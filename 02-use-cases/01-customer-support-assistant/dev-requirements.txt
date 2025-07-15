@@ -1,0 +1,8 @@
+opensearch-py
+requests-aws4auth
+pyyaml
+retrying
+pandas
+streamlit
+streamlit-cookies-manager
+boto3

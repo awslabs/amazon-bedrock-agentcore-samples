@@ -1,0 +1,56 @@
+#!/usr/bin/env python3
+
+import asyncio
+import click
+from bedrock_agentcore.identity.auth import requires_access_token
+from strands.tools.mcp import MCPClient
+from mcp.client.streamable_http import streamablehttp_client
+from strands import Agent
+import sys
+import os
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+from scripts.utils import read_config
+
+gateway_access_token = None
+
+
+@requires_access_token(
+    provider_name="customersupport-gateways",
+    scopes=[],  # Optional unless required
+    auth_flow="M2M",
+)
+async def _get_access_token_manually(*, access_token: str):
+    global gateway_access_token
+    gateway_access_token = access_token
+    return access_token
+
+
+@click.command()
+@click.option("--prompt", "-p", required=True, help="Prompt to send to the MCP agent")
+def main(prompt: str):
+    """CLI tool to interact with an MCP Agent using a prompt."""
+
+    # Fetch access token
+    asyncio.run(_get_access_token_manually(access_token=""))
+
+    # Load config
+    gateway_config = read_config("gateway.config")
+    print(f"Gateway Endpoint - MCP URL: {gateway_config['gateway']['gateway_url']}mcp")
+
+    # Set up MCP client
+    client = MCPClient(
+        lambda: streamablehttp_client(
+            f"{gateway_config['gateway']['gateway_url']}",
+            headers={"Authorization": f"Bearer {gateway_access_token}"},
+        )
+    )
+
+    with client:
+        agent = Agent(tools=client.list_tools_sync())
+        response = agent(prompt)
+        print(str(response))
+
+
+if __name__ == "__main__":
+    main()
