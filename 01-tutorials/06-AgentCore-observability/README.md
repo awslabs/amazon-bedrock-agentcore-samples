@@ -1,4 +1,4 @@
-# GenAI Observability on Amazon CloudWatch
+# AgentCore Observability on Amazon CloudWatch
 
 This repository demonstrates how to implement AgentCore observability for Agents using Amazon CloudWatch and OpenTelemetry. It provides examples for both Amazon Bedrock AgentCore Runtime hosted agents and popular open-source agent frameworks.
 
