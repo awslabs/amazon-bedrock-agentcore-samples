@@ -45,7 +45,7 @@ The Amazon Bedrock AgentCore Code Interpreter is suitable for a wide range of ap
 
 In these tutorials we will cover the following functionality:
 
-- [File Operations using Code Interpreter](01-file-operations-using-code-interpreter)
-- [Code Execution with agent using Code Interpreter](02-code-execution-with-agent-using-code-interpreter)
-- [Advanced Data Analysis with AI Agent using Code Interpreter](03-advanced-data-analysis-with-agent-using-code-interpreter)
-- [Run Commnads using Code Interpreter](04-run-commands-using-code-interpreter)
+- [File Operations using Amazon Bedrock AgentCore Code Interpreter](01-file-operations-using-code-interpreter)
+- [Code Execution with agent using Amazon Bedrock AgentCore Code Interpreter](02-code-execution-with-agent-using-code-interpreter)
+- [Advanced Data Analysis with AI Agent using Amazon Bedrock AgentCore Code Interpreter](03-advanced-data-analysis-with-agent-using-code-interpreter)
+- [Run Commnads using Amazon Bedrock AgentCore Code Interpreter](04-run-commands-using-code-interpreter)
