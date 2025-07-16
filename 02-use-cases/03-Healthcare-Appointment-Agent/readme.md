@@ -10,7 +10,7 @@ An AI agent for immunization related healthcare appointments built with **Amazon
 | Agent type          | Single Agent                                                                                                                        |
 | Use case components | Amazon Bedrock AgentCore related components: Gateway and Identity                                                                   |
 |  					  | Other Components: Amazon Cognito, AWS Healthlake, Amazon API Gateway and AWS Lambda                                                 |
-|  					  | MCP Tools: MCP tools are exposed to Bedrock AgentCore Gateway using OpenAPI specificati                                             |
+|  					  | MCP Tools: MCP tools are exposed to Bedrock AgentCore Gateway using OpenAPI specification                                          |
 | Use case vertical   | Healthcare                                                                                                                          |
 | Example complexity  | Intermediate                                                                                                                        |
 | SDK used            | Amazon Bedrock AgentCore SDK and boto3								                                                                |
@@ -181,13 +181,6 @@ Set up Bedrock AgentCore Gateway and Gateway Target based on OpenAPI specificati
 
 ```
 python setup_fhir_mcp.py --op_type Create --gateway_name <gateway_name_here>
-```
-
-### Test with MCP Client
-Run Strands Agent by using below steps.
-
-```
-python test_fhir_mcp.py --gateway_id <gateway_id_here>
 ```
 
 ### Run Strands Agent

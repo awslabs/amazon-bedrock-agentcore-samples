@@ -3,8 +3,6 @@ import os
 from dotenv import load_dotenv
 import boto3
 import requests
-import subprocess
-import json
 
 #Reading environment variables
 load_dotenv()

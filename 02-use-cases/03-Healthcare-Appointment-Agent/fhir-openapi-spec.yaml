@@ -4,7 +4,7 @@ info:
   description: A simple API for searching and getting patient records from FHIR database
   version: 1.0.0
 servers:
-- url: <your API endpoint here>
+- url: <input url here>
 
 paths:
   /get_patient_emr:

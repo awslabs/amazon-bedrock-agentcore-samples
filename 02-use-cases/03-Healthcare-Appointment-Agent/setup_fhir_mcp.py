@@ -3,11 +3,9 @@ import os
 import json
 import yaml
 import argparse
-import subprocess
 import time
 import utils
 import botocore
-import boto3
 
 load_dotenv()
 
@@ -122,18 +120,11 @@ def delete_gateway(gateway_id):
         gatewayIdentifier=gateway_id
     )
 
-    #print(json.dumps(response, indent=2, default=str))
-
 def create_egress_oauth_provider(gateway_name):
-    acps_client = boto_session.client(
-        "agentcredentialprovider",
-        region_name=os.getenv("aws_default_region")
-    )
-
     cred_provider_name = f"{gateway_name}-oauth-credential-provider"
 
     try:
-        acps_client.delete_oauth2_credential_provider(name=cred_provider_name)
+        agentcore_client.delete_oauth2_credential_provider(name=cred_provider_name)
         print(f"Deleted existing egress credential provider with name {cred_provider_name}")
         time.sleep(15)
     except botocore.exceptions.ClientError as err:
@@ -155,8 +146,7 @@ def create_egress_oauth_provider(gateway_name):
             }
         }
 
-
-        response = acps_client.create_oauth2_credential_provider(
+        response = agentcore_client.create_oauth2_credential_provider(
             name = cred_provider_name,
             credentialProviderVendor = 'CustomOauth2',
             oauth2ProviderConfigInput = provider_config
