@@ -12,8 +12,8 @@ from datetime import datetime
 from langgraph.graph import StateGraph, END
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 from langchain_aws import ChatBedrockConverse
-from bedrock-agentcore.tools.browser_client import BrowserClient
-from bedrock-agentcore.tools.code_interpreter_client import CodeInterpreter
+from bedrock_agentcore.tools.browser_client import BrowserClient
+from bedrock_agentcore.tools.code_interpreter_client import CodeInterpreter
 from rich.console import Console
 from rich.panel import Panel
 
