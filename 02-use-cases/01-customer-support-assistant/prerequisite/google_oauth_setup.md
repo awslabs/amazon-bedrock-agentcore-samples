@@ -52,5 +52,3 @@ After creation, a dialog will display your Client ID and Client Secret. Download
 4. Click “Add or remove scopes”.
 5. Under Manually add scopes, enter scope: `https://www.googleapis.com/auth/calendar`
 6. Click Update, then click Save to confirm the configuration.
-
-## 🤖 7. Test Credentials

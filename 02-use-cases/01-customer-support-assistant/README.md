@@ -45,7 +45,6 @@ This is a customer support agent implementation using AWS Bedrock AgentCore fram
     python -m venv .venv
     source .venv/bin/activate
 
-    pip install -r dev-requirements.txt
     chmod +x scripts/prereq.sh
     ./scripts/prereq.sh
 
@@ -56,8 +55,7 @@ This is a customer support agent implementation using AWS Bedrock AgentCore fram
 2. Create Agentcore Gateway
 
     ```bash
-    pip install -r requirements.txt
-    python scripts/agentcore_gateway.py --gateway_name <GatewayName>
+    python scripts/agentcore_gateway.py create --name customersupgateway
     ```
 
     This create `gateway.config` file.
@@ -67,7 +65,7 @@ This is a customer support agent implementation using AWS Bedrock AgentCore fram
     - Setup Cognito Credential Provider
 
     ```bash
-    python scripts/cognito_credentials_provider.py
+    python scripts/cognito_credentials_provider.py create --name customersupport-gateways
 
     python test/test_gateway.py --prompt "Check warranty with serial number MNO33333333"
     ```
@@ -77,7 +75,7 @@ This is a customer support agent implementation using AWS Bedrock AgentCore fram
     Follow instructions to setup [Google Credentials](./prerequisite/google_oauth_setup.md).
 
     ```bash
-    python scripts/google_credentials_provider.py
+    python scripts/google_credentials_provider.py create --name customersupport-google-calendar
 
     python test/test_google_tool.py
     ```
@@ -85,8 +83,8 @@ This is a customer support agent implementation using AWS Bedrock AgentCore fram
 4. Create Memory
 
     ```bash
-    python scripts/agentcore_memory.py create
-    TODO: Test Memory Script
+    python scripts/agentcore_memory.py create --name customersupport
+
     ```
 
 5. Setup Agent Runtime
@@ -110,8 +108,6 @@ This is a customer support agent implementation using AWS Bedrock AgentCore fram
     ```
 
 6. Local Host Streamlit UI
-
-Create `.streamlit/secrets.toml` file using [.streamlit/secrets.template.toml](./.streamlit/secrets.template.toml).
 
 ```bash
 pip install streamlit
@@ -207,10 +203,11 @@ python scripts/google_credentials_provider.py delete --confirm
 chmod +x scripts/cleanup.sh
 ./scripts/cleanup.sh
 
-TODO: Cleanup for Memory
-TODO: Cleanup for Gateway
-TODO: Cleanup for Identity
-TODO: Cleanup for Runtime
+python scripts/google_credentials_provider.py delete
+python scripts/cognito_credentials_provider.py delete
+python scripts/agentcore_memory.py delete
+python scripts/agentcore_gateway.py delete
+python scripts/agencore_agent_runtime.py delete
 ```
 
 ## 🤝 Contributing
