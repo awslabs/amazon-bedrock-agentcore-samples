@@ -7,4 +7,7 @@ google-auth-httplib2
 google-auth-oauthlib
 fastmcp
 pydantic
-wheelhouse/bedrock_agentcore-0.1.0-py3-none-any.whl
+bedrock-agentcore
+bedrock-agentcore-starter-toolkit
+botocore
+boto3

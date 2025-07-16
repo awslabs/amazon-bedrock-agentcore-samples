@@ -57,9 +57,6 @@ This is a customer support agent implementation using AWS Bedrock AgentCore fram
 
     ```bash
     pip install -r requirements.txt
-    pip install wheelhouse/bedrock_agentcore_starter_toolkit-0.1.0-py3-none-any.whl
-    pip install wheelhouse/botocore-1.39.5-py3-none-any.whl
-    pip install wheelhouse/boto3-1.39.5-py3-none-any.whl
     python scripts/agentcore_gateway.py --gateway_name <GatewayName>
     ```
 

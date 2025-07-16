@@ -4,6 +4,10 @@ pyyaml
 retrying
 pandas
 streamlit
-streamlit-cookies-manager
+streamlit-cookies-controller
 boto3
 click
+bedrock-agentcore
+bedrock-agentcore-starter-toolkit
+botocore
+boto3

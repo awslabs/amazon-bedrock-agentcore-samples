@@ -65,5 +65,3 @@ tests/
 Dockerfile
 .dockerignore
 .env
-# Keep wheelhouse for offline installations
-# wheelhouse/
