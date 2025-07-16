@@ -1,11 +1,14 @@
 import click
 import boto3
+import sys
 from botocore.exceptions import ClientError
 from bedrock_agentcore.memory import MemoryClient
 from bedrock_agentcore.memory.constants import StrategyType
+from utils import get_aws_region
 
 # AWS clients
-ssm = boto3.client("ssm")
+REGION = get_aws_region()
+ssm = boto3.client("ssm", region_name=REGION)
 memory_client = MemoryClient()
 
 
@@ -31,24 +34,38 @@ def delete_ssm_param(param_name: str):
 
 
 @click.group()
-def cli():
-    """CLI for managing Bedrock Agent Memory"""
-    pass
+@click.pass_context
+def cli(ctx):
+    """AgentCore Memory Management CLI.
+    
+    Create and delete AgentCore memory resources for the customer support application.
+    """
+    ctx.ensure_object(dict)
 
 
 @cli.command()
 @click.option(
-    "--memory-name",
+    "--name",
     default="CustomerSupportMemory",
-    help="Name of the memory resource.",
+    help="Name of the memory resource"
 )
 @click.option(
     "--ssm-param",
     default="/app/customersupport/agentcore/memory_id",
-    help="SSM parameter to store memory_id.",
+    help="SSM parameter to store memory_id"
 )
-def create(memory_name, ssm_param):
-    """Create Bedrock Agent memory and store memory_id in SSM."""
+@click.option(
+    "--event-expiry-days",
+    default=30,
+    type=int,
+    help="Number of days before events expire (default: 30)"
+)
+def create(name, ssm_param, event_expiry_days):
+    """Create a new AgentCore memory resource."""
+    click.echo(f"🚀 Creating AgentCore memory: {name}")
+    click.echo(f"📍 Region: {REGION}")
+    click.echo(f"⏱️  Event expiry: {event_expiry_days} days")
+    
     strategies = [
         {
             StrategyType.SUMMARY.value: {
@@ -60,75 +77,87 @@ def create(memory_name, ssm_param):
     ]
 
     try:
+        click.echo("🔄 Creating memory resource...")
         memory = memory_client.create_memory_and_wait(
-            name=memory_name,
+            name=name,
             strategies=strategies,
             description="Memory for customer support agent",
-            event_expiry_days=30,
+            event_expiry_days=event_expiry_days,
         )
         memory_id = memory["memoryId"]
-        click.echo(f"✅ Created memory: {memory_id}")
+        click.echo(f"✅ Memory created successfully: {memory_id}")
+        
     except Exception as e:
         if "already exists" in str(e):
+            click.echo("📋 Memory already exists, finding existing resource...")
             memories = memory_client.list_memories()
             memory_id = next(
-                (m["memoryId"] for m in memories if memory_name in m["id"]), None
+                (m["memoryId"] for m in memories if name in m.get("name", "")), None
             )
-            click.echo(f"✅ Using existing memory: {memory_id}")
+            if memory_id:
+                click.echo(f"✅ Using existing memory: {memory_id}")
+            else:
+                click.echo("❌ Could not find existing memory resource", err=True)
+                sys.exit(1)
         else:
-            raise click.ClickException(f"❌ Error creating memory: {e}")
+            click.echo(f"❌ Error creating memory: {str(e)}", err=True)
+            sys.exit(1)
 
-    store_memory_id_in_ssm(ssm_param, memory_id)
+    try:
+        store_memory_id_in_ssm(ssm_param, memory_id)
+        click.echo(f"🎉 Memory setup completed successfully!")
+        click.echo(f"   Memory ID: {memory_id}")
+        click.echo(f"   SSM Parameter: {ssm_param}")
+        
+    except Exception as e:
+        click.echo(f"⚠️  Memory created but failed to store in SSM: {str(e)}", err=True)
 
 
 @cli.command()
-@click.option("--memory-id", default=None, help="Memory ID to delete directly.")
+@click.option(
+    "--memory-id",
+    help="Memory ID to delete (if not provided, will read from SSM parameter)"
+)
 @click.option(
     "--ssm-param",
     default="/app/customersupport/agentcore/memory_id",
-    help="SSM parameter to retrieve memory_id from.",
+    help="SSM parameter to retrieve memory_id from"
 )
 @click.option(
-    "--skip-ssm-delete", is_flag=True, help="Skip deleting the SSM parameter."
+    "--confirm",
+    is_flag=True,
+    help="Skip confirmation prompt"
 )
-def delete(memory_id, ssm_param, skip_ssm_delete):
-    """Delete Bedrock Agent memory by ID or via SSM. Optionally remove SSM parameter."""
+def delete(memory_id, ssm_param, confirm):
+    """Delete an AgentCore memory resource."""
+    
+    # If no memory ID provided, try to read from SSM
     if not memory_id:
         try:
             memory_id = get_memory_id_from_ssm(ssm_param)
-            click.echo(f"📥 Retrieved memory ID from SSM: {memory_id}")
+            click.echo(f"📖 Using memory ID from SSM: {memory_id}")
         except Exception:
-            click.echo(
-                "⚠️ No memory ID provided and no SSM parameter found. Nothing to delete."
-            )
-            return
+            click.echo("❌ No memory ID provided and couldn't read from SSM parameter", err=True)
+            sys.exit(1)
+
+    # Confirmation prompt
+    if not confirm:
+        if not click.confirm(f"⚠️  Are you sure you want to delete memory {memory_id}? This action cannot be undone."):
+            click.echo("❌ Operation cancelled")
+            sys.exit(0)
+
+    click.echo(f"🗑️  Deleting memory: {memory_id}")
 
     try:
         memory_client.delete_memory(memory_id=memory_id)
-        click.echo(f"✅ Deleted memory resource: {memory_id}")
+        click.echo(f"✅ Memory deleted successfully: {memory_id}")
     except Exception as e:
-        click.echo(f"❌ Error deleting memory: {e}")
+        click.echo(f"❌ Error deleting memory: {str(e)}", err=True)
+        sys.exit(1)
 
-    if not skip_ssm_delete:
-        delete_ssm_param(ssm_param)
-    else:
-        click.echo("⚠️ Skipping SSM parameter deletion as requested.")
-
-
-@cli.command("list")
-def list_memories():
-    """List all Bedrock memory resources."""
-    try:
-        memories = memory_client.list_memories()
-        if not memories:
-            click.echo("ℹ️ No memory resources found.")
-            return
-
-        click.echo("🧠 Existing Memory Resources:")
-        for mem in memories:
-            click.echo(f"- Arn: {mem['arn']}, ID: {mem['memoryId']}")
-    except Exception as e:
-        raise click.ClickException(f"❌ Error listing memories: {e}")
+    # Always delete SSM parameter
+    delete_ssm_param(ssm_param)
+    click.echo("🎉 Memory and SSM parameter deleted successfully")
 
 
 if __name__ == "__main__":

@@ -10,13 +10,13 @@ import sys
 import os
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-from scripts.utils import read_config
+from scripts.utils import read_config, get_ssm_parameter
 
 gateway_access_token = None
 
 
 @requires_access_token(
-    provider_name="customersupport-gateways",
+    provider_name=get_ssm_parameter("/app/customersupport/agentcore/cognito_provider"),
     scopes=[],  # Optional unless required
     auth_flow="M2M",
 )

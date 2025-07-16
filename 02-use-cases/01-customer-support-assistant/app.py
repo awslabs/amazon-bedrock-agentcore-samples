@@ -254,7 +254,7 @@ if query_params.get("code") and query_params.get("state") and not cookies.get("t
         # st.success("Logged in successfully!")
 
         # Clear the cookies after login to avoid reuse of old code_verifier and state
-        cookies.set("tokens", json.dumps(tokens, default=str))
+        cookies.set("tokens", json.dumps(tokens))
         cookies.remove("code_verifier")
         cookies.remove("code_challenge")
         cookies.remove("oauth_state")
@@ -318,7 +318,7 @@ def invoke_endpoint(
             timeout=100,
             stream=True,
         )
-
+        last_data = False
         for line in response.iter_lines(chunk_size=1):
             if line:
                 line = line.decode("utf-8")
@@ -361,6 +361,7 @@ if cookies.get("tokens"):
     st.sidebar.code(st.session_state["session_id"])
 
     token = json.loads(cookies.get("tokens"))
+
     claims = jwt.decode(token["id_token"], options={"verify_signature": False})
 
     st.title("Customer Support Assistant")
@@ -373,7 +374,9 @@ if cookies.get("tokens"):
     )
     # Initialize chat history
     if "messages" not in st.session_state:
-        default_prompt = f"Hi my email is {claims.get('email')}"
+        default_prompt = (
+            f"Hi my name is Maira Ladeira Tanke and my email is {claims.get('email')}"
+        )
         st.session_state.messages = [
             {
                 "role": "user",

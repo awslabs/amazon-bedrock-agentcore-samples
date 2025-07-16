@@ -6,6 +6,13 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from datetime import datetime, timedelta
 
+import sys
+import os
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
+from scripts.utils import get_ssm_parameter
+
 
 async def on_auth_url(url: str):
     print(f"Authorization url: {url}")
@@ -17,7 +24,7 @@ google_access_token = None
 
 # This annotation helps agent developer to obtain access tokens from external applications
 @requires_access_token(
-    provider_name="customersupports-google-calendar",
+    provider_name=get_ssm_parameter("/app/customersupport/agentcore/google_provider"),
     scopes=SCOPES,  # Google OAuth2 scopes
     auth_flow="USER_FEDERATION",  # On-behalf-of user (3LO) flow
     on_auth_url=on_auth_url,  # prints authorization URL to console

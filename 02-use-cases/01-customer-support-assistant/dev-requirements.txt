@@ -6,3 +6,4 @@ pandas
 streamlit
 streamlit-cookies-manager
 boto3
+click

@@ -2,7 +2,6 @@ import os
 import uuid
 import asyncio
 import logging
-from bedrock_agentcore.runtime import BedrockAgentCoreApp
 from bedrock_agentcore.identity.auth import requires_access_token
 from agent import CustomerSupport  # Your custom agent class
 from datetime import datetime, timedelta
@@ -17,6 +16,8 @@ from tools.agent_core_memory import AgentCoreMemoryToolProvider
 from memory_hook_provider import MemoryHook
 from bedrock_agentcore.memory import MemoryClient
 
+from bedrock_agentcore.runtime import BedrockAgentCoreApp
+
 # Environment flags
 os.environ["STRANDS_OTEL_ENABLE_CONSOLE_EXPORT"] = "true"
 os.environ["STRANDS_TOOL_CONSOLE_MODE"] = "enabled"
@@ -24,15 +25,18 @@ os.environ["STRANDS_TOOL_CONSOLE_MODE"] = "enabled"
 os.environ["KNOWLEDGE_BASE_ID"] = get_ssm_parameter(
     "/app/customersupport/knowledge_base/knowledge_base_id"
 )
+
 # Logging setup
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Bedrock app and global agent instance
 app = BedrockAgentCoreApp()
+
 agent = None  # Will be initialized with access token
 gateway_access_token = None
 google_access_token = None
+
 memory_client = MemoryClient()
 
 
@@ -83,9 +87,9 @@ def create_calendar_event() -> str:
         end_time = start_time + timedelta(hours=1)
 
         event = {
-            "summary": "Test Event from API",
+            "summary": "Customer Support Call - Maira Ladeira Tanke",
             "location": "Virtual",
-            "description": "This event was created using the Google Calendar API.",
+            "description": "This event was created by Customer Support Assistant.",
             "start": {
                 "dateTime": start_time.isoformat() + "Z",  # UTC time
                 "timeZone": "UTC",
@@ -167,7 +171,7 @@ def get_calendar_events_today() -> str:
 
 
 @requires_access_token(
-    provider_name="customersupport-gateways",
+    provider_name=get_ssm_parameter("/app/customersupport/agentcore/cognito_provider"),
     scopes=[],  # Optional unless required
     auth_flow="M2M",
 )
@@ -187,7 +191,7 @@ SCOPES = ["https://www.googleapis.com/auth/calendar"]
 
 # This annotation helps agent developer to obtain access tokens from external applications
 @requires_access_token(
-    provider_name="customersupports-google-calendar",
+    provider_name=get_ssm_parameter("/app/customersupport/agentcore/google_provider"),
     scopes=SCOPES,  # Google OAuth2 scopes
     auth_flow="USER_FEDERATION",  # On-behalf-of user (3LO) flow
     on_auth_url=on_auth_url,  # prints authorization URL to console
