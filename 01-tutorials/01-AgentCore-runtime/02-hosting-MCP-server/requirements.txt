@@ -1,3 +1,4 @@
 mcp
 boto3
 fastmcp
+bedrock-agentcore-starter-toolkit
