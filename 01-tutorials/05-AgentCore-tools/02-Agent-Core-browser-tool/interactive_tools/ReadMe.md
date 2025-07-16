@@ -18,7 +18,7 @@ This folder contains examples demonstrating the use of AgentCore SDK tools:
 uv pip install -r requirements.txt
 ```
 
-Required packages: fastapi, uvicorn, rich, boto3, genesis
+Required packages: fastapi, uvicorn, rich, boto3
 
 ### AWS Credentials (For S3 Storage)
 For S3 recording storage, ensure AWS credentials are configured:

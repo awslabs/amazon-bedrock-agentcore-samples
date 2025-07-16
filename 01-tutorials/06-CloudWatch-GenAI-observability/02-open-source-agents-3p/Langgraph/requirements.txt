@@ -1,0 +1,11 @@
+# Langgraph Requirements for Observability
+boto3
+botocore
+langchain[aws]
+langgraph
+langsmith[otel]
+duckduckgo-search 
+langchain-community
+opentelemetry-instrumentation-langchain
+aws-opentelemetry-distro==0.10.0
+python-dotenv

@@ -1,0 +1,8 @@
+# Strands Agent SDK and instrumentation
+strands-agents[otel]
+strands-agents-tools
+boto3
+botocore
+duckduckgo-search
+aws-opentelemetry-distro==0.10.0
+python-dotenv
