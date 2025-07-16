@@ -62,7 +62,7 @@ Amazon Bedrock AgentCore with different entry points.
 2. **Set up your environment**
 
    ```bash
-   pip install bedrock_agentcore
+   pip install bedrock-agentcore
    ```
 
 3. **Start with tutorials**
