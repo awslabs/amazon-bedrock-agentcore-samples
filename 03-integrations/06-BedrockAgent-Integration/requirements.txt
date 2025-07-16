@@ -1,0 +1,12 @@
+# Install boto3
+botocore==1.39.5 #Version number to be double checked
+boto3==1.39.5 #Version number to be double checked
+#bedrock_agentcore==0.1.0
+#bedrock_agentcore_starter_toolkit==0.1.0
+#amzn_AWSAgentCredentialProviderServiceBotocoreClient==1.0
+
+# Standard packages
+jupyter>=1.0.0
+notebook>=6.0.0
+requests>=2.25.0
+urllib3>=1.26.0

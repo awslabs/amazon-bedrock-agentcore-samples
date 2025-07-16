@@ -1,0 +1,2 @@
+bedrock-agentcore
+boto3

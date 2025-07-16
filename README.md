@@ -54,13 +54,15 @@ Amazon Bedrock AgentCore with different entry points.
 ## 🚀 Quick Start
 
 1. **Clone the repository**
-   ```bash
 
+   ```bash
+   git clone https://github.com/awslabs/amazon-bedrock-agentcore-samples.git
    ```
 
 2. **Set up your environment**
+
    ```bash
-   pip install -r requirements.txt
+   pip install bedrock_agentcore
    ```
 
 3. **Start with tutorials**
@@ -78,6 +80,7 @@ Amazon Bedrock AgentCore with different entry points.
 ## 🤝 Contributing
 
 We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.md) for details on:
+
 - Adding new samples
 - Improving existing examples
 - Reporting issues

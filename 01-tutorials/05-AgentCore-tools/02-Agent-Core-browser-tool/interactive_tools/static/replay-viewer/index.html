@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bedrock Agentcore Session Replay Viewer</title>
+    <style>
+        * { box-sizing: border-box; }
+        
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: #f5f5f5;
+        }
+        
+        .header {
+            background: #232f3e;
+            color: white;
+            padding: 15px 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .header h1 {
+            margin: 0;
+            font-size: 20px;
+            font-weight: 400;
+        }
+        
+        .container {
+            display: flex;
+            height: calc(100vh - 60px);
+        }
+        
+        .sidebar {
+            width: 350px;
+            background: white;
+            border-right: 1px solid #e0e0e0;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .sidebar-header {
+            padding: 15px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e0e0e0;
+            font-weight: 500;
+        }
+        
+        .recordings-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+        }
+        
+        .recording-item {
+            padding: 12px;
+            margin: 5px 0;
+            background: #f8f9fa;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid transparent;
+        }
+        
+        .recording-item:hover {
+            background: #e9ecef;
+            border-color: #dee2e6;
+        }
+        
+        .recording-item.active {
+            background: #0073bb;
+            color: white;
+            border-color: #0073bb;
+        }
+        
+        .recording-item .date {
+            font-size: 12px;
+            opacity: 0.8;
+            margin-bottom: 4px;
+        }
+        
+        .recording-item .session-id {
+            font-family: monospace;
+            font-size: 13px;
+            margin-bottom: 4px;
+        }
+        
+        .recording-item .stats {
+            font-size: 12px;
+            opacity: 0.7;
+        }
+        
+        .viewer {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: #e9ecef;
+        }
+        
+        .player-container {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        #player {
+            width: 100%;
+            max-width: 1200px;
+            height: 100%;
+            max-height: 800px;
+            background: white;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            border-radius: 8px;
+        }
+        
+        .empty-state {
+            text-align: center;
+            color: #6c757d;
+            padding: 40px;
+        }
+        
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #0073bb;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .error {
+            color: #dc3545;
+            padding: 20px;
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            border-radius: 4px;
+            margin: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Bedrock Agentcore Session Replay Viewer</h1>
+    </div>
+    
+    <div class="container">
+        <div class="sidebar">
+            <div class="sidebar-header">
+                Available Recordings
+                <span id="recordingCount" style="float: right; opacity: 0.7;"></span>
+            </div>
+            <div class="recordings-list" id="recordingsList">
+                <div class="empty-state">
+                    <div class="loading"></div>
+                    Loading recordings...
+                </div>
+            </div>
+        </div>
+        
+        <div class="viewer">
+            <div class="player-container">
+                <div id="player">
+                    <div class="empty-state">
+                        <h2>Select a Recording</h2>
+                        <p>Choose a recording from the list to begin playback</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/rrweb@latest/dist/rrweb.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/rrweb-player@latest/dist/index.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/rrweb-player@latest/dist/style.css">
+    
+    <script>
+        let currentPlayer = null;
+        let recordings = [];
+        
+        async function loadRecordings() {
+            try {
+                const response = await fetch('/api/recordings');
+                const data = await response.json();
+                
+                // Check if response has error
+                if (data.error) {
+                    console.error('Server returned error:', data.error);
+                    document.getElementById('recordingsList').innerHTML = 
+                        '<div class="error">Failed to load recordings: ' + data.error + '</div>';
+                    document.getElementById('recordingCount').textContent = '(0)';
+                    return;
+                }
+                
+                // Make sure recordings is an array
+                recordings = Array.isArray(data) ? data : (data.recordings || []);
+                
+                const listEl = document.getElementById('recordingsList');
+                const countEl = document.getElementById('recordingCount');
+                
+                if (recordings.length === 0) {
+                    listEl.innerHTML = '<div class="empty-state">No recordings found</div>';
+                    countEl.textContent = '(0)';
+                    return;
+                }
+                
+                // CHANGED: Use string concatenation instead of template literals
+                countEl.textContent = '(' + recordings.length + ')';
+                
+                // CHANGED: Create HTML using map with string concatenation
+                listEl.innerHTML = recordings.map(function(recording, index) {
+                    return '<div class="recording-item" data-index="' + index + '" onclick="loadRecording(' + index + ')">' +
+                        '<div class="date">' + recording.date + '</div>' +
+                        '<div class="session-id">' + recording.sessionId + '</div>' +
+                        '<div class="stats">' + 
+                            recording.events + ' events • ' + formatDuration(recording.duration) +
+                        '</div>' +
+                    '</div>';
+                }).join('');
+                
+            } catch (e) {
+                console.error('Failed to load recordings:', e);
+                document.getElementById('recordingsList').innerHTML = 
+                    '<div class="error">Failed to load recordings: ' + e.message + '</div>';
+                document.getElementById('recordingCount').textContent = '(0)';
+            }
+        }
+        
+        function formatDuration(ms) {
+            const seconds = Math.floor(ms / 1000);
+            const minutes = Math.floor(seconds / 60);
+            const hours = Math.floor(minutes / 60);
+            
+            // CHANGED: Use string concatenation instead of template literals
+            if (hours > 0) {
+                return hours + 'h ' + (minutes % 60) + 'm';
+            } else if (minutes > 0) {
+                return minutes + 'm ' + (seconds % 60) + 's';
+            } else {
+                return seconds + 's';
+            }
+        }
+        
+        async function loadRecording(index) {
+            const recording = recordings[index];
+            
+            document.querySelectorAll('.recording-item').forEach(el => {
+                el.classList.remove('active');
+            });
+            // CHANGED: Use string concatenation
+            document.querySelector('[data-index="' + index + '"]').classList.add('active');
+            
+            const playerEl = document.getElementById('player');
+            playerEl.innerHTML = '<div class="empty-state"><div class="loading"></div>Downloading recording...</div>';
+            
+            try {
+                // Safely dispose of the existing player first
+                if (currentPlayer) {
+                    try {
+                        if (typeof currentPlayer.destroy === 'function') {
+                            currentPlayer.destroy();
+                        } else {
+                            console.warn('Current player does not have a destroy method');
+                        }
+                    } catch (e) {
+                        console.error('Error destroying player:', e);
+                    }
+                    currentPlayer = null;
+                }
+                
+                // CHANGED: Use string concatenation
+                const response = await fetch('/api/download/' + recording.id);
+                const result = await response.json();
+                
+                if (!result.success || !result.data) {
+                    throw new Error(result.error || 'Failed to download recording');
+                }
+                
+                const { events } = result.data;
+                
+                if (!events || events.length === 0) {
+                    throw new Error('Recording contains no events');
+                }
+                
+                // CHANGED: Use string concatenation for logging
+                console.log('Loaded ' + events.length + ' events. First event type: ' + events[0].type);
+                
+                playerEl.innerHTML = '';
+                
+                if (typeof rrwebPlayer !== 'function') {
+                    throw new Error('rrwebPlayer not found - make sure the library is loaded');
+                }
+                
+                const width = Math.min(playerEl.offsetWidth, 1200);
+                const height = Math.min(playerEl.offsetHeight, 800);
+                
+                // CHANGED: Use string concatenation
+                console.log('Creating player with dimensions ' + width + 'x' + height);
+                
+                currentPlayer = new rrwebPlayer({
+                    target: playerEl,
+                    props: {
+                        events: events,
+                        width: width,
+                        height: height,
+                        autoPlay: true,
+                        showController: true
+                    }
+                });
+                
+                console.log('Player created:', currentPlayer);
+                
+            } catch (e) {
+                console.error('Failed to load recording:', e);
+                // CHANGED: Use string concatenation
+                playerEl.innerHTML = '<div class="error">Error: ' + e.message + '</div>';
+            }
+        }
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Session Replay Viewer loaded');
+            loadRecordings();
+        });
+        
+        // Auto-refresh recordings list periodically
+        setInterval(loadRecordings, 30000);
+    </script>
+</body>
+</html>

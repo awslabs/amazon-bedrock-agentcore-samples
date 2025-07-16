@@ -1,0 +1,6 @@
+browser-use<0.3.3
+langchain_aws
+uv
+rich
+fastapi>=0.109.0
+uvicorn>=0.27.0

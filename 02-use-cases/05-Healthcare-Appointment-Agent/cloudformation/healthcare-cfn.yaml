@@ -1,0 +1,578 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Parameters:
+  LambdaS3Bucket:
+    Description: The name of S3 bucket which contains lambda code
+    Type: String
+  LambdaS3Key:
+    Description: The S3 object key which contains lambda code in zip format
+    Type: String
+  ApiName:
+    Type: String
+    Default: 'HCLRestAPI'
+    Description: 'Name for the REST API'
+  StageName:
+    Type: String
+    Default: 'dev'
+    Description: 'Stage name for API deployment'
+  UserPoolName:
+    Type: String
+    Default: 'MyUserPool'
+    Description: 'Name of the Cognito User Pool'
+  AppClientName:
+    Type: String
+    Default: 'MyAppClient'
+    Description: 'Name of the Cognito User Pool Application Client'
+Resources:
+  IAMRoleLambda:
+    Type: AWS::IAM::Role
+    Properties:
+      Path: /service-role/
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      MaxSessionDuration: 3600
+      RoleName: !Join
+        - '-'
+        - - 'lambda-iam-role'
+          - !Select
+            - 2
+            - !Split
+              - '/'
+              - !Ref 'AWS::StackId'
+      Policies:
+        - PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Resource: '*'
+                Action:
+                  - healthlake:CreateResource
+                  - healthlake:StartFHIRExportJob
+                  - healthlake:ReadResource
+                  - healthlake:StartFHIRImportJob
+                  - healthlake:DeleteResource
+                  - healthlake:ProcessBundle
+                  - healthlake:SearchWithGet
+                  - healthlake:StartFHIRExportJobWithGet
+                  - healthlake:SearchWithPost
+                  - healthlake:StartFHIRExportJobWithPost
+                  - healthlake:UpdateResource
+                  - healthlake:SearchEverything
+                Effect: Allow
+                Sid: VisualEditor0
+          PolicyName: HealthLakeAccess
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+
+  IAMRoleLambdaAPIGWognito:
+    Type: AWS::IAM::Role
+    Properties:
+      Path: /service-role/
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - arn:aws:iam::aws:policy/AmazonAPIGatewayAdministrator
+      MaxSessionDuration: 3600
+      RoleName: !Join
+        - '-'
+        - - 'lambda-iam-role-apicognito'
+          - !Select
+            - 2
+            - !Split
+              - '/'
+              - !Ref 'AWS::StackId'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+
+  IAMRolePrimitives:
+    Type: AWS::IAM::Role
+    Properties:
+      Path: /service-role/
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AWSLambda_FullAccess
+        - arn:aws:iam::aws:policy/AWSKeyManagementServicePowerUser
+      Policies:
+        - PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Resource: '*'
+                Action:
+                  - bedrock-agentcore:*
+                  - agent-credential-provider:*
+                  - secretsmanager:GetSecretValue
+                  - iam:PassRole
+                Effect: Allow
+                Sid: VisualEditor0
+          PolicyName: PrimitivesInline
+      MaxSessionDuration: 3600
+      RoleName: !Join
+        - '-'
+        - - 'primitives-iam-role'
+          - !Select
+            - 2
+            - !Split
+              - '/'
+              - !Ref 'AWS::StackId'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Action:
+              - sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: bedrock-agentcore.amazonaws.com
+  HealthLakeFHIRDatastore:
+    Type: AWS::HealthLake::FHIRDatastore
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      DatastoreTypeVersion: R4
+      DatastoreName: fhirStore
+      IdentityProviderConfiguration:
+        FineGrainedAuthorizationEnabled: false
+        AuthorizationStrategy: AWS_AUTH
+      PreloadDataConfig:
+        PreloadDataType: SYNTHEA
+      SseConfiguration:
+        KmsEncryptionConfig:
+          CmkType: AWS_OWNED_KMS_KEY
+  FhirMCPLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      Description: 'Lambda function for MCP tools'
+      Handler: lambda_function.lambda_handler
+      Code:
+        S3Bucket: !Ref LambdaS3Bucket
+        S3Key: !Ref LambdaS3Key
+      Role: !GetAtt IAMRoleLambda.Arn
+      FunctionName: !Join
+        - '-'
+        - - 'fhir-mcp-lambda'
+          - !Select
+            - 2
+            - !Split
+              - '/'
+              - !Ref 'AWS::StackId'
+      Runtime: python3.11
+      PackageType: Zip
+      Environment:
+        Variables:
+          data_store_endpoint: !GetAtt HealthLakeFHIRDatastore.DatastoreEndpoint
+      Architectures:
+        - x86_64
+
+  APIGWCognitoLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: index.handler
+      Runtime: python3.11
+      Timeout: 60
+      Role: !GetAtt IAMRoleLambdaAPIGWognito.Arn
+      Environment:
+        Variables:
+          RestAPIId: !Ref RestApi
+          CognitoAuthId: !Ref APIAuthorizer
+          oAuthScope: !Join
+            - ''
+            - - 'default-m2m-resource-server-'
+              - !Select [0, !Split ['-', !Select [2, !Split ['/', !Ref 'AWS::StackId']]]]
+              - '/read'
+      Code:
+        ZipFile:
+          !Sub |
+            import json
+            import boto3
+            import os
+
+            RestAPIId = os.environ.get('RestAPIId', 'None')
+            CognitoAuthId = os.environ.get('CognitoAuthId', 'None')
+            oAuthScope = os.environ.get('oAuthScope', 'None')
+
+            def handler(event, context):
+                print(f"Event recd: {event}")
+
+                if event["RequestType"] in ["Create", "Update", "Delete"]:
+                    apiClient = boto3.client('apigateway')
+
+                    response = apiClient.get_resources(restApiId = RestAPIId, limit=100)
+                    #print(response)
+
+                    for resource in response['items']:
+                        ResourceId = resource['id']
+                        ResourcePath = resource['path']
+
+                        print(f"Resource Id:{ResourceId}, path: {ResourcePath}")
+
+                        if 'resourceMethods' in resource:
+                            for method in resource['resourceMethods']:
+                                http_method = method
+
+                                if event["RequestType"] in ["Create", "Update"]:
+                                    print(f"Adding auth to Method: {http_method}")
+
+                                    response = apiClient.update_method(
+                                        restApiId=RestAPIId,
+                                        resourceId=ResourceId,
+                                        httpMethod=http_method,
+                                        patchOperations=[
+                                            {
+                                                'op': 'replace',
+                                                'path': '/authorizationType',
+                                                'value': 'COGNITO_USER_POOLS'
+                                            },
+                                            {
+                                                'op': 'replace',
+                                                'path': '/authorizerId',
+                                                'value': CognitoAuthId
+                                            },
+                                            {
+                                                'op': 'add',
+                                                'path': '/authorizationScopes',
+                                                'value': oAuthScope
+                                            }
+                                        ]
+                                    )
+                                else:
+                                    print(f"Removing auth from Method: {http_method}")
+
+                                    response = apiClient.update_method(
+                                        restApiId=RestAPIId,
+                                        resourceId=ResourceId,
+                                        httpMethod=http_method,
+                                        patchOperations=[
+                                            {
+                                                'op': 'replace',
+                                                'path': '/authorizationType',
+                                                'value': 'NONE'
+                                            },
+                                            {
+                                                'op': 'remove',
+                                                'path': '/authorizationScopes',
+                                                'value': oAuthScope
+                                            }
+                                        ]
+                                    )
+
+                    print("Deploying to Dev stage")
+
+                    response = apiClient.create_deployment(restApiId = RestAPIId, stageName = 'dev')
+
+                    print("Deployment to Dev stage complete")
+                                
+                return {
+                    'statusCode': 200,
+                    'body': json.dumps('Auth Updated')
+                }
+
+  # REST API
+  RestApi:
+    Type: 'AWS::ApiGateway::RestApi'
+    Properties:
+      Name: !Ref ApiName
+      Description: 'Healthcare FHIR API Gateway'
+      EndpointConfiguration:
+        Types:
+          - REGIONAL
+      Policy:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: '*'
+            Action: 'execute-api:Invoke'
+            Resource: '*'
+      Body:
+        openapi: "3.0.1"
+        info:
+          title: "API-v1"
+        paths:
+          /get_patient_emr:
+            get:
+              responses:
+                "200":
+                  description: "200 response"
+                  content:
+                    application/json:
+                      schema:
+                        \$ref: "#/components/schemas/Empty"
+              x-amazon-apigateway-integration:
+                httpMethod: "POST"
+                uri: !Join 
+                  - ''
+                  - - !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/'
+                    - !GetAtt FhirMCPLambda.Arn
+                    - '/invocations'
+                responses:
+                  default:
+                    statusCode: "200"
+                passthroughBehavior: "when_no_match"
+                timeoutInMillis: 29000
+                contentHandling: "CONVERT_TO_TEXT"
+                type: "aws_proxy"
+          /get_available_slots:
+            get:
+              responses:
+                "200":
+                  description: "200 response"
+                  content:
+                    application/json:
+                      schema:
+                        \$ref: "#/components/schemas/Empty"
+              x-amazon-apigateway-integration:
+                httpMethod: "POST"
+                uri: !Join 
+                  - ''
+                  - - !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/'
+                    - !GetAtt FhirMCPLambda.Arn
+                    - '/invocations'
+                responses:
+                  default:
+                    statusCode: "200"
+                passthroughBehavior: "when_no_match"
+                timeoutInMillis: 29000
+                contentHandling: "CONVERT_TO_TEXT"
+                type: "aws_proxy"
+          /book_appointment:
+            post:
+              responses:
+                "200":
+                  description: "200 response"
+                  content:
+                    application/json:
+                      schema:
+                        \$ref: "#/components/schemas/Empty"
+              x-amazon-apigateway-integration:
+                httpMethod: "POST"
+                uri: !Join 
+                  - ''
+                  - - !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/'
+                    - !GetAtt FhirMCPLambda.Arn
+                    - '/invocations'
+                responses:
+                  default:
+                    statusCode: "200"
+                passthroughBehavior: "when_no_match"
+                timeoutInMillis: 29000
+                contentHandling: "CONVERT_TO_TEXT"
+                type: "aws_proxy"
+          /search_immunization_emr:
+            post:
+              responses:
+                "200":
+                  description: "200 response"
+                  content:
+                    application/json:
+                      schema:
+                        \$ref: "#/components/schemas/Empty"
+              x-amazon-apigateway-integration:
+                httpMethod: "POST"
+                uri: !Join 
+                  - ''
+                  - - !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/'
+                    - !GetAtt FhirMCPLambda.Arn
+                    - '/invocations'
+                responses:
+                  default:
+                    statusCode: "200"
+                passthroughBehavior: "when_no_match"
+                timeoutInMillis: 29000
+                contentHandling: "CONVERT_TO_TEXT"
+                type: "aws_proxy"
+        components:
+          schemas:
+            Empty:
+              title: "Empty Schema"
+              type: "object"
+
+  APIAuthorizer:
+    Type: AWS::ApiGateway::Authorizer
+    Properties:
+      Name: !Sub "${ApiName}-cognitoauth"
+      RestApiId: !Ref RestApi
+      Type: COGNITO_USER_POOLS
+      IdentitySource: method.request.header.Authorization
+      ProviderARNs:
+        - !GetAtt UserPool.Arn
+      AuthorizerResultTtlInSeconds: 300
+
+  # API Gateway Deployment
+  ApiDeployment:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn:
+      - RestApi
+    Properties:
+      RestApiId: !Ref RestApi
+      Description: 'API Deployment'
+
+  # API Gateway Stage
+  ApiStage:
+    Type: AWS::ApiGateway::Stage
+    Properties:
+      RestApiId: !Ref RestApi
+      DeploymentId: !Ref ApiDeployment
+      StageName: !Ref StageName
+      Description: 'API Stage'
+      MethodSettings:
+        - ResourcePath: '/*'
+          HttpMethod: '*'
+          LoggingLevel: INFO
+          DataTraceEnabled: true
+          MetricsEnabled: true
+
+  # CloudWatch Log Group for API Gateway
+  ApiGatewayLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/apigateway/${RestApi}'
+      RetentionInDays: 14
+
+  # IAM Role for API Gateway CloudWatch Logging
+  ApiGatewayCloudWatchRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: apigateway.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs
+  # API Gateway Account (for CloudWatch logging)
+  ApiGatewayAccount:
+    Type: AWS::ApiGateway::Account
+    Properties:
+      CloudWatchRoleArn: !GetAtt ApiGatewayCloudWatchRole.Arn
+  LambdaPermissionForGetMethod:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt FhirMCPLambda.Arn
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${RestApi}/*/*'
+  UserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: !Ref UserPoolName
+      MfaConfiguration: 'OFF'
+      UsernameConfiguration:
+        CaseSensitive: false
+  UserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    DependsOn: ResourceServer
+    Properties:
+      ClientName: !Ref AppClientName
+      UserPoolId: !Ref UserPool
+      GenerateSecret: true
+      ExplicitAuthFlows:
+        - ALLOW_REFRESH_TOKEN_AUTH
+      RefreshTokenValidity: 1
+      AccessTokenValidity: 60
+      IdTokenValidity: 60
+      TokenValidityUnits:
+        AccessToken: minutes
+        IdToken: minutes
+        RefreshToken: days
+      AllowedOAuthFlows:
+        - client_credentials
+      AllowedOAuthScopes:
+        - !Join
+          - ''
+          - - 'default-m2m-resource-server-'
+            - !Select [0, !Split ['-', !Select [2, !Split ['/', !Ref 'AWS::StackId']]]]
+            - '/read'
+      AllowedOAuthFlowsUserPoolClient: true
+      SupportedIdentityProviders:
+        - COGNITO
+      EnableTokenRevocation: true
+  ResourceServer:
+    Type: AWS::Cognito::UserPoolResourceServer
+    Properties:
+      UserPoolId: !Ref UserPool
+      Identifier: !Join
+        - '-'
+        - - 'default-m2m-resource-server'
+          - !Select [0, !Split ['-', !Select [2, !Split ['/', !Ref 'AWS::StackId']]]]
+      Name: !Join
+        - '-'
+        - - 'Default M2M Resource Server '
+          - !Select [0, !Split ['-', !Select [2, !Split ['/', !Ref 'AWS::StackId']]]]
+      Scopes:
+        - ScopeName: 'read'
+          ScopeDescription: 'An example scope created by Amazon Cognito quick start'
+  UserPoolDomain:
+    Type: AWS::Cognito::UserPoolDomain
+    Properties:
+      UserPoolId: !Ref UserPool
+      Domain: !Join
+        - ''
+        - - !Ref 'AWS::Region'
+          - !Select [0, !Split ['-', !Select [2, !Split ['/', !Ref 'AWS::StackId']]]]
+
+Outputs:
+  HealthLakeEndpoint:
+    Description: 'HealthLake Endpoint'
+    Value: !GetAtt HealthLakeFHIRDatastore.DatastoreEndpoint
+    Export:
+      Name: !Sub '${AWS::StackName}-HealthLakeEndpoint'
+  RestApiId:
+    Description: 'REST API Id'
+    Value: !Ref RestApi
+    Export:
+      Name: !Sub '${AWS::StackName}-RestApiId'
+  IAMRolePrimitivesArn:
+    Description: 'ARN for Primitives IAM Role'
+    Value: !GetAtt IAMRolePrimitives.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-IAMRolePrimitivesArn'
+  ApiUrl:
+    Description: 'API Gateway URL'
+    Value: !Sub 'https://${RestApi}.execute-api.${AWS::Region}.amazonaws.com/${StageName}'
+    Export:
+      Name: !Sub '${AWS::StackName}-ApiUrl'
+  APIGWCognitoLambdaName:
+    Description: 'Lambda function to add authorisation to API Gateway'
+    Value: !Ref APIGWCognitoLambda
+    Export:
+      Name: !Sub '${AWS::StackName}-APIGWCognitoLambdaName'
+  UserPoolId:
+    Description: 'Cognito User Pool Id'
+    Value: !Ref UserPool
+    Export:
+      Name: !Sub '${AWS::StackName}-UserPoolId'
+  APIClientId:
+    Description: 'API Client Id'
+    Value: !Ref UserPoolClient
+    Export:
+      Name: !Sub '${AWS::StackName}-APIClientId'
+  oAuthDiscoveryURL:
+    Description: oAuth Discovery URL
+    Value: !Sub 'https://cognito-idp.${AWS::Region}.amazonaws.com/${UserPool}/.well-known/openid-configuration'
+    Export:
+      Name: !Sub '${AWS::StackName}-oAuthDiscoveryURL'
+  oAuthTokenURL:
+    Description: OAuth Token URL
+    Value: !Join
+      - ''
+      - - !Sub 'https://${AWS::Region}'
+        - !Select [0, !Split ['-', !Select [2, !Split ['/', !Ref 'AWS::StackId']]]]
+        - !Sub '.auth.${AWS::Region}.amazoncognito.com/oauth2/token'
+    Export:
+      Name: !Sub '${AWS::StackName}-oAuthTokenURL'
+  oAuthScope:
+    Description: 'oAuth Scope'
+    Value: !Join
+      - ''
+      - - 'default-m2m-resource-server-'
+        - !Select [0, !Split ['-', !Select [2, !Split ['/', !Ref 'AWS::StackId']]]]
+        - '/read'
+    Export:
+      Name: !Sub '${AWS::StackName}-oAuthScope'
+  

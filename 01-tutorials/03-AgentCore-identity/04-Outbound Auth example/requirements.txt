@@ -1,0 +1,8 @@
+strands-agents
+strands-agents-tools
+strands-agents[litellm]
+uv
+starlette
+uvicorn
+aws-opentelemetry-distro-genai-beta
+setuptools

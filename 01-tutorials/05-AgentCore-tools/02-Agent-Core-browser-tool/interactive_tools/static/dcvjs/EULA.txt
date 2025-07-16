@@ -1,0 +1,403 @@
+END-USER LICENSE AGREEMENT (EULA)
+for NICE Software and Solutions
+(Version 8.4) 
+
+This End User License Agreement ("EULA" or "Agreement") contains the terms
+and conditions that govern your ("Licensee" or "you" or "your") access to and
+use of NICE EnginFrame and Amazon DCV (together with any updates, including
+updates to the software name, or enhancements, and accompanying documentation,
+"Software") and Amazon DCV Web Client software development kit (together with
+any updates, including any updates to the software development kit name, or
+enhancements, and accompanying documentation,"SDK"). As used in this EULA,
+"NICE" means NICE, S.r.l. with principal offices located at Via Milliavacca, 9
+– 14100 Asti - Italy ("NICE IT"), except that if Licensee is located in the
+United States, "NICE" means NICE USA LLC, with principal offices at 410 Terry
+Avenue North, Seattle, Washington, 98109-5210 ("NICE US"). This EULA 
+supplements the AWS Customer Agreement posted at aws.amazon.com/agreement or
+other agreement with NICE or an affiliate governing your use of NICE services 
+(the "Customer Agreement"), and unless otherwise defined in this EULA, 
+capitalized terms will have the same meaning as set forth in the Customer 
+Agreement.  
+
+1. LICENSE TO AND USE OF THE SOFTWARE. The Software may be accessed and used
+only in accordance with this EULA and the Customer Agreement, and subject to
+these terms: (a) You are granted a limited, non-transferable, revocable,
+non-sublicensable license to install and use the Software for your internal
+business purposes only and only in the quantity that you have purchased from
+NICE or an authorized reseller of the Software, or to the extent your use has
+otherwise been authorized by NICE or Amazon Web Services. (b) if you requested
+access to the Software to evaluate its features and functionality, you are
+granted a limited, non-transferable, revocable, non-sublicensable license to
+install and use the Software for your internal evaluation and testing purposes
+only, and only in the quantity that you have requested from NICE.  
+
+2. BETA PARTICIPATION. NICE may provide Licensee certain features, 
+technologies, software, and services that are not yet generally available,
+including those labeled "beta", "preview", "pre-release", or "experimental"
+(each, a "Beta"). Access and use of Betas are subject to any Beta terms
+provided by NICE and if there is a conflict between the terms of this Section
+and any Beta terms, Beta terms will take precedence. Betas are Software subject
+to all the terms and conditions of this EULA. (a) Licensee agrees not to allow
+access to or use of any Beta or any related materials by any third party other
+than Licensee's employees and contractors who have a need to use or access in
+connection with Licensee's internal evaluation activities and have executed
+written non-disclosure agreements obligating them to protect the 
+confidentiality of the Beta and related materials. (b) Licensee must comply
+with all policies and guidelines related to any Beta as posted on the NICE's
+website or otherwise made available to Licensee. NICE may add or modify
+restrictions, including usage limits related to access to or use of any Beta
+or related materials at any time. If requested by NICE, Licensee will promptly
+increase or decrease usage to the levels that NICE may specify. Any service
+level agreements that Licensee may have for the Software do not apply to Betas.
+(c) Licensee will, when requested by NICE, provide NICE with information
+relating to Licensee's access, use, testing, and evaluation of the Beta and any
+related Beta Materials, including observations or information regarding the
+performance, features, and functionality of the Beta in the form reasonably
+requested by NICE ("Test Observations"). NICE will own and may use and evaluate
+all Test Observations for its own purposes. All Betas, related materials, and
+Test Observations are NICE Confidential Information. Each individual Beta
+license will automatically terminate upon the release of a generally available
+version of the Beta or upon notice of termination by NICE which may occur at
+any time and for any reason. Upon the termination of Licensee's license to any
+Beta, Licensee will cease use of the Beta and immediately return or, if
+instructed by NICE, destroy all copies of the Beta and all related materials.
+NICE does not guarantee that any Beta will ever be made generally available or
+that any generally available version will contain the same or similar
+functionality as any Beta version made available to Licensee. (d) WITHOUT
+LIMITING ANY DISCLAIMERS HEREIN, BETAS ARE NOT READY FOR GENERAL COMMERCIAL
+RELEASE AND MAY CONTAIN BUGS, ERRORS, DEFECTS OR HARMFUL COMPONENTS.
+ACCORDINGLY, AND NOTWITHSTANDING ANYTHING TO THE CONTRARY IN THIS EULA OR
+OTHERWISE, NICE PROVIDES BETAS TO LICENSEE "AS IS." 
+
+ 3. USE RESTRICTIONS. Your use of the Software is conditioned upon your
+ compliance with the following limitations: 
+(a) Licensee will not distribute, rent, lease, lend, loan, transfer, assign,
+resell, sublicense, disclose, or otherwise provide the Software to or use the
+Software for the benefit of any third party (including acting as a service
+bureau or provide of a time sharing service). Notwithstanding the foregoing,
+Licensee may permit its third party contractors to use the software for
+Licensee's internal business purposes provided that Licensee enters to a
+binding agreement with contractor requiring contractor to comply with this
+EULA and is solely responsible and liable for any breach of this EULA
+including any unauthorized use of the Software by Licensee's contractors.
+(b) Licensee will not modify, adapt, translate, alter, tamper with, repair,
+or otherwise create derivative works of the Software, subject to Section 10. 
+(c) Licensee will not decompile, decipher, disassemble, reverse engineer or
+otherwise attempt to access or derive source code of the Software, except to
+the extent applicable law does not allow this restriction. 
+(d) Licensee will not attempt to use the Software in excess of any usage limits
+and will not attempt to circumvent any technology in or with the Software that
+is designed to monitor, restrict, or limit use. Licensee acknowledges and 
+agrees that the Software (including all evaluation versions) may require the
+use of license key or token in order to operate and that operation of the
+Software will automatically terminate upon expiration. 
+(e) Licensee will not remove any proprietary notices or labels on the Software
+or any copy thereof. 
+(f) Licensee requires that each end user before accessing the Software, agrees
+to comply with this EULA. 
+(g) Licensee will not make any use of the Software in any manner not expressly
+permitted by this EULA.  
+
+4. INTELLECTUAL PROPERTY. 
+(a) The Software and SDK (including the related documentation) are owned by
+NICE. Licensee acknowledges and agrees that title to the Software and SDK, 
+including the documentation, and all the copies thereof, including all
+industrial and intellectual property rights (including the exclusive rights
+of economic exploitation), copyright, trade secrets, and patent rights, remains
+with NICE.
+(b) Licensee has no obligation to give NICE any suggestions, comments, or other
+feedback relating to the Software ("Feedback"). To the extent Licensee provides
+Feedback to NICE, NICE may use and exercise any and all rights in the Feedback
+without obligation or restriction of any kind during and after the Term, and
+Feedback will not be deemed to be confidential information of Licensee or
+otherwise create any confidentiality obligation. Licensee agrees not to provide
+any Feedback that: (i) Licensee knows is subject to any patent, copyright or
+other intellectual property claim or right of any third party; or (ii) is
+subject to license terms which seek to require any products incorporating or
+derived from the Feedback, or other NICE intellectual property, to be licensed
+to or otherwise shared with any third party.  
+
+5. AUDIT. Licensee shall maintain accurate records regarding Licensee's use
+of the Software and compliance with this EULA and, upon request, make such
+records available to NICE and certify Licensee's compliance with this EULA.
+NICE or a third party may examine and audit Licensee's access, use, and
+deployment of the Software and verify Licensee's compliance with this EULA.
+Any audit will take place during normal business hours on at least 10 days
+prior written notice. If Licensee misreported any figure or underpaid any
+amount, Licensee will remit to NICE the amount of any underpayment within 10
+days after notification of the discrepancy. If the discrepancy exceeds $1,000
+U.S. dollars or 5% of the total amount purchased or reported by Licensee for
+the period audited, then Licensee will reimburse NICE for the reasonable costs
+of the audit.  
+
+6. SUPPORT SERVICES. Licensee may be eligible to subscribe to software support
+for any or all of the Software (the "Support Services", as described and
+regulated under the Standard Support Services for NICE Products terms,
+available here:
+https://www.nice-software.com/html/pdf/NICE_Standard_Support_Services.pdf , as
+may be updated). Support Services are subject to and governed by the terms of
+this EULA and the Customer Agreement, as is any update or upgrade to the
+Software provided by NICE in connection with Support Services. If the Support
+Services are terminated, Licensee's license to the Software under this EULA
+will continue in accordance with the terms of this EULA. If Support Services
+expire or terminate and Licensee later reinstates Support Services, Licensee
+shall pay a reinstatement fee equal to 70% of the current annual charge for
+Support Services for the period of time when Licensee did not receive Support
+Services. The reinstatement fee for any partial year will be a pro rata portion
+of the applicable annual fee.  
+
+7. LIMITED WARRANTY. 
+(a) NICE warrants that the Software will for a period of 60 days from delivery
+to the Licensee (the "Warranty Period"), when used in accordance with NICE's
+written instructions, operate substantially in compliance with NICE's official
+published documentation. NICE's sole responsibility, and Licensee's exclusive
+remedy, in the event of breach of the limited warranty during the Warranty 
+Period, is for NICE, at its option, to use reasonable efforts to repair the 
+Software, replace the Software, or provide a refund. NICE shall not be
+responsible or liable for any noncompliance with the foregoing warranty or
+limitations or defects of the Software, if they have been caused, in whole or
+in part, by unauthorized behavior of Licensee, any use of the Software which is
+inconsistent with the Documentation, any accident, abuse, or misapplication,
+and/or if they arise from or are related to software or any other products
+which are not supplied by NICE. 
+(b) DISCLAIMER. EXCEPT FOR THE LIMITED WARRANTY IN SECTION 7(A), THE SOFTWARE
+IS PROVIDED "AS IS." EXCEPT TO THE EXTENT PROHIBITED BY LAW, OR TO THE EXTENT
+ANY STATUTORY RIGHTS APPLY THAT CANNOT BE EXCLUDED, LIMITED OR WAIVED, NICE AND
+ITS AFFILIATES AND LICENSORS (I) MAKE NO OTHER REPRESENTATIONS OR WARRANTIES OF
+ANY KIND, WHETHER EXPRESS, IMPLIED, STATUTORY OR OTHERWISE REGARDING THE
+SOFTWARE, AND (II) DISCLAIM ALL OTHER WARRANTIES, INCLUDING ANY IMPLIED OR
+EXPRESS WARRANTIES (A) OF MERCHANTABILITY, SATISFACTORY QUALITY, FITNESS FOR A
+PARTICULAR PURPOSE, NON-INFRINGEMENT, OR QUIET ENJOYMENT, (B) ARISING OUT OF
+ANY COURSE OF DEALING OR USAGE OF TRADE, (C) THAT THE SOFTWARE WILL BE
+UNINTERRUPTED, ERROR FREE, OR FREE OF HARMFUL COMPONENTS, AND (D) THAT ANY
+CONTENT WILL BE SECURE OR NOT OTHERWISE LOST OR ALTERED.  
+
+8. LIMITATIONS OF LIABILITY. NICE AND ITS AFFILIATES AND LICENSORS WILL NOT BE
+LIABLE TO LICENSEE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL
+OR EXEMPLARY DAMAGES (INCLUDING DAMAGES FOR LOSS OF PROFITS, REVENUES, CUSTOMERS,
+OPPORTUNITIES, GOODWILL, USE, OR DATA), EVEN IF A PART YHAS BEEN ADVISED OF THE
+POSSIBILITY OF SUCH DAMAGES. FURTHER, NEITHER NICE NOR ANY OF ITS AFFILIATES OR
+LICENSORS WILL BE RESPONSIBLE FOR AN YCOMPENSATION, REIMBURSEMENT, OR DAMAGES
+ARISING IN CONNECTION WITH: (A) YOUR INABILITY TO USE THE SOFTWARE, INCLUDING AS
+A RESULT OF ANY (I) TERMINATION OR EXPIRATION OF THIS EULA OR YOUR USE OF OR
+ACCESS TO THE SOFTWARE OR, (II) ANY ERROR OR UNANTICIPATED INTERUPTION IN THE
+OPERATION OF THE SOFTWARE FOR ANY REASON; (B) THE COST OF PROCUREMENT OF
+SUBSTITUTE GOODS OR SERVICES; (C) ANY INVESTMENTS, EXPENDITURES, OR COMMITMENTS
+BY LICENSEE IN CONNECTION WITH THIS EULA OR YOUR USE OF OR ACCESS TO THE
+SOFTWARE; OR (D) ANY UNAUTHORIZED ACCESS TO, ALTERATION OF, OR THE DELETION,
+DESTRUCTION, DAMAGE, LOSS OR FAILURE TO STORE ANY OF YOUR CONTENT OR OTHER
+DATA. IN ANY CASE, NICE AND ITS AFFILIATES' AND LICENSORS' AGGREGATE LIABILITY
+UNDER THIS EULA WILL NOT EXCEED THE AMOUNT LICENSEE ACTUALLY PAID NICE FOR THE
+SOFTWARE THAT GAVE RISE TO THE CLAIM DURING THE 12 MONTHS BEFORE THE LIABILITY
+AROSE. THE LIMITATIONS IN THIS SECTION APPLY ONLY TO THE MAXIMUM EXTENT
+PERMITTED BY APPLICABLE LAW.  
+
+9. TERM AND TERMINATION.  
+(a) This EULA is effective upon the earlier of NICE's (i) acceptance of an
+order for Software, (ii) delivery of the Software and it will continue until
+it expires or terminates ("Term"). 
+(b) NICE may terminate this EULA at any time and for any reason on 30 days'
+prior written notice to Licensee. Your rightsunder this EULA will automatically
+terminate without notice from us if you fail to comply with any term of this
+EULA or the Customer Agreement.
+(c) Licensee may terminate this EULA at any time by uninstalling or destroying
+all copies of the Software that are in your possession or control.
+(d) Upon termination or expiration of this EULA, Licensee shall (i) be no
+longer entitled to use the Software and documentation, (ii) immediately remove
+the Software from all computers on which the Software is installed, (iii)
+return to NICE, within 5 days from expiration or termination, all copies of the
+Software and documentation (or destroy such materials, as instructed by NICE)
+and will certify in writing that all copies or partial copies of the Software
+and documentation have been returned to NICE or destroyed; and (iv) remain
+responsible and liable for all fees and charges for the Software that Licensee
+incurred through the date of termination or
+expiration.
+(e) If NICE terminates this EULA for convenience under subsection (b) of this
+Section, NICE will issue Licensee a prorata credit of any license fees prepaid
+by Licensee based a ten year life-span for the Software. 
+(f) Sections 3-11 inclusive will survive termination of this EULA.  
+
+10. SDK. If you downloaded the SDK, you may use, reproduce, distribute,
+publish, and sublicense the SDK, and create derivative works of the SDK and
+Amazon DCV Web Client solely to the extent those derivative works implement
+the Amazon DCV Web Client, subject to the following conditions:
+(a) You will not remove any proprietary notices or labels on the SDK or any
+copy thereof.
+(b) You will include this permission notice in all copies or substantial
+portions of the SDK.
+(c) You require that each end user before accessing the SDK, Amazon DCV
+Web Client, or any copies, derivative works or substantial portions thereof,
+agrees to comply with this EULA.
+(d) Some components of the SDK may be governed by third party software
+licenses. Your license rights with respect to these individual components are
+defined by the applicable third party software licenses, and nothing in this
+Agreement will restrict, limit, or otherwise affect any rights or obligations
+you may have, or conditions to which you may be subject, under such third party
+software licenses.
+(e) THE SDK IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SDK OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.  
+
+11. GENERAL.
+(a) Entire Agreement. This EULA and its incorporation of the Customer 
+Agreement, along with related documents provided by NICE, represents the
+complete and exclusive agreement between the parties with respect to the
+subject matter hereof and supersedes all prior agreements, negotiations, and
+understandings. NICE will not be bound by, and specifically objects to, any
+term, condition or other provision that is different from or in addition to the
+provisions of this EULA (whether or not it would materially alter this EULA)
+including for example, any term, condition or other provision (i) submitted by
+Licensee in any purchase order, receipt, acceptance, confirmation,
+correspondence or other document, or (ii) related to any invoicing process that
+Licensee submits or require NICE to complete. To the extent there is any
+conflict between this EULA and the Customer Agreement, this EULA prevails.
+(b) Assignment. Licensee shall not assign or otherwise transfer this EULA or
+any of Licensee's rights or obligations, without our prior written consent.
+Any assignment or transfer in violation of this Section will be void. NICE may
+assign this EULA without your consent (i) in connection with a merger,
+acquisition or sale of all or substantially all of our assets, or (ii) to any
+affiliate or as part of a corporate reorganization; and effective upon such
+assignment, the assignee is deemed substituted for NICE as a party to this EULA
+and NICE is fully released from all of its obligations and duties to perform
+under this EULA. Subject to the foregoing, this EULA will be binding upon, and
+inure to the benefit of the parties and their respective permitted successors
+and assigns.
+(c) Governing Law and Dispute Resolution for US Licensees. If NICE US is the
+contracting party to this EULA, the laws of the State of Washington, without
+reference to conflict of law rules, govern this EULA and any dispute of any
+sort that might arise between NICE and Licensee. The United Nations Convention
+for the International Sale of Goods does not apply to this EULA. Any dispute or
+claim relating in any way to the Software or this EULA will be adjudicated
+exclusively in the federal and state courts located in King County, Washington,
+and Licensee consents and waives any objections to such exclusive jurisdiction 
+and venue. Notwithstanding the foregoing, NICE may seek injunctive (or similar)
+remedies in any jurisdiction. 
+(d) Governing Law and Dispute Resolution when Licensees Outside the US. (i) If
+NICE IT is the contracting party to this EULA, the laws of the Republic of
+Italy, without reference to conflict of law rules, govern this EULA and any
+dispute of any sort that might arise between NICE and Licensee. The United
+Nations Convention for the International Sale of Goods does not apply to this
+EULA. Any dispute or claim relating in any way to the Software or this EULA
+will be adjudicated exclusively in the Court of Milan, Italy, and Licensee
+consents and waives any objections to such exclusive jurisdiction and venue.
+Notwithstanding the foregoing, NICE may seek injunctive (or similar) remedies
+in any jurisdiction. (ii) IF NICE IT IS THE CONTRACTING PARTY, PURSUANT TO AND
+BY THE EFFECT OF SECTIONS 1341 AND 1342 OF THE ITALIAN CIVIL CODE, LICENSEE
+EXPLICITLY APPROVES THE FOLLOWING CONDITIONS: 3 (USE RESTRICTIONS), 7 (LIMITED
+WARRANTY), 8 (LIMITATIONS OF LIABILITY), 9 (TERMINATION), 10 (GENERAL -
+INCLUDING GOVERNING LAW, DISPUTE RESOLUTION, CONFIDENTIALITY AND PUBLICITY,
+AND MODIFICATIONS TO THE AGREEMENT).
+(e) Waiver. The failure by NICE to enforce any provision of this EULA will not
+constitute a present or future waiver of such provision nor will it limit
+NICE's right to enforce such provision at a later time. All waivers by NICE
+must be in writing to be effective.
+(f) Severability. If any portion of this Agreement is held to be invalid or
+unenforceable, the remaining portions of this Agreement will remain in full
+force and effect. Any invalid or unenforceable portions will be interpreted to
+effectuate the intent of the original portion. If such construction is not
+possible, the invalid or unenforceable portion will be severed from this
+Agreement but the rest of the Agreement will remain in full force and effect.
+(g) Taxes. Each party will be responsible, as required under applicable law,
+for identifying and paying all taxes and other governmental fees and charges
+(and any penalties, interest, and other additions thereto) that are imposed on
+that party upon or with respect to the transactions and payments under this
+EULA. All fees payable by Licensee are exclusive of applicable taxes and
+duties, including VAT, Service Tax, GST, excise taxes, sales and transactions
+taxes, and gross receipts tax ("Indirect Taxes"). NICE may charge and Licensee
+will pay applicable Indirect Taxes that NICE is legally obligated or authorized
+to collect from Licensee. Licensee will provide such information to NICE as
+reasonably required to determine whether NICE is obligated to collect Indirect
+Taxes from Licensee. NICE will not collect, and Licensee will not pay, any
+Indirect Tax for which Licensee furnishes NICE a properly completed exemption
+certificate or a direct payment permit certificate for which NICE may claim an
+available exemption from such Indirect Tax. All payments made by Licensee to
+NICE under this EULA will be made free and clear of any deduction or
+withholding, as may be required by law. If any such deduction or withholding
+(including cross-border withholding taxes) is required on any payment,
+Licensee will pay such additional amounts as are necessary so that the net
+amount received by NICE is equal to the amount then due and payable under this
+EULA. NICE will provide Licensee with such tax forms as are reasonably
+requested in order to reduce or eliminate the amount of any withholding or
+deduction for taxes in respect of payments made under this EULA.
+(h) Confidentiality And Publicity. Licensee may use NICE Confidential
+Information only in connection with Licensee's use of the Software as
+permitted under this EULA. Licensee will not disclose NICE Confidential
+Information during the Term or at any time after without NICE's advance written
+consent. Licensee will take all reasonable measures to avoid disclosure,
+dissemination, or unauthorized use of NICE Confidential Information, including,
+at a minimum, those measures Licensee takes to protect its own confidential
+information of a similar nature. Licensee will not issue any press release or
+make any other public communication with respect to this EULA or your use of
+the Software. "NICE Confidential Information" means all nonpublic information
+disclosed by NICE its affiliates, business partners or its or their respective
+employees, contractors or agents that is designated as confidential or that,
+given the nature of the information or circumstances surrounding its
+disclosure, reasonably should be understood to be confidential. NICE
+Confidential Information does not include any information that: (i) is or
+becomes publicly available without breach of this EULA; (ii) can be shown by
+documentation to have been known to Licensee at the time of receipt from NICE;
+(iii) is received from a third party who did not acquire or disclose the same
+by a wrongful or tortious act; or (iv) can be shown by documentation to have
+been independently developed by Licensee without reference to NICE
+Confidential Information.
+(i) Notices. Any notice required or permitted by this EULA to be given to
+either party shall be effective upon receipt and shall be given in writing and
+sent by overnight courier, facsimile, or first class certified mail with
+postage prepaid. Notices to Licensee will be sent to the addresses indicated
+in the applicable order for the Software and to the NICE contracting party at
+the address in the opening paragraph of this EULA. Receipt shall be presumed
+received 5 business days after mailing by first class mail unless the sender
+obtains a delivery receipt indicating it was delivered earlier, the next day
+if sent by over-night courier, and when confirmation is received if by fax.
+In addition, a copy of the notice shall also be given via e-mail to each
+party's primary contact. Either party may designate a different address than
+that given below by notice to the other party in accordance with this
+paragraph. A copy of any notice required or permitted to be sent to NICE shall
+also be sent to Amazon.com, Inc. Attn: General Counsel P.O. Box 81226 Seattle,
+WA 98108-1226 Fax: (206) 266-7010 E-mail: contracts-legal@amazon.com.
+(j) Modifications To The Agreement. NICE may modify this EULA at any time by
+posting a revised version on the NICE website (nice-software.com, and any
+successor or related site designated by NICE, hereinafter, the "NICE Website")
+or by sending a message to the email address then associated with Licensee's
+account. Notices of modifications NICE provides by posting on the NICE Website
+will be effective upon posting, and notices NICE provides by email will be
+effective when NICE sends the email. It is Licensee's responsibility to keep
+its email address current. Licensee will be deemed to have received any email
+sent to the email address then associated with its account when NICE sends the
+email, whether or not Licensee actually receives the email. By continuing to
+use the Software after the effective date of any modifications to this EULA,
+Licensee agrees to be bound by the modified terms. It is Licensee's
+responsibility to check the NICE Website regularly for modifications to this
+EULA.
+(k) Trade Compliance. In connection with this EULA, Licensee will comply with
+all applicable import, re-import, sanctions, anti-boycott, export, and
+re-export control laws and regulations, including all such laws and regulations
+that apply to a U.S. company, such as the Export Administration Regulations,
+the International Traffic in Arms Regulations, and economic sanctions programs
+implemented by the Office of Foreign Assets Control. For clarity, Licensee is
+solely responsible for compliance related to the manner in which Licensee
+chooses to use the Software. Licensee represents and warrants that Licensee and
+its financial institutions, or any party that owns or controls Licensee or its
+financial institutions, are not subject to sanctions or otherwise designated on
+any list of prohibited or restricted parties, including the lists maintained by
+the United Nations Security Council, the US Government (e.g., the US Department
+of Treasury's Specially Designated Nationals list and Foreign Sanctions Evaders
+list and the US Department of Commerce's Entity List), the European Union or
+its member states, or other applicable government authority.
+(l) U.S. Government Rights. The Software is provided to the U.S. Government as
+"commercial items," "commercial computer software," "commercial computer
+software documentation," and "technical data" with the same rights and
+restrictions generally applicable to the Software. If you are using the
+Software on behalf of the U.S. Government and these terms fail to meet the U.S.
+Government's needs or are inconsistent in any respect with federal law,
+Licensee will immediately discontinue use of the Software. The terms
+"commercial item" "commercial computer software," "commercial computer software
+documentation," and "technical data" are defined in the Federal Acquisition
+Regulation and the Defense Federal Acquisition Regulation Supplement.
+(m) No Third-Party Beneficiaries. This EULA does not create any third-party
+beneficiary rights in any individual or entity that is not a party to this
+EULA.  

@@ -1,0 +1,123 @@
+openapi: 3.0.0
+info:
+  title: fhir-api
+  description: A simple API for searching and getting patient records from FHIR database
+  version: 1.0.0
+servers:
+- url: <your API endpoint here>
+
+paths:
+  /get_patient_emr:
+    get:
+      summary: Get a patient record based on patient id
+      description: Returns a list of patient details based on patient id
+      operationId: getPatient
+      parameters:
+        - name: patient_id
+          in: query
+          description: ID of the patient to return
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful operation
+        '404':
+          description: Patient not found
+        '500':
+          description: Internal server error
+      x-amazon-apigateway-integration:
+        uri: arn:aws:apigateway:${Region}:lambda:path/2015-03-31/functions/${LambdaFunctionArn}/invocations
+        httpMethod: GET
+        type: aws_proxy
+
+  /search_immunization_emr:
+    post:
+      summary: Search immunization records
+      description: Search immunization records based on Patient Id
+      operationId: searchImmunization
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/searchImmunization'
+      responses:
+        '200':
+          description: Successful operation
+        '400':
+          description: Bad request
+        '500':
+          description: Internal server error
+      x-amazon-apigateway-integration:
+        uri: arn:aws:apigateway:${Region}:lambda:path/2015-03-31/functions/${LambdaFunctionArn}/invocations
+        httpMethod: POST
+        type: aws_proxy
+
+  /book_appointment:
+    post:
+      summary: Book an appointment
+      description: Book appointment as per given datetime slot
+      operationId: bookAppointment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/bookAppointment'
+      responses:
+        '200':
+          description: Successful operation
+        '400':
+          description: Bad request
+        '500':
+          description: Internal server error
+      x-amazon-apigateway-integration:
+        uri: arn:aws:apigateway:${Region}:lambda:path/2015-03-31/functions/${LambdaFunctionArn}/invocations
+        httpMethod: POST
+        type: aws_proxy
+
+  /get_available_slots:
+    get:
+      summary: Get available slots as per immunization schedule date
+      description: Returns doctor details along with available datetime slots
+      operationId: getSlots
+      parameters:
+        - name: date_string
+          in: query
+          description: Preferred date in YYYY-MM-DD
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful operation
+        '404':
+          description: Slots not found
+        '500':
+          description: Internal server error
+      x-amazon-apigateway-integration:
+        uri: arn:aws:apigateway:${Region}:lambda:path/2015-03-31/functions/${LambdaFunctionArn}/invocations
+        httpMethod: GET
+        type: aws_proxy
+
+components:
+  schemas:
+    searchImmunization:
+      type: object
+      required:
+        - search_value
+      properties:
+        search_value:
+          type: string
+          description: Patient ID to search for immunization records
+          example: pediatric-patient-001
+    bookAppointment:
+      type: object
+      required:
+        - date_string
+      properties:
+        date_string:
+          type: string
+          description: Preferred date and time in YYYY-MM-DD HH:MM format
+          example: 2025-08-15 16:00

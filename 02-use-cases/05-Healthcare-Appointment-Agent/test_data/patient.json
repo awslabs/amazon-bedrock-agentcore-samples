@@ -1,0 +1,66 @@
+{
+  "resourceType": "Bundle",
+  "type": "collection",
+  "entry": [
+    {
+      "resource": {
+        "resourceType": "Patient",
+        "id": "pediatric-patient-001",
+        "active": true,
+        "name": [
+          {
+            "use": "official",
+            "family": "Doe",
+            "given": [
+              "John"
+            ]
+          }
+        ],
+        "gender": "male",
+        "birthDate": "2023-07-10",
+        "address": [
+          {
+            "use": "home",
+            "line": [
+              "123 Maple Street"
+            ],
+            "city": "Springfield",
+            "state": "IL",
+            "postalCode": "62701",
+            "country": "USA"
+          }
+        ]
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Patient",
+        "id": "adult-patient-001",
+        "active": true,
+        "name": [
+          {
+            "use": "official",
+            "family": "Doe",
+            "given": [
+              "Richard"
+            ]
+          }
+        ],
+        "gender": "male",
+        "birthDate": "1985-07-10",
+        "address": [
+          {
+            "use": "home",
+            "line": [
+              "123 Maple Street"
+            ],
+            "city": "Springfield",
+            "state": "IL",
+            "postalCode": "62701",
+            "country": "USA"
+          }
+        ]
+      }
+    }
+  ]
+}

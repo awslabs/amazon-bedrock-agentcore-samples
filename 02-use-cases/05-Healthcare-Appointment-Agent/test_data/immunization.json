@@ -1,0 +1,240 @@
+{
+  "resourceType": "Bundle",
+  "type": "collection",
+  "entry": [
+    {
+      "resource": {
+        "resourceType": "Immunization",
+        "id": "imm-001",
+        "status": "completed",
+        "vaccineCode": {
+          "coding": [
+            {
+              "system": "http://hl7.org/fhir/sid/cvx",
+              "code": "10",
+              "display": "IPV"
+            }
+          ]
+        },
+        "patient": {
+          "reference": "Patient/pediatric-patient-001"
+        },
+        "occurrenceDateTime": "2023-09-15",
+        "primarySource": true
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Immunization",
+        "id": "imm-002",
+        "status": "completed",
+        "vaccineCode": {
+          "coding": [
+            {
+              "system": "http://hl7.org/fhir/sid/cvx",
+              "code": "20",
+              "display": "DTaP"
+            }
+          ]
+        },
+        "patient": {
+          "reference": "Patient/pediatric-patient-001"
+        },
+        "occurrenceDateTime": "2023-09-15",
+        "primarySource": true
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Immunization",
+        "id": "imm-003",
+        "status": "completed",
+        "vaccineCode": {
+          "coding": [
+            {
+              "system": "http://hl7.org/fhir/sid/cvx",
+              "code": "133",
+              "display": "PCV13"
+            }
+          ]
+        },
+        "patient": {
+          "reference": "Patient/pediatric-patient-001"
+        },
+        "occurrenceDateTime": "2024-01-10",
+        "primarySource": true
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Immunization",
+        "id": "imm-004",
+        "status": "not-done",
+        "vaccineCode": {
+          "coding": [
+            {
+              "system": "http://hl7.org/fhir/sid/cvx",
+              "code": "03",
+              "display": "MMR"
+            }
+          ]
+        },
+        "patient": {
+          "reference": "Patient/pediatric-patient-001"
+        },
+        "occurrenceDateTime": "2025-08-15",
+        "statusReason": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/v3-ActReason",
+              "code": "PATOBJ",
+              "display": "Patient Objection"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Immunization",
+        "id": "imm-005",
+        "status": "not-done",
+        "vaccineCode": {
+          "coding": [
+            {
+              "system": "http://hl7.org/fhir/sid/cvx",
+              "code": "21",
+              "display": "Varicella"
+            }
+          ]
+        },
+        "patient": {
+          "reference": "Patient/pediatric-patient-001"
+        },
+        "occurrenceDateTime": "2025-08-15",
+        "statusReason": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/v3-ActReason",
+              "code": "MEDPREC",
+              "display": "Medical Precaution"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Immunization",
+        "id": "imm-006",
+        "status": "completed",
+        "vaccineCode": {
+          "coding": [
+            {
+              "system": "http://hl7.org/fhir/sid/cvx",
+              "code": "17",
+              "display": "Hib"
+            }
+          ]
+        },
+        "patient": {
+          "reference": "Patient/pediatric-patient-001"
+        },
+        "occurrenceDateTime": "2024-03-20",
+        "primarySource": true
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Immunization",
+        "id": "imm-007",
+        "status": "completed",
+        "vaccineCode": {
+          "coding": [
+            {
+              "system": "http://hl7.org/fhir/sid/cvx",
+              "code": "08",
+              "display": "Hepatitis B"
+            }
+          ]
+        },
+        "patient": {
+          "reference": "Patient/pediatric-patient-001"
+        },
+        "occurrenceDateTime": "2023-08-10",
+        "primarySource": true
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Immunization",
+        "id": "imm-008",
+        "status": "completed",
+        "vaccineCode": {
+          "coding": [
+            {
+              "system": "http://hl7.org/fhir/sid/cvx",
+              "code": "85",
+              "display": "Hepatitis A"
+            }
+          ]
+        },
+        "patient": {
+          "reference": "Patient/pediatric-patient-001"
+        },
+        "occurrenceDateTime": "2024-02-15",
+        "primarySource": true
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Immunization",
+        "id": "imm-009",
+        "status": "not-done",
+        "vaccineCode": {
+          "coding": [
+            {
+              "system": "http://hl7.org/fhir/sid/cvx",
+              "code": "94",
+              "display": "MMR-Varicella"
+            }
+          ]
+        },
+        "patient": {
+          "reference": "Patient/pediatric-patient-001"
+        },
+        "occurrenceDateTime": "2025-08-15",
+        "statusReason": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/v3-ActReason",
+              "code": "PATOBJ",
+              "display": "Patient Objection"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Immunization",
+        "id": "imm-010",
+        "status": "completed",
+        "vaccineCode": {
+          "coding": [
+            {
+              "system": "http://hl7.org/fhir/sid/cvx",
+              "code": "88",
+              "display": "Influenza"
+            }
+          ]
+        },
+        "patient": {
+          "reference": "Patient/pediatric-patient-001"
+        },
+        "occurrenceDateTime": "2024-01-15",
+        "primarySource": true
+      }
+    }
+  ]
+}
