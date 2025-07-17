@@ -1,0 +1,5 @@
+strands-agents
+strands-agents-tools
+aws-opentelemetry-distro==0.10.0
+bedrock-agentcore
+bedrock-agentcore-starter-toolkit
