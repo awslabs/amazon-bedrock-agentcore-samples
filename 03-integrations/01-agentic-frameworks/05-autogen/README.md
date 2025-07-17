@@ -1,5 +1,15 @@
 # AutoGen Agent with Bedrock AgentCore Integration
 
+| Information         | Details                                                                      |
+|---------------------|------------------------------------------------------------------------------|
+| Integration type    | Autgen with Agentcore Runtime                                               |
+| Agent type          | Synchronous                                                                  |
+| Agentic Framework   | Autogen                                                                      |
+| LLM model           | OpenAI GPT 4o                                                   |
+| Components          | AgentCore Runtime                                                            |
+| Example complexity  | Easy                                                                         |
+| SDK used            | Amazon BedrockAgentCore Python SDK                                           |
+
 This example demonstrates how to integrate an AutoGen agent with AWS Bedrock AgentCore, enabling you to deploy a conversational agent with tool-using capabilities as a managed service.
 
 ## Prerequisites
