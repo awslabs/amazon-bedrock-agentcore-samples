@@ -1,0 +1,15 @@
+ActResult(
+    response = Apple 2025 MacBook Air 13-inch Laptop with M4 chip: Built for Apple Intelligence, 13.6-inch Liquid Retina Display, 16GB Unified Memory, 256GB SSD Storage, 12MP Center Stage Camera, Touch ID; Midnight
+    parsed_response = None
+    valid_json = None
+    matches_schema = None
+    metadata = ActMetadata(
+        session_id = 53b5e715-7c16-430d-9abe-5deaef9038be
+        act_id = 2db9ad69-b591-44bf-9201-e57e4cb8e1de
+        num_steps_executed = 4
+        start_time = 2025-07-17 14:26:01.636954 EDT
+        end_time = 2025-07-17 14:27:03.710885 EDT
+        step_server_times_s = ['4.136', '4.334', '12.197', '6.227']
+        prompt = 'Search for macbooks and extract the details of the first one'
+    )
+)
