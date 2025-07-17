@@ -9,21 +9,41 @@ This folder contains examples demonstrating the use of AgentCore SDK tools:
 
 ## Code Interpreter Tools
 
-* `research_agent_code_interpreter.py` - LangGraph-powered research agent with dynamic code generation
+* `dynamic_research_agent_langgraph.py` - LangGraph-powered research agent with dynamic code generation
 
 ## Prerequisites
 
 ### Python Dependencies
 ```bash
-uv pip install -r requirements.txt
+pip install -r requirements.txt
 ```
 
-Required packages: fastapi, uvicorn, rich, boto3, genesis
+Required packages: fastapi, uvicorn, rich, boto3, bedrock-agentcore
 
 ### AWS Credentials (For S3 Storage)
 For S3 recording storage, ensure AWS credentials are configured:
 ```bash
 aws configure
+```
+
+## Running the Examples
+
+### Browser Live Viewer
+From the `02-Agent-Core-browser-tool` directory:
+```bash
+python -m interactive_tools.run_live_viewer
+```
+
+### Dynamic Research Agent
+From the `02-Agent-Core-browser-tool` directory:
+```bash
+python -m interactive_tools.dynamic_research_agent_langgraph
+```
+
+### Session Replay
+From the `02-Agent-Core-browser-tool/interactive_tools` directory:
+```bash
+python -m live_view_sessionreplay.browser_interactive_session
 ```
 
 ## Browser Live Viewer
@@ -53,7 +73,6 @@ Record and replay browser sessions for debugging, testing, and demonstration pur
 This tool records DOM events using rrweb, not video streams:
 - The actual browser content (DCV canvas) may appear as a black box
 - For pixel-perfect video recording, use screen recording software
-
 
 ## Troubleshooting
 
