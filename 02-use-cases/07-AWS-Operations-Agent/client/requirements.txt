@@ -1,8 +1,0 @@
-# AWS Operations Agent Client Requirements
-# Compatible with existing boto3 version
-
-boto3>=1.28.0
-requests>=2.31.0
-python-dotenv>=1.0.0
-rich>=13.4.2
-prompt_toolkit>=3.0.38
