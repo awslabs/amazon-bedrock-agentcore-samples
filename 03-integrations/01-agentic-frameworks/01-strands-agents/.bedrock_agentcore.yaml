@@ -33,8 +33,8 @@ agents:
       execution_role: arn:aws:iam::266239926753:role/agentcorerole
       account: '266239926753'
       region: us-west-2
-      ecr_repository: null
-      ecr_auto_create: true
+      ecr_repository: 266239926753.dkr.ecr.us-west-2.amazonaws.com/bedrock_agentcore-st02
+      ecr_auto_create: false
       network_configuration:
         network_mode: PUBLIC
       protocol_configuration:
@@ -42,8 +42,8 @@ agents:
       observability:
         enabled: true
     bedrock_agentcore:
-      agent_id: null
-      agent_arn: null
+      agent_id: st02-h2G4CW3Zs5
+      agent_arn: arn:aws:bedrock-agentcore:us-west-2:266239926753:runtime/st02-h2G4CW3Zs5
       agent_session_id: f20c626b-5ff7-47de-a4d3-c047594564d9
     authorizer_configuration: null
     oauth_configuration:
