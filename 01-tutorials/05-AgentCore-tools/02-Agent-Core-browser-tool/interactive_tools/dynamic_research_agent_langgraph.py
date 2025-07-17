@@ -72,6 +72,7 @@ Generate Python code to accomplish this task. Be specific and include:
 - Error handling
 - Clear output with print statements
 - Save any results to files for later use
+- Print confirmation messages after files are written
 
 Return ONLY the Python code, no explanations."""
         
@@ -91,6 +92,11 @@ Return ONLY the Python code, no explanations."""
         
         # Extract output
         output = self._extract_output(result)
+        
+        # Check what files were created
+        list_result = self.code_client.invoke("listFiles", {"path": ""})
+        files_list = self._extract_output(list_result)
+        console.print(f"[dim]Files available:[/dim] {files_list}")
         
         if result.get("isError", False):
             console.print(f"[red]Execution error: {output}[/red]")
@@ -231,7 +237,7 @@ Respond in JSON format."""
         """Generate final report with insights"""
         console.print("\n[bold magenta]💡 Generating insights and report...[/bold magenta]")
         
-        # LLM generates code to create final report
+        # LLM generates code to create final report with explicit file handling
         output = self.execute_llm_generated_code(
             f"Create a comprehensive report for: {state['research_query']}. "
             "1. Load all previous results (analysis_results.json, any PNG files) "
@@ -241,14 +247,53 @@ Respond in JSON format."""
             "   - Visualizations (reference the PNG files) "
             "   - Actionable recommendations "
             "   - Methodology section "
-            "3. Save as 'final_report.md' "
-            "4. Also create a presentation-ready summary as 'executive_summary.txt'",
+            "3. Save as 'final_report.md' and print the full path after saving "
+            "4. Also create a presentation-ready summary as 'executive_summary.txt' and print the path "
+            "5. Print the contents of final_report.md after creating it",
             context=state["research_data"]
         )
         
-        # Read and display the final report
-        read_result = self.code_client.invoke("readFiles", {"paths": ["final_report.md"]})
-        report_content = self._extract_output(read_result)
+        # Try to extract the report content from the output if the file read fails
+        report_content = ""
+        
+        # First check if the output itself contains the report content
+        if "# " in output and "## " in output:
+            console.print("[yellow]Using report content from execution output[/yellow]")
+            report_content = output
+        else:
+            # Try to read the report from file
+            try:
+                console.print("[cyan]Attempting to read final_report.md...[/cyan]")
+                read_result = self.code_client.invoke("readFiles", {"paths": ["final_report.md"]})
+                report_content = self._extract_output(read_result)
+                
+                if not report_content:
+                    console.print("[yellow]final_report.md was empty, trying executive_summary.txt[/yellow]")
+                    summary_result = self.code_client.invoke("readFiles", {"paths": ["executive_summary.txt"]})
+                    report_content = self._extract_output(summary_result)
+                    
+                    if report_content:
+                        report_content = f"# Executive Summary\n\n{report_content}"
+            except Exception as e:
+                console.print(f"[red]Error reading report file: {str(e)}[/red]")
+        
+        # If we still don't have report content, generate it from previous outputs
+        if not report_content:
+            console.print("[yellow]No report content found, generating from previous steps[/yellow]")
+            report_content = f"""# Research Report: {state['research_query']}
+
+    ## Understanding
+    {state['research_data'].get('query_understanding', 'No understanding data')}
+
+    ## Data Collection
+    {state['research_data'].get('data_collection_output', 'No collection data')[:500]}...
+
+    ## Processing
+    {state['research_data'].get('processing_output', 'No processing data')[:500]}...
+
+    ## Analysis
+    {state['research_data'].get('analysis_output', 'No analysis data')[:500]}...
+    """
         
         console.print("\n[bold green]📄 Final Report:[/bold green]")
         console.print("="*60)
