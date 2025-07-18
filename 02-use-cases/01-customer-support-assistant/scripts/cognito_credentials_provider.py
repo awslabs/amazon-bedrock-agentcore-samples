@@ -114,7 +114,7 @@ def delete_cognito_provider(provider_name: str) -> bool:
 
         identity_client.delete_oauth2_credential_provider(name=provider_name)
 
-        click.echo(f"✅ OAuth2 credential provider deleted successfully")
+        click.echo("✅ OAuth2 credential provider deleted successfully")
         return True
 
     except Exception as e:

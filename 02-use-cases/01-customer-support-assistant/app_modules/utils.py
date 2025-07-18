@@ -1,5 +1,4 @@
 import re
-import streamlit as st
 
 
 def make_urls_clickable(text):

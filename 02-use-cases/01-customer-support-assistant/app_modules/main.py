@@ -16,17 +16,17 @@ def main():
 
     # Configure page
     st.set_page_config(layout="wide")
-    
+
     # Apply custom styles
     apply_custom_styles()
-    
+
     # Initialize managers
     auth_manager = AuthManager()
     chat_manager = ChatManager(agent_name)
-    
+
     # Handle OAuth callback
     auth_manager.handle_oauth_callback()
-    
+
     # Check authentication status
     if auth_manager.is_authenticated():
         # Authenticated user interface
@@ -36,12 +36,14 @@ def main():
         render_login_interface(auth_manager)
 
 
-def render_authenticated_interface(auth_manager: AuthManager, chat_manager: ChatManager):
+def render_authenticated_interface(
+    auth_manager: AuthManager, chat_manager: ChatManager
+):
     """Render the interface for authenticated users"""
     # Sidebar
     st.sidebar.title("Access Tokens")
     st.sidebar.code(auth_manager.cookies.get("tokens"))
-    
+
     if st.sidebar.button("Logout"):
         auth_manager.logout()
 
@@ -66,7 +68,9 @@ def render_authenticated_interface(auth_manager: AuthManager, chat_manager: Chat
 
     # Initialize conversation if needed
     if not st.session_state.get("messages"):
-        chat_manager.initialize_default_conversation(user_claims, tokens["access_token"])
+        chat_manager.initialize_default_conversation(
+            user_claims, tokens["access_token"]
+        )
     else:
         # Display chat history
         chat_manager.display_chat_history()
@@ -79,7 +83,10 @@ def render_authenticated_interface(auth_manager: AuthManager, chat_manager: Chat
 def render_login_interface(auth_manager: AuthManager):
     """Render the login interface"""
     login_url = auth_manager.get_login_url()
-    st.markdown(f'<meta http-equiv="refresh" content="0;url={login_url}">', unsafe_allow_html=True)
+    st.markdown(
+        f'<meta http-equiv="refresh" content="0;url={login_url}">',
+        unsafe_allow_html=True,
+    )
 
 
 if __name__ == "__main__":

@@ -45,7 +45,7 @@ class ChatManager:
         """Invoke agent endpoint using HTTP request with bearer token."""
         escaped_arn = urllib.parse.quote(agent_arn, safe="")
         url = f"https://bedrock-agentcore.{st.session_state['region']}.amazonaws.com/runtimes/{escaped_arn}/invocations"
-        
+
         headers = {
             "Authorization": f"Bearer {bearer_token}",
             "Content-Type": "application/json",
@@ -88,20 +88,20 @@ class ChatManager:
     def display_chat_history(self):
         """Display chat messages from history"""
         messages_to_show = st.session_state.messages[:]
-        
+
         if (
             st.session_state.get("pending_assistant", False)
             and messages_to_show
             and messages_to_show[-1]["role"] == "user"
         ):
             messages_to_show = messages_to_show[:-1]
-            
+
         for message in messages_to_show:
             bubble_class = (
                 "user-bubble" if message["role"] == "user" else "assistant-bubble"
             )
             emoji = "🧑‍💻" if message["role"] == "user" else "🤖"
-            
+
             with st.chat_message(message["role"]):
                 if message["role"] == "assistant" and "elapsed" in message:
                     clickable_content = make_urls_clickable(message["content"])
@@ -170,7 +170,10 @@ class ChatManager:
                         message_placeholder,
                     )
 
-                    if ".prod.agent-credential-provider.cognito.aws.dev" in accumulated_response:
+                    if (
+                        ".prod.agent-credential-provider.cognito.aws.dev"
+                        in accumulated_response
+                    ):
                         accumulated_response = str()
 
                     time.sleep(0.02)
@@ -184,7 +187,11 @@ class ChatManager:
             )
 
             st.session_state.messages.append(
-                {"role": "assistant", "content": accumulated_response, "elapsed": elapsed}
+                {
+                    "role": "assistant",
+                    "content": accumulated_response,
+                    "elapsed": elapsed,
+                }
             )
             st.session_state["pending_assistant"] = False
 
@@ -192,9 +199,7 @@ class ChatManager:
         """Initialize the conversation with a default message"""
         if not st.session_state.messages:
             default_prompt = f"Hi my email is {user_claims.get('email')}"
-            st.session_state.messages = [
-                {"role": "user", "content": default_prompt}
-            ]
+            st.session_state.messages = [{"role": "user", "content": default_prompt}]
 
             with st.chat_message("user"):
                 create_safe_markdown_text(
@@ -233,7 +238,9 @@ class ChatManager:
                         if chunk_count % 3 == 0:
                             accumulated_response += ""
 
-                        clickable_streaming_text = make_urls_clickable(accumulated_response)
+                        clickable_streaming_text = make_urls_clickable(
+                            accumulated_response
+                        )
 
                         create_safe_markdown_text(
                             f'<div class="assistant-bubble streaming typing-cursor">🤖 {clickable_streaming_text}</div>',
@@ -244,14 +251,18 @@ class ChatManager:
 
                 elapsed = time.time() - start_time
                 clickable_answer = make_urls_clickable(accumulated_response)
-                
+
                 create_safe_markdown_text(
                     f'<div class="assistant-bubble">🤖 {clickable_answer}<br><span style="font-size:0.9em;color:#888;">⏱️ Response time: {elapsed:.2f} seconds</span></div>',
                     message_placeholder,
                 )
 
                 st.session_state.messages.append(
-                    {"role": "assistant", "content": accumulated_response, "elapsed": elapsed}
+                    {
+                        "role": "assistant",
+                        "content": accumulated_response,
+                        "elapsed": elapsed,
+                    }
                 )
                 st.session_state["pending_assistant"] = False
                 st.rerun()

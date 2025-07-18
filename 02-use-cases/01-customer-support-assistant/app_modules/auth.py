@@ -16,13 +16,17 @@ class AuthManager:
         self.cognito_domain = get_ssm_parameter(
             "/app/customersupport/agentcore/cognito_domain"
         ).replace("https://", "")
-        self.client_id = get_ssm_parameter("/app/customersupport/agentcore/web_client_id")
+        self.client_id = get_ssm_parameter(
+            "/app/customersupport/agentcore/web_client_id"
+        )
         self.redirect_uri = "http://localhost:8501/"
         self.scopes = "email openid profile"
         self.cookies = CookieController()
 
     def generate_pkce_pair(self):
-        code_verifier = base64.urlsafe_b64encode(os.urandom(40)).decode("utf-8").rstrip("=")
+        code_verifier = (
+            base64.urlsafe_b64encode(os.urandom(40)).decode("utf-8").rstrip("=")
+        )
         code_challenge = (
             base64.urlsafe_b64encode(hashlib.sha256(code_verifier.encode()).digest())
             .decode("utf-8")
@@ -32,7 +36,7 @@ class AuthManager:
 
     def logout(self):
         self.cookies.remove("tokens")
-        
+
         # Clear session state
         if "session_id" in st.session_state:
             del st.session_state["session_id"]
@@ -49,21 +53,28 @@ class AuthManager:
             {"client_id": self.client_id, "logout_uri": self.redirect_uri}
         )
 
-        st.markdown(f'<meta http-equiv="refresh" content="0;url={logout_url}">', unsafe_allow_html=True)
+        st.markdown(
+            f'<meta http-equiv="refresh" content="0;url={logout_url}">',
+            unsafe_allow_html=True,
+        )
         st.rerun()
 
     def handle_oauth_callback(self):
         query_params = st.query_params
-        if query_params.get("code") and query_params.get("state") and not self.cookies.get("tokens"):
+        if (
+            query_params.get("code")
+            and query_params.get("state")
+            and not self.cookies.get("tokens")
+        ):
             auth_code = query_params.get("code")
             returned_state = query_params.get("state")
 
             code_verifier = self.cookies.get("code_verifier")
             state = self.cookies.get("oauth_state")
-            
+
             if not state:
                 st.stop()
-            
+
             if returned_state != state:
                 st.error("State mismatch - potential CSRF detected")
                 st.stop()
@@ -79,7 +90,7 @@ class AuthManager:
             }
             headers = {"Content-Type": "application/x-www-form-urlencoded"}
             response = requests.post(token_url, data=data, headers=headers)
-            
+
             if response.ok:
                 tokens = response.json()
                 self.cookies.set("tokens", json.dumps(tokens))
@@ -88,7 +99,9 @@ class AuthManager:
                 self.cookies.remove("oauth_state")
                 st.query_params.clear()
             else:
-                st.error(f"Failed to exchange token: {response.status_code} - {response.text}")
+                st.error(
+                    f"Failed to exchange token: {response.status_code} - {response.text}"
+                )
 
     def get_login_url(self):
         code_verifier, code_challenge = self.generate_pkce_pair()
@@ -106,7 +119,9 @@ class AuthManager:
             "code_challenge": self.cookies.get("code_challenge"),
             "state": self.cookies.get("oauth_state"),
         }
-        return f"https://{self.cognito_domain}/oauth2/authorize?{urlencode(login_params)}"
+        return (
+            f"https://{self.cognito_domain}/oauth2/authorize?{urlencode(login_params)}"
+        )
 
     def is_authenticated(self):
         return bool(self.cookies.get("tokens"))
@@ -115,7 +130,7 @@ class AuthManager:
         tokens_data = self.cookies.get("tokens")
         if not tokens_data:
             return None
-        
+
         # Handle both string and dict cases
         if isinstance(tokens_data, str):
             return json.loads(tokens_data)

@@ -15,7 +15,6 @@ import uuid
 from botocore.exceptions import ClientError
 import pprint
 from retrying import retry
-import random
 import yaml
 import os
 import argparse
@@ -189,21 +188,21 @@ class KnowledgeBasesForAmazonBedrock:
             print(
                 "========================================================================================"
             )
-            print(f"Step 3 - Creating S3 Vectors Bucket and Index")
+            print("Step 3 - Creating S3 Vectors Bucket and Index")
             vector_bucket_arn, index_arn = self.create_s3_vectors_bucket_and_index(
                 vector_bucket_name, index_name, bedrock_kb_execution_role
             )
             print(
                 "========================================================================================"
             )
-            print(f"Step 4 - Creating S3 Vectors Policy")
+            print("Step 4 - Creating S3 Vectors Policy")
             self.create_s3_vectors_policy(
                 s3_vectors_policy_name, vector_bucket_arn, bedrock_kb_execution_role
             )
             print(
                 "========================================================================================"
             )
-            print(f"Step 5 - Creating Knowledge Base")
+            print("Step 5 - Creating Knowledge Base")
             knowledge_base, data_source = self.create_knowledge_base(
                 vector_bucket_arn,
                 index_arn,
@@ -232,7 +231,7 @@ class KnowledgeBasesForAmazonBedrock:
         try:
             self.s3_client.head_bucket(Bucket=bucket_name)
             print(f"Bucket {bucket_name} already exists - retrieving it!")
-        except ClientError as e:
+        except ClientError:
             print(f"Creating bucket {bucket_name}")
             if self.region_name == "us-east-1":
                 self.s3_client.create_bucket(Bucket=bucket_name)
@@ -430,7 +429,7 @@ class KnowledgeBasesForAmazonBedrock:
 
         # Create S3 Vectors bucket
         try:
-            response = self.s3_vectors_client.create_vector_bucket(
+            self.s3_vectors_client.create_vector_bucket(
                 vectorBucketName=vector_bucket_name,
                 encryptionConfiguration={"sseType": "AES256"},
             )
@@ -449,7 +448,7 @@ class KnowledgeBasesForAmazonBedrock:
 
         # Create vector index
         try:
-            response = self.s3_vectors_client.create_index(
+            self.s3_vectors_client.create_index(
                 vectorBucketName=vector_bucket_name,
                 indexName=index_name,
                 dataType="float32",
@@ -754,13 +753,10 @@ class KnowledgeBasesForAmazonBedrock:
         for ds in ds_available["dataSourceSummaries"]:
             if kb_id == ds["knowledgeBaseId"]:
                 ds_id = ds["dataSourceId"]
-        ds_details = self.bedrock_agent_client.get_data_source(
+        self.bedrock_agent_client.get_data_source(
             dataSourceId=ds_id,
             knowledgeBaseId=kb_id,
         )
-        bucket_name = ds_details["dataSource"]["dataSourceConfiguration"][
-            "s3Configuration"
-        ]["bucketArn"].replace("arn:aws:s3:::", "")
 
         if (
             delete_s3_vector

@@ -1,6 +1,5 @@
 #!/usr/bin/python
 
-import ast
 import base64
 import hashlib
 from typing import Any, Optional
@@ -62,7 +61,6 @@ def invoke_endpoint(
         )
         logger = logging.getLogger("bedrock_agentcore.stream")
         logger.setLevel(logging.INFO)
-        content = []
 
         last_data = False
         # for line in response.text.splitlines():

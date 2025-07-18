@@ -118,7 +118,7 @@ def create(name, ssm_param, event_expiry_days):
 
     try:
         store_memory_id_in_ssm(ssm_param, memory_id)
-        click.echo(f"🎉 Memory setup completed successfully!")
+        click.echo("🎉 Memory setup completed successfully!")
         click.echo(f"   Memory ID: {memory_id}")
         click.echo(f"   SSM Parameter: {ssm_param}")
 

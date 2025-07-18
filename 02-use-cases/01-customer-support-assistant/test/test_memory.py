@@ -97,7 +97,7 @@ def load_conversation():
 @click.argument("prompt", type=str)
 def load_prompt(prompt):
     """Load a custom prompt from user input and execute it with memory"""
-    click.echo(f"=== Processing Custom Prompt ===")
+    click.echo("=== Processing Custom Prompt ===")
     click.echo(f"Session ID: {SESSION_ID}")
     click.echo(f"Actor ID: {ACTOR_ID}")
     click.echo("=" * 40)
