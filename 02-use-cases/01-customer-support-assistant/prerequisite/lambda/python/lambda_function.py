@@ -1,6 +1,5 @@
 from check_warranty import check_warranty_status
 from get_customer_profile import get_customer_profile
-import json
 
 
 def get_named_parameter(event, name):

@@ -36,8 +36,7 @@ Your new project will appear in the project list.
 3. Choose Web application as the application type.
 4. Enter a name for the credentials.
 5. Under Authorized redirect URIs, add your following redirect URI:
-   - `https://us-west-2.prod.agent-credential-provider.cognito.aws.dev/identities/oauth2/callback`
-   - `http://localhost:64161/`
+   - `https://bedrock-agentcore.us-east-1.amazonaws.com/identities/oauth2/callback`
 6. Click Create.
 
 ## 🔑 5. Obtain Client ID and Client Secret

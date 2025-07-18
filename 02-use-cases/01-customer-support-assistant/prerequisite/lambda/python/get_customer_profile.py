@@ -18,7 +18,7 @@ smm_client = boto3.client("ssm")
 
 # Get customer profile table name from Parameter Store
 customer_table = smm_client.get_parameter(
-    Name="/app/customersupport/dynamodb/customer-profile-table-name",
+    Name="/app/customersupport/dynamodb/customer_profile_table_name",
     WithDecryption=False,
 )
 customer_table_name = customer_table["Parameter"]["Value"]

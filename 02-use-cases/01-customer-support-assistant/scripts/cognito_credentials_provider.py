@@ -1,8 +1,9 @@
+#!/usr/bin/python
 import boto3
 import click
 import sys
 from botocore.exceptions import ClientError
-from utils import get_ssm_parameter, read_config, get_aws_region
+from utils import get_ssm_parameter, get_aws_region
 
 REGION = get_aws_region()
 
@@ -48,17 +49,15 @@ def delete_ssm_param():
 def create_cognito_provider(provider_name: str) -> dict:
     """Create a Cognito OAuth2 credential provider."""
     try:
-        click.echo("🔧 Reading gateway configuration...")
-        gateway_config = read_config("gateway.config")
-        click.echo("✅ Gateway configuration loaded")
-
         click.echo("📥 Fetching Cognito configuration from SSM...")
         client_id = get_ssm_parameter(
             "/app/customersupport/agentcore/machine_client_id"
         )
         click.echo(f"✅ Retrieved client ID: {client_id}")
 
-        client_secret = gateway_config["cognito"]["secret"]
+        client_secret = get_ssm_parameter(
+            "/app/customersupport/agentcore/cognito_secret"
+        )
         click.echo(f"✅ Retrieved client secret: {client_secret[:4]}***")
 
         issuer = get_ssm_parameter(
@@ -113,11 +112,9 @@ def delete_cognito_provider(provider_name: str) -> bool:
     try:
         click.echo(f"🗑️  Deleting OAuth2 credential provider: {provider_name}")
 
-        identity_client.delete_oauth2_credential_provider(
-            name=provider_name
-        )
+        identity_client.delete_oauth2_credential_provider(name=provider_name)
 
-        click.echo(f"✅ OAuth2 credential provider deleted successfully")
+        click.echo("✅ OAuth2 credential provider deleted successfully")
         return True
 
     except Exception as e:

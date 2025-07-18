@@ -1,3 +1,4 @@
+#!/usr/bin/python
 import json
 import os
 import sys
@@ -121,7 +122,7 @@ def delete_google_provider(provider_name: str) -> bool:
 
         identity_client.delete_oauth2_credential_provider(name=provider_name)
 
-        click.echo(f"✅ Google OAuth2 credential provider deleted successfully")
+        click.echo("✅ Google OAuth2 credential provider deleted successfully")
         return True
 
     except Exception as e:

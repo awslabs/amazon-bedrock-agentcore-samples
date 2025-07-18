@@ -7,6 +7,32 @@ This is a customer support agent implementation using AWS Bedrock AgentCore fram
 
 ![architecture](./images/architecture.png)
 
+## Table of Contents
+
+- [Customer Support Agent](#customer-support-agent)
+  - [Table of Contents](#table-of-contents)
+  - [Prerequisites](#prerequisites)
+    - [AWS Account Setup](#aws-account-setup)
+  - [Deploy](#deploy)
+  - [Scripts](#scripts)
+    - [Amazon Bedrock AgentCore Gateway](#amazon-bedrock-agentcore-gateway)
+      - [Create Amazon Bedrock AgentCore Gateway](#create-amazon-bedrock-agentcore-gateway)
+      - [Delete Amazon Bedrock AgentCore Gateway](#delete-amazon-bedrock-agentcore-gateway)
+    - [Amazon Bedrock AgentCore Memory](#amazon-bedrock-agentcore-memory)
+      - [Create Amazon Bedrock AgentCore Memory](#create-amazon-bedrock-agentcore-memory)
+      - [Delete Amazon Bedrock AgentCore Memory](#delete-amazon-bedrock-agentcore-memory)
+    - [Cognito Credentials Provider](#cognito-credentials-provider)
+      - [Create Cognito Credentials Provider](#create-cognito-credentials-provider)
+      - [Delete Cognito Credentials Provider](#delete-cognito-credentials-provider)
+    - [Google Credentials Provider](#google-credentials-provider)
+      - [Create Credentials Provider](#create-credentials-provider)
+      - [Delete Credentials Provider](#delete-credentials-provider)
+  - [Cleanup](#cleanup)
+  - [🤝 Contributing](#-contributing)
+  - [📄 License](#-license)
+  - [🆘 Support](#-support)
+  - [🔄 Updates](#-updates)
+
 ## Prerequisites
 
 ### AWS Account Setup
@@ -26,24 +52,24 @@ This is a customer support agent implementation using AWS Bedrock AgentCore fram
 3. **Bedrock Model Access**: Enable access to Amazon Bedrock Anthropic Claude 4.0 models in your AWS region
    - Navigate to [Amazon Bedrock Console](https://console.aws.amazon.com/bedrock/)
    - Go to "Model access" and request access to:
-     - Anthropic Claude Sonnet models
+     - Anthropic Claude 4.0 Sonnet model
+     - Anthropic Claude 3.5 Haiku model
    - [Bedrock Model Access Guide](https://docs.aws.amazon.com/bedrock/latest/userguide/model-access.html)
 
-4. **Python 3.8+**: Required for running the application
+4. **Python 3.10+**: Required for running the application
    - [Python Downloads](https://www.python.org/downloads/)
 
 5. **Create OAuth 2.0 credentials for calendar access** : For Google Calendar integration
    - Follow [Google OAuth Setup](./prerequisite/google_oauth_setup.md)
 
-6. **Install [uv](https://docs.astral.sh/uv/getting-started/installation/) package manager**.
-
 ## Deploy
 
-1. Create infrastructure
+1. **Create infrastructure**
 
     ```bash
     python -m venv .venv
     source .venv/bin/activate
+    pip install -r dev-requirements.txt
 
     chmod +x scripts/prereq.sh
     ./scripts/prereq.sh
@@ -52,17 +78,15 @@ This is a customer support agent implementation using AWS Bedrock AgentCore fram
     ./scripts/list_ssm_parameters.sh
     ```
 
-2. Create Agentcore Gateway
+2. **Create Agentcore Gateway**
 
     ```bash
     python scripts/agentcore_gateway.py create --name customersupgateway
     ```
 
-    This create `gateway.config` file.
+3. **Setup Agentcore Identity**
 
-3. Setup Agentcore Identity
-
-    - Setup Cognito Credential Provider
+    - **Setup Cognito Credential Provider**
 
     ```bash
     python scripts/cognito_credentials_provider.py create --name customersupport-gateways
@@ -70,7 +94,7 @@ This is a customer support agent implementation using AWS Bedrock AgentCore fram
     python test/test_gateway.py --prompt "Check warranty with serial number MNO33333333"
     ```
 
-    - Setup Google Credential Provider
+    - **Setup Google Credential Provider**
 
     Follow instructions to setup [Google Credentials](./prerequisite/google_oauth_setup.md).
 
@@ -80,24 +104,26 @@ This is a customer support agent implementation using AWS Bedrock AgentCore fram
     python test/test_google_tool.py
     ```
 
-4. Create Memory
+4. **Create Memory**
 
     ```bash
     python scripts/agentcore_memory.py create --name customersupport
 
+    python test/test_memory.py load-conversation
+    python test/test_memory.py load-prompt "My preference of gaming console is V5 Pro"
+    python test/test_memory.py list-memory
     ```
 
-5. Setup Agent Runtime
+5. **Setup Agent Runtime**
 
     ```bash
-
     agentcore configure --entrypoint main.py -er arn:aws:iam::<Account-Id>:role/<Role> --name customersupport<AgentName>
     ```
 
     Use `./scripts/list_ssm_parameters.sh` to fill:
     - `Role = ValueOf(/app/customersupport/agentcore/agentcore_iam_role)`
-    - `Oath Discovery URL = ValueOf(/app/customersupport/agentcore/cognito_discovery_url)`
-    - `Oath client id = ValueOf(/app/customersupport/agentcore/web_client_id)`.
+    - `OAuth Discovery URL = ValueOf(/app/customersupport/agentcore/cognito_discovery_url)`
+    - `OAuth client id = ValueOf(/app/customersupport/agentcore/web_client_id)`.
 
     ![configure](./images/runtime_configure.png)
 
@@ -107,11 +133,13 @@ This is a customer support agent implementation using AWS Bedrock AgentCore fram
     python test/test_agent.py customersupport<AgentName> -p "Hi"
     ```
 
-6. Local Host Streamlit UI
+6. **Local Host Streamlit UI**
+
+> [!CAUTION]
+> Streamlit app should only run on port `8501`.
 
 ```bash
-pip install streamlit
-streamlit run app.py -- --agent=customersupport<AgentName>
+streamlit run app.py --server.port 8501 -- --agent=customersupport<AgentName>
 ```
 
 ## Scripts
@@ -207,7 +235,7 @@ python scripts/google_credentials_provider.py delete
 python scripts/cognito_credentials_provider.py delete
 python scripts/agentcore_memory.py delete
 python scripts/agentcore_gateway.py delete
-python scripts/agencore_agent_runtime.py delete
+python scripts/agentcore_agent_runtime.py delete
 ```
 
 ## 🤝 Contributing

@@ -1,11 +1,11 @@
-from typing import List
-from strands.tools.mcp import MCPClient
-from strands import Agent
-from strands.models import BedrockModel
+from .utils import get_ssm_parameter
+from agent_config.memory_hook_provider import MemoryHook
 from mcp.client.streamable_http import streamablehttp_client
+from strands import Agent
 from strands_tools import current_time, retrieve
-from memory_hook_provider import MemoryHook
-from scripts.utils import read_config
+from strands.models import BedrockModel
+from strands.tools.mcp import MCPClient
+from typing import List
 
 
 class CustomerSupport:
@@ -41,15 +41,13 @@ class CustomerSupport:
     """
         )
 
-        self.gateway_config = read_config("gateway.config")
-        print(
-            f"Gateway Endpoint - MCP URL: {self.gateway_config['gateway']['gateway_url']}mcp"
-        )
+        gateway_url = get_ssm_parameter("/app/customersupport/agentcore/gateway_url")
+        print(f"Gateway Endpoint - MCP URL: {gateway_url}")
 
         try:
             self.gateway_client = MCPClient(
                 lambda: streamablehttp_client(
-                    f"{self.gateway_config['gateway']['gateway_url']}",
+                    gateway_url,
                     headers={"Authorization": f"Bearer {bearer_token}"},
                 )
             )

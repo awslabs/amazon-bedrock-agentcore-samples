@@ -51,7 +51,9 @@ fi
 echo "🗑️ Removing local file $ZIP_FILE..."
 rm -f "$ZIP_FILE"
 
+# ----- 5. Delete Knowledge Base -----
+
 echo "🗑️ Deleting Knowledgebase"
 python prerequisite/knowledge_base.py --mode delete
 
-echo "✅ Cleanup complete."
+echo "✅ Deployment complete."

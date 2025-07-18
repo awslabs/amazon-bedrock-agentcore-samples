@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/python
 
 import asyncio
 import click
@@ -10,7 +10,7 @@ import sys
 import os
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-from scripts.utils import read_config, get_ssm_parameter
+from scripts.utils import get_ssm_parameter
 
 gateway_access_token = None
 
@@ -34,14 +34,19 @@ def main(prompt: str):
     # Fetch access token
     asyncio.run(_get_access_token_manually(access_token=""))
 
-    # Load config
-    gateway_config = read_config("gateway.config")
-    print(f"Gateway Endpoint - MCP URL: {gateway_config['gateway']['gateway_url']}mcp")
+    # Load gateway configuration from SSM parameters
+    try:
+        gateway_url = get_ssm_parameter("/app/customersupport/agentcore/gateway_url")
+    except Exception as e:
+        print(f"❌ Error reading gateway URL from SSM: {str(e)}")
+        sys.exit(1)
+
+    print(f"Gateway Endpoint - MCP URL: {gateway_url}")
 
     # Set up MCP client
     client = MCPClient(
         lambda: streamablehttp_client(
-            f"{gateway_config['gateway']['gateway_url']}",
+            gateway_url,
             headers={"Authorization": f"Bearer {gateway_access_token}"},
         )
     )
