@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/python
 
 import ast
 import base64
@@ -102,6 +102,8 @@ def invoke_endpoint(
 def main(agent_name: str, prompt: str):
     """CLI tool to invoke a Bedrock agent by name."""
     runtime_config = read_config(".bedrock_agentcore.yaml")
+
+    print(runtime_config)
 
     if agent_name not in runtime_config["agents"]:
         print(f"❌ Agent '{agent_name}' not found in config.")

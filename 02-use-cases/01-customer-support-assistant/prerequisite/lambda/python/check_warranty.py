@@ -18,7 +18,7 @@ smm_client = boto3.client("ssm")
 
 # Get warranty table name from Parameter Store
 warranty_table = smm_client.get_parameter(
-    Name="/app/customersupport/dynamodb/warranty-table-name", WithDecryption=False
+    Name="/app/customersupport/dynamodb/warranty_table_name", WithDecryption=False
 )
 warranty_table_name = warranty_table["Parameter"]["Value"]
 

@@ -1,3 +1,5 @@
+#!/usr/bin/python
+
 import boto3
 from utils import get_aws_region
 

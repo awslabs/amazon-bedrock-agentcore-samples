@@ -1,3 +1,4 @@
+#!/usr/bin/python
 import json
 import os
 import sys

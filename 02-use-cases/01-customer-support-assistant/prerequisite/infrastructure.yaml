@@ -98,22 +98,42 @@ Resources:
                   - bedrock:InvokeModel
                   - bedrock:InvokeModelWithResponseStream
                 Resource:
+                  - "arn:aws:bedrock:*::foundation-model/*"
                   - !Sub arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:*
-              - Sid: AgentcoreAllowRuntime
-                Effect: Allow
-                Action:
-                  - bedrock-agentcore:*
-                  - iam:PassRole
-                Resource:
-                  - "*"    
               - Sid: SSMGetparam
                 Effect: Allow
                 Action:
                   - ssm:GetParameter
                 Resource:
                   - !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/app/customersupport/*
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/AdministratorAccess
+              - Sid: Identity
+                Effect: Allow
+                Action:
+                  - bedrock-agentcore:GetResourceOauth2Token
+                Resource:
+                  - !Sub arn:aws:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:token-vault/default/oauth2credentialprovider/customersupport*
+                  - !Sub arn:aws:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:workload-identity-directory/default/workload-identity/customersupport*
+                  - !Sub arn:aws:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:workload-identity-directory/default
+                  - !Sub arn:aws:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:token-vault/default
+              - Sid: SecretManager
+                Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource:
+                  - !Sub arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:bedrock-agentcore-identity!default/oauth2/customersupport*
+              - Sid: AgentCoreMemory
+                Effect: Allow
+                Action:
+                  - bedrock-agentcore:ListMemories
+                  - bedrock-agentcore:ListMemoryRecords
+                  - bedrock-agentcore:RetrieveMemoryRecords
+                  - bedrock-agentcore:GetMemory
+                  - bedrock-agentcore:GetMemoryRecord
+                  - bedrock-agentcore:CreateEvent
+                  - bedrock-agentcore:GetEvent
+                Resource:
+                  - !Sub arn:aws:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:memory/customersupport*
+
         
   GatewayAgentCoreRole:
     Type: AWS::IAM::Role
@@ -132,18 +152,12 @@ Resources:
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
-              - Sid: AgentcoreAllow
-                Effect: Allow
-                Action:
-                  - bedrock-agentcore:*
-                Resource:
-                  - "*"    
               - Sid: InvokeFunction
                 Effect: Allow
                 Action:
                   - lambda:InvokeFunction
                 Resource:
-                  - "*"    
+                  - !GetAtt CustomerSupportLambda.Arn
 
   # DynamoDB Table for Warranty Information
   WarrantyTable:
@@ -602,7 +616,7 @@ Resources:
   WarrantyTableNameParameter:
     Type: AWS::SSM::Parameter
     Properties:
-      Name: /app/customersupport/dynamodb/warranty-table-name
+      Name: /app/customersupport/dynamodb/warranty_table_name
       Type: String
       Value: !Ref WarrantyTable
       Description: DynamoDB table name for warranty information
@@ -613,7 +627,7 @@ Resources:
   CustomerProfileTableNameParameter:
     Type: AWS::SSM::Parameter
     Properties:
-      Name: /app/customersupport/dynamodb/customer-profile-table-name
+      Name: /app/customersupport/dynamodb/customer_profile_table_name
       Type: String
       Value: !Ref CustomerProfileTable
       Description: DynamoDB table name for customer profiles

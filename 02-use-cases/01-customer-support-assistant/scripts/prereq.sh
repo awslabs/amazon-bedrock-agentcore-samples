@@ -13,7 +13,7 @@ REGION=$(aws configure get region)
 ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 FULL_BUCKET_NAME="${BUCKET_NAME}-${ACCOUNT_ID}"
 ZIP_FILE="lambda.zip"
-LAMBDA_SRC="lambda/python"
+LAMBDA_SRC="prerequisite/lambda/python"
 S3_KEY="${ZIP_FILE}"
 
 # ----- 1. Create S3 bucket -----

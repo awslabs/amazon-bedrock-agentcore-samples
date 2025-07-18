@@ -5,7 +5,7 @@
 This module contains a helper class for building and using Knowledge Bases for Amazon Bedrock.
 The KnowledgeBasesForAmazonBedrock class provides a convenient interface for working with Knowledge Bases.
 It includes methods for creating, updating, and invoking Knowledge Bases, as well as managing
-IAM roles and OpenSearch Serverless.
+IAM roles and S3 Vectors.
 """
 
 import json
@@ -13,12 +13,6 @@ import boto3
 import time
 import uuid
 from botocore.exceptions import ClientError
-from opensearchpy import (
-    OpenSearch,
-    RequestsHttpConnection,
-    AWSV4SignerAuth,
-    RequestError,
-)
 import pprint
 from retrying import retry
 import random
@@ -66,7 +60,7 @@ class KnowledgeBasesForAmazonBedrock:
     """
     Support class that allows for:
         - creation (or retrieval) of a Knowledge Base for Amazon Bedrock with all its pre-requisites
-          (including OSS, IAM roles and Permissions and S3 bucket)
+          (including S3 Vectors, IAM roles and Permissions and S3 bucket)
         - Ingestion of data into the Knowledge Base
         - Deletion of all resources created
     """
@@ -90,19 +84,15 @@ class KnowledgeBasesForAmazonBedrock:
         self.identity = boto3.client(
             "sts", region_name=self.region_name
         ).get_caller_identity()["Arn"]
-        self.aoss_client = boto3_session.client(
-            "opensearchserverless", region_name=self.region_name
+        self.s3_vectors_client = boto3_session.client(
+            "s3vectors", region_name=self.region_name
         )
         self.s3_client = boto3.client("s3", region_name=self.region_name)
         self.bedrock_agent_client = boto3.client(
             "bedrock-agent", region_name=self.region_name
         )
-        self.bedrock_agent_client = boto3.client(
-            "bedrock-agent", region_name=self.region_name
-        )
-        credentials = boto3.Session().get_credentials()
-        self.awsauth = AWSV4SignerAuth(credentials, self.region_name, "aoss")
-        self.oss_client = None
+        self.vector_bucket_name = None
+        self.index_name = None
         self.data_bucket_name = None
 
     def create_or_retrieve_knowledge_base(
@@ -163,10 +153,6 @@ class KnowledgeBasesForAmazonBedrock:
                 raise ValueError(
                     f"Invalid embedding model. Your embedding model should be one of {valid_embeddings_str}"
                 )
-            # self.embedding_model = embedding_model
-            encryption_policy_name = f"{kb_name}-sp-{self.suffix}"
-            network_policy_name = f"{kb_name}-np-{self.suffix}"
-            access_policy_name = f"{kb_name}-ap-{self.suffix}"
             kb_execution_role_name = (
                 f"AmazonBedrockExecutionRoleForKnowledgeBase_{self.suffix}"
             )
@@ -174,8 +160,10 @@ class KnowledgeBasesForAmazonBedrock:
                 f"AmazonBedrockFoundationModelPolicyForKnowledgeBase_{self.suffix}"
             )
             s3_policy_name = f"AmazonBedrockS3PolicyForKnowledgeBase_{self.suffix}"
-            oss_policy_name = f"AmazonBedrockOSSPolicyForKnowledgeBase_{self.suffix}"
-            vector_store_name = f"{kb_name}-{self.suffix}"
+            s3_vectors_policy_name = (
+                f"AmazonBedrockS3VectorsPolicyForKnowledgeBase_{self.suffix}"
+            )
+            vector_bucket_name = f"{kb_name}-vectors-{self.suffix}"
             index_name = f"{kb_name}-index-{self.suffix}"
             print(
                 "========================================================================================"
@@ -197,49 +185,28 @@ class KnowledgeBasesForAmazonBedrock:
                 s3_policy_name,
                 kb_execution_role_name,
             )
+            print(time.sleep(10))
             print(
                 "========================================================================================"
             )
-            print(f"Step 3 - Creating OSS encryption, network and data access policies")
-            encryption_policy, network_policy, access_policy = (
-                self.create_policies_in_oss(
-                    encryption_policy_name,
-                    vector_store_name,
-                    network_policy_name,
-                    bedrock_kb_execution_role,
-                    access_policy_name,
-                )
+            print(f"Step 3 - Creating S3 Vectors Bucket and Index")
+            vector_bucket_arn, index_arn = self.create_s3_vectors_bucket_and_index(
+                vector_bucket_name, index_name, bedrock_kb_execution_role
             )
             print(
                 "========================================================================================"
             )
-            print(
-                f"Step 4 - Creating OSS Collection (this step takes a couple of minutes to complete)"
+            print(f"Step 4 - Creating S3 Vectors Policy")
+            self.create_s3_vectors_policy(
+                s3_vectors_policy_name, vector_bucket_arn, bedrock_kb_execution_role
             )
-            host, collection, collection_id, collection_arn = self.create_oss(
-                vector_store_name, oss_policy_name, bedrock_kb_execution_role
-            )
-            # Build the OpenSearch client
-            self.oss_client = OpenSearch(
-                hosts=[{"host": host, "port": 443}],
-                http_auth=self.awsauth,
-                use_ssl=True,
-                verify_certs=True,
-                connection_class=RequestsHttpConnection,
-                timeout=300,
-            )
-
             print(
                 "========================================================================================"
             )
-            print(f"Step 5 - Creating OSS Vector Index")
-            self.create_vector_index(index_name)
-            print(
-                "========================================================================================"
-            )
-            print(f"Step 6 - Creating Knowledge Base")
+            print(f"Step 5 - Creating Knowledge Base")
             knowledge_base, data_source = self.create_knowledge_base(
-                collection_arn,
+                vector_bucket_arn,
+                index_arn,
                 index_name,
                 data_bucket_name,
                 embedding_model,
@@ -380,6 +347,12 @@ class KnowledgeBasesForAmazonBedrock:
                     "Effect": "Allow",
                     "Principal": {"Service": "bedrock.amazonaws.com"},
                     "Action": "sts:AssumeRole",
+                    "Condition": {
+                        "StringEquals": {"aws:SourceAccount": f"{self.account_number}"},
+                        "ArnLike": {
+                            "aws:SourceArn": f"arn:aws:bedrock:{self.region_name}:{self.account_number}:knowledge-base/*"
+                        },
+                    },
                 }
             ],
         }
@@ -436,276 +409,140 @@ class KnowledgeBasesForAmazonBedrock:
         )
         return bedrock_kb_execution_role
 
-    def create_oss_policy_attach_bedrock_execution_role(
-        self, collection_id: str, oss_policy_name: str, bedrock_kb_execution_role: str
+    def create_s3_vectors_bucket_and_index(
+        self,
+        vector_bucket_name: str,
+        index_name: str,
+        bedrock_kb_execution_role: str,
     ):
         """
-        Create OpenSearch Serverless policy and attach it to the Knowledge Base Execution role.
-        If policy already exists, attaches it
+        Create S3 Vectors bucket and index.
         Args:
-            collection_id: collection id
-            oss_policy_name: opensearch serverless policy name
+            vector_bucket_name: name of the S3 vectors bucket
+            index_name: name of the vector index
             bedrock_kb_execution_role: knowledge base execution role
 
         Returns:
-            created: bool - boolean to indicate if role was created
+            vector_bucket_arn, index_arn
         """
-        # define oss policy document
-        oss_policy_document = {
+        self.vector_bucket_name = vector_bucket_name
+        self.index_name = index_name
+
+        # Create S3 Vectors bucket
+        try:
+            response = self.s3_vectors_client.create_vector_bucket(
+                vectorBucketName=vector_bucket_name,
+                encryptionConfiguration={"sseType": "AES256"},
+            )
+            get_response = self.s3_vectors_client.get_vector_bucket(
+                vectorBucketName=vector_bucket_name
+            )
+            vector_bucket_arn = get_response["vectorBucket"]["vectorBucketArn"]
+            print(f"Created S3 Vectors bucket: {vector_bucket_name}")
+        except self.s3_vectors_client.exceptions.ConflictException:
+            print(f"S3 Vectors bucket {vector_bucket_name} already exists")
+            # Get the bucket ARN
+            vector_bucket_arn = f"arn:aws:s3vectors:{self.region_name}:{self.account_number}:vector-bucket/{vector_bucket_name}"
+        except Exception as e:
+            print(f"Error creating S3 vectors bucket: {e}")
+            raise
+
+        # Create vector index
+        try:
+            response = self.s3_vectors_client.create_index(
+                vectorBucketName=vector_bucket_name,
+                indexName=index_name,
+                dataType="float32",
+                dimension=1024,  # Matching the OpenSearch configuration
+                distanceMetric="cosine",
+                metadataConfiguration={
+                    "nonFilterableMetadataKeys": [
+                        "AMAZON_BEDROCK_TEXT",
+                    ]
+                },
+            )
+            get_index_response = self.s3_vectors_client.get_index(
+                vectorBucketName=vector_bucket_name,
+                indexName=index_name,
+            )
+            time.sleep(10)
+            index_arn = get_index_response["index"]["indexArn"]
+            print(f"Created S3 Vectors index: {index_name}")
+        except self.s3_vectors_client.exceptions.ConflictException:
+            print(f"S3 Vectors index {index_name} already exists")
+            # Get the index ARN
+            index_arn = f"arn:aws:s3vectors:{self.region_name}:{self.account_number}:index/{vector_bucket_name}/{index_name}"
+        except Exception as e:
+            print(f"Error creating S3 vectors index: {e}")
+            raise
+
+        return vector_bucket_arn, index_arn
+
+    def create_s3_vectors_policy(
+        self,
+        s3_vectors_policy_name: str,
+        vector_bucket_arn: str,
+        bedrock_kb_execution_role: str,
+    ):
+        """
+        Create S3 Vectors policy and attach it to the Knowledge Base Execution role.
+        Args:
+            s3_vectors_policy_name: name of the S3 vectors policy
+            vector_bucket_arn: ARN of the S3 vectors bucket
+            bedrock_kb_execution_role: knowledge base execution role
+        """
+        # Define S3 Vectors policy document
+        s3_vectors_policy_document = {
             "Version": "2012-10-17",
             "Statement": [
                 {
+                    "Sid": "S3VectorsPermissions",
                     "Effect": "Allow",
-                    "Action": ["aoss:APIAccessAll"],
-                    "Resource": [
-                        f"arn:aws:aoss:{self.region_name}:{self.account_number}:collection/{collection_id}"
+                    "Action": [
+                        "s3vectors:GetIndex",
+                        "s3vectors:QueryVectors",
+                        "s3vectors:PutVectors",
+                        "s3vectors:GetVectors",
+                        "s3vectors:DeleteVectors",
                     ],
+                    "Resource": f"{vector_bucket_arn}/index/*",
+                    "Condition": {
+                        "StringEquals": {
+                            "aws:ResourceAccount": f"{self.account_number}"
+                        }
+                    },
                 }
             ],
         }
 
-        oss_policy_arn = f"arn:aws:iam::{self.account_number}:policy/{oss_policy_name}"
-        created = False
         try:
-            self.iam_client.create_policy(
-                PolicyName=oss_policy_name,
-                PolicyDocument=json.dumps(oss_policy_document),
-                Description="Policy for accessing opensearch serverless",
+            s3_vectors_policy = self.iam_client.create_policy(
+                PolicyName=s3_vectors_policy_name,
+                PolicyDocument=json.dumps(s3_vectors_policy_document),
+                Description="Policy for accessing S3 vectors",
             )
-            created = True
+            print(f"Created S3 Vectors policy: {s3_vectors_policy_name}")
         except self.iam_client.exceptions.EntityAlreadyExistsException:
-            print(f"Policy {oss_policy_arn} already exists, updating it")
-        print("Opensearch serverless arn: ", oss_policy_arn)
+            print(f"S3 Vectors policy {s3_vectors_policy_name} already exists")
+            s3_vectors_policy = self.iam_client.get_policy(
+                PolicyArn=f"arn:aws:iam::{self.account_number}:policy/{s3_vectors_policy_name}"
+            )
 
+        # Attach policy to Bedrock execution role
+        s3_vectors_policy_arn = s3_vectors_policy["Policy"]["Arn"]
         self.iam_client.attach_role_policy(
             RoleName=bedrock_kb_execution_role["Role"]["RoleName"],
-            PolicyArn=oss_policy_arn,
+            PolicyArn=s3_vectors_policy_arn,
         )
-        return created
-
-    def create_policies_in_oss(
-        self,
-        encryption_policy_name: str,
-        vector_store_name: str,
-        network_policy_name: str,
-        bedrock_kb_execution_role: str,
-        access_policy_name: str,
-    ):
-        """
-        Create OpenSearch Serverless encryption, network and data access policies.
-        If policies already exist, retrieve them
-        Args:
-            encryption_policy_name: name of the data encryption policy
-            vector_store_name: name of the vector store
-            network_policy_name: name of the network policy
-            bedrock_kb_execution_role: name of the knowledge base execution role
-            access_policy_name: name of the data access policy
-
-        Returns:
-            encryption_policy, network_policy, access_policy
-        """
-        try:
-            encryption_policy = self.aoss_client.create_security_policy(
-                name=encryption_policy_name,
-                policy=json.dumps(
-                    {
-                        "Rules": [
-                            {
-                                "Resource": ["collection/" + vector_store_name],
-                                "ResourceType": "collection",
-                            }
-                        ],
-                        "AWSOwnedKey": True,
-                    }
-                ),
-                type="encryption",
-            )
-        except self.aoss_client.exceptions.ConflictException:
-            print(f"{encryption_policy_name} already exists, retrieving it!")
-            encryption_policy = self.aoss_client.get_security_policy(
-                name=encryption_policy_name, type="encryption"
-            )
-
-        try:
-            network_policy = self.aoss_client.create_security_policy(
-                name=network_policy_name,
-                policy=json.dumps(
-                    [
-                        {
-                            "Rules": [
-                                {
-                                    "Resource": ["collection/" + vector_store_name],
-                                    "ResourceType": "collection",
-                                }
-                            ],
-                            "AllowFromPublic": True,
-                        }
-                    ]
-                ),
-                type="network",
-            )
-        except self.aoss_client.exceptions.ConflictException:
-            print(f"{network_policy_name} already exists, retrieving it!")
-            network_policy = self.aoss_client.get_security_policy(
-                name=network_policy_name, type="network"
-            )
-
-        try:
-            access_policy = self.aoss_client.create_access_policy(
-                name=access_policy_name,
-                policy=json.dumps(
-                    [
-                        {
-                            "Rules": [
-                                {
-                                    "Resource": ["collection/" + vector_store_name],
-                                    "Permission": [
-                                        "aoss:CreateCollectionItems",
-                                        "aoss:DeleteCollectionItems",
-                                        "aoss:UpdateCollectionItems",
-                                        "aoss:DescribeCollectionItems",
-                                    ],
-                                    "ResourceType": "collection",
-                                },
-                                {
-                                    "Resource": ["index/" + vector_store_name + "/*"],
-                                    "Permission": [
-                                        "aoss:CreateIndex",
-                                        "aoss:DeleteIndex",
-                                        "aoss:UpdateIndex",
-                                        "aoss:DescribeIndex",
-                                        "aoss:ReadDocument",
-                                        "aoss:WriteDocument",
-                                    ],
-                                    "ResourceType": "index",
-                                },
-                            ],
-                            "Principal": [
-                                self.identity,
-                                bedrock_kb_execution_role["Role"]["Arn"],
-                            ],
-                            "Description": "Easy data policy",
-                        }
-                    ]
-                ),
-                type="data",
-            )
-        except self.aoss_client.exceptions.ConflictException:
-            print(f"{access_policy_name} already exists, retrieving it!")
-            access_policy = self.aoss_client.get_access_policy(
-                name=access_policy_name, type="data"
-            )
-        return encryption_policy, network_policy, access_policy
-
-    def create_oss(
-        self,
-        vector_store_name: str,
-        oss_policy_name: str,
-        bedrock_kb_execution_role: str,
-    ):
-        """
-        Create OpenSearch Serverless Collection. If already existent, retrieve
-        Args:
-            vector_store_name: name of the vector store
-            oss_policy_name: name of the opensearch serverless access policy
-            bedrock_kb_execution_role: name of the knowledge base execution role
-        """
-        try:
-            collection = self.aoss_client.create_collection(
-                name=vector_store_name, type="VECTORSEARCH"
-            )
-            collection_id = collection["createCollectionDetail"]["id"]
-            collection_arn = collection["createCollectionDetail"]["arn"]
-        except self.aoss_client.exceptions.ConflictException:
-            collection = self.aoss_client.batch_get_collection(
-                names=[vector_store_name]
-            )["collectionDetails"][0]
-            pp.pprint(collection)
-            collection_id = collection["id"]
-            collection_arn = collection["arn"]
-        pp.pprint(collection)
-
-        # Get the OpenSearch serverless collection URL
-        host = collection_id + "." + self.region_name + ".aoss.amazonaws.com"
-        print(host)
-        # wait for collection creation
-        # This can take couple of minutes to finish
-        response = self.aoss_client.batch_get_collection(names=[vector_store_name])
-        # Periodically check collection status
-        while (response["collectionDetails"][0]["status"]) == "CREATING":
-            print("Creating collection...")
-            interactive_sleep(30)
-            response = self.aoss_client.batch_get_collection(names=[vector_store_name])
-        print("\nCollection successfully created:")
-        pp.pprint(response["collectionDetails"])
-        # create opensearch serverless access policy and attach it to Bedrock execution role
-        try:
-            created = self.create_oss_policy_attach_bedrock_execution_role(
-                collection_id, oss_policy_name, bedrock_kb_execution_role
-            )
-            if created:
-                # It can take up to a minute for data access rules to be enforced
-                print(
-                    "Sleeping for a minute to ensure data access rules have been enforced"
-                )
-                interactive_sleep(60)
-            return host, collection, collection_id, collection_arn
-        except Exception as e:
-            print("Policy already exists")
-            pp.pprint(e)
-
-    def create_vector_index(self, index_name: str):
-        """
-        Create OpenSearch Serverless vector index. If existent, ignore
-        Args:
-            index_name: name of the vector index
-        """
-        body_json = {
-            "settings": {
-                "index.knn": "true",
-                "number_of_shards": 1,
-                "knn.algo_param.ef_search": 512,
-                "number_of_replicas": 0,
-            },
-            "mappings": {
-                "properties": {
-                    "vector": {
-                        "type": "knn_vector",
-                        "dimension": 1024,
-                        "method": {
-                            "name": "hnsw",
-                            "engine": "faiss",
-                            "space_type": "l2",
-                        },
-                    },
-                    "text": {"type": "text"},
-                    "text-metadata": {"type": "text"},
-                }
-            },
-        }
-
-        # Create index
-        try:
-            response = self.oss_client.indices.create(
-                index=index_name, body=json.dumps(body_json)
-            )
-            print("\nCreating index:")
-            pp.pprint(response)
-
-            # index creation can take up to a minute
-            interactive_sleep(60)
-        except RequestError as e:
-            # you can delete the index if its already exists
-            # oss_client.indices.delete(index=index_name)
-            print(
-                f"Error while trying to create the index, with error {e.error}\nyou may unmark the delete above to "
-                f"delete, and recreate the index"
-            )
+        print(
+            f"Attached S3 Vectors policy to role: {bedrock_kb_execution_role['Role']['RoleName']}"
+        )
 
     @retry(wait_random_min=1000, wait_random_max=2000, stop_max_attempt_number=7)
     def create_knowledge_base(
         self,
-        collection_arn: str,
+        vector_bucket_arn: str,
+        index_arn: str,
         index_name: str,
         bucket_name: str,
         embedding_model: str,
@@ -716,8 +553,9 @@ class KnowledgeBasesForAmazonBedrock:
         """
         Create Knowledge Base and its Data Source. If existent, retrieve
         Args:
-            collection_arn: ARN of the opensearch serverless collection
-            index_name: name of the opensearch serverless index
+            vector_bucket_arn: ARN of the S3 vectors bucket
+            index_arn: ARN of the S3 vectors index
+            index_name: name of the S3 vectors index
             bucket_name: name of the s3 bucket containing the knowledge base data
             embedding_model: id of the embedding model used
             kb_name: knowledge base name
@@ -728,14 +566,12 @@ class KnowledgeBasesForAmazonBedrock:
             knowledge base object,
             data source object
         """
-        opensearch_serverless_configuration = {
-            "collectionArn": collection_arn,
-            "vectorIndexName": index_name,
-            "fieldMapping": {
-                "vectorField": "vector",
-                "textField": "text",
-                "metadataField": "text-metadata",
-            },
+        print(vector_bucket_arn)
+        print(index_name)
+        s3_vectors_configuration = {
+            "vectorBucketArn": vector_bucket_arn,
+            # "indexName": index_name,
+            "indexArn": index_arn,
         }
 
         # Ingest strategy - How to ingest data from the data source
@@ -770,6 +606,7 @@ class KnowledgeBasesForAmazonBedrock:
             )
         )
         try:
+            print(bedrock_kb_execution_role["Role"]["Arn"])
             create_kb_response = self.bedrock_agent_client.create_knowledge_base(
                 name=kb_name,
                 description=kb_description,
@@ -781,23 +618,24 @@ class KnowledgeBasesForAmazonBedrock:
                     },
                 },
                 storageConfiguration={
-                    "type": "OPENSEARCH_SERVERLESS",
-                    "opensearchServerlessConfiguration": opensearch_serverless_configuration,
+                    "type": "S3_VECTORS",
+                    "s3VectorsConfiguration": s3_vectors_configuration,
                 },
             )
             kb = create_kb_response["knowledgeBase"]
             pp.pprint(kb)
-        except self.bedrock_agent_client.exceptions.ConflictException:
-            kbs = self.bedrock_agent_client.list_knowledge_bases(maxResults=100)
-            kb_id = None
-            for kb in kbs["knowledgeBaseSummaries"]:
-                if kb["name"] == kb_name:
-                    kb_id = kb["knowledgeBaseId"]
-            response = self.bedrock_agent_client.get_knowledge_base(
-                knowledgeBaseId=kb_id
-            )
-            kb = response["knowledgeBase"]
-            pp.pprint(kb)
+        except Exception as e:
+            # kbs = self.bedrock_agent_client.list_knowledge_bases(maxResults=100)
+            # kb_id = None
+            # for kb in kbs["knowledgeBaseSummaries"]:
+            #     if kb["name"] == kb_name:
+            #         kb_id = kb["knowledgeBaseId"]
+            # response = self.bedrock_agent_client.get_knowledge_base(
+            #     knowledgeBaseId=kb_id
+            # )
+            # kb = response["knowledgeBase"]
+            # pp.pprint(kb)
+            print(e)
 
         # Create a DataSource in KnowledgeBase
         try:
@@ -878,7 +716,7 @@ class KnowledgeBasesForAmazonBedrock:
         kb_name: str,
         delete_s3_bucket: bool = True,
         delete_iam_roles_and_policies: bool = True,
-        delete_aoss: bool = True,
+        delete_s3_vector: bool = True,
     ):
         """
         Delete the Knowledge Base resources
@@ -886,7 +724,7 @@ class KnowledgeBasesForAmazonBedrock:
             kb_name: name of the knowledge base to delete
             delete_s3_bucket (bool): boolean to indicate if s3 bucket should also be deleted
             delete_iam_roles_and_policies (bool): boolean to indicate if IAM roles and Policies should also be deleted
-            delete_aoss: boolean to indicate if amazon opensearch serverless resources should also be deleted
+            delete_s3_vector: boolean to indicate if amazon Amazon S3 Vector
         """
         kbs_available = self.bedrock_agent_client.list_knowledge_bases(
             maxResults=100,
@@ -898,36 +736,16 @@ class KnowledgeBasesForAmazonBedrock:
                 kb_id = kb["knowledgeBaseId"]
         kb_details = self.bedrock_agent_client.get_knowledge_base(knowledgeBaseId=kb_id)
         kb_role = kb_details["knowledgeBase"]["roleArn"].split("/")[1]
-        collection_id = kb_details["knowledgeBase"]["storageConfiguration"][
-            "opensearchServerlessConfiguration"
-        ]["collectionArn"].split("/")[1]
-        index_name = kb_details["knowledgeBase"]["storageConfiguration"][
-            "opensearchServerlessConfiguration"
-        ]["vectorIndexName"]
+        vector_bucket_arn = kb_details["knowledgeBase"]["storageConfiguration"][
+            "s3VectorsConfiguration"
+        ]["vectorBucketArn"]
+        # index_name = kb_details["knowledgeBase"]["storageConfiguration"][
+        #     "s3VectorsConfiguration"
+        # ]["indexName"]
 
-        encryption_policies = self.aoss_client.list_security_policies(
-            maxResults=100, type="encryption"
-        )
-        encryption_policy_name = None
-        for ep in encryption_policies["securityPolicySummaries"]:
-            if ep["name"].startswith(kb_name):
-                encryption_policy_name = ep["name"]
-
-        network_policies = self.aoss_client.list_security_policies(
-            maxResults=100, type="network"
-        )
-        network_policy_name = None
-        for np in network_policies["securityPolicySummaries"]:
-            if np["name"].startswith(kb_name):
-                network_policy_name = np["name"]
-
-        data_policies = self.aoss_client.list_access_policies(
-            maxResults=100, type="data"
-        )
-        access_policy_name = None
-        for dp in data_policies["accessPolicySummaries"]:
-            if dp["name"].startswith(kb_name):
-                access_policy_name = dp["name"]
+        index_arn = kb_details["knowledgeBase"]["storageConfiguration"][
+            "s3VectorsConfiguration"
+        ]["indexArn"]
 
         ds_available = self.bedrock_agent_client.list_data_sources(
             knowledgeBaseId=kb_id,
@@ -943,63 +761,36 @@ class KnowledgeBasesForAmazonBedrock:
         bucket_name = ds_details["dataSource"]["dataSourceConfiguration"][
             "s3Configuration"
         ]["bucketArn"].replace("arn:aws:s3:::", "")
-        try:
-            self.bedrock_agent_client.delete_data_source(
-                dataSourceId=ds_id, knowledgeBaseId=kb_id
+
+        if (
+            delete_s3_vector
+        ):  # Renamed for backward compatibility, but now handles S3 vectors
+            self.s3_vectors_client.delete_index(
+                # vectorBucketName=vector_bucket_name,
+                # vectorBucketArn=vector_bucket_arn,
+                # indexName=index_name,
+                indexArn=index_arn,
             )
-            print("Data Source deleted successfully!")
-        except Exception as e:
-            print(e)
-        try:
-            self.bedrock_agent_client.delete_knowledge_base(knowledgeBaseId=kb_id)
-            print("Knowledge Base deleted successfully!")
-        except Exception as e:
-            print(e)
-        if delete_aoss:
-            try:
-                self.oss_client.indices.delete(index=index_name)
-                print("OpenSource Serveless Index deleted successfully!")
-            except Exception as e:
-                print(e)
-            try:
-                self.aoss_client.delete_collection(id=collection_id)
-                print("OpenSource Collection Index deleted successfully!")
-            except Exception as e:
-                print(e)
-            try:
-                self.aoss_client.delete_access_policy(
-                    type="data", name=access_policy_name
-                )
-                print("OpenSource Serveless access policy deleted successfully!")
-            except Exception as e:
-                print(e)
-            try:
-                self.aoss_client.delete_security_policy(
-                    type="network", name=network_policy_name
-                )
-                print("OpenSource Serveless network policy deleted successfully!")
-            except Exception as e:
-                print(e)
-            try:
-                self.aoss_client.delete_security_policy(
-                    type="encryption", name=encryption_policy_name
-                )
-                print("OpenSource Serveless encryption policy deleted successfully!")
-            except Exception as e:
-                print(e)
-        if delete_s3_bucket:
-            try:
-                self.delete_s3(bucket_name)
-                print("Knowledge Base S3 bucket deleted successfully!")
-            except Exception as e:
-                print(e)
+            print("S3 Vectors index deleted successfully!")
+
+            self.s3_vectors_client.delete_vector_bucket(
+                vectorBucketArn=vector_bucket_arn,
+            )
+            print("S3 Vectors bucket deleted successfully!")
+
         if delete_iam_roles_and_policies:
-            try:
-                self.delete_iam_roles_and_policies(kb_role)
-                print("Knowledge Base Roles and Policies deleted successfully!")
-            except Exception as e:
-                print(e)
+            self.delete_iam_roles_and_policies(kb_role)
+            print("Knowledge Base Roles and Policies deleted successfully!")
+
         print("Resources deleted successfully!")
+
+        self.bedrock_agent_client.delete_data_source(
+            dataSourceId=ds_id, knowledgeBaseId=kb_id
+        )
+        print("Data Source deleted successfully!")
+
+        self.bedrock_agent_client.delete_knowledge_base(knowledgeBaseId=kb_id)
+        print("Knowledge Base deleted successfully!")
 
     def delete_iam_roles_and_policies(self, kb_execution_role_name: str):
         """
