@@ -2,9 +2,10 @@ import os
 os.environ["BYPASS_TOOL_CONSENT"]="true"
 
 from haystack.components.agents import Agent
-from haystack.dataclasses import Document, ChatMessage
+from haystack.dataclasses import ChatMessage
 from haystack_integrations.components.generators.amazon_bedrock import AmazonBedrockChatGenerator
 from haystack_integrations.tools.github import GitHubIssueViewerTool
+from bedrock_agentcore.runtime import BedrockAgentCoreApp
 
 tool = GitHubIssueViewerTool()
 
@@ -15,8 +16,6 @@ tool_calling_agent = Agent(
     tools=[tool]
 )
 
-# Run the agent with the user message
-from bedrock_agentcore.runtime import BedrockAgentCoreApp
 app = BedrockAgentCoreApp()
 
 @app.entrypoint
