@@ -6,3 +6,4 @@ starlette
 uvicorn
 aws-opentelemetry-distro-genai-beta
 setuptools
+bedrock-agentcore

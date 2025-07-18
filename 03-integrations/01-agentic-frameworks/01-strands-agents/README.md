@@ -1,5 +1,14 @@
 # Strands Agent with Bedrock AgentCore Integration
 
+| Information         | Details                                                                      |
+|---------------------|------------------------------------------------------------------------------|
+| Agent type          | Synchronous                                                                 |
+| Agentic Framework   | Strands                                                                    |
+| LLM model           | Anthropic Claude 3 Haiku                                                     |
+| Components          | AgentCore Runtime                                |
+| Example complexity  | Easy                                                                 |
+| SDK used            | Amazon BedrockAgentCore Python SDK                                           |
+
 These example demonstrate how to integrate a Strands agents with AWS Bedrock AgentCore, enabling you to deploy your agent as a managed service. You can use the `agentcore` CLI to configure and launch these agents. 
 
 ## Prerequisites
