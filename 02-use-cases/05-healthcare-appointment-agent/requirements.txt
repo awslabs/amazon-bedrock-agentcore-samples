@@ -11,4 +11,5 @@ langchain-aws==0.2.27
 langchain-mcp-adapters==0.1.7
 langgraph==0.5.1
 botocore
+bedrock-agentcore
 boto3

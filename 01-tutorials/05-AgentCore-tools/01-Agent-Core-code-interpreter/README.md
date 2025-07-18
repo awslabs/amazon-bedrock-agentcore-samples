@@ -45,8 +45,7 @@ The Amazon Bedrock AgentCore Code Interpreter is suitable for a wide range of ap
 
 In these tutorials we will cover the following functionality:
 
-- [Hosting agents using Amazon Bedrock Models](01-hosting-agent-using-bedrock-model)
-- [Hosting agents using non Amazon Bedrock Models](02-hosting-agent-using-non-bedrock-model)
-- [Hosting an agent tool](03-hosting-tool)
-- [Hosting a MCP Server](04-hosting-MCP-server)
-- [Advanced Concepts](05-advanced-concepts)
+- [File Operations using Amazon Bedrock AgentCore Code Interpreter](01-file-operations-using-code-interpreter)
+- [Code Execution with agent using Amazon Bedrock AgentCore Code Interpreter](02-code-execution-with-agent-using-code-interpreter)
+- [Advanced Data Analysis with AI Agent using Amazon Bedrock AgentCore Code Interpreter](03-advanced-data-analysis-with-agent-using-code-interpreter)
+- [Run Commnads using Amazon Bedrock AgentCore Code Interpreter](04-run-commands-using-code-interpreter)
