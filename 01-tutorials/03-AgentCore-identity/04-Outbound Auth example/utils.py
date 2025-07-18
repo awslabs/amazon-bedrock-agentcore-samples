@@ -102,18 +102,18 @@ def create_agentcore_role(agent_name):
                   f"arn:aws:bedrock-agentcore:{region}:{account_id}:workload-identity-directory/default/workload-identity/{agent_name}*"
                 ]
             },
-                {
-            "Sid": "GetAgentAccessTokenAPIKey",
-            "Effect": "Allow",
-            "Action": [
-                "bedrock-agentcore:GetResourceApiKey"
-            ],
-            "Resource": [
-                "arn:aws:bedrock-agentcore:{region}:{account_id}:token-vault/default/apikeycredentialprovider/openai-apikey-provider*",
-                "arn:aws:bedrock-agentcore:{region}:{account_id}:workload-identity-directory/default/workload-identity/{agent_name}*",
-                "arn:aws:bedrock-agentcore:{region}:{account_id}:workload-identity-directory/default",
-                "arn:aws:bedrock-agentcore:{region}:{account_id}:token-vault/default"
-            ]
+            {
+                "Sid": "GetAgentAccessTokenAPIKey",
+                "Effect": "Allow",
+                "Action": [
+                    "bedrock-agentcore:GetResourceApiKey"
+                ],
+                "Resource": [
+                    f"arn:aws:bedrock-agentcore:{region}:{account_id}:token-vault/default/apikeycredentialprovider/openai-apikey-provider*",
+                    f"arn:aws:bedrock-agentcore:{region}:{account_id}:workload-identity-directory/default/workload-identity/{agent_name}*",
+                    f"arn:aws:bedrock-agentcore:{region}:{account_id}:workload-identity-directory/default",
+                    f"arn:aws:bedrock-agentcore:{region}:{account_id}:token-vault/default"
+                ]
             },
             {
                 "Sid": "GetSecretsValue",
