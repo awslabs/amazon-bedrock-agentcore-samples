@@ -138,9 +138,9 @@ This is a customer support agent implementation using AWS Bedrock AgentCore fram
 > [!CAUTION]
 > Streamlit app should only run on port `8501`.
 
-    ```bash
-    streamlit run app.py --server.port 8501 -- --agent=customersupport<AgentName>
-    ```
+```bash
+streamlit run app.py --server.port 8501 -- --agent=customersupport<AgentName>
+```
 
 ## Scripts
 
