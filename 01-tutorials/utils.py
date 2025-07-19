@@ -3,7 +3,6 @@ import json
 import time
 from boto3.session import Session
 
-
 def setup_cognito_user_pool():
     boto_session = Session()
     region = boto_session.region_name

@@ -11,3 +11,6 @@ langchain-community
 opentelemetry-instrumentation-langchain
 bedrock-agentcore
 bedrock-agentcore-starter-toolkit
+ipython
+ipykernel
+pandas

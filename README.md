@@ -55,28 +55,38 @@ Amazon Bedrock AgentCore with different entry points.
 
 ## 🚀 Quick Start
 
-1. **Clone the repository**
+**Clone the repository**
 
    ```bash
    git clone https://github.com/awslabs/amazon-bedrock-agentcore-samples.git
    ```
 
-2. **Set up your environment**
+You will need to install the pre-requisites for deploying your agent into AgentCore Runtime. Follow the instructions below to get your environment up and running:
 
-   ```bash
-   pip install bedrock-agentcore
-   ```
-
-3. **Start with tutorials**
-   ```bash
-   cd 01-tutorials
-   jupyter notebook
-   ```
+1. Install Docker or Finch. You can get started [here](https://www.docker.com/get-started/)
+1. Make sure that you Docker or Finch is running
+1. For better package control it is strongly recommended that you create a virtual environment to run your applications. `uv` tool is a high-speed package and project manager for Python. We recommend using `uv` to manager your environment here. You can install uv with the instructions from [here](https://docs.astral.sh/uv/getting-started/installation/)
+1. Once you have `uv` installed, create and activate a new environment using the following commands:
+```commandline
+uv python install 3.10
+uv venv --python 3.10
+source .venv/bin/activate
+uv init
+```
+Next add the required packages to your `uv` environment:
+```commandline
+uv add -r requirements.txt --active
+```
+You can start a Jupyter notebook instance from your `uv` environment using:
+```commandline
+uv run --with jupyter jupyter lab
+```
 
 ## 📋 Prerequisites
 
 - Python 3.10 or higher
 - AWS account
+- Docker or Finch installed and running
 - Jupyter Notebook (for tutorials)
 
 ## 🤝 Contributing
