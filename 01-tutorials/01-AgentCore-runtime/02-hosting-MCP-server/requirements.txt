@@ -1,4 +1,4 @@
-mcp
-boto3
-fastmcp
-bedrock-agentcore-starter-toolkit
+mcp==1.11.0
+boto3==1.39.9
+fastmcp==2.10.5
+bedrock-agentcore-starter-toolkit==0.1.0
