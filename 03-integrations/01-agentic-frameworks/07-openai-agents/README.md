@@ -1,10 +1,19 @@
 # OpenAI Agents with Bedrock AgentCore Integration
 
+| Information         | Details                                                                      |
+|---------------------|------------------------------------------------------------------------------|
+| Agent type          | Synchronous with and without Handoffs                                                   |
+| Agentic Framework   | OpenAI Agents SDK                                                       |
+| LLM model           | GPT-4o                                                              |
+| Components          | AgentCore Runtime                                         |
+| Example complexity  | Medium                                                                       |
+| SDK used            | Amazon BedrockAgentCore Python SDK, OpenAI Agents SDK                   |
+
 This example demonstrates how to integrate OpenAI Agents with AWS Bedrock AgentCore, showcasing agent handoffs for specialized tasks.
 
 ## Prerequisites
 
-- Python 3.9+
+- Python 3.10+
 - [uv](https://github.com/astral-sh/uv) - Fast Python package installer and resolver
 - AWS account with Bedrock access
 - OpenAI API key
@@ -30,32 +39,47 @@ uv pip install -r requirements.txt
 
 ## Example 1: Hello World Agent
 
-The `openai_agents_hello_world.py` file contains a simple OpenAI agent with web search and file search capabilities:
+The `openai_agents_hello_world.py` file contains a simple OpenAI agent with web search capabilities and Bedrock AgentCore integration:
 
 ```python
-from agents import Agent, FileSearchTool, Runner, WebSearchTool
+from agents import Agent, Runner, WebSearchTool
 import logging
+import sys
 
 # Set up logging
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[logging.StreamHandler(sys.stdout)]
+)
 logger = logging.getLogger("openai_agents")
 
+# Initialize the agent with web search tool
 agent = Agent(
     name="Assistant",
-    tools=[
-        WebSearchTool(),
-        FileSearchTool(
-            max_num_results=3,
-            vector_store_ids=["VECTOR_STORE_ID"],
-        ),
-    ],
+    tools=[WebSearchTool()],
 )
 
-async def main():
-    query = "Which coffee shop should I go to, taking into account my preferences and the weather today in SF?"
+async def main(query=None):
+    if query is None:
+        query = "Which coffee shop should I go to, taking into account my preferences and the weather today in SF?"
+    
     logger.debug(f"Running agent with query: {query}")
     result = await Runner.run(agent, query)
-    print(result.final_output)
+    return result
+
+# Integration with Bedrock AgentCore
+from bedrock_agentcore.runtime import BedrockAgentCoreApp
+app = BedrockAgentCoreApp()
+
+@app.entrypoint
+async def agent_invocation(payload, context):
+    query = payload.get("prompt", "How can I help you today?")
+    result = await main(query)
+    return {"result": result.final_output}
+
+if __name__ == "__main__":
+    app.run()
 ```
 
 ## Example 2: Agent Handoffs
