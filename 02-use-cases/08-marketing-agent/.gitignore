@@ -1,0 +1,38 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+.Python
+env/
+venv/
+build/
+dist/
+*.egg-info/
+
+# Logs and local env
+*.log
+.env
+*.env
+
+# IDE directories
+.vscode/
+.idea/
+
+# macOS
+.DS_Store
+
+# Test outputs
+.coverage
+htmlcov/
+
+# Other
+workflows/
+repl_state/
+
+# Output files
+output/images/
+output/reports/
+ai_*.png
+*.md

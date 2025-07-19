@@ -1,0 +1,39 @@
+# Core AI Agent Framework
+strands-agents[bedrock,otel]
+strands-agents-tools
+
+# Memory Layer
+mem0ai>=0.1.0
+openai>=1.0.0
+
+# Web Search
+tavily-python
+
+# Additional Dependencies
+python-dotenv
+pydantic>=2.0.0
+aiohttp>=3.8.0
+requests>=2.31.0
+boto3
+anthropic>=0.25.0
+
+# Data Processing
+pandas>=2.0.0
+numpy>=1.24.0
+json5>=0.9.0
+
+# Logging and Monitoring
+loguru>=0.7.0
+rich>=13.0.0
+
+# Environment
+python-decouple>=3.8
+
+# OpenTelemetry
+opentelemetry-sdk
+opentelemetry-api
+opentelemetry-exporter-otlp-proto-http 
+
+# OpenSearch
+opensearch-py
+faiss-cpu   
