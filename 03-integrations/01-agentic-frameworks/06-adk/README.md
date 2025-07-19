@@ -39,7 +39,7 @@ uv pip install -r requirements.txt
 
 ### 3. Understanding the Agent Code
 
-The `adk-agent-google-search.py` file contains a Google ADK agent with Google Search capabilities, integrated with Bedrock AgentCore:
+The `adk_agent_google_search.py` file contains a Google ADK agent with Google Search capabilities, integrated with Bedrock AgentCore:
 
 ```python
 from google.adk.agents import Agent
@@ -98,7 +98,7 @@ app.run()
 
 ```bash
 # Configure your agent for deployment
-agentcore configure -e adk-agent-google-search.py
+agentcore configure -e adk_agent_google_search.py
 
 # Deploy your agent with Gemini API key
 agentcore launch --env GEMINI_API_KEY=your_api_key_here
