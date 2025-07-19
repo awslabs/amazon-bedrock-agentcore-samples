@@ -13,6 +13,8 @@ from fastapi import (
 )
 from fastapi.responses import JSONResponse
 
+from retrieve_api_key import retrieve_api_key
+
 # Configure logging with basicConfig
 logging.basicConfig(
     level=logging.INFO,  # Set the log level to INFO
@@ -25,7 +27,17 @@ app = FastAPI(title="DevOps Runbooks API", version="1.0.0")
 DATA_PATH = Path(__file__).parent.parent / "data" / "runbooks_data"
 
 # API Key for authentication
-EXPECTED_API_KEY = "test-key-123"
+CREDENTIAL_PROVIDER_NAME = "sre-agent-api-key-credential-provider"
+
+# Retrieve API key from credential provider at startup
+try:
+    EXPECTED_API_KEY = retrieve_api_key(CREDENTIAL_PROVIDER_NAME)
+    if not EXPECTED_API_KEY:
+        logging.error("Failed to retrieve API key from credential provider")
+        raise RuntimeError("Cannot start server without valid API key from credential provider")
+except Exception as e:
+    logging.error(f"Error retrieving API key: {e}")
+    raise RuntimeError(f"Cannot start server: {e}") from e
 
 
 def _validate_api_key(x_api_key: str = Header(None, alias="X-API-Key")):

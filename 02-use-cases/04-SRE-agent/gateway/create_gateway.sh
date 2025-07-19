@@ -35,6 +35,7 @@ PROVIDER_ARN=$(get_config "provider_arn")
 GATEWAY_NAME=$(get_config "gateway_name")
 GATEWAY_DESCRIPTION=$(get_config "gateway_description")
 TARGET_DESCRIPTION=$(get_config "target_description")
+CREDENTIAL_PROVIDER_NAME=$(get_config "credential_provider_name")
 
 # Construct derived values
 DISCOVERY_URL="https://cognito-idp.us-west-2.amazonaws.com/${USER_POOL_ID}/.well-known/openid-configuration"
@@ -84,7 +85,6 @@ fi
 
 # Create credential provider with parameters
 echo "🔑 Creating API key credential provider..."
-CREDENTIAL_PROVIDER_NAME="sre-agent-api-key-credential-provider"
 
 # Check if BACKEND_API_KEY is set
 if [ -z "$BACKEND_API_KEY" ]; then

@@ -18,6 +18,12 @@ import boto3
 from botocore.config import Config
 from botocore.exceptions import ClientError
 
+from observability import enable_observability_for_resource
+
+
+# Configuration constants
+GATEWAY_DELETION_PROPAGATION_DELAY = 3
+
 
 # Configure logging with basicConfig
 logging.basicConfig(
@@ -25,6 +31,29 @@ logging.basicConfig(
     # Define log message format
     format="%(asctime)s,p%(process)s,{%(filename)s:%(lineno)d},%(levelname)s,%(message)s",
 )
+
+
+def _extract_account_id_from_arn(arn: str) -> str:
+    """
+    Extract AWS account ID from an ARN.
+    
+    Args:
+        arn: AWS ARN string
+        
+    Returns:
+        Account ID extracted from ARN
+    """
+    try:
+        # ARN format: arn:aws:service:region:account-id:resource
+        parts = arn.split(":")
+        if len(parts) >= 5:
+            return parts[4]
+        else:
+            logging.error(f"Invalid ARN format: {arn}")
+            return ""
+    except Exception as e:
+        logging.error(f"Failed to extract account ID from ARN: {e}")
+        return ""
 
 
 def _create_agentcore_client(region: str, endpoint_url: str) -> Any:
@@ -38,12 +67,14 @@ def _create_agentcore_client(region: str, endpoint_url: str) -> Any:
     Returns:
         Configured boto3 client for bedrock-agentcore-control
     """
-    # Custom retry configuration
+    # Custom retry configuration with increased attempts and timeout
     retry_config = Config(
         retries={
-            'max_attempts': 10,
+            'max_attempts': 20,
             'mode': 'adaptive'
-        }
+        },
+        connect_timeout=60,
+        read_timeout=60
     )
     
     try:
@@ -225,6 +256,10 @@ def _delete_gateway(client: Any, gateway_id: str) -> None:
 
         if logging.getLogger().isEnabledFor(logging.DEBUG):
             logging.debug(f"Gateway delete response: {delete_response}")
+        
+        # Wait for deletion to propagate
+        logging.info(f"Waiting {GATEWAY_DELETION_PROPAGATION_DELAY} seconds for deletion to propagate...")
+        time.sleep(GATEWAY_DELETION_PROPAGATION_DELAY)
     except ClientError as e:
         logging.error(f"Failed to delete gateway {gateway_id}: {e}")
         raise
@@ -537,6 +572,11 @@ def main():
     parser.add_argument(
         "--output-json", action="store_true", help="Output responses in JSON format"
     )
+    parser.add_argument(
+        "--enable-observability",
+        action="store_true",
+        help="Enable CloudWatch logs and X-Ray tracing for the gateway",
+    )
 
     args = parser.parse_args()
 
@@ -584,6 +624,14 @@ def main():
 
     gateway_id = create_response["gatewayId"]
     gateway_url = create_response.get("gatewayUrl", "")
+    gateway_arn = create_response.get("gatewayArn", "")
+
+    # Check if observability was requested
+    if args.enable_observability:
+        logging.error("Observability feature is not yet supported")
+        print("\n❌ Error: The --enable-observability feature is currently not supported but will be available soon.")
+        print("   Please run the command without the --enable-observability flag.")
+        exit(1)
 
     # Save gateway URL if requested
     if args.save_gateway_url and gateway_url:

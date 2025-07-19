@@ -207,6 +207,36 @@ sre-agent --output-dir ./investigations --query "Analyze memory usage trends"
 AWS_PROFILE=production sre-agent --provider bedrock --interactive
 ```
 
+## Managing OpenAPI Specifications
+
+### Important: Domain Configuration for Development vs Git Commits
+
+The OpenAPI specification files in `backend/openapi_specs/` use a placeholder domain `your-backend-domain.com` by default. For development, you'll need to replace this with your actual domain, but **you must revert these changes before committing to git**.
+
+#### For Development Setup
+```bash
+# Replace placeholder domain with your actual domain
+sed -i 's/your-backend-domain.com/your-actual-domain.com/g' backend/openapi_specs/*.yaml
+```
+
+#### Before Committing Changes
+```bash
+# Revert back to placeholder domain before git commit
+sed -i 's/your-actual-domain.com/your-backend-domain.com/g' backend/openapi_specs/*.yaml
+
+# Then commit your changes
+git add .
+git commit -m "Your commit message"
+```
+
+#### Pre-commit Hook Protection
+A git pre-commit hook is installed that automatically prevents commits of OpenAPI spec files that don't contain the placeholder domain `your-backend-domain.com`. This ensures that custom domain configurations don't accidentally get committed to the repository.
+
+If the pre-commit hook blocks your commit:
+1. Check which OpenAPI spec files contain custom domains
+2. Use the sed command above to revert them to the placeholder
+3. Commit again
+
 ## Clean up instructions
 
 ```bash

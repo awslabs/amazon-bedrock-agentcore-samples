@@ -37,7 +37,7 @@ DEFAULT_ENDPOINT_URL = (
 )
 MAX_RETRIES = 3
 INITIAL_RETRY_DELAY = 5
-PROPAGATION_DELAY = 3
+PROPAGATION_DELAY = 15
 
 
 def _create_acps_client(region: str, endpoint_url: str) -> Any:
@@ -107,7 +107,7 @@ def _delete_existing_provider(client: Any, provider_name: str) -> None:
         logger.info("Successfully deleted existing credential provider")
 
         # Wait for deletion to propagate
-        logger.info("Waiting for deletion to propagate...")
+        logger.info(f"Waiting {PROPAGATION_DELAY} seconds for deletion to propagate...")
         time.sleep(PROPAGATION_DELAY)
 
     except ClientError as e:
