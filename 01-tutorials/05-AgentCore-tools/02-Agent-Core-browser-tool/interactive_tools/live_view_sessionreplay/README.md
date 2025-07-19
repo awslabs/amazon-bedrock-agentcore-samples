@@ -24,6 +24,20 @@ Ensure AWS credentials are configured:
 aws configure
 ```
 
+## Running the Examples
+
+### Complete Browser Experience with Recording & Replay
+From the `02-Agent-Core-browser-tool/interactive_tools` directory:
+```bash
+python -m live_view_sessionreplay.browser_interactive_session
+```
+
+### View Recordings
+From the `02-Agent-Core-browser-tool/interactive_tools` directory:
+```bash
+python -m live_view_sessionreplay.view_recordings --bucket YOUR_BUCKET --prefix YOUR_PREFIX
+```
+
 ## Complete Browser Experience with Recording & Replay
 
 Run a complete end-to-end workflow that includes live browser viewing, automatic recording to S3, and integrated session replay.
@@ -88,13 +102,13 @@ A separate tool for viewing recorded browser sessions directly from S3 without c
 
 ```bash
 # View the latest recording in a bucket
-python view_recordings.py --bucket session-record-test-123456789012 --prefix replay-data
+python -m live_view_sessionreplay.view_recordings --bucket session-record-test-123456789012 --prefix replay-data
 
 # View a specific recording
-python view_recordings.py --bucket session-record-test-123456789012 --prefix replay-data --session 01JZVDG02M8MXZY2N7P3PKDQ74
+python -m live_view_sessionreplay.view_recordings --bucket session-record-test-123456789012 --prefix replay-data --session 01JZVDG02M8MXZY2N7P3PKDQ74
 
 # Use a specific AWS profile
-python view_recordings.py --bucket session-record-test-123456789012 --prefix replay-data --profile my-profile
+python -m live_view_sessionreplay.view_recordings --bucket session-record-test-123456789012 --prefix replay-data --profile my-profile
 ```
 
 ### Finding Recordings

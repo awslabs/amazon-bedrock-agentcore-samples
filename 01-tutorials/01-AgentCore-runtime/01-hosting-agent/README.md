@@ -9,7 +9,7 @@ AgentCore Runtime is a **framework and model-agnostic** platform that can host a
 The Amazon Bedrock AgentCore Python SDK acts as a wrapper that:
 
 - **Transforms** your agent code into AgentCore's standardized protocols
-- **Handles** HTTP and MCP server infrastructure automatically  
+- **Handles** HTTP and MCP server infrastructure automatically
 - **Lets you focus** on your agent's core functionality
 - **Supports** two protocol types:
   - **HTTP Protocol**: Traditional request/response REST API endpoints
@@ -18,6 +18,7 @@ The Amazon Bedrock AgentCore Python SDK acts as a wrapper that:
 ### Service Architecture
 
 When hosting agents, the SDK automatically:
+
 - Hosts your agent on port `8080`
 - Provides two key endpoints:
   - **`/entrypoint`**: Primary agent interaction (JSON input → JSON/SSE output)
@@ -35,21 +36,20 @@ Once deployed, your AgentCore Runtime architecture in AWS looks as following:
 
 ![RuntimeArchitecture](../images/runtime_architecture.png)
 
-
 ## Tutorial Examples
 
 This tutorial includes three hands-on examples to get you started:
 
-| Example | Framework | Model | Description                                |
-|---------|-----------|-------|--------------------------------------------|
-| **[01-strands-with-bedrock-model](01-strands-with-bedrock-model)** | Strands Agents | Amazon Bedrock | Basic agent hosting with AWS native models |
-| **[02-langgraph-with-bedrock-model](02-langgraph-with-bedrock-model)** | LangGraph | Amazon Bedrock | LangGraph agent workflows                  |
-| **[03-strands-with-openai-model](03-strands-with-openai-model)** | Strands Agents | OpenAI | Integration with external LLM providers    |
+| Example                                                                | Framework      | Model          | Description                                |
+| ---------------------------------------------------------------------- | -------------- | -------------- | ------------------------------------------ |
+| **[01-strands-with-bedrock-model](01-strands-with-bedrock-model)**     | Strands Agents | Amazon Bedrock | Basic agent hosting with AWS native models |
+| **[02-langgraph-with-bedrock-model](02-langgraph-with-bedrock-model)** | LangGraph      | Amazon Bedrock | LangGraph agent workflows                  |
+| **[03-strands-with-openai-model](03-strands-with-openai-model)**       | Strands Agents | OpenAI         | Integration with external LLM providers    |
 
 ## Key Benefits
 
 - **Framework Agnostic**: Works with any Python-based agent framework
-- **Model Flexible**: Support for Amazon Bedrock, OpenAI, and other LLM providers  
+- **Model Flexible**: Support for Amazon Bedrock, OpenAI, and other LLM providers
 - **Production Ready**: Built-in health checks and monitoring
 - **Easy Integration**: Minimal code changes required
 - **Scalable**: Designed for enterprise workloads
@@ -57,6 +57,7 @@ This tutorial includes three hands-on examples to get you started:
 ## Getting Started
 
 Choose one of the tutorial examples above based on your preferred framework and model combination. Each example includes:
+
 - Step-by-step setup instructions
 - Complete code samples
 - Testing guidelines
@@ -65,6 +66,7 @@ Choose one of the tutorial examples above based on your preferred framework and 
 ## Next Steps
 
 After completing the tutorials, you can:
+
 - Extend these patterns to other frameworks and models
 - Deploy to production environments
 - Integrate with your existing applications

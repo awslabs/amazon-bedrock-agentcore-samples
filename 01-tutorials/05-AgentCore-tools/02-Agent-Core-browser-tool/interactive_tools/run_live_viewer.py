@@ -36,20 +36,12 @@ def main():
         session_id = browser_client.start()
         console.print(f"✅ Session created: {session_id}")
         
-        # Step 2: Wait for browser initialization
-        console.print("\n[cyan]Step 2: Waiting for browser initialization...[/cyan]")
-        console.print("[dim]This 20-second wait is required (will be removed after 6/20)[/dim]")
-        for i in range(2, 0, -1):
-            print(f"\r   {i} seconds remaining...", end='', flush=True)
-            time.sleep(1)
-        print("\r   ✅ Browser ready!                    ")
-        
-        # Step 3: Start viewer server
-        console.print("\n[cyan]Step 3: Starting viewer server...[/cyan]")
+        # Step 2: Start viewer server
+        console.print("\n[cyan]Step 2: Starting viewer server...[/cyan]")
         viewer = BrowserViewerServer(browser_client, port=8000)
         viewer_url = viewer.start(open_browser=True)
         
-        # Step 4: Show features
+        # Step 3: Show features
         console.print("\n[bold green]Viewer Features:[/bold green]")
         console.print("• Default display: 1600×900 (configured via displayLayout callback)")
         console.print("• Size options: 720p, 900p, 1080p, 1440p")

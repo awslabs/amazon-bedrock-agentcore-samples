@@ -3,7 +3,7 @@ uvicorn[standard]==0.34.3
 pydantic==2.11.5
 boto3==1.39.3
 botocore==1.39.3
-aiohttp==3.9.1
+aiohttp==3.12.14
 python-multipart>=0.0.9
 python-dotenv==1.0.0
 # Strands SDK dependencies

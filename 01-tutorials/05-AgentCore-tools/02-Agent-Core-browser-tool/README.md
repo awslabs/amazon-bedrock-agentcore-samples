@@ -44,8 +44,7 @@ The Amazon Bedrock AgentCore Browser Tool is suitable for a wide range of applic
 
 In these tutorials we will cover the following functionality:
 
-- [Hosting agents using Amazon Bedrock Models](01-hosting-agent-using-bedrock-model)
-- [Hosting agents using non Amazon Bedrock Models](02-hosting-agent-using-non-bedrock-model)
-- [Hosting an agent tool](03-hosting-tool)
-- [Hosting a MCP Server](04-hosting-MCP-server)
-- [Advanced Concepts](05-advanced-concepts)
+- [Getting Started with Bedrock AgentCore Browser Tool and NovaAct](getting_started-agentcore-browser-tool-with-nova-act.ipynb)
+- [Amazon Bedrock AgentCore Browser Tool Live View and Nova Act](agentcore-browser-tool-live-view-with-nova-act.ipynb)
+- [Getting Started with Bedrock AgentCore Browser Tool and Browser use](getting_started-agentcore-browser-tool-with-browser-use.ipynb)
+- [Amazon Bedrock AgentCore Browser Tool Live View and Browser Use](agentcore-browser-tool-live-view-with-browser-use.ipynb)
