@@ -1,0 +1,6 @@
+amazon-bedrock-haystack>=3.7.0
+github-haystack>=1.1.0
+haystack-ai>=2.14.3
+aws-opentelemetry-distro==0.10.0
+bedrock-agentcore
+bedrock-agentcore-starter-toolkit
