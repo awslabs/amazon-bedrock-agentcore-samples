@@ -15,3 +15,4 @@ ipython
 ipykernel
 pandas
 jupyterlab
+openpyxl
