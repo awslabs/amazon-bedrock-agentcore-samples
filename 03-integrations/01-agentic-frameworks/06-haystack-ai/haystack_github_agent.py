@@ -24,9 +24,9 @@ def agent_invocation(payload, context):
     payload = payload.get("prompt", "No prompt found in input, please guide customer to create a json payload with prompt key")
     user_message = ChatMessage.from_user(payload)
     result = tool_calling_agent.run(messages=[user_message])
-    result = result["messages"][-1].text
+    result_string = result["messages"][-1].text
     print("context:\n-------\n", context)
-    print("result:\n*******\n", result)
-    return {"result": result.messages}
+    print("result:\n*******\n", result_string)
+    return {"result": result_string}
 
 app.run()
