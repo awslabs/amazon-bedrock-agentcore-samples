@@ -1,7 +1,4 @@
-bedrock-agentcore-sdk
-langgraph
-langchain
-langchain_aws
-typing_extensions
-langchain_community
+bedrock-agentcore
+strands-agents
+strands-agents-tools
 nova_act
