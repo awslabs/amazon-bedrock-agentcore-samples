@@ -1,0 +1,16 @@
+{
+  "extends": [
+    "react-app",
+    "react-app/jest"
+  ],
+  "rules": {
+    "react/jsx-no-undef": "error",
+    "no-unused-vars": "warn",
+    "no-console": "warn"
+  },
+  "env": {
+    "browser": true,
+    "es6": true,
+    "node": true
+  }
+}
