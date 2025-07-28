@@ -205,3 +205,9 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+.bedrock_agentcore.yaml
+
+# Ignore all Dockerfiles in 01-tutorials
+01-tutorials/**/Dockerfile
+01-tutorials/**/.dockerignore
