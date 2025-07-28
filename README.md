@@ -57,16 +57,16 @@ Set agent-to-agent communication with A2A and different multi-agent collaboratio
 | Component | Tutorial | Description |
 |-----------|----------|-------------|
 | **Runtime** | [AI Agents Hosting](./01-tutorials/01-AgentCore-runtime/01-hosting-agent/) | Host [Strands](https://strandsagents.com/latest/), [LangGraph](https://www.langchain.com/langgraph), and [CrewAi](https://www.crewai.com/) agents with AgentCore Runtime |
-| **Runtime** | [MCP Server Hosting](./01-tutorials/01-AgentCore-runtime/02-hosting-MCP-server/hosting_mcp_server.ipynb) | Host MCP servers with AgentCore Runtime |
-| **Gateway** | [Lambda to MCP Tools](./01-tutorials/02-AgentCore-gateway/01-transform-lambda-into-mcp-tools/01-gateway-target-lambda.ipynb) | Transform Lambda functions into MCP tools |
-| **Gateway** | [OpenAPI to MCP (API Key)](./01-tutorials/02-AgentCore-gateway/02-transform-apis-into-mcp-tools/02-transform-openapi-into-mcp-tools/01-openapis-into-mcp-api-key.ipynb) | Transform OpenAPI specs into MCP tools with API key auth |
-| **Gateway** | [OpenAPI to MCP (OAuth)](./01-tutorials/02-AgentCore-gateway/02-transform-apis-into-mcp-tools/02-transform-openapi-into-mcp-tools/02-openapis-into-mcp-oauth-enterpris-apis.ipynb) | Transform OpenAPI specs into MCP tools with OAuth |
-| **Gateway** | [Smithy APIs to MCP](./01-tutorials/02-AgentCore-gateway/02-transform-apis-into-mcp-tools/03-transform-smithyapis-into-mcp-tools/01-s3-smithy-into-mcp-iam.ipynb) | Transform Smithy APIs into MCP tools |
+| **Runtime** | [MCP Server Hosting](./01-tutorials/01-AgentCore-runtime/02-hosting-MCP-server/hosting_mcp_server.ipynb) | Host [MCP](https://modelcontextprotocol.io/overview) servers with AgentCore Runtime |
+| **Gateway** | [Lambda to MCP Tools](./01-tutorials/02-AgentCore-gateway/01-transform-lambda-into-mcp-tools/01-gateway-target-lambda.ipynb) | Transform Lambda functions into [MCP](https://modelcontextprotocol.io/overview) tools |
+| **Gateway** | [OpenAPI to MCP (API Key)](./01-tutorials/02-AgentCore-gateway/02-transform-apis-into-mcp-tools/02-transform-openapi-into-mcp-tools/01-openapis-into-mcp-api-key.ipynb) | Transform OpenAPI specs into [MCP](https://modelcontextprotocol.io/overview) tools with API key auth |
+| **Gateway** | [OpenAPI to MCP (OAuth)](./01-tutorials/02-AgentCore-gateway/02-transform-apis-into-mcp-tools/02-transform-openapi-into-mcp-tools/02-openapis-into-mcp-oauth-enterpris-apis.ipynb) | Transform OpenAPI specs into [MCP](https://modelcontextprotocol.io/overview) tools with OAuth |
+| **Gateway** | [Smithy APIs to MCP](./01-tutorials/02-AgentCore-gateway/02-transform-apis-into-mcp-tools/03-transform-smithyapis-into-mcp-tools/01-s3-smithy-into-mcp-iam.ipynb) | Transform Smithy APIs into [MCP](https://modelcontextprotocol.io/overview) tools |
 | **Identity** | [Create agent and tool identities with AgentCore Identity](./01-tutorials/03-AgentCore-identity/03-Inbound%20Auth%20example/inbound_auth_runtime_with_strands_and_bedrock_models.ipynb) | Configure secure authentication, authorization, and credential management capabilities that enable agents and tools to access AWS resources and third-party services on behalf of users |
 | **Memory** | [Short-term Memory](./01-tutorials/04-AgentCore-memory/01-short-term-memory/) | Add Short-term memory to you AI agents |
 | **Memory** | [Long-term Memory](./01-tutorials/04-AgentCore-memory/02-long-term-memory/) | Add Long-term memory to you AI agents |
 | **Tools** | [AgentCore Built-in tools](./01-tutorials/05-AgentCore-tools/) | Use Amazon Bedrock AgentCore built-in tools to interact with your applications |
-| **Observability** | [Observability for AgentCore Runtime](./01-tutorials/06-AgentCore-observability/01-Agentcore-runtime-hosted/runtime_with_strands_and_bedrock_models.ipynb) | Observability for runtime-hosted agents |
+| **Observability** | [Observability for AgentCore Runtime](./01-tutorials/06-AgentCore-observability/01-Agentcore-runtime-hosted/runtime_with_strands_and_bedrock_models.ipynb) | Observability for AgentCore Runtime hosted agents |
 | **Observability** | [Observability for Open Source Agents](./01-tutorials/06-AgentCore-observability/02-Agent-not-hosted-on-runtime/) | Observability for [Strands](https://strandsagents.com/latest/), [LangGraph](https://www.langchain.com/langgraph), and [CrewAi](https://www.crewai.com/) agents |
 
 ## 📋 Prerequisites
