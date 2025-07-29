@@ -23,6 +23,11 @@ In this tutorial we will describe how to deploy an existing agent to AgentCore r
 
 For demonstration purposes, we will use CrewAi using Amazon Bedrock models
 
+<div style="text-align:left">
+    <img src="images/architecture_runtime.png" width="100%"/>
+</div>
+
+
 ### Tutorial key Features
 
 * Hosting Agents on Amazon Bedrock AgentCore Runtime
