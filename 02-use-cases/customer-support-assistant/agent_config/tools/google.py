@@ -1,4 +1,4 @@
-from ..context import get_google_token_ctx, get_response_queue_ctx, set_google_token_ctx
+from ..context import CustomerSupportContext
 from bedrock_agentcore.identity.auth import requires_access_token
 from datetime import datetime, timedelta
 from google.oauth2.credentials import Credentials
@@ -12,8 +12,7 @@ SCOPES = ["https://www.googleapis.com/auth/calendar"]
 
 
 async def on_auth_url(url: str):
-    response_queue = get_response_queue_ctx()
-    print(f"Authorization url: {url}")
+    response_queue = CustomerSupportContext.get_response_queue_ctx()
     await response_queue.put(f"Authorization url: {url}")
 
 
@@ -23,10 +22,10 @@ async def on_auth_url(url: str):
     scopes=SCOPES,  # Google OAuth2 scopes
     auth_flow="USER_FEDERATION",  # On-behalf-of user (3LO) flow
     on_auth_url=on_auth_url,  # prints authorization URL to console
-    force_authentication=True,
     into="access_token",
+    force_authentication=True,
 )
-async def get_google_access_token(access_token: str):
+def get_google_access_token(access_token: str):
     return access_token
 
 
@@ -34,15 +33,20 @@ async def get_google_access_token(access_token: str):
     name="Create_calendar_event",
     description="Creates a new event on your Google Calendar",
 )
-async def create_calendar_event() -> str:
-    google_access_token = get_google_token_ctx()  # Get from context instead of global
+def create_calendar_event() -> str:
+    google_access_token = (
+        CustomerSupportContext.get_google_token_ctx()
+    )  # Get from context instead of global
 
     if not google_access_token:
         try:
-            google_access_token = await get_google_access_token(
+            google_access_token = get_google_access_token(
                 access_token=google_access_token
             )
-            set_google_token_ctx(token=google_access_token)
+            if not google_access_token:
+                raise Exception("requires_access_token did not provide tokens")
+
+            CustomerSupportContext.set_google_token_ctx(token=google_access_token)
         except Exception as e:
             return "Error Authentication with Google: " + str(e)
 
@@ -91,15 +95,17 @@ async def create_calendar_event() -> str:
     name="Get_calendar_events_today",
     description="Retrieves the calendar events for the day from your Google Calendar",
 )
-async def get_calendar_events_today() -> str:
-    google_access_token = get_google_token_ctx()  # Get from context instead of global
+def get_calendar_events_today() -> str:
+    google_access_token = (
+        CustomerSupportContext.get_google_token_ctx()
+    )  # Get from context instead of global
 
     if not google_access_token:
         try:
-            google_access_token = await get_google_access_token(
+            google_access_token = get_google_access_token(
                 access_token=google_access_token
             )
-            set_google_token_ctx(token=google_access_token)
+            CustomerSupportContext.set_google_token_ctx(token=google_access_token)
         except Exception as e:
             return "Error Authentication with Google: " + str(e)
 
@@ -127,7 +133,6 @@ async def get_calendar_events_today() -> str:
             .execute()
         )
         events = events_result.get("items", [])
-        print(events)
         if not events:
             return json.dumps({"events": []})  # Return empty events array as JSON
 

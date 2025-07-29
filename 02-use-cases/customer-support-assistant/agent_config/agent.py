@@ -67,29 +67,23 @@ class CustomerSupport:
 
         self.memory_hook = memory_hook
 
-    def invoke(self, user_query: str, session_id: str):
-        try:
-            agent = Agent(
-                model=self.model,
-                system_prompt=self.system_prompt,
-                tools=self.tools,
-                hooks=[self.memory_hook],
-            )
+        self.agent = Agent(
+            model=self.model,
+            system_prompt=self.system_prompt,
+            tools=self.tools,
+            hooks=[self.memory_hook],
+        )
 
-            response = str(agent(user_query))
+    def invoke(self, user_query: str):
+        try:
+            response = str(self.agent(user_query))
         except Exception as e:
             return f"Error invoking agent: {e}"
         return response
 
-    async def stream(self, user_query: str, session_id: str):
+    async def stream(self, user_query: str):
         try:
-            agent = Agent(
-                model=self.model,
-                system_prompt=self.system_prompt,
-                tools=self.tools,
-                hooks=[self.memory_hook],
-            )
-            async for event in agent.stream_async(user_query):
+            async for event in self.agent.stream_async(user_query):
                 if "data" in event:
                     # Only stream text chunks to the client
                     yield event["data"]

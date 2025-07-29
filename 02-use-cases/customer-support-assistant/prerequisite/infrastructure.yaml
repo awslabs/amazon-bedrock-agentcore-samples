@@ -131,6 +131,7 @@ Resources:
                   - bedrock-agentcore:GetMemoryRecord
                   - bedrock-agentcore:CreateEvent
                   - bedrock-agentcore:GetEvent
+                  - bedrock-agentcore:ListEvents
                 Resource:
                   - !Sub arn:aws:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:memory/customersupport*
 

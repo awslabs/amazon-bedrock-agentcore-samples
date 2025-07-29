@@ -16,6 +16,7 @@ import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from scripts.utils import get_ssm_parameter
+from agent_config.context import CustomerSupportContext
 
 
 async def on_auth_url(url: str):
@@ -44,12 +45,19 @@ def get_google_access_token(access_token: str):
     description="Creates a new event on your Google Calendar",
 )
 def create_calendar_event() -> str:
-    global google_access_token
+    google_access_token = CustomerSupportContext.get_google_token_ctx()
+
+    print(f"Access Token google: {google_access_token}")
     if not google_access_token:
         try:
             google_access_token = get_google_access_token(
                 access_token=google_access_token
             )
+
+            if not google_access_token:
+                raise Exception("requires_access_token did not provide tokens")
+
+            CustomerSupportContext.set_google_token_ctx(token=google_access_token)
         except Exception as e:
             return "Error Authentication with Google: " + str(e)
 
@@ -94,6 +102,65 @@ def create_calendar_event() -> str:
         return json.dumps({"error": str(e), "event_created": False})
 
 
+@tool(
+    name="Get_calendar_events_today",
+    description="Retrieves the calendar events for the day from your Google Calendar",
+)
+def get_calendar_events_today() -> str:
+    google_access_token = CustomerSupportContext.get_google_token_ctx()
+
+    print(f"Access Token google: {google_access_token}")
+
+    if not google_access_token:
+        try:
+            google_access_token = get_google_access_token(
+                access_token=google_access_token
+            )
+
+            if not google_access_token:
+                raise Exception("requires_access_token did not provide tokens")
+
+            CustomerSupportContext.set_google_token_ctx(token=google_access_token)
+
+        except Exception as e:
+            return "Error Authentication with Google: " + str(e)
+
+    # Create credentials from the provided access token
+    creds = Credentials(token=google_access_token, scopes=SCOPES)
+    try:
+        service = build("calendar", "v3", credentials=creds)
+        # Call the Calendar API
+        today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        today_end = today_start.replace(hour=23, minute=59, second=59)
+
+        # Format with CDT timezone (-05:00)
+        timeMin = today_start.strftime("%Y-%m-%dT00:00:00-05:00")
+        timeMax = today_end.strftime("%Y-%m-%dT23:59:59-05:00")
+
+        events_result = (
+            service.events()
+            .list(
+                calendarId="primary",
+                timeMin=timeMin,
+                timeMax=timeMax,
+                singleEvents=True,
+                orderBy="startTime",
+            )
+            .execute()
+        )
+        events = events_result.get("items", [])
+        if not events:
+            return json.dumps({"events": []})  # Return empty events array as JSON
+
+        return json.dumps({"events": events})  # Return events wrapped in an object
+    except HttpError as error:
+        error_message = str(error)
+        return json.dumps({"error": error_message, "events": []})
+    except Exception as e:
+        error_message = str(e)
+        return json.dumps({"error": error_message, "events": []})
+
+
 model_id = "us.anthropic.claude-sonnet-4-20250514-v1:0"
 model = BedrockModel(
     model_id=model_id,
@@ -118,10 +185,17 @@ system_prompt = """
 agent = Agent(
     model=model,
     system_prompt=system_prompt,
-    tools=[create_calendar_event],
+    tools=[create_calendar_event, get_calendar_events_today],
+    callback_handler=None,
 )
-# google_access_token = need_token_3LO_async(access_token="")
 
-response = agent("Can you create a google event?")
 
-print(create_calendar_event())
+print(
+    str(
+        agent(
+            "Can you create a new event on my cal? You can call the create_calendar_event directly."
+        )
+    )
+)
+
+print(str(agent("Whats my agenda for today?")))
