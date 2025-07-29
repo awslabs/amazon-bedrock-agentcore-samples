@@ -1,0 +1,8 @@
+langchain-community
+ddgs
+aiohttp
+duckduckgo_search
+bedrock-agentcore
+bedrock-agentcore-starter-toolkit
+crewai
+crewai-tools
