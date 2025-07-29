@@ -122,24 +122,33 @@ This is a customer support agent implementation using AWS Bedrock AgentCore fram
 
 5. **Setup Agent Runtime**
 
-    ```bash
-    agentcore configure --entrypoint main.py -er arn:aws:iam::<Account-Id>:role/<Role> --name customersupport<AgentName>
-    ```
+> [!CAUTION]
+> Please ensure the name of the agent starts with `customersupport`.
+    
+  ```bash
+  agentcore configure --entrypoint main.py -er arn:aws:iam::<Account-Id>:role/<Role> --name customersupport<AgentName>
+  ```
 
-    Use `./scripts/list_ssm_parameters.sh` to fill:
-    - `Role = ValueOf(/app/customersupport/agentcore/agentcore_iam_role)`
-    - `OAuth Discovery URL = ValueOf(/app/customersupport/agentcore/cognito_discovery_url)`
-    - `OAuth client id = ValueOf(/app/customersupport/agentcore/web_client_id)`.
+  Use `./scripts/list_ssm_parameters.sh` to fill:
+  - `Role = ValueOf(/app/customersupport/agentcore/runtime_iam_role)`
+  - `OAuth Discovery URL = ValueOf(/app/customersupport/agentcore/cognito_discovery_url)`
+  - `OAuth client id = ValueOf(/app/customersupport/agentcore/web_client_id)`.
 
-    ![configure](./images/runtime_configure.png)
+  ![configure](./images/runtime_configure.png)
 
-    ```bash
-    agentcore launch
+  > [!CAUTION]
+  > Please make sure to delete `.agentcore.yaml` before running agentcore launch.
 
-    python test/test_agent.py customersupport<AgentName> -p "Hi"
-    ```
+  ```bash
 
-    ![code](./images/code.png)
+  rm .agentcore.yaml
+
+  agentcore launch
+
+  python test/test_agent.py customersupport<AgentName> -p "Hi"
+  ```
+
+  ![code](./images/code.png)
 
 6. **Local Host Streamlit UI**
 
