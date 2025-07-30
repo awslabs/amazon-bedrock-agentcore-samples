@@ -97,6 +97,8 @@ The shopping assistant uses a multi-agent architecture with three specialized ag
 
 2. **Install dependencies**:
    ```bash
+   uv venv
+   source .venv/bin/activate
    uv pip install -r requirements.txt
    ```
 
@@ -107,15 +109,19 @@ The shopping assistant uses a multi-agent architecture with three specialized ag
 You can test the agent locally using the Jupyter notebook:
 
 ```bash
-jupyter notebook asynchronous_shopping_assistant_strands.ipynb
+uv add --dev ipykernel
+uv run ipython kernel install --user --env VIRTUAL_ENV $(pwd)/.venv --name=async_shop_agent
+uv run --with jupyter jupyter lab
 ```
+
+In Jupyter Lab environment open asynchronous_shopping_assistant_strands.ipynb ny double clicking from the file browser.
 
 ### Streamlit Chat Interface
 
 Launch the interactive chat interface:
 
 ```bash
-streamlit run agentcore_chat.py
+uv run streamlit run agentcore_chat.py
 ```
 
 This provides a web-based chat interface where you can:
