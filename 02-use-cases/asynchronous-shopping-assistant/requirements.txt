@@ -1,4 +1,6 @@
 bedrock-agentcore
+bedrock-agentcore-starter-toolkit
 strands-agents
 strands-agents-tools
 nova_act
+nest_asyncio
