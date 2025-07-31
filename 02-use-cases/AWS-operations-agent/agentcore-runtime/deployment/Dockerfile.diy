@@ -1,0 +1,34 @@
+FROM --platform=linux/arm64 python:3.11-slim
+
+WORKDIR /app
+
+# Copy requirements first for better caching
+COPY requirements.txt .
+RUN pip install -r requirements.txt
+
+# Copy shared configuration manager (project-wide)
+COPY shared/ ./shared/
+
+# Copy static configuration (embedded in container)
+COPY config/static-config.yaml ./config/
+
+# Copy dynamic configuration (contains gateway URL and runtime info)
+COPY config/dynamic-config.yaml ./config/
+
+# Copy agent-specific shared helper functions to agent_shared directory (avoid overwrite)
+COPY agentcore-runtime/src/agent_shared/ ./agent_shared/
+
+# Copy agent implementation
+COPY agentcore-runtime/src/agents/diy_agent.py .
+
+# Validate static configuration at build time
+RUN python -c "from shared.config_manager import AgentCoreConfigManager; config = AgentCoreConfigManager(); print('✅ Static configuration validated')"
+
+# Validate that gateway URL and OAuth settings are accessible
+RUN python -c "from shared.config_manager import AgentCoreConfigManager; config = AgentCoreConfigManager(); gateway_url = config.get_gateway_url(); oauth = config.get_oauth_settings(); print(f'✅ Gateway URL: {gateway_url}'); print(f'✅ OAuth domain: {oauth.get(\"domain\", \"Not configured\")}')"
+
+# Expose port 8080 (AgentCore requirement)
+EXPOSE 8080
+
+# Run the agent using FastAPI/Uvicorn
+CMD ["uvicorn", "diy_agent:app", "--host", "0.0.0.0", "--port", "8080"]

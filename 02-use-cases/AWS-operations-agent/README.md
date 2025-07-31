@@ -1,329 +1,434 @@
-# AWS Operations Conversational Agent
+# AWS Support Agent with Amazon Bedrock AgentCore
 
----
-## 📋 Navigation
-**🏠 [README](README.md)** | **📖 [Setup Guide](docs/SETUP.md)** | **🏗️ [Architecture](docs/ARCHITECTURE-FLOW.md)** | **🔧 [Scripts](scripts/README.md)** | **🤖 [Client](client/README.md)** | **⚙️ [Config](configs/README.md)** | **🔐 [Okta Setup](okta-auth/OKTA-OPENID-PKCE-SETUP.md)**
----
+An AWS support conversational AI system built on Amazon Bedrock AgentCore, featuring OAuth2 authentication, MCP (Model Control Protocol) integration, and comprehensive AWS service operations.
 
-## 🎯 Project Description
+## Demo
 
-This project demonstrates a **AI-powered AWS operations platform** that transforms how DevOps teams interact with AWS infrastructure. By combining **Amazon Bedrock's Claude 3.7 Sonnet**, **Model Context Protocol (MCP)**, and **serverless architecture**, users can perform complex AWS operations through natural language conversations.
+![AWS Support Agent Demo](images/demo-agentcore.gif)
 
-### **Real-World Use Cases**
+*Interactive demonstration of the AWS Support Agent powered by Amazon Bedrock AgentCore*
 
-**🔍 Infrastructure Discovery & Monitoring**
-- "Show me all EC2 instances that haven't been accessed in 30 days"
-- "Which RDS databases are consuming the most storage?"
-- "List all Lambda functions with error rates above 5%"
-- "Find S3 buckets with public read access"
+## Architecture Overview
 
-**💰 Cost Optimization & Analysis**
-- "What are my top 10 most expensive AWS services this month?"
-- "Show me unused EBS volumes across all regions"
-- "Which CloudFormation stacks are costing more than $100/month?"
-- "Find EC2 instances running 24/7 that could be scheduled"
+![AWS Support Agent Architecture](images/architecture.jpg)
 
-**🔐 Security & Compliance Auditing**
-- "List all IAM users with admin privileges"
-- "Show me security groups with unrestricted inbound access"
-- "Which resources don't have required tags?"
-- "Find VPCs without flow logs enabled"
+The system follows a secure, distributed architecture:
 
-**⚡ Operational Troubleshooting**
-- "Why is my application load balancer showing 5xx errors?"
-- "Show me CloudWatch alarms that fired in the last 24 hours"
-- "Which Lambda functions are hitting timeout limits?"
-- "Find auto-scaling groups that scaled recently"
+1. **Chat Client** authenticates users via Okta OAuth2 and sends questions with JWT tokens
+2. **AgentCore Runtime** validates tokens, processes conversations, and maintains session memory
+3. **AgentCore Gateway** provides secure tool access through MCP protocol
+4. **AWS Lambda Target** executes AWS service operations with proper authentication
+5. **AgentCore Identity** manages workload authentication and token exchange
 
-### **What You'll Learn**
+## Key Features
 
-**🏗️ Advanced Serverless Architecture**
-- **Multi-Lambda orchestration** with Function URLs and Docker containers
-- **Cross-service authentication** using AWS SigV4 and Okta JWT tokens
-- **Production-grade deployment** with SAM templates and infrastructure as code
-- **Container optimization** for Lambda with platform-specific Docker builds
+- 🔐 **Enterprise Authentication**: Okta OAuth2 with JWT token validation
+- 🤖 **Dual Agent Architecture**: Both FastAPI (DIY) and BedrockAgentCoreApp (SDK) implementations
+- 🧠 **Conversation Memory**: Persistent session storage with AgentCore Memory
+- 🔗 **MCP Integration**: Standardized tool communication protocol
+- 🛠️ **20+ AWS Tools**: Comprehensive read-only operations across AWS services
+- 📊 **Production Ready**: Complete deployment automation and infrastructure management
 
-**🤖 AI Agent Development**
-- **Model Context Protocol (MCP)** implementation for tool integration
-- **Conversational AI patterns** with streaming responses and memory persistence
-- **Natural language to API translation** using Claude 3.7 Sonnet
-- **Agent orchestration** with the Strands framework for complex workflows
-
-**🔐 Enterprise Authentication & Security**
-- **Dual authentication patterns** combining AWS IAM and external OAuth2
-- **Production security practices** with least-privilege IAM roles
-- **Token management** and secure credential handling
-- **API gateway alternatives** using Lambda Function URLs
-
-**☁️ AWS Operations at Scale**
-- **20+ AWS service integrations** including EC2, S3, RDS, CloudWatch, IAM
-- **Cross-region resource management** with unified interfaces
-- **Real-time monitoring** and alerting through conversational queries
-- **Infrastructure automation** through natural language commands
-
-**🛠️ DevOps & Platform Engineering**
-- **GitOps workflows** with automated deployment pipelines
-- **Observability patterns** using CloudWatch, DynamoDB, and structured logging
-- **Error handling** and resilience patterns in distributed systems
-- **Performance optimization** for serverless applications
-
-### **Technical Innovation Highlights**
-
-**🔄 Production-Ready Patterns**
-- **Conversation persistence** with DynamoDB for stateful interactions
-- **Streaming responses** for real-time user experience
-- **Error recovery** and graceful degradation
-- **Scalable architecture** supporting concurrent users
-
-**🎯 Business Value**
-- **Reduce operational overhead** by 60% through natural language interfaces
-- **Accelerate troubleshooting** with AI-powered root cause analysis
-- **Improve security posture** through automated compliance checking
-- **Enable self-service operations** for development teams
-
-A complete Bedrock AgentCore Gateway MCP (Model Context Protocol) solution enabling natural language AWS operations through AWS Operations Agent interface with Function URL deployment and DynamoDB conversation persistence.
-
-## 🏗️ Architecture Overview
-
-This project implements a **serverless AI-powered AWS operations platform** using a multi-Lambda architecture with dual authentication. The flow begins with a **Client App** that authenticates via AWS SigV4 to invoke the **AWS Operations Agent Lambda** through a Function URL. The Agent Lambda, built with FastAPI and the Strands framework, manages conversations in DynamoDB and communicates with the **Bedrock AgentCore Gateway** using MCP (Model Context Protocol) and Okta JWT authentication. The Gateway then invokes the **MCP Tool Lambda** (Docker-based) which provides 20 AWS service tools for operations like EC2 management, S3 operations, CloudWatch monitoring, and more. This architecture eliminates API Gateway complexity while providing enterprise-grade security and scalability.
-
-**Key Components:**
-- **AWS Operations Agent Lambda** (`aws-operations-agent-dev`) - FastAPI with Strands Agent + MCP Client
-- **MCP Tool Lambda** (`dev-bedrock-agentcore-mcp-tool`) - Docker container with 20 AWS tools
-- **Bedrock AgentCore Gateway** - Production MCP server with Okta authentication
-- **Function URL** - Direct Lambda access with IAM_AUTH (no API Gateway)
-- **DynamoDB** - Conversation persistence and session management
-
-**📖 For detailed architecture diagrams and component interactions, see [ARCHITECTURE-FLOW.md](docs/ARCHITECTURE-FLOW.md)**
-
-## 🎬 Demo
-
-### AWS Operations Agent in Action
-
-![AWS Operations Conversational Agent Demo](images/demo.gif)
-
-The interactive client provides a natural language interface for AWS operations:
-- **Real-time streaming responses** from Claude 3.7 Sonnet
-- **20 AWS service tools** for comprehensive operations
-- **Conversation persistence** with DynamoDB storage
-- **Natural language queries** like "List my S3 buckets" or "Show EC2 instances"
-
-## 🚀 Getting Started
-
-This project requires AWS CLI configuration, Python 3.11+, AWS SAM CLI, Docker, and Okta authentication setup. The deployment involves multiple Lambda functions, Bedrock AgentCore Gateway configuration, and DynamoDB setup.
-
-**📖 For complete step-by-step setup instructions, see [SETUP.md](docs/SETUP.md)**
-
-## 📁 Project Structure
+## Project Structure
 
 ```
-07-Operational-Support-Lambda-Web-Adapter/
-├── 📄 README.md                    # This file - project overview
-├── 📁 docs/                        # Documentation
-│   ├── 📄 SETUP.md                 # Step-by-step setup guide
-│   └── 📄 ARCHITECTURE-FLOW.md     # Detailed architecture documentation
-├── 📁 configs/                     # Centralized configuration
-│   ├── 📄 bedrock-agentcore-config.json      # Main configuration file
-│   ├── 📄 config_manager.py        # Configuration management utilities
-│   └── 📄 README.md                # Configuration documentation
-├── 📁 agent-lambda/                # AWS Operations Agent Lambda (main component)
-│   ├── 📁 src/                     # Source code directory
-│   ├── 📄 template.yaml            # SAM deployment template
-│   ├── 📄 deploy.sh                # Deployment script
-│   ├── 📄 Dockerfile               # Container configuration
-│   └── 📄 README.md                # Agent Lambda documentation
-├── 📁 mcp-tool-lambda/             # MCP Tool Lambda (Docker-based)
-│   ├── 📁 lambda/                  # Lambda function source code
-│   ├── 📄 mcp-tool-template.yaml   # SAM template for Docker Lambda
-│   └── 📄 deploy-mcp-tool.sh       # Docker deployment script
-├── 📁 scripts/                     # Bedrock AgentCore Gateway management
-│   ├── 📄 create-gateway.py        # Create Bedrock AgentCore Gateway
-│   ├── 📄 create-target.py         # Create MCP tool targets
-│   ├── 📄 get-gateway.py           # Get gateway details
-│   ├── 📄 get-target.py            # Get target details
-│   ├── 📄 list-gateways.py         # List all gateways
-│   ├── 📄 list-targets.py          # List all targets
-│   ├── 📄 update-gateway.py        # Update gateway configuration
-│   ├── 📄 update-target.py         # Update target configuration
-│   ├── 📄 delete-gateway.py        # Delete gateway
-│   ├── 📄 delete-target.py         # Delete target
-│   └── 📄 README.md                # Scripts documentation
-├── 📁 client/                      # AWS Operations Agent client applications
-│   ├── 📁 src/                     # Client source code
-│   ├── 📄 requirements.txt         # Python dependencies
-│   ├── 📄 run_client.sh            # Client execution script
-│   └── 📄 README.md                # Client documentation
-├── 📁 okta-auth/                   # Okta authentication setup
-│   └── 📄 OKTA-OPENID-PKCE-SETUP.md # Okta configuration guide
-└── 📁 images/                      # Project images and screenshots
-    └── 📄 chatbot.jpg              # Demo screenshot
+AgentCore/
+├── README.md                           # This documentation
+├── requirements.txt                    # Python dependencies
+├── config/                             # 🔧 Configuration management
+│   ├── static-config.yaml              # Manual configuration settings
+│   └── dynamic-config.yaml             # Runtime-generated configuration
+│
+├── shared/                             # 🔗 Shared configuration utilities
+│   ├── config_manager.py               # Central configuration management
+│   └── config_validator.py             # Configuration validation
+│
+├── chatbot-client/                     # 🤖 Client application
+│   ├── src/client.py                   # Interactive chat client
+│   └── README.md                       # Client-specific documentation
+│
+├── agentcore-runtime/                  # 🚀 Main runtime implementation
+│   ├── src/
+│   │   ├── agents/                     # Agent implementations
+│   │   │   ├── diy_agent.py            # FastAPI implementation
+│   │   │   └── sdk_agent.py            # BedrockAgentCoreApp implementation
+│   │   ├── agent_shared/               # Shared agent utilities
+│   │   │   ├── auth.py                 # JWT validation
+│   │   │   ├── config.py               # Agent configuration
+│   │   │   ├── mcp.py                  # MCP client
+│   │   │   ├── memory.py               # Conversation memory
+│   │   │   └── responses.py            # Response formatting
+│   │   └── utils/
+│   │       └── memory_manager.py       # Memory management utilities
+│   ├── deployment/                     # 🚀 Deployment scripts
+│   │   ├── 01-prerequisites.sh         # IAM roles and prerequisites
+│   │   ├── 02-create-memory.sh         # AgentCore Memory setup
+│   │   ├── 03-setup-oauth-provider.sh  # OAuth2 provider configuration
+│   │   ├── 04-deploy-mcp-tool-lambda.sh # MCP Lambda deployment
+│   │   ├── 05-create-gateway-targets.sh # Gateway and targets setup
+│   │   ├── 06-deploy-diy.sh            # DIY agent deployment
+│   │   ├── 07-deploy-sdk.sh            # SDK agent deployment
+│   │   ├── 08-delete-runtimes.sh       # Runtime cleanup
+│   │   ├── 09-delete-gateways-targets.sh # Gateway cleanup
+│   │   ├── 10-delete-mcp-tool-deployment.sh # MCP cleanup
+│   │   ├── 11-delete-memory.sh         # Memory cleanup
+│   │   ├── Dockerfile.diy              # DIY agent container
+│   │   ├── Dockerfile.sdk              # SDK agent container
+│   │   ├── deploy-diy-runtime.py       # DIY deployment automation
+│   │   └── deploy-sdk-runtime.py       # SDK deployment automation
+│   ├── gateway-ops-scripts/            # 🌉 Gateway management
+│   │   └── [Gateway CRUD operations]
+│   ├── runtime-ops-scripts/            # ⚙️ Runtime management
+│   │   └── [Runtime and identity management]
+│   └── tests/local/                    # 🧪 Local testing scripts
+│
+├── mcp-tool-lambda/                    # 🔧 AWS Tools Lambda
+│   ├── lambda/mcp-tool-handler.py      # MCP tool implementation
+│   ├── mcp-tool-template.yaml          # CloudFormation template
+│   └── deploy-mcp-tool.sh              # Lambda deployment script
+│
+├── okta-auth/                          # 🔐 Authentication setup
+│   ├── OKTA-OPENID-PKCE-SETUP.md      # Okta configuration guide
+│   ├── iframe-oauth-flow.html          # OAuth flow testing
+│   └── setup-local-nginx.sh           # Local development setup
+│
+└── docs/                               # 📚 Documentation
+    └── images/
+        └── agentcore-implementation.jpg # Architecture diagram
 ```
 
-## 📚 Documentation
+## Quick Start
 
-### 🎯 Getting Started
-- **[SETUP.md](docs/SETUP.md)** - Complete step-by-step setup guide (streamlined, 7 steps)
-- **[ARCHITECTURE-FLOW.md](docs/ARCHITECTURE-FLOW.md)** - Detailed architecture and component flow
+### Prerequisites
 
-### 🔧 Component Documentation
-- **[Agent Lambda README](agent-lambda/README.md)** - AWS Operations Agent Lambda details
-- **[Scripts README](scripts/README.md)** - Bedrock AgentCore Gateway management scripts
-- **[Client README](client/README.md)** - AWS Operations Agent client applications
-- **[Config README](configs/README.md)** - Configuration management
+- **AWS CLI** configured with appropriate permissions
+- **Docker** and Docker Compose installed
+- **Python 3.11+** installed
+- **Okta developer account** and application configured
+- **yq** tool for YAML processing (optional, fallback available)
 
-### 🔐 Authentication
-- **[Okta Setup Guide](okta-auth/OKTA-OPENID-PKCE-SETUP.md)** - Okta OAuth2 configuration
+### 1. Configure Settings
 
-## 🛠️ Key Features
+Edit the configuration files with your specific settings:
 
-### **Dual Authentication**
-- **Function URL**: AWS SigV4 for Lambda access
-- **Bedrock AgentCore Gateway**: Okta JWT for MCP tool authorization
-
-### **AWS Operations Agent Capabilities**
-- **Natural Language**: Conversational AWS operations
-- **20 AWS Tools**: EC2, S3, Lambda, CloudFormation, IAM, RDS, CloudWatch, etc.
-- **Streaming Responses**: Real-time AI responses
-- **Conversation Memory**: DynamoDB persistence
-
-### **Production Ready**
-- **Docker Deployment**: MCP Tool Lambda with Strands framework
-- **Function URL**: Direct access without API Gateway
-- **Production Endpoints**: bedrock-agentcore-control service
-- **Scalable Architecture**: Optimized for performance
-
-## 🧪 Testing
-
-### Interactive Testing
 ```bash
-cd client
-python aws_operations_agent_mcp.py
+# Configure AWS and Okta settings
+vim config/static-config.yaml
 
-# Try these commands:
-# "What time is it? Use the get_time tool."
-# "List my S3 buckets"
-# "Show me EC2 instances"
-# "What Lambda functions do I have?"
+# Key settings to update:
+# - aws.account_id: Your AWS account ID
+# - aws.region: Your preferred AWS region  (this project tested on us-east-1)
+# - okta.domain: Your Okta domain
+# - okta.client_credentials.client_id: Your Okta client ID
+# - okta.client_credentials.client_secret: Set via environment variable
+
+# IMPORTANT: Update IAM policy files with your AWS account ID
+# Replace YOUR_AWS_ACCOUNT_ID placeholder in these files:
+sed -i "s/YOUR_AWS_ACCOUNT_ID/$(aws sts get-caller-identity --query Account --output text)/g" \
+  agentcore-runtime/deployment/bac-permissions-policy.json \
+  agentcore-runtime/deployment/bac-trust-policy.json
+
+# Verify the account ID was updated correctly
+grep -n "$(aws sts get-caller-identity --query Account --output text)" \
+  agentcore-runtime/deployment/bac-permissions-policy.json \
+  agentcore-runtime/deployment/bac-trust-policy.json
 ```
 
-### Component Testing
+### 2. Deploy Infrastructure
+
+Run the deployment scripts in sequence:
+
 ```bash
-# Test Bedrock AgentCore Gateway
-cd scripts && python test_bedrock_agentcore_auth.py
+cd agentcore-runtime/deployment
 
-# Test Lambda deployments
-aws lambda get-function --function-name aws-operations-agent-dev --profile demo1
-aws lambda get-function --function-name dev-bedrock-agentcore-mcp-tool --profile demo1
+# Set up AWS prerequisites and roles
+./01-prerequisites.sh
+
+# Create AgentCore Memory for conversation storage
+./02-create-memory.sh
+
+# Set up Okta OAuth2 provider
+./03-setup-oauth-provider.sh
+
+# Deploy MCP tools Lambda function
+./04-deploy-mcp-tool-lambda.sh
+
+# Create AgentCore Gateway and targets
+./05-create-gateway-targets.sh
+
+# Deploy the agents (choose one or both)
+./06-deploy-diy.sh    # FastAPI implementation
+./07-deploy-sdk.sh    # BedrockAgentCoreApp implementation
 ```
 
-## 🔍 Architecture Details
+### 3. Test the System
 
-### **Data Flow**
-1. **Client** sends request with AWS SigV4 + Okta token
-2. **Function URL** validates SigV4 and invokes AWS Operations Agent Lambda
-3. **AWS Operations Agent Lambda** processes request and stores conversation in DynamoDB
-4. **AWS Operations Agent Lambda** calls Bedrock AgentCore Gateway with Okta token via MCP
-5. **Bedrock AgentCore Gateway** validates Okta token and invokes MCP Tool Lambda
-6. **MCP Tool Lambda** executes AWS operations using Strands framework
-7. **Response** flows back through the chain with natural language formatting
+#### Run Local Test Scripts
+```bash
+# Test local agent functionality
+cd agentcore-runtime/tests/local
+./test-diy-simple.sh    # Tests DIY agent with local tools
+./test-sdk-mcp.sh       # Tests SDK agent with MCP gateway integration
+```
 
-### **Key Technologies**
-- **AWS Lambda**: Serverless compute (Function URL + Docker)
-- **Bedrock AgentCore Gateway**: MCP server with production endpoints
-- **Strands Framework**: AI agent framework for AWS operations
-- **FastAPI**: Web framework with Lambda Web Adapter
-- **DynamoDB**: NoSQL database for conversation storage
-- **Docker**: Container runtime for MCP Tool Lambda
+#### Test with Direct curl Commands
 
-## 🚨 Troubleshooting
+**DIY Agent (Port 8080):**
+```bash
+# Start DIY agent
+cd agentcore-runtime/tests/local && ./test-diy-simple.sh
+
+# Test with curl (returns SSE stream)
+curl -X POST http://localhost:8080/invocations \
+  -H "Content-Type: application/json" \
+  -d '{
+    "prompt": "What time is it?",
+    "session_id": "test-session-123",
+    "actor_id": "user"
+  }'
+
+# Extract just the text response
+curl -s -X POST http://localhost:8080/invocations \
+  -H "Content-Type: application/json" \
+  -d '{"prompt": "Hello!", "session_id": "demo", "actor_id": "user"}' \
+  | grep '"type":"text_delta"' \
+  | sed 's/.*"content": *"\([^"]*\)".*/\1/' \
+  | tr -d '\n'
+
+# Health check
+curl http://localhost:8080/ping
+# Returns: {"status":"healthy","agent_type":"diy"}
+```
+
+**SDK Agent (Port 8081):**
+```bash
+# Start SDK agent
+cd agentcore-runtime/tests/local && ./test-sdk-mcp.sh
+
+# Test with curl (returns different SSE format)
+curl -X POST http://localhost:8081/invocations \
+  -H "Content-Type: application/json" \
+  -d '{
+    "prompt": "What time is it?",
+    "session_id": "test-session-456",
+    "actor_id": "user"
+  }'
+
+# Health check
+curl http://localhost:8081/ping
+# Returns: {"status":"Healthy","time_of_last_update":1753954747}
+```
+
+#### Use the Interactive Chat Client
+```bash
+cd chatbot-client/src
+python client.py
+```
+
+## Component Details
+
+### Agent Implementations
+
+#### DIY Agent (FastAPI)
+- **Framework**: FastAPI with Uvicorn
+- **Endpoint**: `/invoke` 
+- **Features**: Custom implementation with full control over request/response handling
+- **Container**: `agentcore-runtime/deployment/Dockerfile.diy`
+
+#### SDK Agent (BedrockAgentCoreApp)
+- **Framework**: BedrockAgentCoreApp SDK
+- **Features**: Native AgentCore integration with built-in optimizations
+- **Container**: `agentcore-runtime/deployment/Dockerfile.sdk`
+
+### Authentication Flow
+
+1. **User Authentication**: Users authenticate via Okta OAuth2 PKCE flow
+2. **Token Validation**: AgentCore Runtime validates JWT tokens using Okta's discovery endpoint
+3. **Workload Identity**: Runtime exchanges user tokens for workload access tokens
+4. **Service Authentication**: Workload tokens authenticate with AgentCore Gateway and tools
+
+### Memory Management
+
+- **Storage**: AgentCore Memory service provides persistent conversation storage
+- **Session Management**: Each conversation maintains session context across interactions
+- **Retention**: Configurable retention periods for conversation data
+- **Privacy**: Memory isolation per user session
+
+### Tool Integration
+
+The system provides 20+ AWS service tools through the MCP Lambda:
+
+- **EC2**: Instance management and monitoring
+- **S3**: Bucket operations and policy analysis
+- **Lambda**: Function management and monitoring
+- **CloudFormation**: Stack operations and resource tracking
+- **IAM**: User, role, and policy management
+- **RDS**: Database instance monitoring
+- **CloudWatch**: Metrics, alarms, and log analysis
+- **Cost Explorer**: Cost analysis and optimization
+- **And many more...**
+
+## Configuration Management
+
+### Static Configuration (`config/static-config.yaml`)
+Contains manually configured settings:
+- AWS account and region settings
+- Okta OAuth2 configuration
+- Agent model settings
+- Tool schemas and definitions
+
+### Dynamic Configuration (`config/dynamic-config.yaml`)
+Auto-generated during deployment:
+- Runtime ARNs and endpoints
+- Gateway URLs and identifiers
+- OAuth provider configurations
+- Memory service details
+
+### Configuration Manager
+The `shared/config_manager.py` provides:
+- Unified configuration access
+- Environment-specific settings
+- Validation and error handling
+- Backward compatibility
+
+## Development
+
+### Local Testing
+
+```bash
+# Test agents locally without full deployment
+cd agentcore-runtime/tests/local
+
+# Test DIY agent with simple conversation
+./test-diy-simple.sh
+
+# Test SDK agent with MCP tools
+./test-sdk-mcp.sh
+
+# Test MCP gateway functionality
+./test-diy-ec2-mcp.sh
+```
+
+### Container Development
+
+Both agents follow a standardized container structure:
+
+```
+/app/
+├── shared/                     # Project-wide utilities
+├── agent_shared/              # Agent-specific helpers
+├── config/                    # Configuration files
+│   ├── static-config.yaml
+│   └── dynamic-config.yaml
+├── [agent].py                 # Agent implementation
+└── requirements.txt
+```
+
+### Adding New Tools
+
+1. **Define tool schema** in `config/static-config.yaml`
+2. **Implement tool logic** in `mcp-tool-lambda/lambda/mcp-tool-handler.py`
+3. **Update gateway targets** using gateway-ops-scripts
+4. **Test integration** with local test scripts
+
+## Monitoring and Operations
+
+### Runtime Management
+```bash
+cd agentcore-runtime/runtime-ops-scripts
+
+# List all deployed runtimes
+python runtime_manager.py list
+
+# Check runtime details
+python runtime_manager.py get <runtime_id>
+
+# Test OAuth flow
+python oauth_test.py test-config
+```
+
+### Gateway Management
+```bash
+cd agentcore-runtime/gateway-ops-scripts
+
+# List all gateways
+python list-gateways.py
+
+# Check gateway targets
+python list-targets.py
+
+# Update gateway configuration
+python update-gateway.py --gateway-id <id> --name "New Name"
+```
+
+### Log Analysis
+- **CloudWatch Logs**: Agent runtime logs
+- **Request Tracing**: Full request/response logging
+- **Error Monitoring**: Centralized error tracking
+- **Performance Metrics**: Response time and resource usage
+
+## Cleanup
+
+To remove all deployed resources:
+
+```bash
+cd agentcore-runtime/deployment
+
+# Delete runtimes
+./08-delete-runtimes.sh
+
+# Delete gateways and targets  
+./09-delete-gateways-targets.sh
+
+# Delete MCP Lambda
+./10-delete-mcp-tool-deployment.sh
+
+# Delete memory and clear config
+./11-delete-memory.sh
+
+# Complete cleanup (optional)
+./12-cleanup-everything.sh
+```
+
+## Security Best Practices
+
+- **Token Validation**: All requests validated against Okta JWT
+- **Least Privilege**: IAM roles follow principle of least privilege
+- **Encryption**: All data encrypted in transit and at rest
+- **Network Security**: Private networking with controlled access
+- **Audit Logging**: Comprehensive audit trail for all operations
+
+## Troubleshooting
 
 ### Common Issues
-1. **Configuration Mismatch**: Ensure `configs/bedrock-agentcore-config.json` has actual values, not templates
-2. **Authentication Errors**: Verify Okta token in `client/token.txt` and AWS credentials
-3. **Lambda Deployment**: Check CloudFormation stacks and Lambda logs
-4. **Bedrock AgentCore Gateway**: Verify gateway and target status with `get-gateway.py` and `get-target.py`
 
-### Debug Commands
-```bash
-# Check component status
-aws lambda get-function --function-name aws-operations-agent-dev --profile demo1
-cd scripts && python get-gateway.py && python get-target.py
+1. **Token Validation Failures**
+   - Check Okta configuration in `static-config.yaml`
+   - Verify JWT audience and issuer settings
+   - Test with `oauth_test.py`
 
-# View logs
-aws logs tail /aws/lambda/aws-operations-agent-dev --follow --profile demo1
-```
+2. **Memory Access Issues**
+   - Verify AgentCore Memory is deployed and available
+   - Check memory configuration in `dynamic-config.yaml`
+   - Test memory operations with local scripts
 
-## 🎯 Use Cases
+3. **Tool Execution Failures**
+   - Check MCP Lambda deployment status
+   - Verify gateway target configuration
+   - Test individual tools with MCP client
 
-- **AWS Resource Discovery**: "Show me all my EC2 instances"
-- **Cost Analysis**: "What are my highest cost services this month?"
-- **Security Auditing**: "List IAM roles with admin access"
-- **Infrastructure Monitoring**: "Show me CloudWatch alarms that are firing"
-- **Operational Queries**: "Which Lambda functions have errors?"
+4. **Container Startup Issues**
+   - Check Docker build logs
+   - Verify requirements.txt compatibility
+   - Review container health endpoints
 
-## 🔄 Development Workflow
+### Getting Help
 
-1. **Configuration**: Update `configs/bedrock-agentcore-config.json` with your values
-2. **Deploy Components**: AWS Operations Agent Lambda → MCP Tool Lambda → Bedrock AgentCore Gateway
-3. **Test Integration**: Use interactive client to verify end-to-end flow
-4. **Monitor**: Check CloudWatch logs and DynamoDB for conversation storage
-5. **Iterate**: Add new tools or modify configurations as needed
+1. **Check deployment logs** in CloudWatch
+2. **Run diagnostic scripts** in runtime-ops-scripts
+3. **Verify configuration** with config_manager validation
+4. **Test components individually** using local test scripts
 
-## 📊 Production Considerations
+## License
 
-- **Security**: IAM roles with least privilege, Okta JWT validation
-- **Monitoring**: CloudWatch logs, DynamoDB metrics, Lambda performance
-- **Scalability**: On-demand DynamoDB, containerized Lambda functions
-
-## ⚠️ Current Limitations & Write Operations
-
-### **Read-Only Operations**
-This agent is currently configured for **read-only AWS operations** as a security best practice. All 20 AWS service tools are designed to query and retrieve information without making changes to your infrastructure.
-
-**Current Capabilities:**
-- ✅ List and describe AWS resources (EC2, S3, RDS, etc.)
-- ✅ Query CloudWatch metrics and logs
-- ✅ Analyze costs and billing information
-- ✅ Audit security configurations and compliance
-- ✅ Monitor infrastructure health and performance
-
-### **Enabling Write Operations**
-To enable write operations (create, update, delete resources), you need to make two key changes:
-
-#### **1. Update MCP Tool Lambda Permissions**
-```bash
-# Edit the IAM role for the MCP Tool Lambda
-# Current: ReadOnlyAccess policy
-# Add: Specific write permissions for required services
-
-# Example: Enable EC2 write operations
-aws iam attach-role-policy \
-  --role-name lambda-execution-role-dev-bedrock-agentcore-mcp-tool \
-  --policy-arn arn:aws:iam::aws:policy/AmazonEC2FullAccess
-```
-
-#### **2. Update Strands Agent System Prompt**
-```python
-# In agent-lambda/src/main.py, modify the system prompt:
-# Current: "You are a read-only AWS operations assistant..."
-# Update to: "You are an AWS operations assistant with read and write capabilities..."
-
-# Example system prompt update:
-SYSTEM_PROMPT = """
-You are an AWS operations assistant with comprehensive read and write capabilities.
-You can query AWS resources AND make changes when explicitly requested.
-Always confirm destructive operations before executing.
-Use appropriate AWS tools for both read and write operations.
-"""
-```
-
-#### **3. Security Considerations for Write Operations**
-- **Implement confirmation prompts** for destructive operations
-- **Use resource tagging** to identify managed vs. unmanaged resources  
-- **Enable CloudTrail logging** for audit trails of all changes
-- **Consider approval workflows** for high-impact operations
-- **Test in non-production environments** first
-
-**⚠️ Warning**: Write operations can modify or delete AWS resources. Always test thoroughly and implement appropriate safeguards before enabling in production environments.
-
----
+This project is for educational and experimental purposes. Please ensure compliance with your organization's policies and AWS service terms.

@@ -13,7 +13,7 @@ from typing import Dict, Any, Optional
 try:
     from strands import Agent
     from strands.models import BedrockModel
-    from strands_tools import use_aws
+    from strands_tools import use_aws, calculator, think, current_time
     STRANDS_AVAILABLE = True
     logging.info("Strands modules imported successfully")
 except ImportError as e:
@@ -137,11 +137,35 @@ def handle_aws_service_tool(tool_name: str, event: Dict[str, Any]) -> Dict[str, 
             region_name='us-east-1',
             model_id='us.anthropic.claude-3-7-sonnet-20250219-v1:0',
             temperature=0.1,
-            system_prompt="You are an AWS Operational Support Agent executing read-only AWS operations. You receive natural language queries and must perform the requested AWS operations efficiently.\n\nFor each query:\n1. Identify the specific AWS service and operation needed\n2. Execute only the minimum required AWS calls to answer the query\n3. Return structured, actionable results in a clear format\n4. Focus on the specific information requested, avoid unnecessary details\n\nExamples:\n- Query: 'list running instances' → Use EC2 describe-instances with running state filter\n- Query: 'count S3 buckets' → Use S3 list-buckets and return count\n- Query: 'show failed stacks' → Use CloudFormation list-stacks with failed status filter\n\nAlways optimize for speed and relevance. Return concise, well-structured responses."
+            system_prompt="""You are an AWS Operational Support Agent executing read-only AWS operations. You receive natural language queries and must perform the requested AWS operations efficiently.
+
+CRITICAL: For any date-related queries, ALWAYS use the current_time tool first to get the current date before calculating date ranges.
+
+For each query:
+1. If the query involves dates or time periods (like "last month", "last 14 days", "current month"):
+   - FIRST call current_time to get the current date
+   - Calculate the correct date ranges based on the current date
+   - Use YYYY-MM-DD format for all AWS API calls
+2. Identify the specific AWS service and operation needed
+3. Execute only the minimum required AWS calls to answer the query
+4. Return structured, actionable results in a clear format
+5. Focus on the specific information requested, avoid unnecessary details
+
+Date Calculation Examples:
+- Query: 'last month expenses' → Call current_time, then calculate previous month from current date
+- Query: 'last 14 days costs' → Call current_time, then subtract 14 days from current date
+- Query: 'current month breakdown' → Call current_time, then use current month start to current date
+
+Service Operation Examples:
+- Query: 'list running instances' → Use EC2 describe-instances with running state filter
+- Query: 'count S3 buckets' → Use S3 list-buckets and return count
+- Query: 'show failed stacks' → Use CloudFormation list-stacks with failed status filter
+
+Always optimize for speed and relevance. Return concise, well-structured responses."""
         )
         
         # Create Strands Agent
-        agent = Agent(model=bedrock_model, tools=[use_aws])
+        agent = Agent(model=bedrock_model, tools=[use_aws, calculator, think, current_time])
         
         # Build query
         # Get the natural language query from the simplified schema

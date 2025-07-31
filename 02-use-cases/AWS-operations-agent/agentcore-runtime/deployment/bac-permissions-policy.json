@@ -1,0 +1,151 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "ECRImageAccess",
+            "Effect": "Allow",
+            "Action": [
+                "ecr:BatchGetImage",
+                "ecr:GetDownloadUrlForLayer"
+            ],
+            "Resource": [
+                "arn:aws:ecr:*:<YOUR_AWS_ACCOUNT_ID>:repository/*"
+            ]        
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "logs:DescribeLogStreams",
+                "logs:CreateLogGroup"
+            ],
+            "Resource": [
+                "arn:aws:logs:*:<YOUR_AWS_ACCOUNT_ID>:log-group:/aws/bedrock-agentcore/runtimes/*"
+            ]
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "logs:DescribeLogGroups"
+            ],
+            "Resource": [
+                "arn:aws:logs:*:<YOUR_AWS_ACCOUNT_ID>:log-group:*"
+            ]
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "logs:CreateLogStream",
+                "logs:PutLogEvents"
+            ],
+            "Resource": [
+                "arn:aws:logs:*:<YOUR_AWS_ACCOUNT_ID>:log-group:/aws/bedrock-agentcore/runtimes/*:log-stream:*"
+            ]
+        },
+        {
+            "Sid": "ECRTokenAccess",
+            "Effect": "Allow",
+            "Action": [
+                "ecr:GetAuthorizationToken"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Effect": "Allow", 
+            "Action": [ 
+                "xray:PutTraceSegments", 
+                "xray:PutTelemetryRecords", 
+                "xray:GetSamplingRules", 
+                "xray:GetSamplingTargets"
+            ],
+            "Resource": [ "*" ] 
+        },
+        {
+            "Effect": "Allow",
+            "Resource": "*",
+            "Action": "cloudwatch:PutMetricData",
+            "Condition": {
+                "StringEquals": {
+                    "cloudwatch:namespace": "bedrock-agentcore"
+                }
+            }
+        },
+        {
+            "Sid": "GetAgentAccessToken",
+            "Effect": "Allow",
+            "Action": [
+                "bedrock-agentcore:GetWorkloadAccessToken",
+                "bedrock-agentcore:GetWorkloadAccessTokenForJWT",
+                "bedrock-agentcore:GetWorkloadAccessTokenForUserId"
+            ],
+            "Resource": [
+              "arn:aws:bedrock-agentcore:*:<YOUR_AWS_ACCOUNT_ID>:workload-identity-directory/default",
+              "arn:aws:bedrock-agentcore:*:<YOUR_AWS_ACCOUNT_ID>:workload-identity-directory/default/workload-identity/*"
+            ]
+        },
+        {
+            "Sid": "AgentCoreIdentityManagement",
+            "Effect": "Allow",
+            "Action": [
+                "bedrock-agentcore:CreateOauth2CredentialProvider",
+                "bedrock-agentcore:CreateWorkloadIdentity",
+                "bedrock-agentcore:GetResourceOauth2Token",
+                "bedrock-agentcore:ListOauth2CredentialProviders",
+                "bedrock-agentcore:ListWorkloadIdentities",
+                "bedrock-agentcore:DeleteOauth2CredentialProvider",
+                "bedrock-agentcore:DeleteWorkloadIdentity",
+                "bedrock-agentcore:GetOauth2CredentialProvider",
+                "bedrock-agentcore:GetWorkloadIdentity",
+                "bedrock-agentcore:UpdateOauth2CredentialProvider",
+                "bedrock-agentcore:UpdateWorkloadIdentity"
+            ],
+            "Resource": [
+                "arn:aws:bedrock-agentcore:*:<YOUR_AWS_ACCOUNT_ID>:token-vault/default",
+                "arn:aws:bedrock-agentcore:*:<YOUR_AWS_ACCOUNT_ID>:token-vault/default/*",
+                "arn:aws:bedrock-agentcore:*:<YOUR_AWS_ACCOUNT_ID>:workload-identity-directory/default",
+                "arn:aws:bedrock-agentcore:*:<YOUR_AWS_ACCOUNT_ID>:workload-identity-directory/default/workload-identity/*"
+            ]
+        },
+        {
+            "Sid": "AgentCoreGatewayManagement",
+            "Effect": "Allow",
+            "Action": [
+                "bedrock-agentcore:CreateGateway",
+                "bedrock-agentcore:DeleteGateway",
+                "bedrock-agentcore:GetGateway",
+                "bedrock-agentcore:ListGateways",
+                "bedrock-agentcore:UpdateGateway",
+                "bedrock-agentcore:CreateGatewayTarget",
+                "bedrock-agentcore:DeleteGatewayTarget",
+                "bedrock-agentcore:GetGatewayTarget",
+                "bedrock-agentcore:ListGatewayTargets",
+                "bedrock-agentcore:UpdateGatewayTarget"
+            ],
+            "Resource": [
+                "arn:aws:bedrock-agentcore:*:<YOUR_AWS_ACCOUNT_ID>:gateway/*",
+                "arn:aws:bedrock-agentcore:*:<YOUR_AWS_ACCOUNT_ID>:gateway/*/target/*"
+            ]
+        },
+        {
+            "Sid": "SecretsManagerAccess",
+            "Effect": "Allow",
+            "Action": [
+                "secretsmanager:GetSecretValue"
+            ],
+            "Resource": [
+                "arn:aws:secretsmanager:*:<YOUR_AWS_ACCOUNT_ID>:secret:*"
+            ]
+        },
+        {
+            "Sid": "BedrockModelInvocation", 
+            "Effect": "Allow", 
+            "Action": [ 
+                "bedrock:InvokeModel", 
+                "bedrock:InvokeModelWithResponseStream"
+            ], 
+            "Resource": [
+                "arn:aws:bedrock:*::foundation-model/*",
+                "arn:aws:bedrock:*:<YOUR_AWS_ACCOUNT_ID>:*"
+            ]
+        }
+    ]
+}

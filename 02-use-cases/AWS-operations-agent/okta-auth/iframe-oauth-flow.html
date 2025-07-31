@@ -164,6 +164,14 @@
             background: #28a745;
             color: white;
         }
+        .progress-step.clickable {
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .progress-step.clickable:hover {
+            background: #007bff;
+            color: white;
+        }
     </style>
 </head>
 <body>
@@ -174,8 +182,8 @@
         </div>
 
         <div class="progress">
-            <div class="progress-step active" id="step0-progress">0. Config</div>
-            <div class="progress-step" id="step1-progress">1. Login</div>
+            <div class="progress-step active clickable" id="step0-progress" onclick="goToStep(0)">0. Config</div>
+            <div class="progress-step clickable" id="step1-progress" onclick="goToStep(1)">1. Login</div>
             <div class="progress-step" id="step2-progress">2. Session Token</div>
             <div class="progress-step" id="step3-progress">3. iframe PKCE</div>
             <div class="progress-step" id="step4-progress">4. OAuth Tokens</div>
@@ -188,19 +196,19 @@
             
             <div class="form-group">
                 <label for="oktaDomain">Okta Domain:</label>
-                <input type="text" id="oktaDomain" name="oktaDomain" value="dev-09210948.okta.com" required>
+                <input type="text" id="oktaDomain" name="oktaDomain" value="<YOUR_OKTA_DOMAIN>" required>
                 <small style="color: #666; font-size: 12px;">Example: dev-12345678.okta.com or your-company.okta.com</small>
             </div>
             
             <div class="form-group">
                 <label for="clientId">Client ID:</label>
-                <input type="text" id="clientId" name="clientId" value="0oapcjro7liptyDSN5d7" required>
+                <input type="text" id="clientId" name="clientId" value="<YOUR_OKTA_CLIENT_ID>" required>
                 <small style="color: #666; font-size: 12px;">Your Okta application's client ID</small>
             </div>
             
             <div class="form-group">
                 <label for="redirectUri">Redirect URI:</label>
-                <input type="text" id="redirectUri" name="redirectUri" value="http://localhost/okta-auth/iframe-callback.html" required>
+                <input type="text" id="redirectUri" name="redirectUri" value="<YOUR_REDIRECT_URI>" required>
                 <small style="color: #666; font-size: 12px;">Must match your Okta app configuration</small>
             </div>
             
@@ -215,19 +223,19 @@
                 <div style="background: #f8f9fa; padding: 15px; border-radius: 6px; border: 1px solid #dee2e6;">
                     <div style="margin-bottom: 10px;">
                         <strong>Base URL:</strong><br>
-                        <code id="displayBaseUrl">https://dev-09210948.okta.com</code>
+                        <code id="displayBaseUrl">https://<YOUR_OKTA_DOMAIN></code>
                     </div>
                     <div style="margin-bottom: 10px;">
                         <strong>Authorization Endpoint:</strong><br>
-                        <code id="displayAuthEndpoint">https://dev-09210948.okta.com/oauth2/default/v1/authorize</code>
+                        <code id="displayAuthEndpoint">https://<YOUR_OKTA_DOMAIN>/oauth2/default/v1/authorize</code>
                     </div>
                     <div style="margin-bottom: 10px;">
                         <strong>Token Endpoint:</strong><br>
-                        <code id="displayTokenEndpoint">https://dev-09210948.okta.com/oauth2/default/v1/token</code>
+                        <code id="displayTokenEndpoint">https://<YOUR_OKTA_DOMAIN>/oauth2/default/v1/token</code>
                     </div>
                     <div>
                         <strong>Authentication API:</strong><br>
-                        <code id="displayAuthApi">https://dev-09210948.okta.com/api/v1/authn</code>
+                        <code id="displayAuthApi">https://<YOUR_OKTA_DOMAIN>/api/v1/authn</code>
                     </div>
                 </div>
             </div>
@@ -243,6 +251,9 @@
                 </button>
                 <button onclick="loadPresetConfig('production')" style="background: #6c757d;">
                     🏢 Load Production Template
+                </button>
+                <button onclick="clearConfigFromStorage(); location.reload();" style="background: #dc3545;">
+                    🗑️ Clear All & Reset
                 </button>
             </div>
         </div>
@@ -365,14 +376,14 @@
 
         function loadPresetConfig(preset) {
             if (preset === 'demo') {
-                document.getElementById('oktaDomain').value = 'dev-09210948.okta.com';
-                document.getElementById('clientId').value = '0oapcjro7liptyDSN5d7';
-                document.getElementById('redirectUri').value = 'http://localhost/okta-auth/iframe-callback.html';
+                document.getElementById('oktaDomain').value = '<YOUR_OKTA_DOMAIN>';
+                document.getElementById('clientId').value = '<YOUR_OKTA_CLIENT_ID>';
+                document.getElementById('redirectUri').value = '<YOUR_REDIRECT_URI>';
                 document.getElementById('authServerId').value = 'default';
             } else if (preset === 'production') {
-                document.getElementById('oktaDomain').value = 'your-company.okta.com';
-                document.getElementById('clientId').value = 'your-client-id-here';
-                document.getElementById('redirectUri').value = 'https://your-app.com/callback';
+                document.getElementById('oktaDomain').value = '<YOUR_PRODUCTION_OKTA_DOMAIN>';
+                document.getElementById('clientId').value = '<YOUR_PRODUCTION_CLIENT_ID>';
+                document.getElementById('redirectUri').value = '<YOUR_PRODUCTION_REDIRECT_URI>';
                 document.getElementById('authServerId').value = 'default';
             }
             updateEndpointDisplays();
@@ -439,6 +450,9 @@
                     showGlobalStatus('⚠️ Could not validate Okta endpoints, but configuration saved', 'info');
                 }
 
+                // Save configuration to localStorage
+                saveConfigToStorage();
+                
                 // Move to next step
                 updateProgress(1);
                 showStep(1);
@@ -467,6 +481,62 @@
             }
         }
 
+        // Configuration persistence functions
+        function saveConfigToStorage() {
+            const config = {
+                oktaDomain: document.getElementById('oktaDomain').value,
+                clientId: document.getElementById('clientId').value,
+                redirectUri: document.getElementById('redirectUri').value,
+                authServerId: document.getElementById('authServerId').value
+            };
+            localStorage.setItem('oktaConfig', JSON.stringify(config));
+            showGlobalStatus('✅ Configuration saved locally', 'success');
+        }
+
+        function loadConfigFromStorage() {
+            const saved = localStorage.getItem('oktaConfig');
+            if (saved) {
+                try {
+                    const config = JSON.parse(saved);
+                    document.getElementById('oktaDomain').value = config.oktaDomain || '<YOUR_OKTA_DOMAIN>';
+                    document.getElementById('clientId').value = config.clientId || '<YOUR_OKTA_CLIENT_ID>';
+                    document.getElementById('redirectUri').value = config.redirectUri || '<YOUR_REDIRECT_URI>';
+                    document.getElementById('authServerId').value = config.authServerId || 'default';
+                    updateEndpointDisplays();
+                    showGlobalStatus('✅ Configuration loaded from previous session', 'info');
+                    return true;
+                } catch (e) {
+                    console.warn('Could not load saved config:', e);
+                }
+            }
+            return false;
+        }
+
+        function clearConfigFromStorage() {
+            localStorage.removeItem('oktaConfig');
+            showGlobalStatus('🗑️ Saved configuration cleared', 'info');
+        }
+
+        // Navigation function
+        function goToStep(stepNumber) {
+            if (stepNumber === 0) {
+                // Always allow going back to config
+                showStep(0);
+                updateProgress(0);
+                showGlobalStatus('📝 Back to configuration', 'info');
+            } else if (stepNumber === 1) {
+                // Only allow going to login if config is valid
+                if (oktaConfig.domain && oktaConfig.clientId) {
+                    showStep(1);
+                    updateProgress(1);
+                    showGlobalStatus('🔐 Ready to login', 'info');
+                } else {
+                    showGlobalStatus('⚠️ Please configure Okta settings first', 'error');
+                }
+            }
+            // Other steps are not directly clickable as they require completing previous steps
+        }
+
         // Add event listeners for real-time endpoint updates
         document.addEventListener('DOMContentLoaded', function() {
             const domainInput = document.getElementById('oktaDomain');
@@ -474,6 +544,9 @@
             
             domainInput.addEventListener('input', updateEndpointDisplays);
             authServerInput.addEventListener('input', updateEndpointDisplays);
+            
+            // Load saved configuration on page load
+            loadConfigFromStorage();
             
             // Initialize displays
             updateEndpointDisplays();
