@@ -1,5 +1,5 @@
-AWSTemplateFormatVersion: '2010-09-09'
-Description: 'CloudFormation template for Customer Support System with DynamoDB tables, SSM parameters, and synthetic data'
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "CloudFormation template for Customer Support System with DynamoDB tables, SSM parameters, and synthetic data"
 Metadata:
   AWS::CloudFormation::Interface:
     ParameterGroups:
@@ -10,24 +10,22 @@ Metadata:
           - LambdaS3Key
 
 Parameters:
-
   LambdaS3Bucket:
     Description: The name of S3 bucket which contains lambda code
     Type: String
     MinLength: 1
-  
+
   LambdaS3Key:
     Description: The S3 object key which contains customer support assistant code in zip format
     Type: String
     MinLength: 1
-    
-Resources:
 
+Resources:
   RuntimeAgentCoreRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
-        Version: '2012-10-17'
+        Version: "2012-10-17"
         Statement:
           - Effect: Allow
             Principal:
@@ -38,7 +36,7 @@ Resources:
       Policies:
         - PolicyName: BedrockAgentPolicy
           PolicyDocument:
-            Version: '2012-10-17'
+            Version: "2012-10-17"
             Statement:
               - Sid: ECRImageAccess
                 Effect: Allow
@@ -46,7 +44,7 @@ Resources:
                   - ecr:BatchGetImage
                   - ecr:GetDownloadUrlForLayer
                 Resource:
-                  - !Sub arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/bedrock_agentcore-customersupport*
+                  - !Sub arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/bedrock-agentcore-customersupport*
               - Effect: Allow
                 Action:
                   - logs:DescribeLogStreams
@@ -135,12 +133,11 @@ Resources:
                 Resource:
                   - !Sub arn:aws:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:memory/customersupport*
 
-        
   GatewayAgentCoreRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
-        Version: '2012-10-17'
+        Version: "2012-10-17"
         Statement:
           - Effect: Allow
             Principal:
@@ -151,7 +148,7 @@ Resources:
       Policies:
         - PolicyName: BedrockAgentPolicy
           PolicyDocument:
-            Version: '2012-10-17'
+            Version: "2012-10-17"
             Statement:
               - Sid: InvokeFunction
                 Effect: Allow
@@ -248,10 +245,10 @@ Resources:
                       dynamodb = boto3.resource('dynamodb')
                       warranty_table_name = event['ResourceProperties']['WarrantyTableName']
                       customer_table_name = event['ResourceProperties']['CustomerTableName']
-                      
+
                       warranty_table = dynamodb.Table(warranty_table_name)
                       customer_table = dynamodb.Table(customer_table_name)
-                      
+
                       # Customer profile data
                       customer_data = [
                           {
@@ -385,7 +382,7 @@ Resources:
                               'notes': 'Gaming enthusiast, prefers phone support'
                           }
                       ]
-                      
+
                       # Warranty data with customer_id references
                       warranty_data = [
                           {
@@ -477,26 +474,26 @@ Resources:
                               'store_location': 'Chicago - Michigan Avenue'
                           }
                       ]
-                      
+
                       # Insert customer data
                       with customer_table.batch_writer() as batch:
                           for item in customer_data:
                               item = json.loads(json.dumps(item), parse_float=Decimal)
                               batch.put_item(Item=item)
-                      
+
                       # Insert warranty data
                       with warranty_table.batch_writer() as batch:
                           for item in warranty_data:
                               item = json.loads(json.dumps(item), parse_float=Decimal)
                               batch.put_item(Item=item)
-                      
+
                       print(f"Successfully populated {len(customer_data)} customer profiles")
                       print(f"Successfully populated {len(warranty_data)} warranty records")
                       cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
-                      
+
                   else:
                       cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
-                      
+
               except Exception as e:
                   print(f"Error: {str(e)}")
                   cfnresponse.send(event, context, cfnresponse.FAILED, {})
@@ -506,7 +503,7 @@ Resources:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
-        Version: '2012-10-17'
+        Version: "2012-10-17"
         Statement:
           - Effect: Allow
             Principal:
@@ -515,7 +512,7 @@ Resources:
       Policies:
         - PolicyName: DynamoDBWritePolicy
           PolicyDocument:
-            Version: '2012-10-17'
+            Version: "2012-10-17"
             Statement:
               - Effect: Allow
                 Action:
@@ -526,7 +523,7 @@ Resources:
                   - !GetAtt CustomerProfileTable.Arn
         - PolicyName: AllowBasicLogs
           PolicyDocument:
-            Version: '2012-10-17'
+            Version: "2012-10-17"
             Statement:
               - Effect: Allow
                 Action:
@@ -544,7 +541,7 @@ Resources:
     DependsOn:
       - WarrantyTable
       - CustomerProfileTable
-  
+
   # Lambda target
   CustomerSupportLambdaRole:
     Type: AWS::IAM::Role
@@ -553,7 +550,7 @@ Resources:
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
       AssumeRolePolicyDocument:
-        Version: '2012-10-17'
+        Version: "2012-10-17"
         Statement:
           - Action: sts:AssumeRole
             Effect: Allow
@@ -562,7 +559,7 @@ Resources:
       Policies:
         - PolicyName: CustomerProfileAccessPolicy
           PolicyDocument:
-            Version: '2012-10-17'
+            Version: "2012-10-17"
             Statement:
               - Sid: AllowReadCustomerTableNameFromSSM
                 Effect: Allow
@@ -585,7 +582,7 @@ Resources:
 
         - PolicyName: WarrantyCheckAccessPolicy
           PolicyDocument:
-            Version: '2012-10-17'
+            Version: "2012-10-17"
             Statement:
               - Sid: AllowReadWarrantyTableNameFromSSM
                 Effect: Allow
@@ -602,7 +599,7 @@ Resources:
   CustomerSupportLambda:
     Type: AWS::Lambda::Function
     Properties:
-      Description: 'Lambda function for Customer Support Assistant'
+      Description: "Lambda function for Customer Support Assistant"
       Handler: lambda_function.lambda_handler
       Code:
         S3Bucket: !Ref LambdaS3Bucket
@@ -612,8 +609,8 @@ Resources:
       PackageType: Zip
       Architectures:
         - x86_64
-  
-# SSM Parameter to store warranty table name
+
+  # SSM Parameter to store warranty table name
   WarrantyTableNameParameter:
     Type: AWS::SSM::Parameter
     Properties:
@@ -664,4 +661,3 @@ Resources:
       Description: ARN of the lambda that integrates with agentcore
       Tags:
         Application: CustomerSupport
-  
