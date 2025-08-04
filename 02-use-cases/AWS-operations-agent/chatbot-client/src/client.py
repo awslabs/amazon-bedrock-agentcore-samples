@@ -161,7 +161,8 @@ class AgentCoreClient:
                 runtime_names.append('diy')
                 print(f"1. DIY Agent")
                 print(f"   Name: {diy.get('name', 'N/A')}")
-                print(f"   ARN: {diy.get('arn', 'N/A')}")
+                if self.debug:
+                    print(f"   ARN: {diy.get('arn', 'N/A')}")
                 print(f"   Status: ✅ Available")
             else:
                 print(f"1. DIY Agent")
@@ -174,7 +175,8 @@ class AgentCoreClient:
                 runtime_names.append('sdk')
                 print(f"2. SDK Agent")
                 print(f"   Name: {sdk.get('name', 'N/A')}")
-                print(f"   ARN: {sdk.get('arn', 'N/A')}")
+                if self.debug:
+                    print(f"   ARN: {sdk.get('arn', 'N/A')}")
                 print(f"   Status: ✅ Available")
             else:
                 print(f"2. SDK Agent")
@@ -558,7 +560,7 @@ class AgentCoreClient:
         print("Type 'switch' to change runtime")
         print("Type 'token' to refresh authentication token")
         print("Type 'clear-token' to clear saved token")
-        print("Type 'debug' to toggle debug mode")
+        print("Type 'debug' to toggle debug mode (shows ARNs and detailed logging)")
         print("Type 'test' or 'ping' to test agent connectivity")
         print("Type 'mcp test' to test MCP gateway connection")
         print("-" * 50)
@@ -953,7 +955,7 @@ def main():
     parser.add_argument("--token", help="Okta JWT token (if not provided, will prompt)")
     parser.add_argument("--message", help="Message to send (if not provided, enters interactive mode)")
     parser.add_argument("--interactive", action="store_true", help="Force interactive mode with runtime selection")
-    parser.add_argument("--debug", action="store_true", help="Enable debug logging to show raw requests/responses")
+    parser.add_argument("--debug", action="store_true", help="Enable debug logging (shows ARNs and detailed requests/responses)")
     parser.add_argument("--local", action="store_true", help="Local testing mode - connect to localhost:8080 without authentication")
     
     args = parser.parse_args()

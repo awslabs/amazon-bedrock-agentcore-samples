@@ -164,6 +164,14 @@
             background: #28a745;
             color: white;
         }
+        .progress-step.clickable {
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .progress-step.clickable:hover {
+            background: #007bff;
+            color: white;
+        }
     </style>
 </head>
 <body>
@@ -174,8 +182,8 @@
         </div>
 
         <div class="progress">
-            <div class="progress-step active" id="step0-progress">0. Config</div>
-            <div class="progress-step" id="step1-progress">1. Login</div>
+            <div class="progress-step active clickable" id="step0-progress" onclick="goToStep(0)">0. Config</div>
+            <div class="progress-step clickable" id="step1-progress" onclick="goToStep(1)">1. Login</div>
             <div class="progress-step" id="step2-progress">2. Session Token</div>
             <div class="progress-step" id="step3-progress">3. iframe PKCE</div>
             <div class="progress-step" id="step4-progress">4. OAuth Tokens</div>
@@ -243,6 +251,9 @@
                 </button>
                 <button onclick="loadPresetConfig('production')" style="background: #6c757d;">
                     🏢 Load Production Template
+                </button>
+                <button onclick="clearConfigFromStorage(); location.reload();" style="background: #dc3545;">
+                    🗑️ Clear All & Reset
                 </button>
             </div>
         </div>
@@ -439,6 +450,9 @@
                     showGlobalStatus('⚠️ Could not validate Okta endpoints, but configuration saved', 'info');
                 }
 
+                // Save configuration to localStorage
+                saveConfigToStorage();
+                
                 // Move to next step
                 updateProgress(1);
                 showStep(1);
@@ -467,6 +481,62 @@
             }
         }
 
+        // Configuration persistence functions
+        function saveConfigToStorage() {
+            const config = {
+                oktaDomain: document.getElementById('oktaDomain').value,
+                clientId: document.getElementById('clientId').value,
+                redirectUri: document.getElementById('redirectUri').value,
+                authServerId: document.getElementById('authServerId').value
+            };
+            localStorage.setItem('oktaConfig', JSON.stringify(config));
+            showGlobalStatus('✅ Configuration saved locally', 'success');
+        }
+
+        function loadConfigFromStorage() {
+            const saved = localStorage.getItem('oktaConfig');
+            if (saved) {
+                try {
+                    const config = JSON.parse(saved);
+                    document.getElementById('oktaDomain').value = config.oktaDomain || '<YOUR_OKTA_DOMAIN>';
+                    document.getElementById('clientId').value = config.clientId || '<YOUR_OKTA_CLIENT_ID>';
+                    document.getElementById('redirectUri').value = config.redirectUri || '<YOUR_REDIRECT_URI>';
+                    document.getElementById('authServerId').value = config.authServerId || 'default';
+                    updateEndpointDisplays();
+                    showGlobalStatus('✅ Configuration loaded from previous session', 'info');
+                    return true;
+                } catch (e) {
+                    console.warn('Could not load saved config:', e);
+                }
+            }
+            return false;
+        }
+
+        function clearConfigFromStorage() {
+            localStorage.removeItem('oktaConfig');
+            showGlobalStatus('🗑️ Saved configuration cleared', 'info');
+        }
+
+        // Navigation function
+        function goToStep(stepNumber) {
+            if (stepNumber === 0) {
+                // Always allow going back to config
+                showStep(0);
+                updateProgress(0);
+                showGlobalStatus('📝 Back to configuration', 'info');
+            } else if (stepNumber === 1) {
+                // Only allow going to login if config is valid
+                if (oktaConfig.domain && oktaConfig.clientId) {
+                    showStep(1);
+                    updateProgress(1);
+                    showGlobalStatus('🔐 Ready to login', 'info');
+                } else {
+                    showGlobalStatus('⚠️ Please configure Okta settings first', 'error');
+                }
+            }
+            // Other steps are not directly clickable as they require completing previous steps
+        }
+
         // Add event listeners for real-time endpoint updates
         document.addEventListener('DOMContentLoaded', function() {
             const domainInput = document.getElementById('oktaDomain');
@@ -474,6 +544,9 @@
             
             domainInput.addEventListener('input', updateEndpointDisplays);
             authServerInput.addEventListener('input', updateEndpointDisplays);
+            
+            // Load saved configuration on page load
+            loadConfigFromStorage();
             
             // Initialize displays
             updateEndpointDisplays();
