@@ -10,7 +10,21 @@ An AWS support conversational AI system built on Amazon Bedrock AgentCore, featu
 
 ## Architecture Overview
 
+### High-Level Architecture
+
+![AWS Support Agent High-Level Architecture](images/architecture-2.jpg)
+
+*High-level system architecture showing the complete AgentCore ecosystem with observability integration*
+
+### Detailed Authentication Flow
+
+![AWS Support Agent Authentication Flow](images/flow.jpg)
+
+*Detailed sequence diagram showing OAuth2 authentication flow and token management across AgentCore components*
+
 ![AWS Support Agent Architecture](images/architecture.jpg)
+
+*Core system architecture showing component interactions and data flow*
 
 The system follows a secure, distributed architecture:
 
@@ -19,6 +33,7 @@ The system follows a secure, distributed architecture:
 3. **AgentCore Gateway** provides secure tool access through MCP protocol
 4. **AWS Lambda Target** executes AWS service operations with proper authentication
 5. **AgentCore Identity** manages workload authentication and token exchange
+6. **AgentCore Observability** provides comprehensive monitoring, metrics, and logging capabilities
 
 ## Key Features
 
