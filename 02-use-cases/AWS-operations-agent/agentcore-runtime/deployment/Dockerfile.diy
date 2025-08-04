@@ -43,7 +43,10 @@ USER bedrock_agentcore
 # Expose port 8080 (AgentCore requirement)
 EXPOSE 8080
 
-# Run the agent using FastAPI/Uvicorn
-CMD ["uvicorn", "diy_agent:app", "--host", "0.0.0.0", "--port", "8080"]
+# Comment below to run in agentcore runtime
+# Uncomment below to run in local container on desktop
+#CMD ["uvicorn", "diy_agent:app", "--host", "0.0.0.0", "--port", "8080"]
 
-#CMD ["opentelemetry-instrument", "python", "diy_agent.py"]
+# Uncomment below to run in agentcore runtime
+# Comment below to run in local container on desktop
+CMD ["opentelemetry-instrument", "python", "diy_agent.py"]
