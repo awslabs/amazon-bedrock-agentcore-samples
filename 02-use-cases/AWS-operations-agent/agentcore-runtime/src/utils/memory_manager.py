@@ -16,11 +16,14 @@ import yaml
 import uuid
 from typing import List, Tuple, Optional, Dict, Any
 from datetime import datetime
+from agent_shared import mylogger
+ 
+logger = mylogger.get_logger()
 
 try:
     from bedrock_agentcore.memory import MemoryClient
 except ImportError:
-    print("Warning: bedrock-agentcore not installed. Memory functionality will be disabled.")
+    logger.warning("bedrock-agentcore not installed. Memory functionality will be disabled.")
     MemoryClient = None
 
 # ============================================================================
@@ -49,16 +52,16 @@ class MemoryManager:
             with open(config_file, 'r') as f:
                 return yaml.safe_load(f)
         except FileNotFoundError:
-            print(f"Warning: Config file not found at {config_file}. Memory functionality may be limited.")
+            logger.warning(f"Config file not found at {config_file}. Memory functionality may be limited.")
             return {}
         except yaml.YAMLError as e:
-            print(f"Warning: Error parsing config file: {e}. Memory functionality may be limited.")
+            logger.warning(f"Error parsing config file: {e}. Memory functionality may be limited.")
             return {}
     
     def _initialize_memory(self):
         """Initialize memory client and resources"""
         if MemoryClient is None:
-            print("Memory client not available. Skipping memory initialization.")
+            logger.info("Memory client not available. Skipping memory initialization.")
             return
         
         try:
@@ -69,7 +72,7 @@ class MemoryManager:
             self._setup_memory_resource()
             
         except Exception as e:
-            print(f"Warning: Failed to initialize memory client: {e}")
+            logger.error(f"Failed to initialize memory client: {e}")
             self.memory_client = None
     
     def _setup_memory_resource(self):
@@ -89,7 +92,7 @@ class MemoryManager:
             
             if agent_memory:
                 self.memory_id = agent_memory.get('id')
-                print(f"Using existing memory resource: {self.memory_id}")
+                logger.info(f"Using existing memory resource: {self.memory_id}")
             else:
                 # Create new short-term memory
                 memory = self.memory_client.create_memory(
@@ -97,10 +100,10 @@ class MemoryManager:
                     description="Short-term memory for AgentCore agent conversations"
                 )
                 self.memory_id = memory.get('id')
-                print(f"Created new memory resource: {self.memory_id}")
+                logger.info(f"Created new memory resource: {self.memory_id}")
                 
         except Exception as e:
-            print(f"Warning: Failed to setup memory resource: {e}")
+            logger.error(f"Failed to setup memory resource: {e}")
             self.memory_client = None
     
     def start_session(self, session_id: str = None) -> str:
@@ -146,7 +149,7 @@ class MemoryManager:
             return True
             
         except Exception as e:
-            print(f"Warning: Failed to store conversation turn: {e}")
+            logger.error(f"Failed to store conversation turn: {e}")
             return False
     
     def get_conversation_context(
@@ -169,7 +172,7 @@ class MemoryManager:
             return conversations if conversations else []
             
         except Exception as e:
-            print(f"Warning: Failed to retrieve conversation context: {e}")
+            logger.error(f"Failed to retrieve conversation context: {e}")
             return []
     
     def format_context_for_agent(
@@ -203,7 +206,7 @@ class MemoryManager:
                         context_parts.append(f"Tool: {content}")
         
         except Exception as e:
-            print(f"Warning: Error formatting context: {e}")
+            logger.error(f"Error formatting context: {e}")
             return ""
         
         return "\n".join(context_parts)

@@ -1,13 +1,12 @@
 #!/bin/bash
 
-# Deploy MCP Tool Lambda function using SAM
-echo "🚀 Deploying MCP Tool Lambda function..."
+# Deploy MCP Tool Lambda function using SAM with ZIP packaging (no Docker)
+echo "🚀 Deploying MCP Tool Lambda function (ZIP-based, no Docker)..."
 
 # Configuration - Get project directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_DIR="$(dirname "$(dirname "$SCRIPT_DIR")")"  # Go up two levels to reach AgentCore root
-RUNTIME_DIR="$(dirname "$SCRIPT_DIR")"  # agentcore-runtime directory
-MCP_TOOL_DIR="${PROJECT_DIR}/mcp-tool-lambda"
+PROJECT_DIR="$(dirname "$SCRIPT_DIR")"  # Go up one level to reach AgentCore root
+RUNTIME_DIR="${PROJECT_DIR}/agentcore-runtime"  # agentcore-runtime directory
 
 # Load configuration from consolidated config files
 CONFIG_DIR="${PROJECT_DIR}/config"
@@ -40,6 +39,7 @@ echo "📝 Configuration:"
 echo "   Region: $REGION"
 echo "   Account ID: $ACCOUNT_ID"
 echo "   Stack Name: $STACK_NAME"
+echo "   Deployment Type: ZIP-based (no Docker)"
 echo ""
 
 # Get AWS credentials from SSO
@@ -66,39 +66,71 @@ fi
 
 echo "✅ SAM CLI found: $(sam --version)"
 
-# Check if Docker is available
-if ! command -v docker &> /dev/null; then
-    echo "❌ Docker is not installed. SAM requires Docker for building container images."
-    echo "   Please install Docker: https://docs.docker.com/get-docker/"
+# Check if Python is available
+if ! command -v python3 &> /dev/null; then
+    echo "❌ Python 3 is not installed. Please install Python 3."
     exit 1
 fi
 
-# Check if Docker daemon is running
-if ! docker info &> /dev/null; then
-    echo "❌ Docker daemon is not running. Please start Docker."
-    exit 1
-fi
-
-# Warning about nested virtualization
-echo "⚠️  IMPORTANT: This script uses Docker and SAM which require nested virtualization."
-echo "   If you're running this in a virtual machine, it may fail due to nested virtualization limitations."
-echo "   Consider running this script on a physical machine or cloud instance with nested virtualization enabled."
-echo ""
+echo "✅ Python found: $(python3 --version)"
 
 # Change to MCP tool directory
-cd "${MCP_TOOL_DIR}"
+cd "${SCRIPT_DIR}"
 
-# Check if template exists
-if [[ ! -f "mcp-tool-template.yaml" ]]; then
-    echo "❌ SAM template not found: mcp-tool-template.yaml"
+# Check if ZIP template exists
+if [[ ! -f "mcp-tool-template-zip.yaml" ]]; then
+    echo "❌ ZIP-based SAM template not found: mcp-tool-template-zip.yaml"
     exit 1
 fi
 
-echo "✅ SAM template found: mcp-tool-template.yaml"
+echo "✅ ZIP-based SAM template found: mcp-tool-template-zip.yaml"
+
+# Force fresh deployment by deleting existing stack
+echo "🧹 Ensuring fresh deployment..."
+
+# Check if stack exists and delete it for fresh deployment
+if aws cloudformation describe-stacks --stack-name "$STACK_NAME" --region "$REGION" &>/dev/null; then
+    echo "   📦 Found existing CloudFormation stack: $STACK_NAME"
+    echo "   🔄 Deleting existing stack for fresh deployment..."
+    
+    # Delete the CloudFormation stack
+    echo "   🗑️  Deleting CloudFormation stack..."
+    aws cloudformation delete-stack \
+        --stack-name "$STACK_NAME" \
+        --region "$REGION"
+    
+    # Wait for stack deletion to complete
+    echo "   ⏳ Waiting for stack deletion to complete..."
+    aws cloudformation wait stack-delete-complete \
+        --stack-name "$STACK_NAME" \
+        --region "$REGION"
+    
+    echo "   ✅ Stack deleted successfully"
+else
+    echo "   ℹ️  No existing stack found, proceeding with fresh deployment"
+fi
+
+# Clean SAM build cache
+echo "🧹 Cleaning SAM build cache..."
+if [[ -d ".aws-sam" ]]; then
+    rm -rf .aws-sam
+    echo "   ✅ SAM build cache cleared"
+else
+    echo "   ℹ️  No SAM build cache to clear"
+fi
+
+# Package the Lambda function
+echo "📦 Packaging Lambda function..."
+if ! python3 package_for_lambda.py; then
+    echo "❌ Lambda packaging failed"
+    exit 1
+fi
+
+echo "✅ Lambda packaging completed"
 
 # Build the SAM application
 echo "🔨 Building SAM application..."
-if ! sam build --template-file mcp-tool-template.yaml; then
+if ! sam build --template-file mcp-tool-template-zip.yaml --no-cached; then
     echo "❌ SAM build failed"
     exit 1
 fi
@@ -108,13 +140,12 @@ echo "✅ SAM build completed"
 # Deploy the SAM application
 echo "📤 Deploying SAM application..."
 if sam deploy \
-    --template-file mcp-tool-template.yaml \
+    --template-file mcp-tool-template-zip.yaml \
     --stack-name "$STACK_NAME" \
     --region "$REGION" \
     --parameter-overrides "Environment=prod" \
     --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM \
     --resolve-s3 \
-    --resolve-image-repos \
     --no-fail-on-empty-changeset; then
     echo "✅ SAM deployment completed"
 else
@@ -170,11 +201,6 @@ if [[ ! -f "$DYNAMIC_CONFIG" ]]; then
     exit 1
 fi
 
-# Build ECR URI from configuration values
-ECR_REPOSITORY=$(get_yaml_value "ecr_repository_name" "${CONFIG_DIR}/static-config.yaml")
-ECR_REPOSITORY=${ECR_REPOSITORY:-"bac-mcp-tool-repo"}
-ECR_URI="${ACCOUNT_ID}.dkr.ecr.${REGION}.amazonaws.com/${ECR_REPOSITORY}"
-
 # Use sed to update the mcp_lambda section (using | as delimiter to handle ARNs with /)
 echo "   📝 Updating mcp_lambda section in dynamic-config.yaml..."
 
@@ -184,7 +210,6 @@ sed -i '' \
     -e "s|role_arn: \"\"|role_arn: \"$FUNCTION_ROLE_ARN\"|" \
     -e "s|stack_name: \"\"|stack_name: \"$STACK_NAME\"|" \
     -e "s|gateway_execution_role_arn: \"\"|gateway_execution_role_arn: \"$GATEWAY_EXECUTION_ROLE_ARN\"|" \
-    -e "s|ecr_uri: \"\"|ecr_uri: \"${ECR_URI}:latest\"|" \
     "$DYNAMIC_CONFIG"
 
 echo "✅ Configuration updated with Lambda details"
@@ -210,7 +235,7 @@ fi
 echo ""
 echo "🎉 MCP Tool Lambda Deployment Complete!"
 echo "======================================"
-echo "✅ Lambda function deployed and configured"
+echo "✅ Lambda function deployed and configured (ZIP-based, no Docker)"
 echo ""
 echo "📋 Deployment Details:"
 echo "   • Function Name: $FUNCTION_NAME"
@@ -219,18 +244,26 @@ echo "   • Lambda Function Role ARN: $FUNCTION_ROLE_ARN"
 echo "   • Gateway Execution Role ARN: $GATEWAY_EXECUTION_ROLE_ARN"
 echo "   • Stack Name: $STACK_NAME"
 echo "   • Region: $REGION"
+echo "   • Deployment Type: ZIP-based (no Docker caching issues)"
 echo ""
 echo "📋 What was deployed:"
-echo "   • Lambda function with MCP tool handlers"
+echo "   • Lambda function with MCP tool handlers (ZIP package)"
 echo "   • IAM role with Bedrock and AWS service permissions"
 echo "   • CloudWatch log group for function logs"
 echo "   • SAM-managed deployment infrastructure"
 echo ""
 echo "🚀 Next Steps:"
-echo "   Run ./04-create-gateway-targets.sh to create AgentCore Gateway and targets"
+echo "   Run ./05-create-gateway-targets.sh to create AgentCore Gateway and targets"
 echo "   The Lambda function is ready to handle MCP tool calls"
 echo ""
 echo "💡 Function Capabilities:"
 echo "   • Basic tools: hello_world, get_time"
 echo "   • AWS service tools: EC2, S3, Lambda, RDS, and 16 more services"
 echo "   • Natural language query processing via Strands Agent"
+echo ""
+echo "🔧 Deployment Features:"
+echo "   • ZIP-based deployment eliminates Docker caching issues"
+echo "   • Architecture-specific dependency installation for Lambda x86_64"
+echo "   • Automatic stack cleanup for fresh deployments"
+echo "   • No Docker dependencies required"
+echo "   • No API Gateway provisioned (Lambda only for MCP Gateway integration)"

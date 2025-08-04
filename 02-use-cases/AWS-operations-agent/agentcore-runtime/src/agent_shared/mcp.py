@@ -5,7 +5,9 @@
 import logging
 from .auth import get_m2m_token
 
-logger = logging.getLogger(__name__)
+from . import mylogger
+ 
+logger = mylogger.get_logger()
 
 # Global MCP client for persistent connection
 _global_mcp_client = None

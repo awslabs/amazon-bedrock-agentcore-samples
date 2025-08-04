@@ -1,9 +1,6 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
-Description: MCP Tool Lambda for Bedrock AgentCore Gateway MCP testing
-
-# Note: This template uses the bedrock-agentcore.amazonaws.com service principal
-# instead of a hardcoded service account ID for better maintainability and security
+Description: MCP Tool Lambda for Bedrock AgentCore Gateway MCP testing (ZIP-based deployment)
 
 Parameters:
   Environment:
@@ -15,6 +12,8 @@ Globals:
   Function:
     Timeout: 900  # 15 minutes
     MemorySize: 3008  # Maximum memory for performance
+    Runtime: python3.12
+    Architectures: [x86_64]
 
 Resources:
   # Bedrock AgentCore Gateway Execution Role - Role that Bedrock AgentCore Gateway assumes to invoke Lambda functions
@@ -49,16 +48,6 @@ Resources:
                 Effect: Allow
                 Action:
                   - bedrock-agentcore:*
-                  - iam:PassRole
-                Resource: '*'
-              - Sid: S3Permissions
-                Effect: Allow
-                Action:
-                  - s3:GetObject
-                  - s3:PutObject
-                  - s3:DeleteObject
-                  - s3:ListBucket
-                  - s3:GetBucketLocation
                 Resource: '*'
               - Sid: CloudWatchLogsPermissions
                 Effect: Allow
@@ -132,6 +121,24 @@ Resources:
                   - ce:GetUsageForecast
                   - ce:GetCostForecast
                 Resource: '*'
+        - PolicyName: BudgetsPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - budgets:ViewBudget
+                  - budgets:DescribeBudgets
+                  - budgets:DescribeBudget
+                  - budgets:DescribeBudgetAction
+                  - budgets:DescribeBudgetActions
+                  - budgets:DescribeBudgetActionsForAccount
+                  - budgets:DescribeBudgetActionsForBudget
+                  - budgets:DescribeBudgetNotificationsForAccount
+                  - budgets:DescribeBudgetPerformanceHistory
+                  - budgets:DescribeNotificationsForBudget
+                  - budgets:DescribeSubscribersForNotification
+                Resource: '*'
         - PolicyName: CloudWatchLogsPolicy
           PolicyDocument:
             Version: '2012-10-17'
@@ -150,14 +157,22 @@ Resources:
         - Key: Environment
           Value: !Ref Environment
 
-  # MCP Tool Lambda Function
+  # CloudWatch Log Group
+  MCPToolLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /aws/lambda/bac-mcp-tool
+      RetentionInDays: 14
+
+  # MCP Tool Lambda Function (ZIP-based)
   MCPToolFunction:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: "bac-mcp-tool"
-      PackageType: Image
-      ImageUri: mcp-tool-lambda:latest
-      Description: MCP Tool Lambda for Bedrock AgentCore Gateway MCP testing
+      PackageType: Zip
+      CodeUri: packaging/mcp-tool-lambda.zip
+      Handler: mcp-tool-handler.lambda_handler
+      Description: MCP Tool Lambda for Bedrock AgentCore Gateway MCP testing (ZIP-based)
       Role: !GetAtt MCPToolFunctionRole.Arn
       
       # Environment variables
@@ -168,37 +183,19 @@ Resources:
       
       # Tracing
       Tracing: Active
-      
-      Tags:
-        Project: lambda-adaptor-bedrock-agentcore
-        Component: mcp-tool-lambda
-        Environment: !Ref Environment
-        ManagedBy: SAM
-
-    Metadata:
-      DockerTag: "bac-mcp-tool"
-      DockerContext: ./lambda
-      Dockerfile: Dockerfile
-
-  # CloudWatch Log Group
-  MCPToolLogGroup:
-    Type: AWS::Logs::LogGroup
-    Properties:
-      LogGroupName: "/aws/lambda/bac-mcp-tool"
-      RetentionInDays: 14
 
 Outputs:
-  MCPToolFunctionArn:
-    Description: MCP Tool Lambda Function ARN
-    Value: !GetAtt MCPToolFunction.Arn
-    Export:
-      Name: !Sub "${AWS::StackName}-MCPToolFunctionArn"
-
   MCPToolFunctionName:
     Description: MCP Tool Lambda Function Name
     Value: !Ref MCPToolFunction
     Export:
       Name: !Sub "${AWS::StackName}-MCPToolFunctionName"
+
+  MCPToolFunctionArn:
+    Description: MCP Tool Lambda Function ARN
+    Value: !GetAtt MCPToolFunction.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-MCPToolFunctionArn"
 
   MCPToolFunctionRoleArn:
     Description: MCP Tool Lambda Function Role ARN
@@ -206,14 +203,14 @@ Outputs:
     Export:
       Name: !Sub "${AWS::StackName}-MCPToolFunctionRoleArn"
 
-  BedrockAgentCoreGatewayExecutionRoleArn:
-    Description: Bedrock AgentCore Gateway Execution Role ARN - Use this role when creating Bedrock AgentCore Gateway targets
-    Value: !GetAtt BedrockAgentCoreGatewayExecutionRole.Arn
-    Export:
-      Name: !Sub "${AWS::StackName}-BedrockAgentCoreGatewayExecutionRoleArn"
-
   BedrockAgentCoreGatewayExecutionRoleName:
     Description: Bedrock AgentCore Gateway Execution Role Name
     Value: !Ref BedrockAgentCoreGatewayExecutionRole
     Export:
       Name: !Sub "${AWS::StackName}-BedrockAgentCoreGatewayExecutionRoleName"
+
+  BedrockAgentCoreGatewayExecutionRoleArn:
+    Description: Bedrock AgentCore Gateway Execution Role ARN - Use this role when creating Bedrock AgentCore Gateway targets
+    Value: !GetAtt BedrockAgentCoreGatewayExecutionRole.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-BedrockAgentCoreGatewayExecutionRoleArn"

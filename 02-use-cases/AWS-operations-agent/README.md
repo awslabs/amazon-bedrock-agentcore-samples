@@ -163,67 +163,77 @@ cd agentcore-runtime/deployment
 
 ### 3. Test the System
 
-#### Run Local Test Scripts
+#### Interactive Chat Client with Local Containers
+
 ```bash
-# Test local agent functionality
+# Start a local agent container
 cd agentcore-runtime/tests/local
-./test-diy-simple.sh    # Tests DIY agent with local tools
-./test-sdk-mcp.sh       # Tests SDK agent with MCP gateway integration
+./run-diy-local-container.sh    # For DIY agent
+# OR
+./run-sdk-local-container.sh    # For SDK agent
+
+# In another terminal, connect with the chat client
+cd chatbot-client
+python src/client.py --local
 ```
 
-#### Test with Direct curl Commands
+The client will show you available local agents:
+```
+🤖 Local Testing Mode
+==============================
 
-**DIY Agent (Port 8080):**
+📦 Local Testing Mode:
+========================================
+1. DIY Agent
+   Name: Local DIY Agent
+   URL: http://localhost:8080
+   Status: ✅ Available (if Docker container is running)
+2. SDK Agent
+   Name: Local SDK Agent
+   URL: http://localhost:8080
+   Status: ✅ Available (if Docker container is running)
+
+🎯 Select Runtime:
+Enter choice (1 for DIY, 2 for SDK):
+```
+
+**For local testing with containers:**
 ```bash
-# Start DIY agent
-cd agentcore-runtime/tests/local && ./test-diy-simple.sh
-
-# Test with curl (returns SSE stream)
-curl -X POST http://localhost:8080/invocations \
-  -H "Content-Type: application/json" \
-  -d '{
-    "prompt": "What time is it?",
-    "session_id": "test-session-123",
-    "actor_id": "user"
-  }'
-
-# Extract just the text response
-curl -s -X POST http://localhost:8080/invocations \
-  -H "Content-Type: application/json" \
-  -d '{"prompt": "Hello!", "session_id": "demo", "actor_id": "user"}' \
-  | grep '"type":"text_delta"' \
-  | sed 's/.*"content": *"\([^"]*\)".*/\1/' \
-  | tr -d '\n'
-
-# Health check
-curl http://localhost:8080/ping
-# Returns: {"status":"healthy","agent_type":"diy"}
+cd chatbot-client
+python src/client.py --local
 ```
 
-**SDK Agent (Port 8081):**
-```bash
-# Start SDK agent
-cd agentcore-runtime/tests/local && ./test-sdk-mcp.sh
+The `--local` flag enables local testing mode where you can connect to containerized agents running on localhost:8080.
 
-# Test with curl (returns different SSE format)
-curl -X POST http://localhost:8081/invocations \
-  -H "Content-Type: application/json" \
-  -d '{
-    "prompt": "What time is it?",
-    "session_id": "test-session-456",
-    "actor_id": "user"
-  }'
-
-# Health check
-curl http://localhost:8081/ping
-# Returns: {"status":"Healthy","time_of_last_update":1753954747}
-```
 
 #### Use the Interactive Chat Client
+
+**For deployed agents:**
 ```bash
-cd chatbot-client/src
-python client.py
+cd chatbot-client
+python src/client.py
 ```
+
+The client will show you available deployed agents:
+```
+🤖 AgentCore Chatbot Client
+==============================
+
+📦 Available AgentCore Runtimes:
+========================================
+1. DIY Agent
+   Name: bac_runtime_diy
+   ARN: arn:aws:bedrock-agentcore:us-east-1:xxxxxxx:runtime/bac_runtime_diy-xxxxx
+   Status: ✅ Available
+2. SDK Agent
+   Name: bac_runtime_sdk
+   ARN: arn:aws:bedrock-agentcore:us-east-1:xxxxx:runtime/bac_runtime_sdk-xxxx
+   Status: ✅ Available
+
+🎯 Select Runtime:
+Enter choice (1 for DIY, 2 for SDK): 
+```
+
 
 ## Component Details
 
@@ -291,23 +301,6 @@ The `shared/config_manager.py` provides:
 - Validation and error handling
 - Backward compatibility
 
-## Development
-
-### Local Testing
-
-```bash
-# Test agents locally without full deployment
-cd agentcore-runtime/tests/local
-
-# Test DIY agent with simple conversation
-./test-diy-simple.sh
-
-# Test SDK agent with MCP tools
-./test-sdk-mcp.sh
-
-# Test MCP gateway functionality
-./test-diy-ec2-mcp.sh
-```
 
 ### Container Development
 
@@ -323,6 +316,19 @@ Both agents follow a standardized container structure:
 ├── [agent].py                 # Agent implementation
 └── requirements.txt
 ```
+
+### Local Container Scripts
+
+The following scripts provide easy local testing with full containerization:
+
+- **`agentcore-runtime/tests/local/run-diy-local-container.sh`** - Runs DIY agent in Docker container on port 8080
+- **`agentcore-runtime/tests/local/run-sdk-local-container.sh`** - Runs SDK agent in Docker container on port 8080
+
+These containers include:
+- Full MCP tool integration
+- Local tool fallbacks when MCP gateway is unavailable
+- Complete agent functionality without AWS deployment
+- Isolated testing environment
 
 ### Adding New Tools
 

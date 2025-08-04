@@ -55,7 +55,7 @@ fi
 # Build ARM64 image using DIY Dockerfile
 echo "🔨 Building ARM64 image..."
 cd "${PROJECT_DIR}"
-docker build --platform linux/arm64 -f agentcore-runtime/deployment/Dockerfile.diy -t ${ECR_REPO}:latest .
+docker build --no-cache --platform linux/arm64 -f agentcore-runtime/deployment/Dockerfile.diy -t ${ECR_REPO}:latest .
 
 # Tag for ECR
 echo "🏷️  Tagging image..."

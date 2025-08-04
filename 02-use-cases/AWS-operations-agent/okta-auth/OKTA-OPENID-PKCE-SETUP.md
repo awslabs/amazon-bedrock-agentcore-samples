@@ -27,10 +27,15 @@ This guide configures Okta OAuth2 authentication for the AgentCore system, suppo
    Sign-in redirect URIs: 
      - http://localhost:8080/callback
      - http://localhost:8080/okta-auth/
+     - http://localhost:8080/okta-auth/iframe-oauth-flow.html
    Sign-out redirect URIs: http://localhost:8080/
    Controlled access: Allow everyone in your organization to access
+   uncheck “Immediate app access with Federation Broker Mode“
    ```
 5. **Save** the application and note the **Client ID**
+```
+Confirm you are added under Assignment
+```
 
 ### 2. Configure API Scopes
 
@@ -43,6 +48,15 @@ This guide configures Okta OAuth2 authentication for the AgentCore system, suppo
    - **Name**: `api`
    - **Description**: API access for AgentCore
    - **Include in public metadata**: ✅
+
+```
+Under Security → API → Trusted Origins, enable CORS for http://localhost:8080
+Origin: http://localhost:8080
+ ✅ Cross-Origin Resource Sharing (CORS)
+ ✅ Redirect
+ ✅ iFrame embed
+ ✅ Allows iFrame embedding of Okta End User Dashboard
+```
 
 ### 3. Create Machine-to-Machine Application
 
