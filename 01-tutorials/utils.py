@@ -1,11 +1,12 @@
 import boto3
 import json
 import time
+import os
 from boto3.session import Session
 
 def setup_cognito_user_pool():
     boto_session = Session()
-    region = boto_session.region_name
+    region = boto_session.region_name or os.environ.get('AWS_REGION', 'us-east-1')
     
     # Initialize Cognito client
     cognito_client = boto3.client('cognito-idp', region_name=region)
@@ -84,7 +85,7 @@ def create_agentcore_role(agent_name):
     iam_client = boto3.client('iam')
     agentcore_role_name = f'agentcore-{agent_name}-role'
     boto_session = Session()
-    region = boto_session.region_name
+    region = boto_session.region_name or os.environ.get('AWS_REGION', 'us-east-1')
     account_id = boto3.client("sts").get_caller_identity()["Account"]
     role_policy = {
         "Version": "2012-10-17",
