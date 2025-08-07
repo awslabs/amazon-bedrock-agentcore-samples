@@ -288,6 +288,12 @@ class SupervisorAgent:
         current_query = state.get("current_query", "No query provided")
         user_id = state.get("user_id", SREConstants.agents.default_user_id)
         incident_id = state.get("incident_id")
+        
+        # Update memory tools with the current user_id
+        if self.memory_tools:
+            from .memory.tools import update_memory_tools_user_id
+            update_memory_tools_user_id(self.memory_tools, user_id)
+            logger.info(f"Updated memory tools with user_id: {user_id}")
         # Use user_id as actor_id for investigation memory retrieval (consistent with storage)
         actor_id = state.get(
             "user_id", state.get("actor_id", SREConstants.agents.default_actor_id)

@@ -115,6 +115,28 @@ The system showcases the power of Amazon Bedrock AgentCore by utilizing multiple
 - **Ingress Authentication**: Secure access control for agents connecting to the Gateway
 - **Egress Authentication**: Manages authentication with backend servers, ensuring secure API access without hardcoding credentials
 
+**AgentCore Memory**: Transforms the SRE Agent from a stateless system into an intelligent, learning assistant that personalizes investigations based on user preferences and historical context. The memory system provides three distinct strategies:
+
+- **User Preferences Strategy** (`/sre/users/{user_id}/preferences`): Stores individual user preferences for investigation style, communication channels, escalation procedures, and report formatting. For example, Alice (Technical SRE) receives detailed systematic analysis with troubleshooting steps, while Carol (Executive/Director) receives business-focused summaries with impact analysis.
+
+- **Infrastructure Knowledge Strategy** (`/sre/infrastructure/{user_id}/{session_id}`): Accumulates domain expertise across investigations, allowing agents to learn from past discoveries. When the Kubernetes agent identifies a memory leak pattern, this knowledge becomes available for future investigations, enabling faster root cause identification.
+
+- **Investigation Memory Strategy** (`/sre/investigations/{user_id}/{session_id}`): Maintains historical context of past incidents and their resolutions. This enables the system to suggest proven remediation approaches and avoid anti-patterns that previously failed.
+
+The memory system demonstrates its value through personalized investigations. When both Alice and Carol investigate "API response times have degraded 3x in the last hour," they receive identical technical findings but completely different presentations:
+
+```python
+# Alice receives technical analysis
+memory_client.retrieve_user_preferences(user_id="Alice")
+# Returns: {"investigation_style": "detailed_systematic_analysis", 
+#          "reports": "technical_exposition_with_troubleshooting_steps"}
+
+# Carol receives executive summary  
+memory_client.retrieve_user_preferences(user_id="Carol")
+# Returns: {"investigation_style": "business_impact_focused",
+#          "reports": "executive_summary_without_technical_details"}
+```
+
 **AgentCore Runtime**: Provides the serverless execution environment for deploying agents at scale. The Runtime offers automatic scaling from zero to thousands of concurrent sessions while maintaining complete session isolation. Authentication and authorization to agents deployed on AgentCore Runtime is handled by AWS IAM - applications invoking the agent must have appropriate IAM permissions and trust policies. Learn more about [AgentCore security and IAM configuration](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/security-iam.html).
 
 **Foundation Models**: The system supports two providers for the Claude language models:
@@ -179,17 +201,18 @@ To implement this solution, you need the following:
 
 ## Implementation walkthrough
 
-In this section, we focus on how AgentCore Gateway and Runtime help us build this multi-agent collaboration system and deploy it end-to-end with MCP support to communicate with backend systems. The step-by-step guidance to run this solution is found in the README and other documentation - here we provide a bullet point overview of what those steps entail:
+In this section, we focus on how AgentCore Gateway, Memory, and Runtime work together to build this multi-agent collaboration system and deploy it end-to-end with MCP support and persistent intelligence. The step-by-step guidance to run this solution is found in the README and other documentation - here we provide a bullet point overview of what those steps entail:
 
 - **Clone and setup**: Repository cloning, virtual environment creation, and dependency installation
 - **Environment configuration**: Setting up API keys, LLM providers, and deployment configurations  
 - **Backend APIs deployment**: Starting demo infrastructure APIs with SSL certificates
 - **AgentCore Gateway setup**: Creating the gateway, identity providers, and MCP tool access
-- **Agent configuration**: Defining agent-to-tool mappings and system behavior
-- **Multi-agent system initialization**: Setting up LangGraph workflow and agent coordination
-- **Testing and validation**: Running CLI tests and validating end-to-end functionality
+- **AgentCore Memory initialization**: Creating memory strategies and loading user personas for personalized investigations
+- **Agent configuration**: Defining agent-to-tool mappings, memory integration, and system behavior
+- **Multi-agent system initialization**: Setting up LangGraph workflow with memory-enabled agent coordination
+- **Testing and validation**: Running CLI tests with user personas and validating personalized functionality
 - **Containerization**: Building ARM64 Docker images for AgentCore Runtime compatibility
-- **Production deployment**: Deploying containers to AgentCore Runtime with proper IAM configuration
+- **Production deployment**: Deploying containers to AgentCore Runtime with proper IAM configuration and memory persistence
 
 Detailed instructions for each step are provided in the repository:
 - [Use Case Setup Guide](https://github.com/awslabs/amazon-bedrock-agentcore-samples/tree/feature/issue-143-deploy-sre-agent-agentcore-runtime/02-use-cases/SRE-agent#use-case-setup) - Backend deployment and development setup
@@ -329,6 +352,114 @@ The advantage of this approach is that existing APIs require no modification—o
 
 This means you can take any existing infrastructure API (Kubernetes, monitoring, logging, documentation) and instantly make it available to any AI agent framework that supports MCP—all through a single, secure, standardized interface.
 
+### Implementing Persistent Intelligence with AgentCore Memory
+
+While AgentCore Gateway provides seamless API access, AgentCore Memory transforms the SRE Agent from a stateless system into an intelligent, learning assistant. The memory implementation demonstrates how a few lines of code can enable sophisticated personalization and cross-session knowledge retention.
+
+#### Step 1: Initialize Memory Strategies
+
+The SRE Agent memory system is built on Amazon Bedrock AgentCore Memory's event-based model with automatic namespace routing. During initialization, the system creates three memory strategies with specific namespace patterns:
+
+```python
+from sre_agent.memory.client import SREMemoryClient
+from sre_agent.memory.strategies import create_memory_strategies
+
+# Initialize memory client
+memory_client = SREMemoryClient(
+    memory_name="sre_agent_memory", 
+    region="us-east-1"
+)
+
+# Create three specialized memory strategies
+strategies = create_memory_strategies()
+for strategy in strategies:
+    memory_client.create_strategy(strategy)
+```
+
+The three strategies each serve distinct purposes:
+- **User Preferences**: `/sre/users/{user_id}/preferences` - Individual investigation styles and communication preferences
+- **Infrastructure Knowledge**: `/sre/infrastructure/{user_id}/{session_id}` - Domain expertise accumulated across investigations
+- **Investigation Summaries**: `/sre/investigations/{user_id}/{session_id}` - Historical incident patterns and resolutions
+
+#### Step 2: Load User Personas and Preferences
+
+The system comes pre-configured with user personas that demonstrate personalized investigations. The [manage_memories.py](https://github.com/awslabs/amazon-bedrock-agentcore-samples/blob/feature/issue-143-deploy-sre-agent-agentcore-runtime/02-use-cases/SRE-agent/scripts/manage_memories.py) script loads these personas:
+
+```python
+# Load Alice - Technical SRE Engineer
+alice_preferences = {
+    "investigation_style": "detailed_systematic_analysis",
+    "communication": ["#alice-alerts", "#sre-team"],
+    "escalation": {"contact": "alice.manager@company.com", "threshold": "15min"},
+    "reports": "technical_exposition_with_troubleshooting_steps",
+    "timezone": "UTC"
+}
+
+# Load Carol - Executive/Director
+carol_preferences = {
+    "investigation_style": "business_impact_focused", 
+    "communication": ["#carol-executive", "#strategic-alerts"],
+    "escalation": {"contact": "carol.director@company.com", "threshold": "5min"},
+    "reports": "executive_summary_without_technical_details",
+    "timezone": "EST"
+}
+
+# Store preferences using memory client
+memory_client.store_user_preference("Alice", alice_preferences)
+memory_client.store_user_preference("Carol", carol_preferences)
+```
+
+#### Step 3: Automatic Namespace Routing in Action
+
+The power of AgentCore Memory lies in its automatic namespace routing. When the SRE Agent creates events, it only needs to provide the `actor_id`—Amazon Bedrock AgentCore Memory automatically determines which namespace(s) the event belongs to:
+
+```python
+# During investigation, the supervisor agent stores context
+memory_client.create_event(
+    memory_id="sre_agent_memory-abc123",
+    actor_id="Alice",  # AgentCore Memory routes this automatically
+    session_id="investigation_2025_01_15", 
+    messages=[("investigation_started", "USER")]
+)
+
+# Memory system automatically:
+# 1. Checks all strategy namespaces
+# 2. Matches actor_id "Alice" to /sre/users/Alice/preferences
+# 3. Stores event in User Preferences Strategy
+# 4. Makes event available for future retrievals
+```
+
+#### Result: Personalized Investigation Experience
+
+The memory system's impact becomes clear when both Alice and Carol investigate the same issue. Using identical technical findings, the system produces completely different presentations:
+
+**Alice's Technical Report** (detailed systematic analysis):
+```markdown
+## Technical Investigation Summary
+**Root Cause**: Payment processor memory leak causing OOM kills
+**Analysis**:
+- Pod restart frequency increased 300% at 14:23 UTC
+- Memory utilization peaked at 8.2GB (80% of container limit)  
+- JVM garbage collection latency spiked to 2.3s
+**Next Steps**:
+1. Implement heap dump analysis (kubectl exec payment-pod -- jmap)
+2. Review recent code deployments for memory management changes
+3. Consider increasing memory limits and implementing graceful shutdown
+```
+
+**Carol's Executive Summary** (business impact focused):
+```markdown
+## Business Impact Assessment  
+**Status**: CRITICAL - Customer payment processing degraded
+**Impact**: 23% transaction failure rate, $47K revenue at risk
+**Timeline**: Issue detected 14:23 UTC, resolution ETA 45 minutes
+**Business Actions**:
+- Customer communication initiated via status page
+- Finance team alerted for revenue impact tracking  
+- Escalating to VP Engineering if not resolved by 15:15 UTC
+```
+
+The memory system enables this personalization while continuously learning from each investigation, building organizational knowledge that improves incident response over time.
 
 ### Deploying to production with Amazon Bedrock AgentCore Runtime
 
@@ -600,23 +731,27 @@ Replace the demo APIs with connections to your actual systems:
 
 ## Clean up
 
-To avoid incurring future charges, complete the following steps to clean up your resources:
+To avoid incurring future charges, use the comprehensive cleanup script to remove all AWS resources:
 
 ```bash
-# Stop all demo servers
-cd backend
-./scripts/stop_demo_backend.sh
-cd ..
+# Complete cleanup - deletes AWS resources and local files
+./scripts/cleanup.sh
 
-# Remove virtual environment
-deactivate
-rm -rf .venv
+# Or with custom names
+./scripts/cleanup.sh --gateway-name my-gateway --runtime-name my-runtime
 
-# Clean up generated files
-rm -rf reports/
-rm -rf gateway/.gateway_uri gateway/.access_token
-rm -rf sre_agent/.env
+# Force cleanup without confirmation prompts
+./scripts/cleanup.sh --force
 ```
+
+This script will automatically:
+- Stop all backend servers
+- Delete the AgentCore Gateway and all its targets
+- Delete AgentCore Memory resources
+- Delete the AgentCore Runtime
+- Remove generated files (gateway URIs, tokens, agent ARNs, memory IDs)
+
+The cleanup script ensures complete removal of all billable AWS resources created during the demo.
 
 ## Conclusion
 
