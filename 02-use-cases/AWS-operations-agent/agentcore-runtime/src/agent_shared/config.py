@@ -6,9 +6,13 @@ import os
 import yaml
 import logging
 
+<<<<<<< HEAD
 from . import mylogger
  
 logger = mylogger.get_logger()
+=======
+logger = logging.getLogger(__name__)
+>>>>>>> origin/main
 
 # ============================================================================
 # CONFIGURATION LOADING
@@ -28,7 +32,11 @@ def load_configs():
         
         # In Docker container, config_manager is in /app/shared/
         # No need to manipulate path since it's in the same shared directory structure
+<<<<<<< HEAD
         from .config_manager import AgentCoreConfigManager
+=======
+        from shared.config_manager import AgentCoreConfigManager
+>>>>>>> origin/main
         
         # Initialize config manager
         config_manager = AgentCoreConfigManager()

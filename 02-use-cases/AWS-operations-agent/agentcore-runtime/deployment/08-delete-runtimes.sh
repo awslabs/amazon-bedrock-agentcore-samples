@@ -11,6 +11,7 @@ CONFIG_DIR="${PROJECT_DIR}/config"
 
 # Load configuration from YAML (fallback if yq not available)
 if command -v yq >/dev/null 2>&1; then
+<<<<<<< HEAD
     REGION=$(yq eval '.aws.region' "${CONFIG_DIR}/static-config.yaml")
     ACCOUNT_ID=$(yq eval '.aws.account_id' "${CONFIG_DIR}/static-config.yaml")
 else
@@ -18,6 +19,15 @@ else
     # Fallback: extract from YAML using grep/sed
     REGION=$(grep "region:" "${CONFIG_DIR}/static-config.yaml" | head -1 | sed 's/.*region: *["'\'']*\([^"'\'']*\)["'\'']*$/\1/')
     ACCOUNT_ID=$(grep "account_id:" "${CONFIG_DIR}/static-config.yaml" | head -1 | sed 's/.*account_id: *["'\'']*\([^"'\'']*\)["'\'']*$/\1/')
+=======
+    REGION=$(yq eval '.aws.region' "${CONFIG_DIR}/static/base-settings.yaml")
+    ACCOUNT_ID=$(yq eval '.aws.account_id' "${CONFIG_DIR}/static/base-settings.yaml")
+else
+    echo "⚠️  yq not found, using default values from existing config"
+    # Fallback: extract from YAML using grep/sed
+    REGION=$(grep "region:" "${CONFIG_DIR}/static/base-settings.yaml" | head -1 | sed 's/.*region: *["'\'']*\([^"'\'']*\)["'\'']*$/\1/')
+    ACCOUNT_ID=$(grep "account_id:" "${CONFIG_DIR}/static/base-settings.yaml" | head -1 | sed 's/.*account_id: *["'\'']*\([^"'\'']*\)["'\'']*$/\1/')
+>>>>>>> origin/main
 fi
 
 echo "📝 Configuration:"
@@ -36,6 +46,7 @@ else
 fi
 
 # Check AWS credentials
+<<<<<<< HEAD
 echo "🔍 Verifying AWS credentials..."
 if aws sts get-caller-identity --region "$REGION" >/dev/null 2>&1; then
     CALLER_IDENTITY=$(aws sts get-caller-identity --region "$REGION" 2>/dev/null)
@@ -55,6 +66,15 @@ else
     aws configure list
     exit 1
 fi
+=======
+if ! aws sts get-caller-identity --region "$REGION" >/dev/null 2>&1; then
+    echo "❌ AWS credentials not configured or invalid"
+    echo "   Please run: aws sso login --profile <your-profile>"
+    exit 1
+fi
+
+echo "✅ AWS credentials configured"
+>>>>>>> origin/main
 echo ""
 
 # Function to delete runtime
@@ -117,7 +137,11 @@ delete_runtime() {
 
 # Get runtime ARNs from dynamic configuration
 echo "📖 Reading runtime ARNs from dynamic configuration..."
+<<<<<<< HEAD
 DYNAMIC_CONFIG="${CONFIG_DIR}/dynamic-config.yaml"
+=======
+DYNAMIC_CONFIG="${CONFIG_DIR}/dynamic/infrastructure.yaml"
+>>>>>>> origin/main
 
 if [ -f "$DYNAMIC_CONFIG" ]; then
     if command -v yq >/dev/null 2>&1; then

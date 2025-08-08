@@ -10,12 +10,23 @@
       "Action": "sts:AssumeRole",
       "Condition": {
         "StringEquals": {
+<<<<<<< HEAD
           "aws:SourceAccount": "<your-aws-account-id>"
         },
         "ArnLike": {
           "aws:SourceArn": "arn:aws:bedrock-agentcore:*:<your-aws-account-id>:*"
+=======
+          "aws:SourceAccount": "<YOUR_AWS_ACCOUNT_ID>"
+        },
+        "ArnLike": {
+          "aws:SourceArn": "arn:aws:bedrock-agentcore:*:<YOUR_AWS_ACCOUNT_ID>:*"
+>>>>>>> origin/main
         }
       }
     }
   ]
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> origin/main

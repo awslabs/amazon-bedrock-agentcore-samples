@@ -37,16 +37,34 @@ class AgentCoreClient:
     # INITIALIZATION & CONFIGURATION
     # ========================================================================
     
+<<<<<<< HEAD
     def __init__(self, config_path: str = None, debug: bool = False, local_mode: bool = False):
         """Initialize client with configuration"""
         self.local_mode = local_mode
         self.session_token = None
         self.selected_runtime = None
         self.conversation_history = []
+=======
+    def __init__(self, config_path: str = None, debug: bool = False):
+        """Initialize client with configuration"""
+        # Add project root to path for shared config manager
+        project_root = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..')
+        sys.path.insert(0, project_root)
+        
+        from shared.config_manager import AgentCoreConfigManager
+        
+        self.config_manager = AgentCoreConfigManager()
+        self.agentcore_config = self.config_manager.get_merged_config()
+        self.session_token = None
+        self.selected_runtime = None
+        self.conversation_history = []
+        self.token_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.okta_token')
+>>>>>>> origin/main
         # Generate session ID once at client startup for conversation continuity across runtime switches
         self.session_id = f"session_{uuid.uuid4().hex}_{os.getpid()}"
         self.debug = debug
         
+<<<<<<< HEAD
         if not local_mode:
             # Standard AgentCore mode - load full configuration
             # Add project root to path for shared config manager
@@ -71,6 +89,8 @@ class AgentCoreClient:
             }
             self.token_file = None
         
+=======
+>>>>>>> origin/main
     def _should_show_detailed_errors(self, error_message: str = "") -> bool:
         """Determine if we should show detailed error information"""
         # Always show details in debug mode
@@ -90,11 +110,14 @@ class AgentCoreClient:
     
     def _get_runtime_url(self, agent_type: str) -> str:
         """Get runtime URL for agent type"""
+<<<<<<< HEAD
         if self.local_mode:
             # Local testing mode - connect to localhost Docker container
             return "http://localhost:8080/invocations"
         
         # Standard AgentCore mode
+=======
+>>>>>>> origin/main
         if agent_type == "sdk":
             runtime_arn = self.agentcore_config['runtime']['sdk_agent']['arn']
         elif agent_type == "diy":
@@ -134,6 +157,7 @@ class AgentCoreClient:
     
     def display_available_runtimes(self) -> List[str]:
         """Display available runtimes and return their names."""
+<<<<<<< HEAD
         if self.local_mode:
             print("\n📦 Local Testing Mode:")
             print("=" * 40)
@@ -148,6 +172,8 @@ class AgentCoreClient:
             return ['diy', 'sdk']
         
         # Standard AgentCore mode
+=======
+>>>>>>> origin/main
         print("\n📦 Available AgentCore Runtimes:")
         print("=" * 40)
         
@@ -161,8 +187,12 @@ class AgentCoreClient:
                 runtime_names.append('diy')
                 print(f"1. DIY Agent")
                 print(f"   Name: {diy.get('name', 'N/A')}")
+<<<<<<< HEAD
                 if self.debug:
                     print(f"   ARN: {diy.get('arn', 'N/A')}")
+=======
+                print(f"   ARN: {diy.get('arn', 'N/A')}")
+>>>>>>> origin/main
                 print(f"   Status: ✅ Available")
             else:
                 print(f"1. DIY Agent")
@@ -175,8 +205,12 @@ class AgentCoreClient:
                 runtime_names.append('sdk')
                 print(f"2. SDK Agent")
                 print(f"   Name: {sdk.get('name', 'N/A')}")
+<<<<<<< HEAD
                 if self.debug:
                     print(f"   ARN: {sdk.get('arn', 'N/A')}")
+=======
+                print(f"   ARN: {sdk.get('arn', 'N/A')}")
+>>>>>>> origin/main
                 print(f"   Status: ✅ Available")
             else:
                 print(f"2. SDK Agent")
@@ -368,15 +402,19 @@ class AgentCoreClient:
 
     def chat(self, message: str, agent_type: str = None, okta_token: str = None) -> str:
         """Send message to agent and get response"""
+<<<<<<< HEAD
         import time
         
         # Start timing
         start_time = time.time()
+=======
+>>>>>>> origin/main
         
         # Use selected runtime or default agent if not specified
         if agent_type is None:
             agent_type = self.selected_runtime or self.agentcore_config['client']['default_agent']
         
+<<<<<<< HEAD
         # In local mode, skip token requirement
         if not self.local_mode:
             # Use session token if available
@@ -385,12 +423,21 @@ class AgentCoreClient:
                 
             if okta_token is None:
                 raise ValueError("Okta token must be provided")
+=======
+        # Use session token if available
+        if okta_token is None:
+            okta_token = self.session_token
+            
+        if okta_token is None:
+            raise ValueError("Okta token must be provided")
+>>>>>>> origin/main
         
         # Get runtime URL and prepare request
         url = self._get_runtime_url(agent_type)
         payload = self._get_payload(message, agent_type, self.session_id, "user")
         trace_id = str(uuid.uuid4())
         
+<<<<<<< HEAD
         # Build headers based on mode
         headers = {
             'Content-Type': 'application/json',
@@ -402,6 +449,15 @@ class AgentCoreClient:
         if not self.local_mode:
             headers['Authorization'] = f'Bearer {okta_token}'
         
+=======
+        headers = {
+            'Authorization': f'Bearer {okta_token}',
+            'X-Amzn-Trace-Id': f'trace-{trace_id[:10]}',
+            'Content-Type': 'application/json',
+            'X-Amzn-Bedrock-AgentCore-Runtime-Session-Id': self.session_id or trace_id
+        }
+        
+>>>>>>> origin/main
         # DEBUG: Log request details
         if self.debug:
             print("\n" + "="*80)
@@ -419,6 +475,7 @@ class AgentCoreClient:
             print("="*80)
         
         try:
+<<<<<<< HEAD
             # Record request sent time
             request_sent_time = time.time()
             
@@ -427,6 +484,10 @@ class AgentCoreClient:
             
             # Record first response time (headers received)
             first_response_time = time.time()
+=======
+            # Add timeout for better error handling
+            response = requests.post(url, headers=headers, json=payload, stream=True, timeout=300)
+>>>>>>> origin/main
             
             # DEBUG: Log response details
             if self.debug:
@@ -436,7 +497,10 @@ class AgentCoreClient:
                 print(f"[DEBUG] Response Headers:")
                 for key, value in response.headers.items():
                     print(f"[DEBUG]   {key}: {value}")
+<<<<<<< HEAD
                 print(f"[DEBUG] Time to first response: {first_response_time - request_sent_time:.3f}s")
+=======
+>>>>>>> origin/main
                 print("="*80)
             
             if response.status_code != 200:
@@ -457,6 +521,7 @@ class AgentCoreClient:
             content_type = response.headers.get("content-type", "")
             
             if "text/event-stream" in content_type:
+<<<<<<< HEAD
                  # Server-Sent Events streaming (test commands)
                  response_text = self._handle_streaming_response(response, agent_type, start_time, first_response_time)
             elif "text/plain" in content_type:
@@ -491,11 +556,39 @@ class AgentCoreClient:
             end_time = time.time()
             total_time = end_time - start_time
             
+=======
+                # Server-Sent Events streaming (test commands)
+                return self._handle_streaming_response(response, agent_type)
+            elif "text/plain" in content_type:
+                # Plain text streaming (regular agent responses)
+                return self._handle_plain_text_streaming(response, agent_type)
+            else:
+                # Non-streaming response (fallback)
+                response_text = response.text
+                if self.debug:
+                    print(f"\n[DEBUG] NON-STREAMING RESPONSE:")
+                    print(f"[DEBUG] Content-Type: {content_type}")
+                    print(f"[DEBUG] Response: {response_text}")
+                    print("="*80)
+                
+                # Display the response if it's not empty
+                if response_text.strip():
+                    print(f"🤖 {agent_type.upper()}: {response_text}")
+                else:
+                    print(f"🤖 {agent_type.upper()}: <Empty response>")
+                
+                return response_text
+                
+        except Exception as e:
+>>>>>>> origin/main
             if self.debug:
                 print(f"\n[DEBUG] EXCEPTION OCCURRED:")
                 print(f"[DEBUG] Exception Type: {type(e).__name__}")
                 print(f"[DEBUG] Exception Message: {str(e)}")
+<<<<<<< HEAD
                 print(f"[DEBUG] Time before exception: {total_time:.3f}s")
+=======
+>>>>>>> origin/main
                 import traceback
                 print(f"[DEBUG] Full Traceback:")
                 print(traceback.format_exc())
@@ -560,7 +653,11 @@ class AgentCoreClient:
         print("Type 'switch' to change runtime")
         print("Type 'token' to refresh authentication token")
         print("Type 'clear-token' to clear saved token")
+<<<<<<< HEAD
         print("Type 'debug' to toggle debug mode (shows ARNs and detailed logging)")
+=======
+        print("Type 'debug' to toggle debug mode")
+>>>>>>> origin/main
         print("Type 'test' or 'ping' to test agent connectivity")
         print("Type 'mcp test' to test MCP gateway connection")
         print("-" * 50)
@@ -643,20 +740,30 @@ class AgentCoreClient:
     
     def run_interactive_mode(self):
         """Run the chatbot client in interactive mode."""
+<<<<<<< HEAD
         mode_text = "Local Testing Mode" if self.local_mode else "AgentCore Chatbot Client"
         print(f"🤖 {mode_text}")
+=======
+        print("🤖 AgentCore Chatbot Client")
+>>>>>>> origin/main
         print("=" * 30)
         
         # Step 1: Select runtime
         if not self.select_runtime():
             return
         
+<<<<<<< HEAD
         # Step 2: Get Okta token (skip in local mode)
         if not self.local_mode:
             if not self.get_okta_token():
                 return
         else:
             print("🏠 Local mode: Skipping authentication")
+=======
+        # Step 2: Get Okta token
+        if not self.get_okta_token():
+            return
+>>>>>>> origin/main
         
         # Step 3: Start chat session
         self.chat_loop()
@@ -665,6 +772,7 @@ class AgentCoreClient:
     # STREAMING RESPONSE HANDLERS (Part of Core Communication)
     # ------------------------------------------------------------------------
     
+<<<<<<< HEAD
     def _handle_plain_text_streaming(self, response, agent_type: str, start_time: float, first_response_time: float) -> str:
         """Handle plain text streaming response from DIY agent"""
         import time
@@ -673,6 +781,11 @@ class AgentCoreClient:
         first_chunk_time = None
         last_chunk_time = None
         
+=======
+    def _handle_plain_text_streaming(self, response, agent_type: str) -> str:
+        """Handle plain text streaming response from DIY agent"""
+        content = []
+>>>>>>> origin/main
         print(f"🤖 {agent_type.upper()}: ", end="" if not self.debug else "\n", flush=True)
         
         if self.debug:
@@ -682,7 +795,10 @@ class AgentCoreClient:
             print(f"[DEBUG] Status Code: {response.status_code}")
             print(f"[DEBUG] Content-Type: {response.headers.get('content-type', 'N/A')}")
             print(f"[DEBUG] All Headers: {dict(response.headers)}")
+<<<<<<< HEAD
             print(f"[DEBUG] Time to first response: {first_response_time - start_time:.3f}s")
+=======
+>>>>>>> origin/main
             print("="*80)
         
         try:
@@ -697,28 +813,38 @@ class AgentCoreClient:
             
             for chunk in response.iter_content(chunk_size=1, decode_unicode=True):
                 if chunk:
+<<<<<<< HEAD
                     current_time = time.time()
                     if first_chunk_time is None:
                         first_chunk_time = current_time
                     last_chunk_time = current_time
                     
+=======
+>>>>>>> origin/main
                     chunk_count += 1
                     total_bytes += len(chunk.encode('utf-8'))
                     
                     if self.debug:
+<<<<<<< HEAD
                         print(f"[DEBUG] Chunk #{chunk_count}: {repr(chunk)} (bytes: {len(chunk.encode('utf-8'))}, time: {current_time - start_time:.3f}s)")
+=======
+                        print(f"[DEBUG] Chunk #{chunk_count}: {repr(chunk)} (bytes: {len(chunk.encode('utf-8'))})")
+>>>>>>> origin/main
                     
                     # Stream character by character for real-time display
                     if not self.debug:
                         print(chunk, end="", flush=True)
                     content.append(chunk)
             
+<<<<<<< HEAD
             # Calculate timing metrics
             end_time = time.time()
             total_time = end_time - start_time
             time_to_first_chunk = first_chunk_time - start_time if first_chunk_time else 0
             streaming_duration = last_chunk_time - first_chunk_time if first_chunk_time and last_chunk_time else 0
             
+=======
+>>>>>>> origin/main
             # If no chunks received, check raw response
             if chunk_count == 0:
                 if self.debug:
@@ -736,11 +862,14 @@ class AgentCoreClient:
                 print(f"[DEBUG] Total bytes received: {total_bytes}")
                 print(f"[DEBUG] Final content length: {len(''.join(content))}")
                 print(f"[DEBUG] Final content: {repr(''.join(content))}")
+<<<<<<< HEAD
                 print(f"[DEBUG] TIMING BREAKDOWN:")
                 print(f"[DEBUG]   Total time: {total_time:.3f}s")
                 print(f"[DEBUG]   Time to first response: {first_response_time - start_time:.3f}s")
                 print(f"[DEBUG]   Time to first chunk: {time_to_first_chunk:.3f}s")
                 print(f"[DEBUG]   Streaming duration: {streaming_duration:.3f}s")
+=======
+>>>>>>> origin/main
                 print("="*80)
                 if content:
                     print(f"🤖 {agent_type.upper()}: {''.join(content)}")
@@ -752,6 +881,7 @@ class AgentCoreClient:
                 else:
                     print()  # New line after streaming is complete
             
+<<<<<<< HEAD
             # Show timing information (always show, not just in debug mode)
             if content:
                 print(f"⏱️  Response time: {total_time:.3f}s (first chunk: {time_to_first_chunk:.3f}s, streaming: {streaming_duration:.3f}s)")
@@ -761,21 +891,31 @@ class AgentCoreClient:
         except Exception as e:
             end_time = time.time()
             total_time = end_time - start_time
+=======
+        except Exception as e:
+>>>>>>> origin/main
             error_msg = f"❌ Streaming error: {str(e)}"
             if self.debug:
                 print(f"\n[DEBUG] PLAIN TEXT STREAMING ERROR: {error_msg}")
                 print(f"[DEBUG] Exception type: {type(e)}")
+<<<<<<< HEAD
                 print(f"[DEBUG] Total time before error: {total_time:.3f}s")
+=======
+>>>>>>> origin/main
                 import traceback
                 print(f"[DEBUG] Traceback: {traceback.format_exc()}")
                 print("="*80)
             else:
                 print(f"\n{error_msg}")
+<<<<<<< HEAD
                 print(f"⏱️  Time before error: {total_time:.3f}s")
+=======
+>>>>>>> origin/main
             content.append(error_msg)
         
         return ''.join(content)
 
+<<<<<<< HEAD
     def _handle_streaming_response(self, response, agent_type: str, start_time: float, first_response_time: float) -> str:
         """Handle Server-Sent Events streaming response (for test commands)"""
         import time
@@ -784,6 +924,11 @@ class AgentCoreClient:
         first_chunk_time = None
         last_chunk_time = None
         
+=======
+    def _handle_streaming_response(self, response, agent_type: str) -> str:
+        """Handle Server-Sent Events streaming response (for test commands)"""
+        content = []
+>>>>>>> origin/main
         print(f"🤖 {agent_type.upper()}: ", end="" if not self.debug else "\n", flush=True)
         
         if self.debug:
@@ -791,12 +936,16 @@ class AgentCoreClient:
             print("[DEBUG] SSE STREAMING RESPONSE PROCESSING:")
             print(f"[DEBUG] Agent Type: {agent_type}")
             print(f"[DEBUG] Content-Type: {response.headers.get('content-type', 'N/A')}")
+<<<<<<< HEAD
             print(f"[DEBUG] Time to first response: {first_response_time - start_time:.3f}s")
+=======
+>>>>>>> origin/main
             print("="*80)
         
         line_count = 0
         try:
             for line in response.iter_lines(decode_unicode=True):
+<<<<<<< HEAD
                 current_time = time.time()
                 if first_chunk_time is None and line and line.startswith("data: "):
                     first_chunk_time = current_time
@@ -807,6 +956,12 @@ class AgentCoreClient:
                 
                 if self.debug:
                     print(f"\n[DEBUG] Raw Line #{line_count}: {repr(line)} (time: {current_time - start_time:.3f}s)")
+=======
+                line_count += 1
+                
+                if self.debug:
+                    print(f"\n[DEBUG] Raw Line #{line_count}: {repr(line)}")
+>>>>>>> origin/main
                 
                 if line and line.startswith("data: "):
                     data = line[6:]  # Remove "data: " prefix
@@ -829,6 +984,7 @@ class AgentCoreClient:
                     print(f"[DEBUG] Non-data line: {repr(line)}")
         
         except Exception as e:
+<<<<<<< HEAD
             end_time = time.time()
             total_time = end_time - start_time
             error_msg = f"❌ SSE streaming error: {str(e)}"
@@ -847,27 +1003,43 @@ class AgentCoreClient:
         time_to_first_chunk = first_chunk_time - start_time if first_chunk_time else 0
         streaming_duration = last_chunk_time - first_chunk_time if first_chunk_time and last_chunk_time else 0
         
+=======
+            error_msg = f"❌ SSE streaming error: {str(e)}"
+            if self.debug:
+                print(f"\n[DEBUG] SSE STREAMING ERROR: {error_msg}")
+                print("="*80)
+            else:
+                print(f"\n{error_msg}")
+            content.append(error_msg)
+        
+>>>>>>> origin/main
         if self.debug:
             print(f"\n[DEBUG] SSE STREAMING COMPLETE:")
             print(f"[DEBUG] Total lines processed: {line_count}")
             print(f"[DEBUG] Content chunks collected: {len(content)}")
             print(f"[DEBUG] Final content: {repr(''.join(content))}")
+<<<<<<< HEAD
             print(f"[DEBUG] TIMING BREAKDOWN:")
             print(f"[DEBUG]   Total time: {total_time:.3f}s")
             print(f"[DEBUG]   Time to first response: {first_response_time - start_time:.3f}s")
             print(f"[DEBUG]   Time to first chunk: {time_to_first_chunk:.3f}s")
             print(f"[DEBUG]   Streaming duration: {streaming_duration:.3f}s")
+=======
+>>>>>>> origin/main
             print("="*80)
             print(f"🤖 {agent_type.upper()}: {''.join(content)}")
         else:
             print()  # New line after streaming is complete
         
+<<<<<<< HEAD
         # Show timing information (always show, not just in debug mode)
         if content:
             print(f"⏱️  Response time: {total_time:.3f}s (first chunk: {time_to_first_chunk:.3f}s, streaming: {streaming_duration:.3f}s)")
         else:
             print(f"⏱️  Response time: {total_time:.3f}s (no content received)")
         
+=======
+>>>>>>> origin/main
         return ''.join(content)
     
     def _extract_text_from_sse_data(self, data: str, agent_type: str) -> str:
@@ -955,6 +1127,7 @@ def main():
     parser.add_argument("--token", help="Okta JWT token (if not provided, will prompt)")
     parser.add_argument("--message", help="Message to send (if not provided, enters interactive mode)")
     parser.add_argument("--interactive", action="store_true", help="Force interactive mode with runtime selection")
+<<<<<<< HEAD
     parser.add_argument("--debug", action="store_true", help="Enable debug logging (shows ARNs and detailed requests/responses)")
     parser.add_argument("--local", action="store_true", help="Local testing mode - connect to localhost:8080 without authentication")
     
@@ -968,6 +1141,20 @@ def main():
         return
     
     # Command-line mode with all parameters provided (non-local mode)
+=======
+    parser.add_argument("--debug", action="store_true", help="Enable debug logging to show raw requests/responses")
+    
+    args = parser.parse_args()
+    
+    client = AgentCoreClient(debug=args.debug)
+    
+    # If interactive mode or missing parameters, use the full interactive experience
+    if args.interactive or (not args.agent or not args.token):
+        client.run_interactive_mode()
+        return
+    
+    # Command-line mode with all parameters provided
+>>>>>>> origin/main
     if args.message:
         # Single message mode
         try:
@@ -982,8 +1169,12 @@ def main():
         client.session_token = args.token
         client.selected_runtime = args.agent
         
+<<<<<<< HEAD
         mode_text = "Local Testing" if args.local else "AgentCore Chatbot Client"
         print(f"🤖 {mode_text} - {args.agent.upper()} Agent")
+=======
+        print(f"🤖 AgentCore Chatbot Client - {args.agent.upper()} Agent")
+>>>>>>> origin/main
         print("Type 'quit' or 'exit' to stop")
         print("=" * 50)
         

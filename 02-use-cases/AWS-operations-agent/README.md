@@ -10,6 +10,7 @@ An AWS support conversational AI system built on Amazon Bedrock AgentCore, featu
 
 ## Architecture Overview
 
+<<<<<<< HEAD
 ### High-Level Architecture
 
 ![AWS Support Agent High-Level Architecture](images/architecture-2.jpg)
@@ -44,6 +45,27 @@ The system follows a secure, distributed architecture:
 - 🛠️ **20+ AWS Tools**: Comprehensive read-only operations across AWS services
 - 📊 **Production Ready**: Complete deployment automation and infrastructure management
 
+=======
+![AWS Support Agent Architecture](images/architecture.jpg)
+
+The system follows a secure, distributed architecture:
+
+1. **Chat Client** authenticates users via Okta OAuth2 and sends questions with JWT tokens
+2. **AgentCore Runtime** validates tokens, processes conversations, and maintains session memory
+3. **AgentCore Gateway** provides secure tool access through MCP protocol
+4. **AWS Lambda Target** executes AWS service operations with proper authentication
+5. **AgentCore Identity** manages workload authentication and token exchange
+
+## Key Features
+
+- 🔐 **Enterprise Authentication**: Okta OAuth2 with JWT token validation
+- 🤖 **Dual Agent Architecture**: Both FastAPI (DIY) and BedrockAgentCoreApp (SDK) implementations
+- 🧠 **Conversation Memory**: Persistent session storage with AgentCore Memory
+- 🔗 **MCP Integration**: Standardized tool communication protocol
+- 🛠️ **20+ AWS Tools**: Comprehensive read-only operations across AWS services
+- 📊 **Production Ready**: Complete deployment automation and infrastructure management
+
+>>>>>>> origin/main
 ## Project Structure
 
 ```
@@ -178,6 +200,7 @@ cd agentcore-runtime/deployment
 
 ### 3. Test the System
 
+<<<<<<< HEAD
 #### Interactive Chat Client with Local Containers
 
 ```bash
@@ -250,6 +273,70 @@ Enter choice (1 for DIY, 2 for SDK):
 ```
 
 
+=======
+#### Run Local Test Scripts
+```bash
+# Test local agent functionality
+cd agentcore-runtime/tests/local
+./test-diy-simple.sh    # Tests DIY agent with local tools
+./test-sdk-mcp.sh       # Tests SDK agent with MCP gateway integration
+```
+
+#### Test with Direct curl Commands
+
+**DIY Agent (Port 8080):**
+```bash
+# Start DIY agent
+cd agentcore-runtime/tests/local && ./test-diy-simple.sh
+
+# Test with curl (returns SSE stream)
+curl -X POST http://localhost:8080/invocations \
+  -H "Content-Type: application/json" \
+  -d '{
+    "prompt": "What time is it?",
+    "session_id": "test-session-123",
+    "actor_id": "user"
+  }'
+
+# Extract just the text response
+curl -s -X POST http://localhost:8080/invocations \
+  -H "Content-Type: application/json" \
+  -d '{"prompt": "Hello!", "session_id": "demo", "actor_id": "user"}' \
+  | grep '"type":"text_delta"' \
+  | sed 's/.*"content": *"\([^"]*\)".*/\1/' \
+  | tr -d '\n'
+
+# Health check
+curl http://localhost:8080/ping
+# Returns: {"status":"healthy","agent_type":"diy"}
+```
+
+**SDK Agent (Port 8081):**
+```bash
+# Start SDK agent
+cd agentcore-runtime/tests/local && ./test-sdk-mcp.sh
+
+# Test with curl (returns different SSE format)
+curl -X POST http://localhost:8081/invocations \
+  -H "Content-Type: application/json" \
+  -d '{
+    "prompt": "What time is it?",
+    "session_id": "test-session-456",
+    "actor_id": "user"
+  }'
+
+# Health check
+curl http://localhost:8081/ping
+# Returns: {"status":"Healthy","time_of_last_update":1753954747}
+```
+
+#### Use the Interactive Chat Client
+```bash
+cd chatbot-client/src
+python client.py
+```
+
+>>>>>>> origin/main
 ## Component Details
 
 ### Agent Implementations
@@ -316,6 +403,26 @@ The `shared/config_manager.py` provides:
 - Validation and error handling
 - Backward compatibility
 
+<<<<<<< HEAD
+=======
+## Development
+
+### Local Testing
+
+```bash
+# Test agents locally without full deployment
+cd agentcore-runtime/tests/local
+
+# Test DIY agent with simple conversation
+./test-diy-simple.sh
+
+# Test SDK agent with MCP tools
+./test-sdk-mcp.sh
+
+# Test MCP gateway functionality
+./test-diy-ec2-mcp.sh
+```
+>>>>>>> origin/main
 
 ### Container Development
 
@@ -332,6 +439,7 @@ Both agents follow a standardized container structure:
 └── requirements.txt
 ```
 
+<<<<<<< HEAD
 ### Local Container Scripts
 
 The following scripts provide easy local testing with full containerization:
@@ -345,6 +453,8 @@ These containers include:
 - Complete agent functionality without AWS deployment
 - Isolated testing environment
 
+=======
+>>>>>>> origin/main
 ### Adding New Tools
 
 1. **Define tool schema** in `config/static-config.yaml`
