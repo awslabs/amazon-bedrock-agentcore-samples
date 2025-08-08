@@ -23,8 +23,8 @@ PRIVATE_IP=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" \
 # Start with SSL certificates
 ./scripts/start_demo_backend.sh \
   --host $PRIVATE_IP \
-  --ssl-keyfile /etc/ssl/private/privkey.pem \
-  --ssl-certfile /etc/ssl/certs/fullchain.pem
+  --ssl-keyfile /opt/ssl/privkey.pem \
+  --ssl-certfile /opt/ssl/fullchain.pem
 
 # Alternative: Start without SSL (testing only - not compatible with AgentCore Gateway)
 # ./scripts/start_demo_backend.sh --host 0.0.0.0

@@ -48,5 +48,5 @@ global_tools:
 
 # Gateway configuration
 gateway:
-  uri: "https://your-agentcore-gateway-endpoint.gateway.bedrock-agentcore.us-east-1.amazonaws.com"
+  uri: "https://sre-gateway-i7ge1zayhw.gateway.bedrock-agentcore.us-east-1.amazonaws.com"
 

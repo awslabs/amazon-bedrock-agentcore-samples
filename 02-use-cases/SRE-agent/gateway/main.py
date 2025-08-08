@@ -12,7 +12,7 @@ import json
 import logging
 import time
 from pathlib import Path
-from typing import Dict, Any
+from typing import Any, Dict
 
 import boto3
 from botocore.config import Config
@@ -584,7 +584,7 @@ def main():
     existing_gateway_id = _check_gateway_exists(client, args.gateway_name)
     if existing_gateway_id:
         if args.delete_gateway_if_exists:
-            logging.info(f"Deleting existing gateway before creating new one")
+            logging.info("Deleting existing gateway before creating new one")
             _delete_gateway(client, existing_gateway_id)
         else:
             logging.warning(
@@ -595,7 +595,7 @@ def main():
             )
             print(f"❌ Gateway '{args.gateway_name}' already exists")
             print(f"   Gateway ID: {existing_gateway_id}")
-            print(f"   Use --delete-gateway-if-exists flag to delete and recreate")
+            print("   Use --delete-gateway-if-exists flag to delete and recreate")
             exit(1)
 
     # Create gateway
@@ -667,14 +667,14 @@ def main():
                 s3_uri.split("/")[-1].replace(".yaml", "").replace(".json", "")
             )
             if not target_name or target_name == s3_uri:
-                target_name = f"target-{i+1}"
+                target_name = f"target-{i + 1}"
 
             # Replace underscores with hyphens to meet AWS naming requirements
             # AWS requires: ([0-9a-zA-Z][-]?){1,100}
             target_name = target_name.replace("_", "-")
 
             logging.info(
-                f"Creating S3 OpenAPI target {i+1}/{len(s3_uris)}: {target_name}"
+                f"Creating S3 OpenAPI target {i + 1}/{len(s3_uris)}: {target_name}"
             )
             s3_response = create_s3_target(
                 client=client,
@@ -687,7 +687,7 @@ def main():
             s3_responses.append(s3_response)
 
             if args.output_json:
-                print(f"\nS3 Target {i+1} Creation:")
+                print(f"\nS3 Target {i + 1} Creation:")
                 print(json.dumps(s3_response, indent=2, default=str))
 
         if not args.output_json:

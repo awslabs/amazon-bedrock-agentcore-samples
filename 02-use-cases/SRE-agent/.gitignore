@@ -75,10 +75,16 @@ Thumbs.db
 .conversation_state.json
 .langgraph_conversation_state.json
 .multi_agent_conversation_state.json
+.memory_id
 *.log
 logs/
-reports/*.md
-!reports/README.md
+reports/
+
+# Generated OpenAPI specifications (generated from templates)
+backend/openapi_specs/k8s_api.yaml
+backend/openapi_specs/logs_api.yaml
+backend/openapi_specs/metrics_api.yaml
+backend/openapi_specs/runbooks_api.yaml
 
 # Generated OpenAPI specifications (generated from templates)
 backend/openapi_specs/k8s_api.yaml
@@ -101,7 +107,7 @@ deployment/.cognito_config
 *.temp
 
 # Scratchpad and notes
-.scratchpad.md
+.scratchpad/
 docs/agentic-ai-architecture-assessment.md
 
 # Deployment artifacts

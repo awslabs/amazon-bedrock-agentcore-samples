@@ -14,6 +14,7 @@ from .agent_nodes import (
     create_runbooks_agent,
 )
 from .agent_state import AgentState
+from .constants import SREConstants
 from .supervisor import SupervisorAgent
 
 # Configure logging with basicConfig
@@ -49,12 +50,17 @@ def _route_supervisor(state: AgentState) -> str:
     if next_agent == "FINISH":
         return "aggregate"
 
-    # Map to actual node names
+    # Map to actual node names - handle both old short names and new full names
     agent_map = {
         "kubernetes": "kubernetes_agent",
         "logs": "logs_agent",
         "metrics": "metrics_agent",
         "runbooks": "runbooks_agent",
+        # Also handle the new full names directly
+        "kubernetes_agent": "kubernetes_agent",
+        "logs_agent": "logs_agent",
+        "metrics_agent": "metrics_agent",
+        "runbooks_agent": "runbooks_agent",
     }
 
     return agent_map.get(next_agent, "aggregate")
@@ -81,13 +87,17 @@ async def _prepare_initial_state(state: AgentState) -> Dict[str, Any]:
 
 
 def build_multi_agent_graph(
-    tools: List[BaseTool], llm_provider: str = "bedrock", **llm_kwargs
+    tools: List[BaseTool],
+    llm_provider: str = "bedrock",
+    force_delete_memory: bool = False,
+    **llm_kwargs,
 ) -> StateGraph:
     """Build the multi-agent collaboration graph.
 
     Args:
         tools: List of all available tools
         llm_provider: LLM provider to use
+        force_delete_memory: Whether to force delete existing memory
         **llm_kwargs: Additional arguments for LLM
 
     Returns:
@@ -99,16 +109,34 @@ def build_multi_agent_graph(
     workflow = StateGraph(AgentState)
 
     # Create supervisor
-    supervisor = SupervisorAgent(llm_provider=llm_provider, **llm_kwargs)
-
-    # Create agent nodes with filtered tools
-    kubernetes_agent = create_kubernetes_agent(
-        tools, llm_provider=llm_provider, **llm_kwargs
+    supervisor = SupervisorAgent(
+        llm_provider=llm_provider, force_delete_memory=force_delete_memory, **llm_kwargs
     )
-    logs_agent = create_logs_agent(tools, llm_provider=llm_provider, **llm_kwargs)
-    metrics_agent = create_metrics_agent(tools, llm_provider=llm_provider, **llm_kwargs)
+
+    # Create agent nodes with filtered tools and metadata from constants
+    kubernetes_agent = create_kubernetes_agent(
+        tools,
+        agent_metadata=SREConstants.agents.agents["kubernetes"],
+        llm_provider=llm_provider,
+        **llm_kwargs,
+    )
+    logs_agent = create_logs_agent(
+        tools,
+        agent_metadata=SREConstants.agents.agents["logs"],
+        llm_provider=llm_provider,
+        **llm_kwargs,
+    )
+    metrics_agent = create_metrics_agent(
+        tools,
+        agent_metadata=SREConstants.agents.agents["metrics"],
+        llm_provider=llm_provider,
+        **llm_kwargs,
+    )
     runbooks_agent = create_runbooks_agent(
-        tools, llm_provider=llm_provider, **llm_kwargs
+        tools,
+        agent_metadata=SREConstants.agents.agents["runbooks"],
+        llm_provider=llm_provider,
+        **llm_kwargs,
     )
 
     # Add nodes to the graph

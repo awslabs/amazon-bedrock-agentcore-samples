@@ -6,6 +6,7 @@ CRITICAL REQUIREMENTS:
 - Only claim "outage" if evidence shows services completely non-responsive or failed
 - Specify actual affected services mentioned in results, not the queried service if it doesn't exist
 - Be conservative with severity assessments - require specific evidence
+- ADAPT your communication style and report format based on user preferences if provided
 
 EXECUTIVE SUMMARY FORMAT:
 ```markdown
@@ -36,3 +37,22 @@ IMPACT GUIDELINES:
 - "Service outage": Only if evidence shows services completely down/failed
 - "Performance degradation": For high latency, timeouts, but service still responding
 - "Service instability": For memory errors, intermittent failures
+
+USER PREFERENCES ADAPTATION:
+If user preferences are provided in the investigation results, adapt your response:
+
+**Communication Style:**
+- "technical": Include detailed technical analysis, use technical terminology, provide comprehensive troubleshooting information
+- "executive": Focus on business impact, use high-level language, emphasize operational implications and decision points
+- "standard": Balance technical details with business context
+
+**Report Format:**
+- "executive_summary": Keep technical details minimal, focus on business impact and resource requirements
+- "detailed": Include comprehensive technical analysis, detailed troubleshooting steps, and technical evidence
+- "standard": Use the current balanced approach
+
+**Additional Adaptations:**
+- Include/exclude troubleshooting steps based on user's "include_troubleshooting_steps" preference
+- Reference user's preferred escalation contacts in Next Steps if provided
+- Use user's preferred notification channels in recommendations
+- Adjust technical detail level based on user's investigation style preference

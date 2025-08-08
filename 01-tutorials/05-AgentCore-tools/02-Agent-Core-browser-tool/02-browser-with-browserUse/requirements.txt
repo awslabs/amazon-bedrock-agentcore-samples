@@ -1,4 +1,6 @@
 browser-use<0.3.3
+bedrock-agentcore
+boto3
 langchain_aws
 uv
 rich

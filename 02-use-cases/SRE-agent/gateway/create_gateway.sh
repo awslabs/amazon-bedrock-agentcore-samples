@@ -57,8 +57,11 @@ GATEWAY_DESCRIPTION=$(get_config "gateway_description")
 TARGET_DESCRIPTION=$(get_config "target_description")
 CREDENTIAL_PROVIDER_NAME=$(get_config "credential_provider_name")
 
-# Construct derived values
-DISCOVERY_URL="https://cognito-idp.${REGION}.amazonaws.com/${USER_POOL_ID}/.well-known/openid-configuration"
+# Extract Cognito region from User Pool ID (format: region_poolId)
+COGNITO_REGION=$(echo "$USER_POOL_ID" | cut -d'_' -f1)
+
+# Construct derived values using Cognito region instead of AWS region
+DISCOVERY_URL="https://cognito-idp.${COGNITO_REGION}.amazonaws.com/${USER_POOL_ID}/.well-known/openid-configuration"
 
 # Define API schema filenames
 API_SCHEMAS=(

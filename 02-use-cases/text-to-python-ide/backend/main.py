@@ -760,15 +760,15 @@ def get_extended_botocore_config():
 
 @lru_cache(maxsize=3)
 def create_bedrock_model_with_fallback(aws_region: str):
-    """Create BedrockModel with Claude Sonnet 4 primary and Nova Premier fallback using inference profiles - cached"""
+    """Create BedrockModel with Claude Sonnet 3.7 primary and Nova Premier fallback using inference profiles - cached"""
     
     cache_key = f"model_{aws_region}"
     if cache_key in _model_cache:
         print(f"✅ Using cached model for region {aws_region}")
         return _model_cache[cache_key]
     
-    # Primary model: Claude Sonnet 4 (Inference Profile)
-    primary_model_id = "us.anthropic.claude-sonnet-4-20250514-v1:0"
+    # Primary model: Claude Sonnet 3.7 (Inference Profile)
+    primary_model_id = "us.anthropic.claude-3-7-sonnet-20250219-v1:0"
     fallback_model_id = "us.amazon.nova-premier-v1:0"
     default_model_id = "anthropic.claude-3-5-sonnet-20241022-v2:0"
     

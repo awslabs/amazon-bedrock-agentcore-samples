@@ -7,16 +7,16 @@ from datetime import datetime, timezone
 from typing import Any, Dict
 
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
 from langchain_core.messages import HumanMessage
 from langchain_core.tools import BaseTool
+from pydantic import BaseModel
 
-from .multi_agent_langgraph import create_multi_agent_system
 from .agent_state import AgentState
 from .constants import SREConstants
 
 # Import logging config
 from .logging_config import configure_logging
+from .multi_agent_langgraph import create_multi_agent_system
 
 # Configure logging based on DEBUG environment variable
 # This ensures debug mode works even when not run via __main__
@@ -25,8 +25,21 @@ if not logging.getLogger().handlers:
     debug_from_env = os.getenv("DEBUG", "false").lower() in ("true", "1", "yes")
     configure_logging(debug_from_env)
 
-# Disable uvicorn access logs for /ping endpoint
-logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
+
+# Custom filter to exclude /ping endpoint logs
+class PingEndpointFilter(logging.Filter):
+    def filter(self, record):
+        # Filter out GET /ping requests from access logs
+        if hasattr(record, "getMessage"):
+            message = record.getMessage()
+            if '"GET /ping HTTP/' in message:
+                return False
+        return True
+
+
+# Configure uvicorn access logger to filter out ping requests
+uvicorn_logger = logging.getLogger("uvicorn.access")
+uvicorn_logger.addFilter(PingEndpointFilter())
 
 logger = logging.getLogger(__name__)
 
@@ -78,13 +91,13 @@ async def initialize_agent():
         )
 
     except Exception as e:
-        from .llm_utils import LLMAuthenticationError, LLMAccessError, LLMProviderError
+        from .llm_utils import LLMAccessError, LLMAuthenticationError, LLMProviderError
 
         if isinstance(e, (LLMAuthenticationError, LLMAccessError, LLMProviderError)):
             logger.error(f"LLM Provider Error: {e}")
             print(f"\n❌ {type(e).__name__}:")
             print(str(e))
-            print(f"\n💡 Set LLM_PROVIDER environment variable to switch providers:")
+            print("\n💡 Set LLM_PROVIDER environment variable to switch providers:")
             other_provider = "anthropic" if provider == "bedrock" else "bedrock"
             print(f"   export LLM_PROVIDER={other_provider}")
         else:
@@ -119,6 +132,12 @@ async def invoke_agent(request: InvocationRequest):
 
         logger.info(f"Processing query: {user_prompt}")
 
+        # Extract session_id and user_id from request
+        session_id = request.input.get("session_id", "")
+        user_id = request.input.get("user_id", "default_user")
+
+        logger.info(f"Session ID: {session_id}, User ID: {user_id}")
+
         # Create initial state exactly like the CLI does
         initial_state: AgentState = {
             "messages": [HumanMessage(content=user_prompt)],
@@ -130,6 +149,8 @@ async def invoke_agent(request: InvocationRequest):
             "agents_invoked": [],
             "final_response": None,
             "auto_approve_plan": True,  # Always auto-approve plans in runtime mode
+            "session_id": session_id,  # Required for memory retrieval
+            "user_id": user_id,  # Required for user personalization
         }
 
         # Process through the agent graph exactly like the CLI
@@ -257,6 +278,7 @@ def invoke_sre_agent(prompt: str, provider: str = "anthropic") -> str:
 
 if __name__ == "__main__":
     import argparse
+
     import uvicorn
 
     parser = argparse.ArgumentParser(description="SRE Agent Runtime")

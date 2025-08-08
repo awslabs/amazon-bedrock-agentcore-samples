@@ -12,7 +12,6 @@ from types import FrameType
 from typing import TYPE_CHECKING, List, Optional, Sequence, Set, Tuple, Union
 
 import click
-
 from uvicorn.config import Config
 
 if TYPE_CHECKING:

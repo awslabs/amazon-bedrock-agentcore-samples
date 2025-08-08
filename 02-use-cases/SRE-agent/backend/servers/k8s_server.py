@@ -1,20 +1,18 @@
 import json
 import logging
 from datetime import datetime, timezone
+from enum import Enum
 from pathlib import Path
-from typing import Optional, List
+from typing import List, Optional
 
 from fastapi import (
+    Depends,
     FastAPI,
-    Query,
     Header,
     HTTPException,
-    Depends,
+    Query,
 )
 from pydantic import BaseModel, Field
-from enum import Enum
-from fastapi.responses import JSONResponse
-
 from retrieve_api_key import retrieve_api_key
 
 # Configure logging with basicConfig
@@ -471,10 +469,11 @@ async def health_check(api_key: str = Depends(_validate_api_key)):
 
 
 if __name__ == "__main__":
-    import uvicorn
-    import sys
     import argparse
+    import sys
     from pathlib import Path
+
+    import uvicorn
 
     # Add parent directory to path to import config_utils
     sys.path.append(str(Path(__file__).parent.parent))

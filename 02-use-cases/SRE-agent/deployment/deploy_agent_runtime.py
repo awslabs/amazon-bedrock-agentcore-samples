@@ -1,14 +1,18 @@
 #!/usr/bin/env python3
 
 import argparse
-import boto3
 import json
 import logging
 import os
 import time
 from pathlib import Path
-from dotenv import load_dotenv
+
+import boto3
 from botocore.exceptions import ClientError
+from dotenv import load_dotenv
+
+# Configuration constants
+DELETION_WAIT_TIME = 150  # seconds to wait after runtime deletion before recreating
 
 # Configure logging with basicConfig
 logging.basicConfig(
@@ -129,7 +133,7 @@ def _create_agent_runtime(
             environmentVariables=env_vars,
         )
 
-        logging.info(f"Agent Runtime created successfully!")
+        logging.info("Agent Runtime created successfully!")
         logging.info(f"Agent Runtime ARN: {response['agentRuntimeArn']}")
         logging.info(f"Status: {response['status']}")
         _write_agent_arn_to_file(response["agentRuntimeArn"])
@@ -169,22 +173,47 @@ def _create_agent_runtime(
             return
 
         # Wait for deletion to complete
-        logging.info("Waiting 10 seconds for deletion to complete...")
-        time.sleep(10)
+        logging.info(
+            f"Waiting {DELETION_WAIT_TIME} seconds for deletion to complete..."
+        )
+        time.sleep(DELETION_WAIT_TIME)
 
         # Recreate the runtime after successful deletion
         logging.info("Attempting to recreate agent runtime...")
-        response = client.create_agent_runtime(
-            agentRuntimeName=runtime_name,
-            agentRuntimeArtifact={
-                "containerConfiguration": {"containerUri": container_uri}
-            },
-            networkConfiguration={"networkMode": "PUBLIC"},
-            roleArn=role_arn,
-            environmentVariables=env_vars,
-        )
+        try:
+            response = client.create_agent_runtime(
+                agentRuntimeName=runtime_name,
+                agentRuntimeArtifact={
+                    "containerConfiguration": {"containerUri": container_uri}
+                },
+                networkConfiguration={"networkMode": "PUBLIC"},
+                roleArn=role_arn,
+                environmentVariables=env_vars,
+            )
+        except ClientError as e:
+            if e.response["Error"]["Code"] == "ConflictException":
+                logging.error("\n" + "=" * 70)
+                logging.error("⚠️  AGENT NAME CONFLICT - AWS CLEANUP STILL IN PROGRESS")
+                logging.error("=" * 70)
+                logging.error(
+                    f"Even after waiting {DELETION_WAIT_TIME} seconds, the agent name"
+                )
+                logging.error(f"'{runtime_name}' is still not available.")
+                logging.error("")
+                logging.error(
+                    "This is an AWS internal cleanup delay. Please try one of:"
+                )
+                logging.error("1. Wait 1-2 more minutes and run the script again")
+                logging.error("2. Use a different agent name (e.g., add a timestamp)")
+                logging.error(f"   ./deployment/build_and_deploy.sh {runtime_name}_v2")
+                logging.error("=" * 70)
+                print(
+                    "\n⚠️  Please wait 1-2 minutes for AWS to complete agent deletion,"
+                )
+                print("   then try running the deployment script again.")
+            raise
 
-        logging.info(f"Agent Runtime recreated successfully!")
+        logging.info("Agent Runtime recreated successfully!")
         logging.info(f"Agent Runtime ARN: {response['agentRuntimeArn']}")
         logging.info(f"Status: {response['status']}")
         _write_agent_arn_to_file(response["agentRuntimeArn"])

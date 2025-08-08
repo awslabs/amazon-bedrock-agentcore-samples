@@ -4,15 +4,16 @@ from pathlib import Path
 from typing import Optional
 
 from fastapi import (
+    Depends,
     FastAPI,
-    Query,
-    Path as PathParam,
     Header,
     HTTPException,
-    Depends,
+    Query,
+)
+from fastapi import (
+    Path as PathParam,
 )
 from fastapi.responses import JSONResponse
-
 from retrieve_api_key import retrieve_api_key
 
 # Configure logging with basicConfig
@@ -110,12 +111,12 @@ async def search_runbooks(
         )
         for i, runbook in enumerate(runbooks):
             logging.info(
-                f"  📖 Runbook {i+1}: {runbook.get('title', 'No title')} (ID: {runbook.get('id', 'No ID')})"
+                f"  📖 Runbook {i + 1}: {runbook.get('title', 'No title')} (ID: {runbook.get('id', 'No ID')})"
             )
             steps = runbook.get("steps", [])
             logging.info(f"     Steps count: {len(steps)}")
             for j, step in enumerate(steps[:3]):  # Show first 3 steps for brevity
-                logging.info(f"     Step {j+1}: {step}")
+                logging.info(f"     Step {j + 1}: {step}")
             if len(steps) > 3:
                 logging.info(f"     ... and {len(steps) - 3} more steps")
 
@@ -152,7 +153,7 @@ async def get_incident_playbook(
                 steps = playbook.get("steps", [])
                 logging.info(f"📝 RUNBOOKS API: Playbook has {len(steps)} steps:")
                 for i, step in enumerate(steps):
-                    logging.info(f"   Step {i+1}: {step}")
+                    logging.info(f"   Step {i + 1}: {step}")
 
                 logging.info(
                     f"📤 RUNBOOKS API: Returning complete playbook data: {json.dumps(playbook, indent=2)}"
@@ -213,12 +214,12 @@ async def get_troubleshooting_guide(
         )
         for i, guide in enumerate(guides):
             logging.info(
-                f"  📖 Guide {i+1}: {guide.get('title', 'No title')} (ID: {guide.get('id', 'No ID')})"
+                f"  📖 Guide {i + 1}: {guide.get('title', 'No title')} (ID: {guide.get('id', 'No ID')})"
             )
             steps = guide.get("steps", [])
             logging.info(f"     Steps count: {len(steps)}")
             for j, step in enumerate(steps[:3]):  # Show first 3 steps for brevity
-                logging.info(f"     Step {j+1}: {step}")
+                logging.info(f"     Step {j + 1}: {step}")
             if len(steps) > 3:
                 logging.info(f"     ... and {len(steps) - 3} more steps")
 
@@ -318,12 +319,12 @@ async def get_common_resolutions(
         )
         for i, resolution in enumerate(matching_resolutions):
             logging.info(
-                f"  📖 Resolution {i+1}: {resolution.get('issue', 'No issue title')} (ID: {resolution.get('id', 'No ID')})"
+                f"  📖 Resolution {i + 1}: {resolution.get('issue', 'No issue title')} (ID: {resolution.get('id', 'No ID')})"
             )
             steps = resolution.get("steps", [])
             logging.info(f"     Steps count: {len(steps)}")
             for j, step in enumerate(steps[:3]):  # Show first 3 steps for brevity
-                logging.info(f"     Step {j+1}: {step}")
+                logging.info(f"     Step {j + 1}: {step}")
             if len(steps) > 3:
                 logging.info(f"     ... and {len(steps) - 3} more steps")
 
@@ -343,10 +344,11 @@ async def health_check(api_key: str = Depends(_validate_api_key)):
 
 
 if __name__ == "__main__":
-    import uvicorn
-    import sys
     import argparse
+    import sys
     from pathlib import Path
+
+    import uvicorn
 
     # Add parent directory to path to import config_utils
     sys.path.append(str(Path(__file__).parent.parent))

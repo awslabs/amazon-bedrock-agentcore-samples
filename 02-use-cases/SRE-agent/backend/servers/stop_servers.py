@@ -1,6 +1,6 @@
 import logging
 import subprocess
-import sys
+
 from config_utils import get_server_ports
 
 # Configure logging with basicConfig

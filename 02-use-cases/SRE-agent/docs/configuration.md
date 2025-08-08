@@ -1,5 +1,42 @@
 # Configuration
 
+This document provides a comprehensive overview of all configuration files used in the SRE Agent system. Configuration files are organized across different directories based on their purpose and scope.
+
+## Configuration Files Overview
+
+| File Path | Type | Purpose | Manual Edit Required? | Auto-Generated? |
+|-----------|------|---------|----------------------|-----------------|
+| `sre_agent/.env` | ENV | SRE agent-specific settings | Yes | Yes (GATEWAY_ACCESS_TOKEN by [setup](../README.md#use-case-setup)) |
+| `gateway/.env` | ENV | Gateway authentication settings | Yes | No |
+| `gateway/config.yaml` | YAML | AgentCore Gateway configuration | Yes | Partially (provider_arn by [setup](../README.md#use-case-setup)) |
+| `deployment/.env` | ENV | Soft link to `sre_agent/.env` | No (uses sre_agent/.env) | N/A (symlink) |
+| `sre_agent/config/agent_config.yaml` | YAML | Agent-to-tool mapping configuration | No | Yes (gateway URI by [setup](../README.md#use-case-setup)) |
+| `scripts/user_config.yaml` | YAML | Script-specific user configuration | No | No |
+| `backend/openapi_specs/*.yaml` | YAML | OpenAPI specifications for tools | No | Yes (from templates by [setup](../README.md#use-case-setup)) |
+
+### Setup Instructions
+
+For files with `.example` versions:
+1. Copy the `.example` file to create the actual configuration file
+2. Edit the copied file with your environment-specific values
+3. Never commit the actual configuration files to version control
+
+```bash
+# Example setup commands
+cp sre_agent/.env.example sre_agent/.env
+cp gateway/.env.example gateway/.env
+cp gateway/config.yaml.example gateway/config.yaml
+```
+
+### Files Automatically Updated During Setup
+
+The following files are automatically modified by the setup scripts:
+
+1. **`sre_agent/.env`** - The `GATEWAY_ACCESS_TOKEN` is automatically appended
+2. **`sre_agent/config/agent_config.yaml`** - The `gateway.uri` field is updated with the created gateway URI
+3. **`gateway/config.yaml`** - The `provider_arn` field is updated when creating the credential provider
+4. **`backend/openapi_specs/*.yaml`** - Generated from templates with your backend domain
+
 ## Environment Variables
 
 The SRE Agent uses environment variables for sensitive configuration values. Create a `.env` file in the `sre_agent/` directory with the following required variables:
@@ -131,3 +168,54 @@ gateway_description: "AgentCore Gateway for API Integration"
 # Target Configuration
 target_description: "S3 target for OpenAPI schema"
 ```
+
+## Configuration File Details
+
+### SRE Agent `.env` File
+- **Location**: `sre_agent/.env`
+- **Purpose**: Agent-specific configuration separate from deployment settings
+- **Setup**: Copy from `sre_agent/.env.example` and customize
+- **Auto-Updates**: The setup script automatically adds `GATEWAY_ACCESS_TOKEN` to this file
+- **Note**: The agent looks for this file specifically in the `sre_agent/` directory
+
+### Gateway `.env` File
+- **Location**: `gateway/.env`
+- **Purpose**: Gateway authentication and backend API configuration
+- **Setup**: Copy from `gateway/.env.example` and customize
+- **Key Variables**: Backend API key for credential provider authentication
+
+### Deployment `.env` File
+- **Location**: `deployment/.env`
+- **Purpose**: Symbolic link to `sre_agent/.env`
+- **Setup**: No manual setup required - this is a soft link
+- **Note**: This symlink ensures deployment scripts use the same environment variables as the agent
+
+### Gateway Configuration (`config.yaml`)
+- **Location**: `gateway/config.yaml`
+- **Purpose**: AgentCore Gateway settings including AWS, Cognito, and S3 configuration
+- **Setup**: Copy from `config.yaml.example` and customize
+- **Auto-Updates**: The `create_gateway.sh` script automatically updates certain fields like `provider_arn`
+
+### Agent Configuration (`agent_config.yaml`)
+- **Location**: `sre_agent/config/agent_config.yaml`
+- **Purpose**: Defines agent-to-tool mappings and agent capabilities
+- **Setup**: Edit directly (no example file)
+- **Auto-Updates**: The setup script automatically updates the `gateway.uri` field with the created gateway URI
+- **Content**: Agent definitions, tool assignments, and global tool configurations
+
+### User Configuration File
+- **Location**: `scripts/user_config.yaml`
+- **Purpose**: User personas and preferences for memory-enhanced personalization
+- **Setup**: Edit directly to add or modify user personas
+- **Content**: Predefined user preferences (Alice: technical, Carol: executive)
+
+### OpenAPI Specifications
+- **Location**: `backend/openapi_specs/*.yaml`
+- **Purpose**: Define the API contracts for various backend services
+- **Files**:
+  - `k8s_api.yaml` - Kubernetes operations API
+  - `logs_api.yaml` - Log analysis API
+  - `metrics_api.yaml` - Metrics collection API
+  - `runbooks_api.yaml` - Runbook management API
+- **Auto-Generation**: These files are generated from templates during setup when you run `generate_specs.sh`
+- **Note**: Do not edit these directly - modify the templates instead

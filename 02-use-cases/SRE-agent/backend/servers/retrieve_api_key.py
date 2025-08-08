@@ -9,12 +9,11 @@ by fetching the Secrets Manager ARN and then retrieving the secret value.
 import argparse
 import json
 import logging
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
 
 import boto3
 from botocore.config import Config
 from botocore.exceptions import ClientError
-
 
 # Configure logging with basicConfig
 logging.basicConfig(
@@ -254,7 +253,7 @@ def main() -> None:
     )
 
     if api_key:
-        print(f"✅ Successfully retrieved API key")
+        print("✅ Successfully retrieved API key")
         print(f"📄 API Key: {api_key}")
     else:
         print("❌ Failed to retrieve API key")

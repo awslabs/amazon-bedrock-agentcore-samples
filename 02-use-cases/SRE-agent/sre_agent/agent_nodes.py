@@ -7,16 +7,14 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 import yaml
-from langchain_anthropic import ChatAnthropic
-from langchain_aws import ChatBedrock
-
-from .llm_utils import create_llm_with_error_handling
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.tools import BaseTool
 from langgraph.prebuilt import create_react_agent
 
 from .agent_state import AgentState
-from .constants import SREConstants
+from .constants import AgentMetadata
+from .llm_utils import create_llm_with_error_handling
+from .memory import SREMemoryClient, create_conversation_memory_manager
 from .prompt_loader import prompt_loader
 
 # Logging will be configured by the main entry point
@@ -58,6 +56,25 @@ def _filter_tools_for_agent(
             filtered_tools.append(tool)
 
     logger.info(f"Agent {agent_name} has access to {len(filtered_tools)} tools")
+
+    # Debug: Show which tools are being added to this agent
+    logger.info(f"Agent {agent_name} tool names:")
+    for tool in filtered_tools:
+        tool_name = getattr(tool, "name", "unknown")
+        tool_description = getattr(tool, "description", "No description")
+        # Extract just the first line of description for cleaner logging
+        description_first_line = (
+            tool_description.split("\n")[0].strip()
+            if tool_description
+            else "No description"
+        )
+        logger.info(f"  - {tool_name}: {description_first_line}")
+
+    # Debug: Show what was allowed vs what was available
+    logger.debug(f"Agent {agent_name} allowed tools: {allowed_tools}")
+    all_tool_names = [getattr(tool, "name", "unknown") for tool in all_tools]
+    logger.debug(f"Agent {agent_name} available tools: {all_tool_names}")
+
     return filtered_tools
 
 
@@ -70,14 +87,28 @@ class BaseAgentNode:
         description: str,
         tools: List[BaseTool],
         llm_provider: str = "bedrock",
+        agent_metadata: AgentMetadata = None,
         **llm_kwargs,
     ):
-        self.name = name
-        self.description = description
+        # Use agent_metadata if provided, otherwise fall back to individual parameters
+        if agent_metadata:
+            self.name = agent_metadata.display_name
+            self.description = agent_metadata.description
+            self.actor_id = agent_metadata.actor_id
+            self.agent_type = agent_metadata.agent_type
+        else:
+            # Backward compatibility - use provided name/description
+            self.name = name
+            self.description = description
+            self.actor_id = None  # No actor_id available in legacy mode
+            self.agent_type = "unknown"
+
         self.tools = tools
         self.llm_provider = llm_provider
 
-        logger.info(f"Initializing {name} with LLM provider: {llm_provider}")
+        logger.info(
+            f"Initializing {self.name} with LLM provider: {llm_provider}, actor_id: {self.actor_id}, tools: {[tool.name for tool in tools]}"
+        )
         self.llm = _create_llm(llm_provider, **llm_kwargs)
 
         # Create the react agent
@@ -101,7 +132,12 @@ class BaseAgentNode:
             return f"You are the {self.name}. {self.description}"
 
     def _get_agent_type(self) -> str:
-        """Determine agent type based on agent name."""
+        """Determine agent type based on agent metadata or fallback to name parsing."""
+        # Use agent_type from metadata if available
+        if hasattr(self, "agent_type") and self.agent_type != "unknown":
+            return self.agent_type
+
+        # Fallback to name-based detection for backward compatibility
         name_lower = self.name.lower()
 
         if "kubernetes" in name_lower:
@@ -135,6 +171,27 @@ class BaseAgentNode:
             all_messages = []
             agent_response = ""
 
+            # Initialize conversation memory manager for automatic message tracking
+            conversation_manager = None
+            user_id = state.get("user_id")
+            if user_id:
+                try:
+                    memory_client = SREMemoryClient()
+                    conversation_manager = create_conversation_memory_manager(
+                        memory_client
+                    )
+                    logger.info(
+                        f"{self.name} - Initialized conversation memory manager for user: {user_id}"
+                    )
+                except Exception as e:
+                    logger.warning(
+                        f"{self.name} - Failed to initialize conversation memory manager: {e}"
+                    )
+            else:
+                logger.info(
+                    f"{self.name} - No user_id found in state, skipping conversation memory"
+                )
+
             # Add system prompt and user prompt
             system_message = SystemMessage(content=self._get_system_prompt())
             user_message = HumanMessage(content=agent_prompt)
@@ -149,6 +206,9 @@ class BaseAgentNode:
                 async def execute_agent():
                     nonlocal agent_response  # Fix scope issue - allow access to outer variable
                     chunk_count = 0
+                    logger.info(
+                        f"{self.name} - Executing agent with {[system_message] + messages + [user_message]}"
+                    )
                     async for chunk in self.agent.astream(
                         {"messages": [system_message] + messages + [user_message]}
                     ):
@@ -238,6 +298,112 @@ class BaseAgentNode:
             if agent_response:
                 logger.info(f"{self.name} - Full response: {str(agent_response)}")
 
+            # Store conversation messages in memory after agent response
+            if conversation_manager and user_id and agent_response:
+                try:
+                    # Store the user query and agent response as conversation messages
+                    messages_to_store = [
+                        (agent_prompt, "USER"),
+                        (
+                            f"[Agent: {self.name}]\n{agent_response}",
+                            "ASSISTANT",
+                        ),  # Include agent name in message content
+                    ]
+
+                    # Also capture tool execution results as TOOL messages
+                    tool_names = []
+                    for msg in all_messages:
+                        if hasattr(msg, "tool_call_id") and hasattr(msg, "content"):
+                            tool_content = str(msg.content)[
+                                :500
+                            ]  # Limit tool message length
+                            tool_name = getattr(msg, "name", "unknown")
+                            tool_names.append(tool_name)
+                            messages_to_store.append(
+                                (
+                                    f"[Agent: {self.name}] [Tool: {tool_name}]\n{tool_content}",
+                                    "TOOL",
+                                )
+                            )
+
+                    # Count message types
+                    user_count = len([m for m in messages_to_store if m[1] == "USER"])
+                    assistant_count = len(
+                        [m for m in messages_to_store if m[1] == "ASSISTANT"]
+                    )
+                    tool_count = len([m for m in messages_to_store if m[1] == "TOOL"])
+
+                    # Log message breakdown before storing
+                    logger.info(
+                        f"{self.name} - Message breakdown: {user_count} USER, {assistant_count} ASSISTANT, {tool_count} TOOL messages"
+                    )
+                    if tool_names:
+                        logger.info(
+                            f"{self.name} - Tools called: {', '.join(tool_names)}"
+                        )
+                    else:
+                        logger.info(f"{self.name} - No tools called")
+
+                    # Store the conversation batch
+                    success = conversation_manager.store_conversation_batch(
+                        messages=messages_to_store,
+                        user_id=user_id,
+                        session_id=state.get("session_id"),  # Use session_id from state
+                        agent_name=self.name,
+                    )
+
+                    if success:
+                        logger.info(
+                            f"{self.name} - Successfully stored {len(messages_to_store)} conversation messages"
+                        )
+                    else:
+                        logger.warning(
+                            f"{self.name} - Failed to store conversation messages"
+                        )
+
+                except Exception as e:
+                    logger.error(
+                        f"{self.name} - Error storing conversation messages: {e}",
+                        exc_info=True,
+                    )
+
+            # Process agent response for pattern extraction and memory capture
+            if user_id and agent_response:
+                try:
+                    # Check if memory hooks are available through the memory client
+                    from .memory.hooks import MemoryHookProvider
+
+                    # Use the SREMemoryClient that's already imported at the top
+                    memory_client = SREMemoryClient()
+                    memory_hooks = MemoryHookProvider(memory_client)
+
+                    # Create response object for hooks
+                    response_obj = {
+                        "content": agent_response,
+                        "tool_calls": [
+                            {
+                                "name": getattr(msg, "name", "unknown"),
+                                "content": str(getattr(msg, "content", "")),
+                            }
+                            for msg in all_messages
+                            if hasattr(msg, "tool_call_id")
+                        ],
+                    }
+
+                    # Call on_agent_response hook to extract patterns
+                    memory_hooks.on_agent_response(
+                        agent_name=self.name, response=response_obj, state=state
+                    )
+
+                    logger.info(
+                        f"{self.name} - Processed agent response for memory pattern extraction"
+                    )
+
+                except Exception as e:
+                    logger.warning(
+                        f"{self.name} - Failed to process agent response for memory patterns: {e}"
+                    )
+
             # Update state with streaming info
             return {
                 "agent_results": {
@@ -263,53 +429,65 @@ class BaseAgentNode:
             }
 
 
-def create_kubernetes_agent(tools: List[BaseTool], **kwargs) -> BaseAgentNode:
+def create_kubernetes_agent(
+    tools: List[BaseTool], agent_metadata: AgentMetadata = None, **kwargs
+) -> BaseAgentNode:
     """Create Kubernetes infrastructure agent."""
     config = _load_agent_config()
     filtered_tools = _filter_tools_for_agent(tools, "kubernetes_agent", config)
 
     return BaseAgentNode(
-        name="Kubernetes Infrastructure Agent",
-        description="Manages Kubernetes cluster operations and monitoring",
+        name="Kubernetes Infrastructure Agent",  # Fallback for backward compatibility
+        description="Manages Kubernetes cluster operations and monitoring",  # Fallback
         tools=filtered_tools,
+        agent_metadata=agent_metadata,
         **kwargs,
     )
 
 
-def create_logs_agent(tools: List[BaseTool], **kwargs) -> BaseAgentNode:
+def create_logs_agent(
+    tools: List[BaseTool], agent_metadata: AgentMetadata = None, **kwargs
+) -> BaseAgentNode:
     """Create application logs agent."""
     config = _load_agent_config()
     filtered_tools = _filter_tools_for_agent(tools, "logs_agent", config)
 
     return BaseAgentNode(
-        name="Application Logs Agent",
-        description="Handles application log analysis and searching",
+        name="Application Logs Agent",  # Fallback for backward compatibility
+        description="Handles application log analysis and searching",  # Fallback
         tools=filtered_tools,
+        agent_metadata=agent_metadata,
         **kwargs,
     )
 
 
-def create_metrics_agent(tools: List[BaseTool], **kwargs) -> BaseAgentNode:
+def create_metrics_agent(
+    tools: List[BaseTool], agent_metadata: AgentMetadata = None, **kwargs
+) -> BaseAgentNode:
     """Create performance metrics agent."""
     config = _load_agent_config()
     filtered_tools = _filter_tools_for_agent(tools, "metrics_agent", config)
 
     return BaseAgentNode(
-        name="Performance Metrics Agent",
-        description="Provides application performance and resource metrics",
+        name="Performance Metrics Agent",  # Fallback for backward compatibility
+        description="Provides application performance and resource metrics",  # Fallback
         tools=filtered_tools,
+        agent_metadata=agent_metadata,
         **kwargs,
     )
 
 
-def create_runbooks_agent(tools: List[BaseTool], **kwargs) -> BaseAgentNode:
+def create_runbooks_agent(
+    tools: List[BaseTool], agent_metadata: AgentMetadata = None, **kwargs
+) -> BaseAgentNode:
     """Create operational runbooks agent."""
     config = _load_agent_config()
     filtered_tools = _filter_tools_for_agent(tools, "runbooks_agent", config)
 
     return BaseAgentNode(
-        name="Operational Runbooks Agent",
-        description="Provides operational procedures and troubleshooting guides",
+        name="Operational Runbooks Agent",  # Fallback for backward compatibility
+        description="Provides operational procedures and troubleshooting guides",  # Fallback
         tools=filtered_tools,
+        agent_metadata=agent_metadata,
         **kwargs,
     )

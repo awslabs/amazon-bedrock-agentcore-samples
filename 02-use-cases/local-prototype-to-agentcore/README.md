@@ -1,6 +1,7 @@
 # From Prototype to Production: Agentic Applications with AWS Bedrock AgentCore
-> [!CAUTION]
-> This sample is for experimental and educational purposes only. They demonstrate concepts and techniques but are not intended for direct use in production environments. Make sure to have Amazon Bedrock Guardrails in place to protect against [prompt injection](https://docs.aws.amazon.com/bedrock/latest/userguide/prompt-injection.html). 
+
+> [!IMPORTANT]
+> This sample is for experimental and educational purposes only. They demonstrate concepts and techniques but are not intended for direct use in production environments.
 
 **Important:**
 - This application **is not intended** for direct use in production environments.

@@ -581,6 +581,7 @@ def create_gateway_lambda(lambda_function_code_path) -> dict[str, int]:
         )
 
         print(f"Role '{role_name}' created successfully: {role_arn}")
+        time.sleep(100)
     except botocore.exceptions.ClientError as error:
         if error.response['Error']['Code'] == "EntityAlreadyExists":
             response = iam_client.get_role(RoleName=role_name)

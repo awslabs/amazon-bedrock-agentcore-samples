@@ -99,6 +99,6 @@ If the tool running in AgentCore Gateway needs to access external resources, OAu
 
 In these tutorials we will cover the following functionality:
 
-- [Transform your OpenAPIs into MCP tools](02-transform-openapi-into-mcp-tools)
-- [Transform your Smithy models into MCP tools](03-transform-smithyapis-into-mcp-tools)
+- [Transform your OpenAPIs into MCP tools](01-transform-openapi-into-mcp-tools)
+- [Transform your Smithy models into MCP tools](02-transform-smithyapis-into-mcp-tools)
 

@@ -14,6 +14,14 @@ The SRE Agent is a multi-agent system for Site Reliability Engineers that helps 
 | Example complexity  | Advanced                                                                                                                            |
 | SDK used            | Amazon Bedrock AgentCore SDK, LangGraph, MCP                                                                                       |
 
+## Assets
+
+| Asset | Description |
+|-------|-------------|
+| [Demo video 1 (SRE-Agent CLI, VSCode integration)](https://github.com/user-attachments/assets/c28087a6-7a97-43f0-933d-28e3f6e2eeeb) | Walkthrough of the SRE Agent investigating and resolving infrastructure issues using CLI and VSCode |
+| [Demo video 2 (Cursor integration)](https://github.com/user-attachments/assets/c1a3c26b-e982-4842-bed0-8e668d79269e) | Demonstration of AgentCore Gateway with SRE tools integration with Cursor IDE |
+| [AI generated podcast](https://github.com/user-attachments/assets/feedb9d2-064c-4c5e-a306-94941065cf82) | Audio discussion explaining the SRE Agent's capabilities and architecture |
+
 ### Use case Architecture 
 
 ![SRE support agent with Amazon Bedrock AgentCore](docs/images/sre-agent-architecture.png)
@@ -22,6 +30,8 @@ The SRE Agent is a multi-agent system for Site Reliability Engineers that helps 
 
 - **Multi-Agent Orchestration**: Specialized agents collaborate on infrastructure investigations with real-time streaming
 - **Conversational Interface**: Single-query investigations and interactive multi-turn conversations with context preservation
+- **Long-term Memory Integration**: Amazon Bedrock Agent Memory provides persistent user preferences and infrastructure knowledge across sessions
+- **User Personalization**: Tailored reports and escalation procedures based on individual user preferences and roles
 - **MCP-based Integration**: AgentCore Gateway provides secure API access with authentication and health monitoring
 - **Specialized Agents**: Four domain-specific agents for Kubernetes, logs, metrics, and operational procedures
 - **Documentation and Reporting**: Markdown reports generated for each investigation with audit trail
@@ -31,14 +41,15 @@ The SRE Agent is a multi-agent system for Site Reliability Engineers that helps 
 For comprehensive information about the SRE Agent system, please refer to the following detailed documentation:
 
 - **[System Components](docs/system-components.md)** - In-depth architecture and component explanations
-- **[Specialized Agents](docs/specialized-agents.md)** - Detailed capabilities of each of the four specialized agents
+- **[Memory System](docs/memory-system.md)** - Long-term memory integration, user personalization, and cross-session learning
 - **[Configuration](docs/configuration.md)** - Complete configuration guides for environment variables, agents, and gateway
+- **[Deployment Guide](docs/deployment-guide.md)** - Complete deployment guide for Amazon Bedrock AgentCore Runtime
 - **[Security](docs/security.md)** - Security best practices and considerations for production deployment
 - **[Demo Environment](docs/demo-environment.md)** - Demo scenarios, data customization, and testing setup
 - **[Example Use Cases](docs/example-use-cases.md)** - Detailed walkthroughs and interactive troubleshooting examples
 - **[Verification](docs/verification.md)** - Ground truth verification and report validation
 - **[Development](docs/development.md)** - Testing, code quality, and contribution guidelines
-- **[Deployment Guide](docs/deployment-guide.md)** - Complete deployment guide for Amazon Bedrock AgentCore Runtime
+
 
 ## Prerequisites
 
@@ -54,6 +65,8 @@ For comprehensive information about the SRE Agent system, please refer to the fo
 > **Note:** All prerequisites must be completed before proceeding to the use case setup. The setup will fail without proper SSL certificates, IAM permissions, and identity provider configuration.
 
 ## Use case setup
+
+> **Configuration Guide**: For detailed information about all configuration files used in this project, see the [Configuration Documentation](docs/configuration.md).
 
 ```bash
 # Clone the repository
@@ -85,8 +98,8 @@ PRIVATE_IP=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" \
 cd backend
 ./scripts/start_demo_backend.sh \
   --host $PRIVATE_IP  \
-  --ssl-keyfile /etc/ssl/private/privkey.pem \
-  --ssl-certfile /etc/ssl/certs/fullchain.pem
+  --ssl-keyfile /opt/ssl/privkey.pem \
+  --ssl-certfile /opt/ssl/fullchain.pem
 cd ..
 
 # Create and configure the AgentCore Gateway
@@ -102,9 +115,44 @@ sed -i "s|uri: \".*\"|uri: \"$GATEWAY_URI\"|" sre_agent/config/agent_config.yaml
 # Copy the gateway access token to your .env file
 sed -i '/^GATEWAY_ACCESS_TOKEN=/d' sre_agent/.env
 echo "GATEWAY_ACCESS_TOKEN=$(cat gateway/.access_token)" >> sre_agent/.env
+
+# Initialize memory system and add user preferences
+uv run python scripts/manage_memories.py update
+
+# Note: Memory system takes 10-12 minutes to be ready
+# Check memory status after 10 minutes:
+uv run python scripts/manage_memories.py list
+
+# Once memory shows as ready, run update again to ensure preferences are loaded:
+uv run python scripts/manage_memories.py update
 ```
 
+> **Local Setup Complete**: Your SRE Agent is now running locally on your EC2 instance and is exercising the AgentCore Gateway and Memory services. If you want to deploy this agent on AgentCore Runtime so you can integrate it into your applications (like a chatbot, Slack bot, etc.), follow the instructions in the [Development to Production Deployment Flow](#development-to-production-deployment-flow) section below.
+
 ## Execution instructions
+
+### Memory-Enhanced Personalized Investigations
+
+The SRE Agent includes a sophisticated memory system that personalizes investigations based on user preferences. The system comes preconfigured with two user personas in [`scripts/user_config.yaml`](scripts/user_config.yaml):
+
+- **Alice**: Technical detailed investigations with comprehensive analysis and team alerts
+- **Carol**: Executive-focused investigations with business impact analysis and strategic alerts
+
+When running investigations with different user IDs, the agent produces similar technical findings but presents them according to each user's preferences:
+
+```bash
+# Alice's detailed technical investigation
+USER_ID=Alice sre-agent --prompt "API response times have degraded 3x in the last hour" --provider bedrock
+
+# Carol's executive-focused investigation  
+USER_ID=Carol sre-agent --prompt "API response times have degraded 3x in the last hour" --provider bedrock
+```
+
+Both commands will identify identical technical issues but present them differently:
+- **Alice** receives detailed technical analysis with step-by-step troubleshooting and team notifications
+- **Carol** receives executive summaries focused on business impact with rapid escalation timelines
+
+For a detailed comparison showing how the memory system personalizes identical incidents, see: [**Memory System Report Comparison**](docs/examples/Memory_System_Analysis_User_Personalization_20250802_162648.md)
 
 ### Single Query Mode
 ```bash
@@ -200,7 +248,115 @@ The AgentCore Runtime deployment supports:
 
 For complete step-by-step instructions including local testing, container building, and production deployment, see the **[Deployment Guide](docs/deployment-guide.md)**.
 
+## AgentCore Observability
+
+Adding observability to an Agent deployed on the AgentCore Runtime is straightforward using the observability primitive. This enables comprehensive monitoring through Amazon CloudWatch with metrics, traces, and logs.
+
+### Setting Up Observability
+
+#### 1. Add OpenTelemetry Packages
+
+The required OpenTelemetry packages are already included in `pyproject.toml`:
+
+```toml
+dependencies = [
+    # ... other dependencies ...
+    "opentelemetry-instrumentation-langchain",
+    "aws-opentelemetry-distro~=0.10.1",
+]
+```
+
+#### 2. Configure Observability for Agents
+
+Follow the [Amazon Bedrock AgentCore observability configuration guide](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/observability-configure.html#observability-configure-builtin) to enable metrics in Amazon CloudWatch.
+
+#### 3. Enable OpenTelemetry Instrumentation
+
+When starting the container, use the `opentelemetry-instrument` utility to automatically instrument your application. This is configured in the Dockerfile:
+
+```dockerfile
+# Run application with OpenTelemetry instrumentation
+CMD ["uv", "run", "opentelemetry-instrument", "uvicorn", "sre_agent.agent_runtime:app", "--host", "0.0.0.0", "--port", "8080"]
+```
+
+### Viewing Metrics and Traces
+
+Once deployed with observability enabled, you can monitor your agent's performance through:
+
+- **Amazon CloudWatch Metrics**: View request rates, latencies, and error rates
+- **AWS X-Ray Traces**: Analyze distributed traces to understand request flow
+- **CloudWatch Logs**: Access structured logs for debugging and analysis
+
+![Agent Metrics Dashboard](docs/images/agent-metrics.gif)
+
+The observability primitive automatically captures:
+- LLM invocation metrics (tokens, latency, model usage)
+- Tool execution traces (duration, success/failure)
+- Memory operations (retrieval, storage)
+- End-to-end request tracing across all agent components
+
+## Maintenance and Operations
+
+### Restarting Backend Servers and Refreshing Access Token
+
+To maintain connectivity with the Amazon Bedrock AgentCore Gateway, you need to periodically restart backend servers and refresh the access token. Run the gateway configuration script:
+
+```bash
+# Important: Run this from within the virtual environment
+source .venv/bin/activate  # If not already activated
+./scripts/configure_gateway.sh
+```
+
+**What this script does:**
+- **Stops running backend servers** to ensure clean restart
+- **Generates a new access token** for AgentCore Gateway authentication
+- **Gets the EC2 instance private IP** for proper SSL binding
+- **Starts backend servers** with SSL certificates (HTTPS) or HTTP fallback
+- **Updates gateway URI** in the agent configuration from `gateway/.gateway_uri`
+- **Updates access token** in the `.env` file for agent authentication
+
+**Important:** You must run this script **every 24 hours** because the access token expires after 24 hours. If you don't refresh the token:
+- The SRE agent will lose connection to the AgentCore gateway
+- No MCP tools will be available (Kubernetes, logs, metrics, runbooks APIs)
+- Investigations will fail as agents cannot access backend services
+
+For more details, see the [configure_gateway.sh](scripts/configure_gateway.sh) script.
+
+### Troubleshooting Gateway Connection Issues
+
+If you encounter "gateway connection failed" or "MCP tools unavailable" errors:
+1. Check if the access token has expired (24-hour limit)
+2. Run `./scripts/configure_gateway.sh` to refresh authentication (from within the virtual environment)
+3. Verify backend servers are running with `ps aux | grep python`
+4. Check SSL certificate validity if using HTTPS
+
 ## Clean up instructions
+
+### Complete AWS Resource Cleanup
+
+For complete cleanup of all AWS resources (Gateway, Runtime, and local files):
+
+```bash
+# Complete cleanup - deletes AWS resources and local files
+./scripts/cleanup.sh
+
+# Or with custom names
+./scripts/cleanup.sh --gateway-name my-gateway --runtime-name my-runtime
+
+# Force cleanup without confirmation prompts
+./scripts/cleanup.sh --force
+```
+
+This script will:
+- Stop backend servers
+- Delete the AgentCore Gateway and all its targets
+- Delete memory resources
+- Delete the AgentCore Runtime
+- Remove generated files (gateway URIs, tokens, agent ARNs, memory IDs)
+
+### Manual Local Cleanup Only
+
+If you only want to clean up local files without touching AWS resources:
 
 ```bash
 # Stop all demo servers
@@ -208,14 +364,11 @@ cd backend
 ./scripts/stop_demo_backend.sh
 cd ..
 
-# Remove virtual environment
-deactivate
-rm -rf .venv
-
-# Clean up generated files
-rm -rf reports/
+# Clean up generated files only
 rm -rf gateway/.gateway_uri gateway/.access_token
-rm -rf sre_agent/.env
+rm -rf deployment/.agent_arn .memory_id
+
+# Note: .env, .venv, and reports/ are preserved for development continuity
 ```
 
 ## Disclaimer
