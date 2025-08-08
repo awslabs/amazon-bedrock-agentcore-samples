@@ -194,8 +194,8 @@ In this section, we focus on how AgentCore Gateway, Memory, and Runtime work tog
 - **Production deployment**: Deploying containers to AgentCore Runtime with proper IAM configuration and memory persistence
 
 Detailed instructions for each step are provided in the repository:
-- [Use Case Setup Guide](https://github.com/awslabs/amazon-bedrock-agentcore-samples/tree/feature/issue-143-deploy-sre-agent-agentcore-runtime/02-use-cases/SRE-agent#use-case-setup) - Backend deployment and development setup
-- [Deployment Guide](https://github.com/awslabs/amazon-bedrock-agentcore-samples/blob/feature/issue-143-deploy-sre-agent-agentcore-runtime/02-use-cases/SRE-agent/docs/deployment-guide.md) - Production containerization and AgentCore Runtime deployment
+- [Use Case Setup Guide](https://github.com/awslabs/amazon-bedrock-agentcore-samples/tree/main/02-use-cases/SRE-agent#use-case-setup) - Backend deployment and development setup
+- [Deployment Guide](https://github.com/awslabs/amazon-bedrock-agentcore-samples/tree/main/02-use-cases/SRE-agent/docs/deployment-guide.md) - Production containerization and AgentCore Runtime deployment
 
 ### Converting APIs to MCP Tools with AgentCore Gateway
 
@@ -203,7 +203,7 @@ Amazon Bedrock AgentCore Gateway demonstrates the power of protocol standardizat
 
 #### Step 1: Upload OpenAPI specifications
 
-The gateway process begins by uploading your existing API specifications to S3. The [create_gateway.sh](https://github.com/awslabs/amazon-bedrock-agentcore-samples/blob/feature/issue-143-deploy-sre-agent-agentcore-runtime/02-use-cases/SRE-agent/gateway/create_gateway.sh) script automatically handles uploading the four API specifications (Kubernetes, Logs, Metrics, and Runbooks) to your configured S3 bucket with proper metadata and content types.
+The gateway process begins by uploading your existing API specifications to S3. The [create_gateway.sh](https://github.com/awslabs/amazon-bedrock-agentcore-samples/blob/feature/issue-143-deploy-sre-agent-agentcore-runtime/02-use-cases/SRE-agent/gateway/create_gateway.sh) script automatically handles uploading the four API specifications (Kubernetes, Logs, Metrics, and Runbooks) to your configured S3 bucket with proper metadata and content types. These specifications will be used to create API Endpoint Targets in the gateway.
 
 #### Step 2: Create identity provider and gateway
 
@@ -244,21 +244,21 @@ def create_gateway(
     return response
 ```
 
-#### Step 3: Deploy S3 targets with credential providers
+#### Step 3: Deploy API Endpoint Targets with credential providers
 
 Each API becomes an MCP target through the gateway. The system automatically handles credential management:
 
 ```python
-def create_s3_target(
+def create_api_endpoint_target(
     client: Any,
     gateway_id: str,
     s3_uri: str,
     provider_arn: str,
     target_name_prefix: str = "open",
-    description: str = "S3 target for OpenAPI schema",
+    description: str = "API Endpoint Target for OpenAPI schema",
 ) -> Dict[str, Any]:
     
-    s3_target_config = {"mcp": {"openApiSchema": {"s3": {"uri": s3_uri}}}}
+    api_target_config = {"mcp": {"openApiSchema": {"s3": {"uri": s3_uri}}}}
 
     # API key credential provider configuration
     credential_config = {
@@ -276,7 +276,7 @@ def create_s3_target(
         gatewayIdentifier=gateway_id,
         name=target_name_prefix,
         description=description,
-        targetConfiguration=s3_target_config,
+        targetConfiguration=api_target_config,
         credentialProviderConfigurations=[credential_config],
     )
     return response
@@ -729,20 +729,18 @@ The cleanup script ensures complete removal of all billable AWS resources create
 
 ## Conclusion
 
-The future of site reliability engineering lies not in replacing human expertise, but in augmenting it with AI that can rapidly synthesize information across complex distributed systems. The SRE Agent demonstrates how multi-agent systems can transform incident response from a manual, time-intensive process into an intelligent, collaborative investigation that provides SREs with the insights they need to resolve issues quickly and confidently.
+The SRE Agent demonstrates how multi-agent systems can transform incident response from a manual, time-intensive process into an intelligent, collaborative investigation that provides SREs with the insights they need to resolve issues quickly and confidently.
 
-By combining Amazon Bedrock AgentCore's enterprise-grade infrastructure with the Model Context Protocol's standardized tool access, we've created a foundation that can adapt as your infrastructure evolves and new capabilities emerge. AWS's comprehensive AI and machine learning services, from foundation models to serverless computing, provide the scalable, secure foundation that enterprises need for production AI deployments.
-
-The system's modular architecture ensures that you can start with basic functionality and expand to address your organization's specific operational challenges while leveraging AWS's proven track record in mission-critical infrastructure. Whether you're dealing with midnight production incidents, conducting proactive health checks, or training new team members, AI-powered SRE assistance can help your team maintain reliable, high-performing systems while reducing the stress and toil that traditionally comes with operations work.
+By combining Amazon Bedrock AgentCore's enterprise-grade infrastructure with the Model Context Protocol's standardized tool access, we've created a foundation that can adapt as your infrastructure evolves and new capabilities emerge. 
 
 The complete implementation is available in our GitHub repository, including demo environments, configuration guides, and extension examples. We encourage you to explore the system, customize it for your infrastructure, and share your experiences with the community.
 
 To get started building your own SRE assistant, refer to the following resources:
 
 * [Amazon Bedrock AgentCore documentation](https://docs.aws.amazon.com/bedrock/latest/userguide/agents.html)
+* [SRE Agent GitHub repository](https://github.com/awslabs/amazon-bedrock-agentcore-samples)
 * [Model Context Protocol specification](https://modelcontextprotocol.io)
 * [LangGraph framework documentation](https://langchain-ai.github.io/langgraph/)
-* [SRE Agent GitHub repository](https://github.com/awslabs/amazon-bedrock-agentcore-samples)
 
 What operational challenges will you solve with AI-powered SRE assistance? Start your journey today and experience the future of intelligent infrastructure operations.
 
@@ -753,5 +751,3 @@ What operational challenges will you solve with AI-powered SRE assistance? Start
 **[Author Name]** is a [Title] at Amazon Web Services, where [brief description of role and expertise]. [Additional background and interests].
 
 **[Author Name]** is a [Title] at Amazon Web Services, specializing in [expertise areas]. [Background and contributions].
-
-**[Author Name]** is a [Title] at Amazon Web Services, focusing on [specialization]. [Experience and interests]. 
