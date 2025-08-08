@@ -19,7 +19,7 @@ The SRE Agent is a multi-agent system for Site Reliability Engineers that helps 
 | Asset | Description |
 |-------|-------------|
 | [Demo video 1 (SRE-Agent CLI, VSCode integration)](https://github.com/user-attachments/assets/c28087a6-7a97-43f0-933d-28e3f6e2eeeb) | Walkthrough of the SRE Agent investigating and resolving infrastructure issues using CLI and VSCode |
-| [Demo video 2 (Cursor integration)](https://github.com/user-attachments/assets/c1a3c26b-e982-4842-bed0-8e668d79269e) | Demonstration of SRE Agent integration with Cursor IDE |
+| [Demo video 2 (Cursor integration)](https://github.com/user-attachments/assets/c1a3c26b-e982-4842-bed0-8e668d79269e) | Demonstration of AgentCore Gateway with SRE tools integration with Cursor IDE |
 | [AI generated podcast](https://github.com/user-attachments/assets/feedb9d2-064c-4c5e-a306-94941065cf82) | Audio discussion explaining the SRE Agent's capabilities and architecture |
 
 ### Use case Architecture 
