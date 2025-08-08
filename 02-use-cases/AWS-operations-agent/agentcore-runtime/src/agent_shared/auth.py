@@ -4,14 +4,9 @@
 
 import logging
 from .config import get_oauth_settings
-<<<<<<< HEAD
 from . import mylogger
  
 logger = mylogger.get_logger()
-=======
-
-logger = logging.getLogger(__name__)
->>>>>>> origin/main
 
 # Global variables for OAuth state
 _oauth_initialized = False

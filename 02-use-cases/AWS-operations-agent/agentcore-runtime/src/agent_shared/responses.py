@@ -5,13 +5,9 @@
 import json
 import logging
 
-<<<<<<< HEAD
 from . import mylogger
  
 logger = mylogger.get_logger()
-=======
-logger = logging.getLogger(__name__)
->>>>>>> origin/main
 
 # ============================================================================
 # DIY RESPONSE FORMATTING
@@ -111,10 +107,7 @@ def process_text_formatting(text: str) -> str:
     try:
         # Convert literal \n strings to actual newlines
         # Handle both single and double backslash cases
-<<<<<<< HEAD
         processed_text = text
-=======
->>>>>>> origin/main
         processed_text = text.replace('\\n', '\n')
         
         # Handle other common escape sequences that might appear
@@ -139,10 +132,7 @@ def process_text_formatting(text: str) -> str:
 def extract_content_from_event(event) -> dict:
     """
     Extract structured content from a Strands streaming event.
-<<<<<<< HEAD
     Uses priority-based extraction to avoid duplicates.
-=======
->>>>>>> origin/main
     
     Args:
         event: Strands streaming event
@@ -158,7 +148,6 @@ def extract_content_from_event(event) -> dict:
             'raw_event': str(event)[:200] + '...' if len(str(event)) > 200 else str(event)
         }
         
-<<<<<<< HEAD
         extracted_text = None
         extraction_method = None
         
@@ -226,39 +215,6 @@ def extract_content_from_event(event) -> dict:
         else:
             logger.debug(f"📭 No text content in event: {content_data['event_type']}")
         
-=======
-        # Try to extract text from delta attribute
-        if hasattr(event, 'delta') and hasattr(event.delta, 'text'):
-            raw_text = event.delta.text or ""
-            if raw_text:
-                content_data['content'] = process_text_formatting(raw_text)
-                content_data['has_text'] = True
-                logger.debug(f"📤 Extracted text from delta: {raw_text[:30]}...")
-                return content_data
-        
-        # Try to extract from string representation as fallback
-        event_str = str(event)
-        if 'contentBlockDelta' in event_str and "'text':" in event_str:
-            import re
-            # More robust regex pattern to handle various formats
-            patterns = [
-                r"delta=\{[^}]*'text':\s*'([^']*)'[^}]*\}",
-                r'"text":\s*"([^"]*)"',
-                r"'text':\s*'([^']*)'",
-            ]
-            
-            for pattern in patterns:
-                delta_match = re.search(pattern, event_str)
-                if delta_match:
-                    raw_text = delta_match.group(1)
-                    content_data['content'] = process_text_formatting(raw_text)
-                    content_data['has_text'] = True
-                    logger.debug(f"📤 Extracted text from string: {raw_text[:30]}...")
-                    return content_data
-        
-        # No text content found
-        logger.debug(f"📭 No text content in event: {content_data['event_type']}")
->>>>>>> origin/main
         return content_data
         
     except Exception as e:

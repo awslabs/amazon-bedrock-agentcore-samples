@@ -8,15 +8,9 @@ import yaml
 import logging
 from typing import Dict, Any, List, Optional
 from pathlib import Path
-<<<<<<< HEAD
 from . import mylogger
  
 logger = mylogger.get_logger()
-=======
-
-logger = logging.getLogger(__name__)
-
->>>>>>> origin/main
 
 class AgentCoreConfigManager:
     """Unified configuration management for all AgentCore consumers"""

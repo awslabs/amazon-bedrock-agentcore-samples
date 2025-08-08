@@ -8,7 +8,6 @@ set -e  # Exit on any error
 
 echo "🧹 AgentCore Complete Cleanup"
 echo "============================="
-<<<<<<< HEAD
 echo ""
 echo "This script will delete ALL resources created by the following deployment scripts:"
 echo "  • 01-prerequisites.sh (IAM roles, ECR repositories)"
@@ -19,8 +18,6 @@ echo "  • 05-create-gateway-targets.sh (AgentCore Gateways and targets)"
 echo "  • 06-deploy-diy.sh (DIY agent runtime and ECR images)"
 echo "  • 07-deploy-sdk.sh (SDK agent runtime and ECR images)"
 echo ""
-=======
->>>>>>> origin/main
 
 # Color codes for output
 RED='\033[0;31m'
@@ -151,7 +148,6 @@ show_warning() {
     echo ""
     echo -e "${YELLOW}This script will DELETE ALL of the following:${NC}"
     echo ""
-<<<<<<< HEAD
     echo -e "${RED}🗑️  AgentCore Runtime Agents (from 06-deploy-diy.sh & 07-deploy-sdk.sh):${NC}"
     echo "   • DIY agent runtime instances and endpoints"
     echo "   • SDK agent runtime instances and endpoints"
@@ -182,30 +178,6 @@ show_warning() {
     echo ""
     echo -e "${RED}🗑️  Configuration Files:${NC}"
     echo "   • Dynamic configuration values (reset to empty)"
-=======
-    echo -e "${RED}🗑️  AgentCore Runtime Agents:${NC}"
-    echo "   • All deployed DIY and SDK agents"
-    echo "   • Agent runtime instances"
-    echo "   • Agent configurations"
-    echo ""
-    echo -e "${RED}🗑️  AgentCore Identity Resources:${NC}"
-    echo "   • All OAuth2 credential providers"
-    echo "   • All workload identities"
-    echo "   • All identity associations"
-    echo ""
-    echo -e "${RED}🗑️  AWS Infrastructure:${NC}"
-    echo "   • ECR repositories and images"
-    echo "   • IAM role: bac-execution-role"
-    echo "   • IAM policies attached to the role"
-    echo ""
-    echo -e "${RED}🗑️  AgentCore Gateway & MCP Resources:${NC}"
-    echo "   • All AgentCore gateways and targets"
-    echo "   • MCP tool Lambda function and stack"
-    echo "   • Gateway configurations"
-    echo ""
-    echo -e "${RED}🗑️  Configuration Files:${NC}"
-    echo "   • oauth-provider.yaml"
->>>>>>> origin/main
     echo "   • Generated configuration sections"
     echo ""
     echo -e "${YELLOW}💡 What will NOT be deleted:${NC}"
@@ -215,7 +187,6 @@ show_warning() {
     echo ""
 }
 
-<<<<<<< HEAD
 # Function to cleanup AgentCore Memory resources
 cleanup_memory_resources() {
     echo -e "${BLUE}🗑️  Cleaning up AgentCore Memory resources...${NC}"
@@ -234,46 +205,21 @@ cleanup_memory_resources() {
     fi
 }
 
-=======
->>>>>>> origin/main
 # Function to cleanup AgentCore Runtime agents
 cleanup_runtime_agents() {
     echo -e "${BLUE}🗑️  Cleaning up AgentCore Runtime agents...${NC}"
     echo "============================================="
     
-<<<<<<< HEAD
     # Use the existing runtime deletion script
     if [[ -f "${SCRIPT_DIR}/08-delete-runtimes.sh" ]]; then
         echo "Using existing 08-delete-runtimes.sh script..."
         if bash "${SCRIPT_DIR}/08-delete-runtimes.sh"; then
-=======
-    # Use the existing cleanup script if available
-    if [[ -f "${SCRIPT_DIR}/cleanup-agents.py" ]]; then
-        echo "Using existing cleanup-agents.py script with configuration..."
-        
-        # Set environment variables for the cleanup script
-        export CLEANUP_REGION="$REGION"
-        export CLEANUP_DIY_ARN="$DIY_RUNTIME_ARN"
-        export CLEANUP_SDK_ARN="$SDK_RUNTIME_ARN"
-        export CLEANUP_DIY_ENDPOINT_ARN="$DIY_ENDPOINT_ARN"
-        export CLEANUP_SDK_ENDPOINT_ARN="$SDK_ENDPOINT_ARN"
-        
-        if python3 "${SCRIPT_DIR}/cleanup-agents.py"; then
->>>>>>> origin/main
             echo -e "${GREEN}✅ Runtime agents cleanup completed${NC}"
         else
             echo -e "${YELLOW}⚠️  Runtime agents cleanup had issues${NC}"
         fi
-<<<<<<< HEAD
     else
         echo -e "${YELLOW}⚠️  08-delete-runtimes.sh not found - skipping runtime cleanup${NC}"
-=======
-        
-        # Clean up environment variables
-        unset CLEANUP_REGION CLEANUP_DIY_ARN CLEANUP_SDK_ARN CLEANUP_DIY_ENDPOINT_ARN CLEANUP_SDK_ENDPOINT_ARN
-    else
-        echo -e "${YELLOW}⚠️  cleanup-agents.py not found, skipping runtime cleanup${NC}"
->>>>>>> origin/main
     fi
 }
 
@@ -282,7 +228,6 @@ cleanup_gateway_mcp_resources() {
     echo -e "${BLUE}🗑️  Cleaning up AgentCore Gateway and MCP resources...${NC}"
     echo "===================================================="
     
-<<<<<<< HEAD
     # Use the existing gateway and MCP deletion scripts
     echo "Step 1: Deleting gateways and targets..."
     if [[ -f "${SCRIPT_DIR}/09-delete-gateways-targets.sh" ]]; then
@@ -302,363 +247,6 @@ cleanup_gateway_mcp_resources() {
     fi
     
     echo -e "${GREEN}✅ Gateway and MCP resources cleanup completed${NC}"
-=======
-    # Create temporary Python script for gateway and MCP cleanup
-    local cleanup_script="${SCRIPT_DIR}/temp_gateway_mcp_cleanup.py"
-    
-    cat > "$cleanup_script" << 'EOF'
-import boto3
-import json
-import time
-import os
-
-def cleanup_mcp_cloudformation_stack(cloudformation_client, stack_name):
-    """Cleanup MCP CloudFormation stack with enhanced error handling"""
-    try:
-        # Check if stack exists
-        try:
-            cloudformation_client.describe_stacks(StackName=stack_name)
-            stack_exists = True
-        except cloudformation_client.exceptions.ClientError as e:
-            if "does not exist" in str(e):
-                stack_exists = False
-                print(f"   ✅ CloudFormation stack doesn't exist: {stack_name}")
-                return True
-            else:
-                raise e
-        
-        if stack_exists:
-            print(f"   🗑️  Deleting CloudFormation stack: {stack_name}")
-            cloudformation_client.delete_stack(StackName=stack_name)
-            
-            # Wait for stack deletion (with timeout)
-            print("   ⏳ Waiting for stack deletion...")
-            waiter = cloudformation_client.get_waiter('stack_delete_complete')
-            
-            try:
-                waiter.wait(
-                    StackName=stack_name,
-                    WaiterConfig={'MaxAttempts': 20, 'Delay': 30}  # Wait up to 10 minutes
-                )
-                print(f"   ✅ CloudFormation stack deleted: {stack_name}")
-                return True
-            except Exception as e:
-                print(f"   ⚠️  Stack deletion timeout or error: {e}")
-                print(f"   🔍 Check AWS Console for stack status")
-                return False
-        
-        return True
-        
-    except Exception as e:
-        print(f"   ❌ Error with CloudFormation stack: {e}")
-        return False
-
-def cleanup_standalone_mcp_resources(region):
-    """Cleanup standalone MCP tool lambda resources not managed by CloudFormation"""
-    try:
-        lambda_client = boto3.client('lambda', region_name=region)
-        iam_client = boto3.client('iam', region_name=region)
-        logs_client = boto3.client('logs', region_name=region)
-        
-        # 1. Find and delete MCP lambda functions
-        print("   🔍 Finding standalone MCP lambda functions...")
-        functions = lambda_client.list_functions()
-        mcp_functions = []
-        
-        # Look for MCP-related function names (excluding CloudFormation managed ones)
-        mcp_patterns = ['mcp', 'tool', 'agentcore', 'genesis']
-        cf_patterns = ['aws-cloudformation', 'cloudformation']  # Skip CF managed functions
-        
-        for func in functions.get('Functions', []):
-            func_name = func.get('FunctionName', '')
-            func_name_lower = func_name.lower()
-            
-            # Check if it's MCP-related but not CloudFormation managed
-            is_mcp_related = any(pattern in func_name_lower for pattern in mcp_patterns)
-            is_cf_managed = any(pattern in func_name_lower for pattern in cf_patterns)
-            
-            if is_mcp_related and not is_cf_managed:
-                mcp_functions.append(func)
-                print(f"   📦 Found potential standalone MCP function: {func_name}")
-        
-        if not mcp_functions:
-            print("   ✅ No standalone MCP lambda functions found")
-            return True
-        
-        # Delete identified MCP functions
-        deleted_functions = []
-        for func in mcp_functions:
-            func_name = func.get('FunctionName')
-            try:
-                lambda_client.delete_function(FunctionName=func_name)
-                print(f"   ✅ Deleted lambda function: {func_name}")
-                deleted_functions.append(func_name)
-            except Exception as e:
-                print(f"   ❌ Failed to delete lambda function {func_name}: {e}")
-        
-        # 2. Cleanup associated IAM roles
-        print("   🔍 Cleaning up MCP-related IAM roles...")
-        cleanup_mcp_iam_roles(iam_client, deleted_functions)
-        
-        # 3. Cleanup CloudWatch log groups
-        print("   🔍 Cleaning up MCP-related CloudWatch log groups...")
-        cleanup_mcp_log_groups(logs_client, deleted_functions)
-        
-        return len(deleted_functions) > 0
-            
-    except Exception as e:
-        print(f"   ❌ Standalone MCP tool lambda cleanup failed: {e}")
-        return False
-
-def cleanup_mcp_iam_roles(iam_client, deleted_function_names):
-    """Cleanup IAM roles created by MCP tool deployment"""
-    try:
-        roles = iam_client.list_roles()
-        mcp_role_patterns = ['mcp', 'tool', 'lambda', 'agentcore', 'genesis']
-        
-        for role in roles.get('Roles', []):
-            role_name = role.get('RoleName', '')
-            role_name_lower = role_name.lower()
-            
-            # Check if role is MCP-related
-            is_mcp_role = any(pattern in role_name_lower for pattern in mcp_role_patterns)
-            
-            # Also check if role is associated with deleted functions
-            is_function_role = any(func_name in role_name for func_name in deleted_function_names)
-            
-            if is_mcp_role or is_function_role:
-                try:
-                    print(f"   🗑️  Attempting to delete IAM role: {role_name}")
-                    
-                    # Detach managed policies first
-                    attached_policies = iam_client.list_attached_role_policies(RoleName=role_name)
-                    for policy in attached_policies.get('AttachedPolicies', []):
-                        iam_client.detach_role_policy(
-                            RoleName=role_name,
-                            PolicyArn=policy.get('PolicyArn')
-                        )
-                        print(f"       ✅ Detached policy: {policy.get('PolicyName')}")
-                    
-                    # Delete inline policies
-                    inline_policies = iam_client.list_role_policies(RoleName=role_name)
-                    for policy_name in inline_policies.get('PolicyNames', []):
-                        iam_client.delete_role_policy(
-                            RoleName=role_name,
-                            PolicyName=policy_name
-                        )
-                        print(f"       ✅ Deleted inline policy: {policy_name}")
-                    
-                    # Delete the role
-                    iam_client.delete_role(RoleName=role_name)
-                    print(f"   ✅ Deleted IAM role: {role_name}")
-                    
-                except Exception as e:
-                    print(f"   ❌ Failed to delete IAM role {role_name}: {e}")
-                    
-    except Exception as e:
-        print(f"   ❌ Error cleaning up MCP IAM roles: {e}")
-
-def cleanup_mcp_log_groups(logs_client, deleted_function_names):
-    """Cleanup CloudWatch log groups for MCP functions"""
-    try:
-        # Cleanup log groups for deleted functions
-        for func_name in deleted_function_names:
-            log_group_name = f"/aws/lambda/{func_name}"
-            
-            try:
-                logs_client.delete_log_group(logGroupName=log_group_name)
-                print(f"   ✅ Deleted log group: {log_group_name}")
-            except logs_client.exceptions.ResourceNotFoundException:
-                print(f"   ✅ Log group doesn't exist: {log_group_name}")
-            except Exception as e:
-                print(f"   ❌ Failed to delete log group {log_group_name}: {e}")
-                
-    except Exception as e:
-        print(f"   ❌ Error cleaning up MCP log groups: {e}")
-
-def verify_gateway_mcp_cleanup(bedrock_client, cloudformation_client, stack_name, cf_success, standalone_success):
-    """Enhanced verification of gateway and MCP cleanup"""
-    try:
-        print("   🔍 Performing comprehensive verification...")
-        
-        # Check remaining gateways
-        gateways_after = bedrock_client.list_gateways()
-        gateways_count = len(gateways_after.get('gateways', []))
-        
-        # Check CloudFormation stack status
-        stack_exists = False
-        try:
-            cloudformation_client.describe_stacks(StackName=stack_name)
-            stack_exists = True
-        except cloudformation_client.exceptions.ClientError:
-            stack_exists = False
-        
-        # Check for remaining standalone MCP functions
-        lambda_client = boto3.client('lambda', region_name=os.environ.get('CLEANUP_REGION', 'us-east-1'))
-        functions = lambda_client.list_functions()
-        mcp_patterns = ['mcp', 'tool', 'agentcore', 'genesis']
-        remaining_mcp_functions = []
-        
-        for func in functions.get('Functions', []):
-            func_name = func.get('FunctionName', '')
-            if any(pattern in func_name.lower() for pattern in mcp_patterns):
-                remaining_mcp_functions.append(func_name)
-        
-        # Detailed reporting
-        print(f"   📊 Verification Results:")
-        print(f"   ├── Gateways: {gateways_count} remaining")
-        print(f"   ├── CloudFormation Stack: {'❌ Still exists' if stack_exists else '✅ Deleted'}")
-        print(f"   ├── Standalone MCP Functions: {len(remaining_mcp_functions)} remaining")
-        
-        if remaining_mcp_functions:
-            print(f"   ⚠️  Remaining MCP functions:")
-            for func_name in remaining_mcp_functions[:5]:  # Show first 5
-                print(f"       - {func_name}")
-            if len(remaining_mcp_functions) > 5:
-                print(f"       ... and {len(remaining_mcp_functions) - 5} more")
-        
-        # Overall assessment
-        cleanup_complete = (gateways_count == 0 and not stack_exists and len(remaining_mcp_functions) == 0)
-        
-        if cleanup_complete:
-            print("   🎉 Gateway and MCP cleanup verification: PASSED")
-            print("   ✅ All gateway and MCP resources successfully removed")
-        else:
-            print("   ⚠️  Gateway and MCP cleanup verification: PARTIAL")
-            print(f"   📈 Gateway cleanup: {'✅ SUCCESS' if gateways_count == 0 else '⚠️ PARTIAL'}")
-            print(f"   📈 CloudFormation cleanup: {'✅ SUCCESS' if not stack_exists else '⚠️ PARTIAL'}")
-            print(f"   📈 Standalone MCP cleanup: {'✅ SUCCESS' if len(remaining_mcp_functions) == 0 else '⚠️ PARTIAL'}")
-        
-        return cleanup_complete
-        
-    except Exception as e:
-        print(f"   ❌ Verification failed: {e}")
-        return False
-
-def cleanup_gateways_enhanced(bedrock_client):
-    """Enhanced gateway cleanup with retry logic"""
-    try:
-        gateways = bedrock_client.list_gateways()
-        gateway_list = gateways.get('gateways', [])
-        
-        if not gateway_list:
-            print("   ✅ No gateways to delete")
-            return True
-            
-        print(f"   Found {len(gateway_list)} gateways")
-        
-        deleted_count = 0
-        failed_count = 0
-        
-        for gateway in gateway_list:
-            gateway_id = gateway.get('gatewayId')
-            gateway_name = gateway.get('name')
-            
-            try:
-                # List targets for this gateway first
-                targets_response = bedrock_client.list_targets(gatewayId=gateway_id)
-                targets = targets_response.get('targets', [])
-                
-                print(f"   Gateway '{gateway_name}' has {len(targets)} targets")
-                
-                # Delete targets first with retry logic
-                targets_deleted = 0
-                for target in targets:
-                    target_id = target.get('targetId')
-                    target_name = target.get('name', target_id)
-                    
-                    max_retries = 3
-                    for attempt in range(max_retries):
-                        try:
-                            bedrock_client.delete_target(gatewayId=gateway_id, targetId=target_id)
-                            print(f"   ✅ Deleted target: {target_name}")
-                            targets_deleted += 1
-                            break
-                        except Exception as e:
-                            if attempt < max_retries - 1:
-                                print(f"   ⏳ Retrying target deletion: {target_name} (attempt {attempt + 2})")
-                                time.sleep(2)
-                            else:
-                                print(f"   ❌ Failed to delete target {target_name}: {e}")
-                
-                # Wait for targets to be deleted
-                if targets_deleted > 0:
-                    print(f"   ⏳ Waiting for {targets_deleted} targets to be deleted...")
-                    time.sleep(10)
-                
-                # Delete the gateway with retry logic
-                max_retries = 3
-                for attempt in range(max_retries):
-                    try:
-                        bedrock_client.delete_gateway(gatewayId=gateway_id)
-                        print(f"   ✅ Deleted gateway: {gateway_name}")
-                        deleted_count += 1
-                        break
-                    except Exception as e:
-                        if attempt < max_retries - 1:
-                            print(f"   ⏳ Retrying gateway deletion: {gateway_name} (attempt {attempt + 2})")
-                            time.sleep(5)
-                        else:
-                            print(f"   ❌ Failed to delete gateway {gateway_name}: {e}")
-                            failed_count += 1
-                
-            except Exception as e:
-                print(f"   ❌ Failed to process gateway {gateway_name}: {e}")
-                failed_count += 1
-        
-        print(f"   📊 Gateway Results:")
-        print(f"   ✅ Successfully deleted: {deleted_count}")
-        print(f"   ❌ Failed to delete: {failed_count}")
-        
-        return failed_count == 0
-        
-    except Exception as e:
-        print(f"   ❌ Error with gateways: {e}")
-        return False
-
-def cleanup_gateway_mcp_resources():
-    try:
-        region = os.environ.get('CLEANUP_REGION', 'us-east-1')
-        bedrock_client = boto3.client('bedrock-agentcore-control', region_name=region)
-        cloudformation_client = boto3.client('cloudformation', region_name=region)
-        
-        # 1. Delete all AgentCore gateways (which will also delete targets)
-        print("🗑️  Deleting AgentCore gateways and targets...")
-        gateway_success = cleanup_gateways_enhanced(bedrock_client)
-        
-        # 2. Delete MCP Tool Lambda CloudFormation stack
-        print("\n🗑️  Deleting MCP Tool Lambda CloudFormation stack...")
-        stack_name = os.environ.get('MCP_STACK_NAME', 'bac-mcp-stack')
-        cloudformation_success = cleanup_mcp_cloudformation_stack(cloudformation_client, stack_name)
-        
-        # 3. Cleanup standalone MCP tool lambda resources
-        print("\n🗑️  Cleaning up standalone MCP tool lambda resources...")
-        standalone_success = cleanup_standalone_mcp_resources(region)
-        
-        # 4. Enhanced verification
-        print("\n✅ Verifying gateway and MCP cleanup...")
-        verification_success = verify_gateway_mcp_cleanup(bedrock_client, cloudformation_client, stack_name, cloudformation_success, standalone_success)
-        
-        return verification_success
-        
-    except Exception as e:
-        print(f"❌ Gateway and MCP cleanup failed: {e}")
-        return False
-
-if __name__ == "__main__":
-    cleanup_gateway_mcp_resources()
-EOF
-    
-    # Run the gateway and MCP cleanup
-    if python3 "$cleanup_script"; then
-        echo -e "${GREEN}✅ Gateway and MCP resources cleanup completed${NC}"
-    else
-        echo -e "${YELLOW}⚠️  Gateway and MCP resources cleanup had issues${NC}"
-    fi
-    
-    # Clean up temporary script
-    rm -f "$cleanup_script"
->>>>>>> origin/main
 }
 
 # Function to cleanup AgentCore Identity resources
@@ -1014,27 +602,11 @@ cleanup_config_files() {
     echo -e "${BLUE}🗑️  Cleaning up configuration files...${NC}"
     echo "======================================"
     
-<<<<<<< HEAD
-=======
-    # Remove oauth-provider.yaml
-    local oauth_config="${CONFIG_DIR}/oauth-provider.yaml"
-    if [[ -f "$oauth_config" ]]; then
-        rm -f "$oauth_config"
-        echo -e "${GREEN}   ✅ Deleted: oauth-provider.yaml${NC}"
-    else
-        echo -e "${GREEN}   ✅ oauth-provider.yaml doesn't exist${NC}"
-    fi
-    
->>>>>>> origin/main
     # Reset dynamic-config.yaml to empty values
     local dynamic_config="${CONFIG_DIR}/dynamic-config.yaml"
     if [[ -f "$dynamic_config" ]]; then
         # Create backup
-<<<<<<< HEAD
         cp "$dynamic_config" "${dynamic_config}.backup.$(date +%Y%m%d_%H%M%S)"
-=======
-        cp "$dynamic_config" "${dynamic_config}.backup"
->>>>>>> origin/main
         
         # Reset all dynamic values to empty
         cat > "$dynamic_config" << 'EOF'
@@ -1055,10 +627,7 @@ mcp_lambda:
   stack_name: ""
   gateway_execution_role_arn: ""
   ecr_uri: ""
-<<<<<<< HEAD
   deployment_type: ""
-=======
->>>>>>> origin/main
 runtime:
   diy_agent:
     arn: ""
@@ -1071,7 +640,6 @@ runtime:
 client:
   diy_runtime_endpoint: ""
   sdk_runtime_endpoint: ""
-<<<<<<< HEAD
 memory:
   id: ""
   name: ""
@@ -1104,12 +672,6 @@ EOF
     find "${CONFIG_DIR}" -name "*.backup*" -type f -mtime +30 -delete 2>/dev/null || true
     
     echo -e "${GREEN}   ✅ Configuration cleanup completed${NC}"
-=======
-EOF
-        echo -e "${GREEN}   ✅ Reset dynamic-config.yaml to empty values${NC}"
-        echo -e "${BLUE}   📝 Backup saved as: dynamic-config.yaml.backup${NC}"
-    fi
->>>>>>> origin/main
 }
 
 # Function to show cleanup summary
@@ -1119,20 +681,12 @@ show_cleanup_summary() {
     echo -e "${GREEN}===================${NC}"
     echo ""
     echo -e "${BLUE}📋 What was cleaned up:${NC}"
-<<<<<<< HEAD
     echo "   ✅ AgentCore Runtime agents (DIY and SDK)"
     echo "   ✅ AgentCore Gateways and MCP targets"
     echo "   ✅ MCP Tool Lambda function and CloudFormation stack"
     echo "   ✅ OAuth2 credential providers"
     echo "   ✅ Workload identities"
     echo "   ✅ AgentCore Memory resources"
-=======
-    echo "   ✅ AgentCore Runtime agents"
-    echo "   ✅ AgentCore Gateways and MCP targets"
-    echo "   ✅ MCP Tool Lambda function and stack"
-    echo "   ✅ OAuth2 credential providers"
-    echo "   ✅ Workload identities"
->>>>>>> origin/main
     echo "   ✅ ECR repositories and images"
     echo "   ✅ IAM role and policies"
     echo "   ✅ Generated configuration files"
@@ -1144,7 +698,6 @@ show_cleanup_summary() {
     echo "   ✅ Other AWS resources"
     echo ""
     echo -e "${BLUE}🚀 To redeploy from scratch:${NC}"
-<<<<<<< HEAD
     echo "   1. ./01-prerequisites.sh (Setup IAM roles and ECR repositories)"
     echo "   2. ./02-create-memory.sh (Create AgentCore Memory resources)"
     echo "   3. ./03-setup-oauth-provider.sh (Setup OAuth2 credential providers)"
@@ -1152,14 +705,6 @@ show_cleanup_summary() {
     echo "   5. ./05-create-gateway-targets.sh (Create AgentCore Gateways and targets)"
     echo "   6. ./06-deploy-diy.sh (Deploy DIY agent runtime)"
     echo "   7. ./07-deploy-sdk.sh (Deploy SDK agent runtime)"
-=======
-    echo "   1. ./01-prerequisites.sh"
-    echo "   2. ./02-setup-oauth-provider.sh"
-    echo "   3. ./03-deploy-mcp-tool-lambda.sh"
-    echo "   4. ./04-create-gateway-targets.sh"
-    echo "   5. ./05-deploy-diy.sh"
-    echo "   6. ./06-deploy-sdk.sh"
->>>>>>> origin/main
 }
 
 # Main execution
@@ -1180,7 +725,6 @@ main() {
     echo -e "${RED}🚨 STARTING DESTRUCTIVE CLEANUP...${NC}"
     echo ""
     
-<<<<<<< HEAD
     # Execute cleanup steps in reverse order of deployment
     echo "Step 1: Cleaning up runtime agents..."
     cleanup_runtime_agents
@@ -1210,39 +754,6 @@ main() {
     echo ""
     
     echo "Step 7: Cleaning up configuration files..."
-=======
-    # Execute cleanup steps
-    cleanup_runtime_agents
-    echo ""
-    
-    # Set environment variables for gateway and MCP cleanup
-    export CLEANUP_REGION="$REGION"
-    export MCP_STACK_NAME="$MCP_STACK_NAME"
-    export GATEWAY_ID="$GATEWAY_ID"
-    export MCP_FUNCTION_NAME="$MCP_FUNCTION_NAME"
-    
-    cleanup_gateway_mcp_resources
-    
-    # Clean up environment variables
-    unset CLEANUP_REGION MCP_STACK_NAME GATEWAY_ID MCP_FUNCTION_NAME
-    echo ""
-    
-    # Set environment variables for identity cleanup
-    export CLEANUP_REGION="$REGION"
-    
-    cleanup_identity_resources
-    
-    # Clean up environment variables
-    unset CLEANUP_REGION
-    echo ""
-    
-    cleanup_ecr_repositories
-    echo ""
-    
-    cleanup_iam_resources
-    echo ""
-    
->>>>>>> origin/main
     cleanup_config_files
     echo ""
     

@@ -16,21 +16,14 @@ import yaml
 import uuid
 from typing import List, Tuple, Optional, Dict, Any
 from datetime import datetime
-<<<<<<< HEAD
 from agent_shared import mylogger
  
 logger = mylogger.get_logger()
-=======
->>>>>>> origin/main
 
 try:
     from bedrock_agentcore.memory import MemoryClient
 except ImportError:
-<<<<<<< HEAD
     logger.warning("bedrock-agentcore not installed. Memory functionality will be disabled.")
-=======
-    print("Warning: bedrock-agentcore not installed. Memory functionality will be disabled.")
->>>>>>> origin/main
     MemoryClient = None
 
 # ============================================================================
@@ -59,27 +52,16 @@ class MemoryManager:
             with open(config_file, 'r') as f:
                 return yaml.safe_load(f)
         except FileNotFoundError:
-<<<<<<< HEAD
             logger.warning(f"Config file not found at {config_file}. Memory functionality may be limited.")
             return {}
         except yaml.YAMLError as e:
             logger.warning(f"Error parsing config file: {e}. Memory functionality may be limited.")
-=======
-            print(f"Warning: Config file not found at {config_file}. Memory functionality may be limited.")
-            return {}
-        except yaml.YAMLError as e:
-            print(f"Warning: Error parsing config file: {e}. Memory functionality may be limited.")
->>>>>>> origin/main
             return {}
     
     def _initialize_memory(self):
         """Initialize memory client and resources"""
         if MemoryClient is None:
-<<<<<<< HEAD
             logger.info("Memory client not available. Skipping memory initialization.")
-=======
-            print("Memory client not available. Skipping memory initialization.")
->>>>>>> origin/main
             return
         
         try:
@@ -90,11 +72,7 @@ class MemoryManager:
             self._setup_memory_resource()
             
         except Exception as e:
-<<<<<<< HEAD
             logger.error(f"Failed to initialize memory client: {e}")
-=======
-            print(f"Warning: Failed to initialize memory client: {e}")
->>>>>>> origin/main
             self.memory_client = None
     
     def _setup_memory_resource(self):
@@ -114,11 +92,7 @@ class MemoryManager:
             
             if agent_memory:
                 self.memory_id = agent_memory.get('id')
-<<<<<<< HEAD
                 logger.info(f"Using existing memory resource: {self.memory_id}")
-=======
-                print(f"Using existing memory resource: {self.memory_id}")
->>>>>>> origin/main
             else:
                 # Create new short-term memory
                 memory = self.memory_client.create_memory(
@@ -126,17 +100,10 @@ class MemoryManager:
                     description="Short-term memory for AgentCore agent conversations"
                 )
                 self.memory_id = memory.get('id')
-<<<<<<< HEAD
                 logger.info(f"Created new memory resource: {self.memory_id}")
                 
         except Exception as e:
             logger.error(f"Failed to setup memory resource: {e}")
-=======
-                print(f"Created new memory resource: {self.memory_id}")
-                
-        except Exception as e:
-            print(f"Warning: Failed to setup memory resource: {e}")
->>>>>>> origin/main
             self.memory_client = None
     
     def start_session(self, session_id: str = None) -> str:
@@ -182,11 +149,7 @@ class MemoryManager:
             return True
             
         except Exception as e:
-<<<<<<< HEAD
             logger.error(f"Failed to store conversation turn: {e}")
-=======
-            print(f"Warning: Failed to store conversation turn: {e}")
->>>>>>> origin/main
             return False
     
     def get_conversation_context(
@@ -209,11 +172,7 @@ class MemoryManager:
             return conversations if conversations else []
             
         except Exception as e:
-<<<<<<< HEAD
             logger.error(f"Failed to retrieve conversation context: {e}")
-=======
-            print(f"Warning: Failed to retrieve conversation context: {e}")
->>>>>>> origin/main
             return []
     
     def format_context_for_agent(
@@ -247,11 +206,7 @@ class MemoryManager:
                         context_parts.append(f"Tool: {content}")
         
         except Exception as e:
-<<<<<<< HEAD
             logger.error(f"Error formatting context: {e}")
-=======
-            print(f"Warning: Error formatting context: {e}")
->>>>>>> origin/main
             return ""
         
         return "\n".join(context_parts)

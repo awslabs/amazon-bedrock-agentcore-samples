@@ -27,7 +27,6 @@ This guide configures Okta OAuth2 authentication for the AgentCore system, suppo
    Sign-in redirect URIs: 
      - http://localhost:8080/callback
      - http://localhost:8080/okta-auth/
-<<<<<<< HEAD
      - http://localhost:8080/okta-auth/iframe-oauth-flow.html
    Sign-out redirect URIs: http://localhost:8080/
    Controlled access: Allow everyone in your organization to access
@@ -115,81 +114,6 @@ agentcore:
       - "YOUR_SPA_CLIENT_ID"
 ```
 
-=======
-   Sign-out redirect URIs: http://localhost:8080/
-   Controlled access: Allow everyone in your organization to access
-   ```
-5. **Save** the application and note the **Client ID**
-
-### 2. Configure API Scopes
-
-1. **Navigate to**: Security → API → Authorization Servers → default
-2. **Verify scopes exist**:
-   - `openid` - Required for OpenID Connect
-   - `profile` - User profile information  
-   - `email` - User email address
-3. **Add custom scope**:
-   - **Name**: `api`
-   - **Description**: API access for AgentCore
-   - **Include in public metadata**: ✅
-
-### 3. Create Machine-to-Machine Application
-
-For AgentCore workload authentication:
-
-1. **Create new app**: OIDC - OpenID Connect → Web Application
-2. **Configure**:
-   ```
-   App name: aws-support-agent-m2m
-   Grant types: ✅ Client Credentials
-   Client authentication: ✅ Client secret
-   ```
-3. **Save** and note the **Client ID** and **Client Secret**
-
-## Project Configuration
-
-### 1. Update Static Configuration
-
-Edit `config/static-config.yaml`:
-
-```yaml
-# Okta OAuth2 Configuration
-okta:
-  domain: "your-domain.okta.com"  # Replace with your Okta domain
-  
-  # OAuth2 authorization server configuration
-  authorization_server: "default"
-  
-  # Client configuration for client credentials flow (app-to-app)
-  client_credentials:
-    client_id: "YOUR_M2M_CLIENT_ID"      # From M2M app
-    client_secret: "${OKTA_CLIENT_SECRET}"  # Set via environment variable
-    scope: "api"
-  
-  # Client configuration for user authentication (PKCE flow)
-  user_auth:
-    client_id: "YOUR_SPA_CLIENT_ID"      # From SPA app
-    audience: "YOUR_SPA_CLIENT_ID"       # Same as client_id
-    redirect_uri: "http://localhost:8080/callback"
-    scope: "openid profile email"
-  
-  # JWT token configuration
-  jwt:
-    audience: "YOUR_SPA_CLIENT_ID"       # Your SPA client ID
-    issuer: "https://your-domain.okta.com/oauth2/default"
-    discovery_url: "https://your-domain.okta.com/oauth2/default/.well-known/openid-configuration"
-    cache_duration: 300
-    refresh_threshold: 60
-
-# AgentCore JWT Authorizer Configuration
-agentcore:
-  jwt_authorizer:
-    discovery_url: "https://your-domain.okta.com/oauth2/default/.well-known/openid-configuration"
-    allowed_audience: 
-      - "YOUR_SPA_CLIENT_ID"
-```
-
->>>>>>> origin/main
 ### 2. Set Environment Variables
 
 ```bash
