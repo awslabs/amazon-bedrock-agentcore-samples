@@ -79,6 +79,24 @@ gateway:
   uri: "https://your-gateway-url.com"  # Updated during setup
 ```
 
+## Gateway Environment Variables
+
+The AgentCore Gateway requires additional environment variables for authentication. Create a `.env` file in the `gateway/` directory with the following:
+
+```bash
+# Required: Backend API key for credential provider authentication
+BACKEND_API_KEY=your-backend-api-key-here
+
+# Optional: Override config.yaml values with environment variables
+# ACCOUNT_ID=123456789012
+# REGION=us-east-1
+# ROLE_NAME=your-role-name
+# GATEWAY_NAME=MyAgentCoreGateway
+# CREDENTIAL_PROVIDER_NAME=sre-agent-api-key-credential-provider
+```
+
+**Note**: The `BACKEND_API_KEY` is used by the `create_gateway.sh` script to authenticate with the credential provider service.
+
 ## Gateway Configuration
 
 The AgentCore Gateway is configured through `gateway/config.yaml`. This configuration is managed by the setup scripts but can be customized:

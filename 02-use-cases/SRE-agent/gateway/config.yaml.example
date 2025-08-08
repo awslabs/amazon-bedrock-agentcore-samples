@@ -4,9 +4,13 @@
 # AWS Configuration
 account_id: "YOUR_ACCOUNT_ID"
 region: "us-east-1"
+# IAM role used to create and manage the gateway
+# This role must have BedrockAgentCoreFullAccess policy and trust policy for bedrock-agentcore.amazonaws.com
 role_name: "YOUR_ROLE_NAME"
 endpoint_url: "https://bedrock-agentcore-control.us-east-1.amazonaws.com"
 credential_provider_endpoint_url: "https://us-east-1.prod.agent-credential-provider.cognito.aws.dev"
+# Name for the API key credential provider used by backend services for authentication
+credential_provider_name: "sre-agent-api-key-credential-provider"
 
 # Cognito Configuration
 user_pool_id: "YOUR_USER_POOL_ID"

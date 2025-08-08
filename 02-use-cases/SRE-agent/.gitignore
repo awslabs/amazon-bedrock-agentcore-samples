@@ -80,12 +80,21 @@ logs/
 reports/*.md
 !reports/README.md
 
+# Generated OpenAPI specifications (generated from templates)
+backend/openapi_specs/k8s_api.yaml
+backend/openapi_specs/logs_api.yaml
+backend/openapi_specs/metrics_api.yaml
+backend/openapi_specs/runbooks_api.yaml
+
 # Docker
 .dockerignore
 
 # Local config
 config.yaml
 !config.yaml.example
+
+# Cognito setup artifacts
+deployment/.cognito_config
 
 # Temporary files
 *.tmp

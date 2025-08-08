@@ -7,6 +7,8 @@ from typing import Any, Dict, List, Literal
 
 from langchain_anthropic import ChatAnthropic
 from langchain_aws import ChatBedrock
+
+from .llm_utils import create_llm_with_error_handling
 from langchain_core.messages import HumanMessage, SystemMessage
 from pydantic import BaseModel, Field
 
@@ -109,33 +111,15 @@ Always consider if a query requires multiple perspectives. For example:
 class SupervisorAgent:
     """Supervisor agent that orchestrates other agents."""
 
-    def __init__(self, llm_provider: str = "anthropic", **llm_kwargs):
+    def __init__(self, llm_provider: str = "bedrock", **llm_kwargs):
         self.llm_provider = llm_provider
         self.llm = self._create_llm(**llm_kwargs)
         self.system_prompt = _read_supervisor_prompt()
         self.formatter = create_formatter(llm_provider=llm_provider)
 
     def _create_llm(self, **kwargs):
-        """Create LLM instance based on provider."""
-        config = SREConstants.get_model_config(self.llm_provider, **kwargs)
-
-        if self.llm_provider == "anthropic":
-            return ChatAnthropic(
-                model=config["model_id"],
-                max_tokens=config["max_tokens"],
-                temperature=config["temperature"],
-            )
-        elif self.llm_provider == "bedrock":
-            return ChatBedrock(
-                model_id=config["model_id"],
-                region_name=config["region_name"],
-                model_kwargs={
-                    "temperature": config["temperature"],
-                    "max_tokens": config["max_tokens"],
-                },
-            )
-        else:
-            raise ValueError(f"Unsupported provider: {self.llm_provider}")
+        """Create LLM instance with improved error handling."""
+        return create_llm_with_error_handling(self.llm_provider, **kwargs)
 
     async def create_investigation_plan(self, state: AgentState) -> InvestigationPlan:
         """Create an investigation plan for the user's query."""

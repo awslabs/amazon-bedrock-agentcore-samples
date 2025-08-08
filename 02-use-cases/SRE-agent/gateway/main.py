@@ -33,10 +33,10 @@ logging.basicConfig(
 def _extract_account_id_from_arn(arn: str) -> str:
     """
     Extract AWS account ID from an ARN.
-    
+
     Args:
         arn: AWS ARN string
-        
+
     Returns:
         Account ID extracted from ARN
     """
@@ -66,20 +66,17 @@ def _create_agentcore_client(region: str, endpoint_url: str) -> Any:
     """
     # Custom retry configuration with increased attempts and timeout
     retry_config = Config(
-        retries={
-            'max_attempts': 20,
-            'mode': 'adaptive'
-        },
+        retries={"max_attempts": 20, "mode": "adaptive"},
         connect_timeout=60,
-        read_timeout=60
+        read_timeout=60,
     )
-    
+
     try:
         client = boto3.client(
-            "bedrock-agentcore-control", 
-            region_name=region, 
+            "bedrock-agentcore-control",
+            region_name=region,
             endpoint_url=endpoint_url,
-            config=retry_config
+            config=retry_config,
         )
         logging.info(f"Created AgentCore client for region {region}")
         return client
@@ -253,9 +250,11 @@ def _delete_gateway(client: Any, gateway_id: str) -> None:
 
         if logging.getLogger().isEnabledFor(logging.DEBUG):
             logging.debug(f"Gateway delete response: {delete_response}")
-        
+
         # Wait for deletion to propagate
-        logging.info(f"Waiting {GATEWAY_DELETION_PROPAGATION_DELAY} seconds for deletion to propagate...")
+        logging.info(
+            f"Waiting {GATEWAY_DELETION_PROPAGATION_DELAY} seconds for deletion to propagate..."
+        )
         time.sleep(GATEWAY_DELETION_PROPAGATION_DELAY)
     except ClientError as e:
         logging.error(f"Failed to delete gateway {gateway_id}: {e}")
@@ -317,7 +316,7 @@ def create_gateway(
             authorizerConfiguration=auth_config,
             protocolConfiguration=protocol_configuration,
             description=description,
-            exceptionLevel='DEBUG'
+            exceptionLevel="DEBUG",
         )
         logging.info(f"Created gateway: {response.get('gatewayId')}")
         return response
@@ -627,7 +626,9 @@ def main():
     # Check if observability was requested
     if args.enable_observability:
         logging.error("Observability feature is not yet supported")
-        print("\n❌ Error: The --enable-observability feature is currently not supported but will be available soon.")
+        print(
+            "\n❌ Error: The --enable-observability feature is currently not supported but will be available soon."
+        )
         print("   Please run the command without the --enable-observability flag.")
         exit(1)
 

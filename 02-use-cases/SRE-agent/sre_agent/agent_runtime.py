@@ -78,7 +78,17 @@ async def initialize_agent():
         )
 
     except Exception as e:
-        logger.error(f"Failed to initialize SRE Agent system: {e}")
+        from .llm_utils import LLMAuthenticationError, LLMAccessError, LLMProviderError
+
+        if isinstance(e, (LLMAuthenticationError, LLMAccessError, LLMProviderError)):
+            logger.error(f"LLM Provider Error: {e}")
+            print(f"\n❌ {type(e).__name__}:")
+            print(str(e))
+            print(f"\n💡 Set LLM_PROVIDER environment variable to switch providers:")
+            other_provider = "anthropic" if provider == "bedrock" else "bedrock"
+            print(f"   export LLM_PROVIDER={other_provider}")
+        else:
+            logger.error(f"Failed to initialize SRE Agent system: {e}")
         raise
 
 

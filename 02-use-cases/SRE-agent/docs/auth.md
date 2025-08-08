@@ -4,9 +4,40 @@ This document covers the setup requirements for IAM permissions and identity pro
 
 ## IAM Permissions Setup
 
-### Core Gateway Permissions
+### AWS Managed Policy
 
-Policy required for invoking CRUDL operations on Gateway Target or Gateway, InvokeTool API, and ListTool:
+For simplified setup, AWS provides a managed policy that includes all necessary permissions for Bedrock AgentCore operations:
+
+**Policy Name**: `BedrockAgentCoreFullAccess`
+
+This managed policy should be attached to the IAM role used by your AgentCore runtime. It includes:
+- All bedrock-agentcore permissions
+- Required IAM:PassRole permissions
+- S3 access for schema storage
+- Other necessary service permissions
+
+### Trust Policy Requirements
+
+The IAM role must include a trust policy that allows the Bedrock AgentCore service to assume the role:
+
+```json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Principal": {
+                "Service": "bedrock-agentcore.amazonaws.com"
+            },
+            "Action": "sts:AssumeRole"
+        }
+    ]
+}
+```
+
+### Core Gateway Permissions (Alternative)
+
+If you prefer granular permissions instead of the managed policy, use this policy for invoking CRUDL operations on Gateway Target or Gateway, InvokeTool API, and ListTool:
 
 ```json
 {
@@ -69,7 +100,6 @@ If the Gateway Target is of Smithy Target type:
 - Execution role must include any AWS permissions for the tools/APIs you wish to invoke
 - Example: Adding a gateway target for S3 → add relevant S3 permissions to the role
 
-### Trust Policy for AgentCore Service
 
 You need to trust the AgentCore service's beta account to assume the role:
 
@@ -128,16 +158,27 @@ If the Lambda is in another account, configure a resource-based policy (RBP) on 
 - For Cognito, you MUST use `allowedClients` with your app client ID
 - For Auth0/Okta, you MUST use `allowedAudience` with your API identifier
 
-**Command Line Usage:**
-```bash
-# For Cognito
-python main.py "MyGateway" --allowed-clients "your-client-id" ...
+### 1. Amazon Cognito Setup
 
-# For Auth0/Okta  
-python main.py "MyGateway" --allowed-audience "your-audience" ...
+#### Option A: Automated Setup (Recommended)
+
+For a complete end-to-end Cognito setup, use the automation script:
+
+```bash
+cd deployment
+./setup_cognito.sh
 ```
 
-### 1. Amazon Cognito Setup
+This script will:
+- Create user pool and domain
+- Create resource server with scopes
+- Create app client with credentials
+- Generate `.env` file with all required variables
+- Provide configuration details for gateway setup
+
+#### Option B: Manual Setup
+
+If you prefer to set up Cognito manually, follow these steps:
 
 #### Create User Pool
 
@@ -172,6 +213,21 @@ aws cognito-idp create-resource-server \
     --scopes '[{"ScopeName":"read","ScopeDescription":"Read access"}, {"ScopeName":"write","ScopeDescription":"Write access"}]'
 ```
 
+#### Create User Pool Domain
+
+**Important**: You must create a domain before you can get access tokens.
+
+```bash
+# Create user pool domain (required for token endpoint)
+aws cognito-idp create-user-pool-domain \
+    --region us-west-2 \
+    --user-pool-id <UserPoolId> \
+    --domain "your-unique-domain-name"
+
+# Note: Domain name must be globally unique across all AWS accounts
+# Example: "sre-agent-demo-12345" or "mycompany-sre-agent"
+```
+
 #### Create Client
 
 ```bash
@@ -189,12 +245,14 @@ aws cognito-idp create-user-pool-client \
 #### Get Access Token
 
 ```bash
-curl --http1.1 -X POST https://<UserPoolIdWithoutUnderscore>.auth.us-west-2.amazoncognito.com/oauth2/token \
+# Use your domain name (not UserPoolId) in the URL
+curl --http1.1 -X POST https://<your-domain-name>.auth.us-west-2.amazoncognito.com/oauth2/token \
     -H "Content-Type: application/x-www-form-urlencoded" \
     -d "grant_type=client_credentials&client_id=<ClientId>&client_secret=<ClientSecret>"
 ```
 
-**Note**: Remove any underscore from the UserPoolId in the URL (e.g., `us-west-2_gmSGKKGr9` becomes `us-west-2gmSGKKGr9`)
+**Note**: Use the domain name you created in the previous step, NOT the UserPoolId. The URL format is:
+`https://<domain-name>.auth.<region>.amazoncognito.com/oauth2/token`
 
 #### Sample Cognito Token Claims
 
@@ -320,9 +378,12 @@ After setting up your identity provider, configure these environment variables i
 
 ```bash
 # For Cognito
-COGNITO_DOMAIN=https://yourdomain.auth.us-west-2.amazoncognito.com
+COGNITO_DOMAIN=https://your-domain-name.auth.us-west-2.amazoncognito.com
 COGNITO_CLIENT_ID=your-client-id
 COGNITO_CLIENT_SECRET=your-client-secret
+
+# Where 'your-domain-name' is the domain you created with:
+# aws cognito-idp create-user-pool-domain --domain "your-domain-name"
 
 # For Auth0
 COGNITO_DOMAIN=https://dev-yourdomain.us.auth0.com

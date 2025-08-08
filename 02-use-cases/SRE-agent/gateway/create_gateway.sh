@@ -17,8 +17,28 @@ fi
 # Function to read value from YAML
 get_config() {
     local key=$1
-    # Use cut to get everything after the first colon and space, then remove quotes
-    grep "^${key}:" "${SCRIPT_DIR}/config.yaml" | cut -d':' -f2- | sed 's/^ *"\?\(.*\)"\?$/\1/' | sed 's/"$//'
+    local line=$(grep "^${key}:" "${SCRIPT_DIR}/config.yaml" | cut -d':' -f2-)
+    local result
+    
+    # Remove leading whitespace
+    line=$(echo "$line" | sed 's/^[ \t]*//')
+    
+    # Handle quoted values - extract content between first pair of quotes, ignore comments after
+    if echo "$line" | grep -q '^".*"'; then
+        result=$(echo "$line" | sed 's/^"\([^"]*\)".*/\1/')
+    else
+        # Handle unquoted values - extract everything before comment or end of line, trim trailing whitespace
+        result=$(echo "$line" | sed 's/[ \t]*#.*//' | sed 's/[ \t]*$//')
+    fi
+    
+    # For critical AWS identifiers, remove all whitespace to prevent copy-paste errors
+    case "$key" in
+        account_id|role_name|user_pool_id|client_id|s3_bucket|credential_provider_name)
+            result=$(echo "$result" | tr -d ' \t')
+            ;;
+    esac
+    
+    echo "$result"
 }
 
 # Read configuration from config.yaml
@@ -38,7 +58,7 @@ TARGET_DESCRIPTION=$(get_config "target_description")
 CREDENTIAL_PROVIDER_NAME=$(get_config "credential_provider_name")
 
 # Construct derived values
-DISCOVERY_URL="https://cognito-idp.us-west-2.amazonaws.com/${USER_POOL_ID}/.well-known/openid-configuration"
+DISCOVERY_URL="https://cognito-idp.${REGION}.amazonaws.com/${USER_POOL_ID}/.well-known/openid-configuration"
 
 # Define API schema filenames
 API_SCHEMAS=(

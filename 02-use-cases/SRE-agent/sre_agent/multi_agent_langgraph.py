@@ -794,8 +794,8 @@ async def main():
     parser.add_argument(
         "--provider",
         choices=["bedrock", "anthropic"],
-        default="anthropic",
-        help="Model provider to use (default: anthropic)",
+        default="bedrock",
+        help="Model provider to use (default: bedrock)",
     )
     parser.add_argument(
         "--debug",
@@ -841,6 +841,8 @@ async def main():
         logger.info("Debug logging enabled")
 
     try:
+        logger.info(f"🚀 Starting SRE Agent with provider: {args.provider}")
+
         # Interactive mode
         if args.interactive or not args.prompt:
             await _run_interactive_session(
@@ -851,8 +853,31 @@ async def main():
             )
         # Single prompt mode
         else:
-            graph, all_tools = await create_multi_agent_system(args.provider)
-            logger.info("Multi-agent system created successfully")
+            try:
+                graph, all_tools = await create_multi_agent_system(args.provider)
+                logger.info("Multi-agent system created successfully")
+            except Exception as e:
+                from .llm_utils import (
+                    LLMAuthenticationError,
+                    LLMAccessError,
+                    LLMProviderError,
+                )
+
+                if isinstance(
+                    e, (LLMAuthenticationError, LLMAccessError, LLMProviderError)
+                ):
+                    print(f"\n❌ {type(e).__name__}:")
+                    print(str(e))
+                    print(f"\n💡 Quick fix: Try running with the other provider:")
+                    other_provider = (
+                        "anthropic" if args.provider == "bedrock" else "bedrock"
+                    )
+                    print(
+                        f'   sre-agent --provider {other_provider} --prompt "your query"'
+                    )
+                    return
+                else:
+                    raise
 
             # Create initial state
             initial_state: AgentState = {

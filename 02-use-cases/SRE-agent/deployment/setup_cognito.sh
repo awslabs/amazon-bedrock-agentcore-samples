@@ -1,0 +1,221 @@
+#!/bin/bash
+
+# Cognito Setup Automation Script for SRE Agent
+# Creates complete Cognito infrastructure for AgentCore Gateway authentication
+
+set -e
+
+# Configuration defaults (can be overridden by environment variables)
+REGION="${AWS_REGION:-us-east-1}"
+POOL_NAME="${COGNITO_POOL_NAME:-sre-agent-user-pool}"
+DOMAIN_PREFIX="${COGNITO_DOMAIN_PREFIX:-sre-agent-$(date +%s)}"
+RESOURCE_SERVER_ID="${COGNITO_RESOURCE_SERVER_ID:-sre-agent-api}"
+CLIENT_NAME="${COGNITO_CLIENT_NAME:-sre-agent-client}"
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+# Logging functions
+log_info() { echo -e "${BLUE}ℹ️  $1${NC}"; }
+log_success() { echo -e "${GREEN}✅ $1${NC}"; }
+log_warning() { echo -e "${YELLOW}⚠️  $1${NC}"; }
+log_error() { echo -e "${RED}❌ $1${NC}"; }
+
+# Check if AWS CLI is installed and configured
+check_prerequisites() {
+    log_info "Checking prerequisites..."
+    
+    if ! command -v aws &> /dev/null; then
+        log_error "AWS CLI is not installed. Please install it first."
+        exit 1
+    fi
+    
+    if ! aws sts get-caller-identity &> /dev/null; then
+        log_error "AWS CLI is not configured. Please run 'aws configure' first."
+        exit 1
+    fi
+    
+    log_success "Prerequisites check passed"
+}
+
+# Create User Pool
+create_user_pool() {
+    log_info "Creating Cognito User Pool: $POOL_NAME..."
+    
+    USER_POOL_ID=$(aws cognito-idp create-user-pool \
+        --region "$REGION" \
+        --pool-name "$POOL_NAME" \
+        --query 'UserPool.Id' \
+        --output text)
+    
+    if [ $? -eq 0 ] && [ -n "$USER_POOL_ID" ]; then
+        log_success "User Pool created: $USER_POOL_ID"
+        echo "USER_POOL_ID=$USER_POOL_ID" >> .cognito_config
+    else
+        log_error "Failed to create User Pool"
+        exit 1
+    fi
+}
+
+# Create User Pool Domain
+create_user_pool_domain() {
+    log_info "Creating User Pool Domain: $DOMAIN_PREFIX..."
+    
+    # Check if domain is available
+    if aws cognito-idp describe-user-pool-domain --domain "$DOMAIN_PREFIX" --region "$REGION" &> /dev/null; then
+        log_warning "Domain $DOMAIN_PREFIX already exists. Generating new domain..."
+        DOMAIN_PREFIX="sre-agent-$(date +%s)-$(shuf -i 100-999 -n 1)"
+        log_info "Using new domain: $DOMAIN_PREFIX"
+    fi
+    
+    aws cognito-idp create-user-pool-domain \
+        --region "$REGION" \
+        --domain "$DOMAIN_PREFIX" \
+        --user-pool-id "$USER_POOL_ID"
+    
+    if [ $? -eq 0 ]; then
+        COGNITO_DOMAIN="https://$DOMAIN_PREFIX.auth.$REGION.amazoncognito.com"
+        log_success "User Pool Domain created: $COGNITO_DOMAIN"
+        echo "COGNITO_DOMAIN=$COGNITO_DOMAIN" >> .cognito_config
+        echo "DOMAIN_PREFIX=$DOMAIN_PREFIX" >> .cognito_config
+    else
+        log_error "Failed to create User Pool Domain"
+        exit 1
+    fi
+}
+
+# Create Resource Server
+create_resource_server() {
+    log_info "Creating Resource Server: $RESOURCE_SERVER_ID..."
+    
+    aws cognito-idp create-resource-server \
+        --region "$REGION" \
+        --user-pool-id "$USER_POOL_ID" \
+        --identifier "$RESOURCE_SERVER_ID" \
+        --name "SRE Agent API Resource Server" \
+        --scopes '[
+            {"ScopeName":"read","ScopeDescription":"Read access to SRE Agent APIs"}, 
+            {"ScopeName":"write","ScopeDescription":"Write access to SRE Agent APIs"}
+        ]'
+    
+    if [ $? -eq 0 ]; then
+        log_success "Resource Server created: $RESOURCE_SERVER_ID"
+        echo "RESOURCE_SERVER_ID=$RESOURCE_SERVER_ID" >> .cognito_config
+    else
+        log_error "Failed to create Resource Server"
+        exit 1
+    fi
+}
+
+# Create App Client
+create_app_client() {
+    log_info "Creating App Client: $CLIENT_NAME..."
+    
+    CLIENT_RESPONSE=$(aws cognito-idp create-user-pool-client \
+        --region "$REGION" \
+        --user-pool-id "$USER_POOL_ID" \
+        --client-name "$CLIENT_NAME" \
+        --generate-secret \
+        --allowed-o-auth-flows client_credentials \
+        --allowed-o-auth-scopes "$RESOURCE_SERVER_ID/read" "$RESOURCE_SERVER_ID/write" \
+        --allowed-o-auth-flows-user-pool-client \
+        --supported-identity-providers "COGNITO" \
+        --query 'UserPoolClient.{ClientId:ClientId,ClientSecret:ClientSecret}' \
+        --output json)
+    
+    if [ $? -eq 0 ]; then
+        CLIENT_ID=$(echo "$CLIENT_RESPONSE" | jq -r '.ClientId')
+        CLIENT_SECRET=$(echo "$CLIENT_RESPONSE" | jq -r '.ClientSecret')
+        
+        log_success "App Client created: $CLIENT_ID"
+        echo "COGNITO_CLIENT_ID=$CLIENT_ID" >> .cognito_config
+        echo "COGNITO_CLIENT_SECRET=$CLIENT_SECRET" >> .cognito_config
+    else
+        log_error "Failed to create App Client"
+        exit 1
+    fi
+}
+
+# Generate .env file
+generate_env_file() {
+    log_info "Generating .env file..."
+    
+    ENV_FILE="../gateway/.env"
+    
+    cat > "$ENV_FILE" << EOF
+# Cognito Configuration for SRE Agent
+# Generated by deployment/setup_cognito.sh on $(date)
+
+# Cognito Domain (for token generation)
+COGNITO_DOMAIN=$COGNITO_DOMAIN
+
+# Cognito Client Credentials
+COGNITO_CLIENT_ID=$CLIENT_ID
+COGNITO_CLIENT_SECRET=$CLIENT_SECRET
+
+# Additional Configuration
+USER_POOL_ID=$USER_POOL_ID
+RESOURCE_SERVER_ID=$RESOURCE_SERVER_ID
+REGION=$REGION
+EOF
+    
+    log_success "Environment file created: $ENV_FILE"
+}
+
+# Display summary
+display_summary() {
+    log_info "🎉 Cognito Setup Complete! Here's your configuration:"
+    echo ""
+    echo "📋 Configuration Summary:"
+    echo "  Region: $REGION"
+    echo "  User Pool ID: $USER_POOL_ID"
+    echo "  Domain: $COGNITO_DOMAIN"
+    echo "  Client ID: $CLIENT_ID"
+    echo "  Resource Server: $RESOURCE_SERVER_ID"
+    echo ""
+    echo "📁 Files Created:"
+    echo "  ✓ .cognito_config (backup configuration)"
+    echo "  ✓ ../gateway/.env (environment variables)"
+    echo ""
+    echo "🚀 Next Steps:"
+    echo "  1. Update gateway/config.yaml with your User Pool ID:"
+    echo "     user_pool_id: \"$USER_POOL_ID\""
+    echo "     client_id: \"$CLIENT_ID\""
+    echo ""
+    echo "  2. Test token generation:"
+    echo "     cd ../gateway && python generate_token.py"
+    echo ""
+    echo "  3. Create your gateway:"
+    echo "     cd ../gateway && ./create_gateway.sh"
+    echo ""
+    echo "🔗 Discovery URL for gateway configuration:"
+    echo "  https://cognito-idp.$REGION.amazonaws.com/$USER_POOL_ID/.well-known/openid-configuration"
+}
+
+# Main function
+main() {
+    echo "🚀 Starting Cognito Setup for SRE Agent..."
+    echo ""
+    
+    # Clean up any existing config
+    rm -f .cognito_config
+    
+    check_prerequisites
+    create_user_pool
+    create_user_pool_domain
+    create_resource_server
+    create_app_client
+    generate_env_file
+    display_summary
+    
+    log_success "Cognito setup completed successfully!"
+}
+
+# Script execution
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    main "$@"
+fi 

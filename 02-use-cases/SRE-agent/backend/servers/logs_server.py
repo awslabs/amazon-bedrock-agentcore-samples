@@ -34,7 +34,9 @@ try:
     EXPECTED_API_KEY = retrieve_api_key(CREDENTIAL_PROVIDER_NAME)
     if not EXPECTED_API_KEY:
         logging.error("Failed to retrieve API key from credential provider")
-        raise RuntimeError("Cannot start server without valid API key from credential provider")
+        raise RuntimeError(
+            "Cannot start server without valid API key from credential provider"
+        )
 except Exception as e:
     logging.error(f"Error retrieving API key: {e}")
     raise RuntimeError(f"Cannot start server: {e}") from e
@@ -214,12 +216,12 @@ async def analyze_log_patterns(
         patterns_file = DATA_PATH / "log_patterns.json"
         if not patterns_file.exists():
             return {"patterns": []}
-        
+
         with open(patterns_file, "r") as f:
             data = json.load(f)
-        
+
         patterns = data.get("patterns", [])
-        
+
         # Filter by min_occurrences
         patterns = [p for p in patterns if p["count"] >= min_occurrences]
 
@@ -273,14 +275,14 @@ async def count_log_events(
         counts_file = DATA_PATH / "log_counts.json"
         if not counts_file.exists():
             return {"total_count": 0, "counts": []}
-        
+
         with open(counts_file, "r") as f:
             data = json.load(f)
-        
+
         if event_type.lower() == "error":
             error_data = data.get("error_counts", {})
             total_count = error_data.get("total_count", 0)
-            
+
             if group_by == "service":
                 counts = error_data.get("by_service", [])
             elif group_by == "level":
@@ -315,28 +317,36 @@ if __name__ == "__main__":
     from config_utils import get_server_port
 
     parser = argparse.ArgumentParser(description="Logs API Server")
-    parser.add_argument("--host", type=str, required=True, 
-                       help="Host to bind to (REQUIRED - must match SSL certificate hostname if using SSL)")
+    parser.add_argument(
+        "--host",
+        type=str,
+        required=True,
+        help="Host to bind to (REQUIRED - must match SSL certificate hostname if using SSL)",
+    )
     parser.add_argument("--ssl-keyfile", type=str, help="Path to SSL private key file")
     parser.add_argument("--ssl-certfile", type=str, help="Path to SSL certificate file")
     parser.add_argument("--port", type=int, help="Port to bind to (overrides config)")
-    
+
     args = parser.parse_args()
-    
+
     port = args.port if args.port else get_server_port("logs")
-    
+
     # Configure SSL if both cert files are provided
     ssl_config = {}
     if args.ssl_keyfile and args.ssl_certfile:
         ssl_config = {
             "ssl_keyfile": args.ssl_keyfile,
-            "ssl_certfile": args.ssl_certfile
+            "ssl_certfile": args.ssl_certfile,
         }
         protocol = "HTTPS"
-        logging.warning(f"⚠️  SSL CERTIFICATE HOSTNAME WARNING: Ensure your SSL certificate is valid for hostname '{args.host}'")
-        logging.warning(f"⚠️  If using self-signed certificates, generate with: openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365 -nodes -subj '/CN={args.host}'")
+        logging.warning(
+            f"⚠️  SSL CERTIFICATE HOSTNAME WARNING: Ensure your SSL certificate is valid for hostname '{args.host}'"
+        )
+        logging.warning(
+            f"⚠️  If using self-signed certificates, generate with: openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365 -nodes -subj '/CN={args.host}'"
+        )
     else:
         protocol = "HTTP"
-    
+
     logging.info(f"Starting Logs server on {protocol}://{args.host}:{port}")
     uvicorn.run(app, host=args.host, port=port, **ssl_config)

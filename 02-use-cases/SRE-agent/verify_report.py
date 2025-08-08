@@ -134,32 +134,25 @@ Be extremely thorough and precise. SRE operations require absolute accuracy - ev
 
 
 def _verify_report_with_claude(
-    report_content: str, 
-    ground_truth_content: str,
-    api_key: str
+    report_content: str, ground_truth_content: str, api_key: str
 ) -> str:
     """Use Claude to verify the report against ground truth data."""
     try:
         client = anthropic.Anthropic(api_key=api_key)
-        
+
         prompt = _create_verification_prompt(report_content, ground_truth_content)
-        
+
         logger.info("Sending verification request to Claude 4 Sonnet...")
-        
+
         response = client.messages.create(
             model="claude-sonnet-4-20250514",
             max_tokens=4096,
             temperature=0.1,  # Low temperature for consistent, accurate analysis
-            messages=[
-                {
-                    "role": "user",
-                    "content": prompt
-                }
-            ]
+            messages=[{"role": "user", "content": prompt}],
         )
-        
+
         return response.content[0].text
-        
+
     except Exception as e:
         logger.error(f"Error calling Claude API: {e}")
         sys.exit(1)
@@ -171,17 +164,15 @@ def main():
         description="Verify SRE investigation reports against ground truth data"
     )
     parser.add_argument(
-        "report_path",
-        help="Path to the SRE investigation report (markdown file)"
+        "report_path", help="Path to the SRE investigation report (markdown file)"
     )
     parser.add_argument(
         "--data-path",
         default="backend/data/all_data_dump.txt",
-        help="Path to the ground truth data file (default: backend/data/all_data_dump.txt)"
+        help="Path to the ground truth data file (default: backend/data/all_data_dump.txt)",
     )
     parser.add_argument(
-        "--output",
-        help="Optional output file to save verification results"
+        "--output", help="Optional output file to save verification results"
     )
 
     args = parser.parse_args()
@@ -190,7 +181,7 @@ def main():
     if not os.path.exists(args.report_path):
         logger.error(f"Report file not found: {args.report_path}")
         sys.exit(1)
-    
+
     if not os.path.exists(args.data_path):
         logger.error(f"Ground truth data file not found: {args.data_path}")
         sys.exit(1)
@@ -205,24 +196,22 @@ def main():
     # Read files
     logger.info(f"Reading report: {args.report_path}")
     report_content = _read_file(args.report_path)
-    
+
     logger.info(f"Reading ground truth data: {args.data_path}")
     ground_truth_content = _read_file(args.data_path)
 
     # Verify report
     logger.info("Starting verification process...")
     verification_result = _verify_report_with_claude(
-        report_content, 
-        ground_truth_content, 
-        api_key
+        report_content, ground_truth_content, api_key
     )
 
     # Output results
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print("SRE REPORT VERIFICATION RESULTS")
-    print("="*80)
+    print("=" * 80)
     print(verification_result)
-    print("="*80)
+    print("=" * 80)
 
     # Save to output file if specified
     if args.output:

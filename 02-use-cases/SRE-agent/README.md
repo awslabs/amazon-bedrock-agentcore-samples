@@ -30,26 +30,28 @@ The SRE Agent is a multi-agent system for Site Reliability Engineers that helps 
 
 For comprehensive information about the SRE Agent system, please refer to the following detailed documentation:
 
-- **[Specialized Agents](docs/specialized-agents.md)** - Detailed capabilities of each of the four specialized agents
 - **[System Components](docs/system-components.md)** - In-depth architecture and component explanations
+- **[Specialized Agents](docs/specialized-agents.md)** - Detailed capabilities of each of the four specialized agents
 - **[Configuration](docs/configuration.md)** - Complete configuration guides for environment variables, agents, and gateway
+- **[Security](docs/security.md)** - Security best practices and considerations for production deployment
 - **[Demo Environment](docs/demo-environment.md)** - Demo scenarios, data customization, and testing setup
 - **[Example Use Cases](docs/example-use-cases.md)** - Detailed walkthroughs and interactive troubleshooting examples
-- **[Security](docs/security.md)** - Security best practices and considerations for production deployment
 - **[Verification](docs/verification.md)** - Ground truth verification and report validation
 - **[Development](docs/development.md)** - Testing, code quality, and contribution guidelines
 - **[Deployment Guide](docs/deployment-guide.md)** - Complete deployment guide for Amazon Bedrock AgentCore Runtime
 
 ## Prerequisites
 
-> **⚠️ IMPORTANT:** Amazon Bedrock AgentCore Gateway **only works with HTTPS endpoints**. You must have valid SSL certificates for your backend servers.
+| Requirement | Description |
+|-------------|-------------|
+| Python 3.12+ and `uv` | Python runtime and package manager. See [use-case setup](#use-case-setup) |
+| Amazon EC2 Instance | Recommended: `t3.xlarge` or larger |
+| Valid SSL certificates | **⚠️ IMPORTANT:** Amazon Bedrock AgentCore Gateway **only works with HTTPS endpoints**. For example, you can register your Amazon EC2 with [no-ip.com](https://www.noip.com/) and obtain a certificate from [letsencrypt.org](https://letsencrypt.org/), or use any other domain registration and SSL certificate provider. You'll need the domain name as `BACKEND_DOMAIN` and certificate paths in the [use-case setup](#use-case-setup) section |
+| EC2 instance port configuration | Required inbound ports (443, 8011-8014). See [EC2 instance port configuration](docs/ec2-port-configuration.md) |
+| IAM role with BedrockAgentCoreFullAccess policy | Required permissions and trust policy for AgentCore service. See [IAM role with BedrockAgentCoreFullAccess policy](docs/auth.md) |
+| Identity Provider (IDP) | Amazon Cognito, Auth0, or Okta for JWT authentication. For automated Cognito setup, use `deployment/setup_cognito.sh`. See [Authentication setup](docs/auth.md#identity-provider-configuration) |
 
-* Python 3.12+
-* `uv` package manager for Python package management
-* EC2 Instance (recommended: `t3.xlarge` or larger)
-* Valid SSL certificates for HTTPS endpoints
-* Either Anthropic API key or AWS credentials configured for Amazon Bedrock
-* Updated OpenAPI specifications with your actual domain name
+> **Note:** All prerequisites must be completed before proceeding to the use case setup. The setup will fail without proper SSL certificates, IAM permissions, and identity provider configuration.
 
 ## Use case setup
 
@@ -70,9 +72,8 @@ cp .env.example sre_agent/.env
 # Edit sre_agent/.env and add your Anthropic API key:
 # ANTHROPIC_API_KEY=sk-ant-your-key-here
 
-# Update OpenAPI specifications with your domain
-# Replace 'your-backend-domain.com' with your actual domain in all OpenAPI spec files
-sed -i 's/your-backend-domain.com/mydomain.com/g' backend/openapi_specs/*.yaml
+# Openapi Templates get replaced with your backend domain and saved as .yaml
+BACKEND_DOMAIN=api.mycompany.com ./backend/openapi_specs/generate_specs.sh
 
 # Get your EC2 instance private IP for server binding
 TOKEN=$(curl -X PUT "http://169.254.169.254/latest/api/token" \
@@ -145,7 +146,7 @@ AWS_PROFILE=production sre-agent --provider bedrock --interactive
 
 ## Development to Production Deployment Flow
 
-The SRE Agent follows a structured deployment process from local development to production on Amazon Bedrock AgentCore Runtime:
+The SRE Agent follows a structured deployment process from local development to production on Amazon Bedrock AgentCore Runtime. For detailed instructions, see the **[Deployment Guide](docs/deployment-guide.md)**.
 
 ```
 STEP 1: LOCAL DEVELOPMENT
@@ -198,36 +199,6 @@ The AgentCore Runtime deployment supports:
 - **Secure credential management** through AWS IAM and environment variables
 
 For complete step-by-step instructions including local testing, container building, and production deployment, see the **[Deployment Guide](docs/deployment-guide.md)**.
-
-## Managing OpenAPI Specifications
-
-### Important: Domain Configuration for Development vs Git Commits
-
-The OpenAPI specification files in `backend/openapi_specs/` use a placeholder domain `your-backend-domain.com` by default. For development, you'll need to replace this with your actual domain, but **you must revert these changes before committing to git**.
-
-#### For Development Setup
-```bash
-# Replace placeholder domain with your actual domain
-sed -i 's/your-backend-domain.com/your-actual-domain.com/g' backend/openapi_specs/*.yaml
-```
-
-#### Before Committing Changes
-```bash
-# Revert back to placeholder domain before git commit
-sed -i 's/your-actual-domain.com/your-backend-domain.com/g' backend/openapi_specs/*.yaml
-
-# Then commit your changes
-git add .
-git commit -m "Your commit message"
-```
-
-#### Pre-commit Hook Protection
-A git pre-commit hook is installed that automatically prevents commits of OpenAPI spec files that don't contain the placeholder domain `your-backend-domain.com`. This ensures that custom domain configurations don't accidentally get committed to the repository.
-
-If the pre-commit hook blocks your commit:
-1. Check which OpenAPI spec files contain custom domains
-2. Use the sed command above to revert them to the placeholder
-3. Commit again
 
 ## Clean up instructions
 

@@ -9,6 +9,8 @@ from typing import Any, Dict, List
 import yaml
 from langchain_anthropic import ChatAnthropic
 from langchain_aws import ChatBedrock
+
+from .llm_utils import create_llm_with_error_handling
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.tools import BaseTool
 from langgraph.prebuilt import create_react_agent
@@ -30,30 +32,8 @@ def _load_agent_config() -> Dict[str, Any]:
 
 
 def _create_llm(provider: str = "bedrock", **kwargs):
-    """Create LLM instance based on provider."""
-    config = SREConstants.get_model_config(provider, **kwargs)
-
-    if provider == "anthropic":
-        logger.info(f"Creating LLM - Provider: Anthropic, Model: {config['model_id']}")
-        return ChatAnthropic(
-            model=config["model_id"],
-            max_tokens=config["max_tokens"],
-            temperature=config["temperature"],
-        )
-    elif provider == "bedrock":
-        logger.info(
-            f"Creating LLM - Provider: Amazon Bedrock, Model: {config['model_id']}, Region: {config['region_name']}"
-        )
-        return ChatBedrock(
-            model_id=config["model_id"],
-            region_name=config["region_name"],
-            model_kwargs={
-                "temperature": config["temperature"],
-                "max_tokens": config["max_tokens"],
-            },
-        )
-    else:
-        raise ValueError(f"Unsupported provider: {provider}")
+    """Create LLM instance with improved error handling."""
+    return create_llm_with_error_handling(provider, **kwargs)
 
 
 def _filter_tools_for_agent(

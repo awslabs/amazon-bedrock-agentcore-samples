@@ -4,7 +4,7 @@ info:
   version: 1.0.0
   description: API for accessing Kubernetes cluster data and analysis
 servers:
-  - url: https://your-backend-domain.com:8011
+  - url: https://{{BACKEND_DOMAIN}}:8011
     description: Remote development server for K8s API
   - url: https://localhost:8011
     description: Local development server for K8s API

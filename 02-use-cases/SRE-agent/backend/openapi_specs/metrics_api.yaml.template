@@ -4,7 +4,7 @@ info:
   version: 1.0.0
   description: API for accessing application performance metrics
 servers:
-  - url: https://your-backend-domain.com:8013
+  - url: https://{{BACKEND_DOMAIN}}:8013
     description: Remote development server for Metrics API
   - url: https://localhost:8013
     description: Local development server for Metrics API

@@ -4,7 +4,7 @@ info:
   version: 1.0.0
   description: API for accessing DevOps runbooks and playbooks
 servers:
-  - url: https://your-backend-domain.com:8014
+  - url: https://{{BACKEND_DOMAIN}}:8014
     description: Remote development server for Runbooks API
   - url: https://localhost:8014
     description: Local development server for Runbooks API

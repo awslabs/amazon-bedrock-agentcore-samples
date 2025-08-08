@@ -4,7 +4,7 @@ info:
   version: 1.0.0
   description: API for accessing and analyzing application logs
 servers:
-  - url: https://your-backend-domain.com:8012
+  - url: https://{{BACKEND_DOMAIN}}:8012
     description: Remote development server for Logs API
   - url: https://localhost:8012
     description: Local development server for Logs API
@@ -309,4 +309,4 @@ paths:
                         count:
                           type: integer
                         percentage:
-                          type: number
+                          type: number 
