@@ -375,13 +375,14 @@ async def create_multi_agent_system(
     mcp_tools = []
     max_retries = 3
     retry_count = 0
-    
+
     while retry_count < max_retries:
         try:
             client = create_mcp_client()
             # Add timeout for MCP tool loading to prevent hanging
             all_mcp_tools = await asyncio.wait_for(
-                client.get_tools(), timeout=SREConstants.timeouts.mcp_tools_timeout_seconds
+                client.get_tools(),
+                timeout=SREConstants.timeouts.mcp_tools_timeout_seconds,
             )
 
             # Don't filter out x-amz-agentcore-search as it's a global tool
@@ -398,7 +399,7 @@ async def create_multi_agent_system(
                     tool_desc = getattr(tool, "description", "No description")
                     print(f"  - {tool_name}: {tool_desc[:80]}...")
                     logger.info(f"  - {tool_name}: {tool_desc[:80]}...")
-            
+
             # Success - break out of retry loop
             break
 
@@ -406,19 +407,19 @@ async def create_multi_agent_system(
             logger.warning("MCP tool loading timed out after 30 seconds")
             mcp_tools = []
             break  # Don't retry on timeout
-            
+
         except Exception as e:
             retry_count += 1
             error_msg = str(e)
-            
+
             # Check if it's a rate limiting error (429)
             if "429" in error_msg or "Too Many Requests" in error_msg:
                 if retry_count < max_retries:
                     # Exponential backoff with jitter
-                    base_delay = 2 ** retry_count  # 2, 4, 8 seconds
+                    base_delay = 2**retry_count  # 2, 4, 8 seconds
                     jitter = random.uniform(0, 1)  # Add 0-1 second random jitter
                     wait_time = base_delay + jitter
-                    
+
                     logger.warning(
                         f"Rate limited by MCP server (attempt {retry_count}/{max_retries}). "
                         f"Waiting {wait_time:.1f} seconds before retry..."
@@ -426,7 +427,9 @@ async def create_multi_agent_system(
                     await asyncio.sleep(wait_time)
                     continue
                 else:
-                    logger.error(f"Failed to load MCP tools after {max_retries} retries: {e}")
+                    logger.error(
+                        f"Failed to load MCP tools after {max_retries} retries: {e}"
+                    )
                     mcp_tools = []
             else:
                 # For other errors, don't retry

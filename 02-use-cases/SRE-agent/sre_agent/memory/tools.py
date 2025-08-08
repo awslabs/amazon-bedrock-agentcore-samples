@@ -328,7 +328,9 @@ class RetrieveMemoryTool(BaseTool):
     """
     args_schema: Type[BaseModel] = RetrieveMemoryInput
 
-    def __init__(self, memory_client: SREMemoryClient, user_id: Optional[str] = None, **kwargs):
+    def __init__(
+        self, memory_client: SREMemoryClient, user_id: Optional[str] = None, **kwargs
+    ):
         super().__init__(**kwargs)
         # Store memory client as instance attribute (not Pydantic field)
         object.__setattr__(self, "_memory_client", memory_client)
@@ -339,12 +341,12 @@ class RetrieveMemoryTool(BaseTool):
     def memory_client(self) -> SREMemoryClient:
         """Get the memory client."""
         return getattr(self, "_memory_client")
-    
+
     @property
     def user_id(self) -> Optional[str]:
         """Get the user_id."""
         return getattr(self, "_user_id", None)
-    
+
     def set_user_id(self, user_id: str) -> None:
         """Set the user_id for this tool instance."""
         object.__setattr__(self, "_user_id", user_id)
@@ -368,7 +370,7 @@ class RetrieveMemoryTool(BaseTool):
                 )
             else:
                 effective_actor_id = actor_id
-            
+
             sanitized_actor_id = _sanitize_actor_id(effective_actor_id)
             logger.info(
                 f"retrieve_memory called: type={memory_type}, query='{query}', actor_id={actor_id} -> {sanitized_actor_id}, max_results={max_results}"
@@ -461,7 +463,7 @@ class RetrieveMemoryTool(BaseTool):
 
 def create_memory_tools(memory_client: SREMemoryClient) -> List[BaseTool]:
     """Create memory tools for the agent.
-    
+
     Args:
         memory_client: The memory client instance
     """
@@ -475,12 +477,12 @@ def create_memory_tools(memory_client: SREMemoryClient) -> List[BaseTool]:
 
 def update_memory_tools_user_id(memory_tools: List[BaseTool], user_id: str) -> None:
     """Update the user_id for all RetrieveMemoryTool instances in the list.
-    
+
     Args:
         memory_tools: List of memory tools
         user_id: The user_id to set
     """
     for tool in memory_tools:
-        if hasattr(tool, 'name') and tool.name == 'retrieve_memory':
-            if hasattr(tool, 'set_user_id'):
+        if hasattr(tool, "name") and tool.name == "retrieve_memory":
+            if hasattr(tool, "set_user_id"):
                 tool.set_user_id(user_id)

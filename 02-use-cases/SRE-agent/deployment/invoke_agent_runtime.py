@@ -59,8 +59,9 @@ def _get_session_from_env(mode: str) -> str:
     else:
         # Auto-generate session_id (minimum 33 characters required)
         import uuid
-        timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
-        unique_id = str(uuid.uuid4()).replace('-', '')[:12]  # 12 character UUID segment
+
+        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+        unique_id = str(uuid.uuid4()).replace("-", "")[:12]  # 12 character UUID segment
         auto_session_id = f"{mode}-{timestamp}-{unique_id}"
         logger.info(
             f"SESSION_ID not set in environment, auto-generated: {auto_session_id}"
@@ -131,20 +132,15 @@ def main():
 
     # Create AgentCore client with custom timeout
     from botocore.config import Config
-    
+
     # Increase read timeout to handle long-running agent operations
     config = Config(
         read_timeout=300,  # 5 minutes read timeout (default is 60 seconds)
-        retries={
-            'max_attempts': 3,
-            'mode': 'adaptive'
-        }
+        retries={"max_attempts": 3, "mode": "adaptive"},
     )
-    
+
     agent_core_client = boto3.client(
-        "bedrock-agentcore", 
-        region_name=args.region,
-        config=config
+        "bedrock-agentcore", region_name=args.region, config=config
     )
 
     # Get user_id and session_id from environment

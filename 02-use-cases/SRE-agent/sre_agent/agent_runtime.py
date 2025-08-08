@@ -25,15 +25,17 @@ if not logging.getLogger().handlers:
     debug_from_env = os.getenv("DEBUG", "false").lower() in ("true", "1", "yes")
     configure_logging(debug_from_env)
 
+
 # Custom filter to exclude /ping endpoint logs
 class PingEndpointFilter(logging.Filter):
     def filter(self, record):
         # Filter out GET /ping requests from access logs
-        if hasattr(record, 'getMessage'):
+        if hasattr(record, "getMessage"):
             message = record.getMessage()
             if '"GET /ping HTTP/' in message:
                 return False
         return True
+
 
 # Configure uvicorn access logger to filter out ping requests
 uvicorn_logger = logging.getLogger("uvicorn.access")
@@ -133,7 +135,7 @@ async def invoke_agent(request: InvocationRequest):
         # Extract session_id and user_id from request
         session_id = request.input.get("session_id", "")
         user_id = request.input.get("user_id", "default_user")
-        
+
         logger.info(f"Session ID: {session_id}, User ID: {user_id}")
 
         # Create initial state exactly like the CLI does
