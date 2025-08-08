@@ -454,22 +454,26 @@ FROM --platform=linux/arm64 ghcr.io/astral-sh/uv:python3.12-bookworm-slim
 
 WORKDIR /app
 
-# Copy and install dependencies
+# Copy uv files
 COPY pyproject.toml uv.lock ./
+
+# Install dependencies
 RUN uv sync --frozen --no-dev
 
 # Copy SRE agent module
 COPY sre_agent/ ./sre_agent/
 
 # Set environment variables
+# Note: Set DEBUG=true to enable debug logging and traces
 ENV PYTHONPATH="/app" \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
+# Expose port
 EXPOSE 8080
 
-# Run application
-CMD ["uv", "run", "uvicorn", "sre_agent.agent_runtime:app", "--host", "0.0.0.0", "--port", "8080"]
+# Run application with OpenTelemetry instrumentation
+CMD ["uv", "run", "opentelemetry-instrument", "uvicorn", "sre_agent.agent_runtime:app", "--host", "0.0.0.0", "--port", "8080"]
 ```
 
 The key insight: any existing agent just needs a FastAPI wrapper (`agent_runtime:app`) to become AgentCore-compatible.
@@ -516,13 +520,27 @@ Calling your deployed agent is just as simple with [invoke_agent_runtime.py](htt
 ```python
 import boto3
 import json
+from botocore.config import Config
 
-# Create AgentCore client
-agent_core_client = boto3.client('bedrock-agentcore', region_name=region)
+# Create AgentCore client with custom timeout for long-running operations
+config = Config(
+    read_timeout=300,  # 5 minutes read timeout (default is 60 seconds)
+    retries={'max_attempts': 3, 'mode': 'adaptive'}
+)
 
-# Prepare your query
+agent_core_client = boto3.client(
+    'bedrock-agentcore', 
+    region_name=region,
+    config=config
+)
+
+# Prepare your query with user_id and session_id for memory personalization
 payload = json.dumps({
-    "input": {"prompt": "API response times have degraded 3x in the last hour"}
+    "input": {
+        "prompt": "API response times have degraded 3x in the last hour",
+        "user_id": "Alice",  # User for personalized investigation
+        "session_id": "investigation-20250127-123456"  # Session for context
+    }
 })
 
 # Invoke the deployed agent
@@ -535,7 +553,7 @@ response = agent_core_client.invoke_agent_runtime(
 
 # Get the response
 response_data = json.loads(response['response'].read())
-print(response_data["output"]["message"])
+print(response_data)  # Full response includes output with agent's investigation
 ```
 
 #### Key benefits of AgentCore Runtime
@@ -645,26 +663,9 @@ The system aggregates these findings into an executive summary with clear next s
 3. **Long-term** (< 1 week): Implement circuit breaker patterns to prevent cascade failures, scale web-service resources to handle memory demands
 4. **Follow-up**: Monitor database connectivity patterns and establish alerts for ConfigMap availability and memory utilization thresholds
 
-### Real-time agent execution traces
+The SRE Agent demonstrates real-time collaboration between agents, with the supervisor intelligently routing work to specialists based on the investigation plan. The system automatically scales from identifying performance metrics to correlating with error rates and resource utilization.
 
-The agent.log file shows the detailed execution flow during this investigation:
-
-```
-2025-07-27 01:05:07,085 - Starting multi-agent system with provider: anthropic
-2025-07-27 01:05:07,326 - Retrieved 21 tools from MCP
-2025-07-27 01:05:11,735 - Created investigation plan: 3 steps, complexity: simple
-2025-07-27 01:05:11,736 - Supervisor: Routing to metrics
-2025-07-27 01:05:14,064 - Performance Metrics Agent - Agent making 1 tool calls
-2025-07-27 01:05:14,064 - Tool call: metrics-api___get_performance_metrics
-2025-07-27 01:05:16,655 - Tool call: metrics-api___analyze_trends
-2025-07-27 01:05:26,196 - Tool call: metrics-api___get_error_rates
-2025-07-27 01:05:29,165 - Tool call: metrics-api___get_resource_metrics (cpu)
-2025-07-27 01:05:31,587 - Tool call: metrics-api___get_resource_metrics (memory)
-```
-
-This shows the real-time collaboration between agents, with the supervisor intelligently routing work to specialists based on the investigation plan. The system automatically scaled from identifying performance metrics to correlating with error rates and resource utilization.
-
-This investigation demonstrates several key capabilities:
+This investigation showcases several key capabilities:
 - **Multi-source correlation**: Connecting database configuration issues to API performance degradation
 - **Real-time streaming**: Agents work in parallel while providing live updates
 - **Source attribution**: Every finding includes the specific tool and data source
@@ -715,12 +716,6 @@ To avoid incurring future charges, use the comprehensive cleanup script to remov
 ```bash
 # Complete cleanup - deletes AWS resources and local files
 ./scripts/cleanup.sh
-
-# Or with custom names
-./scripts/cleanup.sh --gateway-name my-gateway --runtime-name my-runtime
-
-# Force cleanup without confirmation prompts
-./scripts/cleanup.sh --force
 ```
 
 This script will automatically:
