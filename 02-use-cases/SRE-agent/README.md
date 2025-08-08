@@ -14,6 +14,13 @@ The SRE Agent is a multi-agent system for Site Reliability Engineers that helps 
 | Example complexity  | Advanced                                                                                                                            |
 | SDK used            | Amazon Bedrock AgentCore SDK, LangGraph, MCP                                                                                       |
 
+## Assets
+
+| Asset | Description |
+|-------|-------------|
+| [Demo video](https://github.com/user-attachments/assets/c28087a6-7a97-43f0-933d-28e3f6e2eeeb) | Walkthrough of the SRE Agent investigating and resolving infrastructure issues |
+| [AI generated podcast](https://github.com/user-attachments/assets/feedb9d2-064c-4c5e-a306-94941065cf82) | Audio discussion explaining the SRE Agent's capabilities and architecture |
+
 ### Use case Architecture 
 
 ![SRE support agent with Amazon Bedrock AgentCore](docs/images/sre-agent-architecture.png)
@@ -239,6 +246,53 @@ The AgentCore Runtime deployment supports:
 - **Secure credential management** through AWS IAM and environment variables
 
 For complete step-by-step instructions including local testing, container building, and production deployment, see the **[Deployment Guide](docs/deployment-guide.md)**.
+
+## AgentCore Observability
+
+Adding observability to an Agent deployed on the AgentCore Runtime is straightforward using the observability primitive. This enables comprehensive monitoring through Amazon CloudWatch with metrics, traces, and logs.
+
+### Setting Up Observability
+
+#### 1. Add OpenTelemetry Packages
+
+The required OpenTelemetry packages are already included in `pyproject.toml`:
+
+```toml
+dependencies = [
+    # ... other dependencies ...
+    "opentelemetry-instrumentation-langchain",
+    "aws-opentelemetry-distro~=0.10.1",
+]
+```
+
+#### 2. Configure Observability for Agents
+
+Follow the [Amazon Bedrock AgentCore observability configuration guide](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/observability-configure.html#observability-configure-builtin) to enable metrics in Amazon CloudWatch.
+
+#### 3. Enable OpenTelemetry Instrumentation
+
+When starting the container, use the `opentelemetry-instrument` utility to automatically instrument your application. This is configured in the Dockerfile:
+
+```dockerfile
+# Run application with OpenTelemetry instrumentation
+CMD ["uv", "run", "opentelemetry-instrument", "uvicorn", "sre_agent.agent_runtime:app", "--host", "0.0.0.0", "--port", "8080"]
+```
+
+### Viewing Metrics and Traces
+
+Once deployed with observability enabled, you can monitor your agent's performance through:
+
+- **Amazon CloudWatch Metrics**: View request rates, latencies, and error rates
+- **AWS X-Ray Traces**: Analyze distributed traces to understand request flow
+- **CloudWatch Logs**: Access structured logs for debugging and analysis
+
+![Agent Metrics Dashboard](docs/images/agent-metrics.gif)
+
+The observability primitive automatically captures:
+- LLM invocation metrics (tokens, latency, model usage)
+- Tool execution traces (duration, success/failure)
+- Memory operations (retrieval, storage)
+- End-to-end request tracing across all agent components
 
 ## Maintenance and Operations
 

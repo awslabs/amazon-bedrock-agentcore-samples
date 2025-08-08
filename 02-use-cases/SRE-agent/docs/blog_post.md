@@ -89,6 +89,35 @@ memory_client.retrieve_user_preferences(user_id="Carol")
 
 **AgentCore Runtime**: Provides the serverless execution environment for deploying agents at scale. The Runtime offers automatic scaling from zero to thousands of concurrent sessions while maintaining complete session isolation. Authentication and authorization to agents deployed on AgentCore Runtime is handled by AWS IAM - applications invoking the agent must have appropriate IAM permissions and trust policies. Learn more about [AgentCore security and IAM configuration](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/security-iam.html).
 
+**AgentCore Observability**: Adding observability to an Agent deployed on the AgentCore Runtime is straightforward using the observability primitive. This enables comprehensive monitoring through Amazon CloudWatch with metrics, traces, and logs. Setting up observability requires three simple steps:
+
+First, add the OpenTelemetry packages to your `pyproject.toml`:
+```toml
+dependencies = [
+    # ... other dependencies ...
+    "opentelemetry-instrumentation-langchain",
+    "aws-opentelemetry-distro~=0.10.1",
+]
+```
+
+Second, configure observability for your agents following the [Amazon Bedrock AgentCore observability configuration guide](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/observability-configure.html#observability-configure-builtin) to enable metrics in Amazon CloudWatch.
+
+Finally, start your container using the `opentelemetry-instrument` utility to automatically instrument your application:
+```dockerfile
+# Run application with OpenTelemetry instrumentation
+CMD ["uv", "run", "opentelemetry-instrument", "uvicorn", "sre_agent.agent_runtime:app", "--host", "0.0.0.0", "--port", "8080"]
+```
+
+Once deployed with observability enabled, you gain visibility into:
+- **LLM invocation metrics**: Token usage, latency, and model performance across all agents
+- **Tool execution traces**: Duration and success rates for each MCP tool call
+- **Memory operations**: Retrieval patterns and storage efficiency
+- **End-to-end request tracing**: Complete request flow from user query to final response
+
+![Agent Metrics Dashboard](./images/agent-metrics.gif)
+
+The observability primitive automatically captures these metrics without additional code changes, providing production-grade monitoring capabilities out of the box.
+
 **Foundation Models**: The system supports two providers for the Claude language models:
 - **Amazon Bedrock**: Claude 3.7 Sonnet (us.anthropic.claude-3-7-sonnet-20250219-v1:0) for AWS-integrated deployments
 - **Anthropic Direct**: Claude 4 Sonnet (claude-sonnet-4-20250514) for direct API access
