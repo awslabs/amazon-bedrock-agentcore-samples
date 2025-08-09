@@ -85,16 +85,16 @@ cleanup_dynamic_config() {
             yq eval ".mcp_lambda.function_name = \"\"" -i "$DYNAMIC_CONFIG"
             yq eval ".mcp_lambda.function_role_arn = \"\"" -i "$DYNAMIC_CONFIG"
             yq eval ".mcp_lambda.gateway_execution_role_arn = \"\"" -i "$DYNAMIC_CONFIG"
+            yq eval ".mcp_lambda.role_arn = \"\"" -i "$DYNAMIC_CONFIG"
             yq eval ".mcp_lambda.stack_name = \"\"" -i "$DYNAMIC_CONFIG"
-            yq eval ".mcp_lambda.deployment_type = \"\"" -i "$DYNAMIC_CONFIG"
         else
             # Fallback: manual update using sed
             sed -i.bak "s|function_arn: \".*\"|function_arn: \"\"|" "$DYNAMIC_CONFIG"
             sed -i.bak "s|function_name: \".*\"|function_name: \"\"|" "$DYNAMIC_CONFIG"
             sed -i.bak "s|function_role_arn: \".*\"|function_role_arn: \"\"|" "$DYNAMIC_CONFIG"
             sed -i.bak "s|gateway_execution_role_arn: \".*\"|gateway_execution_role_arn: \"\"|" "$DYNAMIC_CONFIG"
+            sed -i.bak "s|role_arn: \".*\"|role_arn: \"\"|" "$DYNAMIC_CONFIG"
             sed -i.bak "s|stack_name: \".*\"|stack_name: \"\"|" "$DYNAMIC_CONFIG"
-            sed -i.bak "s|deployment_type: \".*\"|deployment_type: \"\"|" "$DYNAMIC_CONFIG"
             
             # Remove backup file
             rm -f "${DYNAMIC_CONFIG}.bak"
@@ -230,12 +230,6 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
     echo "   • Static configuration is unchanged"
     echo "   • No ECR repositories were involved (ZIP deployment)"
     echo ""
-    echo "🚀 To redeploy the MCP Tool Lambda:"
-    echo "   cd mcp-tool-lambda && ./deploy-mcp-tool-zip.sh"
-    echo ""
-    echo "⚠️  If you have active gateways using this Lambda:"
-    echo "   Run ./09-delete-gateways-targets.sh first"
-    echo "   Then redeploy both Lambda and gateways"
     echo ""
 else
     echo ""

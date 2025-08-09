@@ -99,14 +99,25 @@ fi
 echo ""
 echo "📝 Clearing memory configuration from dynamic config..."
 
-python3 -c "
+if command -v yq >/dev/null 2>&1; then
+    # Use yq to remove the memory section while preserving format
+    echo "   Using yq to remove memory section..."
+    yq eval 'del(.memory)' -i "$DYNAMIC_CONFIG"
+    echo "✅ Memory configuration cleared from dynamic config"
+else
+    # Fallback: Use Python but preserve quote style
+    python3 -c "
 import yaml
 import sys
-from datetime import datetime
+import re
 
 config_file = '$DYNAMIC_CONFIG'
 
 try:
+    # Read the original file content to preserve formatting
+    with open(config_file, 'r') as f:
+        original_content = f.read()
+    
     # Load existing config
     with open(config_file, 'r') as f:
         config = yaml.safe_load(f) or {}
@@ -116,9 +127,21 @@ try:
         print(f'   Removing memory section from configuration')
         del config['memory']
         
-        # Write updated config
+        # Write updated config with preserved quote style
         with open(config_file, 'w') as f:
-            yaml.dump(config, f, default_flow_style=False, sort_keys=False, indent=2)
+            # Use the same quote style as other scripts (single quotes for empty strings)
+            yaml.dump(config, f, default_flow_style=False, sort_keys=False, indent=2, 
+                     default_style=None, allow_unicode=True)
+        
+        # Post-process to ensure consistent quote style with rest of file
+        with open(config_file, 'r') as f:
+            content = f.read()
+        
+        # Ensure empty strings use single quotes consistently
+        content = re.sub(r'\"\"', \"''\", content)
+        
+        with open(config_file, 'w') as f:
+            f.write(content)
         
         print('✅ Memory configuration cleared from dynamic config')
     else:
@@ -128,6 +151,7 @@ except Exception as e:
     print(f'❌ Failed to update configuration: {e}')
     sys.exit(1)
 "
+fi
 
 # Verify memory resource is fully deleted
 echo ""

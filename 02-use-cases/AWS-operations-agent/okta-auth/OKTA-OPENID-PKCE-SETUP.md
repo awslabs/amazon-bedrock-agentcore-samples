@@ -15,6 +15,12 @@ This guide configures Okta OAuth2 authentication for the AgentCore system, suppo
 
 ## Okta Application Setup
 
+#### OKTA Documentation for PKCE APP Setup: 
+
+https://developer.okta.com/blog/2019/08/22/okta-authjs-pkce 
+
+https://developer.okta.com/docs/guides/implement-grant-type/authcodepkce/main/
+
 ### 1. Create OIDC Application
 
 1. **Log in to Okta Developer Console**
@@ -62,12 +68,14 @@ Origin: http://localhost:8080
 
 For AgentCore workload authentication:
 
-1. **Create new app**: OIDC - OpenID Connect → Web Application
+1. **Create a new app integration**: API Services
 2. **Configure**:
    ```
    App name: aws-support-agent-m2m
    Grant types: ✅ Client Credentials
    Client authentication: ✅ Client secret
+   Enable : Token Exchange
+   Disable : Require Demonstrating Proof of Possession (DPoP)
    ```
 3. **Save** and note the **Client ID** and **Client Secret**
 
@@ -117,9 +125,6 @@ agentcore:
 ### 2. Set Environment Variables
 
 ```bash
-# Set the Okta client secret
-export OKTA_CLIENT_SECRET="your_m2m_client_secret"
-
 # Optional: Set AWS profile if different from default
 export AWS_PROFILE="your-aws-profile"
 ```
@@ -192,14 +197,15 @@ Use the provided HTML test page:
      scope: 'openid profile email',
    };
    ```
+Or you can enter the values in html page. 
 
-2. **Open browser**: http://localhost:8080/okta-auth/
+2. **Open browser**: http://localhost:9090/okta-auth/iframe-oauth-flow.html
 3. **Click "Login with Okta"** and complete authentication
 4. **Copy the access token** for testing
 
 ## Deploy and Test the System
 
-### 1. Deploy Infrastructure
+### 1. Deploy Infrastructure - go back to README.md for instructions
 
 ```bash
 # Deploy the AgentCore system

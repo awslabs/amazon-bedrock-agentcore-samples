@@ -293,7 +293,6 @@ mcp_lambda:
   role_arn: ""
   stack_name: ""
   gateway_execution_role_arn: ""
-  ecr_uri: ""
 runtime:
   diy_agent:
     arn: ""

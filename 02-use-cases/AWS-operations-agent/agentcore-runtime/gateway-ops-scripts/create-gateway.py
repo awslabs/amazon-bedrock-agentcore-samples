@@ -86,11 +86,11 @@ def create_bedrock_agentcore_gateway(config_manager, environment, gateway_name=N
         'profile': None  # Use default credentials
     }
     
-    # Get gateway execution role from dynamic config
-    gateway_execution_role_arn = dynamic_config['mcp_lambda']['gateway_execution_role_arn']
+    # Get gateway execution role from static config (bac-execution-role)
+    gateway_execution_role_arn = base_settings['runtime']['role_arn']
     
     if not gateway_execution_role_arn:
-        raise ValueError("Gateway execution role ARN not found in configuration. Please run 03-deploy-mcp-tool-lambda.sh first.")
+        raise ValueError("Gateway execution role ARN not found in static configuration. Please run 01-prerequisites.sh first.")
     
     # Create authorization configuration
     auth_config = {
@@ -104,7 +104,7 @@ def create_bedrock_agentcore_gateway(config_manager, environment, gateway_name=N
     print(f"   Environment: {environment}")
     print(f"   AWS Region: {aws_config['region']}")
     print(f"   AWS Account: {aws_config['account_id']}")
-    print(f"   Gateway Execution Role: {gateway_execution_role_arn}")
+    print(f"   Gateway Execution Role (bac-execution-role): {gateway_execution_role_arn}")
     print(f"   JWT Discovery URL: {oauth_settings['jwt']['discovery_url']}")
     print(f"   JWT Audience: {oauth_settings['jwt']['audience']}")
     

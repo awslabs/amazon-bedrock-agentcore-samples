@@ -13,7 +13,7 @@ echo "This script will delete ALL resources created by the following deployment 
 echo "  • 01-prerequisites.sh (IAM roles, ECR repositories)"
 echo "  • 02-create-memory.sh (AgentCore Memory resources)"
 echo "  • 03-setup-oauth-provider.sh (OAuth2 credential providers)"
-echo "  • 04-deploy-mcp-tool-lambda-zip.sh (MCP Lambda function and stack)"
+echo "  • 04-deploy-mcp-tool-lambda.sh (MCP Lambda function and stack)"
 echo "  • 05-create-gateway-targets.sh (AgentCore Gateways and targets)"
 echo "  • 06-deploy-diy.sh (DIY agent runtime and ECR images)"
 echo "  • 07-deploy-sdk.sh (SDK agent runtime and ECR images)"
@@ -163,7 +163,7 @@ show_warning() {
     echo "   • All workload identities"
     echo "   • All identity associations"
     echo ""
-    echo -e "${RED}🗑️  AgentCore Gateway & MCP Resources (from 04-deploy-mcp-tool-lambda-zip.sh & 05-create-gateway-targets.sh):${NC}"
+    echo -e "${RED}🗑️  AgentCore Gateway & MCP Resources (from 04-deploy-mcp-tool-lambda.sh & 05-create-gateway-targets.sh):${NC}"
     echo "   • All AgentCore gateways and targets"
     echo "   • MCP tool Lambda function (bac-mcp-tool)"
     echo "   • CloudFormation stack (bac-mcp-stack)"
@@ -192,16 +192,16 @@ cleanup_memory_resources() {
     echo -e "${BLUE}🗑️  Cleaning up AgentCore Memory resources...${NC}"
     echo "============================================="
     
-    # Use the existing memory deletion script
-    if [[ -f "${SCRIPT_DIR}/11-delete-memory.sh" ]]; then
-        echo "Using existing 11-delete-memory.sh script..."
-        if bash "${SCRIPT_DIR}/11-delete-memory.sh"; then
+    # Use the existing memory deletion script (correct filename)
+    if [[ -f "${SCRIPT_DIR}/12-delete-memory.sh" ]]; then
+        echo "Using existing 12-delete-memory.sh script..."
+        if bash "${SCRIPT_DIR}/12-delete-memory.sh"; then
             echo -e "${GREEN}✅ Memory resources cleanup completed${NC}"
         else
             echo -e "${YELLOW}⚠️  Memory resources cleanup had issues${NC}"
         fi
     else
-        echo -e "${YELLOW}⚠️  11-delete-memory.sh not found - skipping memory cleanup${NC}"
+        echo -e "${YELLOW}⚠️  12-delete-memory.sh not found - skipping memory cleanup${NC}"
     fi
 }
 
@@ -232,7 +232,9 @@ cleanup_gateway_mcp_resources() {
     echo "Step 1: Deleting gateways and targets..."
     if [[ -f "${SCRIPT_DIR}/09-delete-gateways-targets.sh" ]]; then
         # Run the gateway deletion script non-interactively
-        echo "y" | bash "${SCRIPT_DIR}/09-delete-gateways-targets.sh" || echo -e "${YELLOW}⚠️  Gateway deletion had issues${NC}"
+        # The script expects: option choice (1 or 2), then confirmation (y)
+        # We'll choose option 1 (delete configured gateway) and confirm with y
+        echo -e "1\ny" | bash "${SCRIPT_DIR}/09-delete-gateways-targets.sh" || echo -e "${YELLOW}⚠️  Gateway deletion had issues${NC}"
     else
         echo -e "${YELLOW}⚠️  09-delete-gateways-targets.sh not found${NC}"
     fi
@@ -626,8 +628,6 @@ mcp_lambda:
   role_arn: ""
   stack_name: ""
   gateway_execution_role_arn: ""
-  ecr_uri: ""
-  deployment_type: ""
 runtime:
   diy_agent:
     arn: ""
@@ -701,7 +701,7 @@ show_cleanup_summary() {
     echo "   1. ./01-prerequisites.sh (Setup IAM roles and ECR repositories)"
     echo "   2. ./02-create-memory.sh (Create AgentCore Memory resources)"
     echo "   3. ./03-setup-oauth-provider.sh (Setup OAuth2 credential providers)"
-    echo "   4. ./04-deploy-mcp-tool-lambda-zip.sh (Deploy MCP Lambda function)"
+    echo "   4. ./04-deploy-mcp-tool-lambda.sh (Deploy MCP Lambda function)"
     echo "   5. ./05-create-gateway-targets.sh (Create AgentCore Gateways and targets)"
     echo "   6. ./06-deploy-diy.sh (Deploy DIY agent runtime)"
     echo "   7. ./07-deploy-sdk.sh (Deploy SDK agent runtime)"

@@ -184,13 +184,21 @@ echo ""
 echo "📝 Updating dynamic configuration to clear runtime ARNs..."
 if command -v yq >/dev/null 2>&1; then
     yq eval '.runtime.diy_agent.arn = ""' -i "$DYNAMIC_CONFIG"
+    yq eval '.runtime.diy_agent.ecr_uri = ""' -i "$DYNAMIC_CONFIG"
     yq eval '.runtime.diy_agent.endpoint_arn = ""' -i "$DYNAMIC_CONFIG"
     yq eval '.runtime.sdk_agent.arn = ""' -i "$DYNAMIC_CONFIG"
+    yq eval '.runtime.sdk_agent.ecr_uri = ""' -i "$DYNAMIC_CONFIG"
     yq eval '.runtime.sdk_agent.endpoint_arn = ""' -i "$DYNAMIC_CONFIG"
-    echo "   ✅ Dynamic configuration updated - runtime ARNs cleared"
+    echo "   ✅ Dynamic configuration updated - runtime ARNs and ECR URIs cleared"
 else
-    echo "   ⚠️  yq not found - please manually clear runtime ARNs from:"
-    echo "      $DYNAMIC_CONFIG"
+    echo "   ⚠️  yq not found - using sed fallback to clear runtime fields"
+    # Fallback: use sed to clear the fields
+    sed -i '' \
+        -e 's|arn: "arn:aws:bedrock-agentcore:.*"|arn: ""|g' \
+        -e 's|ecr_uri: ".*\.dkr\.ecr\..*"|ecr_uri: ""|g' \
+        -e 's|endpoint_arn: "arn:aws:bedrock-agentcore:.*"|endpoint_arn: ""|g' \
+        "$DYNAMIC_CONFIG"
+    echo "   ✅ Dynamic configuration updated - runtime ARNs and ECR URIs cleared"
 fi
 
 echo ""
@@ -237,6 +245,7 @@ echo "   • Cleared runtime ARNs from dynamic configuration"
 echo "   • Cleaned up ECR repository images"
 echo ""
 echo "💡 Next steps:"
-echo "   • Run 97-delete-all-gateways-targets.sh to delete gateways and targets"
-echo "   • Run 98-delete-mcp-tool-deployment.sh to delete MCP Lambda"
-echo "   • Run 99-cleanup-everything.sh for complete cleanup"
+echo "   • Run 09-delete-all-gateways-targets.sh to delete gateways and targets"
+echo "   • Run 10-delete-mcp-tool-deployment.sh to delete MCP Lambda"
+echo "   • Run 11-delete-oauth-provider.sh for complete cleanup"
+echo "   • Run 12-delete-memory.sh to delete memory"

@@ -204,12 +204,38 @@ create_oauth_provider() {
         --name "$provider_name" \
         --region "$REGION" 2>&1); then
         
-        # Extract ARN from the response
-        PROVIDER_ARN=$(echo "$provider_details" | grep -o '"credentialProviderArn":"[^"]*"' | cut -d'"' -f4)
+        # Extract ARN from the response using multiple approaches for reliability
+        # First try with jq if available
+        if command -v jq >/dev/null 2>&1; then
+            PROVIDER_ARN=$(echo "$provider_details" | jq -r '.credentialProviderArn' 2>/dev/null)
+        fi
+        
+        # Fallback: Extract ARN using grep and sed (handle escaped JSON)
+        if [[ -z "$PROVIDER_ARN" || "$PROVIDER_ARN" == "null" ]]; then
+            # Look for the credentialProviderArn field in the JSON response
+            PROVIDER_ARN=$(echo "$provider_details" | grep -o 'credentialProviderArn[^,}]*' | sed 's/.*: *["\\"]*\([^"\\]*\).*/\1/' | head -1)
+        fi
+        
+        # Additional fallback: try a different pattern
+        if [[ -z "$PROVIDER_ARN" ]]; then
+            PROVIDER_ARN=$(echo "$provider_details" | sed -n 's/.*"credentialProviderArn": *"\([^"]*\)".*/\1/p' | head -1)
+        fi
+        
+        # Final fallback: extract from the escaped JSON string
+        if [[ -z "$PROVIDER_ARN" ]]; then
+            PROVIDER_ARN=$(echo "$provider_details" | sed -n 's/.*\\\"credentialProviderArn\\\":\\\"\\([^\\]*\\)\\\".*/\1/p' | head -1)
+        fi
+        
         PROVIDER_NAME="$provider_name"
         
         echo "   Name: $PROVIDER_NAME"
         echo "   ARN: $PROVIDER_ARN"
+        
+        # Validate that we got an ARN
+        if [[ -z "$PROVIDER_ARN" ]]; then
+            echo -e "${YELLOW}⚠️  Warning: Could not extract ARN from response${NC}"
+            echo "   Response: $provider_details"
+        fi
         
         return 0
     else
@@ -239,6 +265,17 @@ update_config_files() {
                 "$dynamic_config"
             
             echo -e "${GREEN}✅ Updated: dynamic-config.yaml${NC}"
+            
+            # Validate the updates
+            if [[ -n "$PROVIDER_ARN" ]]; then
+                if grep -q "provider_arn: \"$PROVIDER_ARN\"" "$dynamic_config"; then
+                    echo -e "${GREEN}   ✓ Provider ARN updated successfully${NC}"
+                else
+                    echo -e "${YELLOW}   ⚠️  Provider ARN may not have been updated correctly${NC}"
+                fi
+            else
+                echo -e "${YELLOW}   ⚠️  Provider ARN was empty - config may need manual update${NC}"
+            fi
         else
             echo -e "${YELLOW}⚠️  oauth_provider section not found in dynamic-config.yaml${NC}"
         fi

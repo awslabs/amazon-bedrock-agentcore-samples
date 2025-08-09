@@ -159,6 +159,16 @@
                 "arn:aws:bedrock:*::foundation-model/*",
                 "arn:aws:bedrock:*:<your-aws-account-id>:*"
             ]
+        },
+        {
+            "Sid": "LambdaInvokeAccess",
+            "Effect": "Allow",
+            "Action": [
+                "lambda:InvokeFunction"
+            ],
+            "Resource": [
+                "arn:aws:lambda:*:<your-aws-account-id>:function:bac-mcp-tool*"
+            ]
         }
     ]
 }

@@ -23,21 +23,21 @@ okta:
   authorization_server: "default"
   
   # Client configuration for client credentials flow (app-to-app)
-  client_credentials:
-    client_id: "<YOUR_OKTA_CLIENT_ID>"
-    client_secret: "${OKTA_CLIENT_SECRET}"
-    scope: "api"
+  #client_credentials:
+  #  client_id: "<YOUR_OKTA_CLIENT_ID>"
+  #   client_secret: "${OKTA_CLIENT_SECRET}"
+  #  scope: "api"
   
   # Client configuration for user authentication (PKCE flow)
   user_auth:
     client_id: "<YOUR_OKTA_CLIENT_ID>"
-    audience: "<YOUR_OKTA_CLIENT_ID>"
+    audience: "<YOUR_OKTA_AUTHORIZATION_SERVER_AUDIENCE>"
     redirect_uri: "http://localhost:8080/callback"
     scope: "openid profile email"
   
   # JWT token configuration
   jwt:
-    audience: "<YOUR_OKTA_CLIENT_ID>"
+    audience: "<YOUR_OKTA_AUTHORIZATION_SERVER_AUDIENCE>"
     issuer: "https://<YOUR_OKTA_DOMAIN>/oauth2/default"
     discovery_url: "https://<YOUR_OKTA_DOMAIN>/oauth2/default/.well-known/openid-configuration"
     cache_duration: 300
