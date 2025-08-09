@@ -162,6 +162,9 @@ Run the deployment scripts in sequence:
 ```bash
 cd agentcore-runtime/deployment
 
+# Please ensure you update below files with account ID by replacing the place holders <your-aws-account-id> before running ./01-prerequisites.sh
+# bac-permissions-policy.json
+# bac-trust-policy.json
 # Set up AWS prerequisites and roles
 ./01-prerequisites.sh
 
