@@ -19,7 +19,7 @@ agents:
 okta:
   domain: "<YOUR_OKTA_DOMAIN>"
   
-  # OAuth2 authorization server configuration
+  # OAuth2 authorization server configuration (recommended to keep default authorization server. otherwise change the configuration urls accordingly)
   authorization_server: "default"
   
   # Client configuration for client credentials flow (app-to-app)
@@ -35,7 +35,7 @@ okta:
     redirect_uri: "http://localhost:8080/callback"
     scope: "openid profile email"
   
-  # JWT token configuration
+  # JWT token configuration for M2M flow
   jwt:
     audience: "<YOUR_OKTA_AUTHORIZATION_SERVER_AUDIENCE>"
     issuer: "https://<YOUR_OKTA_DOMAIN>/oauth2/default"
@@ -43,12 +43,12 @@ okta:
     cache_duration: 300
     refresh_threshold: 60
 
-# AgentCore JWT Authorizer Configuration
+# AgentCore JWT Authorizer Configuration for Runtime
 agentcore:
   jwt_authorizer:
     discovery_url: "https://<YOUR_OKTA_DOMAIN>/oauth2/default/.well-known/openid-configuration"
     allowed_audience: 
-      - "<YOUR_OKTA_CLIENT_ID>"
+      - "<YOUR_OKTA_AUTHORIZATION_SERVER_AUDIENCE>"
 
 # Client Settings (used by chatbot client)
 client:

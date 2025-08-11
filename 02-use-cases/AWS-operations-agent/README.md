@@ -132,6 +132,7 @@ Edit the configuration files with your specific settings:
 
 ```bash
 # Configure AWS and Okta settings - Ensure you update the static config 
+#Please ensure you update below files by replacing the place holders <your-aws-account-id>, <YOUR_OKTA_DOMAIN>, <YOUR_OKTA_CLIENT_ID> and #<YOUR_OKTA_AUTHORIZATION_SERVER_AUDIENCE> 
 vim config/static-config.yaml
 
 # Key settings to update:
@@ -139,7 +140,6 @@ vim config/static-config.yaml
 # - aws.region: Your preferred AWS region  (this project tested on us-east-1)
 # - okta.domain: Your Okta domain
 # - okta.client_credentials.client_id: Your Okta client ID
-# - okta.client_credentials.client_secret: Set via environment variable
 
 # IMPORTANT: Update IAM policy files with your AWS account ID
 # Replace YOUR_AWS_ACCOUNT_ID placeholder in these files:
@@ -157,15 +157,16 @@ grep -n "$(aws sts get-caller-identity --query Account --output text)" \
 
 Run the deployment scripts in sequence:
 
-#### Note: `Before running below scripts please ensure you have successfully setup Okta and can generate access token using http://localhost:8080/okta-auth/iframe-oauth-flow.html - Refer OKTA-OPENID-PKCE-SETUP.md for details.`
+#### Note: `Before running below scripts please ensure you have successfully setup Okta and can generate access token using http://localhost:8080/okta-auth/iframe-oauth-flow.html - Refer OKTA-OPENID-PKCE-SETUP.md for details. [/AWS-operations-agent/okta-auth/OKTA-OPENID-PKCE-SETUP.md]`
 
 ```bash
 cd agentcore-runtime/deployment
 
-# Please ensure you update below files with account ID by replacing the place holders <your-aws-account-id> before running ./01-prerequisites.sh
+# Please ensure you update below files replacing the place holders <your-aws-account-id>, <YOUR_OKTA_DOMAIN>, <YOUR_OKTA_CLIENT_ID> and <YOUR_OKTA_AUTHORIZATION_SERVER_AUDIENCE> before running ./01-prerequisites.sh
 # bac-permissions-policy.json
 # bac-trust-policy.json
-# Set up AWS prerequisites and roles
+# Ensure latest AWS Cli is installed and AWS Cli  credentails file has default profile populated or export AWS credentials on terminal
+# Ensure the AWS Account you are using has anthropic models enabled by going to Bedrock > Model Access page in us-east-1 (N. Virginia region)
 ./01-prerequisites.sh
 
 # If you get error 'aws bedrock-agentcore-control is not available'
@@ -178,9 +179,9 @@ cd agentcore-runtime/deployment
 
 # Set up Okta OAuth2 provider - This setup is for outbound auth from AgentCore Runtime to AgentCore Gateway EndPoint.
 # Please ensure you OKTA-OPENID-PKCE-SETUP.md file to setup SPA app for client side - inbound auth with runtime
-# And also setup new services app for outbound auth between AgentCore Runtime and AgentCore Gateway EndPoint.
-# You need to add the client id/client secret of the <**Create a new app integration**: API Services> app when executing below script as,
-# that will create a credentails provider where these secrets will be stored.
+# And also setup new api services app for outbound auth between AgentCore Runtime and AgentCore Gateway EndPoint.
+# You need to add the client id/client secret of the Okta App 'App name: aws-support-agent-m2m' when executing below script as,
+# that will create a credentails provider where these secrets will be stored. Go to Okta Console > Applications > Applications > aws-support-agent-m2m and copy cliend id and client secret. We are assuming you have create new scope 'api' in Okta per OKTA-OPENID-PKCE-SETUP.md and therefore you will not need to change value of 'api' when running below script
 ./03-setup-oauth-provider.sh
 
 # Deploy MCP tools Lambda function
@@ -206,6 +207,9 @@ cd chatbot-client
 python src/client.py
 ```
 
+#### Note: `Please use http://localhost:9090/okta-auth/iframe-oauth-flow.html to fetch access token as the client will ask for it`
+
+
 The client will show you available deployed agents:
 ```
 🤖 AgentCore Chatbot Client
@@ -228,6 +232,8 @@ Enter choice (1 for DIY, 2 for SDK):
 
 #### Interactive Chat Client with Local Containers (optional - advance use case)
 
+#### `Please run below script to deploy agents locally. Agents will be connecting to AgentCore services in AWS. `
+
 ```bash
 # Start a local agent container
 cd agentcore-runtime/tests/local
@@ -240,7 +246,8 @@ cd chatbot-client
 python src/client.py --local
 ```
 
-The client will show you available local agents:
+#### Note: `The client will show you available local agents and can only connect with one Agent at a time, since both agents are deployed to 8080. Ensure you stop nginx otherwise it will conflict with local deployment. Or else, please change nginx port by updating server block configuration and correspondingly change Okta configurations.`
+
 ```
 🤖 Local Testing Mode
 ==============================
