@@ -6,7 +6,7 @@ python-multipart==0.0.6
 boto3==1.39.7
 pydantic==2.4.2
 websockets==11.0.3
-python-jose==3.3.0
+python-jose==3.4.0
 itsdangerous==2.1.2
 httpx==0.24.1
 starlette-session==0.4.3
