@@ -6,7 +6,7 @@ INFRA_STACK_NAME=${2:-CustomerSupportStackInfra}
 COGNITO_STACK_NAME=${3:-CustomerSupportStackCognito}
 INFRA_TEMPLATE_FILE="prerequisite/infrastructure.yaml"
 COGNITO_TEMPLATE_FILE="prerequisite/cognito.yaml"
-REGION=$(aws configure get region 2>/dev/null || echo "us-east-1")
+REGION=$(aws configure get region 2>/dev/null || echo "us-west-2")
 ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 FULL_BUCKET_NAME="${BUCKET_NAME}-${ACCOUNT_ID}-${REGION}"
 ZIP_FILE="lambda.zip"
@@ -20,7 +20,7 @@ echo "Region: $REGION"
 echo "Account ID: $ACCOUNT_ID"
 # ----- 1. Create S3 bucket -----
 echo "🪣 Using S3 bucket: $FULL_BUCKET_NAME"
-if [ "$REGION" = "us-east-1" ]; then
+if [ "$REGION" = "us-west-2" ]; then
   aws s3api create-bucket \
     --bucket "$FULL_BUCKET_NAME" \
     2>/dev/null || echo "ℹ️ Bucket may already exist or be owned by you."
