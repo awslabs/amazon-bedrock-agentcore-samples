@@ -69,8 +69,9 @@ def create_or_get_memory_resource():
             except:
                 raise
             return memory_id
-        except:
-            return None
+        except Exception as e:
+            print(f"Error: {e}")
+            raise e
 
 
 def delete_memory(memory_hook):
@@ -133,9 +134,9 @@ class CustomerSupportMemoryHooks(HookProvider):
                 if all_context:
                     context_text = "\n".join(all_context)
                     original_text = messages[-1]["content"][0]["text"]
-                    messages[-1]["content"][0][
-                        "text"
-                    ] = f"Customer Context:\n{context_text}\n\n{original_text}"
+                    messages[-1]["content"][0]["text"] = (
+                        f"Customer Context:\n{context_text}\n\n{original_text}"
+                    )
                     logger.info(f"Retrieved {len(all_context)} customer context items")
 
             except Exception as e:

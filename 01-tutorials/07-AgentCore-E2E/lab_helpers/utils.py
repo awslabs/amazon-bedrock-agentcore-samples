@@ -271,7 +271,7 @@ def setup_cognito_user_pool():
         return cognito_config
     except Exception as e:
         print(f"Error: {e}")
-        return None
+        raise e
 
 
 def cleanup_cognito_resources(pool_id):
@@ -579,64 +579,62 @@ def delete_agentcore_runtime_execution_role():
     except Exception as e:
         print(f"❌ Error during cleanup: {str(e)}")
 
+
 def agentcore_memory_cleanup():
-    
-    control_client = boto3.client('bedrock-agentcore-control',region_name=REGION)
-    
+    control_client = boto3.client("bedrock-agentcore-control", region_name=REGION)
+
     """List all memories and their associated strategies"""
     next_token = None
-    
+
     while True:
         # Build request parameters
         params = {}
         if next_token:
-            params['nextToken'] = next_token
-        
+            params["nextToken"] = next_token
+
         # List memories
         try:
             response = control_client.list_memories(**params)
-            
+
             # Process each memory
-            for memory in response.get('memories', []):
-                memory_id = memory.get('id')
+            for memory in response.get("memories", []):
+                memory_id = memory.get("id")
                 print(f"\nMemory ID: {memory_id}")
                 print(f"Status: {memory.get('status')}")
-                response = control_client.delete_memory(
-                    memoryId=memory_id
-                )
+                response = control_client.delete_memory(memoryId=memory_id)
                 response = control_client.list_memories(**params)
                 print(f"✅ Successfully deleted memory: {memory_id}")
-                
-            response = control_client.list_memories(**params)    
+
+            response = control_client.list_memories(**params)
             # Process each memory status
-            for memory in response.get('memories', []):
-                memory_id = memory.get('id')
+            for memory in response.get("memories", []):
+                memory_id = memory.get("id")
                 print(f"\nMemory ID: {memory_id}")
                 print(f"Status: {memory.get('status')}")
-                
+
         except Exception as e:
             print(f"⚠️  Error getting memory details: {e}")
-        
+
         # Check for more results
-        next_token = response.get('nextToken')
+        next_token = response.get("nextToken")
         if not next_token:
             break
-            
+
+
 def gateway_target_cleanup():
-    
     gateway_client = boto3.client(
         "bedrock-agentcore-control",
         region_name=REGION,
     )
-    response = gateway_client.list_gateways() 
-    gateway_id = (response['items'][0]['gatewayId'])
+    response = gateway_client.list_gateways()
+    gateway_id = response["items"][0]["gatewayId"]
     print(f"🗑️  Deleting all targets for gateway: {gateway_id}")
-    
+
     # List and delete all targets
     list_response = gateway_client.list_gateway_targets(
         gatewayIdentifier=gateway_id, maxResults=100
     )
-    
+
     for item in list_response["items"]:
         target_id = item["targetId"]
         print(f"   Deleting target: {target_id}")
@@ -644,49 +642,51 @@ def gateway_target_cleanup():
             gatewayIdentifier=gateway_id, targetId=target_id
         )
         print(f"   ✅ Target {target_id} deleted")
-    
+
     # Delete the gateway
     print(f"🗑️  Deleting gateway: {gateway_id}")
     gateway_client.delete_gateway(gatewayIdentifier=gateway_id)
     print(f"✅ Gateway {gateway_id} deleted successfully")
 
+
 def runtime_resource_cleanup():
     try:
         # Initialize AWS clients
-        agentcore_control_client = boto3.client("bedrock-agentcore-control", region_name=REGION)
+        agentcore_control_client = boto3.client(
+            "bedrock-agentcore-control", region_name=REGION
+        )
         ecr_client = boto3.client("ecr", region_name=REGION)
-        
+
         # Delete the AgentCore Runtime
         # print("  🗑️  Deleting AgentCore Runtime...")
         runtimes = agentcore_control_client.list_agent_runtimes()
-        for runtime in runtimes['agentRuntimes']:        
+        for runtime in runtimes["agentRuntimes"]:
             response = agentcore_control_client.delete_agent_runtime(
-                agentRuntimeId=runtime['agentRuntimeId']
+                agentRuntimeId=runtime["agentRuntimeId"]
             )
             print(f"  ✅ Agent runtime deleted: {response['status']}")
-        
+
         # Delete the ECR repository
         print("  🗑️  Deleting ECR repository...")
         repositories = ecr_client.describe_repositories()
-        for repo in repositories['repositories']:
-            if 'bedrock-agentcore-customer_support_agent' in repo['repositoryName']:
+        for repo in repositories["repositories"]:
+            if "bedrock-agentcore-customer_support_agent" in repo["repositoryName"]:
                 ecr_client.delete_repository(
-                    repositoryName=repo['repositoryName'],
-                    force=True
+                    repositoryName=repo["repositoryName"], force=True
                 )
                 print(f"  ✅ ECR repository deleted: {repo['repositoryName']}")
-      
-    
+
     except Exception as e:
         print(f"  ⚠️  Error during runtime cleanup: {e}")
+
 
 def delete_observability_resources():
     # Configuration
     log_group_name = "agents/customer-support-assistant-logs"
     log_stream_name = "default"
-    
+
     logs_client = boto3.client("logs", region_name=REGION)
-    
+
     # Delete log stream first (must be done before deleting log group)
     try:
         print(f"  🗑️  Deleting log stream '{log_stream_name}'...")
@@ -699,7 +699,7 @@ def delete_observability_resources():
             print(f"  ℹ️  Log stream '{log_stream_name}' doesn't exist")
         else:
             print(f"  ⚠️  Error deleting log stream: {e}")
-    
+
     # Delete log group
     try:
         print(f"  🗑️  Deleting log group '{log_group_name}'...")
@@ -711,6 +711,7 @@ def delete_observability_resources():
         else:
             print(f"  ⚠️  Error deleting log group: {e}")
 
+
 def local_file_cleanup():
     # List of files to clean up
     files_to_delete = [
@@ -720,7 +721,7 @@ def local_file_cleanup():
         "customer_support_agent.py",
         "agent_runtime.py",
     ]
-    
+
     deleted_files = []
     missing_files = []
 
@@ -734,8 +735,10 @@ def local_file_cleanup():
                 print(f"  ⚠️  Error deleting {file}: {e}")
         else:
             missing_files.append(file)
-    
+
     if deleted_files:
         print(f"\n📁 Successfully deleted {len(deleted_files)} files")
     if missing_files:
-        print(f"ℹ️  {len(missing_files)} files were already missing: {', '.join(missing_files)}")
+        print(
+            f"ℹ️  {len(missing_files)} files were already missing: {', '.join(missing_files)}"
+        )
