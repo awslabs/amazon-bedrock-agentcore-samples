@@ -1,6 +1,4 @@
-// AWS Credentials
-const ACCESS_KEY_ID = "";
-const SECRET_ACCESS_KEY = "";
+// AWS Configuration
 const AWS_REGION = "us-east-1";
 
 // DynamoDB Table
@@ -309,7 +307,5 @@ export {
   LAST_K_TURNS,
   MODEL_ID_FOR_CHART,
   MAX_LENGTH_INPUT_SEARCH,
-  ACCESS_KEY_ID,
-  SECRET_ACCESS_KEY,
   AWS_REGION,
 };

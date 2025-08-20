@@ -33,20 +33,42 @@ Install the React application dependencies:
 npm install
 ```
 
-## Configure IAM User Access for Front-End Permissions
+## Configure AWS Credentials and Permissions
 
-- **[Create an IAM user](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_users_create.html)**
-- **[Create Access key and Secret access key](https://docs.aws.amazon.com/keyspaces/latest/devguide/create.keypair.html)** for programmatic access
-- Add an inline policy to this user with the following JSON (replace placeholder values with your actual ARNs).
+### If running locally on your machine, set up AWS Credentials
 
-Update the values with your **<account_id>** and **<question_answers_table_arn>**, which you can find in the outputs from the CDK project, and the **<agent_runtime_arn>** that was created previously.
+You only need to do this step if you're running the front end on your workstation. If are running this on an AWS compute service, such as EC2, the AWS SDK will automatically discover credentials.
+
+Configure your AWS credentials using one of these methods:
+
+```bash
+# Option 1: Environment variables
+export AWS_ACCESS_KEY_ID=your_access_key_here
+export AWS_SECRET_ACCESS_KEY=your_secret_key_here
+export AWS_SESSION_TOKEN=your_session_token_here
+export AWS_DEFAULT_REGION=us-east-1
+```
+
+```bash
+# Option 2: sign into AWS IAM Identity Center to get temporary credentials
+aws configure sso
+```
+
+```bash
+# Option 3: configure static the AWS CLI for credentials
+aws configure
+```
+
+
+### Required IAM Permissions
+
+Ensure your IAM role or IAM user have the following permissions (replace placeholder values with your actual ARNs):
 
 ``` json
 {
     "Version": "2012-10-17",
     "Statement": [
         {
-            "Sid": "InvokeBedrockModel",
             "Effect": "Allow",
             "Action": [
                 "bedrock:InvokeModel"
@@ -59,7 +81,6 @@ Update the values with your **<account_id>** and **<question_answers_table_arn>*
             ]
         },
         {
-            "Sid": "DynamoDB",
             "Effect": "Allow",
             "Action": [
                 "dynamodb:Query"
@@ -67,7 +88,6 @@ Update the values with your **<account_id>** and **<question_answers_table_arn>*
             "Resource": "<question_answers_table_arn>"
         },
         {
-            "Sid": "BedrockAgentCorePermissions",
             "Effect": "Allow",
             "Action": "bedrock-agentcore:InvokeAgentRuntime",
             "Resource": [
@@ -79,13 +99,11 @@ Update the values with your **<account_id>** and **<question_answers_table_arn>*
 }
 ```
 
-## Configure Environment Variables
+## Configure Application Variables
 
 - Rename the file **src/sample.env.js** to **src/env.js** and update the following environment variables:
 
-    - AWS Credentials and Region:
-        - **ACCESS_KEY_ID**
-        - **SECRET_ACCESS_KEY**
+    - AWS Region (if not set via credentials):
         - **AWS_REGION**
 
     - You can find the DynamoDB table name in the CloudFormation Outputs from the CDK project:

@@ -60,7 +60,7 @@ The AWS CDK stack deploys and configures the following managed services:
 | Model Provider | Amazon Bedrock |
 
 > [!NOTE]
-> This solution references the use of AWS IAM credentials to connect to Amazon Bedrock AgentCore and Amazon DynamoDB. 🚀 For production deployment, consider integrating Amazon Cognito or another identity provider for proper authentication and authorization instead of using IAM user credentials.
+> This solution uses the AWS SDK's default credential provider chain, meaning it will automatically discover credentials from an AWS compute service, such as EC2, EKS, or ECS, or the `default` profile in `.aws/credentials`, or AWS credentials in environment variables.
 
 > [!TIP]
 > You can also change the data source to connect to your preferred database engine by adapting the Agent's instructions and tool implementations.
