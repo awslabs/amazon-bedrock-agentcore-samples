@@ -149,10 +149,10 @@ def save_customer_support_secret(secret_value):
             SecretString=secret_value,
             Description="Secret containing the Cognito Configuration for the Customer Support Agent",
         )
-        print(f"✅ Created secret: {secret_name}")
+        print(f"✅ Created secret")
     except secrets_client.exceptions.ResourceExistsException:
         secrets_client.update_secret(SecretId=secret_name, SecretString=secret_value)
-        print(f"✅ Updated existing secret: {secret_name}")
+        print(f"✅ Updated existing secret")
     except Exception as e:
         print(f"❌ Error saving secret: {str(e)}")
         return False
