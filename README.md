@@ -27,7 +27,19 @@ git clone https://github.com/yourusername/llamaindex-agentcore-observability.git
 cd llamaindex-agentcore-observability
 ```
 
-2. Install dependencies:
+2. Create and activate a virtual environment:
+```bash
+# Create a virtual environment
+python -m venv venv
+
+# Activate the virtual environment
+# On Windows
+venv\Scripts\activate
+# On macOS/Linux
+source venv/bin/activate
+```
+
+3. Install dependencies:
 ```bash
 pip install -r requirements.txt
 ```
@@ -188,11 +200,11 @@ def get_bedrock_model():
     region = os.getenv("AWS_DEFAULT_REGION", "us-west-2")
     
     try:
+        # Let boto3 handle credential resolution automatically
         bedrock_model = BedrockConverse(
             model=model_id,
-            aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
-            aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY"),
             region_name=region,
+            # No explicit credentials - boto3 will find them automatically
         )
         logger.info(f"Successfully initialized Bedrock model: {model_id} in region: {region}")
         return bedrock_model
