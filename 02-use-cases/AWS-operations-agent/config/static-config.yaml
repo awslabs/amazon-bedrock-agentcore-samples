@@ -22,13 +22,7 @@ okta:
   # OAuth2 authorization server configuration (recommended to keep default authorization server. otherwise change the configuration urls accordingly)
   authorization_server: "default"
   
-  # Client configuration for client credentials flow (app-to-app)
-  #client_credentials:
-  #  client_id: "<YOUR_OKTA_CLIENT_ID>"
-  #   client_secret: "${OKTA_CLIENT_SECRET}"
-  #  scope: "api"
-  
-  # Client configuration for user authentication (PKCE flow)
+  # Client configuration for user authentication (PKCE flow) - Okta App ClientID - 'aws-support-agent-client'
   user_auth:
     client_id: "<YOUR_OKTA_CLIENT_ID>"
     audience: "<YOUR_OKTA_AUTHORIZATION_SERVER_AUDIENCE>"
