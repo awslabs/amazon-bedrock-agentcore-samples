@@ -55,7 +55,9 @@ def create_or_get_memory_resource():
                     }
                 },
             ]
-            print("Creating AgentCore Memory resources. This can a couple of minutes..")
+            print(
+                "Creating AgentCore Memory resources. This can take a couple of minutes..."
+            )
             # *** AGENTCORE MEMORY USAGE *** - Create memory resource with semantic and user_pref strategy
             response = memory_client.create_memory_and_wait(
                 name=memory_name,
