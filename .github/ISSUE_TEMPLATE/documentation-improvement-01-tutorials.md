@@ -1,9 +1,9 @@
 ---
 name: Documentation improvement [01-tutorials]
 about: Suggest a documentation improvement in 01-tutorials
-title: Amazon Bedrock AgentCore Samples - [Content Improvement]
+title: 01-tutorials - [Content Improvement]
 labels: 01-tutorials, documentation
-assignees: akshseh, EashanKaushik
+assignees: akshseh
 
 ---
 
