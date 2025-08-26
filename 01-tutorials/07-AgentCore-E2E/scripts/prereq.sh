@@ -38,11 +38,17 @@ echo "Region: $REGION"
 echo "Account ID: $ACCOUNT_ID"
 # ----- 1. Create S3 bucket -----
 echo "🪣 Using S3 bucket: $FULL_BUCKET_NAME"
-aws s3api create-bucket \
---bucket "$FULL_BUCKET_NAME" \
---region "$REGION" \
---create-bucket-configuration LocationConstraint="$REGION" \
-2>/dev/null || echo "ℹ️ Bucket may already exist or be owned by you."
+if [ "$REGION" = "us-east-1" ]; then
+  aws s3api create-bucket \
+    --bucket "$FULL_BUCKET_NAME" \
+    2>/dev/null || echo "ℹ️ Bucket may already exist or be owned by you."
+else
+  aws s3api create-bucket \
+    --bucket "$FULL_BUCKET_NAME" \
+    --region "$REGION" \
+    --create-bucket-configuration LocationConstraint="$REGION" \
+    2>/dev/null || echo "ℹ️ Bucket may already exist or be owned by you."
+fi
 
 # ----- Verify S3 bucket ownership -----
 echo "🔍 Verifying S3 bucket ownership..."
