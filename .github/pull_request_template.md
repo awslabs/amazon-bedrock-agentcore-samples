@@ -4,7 +4,7 @@
 > 1. We strictly follow a issue-first approach, please first open an [issue](https://github.com/awslabs/amazon-bedrock-agentcore-samples/issues) relating to this Pull Request.
 > 2. Once this Pull Request is ready for review please attach `review ready` label to it. Only PRs with `review ready` will be reviewed.
 
-**RFC issue number**:
+**Issue number**:
 
 ### Concise description of the PR
 
