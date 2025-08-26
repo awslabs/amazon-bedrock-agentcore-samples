@@ -7,7 +7,7 @@ assignees: akshseh
 
 ---
 
-**Which Component is the bug present?**
+**In which component is this bug present?**
 
 - [ ] 01-AgentCore-runtime
 - [ ] 02-AgentCore-gateway
@@ -17,7 +17,7 @@ assignees: akshseh
 - [ ] 06-AgentCore-observability
 - [ ] 07-AgentCore-E2E
 
-Please create a separate issue if you are reporting multiple bugs. If this is a documentation improvement please use `documentation improvement` issue. 
+If you are reporting multiple bugs, please create a separate issue for each. For documentation improvements, use the documentation improvement issue type.
 
 **Bug Description**
 A clear and concise description of the bug.
