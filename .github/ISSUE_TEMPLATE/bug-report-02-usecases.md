@@ -3,7 +3,7 @@ name: Bug report [02-use-cases]
 about: Report a bug in 02-use-cases
 title: 02-use-cases - [Bug]
 labels: 02-use-cases, bug
-assignees: eashankaushik
+assignees: EashanKaushik
 
 ---
 
