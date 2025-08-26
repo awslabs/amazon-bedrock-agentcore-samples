@@ -11,6 +11,12 @@ This project implements:
 - Simple arithmetic tools (add and multiply)
 - Session tracking capabilities for correlating traces across multiple agent runs
 
+## Architecture Diagram
+
+The following diagram illustrates the architecture of this LlamaIndex agent implementation with AWS Bedrock and OpenTelemetry:
+
+![LlamaIndex AgentCore Architecture Diagram](images/llamaindex_agentcore_arch_diagram.png)
+
 ## Prerequisites
 
 - Python 3.9+
