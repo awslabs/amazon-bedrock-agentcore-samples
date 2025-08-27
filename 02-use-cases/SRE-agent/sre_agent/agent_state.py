@@ -49,3 +49,16 @@ class AgentState(TypedDict):
 
     # Auto-approve plans without user confirmation (defaults to False)
     auto_approve_plan: Optional[bool]
+
+    # Memory-related fields
+    user_id: Optional[str]  # For user preference tracking
+    incident_id: Optional[str]  # For investigation tracking
+    actor_id: Optional[str]  # Actor ID for memory storage and retrieval
+    session_id: Optional[str]  # Session ID for conversation grouping
+    memory_context: Optional[Dict[str, Any]]  # Retrieved memory context
+    captured_preferences: Optional[
+        List[Dict[str, Any]]
+    ]  # Preferences captured during session
+    captured_knowledge: Optional[
+        List[Dict[str, Any]]
+    ]  # Infrastructure knowledge captured

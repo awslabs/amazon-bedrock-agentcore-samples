@@ -7,7 +7,7 @@ The application has been updated to use **inference profile IDs** with the `us.`
 ## 🔧 **Changes Made**
 
 ### **Model IDs Updated:**
-- **✅ Primary**: `us.anthropic.claude-sonnet-4-20250514-v1:0` (Claude Sonnet 4 Inference Profile)
+- **✅ Primary**: `us.anthropic.claude-3-7-sonnet-20250219-v1:0` (Claude Sonnet 3.7 Inference Profile)
 - **✅ Fallback**: `us.amazon.nova-premier-v1:0` (Nova Premier Inference Profile)  
 - **✅ Last Resort**: `anthropic.claude-3-5-sonnet-20241022-v2:0` (Standard Model)
 
@@ -21,14 +21,14 @@ The application has been updated to use **inference profile IDs** with the `us.`
 
 ### **Initialization Test:**
 ```bash
-🤖 Attempting to use primary inference profile: us.anthropic.claude-sonnet-4-20250514-v1:0
-✅ Primary inference profile us.anthropic.claude-sonnet-4-20250514-v1:0 initialized successfully
+🤖 Attempting to use primary inference profile: us.anthropic.claude-3-7-sonnet-20250219-v1:0
+✅ Primary inference profile us.anthropic.claude-3-7-sonnet-20250219-v1:0 initialized successfully
 🎯 SUCCESS: Using inference profile ID
-✅ Claude Sonnet 4 inference profile active
+✅ Claude Sonnet 3.7 inference profile active
 ```
 
 ### **Model Hierarchy Confirmed:**
-1. **🎯 PRIMARY**: `us.anthropic.claude-sonnet-4-20250514-v1:0` - **ACTIVE**
+1. **🎯 PRIMARY**: `us.anthropic.claude-3-7-sonnet-20250219-v1:0` - **ACTIVE**
 2. **🔄 FALLBACK**: `us.amazon.nova-premier-v1:0` - **READY**
 3. **🛡️ SAFETY NET**: `anthropic.claude-3-5-sonnet-20241022-v2:0` - **AVAILABLE**
 
@@ -51,7 +51,7 @@ The application has been updated to use **inference profile IDs** with the `us.`
 ### **Active Configuration:**
 ```json
 {
-  "primary_model": "us.anthropic.claude-sonnet-4-20250514-v1:0",
+  "primary_model": "us.anthropic.claude-3-7-sonnet-20250219-v1:0",
   "model_type": "inference_profile",
   "status": "active",
   "performance": "optimized"
@@ -65,14 +65,14 @@ The application has been updated to use **inference profile IDs** with the `us.`
 
 # Check current model
 curl http://localhost:8000/health | jq '.current_model'
-# Returns: "us.anthropic.claude-sonnet-4-20250514-v1:0"
+# Returns: "us.anthropic.claude-3-7-sonnet-20250219-v1:0"
 ```
 
 ## ✅ **SUMMARY**
 
 **The application now correctly uses:**
 - **🎯 Inference Profile IDs** with `us.` prefix as requested
-- **🚀 Claude Sonnet 4** via optimized inference profile
+- **🚀 Claude Sonnet 3.7** via optimized inference profile
 - **🔄 Nova Premier** as inference profile fallback
 - **🛡️ Standard models** as final safety net
 - **📊 Full monitoring** and status reporting

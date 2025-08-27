@@ -12,12 +12,11 @@ import logging
 import time
 from pathlib import Path
 from pprint import pprint
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
 
 import boto3
 from botocore.config import Config
 from botocore.exceptions import ClientError
-
 
 # Configure logging with basicConfig
 logging.basicConfig(
@@ -143,7 +142,6 @@ def _create_provider_with_retry(
             if e.response["Error"][
                 "Code"
             ] == "ConflictException" and "SecretsManager" in str(e):
-
                 if attempt < MAX_RETRIES - 1:
                     logger.warning(
                         f"SecretsManager conflict (attempt {attempt + 1}/{MAX_RETRIES}). "

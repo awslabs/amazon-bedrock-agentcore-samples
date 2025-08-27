@@ -14,6 +14,14 @@ The SRE Agent is a multi-agent system for Site Reliability Engineers that helps 
 | Example complexity  | Advanced                                                                                                                            |
 | SDK used            | Amazon Bedrock AgentCore SDK, LangGraph, MCP                                                                                       |
 
+## Assets
+
+| Asset | Description |
+|-------|-------------|
+| [Demo video 1 (SRE-Agent CLI, VSCode integration)](https://github.com/user-attachments/assets/c28087a6-7a97-43f0-933d-28e3f6e2eeeb) | Walkthrough of the SRE Agent investigating and resolving infrastructure issues using CLI and VSCode |
+| [Demo video 2 (Cursor integration)](https://github.com/user-attachments/assets/c1a3c26b-e982-4842-bed0-8e668d79269e) | Demonstration of AgentCore Gateway with SRE tools integration with Cursor IDE |
+| [AI generated podcast](https://github.com/user-attachments/assets/feedb9d2-064c-4c5e-a306-94941065cf82) | Audio discussion explaining the SRE Agent's capabilities and architecture |
+
 ### Use case Architecture 
 
 ![SRE support agent with Amazon Bedrock AgentCore](docs/images/sre-agent-architecture.png)
@@ -22,6 +30,8 @@ The SRE Agent is a multi-agent system for Site Reliability Engineers that helps 
 
 - **Multi-Agent Orchestration**: Specialized agents collaborate on infrastructure investigations with real-time streaming
 - **Conversational Interface**: Single-query investigations and interactive multi-turn conversations with context preservation
+- **Long-term Memory Integration**: Amazon Bedrock Agent Memory provides persistent user preferences and infrastructure knowledge across sessions
+- **User Personalization**: Tailored reports and escalation procedures based on individual user preferences and roles
 - **MCP-based Integration**: AgentCore Gateway provides secure API access with authentication and health monitoring
 - **Specialized Agents**: Four domain-specific agents for Kubernetes, logs, metrics, and operational procedures
 - **Documentation and Reporting**: Markdown reports generated for each investigation with audit trail
@@ -30,28 +40,33 @@ The SRE Agent is a multi-agent system for Site Reliability Engineers that helps 
 
 For comprehensive information about the SRE Agent system, please refer to the following detailed documentation:
 
-- **[Specialized Agents](docs/specialized-agents.md)** - Detailed capabilities of each of the four specialized agents
 - **[System Components](docs/system-components.md)** - In-depth architecture and component explanations
+- **[Memory System](docs/memory-system.md)** - Long-term memory integration, user personalization, and cross-session learning
 - **[Configuration](docs/configuration.md)** - Complete configuration guides for environment variables, agents, and gateway
+- **[Deployment Guide](docs/deployment-guide.md)** - Complete deployment guide for Amazon Bedrock AgentCore Runtime
+- **[Security](docs/security.md)** - Security best practices and considerations for production deployment
 - **[Demo Environment](docs/demo-environment.md)** - Demo scenarios, data customization, and testing setup
 - **[Example Use Cases](docs/example-use-cases.md)** - Detailed walkthroughs and interactive troubleshooting examples
-- **[Security](docs/security.md)** - Security best practices and considerations for production deployment
 - **[Verification](docs/verification.md)** - Ground truth verification and report validation
 - **[Development](docs/development.md)** - Testing, code quality, and contribution guidelines
-- **[Deployment Guide](docs/deployment-guide.md)** - Complete deployment guide for Amazon Bedrock AgentCore Runtime
+
 
 ## Prerequisites
 
-> **⚠️ IMPORTANT:** Amazon Bedrock AgentCore Gateway **only works with HTTPS endpoints**. You must have valid SSL certificates for your backend servers.
+| Requirement | Description |
+|-------------|-------------|
+| Python 3.12+ and `uv` | Python runtime and package manager. See [use-case setup](#use-case-setup) |
+| Amazon EC2 Instance | Recommended: `t3.xlarge` or larger |
+| Valid SSL certificates | **⚠️ IMPORTANT:** Amazon Bedrock AgentCore Gateway **only works with HTTPS endpoints**. For example, you can register your Amazon EC2 with [no-ip.com](https://www.noip.com/) and obtain a certificate from [letsencrypt.org](https://letsencrypt.org/), or use any other domain registration and SSL certificate provider. You'll need the domain name as `BACKEND_DOMAIN` and certificate paths in the [use-case setup](#use-case-setup) section |
+| EC2 instance port configuration | Required inbound ports (443, 8011-8014). See [EC2 instance port configuration](docs/ec2-port-configuration.md) |
+| IAM role with BedrockAgentCoreFullAccess policy | Required permissions and trust policy for AgentCore service. See [IAM role with BedrockAgentCoreFullAccess policy](docs/auth.md) |
+| Identity Provider (IDP) | Amazon Cognito, Auth0, or Okta for JWT authentication. For automated Cognito setup, use `deployment/setup_cognito.sh`. See [Authentication setup](docs/auth.md#identity-provider-configuration) |
 
-* Python 3.12+
-* `uv` package manager for Python package management
-* EC2 Instance (recommended: `t3.xlarge` or larger)
-* Valid SSL certificates for HTTPS endpoints
-* Either Anthropic API key or AWS credentials configured for Amazon Bedrock
-* Updated OpenAPI specifications with your actual domain name
+> **Note:** All prerequisites must be completed before proceeding to the use case setup. The setup will fail without proper SSL certificates, IAM permissions, and identity provider configuration.
 
 ## Use case setup
+
+> **Configuration Guide**: For detailed information about all configuration files used in this project, see the [Configuration Documentation](docs/configuration.md).
 
 ```bash
 # Clone the repository
@@ -66,30 +81,57 @@ source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 uv pip install -e .
 
 # Configure environment variables
-cp .env.example sre_agent/.env
-# Edit sre_agent/.env and add your Anthropic API key:
+cp sre_agent/.env.example sre_agent/.env
+# Edit sre_agent/.env and add your Anthropic API key if using Anthropic directly:
 # ANTHROPIC_API_KEY=sk-ant-your-key-here
+# 
+# Note: If you are using Amazon Bedrock models for inference, you do not need to
+# make any changes to the .env file - the defaults are good to get started
 
-# Update OpenAPI specifications with your domain
-# Replace 'your-backend-domain.com' with your actual domain in all OpenAPI spec files
-sed -i 's/your-backend-domain.com/mydomain.com/g' backend/openapi_specs/*.yaml
+# Openapi Templates get replaced with your backend domain and saved as .yaml
+BACKEND_DOMAIN=api.mycompany.com ./backend/openapi_specs/generate_specs.sh
 
-# Get your EC2 instance private IP for server binding
-TOKEN=$(curl -X PUT "http://169.254.169.254/latest/api/token" \
-  -H "X-aws-ec2-metadata-token-ttl-seconds: 21600" -s)
-PRIVATE_IP=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" \
-  -s http://169.254.169.254/latest/meta-data/local-ipv4)
+# Set backend startup control variable (set to 0, false, or no to skip backend startup)
+# This is useful when backend API servers are already running elsewhere,
+# such as in workshop studio accounts or shared environments
+START_API_BACKEND=${START_API_BACKEND:-1}
 
-# Start the demo backend servers with SSL
-cd backend
-./scripts/start_demo_backend.sh \
-  --host $PRIVATE_IP  \
-  --ssl-keyfile /etc/ssl/private/privkey.pem \
-  --ssl-certfile /etc/ssl/certs/fullchain.pem
-cd ..
+if [[ "$START_API_BACKEND" =~ ^(1|true|yes)$ ]]; then
+  echo "Starting backend API servers..."
+  
+  # Get your EC2 instance private IP for server binding
+  TOKEN=$(curl -X PUT "http://169.254.169.254/latest/api/token" \
+    -H "X-aws-ec2-metadata-token-ttl-seconds: 21600" -s)
+  PRIVATE_IP=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" \
+    -s http://169.254.169.254/latest/meta-data/local-ipv4)
+
+  # Start the demo backend servers with SSL
+  cd backend
+  ./scripts/start_demo_backend.sh \
+    --host $PRIVATE_IP  \
+    --ssl-keyfile /opt/ssl/privkey.pem \
+    --ssl-certfile /opt/ssl/fullchain.pem
+  cd ..
+else
+  echo "Skipping backend API server startup (START_API_BACKEND is set to $START_API_BACKEND)"
+fi
+
+# Configure the AgentCore Gateway
+cd gateway
+cp config.yaml.example config.yaml
+# Edit config.yaml and update the parameter values
+# The file contains helpful comments for each parameter
+# Key parameters to update:
+#   - account_id: Your AWS account ID
+#   - region: Your AWS region
+#   - role_name: IAM role with BedrockAgentCoreFullAccess
+#     For testing: Can be your current EC2/notebook role (run: aws sts get-caller-identity)
+#     For production: Use a dedicated gateway role (recommended)
+#   - user_pool_id and client_id: From Cognito setup
+#   - s3_bucket: Your S3 bucket for OpenAPI schemas
+# See gateway/config.yaml for detailed parameter descriptions
 
 # Create and configure the AgentCore Gateway
-cd gateway
 ./create_gateway.sh
 ./mcp_cmds.sh
 cd ..
@@ -101,9 +143,44 @@ sed -i "s|uri: \".*\"|uri: \"$GATEWAY_URI\"|" sre_agent/config/agent_config.yaml
 # Copy the gateway access token to your .env file
 sed -i '/^GATEWAY_ACCESS_TOKEN=/d' sre_agent/.env
 echo "GATEWAY_ACCESS_TOKEN=$(cat gateway/.access_token)" >> sre_agent/.env
+
+# Initialize memory system and add user preferences
+uv run python scripts/manage_memories.py update
+
+# Note: Memory system takes 10-12 minutes to be ready
+# Check memory status after 10 minutes:
+uv run python scripts/manage_memories.py list
+
+# Once memory shows as ready, run update again to ensure preferences are loaded:
+uv run python scripts/manage_memories.py update
 ```
 
+> **Local Setup Complete**: Your SRE Agent is now running locally on your EC2 instance and is exercising the AgentCore Gateway and Memory services. If you want to deploy this agent on AgentCore Runtime so you can integrate it into your applications (like a chatbot, Slack bot, etc.), follow the instructions in the [Development to Production Deployment Flow](#development-to-production-deployment-flow) section below.
+
 ## Execution instructions
+
+### Memory-Enhanced Personalized Investigations
+
+The SRE Agent includes a sophisticated memory system that personalizes investigations based on user preferences. The system comes preconfigured with two user personas in [`scripts/user_config.yaml`](scripts/user_config.yaml):
+
+- **Alice**: Technical detailed investigations with comprehensive analysis and team alerts
+- **Carol**: Executive-focused investigations with business impact analysis and strategic alerts
+
+When running investigations with different user IDs, the agent produces similar technical findings but presents them according to each user's preferences:
+
+```bash
+# Alice's detailed technical investigation
+USER_ID=Alice sre-agent --prompt "API response times have degraded 3x in the last hour" --provider bedrock
+
+# Carol's executive-focused investigation  
+USER_ID=Carol sre-agent --prompt "API response times have degraded 3x in the last hour" --provider bedrock
+```
+
+Both commands will identify identical technical issues but present them differently:
+- **Alice** receives detailed technical analysis with step-by-step troubleshooting and team notifications
+- **Carol** receives executive summaries focused on business impact with rapid escalation timelines
+
+For a detailed comparison showing how the memory system personalizes identical incidents, see: [**Memory System Report Comparison**](docs/examples/Memory_System_Analysis_User_Personalization_20250802_162648.md)
 
 ### Single Query Mode
 ```bash
@@ -145,7 +222,7 @@ AWS_PROFILE=production sre-agent --provider bedrock --interactive
 
 ## Development to Production Deployment Flow
 
-The SRE Agent follows a structured deployment process from local development to production on Amazon Bedrock AgentCore Runtime:
+The SRE Agent follows a structured deployment process from local development to production on Amazon Bedrock AgentCore Runtime. For detailed instructions, see the **[Deployment Guide](docs/deployment-guide.md)**.
 
 ```
 STEP 1: LOCAL DEVELOPMENT
@@ -199,37 +276,115 @@ The AgentCore Runtime deployment supports:
 
 For complete step-by-step instructions including local testing, container building, and production deployment, see the **[Deployment Guide](docs/deployment-guide.md)**.
 
-## Managing OpenAPI Specifications
+## AgentCore Observability
 
-### Important: Domain Configuration for Development vs Git Commits
+Adding observability to an Agent deployed on the AgentCore Runtime is straightforward using the observability primitive. This enables comprehensive monitoring through Amazon CloudWatch with metrics, traces, and logs.
 
-The OpenAPI specification files in `backend/openapi_specs/` use a placeholder domain `your-backend-domain.com` by default. For development, you'll need to replace this with your actual domain, but **you must revert these changes before committing to git**.
+### Setting Up Observability
 
-#### For Development Setup
-```bash
-# Replace placeholder domain with your actual domain
-sed -i 's/your-backend-domain.com/your-actual-domain.com/g' backend/openapi_specs/*.yaml
+#### 1. Add OpenTelemetry Packages
+
+The required OpenTelemetry packages are already included in `pyproject.toml`:
+
+```toml
+dependencies = [
+    # ... other dependencies ...
+    "opentelemetry-instrumentation-langchain",
+    "aws-opentelemetry-distro~=0.10.1",
+]
 ```
 
-#### Before Committing Changes
-```bash
-# Revert back to placeholder domain before git commit
-sed -i 's/your-actual-domain.com/your-backend-domain.com/g' backend/openapi_specs/*.yaml
+#### 2. Configure Observability for Agents
 
-# Then commit your changes
-git add .
-git commit -m "Your commit message"
+Follow the [Amazon Bedrock AgentCore observability configuration guide](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/observability-configure.html#observability-configure-builtin) to enable metrics in Amazon CloudWatch.
+
+#### 3. Enable OpenTelemetry Instrumentation
+
+When starting the container, use the `opentelemetry-instrument` utility to automatically instrument your application. This is configured in the Dockerfile:
+
+```dockerfile
+# Run application with OpenTelemetry instrumentation
+CMD ["uv", "run", "opentelemetry-instrument", "uvicorn", "sre_agent.agent_runtime:app", "--host", "0.0.0.0", "--port", "8080"]
 ```
 
-#### Pre-commit Hook Protection
-A git pre-commit hook is installed that automatically prevents commits of OpenAPI spec files that don't contain the placeholder domain `your-backend-domain.com`. This ensures that custom domain configurations don't accidentally get committed to the repository.
+### Viewing Metrics and Traces
 
-If the pre-commit hook blocks your commit:
-1. Check which OpenAPI spec files contain custom domains
-2. Use the sed command above to revert them to the placeholder
-3. Commit again
+Once deployed with observability enabled, you can monitor your agent's performance through:
+
+- **Amazon CloudWatch Metrics**: View request rates, latencies, and error rates
+- **AWS X-Ray Traces**: Analyze distributed traces to understand request flow
+- **CloudWatch Logs**: Access structured logs for debugging and analysis
+
+![Agent Metrics Dashboard](docs/images/agent-metrics.gif)
+
+The observability primitive automatically captures:
+- LLM invocation metrics (tokens, latency, model usage)
+- Tool execution traces (duration, success/failure)
+- Memory operations (retrieval, storage)
+- End-to-end request tracing across all agent components
+
+## Maintenance and Operations
+
+### Restarting Backend Servers and Refreshing Access Token
+
+To maintain connectivity with the Amazon Bedrock AgentCore Gateway, you need to periodically restart backend servers and refresh the access token. Run the gateway configuration script:
+
+```bash
+# Important: Run this from within the virtual environment
+source .venv/bin/activate  # If not already activated
+./scripts/configure_gateway.sh
+```
+
+**What this script does:**
+- **Stops running backend servers** to ensure clean restart
+- **Generates a new access token** for AgentCore Gateway authentication
+- **Gets the EC2 instance private IP** for proper SSL binding
+- **Starts backend servers** with SSL certificates (HTTPS) or HTTP fallback
+- **Updates gateway URI** in the agent configuration from `gateway/.gateway_uri`
+- **Updates access token** in the `.env` file for agent authentication
+
+**Important:** You must run this script **every 24 hours** because the access token expires after 24 hours. If you don't refresh the token:
+- The SRE agent will lose connection to the AgentCore gateway
+- No MCP tools will be available (Kubernetes, logs, metrics, runbooks APIs)
+- Investigations will fail as agents cannot access backend services
+
+For more details, see the [configure_gateway.sh](scripts/configure_gateway.sh) script.
+
+### Troubleshooting Gateway Connection Issues
+
+If you encounter "gateway connection failed" or "MCP tools unavailable" errors:
+1. Check if the access token has expired (24-hour limit)
+2. Run `./scripts/configure_gateway.sh` to refresh authentication (from within the virtual environment)
+3. Verify backend servers are running with `ps aux | grep python`
+4. Check SSL certificate validity if using HTTPS
 
 ## Clean up instructions
+
+### Complete AWS Resource Cleanup
+
+For complete cleanup of all AWS resources (Gateway, Runtime, and local files):
+
+```bash
+# Complete cleanup - deletes AWS resources and local files
+./scripts/cleanup.sh
+
+# Or with custom names
+./scripts/cleanup.sh --gateway-name my-gateway --runtime-name my-runtime
+
+# Force cleanup without confirmation prompts
+./scripts/cleanup.sh --force
+```
+
+This script will:
+- Stop backend servers
+- Delete the AgentCore Gateway and all its targets
+- Delete memory resources
+- Delete the AgentCore Runtime
+- Remove generated files (gateway URIs, tokens, agent ARNs, memory IDs)
+
+### Manual Local Cleanup Only
+
+If you only want to clean up local files without touching AWS resources:
 
 ```bash
 # Stop all demo servers
@@ -237,14 +392,11 @@ cd backend
 ./scripts/stop_demo_backend.sh
 cd ..
 
-# Remove virtual environment
-deactivate
-rm -rf .venv
-
-# Clean up generated files
-rm -rf reports/
+# Clean up generated files only
 rm -rf gateway/.gateway_uri gateway/.access_token
-rm -rf sre_agent/.env
+rm -rf deployment/.agent_arn .memory_id
+
+# Note: .env, .venv, and reports/ are preserved for development continuity
 ```
 
 ## Disclaimer

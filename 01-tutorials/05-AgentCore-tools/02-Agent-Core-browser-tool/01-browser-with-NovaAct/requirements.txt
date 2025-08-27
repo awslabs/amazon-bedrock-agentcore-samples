@@ -1,4 +1,5 @@
 nova-act
+bedrock-agentcore
 boto3
 uv
 rich

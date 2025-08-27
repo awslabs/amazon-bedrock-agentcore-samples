@@ -27,7 +27,7 @@ def verify_secret(secret_name, region='us-west-2', test_connection=True):
                 
                 if list_response['SecretList']:
                     secret_arn = list_response['SecretList'][0]['ARN']
-                    print(f"Found secret ARN: {secret_arn}")
+                    print(f"Found secret")
                     response = secretsmanager.get_secret_value(SecretId=secret_arn)
                 else:
                     # Try with the name directly as a fallback
@@ -43,7 +43,7 @@ def verify_secret(secret_name, region='us-west-2', test_connection=True):
             
             for s in list_response['SecretList']:
                 if secret_name in s['Name']:
-                    print(f"Found matching secret: {s['Name']} with ARN: {s['ARN']}")
+                    print(f"Found matching secret")
                     response = secretsmanager.get_secret_value(SecretId=s['ARN'])
                     found = True
                     break
@@ -57,15 +57,15 @@ def verify_secret(secret_name, region='us-west-2', test_connection=True):
         missing_fields = [field for field in required_fields if field not in secret_data]
         
         if missing_fields:
-            print(f"Warning: Secret {secret_name} is missing fields: {', '.join(missing_fields)}")
+            print(f"Warning: Secret is missing fields: {', '.join(missing_fields)}")
             return False
         
         # Verify password is not empty
         if not secret_data['password']:
-            print(f"Warning: Secret {secret_name} has an empty password")
+            print(f"Warning: Secret has an empty password")
             return False
             
-        print(f"Secret {secret_name} verified successfully")
+        print(f"Secret verified successfully")
         
         # Test database connection if requested
         if test_connection:
@@ -73,7 +73,7 @@ def verify_secret(secret_name, region='us-west-2', test_connection=True):
                 # Import psycopg2 only if needed
                 import psycopg2
                 
-                print(f"Testing connection to database {secret_data['dbname']} at {secret_data['host']}:{secret_data['port']}...")
+                print(f"Testing connection to database")
                 conn = psycopg2.connect(
                     host=secret_data['host'],
                     database=secret_data['dbname'],
@@ -106,7 +106,7 @@ def verify_secret(secret_name, region='us-west-2', test_connection=True):
         
         return True
     except Exception as e:
-        print(f"Error verifying secret {secret_name}: {str(e)}")
+        print(f"Error verifying secret")
         return False
 
 def setup_database_access(cluster_name, environment, username=None, password=None, existing_secret=None, region='us-west-2'):
@@ -144,7 +144,7 @@ def setup_database_access(cluster_name, environment, username=None, password=Non
         if existing_secret:
             # Use existing secret
             secret_name = existing_secret
-            print(f"Using existing secret: {secret_name}")
+            print(f"Using existing secret")
             
             try:
                 # Get the existing secret to verify it exists
@@ -164,7 +164,7 @@ def setup_database_access(cluster_name, environment, username=None, password=Non
                         
                         if list_response['SecretList']:
                             secret_arn = list_response['SecretList'][0]['ARN']
-                            print(f"Found secret ARN: {secret_arn}")
+                            print(f"Found secret")
                             secret_response = secretsmanager.get_secret_value(SecretId=secret_arn)
                         else:
                             # Try with the name directly as a fallback
@@ -180,7 +180,6 @@ def setup_database_access(cluster_name, environment, username=None, password=Non
                     
                     for s in list_response['SecretList']:
                         if secret_name in s['Name']:
-                            print(f"Found matching secret: {s['Name']} with ARN: {s['ARN']}")
                             secret_response = secretsmanager.get_secret_value(SecretId=s['ARN'])
                             found = True
                             break
@@ -194,9 +193,9 @@ def setup_database_access(cluster_name, environment, username=None, password=Non
                 if 'username' in secret_data and 'password' in secret_data:
                     username = secret_data['username']
                     password = secret_data['password']
-                    print(f"Successfully retrieved credentials from existing secret for user: {username}")
+                    print(f"Successfully retrieved credentials from existing secret for user")
                 else:
-                    print(f"Error: Existing secret {secret_name} does not contain username and password")
+                    print(f"Error: Existing secret does not contain username and password")
                     return False
                     
                 # Create a new secret with the required format
@@ -209,33 +208,31 @@ def setup_database_access(cluster_name, environment, username=None, password=Non
                     "port": port
                 }
                 
-                # Print confirmation but mask the password
-                print(f"Using credentials - Username: {username}, Password: {'*' * len(password) if password else ''}")
-                
+                # Print confirmation but mask the password                
                 print(f"Creating new secret with endpoint: {endpoint}, port: {port}, database: {db_name}")
-                print(f"This will not affect the original secret: {secret_name}")
+                print(f"This will not affect the original secret")
                 
                 # Determine whether to create a new secret or use the existing one directly
                 # Check if we're running in non-interactive mode
                 if '--non-interactive' in sys.argv:
                     if '--use-existing-directly' in sys.argv:
-                        print(f"Non-interactive mode: Using existing secret directly: {secret_name}")
+                        print(f"Non-interactive mode: Using existing secret directly")
                         new_secret_name = secret_name
                     elif '--create-new-secret' in sys.argv:
-                        print(f"Non-interactive mode: Creating new secret: {new_secret_name}")
+                        print(f"Non-interactive mode: Creating new secret")
                     else:
                         # Default behavior in non-interactive mode is to create a new secret
-                        print(f"Non-interactive mode: Creating new secret (default): {new_secret_name}")
+                        print(f"Non-interactive mode: Creating new secret (default)")
                 else:
                     # Interactive mode - ask the user
                     choice = input("Do you want to: (1) Create a new secret with these credentials, or (2) Use the existing secret directly? (1/2): ")
                     
                     if choice == "2":
-                        print(f"Using existing secret directly: {secret_name}")
+                        print(f"Using existing secret directly")
                         # No need to create a new secret, just use the existing one
                         new_secret_name = secret_name
                     elif choice == "1":
-                        print(f"Creating new secret: {new_secret_name}")
+                        print(f"Creating new secret")
                     else:
                         print("Invalid choice. Operation cancelled.")
                         return False
@@ -248,7 +245,7 @@ def setup_database_access(cluster_name, environment, username=None, password=Non
                             Description=f"Database credentials for {cluster_name} in {environment} environment",
                             SecretString=json.dumps(secret_value)
                         )
-                        print(f"Successfully created new secret: {new_secret_name}")
+                        print(f"Successfully created new secret")
                     except Exception as e:
                         print(f"Error creating new secret: {str(e)}")
                         return False
@@ -257,7 +254,7 @@ def setup_database_access(cluster_name, environment, username=None, password=Non
                 secret_name = new_secret_name
                 
             except secretsmanager.exceptions.ResourceNotFoundException:
-                print(f"Error: Secret {secret_name} not found")
+                print(f"Error: Secret not found")
                 return False
         else:
             # Create new secret with provided credentials
@@ -285,7 +282,7 @@ def setup_database_access(cluster_name, environment, username=None, password=Non
         
         # Verify the secret was created correctly
         if not verify_secret(secret_name, region):
-            print(f"Error: Secret {secret_name} verification failed")
+            print(f"Error: Secret verification failed")
             return False
             
         # Store secret name in SSM Parameter Store
@@ -298,7 +295,7 @@ def setup_database_access(cluster_name, environment, username=None, password=Non
         )
         
         print(f"Successfully set up database access:")
-        print(f"- Secret created: {secret_name}")
+        print(f"- Secret created")
         print(f"- SSM Parameter created: {ssm_parameter_name}")
         
         # Save to config file
@@ -307,7 +304,7 @@ def setup_database_access(cluster_name, environment, username=None, password=Non
         os.makedirs(config_dir, exist_ok=True)
         with open(os.path.join(config_dir, f"db_{environment}_config.env"), "w") as f:
             f.write(f"export DB_CLUSTER_NAME={cluster_name}\n")
-            f.write(f"export DB_SECRET_NAME={secret_name}\n")
+            f.write(f"# DB_SECRET_NAME stored securely in SSM Parameter Store: {ssm_parameter_name}\n")
             f.write(f"export DB_SSM_PARAMETER={ssm_parameter_name}\n")
             f.write(f"export DB_ENDPOINT={endpoint}\n")
             f.write(f"export DB_PORT={port}\n")
@@ -361,7 +358,7 @@ if __name__ == "__main__":
         try:
             response = ssm.get_parameter(Name=f"/AuroraOps/{args.environment}")
             secret_name = response['Parameter']['Value']
-            print(f"Testing connection using secret {secret_name}...")
+            print("Testing database connection using retrieved secret.")
             verify_secret(secret_name, args.region, True)
         except Exception as e:
             print(f"Error testing connection: {str(e)}")

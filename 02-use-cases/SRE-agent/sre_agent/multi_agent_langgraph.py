@@ -5,6 +5,9 @@ import asyncio
 import json
 import logging
 import os
+import random
+import re
+import shutil
 import sys
 import threading
 import time
@@ -34,6 +37,47 @@ logger = logging.getLogger(__name__)
 
 # Load environment variables from .env file in sre_agent directory
 load_dotenv(Path(__file__).parent / ".env")
+
+
+def _get_user_from_env() -> str:
+    """Get user_id from environment variable.
+
+    Returns:
+        user_id from USER_ID environment variable or default
+    """
+    user_id = os.getenv("USER_ID")
+    if user_id:
+        logger.info(f"Using user_id from environment: {user_id}")
+        return user_id
+    else:
+        # Fallback to default user_id
+        default_user_id = SREConstants.agents.default_user_id
+        logger.warning(
+            f"USER_ID not set in environment, using default: {default_user_id}"
+        )
+        return default_user_id
+
+
+def _get_session_from_env(mode: str) -> str:
+    """Get session_id from environment variable or generate one.
+
+    Args:
+        mode: "interactive" or "prompt" for auto-generation prefix
+
+    Returns:
+        session_id from SESSION_ID environment variable or auto-generated
+    """
+    session_id = os.getenv("SESSION_ID")
+    if session_id:
+        logger.info(f"Using session_id from environment: {session_id}")
+        return session_id
+    else:
+        # Auto-generate session_id
+        auto_session_id = f"{mode}-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+        logger.info(
+            f"SESSION_ID not set in environment, auto-generated: {auto_session_id}"
+        )
+        return auto_session_id
 
 
 class Spinner:
@@ -89,9 +133,86 @@ class Spinner:
             i += 1
 
 
+def _archive_old_reports(output_dir: str) -> None:
+    """Archive reports from previous days into date-based folders."""
+    try:
+        output_path = Path(output_dir)
+        if not output_path.exists():
+            return
+
+        # Get today's date in the format used in filenames (YYYYMMDD)
+        today = datetime.now().strftime("%Y%m%d")
+
+        # Process all .md and .log files in the reports directory
+        for file_path in output_path.glob("*.md"):
+            if not file_path.is_file():
+                continue
+
+            # Extract date from filename (format: YYYYMMDD)
+            # Handle both old format (query_YYYYMMDD_HHMMSS.md) and new format (query_user_id_USER_YYYYMMDD_HHMMSS.md)
+            filename = file_path.name
+            date_match = re.search(r"202[0-9]{5}", filename)
+
+            if date_match:
+                date_part = date_match.group()
+
+                # Only move files that are not from today
+                if date_part != today:
+                    # Extract year, month, day
+                    year = date_part[:4]
+                    month = date_part[4:6]
+                    day = date_part[6:8]
+                    date_folder_name = f"{year}-{month}-{day}"
+
+                    # Create date folder if it doesn't exist
+                    date_folder = output_path / date_folder_name
+                    date_folder.mkdir(exist_ok=True)
+
+                    # Move file to date folder
+                    destination = date_folder / filename
+                    if not destination.exists():  # Avoid overwriting existing files
+                        shutil.move(str(file_path), str(destination))
+                        logger.info(f"Archived {filename} to {date_folder_name}/")
+
+        # Also process .log files
+        for file_path in output_path.glob("*.log"):
+            if not file_path.is_file():
+                continue
+
+            # Extract date from filename (format: YYYYMMDD)
+            # Handle both old format (query_YYYYMMDD_HHMMSS.log) and new format (query_user_id_USER_YYYYMMDD_HHMMSS.log)
+            filename = file_path.name
+            date_match = re.search(r"202[0-9]{5}", filename)
+
+            if date_match:
+                date_part = date_match.group()
+
+                # Only move files that are not from today
+                if date_part != today:
+                    # Extract year, month, day
+                    year = date_part[:4]
+                    month = date_part[4:6]
+                    day = date_part[6:8]
+                    date_folder_name = f"{year}-{month}-{day}"
+
+                    # Create date folder if it doesn't exist
+                    date_folder = output_path / date_folder_name
+                    date_folder.mkdir(exist_ok=True)
+
+                    # Move file to date folder
+                    destination = date_folder / filename
+                    if not destination.exists():  # Avoid overwriting existing files
+                        shutil.move(str(file_path), str(destination))
+                        logger.info(f"Archived {filename} to {date_folder_name}/")
+
+    except Exception as e:
+        logger.warning(f"Failed to archive old reports: {e}")
+
+
 def _save_final_response_to_markdown(
     query: str,
     final_response: str,
+    user_id: Optional[str] = None,
     timestamp: Optional[datetime] = None,
     output_dir: str = ".",
     filename_prefix: str = "sre_investigation",
@@ -103,6 +224,9 @@ def _save_final_response_to_markdown(
     # Create output directory if it doesn't exist
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
+
+    # Archive old reports before saving new one
+    _archive_old_reports(output_dir)
 
     # Create filename with query and timestamp
     # Clean the query string for filename use
@@ -127,7 +251,13 @@ def _save_final_response_to_markdown(
         clean_query = "query"
 
     timestamp_str = timestamp.strftime("%Y%m%d_%H%M%S")
-    filename = f"{clean_query}_{timestamp_str}.md"
+
+    # Include user_id in filename if provided
+    if user_id:
+        filename = f"{clean_query}_user_id_{user_id}_{timestamp_str}.md"
+    else:
+        filename = f"{clean_query}_{timestamp_str}.md"
+
     filepath = output_path / filename
 
     # Create markdown content
@@ -188,7 +318,7 @@ def _read_gateway_config() -> tuple[str, str]:
         # Load environment variables from sre_agent directory
         load_dotenv(Path(__file__).parent / ".env")
 
-        # Read gateway URI from agent_config.yaml
+        # Read gateway URI and region from agent_config.yaml
         config_path = Path(__file__).parent / "config" / "agent_config.yaml"
         with open(config_path, "r") as f:
             config = yaml.safe_load(f)
@@ -198,13 +328,18 @@ def _read_gateway_config() -> tuple[str, str]:
             raise ValueError(
                 "Gateway URI not found in agent_config.yaml under 'gateway.uri'"
             )
+        
+        # Get AWS region with fallback logic: config -> AWS_REGION env var -> us-east-1
+        aws_region = config.get("aws", {}).get("region")
+        if not aws_region:
+            aws_region = os.environ.get("AWS_REGION", "us-east-1")
 
         # Read access token from environment
         access_token = os.getenv("GATEWAY_ACCESS_TOKEN")
         if not access_token:
             raise ValueError("GATEWAY_ACCESS_TOKEN environment variable is required")
 
-        return gateway_uri.rstrip("/"), access_token
+        return gateway_uri.rstrip("/"), access_token, aws_region
     except Exception as e:
         logger.error(f"Error reading gateway configuration: {e}")
         raise
@@ -212,7 +347,7 @@ def _read_gateway_config() -> tuple[str, str]:
 
 def create_mcp_client() -> MultiServerMCPClient:
     """Create and return MultiServerMCPClient with gateway configuration."""
-    gateway_uri, access_token = _read_gateway_config()
+    gateway_uri, access_token, _ = _read_gateway_config()  # Region not needed here
 
     # Configure MCP server connection
     client = MultiServerMCPClient(
@@ -229,7 +364,13 @@ def create_mcp_client() -> MultiServerMCPClient:
 
 
 async def create_multi_agent_system(
-    provider: str = "bedrock", checkpointer=None, **llm_kwargs
+    provider: str = "bedrock",
+    checkpointer=None,
+    force_delete_memory: bool = False,
+    export_graph: bool = False,
+    graph_output_path: str = "./docs/sre_agent_architecture.md",
+    region_name: str = None,
+    **llm_kwargs,
 ):
     """Create multi-agent system with MCP tools."""
     logger.info(f"Creating multi-agent system with provider: {provider}")
@@ -237,41 +378,180 @@ async def create_multi_agent_system(
     # Get Anthropic API key if needed
     if provider == "anthropic" and not llm_kwargs.get("api_key"):
         llm_kwargs["api_key"] = _get_anthropic_api_key()
+    
+    # Add region_name to llm_kwargs for bedrock provider
+    if provider == "bedrock" and region_name:
+        llm_kwargs["region_name"] = region_name
+        logger.info(f"Using AWS region for Bedrock: {region_name}")
 
-    # Create MCP client and get tools
+    # Create MCP client and get tools with retry logic
     mcp_tools = []
-    try:
-        client = create_mcp_client()
-        # Add timeout for MCP tool loading to prevent hanging
-        all_mcp_tools = await asyncio.wait_for(
-            client.get_tools(), timeout=SREConstants.timeouts.mcp_tools_timeout_seconds
-        )
+    max_retries = 3
+    retry_count = 0
 
-        # Don't filter out x-amz-agentcore-search as it's a global tool
-        mcp_tools = all_mcp_tools
+    while retry_count < max_retries:
+        try:
+            client = create_mcp_client()
+            # Add timeout for MCP tool loading to prevent hanging
+            all_mcp_tools = await asyncio.wait_for(
+                client.get_tools(),
+                timeout=SREConstants.timeouts.mcp_tools_timeout_seconds,
+            )
 
-        logger.info(f"Retrieved {len(mcp_tools)} tools from MCP")
+            # Don't filter out x-amz-agentcore-search as it's a global tool
+            mcp_tools = all_mcp_tools
 
-        # Print tool information (only in debug mode)
-        logger.info(f"MCP tools loaded: {len(mcp_tools)}")
-        if should_show_debug_traces():
-            print(f"\nMCP tools loaded: {len(mcp_tools)}")
-            for tool in mcp_tools:
-                tool_name = getattr(tool, "name", "unknown")
-                tool_desc = getattr(tool, "description", "No description")
-                print(f"  - {tool_name}: {tool_desc[:80]}...")
-                logger.info(f"  - {tool_name}: {tool_desc[:80]}...")
+            logger.info(f"Retrieved {len(mcp_tools)} tools from MCP")
 
-    except asyncio.TimeoutError:
-        logger.warning("MCP tool loading timed out after 30 seconds")
-        mcp_tools = []
-    except Exception as e:
-        logger.warning(f"Failed to load MCP tools: {e}")
-        mcp_tools = []
+            # Print tool information (only in debug mode)
+            logger.info(f"MCP tools loaded: {len(mcp_tools)}")
+            if should_show_debug_traces():
+                print(f"\nMCP tools loaded: {len(mcp_tools)}")
+                for tool in mcp_tools:
+                    tool_name = getattr(tool, "name", "unknown")
+                    tool_desc = getattr(tool, "description", "No description")
+                    print(f"  - {tool_name}: {tool_desc[:80]}...")
+                    logger.info(f"  - {tool_name}: {tool_desc[:80]}...")
+
+            # Success - break out of retry loop
+            break
+
+        except asyncio.TimeoutError:
+            logger.warning("MCP tool loading timed out after 30 seconds")
+            mcp_tools = []
+            break  # Don't retry on timeout
+
+        except Exception as e:
+            retry_count += 1
+            error_msg = str(e)
+
+            # Check if it's a rate limiting error (429)
+            if "429" in error_msg or "Too Many Requests" in error_msg:
+                if retry_count < max_retries:
+                    # Exponential backoff with jitter
+                    base_delay = 2**retry_count  # 2, 4, 8 seconds
+                    jitter = random.uniform(0, 1)  # Add 0-1 second random jitter
+                    wait_time = base_delay + jitter
+
+                    logger.warning(
+                        f"Rate limited by MCP server (attempt {retry_count}/{max_retries}). "
+                        f"Waiting {wait_time:.1f} seconds before retry..."
+                    )
+                    await asyncio.sleep(wait_time)
+                    continue
+                else:
+                    logger.error(
+                        f"Failed to load MCP tools after {max_retries} retries: {e}"
+                    )
+                    mcp_tools = []
+            else:
+                # For other errors, don't retry
+                logger.warning(f"Failed to load MCP tools: {e}")
+                mcp_tools = []
+                break
 
     # Combine local tools with MCP tools
     local_tools = [get_current_time]
-    all_tools = local_tools + mcp_tools
+
+    # Add memory tools if memory system is enabled
+    memory_tools = []
+    try:
+        from .memory.client import SREMemoryClient
+        from .memory.config import _load_memory_config
+        from .memory.tools import create_memory_tools
+
+        memory_config = _load_memory_config()
+        if memory_config.enabled:
+            logger.debug("Adding memory tools to agent tool list")
+            # Use the region from parameter if provided, otherwise use config default
+            memory_region = region_name if region_name else memory_config.region
+            memory_client = SREMemoryClient(
+                memory_name=memory_config.memory_name,
+                region=memory_region,
+                force_delete=force_delete_memory,
+            )
+            logger.info(f"Using AWS region for memory: {memory_region}")
+            memory_tools = create_memory_tools(memory_client)
+            logger.info(f"Added {len(memory_tools)} memory tools to agent tool list")
+        else:
+            logger.info("Memory system disabled - no memory tools added")
+    except Exception as e:
+        logger.warning(f"Failed to add memory tools: {e}")
+        memory_tools = []
+
+    all_tools = local_tools + mcp_tools + memory_tools
+
+    # Debug: Show all tools being passed to agents
+    logger.info(f"Total tools being passed to agents: {len(all_tools)}")
+    logger.info(f"  - Local tools: {len(local_tools)}")
+    logger.info(f"  - MCP tools: {len(mcp_tools)}")
+    logger.info(f"  - Memory tools: {len(memory_tools)}")
+
+    # Log detailed memory tool information
+    if memory_tools:
+        logger.info("Memory tools details:")
+        for tool in memory_tools:
+            logger.info(f"    Tool: {getattr(tool, 'name', 'unknown')}")
+            logger.info(
+                f"      Description: {getattr(tool, 'description', 'No description')}"
+            )
+            # Log args schema details
+            args_schema = getattr(tool, "args_schema", None)
+            if args_schema:
+                logger.info(f"      Args schema: {args_schema.__name__}")
+                # Handle both Pydantic v1 and v2
+                if hasattr(args_schema, "model_fields"):
+                    # Pydantic v2
+                    for field_name, field_info in args_schema.model_fields.items():
+                        field_type = str(field_info.annotation)
+                        field_desc = (
+                            field_info.description
+                            if field_info.description
+                            else "No description"
+                        )
+                        field_default = (
+                            str(field_info.default)
+                            if field_info.default is not None
+                            else "No default"
+                        )
+                        logger.info(
+                            f"        - {field_name}: {field_type} (description: {field_desc}, default: {field_default})"
+                        )
+                elif hasattr(args_schema, "__fields__"):
+                    # Pydantic v1
+                    for field_name, field_info in args_schema.__fields__.items():
+                        field_type = str(field_info.type_)
+                        field_desc = (
+                            field_info.field_info.description
+                            if hasattr(field_info.field_info, "description")
+                            else "No description"
+                        )
+                        field_default = (
+                            str(field_info.default)
+                            if field_info.default is not None
+                            else "No default"
+                        )
+                        logger.info(
+                            f"        - {field_name}: {field_type} (description: {field_desc}, default: {field_default})"
+                        )
+            else:
+                logger.info("      Args schema: No schema")
+            # Log additional attributes if present
+            if hasattr(tool, "memory_client"):
+                logger.info("      Has memory_client: Yes")
+            logger.info(f"      Tool class: {tool.__class__.__name__}")
+
+    logger.info("All tool names:")
+    for tool in all_tools:
+        tool_name = getattr(tool, "name", "unknown")
+        tool_description = getattr(tool, "description", "No description")
+        # Extract just the first line of description for cleaner logging
+        description_first_line = (
+            tool_description.split("\n")[0].strip()
+            if tool_description
+            else "No description"
+        )
+        logger.info(f"  - {tool_name}: {description_first_line}")
 
     logger.info(f"Additional local tools: {len(local_tools)}")
     if should_show_debug_traces():
@@ -288,7 +568,12 @@ async def create_multi_agent_system(
 
     # Build the multi-agent graph
     graph = build_multi_agent_graph(
-        tools=all_tools, llm_provider=provider, **llm_kwargs
+        tools=all_tools,
+        llm_provider=provider,
+        force_delete_memory=force_delete_memory,
+        export_graph=export_graph,
+        graph_output_path=graph_output_path,
+        **llm_kwargs,
     )
 
     return graph, all_tools
@@ -362,6 +647,8 @@ async def _run_interactive_session(
     save_state: bool = True,
     output_dir: str = "./reports",
     save_markdown: bool = True,
+    force_delete_memory: bool = False,
+    region_name: str = "us-east-1",
 ):
     """Run an interactive multi-turn conversation session."""
     # Buffer to store last query and response for /savereport command
@@ -369,6 +656,8 @@ async def _run_interactive_session(
     last_response = None
     # Track the original query for report naming (resets after each /savereport)
     original_query = None
+    # Session ID management - generates new session after /savereport or at start
+    current_session_id = f"interactive-{datetime.now().strftime('%Y%m%d%H%M%S')}"
     print("\n🤖 Starting interactive multi-agent SRE assistant...")
     logger.info("🤖 Starting interactive multi-agent SRE assistant...")
     print("Commands:")
@@ -392,7 +681,12 @@ async def _run_interactive_session(
         saved_messages, saved_state = _load_conversation_state()
 
     # Create multi-agent system
-    graph, all_tools = await create_multi_agent_system(provider)
+    graph, all_tools = await create_multi_agent_system(
+        provider, 
+        force_delete_memory=force_delete_memory,
+        export_graph=False,  # Don't export in interactive mode each time
+        region_name=region_name,
+    )
 
     # Initialize conversation state
     messages = []
@@ -454,6 +748,7 @@ async def _run_interactive_session(
                     filepath = _save_final_response_to_markdown(
                         original_query,
                         last_response,
+                        user_id=user_id,
                         output_dir=output_dir,
                     )
                     if filepath:
@@ -462,6 +757,14 @@ async def _run_interactive_session(
                         last_query = None
                         last_response = None
                         original_query = None
+                        # Generate new session ID for next conversation
+                        current_session_id = (
+                            f"interactive-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+                        )
+                        logger.info(
+                            f"Generated new session ID for next conversation: {current_session_id}"
+                        )
+                        print("✨ New conversation session started.")
                     else:
                         print("❌ Failed to save report")
                 else:
@@ -530,28 +833,34 @@ async def _run_interactive_session(
             if not user_input:
                 continue
 
+            # Get user_id from environment and use input as-is
+            user_id = _get_user_from_env()
+            cleaned_query = user_input
+
             # Track original query for report naming (only set if not already set)
             if original_query is None:
-                original_query = user_input
+                original_query = cleaned_query  # Use cleaned query for reports
 
             # Process with multi-agent system
             print("\n🤖 Multi-Agent System: Processing...\n")
             logger.info("🤖 Multi-Agent System: Processing...")
 
-            # Add user message
-            messages.append(HumanMessage(content=user_input))
+            # Add user message with cleaned query
+            messages.append(HumanMessage(content=cleaned_query))
 
             # Create initial state
             initial_state: AgentState = {
                 "messages": messages,
                 "next": "supervisor",
                 "agent_results": {},
-                "current_query": user_input,
+                "current_query": cleaned_query,
                 "metadata": {},
                 "requires_collaboration": False,
                 "agents_invoked": [],
                 "final_response": None,
                 "auto_approve_plan": False,  # Default to False for interactive mode
+                "user_id": user_id,  # Add extracted user_id
+                "session_id": current_session_id,  # Add session ID for conversation tracking
             }
 
             # Stream the graph execution
@@ -648,7 +957,9 @@ async def _run_interactive_session(
                                         )  # Show full content
                                     else:
                                         content_preview = "No content"
-                                    print(f"      {i+1}. {msg_type}: {content_preview}")
+                                    print(
+                                        f"      {i + 1}. {msg_type}: {content_preview}"
+                                    )
                                     if hasattr(msg, "tool_calls") and msg.tool_calls:
                                         print(
                                             f"         Tool calls: {len(msg.tool_calls)}"
@@ -794,8 +1105,8 @@ async def main():
     parser.add_argument(
         "--provider",
         choices=["bedrock", "anthropic"],
-        default="anthropic",
-        help="Model provider to use (default: anthropic)",
+        default="bedrock",
+        help="Model provider to use (default: bedrock)",
     )
     parser.add_argument(
         "--debug",
@@ -827,11 +1138,53 @@ async def main():
         action="store_true",
         help="Disable saving final responses to markdown files",
     )
+    parser.add_argument(
+        "--force-delete-memory",
+        action="store_true",
+        help="Force delete and recreate the memory system (WARNING: This will delete all saved memories)",
+    )
+    parser.add_argument(
+        "--export-graph",
+        action="store_true",
+        help="Export the agent architecture as a Mermaid diagram",
+    )
+    parser.add_argument(
+        "--graph-output",
+        default="./docs/sre_agent_architecture.md",
+        help="Path to save the exported Mermaid diagram (default: ./docs/sre_agent_architecture.md)",
+    )
 
     args = parser.parse_args()
 
     # Configure logging based on debug flag
     debug_enabled = configure_logging(args.debug)
+    
+    # Load AWS region with fallback logic: config -> AWS_REGION env var -> us-east-1
+    try:
+        config_path = Path(__file__).parent / "config" / "agent_config.yaml"
+        with open(config_path, "r") as f:
+            config = yaml.safe_load(f)
+        
+        # Try to get region from config first
+        aws_region = config.get("aws", {}).get("region")
+        
+        if aws_region:
+            logger.info(f"Using AWS region from agent_config.yaml: {aws_region}")
+        else:
+            # Fallback to AWS_REGION environment variable
+            aws_region = os.environ.get("AWS_REGION")
+            if aws_region:
+                logger.info(f"Using AWS region from AWS_REGION environment variable: {aws_region}")
+            else:
+                # Final fallback to us-east-1
+                aws_region = "us-east-1"
+                logger.info(f"Using default AWS region: {aws_region}")
+                
+    except Exception as e:
+        logger.warning(f"Failed to load AWS region from config: {e}")
+        # Try environment variable, then default
+        aws_region = os.environ.get("AWS_REGION", "us-east-1")
+        logger.info(f"Using AWS region fallback: {aws_region}")
 
     # Set environment variable so other modules can check debug status
     os.environ["DEBUG"] = "true" if debug_enabled else "false"
@@ -841,29 +1194,86 @@ async def main():
         logger.info("Debug logging enabled")
 
     try:
+        logger.info(f"🚀 Starting SRE Agent with provider: {args.provider}")
+
         # Interactive mode
         if args.interactive or not args.prompt:
+            # Export graph before starting interactive session if requested
+            if args.export_graph:
+                print(f"\n📊 Exporting agent architecture to {args.graph_output}...")
+                await create_multi_agent_system(
+                    provider=args.provider,
+                    force_delete_memory=args.force_delete_memory,
+                    export_graph=True,
+                    graph_output_path=args.graph_output,
+                    region_name=aws_region,
+                )
+            
             await _run_interactive_session(
                 provider=args.provider,
                 save_state=not args.no_save,
                 output_dir=args.output_dir,
                 save_markdown=not args.no_markdown,
+                force_delete_memory=args.force_delete_memory,
+                region_name=aws_region,
             )
         # Single prompt mode
         else:
-            graph, all_tools = await create_multi_agent_system(args.provider)
-            logger.info("Multi-agent system created successfully")
+            try:
+                graph, all_tools = await create_multi_agent_system(
+                    args.provider, 
+                    force_delete_memory=args.force_delete_memory,
+                    export_graph=args.export_graph,
+                    graph_output_path=args.graph_output,
+                    region_name=aws_region,
+                )
+                logger.info("Multi-agent system created successfully")
+            except Exception as e:
+                from .llm_utils import (
+                    LLMAccessError,
+                    LLMAuthenticationError,
+                    LLMProviderError,
+                )
+
+                if isinstance(
+                    e, (LLMAuthenticationError, LLMAccessError, LLMProviderError)
+                ):
+                    print(f"\n❌ {type(e).__name__}:")
+                    print(str(e))
+                    print("\n💡 Quick fix: Try running with the other provider:")
+                    other_provider = (
+                        "anthropic" if args.provider == "bedrock" else "bedrock"
+                    )
+                    print(
+                        f'   sre-agent --provider {other_provider} --prompt "your query"'
+                    )
+                    return
+                else:
+                    raise
+
+            # Get user_id from environment and use prompt as-is
+            user_id = _get_user_from_env()
+            cleaned_query = args.prompt
+
+            # Generate session ID for this prompt-mode conversation
+            prompt_session_id = f"prompt-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+            logger.info(
+                f"Generated session ID for prompt mode: {prompt_session_id}, user_id: {user_id}"
+            )
 
             # Create initial state
             initial_state: AgentState = {
-                "messages": [HumanMessage(content=args.prompt)],
+                "messages": [HumanMessage(content=cleaned_query)],
                 "next": "supervisor",
                 "agent_results": {},
-                "current_query": args.prompt,
+                "current_query": cleaned_query,
                 "metadata": {},
                 "requires_collaboration": False,
                 "agents_invoked": [],
                 "final_response": None,
+                "auto_approve_plan": True,  # Auto-approve plans in prompt mode
+                "user_id": user_id,  # Add extracted user_id
+                "session_id": prompt_session_id,  # Add session ID for conversation tracking
             }
 
             print("🤖 Multi-Agent System:\n")
@@ -961,7 +1371,9 @@ async def main():
                                         )  # Show full content
                                     else:
                                         content_preview = "No content"
-                                    print(f"      {i+1}. {msg_type}: {content_preview}")
+                                    print(
+                                        f"      {i + 1}. {msg_type}: {content_preview}"
+                                    )
                                     if hasattr(msg, "tool_calls") and msg.tool_calls:
                                         print(
                                             f"         Tool calls: {len(msg.tool_calls)}"
@@ -1055,6 +1467,7 @@ async def main():
                                     _save_final_response_to_markdown(
                                         args.prompt,
                                         final_response,
+                                        user_id=user_id,
                                         output_dir=args.output_dir,
                                     )
             except asyncio.TimeoutError:

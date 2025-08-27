@@ -1,186 +1,465 @@
 # Okta OpenID Connect PKCE Setup Guide
 
----
-## 📋 Navigation
-**🏠 [README](../README.md)** | **📖 [Setup Guide](../docs/SETUP.md)** | **🏗️ [Architecture](../docs/ARCHITECTURE-FLOW.md)** | **🔧 [Scripts](../scripts/README.md)** | **🤖 [Client](../client/README.md)** | **⚙️ [Config](../configs/README.md)** | **🔐 [Okta Setup](OKTA-OPENID-PKCE-SETUP.md)**
----
+Complete guide for setting up Okta OAuth2 authentication with the AWS Support Agent AgentCore system.
 
 ## Overview
 
-This guide sets up Okta PKCE authentication for Bedrock AgentCore Gateway using the existing `iframe-oauth-flow.html` - a complete, self-contained PKCE application.
+This guide configures Okta OAuth2 authentication for the AgentCore system, supporting both user authentication (PKCE flow) and machine-to-machine authentication (client credentials flow).
 
 ## Prerequisites
 
-- Okta Developer Account (free at [developer.okta.com](https://developer.okta.com))
-- Access to Bedrock AgentCore Gateway (beta access required)
-- nginx installed locally (see installation instructions below)
+- **Okta Developer Account** (free at [developer.okta.com](https://developer.okta.com))
+- **AWS Account** with Bedrock AgentCore access
+- **nginx** installed locally (for testing)
+- **Python 3.11+** for running the system
 
-## Okta Setup
+## Okta Application Setup 
 
-For detailed guidance on setting up Okta for PKCE authentication, refer to these official Okta documentation resources:
+#### OKTA Documentation for PKCE APP Setup: 
 
-📖 **[Implement Authorization Code Flow with PKCE](https://developer.okta.com/docs/guides/implement-grant-type/authcodepkce/main/)** - Complete guide on implementing PKCE flow
+https://developer.okta.com/blog/2019/08/22/okta-authjs-pkce 
 
-📖 **[Create a Custom Authorization Server](https://developer.okta.com/docs/guides/terraform-create-custom-auth-server/main/)** - Setting up custom authorization servers (optional)
+https://developer.okta.com/docs/guides/implement-grant-type/authcodepkce/main/
 
-### Create an OIDC Application
+#### `Create Okta Developer Account with "Access the Okta Integrator Free Plan" https://developer.okta.com/signup/`
 
-1. Log in to your Okta Developer Console
-2. Navigate to **Applications** → **Applications** → **Create App Integration**
-3. Configure:
+### 1. Create OIDC Application
+
+1. **Log in to Okta Developer Console**
+2. **Navigate to**: Applications → Applications → Create App Integration
+3. **Select**: OIDC - OpenID Connect → Single-Page Application (SPA)
+4. **Configure Application**: Edit application and fill below values
    ```
-   App name: bedrock-agentcore-gateway-client
+   App name: aws-support-agent-client
    Grant types: ✅ Authorization Code, ✅ Refresh Token
-   Sign-in redirect URIs: http://localhost:8080/okta-auth/
-   Allowed grant types: ✅ Authorization Code
-   Client authentication: ✅ Use PKCE (for public clients)
+   Sign-in redirect URIs: 
+     - http://localhost:8080/callback
+     - http://localhost:8080/okta-auth/
+     - http://localhost:8080/okta-auth/iframe-oauth-flow.html
+   Sign-out redirect URIs: http://localhost:8080/
+   Controlled access: Allow everyone in your organization to access
+   uncheck “Immediate app access with Federation Broker Mode“
    ```
-4. Save the application
+5. **Save** the application and note the **Client ID**
+```
+Confirm you are added under Assignments in your aws-support-agent-client application
+```
 
-### Configure API Scopes
+### 2a. Configure API Scopes and Policies
 
-- **Security** → **API** → **Authorization Servers** → **default**
-- Ensure scopes exist: `openid`, `profile`, `email`
-- Add custom scopes if needed: `bedrock-agentcore:read`, `bedrock-agentcore:write`
+1. **Navigate to**: Security → API → Authorization Servers → default
+2. **Verify scopes exist**:
+   - `openid` - Required for OpenID Connect
+   - `profile` - User profile information  
+   - `email` - User email address
+3. **Add custom scope**:
+   - **Name**: `api`
+   - **Description**: API access for AgentCore
+   - **Include in public metadata**: ✅
+   - **Set as a default scope**: ✅
+4.  **Add Access Policies**:
+    - Under default authorization server click 'Access Policies' tab
+    - click Add Policy
+    - **Name**: `All`
+    - **Description**: Access to all
+    - Click Create Policy
+    - Click Add Rule
+    - **Rule Name**: 'All'
+    - Click Create Rule
 
-## Local Setup
+### 2b. Configure CORS
+```
+Under Security → API → Trusted Origins, enable CORS for http://localhost:8080
+Origin: http://localhost:8080
+ ✅ Cross-Origin Resource Sharing (CORS)
+ ✅ Redirect
+ ✅ iFrame embed
+ ✅ Allows iFrame embedding of Okta End User Dashboard
+```
 
-### Install nginx
+### 3. Create Machine-to-Machine Application
 
-#### macOS (Homebrew - Recommended)
+For AgentCore workload authentication:
 
-```bash
-# Install Homebrew (if not already installed)
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+1. **Create a new app integration**:
+```
+   Navigate to: Applications → Applications → Create App Integration
 
-# Install nginx
-brew install nginx
+   App Type: API Services
+```
+2. **Configure**: Edit application and fill below values
+   ```
+   App name: aws-support-agent-m2m
+   Client authentication: ✅ Client secret
+   Grant types: ✅ Client Credentials
+   Click edit on right of General Settings and Under Grant types click Advanced
+      Enable : Token Exchange
+      Disable : Require Demonstrating Proof of Possession (DPoP)
+      Click Save
+   ```
+3. **Save** and note the **Client ID** and **Client Secret**
 
-# Start nginx service
+### 4. Change Authorization server audience
+
+1. **Navigate to**: Security → API → Authorization Servers
+2. Edit default Authorization server (hint - click on the pencil sign on the right)
+3. Under setting click edit
+4. **Audience**: change from api://default to 'myagentcoreaud' or any other name
+5. click Save
+
+### Note:
+```
+a) You can add users by going to Directory > People
+    - Otherwise if you use Admin user for login you will be asked to enter OTP from Okta verify app during PKCE login via http://localhost:8080/okta-auth/iframe-oauth-flow.html
+b) ensure this user is assigned to the app 'aws-support-agent-client'
+c) We are using common authorization server between both the apps 'aws-support-agent-client' and 'aws-support-agent-m2m'. In production there will be different authorization server for each app for isolation and security needs. Also, since we will not be able to decode the token generated by AgentCore Identity for M2M flow, keeping common authrozation server help us to decode the token from the PKCE flow via the html page (http://localhost:8080/okta-auth/iframe-oauth-flow.html). This way by decoding the token, we can validate the scope and audience are correctly added into the access token. 
+```
+
+# Installing Nginx Locally
+
+### Nginx Installation Documentation: https://docs.nginx.com/nginx/admin-guide/installing-nginx/installing-nginx-open-source/
+
+## macOS Installation
+
+### Using Homebrew (Recommended)
+
+1. Install Homebrew (if not already installed):
+  bash
+   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+
+2. Install Nginx:
+  bash
+   brew install nginx
+
+
+3. Start Nginx:
+  bash
+   brew services start nginx
+
+
+4. Verify Installation:
+  Open your browser and navigate to http://localhost:8080. You should see the Nginx welcome page.
+
+Default config location: /opt/homebrew/etc/nginx/nginx.conf
+
+## Windows Installation
+
+### Direct Download
+
+1. Download Nginx:
+   • Visit [nginx.org/en/download.html](http://nginx.org/en/download.html)
+   • Download the Windows version (stable release)
+
+2. Extract Files:
+   • Extract the downloaded zip file to C:\nginx
+
+3. Start Nginx:
+   • Open Command Prompt as Administrator
+   • Navigate to the nginx directory:
+    cmd
+     cd C:\nginx
+
+   • Start nginx:
+    cmd
+     nginx.exe
+
+
+4. Verify Installation:
+  Open your browser and navigate to http://localhost. You should see the Nginx welcome page.
+
+
+### Configuration Files (Windows)
+• **Main config**: C:\nginx\conf\nginx.conf
+• **Document root**: C:\nginx\html
+
+## Linux Installation
+
+Use sudo as required.
+
+1. apt update -y
+2. apt upgrade -y
+3. apt install nginx
+
+Default nginx location: /etc/nginx
+Default nginx config: /etc/nginx/nginx.conf 
+
+Default Server block location: etc/nginx/sites-enabled/default
+
+If server is running on port 80, change it to 8080. Save file and exit.
+```
+server {
+	listen 8080 default_server;
+	listen [::]:8080 default_server;
+```
+Restart nginx
+
+```
+Bash > nginx -s reload
+
+# Please replace the server block in this file based on instructions below in this document.
+```
+## Common Commands
+
+### Starting and Stopping Nginx
+
+### macOS (Homebrew):
+bash
+#### Start
 brew services start nginx
 
-# Verify installation at http://localhost:8080
+#### Stop
+brew services stop nginx
+
+#### Restart
+brew services restart nginx
+
+
+### Windows:
+cmd
+#### Start
+nginx.exe
+
+#### Stop
+nginx.exe -s stop
+
+#### Reload configuration
+nginx.exe -s reload
+
+
+### Testing Configuration
+bash
+# Test configuration file
+nginx -t
+
+
+## Default Ports
+• **macOS**: Port 8080 (Homebrew default)
+• **Windows**: Port 80 (You will need to either change the port to 8080 or remove 8080 from all the Okta and local configuration setup)
+
+You can modify the port in the nginx configuration file if needed.
+
+## Verify Nginx Installation
+
+```
+curl http://localhost:8080
+
+# Should return: Welcome to nginx!
 ```
 
-#### Other Platforms
+## Configure Nginx Setup
 
-For comprehensive installation instructions on all platforms including Linux, Windows, and other Unix systems, refer to the official nginx documentation:
-
-**📖 [NGINX Open Source Installation Guide](https://docs.nginx.com/nginx/admin-guide/installing-nginx/installing-nginx-open-source/)**
-
-The official guide covers:
-- Package manager installations (recommended for production)
-- Operating system default repositories 
-- Compiling from source
-- Platform-specific instructions for RHEL/CentOS, Debian/Ubuntu, Alpine Linux, Amazon Linux, SUSE, and more
-
-### Configure Local nginx
-
-1. **Update nginx configuration paths**:
-   ```bash
-   # Edit the nginx configuration file
-   vi okta-auth/nginx/okta-local.conf
-   ```
-   
-   Update the following paths to match your project structure:
-   - Line 7: `root /path/to/your/project/okta-auth;`
-   - Line 36: `alias /path/to/your/project/okta-auth;`
-
-2. **Start nginx with the configuration**:
-   ```bash
-   # Navigate to the project directory
-   cd /path/to/project
-
-   # Start with provided configuration
-   sudo nginx -c $(pwd)/okta-auth/nginx/okta-local.conf
-   ```
-
-### Configure OAuth Parameters
-
-The `iframe-oauth-flow.html` file provides a web-based configuration interface. You can configure it in two ways:
-
-#### Option 1: Configure via Web Interface (Recommended)
-1. Open http://localhost:8080/okta-auth/ in your browser
-2. Fill in the configuration form with your Okta details:
-   - **Okta Domain**: Your Okta domain (e.g., `dev-12345678.okta.com`)
-   - **Client ID**: From your Okta application
-   - **Redirect URI**: `http://localhost:8080/okta-auth/`
-   - **Auth Server ID**: `default` (or your custom server ID)
-3. Click "Save Configuration" to validate and save
-
-#### Option 2: Pre-configure in HTML File
-1. Open `iframe-oauth-flow.html` in a text editor
-2. Update the default values in the form inputs (around line 197):
-   ```html
-   <input type="text" id="clientId" name="clientId" value="YOUR_CLIENT_ID" required>
-   ```
-3. Update other form fields as needed:
-   - **oktaDomain**: Your Okta domain
-   - **redirectUri**: `http://localhost:8080/okta-auth/`
-   - **authServerId**: `api://default`
-
-*Note: The iframe file handles all PKCE logic, token management, and Bedrock AgentCore Gateway integration automatically.*
-
-## Test the Setup
-
-1. Open a browser and navigate to: http://localhost:8080/okta-auth/
-2. Click "Login with Okta"
-3. Complete the Okta authentication flow
-4. You should see the access token displayed on the page
-5. Copy this token for use with the client application
-
-## Using the Token
+For local PKCE testing, you need to add the server block to your nginx configuration:
 
 ```bash
-# Step 1: Use the token management script
-cd ../client
-python src/save_token.py
+Step 1: Configure nginx server block
+# Navigate to your project directory
+cd /path/to/your/AWS-operations-agent/project
 
-# Step 2: Run the client
-python src/main.py
+Step 1: Update paths in the nginx config file 'okta-local.conf' located at /path/to/your/AWS-operations-agent/okta-auth/nginx/
+# Replace placeholder paths with your actual project path
+# There are 2 paths to be updated in Server block in 'okta-local.conf'. Use absolute paths for below from your project.
+# 1. at root /path/to/your/AWS-operations-agent/okta-auth;
+# 2. at location 
+#/okta-auth {
+#        UPDATE THIS PATH: Replace with your actual project path + /okta-auth
+#        alias /path/to/your/AWS-operations-agent/okta-auth;
+
+# Verify the paths were updated correctly
+cat okta-auth/nginx/okta-local.conf | grep "root\|alias"
+
+Step 2: IMPORTANT - okta-local.conf contains only a server block, not a complete nginx.conf
+# You must replace this server block with server block in your existing nginx configuration.
+
+# Manual Integration Steps:
+1. Find your nginx.conf location:
+#    - macOS (Homebrew): /usr/local/etc/nginx/nginx.conf or /opt/homebrew/etc/nginx/nginx.conf
+#    - Linux: /etc/nginx/nginx.conf
+#    - Docker: /etc/nginx/nginx.conf
+
+2. Make a backup of your current nginx.conf
+sudo cp /opt/homebrew/etc/nginx/nginx.conf /opt/homebrew/etc/nginx/nginx.conf.backup  # macOS
+# sudo cp /etc/nginx/nginx.conf /etc/nginx/nginx.conf.backup                    # Linux
+
+3. Open your main nginx.conf file for editing:
+sudo vi /opt/homebrew/etc/nginx/nginx.conf  # macOS
+# sudo nano /etc/nginx/nginx.conf          # Linux
+
+4. Find the http {} block in nginx.conf
+5. Comment/remove existing server block
+6. Copy the entire server block content from okta-auth/nginx/okta-local.conf 
+7. Paste it inside the existing http {} block (before the closing }) 
+8. Save and close the file
+
+# NOTE: The setup-local-nginx.sh script will not work for MAC and Window setup as it attempts to use
+# okta-local.conf as a complete nginx configuration, which will fail. Will work for Linux setup as server block is separate file.
+
+Step 3: Test and reload nginx
+# Test nginx configuration for syntax errors
+sudo nginx -t
+
+# If test passes, reload nginx configuration
+sudo nginx -s reload
+
+curl http://localhost:8080/okta-auth/iframe-oauth-flow.html
+# Should return: PKCE OpenID Flow HTML page
 ```
+
+### 2. Test OAuth Flow
+
+Use the provided HTML test page:
+
+1. **Update configuration** in `okta-auth/iframe-oauth-flow.html`:
+   ```javascript
+   const config = {
+     clientId: 'YOUR_SPA_CLIENT_ID',
+     redirectUri: 'http://localhost:8080/okta-auth/',
+     authorizationEndpoint: 'https://your-domain.okta.com/oauth2/default/v1/authorize',
+     tokenEndpoint: 'https://your-domain.okta.com/oauth2/default/v1/token',
+     scope: 'openid profile email',
+   };
+   ```
+Or you can enter the values in html page. 
+
+2. a) **Open browser**: http://localhost:8080/okta-auth/iframe-oauth-flow.html
+2. b) Enter / update following values in html page:
+      - Okta Domain: **Click on top right of your okta console page on your name** - should be like integrator-xxxx.okta.com
+      - Client ID: **Client ID of 'aws-support-agent-client' app**
+      - Redirect URI: http://localhost:8080/okta-auth/iframe-oauth-flow.html
+      - Authorization Server ID: default 
+          **unless you created a new authorization server** - Recommend to use default
+2. c) click 'Validate and Save configuration"
+3. **Click "Login with Okta"**: Enter credentails and login
+4. **Session Token Retrieved**: If session token sucessfully retrieved. click 'Continue with iframe PKCE Flow'
+5. **iframe PKCE**: May require you to enter code from okta verify based on the rights you have gived to the user in Okta. Typically admin rights trigger this additional verification.
+6. **Decode the Access Token**: Click decode access token and scoll down to validate audience and scope (api) in the token. 
+7. **Copy the access token** for testing
+
+## Project Configuration
+
+### 1. Update Static Configuration
+
+Edit `config/static-config.yaml`: Update all Okta specific configuration values.
+
+```yaml
+# Okta OAuth2 Configuration (used by deployment scripts and gateway creation)
+okta:
+  domain: "<YOUR_OKTA_DOMAIN>"
+  
+  # OAuth2 authorization server configuration (recommended to keep default authorization server. otherwise change the configuration urls accordingly)
+  authorization_server: "default"
+  
+  # Client configuration for user authentication (PKCE flow)
+  user_auth:
+    client_id: "<YOUR_OKTA_CLIENT_ID>"
+    audience: "<YOUR_OKTA_AUTHORIZATION_SERVER_AUDIENCE>"
+    redirect_uri: "http://localhost:8080/callback"
+    scope: "openid profile email"
+  
+  # JWT token configuration for M2M flow
+  jwt:
+    audience: "<YOUR_OKTA_AUTHORIZATION_SERVER_AUDIENCE>"
+    issuer: "https://<YOUR_OKTA_DOMAIN>/oauth2/default"
+    discovery_url: "https://<YOUR_OKTA_DOMAIN>/oauth2/default/.well-known/openid-configuration"
+    cache_duration: 300
+    refresh_threshold: 60
+
+# AgentCore JWT Authorizer Configuration for Runtime
+agentcore:
+  jwt_authorizer:
+    discovery_url: "https://<YOUR_OKTA_DOMAIN>/oauth2/default/.well-known/openid-configuration"
+    allowed_audience: 
+      - "<YOUR_OKTA_AUTHORIZATION_SERVER_AUDIENCE>"
+```
+
+### 2. Set Environment Variables
+
+```bash
+# Optional: Set and Export AWS profile if different from default - Recommended to use default
+export AWS_PROFILE="your-aws-profile"
+```
+
+
+## Deploy and Test the System
+
+### 1. Deploy Infrastructure - go back to README.md for instructions
+
+```bash
+# Deploy the AgentCore system
+cd agentcore-runtime/deployment
+./01-prerequisites.sh
+./02-create-memory.sh
+./03-setup-oauth-provider.sh  # This uses your Okta config
+./04-deploy-mcp-tool-lambda.sh
+./05-create-gateway-targets.sh
+./06-deploy-diy.sh
+./07-deploy-sdk.sh
+```
+
+## Authentication Flow
+
+### User Authentication (PKCE)
+1. **User** → Okta login → JWT token
+2. **Chat Client** → AgentCore Runtime (with JWT)
+3. **Runtime validates** JWT against Okta discovery endpoint
+4. **Runtime processes** user request
+
+### Machine-to-Machine (M2M)
+1. **Runtime** → AgentCore Identity → Workload token
+2. **Workload token** → OAuth provider → M2M token  
+3. **M2M token** → AgentCore Gateway → Tools access
+4. **Tools** → AWS services → Results
 
 ## Troubleshooting
 
 ### Common Issues
 
-1. **CORS Errors**:
-   - Ensure your Okta application has the correct redirect URI
-   - Check that nginx is running with the provided configuration
-
-2. **Invalid Client Error**:
-   - Verify your Client ID is correct
-   - Ensure PKCE is enabled for the application
-
-3. **Token Not Working**:
-   - Check token expiration (default is 1 hour)
-   - Verify scopes match what's required by the gateway
-
-### Debugging
-
+**1. Invalid Client Error**
 ```bash
-# Check nginx configuration
-nginx -t -c /path/to/okta-local.conf
-
-# View nginx logs
-tail -f /usr/local/var/log/nginx/error.log
-
-# Test token with curl
-curl -H "Authorization: Bearer YOUR_TOKEN" https://your-gateway-url/mcp
+# Check your client IDs in static-config.yaml
+grep -A 10 "client details:" config/static-config.yaml
+grep -A 10 "user_auth:" config/static-config.yaml
 ```
 
-## Advanced Configuration
+**2. Token Validation Failures**
+```bash
+# Verify Okta discovery endpoint
+curl https://your-domain.okta.com/oauth2/default/.well-known/openid-configuration
 
-The `iframe-oauth-flow.html` file is a complete PKCE implementation that includes:
+```
 
-- Code challenge and verifier generation
-- Authorization code flow
-- Token exchange and refresh
-- Complete PKCE implementation (lines 330+)
-- Token display and management
-- Bedrock AgentCore Gateway integration
-- All necessary HTML, CSS, and JavaScript
+### Log Analysis
 
-You can customize this file for your specific needs or use it as a reference for implementing PKCE in your own applications.
+**AgentCore Runtime logs** (look for):
+- `✅ OAuth initialized with provider`
+- `✅ M2M token obtained successfully`
+- `✅ MCP client ready`
+
+**Common error patterns**:
+- `❌ OAuth provider not found` → Check deployment step 03
+- `❌ Invalid client credentials` → Check client secret environment variable
+- `❌ Token validation failed` → Check JWT configuration in static-config.yaml
+
+## Security Best Practices
+
+1. **Never commit secrets** - Always use environment variables for client secrets
+2. **Use HTTPS in production** - Update redirect URIs for production deployment
+3. **Rotate tokens regularly** - Configure appropriate token lifetimes in Okta
+4. **Validate token audiences** - Ensure JWT audience validation is strict
+5. **Monitor authentication** - Review Okta system logs regularly
+
+## Production Deployment
+
+For production, update:
+
+1. **Redirect URIs** to your production domain
+2. **Environment variables** in your deployment pipeline
+3. **Network security** to restrict access appropriately
+4. **Token lifetimes** based on your security requirements
 
 ---
+
+For additional help, refer to:
+- [Okta Developer Documentation](https://developer.okta.com/docs/)
+- [AgentCore Documentation](https://docs.aws.amazon.com/bedrock/latest/userguide/agentcore.html)
+- [Project README](../README.md) for complete system setup

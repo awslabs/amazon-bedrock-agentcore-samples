@@ -13,7 +13,7 @@ Amazon Bedrock AgentCore Runtime provides isolated sessions for each user intera
 | Tutorial type       | Context and Session Management|
 | Agent type          | Single         |
 | Agentic Framework   | Strands Agents |
-| LLM model           | Anthropic Claude Sonnet 4 |
+| LLM model           | Anthropic Claude Sonnet 3.7 |
 | Tutorial components | Runtime Context, Session Management, AgentCore Runtime, Strands Agent and Amazon Bedrock Model |
 | Tutorial vertical   | Cross-vertical                                                                   |
 | Example complexity  | Intermediate                                                                     |

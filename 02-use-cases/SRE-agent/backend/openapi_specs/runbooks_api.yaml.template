@@ -1,0 +1,608 @@
+openapi: 3.0.3
+info:
+  title: DevOps Runbooks API
+  version: 1.0.0
+  description: API for accessing DevOps runbooks and playbooks
+servers:
+  - url: https://{{BACKEND_DOMAIN}}:8014
+    description: Remote development server for Runbooks API
+  - url: https://localhost:8014
+    description: Local development server for Runbooks API
+
+security:
+  - apiKey: []
+
+components:
+  securitySchemes:
+    apiKey:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: API key for authentication
+      
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error message
+        code:
+          type: string
+          description: Error code
+        timestamp:
+          type: string
+          format: date-time
+          description: Error timestamp
+          
+    Runbook:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique runbook identifier
+          example: "memory-pressure-playbook"
+        title:
+          type: string
+          description: Runbook title
+          example: "Memory Pressure Incident Response"
+        incident_type:
+          type: string
+          enum: [performance, availability, security, deployment]
+          description: Type of incident
+          example: "performance"
+        severity:
+          type: string
+          enum: [low, medium, high, critical]
+          description: Incident severity level
+          example: "high"
+        description:
+          type: string
+          description: Runbook description
+          example: "Procedures for handling memory pressure incidents"
+        estimated_resolution_time:
+          type: string
+          description: Estimated time to resolve
+          example: "15-30 minutes"
+        steps:
+          type: array
+          description: List of resolution steps
+          items:
+            type: string
+          example:
+            - "Check memory usage metrics"
+            - "Identify memory-consuming processes"
+            - "Scale resources if needed"
+            
+    Playbook:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique playbook identifier
+          example: "memory-pressure-playbook"
+        title:
+          type: string
+          description: Playbook title
+          example: "Memory Pressure Incident Response"
+        incident_type:
+          type: string
+          enum: [performance, availability, security, deployment]
+          description: Type of incident
+          example: "performance"
+        severity:
+          type: string
+          enum: [low, medium, high, critical]
+          description: Incident severity level
+          example: "high"
+        description:
+          type: string
+          description: Playbook description
+          example: "Comprehensive playbook for memory pressure incidents"
+        triggers:
+          type: array
+          description: Conditions that trigger this playbook
+          items:
+            type: string
+          example:
+            - "Memory utilization > 90%"
+            - "OOM killer events detected"
+        steps:
+          type: array
+          description: Detailed resolution steps
+          items:
+            type: string
+          example:
+            - "Validate memory metrics in monitoring dashboard"
+            - "Identify top memory-consuming processes"
+            - "Check for memory leaks in application logs"
+        escalation:
+          type: object
+          description: Escalation contacts
+          properties:
+            primary:
+              type: string
+              example: "oncall-engineer@company.com"
+            secondary:
+              type: string
+              example: "senior-engineer@company.com"
+            manager:
+              type: string
+              example: "engineering-manager@company.com"
+        estimated_resolution_time:
+          type: string
+          description: Estimated time to resolve
+          example: "15-30 minutes"
+        related_runbooks:
+          type: array
+          description: Related runbook IDs
+          items:
+            type: string
+          example:
+            - "cpu-pressure-playbook"
+            - "application-restart-playbook"
+paths:
+  /runbooks/search:
+    get:
+      operationId: search_runbooks
+      summary: Search runbooks by incident type/keyword
+      parameters:
+        - name: incident_type
+          in: query
+          schema:
+            type: string
+            enum: [performance, availability, security, deployment]
+          description: Type of incident
+        - name: keyword
+          in: query
+          schema:
+            type: string
+          description: Search keyword in runbook content
+        - name: severity
+          in: query
+          schema:
+            type: string
+            enum: [low, medium, high, critical]
+          description: Incident severity level
+      responses:
+        '200':
+          description: Matching runbooks
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  runbooks:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Runbook'
+                example:
+                  runbooks:
+                    - id: "memory-pressure-playbook"
+                      title: "Memory Pressure Incident Response"
+                      incident_type: "performance"
+                      severity: "high"
+                      description: "Procedures for handling memory pressure incidents"
+                      estimated_resolution_time: "15-30 minutes"
+                      steps:
+                        - "Check memory usage metrics"
+                        - "Identify memory-consuming processes"
+                        - "Scale resources if needed"
+        '400':
+          description: Bad request - invalid parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "Invalid severity parameter"
+                code: "INVALID_PARAMETER"
+                timestamp: "2024-01-15T14:20:00Z"
+        '401':
+          description: Unauthorized - invalid or missing API key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "Invalid or missing API key"
+                code: "UNAUTHORIZED"
+                timestamp: "2024-01-15T14:20:00Z"
+        '429':
+          description: Too many requests - rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "Rate limit exceeded. Try again later."
+                code: "RATE_LIMIT_EXCEEDED"
+                timestamp: "2024-01-15T14:20:00Z"
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "Failed to search runbooks"
+                code: "INTERNAL_ERROR"
+                timestamp: "2024-01-15T14:20:00Z"
+  /runbooks/playbook/{playbook_id}:
+    get:
+      operationId: get_incident_playbook
+      summary: Retrieve specific incident playbooks
+      parameters:
+        - name: playbook_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Unique identifier of the playbook
+      responses:
+        '200':
+          description: Incident playbook details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Playbook'
+              example:
+                id: "memory-pressure-playbook"
+                title: "Memory Pressure Incident Response"
+                incident_type: "performance"
+                severity: "high"
+                description: "Comprehensive playbook for memory pressure incidents"
+                triggers:
+                  - "Memory utilization > 90%"
+                  - "OOM killer events detected"
+                steps:
+                  - "Validate memory metrics in monitoring dashboard"
+                  - "Identify top memory-consuming processes"
+                  - "Check for memory leaks in application logs"
+                escalation:
+                  primary: "oncall-engineer@company.com"
+                  secondary: "senior-engineer@company.com"
+                  manager: "engineering-manager@company.com"
+                estimated_resolution_time: "15-30 minutes"
+                related_runbooks:
+                  - "cpu-pressure-playbook"
+                  - "application-restart-playbook"
+        '400':
+          description: Bad request - invalid playbook ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "Invalid playbook ID format"
+                code: "INVALID_PARAMETER"
+                timestamp: "2024-01-15T14:20:00Z"
+        '401':
+          description: Unauthorized - invalid or missing API key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "Invalid or missing API key"
+                code: "UNAUTHORIZED"
+                timestamp: "2024-01-15T14:20:00Z"
+        '404':
+          description: Playbook not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "Playbook not found"
+                code: "NOT_FOUND"
+                timestamp: "2024-01-15T14:20:00Z"
+        '429':
+          description: Too many requests - rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "Rate limit exceeded. Try again later."
+                code: "RATE_LIMIT_EXCEEDED"
+                timestamp: "2024-01-15T14:20:00Z"
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "Failed to retrieve playbook"
+                code: "INTERNAL_ERROR"
+                timestamp: "2024-01-15T14:20:00Z"
+  /runbooks/troubleshooting:
+    get:
+      operationId: get_troubleshooting_guide
+      summary: Fetch step-by-step troubleshooting guides
+      parameters:
+        - name: category
+          in: query
+          schema:
+            type: string
+            enum: [kubernetes, performance, networking, database]
+          description: Troubleshooting category
+        - name: issue_type
+          in: query
+          schema:
+            type: string
+          description: Specific issue type
+      responses:
+        '200':
+          description: Troubleshooting guides
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  guides:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        title:
+                          type: string
+                        category:
+                          type: string
+                        steps:
+                          type: array
+                          items:
+                            type: string
+                        common_causes:
+                          type: array
+                          items:
+                            type: string
+                        diagnostic_commands:
+                          type: array
+                          items:
+                            type: string
+                example:
+                  guides:
+                    - id: "k8s-pod-crashloop"
+                      title: "Kubernetes Pod CrashLoopBackOff Troubleshooting"
+                      category: "kubernetes"
+                      steps:
+                        - "Check pod logs: kubectl logs <pod-name>"
+                        - "Describe pod: kubectl describe pod <pod-name>"
+                        - "Check resource limits and requests"
+                      common_causes:
+                        - "Application startup failure"
+                        - "Resource constraints"
+                        - "Configuration errors"
+                      diagnostic_commands:
+                        - "kubectl get events --field-selector involvedObject.name=<pod-name>"
+                        - "kubectl top pod <pod-name>"
+        '400':
+          description: Bad request - invalid parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized - invalid or missing API key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Too many requests - rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /runbooks/escalation:
+    get:
+      operationId: get_escalation_procedures
+      summary: Retrieve escalation procedures
+      parameters:
+        - name: severity
+          in: query
+          schema:
+            type: string
+            enum: [low, medium, high, critical]
+          description: Incident severity
+        - name: incident_type
+          in: query
+          schema:
+            type: string
+          description: Type of incident
+      responses:
+        '200':
+          description: Escalation procedures
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  escalation_procedures:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        title:
+                          type: string
+                        severity:
+                          type: string
+                        trigger_conditions:
+                          type: array
+                          items:
+                            type: string
+                        escalation_chain:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              level:
+                                type: integer
+                              role:
+                                type: string
+                              response_time:
+                                type: string
+                              actions:
+                                type: array
+                                items:
+                                  type: string
+                example:
+                  escalation_procedures:
+                    - id: "high-severity-escalation"
+                      title: "High Severity Incident Escalation"
+                      severity: "high"
+                      trigger_conditions:
+                        - "Service unavailable for > 5 minutes"
+                        - "Multiple service failures"
+                      escalation_chain:
+                        - level: 1
+                          role: "On-call Engineer"
+                          response_time: "5 minutes"
+                          actions:
+                            - "Acknowledge incident"
+                            - "Begin initial triage"
+                        - level: 2
+                          role: "Senior Engineer"
+                          response_time: "15 minutes"
+                          actions:
+                            - "Lead incident response"
+                            - "Coordinate with stakeholders"
+        '400':
+          description: Bad request - invalid parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized - invalid or missing API key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Too many requests - rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /runbooks/resolutions:
+    get:
+      operationId: get_common_resolutions
+      summary: Fetch common resolution steps
+      parameters:
+        - name: issue
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Issue or error type
+        - name: service
+          in: query
+          schema:
+            type: string
+          description: Affected service
+      responses:
+        '200':
+          description: Common resolution steps
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  resolutions:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        issue:
+                          type: string
+                        symptoms:
+                          type: array
+                          items:
+                            type: string
+                        quick_fixes:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              action:
+                                type: string
+                              command:
+                                type: string
+                              duration:
+                                type: string
+                              effectiveness:
+                                type: string
+                        permanent_solutions:
+                          type: array
+                          items:
+                            type: string
+                example:
+                  resolutions:
+                    - id: "memory-leak-resolution"
+                      issue: "memory"
+                      symptoms:
+                        - "Increasing memory usage over time"
+                        - "OutOfMemoryError in application logs"
+                        - "Pod restarts due to memory limits"
+                      quick_fixes:
+                        - action: "Restart application"
+                          command: "kubectl rollout restart deployment/<deployment-name>"
+                          duration: "2-3 minutes"
+                          effectiveness: "temporary"
+                        - action: "Increase memory limits"
+                          command: "kubectl patch deployment <deployment-name> -p '{\"spec\":{\"template\":{\"spec\":{\"containers\":[{\"name\":\"<container-name>\",\"resources\":{\"limits\":{\"memory\":\"1Gi\"}}}]}}}}'"
+                          duration: "1-2 minutes"
+                          effectiveness: "temporary"
+                      permanent_solutions:
+                        - "Profile application for memory leaks"
+                        - "Optimize memory usage in application code"
+                        - "Implement proper memory management practices"
+        '400':
+          description: Bad request - invalid parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "Issue parameter is required"
+                code: "MISSING_PARAMETER"
+                timestamp: "2024-01-15T14:20:00Z"
+        '401':
+          description: Unauthorized - invalid or missing API key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Too many requests - rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'

@@ -1,7 +1,8 @@
 import logging
-import yaml
 from pathlib import Path
 from typing import Dict, Optional
+
+import yaml
 
 # Configure logging with basicConfig
 logging.basicConfig(

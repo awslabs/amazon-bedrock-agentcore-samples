@@ -5,6 +5,7 @@ import os
 from typing import Any, Dict, List, Optional
 
 from .constants import SREConstants
+from .llm_utils import create_llm_with_error_handling
 from .prompt_loader import prompt_loader
 
 # Configure logging with basicConfig
@@ -28,36 +29,19 @@ class SREOutputFormatter:
         )
 
     def _create_llm(self, **kwargs):
-        """Create LLM instance based on configured provider."""
-        config = SREConstants.get_output_formatter_config(self.llm_provider, **kwargs)
+        """Create LLM instance with improved error handling."""
+        # Get output formatter specific config (with reduced max_tokens)
+        formatter_config = SREConstants.get_output_formatter_config(
+            self.llm_provider, **kwargs
+        )
+        logger.info(
+            f"Creating LLM for output formatter - Provider: {self.llm_provider}, Max tokens: {formatter_config['max_tokens']}"
+        )
 
-        if self.llm_provider == "anthropic":
-            from langchain_anthropic import ChatAnthropic
-
-            logger.info(
-                f"Creating LLM for output formatter - Provider: Anthropic, Model: {config['model_id']}"
-            )
-            return ChatAnthropic(
-                model=config["model_id"],
-                max_tokens=config["max_tokens"],
-                temperature=config["temperature"],
-            )
-        elif self.llm_provider == "bedrock":
-            from langchain_aws import ChatBedrock
-
-            logger.info(
-                f"Creating LLM for output formatter - Provider: Amazon Bedrock, Model: {config['model_id']}, Region: {config['region_name']}"
-            )
-            return ChatBedrock(
-                model_id=config["model_id"],
-                region_name=config["region_name"],
-                model_kwargs={
-                    "temperature": config["temperature"],
-                    "max_tokens": config["max_tokens"],
-                },
-            )
-        else:
-            raise ValueError(f"Unsupported provider: {self.llm_provider}")
+        # Use the centralized error handling with formatter-specific config
+        return create_llm_with_error_handling(
+            self.llm_provider, max_tokens=formatter_config["max_tokens"], **kwargs
+        )
 
     def _extract_steps_from_response(self, response: str) -> List[str]:
         """Extract numbered steps from agent response."""
@@ -83,6 +67,7 @@ class SREOutputFormatter:
         agent_results: Dict[str, Any],
         metadata: Dict[str, Any],
         plan: Optional[Dict[str, Any]] = None,
+        user_preferences: Optional[List[Dict[str, Any]]] = None,
     ) -> str:
         """Format a complete investigation response in clean markdown."""
 
@@ -97,16 +82,11 @@ class SREOutputFormatter:
         output.append("# 🔍 Investigation Results")
         output.append("")
         output.append(f"**Query:** {query}")
-        # Only show step progress if we have valid step data
-        if total_steps > 0 and current_step <= total_steps:
-            output.append(f"**Status:** Step {current_step} of {total_steps} Complete")
-        else:
-            output.append("**Status:** Investigation Complete")
         output.append("")
 
         # Executive Summary Section
         executive_summary = self._generate_executive_summary(
-            query, agent_results, metadata
+            query, agent_results, metadata, user_preferences
         )
         if executive_summary:
             output.append(executive_summary)
@@ -171,7 +151,11 @@ class SREOutputFormatter:
         return "\n".join(output)
 
     def _generate_executive_summary(
-        self, query: str, agent_results: Dict[str, Any], metadata: Dict[str, Any]
+        self,
+        query: str,
+        agent_results: Dict[str, Any],
+        metadata: Dict[str, Any],
+        user_preferences: Optional[List[Dict[str, Any]]] = None,
     ) -> str:
         """Generate executive summary using LLM analysis of investigation results."""
         if not agent_results:
@@ -191,10 +175,35 @@ class SREOutputFormatter:
 
             results_text = "\n".join(formatted_results)
 
+            # Add user preferences to the context if available
+            if user_preferences:
+                import json
+
+                prefs_text = json.dumps(user_preferences, indent=2, default=str)
+                results_text += f"\n\n**User Preferences:**\n{prefs_text}\n"
+
             # Get prompts from prompt loader
             system_prompt, user_prompt = prompt_loader.get_executive_summary_prompts(
                 query=query, results_text=results_text
             )
+
+            # Log the prompts being sent to LLM for debugging
+            logger.info("=== EXECUTIVE SUMMARY PROMPT LOGGING ===")
+            logger.info(f"System Prompt Length: {len(system_prompt)} characters")
+            logger.info(f"User Prompt Length: {len(user_prompt)} characters")
+            if user_preferences:
+                logger.info(
+                    f"User preferences included in context: {len(user_preferences)} preference items"
+                )
+                logger.info(
+                    f"User preferences preview: {str(user_preferences)[:200]}..."
+                )
+            else:
+                logger.info(
+                    "No user preferences provided to executive summary generation"
+                )
+            logger.info(f"User Prompt Content:\n{user_prompt}")
+            logger.info("=== END EXECUTIVE SUMMARY PROMPT LOGGING ===")
 
             # Generate executive summary
             messages = [

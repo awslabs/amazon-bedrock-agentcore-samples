@@ -9,6 +9,7 @@ This guide walks you through the complete deployment process for the SRE Agent, 
 - UV package manager installed
 - Python 3.12+
 - Access to Amazon Bedrock AgentCore Runtime
+- IAM role with `BedrockAgentCoreFullAccess` policy and appropriate trust policy (see [Authentication Setup](auth.md))
 
 ## Environment Configuration
 
@@ -217,6 +218,7 @@ uv run python deployment/invoke_agent_runtime.py \
 | Variable | Description | Default | Required |
 |----------|-------------|---------|----------|
 | `GATEWAY_ACCESS_TOKEN` | Gateway authentication token | - | Yes |
+| `BACKEND_API_KEY` | Backend API key for credential provider | - | Yes (gateway setup) |
 | `LLM_PROVIDER` | Language model provider | `bedrock` | No |
 | `ANTHROPIC_API_KEY` | Anthropic API key | - | Only for anthropic provider |
 | `DEBUG` | Enable debug logging and traces | `false` | No |

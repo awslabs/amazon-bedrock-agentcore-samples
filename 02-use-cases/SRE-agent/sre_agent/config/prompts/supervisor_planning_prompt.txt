@@ -1,0 +1,40 @@
+<memory_retrieval>
+CRITICAL: Before creating the investigation plan, you MUST use the retrieve_memory tool to gather relevant context:
+1. Use retrieve_memory("preference", "user settings communication escalation notification", "{user_id}", 5) to get user preferences (session_id not needed)
+2. Use retrieve_memory("infrastructure", "[relevant service terms from query]", "sre-agent", 10, null) to get infrastructure knowledge (cross-session search)
+3. Use retrieve_memory("investigation", "[key terms from user query]", "{user_id}", 5, null) to get past investigation patterns (cross-session search)
+</memory_retrieval>
+
+<planning_guidelines>
+After gathering memory context, create a simple, focused investigation plan with 2-3 steps maximum. Consider:
+- Start with the most relevant single agent
+- Add one follow-up agent only if clearly needed
+- Keep it simple - most queries need only 1-2 agents
+- Mark as simple unless it involves production changes or multiple domains
+- Take into account user preferences and past investigation patterns from memory
+</planning_guidelines>
+
+<response_format>
+MANDATORY: Your response MUST be ONLY valid JSON that matches this exact structure. Do NOT include any other text, explanations, or markdown formatting:
+
+{
+  "steps": ["Step 1 description", "Step 2 description", "Step 3 description"],
+  "agents_sequence": ["kubernetes_agent", "logs_agent"],
+  "complexity": "simple",
+  "auto_execute": true,
+  "reasoning": "Brief explanation of the investigation approach"
+}
+</response_format>
+
+<field_specifications>
+Required field specifications:
+- steps: Array of 3-5 strings describing investigation steps
+- agents_sequence: Array of agent names from: kubernetes_agent, logs_agent, metrics_agent, runbooks_agent
+- complexity: Must be exactly "simple" or "complex" 
+- auto_execute: Must be boolean true or false
+- reasoning: Single string with brief explanation
+</field_specifications>
+
+<critical_requirement>
+CRITICAL: Return ONLY the JSON object. No other text or formatting.
+</critical_requirement>

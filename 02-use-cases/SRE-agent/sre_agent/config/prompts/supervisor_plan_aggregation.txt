@@ -8,9 +8,14 @@ Plan: {plan}
 Agent findings:
 {agent_results}
 
-Present the results clearly:
+User preferences (if available):
+{user_preferences}
+
+Present the results clearly, adapting format and communication style to user preferences if provided above:
 1. **Current Status**: What we've completed so far
 2. **Key Findings**: Important discoveries from this investigation
 3. **Next Steps**: What happens next (if plan continues) or recommendations
+
+DATA VERIFICATION: Only include findings with clear tool attribution. Flag or exclude unverified claims.
 
 Keep it professional and focused on the investigation results.{auto_approve_instruction}

@@ -131,6 +131,74 @@ lambda_target_config = {
                             },
                             "required": ["environment","action_type"]
                             }
+                        },
+                        {
+                        "name": "vacuum_progress",
+                        "description": "Monitors current vacuum operations progress including phase, duration, and completion percentage. Based on comprehensive diagnostics from runbooks.py. Provide the environment (dev/prod) to analyze vacuum progress. Use action_type default value as vacuum_progress.",
+                        "inputSchema": {
+                            "type": "object",
+                            "properties": {
+                                "environment": {
+                                    "type": "string"
+                                },
+                                "action_type": {
+                                    "type": "string",
+                                    "description": "The type of action to perform. Use 'vacuum_progress' for this tool."
+                                }
+                            },
+                            "required": ["environment","action_type"]
+                            }
+                        },
+                        {
+                        "name": "xid_analysis",
+                        "description": "Analyzes transaction ID (XID) wraparound status, oldest XIDs across databases, and tables needing vacuum to prevent wraparound. Based on comprehensive diagnostics from runbooks.py. Provide the environment (dev/prod) to analyze XID status. Use action_type default value as xid_analysis.",
+                        "inputSchema": {
+                            "type": "object",
+                            "properties": {
+                                "environment": {
+                                    "type": "string"
+                                },
+                                "action_type": {
+                                    "type": "string",
+                                    "description": "The type of action to perform. Use 'xid_analysis' for this tool."
+                                }
+                            },
+                            "required": ["environment","action_type"]
+                            }
+                        },
+                        {
+                        "name": "bloat_analysis",
+                        "description": "Identifies tables with significant bloat, calculates bloat percentages and wasted space. Based on comprehensive diagnostics from runbooks.py. Provide the environment (dev/prod) to analyze table bloat. Use action_type default value as bloat_analysis.",
+                        "inputSchema": {
+                            "type": "object",
+                            "properties": {
+                                "environment": {
+                                    "type": "string"
+                                },
+                                "action_type": {
+                                    "type": "string",
+                                    "description": "The type of action to perform. Use 'bloat_analysis' for this tool."
+                                }
+                            },
+                            "required": ["environment","action_type"]
+                            }
+                        },
+                        {
+                        "name": "long_running_transactions",
+                        "description": "Identifies long-running transactions that may be blocking vacuum operations or causing performance issues. Based on comprehensive diagnostics from runbooks.py. Provide the environment (dev/prod) to analyze long-running transactions. Use action_type default value as long_running_transactions.",
+                        "inputSchema": {
+                            "type": "object",
+                            "properties": {
+                                "environment": {
+                                    "type": "string"
+                                },
+                                "action_type": {
+                                    "type": "string",
+                                    "description": "The type of action to perform. Use 'long_running_transactions' for this tool."
+                                }
+                            },
+                            "required": ["environment","action_type"]
+                            }
                         }
                 ]
             }
@@ -148,7 +216,7 @@ credential_config = [
 response = agentcore_client.create_gateway_target(
     gatewayIdentifier=os.getenv('GATEWAY_IDENTIFIER'), # Replace with your GatewayID
     name=os.getenv('TARGET_NAME','pgstat-analyze-db'),
-    description=os.getenv('TARGET_DESCRIPTION', 'PostgreSQL database performance analyzer for slow queries, connection issues, I/O bottlenecks, index usage, autovacuum, replication, and system health'),
+    description=os.getenv('TARGET_DESCRIPTION', 'Enhanced PostgreSQL database performance analyzer with comprehensive diagnostics including slow queries, connection issues, I/O bottlenecks, index usage, autovacuum, replication, system health, vacuum progress monitoring, XID wraparound analysis, table bloat detection, and long-running transaction identification. Based on production-ready runbooks with deep diagnostic capabilities.'),
     credentialProviderConfigurations=credential_config, 
     targetConfiguration=lambda_target_config)
 

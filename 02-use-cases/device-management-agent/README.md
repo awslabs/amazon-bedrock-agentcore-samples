@@ -38,6 +38,13 @@ This use case implements a comprehensive Device Management System using Amazon B
 
 5. **Data Flow**: All device data, user information, and configuration settings are stored in and retrieved from DynamoDB tables.
 
+6. **Observability Flow**:
+   - The AgentCore runtime sends logs to CloudWatch Logs
+   - Gateway operations are logged to dedicated CloudWatch log groups
+   - Traces are captured by AWS X-Ray
+   - Custom metrics are published to CloudWatch Metrics
+   - All observability data can be monitored through the AWS Console
+
 ## Use case key Features
 
 The Device Management System provides the following capabilities:
@@ -54,7 +61,8 @@ The Device Management System provides the following capabilities:
 - Python 3.10+
 - AWS account with appropriate permissions
 - boto3 and Amazon Bedrock AgentCore SDK
-- Cognito User Pool with configured app client
+- Cognito User Pool with configured app client (for Gateway/Runtime authentication)
+- Cognito User Pool with configured app client (for Frontend authentication - separate from Gateway)
 - Cognito Domain (optional but recommended for hosted UI)
 - IAM Role for Bedrock Agent Core Gateway with appropriate permissions
 
@@ -84,24 +92,44 @@ Create a `.env` file in the project root with the following variables:
 
 ```
 # AWS and endpoint configuration
-AWS_REGION=<Your AWS Region>
-ENDPOINT_URL=https://bedrock-agentcore-control.<REGION>.amazonaws.com
+AWS_REGION=us-west-2
+ENDPOINT_URL=https://bedrock-agentcore-control.us-west-2.amazonaws.com
 
 # Lambda configuration
-LAMBDA_ARN=arn:aws:lambda:<REGION>:your-account-id:function:DeviceManagementLambda
+LAMBDA_FUNCTION_NAME=DeviceManagementLambda
+LAMBDA_ARN=arn:aws:lambda:us-west-2:your-account-id:function:DeviceManagementLambda
+
+# Gateway configuration
+GATEWAY_IDENTIFIER=your-gateway-identifier
+GATEWAY_NAME=Device-Management-Gateway
+GATEWAY_DESCRIPTION=Device Management Gateway
+ROLE_ARN=arn:aws:iam::your-account-id:role/YourGatewayRole
+
+# Gateway observability (auto-populated by deploy script)
+GATEWAY_ARN=arn:aws:bedrock-agentcore:us-west-2:your-account-id:gateway/your-gateway-id
+GATEWAY_ID=your-gateway-id
 
 # Target configuration
-GATEWAY_IDENTIFIER=your-gateway-identifier
 TARGET_NAME=device-management-target
 TARGET_DESCRIPTION=List, Update device management activities
 
-# Gateway creation configuration
-COGNITO_USERPOOL_ID=your-cognito-userpool-id
-COGNITO_APP_CLIENT_ID=your-cognito-app-client-id
-GATEWAY_NAME=Device-Management-Gateway
-ROLE_ARN=arn:aws:iam::your-account-id:role/YourGatewayRole
-GATEWAY_DESCRIPTION=Device Management Gateway
+# Cognito configuration for Gateway/Runtime
+COGNITO_USERPOOL_ID=your-gateway-cognito-userpool-id
+COGNITO_APP_CLIENT_ID=your-gateway-cognito-app-client-id
+COGNITO_DOMAIN=your-gateway-cognito-domain.auth.us-west-2.amazoncognito.com
+COGNITO_CLIENT_SECRET=your-gateway-cognito-client-secret
+
+# Cognito configuration for Frontend (separate user pool)
+FRONTEND_COGNITO_USERPOOL_ID=your-frontend-cognito-userpool-id
+FRONTEND_COGNITO_APP_CLIENT_ID=your-frontend-cognito-app-client-id
+FRONTEND_COGNITO_DOMAIN=your-frontend-cognito-domain.auth.us-west-2.amazoncognito.com
+FRONTEND_COGNITO_CLIENT_SECRET=your-frontend-cognito-client-secret
+
+# Frontend configuration (auto-populated by deploy script)
+MCP_SERVER_URL=https://your-gateway-id.gateway.bedrock-agentcore.us-west-2.amazonaws.com
 ```
+
+**Note**: You can use the provided `.env.example` file as a template by copying it to `.env` and updating the placeholder values.
 
 ### 2. Install Dependencies
 
@@ -111,43 +139,76 @@ Install the required Python packages:
 pip install -r requirements.txt
 ```
 
-### 3. Deploy the Lambda Function
+### 3. Automated Deployment
 
-You can deploy the Lambda function using the provided deployment script:
+You can deploy all components using the provided deployment script:
 
 ```bash
-chmod +x deploy.sh
-./deploy.sh
+chmod +x deploy_all.sh
+./deploy_all.sh
 ```
 
 The deployment script performs the following actions:
-- Packages the Lambda function code with dependencies
-- Creates an IAM role with necessary permissions (if it doesn't exist)
-- Creates or updates the Lambda function
-- Configures the function with appropriate memory and timeout settings
+- Deploys the Lambda function with dependencies
+- Creates and configures the gateway
+- Sets up gateway targets
+- Enables gateway observability (CloudWatch logging)
+- Configures the agent runtime
+- Sets up frontend configuration
 
-### 4. Create a Gateway (Optional if you want to use the existing gateway)
+### 4. Manual Deployment (Alternative)
 
-To create a new gateway, execute the below script:
+If you prefer to deploy components individually:
 
+#### Deploy Lambda Function
 ```bash
+cd device-management
+chmod +x deploy.sh
+./deploy.sh
+cd ..
+```
+
+#### Create Gateway
+```bash
+cd gateway
 python create_gateway.py
 ```
 
-### 5. Create Gateway Target
-
-After deploying the Lambda function, create a gateway target to expose the Lambda function as targets:
-
+#### Create Gateway Target
 ```bash
 python device-management-target.py
 ```
 
-### 6. Generate Test Data (Optional)
+#### Setup Gateway Observability
+```bash
+python gateway_observability.py
+cd ..
+```
+
+#### Setup Agent Runtime
+```bash
+cd agent-runtime
+chmod +x setup.sh
+./setup.sh
+cd ..
+```
+
+#### Setup Frontend (Optional)
+```bash
+cd frontend
+chmod +x setup_and_run.sh
+./setup_and_run.sh
+cd ..
+```
+
+### 5. Generate Test Data (Optional)
 
 To populate the tables with synthetic test data:
 
 ```bash
+cd device-management
 python synthetic_data.py
+cd ..
 ```
 
 ## Execution instructions
@@ -199,7 +260,28 @@ vi mcp.json
 
 Replace `<Bearer token>` with the access token obtained from the Cognito authentication request.
 
-### 3. Sample prompts:
+### 3. Using the Web Frontend
+
+After setting up the frontend, you can interact with the Device Management system through the web interface:
+
+1. **Access the application**:
+   ```bash
+   # If using Docker
+   open http://localhost:5001
+   
+   # If running locally
+   open http://localhost:5001
+   ```
+
+2. **Authentication**:
+   - Use AWS Cognito login (if configured)
+   - Or use the simple login form with your credentials
+
+3. **Chat Interface**:
+   - Type your device management queries in the chat interface
+   - Responses will stream in real-time from the agent
+
+### 4. Sample prompts:
 
 1. "Can you list all the dormant devices?"
 2. "Can you update SSID for my device ID DG-10016 to XXXXXXXXXX'?"
@@ -252,6 +334,14 @@ The examples provided in this repository are for experimental and educational pu
 - `device-management-target.py`: Script to create a gateway target for the Lambda function
 - `.env`: Environment variables configuration file
 - `test_lambda.py`: Script to test the Lambda function locally
+
+### Folders
+
+- `device-management/`: Contains the Lambda function and DynamoDB setup
+- `gateway/`: Contains gateway creation and configuration scripts
+- `agent-runtime/`: Contains agent runtime components for handling communication between frontend and backend services
+- `frontend/`: Contains the web frontend application for device management
+- `images/`: Contains architecture diagrams and documentation images
 
 ### IAM Permissions
 

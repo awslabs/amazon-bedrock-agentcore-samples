@@ -13,7 +13,7 @@ agent = None
     provider_name="openai-apikey-provider" # replace with your own credential provider name
 )
 async def need_api_key(*, api_key: str):
-    print(f'received api key for async func: {api_key}')
+    print("received api key for async func")
     os.environ["OPENAI_API_KEY"] = api_key
 
 def create_model():
