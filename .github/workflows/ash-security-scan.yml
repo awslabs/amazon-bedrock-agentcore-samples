@@ -82,7 +82,7 @@ jobs:
         if: steps.changed-files.outputs.any_changed == 'true'
         run: |
           cd /tmp/ash-scan
-          uv tool run ash --mode local
+          uv tool run ash.py --mode local
         continue-on-error: true
 
       - name: Process scan results and create summary
