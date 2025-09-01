@@ -79,10 +79,10 @@ Resources:
               - '/read'
       AllowedOAuthFlowsUserPoolClient: true
       CallbackURLs:
-        - http://localhost:8501/
-        - https://52.7.14.218:8501/
+        - http://52.7.14.218:8501/
+        - https://example.com/auth/callback
       LogoutURLs:
-        - https://52.7.14.218:8501/
+        - http://52.7.14.218:8501/
       SupportedIdentityProviders:
         - COGNITO
       AccessTokenValidity: 60

@@ -499,6 +499,7 @@ class KnowledgeBasesForAmazonBedrock:
                     "Effect": "Allow",
                     "Action": [
                         "s3vectors:GetIndex",
+                        "s3vectors:ListIndexes",        # ← NEW
                         "s3vectors:QueryVectors",
                         "s3vectors:PutVectors",
                         "s3vectors:GetVectors",

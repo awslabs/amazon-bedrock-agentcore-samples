@@ -40,26 +40,6 @@ Resources:
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
-              - Sid: IndexDescribe          # let Bedrock inspect the index
-                Effect: Allow
-                Action:
-                  - s3vectors:GetIndex
-                  - s3vectors:ListIndexes
-                Resource: arn:aws:s3vectors:us-east-1:562239682800:bucket/customer-support-vectors-*/index/*
-              - Sid: VectorIO               # read / write vectors
-                Effect: Allow
-                Action:
-                  - s3vectors:QueryVectors
-                  - s3vectors:GetVectors
-                  - s3vectors:PutVectors
-                  - s3vectors:DeleteVectors
-                Resource: arn:aws:s3vectors:us-east-1:562239682800:bucket/customer-support-vectors-*/index/customer-support-index-7e59
-              - Sid: VectorAdmin            # (optional) create / delete index
-                Effect: Allow
-                Action:
-                  - s3vectors:CreateIndex
-                  - s3vectors:DeleteIndex
-                Resource: arn:aws:s3vectors:us-east-1:562239682800:bucket/customer-support-vectors-*
               - Sid: ECRImageAccess
                 Effect: Allow
                 Action:
@@ -68,6 +48,15 @@ Resources:
                   - ecr:GetAuthorizationToken
                 Resource:
                   - '*'
+              - Sid: AllowVectorQueries
+                Effect: Allow
+                Action:
+                  - s3vectors:QueryVectors     # similarity search during create & at runtime
+                  - s3vectors:GetVectors       # return metadata if you use filters
+                  - s3vectors:GetIndex         # look up index dimension / stats
+                  - s3vectors:ListIndexes
+                Resource:
+                  - !Sub arn:aws:s3vectors:us-east-1:562239682800:bucket/customer-support-vectors*
               - Effect: Allow
                 Action:
                   - logs:DescribeLogStreams

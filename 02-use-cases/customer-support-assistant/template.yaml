@@ -1,0 +1,2034 @@
+{
+    "Metadata": {
+        "Version": "3.1"
+    },
+    "Parameters": {
+        "QSType": {
+            "Type": "String",
+            "AllowedValues": [
+                "LA",
+                "TA",
+                "MA"
+            ],
+            "Default": "TA",
+            "Description": "(Required) Specifies whether the Quick Setup applies to the local account or an AWS organization."
+        },
+        "QSConfigurationId": {
+            "Type": "String",
+            "Default": "",
+            "Description": "(Required) Unique identifier of the deployed configuration."
+        },
+        "QSAttachConfigurationPolicy": {
+            "Type": "String",
+            "Default": "false",
+            "AllowedValues": [
+                "true",
+                "false"
+            ],
+            "Description": "(Optional) Whether to attach Configuration permissions policy which sets boundaries of what configuration can do."
+        },
+        "QSGlobalResourcesRegion": {
+            "Type": "String",
+            "Default": "",
+            "Description": "(Required) Name of the AWS Region to deploy global resources such as S3 buckets."
+        },
+        "QSPrincipalOrgId": {
+            "Type": "String",
+            "Default": "",
+            "Description": "(Optional) The ID of the principal organization your management account operates in."
+        },
+        "UpdateSsmAgent": {
+            "Type": "String",
+            "Default": "true",
+            "AllowedValues": [
+                "true",
+                "false"
+            ],
+            "Description": "(Optional) Determines whether the SSM agent updates every 2 weeks."
+        },
+        "UpdateEc2LaunchAgent": {
+            "Type": "String",
+            "Default": "false",
+            "AllowedValues": [
+                "true",
+                "false"
+            ],
+            "Description": "(Optional) Determines whether the EC2Launch agent updates monthly."
+        },
+        "CollectInventory": {
+            "Type": "String",
+            "Default": "true",
+            "AllowedValues": [
+                "true",
+                "false"
+            ],
+            "Description": "(Optional) Determines whether inventory is collected every 30 minutes."
+        },
+        "ScanInstances": {
+            "Type": "String",
+            "Default": "true",
+            "AllowedValues": [
+                "true",
+                "false"
+            ],
+            "Description": "(Optional) Determines whether instances are scanned for patches daily."
+        },
+        "InstallCloudWatchAgent": {
+            "Type": "String",
+            "Default": "false",
+            "AllowedValues": [
+                "true",
+                "false"
+            ],
+            "Description": "(Optional) Whether the CloudWatch agent should be installed."
+        },
+        "UpdateCloudWatchAgent": {
+            "Type": "String",
+            "Default": "false",
+            "AllowedValues": [
+                "true",
+                "false"
+            ],
+            "Description": "(Optional) Determines whether the CloudWatch agent updates monthly."
+        },
+        "IsPolicyAttachAllowed": {
+            "Type": "String",
+            "Default": "false",
+            "AllowedValues": [
+                "true",
+                "false"
+            ],
+            "Description": "(Optional) Whether you want to allow Quick Setup to attach IAM policies to existing instance profiles."
+        },
+        "TargetType": {
+            "Type": "String",
+            "Default": "*",
+            "AllowedValues": [
+                "Tags",
+                "InstanceIds",
+                "*",
+                "ResourceGroups"
+            ],
+            "Description": "(Optional) Specifies the way instances are targeted. This parameter is only used for the local Quick Setup type."
+        },
+        "TargetInstances": {
+            "Type": "String",
+            "Default": "*",
+            "Description": "(Optional) Specifies the target instances. This parameter is only used for the local Quick Setup type when InstanceIds are the TargetType."
+        },
+        "TargetTagKey": {
+            "Type": "String",
+            "Default": "",
+            "Description": "(Optional) Specifies the tag key used to target instances. This parameter is only used for the local Quick Setup type when Tags are the TargetType."
+        },
+        "TargetTagValue": {
+            "Type": "String",
+            "Default": "",
+            "Description": "(Optional) Specifies the tag value used to target instances. This parameter is only used for the local Quick Setup type when Tags are the TargetType."
+        },
+        "ResourceGroupName": {
+            "Type": "String",
+            "Default": "",
+            "Description": "(Optional) Specifies the tag value for the resource group used to target instances. This parameter is only used for the local Quick Setup type when ResourceGroups are the TargetType."
+        }
+    },
+    "Conditions": {
+        "ShouldAttachConfigurationPolicy": {
+            "Fn::Equals": [
+                {
+                    "Ref": "QSAttachConfigurationPolicy"
+                },
+                "true"
+            ]
+        },
+        "CreateUpdateSsmAgentAssociation": {
+            "Fn::Equals": [
+                {
+                    "Ref": "UpdateSsmAgent"
+                },
+                "true"
+            ]
+        },
+        "CreateUpdateEc2LaunchAgentAssociation": {
+            "Fn::Equals": [
+                {
+                    "Ref": "UpdateEc2LaunchAgent"
+                },
+                "true"
+            ]
+        },
+        "CreateCollectInventoryAssociation": {
+            "Fn::Equals": [
+                {
+                    "Ref": "CollectInventory"
+                },
+                "true"
+            ]
+        },
+        "CreateScanInstancesAssociation": {
+            "Fn::Equals": [
+                {
+                    "Ref": "ScanInstances"
+                },
+                "true"
+            ]
+        },
+        "CreateInstallAndManageCloudWatchAgentAssociation": {
+            "Fn::Equals": [
+                {
+                    "Ref": "InstallCloudWatchAgent"
+                },
+                "true"
+            ]
+        },
+        "UpdateCloudWatchAgentAssociation": {
+            "Fn::Equals": [
+                {
+                    "Ref": "UpdateCloudWatchAgent"
+                },
+                "true"
+            ]
+        },
+        "ShouldUpdateCloudWatchAgent": {
+            "Fn::Equals": [
+                {
+                    "Ref": "UpdateCloudWatchAgent"
+                },
+                "true"
+            ]
+        },
+        "IsTagValueNotSpecified": {
+            "Fn::Equals": [
+                {
+                    "Ref": "TargetTagValue"
+                },
+                ""
+            ]
+        },
+        "IsTagKeyAndValueTargeted": {
+            "Fn::And": [
+                {
+                    "Fn::Equals": [
+                        {
+                            "Ref": "QSType"
+                        },
+                        "LA"
+                    ]
+                },
+                {
+                    "Fn::Equals": [
+                        {
+                            "Ref": "TargetType"
+                        },
+                        "Tags"
+                    ]
+                },
+                {
+                    "Fn::Not": [
+                        {
+                            "Condition": "IsTagValueNotSpecified"
+                        }
+                    ]
+                }
+            ]
+        },
+        "IsTagKeyOnlyTargeted": {
+            "Fn::And": [
+                {
+                    "Fn::Equals": [
+                        {
+                            "Ref": "QSType"
+                        },
+                        "LA"
+                    ]
+                },
+                {
+                    "Fn::Equals": [
+                        {
+                            "Ref": "TargetType"
+                        },
+                        "Tags"
+                    ]
+                },
+                {
+                    "Condition": "IsTagValueNotSpecified"
+                }
+            ]
+        },
+        "IsResourceGroupTargeted": {
+            "Fn::And": [
+                {
+                    "Fn::Equals": [
+                        {
+                            "Ref": "QSType"
+                        },
+                        "LA"
+                    ]
+                },
+                {
+                    "Fn::Equals": [
+                        {
+                            "Ref": "TargetType"
+                        },
+                        "ResourceGroups"
+                    ]
+                }
+            ]
+        },
+        "IsOrgQuickSetup": {
+            "Fn::Equals": [
+                {
+                    "Ref": "QSType"
+                },
+                "TA"
+            ]
+        },
+        "TargetAllAutomation": {
+            "Fn::Equals": [
+                {
+                    "Ref": "TargetInstances"
+                },
+                "*"
+            ]
+        },
+        "TargetAll": {
+            "Fn::Equals": [
+                {
+                    "Ref": "TargetInstances"
+                },
+                "*"
+            ]
+        },
+        "PolicyAttachAllowed": {
+            "Fn::Equals": [
+                {
+                    "Ref": "IsPolicyAttachAllowed"
+                },
+                "true"
+            ]
+        }
+    },
+    "Resources": {
+        "RoleForAutomation": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "ssm.amazonaws.com"
+                                ]
+                            },
+                            "Action": [
+                                "sts:AssumeRole"
+                            ]
+                        }
+                    ]
+                },
+                "Policies": [
+                    {
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "iam:ListRoles",
+                                        "config:DescribeConfigurationRecorders",
+                                        "compute-optimizer:GetEnrollmentStatus",
+                                        "support:DescribeTrustedAdvisorChecks"
+                                    ],
+                                    "Resource": "*"
+                                },
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "ssm:UpdateServiceSetting",
+                                        "ssm:GetServiceSetting"
+                                    ],
+                                    "Resource": [
+                                        {
+                                            "Fn::Join": [
+                                                "",
+                                                [
+                                                    "arn:",
+                                                    {
+                                                        "Ref": "AWS::Partition"
+                                                    },
+                                                    ":ssm:*:*:servicesetting/ssm/opsitem/ssm-patchmanager"
+                                                ]
+                                            ]
+                                        },
+                                        {
+                                            "Fn::Join": [
+                                                "",
+                                                [
+                                                    "arn:",
+                                                    {
+                                                        "Ref": "AWS::Partition"
+                                                    },
+                                                    ":ssm:*:*:servicesetting/ssm/opsitem/EC2"
+                                                ]
+                                            ]
+                                        },
+                                        {
+                                            "Fn::Join": [
+                                                "",
+                                                [
+                                                    "arn:",
+                                                    {
+                                                        "Ref": "AWS::Partition"
+                                                    },
+                                                    ":ssm:*:*:servicesetting/ssm/opsdata/ExplorerOnboarded"
+                                                ]
+                                            ]
+                                        },
+                                        {
+                                            "Fn::Join": [
+                                                "",
+                                                [
+                                                    "arn:",
+                                                    {
+                                                        "Ref": "AWS::Partition"
+                                                    },
+                                                    ":ssm:*:*:servicesetting/ssm/opsdata/Association"
+                                                ]
+                                            ]
+                                        },
+                                        {
+                                            "Fn::Join": [
+                                                "",
+                                                [
+                                                    "arn:",
+                                                    {
+                                                        "Ref": "AWS::Partition"
+                                                    },
+                                                    ":ssm:*:*:servicesetting/ssm/opsdata/ComputeOptimizer"
+                                                ]
+                                            ]
+                                        },
+                                        {
+                                            "Fn::Join": [
+                                                "",
+                                                [
+                                                    "arn:",
+                                                    {
+                                                        "Ref": "AWS::Partition"
+                                                    },
+                                                    ":ssm:*:*:servicesetting/ssm/opsdata/ConfigCompliance"
+                                                ]
+                                            ]
+                                        },
+                                        {
+                                            "Fn::Join": [
+                                                "",
+                                                [
+                                                    "arn:",
+                                                    {
+                                                        "Ref": "AWS::Partition"
+                                                    },
+                                                    ":ssm:*:*:servicesetting/ssm/opsdata/OpsData-TrustedAdvisor"
+                                                ]
+                                            ]
+                                        },
+                                        {
+                                            "Fn::Join": [
+                                                "",
+                                                [
+                                                    "arn:",
+                                                    {
+                                                        "Ref": "AWS::Partition"
+                                                    },
+                                                    ":ssm:*:*:servicesetting/ssm/opsdata/SupportCenterCase"
+                                                ]
+                                            ]
+                                        }
+                                    ]
+                                },
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "iam:CreateServiceLinkedRole"
+                                    ],
+                                    "Resource": {
+                                        "Fn::Join": [
+                                            "",
+                                            [
+                                                "arn:",
+                                                {
+                                                    "Ref": "AWS::Partition"
+                                                },
+                                                ":iam::*:role/aws-service-role/ssm.",
+                                                {
+                                                    "Ref": "AWS::URLSuffix"
+                                                },
+                                                "/AWSServiceRoleForAmazonSSM"
+                                            ]
+                                        ]
+                                    },
+                                    "Condition": {
+                                        "StringEquals": {
+                                            "iam:AWSServiceName": "ssm.amazonaws.com"
+                                        }
+                                    }
+                                }
+                            ]
+                        },
+                        "PolicyName": "SSMQuickSetupEnableExplorerInlinePolicy"
+                    },
+                    {
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "ssm:GetAutomationExecution",
+                                        "ec2:DescribeIamInstanceProfileAssociations",
+                                        "ec2:DisassociateIamInstanceProfile",
+                                        "ec2:DescribeInstances",
+                                        "ssm:StartAutomationExecution",
+                                        "iam:GetInstanceProfile",
+                                        "iam:ListInstanceProfilesForRole"
+                                    ],
+                                    "Resource": "*"
+                                },
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "iam:AttachRolePolicy"
+                                    ],
+                                    "Resource": [
+                                        {
+                                            "Fn::If": [
+                                                "PolicyAttachAllowed",
+                                                "*",
+                                                {
+                                                    "Fn::Join": [
+                                                        "",
+                                                        [
+                                                            "arn:",
+                                                            {
+                                                                "Ref": "AWS::Partition"
+                                                            },
+                                                            ":iam::",
+                                                            {
+                                                                "Ref": "AWS::AccountId"
+                                                            },
+                                                            ":role/AmazonSSMRoleForInstancesQuickSetup"
+                                                        ]
+                                                    ]
+                                                }
+                                            ]
+                                        }
+                                    ],
+                                    "Condition": {
+                                        "ArnEquals": {
+                                            "iam:PolicyARN": [
+                                                {
+                                                    "Fn::Join": [
+                                                        "",
+                                                        [
+                                                            "arn:",
+                                                            {
+                                                                "Ref": "AWS::Partition"
+                                                            },
+                                                            ":iam::aws:policy/AmazonSSMManagedInstanceCore"
+                                                        ]
+                                                    ]
+                                                },
+                                                {
+                                                    "Fn::Join": [
+                                                        "",
+                                                        [
+                                                            "arn:",
+                                                            {
+                                                                "Ref": "AWS::Partition"
+                                                            },
+                                                            ":iam::aws:policy/AmazonSSMPatchAssociation"
+                                                        ]
+                                                    ]
+                                                }
+                                            ]
+                                        }
+                                    }
+                                },
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "iam:AddRoleToInstanceProfile"
+                                    ],
+                                    "Resource": [
+                                        {
+                                            "Fn::Join": [
+                                                "",
+                                                [
+                                                    "arn:",
+                                                    {
+                                                        "Ref": "AWS::Partition"
+                                                    },
+                                                    ":iam::",
+                                                    {
+                                                        "Ref": "AWS::AccountId"
+                                                    },
+                                                    ":instance-profile/AmazonSSMRoleForInstancesQuickSetup"
+                                                ]
+                                            ]
+                                        }
+                                    ]
+                                },
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "ec2:AssociateIamInstanceProfile"
+                                    ],
+                                    "Resource": "*",
+                                    "Condition": {
+                                        "StringEquals": {
+                                            "ec2:NewInstanceProfile": {
+                                                "Fn::Join": [
+                                                    "",
+                                                    [
+                                                        "arn:",
+                                                        {
+                                                            "Ref": "AWS::Partition"
+                                                        },
+                                                        ":iam::",
+                                                        {
+                                                            "Ref": "AWS::AccountId"
+                                                        },
+                                                        ":instance-profile/AmazonSSMRoleForInstancesQuickSetup"
+                                                    ]
+                                                ]
+                                            }
+                                        }
+                                    }
+                                },
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "iam:CreateInstanceProfile"
+                                    ],
+                                    "Resource": [
+                                        {
+                                            "Fn::Join": [
+                                                "",
+                                                [
+                                                    "arn:",
+                                                    {
+                                                        "Ref": "AWS::Partition"
+                                                    },
+                                                    ":iam::",
+                                                    {
+                                                        "Ref": "AWS::AccountId"
+                                                    },
+                                                    ":instance-profile/AmazonSSMRoleForInstancesQuickSetup"
+                                                ]
+                                            ]
+                                        }
+                                    ]
+                                },
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "iam:GetRole"
+                                    ],
+                                    "Resource": [
+                                        {
+                                            "Fn::Join": [
+                                                "",
+                                                [
+                                                    "arn:",
+                                                    {
+                                                        "Ref": "AWS::Partition"
+                                                    },
+                                                    ":iam::",
+                                                    {
+                                                        "Ref": "AWS::AccountId"
+                                                    },
+                                                    ":role/AmazonSSMRoleForInstancesQuickSetup"
+                                                ]
+                                            ]
+                                        },
+                                        {
+                                            "Fn::Join": [
+                                                "",
+                                                [
+                                                    "arn:",
+                                                    {
+                                                        "Ref": "AWS::Partition"
+                                                    },
+                                                    ":iam::",
+                                                    {
+                                                        "Ref": "AWS::AccountId"
+                                                    },
+                                                    ":role/AWS-QuickSetup-HostMgmtRole-",
+                                                    {
+                                                        "Ref": "AWS::Region"
+                                                    },
+                                                    "-",
+                                                    {
+                                                        "Ref": "QSType"
+                                                    }
+                                                ]
+                                            ]
+                                        }
+                                    ]
+                                },
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "iam:PassRole"
+                                    ],
+                                    "Resource": [
+                                        {
+                                            "Fn::Join": [
+                                                "",
+                                                [
+                                                    "arn:",
+                                                    {
+                                                        "Ref": "AWS::Partition"
+                                                    },
+                                                    ":iam::",
+                                                    {
+                                                        "Ref": "AWS::AccountId"
+                                                    },
+                                                    ":role/AmazonSSMRoleForInstancesQuickSetup"
+                                                ]
+                                            ]
+                                        }
+                                    ],
+                                    "Condition": {
+                                        "StringEquals": {
+                                            "iam:PassedToService": [
+                                                "ec2.amazonaws.com"
+                                            ]
+                                        }
+                                    }
+                                },
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "iam:PassRole"
+                                    ],
+                                    "Resource": [
+                                        {
+                                            "Fn::Join": [
+                                                "",
+                                                [
+                                                    "arn:",
+                                                    {
+                                                        "Ref": "AWS::Partition"
+                                                    },
+                                                    ":iam::",
+                                                    {
+                                                        "Ref": "AWS::AccountId"
+                                                    },
+                                                    ":role/AWS-QuickSetup-HostMgmtRole-",
+                                                    {
+                                                        "Ref": "AWS::Region"
+                                                    },
+                                                    "-",
+                                                    {
+                                                        "Ref": "QSType"
+                                                    }
+                                                ]
+                                            ]
+                                        }
+                                    ],
+                                    "Condition": {
+                                        "StringEquals": {
+                                            "iam:PassedToService": [
+                                                "ssm.amazonaws.com"
+                                            ]
+                                        }
+                                    }
+                                },
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "iam:CreateRole"
+                                    ],
+                                    "Resource": [
+                                        {
+                                            "Fn::Join": [
+                                                "",
+                                                [
+                                                    "arn:",
+                                                    {
+                                                        "Ref": "AWS::Partition"
+                                                    },
+                                                    ":iam::",
+                                                    {
+                                                        "Ref": "AWS::AccountId"
+                                                    },
+                                                    ":role/AmazonSSMRoleForInstancesQuickSetup"
+                                                ]
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
+                        },
+                        "PolicyName": {
+                            "Fn::Join": [
+                                "",
+                                [
+                                    "AWS-QuickSetup-SSMHostMgmt-CreateAndAttachRoleInlinePolicy-",
+                                    {
+                                        "Ref": "AWS::Region"
+                                    },
+                                    "-",
+                                    {
+                                        "Ref": "QSConfigurationId"
+                                    }
+                                ]
+                            ]
+                        }
+                    }
+                ],
+                "PermissionsBoundary": {
+                    "Fn::If": [
+                        "ShouldAttachConfigurationPolicy",
+                        {
+                            "Fn::Sub": "arn:${AWS::Partition}:iam::aws:policy/AWSQuickSetupSSMHostMgmtPermissionsBoundary"
+                        },
+                        {
+                            "Ref": "AWS::NoValue"
+                        }
+                    ]
+                },
+                "RoleName": {
+                    "Fn::Join": [
+                        "",
+                        [
+                            "AWS-QuickSetup-HostMgmtRole-",
+                            {
+                                "Ref": "AWS::Region"
+                            },
+                            "-",
+                            {
+                                "Ref": "QSType"
+                            }
+                        ]
+                    ]
+                }
+            }
+        },
+        "CreateAndAttachIAMToInstance": {
+            "Type": "AWS::SSM::Document",
+            "Properties": {
+                "UpdateMethod": "NewVersion",
+                "Content": {
+                    "description": "Composite document for Quick Setup Managing Instances association. This document ensures IAM role for instance profile is created in account with all required policies",
+                    "schemaVersion": "0.3",
+                    "assumeRole": "{{AutomationAssumeRole}}",
+                    "parameters": {
+                        "AutomationAssumeRole": {
+                            "type": "String"
+                        },
+                        "InstanceId": {
+                            "type": "String"
+                        },
+                        "IsPolicyAttachAllowed": {
+                            "type": "String"
+                        }
+                    },
+                    "mainSteps": [
+                        {
+                            "name": "getExistingRoleName",
+                            "action": "aws:executeScript",
+                            "maxAttempts": 3,
+                            "inputs": {
+                                "Runtime": "python3.8",
+                                "Handler": "getInstanceProfileName",
+                                "InputPayload": {
+                                    "InstanceId": "{{InstanceId}}"
+                                },
+                                "Script": "import boto3\n\ndef getInstanceProfileName(events, context):\n    ec2_client = boto3.client(\"ec2\")\n    response = ec2_client.describe_instances(InstanceIds=[events[\"InstanceId\"]])\n    if 'IamInstanceProfile' in response['Reservations'][0]['Instances'][0]:\n        return {'RoleName': response['Reservations'][0]['Instances'][0]['IamInstanceProfile']['Arn'].split('/').pop()}\n    return {'RoleName': 'NoRoleFound'}"
+                            },
+                            "outputs": [
+                                {
+                                    "Name": "existingInstanceProfileRoleName",
+                                    "Selector": "$.Payload.RoleName",
+                                    "Type": "String"
+                                }
+                            ],
+                            "nextStep": "branchIfProfileExists"
+                        },
+                        {
+                            "name": "branchIfProfileExists",
+                            "action": "aws:branch",
+                            "inputs": {
+                                "Choices": [
+                                    {
+                                        "NextStep": "createRoleIfNotExists",
+                                        "Variable": "{{getExistingRoleName.existingInstanceProfileRoleName}}",
+                                        "StringEquals": "NoRoleFound"
+                                    }
+                                ],
+                                "Default": "checkIfPolicyAttachAllowed"
+                            }
+                        },
+                        {
+                            "name": "checkIfPolicyAttachAllowed",
+                            "action": "aws:branch",
+                            "inputs": {
+                                "Choices": [
+                                    {
+                                        "NextStep": "getRoleFromInstanceProfile",
+                                        "Variable": "{{IsPolicyAttachAllowed}}",
+                                        "StringEquals": "true"
+                                    }
+                                ],
+                                "Default": "createRoleIfNotExists"
+                            }
+                        },
+                        {
+                            "name": "getRoleFromInstanceProfile",
+                            "action": "aws:executeAwsApi",
+                            "inputs": {
+                                "Service": "iam",
+                                "Api": "GetInstanceProfile",
+                                "InstanceProfileName": "{{getExistingRoleName.existingInstanceProfileRoleName}}"
+                            },
+                            "outputs": [
+                                {
+                                    "Name": "existingRoleName",
+                                    "Selector": "$.InstanceProfile.Roles[0].RoleName",
+                                    "Type": "String"
+                                }
+                            ],
+                            "nextStep": "attachAmazonSSMManagedInstanceCoreToExistingRole"
+                        },
+                        {
+                            "name": "attachAmazonSSMManagedInstanceCoreToExistingRole",
+                            "action": "aws:executeAwsApi",
+                            "inputs": {
+                                "Service": "iam",
+                                "Api": "AttachRolePolicy",
+                                "RoleName": "{{getRoleFromInstanceProfile.existingRoleName}}",
+                                "PolicyArn": {
+                                    "Fn::Sub": "arn:${AWS::Partition}:iam::aws:policy/AmazonSSMManagedInstanceCore"
+                                }
+                            },
+                            "nextStep": "attachAmazonSSMPatchAssociationToExistingRole"
+                        },
+                        {
+                            "name": "attachAmazonSSMPatchAssociationToExistingRole",
+                            "action": "aws:executeAwsApi",
+                            "inputs": {
+                                "Service": "iam",
+                                "Api": "AttachRolePolicy",
+                                "RoleName": "{{getRoleFromInstanceProfile.existingRoleName}}",
+                                "PolicyArn": {
+                                    "Fn::Sub": "arn:${AWS::Partition}:iam::aws:policy/AmazonSSMPatchAssociation"
+                                }
+                            },
+                            "isEnd": true
+                        },
+                        {
+                            "name": "createRoleIfNotExists",
+                            "action": "aws:executeAwsApi",
+                            "inputs": {
+                                "Service": "iam",
+                                "Api": "CreateRole",
+                                "Path": "/",
+                                "RoleName": "AmazonSSMRoleForInstancesQuickSetup",
+                                "AssumeRolePolicyDocument": "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"ec2.amazonaws.com\"},\"Action\":\"sts:AssumeRole\"}]}",
+                                "Description": "EC2 role for SSM for Quick-Setup"
+                            },
+                            "description": "Create AmazonSSMRoleForInstancesQuickSetup Role For SSM Quick Setup",
+                            "onFailure": "Continue",
+                            "nextStep": "assertRoleForInstanceProfileExists"
+                        },
+                        {
+                            "name": "assertRoleForInstanceProfileExists",
+                            "action": "aws:assertAwsResourceProperty",
+                            "inputs": {
+                                "Service": "iam",
+                                "Api": "GetRole",
+                                "PropertySelector": "$.Role.RoleName",
+                                "DesiredValues": [
+                                    "AmazonSSMRoleForInstancesQuickSetup"
+                                ],
+                                "RoleName": "AmazonSSMRoleForInstancesQuickSetup"
+                            },
+                            "nextStep": "attachAmazonSSMManagedInstanceCoreToRole"
+                        },
+                        {
+                            "name": "attachAmazonSSMManagedInstanceCoreToRole",
+                            "action": "aws:executeAwsApi",
+                            "inputs": {
+                                "Service": "iam",
+                                "Api": "AttachRolePolicy",
+                                "RoleName": "AmazonSSMRoleForInstancesQuickSetup",
+                                "PolicyArn": {
+                                    "Fn::Sub": "arn:${AWS::Partition}:iam::aws:policy/AmazonSSMManagedInstanceCore"
+                                }
+                            },
+                            "nextStep": "attachAmazonSSMPatchAssociationToRole"
+                        },
+                        {
+                            "name": "attachAmazonSSMPatchAssociationToRole",
+                            "action": "aws:executeAwsApi",
+                            "inputs": {
+                                "Service": "iam",
+                                "Api": "AttachRolePolicy",
+                                "RoleName": "AmazonSSMRoleForInstancesQuickSetup",
+                                "PolicyArn": {
+                                    "Fn::Sub": "arn:${AWS::Partition}:iam::aws:policy/AmazonSSMPatchAssociation"
+                                }
+                            },
+                            "nextStep": "createInstanceProfileIfNotExists"
+                        },
+                        {
+                            "name": "createInstanceProfileIfNotExists",
+                            "action": "aws:executeAwsApi",
+                            "inputs": {
+                                "InstanceProfileName": "AmazonSSMRoleForInstancesQuickSetup",
+                                "Service": "iam",
+                                "Api": "CreateInstanceProfile"
+                            },
+                            "onFailure": "Continue",
+                            "nextStep": "addRoleToInstanceProfile"
+                        },
+                        {
+                            "name": "addRoleToInstanceProfile",
+                            "action": "aws:executeAwsApi",
+                            "inputs": {
+                                "InstanceProfileName": "AmazonSSMRoleForInstancesQuickSetup",
+                                "RoleName": "AmazonSSMRoleForInstancesQuickSetup",
+                                "Service": "iam",
+                                "Api": "AddRoleToInstanceProfile"
+                            },
+                            "onFailure": "Continue",
+                            "nextStep": "executeAttachIAMToInstance"
+                        },
+                        {
+                            "name": "executeAttachIAMToInstance",
+                            "action": "aws:executeAutomation",
+                            "maxAttempts": 10,
+                            "timeoutSeconds": 60,
+                            "inputs": {
+                                "DocumentName": "AWS-AttachIAMToInstance",
+                                "RuntimeParameters": {
+                                    "RoleName": "AmazonSSMRoleForInstancesQuickSetup",
+                                    "ForceReplace": false,
+                                    "AutomationAssumeRole": "{{ AutomationAssumeRole }}",
+                                    "InstanceId": "{{ InstanceId }}"
+                                }
+                            },
+                            "isEnd": true
+                        }
+                    ]
+                },
+                "DocumentType": "Automation",
+                "Name": {
+                    "Fn::Sub": "AWSQuickSetup-CreateAndAttachIAMToInstanceV2-${QSConfigurationId}"
+                },
+                "TargetType": "/AWS::EC2::Instance"
+            },
+            "DependsOn": "RoleForAutomation"
+        },
+        "SystemAssociationForManagingInstances": {
+            "Type": "AWS::SSM::Association",
+            "Properties": {
+                "Name": {
+                    "Ref": "CreateAndAttachIAMToInstance"
+                },
+                "AssociationName": {
+                    "Fn::Join": [
+                        "",
+                        [
+                            "AWS-QuickSetup-SSMHostMgmt-AttachIAMToInstance-",
+                            {
+                                "Ref": "QSConfigurationId"
+                            }
+                        ]
+                    ]
+                },
+                "Parameters": {
+                    "AutomationAssumeRole": [
+                        {
+                            "Fn::GetAtt": [
+                                "RoleForAutomation",
+                                "Arn"
+                            ]
+                        }
+                    ],
+                    "IsPolicyAttachAllowed": [
+                        {
+                            "Ref": "IsPolicyAttachAllowed"
+                        }
+                    ]
+                },
+                "AutomationTargetParameterName": "InstanceId",
+                "Targets": {
+                    "Fn::If": [
+                        "IsOrgQuickSetup",
+                        [
+                            {
+                                "Key": "InstanceIds",
+                                "Values": [
+                                    "*"
+                                ]
+                            }
+                        ],
+                        {
+                            "Fn::If": [
+                                "IsTagKeyAndValueTargeted",
+                                [
+                                    {
+                                        "Key": {
+                                            "Fn::Join": [
+                                                "",
+                                                [
+                                                    "tag:",
+                                                    {
+                                                        "Ref": "TargetTagKey"
+                                                    }
+                                                ]
+                                            ]
+                                        },
+                                        "Values": [
+                                            {
+                                                "Ref": "TargetTagValue"
+                                            }
+                                        ]
+                                    }
+                                ],
+                                {
+                                    "Fn::If": [
+                                        "IsTagKeyOnlyTargeted",
+                                        [
+                                            {
+                                                "Key": "tag-key",
+                                                "Values": [
+                                                    {
+                                                        "Ref": "TargetTagKey"
+                                                    }
+                                                ]
+                                            }
+                                        ],
+                                        {
+                                            "Fn::If": [
+                                                "IsResourceGroupTargeted",
+                                                [
+                                                    {
+                                                        "Key": "ResourceGroup",
+                                                        "Values": [
+                                                            {
+                                                                "Ref": "ResourceGroupName"
+                                                            }
+                                                        ]
+                                                    }
+                                                ],
+                                                {
+                                                    "Fn::If": [
+                                                        "TargetAll",
+                                                        [
+                                                            {
+                                                                "Key": "InstanceIds",
+                                                                "Values": [
+                                                                    "*"
+                                                                ]
+                                                            }
+                                                        ],
+                                                        [
+                                                            {
+                                                                "Key": "ParameterValues",
+                                                                "Values": {
+                                                                    "Fn::Split": [
+                                                                        ",",
+                                                                        {
+                                                                            "Ref": "TargetInstances"
+                                                                        }
+                                                                    ]
+                                                                }
+                                                            }
+                                                        ]
+                                                    ]
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                },
+                "ScheduleExpression": "rate(30 days)"
+            }
+        },
+        "SystemAssociationForEnablingExplorer": {
+            "Type": "AWS::SSM::Association",
+            "Properties": {
+                "Name": "AWS-EnableExplorer",
+                "AssociationName": {
+                    "Fn::Join": [
+                        "",
+                        [
+                            "AWS-QuickSetup-SSMHostMgmt-EnableExplorer-",
+                            {
+                                "Ref": "QSConfigurationId"
+                            }
+                        ]
+                    ]
+                },
+                "Parameters": {
+                    "AutomationAssumeRole": [
+                        {
+                            "Fn::GetAtt": [
+                                "RoleForAutomation",
+                                "Arn"
+                            ]
+                        }
+                    ]
+                }
+            }
+        },
+        "SystemAssociationForSsmAgentUpdate": {
+            "Type": "AWS::SSM::Association",
+            "Properties": {
+                "Name": "AWS-UpdateSSMAgent",
+                "AssociationName": {
+                    "Fn::Join": [
+                        "",
+                        [
+                            "AWS-QuickSetup-SSMHostMgmt-UpdateSSMAgent-",
+                            {
+                                "Ref": "QSConfigurationId"
+                            }
+                        ]
+                    ]
+                },
+                "ScheduleExpression": "rate(14 days)",
+                "Targets": {
+                    "Fn::If": [
+                        "IsOrgQuickSetup",
+                        [
+                            {
+                                "Key": "InstanceIds",
+                                "Values": [
+                                    "*"
+                                ]
+                            }
+                        ],
+                        {
+                            "Fn::If": [
+                                "IsTagKeyAndValueTargeted",
+                                [
+                                    {
+                                        "Key": {
+                                            "Fn::Join": [
+                                                "",
+                                                [
+                                                    "tag:",
+                                                    {
+                                                        "Ref": "TargetTagKey"
+                                                    }
+                                                ]
+                                            ]
+                                        },
+                                        "Values": [
+                                            {
+                                                "Ref": "TargetTagValue"
+                                            }
+                                        ]
+                                    }
+                                ],
+                                {
+                                    "Fn::If": [
+                                        "IsTagKeyOnlyTargeted",
+                                        [
+                                            {
+                                                "Key": "tag-key",
+                                                "Values": [
+                                                    {
+                                                        "Ref": "TargetTagKey"
+                                                    }
+                                                ]
+                                            }
+                                        ],
+                                        {
+                                            "Fn::If": [
+                                                "IsResourceGroupTargeted",
+                                                [
+                                                    {
+                                                        "Key": "resource-groups:Name",
+                                                        "Values": [
+                                                            {
+                                                                "Ref": "ResourceGroupName"
+                                                            }
+                                                        ]
+                                                    }
+                                                ],
+                                                {
+                                                    "Fn::If": [
+                                                        "TargetAll",
+                                                        [
+                                                            {
+                                                                "Key": "InstanceIds",
+                                                                "Values": [
+                                                                    "*"
+                                                                ]
+                                                            }
+                                                        ],
+                                                        [
+                                                            {
+                                                                "Key": "InstanceIds",
+                                                                "Values": {
+                                                                    "Fn::Split": [
+                                                                        ",",
+                                                                        {
+                                                                            "Ref": "TargetInstances"
+                                                                        }
+                                                                    ]
+                                                                }
+                                                            }
+                                                        ]
+                                                    ]
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                }
+            },
+            "Condition": "CreateUpdateSsmAgentAssociation",
+            "DependsOn": "SystemAssociationForManagingInstances"
+        },
+        "SystemAssociationForEc2LaunchAgentUpdate": {
+            "Type": "AWS::SSM::Association",
+            "Properties": {
+                "Name": "AWSEC2-UpdateLaunchAgent",
+                "AssociationName": {
+                    "Fn::Join": [
+                        "",
+                        [
+                            "AWS-QuickSetup-SSMHostMgmt-UpdateEC2LaunchAgent-",
+                            {
+                                "Ref": "QSConfigurationId"
+                            }
+                        ]
+                    ]
+                },
+                "ScheduleExpression": "rate(30 days)",
+                "Targets": {
+                    "Fn::If": [
+                        "IsOrgQuickSetup",
+                        [
+                            {
+                                "Key": "InstanceIds",
+                                "Values": [
+                                    "*"
+                                ]
+                            }
+                        ],
+                        {
+                            "Fn::If": [
+                                "IsTagKeyAndValueTargeted",
+                                [
+                                    {
+                                        "Key": {
+                                            "Fn::Join": [
+                                                "",
+                                                [
+                                                    "tag:",
+                                                    {
+                                                        "Ref": "TargetTagKey"
+                                                    }
+                                                ]
+                                            ]
+                                        },
+                                        "Values": [
+                                            {
+                                                "Ref": "TargetTagValue"
+                                            }
+                                        ]
+                                    }
+                                ],
+                                {
+                                    "Fn::If": [
+                                        "IsTagKeyOnlyTargeted",
+                                        [
+                                            {
+                                                "Key": "tag-key",
+                                                "Values": [
+                                                    {
+                                                        "Ref": "TargetTagKey"
+                                                    }
+                                                ]
+                                            }
+                                        ],
+                                        {
+                                            "Fn::If": [
+                                                "IsResourceGroupTargeted",
+                                                [
+                                                    {
+                                                        "Key": "resource-groups:Name",
+                                                        "Values": [
+                                                            {
+                                                                "Ref": "ResourceGroupName"
+                                                            }
+                                                        ]
+                                                    }
+                                                ],
+                                                {
+                                                    "Fn::If": [
+                                                        "TargetAll",
+                                                        [
+                                                            {
+                                                                "Key": "InstanceIds",
+                                                                "Values": [
+                                                                    "*"
+                                                                ]
+                                                            }
+                                                        ],
+                                                        [
+                                                            {
+                                                                "Key": "InstanceIds",
+                                                                "Values": {
+                                                                    "Fn::Split": [
+                                                                        ",",
+                                                                        {
+                                                                            "Ref": "TargetInstances"
+                                                                        }
+                                                                    ]
+                                                                }
+                                                            }
+                                                        ]
+                                                    ]
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                }
+            },
+            "Condition": "CreateUpdateEc2LaunchAgentAssociation",
+            "DependsOn": "SystemAssociationForManagingInstances"
+        },
+        "SystemAssociationForInventoryCollection": {
+            "Type": "AWS::SSM::Association",
+            "Properties": {
+                "Name": "AWS-GatherSoftwareInventory",
+                "AssociationName": {
+                    "Fn::Join": [
+                        "",
+                        [
+                            "AWS-QuickSetup-SSMHostMgmt-CollectInventory-",
+                            {
+                                "Ref": "QSConfigurationId"
+                            }
+                        ]
+                    ]
+                },
+                "Parameters": {
+                    "applications": [
+                        "Enabled"
+                    ],
+                    "awsComponents": [
+                        "Enabled"
+                    ],
+                    "networkConfig": [
+                        "Enabled"
+                    ],
+                    "instanceDetailedInformation": [
+                        "Enabled"
+                    ],
+                    "windowsUpdates": [
+                        "Enabled"
+                    ],
+                    "services": [
+                        "Enabled"
+                    ],
+                    "windowsRoles": [
+                        "Enabled"
+                    ],
+                    "customInventory": [
+                        "Enabled"
+                    ]
+                },
+                "ScheduleExpression": "rate(30 minutes)",
+                "Targets": {
+                    "Fn::If": [
+                        "IsOrgQuickSetup",
+                        [
+                            {
+                                "Key": "InstanceIds",
+                                "Values": [
+                                    "*"
+                                ]
+                            }
+                        ],
+                        {
+                            "Fn::If": [
+                                "IsTagKeyAndValueTargeted",
+                                [
+                                    {
+                                        "Key": {
+                                            "Fn::Join": [
+                                                "",
+                                                [
+                                                    "tag:",
+                                                    {
+                                                        "Ref": "TargetTagKey"
+                                                    }
+                                                ]
+                                            ]
+                                        },
+                                        "Values": [
+                                            {
+                                                "Ref": "TargetTagValue"
+                                            }
+                                        ]
+                                    }
+                                ],
+                                {
+                                    "Fn::If": [
+                                        "IsTagKeyOnlyTargeted",
+                                        [
+                                            {
+                                                "Key": "tag-key",
+                                                "Values": [
+                                                    {
+                                                        "Ref": "TargetTagKey"
+                                                    }
+                                                ]
+                                            }
+                                        ],
+                                        {
+                                            "Fn::If": [
+                                                "IsResourceGroupTargeted",
+                                                [
+                                                    {
+                                                        "Key": "resource-groups:Name",
+                                                        "Values": [
+                                                            {
+                                                                "Ref": "ResourceGroupName"
+                                                            }
+                                                        ]
+                                                    }
+                                                ],
+                                                {
+                                                    "Fn::If": [
+                                                        "TargetAll",
+                                                        [
+                                                            {
+                                                                "Key": "InstanceIds",
+                                                                "Values": [
+                                                                    "*"
+                                                                ]
+                                                            }
+                                                        ],
+                                                        [
+                                                            {
+                                                                "Key": "InstanceIds",
+                                                                "Values": {
+                                                                    "Fn::Split": [
+                                                                        ",",
+                                                                        {
+                                                                            "Ref": "TargetInstances"
+                                                                        }
+                                                                    ]
+                                                                }
+                                                            }
+                                                        ]
+                                                    ]
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                }
+            },
+            "Condition": "CreateCollectInventoryAssociation",
+            "DependsOn": "SystemAssociationForManagingInstances"
+        },
+        "SystemAssociationForScanningPatches": {
+            "Type": "AWS::SSM::Association",
+            "Properties": {
+                "Name": "AWS-RunPatchBaselineAssociation",
+                "AssociationName": {
+                    "Fn::Join": [
+                        "",
+                        [
+                            "AWS-QuickSetup-SSMHostMgmt-ScanForPatches-",
+                            {
+                                "Ref": "QSConfigurationId"
+                            }
+                        ]
+                    ]
+                },
+                "Parameters": {
+                    "Operation": [
+                        "Scan"
+                    ]
+                },
+                "ScheduleExpression": "rate(1 day)",
+                "SyncCompliance": "MANUAL",
+                "Targets": {
+                    "Fn::If": [
+                        "IsOrgQuickSetup",
+                        [
+                            {
+                                "Key": "InstanceIds",
+                                "Values": [
+                                    "*"
+                                ]
+                            }
+                        ],
+                        {
+                            "Fn::If": [
+                                "IsTagKeyAndValueTargeted",
+                                [
+                                    {
+                                        "Key": {
+                                            "Fn::Join": [
+                                                "",
+                                                [
+                                                    "tag:",
+                                                    {
+                                                        "Ref": "TargetTagKey"
+                                                    }
+                                                ]
+                                            ]
+                                        },
+                                        "Values": [
+                                            {
+                                                "Ref": "TargetTagValue"
+                                            }
+                                        ]
+                                    }
+                                ],
+                                {
+                                    "Fn::If": [
+                                        "IsTagKeyOnlyTargeted",
+                                        [
+                                            {
+                                                "Key": "tag-key",
+                                                "Values": [
+                                                    {
+                                                        "Ref": "TargetTagKey"
+                                                    }
+                                                ]
+                                            }
+                                        ],
+                                        {
+                                            "Fn::If": [
+                                                "IsResourceGroupTargeted",
+                                                [
+                                                    {
+                                                        "Key": "resource-groups:Name",
+                                                        "Values": [
+                                                            {
+                                                                "Ref": "ResourceGroupName"
+                                                            }
+                                                        ]
+                                                    }
+                                                ],
+                                                {
+                                                    "Fn::If": [
+                                                        "TargetAll",
+                                                        [
+                                                            {
+                                                                "Key": "InstanceIds",
+                                                                "Values": [
+                                                                    "*"
+                                                                ]
+                                                            }
+                                                        ],
+                                                        [
+                                                            {
+                                                                "Key": "InstanceIds",
+                                                                "Values": {
+                                                                    "Fn::Split": [
+                                                                        ",",
+                                                                        {
+                                                                            "Ref": "TargetInstances"
+                                                                        }
+                                                                    ]
+                                                                }
+                                                            }
+                                                        ]
+                                                    ]
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                }
+            },
+            "Condition": "CreateScanInstancesAssociation",
+            "DependsOn": "SystemAssociationForManagingInstances"
+        },
+        "InstallAndManageCloudWatchDocument": {
+            "Type": "AWS::SSM::Document",
+            "Properties": {
+                "UpdateMethod": "NewVersion",
+                "Content": {
+                    "schemaVersion": "2.2",
+                    "description": "The AWS-InstallAndManageCloudWatch command document installs the Amazon CloudWatch agent and manages the configuration of the agent for Amazon EC2 instances.",
+                    "mainSteps": [
+                        {
+                            "action": "aws:runDocument",
+                            "name": "installCWAgent",
+                            "inputs": {
+                                "documentType": "SSMDocument",
+                                "documentPath": "AWS-ConfigureAWSPackage",
+                                "documentParameters": {
+                                    "action": "Install",
+                                    "name": "AmazonCloudWatchAgent"
+                                }
+                            }
+                        },
+                        {
+                            "action": "aws:runDocument",
+                            "name": "manageCWAgent",
+                            "inputs": {
+                                "documentType": "SSMDocument",
+                                "documentPath": "AmazonCloudWatch-ManageAgent",
+                                "documentParameters": {
+                                    "action": "configure",
+                                    "mode": "ec2",
+                                    "optionalConfigurationSource": "default",
+                                    "optionalRestart": "yes"
+                                }
+                            }
+                        }
+                    ]
+                },
+                "DocumentType": "Command",
+                "Name": {
+                    "Fn::Join": [
+                        "",
+                        [
+                            "AWSQuickSetup-InstallAndManageCloudWatchDocument-",
+                            {
+                                "Ref": "QSConfigurationId"
+                            }
+                        ]
+                    ]
+                }
+            },
+            "Condition": "CreateInstallAndManageCloudWatchAgentAssociation",
+            "DependsOn": "SystemAssociationForManagingInstances"
+        },
+        "SystemAssociationForInstallAndConfigureCloudWatchAgent": {
+            "Type": "AWS::SSM::Association",
+            "Properties": {
+                "Name": {
+                    "Ref": "InstallAndManageCloudWatchDocument"
+                },
+                "AssociationName": {
+                    "Fn::Join": [
+                        "",
+                        [
+                            "AWS-QuickSetup-SSMHostMgmt-ManageCloudWatchAgent-",
+                            {
+                                "Ref": "QSConfigurationId"
+                            }
+                        ]
+                    ]
+                },
+                "ScheduleExpression": {
+                    "Ref": "AWS::NoValue"
+                },
+                "Targets": {
+                    "Fn::If": [
+                        "IsOrgQuickSetup",
+                        [
+                            {
+                                "Key": "InstanceIds",
+                                "Values": [
+                                    "*"
+                                ]
+                            }
+                        ],
+                        {
+                            "Fn::If": [
+                                "IsTagKeyAndValueTargeted",
+                                [
+                                    {
+                                        "Key": {
+                                            "Fn::Join": [
+                                                "",
+                                                [
+                                                    "tag:",
+                                                    {
+                                                        "Ref": "TargetTagKey"
+                                                    }
+                                                ]
+                                            ]
+                                        },
+                                        "Values": [
+                                            {
+                                                "Ref": "TargetTagValue"
+                                            }
+                                        ]
+                                    }
+                                ],
+                                {
+                                    "Fn::If": [
+                                        "IsTagKeyOnlyTargeted",
+                                        [
+                                            {
+                                                "Key": "tag-key",
+                                                "Values": [
+                                                    {
+                                                        "Ref": "TargetTagKey"
+                                                    }
+                                                ]
+                                            }
+                                        ],
+                                        {
+                                            "Fn::If": [
+                                                "IsResourceGroupTargeted",
+                                                [
+                                                    {
+                                                        "Key": "resource-groups:Name",
+                                                        "Values": [
+                                                            {
+                                                                "Ref": "ResourceGroupName"
+                                                            }
+                                                        ]
+                                                    }
+                                                ],
+                                                {
+                                                    "Fn::If": [
+                                                        "TargetAll",
+                                                        [
+                                                            {
+                                                                "Key": "InstanceIds",
+                                                                "Values": [
+                                                                    "*"
+                                                                ]
+                                                            }
+                                                        ],
+                                                        [
+                                                            {
+                                                                "Key": "InstanceIds",
+                                                                "Values": {
+                                                                    "Fn::Split": [
+                                                                        ",",
+                                                                        {
+                                                                            "Ref": "TargetInstances"
+                                                                        }
+                                                                    ]
+                                                                }
+                                                            }
+                                                        ]
+                                                    ]
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                }
+            },
+            "Condition": "CreateInstallAndManageCloudWatchAgentAssociation",
+            "DependsOn": "SystemAssociationForManagingInstances"
+        },
+        "UpdateCloudWatchAgentDocument": {
+            "Type": "AWS::SSM::Document",
+            "Properties": {
+                "UpdateMethod": "NewVersion",
+                "Content": {
+                    "schemaVersion": "2.2",
+                    "description": "A composite document for updating CloudWatch agent.",
+                    "mainSteps": [
+                        {
+                            "precondition": {
+                                "StringEquals": [
+                                    "platformType",
+                                    "Linux"
+                                ]
+                            },
+                            "action": "aws:runShellScript",
+                            "name": "first",
+                            "inputs": {
+                                "runCommand": [
+                                    "sleep 1800"
+                                ]
+                            }
+                        },
+                        {
+                            "precondition": {
+                                "StringEquals": [
+                                    "platformType",
+                                    "Windows"
+                                ]
+                            },
+                            "action": "aws:runPowerShellScript",
+                            "name": "second",
+                            "inputs": {
+                                "runCommand": [
+                                    "Start-Sleep -Seconds 1800"
+                                ]
+                            }
+                        },
+                        {
+                            "action": "aws:runDocument",
+                            "name": "installCWAgent",
+                            "inputs": {
+                                "documentType": "SSMDocument",
+                                "documentPath": "AWS-ConfigureAWSPackage",
+                                "documentParameters": "{\"action\":\"Install\",\"name\" : \"AmazonCloudWatchAgent\"}"
+                            }
+                        }
+                    ]
+                },
+                "DocumentType": "Command",
+                "Name": {
+                    "Fn::Join": [
+                        "",
+                        [
+                            "AWSQuickSetup-SSMHostMgmt-UpdateCloudWatchDocument-",
+                            {
+                                "Ref": "QSConfigurationId"
+                            }
+                        ]
+                    ]
+                }
+            },
+            "Condition": "UpdateCloudWatchAgentAssociation",
+            "DependsOn": "SystemAssociationForManagingInstances"
+        },
+        "SystemAssociationForUpdateCloudWatchAgent": {
+            "Type": "AWS::SSM::Association",
+            "Properties": {
+                "Name": {
+                    "Ref": "UpdateCloudWatchAgentDocument"
+                },
+                "AssociationName": {
+                    "Fn::Join": [
+                        "",
+                        [
+                            "AWS-QuickSetup-SSMHostMgmt-UpdateCloudWatchAgent-",
+                            {
+                                "Ref": "QSConfigurationId"
+                            }
+                        ]
+                    ]
+                },
+                "ScheduleExpression": "rate(30 days)",
+                "Targets": {
+                    "Fn::If": [
+                        "IsOrgQuickSetup",
+                        [
+                            {
+                                "Key": "InstanceIds",
+                                "Values": [
+                                    "*"
+                                ]
+                            }
+                        ],
+                        {
+                            "Fn::If": [
+                                "IsTagKeyAndValueTargeted",
+                                [
+                                    {
+                                        "Key": {
+                                            "Fn::Join": [
+                                                "",
+                                                [
+                                                    "tag:",
+                                                    {
+                                                        "Ref": "TargetTagKey"
+                                                    }
+                                                ]
+                                            ]
+                                        },
+                                        "Values": [
+                                            {
+                                                "Ref": "TargetTagValue"
+                                            }
+                                        ]
+                                    }
+                                ],
+                                {
+                                    "Fn::If": [
+                                        "IsTagKeyOnlyTargeted",
+                                        [
+                                            {
+                                                "Key": "tag-key",
+                                                "Values": [
+                                                    {
+                                                        "Ref": "TargetTagKey"
+                                                    }
+                                                ]
+                                            }
+                                        ],
+                                        {
+                                            "Fn::If": [
+                                                "IsResourceGroupTargeted",
+                                                [
+                                                    {
+                                                        "Key": "resource-groups:Name",
+                                                        "Values": [
+                                                            {
+                                                                "Ref": "ResourceGroupName"
+                                                            }
+                                                        ]
+                                                    }
+                                                ],
+                                                {
+                                                    "Fn::If": [
+                                                        "TargetAll",
+                                                        [
+                                                            {
+                                                                "Key": "InstanceIds",
+                                                                "Values": [
+                                                                    "*"
+                                                                ]
+                                                            }
+                                                        ],
+                                                        [
+                                                            {
+                                                                "Key": "InstanceIds",
+                                                                "Values": {
+                                                                    "Fn::Split": [
+                                                                        ",",
+                                                                        {
+                                                                            "Ref": "TargetInstances"
+                                                                        }
+                                                                    ]
+                                                                }
+                                                            }
+                                                        ]
+                                                    ]
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                }
+            },
+            "Condition": "UpdateCloudWatchAgentAssociation",
+            "DependsOn": "SystemAssociationForManagingInstances"
+        }
+    }
+}
