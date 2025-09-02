@@ -643,6 +643,6 @@ def delete_all_gateways(gateway_client):
         )
         for item in list_response['items']:
             gatewayId= item["gatewayId"]
-            delete_gateway(gatewayId)
+            delete_gateway(gateway_client, gatewayId)
     except Exception as e:
         print(e)
