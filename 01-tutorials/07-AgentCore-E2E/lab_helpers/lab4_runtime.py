@@ -7,6 +7,7 @@ from scripts.utils import get_ssm_parameter
 from lab_helpers.lab1_strands_agent import (
     get_return_policy,
     get_product_info,
+    get_technical_support,
     SYSTEM_PROMPT,
     MODEL_ID,
 )
@@ -30,7 +31,7 @@ memory_hooks = CustomerSupportMemoryHooks(
 # Create the agent with all customer support tools
 agent = Agent(
     model=model,
-    tools=[get_return_policy, get_product_info],
+    tools=[get_return_policy, get_product_info, get_technical_support],
     system_prompt=SYSTEM_PROMPT,
     hooks=[memory_hooks],
 )
