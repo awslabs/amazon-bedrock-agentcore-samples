@@ -1,4 +1,0 @@
-bedrock-agentcore
-strands-agents
-strands-agents-tools
-nova_act
