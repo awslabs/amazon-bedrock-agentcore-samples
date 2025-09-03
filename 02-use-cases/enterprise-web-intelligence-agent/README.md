@@ -11,6 +11,10 @@ This repository contains **two independent implementations** that cannot share m
 
 Only configuration files and utilities are shared between implementations. Each has its own version of core components due to different async handling, LLM invocation patterns, and state management approaches.
 
+## 🏗️ Architecture Overview
+
+![Market Intelligence Platform Architecture](./images/highlevel_arch.png)
+
 ## 🏗️ Architecture Differences
 
 ### Why Separate Implementations?
@@ -36,7 +40,7 @@ The two frameworks have incompatible approaches to:
 ## 📁 Project Structure
 
 ```
-competitive-intelligence-agent/
+enterprise-web-intelligence-agent/
 ├── shared/                     # Minimal shared components
 │   ├── config.py              # Configuration (shared)
 │   ├── cleanup_resources.py   # AWS cleanup scripts (shared)
@@ -65,33 +69,58 @@ competitive-intelligence-agent/
 ## 🚀 Installation
 
 ### Prerequisites
-- Python 3.9+
 - AWS Account with Bedrock access
+- Claude 3.7 Sonnet Model access enables in Bedrock (us-west-2 region)
 - IAM role with appropriate permissions
+- S3 bucket for recordings (Optional - will be created automatically if not specified)
+
+### Environment Setup
+
+```bash
+# Clone the repository
+git clone https://github.com/awslabs/amazon-bedrock-agentcore-samples.git
+cd amazon-bedrock-agentcore-samples/02-use-cases/enterprise-web-intelligence-agent
+```
 
 ### LangGraph Version
 ```bash
 cd langgraph
 uv pip install -r requirements.txt
-playwright install chromium
 ```
 
 ### Strands Version
 ```bash
 cd strands
 uv pip install -r requirements.txt
-playwright install chromium
 ```
 
 ## 🔧 Configuration
 
-Both implementations share the same configuration:
+Both implementations share the same configuration. The S3 bucket is optional - if not specified, the agent will create one automatically using your AWS account ID:
 
 ```bash
+# Required
 export AWS_REGION="us-west-2"
-export RECORDING_ROLE_ARN="arn:aws:iam::account:role/BedrockAgentCoreRole"
-export S3_RECORDING_BUCKET="your-recordings-bucket"
+export AWS_ACCOUNT_ID="your-account-id"  # Required for automatic bucket creation
+
+# Required - IAM role with BedrockAgentCore permissions
+export RECORDING_ROLE_ARN="arn:aws:iam::your-account-id:role/BedrockAgentCoreRole"
+
+# Optional - S3 bucket (will be created as bedrock-agentcore-recordings-{account-id} if not specified)
+export S3_RECORDING_BUCKET="your-recordings-bucket"  
+
+# Optional - Custom ports
+export LIVE_VIEW_PORT=8000  # Default: 8000
+export REPLAY_VIEWER_PORT=8001  # Default: 8001
 ```
+
+### IAM Role Requirements
+
+The IAM role must have the following permissions:
+
+- BedrockAgentCore browser operations (create, delete, list)
+- S3 read/write access to the recordings bucket
+- Bedrock model invocation permissions
 
 ## 📊 Implementation Comparison
 
@@ -103,6 +132,7 @@ export S3_RECORDING_BUCKET="your-recordings-bucket"
 | **LLM calls** | `await llm.ainvoke()` | `bedrock_client.invoke_model()` |
 | **State access** | Direct dictionary | Safe getter with defaults |
 | **Error handling** | Graph node boundaries | Tool-level try/catch |
+| **Session persistence** | Custom implementation | Built-in S3SessionManager |
 | **Code reuse** | ~20% shared | ~20% shared |
 
 ## ⚙️ Running Each Implementation
@@ -155,19 +185,57 @@ future = asyncio.run_coroutine_threadsafe(
 return future.result(timeout=120)
 ```
 
-## 💰 Cost Management
+### Example: State Management
 
-Both implementations share the same cleanup scripts:
+**LangGraph**: Direct state dictionary
+```python
+state["competitor_data"][name] = extracted_data
+current_index = state["current_competitor_index"]
+```
+
+**Strands**: Safe state accessors with defaults
+```python
+competitor_data = self._safe_state_get("competitor_data", {})
+competitor_data[name] = extracted_data
+self.agent.state.set("competitor_data", competitor_data)
+```
+
+## Clean Up
+
+#### Automatic Cleanup
+Both implementations automatically clean up resources when the program ends:
+
+- BedrockAgentCore browsers are deleted
+- Code Interpreter sessions are terminated
+- Playwright connections are closed
+
+#### Manual Cleanup
+For orphaned resources or old recordings:
 
 ```bash
-# Manual cleanup (works for both)
-cd shared
-python cleanup_resources.py --clean-all
+# Clean up stuck browsers (main cost driver at $0.10/hour)
+python shared/cleanup_resources.py
 
-# Schedule automatic cleanup
+# Also delete old S3 recordings
+python shared/cleanup_resources.py --delete-old-recordings
+
+# Schedule automatic cleanup via cron
 crontab -e
-# Add: 0 */6 * * * python /path/to/shared/cleanup_resources.py
+# Add: 0 2 * * * cd /path/to/project && python shared/cleanup_resources.py
 ```
+
+## 🚀 Features
+
+Both implementations provide:
+
+- **Live Browser Viewing:** Watch the agent navigate in real-time
+- **Interactive Control:** Take/release control during automation
+- **Session Recording:** Complete audit trail saved to S3
+- **Session Replay:** Time-travel debugging of past analyses
+- **Network Interception:** Discover hidden API endpoints
+- **LLM Extraction:** Claude 3.7 Sonnet understands page context
+- **Code Interpreter:** Secure Python sandbox for analysis
+- **Parallel Processing:** Analyze multiple competitors simultaneously
 
 ## 🤝 Contributing
 
@@ -176,9 +244,6 @@ When contributing, please note:
 - Test both implementations independently
 - Only update shared files if the change works for both frameworks
 
-## 📄 License
-
-MIT License - See LICENSE file for details
 
 ## 🆘 Support
 
