@@ -12,20 +12,27 @@ This repository demonstrates how to implement AgentCore observability for Agents
 │   ├── README.md
 │   ├── requirements.txt
 │   └── runtime_with_strands_and_bedrock_models.ipynb
-└── 02-open-source-agents-3p/
-    ├── CrewAI/
-    │   ├── .env.example
-    │   ├── CrewAI_Observability.ipynb
-    │   └── requirements.txt
-    ├── Langgraph/
-    │   ├── .env.example
-    │   ├── Langgraph_Observability.ipynb
-    │   └── requirements.txt
-    ├── Strands/
-    │   ├── .env.example
-    │   ├── requirements.txt
-    │   └── Strands_Observability.ipynb
-    └── README.md
+├── 02-Agent-not-hosted-on-runtime/
+│   ├── CrewAI/
+│   │   ├── .env.example
+│   │   ├── CrewAI_Observability.ipynb
+│   │   └── requirements.txt
+│   ├── Langgraph/
+│   │   ├── .env.example
+│   │   ├── Langgraph_Observability.ipynb
+│   │   └── requirements.txt
+│   ├── Strands/
+│   │   ├── .env.example
+│   │   ├── requirements.txt
+│   │   └── Strands_Observability.ipynb
+│   └── README.md
+├── 03-advanced-concepts/
+│   └── 01-custom-span-creation/
+│       ├── .env.example
+│       ├── Custom_Span_Creation.ipynb
+│       └── requirements.txt
+├── README.md
+└── utils.py
 ```
 
 ## Overview
@@ -45,6 +52,12 @@ Examples showcasing observability for popular open-source agent frameworks not h
 - **CrewAI**: Create autonomous AI agents that work together in roles to accomplish tasks
 - **LangGraph**: Extend LangChain with stateful, multi-actor applications for complex reasoning systems
 - **Strands Agents**: Build LLM applications with complex workflows using model-driven agentic development
+
+### 3. Advanced Concepts (03-advanced-concepts)
+
+Advanced observability patterns and techniques:
+
+- **Custom Span Creation**: Learn how to create custom spans for detailed tracing and monitoring of specific operations within your agent workflows
 
 ## Getting Started
 

@@ -1,3 +1,5 @@
 crewai
 crewai-tools
 bedrock-agentcore
+langchain-community
+duckduckgo-search

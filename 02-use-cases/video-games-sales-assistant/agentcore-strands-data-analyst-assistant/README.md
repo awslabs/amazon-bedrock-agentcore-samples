@@ -21,6 +21,7 @@ Don't forget to review the **[Amazon Bedrock AgentCore documentation](https://do
 Before you begin, ensure you have:
 
 * **[Back-End Deployment - Data Source and Configuration Management Deployment with CDK](../cdk-agentcore-strands-data-analyst-assistant)**
+* **[Docker](https://www.docker.com)**
 * **Required Packages**:
   * Install the Amazon Bedrock AgentCore CLI:
     ```bash

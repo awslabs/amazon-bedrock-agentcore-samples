@@ -1,7 +1,7 @@
 #!/bin/bash
 # Bedrock AgentCore Gateway - Okta PKCE Local Development Setup
 
-PROJECT_DIR="/Users/rohillao/Documents/Volumes/devenv/projects/local/Rough/07-Operational-Support-Lambda-Web-Adapter/okta-auth"
+PROJECT_DIR="<project directory path>"
 
 echo "🚀 Setting up Bedrock AgentCore Gateway Okta PKCE Local Development Environment"
 

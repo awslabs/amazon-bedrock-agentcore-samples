@@ -1,20 +1,18 @@
 import json
 import logging
 from datetime import datetime, timezone
+from enum import Enum
 from pathlib import Path
-from typing import Optional, List
+from typing import List, Optional
 
 from fastapi import (
+    Depends,
     FastAPI,
-    Query,
     Header,
     HTTPException,
-    Depends,
+    Query,
 )
 from pydantic import BaseModel, Field
-from enum import Enum
-from fastapi.responses import JSONResponse
-
 from retrieve_api_key import retrieve_api_key
 
 # Configure logging with basicConfig
@@ -37,7 +35,9 @@ try:
     EXPECTED_API_KEY = retrieve_api_key(CREDENTIAL_PROVIDER_NAME)
     if not EXPECTED_API_KEY:
         logging.error("Failed to retrieve API key from credential provider")
-        raise RuntimeError("Cannot start server without valid API key from credential provider")
+        raise RuntimeError(
+            "Cannot start server without valid API key from credential provider"
+        )
 except Exception as e:
     logging.error(f"Error retrieving API key: {e}")
     raise RuntimeError(f"Cannot start server: {e}") from e
@@ -469,38 +469,47 @@ async def health_check(api_key: str = Depends(_validate_api_key)):
 
 
 if __name__ == "__main__":
-    import uvicorn
-    import sys
     import argparse
+    import sys
     from pathlib import Path
+
+    import uvicorn
 
     # Add parent directory to path to import config_utils
     sys.path.append(str(Path(__file__).parent.parent))
     from config_utils import get_server_port
 
     parser = argparse.ArgumentParser(description="K8s API Server")
-    parser.add_argument("--host", type=str, required=True, 
-                       help="Host to bind to (REQUIRED - must match SSL certificate hostname if using SSL)")
+    parser.add_argument(
+        "--host",
+        type=str,
+        required=True,
+        help="Host to bind to (REQUIRED - must match SSL certificate hostname if using SSL)",
+    )
     parser.add_argument("--ssl-keyfile", type=str, help="Path to SSL private key file")
     parser.add_argument("--ssl-certfile", type=str, help="Path to SSL certificate file")
     parser.add_argument("--port", type=int, help="Port to bind to (overrides config)")
-    
+
     args = parser.parse_args()
-    
+
     port = args.port if args.port else get_server_port("k8s")
-    
+
     # Configure SSL if both cert files are provided
     ssl_config = {}
     if args.ssl_keyfile and args.ssl_certfile:
         ssl_config = {
             "ssl_keyfile": args.ssl_keyfile,
-            "ssl_certfile": args.ssl_certfile
+            "ssl_certfile": args.ssl_certfile,
         }
         protocol = "HTTPS"
-        logging.warning(f"⚠️  SSL CERTIFICATE HOSTNAME WARNING: Ensure your SSL certificate is valid for hostname '{args.host}'")
-        logging.warning(f"⚠️  If using self-signed certificates, generate with: openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365 -nodes -subj '/CN={args.host}'")
+        logging.warning(
+            f"⚠️  SSL CERTIFICATE HOSTNAME WARNING: Ensure your SSL certificate is valid for hostname '{args.host}'"
+        )
+        logging.warning(
+            f"⚠️  If using self-signed certificates, generate with: openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365 -nodes -subj '/CN={args.host}'"
+        )
     else:
         protocol = "HTTP"
-    
+
     logging.info(f"Starting K8s server on {protocol}://{args.host}:{port}")
     uvicorn.run(app, host=args.host, port=port, **ssl_config)

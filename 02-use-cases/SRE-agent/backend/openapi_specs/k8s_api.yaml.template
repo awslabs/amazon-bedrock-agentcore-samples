@@ -1,0 +1,436 @@
+openapi: 3.0.3
+info:
+  title: Kubernetes Analysis API
+  version: 1.0.0
+  description: API for accessing Kubernetes cluster data and analysis
+servers:
+  - url: https://{{BACKEND_DOMAIN}}:8011
+    description: Remote development server for K8s API
+  - url: https://localhost:8011
+    description: Local development server for K8s API
+
+security:
+  - apiKey: []
+
+components:
+  securitySchemes:
+    apiKey:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: API key for authentication
+
+paths:
+  /pods/status:
+    get:
+      operationId: get_pod_status
+      summary: Retrieve pod information
+      parameters:
+        - name: namespace
+          in: query
+          schema:
+            type: string
+          description: Kubernetes namespace to filter pods
+        - name: pod_name
+          in: query
+          schema:
+            type: string
+          description: Specific pod name to retrieve
+      responses:
+        '200':
+          description: Pod status information
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  pods:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name:
+                          type: string
+                          description: Pod name
+                          example: "web-app-deployment-5c8d7f9b6d-k2n8p"
+                        namespace:
+                          type: string
+                          description: Kubernetes namespace
+                          example: "production"
+                        status:
+                          type: string
+                          description: Pod status
+                          enum: [Running, Pending, Succeeded, Failed, Unknown]
+                          example: "Running"
+                        phase:
+                          type: string
+                          description: Pod phase
+                          enum: [Pending, Running, Succeeded, Failed, Unknown]
+                          example: "Running"
+                        node:
+                          type: string
+                          description: Node where pod is running
+                          example: "node-1"
+                        created_at:
+                          type: string
+                          format: date-time
+                          description: Pod creation timestamp
+                          example: "2024-01-15T10:30:00Z"
+                        resource_usage:
+                          type: object
+                          description: Resource usage metrics
+                          properties:
+                            cpu:
+                              type: string
+                              description: CPU request/limit
+                              example: "250m"
+                            memory:
+                              type: string
+                              description: Memory request/limit
+                              example: "512Mi"
+                            cpu_utilization:
+                              type: string
+                              description: CPU utilization percentage
+                              example: "75%"
+                            memory_utilization:
+                              type: string
+                              description: Memory utilization percentage
+                              example: "85%"
+                example:
+                  pods:
+                    - name: "web-app-deployment-5c8d7f9b6d-k2n8p"
+                      namespace: "production"
+                      status: "Running"
+                      phase: "Running"
+                      node: "node-1"
+                      created_at: "2024-01-15T10:30:00Z"
+                      resource_usage:
+                        cpu: "250m"
+                        memory: "512Mi"
+                        cpu_utilization: "75%"
+                        memory_utilization: "85%"
+        '400':
+          description: Bad request - invalid parameters
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Invalid namespace parameter"
+        '401':
+          description: Unauthorized - invalid or missing API key
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail:
+                    type: string
+                    example: "Invalid or missing API key"
+        '429':
+          description: Too many requests - rate limit exceeded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Rate limit exceeded. Try again later."
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Internal server error occurred"
+  /deployments/status:
+    get:
+      operationId: get_deployment_status
+      summary: Check deployment health
+      parameters:
+        - name: namespace
+          in: query
+          schema:
+            type: string
+          description: Kubernetes namespace
+        - name: deployment_name
+          in: query
+          schema:
+            type: string
+          description: Specific deployment name
+      responses:
+        '200':
+          description: Deployment status information
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  deployments:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name:
+                          type: string
+                          description: Deployment name
+                          example: "web-app-deployment"
+                        namespace:
+                          type: string
+                          description: Kubernetes namespace
+                          example: "production"
+                        replicas:
+                          type: integer
+                          description: Desired number of replicas
+                          example: 3
+                        available_replicas:
+                          type: integer
+                          description: Number of available replicas
+                          example: 2
+                        unavailable_replicas:
+                          type: integer
+                          description: Number of unavailable replicas
+                          example: 1
+                        status:
+                          type: string
+                          description: Deployment status
+                          enum: [Healthy, Degraded, Failed]
+                          example: "Degraded"
+                example:
+                  deployments:
+                    - name: "web-app-deployment"
+                      namespace: "production"
+                      replicas: 3
+                      available_replicas: 2
+                      unavailable_replicas: 1
+                      status: "Degraded"
+        '400':
+          description: Bad request - invalid parameters
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Invalid deployment name parameter"
+        '401':
+          description: Unauthorized - invalid or missing API key
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail:
+                    type: string
+                    example: "Invalid or missing API key"
+        '429':
+          description: Too many requests - rate limit exceeded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Rate limit exceeded. Try again later."
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Internal server error occurred"
+  /events:
+    get:
+      operationId: get_cluster_events
+      summary: Fetch recent K8s events
+      parameters:
+        - name: since
+          in: query
+          schema:
+            type: string
+            format: date-time
+          description: Filter events since this timestamp
+        - name: severity
+          in: query
+          schema:
+            type: string
+            enum: [Warning, Error, Normal]
+          description: Filter by event severity
+      responses:
+        '200':
+          description: Cluster events
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  events:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        type:
+                          type: string
+                          description: Event type
+                          enum: [Normal, Warning, Error]
+                          example: "Warning"
+                        reason:
+                          type: string
+                          description: Event reason
+                          example: "FailedScheduling"
+                        object:
+                          type: string
+                          description: Kubernetes object reference
+                          example: "pod/web-app-deployment-5c8d7f9b6d-k2n8p"
+                        message:
+                          type: string
+                          description: Event message
+                          example: "0/3 nodes are available: 3 Insufficient memory"
+                        timestamp:
+                          type: string
+                          format: date-time
+                          description: Event timestamp
+                          example: "2024-01-15T14:20:00Z"
+                        namespace:
+                          type: string
+                          description: Kubernetes namespace
+                          example: "production"
+                        count:
+                          type: integer
+                          description: Number of occurrences
+                          example: 5
+                example:
+                  events:
+                    - type: "Warning"
+                      reason: "FailedScheduling"
+                      object: "pod/web-app-deployment-5c8d7f9b6d-k2n8p"
+                      message: "0/3 nodes are available: 3 Insufficient memory"
+                      timestamp: "2024-01-15T14:20:00Z"
+                      namespace: "production"
+                      count: 5
+        '400':
+          description: Bad request - invalid parameters
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Invalid severity parameter"
+        '401':
+          description: Unauthorized - invalid or missing API key
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail:
+                    type: string
+                    example: "Invalid or missing API key"
+        '429':
+          description: Too many requests - rate limit exceeded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Rate limit exceeded. Try again later."
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Internal server error occurred"
+  /resource_usage:
+    get:
+      operationId: get_resource_usage
+      summary: Monitor resource consumption
+      parameters:
+        - name: namespace
+          in: query
+          schema:
+            type: string
+          description: Filter by namespace
+        - name: resource_type
+          in: query
+          schema:
+            type: string
+            enum: [cpu, memory, pods]
+          description: Type of resource to monitor
+      responses:
+        '200':
+          description: Resource usage metrics
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  resource_usage:
+                    type: object
+                    properties:
+                      timestamp:
+                        type: string
+                        format: date-time
+                      cluster:
+                        type: object
+                      namespace_usage:
+                        type: object
+                      top_consumers:
+                        type: array
+                        items:
+                          type: object
+  /nodes/status:
+    get:
+      operationId: get_node_status
+      summary: Check node health
+      parameters:
+        - name: node_name
+          in: query
+          schema:
+            type: string
+          description: Specific node name
+      responses:
+        '200':
+          description: Node status information
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  nodes:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name:
+                          type: string
+                        status:
+                          type: string
+                        roles:
+                          type: array
+                          items:
+                            type: string
+                        capacity:
+                          type: object
+                        allocatable:
+                          type: object
+                        usage:
+                          type: object

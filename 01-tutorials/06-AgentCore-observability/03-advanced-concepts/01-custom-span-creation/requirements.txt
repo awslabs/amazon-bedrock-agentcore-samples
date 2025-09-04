@@ -1,0 +1,7 @@
+aws-opentelemetry-distro~=0.10.1
+python-dotenv
+strands-agents[otel]
+ddgs
+boto3
+botocore
+

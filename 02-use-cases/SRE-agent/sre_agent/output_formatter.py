@@ -1,7 +1,12 @@
 #!/usr/bin/env python3
 
 import logging
+import os
 from typing import Any, Dict, List, Optional
+
+from .constants import SREConstants
+from .llm_utils import create_llm_with_error_handling
+from .prompt_loader import prompt_loader
 
 # Configure logging with basicConfig
 logging.basicConfig(
@@ -16,8 +21,27 @@ logger = logging.getLogger(__name__)
 class SREOutputFormatter:
     """Simple markdown output formatter for SRE multi-agent responses."""
 
-    def __init__(self):
-        pass
+    def __init__(self, llm_provider: Optional[str] = None):
+        # Get provider from parameter, environment, or default to bedrock
+        self.llm_provider = llm_provider or os.getenv("LLM_PROVIDER", "bedrock")
+        logger.info(
+            f"SREOutputFormatter initialized with LLM provider: {self.llm_provider}"
+        )
+
+    def _create_llm(self, **kwargs):
+        """Create LLM instance with improved error handling."""
+        # Get output formatter specific config (with reduced max_tokens)
+        formatter_config = SREConstants.get_output_formatter_config(
+            self.llm_provider, **kwargs
+        )
+        logger.info(
+            f"Creating LLM for output formatter - Provider: {self.llm_provider}, Max tokens: {formatter_config['max_tokens']}"
+        )
+
+        # Use the centralized error handling with formatter-specific config
+        return create_llm_with_error_handling(
+            self.llm_provider, max_tokens=formatter_config["max_tokens"], **kwargs
+        )
 
     def _extract_steps_from_response(self, response: str) -> List[str]:
         """Extract numbered steps from agent response."""
@@ -43,6 +67,7 @@ class SREOutputFormatter:
         agent_results: Dict[str, Any],
         metadata: Dict[str, Any],
         plan: Optional[Dict[str, Any]] = None,
+        user_preferences: Optional[List[Dict[str, Any]]] = None,
     ) -> str:
         """Format a complete investigation response in clean markdown."""
 
@@ -57,15 +82,12 @@ class SREOutputFormatter:
         output.append("# 🔍 Investigation Results")
         output.append("")
         output.append(f"**Query:** {query}")
-        # Only show step progress if we have valid step data
-        if total_steps > 0 and current_step <= total_steps:
-            output.append(f"**Status:** Step {current_step} of {total_steps} Complete")
-        else:
-            output.append("**Status:** Investigation Complete")
         output.append("")
 
         # Executive Summary Section
-        executive_summary = self._generate_executive_summary(query, agent_results, metadata)
+        executive_summary = self._generate_executive_summary(
+            query, agent_results, metadata, user_preferences
+        )
         if executive_summary:
             output.append(executive_summary)
             output.append("")
@@ -128,104 +150,77 @@ class SREOutputFormatter:
 
         return "\n".join(output)
 
-
     def _generate_executive_summary(
         self,
         query: str,
         agent_results: Dict[str, Any],
-        metadata: Dict[str, Any]
+        metadata: Dict[str, Any],
+        user_preferences: Optional[List[Dict[str, Any]]] = None,
     ) -> str:
         """Generate executive summary using LLM analysis of investigation results."""
         if not agent_results:
             return ""
 
         try:
-            from langchain_anthropic import ChatAnthropic
             from langchain_core.messages import HumanMessage, SystemMessage
-            
-            # Create LLM instance
-            llm = ChatAnthropic(
-                model="claude-sonnet-4-20250514",
-                max_tokens=1000,
-                temperature=0.1,
-            )
-            
+
+            # Create LLM instance using configured provider
+            llm = self._create_llm()
+
             # Prepare agent results for analysis
             formatted_results = []
             for agent_name, result in agent_results.items():
                 if result and result != "No response provided":
                     formatted_results.append(f"**{agent_name}:**\n{result}\n")
-            
+
             results_text = "\n".join(formatted_results)
-            
-            # System prompt for executive summary generation
-            system_prompt = """You are an expert SRE analyst generating executive summaries for incident reports.
 
-CRITICAL REQUIREMENTS:
-- Base all conclusions ONLY on the provided agent investigation results
-- Distinguish between performance degradation (slow responses) vs actual outages (services down)
-- Only claim "outage" if evidence shows services completely non-responsive or failed
-- Specify actual affected services mentioned in results, not the queried service if it doesn't exist
-- Be conservative with severity assessments - require specific evidence
+            # Add user preferences to the context if available
+            if user_preferences:
+                import json
 
-EXECUTIVE SUMMARY FORMAT:
-```markdown
-## 📋 Executive Summary
+                prefs_text = json.dumps(user_preferences, indent=2, default=str)
+                results_text += f"\n\n**User Preferences:**\n{prefs_text}\n"
 
-### 🎯 Key Insights
-- **Root Cause**: [Primary issue identified with specific evidence]
-- **Impact**: [Performance degradation/Service instability/Service outage - based on evidence]
-- **Severity**: [Critical/High/Medium/Low with specific justification]
+            # Get prompts from prompt loader
+            system_prompt, user_prompt = prompt_loader.get_executive_summary_prompts(
+                query=query, results_text=results_text
+            )
 
-### ⚡ Next Steps
-1. **Immediate** (< 1 hour): [Most urgent action based on findings]
-2. **Short-term** (< 24 hours): [Resolution steps from investigation]
-3. **Long-term** (< 1 week): [Prevention measures]
-4. **Follow-up**: [Monitoring or review recommendations]
-
-### 🚨 Critical Alerts
-- [Only include if evidence shows immediate risks - no speculation]
-```
-
-SEVERITY GUIDELINES:
-- Critical: Security issues, complete service failures, data loss
-- High: Significant performance degradation (>5 sec response times), memory errors causing instability  
-- Medium: Moderate performance issues, intermittent errors
-- Low: Minor issues, warnings
-
-IMPACT GUIDELINES:
-- "Service outage": Only if evidence shows services completely down/failed
-- "Performance degradation": For high latency, timeouts, but service still responding
-- "Service instability": For memory errors, intermittent failures"""
-
-            user_prompt = f"""Generate an executive summary for this SRE investigation:
-
-**Original Query:** {query}
-
-**Investigation Results:**
-{results_text}
-
-Generate a concise, accurate executive summary based only on the evidence provided above. Focus on what executives and on-call engineers need to know immediately."""
+            # Log the prompts being sent to LLM for debugging
+            logger.info("=== EXECUTIVE SUMMARY PROMPT LOGGING ===")
+            logger.info(f"System Prompt Length: {len(system_prompt)} characters")
+            logger.info(f"User Prompt Length: {len(user_prompt)} characters")
+            if user_preferences:
+                logger.info(
+                    f"User preferences included in context: {len(user_preferences)} preference items"
+                )
+                logger.info(
+                    f"User preferences preview: {str(user_preferences)[:200]}..."
+                )
+            else:
+                logger.info(
+                    "No user preferences provided to executive summary generation"
+                )
+            logger.info(f"User Prompt Content:\n{user_prompt}")
+            logger.info("=== END EXECUTIVE SUMMARY PROMPT LOGGING ===")
 
             # Generate executive summary
             messages = [
                 SystemMessage(content=system_prompt),
-                HumanMessage(content=user_prompt)
+                HumanMessage(content=user_prompt),
             ]
-            
+
             response = llm.invoke(messages)
-            return response.content.strip()
-            
+            return str(response.content).strip()
+
         except Exception as e:
             logger.error(f"Error generating executive summary with LLM: {e}")
             # Fallback to simple summary if LLM fails
             return self._generate_fallback_summary(query, agent_results)
 
-
     def _generate_fallback_summary(
-        self,
-        query: str,
-        agent_results: Dict[str, Any]
+        self, query: str, agent_results: Dict[str, Any]
     ) -> str:
         """Fallback executive summary if LLM generation fails."""
         return """## 📋 Executive Summary
@@ -282,6 +277,6 @@ Generate a concise, accurate executive summary based only on the evidence provid
         return "\n".join(output)
 
 
-def create_formatter() -> SREOutputFormatter:
+def create_formatter(llm_provider: Optional[str] = None) -> SREOutputFormatter:
     """Create and return a new SRE output formatter instance."""
-    return SREOutputFormatter()
+    return SREOutputFormatter(llm_provider=llm_provider)

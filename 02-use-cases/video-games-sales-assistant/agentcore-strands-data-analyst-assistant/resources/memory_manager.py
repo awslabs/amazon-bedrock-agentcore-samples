@@ -53,7 +53,7 @@ def create_memory(environment: str = DEFAULT_ENVIRONMENT,
             description="Short-term memory for data analyst assistant",
             event_expiry_days=expiry_days,  # Retention period for short-term memory (up to 365 days)
         )
-        memory_id = memory['memoryId']
+        memory_id = memory['id']
         logger.info(f"✅ Created memory: {memory_id}")
         
         # Store memory ID in parameter store if parameter_store_name is provided

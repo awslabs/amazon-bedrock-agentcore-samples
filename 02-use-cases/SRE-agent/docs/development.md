@@ -29,9 +29,6 @@ pytest -vv -s
 Maintain code quality using automated tools:
 
 ```bash
-# Format code with black
-black sre_agent/ tests/
-
 # Check type hints with mypy
 mypy sre_agent/
 

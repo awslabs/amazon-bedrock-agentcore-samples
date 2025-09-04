@@ -42,8 +42,9 @@ class MemoryHook(HookProvider):
                 # context = "\n".join(context_messages)
                 # Add context to agent's system prompt.
                 event.agent.system_prompt += """
-                Do not respond to user preferences or user facts. 
+                Do not respond with user preferences or user facts. 
                 Strictly use user preferences and user facts to know more about the user.
+                Also be aware that this information can be outdated.
                 """
                 event.agent.messages = context_messages
 
@@ -99,7 +100,6 @@ class MemoryHook(HookProvider):
                 )
 
         except Exception as e:
-            print(messages[-1])
             raise RuntimeError(f"Memory save error: {e}")
 
     def register_hooks(self, registry: HookRegistry):

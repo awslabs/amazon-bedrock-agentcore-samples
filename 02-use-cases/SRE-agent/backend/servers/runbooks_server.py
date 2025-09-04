@@ -4,15 +4,16 @@ from pathlib import Path
 from typing import Optional
 
 from fastapi import (
+    Depends,
     FastAPI,
-    Query,
-    Path as PathParam,
     Header,
     HTTPException,
-    Depends,
+    Query,
+)
+from fastapi import (
+    Path as PathParam,
 )
 from fastapi.responses import JSONResponse
-
 from retrieve_api_key import retrieve_api_key
 
 # Configure logging with basicConfig
@@ -34,7 +35,9 @@ try:
     EXPECTED_API_KEY = retrieve_api_key(CREDENTIAL_PROVIDER_NAME)
     if not EXPECTED_API_KEY:
         logging.error("Failed to retrieve API key from credential provider")
-        raise RuntimeError("Cannot start server without valid API key from credential provider")
+        raise RuntimeError(
+            "Cannot start server without valid API key from credential provider"
+        )
 except Exception as e:
     logging.error(f"Error retrieving API key: {e}")
     raise RuntimeError(f"Cannot start server: {e}") from e
@@ -108,12 +111,12 @@ async def search_runbooks(
         )
         for i, runbook in enumerate(runbooks):
             logging.info(
-                f"  📖 Runbook {i+1}: {runbook.get('title', 'No title')} (ID: {runbook.get('id', 'No ID')})"
+                f"  📖 Runbook {i + 1}: {runbook.get('title', 'No title')} (ID: {runbook.get('id', 'No ID')})"
             )
             steps = runbook.get("steps", [])
             logging.info(f"     Steps count: {len(steps)}")
             for j, step in enumerate(steps[:3]):  # Show first 3 steps for brevity
-                logging.info(f"     Step {j+1}: {step}")
+                logging.info(f"     Step {j + 1}: {step}")
             if len(steps) > 3:
                 logging.info(f"     ... and {len(steps) - 3} more steps")
 
@@ -150,7 +153,7 @@ async def get_incident_playbook(
                 steps = playbook.get("steps", [])
                 logging.info(f"📝 RUNBOOKS API: Playbook has {len(steps)} steps:")
                 for i, step in enumerate(steps):
-                    logging.info(f"   Step {i+1}: {step}")
+                    logging.info(f"   Step {i + 1}: {step}")
 
                 logging.info(
                     f"📤 RUNBOOKS API: Returning complete playbook data: {json.dumps(playbook, indent=2)}"
@@ -211,12 +214,12 @@ async def get_troubleshooting_guide(
         )
         for i, guide in enumerate(guides):
             logging.info(
-                f"  📖 Guide {i+1}: {guide.get('title', 'No title')} (ID: {guide.get('id', 'No ID')})"
+                f"  📖 Guide {i + 1}: {guide.get('title', 'No title')} (ID: {guide.get('id', 'No ID')})"
             )
             steps = guide.get("steps", [])
             logging.info(f"     Steps count: {len(steps)}")
             for j, step in enumerate(steps[:3]):  # Show first 3 steps for brevity
-                logging.info(f"     Step {j+1}: {step}")
+                logging.info(f"     Step {j + 1}: {step}")
             if len(steps) > 3:
                 logging.info(f"     ... and {len(steps) - 3} more steps")
 
@@ -316,12 +319,12 @@ async def get_common_resolutions(
         )
         for i, resolution in enumerate(matching_resolutions):
             logging.info(
-                f"  📖 Resolution {i+1}: {resolution.get('issue', 'No issue title')} (ID: {resolution.get('id', 'No ID')})"
+                f"  📖 Resolution {i + 1}: {resolution.get('issue', 'No issue title')} (ID: {resolution.get('id', 'No ID')})"
             )
             steps = resolution.get("steps", [])
             logging.info(f"     Steps count: {len(steps)}")
             for j, step in enumerate(steps[:3]):  # Show first 3 steps for brevity
-                logging.info(f"     Step {j+1}: {step}")
+                logging.info(f"     Step {j + 1}: {step}")
             if len(steps) > 3:
                 logging.info(f"     ... and {len(steps) - 3} more steps")
 
@@ -341,38 +344,47 @@ async def health_check(api_key: str = Depends(_validate_api_key)):
 
 
 if __name__ == "__main__":
-    import uvicorn
-    import sys
     import argparse
+    import sys
     from pathlib import Path
+
+    import uvicorn
 
     # Add parent directory to path to import config_utils
     sys.path.append(str(Path(__file__).parent.parent))
     from config_utils import get_server_port
 
     parser = argparse.ArgumentParser(description="Runbooks API Server")
-    parser.add_argument("--host", type=str, required=True, 
-                       help="Host to bind to (REQUIRED - must match SSL certificate hostname if using SSL)")
+    parser.add_argument(
+        "--host",
+        type=str,
+        required=True,
+        help="Host to bind to (REQUIRED - must match SSL certificate hostname if using SSL)",
+    )
     parser.add_argument("--ssl-keyfile", type=str, help="Path to SSL private key file")
     parser.add_argument("--ssl-certfile", type=str, help="Path to SSL certificate file")
     parser.add_argument("--port", type=int, help="Port to bind to (overrides config)")
-    
+
     args = parser.parse_args()
-    
+
     port = args.port if args.port else get_server_port("runbooks")
-    
+
     # Configure SSL if both cert files are provided
     ssl_config = {}
     if args.ssl_keyfile and args.ssl_certfile:
         ssl_config = {
             "ssl_keyfile": args.ssl_keyfile,
-            "ssl_certfile": args.ssl_certfile
+            "ssl_certfile": args.ssl_certfile,
         }
         protocol = "HTTPS"
-        logging.warning(f"⚠️  SSL CERTIFICATE HOSTNAME WARNING: Ensure your SSL certificate is valid for hostname '{args.host}'")
-        logging.warning(f"⚠️  If using self-signed certificates, generate with: openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365 -nodes -subj '/CN={args.host}'")
+        logging.warning(
+            f"⚠️  SSL CERTIFICATE HOSTNAME WARNING: Ensure your SSL certificate is valid for hostname '{args.host}'"
+        )
+        logging.warning(
+            f"⚠️  If using self-signed certificates, generate with: openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365 -nodes -subj '/CN={args.host}'"
+        )
     else:
         protocol = "HTTP"
-    
+
     logging.info(f"Starting Runbooks server on {protocol}://{args.host}:{port}")
     uvicorn.run(app, host=args.host, port=port, **ssl_config)

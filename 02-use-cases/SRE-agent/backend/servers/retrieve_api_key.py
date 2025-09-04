@@ -9,12 +9,11 @@ by fetching the Secrets Manager ARN and then retrieving the secret value.
 import argparse
 import json
 import logging
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
 
 import boto3
 from botocore.config import Config
 from botocore.exceptions import ClientError
-
 
 # Configure logging with basicConfig
 logging.basicConfig(
@@ -34,10 +33,7 @@ DEFAULT_ENDPOINT_URL = (
 )
 
 
-def _create_acps_client(
-    region: str,
-    endpoint_url: str
-) -> Any:
+def _create_acps_client(region: str, endpoint_url: str) -> Any:
     """
     Create and configure the Agent Credential Provider Service client.
 
@@ -62,8 +58,7 @@ def _create_acps_client(
 
 
 def _get_credential_provider_details(
-    client: Any,
-    provider_name: str
+    client: Any, provider_name: str
 ) -> Optional[Dict[str, Any]]:
     """
     Get API key credential provider details including Secrets Manager ARN.
@@ -80,26 +75,27 @@ def _get_credential_provider_details(
         response = client.get_api_key_credential_provider(name=provider_name)
         logger.info(f"Successfully retrieved credential provider: {provider_name}")
         logger.debug(f"Full response: {response}")
-        
+
         # Log all keys in the response for debugging
         if response:
             logger.info(f"Response keys: {list(response.keys())}")
             for key, value in response.items():
                 if key != "apiKey":  # Don't log sensitive data
                     logger.info(f"  {key}: {value}")
-        
+
         return response
     except ClientError as e:
         logger.error(f"Failed to get credential provider: {e}")
-        logger.error(f"Error code: {e.response.get('Error', {}).get('Code', 'Unknown')}")
-        logger.error(f"Error message: {e.response.get('Error', {}).get('Message', 'Unknown')}")
+        logger.error(
+            f"Error code: {e.response.get('Error', {}).get('Code', 'Unknown')}"
+        )
+        logger.error(
+            f"Error message: {e.response.get('Error', {}).get('Message', 'Unknown')}"
+        )
         return None
 
 
-def _retrieve_secret_value(
-    secrets_manager_arn: str,
-    region: str
-) -> Optional[str]:
+def _retrieve_secret_value(secrets_manager_arn: str, region: str) -> Optional[str]:
     """
     Retrieve the secret value from AWS Secrets Manager.
 
@@ -112,36 +108,33 @@ def _retrieve_secret_value(
     """
     try:
         # Create Secrets Manager client
-        secrets_client = boto3.client(
-            service_name="secretsmanager",
-            region_name=region
-        )
+        secrets_client = boto3.client(service_name="secretsmanager", region_name=region)
 
         # Retrieve the secret
-        response = secrets_client.get_secret_value(
-            SecretId=secrets_manager_arn
-        )
+        response = secrets_client.get_secret_value(SecretId=secrets_manager_arn)
 
         # Extract the secret value
         if "SecretString" in response:
             secret_string = response["SecretString"]
             logger.debug(f"Secret string type: {type(secret_string)}")
-            
+
             # Try to parse as JSON first
             try:
                 secret_data = json.loads(secret_string)
                 logger.info(f"Secret is JSON with keys: {list(secret_data.keys())}")
-                
+
                 # Extract the API key from the known field
                 api_key = secret_data.get("api_key_value")
                 if api_key:
-                    logger.info("Successfully retrieved API key from 'api_key_value' field")
+                    logger.info(
+                        "Successfully retrieved API key from 'api_key_value' field"
+                    )
                     return api_key
                 else:
                     logger.error("No 'api_key_value' field found in secret")
                     logger.error(f"Available fields: {list(secret_data.keys())}")
                     return None
-                
+
             except json.JSONDecodeError:
                 # If not JSON, the secret might be the API key directly
                 logger.info("Secret is not JSON, treating as raw API key")
@@ -161,7 +154,7 @@ def _retrieve_secret_value(
 def retrieve_api_key(
     credential_provider_name: str,
     region: str = DEFAULT_REGION,
-    endpoint_url: str = DEFAULT_ENDPOINT_URL
+    endpoint_url: str = DEFAULT_ENDPOINT_URL,
 ) -> Optional[str]:
     """
     Main function to retrieve API key from credential provider.
@@ -181,8 +174,7 @@ def retrieve_api_key(
 
     # Get credential provider details
     provider_details = _get_credential_provider_details(
-        client,
-        credential_provider_name
+        client, credential_provider_name
     )
 
     if not provider_details:
@@ -196,15 +188,13 @@ def retrieve_api_key(
         logger.error("No apiKeySecretArn found in provider details")
         logger.error(f"Available fields in response: {list(provider_details.keys())}")
         return None
-    
+
     secrets_manager_arn = api_key_secret_arn.get("secretArn")
     if not secrets_manager_arn:
         logger.error("No secretArn found in apiKeySecretArn")
         logger.error(f"Available fields in apiKeySecretArn: {list(api_key_secret_arn.keys())}")
         return None
-
     logger.info(f"Using Secrets Manager ARN: {secrets_manager_arn}")
-
     # Retrieve the API key from Secrets Manager
     api_key = _retrieve_secret_value(secrets_manager_arn, region)
 
@@ -259,8 +249,9 @@ def main() -> None:
     )
 
     if api_key:
-        print(f"✅ Successfully retrieved API key")
-        print(f"📄 API Key: {api_key}")
+        print("✅ Successfully retrieved API key")
+        # Do not print the full API key.
+        print("ℹ️ API key has been securely retrieved and is available for programmatic use.")
     else:
         print("❌ Failed to retrieve API key")
 

@@ -70,7 +70,7 @@ ApexChartsx Technical Specifications:\n\
     - Format decimal values to two places using formatter functions\n\
     - Use simple JavaScript functions (no moment.js)\n\
 \n\
-ApexChartsx Rules to Avoid Known Erros:\n\
+ApexChartsx Rules to Avoid Known Errors:\n\
 \n\
    - Do not use Multiple Y Axis for bars, those are not supported.\n\
    - In JSON format, avoid the error: raise JSONDecodeError("Expecting value", s, err.value) from None\n\

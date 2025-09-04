@@ -15,7 +15,7 @@ and for a Strands Agents with an OpenAI model check [here](../03-strands-with-op
 | Tutorial type       | Conversational                                                                   |
 | Agent type          | Single                                                                           |
 | Agentic Framework   | Strands Agents                                                                   |
-| LLM model           | Anthropic Claude Sonnet 4                                                        |
+| LLM model           | Anthropic Claude Sonnet 3.7                                                        |
 | Tutorial components | Hosting agent on AgentCore Runtime. Using Strands Agent and Amazon Bedrock Model |
 | Tutorial vertical   | Cross-vertical                                                                   |
 | Example complexity  | Easy                                                                             |

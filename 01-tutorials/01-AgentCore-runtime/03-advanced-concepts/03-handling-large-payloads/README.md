@@ -11,7 +11,7 @@ This tutorial demonstrates how Amazon Bedrock AgentCore Runtime handles large pa
 | Tutorial type       | Large Payload & Multi-Modal Processing                       |
 | Agent type          | Single                                                       |
 | Agentic Framework   | Strands Agents                                               |
-| LLM model           | Anthropic Claude Sonnet 4                                    |
+| LLM model           | Anthropic Claude Sonnet 3.7                                    |
 | Tutorial components | Large File Processing, Image Analysis, Excel Data Processing |
 | Tutorial vertical   | Data Analysis & Multi-Modal AI                               |
 | Example complexity  | Intermediate                                                 |

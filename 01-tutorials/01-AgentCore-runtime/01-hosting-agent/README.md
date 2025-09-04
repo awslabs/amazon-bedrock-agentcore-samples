@@ -4,7 +4,7 @@
 
 This tutorial demonstrates how to host AI agents on **Amazon Bedrock AgentCore Runtime** using the Amazon Bedrock AgentCore Python SDK. Learn to transform your agent code into a standardized HTTP service that integrates seamlessly with Amazon Bedrock's infrastructure.
 
-AgentCore Runtime is a **framework and model-agnostic** platform that can host agents built with any agentic framework (Strands Agents, LangGraph, CrewAI) and any LLM model (Amazon Bedrock, OpenAI, etc.).
+AgentCore Runtime is a **framework and model-agnostic** platform that can host agents built with any agentic framework (Strands Agents, LangGraph, CrewAI) and any LLM model (in Amazon Bedrock, OpenAI, etc.).
 
 The Amazon Bedrock AgentCore Python SDK acts as a wrapper that:
 
@@ -21,7 +21,7 @@ When hosting agents, the SDK automatically:
 
 - Hosts your agent on port `8080`
 - Provides two key endpoints:
-  - **`/entrypoint`**: Primary agent interaction (JSON input → JSON/SSE output)
+  - **`/invocations`**: Primary agent interaction (JSON input → JSON/SSE output)
   - **`/ping`**: Health check for monitoring
 
 ![Hosting agent](images/hosting_agent_python_sdk.png)
@@ -49,7 +49,7 @@ This tutorial includes three hands-on examples to get you started:
 ## Key Benefits
 
 - **Framework Agnostic**: Works with any Python-based agent framework
-- **Model Flexible**: Support for Amazon Bedrock, OpenAI, and other LLM providers
+- **Model Flexible**: Support for LLMs in Amazon Bedrock, OpenAI, and other LLM providers
 - **Production Ready**: Built-in health checks and monitoring
 - **Easy Integration**: Minimal code changes required
 - **Scalable**: Designed for enterprise workloads

@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Device Management Assistant</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/styles.css') }}">
+    <style>
+        .user-info {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 15px;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .user-name {
+            font-weight: bold;
+            color: white;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            max-width: 120px;
+        }
+        .logout-btn {
+            background-color: #ff9900;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 5px 10px;
+            cursor: pointer;
+            font-size: 12px;
+            white-space: nowrap;
+        }
+        .logout-btn:hover {
+            background-color: #e88a00;
+        }
+        .typing-indicator {
+            display: inline-block;
+            margin-left: 5px;
+        }
+        .typing-indicator span {
+            display: inline-block;
+            width: 6px;
+            height: 6px;
+            background-color: #888;
+            border-radius: 50%;
+            margin: 0 2px;
+            animation: typing 1.4s infinite both;
+        }
+        .typing-indicator span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+        .typing-indicator span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+        @keyframes typing {
+            0% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+            100% { transform: translateY(0); }
+        }
+        .device-item {
+            background-color: rgba(0, 123, 255, 0.1);
+            border-left: 3px solid #007bff;
+            padding: 8px 12px;
+            margin: 5px 0;
+            border-radius: 4px;
+        }
+        .device-item strong {
+            color: #007bff;
+        }
+        pre {
+            background-color: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 4px;
+            padding: 12px;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+        pre.json {
+            background-color: #f8f9fa;
+            border-left: 3px solid #28a745;
+        }
+        code {
+            background-color: #f8f9fa;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <h2>Device Management</h2>
+            <div class="user-info">
+                <span class="user-name" title="{{ user.username if user.username else (user.name if user.name else user.email) }}">
+                    {{ user.username if user.username else (user.name if user.name else user.email) }}
+                </span>
+                <a href="/logout"><button class="logout-btn">Logout</button></a>
+            </div>
+            <div class="menu">
+                <div class="menu-item active">Chat Assistant</div>
+                <div class="menu-item">About</div>
+            </div>
+            <div class="info-box">
+                <h3>Example Commands</h3>
+                <ul>
+                    <li>List all devices</li>
+                    <li>Show settings for device DEV001</li>
+                    <li>List WiFi networks for Living Room Router</li>
+                    <li>Update WiFi SSID to MyNewNetwork on device DEV001</li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="main-content">
+            <div class="chat-container">
+                <div class="chat-header">
+                    <h2>Device Management Assistant</h2>
+                </div>
+                <div class="chat-messages" id="chat-messages">
+                    <div class="message system">
+                        <div class="message-content">
+                            <p>👋 Welcome to the Device Management Assistant!</p>
+                            <p>I can help you manage your connected devices, check their status, and update settings. Try asking me about your devices or specific settings.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="chat-input">
+                    <textarea id="user-input" placeholder="Type your message here..." rows="1"></textarea>
+                    <button id="send-button">Send</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const chatMessages = document.getElementById('chat-messages');
+        const userInput = document.getElementById('user-input');
+        const sendButton = document.getElementById('send-button');
+        
+        // Generate a unique client ID for this session
+        const clientId = Date.now() + Math.random().toString(36).substring(2);
+        
+        // WebSocket connection
+        const ws = new WebSocket(`ws://${window.location.host}/ws/${clientId}`);
+        
+        // Track current response message element for streaming
+        let currentResponseElement = null;
+        let currentResponseContent = '';
+        
+        // Handle WebSocket events
+        ws.onopen = () => {
+            console.log('WebSocket connection established');
+        };
+        
+        ws.onmessage = (event) => {
+            try {
+                const data = JSON.parse(event.data);
+                
+                if (data.error) {
+                    // Display error message
+                    removeTypingIndicator();
+                    addMessage('error', data.error);
+                    currentResponseElement = null;
+                    currentResponseContent = '';
+                } else if (data.complete || data.response || data.final_response) {
+                    // Response is complete - display the final result
+                    removeTypingIndicator();
+                    
+                    let responseText = '';
+                    if (data.final_response) {
+                        responseText = data.final_response;
+                    } else if (data.response) {
+                        responseText = data.response;
+                    } else if (currentResponseContent) {
+                        responseText = currentResponseContent;
+                    }
+                    
+                    if (responseText) {
+                        addMessage('assistant', responseText);
+                    } else {
+                        addMessage('error', 'No response content received');
+                    }
+                    
+                    // Reset streaming state
+                    currentResponseElement = null;
+                    currentResponseContent = '';
+                } else if (data.status) {
+                    // Display status message
+                    addMessage('system', data.status);
+                } else {
+                    // Log unexpected data format for debugging
+                    console.log('Unexpected message format:', data);
+                }
+                
+                // Scroll to bottom
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+                
+            } catch (error) {
+                console.error('Error parsing WebSocket message:', error);
+                console.log('Raw message:', event.data);
+                removeTypingIndicator();
+                addMessage('error', 'Error processing server response');
+            }
+        };
+        
+        ws.onclose = () => {
+            console.log('WebSocket connection closed');
+            addMessage('system', 'Connection closed. Please refresh the page to reconnect.');
+        };
+        
+        ws.onerror = (error) => {
+            console.error('WebSocket error:', error);
+            addMessage('error', 'Connection error. Please refresh the page to try again.');
+        };
+        
+        // Send message when button is clicked
+        sendButton.addEventListener('click', sendMessage);
+        
+        // Send message when Enter key is pressed (but allow Shift+Enter for new lines)
+        userInput.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                sendMessage();
+            }
+        });
+        
+        // Auto-resize textarea as user types
+        userInput.addEventListener('input', () => {
+            userInput.style.height = 'auto';
+            userInput.style.height = (userInput.scrollHeight) + 'px';
+        });
+        
+        function sendMessage() {
+            const message = userInput.value.trim();
+            if (!message) return;
+            
+            // Add user message to chat
+            addMessage('user', message);
+            
+            // Add typing indicator
+            addTypingIndicator();
+            
+            // Send message to server
+            ws.send(message);
+            
+            // Clear input
+            userInput.value = '';
+            userInput.style.height = 'auto';
+            
+            // Reset current response tracking
+            currentResponseElement = null;
+            currentResponseContent = '';
+            
+            // Scroll to bottom
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+        
+        function addMessage(role, content) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${role}`;
+            
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'message-content';
+            
+            // Safe formatting without innerHTML
+            if (role === 'user') {
+                contentDiv.textContent = content;
+            } else {
+                formatContentSafely(contentDiv, content);
+            }
+            
+            messageDiv.appendChild(contentDiv);
+            chatMessages.appendChild(messageDiv);
+        }
+        
+
+        
+        function formatContentSafely(container, content) {
+            const lines = content.split('\n');
+            
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i];
+                
+                // Handle code blocks
+                if (line.startsWith('```')) {
+                    const codeBlock = document.createElement('pre');
+                    const codeElement = document.createElement('code');
+                    
+                    // Collect code content
+                    let codeContent = '';
+                    i++; // Skip opening ```
+                    while (i < lines.length && !lines[i].startsWith('```')) {
+                        codeContent += lines[i] + '\n';
+                        i++;
+                    }
+                    
+                    codeElement.textContent = codeContent.trim();
+                    codeBlock.appendChild(codeElement);
+                    container.appendChild(codeBlock);
+                } else if (line.trim() === '') {
+                    // Empty line - add line break
+                    container.appendChild(document.createElement('br'));
+                } else {
+                    // Regular line with basic formatting
+                    const p = document.createElement('p');
+                    p.style.margin = '0.5em 0';
+                    
+                    // Handle bold text **text**
+                    if (line.includes('**')) {
+                        formatLineWithBold(p, line);
+                    } else {
+                        p.textContent = line;
+                    }
+                    
+                    container.appendChild(p);
+                }
+            }
+        }
+        
+        function formatLineWithBold(container, text) {
+            const parts = text.split('**');
+            
+            for (let i = 0; i < parts.length; i++) {
+                if (i % 2 === 0) {
+                    // Regular text
+                    if (parts[i]) {
+                        container.appendChild(document.createTextNode(parts[i]));
+                    }
+                } else {
+                    // Bold text
+                    const bold = document.createElement('strong');
+                    bold.textContent = parts[i];
+                    container.appendChild(bold);
+                }
+            }
+        }
+        
+        function addTypingIndicator() {
+            // Remove any existing typing indicator
+            removeTypingIndicator();
+            
+            // Create typing indicator safely
+            const typingDiv = document.createElement('div');
+            typingDiv.className = 'message assistant typing-message';
+            
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'message-content';
+            
+            contentDiv.appendChild(document.createTextNode('Thinking'));
+            
+            const indicatorDiv = document.createElement('div');
+            indicatorDiv.className = 'typing-indicator';
+            
+            for (let i = 0; i < 3; i++) {
+                const span = document.createElement('span');
+                indicatorDiv.appendChild(span);
+            }
+            
+            contentDiv.appendChild(indicatorDiv);
+            typingDiv.appendChild(contentDiv);
+            chatMessages.appendChild(typingDiv);
+            
+            // Scroll to bottom
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+        
+        function removeTypingIndicator() {
+            const typingIndicator = document.querySelector('.typing-message');
+            if (typingIndicator) {
+                typingIndicator.remove();
+            }
+        }
+    </script>
+</body>
+</html>

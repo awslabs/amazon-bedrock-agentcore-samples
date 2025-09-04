@@ -46,7 +46,11 @@ agents:
 global_tools:
   - x-amz-bedrock-agentcore-search  # Universal search tool
 
+# AWS Configuration
+aws:
+  # region: "us-east-1"  # AWS region for Bedrock models and memory storage (uncomment to override)
+
 # Gateway configuration
 gateway:
-  uri: "your_agentcore_gateway_url"
+  uri: "https://sre-gateway-i7ge1zayhw.gateway.bedrock-agentcore.us-east-1.amazonaws.com"
 

@@ -1,7 +1,7 @@
 # Customer Support Agent
 
-> [!CAUTION]
-> The examples provided in this repository are for experimental and educational purposes only. They demonstrate concepts and techniques but are not intended for direct use in production environments. Make sure to have Amazon Bedrock Guardrails in place to protect against [prompt injection](https://docs.aws.amazon.com/bedrock/latest/userguide/prompt-injection.html).
+> [!IMPORTANT]
+> The examples provided in this repository are for experimental and educational purposes only. They demonstrate concepts and techniques but are not intended for direct use in production environments.
 
 This is a customer support agent implementation using AWS Bedrock AgentCore framework. The system provides an AI-powered customer support interface with capabilities for warranty checking, customer profile management, Google calendar integration, and Amazon Bedrock Knowledge Base retrieval.
 
@@ -122,24 +122,33 @@ This is a customer support agent implementation using AWS Bedrock AgentCore fram
 
 5. **Setup Agent Runtime**
 
-    ```bash
-    agentcore configure --entrypoint main.py -er arn:aws:iam::<Account-Id>:role/<Role> --name customersupport<AgentName>
-    ```
+> [!CAUTION]
+> Please ensure the name of the agent starts with `customersupport`.
+    
+  ```bash
+  agentcore configure --entrypoint main.py -er arn:aws:iam::<Account-Id>:role/<Role> --name customersupport<AgentName>
+  ```
 
-    Use `./scripts/list_ssm_parameters.sh` to fill:
-    - `Role = ValueOf(/app/customersupport/agentcore/agentcore_iam_role)`
-    - `OAuth Discovery URL = ValueOf(/app/customersupport/agentcore/cognito_discovery_url)`
-    - `OAuth client id = ValueOf(/app/customersupport/agentcore/web_client_id)`.
+  Use `./scripts/list_ssm_parameters.sh` to fill:
+  - `Role = ValueOf(/app/customersupport/agentcore/runtime_iam_role)`
+  - `OAuth Discovery URL = ValueOf(/app/customersupport/agentcore/cognito_discovery_url)`
+  - `OAuth client id = ValueOf(/app/customersupport/agentcore/web_client_id)`.
 
-    ![configure](./images/runtime_configure.png)
+  ![configure](./images/runtime_configure.png)
 
-    ```bash
-    agentcore launch
+  > [!CAUTION]
+  > Please make sure to delete `.agentcore.yaml` before running agentcore launch.
 
-    python test/test_agent.py customersupport<AgentName> -p "Hi"
-    ```
+  ```bash
 
-    ![code](./images/code.png)
+  rm .agentcore.yaml
+
+  agentcore launch
+
+  python test/test_agent.py customersupport<AgentName> -p "Hi"
+  ```
+
+  ![code](./images/code.png)
 
 6. **Local Host Streamlit UI**
 

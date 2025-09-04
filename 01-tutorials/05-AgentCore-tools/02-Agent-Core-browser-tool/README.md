@@ -1,13 +1,15 @@
 # Amazon Bedrock AgentCore Browser Tool
 
 ## Overview
-Amazon Bedrock AgentCore Browser Tool provides AI agents with a secure, fully managed way to interact with websites just like humans do. It allows agents to navigate web pages, fill out forms, and complete complex tasks without requiring developers to write and maintain custom automation scripts. 
+
+Amazon Bedrock AgentCore Browser Tool provides AI agents with a secure, fully managed way to interact with websites just like humans do. It allows agents to navigate web pages, fill out forms, and complete complex tasks without requiring developers to write and maintain custom automation scripts.
 
 ## How it works
 
 A browser tool sandbox is a secure execution environment that enables AI agents to safely interact with web browsers. When a user makes a request, the Large Language Model (LLM) selects appropriate tools and translates commands. These commands are executed within a controlled sandbox environment containing a headless browser and hosted library server (using tools like Playwright). The sandbox provides isolation and security by containing web interactions within a restricted space, preventing unauthorized system access. The agent receives feedback through screenshots and can perform automated tasks while maintaining system security. This setup enables safe web automation for AI agents
 
 ![architecture local](../02-Agent-Core-browser-tool/images/browser-tool.png)
+
 ## Key Features
 
 ### Secure, Managed Web Interaction
@@ -44,7 +46,7 @@ The Amazon Bedrock AgentCore Browser Tool is suitable for a wide range of applic
 
 In these tutorials we will cover the following functionality:
 
-- [Getting Started with Bedrock AgentCore Browser Tool and NovaAct](getting_started-agentcore-browser-tool-with-nova-act.ipynb)
-- [Amazon Bedrock AgentCore Browser Tool Live View and Nova Act](agentcore-browser-tool-live-view-with-nova-act.ipynb)
-- [Getting Started with Bedrock AgentCore Browser Tool and Browser use](getting_started-agentcore-browser-tool-with-browser-use.ipynb)
-- [Amazon Bedrock AgentCore Browser Tool Live View and Browser Use](agentcore-browser-tool-live-view-with-browser-use.ipynb)
+- [Getting Started with Bedrock AgentCore Browser Tool and NovaAct](01-browser-with-NovaAct/01_getting_started-agentcore-browser-tool-with-nova-act.ipynb)
+- [Amazon Bedrock AgentCore Browser Tool Live View and Nova Act](01-browser-with-NovaAct/02_agentcore-browser-tool-live-view-with-nova-act.ipynb)
+- [Getting Started with Bedrock AgentCore Browser Tool and Browser use](02-browser-with-browserUse/getting_started-agentcore-browser-tool-with-browser-use.ipynb)
+- [Amazon Bedrock AgentCore Browser Tool Live View and Browser Use](02-browser-with-browserUse/agentcore-browser-tool-live-view-with-browser-use.ipynb)

@@ -1,4 +1,5 @@
 import asyncio
+import os
 from bedrock_agentcore.identity.auth import requires_api_key
 from strands import Agent
 from strands.models.openai import OpenAIModel
@@ -7,21 +8,19 @@ from bedrock_agentcore.runtime import BedrockAgentCoreApp
 
 # Global agent variable
 agent = None
-AZURE_API_KEY_FROM_CREDS_PROVIDER = ""
 
 @requires_api_key(
-    provider_name="OPENAI-key" # replace with your own credential provider name
+    provider_name="openai-apikey-provider" # replace with your own credential provider name
 )
 async def need_api_key(*, api_key: str):
-    global AZURE_API_KEY_FROM_CREDS_PROVIDER
-    print(f'received api key for async func: {api_key}')
-    AZURE_API_KEY_FROM_CREDS_PROVIDER = api_key
+    print("received api key for async func")
+    os.environ["OPENAI_API_KEY"] = api_key
 
 def create_model():
     """Create the OpenAI model with the API key"""
     return OpenAIModel(
         client_args={
-            "api_key": AZURE_API_KEY_FROM_CREDS_PROVIDER, 
+            "api_key": os.environ.get("OPENAI_API_KEY"), 
         },
         model_id="gpt-4o",
         params={
@@ -37,22 +36,21 @@ async def strands_agent_open_ai(payload):
     """
     Invoke the agent with a payload
     """
-    global AZURE_API_KEY_FROM_CREDS_PROVIDER, agent
+    global agent
     
-    print(f"Entrypoint called with AZURE_API_KEY_FROM_CREDS_PROVIDER: '{AZURE_API_KEY_FROM_CREDS_PROVIDER}'")
+    print(f"Entrypoint called")
     
-    # Get API key if not already retrieved
-    if not AZURE_API_KEY_FROM_CREDS_PROVIDER:
+    # Get API key if not already set in environment
+    if not os.environ.get("OPENAI_API_KEY"):
         print("Attempting to retrieve API key...")
         try:
             await need_api_key(api_key="")
-            print(f"API key retrieved: '{AZURE_API_KEY_FROM_CREDS_PROVIDER}'")
-            print("Environment variable AZURE_API_KEY set")
+            print("API key retrieved and set in environment")
         except Exception as e:
             print(f"Error retrieving API key: {e}")
             raise
     else:
-        print("API key already available")
+        print("API key already available in environment")
     
     # Initialize agent after API key is set
     if agent is None:

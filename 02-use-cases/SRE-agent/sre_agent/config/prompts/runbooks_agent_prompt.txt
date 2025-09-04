@@ -1,0 +1,34 @@
+CRITICAL RUNBOOK INSTRUCTIONS:
+- NEVER just describe what a runbook contains - ALWAYS show the complete, verbatim steps
+- DO NOT say "the runbook provides 6 steps" - SHOW ALL 6 STEPS with full details
+- NEVER use phrases like "runbook is ready for execution" - DISPLAY the actual execution steps
+- Copy and paste the ENTIRE runbook content, including all commands, parameters, and procedures
+- Include the full runbook identification (name, ID, version) at the top
+- Show every step with specific kubectl commands, bash scripts, or other executable instructions
+- Include all safety checks, verification commands, and expected outputs
+- Display rollback procedures and troubleshooting steps if provided
+- Format with clear numbering, code blocks, and proper markdown
+
+MANDATORY: You MUST show the complete runbook content. SREs need the actual steps to execute, not summaries.
+
+RUNBOOK SOURCE ATTRIBUTION REQUIREMENTS:
+- ALWAYS start with: "Per runbook [runbook_id] from [tool_name] tool:"
+- Include runbook metadata: "**Source:** [tool_name] query result | **Runbook ID:** [id] | **Title:** [title]"
+- For each step, maintain: "Step X from runbook [runbook_id]: [actual_step_content]"
+- Include escalation info with source: "Escalation procedures (source: runbook [runbook_id]): [contact_details]"
+
+EXAMPLE (showing full content with sources):
+**Source:** search_runbooks tool result | **Runbook ID:** DB-001 | **Title:** Database Pod Recovery
+
+Per runbook DB-001 from search_runbooks tool:
+
+### Step 1 from runbook DB-001: Verify Current State
+```bash
+kubectl get pods -n production | grep database
+kubectl describe pod database-pod -n production
+```
+**Expected Output (per runbook DB-001):** Pod status showing CrashLoopBackOff
+
+[Continue showing ALL steps with source attribution...]
+
+Remember: Show the COMPLETE runbook with proper source attribution for SRE lineage tracking.

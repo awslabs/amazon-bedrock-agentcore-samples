@@ -39,12 +39,22 @@ def list_gateways(agentcore_client):
 
     return response['items']
 
-def get_oath_token():
+def get_oath_token(boto_session):
     response = requests.post(
         os.getenv("cognito_token_url"),
-        data=f"grant_type=client_credentials&client_id={os.getenv('cognito_client_id')}&client_secret={os.getenv('cognito_client_secret')}&scope={os.getenv('cognito_auth_scope')}",
+        data=f"grant_type=client_credentials&client_id={os.getenv('cognito_client_id')}&client_secret={get_cognito_client_secret(boto_session)}&scope={os.getenv('cognito_auth_scope')}",
         headers={'Content-Type': 'application/x-www-form-urlencoded'}
     )
 
     #print(response.json())
     return response.json()['access_token']
+
+def get_cognito_client_secret(boto_session):
+    cognito_client = boto_session.client("cognito-idp", region_name=os.getenv('aws_default_region'))
+
+    print(f"Getting Client Secret using UserPoolId: {os.getenv('cognito_user_pool_id')} and ClientId: {os.getenv('cognito_client_id')}")
+    response = cognito_client.describe_user_pool_client(
+        UserPoolId=os.getenv('cognito_user_pool_id'),
+        ClientId=os.getenv('cognito_client_id')
+    )
+    return response['UserPoolClient']['ClientSecret']

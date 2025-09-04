@@ -1,0 +1,8 @@
+Generate an executive summary for this SRE investigation:
+
+**Query:** {query}
+
+**Investigation Results:**
+{results_text}
+
+Generate a concise, accurate executive summary based only on the evidence provided above. Focus on what executives and on-call engineers need to know immediately.

@@ -6,7 +6,7 @@ import sys
 
 # Simple CLI wrapper for the multi-agent system
 def main():
-    """Main CLI entry point - runs the multi-agent system."""
+    """Main CLI entry point - runs the multi-agent system with debug support."""
     try:
         # Import and run the multi-agent system
         from .multi_agent_langgraph import main as multi_agent_main
