@@ -1,11 +1,38 @@
+"""
+AWS IAM Role Management Module
+
+This module provides functionality to create IAM roles specifically configured
+for AWS Bedrock AgentCore services with the necessary permissions and trust policies.
+"""
+
 import boto3
+from botocore.exceptions import ClientError
 
 def create_role(role_name, region, account_id):
+    """
+    Create an IAM role for Bedrock Agent Core with required permissions.
+    
+    Checks if the role already exists and returns it, otherwise creates a new role
+    with comprehensive Bedrock Agent Core permissions including memory management,
+    event handling, logging, ECR access, and model invocation capabilities.
+    
+    Args:
+        role_name (str): Name of the IAM role to create or retrieve
+        region (str): AWS region for the role configuration
+        account_id (str): AWS account ID for resource ARN construction
+        
+    Returns:
+        dict: IAM role response object containing role details
+        
+    Raises:
+        ClientError: If role creation fails due to AWS API errors
+    """
     iam = boto3.client('iam')
     try:
         response = iam.get_role(RoleName=role_name)
         return response
-    except:
+    except ClientError as e:
+        print(f"Role {role_name} does not exist", e)
         permission = """{
             "Version": "2012-10-17",
             "Statement": [
@@ -175,7 +202,7 @@ def create_role(role_name, region, account_id):
                 }
             ]
         }"""
-        
+
         trust_policy = """{
           "Version": "2012-10-17",
           "Statement": [
@@ -197,20 +224,18 @@ def create_role(role_name, region, account_id):
             }
           ]
         }"""
-        #trust_policy = json.loads(trust_policy.replace("accountId", account_id).replace("region", region))
         trust_policy = trust_policy.replace("accountId", account_id).replace("region", region)
-        #permission = json.loads(permission.replace("accountId", account_id).replace("region", region))
         permission = permission.replace("accountId", account_id).replace("region", region)
-    
-        
+
+
         policy_name = role_name+"Policy"
         agentcore_iam_role = iam.create_role(
                 RoleName=role_name,
                 AssumeRolePolicyDocument=trust_policy
             )
-        policy = iam.put_role_policy(
+        iam.put_role_policy(
                 PolicyDocument=permission,
-                PolicyName="AgentCorePolicy",
+                PolicyName=policy_name,
                 RoleName=role_name
             )
         return agentcore_iam_role
