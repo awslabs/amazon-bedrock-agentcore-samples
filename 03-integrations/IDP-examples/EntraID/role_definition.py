@@ -8,26 +8,27 @@ for AWS Bedrock AgentCore services with the necessary permissions and trust poli
 import boto3
 from botocore.exceptions import ClientError
 
+
 def create_role(role_name, region, account_id):
     """
     Create an IAM role for Bedrock Agent Core with required permissions.
-    
+
     Checks if the role already exists and returns it, otherwise creates a new role
     with comprehensive Bedrock Agent Core permissions including memory management,
     event handling, logging, ECR access, and model invocation capabilities.
-    
+
     Args:
         role_name (str): Name of the IAM role to create or retrieve
         region (str): AWS region for the role configuration
         account_id (str): AWS account ID for resource ARN construction
-        
+
     Returns:
         dict: IAM role response object containing role details
-        
+
     Raises:
         ClientError: If role creation fails due to AWS API errors
     """
-    iam = boto3.client('iam')
+    iam = boto3.client("iam")
     try:
         response = iam.get_role(RoleName=role_name)
         return response
@@ -224,18 +225,18 @@ def create_role(role_name, region, account_id):
             }
           ]
         }"""
-        trust_policy = trust_policy.replace("accountId", account_id).replace("region", region)
-        permission = permission.replace("accountId", account_id).replace("region", region)
+        trust_policy = trust_policy.replace("accountId", account_id).replace(
+            "region", region
+        )
+        permission = permission.replace("accountId", account_id).replace(
+            "region", region
+        )
 
-
-        policy_name = role_name+"Policy"
+        policy_name = role_name + "Policy"
         agentcore_iam_role = iam.create_role(
-                RoleName=role_name,
-                AssumeRolePolicyDocument=trust_policy
-            )
+            RoleName=role_name, AssumeRolePolicyDocument=trust_policy
+        )
         iam.put_role_policy(
-                PolicyDocument=permission,
-                PolicyName=policy_name,
-                RoleName=role_name
-            )
+            PolicyDocument=permission, PolicyName=policy_name, RoleName=role_name
+        )
         return agentcore_iam_role
