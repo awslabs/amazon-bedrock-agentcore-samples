@@ -51,6 +51,13 @@ The AWS CDK stack deploys and configures the following managed services:
 - **Amazon DynamoDB**: Tracks raw query results and agent interactions
 - **Parameter Store Configuration Management**: Securely manages application configuration
 
+### Amplify Deployment for the Front-End Application
+
+- **React Web Application**: Delivers the user interface for the assistant
+    - Uses Amazon Cognito for user authentication and permissions management
+    - The application invokes the Amazon Bedrock AgentCore for interacting with the assistant
+    - For chart generation, the application directly invokes the Claude 3.7 Sonnet model
+
 ### Strands Agent Features
 
 | Feature | Description |
@@ -60,7 +67,7 @@ The AWS CDK stack deploys and configures the following managed services:
 | Model Provider | Amazon Bedrock |
 
 > [!NOTE]
-> This solution references the use of AWS IAM credentials to connect to Amazon Bedrock AgentCore and Amazon DynamoDB. 🚀 For production deployment, consider integrating Amazon Cognito or another identity provider for proper authentication and authorization instead of using IAM user credentials.
+> The React Web Application uses Amazon Cognito for user authentication and permissions management, providing secure access to Amazon Bedrock AgentCore and Amazon DynamoDB services through authenticated user roles.
 
 > [!TIP]
 > You can also change the data source to connect to your preferred database engine by adapting the Agent's instructions and tool implementations.
@@ -75,7 +82,7 @@ The **user interaction workflow** operates as follows:
 - The agent's built-in tools execute SQL queries against the Aurora PostgreSQL database and formulate an answer to the question
 - AgentCore Memory captures session interactions and retrieves previous conversations for context
 - After the agent's response is received by the web application, the raw data query results are retrieved from the DynamoDB table to display both the answer and the corresponding records
-- For chart generation, the application invokes a model (powered by Claude 3.5 Sonnet) to analyze the agent's answer and raw data query results to generate the necessary data to render an appropriate chart visualization
+- For chart generation, the application invokes a model (powered by Claude 3.7 Sonnet) to analyze the agent's answer and raw data query results to generate the necessary data to render an appropriate chart visualization
 
 ## Deployment Instructions
 

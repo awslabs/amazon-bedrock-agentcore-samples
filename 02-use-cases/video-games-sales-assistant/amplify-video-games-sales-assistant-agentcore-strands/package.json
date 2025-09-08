@@ -4,6 +4,7 @@
   "author": "Uriel Ramirez (beralfon@amazon.com)",
   "private": true,
   "dependencies": {
+    "@aws-amplify/ui-react": "^6.12.0",
     "@aws-sdk/client-bedrock-agentcore": "^3.847.0",
     "@aws-sdk/client-bedrock-runtime": "^3.846.0",
     "@aws-sdk/client-dynamodb": "^3.846.0",
@@ -18,6 +19,7 @@
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.2.0",
     "@testing-library/user-event": "^13.5.0",
+    "aws-amplify": "^6.15.5",
     "react": "^19.1.0",
     "react-apexcharts": "^1.7.0",
     "react-dom": "^19.1.0",
