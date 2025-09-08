@@ -1,0 +1,9 @@
+strands-agents
+strands-agents-tools
+uv
+boto3
+bedrock-agentcore
+bedrock-agentcore-starter-toolkit
+tavily-python
+uvicorn
+fastapi
