@@ -1,4 +1,4 @@
-name: ASH Security Scan with PR Comments
+name: ASH Security Scan
 
 on:
   pull_request:
@@ -6,7 +6,6 @@ on:
 
 permissions:
   contents: read
-  pull-requests: write
 
 jobs:
   scan:
@@ -18,7 +17,7 @@ jobs:
 
       - name: Get changed files
         id: changed-files
-        uses: tj-actions/changed-files@v41
+        uses: tj-actions/changed-files@v46
         with:
           files: |
             **/*.py
@@ -198,7 +197,13 @@ jobs:
           fi
           
 
-      - name: Upload ASH results
+      - name: Save PR metadata
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: |
+          echo "${{ github.event.pull_request.number }}" > /tmp/pr_number.txt
+          echo "${{ github.event.pull_request.head.sha }}" > /tmp/pr_sha.txt
+
+      - name: Upload ASH results and PR metadata
         if: steps.changed-files.outputs.any_changed == 'true' && always()
         uses: actions/upload-artifact@v4
         with:
@@ -206,99 +211,9 @@ jobs:
           path: |
             /tmp/ash-scan/.ash/
             /tmp/pr_comment.md
+            /tmp/pr_number.txt
+            /tmp/pr_sha.txt
           retention-days: 30
-
-      - name: Add PR comment
-        if: steps.changed-files.outputs.any_changed == 'true'
-        # Always run this step even if ASH scan failed
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const fs = require('fs');
-            const commentPath = '/tmp/pr_comment.md';
-            
-            if (fs.existsSync(commentPath)) {
-              const commentBody = fs.readFileSync(commentPath, 'utf8');
-              const issueNumber = context.issue.number;
-              
-              // Check if we already have an ASH security scan comment
-              const { data: comments } = await github.rest.issues.listComments({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: issueNumber,
-              });
-              
-              // Debug: Log all bot comments to understand what we have
-              const botComments = comments.filter(comment => comment.user.type === 'Bot');
-              console.log(`Found ${botComments.length} bot comments`);
-              botComments.forEach(comment => {
-                console.log(`Bot comment ${comment.id}: ${comment.body.substring(0, 100)}...`);
-              });
-              
-              // Find ALL ASH security scan comments 
-              const ashComments = comments.filter(comment => 
-                comment.user.type === 'Bot' && 
-                (comment.body.includes('<!-- ASH-SECURITY-SCAN-COMMENT -->') ||
-                 comment.body.includes('## Security Scan Results') ||
-                 comment.body.includes('Latest scan for commit:') ||
-                 comment.body.includes('ASH Security Scan Report'))
-              );
-              
-              console.log(`Found ${ashComments.length} ASH security scan comments`);
-              
-              // Use the most recent ASH comment (highest ID = most recent)
-              const botComment = ashComments.length > 0 ? 
-                ashComments.sort((a, b) => b.id - a.id)[0] : null;
-              
-              if (botComment) {
-                console.log(`Will update most recent ASH comment: ${botComment.id}`);
-              }
-              
-              // Delete any duplicate/older ASH comments (keep only the most recent one)
-              if (ashComments.length > 1) {
-                console.log(`Cleaning up ${ashComments.length - 1} duplicate ASH comments`);
-                for (const comment of ashComments.slice(1)) { // Skip the first (most recent) one
-                  try {
-                    await github.rest.issues.deleteComment({
-                      owner: context.repo.owner,
-                      repo: context.repo.repo,
-                      comment_id: comment.id,
-                    });
-                    console.log(`Deleted duplicate comment ${comment.id}`);
-                  } catch (error) {
-                    console.log(`Failed to delete comment ${comment.id}: ${error.message}`);
-                  }
-                }
-              }
-              
-              // Add commit and timestamp info to the body with unique identifier
-              const commitSha = context.payload.pull_request?.head?.sha || context.sha;
-              const timestamp = new Date().toISOString().replace('T', ' ').substring(0, 19) + ' UTC';
-              const enhancedBody = `**Latest scan for commit:** \`${commitSha.substring(0, 7)}\` **| Updated:** ${timestamp}\n\n${commentBody}\n\n<!-- ASH-SECURITY-SCAN-COMMENT -->`;
-              
-              if (botComment) {
-                // Update existing comment with latest scan
-                console.log(`Updating existing comment ${botComment.id}`);
-                await github.rest.issues.updateComment({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  comment_id: botComment.id,
-                  body: enhancedBody
-                });
-                console.log('Successfully updated existing ASH security scan comment');
-              } else {
-                // Create new comment
-                console.log('No existing ASH comment found, creating new one');
-                await github.rest.issues.createComment({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  issue_number: issueNumber,
-                  body: enhancedBody
-                });
-                console.log('Successfully created new ASH security scan comment');
-              }
-            }
 
       - name: Security scan summary
         if: steps.changed-files.outputs.any_changed == 'true'
