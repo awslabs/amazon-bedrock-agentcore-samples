@@ -4,8 +4,9 @@
 
 import logging
 from .config import get_oauth_settings
-
-logger = logging.getLogger(__name__)
+from . import mylogger
+ 
+logger = mylogger.get_logger()
 
 # Global variables for OAuth state
 _oauth_initialized = False
@@ -67,9 +68,9 @@ def setup_oauth():
         scopes = oauth_settings['scopes']
         auth_flow = oauth_settings['auth_flow']
         
-        logger.info(f"🔐 Setting up OAuth with provider: {provider_name}")
-        logger.info(f"🔐 Scopes: {scopes}")
-        logger.info(f"🔐 Auth flow: {auth_flow}")
+        # logger.info(f"🔐 Setting up OAuth with provider: {provider_name}")
+        # logger.info(f"🔐 Scopes: {scopes}")
+        # logger.info(f"🔐 Auth flow: {auth_flow}")
         
         # Create token getter function
         @requires_access_token(
@@ -84,7 +85,7 @@ def setup_oauth():
         _token_getter = get_token_sync
         _oauth_initialized = True
         
-        logger.info(f"✅ OAuth initialized with provider: {provider_name}")
+        logger.info("✅ OAuth initialized.")
         return True
         
     except Exception as e:

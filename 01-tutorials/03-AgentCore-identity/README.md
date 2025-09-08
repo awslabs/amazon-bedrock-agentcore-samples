@@ -1,71 +1,100 @@
-# Hosting AI Agents on AgentCore Runtime
+# Amazon Bedrock AgentCore Identity
 
 ## Overview
 
-This tutorial demonstrates how to host AI agents on **Amazon Bedrock AgentCore Runtime** using the Amazon Bedrock AgentCore Python SDK. Learn to transform your agent code into a standardized HTTP service that integrates seamlessly with Amazon Bedrock's infrastructure.
+Amazon Bedrock AgentCore Identity is a comprehensive identity and credential management service designed specifically for AI agents and automated workloads. It provides secure authentication, authorization, and credential management capabilities that enable users to invoke agents, and agents to access external resources and services on behalf of users while maintaining strict security controls and audit trails.
 
-AgentCore Runtime is a **framework and model-agnostic** platform that can host agents built with any agentic framework (Strands Agents, LangGraph, CrewAI) and any LLM model (Amazon Bedrock, OpenAI, etc.).
+AgentCore Identity addresses a fundamental challenge in AI agent deployment: enabling agents to securely access user-specific data across multiple services without compromising security or user experience. The service operates on the principle of **delegation rather than impersonation**, where agents authenticate as themselves while carrying verifiable user context.
 
-The Amazon Bedrock AgentCore Python SDK acts as a wrapper that:
+## Key Features
 
-- **Transforms** your agent code into AgentCore's standardized protocols
-- **Handles** HTTP and MCP server infrastructure automatically  
-- **Lets you focus** on your agent's core functionality
-- **Supports** two protocol types:
-  - **HTTP Protocol**: Traditional request/response REST API endpoints
-  - **MCP Protocol**: Model Context Protocol for tools and agent servers
+- **Inbound Authentication**: Validate access for users and applications calling agents or tools
+- **Outbound Authentication**: Secure access from agents to external services on behalf of users
+- **OAuth Integration**: Support for 2-legged and 3-legged OAuth flows
+- **AWS IAM Integration**: Native integration with AWS identity and access management
+- **Zero Trust Security**: Every request is validated regardless of source or previous trust relationships
+- **Cross-Platform Support**: Works across AWS, other cloud providers, and on-premise environments
 
-### Service Architecture
+## Authentication Types
 
-When hosting agents, the SDK automatically:
-- Hosts your agent on port `8080`
-- Provides two key endpoints:
-  - **`/entrypoint`**: Primary agent interaction (JSON input → JSON/SSE output)
-  - **`/ping`**: Health check for monitoring
+AgentCore Identity supports two primary authentication patterns:
 
-![Hosting agent](images/hosting_agent_python_sdk.png)
+### Inbound Auth
+Validates access for users and applications calling agents or tools in AgentCore Runtime or Gateway targets. Supports:
+- **AWS IAM**: Direct IAM-based access control
+- **OAuth**: Token-based authentication without requiring IAM permissions for end users
 
-Once your agent is prepared for deployment on AgentCore Runtime, you can use the Amazon Bedrock AgentCore StarterKit to deploy it to deploy it to AgentCore Runtime.
+### Outbound Auth
+Enables agents to access AWS services and external resources on behalf of users:
+- **AWS Resources**: Uses IAM execution roles for AWS service access
+- **External Services**: OAuth 2-legged (client credentials) and 3-legged (authorization code) flows
 
-With the Starter Kit you can configure your agent deployment, launch it to create an Amazon ECR repository with the Agent's configuration and the AgentCore Runtime endpoint and invoke the created endpoint for validation.
 
-![StarterKit](../images/runtime_overview.png)
+![Authentication Basics](images/auth_basics3.png)
 
-Once deployed, your AgentCore Runtime architecture in AWS looks as following:
+## How It Works
 
-![RuntimeArchitecture](../images/runtime_architecture.png)
+AgentCore Identity implements a comprehensive workflow that orchestrates authentication and authorization across multiple trust domains:
 
+1. **User Authentication**: Users authenticate through existing identity providers (Cognito, Auth0, etc.)
+2. **Agent Authorization**: Applications request agent access with user tokens
+3. **Token Exchange**: AgentCore Identity validates user tokens and issues workload access tokens
+4. **Resource Access**: Agents use workload tokens to access AWS and third-party resources
+5. **Delegation & Audit**: All actions maintain user context and audit trails
+
+![How It Works](images/how_it_works.png)
+
+For detailed technical information, see [How AgentCore Identity Works](02-how_it_works.md).
 
 ## Tutorial Examples
 
-This tutorial includes three hands-on examples to get you started:
+This tutorial includes four hands-on examples demonstrating different authentication scenarios:
 
-| Example | Framework | Model | Description                                |
-|---------|-----------|-------|--------------------------------------------|
-| **[01-strands-with-bedrock-model](01-strands-with-bedrock-model)** | Strands Agents | Amazon Bedrock | Basic agent hosting with AWS native models |
-| **[02-langgraph-with-bedrock-model](02-langgraph-with-bedrock-model)** | LangGraph | Amazon Bedrock | LangGraph agent workflows                  |
-| **[03-strands-with-openai-model](03-strands-with-openai-model)** | Strands Agents | OpenAI | Integration with external LLM providers    |
+| Example | Type | Description |
+|---------|------|-------------|
+| **[Inbound Auth Example](03-Inbound%20Auth%20example)** | Inbound | User authentication with Strands agents and Bedrock models |
+| **[Outbound Auth Example](04-Outbound%20Auth%20example)** | Outbound | Agent access to external services with Strands and OpenAI |
+| **[3-Legged OAuth](05-Outbound_Auth_3lo)** | Outbound | User-delegated access with Cognito and 3-legged OAuth flow with Google |
+| **[GitHub Integration](06-Outbound_Auth_Github)** | Outbound | GitHub API access using 3-legged OAuth authentication |
 
-## Key Benefits
-
-- **Framework Agnostic**: Works with any Python-based agent framework
-- **Model Flexible**: Support for Amazon Bedrock, OpenAI, and other LLM providers  
-- **Production Ready**: Built-in health checks and monitoring
-- **Easy Integration**: Minimal code changes required
-- **Scalable**: Designed for enterprise workloads
+Each example includes:
+- Complete Jupyter notebook walkthrough
+- Step-by-step setup instructions
+- Code samples and explanations
+- Best practices and security considerations
 
 ## Getting Started
 
-Choose one of the tutorial examples above based on your preferred framework and model combination. Each example includes:
-- Step-by-step setup instructions
-- Complete code samples
-- Testing guidelines
-- Best practices
+1. **Read the Introduction**: Start with [Getting Started](01-getting_started.md) to understand AgentCore Identity concepts
+2. **Understand the Workflow**: Review [How It Works](02-how_it_works.md) for technical details
+3. **Choose an Example**: Select a tutorial example based on your authentication needs:
+   - For user authentication to agents: Start with **Inbound Auth Example**
+   - For agent access to external services: Try **Outbound Auth Example**
+   - For user-delegated access patterns: Explore **3-Legged OAuth** or **GitHub Integration**
+
+## Key Benefits
+
+- **Enhanced Security**: Zero trust authentication with fine-grained access controls
+- **User Experience**: Seamless access without repeated authentication prompts
+- **Audit & Compliance**: Complete audit trails for all agent actions
+- **Framework Agnostic**: Works with any agent framework (Strands, LangGraph, CrewAI, etc.)
+- **Scalable**: Enterprise-ready with support for multiple identity providers
+- **Standards-Based**: Built on OAuth 2.0, OIDC, and industry security standards
+
+## Architecture Integration
+
+AgentCore Identity integrates seamlessly with other AgentCore components:
+
+- **AgentCore Runtime**: Provides authentication for hosted agents
+- **AgentCore Gateway**: Secures access to tools and external APIs  
+- **AgentCore Memory**: Maintains secure access to user-specific memory stores
+- **Third-Party Services**: Enables secure integration with external APIs and services
 
 ## Next Steps
 
 After completing the tutorials, you can:
-- Extend these patterns to other frameworks and models
-- Deploy to production environments
-- Integrate with your existing applications
-- Scale your agent infrastructure
+- Integrate AgentCore Identity with your existing identity infrastructure
+- Configure custom OAuth providers and scopes
+- Implement advanced security policies and access controls
+- Deploy production-ready agent authentication workflows
+- Scale your secure agent infrastructure across multiple services and platforms

@@ -1,50 +1,35 @@
 # Amazon Bedrock AgentCore Samples Pull Request
 
-<!-- Do not erase any parts of this template not applicable to your Pull Request. -->
-<!-- If a section does not apply to you, provide reasoning. -->
+> [!IMPORTANT]  
+> 1. We strictly follow a issue-first approach, please first open an [issue](https://github.com/awslabs/amazon-bedrock-agentcore-samples/issues) relating to this Pull Request.
+> 2. Once this Pull Request is ready for review please attach `review ready` label to it. Only PRs with `review ready` will be reviewed.
 
-## Instructions
+**Issue number**:
 
-- Do not erase any parts of this template that are not applicable to your pull request.
-- If a section is not applicable, explicitly state the reason.
-- * [x] Tick the checkboxes for the items you have completed.
-- These are mandatory requirements, not mere suggestions.
-
-<hr/>
-
-## Describe your changes
-
-* [ ] Concise description of the PR
+### Concise description of the PR
 
 ```
 Changes to ..., because ...
 ```
 
-<hr/>
+### User experience
 
-## Issue ticket number and link
+> Please share what the user experience looks like before and after this change
 
-* [ ] Issue # (if applicable)
+## Checklist
 
-<hr/>
+If your change doesn't seem to apply, please leave them unchecked.
 
-### All Submissions:
-
-* [ ] Have you followed the guidelines in our Contributing document?
+* [ ] I have reviewed the [contributing guidelines](https://github.com/awslabs/amazon-bedrock-agentcore-samples/blob/main/CONTRIBUTING.md)
+* [ ] Add your name to [CONTRIBUTORS.md](https://github.com/awslabs/amazon-bedrock-agentcore-samples/blob/main/CONTRIBUTORS.md)
 * [ ] Have you checked to ensure there aren't other open [Pull Requests](https://github.com/awslabs/amazon-bedrock-agentcore-samples/pulls) for the same update/change?
 * [ ] Are you uploading a dataset?
-* [ ] Have you added contributions to [RELEASE NOTES](/RELEASE_NOTES.md)?
-
-<hr/>
-
-### New Example Submissions:
-
-* [ ] Have you tested your code, and made sure the functionality runs successfully? Provide screenshots. 
-* [ ] Have you linted your Python code with [black](https://github.com/psf/black)?
 * [ ] Have you documented **Introduction**, **Architecture Diagram**, **Prerequisites**, **Usage**, **Sample Prompts**, and **Clean Up** steps in your example README?
 * [ ] I agree to resolve any [issues](https://github.com/awslabs/amazon-bedrock-agent-samples/issues) created for this example in the future.
+* [ ] I have performed a self-review of this change
+* [ ] Changes have been tested
+* [ ] Changes are documented
 
-<hr/>
+## Acknowledgment
 
-
-* [ ] Add your name to [CONTRIBUTORS.md](/CONTRIBUTORS.md) :D
+By submitting this pull request, I confirm that you can use, modify, copy, and redistribute this contribution, under the terms of the [project license](https://github.com/awslabs/amazon-bedrock-agentcore-samples/blob/main/LICENSE).

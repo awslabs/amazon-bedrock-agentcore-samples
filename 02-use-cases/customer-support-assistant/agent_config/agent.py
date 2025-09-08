@@ -13,7 +13,7 @@ class CustomerSupport:
         self,
         bearer_token: str,
         memory_hook: MemoryHook,
-        bedrock_model_id: str = "us.anthropic.claude-sonnet-4-20250514-v1:0",
+        bedrock_model_id: str = "us.anthropic.claude-3-7-sonnet-20250219-v1:0",
         system_prompt: str = None,
         tools: List[callable] = None,
     ):

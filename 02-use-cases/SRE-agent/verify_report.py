@@ -11,7 +11,6 @@ import logging
 import os
 import sys
 from pathlib import Path
-from typing import Dict, List, Optional
 
 import anthropic
 from dotenv import load_dotenv
@@ -217,7 +216,7 @@ def main():
     if args.output:
         try:
             with open(args.output, "w", encoding="utf-8") as f:
-                f.write(f"# SRE Report Verification Results\n\n")
+                f.write("# SRE Report Verification Results\n\n")
                 f.write(f"**Report**: {args.report_path}\n")
                 f.write(f"**Ground Truth**: {args.data_path}\n")
                 f.write(f"**Verified on**: {Path().cwd()}\n\n")

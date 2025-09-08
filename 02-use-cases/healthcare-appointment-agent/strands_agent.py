@@ -43,7 +43,7 @@ if __name__ == "__main__":
     gatewayEndpoint=utils.get_gateway_endpoint(agentcore_client=agentcore_client, gateway_id=args.gateway_id)
     print(f"Gateway Endpoint: {gatewayEndpoint}")
 
-    jwtToken = utils.get_oath_token()
+    jwtToken = utils.get_oath_token(boto_session)
     client = MCPClient(lambda: streamablehttp_client(gatewayEndpoint,headers={"Authorization": f"Bearer {jwtToken}"}))
 
     bedrockmodel = BedrockModel(

@@ -11,13 +11,13 @@ CONFIG_DIR="${PROJECT_DIR}/config"
 
 # Load configuration from YAML (fallback if yq not available)
 if command -v yq >/dev/null 2>&1; then
-    REGION=$(yq eval '.aws.region' "${CONFIG_DIR}/static/base-settings.yaml")
-    ACCOUNT_ID=$(yq eval '.aws.account_id' "${CONFIG_DIR}/static/base-settings.yaml")
+    REGION=$(yq eval '.aws.region' "${CONFIG_DIR}/static-config.yaml")
+    ACCOUNT_ID=$(yq eval '.aws.account_id' "${CONFIG_DIR}/static-config.yaml")
 else
     echo "⚠️  yq not found, using default values from existing config"
     # Fallback: extract from YAML using grep/sed
-    REGION=$(grep "region:" "${CONFIG_DIR}/static/base-settings.yaml" | head -1 | sed 's/.*region: *["'\'']*\([^"'\'']*\)["'\'']*$/\1/')
-    ACCOUNT_ID=$(grep "account_id:" "${CONFIG_DIR}/static/base-settings.yaml" | head -1 | sed 's/.*account_id: *["'\'']*\([^"'\'']*\)["'\'']*$/\1/')
+    REGION=$(grep "region:" "${CONFIG_DIR}/static-config.yaml" | head -1 | sed 's/.*region: *["'\'']*\([^"'\'']*\)["'\'']*$/\1/')
+    ACCOUNT_ID=$(grep "account_id:" "${CONFIG_DIR}/static-config.yaml" | head -1 | sed 's/.*account_id: *["'\'']*\([^"'\'']*\)["'\'']*$/\1/')
 fi
 
 echo "📝 Configuration:"
@@ -36,13 +36,25 @@ else
 fi
 
 # Check AWS credentials
-if ! aws sts get-caller-identity --region "$REGION" >/dev/null 2>&1; then
+echo "🔍 Verifying AWS credentials..."
+if aws sts get-caller-identity --region "$REGION" >/dev/null 2>&1; then
+    CALLER_IDENTITY=$(aws sts get-caller-identity --region "$REGION" 2>/dev/null)
+    CURRENT_ACCOUNT=$(echo "$CALLER_IDENTITY" | grep -o '"Account": "[^"]*"' | cut -d'"' -f4)
+    echo "✅ AWS credentials configured"
+    echo "   Current Account: $CURRENT_ACCOUNT"
+    echo "   Target Account: $ACCOUNT_ID"
+    
+    if [ "$CURRENT_ACCOUNT" != "$ACCOUNT_ID" ]; then
+        echo "⚠️  Warning: Current account ($CURRENT_ACCOUNT) differs from config account ($ACCOUNT_ID)"
+        echo "   Proceeding with current account credentials..."
+    fi
+else
     echo "❌ AWS credentials not configured or invalid"
-    echo "   Please run: aws sso login --profile <your-profile>"
+    echo "   Please run: aws configure or aws sso login --profile <your-profile>"
+    echo "   Current AWS config:"
+    aws configure list
     exit 1
 fi
-
-echo "✅ AWS credentials configured"
 echo ""
 
 # Function to delete runtime
@@ -105,7 +117,7 @@ delete_runtime() {
 
 # Get runtime ARNs from dynamic configuration
 echo "📖 Reading runtime ARNs from dynamic configuration..."
-DYNAMIC_CONFIG="${CONFIG_DIR}/dynamic/infrastructure.yaml"
+DYNAMIC_CONFIG="${CONFIG_DIR}/dynamic-config.yaml"
 
 if [ -f "$DYNAMIC_CONFIG" ]; then
     if command -v yq >/dev/null 2>&1; then
@@ -172,13 +184,21 @@ echo ""
 echo "📝 Updating dynamic configuration to clear runtime ARNs..."
 if command -v yq >/dev/null 2>&1; then
     yq eval '.runtime.diy_agent.arn = ""' -i "$DYNAMIC_CONFIG"
+    yq eval '.runtime.diy_agent.ecr_uri = ""' -i "$DYNAMIC_CONFIG"
     yq eval '.runtime.diy_agent.endpoint_arn = ""' -i "$DYNAMIC_CONFIG"
     yq eval '.runtime.sdk_agent.arn = ""' -i "$DYNAMIC_CONFIG"
+    yq eval '.runtime.sdk_agent.ecr_uri = ""' -i "$DYNAMIC_CONFIG"
     yq eval '.runtime.sdk_agent.endpoint_arn = ""' -i "$DYNAMIC_CONFIG"
-    echo "   ✅ Dynamic configuration updated - runtime ARNs cleared"
+    echo "   ✅ Dynamic configuration updated - runtime ARNs and ECR URIs cleared"
 else
-    echo "   ⚠️  yq not found - please manually clear runtime ARNs from:"
-    echo "      $DYNAMIC_CONFIG"
+    echo "   ⚠️  yq not found - using sed fallback to clear runtime fields"
+    # Fallback: use sed to clear the fields
+    sed -i '' \
+        -e 's|arn: "arn:aws:bedrock-agentcore:.*"|arn: ""|g' \
+        -e 's|ecr_uri: ".*\.dkr\.ecr\..*"|ecr_uri: ""|g' \
+        -e 's|endpoint_arn: "arn:aws:bedrock-agentcore:.*"|endpoint_arn: ""|g' \
+        "$DYNAMIC_CONFIG"
+    echo "   ✅ Dynamic configuration updated - runtime ARNs and ECR URIs cleared"
 fi
 
 echo ""
@@ -225,6 +245,7 @@ echo "   • Cleared runtime ARNs from dynamic configuration"
 echo "   • Cleaned up ECR repository images"
 echo ""
 echo "💡 Next steps:"
-echo "   • Run 97-delete-all-gateways-targets.sh to delete gateways and targets"
-echo "   • Run 98-delete-mcp-tool-deployment.sh to delete MCP Lambda"
-echo "   • Run 99-cleanup-everything.sh for complete cleanup"
+echo "   • Run 09-delete-all-gateways-targets.sh to delete gateways and targets"
+echo "   • Run 10-delete-mcp-tool-deployment.sh to delete MCP Lambda"
+echo "   • Run 11-delete-oauth-provider.sh for complete cleanup"
+echo "   • Run 12-delete-memory.sh to delete memory"

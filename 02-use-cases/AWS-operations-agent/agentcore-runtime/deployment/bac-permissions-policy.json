@@ -9,7 +9,7 @@
                 "ecr:GetDownloadUrlForLayer"
             ],
             "Resource": [
-                "arn:aws:ecr:*:<YOUR_AWS_ACCOUNT_ID>:repository/*"
+                "arn:aws:ecr:*:<your-aws-account-id>:repository/*"
             ]        
         },
         {
@@ -19,7 +19,7 @@
                 "logs:CreateLogGroup"
             ],
             "Resource": [
-                "arn:aws:logs:*:<YOUR_AWS_ACCOUNT_ID>:log-group:/aws/bedrock-agentcore/runtimes/*"
+                "arn:aws:logs:*:<your-aws-account-id>:log-group:/aws/bedrock-agentcore/runtimes/*"
             ]
         },
         {
@@ -28,7 +28,7 @@
                 "logs:DescribeLogGroups"
             ],
             "Resource": [
-                "arn:aws:logs:*:<YOUR_AWS_ACCOUNT_ID>:log-group:*"
+                "arn:aws:logs:*:<your-aws-account-id>:log-group:*"
             ]
         },
         {
@@ -38,7 +38,7 @@
                 "logs:PutLogEvents"
             ],
             "Resource": [
-                "arn:aws:logs:*:<YOUR_AWS_ACCOUNT_ID>:log-group:/aws/bedrock-agentcore/runtimes/*:log-stream:*"
+                "arn:aws:logs:*:<your-aws-account-id>:log-group:/aws/bedrock-agentcore/runtimes/*:log-stream:*"
             ]
         },
         {
@@ -78,8 +78,8 @@
                 "bedrock-agentcore:GetWorkloadAccessTokenForUserId"
             ],
             "Resource": [
-              "arn:aws:bedrock-agentcore:*:<YOUR_AWS_ACCOUNT_ID>:workload-identity-directory/default",
-              "arn:aws:bedrock-agentcore:*:<YOUR_AWS_ACCOUNT_ID>:workload-identity-directory/default/workload-identity/*"
+              "arn:aws:bedrock-agentcore:*:<your-aws-account-id>:workload-identity-directory/default",
+              "arn:aws:bedrock-agentcore:*:<your-aws-account-id>:workload-identity-directory/default/workload-identity/*"
             ]
         },
         {
@@ -99,10 +99,10 @@
                 "bedrock-agentcore:UpdateWorkloadIdentity"
             ],
             "Resource": [
-                "arn:aws:bedrock-agentcore:*:<YOUR_AWS_ACCOUNT_ID>:token-vault/default",
-                "arn:aws:bedrock-agentcore:*:<YOUR_AWS_ACCOUNT_ID>:token-vault/default/*",
-                "arn:aws:bedrock-agentcore:*:<YOUR_AWS_ACCOUNT_ID>:workload-identity-directory/default",
-                "arn:aws:bedrock-agentcore:*:<YOUR_AWS_ACCOUNT_ID>:workload-identity-directory/default/workload-identity/*"
+                "arn:aws:bedrock-agentcore:*:<your-aws-account-id>:token-vault/default",
+                "arn:aws:bedrock-agentcore:*:<your-aws-account-id>:token-vault/default/*",
+                "arn:aws:bedrock-agentcore:*:<your-aws-account-id>:workload-identity-directory/default",
+                "arn:aws:bedrock-agentcore:*:<your-aws-account-id>:workload-identity-directory/default/workload-identity/*"
             ]
         },
         {
@@ -121,8 +121,21 @@
                 "bedrock-agentcore:UpdateGatewayTarget"
             ],
             "Resource": [
-                "arn:aws:bedrock-agentcore:*:<YOUR_AWS_ACCOUNT_ID>:gateway/*",
-                "arn:aws:bedrock-agentcore:*:<YOUR_AWS_ACCOUNT_ID>:gateway/*/target/*"
+                "arn:aws:bedrock-agentcore:*:<your-aws-account-id>:gateway/*",
+                "arn:aws:bedrock-agentcore:*:<your-aws-account-id>:gateway/*/target/*"
+            ]
+        },
+        {
+            "Sid": "AgentCoreMemoryAccess",
+            "Effect": "Allow",
+            "Action": [
+                "bedrock-agentcore:CreateEvent",
+                "bedrock-agentcore:ListEvents",
+                "bedrock-agentcore:GetEvent",
+                "bedrock-agentcore:DeleteEvent"
+            ],
+            "Resource": [
+                "arn:aws:bedrock-agentcore:*:<your-aws-account-id>:memory/*"
             ]
         },
         {
@@ -132,7 +145,7 @@
                 "secretsmanager:GetSecretValue"
             ],
             "Resource": [
-                "arn:aws:secretsmanager:*:<YOUR_AWS_ACCOUNT_ID>:secret:*"
+                "arn:aws:secretsmanager:*:<your-aws-account-id>:secret:*"
             ]
         },
         {
@@ -144,7 +157,17 @@
             ], 
             "Resource": [
                 "arn:aws:bedrock:*::foundation-model/*",
-                "arn:aws:bedrock:*:<YOUR_AWS_ACCOUNT_ID>:*"
+                "arn:aws:bedrock:*:<your-aws-account-id>:*"
+            ]
+        },
+        {
+            "Sid": "LambdaInvokeAccess",
+            "Effect": "Allow",
+            "Action": [
+                "lambda:InvokeFunction"
+            ],
+            "Resource": [
+                "arn:aws:lambda:*:<your-aws-account-id>:function:bac-mcp-tool*"
             ]
         }
     ]

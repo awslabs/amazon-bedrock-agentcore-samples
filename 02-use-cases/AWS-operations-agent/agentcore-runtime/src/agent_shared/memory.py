@@ -6,7 +6,9 @@ import logging
 from datetime import datetime
 from .config import load_configs
 
-logger = logging.getLogger(__name__)
+from . import mylogger
+ 
+logger = mylogger.get_logger()
 
 # Global variables for memory state
 _memory_initialized = False

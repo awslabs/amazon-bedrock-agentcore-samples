@@ -1,0 +1,30 @@
+BACKEND DATA PATTERN GUIDE FOR AGENTS:
+
+This guide helps agents align their outputs with actual backend data patterns to ensure grepability.
+
+KNOWN BACKEND TIMESTAMP PATTERNS:
+- Backend uses: 2024-01-15T14:20:00Z format
+- NOT: 2023-07-15T08:22:03Z format
+- When generating timestamps, use 2024-01-15 dates
+- Preserve exact backend timestamp formats when quoting
+
+VERIFIED BACKEND METRICS PATTERNS:
+- CPU percentages found: 25%, 45%, 65%, 85%, 95%
+- Memory percentages found: 50%, 63%, 76%, 90%, 100%
+- Error counts found: 245 (confirmed in backend)
+- Connection pools: "Database connection pool exhausted" (confirmed)
+
+BACKEND SERVICE NAMES (use these, not invented names):
+- web-service (confirmed)
+- product-catalog-service (confirmed)
+- api-service (confirmed)
+
+PREFERRED PATTERNS FOR UNKNOWN VALUES:
+- Instead of "87%" → use "around 85-90%"
+- Instead of "2023-07-15T08:22:03Z" → use "approximately 30 minutes ago"
+- Instead of "exactly 127 occurrences" → use "multiple occurrences" or "significant increase"
+- Instead of precise MB/s values → use "elevated" or "increased network I/O"
+
+GREPABILITY REQUIREMENT:
+Any specific metric quoted should be findable via grep in /backend/data/ folder.
+If uncertain, use approximate language instead of precise numbers.

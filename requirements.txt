@@ -16,3 +16,4 @@ ipykernel
 pandas
 jupyterlab
 openpyxl
+mcp>=1.9.0

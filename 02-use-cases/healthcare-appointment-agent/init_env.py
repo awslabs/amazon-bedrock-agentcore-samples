@@ -20,7 +20,6 @@ parser.add_argument('--openapi_spec_file', default="./temp-fhir-openapi-spec.yam
 parser.add_argument('--profile', help = "AWS Credentials Profile Name (optional)")
 
 def main():
-    user_pool_id = ""
     apigateway_endpoint = ""
     apigateway_cognito_lambda = ""
 
@@ -31,8 +30,8 @@ def main():
         "cognito_issuer":"",
         "cognito_auth_endpoint":"",
         "cognito_token_url":"",
+        "cognito_user_pool_id":"",
         "cognito_client_id":"",
-        "cognito_client_secret":"",
         "cognito_auth_scope":"",
         "healthlake_endpoint":"",
         "openapi_spec_file":args.openapi_spec_file
@@ -47,7 +46,6 @@ def main():
 
     print(f"Getting output variables from Cloudformation stack name: {args.cfn_name}")
     cfn_client = session.client("cloudformation", region_name=args.region)
-    cognito_client = session.client("cognito-idp", region_name=args.region)
 
     next_token = "start"
     while next_token != "end":
@@ -80,14 +78,12 @@ def main():
             env_vars['cognito_token_url'] = output['OutputValue']
         elif output['OutputKey'] == 'APIClientId':
             env_vars['cognito_client_id'] = output['OutputValue']
-        elif output['OutputKey'] == 'ClientSecret':
-            env_vars['cognito_client_secret'] = output['OutputValue']
         elif output['OutputKey'] == 'oAuthScope':
             env_vars['cognito_auth_scope'] = output['OutputValue']
         elif output['OutputKey'] == 'HealthLakeEndpoint':
             env_vars['healthlake_endpoint'] = output['OutputValue']
         elif output['OutputKey'] == 'UserPoolId':
-            user_pool_id = output['OutputValue']
+            env_vars['cognito_user_pool_id'] = output['OutputValue']
         elif output['OutputKey'] == 'ApiUrl':
             apigateway_endpoint = output['OutputValue']
         elif output['OutputKey'] == 'APIGWCognitoLambdaName':
@@ -104,13 +100,6 @@ def main():
 
     if 'issuer' in response_json:
         env_vars['cognito_issuer'] = response_json['issuer']
-
-    print(f"Getting Client Secret using UserPoolId: {user_pool_id} and ClientId: {env_vars['cognito_client_id']}")
-    response = cognito_client.describe_user_pool_client(
-        UserPoolId=user_pool_id,
-        ClientId=env_vars['cognito_client_id']
-    )
-    env_vars['cognito_client_secret'] = response['UserPoolClient']['ClientSecret']
 
     print(f"Creating .env file")
     # Open the .env file in write mode

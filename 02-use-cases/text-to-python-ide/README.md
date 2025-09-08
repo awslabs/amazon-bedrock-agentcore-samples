@@ -14,7 +14,7 @@ Text to Python IDE is a full-stack application that enables users to:
 
 ### Key Features
 
-- 🤖 **AI-Powered Code Generation** using Claude Sonnet 4 and Nova Premier
+- 🤖 **AI-Powered Code Generation** using Claude Sonnet 3.7 and Nova Premier
 - ⚡ **Real-time Code Execution** via AWS Bedrock AgentCore
 - 📊 **CSV File Upload & Integration** for data analysis workflows
 - ⏱️ **Execution Timer** with visual feedback for long-running operations
@@ -40,13 +40,13 @@ Text to Python IDE is a full-stack application that enables users to:
 - **Session History Tab**: View execution and conversation history
 
 #### **Backend (FastAPI + Strands-Agents)**
-- **Code Generator Agent**: Uses Claude Sonnet 4 for intelligent code generation
+- **Code Generator Agent**: Uses Claude Sonnet 3.7 for intelligent code generation
 - **Code Executor Agent**: Integrates with AgentCore for safe code execution
 - **Session Management**: RESTful APIs and WebSocket support
 - **Model Fallback**: Automatic failover between AI models
 
 #### **AI Models (AWS Bedrock)**
-- **Primary**: Claude Sonnet 4 (Inference Profile) - `us.anthropic.claude-sonnet-4-20250514-v1:0`
+- **Primary**: Claude Sonnet 3.7 (Inference Profile) - `us.anthropic.claude-3-7-sonnet-20250219-v1:0`
 - **Fallback**: Nova Premier (Inference Profile) - `us.amazon.nova-premier-v1:0`
 - **Safety Net**: Claude 3.5 Sonnet - `anthropic.claude-3-5-sonnet-20241022-v2:0`
 
@@ -228,7 +228,7 @@ Or use the managed policy: `BedrockAgentCoreFullAccess`
 
 The application automatically selects the best available model:
 
-1. **Claude Sonnet 4** (Inference Profile) - Primary choice
+1. **Claude Sonnet 3.7** (Inference Profile) - Primary choice
 2. **Nova Premier** (Inference Profile) - Automatic fallback
 3. **Claude 3.5 Sonnet** - Safety fallback
 

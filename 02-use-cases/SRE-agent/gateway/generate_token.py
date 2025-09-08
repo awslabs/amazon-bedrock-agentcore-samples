@@ -7,14 +7,13 @@ and saves them to a .access_token file for use with AgentCore Gateway.
 """
 
 import argparse
-import os
 import logging
+import os
 from pathlib import Path
-from typing import Dict, Any
+from typing import Any, Dict
 
-import requests
 import dotenv
-
+import requests
 
 # Configure logging with basicConfig
 logging.basicConfig(

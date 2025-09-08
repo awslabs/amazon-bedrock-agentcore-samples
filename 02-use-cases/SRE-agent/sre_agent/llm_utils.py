@@ -7,7 +7,7 @@ for authentication, access, and configuration issues.
 """
 
 import logging
-from typing import Optional, Dict, Any
+from typing import Any, Dict
 
 from langchain_anthropic import ChatAnthropic
 from langchain_aws import ChatBedrock

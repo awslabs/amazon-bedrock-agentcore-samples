@@ -209,6 +209,17 @@ except Exception as e:
     sys.exit(1)
 "
 
+# Fix quote consistency: Convert single quotes to double quotes for empty strings
+# This ensures compatibility with other deployment scripts that expect double quotes
+echo "📝 Ensuring quote consistency in dynamic-config.yaml..."
+sed -i '' "s/: ''/: \"\"/g" "$PROJECT_ROOT/config/dynamic-config.yaml"
+
+# Fix the scopes array format to maintain consistency (remove YAML list format and use JSON array)
+# First remove any existing "- api" line under scopes
+sed -i '' '/^  scopes:$/,/^[^ ]/ { /^  - api$/d; }' "$PROJECT_ROOT/config/dynamic-config.yaml"
+# Then ensure scopes line has the proper JSON array format
+sed -i '' 's/^  scopes:$/  scopes: ["api"]/' "$PROJECT_ROOT/config/dynamic-config.yaml"
+
 # Verify memory resource is accessible
 echo ""
 echo "🧪 Testing memory resource access..."

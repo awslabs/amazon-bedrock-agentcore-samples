@@ -14,7 +14,7 @@ The Project folder has the following:
 ## Usage
 
 1. Navigate to the directory of the framework you want to explore
-2. Install the requirements: `#uv add -r requirements.txt --active`
+2. Install the requirements: `!pip install -r requirements.txt `
 3. Configure your AWS credentials 
 3. Copy the .env.example file to .env and update the variables
 4. Open and run the Jupyter notebook

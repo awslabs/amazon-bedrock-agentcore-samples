@@ -24,9 +24,33 @@ def get_secret(secret_name):
         raise Exception(f"Failed to get secret: {str(e)}")
 
 def execute_slow_query(secret_name, min_exec_time):
-    """Execute multiple performance-related queries"""
+    """Execute enhanced slow query analysis based on runbooks.py diagnostics"""
     queries = {
-        "slow_queries": """
+        "active_slow_queries": """
+            -- Currently running slow queries from pg_stat_activity (from runbooks.py)
+            SELECT datname, pid, usename, application_name, client_addr, state, 
+                   now() - query_start AS duration, query 
+            FROM pg_stat_activity 
+            WHERE backend_type = 'client backend' AND state = 'active' 
+            AND query_start < now() - interval '5 minutes' 
+            ORDER BY duration DESC;
+        """,
+        "top_queries_by_avg_time": """
+            -- Top SQL queries by execution time per call (from runbooks.py)
+            SELECT query, total_time, calls, (total_time / calls) AS avg_time 
+            FROM pg_stat_statements 
+            ORDER BY avg_time DESC 
+            LIMIT 10;
+        """,
+        "top_queries_by_calls": """
+            -- Top SQL queries by number of calls (from runbooks.py)
+            SELECT query, calls, total_time, (total_time / calls) AS avg_time 
+            FROM pg_stat_statements 
+            ORDER BY calls DESC 
+            LIMIT 10;
+        """,
+        "slow_queries_detailed": """
+            -- Enhanced slow query analysis with detailed metrics
             SELECT 
                 CASE 
                     WHEN rolname IS NULL THEN 'unknown'
@@ -43,10 +67,27 @@ def execute_slow_query(secret_name, min_exec_time):
                 max_exec_time/1000 as max_time_sec,
                 mean_exec_time/1000 as avg_time_sec,
                 stddev_exec_time/1000 as stddev_time_sec,
-                rows
+                rows,
+                shared_blks_hit,
+                shared_blks_read,
+                shared_blks_dirtied,
+                shared_blks_written,
+                local_blks_hit,
+                local_blks_read,
+                temp_blks_read,
+                temp_blks_written,
+                blk_read_time/1000 as blk_read_time_sec,
+                blk_write_time/1000 as blk_write_time_sec,
+                -- Calculate cache hit ratio
+                CASE 
+                    WHEN (shared_blks_hit + shared_blks_read) > 0 THEN
+                        ROUND(shared_blks_hit::numeric / (shared_blks_hit + shared_blks_read) * 100, 2)
+                    ELSE 0
+                END as cache_hit_ratio_pct
             FROM pg_stat_statements s
             LEFT JOIN pg_roles r ON r.oid = s.userid
             LEFT JOIN pg_database d ON d.oid = s.dbid
+            WHERE mean_exec_time >= %s
             ORDER BY total_exec_time DESC
             LIMIT 10;
         """,
@@ -522,53 +563,132 @@ def format_results_for_index_analysis(results):
     return output
 
 def execute_autovacuum_analysis(secret_name):
-    """Execute autovacuum-related analysis queries"""
+    """Execute enhanced autovacuum-related analysis queries based on runbooks.py diagnostics"""
     queries = {
-        "tables_needing_vacuum": """
-            SELECT relname as table_name, 
-                   n_dead_tup as dead_tuples, 
-                   n_live_tup as live_tuples, 
-                   (n_dead_tup::float / NULLIF(n_live_tup + n_dead_tup, 0) * 100)::numeric(10,2) as dead_percentage,
+        "current_vacuum_progress": """
+            -- Current vacuum progress (from runbooks.py)
+            SELECT CURRENT_TIMESTAMP as snapshot_time, p.pid, now() - a.xact_start AS duration, 
+                   coalesce(wait_event_type ||'.'|| wait_event, 'CPU') AS wait_event,
+                   CASE WHEN a.query ~ '^autovacuum.*to prevent wraparound' THEN 'wraparound' 
+                        WHEN a.query ~ '^vacuum' THEN 'user' ELSE 'regular' END AS mode,
+                   p.datname AS database, p.relid::regclass AS table, p.phase, a.query,
+                   pg_size_pretty(p.heap_blks_total * current_setting('block_size')::int) AS table_size,
+                   pg_size_pretty(pg_total_relation_size(p.relid)) AS total_size,
+                   pg_size_pretty(p.heap_blks_scanned * current_setting('block_size')::int) AS scanned,
+                   pg_size_pretty(p.heap_blks_vacuumed * current_setting('block_size')::int) AS vacuumed,
+                   round(100.0 * p.heap_blks_scanned / p.heap_blks_total, 1) AS scanned_pct,
+                   round(100.0 * p.heap_blks_vacuumed / p.heap_blks_total, 1) AS vacuumed_pct,
+                   p.index_vacuum_count,
+                   s.n_dead_tup as total_num_dead_tuples
+            FROM pg_stat_progress_vacuum p 
+            JOIN pg_stat_activity a using (pid)
+            JOIN pg_stat_all_tables s on s.relid = p.relid
+            ORDER BY now() - a.xact_start DESC;
+        """,
+        "tables_eligible_for_vacuum": """
+            -- Tables eligible for vacuum (from runbooks.py)
+            SELECT schemaname, relname as table_name,
+                   n_live_tup as live_tuples,
+                   n_dead_tup as dead_tuples,
+                   CASE WHEN n_live_tup > 0 THEN 
+                       round(100.0 * n_dead_tup / n_live_tup, 2) 
+                   ELSE 0 END as dead_tuple_percentage,
                    last_vacuum,
                    last_autovacuum,
-                   last_analyze,
-                   last_autoanalyze
+                   vacuum_count,
+                   autovacuum_count,
+                   pg_size_pretty(pg_total_relation_size(schemaname||'.'||relname)) as table_size,
+                   EXTRACT(EPOCH FROM (NOW() - COALESCE(last_vacuum, last_autovacuum)))/86400 AS days_since_last_vacuum
             FROM pg_stat_user_tables
-            WHERE n_dead_tup > 0
-            ORDER BY dead_percentage DESC;
-        """,
-        "autovacuum_activity": """
-            SELECT pid, 
-                   datname, 
-                   usename, 
-                   query, 
-                   state, 
-                   wait_event_type, 
-                   wait_event, 
-                   age(now(), xact_start) as xact_age,
-                   age(now(), query_start) as query_age
-            FROM pg_stat_activity
-            WHERE query LIKE '%autovacuum%' 
-            AND state != 'idle';
-        """,
-        "table_bloat": """
-            SELECT schemaname, 
-                   relname, 
-                   n_live_tup, 
-                   n_dead_tup, 
-                   pg_size_pretty(pg_total_relation_size(schemaname || '.' || relname::text)) as total_size
-            FROM pg_stat_user_tables
-            ORDER BY n_dead_tup DESC
+            WHERE n_dead_tup > 1000 OR 
+                  (n_live_tup > 0 AND n_dead_tup::float / n_live_tup > 0.1) OR
+                  COALESCE(last_vacuum, last_autovacuum) < now() - interval '7 days'
+            ORDER BY dead_tuple_percentage DESC, n_dead_tup DESC
             LIMIT 20;
         """,
-        "wraparound_status": """
-            SELECT datname, 
-                   age(datfrozenxid) as xid_age,
-                   current_setting('autovacuum_freeze_max_age')::int as max_age,
-                   round(100 * age(datfrozenxid)::float / 
-                   current_setting('autovacuum_freeze_max_age')::int) as percent_towards_wraparound
-            FROM pg_database
-            ORDER BY age(datfrozenxid) DESC;
+        "tables_high_dead_tuple_ratio": """
+            -- Tables with more than 20% dead tuples (from runbooks.py)
+            SELECT schemaname, relname as table_name,
+                   n_live_tup as live_tuples,
+                   n_dead_tup as dead_tuples,
+                   round(100.0 * n_dead_tup / GREATEST(n_live_tup, 1), 2) as dead_tuple_percentage,
+                   last_vacuum,
+                   last_autovacuum
+            FROM pg_stat_user_tables
+            WHERE n_live_tup > 0 AND (n_dead_tup::float / n_live_tup) > 0.2
+            ORDER BY dead_tuple_percentage DESC;
+        """,
+        "oldest_xid_all_databases": """
+            -- Oldest XID age across all databases (from runbooks.py)
+            SELECT max(age(datfrozenxid)) AS oldest_xid FROM pg_database;
+        """,
+        "oldest_xid_by_database": """
+            -- XID age for each database (from runbooks.py)
+            SELECT datname, age(datfrozenxid) AS xid_age 
+            FROM pg_database 
+            ORDER BY xid_age DESC 
+            LIMIT 5;
+        """,
+        "percent_towards_xid_wraparound": """
+            -- Percent towards XID wraparound (from runbooks.py)
+            WITH max_age AS (
+                SELECT 2^31-1000000 as max_old_xid, setting AS autovacuum_freeze_max_age
+                FROM pg_catalog.pg_settings WHERE name = 'autovacuum_freeze_max_age'
+            ),
+            per_database_stats AS (
+                SELECT datname, m.max_old_xid::int, m.autovacuum_freeze_max_age::int,
+                       age(d.datfrozenxid) AS oldest_current_xid
+                FROM pg_catalog.pg_database d
+                JOIN max_age m ON (True)
+                WHERE d.datallowconn
+            )
+            SELECT max(oldest_current_xid) AS oldest_current_xid,
+                   max(ROUND(100*(oldest_current_xid/max_old_xid::float))) AS percent_towards_wraparound,
+                   max(ROUND(100*(oldest_current_xid/autovacuum_freeze_max_age::float))) AS percent_towards_emergency_autovac
+            FROM per_database_stats;
+        """,
+        "tables_with_oldest_relfrozenxid": """
+            -- Tables with oldest relfrozenxid (from runbooks.py)
+            SELECT c.oid::regclass AS table_name, age(c.relfrozenxid) AS xid_age, n.nspname AS schema_name 
+            FROM pg_class c 
+            JOIN pg_namespace n ON n.oid = c.relnamespace 
+            WHERE c.relkind = 'r' AND c.relfrozenxid != 0 
+            ORDER BY xid_age DESC 
+            LIMIT 10;
+        """,
+        "vacuum_blockers": """
+            -- Long-running transactions that may block vacuum (from runbooks.py)
+            SELECT pid, datname, usename, application_name, client_addr, backend_start, xact_start, query_start,
+                   state_change, wait_event_type, wait_event, state, backend_xid, backend_xmin, query,
+                   EXTRACT(EPOCH FROM (now() - xact_start)) / 3600 AS xact_age_hours,
+                   EXTRACT(EPOCH FROM (now() - query_start)) / 3600 AS query_age_hours
+            FROM pg_stat_activity
+            WHERE backend_type = 'client backend'
+            AND state != 'idle'
+            AND xact_start IS NOT NULL
+            AND EXTRACT(EPOCH FROM (now() - xact_start)) > 3600
+            ORDER BY xact_start;
+        """,
+        "inactive_replication_slots": """
+            -- Inactive replication slots that may cause vacuum issues (from runbooks.py)
+            SELECT slot_name, plugin, slot_type, database, active, 
+                   xmin, catalog_xmin, restart_lsn, confirmed_flush_lsn,
+                   CASE WHEN xmin IS NOT NULL THEN age(xmin) ELSE NULL END as xmin_age,
+                   CASE WHEN catalog_xmin IS NOT NULL THEN age(catalog_xmin) ELSE NULL END as catalog_xmin_age
+            FROM pg_replication_slots
+            WHERE NOT active OR xmin IS NOT NULL OR catalog_xmin IS NOT NULL
+            ORDER BY GREATEST(
+                COALESCE(age(xmin), 0),
+                COALESCE(age(catalog_xmin), 0)
+            ) DESC;
+        """,
+        "prepared_transactions": """
+            -- Prepared transactions that may block vacuum (from runbooks.py)
+            SELECT gid, prepared, owner, database, 
+                   EXTRACT(EPOCH FROM (now() - prepared)) / 60 AS prepared_minutes_ago
+            FROM pg_prepared_xacts
+            WHERE prepared < now() - interval '15 minutes'
+            ORDER BY prepared;
         """
     }
     
@@ -1139,7 +1259,6 @@ def connect_to_db(secret_name):
     """Establish database connection"""
     cur_secret = secret_name
     secret = get_secret(cur_secret)
-    print(secret)
     try:
         print("in connect_to_db")
         conn = psycopg2.connect(
@@ -1183,6 +1302,299 @@ def get_env_secret(environment):
     else:
         print("environement does not exist")
         raise ValueError(f"Unknown environment: {environment}")
+
+def execute_vacuum_progress_analysis(secret_name):
+    """Execute current vacuum progress analysis based on runbooks.py"""
+    query = """
+        -- Current vacuum progress (from runbooks.py)
+        SELECT CURRENT_TIMESTAMP as snapshot_time, p.pid, now() - a.xact_start AS duration, 
+               coalesce(wait_event_type ||'.'|| wait_event, 'CPU') AS wait_event,
+               CASE WHEN a.query ~ '^autovacuum.*to prevent wraparound' THEN 'wraparound' 
+                    WHEN a.query ~ '^vacuum' THEN 'user' ELSE 'regular' END AS mode,
+               p.datname AS database, p.relid::regclass AS table, p.phase, a.query,
+               pg_size_pretty(p.heap_blks_total * current_setting('block_size')::int) AS table_size,
+               pg_size_pretty(pg_total_relation_size(p.relid)) AS total_size,
+               pg_size_pretty(p.heap_blks_scanned * current_setting('block_size')::int) AS scanned,
+               pg_size_pretty(p.heap_blks_vacuumed * current_setting('block_size')::int) AS vacuumed,
+               round(100.0 * p.heap_blks_scanned / p.heap_blks_total, 1) AS scanned_pct,
+               round(100.0 * p.heap_blks_vacuumed / p.heap_blks_total, 1) AS vacuumed_pct,
+               p.index_vacuum_count,
+               s.n_dead_tup as total_num_dead_tuples
+        FROM pg_stat_progress_vacuum p 
+        JOIN pg_stat_activity a using (pid)
+        JOIN pg_stat_all_tables s on s.relid = p.relid
+        ORDER BY now() - a.xact_start DESC;
+    """
+    
+    conn = None
+    try:
+        conn = connect_to_db(secret_name)
+        with conn.cursor() as cur:
+            cur.execute(query)
+            columns = [desc[0] for desc in cur.description]
+            rows = cur.fetchall()
+            return [dict(zip(columns, row)) for row in rows]
+    except Exception as e:
+        raise Exception(f"Failed to retrieve vacuum progress: {str(e)}")
+    finally:
+        if conn:
+            conn.close()
+
+def execute_xid_analysis(secret_name):
+    """Execute XID wraparound analysis based on runbooks.py"""
+    queries = {
+        "oldest_xid_all_databases": """
+            SELECT max(age(datfrozenxid)) AS oldest_xid FROM pg_database;
+        """,
+        "oldest_xid_by_database": """
+            SELECT datname, age(datfrozenxid) AS xid_age 
+            FROM pg_database 
+            ORDER BY xid_age DESC 
+            LIMIT 5;
+        """,
+        "percent_towards_wraparound": """
+            WITH max_age AS (
+                SELECT 2^31-1000000 as max_old_xid, setting AS autovacuum_freeze_max_age
+                FROM pg_catalog.pg_settings WHERE name = 'autovacuum_freeze_max_age'
+            ),
+            per_database_stats AS (
+                SELECT datname, m.max_old_xid::int, m.autovacuum_freeze_max_age::int,
+                       age(d.datfrozenxid) AS oldest_current_xid
+                FROM pg_catalog.pg_database d
+                JOIN max_age m ON (True)
+                WHERE d.datallowconn
+            )
+            SELECT max(oldest_current_xid) AS oldest_current_xid,
+                   max(ROUND(100*(oldest_current_xid/max_old_xid::float))) AS percent_towards_wraparound,
+                   max(ROUND(100*(oldest_current_xid/autovacuum_freeze_max_age::float))) AS percent_towards_emergency_autovac
+            FROM per_database_stats;
+        """,
+        "tables_with_oldest_relfrozenxid": """
+            SELECT c.oid::regclass AS table_name, age(c.relfrozenxid) AS xid_age, n.nspname AS schema_name 
+            FROM pg_class c 
+            JOIN pg_namespace n ON n.oid = c.relnamespace 
+            WHERE c.relkind = 'r' AND c.relfrozenxid != 0 
+            ORDER BY xid_age DESC 
+            LIMIT 10;
+        """
+    }
+    
+    conn = None
+    try:
+        conn = connect_to_db(secret_name)
+        results = {}
+        
+        for query_name, query in queries.items():
+            try:
+                with conn.cursor() as cur:
+                    cur.execute(query)
+                    columns = [desc[0] for desc in cur.description]
+                    rows = cur.fetchall()
+                    results[query_name] = [dict(zip(columns, row)) for row in rows]
+            except Exception as e:
+                print(f"Error executing {query_name}: {str(e)}")
+                results[query_name] = []
+                
+        return results
+    except Exception as e:
+        raise Exception(f"Failed to retrieve XID analysis: {str(e)}")
+    finally:
+        if conn:
+            conn.close()
+
+def execute_bloat_analysis(secret_name):
+    """Execute table and index bloat analysis based on runbooks.py"""
+    query = """
+        -- Table and index bloat analysis (from runbooks.py)
+        WITH constants AS (
+            SELECT current_setting('block_size')::numeric AS bs,
+                23 AS hdr,
+                4 AS ma
+        ),
+        bloat_info AS (
+            SELECT schemaname,
+                tablename,
+                attname,
+                null_frac,
+                avg_width
+            FROM pg_stats
+            WHERE schemaname NOT IN ('information_schema', 'pg_catalog')
+        ),
+        table_bloat AS (
+            SELECT cc.relnamespace::regnamespace::text schemaname,
+                cc.relname tablename,
+                cc.reltuples,
+                cc.relpages,
+                bs,
+                CEIL((cc.reltuples * (
+                    (SELECT SUM(avg_width) FROM bloat_info bi WHERE bi.tablename = cc.relname and bi.schemaname = cc.relnamespace::regnamespace::text) + 23
+                )) / bs) AS expected_pages,
+                cc.relpages - CEIL((cc.reltuples * (
+                    (SELECT SUM(
+                        CASE WHEN avg_width = -1 THEN 10
+                                ELSE avg_width
+                        END
+                    ) FROM bloat_info bi WHERE bi.tablename = cc.relname and bi.schemaname = cc.relnamespace::regnamespace::text) + 23
+                )) / bs) AS bloat_pages,
+                CASE WHEN cc.relpages > 0 THEN
+                    ROUND(100 * (cc.relpages - CEIL((cc.reltuples * (
+                        (SELECT SUM(
+                            CASE WHEN avg_width = -1 THEN 10
+                                    ELSE avg_width
+                            END
+                        ) FROM bloat_info bi WHERE bi.tablename = cc.relname and bi.schemaname = cc.relnamespace::regnamespace::text) + 23
+                    )) / bs))::numeric / cc.relpages, 2)
+                ELSE 0 END AS bloat_percentage
+            FROM pg_class cc
+            JOIN pg_namespace nn ON cc.relnamespace = nn.oid
+            WHERE cc.relkind = 'r'
+            AND nn.nspname NOT IN ('information_schema', 'pg_catalog')
+            AND cc.reltuples > 0
+        )
+        SELECT schemaname, tablename, 
+               pg_size_pretty(relpages * bs::bigint) as table_size,
+               bloat_pages,
+               pg_size_pretty(bloat_pages * bs::bigint) as bloat_size,
+               bloat_percentage
+        FROM table_bloat, constants
+        WHERE bloat_percentage > 10
+        ORDER BY bloat_percentage DESC, bloat_pages DESC
+        LIMIT 20;
+    """
+    
+    conn = None
+    try:
+        conn = connect_to_db(secret_name)
+        with conn.cursor() as cur:
+            cur.execute(query)
+            columns = [desc[0] for desc in cur.description]
+            rows = cur.fetchall()
+            return [dict(zip(columns, row)) for row in rows]
+    except Exception as e:
+        raise Exception(f"Failed to retrieve bloat analysis: {str(e)}")
+    finally:
+        if conn:
+            conn.close()
+
+def execute_long_running_transactions(secret_name):
+    """Execute long-running transaction analysis based on runbooks.py"""
+    query = """
+        -- Long-running transactions (from runbooks.py)
+        SELECT pid, datname, usename, application_name, client_addr, backend_start, xact_start, query_start,
+               state_change, wait_event_type, wait_event, state, backend_xid, backend_xmin, query,
+               EXTRACT(EPOCH FROM (now() - xact_start)) / 3600 AS xact_age_hours,
+               EXTRACT(EPOCH FROM (now() - query_start)) / 3600 AS query_age_hours
+        FROM pg_stat_activity
+        WHERE backend_type = 'client backend'
+        AND state != 'idle'
+        AND xact_start IS NOT NULL
+        AND EXTRACT(EPOCH FROM (now() - xact_start)) > 3600
+        ORDER BY xact_start;
+    """
+    
+    conn = None
+    try:
+        conn = connect_to_db(secret_name)
+        with conn.cursor() as cur:
+            cur.execute(query)
+            columns = [desc[0] for desc in cur.description]
+            rows = cur.fetchall()
+            return [dict(zip(columns, row)) for row in rows]
+    except Exception as e:
+        raise Exception(f"Failed to retrieve long-running transactions: {str(e)}")
+    finally:
+        if conn:
+            conn.close()
+
+def format_results_for_vacuum_progress(results):
+    """Format vacuum progress results for display"""
+    if not results:
+        return "No active vacuum operations found."
+    
+    output = "=== CURRENT VACUUM PROGRESS ===\n"
+    for idx, vacuum in enumerate(results, 1):
+        output += f"\nVacuum Operation #{idx}:\n"
+        output += f"• PID: {vacuum['pid']}\n"
+        output += f"• Database: {vacuum['database']}\n"
+        output += f"• Table: {vacuum['table']}\n"
+        output += f"• Mode: {vacuum['mode']}\n"
+        output += f"• Phase: {vacuum['phase']}\n"
+        output += f"• Duration: {vacuum['duration']}\n"
+        output += f"• Table Size: {vacuum['table_size']}\n"
+        output += f"• Scanned: {vacuum['scanned']} ({vacuum['scanned_pct']}%)\n"
+        output += f"• Vacuumed: {vacuum['vacuumed']} ({vacuum['vacuumed_pct']}%)\n"
+        output += f"• Dead Tuples: {vacuum['total_num_dead_tuples']}\n"
+        output += f"• Wait Event: {vacuum['wait_event']}\n"
+    
+    return output
+
+def format_results_for_xid_analysis(results):
+    """Format XID analysis results for display"""
+    output = "=== XID WRAPAROUND ANALYSIS ===\n"
+    
+    # Oldest XID across all databases
+    if results.get("oldest_xid_all_databases"):
+        oldest_xid = results["oldest_xid_all_databases"][0]["oldest_xid"]
+        output += f"\nOldest XID across all databases: {oldest_xid}\n"
+    
+    # Percent towards wraparound
+    if results.get("percent_towards_wraparound"):
+        wraparound_data = results["percent_towards_wraparound"][0]
+        output += f"\nXID Wraparound Status:\n"
+        output += f"• Current oldest XID: {wraparound_data['oldest_current_xid']}\n"
+        output += f"• Percent towards wraparound: {wraparound_data['percent_towards_wraparound']}%\n"
+        output += f"• Percent towards emergency autovacuum: {wraparound_data['percent_towards_emergency_autovac']}%\n"
+    
+    # XID age by database
+    if results.get("oldest_xid_by_database"):
+        output += f"\nXID Age by Database:\n"
+        for db in results["oldest_xid_by_database"]:
+            output += f"• {db['datname']}: {db['xid_age']}\n"
+    
+    # Tables with oldest relfrozenxid
+    if results.get("tables_with_oldest_relfrozenxid"):
+        output += f"\nTables with Oldest relfrozenxid:\n"
+        for table in results["tables_with_oldest_relfrozenxid"]:
+            output += f"• {table['schema_name']}.{table['table_name']}: {table['xid_age']}\n"
+    
+    return output
+
+def format_results_for_bloat_analysis(results):
+    """Format bloat analysis results for display"""
+    if not results:
+        return "No significant table bloat found."
+    
+    output = "=== TABLE BLOAT ANALYSIS ===\n"
+    for idx, table in enumerate(results, 1):
+        output += f"\nBloated Table #{idx}:\n"
+        output += f"• Schema: {table['schemaname']}\n"
+        output += f"• Table: {table['tablename']}\n"
+        output += f"• Table Size: {table['table_size']}\n"
+        output += f"• Bloat Size: {table['bloat_size']}\n"
+        output += f"• Bloat Percentage: {table['bloat_percentage']}%\n"
+        output += f"• Bloat Pages: {table['bloat_pages']}\n"
+    
+    return output
+
+def format_results_for_long_running_transactions(results):
+    """Format long-running transaction results for display"""
+    if not results:
+        return "No long-running transactions found."
+    
+    output = "=== LONG-RUNNING TRANSACTIONS ===\n"
+    for idx, txn in enumerate(results, 1):
+        output += f"\nLong-Running Transaction #{idx}:\n"
+        output += f"• PID: {txn['pid']}\n"
+        output += f"• Database: {txn['datname']}\n"
+        output += f"• User: {txn['usename']}\n"
+        output += f"• Application: {txn['application_name']}\n"
+        output += f"• Transaction Age: {txn['xact_age_hours']:.2f} hours\n"
+        output += f"• Query Age: {txn['query_age_hours']:.2f} hours\n"
+        output += f"• State: {txn['state']}\n"
+        output += f"• Wait Event: {txn['wait_event_type']}.{txn['wait_event']}\n"
+        output += f"• Query: {txn['query'][:100]}...\n"
+    
+    return output
 
 def lambda_handler(event, context):
     try:
@@ -1242,10 +1654,26 @@ def lambda_handler(event, context):
             print("Executing system_health")
             results = execute_system_health(secret_name)
             formatted_output = format_results_for_system_health(results)
+        elif action_type == 'vacuum_progress':
+            print("Executing vacuum_progress analysis")
+            results = execute_vacuum_progress_analysis(secret_name)
+            formatted_output = format_results_for_vacuum_progress(results)
+        elif action_type == 'xid_analysis':
+            print("Executing XID wraparound analysis")
+            results = execute_xid_analysis(secret_name)
+            formatted_output = format_results_for_xid_analysis(results)
+        elif action_type == 'bloat_analysis':
+            print("Executing table bloat analysis")
+            results = execute_bloat_analysis(secret_name)
+            formatted_output = format_results_for_bloat_analysis(results)
+        elif action_type == 'long_running_transactions':
+            print("Executing long-running transactions analysis")
+            results = execute_long_running_transactions(secret_name)
+            formatted_output = format_results_for_long_running_transactions(results)
         else:
             return {
                 "functionResponse": {
-                    "content": f"Error: Unknown "
+                    "content": f"Error: Unknown action_type '{action_type}'. Available actions: slow_query, connection_management_issues, index_analysis, autovacuum_analysis, io_analysis, replication_analysis, system_health, vacuum_progress, xid_analysis, bloat_analysis, long_running_transactions"
                 }
             }
 

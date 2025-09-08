@@ -19,7 +19,6 @@ def main():
     # Print Cognito details
     print(f"Cognito User Pool ID: {cognito_result['client_info']['user_pool_id']}")
     print(f"Cognito Client ID: {cognito_result['client_info']['client_id']}")
-    print(f"Cognito Client Secret: {cognito_result['client_info']['client_secret']}")
     print(f"Cognito Domain: {cognito_result['client_info']['domain_prefix']}")
     print(f"Discovery URL: {cognito_result['authorizer_config']['customJWTAuthorizer']['discoveryUrl']}")
     

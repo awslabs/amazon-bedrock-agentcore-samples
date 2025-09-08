@@ -3,7 +3,7 @@
 import logging
 from functools import lru_cache
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Optional
 
 # Configure logging with basicConfig
 logging.basicConfig(
@@ -95,17 +95,22 @@ class PromptLoader:
             raise ValueError(f"Error formatting template {template_name}: {e}")
 
     def get_agent_prompt(
-        self, agent_type: str, agent_name: str, agent_description: str
+        self,
+        agent_type: str,
+        agent_name: str,
+        agent_description: str,
+        memory_context: str = "",
     ) -> str:
-        """Combine base agent prompt with agent-specific prompt.
+        """Combine base agent prompt with agent-specific prompt and memory context.
 
         Args:
             agent_type: Type of agent (kubernetes, logs, metrics, runbooks)
             agent_name: Display name of the agent
             agent_description: Description of the agent's capabilities
+            memory_context: Relevant memory context for this agent
 
         Returns:
-            Complete system prompt for the agent
+            Complete system prompt for the agent with memory context
         """
         try:
             # Load base prompt template
@@ -123,6 +128,13 @@ class PromptLoader:
                 logger.warning(f"No specific prompt found for agent type: {agent_type}")
                 combined_prompt = base_prompt
 
+            # Add memory context if provided
+            if memory_context:
+                combined_prompt += f"\n\n## Relevant Memory Context\n\n{memory_context}\n\nUse this context to inform your responses and avoid repeating work that has already been done."
+                logger.debug(
+                    f"Added memory context to {agent_type} agent prompt ({len(memory_context)} characters)"
+                )
+
             return combined_prompt
 
         except Exception as e:
@@ -135,6 +147,7 @@ class PromptLoader:
         query: str,
         agent_results: str,
         auto_approve_plan: bool = False,
+        user_preferences: str = "",
         **kwargs,
     ) -> str:
         """Get supervisor aggregation prompt based on context.
@@ -159,6 +172,7 @@ class PromptLoader:
                 "query": query,
                 "agent_results": agent_results,
                 "auto_approve_instruction": auto_approve_instruction,
+                "user_preferences": user_preferences,
                 **kwargs,
             }
 
@@ -230,6 +244,10 @@ def load_template(template_name: str, **kwargs) -> str:
     return prompt_loader.load_template(template_name, **kwargs)
 
 
-def get_agent_prompt(agent_type: str, agent_name: str, agent_description: str) -> str:
+def get_agent_prompt(
+    agent_type: str, agent_name: str, agent_description: str, memory_context: str = ""
+) -> str:
     """Get complete agent prompt using the default loader."""
-    return prompt_loader.get_agent_prompt(agent_type, agent_name, agent_description)
+    return prompt_loader.get_agent_prompt(
+        agent_type, agent_name, agent_description, memory_context
+    )

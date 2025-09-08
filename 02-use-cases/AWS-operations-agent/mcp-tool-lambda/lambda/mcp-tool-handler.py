@@ -1,7 +1,7 @@
 """
 AWS Operations Agent Gateway Lambda Handler - Optimized Version
 Handles AWS resource inspection tools via Strands Agent integration
-Updated: 2025-07-15 - Fixed Strands import issue
+Updated: 2025-08-02 - Added optimized system prompt with python_repl and shell tools
 """
 import json
 import logging
@@ -10,15 +10,11 @@ from datetime import datetime
 from typing import Dict, Any, Optional
 
 # Import Strands components at module level
-try:
-    from strands import Agent
-    from strands.models import BedrockModel
-    from strands_tools import use_aws, calculator, think, current_time
-    STRANDS_AVAILABLE = True
-    logging.info("Strands modules imported successfully")
-except ImportError as e:
-    STRANDS_AVAILABLE = False
-    logging.error(f"Failed to import Strands modules: {e}")
+from strands import Agent, tool
+from strands.models import BedrockModel
+from strands_tools import use_aws, shell, calculator, think, current_time, stop, handoff_to_user
+STRANDS_AVAILABLE = True
+logging.info("Strands modules imported successfully with shell tool")
 
 # Configure logging
 logger = logging.getLogger()
@@ -81,7 +77,6 @@ def extract_tool_name(context, event: Dict[str, Any]) -> Optional[str]:
     
     return None
 
-
 def handle_hello_world(event: Dict[str, Any]) -> Dict[str, Any]:
     """Handle hello_world tool."""
     name = event.get('name', 'World')
@@ -94,7 +89,6 @@ def handle_hello_world(event: Dict[str, Any]) -> Dict[str, Any]:
         'timestamp': datetime.utcnow().isoformat() + 'Z'
     }
 
-
 def handle_get_time(event: Dict[str, Any]) -> Dict[str, Any]:
     """Handle get_time tool."""
     current_time = datetime.utcnow().isoformat() + 'Z'
@@ -105,7 +99,6 @@ def handle_get_time(event: Dict[str, Any]) -> Dict[str, Any]:
         'tool': 'get_time',
         'timestamp': current_time
     }
-
 
 def handle_aws_service_tool(tool_name: str, event: Dict[str, Any]) -> Dict[str, Any]:
     """Handle AWS service tools using Strands Agent."""
@@ -135,41 +128,37 @@ def handle_aws_service_tool(tool_name: str, event: Dict[str, Any]) -> Dict[str, 
         # Initialize Bedrock model
         bedrock_model = BedrockModel(
             region_name='us-east-1',
-            model_id='us.anthropic.claude-3-7-sonnet-20250219-v1:0',
-            temperature=0.1,
-            system_prompt="""You are an AWS Operational Support Agent executing read-only AWS operations. You receive natural language queries and must perform the requested AWS operations efficiently.
-
-CRITICAL: For any date-related queries, ALWAYS use the current_time tool first to get the current date before calculating date ranges.
-
-For each query:
-1. If the query involves dates or time periods (like "last month", "last 14 days", "current month"):
-   - FIRST call current_time to get the current date
-   - Calculate the correct date ranges based on the current date
-   - Use YYYY-MM-DD format for all AWS API calls
-2. Identify the specific AWS service and operation needed
-3. Execute only the minimum required AWS calls to answer the query
-4. Return structured, actionable results in a clear format
-5. Focus on the specific information requested, avoid unnecessary details
-
-Date Calculation Examples:
-- Query: 'last month expenses' → Call current_time, then calculate previous month from current date
-- Query: 'last 14 days costs' → Call current_time, then subtract 14 days from current date
-- Query: 'current month breakdown' → Call current_time, then use current month start to current date
-
-Service Operation Examples:
-- Query: 'list running instances' → Use EC2 describe-instances with running state filter
-- Query: 'count S3 buckets' → Use S3 list-buckets and return count
-- Query: 'show failed stacks' → Use CloudFormation list-stacks with failed status filter
-
-Always optimize for speed and relevance. Return concise, well-structured responses."""
+            model_id='us.anthropic.claude-3-5-haiku-20241022-v1:0', #'us.anthropic.claude-3-7-sonnet-20250219-v1:0',
+            temperature=0.1
         )
         
-        # Create Strands Agent
-        agent = Agent(model=bedrock_model, tools=[use_aws, calculator, think, current_time])
+        # Import loop control tools
+        from strands_tools import stop, handoff_to_user
         
+        # Create Strands Agent with loop control tools
+        agent = Agent(
+            model=bedrock_model,
+            tools=[use_aws, stop, handoff_to_user, current_time],
+            system_prompt="""
+            You are an AWS assistant. IMPORTANT LOOP CONTROL RULES:
+            
+            1. Keep track of how many AWS operations you've performed
+            2. If you've made more than 15 AWS tool calls, use the 'stop' tool immediately
+            3. If you encounter repetitive operations, use 'handoff_to_user' to get guidance
+            4. If you're stuck in a loop, call 'stop' with an explanation
+            5. Always provide a summary before calling 'stop'
+            
+            Available tools for loop control:
+            - stop: Gracefully terminate when done or when hitting limits
+            - handoff_to_user: Get human guidance when uncertain
+            - use_aws: Your main AWS operations tool
+
+            CRITICAL: For any date-related queries, ALWAYS use the current_time tool first to get the current date before calculating date ranges.
+            """
+        )
+
         # Build query
         # Get the natural language query from the simplified schema
-        user_query = event.get('query', '')
         if not user_query:
             return {
                 'success': False,
@@ -178,15 +167,18 @@ Always optimize for speed and relevance. Return concise, well-structured respons
                 'timestamp': datetime.utcnow().isoformat() + 'Z'
             }
         
-        # Build the final query combining service context with user query
-        service_context = SERVICE_QUERIES.get(tool_name, f"AWS {tool_name.replace('_read_operations', '').upper()} service operations")
-        final_query = f"AWS Service: {tool_name.replace('_read_operations', '').upper()}\nUser Request: {user_query}\nContext: {service_context}\n\nExecute this AWS operation and return structured results."
+        # Build a simple, direct query (removed complex service context to prevent over-execution)
+        #service_name = tool_name.replace('_read_operations', '').upper()
+        #final_query = f"AWS {service_name}: {user_query}\n\nExecute this single operation directly and return results."
         
-        logger.info(f"Executing simplified query for {tool_name}: {user_query}")
+        #logger.info(f"Executing simplified query for {tool_name}: {user_query}")
         
         # Execute query
-        response = agent(final_query)
-        
+        #response = agent(final_query)
+        response = agent(user_query)
+        logger.info("##################################")
+        print(str(response))
+        logger.info("##################################")
         # Extract response text
         response_text = ""
         if hasattr(response, 'message') and 'content' in response.message:
@@ -198,14 +190,15 @@ Always optimize for speed and relevance. Return concise, well-structured respons
         
         logger.info(f"Response length: {len(response_text)} characters")
         
-        return {
-            'success': True,
-            'result': response_text,
-            'tool': tool_name,
-            'service': tool_name.replace('_read_operations', '').replace('_', '-'),
-            'user_query': user_query,
-            'timestamp': datetime.utcnow().isoformat() + 'Z'
-        }
+        return response_text
+        # return {
+        #     'success': True,
+        #     'result': response_text,
+        #     'tool': tool_name,
+        #     'service': tool_name.replace('_read_operations', '').replace('_', '-'),
+        #     'user_query': user_query,
+        #     'timestamp': datetime.utcnow().isoformat() + 'Z'
+        # }
         
     except Exception as e:
         logger.error(f"AWS service tool error: {str(e)}")
@@ -216,7 +209,6 @@ Always optimize for speed and relevance. Return concise, well-structured respons
             'service': tool_name.replace('_read_operations', '').replace('_', '-'),
             'timestamp': datetime.utcnow().isoformat() + 'Z'
         }
-
 
 def lambda_handler(event, context):
     """

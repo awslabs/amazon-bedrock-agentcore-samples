@@ -103,7 +103,7 @@ print(f"Target ID: {open_api_target['targetId']}")
 # Print authentication information
 print("\nAuthentication Information:")
 print(f"Client ID: {cognito_response['client_info']['client_id']}")
-print(f"Client Secret: {cognito_response['client_info']['client_secret']}")
+print("Client Secret: [REDACTED]")
 print(f"Token Endpoint: {cognito_response['client_info']['token_endpoint']}")
 print(f"Scope: {cognito_response['client_info']['scope']}")
 

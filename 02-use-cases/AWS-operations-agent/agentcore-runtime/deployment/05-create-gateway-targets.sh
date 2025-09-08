@@ -63,9 +63,9 @@ if [[ -z "$LAMBDA_FUNCTION_ARN" || "$LAMBDA_FUNCTION_ARN" == "null" ]]; then
     exit 1
 fi
 
-if [[ -z "$GATEWAY_EXECUTION_ROLE_ARN" || "$GATEWAY_EXECUTION_ROLE_ARN" == "null" ]]; then
-    echo "❌ Gateway Execution Role ARN not found in configuration"
-    echo "   Please run ./03-deploy-mcp-tool-lambda.sh first"
+if [[ -z "$ROLE_ARN" || "$ROLE_ARN" == "null" ]]; then
+    echo "❌ Gateway Execution Role ARN (bac-execution-role) not found in configuration"
+    echo "   Please run ./01-prerequisites.sh first"
     exit 1
 fi
 
@@ -80,8 +80,8 @@ echo "   Region: $REGION"
 echo "   Account ID: $ACCOUNT_ID"
 echo "   Gateway Name: $GATEWAY_NAME"
 echo "   Target Name: $TARGET_NAME"
-echo "   Role ARN: $ROLE_ARN"
-echo "   Gateway Execution Role ARN: $GATEWAY_EXECUTION_ROLE_ARN"
+echo "   Gateway Role ARN (bac-execution-role): $ROLE_ARN"
+echo "   Lambda Function Role ARN: $GATEWAY_EXECUTION_ROLE_ARN"
 echo "   Provider ARN: $PROVIDER_ARN"
 echo "   Lambda ARN: $LAMBDA_FUNCTION_ARN"
 echo "   JWT Discovery URL: $JWT_DISCOVERY_URL"

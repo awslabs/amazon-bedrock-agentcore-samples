@@ -452,7 +452,7 @@ button.active {
             except Exception as e:
                 console.print(f"[red]❌ Failed to take control: {e}[/red]")
                 return JSONResponse(
-                    {"status": "error", "message": str(e), "has_control": self.has_control},
+                    {"status": "error", "message": "An error occurred while taking control. See server logs for details.", "has_control": self.has_control},
                     status_code=500
                 )
         
@@ -468,7 +468,7 @@ button.active {
             except Exception as e:
                 console.print(f"[red]❌ Failed to release control: {e}[/red]")
                 return JSONResponse(
-                    {"status": "error", "message": str(e), "has_control": self.has_control},
+                    {"status": "error", "message": "An error occurred while releasing control. See server logs for details.", "has_control": self.has_control},
                     status_code=500
                 )
         

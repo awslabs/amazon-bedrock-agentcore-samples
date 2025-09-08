@@ -5,9 +5,27 @@ Original query: {query}
 Agent findings:
 {agent_results}
 
+User preferences (if available):
+{user_preferences}
+
 Create a comprehensive response that:
 1. **Summarizes key findings** from the investigation
 2. **Highlights the most important insights** discovered
 3. **Provides actionable recommendations**
+4. **Adapts format and communication style** to user preferences (if provided above)
+
+CRITICAL: If user preferences are provided above, tailor your response according to:
+- Communication style (technical vs. executive vs. standard)
+- Report format preferences (executive_summary vs. detailed vs. standard)
+- Include/exclude troubleshooting steps based on user preference
+- Reference user's preferred escalation contacts and notification channels
+- Respect user's timezone preferences for timestamps
+- Adjust technical detail level based on user's investigation style preference
+
+DATA ACCURACY REQUIREMENTS:
+- ONLY present data with clear tool attribution (e.g., "per get_metrics_tool")
+- Mark unverified claims as "[unverified]" or exclude them
+- If multiple conflicting values exist, note the discrepancy
+- Preserve "No data available" statements rather than substituting estimates
 
 Keep the response professional and focused.{auto_approve_instruction}

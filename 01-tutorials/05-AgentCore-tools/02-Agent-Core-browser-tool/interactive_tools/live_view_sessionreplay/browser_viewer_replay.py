@@ -471,7 +471,7 @@ button.active {
                 return JSONResponse(
                     {
                         "status": "error",
-                        "message": str(e),
+                        "message": "An error occurred while taking control. See server logs for details.",
                         "has_control": self.has_control,
                     },
                     status_code=500,
@@ -497,7 +497,7 @@ button.active {
                 return JSONResponse(
                     {
                         "status": "error",
-                        "message": str(e),
+                        "message": "An error occurred while releasing control. See server logs for details.",
                         "has_control": self.has_control,
                     },
                     status_code=500,

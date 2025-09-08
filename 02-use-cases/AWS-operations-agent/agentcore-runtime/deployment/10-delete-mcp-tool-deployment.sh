@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Delete MCP Tool Lambda deployment
-echo "🗑️  Deleting MCP Tool Lambda deployment..."
+# Delete MCP Tool Lambda deployment (ZIP-based)
+echo "🗑️  Deleting MCP Tool Lambda deployment (ZIP-based)..."
 
 # Configuration - Get project directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -21,7 +21,7 @@ else
     STACK_NAME=$(grep "stack_name:" "${CONFIG_DIR}/dynamic-config.yaml" | head -1 | sed 's/.*stack_name: *["'\'']*\([^"'\'']*\)["'\'']*$/\1/' 2>/dev/null)
 fi
 
-# Default stack name if not found in config
+# Default stack name if not found in config (matches ZIP deployment script)
 if [[ -z "$STACK_NAME" || "$STACK_NAME" == "null" ]]; then
     STACK_NAME="bac-mcp-stack"
     echo "⚠️  Stack name not found in config, using default: $STACK_NAME"
@@ -31,6 +31,7 @@ echo "📝 Configuration:"
 echo "   Region: $REGION"
 echo "   Account ID: $ACCOUNT_ID"
 echo "   Stack Name: $STACK_NAME"
+echo "   Deployment Type: ZIP-based (no Docker/ECR)"
 echo ""
 
 # Get AWS credentials
@@ -76,7 +77,7 @@ get_stack_resources() {
 cleanup_dynamic_config() {
     echo "🧹 Cleaning up dynamic configuration..."
     
-    DYNAMIC_CONFIG="${CONFIG_DIR}/dynamic/infrastructure.yaml"
+    DYNAMIC_CONFIG="${CONFIG_DIR}/dynamic-config.yaml"
     
     if [[ -f "$DYNAMIC_CONFIG" ]]; then
         if command -v yq >/dev/null 2>&1; then
@@ -84,16 +85,16 @@ cleanup_dynamic_config() {
             yq eval ".mcp_lambda.function_name = \"\"" -i "$DYNAMIC_CONFIG"
             yq eval ".mcp_lambda.function_role_arn = \"\"" -i "$DYNAMIC_CONFIG"
             yq eval ".mcp_lambda.gateway_execution_role_arn = \"\"" -i "$DYNAMIC_CONFIG"
+            yq eval ".mcp_lambda.role_arn = \"\"" -i "$DYNAMIC_CONFIG"
             yq eval ".mcp_lambda.stack_name = \"\"" -i "$DYNAMIC_CONFIG"
-            yq eval ".mcp_lambda.ecr_uri = \":latest\"" -i "$DYNAMIC_CONFIG"
         else
             # Fallback: manual update using sed
             sed -i.bak "s|function_arn: \".*\"|function_arn: \"\"|" "$DYNAMIC_CONFIG"
             sed -i.bak "s|function_name: \".*\"|function_name: \"\"|" "$DYNAMIC_CONFIG"
             sed -i.bak "s|function_role_arn: \".*\"|function_role_arn: \"\"|" "$DYNAMIC_CONFIG"
             sed -i.bak "s|gateway_execution_role_arn: \".*\"|gateway_execution_role_arn: \"\"|" "$DYNAMIC_CONFIG"
+            sed -i.bak "s|role_arn: \".*\"|role_arn: \"\"|" "$DYNAMIC_CONFIG"
             sed -i.bak "s|stack_name: \".*\"|stack_name: \"\"|" "$DYNAMIC_CONFIG"
-            sed -i.bak "s|ecr_uri: \".*\"|ecr_uri: \":latest\"|" "$DYNAMIC_CONFIG"
             
             # Remove backup file
             rm -f "${DYNAMIC_CONFIG}.bak"
@@ -105,13 +106,47 @@ cleanup_dynamic_config() {
     fi
 }
 
+# Function to clean up ZIP deployment artifacts
+cleanup_zip_artifacts() {
+    echo "🧹 Cleaning up ZIP deployment artifacts..."
+    
+    MCP_LAMBDA_DIR="${PROJECT_DIR}/mcp-tool-lambda"
+    
+    if [[ -d "$MCP_LAMBDA_DIR" ]]; then
+        # Clean up packaging directory
+        if [[ -d "${MCP_LAMBDA_DIR}/packaging" ]]; then
+            echo "   Removing packaging directory..."
+            rm -rf "${MCP_LAMBDA_DIR}/packaging"
+            echo "   ✅ Packaging directory removed"
+        fi
+        
+        # Clean up SAM build artifacts
+        if [[ -d "${MCP_LAMBDA_DIR}/.aws-sam" ]]; then
+            echo "   Removing SAM build artifacts..."
+            rm -rf "${MCP_LAMBDA_DIR}/.aws-sam"
+            echo "   ✅ SAM build artifacts removed"
+        fi
+        
+        # Clean up samconfig.toml if it exists
+        if [[ -f "${MCP_LAMBDA_DIR}/samconfig.toml" ]]; then
+            echo "   Removing SAM configuration..."
+            rm -f "${MCP_LAMBDA_DIR}/samconfig.toml"
+            echo "   ✅ SAM configuration removed"
+        fi
+    else
+        echo "   ⚠️  MCP Lambda directory not found: $MCP_LAMBDA_DIR"
+    fi
+}
+
 # Main execution
-echo "⚠️  WARNING: This will delete the MCP Tool Lambda deployment!"
+echo "⚠️  WARNING: This will delete the MCP Tool Lambda deployment (ZIP-based)!"
 echo "   This includes:"
-echo "   • Lambda function: dev-bedrock-agentcore-mcp-tool"
+echo "   • Lambda function: bac-mcp-tool"
 echo "   • IAM roles: MCPToolFunctionRole and BedrockAgentCoreGatewayExecutionRole"
-echo "   • CloudWatch log group"
+echo "   • CloudWatch log group: /aws/lambda/bac-mcp-tool"
 echo "   • CloudFormation stack: $STACK_NAME"
+echo "   • Local ZIP packaging artifacts"
+echo "   • SAM build artifacts"
 echo ""
 echo "   This action cannot be undone."
 echo ""
@@ -168,31 +203,33 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
     cleanup_dynamic_config
     
     echo ""
+    
+    # Clean up ZIP deployment artifacts
+    cleanup_zip_artifacts
+    
+    echo ""
     echo "🎉 MCP Tool Lambda Deletion Complete!"
     echo "===================================="
     echo ""
     echo "✅ CloudFormation stack deleted: $STACK_NAME"
     echo "✅ Dynamic configuration cleared"
+    echo "✅ ZIP deployment artifacts cleaned up"
     echo ""
     echo "📋 What was deleted:"
-    echo "   • Lambda function: dev-bedrock-agentcore-mcp-tool"
+    echo "   • Lambda function: bac-mcp-tool"
     echo "   • IAM role: MCPToolFunctionRole (for Lambda execution)"
     echo "   • IAM role: BedrockAgentCoreGatewayExecutionRole (for Gateway)"
-    echo "   • CloudWatch log group: /aws/lambda/dev-bedrock-agentcore-mcp-tool"
-    echo "   • ECR repository and images (if created)"
+    echo "   • CloudWatch log group: /aws/lambda/bac-mcp-tool"
     echo "   • CloudFormation stack: $STACK_NAME"
+    echo "   • Local packaging directory and ZIP artifacts"
+    echo "   • SAM build artifacts (.aws-sam directory)"
     echo ""
     echo "💡 Note:"
     echo "   • AgentCore Gateways and Targets are NOT deleted"
     echo "   • OAuth provider configuration is still available"
     echo "   • Static configuration is unchanged"
+    echo "   • No ECR repositories were involved (ZIP deployment)"
     echo ""
-    echo "🚀 To redeploy the MCP Tool Lambda:"
-    echo "   Run ./03-deploy-mcp-tool-lambda.sh"
-    echo ""
-    echo "⚠️  If you have active gateways using this Lambda:"
-    echo "   Run ./97-delete-all-gateways-targets.sh first"
-    echo "   Then redeploy both Lambda and gateways"
     echo ""
 else
     echo ""

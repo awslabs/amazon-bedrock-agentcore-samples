@@ -178,7 +178,7 @@ process_secret_by_arn() {
     echo "Saving configuration to file: config/db_${ENVIRONMENT}_config.env"
     cat > "config/db_${ENVIRONMENT}_config.env" << EOF
 export DB_CLUSTER_NAME=$CLUSTER_NAME
-export DB_SECRET_NAME=$SECRET_NAME
+# DB_SECRET_NAME stored securely in SSM Parameter Store: $SSM_PARAMETER_NAME
 export DB_SSM_PARAMETER=$SSM_PARAMETER_NAME
 export DB_ENDPOINT=$HOST
 export DB_PORT=$PORT

@@ -5,7 +5,9 @@
 import json
 import logging
 
-logger = logging.getLogger(__name__)
+from . import mylogger
+ 
+logger = mylogger.get_logger()
 
 # ============================================================================
 # DIY RESPONSE FORMATTING
@@ -105,6 +107,7 @@ def process_text_formatting(text: str) -> str:
     try:
         # Convert literal \n strings to actual newlines
         # Handle both single and double backslash cases
+        processed_text = text
         processed_text = text.replace('\\n', '\n')
         
         # Handle other common escape sequences that might appear
@@ -129,6 +132,7 @@ def process_text_formatting(text: str) -> str:
 def extract_content_from_event(event) -> dict:
     """
     Extract structured content from a Strands streaming event.
+    Uses priority-based extraction to avoid duplicates.
     
     Args:
         event: Strands streaming event
@@ -144,37 +148,73 @@ def extract_content_from_event(event) -> dict:
             'raw_event': str(event)[:200] + '...' if len(str(event)) > 200 else str(event)
         }
         
-        # Try to extract text from delta attribute
-        if hasattr(event, 'delta') and hasattr(event.delta, 'text'):
-            raw_text = event.delta.text or ""
-            if raw_text:
-                content_data['content'] = process_text_formatting(raw_text)
-                content_data['has_text'] = True
-                logger.debug(f"📤 Extracted text from delta: {raw_text[:30]}...")
-                return content_data
+        extracted_text = None
+        extraction_method = None
         
-        # Try to extract from string representation as fallback
-        event_str = str(event)
-        if 'contentBlockDelta' in event_str and "'text':" in event_str:
-            import re
-            # More robust regex pattern to handle various formats
-            patterns = [
-                r"delta=\{[^}]*'text':\s*'([^']*)'[^}]*\}",
-                r'"text":\s*"([^"]*)"',
-                r"'text':\s*'([^']*)'",
-            ]
-            
-            for pattern in patterns:
-                delta_match = re.search(pattern, event_str)
-                if delta_match:
-                    raw_text = delta_match.group(1)
-                    content_data['content'] = process_text_formatting(raw_text)
-                    content_data['has_text'] = True
-                    logger.debug(f"📤 Extracted text from string: {raw_text[:30]}...")
-                    return content_data
+        # Priority 1: Extract from nested dictionary structure (DIY agent format)
+        if not extracted_text and isinstance(event, dict) and 'event' in event:
+            inner_event = event['event']
+            if 'contentBlockDelta' in inner_event:
+                delta = inner_event['contentBlockDelta'].get('delta', {})
+                if 'text' in delta and delta['text']:
+                    extracted_text = delta['text']
+                    extraction_method = "nested_dict"
         
-        # No text content found
-        logger.debug(f"📭 No text content in event: {content_data['event_type']}")
+        # Priority 1.5: Handle contentBlockStart events (tool selection)
+        if not extracted_text and isinstance(event, dict) and 'event' in event:
+            inner_event = event['event']
+            if 'contentBlockStart' in inner_event:
+                start_info = inner_event['contentBlockStart'].get('start', {})
+                if 'toolUse' in start_info:
+                    tool_info = start_info['toolUse']
+                    tool_name = tool_info.get('name', 'unknown_tool')
+                    tool_id = tool_info.get('toolUseId', 'unknown_id')
+                    
+                    # Clean up tool name by removing namespace prefix
+                    # e.g., "bac-tool___ec2_read_operations" -> "ec2_read_operations"
+                    clean_tool_name = tool_name.split('___')[-1] if '___' in tool_name else tool_name
+                    
+                    # Create user-friendly message about tool selection
+                    extracted_text = f"\n🔍 Using {clean_tool_name} tool...(ID: {tool_id})\n"
+                    extraction_method = "tool_start"
+                    logger.debug(f"📤 Tool selected: {clean_tool_name} (ID: {tool_id[:8]}...)")
+
+        # Priority 2: Extract from delta attribute (SDK format)
+        if not extracted_text and hasattr(event, 'delta') and hasattr(event.delta, 'text'):
+            if event.delta.text:
+                #logger.info('# Priority 2: Ecan you creatextract from delta attribute (SDK format)')
+                extracted_text = event.delta.text
+                extraction_method = "delta_attribute"
+
+        # Priority 3: Extract from string representation (fallback)
+        if not extracted_text:
+            #logger.info('# Priority 3: Extract from string representation (fallback)')
+            event_str = str(event)
+            # <uncomment later>
+            # if 'contentBlockDelta' in event_str and "'text':" in event_str:
+            #     import re
+            #     # Try patterns in order of specificity
+            #     patterns = [
+            #         r"'text':\s*'([^']*)'",  # Most specific first
+            #         r'"text":\s*"([^"]*)"',
+            #         r"delta=\{[^}]*'text':\s*'([^']*)'[^}]*\}",
+            #     ]
+                
+            #     for pattern in patterns:
+            #         delta_match = re.search(pattern, event_str)
+            #         if delta_match and delta_match.group(1):
+            #             extracted_text = delta_match.group(1)
+            #             extraction_method = f"regex_{pattern[:20]}..."
+            #             break
+        
+        # Process extracted text if found
+        if extracted_text:
+            content_data['content'] = process_text_formatting(extracted_text)
+            content_data['has_text'] = True
+            logger.debug(f"📤 Extracted text via {extraction_method}: {extracted_text[:30]}...")
+        else:
+            logger.debug(f"📭 No text content in event: {content_data['event_type']}")
+        
         return content_data
         
     except Exception as e:

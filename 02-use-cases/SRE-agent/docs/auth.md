@@ -174,7 +174,14 @@ This script will:
 - Create resource server with scopes
 - Create app client with credentials
 - Generate `.env` file with all required variables
+- Save all Cognito configuration to `deployment/.cognito_config` file
 - Provide configuration details for gateway setup
+
+**Important Files Created:**
+- `deployment/.cognito_config` - Contains USER_POOL_ID, CLIENT_ID, CLIENT_SECRET, and other Cognito settings
+- `gateway/.env` - Environment variables for authentication
+
+You can reference the values in `.cognito_config` when configuring `gateway/config.yaml`
 
 #### Option B: Manual Setup
 

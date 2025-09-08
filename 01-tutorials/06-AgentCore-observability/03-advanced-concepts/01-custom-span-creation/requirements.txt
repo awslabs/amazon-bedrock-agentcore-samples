@@ -1,7 +1,7 @@
-aws-opentelemetry-distro==0.10.0
+aws-opentelemetry-distro~=0.10.1
 python-dotenv
 strands-agents[otel]
-duckduckgo-search
+ddgs
 boto3
 botocore
 

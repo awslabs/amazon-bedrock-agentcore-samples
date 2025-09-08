@@ -1,4 +1,4 @@
-FROM --platform=linux/arm64 python:3.11-slim
+FROM --platform=linux/arm64 python:3.12-slim
 
 WORKDIR /app
 
@@ -7,7 +7,7 @@ COPY requirements.txt .
 RUN pip install -r requirements.txt
 
 # Copy shared configuration manager (project-wide)
-COPY shared/ ./shared/
+#COPY shared/ ./shared/
 
 # Copy static configuration (embedded in container)
 COPY config/static-config.yaml ./config/
@@ -21,14 +21,19 @@ COPY agentcore-runtime/src/agent_shared/ ./agent_shared/
 # Copy agent implementation
 COPY agentcore-runtime/src/agents/sdk_agent.py .
 
-# Validate static configuration at build time
-RUN python -c "from shared.config_manager import AgentCoreConfigManager; config = AgentCoreConfigManager(); print('✅ Static configuration validated')"
+RUN python -m pip install --no-cache-dir aws_opentelemetry_distro_genai_beta>=0.1.2
 
-# Validate that gateway URL and OAuth settings are accessible
-RUN python -c "from shared.config_manager import AgentCoreConfigManager; config = AgentCoreConfigManager(); gateway_url = config.get_gateway_url(); oauth = config.get_oauth_settings(); print(f'✅ Gateway URL: {gateway_url}'); print(f'✅ OAuth domain: {oauth.get(\"domain\", \"Not configured\")}')"
+# Create non-root user
+RUN useradd -m -u 1000 bedrock_agentcore
+USER bedrock_agentcore
 
 # Expose port 8080 (AgentCore requirement)
 EXPOSE 8080
 
-# Run the agent using BedrockAgentCoreApp
-CMD ["python", "sdk_agent.py"]
+# Comment below to run in agentcore runtime
+# Uncomment below to run in local container on desktop
+#CMD ["python", "sdk_agent.py"]
+
+# Uncomment below to run in agentcore runtime
+# Comment below to run in local container on desktop
+CMD ["opentelemetry-instrument", "python", "sdk_agent.py"]

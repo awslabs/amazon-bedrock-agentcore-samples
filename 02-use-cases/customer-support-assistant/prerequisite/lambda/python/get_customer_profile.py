@@ -269,8 +269,6 @@ def get_customer_profile(
             "",
         ]
 
-        print(profile_info)
-
         # Add customer tier benefits
         if tier == "Premium" or tier == "VIP":
             profile_info.extend(

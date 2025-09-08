@@ -13,7 +13,7 @@ We will focus on a Strands Agents with Amazon Bedrock model example that demonst
 | Tutorial type       | Conversational with Streaming                                                    |
 | Agent type          | Single                                                                           |
 | Agentic Framework   | Strands Agents                                                                   |
-| LLM model           | Anthropic Claude Sonnet 4                                                        |
+| LLM model           | Anthropic Claude Sonnet 3.7                                                      |
 | Tutorial components | Streaming responses with AgentCore Runtime. Using Strands Agent and Amazon Bedrock Model |
 | Tutorial vertical   | Cross-vertical                                                                   |
 | Example complexity  | Easy                                                                             |

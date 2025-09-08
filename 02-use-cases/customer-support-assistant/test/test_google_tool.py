@@ -161,7 +161,7 @@ def get_calendar_events_today() -> str:
         return json.dumps({"error": error_message, "events": []})
 
 
-model_id = "us.anthropic.claude-sonnet-4-20250514-v1:0"
+model_id = "us.anthropic.claude-3-7-sonnet-20250219-v1:0"
 model = BedrockModel(
     model_id=model_id,
 )
