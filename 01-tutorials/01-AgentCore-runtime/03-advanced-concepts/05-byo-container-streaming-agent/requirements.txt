@@ -1,0 +1,8 @@
+bedrock-agentcore
+bedrock-agentcore-starter-toolkit
+fastapi>=0.116.1
+pydantic>=2.11.7
+requests>=2.32.3
+strands-agents>=0.1.0
+strands-agents-tools>=0.1.0
+uvicorn>=0.34.2
