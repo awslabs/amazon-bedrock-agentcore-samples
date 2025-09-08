@@ -9,7 +9,6 @@ It leverages Bedrock Agent Core for agent functionality and memory management.
 import logging
 import json
 from uuid import uuid4
-import os
 
 # Bedrock Agent Core imports
 from bedrock_agentcore import BedrockAgentCoreApp
@@ -151,7 +150,7 @@ def create_execute_sql_query_tool(user_prompt: str, prompt_uuid: str):
             records_to_return = response_json.get("result", [])
             message = response_json.get("message", "")
             
-            print(f"✅ Query executed successfully")
+            print("✅ Query executed successfully")
             print(f"📊 Records returned: {len(records_to_return)}")
             if message:
                 print(f"💬 Message: {message}")

@@ -124,9 +124,9 @@ class MemoryHookProvider(HookProvider):
                                 print(f"      ✅ Found get_tables_information tool result (length: {len(content_to_save)})")
                                 break
                             else:
-                                print(f"      ❌ Tool result doesn't contain get_tables_information marker")
+                                print("      ❌ Tool result doesn't contain get_tables_information marker")
                         else:
-                            print(f"      ❌ Tool result missing expected content structure")
+                            print("      ❌ Tool result missing expected content structure")
                 
                 if content_to_save:
                     print("\n" + "="*50)

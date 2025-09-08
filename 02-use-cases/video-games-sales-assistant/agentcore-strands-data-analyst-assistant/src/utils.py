@@ -13,7 +13,7 @@ The module uses the following SSM parameters:
 import boto3
 import json
 from boto3.dynamodb.conditions import Key
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any
 from datetime import datetime
 from .ssm_utils import load_config
 
