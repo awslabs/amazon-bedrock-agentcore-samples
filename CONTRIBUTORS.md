@@ -8,6 +8,7 @@
 - bergjaak
 - danystinson
 - dhawalkp
+- didhd
 - EashanKaushik
 - Grace Lang
 - khastation
