@@ -11,7 +11,7 @@ to provide persistent conversation history across sessions.
 
 import logging
 
-from strands.hooks.events import AgentInitializedEvent, MessageAddedEvent
+from strands.hooks.events import MessageAddedEvent
 from strands.hooks.registry import HookProvider, HookRegistry
 from bedrock_agentcore.memory import MemoryClient
 
@@ -51,47 +51,6 @@ class MemoryHookProvider(HookProvider):
         self.session_id = session_id
         self.last_k_turns = last_k_turns
     
-    def on_agent_initialized(self, event: AgentInitializedEvent):
-        """
-        Load recent conversation history when agent starts.
-        
-        This method retrieves the specified number of conversation turns from memory
-        and adds them to the agent's system prompt as context.
-        
-        Args:
-            event: Agent initialization event
-        """
-        try:
-            # Load the specified number of conversation turns from memory
-            print("************ last_k_turns *********")
-            print(self.last_k_turns)
-            recent_turns = self.memory_client.get_last_k_turns(
-                memory_id=self.memory_id,
-                actor_id=self.actor_id,
-                session_id=self.session_id,
-                k=self.last_k_turns
-            )
-            
-            if recent_turns:
-                # Format conversation history for context
-                context_messages = []
-                for turn in recent_turns:
-                    for message in turn:
-                        role = message['role']
-                        content = message['content']['text']
-                        context_messages.append(f"{role}: {content}")
-                
-                context = "\n".join(context_messages)
-                # Add context to agent's system prompt.
-                print("******************************")
-                print(recent_turns)
-                event.agent.system_prompt += f"\n\nRecent conversation:\n{context}"
-                logger.info(f"✅ Loaded {len(recent_turns)} conversation turns")
-                print("******************************")
-                
-        except Exception as e:
-            logger.error(f"Memory load error: {e}")
-    
     def on_message_added(self, event: MessageAddedEvent):
         """
         Store messages in memory as they are added to the conversation.
@@ -103,11 +62,35 @@ class MemoryHookProvider(HookProvider):
             event: Message added event
         """
         messages = event.agent.messages
-        print("------------|||||||||||||")
-        print(messages)
+        
+        print("\n" + "="*70)
+        print("💾 MEMORY HOOK - MESSAGE ADDED EVENT")
+        print("="*70)
+        print("📨 AGENT MESSAGES:")
+        print("-"*70)
+        
+        # Display all messages in a formatted way
+        for idx, msg in enumerate(messages, 1):
+            role = msg.get('role', 'unknown')
+            role_icon = "🤖" if role == 'assistant' else "👤" if role == 'user' else "❓"
+            print(f"  {idx}. {role_icon} {role.upper()}:")
+            
+            if 'content' in msg and msg['content']:
+                for content_idx, content_item in enumerate(msg['content'], 1):
+                    if 'text' in content_item:
+                        text_preview = content_item['text'][:150] + "..." if len(content_item['text']) > 150 else content_item['text']
+                        print(f"     📝 Text: {text_preview}")
+                    elif 'toolResult' in content_item:
+                        print(f"     🔧 Tool Result: {content_item['toolResult'].get('toolUseId', 'N/A')}")
+        
+        print("-"*70)
 
         try:
             last_message = messages[-1]
+            
+            print("🔍 PROCESSING LAST MESSAGE:")
+            print(f"   📋 Role: {last_message.get('role', 'unknown')}")
+            print(f"   📊 Content items: {len(last_message.get('content', []))}")
             
             # Check if the message has the expected structure
             if "role" in last_message and "content" in last_message and last_message["content"]:
@@ -116,10 +99,15 @@ class MemoryHookProvider(HookProvider):
                 # Look for text content or specific toolResult content
                 content_to_save = None
                 
-                for content_item in last_message["content"]:
+                print("   🔎 Searching for saveable content...")
+                
+                for content_idx, content_item in enumerate(last_message["content"], 1):
+                    print(f"      Content item {content_idx}: {list(content_item.keys())}")
+                    
                     # Check for regular text content
                     if "text" in content_item:
                         content_to_save = content_item["text"]
+                        print(f"      ✅ Found text content (length: {len(content_to_save)})")
                         break
                     
                     # Check for toolResult with get_tables_information
@@ -133,14 +121,23 @@ class MemoryHookProvider(HookProvider):
                             # Check if it contains the specific toolUsed marker
                             if "'toolUsed': 'get_tables_information'" in tool_text:
                                 content_to_save = tool_text
+                                print(f"      ✅ Found get_tables_information tool result (length: {len(content_to_save)})")
                                 break
+                            else:
+                                print("      ❌ Tool result doesn't contain get_tables_information marker")
+                        else:
+                            print("      ❌ Tool result missing expected content structure")
                 
                 if content_to_save:
-                    print("/////////////////////////")
-                    print(content_to_save)
-                    print("----")
-                    print(role)
-                    print("/////////////////////////")
+                    print("\n" + "="*50)
+                    print("💾 SAVING TO MEMORY")
+                    print("="*50)
+                    print(f"📝 Content preview: {content_to_save[:200]}{'...' if len(content_to_save) > 200 else ''}")
+                    print(f"👤 Role: {role}")
+                    print(f"🆔 Memory ID: {self.memory_id}")
+                    print(f"👤 Actor ID: {self.actor_id}")
+                    print(f"🔗 Session ID: {self.session_id}")
+                    print("="*50)
 
                     self.memory_client.save_conversation(
                         memory_id=self.memory_id,
@@ -148,13 +145,19 @@ class MemoryHookProvider(HookProvider):
                         session_id=self.session_id,
                         messages=[(content_to_save, role)]
                     )
-                    print("------------||||||||||||| SAVED")
+                    print("✅ SUCCESSFULLY SAVED TO MEMORY")
                 else:
-                    print("------------||||||||||||| NOT SAVED")
+                    print("❌ NO SAVEABLE CONTENT FOUND")
+                    print("   Reasons: No text content or get_tables_information tool result found")
             else:
-                print("------------||||||||||||| INVALID MESSAGE STRUCTURE")
+                print("❌ INVALID MESSAGE STRUCTURE")
+                print("   Missing required fields: role, content, or content is empty")
+                
         except Exception as e:
+            print(f"💥 MEMORY SAVE ERROR: {str(e)}")
             logger.error(f"Memory save error: {e}")
+        
+        print("="*70 + "\n")
     
     def register_hooks(self, registry: HookRegistry):
         """
@@ -165,4 +168,3 @@ class MemoryHookProvider(HookProvider):
         """
         # Register memory hooks
         registry.add_callback(MessageAddedEvent, self.on_message_added)
-        registry.add_callback(AgentInitializedEvent, self.on_agent_initialized)

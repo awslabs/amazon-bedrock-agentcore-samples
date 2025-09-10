@@ -31,7 +31,12 @@ def load_file_content(file_path: str, default_content: str = None) -> str:
             return file.read()
     except FileNotFoundError:
         if default_content is not None:
-            print(f"Warning: {file_path} not found. Using fallback content.")
+            print("\n" + "="*70)
+            print("⚠️  FILE NOT FOUND - USING FALLBACK")
+            print("="*70)
+            print(f"📁 File: {file_path}")
+            print("🔄 Using fallback content")
+            print("="*70 + "\n")
             return default_content
         raise
     except Exception as e:

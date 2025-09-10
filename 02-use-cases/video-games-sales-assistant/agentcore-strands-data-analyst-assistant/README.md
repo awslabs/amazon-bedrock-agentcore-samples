@@ -42,10 +42,9 @@ Before deploying your agent, you need to create a **[short-term memory](https://
 python3 resources/memory_manager.py create DataAnalystAssistantMemory ${MEMORY_ID_SSM_PARAMETER}
 ```
 
-2. Validate that your memory store was created successfully:
+2. List all available memory stores to validate that your memory store was created successfully:
 
 ```bash
-# List all available memory stores to confirm creation
 python3 resources/memory_manager.py list
 ```
 

@@ -6,7 +6,9 @@
 - aristsakpinis93
 - aurbac
 - bergjaak
+- danystinson
 - dhawalkp
+- didhd
 - EashanKaushik
 - Grace Lang
 - khastation
@@ -27,3 +29,4 @@
 - w601sxs
 - erezweinstein5
 - HardikThakkar94
+- brianloyal

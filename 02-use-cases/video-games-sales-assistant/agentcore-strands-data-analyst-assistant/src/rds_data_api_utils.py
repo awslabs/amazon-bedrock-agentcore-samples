@@ -25,7 +25,11 @@ from .ssm_utils import load_config
 try:
     CONFIG = load_config()
 except Exception as e:
-    print(f"Error loading configuration from SSM: {e}")
+    print("\n" + "="*70)
+    print("❌ CONFIGURATION LOADING ERROR")
+    print("="*70)
+    print(f"💥 Error loading configuration from SSM: {e}")
+    print("="*70 + "\n")
     CONFIG = {}
 
 
@@ -81,10 +85,20 @@ def execute_statement(sql_query: str, aws_region: str, aurora_resource_arn: str,
             sql=sql_query,
             includeResultMetadata=True
         )
-        print("SQL statement executed successfully!")
+        print("\n" + "="*70)
+        print("✅ SQL STATEMENT EXECUTED SUCCESSFULLY")
+        print("="*70)
+        print(f"🗄️  Database: {database_name}")
+        print(f"📊 Query length: {len(sql_query)} characters")
+        print("="*70 + "\n")
         return response
     except ClientError as e:
-        print("Error executing SQL statement:", e)
+        print("\n" + "="*70)
+        print("❌ SQL EXECUTION ERROR")
+        print("="*70)
+        print(f"🗄️  Database: {database_name}")
+        print(f"💥 Error: {e}")
+        print("="*70 + "\n")
         return {"error": str(e)}
 
 
@@ -115,7 +129,11 @@ def run_sql_query(sql_query: str) -> str:
     Returns:
         str: JSON string containing query results or error information
     """
-    print(sql_query)
+    print("\n" + "="*70)
+    print("🔍 SQL QUERY EXECUTION")
+    print("="*70)
+    print(f"📝 Query: {sql_query[:100]}{'...' if len(sql_query) > 100 else ''}")
+    print("="*70)
     try:
         # Validate configuration parameters before proceeding
         validate_configuration()
@@ -133,7 +151,11 @@ def run_sql_query(sql_query: str) -> str:
                 "error": f"Something went wrong executing the query: {response['error']}"
             })
 
-        print("Query executed")
+        print("\n" + "="*50)
+        print("✅ QUERY PROCESSING COMPLETE")
+        print("="*50)
+        print(f"📊 Records found: {len(response.get('records', []))}")
+        print("="*50 + "\n")
 
         records = []
         records_to_return = []
@@ -164,11 +186,8 @@ def run_sql_query(sql_query: str) -> str:
                     if get_size(json.dumps(records_to_return)) <= max_response_size:
                         records_to_return.append(item)
                 message = (
-                    "The data is too large, it has been truncated from "
-                    + str(len(records))
-                    + " to "
-                    + str(len(records_to_return))
-                    + " rows."
+                    f"The data is too large, it has been truncated from "
+                    f"{len(records)} to {len(records_to_return)} rows."
                 )
             else:
                 records_to_return = records

@@ -66,7 +66,12 @@ def get_ssm_parameter(param_name, region_name=None):
         )
         return response['Parameter']['Value']
     except ClientError as e:
-        print(f"Error retrieving SSM parameter {full_param_name}: {e}")
+        print("\n" + "="*70)
+        print("❌ SSM PARAMETER RETRIEVAL ERROR")
+        print("="*70)
+        print(f"📋 Parameter: {full_param_name}")
+        print(f"💥 Error: {e}")
+        print("="*70 + "\n")
         raise
 
 def load_config(region_name=None):

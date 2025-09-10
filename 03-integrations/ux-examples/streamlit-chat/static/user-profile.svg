@@ -1,0 +1,4 @@
+<svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
+<path fill="#5C7FFF" d="M8 7C9.66 7 11 5.66 11 4C11 2.34 9.66 1 8 1C6.34 1 5 2.34 5 4C5 5.66 6.34 7 8 7Z" />
+<path fill="#5C7FFF" d="M2 16V13C2 11.34 3.34 10 5 10H11C12.66 10 14 11.34 14 13V16" class="stroke-linejoin-round"/>
+</svg>
