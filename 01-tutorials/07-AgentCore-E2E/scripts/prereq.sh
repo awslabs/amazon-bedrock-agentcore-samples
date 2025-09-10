@@ -62,6 +62,7 @@ deploy_stack() {
   output=$(aws cloudformation deploy \
     --stack-name "$stack_name" \
     --template-file "$template_file" \
+    --s3-bucket "$FULL_BUCKET_NAME" \
     --capabilities CAPABILITY_NAMED_IAM \
     --region "$REGION" \
     "${params[@]}" 2>&1)
