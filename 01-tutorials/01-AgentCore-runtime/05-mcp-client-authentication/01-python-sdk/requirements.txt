@@ -1,0 +1,20 @@
+# MCP Client Authentication Requirements
+
+# Core MCP SDK
+mcp>=1.13.1
+
+# HTTP client for async requests
+httpx>=0.24.0
+
+# AWS SDK for SigV4 authentication
+boto3>=1.28.0
+botocore>=1.31.0
+
+# Environment variable loading (optional, but recommended)
+python-dotenv>=0.19.0
+
+# OAuth 2.0 dependencies (included with mcp)
+pydantic>=2.0.0
+
+# Additional dependencies for OAuth flows
+# Note: Most OAuth dependencies are included with the mcp package

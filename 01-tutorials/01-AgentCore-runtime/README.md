@@ -43,4 +43,6 @@ In these tutorials we will cover the following functionality:
 - [Hosting agents](01-hosting-agent)
 - [Hosting MCP Servers](02-hosting-MCP-server)
 - [Advanced Concepts](03-advanced-concepts)
+- [Hosting TypeScript MCP Servers](04-hosting-ts-MCP-server)
+- [MCP Client Authentication](05-mcp-client-authentication)
 
