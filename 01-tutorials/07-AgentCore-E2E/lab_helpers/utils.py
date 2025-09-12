@@ -10,7 +10,7 @@ import boto3
 import yaml
 from boto3.session import Session
 
-sts_client = boto3.client('sts')
+sts_client = boto3.client("sts")
 
 # Get AWS account details
 REGION = boto3.session.Session().region_name
