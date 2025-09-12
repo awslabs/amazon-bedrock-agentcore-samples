@@ -31,7 +31,7 @@ By the end of the 5 labs of this tutorial you will have created the following ar
 - AWS account with Bedrock access
 - Python 3.10+
 - AWS CLI configured
-- Amazon Nova Micro enabled in Bedrock
+- Claude 3.7 Sonnet enabled in Bedrock
 
 ## Labs
 
