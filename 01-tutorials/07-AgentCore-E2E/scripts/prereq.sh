@@ -55,7 +55,7 @@ fi
 echo "✅ S3 bucket ownership verified"
 
 # ----- 2. Zip Lambda code -----
-# sudo apt install zip
+sudo apt install zip
 echo "📦 Zipping contents of $LAMBDA_SRC into $ZIP_FILE..."
 cd "$LAMBDA_SRC"
 zip -r "../../../$ZIP_FILE" . > /dev/null
