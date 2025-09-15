@@ -13,8 +13,12 @@ REGION=$(aws configure get region 2>/dev/null || echo "us-west-2")
 
 # Get AWS Account ID with proper error handling
 echo "🔍 Getting AWS Account ID..."
+set +e  # Temporarily disable exit on error
 ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text 2>&1)
-if [ $? -ne 0 ] || [ -z "$ACCOUNT_ID" ] || [ "$ACCOUNT_ID" = "None" ]; then
+AWS_EXIT_CODE=$?
+set -e  # Re-enable exit on error
+
+if [ $AWS_EXIT_CODE -ne 0 ] || [ -z "$ACCOUNT_ID" ] || [ "$ACCOUNT_ID" = "None" ]; then
     echo "❌ Failed to get AWS Account ID. Please check your AWS credentials and network connectivity."
     echo "Error: $ACCOUNT_ID"
     exit 1
@@ -44,8 +48,17 @@ else
     2>/dev/null || echo "ℹ️ Bucket may already exist or be owned by you."
 fi
 
+# ----- Verify S3 bucket ownership -----
+echo "🔍 Verifying S3 bucket ownership..."
+aws s3api head-bucket --bucket "$FULL_BUCKET_NAME" --expected-bucket-owner "$ACCOUNT_ID"
+if [ $? -ne 0 ]; then
+    echo "❌ S3 bucket $FULL_BUCKET_NAME is not owned by account $ACCOUNT_ID"
+    exit 1
+fi
+echo "✅ S3 bucket ownership verified"
+
 # ----- 2. Zip Lambda code -----
-sudo apt install zip
+# sudo apt install zip
 echo "📦 Zipping contents of $LAMBDA_SRC into $ZIP_FILE..."
 cd "$LAMBDA_SRC"
 zip -r "../../../$ZIP_FILE" . > /dev/null
@@ -54,11 +67,11 @@ cd - > /dev/null
 
 # ----- 3. Upload to S3 -----
 echo "☁️ Uploading $ZIP_FILE to s3://$FULL_BUCKET_NAME/$S3_KEY..."
-aws s3 cp "$ZIP_FILE" "s3://$FULL_BUCKET_NAME/$S3_KEY"
+aws s3api put-object --bucket "$FULL_BUCKET_NAME" --key "$S3_KEY" --body "$ZIP_FILE" --expected-bucket-owner "$ACCOUNT_ID"
 
 echo "☁️ Uploading $LAYER_ZIP_FILE to s3://$FULL_BUCKET_NAME/$S3_LAYER_KEY..."
 cd "$LAMBDA_SRC"
-aws s3 cp "$LAYER_ZIP_FILE" "s3://$FULL_BUCKET_NAME/$S3_LAYER_KEY"
+aws s3api put-object --bucket "$FULL_BUCKET_NAME" --key "$S3_LAYER_KEY" --body "$LAYER_ZIP_FILE" --expected-bucket-owner "$ACCOUNT_ID"
 cd - > /dev/null
 # ----- 4. Deploy CloudFormation -----
 deploy_stack() {
