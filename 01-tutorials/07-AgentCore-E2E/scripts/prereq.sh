@@ -13,16 +13,13 @@ REGION=$(aws configure get region 2>/dev/null || echo "us-west-2")
 
 # Get AWS Account ID with proper error handling
 echo "🔍 Getting AWS Account ID..."
-set +e  # Temporarily disable exit on error
 ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text 2>&1)
-AWS_EXIT_CODE=$?
-set -e  # Re-enable exit on error
-
-if [ $AWS_EXIT_CODE -ne 0 ] || [ -z "$ACCOUNT_ID" ] || [ "$ACCOUNT_ID" = "None" ]; then
+if [ $? -ne 0 ] || [ -z "$ACCOUNT_ID" ] || [ "$ACCOUNT_ID" = "None" ]; then
     echo "❌ Failed to get AWS Account ID. Please check your AWS credentials and network connectivity."
     echo "Error: $ACCOUNT_ID"
     exit 1
 fi
+
 
 FULL_BUCKET_NAME="${BUCKET_NAME}-${ACCOUNT_ID}-${REGION}"
 ZIP_FILE="lambda.zip"
