@@ -7,9 +7,9 @@
 | LLM model           | Gemini 2.0 Flash                                                   |
 | Components          | AgentCore Runtime                                |
 | Example complexity  | Easy                                                                 |
-| SDK used            | Amazon BedrockAgentCore Python SDK                                           |
+| SDK used            | Amazon Bedrock AgentCore Python SDK                                           |
 
-This example demonstrates how to integrate a Google ADK agent with AWS Bedrock AgentCore, enabling you to deploy a search-capable agent as a managed service.
+This example demonstrates how to integrate a Google ADK agent with Amazon Bedrock AgentCore, enabling you to deploy a search-capable agent as a managed service.
 
 ## Prerequisites
 
@@ -142,6 +142,6 @@ The agent is wrapped with the Bedrock AgentCore framework, which handles:
 
 ## Additional Resources
 
-- [Google ADK Documentation](https://github.com/google/adk)
+- [Google ADK Documentation]([https://github.com/google/adk](https://google.github.io/adk-docs/))
 - [Gemini API Documentation](https://ai.google.dev/docs)
 - [Bedrock AgentCore Documentation](https://docs.aws.amazon.com/bedrock/latest/userguide/agents-core.html)
