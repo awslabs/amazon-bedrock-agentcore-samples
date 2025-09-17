@@ -41,6 +41,12 @@ AWS_REGION="${AWS_REGION:-us-east-1}"
 ECR_REPO_NAME="${1:-sre_agent}"
 RUNTIME_NAME="${RUNTIME_NAME:-$ECR_REPO_NAME}"
 AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+if [ $? -ne 0 ] || [ -z "$AWS_ACCOUNT_ID" ] || [ "$AWS_ACCOUNT_ID" = "None" ]; then
+    echo "❌ Failed to get AWS Account ID. Please check your AWS credentials and network connectivity."
+    echo "Error: $AWS_ACCOUNT_ID"
+    exit 1
+fi
+
 ECR_REPO_URI="$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPO_NAME"
 
 # Platform configuration (default to ARM64 for AgentCore)

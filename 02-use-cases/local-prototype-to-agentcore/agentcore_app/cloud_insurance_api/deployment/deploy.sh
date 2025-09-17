@@ -19,6 +19,12 @@ fi
 
 # Get AWS account ID and region
 ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+if [ $? -ne 0 ] || [ -z "$ACCOUNT_ID" ] || [ "$ACCOUNT_ID" = "None" ]; then
+    echo "❌ Failed to get AWS Account ID. Please check your AWS credentials and network connectivity."
+    echo "Error: $ACCOUNT_ID"
+    exit 1
+fi
+
 REGION=$(aws configure get region)
 
 # Set variables

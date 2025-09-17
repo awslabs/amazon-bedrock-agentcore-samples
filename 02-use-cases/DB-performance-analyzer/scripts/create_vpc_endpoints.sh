@@ -82,6 +82,11 @@ fi
 
 # Get account ID for endpoint policy
 ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+if [ $? -ne 0 ] || [ -z "$ACCOUNT_ID" ] || [ "$ACCOUNT_ID" = "None" ]; then
+    echo "❌ Failed to get AWS Account ID. Please check your AWS credentials and network connectivity."
+    echo "Error: $ACCOUNT_ID"
+    exit 1
+fi
 
 # Create endpoint policy that restricts access to this account only
 ENDPOINT_POLICY='{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":"*","Action":"*","Resource":"*","Condition":{"StringEquals":{"aws:PrincipalAccount":"'"$ACCOUNT_ID"'"}}}]}'

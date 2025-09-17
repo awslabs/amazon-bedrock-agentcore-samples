@@ -16,6 +16,13 @@ ZIP_FILE="lambda.zip"
 LAMBDA_SRC="prerequisite/lambda/python"
 S3_KEY="${ZIP_FILE}"
 
+if [ $? -ne 0 ] || [ -z "$ACCOUNT_ID" ] || [ "$ACCOUNT_ID" = "None" ]; then
+    echo "❌ Failed to get AWS Account ID. Please check your AWS credentials and network connectivity."
+    echo "Error: $ACCOUNT_ID"
+    exit 1
+fi
+
+
 # ----- 1. Create S3 bucket -----
 echo "🪣 Using S3 bucket: $FULL_BUCKET_NAME"
 if [ "$REGION" = "us-east-1" ]; then

@@ -3,14 +3,13 @@ import hashlib
 import hmac
 import json
 import os
-import sys
 from typing import Any, Dict
 
 import boto3
 import yaml
 from boto3.session import Session
 
-sts_client = boto3.client('sts')
+sts_client = boto3.client("sts")
 
 # Get AWS account details
 REGION = boto3.session.Session().region_name
@@ -149,10 +148,10 @@ def save_customer_support_secret(secret_value):
             SecretString=secret_value,
             Description="Secret containing the Cognito Configuration for the Customer Support Agent",
         )
-        print(f"✅ Created secret")
+        print("✅ Created secret")
     except secrets_client.exceptions.ResourceExistsException:
         secrets_client.update_secret(SecretId=secret_name, SecretString=secret_value)
-        print(f"✅ Updated existing secret")
+        print("✅ Updated existing secret")
     except Exception as e:
         print(f"❌ Error saving secret: {str(e)}")
         return False
@@ -458,6 +457,7 @@ def create_agentcore_runtime_execution_role():
                     "bedrock:InvokeModel",
                     "bedrock:InvokeModelWithResponseStream",
                     "bedrock:ApplyGuardrail",
+                    "bedrock:Retrieve",
                 ],
                 "Resource": [
                     "arn:aws:bedrock:*::foundation-model/*",
@@ -480,9 +480,7 @@ def create_agentcore_runtime_execution_role():
                 "Sid": "GetMemoryId",
                 "Effect": "Allow",
                 "Action": ["ssm:GetParameter"],
-                "Resource": [
-                    f"arn:aws:ssm:{region}:{account_id}:parameter/app/customersupport/agentcore/memory_id"
-                ],
+                "Resource": [f"arn:aws:ssm:{region}:{account_id}:parameter/app/*"],
             },
         ],
     }
@@ -526,10 +524,10 @@ def create_agentcore_runtime_execution_role():
         # Attach policy to role
         try:
             iam.attach_role_policy(RoleName=role_name, PolicyArn=policy_arn)
-            print(f"✅ Attached policy to role")
+            print("✅ Attached policy to role")
         except Exception as e:
             if "already attached" in str(e).lower():
-                print(f"ℹ️ Policy already attached to role")
+                print("ℹ️ Policy already attached to role")
             else:
                 raise
 
@@ -556,7 +554,7 @@ def delete_agentcore_runtime_execution_role():
         # Detach policy from role
         try:
             iam.detach_role_policy(RoleName=role_name, PolicyArn=policy_arn)
-            print(f"✅ Detached policy from role")
+            print("✅ Detached policy from role")
         except Exception:
             pass
 
@@ -725,7 +723,7 @@ def local_file_cleanup():
     
     deleted_files = []
     missing_files = []
-    
+
     for file in files_to_delete:
         if os.path.exists(file):
             try:
