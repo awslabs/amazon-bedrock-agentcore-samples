@@ -68,12 +68,12 @@ The setup process automatically generates several configuration files in the `co
 - **cognito_config.env**: Contains Cognito user pool, client, and token information
 - **gateway_config.env**: Contains Gateway ID, ARN, and region
 - **iam_config.env**: Contains IAM role ARNs and account information
-- **db_dev_config.env/db_prod_config.env**: Contains database connection information
+- **db_dev_config.env/db_prod_config.env**: Contains database connection information (credentials stored securely in AWS Secrets Manager)
 - **vpc_config.env**: Contains VPC, subnet, and security group IDs
 - **target_config.env**: Contains Gateway target configuration
 - **pgstat_target_config.env**: Contains configuration for the pg_stat_statements target
 
-These files contain sensitive information and are excluded from Git via `.gitignore`.
+These files contain configuration information and are excluded from Git via `.gitignore`. Sensitive credentials are stored securely in AWS Secrets Manager and SSM Parameter Store, not in these config files.
 
 ## Prerequisites
 
@@ -115,7 +115,7 @@ These files contain sensitive information and are excluded from Git via `.gitign
    - Retrieve the cluster endpoint and port from RDS
    - Create a secret in AWS Secrets Manager with the required format
    - Store the secret name in SSM Parameter Store
-   - Save the configuration to a file
+   - Save non-sensitive configuration to a file (credentials remain secure in AWS services)
    
    You can also specify an existing secret directly:
    ```bash

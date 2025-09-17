@@ -32,6 +32,12 @@ find_secret_arn() {
         echo "No match found by name, trying to find by ARN pattern..."
         # Try to construct the ARN pattern
         ACCOUNT_ID=$(aws sts get-caller-identity --query "Account" --output text)
+        if [ $? -ne 0 ] || [ -z "$ACCOUNT_ID" ] || [ "$ACCOUNT_ID" = "None" ]; then
+            echo "❌ Failed to get AWS Account ID. Please check your AWS credentials and network connectivity."
+            echo "Error: $ACCOUNT_ID"
+            exit 1
+        fi
+
         REGION_NAME=$REGION
         
         # Construct a potential ARN
@@ -178,7 +184,7 @@ process_secret_by_arn() {
     echo "Saving configuration to file: config/db_${ENVIRONMENT}_config.env"
     cat > "config/db_${ENVIRONMENT}_config.env" << EOF
 export DB_CLUSTER_NAME=$CLUSTER_NAME
-export DB_SECRET_NAME=$SECRET_NAME
+# DB_SECRET_NAME stored securely in SSM Parameter Store: $SSM_PARAMETER_NAME
 export DB_SSM_PARAMETER=$SSM_PARAMETER_NAME
 export DB_ENDPOINT=$HOST
 export DB_PORT=$PORT

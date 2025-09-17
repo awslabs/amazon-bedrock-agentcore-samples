@@ -79,22 +79,22 @@ def main():
 
     print("\nAccess token updated in gateway_info.json")
     print("\nTo use this token in your application, update the token value in your client code.")
-    print("New access token:\n{}".format(new_token))
+    print("The new access token has been saved in gateway_info.json.")
     
-    # Output how to use in code
+    # Output how to use in code (use placeholder, do not print sensitive value!)
     print("\nExample of using the token in Python code:")
     print("""
 from mcp.client.streamablehttp import streamablehttp_client
 from strands.tools.mcp import MCPClient
 
 # Create an MCP Client with your token
-access_token = "{token}"
-mcp_url = "{mcp_url}"
+access_token = "YOUR_ACCESS_TOKEN"
+mcp_url = "YOUR_MCP_URL"
 mcp_client = MCPClient(lambda: streamablehttp_client(
     mcp_url, 
-    headers={{"Authorization": f"Bearer {{access_token}}"}}
+    headers={"Authorization": f"Bearer {access_token}"}
 ))
-""".format(token=new_token, mcp_url=gateway_info["gateway"].get("mcp_url", "YOUR_MCP_URL")))
+""")
 
 if __name__ == "__main__":
     main()

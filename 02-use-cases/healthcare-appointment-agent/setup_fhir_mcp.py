@@ -142,7 +142,7 @@ def create_egress_oauth_provider(gateway_name):
                     }
                 },
                 "clientId": os.getenv("cognito_client_id"),
-                "clientSecret": os.getenv("cognito_client_secret")
+                "clientSecret": utils.get_cognito_client_secret(boto_session)
             }
         }
 
@@ -186,7 +186,7 @@ if __name__ == "__main__":
         print(f"Gateway created with id: {gatewayId}. Creating credential provider.")
 
         credProviderARN = create_egress_oauth_provider(gateway_name=args.gateway_name)
-        print(f"Egress credential provider created with ARN: {credProviderARN}. Creating gateawy target.")
+        print("Egress credential provider created. Creating gateway target.")
 
         targetId = create_gatewaytarget(gateway_id=gatewayId, cred_provider_arn=credProviderARN)
         print(f"Target created with id: {targetId}")

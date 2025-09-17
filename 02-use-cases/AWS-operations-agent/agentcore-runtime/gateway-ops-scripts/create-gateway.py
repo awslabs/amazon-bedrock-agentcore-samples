@@ -105,8 +105,6 @@ def create_bedrock_agentcore_gateway(config_manager, environment, gateway_name=N
     print(f"   AWS Region: {aws_config['region']}")
     print(f"   AWS Account: {aws_config['account_id']}")
     print(f"   Gateway Execution Role (bac-execution-role): {gateway_execution_role_arn}")
-    print(f"   JWT Discovery URL: {oauth_settings['jwt']['discovery_url']}")
-    print(f"   JWT Audience: {oauth_settings['jwt']['audience']}")
     
     # Use default gateway name if not provided
     if not gateway_name:

@@ -1,0 +1,67 @@
+name: JavaScript/TypeScript Code Quality
+
+on:
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: read
+
+jobs:
+  js-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Get changed JS/TS files
+        id: changed-files
+        uses: tj-actions/changed-files@v46
+        with:
+          files: |
+            **/*.js
+            **/*.ts
+            **/*.jsx
+            **/*.tsx
+
+      - name: Set up Node.js
+        if: steps.changed-files.outputs.any_changed == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install ESLint and Prettier globally
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: |
+          npm install -g eslint @typescript-eslint/parser @typescript-eslint/eslint-plugin prettier
+
+      - name: Run ESLint on changed files
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: |
+          echo "Linting changed JS/TS files:"
+          echo "${{ steps.changed-files.outputs.all_changed_files }}" | tr ' ' '\n'
+          
+          for file in ${{ steps.changed-files.outputs.all_changed_files }}; do
+            if [ -f "$file" ]; then
+              echo "Linting: $file"
+              npx eslint "$file"
+            fi
+          done
+        continue-on-error: true
+
+      - name: Run Prettier check on changed files
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: |
+          echo "Checking format of changed JS/TS files:"
+          
+          for file in ${{ steps.changed-files.outputs.all_changed_files }}; do
+            if [ -f "$file" ]; then
+              echo "Checking format: $file"
+              npx prettier --check "$file"
+            fi
+          done
+        continue-on-error: true
+
+      - name: Skip message
+        if: steps.changed-files.outputs.any_changed == 'false'
+        run: echo "⏭️ No JavaScript/TypeScript files changed - skipping JS/TS linting"

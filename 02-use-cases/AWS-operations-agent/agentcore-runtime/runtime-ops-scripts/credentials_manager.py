@@ -60,10 +60,10 @@ class CredentialsManager:
             provider = response
             print(f"   📋 Provider Details:")
             print(f"      • Name: {provider.get('name')}")
-            print(f"      • ARN: {provider.get('oauth2CredentialProviderArn')}")
+            # print(f"      • ARN: {provider.get('oauth2CredentialProviderArn')}")
             print(f"      • Status: {provider.get('status')}")
             print(f"      • Domain: {provider.get('domain')}")
-            print(f"      • Type: {provider.get('oauth2CredentialProviderType')}")
+            # print(f"      • Type: {provider.get('oauth2CredentialProviderType')}")
             print(f"      • Created: {provider.get('createdTime')}")
             print(f"      • Updated: {provider.get('updatedTime')}")
             
@@ -71,10 +71,10 @@ class CredentialsManager:
             config = provider.get('oauth2CredentialProviderConfiguration', {})
             if config:
                 print(f"      • Configuration:")
-                print(f"        - Client ID: {config.get('clientId', 'Not set')}")
-                print(f"        - Authorization Server: {config.get('authorizationServer', 'Not set')}")
-                print(f"        - Token Endpoint: {config.get('tokenEndpoint', 'Not set')}")
-                print(f"        - Authorization Endpoint: {config.get('authorizationEndpoint', 'Not set')}")
+                print(f"        - Client ID: {"Hidden" if config.get('clientId') else 'Not set'}")
+                print(f"        - Authorization Server: {"Hidden" if config.get('authorizationServer') else 'Not set'}")
+                print(f"        - Token Endpoint: {"Hidden" if config.get('tokenEndpoint') else 'Not set'}")
+                print(f"        - Authorization Endpoint: {"Hidden" if config.get('authorizationEndpoint') else 'Not set'}")
                 
                 # Don't show sensitive fields like client_secret
                 sensitive_fields = ['clientSecret', 'privateKey']
@@ -115,7 +115,6 @@ class CredentialsManager:
             )
             
             print(f"   ✅ Provider created successfully!")
-            print(f"      • ARN: {response.get('oauth2CredentialProviderArn')}")
             print(f"      • Domain: {domain}")
             print(f"      • Scopes: {scopes}")
             

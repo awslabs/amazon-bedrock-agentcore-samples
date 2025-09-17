@@ -1,27 +1,27 @@
-// AWS Credentials
-const ACCESS_KEY_ID = "";
-const SECRET_ACCESS_KEY = "";
-const AWS_REGION = "us-east-1";
+// ================================
+// CUSTOMIZABLE CONFIGURATION VALUES
+// ================================
 
-// DynamoDB Table
-const QUESTION_ANSWERS_TABLE_NAME = "";
+// AWS Configuration - UPDATE THESE VALUES
+const AWS_REGION = "us-east-1"; // Your AWS region
+const QUESTION_ANSWERS_TABLE_NAME = ""; // Your DynamoDB table name
 
-// Application Information
-const APP_NAME = "Data Analyst Assistant";
-const APP_SUBJECT = "Video Games Sales";
-const WELCOME_MESSAGE =
-  "I'm your Video Games Sales Data Analyst, crunching data for insights.";
-
-// Amazon Bedrock AgentCore
+// Amazon Bedrock AgentCore Configuration
 const AGENT_RUNTIME_ARN = "";
 const AGENT_ENDPOINT_NAME = "DEFAULT";
-// AgentCore Memory (Short-Term Memory) - Retrieve the last K conversation turns for context memory
-const LAST_K_TURNS = 10;
+const LAST_K_TURNS = 10; // AgentCore Memory - Retrieve the last K conversation turns for context memory
 
-// --------------------------------
+// Application Information - CUSTOMIZE AS NEEDED
+const APP_NAME = "Data Analyst Assistant";
+const APP_SUBJECT = "Video Games Sales";
+const WELCOME_MESSAGE = "I'm your Video Games Sales Data Analyst, crunching data for insights.";
+
+// ================================
+// SYSTEM CONFIGURATION
+// ================================
 
 const MAX_LENGTH_INPUT_SEARCH = 140;
-const MODEL_ID_FOR_CHART = "us.anthropic.claude-3-5-sonnet-20241022-v2:0";
+const MODEL_ID_FOR_CHART = "us.anthropic.claude-3-7-sonnet-20250219-v1:0";
 
 const CHART_PROMPT =
   '\n\
@@ -70,7 +70,7 @@ ApexChartsx Technical Specifications:\n\
     - Format decimal values to two places using formatter functions\n\
     - Use simple JavaScript functions (no moment.js)\n\
 \n\
-ApexChartsx Rules to Avoid Known Errors:\n\
+ApexChartsx Rules to Avoid Known Erros:\n\
 \n\
    - Do not use Multiple Y Axis for bars, those are not supported.\n\
    - In JSON format, avoid the error: raise JSONDecodeError("Expecting value", s, err.value) from None\n\
@@ -299,17 +299,22 @@ Example Chart Configurations:\n\
 </ChartExamples>';
 
 export {
-  CHART_PROMPT,
+  // AWS Configuration
+  AWS_REGION,
   QUESTION_ANSWERS_TABLE_NAME,
-  APP_NAME,
-  APP_SUBJECT,
-  WELCOME_MESSAGE,
+  
+  // Amazon Bedrock AgentCore
   AGENT_RUNTIME_ARN,
   AGENT_ENDPOINT_NAME,
   LAST_K_TURNS,
-  MODEL_ID_FOR_CHART,
+  
+  // Application Information
+  APP_NAME,
+  APP_SUBJECT,
+  WELCOME_MESSAGE,
+  
+  // System Configuration
   MAX_LENGTH_INPUT_SEARCH,
-  ACCESS_KEY_ID,
-  SECRET_ACCESS_KEY,
-  AWS_REGION,
+  MODEL_ID_FOR_CHART,
+  CHART_PROMPT
 };

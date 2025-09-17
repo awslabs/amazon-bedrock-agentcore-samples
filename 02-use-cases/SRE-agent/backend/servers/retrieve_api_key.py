@@ -192,13 +192,9 @@ def retrieve_api_key(
     secrets_manager_arn = api_key_secret_arn.get("secretArn")
     if not secrets_manager_arn:
         logger.error("No secretArn found in apiKeySecretArn")
-        logger.error(
-            f"Available fields in apiKeySecretArn: {list(api_key_secret_arn.keys())}"
-        )
+        logger.error(f"Available fields in apiKeySecretArn: {list(api_key_secret_arn.keys())}")
         return None
-
     logger.info(f"Using Secrets Manager ARN: {secrets_manager_arn}")
-
     # Retrieve the API key from Secrets Manager
     api_key = _retrieve_secret_value(secrets_manager_arn, region)
 
@@ -254,7 +250,8 @@ def main() -> None:
 
     if api_key:
         print("✅ Successfully retrieved API key")
-        print(f"📄 API Key: {api_key}")
+        # Do not print the full API key.
+        print("ℹ️ API key has been securely retrieved and is available for programmatic use.")
     else:
         print("❌ Failed to retrieve API key")
 

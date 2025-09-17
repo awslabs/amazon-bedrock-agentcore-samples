@@ -1,0 +1,8 @@
+uv
+langchain[aws]
+langgraph
+langsmith[otel]
+langchain-community
+uvicorn
+bedrock-agentcore
+bedrock-agentcore-starter-toolkit

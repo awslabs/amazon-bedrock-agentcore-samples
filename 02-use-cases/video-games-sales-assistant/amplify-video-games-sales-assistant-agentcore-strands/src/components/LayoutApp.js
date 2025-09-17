@@ -1,40 +1,71 @@
-import React from "react";
-import { useEffect } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { createTheme, ThemeProvider } from "@mui/material/styles";
+import { alpha } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
 import GlobalStyles from "@mui/material/GlobalStyles";
 import Container from "@mui/material/Container";
 import Typography from "@mui/material/Typography";
 import Box from "@mui/material/Box";
-import SentimentSatisfiedAltIcon from "@mui/icons-material/SentimentSatisfiedAlt";
 import AppBar from "@mui/material/AppBar";
 import Toolbar from "@mui/material/Toolbar";
 import Button from "@mui/material/Button";
-import Chip from "@mui/material/Chip";
+
 import "@fontsource/roboto/300.css";
 import "@fontsource/roboto/400.css";
 import "@fontsource/roboto/500.css";
 import "@fontsource/roboto/700.css";
-import { alpha } from "@mui/material/styles";
 import Chat from "./Chat";
 
 import { APP_NAME } from "../env";
-import Dialog from "@mui/material/Dialog";
-import DialogActions from "@mui/material/DialogActions";
-import DialogContent from "@mui/material/DialogContent";
-import DialogTitle from "@mui/material/DialogTitle";
 import IconButton from "@mui/material/IconButton";
+import ArchitectureDiagramDialog from "./ArchitectureDiagramDialog";
 import CloudOutlinedIcon from "@mui/icons-material/CloudOutlined";
+import LogoutIcon from "@mui/icons-material/Logout";
+import { signOut, fetchUserAttributes, getCurrentUser } from "aws-amplify/auth";
 
 function LayoutApp() {
   const [userName, setUserName] = React.useState("Guest User");
+  const [email, setEmail] = useState("");
   const [open, setOpen] = React.useState(false);
 
-  const effectRan = React.useRef(false);
+  const effectRan = useRef(false);
   useEffect(() => {
     if (!effectRan.current) {
       console.log("effect applied - only on the FIRST mount");
+
+      const fetchUserData = async () => {
+        console.log("Layout");
+        try {
+          const currentUser = await getCurrentUser();
+          console.log(currentUser);
+          setUserName(
+            currentUser.signInDetails.loginId
+              .split("@")[0]
+              .charAt(0)
+              .toUpperCase() +
+              currentUser.signInDetails.loginId
+                .split("@")[0]
+                .slice(1)
+                .toLowerCase()
+          );
+          setEmail(currentUser.signInDetails.loginId);
+          const userAttributes = await fetchUserAttributes();
+          if ("name" in userAttributes) {
+            setUserName(userAttributes.name);
+          }
+          console.log(userAttributes);
+        } catch (error) {
+          console.error("Error fetching user data:", error);
+        }
+      };
+
+      Promise.all([fetchUserData()])
+        .catch(console.error)
+        .finally(() => {
+          console.log("complete loading");
+        });
     }
+
     return () => (effectRan.current = true);
   }, []);
 
@@ -57,6 +88,14 @@ function LayoutApp() {
     setOpen(false);
   };
 
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+    } catch (error) {
+      console.error("Error signing out:", error);
+    }
+  };
+
   return (
     <ThemeProvider theme={defaultTheme}>
       <GlobalStyles
@@ -65,48 +104,55 @@ function LayoutApp() {
       <CssBaseline />
       <AppBar
         position="static"
-        color="default"
         elevation={0}
-        sx={{
-          background: "#F6F7FD",
-          position: "relative",
-          "&::after": {
-            content: '""',
-            position: "absolute",
-            bottom: 0,
-            left: 0,
-            right: 0,
-            height: "1px",
-            backgroundImage: (theme) => `linear-gradient(to right, 
-                                  ${theme.palette.divider}, 
-                                  ${alpha(theme.palette.primary.main, 0.3)}, 
-                                  ${theme.palette.divider})`,
-          },
-        }}
+        sx={(theme) => ({
+          bgcolor: alpha(theme.palette.secondary.main, 0.04),
+          borderBottom: 1,
+          borderColor: alpha(theme.palette.secondary.main, 0.1),
+        })}
       >
-        <Toolbar sx={{ flexWrap: "wrap", p: 1, m: 0 }}>
+        <Toolbar sx={{ minHeight: { xs: 56, sm: 64 }, px: { xs: 2, sm: 3 } }}>
           <Typography
             variant="h6"
             color="primary"
-            noWrap
-            sx={{ flexGrow: 1, p: 0, m: 0 }}
+            sx={{
+              flexGrow: 1,
+              fontSize: { xs: "1.1rem", sm: "1.25rem" },
+              fontWeight: 600,
+            }}
           >
             {APP_NAME}
           </Typography>
-          <Box sx={{ display: { xs: "none", sm: "inline" } }}>
-            <Chip
-              sx={{
-                border: 0,
-                fontSize: "0.95em",
-                color: (theme) => theme.palette.primary.dark, // Sets text color to primary dark
-                "& .MuiChip-icon": {
-                  color: (theme) => theme.palette.primary.dark, // Sets icon color to primary dark
-                },
-              }}
-              label={userName}
-              variant="outlined"
-              icon={<SentimentSatisfiedAltIcon />}
-            />
+
+          {/* Desktop view */}
+          <Box
+            sx={{
+              display: { xs: "none", sm: "flex" },
+              alignItems: "center",
+              gap: 1.5,
+            }}
+          >
+            <Typography variant="body1" color="text.primary">{userName}</Typography>
+            <IconButton
+              onClick={handleSignOut}
+              size="small"
+              sx={{ color: "primary.main" }}
+            >
+              <LogoutIcon fontSize="small" />
+            </IconButton>
+          </Box>
+
+          {/* Mobile view */}
+          <Box
+            sx={{ display: { xs: "flex", sm: "none" }, alignItems: "center" }}
+          >
+            <IconButton
+              onClick={handleSignOut}
+              size="small"
+              sx={{ color: "primary.main" }}
+            >
+              <LogoutIcon fontSize="small" />
+            </IconButton>
           </Box>
         </Toolbar>
       </AppBar>
@@ -130,25 +176,7 @@ function LayoutApp() {
         </IconButton>
       </Box>
 
-      <Dialog maxWidth={"xl"} open={open} onClose={handleClose}>
-        <DialogTitle>Data Analyst Assistant Architecture Diagram</DialogTitle>
-        <DialogContent>
-          <Box display="flex" justifyContent="center" alignItems="center">
-            <img
-              src="/images/gen-ai-assistant-diagram.png"
-              style={{
-                maxWidth: "100%",
-                maxHeight: "80vh",
-                objectFit: "contain",
-              }}
-              alt="Powered By AWS"
-            />
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleClose}>Close</Button>
-        </DialogActions>
-      </Dialog>
+      <ArchitectureDiagramDialog open={open} onClose={handleClose} src="/images/gen-ai-assistant-diagram.png" />
     </ThemeProvider>
   );
 }

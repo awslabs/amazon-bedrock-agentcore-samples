@@ -1,0 +1,53 @@
+name: Python Code Quality
+
+on:
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: read
+
+jobs:
+  python-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Get changed Python files
+        id: changed-files
+        uses: tj-actions/changed-files@v46
+        with:
+          files: |
+            **/*.py
+
+      - name: Set up Python
+        if: steps.changed-files.outputs.any_changed == 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install uv
+        if: steps.changed-files.outputs.any_changed == 'true'
+        uses: astral-sh/setup-uv@v3
+
+      - name: Install ruff
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: uv tool install ruff
+
+      - name: Run ruff check on changed files
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: |
+          echo "Checking changed Python files:"
+          echo "${{ steps.changed-files.outputs.all_changed_files }}" | tr ' ' '\n'
+          uv tool run ruff check --output-format=github ${{ steps.changed-files.outputs.all_changed_files }}
+
+      - name: Run ruff format check on changed files
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: |
+          echo "Checking format of changed Python files:"
+          uv tool run ruff format --check ${{ steps.changed-files.outputs.all_changed_files }}
+
+      - name: Skip message
+        if: steps.changed-files.outputs.any_changed == 'false'
+        run: echo "⏭️ No Python files changed - skipping Python linting"

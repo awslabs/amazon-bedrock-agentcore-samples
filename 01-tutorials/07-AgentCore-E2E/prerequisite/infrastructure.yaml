@@ -687,4 +687,693 @@ Resources:
       Description: ARN of the lambda that integrates with agentcore
       Tags:
         Application: CustomerSupport
-  
+
+  # S3 Bucket for knowledge base documents
+  BedrockKnowledgeBaseDataBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub '${AWS::AccountId}-${AWS::Region}-kb-data-bucket'
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  # Lambda Layer with latest boto3
+  Boto3Layer:
+    Type: AWS::CloudFormation::CustomResource
+    Properties:
+      ServiceToken: !GetAtt Boto3LayerCreator.Arn
+
+  Boto3LayerCreator:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${AWS::AccountId}-${AWS::Region}-kb-boto3-layer-creator'
+      Runtime: python3.9
+      Handler: index.handler
+      Role: !GetAtt Boto3LayerCreatorRole.Arn
+      Timeout: 900
+      MemorySize: 1024
+      Code:
+        ZipFile: |
+          import boto3
+          import cfnresponse
+          import zipfile
+          import tempfile
+          import os
+          import subprocess
+          import sys
+
+          def handler(event, context):
+              try:
+                  if event['RequestType'] == 'Delete':
+                      cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
+                      return
+                  
+                  with tempfile.TemporaryDirectory() as temp_dir:
+                      python_dir = os.path.join(temp_dir, 'python')
+                      os.makedirs(python_dir)
+                      
+                      subprocess.check_call([
+                          sys.executable, '-m', 'pip', 'install', 
+                          'boto3>=1.34.0', 'botocore>=1.34.0',
+                          '--target', python_dir, '--upgrade', '--no-cache-dir'
+                      ])
+                      
+                      zip_path = os.path.join(temp_dir, 'boto3-layer.zip')
+                      with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+                          for root, dirs, files in os.walk(python_dir):
+                              for file in files:
+                                  if not file.startswith('.'):
+                                      file_path = os.path.join(root, file)
+                                      arcname = os.path.relpath(file_path, temp_dir)
+                                      zipf.write(file_path, arcname)
+                      
+                      lambda_client = boto3.client('lambda')
+                      with open(zip_path, 'rb') as f:
+                          account_id = context.invoked_function_arn.split(':')[4]
+                          region = context.invoked_function_arn.split(':')[3]
+                          response = lambda_client.publish_layer_version(
+                              LayerName=f"{account_id}-{region}-kb-boto3-layer",
+                              Content={'ZipFile': f.read()},
+                              CompatibleRuntimes=['python3.9', 'python3.10', 'python3.11'],
+                              CompatibleArchitectures=['x86_64']
+                          )
+                      
+                      cfnresponse.send(event, context, cfnresponse.SUCCESS, {
+                          'LayerVersionArn': response['LayerVersionArn']
+                      })
+                      
+              except Exception as e:
+                  print(f"Error: {str(e)}")
+                  cfnresponse.send(event, context, cfnresponse.FAILED, {})
+
+  Boto3LayerCreatorRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${AWS::AccountId}-${AWS::Region}-kb-boto3-layer-creator-role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: LayerCreatorPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - lambda:PublishLayerVersion
+                  - lambda:DeleteLayerVersion
+                Resource: '*'
+
+  # IAM Role for Bedrock service
+  BedrockServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${AWS::AccountId}-${AWS::Region}-kb-bedrock-service-role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: bedrock.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: BedrockS3AccessPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:ListBucket
+                Resource:
+                  - !GetAtt BedrockKnowledgeBaseDataBucket.Arn
+                  - !Sub '${BedrockKnowledgeBaseDataBucket.Arn}/*'
+              - Effect: Allow
+                Action:
+                  - bedrock:InvokeModel
+                Resource: !Sub 'arn:aws:bedrock:${AWS::Region}::foundation-model/amazon.titan-embed-text-v2:0'
+              - Effect: Allow
+                Action:
+                  - s3vectors:ListIndexes
+                  - s3vectors:ListVectorBuckets
+                  - s3vectors:ListVectors
+                  - s3vectors:ListIndexes
+                  - s3vectors:GetVectorBucket
+                  - s3vectors:GetVectors
+                  - s3vectors:GetIndex
+                  - s3vectors:PutVectorBucketPolicy
+                  - s3vectors:PutVectors
+                  - s3vectors:CreateVectorBucket
+                  - s3vectors:CreateIndex
+                  - s3vectors:QueryVectors
+                  - s3vectors:GetVectorBucketPolicy
+                Resource: '*'
+
+  # Lambda function with technical documentation content
+  KnowledgeBaseSetupFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${AWS::AccountId}-${AWS::Region}-kb-setup-function'
+      Runtime: python3.9
+      Handler: index.lambda_handler
+      Role: !GetAtt KnowledgeBaseSetupRole.Arn
+      Timeout: 600
+      MemorySize: 512
+      Layers:
+        - !GetAtt Boto3Layer.LayerVersionArn
+      Code:
+        ZipFile: |
+          import boto3
+          import cfnresponse
+          import json
+
+          def lambda_handler(event, context):
+              response_data = {
+                  'Status': 'UNKNOWN',
+                  'FilesUploaded': 0,
+                  'S3Bucket': 'unknown',
+                  'KnowledgeBaseId': 'not-created',
+                  'DataSourceId': 'not-created',
+                  'ParameterStoreCreated': 'NO',
+                  'Error': 'No error'
+              }
+              
+              try:
+                  if event['RequestType'] == 'Delete':
+                      response_data.update({
+                          'Status': 'DELETED',
+                          'Error': 'Stack deleted successfully'
+                      })
+                      cfnresponse.send(event, context, cfnresponse.SUCCESS, response_data)
+                      return
+
+                  data_bucket_name = event['ResourceProperties']['BucketName']
+                  execution_role_arn = event['ResourceProperties']['BedrockRoleArn']
+                  response_data['S3Bucket'] = data_bucket_name
+                  
+                  print(f"Starting setup with bucket: {data_bucket_name}")
+                  
+                  # Create documentation content
+                  docs = {}
+                  docs['troubleshooting-guide.txt'] = """Common Electronics Troubleshooting Guide
+
+          POWER ISSUES
+          1. Device won't turn on
+             - Check power cable connections
+             - Verify power outlet functionality  
+             - Try different power cable if available
+             - Check for physical damage to device
+
+          2. Device turns off unexpectedly
+             - Check for overheating
+             - Verify power supply capacity
+             - Update device firmware
+             - Check for loose connections
+
+          CONNECTIVITY ISSUES  
+          1. Wi-Fi connection problems
+             - Restart router and device
+             - Check Wi-Fi password accuracy
+             - Update network drivers
+             - Reset network settings
+
+          2. Bluetooth pairing issues
+             - Clear Bluetooth cache
+             - Remove and re-pair devices
+             - Check compatibility
+             - Update Bluetooth drivers
+
+          PERFORMANCE ISSUES
+          1. Slow performance
+             - Close unnecessary applications
+             - Check available storage space
+             - Run system updates
+             - Clear cache and temporary files
+
+          2. Audio and Video problems
+             - Check cable connections
+             - Update audio and video drivers
+             - Verify settings configuration
+             - Test with different media"""
+
+                  docs['laptop-maintenance-guide.txt'] = """Laptop Maintenance and Care Guide
+
+          DAILY CARE
+          - Keep laptop on hard flat surfaces for proper ventilation
+          - Avoid eating or drinking near the laptop
+          - Clean screen gently with microfiber cloth
+          - Close laptop carefully without slamming
+
+          WEEKLY MAINTENANCE
+          - Clean keyboard with compressed air
+          - Wipe down exterior with damp cloth
+          - Check for software updates
+          - Empty downloads and temp folders
+
+          MONTHLY TASKS
+          - Deep clean vents and fans
+          - Check battery health and calibrate
+          - Update all drivers and software
+          - Run disk cleanup and defragmentation
+          - Backup important data
+
+          PERFORMANCE OPTIMIZATION
+          - Uninstall unused programs
+          - Manage startup programs
+          - Check hard drive health
+          - Monitor temperature levels
+          - Keep 15-20% disk space free
+
+          WARNING SIGNS
+          - Excessive heat generation
+          - Unusual fan noise
+          - Slow boot times
+          - Frequent crashes or freezes
+          - Reduced battery life"""
+
+                  docs['smartphone-setup-guide.txt'] = """Smartphone Initial Setup and Configuration Guide
+
+          FIRST-TIME SETUP
+          1. Charge device to at least 50% before first use
+          2. Insert SIM card if applicable
+          3. Power on and follow setup wizard
+          4. Connect to Wi-Fi network
+          5. Sign in to your account Apple ID or Google Account
+          6. Configure security PIN fingerprint face unlock
+          7. Restore from backup or set up as new device
+
+          SECURITY CONFIGURATION
+          - Enable automatic screen lock
+          - Set up biometric authentication
+          - Configure Find My Device or Find My iPhone
+          - Enable automatic app updates
+          - Set up two-factor authentication
+
+          ESSENTIAL APPS
+          - Email client configuration
+          - Banking and payment apps
+          - Navigation and maps
+          - Communication apps
+          - Backup and cloud storage
+
+          BATTERY OPTIMIZATION
+          - Enable battery optimization settings
+          - Adjust screen brightness and timeout
+          - Manage background app refresh
+          - Configure location services
+          - Set up low power mode
+
+          DATA MANAGEMENT
+          - Configure cloud backup schedules
+          - Set up automatic photo backup
+          - Manage storage and cleanup
+          - Configure data usage limits
+          - Set up family sharing if applicable"""
+
+                  docs['monitor-calibration-guide.txt'] = """Monitor Setup and Calibration Guide
+
+          PHYSICAL SETUP
+          - Position monitor at arms length 20-26 inches
+          - Top of screen at or below eye level
+          - Minimize glare from windows and lights
+          - Ensure stable desk placement
+
+          DISPLAY SETTINGS
+          1. Resolution - Set to native resolution
+          2. Brightness - 120-150 cd per m² for office use
+          3. Contrast - 1000 to 1 ratio recommended
+          4. Color temperature - 6500K for general use
+          5. Gamma - 2.2 for Windows 1.8 for Mac
+
+          COLOR CALIBRATION
+          - Use built-in calibration tools
+          - Consider hardware colorimeter for precision
+          - Calibrate monthly for professional work
+          - Save custom color profiles
+
+          ERGONOMIC CONSIDERATIONS
+          - Monitor height adjustment
+          - Tilt angle 10-20 degrees back
+          - Multiple monitor alignment
+          - Proper lighting setup
+
+          TROUBLESHOOTING
+          - Flickering - Check cable connections and refresh rate
+          - Color issues - Update graphics drivers
+          - Blurry text - Verify native resolution
+          - Dead pixels - Check warranty coverage"""
+
+                  docs['wireless-connectivity-guide.txt'] = """Wireless Connectivity Setup and Troubleshooting
+
+          WI-FI SETUP
+          1. Locate network settings in device
+          2. Select your network from available list
+          3. Enter network password carefully
+          4. Configure network security settings
+          5. Test internet connectivity
+
+          BLUETOOTH PAIRING
+          1. Enable Bluetooth on both devices
+          2. Put accessory in pairing mode
+          3. Select device from available list
+          4. Complete pairing process
+          5. Test functionality
+
+          COMMON WI-FI ISSUES
+          - Weak signal - Move closer to router check for interference
+          - Slow speeds - Check bandwidth usage update router firmware
+          - Connection drops - Update network drivers check power saving
+          - Cannot connect - Verify password restart network adapter
+
+          BLUETOOTH TROUBLESHOOTING
+          - Pairing fails - Clear Bluetooth cache restart both devices
+          - Audio stuttering - Check for interference update drivers
+          - Connection unstable - Verify compatibility check battery levels
+          - Device not found - Ensure proper pairing mode activation
+
+          SECURITY CONSIDERATIONS
+          - Use WPA3 encryption when available
+          - Regularly update device firmware
+          - Avoid public Wi-Fi for sensitive activities
+          - Monitor connected devices regularly"""
+
+                  docs['warranty-service-guide.txt'] = """Warranty and Service Information Guide
+
+          WARRANTY COVERAGE
+          - Manufacturing defects - Full coverage
+          - Normal wear and tear - Not covered
+          - Accidental damage - Extended warranty plans available
+          - Water damage - Generally not covered check IP rating
+          - Software issues - Covered if not user-caused
+
+          WARRANTY CLAIMS PROCESS
+          1. Gather proof of purchase and serial number
+          2. Contact technical support for diagnosis
+          3. Complete warranty claim form
+          4. Package device securely for shipping
+          5. Track repair status through online portal
+
+          SERVICE OPTIONS
+          - In-warranty repairs - Free parts and labor
+          - Out-of-warranty repairs - Quote provided before service
+          - Express service - Available for additional fee
+          - On-site service - Available for business customers
+
+          EXTENDED WARRANTY PLANS
+          - Accidental damage protection
+          - Extended coverage periods
+          - Premium technical support
+          - Replacement device programs
+
+          SUPPORT CHANNELS
+          - Online chat - 24/7 availability
+          - Phone support - Business hours
+          - Email support - 24-hour response
+          - Video troubleshooting - Appointment based"""
+
+                  s3_client = boto3.client('s3')
+                  uploaded_count = 0
+                  
+                  for filename, content in docs.items():
+                      try:
+                          print(f"Uploading {filename}...")
+                          s3_client.put_object(
+                              Bucket=data_bucket_name,
+                              Key=filename,
+                              Body=content.strip().encode('utf-8'),
+                              ContentType='text/plain'
+                          )
+                          uploaded_count += 1
+                          print(f"Successfully uploaded {filename}")
+                      except Exception as e:
+                          print(f"Failed to upload {filename}: {str(e)}")
+                  
+                  response_data['FilesUploaded'] = uploaded_count
+                  
+                  if uploaded_count == 0:
+                      response_data.update({
+                          'Status': 'FAILED',
+                          'Error': 'No documentation files were uploaded successfully'
+                      })
+                      cfnresponse.send(event, context, cfnresponse.SUCCESS, response_data)
+                      return
+                  
+                  try:
+                      s3vectors = boto3.client('s3vectors')
+                      bedrock = boto3.client('bedrock-agent')
+                  except Exception as e:
+                      response_data.update({
+                          'Status': 'FAILED',
+                          'Error': f'Client initialization failed: {str(e)}'
+                      })
+                      cfnresponse.send(event, context, cfnresponse.SUCCESS, response_data)
+                      return
+                  
+                  account_id = context.invoked_function_arn.split(':')[4]
+                  region = context.invoked_function_arn.split(':')[3]
+                  
+                  vector_bucket_name = f"{account_id}-{region}-kb-vector-bucket"
+                  index_name = f"{account_id}-{region}-kb-vector-index"
+                  kb_name = f"{account_id}-{region}-kb"
+                  datasource_name = f"{account_id}-{region}-kb-datasource"
+                  
+                  try:
+                      print(f"Creating S3 vector bucket: {vector_bucket_name}")
+                      s3vectors.create_vector_bucket(
+                          vectorBucketName=vector_bucket_name,
+                          encryptionConfiguration={'sseType': 'AES256'}
+                      )
+                      
+                      print(f"Creating vector index: {index_name}")
+                      s3vectors.create_index(
+                          vectorBucketName=vector_bucket_name,
+                          indexName=index_name,
+                          dimension=1024,
+                          distanceMetric='cosine',
+                          dataType='float32'
+                      )
+                      
+                      index_arn = f"arn:aws:s3vectors:{region}:{account_id}:bucket/{vector_bucket_name}/index/{index_name}"
+                      
+                      print(f"Creating knowledge base: {kb_name}")
+                      kb_response = bedrock.create_knowledge_base(
+                          name=kb_name,
+                          roleArn=execution_role_arn,
+                          knowledgeBaseConfiguration={
+                              'type': 'VECTOR',
+                              'vectorKnowledgeBaseConfiguration': {
+                                  'embeddingModelArn': f'arn:aws:bedrock:{region}::foundation-model/amazon.titan-embed-text-v2:0',
+                                  'embeddingModelConfiguration': {
+                                      'bedrockEmbeddingModelConfiguration': {
+                                          'dimensions': 1024,
+                                          'embeddingDataType': 'FLOAT32'
+                                      }
+                                  }
+                              }
+                          },
+                          storageConfiguration={
+                              'type': 'S3_VECTORS',
+                              's3VectorsConfiguration': {
+                                  'indexArn': index_arn
+                              }
+                          }
+                      )
+                      
+                      kb_id = kb_response['knowledgeBase']['knowledgeBaseId']
+                      
+                      print(f"Creating data source: {datasource_name}")
+                      ds_response = bedrock.create_data_source(
+                          knowledgeBaseId=kb_id,
+                          name=datasource_name,
+                          dataSourceConfiguration={
+                              'type': 'S3',
+                              's3Configuration': {
+                                  'bucketArn': f"arn:aws:s3:::{data_bucket_name}"
+                              }
+                          },
+                          vectorIngestionConfiguration={
+                              'chunkingConfiguration': {
+                                  'chunkingStrategy': 'FIXED_SIZE',
+                                  'fixedSizeChunkingConfiguration': {
+                                      'maxTokens': 200,
+                                      'overlapPercentage': 10
+                                  }
+                              }
+                          }
+                      )
+                      
+                      ds_id = ds_response['dataSource']['dataSourceId']
+                      
+                      response_data.update({
+                          'KnowledgeBaseId': kb_id,
+                          'DataSourceId': ds_id,
+                          'VectorBucketName': vector_bucket_name,
+                          'IndexArn': index_arn,
+                          'KnowledgeBaseName': kb_name,
+                          'DataSourceName': datasource_name
+                      })
+                      
+                      print("Creating Parameter Store entries...")
+                      ssm_client = boto3.client('ssm')
+                      
+                      try:
+                          ssm_client.put_parameter(
+                              Name=f"/{account_id}-{region}/kb/knowledge-base-id",
+                              Value=kb_id,
+                              Type='String',
+                              Description='Electronics Support Knowledge Base ID',
+                              Overwrite=True
+                          )
+                          
+                          ssm_client.put_parameter(
+                              Name=f"/{account_id}-{region}/kb/data-source-id",
+                              Value=ds_id,
+                              Type='String',
+                              Description='Electronics Support Data Source ID',
+                              Overwrite=True
+                          )
+                          
+                          response_data.update({
+                              'Status': 'SUCCESS',
+                              'ParameterStoreCreated': 'YES',
+                              'Error': 'Electronics support knowledge base created successfully'
+                          })
+                          
+                      except Exception as ssm_error:
+                          response_data.update({
+                              'Status': 'PARTIAL_SUCCESS',
+                              'ParameterStoreCreated': f'FAILED: {str(ssm_error)}',
+                              'Error': f'Parameter Store creation failed: {str(ssm_error)}'
+                          })
+                      
+                      print("Electronics support knowledge base setup completed!")
+                      cfnresponse.send(event, context, cfnresponse.SUCCESS, response_data)
+                      
+                  except Exception as e:
+                      print(f"Knowledge base creation failed: {str(e)}")
+                      response_data.update({
+                          'Status': 'PARTIAL_SUCCESS',
+                          'Error': f"Knowledge base creation failed: {str(e)}"
+                      })
+                      cfnresponse.send(event, context, cfnresponse.SUCCESS, response_data)
+                      
+              except Exception as e:
+                  print(f"Critical error: {str(e)}")
+                  response_data.update({
+                      'Status': 'FAILED',
+                      'Error': f"Critical error: {str(e)}"
+                  })
+                  cfnresponse.send(event, context, cfnresponse.SUCCESS, response_data)
+
+  KnowledgeBaseSetupRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${AWS::AccountId}-${AWS::Region}-kb-setup-function-role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: KnowledgeBaseSetupPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:PutObjectAcl
+                  - s3:ListBucket
+                Resource:
+                  - !GetAtt BedrockKnowledgeBaseDataBucket.Arn
+                  - !Sub '${BedrockKnowledgeBaseDataBucket.Arn}/*'
+              - Effect: Allow
+                Action:
+                  - s3vectors:CreateVectorBucket
+                  - s3vectors:CreateIndex
+                  - s3vectors:GetVectorBucket
+                  - s3vectors:GetIndex
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - bedrock:CreateKnowledgeBase
+                  - bedrock:CreateDataSource
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - iam:PassRole
+                Resource: !GetAtt BedrockServiceRole.Arn
+              - Effect: Allow
+                Action:
+                  - ssm:PutParameter
+                  - ssm:GetParameter
+                Resource: !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/*'
+
+  # Trigger the setup
+  KnowledgeBaseSetup:
+    Type: AWS::CloudFormation::CustomResource
+    Properties:
+      ServiceToken: !GetAtt KnowledgeBaseSetupFunction.Arn
+      BucketName: !Ref BedrockKnowledgeBaseDataBucket
+      BedrockRoleArn: !GetAtt BedrockServiceRole.Arn
+
+Outputs:
+  S3DataBucketName:
+    Description: 'S3 bucket containing electronics technical documentation'
+    Value: !Ref BedrockKnowledgeBaseDataBucket
+
+  SetupStatus:
+    Description: 'Setup completion status'
+    Value: !GetAtt KnowledgeBaseSetup.Status
+
+  FilesUploaded:
+    Description: 'Number of technical documentation files uploaded'
+    Value: !GetAtt KnowledgeBaseSetup.FilesUploaded
+
+  KnowledgeBaseId:
+    Description: 'Electronics Support Knowledge Base ID'
+    Value: !GetAtt KnowledgeBaseSetup.KnowledgeBaseId
+
+  DataSourceId:
+    Description: 'Electronics Support Data Source ID'
+    Value: !GetAtt KnowledgeBaseSetup.DataSourceId
+
+  VectorBucketName:
+    Description: 'S3 Vector Bucket Name'
+    Value: !GetAtt KnowledgeBaseSetup.VectorBucketName
+
+  KnowledgeBaseName:
+    Description: 'Knowledge Base Name'
+    Value: !GetAtt KnowledgeBaseSetup.KnowledgeBaseName
+
+  DataSourceName:
+    Description: 'Data Source Name'
+    Value: !GetAtt KnowledgeBaseSetup.DataSourceName
+
+  ParameterStoreCreated:
+    Description: 'Whether Parameter Store parameters were created'
+    Value: !GetAtt KnowledgeBaseSetup.ParameterStoreCreated
+
+  ParameterStoreKnowledgeBaseId:
+    Description: 'Parameter Store path for Knowledge Base ID'
+    Value: !Sub '${AWS::AccountId}-${AWS::Region}/kb/knowledge-base-id'
+
+  ParameterStoreDataSourceId:
+    Description: 'Parameter Store path for Data Source ID'
+    Value: !Sub '${AWS::AccountId}-${AWS::Region}/kb/data-source-id'
+
+  ErrorMessage:
+    Description: 'Error message or success confirmation'
+    Value: !GetAtt KnowledgeBaseSetup.Error

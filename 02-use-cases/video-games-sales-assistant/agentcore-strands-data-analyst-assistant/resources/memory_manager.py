@@ -22,19 +22,15 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 # Default configuration
-DEFAULT_REGION = "us-west-2"
-DEFAULT_ENVIRONMENT = "prod"
 DEFAULT_MEMORY_NAME = "AssistantAgentMemory"
 DEFAULT_EXPIRY_DAYS = 7
 
-def create_memory(environment: str = DEFAULT_ENVIRONMENT, 
-                 memory_name: str = DEFAULT_MEMORY_NAME, expiry_days: int = DEFAULT_EXPIRY_DAYS,
+def create_memory(memory_name: str = DEFAULT_MEMORY_NAME, expiry_days: int = DEFAULT_EXPIRY_DAYS,
                  parameter_store_name: Optional[str] = None) -> Optional[str]:
     """
     Create a new memory resource for the agent and store the memory ID in parameter store
     
     Args:
-        environment (str): Environment (prod or dev)
         memory_name (str): Name for the memory resource
         expiry_days (int): Retention period for short-term memory
         parameter_store_name (str): Name of the parameter store to update with memory ID
@@ -43,7 +39,7 @@ def create_memory(environment: str = DEFAULT_ENVIRONMENT,
         str: Memory ID if successful, None otherwise
     """
     logger.info(f"Creating memory resource: {memory_name}")
-    client = MemoryClient(environment=environment, region_name=DEFAULT_REGION)
+    client = MemoryClient()
     
     try:
         # Create memory resource for short-term conversation storage
@@ -81,18 +77,15 @@ def create_memory(environment: str = DEFAULT_ENVIRONMENT,
         traceback.print_exc()
         return None
 
-def list_memories(environment: str = DEFAULT_ENVIRONMENT) -> List[Dict[str, Any]]:
+def list_memories() -> List[Dict[str, Any]]:
     """
     List all available memory resources
     
-    Args:
-        environment (str): Environment (prod or dev)
-        
     Returns:
         List[Dict]: List of memory resources
     """
     logger.info("Listing memory resources...")
-    client = MemoryClient(environment=environment, region_name=DEFAULT_REGION)
+    client = MemoryClient()
     
     try:
         memories = client.list_memories()

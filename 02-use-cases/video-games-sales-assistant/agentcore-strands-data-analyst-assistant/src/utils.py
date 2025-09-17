@@ -13,7 +13,7 @@ The module uses the following SSM parameters:
 import boto3
 import json
 from boto3.dynamodb.conditions import Key
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any
 from datetime import datetime
 from .ssm_utils import load_config
 
@@ -21,7 +21,11 @@ from .ssm_utils import load_config
 try:
     CONFIG = load_config()
 except Exception as e:
-    print(f"Error loading configuration from SSM: {e}")
+    print("\n" + "="*70)
+    print("❌ CONFIGURATION LOADING ERROR")
+    print("="*70)
+    print(f"💥 Error loading configuration from SSM: {e}")
+    print("="*70 + "\n")
     CONFIG = {}
 
 def save_raw_query_result(user_prompt_uuid, user_prompt, sql_query, sql_query_description, result, message):
@@ -61,25 +65,36 @@ def save_raw_query_result(user_prompt_uuid, user_prompt, sql_query, sql_query_de
             },
         )
         
-        print(f"Data saved to DynamoDB with ID: {user_prompt_uuid}")
+        print("\n" + "="*70)
+        print("✅ DATA SAVED TO DYNAMODB")
+        print("="*70)
+        print(f"🆔 ID: {user_prompt_uuid}")
+        print(f"📊 Table: {question_answers_table}")
+        print(f"🗄️  Region: {CONFIG['AWS_REGION']}")
+        print("="*70 + "\n")
         return {"success": True, "response": response}
         
     except Exception as e:
-        print(f"Error saving to DynamoDB: {str(e)}")
+        print("\n" + "="*70)
+        print("❌ DYNAMODB SAVE ERROR")
+        print("="*70)
+        print(f"📊 Table: {question_answers_table}")
+        print(f"💥 Error: {str(e)}")
+        print("="*70 + "\n")
         return {"success": False, "error": str(e)}
 
 
-def read_messages_by_session(
+def read_interactions_by_session(
     session_id: str
 ) -> List[Dict[str, Any]]:
     """
-    Read conversation history messages from DynamoDB by session_id with pagination.
+    Read conversation history interactions from DynamoDB by session_id with pagination.
     
     Args:
         session_id: The session ID to query for
         
     Returns:
-        List of message objects containing only message attribute
+        List of interaction objects containing only message attribute
         
     Note:
         Uses AGENT_INTERACTIONS_TABLE_NAME parameter from SSM for data retrieval.
@@ -87,7 +102,12 @@ def read_messages_by_session(
     # Check if the table name is available
     conversation_table = CONFIG.get("AGENT_INTERACTIONS_TABLE_NAME")
     if not conversation_table:
-        print("AGENT_INTERACTIONS_TABLE_NAME not configured")
+        print("\n" + "="*70)
+        print("⚠️  AGENT INTERACTIONS TABLE NOT CONFIGURED")
+        print("="*70)
+        print("📊 Parameter: AGENT_INTERACTIONS_TABLE_NAME")
+        print("🔄 Returning empty list")
+        print("="*70 + "\n")
         return []
         
     dynamodb_resource = boto3.resource('dynamodb', region_name=CONFIG["AWS_REGION"])
@@ -194,12 +214,21 @@ def save_agent_interactions(session_id: str, prompt_uuid: str, starting_message_
     
     messages_to_save = messages_objects_to_strings(messages)
 
-    print("Final messages length: " + str(len(messages_to_save)))
+    print("\n" + "="*70)
+    print("📊 AGENT INTERACTIONS PROCESSING")
+    print("="*70)
+    print(f"📝 Final messages length: {len(messages_to_save)}")
+    print("="*70)
 
     # Check if the table name is available
     conversation_table = CONFIG.get("AGENT_INTERACTIONS_TABLE_NAME")
     if not conversation_table:
-        print("AGENT_INTERACTIONS_TABLE_NAME not configured")
+        print("\n" + "="*70)
+        print("⚠️  AGENT INTERACTIONS TABLE NOT CONFIGURED")
+        print("="*70)
+        print("📊 Parameter: AGENT_INTERACTIONS_TABLE_NAME")
+        print("🔄 Returning False")
+        print("="*70 + "\n")
         return False
         
     dynamodb = boto3.resource('dynamodb', region_name=CONFIG["AWS_REGION"])
@@ -221,5 +250,10 @@ def save_agent_interactions(session_id: str, prompt_uuid: str, starting_message_
                 starting_message_id += 1
         return True
     except Exception as e:
-        print(f"Error writing messages: {e}")
+        print("\n" + "="*70)
+        print("❌ BATCH WRITE ERROR")
+        print("="*70)
+        print(f"📊 Table: {conversation_table}")
+        print(f"💥 Error: {e}")
+        print("="*70 + "\n")
         return False

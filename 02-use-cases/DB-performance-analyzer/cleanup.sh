@@ -280,20 +280,24 @@ if [ "$DELETE_SECRETS" = true ]; then
     
     if [ -f config/db_prod_config.env ]; then
         source config/db_prod_config.env
-        if [ ! -z "$DB_SECRET_NAME" ]; then
-            DB_SECRETS_TO_DELETE+=("$DB_SECRET_NAME")
-        fi
         if [ ! -z "$DB_SSM_PARAMETER" ]; then
+            # Get secret name from SSM Parameter Store instead of config file
+            SECRET_NAME=$(aws ssm get-parameter --name "$DB_SSM_PARAMETER" --query "Parameter.Value" --output text 2>/dev/null || echo "")
+            if [ ! -z "$SECRET_NAME" ] && [ "$SECRET_NAME" != "None" ]; then
+                DB_SECRETS_TO_DELETE+=("$SECRET_NAME")
+            fi
             SSM_PARAMS_TO_DELETE+=("$DB_SSM_PARAMETER")
         fi
     fi
     
     if [ -f config/db_dev_config.env ]; then
         source config/db_dev_config.env
-        if [ ! -z "$DB_SECRET_NAME" ]; then
-            DB_SECRETS_TO_DELETE+=("$DB_SECRET_NAME")
-        fi
         if [ ! -z "$DB_SSM_PARAMETER" ]; then
+            # Get secret name from SSM Parameter Store instead of config file
+            SECRET_NAME=$(aws ssm get-parameter --name "$DB_SSM_PARAMETER" --query "Parameter.Value" --output text 2>/dev/null || echo "")
+            if [ ! -z "$SECRET_NAME" ] && [ "$SECRET_NAME" != "None" ]; then
+                DB_SECRETS_TO_DELETE+=("$SECRET_NAME")
+            fi
             SSM_PARAMS_TO_DELETE+=("$DB_SSM_PARAMETER")
         fi
     fi

@@ -1,0 +1,33 @@
+[server]
+enableStaticServing = true
+
+[theme]
+primaryColor = "#5C7FFF"
+textColor = "#232F3E"
+font = "amazon-ember, sans-serif"
+headingFont = "amazon-ember-heading, sans-serif"
+codeFont = "amazon-ember-mono, monospace"
+showSidebarBorder = true
+
+[[theme.fontFaces]]
+family = "amazon-ember"
+url = "app/static/Amazon-Ember-Medium.ttf"
+style = "normal"
+
+[[theme.fontFaces]]
+family = "amazon-ember"
+url = "app/static/Amazon-Ember-MediumItalic.ttf"
+style = "italic"
+
+[[theme.fontFaces]]
+family = "amazon-ember-mono"
+url = "app/static/AmazonEmberMono_Rg.ttf"
+style = "normal"
+
+[[theme.fontFaces]]
+family = "amazon-ember-heading"
+url = "app/static/AmazonEmber_He.ttf"
+style = "normal"
+
+[theme.sidebar]
+primaryColor = "#962EFF"

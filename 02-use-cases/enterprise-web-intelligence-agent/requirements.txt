@@ -1,0 +1,6 @@
+playwright
+rich
+matplotlib
+seaborn
+fastapi
+uvicorn

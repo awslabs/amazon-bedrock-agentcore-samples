@@ -48,7 +48,7 @@ class OAuthTester:
     def get_oauth_token(self, workload_token, provider_name, scopes=None, auth_flow="M2M"):
         """Get OAuth2 token using workload token"""
         try:
-            print(f"🎫 Getting OAuth2 token from provider: {provider_name}")
+            print(f"🎫 Getting OAuth2 token from provider")
             
             if scopes is None:
                 scopes = ["api"]
@@ -106,7 +106,6 @@ class OAuthTester:
             print("\n🎉 SUCCESS! Complete OAuth flow working!")
             print("=" * 50)
             print(f"✅ Workload: {workload_name}")
-            print(f"✅ Provider: {provider_name}")
             print(f"✅ Scopes: {scopes or ['api']}")
             print(f"✅ Token obtained and ready for use")
             
@@ -135,7 +134,6 @@ class OAuthTester:
                 
                 scopes = ['api']  # Default scopes
                 
-                print(f"   📋 Using provider from config: {provider_name}")
                 print(f"   📋 Using scopes: {scopes}")
             else:
                 print("   ⚠️  OAuth provider config not found, using defaults")

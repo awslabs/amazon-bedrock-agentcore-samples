@@ -508,20 +508,29 @@ const Chat = ({ userName = "Guest User" }) => {
                         textAlign: "right",
                         borderRadius: borderRadius,
                         fontWeight: 500,
-                        pt: 1,
-                        pb: 1,
-                        pl: 2,
-                        pr: 2,
+                        py: 1,
+                        px: 2,
                         mt: 2,
                         mb: 1.5,
                         mr: 1,
                         boxShadow: "rgba(0, 0, 0, 0.05) 0px 4px 12px",
-                        background: `linear-gradient(to right, 
-                  ${alpha(theme.palette.primary.light, 0.2)}, 
-                  ${alpha(theme.palette.primary.main, 0.2)})`,
+                        border: `1px solid ${alpha(
+                          theme.palette.secondary.main,
+                          0.15
+                        )}`,
+                        backgroundColor: alpha(
+                          theme.palette.secondary.main,
+                          0.1
+                        ),
                       })}
                     >
-                      <Typography color="primary.dark" variant="body1">
+                      <Typography
+                        sx={{
+                          color: "text.primary",
+                          fontSize: "0.95rem",
+                          fontWeight: 500,
+                        }}
+                      >
                         {answer.query}
                       </Typography>
                     </Box>
@@ -542,51 +551,76 @@ const Chat = ({ userName = "Guest User" }) => {
           </ul>
         ) : (
           <Box
-            textAlign={"center"}
             sx={{
-              pl: 1,
-              pt: 1,
-              pr: 1,
-              pb: 6,
               height: height,
               display: "flex",
-              alignItems: "flex-end",
+              alignItems: "center",
+              justifyContent: "center",
+              px: 3,
             }}
           >
-            <div style={{ width: "100%" }}>
-              <img
-                src="/images/agentcore.png"
-                alt="Amazon Bedrock AgentCore"
-                height={128}
-              />
+            <Box sx={{ textAlign: "center", maxWidth: 600 }}>
+              <Box sx={{ mb: 4 }}>
+                <img
+                  src="images/agentcore.png"
+                  alt="Amazon Bedrock AgentCore"
+                  height={128}
+                  style={{ opacity: 0.9 }}
+                />
+              </Box>
+
               <Typography
-                variant="h5"
-                sx={(theme) => ({
-                  pb: 1,
-                  fontWeight: 500,
-                  background: `linear-gradient(to right, 
-                  ${theme.palette.text.primary}, 
-                  ${theme.palette.primary.dark}, 
-                  ${theme.palette.text.primary})`,
-                  backgroundClip: "text",
-                  WebkitBackgroundClip: "text",
-                  WebkitTextFillColor: "transparent",
-                  textFillColor: "transparent",
-                })}
+                variant="h4"
+                sx={{
+                  fontWeight: 600,
+                  fontSize: { xs: "1.75rem", sm: "2rem" },
+                  lineHeight: 1.2,
+                  mb: 2,
+                  color: "text.primary",
+                  letterSpacing: "-0.02em",
+                }}
               >
                 Amazon Bedrock AgentCore
               </Typography>
-              <Typography sx={{ pb: 4, fontWeight: 400 }}>
+
+              <Typography
+                variant="body1"
+                sx={{
+                  color: "text.secondary",
+                  fontSize: "1.1rem",
+                  lineHeight: 1.5,
+                  mb: 3,
+                  fontWeight: 400,
+                }}
+              >
                 Secure, scalable AI agent deployment and operations platform
                 with support for Strands Agent SDK and other frameworks.
               </Typography>
-              <Typography
-                color="primary"
-                sx={{ fontSize: "1.1rem", pb: 1, fontWeight: 500 }}
+
+              <Box
+                sx={(theme) => ({
+                  borderRadius: 2,
+                  px: 3,
+                  py: 2,
+                  border: `1px solid ${alpha(
+                    theme.palette.secondary.main,
+                    0.15
+                  )}`,
+                  backgroundColor: alpha(theme.palette.secondary.main, 0.1),
+                })}
               >
-                {WELCOME_MESSAGE}
-              </Typography>
-            </div>
+                <Typography
+                  variant="body1"
+                  sx={{
+                    color: "secondary.main",
+                    fontWeight: 500,
+                    lineHeight: 1.4,
+                  }}
+                >
+                  {WELCOME_MESSAGE}
+                </Typography>
+              </Box>
+            </Box>
           </Box>
         )}
       </Box>
@@ -600,7 +634,7 @@ const Chat = ({ userName = "Guest User" }) => {
           display: "flex",
           alignItems: "center",
           boxShadow:
-            "rgba(60, 26, 128, 0.05) 0px 4px 16px, rgba(60, 26, 128, 0.05) 0px 8px 24px, rgba(60, 26, 128, 0.05) 0px 16px 56px",
+            "rgba(20, 40, 60, 0.06) 0px 4px 16px, rgba(20, 40, 60, 0.04) 0px 8px 24px, rgba(20, 40, 60, 0.03) 0px 16px 56px",
           borderRadius: 6,
           position: "relative",
           // Remove the default border

@@ -1,0 +1,131 @@
+name: ASH Security Scan - Post Comments
+
+on:
+  workflow_run:
+    workflows: ["ASH Security Scan"]
+    types:
+      - completed
+
+permissions:
+  pull-requests: write
+  actions: read
+
+jobs:
+  comment:
+    runs-on: ubuntu-latest
+    if: github.event.workflow_run.event == 'pull_request'
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: ash-security-results
+          path: /tmp/ash-results
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get PR information
+        id: pr-info
+        run: |
+          if [ -f /tmp/ash-results/pr_number.txt ]; then
+            PR_NUMBER=$(cat /tmp/ash-results/pr_number.txt)
+            echo "pr_number=${PR_NUMBER}" >> $GITHUB_OUTPUT
+            echo "Found PR number: ${PR_NUMBER}"
+          else
+            echo "No PR number found in artifacts"
+            exit 1
+          fi
+          
+          if [ -f /tmp/ash-results/pr_sha.txt ]; then
+            PR_SHA=$(cat /tmp/ash-results/pr_sha.txt)
+            echo "pr_sha=${PR_SHA}" >> $GITHUB_OUTPUT
+            echo "Found PR SHA: ${PR_SHA}"
+          fi
+
+      - name: Post comment on PR
+        if: steps.pr-info.outputs.pr_number
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const commentPath = '/tmp/ash-results/pr_comment.md';
+            
+            if (!fs.existsSync(commentPath)) {
+              console.log('No comment file found in artifacts');
+              return;
+            }
+            
+            const commentBody = fs.readFileSync(commentPath, 'utf8');
+            const prNumber = parseInt('${{ steps.pr-info.outputs.pr_number }}');
+            const prSha = '${{ steps.pr-info.outputs.pr_sha }}';
+            
+            if (!prNumber) {
+              console.log('Invalid PR number');
+              return;
+            }
+            
+            // Get existing comments
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+            });
+            
+            // Find ALL ASH security scan comments
+            const ashComments = comments.filter(comment => 
+              comment.user.type === 'Bot' && 
+              (comment.body.includes('<!-- ASH-SECURITY-SCAN-COMMENT -->') ||
+               comment.body.includes('## Security Scan Results') ||
+               comment.body.includes('Latest scan for commit:') ||
+               comment.body.includes('ASH Security Scan Report'))
+            );
+            
+            console.log(`Found ${ashComments.length} ASH security scan comments`);
+            
+            // Use the most recent ASH comment (highest ID = most recent)
+            const existingComment = ashComments.length > 0 ? 
+              ashComments.sort((a, b) => b.id - a.id)[0] : null;
+            
+            // Delete any duplicate/older ASH comments (keep only the most recent one)
+            if (ashComments.length > 1) {
+              console.log(`Cleaning up ${ashComments.length - 1} duplicate ASH comments`);
+              for (const comment of ashComments.slice(1)) {
+                try {
+                  await github.rest.issues.deleteComment({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    comment_id: comment.id,
+                  });
+                  console.log(`Deleted duplicate comment ${comment.id}`);
+                } catch (error) {
+                  console.log(`Failed to delete comment ${comment.id}: ${error.message}`);
+                }
+              }
+            }
+            
+            // Add commit and timestamp info to the body
+            const timestamp = new Date().toISOString().replace('T', ' ').substring(0, 19) + ' UTC';
+            const shortSha = prSha ? prSha.substring(0, 7) : 'unknown';
+            const enhancedBody = `**Latest scan for commit:** \`${shortSha}\` **| Updated:** ${timestamp}\n\n${commentBody}\n\n<!-- ASH-SECURITY-SCAN-COMMENT -->`;
+            
+            if (existingComment) {
+              // Update existing comment
+              console.log(`Updating existing comment ${existingComment.id}`);
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existingComment.id,
+                body: enhancedBody
+              });
+              console.log('Successfully updated existing ASH security scan comment');
+            } else {
+              // Create new comment
+              console.log('No existing ASH comment found, creating new one');
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prNumber,
+                body: enhancedBody
+              });
+              console.log('Successfully created new ASH security scan comment');
+            }

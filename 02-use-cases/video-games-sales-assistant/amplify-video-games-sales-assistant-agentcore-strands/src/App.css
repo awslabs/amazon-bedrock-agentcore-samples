@@ -1,0 +1,108 @@
+/* amplify-theme.css */
+:root {
+  --amplify-fonts-default-variable: 'Open Sans';
+  --amplify-fonts-default-static: 'Open Sans';
+
+  --amplify-colors-shadow-primary: #EBEBEB;
+
+  --amplify-colors-brand-primary-10: #B8A3E8;
+  --amplify-colors-brand-primary-20: #9B7FE0;
+  --amplify-colors-brand-primary-40: #7E5BD8;
+  --amplify-colors-brand-primary-60: #5425AF;
+  --amplify-colors-brand-primary-80: #431E8C;
+  --amplify-colors-brand-primary-90: #321769;
+  --amplify-colors-brand-primary-100: #211046;
+
+  --amplify-colors-brand-secondary-10: #D4A8DB;
+  --amplify-colors-brand-secondary-20: #C084C8;
+  --amplify-colors-brand-secondary-40: #AC60B5;
+  --amplify-colors-brand-secondary-60: #812C90;
+  --amplify-colors-brand-secondary-80: #672373;
+  --amplify-colors-brand-secondary-90: #4D1A56;
+  --amplify-colors-brand-secondary-100: #331139;
+
+  --amplify-colors-border-primary: var(--amplify-colors-neutral-40);
+  --amplify-colors-border-secondary: var(--amplify-colors-neutral-20);
+  --amplify-colors-border-tertiary: var(--amplify-colors-neutral-10);
+  --amplify-colors-background-secondary: var(--amplify-colors-brand-primary-10);
+  
+  --amplify-radii-small: 4px;
+  --amplify-radii-medium: 6px;
+  --amplify-radii-large: 8px;
+  
+  --amplify-space-small: 0.75rem;
+  --amplify-space-medium: 1rem;
+  --amplify-space-large: 1.5rem;
+  
+  --amplify-border-widths-small: 1px;
+  --amplify-border-widths-medium: 2px;
+  --amplify-border-widths-large: 4px;
+}
+
+[data-amplify-authenticator] {
+  --amplify-components-authenticator-router-box-shadow: 0 0 40px var(--amplify-colors-shadow-primary);
+  --amplify-components-authenticator-router-border-width: 0rem;
+  --amplify-components-authenticator-router-border-color: var(--amplify-colors-brand-primary-60);
+  --amplify-components-authenticator-form-padding: var(--amplify-space-medium) var(--amplify-space-xl) var(--amplify-space-xl);
+  
+  /* Button Default */
+  --amplify-components-button-primary-background-color: var(--amplify-colors-brand-primary-20);
+  --amplify-components-button-primary-color: white;
+  
+  /* Button Hover */
+  --amplify-components-button-primary-hover-background-color: var(--amplify-colors-brand-primary-80);
+  --amplify-components-button-primary-hover-color: white;
+  
+  /* Button Pressed (Active) */
+  --amplify-components-button-primary-active-background-color: var(--amplify-colors-brand-primary-100);
+  --amplify-components-button-primary-active-color: white;
+  --amplify-components-button-primary-active-transform: scale(0.98);
+  
+  /* Button Focused */
+  --amplify-components-button-primary-focus-background-color: var(--amplify-colors-brand-primary-60);
+  --amplify-components-button-primary-focus-border-color: var(--amplify-colors-brand-primary-90);
+  --amplify-components-button-primary-focus-box-shadow: 0 0 0 2px rgba(226, 47, 136, 0.3);
+  
+  /* Button Disabled */
+  --amplify-components-button-primary-disabled-background-color: var(--amplify-colors-brand-primary-10);
+  --amplify-components-button-primary-disabled-color: rgba(255, 255, 255, 0.8);
+  --amplify-components-button-primary-disabled-opacity: 0.6;
+  
+  --amplify-components-fieldcontrol-focus-box-shadow: 0 0 0 2px var(--amplify-colors-brand-primary-60);
+  
+  --amplify-components-tabs-item-border-color: var(--amplify-colors-neutral-60);
+  --amplify-components-tabs-item-color: var(--amplify-colors-brand-primary-10);
+  --amplify-components-tabs-item-active-border-color: var(--amplify-colors-brand-primary-10);
+  --amplify-components-tabs-item-active-color: var(--amplify-colors-brand-primary-80);
+  
+  --amplify-components-button-link-color: var(--amplify-colors-brand-primary-20);
+  --amplify-components-button-link-hover-color: var(--amplify-colors-brand-primary-80);
+  --amplify-components-button-link-active-color: var(--amplify-colors-brand-primary-100);
+}
+
+/* Custom styles for button states - these will override and complement the CSS variables */
+.amplify-button[data-variation="primary"] {
+  transition: background-color 0.2s ease, transform 0.1s ease, box-shadow 0.2s ease;
+}
+
+.amplify-button[data-variation="primary"]:hover {
+  background-color: var(--amplify-components-button-primary-hover-background-color);
+}
+
+.amplify-button[data-variation="primary"]:active {
+  background-color: var(--amplify-components-button-primary-active-background-color);
+  transform: var(--amplify-components-button-primary-active-transform);
+}
+
+.amplify-button[data-variation="primary"]:focus-visible {
+  background-color: var(--amplify-components-button-primary-focus-background-color);
+  box-shadow: var(--amplify-components-button-primary-focus-box-shadow);
+  outline: none;
+}
+
+.amplify-button[data-variation="primary"]:disabled {
+  background-color: var(--amplify-components-button-primary-disabled-background-color);
+  color: var(--amplify-components-button-primary-disabled-color);
+  opacity: var(--amplify-components-button-primary-disabled-opacity);
+  cursor: not-allowed;
+}

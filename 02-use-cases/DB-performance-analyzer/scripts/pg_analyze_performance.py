@@ -1527,6 +1527,225 @@ def format_multi_query_results(results):
     
     return "\n".join(formatted_output)
 
+def execute_enhanced_query_diagnostics(secret_name, query):
+    """
+    Execute enhanced query diagnostics based on runbooks.py
+    Provides comprehensive analysis including execution plan, performance metrics, and optimization suggestions
+    """
+    conn = None
+    try:
+        conn = connect_to_db(secret_name)
+        results = {}
+        
+        with conn.cursor() as cur:
+            # Get current database statistics
+            cur.execute("""
+                SELECT 
+                    datname,
+                    numbackends as active_connections,
+                    xact_commit as total_commits,
+                    xact_rollback as total_rollbacks,
+                    blks_read,
+                    blks_hit,
+                    CASE WHEN (blks_read + blks_hit) > 0 THEN
+                        ROUND(blks_hit::numeric / (blks_read + blks_hit) * 100, 2)
+                    ELSE 0 END as cache_hit_ratio
+                FROM pg_stat_database 
+                WHERE datname = current_database();
+            """)
+            db_stats = cur.fetchone()
+            if db_stats:
+                results['database_stats'] = {
+                    'database': db_stats[0],
+                    'active_connections': db_stats[1],
+                    'total_commits': db_stats[2],
+                    'total_rollbacks': db_stats[3],
+                    'blocks_read': db_stats[4],
+                    'blocks_hit': db_stats[5],
+                    'cache_hit_ratio': db_stats[6]
+                }
+            
+            # Analyze the query execution plan
+            try:
+                cur.execute(f"EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) {query}")
+                plan_result = cur.fetchone()
+                if plan_result:
+                    plan = plan_result[0][0]
+                    results['execution_plan'] = {
+                        'total_cost': plan['Plan'].get('Total Cost'),
+                        'execution_time': plan['Plan'].get('Actual Total Time'),
+                        'rows_returned': plan['Plan'].get('Actual Rows'),
+                        'node_type': plan['Plan'].get('Node Type'),
+                        'startup_cost': plan['Plan'].get('Startup Cost')
+                    }
+                    
+                    # Extract buffer usage if available
+                    if 'Shared Hit Blocks' in plan['Plan']:
+                        results['buffer_usage'] = {
+                            'shared_hit_blocks': plan['Plan'].get('Shared Hit Blocks', 0),
+                            'shared_read_blocks': plan['Plan'].get('Shared Read Blocks', 0),
+                            'shared_dirtied_blocks': plan['Plan'].get('Shared Dirtied Blocks', 0),
+                            'shared_written_blocks': plan['Plan'].get('Shared Written Blocks', 0)
+                        }
+            except Exception as e:
+                results['execution_plan_error'] = str(e)
+            
+            # Get query from pg_stat_statements if available
+            try:
+                cur.execute("""
+                    SELECT query, calls, total_exec_time, mean_exec_time, 
+                           rows, shared_blks_hit, shared_blks_read
+                    FROM pg_stat_statements 
+                    WHERE query ILIKE %s
+                    LIMIT 1;
+                """, (f"%{query[:50]}%",))
+                
+                stmt_stats = cur.fetchone()
+                if stmt_stats:
+                    results['statement_stats'] = {
+                        'calls': stmt_stats[1],
+                        'total_exec_time': stmt_stats[2],
+                        'mean_exec_time': stmt_stats[3],
+                        'rows': stmt_stats[4],
+                        'shared_blks_hit': stmt_stats[5],
+                        'shared_blks_read': stmt_stats[6]
+                    }
+            except Exception as e:
+                results['statement_stats_error'] = str(e)
+        
+        return results
+        
+    except Exception as e:
+        raise Exception(f"Failed to execute enhanced query diagnostics: {str(e)}")
+    finally:
+        if conn:
+            conn.close()
+
+def execute_performance_insights_analysis(secret_name):
+    """
+    Execute performance analysis similar to AWS Performance Insights
+    Based on runbooks.py diagnostic patterns
+    """
+    conn = None
+    try:
+        conn = connect_to_db(secret_name)
+        results = {}
+        
+        with conn.cursor() as cur:
+            # Top queries by execution time (similar to Performance Insights)
+            cur.execute("""
+                SELECT 
+                    query,
+                    calls,
+                    total_exec_time/1000 as total_time_sec,
+                    mean_exec_time/1000 as avg_time_sec,
+                    (total_exec_time/sum(total_exec_time) OVER()) * 100 as pct_of_total_time,
+                    rows,
+                    shared_blks_hit,
+                    shared_blks_read,
+                    CASE WHEN (shared_blks_hit + shared_blks_read) > 0 THEN
+                        ROUND(shared_blks_hit::numeric / (shared_blks_hit + shared_blks_read) * 100, 2)
+                    ELSE 0 END as cache_hit_ratio
+                FROM pg_stat_statements
+                WHERE total_exec_time > 0
+                ORDER BY total_exec_time DESC
+                LIMIT 10;
+            """)
+            
+            columns = [desc[0] for desc in cur.description]
+            rows = cur.fetchall()
+            results['top_queries_by_time'] = [dict(zip(columns, row)) for row in rows]
+            
+            # Wait events analysis (PostgreSQL equivalent)
+            cur.execute("""
+                SELECT 
+                    wait_event_type,
+                    wait_event,
+                    COUNT(*) as count,
+                    COUNT(*) * 100.0 / SUM(COUNT(*)) OVER() as percentage
+                FROM pg_stat_activity 
+                WHERE wait_event_type IS NOT NULL
+                GROUP BY wait_event_type, wait_event
+                ORDER BY count DESC
+                LIMIT 10;
+            """)
+            
+            columns = [desc[0] for desc in cur.description]
+            rows = cur.fetchall()
+            results['wait_events'] = [dict(zip(columns, row)) for row in rows]
+            
+            # Database load metrics
+            cur.execute("""
+                SELECT 
+                    COUNT(*) as total_connections,
+                    COUNT(CASE WHEN state = 'active' THEN 1 END) as active_connections,
+                    COUNT(CASE WHEN state = 'idle' THEN 1 END) as idle_connections,
+                    COUNT(CASE WHEN state = 'idle in transaction' THEN 1 END) as idle_in_transaction,
+                    AVG(EXTRACT(EPOCH FROM (now() - query_start))) as avg_query_duration_sec
+                FROM pg_stat_activity
+                WHERE backend_type = 'client backend';
+            """)
+            
+            load_stats = cur.fetchone()
+            if load_stats:
+                results['database_load'] = {
+                    'total_connections': load_stats[0],
+                    'active_connections': load_stats[1],
+                    'idle_connections': load_stats[2],
+                    'idle_in_transaction': load_stats[3],
+                    'avg_query_duration_sec': load_stats[4]
+                }
+        
+        return results
+        
+    except Exception as e:
+        raise Exception(f"Failed to execute performance insights analysis: {str(e)}")
+    finally:
+        if conn:
+            conn.close()
+
+def format_enhanced_diagnostics_output(results):
+    """Format enhanced diagnostics results for display"""
+    output = []
+    
+    if 'database_stats' in results:
+        stats = results['database_stats']
+        output.append("=== DATABASE STATISTICS ===")
+        output.append(f"Database: {stats['database']}")
+        output.append(f"Active Connections: {stats['active_connections']}")
+        output.append(f"Cache Hit Ratio: {stats['cache_hit_ratio']}%")
+        output.append(f"Total Commits: {stats['total_commits']}")
+        output.append(f"Total Rollbacks: {stats['total_rollbacks']}")
+        output.append("")
+    
+    if 'execution_plan' in results:
+        plan = results['execution_plan']
+        output.append("=== EXECUTION PLAN SUMMARY ===")
+        output.append(f"Node Type: {plan['node_type']}")
+        output.append(f"Execution Time: {plan['execution_time']:.2f} ms")
+        output.append(f"Rows Returned: {plan['rows_returned']}")
+        output.append(f"Total Cost: {plan['total_cost']:.2f}")
+        output.append("")
+    
+    if 'buffer_usage' in results:
+        buffer = results['buffer_usage']
+        output.append("=== BUFFER USAGE ===")
+        output.append(f"Shared Hit Blocks: {buffer['shared_hit_blocks']}")
+        output.append(f"Shared Read Blocks: {buffer['shared_read_blocks']}")
+        output.append(f"Shared Dirtied Blocks: {buffer['shared_dirtied_blocks']}")
+        output.append("")
+    
+    if 'statement_stats' in results:
+        stats = results['statement_stats']
+        output.append("=== STATEMENT STATISTICS ===")
+        output.append(f"Total Calls: {stats['calls']}")
+        output.append(f"Mean Execution Time: {stats['mean_exec_time']:.2f} ms")
+        output.append(f"Total Execution Time: {stats['total_exec_time']:.2f} ms")
+        output.append(f"Average Rows: {stats['rows']}")
+        output.append("")
+    
+    return "\n".join(output)
+
 def lambda_handler(event, context):
     try:
         print(f"Received event: {json.dumps(event)}")
@@ -1584,11 +1803,20 @@ def lambda_handler(event, context):
                 max_complexity=15
             )
             formatted_results = format_enhanced_results(results)
+        elif action_type == 'enhanced_query_diagnostics':
+            query = event.get('query') if 'arguments' not in event else event['arguments'].get('query')
+            print("Executing enhanced query diagnostics")
+            results = execute_enhanced_query_diagnostics(secret_name, query)
+            formatted_results = format_enhanced_diagnostics_output(results)
+        elif action_type == 'performance_insights_analysis':
+            print("Executing performance insights analysis")
+            results = execute_performance_insights_analysis(secret_name)
+            formatted_results = format_enhanced_results(results)
         else:
             print("I'm inside else condition")
             return {
                 "functionResponse": {
-                    "content": f"Error: Unknown function {function}"
+                    "content": f"Error: Unknown action_type '{action_type}'. Available actions: explain_query, extract_ddl, execute_query, enhanced_query_diagnostics, performance_insights_analysis"
                 }
             }
 

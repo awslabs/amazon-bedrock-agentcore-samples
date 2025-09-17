@@ -1,0 +1,232 @@
+name: ASH Security Scan
+
+on:
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get changed files
+        id: changed-files
+        uses: tj-actions/changed-files@v46
+        with:
+          files: |
+            **/*.py
+            **/*.js
+            **/*.ts
+            **/*.java
+            **/*.go
+            **/*.rb
+            **/*.php
+            **/*.cs
+            **/*.cpp
+            **/*.c
+            **/*.h
+            **/*.yaml
+            **/*.yml
+            **/*.json
+            **/*.sh
+            **/*.dockerfile
+            **/Dockerfile*
+            **/requirements*.txt
+            **/package*.json
+            **/Pipfile*
+            **/pom.xml
+            **/build.gradle*
+            **/*.tf
+            **/*.tfvars
+
+      - name: Set up Python
+        if: steps.changed-files.outputs.any_changed == 'true'
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install ASH
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: pip install git+https://github.com/awslabs/automated-security-helper.git@v3.0.0
+
+      - name: Create temp directory for changed files
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: |
+          mkdir -p /tmp/ash-scan
+          echo "Changed files for security scan:"
+          echo "${{ steps.changed-files.outputs.all_changed_files }}" | tr ' ' '\n'
+
+      - name: Copy changed files to temp directory
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: |
+          for file in ${{ steps.changed-files.outputs.all_changed_files }}; do
+            if [ -f "$file" ]; then
+              mkdir -p "/tmp/ash-scan/$(dirname "$file")"
+              cp "$file" "/tmp/ash-scan/$file"
+              echo "Copied for scan: $file"
+            fi
+          done
+
+      - name: Run ASH scan on changed files
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: |
+          cd /tmp/ash-scan
+          # Create temporary ASH config to show all findings
+          cat > .ash_config.yaml << 'EOF'
+          reporters:
+            markdown:
+              enabled: true
+              options:
+                include_detailed_findings: true
+                max_detailed_findings: 1000
+          EOF
+          ash --mode container --config .ash_config.yaml 2>&1 | tee /tmp/ash-output.log
+        continue-on-error: true
+
+      - name: Process scan results and create summary
+        if: steps.changed-files.outputs.any_changed == 'true'
+        id: process-results
+        run: |
+          SUMMARY_FILE="/tmp/pr_comment.md"
+          
+          if [ -f "/tmp/ash-output.log" ]; then
+            # Find the table boundaries  
+            TABLE_START=$(grep -n "ASH Scan Results Summary" /tmp/ash-output.log | head -1 | cut -d: -f1 || echo "0")
+            TABLE_END=$(grep -n "source-dir:" /tmp/ash-output.log | head -1 | cut -d: -f1 || echo "0")
+            
+            echo "## Security Scan Results" > "$SUMMARY_FILE"
+            echo "" >> "$SUMMARY_FILE"
+            
+            if [ "$TABLE_START" != "0" ] && [ "$TABLE_END" != "0" ] && [ "$TABLE_END" -gt "$TABLE_START" ]; then
+              # Add scan metadata and explanation
+              echo "### Scan Metadata" >> "$SUMMARY_FILE"
+              echo "" >> "$SUMMARY_FILE"
+              echo "- **Project**: ASH" >> "$SUMMARY_FILE"
+              echo "- **Scan executed**: $(date -u +%Y-%m-%dT%H:%M:%S+00:00)" >> "$SUMMARY_FILE"
+              echo "- **ASH version**: 3.0.0" >> "$SUMMARY_FILE"
+              echo "" >> "$SUMMARY_FILE"
+              
+              echo "### Summary" >> "$SUMMARY_FILE"
+              echo "" >> "$SUMMARY_FILE"
+              echo "#### Scanner Results" >> "$SUMMARY_FILE"
+              echo "" >> "$SUMMARY_FILE"
+              echo "The table below shows findings by scanner, with status based on severity thresholds and dependencies:" >> "$SUMMARY_FILE"
+              echo "" >> "$SUMMARY_FILE"
+              echo "**Column Explanations:**" >> "$SUMMARY_FILE"
+              echo "" >> "$SUMMARY_FILE"
+              echo "**Severity Levels (S/C/H/M/L/I):**" >> "$SUMMARY_FILE"
+              echo "- **Suppressed (S)**: Security findings that have been explicitly suppressed/ignored and don't affect the scanner's pass/fail status" >> "$SUMMARY_FILE"
+              echo "- **Critical (C)**: The most severe security vulnerabilities requiring immediate remediation (e.g., SQL injection, remote code execution)" >> "$SUMMARY_FILE"
+              echo "- **High (H)**: Serious security vulnerabilities that should be addressed promptly (e.g., authentication bypasses, privilege escalation)" >> "$SUMMARY_FILE"
+              echo "- **Medium (M)**: Moderate security risks that should be addressed in normal development cycles (e.g., weak encryption, input validation issues)" >> "$SUMMARY_FILE"
+              echo "- **Low (L)**: Minor security concerns with limited impact (e.g., information disclosure, weak recommendations)" >> "$SUMMARY_FILE"
+              echo "- **Info (I)**: Informational findings for awareness with minimal security risk (e.g., code quality suggestions, best practice recommendations)" >> "$SUMMARY_FILE"
+              echo "" >> "$SUMMARY_FILE"
+              echo "**Other Columns:**" >> "$SUMMARY_FILE"
+              echo "- **Time**: Duration taken by each scanner to complete its analysis" >> "$SUMMARY_FILE"
+              echo "- **Action**: Total number of actionable findings at or above the configured severity threshold that require attention" >> "$SUMMARY_FILE"
+              echo "" >> "$SUMMARY_FILE"
+              echo "**Scanner Results:**" >> "$SUMMARY_FILE"
+              echo "- **PASSED**: Scanner found no security issues at or above the configured severity threshold - code is clean for this scanner" >> "$SUMMARY_FILE"
+              echo "- **FAILED**: Scanner found security vulnerabilities at or above the threshold that require attention and remediation" >> "$SUMMARY_FILE"
+              echo "- **MISSING**: Scanner could not run because required dependencies/tools are not installed or available" >> "$SUMMARY_FILE"
+              echo "- **SKIPPED**: Scanner was intentionally disabled or excluded from this scan" >> "$SUMMARY_FILE"
+              echo "- **ERROR**: Scanner encountered an execution error and could not complete successfully" >> "$SUMMARY_FILE"
+              echo "" >> "$SUMMARY_FILE"
+              echo "**Severity Thresholds (Thresh Column):**" >> "$SUMMARY_FILE"
+              echo "- **CRITICAL**: Only Critical severity findings cause scanner to fail" >> "$SUMMARY_FILE"
+              echo "- **HIGH**: High and Critical severity findings cause scanner to fail" >> "$SUMMARY_FILE"
+              echo "- **MEDIUM (MED)**: Medium, High, and Critical severity findings cause scanner to fail" >> "$SUMMARY_FILE"
+              echo "- **LOW**: Low, Medium, High, and Critical severity findings cause scanner to fail" >> "$SUMMARY_FILE"
+              echo "- **ALL**: Any finding of any severity level causes scanner to fail" >> "$SUMMARY_FILE"
+              echo "" >> "$SUMMARY_FILE"
+              echo "**Threshold Source:** Values in parentheses indicate where the threshold is configured:" >> "$SUMMARY_FILE"
+              echo "- **(g) = global**: Set in the global_settings section of ASH configuration" >> "$SUMMARY_FILE"
+              echo "- **(c) = config**: Set in the individual scanner configuration section" >> "$SUMMARY_FILE"
+              echo "- **(s) = scanner**: Default threshold built into the scanner itself" >> "$SUMMARY_FILE"
+              echo "" >> "$SUMMARY_FILE"
+              echo "**Statistics calculation:**" >> "$SUMMARY_FILE"
+              echo "- All statistics are calculated from the final aggregated SARIF report" >> "$SUMMARY_FILE"
+              echo "- Suppressed findings are counted separately and do not contribute to actionable findings" >> "$SUMMARY_FILE"
+              echo "- Scanner status is determined by comparing actionable findings to the threshold" >> "$SUMMARY_FILE"
+              echo "" >> "$SUMMARY_FILE"
+              
+              # Convert terminal table to markdown table format
+              echo "| Scanner | S | C | H | M | L | I | Time | Action | Result | Thresh |" >> "$SUMMARY_FILE"
+              echo "|---------|---|---|---|---|---|---|------|--------|--------|--------|" >> "$SUMMARY_FILE"
+              # Extract table data, strip ANSI codes, and convert to markdown
+              sed -n "${TABLE_START},${TABLE_END}p" /tmp/ash-output.log | \
+              sed 's/\x1b\[[0-9;]*m//g' | \
+              grep "^│" | \
+              sed 's/│/|/g' | \
+              sed 's/^ *|/|/' | \
+              sed 's/| *$/|/' >> "$SUMMARY_FILE"
+              echo "" >> "$SUMMARY_FILE"
+              
+              # Add detailed findings
+              if [ -f "/tmp/ash-scan/.ash/ash_output/reports/ash.summary.md" ]; then
+                grep -A 1000 "Detailed Findings" "/tmp/ash-scan/.ash/ash_output/reports/ash.summary.md" | \
+                grep -v -E '^(Time since scan:|Report generated:)' | \
+                grep -v 'Report generated by Automated Security Helper' >> "$SUMMARY_FILE" || true
+              fi
+            else
+              # Fallback to markdown report if terminal extraction fails
+              if [ -f "/tmp/ash-scan/.ash/ash_output/reports/ash.summary.md" ]; then
+                grep -v -E '^(Time since scan:|Report generated:)' "/tmp/ash-scan/.ash/ash_output/reports/ash.summary.md" | \
+                grep -v 'Report generated by Automated Security Helper' > "$SUMMARY_FILE"
+              fi
+            fi
+            
+            # Check if findings were detected
+            if grep -q "Actionable findings detected!" /tmp/ash-output.log; then
+              echo "has_findings=true" >> $GITHUB_OUTPUT
+            else
+              echo "has_findings=false" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "## Security Scan Results" > "$SUMMARY_FILE"
+            echo "" >> "$SUMMARY_FILE"
+            echo "No security scan results found." >> "$SUMMARY_FILE"
+            echo "has_findings=false" >> $GITHUB_OUTPUT
+          fi
+          
+
+      - name: Save PR metadata
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: |
+          echo "${{ github.event.pull_request.number }}" > /tmp/pr_number.txt
+          echo "${{ github.event.pull_request.head.sha }}" > /tmp/pr_sha.txt
+
+      - name: Upload ASH results and PR metadata
+        if: steps.changed-files.outputs.any_changed == 'true' && always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ash-security-results
+          path: |
+            /tmp/ash-scan/.ash/
+            /tmp/pr_comment.md
+            /tmp/pr_number.txt
+            /tmp/pr_sha.txt
+          retention-days: 30
+
+      - name: Security scan summary
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: |
+          if [ "${{ steps.process-results.outputs.has_findings }}" = "true" ]; then
+            echo "Security findings detected. Please review the results."
+            # Note: Currently configured to NOT fail the workflow on security findings
+            # Uncomment the next line to enforce strict security policy
+            # exit 1
+          else
+            echo "No security issues found in the changed files."
+          fi
+
+      - name: Skip message
+        if: steps.changed-files.outputs.any_changed == 'false'
+        run: echo "No relevant files changed - skipping security scan"
