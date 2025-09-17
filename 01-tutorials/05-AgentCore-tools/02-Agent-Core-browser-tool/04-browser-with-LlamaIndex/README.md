@@ -38,7 +38,7 @@ Learn how to build LlamaIndex-powered agents that can intelligently detect and s
 - Adaptive learning from CAPTCHA solving experiences
 
 **Prerequisites**: 
-- [LlamaIndex Basics](../../../03-integrations/agentic-frameworks/llamaindex/README.md)
+- [LlamaIndex Production Integration](../../../03-integrations/01-AgentCore-tools/02-Agent-Core-browser-tool/04-browser-with-LlamaIndex/README.md)
 - [AgentCore Browser Tool Basics](../README.md)
 
 ### 🔐 Handling Sensitive Information
@@ -54,7 +54,19 @@ Discover how to safely handle sensitive data in browser automation scenarios usi
 
 **Prerequisites**:
 - [AgentCore Identity](../../../03-AgentCore-identity/README.md)
-- [LlamaIndex Security Patterns](../../../03-integrations/agentic-frameworks/llamaindex/README.md)
+- [LlamaIndex Production Integration](../../../03-integrations/01-AgentCore-tools/02-Agent-Core-browser-tool/04-browser-with-LlamaIndex/README.md)
+
+## 🚀 Production-Ready Integration
+
+For production use cases and advanced implementation examples, see the comprehensive **[LlamaIndex-AgentCore Browser Tool Integration](../../../03-integrations/01-AgentCore-tools/02-Agent-Core-browser-tool/04-browser-with-LlamaIndex/README.md)** which includes:
+
+- **Complete Integration Package**: Production-ready code with enterprise features
+- **Advanced Examples**: CAPTCHA solving, document processing, and multi-modal AI
+- **Security Features**: VM isolation, privacy controls, and compliance tools  
+- **Deployment Guides**: Configuration, monitoring, and scaling patterns
+- **API Documentation**: Comprehensive reference for all integration components
+
+The production integration provides the foundation that these tutorials build upon, offering both learning examples and real-world implementation patterns.
 
 ## Getting Started
 
@@ -145,18 +157,18 @@ The LlamaIndex + AgentCore Browser Tool integration follows a knowledge-driven a
 
 ### Beginner Path
 1. Start with [AgentCore Browser Tool Basics](../README.md)
-2. Complete [LlamaIndex Fundamentals](../../../03-integrations/agentic-frameworks/llamaindex/README.md)
+2. Review the [Production Integration Overview](../../../03-integrations/01-AgentCore-tools/02-Agent-Core-browser-tool/04-browser-with-LlamaIndex/README.md)
 3. Try the basic examples in `captcha-handling/` or `handling-sensitive-information/`
 
 ### Intermediate Path
-1. Explore RAG-enhanced browser automation scenarios
-2. Implement custom LlamaIndex tools for web data processing
+1. Explore the [Production Integration Examples](../../../03-integrations/01-AgentCore-tools/02-Agent-Core-browser-tool/04-browser-with-LlamaIndex/examples/)
+2. Implement custom LlamaIndex tools using the production codebase
 3. Build intelligent query engines for web-based knowledge
 
 ### Advanced Path
-1. Create production-ready RAG pipelines with browser integration
-2. Implement advanced security and privacy patterns
-3. Build scalable knowledge management systems
+1. Deploy the [Production Integration](../../../03-integrations/01-AgentCore-tools/02-Agent-Core-browser-tool/04-browser-with-LlamaIndex/) in your environment
+2. Implement advanced security and privacy patterns from the production code
+3. Build scalable knowledge management systems using the provided architecture
 
 ## Key Features Demonstrated
 

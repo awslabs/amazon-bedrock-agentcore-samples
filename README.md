@@ -1,184 +1,512 @@
-<div align="center">
-  <div>
-    <a href="https://aws.amazon.com/bedrock/agentcore/">
-      <img width="150" height="150" alt="image" src="https://github.com/user-attachments/assets/b8b9456d-c9e2-45e1-ac5b-760f21f1ac18" />
-   </a>
-  </div>
+# Project Integrity Validator
 
-  <h1>
-      Amazon Bedrock AgentCore Samples
-  </h1>
+A comprehensive validation tool for browser tool directories that checks file completeness, working links, valid notebooks, and proper requirements.txt files. This tool is specifically designed to validate AgentCore browser tool directories and ensure all documentation and dependencies are correct.
 
-  <h2>
-    Deploy and operate AI agents securely at scale - using any framework and model
-  </h2>
+## 🚨 Python 3.12+ Required
 
-  <div align="center">
-    <a href="https://github.com/awslabs/amazon-bedrock-agentcore-samples/graphs/commit-activity"><img alt="GitHub commit activity" src="https://img.shields.io/github/commit-activity/m/awslabs/amazon-bedrock-agentcore-samples"/></a>
-    <a href="https://github.com/awslabs/amazon-bedrock-agentcore-samples/issues"><img alt="GitHub open issues" src="https://img.shields.io/github/issues/awslabs/amazon-bedrock-agentcore-samples"/></a>
-    <a href="https://github.com/awslabs/amazon-bedrock-agentcore-samples/pulls"><img alt="GitHub open pull requests" src="https://img.shields.io/github/issues-pr/awslabs/amazon-bedrock-agentcore-samples"/></a>
-    <a href="https://github.com/awslabs/amazon-bedrock-agentcore-samples/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/github/license/awslabs/amazon-bedrock-agentcore-samples"/></a>
-  </div>
-  
-  <p>
-    <a href="https://docs.aws.amazon.com/bedrock-agentcore/">Documentation</a>
-    ◆ <a href="https://github.com/aws/bedrock-agentcore-sdk-python">Python SDK</a>
-    ◆ <a href="https://github.com/aws/bedrock-agentcore-starter-toolkit">Starter Toolkit </a>
-    ◆ <a href="https://discord.gg/bedrockagentcore-preview">Discord</a>
-  </p>
-</div>
+**This tool requires Python 3.12 or higher.** The validator enforces this requirement at startup and will not run on older Python versions.
 
-Welcome to the Amazon Bedrock AgentCore Samples repository! 
+### Why Python 3.12+?
 
-Amazon Bedrock AgentCore is both framework-agnostic and model-agnostic, giving you the flexibility to deploy and operate advanced AI agents securely and at scale. Whether you’re building with [Strands Agents](https://strandsagents.com/latest/), [CrewAI](https://www.crewai.com/), [LangGraph](https://www.langchain.com/langgraph), [LlamaIndex](https://www.llamaindex.ai/), or any other framework—and running them on any Large Language Model (LLM)—Amazon Bedrock AgentCore provides the infrastructure to support them. By eliminating the undifferentiated heavy lifting of building and managing specialized agent infrastructure, Amazon Bedrock AgentCore lets you bring your preferred framework and model, and deploy without rewriting code.
+- Enhanced error handling and debugging capabilities
+- Improved performance for file system operations
+- Better type hints and static analysis support
+- Modern async/await patterns for HTTP validation
+- Latest security updates and bug fixes
 
-This collection provides examples and tutorials to help you understand, implement, and integrate Amazon Bedrock AgentCore capabilities into your applications.
+## 📋 Features
 
-> [!IMPORTANT]
-> The examples provided in this repository are for experimental and educational purposes only. They demonstrate concepts and techniques but are not intended for direct use in production environments.
+- **File Validation**: Checks file existence, readability, and accessibility
+- **Link Validation**: Validates both relative links and HTTP/HTTPS URLs
+- **Notebook Validation**: Ensures Jupyter notebooks have valid JSON structure
+- **Requirements Validation**: Verifies Python package dependencies and versions
+- **Parallel Processing**: Multi-threaded validation for improved performance
+- **Comprehensive Reporting**: Detailed reports in console or JSON format
+- **Configuration Support**: YAML-based configuration for customization
+- **Error Recovery**: Robust error handling with retry mechanisms
 
-## 🎥 Video
+## 🎯 Default Target Directories
 
-Build your first production-ready AI agent with Amazon Bedrock AgentCore. We’ll take you beyond prototyping and show you how to productionize your first agentic AI application using Amazon Bedrock AgentCore. 
+The validator is pre-configured to check these browser tool directories:
 
-<p align="center">
-  <a href="https://www.youtube.com/watch?v=wzIQDPFQx30"><img src="https://markdown-videos-api.jorgenkh.no/youtube/wzIQDPFQx30?width=640&height=360&filetype=jpeg" /></a>
-</p>
+- `01-tutorials/05-AgentCore-tools/02-Agent-Core-browser-tool/01-browser-with-NovaAct`
+- `01-tutorials/05-AgentCore-tools/02-Agent-Core-browser-tool/02-browser-with-browserUse`
+- `01-tutorials/05-AgentCore-tools/02-Agent-Core-browser-tool/03-browser-with-Strands`
+- `01-tutorials/05-AgentCore-tools/02-Agent-Core-browser-tool/04-browser-with-LlamaIndex`
+- `03-integrations/01-AgentCore-tools/02-Agent-Core-browser-tool/03-browser-with-Strands`
+- `03-integrations/01-AgentCore-tools/02-Agent-Core-browser-tool/04-browser-with-LlamaIndex`
 
-## 📁 Repository Structure
+## 🚀 Quick Start
 
-### 📚 [`01-tutorials/`](./01-tutorials/)
-**Interactive Learning & Foundation**
+### Installation
 
-This folder contains notebook-based tutorials that teach you the fundamentals of Amazon Bedrock AgentCore capabilities through hands-on examples.
+1. **Ensure Python 3.12+ is installed:**
+   ```bash
+   python --version  # Should show 3.12.0 or higher
+   ```
 
-The structure is divided by AgentCore component:
-* **[Runtime](./01-tutorials/01-AgentCore-runtime)**: Amazon Bedrock AgentCore Runtime is a secure, serverless runtime capability that empowers organizations to deploy and scale both AI agents and tools, regardless of framework, protocol, or model choice—enabling rapid prototyping, seamless scaling, and accelerated time to market
-* **[Gateway](./01-tutorials/02-AgentCore-gateway)**: AI agents need tools to perform real-world tasks—from searching databases to sending messages. Amazon Bedrock AgentCore Gateway automatically converts APIs, Lambda functions, and existing services into MCP-compatible tools so developers can quickly make these essential capabilities available to agents without managing integrations. 
-* **[Memory](./01-tutorials/03-AgentCore-identity)**: Amazon Bedrock AgentCore Memory makes it easy for developer to build rich, personalized agent experiences with fully-manged memory infrastructure and the ability to customize memory for your needs.
-* **[Identity](./01-tutorials/04-AgentCore-memory)**: Amazon Bedrock AgentCore Identity provides seamless agent identity and access management across AWS services and third-party applications such as Slack and Zoom while supporting any standard identity providers such as Okta, Entra, and Amazon Cognito.
-* **[Tools](./01-tutorials/05-AgentCore-tools)**: Amazon Bedrock AgentCore provides two built-in tools to simplify your agentic AI application development: Amazon Bedrock AgentCore **Code Interpreter** tool enables AI agents to write and execute code securely, enhancing their accuracy and expanding their ability to solve complex end-to-end tasks. Amazon Bedrock AgentCore **Browser Tool** is an enterprise-grade capability that enables AI agents to navigate websites, complete multi-step forms, and perform complex web-based tasks with human-like precision within a fully managed, secure sandbox environment with low latency
-* **[Observability](./01-tutorials/06-AgentCore-observability)**: Amazon Bedrock AgentCore Observability helps developers trace, debug, and monitor agent performance through unified operational dashboards. With support for OpenTelemetry compatible telemetry and detailed visualizations of each step of the agent workflow, Amazon Bedrock AgentCore Observability enables developers to easily gain visibility into agent behavior and maintain quality standards at scale.
+2. **Install the validator:**
+   ```bash
+   # From the project root directory
+   pip install -e .
+   ```
 
-* **[AgentCore end-to-end](./01-tutorials/07-AgentCore-E2E)**: In this tutorial we will move a customer support agent from prototype to production using Amazon Bedrock AgentCore services.
+3. **Run validation on default directories:**
+   ```bash
+   python -m project_integrity_validator
+   ```
 
-
-The examples provided as perfect for beginners and those looking to understand the underlying concepts before building AI Agents applications.
-
-### 💡 [`02-use-cases/`](./02-use-cases/)
-**End-to-end Applications**
-
-Explore practical use case implementations that demonstrate how to apply Amazon Bedrock AgentCore capabilities to solve real business problems.
-
-Each use case includes complete implementation focused on the AgentCore components with detailed explanations.
-
-### 🔌 [`03-integrations/`](./03-integrations/)
-**Framework & Protocol Integration**
-
-Learn how to integrate Amazon Bedrock AgentCore capabilities with popular Agentic frameworks such as Strands Agents, LangChain and CrewAI.
-
-Set agent-to-agent communication with A2A and different multi-agent collaboration patterns. Integrate agentic interfaces and learn how to use 
-Amazon Bedrock AgentCore with different entry points.
-
-## Quick Start - [Amazon Bedrock AgentCore Runtime](https://github.com/aws/bedrock-agentcore-starter-toolkit/blob/main/documentation/docs/user-guide/runtime/quickstart.md)
-
-### Step 1: Prerequisites
-
-- An [AWS account](https://signin.aws.amazon.com/signin?redirect_uri=https%3A%2F%2Fportal.aws.amazon.com%2Fbilling%2Fsignup%2Fresume&client_id=signup) with credentials configured (`aws configure`)
-- [Python 3.10](https://www.python.org/downloads/) or later
-- [Docker](https://www.docker.com/) or [Finch](https://runfinch.com/) installed and running - only for local development
-- Model Access: Anthropic Claude 4.0 enabled in [Amazon Bedrock console](https://docs.aws.amazon.com/bedrock/latest/userguide/model-access-modify.html)
-- AWS Permissions:
-    - `BedrockAgentCoreFullAccess` managed policy
-    - `AmazonBedrockFullAccess` managed policy
-    - `Caller permissions`: See detailed policy [here](https://github.com/aws/bedrock-agentcore-starter-toolkit/blob/main/documentation/docs/user-guide/runtime/permissions.md#developercaller-permissions)
-
-### Step 2: Install and Create Your Agent
+### Basic Usage
 
 ```bash
-# Install both packages
-pip install bedrock-agentcore strands-agents bedrock-agentcore-starter-toolkit
+# Validate default browser tool directories
+python -m project_integrity_validator
+
+# Validate specific directories
+python -m project_integrity_validator path/to/dir1 path/to/dir2
+
+# Generate JSON report
+python -m project_integrity_validator --json --output report.json
+
+# Run with verbose output
+python -m project_integrity_validator --verbose
+
+# Skip HTTP link validation for faster execution
+python -m project_integrity_validator --skip-http-links
 ```
 
-Create `my_agent.py`:
+## 📖 Installation Guide
 
-```python
-from bedrock_agentcore import BedrockAgentCoreApp
-from strands import Agent
+### Prerequisites
 
-app = BedrockAgentCoreApp()
-agent = Agent()
+1. **Python 3.12 or Higher**
+   
+   **On macOS (using Homebrew):**
+   ```bash
+   brew install python@3.12
+   python3.12 --version
+   ```
+   
+   **On Ubuntu/Debian:**
+   ```bash
+   sudo apt update
+   sudo apt install python3.12 python3.12-pip python3.12-venv
+   python3.12 --version
+   ```
+   
+   **On Windows:**
+   - Download Python 3.12+ from [python.org](https://www.python.org/downloads/)
+   - During installation, check "Add Python to PATH"
+   - Verify: `python --version`
 
-@app.entrypoint
-def invoke(payload):
-    """Your AI agent function"""
-    user_message = payload.get("prompt", "Hello! How can I help you today?")
-    result = agent(user_message)
-    return {"result": result.message}
+2. **Create Virtual Environment (Recommended):**
+   ```bash
+   python3.12 -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   pip install --upgrade pip
+   ```
 
-if __name__ == "__main__":
-    app.run()
+### Installation Methods
+
+#### Method 1: Development Installation
+```bash
+# Clone or navigate to the project directory
+cd project-integrity-validator
+
+# Install in development mode
+pip install -e .
+
+# Verify installation
+python -m project_integrity_validator --version
 ```
-Create `requirements.txt`:
+
+#### Method 2: Direct Installation
+```bash
+# Install required dependencies
+pip install requests pyyaml
+
+# Run directly from source
+python -m project_integrity_validator
+```
+
+#### Method 3: Package Installation
+```bash
+# If distributed as a package
+pip install project-integrity-validator
+project-integrity-validator --help
+```
+
+## 🔧 Configuration
+
+### Configuration File
+
+Create a `validator_config.yaml` file to customize validation behavior:
+
+```yaml
+# Target directories to validate
+target_paths:
+  - "01-tutorials/05-AgentCore-tools/02-Agent-Core-browser-tool/01-browser-with-NovaAct"
+  - "01-tutorials/05-AgentCore-tools/02-Agent-Core-browser-tool/02-browser-with-browserUse"
+  - "custom/path/to/validate"
+
+# Validation settings
+validation:
+  check_http_links: true
+  http_timeout: 10
+  skip_file_patterns:
+    - "*.pyc"
+    - "__pycache__"
+    - "*.log"
+  max_workers: 4
+
+# Reporting settings
+reporting:
+  format: "console"  # console or json
+  show_success: false
+  output_file: null
+```
+
+### Configuration Options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `target_paths` | List[str] | Default browser tool paths | Directories to validate |
+| `check_http_links` | bool | true | Enable HTTP/HTTPS link validation |
+| `http_timeout` | int | 10 | Timeout for HTTP requests (seconds) |
+| `skip_file_patterns` | List[str] | ["*.pyc", "__pycache__"] | File patterns to ignore |
+| `max_workers` | int | 4 | Number of parallel worker threads |
+| `format` | str | "console" | Report format (console/json) |
+| `show_success` | bool | false | Show successful validations |
+| `output_file` | str | null | Save report to file |
+
+### Creating Configuration Files
 
 ```bash
-cat > requirements.txt << EOF
-bedrock-agentcore
-strands-agents
+# Create a default configuration file
+python -m project_integrity_validator --create-config validator_config.yaml
+
+# Use custom configuration
+python -m project_integrity_validator --config my_config.yaml
+```
+
+## 💻 Command Line Interface
+
+### Basic Commands
+
+```bash
+# Show help
+python -m project_integrity_validator --help
+
+# Show version
+python -m project_integrity_validator --version
+
+# List default target directories
+python -m project_integrity_validator --list-defaults
+
+# Create default configuration
+python -m project_integrity_validator --create-config config.yaml
+```
+
+### Validation Options
+
+```bash
+# Skip HTTP link validation (faster)
+python -m project_integrity_validator --skip-http-links
+
+# Set HTTP timeout
+python -m project_integrity_validator --timeout 30
+
+# Use more worker threads
+python -m project_integrity_validator --workers 8
+
+# Validate specific directories
+python -m project_integrity_validator dir1 dir2 dir3
+```
+
+### Output Options
+
+```bash
+# JSON output
+python -m project_integrity_validator --json
+
+# Save to file
+python -m project_integrity_validator --output report.txt
+
+# JSON output to file
+python -m project_integrity_validator --json --output report.json
+
+# Verbose logging
+python -m project_integrity_validator --verbose
+
+# Quiet mode (errors only)
+python -m project_integrity_validator --quiet
+```
+
+## 📊 Validation Report Format
+
+### Console Output
+
+```
+Project Integrity Validator
+==================================================
+Python version: 3.12.0
+Target paths: 6
+Worker threads: 4
+HTTP timeout: 10s
+
+Validating 6 directories...
+
+Validation Results:
+==================
+
+✅ PASSED: 01-tutorials/05-AgentCore-tools/02-Agent-Core-browser-tool/01-browser-with-NovaAct
+   Files: 15, Links: 8, Requirements: 1, Notebooks: 3
+
+❌ FAILED: 01-tutorials/05-AgentCore-tools/02-Agent-Core-browser-tool/02-browser-with-browserUse
+   Issues found: 2
+   
+   File Issues:
+   - Missing file: requirements.txt
+   
+   Link Issues:
+   - Broken link in README.md: https://example.com/broken-link
+
+Summary:
+========
+Files checked: 89
+Issues found: 2
+Status: ❌ Issues found that need attention
+```
+
+### JSON Output
+
+```json
+{
+  "target_paths": [
+    "01-tutorials/05-AgentCore-tools/02-Agent-Core-browser-tool/01-browser-with-NovaAct"
+  ],
+  "total_files_checked": 89,
+  "total_issues": 2,
+  "summary": {
+    "pass": 87,
+    "fail": 2,
+    "warning": 0
+  },
+  "results": [
+    {
+      "file_path": "01-tutorials/.../README.md",
+      "validation_type": "link",
+      "status": "fail",
+      "message": "HTTP link validation failed",
+      "details": "Connection timeout after 10 seconds"
+    }
+  ],
+  "validation_timestamp": "2024-01-15T10:30:00Z",
+  "python_version": "3.12.0",
+  "validator_version": "1.0.0"
+}
+```
+
+## 🔍 Validation Types
+
+### File Validation
+- Checks file existence and readability
+- Validates file permissions
+- Scans directory structure recursively
+- Identifies missing or corrupted files
+
+### Link Validation
+- **Relative Links**: Verifies target files exist
+- **HTTP/HTTPS Links**: Checks URL accessibility
+- **Markdown Links**: Extracts from `.md` files
+- **Notebook Links**: Extracts from `.ipynb` cells
+- Configurable timeout and retry logic
+
+### Notebook Validation
+- Validates JSON structure of `.ipynb` files
+- Checks required notebook fields (cells, metadata)
+- Verifies notebook format compliance
+- Detects corrupted notebook files
+
+### Requirements Validation
+- Parses `requirements.txt` files
+- Validates package names and versions
+- Checks package availability on PyPI
+- Verifies version constraint syntax
+
+## 🛠️ Usage Examples
+
+### Example 1: Basic Validation
+
+```bash
+# Run validation on default directories
+python -m project_integrity_validator
+
+# Expected output:
+# Project Integrity Validator
+# ==================================================
+# Validating 6 directories...
+# ✅ All validations passed!
+```
+
+### Example 2: Custom Directory Validation
+
+```bash
+# Validate specific directories
+python -m project_integrity_validator \
+  tutorials/browser-tools \
+  integrations/agent-tools
+
+# With verbose output
+python -m project_integrity_validator \
+  --verbose \
+  tutorials/browser-tools
+```
+
+### Example 3: Performance Optimization
+
+```bash
+# Fast validation (skip HTTP links)
+python -m project_integrity_validator --skip-http-links
+
+# Use more workers for large projects
+python -m project_integrity_validator --workers 8
+
+# Custom timeout for slow networks
+python -m project_integrity_validator --timeout 30
+```
+
+### Example 4: Report Generation
+
+```bash
+# Generate detailed text report
+python -m project_integrity_validator \
+  --output validation_report.txt \
+  --verbose
+
+# Generate JSON report for automation
+python -m project_integrity_validator \
+  --json \
+  --output report.json
+
+# Quiet mode with JSON output
+python -m project_integrity_validator \
+  --quiet \
+  --json \
+  --output results.json
+```
+
+### Example 5: Configuration-Based Validation
+
+```bash
+# Create custom configuration
+cat > my_config.yaml << EOF
+target_paths:
+  - "my-project/docs"
+  - "my-project/tutorials"
+validation:
+  check_http_links: false
+  max_workers: 2
+reporting:
+  show_success: true
 EOF
+
+# Use custom configuration
+python -m project_integrity_validator --config my_config.yaml
 ```
-### Step 3: Test Locally
+
+## 🐛 Troubleshooting
+
+### Common Issues
+
+#### Python Version Error
+```
+Error: Python 3.12 or higher is required for this tool.
+Current version: 3.11.0
+```
+**Solution**: Upgrade to Python 3.12+ following the installation guide above.
+
+#### Missing Dependencies
+```
+ModuleNotFoundError: No module named 'requests'
+```
+**Solution**: Install required dependencies:
+```bash
+pip install requests pyyaml
+```
+
+#### Permission Errors
+```
+PermissionError: [Errno 13] Permission denied: '/path/to/file'
+```
+**Solution**: Check file permissions or run with appropriate privileges.
+
+#### Network Timeouts
+```
+HTTP link validation failed: Connection timeout
+```
+**Solution**: Increase timeout or skip HTTP validation:
+```bash
+python -m project_integrity_validator --timeout 30
+# or
+python -m project_integrity_validator --skip-http-links
+```
+
+### Debug Mode
+
+Enable verbose logging for detailed troubleshooting:
 
 ```bash
-# Start your agent
-python my_agent.py
-
-# Test it (in another terminal)
-curl -X POST http://localhost:8080/invocations \
-  -H "Content-Type: application/json" \
-  -d '{"prompt": "Hello!"}'
-```
-Success: You should see a response like {"result": "Hello! I'm here to help..."}
-
-### Step 4: Deploy to AWS
-
-```bash
-# Configure and deploy (auto-creates all required resources)
-agentcore configure -e my_agent.py
-agentcore launch
-
-# Test your deployed agent
-agentcore invoke '{"prompt": "tell me a joke"}'
+python -m project_integrity_validator --verbose
 ```
 
-Congratulations! Your agent is now running on Amazon Bedrock AgentCore Runtime!
+This will show:
+- Detailed validation progress
+- HTTP request/response information
+- File system operation details
+- Error stack traces
 
-Follow quickstart guides for [Gatway](https://github.com/aws/bedrock-agentcore-starter-toolkit/blob/main/documentation/docs/user-guide/gateway/quickstart.md), [Identity](https://github.com/aws/bedrock-agentcore-starter-toolkit/blob/main/documentation/docs/user-guide/identity/quickstart.md), [Memory](https://github.com/aws/bedrock-agentcore-starter-toolkit/blob/main/documentation/docs/user-guide/memory/quickstart.md), [Observability](https://github.com/aws/bedrock-agentcore-starter-toolkit/blob/main/documentation/docs/user-guide/observability/quickstart.md), and [builtin-tools](https://github.com/aws/bedrock-agentcore-starter-toolkit/tree/main/documentation/docs/user-guide/builtin-tools). 
+### Performance Issues
 
-## 🔗 Related Links:
+If validation is slow:
 
-- [Getting started with Amazon Bedrock AgentCore - Workshop](https://catalog.us-east-1.prod.workshops.aws/workshops/850fcd5c-fd1f-48d7-932c-ad9babede979/en-US)
-- [Diving Deep into Bedrock AgentCore - Workshop](https://catalog.workshops.aws/agentcore-deep-dive/en-US)
-- [Amazon Bedrock AgentCore pricing](https://aws.amazon.com/bedrock/agentcore/pricing/)
-- [Amazon Bedrock AgentCore FAQs](https://aws.amazon.com/bedrock/agentcore/faqs/)
+1. **Skip HTTP links**: `--skip-http-links`
+2. **Increase workers**: `--workers 8`
+3. **Reduce timeout**: `--timeout 5`
+4. **Use configuration file** to exclude unnecessary paths
 
 ## 🤝 Contributing
 
-We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.md) for details on:
+### Development Setup
 
-- Adding new samples
-- Improving existing examples
-- Reporting issues
-- Suggesting enhancements
+1. **Clone the repository**
+2. **Create virtual environment with Python 3.12+**
+3. **Install in development mode**: `pip install -e .`
+4. **Run tests**: `python -m pytest`
 
+### Running Tests
+
+```bash
+# Run all tests
+python -m pytest
+
+# Run with coverage
+python -m pytest --cov=project_integrity_validator
+
+# Run specific test file
+python -m pytest project_integrity_validator/test_validator.py
+```
 
 ## 📄 License
 
-This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License. See the LICENSE file for details.
 
+## 🔗 Related Documentation
 
-## Contributors
+- [AgentCore Documentation](https://docs.agentcore.aws.dev/)
+- [Browser Tools Guide](./01-tutorials/05-AgentCore-tools/02-Agent-Core-browser-tool/README.md)
+- [Python 3.12 Features](https://docs.python.org/3.12/whatsnew/3.12.html)
 
-<a href="https://github.com/awslabs/amazon-bedrock-agentcore-samples/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=awslabs/amazon-bedrock-agentcore-samples" />
-</a>
+---
+
+**Note**: This validator is specifically designed for AgentCore browser tool directories. For general project validation needs, consider adapting the configuration to your specific requirements.

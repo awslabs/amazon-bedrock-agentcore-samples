@@ -1,0 +1,18 @@
+# Virtual environment
+browseruse-agentcore-env/
+
+# Python cache files
+__pycache__/
+*.pyc
+*.pyo
+
+# Environment files
+.env
+.env.local
+
+# Log files
+*.log
+
+# IDE files
+.vscode/
+.idea/

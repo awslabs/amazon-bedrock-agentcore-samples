@@ -542,7 +542,7 @@ This tutorial builds upon foundational Browser-use concepts. **[View the complet
 - **[Browser-use Live View](02-browser-with-browserUse/agentcore-browser-tool-live-view-with-browser-use.ipynb)** 🔍 **Visual debugging skills**
 
 **Recommended Background**:
-- **[NovaAct Getting Started](01-browser-with-NovaAct/01_getting_started-agentcore-browser-tool-with-nova-act.ipynb)** 🤖 **Alternative approaches**
+- **[AgentCore Runtime Basics](01-AgentCore-runtime/README.md)** 🏢 **Enterprise context and managed infrastructure**
 
 ### 🔗 Related AgentCore Tutorials
 Continue your learning journey with these complementary tutorials:

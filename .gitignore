@@ -240,6 +240,10 @@ lambda.zip
 .env.staging
 config.local.yaml
 config.production.yaml
+config.yaml
+**/config.yaml
+**/agentcore_config.json
+**/test_config.yaml
 **/credentials.json
 **/secrets.json
 **/aws-credentials
@@ -252,5 +256,38 @@ config.production.yaml
 *.development
 *.pyc
 
-### Local testing framework (not for main repo) ###
+### Local testing framework and development directories (not for main repo) ###
 tutorial_validation_framework/
+notebook_processor/
+project_integrity_validator/
+sample_notebooks/
+sample_requirements/
+test_strands_env/
+docs/
+examples/
+CLI_README.md
+
+### Notebook backup files (keep local only) ###
+**/01_novaact*original_backup.ipynb
+**/02_novaact_*original_backup.ipynb
+**/*_backup.ipynb
+**/*backup*.ipynb
+
+### Temporary and development files ###
+**/temp_*
+**/tmp_*
+**/*_temp.*
+**/*_tmp.*
+**/fix_*.py
+**/cleanup_*.py
+**/validate_*.py
+**/test_*.py
+**/*_validation_report.*
+**/*_performance_*.log
+**/validator_performance_*.log
+
+### Virtual environments (additional patterns) ###
+venv*/
+.venv*/
+env*/
+.env*/

@@ -34,6 +34,68 @@ This tutorial contains **NO MOCKS OR FALLBACKS** and demonstrates real enterpris
 - Proper AWS credentials and AgentCore service access
 - Production-grade security controls and compliance validation
 
+
+## 🎯 Learning Pathway
+
+This tutorial series follows a structured progression for mastering browser-use + AgentCore integration:
+
+### 1. 🔐 **Secure Connection Tutorial** (Foundation)
+**File**: `browseruse_agentcore_secure_connection_tutorial.ipynb`
+
+**What you'll learn**:
+- Environment setup and validation
+- Secure AgentCore session creation
+- WebSocket connection establishment
+- Browser-use agent integration
+- Live monitoring and session replay
+- Proper resource cleanup
+
+**Prerequisites**: Python 3.12+, AWS credentials, browser-use, bedrock-agentcore
+
+### 2. 🎭 **PII Masking Tutorial** (Data Security)
+**File**: `browseruse_pii_masking_tutorial.ipynb`
+
+**What you'll learn**:
+- Advanced PII detection techniques
+- Context-aware data masking
+- Custom PII patterns
+- Real-time data validation
+- Secure data processing workflows
+
+**Prerequisites**: Complete Secure Connection Tutorial
+
+### 3. 📋 **Compliance Audit Tutorial** (Regulatory)
+**File**: `browseruse_compliance_audit_tutorial.ipynb`
+
+**What you'll learn**:
+- HIPAA, PCI-DSS, GDPR compliance
+- Audit trail generation
+- Session replay for compliance
+- Violation detection and response
+- Compliance reporting
+
+**Prerequisites**: Complete PII Masking Tutorial
+
+### 4. 🚀 **Production Deployment Tutorial** (Enterprise)
+**File**: `browseruse_production_deployment_tutorial.ipynb`
+
+**What you'll learn**:
+- Production-ready configurations
+- Scaling and performance optimization
+- Monitoring and alerting
+- Error handling and recovery
+- Enterprise deployment patterns
+
+**Prerequisites**: Complete all previous tutorials
+
+### 📚 **Recommended Learning Path**:
+```
+Secure Connection → PII Masking → Compliance Audit → Production Deployment
+     (Foundation)    (Security)     (Regulatory)      (Enterprise)
+```
+
+Each tutorial builds upon the previous one, creating a comprehensive understanding of secure browser automation with AgentCore.
+
 ## Overview
 
 This tutorial showcases how browser-use leverages Amazon Bedrock AgentCore Browser Tool's enterprise-grade security capabilities for sensitive data scenarios. Unlike traditional browser automation that requires managing browser infrastructure, this integration provides serverless, secure, and compliant web automation through AgentCore's managed browser runtime.
@@ -54,6 +116,32 @@ Browser-Use Agent → AgentCore Browser Client → Micro-VM Browser → Target W
                                 ↓
                     Live View & Session Replay
 ```
+
+
+## Learning Pathway
+
+This tutorial series follows a structured learning pathway:
+
+1. **🔐 Secure Connection** (`browseruse_agentcore_secure_connection_tutorial.ipynb`)
+   - Foundation tutorial showing browser-use + AgentCore integration
+   - Environment setup and validation
+   - Secure session creation and WebSocket connections
+   - Basic monitoring and cleanup patterns
+
+2. **🎭 PII Masking** (`browseruse_pii_masking_tutorial.ipynb`)
+   - Advanced PII detection and masking techniques
+   - Context-aware sensitive data handling
+   - Custom PII patterns and validation
+
+3. **📋 Compliance Audit** (`browseruse_compliance_audit_tutorial.ipynb`)
+   - HIPAA, PCI-DSS, GDPR compliance validation
+   - Audit trail generation and session replay
+   - Compliance reporting and violation handling
+
+4. **🚀 Production Deployment** (`browseruse_production_deployment_tutorial.ipynb`)
+   - Production-ready patterns and configurations
+   - Scaling and performance optimization
+   - Monitoring and alerting setup
 
 ## Prerequisites for Browser-Use + AgentCore Integration
 
@@ -131,7 +219,7 @@ BROWSERUSE_TIMEOUT=30
 
 ### Step 1: Environment Setup
 ```bash
-# Create Python 3.12 virtual environment
+# Create Python 3.12+ virtual environment
 python3.12 -m venv browseruse-agentcore-env
 source browseruse-agentcore-env/bin/activate  # Linux/Mac
 # or

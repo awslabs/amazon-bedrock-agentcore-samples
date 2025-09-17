@@ -38,6 +38,7 @@ Learn how to build Strands agents that can intelligently detect and solve variou
 - Enterprise security and compliance patterns
 
 **Prerequisites**: 
+- [Strands Production Integration](../../../03-integrations/01-AgentCore-tools/02-Agent-Core-browser-tool/03-browser-with-Strands/README.md)
 - [Strands Agents with Bedrock Models](../../../01-AgentCore-runtime/01-hosting-agent/01-strands-with-bedrock-model/README.md)
 - [AgentCore Browser Tool Basics](../README.md)
 
@@ -53,6 +54,7 @@ Discover how to safely handle sensitive data in browser automation scenarios usi
 - Audit trails and compliance logging
 
 **Prerequisites**:
+- [Strands Production Integration](../../../03-integrations/01-AgentCore-tools/02-Agent-Core-browser-tool/03-browser-with-Strands/README.md)
 - [AgentCore Identity](../../../03-AgentCore-identity/README.md)
 - [Strands Agents with Bedrock Models](../../../01-AgentCore-runtime/01-hosting-agent/01-strands-with-bedrock-model/README.md)
 

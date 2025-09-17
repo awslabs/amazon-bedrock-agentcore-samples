@@ -80,7 +80,8 @@ class NovaActAgentCoreValidator:
             '01_novaact_agentcore_secure_login.ipynb',
             '02_novaact_sensitive_form_automation.ipynb', 
             '03_novaact_agentcore_session_security.ipynb',
-            '04_production_novaact_agentcore_patterns.ipynb'
+            '04_audit_logging_compliance.ipynb',
+            '05_production_novaact_agentcore_patterns.ipynb'
         ]
         
         for notebook in notebooks:
@@ -560,7 +561,7 @@ class NovaActAgentCoreValidator:
 
 def main():
     """Main validation entry point."""
-    tutorial_path = "01-tutorials/05-AgentCore-tools/02-Agent-Core-browser-tool/05-handling-sensitive-information/NovaAct"
+    tutorial_path = "."
     
     if not os.path.exists(tutorial_path):
         logging.error(f"Tutorial path not found: {tutorial_path}")

@@ -6,25 +6,28 @@ This directory contains integrations between AWS Bedrock AgentCore components an
 
 ```
 03-integrations/
-├── agentic-frameworks/              # Integrations with agentic frameworks
+├── 01-AgentCore-tools/             # AgentCore tools integrations
+│   └── 02-Agent-Core-browser-tool/ # Browser Tool integrations (moved to tutorials)
+├── agentic-frameworks/             # Integrations with agentic frameworks
 │   ├── strands-agents/             # Strands Agents integrations
 │   ├── langchain/                  # LangChain integrations
 │   ├── crewai/                     # CrewAI integrations
 │   └── ...                         # Other agentic frameworks
-├── bedrock-agentcore-browser-tool/ # Browser Tool specific integrations
-│   └── agentic-frameworks/         # Browser Tool + Agentic Framework integrations
-│       └── strands-agents/         # Strands + Browser Tool integration
 ├── bedrock-agent/                  # Bedrock Agent integrations
+├── IDP-examples/                   # Identity Provider examples
+├── nova/                           # Nova integrations
+├── ux-examples/                    # User experience examples
 └── README.md                       # This file
 ```
 
 ## Integration Categories
 
 ### Bedrock AgentCore Browser Tool Integrations
-**Location**: `bedrock-agentcore-browser-tool/`
+**Location**: `01-AgentCore-tools/02-Agent-Core-browser-tool/`
 
-Integrations specific to the Bedrock AgentCore Browser Tool component:
-- **[Strands Agents](./bedrock-agentcore-browser-tool/agentic-frameworks/strands-agents/)** - Complete browser automation with AI agents
+Browser Tool integrations are now organized in the AgentCore tools section:
+- **[Browser Tool with Strands](./01-AgentCore-tools/02-Agent-Core-browser-tool/03-browser-with-Strands/)** - Complete browser automation with AI agents
+- **[Browser Tool with LlamaIndex](./01-AgentCore-tools/02-Agent-Core-browser-tool/04-browser-with-LlamaIndex/)** - Browser automation with LlamaIndex framework
 
 ### General Agentic Framework Integrations  
 **Location**: `agentic-frameworks/`
@@ -44,8 +47,8 @@ Integrations with AWS Bedrock Agents service.
 
 | Component | Framework | Status | Description |
 |-----------|-----------|--------|-------------|
-| Browser Tool | Strands Agents | ✅ Complete | AWS-hosted browser automation with AI agents |
-| Browser Tool | LangChain | 🚧 Planned | Browser automation for LLM applications |
+| Browser Tool | Strands Agents | ✅ Complete | AWS-hosted browser automation with AI agents (reorganized) |
+| Browser Tool | LlamaIndex | ✅ Complete | Browser automation with LlamaIndex framework (reorganized) |
 | Browser Tool | CrewAI | 🚧 Planned | Multi-agent web research workflows |
 | General | Strands Agents | ✅ Available | General AgentCore tool integrations |
 

@@ -1,0 +1,50 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "project-integrity-validator"
+version = "0.1.0"
+description = "A tool to validate browser tool directories for file completeness, working links, valid notebooks, and proper requirements.txt files."
+authors = [
+    {name = "Project Team", email = "team@example.com"}
+]
+readme = "README.md"
+requires-python = ">=3.12"
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
+dependencies = [
+    "requests>=2.25.0",
+]
+
+[project.optional-dependencies]
+config = [
+    "PyYAML>=6.0",
+]
+test = [
+    "pytest>=7.0",
+    "pytest-cov",
+    "PyYAML>=6.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/example/project-integrity-validator"
+Repository = "https://github.com/example/project-integrity-validator"
+Issues = "https://github.com/example/project-integrity-validator/issues"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["project_integrity_validator*"]
+
+[tool.pytest.ini_options]
+testpaths = ["project_integrity_validator"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]

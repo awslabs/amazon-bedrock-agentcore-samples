@@ -13,7 +13,7 @@ graph TB
     subgraph "Client Environment"
         DEV[Developer/Application]
         JUPYTER[Jupyter Notebook]
-        PYTHON[Python 3.12 Runtime]
+        PYTHON[Python 3.12++++ Runtime]
     end
     
     subgraph "Browser-Use Framework Layer"

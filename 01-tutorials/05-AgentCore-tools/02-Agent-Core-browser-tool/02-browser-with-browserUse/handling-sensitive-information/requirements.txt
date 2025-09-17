@@ -1,10 +1,11 @@
+# Python 3.12+ compatible dependencies
 # Browser-Use AgentCore Tutorial Requirements
 # Python 3.12+ compatible dependencies for sensitive information handling
 # Production dependencies - NO MOCKS OR FALLBACKS
 
 # Core browser automation
-browser-use>=0.1.0
-playwright>=1.40.0
+browser-use>=0.7.0
+playwright>=1.55.0
 
 # Amazon Bedrock AgentCore Browser Client SDK
 bedrock-agentcore>=1.0.0
@@ -17,16 +18,16 @@ langchain-community>=0.3.0
 anthropic>=0.18.0
 
 # Data handling and validation (Python 3.12 compatible)
-pydantic>=2.5.0
+pydantic>=2.11.0
 typing-extensions>=4.9.0
 
 # Async and networking (Python 3.12 optimized)
-aiohttp>=3.9.0
-websockets>=12.0
+aiohttp>=3.12.0
+websockets>=15.0
 asyncio-mqtt>=0.16.0
 
 # Security and compliance (Python 3.12 compatible)
-cryptography>=41.0.0
+cryptography>=45.0.0
 python-jose[cryptography]>=3.3.0
 bcrypt>=4.1.0
 
