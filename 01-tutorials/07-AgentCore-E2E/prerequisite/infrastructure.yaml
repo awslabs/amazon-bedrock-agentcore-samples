@@ -1144,6 +1144,12 @@ Resources:
                   index_name = f"{account_id}-{region}-kb-vector-index"
                   kb_name = f"{account_id}-{region}-kb"
                   datasource_name = f"{account_id}-{region}-kb-datasource"
+
+                  response_data.update({
+                    'VectorBucketName': vector_bucket_name,
+                    'KnowledgeBaseName': kb_name,
+                    'DataSourceName': datasource_name
+                  })
                   
                   try:
                       print(f"Creating S3 vector bucket: {vector_bucket_name}")
