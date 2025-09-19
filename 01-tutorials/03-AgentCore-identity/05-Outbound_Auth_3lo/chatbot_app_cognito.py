@@ -594,7 +594,7 @@ def main():
                 streaming_client = StreamingHttpBedrockAgentCoreClient(region)
                 
                 # Show initial thinking state with pulsing animation
-                message_placeholder.markdown(f'<span class="thinking-bubble">🤖 💭 Bedrock Agentcore is thinking...</span>', unsafe_allow_html=True)
+                message_placeholder.markdown('<span class="thinking-bubble">🤖 💭 Bedrock Agentcore is thinking...</span>', unsafe_allow_html=True)
                 
                 # Stream the response with animations
                 chunk_count = 0
@@ -615,7 +615,7 @@ def main():
                         if '"End agent execution"' in accumulated_response:
                             # Show processing state
                             message_placeholder.markdown(
-                                f'<span class="thinking-bubble">🤖 🔄 Processing response...</span>', 
+                                '<span class="thinking-bubble">🤖 🔄 Processing response...</span>', 
                                 unsafe_allow_html=True
                             )
                             
