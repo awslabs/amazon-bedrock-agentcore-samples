@@ -2,5 +2,5 @@ strands-agents
 duckduckgo-search
 strands-agents-tools
 uv
-bedrock-agentcore
+bedrock-agentcore==0.1.4
 ddgs

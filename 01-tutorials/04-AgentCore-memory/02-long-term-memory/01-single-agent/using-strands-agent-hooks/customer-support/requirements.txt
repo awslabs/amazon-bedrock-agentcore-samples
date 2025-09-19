@@ -2,4 +2,4 @@ boto3
 strands-agents
 strands-agents-tools
 ddgs
-bedrock-agentcore
+bedrock-agentcore==0.1.4

@@ -1,4 +1,4 @@
 boto3
 strands-agents
 strands-agents-tools
-bedrock-agentcore
+bedrock-agentcore==0.1.4

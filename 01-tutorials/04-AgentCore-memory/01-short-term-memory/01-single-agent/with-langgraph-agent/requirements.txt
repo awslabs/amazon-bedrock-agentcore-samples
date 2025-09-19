@@ -2,4 +2,4 @@ boto3
 langchain_aws
 langchain_core
 langgraph
-bedrock_agentcore
+bedrock_agentcore==0.1.4
