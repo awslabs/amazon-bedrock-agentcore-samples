@@ -1,4 +1,4 @@
-aws-opentelemetry-distro~=0.10.1
+aws-opentelemetry-distro~=0.12.1
 python-dotenv
 strands-agents[otel]
 ddgs
