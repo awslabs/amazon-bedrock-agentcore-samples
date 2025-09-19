@@ -5,7 +5,7 @@ import requests
 import urllib.parse
 import logging
 import re
-from runtime import HttpBedrockAgentCoreClient, get_data_plane_endpoint
+from runtime import get_data_plane_endpoint
 import sys
 import yaml
 import boto3
@@ -35,9 +35,9 @@ def get_streamlit_url():
     # Now you can use domain_id and space_name variables in your code
     # print(f"Domain ID: {domain_id}")
     # print(f"Space Name: {space_name}")
-    print(f"Please use the following to login and test the Streamlit Application")
-    print(f"Username:       testuser")
-    print(f"Password:       MyPassword123!")
+    print("Please use the following to login and test the Streamlit Application")
+    print("Username:       testuser")
+    print("Password:       MyPassword123!")
     if domain_id is not None:
         sagemaker_client = boto3.client('sagemaker')
         # Replace 'your-space-name' and 'your-domain-id' with your actual values
