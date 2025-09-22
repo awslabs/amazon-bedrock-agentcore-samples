@@ -3,6 +3,7 @@ Claude Code Agent for Amazon Bedrock AgentCore
 
 This agent runs Claude Code in headless mode to autonomously handle coding tasks.
 It accepts natural language prompts and executes them using Claude Code's CLI.
+Configured to use Amazon Bedrock for model inference.
 """
 
 import os
@@ -11,6 +12,12 @@ import subprocess
 import logging
 from typing import Dict, Any, Optional
 from bedrock_agentcore.runtime import BedrockAgentCoreApp
+
+# Configure Claude Code to use Amazon Bedrock
+os.environ["CLAUDE_CODE_USE_BEDROCK"] = "1"
+os.environ["AWS_REGION"] = os.environ.get("AWS_REGION", "us-east-1")
+os.environ["CLAUDE_CODE_MAX_OUTPUT_TOKENS"] = "4096"
+os.environ["MAX_THINKING_TOKENS"] = "1024"
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
