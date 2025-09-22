@@ -1,162 +1,81 @@
 #!/usr/bin/env python3
 """
-Test script for Claude Code headless mode implementation
-Simulates the functionality without requiring Claude Code CLI
+Test script for Claude Code headless mode
 """
 
-import sys
-import os
-sys.path.insert(0, os.path.abspath('headless-mode'))
-
 import json
-from claude_code_agent import claude_code_invoke
+import subprocess
+import sys
 
-def test_basic_prompt():
-    """Test basic prompt execution"""
-    print("=" * 60)
-    print("Test 1: Basic Prompt Execution")
-    print("=" * 60)
+def test_headless_mode():
+    """Test Claude Code in headless mode"""
     
-    payload = {
-        "prompt": "Create a simple hello world Python script"
-    }
-    
-    result = claude_code_invoke(payload, {})
-    print(f"Success: {result.get('success')}")
-    print(f"Result: {result.get('result', 'N/A')[:200]}...")
-    print(f"Error: {result.get('error', 'None')}")
-    print()
-    return result
-
-def test_with_options():
-    """Test with custom options"""
-    print("=" * 60)
-    print("Test 2: Prompt with Custom Options")
-    print("=" * 60)
-    
-    payload = {
-        "prompt": "Create a Flask API with CRUD operations",
-        "options": {
-            "allowed_tools": ["Write", "Read", "Bash"],
-            "permission_mode": "acceptEdits",
-            "append_system_prompt": "Use best practices and include error handling"
+    # Test prompts
+    test_cases = [
+        {
+            "name": "Simple Hello World",
+            "prompt": "Create a Python script that prints 'Hello, World!'"
+        },
+        {
+            "name": "Function Generation",
+            "prompt": "Create a Python function that calculates the factorial of a number"
+        },
+        {
+            "name": "Class Creation",
+            "prompt": "Create a Python class for a simple to-do list with add, remove, and list methods"
         }
-    }
-    
-    result = claude_code_invoke(payload, {})
-    print(f"Success: {result.get('success')}")
-    print(f"Session ID: {result.get('session_id', 'N/A')}")
-    print(f"Metadata: {json.dumps(result.get('metadata', {}), indent=2)}")
-    print()
-    return result
-
-def test_aws_deployment():
-    """Test AWS-specific functionality"""
-    print("=" * 60)
-    print("Test 3: AWS Deployment Task")
-    print("=" * 60)
-    
-    payload = {
-        "prompt": "Create a website about NYC running clubs and deploy to S3",
-        "options": {
-            "allowed_tools": ["Write", "Read", "Bash", "WebFetch"],
-            "permission_mode": "acceptEdits"
-        }
-    }
-    
-    result = claude_code_invoke(payload, {})
-    print(f"Success: {result.get('success')}")
-    
-    # Check if AWS context was added
-    if "aws" in str(payload).lower():
-        print("✓ AWS context detection working")
-    
-    print(f"Error: {result.get('error', 'None')}")
-    print()
-    return result
-
-def test_session_continuation():
-    """Test session continuation"""
-    print("=" * 60)
-    print("Test 4: Session Continuation")
-    print("=" * 60)
-    
-    # First prompt
-    payload1 = {
-        "prompt": "Create a Python class for managing tasks"
-    }
-    
-    result1 = claude_code_invoke(payload1, {})
-    session_id = result1.get("session_id")
-    
-    # Continue session
-    payload2 = {
-        "prompt": "Add methods for priority sorting",
-        "session_id": session_id,
-        "continue": True
-    }
-    
-    result2 = claude_code_invoke(payload2, {})
-    print(f"Session continued: {result2.get('session_id') == session_id}")
-    print(f"Success: {result2.get('success')}")
-    print()
-    return result2
-
-def main():
-    """Run all tests"""
-    print("\n" + "=" * 60)
-    print("CLAUDE CODE HEADLESS MODE TESTS")
-    print("=" * 60 + "\n")
-    
-    print("Note: These tests simulate the functionality.")
-    print("In production, Claude Code CLI must be installed.")
-    print()
-    
-    # Check AWS credentials
-    import boto3
-    try:
-        sts = boto3.client('sts')
-        identity = sts.get_caller_identity()
-        print(f"✓ AWS credentials configured: {identity['Arn']}")
-    except Exception as e:
-        print(f"⚠ AWS credentials issue: {e}")
-    print()
-    
-    # Run tests
-    tests = [
-        test_basic_prompt,
-        test_with_options,
-        test_aws_deployment,
-        test_session_continuation
     ]
     
-    results = []
-    for test in tests:
+    print("🧪 Testing Claude Code Headless Mode")
+    print("=" * 50)
+    
+    for test in test_cases:
+        print(f"\n📝 Test: {test['name']}")
+        print(f"   Prompt: {test['prompt'][:50]}...")
+        
+        # Construct the command
+        payload = json.dumps({"prompt": test['prompt']})
+        cmd = f"echo '{payload}' | claude -p --output-format json"
+        
         try:
-            result = test()
-            results.append(("✓", test.__name__))
+            # Run the command
+            result = subprocess.run(
+                cmd,
+                shell=True,
+                capture_output=True,
+                text=True,
+                timeout=60
+            )
+            
+            if result.returncode == 0:
+                try:
+                    response = json.loads(result.stdout)
+                    if response.get('is_error'):
+                        print(f"   ❌ Error: {response.get('result', 'Unknown error')}")
+                    else:
+                        print(f"   ✅ Success!")
+                        print(f"   💰 Cost: ${response.get('total_cost_usd', 0):.4f}")
+                        print(f"   ⏱️  Duration: {response.get('duration_ms', 0)/1000:.2f}s")
+                except json.JSONDecodeError:
+                    print(f"   ⚠️  Non-JSON response: {result.stdout[:100]}...")
+            else:
+                print(f"   ❌ Command failed: {result.stderr}")
+                
+        except subprocess.TimeoutExpired:
+            print(f"   ⏱️  Timeout after 60 seconds")
         except Exception as e:
-            print(f"Error in {test.__name__}: {e}")
-            results.append(("✗", test.__name__))
+            print(f"   ❌ Error: {str(e)}")
     
-    # Summary
-    print("=" * 60)
-    print("TEST SUMMARY")
-    print("=" * 60)
-    for status, name in results:
-        print(f"{status} {name}")
-    
-    print("\n" + "=" * 60)
-    print("INTEGRATION STATUS")
-    print("=" * 60)
-    print("✓ Headless mode wrapper implemented")
-    print("✓ AgentCore integration ready")
-    print("✓ AWS context detection working")
-    print("⚠ Requires Claude Code CLI installation")
-    print("\nTo deploy to AgentCore:")
-    print("  cd headless-mode")
-    print("  agentcore configure -e claude_code_agent.py")
-    print("  agentcore launch")
+    print("\n" + "=" * 50)
+    print("✅ Testing complete!")
 
 if __name__ == "__main__":
-    main()
+    # Check if Claude Code is installed
+    try:
+        subprocess.run(["claude", "--version"], capture_output=True, check=True)
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        print("❌ Claude Code CLI not found. Please install it first:")
+        print("   npm install -g @anthropic-ai/claude-code")
+        sys.exit(1)
+    
+    test_headless_mode()

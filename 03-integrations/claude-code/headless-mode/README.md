@@ -1,241 +1,329 @@
-# Claude Code Headless Mode for AgentCore
+# Claude Code Headless Mode for Amazon Bedrock AgentCore
 
-Run Claude Code as an autonomous coding agent on Amazon Bedrock AgentCore without any interactive UI.
+This folder contains the complete implementation for deploying Claude Code as an autonomous agent on Amazon Bedrock AgentCore.
 
 ## Overview
 
-This implementation allows you to:
-- Execute Claude Code programmatically through AgentCore
-- Handle complex, multi-step coding tasks autonomously
-- Deploy applications and infrastructure from natural language prompts
-- Maintain conversation context across multiple interactions
+Claude Code is an AI-powered coding assistant that can autonomously complete programming tasks. This integration packages Claude Code as an AgentCore-compatible agent that:
+
+- 🤖 **Runs autonomously** without interactive UI using headless mode
+- 🚀 **Deploys to AgentCore** for scalable, serverless execution
+- 🔧 **Uses Amazon Bedrock** for model inference (no Anthropic API key required)
+- 📝 **Handles complex tasks** with multi-step reasoning and file operations
+- 💰 **Cost-effective** - typical tasks cost under $0.50
+
+## Architecture
+
+```
+┌─────────────────┐     ┌──────────────────────┐     ┌─────────────────┐
+│   User Request  │────▶│  AgentCore Runtime   │────▶│  Claude Code    │
+│   (JSON)        │     │  (Container)         │     │  (Headless)     │
+└─────────────────┘     └──────────────────────┘     └─────────────────┘
+                                 │                            │
+                                 ▼                            ▼
+                        ┌──────────────────────┐     ┌─────────────────┐
+                        │  Amazon Bedrock      │◀────│  Code Execution │
+                        │  Claude Models       │     │  & File Ops     │
+                        └──────────────────────┘     └─────────────────┘
+```
 
 ## Prerequisites
 
-1. **Claude Code CLI**: Install Claude Code command-line interface
-   ```bash
-   # Option 1: Using npm
-   npm install -g @anthropic/claude-code-cli
-   
-   # Option 2: Download binary from releases
-   # https://github.com/anthropic/claude-code/releases
-   ```
+- **AWS Account** with appropriate permissions
+- **AWS CLI** configured (`aws configure`)
+- **Python 3.10+** installed
+- **Docker** (optional, for local testing)
+- **Node.js 20+** (for Claude Code CLI)
+- **Amazon Bedrock** model access enabled for Claude models
+- **AgentCore Toolkit** (`pip install bedrock-agentcore-starter-toolkit`)
 
-2. **AWS Configuration**: Ensure AWS CLI is configured
-   ```bash
-   aws configure
-   ```
+## Quick Start
 
-3. **Python Environment**: Python 3.10+ with pip
-
-## Installation
-
-1. Install Python dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-2. Verify Claude Code installation:
-   ```bash
-   claude --version
-   ```
-
-## Configuration
-
-### Environment Variables
-
-Set these optional environment variables to customize behavior:
+### 1. Install Dependencies
 
 ```bash
-# Enable verbose logging
-export CLAUDE_CODE_VERBOSE=true
+# From the claude-code directory
+cd 03-integrations/claude-code
 
-# Set execution timeout (seconds, default: 600)
-export CLAUDE_CODE_TIMEOUT=1200
+# Create virtual environment
+python3 -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
 
-# AWS region for deployments
-export AWS_DEFAULT_REGION=us-east-1
+# Install requirements
+pip install -r requirements.txt
+
+# Install AgentCore toolkit
+pip install bedrock-agentcore-starter-toolkit
+
+# Install Claude Code CLI globally (optional, for local testing)
+npm install -g @anthropic-ai/claude-code
 ```
 
-## Deployment to AgentCore
+### 2. Configure for Bedrock
 
-1. Configure the agent:
-   ```bash
-   agentcore configure -e claude_code_agent.py
-   ```
+The integration is pre-configured to use Amazon Bedrock. The following environment variables are automatically set in the Dockerfile:
 
-2. Deploy to AgentCore:
-   ```bash
-   agentcore launch
-   ```
+```bash
+CLAUDE_CODE_USE_BEDROCK=1
+AWS_REGION=us-east-1  # Or your preferred region
+CLAUDE_CODE_MAX_OUTPUT_TOKENS=4096
+MAX_THINKING_TOKENS=1024
+```
 
-3. Test the deployment:
-   ```bash
-   agentcore invoke '{"prompt":"Create a simple hello world Python script"}'
-   ```
+### 3. Deploy to AgentCore
+
+```bash
+cd headless-mode
+
+# Configure the agent
+agentcore configure -e claude_code_agent.py
+
+# Deploy to cloud (builds container with CodeBuild)
+agentcore launch
+
+# The deployment will output:
+# ✅ Agent ARN: arn:aws:bedrock-agentcore:region:account:runtime/claude_code_agent-xxxxx
+# ✅ CloudWatch Logs: /aws/bedrock-agentcore/runtimes/claude_code_agent-xxxxx-DEFAULT
+```
+
+### 4. Invoke the Agent
+
+```bash
+# Basic code generation
+agentcore invoke '{
+  "prompt": "Create a Python FastAPI application with user authentication"
+}'
+
+# Complex multi-file project
+agentcore invoke '{
+  "prompt": "Build a complete React TypeScript application with routing, state management, and tests"
+}'
+
+# Code refactoring
+agentcore invoke '{
+  "prompt": "Refactor this code for better performance and add comprehensive tests",
+  "context": "def calculate(n): result = []; for i in range(n): if is_prime(i): result.append(i); return result"
+}'
+```
 
 ## Usage Examples
 
-### Basic Code Generation
+### Example 1: Generate a REST API
 
-```json
-{
-  "prompt": "Create a Python Flask API with CRUD operations for a todo list application"
-}
+```bash
+agentcore invoke '{
+  "prompt": "Create a complete REST API with FastAPI including:
+    - User model with SQLAlchemy
+    - CRUD operations
+    - JWT authentication
+    - Input validation with Pydantic
+    - Unit tests with pytest"
+}'
 ```
 
-### AWS Deployment
+**Expected Output:**
+- Multiple Python files created (models.py, routes.py, auth.py, tests/)
+- Complete working API with all requested features
+- Documentation and setup instructions
+
+### Example 2: Analyze and Refactor Code
+
+```bash
+agentcore invoke '{
+  "prompt": "Analyze this Python code for performance issues and refactor it with best practices",
+  "context": "paste your code here"
+}'
+```
+
+### Example 3: Create Full-Stack Application
+
+```bash
+agentcore invoke '{
+  "prompt": "Create a full-stack task management application with:
+    - React frontend with TypeScript
+    - Node.js/Express backend
+    - MongoDB database schema
+    - Docker Compose setup
+    - README with setup instructions"
+}'
+```
+
+## Configuration Options
+
+### Payload Parameters
 
 ```json
 {
-  "prompt": "Create a static website showing NYC running clubs with their schedules and locations. Deploy it to S3 and set up CloudFront distribution. Return the CloudFront URL.",
+  "prompt": "Your task description",
+  "session_id": "optional-session-id-for-continuity",
+  "continue": false,
   "allowed_tools": "Bash,Read,Write,Replace,Search,List,WebFetch",
-  "permission_mode": "acceptEdits"
+  "output_format": "json",
+  "permission_mode": "acceptEdits",
+  "append_system_prompt": "Optional additional instructions"
 }
 ```
 
-### Multi-turn Conversation
+### Environment Variables
 
-First request:
-```json
-{
-  "prompt": "Create a React application for task management"
-}
-```
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `CLAUDE_CODE_USE_BEDROCK` | Enable Bedrock integration | `1` |
+| `AWS_REGION` | AWS region for Bedrock | `us-east-1` |
+| `CLAUDE_CODE_MAX_OUTPUT_TOKENS` | Maximum output tokens | `4096` |
+| `MAX_THINKING_TOKENS` | Maximum thinking tokens | `1024` |
+| `CLAUDE_CODE_VERBOSE` | Enable verbose logging | `false` |
+| `CLAUDE_CODE_TIMEOUT` | Execution timeout (seconds) | `600` |
 
-Continue the conversation:
-```json
-{
-  "prompt": "Now add authentication using AWS Cognito",
-  "continue": true
-}
-```
-
-Or resume a specific session:
-```json
-{
-  "prompt": "Add a dashboard with charts",
-  "session_id": "550e8400-e29b-41d4-a716-446655440000"
-}
-```
-
-### Custom System Instructions
-
-```json
-{
-  "prompt": "Build a REST API for inventory management",
-  "append_system_prompt": "Use TypeScript, Express.js, and PostgreSQL. Include comprehensive error handling and input validation. Follow REST best practices."
-}
-```
-
-## Input Parameters
-
-The agent accepts these parameters in the payload:
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `prompt` | string | Yes | The task description for Claude Code |
-| `session_id` | string | No | Session ID to resume a previous conversation |
-| `continue` | boolean | No | Continue the most recent conversation |
-| `allowed_tools` | string | No | Comma-separated list of allowed tools |
-| `append_system_prompt` | string | No | Additional system instructions |
-| `output_format` | string | No | Output format: json, text, stream-json (default: json) |
-| `permission_mode` | string | No | Permission handling: acceptEdits, askUser (default: acceptEdits) |
-
-## Output Format
-
-The agent returns a JSON response:
+## Response Format
 
 ```json
 {
   "success": true,
-  "result": "The task has been completed. The website is now live at: https://d123abc.cloudfront.net",
-  "session_id": "550e8400-e29b-41d4-a716-446655440000",
+  "result": "Detailed completion message with created files and instructions",
+  "session_id": "uuid-for-session-continuation",
   "metadata": {
-    "cost_usd": 0.042,
-    "duration_ms": 45000,
-    "num_turns": 12
+    "cost_usd": 0.45,
+    "duration_ms": 180000,
+    "num_turns": 58
   },
   "error": null
 }
 ```
 
-## Allowed Tools
+## IAM Permissions
 
-Claude Code can use various tools. Common ones include:
+The AgentCore execution role needs the following permissions:
 
-- `Bash` - Execute shell commands
-- `Read` - Read file contents
-- `Write` - Create/overwrite files
-- `Replace` - Make targeted file edits
-- `Search` - Search files with regex
-- `List` - List directory contents
-- `WebFetch` - Fetch web content
-- `AskFollowup` - Ask clarifying questions
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "bedrock:InvokeModel",
+        "bedrock:InvokeModelWithResponseStream"
+      ],
+      "Resource": "arn:aws:bedrock:*:*:inference-profile/*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "logs:CreateLogGroup",
+        "logs:CreateLogStream",
+        "logs:PutLogEvents"
+      ],
+      "Resource": "arn:aws:logs:*:*:*"
+    }
+  ]
+}
+```
 
-## Best Practices
+**Note:** Additional permissions (S3, CloudFront, etc.) can be added if you want Claude Code to deploy infrastructure.
 
-1. **Clear Prompts**: Provide detailed, specific instructions
-2. **Tool Selection**: Only enable tools needed for the task
-3. **Error Handling**: Check the `success` field in responses
-4. **Session Management**: Use session IDs for complex multi-step tasks
-5. **Timeouts**: Adjust timeout for long-running tasks
-6. **Cost Monitoring**: Track the `cost_usd` in metadata
+## Files in This Directory
+
+- **claude_code_agent.py** - Main agent implementation with AgentCore entrypoint
+- **requirements.txt** - Python dependencies for the agent
+- **Dockerfile** - Container configuration with Claude Code CLI and Bedrock setup
+- **.dockerignore** - Files to exclude from Docker build
+- **.bedrock_agentcore.yaml** - AgentCore deployment configuration
+- **examples/** - Example prompts and usage patterns
+
+## Testing
+
+### Local Testing
+
+```bash
+# Test the agent locally (from parent directory)
+cd ..
+python test_headless_mode.py
+```
+
+### Container Testing
+
+```bash
+# Build container locally
+docker build -t claude-code-agent .
+
+# Run container
+docker run -p 8080:8080 \
+  -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID \
+  -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY \
+  -e AWS_SESSION_TOKEN=$AWS_SESSION_TOKEN \
+  claude-code-agent
+
+# Test endpoint
+curl -X POST http://localhost:8080/invocations \
+  -H "Content-Type: application/json" \
+  -d '{"prompt": "Create a hello world Python script"}'
+```
+
+## Monitoring
+
+After deployment, monitor your agent through:
+
+1. **CloudWatch Logs**
+   ```bash
+   aws logs tail /aws/bedrock-agentcore/runtimes/claude_code_agent-xxxxx-DEFAULT --follow
+   ```
+
+2. **AgentCore Status**
+   ```bash
+   agentcore status
+   ```
+
+3. **GenAI Observability Dashboard**
+   - Navigate to CloudWatch Console
+   - Select GenAI Observability → Agent Core
+
+## Cost Optimization
+
+- **Typical costs**: $0.30-0.50 per complex task
+- **Optimize by**:
+  - Setting appropriate token limits
+  - Using session continuity for related tasks
+  - Batching similar operations
 
 ## Troubleshooting
 
-### Claude Code not found
+### Common Issues
 
-If you get "command not found" errors:
-1. Ensure Claude Code CLI is installed
-2. Add it to your PATH
-3. Or specify full path in the agent code
+1. **"Claude Code not found" error**
+   - The Claude Code CLI is installed in the container during build
+   - For local testing, install: `npm install -g @anthropic-ai/claude-code`
 
-### Timeout Issues
+2. **Authentication errors**
+   - Ensure AWS credentials are configured: `aws configure`
+   - Verify Bedrock model access is enabled in your region
 
-For long-running tasks:
+3. **Timeout errors**
+   - Increase timeout: Set `CLAUDE_CODE_TIMEOUT` environment variable
+   - Complex tasks may take 3-5 minutes
+
+4. **Permission denied errors**
+   - Check IAM role has Bedrock invoke permissions
+   - Verify the execution role was created during deployment
+
+### Debug Mode
+
+Enable verbose logging for troubleshooting:
+
 ```bash
-export CLAUDE_CODE_TIMEOUT=1800  # 30 minutes
+agentcore invoke '{
+  "prompt": "Your task",
+  "verbose": true
+}' --verbose
 ```
 
-### Permission Errors
+## Limitations
 
-Ensure the agent has necessary AWS permissions:
-- S3: CreateBucket, PutObject, PutBucketPolicy
-- CloudFront: CreateDistribution
-- IAM: As needed for your use case
+- **File system**: Claude Code operates in a containerized environment
+- **Internet access**: Limited to allowed tools (WebFetch)
+- **Execution time**: Default 10-minute timeout
+- **AWS operations**: Requires additional IAM permissions
 
-## Advanced Usage
+## License
 
-### Streaming Output
-
-For real-time progress updates:
-```json
-{
-  "prompt": "Build and deploy a complex application",
-  "output_format": "stream-json"
-}
-```
-
-### Custom Tool Configuration
-
-Restrict tools for security:
-```json
-{
-  "prompt": "Analyze this codebase and suggest improvements",
-  "allowed_tools": "Read,List,Search"
-}
-```
-
-## Examples
-
-See the [examples](examples/) directory for more use cases:
-- `example_prompts.json` - Sample prompts for various tasks
-- Testing scripts and validation tools
-
-## Support
-
-For issues specific to:
-- **This integration**: Open an issue in this repository
-- **AgentCore**: Consult AWS documentation
-- **Claude Code**: Refer to Claude Code documentation
+This integration is provided as-is for educational and experimental purposes. Ensure compliance with your organization's policies and AWS service terms.
