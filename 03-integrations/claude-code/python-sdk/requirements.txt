@@ -1,0 +1,18 @@
+# Claude Code Python SDK Requirements
+
+# Official Claude Code SDK
+claude-code-sdk>=0.1.0
+
+# AgentCore integration
+bedrock-agentcore>=0.1.0
+
+# AWS SDK for cloud operations
+boto3>=1.28.0
+botocore>=1.31.0
+
+# Async support
+asyncio
+
+# Optional: For enhanced functionality
+python-json-logger>=2.0.7  # Structured logging
+pyyaml>=6.0  # YAML configuration support

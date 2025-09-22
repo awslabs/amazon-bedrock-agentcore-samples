@@ -1,0 +1,15 @@
+# Claude Code Headless Mode Requirements
+
+# Core dependencies
+bedrock-agentcore>=0.1.0
+boto3>=1.28.0
+
+# Logging and utilities
+python-json-logger>=2.0.7
+
+# AWS SDK
+botocore>=1.31.0
+
+# Optional: For enhanced functionality
+requests>=2.31.0  # For API calls
+pyyaml>=6.0  # For YAML configuration
