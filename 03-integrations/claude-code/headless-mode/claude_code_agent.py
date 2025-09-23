@@ -69,8 +69,8 @@ def run_claude_code(
     elif continue_conversation:
         cmd.append("--continue")
     
-    # Add verbose flag for debugging
-    if os.environ.get("CLAUDE_CODE_VERBOSE", "false").lower() == "true":
+    # Add verbose flag for debugging (but not for JSON output as it changes the format)
+    if os.environ.get("CLAUDE_CODE_VERBOSE", "false").lower() == "true" and output_format != "json":
         cmd.append("--verbose")
     
     logger.info(f"Executing Claude Code with command: {' '.join(cmd[:3])}...")
@@ -87,7 +87,27 @@ def run_claude_code(
         # Parse output based on format
         if output_format == "json":
             try:
-                output = json.loads(result.stdout)
+                # Parse the JSON output
+                if result.stdout.strip():
+                    output = json.loads(result.stdout.strip())
+                else:
+                    logger.error("Empty output from Claude Code")
+                    return {
+                        "success": False,
+                        "error": "Empty output from Claude Code",
+                        "stderr": result.stderr
+                    }
+                
+                # Ensure output is a dictionary
+                if not isinstance(output, dict):
+                    logger.error(f"Unexpected output type: {type(output).__name__}")
+                    return {
+                        "success": False,
+                        "error": f"Unexpected output type: {type(output).__name__}",
+                        "stdout": result.stdout,
+                        "stderr": result.stderr
+                    }
+                
                 return {
                     "success": not output.get("is_error", False),
                     "result": output.get("result", ""),
@@ -99,9 +119,19 @@ def run_claude_code(
                 }
             except json.JSONDecodeError as e:
                 logger.error(f"Failed to parse JSON output: {e}")
+                logger.error(f"Raw stdout: {result.stdout[:500]}")
                 return {
                     "success": False,
                     "error": f"JSON parse error: {str(e)}",
+                    "stdout": result.stdout,
+                    "stderr": result.stderr
+                }
+            except AttributeError as e:
+                logger.error(f"AttributeError in JSON parsing: {e}")
+                logger.error(f"Output type: {type(output) if 'output' in locals() else 'undefined'}")
+                return {
+                    "success": False,
+                    "error": f"AttributeError: {str(e)}",
                     "stdout": result.stdout,
                     "stderr": result.stderr
                 }
@@ -140,7 +170,18 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     
     # Extract payload from event
     payload = event
-    if isinstance(event, dict) and 'body' in event:
+    
+    # Handle different input formats
+    if isinstance(event, list):
+        # If event is a list, try to extract the first element
+        if event and isinstance(event[0], dict):
+            payload = event[0]
+        else:
+            return {
+                "success": False,
+                "error": "Invalid input format. Expected a dictionary or an object with a prompt field."
+            }
+    elif isinstance(event, dict) and 'body' in event:
         # If event has a body field, parse it
         if isinstance(event['body'], str):
             try:
@@ -149,6 +190,13 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 payload = event
         else:
             payload = event['body']
+    
+    # Ensure payload is a dictionary
+    if not isinstance(payload, dict):
+        return {
+            "success": False,
+            "error": f"Invalid payload type: {type(payload).__name__}. Expected dictionary."
+        }
     
     # Extract parameters from payload
     prompt = payload.get("prompt")
