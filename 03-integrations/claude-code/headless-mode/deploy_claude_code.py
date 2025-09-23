@@ -128,7 +128,8 @@ def deploy_agent_runtime(image_uri: str, role_arn: str) -> str:
     """Deploy the agent runtime to AgentCore."""
     print("\n🚀 Deploying agent runtime...")
     
-    runtime_name = f"{AGENT_NAME}-runtime"
+    # Use underscores instead of hyphens for runtime name (AWS naming constraint)
+    runtime_name = "claude_code_agent_runtime"
     
     try:
         # Check if runtime already exists
@@ -209,7 +210,7 @@ aws bedrock-agentcore-runtime invoke-agent \\
     --input '{{"prompt": "Create a coffee shop website"}}'
     """)
     print("\n📊 View logs in CloudWatch:")
-    print(f"  /aws/bedrock-agentcore/runtimes/{AGENT_NAME}-runtime")
+    print(f"  /aws/bedrock-agentcore/runtimes/claude_code_agent_runtime")
     print("="*60)
 
 
