@@ -1,9 +1,16 @@
 FROM ghcr.io/astral-sh/uv:python3.13-bookworm-slim
 
-# Install Node.js and required packages
+# All environment variables in one layer
+ENV UV_SYSTEM_PYTHON=1 UV_COMPILE_BYTECODE=1 PYTHONUNBUFFERED=1 \
+    AWS_REGION=us-east-1 AWS_DEFAULT_REGION=us-east-1 \
+    DOCKER_CONTAINER=1 \
+    CLAUDE_CODE_USE_BEDROCK=1 \
+    CLAUDE_CODE_MAX_OUTPUT_TOKENS=4096 \
+    MAX_THINKING_TOKENS=1024
+
+# Install system dependencies including Node.js
 RUN apt-get update && apt-get install -y \
     curl \
-    git \
     && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
     && apt-get install -y nodejs \
     && apt-get clean \
@@ -12,13 +19,8 @@ RUN apt-get update && apt-get install -y \
 # Install Claude Code CLI globally
 RUN npm install -g @anthropic-ai/claude-code
 
-# All environment variables in one layer
-ENV UV_SYSTEM_PYTHON=1 UV_COMPILE_BYTECODE=1 PYTHONUNBUFFERED=1 \
-    AWS_REGION=us-east-1 AWS_DEFAULT_REGION=us-east-1 \
-    DOCKER_CONTAINER=1 \
-    CLAUDE_CODE_USE_BEDROCK=1 \
-    CLAUDE_CODE_MAX_OUTPUT_TOKENS=4096 \
-    MAX_THINKING_TOKENS=1024
+# Verify Claude Code is installed
+RUN claude --version
 
 COPY requirements.txt requirements.txt
 

@@ -54,17 +54,14 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
 pip install bedrock-agentcore-starter-toolkit
 
-# Step 3: Verify AgentCore CLI is installed
-agentcore --version
-
-# Step 4: Navigate to headless mode directory
+# Step 3: Navigate to headless mode directory
 cd headless-mode
 
-# Step 5: Configure and deploy
+# Step 4: Configure and deploy
 agentcore configure -e claude_code_agent.py
 agentcore launch
 
-# Step 6: Invoke the agent
+# Step 5: Invoke the agent
 agentcore invoke '{"prompt": "Create a Python FastAPI application with authentication"}'
 ```
 

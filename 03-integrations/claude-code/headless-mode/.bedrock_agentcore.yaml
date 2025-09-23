@@ -21,7 +21,7 @@ agents:
     bedrock_agentcore:
       agent_id: claude_code_agent-Vqv9LGEhVL
       agent_arn: arn:aws:bedrock-agentcore:us-east-1:669298908997:runtime/claude_code_agent-Vqv9LGEhVL
-      agent_session_id: 947a2721-6770-4509-b1dc-1d018ff15c02
+      agent_session_id: 315399b1-147c-4a8f-88ae-09807ca1b160
     codebuild:
       project_name: bedrock-agentcore-claude_code_agent-builder
       execution_role: arn:aws:iam::669298908997:role/AmazonBedrockAgentCoreSDKCodeBuild-us-east-1-96fe6b7447
