@@ -5,8 +5,7 @@
       "Effect": "Allow",
       "Principal": {
         "Service": [
-          "bedrock.amazonaws.com",
-          "agentcore.bedrock.amazonaws.com"
+          "bedrock-agentcore.amazonaws.com"
         ]
       },
       "Action": "sts:AssumeRole"

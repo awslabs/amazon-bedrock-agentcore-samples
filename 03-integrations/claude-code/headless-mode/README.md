@@ -112,7 +112,9 @@ ROLE_ARN="arn:aws:iam::YOUR_ACCOUNT_ID:role/claude-code-agentcore-role"
 agentcore configure -e claude_code_agent.py \
   --execution-role $ROLE_ARN \
   --container-runtime docker \
-  --requirements-file requirements.txt
+  --requirements-file requirements.txt \
+  --ecr auto
+
 
 # Deploy to cloud (builds container with CodeBuild)
 agentcore launch
@@ -231,11 +233,14 @@ agentcore invoke '{
 
 The AgentCore execution role needs the following permissions:
 
+### Core Permissions (Required)
+
 ```json
 {
   "Version": "2012-10-17",
   "Statement": [
     {
+      "Sid": "BedrockModelAccess",
       "Effect": "Allow",
       "Action": [
         "bedrock:InvokeModel",
@@ -244,6 +249,18 @@ The AgentCore execution role needs the following permissions:
       "Resource": "arn:aws:bedrock:*:*:inference-profile/*"
     },
     {
+      "Sid": "ECRAccess",
+      "Effect": "Allow",
+      "Action": [
+        "ecr:GetAuthorizationToken",
+        "ecr:BatchCheckLayerAvailability",
+        "ecr:GetDownloadUrlForLayer",
+        "ecr:BatchGetImage"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "CloudWatchLogs",
       "Effect": "Allow",
       "Action": [
         "logs:CreateLogGroup",
@@ -256,7 +273,37 @@ The AgentCore execution role needs the following permissions:
 }
 ```
 
-**Note:** Additional permissions (S3, CloudFront, etc.) can be added if you want Claude Code to deploy infrastructure.
+### Additional Permissions for AWS Deployment (Optional)
+
+If you want Claude Code to deploy websites to S3 and CloudFront, add these permissions:
+
+```json
+{
+  "Sid": "S3Operations",
+  "Effect": "Allow",
+  "Action": [
+    "s3:CreateBucket",
+    "s3:PutBucket*",
+    "s3:PutObject",
+    "s3:PutObjectAcl"
+  ],
+  "Resource": [
+    "arn:aws:s3:::claude-code-*",
+    "arn:aws:s3:::claude-code-*/*"
+  ]
+},
+{
+  "Sid": "CloudFrontOperations",
+  "Effect": "Allow",
+  "Action": [
+    "cloudfront:CreateDistribution",
+    "cloudfront:GetDistribution"
+  ],
+  "Resource": "*"
+}
+```
+
+**Note:** The IAM setup script in `iam/setup-iam-role.sh` automatically configures all these permissions.
 
 ## Files in This Directory
 

@@ -66,7 +66,8 @@ ROLE_ARN="arn:aws:iam::YOUR_ACCOUNT_ID:role/claude-code-agentcore-role"
 agentcore configure -e claude_code_agent.py \
   --execution-role $ROLE_ARN \
   --container-runtime docker \
-  --requirements-file requirements.txt
+  --requirements-file requirements.txt \
+  --ecr auto
 
 # Step 6: Launch the agent
 agentcore launch
