@@ -49,7 +49,7 @@ agents:
     bedrock_agentcore:
       agent_id: cc-TtY20NH82L
       agent_arn: arn:aws:bedrock-agentcore:us-east-1:669298908997:runtime/cc-TtY20NH82L
-      agent_session_id: 8e430b08-c991-4773-9742-c73d9536ebeb
+      agent_session_id: 6eebd0ee-7024-486d-b14d-ab5491444ae3
     codebuild:
       project_name: bedrock-agentcore-cc-builder
       execution_role: arn:aws:iam::669298908997:role/AmazonBedrockAgentCoreSDKCodeBuild-us-east-1-355b1bbfc9

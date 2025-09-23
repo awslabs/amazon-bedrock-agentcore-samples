@@ -60,17 +60,12 @@ cd headless-mode
 # Step 4: Set up IAM role (for AWS deployment features)
 cd iam && chmod +x setup-iam-role.sh && ./setup-iam-role.sh && cd ..
 
-# Step 5: Configure and deploy with Docker runtime
-# Replace YOUR_ACCOUNT_ID with your AWS account ID
-ROLE_ARN="arn:aws:iam::YOUR_ACCOUNT_ID:role/claude-code-agentcore-role"
-agentcore configure -e claude_code_agent.py \
-  --execution-role $ROLE_ARN \
-  --container-runtime docker \
-  --requirements-file requirements.txt \
-  --ecr auto
+# Step 5: Deploy using the manual deployment script
+# This preserves our custom Dockerfile with Node.js and Claude Code CLI
+chmod +x deploy_claude_code.py
+python deploy_claude_code.py
 
-# Step 6: Launch the agent
-agentcore launch
+# The script will build, push to ECR, and deploy the agent
 
 # Step 7: Invoke the agent with example prompt
 agentcore invoke '{

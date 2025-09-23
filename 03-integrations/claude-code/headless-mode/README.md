@@ -102,27 +102,29 @@ The IAM role grants permissions to:
 
 ### 4. Deploy to AgentCore
 
+**Important:** We use a manual deployment approach to preserve our custom Dockerfile with Node.js and Claude Code CLI.
+
 ```bash
 cd .. # Back to headless-mode directory
 
-# Get the IAM Role ARN from the previous step
-ROLE_ARN="arn:aws:iam::YOUR_ACCOUNT_ID:role/claude-code-agentcore-role"
+# Make the deployment script executable
+chmod +x deploy_claude_code.py
 
-# Configure the agent with Docker runtime and IAM role
-agentcore configure -e claude_code_agent.py \
-  --execution-role $ROLE_ARN \
-  --container-runtime docker \
-  --requirements-file requirements.txt \
-  --ecr auto
+# Run the deployment script
+python deploy_claude_code.py
 
-
-# Deploy to cloud (builds container with CodeBuild)
-agentcore launch
+# The script will:
+# 1. Create an ECR repository
+# 2. Build the Docker image with our custom Dockerfile
+# 3. Push the image to ECR
+# 4. Deploy the agent runtime to AgentCore
 
 # The deployment will output:
-# ✅ Agent ARN: arn:aws:bedrock-agentcore:region:account:runtime/claude_code_agent-xxxxx
-# ✅ CloudWatch Logs: /aws/bedrock-agentcore/runtimes/claude_code_agent-xxxxx-DEFAULT
+# ✅ Agent Runtime ARN: arn:aws:bedrock-agentcore:region:account:runtime/claude-code-agent-runtime
+# ✅ Container Image: account-id.dkr.ecr.region.amazonaws.com/bedrock-agentcore-claude-code-agent:latest
 ```
+
+**Note:** The deployment script (`deploy_claude_code.py`) preserves our custom Dockerfile with Node.js and Claude Code CLI installation, which is essential for the agent to work properly.
 
 ### 4. Invoke the Agent
 
