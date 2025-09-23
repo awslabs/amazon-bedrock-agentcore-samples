@@ -206,10 +206,11 @@ def main():
     print(f"Container Image: {image_uri}")
     print("\n📝 To invoke the agent, use:")
     print(f"""
-aws bedrock-agentcore-runtime invoke-agent \\
+aws bedrock-agentcore invoke-agent-runtime \\
     --agent-runtime-arn {runtime_arn} \\
     --region {REGION} \\
-    --input '{{"prompt": "Create a coffee shop website"}}'
+    --payload '{{"prompt": "Create a coffee shop website called Brew Haven with menu, location, and contact sections. Deploy it to S3 and CloudFront."}}' \\
+    claude_code_agent_response.json
     """)
     print("\n📊 View logs in CloudWatch:")
     print(f"  /aws/bedrock-agentcore/runtimes/claude_code_agent_runtime")

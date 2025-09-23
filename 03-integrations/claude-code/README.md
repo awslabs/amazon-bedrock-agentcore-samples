@@ -67,10 +67,13 @@ python deploy_claude_code.py
 
 # The script will build, push to ECR, and deploy the agent
 
-# Step 7: Invoke the agent with example prompt
-agentcore invoke '{
-  "prompt": "Create a modern coffee shop website called Brew Haven with menu, location, and contact sections. Deploy it to S3 and CloudFront."
-}'
+# Step 6: Invoke the agent with example prompt
+# Replace YOUR_RUNTIME_ARN with the ARN from deployment output
+aws bedrock-agentcore invoke-agent-runtime \
+  --agent-runtime-arn YOUR_RUNTIME_ARN \
+  --region us-east-1 \
+  --payload '{"prompt": "Create a modern coffee shop website called Brew Haven with menu, location, and contact sections. Deploy it to S3 and CloudFront."}' \
+  response.json
 ```
 
 ### For Python SDK Usage

@@ -126,24 +126,45 @@ python deploy_claude_code.py
 
 **Note:** The deployment script (`deploy_claude_code.py`) preserves our custom Dockerfile with Node.js and Claude Code CLI installation, which is essential for the agent to work properly.
 
-### 4. Invoke the Agent
+### 5. Invoke the Agent
+
+After deployment, you can invoke the agent using the AWS CLI:
+
+```bash
+# Replace with your actual runtime ARN from the deployment output
+aws bedrock-agentcore invoke-agent-runtime \
+    --agent-runtime-arn arn:aws:bedrock-agentcore:us-east-1:YOUR_ACCOUNT_ID:runtime/claude_code_agent_runtime \
+    --region us-east-1 \
+    --payload '{"prompt": "Create a coffee shop website called Brew Haven with menu, location, and contact sections. Deploy it to S3 and CloudFront."}' \
+    claude_code_agent_response.json
+
+# View the response
+cat claude_code_agent_response.json
+```
+
+#### Example Prompts
 
 ```bash
 # Basic code generation
-agentcore invoke '{
-  "prompt": "Create a Python FastAPI application with user authentication"
-}'
+aws bedrock-agentcore invoke-agent-runtime \
+    --agent-runtime-arn YOUR_RUNTIME_ARN \
+    --region us-east-1 \
+    --payload '{"prompt": "Create a Python FastAPI application with user authentication"}' \
+    response.json
 
 # Complex multi-file project
-agentcore invoke '{
-  "prompt": "Build a complete React TypeScript application with routing, state management, and tests"
-}'
+aws bedrock-agentcore invoke-agent-runtime \
+    --agent-runtime-arn YOUR_RUNTIME_ARN \
+    --region us-east-1 \
+    --payload '{"prompt": "Build a complete React TypeScript application with routing, state management, and tests"}' \
+    response.json
 
 # Code refactoring
-agentcore invoke '{
-  "prompt": "Refactor this code for better performance and add comprehensive tests",
-  "context": "def calculate(n): result = []; for i in range(n): if is_prime(i): result.append(i); return result"
-}'
+aws bedrock-agentcore invoke-agent-runtime \
+    --agent-runtime-arn YOUR_RUNTIME_ARN \
+    --region us-east-1 \
+    --payload '{"prompt": "Refactor this code for better performance and add comprehensive tests", "context": "def calculate(n): result = []; for i in range(n): if is_prime(i): result.append(i); return result"}' \
+    response.json
 ```
 
 ## Usage Examples
