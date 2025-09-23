@@ -1,110 +1,30 @@
 {
-  "examples": [
+  "prompts": [
     {
-      "name": "NYC Running Clubs Website",
-      "description": "Create and deploy a website listing NYC running clubs",
-      "payload": {
-        "prompt": "Create a responsive website that lists all major running clubs in New York City with their meeting schedules, locations, and contact information. Deploy the website to S3 with static website hosting enabled and set up CloudFront distribution. Return the CloudFront URL as the final output.",
-        "allowed_tools": "Bash,Read,Write,Replace,Search,List,WebFetch",
-        "append_system_prompt": "Ensure the website is mobile-responsive, uses modern CSS, and includes proper SEO meta tags. When deploying to AWS, use boto3 and ensure all resources are properly tagged."
-      }
+      "name": "Create Coffee Shop Website with AWS Deployment",
+      "prompt": "Create a modern coffee shop website called 'Brew Haven' with: 1) A hero section with background image and tagline 'Your Daily Dose of Happiness', 2) Menu section with coffee drinks and prices, 3) About section describing the cozy atmosphere, 4) Location and hours (Open 7am-8pm daily, 123 Main St), 5) Contact form. Use a warm color scheme with browns and creams. Make it fully responsive. Then create a Python script to deploy this website to AWS S3 and CloudFront. The deployment script should create a unique S3 bucket with prefix 'claude-code-', configure it for static website hosting, upload all files, and create a CloudFront distribution.",
+      "expected_output": "HTML, CSS, JavaScript files for the website, plus a Python deployment script for S3 and CloudFront"
     },
     {
-      "name": "REST API Development",
-      "description": "Build a complete REST API with database",
-      "payload": {
-        "prompt": "Create a REST API for a library management system using Python FastAPI. Include endpoints for books, authors, and borrowers with full CRUD operations. Use SQLAlchemy for database ORM and include proper validation, error handling, and API documentation.",
-        "allowed_tools": "Bash,Read,Write,Replace,Search,List",
-        "permission_mode": "acceptEdits"
-      }
+      "name": "Simple Portfolio Website",
+      "prompt": "Build a simple portfolio website with sections for projects, skills, and contact. Include smooth scrolling and a modern design. Create a deployment script for AWS S3 and CloudFront.",
+      "expected_output": "Complete portfolio website with AWS deployment script"
     },
     {
-      "name": "Data Analysis Pipeline",
-      "description": "Create a data processing and visualization pipeline",
-      "payload": {
-        "prompt": "Build a Python data analysis pipeline that fetches weather data from a public API, processes it using pandas, creates visualizations with matplotlib, and generates an HTML report. Include error handling and logging.",
-        "allowed_tools": "Bash,Read,Write,Replace,WebFetch",
-        "append_system_prompt": "Use best practices for data processing, include data validation, and create informative visualizations with proper labels and legends."
-      }
+      "name": "Landing Page with Deployment",
+      "prompt": "Create a product landing page for a fitness app with features section, pricing tiers, and call-to-action buttons. Include a Python script to deploy to S3 with CloudFront CDN.",
+      "expected_output": "Landing page files and AWS deployment automation"
     },
     {
-      "name": "React Dashboard",
-      "description": "Create a modern React dashboard application",
-      "payload": {
-        "prompt": "Create a React dashboard application with charts, data tables, and a sidebar navigation. Use Material-UI for components and Recharts for data visualization. Include at least 3 different pages with sample data.",
-        "allowed_tools": "Bash,Read,Write,Replace,Search,List"
-      }
+      "name": "Build REST API",
+      "prompt": "Create a complete REST API with FastAPI including user authentication, CRUD operations, and database models",
+      "expected_output": "Python files with FastAPI routes, models, and authentication"
     },
     {
-      "name": "Lambda Function with API Gateway",
-      "description": "Deploy a serverless function to AWS",
-      "payload": {
-        "prompt": "Create an AWS Lambda function that processes image uploads, resizes them, and stores them in S3. Set up API Gateway to trigger the function and return presigned URLs for uploads. Include proper IAM roles and error handling.",
-        "allowed_tools": "Bash,Read,Write,Replace",
-        "append_system_prompt": "Use boto3 for AWS operations, implement proper error handling, and ensure the Lambda function follows best practices for performance and security."
-      }
-    },
-    {
-      "name": "Documentation Generator",
-      "description": "Generate comprehensive documentation from code",
-      "payload": {
-        "prompt": "Analyze the Python files in the current directory and generate comprehensive documentation including a README, API reference, and usage examples. Use docstrings and type hints to extract information.",
-        "allowed_tools": "Read,Write,List,Search"
-      }
-    },
-    {
-      "name": "Database Schema Migration",
-      "description": "Create and execute database migrations",
-      "payload": {
-        "prompt": "Create a database schema for an e-commerce platform with tables for users, products, orders, and reviews. Generate SQL migration scripts and a Python script using SQLAlchemy to manage the schema.",
-        "allowed_tools": "Write,Read,Replace"
-      }
-    },
-    {
-      "name": "CI/CD Pipeline",
-      "description": "Set up a complete CI/CD pipeline",
-      "payload": {
-        "prompt": "Create a GitHub Actions workflow for a Node.js application that runs tests, builds the application, and deploys to AWS S3. Include stages for linting, testing, building, and deployment with proper secrets management.",
-        "allowed_tools": "Write,Read"
-      }
-    },
-    {
-      "name": "Multi-turn: Build and Enhance App",
-      "description": "Example of multi-turn conversation",
-      "initial": {
-        "prompt": "Create a simple todo list web application using HTML, CSS, and vanilla JavaScript with local storage for persistence."
-      },
-      "followup": {
-        "prompt": "Now add user authentication using Firebase Auth and sync todos to Firestore database",
-        "continue": true
-      }
-    },
-    {
-      "name": "Code Review and Refactoring",
-      "description": "Analyze and improve existing code",
-      "payload": {
-        "prompt": "Review the code in the src directory, identify potential issues, suggest improvements, and refactor the code following best practices. Create a detailed report of changes made.",
-        "allowed_tools": "Read,Write,Replace,List,Search",
-        "append_system_prompt": "Focus on code quality, performance optimizations, security issues, and adherence to design patterns and SOLID principles."
-      }
+      "name": "Refactor Code",
+      "prompt": "Analyze and refactor this code for better performance and maintainability",
+      "context": "def process_data(data): result = []; for item in data: if item > 0: result.append(item * 2); return result",
+      "expected_output": "Refactored code with improvements and explanations"
     }
-  ],
-  "testing": {
-    "simple_test": {
-      "description": "Basic functionality test",
-      "payload": {
-        "prompt": "Create a simple Python script that prints 'Hello, AgentCore!' and save it as hello.py"
-      }
-    },
-    "session_test": {
-      "description": "Test session continuation",
-      "step1": {
-        "prompt": "Create a Python class for managing a shopping cart"
-      },
-      "step2": {
-        "prompt": "Add methods for calculating discounts and taxes",
-        "continue": true
-      }
-    }
-  }
+  ]
 }

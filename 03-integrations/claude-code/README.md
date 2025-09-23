@@ -57,12 +57,24 @@ pip install bedrock-agentcore-starter-toolkit
 # Step 3: Navigate to headless mode directory
 cd headless-mode
 
-# Step 4: Configure and deploy
-agentcore configure -e claude_code_agent.py
+# Step 4: Set up IAM role (for AWS deployment features)
+cd iam && chmod +x setup-iam-role.sh && ./setup-iam-role.sh && cd ..
+
+# Step 5: Configure and deploy with Docker runtime
+# Replace YOUR_ACCOUNT_ID with your AWS account ID
+ROLE_ARN="arn:aws:iam::YOUR_ACCOUNT_ID:role/claude-code-agentcore-role"
+agentcore configure -e claude_code_agent.py \
+  --execution-role $ROLE_ARN \
+  --container-runtime docker \
+  --requirements-file requirements.txt
+
+# Step 6: Launch the agent
 agentcore launch
 
-# Step 5: Invoke the agent
-agentcore invoke '{"prompt": "Create a Python FastAPI application with authentication"}'
+# Step 7: Invoke the agent with example prompt
+agentcore invoke '{
+  "prompt": "Create a modern coffee shop website called Brew Haven with menu, location, and contact sections. Deploy it to S3 and CloudFront."
+}'
 ```
 
 ### For Python SDK Usage

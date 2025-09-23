@@ -78,13 +78,41 @@ CLAUDE_CODE_MAX_OUTPUT_TOKENS=4096
 MAX_THINKING_TOKENS=1024
 ```
 
-### 3. Deploy to AgentCore
+### 3. Set Up IAM Role (Required for AWS Deployment)
+
+If you want Claude Code to deploy websites to S3 and CloudFront, you need to set up an IAM role:
 
 ```bash
-cd headless-mode
+cd headless-mode/iam
 
-# Configure the agent
-agentcore configure -e claude_code_agent.py
+# Make the script executable
+chmod +x setup-iam-role.sh
+
+# Run the IAM setup script
+./setup-iam-role.sh
+
+# This will output an IAM Role ARN that you'll use in the next step
+```
+
+The IAM role grants permissions to:
+- Invoke Bedrock models
+- Create and manage S3 buckets (with prefix 'claude-code-*')
+- Create and manage CloudFront distributions
+- Write CloudWatch logs
+
+### 4. Deploy to AgentCore
+
+```bash
+cd .. # Back to headless-mode directory
+
+# Get the IAM Role ARN from the previous step
+ROLE_ARN="arn:aws:iam::YOUR_ACCOUNT_ID:role/claude-code-agentcore-role"
+
+# Configure the agent with Docker runtime and IAM role
+agentcore configure -e claude_code_agent.py \
+  --execution-role $ROLE_ARN \
+  --container-runtime docker \
+  --requirements-file requirements.txt
 
 # Deploy to cloud (builds container with CodeBuild)
 agentcore launch
