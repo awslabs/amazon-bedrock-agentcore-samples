@@ -138,14 +138,16 @@ def deploy_agent_runtime(image_uri: str, role_arn: str) -> str:
         for runtime in existing_runtimes.get("agentRuntimes", []):
             if runtime["agentRuntimeName"] == runtime_name:
                 print(f"ℹ️  Agent runtime already exists: {runtime_name}")
-                # Update existing runtime
+                # Update existing runtime - use correct parameter names
                 response = agentcore_client.update_agent_runtime(
-                    agentRuntimeArn=runtime["agentRuntimeArn"],
+                    agentRuntimeId=runtime["agentRuntimeId"],  # Changed from agentRuntimeArn
                     agentRuntimeArtifact={
                         "containerConfiguration": {
                             "containerUri": image_uri
                         }
-                    }
+                    },
+                    roleArn=role_arn,  # Added required parameter
+                    networkConfiguration={"networkMode": "PUBLIC"}  # Added required parameter
                 )
                 print(f"✅ Updated agent runtime: {runtime_name}")
                 return runtime["agentRuntimeArn"]
