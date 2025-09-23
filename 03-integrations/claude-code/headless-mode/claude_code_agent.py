@@ -11,8 +11,6 @@ import json
 import subprocess
 import logging
 from typing import Dict, Any, Optional
-from bedrock_agentcore.runtime import BedrockAgentCoreApp
-
 # Configure Claude Code to use Amazon Bedrock
 os.environ["CLAUDE_CODE_USE_BEDROCK"] = "1"
 os.environ["AWS_REGION"] = os.environ.get("AWS_REGION", "us-east-1")
@@ -22,9 +20,6 @@ os.environ["MAX_THINKING_TOKENS"] = "1024"
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-# Initialize AgentCore app
-app = BedrockAgentCoreApp()
 
 def run_claude_code(
     prompt: str,
@@ -131,25 +126,29 @@ def run_claude_code(
             "error": str(e)
         }
 
-@app.entrypoint
-def claude_code_invoke(payload: Dict[str, Any], context: Dict[str, Any]) -> Dict[str, Any]:
+def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """
     Main handler for Claude Code agent invocation
     
     Args:
-        payload: Input payload containing:
-            - prompt: The task to execute
-            - session_id: (optional) Session ID for conversation continuation  
-            - continue: (optional) Boolean to continue most recent conversation
-            - allowed_tools: (optional) Comma-separated list of allowed tools
-            - append_system_prompt: (optional) Additional system instructions
-            - output_format: (optional) Output format (default: json)
-            - permission_mode: (optional) Permission mode (default: acceptEdits)
-        context: AgentCore context
+        event: AWS Lambda/AgentCore event containing the payload
+        context: Lambda/AgentCore context
         
     Returns:
         Dictionary containing execution results
     """
+    
+    # Extract payload from event
+    payload = event
+    if isinstance(event, dict) and 'body' in event:
+        # If event has a body field, parse it
+        if isinstance(event['body'], str):
+            try:
+                payload = json.loads(event['body'])
+            except json.JSONDecodeError:
+                payload = event
+        else:
+            payload = event['body']
     
     # Extract parameters from payload
     prompt = payload.get("prompt")
@@ -217,6 +216,14 @@ def claude_code_invoke(payload: Dict[str, Any], context: Dict[str, Any]) -> Dict
         "error": result.get("error") if not result.get("success") else None
     }
 
+# For local testing
 if __name__ == "__main__":
-    # Run the AgentCore app
-    app.run()
+    import sys
+    
+    # Test handler with a sample event
+    test_event = {
+        "prompt": sys.argv[1] if len(sys.argv) > 1 else "Create a hello world Python script"
+    }
+    
+    result = handler(test_event, {})
+    print(json.dumps(result, indent=2))

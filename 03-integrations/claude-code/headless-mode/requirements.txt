@@ -1,8 +1,8 @@
 # Claude Code Headless Mode Requirements
 
 # Core dependencies
-bedrock-agentcore>=0.1.0
 boto3>=1.28.0
+flask>=2.3.0  # For HTTP server
 
 # Logging and utilities
 python-json-logger>=2.0.7
