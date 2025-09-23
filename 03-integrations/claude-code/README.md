@@ -45,14 +45,26 @@ Python SDK wrapper for programmatic interaction with Claude Code.
 ### For AgentCore Deployment (Recommended)
 
 ```bash
-# Navigate to headless mode
+# Step 1: Install dependencies
+cd 03-integrations/claude-code
+python3 -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# Step 2: Install required packages including AgentCore CLI
+pip install -r requirements.txt
+pip install bedrock-agentcore-starter-toolkit
+
+# Step 3: Verify AgentCore CLI is installed
+agentcore --version
+
+# Step 4: Navigate to headless mode directory
 cd headless-mode
 
-# Configure and deploy
+# Step 5: Configure and deploy
 agentcore configure -e claude_code_agent.py
 agentcore launch
 
-# Invoke the agent
+# Step 6: Invoke the agent
 agentcore invoke '{"prompt": "Create a Python FastAPI application with authentication"}'
 ```
 

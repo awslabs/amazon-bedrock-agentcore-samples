@@ -33,29 +33,37 @@ Claude Code is an AI-powered coding assistant that can autonomously complete pro
 - **AWS CLI** configured (`aws configure`)
 - **Python 3.10+** installed
 - **Docker** (optional, for local testing)
-- **Node.js 20+** (for Claude Code CLI)
+- **Node.js 20+** (for Claude Code CLI, installed in container)
 - **Amazon Bedrock** model access enabled for Claude models
-- **AgentCore Toolkit** (`pip install bedrock-agentcore-starter-toolkit`)
+- **AgentCore CLI Toolkit** - REQUIRED for deployment commands:
+  ```bash
+  pip install bedrock-agentcore-starter-toolkit
+  ```
 
 ## Quick Start
 
 ### 1. Install Dependencies
 
 ```bash
-# From the claude-code directory
+# From the repository root, navigate to claude-code directory
 cd 03-integrations/claude-code
 
-# Create virtual environment
+# Create and activate virtual environment
 python3 -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 
 # Install requirements
 pip install -r requirements.txt
 
-# Install AgentCore toolkit
+# IMPORTANT: Install AgentCore CLI toolkit (provides 'agentcore' command)
 pip install bedrock-agentcore-starter-toolkit
 
-# Install Claude Code CLI globally (optional, for local testing)
+# Verify AgentCore CLI is installed
+agentcore --version
+# If you get "command not found", ensure your virtual environment is activated
+
+# Optional: Install Claude Code CLI for local testing only
+# (The container will install this automatically during build)
 npm install -g @anthropic-ai/claude-code
 ```
 
@@ -290,19 +298,33 @@ After deployment, monitor your agent through:
 
 ### Common Issues
 
-1. **"Claude Code not found" error**
+1. **"agentcore: command not found" error**
+   - The AgentCore CLI must be installed first:
+     ```bash
+     pip install bedrock-agentcore-starter-toolkit
+     ```
+   - Ensure your virtual environment is activated:
+     ```bash
+     source venv/bin/activate  # On Windows: venv\Scripts\activate
+     ```
+   - Verify installation:
+     ```bash
+     agentcore --version
+     ```
+
+2. **"Claude Code not found" error**
    - The Claude Code CLI is installed in the container during build
    - For local testing, install: `npm install -g @anthropic-ai/claude-code`
 
-2. **Authentication errors**
+3. **Authentication errors**
    - Ensure AWS credentials are configured: `aws configure`
    - Verify Bedrock model access is enabled in your region
 
-3. **Timeout errors**
+4. **Timeout errors**
    - Increase timeout: Set `CLAUDE_CODE_TIMEOUT` environment variable
    - Complex tasks may take 3-5 minutes
 
-4. **Permission denied errors**
+5. **Permission denied errors**
    - Check IAM role has Bedrock invoke permissions
    - Verify the execution role was created during deployment
 
