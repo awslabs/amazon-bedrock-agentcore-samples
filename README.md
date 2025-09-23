@@ -153,7 +153,7 @@ agentcore invoke '{"prompt": "tell me a joke"}'
 
 Congratulations! Your agent is now running on Amazon Bedrock AgentCore Runtime!
 
-Follow quickstart guides for [Gatway](https://github.com/aws/bedrock-agentcore-starter-toolkit/blob/main/documentation/docs/user-guide/gateway/quickstart.md), [Identity](https://github.com/aws/bedrock-agentcore-starter-toolkit/blob/main/documentation/docs/user-guide/identity/quickstart.md), [Memory](https://github.com/aws/bedrock-agentcore-starter-toolkit/blob/main/documentation/docs/user-guide/memory/quickstart.md), [Observability](https://github.com/aws/bedrock-agentcore-starter-toolkit/blob/main/documentation/docs/user-guide/observability/quickstart.md), and [builtin-tools](https://github.com/aws/bedrock-agentcore-starter-toolkit/tree/main/documentation/docs/user-guide/builtin-tools). 
+Follow quickstart guides for [Gateway](https://github.com/aws/bedrock-agentcore-starter-toolkit/blob/main/documentation/docs/user-guide/gateway/quickstart.md), [Identity](https://github.com/aws/bedrock-agentcore-starter-toolkit/blob/main/documentation/docs/user-guide/identity/quickstart.md), [Memory](https://github.com/aws/bedrock-agentcore-starter-toolkit/blob/main/documentation/docs/user-guide/memory/quickstart.md), [Observability](https://github.com/aws/bedrock-agentcore-starter-toolkit/blob/main/documentation/docs/user-guide/observability/quickstart.md), and [builtin-tools](https://github.com/aws/bedrock-agentcore-starter-toolkit/tree/main/documentation/docs/user-guide/builtin-tools). 
 
 ## 🔗 Related Links:
 
