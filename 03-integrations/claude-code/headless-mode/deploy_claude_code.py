@@ -9,7 +9,7 @@ import sys
 import json
 import boto3
 import subprocess
-from typing import Optional
+from typing import Optional, Union, List
 
 # Configuration
 AGENT_NAME = "claude-code-agent"
@@ -25,10 +25,29 @@ agentcore_client = boto3.client("bedrock-agentcore-control", region_name=REGION)
 iam_client = boto3.client("iam", region_name=REGION)
 
 
-def run_command(command: str, check: bool = True) -> subprocess.CompletedProcess:
-    """Run a shell command and return the result."""
-    print(f"Running: {command}")
-    result = subprocess.run(command, shell=True, capture_output=True, text=True)
+def run_command(command: Union[str, List[str]], check: bool = True, use_shell: bool = False) -> subprocess.CompletedProcess:
+    """Run a command and return the result.
+    
+    Args:
+        command: Command to run (as list for shell=False, or string for shell=True)
+        check: Whether to check return code and exit on failure
+        use_shell: Whether to use shell (only for commands with pipes)
+    """
+    if isinstance(command, str):
+        if use_shell:
+            # Only use shell=True when explicitly needed (for pipes)
+            print(f"Running: {command}")
+            result = subprocess.run(command, shell=True, capture_output=True, text=True)
+        else:
+            # Convert string to list for shell=False
+            cmd_list = command.split()
+            print(f"Running: {' '.join(cmd_list)}")
+            result = subprocess.run(cmd_list, shell=False, capture_output=True, text=True)
+    else:
+        # Use list directly
+        print(f"Running: {' '.join(command)}")
+        result = subprocess.run(command, shell=False, capture_output=True, text=True)
+    
     if check and result.returncode != 0:
         print(f"Error: {result.stderr}")
         sys.exit(1)
@@ -57,17 +76,17 @@ def setup_docker_buildx():
     """Set up Docker buildx for multi-platform builds."""
     print("\n🔧 Setting up Docker buildx...")
     
-    # Check if buildx builder exists
-    result = run_command("docker buildx ls | grep claude-code-builder", check=False)
+    # Check if buildx builder exists - this needs shell for pipe
+    result = run_command("docker buildx ls | grep claude-code-builder", check=False, use_shell=True)
     if result.returncode != 0:
         # Create new builder
-        run_command("docker buildx create --name claude-code-builder --use")
+        run_command(["docker", "buildx", "create", "--name", "claude-code-builder", "--use"])
     else:
         # Use existing builder
-        run_command("docker buildx use claude-code-builder")
+        run_command(["docker", "buildx", "use", "claude-code-builder"])
     
     # Start the builder
-    run_command("docker buildx inspect --bootstrap")
+    run_command(["docker", "buildx", "inspect", "--bootstrap"])
     print("✅ Docker buildx ready")
 
 
@@ -75,22 +94,40 @@ def build_and_push_image(repo_uri: str) -> str:
     """Build and push Docker image to ECR."""
     print(f"\n🐳 Building Docker image...")
     
-    # Login to ECR
+    # Login to ECR - needs to use shell for pipe
     print("Logging in to ECR...")
-    login_command = f"aws ecr get-login-password --region {REGION} | docker login --username AWS --password-stdin {ACCOUNT_ID}.dkr.ecr.{REGION}.amazonaws.com"
-    run_command(login_command)
+    ecr_password = subprocess.run(
+        ["aws", "ecr", "get-login-password", "--region", REGION],
+        capture_output=True,
+        text=True
+    )
+    if ecr_password.returncode != 0:
+        print(f"Error getting ECR password: {ecr_password.stderr}")
+        sys.exit(1)
+    
+    docker_login = subprocess.run(
+        ["docker", "login", "--username", "AWS", "--password-stdin", 
+         f"{ACCOUNT_ID}.dkr.ecr.{REGION}.amazonaws.com"],
+        input=ecr_password.stdout,
+        capture_output=True,
+        text=True
+    )
+    if docker_login.returncode != 0:
+        print(f"Error logging in to Docker: {docker_login.stderr}")
+        sys.exit(1)
+    print("✅ Logged in to ECR")
     
     # Build and push image for ARM64 (Graviton)
     image_uri = f"{repo_uri}:{IMAGE_TAG}"
     print(f"Building and pushing image: {image_uri}")
     
-    build_command = f"""
-    docker buildx build \
-        --platform linux/arm64 \
-        -t {image_uri} \
-        --push \
-        .
-    """
+    build_command = [
+        "docker", "buildx", "build",
+        "--platform", "linux/arm64",
+        "-t", image_uri,
+        "--push",
+        "."
+    ]
     
     run_command(build_command)
     print(f"✅ Image pushed to ECR: {image_uri}")
