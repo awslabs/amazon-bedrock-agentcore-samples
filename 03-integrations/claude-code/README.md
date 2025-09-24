@@ -2,47 +2,29 @@
 
 This integration enables Claude Code to run autonomously on Amazon Bedrock AgentCore, providing powerful AI-driven code generation capabilities without requiring an Anthropic API key.
 
-## 📁 Folder Structure
+## 🎯 Overview
 
-This integration provides two approaches for using Claude Code with AgentCore:
-
-### 1. **headless-mode/** - Production Deployment
-Complete implementation for deploying Claude Code as an autonomous agent on Amazon Bedrock AgentCore.
-
-**Use this when you want to:**
-- Deploy Claude Code to AgentCore Runtime
-- Run autonomous coding tasks in the cloud
-- Build production-ready coding automation
-- Scale code generation capabilities
+Claude Code Headless Mode provides a complete implementation for deploying Claude Code as an autonomous agent on Amazon Bedrock AgentCore. This enables you to run coding tasks in the cloud with full automation capabilities.
 
 **Key Features:**
-- Full AgentCore deployment with Docker container
-- Configured for Amazon Bedrock inference
-- Production-ready with CloudWatch monitoring
-- Cost-effective (~$0.30-0.50 per task)
-
-[📖 See headless-mode/README.md for detailed deployment instructions](headless-mode/README.md)
-
-### 2. **python-sdk/** - Programmatic Access
-Python SDK wrapper for programmatic interaction with Claude Code.
-
-**Use this when you want to:**
-- Integrate Claude Code into Python applications
-- Build custom workflows with Claude Code
-- Develop local prototypes
-- Create automated code generation pipelines
-
-**Key Features:**
-- Simple Python API for Claude Code
-- AgentCore-compatible wrapper
-- Local and remote execution support
-- Session management for multi-turn interactions
-
-[📖 See python-sdk/README.md for SDK documentation](python-sdk/README.md)
+- ✅ **No Anthropic API Key Required** - Uses Amazon Bedrock
+- ✅ **Autonomous Operation** - Runs without human intervention  
+- ✅ **Cost Effective** - ~$0.30-0.50 per complex task
+- ✅ **Scalable** - Leverages AgentCore's serverless architecture
+- ✅ **Production Ready** - Complete with monitoring and logging
 
 ## 🚀 Quick Start
 
-### For AgentCore Deployment (Recommended)
+### Prerequisites
+
+- **AWS Account** with Bedrock access
+- **Python 3.10+**
+- **AWS CLI** configured
+- **Docker** installed (for local testing)
+- **Bedrock Model Access** for Claude models
+- **AgentCore Toolkit**: `pip install bedrock-agentcore-starter-toolkit`
+
+### Installation Steps
 
 ```bash
 # Step 1: Install dependencies
@@ -76,56 +58,31 @@ aws bedrock-agentcore invoke-agent-runtime \
   response.json
 ```
 
-### For Python SDK Usage
+### Local Testing
+
+You can test the agent locally before deploying:
 
 ```bash
-# Navigate to python-sdk
-cd python-sdk
+# Build and run the Docker container
+cd headless-mode
+docker build -t claude-code-headless .
+docker run -d --name claude-code-headless -p 8080:8080 -v ~/.aws:/root/.aws:ro claude-code-headless
 
-# Install dependencies
-pip install -r requirements.txt
+# Test the agent
+curl -X POST http://localhost:8080/invocations \
+  -H "Content-Type: application/json" \
+  -d '{"input": {"prompt": "Create a simple hello.py file that prints Hello, World!"}}' \
+  | python3 -m json.tool
 
-# Use in your Python code
-from claude_code_sdk_wrapper import ClaudeCodeSDK
-
-sdk = ClaudeCodeSDK()
-result = sdk.execute("Create a REST API with FastAPI")
-print(result['result'])
+# Clean up
+docker stop claude-code-headless
+docker rm claude-code-headless
 ```
-
-## 🔧 Prerequisites
-
-- **AWS Account** with Bedrock access
-- **Python 3.10+**
-- **AWS CLI** configured
-- **Bedrock Model Access** for Claude models
-- **AgentCore Toolkit** (for deployment): `pip install bedrock-agentcore-starter-toolkit`
-
-## 📊 Key Benefits
-
-- ✅ **No Anthropic API Key Required** - Uses Amazon Bedrock
-- ✅ **Autonomous Operation** - Runs without human intervention
-- ✅ **Cost Effective** - ~$0.30-0.50 per complex task
-- ✅ **Scalable** - Leverages AgentCore's serverless architecture
-- ✅ **Production Ready** - Complete with monitoring and logging
 
 ## 📚 Documentation
 
-- [Headless Mode Documentation](headless-mode/README.md) - Full deployment guide
-- [Python SDK Documentation](python-sdk/README.md) - SDK usage and examples
-- [Example Prompts](headless-mode/examples/example_prompts.json) - Sample tasks
-
-## 🧪 Testing
-
-Test scripts are provided in the root directory:
-
-```bash
-# Test headless mode
-python test_headless_mode.py
-
-# Test Python SDK
-python test_python_sdk.py
-```
+- [Headless Mode Documentation](headless-mode/README.md) - Detailed deployment guide
+- [Example Prompts](headless-mode/examples/example_prompts.json) - Sample tasks for testing
 
 ## 🎯 Use Cases
 
@@ -135,29 +92,54 @@ python test_python_sdk.py
 - **Documentation** - Auto-generate documentation for codebases
 - **Migration** - Convert code between frameworks or languages
 - **Analysis** - Review code for security, performance, and best practices
+- **AWS Infrastructure** - Generate CloudFormation/CDK templates and deploy resources
 
-## 📦 What's Included
+## 📦 Project Structure
 
 ```
 claude-code/
 ├── README.md                    # This file
-├── requirements.txt             # Shared Python dependencies
+├── requirements.txt             # Python dependencies
 ├── test_headless_mode.py        # Test script for headless mode
-├── test_python_sdk.py          # Test script for Python SDK
 │
-├── headless-mode/              # AgentCore deployment
-│   ├── claude_code_agent.py    # Main agent implementation
-│   ├── requirements.txt        # Agent dependencies
-│   ├── Dockerfile              # Container configuration
-│   ├── README.md              # Detailed deployment guide
-│   └── examples/              # Example prompts
-│
-└── python-sdk/                 # Python SDK wrapper
-    ├── claude_code_sdk_wrapper.py # SDK implementation
-    ├── requirements.txt        # SDK dependencies
-    ├── README.md              # SDK documentation
-    └── examples/              # Usage examples
+└── headless-mode/              # AgentCore deployment
+    ├── agent.py                # Main agent implementation
+    ├── deploy_claude_code.py   # Deployment script
+    ├── Dockerfile              # Container configuration
+    ├── pyproject.toml          # Python project configuration
+    ├── uv.lock                 # Dependency lock file
+    ├── README.md              # Detailed deployment guide
+    ├── examples/              # Example prompts
+    │   └── example_prompts.json
+    └── iam/                   # IAM configuration
+        ├── permissions-policy.json
+        ├── trust-policy.json
+        └── setup-iam-role.sh
 ```
+
+## 🧪 Testing
+
+Test script is provided in the root directory:
+
+```bash
+# Test headless mode deployment
+python test_headless_mode.py
+```
+
+## 📊 Performance & Cost
+
+- **Task Duration**: 10-30 seconds for typical tasks
+- **Cost**: ~$0.30-0.50 per complex task
+- **Concurrency**: Supports multiple simultaneous requests
+- **Scaling**: Auto-scales based on demand
+
+## 🔄 Coming Soon
+
+- **Python SDK** - A Python wrapper for programmatic access to Claude Code will be added in a future update, enabling:
+  - Integration into Python applications
+  - Custom workflow development
+  - Batch processing capabilities
+  - Advanced session management
 
 ## 🤝 Contributing
 

@@ -1,20 +1,16 @@
-# Claude Code Integration for Amazon Bedrock AgentCore
+# Claude Code Headless Mode for Amazon Bedrock AgentCore
 
-# Choose the appropriate requirements file based on your use case:
-#
-# For Headless Mode (CLI-based):
-#   pip install -r headless-mode/requirements.txt
-#
-# For Python SDK:
-#   pip install -r python-sdk/requirements.txt
-
-# Common requirements for both modes
-bedrock-agentcore>=0.1.0
+# Core requirements for testing and deployment
 boto3>=1.28.0
 python-json-logger>=2.0.7
+bedrock-agentcore-starter-toolkit>=0.1.0
+requests>=2.31.0
 
-# For Python SDK mode, also install:
-# claude-code-sdk>=0.1.0
+# Testing dependencies
+pytest>=7.4.0
 
-# Note: Claude Code CLI must be installed separately:
-# npm install -g @anthropic/claude-code-cli
+# Note: For headless mode specific dependencies, see headless-mode/pyproject.toml
+# The headless mode Docker container handles all necessary dependencies including:
+# - Node.js and npm for Claude Code CLI
+# - Python packages via uv package manager
+# - @anthropic-ai/claude-code npm package
