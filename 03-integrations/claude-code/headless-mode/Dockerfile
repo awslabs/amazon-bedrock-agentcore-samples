@@ -1,12 +1,18 @@
-FROM ghcr.io/astral-sh/uv:python3.13-bookworm-slim
+# Use uv's ARM64 Python base image
+FROM --platform=linux/arm64 ghcr.io/astral-sh/uv:python3.11-bookworm-slim
 
-# All environment variables in one layer
-ENV UV_SYSTEM_PYTHON=1 UV_COMPILE_BYTECODE=1 PYTHONUNBUFFERED=1 \
-    AWS_REGION=us-east-1 AWS_DEFAULT_REGION=us-east-1 \
+# Set environment variables
+ENV UV_SYSTEM_PYTHON=1 \
+    UV_COMPILE_BYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    AWS_REGION=us-east-1 \
+    AWS_DEFAULT_REGION=us-east-1 \
     DOCKER_CONTAINER=1 \
     CLAUDE_CODE_USE_BEDROCK=1 \
     CLAUDE_CODE_MAX_OUTPUT_TOKENS=4096 \
     MAX_THINKING_TOKENS=1024
+
+WORKDIR /app
 
 # Install system dependencies including Node.js
 RUN apt-get update && apt-get install -y \
@@ -22,18 +28,17 @@ RUN npm install -g @anthropic-ai/claude-code
 # Verify Claude Code is installed
 RUN claude --version
 
-COPY requirements.txt requirements.txt
+# Copy uv files first for better caching
+COPY pyproject.toml uv.lock* ./
 
-RUN uv pip install -r requirements.txt && \
-    uv pip install aws-opentelemetry-distro>=0.10.1
+# Install Python dependencies
+RUN uv sync --frozen --no-cache
 
+# Copy application code
+COPY agent.py ./
 
-EXPOSE 8080 8000
+# Expose port
+EXPOSE 8080
 
-# Copy entire project
-
-COPY . .
-
-
-# Run the Flask HTTP server
-CMD ["python", "__main__.py"]
+# Run application using uvicorn
+CMD ["uv", "run", "uvicorn", "agent:app", "--host", "0.0.0.0", "--port", "8080"]

@@ -1,7 +1,7 @@
 """
 Claude Code Agent for Amazon Bedrock AgentCore
 
-This agent runs Claude Code in headless mode to autonomously handle coding tasks.
+This agent runs Claude Code (Cline) in headless mode to autonomously handle coding tasks.
 It accepts natural language prompts and executes them using Claude Code's CLI.
 Configured to use Amazon Bedrock for model inference.
 """
@@ -11,6 +11,10 @@ import json
 import subprocess
 import logging
 from typing import Dict, Any, Optional
+from datetime import datetime
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+
 # Configure Claude Code to use Amazon Bedrock
 os.environ["CLAUDE_CODE_USE_BEDROCK"] = "1"
 os.environ["AWS_REGION"] = os.environ.get("AWS_REGION", "us-east-1")
@@ -20,6 +24,14 @@ os.environ["MAX_THINKING_TOKENS"] = "1024"
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+app = FastAPI(title="Claude Code Agent Server", version="1.0.0")
+
+class InvocationRequest(BaseModel):
+    input: Dict[str, Any]
+
+class InvocationResponse(BaseModel):
+    output: Dict[str, Any]
 
 def run_claude_code(
     prompt: str,
@@ -126,15 +138,6 @@ def run_claude_code(
                     "stdout": result.stdout,
                     "stderr": result.stderr
                 }
-            except AttributeError as e:
-                logger.error(f"AttributeError in JSON parsing: {e}")
-                logger.error(f"Output type: {type(output) if 'output' in locals() else 'undefined'}")
-                return {
-                    "success": False,
-                    "error": f"AttributeError: {str(e)}",
-                    "stdout": result.stdout,
-                    "stderr": result.stderr
-                }
         else:
             # For text or stream-json format
             return {
@@ -156,122 +159,90 @@ def run_claude_code(
             "error": str(e)
         }
 
-def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+@app.post("/invocations", response_model=InvocationResponse)
+async def invoke_agent(request: InvocationRequest):
     """
-    Main handler for Claude Code agent invocation
-    
-    Args:
-        event: AWS Lambda/AgentCore event containing the payload
-        context: Lambda/AgentCore context
+    Main invocation endpoint for Claude Code agent
+    """
+    try:
+        # Extract prompt from input
+        user_prompt = request.input.get("prompt", "")
+        if not user_prompt:
+            raise HTTPException(
+                status_code=400, 
+                detail="No prompt found in input. Please provide a 'prompt' key in the input."
+            )
         
-    Returns:
-        Dictionary containing execution results
-    """
-    
-    # Extract payload from event
-    payload = event
-    
-    # Handle different input formats
-    if isinstance(event, list):
-        # If event is a list, try to extract the first element
-        if event and isinstance(event[0], dict):
-            payload = event[0]
-        else:
-            return {
-                "success": False,
-                "error": "Invalid input format. Expected a dictionary or an object with a prompt field."
+        # Get optional parameters with defaults
+        session_id = request.input.get("session_id")
+        continue_conversation = request.input.get("continue", False)
+        output_format = request.input.get("output_format", "json")
+        permission_mode = request.input.get("permission_mode", "acceptEdits")
+        append_system_prompt = request.input.get("append_system_prompt")
+        
+        # Default allowed tools for autonomous operation
+        default_tools = "Bash,Read,Write,Replace,Search,List,WebFetch,AskFollowup"
+        allowed_tools = request.input.get("allowed_tools", default_tools)
+        
+        # Add AWS-specific context if needed
+        if "aws" in user_prompt.lower() or "s3" in user_prompt.lower() or "cloudfront" in user_prompt.lower():
+            aws_context = """
+            You have AWS CLI configured and boto3 available.
+            When deploying to AWS services:
+            - Use boto3 for programmatic access
+            - Ensure proper error handling
+            - Set appropriate permissions and policies
+            - Return resource URLs/ARNs in the final output
+            """
+            if append_system_prompt:
+                append_system_prompt = f"{append_system_prompt}\n\n{aws_context}"
+            else:
+                append_system_prompt = aws_context
+        
+        logger.info(f"Processing prompt: {user_prompt[:100]}...")
+        
+        # Execute Claude Code
+        result = run_claude_code(
+            prompt=user_prompt,
+            output_format=output_format,
+            allowed_tools=allowed_tools,
+            permission_mode=permission_mode,
+            append_system_prompt=append_system_prompt,
+            session_id=session_id,
+            continue_conversation=continue_conversation
+        )
+        
+        # Build response
+        response_data = {
+            "success": result.get("success", False),
+            "result": result.get("result", ""),
+            "session_id": result.get("session_id"),
+            "timestamp": datetime.utcnow().isoformat(),
+            "model": "claude-code-headless",
+            "metadata": {
+                "cost_usd": result.get("total_cost_usd"),
+                "duration_ms": result.get("duration_ms"),
+                "num_turns": result.get("num_turns")
             }
-    elif isinstance(event, dict) and 'body' in event:
-        # If event has a body field, parse it
-        if isinstance(event['body'], str):
-            try:
-                payload = json.loads(event['body'])
-            except json.JSONDecodeError:
-                payload = event
-        else:
-            payload = event['body']
-    
-    # Ensure payload is a dictionary
-    if not isinstance(payload, dict):
-        return {
-            "success": False,
-            "error": f"Invalid payload type: {type(payload).__name__}. Expected dictionary."
         }
-    
-    # Extract parameters from payload
-    prompt = payload.get("prompt")
-    if not prompt:
-        return {
-            "success": False,
-            "error": "No prompt provided. Please include a 'prompt' field in your payload."
-        }
-    
-    # Get optional parameters with defaults
-    session_id = payload.get("session_id")
-    continue_conversation = payload.get("continue", False)
-    output_format = payload.get("output_format", "json")
-    permission_mode = payload.get("permission_mode", "acceptEdits")
-    append_system_prompt = payload.get("append_system_prompt")
-    
-    # Default allowed tools for autonomous operation
-    default_tools = "Bash,Read,Write,Replace,Search,List,WebFetch,AskFollowup"
-    allowed_tools = payload.get("allowed_tools", default_tools)
-    
-    # Add AWS-specific context if needed
-    if "aws" in prompt.lower() or "s3" in prompt.lower() or "cloudfront" in prompt.lower():
-        aws_context = """
-        You have AWS CLI configured and boto3 available.
-        When deploying to AWS services:
-        - Use boto3 for programmatic access
-        - Ensure proper error handling
-        - Set appropriate permissions and policies
-        - Return resource URLs/ARNs in the final output
-        """
-        if append_system_prompt:
-            append_system_prompt = f"{append_system_prompt}\n\n{aws_context}"
+        
+        if not result.get("success"):
+            response_data["error"] = result.get("error", "Unknown error")
+            logger.error(f"Claude Code execution failed: {response_data['error']}")
         else:
-            append_system_prompt = aws_context
-    
-    logger.info(f"Processing prompt: {prompt[:100]}...")
-    
-    # Execute Claude Code
-    result = run_claude_code(
-        prompt=prompt,
-        output_format=output_format,
-        allowed_tools=allowed_tools,
-        permission_mode=permission_mode,
-        append_system_prompt=append_system_prompt,
-        session_id=session_id,
-        continue_conversation=continue_conversation
-    )
-    
-    # Log execution result
-    if result.get("success"):
-        logger.info("Claude Code execution completed successfully")
-    else:
-        logger.error(f"Claude Code execution failed: {result.get('error', 'Unknown error')}")
-    
-    # Return result
-    return {
-        "success": result.get("success", False),
-        "result": result.get("result", ""),
-        "session_id": result.get("session_id"),
-        "metadata": {
-            "cost_usd": result.get("total_cost_usd"),
-            "duration_ms": result.get("duration_ms"),
-            "num_turns": result.get("num_turns")
-        },
-        "error": result.get("error") if not result.get("success") else None
-    }
+            logger.info("Claude Code execution completed successfully")
+        
+        return InvocationResponse(output=response_data)
 
-# For local testing
+    except Exception as e:
+        logger.error(f"Agent processing failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Agent processing failed: {str(e)}")
+
+@app.get("/ping")
+async def ping():
+    """Health check endpoint"""
+    return {"status": "healthy", "service": "claude-code-agent"}
+
 if __name__ == "__main__":
-    import sys
-    
-    # Test handler with a sample event
-    test_event = {
-        "prompt": sys.argv[1] if len(sys.argv) > 1 else "Create a hello world Python script"
-    }
-    
-    result = handler(test_event, {})
-    print(json.dumps(result, indent=2))
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8080)
