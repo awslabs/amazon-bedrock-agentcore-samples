@@ -1,0 +1,31 @@
+default_agent: strands_langfuse_observability
+agents:
+  strands_langfuse_observability:
+    name: strands_langfuse_observability
+    entrypoint: /Users/ravizraj/Documents/workspaces/agent-core/rajesh/amazon-bedrock-agentcore-samples/01-tutorials/06-AgentCore-observability/04-Agentcore-runtime-partner-observability/Langfuse/strands_claude.py
+    platform: linux/arm64
+    container_runtime: finch
+    aws:
+      execution_role: arn:aws:iam::467801433859:role/AmazonBedrockAgentCoreSDKRuntime-us-east-1-2102f51ebb
+      execution_role_auto_create: false
+      account: '467801433859'
+      region: us-east-1
+      ecr_repository: 467801433859.dkr.ecr.us-east-1.amazonaws.com/bedrock-agentcore-strands_langfuse_observability
+      ecr_auto_create: false
+      network_configuration:
+        network_mode: PUBLIC
+      protocol_configuration:
+        server_protocol: HTTP
+      observability:
+        enabled: false
+    bedrock_agentcore:
+      agent_id: strands_langfuse_observability-64dAhNEayV
+      agent_arn: arn:aws:bedrock-agentcore:us-east-1:467801433859:runtime/strands_langfuse_observability-64dAhNEayV
+      agent_session_id: 97a0d633-cd84-4f1d-8385-7770f89de0c1
+    codebuild:
+      project_name: bedrock-agentcore-strands_langfuse_observability-builder
+      execution_role: arn:aws:iam::467801433859:role/AmazonBedrockAgentCoreSDKCodeBuild-us-east-1-2102f51ebb
+      source_bucket: bedrock-agentcore-codebuild-sources-467801433859-us-east-1
+    authorizer_configuration: null
+    request_header_configuration: null
+    oauth_configuration: null
