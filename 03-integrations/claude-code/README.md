@@ -54,7 +54,7 @@ python deploy_claude_code.py
 aws bedrock-agentcore invoke-agent-runtime \
   --agent-runtime-arn YOUR_RUNTIME_ARN \
   --region us-east-1 \
-  --payload '{"prompt": "Create a modern coffee shop website called Brew Haven with menu, location, and contact sections. Deploy it to S3 and CloudFront."}' \
+  --payload '{"input": {"prompt": "Create a modern coffee shop website called Brew Haven with menu, location, and contact sections. Deploy it to S3 and CloudFront."}}' \
   response.json
 ```
 
