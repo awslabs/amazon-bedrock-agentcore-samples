@@ -218,6 +218,15 @@ Resources:
                   - !Sub 'arn:aws:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:workload-identity-directory/*'
               - Effect: Allow
                 Action:
+                  - bedrock-agentcore:GetResourceOauth2Token
+                  - bedrock-agentcore:CreateOauth2CredentialProvider
+                  - bedrock-agentcore:DeleteOauth2CredentialProvider
+                  - bedrock-agentcore:UpdateOauth2CredentialProvider
+                  - bedrock-agentcore:ListOauth2CredentialProviders
+                  - bedrock-agentcore:GetOauth2CredentialProvider
+                Resource: '*'
+              - Effect: Allow
+                Action:
                   - ssm:GetParameter
                   - ssm:GetParameters
                   - ssm:PutParameter
@@ -228,6 +237,17 @@ Resources:
                 Action:
                   - iam:PassRole
                 Resource: !GetAtt GatewayAgentCoreRole.Arn
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource:
+                  Fn::ImportValue: !Sub '${CognitoStackName}-GatewayClientSecret'
+              - Effect: Allow
+                Action:
+                  - kms:Decrypt
+                  - kms:GenerateDataKey
+                Resource:
+                  Fn::ImportValue: !Sub '${CognitoStackName}-SecretsManagerKMSKeyArn'
 
   # Gateway Management Lambda Function
   GatewayManagementFunction:
@@ -238,9 +258,14 @@ Resources:
       Handler: index.lambda_handler
       Role: !GetAtt GatewayManagementLambdaRole.Arn
       Timeout: 300
+      Environment:
+        Variables:
+          GATEWAY_SECRET_ARN:
+              Fn::ImportValue: !Sub '${CognitoStackName}-GatewayClientSecret'
       Code:
         ZipFile: |
           import json
+          import os
           import boto3
           import cfnresponse
           import logging
@@ -281,7 +306,18 @@ Resources:
                   lambda_arn = properties['LambdaArn']
                   provider_name = properties['ProviderName']
 
-                  # TODO: Client ID
+                  # Get client credentials from Secrets Manager
+                  secrets_client = boto3.client('secretsmanager')
+                  secret_arn = os.environ['GATEWAY_SECRET_ARN']
+
+                  secret_response = secrets_client.get_secret_value(SecretId=secret_arn)
+                  secret_data = json.loads(secret_response['SecretString'])
+
+                  client_id = secret_data['client_id']
+                  client_secret = secret_data['client_secret']
+                  token_url = secret_data['token_endpoint']
+                  auth_url = properties['DiscoveryUrl'].replace('/.well-known/openid-configuration', '/oauth2/authorize')
+                  issuer_url = f"https://cognito-idp.{boto3.Session().region_name}.amazonaws.com/{secret_data['user_pool_id']}"
                   identity_client.create_oauth2_credential_provider(
                       name=provider_name,
                       credentialProviderVendor="CustomOauth2",

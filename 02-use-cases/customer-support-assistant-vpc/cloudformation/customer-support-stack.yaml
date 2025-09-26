@@ -6,7 +6,7 @@ Parameters:
   TemplateBaseURL:
     Type: String
     Description: 'Base URL for the nested CloudFormation templates'
-    Default: 'https://raw.githubusercontent.com/your-org/vpc-agents/main/cloudformation'
+    Default: 'https://github.com/EashanKaushik/amazon-bedrock-agentcore-samples-fork/tree/customer-support-vpc/02-use-cases/customer-support-assistant-vpc/cloudformation'
 
   # Environment parameters
   Environment:
@@ -39,6 +39,11 @@ Parameters:
     Default: '10.0.1.0/24'
     Description: 'CIDR block for the third private subnet'
 
+  PrivateSubnet4Cidr:
+    Type: String
+    Default: '10.0.5.0/24'
+    Description: 'CIDR block for the fourth private subnet'
+
   # Aurora Stack Parameters
   DBMasterUsername:
     Type: String
@@ -61,6 +66,7 @@ Resources:
         PrivateSubnet1Cidr: !Ref PrivateSubnet1Cidr
         PrivateSubnet2Cidr: !Ref PrivateSubnet2Cidr
         PrivateSubnet3Cidr: !Ref PrivateSubnet3Cidr
+        PrivateSubnet4Cidr: !Ref PrivateSubnet4Cidr
       Tags:
         - Key: Name
           Value: !Sub '${Environment}-vpc-stack'
@@ -91,7 +97,7 @@ Resources:
     Properties:
       TemplateURL: !Sub '${TemplateBaseURL}/aurora-postgres-stack.yaml'
       Parameters:
-        VPCStackName: !Sub '${AWS::StackName}-VPCStack'
+        VPCStackName: !Ref VPCStack
         DBMasterUsername: !Ref DBMasterUsername
         DatabaseName: !Ref DatabaseName
       Capabilities:
@@ -111,7 +117,7 @@ Resources:
     Properties:
       TemplateURL: !Sub '${TemplateBaseURL}/dynamodb-stack.yaml'
       Parameters:
-        VPCStackName: !Sub '${AWS::StackName}-VPCStack'
+        VPCStackName: !Ref VPCStack
       Capabilities:
         - CAPABILITY_IAM
       Tags:
@@ -121,6 +127,48 @@ Resources:
           Value: !Ref Environment
         - Key: StackType
           Value: 'Nested-DynamoDB'
+
+  # Agent Server Stack - AgentCore runtime layer (depends on VPC and Cognito)
+  AgentServerStack:
+    Type: AWS::CloudFormation::Stack
+    DependsOn:
+      - VPCStack
+      - CognitoStack
+    Properties:
+      TemplateURL: !Sub '${TemplateBaseURL}/agent-server-stack.yaml'
+      Parameters:
+        VPCStackName: !Ref VPCStack
+        CognitoStackName: !Ref CognitoStack
+      Capabilities:
+        - CAPABILITY_IAM
+      Tags:
+        - Key: Name
+          Value: !Sub '${Environment}-agent-server-stack'
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: StackType
+          Value: 'Nested-AgentServer'
+
+  # MCP Server Stack - MCP DynamoDB runtime layer (depends on VPC and Cognito)
+  MCPServerStack:
+    Type: AWS::CloudFormation::Stack
+    DependsOn:
+      - VPCStack
+      - CognitoStack
+    Properties:
+      TemplateURL: !Sub '${TemplateBaseURL}/mcp-server-stack.yaml'
+      Parameters:
+        VPCStackName: !Ref VPCStack
+        CognitoStackName: !Ref CognitoStack
+      Capabilities:
+        - CAPABILITY_IAM
+      Tags:
+        - Key: Name
+          Value: !Sub '${Environment}-mcp-server-stack'
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: StackType
+          Value: 'Nested-MCPServer'
 
   # Gateway Stack - Application layer (depends on all other stacks)
   GatewayStack:
@@ -133,7 +181,7 @@ Resources:
     Properties:
       TemplateURL: !Sub '${TemplateBaseURL}/gateway-stack.yaml'
       Parameters:
-        CognitoStackName: !Sub '${AWS::StackName}-CognitoStack'
+        CognitoStackName: !Ref CognitoStack
       Capabilities:
         - CAPABILITY_IAM
       Tags:
@@ -157,12 +205,6 @@ Outputs:
     Value: !GetAtt VPCStack.Outputs.PrivateSubnets
     Export:
       Name: !Sub '${AWS::StackName}-PrivateSubnets'
-
-  GatewaySecurityGroupId:
-    Description: 'Gateway security group ID from the nested VPC stack'
-    Value: !GetAtt VPCStack.Outputs.GatewaySecurityGroupId
-    Export:
-      Name: !Sub '${AWS::StackName}-GatewaySecurityGroupId'
 
   # Aurora Stack Outputs
   AuroraClusterEndpoint:
@@ -239,6 +281,44 @@ Outputs:
     Value: !GetAtt GatewayStack.Outputs.WarrantyTableName
     Export:
       Name: !Sub '${AWS::StackName}-WarrantyTableName'
+
+  # Agent Server Stack Outputs
+  AgentCoreRuntimeExecutionRoleArn:
+    Description: 'ARN of the AgentCore runtime execution role from Agent Server stack'
+    Value: !GetAtt AgentServerStack.Outputs.AgentCoreRuntimeExecutionRoleArn
+    Export:
+      Name: !Sub '${AWS::StackName}-AgentCoreRuntimeExecutionRoleArn'
+
+  AgentECRRepositoryUri:
+    Description: 'URI of the ECR repository for agent Docker images from Agent Server stack'
+    Value: !GetAtt AgentServerStack.Outputs.AgentECRRepositoryUri
+    Export:
+      Name: !Sub '${AWS::StackName}-AgentECRRepositoryUri'
+
+  CodeBuildProjectName:
+    Description: 'Name of the CodeBuild project for building agent Docker images from Agent Server stack'
+    Value: !GetAtt AgentServerStack.Outputs.CodeBuildProjectName
+    Export:
+      Name: !Sub '${AWS::StackName}-CodeBuildProjectName'
+
+  # MCP Server Stack Outputs
+  MCPDynamoDBRuntimeExecutionRoleArn:
+    Description: 'ARN of the MCP DynamoDB runtime execution role from MCP Server stack'
+    Value: !GetAtt MCPServerStack.Outputs.MCPDynamoDBRuntimeExecutionRoleArn
+    Export:
+      Name: !Sub '${AWS::StackName}-MCPDynamoDBRuntimeExecutionRoleArn'
+
+  MCPDynamoDBECRRepositoryUri:
+    Description: 'URI of the ECR repository for MCP DynamoDB Docker images from MCP Server stack'
+    Value: !GetAtt MCPServerStack.Outputs.MCPDynamoDBECRRepositoryUri
+    Export:
+      Name: !Sub '${AWS::StackName}-MCPDynamoDBECRRepositoryUri'
+
+  MCPDynamoDBRuntimeArn:
+    Description: 'ARN of the BedrockAgentCore MCP DynamoDB Runtime from MCP Server stack'
+    Value: !GetAtt MCPServerStack.Outputs.MCPDynamoDBRuntimeArn
+    Export:
+      Name: !Sub '${AWS::StackName}-MCPDynamoDBRuntimeArn'
 
   # Stack Information
   MasterStackId:

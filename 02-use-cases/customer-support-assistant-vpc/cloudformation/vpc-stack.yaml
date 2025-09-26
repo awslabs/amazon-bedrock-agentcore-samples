@@ -12,6 +12,11 @@ Parameters:
     Default: '10.0.1.0/24'
     Description: 'CIDR block for the third private subnet'
 
+  PrivateSubnet4Cidr:
+    Type: String
+    Default: '10.0.5.0/24'
+    Description: 'CIDR block for the fourth private subnet'
+
   PrivateSubnet1Cidr:
     Type: String
     Default: '10.0.3.0/24'
@@ -67,6 +72,16 @@ Resources:
         - Key: Name
           Value: !Sub '${AWS::StackName}-Private-Subnet-3'
 
+  PrivateSubnet4:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [0, !GetAZs '']
+      CidrBlock: !Ref PrivateSubnet4Cidr
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-Private-Subnet-4'
+
   # Private Route Table (no internet routes)
   PrivateRouteTable:
     Type: AWS::EC2::RouteTable
@@ -95,74 +110,11 @@ Resources:
       RouteTableId: !Ref PrivateRouteTable
       SubnetId: !Ref PrivateSubnet3
 
-  # Security Groups
-  GatewaySecurityGroup:
-    Type: AWS::EC2::SecurityGroup
+  PrivateSubnet4RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
-      GroupDescription: 'Security group for gateway VPC'
-      VpcId: !Ref VPC
-      SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: 443
-          ToPort: 443
-          CidrIp: !Ref VpcCidr
-          Description: 'HTTPS within VPC'
-        - IpProtocol: tcp
-          FromPort: 80
-          ToPort: 80
-          CidrIp: !Ref VpcCidr
-          Description: 'HTTP within VPC'
-      SecurityGroupEgress:
-        - IpProtocol: tcp
-          FromPort: 443
-          ToPort: 443
-          CidrIp: !Ref VpcCidr
-          Description: 'HTTPS within VPC'
-      Tags:
-        - Key: Name
-          Value: !Sub '${AWS::StackName}-Gateway-VPC-SG'
-
-  AuroraSecurityGroup:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupDescription: 'Security group for Aurora VPC'
-      VpcId: !Ref VPC
-      SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: 5432
-          ToPort: 5432
-          SourceSecurityGroupId: !Ref GatewaySecurityGroup
-          Description: 'PostgreSQL access from gateway'
-      SecurityGroupEgress:
-        - IpProtocol: tcp
-          FromPort: 5432
-          ToPort: 5432
-          DestinationSecurityGroupId: !Ref GatewaySecurityGroup
-          Description: 'PostgreSQL responses to gateway'
-      Tags:
-        - Key: Name
-          Value: !Sub '${AWS::StackName}-Aurora-VPC-SG'
-
-  DynamoSecurityGroup:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupDescription: 'Security group for DynamoDB VPC '
-      VpcId: !Ref VPC
-      SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: 443
-          ToPort: 443
-          SourceSecurityGroupId: !Ref GatewaySecurityGroup
-          Description: 'HTTPS access from gateway for DynamoDB'
-      SecurityGroupEgress:
-        - IpProtocol: tcp
-          FromPort: 443
-          ToPort: 443
-          CidrIp: !Ref VpcCidr
-          Description: 'HTTPS within VPC'
-      Tags:
-        - Key: Name
-          Value: !Sub '${AWS::StackName}-Dynamo-VPC-SG'
+      RouteTableId: !Ref PrivateRouteTable
+      SubnetId: !Ref PrivateSubnet4
 
   # VPC Flow Logs
   VPCFlowLogRole:
@@ -251,7 +203,7 @@ Outputs:
 
   PrivateSubnets:
     Description: 'A list of all private subnets'
-    Value: !Join [",", [!Ref PrivateSubnet1, !Ref PrivateSubnet2, !Ref PrivateSubnet3]]
+    Value: !Join [",", [!Ref PrivateSubnet1, !Ref PrivateSubnet2, !Ref PrivateSubnet3, !Ref PrivateSubnet4]]
     Export:
       Name: !Sub '${AWS::StackName}-PrivateSubnets'
 
@@ -273,20 +225,8 @@ Outputs:
     Export:
       Name: !Sub '${AWS::StackName}-PrivateSubnet3'
 
-  GatewaySecurityGroupId:
-    Description: 'Security Group ID for gateway services'
-    Value: !Ref GatewaySecurityGroup
+  PrivateSubnet4:
+    Description: 'A reference to the private subnet in the 4th Availability Zone'
+    Value: !Ref PrivateSubnet4
     Export:
-      Name: !Sub '${AWS::StackName}-GatewaySecurityGroupId'
-
-  AuroraSecurityGroupId:
-    Description: 'Security Group ID for Aurora database'
-    Value: !Ref AuroraSecurityGroup
-    Export:
-      Name: !Sub '${AWS::StackName}-AuroraSecurityGroupId'
-
-  DynamoSecurityGroupId:
-    Description: 'Security Group ID for DynamoDB access'
-    Value: !Ref DynamoSecurityGroup
-    Export:
-      Name: !Sub '${AWS::StackName}-DynamoSecurityGroupId'
+      Name: !Sub '${AWS::StackName}-PrivateSubnet4'

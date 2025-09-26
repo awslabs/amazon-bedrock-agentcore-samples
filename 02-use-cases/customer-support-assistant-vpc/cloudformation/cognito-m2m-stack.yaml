@@ -446,6 +446,30 @@ Outputs:
     Export:
       Name: !Sub '${AWS::StackName}-MCPScopes'
 
+  GatewayClientSecret:
+    Description: 'Gateway Client Secret ARN for accessing client configuration'
+    Value: !Ref GatewayClientSecret
+    Export:
+      Name: !Sub '${AWS::StackName}-GatewayClientSecret'
+
+  AgentClientSecret:
+    Description: 'Agent Client Secret ARN for accessing client configuration'
+    Value: !Ref AgentClientSecret
+    Export:
+      Name: !Sub '${AWS::StackName}-AgentClientSecret'
+
+  MCPClientSecret:
+    Description: 'MCP Client Secret ARN for accessing client configuration'
+    Value: !Ref MCPClientSecret
+    Export:
+      Name: !Sub '${AWS::StackName}-MCPClientSecret'
+
+  SecretsManagerKMSKeyArn:
+    Description: 'KMS Key ARN for Secrets Manager encryption'
+    Value: !GetAtt SecretsManagerKMSKey.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-SecretsManagerKMSKeyArn'
+
   ClientCredentialsExample:
     Description: 'Example curl command for getting access token'
     Value: !Sub |

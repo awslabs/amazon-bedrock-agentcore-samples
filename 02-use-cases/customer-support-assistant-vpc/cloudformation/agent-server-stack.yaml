@@ -1,4 +1,636 @@
-# TODO: Complete
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'AgentCore runtime execution role and related resources'
 
-# - Agent Role
-# 
+Parameters:
+  VPCStackName:
+    Type: String
+    Default: 'customer-support-vpc-VPCStack'
+    Description: 'Name of the VPC stack to reference for network configuration'
+
+  CognitoStackName:
+    Type: String
+    Default: 'customer-support-vpc-CognitoStack'
+    Description: 'Name of the Cognito stack to reference for client configuration'
+
+Resources:
+  # ECR Repository for Agent Docker Images
+  AgentECRRepository:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: !Sub '${AWS::StackName}-agent-repository'
+      ImageScanningConfiguration:
+        ScanOnPush: true
+      LifecyclePolicy:
+        LifecyclePolicyText: |
+          {
+            "rules": [
+              {
+                "rulePriority": 1,
+                "selection": {
+                  "tagStatus": "untagged",
+                  "countType": "sinceImagePushed",
+                  "countUnit": "days",
+                  "countNumber": 1
+                },
+                "action": {
+                  "type": "expire"
+                }
+              },
+              {
+                "rulePriority": 2,
+                "selection": {
+                  "tagStatus": "tagged",
+                  "tagPrefixList": ["v", "latest", "main", "master"],
+                  "countType": "imageCountMoreThan",
+                  "countNumber": 10
+                },
+                "action": {
+                  "type": "expire"
+                }
+              }
+            ]
+          }
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-Agent-ECR'
+        - Key: Purpose
+          Value: 'Agent Docker Images'
+    DeletionPolicy: Delete
+
+  # AgentCore Runtime Execution Role
+  AgentCoreRuntimeExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${AWS::StackName}-agentcore-runtime-execution-role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AssumeRolePolicy
+            Effect: Allow
+            Principal:
+              Service: bedrock-agentcore.amazonaws.com
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals:
+                'aws:SourceAccount': !Ref AWS::AccountId
+              ArnLike:
+                'aws:SourceArn': !Sub 'arn:aws:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:*'
+      Policies:
+        - PolicyName: AgentCoreRuntimeExecutionPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: ECRImageAccess
+                Effect: Allow
+                Action:
+                  - ecr:BatchGetImage
+                  - ecr:GetDownloadUrlForLayer
+                Resource:
+                  - !Sub 'arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/*'
+              - Effect: Allow
+                Action:
+                  - logs:DescribeLogStreams
+                  - logs:CreateLogGroup
+                Resource:
+                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/bedrock-agentcore/runtimes/*'
+              - Effect: Allow
+                Action:
+                  - logs:DescribeLogGroups
+                Resource:
+                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:*'
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/bedrock-agentcore/runtimes/*:log-stream:*'
+              - Sid: ECRTokenAccess
+                Effect: Allow
+                Action:
+                  - ecr:GetAuthorizationToken
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
+                  - xray:GetSamplingRules
+                  - xray:GetSamplingTargets
+                Resource: '*'
+              - Effect: Allow
+                Resource: '*'
+                Action: cloudwatch:PutMetricData
+                Condition:
+                  StringEquals:
+                    'cloudwatch:namespace': 'bedrock-agentcore'
+              - Sid: GetAgentAccessToken
+                Effect: Allow
+                Action:
+                  - bedrock-agentcore:GetWorkloadAccessToken
+                  - bedrock-agentcore:GetWorkloadAccessTokenForJWT
+                  - bedrock-agentcore:GetWorkloadAccessTokenForUserId
+                Resource:
+                  - !Sub 'arn:aws:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:workload-identity-directory/default'
+                  - !Sub 'arn:aws:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:workload-identity-directory/default/workload-identity/agentName-*'
+              - Sid: BedrockModelInvocation
+                Effect: Allow
+                Action:
+                  - bedrock:InvokeModel
+                  - bedrock:InvokeModelWithResponseStream
+                Resource:
+                  - 'arn:aws:bedrock:*::foundation-model/*'
+                  - !Sub 'arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:*'
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-AgentCore-Runtime-Role'
+        - Key: Purpose
+          Value: 'AgentCore Runtime Execution'
+
+  # CodeBuild Service Role for Docker Image Build
+  CodeBuildServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: codebuild.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: CodeBuildLogsPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${AWS::StackName}-*'
+        - PolicyName: ECRAccessPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ecr:BatchCheckLayerAvailability
+                  - ecr:GetDownloadUrlForLayer
+                  - ecr:BatchGetImage
+                  - ecr:GetAuthorizationToken
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - ecr:InitiateLayerUpload
+                  - ecr:UploadLayerPart
+                  - ecr:CompleteLayerUpload
+                  - ecr:PutImage
+                Resource: !GetAtt AgentECRRepository.Arn
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-CodeBuild-Role'
+        - Key: Purpose
+          Value: 'CodeBuild Docker Image Build'
+
+  # CodeBuild Project for Agent Docker Image
+  AgentDockerBuildProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: !Sub '${AWS::StackName}-agent-docker-build'
+      Description: 'Build and push agent Docker image to ECR'
+      ServiceRole: !GetAtt CodeBuildServiceRole.Arn
+      Artifacts:
+        Type: NO_ARTIFACTS
+      Environment:
+        Type: ARM_CONTAINER
+        ComputeType: BUILD_GENERAL1_LARGE
+        Image: aws/codebuild/amazonlinux2-aarch64-standard:3.0
+        PrivilegedMode: true
+        EnvironmentVariables:
+          - Name: ECR_REPOSITORY_URI
+            Value: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${AgentECRRepository}'
+          - Name: ECR_REPOSITORY_NAME
+            Value: !Ref AgentECRRepository
+          - Name: AWS_DEFAULT_REGION
+            Value: !Ref AWS::Region
+          - Name: AWS_ACCOUNT_ID
+            Value: !Ref AWS::AccountId
+      Source:
+        Type: GITHUB
+        Location: 'https://github.com/EashanKaushik/amazon-bedrock-agentcore-samples-fork.git'
+        GitCloneDepth: 1
+        BuildSpec: |
+          version: 0.2
+          phases:
+            pre_build:
+              commands:
+                - echo "Logging in to Amazon ECR..."
+                - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $ECR_REPOSITORY_URI
+                - echo "Checking current directory and contents..."
+                - pwd
+                - ls -la
+                - echo "Navigating to agent directory..."
+                - cd 02-use-cases/customer-support-assistant-vpc/agent
+                - echo "Contents of agent directory:"
+                - ls -la
+                - echo "Checking for Dockerfile..."
+                - cat Dockerfile || echo "Dockerfile not found"
+            build:
+              commands:
+                - echo "Build started on `date`"
+                - echo "Building the Docker image for ARM64..."
+                - IMAGE_TAG=${CODEBUILD_RESOLVED_SOURCE_VERSION:-latest}
+                - echo "Building image with tag $IMAGE_TAG"
+                - docker build --platform linux/arm64 -t $ECR_REPOSITORY_NAME:$IMAGE_TAG .
+                - docker tag $ECR_REPOSITORY_NAME:$IMAGE_TAG $ECR_REPOSITORY_URI:$IMAGE_TAG
+                - docker tag $ECR_REPOSITORY_NAME:$IMAGE_TAG $ECR_REPOSITORY_URI:latest
+            post_build:
+              commands:
+                - echo "Build completed on `date`"
+                - echo "Pushing the Docker image..."
+                - docker push $ECR_REPOSITORY_URI:$IMAGE_TAG
+                - docker push $ECR_REPOSITORY_URI:latest
+                - echo "Docker image pushed successfully"
+                - echo "Image URI:" $ECR_REPOSITORY_URI:$IMAGE_TAG
+      SourceVersion: refs/heads/customer-support-vpc
+      TimeoutInMinutes: 30
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-Agent-Docker-Build'
+        - Key: Purpose
+          Value: 'Agent Docker Image Build'
+
+  # Lambda Execution Role for CodeBuild Trigger
+  CodeBuildTriggerLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: CodeBuildTriggerPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - codebuild:StartBuild
+                  - codebuild:BatchGetBuilds
+                Resource: !GetAtt AgentDockerBuildProject.Arn
+        - PolicyName: SecretsManagerAccessPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource:
+                  - Fn::ImportValue: !Sub '${CognitoStackName}-AgentClientSecret'
+              - Effect: Allow
+                Action:
+                  - kms:Decrypt
+                  - kms:GenerateDataKey
+                Resource:
+                  Fn::ImportValue: !Sub '${CognitoStackName}-SecretsManagerKMSKeyArn'
+        - PolicyName: BedrockIdentityAccessPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - bedrock-identity:CreateOauth2CredentialProvider
+                  - bedrock-identity:UpdateOauth2CredentialProvider
+                  - bedrock-identity:GetOauth2CredentialProvider
+                  - bedrock-identity:DeleteOauth2CredentialProvider
+                  - bedrock-identity:ListOauth2CredentialProviders
+                Resource: '*'
+        - PolicyName: ECRCleanupPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ecr:ListImages
+                  - ecr:BatchDeleteImage
+                Resource: !GetAtt AgentECRRepository.Arn
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-CodeBuild-Trigger-Role'
+        - Key: Purpose
+          Value: 'CodeBuild Trigger Lambda'
+
+  # Lambda Function to Trigger CodeBuild
+  CodeBuildTriggerFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-codebuild-trigger'
+      Runtime: python3.12
+      Handler: index.lambda_handler
+      Role: !GetAtt CodeBuildTriggerLambdaRole.Arn
+      Timeout: 900
+      Environment:
+        Variables:
+          CODEBUILD_PROJECT_NAME: !Ref AgentDockerBuildProject
+          AGENT_CLIENT_SECRET_ARN:
+            Fn::ImportValue: !Sub '${CognitoStackName}-AgentClientSecret'
+          DISCOVERY_URL: !Sub
+            - 'https://${UserPoolDomain}/.well-known/openid-configuration'
+            - UserPoolDomain:
+                Fn::ImportValue: !Sub '${CognitoStackName}-UserPoolDomain'
+          ECR_REPOSITORY_NAME: !Ref AgentECRRepository
+      Code:
+        ZipFile: |
+          import json
+          import boto3
+          import urllib3
+          import logging
+          import os
+          import time
+
+          logger = logging.getLogger()
+          logger.setLevel(logging.INFO)
+
+          def create_oauth2_credential_provider(secret_arn, discovery_url, provider_name):
+              try:
+                  logger.info(f"Creating OAuth2 credential provider for Agent: {provider_name}")
+
+                  # Get client credentials from Secrets Manager
+                  secrets_client = boto3.client('secretsmanager')
+                  secret_response = secrets_client.get_secret_value(SecretId=secret_arn)
+                  secret_data = json.loads(secret_response['SecretString'])
+
+                  client_id = secret_data['client_id']
+                  client_secret = secret_data['client_secret']
+                  token_url = secret_data['token_endpoint']
+                  auth_url = discovery_url.replace('/.well-known/openid-configuration', '/oauth2/authorize')
+
+                  # Create OAuth2 credential provider
+                  identity_client = boto3.client('bedrock-identity')
+
+                  identity_client.create_oauth2_credential_provider(
+                      name=provider_name,
+                      credentialProviderVendor="CustomOauth2",
+                      oauth2ProviderConfigInput={
+                          "customOauth2ProviderConfig": {
+                              "clientId": client_id,
+                              "clientSecret": client_secret,
+                              "oauthDiscovery": {
+                                  "authorizationServerMetadata": {
+                                      "issuer": discovery_url,
+                                      "authorizationEndpoint": auth_url,
+                                      "tokenEndpoint": token_url,
+                                      "responseTypes": ["code", "token"],
+                                  }
+                              },
+                          }
+                      },
+                  )
+
+                  logger.info(f"OAuth2 credential provider created: {provider_name}")
+                  return provider_name
+
+              except Exception as e:
+                  logger.error(f"Failed to create OAuth2 credential provider: {str(e)}")
+                  raise e
+
+          def empty_ecr_repository(repository_name):
+              try:
+                  logger.info(f"Emptying ECR repository: {repository_name}")
+
+                  ecr_client = boto3.client('ecr')
+
+                  # List all images in the repository
+                  response = ecr_client.list_images(repositoryName=repository_name)
+
+                  if not response['imageIds']:
+                      logger.info("Repository is already empty")
+                      return
+
+                  # Delete all images
+                  logger.info(f"Deleting {len(response['imageIds'])} images from repository")
+                  ecr_client.batch_delete_image(
+                      repositoryName=repository_name,
+                      imageIds=response['imageIds']
+                  )
+
+                  logger.info(f"Successfully emptied ECR repository: {repository_name}")
+
+              except Exception as e:
+                  logger.error(f"Failed to empty ECR repository: {str(e)}")
+                  # Don't raise the exception, as we want deletion to continue
+
+          def lambda_handler(event, context):
+              try:
+                  logger.info(f"Received event: {json.dumps(event)}")
+
+                  request_type = event['RequestType']
+                  project_name = os.environ['CODEBUILD_PROJECT_NAME']
+                  agent_client_secret_arn = os.environ['AGENT_CLIENT_SECRET_ARN']
+                  discovery_url = os.environ['DISCOVERY_URL']
+                  provider_name = event['ResourceProperties']['ProviderName']
+                  ecr_repository_name = os.environ['ECR_REPOSITORY_NAME']
+
+                  if request_type == 'Create':
+                      # Create OAuth2 credential provider first
+                      create_oauth2_credential_provider(agent_client_secret_arn, discovery_url, provider_name)
+                      # Start CodeBuild project on stack creation and wait for completion
+                      codebuild = boto3.client('codebuild')
+
+                      logger.info(f"Starting CodeBuild project: {project_name}")
+
+                      response = codebuild.start_build(projectName=project_name)
+                      build_id = response['build']['id']
+
+                      logger.info(f"Build started successfully with ID: {build_id}")
+
+                      # Wait for build to complete
+                      max_wait_time = 1800  # 30 minutes
+                      wait_interval = 30    # 30 seconds
+                      elapsed_time = 0
+
+                      while elapsed_time < max_wait_time:
+                          # Check remaining Lambda execution time
+                          remaining_time = context.get_remaining_time_in_millis()
+                          if remaining_time < 60000:  # Less than 1 minute left
+                              logger.error("Lambda timeout approaching, cannot wait for build completion")
+                              send_response(event, context, 'FAILED', {
+                                  'Error': 'Lambda timeout approaching',
+                                  'BuildId': build_id
+                              })
+                              return
+
+                          build_status = codebuild.batch_get_builds(ids=[build_id])
+                          current_phase = build_status['builds'][0]['currentPhase']
+                          build_complete = build_status['builds'][0]['buildComplete']
+
+                          logger.info(f"Build status: {current_phase}, Complete: {build_complete}")
+
+                          if build_complete:
+                              final_status = build_status['builds'][0]['buildStatus']
+                              logger.info(f"Build completed with status: {final_status}")
+
+                              if final_status == 'SUCCEEDED':
+                                  send_response(event, context, 'SUCCESS', {
+                                      'Message': 'CodeBuild project completed successfully',
+                                      'BuildId': build_id,
+                                      'ProjectName': project_name,
+                                      'BuildStatus': final_status,
+                                      'ProviderName': provider_name
+                                  })
+                                  return
+                              else:
+                                  send_response(event, context, 'FAILED', {
+                                      'Error': f'Build failed with status: {final_status}',
+                                      'BuildId': build_id,
+                                      'BuildStatus': final_status
+                                  })
+                                  return
+
+                          # Wait before checking again
+                          time.sleep(wait_interval)
+                          elapsed_time += wait_interval
+
+                      # Timeout reached
+                      send_response(event, context, 'FAILED', {
+                          'Error': 'Build timeout exceeded (30 minutes)',
+                          'BuildId': build_id
+                      })
+
+                  elif request_type == 'Delete':
+                      logger.info("Stack deletion - cleaning up resources")
+
+                      # Clean up ECR repository
+                      empty_ecr_repository(ecr_repository_name)
+
+                      # Clean up OAuth2 credential provider
+                      try:
+                          identity_client = boto3.client('bedrock-identity')
+                          identity_client.delete_oauth2_credential_provider(name=provider_name)
+                          logger.info(f"OAuth2 credential provider deleted: {provider_name}")
+                      except Exception as e:
+                          logger.error(f"Failed to delete OAuth2 credential provider: {str(e)}")
+                          # Continue with deletion even if provider cleanup fails
+
+                      send_response(event, context, 'SUCCESS', {
+                          'Message': 'Stack deletion completed'
+                      })
+
+                  elif request_type == 'Update':
+                      logger.info("Stack update - no action required")
+                      send_response(event, context, 'SUCCESS', {
+                          'Message': 'Stack update completed'
+                      })
+
+              except Exception as e:
+                  logger.error(f"Error: {str(e)}")
+                  send_response(event, context, 'FAILED', {'Error': str(e)})
+
+          def send_response(event, context, response_status, response_data):
+              response_body = {
+                  'Status': response_status,
+                  'Reason': f'See CloudWatch Log Stream: {context.log_stream_name}',
+                  'PhysicalResourceId': context.log_stream_name,
+                  'StackId': event['StackId'],
+                  'RequestId': event['RequestId'],
+                  'LogicalResourceId': event['LogicalResourceId'],
+                  'Data': response_data
+              }
+
+              json_response_body = json.dumps(response_body)
+
+              headers = {
+                  'content-type': '',
+                  'content-length': str(len(json_response_body))
+              }
+
+              http = urllib3.PoolManager()
+              response = http.request('PUT', event['ResponseURL'], body=json_response_body, headers=headers)
+              logger.info(f"Response status: {response.status}")
+
+  # Custom Resource to Trigger CodeBuild on Stack Creation
+  CodeBuildTrigger:
+    Type: AWS::CloudFormation::CustomResource
+    DependsOn: AgentDockerBuildProject
+    Properties:
+      ServiceToken: !GetAtt CodeBuildTriggerFunction.Arn
+      ProviderName: !Sub 'AgentOAuth2Provider-${AWS::StackName}'
+
+  # BedrockAgentCore Runtime using latest ECR image
+  AgentRuntime:
+    Type: AWS::BedrockAgentCore::Runtime
+    DependsOn: CodeBuildTrigger
+    Properties:
+      AgentRuntimeName: !Sub
+        - '${StackName}AgentRuntime'
+        - StackName: !Join ['', !Split ['-', !Ref 'AWS::StackName']]
+      RoleArn: !GetAtt AgentCoreRuntimeExecutionRole.Arn
+      NetworkConfiguration:
+        NetworkMode: "PUBLIC"       
+      AgentRuntimeArtifact:
+        ContainerConfiguration:
+          ContainerUri: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${AgentECRRepository}:latest'
+      ProtocolConfiguration: HTTP
+      DiscoveryUrl: !Sub
+        - 'https://${UserPoolDomain}/.well-known/openid-configuration'
+        - UserPoolDomain:
+            Fn::ImportValue: !Sub '${CognitoStackName}-UserPoolDomain'
+      AllowedClients:
+        - Fn::ImportValue: !Sub '${CognitoStackName}-AgentClientId'
+      Tags:
+        Name: !Sub '${AWS::StackName}-Agent-Runtime'
+        Purpose: 'AgentCore Runtime'
+
+Outputs:
+  AgentCoreRuntimeExecutionRoleArn:
+    Description: 'ARN of the AgentCore runtime execution role'
+    Value: !GetAtt AgentCoreRuntimeExecutionRole.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-AgentCoreRuntimeExecutionRoleArn'
+
+  AgentCoreRuntimeExecutionRoleName:
+    Description: 'Name of the AgentCore runtime execution role'
+    Value: !Ref AgentCoreRuntimeExecutionRole
+    Export:
+      Name: !Sub '${AWS::StackName}-AgentCoreRuntimeExecutionRoleName'
+
+  AgentECRRepositoryUri:
+    Description: 'URI of the ECR repository for agent Docker images'
+    Value: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${AgentECRRepository}'
+    Export:
+      Name: !Sub '${AWS::StackName}-AgentECRRepositoryUri'
+
+  AgentECRRepositoryName:
+    Description: 'Name of the ECR repository'
+    Value: !Ref AgentECRRepository
+    Export:
+      Name: !Sub '${AWS::StackName}-AgentECRRepositoryName'
+
+  CodeBuildProjectName:
+    Description: 'Name of the CodeBuild project for building agent Docker images'
+    Value: !Ref AgentDockerBuildProject
+    Export:
+      Name: !Sub '${AWS::StackName}-CodeBuildProjectName'
+
+  # AgentRuntimeArn:
+  #   Description: 'ARN of the BedrockAgentCore Runtime'
+  #   Value: !GetAtt AgentRuntime.AgentRuntimeArn
+  #   Export:
+  #     Name: !Sub '${AWS::StackName}-AgentRuntimeArn'
+
+  # AgentRuntimeId:
+  #   Description: 'ID of the BedrockAgentCore Runtime'
+  #   Value: !GetAtt AgentRuntime.AgentRuntimeId
+  #   Export:
+  #     Name: !Sub '${AWS::StackName}-AgentRuntimeId'
+
+  # AgentRuntimeName:
+  #   Description: 'Name of the BedrockAgentCore Runtime'
+  #   Value: !Ref AgentRuntime
+  #   Export:
+  #     Name: !Sub '${AWS::StackName}-AgentRuntimeName'

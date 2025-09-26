@@ -31,10 +31,10 @@ Parameters:
 
 Resources:
 
-  # TODO: Clean contents of Layer bucket for delete
   # S3 Bucket for Lambda Layers
   LayerArtifactsBucket:
     Type: AWS::S3::Bucket
+    DeletionPolicy: Delete
     Properties:
       BucketName: !Sub '${AWS::StackName}-lambda-layers-${AWS::AccountId}'
       BucketEncryption:
@@ -86,6 +86,51 @@ Resources:
             Action: 's3:ListBucket'
             Resource: !Sub 'arn:aws:s3:::${LayerArtifactsBucket}'
 
+  # Security Group for Lambda Functions
+  LambdaSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: 'Security group for Lambda functions'
+      VpcId:
+        Fn::ImportValue: !Sub '${VPCStackName}-VPCID'
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: '0.0.0.0/0'
+          Description: 'HTTPS to AWS services via VPC endpoints'
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          CidrIp: '10.0.0.0/16'
+          Description: 'PostgreSQL access within VPC'
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-Lambda-SG'
+
+  # Security Group for VPC Endpoints
+  VPCEndpointSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: 'Security group for VPC endpoints'
+      VpcId:
+        Fn::ImportValue: !Sub '${VPCStackName}-VPCID'
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          SourceSecurityGroupId: !Ref LambdaSecurityGroup
+          Description: 'HTTPS access from Lambda functions'
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          DestinationSecurityGroupId: !Ref LambdaSecurityGroup
+          Description: 'HTTPS responses to Lambda functions'
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-VPCEndpoint-SG'
+
   # Security Group for Aurora
   AuroraSecurityGroup:
     Type: AWS::EC2::SecurityGroup
@@ -97,19 +142,89 @@ Resources:
         - IpProtocol: tcp
           FromPort: 5432
           ToPort: 5432
-          SourceSecurityGroupId:
-            Fn::ImportValue: !Sub '${VPCStackName}-GatewaySecurityGroupId'
-          Description: 'PostgreSQL access from gateway services'
+          SourceSecurityGroupId: !Ref LambdaSecurityGroup
+          Description: 'PostgreSQL access from Lambda functions'
       SecurityGroupEgress:
         - IpProtocol: tcp
           FromPort: 5432
           ToPort: 5432
-          DestinationSecurityGroupId:
-            Fn::ImportValue: !Sub '${VPCStackName}-GatewaySecurityGroupId'
-          Description: 'PostgreSQL responses to gateway'
+          DestinationSecurityGroupId: !Ref LambdaSecurityGroup
+          Description: 'PostgreSQL responses to Lambda functions'
       Tags:
         - Key: Name
           Value: !Sub '${AWS::StackName}-Aurora-SG'
+
+  # VPC Endpoints for AWS Services
+  SecretsManagerVPCEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId:
+        Fn::ImportValue: !Sub '${VPCStackName}-VPCID'
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.secretsmanager'
+      VpcEndpointType: Interface
+      SubnetIds:
+        - Fn::ImportValue: !Sub '${VPCStackName}-PrivateSubnet2'
+        - Fn::ImportValue: !Sub '${VPCStackName}-PrivateSubnet4'
+      SecurityGroupIds:
+        - !Ref VPCEndpointSecurityGroup
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: '*'
+            Action:
+              - secretsmanager:GetSecretValue
+              - secretsmanager:DescribeSecret
+            Resource: '*'
+      PrivateDnsEnabled: true
+
+  CloudWatchLogsVPCEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId:
+        Fn::ImportValue: !Sub '${VPCStackName}-VPCID'
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.logs'
+      VpcEndpointType: Interface
+      SubnetIds:
+        - Fn::ImportValue: !Sub '${VPCStackName}-PrivateSubnet2'
+        - Fn::ImportValue: !Sub '${VPCStackName}-PrivateSubnet4'
+      SecurityGroupIds:
+        - !Ref VPCEndpointSecurityGroup
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: '*'
+            Action:
+              - logs:CreateLogGroup
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+              - logs:DescribeLogStreams
+              - logs:DescribeLogGroups
+            Resource: '*'
+      PrivateDnsEnabled: true
+
+  MonitoringVPCEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId:
+        Fn::ImportValue: !Sub '${VPCStackName}-VPCID'
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.monitoring'
+      VpcEndpointType: Interface
+      SubnetIds:
+        - Fn::ImportValue: !Sub '${VPCStackName}-PrivateSubnet2'
+        - Fn::ImportValue: !Sub '${VPCStackName}-PrivateSubnet4'
+      SecurityGroupIds:
+        - !Ref VPCEndpointSecurityGroup
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: '*'
+            Action:
+              - cloudwatch:PutMetricData
+            Resource: '*'
+      PrivateDnsEnabled: true
 
   # DB Subnet Group
   DBSubnetGroup:
@@ -117,8 +232,8 @@ Resources:
     Properties:
       DBSubnetGroupDescription: 'Subnet group for Aurora PostgreSQL cluster'
       SubnetIds:
-        - Fn::ImportValue: !Sub '${VPCStackName}-PrivateSubnet1'
         - Fn::ImportValue: !Sub '${VPCStackName}-PrivateSubnet2'
+        - Fn::ImportValue: !Sub '${VPCStackName}-PrivateSubnet4'
       Tags:
         - Key: Name
           Value: !Sub '${AWS::StackName}-DB-SubnetGroup'
@@ -387,7 +502,14 @@ Resources:
                 Action:
                   - s3:GetObject
                   - s3:PutObject
+                  - s3:DeleteObject
+                  - s3:DeleteObjectVersion
                 Resource: !Sub 'arn:aws:s3:::${LayerArtifactsBucket}/*'
+              - Effect: Allow
+                Action:
+                  - s3:ListBucket
+                  - s3:ListBucketVersions
+                Resource: !Sub 'arn:aws:s3:::${LayerArtifactsBucket}'
               - Effect: Allow
                 Action:
                   - lambda:GetLayerVersion
@@ -422,6 +544,45 @@ Resources:
 
                   request_type = event.get('RequestType', 'Create')
                   if request_type == 'Delete':
+                      # Clean bucket contents on stack deletion
+                      bucket_name = os.environ['BUCKET_NAME']
+                      s3 = boto3.client('s3')
+
+                      print(f"Cleaning contents of bucket: {bucket_name}")
+
+                      try:
+                          # List and delete all object versions
+                          paginator = s3.get_paginator('list_object_versions')
+                          for page in paginator.paginate(Bucket=bucket_name):
+                              objects_to_delete = []
+
+                              # Add current versions
+                              for obj in page.get('Versions', []):
+                                  objects_to_delete.append({
+                                      'Key': obj['Key'],
+                                      'VersionId': obj['VersionId']
+                                  })
+
+                              # Add delete markers
+                              for obj in page.get('DeleteMarkers', []):
+                                  objects_to_delete.append({
+                                      'Key': obj['Key'],
+                                      'VersionId': obj['VersionId']
+                                  })
+
+                              # Delete objects in batches
+                              if objects_to_delete:
+                                  s3.delete_objects(
+                                      Bucket=bucket_name,
+                                      Delete={'Objects': objects_to_delete}
+                                  )
+                                  print(f"Deleted {len(objects_to_delete)} objects from {bucket_name}")
+
+                          print(f"Successfully cleaned bucket: {bucket_name}")
+                      except Exception as cleanup_error:
+                          print(f"Error during bucket cleanup: {str(cleanup_error)}")
+                          # Continue with success even if cleanup fails to avoid blocking stack deletion
+
                       send_response(event, context, 'SUCCESS', {'Message': 'Layer builder cleanup completed'})
                       return
 
@@ -526,11 +687,10 @@ Resources:
         - !GetAtt Psycopg2Layer.LayerVersionArn
       VpcConfig:
         SecurityGroupIds:
-          - Fn::ImportValue: !Sub '${VPCStackName}-GatewaySecurityGroupId'
+          - !Ref LambdaSecurityGroup
         SubnetIds:
-          - Fn::ImportValue: !Sub '${VPCStackName}-PrivateSubnet1'
           - Fn::ImportValue: !Sub '${VPCStackName}-PrivateSubnet2'
-          - Fn::ImportValue: !Sub '${VPCStackName}-PrivateSubnet3'
+          - Fn::ImportValue: !Sub '${VPCStackName}-PrivateSubnet4'
       Environment:
         Variables:
           DB_CLUSTER_ENDPOINT: !GetAtt AuroraCluster.Endpoint.Address
