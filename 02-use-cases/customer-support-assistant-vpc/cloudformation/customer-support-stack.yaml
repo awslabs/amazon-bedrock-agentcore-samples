@@ -1,0 +1,254 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Customer Support System master stack that deploys infrastructure with nested stacks'
+
+Parameters:
+  # Base URL for nested stack templates (public URLs)
+  TemplateBaseURL:
+    Type: String
+    Description: 'Base URL for the nested CloudFormation templates'
+    Default: 'https://raw.githubusercontent.com/your-org/vpc-agents/main/cloudformation'
+
+  # Environment parameters
+  Environment:
+    Type: String
+    Default: 'dev'
+    AllowedValues:
+      - dev
+      - staging
+      - prod
+    Description: 'Environment name for resource naming'
+
+  # VPC Stack Parameters
+  VpcCidr:
+    Type: String
+    Default: '10.0.0.0/16'
+    Description: 'CIDR block for the VPC'
+
+  PrivateSubnet1Cidr:
+    Type: String
+    Default: '10.0.3.0/24'
+    Description: 'CIDR block for the first private subnet'
+
+  PrivateSubnet2Cidr:
+    Type: String
+    Default: '10.0.4.0/24'
+    Description: 'CIDR block for the second private subnet'
+
+  PrivateSubnet3Cidr:
+    Type: String
+    Default: '10.0.1.0/24'
+    Description: 'CIDR block for the third private subnet'
+
+  # Aurora Stack Parameters
+  DBMasterUsername:
+    Type: String
+    Default: 'postgres'
+    Description: 'Master username for Aurora PostgreSQL cluster'
+
+  DatabaseName:
+    Type: String
+    Default: 'sampledb'
+    Description: 'Name of the initial database'
+
+Resources:
+  # VPC Stack - Foundation layer
+  VPCStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub '${TemplateBaseURL}/vpc-stack.yaml'
+      Parameters:
+        VpcCidr: !Ref VpcCidr
+        PrivateSubnet1Cidr: !Ref PrivateSubnet1Cidr
+        PrivateSubnet2Cidr: !Ref PrivateSubnet2Cidr
+        PrivateSubnet3Cidr: !Ref PrivateSubnet3Cidr
+      Tags:
+        - Key: Name
+          Value: !Sub '${Environment}-vpc-stack'
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: StackType
+          Value: 'Nested-VPC'
+
+  # Cognito Stack - Authentication layer (no dependencies)
+  CognitoStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub '${TemplateBaseURL}/cognito-m2m-stack.yaml'
+      Capabilities:
+        - CAPABILITY_IAM
+      Tags:
+        - Key: Name
+          Value: !Sub '${Environment}-cognito-stack'
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: StackType
+          Value: 'Nested-Cognito'
+
+  # Aurora PostgreSQL Stack - Database layer (depends on VPC)
+  AuroraStack:
+    Type: AWS::CloudFormation::Stack
+    DependsOn: VPCStack
+    Properties:
+      TemplateURL: !Sub '${TemplateBaseURL}/aurora-postgres-stack.yaml'
+      Parameters:
+        VPCStackName: !Sub '${AWS::StackName}-VPCStack'
+        DBMasterUsername: !Ref DBMasterUsername
+        DatabaseName: !Ref DatabaseName
+      Capabilities:
+        - CAPABILITY_IAM
+      Tags:
+        - Key: Name
+          Value: !Sub '${Environment}-aurora-stack'
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: StackType
+          Value: 'Nested-Aurora'
+
+  # DynamoDB Stack - NoSQL data layer (depends on VPC for reference)
+  DynamoDBStack:
+    Type: AWS::CloudFormation::Stack
+    DependsOn: VPCStack
+    Properties:
+      TemplateURL: !Sub '${TemplateBaseURL}/dynamodb-stack.yaml'
+      Parameters:
+        VPCStackName: !Sub '${AWS::StackName}-VPCStack'
+      Capabilities:
+        - CAPABILITY_IAM
+      Tags:
+        - Key: Name
+          Value: !Sub '${Environment}-dynamodb-stack'
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: StackType
+          Value: 'Nested-DynamoDB'
+
+  # Gateway Stack - Application layer (depends on all other stacks)
+  GatewayStack:
+    Type: AWS::CloudFormation::Stack
+    DependsOn:
+      - VPCStack
+      - AuroraStack
+      - DynamoDBStack
+      - CognitoStack
+    Properties:
+      TemplateURL: !Sub '${TemplateBaseURL}/gateway-stack.yaml'
+      Parameters:
+        CognitoStackName: !Sub '${AWS::StackName}-CognitoStack'
+      Capabilities:
+        - CAPABILITY_IAM
+      Tags:
+        - Key: Name
+          Value: !Sub '${Environment}-gateway-stack'
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: StackType
+          Value: 'Nested-Gateway'
+
+Outputs:
+  # VPC Stack Outputs
+  VPCId:
+    Description: 'VPC ID from the nested VPC stack'
+    Value: !GetAtt VPCStack.Outputs.VPC
+    Export:
+      Name: !Sub '${AWS::StackName}-VPCId'
+
+  PrivateSubnets:
+    Description: 'Private subnet IDs from the nested VPC stack'
+    Value: !GetAtt VPCStack.Outputs.PrivateSubnets
+    Export:
+      Name: !Sub '${AWS::StackName}-PrivateSubnets'
+
+  GatewaySecurityGroupId:
+    Description: 'Gateway security group ID from the nested VPC stack'
+    Value: !GetAtt VPCStack.Outputs.GatewaySecurityGroupId
+    Export:
+      Name: !Sub '${AWS::StackName}-GatewaySecurityGroupId'
+
+  # Aurora Stack Outputs
+  AuroraClusterEndpoint:
+    Description: 'Aurora cluster endpoint from the nested Aurora stack'
+    Value: !GetAtt AuroraStack.Outputs.AuroraClusterEndpoint
+    Export:
+      Name: !Sub '${AWS::StackName}-AuroraClusterEndpoint'
+
+  DatabaseCredentialsSecretArn:
+    Description: 'Database credentials secret ARN from Aurora stack'
+    Value: !GetAtt AuroraStack.Outputs.DatabaseCredentialsSecretArn
+    Export:
+      Name: !Sub '${AWS::StackName}-DatabaseCredentialsSecretArn'
+
+  # Cognito Stack Outputs
+  UserPoolId:
+    Description: 'Cognito User Pool ID from the nested Cognito stack'
+    Value: !GetAtt CognitoStack.Outputs.UserPoolId
+    Export:
+      Name: !Sub '${AWS::StackName}-UserPoolId'
+
+  GatewayClientId:
+    Description: 'Gateway client ID from the nested Cognito stack'
+    Value: !GetAtt CognitoStack.Outputs.GatewayClientId
+    Export:
+      Name: !Sub '${AWS::StackName}-GatewayClientId'
+
+  TokenEndpoint:
+    Description: 'Token endpoint from the nested Cognito stack'
+    Value: !GetAtt CognitoStack.Outputs.TokenEndpoint
+    Export:
+      Name: !Sub '${AWS::StackName}-TokenEndpoint'
+
+  # DynamoDB Stack Outputs
+  ReviewsTableName:
+    Description: 'Reviews table name from the nested DynamoDB stack'
+    Value: !GetAtt DynamoDBStack.Outputs.ReviewsTableName
+    Export:
+      Name: !Sub '${AWS::StackName}-ReviewsTableName'
+
+  ProductsTableName:
+    Description: 'Products table name from the nested DynamoDB stack'
+    Value: !GetAtt DynamoDBStack.Outputs.ProductsTableName
+    Export:
+      Name: !Sub '${AWS::StackName}-ProductsTableName'
+
+  # Gateway Stack Outputs
+  CustomerSupportLambdaArn:
+    Description: 'Customer Support Lambda ARN from the nested Gateway stack'
+    Value: !GetAtt GatewayStack.Outputs.CustomerSupportLambdaArn
+    Export:
+      Name: !Sub '${AWS::StackName}-CustomerSupportLambdaArn'
+
+  CustomerProfileTableName:
+    Description: 'Customer Profile table name from the nested Gateway stack'
+    Value: !GetAtt GatewayStack.Outputs.CustomerProfileTableName
+    Export:
+      Name: !Sub '${AWS::StackName}-CustomerProfileTableName'
+
+  GatewayId:
+    Description: 'Customer Support Gateway ID from the nested Gateway stack'
+    Value: !GetAtt GatewayStack.Outputs.GatewayId
+    Export:
+      Name: !Sub '${AWS::StackName}-GatewayId'
+
+  GatewayArn:
+    Description: 'Customer Support Gateway ARN from the nested Gateway stack'
+    Value: !GetAtt GatewayStack.Outputs.GatewayArn
+    Export:
+      Name: !Sub '${AWS::StackName}-GatewayArn'
+
+  WarrantyTableName:
+    Description: 'Warranty table name from the nested Gateway stack'
+    Value: !GetAtt GatewayStack.Outputs.WarrantyTableName
+    Export:
+      Name: !Sub '${AWS::StackName}-WarrantyTableName'
+
+  # Stack Information
+  MasterStackId:
+    Description: 'Customer Support Master Stack ID'
+    Value: !Ref AWS::StackId
+    Export:
+      Name: !Sub '${AWS::StackName}-MasterStackId'
+
+  Environment:
+    Description: 'Environment for this deployment'
+    Value: !Ref Environment
+    Export:
+      Name: !Sub '${AWS::StackName}-Environment'
