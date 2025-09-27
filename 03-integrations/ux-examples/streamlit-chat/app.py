@@ -62,7 +62,10 @@ def fetch_agent_runtime_versions(
     """Fetch versions for a specific agent runtime"""
     try:
         client = boto3.client("bedrock-agentcore-control", region_name=region)
-        response = client.list_agent_runtime_versions(agentRuntimeId=agent_runtime_id)
+        response = client.list_agent_runtime_versions(
+            agentRuntimeId=agent_runtime_id,
+            maxResults=100  # Ensure we get all versions, not just default 10
+        )
 
         # Filter only READY versions
         ready_versions = [
