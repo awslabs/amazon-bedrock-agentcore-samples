@@ -10,6 +10,7 @@ logger = logging.getLogger(__name__)
 ssm = boto3.client("ssm")
 dynamodb = boto3.resource("dynamodb")
 
+
 def get_table_names():
     """
     Retrieve DynamoDB table names from SSM parameters
@@ -19,7 +20,7 @@ def get_table_names():
         response = ssm.get_parameters(
             Names=[
                 "/app/customersupportvpc/dynamodb/reviews_table_name",
-                "/app/customersupportvpc/dynamodb/products_table_name"
+                "/app/customersupportvpc/dynamodb/products_table_name",
             ]
         )
 
@@ -45,8 +46,9 @@ def get_table_names():
         logger.warning("Falling back to default table names")
         return {
             "reviews": "dynamodb-stack-reviews",
-            "products": "dynamodb-stack-products"
+            "products": "dynamodb-stack-products",
         }
+
 
 # Get table names dynamically
 table_names = get_table_names()
@@ -55,7 +57,9 @@ table_names = get_table_names()
 reviews_table = dynamodb.Table(table_names["reviews"])
 products_table = dynamodb.Table(table_names["products"])
 
-logger.info(f"Initialized DynamoDB tables: reviews={table_names['reviews']}, products={table_names['products']}")
+logger.info(
+    f"Initialized DynamoDB tables: reviews={table_names['reviews']}, products={table_names['products']}"
+)
 
 # Initialize FastMCP
 mcp = FastMCP()
@@ -77,7 +81,7 @@ def get_reviews(review_id: str):
 
 
 @mcp.tool
-def get_products(product_id: str):
+def get_products(product_id: int):
     """
     Fetch a single product by product_id
     """
