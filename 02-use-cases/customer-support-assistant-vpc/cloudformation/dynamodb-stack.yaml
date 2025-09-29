@@ -387,6 +387,27 @@ Resources:
     Properties:
       ServiceToken: !GetAtt DataPopulationFunction.Arn
 
+  # SSM Parameters for table names
+  ReviewsTableNameParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /app/customersupportvpc/dynamodb/reviews_table_name
+      Type: String
+      Value: !Ref ReviewsTable
+      Description: 'Name of the Reviews DynamoDB table'
+      Tags:
+        Purpose: 'DynamoDB Table Configuration'
+
+  ProductsTableNameParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /app/customersupportvpc/dynamodb/products_table_name
+      Type: String
+      Value: !Ref ProductsTable
+      Description: 'Name of the Products DynamoDB table'
+      Tags:
+        Purpose: 'DynamoDB Table Configuration'
+
 Outputs:
   ReviewsTableName:
     Description: 'Reviews DynamoDB table name'
@@ -417,3 +438,15 @@ Outputs:
     Value: !Ref DynamoDBKMSKey
     Export:
       Name: !Sub '${AWS::StackName}-DynamoDBKMSKey'
+
+  ReviewsTableNameParameterName:
+    Description: 'SSM Parameter name for Reviews table'
+    Value: !Ref ReviewsTableNameParameter
+    Export:
+      Name: !Sub '${AWS::StackName}-ReviewsTableNameParameter'
+
+  ProductsTableNameParameterName:
+    Description: 'SSM Parameter name for Products table'
+    Value: !Ref ProductsTableNameParameter
+    Export:
+      Name: !Sub '${AWS::StackName}-ProductsTableNameParameter'

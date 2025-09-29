@@ -90,23 +90,18 @@ Resources:
   LambdaSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: 'Security group for Lambda functions'
+      GroupDescription: 'Security group for Lambda functions - v2'
       VpcId:
         Fn::ImportValue: !Sub '${VPCStackName}-VPCID'
       SecurityGroupEgress:
-        - IpProtocol: tcp
-          FromPort: 443
-          ToPort: 443
+        - IpProtocol: -1
           CidrIp: '0.0.0.0/0'
-          Description: 'HTTPS to AWS services via VPC endpoints'
-        - IpProtocol: tcp
-          FromPort: 5432
-          ToPort: 5432
-          CidrIp: '10.0.0.0/16'
-          Description: 'PostgreSQL access within VPC'
+          Description: 'Allow all outbound traffic'
       Tags:
         - Key: Name
-          Value: !Sub '${AWS::StackName}-Lambda-SG'
+          Value: !Sub '${AWS::StackName}-Lambda-SG-v2'
+        - Key: Version
+          Value: 'v2'
 
   # Security Group for VPC Endpoints
   VPCEndpointSecurityGroup:
@@ -135,7 +130,7 @@ Resources:
   AuroraSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: 'Security group for Aurora PostgreSQL cluster'
+      GroupDescription: 'Security group for Aurora PostgreSQL cluster - v2'
       VpcId:
         Fn::ImportValue: !Sub '${VPCStackName}-VPCID'
       SecurityGroupIngress:
@@ -144,15 +139,16 @@ Resources:
           ToPort: 5432
           SourceSecurityGroupId: !Ref LambdaSecurityGroup
           Description: 'PostgreSQL access from Lambda functions'
-      SecurityGroupEgress:
         - IpProtocol: tcp
           FromPort: 5432
           ToPort: 5432
-          DestinationSecurityGroupId: !Ref LambdaSecurityGroup
-          Description: 'PostgreSQL responses to Lambda functions'
+          CidrIp: '10.0.0.0/16'
+          Description: 'PostgreSQL access within VPC'
       Tags:
         - Key: Name
-          Value: !Sub '${AWS::StackName}-Aurora-SG'
+          Value: !Sub '${AWS::StackName}-Aurora-SG-v2'
+        - Key: Version
+          Value: 'v2'
 
   # VPC Endpoints for AWS Services
   SecretsManagerVPCEndpoint:
@@ -223,6 +219,74 @@ Resources:
             Principal: '*'
             Action:
               - cloudwatch:PutMetricData
+            Resource: '*'
+      PrivateDnsEnabled: true
+
+  LambdaVPCEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId:
+        Fn::ImportValue: !Sub '${VPCStackName}-VPCID'
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.lambda'
+      VpcEndpointType: Interface
+      SubnetIds:
+        - Fn::ImportValue: !Sub '${VPCStackName}-PrivateSubnet2'
+        - Fn::ImportValue: !Sub '${VPCStackName}-PrivateSubnet4'
+      SecurityGroupIds:
+        - !Ref VPCEndpointSecurityGroup
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: '*'
+            Action:
+              - lambda:InvokeFunction
+            Resource: '*'
+      PrivateDnsEnabled: true
+
+  # S3 VPC Endpoint for CloudFormation responses
+  S3VPCEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId:
+        Fn::ImportValue: !Sub '${VPCStackName}-VPCID'
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.s3'
+      VpcEndpointType: Gateway
+      RouteTableIds:
+        - Fn::ImportValue: !Sub '${VPCStackName}-PrivateRouteTable'
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: '*'
+            Action:
+              - s3:GetObject
+              - s3:PutObject
+            Resource:
+              - 'arn:aws:s3:::cloudformation-custom-resource-response-*/*'
+
+  # CloudFormation VPC Endpoint
+  CloudFormationVPCEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId:
+        Fn::ImportValue: !Sub '${VPCStackName}-VPCID'
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.cloudformation'
+      VpcEndpointType: Interface
+      SubnetIds:
+        - Fn::ImportValue: !Sub '${VPCStackName}-PrivateSubnet2'
+        - Fn::ImportValue: !Sub '${VPCStackName}-PrivateSubnet4'
+      SecurityGroupIds:
+        - !Ref VPCEndpointSecurityGroup
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: '*'
+            Action:
+              - cloudformation:SignalResource
+              - cloudformation:DescribeStacks
+              - cloudformation:DescribeStackEvents
             Resource: '*'
       PrivateDnsEnabled: true
 
@@ -676,13 +740,20 @@ Resources:
   # Lambda Function to Load Mock Data
   MockDataFunction:
     Type: AWS::Lambda::Function
-    DependsOn: Psycopg2Layer
+    DependsOn:
+      - Psycopg2Layer
+      - SecretsManagerVPCEndpoint
+      - CloudWatchLogsVPCEndpoint
+      - LambdaVPCEndpoint
+      - S3VPCEndpoint
+      - CloudFormationVPCEndpoint
+      - AuroraInstance1
     Properties:
       FunctionName: !Sub '${AWS::StackName}-load-mock-data'
       Runtime: python3.13
       Handler: index.lambda_handler
       Role: !GetAtt MockDataLambdaRole.Arn
-      Timeout: 300
+      Timeout: 600
       Layers:
         - !GetAtt Psycopg2Layer.LayerVersionArn
       VpcConfig:
@@ -703,6 +774,8 @@ Resources:
           import psycopg2
           import os
           import logging
+          import urllib3
+          import time
 
           logger = logging.getLogger()
           logger.setLevel(logging.INFO)
@@ -724,8 +797,49 @@ Resources:
               secret = json.loads(get_secret_value_response['SecretString'])
               return secret
 
+          def send_response(event, context, response_status, response_data):
+              response_body = {
+                  'Status': response_status,
+                  'Reason': f'See CloudWatch Log Stream: {context.log_stream_name}',
+                  'PhysicalResourceId': context.log_stream_name,
+                  'StackId': event['StackId'],
+                  'RequestId': event['RequestId'],
+                  'LogicalResourceId': event['LogicalResourceId'],
+                  # 'Data': response_data
+              }
+
+              json_response_body = json.dumps(response_body)
+
+              headers = {
+                  'content-type': '',
+                  'content-length': str(len(json_response_body))
+              }
+
+              http = urllib3.PoolManager()
+              response = http.request('PUT', event['ResponseURL'], body=json_response_body, headers=headers)
+              logger.info(f"Response status: {response.status}")
+
           def lambda_handler(event, context):
               try:
+                  logger.info(f"Received event: {json.dumps(event)}")
+
+                  request_type = event.get('RequestType', 'Create')
+
+                  if request_type == 'Delete':
+                      # For delete operations, just return success
+                      send_response(event, context, 'SUCCESS', {'Message': 'Mock data cleanup completed'})
+                      return
+
+                  if request_type == 'Update':
+                      # For update operations, just return success without doing anything
+                      send_response(event, context, 'SUCCESS', {'Message': 'Mock data update skipped - no action needed'})
+                      return
+
+                  # Only run mock data loading logic for Create operations
+                  if request_type != 'Create':
+                      send_response(event, context, 'SUCCESS', {'Message': f'No action for request type: {request_type}'})
+                      return
+
                   # Get database credentials
                   secret = get_secret()
 
@@ -735,11 +849,32 @@ Resources:
                       'database': os.environ['DB_NAME'],
                       'user': secret['username'],
                       'password': secret['password'],
-                      'port': 5432
+                      'port': 5432,
+                      'connect_timeout': 10
                   }
 
-                  # Connect to database
-                  conn = psycopg2.connect(**db_params)
+                  # Connect to database with retry logic
+                  max_retries = 10
+                  retry_delay = 30  # seconds
+                  conn = None
+
+                  for attempt in range(max_retries):
+                      try:
+                          logger.info(f"Attempting database connection (attempt {attempt + 1}/{max_retries}) to {db_params['host']}:{db_params['port']}")
+                          logger.info(f"Using database: {db_params['database']}, user: {db_params['user']}")
+                          conn = psycopg2.connect(**db_params)
+                          logger.info("Successfully connected to database")
+                          break
+                      except Exception as e:
+                          logger.error(f"Connection attempt {attempt + 1} failed: {str(e)}")
+                          logger.error(f"Exception type: {type(e).__name__}")
+                          if attempt < max_retries - 1:
+                              logger.info(f"Waiting {retry_delay} seconds before retry...")
+                              time.sleep(retry_delay)
+                          else:
+                              logger.error("All connection attempts failed")
+                              raise e
+
                   cur = conn.cursor()
 
                   # Create tables and insert mock data
@@ -833,24 +968,18 @@ Resources:
 
                   logger.info(f"Mock data loaded successfully: {user_count} users, {product_count} products, {order_count} orders")
 
-                  return {
-                      'statusCode': 200,
-                      'body': json.dumps({
-                          'message': 'Mock data loaded successfully',
-                          'users': user_count,
-                          'products': product_count,
-                          'orders': order_count
-                      })
-                  }
+                  # Send success response to CloudFormation
+                  send_response(event, context, 'SUCCESS', {
+                      'Message': 'Mock data loaded successfully',
+                      'Users': user_count,
+                      'Products': product_count,
+                      'Orders': order_count
+                  })
 
               except Exception as e:
                   logger.error(f"Error loading mock data: {str(e)}")
-                  return {
-                      'statusCode': 500,
-                      'body': json.dumps({
-                          'error': str(e)
-                      })
-                  }
+                  # Send failure response to CloudFormation
+                  send_response(event, context, 'FAILED', {'Error': str(e)})
               finally:
                   if 'conn' in locals():
                       conn.close()

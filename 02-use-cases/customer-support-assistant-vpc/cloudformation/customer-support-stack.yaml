@@ -149,17 +149,19 @@ Resources:
         - Key: StackType
           Value: 'Nested-AgentServer'
 
-  # MCP Server Stack - MCP DynamoDB runtime layer (depends on VPC and Cognito)
+  # MCP Server Stack - MCP DynamoDB runtime layer (depends on VPC, Cognito, and DynamoDB)
   MCPServerStack:
     Type: AWS::CloudFormation::Stack
     DependsOn:
       - VPCStack
       - CognitoStack
+      - DynamoDBStack
     Properties:
       TemplateURL: !Sub '${TemplateBaseURL}/mcp-server-stack.yaml'
       Parameters:
         VPCStackName: !Ref VPCStack
         CognitoStackName: !Ref CognitoStack
+        DynamoDBStackName: !Ref DynamoDBStack
       Capabilities:
         - CAPABILITY_IAM
       Tags:

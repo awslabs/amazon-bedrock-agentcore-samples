@@ -230,3 +230,9 @@ Outputs:
     Value: !Ref PrivateSubnet4
     Export:
       Name: !Sub '${AWS::StackName}-PrivateSubnet4'
+
+  PrivateRouteTable:
+    Description: 'A reference to the private route table'
+    Value: !Ref PrivateRouteTable
+    Export:
+      Name: !Sub '${AWS::StackName}-PrivateRouteTable'

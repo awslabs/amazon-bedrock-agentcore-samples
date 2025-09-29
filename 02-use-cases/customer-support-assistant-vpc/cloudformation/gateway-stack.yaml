@@ -227,6 +227,12 @@ Resources:
                 Resource: '*'
               - Effect: Allow
                 Action:
+                  - bedrock-agentcore:GetTokenVault
+                  - bedrock-agentcore:CreateTokenVault
+                  - bedrock-agentcore:DeleteTokenVault
+                Resource: '*'
+              - Effect: Allow
+                Action:
                   - ssm:GetParameter
                   - ssm:GetParameters
                   - ssm:PutParameter
@@ -248,6 +254,11 @@ Resources:
                   - kms:GenerateDataKey
                 Resource:
                   Fn::ImportValue: !Sub '${CognitoStackName}-SecretsManagerKMSKeyArn'
+              - Effect: Allow
+                Action:
+                  - secretsmanager:CreateSecret
+                  - secretsmanager:DeleteSecret
+                Resource: '*'
 
   # Gateway Management Lambda Function
   GatewayManagementFunction:

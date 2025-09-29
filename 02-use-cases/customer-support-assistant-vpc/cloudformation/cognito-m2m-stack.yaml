@@ -68,8 +68,6 @@ Resources:
       AllowedOAuthScopes:
         - !Sub '${AWS::StackName}-resource-server/read'
         - !Sub '${AWS::StackName}-resource-server/gateway'
-      AccessTokenValidity: 1
-      IdTokenValidity: 1
       RefreshTokenValidity: 1
       TokenValidityUnits:
         AccessToken: hours
