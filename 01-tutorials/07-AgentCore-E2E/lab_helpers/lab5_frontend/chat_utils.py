@@ -1,9 +1,10 @@
-import re
-import boto3
 import json
-import yaml
 import os
-from typing import Dict, Any
+import re
+from typing import Any, Dict
+
+import boto3
+import yaml
 
 
 def get_ssm_parameter(name: str, with_decryption: bool = True) -> str:
@@ -61,8 +62,8 @@ def get_aws_account_id() -> str:
 def get_cognito_client_secret() -> str:
     client = boto3.client("cognito-idp")
     response = client.describe_user_pool_client(
-        UserPoolId=get_ssm_parameter("/app/customersupport/agentcore/userpool_id"),
-        ClientId=get_ssm_parameter("/app/customersupport/agentcore/machine_client_id"),
+        UserPoolId=get_ssm_parameter("/app/customersupport/agentcore/pool_id"),
+        ClientId=get_ssm_parameter("/app/customersupport/agentcore/client_id"),
     )
     return response["UserPoolClient"]["ClientSecret"]
 
@@ -136,10 +137,10 @@ def create_safe_markdown_text(text, message_placeholder):
     """Create safe markdown text with proper encoding and newline handling"""
     # First encode/decode for safety
     safe_text = text.encode("utf-16", "surrogatepass").decode("utf-16")
-    
+
     # Convert newlines to HTML breaks for proper rendering
     # This handles both actual newlines and any remaining escaped ones
-    safe_text = safe_text.replace('\n', '<br>')
-    safe_text = safe_text.replace('\\n', '<br>')
-    
+    safe_text = safe_text.replace("\n", "<br>")
+    safe_text = safe_text.replace("\\n", "<br>")
+
     message_placeholder.markdown(safe_text, unsafe_allow_html=True)

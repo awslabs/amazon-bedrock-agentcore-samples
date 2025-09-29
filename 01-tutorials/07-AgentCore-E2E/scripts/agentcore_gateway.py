@@ -1,19 +1,18 @@
 #!/usr/bin/python
-from typing import List
 import os
 import sys
+from typing import List
+
 import boto3
 import click
-
 from utils import (
-    get_aws_region,
-    get_ssm_parameter,
-    put_ssm_parameter,
     delete_ssm_parameter,
-    load_api_spec,
+    get_aws_region,
     get_cognito_client_secret,
+    get_ssm_parameter,
+    load_api_spec,
+    put_ssm_parameter,
 )
-
 
 REGION = get_aws_region()
 
@@ -41,9 +40,7 @@ def create_gateway(gateway_name: str, api_spec: List) -> dict:
         auth_config = {
             "customJWTAuthorizer": {
                 "allowedClients": [
-                    get_ssm_parameter(
-                        "/app/customersupport/agentcore/machine_client_id"
-                    )
+                    get_ssm_parameter("/app/customersupport/agentcore/client_id")
                 ],
                 "discoveryUrl": get_ssm_parameter(
                     "/app/customersupport/agentcore/cognito_discovery_url"

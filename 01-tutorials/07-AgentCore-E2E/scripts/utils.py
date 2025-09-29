@@ -60,8 +60,8 @@ def get_aws_account_id() -> str:
 def get_cognito_client_secret() -> str:
     client = boto3.client("cognito-idp")
     response = client.describe_user_pool_client(
-        UserPoolId=get_ssm_parameter("/app/customersupport/agentcore/userpool_id"),
-        ClientId=get_ssm_parameter("/app/customersupport/agentcore/machine_client_id"),
+        UserPoolId=get_ssm_parameter("/app/customersupport/agentcore/pool_id"),
+        ClientId=get_ssm_parameter("/app/customersupport/agentcore/client_id"),
     )
     return response["UserPoolClient"]["ClientSecret"]
 

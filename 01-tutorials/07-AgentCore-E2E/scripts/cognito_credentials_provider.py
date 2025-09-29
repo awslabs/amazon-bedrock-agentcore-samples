@@ -1,9 +1,10 @@
 #!/usr/bin/python
+import sys
+
 import boto3
 import click
-import sys
 from botocore.exceptions import ClientError
-from utils import get_ssm_parameter, get_aws_region
+from utils import get_aws_region, get_ssm_parameter
 
 REGION = get_aws_region()
 
@@ -50,9 +51,7 @@ def create_cognito_provider(provider_name: str) -> dict:
     """Create a Cognito OAuth2 credential provider."""
     try:
         click.echo("📥 Fetching Cognito configuration from SSM...")
-        client_id = get_ssm_parameter(
-            "/app/customersupport/agentcore/machine_client_id"
-        )
+        client_id = get_ssm_parameter("/app/customersupport/agentcore/client_id")
         click.echo(f"✅ Retrieved client ID: {client_id}")
 
         client_secret = get_ssm_parameter(
