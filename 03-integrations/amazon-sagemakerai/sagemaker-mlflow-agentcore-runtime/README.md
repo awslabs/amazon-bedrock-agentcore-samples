@@ -13,8 +13,8 @@ This example provides step-by-step instructions, sample code, and deployment jup
 
 ![image](./images/sagemaker-mlflow-output.png)
 
-## Code Repository Link
-Find the full code samples and the accompanying jupyter notebook in the respository: [sample-aiops-on-amazon-sagemakerai](https://github.com/aws-samples/sample-aiops-on-amazon-sagemakerai/tree/main/examples/sagemaker-mlflow-agentcore-runtime)
+## Sample Code Repository [sample-aiops-on-amazon-sagemakerai](https://github.com/aws-samples/sample-aiops-on-amazon-sagemakerai/tree/main/examples/sagemaker-mlflow-agentcore-runtime)
+You can find the code samples and the accompanying jupyter notebook in the respository: [sample-aiops-on-amazon-sagemakerai](https://github.com/aws-samples/sample-aiops-on-amazon-sagemakerai/tree/main/examples/sagemaker-mlflow-agentcore-runtime)
 
 # License
 This library is licensed under the MIT-0 License. See the LICENSE file.
