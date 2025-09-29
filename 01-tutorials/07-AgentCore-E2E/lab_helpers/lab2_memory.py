@@ -23,7 +23,7 @@ boto_session = Session()
 REGION = boto_session.region_name
 
 logger = logging.getLogger(__name__)
-from scripts.utils import get_ssm_parameter, put_ssm_parameter
+from lab_helpers.utils import get_ssm_parameter, put_ssm_parameter
 
 ACTOR_ID = "customer_001"
 SESSION_ID = str(uuid.uuid4())
