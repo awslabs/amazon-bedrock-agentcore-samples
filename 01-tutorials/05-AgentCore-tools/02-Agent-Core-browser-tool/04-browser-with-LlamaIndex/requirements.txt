@@ -6,6 +6,10 @@ bedrock-agentcore
 boto3
 rich
 
+# Live viewer dependencies
+fastapi
+uvicorn
+
 # Optional: Only install if you need Jupyter notebook support
 # jupyter
 # ipywidgets
