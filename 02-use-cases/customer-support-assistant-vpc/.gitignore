@@ -213,3 +213,4 @@ aws-architecture-diagram.drawio
 .bedrock_agentcore.yaml
 .agentcore.json
 temp
+ip-ranges.json

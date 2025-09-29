@@ -225,8 +225,6 @@ Resources:
           phases:
             pre_build:
               commands:
-                - echo "Logging in to Amazon ECR..."
-                - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $ECR_REPOSITORY_URI
                 - echo "Checking current directory and contents..."
                 - pwd
                 - ls -la
@@ -238,21 +236,33 @@ Resources:
                 - cat Dockerfile || echo "Dockerfile not found"
             build:
               commands:
-                - echo "Build started on `date`"
-                - echo "Building the Docker image for ARM64..."
-                - IMAGE_TAG=${CODEBUILD_RESOLVED_SOURCE_VERSION:-latest}
-                - echo "Building image with tag $IMAGE_TAG"
-                - docker build --platform linux/arm64 -t $ECR_REPOSITORY_NAME:latest .
-                - docker tag $ECR_REPOSITORY_NAME:latest $ECR_REPOSITORY_URI:latest
-                - docker tag $ECR_REPOSITORY_NAME:latest $ECR_REPOSITORY_URI:$IMAGE_TAG
+                - echo "Starting parallel Docker build and ECR authentication..."
+                - |
+                  docker build -t bedrock-agentcore-arm64 . &
+                  BUILD_PID=$!
+                  aws ecr get-login-password --region $AWS_DEFAULT_REGION | \
+                  docker login --username AWS --password-stdin $ECR_REPOSITORY_URI &
+                  AUTH_PID=$!
+                  echo "Waiting for Docker build to complete..."
+                  wait $BUILD_PID
+                  if [ $? -ne 0 ]; then
+                    echo "Docker build failed"
+                    exit 1
+                  fi
+                  echo "Waiting for ECR authentication to complete..."
+                  wait $AUTH_PID
+                  if [ $? -ne 0 ]; then
+                    echo "ECR authentication failed"
+                    exit 1
+                  fi
+                  echo "Both build and auth completed successfully"
+                - echo "Tagging image..."
+                - docker tag bedrock-agentcore-arm64:latest $ECR_REPOSITORY_URI:latest
             post_build:
               commands:
-                - echo "Build completed on `date`"
-                - echo "Pushing the Docker image..."
+                - echo "Pushing ARM64 image to ECR..."
                 - docker push $ECR_REPOSITORY_URI:latest
-                - docker push $ECR_REPOSITORY_URI:$IMAGE_TAG
-                - echo "Docker image pushed successfully"
-                - echo "Image URI:" $ECR_REPOSITORY_URI:latest
+                - echo "Build completed at $(date)"
       SourceVersion: refs/heads/customer-support-vpc
       TimeoutInMinutes: 30
       Tags:
