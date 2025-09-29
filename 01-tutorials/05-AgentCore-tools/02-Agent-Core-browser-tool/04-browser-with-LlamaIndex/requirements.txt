@@ -1,0 +1,11 @@
+# Core dependencies for browser automation
+llama-index-core
+llama-index-llms-bedrock-converse
+llama-index-tools-aws-bedrock-agentcore
+bedrock-agentcore
+boto3
+rich
+
+# Optional: Only install if you need Jupyter notebook support
+# jupyter
+# ipywidgets
