@@ -1,0 +1,30 @@
+{
+  "prompts": [
+    {
+      "name": "Create Coffee Shop Website with AWS Deployment",
+      "prompt": "Create a modern coffee shop website called 'Brew Haven' with: 1) A hero section with background image and tagline 'Your Daily Dose of Happiness', 2) Menu section with coffee drinks and prices, 3) About section describing the cozy atmosphere, 4) Location and hours (Open 7am-8pm daily, 123 Main St), 5) Contact form. Use a warm color scheme with browns and creams. Make it fully responsive. Then create a Python script to deploy this website to AWS S3 and CloudFront. The deployment script should create a unique S3 bucket with prefix 'claude-code-', configure it for static website hosting, upload all files, and create a CloudFront distribution.",
+      "expected_output": "HTML, CSS, JavaScript files for the website, plus a Python deployment script for S3 and CloudFront"
+    },
+    {
+      "name": "Simple Portfolio Website",
+      "prompt": "Build a simple portfolio website with sections for projects, skills, and contact. Include smooth scrolling and a modern design. Create a deployment script for AWS S3 and CloudFront.",
+      "expected_output": "Complete portfolio website with AWS deployment script"
+    },
+    {
+      "name": "Landing Page with Deployment",
+      "prompt": "Create a product landing page for a fitness app with features section, pricing tiers, and call-to-action buttons. Include a Python script to deploy to S3 with CloudFront CDN.",
+      "expected_output": "Landing page files and AWS deployment automation"
+    },
+    {
+      "name": "Build REST API",
+      "prompt": "Create a complete REST API with FastAPI including user authentication, CRUD operations, and database models",
+      "expected_output": "Python files with FastAPI routes, models, and authentication"
+    },
+    {
+      "name": "Refactor Code",
+      "prompt": "Analyze and refactor this code for better performance and maintainability",
+      "context": "def process_data(data): result = []; for item in data: if item > 0: result.append(item * 2); return result",
+      "expected_output": "Refactored code with improvements and explanations"
+    }
+  ]
+}

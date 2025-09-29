@@ -1,0 +1,16 @@
+# Claude Code Headless Mode for Amazon Bedrock AgentCore
+
+# Core requirements for testing and deployment
+boto3>=1.28.0
+python-json-logger>=2.0.7
+bedrock-agentcore-starter-toolkit>=0.1.0
+requests>=2.31.0
+
+# Testing dependencies
+pytest>=7.4.0
+
+# Note: For headless mode specific dependencies, see headless-mode/pyproject.toml
+# The headless mode Docker container handles all necessary dependencies including:
+# - Node.js and npm for Claude Code CLI
+# - Python packages via uv package manager
+# - @anthropic-ai/claude-code npm package
