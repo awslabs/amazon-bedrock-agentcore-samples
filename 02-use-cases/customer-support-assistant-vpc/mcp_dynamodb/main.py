@@ -94,12 +94,12 @@ def get_products(product_id: int):
         return {"error": str(e)}
 
 
-@mcp.tool
-def get_todo(todo_id: int):
-    """
-    Fetch a single todo by todo_id
-    """
-    return todo_id
+# @mcp.tool
+# def get_todo(todo_id: int):
+#     """
+#     Fetch a single todo by todo_id
+#     """
+#     return todo_id
 
 
 if __name__ == "__main__":
