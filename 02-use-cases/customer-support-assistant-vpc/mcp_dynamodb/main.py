@@ -1,14 +1,22 @@
 from fastmcp import FastMCP
 import boto3
 import logging
+from botocore.config import Config
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Initialize AWS clients
-ssm = boto3.client("ssm")
-dynamodb = boto3.resource("dynamodb")
+# Configure boto3 with 30-second timeouts
+boto_config = Config(
+    connect_timeout=30,
+    read_timeout=30,
+    retries={'max_attempts': 3, 'mode': 'adaptive'}
+)
+
+# Initialize AWS clients with timeouts
+ssm = boto3.client("ssm", config=boto_config)
+dynamodb = boto3.resource("dynamodb", config=boto_config)
 
 
 def get_table_names():
@@ -56,12 +64,16 @@ def get_reviews(review_id: str):
     Fetch a single review by review_id
     """
     try:
+        logger.info(f"Fetching review with ID: {review_id}")
         response = reviews_table.get_item(Key={"review_id": review_id})
         item = response.get("Item")
         if not item:
+            logger.warning(f"Review not found: {review_id}")
             return {"error": "Review not found"}
+        logger.info(f"Successfully fetched review: {review_id}")
         return item
     except Exception as e:
+        logger.error(f"Error fetching review {review_id}: {str(e)}")
         return {"error": str(e)}
 
 
@@ -71,12 +83,16 @@ def get_products(product_id: int):
     Fetch a single product by product_id
     """
     try:
+        logger.info(f"Fetching product with ID: {product_id}")
         response = products_table.get_item(Key={"product_id": product_id})
         item = response.get("Item")
         if not item:
+            logger.warning(f"Product not found: {product_id}")
             return {"error": "Product not found"}
+        logger.info(f"Successfully fetched product: {product_id}")
         return item
     except Exception as e:
+        logger.error(f"Error fetching product {product_id}: {str(e)}")
         return {"error": str(e)}
 
 
