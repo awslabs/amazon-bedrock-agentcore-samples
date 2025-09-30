@@ -16,7 +16,7 @@ from lab_helpers.lab2_memory import (
     CustomerSupportMemoryHooks,
     memory_client,
 )
-from lab_helpers.utils import get_cognito_client_secret, get_ssm_parameter
+from lab_helpers.utils import get_cognito_client_secret, get_ssm_parameter, get_or_create_cognito_pool
 from mcp.client.streamable_http import streamablehttp_client
 from strands import Agent
 from strands.models import BedrockModel
