@@ -9,9 +9,7 @@ logger = logging.getLogger(__name__)
 
 # Configure boto3 with 30-second timeouts
 boto_config = Config(
-    connect_timeout=30,
-    read_timeout=30,
-    retries={'max_attempts': 3, 'mode': 'adaptive'}
+    connect_timeout=30, read_timeout=30, retries={"max_attempts": 3, "mode": "adaptive"}
 )
 
 # Initialize AWS clients with timeouts
@@ -94,6 +92,14 @@ def get_products(product_id: int):
     except Exception as e:
         logger.error(f"Error fetching product {product_id}: {str(e)}")
         return {"error": str(e)}
+
+
+@mcp.tool
+def get_todo(todo_id: int):
+    """
+    Fetch a single todo by todo_id
+    """
+    return todo_id
 
 
 if __name__ == "__main__":
