@@ -15,39 +15,24 @@ def get_table_names():
     """
     Retrieve DynamoDB table names from SSM parameters
     """
-    try:
-        # Get both table names from SSM parameters
-        response = ssm.get_parameters(
-            Names=[
-                "/app/customersupportvpc/dynamodb/reviews_table_name",
-                "/app/customersupportvpc/dynamodb/products_table_name",
-            ]
-        )
+    # Get both table names from SSM parameters
+    response = ssm.get_parameters(
+        Names=[
+            "/app/customersupportvpc/dynamodb/reviews_table_name",
+            "/app/customersupportvpc/dynamodb/products_table_name",
+        ]
+    )
 
-        table_names = {}
-        for param in response["Parameters"]:
-            if "reviews" in param["Name"]:
-                table_names["reviews"] = param["Value"]
-                logger.info(f"Retrieved reviews table name: {param['Value']}")
-            elif "products" in param["Name"]:
-                table_names["products"] = param["Value"]
-                logger.info(f"Retrieved products table name: {param['Value']}")
+    table_names = {}
+    for param in response["Parameters"]:
+        if "reviews" in param["Name"]:
+            table_names["reviews"] = param["Value"]
+            logger.info(f"Retrieved reviews table name: {param['Value']}")
+        elif "products" in param["Name"]:
+            table_names["products"] = param["Value"]
+            logger.info(f"Retrieved products table name: {param['Value']}")
 
-        # Check if we got both table names
-        if "reviews" not in table_names or "products" not in table_names:
-            missing = [k for k in ["reviews", "products"] if k not in table_names]
-            raise ValueError(f"Failed to retrieve table names for: {missing}")
-
-        return table_names
-
-    except Exception as e:
-        logger.error(f"Error retrieving table names from SSM: {e}")
-        # Fallback to default names for backward compatibility
-        logger.warning("Falling back to default table names")
-        return {
-            "reviews": "dynamodb-stack-reviews",
-            "products": "dynamodb-stack-products",
-        }
+    return table_names
 
 
 # Get table names dynamically

@@ -140,7 +140,7 @@ Resources:
                   - logs:DescribeLogGroups
                   - logs:DescribeLogStreams
                 Resource:
-                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:*'
+                  - '*'
 
   VPCFlowLogKMSKey:
     Type: AWS::KMS::Key
@@ -205,13 +205,13 @@ Resources:
           FromPort: 443
           ToPort: 443
           CidrIp: !Ref VpcCidr
-          Description: 'HTTPS access from VPC'
+          Description: 'HTTPS access from Private VPC'
       SecurityGroupEgress:
         - IpProtocol: tcp
           FromPort: 443
           ToPort: 443
           CidrIp: 127.0.0.1/32
-          Description: 'Explicit deny - no outbound access required for VPC endpoints'
+          Description: 'Explicit deny - no outbound access required for Interfaces and VPC endpoints'
       Tags:
         - Key: Name
           Value: !Sub '${AWS::StackName}-VPCEndpoint-SG'
@@ -241,7 +241,11 @@ Resources:
               - logs:PutLogEvents
               - logs:DescribeLogGroups
               - logs:DescribeLogStreams
-            Resource: '*'
+            Resource:
+              - '*'
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-CloudWatch-Logs-VPCEndpoint'
 
   # VPC Endpoint for CloudWatch Monitoring
   CloudWatchMonitoringVPCEndpoint:
@@ -264,9 +268,11 @@ Resources:
             Principal: '*'
             Action:
               - cloudwatch:PutMetricData
-              - cloudwatch:GetMetricStatistics
-              - cloudwatch:ListMetrics
-            Resource: '*'
+            Resource:
+              - '*'
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-CloudWatch-Monitoring-VPCEndpoint'
 
   # VPC Endpoint for ECR Docker Registry
   ECRDockerVPCEndpoint:
@@ -289,10 +295,11 @@ Resources:
             Principal: '*'
             Action:
               - ecr:GetAuthorizationToken
-              - ecr:BatchCheckLayerAvailability
-              - ecr:GetDownloadUrlForLayer
-              - ecr:BatchGetImage
-            Resource: '*'
+            Resource:
+              - '*'
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-ECR-Docker-VPCEndpoint'
 
   # VPC Endpoint for ECR API
   ECRAPIVPCEndpoint:
@@ -314,24 +321,20 @@ Resources:
           - Effect: Allow
             Principal: '*'
             Action:
-              - ecr:GetAuthorizationToken
-              - ecr:DescribeRepositories
-              - ecr:DescribeImages
-              - ecr:BatchCheckLayerAvailability
               - ecr:GetDownloadUrlForLayer
               - ecr:BatchGetImage
-              - ecr:InitiateLayerUpload
-              - ecr:UploadLayerPart
-              - ecr:CompleteLayerUpload
-              - ecr:PutImage
-            Resource: '*'
+            Resource:
+              - !Sub 'arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/*'
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-ECR-API-VPCEndpoint'
 
-  # Gateway Endpoint for S3
-  S3GatewayEndpoint:
+  # Gateway Endpoint for DynamoDB
+  DynamoDBGatewayEndpoint:
     Type: AWS::EC2::VPCEndpoint
     Properties:
       VpcId: !Ref VPC
-      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.s3'
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.dynamodb'
       VpcEndpointType: Gateway
       RouteTableIds:
         - !Ref PrivateRouteTable
@@ -340,8 +343,41 @@ Resources:
         Statement:
           - Effect: Allow
             Principal: '*'
-            Action: 's3:*'
-            Resource: '*'
+            Action: ' dynamodb:GetItem'
+            Resource:
+              - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/*'
+              - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:index/*'
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-DynamoDB-GatewayEndpoint'
+
+  # VPC Endpoint for SSM Parameter Store
+  SSMVPCEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref VPC
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.ssm'
+      VpcEndpointType: Interface
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+        - !Ref PrivateSubnet3
+      SecurityGroupIds:
+        - !Ref VPCEndpointSecurityGroup
+      PrivateDnsEnabled: true
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: '*'
+            Action:
+              - ssm:GetParameter
+              - ssm:GetParameters
+            Resource:
+              - !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/app/customersupportvpc/*'
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-SSM-VPCEndpoint'
 
   # Security Group for MCP Runtime
   MCPRuntimeSecurityGroup:
@@ -351,16 +387,6 @@ Resources:
       VpcId: !Ref VPC
       SecurityGroupIngress: []
       SecurityGroupEgress: []
-        # - IpProtocol: tcp
-        #   FromPort: 443
-        #   ToPort: 443
-        #   CidrIp: !Ref VpcCidr
-        #   Description: 'HTTPS access to VPC endpoints'
-        # - IpProtocol: tcp
-        #   FromPort: 443
-        #   ToPort: 443
-        #   DestinationPrefixListId: !Sub 'pl-${AWS::Region}-dynamodb'
-        #   Description: 'HTTPS access to DynamoDB in us-west-2'
       Tags:
         - Key: Name
           Value: !Sub '${AWS::StackName}-MCPRuntime-SG'
@@ -374,18 +400,7 @@ Resources:
       FromPort: 443
       ToPort: 443
       DestinationSecurityGroupId: !Ref VPCEndpointSecurityGroup
-      Description: 'HTTPS access to VPC Endpoint Security Group'
-
-  # Security Group Rule: Allow VPC Endpoints to receive from MCP Runtime
-  # VPCEndpointFromMCPRuntimeRule:
-  #   Type: AWS::EC2::SecurityGroupIngress
-  #   Properties:
-  #     GroupId: !Ref VPCEndpointSecurityGroup
-  #     IpProtocol: tcp
-  #     FromPort: 443
-  #     ToPort: 443
-  #     SourceSecurityGroupId: !Ref MCPRuntimeSecurityGroup
-  #     Description: 'HTTPS access from MCP Runtime Security Group'
+      Description: 'Outbound HTTPS access to VPC Endpoint Security Group'
 
 Outputs:
   VPC:
