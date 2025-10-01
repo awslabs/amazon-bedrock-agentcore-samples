@@ -314,6 +314,182 @@ Resources:
         - Key: Purpose
           Value: 'MCP DynamoDB Docker Image Build'
 
+  # Lambda Execution Role for ECR Image Notification
+  ECRImageNotificationLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: ECRAccessPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ecr:DescribeImages
+                  - ecr:ListImages
+                Resource: !GetAtt MCPDynamoDBECRRepository.Arn
+        - PolicyName: BedrockAgentCoreAccessPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - bedrock-agentcore:ListAgentRuntimes
+                  - bedrock-agentcore:ListAgentRuntimeEndpoints
+                  - bedrock-agentcore:ListAgentRuntimeVersions
+                  - bedrock-agentcore:GetAgentRuntime
+                  - bedrock-agentcore:GetAgentRuntimeEndpoint
+                  - bedrock-agentcore:UpdateAgentRuntime
+                  - bedrock-agentcore:UpdateAgentRuntimeEndpoint
+                Resource: '*'
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-ECR-Notification-Role'
+        - Key: Purpose
+          Value: 'ECR Image Notification Lambda'
+
+  # Lambda Function for ECR Image Notification
+  ECRImageNotificationFunction:
+    Type: AWS::Lambda::Function
+    DependsOn: MCPDynamoDBRuntime
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-ecr-image-notification'
+      Runtime: python3.12
+      Handler: index.lambda_handler
+      Role: !GetAtt ECRImageNotificationLambdaRole.Arn
+      Timeout: 300
+      Environment:
+        Variables:
+          AGENT_RUNTIME_ID: !GetAtt MCPDynamoDBRuntime.AgentRuntimeId
+          ECR_REPOSITORY_URI: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${MCPDynamoDBECRRepository}'
+          ROLE_ARN: !GetAtt MCPDynamoDBRuntimeExecutionRole.Arn
+      Code:
+        ZipFile: |
+          import json
+          import logging
+          import boto3
+          import os
+
+          logger = logging.getLogger()
+          logger.setLevel(logging.INFO)
+
+          def lambda_handler(event, context):
+              try:
+                  logger.info(f"Received ECR event: {json.dumps(event)}")
+
+                  # Parse the ECR event
+                  detail = event.get('detail', {})
+                  repository_name = detail.get('repository-name')
+                  image_tag = detail.get('image-tag', 'latest')
+                  action = detail.get('action-type')
+                  result = detail.get('result')
+
+                  logger.info(f"ECR Event - Repository: {repository_name}, Tag: {image_tag}, Action: {action}, Result: {result}")
+
+                  # Only proceed if the push was successful
+                  if action != 'PUSH' or result != 'SUCCESS':
+                      logger.info("Skipping non-push or failed event")
+                      return {
+                          'statusCode': 200,
+                          'body': json.dumps('Event skipped - not a successful push')
+                      }
+
+                  # Get environment variables
+                  agent_runtime_id = os.environ['AGENT_RUNTIME_ID']
+                  ecr_repository_uri = os.environ['ECR_REPOSITORY_URI']
+                  role_arn = os.environ['ROLE_ARN']
+
+                  # Initialize bedrock-agentcore-control client
+                  client = boto3.client('bedrock-agentcore-control')
+
+                  # Get current runtime configuration
+                  logger.info(f"Getting current runtime configuration for: {agent_runtime_id}")
+                  get_response = client.get_agent_runtime(agentRuntimeId=agent_runtime_id)
+
+                  logger.info(f"Current runtime status: {get_response.get('status')}")
+
+                  # Build new container URI with the pushed image tag
+                  new_container_uri = f"{ecr_repository_uri}:{image_tag}"
+
+                  logger.info(f"Updating runtime to use new container: {new_container_uri}")
+
+                  # Update the runtime with the new container image
+                  update_response = client.update_agent_runtime(
+                      agentRuntimeId=agent_runtime_id,
+                      agentRuntimeArtifact={
+                          'containerConfiguration': {
+                              'containerUri': new_container_uri
+                          }
+                      },
+                      roleArn=role_arn,
+                      networkConfiguration=get_response.get('networkConfiguration', {'networkMode': 'PUBLIC'}),
+                      protocolConfiguration=get_response.get('protocolConfiguration', 'MCP'),
+                      authorizerConfiguration=get_response.get('authorizerConfiguration', {})
+                  )
+
+                  logger.info(f"Runtime updated successfully. New version: {update_response.get('agentRuntimeVersion')}")
+
+                  return {
+                      'statusCode': 200,
+                      'body': json.dumps({
+                          'message': 'AgentCore Runtime updated successfully',
+                          'newContainerUri': new_container_uri,
+                          'runtimeId': agent_runtime_id,
+                          'newVersion': update_response.get('agentRuntimeVersion')
+                      })
+                  }
+
+              except Exception as e:
+                  logger.error(f"Error processing ECR event: {str(e)}", exc_info=True)
+                  return {
+                      'statusCode': 500,
+                      'body': json.dumps({'error': str(e)})
+                  }
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-ECR-Notification-Function'
+
+  # EventBridge Permission for Lambda
+  ECRImageNotificationLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref ECRImageNotificationFunction
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt ECRImageEventRule.Arn
+
+  # EventBridge Rule for ECR Image Push
+  ECRImageEventRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub '${AWS::StackName}-ecr-image-push-rule'
+      Description: 'Trigger Lambda when new ECR image is pushed'
+      EventPattern:
+        source:
+          - aws.ecr
+        detail-type:
+          - ECR Image Action
+        detail:
+          action-type:
+            - PUSH
+          result:
+            - SUCCESS
+          repository-name:
+            - !Ref MCPDynamoDBECRRepository
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt ECRImageNotificationFunction.Arn
+          Id: ECRImageNotificationTarget
+
   # Lambda Execution Role for CodeBuild Trigger
   CodeBuildTriggerLambdaRole:
     Type: AWS::IAM::Role

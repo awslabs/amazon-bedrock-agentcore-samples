@@ -26,8 +26,9 @@ class OpenTelemetryMiddleware(Middleware):
     """Middleware to automatically trace all tool calls with OpenTelemetry"""
 
     async def on_call_tool(self, context: MiddlewareContext, call_next):
-        tool_name = context.params.get("name", "unknown_tool")
-        tool_args = context.params.get("arguments", {})
+        # Access tool info from the message
+        tool_name = getattr(context.message, "name", "unknown_tool")
+        tool_args = getattr(context.message, "arguments", {})
 
         with tracer.start_as_current_span(f"tool.{tool_name}") as span:
             # Set standard attributes
@@ -35,8 +36,9 @@ class OpenTelemetryMiddleware(Middleware):
             span.set_attribute("mcp.method", context.method)
 
             # Set tool-specific attributes
-            for key, value in tool_args.items():
-                span.set_attribute(f"tool.args.{key}", str(value))
+            if isinstance(tool_args, dict):
+                for key, value in tool_args.items():
+                    span.set_attribute(f"tool.args.{key}", str(value))
 
             try:
                 # Execute the tool

@@ -271,6 +271,111 @@ Resources:
         - Key: Purpose
           Value: 'Agent Docker Image Build'
 
+  # Lambda Execution Role for ECR Image Notification
+  ECRImageNotificationLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: ECRAccessPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ecr:DescribeImages
+                  - ecr:ListImages
+                Resource: !GetAtt AgentECRRepository.Arn
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-ECR-Notification-Role'
+        - Key: Purpose
+          Value: 'ECR Image Notification Lambda'
+
+  # Lambda Function for ECR Image Notification
+  ECRImageNotificationFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-ecr-image-notification'
+      Runtime: python3.12
+      Handler: index.lambda_handler
+      Role: !GetAtt ECRImageNotificationLambdaRole.Arn
+      Timeout: 60
+      Code:
+        ZipFile: |
+          import json
+          import logging
+
+          logger = logging.getLogger()
+          logger.setLevel(logging.INFO)
+
+          def lambda_handler(event, context):
+              try:
+                  logger.info(f"Received ECR event: {json.dumps(event)}")
+
+                  # Parse the ECR event
+                  detail = event.get('detail', {})
+                  repository_name = detail.get('repository-name')
+                  image_tag = detail.get('image-tag', 'latest')
+                  action = detail.get('action-type')
+
+                  logger.info(f"ECR Event - Repository: {repository_name}, Tag: {image_tag}, Action: {action}")
+
+                  # Add your custom logic here
+                  # For example: trigger deployment, send notification, etc.
+
+                  return {
+                      'statusCode': 200,
+                      'body': json.dumps('ECR image notification processed successfully')
+                  }
+
+              except Exception as e:
+                  logger.error(f"Error processing ECR event: {str(e)}")
+                  raise e
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-ECR-Notification-Function'
+
+  # EventBridge Permission for Lambda
+  ECRImageNotificationLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref ECRImageNotificationFunction
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt ECRImageEventRule.Arn
+
+  # EventBridge Rule for ECR Image Push
+  ECRImageEventRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub '${AWS::StackName}-ecr-image-push-rule'
+      Description: 'Trigger Lambda when new ECR image is pushed'
+      EventPattern:
+        source:
+          - aws.ecr
+        detail-type:
+          - ECR Image Action
+        detail:
+          action-type:
+            - PUSH
+          result:
+            - SUCCESS
+          repository-name:
+            - !Ref AgentECRRepository
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt ECRImageNotificationFunction.Arn
+          Id: ECRImageNotificationTarget
+
   # Lambda Execution Role for CodeBuild Trigger
   CodeBuildTriggerLambdaRole:
     Type: AWS::IAM::Role
