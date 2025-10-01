@@ -1,4 +1,5 @@
 from fastmcp import FastMCP
+from fastmcp.server.middleware import Middleware, MiddlewareContext
 import boto3
 import logging
 from botocore.config import Config
@@ -18,6 +19,40 @@ ssm = boto3.client("ssm", config=boto_config)
 dynamodb = boto3.resource("dynamodb", config=boto_config)
 
 tracer = trace.get_tracer("customer_support_vpc_mcp", "1.0.0")
+
+
+# OpenTelemetry Middleware
+class OpenTelemetryMiddleware(Middleware):
+    """Middleware to automatically trace all tool calls with OpenTelemetry"""
+
+    async def on_call_tool(self, context: MiddlewareContext, call_next):
+        tool_name = context.params.get("name", "unknown_tool")
+        tool_args = context.params.get("arguments", {})
+
+        with tracer.start_as_current_span(f"tool.{tool_name}") as span:
+            # Set standard attributes
+            span.set_attribute("tool.name", tool_name)
+            span.set_attribute("mcp.method", context.method)
+
+            # Set tool-specific attributes
+            for key, value in tool_args.items():
+                span.set_attribute(f"tool.args.{key}", str(value))
+
+            try:
+                # Execute the tool
+                result = await call_next(context)
+
+                # Mark success
+                span.set_attribute("result.success", True)
+
+                return result
+            except Exception as e:
+                # Mark error
+                span.set_attribute("error", True)
+                span.set_attribute("error.type", type(e).__name__)
+                span.set_attribute("error.message", str(e))
+                span.set_attribute("result.success", False)
+                raise
 
 
 def get_table_names():
@@ -58,33 +93,27 @@ logger.info(
 # Initialize FastMCP
 mcp = FastMCP()
 
+# Add OpenTelemetry middleware
+mcp.add_middleware(OpenTelemetryMiddleware())
+
 
 @mcp.tool
 def get_reviews(review_id: str):
     """
     Fetch a single review by review_id
     """
-    with tracer.start_as_current_span("get_reviews") as span:
-        span.set_attribute("tool.name", "get_reviews")
-        span.set_attribute("review_id", review_id)
-        span.set_attribute("db.system", "dynamodb")
-        span.set_attribute("db.table", table_names["reviews"])
-        try:
-            logger.info(f"Fetching review with ID: {review_id}")
-            response = reviews_table.get_item(Key={"review_id": review_id})
-            item = response.get("Item")
-            if not item:
-                logger.warning(f"Review not found: {review_id}")
-                span.set_attribute("result.found", False)
-                return {"error": "Review not found"}
-            logger.info(f"Successfully fetched review: {review_id}")
-            span.set_attribute("result.found", True)
-            return item
-        except Exception as e:
-            logger.error(f"Error fetching review {review_id}: {str(e)}")
-            span.set_attribute("error", True)
-            span.set_attribute("error.message", str(e))
-            return {"error": str(e)}
+    try:
+        logger.info(f"Fetching review with ID: {review_id}")
+        response = reviews_table.get_item(Key={"review_id": review_id})
+        item = response.get("Item")
+        if not item:
+            logger.warning(f"Review not found: {review_id}")
+            return {"error": "Review not found"}
+        logger.info(f"Successfully fetched review: {review_id}")
+        return item
+    except Exception as e:
+        logger.error(f"Error fetching review {review_id}: {str(e)}")
+        return {"error": str(e)}
 
 
 @mcp.tool
@@ -92,27 +121,18 @@ def get_products(product_id: int):
     """
     Fetch a single product by product_id
     """
-    with tracer.start_as_current_span("get_products") as span:
-        span.set_attribute("tool.name", "get_products")
-        span.set_attribute("product_id", product_id)
-        span.set_attribute("db.system", "dynamodb")
-        span.set_attribute("db.table", table_names["products"])
-        try:
-            logger.info(f"Fetching product with ID: {product_id}")
-            response = products_table.get_item(Key={"product_id": product_id})
-            item = response.get("Item")
-            if not item:
-                logger.warning(f"Product not found: {product_id}")
-                span.set_attribute("result.found", False)
-                return {"error": "Product not found"}
-            logger.info(f"Successfully fetched product: {product_id}")
-            span.set_attribute("result.found", True)
-            return item
-        except Exception as e:
-            logger.error(f"Error fetching product {product_id}: {str(e)}")
-            span.set_attribute("error", True)
-            span.set_attribute("error.message", str(e))
-            return {"error": str(e)}
+    try:
+        logger.info(f"Fetching product with ID: {product_id}")
+        response = products_table.get_item(Key={"product_id": product_id})
+        item = response.get("Item")
+        if not item:
+            logger.warning(f"Product not found: {product_id}")
+            return {"error": "Product not found"}
+        logger.info(f"Successfully fetched product: {product_id}")
+        return item
+    except Exception as e:
+        logger.error(f"Error fetching product {product_id}: {str(e)}")
+        return {"error": str(e)}
 
 
 # @mcp.tool
