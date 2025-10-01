@@ -196,9 +196,9 @@ def get_or_create_cognito_pool():
         # check for existing cognito pool
         cognito_config_str = get_customer_support_secret()
         cognito_config = json.loads(cognito_config_str)
-        cognito_config["bearer_token"] = reauthenticate_user(
-            cognito_config["client_id"], cognito_config["client_secret"]
-        )
+        # cognito_config["bearer_token"] = reauthenticate_user(
+        #    cognito_config["client_id"], cognito_config["client_secret"]
+        # ) #TO DO: Re-authenticate token if expired
         return cognito_config
     except:
         print("No existing cognito config found. Creating a new one..")
