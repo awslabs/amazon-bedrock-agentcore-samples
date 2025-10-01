@@ -294,9 +294,10 @@ Resources:
           - Effect: Allow
             Principal: '*'
             Action:
-              - ecr:GetAuthorizationToken
-            Resource:
-              - '*'
+              - ecr:GetDownloadUrlForLayer
+              - ecr:BatchGetImage
+              - ecr:BatchCheckLayerAvailability
+            Resource: '*'
       Tags:
         - Key: Name
           Value: !Sub '${AWS::StackName}-ECR-Docker-VPCEndpoint'
@@ -321,10 +322,8 @@ Resources:
           - Effect: Allow
             Principal: '*'
             Action:
-              - ecr:GetDownloadUrlForLayer
-              - ecr:BatchGetImage
-            Resource:
-              - !Sub 'arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/*'
+              - ecr:GetAuthorizationToken
+            Resource: '*'
       Tags:
         - Key: Name
           Value: !Sub '${AWS::StackName}-ECR-API-VPCEndpoint'
@@ -343,7 +342,9 @@ Resources:
         Statement:
           - Effect: Allow
             Principal: '*'
-            Action: ' dynamodb:GetItem'
+            Action:
+              - dynamodb:GetItem
+              - dynamodb:DescribeTable
             Resource:
               - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/*'
               - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:index/*'
@@ -408,17 +409,40 @@ Resources:
         - Key: Name
           Value: !Sub '${AWS::StackName}-KMS-VPCEndpoint'
 
-  # VPC Endpoint for STS
-  STSVPCEndpoint:
+  SecretsManagerVPCEndpoint:
     Type: AWS::EC2::VPCEndpoint
     Properties:
       VpcId: !Ref VPC
-      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.sts'
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.secretsmanager'
       VpcEndpointType: Interface
       SubnetIds:
         - !Ref PrivateSubnet1
         - !Ref PrivateSubnet2
         - !Ref PrivateSubnet3
+      SecurityGroupIds:
+        - !Ref VPCEndpointSecurityGroup
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: '*'
+            Action:
+              - secretsmanager:GetSecretValue
+              - secretsmanager:DescribeSecret
+            Resource: '*'
+      PrivateDnsEnabled: true
+
+  # VPC Endpoint for RDS Data API
+  RDSDataVPCEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref VPC
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.rds-data'
+      VpcEndpointType: Interface
+      SubnetIds:
+        - !Ref PrivateSubnet2
+        - !Ref PrivateSubnet3
+        - !Ref PrivateSubnet4
       SecurityGroupIds:
         - !Ref VPCEndpointSecurityGroup
       PrivateDnsEnabled: true
@@ -428,13 +452,62 @@ Resources:
           - Effect: Allow
             Principal: '*'
             Action:
-              - sts:AssumeRole
-              - sts:GetCallerIdentity
-              - sts:GetSessionToken
+              - rds-data:ExecuteStatement
+              - rds-data:BatchExecuteStatement
+              - rds-data:BeginTransaction
+              - rds-data:CommitTransaction
+              - rds-data:RollbackTransaction
             Resource: '*'
       Tags:
         - Key: Name
-          Value: !Sub '${AWS::StackName}-STS-VPCEndpoint'
+          Value: !Sub '${AWS::StackName}-RDS-Data-VPCEndpoint'
+
+  S3VPCEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref VPC
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.s3'
+      VpcEndpointType: Gateway
+      RouteTableIds:
+        - !Ref PrivateRouteTable
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: '*'
+            Action:
+              - s3:GetObject
+              - s3:PutObject
+            Resource:
+              - 'arn:aws:s3:::cloudformation-custom-resource-response-*/*'
+
+  # VPC Endpoint for STS
+  # STSVPCEndpoint:
+  #   Type: AWS::EC2::VPCEndpoint
+  #   Properties:
+  #     VpcId: !Ref VPC
+  #     ServiceName: !Sub 'com.amazonaws.${AWS::Region}.sts'
+  #     VpcEndpointType: Interface
+  #     SubnetIds:
+  #       - !Ref PrivateSubnet1
+  #       - !Ref PrivateSubnet2
+  #       - !Ref PrivateSubnet3
+  #     SecurityGroupIds:
+  #       - !Ref VPCEndpointSecurityGroup
+  #     PrivateDnsEnabled: true
+  #     PolicyDocument:
+  #       Version: '2012-10-17'
+  #       Statement:
+  #         - Effect: Allow
+  #           Principal: '*'
+  #           Action:
+  #             - sts:AssumeRole
+  #             - sts:GetCallerIdentity
+  #             - sts:GetSessionToken
+  #           Resource: '*'
+  #     Tags:
+  #       - Key: Name
+  #         Value: !Sub '${AWS::StackName}-STS-VPCEndpoint'
 
   # Security Group for MCP Runtime
   MCPRuntimeSecurityGroup:
@@ -457,7 +530,18 @@ Resources:
       FromPort: 443
       ToPort: 443
       DestinationSecurityGroupId: !Ref VPCEndpointSecurityGroup
-      Description: 'Outbound HTTPS access to VPC Endpoint Security Group'
+      Description: 'HTTPS access to VPC Endpoint Security Group'
+
+  # Security Group Rule: Allow MCP Runtime to access DynamoDB
+  MCPRuntimeToDynamoDBRule:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      GroupId: !Ref MCPRuntimeSecurityGroup
+      IpProtocol: tcp
+      FromPort: 443
+      ToPort: 443
+      DestinationPrefixListId: pl-00a54069
+      Description: 'HTTPS access to DynamoDB via Gateway Endpoint'
 
 Outputs:
   VPC:

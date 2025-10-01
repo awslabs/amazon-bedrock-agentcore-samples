@@ -103,29 +103,6 @@ Resources:
         - Key: Version
           Value: 'v2'
 
-  # Security Group for VPC Endpoints
-  VPCEndpointSecurityGroup:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupDescription: 'Security group for VPC endpoints'
-      VpcId:
-        Fn::ImportValue: !Sub '${VPCStackName}-VPCID'
-      SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: 443
-          ToPort: 443
-          SourceSecurityGroupId: !Ref LambdaSecurityGroup
-          Description: 'HTTPS access from Lambda functions'
-      SecurityGroupEgress:
-        - IpProtocol: tcp
-          FromPort: 443
-          ToPort: 443
-          DestinationSecurityGroupId: !Ref LambdaSecurityGroup
-          Description: 'HTTPS responses to Lambda functions'
-      Tags:
-        - Key: Name
-          Value: !Sub '${AWS::StackName}-VPCEndpoint-SG'
-
   # Security Group for Aurora
   AuroraSecurityGroup:
     Type: AWS::EC2::SecurityGroup
@@ -135,13 +112,13 @@ Resources:
         Fn::ImportValue: !Sub '${VPCStackName}-VPCID'
       SecurityGroupIngress:
         - IpProtocol: tcp
-          FromPort: 5432
-          ToPort: 5432
+          FromPort: 3306
+          ToPort: 3306
           SourceSecurityGroupId: !Ref LambdaSecurityGroup
           Description: 'PostgreSQL access from Lambda functions'
         - IpProtocol: tcp
-          FromPort: 5432
-          ToPort: 5432
+          FromPort: 3306
+          ToPort: 3306
           CidrIp: '10.0.0.0/16'
           Description: 'PostgreSQL access within VPC'
       Tags:
@@ -151,144 +128,53 @@ Resources:
           Value: 'v2'
 
   # VPC Endpoints for AWS Services
-  SecretsManagerVPCEndpoint:
-    Type: AWS::EC2::VPCEndpoint
-    Properties:
-      VpcId:
-        Fn::ImportValue: !Sub '${VPCStackName}-VPCID'
-      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.secretsmanager'
-      VpcEndpointType: Interface
-      SubnetIds:
-        - Fn::ImportValue: !Sub '${VPCStackName}-PrivateSubnet2'
-        - Fn::ImportValue: !Sub '${VPCStackName}-PrivateSubnet4'
-      SecurityGroupIds:
-        - !Ref VPCEndpointSecurityGroup
-      PolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Principal: '*'
-            Action:
-              - secretsmanager:GetSecretValue
-              - secretsmanager:DescribeSecret
-            Resource: '*'
-      PrivateDnsEnabled: true
-
-  CloudWatchLogsVPCEndpoint:
-    Type: AWS::EC2::VPCEndpoint
-    Properties:
-      VpcId:
-        Fn::ImportValue: !Sub '${VPCStackName}-VPCID'
-      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.logs'
-      VpcEndpointType: Interface
-      SubnetIds:
-        - Fn::ImportValue: !Sub '${VPCStackName}-PrivateSubnet2'
-        - Fn::ImportValue: !Sub '${VPCStackName}-PrivateSubnet4'
-      SecurityGroupIds:
-        - !Ref VPCEndpointSecurityGroup
-      PolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Principal: '*'
-            Action:
-              - logs:CreateLogGroup
-              - logs:CreateLogStream
-              - logs:PutLogEvents
-              - logs:DescribeLogStreams
-              - logs:DescribeLogGroups
-            Resource: '*'
-      PrivateDnsEnabled: true
-
-  MonitoringVPCEndpoint:
-    Type: AWS::EC2::VPCEndpoint
-    Properties:
-      VpcId:
-        Fn::ImportValue: !Sub '${VPCStackName}-VPCID'
-      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.monitoring'
-      VpcEndpointType: Interface
-      SubnetIds:
-        - Fn::ImportValue: !Sub '${VPCStackName}-PrivateSubnet2'
-        - Fn::ImportValue: !Sub '${VPCStackName}-PrivateSubnet4'
-      SecurityGroupIds:
-        - !Ref VPCEndpointSecurityGroup
-      PolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Principal: '*'
-            Action:
-              - cloudwatch:PutMetricData
-            Resource: '*'
-      PrivateDnsEnabled: true
-
-  LambdaVPCEndpoint:
-    Type: AWS::EC2::VPCEndpoint
-    Properties:
-      VpcId:
-        Fn::ImportValue: !Sub '${VPCStackName}-VPCID'
-      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.lambda'
-      VpcEndpointType: Interface
-      SubnetIds:
-        - Fn::ImportValue: !Sub '${VPCStackName}-PrivateSubnet2'
-        - Fn::ImportValue: !Sub '${VPCStackName}-PrivateSubnet4'
-      SecurityGroupIds:
-        - !Ref VPCEndpointSecurityGroup
-      PolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Principal: '*'
-            Action:
-              - lambda:InvokeFunction
-            Resource: '*'
-      PrivateDnsEnabled: true
+  # LambdaVPCEndpoint:
+  #   Type: AWS::EC2::VPCEndpoint
+  #   Properties:
+  #     VpcId:
+  #       Fn::ImportValue: !Sub '${VPCStackName}-VPCID'
+  #     ServiceName: !Sub 'com.amazonaws.${AWS::Region}.lambda'
+  #     VpcEndpointType: Interface
+  #     SubnetIds:
+  #       - Fn::ImportValue: !Sub '${VPCStackName}-PrivateSubnet2'
+  #       - Fn::ImportValue: !Sub '${VPCStackName}-PrivateSubnet4'
+  #     SecurityGroupIds:
+  #       - !Ref VPCEndpointSecurityGroup
+  #     PolicyDocument:
+  #       Version: '2012-10-17'
+  #       Statement:
+  #         - Effect: Allow
+  #           Principal: '*'
+  #           Action:
+  #             - lambda:InvokeFunction
+  #           Resource: '*'
+  #     PrivateDnsEnabled: true
 
   # S3 VPC Endpoint for CloudFormation responses
-  S3VPCEndpoint:
-    Type: AWS::EC2::VPCEndpoint
-    Properties:
-      VpcId:
-        Fn::ImportValue: !Sub '${VPCStackName}-VPCID'
-      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.s3'
-      VpcEndpointType: Gateway
-      RouteTableIds:
-        - Fn::ImportValue: !Sub '${VPCStackName}-PrivateRouteTable'
-      PolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Principal: '*'
-            Action:
-              - s3:GetObject
-              - s3:PutObject
-            Resource:
-              - 'arn:aws:s3:::cloudformation-custom-resource-response-*/*'
-
   # CloudFormation VPC Endpoint
-  CloudFormationVPCEndpoint:
-    Type: AWS::EC2::VPCEndpoint
-    Properties:
-      VpcId:
-        Fn::ImportValue: !Sub '${VPCStackName}-VPCID'
-      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.cloudformation'
-      VpcEndpointType: Interface
-      SubnetIds:
-        - Fn::ImportValue: !Sub '${VPCStackName}-PrivateSubnet2'
-        - Fn::ImportValue: !Sub '${VPCStackName}-PrivateSubnet4'
-      SecurityGroupIds:
-        - !Ref VPCEndpointSecurityGroup
-      PolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Principal: '*'
-            Action:
-              - cloudformation:SignalResource
-              - cloudformation:DescribeStacks
-              - cloudformation:DescribeStackEvents
-            Resource: '*'
-      PrivateDnsEnabled: true
+  # CloudFormationVPCEndpoint:
+  #   Type: AWS::EC2::VPCEndpoint
+  #   Properties:
+  #     VpcId:
+  #       Fn::ImportValue: !Sub '${VPCStackName}-VPCID'
+  #     ServiceName: !Sub 'com.amazonaws.${AWS::Region}.cloudformation'
+  #     VpcEndpointType: Interface
+  #     SubnetIds:
+  #       - Fn::ImportValue: !Sub '${VPCStackName}-PrivateSubnet2'
+  #       - Fn::ImportValue: !Sub '${VPCStackName}-PrivateSubnet4'
+  #     SecurityGroupIds:
+  #       - !Ref VPCEndpointSecurityGroup
+  #     PolicyDocument:
+  #       Version: '2012-10-17'
+  #       Statement:
+  #         - Effect: Allow
+  #           Principal: '*'
+  #           Action:
+  #             - cloudformation:SignalResource
+  #             - cloudformation:DescribeStacks
+  #             - cloudformation:DescribeStackEvents
+  #           Resource: '*'
+  #     PrivateDnsEnabled: true
 
   # DB Subnet Group
   DBSubnetGroup:
@@ -744,9 +630,7 @@ Resources:
       - Psycopg2Layer
       - SecretsManagerVPCEndpoint
       - CloudWatchLogsVPCEndpoint
-      - LambdaVPCEndpoint
       - S3VPCEndpoint
-      - CloudFormationVPCEndpoint
       - AuroraInstance1
     Properties:
       FunctionName: !Sub '${AWS::StackName}-load-mock-data'
@@ -849,7 +733,7 @@ Resources:
                       'database': os.environ['DB_NAME'],
                       'user': secret['username'],
                       'password': secret['password'],
-                      'port': 5432,
+                      'port': 3306,
                       'connect_timeout': 10
                   }
 

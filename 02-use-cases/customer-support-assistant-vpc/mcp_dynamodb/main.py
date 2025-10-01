@@ -2,6 +2,7 @@ from fastmcp import FastMCP
 import boto3
 import logging
 from botocore.config import Config
+from opentelemetry import trace
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -15,6 +16,8 @@ boto_config = Config(
 # Initialize AWS clients with timeouts
 ssm = boto3.client("ssm", config=boto_config)
 dynamodb = boto3.resource("dynamodb", config=boto_config)
+
+tracer = trace.get_tracer("customer_support_vpc_mcp", "1.0.0")
 
 
 def get_table_names():
@@ -61,18 +64,27 @@ def get_reviews(review_id: str):
     """
     Fetch a single review by review_id
     """
-    try:
-        logger.info(f"Fetching review with ID: {review_id}")
-        response = reviews_table.get_item(Key={"review_id": review_id})
-        item = response.get("Item")
-        if not item:
-            logger.warning(f"Review not found: {review_id}")
-            return {"error": "Review not found"}
-        logger.info(f"Successfully fetched review: {review_id}")
-        return item
-    except Exception as e:
-        logger.error(f"Error fetching review {review_id}: {str(e)}")
-        return {"error": str(e)}
+    with tracer.start_as_current_span("get_reviews") as span:
+        span.set_attribute("tool.name", "get_reviews")
+        span.set_attribute("review_id", review_id)
+        span.set_attribute("db.system", "dynamodb")
+        span.set_attribute("db.table", table_names["reviews"])
+        try:
+            logger.info(f"Fetching review with ID: {review_id}")
+            response = reviews_table.get_item(Key={"review_id": review_id})
+            item = response.get("Item")
+            if not item:
+                logger.warning(f"Review not found: {review_id}")
+                span.set_attribute("result.found", False)
+                return {"error": "Review not found"}
+            logger.info(f"Successfully fetched review: {review_id}")
+            span.set_attribute("result.found", True)
+            return item
+        except Exception as e:
+            logger.error(f"Error fetching review {review_id}: {str(e)}")
+            span.set_attribute("error", True)
+            span.set_attribute("error.message", str(e))
+            return {"error": str(e)}
 
 
 @mcp.tool
@@ -80,18 +92,27 @@ def get_products(product_id: int):
     """
     Fetch a single product by product_id
     """
-    try:
-        logger.info(f"Fetching product with ID: {product_id}")
-        response = products_table.get_item(Key={"product_id": product_id})
-        item = response.get("Item")
-        if not item:
-            logger.warning(f"Product not found: {product_id}")
-            return {"error": "Product not found"}
-        logger.info(f"Successfully fetched product: {product_id}")
-        return item
-    except Exception as e:
-        logger.error(f"Error fetching product {product_id}: {str(e)}")
-        return {"error": str(e)}
+    with tracer.start_as_current_span("get_products") as span:
+        span.set_attribute("tool.name", "get_products")
+        span.set_attribute("product_id", product_id)
+        span.set_attribute("db.system", "dynamodb")
+        span.set_attribute("db.table", table_names["products"])
+        try:
+            logger.info(f"Fetching product with ID: {product_id}")
+            response = products_table.get_item(Key={"product_id": product_id})
+            item = response.get("Item")
+            if not item:
+                logger.warning(f"Product not found: {product_id}")
+                span.set_attribute("result.found", False)
+                return {"error": "Product not found"}
+            logger.info(f"Successfully fetched product: {product_id}")
+            span.set_attribute("result.found", True)
+            return item
+        except Exception as e:
+            logger.error(f"Error fetching product {product_id}: {str(e)}")
+            span.set_attribute("error", True)
+            span.set_attribute("error.message", str(e))
+            return {"error": str(e)}
 
 
 # @mcp.tool
