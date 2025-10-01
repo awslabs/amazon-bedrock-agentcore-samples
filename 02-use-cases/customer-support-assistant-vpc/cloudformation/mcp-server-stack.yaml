@@ -351,6 +351,14 @@ Resources:
                   - bedrock-agentcore:UpdateAgentRuntime
                   - bedrock-agentcore:UpdateAgentRuntimeEndpoint
                 Resource: '*'
+        - PolicyName: IAMPassRole
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - iam:PassRole
+                Resource: !GetAtt MCPDynamoDBRuntimeExecutionRole.Arn
       Tags:
         - Key: Name
           Value: !Sub '${AWS::StackName}-ECR-Notification-Role'
@@ -415,7 +423,7 @@ Resources:
                   logger.info(f"Getting current runtime configuration for: {agent_runtime_id}")
                   get_response = client.get_agent_runtime(agentRuntimeId=agent_runtime_id)
 
-                  logger.info(f"Current runtime status: {get_response.get('status')}")
+                  logger.info(f"Current runtime status: {get_response}")
 
                   # Build new container URI with the pushed image tag
                   new_container_uri = f"{ecr_repository_uri}:{image_tag}"
@@ -431,12 +439,11 @@ Resources:
                           }
                       },
                       roleArn=role_arn,
-                      networkConfiguration=get_response.get('networkConfiguration', {'networkMode': 'PUBLIC'}),
-                      protocolConfiguration=get_response.get('protocolConfiguration', 'MCP'),
-                      authorizerConfiguration=get_response.get('authorizerConfiguration', {})
+                      networkConfiguration=get_response['networkConfiguration'],
+                      protocolConfiguration=get_response['protocolConfiguration'],
                   )
 
-                  logger.info(f"Runtime updated successfully. New version: {update_response.get('agentRuntimeVersion')}")
+                  logger.info(f"Runtime updated successfully. New version: {update_response['agentRuntimeVersion']}")
 
                   return {
                       'statusCode': 200,
@@ -444,7 +451,7 @@ Resources:
                           'message': 'AgentCore Runtime updated successfully',
                           'newContainerUri': new_container_uri,
                           'runtimeId': agent_runtime_id,
-                          'newVersion': update_response.get('agentRuntimeVersion')
+                          'newVersion': update_response['agentRuntimeVersion']
                       })
                   }
 

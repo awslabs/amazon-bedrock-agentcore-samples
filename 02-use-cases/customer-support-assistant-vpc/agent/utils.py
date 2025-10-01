@@ -1,8 +1,7 @@
 import boto3
 import json
-import yaml
-import os
-from typing import Dict, Any
+import requests
+from typing import Dict
 
 
 def get_ssm_parameter(name: str, with_decryption: bool = True) -> str:
@@ -13,58 +12,50 @@ def get_ssm_parameter(name: str, with_decryption: bool = True) -> str:
     return response["Parameter"]["Value"]
 
 
-def put_ssm_parameter(
-    name: str, value: str, parameter_type: str = "String", with_encryption: bool = False
-) -> None:
-    ssm = boto3.client("ssm")
+def get_secret(secret_name: str) -> Dict:
+    """Get secret from AWS Secrets Manager"""
+    client = boto3.client("secretsmanager")
 
-    put_params = {
-        "Name": name,
-        "Value": value,
-        "Type": parameter_type,
-        "Overwrite": True,
+    response = client.get_secret_value(SecretId=secret_name)
+
+    return json.loads(response["SecretString"])
+
+
+def get_gateway_access_token() -> str:
+    """
+    Get OAuth2 access token from Cognito for gateway access
+
+    Returns:
+        str: Access token
+    """
+    # Get credentials from Secrets Manager
+    secret_name = "agentcore-cognito-m2m-stack/agent/client-config"
+    secret = get_secret(secret_name)
+
+    # Extract values from secret
+    token_endpoint = secret["token_endpoint"]
+    client_id = secret["client_id"]
+    client_secret = secret["client_secret"]
+    scope = secret.get("scope", "")
+
+    # Prepare request
+    headers = {
+        "Content-Type": "application/x-www-form-urlencoded"
     }
 
-    if with_encryption:
-        put_params["Type"] = "SecureString"
+    data = {
+        "grant_type": "client_credentials",
+        "client_id": client_id,
+        "client_secret": client_secret,
+    }
 
-    ssm.put_parameter(**put_params)
+    if scope:
+        data["scope"] = scope
 
+    # Make token request
+    response = requests.post(token_endpoint, headers=headers, data=data)
+    response.raise_for_status()
 
-def delete_ssm_parameter(name: str) -> None:
-    ssm = boto3.client("ssm")
-    try:
-        ssm.delete_parameter(Name=name)
-    except ssm.exceptions.ParameterNotFound:
-        pass
+    token_response = response.json()
 
-
-def load_api_spec(file_path: str) -> list:
-    with open(file_path, "r") as f:
-        data = json.load(f)
-    if not isinstance(data, list):
-        raise ValueError("Expected a list in the JSON file")
-    return data
-
-
-def get_aws_region() -> str:
-    session = boto3.session.Session()
-    if not session.region_name:
-        raise Exception("Region not configured")
-    return session.region_name
-
-
-def get_aws_account_id() -> str:
-    sts = boto3.client("sts")
-    if not sts.get_caller_identity()["Account"]:
-        raise Exception("Account not configured")
-    return sts.get_caller_identity()["Account"]
-
-
-def get_cognito_client_secret() -> str:
-    client = boto3.client("cognito-idp")
-    response = client.describe_user_pool_client(
-        UserPoolId=get_ssm_parameter("/app/customersupport/agentcore/userpool_id"),
-        ClientId=get_ssm_parameter("/app/customersupport/agentcore/machine_client_id"),
-    )
-    return response["UserPoolClient"]["ClientSecret"]
+    return token_response["access_token"]

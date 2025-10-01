@@ -481,6 +481,57 @@ Resources:
             Resource:
               - 'arn:aws:s3:::cloudformation-custom-resource-response-*/*'
 
+  # VPC Endpoint for Bedrock AgentCore
+  BedrockAgentCoreVPCEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref VPC
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.bedrock-agentcore'
+      VpcEndpointType: Interface
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+        - !Ref PrivateSubnet3
+      SecurityGroupIds:
+        - !Ref VPCEndpointSecurityGroup
+      PrivateDnsEnabled: true
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: '*'
+            Action:
+              - bedrock-agentcore:InvokeAgentRuntime
+            Resource: !Sub 'arn:aws:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:runtime/*'
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-BedrockAgentCore-VPCEndpoint'
+
+  # VPC Endpoint for Bedrock AgentCore Gateway
+  BedrockAgentCoreGatewayVPCEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref VPC
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.bedrock-agentcore.gateway'
+      VpcEndpointType: Interface
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+        - !Ref PrivateSubnet3
+      SecurityGroupIds:
+        - !Ref VPCEndpointSecurityGroup
+      PrivateDnsEnabled: true
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: '*'
+            Action: '*'
+            Resource: !Sub 'arn:aws:bedrock-agentcore:${AWS::Region}::gateway/*'
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-BedrockAgentCoreGateway-VPCEndpoint'
+
   # VPC Endpoint for STS
   # STSVPCEndpoint:
   #   Type: AWS::EC2::VPCEndpoint
