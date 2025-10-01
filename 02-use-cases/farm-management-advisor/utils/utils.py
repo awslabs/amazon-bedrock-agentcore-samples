@@ -193,21 +193,34 @@ def create_agentcore_role(agent_name):
         )
         for policy_name in inline_policies['PolicyNames']:
             print(f"  Deleting: {policy_name}")
-            iam_client.delete_role_policy(
-                RoleName=agentcore_role_name,
-                PolicyName=policy_name
-            )
+            try:
+                iam_client.delete_role_policy(
+                    RoleName=agentcore_role_name,
+                    PolicyName=policy_name
+                )
+            
+            except iam_client.exceptions.NoSuchEntityException:
+                print(f"  Policy {policy_name} already deleted")
             
         print("policies:", policies)
         for policy_name in policies['PolicyNames']:
-            iam_client.delete_role_policy(
-                RoleName=agentcore_role_name,
-                PolicyName=policy_name
+            try:
+                iam_client.delete_role_policy(
+                    RoleName=agentcore_role_name,
+                    PolicyName=policy_name
+                )
+                print(f"deleting {agentcore_role_name}")
+
+            except iam_client.exceptions.NoSuchEntityException:
+                print(f"  role {policy_name} already deleted")
+
+        try:
+            iam_client.delete_role(
+                RoleName=agentcore_role_name
             )
-        print(f"deleting {agentcore_role_name}")
-        iam_client.delete_role(
-            RoleName=agentcore_role_name
-        )
+        except iam_client.exceptions.NoSuchEntityException:
+            print(f"  role {agentcore_role_name} already deleted")
+        
         print(f"recreating {agentcore_role_name}")
         agentcore_iam_role = iam_client.create_role(
             RoleName=agentcore_role_name,
@@ -232,24 +245,70 @@ def create_agentcore_role(agent_name):
     return agentcore_iam_role
 
 def create_agentcore_mem_role(agent_mem_name):
-
     role_name = f'agentcore-mem-{agent_mem_name}-role'
-    
-    # Define trust policy
+    policy_name = f'agentcore-mem-{agent_mem_name}-policy'
+
+    role_mem_policy = {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Effect": "Allow",
+                "Action": [
+                    "bedrock-agentcore:CreateMemory",
+                    "bedrock-agentcore:GetMemory",
+                    "bedrock-agentcore:UpdateMemory",
+                    "bedrock-agentcore:DeleteMemory",
+                    "bedrock-agentcore:SaveConversation",
+                    "bedrock-agentcore:ListEvents",
+                    "bedrock-agentcore:CreateEvent"
+                ],
+                "Resource": "*"
+            },
+            {
+                "Effect": "Allow", 
+                "Action": [
+                    "kms:Decrypt",
+                    "kms:GenerateDataKey"
+                ],
+                "Resource": "*"
+            },
+            {
+                "Effect": "Allow",
+                "Action": [
+                    "bedrock:InvokeModel",
+                    "bedrock:InvokeModelWithResponseStream"
+                ],
+                "Resource": "*"
+            }
+        ]
+    }
+
     trust_policy = {
         "Version": "2012-10-17",
         "Statement": [
             {
                 "Effect": "Allow",
                 "Principal": {
-                    "Service": "bedrock.amazonaws.com"
+                    "Service": "bedrock-agentcore.amazonaws.com"
                 },
                 "Action": "sts:AssumeRole"
             }
         ]
     }
 
-    
+    try:
+        # Create the managed policy
+        policy_response = iam_client.create_policy(
+            PolicyName=policy_name,
+            PolicyDocument=json.dumps(role_mem_policy),
+            Description="Policy for Bedrock Agent Core Memory operations"
+        )
+        policy_arn = policy_response['Policy']['Arn']
+        
+    except iam_client.exceptions.EntityAlreadyExistsException:
+        # Policy already exists, get its ARN
+        policy_arn = f"arn:aws:iam::{account_id}:policy/{policy_name}"
+
     try:
         response = iam_client.create_role(
             RoleName=role_name,
@@ -257,22 +316,38 @@ def create_agentcore_mem_role(agent_mem_name):
             Description="Role for Bedrock Agent Core Memory operations"
         )
         
-        # Attach the managed policy
+        # Attach both policies
         iam_client.attach_role_policy(
             RoleName=role_name,
             PolicyArn="arn:aws:iam::aws:policy/AmazonBedrockAgentCoreMemoryBedrockModelInferenceExecutionRolePolicy"
         )
         
+        iam_client.attach_role_policy(
+            RoleName=role_name,
+            PolicyArn=policy_arn
+        )
+        
         role_arn = response['Role']['Arn']
         print(f"Role created successfully: {role_arn}")
+
+        # Wait for role to propagate
+        time.sleep(10)
+     
         
     except iam_client.exceptions.EntityAlreadyExistsException:
-        # Role already exists, get its ARN
         response = iam_client.get_role(RoleName=role_name)
         role_arn = response['Role']['Arn']
         print(f"Role already exists: {role_arn}")
+        
+        # Attach the custom policy to existing role
+        iam_client.attach_role_policy(
+            RoleName=role_name,
+            PolicyArn=policy_arn
+        )
 
     return role_arn
+
+
 
 
 

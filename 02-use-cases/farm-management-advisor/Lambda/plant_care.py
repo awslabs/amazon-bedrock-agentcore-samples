@@ -6,7 +6,7 @@ def lambda_handler(event, context):
         plant_name = event.get('plant_name', 'unknown')
         health_status = event.get('health_status', 'healthy')
         
-        bedrock = boto3.client("bedrock-runtime", region_name="us-east-1")
+        bedrock = boto3.client("bedrock-runtime", region_name="us-west-2")
         prompt = f"Provide care advice for {plant_name} with status: {health_status}"
         
         response = bedrock.converse(

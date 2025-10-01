@@ -95,15 +95,18 @@ Include detailed information on:
 7) Companion planting suggestions"""
 
         # Use Nova to process the prompt
-        bedrock = boto3.client("bedrock-runtime", region_name="us-east-1")
+        bedrock = boto3.client("bedrock-runtime", region_name="us-west-2")
         
         response = bedrock.converse(
             modelId="us.amazon.nova-pro-v1:0",
             messages=[{"role": "user", "content": [{"text": prompt}]}],
             inferenceConfig={"temperature": 0.1, "maxTokens": 1500}
         )
+        print("✅ Using Nova results")
+        print(response)
         
         web_advice = response['output']['message']['content'][0]['text']
+        print("web_advice :  ", web_advice)
         
         return {
             'statusCode': 200,

@@ -5,7 +5,7 @@ import boto3
 import os
 
 model_id="us.amazon.nova-pro-v1:0"
-region = 'us-east-1'
+region = 'us-west-2'
 bedrock = boto3.client('bedrock-runtime', region_name=region)
 
 def fallback_to_bedrock(query):

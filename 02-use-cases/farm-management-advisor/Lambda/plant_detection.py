@@ -87,6 +87,8 @@ def lambda_handler(event, context):
             parsed = json.loads(json_part)
         except:
             parsed = {"plant_type": "unknown", "health_analysis": "Parse error"}
+
+        print("PARSED:  ", parsed)
         
         return {
             'statusCode': 200,
