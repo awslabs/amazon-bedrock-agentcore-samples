@@ -6,7 +6,6 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "bedrock-agentcore>=0.1.5",
-    "bedrock-agentcore-starter-toolkit>=0.1.14",
     "fastmcp>=2.12.3",
     "opentelemetry-api>=1.37.0",
     "opentelemetry-sdk>=1.37.0",

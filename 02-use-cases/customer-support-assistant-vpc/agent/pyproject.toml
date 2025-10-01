@@ -6,7 +6,6 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "bedrock-agentcore>=0.1.4",
-    "bedrock-agentcore-starter-toolkit>=0.1.12",
     "strands-agents>=1.9.1",
     "strands-agents-tools>=0.2.8",
 ]

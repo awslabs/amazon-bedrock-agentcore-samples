@@ -1,5 +1,5 @@
-from agent.context import CustomerSupportContext
-from agent.utils import get_ssm_parameter
+from context import CustomerSupportContext
+from utils import get_ssm_parameter
 from bedrock_agentcore.identity.auth import requires_access_token
 from bedrock_agentcore.runtime import BedrockAgentCoreApp
 from mcp.client.streamable_http import streamablehttp_client
