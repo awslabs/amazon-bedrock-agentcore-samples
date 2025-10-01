@@ -12,6 +12,11 @@ Parameters:
     Default: 'customer-support-vpc-CognitoStack'
     Description: 'Name of the Cognito stack to reference for client configuration'
 
+  ModelID:
+    Type: String
+    Default: 'us.anthropic.claude-3-5-haiku-20241022-v1:0'
+    Description: 'Name of the model to use with Agent'
+
 Resources:
   # ECR Repository for Agent Docker Images
   AgentECRRepository:
@@ -133,6 +138,7 @@ Resources:
                   - !Sub
                     - 'arn:aws:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:workload-identity-directory/default/workload-identity/${StackName}*'
                     - StackName: !Join ['', !Split ['-', !Ref 'AWS::StackName']]
+              - Sid: BedrockModelAccess
                 Effect: Allow
                 Action:
                   - bedrock:InvokeModel
@@ -333,9 +339,9 @@ Resources:
       Timeout: 300
       Environment:
         Variables:
-          AGENT_RUNTIME_ID: !GetAtt MCPDynamoDBRuntime.AgentRuntimeId
-          ECR_REPOSITORY_URI: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${MCPDynamoDBECRRepository}'
-          ROLE_ARN: !GetAtt MCPDynamoDBRuntimeExecutionRole.Arn
+          AGENT_RUNTIME_ID: !GetAtt AgentRuntime.AgentRuntimeId
+          ECR_REPOSITORY_URI: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${AgentECRRepository}'
+          ROLE_ARN: !GetAtt AgentCoreRuntimeExecutionRole.Arn
       Code:
         ZipFile: |
           import json
@@ -788,6 +794,8 @@ Resources:
                 Fn::ImportValue: !Sub '${CognitoStackName}-UserPoolId'
           AllowedClients:
             - Fn::ImportValue: !Sub '${CognitoStackName}-AgentClientId'
+      EnvironmentVariables:
+        MODEL_ID: !Ref ModelID
       Tags:
         Name: !Sub '${AWS::StackName}-Agent-Runtime'
         Purpose: 'AgentCore Runtime'

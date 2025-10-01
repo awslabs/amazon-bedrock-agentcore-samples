@@ -16,7 +16,8 @@ MODEL_ID = os.getenv("MODEL_ID", "us.anthropic.claude-3-5-haiku-20241022-v1:0")
 
 
 @requires_access_token(
-    provider_name="customer-support-gateway",
+    # TODO: Gateway provider name
+    provider_name="gateway-stack-gateway-provider",
     scopes=[],  # Optional unless required
     auth_flow="M2M",
 )
