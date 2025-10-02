@@ -433,6 +433,7 @@ Resources:
                   # Update the runtime with the new container image
                   update_response = client.update_agent_runtime(
                       agentRuntimeId=agent_runtime_id,
+                      description=get_response['description'],
                       agentRuntimeArtifact={
                           'containerConfiguration': {
                               'containerUri': new_container_uri
@@ -441,7 +442,9 @@ Resources:
                       roleArn=role_arn,
                       networkConfiguration=get_response['networkConfiguration'],
                       protocolConfiguration=get_response['protocolConfiguration'],
-                      authorizerConfiguration=get_response['authorizerConfiguration']
+                      authorizerConfiguration=get_response['authorizerConfiguration'],
+                      environmentVariables=get_response['environmentVariables'],
+                      requestHeaderConfiguration=get_response['environmentVariables'],
                   )
 
                   logger.info(f"Runtime updated successfully. New version: {update_response['agentRuntimeVersion']}")
