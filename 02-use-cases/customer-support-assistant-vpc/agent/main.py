@@ -191,7 +191,7 @@ async def lifespan(app):
 app = BedrockAgentCoreApp(lifespan=lifespan)
 
 
-@app.middleware
+@app.middleware("http")
 async def initialization_middleware(request, call_next):
     """Middleware to initialize clients on first request."""
     await initialize_clients()
