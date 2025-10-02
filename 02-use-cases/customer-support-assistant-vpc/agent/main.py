@@ -6,6 +6,7 @@ from typing import Optional
 
 from bedrock_agentcore.identity.auth import requires_access_token
 from bedrock_agentcore.runtime import BedrockAgentCoreApp
+from bedrock_agentcore.runtime.context import BedrockAgentCoreContext
 from mcp.client.streamable_http import streamablehttp_client
 from strands import Agent
 from strands.models import BedrockModel
@@ -44,7 +45,9 @@ def get_gateway_url() -> str:
     global _gateway_url
     if _gateway_url is None:
         try:
-            _gateway_url = get_ssm_parameter("/app/customersupportvpc/gateway/gateway_url")
+            _gateway_url = get_ssm_parameter(
+                "/app/customersupportvpc/gateway/gateway_url"
+            )
             logger.info("Gateway URL loaded from SSM")
         except Exception as e:
             logger.error(f"Failed to load gateway URL from SSM: {e}")
@@ -141,7 +144,9 @@ async def initialize_clients():
     logger.info("Listing tools from clients")
     gateway_tools = gateway_client.list_tools_sync()
     mcp_tools = mcp_client.list_tools_sync()
-    logger.info(f"Loaded {len(gateway_tools)} gateway tools and {len(mcp_tools)} MCP tools")
+    logger.info(
+        f"Loaded {len(gateway_tools)} gateway tools and {len(mcp_tools)} MCP tools"
+    )
 
     # Initialize agent
     logger.info(f"Initializing agent with model: {MODEL_ID}")
@@ -194,6 +199,10 @@ app = BedrockAgentCoreApp(lifespan=lifespan)
 @app.middleware("http")
 async def initialization_middleware(request, call_next):
     """Middleware to initialize clients on first request."""
+    headers = request.headers
+    agent_identity_token = headers.get("WorkloadAccessToken")
+    if agent_identity_token:
+        BedrockAgentCoreContext.set_workload_access_token(agent_identity_token)
     await initialize_clients()
     return await call_next(request)
 
