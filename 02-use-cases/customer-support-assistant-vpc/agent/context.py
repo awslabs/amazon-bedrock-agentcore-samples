@@ -1,5 +1,5 @@
 from contextvars import ContextVar
-from typing import Optional
+from typing import Optional, Any
 from strands import Agent
 
 
@@ -9,18 +9,18 @@ class CustomerSupportContext:
     # Global state for tokens that persist across agent calls
     _mcp_token: Optional[str] = None
     _gateway_token: Optional[str] = None
-    # _response_queue: Optional[asyncio.Queue] = None
     _agent: Optional[Agent] = None
+    _mcp_client: Optional[Any] = None
+    _gateway_client: Optional[Any] = None
 
     # Context variables for application state
     _mcp_token_ctx: ContextVar[Optional[str]] = ContextVar("mcp_token", default=None)
     _gateway_token_ctx: ContextVar[Optional[str]] = ContextVar(
         "gateway_token", default=None
     )
-    # _response_queue_ctx: ContextVar[Optional[asyncio.Queue]] = ContextVar(
-    #     "response_queue", default=None
-    # )
     _agent_ctx: ContextVar[Optional[Agent]] = ContextVar("agent", default=None)
+    _mcp_client_ctx: ContextVar[Optional[Any]] = ContextVar("mcp_client", default=None)
+    _gateway_client_ctx: ContextVar[Optional[Any]] = ContextVar("gateway_client", default=None)
 
     @classmethod
     def get_mcp_token_ctx(
@@ -93,3 +93,35 @@ class CustomerSupportContext:
         # Set both global state and context variable
         cls._agent = agent
         cls._agent_ctx.set(agent)
+
+    @classmethod
+    def get_mcp_client_ctx(cls) -> Optional[Any]:
+        # First try to get from global state for persistence across calls
+        if cls._mcp_client:
+            return cls._mcp_client
+        try:
+            return cls._mcp_client_ctx.get()
+        except LookupError:
+            return None
+
+    @classmethod
+    def set_mcp_client_ctx(cls, client: Any) -> None:
+        # Set both global state and context variable
+        cls._mcp_client = client
+        cls._mcp_client_ctx.set(client)
+
+    @classmethod
+    def get_gateway_client_ctx(cls) -> Optional[Any]:
+        # First try to get from global state for persistence across calls
+        if cls._gateway_client:
+            return cls._gateway_client
+        try:
+            return cls._gateway_client_ctx.get()
+        except LookupError:
+            return None
+
+    @classmethod
+    def set_gateway_client_ctx(cls, client: Any) -> None:
+        # Set both global state and context variable
+        cls._gateway_client = client
+        cls._gateway_client_ctx.set(client)

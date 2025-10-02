@@ -82,83 +82,85 @@ async def get_mcp_access_token(access_token: str) -> str:
     return access_token
 
 
+async def initialize_clients():
+    """Initialize MCP clients and agent. Called by middleware on first request."""
+    agent = CustomerSupportContext.get_agent_ctx()
+
+    # Check if agent already initialized
+    if agent is not None:
+        logger.info("Agent already initialized, skipping setup")
+        return
+
+    # Get or fetch access tokens
+    gateway_access_token = CustomerSupportContext.get_gateway_token_ctx()
+    if not gateway_access_token:
+        logger.info("Fetching gateway access token")
+        gateway_access_token = await get_gateway_access_token()
+        CustomerSupportContext.set_gateway_token_ctx(gateway_access_token)
+
+    mcp_access_token = CustomerSupportContext.get_mcp_token_ctx()
+    if not mcp_access_token:
+        logger.info("Fetching MCP access token")
+        mcp_access_token = await get_mcp_access_token()
+        CustomerSupportContext.set_mcp_token_ctx(mcp_access_token)
+
+    # Validate tokens
+    if not gateway_access_token:
+        raise RuntimeError("Failed to obtain gateway access token")
+    if not mcp_access_token:
+        raise RuntimeError("Failed to obtain MCP access token")
+
+    # Initialize MCP clients
+    logger.info("Initializing MCP clients")
+    mcp_url = get_mcp_url()
+    gateway_url = get_gateway_url()
+
+    mcp_client = MCPClient(
+        lambda: streamablehttp_client(
+            url=mcp_url,
+            headers={"Authorization": f"Bearer {mcp_access_token}"},
+        )
+    )
+
+    gateway_client = MCPClient(
+        lambda: streamablehttp_client(
+            url=gateway_url,
+            headers={"Authorization": f"Bearer {gateway_access_token}"},
+        )
+    )
+
+    # Start clients and list tools
+    logger.info("Starting MCP clients")
+    gateway_client.start()
+    mcp_client.start()
+
+    # Store clients in context
+    CustomerSupportContext.set_mcp_client_ctx(mcp_client)
+    CustomerSupportContext.set_gateway_client_ctx(gateway_client)
+
+    logger.info("Listing tools from clients")
+    gateway_tools = gateway_client.list_tools_sync()
+    mcp_tools = mcp_client.list_tools_sync()
+    logger.info(f"Loaded {len(gateway_tools)} gateway tools and {len(mcp_tools)} MCP tools")
+
+    # Initialize agent
+    logger.info(f"Initializing agent with model: {MODEL_ID}")
+    model = BedrockModel(model_id=MODEL_ID)
+    agent = Agent(
+        model=model,
+        tools=gateway_tools + mcp_tools,
+        system_prompt="You're a helpful customer support assistant",
+    )
+
+    CustomerSupportContext.set_agent_ctx(agent)
+    logger.info("Agent initialized successfully")
+
+
 @asynccontextmanager
 async def lifespan(app):
     """Application lifespan manager for startup and cleanup."""
-    mcp_client = None
-    gateway_client = None
-
     try:
-        # Startup
-        logger.info("Starting application lifespan")
-        agent = CustomerSupportContext.get_agent_ctx()
-
-        # Check if agent already initialized
-        if agent is not None:
-            logger.info("Agent already initialized, skipping setup")
-            yield
-            return
-
-        # Get or fetch access tokens
-        gateway_access_token = CustomerSupportContext.get_gateway_token_ctx()
-        if not gateway_access_token:
-            logger.info("Fetching gateway access token")
-            gateway_access_token = await get_gateway_access_token()
-            CustomerSupportContext.set_gateway_token_ctx(gateway_access_token)
-
-        mcp_access_token = CustomerSupportContext.get_mcp_token_ctx()
-        if not mcp_access_token:
-            logger.info("Fetching MCP access token")
-            mcp_access_token = await get_mcp_access_token()
-            CustomerSupportContext.set_mcp_token_ctx(mcp_access_token)
-
-        # Validate tokens
-        if not gateway_access_token:
-            raise RuntimeError("Failed to obtain gateway access token")
-        if not mcp_access_token:
-            raise RuntimeError("Failed to obtain MCP access token")
-
-        # Initialize MCP clients
-        logger.info("Initializing MCP clients")
-        mcp_url = get_mcp_url()
-        gateway_url = get_gateway_url()
-
-        mcp_client = MCPClient(
-            lambda: streamablehttp_client(
-                url=mcp_url,
-                headers={"Authorization": f"Bearer {mcp_access_token}"},
-            )
-        )
-
-        gateway_client = MCPClient(
-            lambda: streamablehttp_client(
-                url=gateway_url,
-                headers={"Authorization": f"Bearer {gateway_access_token}"},
-            )
-        )
-
-        # Start clients and list tools
-        logger.info("Starting MCP clients")
-        gateway_client.start()
-        mcp_client.start()
-
-        logger.info("Listing tools from clients")
-        gateway_tools = gateway_client.list_tools_sync()
-        mcp_tools = mcp_client.list_tools_sync()
-        logger.info(f"Loaded {len(gateway_tools)} gateway tools and {len(mcp_tools)} MCP tools")
-
-        # Initialize agent
-        logger.info(f"Initializing agent with model: {MODEL_ID}")
-        model = BedrockModel(model_id=MODEL_ID)
-        agent = Agent(
-            model=model,
-            tools=gateway_tools + mcp_tools,
-            system_prompt="You're a helpful customer support assistant",
-        )
-
-        CustomerSupportContext.set_agent_ctx(agent)
-        logger.info("Agent initialized successfully")
-
+        logger.info("Application starting")
         yield  # Application runs here
 
     except Exception as e:
@@ -168,6 +170,8 @@ async def lifespan(app):
     finally:
         # Cleanup
         logger.info("Cleaning up resources")
+
+        mcp_client = CustomerSupportContext.get_mcp_client_ctx()
         if mcp_client is not None:
             try:
                 mcp_client.stop()
@@ -175,6 +179,7 @@ async def lifespan(app):
             except Exception as e:
                 logger.error(f"Error stopping MCP client: {e}")
 
+        gateway_client = CustomerSupportContext.get_gateway_client_ctx()
         if gateway_client is not None:
             try:
                 gateway_client.stop()
@@ -184,6 +189,13 @@ async def lifespan(app):
 
 
 app = BedrockAgentCoreApp(lifespan=lifespan)
+
+
+@app.middleware
+async def initialization_middleware(request, call_next):
+    """Middleware to initialize clients on first request."""
+    await initialize_clients()
+    return await call_next(request)
 
 
 @app.entrypoint
