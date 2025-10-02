@@ -431,6 +431,9 @@ Resources:
               - secretsmanager:DescribeSecret
             Resource: '*'
       PrivateDnsEnabled: true
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-SecretsManager-VPCEndpoint'
 
   # VPC Endpoint for RDS Data API
   RDSDataVPCEndpoint:
@@ -480,7 +483,10 @@ Resources:
               - s3:PutObject
             Resource:
               - 'arn:aws:s3:::cloudformation-custom-resource-response-*/*'
-
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-S3-VPCEndpoint'
+          
   # VPC Endpoint for Bedrock AgentCore
   BedrockAgentCoreVPCEndpoint:
     Type: AWS::EC2::VPCEndpoint
@@ -561,6 +567,27 @@ Resources:
   #         Value: !Sub '${AWS::StackName}-STS-VPCEndpoint'
 
   # Security Group for MCP Runtime
+  AgentRuntimeSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: 'Security group for Agent Runtime'
+      VpcId: !Ref VPC
+      SecurityGroupIngress: []
+      SecurityGroupEgress: []
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-AgentRuntime-SG'
+
+  AgentRuntimeToVPCEndpointRule:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      GroupId: !Ref AgentRuntimeSecurityGroup
+      IpProtocol: tcp
+      FromPort: 443
+      ToPort: 443
+      DestinationSecurityGroupId: !Ref VPCEndpointSecurityGroup
+      Description: 'HTTPS access to VPC Endpoint Security Group'
+
   MCPRuntimeSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
@@ -572,6 +599,7 @@ Resources:
         - Key: Name
           Value: !Sub '${AWS::StackName}-MCPRuntime-SG'
 
+  
   # Security Group Rule: Allow MCP Runtime to access VPC Endpoints
   MCPRuntimeToVPCEndpointRule:
     Type: AWS::EC2::SecurityGroupEgress

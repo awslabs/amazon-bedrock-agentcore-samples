@@ -17,6 +17,8 @@ Resources:
       AutoVerifiedAttributes:
         - email
       MfaConfiguration: 'OFF'
+      AdminCreateUserConfig:
+        AllowAdminCreateUserOnly: true
       AccountRecoverySetting:
         RecoveryMechanisms:
           - Name: verified_email

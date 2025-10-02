@@ -12,6 +12,16 @@ Parameters:
     Default: 'customer-support-vpc-CognitoStack'
     Description: 'Name of the Cognito stack to reference for client configuration'
 
+  MCPStackName:
+    Type: String
+    Default: 'customer-support-vpc-MCPStack'
+    Description: 'Name of the MCP stack to reference for MCP runtime ARN'
+
+  GatewayStackName:
+    Type: String
+    Default: 'gateway-stack'
+    Description: 'Name of the Gateway stack to reference for MCP ENV'
+
   ModelID:
     Type: String
     Default: 'us.anthropic.claude-3-5-haiku-20241022-v1:0'
@@ -146,6 +156,27 @@ Resources:
                 Resource:
                   - 'arn:aws:bedrock:*::foundation-model/*'
                   - !Sub 'arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:*'
+              - Sid: SSMParameterAccess
+                Effect: Allow
+                Action:
+                  - ssm:GetParameter
+                  - ssm:GetParameters
+                Resource:
+                  - !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/app/customersupportvpc/gateway/gateway_url'
+              - Sid: Oauth2Token
+                Effect: Allow
+                Action:
+                  - bedrock-agentcore:GetResourceOauth2Token
+                  # TODO: Scope down
+                Resource:
+                  - '*'
+              - Sid: SecretsManager
+                Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                  # TODO: Scope down
+                Resource:
+                  - '*'
       Tags:
         - Key: Name
           Value: !Sub '${AWS::StackName}-AgentCore-Runtime-Role'
@@ -403,6 +434,7 @@ Resources:
                       roleArn=role_arn,
                       networkConfiguration=get_response['networkConfiguration'],
                       protocolConfiguration=get_response['protocolConfiguration'],
+                      authorizerConfiguration=get_response['authorizerConfiguration']
                   )
 
                   logger.info(f"Runtime updated successfully. New version: {update_response['agentRuntimeVersion']}")
@@ -796,6 +828,11 @@ Resources:
             - Fn::ImportValue: !Sub '${CognitoStackName}-AgentClientId'
       EnvironmentVariables:
         MODEL_ID: !Ref ModelID
+        MCP_REGION: !Sub '${AWS::Region}'
+        MCP_ARN:
+          Fn::ImportValue: !Sub '${MCPStackName}-MCPDynamoDBRuntimeArn'
+        MCP_PROVIDER_NAME: !Sub 'MCPOAuth2Provider-${MCPStackName}'
+        GATEWAY_PROVIDER_NAME: !Sub 'GatewayOAuth2Provider-${GatewayStackName}'
       Tags:
         Name: !Sub '${AWS::StackName}-Agent-Runtime'
         Purpose: 'AgentCore Runtime'

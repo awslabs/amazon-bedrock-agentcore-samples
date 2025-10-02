@@ -813,7 +813,7 @@ Resources:
       ServiceToken: !GetAtt GatewayManagementFunction.Arn
       GatewayName: !Sub '${AWS::StackName}-customer-support-gateway'
       ExecutionRoleArn: !GetAtt GatewayAgentCoreRole.Arn
-      ProviderName: !Sub '${AWS::StackName}-gateway-provider'
+      ProviderName: !Sub 'GatewayOAuth2Provider-${AWS::StackName}'
       LambdaArn: !GetAtt CustomerSupportLambda.Arn
       GatewayClientId:
         Fn::ImportValue: !Sub '${CognitoStackName}-GatewayClientId'

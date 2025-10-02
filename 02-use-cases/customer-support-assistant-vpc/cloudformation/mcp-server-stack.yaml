@@ -441,6 +441,7 @@ Resources:
                       roleArn=role_arn,
                       networkConfiguration=get_response['networkConfiguration'],
                       protocolConfiguration=get_response['protocolConfiguration'],
+                      authorizerConfiguration=get_response['authorizerConfiguration']
                   )
 
                   logger.info(f"Runtime updated successfully. New version: {update_response['agentRuntimeVersion']}")

@@ -7,15 +7,13 @@ class CustomerSupportContext:
     """Context Manager for Customer Support Assistant"""
 
     # Global state for tokens that persist across agent calls
-    # _google_token: Optional[str] = None
+    _mcp_token: Optional[str] = None
     _gateway_token: Optional[str] = None
     # _response_queue: Optional[asyncio.Queue] = None
     _agent: Optional[Agent] = None
 
     # Context variables for application state
-    # _google_token_ctx: ContextVar[Optional[str]] = ContextVar(
-    #     "google_token", default=None
-    # )
+    _mcp_token_ctx: ContextVar[Optional[str]] = ContextVar("mcp_token", default=None)
     _gateway_token_ctx: ContextVar[Optional[str]] = ContextVar(
         "gateway_token", default=None
     )
@@ -24,23 +22,23 @@ class CustomerSupportContext:
     # )
     _agent_ctx: ContextVar[Optional[Agent]] = ContextVar("agent", default=None)
 
-    # @classmethod
-    # def get_google_token_ctx(
-    #     cls,
-    # ) -> Optional[str]:
-    #     # First try to get from global state for persistence across calls
-    #     if cls._google_token:
-    #         return cls._google_token
-    #     try:
-    #         return cls._google_token_ctx.get()
-    #     except LookupError:
-    #         return None
+    @classmethod
+    def get_mcp_token_ctx(
+        cls,
+    ) -> Optional[str]:
+        # First try to get from global state for persistence across calls
+        if cls._mcp_token:
+            return cls._mcp_token
+        try:
+            return cls._mcp_token_ctx.get()
+        except LookupError:
+            return None
 
-    # @classmethod
-    # def set_google_token_ctx(cls, token: str) -> None:
-    #     # Set both global state and context variable
-    #     cls._google_token = token
-    #     cls._google_token_ctx.set(token)
+    @classmethod
+    def set_mcp_token_ctx(cls, token: str) -> None:
+        # Set both global state and context variable
+        cls._mcp_token = token
+        cls._mcp_token_ctx.set(token)
 
     # @classmethod
     # def get_response_queue_ctx(
