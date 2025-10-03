@@ -1,0 +1,25 @@
+services:
+  marketing-research-agent:
+    build:
+      context: .
+      platforms:
+        - linux/arm64
+    image: marketing-research-agent:latest
+    container_name: marketing-research-agent
+    ports:
+      - "8080:8080"
+    environment:
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_SESSION_TOKEN=${AWS_SESSION_TOKEN}
+      - AWS_REGION=${AWS_REGION:-us-east-1}
+      - RESEARCH_MODEL=${RESEARCH_MODEL:-anthropic.claude-3-sonnet-20240229-v1:0}
+      - RESEARCH_THINKING_ENABLED=${RESEARCH_THINKING_ENABLED:-false}
+      - RESEARCH_THINKING_TOKENS=${RESEARCH_THINKING_TOKENS:-4096}
+      - SUPERVISOR_MODEL=${SUPERVISOR_MODEL:-anthropic.claude-3-sonnet-20240229-v1:0}
+      - SUPERVISOR_THINKING_ENABLED=${SUPERVISOR_THINKING_ENABLED:-false}
+      - SUPERVISOR_THINKING_TOKENS=${SUPERVISOR_THINKING_TOKENS:-4096}
+      - OTEL_SDK_DISABLED=${OTEL_SDK_DISABLED:-true}
+
+    env_file:
+      - .env

@@ -1,0 +1,98 @@
+version: '3'
+
+vars:
+  ECR_REPO_NAME: marketing-research-agent
+  AWS_REGION: '{{.AWS_REGION | default "us-east-1"}}'
+
+tasks:
+  run:
+    desc: Run the agent locally
+    cmds:
+      - uv run uvicorn agent:app --host 0.0.0.0 --port 8080
+
+  start:
+    desc: Build and run with docker-compose
+    cmds:
+      - docker-compose up --build
+
+  stop:
+    desc: Stop docker-compose
+    cmds:
+      - docker-compose down
+
+  ecr:push:
+    desc: Build and push Docker image to ECR
+    vars:
+      ACCOUNT_ID:
+        sh: aws sts get-caller-identity --query Account --output text
+    cmds:
+      - aws ecr describe-repositories --repository-names {{.ECR_REPO_NAME}} --region {{.AWS_REGION}} 2>/dev/null || aws ecr create-repository --repository-name {{.ECR_REPO_NAME}} --region {{.AWS_REGION}}
+      - aws ecr get-login-password --region {{.AWS_REGION}} | docker login --username AWS --password-stdin {{.ACCOUNT_ID}}.dkr.ecr.{{.AWS_REGION}}.amazonaws.com
+      - docker buildx build --platform linux/arm64 -t {{.ECR_REPO_NAME}}:latest --load .
+      - docker tag {{.ECR_REPO_NAME}}:latest {{.ACCOUNT_ID}}.dkr.ecr.{{.AWS_REGION}}.amazonaws.com/{{.ECR_REPO_NAME}}:latest
+      - docker push {{.ACCOUNT_ID}}.dkr.ecr.{{.AWS_REGION}}.amazonaws.com/{{.ECR_REPO_NAME}}:latest
+
+  cdk:bootstrap:
+    desc: Bootstrap CDK
+    vars:
+      ACCOUNT_ID:
+        sh: aws sts get-caller-identity --query Account --output text
+    cmds:
+      - cdk bootstrap aws://{{.ACCOUNT_ID}}/{{.AWS_REGION}} --no-previous-parameters
+
+  cdk:deploy:
+    desc: Deploy CDK stack
+    deps: [ecr:push]
+    dir: infra
+    vars:
+      ACCOUNT_ID:
+        sh: aws sts get-caller-identity --query Account --output text
+    cmds:
+      - uv sync
+      - cdk deploy --require-approval never
+    env:
+      CDK_DEFAULT_ACCOUNT: '{{.ACCOUNT_ID}}'
+      CDK_DEFAULT_REGION: '{{.AWS_REGION}}'
+      ECR_REPOSITORY_ARN: 'arn:aws:ecr:{{.AWS_REGION}}:{{.ACCOUNT_ID}}:repository/{{.ECR_REPO_NAME}}'
+
+  cdk:destroy:
+    desc: Destroy CDK stack
+    dir: infra
+    vars:
+      ACCOUNT_ID:
+        sh: aws sts get-caller-identity --query Account --output text
+    cmds:
+      - uv sync
+      - cdk destroy --force
+    env:
+      CDK_DEFAULT_ACCOUNT: '{{.ACCOUNT_ID}}'
+      CDK_DEFAULT_REGION: '{{.AWS_REGION}}'
+      ECR_REPOSITORY_ARN: 'arn:aws:ecr:{{.AWS_REGION}}:{{.ACCOUNT_ID}}:repository/{{.ECR_REPO_NAME}}'
+
+  memory:init:
+    desc: Initialize AgentCore Memory
+    cmds:
+      - uv run python scripts/initialize_memory.py --region {{.AWS_REGION}} --bootstrap
+
+  memory:clean:
+    desc: Clean up duplicate memories and create fresh one with strategies
+    cmds:
+      - uv run python scripts/clean_and_recreate_memory.py
+
+  memory:fix:
+    desc: Fix memory strategies for existing memories
+    cmds:
+      - uv run python scripts/fix_memory_strategies.py --region {{.AWS_REGION}}
+
+  dynamo:populate:
+    desc: Populate DynamoDB with sample data
+    cmds:
+      - uv run python scripts/populate_dynamodb.py --region {{.AWS_REGION}} --customers 1000
+
+  deploy:
+    desc: Complete deployment
+    deps: [cdk:bootstrap]
+    cmds:
+      - task: cdk:deploy
+      - task: memory:init
+      - task: dynamo:populate

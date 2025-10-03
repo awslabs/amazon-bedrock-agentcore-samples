@@ -1,0 +1,32 @@
+[project]
+name = "deep-research-strands"
+version = "0.1.0"
+description = "APEX Deep Research Agent"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "asyncio>=4.0.0",
+    "aws-opentelemetry-distro>=0.10.0",
+    "beautifulsoup4>=4.13.5",
+    "bedrock-agentcore",
+    "boto3",
+    "ddgs>=9.6.0",
+    "fastapi>=0.117.1",
+    "fastmcp>=2.12.3",
+    "httpx>=0.28.1",
+    "notebook>=7.4.7",
+    "pydantic>=2.11.9",
+    "pydantic-settings>=2.0.0",
+    "strands-agents>=1.9.1",
+    "strands-agents-tools>=0.2.8",
+    "uvicorn[standard]>=0.37.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4.2",
+    "pytest-asyncio>=1.2.0",
+]
+
+[tool.uv.sources]
+infra = { path = "infra/" }
