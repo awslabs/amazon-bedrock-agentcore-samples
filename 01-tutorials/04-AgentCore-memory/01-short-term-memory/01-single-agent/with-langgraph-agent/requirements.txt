@@ -3,3 +3,4 @@ langchain_aws
 langchain_core
 langgraph
 bedrock_agentcore
+langgraph-checkpoint-aws
