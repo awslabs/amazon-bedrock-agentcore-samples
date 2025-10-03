@@ -646,3 +646,87 @@ def delete_all_gateways(gateway_client):
             delete_gateway(gatewayId)
     except Exception as e:
         print(e)
+
+def wait_for_gateway_ready(gateway_client, gateway_id, max_wait_time=300, check_interval=10):
+    """
+    Wait for a gateway to be in READY state.
+    
+    Args:
+        gateway_client: Boto3 bedrock-agentcore-control client
+        gateway_id: The gateway ID to check
+        max_wait_time: Maximum time to wait in seconds (default: 300 = 5 minutes)
+        check_interval: Time between checks in seconds (default: 10 seconds)
+    
+    Returns:
+        bool: True if gateway is ready, False if timeout or error
+    """
+    print(f"Waiting for gateway {gateway_id} to be ready...")
+    start_time = time.time()
+    
+    while time.time() - start_time < max_wait_time:
+        try:
+            response = gateway_client.get_gateway(gatewayIdentifier=gateway_id)
+            status = response.get('status', 'UNKNOWN')
+            
+            print(f"Gateway status: {status}")
+            
+            if status == 'READY':
+                print(f"Gateway {gateway_id} is ready!")
+                return True
+            elif status in ['FAILED', 'DELETED']:
+                print(f"Gateway {gateway_id} failed with status: {status}")
+                return False
+            
+            print(f"Gateway still in transition state ({status}). Waiting {check_interval} seconds...")
+            time.sleep(check_interval)
+            
+        except Exception as e:
+            print(f"Error checking gateway status: {e}")
+            time.sleep(check_interval)
+    
+    print(f"Timeout waiting for gateway {gateway_id} to be ready after {max_wait_time} seconds")
+    return False
+
+def wait_for_target_ready(gateway_client, gateway_id, target_id, max_wait_time=300, check_interval=10):
+    """
+    Wait for a gateway target to be in READY state.
+    
+    Args:
+        gateway_client: Boto3 bedrock-agentcore-control client
+        gateway_id: The gateway ID
+        target_id: The target ID to check
+        max_wait_time: Maximum time to wait in seconds (default: 300 = 5 minutes)
+        check_interval: Time between checks in seconds (default: 10 seconds)
+    
+    Returns:
+        bool: True if target is ready, False if timeout or error
+    """
+    print(f"Waiting for target {target_id} in gateway {gateway_id} to be ready...")
+    start_time = time.time()
+    
+    while time.time() - start_time < max_wait_time:
+        try:
+            response = gateway_client.get_gateway_target(
+                gatewayIdentifier=gateway_id,
+                targetId=target_id
+            )
+            status = response.get('status', 'UNKNOWN')
+            
+            print(f"Target status: {status}")
+            
+            if status == 'READY':
+                print(f"Target {target_id} is ready!")
+                return True
+            elif status in ['FAILED', 'DELETED']:
+                print(f"Target {target_id} failed with status: {status}")
+                return False
+            
+            print(f"Target still in transition state ({status}). Waiting {check_interval} seconds...")
+            time.sleep(check_interval)
+            
+        except Exception as e:
+            print(f"Error checking target status: {e}")
+            time.sleep(check_interval)
+    
+    print(f"Timeout waiting for target {target_id} to be ready after {max_wait_time} seconds")
+    return False
