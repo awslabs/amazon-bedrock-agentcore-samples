@@ -1,7 +1,6 @@
-browser-use<0.3.3
+browser-use
 bedrock-agentcore
 boto3
-langchain_aws
 uv
 rich
 fastapi>=0.109.0

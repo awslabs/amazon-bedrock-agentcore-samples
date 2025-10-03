@@ -31,3 +31,4 @@
 - erezweinstein5
 - HardikThakkar94
 - brianloyal
+- chintanpatel-ai
