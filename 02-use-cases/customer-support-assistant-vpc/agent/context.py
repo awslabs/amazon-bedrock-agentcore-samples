@@ -1,6 +1,7 @@
 from contextvars import ContextVar
-from typing import Optional, Any
 from strands import Agent
+from strands.tools.mcp.mcp_client import MCPClient
+from typing import Optional, Any
 
 
 class CustomerSupportContext:
@@ -10,8 +11,9 @@ class CustomerSupportContext:
     _mcp_token: Optional[str] = None
     _gateway_token: Optional[str] = None
     _agent: Optional[Agent] = None
-    _mcp_client: Optional[Any] = None
-    _gateway_client: Optional[Any] = None
+    _mcp_client: Optional[MCPClient] = None
+    _gateway_client: Optional[MCPClient] = None
+    _aurora_mcp_client: Optional[MCPClient] = None
 
     # Context variables for application state
     _mcp_token_ctx: ContextVar[Optional[str]] = ContextVar("mcp_token", default=None)
@@ -19,8 +21,15 @@ class CustomerSupportContext:
         "gateway_token", default=None
     )
     _agent_ctx: ContextVar[Optional[Agent]] = ContextVar("agent", default=None)
-    _mcp_client_ctx: ContextVar[Optional[Any]] = ContextVar("mcp_client", default=None)
-    _gateway_client_ctx: ContextVar[Optional[Any]] = ContextVar("gateway_client", default=None)
+    _mcp_client_ctx: ContextVar[Optional[MCPClient]] = ContextVar(
+        "mcp_client", default=None
+    )
+    _gateway_client_ctx: ContextVar[Optional[MCPClient]] = ContextVar(
+        "gateway_client", default=None
+    )
+    _aurora_mcp_client_ctx = ContextVar[Optional[MCPClient]] = ContextVar(
+        "aurora_client", default=None
+    )
 
     @classmethod
     def get_mcp_token_ctx(
@@ -39,6 +48,24 @@ class CustomerSupportContext:
         # Set both global state and context variable
         cls._mcp_token = token
         cls._mcp_token_ctx.set(token)
+
+    @classmethod
+    def get_aurora_mcp_client_ctx(
+        cls,
+    ) -> Optional[Any]:
+        # First try to get from global state for persistence across calls
+        if cls._aurora_mcp_client:
+            return cls._aurora_mcp_client
+        try:
+            return cls._aurora_mcp_client_ctx.get()
+        except LookupError:
+            return None
+
+    @classmethod
+    def set_aurora_mcp_client_ctx(cls, client: Any) -> None:
+        # Set both global state and context variable
+        cls._aurora_mcp_client = client
+        cls._aurora_mcp_client_ctx.set(client)
 
     # @classmethod
     # def get_response_queue_ctx(

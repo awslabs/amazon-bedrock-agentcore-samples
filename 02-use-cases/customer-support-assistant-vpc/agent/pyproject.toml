@@ -8,6 +8,7 @@ dependencies = [
     "bedrock-agentcore>=0.1.4",
     "strands-agents>=1.9.1",
     "strands-agents-tools>=0.2.8",
+    "uv>=0.8.23",
 ]
 
 [dependency-groups]

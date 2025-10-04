@@ -893,6 +893,12 @@ Outputs:
     Export:
       Name: !Sub '${AWS::StackName}-ClusterIdentifier'
 
+  AuroraClusterArn:
+    Description: 'Aurora PostgreSQL cluster ARN for RDS Data API'
+    Value: !Sub 'arn:aws:rds:${AWS::Region}:${AWS::AccountId}:cluster:${AuroraCluster}'
+    Export:
+      Name: !Sub '${AWS::StackName}-ClusterArn'
+
   DatabaseName:
     Description: 'Database name'
     Value: 'sampledb'

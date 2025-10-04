@@ -22,6 +22,11 @@ Parameters:
     Default: 'gateway-stack'
     Description: 'Name of the Gateway stack to reference for MCP ENV'
 
+  AuroraStackName:
+    Type: String
+    Default: 'customer-support-vpc-AuroraStack'
+    Description: 'Name of the Aurora stack to reference for database connection'
+
   ModelID:
     Type: String
     Default: 'us.anthropic.claude-3-5-haiku-20241022-v1:0'
@@ -177,6 +182,22 @@ Resources:
                   # TODO: Scope down
                 Resource:
                   - '*'
+              - Sid: RDSDataAPIAccess
+                Effect: Allow
+                Action:
+                  - rds-data:ExecuteStatement
+                  - rds-data:BatchExecuteStatement
+                  - rds-data:BeginTransaction
+                  - rds-data:CommitTransaction
+                  - rds-data:RollbackTransaction
+                Resource:
+                  Fn::ImportValue: !Sub '${AuroraStackName}-ClusterArn'
+              - Sid: AuroraSecretAccess
+                Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource:
+                  Fn::ImportValue: !Sub '${AuroraStackName}-DBCredentialsSecret'
       Tags:
         - Key: Name
           Value: !Sub '${AWS::StackName}-AgentCore-Runtime-Role'
@@ -834,6 +855,12 @@ Resources:
           Fn::ImportValue: !Sub '${MCPStackName}-MCPDynamoDBRuntimeArn'
         MCP_PROVIDER_NAME: !Sub 'MCPOAuth2Provider-${MCPStackName}'
         GATEWAY_PROVIDER_NAME: !Sub 'GatewayOAuth2Provider-${GatewayStackName}'
+        AURORA_CLUSTER_ARN:
+          Fn::ImportValue: !Sub '${AuroraStackName}-ClusterArn'
+        AURORA_SECRET_ARN:
+          Fn::ImportValue: !Sub '${AuroraStackName}-DBCredentialsSecret'
+        AURORA_DATABASE:
+          Fn::ImportValue: !Sub '${AuroraStackName}-DatabaseName'
       Tags:
         Name: !Sub '${AWS::StackName}-Agent-Runtime'
         Purpose: 'AgentCore Runtime'

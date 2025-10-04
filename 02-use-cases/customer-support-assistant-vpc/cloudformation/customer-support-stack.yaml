@@ -128,17 +128,23 @@ Resources:
         - Key: StackType
           Value: 'Nested-DynamoDB'
 
-  # Agent Server Stack - AgentCore runtime layer (depends on VPC and Cognito)
+  # Agent Server Stack - AgentCore runtime layer (depends on VPC, Cognito, Aurora, MCP, and Gateway)
   AgentServerStack:
     Type: AWS::CloudFormation::Stack
     DependsOn:
       - VPCStack
       - CognitoStack
+      - AuroraStack
+      - MCPServerStack
+      - GatewayStack
     Properties:
       TemplateURL: !Sub '${TemplateBaseURL}/agent-server-stack.yaml'
       Parameters:
         VPCStackName: !Ref VPCStack
         CognitoStackName: !Ref CognitoStack
+        MCPStackName: !Ref MCPServerStack
+        GatewayStackName: !Ref GatewayStack
+        AuroraStackName: !Ref AuroraStack
       Capabilities:
         - CAPABILITY_IAM
       Tags:

@@ -1,19 +1,18 @@
-import logging
-import os
-import urllib.parse
-from contextlib import asynccontextmanager
-from typing import Optional
-
 from bedrock_agentcore.identity.auth import requires_access_token
 from bedrock_agentcore.runtime import BedrockAgentCoreApp
 from bedrock_agentcore.runtime.context import BedrockAgentCoreContext
+from context import CustomerSupportContext
+from contextlib import asynccontextmanager
+from mcp import stdio_client, StdioServerParameters
 from mcp.client.streamable_http import streamablehttp_client
 from strands import Agent
 from strands.models import BedrockModel
 from strands.tools.mcp.mcp_client import MCPClient
-
-from context import CustomerSupportContext
+from typing import Optional
 from utils import get_ssm_parameter
+import logging
+import os
+import urllib.parse
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -34,6 +33,12 @@ MCP_REGION = get_required_env("MCP_REGION")
 MCP_ARN = get_required_env("MCP_ARN")
 GATEWAY_PROVIDER_NAME = get_required_env("GATEWAY_PROVIDER_NAME")
 MCP_PROVIDER_NAME = get_required_env("MCP_PROVIDER_NAME")
+
+# Aurora PostgreSQL environment variables
+AURORA_CLUSTER_ARN = get_required_env("AURORA_CLUSTER_ARN")
+AURORA_SECRET_ARN = get_required_env("AURORA_SECRET_ARN")
+AURORA_DATABASE = get_required_env("AURORA_DATABASE")
+AWS_REGION = os.getenv("AWS_REGION", MCP_REGION)
 
 # Lazy-loaded configuration
 _gateway_url: Optional[str] = None
@@ -95,65 +100,88 @@ async def initialize_clients():
         return
 
     # Get or fetch access tokens
-    gateway_access_token = CustomerSupportContext.get_gateway_token_ctx()
-    if not gateway_access_token:
-        logger.info("Fetching gateway access token")
-        gateway_access_token = await get_gateway_access_token()
-        CustomerSupportContext.set_gateway_token_ctx(gateway_access_token)
+    # gateway_access_token = CustomerSupportContext.get_gateway_token_ctx()
+    # if not gateway_access_token:
+    #     logger.info("Fetching gateway access token")
+    #     gateway_access_token = await get_gateway_access_token()
+    #     CustomerSupportContext.set_gateway_token_ctx(gateway_access_token)
 
-    mcp_access_token = CustomerSupportContext.get_mcp_token_ctx()
-    if not mcp_access_token:
-        logger.info("Fetching MCP access token")
-        mcp_access_token = await get_mcp_access_token()
-        CustomerSupportContext.set_mcp_token_ctx(mcp_access_token)
+    # mcp_access_token = CustomerSupportContext.get_mcp_token_ctx()
+    # if not mcp_access_token:
+    #     logger.info("Fetching MCP access token")
+    #     mcp_access_token = await get_mcp_access_token()
+    #     CustomerSupportContext.set_mcp_token_ctx(mcp_access_token)
 
-    # Validate tokens
-    if not gateway_access_token:
-        raise RuntimeError("Failed to obtain gateway access token")
-    if not mcp_access_token:
-        raise RuntimeError("Failed to obtain MCP access token")
+    # # Validate tokens
+    # if not gateway_access_token:
+    #     raise RuntimeError("Failed to obtain gateway access token")
+    # if not mcp_access_token:
+    #     raise RuntimeError("Failed to obtain MCP access token")
 
-    # Initialize MCP clients
-    logger.info("Initializing MCP clients")
-    mcp_url = get_mcp_url()
-    gateway_url = get_gateway_url()
+    # # Initialize MCP clients
+    # logger.info("Initializing MCP clients")
+    # mcp_url = get_mcp_url()
+    # gateway_url = get_gateway_url()
 
-    mcp_client = MCPClient(
-        lambda: streamablehttp_client(
-            url=mcp_url,
-            headers={"Authorization": f"Bearer {mcp_access_token}"},
+    # mcp_client = MCPClient(
+    #     lambda: streamablehttp_client(
+    #         url=mcp_url,
+    #         headers={"Authorization": f"Bearer {mcp_access_token}"},
+    #     )
+    # )
+
+    # gateway_client = MCPClient(
+    #     lambda: streamablehttp_client(
+    #         url=gateway_url,
+    #         headers={"Authorization": f"Bearer {gateway_access_token}"},
+    #     )
+    # )
+
+    # # Start clients and list tools
+    # logger.info("Starting MCP clients")
+    # gateway_client.start()
+    # mcp_client.start()
+
+    # # Store clients in context
+    # CustomerSupportContext.set_mcp_client_ctx(mcp_client)
+    # CustomerSupportContext.set_gateway_client_ctx(gateway_client)
+
+    # logger.info("Listing tools from clients")
+    # gateway_tools = gateway_client.list_tools_sync()
+    # mcp_tools = mcp_client.list_tools_sync()
+    # logger.info(
+    #     f"Loaded {len(gateway_tools)} gateway tools and {len(mcp_tools)} MCP tools"
+    # )
+
+    # Initialize Aurora PostgreSQL MCP client
+    logger.info("Initializing Aurora PostgreSQL MCP client")
+    aurora_client = MCPClient(
+        lambda: stdio_client(
+            StdioServerParameters(
+                command="uvx",
+                args=[
+                    "awslabs.postgres-mcp-server@latest",
+                    "--resource_arn", AURORA_CLUSTER_ARN,
+                    "--secret_arn", AURORA_SECRET_ARN,
+                    "--database", AURORA_DATABASE,
+                    "--region", AWS_REGION,
+                    "--readonly", "True",
+                ]
+            )
         )
     )
 
-    gateway_client = MCPClient(
-        lambda: streamablehttp_client(
-            url=gateway_url,
-            headers={"Authorization": f"Bearer {gateway_access_token}"},
-        )
-    )
-
-    # Start clients and list tools
-    logger.info("Starting MCP clients")
-    gateway_client.start()
-    mcp_client.start()
-
-    # Store clients in context
-    CustomerSupportContext.set_mcp_client_ctx(mcp_client)
-    CustomerSupportContext.set_gateway_client_ctx(gateway_client)
-
-    logger.info("Listing tools from clients")
-    gateway_tools = gateway_client.list_tools_sync()
-    mcp_tools = mcp_client.list_tools_sync()
-    logger.info(
-        f"Loaded {len(gateway_tools)} gateway tools and {len(mcp_tools)} MCP tools"
-    )
+    aurora_client.start()
+    CustomerSupportContext.set_aurora_mcp_client_ctx(aurora_client)
+    logger.info("Aurora PostgreSQL MCP client started")
 
     # Initialize agent
     logger.info(f"Initializing agent with model: {MODEL_ID}")
     model = BedrockModel(model_id=MODEL_ID)
     agent = Agent(
         model=model,
-        tools=gateway_tools + mcp_tools,
+        # tools=gateway_tools + mcp_tools,
+        tools=aurora_client.list_tools_sync(),
         system_prompt="You're a helpful customer support assistant",
     )
 
@@ -191,6 +219,14 @@ async def lifespan(app):
                 logger.info("Gateway client stopped")
             except Exception as e:
                 logger.error(f"Error stopping gateway client: {e}")
+
+        aurora_client = CustomerSupportContext.get_aurora_mcp_client_ctx()
+        if aurora_client is not None:
+            try:
+                aurora_client.stop()
+                logger.info("Aurora client stopped")
+            except Exception as e:
+                logger.error(f"Error stopping Aurora client: {e}")
 
 
 app = BedrockAgentCoreApp(lifespan=lifespan)
