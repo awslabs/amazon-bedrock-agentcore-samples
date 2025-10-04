@@ -27,7 +27,7 @@ class CustomerSupportContext:
     _gateway_client_ctx: ContextVar[Optional[MCPClient]] = ContextVar(
         "gateway_client", default=None
     )
-    _aurora_mcp_client_ctx = ContextVar[Optional[MCPClient]] = ContextVar(
+    _aurora_mcp_client_ctx: ContextVar[Optional[MCPClient]] = ContextVar(
         "aurora_client", default=None
     )
 
@@ -52,7 +52,7 @@ class CustomerSupportContext:
     @classmethod
     def get_aurora_mcp_client_ctx(
         cls,
-    ) -> Optional[Any]:
+    ) -> Optional[MCPClient]:
         # First try to get from global state for persistence across calls
         if cls._aurora_mcp_client:
             return cls._aurora_mcp_client
@@ -62,7 +62,7 @@ class CustomerSupportContext:
             return None
 
     @classmethod
-    def set_aurora_mcp_client_ctx(cls, client: Any) -> None:
+    def set_aurora_mcp_client_ctx(cls, client: MCPClient) -> None:
         # Set both global state and context variable
         cls._aurora_mcp_client = client
         cls._aurora_mcp_client_ctx.set(client)
@@ -122,7 +122,7 @@ class CustomerSupportContext:
         cls._agent_ctx.set(agent)
 
     @classmethod
-    def get_mcp_client_ctx(cls) -> Optional[Any]:
+    def get_mcp_client_ctx(cls) -> Optional[MCPClient]:
         # First try to get from global state for persistence across calls
         if cls._mcp_client:
             return cls._mcp_client
@@ -132,13 +132,13 @@ class CustomerSupportContext:
             return None
 
     @classmethod
-    def set_mcp_client_ctx(cls, client: Any) -> None:
+    def set_mcp_client_ctx(cls, client: MCPClient) -> None:
         # Set both global state and context variable
         cls._mcp_client = client
         cls._mcp_client_ctx.set(client)
 
     @classmethod
-    def get_gateway_client_ctx(cls) -> Optional[Any]:
+    def get_gateway_client_ctx(cls) -> Optional[MCPClient]:
         # First try to get from global state for persistence across calls
         if cls._gateway_client:
             return cls._gateway_client
@@ -148,7 +148,7 @@ class CustomerSupportContext:
             return None
 
     @classmethod
-    def set_gateway_client_ctx(cls, client: Any) -> None:
+    def set_gateway_client_ctx(cls, client: MCPClient) -> None:
         # Set both global state and context variable
         cls._gateway_client = client
         cls._gateway_client_ctx.set(client)
