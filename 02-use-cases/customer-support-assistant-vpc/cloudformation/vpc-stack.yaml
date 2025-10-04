@@ -388,9 +388,9 @@ Resources:
       ServiceName: !Sub 'com.amazonaws.${AWS::Region}.kms'
       VpcEndpointType: Interface
       SubnetIds:
-        - !Ref PrivateSubnet1
         - !Ref PrivateSubnet2
         - !Ref PrivateSubnet3
+        - !Ref PrivateSubnet4
       SecurityGroupIds:
         - !Ref VPCEndpointSecurityGroup
       PrivateDnsEnabled: true
@@ -404,7 +404,7 @@ Resources:
               - kms:GenerateDataKey
               - kms:DescribeKey
             Resource:
-              - !Sub 'arn:aws:kms:${AWS::Region}:${AWS::AccountId}:key/*'
+              - '*'
       Tags:
         - Key: Name
           Value: !Sub '${AWS::StackName}-KMS-VPCEndpoint'
@@ -416,9 +416,9 @@ Resources:
       ServiceName: !Sub 'com.amazonaws.${AWS::Region}.secretsmanager'
       VpcEndpointType: Interface
       SubnetIds:
-        - !Ref PrivateSubnet1
         - !Ref PrivateSubnet2
         - !Ref PrivateSubnet3
+        - !Ref PrivateSubnet4
       SecurityGroupIds:
         - !Ref VPCEndpointSecurityGroup
       PolicyDocument:
@@ -635,7 +635,7 @@ Outputs:
     Export:
       Name: !Sub '${AWS::StackName}-PrivateSubnets'
 
-  PrivateSubnet1:
+  PrivateSubnet1RDSDataVPCEndpoint:
     Description: 'A reference to the private subnet in the 1st Availability Zone'
     Value: !Ref PrivateSubnet1
     Export:
@@ -670,3 +670,15 @@ Outputs:
     Value: !Ref MCPRuntimeSecurityGroup
     Export:
       Name: !Sub '${AWS::StackName}-MCPRuntimeSecurityGroup'
+
+  AgentRuntimeSecurityGroup:
+    Description: 'Security group for Agent Runtime'
+    Value: !Ref AgentRuntimeSecurityGroup
+    Export:
+      Name: !Sub '${AWS::StackName}-AgentRuntimeSecurityGroup'
+
+  RDSDataVPCEndpoint:
+    Description: 'VPC Endpoint for RDS Data API'
+    Value: !Ref RDSDataVPCEndpoint
+    Export:
+      Name: !Sub '${AWS::StackName}-RDSDataVPCEndpoint'

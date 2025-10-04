@@ -243,6 +243,7 @@ Resources:
       PreferredMaintenanceWindow: 'sun:04:00-sun:05:00'
       EnableCloudwatchLogsExports:
         - postgresql
+      EnableHttpEndpoint: true
       DeletionProtection: false
       Tags:
         - Key: Name

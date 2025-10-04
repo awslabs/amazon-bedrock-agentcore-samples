@@ -12,6 +12,7 @@ from typing import Optional
 from utils import get_ssm_parameter
 import logging
 import os
+import traceback
 import urllib.parse
 
 # Configure logging
@@ -154,26 +155,32 @@ async def initialize_clients():
     # )
 
     # Initialize Aurora PostgreSQL MCP client
-    logger.info("Initializing Aurora PostgreSQL MCP client")
-    aurora_client = MCPClient(
-        lambda: stdio_client(
-            StdioServerParameters(
-                command="uvx",
-                args=[
-                    "awslabs.postgres-mcp-server@latest",
-                    "--resource_arn", AURORA_CLUSTER_ARN,
-                    "--secret_arn", AURORA_SECRET_ARN,
-                    "--database", AURORA_DATABASE,
-                    "--region", AWS_REGION,
-                    "--readonly", "True",
-                ]
+    try:
+        logger.info("Initializing Aurora PostgreSQL MCP client")
+        aurora_client = MCPClient(
+            lambda: stdio_client(
+                StdioServerParameters(
+                    command="uvx",
+                    args=[
+                        "awslabs.postgres-mcp-server@latest",
+                        "--resource_arn", AURORA_CLUSTER_ARN,
+                        "--secret_arn", AURORA_SECRET_ARN,
+                        "--database", AURORA_DATABASE,
+                        "--region", AWS_REGION,
+                        "--readonly", "True",
+                    ]
+                )
             )
         )
-    )
 
-    aurora_client.start()
-    CustomerSupportContext.set_aurora_mcp_client_ctx(aurora_client)
-    logger.info("Aurora PostgreSQL MCP client started")
+        aurora_client.start()
+        CustomerSupportContext.set_aurora_mcp_client_ctx(aurora_client)
+        logger.info("Aurora PostgreSQL MCP client started")
+    except Exception as e:
+        logger.error(f"Failed to initialize Aurora MCP client: {e}", exc_info=True)
+        print("\n🔍 Full error traceback:")
+        traceback.print_exc()
+        raise
 
     # Initialize agent
     logger.info(f"Initializing agent with model: {MODEL_ID}")
