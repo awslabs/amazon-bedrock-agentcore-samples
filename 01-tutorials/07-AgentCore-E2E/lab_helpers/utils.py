@@ -495,6 +495,15 @@ def create_agentcore_runtime_execution_role():
                 "Action": ["ssm:GetParameter"],
                 "Resource": [f"arn:aws:ssm:{region}:{account_id}:parameter/*"],
             },
+            {
+            "Sid": "GatewayAccess",
+            "Effect": "Allow",
+            "Action": [
+                "bedrock-agentcore:GetGateway",
+                "bedrock-agentcore:InvokeGateway"
+            ],
+            "Resource": [f"arn:aws:bedrock-agentcore:{region}:{account_id}:gateway/*"]
+        }
         ],
     }
 
