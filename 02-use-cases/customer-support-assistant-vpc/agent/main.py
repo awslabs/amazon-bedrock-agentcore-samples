@@ -91,7 +91,7 @@ async def get_mcp_access_token(access_token: str) -> str:
     return access_token
 
 
-async def initialize_clients():
+def initialize_clients():
     """Initialize MCP clients and agent. Called by middleware on first request."""
     agent = CustomerSupportContext.get_agent_ctx()
 
@@ -278,23 +278,25 @@ async def lifespan(app):
 app = BedrockAgentCoreApp(lifespan=lifespan)
 
 
-@app.middleware("http")
-async def initialization_middleware(request, call_next):
-    """Middleware to initialize clients and set workload access token before request."""
-    # Extract and set workload access token from headers
-    headers = request.headers
-    agent_identity_token = headers.get("WorkloadAccessToken")
-    if agent_identity_token:
-        logger.info(f"agent_identity_token: {agent_identity_token}")
-        BedrockAgentCoreContext.set_workload_access_token(agent_identity_token)
+# @app.middleware("http")
+# async def initialization_middleware(request, call_next):
+#     """Middleware to initialize clients and set workload access token before request."""
+#     # Extract and set workload access token from headers
+#     headers = request.headers
+#     agent_identity_token = headers.get("WorkloadAccessToken")
+#     if agent_identity_token:
+#         logger.info(f"agent_identity_token: {agent_identity_token}")
+#         BedrockAgentCoreContext.set_workload_access_token(agent_identity_token)
 
-    # Initialize clients on first request
-    await initialize_clients()
+#     # Initialize clients on first request
+#     await initialize_clients()
 
-    # Pass request to next handler
-    response = await call_next(request)
+#     # Pass request to next handler
+#     response = await call_next(request)
 
-    return response
+#     return response
+
+initialize_clients()
 
 
 @app.entrypoint
