@@ -97,7 +97,7 @@ async def initialize_clients():
 
     # Check if agent already initialized
     if agent is not None:
-        logger.info("Agent already initialized, skipping setup")
+        # logger.info("Agent already initialized, skipping setup")
         return
 
     # Get or fetch access tokens
@@ -200,7 +200,7 @@ async def initialize_clients():
         logger.info("Initializing RDS Data API client")
         import boto3
 
-        rds_data_client = boto3.client('rds-data', region_name=AWS_REGION)
+        rds_data_client = boto3.client("rds-data", region_name=AWS_REGION)
 
         # Test connection by executing a simple query
         logger.info("Testing RDS Data API connection")
@@ -208,7 +208,7 @@ async def initialize_clients():
             resourceArn=AURORA_CLUSTER_ARN,
             secretArn=AURORA_SECRET_ARN,
             database=AURORA_DATABASE,
-            sql="SELECT version();"
+            sql="SELECT version();",
         )
 
         logger.info(f"Successfully connected to Aurora PostgreSQL: {response}")
@@ -284,6 +284,7 @@ async def initialization_middleware(request, call_next):
     # Extract and set workload access token from headers
     headers = request.headers
     agent_identity_token = headers.get("WorkloadAccessToken")
+    logger.info(f"agent_identity_token: {agent_identity_token}")
     if agent_identity_token:
         BedrockAgentCoreContext.set_workload_access_token(agent_identity_token)
 
@@ -330,10 +331,10 @@ async def strands_agent_bedrock(payload: dict, context) -> str:
         logger.debug(f"User prompt: {user_message[:100]}...")  # Log first 100 chars
 
         # Invoke agent
-        response = agent(user_message)
+        # response = agent(user_message)
         logger.info(f"Request completed for session: {session_id}")
 
-        return response
+        return user_message
 
     except Exception as e:
         logger.error(f"Error processing request: {e}", exc_info=True)

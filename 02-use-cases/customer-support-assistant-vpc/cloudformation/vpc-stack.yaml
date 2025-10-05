@@ -487,6 +487,33 @@ Resources:
         - Key: Name
           Value: !Sub '${AWS::StackName}-S3-VPCEndpoint'
           
+  # VPC Endpoint for Bedrock Runtime
+  BedrockRuntimeVPCEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref VPC
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.bedrock-runtime'
+      VpcEndpointType: Interface
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+        - !Ref PrivateSubnet3
+      SecurityGroupIds:
+        - !Ref VPCEndpointSecurityGroup
+      PrivateDnsEnabled: true
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: '*'
+            Action:
+              - bedrock:InvokeModel
+              - bedrock:InvokeModelWithResponseStream
+            Resource: '*'
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-BedrockRuntime-VPCEndpoint'
+
   # VPC Endpoint for Bedrock AgentCore
   BedrockAgentCoreVPCEndpoint:
     Type: AWS::EC2::VPCEndpoint
