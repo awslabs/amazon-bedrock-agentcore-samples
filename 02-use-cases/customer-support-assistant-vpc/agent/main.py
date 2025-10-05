@@ -155,41 +155,80 @@ async def initialize_clients():
     # )
 
     # Initialize Aurora PostgreSQL MCP client
+    # try:
+    #     logger.info("Initializing Aurora PostgreSQL MCP client")
+    #     aurora_client = MCPClient(
+    #         lambda: stdio_client(
+    #             StdioServerParameters(
+    #                 command="uvx",
+    #                 args=[
+    #                     "awslabs.postgres-mcp-server@latest",
+    #                     "--resource_arn", AURORA_CLUSTER_ARN,
+    #                     "--secret_arn", AURORA_SECRET_ARN,
+    #                     "--database", AURORA_DATABASE,
+    #                     "--region", AWS_REGION,
+    #                     "--readonly", "True",
+    #                 ]
+    #             )
+    #         )
+    #     )
+
+    #     aurora_client.start()
+    #     CustomerSupportContext.set_aurora_mcp_client_ctx(aurora_client)
+    #     logger.info("Aurora PostgreSQL MCP client started")
+    # except Exception as e:
+    #     logger.error(f"Failed to initialize Aurora MCP client: {e}", exc_info=True)
+    #     print("\n🔍 Full error traceback:")
+    #     traceback.print_exc()
+    #     raise
+
+    # # Initialize agent
+    # logger.info(f"Initializing agent with model: {MODEL_ID}")
+    # model = BedrockModel(model_id=MODEL_ID)
+    # agent = Agent(
+    #     model=model,
+    #     # tools=gateway_tools + mcp_tools,
+    #     tools=aurora_client.list_tools_sync(),
+    #     system_prompt="You're a helpful customer support assistant",
+    # )
+
+    # CustomerSupportContext.set_agent_ctx(agent)
+    # logger.info("Agent initialized successfully")
+
+    # Initialize RDS Data API client for Aurora PostgreSQL
     try:
-        logger.info("Initializing Aurora PostgreSQL MCP client")
-        aurora_client = MCPClient(
-            lambda: stdio_client(
-                StdioServerParameters(
-                    command="uvx",
-                    args=[
-                        "awslabs.postgres-mcp-server@latest",
-                        "--resource_arn", AURORA_CLUSTER_ARN,
-                        "--secret_arn", AURORA_SECRET_ARN,
-                        "--database", AURORA_DATABASE,
-                        "--region", AWS_REGION,
-                        "--readonly", "True",
-                    ]
-                )
-            )
+        logger.info("Initializing RDS Data API client")
+        import boto3
+
+        rds_data_client = boto3.client('rds-data', region_name=AWS_REGION)
+
+        # Test connection by executing a simple query
+        logger.info("Testing RDS Data API connection")
+        response = rds_data_client.execute_statement(
+            resourceArn=AURORA_CLUSTER_ARN,
+            secretArn=AURORA_SECRET_ARN,
+            database=AURORA_DATABASE,
+            sql="SELECT version();"
         )
 
-        aurora_client.start()
-        CustomerSupportContext.set_aurora_mcp_client_ctx(aurora_client)
-        logger.info("Aurora PostgreSQL MCP client started")
+        logger.info(f"Successfully connected to Aurora PostgreSQL: {response}")
+
+        # Store RDS Data API client in context (if needed)
+        # CustomerSupportContext.set_rds_data_client_ctx(rds_data_client)
+
     except Exception as e:
-        logger.error(f"Failed to initialize Aurora MCP client: {e}", exc_info=True)
+        logger.error(f"Failed to initialize RDS Data API client: {e}", exc_info=True)
         print("\n🔍 Full error traceback:")
         traceback.print_exc()
         raise
 
-    # Initialize agent
+    # Initialize agent with mock tools
     logger.info(f"Initializing agent with model: {MODEL_ID}")
     model = BedrockModel(model_id=MODEL_ID)
     agent = Agent(
         model=model,
-        # tools=gateway_tools + mcp_tools,
-        tools=aurora_client.list_tools_sync(),
-        system_prompt="You're a helpful customer support assistant",
+        tools=[],  # No tools for now, just RDS Data API
+        system_prompt="You're a helpful customer support assistant with access to customer data via RDS Data API",
     )
 
     CustomerSupportContext.set_agent_ctx(agent)
