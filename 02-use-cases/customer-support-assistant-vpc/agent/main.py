@@ -284,8 +284,8 @@ async def initialization_middleware(request, call_next):
     # Extract and set workload access token from headers
     headers = request.headers
     agent_identity_token = headers.get("WorkloadAccessToken")
-    logger.info(f"agent_identity_token: {agent_identity_token}")
     if agent_identity_token:
+        logger.info(f"agent_identity_token: {agent_identity_token}")
         BedrockAgentCoreContext.set_workload_access_token(agent_identity_token)
 
     # Initialize clients on first request
