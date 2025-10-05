@@ -331,10 +331,10 @@ async def strands_agent_bedrock(payload: dict, context) -> str:
         logger.debug(f"User prompt: {user_message[:100]}...")  # Log first 100 chars
 
         # Invoke agent
-        # response = agent(user_message)
+        response = agent(user_message)
         logger.info(f"Request completed for session: {session_id}")
 
-        return user_message
+        return response
 
     except Exception as e:
         logger.error(f"Error processing request: {e}", exc_info=True)
