@@ -315,32 +315,27 @@ async def strands_agent_bedrock(payload: dict, context) -> str:
         RuntimeError: If agent is not initialized
         KeyError: If prompt is missing from payload
     """
-    try:
-        # Get agent from context
-        agent = CustomerSupportContext.get_agent_ctx()
-        if agent is None:
-            logger.error("Agent not initialized")
-            raise RuntimeError("Agent not initialized. Check application startup logs.")
+    # Get agent from context
+    agent = CustomerSupportContext.get_agent_ctx()
+    if agent is None:
+        logger.error("Agent not initialized")
+        raise RuntimeError("Agent not initialized. Check application startup logs.")
 
-        # Extract user message
-        user_message = payload.get("prompt")
-        if not user_message:
-            raise KeyError("'prompt' field is required in payload")
+    # Extract user message
+    user_message = payload.get("prompt")
+    if not user_message:
+        raise KeyError("'prompt' field is required in payload")
 
-        # Log request
-        session_id = getattr(context, "session_id", "unknown")
-        logger.info(f"Processing request for session: {session_id}")
-        logger.debug(f"User prompt: {user_message[:100]}...")  # Log first 100 chars
+    # Log request
+    session_id = getattr(context, "session_id", "unknown")
+    logger.info(f"Processing request for session: {session_id}")
+    logger.debug(f"User prompt: {user_message[:100]}...")  # Log first 100 chars
 
-        # Invoke agent
-        response = agent(user_message)
-        logger.info(f"Request completed for session: {session_id}")
+    # Invoke agent
+    response = agent(user_message)
+    logger.info(f"Request completed for session: {session_id}")
 
-        return response
-
-    except Exception as e:
-        logger.error(f"Error processing request: {e}", exc_info=True)
-        raise
+    return response
 
 
 if __name__ == "__main__":
