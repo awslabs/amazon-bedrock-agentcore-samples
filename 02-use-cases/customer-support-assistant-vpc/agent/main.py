@@ -196,31 +196,31 @@ def initialize_clients():
     # logger.info("Agent initialized successfully")
 
     # Initialize RDS Data API client for Aurora PostgreSQL
-    try:
-        logger.info("Initializing RDS Data API client")
-        import boto3
+    # try:
+    #     logger.info("Initializing RDS Data API client")
+    #     import boto3
 
-        rds_data_client = boto3.client("rds-data", region_name=AWS_REGION)
+    #     rds_data_client = boto3.client("rds-data", region_name=AWS_REGION)
 
-        # Test connection by executing a simple query
-        logger.info("Testing RDS Data API connection")
-        response = rds_data_client.execute_statement(
-            resourceArn=AURORA_CLUSTER_ARN,
-            secretArn=AURORA_SECRET_ARN,
-            database=AURORA_DATABASE,
-            sql="SELECT version();",
-        )
+    #     # Test connection by executing a simple query
+    #     logger.info("Testing RDS Data API connection")
+    #     response = rds_data_client.execute_statement(
+    #         resourceArn=AURORA_CLUSTER_ARN,
+    #         secretArn=AURORA_SECRET_ARN,
+    #         database=AURORA_DATABASE,
+    #         sql="SELECT version();",
+    #     )
 
-        logger.info(f"Successfully connected to Aurora PostgreSQL: {response}")
+    #     logger.info(f"Successfully connected to Aurora PostgreSQL: {response}")
 
-        # Store RDS Data API client in context (if needed)
-        # CustomerSupportContext.set_rds_data_client_ctx(rds_data_client)
+    #     # Store RDS Data API client in context (if needed)
+    #     # CustomerSupportContext.set_rds_data_client_ctx(rds_data_client)
 
-    except Exception as e:
-        logger.error(f"Failed to initialize RDS Data API client: {e}", exc_info=True)
-        print("\n🔍 Full error traceback:")
-        traceback.print_exc()
-        raise
+    # except Exception as e:
+    #     logger.error(f"Failed to initialize RDS Data API client: {e}", exc_info=True)
+    #     print("\n🔍 Full error traceback:")
+    #     traceback.print_exc()
+    #     raise
 
     # Initialize agent with mock tools
     logger.info(f"Initializing agent with model: {MODEL_ID}")
