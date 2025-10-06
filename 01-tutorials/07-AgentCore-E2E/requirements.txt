@@ -2,8 +2,8 @@ strands-agents
 strands-agents-tools
 boto3>=1.40.8
 botocore>=1.40.8
-bedrock-agentcore>=0.1.2
-bedrock-agentcore-starter-toolkit>=0.1.5
+bedrock-agentcore<=0.1.5
+bedrock-agentcore-starter-toolkit==0.1.14
 aws-opentelemetry-distro
 ddgs
 aws-opentelemetry-distro~=0.10.1

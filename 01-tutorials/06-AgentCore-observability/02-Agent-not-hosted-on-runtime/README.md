@@ -6,6 +6,7 @@ We will create an agent with the following opensource agent frameworks:
 
 - **CrewAI**
 - **LangGraph**
+- **LlamaIndex**
 - **Strands Agents**
 
 ## Project Structure
@@ -19,6 +20,11 @@ We will create an agent with the following opensource agent frameworks:
 ├── Langgraph/
 │   ├── .env.example
 │   ├── Langgraph_Observability.ipynb
+│   └── requirements.txt
+├── LlamaIndex/
+│   ├── .env.example
+│   ├── LlamaIndex_Observability.ipynb
+│   ├── README.md
 │   └── requirements.txt
 └── Strands/
     ├── .env.example
@@ -48,6 +54,9 @@ Each framework has its own directory with:
 
 ### LangGraph
 [LangGraph](https://www.langchain.com/langgraph) extends LangChain with stateful, multi-actor applications. It's particularly useful for creating complex reasoning systems with LLMs.
+
+### LlamaIndex
+[LlamaIndex](https://www.llamaindex.ai/) allows for the creation of LLM-powered agents over data with LLMs and workflows.
 
 ### Strands Agents
 [ Strands](https://strandsagents.com/latest/) provides a framework for building LLM applications with complex workflows, focusing on model driven agentic developement.

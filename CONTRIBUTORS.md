@@ -21,6 +21,7 @@
 - rameshv29
 - rohillasandeep
 - satveerkhurpa
+- seanslavichaws
 - sssumarss
 - sundargthb
 - vedashree1110
@@ -31,3 +32,4 @@
 - HardikThakkar94
 - brianloyal
 - Sandeep Raveesh-Babu
+- chintanpatel-ai
