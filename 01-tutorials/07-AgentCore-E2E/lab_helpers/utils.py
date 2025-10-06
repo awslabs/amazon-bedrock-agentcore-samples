@@ -187,7 +187,7 @@ def delete_customer_support_secret():
         return False
 
 
-def get_or_create_cognito_pool():
+def get_or_create_cognito_pool(refresh_token=False):
     boto_session = Session()
     region = boto_session.region_name
     # Initialize Cognito client
@@ -196,9 +196,10 @@ def get_or_create_cognito_pool():
         # check for existing cognito pool
         cognito_config_str = get_customer_support_secret()
         cognito_config = json.loads(cognito_config_str)
-        # cognito_config["bearer_token"] = reauthenticate_user(
-        #    cognito_config["client_id"], cognito_config["client_secret"]
-        # ) #TO DO: Re-authenticate token if expired
+        if refresh_token:
+            cognito_config["bearer_token"] = reauthenticate_user(
+                cognito_config["client_id"], cognito_config["client_secret"]
+            )
         return cognito_config
     except:
         print("No existing cognito config found. Creating a new one..")
@@ -496,14 +497,16 @@ def create_agentcore_runtime_execution_role():
                 "Resource": [f"arn:aws:ssm:{region}:{account_id}:parameter/*"],
             },
             {
-            "Sid": "GatewayAccess",
-            "Effect": "Allow",
-            "Action": [
-                "bedrock-agentcore:GetGateway",
-                "bedrock-agentcore:InvokeGateway"
-            ],
-            "Resource": [f"arn:aws:bedrock-agentcore:{region}:{account_id}:gateway/*"]
-        }
+                "Sid": "GatewayAccess",
+                "Effect": "Allow",
+                "Action": [
+                    "bedrock-agentcore:GetGateway",
+                    "bedrock-agentcore:InvokeGateway",
+                ],
+                "Resource": [
+                    f"arn:aws:bedrock-agentcore:{region}:{account_id}:gateway/*"
+                ],
+            },
         ],
     }
 
