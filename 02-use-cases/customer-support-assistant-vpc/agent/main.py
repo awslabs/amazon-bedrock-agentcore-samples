@@ -159,6 +159,14 @@ def initialize_clients():
         logger.info("Initializing Aurora PostgreSQL MCP client")
         logger.info(f"Aurora Config - ARN: {AURORA_CLUSTER_ARN}, Secret: {AURORA_SECRET_ARN}, DB: {AURORA_DATABASE}, Region: {AWS_REGION}")
 
+        # Prepare environment for MCP server subprocess
+        mcp_env = {
+            **os.environ,
+            "FASTMCP_LOG_LEVEL": "DEBUG",
+            "AWS_REGION": AWS_REGION,
+            "AWS_DEFAULT_REGION": AWS_REGION,
+        }
+
         aurora_client = MCPClient(
             lambda: stdio_client(
                 StdioServerParameters(
@@ -177,7 +185,7 @@ def initialize_clients():
                         "--readonly",
                         "True",
                     ],
-                    env={**os.environ}
+                    env=mcp_env
                 )
             )
         )
