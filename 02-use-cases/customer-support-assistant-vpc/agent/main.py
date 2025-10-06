@@ -157,6 +157,8 @@ def initialize_clients():
     # Initialize Aurora PostgreSQL MCP client
     try:
         logger.info("Initializing Aurora PostgreSQL MCP client")
+        logger.info(f"Aurora Config - ARN: {AURORA_CLUSTER_ARN}, Secret: {AURORA_SECRET_ARN}, DB: {AURORA_DATABASE}, Region: {AWS_REGION}")
+
         aurora_client = MCPClient(
             lambda: stdio_client(
                 StdioServerParameters(
@@ -174,15 +176,25 @@ def initialize_clients():
                         "--readonly",
                         "True",
                     ],
+                    env={**os.environ}
                 )
             )
         )
 
+        logger.info("Starting Aurora MCP client...")
         aurora_client.start()
         CustomerSupportContext.set_aurora_mcp_client_ctx(aurora_client)
-        logger.info("Aurora PostgreSQL MCP client started")
+        logger.info("Aurora PostgreSQL MCP client started successfully")
+
+        # List available tools
+        tools = aurora_client.list_tools_sync()
+        logger.info(f"Aurora MCP client loaded {len(tools)} tools: {[t.name for t in tools]}")
+
     except Exception as e:
         logger.error(f"Failed to initialize Aurora MCP client: {e}", exc_info=True)
+        logger.error(f"Exception type: {type(e).__name__}")
+        if hasattr(e, 'exceptions'):
+            logger.error(f"Sub-exceptions: {e.exceptions}")
         print("\n🔍 Full error traceback:")
         traceback.print_exc()
         raise
