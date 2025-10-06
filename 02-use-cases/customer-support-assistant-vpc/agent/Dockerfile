@@ -10,9 +10,9 @@ ENV UV_SYSTEM_PYTHON=1 UV_COMPILE_BYTECODE=1 PYTHONUNBUFFERED=1 \
 COPY requirements.txt requirements.txt
 
 RUN uv pip install -r requirements.txt && \
-    uv pip install aws-opentelemetry-distro>=0.10.1 && \
-    uv pip install psycopg[binary] && \
-    uv pip install awslabs.postgres-mcp-server
+    uv pip install aws-opentelemetry-distro>=0.10.1
+# uv pip install psycopg[binary] && \
+# uv pip install awslabs.postgres-mcp-server
 
 
 EXPOSE 8080 8000
