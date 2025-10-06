@@ -160,8 +160,9 @@ def initialize_clients():
         aurora_client = MCPClient(
             lambda: stdio_client(
                 StdioServerParameters(
-                    command="postgres-mcp-server",
+                    command="uvx",
                     args=[
+                        "awslabs.postgres-mcp-server",
                         "--resource_arn",
                         AURORA_CLUSTER_ARN,
                         "--secret_arn",
