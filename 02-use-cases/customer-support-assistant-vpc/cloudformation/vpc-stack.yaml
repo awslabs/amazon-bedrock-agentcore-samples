@@ -236,11 +236,12 @@ Resources:
           - Effect: Allow
             Principal: '*'
             Action:
-              - logs:CreateLogGroup
-              - logs:CreateLogStream
               - logs:PutLogEvents
-              - logs:DescribeLogGroups
+              - logs:PutRetentionPolicy
               - logs:DescribeLogStreams
+              - logs:DescribeLogGroups
+              - logs:CreateLogStream
+              - logs:CreateLogGroup
             Resource:
               - '*'
       Tags:
@@ -487,6 +488,36 @@ Resources:
         - Key: Name
           Value: !Sub '${AWS::StackName}-S3-VPCEndpoint'
           
+  # VPC Endpoint for X-Ray
+  XRayVPCEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref VPC
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.xray'
+      VpcEndpointType: Interface
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+        - !Ref PrivateSubnet3
+      SecurityGroupIds:
+        - !Ref VPCEndpointSecurityGroup
+      PrivateDnsEnabled: true
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: '*'
+            Action:
+              - xray:PutTraceSegments
+              - xray:PutTelemetryRecords
+              - xray:GetSamplingRules
+              - xray:GetSamplingTargets
+              - xray:GetSamplingStatisticSummaries
+            Resource: '*'
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-XRay-VPCEndpoint'
+
   # VPC Endpoint for Bedrock Runtime
   BedrockRuntimeVPCEndpoint:
     Type: AWS::EC2::VPCEndpoint
