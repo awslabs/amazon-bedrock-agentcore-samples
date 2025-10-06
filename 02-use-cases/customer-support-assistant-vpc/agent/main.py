@@ -157,11 +157,12 @@ def initialize_clients():
     # Initialize Aurora PostgreSQL MCP client
     try:
         logger.info("Initializing Aurora PostgreSQL MCP client")
-        logger.info(f"Aurora Config - ARN: {AURORA_CLUSTER_ARN}, Secret: {AURORA_SECRET_ARN}, DB: {AURORA_DATABASE}, Region: {AWS_REGION}")
+        logger.info(
+            f"Aurora Config - ARN: {AURORA_CLUSTER_ARN}, Secret: {AURORA_SECRET_ARN}, DB: {AURORA_DATABASE}, Region: {AWS_REGION}"
+        )
 
         # Prepare environment for MCP server subprocess
         mcp_env = {
-            **os.environ,
             "FASTMCP_LOG_LEVEL": "DEBUG",
             "AWS_REGION": AWS_REGION,
             "AWS_DEFAULT_REGION": AWS_REGION,
@@ -185,7 +186,7 @@ def initialize_clients():
                         "--readonly",
                         "True",
                     ],
-                    env=mcp_env
+                    env=mcp_env,
                 )
             )
         )
@@ -197,12 +198,14 @@ def initialize_clients():
 
         # List available tools
         tools = aurora_client.list_tools_sync()
-        logger.info(f"Aurora MCP client loaded {len(tools)} tools: {[t.name for t in tools]}")
+        logger.info(
+            f"Aurora MCP client loaded {len(tools)} tools: {[t.name for t in tools]}"
+        )
 
     except Exception as e:
         logger.error(f"Failed to initialize Aurora MCP client: {e}", exc_info=True)
         logger.error(f"Exception type: {type(e).__name__}")
-        if hasattr(e, 'exceptions'):
+        if hasattr(e, "exceptions"):
             logger.error(f"Sub-exceptions: {e.exceptions}")
         print("\n🔍 Full error traceback:")
         traceback.print_exc()
