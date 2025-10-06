@@ -12,7 +12,7 @@ COPY requirements.txt requirements.txt
 RUN uv pip install -r requirements.txt && \
     uv pip install aws-opentelemetry-distro>=0.10.1 && \
     uv pip install psycopg[binary] && \
-    uv tool install awslabs.postgres-mcp-server@latest
+    uv pip install awslabs.postgres-mcp-server
 
 
 EXPOSE 8080 8000
