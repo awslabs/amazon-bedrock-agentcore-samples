@@ -33,3 +33,5 @@
 - brianloyal
 - chintanpatel-ai
 - jagdeep1
+- Sandeep Raveesh-Babu
+- chintanpatel-ai
