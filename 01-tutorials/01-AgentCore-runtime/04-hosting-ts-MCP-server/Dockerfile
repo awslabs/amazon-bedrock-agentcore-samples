@@ -6,7 +6,7 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm install
 
-npm install typescript -g
+RUN npm install typescript -g
 
 COPY . .
 RUN npm run build
