@@ -680,7 +680,7 @@ def wait_for_gateway_ready(gateway_client, gateway_id, max_wait_time=300, check_
             print(f"Gateway still in transition state ({status}). Waiting {check_interval} seconds...")
             time.sleep(check_interval)
             
-        except Exception as e:
+        except botocore.exceptions.BotoCoreError as e:
             print(f"Error checking gateway status: {e}")
             time.sleep(check_interval)
     
@@ -724,7 +724,7 @@ def wait_for_target_ready(gateway_client, gateway_id, target_id, max_wait_time=3
             print(f"Target still in transition state ({status}). Waiting {check_interval} seconds...")
             time.sleep(check_interval)
             
-        except Exception as e:
+        except botocore.exceptions.BotoCoreError as e:
             print(f"Error checking target status: {e}")
             time.sleep(check_interval)
     
