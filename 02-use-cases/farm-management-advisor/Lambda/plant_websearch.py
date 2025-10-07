@@ -1,6 +1,7 @@
 # Web search Lambda code - uses Tavily search + Nova Pro with LLM fallback
 
 import json
+import os
 import boto3
 import urllib3
 

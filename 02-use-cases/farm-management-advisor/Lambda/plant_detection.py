@@ -85,7 +85,7 @@ def lambda_handler(event, context):
             json_end = output.rfind('}') + 1
             json_part = output[json_start:json_end]
             parsed = json.loads(json_part)
-        except:
+        except (ValueError, json.JSONDecodeError):
             parsed = {"plant_type": "unknown", "health_analysis": "Parse error"}
 
         print("PARSED:  ", parsed)

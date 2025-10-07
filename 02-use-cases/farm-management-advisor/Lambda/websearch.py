@@ -104,7 +104,7 @@ def lambda_handler(event, context):
                 # Fallback to Bedrock if Tavily fails
                 return fallback_to_bedrock(query)
                 
-        except Exception as e:
+        except Exception:
             # Fallback to Bedrock if Tavily errors
             return fallback_to_bedrock(query)
     

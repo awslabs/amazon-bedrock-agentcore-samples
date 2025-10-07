@@ -1,6 +1,8 @@
 # Plant care Lambda code - uses Nova Lite to provide care recommendations
 
-import json, boto3
+import json
+import boto3
+
 def lambda_handler(event, context):
     try:
         plant_name = event.get('plant_name', 'unknown')
