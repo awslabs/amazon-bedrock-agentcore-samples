@@ -31,6 +31,7 @@
 - erezweinstein5
 - HardikThakkar94
 - brianloyal
+- jagdeep1
 - Sunil Ramachandra
 - Sandeep Raveesh-Babu
 - chintanpatel-ai
