@@ -19,7 +19,6 @@ This tutorial will navigate through the creation of 3 agents. The first one an A
 
 In these tutorials we will cover the following functionality:
 
-- [1 - Getting Started with first Agent using A2A and Strands](01-a2a-getting-started-agentcore.ipynb)
-- [2 - Create our Second agent, a Blog expert with Strands](02-a2a-aws-blog-agent.ipynb)
-- [3 - Create a orchestrator, that invoke sub-agents using A2A](03-a2a-deploy-orchestrator.ipynb)
-- [4 - Clean Up](04-a2a-cleanup.ipynb)
+- [1 - Getting Started with A2A with Strands and Bedrock AgentCore](01-a2a-getting-started-agentcore-strands.ipynb)
+- [2 - Create a orchestrator, that invoke sub-agents using A2A](02-a2a-deploy-orchestrator.ipynb)
+- [3 - Clean Up](03-a2a-cleanup.ipynb)
