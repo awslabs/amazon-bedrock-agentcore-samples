@@ -323,14 +323,18 @@ def _read_gateway_config() -> tuple[str, str]:
         with open(config_path, "r") as f:
             config = yaml.safe_load(f)
 
-        gateway_uri = config.get("gateway", {}).get("uri")
+        # Handle case where 'gateway' key might be None
+        gateway_config = config.get("gateway") or {}
+        gateway_uri = gateway_config.get("uri") if isinstance(gateway_config, dict) else None
         if not gateway_uri:
             raise ValueError(
                 "Gateway URI not found in agent_config.yaml under 'gateway.uri'"
             )
-        
+
         # Get AWS region with fallback logic: config -> AWS_REGION env var -> us-east-1
-        aws_region = config.get("aws", {}).get("region")
+        # Handle case where 'aws' key might be None
+        aws_config = config.get("aws") or {}
+        aws_region = aws_config.get("region") if isinstance(aws_config, dict) else None
         if not aws_region:
             aws_region = os.environ.get("AWS_REGION", "us-east-1")
 
@@ -378,7 +382,7 @@ async def create_multi_agent_system(
     # Get Anthropic API key if needed
     if provider == "anthropic" and not llm_kwargs.get("api_key"):
         llm_kwargs["api_key"] = _get_anthropic_api_key()
-    
+
     # Add region_name to llm_kwargs for bedrock provider
     if provider == "bedrock" and region_name:
         llm_kwargs["region_name"] = region_name
@@ -682,7 +686,7 @@ async def _run_interactive_session(
 
     # Create multi-agent system
     graph, all_tools = await create_multi_agent_system(
-        provider, 
+        provider,
         force_delete_memory=force_delete_memory,
         export_graph=False,  # Don't export in interactive mode each time
         region_name=region_name,
@@ -745,6 +749,7 @@ async def _run_interactive_session(
 
             elif user_input.lower() == "/savereport":
                 if original_query and last_response:
+                    user_id = _get_user_from_env()
                     filepath = _save_final_response_to_markdown(
                         original_query,
                         last_response,
@@ -1023,7 +1028,7 @@ async def _run_interactive_session(
                                                 lines = formatted.split("\n")
                                                 for line in lines:
                                                     print(f"      {line}")
-                                            except:
+                                            except Exception:
                                                 # Not JSON, print full string
                                                 lines = result_content.split("\n")
                                                 for line in lines:
@@ -1052,7 +1057,6 @@ async def _run_interactive_session(
                                 messages.append(AIMessage(content=final_response))
                                 # Store for /savereport command instead of auto-saving
                                 if save_markdown:
-                                    last_query = user_input
                                     last_response = final_response
                                     print(
                                         "\n💡 Use /savereport to save this investigation report."
@@ -1158,16 +1162,18 @@ async def main():
 
     # Configure logging based on debug flag
     debug_enabled = configure_logging(args.debug)
-    
+
     # Load AWS region with fallback logic: config -> AWS_REGION env var -> us-east-1
     try:
         config_path = Path(__file__).parent / "config" / "agent_config.yaml"
         with open(config_path, "r") as f:
             config = yaml.safe_load(f)
-        
+
         # Try to get region from config first
-        aws_region = config.get("aws", {}).get("region")
-        
+        # Handle case where 'aws' key might be None
+        aws_config = config.get("aws") or {}
+        aws_region = aws_config.get("region") if isinstance(aws_config, dict) else None
+
         if aws_region:
             logger.info(f"Using AWS region from agent_config.yaml: {aws_region}")
         else:
@@ -1179,7 +1185,7 @@ async def main():
                 # Final fallback to us-east-1
                 aws_region = "us-east-1"
                 logger.info(f"Using default AWS region: {aws_region}")
-                
+
     except Exception as e:
         logger.warning(f"Failed to load AWS region from config: {e}")
         # Try environment variable, then default
@@ -1208,7 +1214,7 @@ async def main():
                     graph_output_path=args.graph_output,
                     region_name=aws_region,
                 )
-            
+
             await _run_interactive_session(
                 provider=args.provider,
                 save_state=not args.no_save,
@@ -1221,7 +1227,7 @@ async def main():
         else:
             try:
                 graph, all_tools = await create_multi_agent_system(
-                    args.provider, 
+                    args.provider,
                     force_delete_memory=args.force_delete_memory,
                     export_graph=args.export_graph,
                     graph_output_path=args.graph_output,
@@ -1437,7 +1443,7 @@ async def main():
                                                 lines = formatted.split("\n")
                                                 for line in lines:
                                                     print(f"      {line}")
-                                            except:
+                                            except Exception:
                                                 # Not JSON, print full string
                                                 lines = result_content.split("\n")
                                                 for line in lines:

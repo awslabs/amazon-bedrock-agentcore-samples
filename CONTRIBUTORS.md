@@ -6,7 +6,9 @@
 - aristsakpinis93
 - aurbac
 - bergjaak
+- danystinson
 - dhawalkp
+- didhd
 - EashanKaushik
 - Grace Lang
 - khastation
@@ -19,6 +21,7 @@
 - rameshv29
 - rohillasandeep
 - satveerkhurpa
+- seanslavichaws
 - sssumarss
 - sundargthb
 - vedashree1110
@@ -27,3 +30,8 @@
 - w601sxs
 - erezweinstein5
 - HardikThakkar94
+- brianloyal
+- jagdeep1
+- Sunil Ramachandra
+- Sandeep Raveesh-Babu
+- chintanpatel-ai

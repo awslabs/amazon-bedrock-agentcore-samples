@@ -125,6 +125,12 @@ else
     MCP_FUNCTION_ARN=""
     MCP_FUNCTION_NAME=""
     MCP_STACK_NAME="bac-mcp-stack"
+    if [ $? -ne 0 ] || [ -z "$ACCOUNT_ID" ] || [ "$ACCOUNT_ID" = "None" ]; then
+        echo "❌ Failed to get AWS Account ID. Please check your AWS credentials and network connectivity."
+        echo "Error: $ACCOUNT_ID"
+        exit 1
+    fi
+
 fi
 
 # Clean up temporary script

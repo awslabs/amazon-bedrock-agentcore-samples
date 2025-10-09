@@ -23,6 +23,11 @@ fi
 # Set default region if not set
 AWS_REGION=${AWS_REGION:-"us-west-2"}
 ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+if [ $? -ne 0 ] || [ -z "$ACCOUNT_ID" ] || [ "$ACCOUNT_ID" = "None" ]; then
+    echo "❌ Failed to get AWS Account ID. Please check your AWS credentials and network connectivity."
+    echo "Error: $ACCOUNT_ID"
+    exit 1
+fi
 
 # Step 1: Note about CloudWatch Transaction Search
 echo "Step 1: CloudWatch Transaction Search..."

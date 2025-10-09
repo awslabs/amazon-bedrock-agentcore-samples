@@ -1,6 +1,8 @@
 from strands.tools import tool
 from ddgs.exceptions import DDGSException, RatelimitException
 from ddgs import DDGS
+from strands_tools import retrieve
+import boto3
 
 MODEL_ID = "us.anthropic.claude-3-7-sonnet-20250219-v1:0"
 
@@ -153,3 +155,37 @@ def get_product_info(product_type: str) -> str:
            f"• Key Features: {product['features']}\n" \
            f"• Compatibility: {product['compatibility']}\n" \
            f"• Support: {product['support']}"
+
+@tool
+def get_technical_support(issue_description: str) -> str:
+	try:
+		# Get KB ID from parameter store
+		ssm = boto3.client('ssm')
+		account_id = boto3.client('sts').get_caller_identity()['Account']
+		region = boto3.Session().region_name
+
+		kb_id = ssm.get_parameter(Name=f"/{account_id}-{region}/kb/knowledge-base-id")['Parameter']['Value']
+		print(f"Successfully retrieved KB ID: {kb_id}")
+
+		# Use strands retrieve tool
+		tool_use = {
+			"toolUseId": "tech_support_query",
+			"input": {
+				"text": issue_description,
+				"knowledgeBaseId": kb_id,
+				"region": region,
+				"numberOfResults": 3,
+				"score": 0.4
+			}
+		}
+
+		result = retrieve.retrieve(tool_use)
+
+		if result["status"] == "success":
+			return result["content"][0]["text"]
+		else:
+			return f"Unable to access technical support documentation. Error: {result['content'][0]['text']}"
+
+	except Exception as e:
+		print(f"Detailed error in get_technical_support: {str(e)}")
+		return f"Unable to access technical support documentation. Error: {str(e)}"

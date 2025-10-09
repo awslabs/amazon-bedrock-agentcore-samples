@@ -18,6 +18,12 @@ ZIP_FILE="lambda_package.zip"
 # Get AWS account ID
 ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 echo "AWS Account ID: $ACCOUNT_ID"
+if [ $? -ne 0 ] || [ -z "$ACCOUNT_ID" ] || [ "$ACCOUNT_ID" = "None" ]; then
+    echo "❌ Failed to get AWS Account ID. Please check your AWS credentials and network connectivity."
+    echo "Error: $ACCOUNT_ID"
+    exit 1
+fi
+
 
 echo "Packaging Lambda function..."
 
