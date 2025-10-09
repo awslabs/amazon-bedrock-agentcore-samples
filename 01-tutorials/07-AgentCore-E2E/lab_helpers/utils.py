@@ -201,7 +201,7 @@ def get_or_create_cognito_pool(refresh_token=False):
                 cognito_config["client_id"], cognito_config["client_secret"]
             )
         return cognito_config
-    except:
+    except Exception:
         print("No existing cognito config found. Creating a new one..")
 
     try:

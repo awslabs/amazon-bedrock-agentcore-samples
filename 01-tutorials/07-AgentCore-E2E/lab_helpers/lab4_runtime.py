@@ -1,5 +1,4 @@
 import boto3
-import requests
 from bedrock_agentcore.runtime import (
     BedrockAgentCoreApp,
 )  # ### AGENTCORE RUNTIME - LINE 1 ####

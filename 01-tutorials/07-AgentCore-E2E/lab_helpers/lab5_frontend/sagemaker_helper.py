@@ -23,9 +23,9 @@ def get_streamlit_url():
     # Now you can use domain_id and space_name variables in your code
     print(f"Domain ID: {domain_id}")
     print(f"Space Name: {space_name}")
-    print(f"\nPlease use the following to login and test the Streamlit Application")
-    print(f"Username:       testuser")
-    print(f"Password:       MyPassword123!")
+    print("\nPlease use the following to login and test the Streamlit Application")
+    print("Username:       testuser")
+    print("Password:       MyPassword123!")
     if domain_id is not None:
         sagemaker_client = boto3.client('sagemaker')
         # Replace 'your-space-name' and 'your-domain-id' with your actual values
