@@ -3,4 +3,5 @@ bedrock-agentcore==0.1.7
 bedrock-agentcore-starter-toolkit==0.1.21
 strands-agents[a2a]
 strands-agents-tools
+pyyaml
 ddgs
