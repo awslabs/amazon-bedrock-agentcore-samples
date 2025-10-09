@@ -114,7 +114,7 @@ def delete_cognito_secret():
         secrets_client.delete_secret(
             SecretId=secret_name, ForceDeleteWithoutRecovery=True
         )
-        print(f"✅ Secret Deleted}")
+        print(f"✅ Secret Deleted")
         return True
     except Exception as e:
         print(f"❌ Error deleting secret: {str(e)}")
