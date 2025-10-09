@@ -606,7 +606,6 @@ def delete_agentcore_runtime_execution_role():
 
 
 def agentcore_memory_cleanup():
-
     control_client = boto3.client("bedrock-agentcore-control", region_name=REGION)
 
     """List all memories and their associated strategies"""
@@ -648,7 +647,6 @@ def agentcore_memory_cleanup():
 
 
 def gateway_target_cleanup():
-
     gateway_client = boto3.client(
         "bedrock-agentcore-control",
         region_name=REGION,
