@@ -9,9 +9,9 @@ It supports any frameworks, models, and protocols, enabling developers to transf
 
 Recently, AWS announced [A2A support](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime-a2a.html) for AgentCore Runtime.
 
-In this example, we'll build a multi-agent systems using Amazon Bedrock AgentCore e Strands Agents.
+In this example, we'll build a multi-agent systems using Amazon Bedrock AgentCore and Strands Agents.
 
-This agent will navigate through a creation of 3 agents, first one an AWS Documentation expert, that will consume AWS Docs using MCP. Second one will search on web latest blogs and AWS News and 3rd one will be an orchestrator, that will invoke previous ones using MCP.
+This tutorial will navigate through the creation of 3 agents. The first one an AWS Documentation expert, that will consume AWS Docs using MCP. The second one will search on web latest blogs and AWS News and the third one will be an orchestrator, that will invoke the previous ones using MCP.
 
 <img src="images/architecture.png" style="width: 80%;">
 
