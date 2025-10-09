@@ -480,7 +480,7 @@ def create_agentcore_runtime_execution_role():
                 "Sid": "GetMemoryId",
                 "Effect": "Allow",
                 "Action": ["ssm:GetParameter"],
-                "Resource": [f"arn:aws:ssm:{region}:{account_id}:parameter/app/*"],
+                "Resource": [f"arn:aws:ssm:{region}:{account_id}:parameter/*"],
             },
         ],
     }

@@ -7,3 +7,6 @@ boto3
 botocore
 bedrock-agentcore
 bedrock-agentcore-starter-toolkit
+streamlit
+requests
+streamlit-cognito-auth

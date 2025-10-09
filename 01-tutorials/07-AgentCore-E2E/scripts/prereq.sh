@@ -11,6 +11,7 @@ INFRA_TEMPLATE_FILE="prerequisite/infrastructure.yaml"
 COGNITO_TEMPLATE_FILE="prerequisite/cognito.yaml"
 REGION=$(aws configure get region 2>/dev/null || echo "us-west-2")
 
+
 # Get AWS Account ID with proper error handling
 echo "🔍 Getting AWS Account ID..."
 ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text 2>&1)
@@ -28,6 +29,10 @@ LAYER_SOURCE="prerequisite/lambda/python"
 S3_LAYER_KEY="${LAYER_ZIP_FILE}"
 LAMBDA_SRC="prerequisite/lambda/python"
 S3_KEY="${ZIP_FILE}"
+
+USER_POOL_NAME="CustomerSupportGatewayPool" 
+MACHINE_APP_CLIENT_NAME="CustomerSupportMachineClient" 
+WEB_APP_CLIENT_NAME="CustomerSupportWebClient"
 
 echo "Region: $REGION"
 echo "Account ID: $ACCOUNT_ID"
@@ -114,7 +119,7 @@ deploy_stack "$INFRA_STACK_NAME" "$INFRA_TEMPLATE_FILE" --parameter-overrides La
 infra_exit_code=$?
 
 echo "🔧 Starting deployment of Cognito stack..."
-deploy_stack "$COGNITO_STACK_NAME" "$COGNITO_TEMPLATE_FILE"
+deploy_stack "$COGNITO_STACK_NAME" "$COGNITO_TEMPLATE_FILE" --parameter-overrides UserPoolName="$USER_POOL_NAME" MachineAppClientName="$MACHINE_APP_CLIENT_NAME" WebAppClientName="$WEB_APP_CLIENT_NAME"
 cognito_exit_code=$?
 
 echo "✅ Deployment complete."

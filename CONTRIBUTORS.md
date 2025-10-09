@@ -21,6 +21,7 @@
 - rameshv29
 - rohillasandeep
 - satveerkhurpa
+- seanslavichaws
 - sssumarss
 - sundargthb
 - vedashree1110
@@ -30,3 +31,8 @@
 - erezweinstein5
 - HardikThakkar94
 - brianloyal
+- jagdeep1
+- Sunil Ramachandra
+- Sandeep Raveesh-Babu
+- chintanpatel-ai
+- Evandro Franco
