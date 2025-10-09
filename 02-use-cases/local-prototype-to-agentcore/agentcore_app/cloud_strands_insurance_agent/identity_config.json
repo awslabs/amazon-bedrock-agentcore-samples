@@ -1,0 +1,18 @@
+{
+  "workload_identity": {
+    "arn": "arn:aws:bedrock-agentcore:us-east-1:200937443282:workload-identity-directory/default/workload-identity/insurance-agent-workload",
+    "id": "insurance-agent-workload",
+    "name": "insurance-agent-workload"
+  },
+  "oauth2_provider": {
+    "type": "cognito",
+    "client_id": "2modcaof0mtpqqhrrjehc8t0fg",
+    "token_endpoint": "https://agentcore-b47979c8.auth.us-east-1.amazoncognito.com/oauth2/token",
+    "note": "Using Cognito OAuth2 - tokens managed via gateway_info.json"
+  },
+  "api_key_provider": {
+    "name": "InsuranceAPIKeyProvider",
+    "arn": "arn:aws:bedrock-agentcore:us-east-1:200937443282:token-vault/default/apikeycredentialprovider/InsuranceAPIKeyProvider"
+  },
+  "region": "us-east-1"
+}

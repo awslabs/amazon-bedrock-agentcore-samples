@@ -47,9 +47,9 @@ fi
 echo -e "${GREEN}Using AWS Account ID: ${ACCOUNT_ID}${NC}"
 
 # Get AWS Regions
-echo -e "\nEnter comma-separated list of AWS regions to use (default: us-east-1,us-west-2):"
+echo -e "\nEnter comma-separated list of AWS regions to use (default: us-east-1):"
 read -p "> " REGIONS_INPUT
-REGIONS=${REGIONS_INPUT:-"us-east-1,us-west-2"}
+REGIONS=${REGIONS_INPUT:-"us-east-1"}
 IFS=',' read -ra REGIONS_ARRAY <<< "$REGIONS"
 
 echo -e "${GREEN}Using regions: ${REGIONS}${NC}"

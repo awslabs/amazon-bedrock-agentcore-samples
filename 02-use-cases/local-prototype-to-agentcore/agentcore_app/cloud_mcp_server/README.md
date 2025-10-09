@@ -23,10 +23,24 @@ The Cloud MCP Server acts as a bridge between your LLM-powered agents and your i
 ## Installation
 
 1. Clone this repository
-2. Install dependencies:
+2. Create a virtual environment and install dependencies:
 
 ```bash
+# Create virtual environment (required on macOS)
+python3 -m venv .venv
+
+# Activate virtual environment
+source .venv/bin/activate
+
+# Install dependencies
 pip install -r requirements.txt
+```
+
+**Note for macOS users**: You must use a virtual environment due to system Python restrictions (PEP 668). The virtual environment keeps packages isolated from your system Python.
+
+**For future sessions**: Remember to activate the virtual environment before running scripts:
+```bash
+source .venv/bin/activate
 ```
 
 ## Configuration
@@ -59,9 +73,29 @@ Replace the placeholder values with your actual configuration.
 
 ## Usage
 
-Run the gateway setup script:
+**Option A: Automated Setup (Recommended)**
+
+Run the automated setup script that handles virtual environment creation and package installation:
 
 ```bash
+./setup.sh
+```
+
+This script will:
+- Check for `.env` file (create from `.env_example` if needed)
+- Create virtual environment if it doesn't exist
+- Install all required packages
+- Run the gateway setup script
+
+**Option B: Manual Setup**
+
+If you prefer manual control:
+
+```bash
+# Make sure virtual environment is activated
+source .venv/bin/activate
+
+# Run the setup script
 python agentcore_gateway_setup_openapi.py
 ```
 
@@ -144,10 +178,24 @@ with mcp_client:
 - **Gateway Creation Fails**: Check your AWS permissions and Bedrock service limits
 - **Invalid Endpoint**: Verify your API Gateway URL is accessible
 
+## Token Refresh
+
+Access tokens expire after a period of time. To refresh your token:
+
+```bash
+# Make sure virtual environment is activated
+source .venv/bin/activate
+
+# Run the refresh script
+python refresh_gateway_token.py
+```
+
+This will update the `gateway_info.json` file with a new access token.
+
 ## Next Steps
 
 After setting up the MCP server:
 
 1. Configure your agents to use the MCP URL and authentication
-2. Set up token refresh for production use
+2. Set up token refresh for production use (see Token Refresh section above)
 3. Add monitoring and logging for gateway operations

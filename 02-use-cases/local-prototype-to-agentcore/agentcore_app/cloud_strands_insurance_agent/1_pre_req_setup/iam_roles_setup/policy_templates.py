@@ -48,12 +48,12 @@ def get_ecr_policy(account_id: str, regions: List[str], repository_name: str = '
     Args:
         account_id: The AWS account ID
         regions: List of AWS regions
-        repository_name: ECR repository name
+        repository_name: ECR repository name (supports wildcards)
         
     Returns:
         Dictionary containing the ECR policy statements
     """
-    # ECR image access statement
+    # ECR image access statement - use wildcard to support any agent name
     ecr_image_access = {
         "Sid": "ECRImageAccess",
         "Effect": "Allow",
@@ -61,7 +61,7 @@ def get_ecr_policy(account_id: str, regions: List[str], repository_name: str = '
             "ecr:BatchGetImage",
             "ecr:GetDownloadUrlForLayer"
         ],
-        "Resource": [f"arn:aws:ecr:{region}:{account_id}:repository/{repository_name}" for region in regions]
+        "Resource": [f"arn:aws:ecr:{region}:{account_id}:repository/bedrock-agentcore-*" for region in regions]
     }
     
     # ECR token access statement
@@ -209,6 +209,32 @@ def get_bedrock_models_policy(account_id: str, regions: List[str]) -> Dict[str, 
         ]
     }
 
+def get_memory_policy(account_id: str, regions: List[str]) -> Dict[str, Any]:
+    """
+    Generate the AgentCore Memory access policy statement
+    
+    Args:
+        account_id: The AWS account ID
+        regions: List of AWS regions
+        
+    Returns:
+        Dictionary containing the Memory policy statement
+    """
+    return {
+        "Sid": "MemoryAccess",
+        "Effect": "Allow",
+        "Action": [
+            "bedrock-agentcore:CreateMemory",
+            "bedrock-agentcore:GetMemory",
+            "bedrock-agentcore:UpdateMemory",
+            "bedrock-agentcore:DeleteMemory",
+            "bedrock-agentcore:ListMemories",
+            "bedrock-agentcore:CreateEvent",
+            "bedrock-agentcore:RetrieveMemories"
+        ],
+        "Resource": [f"arn:aws:bedrock-agentcore:{region}:{account_id}:memory/*" for region in regions]
+    }
+
 def build_execution_policy(config_data: Dict[str, Dict[str, str]]) -> Dict[str, Any]:
     """
     Build the complete execution policy document based on configuration
@@ -251,6 +277,9 @@ def build_execution_policy(config_data: Dict[str, Dict[str, str]]) -> Dict[str, 
         
     if policies.get('enable_bedrock_models', 'true').lower() == 'true':
         statements.append(get_bedrock_models_policy(account_id, regions))
+    
+    if policies.get('enable_memory', 'true').lower() == 'true':
+        statements.append(get_memory_policy(account_id, regions))
     
     # Create the complete policy document
     policy_document = {

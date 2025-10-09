@@ -60,7 +60,7 @@ cp ../local_insurance_api/data/*.json build/data/
 
 # Install dependencies in the build directory
 echo "Installing dependencies..."
-pip install -r ../local_insurance_api/requirements.txt -t build/
+python3 -m pip install -r ../local_insurance_api/requirements.txt -t build/
 
 # Package the application
 echo "Packaging the application..."

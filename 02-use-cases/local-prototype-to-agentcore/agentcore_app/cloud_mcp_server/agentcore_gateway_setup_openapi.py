@@ -7,8 +7,8 @@ an insurance API as MCP tools using an OpenAPI specification.
 The script uses environment variables loaded from a .env file for configuration:
 
 Environment Variables:
-    AWS_REGION (str): AWS region for the gateway (default: "us-west-2")
-    ENDPOINT_URL (str): Endpoint URL for Bedrock AgentCore (default: Bedrock AgentCore endpoint in us-west-2)
+    AWS_REGION (str): AWS region for the gateway (default: "us-east-1")
+    ENDPOINT_URL (str): Endpoint URL for Bedrock AgentCore (default: Bedrock AgentCore endpoint in us-east-1)
     GATEWAY_NAME (str): Name for the gateway (default: "InsuranceAPIGateway")
     GATEWAY_DESCRIPTION (str): Description for the gateway
     API_GATEWAY_URL (str): API Gateway URL for the insurance API
@@ -34,8 +34,8 @@ from bedrock_agentcore_starter_toolkit.operations.gateway.client import GatewayC
 load_dotenv()
 
 # Setup the client using environment variables
-region = os.getenv("AWS_REGION", "us-west-2")
-endpoint_url = os.getenv("ENDPOINT_URL", "https://bedrock-agentcore-control.us-west-2.amazonaws.com")
+region = os.getenv("AWS_REGION", "us-east-1")
+endpoint_url = os.getenv("ENDPOINT_URL", "https://bedrock-agentcore-control.us-east-1.amazonaws.com")
 
 print(f"Setting up Gateway client in region {region}")
 client = GatewayClient(endpoint_url=endpoint_url, region_name=region)
@@ -49,12 +49,41 @@ gateway_description = os.getenv("GATEWAY_DESCRIPTION", "Insurance API Gateway wi
 print(f"Creating OAuth authorizer for gateway '{gateway_name}'")
 cognito_response = client.create_oauth_authorizer_with_cognito(gateway_name)
 
-# Create the gateway
-print(f"Creating MCP gateway '{gateway_name}'")
-gateway = client.create_mcp_gateway(
-    name=gateway_name,
-    authorizer_config=cognito_response["authorizer_config"],
-)
+# Check if gateway already exists first
+print(f"Checking if gateway '{gateway_name}' already exists...")
+import boto3
+bedrock_client = boto3.client('bedrock-agentcore-control', 
+                              region_name=region,
+                              endpoint_url=endpoint_url)
+
+gateway = None
+try:
+    response = bedrock_client.list_gateways(maxResults=100)
+    for gw in response.get('gateways', []):
+        if gw['name'] == gateway_name:
+            gateway = gw
+            print(f"✓ Found existing gateway: {gateway['gatewayId']}")
+            break
+except Exception as list_error:
+    print(f"⚠️  Error listing gateways: {list_error}")
+
+# If gateway doesn't exist, create it
+if not gateway:
+    print(f"Creating new MCP gateway '{gateway_name}'")
+    try:
+        gateway = client.create_mcp_gateway(
+            name=gateway_name,
+            authorizer_config=cognito_response["authorizer_config"],
+        )
+        print(f"✓ Created new gateway: {gateway['gatewayId']}")
+    except Exception as e:
+        if "ConflictException" in str(type(e).__name__) or "already exists" in str(e):
+            print(f"❌ Gateway exists but couldn't be found in list. This is a timing issue.")
+            print(f"Please wait a moment and run the script again, or run cleanup first:")
+            print(f"  cd cloud_mcp_server && python cleanup_gateway.py")
+        raise e
+else:
+    print(f"✓ Using existing gateway: {gateway['gatewayId']}")
 
 
 # Load the insurance API OpenAPI specification from environment or default path
@@ -66,7 +95,7 @@ with open(openapi_file_path, "r") as f:
     openapi_spec = json.load(f)
 
 # Set the API Gateway URL from environment variables
-api_gateway_url = os.getenv("API_GATEWAY_URL", "https://i0zzy6t0x9.execute-api.us-west-2.amazonaws.com/dev")
+api_gateway_url = os.getenv("API_GATEWAY_URL", "https://i0zzy6t0x9.execute-api.us-east-1.amazonaws.com/dev")
 
 # Add server URL if not present in OpenAPI spec
 if "servers" not in openapi_spec:
@@ -80,19 +109,42 @@ credential_parameter_name = os.getenv("CREDENTIAL_PARAMETER_NAME", "X-Subscripti
 
 # Create the OpenAPI target with OAuth2 configuration using Cognito
 print("Creating MCP gateway target with OpenAPI specification")
-open_api_target = client.create_mcp_gateway_target(
-    gateway=gateway,
-    name="API",
-    target_type="openApiSchema",
-    target_payload={
-        "inlinePayload": json.dumps(openapi_spec)
-    },
-    credentials={
-        "api_key": api_key,
-        "credential_location": credential_location,
-        "credential_parameter_name": credential_parameter_name
-    }
-)
+try:
+    open_api_target = client.create_mcp_gateway_target(
+        gateway=gateway,
+        name="API",
+        target_type="openApiSchema",
+        target_payload={
+            "inlinePayload": json.dumps(openapi_spec)
+        },
+        credentials={
+            "api_key": api_key,
+            "credential_location": credential_location,
+            "credential_parameter_name": credential_parameter_name
+        }
+    )
+    print(f"✓ Created new target: {open_api_target['targetId']}")
+except Exception as e:
+    if "ConflictException" in str(type(e).__name__) or "already exists" in str(e):
+        print(f"⚠️  Target 'API' already exists, retrieving existing target...")
+        # List targets and find the one with matching name
+        import boto3
+        bedrock_client = boto3.client('bedrock-agentcore-control', 
+                                      region_name=region,
+                                      endpoint_url=endpoint_url)
+        response = bedrock_client.list_gateway_targets(gatewayArn=gateway['gatewayArn'])
+        open_api_target = None
+        for target in response.get('targets', []):
+            if target['name'] == 'API':
+                open_api_target = target
+                print(f"✓ Found existing target: {target['targetId']}")
+                break
+        
+        if not open_api_target:
+            print(f"❌ Could not find existing target 'API'")
+            raise e
+    else:
+        raise e
 
 # Print the gateway information
 print("\n✅ Gateway setup complete!")

@@ -1,10 +1,24 @@
-mcp>=0.1.0
-strands-agents>=0.1.8
+# Core dependencies with explicit versions to avoid conflicts
+pydantic>=2.11.0,<3.0.0
+starlette>=0.46.2
+
+# AgentCore and MCP
+mcp>=1.16.0
+bedrock-agentcore>=0.1.0
+bedrock-agentcore-starter-toolkit>=0.1.0
+
+# Strands Agent Framework
+strands-agents[otel]>=0.1.8
 strands-agents-tools>=0.1.6
+
+# AWS SDK
+boto3>=1.39.7
+botocore>=1.39.7
+
+# Utilities
 typing-extensions>=4.0.0
 python-dateutil>=2.8.2
 python-dotenv>=1.0.0
-boto3>=1.39.7
-botocore>=1.39.7
-bedrock-agentcore>=0.1.0
-bedrock-agentcore-starter-toolkit>=0.1.0
+
+# Observability
+aws-opentelemetry-distro

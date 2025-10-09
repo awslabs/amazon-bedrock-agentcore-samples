@@ -33,6 +33,12 @@ cloud_strands_insurance_agent/
 └── .env_example                          # Environment variable template
 ```
 
+## Quick Reference
+
+📋 **[Deployment Checklist](DEPLOYMENT_CHECKLIST.md)** - Step-by-step checklist to ensure successful deployment
+
+🔧 **[Troubleshooting Guide](DEPLOYMENT_TROUBLESHOOTING.md)** - Solutions to common deployment issues
+
 ## Step 1: Set Up Prerequisites
 
 Set up the required IAM roles and Cognito authentication:
@@ -98,7 +104,38 @@ sed -i "s|MCP_SERVER_URL=.*|MCP_SERVER_URL=\"$MCP_URL\"|g" .env
 sed -i "s|MCP_ACCESS_TOKEN=.*|MCP_ACCESS_TOKEN=\"$ACCESS_TOKEN\"|g" .env
 ```
 
-## Step 3: Configure Your Agent
+## Step 3: Set Up AgentCore Identity (Optional but Recommended)
+
+Configure AgentCore Identity for secure credential management:
+
+```bash
+# Run the automated identity setup
+./setup_identity.sh
+```
+
+This will:
+- Create a **Workload Identity** for the agent (Phase 2: Inbound authentication)
+- Create an **API Key Credential Provider** for secure credential storage (Phase 1: Outbound)
+- Save configuration to `identity_config.json`
+- Optionally update your `.env` file with identity values
+
+**What you need**:
+- `AWS_REGION` set in `.env`
+- `GATEWAY_INFO_FILE` path pointing to `../cloud_mcp_server/gateway_info.json`
+- `API_KEY` (optional) - Insurance API key for secure storage
+
+**What gets created**:
+- Workload Identity: `insurance-agent-workload`
+- API Key Provider: `InsuranceAPIKeyProvider` (if API_KEY is set)
+- Environment variables: `WORKLOAD_IDENTITY_ARN`, `WORKLOAD_IDENTITY_ID`
+
+For more details, see:
+- Quick guide: [IDENTITY_QUICK_START.md](IDENTITY_QUICK_START.md)
+- Full documentation: [IDENTITY_INTEGRATION.md](IDENTITY_INTEGRATION.md)
+
+**Skip this step if**: You want to use basic authentication without Identity features.
+
+## Step 4: Configure Your Agent
 
 Configure the agent with your execution role (using the ARN from Step 1):
 
@@ -117,7 +154,7 @@ This creates:
 - `Dockerfile` - Container build instructions (if not already present)
 - `.dockerignore` - Files to exclude from build
 
-## Step 4: Local Testing
+## Step 5: Local Testing
 
 Test your agent locally before cloud deployment:
 
@@ -143,7 +180,7 @@ curl -X POST http://localhost:8080/invocations \
   -d '{"user_input": "I need a quote for auto insurance"}'
 ```
 
-## Step 5: Deploy to Cloud
+## Step 6: Deploy to Cloud
 
 Deploy your agent to AWS:
 
@@ -151,11 +188,39 @@ Deploy your agent to AWS:
 # Load environment variables from .env file
 source .env
 
+# Verify environment variables are loaded
+echo "Checking environment variables..."
+echo "MCP_SERVER_URL: $MCP_SERVER_URL"
+echo "AWS_REGION: $AWS_REGION"
+echo "MODEL_NAME: $MODEL_NAME"
+
 # Deploy to AWS Bedrock AgentCore
+# IMPORTANT: All -env flags are REQUIRED for the agent to function
+# The agent code expects these environment variables at runtime
+
+# Full deployment with Identity (recommended):
 agentcore launch \
   -env MCP_SERVER_URL=$MCP_SERVER_URL \
-  -env MCP_ACCESS_TOKEN=$MCP_ACCESS_TOKEN
+  -env MCP_ACCESS_TOKEN=$MCP_ACCESS_TOKEN \
+  -env MODEL_NAME=$MODEL_NAME \
+  -env AWS_REGION=$AWS_REGION \
+  -env WORKLOAD_IDENTITY_ARN=$WORKLOAD_IDENTITY_ARN \
+  -env WORKLOAD_IDENTITY_ID=$WORKLOAD_IDENTITY_ID \
+  -env API_KEY_PROVIDER_NAME=$API_KEY_PROVIDER_NAME
+
+# Basic deployment without Identity:
+# agentcore launch \
+#   -env MCP_SERVER_URL=$MCP_SERVER_URL \
+#   -env MCP_ACCESS_TOKEN=$MCP_ACCESS_TOKEN \
+#   -env MODEL_NAME=$MODEL_NAME \
+#   -env AWS_REGION=$AWS_REGION
 ```
+
+**Important Notes:**
+- The `-env` flags pass environment variables to the agent runtime
+- Without these variables, the agent will fail with "client initialization failed"
+- After deployment, verify variables were set: `cat .bedrock_agentcore.yaml | grep -A 20 environment`
+- If you see no `environment:` section, redeploy with the `-env` flags
 
 This will:
 - Build and push Docker image to ECR
@@ -163,7 +228,7 @@ This will:
 - Deploy agent to the cloud
 - Return agent ARN for invocation
 
-## Step 6: Invoke Your Agent
+## Step 7: Invoke Your Agent
 
 Set your bearer token and invoke the deployed agent:
 
@@ -181,7 +246,7 @@ export BEARER_TOKEN=$(jq -r '.bearer_token' cognito_config.json)
 cd ../../
 
 # Invoke agent
-agentcore invoke --bearer-token $BEARER_TOKEN '{"user_input": "Can you help me get a quote for auto insurance?"}'
+agentcore invoke '{"user_input": "Can you help me get a quote for auto insurance?"}' --bearer-token $BEARER_TOKEN
 ```
 
 ## Agent Code Structure
@@ -233,6 +298,8 @@ python-dotenv>=1.0.0
 
 ## Troubleshooting
 
+### Common Deployment Issues
+
 - **424 Failed Dependency**: Check agent logs in CloudWatch
 - **Token expired**: Run `./1_pre_req_setup/cognito_auth/refresh_token.sh` and update your `.env` file
 - **Permission denied**: Verify execution role has Bedrock model access
@@ -241,11 +308,201 @@ python-dotenv>=1.0.0
 - **IAM role errors**: Make sure the IAM role has all required permissions specified in `iam_roles_setup/README.md`
 - **Cognito authentication issues**: Check the documentation in `cognito_auth/README.md` for troubleshooting
 
+### ECR Permission Errors
+
+If you see: `Access denied while validating ECR URI... requires permissions for ecr:GetAuthorizationToken, ecr:BatchGetImage, and ecr:GetDownloadUrlForLayer`
+
+**Solution**: Update your IAM role with ECR permissions:
+
+```bash
+# Get your account ID
+ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+
+# Update the IAM role policy
+cat > /tmp/ecr-policy.json << EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ECRImageAccess",
+      "Effect": "Allow",
+      "Action": [
+        "ecr:BatchGetImage",
+        "ecr:GetDownloadUrlForLayer"
+      ],
+      "Resource": [
+        "arn:aws:ecr:*:${ACCOUNT_ID}:repository/bedrock-agentcore-*"
+      ]
+    },
+    {
+      "Sid": "ECRTokenAccess",
+      "Effect": "Allow",
+      "Action": [
+        "ecr:GetAuthorizationToken"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
+EOF
+
+aws iam put-role-policy \
+  --role-name BedrockAgentCoreExecutionRole \
+  --policy-name ECRAccessPolicy \
+  --policy-document file:///tmp/ecr-policy.json
+```
+
+**Note**: If you re-run the IAM setup script (`./1_pre_req_setup/iam_roles_setup/setup_role.sh`), it will automatically include these permissions.
+
+### Memory Not Working
+
+If memory features aren't working (no conversation history):
+
+**Solution**: Add memory permissions to your IAM role:
+
+```bash
+ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+
+cat > /tmp/memory-policy.json << EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "MemoryAccess",
+      "Effect": "Allow",
+      "Action": [
+        "bedrock-agentcore:CreateMemory",
+        "bedrock-agentcore:GetMemory",
+        "bedrock-agentcore:UpdateMemory",
+        "bedrock-agentcore:DeleteMemory",
+        "bedrock-agentcore:ListMemories",
+        "bedrock-agentcore:CreateEvent",
+        "bedrock-agentcore:RetrieveMemories"
+      ],
+      "Resource": [
+        "arn:aws:bedrock-agentcore:*:${ACCOUNT_ID}:memory/*"
+      ]
+    }
+  ]
+}
+EOF
+
+aws iam put-role-policy \
+  --role-name BedrockAgentCoreExecutionRole \
+  --policy-name MemoryAccessPolicy \
+  --policy-document file:///tmp/memory-policy.json
+```
+
+**Note**: Re-running the IAM setup script will automatically include memory permissions.
+
+### Docker Build Errors
+
+If CodeBuild fails with "Dockerfile not found":
+- Check that `.dockerignore` is not excluding the `Dockerfile`
+- The Dockerfile should be in the root of your agent directory
+- Re-run `agentcore configure` if needed
+
+### Client Initialization Failed
+
+If you see: `I'm sorry, I encountered an error: the client initialization failed`
+
+**Cause**: Environment variables were not passed to the agent runtime.
+
+**Solution**: Redeploy with all required environment variables:
+
+```bash
+source .env
+
+agentcore launch \
+  -env MCP_SERVER_URL=$MCP_SERVER_URL \
+  -env MCP_ACCESS_TOKEN=$MCP_ACCESS_TOKEN \
+  -env MODEL_NAME=$MODEL_NAME \
+  -env AWS_REGION=$AWS_REGION \
+  -env WORKLOAD_IDENTITY_ARN=$WORKLOAD_IDENTITY_ARN \
+  -env WORKLOAD_IDENTITY_ID=$WORKLOAD_IDENTITY_ID
+```
+
+**Verify**: Check that environment variables are in the config:
+```bash
+cat .bedrock_agentcore.yaml | grep -A 20 environment
+```
+
+You should see an `environment:` section with all your variables.
+
 ## Monitoring and Observability
 
-- Monitor agent performance in CloudWatch
-- View traces in AWS X-Ray
-- Check agent logs for detailed error information
+The agent now includes **AgentCore Observability** for comprehensive monitoring:
+
+### Automatic Instrumentation
+- **Session Tracking**: Each invocation is tracked with a unique session ID
+- **Distributed Tracing**: OpenTelemetry automatically traces agent execution
+- **CloudWatch Integration**: Traces and metrics sent to CloudWatch automatically
+
+### Viewing Observability Data
+
+1. **GenAI Observability Dashboard**:
+   - Open CloudWatch Console → GenAI Observability
+   - View the **Bedrock AgentCore** tab
+   - See agents, sessions, and traces
+
+2. **CloudWatch Logs**:
+   - Location: `/aws/bedrock-agentcore/runtimes/<agent_id>-<endpoint_name>/runtime-logs`
+   - View structured OTEL logs
+
+3. **Transaction Search**:
+   - CloudWatch → Transaction Search
+   - Filter by service name or session ID
+   - View detailed execution graphs
+
+### Session Tracking
+Pass `session_id` in your payload to correlate multiple invocations:
+```bash
+agentcore invoke --bearer-token $BEARER_TOKEN '{
+  "user_input": "I need a quote",
+  "session_id": "customer-session-123",
+  "actor_id": "customer-456"
+}'
+```
+
+## Memory Features
+
+The agent includes **AgentCore Memory** for conversation persistence and customer preferences:
+
+### Memory Strategy
+- **User Preference Strategy**: Automatically learns customer preferences
+- **Namespace**: `/insurance/customers/{actor_id}` - organized by customer
+- **Auto-extraction**: Learns coverage needs, vehicle preferences, interaction patterns
+
+### How It Works
+1. **Automatic Context**: Previous conversations are retrieved and added to prompts
+2. **Preference Learning**: Customer preferences are extracted and stored automatically
+3. **Cross-Session**: Memory persists across multiple sessions for the same customer
+
+### Using Memory
+Simply include `actor_id` (customer identifier) in your payload:
+```bash
+agentcore invoke --bearer-token $BEARER_TOKEN '{
+  "user_input": "What coverage did I ask about last time?",
+  "actor_id": "customer-456"
+}'
+```
+
+### Memory Configuration
+- **Auto-creation**: Memory resource created automatically on first run
+- **Manual configuration**: Set `MEMORY_ID` in `.env` to use existing memory resource
+- **Region**: Configure via `AWS_REGION` in `.env` (default: us-west-2)
+
+### Viewing Memory Data
+```python
+from bedrock_agentcore.memory import MemoryClient
+
+client = MemoryClient(region_name="us-west-2")
+memories = client.retrieve_memories(
+    memory_id="your-memory-id",
+    namespace="/insurance/customers/customer-456",
+    query="What are the customer's preferences?"
+)
+```
 
 ## Next Steps
 

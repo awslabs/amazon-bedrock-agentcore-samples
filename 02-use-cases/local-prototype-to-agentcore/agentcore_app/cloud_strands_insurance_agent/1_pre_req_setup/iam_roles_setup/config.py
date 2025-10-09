@@ -22,7 +22,7 @@ DEFAULT_CONFIG = {
     },
     'account': {
         'id': '',
-        'regions': 'us-east-1,us-west-2'
+        'regions': 'us-east-1'
     },
     'ecr': {
         'repository_name': 'bedrock-agentcore'
@@ -103,7 +103,7 @@ def get_regions(config_data: Dict[str, Dict[str, str]]) -> List[str]:
     Returns:
         List of region strings
     """
-    regions_str = config_data.get('account', {}).get('regions', 'us-east-1,us-west-2')
+    regions_str = config_data.get('account', {}).get('regions', 'us-east-1')
     return [r.strip() for r in regions_str.split(',') if r.strip()]
 
 def get_account_id(config_data: Dict[str, Dict[str, str]]) -> str:

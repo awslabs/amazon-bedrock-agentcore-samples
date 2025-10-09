@@ -33,14 +33,26 @@ If you prefer a more customized setup, you can use the Python modules:
 ## Required Permissions
 
 The IAM role includes permissions for:
-- ECR (container registry access)
-- CloudWatch Logs
-- X-Ray tracing
-- CloudWatch metrics
-- Bedrock AgentCore access tokens
-- Bedrock model invocation
+- **ECR (Elastic Container Registry)**: Access to pull Docker images
+  - `ecr:GetAuthorizationToken` - Get authentication token
+  - `ecr:BatchGetImage` - Pull container images
+  - `ecr:GetDownloadUrlForLayer` - Download image layers
+  - Resource: `arn:aws:ecr:*:ACCOUNT_ID:repository/bedrock-agentcore-*` (supports all agent repositories)
+- **CloudWatch Logs**: Write application logs
+- **X-Ray**: Distributed tracing
+- **CloudWatch Metrics**: Publish custom metrics
+- **Bedrock AgentCore**: Access tokens and workload identities
+- **Bedrock Models**: Invoke foundation models
+- **AgentCore Memory**: Store and retrieve conversation history
+  - `bedrock-agentcore:CreateMemory` - Create memory resources
+  - `bedrock-agentcore:GetMemory` - Retrieve memory resources
+  - `bedrock-agentcore:CreateEvent` - Save conversation events
+  - `bedrock-agentcore:RetrieveMemories` - Query stored memories
+  - Resource: `arn:aws:bedrock-agentcore:*:ACCOUNT_ID:memory/*`
 
 These permissions follow AWS best practices with least-privilege principle.
+
+**Note**: The ECR permissions use a wildcard (`bedrock-agentcore-*`) to support any agent name you deploy. This is required for the agent runtime to pull your Docker images from ECR.
 
 ## Prerequisites
 

@@ -1,42 +1,27 @@
-FROM public.ecr.aws/docker/library/python:3.12-slim
-WORKDIR /app
+FROM ghcr.io/astral-sh/uv:python3.13-bookworm-slim
 
-# Install system dependencies if needed
+# All environment variables in one layer
+ENV UV_SYSTEM_PYTHON=1 UV_COMPILE_BYTECODE=1 PYTHONUNBUFFERED=1 \
+    AWS_REGION=us-east-1 AWS_DEFAULT_REGION=us-east-1 \
+    DOCKER_CONTAINER=1
 
 
-# Copy entire project (respecting .dockerignore)
+
+COPY requirements.txt requirements.txt
+
+
+
+
+RUN uv pip install -r requirements.txt && \
+    uv pip install aws-opentelemetry-distro>=0.10.1
+
+
+EXPOSE 8080 8000
+
+# Copy entire project
+
 COPY . .
 
-# Install dependencies
-
-
-
-
-# Install from requirements file
-RUN python -m pip install --no-cache-dir -r requirements.txt
-
-
-
-
-
-# Set AWS region environment variable
-
-ENV AWS_REGION=us-west-2
-ENV AWS_DEFAULT_REGION=us-west-2
-
-
-# Signal that this is running in Docker for host binding logic
-ENV DOCKER_CONTAINER=1
-
-
-RUN python -m pip install aws_opentelemetry_distro_genai_beta>=0.1.2
-
-
-# Create non-root user
-RUN useradd -m -u 1000 bedrock_agentcore
-USER bedrock_agentcore
-
-EXPOSE 8080
 
 # Use the full module path
 
