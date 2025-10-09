@@ -3,10 +3,8 @@ import hashlib
 import hmac
 import json
 import os
-from typing import Any, Dict
 
 import boto3
-import yaml
 from boto3.session import Session
 
 sts_client = boto3.client("sts")
@@ -114,7 +112,7 @@ def delete_cognito_secret():
         secrets_client.delete_secret(
             SecretId=secret_name, ForceDeleteWithoutRecovery=True
         )
-        print(f"✅ Secret Deleted")
+        print("✅ Secret Deleted")
         return True
     except Exception as e:
         print(f"❌ Error deleting secret: {str(e)}")
