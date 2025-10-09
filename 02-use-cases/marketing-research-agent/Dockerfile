@@ -6,6 +6,8 @@ WORKDIR /app
 COPY pyproject.toml uv.lock ./
 
 # Install dependencies
+RUN apt-get update && apt-get install -y build-essential
+RUN uv python install 3.13
 RUN uv sync --frozen --no-cache
 
 # Copy application code
