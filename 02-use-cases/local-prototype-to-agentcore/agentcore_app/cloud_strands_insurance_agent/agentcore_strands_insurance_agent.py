@@ -1,20 +1,19 @@
 #!/usr/bin/env python3
 """
-Insurance Agent with AgentCore Services
+Insurance Agent with AWS Bedrock AgentCore
 
-This agent demonstrates all AgentCore primitives:
-- Runtime: Serverless deployment and scaling
-- Memory: Persistent conversation context
-- Identity: Secure authentication (inbound & outbound)
+This demonstrates how to build production-ready agents using AgentCore services:
+- Runtime: Serverless deployment with auto-scaling
+- Memory: Persistent conversation history
+- Identity: Secure credential management
 - Gateway: MCP tool integration
-- Observability: OpenTelemetry tracing
+- Observability: Built-in tracing and monitoring
 """
 
 import logging
 import os
 import uuid
-from typing import Dict, List, Optional
-from datetime import datetime
+from typing import Dict
 from dotenv import load_dotenv
 
 # Strands Agent Framework
@@ -22,38 +21,51 @@ from strands import Agent
 from strands.tools.mcp import MCPClient
 from mcp.client.streamable_http import streamablehttp_client
 
-# AgentCore Services
-from bedrock_agentcore.runtime import BedrockAgentCoreApp
-from bedrock_agentcore.memory import MemoryClient
-from bedrock_agentcore.services.identity import IdentityClient
+# AgentCore Services - Import the services you need
+from bedrock_agentcore.runtime import BedrockAgentCoreApp  # Serverless deployment
+from bedrock_agentcore.memory import MemoryClient          # Conversation persistence
+from bedrock_agentcore.services.identity import IdentityClient  # Secure auth
 
-# Observability
+# Observability - OpenTelemetry for distributed tracing
 from opentelemetry import baggage, context
 
-# Load environment variables
 load_dotenv()
 
 # ============================================================================
-# AGENTCORE RUNTIME - Initialize the app
+# AGENTCORE RUNTIME - Initialize the serverless app
 # ============================================================================
+# BedrockAgentCoreApp handles:
+# - Lambda function deployment and scaling
+# - Request/response handling
+# - Integration with other AgentCore services
+# - Automatic CloudWatch logging
 app = BedrockAgentCoreApp()
 
 # ============================================================================
-# CONFIGURATION
+# CONFIGURATION - Environment variables
 # ============================================================================
 AWS_REGION = os.getenv("AWS_REGION", "us-east-1")
-MCP_SERVER_URL = os.getenv("MCP_SERVER_URL")
+MCP_SERVER_URL = os.getenv("MCP_SERVER_URL")  # AgentCore Gateway endpoint
 MODEL_NAME = os.getenv("MODEL_NAME", "us.anthropic.claude-3-7-sonnet-20250219-v1:0")
 
-# Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("InsuranceAgent")
 
 # ============================================================================
-# AGENTCORE IDENTITY - Setup authentication
+# AGENTCORE IDENTITY - Secure credential management
 # ============================================================================
+# Identity provides two authentication patterns:
+# 1. INBOUND: Workload Identity - Authenticates your agent (who is calling)
+# 2. OUTBOUND: API Key Provider - Stores credentials for external APIs
+#
+# Benefits:
+# - Centralized credential storage (no hardcoded secrets)
+# - Automatic credential rotation
+# - Fine-grained access control
+# - Audit logging
+
 def setup_identity():
-    """Initialize Identity service for secure authentication"""
+    """Initialize Identity service for authentication"""
     try:
         identity_client = IdentityClient(region_name=AWS_REGION)
         workload_identity_arn = os.getenv("WORKLOAD_IDENTITY_ARN")
@@ -71,20 +83,41 @@ def setup_identity():
 identity_client, workload_identity_arn = setup_identity()
 
 # ============================================================================
-# AGENTCORE MEMORY - Setup persistent memory
+# AGENTCORE MEMORY - Persistent conversation storage
 # ============================================================================
+# Memory stores conversation history and user preferences across sessions.
+#
+# Key features:
+# - Event Memory: Stores conversation turns (user/assistant messages)
+# - Semantic Memory: Retrieves relevant context based on query similarity
+# - User Preferences: Tracks customer preferences over time
+# - Namespaces: Organize memories by customer (/insurance/customers/{actorId})
+#
+# Best practice: Set MEMORY_ID in .env to reuse existing memory
+
+_memory_client = None
+_memory_resource = None
+_memory_initialized = False
+
 def setup_memory():
-    """Initialize Memory service for conversation persistence"""
+    """Initialize Memory service (lazy initialization for performance)"""
+    global _memory_client, _memory_resource, _memory_initialized
+    
+    if _memory_initialized:
+        return _memory_client, _memory_resource
+    
+    _memory_initialized = True
+    
     try:
         memory_client = MemoryClient(region_name=AWS_REGION)
         
-        # ALWAYS use MEMORY_ID from environment if set (recommended)
+        # Best practice: Use MEMORY_ID from .env to avoid searching/creating
         memory_id = os.getenv("MEMORY_ID")
         if memory_id:
             logger.info(f"✓ Using memory from MEMORY_ID: {memory_id}")
             return memory_client, {"id": memory_id}
         
-        # If no MEMORY_ID, search for existing memory
+        # Fallback: Search for existing memory
         logger.info("No MEMORY_ID set, searching for existing memory...")
         try:
             existing_memories = memory_client.list_memories()
@@ -102,24 +135,25 @@ def setup_memory():
         except Exception as list_error:
             logger.warning(f"⚠ Could not list memories: {list_error}")
         
-        # Create memory if it doesn't exist
-        # Note: In production, set MEMORY_ID in .env to avoid this
+        # Create new memory if none exists
         logger.info("Creating new memory resource...")
         try:
             memory_resource = memory_client.create_memory_and_wait(
                 name="InsuranceAgentMemory",
                 description="Insurance agent conversation memory",
                 strategies=[{
-                    "userPreferenceMemoryStrategy": {
+                    "userPreferenceMemoryStrategy": {  # Tracks user preferences
                         "name": "CustomerPreferences",
                         "description": "Customer insurance preferences and history",
-                        "namespaces": ["/insurance/customers/{actorId}"]
+                        "namespaces": ["/insurance/customers/{actorId}"]  # Per-customer storage
                     }
                 }]
             )
             memory_id = memory_resource.get('id')
             logger.info(f"✓ Created memory: {memory_id}")
             logger.info(f"💡 Add to .env to avoid recreation: MEMORY_ID=\"{memory_id}\"")
+            _memory_client = memory_client
+            _memory_resource = memory_resource
             return memory_client, memory_resource
         except Exception as create_error:
             if "already exists" in str(create_error):
@@ -131,6 +165,8 @@ def setup_memory():
                         if 'InsuranceAgentMemory' in memory.get('name', ''):
                             memory_id = memory.get('id')
                             logger.info(f"✓ Found memory: {memory_id}")
+                            _memory_client = memory_client
+                            _memory_resource = {"id": memory_id}
                             return memory_client, {"id": memory_id}
                 except:
                     pass
@@ -141,25 +177,33 @@ def setup_memory():
         logger.warning(f"⚠ Memory setup failed: {e}")
         return None, None
 
-memory_client, memory_resource = setup_memory()
-
-# Log memory setup status
-if memory_client and memory_resource:
-    logger.info(f"✓ Memory initialized: {memory_resource.get('id')}")
-else:
-    logger.warning("⚠ Memory not initialized - conversations will not be persisted")
+# Memory will be initialized lazily on first use (not at module load time)
 
 # ============================================================================
-# AGENTCORE GATEWAY - Setup MCP client
+# AGENTCORE GATEWAY - MCP tool integration
 # ============================================================================
+# Gateway exposes your APIs as MCP tools that agents can use.
+#
+# How it works:
+# 1. Gateway reads your OpenAPI spec
+# 2. Converts API endpoints to MCP tools
+# 3. Handles OAuth authentication
+# 4. Provides tools to your agent
+#
+# Benefits:
+# - No custom tool code needed
+# - Automatic API-to-tool conversion
+# - Built-in authentication
+# - Centralized API management
+
 def get_mcp_token():
-    """Get MCP access token (supports Identity integration in future)"""
+    """Get OAuth token for Gateway authentication"""
     token = os.getenv("MCP_ACCESS_TOKEN")
     if not token:
         logger.warning("⚠ MCP_ACCESS_TOKEN not set")
     return token
 
-# Create MCP client for insurance tools
+# Connect to Gateway to access insurance API tools
 insurance_mcp_client = MCPClient(
     lambda: streamablehttp_client(
         MCP_SERVER_URL,
@@ -168,8 +212,10 @@ insurance_mcp_client = MCPClient(
 )
 
 # ============================================================================
-# AGENT CONFIGURATION
+# AGENT CONFIGURATION - System prompt and behavior
 # ============================================================================
+# Define how your agent behaves and what it can do
+
 SYSTEM_PROMPT = """
 You are an auto insurance assistant that helps customers understand their insurance options.
 
@@ -191,10 +237,13 @@ Remember previous context from the conversation when responding.
 """
 
 # ============================================================================
-# CORE AGENT LOGIC
+# CORE AGENT LOGIC - Memory retrieval and agent execution
 # ============================================================================
+
 def get_memory_context(actor_id: str, query: str) -> str:
-    """Retrieve relevant memories for context"""
+    """Retrieve relevant conversation history from Memory"""
+    memory_client, memory_resource = setup_memory()
+    
     if not memory_client or not memory_resource:
         return ""
     
@@ -217,9 +266,11 @@ def get_memory_context(actor_id: str, query: str) -> str:
     return ""
 
 def save_to_memory(actor_id: str, session_id: str, user_input: str, response: str):
-    """Save conversation to memory"""
+    """Save conversation turn to Memory for future context"""
+    memory_client, memory_resource = setup_memory()
+    
     if not memory_client or not memory_resource:
-        logger.warning(f"⚠ Memory not configured - skipping save (client: {memory_client is not None}, resource: {memory_resource is not None})")
+        logger.warning(f"⚠ Memory not configured - skipping save")
         return
     
     try:
@@ -238,25 +289,25 @@ def save_to_memory(actor_id: str, session_id: str, user_input: str, response: st
         logger.warning(f"⚠ Memory save failed: {e}")
 
 def run_agent(user_input: str, actor_id: str, session_id: str) -> str:
-    """Run the insurance agent with MCP tools"""
+    """Execute the agent with Memory context and Gateway tools"""
     
-    # Get memory context
+    # 1. MEMORY: Get relevant conversation history
     memory_context = get_memory_context(actor_id, user_input)
     enhanced_prompt = SYSTEM_PROMPT + memory_context
     
-    # Connect to MCP server and get tools
+    # 2. GATEWAY: Connect and get available tools
     with insurance_mcp_client:
         tools = insurance_mcp_client.list_tools_sync()
         logger.info(f"✓ Connected to MCP server ({len(tools)} tools)")
         
-        # Create agent with tools
+        # 3. Create agent with tools and context
         agent = Agent(
             model=MODEL_NAME,
             tools=tools,
             system_prompt=enhanced_prompt
         )
         
-        # Get response
+        # 4. Get agent response
         response = agent(user_input)
         
         # Extract response text
@@ -265,24 +316,31 @@ def run_agent(user_input: str, actor_id: str, session_id: str) -> str:
         else:
             response_text = str(response)
         
-        # Save to memory
+        # 5. MEMORY: Save conversation for future context
         save_to_memory(actor_id, session_id, user_input, response_text)
         
         return response_text
 
 # ============================================================================
-# AGENTCORE RUNTIME - Main entrypoint
+# AGENTCORE RUNTIME - Request handler
 # ============================================================================
+# The @app.entrypoint decorator marks this as the Lambda handler.
+# Runtime automatically:
+# - Deploys as Lambda function
+# - Handles request/response
+# - Integrates with CloudWatch
+# - Enables distributed tracing
+
 @app.entrypoint
 def main(payload: Dict) -> str:
     """
-    Main entrypoint for AgentCore Runtime
+    Main request handler - invoked by AgentCore Runtime
     
     Args:
-        payload: Request payload with user_input, actor_id, session_id
+        payload: {"user_input": str, "actor_id": str, "session_id": str}
         
     Returns:
-        Agent response as string
+        Agent response string
     """
     logger.info("=" * 60)
     logger.info("Insurance Agent Request")
@@ -302,11 +360,11 @@ def main(payload: Dict) -> str:
         if workload_identity_arn:
             logger.info(f"✓ Authenticated via: {workload_identity_arn}")
         
-        # OBSERVABILITY: Set session context for tracing
+        # OBSERVABILITY: Set session context for distributed tracing
         ctx = baggage.set_baggage("session.id", session_id)
         context.attach(ctx)
         
-        # Run the agent
+        # Execute agent
         response = run_agent(user_input, actor_id, session_id)
         
         logger.info(f"Response: {response[:100]}...")
@@ -320,7 +378,11 @@ def main(payload: Dict) -> str:
         return f"I'm sorry, I encountered an error. Please try again later."
 
 # ============================================================================
-# AGENTCORE RUNTIME - Start the app
+# AGENTCORE RUNTIME - Start the application
 # ============================================================================
+# app.run() starts the Lambda handler
+# When deployed: Handles Lambda events
+# When local: Runs development server for testing
+
 if __name__ == "__main__":
     app.run()

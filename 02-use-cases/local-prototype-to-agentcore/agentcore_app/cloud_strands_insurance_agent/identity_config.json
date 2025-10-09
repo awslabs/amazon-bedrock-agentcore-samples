@@ -6,8 +6,8 @@
   },
   "oauth2_provider": {
     "type": "cognito",
-    "client_id": "2modcaof0mtpqqhrrjehc8t0fg",
-    "token_endpoint": "https://agentcore-b47979c8.auth.us-east-1.amazoncognito.com/oauth2/token",
+    "client_id": "40rcaa68pv99q3f25nu73reac",
+    "token_endpoint": "https://agentcore-481a0ddf.auth.us-east-1.amazoncognito.com/oauth2/token",
     "note": "Using Cognito OAuth2 - tokens managed via gateway_info.json"
   },
   "api_key_provider": {
