@@ -648,7 +648,6 @@ def agentcore_memory_cleanup(memory_id: str = None):
 
 
 def gateway_target_cleanup(gateway_id: str = None):
-
     if not gateway_id:
         gateway_client = boto3.client(
             "bedrock-agentcore-control",
@@ -679,6 +678,10 @@ def gateway_target_cleanup(gateway_id: str = None):
 
 def runtime_resource_cleanup(runtime_arn: str = None):
     try:
+        # Initialize AWS clients
+        agentcore_control_client = boto3.client(
+            "bedrock-agentcore-control", region_name=REGION
+        )
         if runtime_arn:
             runtime_id = runtime_arn.split(":")[-1].split("/")[-1]
             response = agentcore_control_client.delete_agent_runtime(
@@ -686,10 +689,6 @@ def runtime_resource_cleanup(runtime_arn: str = None):
             )
             print(f"  ✅ Agent runtime deleted: {response['status']}")
         else:
-            # Initialize AWS clients
-            agentcore_control_client = boto3.client(
-                "bedrock-agentcore-control", region_name=REGION
-            )
             ecr_client = boto3.client("ecr", region_name=REGION)
 
             # Delete the AgentCore Runtime
