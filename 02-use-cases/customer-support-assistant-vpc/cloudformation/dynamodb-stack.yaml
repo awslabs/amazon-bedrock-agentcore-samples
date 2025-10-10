@@ -1,10 +1,9 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'DynamoDB tables for Reviews and Products data using existing VPC'
+Description: 'DynamoDB tables for product reviews and catalog data with KMS encryption and point-in-time recovery. Creates tables with GSIs for efficient querying and automatically populates sample data via Lambda custom resource.'
 
 Parameters:
   VPCStackName:
     Type: String
-    Default: 'my-vpc-stack'
     Description: 'Name of the VPC stack to reference'
 
 

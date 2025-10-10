@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'Cognito User Pool with M2M authentication for gateway and agent clients'
+Description: 'Cognito User Pool with OAuth 2.0 client credentials flow for machine-to-machine (M2M) authentication. Creates three client applications (Gateway, Agent, MCP) with scoped access and stores credentials in Secrets Manager with KMS encryption.'
 
 Resources:
   # Cognito User Pool for M2M Authentication

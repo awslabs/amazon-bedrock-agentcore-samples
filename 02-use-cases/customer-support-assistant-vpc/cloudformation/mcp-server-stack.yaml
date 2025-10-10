@@ -1,20 +1,17 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'MCP DynamoDB server runtime execution role and related resources'
+Description: 'Model Context Protocol (MCP) server for DynamoDB access. Deploys Bedrock AgentCore runtime with Docker image stored in ECR, OAuth2 authentication, and automated build pipeline via CodeBuild. Includes EventBridge-triggered updates on new image pushes.'
 
 Parameters:
   VPCStackName:
     Type: String
-    Default: 'customer-support-vpc-VPCStack'
     Description: 'Name of the VPC stack to reference for network configuration'
 
   CognitoStackName:
     Type: String
-    Default: 'customer-support-vpc-CognitoStack'
     Description: 'Name of the Cognito stack to reference for client configuration'
 
   DynamoDBStackName:
     Type: String
-    Default: 'customer-support-vpc-DynamoDBStack'
     Description: 'Name of the DynamoDB stack to reference for table access'
 
 Resources:

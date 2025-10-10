@@ -1,10 +1,9 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'Aurora PostgreSQL cluster in private subnets with mock data'
+Description: 'Aurora PostgreSQL Serverless cluster with RDS Data API enabled. Deploys encrypted database in private subnets with automated mock data population (users, products, orders). Includes Lambda layer build pipeline for psycopg2 and custom data loader.'
 
 Parameters:
   VPCStackName:
     Type: String
-    Default: 'my-vpc-stack'
     Description: 'Name of the VPC stack to reference'
 
   DBMasterUsername:

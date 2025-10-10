@@ -1,35 +1,30 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'AgentCore runtime execution role and related resources'
+Description: 'Bedrock AgentCore agent runtime with HTTP protocol. Deploys containerized agent in ECR with access to MCP servers, Gateway tools, and Aurora database. Includes CodeBuild pipeline for Docker builds, OAuth2 provider setup, and EventBridge automation for container updates.'
 
 Parameters:
   VPCStackName:
     Type: String
-    Default: 'customer-support-vpc-VPCStack'
     Description: 'Name of the VPC stack to reference for network configuration'
 
   CognitoStackName:
     Type: String
-    Default: 'customer-support-vpc-CognitoStack'
     Description: 'Name of the Cognito stack to reference for client configuration'
 
   MCPStackName:
     Type: String
-    Default: 'customer-support-vpc-MCPStack'
     Description: 'Name of the MCP stack to reference for MCP runtime ARN'
 
   GatewayStackName:
     Type: String
-    Default: 'gateway-stack'
     Description: 'Name of the Gateway stack to reference for MCP ENV'
 
   AuroraStackName:
     Type: String
-    Default: 'customer-support-vpc-AuroraStack'
     Description: 'Name of the Aurora stack to reference for database connection'
 
   ModelID:
     Type: String
-    Default: 'us.anthropic.claude-3-5-haiku-20241022-v1:0'
+    Default: 'global.anthropic.claude-sonnet-4-20250514-v1:0'
     Description: 'Name of the model to use with Agent'
 
 Resources:

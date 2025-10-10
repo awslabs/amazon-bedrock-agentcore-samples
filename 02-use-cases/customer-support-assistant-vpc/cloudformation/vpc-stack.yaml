@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'Private VPC with three isolated subnets (no internet access)'
+Description: 'Private VPC with 4 isolated subnets and VPC endpoints for AWS services (no internet gateway). Includes endpoints for Bedrock, ECR, CloudWatch, DynamoDB, Aurora, and Secrets Manager to enable secure communication without public internet access.'
 
 Parameters:
   VpcCidr:
@@ -26,8 +26,6 @@ Parameters:
     Type: String
     Default: '10.0.4.0/24'
     Description: 'CIDR block for the second private subnet'
-
-
 
 Resources:
   # VPC

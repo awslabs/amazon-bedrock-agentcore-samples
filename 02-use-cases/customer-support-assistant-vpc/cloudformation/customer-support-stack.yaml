@@ -1,12 +1,11 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'Customer Support System master stack that deploys infrastructure with nested stacks'
+Description: 'Master CloudFormation stack for Customer Support AI system. Orchestrates deployment of 7 nested stacks: private VPC with endpoints, Cognito M2M authentication, Aurora PostgreSQL database, DynamoDB tables, MCP server, AgentCore Gateway, and Agent runtime with configurable Bedrock model.'
 
 Parameters:
   # Base URL for nested stack templates (public URLs)
   TemplateBaseURL:
     Type: String
     Description: 'Base URL for the nested CloudFormation templates'
-    Default: 'https://github.com/EashanKaushik/amazon-bedrock-agentcore-samples-fork/tree/customer-support-vpc/02-use-cases/customer-support-assistant-vpc/cloudformation'
 
   # Environment parameters
   Environment:
@@ -54,6 +53,12 @@ Parameters:
     Type: String
     Default: 'sampledb'
     Description: 'Name of the initial database'
+
+  # Agent Server Parameters
+  ModelID:
+    Type: String
+    Default: 'global.anthropic.claude-sonnet-4-20250514-v1:0'
+    Description: 'Bedrock model ID to use with Agent Runtime'
 
 Resources:
   # VPC Stack - Foundation layer
@@ -145,6 +150,7 @@ Resources:
         MCPStackName: !Ref MCPServerStack
         GatewayStackName: !Ref GatewayStack
         AuroraStackName: !Ref AuroraStack
+        ModelID: !Ref ModelID
       Capabilities:
         - CAPABILITY_IAM
       Tags:
