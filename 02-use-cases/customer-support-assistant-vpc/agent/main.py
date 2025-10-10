@@ -91,7 +91,7 @@ async def get_mcp_access_token(access_token: str) -> str:
     return access_token
 
 
-def initialize_clients():
+async def initialize_clients():
     """Initialize MCP clients and agent. Called by middleware on first request."""
     agent = CustomerSupportContext.get_agent_ctx()
 
