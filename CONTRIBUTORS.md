@@ -31,5 +31,8 @@
 - erezweinstein5
 - HardikThakkar94
 - brianloyal
-- chintanpatel-ai
 - jagdeep1
+- Sunil Ramachandra
+- Sandeep Raveesh-Babu
+- chintanpatel-ai
+- Evandro Franco
