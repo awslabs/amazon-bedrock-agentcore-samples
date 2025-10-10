@@ -8,12 +8,13 @@ import streamlit as st
 from chat import ChatManager, invoke_endpoint_streaming
 from chat_utils import make_urls_clickable
 from streamlit_cognito_auth import CognitoAuthenticator
-from utils import get_customer_support_secret
 
 # Get the current file's directory and add the project root to the Python path
 current_dir = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.abspath(os.path.join(current_dir, ".."))
 sys.path.append(project_root)
+
+from utils import get_customer_support_secret
 
 secret = get_customer_support_secret()
 secret = json.loads(secret)
