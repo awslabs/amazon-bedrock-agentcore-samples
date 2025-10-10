@@ -235,9 +235,6 @@ async def lifespan(app):
 app = BedrockAgentCoreApp()
 
 
-initialize_clients()
-
-
 @app.entrypoint
 async def strands_agent_bedrock(payload: dict, context) -> str:
     """
@@ -254,6 +251,8 @@ async def strands_agent_bedrock(payload: dict, context) -> str:
         RuntimeError: If agent is not initialized
         KeyError: If prompt is missing from payload
     """
+    initialize_clients()
+
     # Get agent from context
     agent = CustomerSupportContext.get_agent_ctx()
     if agent is None:
