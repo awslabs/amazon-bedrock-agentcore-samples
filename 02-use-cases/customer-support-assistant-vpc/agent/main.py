@@ -167,6 +167,7 @@ def initialize_clients():
     logger.info("Starting MCP clients")
     gateway_client.start()
     mcp_client.start()
+    aurora_client.start()
 
     # Store clients in context
     CustomerSupportContext.set_mcp_client_ctx(mcp_client)
