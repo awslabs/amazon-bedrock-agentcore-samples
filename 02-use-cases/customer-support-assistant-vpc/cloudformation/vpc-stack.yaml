@@ -565,8 +565,8 @@ Resources:
           - Effect: Allow
             Principal: '*'
             Action:
-              - bedrock-agentcore:InvokeAgentRuntime
-            Resource: !Sub 'arn:aws:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:runtime/*'
+              - '*'
+            Resource: "*"
       Tags:
         - Key: Name
           Value: !Sub '${AWS::StackName}-BedrockAgentCore-VPCEndpoint'

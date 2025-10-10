@@ -75,7 +75,7 @@ def get_mcp_url() -> str:
     scopes=[],
     auth_flow="M2M",
 )
-async def get_gateway_access_token(access_token: str) -> str:
+def get_gateway_access_token(access_token: str) -> str:
     """Get OAuth2 access token for gateway."""
     return access_token
 
@@ -85,12 +85,12 @@ async def get_gateway_access_token(access_token: str) -> str:
     scopes=[],
     auth_flow="M2M",
 )
-async def get_mcp_access_token(access_token: str) -> str:
+def get_mcp_access_token(access_token: str) -> str:
     """Get OAuth2 access token for MCP."""
     return access_token
 
 
-async def initialize_clients():
+def initialize_clients():
     """Initialize MCP clients and agent. Called by middleware on first request."""
     agent = CustomerSupportContext.get_agent_ctx()
 
@@ -103,13 +103,13 @@ async def initialize_clients():
     gateway_access_token = CustomerSupportContext.get_gateway_token_ctx()
     if not gateway_access_token:
         logger.info("Fetching gateway access token")
-        gateway_access_token = await get_gateway_access_token()
+        gateway_access_token = get_gateway_access_token()
         CustomerSupportContext.set_gateway_token_ctx(gateway_access_token)
 
     mcp_access_token = CustomerSupportContext.get_mcp_token_ctx()
     if not mcp_access_token:
         logger.info("Fetching MCP access token")
-        mcp_access_token = await get_mcp_access_token()
+        mcp_access_token = get_mcp_access_token()
         CustomerSupportContext.set_mcp_token_ctx(mcp_access_token)
 
     # Validate tokens
@@ -235,23 +235,7 @@ async def lifespan(app):
 app = BedrockAgentCoreApp()
 
 
-@app.middleware("http")
-async def initialization_middleware(request, call_next):
-    """Middleware to initialize clients and set workload access token before request."""
-    # Extract and set workload access token from headers
-    headers = request.headers
-    agent_identity_token = headers.get("WorkloadAccessToken")
-    if agent_identity_token:
-        logger.info(f"agent_identity_token: {agent_identity_token}")
-        BedrockAgentCoreContext.set_workload_access_token(agent_identity_token)
-
-    # Initialize clients on first request
-    await initialize_clients()
-
-    # Pass request to next handler
-    response = await call_next(request)
-
-    return response
+initialize_clients()
 
 
 @app.entrypoint
