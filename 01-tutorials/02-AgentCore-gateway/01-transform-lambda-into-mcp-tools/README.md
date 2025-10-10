@@ -5,9 +5,11 @@ Bedrock AgentCore Gateway provides customers a way to turn their existing Lambda
 
 ![How does it work](images/lambda-iam-gateway.png)
 
+![How does it work](images/lambda-gw-iam-inbound.png)
+
 
 ### Understanding the Lambda context object
-When Gateway invokes a Lambda function, it passes special context information through thecontext.client_context object. This context includes important metadata about the invocation, which your function can use to determine how to process the request.
+When Gateway invokes a Lambda function, it passes special context information through the context.client_context object. This context includes important metadata about the invocation, which your function can use to determine how to process the request.
 The following properties are available in the context.client_context.custom object:
 * bedrockagentcoreEndpointId: The ID of the Gateway endpoint that received the request.
 * bedrockagentcoreTargetId: The ID of the Gateway target that routed the request to your function.
@@ -92,4 +94,4 @@ In these tutorials we will cover the following functionality:
 
 - [Transform your AWS Lambda function into MCP tools with OAuth inbound Auth](01-gateway-target-lambda-oauth.ipynb)
 
-- [Transform your AWS Lambda function into MCP tools with AWS IAM inbound Auth](01-gateway-target-lambda-iam.ipynb)
+- [Transform your AWS Lambda function into MCP tools with AWS IAM inbound Auth](02-gateway-target-lambda-iam.ipynb)
