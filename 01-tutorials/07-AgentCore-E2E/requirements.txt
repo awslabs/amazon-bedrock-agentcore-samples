@@ -6,5 +6,5 @@ bedrock-agentcore==0.1.7
 bedrock-agentcore-starter-toolkit==0.1.22
 aws-opentelemetry-distro
 ddgs
-aws-opentelemetry-distro~=0.10.1
+aws-opentelemetry-distro~=0.12.1
 pyyaml
