@@ -223,68 +223,70 @@ def initialize_clients():
     logger.info("Agent initialized successfully")
 
 
-# @asynccontextmanager
-# async def lifespan(app):
-#     """Application lifespan manager for startup and cleanup."""
-#     try:
-#         logger.info("Application starting")
-#         yield  # Application runs here
+@asynccontextmanager
+async def lifespan(app):
+    """Application lifespan manager for startup and cleanup."""
+    try:
+        logger.info("Application starting")
+        yield  # Application runs here
 
-#     except Exception as e:
-#         logger.error(f"Error during application lifespan: {e}", exc_info=True)
-#         raise
+    except Exception as e:
+        logger.error(f"Error during application lifespan: {e}", exc_info=True)
+        raise
 
-#     finally:
-#         # Cleanup
-#         logger.info("Cleaning up resources")
+    finally:
+        # Cleanup
+        logger.info("Cleaning up resources")
 
-#         mcp_client = CustomerSupportContext.get_mcp_client_ctx()
-#         if mcp_client is not None:
-#             try:
-#                 mcp_client.stop()
-#                 logger.info("MCP client stopped")
-#             except Exception as e:
-#                 logger.error(f"Error stopping MCP client: {e}")
+        mcp_client = CustomerSupportContext.get_mcp_client_ctx()
+        if mcp_client is not None:
+            try:
+                mcp_client.stop()
+                logger.info("MCP client stopped")
+            except Exception as e:
+                logger.error(f"Error stopping MCP client: {e}")
 
-#         gateway_client = CustomerSupportContext.get_gateway_client_ctx()
-#         if gateway_client is not None:
-#             try:
-#                 gateway_client.stop()
-#                 logger.info("Gateway client stopped")
-#             except Exception as e:
-#                 logger.error(f"Error stopping gateway client: {e}")
+        gateway_client = CustomerSupportContext.get_gateway_client_ctx()
+        if gateway_client is not None:
+            try:
+                gateway_client.stop()
+                logger.info("Gateway client stopped")
+            except Exception as e:
+                logger.error(f"Error stopping gateway client: {e}")
 
-#         aurora_client = CustomerSupportContext.get_aurora_mcp_client_ctx()
-#         if aurora_client is not None:
-#             try:
-#                 aurora_client.stop()
-#                 logger.info("Aurora client stopped")
-#             except Exception as e:
-#                 logger.error(f"Error stopping Aurora client: {e}")
+        aurora_client = CustomerSupportContext.get_aurora_mcp_client_ctx()
+        if aurora_client is not None:
+            try:
+                aurora_client.stop()
+                logger.info("Aurora client stopped")
+            except Exception as e:
+                logger.error(f"Error stopping Aurora client: {e}")
 
 
 # app = BedrockAgentCoreApp(lifespan=lifespan)
 app = BedrockAgentCoreApp()
 
-# @app.middleware("http")
-# async def initialization_middleware(request, call_next):
-#     """Middleware to initialize clients and set workload access token before request."""
-#     # Extract and set workload access token from headers
-#     headers = request.headers
-#     agent_identity_token = headers.get("WorkloadAccessToken")
-#     if agent_identity_token:
-#         logger.info(f"agent_identity_token: {agent_identity_token}")
-#         BedrockAgentCoreContext.set_workload_access_token(agent_identity_token)
 
-#     # Initialize clients on first request
-#     await initialize_clients()
+@app.middleware("http")
+async def initialization_middleware(request, call_next):
+    """Middleware to initialize clients and set workload access token before request."""
+    # Extract and set workload access token from headers
+    headers = request.headers
+    agent_identity_token = headers.get("WorkloadAccessToken")
+    if agent_identity_token:
+        logger.info(f"agent_identity_token: {agent_identity_token}")
+        BedrockAgentCoreContext.set_workload_access_token(agent_identity_token)
 
-#     # Pass request to next handler
-#     response = await call_next(request)
+    # Initialize clients on first request
+    await initialize_clients()
 
-#     return response
+    # Pass request to next handler
+    response = await call_next(request)
 
-initialize_clients()
+    return response
+
+
+# initialize_clients()
 
 
 @app.entrypoint
@@ -315,9 +317,10 @@ async def strands_agent_bedrock(payload: dict, context) -> str:
         raise KeyError("'prompt' field is required in payload")
 
     # Log request
-    session_id = getattr(context, "session_id", "unknown")
+    session_id = getattr(context, "session_id")
+    if not session_id:
+        raise KeyError("'session_id' field is required")
     logger.info(f"Processing request for session: {session_id}")
-    logger.debug(f"User prompt: {user_message[:100]}...")  # Log first 100 chars
 
     # Invoke agent
     response = agent(user_message)
