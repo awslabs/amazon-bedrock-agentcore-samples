@@ -195,10 +195,10 @@ def initialize_clients():
         logger.info("Aurora PostgreSQL MCP client started successfully")
 
         # List available tools
-        tools = aurora_client.list_tools_sync()
-        logger.info(
-            f"Aurora MCP client loaded {len(tools)} tools: {[t.name for t in tools]}"
-        )
+        # tools = aurora_client.list_tools_sync()
+        # logger.info(
+        #     f"Aurora MCP client loaded {len(tools)} tools: {[t.name for t in tools]}"
+        # )
 
     except Exception as e:
         logger.error(f"Failed to initialize Aurora MCP client: {e}", exc_info=True)
