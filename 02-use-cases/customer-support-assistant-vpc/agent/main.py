@@ -1,6 +1,5 @@
 from bedrock_agentcore.identity.auth import requires_access_token
 from bedrock_agentcore.runtime import BedrockAgentCoreApp
-from bedrock_agentcore.runtime.context import BedrockAgentCoreContext
 from context import CustomerSupportContext
 from contextlib import asynccontextmanager
 from mcp import stdio_client, StdioServerParameters

@@ -39,9 +39,7 @@ def get_gateway_access_token() -> str:
     scope = secret.get("scope", "")
 
     # Prepare request
-    headers = {
-        "Content-Type": "application/x-www-form-urlencoded"
-    }
+    headers = {"Content-Type": "application/x-www-form-urlencoded"}
 
     data = {
         "grant_type": "client_credentials",

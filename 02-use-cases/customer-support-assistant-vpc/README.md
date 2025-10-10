@@ -1,9 +1,9 @@
-# Custome Support Assistant - Private VPC
+# Customer Support Assistant - Private VPC
 
 > [!IMPORTANT]
 > The examples provided in this repository are for experimental and educational purposes only. They demonstrate concepts and techniques but are not intended for direct use in production environments.
 
-This is a customer support agent implementation using AWS Bedrock AgentCore framework. The system provides an AI-powered customer support interface with capabilities for warranty checking, customer profile management, Google calendar integration, and Amazon Bedrock Knowledge Base retrieval.
+This is a customer support agent implementation using Amazon Bedrock AgentCore deployed in a fully private VPC environment. The system provides an AI-powered customer support interface with capabilities for warranty checking, customer profile management, and cross-system data access across multiple data sources including Aurora PostgreSQL, DynamoDB tables, and Lambda-based APIs. The architecture demonstrates secure, isolated deployment using VPC endpoints for AWS service access without internet connectivity.
 
 ## Architecture Overview
 

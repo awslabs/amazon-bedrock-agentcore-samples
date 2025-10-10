@@ -281,7 +281,7 @@ Resources:
           import cfnresponse
           import logging
           from botocore.exceptions import ClientError
-
+          import time
           # Configure logging
           logger = logging.getLogger()
           logger.setLevel(logging.INFO)
@@ -495,7 +495,7 @@ Resources:
                           )
                           logger.info(f"   ✅ Target {target_id} deleted")
 
-
+                      time.sleep(5)
                       logger.info(f"Deleting gateway: {gateway_id}")
                       gateway_client.delete_gateway(gatewayIdentifier=gateway_id)
 
