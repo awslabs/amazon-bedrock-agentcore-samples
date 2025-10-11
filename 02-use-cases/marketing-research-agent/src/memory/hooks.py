@@ -49,13 +49,18 @@ class MarketingMemoryHookProvider(HookProvider):
                 
                 if user_msg and assistant_msg:
                     # Get session info from agent state
-                    actor_id = getattr(event.agent.state, "actor_id", None) if hasattr(event.agent.state, "actor_id") else event.agent.state.get("actor_id", None)
-                    session_id = getattr(event.agent.state, "session_id", None) if hasattr(event.agent.state, "session_id") else event.agent.state.get("session_id", None)
-                    memory_id = getattr(event.agent.state, "memory_id", self.memory_id) if hasattr(event.agent.state, "memory_id") else event.agent.state.get("memory_id", self.memory_id)
+                    actor_id = event.agent.state.get("actor_id")
+                    session_id = event.agent.state.get("session_id")
+                    memory_id = event.agent.state.get("memory_id") or self.memory_id
                     
                     if not actor_id or not session_id:
                         logger.warning(f"Missing actor_id or session_id in {self.agent_type} agent state")
                         logger.debug(f"Agent state: {event.agent.state}")
+                        return
+                    
+                    # Skip saving if messages are too long for AgentCore Memory (9000 char limit)
+                    if len(assistant_msg) > 9000 or len(user_msg) > 9000:
+                        logger.info(f"Skipping memory save - message too long (user: {len(user_msg)}, assistant: {len(assistant_msg)} chars)")
                         return
                     
                     # Save conversation to AgentCore Memory

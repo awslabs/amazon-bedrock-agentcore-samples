@@ -12,34 +12,7 @@ The Marketing Research Agent transforms traditional marketing research by combin
 
 The system employs a supervisor-worker pattern with five specialized agents:
 
-```mermaid
-graph TD
-    A[User Query] --> B[Supervisor Agent]
-    B --> C[Research Agent]
-    B --> D[Database Agent] 
-    B --> E[Code Generator Agent]
-    B --> F[Reporting Agent]
-    
-    C --> G[Web Research & Competitive Intelligence]
-    D --> H[DynamoDB Table Analysis]
-    E --> I[Analytics Code & Visualizations]
-    F --> J[Report Generation & Synthesis]
-    
-    D --> DB[(marketing-customer-data)]
-    
-    G --> K[AgentCore Memory]
-    H --> K
-    I --> K
-    J --> K
-    
-    K --> L[Persistent Knowledge Base]
-    L --> M[Market Intelligence]
-    L --> N[Customer Insights]
-    L --> O[Team Preferences]
-    L --> P[Analytics Patterns]
-    
-    B --> Q[Final Research Report]
-```
+![Marketing Research Agent Architecture](architecture/marketing_agent.png)
 
 ### Agent Responsibilities
 
@@ -270,9 +243,35 @@ task stop     # Stop services
 
 ## Usage
 
-### Making Research Requests
+### Web Interface (Streamlit Frontend)
 
-Test the deployed system:
+A Streamlit web interface is available for easier interaction with the deployed agent. **Note: The frontend runs locally and connects to localhost.**
+
+After deployment, start the web interface:
+```bash
+# Install dependencies (if not already done)
+uv sync
+
+# Run the task locally
+task run
+
+# (In another shell) Start the Streamlit frontend
+uv run streamlit run src/app.py
+```
+
+The web interface provides:
+- Interactive chat interface with real-time streaming responses
+- Report preview and download functionality
+- Session management and conversation history
+- Example prompts for common research tasks
+- Configuration options for the agent endpoint
+
+The frontend automatically connects to your deployed AgentCore runtime. If you need to change the endpoint, use the sidebar configuration in the web interface.
+
+### API Access (Direct)
+
+You can also interact directly with the deployed AgentCore runtime via API calls:
+
 ```bash
 # Mac / Unix
 curl -X POST http://localhost:8080/invocations \

@@ -17,6 +17,7 @@ dependencies = [
     "notebook>=7.4.7",
     "pydantic>=2.11.9",
     "pydantic-settings>=2.0.0",
+    "streamlit>=1.28.0",
     "strands-agents>=1.9.1",
     "strands-agents-tools>=0.2.8",
     "uvicorn[standard]>=0.37.0",
