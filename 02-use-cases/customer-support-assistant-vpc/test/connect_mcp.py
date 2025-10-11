@@ -1,98 +1,21 @@
 #!/usr/bin/env python3
-import asyncio
-import argparse
-import json
-import sys
-import boto3
-import logging
-import traceback
-from boto3.session import Session
-from datetime import timedelta
 
+from utils import get_aws_info, get_nested_stack_name, get_stack_output
+from bedrock_agentcore.identity.auth import requires_access_token
+from datetime import timedelta
 from mcp import ClientSession
 from mcp.client.streamable_http import streamablehttp_client
+import argparse
+import asyncio
+import logging
+import sys
+import traceback
 import urllib.parse
-from bedrock_agentcore.identity.auth import requires_access_token
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
-
-
-def get_aws_info():
-    """Get AWS account ID and region from boto3 session"""
-    try:
-        boto_session = Session()
-
-        # Get region
-        region = boto_session.region_name
-        if not region:
-            # Try to get from default session
-            region = (
-                boto3.DEFAULT_SESSION.region_name if boto3.DEFAULT_SESSION else None
-            )
-            if not region:
-                raise ValueError(
-                    "AWS region not configured. Please set AWS_DEFAULT_REGION or configure AWS CLI."
-                )
-
-        # Get account ID using STS
-        sts = boto_session.client("sts")
-        account_id = sts.get_caller_identity()["Account"]
-
-        return account_id, region
-
-    except Exception as e:
-        print(f"❌ Error getting AWS info: {e}")
-        print(
-            "Please ensure AWS credentials are configured (aws configure or environment variables)"
-        )
-        sys.exit(1)
-
-
-def get_nested_stack_name(parent_stack_name, logical_resource_id, region):
-    """Get the physical resource ID (stack name) of a nested stack"""
-    try:
-        cfn = boto3.client('cloudformation', region_name=region)
-        response = cfn.describe_stack_resource(
-            StackName=parent_stack_name,
-            LogicalResourceId=logical_resource_id
-        )
-
-        physical_resource_id = response['StackResourceDetail']['PhysicalResourceId']
-        # Physical resource ID for nested stacks is the full stack ARN
-        # Extract just the stack name from the ARN
-        # Format: arn:aws:cloudformation:region:account:stack/stack-name/guid
-        stack_name = physical_resource_id.split('/')[-2]
-        return stack_name
-
-    except Exception as e:
-        print(f"❌ Error getting nested stack name: {e}")
-        sys.exit(1)
-
-
-def get_stack_output(stack_name, output_key, region):
-    """Get CloudFormation stack output value"""
-    try:
-        cfn = boto3.client('cloudformation', region_name=region)
-        response = cfn.describe_stacks(StackName=stack_name)
-
-        if not response['Stacks']:
-            raise ValueError(f"Stack '{stack_name}' not found")
-
-        stack = response['Stacks'][0]
-        outputs = stack.get('Outputs', [])
-
-        for output in outputs:
-            if output['OutputKey'] == output_key:
-                return output['OutputValue']
-
-        raise ValueError(f"Output '{output_key}' not found in stack '{stack_name}'")
-
-    except Exception as e:
-        print(f"❌ Error getting stack output: {e}")
-        sys.exit(1)
 
 
 def create_mcp_client(provider_name, runtime_id):
@@ -226,7 +149,7 @@ def main():
     parser.add_argument(
         "--stack-name",
         default="customer-support-vpc",
-        help="CloudFormation stack name (default: customer-support-vpc)"
+        help="CloudFormation stack name (default: customer-support-vpc)",
     )
     parser.add_argument(
         "--verbose", "-v", action="store_true", help="Enable verbose logging"

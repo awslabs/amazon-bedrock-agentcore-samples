@@ -270,11 +270,10 @@ async def strands_agent_bedrock(payload: dict, context) -> str:
         raise KeyError("'session_id' field is required")
     logger.info(f"Processing request for session: {session_id}")
 
-    # Invoke agent
-    response = agent(user_message)
-    logger.info(f"Request completed for session: {session_id}")
-
-    return response
+    # Invoke agents
+    async for event in agent.stream_async(user_message):
+        if "data" in event:
+            yield event["data"]
 
 
 if __name__ == "__main__":

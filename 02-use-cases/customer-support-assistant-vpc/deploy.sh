@@ -22,6 +22,8 @@ ENVIRONMENT="dev"
 DB_USERNAME="postgres"
 MODEL_ID="global.anthropic.claude-sonnet-4-20250514-v1:0"
 REGION="us-west-2"
+ADMIN_EMAIL=""
+ADMIN_PASSWORD=""
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CFN_DIR="${SCRIPT_DIR}/cloudformation"
 
@@ -184,7 +186,19 @@ deploy_stack() {
     print_info "Region: ${REGION}"
     print_info "Environment: ${ENVIRONMENT}"
     print_info "Model ID: ${MODEL_ID}"
+    print_info "Admin Email: ${ADMIN_EMAIL}"
     print_info "Template URL: ${template_url}"
+
+    # Validate admin email and password
+    if [ -z "$ADMIN_EMAIL" ]; then
+        print_error "Admin email is required. Use --email option."
+        exit 1
+    fi
+
+    if [ -z "$ADMIN_PASSWORD" ]; then
+        print_error "Admin password is required. Use --password option."
+        exit 1
+    fi
 
     # Check if stack already exists
     if aws cloudformation describe-stacks \
@@ -205,6 +219,8 @@ deploy_stack() {
                     ParameterKey=Environment,ParameterValue="$ENVIRONMENT" \
                     ParameterKey=DBMasterUsername,ParameterValue="$DB_USERNAME" \
                     ParameterKey=ModelID,ParameterValue="$MODEL_ID" \
+                    ParameterKey=AdminUserEmail,ParameterValue="$ADMIN_EMAIL" \
+                    ParameterKey=AdminUserPassword,ParameterValue="$ADMIN_PASSWORD" \
                 --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
                 --region "$REGION"
 
@@ -228,6 +244,8 @@ deploy_stack() {
                 ParameterKey=Environment,ParameterValue="$ENVIRONMENT" \
                 ParameterKey=DBMasterUsername,ParameterValue="$DB_USERNAME" \
                 ParameterKey=ModelID,ParameterValue="$MODEL_ID" \
+                ParameterKey=AdminUserEmail,ParameterValue="$ADMIN_EMAIL" \
+                ParameterKey=AdminUserPassword,ParameterValue="$ADMIN_PASSWORD" \
             --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
             --region "$REGION" \
             --tags \
@@ -265,31 +283,37 @@ Deploy Customer Support VPC CloudFormation Stack
 OPTIONS:
     -b, --bucket BUCKET_NAME    S3 bucket name for templates (optional, auto-generated if not provided)
     -s, --stack STACK_NAME      CloudFormation stack name (default: customer-support-vpc)
-    -r, --region REGION         AWS region (default: us-east-1)
+    -r, --region REGION         AWS region (default: us-west-2)
     -e, --env ENVIRONMENT       Environment name (default: dev)
     -u, --db-user USERNAME      Database master username (default: postgres)
     -m, --model MODEL_ID        Bedrock model ID (default: global.anthropic.claude-sonnet-4-20250514-v1:0)
+    --email EMAIL               Admin user email (REQUIRED)
+    --password PASSWORD         Admin user password (REQUIRED, min 8 chars with uppercase, lowercase, number, special char)
     -h, --help                  Show this help message
 
 EXAMPLES:
-    # Deploy with defaults
-    $0
+    # Deploy with required credentials
+    $0 --email admin@example.com --password 'MyP@ssw0rd123'
 
     # Deploy with Sonnet model
-    $0 --model us.anthropic.claude-3-5-sonnet-20241022-v2:0
+    $0 --email admin@example.com --password 'MyP@ssw0rd123' --model us.anthropic.claude-3-5-sonnet-20241022-v2:0
 
     # Deploy to specific region with custom model
-    $0 --region us-west-2 --model anthropic.claude-3-5-sonnet-20240620-v1:0
+    $0 --region us-west-2 --model anthropic.claude-3-5-sonnet-20240620-v1:0 --email admin@example.com --password 'MyP@ssw0rd123'
 
     # Full customization
     $0 --bucket customersupportvpc-prod \\
        --stack prod-support \\
        --region us-east-1 \\
-       --model us.anthropic.claude-3-5-sonnet-20241022-v2:0
+       --model us.anthropic.claude-3-5-sonnet-20241022-v2:0 \\
+       --email admin@example.com \\
+       --password 'MyP@ssw0rd123'
 
 NOTE:
-    If bucket name is not provided, a random S3-compliant name will be generated
-    with prefix 'customersupportvpc-' followed by 12 random lowercase alphanumeric characters.
+    - Admin email and password are REQUIRED for Cognito user pool
+    - Password must be at least 8 characters with uppercase, lowercase, number, and special character
+    - If bucket name is not provided, a random S3-compliant name will be generated
+      with prefix 'customersupportvpc-' followed by 12 random lowercase alphanumeric characters.
 
 EOF
 }
@@ -335,6 +359,14 @@ main() {
                 MODEL_ID="$2"
                 shift 2
                 ;;
+            --email)
+                ADMIN_EMAIL="$2"
+                shift 2
+                ;;
+            --password)
+                ADMIN_PASSWORD="$2"
+                shift 2
+                ;;
             -h|--help)
                 print_usage
                 exit 0
@@ -353,6 +385,13 @@ main() {
         print_info "Generated S3 bucket name: ${BUCKET_NAME}"
     fi
 
+    # Validate required parameters
+    if [ -z "$ADMIN_EMAIL" ] || [ -z "$ADMIN_PASSWORD" ]; then
+        print_error "Admin email and password are required!"
+        print_usage
+        exit 1
+    fi
+
     print_header "Customer Support VPC Stack Deployment"
     echo "Stack Name:   $STACK_NAME"
     echo "S3 Bucket:    $BUCKET_NAME"
@@ -360,6 +399,8 @@ main() {
     echo "Environment:  $ENVIRONMENT"
     echo "DB Username:  $DB_USERNAME"
     echo "Model ID:     $MODEL_ID"
+    echo "Admin Email:  $ADMIN_EMAIL"
+    echo "Password:     ******** (hidden)"
     echo ""
 
     read -p "Continue with deployment? (y/n): " -n 1 -r

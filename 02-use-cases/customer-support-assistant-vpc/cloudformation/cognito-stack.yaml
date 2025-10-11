@@ -1,6 +1,20 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: 'Cognito User Pool with OAuth 2.0 client credentials flow for machine-to-machine (M2M) authentication. Creates three client applications (Gateway, Agent, MCP) with scoped access and stores credentials in Secrets Manager with KMS encryption.'
 
+
+Metadata:
+  'AWS::CloudFormation::Interface':
+    ParameterGroups:
+    - Label:
+        default: 'Environment Configuration'
+      Parameters:
+      - Environment
+    - Label:
+        default: 'User Configuration (Optional)'
+      Parameters:
+      - AdminUserEmail
+      - AdminUserPassword
+
 Parameters:
   Environment:
     Type: String
@@ -105,10 +119,9 @@ Resources:
     Properties:
       ClientName: 'webuserpoolclient'
       UserPoolId: !Ref M2MUserPool
-      GenerateSecret: true  # Required for client_credentials flow
+      GenerateSecret: false  # Public client for PKCE flow (no secret needed)
       AllowedOAuthFlows:
         - code
-        - client_credentials
       AllowedOAuthScopes:
         - openid
         - email
@@ -120,6 +133,7 @@ Resources:
       CallbackURLs:
         - http://localhost:8501/
         - https://example.com/auth/callback
+        - http://localhost:8080/callback
       LogoutURLs:
         - http://localhost:8501/
       SupportedIdentityProviders:
@@ -132,6 +146,7 @@ Resources:
         IdToken: minutes
         RefreshToken: days
       EnableTokenRevocation: true
+      PreventUserExistenceErrors: 'ENABLED'
 
   # MCP Client for M2M Authentication
   MCPClient:
@@ -179,24 +194,25 @@ Resources:
         - Key: Purpose
           Value: M2M-Authentication
 
-  WebUserPoolClientSecret:
-    Type: AWS::SecretsManager::Secret
-    Properties:
-      Name: !Sub 'csvpc-${Environment}/web/client-config'
-      Description: 'Web User Pool Client configuration for M2M authentication'
-      KmsKeyId: !Ref SecretsManagerKMSKey
-      SecretString: !Sub |
-        {
-          "client_id": "${WebUserPoolClient}",
-          "user_pool_id": "${M2MUserPool}",
-          "token_endpoint": "https://${M2MUserPoolDomain}.auth.${AWS::Region}.amazoncognito.com/oauth2/token",
-          "cognito_discovery_url": "https://cognito-idp.${AWS::Region}.amazonaws.com/${M2MUserPool}/.well-known/openid-configuration"
-        }
-      Tags:
-        - Key: Application
-          Value: CustomerSupport
-        - Key: Purpose
-          Value: M2M-Authentication
+  # WebUserPoolClientSecret:
+  #   Type: AWS::SecretsManager::Secret
+  #   Properties:
+  #     Name: !Sub 'csvpc-${Environment}/web/client-config'
+  #     Description: 'Web User Pool Client configuration (public client, no secret)'
+  #     KmsKeyId: !Ref SecretsManagerKMSKey
+  #     SecretString: !Sub |
+  #       {
+  #         "client_id": "${WebUserPoolClient}",
+  #         "user_pool_id": "${M2MUserPool}",
+  #         "token_endpoint": "https://${M2MUserPoolDomain}.auth.${AWS::Region}.amazoncognito.com/oauth2/token",
+  #         "cognito_discovery_url": "https://cognito-idp.${AWS::Region}.amazonaws.com/${M2MUserPool}/.well-known/openid-configuration",
+  #         "client_secret": "NOT_APPLICABLE_PUBLIC_CLIENT"
+  #       }
+  #     Tags:
+  #       - Key: Application
+  #         Value: CustomerSupport
+  #       - Key: Purpose
+  #         Value: Web-Authentication
 
   MCPClientSecret:
     Type: AWS::SecretsManager::Secret
@@ -282,7 +298,7 @@ Resources:
                   - secretsmanager:GetSecretValue
                 Resource:
                   - !Ref GatewayClientSecret
-                  - !Ref WebUserPoolClientSecret
+                  # - !Ref WebUserPoolClientSecret
                   - !Ref MCPClientSecret
               - Effect: Allow
                 Action:
@@ -325,20 +341,28 @@ Resources:
                   cognito_client = boto3.client('cognito-idp')
                   secrets_client = boto3.client('secretsmanager')
 
-                  # Get client secret from Cognito
+                  # Get client configuration from Cognito
                   response = cognito_client.describe_user_pool_client(
                       UserPoolId=user_pool_id,
                       ClientId=client_id
                   )
 
-                  client_secret = response['UserPoolClient']['ClientSecret']
+                  user_pool_client = response['UserPoolClient']
 
                   # Get existing secret value
                   secret_response = secrets_client.get_secret_value(SecretId=secret_arn)
                   secret_data = json.loads(secret_response['SecretString'])
 
-                  # Add client_secret to the existing data
-                  secret_data['client_secret'] = client_secret
+                  # Only update client_secret if the client has one (confidential clients)
+                  # Public clients (like web apps using PKCE) don't have secrets
+                  if 'ClientSecret' in user_pool_client:
+                      client_secret = user_pool_client['ClientSecret']
+                      secret_data['client_secret'] = client_secret
+                      print(f"Updated {client_type} client secret (confidential client)")
+                  else:
+                      # For public clients, set a placeholder or leave as-is
+                      secret_data['client_secret'] = secret_data.get('client_secret', 'NOT_APPLICABLE_PUBLIC_CLIENT')
+                      print(f"{client_type} is a public client (no secret)")
 
                   # Update the secret
                   secrets_client.update_secret(
@@ -346,7 +370,7 @@ Resources:
                       SecretString=json.dumps(secret_data, indent=2)
                   )
 
-                  print(f"Successfully updated {client_type} client secret")
+                  print(f"Successfully updated {client_type} client configuration")
                   send_response(event, context, 'SUCCESS', {'ClientSecretUpdated': 'true'})
 
               except Exception as e:
@@ -387,15 +411,15 @@ Resources:
       ClientType: Gateway
 
   # Custom resource to update Web User Pool client secret
-  WebUserPoolClientSecretUpdater:
-    Type: AWS::CloudFormation::CustomResource
-    DependsOn: WebUserPoolClientSecret
-    Properties:
-      ServiceToken: !GetAtt ClientSecretLambda.Arn
-      UserPoolId: !Ref M2MUserPool
-      ClientId: !Ref WebUserPoolClient
-      SecretArn: !Ref WebUserPoolClientSecret
-      ClientType: WebUserPool
+  # WebUserPoolClientSecretUpdater:
+  #   Type: AWS::CloudFormation::CustomResource
+  #   DependsOn: WebUserPoolClientSecret
+  #   Properties:
+  #     ServiceToken: !GetAtt ClientSecretLambda.Arn
+  #     UserPoolId: !Ref M2MUserPool
+  #     ClientId: !Ref WebUserPoolClient
+  #     SecretArn: !Ref WebUserPoolClientSecret
+  #     ClientType: WebUserPool
 
   # Custom resource to update MCP client secret
   MCPClientSecretUpdater:
@@ -564,8 +588,46 @@ Resources:
       UserEmail: !Ref AdminUserEmail
       UserPassword: !Ref AdminUserPassword
 
+
+  CognitoDomainParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /app/customersupportvpc/agentcore/cognito_domain
+      Type: String
+      Value: !Join
+        - ''
+        - - !Sub 'https://agentcore-m2m-${AWS::AccountId}'
+          - !Sub '.auth.${AWS::Region}.amazoncognito.com'
+      Description: Cognito hosted domain for OAuth2
+      Tags:
+        Application: CustomerSupportVPC
+  
+  CognitoTokenURLParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /app/customersupportvpc/agentcore/cognito_token_url
+      Type: String
+      Value: !Join
+        - ''
+        - - !Sub 'https://agentcore-m2m-${AWS::AccountId}'
+          - !Sub '.auth.${AWS::Region}.amazoncognito.com/oauth2/token'
+      Description: OAuth2 Token URL
+      Tags:
+        Application: CustomerSupportVPC
+
+  CognitoWebClientIdParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /app/customersupportvpc/agentcore/web_client_id
+      Type: String
+      Value: !Ref WebUserPoolClient
+      Description: Cognito client ID for web app
+      Tags:
+        Application: CustomerSupportVPC
+
 Conditions:
   CreateAdminUser: !Not [!Equals [!Ref AdminUserEmail, '']]
+
 
 Outputs:
   StackName:
@@ -646,11 +708,11 @@ Outputs:
     Export:
       Name: !Sub '${AWS::StackName}-GatewayClientSecret'
 
-  WebUserPoolClientSecret:
-    Description: 'Web User Pool Client Secret ARN for accessing client configuration'
-    Value: !Ref WebUserPoolClientSecret
-    Export:
-      Name: !Sub '${AWS::StackName}-WebUserPoolClientSecret'
+  # WebUserPoolClientSecret:
+  #   Description: 'Web User Pool Client Secret ARN for accessing client configuration'
+  #   Value: !Ref WebUserPoolClientSecret
+  #   Export:
+  #     Name: !Sub '${AWS::StackName}-WebUserPoolClientSecret'
 
   MCPClientSecret:
     Description: 'MCP Client Secret ARN for accessing client configuration'

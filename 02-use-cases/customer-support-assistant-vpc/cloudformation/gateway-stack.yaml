@@ -1,6 +1,19 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: 'Bedrock AgentCore Gateway for customer support tools. Deploys Lambda functions for warranty checks and customer profile lookups, DynamoDB tables for warranty and customer data, and AgentCore Gateway with MCP protocol configuration and JWT authentication.'
 
+
+Metadata:
+  'AWS::CloudFormation::Interface':
+    ParameterGroups:
+    - Label:
+        default: 'Environment Configuration'
+      Parameters:
+      - Environment
+    - Label:
+        default: 'Stack References'
+      Parameters:
+      - CognitoStackName
+
 Parameters:
   Environment:
     Type: String

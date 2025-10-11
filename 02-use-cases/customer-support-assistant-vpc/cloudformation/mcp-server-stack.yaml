@@ -1,6 +1,21 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: 'Model Context Protocol (MCP) server for DynamoDB access. Deploys Bedrock AgentCore runtime with Docker image stored in ECR, OAuth2 authentication, and automated build pipeline via CodeBuild. Includes EventBridge-triggered updates on new image pushes.'
 
+
+Metadata:
+  'AWS::CloudFormation::Interface':
+    ParameterGroups:
+    - Label:
+        default: 'Environment Configuration'
+      Parameters:
+      - Environment
+    - Label:
+        default: 'Stack References'
+      Parameters:
+      - VPCStackName
+      - CognitoStackName
+      - DynamoDBStackName
+
 Parameters:
   Environment:
     Type: String

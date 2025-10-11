@@ -1,6 +1,36 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: 'Master CloudFormation stack for Customer Support AI system. Orchestrates deployment of 7 nested stacks: private VPC with endpoints, Cognito M2M authentication, Aurora PostgreSQL database, DynamoDB tables, MCP server, AgentCore Gateway, and Agent runtime with configurable Bedrock model.'
 
+
+Metadata:
+  'AWS::CloudFormation::Interface':
+    ParameterGroups:
+    - Label:
+        default: 'Environment Configuration'
+      Parameters:
+      - TemplateBaseURL
+      - Environment
+      - ModelID
+    - Label:
+        default: 'Database'
+      Parameters:
+      - DBMasterUsername
+      - DatabaseName
+    - Label:
+        default: 'Frontend username/password'
+      Parameters:
+      - AdminUserEmail
+      - AdminUserPassword
+    - Label:
+        default: 'VPC Configurations'
+      Parameters:
+      - VpcCidr
+      - PrivateSubnet1Cidr
+      - PrivateSubnet2Cidr
+      - PrivateSubnet3Cidr
+      - PrivateSubnet4Cidr
+
+
 Parameters:
   # Base URL for nested stack templates (public URLs)
   TemplateBaseURL:
@@ -60,6 +90,21 @@ Parameters:
     Default: 'global.anthropic.claude-sonnet-4-20250514-v1:0'
     Description: 'Bedrock model ID to use with Agent Runtime'
 
+  # Cognito User Parameters
+  AdminUserEmail:
+    Type: String
+    Description: 'Admin user email to create automatically in Cognito User Pool'
+    AllowedPattern: '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    ConstraintDescription: 'Must be a valid email address'
+
+  AdminUserPassword:
+    Type: String
+    NoEcho: true
+    Description: 'Admin user password (must meet Cognito password policy requirements)'
+    MinLength: 8
+    AllowedPattern: '^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#])[A-Za-z\d@$!%*?&#]{8,}$'
+    ConstraintDescription: 'Password must be at least 8 characters with uppercase, lowercase, number, and special character'
+
 Resources:
   # VPC Stack - Foundation layer
   VPCStack:
@@ -88,6 +133,8 @@ Resources:
       TemplateURL: !Sub '${TemplateBaseURL}/cognito-stack.yaml'
       Parameters:
         Environment: !Ref Environment
+        AdminUserEmail: !Ref AdminUserEmail
+        AdminUserPassword: !Ref AdminUserPassword
       Tags:
         - Key: Name
           Value: !Sub '${Environment}-cognito-stack'

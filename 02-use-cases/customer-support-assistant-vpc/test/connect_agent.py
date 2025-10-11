@@ -1,15 +1,25 @@
-#!/usr/bin/env python3
-from bedrock_agentcore.identity.auth import requires_access_token
-from boto3.session import Session
+#!/usr/bin/python
+from urllib.parse import urlencode
 import argparse
-import boto3
+import asyncio
 import json
 import logging
 import requests
 import sys
-import traceback
-import urllib.parse
 import uuid
+
+
+from utils import (
+    generate_pkce_pair,
+    get_auth_code_automatically,
+    get_aws_info,
+    get_nested_stack_name,
+    get_ssm_parameter,
+    get_stack_output,
+    invoke_endpoint,
+    load_access_token,
+    save_access_token,
+)
 
 # Set up detailed logging
 logging.basicConfig(
@@ -18,88 +28,15 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def get_aws_info():
-    """Get AWS account ID and region from boto3 session"""
-    try:
-        boto_session = Session()
-
-        # Get region
-        region = boto_session.region_name
-        if not region:
-            # Try to get from default session
-            region = (
-                boto3.DEFAULT_SESSION.region_name if boto3.DEFAULT_SESSION else None
-            )
-            if not region:
-                raise ValueError(
-                    "AWS region not configured. Please set AWS_DEFAULT_REGION or configure AWS CLI."
-                )
-
-        # Get account ID using STS
-        sts = boto_session.client("sts")
-        account_id = sts.get_caller_identity()["Account"]
-
-        return account_id, region
-
-    except Exception as e:
-        print(f"❌ Error getting AWS info: {e}")
-        print(
-            "Please ensure AWS credentials are configured (aws configure or environment variables)"
-        )
-        sys.exit(1)
-
-
-def get_nested_stack_name(parent_stack_name, logical_resource_id, region):
-    """Get the physical resource ID (stack name) of a nested stack"""
-    try:
-        cfn = boto3.client('cloudformation', region_name=region)
-        response = cfn.describe_stack_resource(
-            StackName=parent_stack_name,
-            LogicalResourceId=logical_resource_id
-        )
-
-        physical_resource_id = response['StackResourceDetail']['PhysicalResourceId']
-        # Physical resource ID for nested stacks is the full stack ARN
-        # Extract just the stack name from the ARN
-        # Format: arn:aws:cloudformation:region:account:stack/stack-name/guid
-        stack_name = physical_resource_id.split('/')[-2]
-        return stack_name
-
-    except Exception as e:
-        print(f"❌ Error getting nested stack name: {e}")
-        sys.exit(1)
-
-
-def get_stack_output(stack_name, output_key, region):
-    """Get CloudFormation stack output value"""
-    try:
-        cfn = boto3.client('cloudformation', region_name=region)
-        response = cfn.describe_stacks(StackName=stack_name)
-
-        if not response['Stacks']:
-            raise ValueError(f"Stack '{stack_name}' not found")
-
-        stack = response['Stacks'][0]
-        outputs = stack.get('Outputs', [])
-
-        for output in outputs:
-            if output['OutputKey'] == output_key:
-                return output['OutputValue']
-
-        raise ValueError(f"Output '{output_key}' not found in stack '{stack_name}'")
-
-    except Exception as e:
-        print(f"❌ Error getting stack output: {e}")
-        sys.exit(1)
-
-
 def main():
+    """CLI tool to invoke a Bedrock agent by name."""
+
     parser = argparse.ArgumentParser(description="Agent Runtime CLI Tool")
     parser.add_argument("--prompt", required=True, help="Prompt to send to the agent")
     parser.add_argument(
         "--stack-name",
         default="customer-support-vpc",
-        help="CloudFormation stack name (default: customer-support-vpc)"
+        help="CloudFormation stack name (default: customer-support-vpc)",
     )
     parser.add_argument(
         "--verbose", "-v", action="store_true", help="Enable verbose logging"
@@ -126,98 +63,107 @@ def main():
 
     # Get the nested AgentServerStack name from the parent stack
     print(f"📦 Parent Stack Name: {args.stack_name}")
-    agent_stack_name = get_nested_stack_name(args.stack_name, "AgentServerStack", region)
+    agent_stack_name = get_nested_stack_name(
+        args.stack_name, "AgentServerStack", region
+    )
     print(f"📦 Agent Stack Name: {agent_stack_name}")
 
     # Get runtime ID and provider name from the nested stack outputs
     runtime_id = get_stack_output(agent_stack_name, "AgentRuntimeId", region)
-    provider_name = get_stack_output(agent_stack_name, "AgentProviderName", region)
+    # provider_name = get_stack_output(agent_stack_name, "AgentProviderName", region)
     print(f"🤖 Agent Runtime ID: {runtime_id}")
-    print(f"🔐 OAuth2 Provider: {provider_name}")
+    # print(f"🔐 OAuth2 Provider: {provider_name}")
 
-    # Create and run the agent client
-    try:
+    # Try to load existing access token
+    access_token = load_access_token(runtime_id)
 
-        @requires_access_token(
-            provider_name=provider_name,
-            scopes=[],
-            auth_flow="M2M",
-            into="bearer_token",
-            force_authentication=True,
+    if access_token:
+        print("✅ Using cached access token.")
+    else:
+        print("🔐 No cached token found. Starting authentication flow...")
+
+        code_verifier, code_challenge = generate_pkce_pair()
+        state = str(uuid.uuid4())
+
+        client_id = get_ssm_parameter("/app/customersupportvpc/agentcore/web_client_id")
+        cognito_domain = get_ssm_parameter(
+            "/app/customersupportvpc/agentcore/cognito_domain"
         )
-        def invoke_endpoint(
-            runtime_id, session_id, payload, stream=False, bearer_token=""
-        ):
-            """Invoke agent runtime with given parameters"""
+        redirect_uri = "http://localhost:8080/callback"
 
-            print(f"🔑 Bearer token received: {bearer_token[:20]}...")
-            agent_arn = (
-                f"arn:aws:bedrock-agentcore:{region}:{account_id}:runtime/{runtime_id}"
-            )
+        login_params = {
+            "response_type": "code",
+            "client_id": client_id,
+            "redirect_uri": redirect_uri,
+            "scope": "email openid profile",
+            "code_challenge_method": "S256",
+            "code_challenge": code_challenge,
+            "state": state,
+        }
 
-            print(agent_arn)
-            escaped_arn = urllib.parse.quote(agent_arn, safe="")
-            url = f"https://bedrock-agentcore.{region}.amazonaws.com/runtimes/{escaped_arn}/invocations"
+        login_url = f"{cognito_domain}/oauth2/authorize?{urlencode(login_params)}"
 
-            headers = {
-                "authorization": f"Bearer {bearer_token}",
-                "Content-Type": "application/json",
-                "X-Amzn-Bedrock-AgentCore-Runtime-Session-Id": session_id,
-            }
+        # Try automated OAuth flow first
+        auth_code = get_auth_code_automatically(login_url)
 
-            try:
-                body = json.loads(payload) if isinstance(payload, str) else payload
-            except json.JSONDecodeError:
-                body = {"payload": payload}
+        # Fallback to manual flow if automation fails
+        if not auth_code:
+            print("\n🔧 Automated flow failed. Falling back to manual authentication:")
+            print("🔐 Open the following URL in a browser to authenticate:")
+            print(login_url)
+            auth_code = input("📥 Paste the `code` from the redirected URL: ").strip()
 
-            try:
-                response = requests.post(
-                    url,
-                    params={"qualifier": "DEFAULT"},
-                    headers=headers,
-                    json=body,
-                    timeout=100,
-                    stream=stream,
-                )
-                if stream:
-                    last_data = False
-                    for line in response.iter_lines(chunk_size=1):
-                        if line:
-                            line = line.decode("utf-8")
-                            if line.startswith("data: "):
-                                last_data = True
-                                line = line[6:]
-                                line = line.replace('"', "")
-                                print(line)
-                            elif line:
-                                line = line.replace('"', "")
-                                if last_data:
-                                    print("\n" + line)
-                                last_data = False
-                else:
-                    return response
-
-            except requests.exceptions.RequestException as e:
-                print("Failed to invoke agent endpoint: %s", str(e))
-                raise
-
-        print(
-            invoke_endpoint(
-                runtime_id,
-                str(uuid.uuid4()),
-                payload={
-                    "prompt": args.prompt
-                },
-            ).content
+        token_url = get_ssm_parameter(
+            "/app/customersupportvpc/agentcore/cognito_token_url"
+        )
+        response = requests.post(
+            token_url,
+            data={
+                "grant_type": "authorization_code",
+                "client_id": client_id,
+                "code": auth_code,
+                "redirect_uri": redirect_uri,
+                "code_verifier": code_verifier,
+            },
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
         )
 
-    except KeyboardInterrupt:
-        print("\n👋 Interrupted by user")
-    except Exception as e:
-        logger.error(f"Unexpected error in main: {e}")
-        logger.error(f"Main traceback: {traceback.format_exc()}")
-        print(f"❌ Unexpected error: {e}")
-        sys.exit(1)
+        if response.status_code != 200:
+            print(f"❌ Failed to exchange code: {response.text}")
+            sys.exit(1)
+
+        access_token = response.json()["access_token"]
+
+        # Save the token for future use
+        save_access_token(access_token, runtime_id)
+        print("✅ Access token acquired and saved.")
+
+    # agent_arn = runtime_config["agents"][agent_name]["bedrock_agentcore"]["agent_arn"]
+    agent_arn = f"arn:aws:bedrock-agentcore:{region}:{account_id}:runtime/{runtime_id}"
+    session_id = str(uuid.uuid4())
+    print("\n🤖 Starting interactive session with agent. Type 'q' or 'quit' to exit.\n")
+
+    while True:
+        user_input = input("👤 You: ").strip()
+
+        if user_input.lower() in ["q", "quit"]:
+            print("👋 Goodbye!")
+            break
+
+        if not user_input:
+            continue
+
+        print("🤖 Assistant: ", end="", flush=True)
+        # asyncio.run(
+        invoke_endpoint(
+            agent_arn=agent_arn,
+            payload=json.dumps({"prompt": user_input, "actor_id": "DEFAULT"}),
+            bearer_token=access_token,
+            session_id=session_id,
+            stream=False,
+        )
+        # )
+        print("\n")
 
 
 if __name__ == "__main__":

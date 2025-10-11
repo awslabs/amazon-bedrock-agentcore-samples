@@ -1,6 +1,15 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: 'DynamoDB tables for product reviews and catalog data with KMS encryption and point-in-time recovery. Creates tables with GSIs for efficient querying and automatically populates sample data via Lambda custom resource.'
 
+
+Metadata:
+  'AWS::CloudFormation::Interface':
+    ParameterGroups:
+    - Label:
+        default: 'Environment Configuration'
+      Parameters:
+      - Environment
+
 Parameters:
   Environment:
     Type: String

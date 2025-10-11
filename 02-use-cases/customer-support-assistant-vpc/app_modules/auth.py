@@ -14,10 +14,10 @@ import uuid
 class AuthManager:
     def __init__(self):
         self.cognito_domain = get_ssm_parameter(
-            "/app/customersupport/agentcore/cognito_domain"
+            "/app/customersupportvpc/agentcore/cognito_domain"
         ).replace("https://", "")
         self.client_id = get_ssm_parameter(
-            "/app/customersupport/agentcore/web_client_id"
+            "/app/customersupportvpc/agentcore/web_client_id"
         )
         self.redirect_uri = "http://localhost:8501/"
         self.scopes = "email openid profile"

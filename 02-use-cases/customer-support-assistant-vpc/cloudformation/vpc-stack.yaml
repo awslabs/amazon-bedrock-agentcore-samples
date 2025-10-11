@@ -1,6 +1,23 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: 'Private VPC with 4 isolated subnets and VPC endpoints for AWS services (no internet gateway). Includes endpoints for Bedrock, ECR, CloudWatch, DynamoDB, Aurora, and Secrets Manager to enable secure communication without public internet access.'
 
+
+Metadata:
+  'AWS::CloudFormation::Interface':
+    ParameterGroups:
+    - Label:
+        default: 'Environment Configuration'
+      Parameters:
+      - Environment
+    - Label:
+        default: 'VPC Configuration'
+      Parameters:
+      - VpcCidr
+      - PrivateSubnet1Cidr
+      - PrivateSubnet2Cidr
+      - PrivateSubnet3Cidr
+      - PrivateSubnet4Cidr
+
 Mappings:
   DynamoDBPrefixListIds:
     us-east-1:
