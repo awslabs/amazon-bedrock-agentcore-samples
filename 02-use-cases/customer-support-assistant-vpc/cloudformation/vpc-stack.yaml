@@ -1,7 +1,27 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: 'Private VPC with 4 isolated subnets and VPC endpoints for AWS services (no internet gateway). Includes endpoints for Bedrock, ECR, CloudWatch, DynamoDB, Aurora, and Secrets Manager to enable secure communication without public internet access.'
 
+Mappings:
+  DynamoDBPrefixListIds:
+    us-east-1:
+      PrefixListId: pl-02cd2c6b
+    us-east-2:
+      PrefixListId: pl-4ca54025
+    us-west-1:
+      PrefixListId: pl-6ea54007
+    us-west-2:
+      PrefixListId: pl-00a54069
+
 Parameters:
+  Environment:
+    Type: String
+    Default: 'dev'
+    AllowedValues:
+      - dev
+      - test
+      - prod
+    Description: 'Environment name for resource naming'
+
   VpcCidr:
     Type: String
     Default: '10.0.0.0/16'
@@ -37,7 +57,7 @@ Resources:
       EnableDnsSupport: true
       Tags:
         - Key: Name
-          Value: !Sub '${AWS::StackName}-VPC'
+          Value: !Sub 'csvpc-${Environment}-VPC'
 
   # Private Subnets (no internet access)
   PrivateSubnet1:
@@ -48,7 +68,7 @@ Resources:
       CidrBlock: !Ref PrivateSubnet1Cidr
       Tags:
         - Key: Name
-          Value: !Sub '${AWS::StackName}-Private-Subnet-1'
+          Value: !Sub 'csvpc-${Environment}-Private-Subnet-1'
 
   PrivateSubnet2:
     Type: AWS::EC2::Subnet
@@ -58,7 +78,7 @@ Resources:
       CidrBlock: !Ref PrivateSubnet2Cidr
       Tags:
         - Key: Name
-          Value: !Sub '${AWS::StackName}-Private-Subnet-2'
+          Value: !Sub 'csvpc-${Environment}-Private-Subnet-2'
 
   PrivateSubnet3:
     Type: AWS::EC2::Subnet
@@ -68,7 +88,7 @@ Resources:
       CidrBlock: !Ref PrivateSubnet3Cidr
       Tags:
         - Key: Name
-          Value: !Sub '${AWS::StackName}-Private-Subnet-3'
+          Value: !Sub 'csvpc-${Environment}-Private-Subnet-3'
 
   PrivateSubnet4:
     Type: AWS::EC2::Subnet
@@ -78,7 +98,7 @@ Resources:
       CidrBlock: !Ref PrivateSubnet4Cidr
       Tags:
         - Key: Name
-          Value: !Sub '${AWS::StackName}-Private-Subnet-4'
+          Value: !Sub 'csvpc-${Environment}-Private-Subnet-4'
 
   # Private Route Table (no internet routes)
   PrivateRouteTable:
@@ -87,7 +107,7 @@ Resources:
       VpcId: !Ref VPC
       Tags:
         - Key: Name
-          Value: !Sub '${AWS::StackName}-Private-Routes'
+          Value: !Sub 'csvpc-${Environment}-Private-Routes'
 
   # Associate Private Subnets with Private Route Table
   PrivateSubnet1RouteTableAssociation:
@@ -169,7 +189,7 @@ Resources:
   VPCFlowLogKMSKeyAlias:
     Type: AWS::KMS::Alias
     Properties:
-      AliasName: !Sub 'alias/${AWS::StackName}-vpc-flowlogs'
+      AliasName: !Sub 'alias/csvpc-${Environment}-vpc-flowlogs'
       TargetKeyId: !Ref VPCFlowLogKMSKey
 
   VPCFlowLogGroup:
@@ -190,7 +210,7 @@ Resources:
       DeliverLogsPermissionArn: !GetAtt VPCFlowLogRole.Arn
       Tags:
         - Key: Name
-          Value: !Sub '${AWS::StackName}-VPC-FlowLog'
+          Value: !Sub 'csvpc-${Environment}-VPC-FlowLog'
 
   # Security Group for VPC Endpoints
   VPCEndpointSecurityGroup:
@@ -212,7 +232,7 @@ Resources:
           Description: 'Explicit deny - no outbound access required for Interfaces and VPC endpoints'
       Tags:
         - Key: Name
-          Value: !Sub '${AWS::StackName}-VPCEndpoint-SG'
+          Value: !Sub 'csvpc-${Environment}-VPCEndpoint-SG'
 
   # VPC Endpoint for CloudWatch Logs
   CloudWatchLogsVPCEndpoint:
@@ -244,7 +264,7 @@ Resources:
               - '*'
       Tags:
         - Key: Name
-          Value: !Sub '${AWS::StackName}-CloudWatch-Logs-VPCEndpoint'
+          Value: !Sub 'csvpc-${Environment}-CloudWatch-Logs-VPCEndpoint'
 
   # VPC Endpoint for CloudWatch Monitoring
   CloudWatchMonitoringVPCEndpoint:
@@ -271,7 +291,7 @@ Resources:
               - '*'
       Tags:
         - Key: Name
-          Value: !Sub '${AWS::StackName}-CloudWatch-Monitoring-VPCEndpoint'
+          Value: !Sub 'csvpc-${Environment}-CloudWatch-Monitoring-VPCEndpoint'
 
   # VPC Endpoint for ECR Docker Registry
   ECRDockerVPCEndpoint:
@@ -299,7 +319,7 @@ Resources:
             Resource: '*'
       Tags:
         - Key: Name
-          Value: !Sub '${AWS::StackName}-ECR-Docker-VPCEndpoint'
+          Value: !Sub 'csvpc-${Environment}-ECR-Docker-VPCEndpoint'
 
   # VPC Endpoint for ECR API
   ECRAPIVPCEndpoint:
@@ -325,7 +345,7 @@ Resources:
             Resource: '*'
       Tags:
         - Key: Name
-          Value: !Sub '${AWS::StackName}-ECR-API-VPCEndpoint'
+          Value: !Sub 'csvpc-${Environment}-ECR-API-VPCEndpoint'
 
   # Gateway Endpoint for DynamoDB
   DynamoDBGatewayEndpoint:
@@ -349,7 +369,7 @@ Resources:
               - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:index/*'
       Tags:
         - Key: Name
-          Value: !Sub '${AWS::StackName}-DynamoDB-GatewayEndpoint'
+          Value: !Sub 'csvpc-${Environment}-DynamoDB-GatewayEndpoint'
 
   # VPC Endpoint for SSM Parameter Store
   SSMVPCEndpoint:
@@ -377,7 +397,7 @@ Resources:
               - !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/app/customersupportvpc/*'
       Tags:
         - Key: Name
-          Value: !Sub '${AWS::StackName}-SSM-VPCEndpoint'
+          Value: !Sub 'csvpc-${Environment}-SSM-VPCEndpoint'
 
   # VPC Endpoint for KMS
   KMSVPCEndpoint:
@@ -406,7 +426,7 @@ Resources:
               - '*'
       Tags:
         - Key: Name
-          Value: !Sub '${AWS::StackName}-KMS-VPCEndpoint'
+          Value: !Sub 'csvpc-${Environment}-KMS-VPCEndpoint'
 
   SecretsManagerVPCEndpoint:
     Type: AWS::EC2::VPCEndpoint
@@ -432,7 +452,7 @@ Resources:
       PrivateDnsEnabled: true
       Tags:
         - Key: Name
-          Value: !Sub '${AWS::StackName}-SecretsManager-VPCEndpoint'
+          Value: !Sub 'csvpc-${Environment}-SecretsManager-VPCEndpoint'
 
   # VPC Endpoint for RDS Data API
   RDSDataVPCEndpoint:
@@ -462,7 +482,7 @@ Resources:
             Resource: '*'
       Tags:
         - Key: Name
-          Value: !Sub '${AWS::StackName}-RDS-Data-VPCEndpoint'
+          Value: !Sub 'csvpc-${Environment}-RDS-Data-VPCEndpoint'
 
   S3VPCEndpoint:
     Type: AWS::EC2::VPCEndpoint
@@ -484,7 +504,7 @@ Resources:
               - 'arn:aws:s3:::cloudformation-custom-resource-response-*/*'
       Tags:
         - Key: Name
-          Value: !Sub '${AWS::StackName}-S3-VPCEndpoint'
+          Value: !Sub 'csvpc-${Environment}-S3-VPCEndpoint'
           
   # VPC Endpoint for X-Ray
   XRayVPCEndpoint:
@@ -514,7 +534,7 @@ Resources:
             Resource: '*'
       Tags:
         - Key: Name
-          Value: !Sub '${AWS::StackName}-XRay-VPCEndpoint'
+          Value: !Sub 'csvpc-${Environment}-XRay-VPCEndpoint'
 
   # VPC Endpoint for Bedrock Runtime
   BedrockRuntimeVPCEndpoint:
@@ -541,7 +561,7 @@ Resources:
             Resource: '*'
       Tags:
         - Key: Name
-          Value: !Sub '${AWS::StackName}-BedrockRuntime-VPCEndpoint'
+          Value: !Sub 'csvpc-${Environment}-BedrockRuntime-VPCEndpoint'
 
   # VPC Endpoint for Bedrock AgentCore
   BedrockAgentCoreVPCEndpoint:
@@ -567,7 +587,7 @@ Resources:
             Resource: "*"
       Tags:
         - Key: Name
-          Value: !Sub '${AWS::StackName}-BedrockAgentCore-VPCEndpoint'
+          Value: !Sub 'csvpc-${Environment}-BedrockAgentCore-VPCEndpoint'
 
   # VPC Endpoint for Bedrock AgentCore Gateway
   BedrockAgentCoreGatewayVPCEndpoint:
@@ -592,7 +612,7 @@ Resources:
             Resource: !Sub 'arn:aws:bedrock-agentcore:${AWS::Region}::gateway/*'
       Tags:
         - Key: Name
-          Value: !Sub '${AWS::StackName}-BedrockAgentCoreGateway-VPCEndpoint'
+          Value: !Sub 'csvpc-${Environment}-BedrockAgentCoreGateway-VPCEndpoint'
 
   # VPC Endpoint for STS
   # STSVPCEndpoint:
@@ -632,7 +652,7 @@ Resources:
       SecurityGroupEgress: []
       Tags:
         - Key: Name
-          Value: !Sub '${AWS::StackName}-AgentRuntime-SG'
+          Value: !Sub 'csvpc-${Environment}-AgentRuntime-SG'
 
   AgentRuntimeToVPCEndpointRule:
     Type: AWS::EC2::SecurityGroupEgress
@@ -653,7 +673,7 @@ Resources:
       SecurityGroupEgress: []
       Tags:
         - Key: Name
-          Value: !Sub '${AWS::StackName}-MCPRuntime-SG'
+          Value: !Sub 'csvpc-${Environment}-MCPRuntime-SG'
 
   
   # Security Group Rule: Allow MCP Runtime to access VPC Endpoints
@@ -675,10 +695,16 @@ Resources:
       IpProtocol: tcp
       FromPort: 443
       ToPort: 443
-      DestinationPrefixListId: pl-00a54069
+      DestinationPrefixListId: !FindInMap [DynamoDBPrefixListIds, !Ref 'AWS::Region', PrefixListId]
       Description: 'HTTPS access to DynamoDB via Gateway Endpoint'
 
 Outputs:
+  StackName:
+    Description: 'Stack name for cross-stack references'
+    Value: !Ref AWS::StackName
+    Export:
+      Name: !Sub '${AWS::StackName}-StackName'
+
   VPC:
     Description: 'A reference to the created VPC'
     Value: !Ref VPC
@@ -690,6 +716,10 @@ Outputs:
     Value: !Join [",", [!Ref PrivateSubnet1, !Ref PrivateSubnet2, !Ref PrivateSubnet3, !Ref PrivateSubnet4]]
     Export:
       Name: !Sub '${AWS::StackName}-PrivateSubnets'
+
+  DynamoDBPrefixListId:
+    Description: 'DynamoDB Prefix List ID used for security group rules'
+    Value: !FindInMap [DynamoDBPrefixListIds, !Ref 'AWS::Region', PrefixListId]
 
   PrivateSubnet1RDSDataVPCEndpoint:
     Description: 'A reference to the private subnet in the 1st Availability Zone'

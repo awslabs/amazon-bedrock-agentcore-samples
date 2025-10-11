@@ -2,6 +2,15 @@ AWSTemplateFormatVersion: '2010-09-09'
 Description: 'Aurora PostgreSQL Serverless cluster with RDS Data API enabled. Deploys encrypted database in private subnets with automated mock data population (users, products, orders). Includes Lambda layer build pipeline for psycopg2 and custom data loader.'
 
 Parameters:
+  Environment:
+    Type: String
+    Default: 'dev'
+    AllowedValues:
+      - dev
+      - test
+      - prod
+    Description: 'Environment name for resource naming'
+
   VPCStackName:
     Type: String
     Description: 'Name of the VPC stack to reference'
@@ -11,6 +20,10 @@ Parameters:
     Default: 'postgres'
     Description: 'Master username for the Aurora cluster'
 
+  DatabaseName:
+    Type: String
+    Default: 'sampledb'
+    Description: 'Name of the initial database to create'
 
   DBInstanceClass:
     Type: String
@@ -35,7 +48,7 @@ Resources:
     Type: AWS::S3::Bucket
     DeletionPolicy: Delete
     Properties:
-      BucketName: !Sub '${AWS::StackName}-lambda-layers-${AWS::AccountId}'
+      BucketName: !Sub 'csvpc-${Environment}-lambda-layers-${AWS::AccountId}'
       BucketEncryption:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
@@ -49,7 +62,7 @@ Resources:
         Status: Enabled
       Tags:
         - Key: Name
-          Value: !Sub '${AWS::StackName}-lambda-layers'
+          Value: !Sub 'csvpc-${Environment}-lambda-layers'
 
   # S3 Bucket Policy for Layer Artifacts
   LayerArtifactsBucketPolicy:
@@ -98,7 +111,7 @@ Resources:
           Description: 'Allow all outbound traffic'
       Tags:
         - Key: Name
-          Value: !Sub '${AWS::StackName}-Lambda-SG-v2'
+          Value: !Sub 'csvpc-${Environment}-Lambda-SG-v2'
         - Key: Version
           Value: 'v2'
 
@@ -120,9 +133,15 @@ Resources:
           ToPort: 3306
           CidrIp: '10.0.0.0/16'
           Description: 'PostgreSQL access within VPC'
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 10.0.0.0/16
+          Description: 'HTTPS to VPC endpoints for AWS services'
       Tags:
         - Key: Name
-          Value: !Sub '${AWS::StackName}-Aurora-SG-v2'
+          Value: !Sub 'csvpc-${Environment}-Aurora-SG-v2'
         - Key: Version
           Value: 'v2'
 
@@ -185,7 +204,7 @@ Resources:
         - Fn::ImportValue: !Sub '${VPCStackName}-PrivateSubnet4'
       Tags:
         - Key: Name
-          Value: !Sub '${AWS::StackName}-DB-SubnetGroup'
+          Value: !Sub 'csvpc-${Environment}-DB-SubnetGroup'
 
   # KMS Key for Aurora encryption
   AuroraKMSKey:
@@ -217,7 +236,7 @@ Resources:
   AuroraKMSKeyAlias:
     Type: AWS::KMS::Alias
     Properties:
-      AliasName: !Sub 'alias/${AWS::StackName}-aurora-postgres'
+      AliasName: !Sub 'alias/csvpc-${Environment}-aurora-postgres'
       TargetKeyId: !Ref AuroraKMSKey
 
   # Aurora PostgreSQL Cluster
@@ -226,12 +245,12 @@ Resources:
     DeletionPolicy: Snapshot
     UpdateReplacePolicy: Snapshot
     Properties:
-      DBClusterIdentifier: !Sub '${AWS::StackName}-aurora-postgres'
+      DBClusterIdentifier: !Sub 'csvpc-${Environment}-aurora-postgres'
       Engine: aurora-postgresql
       EngineVersion: !Ref EngineVersion
       MasterUsername: !Ref DBMasterUsername
       ManageMasterUserPassword: true
-      DatabaseName: 'sampledb'
+      DatabaseName: !Ref DatabaseName
       DBSubnetGroupName: !Ref DBSubnetGroup
       VpcSecurityGroupIds:
         - !Ref AuroraSecurityGroup
@@ -246,13 +265,13 @@ Resources:
       DeletionProtection: false
       Tags:
         - Key: Name
-          Value: !Sub '${AWS::StackName}-Aurora-Cluster'
+          Value: !Sub 'csvpc-${Environment}-Aurora-Cluster'
 
   # Aurora Instance
   AuroraInstance1:
     Type: AWS::RDS::DBInstance
     Properties:
-      DBInstanceIdentifier: !Sub '${AWS::StackName}-aurora-instance-1'
+      DBInstanceIdentifier: !Sub 'csvpc-${Environment}-aurora-instance-1'
       DBClusterIdentifier: !Ref AuroraCluster
       DBInstanceClass: !Ref DBInstanceClass
       Engine: aurora-postgresql
@@ -261,7 +280,7 @@ Resources:
       MonitoringRoleArn: !GetAtt RDSEnhancedMonitoringRole.Arn
       Tags:
         - Key: Name
-          Value: !Sub '${AWS::StackName}-Aurora-Instance-1'
+          Value: !Sub 'csvpc-${Environment}-Aurora-Instance-1'
 
   # CodeBuild Service Role
   CodeBuildServiceRole:
@@ -285,7 +304,7 @@ Resources:
                   - logs:CreateLogStream
                   - logs:PutLogEvents
                 Resource:
-                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${AWS::StackName}-*'
+                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/csvpc-${Environment}-*'
         - PolicyName: S3LayerArtifactsPolicy
           PolicyDocument:
             Version: '2012-10-17'
@@ -310,7 +329,7 @@ Resources:
                   - lambda:DeleteLayerVersion
                   - lambda:GetLayerVersion
                   - lambda:ListLayerVersions
-                Resource: !Sub 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:layer:${AWS::StackName}-psycopg2-layer*'
+                Resource: !Sub 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:layer:csvpc-${Environment}-psycopg2-layer*'
 
   # Enhanced Monitoring Role
   RDSEnhancedMonitoringRole:
@@ -330,7 +349,7 @@ Resources:
   Psycopg2LayerBuild:
     Type: AWS::CodeBuild::Project
     Properties:
-      Name: !Sub '${AWS::StackName}-psycopg2-layer-build'
+      Name: !Sub 'csvpc-${Environment}-psycopg2-layer-build'
       Description: 'Build psycopg2 Lambda layer with correct architecture'
       ServiceRole: !GetAtt CodeBuildServiceRole.Arn
       Artifacts:
@@ -346,7 +365,7 @@ Resources:
           - Name: BUCKET_NAME
             Value: !Ref LayerArtifactsBucket
           - Name: LAYER_NAME
-            Value: !Sub '${AWS::StackName}-psycopg2-layer'
+            Value: !Sub 'csvpc-${Environment}-psycopg2-layer'
           - Name: AWS_DEFAULT_REGION
             Value: !Ref AWS::Region
       Source:
@@ -380,13 +399,13 @@ Resources:
       TimeoutInMinutes: 10
       Tags:
         - Key: Name
-          Value: !Sub '${AWS::StackName}-psycopg2-layer-build'
+          Value: !Sub 'csvpc-${Environment}-psycopg2-layer-build'
 
   Psycopg2Layer:
     Type: AWS::Lambda::LayerVersion
     DependsOn: LayerBuildTrigger
     Properties:
-      LayerName: !Sub '${AWS::StackName}-psycopg2-layer'
+      LayerName: !Sub 'csvpc-${Environment}-psycopg2-layer'
       Description: psycopg2 library for PostgreSQL connections
       Content:
         S3Bucket: !Ref LayerArtifactsBucket
@@ -464,13 +483,13 @@ Resources:
                 Action:
                   - lambda:GetLayerVersion
                   - lambda:ListLayerVersions
-                Resource: !Sub 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:layer:${AWS::StackName}-psycopg2-layer*'
+                Resource: !Sub 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:layer:csvpc-${Environment}-psycopg2-layer*'
 
   # Lambda Function to Trigger Layer Build
   LayerBuilderFunction:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: !Sub '${AWS::StackName}-layer-builder'
+      FunctionName: !Sub 'csvpc-${Environment}-layer-builder'
       Runtime: python3.13
       Handler: index.lambda_handler
       Role: !GetAtt LayerBuilderLambdaRole.Arn
@@ -479,7 +498,7 @@ Resources:
         Variables:
           CODEBUILD_PROJECT: !Ref Psycopg2LayerBuild
           BUCKET_NAME: !Ref LayerArtifactsBucket
-          LAYER_NAME: !Sub '${AWS::StackName}-psycopg2-layer'
+          LAYER_NAME: !Sub 'csvpc-${Environment}-psycopg2-layer'
       Code:
         ZipFile: |
           import json
@@ -630,7 +649,7 @@ Resources:
       - Psycopg2Layer
       - AuroraInstance1
     Properties:
-      FunctionName: !Sub '${AWS::StackName}-load-mock-data'
+      FunctionName: !Sub 'csvpc-${Environment}-load-mock-data'
       Runtime: python3.13
       Handler: index.lambda_handler
       Role: !GetAtt MockDataLambdaRole.Arn
@@ -875,6 +894,12 @@ Resources:
       ServiceToken: !GetAtt MockDataFunction.Arn
 
 Outputs:
+  StackName:
+    Description: 'Stack name for cross-stack references'
+    Value: !Ref AWS::StackName
+    Export:
+      Name: !Sub '${AWS::StackName}-StackName'
+
   AuroraClusterEndpoint:
     Description: 'Aurora PostgreSQL cluster endpoint'
     Value: !GetAtt AuroraCluster.Endpoint.Address
@@ -901,7 +926,7 @@ Outputs:
 
   DatabaseName:
     Description: 'Database name'
-    Value: 'sampledb'
+    Value: !Ref DatabaseName
     Export:
       Name: !Sub '${AWS::StackName}-DatabaseName'
 
@@ -923,7 +948,7 @@ Outputs:
 
   Psycopg2LayerArn:
     Description: 'ARN of the psycopg2 Lambda layer'
-    Value: !Sub 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:layer:${AWS::StackName}-psycopg2-layer:1'
+    Value: !Sub 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:layer:csvpc-${Environment}-psycopg2-layer:1'
     Export:
       Name: !Sub '${AWS::StackName}-Psycopg2LayerArn'
 

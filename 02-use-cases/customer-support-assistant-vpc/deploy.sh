@@ -21,7 +21,7 @@ STACK_NAME="customer-support-vpc"
 ENVIRONMENT="dev"
 DB_USERNAME="postgres"
 MODEL_ID="global.anthropic.claude-sonnet-4-20250514-v1:0"
-REGION="us-east-1"
+REGION="us-west-2"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CFN_DIR="${SCRIPT_DIR}/cloudformation"
 
@@ -94,9 +94,13 @@ create_s3_bucket() {
 
     # Create bucket (handle us-east-1 special case)
     if [ "$REGION" = "us-east-1" ]; then
-        aws s3 mb "s3://${bucket_name}" --region "$REGION"
+        aws s3api create-bucket \
+            --bucket "$bucket_name" \
+            --region "$REGION"
     else
-        aws s3 mb "s3://${bucket_name}" --region "$REGION" \
+        aws s3api create-bucket \
+            --bucket "$bucket_name" \
+            --region "$REGION" \
             --create-bucket-configuration LocationConstraint="$REGION"
     fi
 

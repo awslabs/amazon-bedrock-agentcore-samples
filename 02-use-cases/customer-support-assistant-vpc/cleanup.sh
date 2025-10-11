@@ -18,7 +18,7 @@ NC='\033[0m' # No Color
 
 # Default values
 STACK_NAME="customer-support-vpc"
-REGION="us-east-1"
+REGION="us-west-2"
 DELETE_VPC=false
 DELETE_S3=false
 
@@ -177,16 +177,32 @@ empty_s3_bucket() {
         return 0
     fi
 
-    # Delete all versions and delete markers
+    # Delete all object versions
+    print_info "Deleting object versions..."
     aws s3api list-object-versions \
         --bucket "$bucket_name" \
         --region "$REGION" \
-        --output json \
-        --query '{Objects: [Versions[].{Key:Key,VersionId:VersionId}, DeleteMarkers[].{Key:Key,VersionId:VersionId}][] | []}'  \
-        | jq -r '.[] | "--key \(.Key) --version-id \(.VersionId)"' \
-        | xargs -I {} aws s3api delete-object --bucket "$bucket_name" --region "$REGION" {} 2>/dev/null || true
+        --query 'Versions[].{Key:Key,VersionId:VersionId}' \
+        --output json 2>/dev/null | \
+    jq -r '.[] | "--key \"\(.Key)\" --version-id \(.VersionId)"' | \
+    while read -r args; do
+        eval aws s3api delete-object --bucket "$bucket_name" --region "$REGION" $args 2>/dev/null || true
+    done
 
-    # Delete remaining objects
+    # Delete all delete markers
+    print_info "Deleting delete markers..."
+    aws s3api list-object-versions \
+        --bucket "$bucket_name" \
+        --region "$REGION" \
+        --query 'DeleteMarkers[].{Key:Key,VersionId:VersionId}' \
+        --output json 2>/dev/null | \
+    jq -r '.[] | "--key \"\(.Key)\" --version-id \(.VersionId)"' | \
+    while read -r args; do
+        eval aws s3api delete-object --bucket "$bucket_name" --region "$REGION" $args 2>/dev/null || true
+    done
+
+    # Delete any remaining current objects
+    print_info "Deleting remaining objects..."
     aws s3 rm "s3://$bucket_name" --recursive --region "$REGION" 2>/dev/null || true
 
     print_success "Bucket emptied: $bucket_name"
@@ -233,8 +249,20 @@ get_template_bucket() {
         --output text 2>/dev/null || echo "")
 
     if [[ -n "$template_url" ]]; then
-        # Extract bucket name from S3 URL
-        echo "$template_url" | sed -n 's|https://\([^.]*\)\.s3\..*|\1|p'
+        # Extract bucket name from S3 URL (supports multiple formats)
+        # Format 1: https://bucket-name.s3.region.amazonaws.com/path
+        # Format 2: https://s3.region.amazonaws.com/bucket-name/path
+        local bucket=""
+
+        # Try format 1: bucket-name.s3.region.amazonaws.com
+        bucket=$(echo "$template_url" | sed -n 's|^https://\([^.]*\)\.s3\..*|\1|p')
+
+        # If empty, try format 2: s3.region.amazonaws.com/bucket-name
+        if [[ -z "$bucket" ]]; then
+            bucket=$(echo "$template_url" | sed -n 's|^https://s3[^/]*/\([^/]*\).*|\1|p')
+        fi
+
+        echo "$bucket"
     else
         echo ""
     fi
@@ -269,8 +297,11 @@ fi
 
 # Get S3 bucket name before deleting stacks
 TEMPLATE_BUCKET=$(get_template_bucket "$STACK_NAME")
-if [[ -n "$TEMPLATE_BUCKET" ]]; then
+
+if [[ -n "$TEMPLATE_BUCKET" && "$TEMPLATE_BUCKET" != "None" ]]; then
     print_info "Found template bucket: $TEMPLATE_BUCKET"
+else
+    print_warning "No template bucket found in stack parameters"
 fi
 
 # Delete nested stacks in reverse dependency order

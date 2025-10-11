@@ -2,6 +2,15 @@ AWSTemplateFormatVersion: '2010-09-09'
 Description: 'Bedrock AgentCore Gateway for customer support tools. Deploys Lambda functions for warranty checks and customer profile lookups, DynamoDB tables for warranty and customer data, and AgentCore Gateway with MCP protocol configuration and JWT authentication.'
 
 Parameters:
+  Environment:
+    Type: String
+    Default: 'dev'
+    AllowedValues:
+      - dev
+      - test
+      - prod
+    Description: 'Environment name for resource naming'
+
   CognitoStackName:
     Type: String
     Description: 'Name of the Cognito stack to reference for authentication configuration'
@@ -37,7 +46,7 @@ Resources:
   GatewayDynamoDBKMSKeyAlias:
     Type: AWS::KMS::Alias
     Properties:
-      AliasName: !Sub 'alias/${AWS::StackName}-gateway-dynamodb-key'
+      AliasName: !Sub 'alias/csvpc-${Environment}-gateway-dynamodb-key'
       TargetKeyId: !Ref GatewayDynamoDBKMSKey
 
   GatewayAgentCoreRole:
@@ -107,7 +116,7 @@ Resources:
   WarrantyTable:
     Type: AWS::DynamoDB::Table
     Properties:
-      TableName: !Sub '${AWS::StackName}-warranty-table'
+      TableName: !Sub 'csvpc-${Environment}-warranty-table'
       BillingMode: PAY_PER_REQUEST
       PointInTimeRecoverySpecification:
         PointInTimeRecoveryEnabled: true
@@ -123,7 +132,7 @@ Resources:
           KeyType: HASH
       Tags:
         - Key: Name
-          Value: !Sub '${AWS::StackName}-warranty-table'
+          Value: !Sub 'csvpc-${Environment}-warranty-table'
         - Key: Purpose
           Value: 'Customer Support Warranty Data'
 
@@ -131,7 +140,7 @@ Resources:
   CustomerProfileTable:
     Type: AWS::DynamoDB::Table
     Properties:
-      TableName: !Sub '${AWS::StackName}-customer-profile-table'
+      TableName: !Sub 'csvpc-${Environment}-customer-profile-table'
       BillingMode: PAY_PER_REQUEST
       PointInTimeRecoverySpecification:
         PointInTimeRecoveryEnabled: true
@@ -164,7 +173,7 @@ Resources:
             ProjectionType: ALL
       Tags:
         - Key: Name
-          Value: !Sub '${AWS::StackName}-customer-profile-table'
+          Value: !Sub 'csvpc-${Environment}-customer-profile-table'
         - Key: Purpose
           Value: 'Customer Support Profile Data'
 
@@ -264,7 +273,7 @@ Resources:
   GatewayManagementFunction:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: !Sub '${AWS::StackName}-gateway-management'
+      FunctionName: !Sub 'csvpc-${Environment}-gateway-management'
       Runtime: python3.12
       Handler: index.lambda_handler
       Role: !GetAtt GatewayManagementLambdaRole.Arn
@@ -411,6 +420,7 @@ Resources:
 
                   # Create the gateway
                   logger.info(f"Creating gateway: {gateway_name}")
+                  time.sleep(10)
                   create_response = gateway_client.create_gateway(
                       name=gateway_name,
                       roleArn=execution_role_arn,
@@ -449,7 +459,7 @@ Resources:
                   logger.info(f"Gateway created successfully: {gateway_id}")
                   
                   credential_config = [{"credentialProviderType": "GATEWAY_IAM_ROLE"}]
-
+                  time.sleep(10)
                   create_target_response = gateway_client.create_gateway_target(
                       gatewayIdentifier=gateway_id,
                       name="LambdaUsingSDK",
@@ -495,7 +505,7 @@ Resources:
                           )
                           logger.info(f"   ✅ Target {target_id} deleted")
 
-                      time.sleep(5)
+                      time.sleep(10)
                       logger.info(f"Deleting gateway: {gateway_id}")
                       gateway_client.delete_gateway(gatewayIdentifier=gateway_id)
 
@@ -542,7 +552,7 @@ Resources:
   PopulateDataFunction:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: !Sub '${AWS::StackName}-populate-data'
+      FunctionName: !Sub 'csvpc-${Environment}-populate-data'
       Runtime: python3.12
       Handler: index.lambda_handler
       Role: !GetAtt PopulateDataLambdaRole.Arn
@@ -811,9 +821,9 @@ Resources:
       - CustomerSupportLambda
     Properties:
       ServiceToken: !GetAtt GatewayManagementFunction.Arn
-      GatewayName: !Sub '${AWS::StackName}-customer-support-gateway'
+      GatewayName: !Sub 'csvpc-${Environment}-customer-support-gateway'
       ExecutionRoleArn: !GetAtt GatewayAgentCoreRole.Arn
-      ProviderName: !Sub 'GatewayOAuth2Provider-${AWS::StackName}'
+      ProviderName: !Sub 'GatewayOAuth2Provider-csvpc-${Environment}'
       LambdaArn: !GetAtt CustomerSupportLambda.Arn
       GatewayClientId:
         Fn::ImportValue: !Sub '${CognitoStackName}-GatewayClientId'
@@ -826,7 +836,7 @@ Resources:
   CustomerSupportLambda:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: !Sub '${AWS::StackName}-customer-support'
+      FunctionName: !Sub 'csvpc-${Environment}-customer-support'
       Runtime: python3.12
       Handler: index.lambda_handler
       Role: !GetAtt CustomerSupportLambdaRole.Arn
@@ -1105,6 +1115,12 @@ Resources:
         Application: CustomerSupport
 
 Outputs:
+  StackName:
+    Description: 'Stack name for cross-stack references'
+    Value: !Ref AWS::StackName
+    Export:
+      Name: !Sub '${AWS::StackName}-StackName'
+
   CustomerProfileTableName:
     Description: 'Customer Profile DynamoDB Table Name'
     Value: !Ref CustomerProfileTable
@@ -1116,12 +1132,6 @@ Outputs:
     Value: !Ref WarrantyTable
     Export:
       Name: !Sub '${AWS::StackName}-WarrantyTable'
-
-  CustomerSupportLambdaArn:
-    Description: 'Customer Support Lambda Function ARN'
-    Value: !GetAtt CustomerSupportLambda.Arn
-    Export:
-      Name: !Sub '${AWS::StackName}-CustomerSupportLambdaArn'
 
   GatewayId:
     Description: 'Customer Support Gateway ID'

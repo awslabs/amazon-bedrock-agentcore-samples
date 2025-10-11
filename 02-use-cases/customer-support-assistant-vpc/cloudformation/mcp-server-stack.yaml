@@ -2,6 +2,15 @@ AWSTemplateFormatVersion: '2010-09-09'
 Description: 'Model Context Protocol (MCP) server for DynamoDB access. Deploys Bedrock AgentCore runtime with Docker image stored in ECR, OAuth2 authentication, and automated build pipeline via CodeBuild. Includes EventBridge-triggered updates on new image pushes.'
 
 Parameters:
+  Environment:
+    Type: String
+    Default: 'dev'
+    AllowedValues:
+      - dev
+      - test
+      - prod
+    Description: 'Environment name for resource naming'
+
   VPCStackName:
     Type: String
     Description: 'Name of the VPC stack to reference for network configuration'
@@ -19,7 +28,7 @@ Resources:
   MCPDynamoDBECRRepository:
     Type: AWS::ECR::Repository
     Properties:
-      RepositoryName: !Sub '${AWS::StackName}-mcpdynamodb-repository'
+      RepositoryName: !Sub 'csvpc-${Environment}-mcp-repository'
       ImageScanningConfiguration:
         ScanOnPush: true
       LifecyclePolicy:
@@ -54,7 +63,7 @@ Resources:
           }
       Tags:
         - Key: Name
-          Value: !Sub '${AWS::StackName}-MCPDynamoDB-ECR'
+          Value: !Sub 'csvpc-${Environment}-MCPDynamoDB-ECR'
         - Key: Purpose
           Value: 'MCP DynamoDB Docker Images'
     DeletionPolicy: Delete
@@ -63,7 +72,7 @@ Resources:
   MCPDynamoDBRuntimeExecutionRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: !Sub '${AWS::StackName}-mcpdynamodb-runtime-execution-role'
+      RoleName: !Sub 'csvpc-${Environment}-mcp-runtime-execution-role'
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -132,9 +141,7 @@ Resources:
                   - bedrock-agentcore:GetWorkloadAccessTokenForUserId
                 Resource:
                   - !Sub 'arn:aws:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:workload-identity-directory/default'
-                  - !Sub
-                    - 'arn:aws:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:workload-identity-directory/default/workload-identity/${StackName}*'
-                    - StackName: !Join ['', !Split ['-', !Ref 'AWS::StackName']]
+                  - !Sub 'arn:aws:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:workload-identity-directory/default/workload-identity/csvpcMCPDynamoDBRuntime*'
               - Sid: DynamoDBAccess
                 Effect: Allow
                 Action:
@@ -168,10 +175,7 @@ Resources:
                   - kms:GenerateDataKey
                   - kms:DescribeKey
                 Resource:
-                  - !Sub
-                    - 'arn:aws:kms:${AWS::Region}:${AWS::AccountId}:key/${KMSKeyId}'
-                    - KMSKeyId:
-                        Fn::ImportValue: !Sub '${DynamoDBStackName}-DynamoDBKMSKey'
+                  - Fn::ImportValue: !Sub '${DynamoDBStackName}-DynamoDBKMSKey'
               - Sid: SSMParameterAccess
                 Effect: Allow
                 Action:
@@ -182,7 +186,7 @@ Resources:
                   - !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/app/customersupportvpc/dynamodb/products_table_name'
       Tags:
         - Key: Name
-          Value: !Sub '${AWS::StackName}-MCPDynamoDB-Runtime-Role'
+          Value: !Sub 'csvpc-${Environment}-MCPDynamoDB-Runtime-Role'
         - Key: Purpose
           Value: 'MCP DynamoDB Runtime Execution'
 
@@ -208,7 +212,7 @@ Resources:
                   - logs:CreateLogStream
                   - logs:PutLogEvents
                 Resource:
-                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${AWS::StackName}-*'
+                  - "*"
         - PolicyName: ECRAccessPolicy
           PolicyDocument:
             Version: '2012-10-17'
@@ -229,7 +233,7 @@ Resources:
                 Resource: !GetAtt MCPDynamoDBECRRepository.Arn
       Tags:
         - Key: Name
-          Value: !Sub '${AWS::StackName}-CodeBuild-Role'
+          Value: !Sub 'csvpc-${Environment}-CodeBuild-Role'
         - Key: Purpose
           Value: 'CodeBuild Docker Image Build'
 
@@ -237,7 +241,7 @@ Resources:
   MCPDynamoDBDockerBuildProject:
     Type: AWS::CodeBuild::Project
     Properties:
-      Name: !Sub '${AWS::StackName}-mcpdynamodb-docker-build'
+      Name: !Sub 'csvpc-${Environment}-mcp-docker-build'
       Description: 'Build and push MCP DynamoDB Docker image to ECR'
       ServiceRole: !GetAtt CodeBuildServiceRole.Arn
       Artifacts:
@@ -307,7 +311,7 @@ Resources:
       TimeoutInMinutes: 30
       Tags:
         - Key: Name
-          Value: !Sub '${AWS::StackName}-MCPDynamoDB-Docker-Build'
+          Value: !Sub 'csvpc-${Environment}-MCPDynamoDB-Docker-Build'
         - Key: Purpose
           Value: 'MCP DynamoDB Docker Image Build'
 
@@ -358,7 +362,7 @@ Resources:
                 Resource: !GetAtt MCPDynamoDBRuntimeExecutionRole.Arn
       Tags:
         - Key: Name
-          Value: !Sub '${AWS::StackName}-ECR-Notification-Role'
+          Value: !Sub 'csvpc-${Environment}-ECR-Notification-Role'
         - Key: Purpose
           Value: 'ECR Image Notification Lambda'
 
@@ -367,7 +371,7 @@ Resources:
     Type: AWS::Lambda::Function
     DependsOn: MCPDynamoDBRuntime
     Properties:
-      FunctionName: !Sub '${AWS::StackName}-ecr-image-notification'
+      FunctionName: !Sub 'csvpc-${Environment}-mcp-ecr-notification'
       Runtime: python3.12
       Handler: index.lambda_handler
       Role: !GetAtt ECRImageNotificationLambdaRole.Arn
@@ -461,7 +465,7 @@ Resources:
                   }
       Tags:
         - Key: Name
-          Value: !Sub '${AWS::StackName}-ECR-Notification-Function'
+          Value: !Sub 'csvpc-${Environment}-ECR-Notification-Function'
 
   # EventBridge Permission for Lambda
   ECRImageNotificationLambdaPermission:
@@ -476,7 +480,7 @@ Resources:
   ECRImageEventRule:
     Type: AWS::Events::Rule
     Properties:
-      Name: !Sub '${AWS::StackName}-ecr-image-push-rule'
+      Name: !Sub 'csvpc-${Environment}-mcp-ecr-push-rule'
       Description: 'Trigger Lambda when new ECR image is pushed'
       EventPattern:
         source:
@@ -577,7 +581,7 @@ Resources:
                 Resource: !GetAtt MCPDynamoDBECRRepository.Arn
       Tags:
         - Key: Name
-          Value: !Sub '${AWS::StackName}-CodeBuild-Trigger-Role'
+          Value: !Sub 'csvpc-${Environment}-CodeBuild-Trigger-Role'
         - Key: Purpose
           Value: 'CodeBuild Trigger Lambda'
 
@@ -585,7 +589,7 @@ Resources:
   CodeBuildTriggerFunction:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: !Sub '${AWS::StackName}-codebuild-trigger'
+      FunctionName: !Sub 'csvpc-${Environment}-mcp-codebuild'
       Runtime: python3.12
       Handler: index.lambda_handler
       Role: !GetAtt CodeBuildTriggerLambdaRole.Arn
@@ -790,16 +794,14 @@ Resources:
     DependsOn: MCPDynamoDBDockerBuildProject
     Properties:
       ServiceToken: !GetAtt CodeBuildTriggerFunction.Arn
-      ProviderName: !Sub 'MCPOAuth2Provider-${AWS::StackName}'
+      ProviderName: !Sub 'MCPOAuth2Provider-csvpc-${Environment}'
 
   # BedrockAgentCore Runtime using latest ECR image
   MCPDynamoDBRuntime:
     Type: AWS::BedrockAgentCore::Runtime
     DependsOn: CodeBuildTrigger
     Properties:
-      AgentRuntimeName: !Sub
-        - '${StackName}MCPDynamoDBRuntime'
-        - StackName: !Join ['', !Split ['-', !Ref 'AWS::StackName']]
+      AgentRuntimeName: 'csvpcMCPDynamoDBRuntime'
       RoleArn: !GetAtt MCPDynamoDBRuntimeExecutionRole.Arn
       NetworkConfiguration:
         NetworkMode: "PUBLIC"
@@ -816,39 +818,15 @@ Resources:
           AllowedClients:
             - Fn::ImportValue: !Sub '${CognitoStackName}-MCPClientId'
       Tags:
-        Name: !Sub '${AWS::StackName}-MCPDynamoDB-Runtime'
+        Name: !Sub 'csvpc-${Environment}-MCPDynamoDB-Runtime'
         Purpose: 'MCP DynamoDB Runtime'
 
 Outputs:
-  MCPDynamoDBRuntimeExecutionRoleArn:
-    Description: 'ARN of the MCP DynamoDB runtime execution role'
-    Value: !GetAtt MCPDynamoDBRuntimeExecutionRole.Arn
+  StackName:
+    Description: 'Stack name for cross-stack references'
+    Value: !Ref AWS::StackName
     Export:
-      Name: !Sub '${AWS::StackName}-MCPDynamoDBRuntimeExecutionRoleArn'
-
-  MCPDynamoDBRuntimeExecutionRoleName:
-    Description: 'Name of the MCP DynamoDB runtime execution role'
-    Value: !Ref MCPDynamoDBRuntimeExecutionRole
-    Export:
-      Name: !Sub '${AWS::StackName}-MCPDynamoDBRuntimeExecutionRoleName'
-
-  MCPDynamoDBECRRepositoryUri:
-    Description: 'URI of the ECR repository for MCP DynamoDB Docker images'
-    Value: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${MCPDynamoDBECRRepository}'
-    Export:
-      Name: !Sub '${AWS::StackName}-MCPDynamoDBECRRepositoryUri'
-
-  MCPDynamoDBECRRepositoryName:
-    Description: 'Name of the ECR repository'
-    Value: !Ref MCPDynamoDBECRRepository
-    Export:
-      Name: !Sub '${AWS::StackName}-MCPDynamoDBECRRepositoryName'
-
-  CodeBuildProjectName:
-    Description: 'Name of the CodeBuild project for building MCP DynamoDB Docker images'
-    Value: !Ref MCPDynamoDBDockerBuildProject
-    Export:
-      Name: !Sub '${AWS::StackName}-CodeBuildProjectName'
+      Name: !Sub '${AWS::StackName}-StackName'
 
   MCPDynamoDBRuntimeArn:
     Description: 'ARN of the BedrockAgentCore MCP DynamoDB Runtime'
@@ -867,3 +845,9 @@ Outputs:
     Value: !Ref MCPDynamoDBRuntime
     Export:
       Name: !Sub '${AWS::StackName}-MCPDynamoDBRuntimeName'
+  
+  MCPProviderName: 
+    Description: 'Name of the MCP provider'
+    Value: !Sub 'MCPOAuth2Provider-csvpc-${Environment}'
+    Export:
+      Name: !Sub '${AWS::StackName}-MCPProviderName'

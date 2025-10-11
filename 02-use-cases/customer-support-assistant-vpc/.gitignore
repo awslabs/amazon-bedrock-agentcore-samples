@@ -214,3 +214,4 @@ aws-architecture-diagram.drawio
 .agentcore.json
 temp
 ip-ranges.json
+tmp/*

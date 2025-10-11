@@ -2,9 +2,14 @@ AWSTemplateFormatVersion: '2010-09-09'
 Description: 'Bedrock AgentCore agent runtime with HTTP protocol. Deploys containerized agent in ECR with access to MCP servers, Gateway tools, and Aurora database. Includes CodeBuild pipeline for Docker builds, OAuth2 provider setup, and EventBridge automation for container updates.'
 
 Parameters:
-  VPCStackName:
+  Environment:
     Type: String
-    Description: 'Name of the VPC stack to reference for network configuration'
+    Default: 'dev'
+    AllowedValues:
+      - dev
+      - test
+      - prod
+    Description: 'Environment name for resource naming'
 
   CognitoStackName:
     Type: String
@@ -32,7 +37,7 @@ Resources:
   AgentECRRepository:
     Type: AWS::ECR::Repository
     Properties:
-      RepositoryName: !Sub '${AWS::StackName}-agent-repository'
+      RepositoryName: !Sub 'csvpc-${Environment}-agent-repository'
       ImageScanningConfiguration:
         ScanOnPush: true
       LifecyclePolicy:
@@ -67,7 +72,7 @@ Resources:
           }
       Tags:
         - Key: Name
-          Value: !Sub '${AWS::StackName}-Agent-ECR'
+          Value: !Sub 'csvpc-${Environment}-Agent-ECR'
         - Key: Purpose
           Value: 'Agent Docker Images'
     DeletionPolicy: Delete
@@ -76,7 +81,7 @@ Resources:
   AgentCoreRuntimeExecutionRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: !Sub '${AWS::StackName}-agentcore-runtime-execution-role'
+      RoleName: !Sub 'csvpc-${Environment}-agent-runtime-execution-role'
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -145,9 +150,7 @@ Resources:
                   - bedrock-agentcore:GetWorkloadAccessTokenForUserId
                 Resource:
                   - !Sub 'arn:aws:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:workload-identity-directory/default'
-                  - !Sub
-                    - 'arn:aws:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:workload-identity-directory/default/workload-identity/${StackName}*'
-                    - StackName: !Join ['', !Split ['-', !Ref 'AWS::StackName']]
+                  - !Sub 'arn:aws:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:workload-identity-directory/default/workload-identity/csvpcAgentRuntime*'
               - Sid: BedrockModelAccess
                 Effect: Allow
                 Action:
@@ -195,7 +198,7 @@ Resources:
                   Fn::ImportValue: !Sub '${AuroraStackName}-DBCredentialsSecret'
       Tags:
         - Key: Name
-          Value: !Sub '${AWS::StackName}-AgentCore-Runtime-Role'
+          Value: !Sub 'csvpc-${Environment}-AgentCore-Runtime-Role'
         - Key: Purpose
           Value: 'AgentCore Runtime Execution'
 
@@ -221,7 +224,7 @@ Resources:
                   - logs:CreateLogStream
                   - logs:PutLogEvents
                 Resource:
-                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${AWS::StackName}-*'
+                  - "*"
         - PolicyName: ECRAccessPolicy
           PolicyDocument:
             Version: '2012-10-17'
@@ -242,7 +245,7 @@ Resources:
                 Resource: !GetAtt AgentECRRepository.Arn
       Tags:
         - Key: Name
-          Value: !Sub '${AWS::StackName}-CodeBuild-Role'
+          Value: !Sub 'csvpc-${Environment}-CodeBuild-Role'
         - Key: Purpose
           Value: 'CodeBuild Docker Image Build'
 
@@ -250,7 +253,7 @@ Resources:
   AgentDockerBuildProject:
     Type: AWS::CodeBuild::Project
     Properties:
-      Name: !Sub '${AWS::StackName}-agent-docker-build'
+      Name: !Sub 'csvpc-${Environment}-agent-docker-build'
       Description: 'Build and push agent Docker image to ECR'
       ServiceRole: !GetAtt CodeBuildServiceRole.Arn
       Artifacts:
@@ -320,7 +323,7 @@ Resources:
       TimeoutInMinutes: 30
       Tags:
         - Key: Name
-          Value: !Sub '${AWS::StackName}-Agent-Docker-Build'
+          Value: !Sub 'csvpc-${Environment}-Agent-Docker-Build'
         - Key: Purpose
           Value: 'Agent Docker Image Build'
 
@@ -371,7 +374,7 @@ Resources:
                 Resource: !GetAtt AgentCoreRuntimeExecutionRole.Arn
       Tags:
         - Key: Name
-          Value: !Sub '${AWS::StackName}-ECR-Notification-Role'
+          Value: !Sub 'csvpc-${Environment}-ECR-Notification-Role'
         - Key: Purpose
           Value: 'ECR Image Notification Lambda'
 
@@ -379,7 +382,7 @@ Resources:
   ECRImageNotificationFunction:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: !Sub '${AWS::StackName}-ecr-image-notification'
+      FunctionName: !Sub 'csvpc-${Environment}-agent-ecr-notification'
       Runtime: python3.12
       Handler: index.lambda_handler
       Role: !GetAtt ECRImageNotificationLambdaRole.Arn
@@ -474,7 +477,7 @@ Resources:
                   }
       Tags:
         - Key: Name
-          Value: !Sub '${AWS::StackName}-ECR-Notification-Function'
+          Value: !Sub 'csvpc-${Environment}-ECR-Notification-Function'
 
   # EventBridge Permission for Lambda
   ECRImageNotificationLambdaPermission:
@@ -489,7 +492,7 @@ Resources:
   ECRImageEventRule:
     Type: AWS::Events::Rule
     Properties:
-      Name: !Sub '${AWS::StackName}-ecr-image-push-rule'
+      Name: !Sub 'csvpc-${Environment}-agent-ecr-push-rule'
       Description: 'Trigger Lambda when new ECR image is pushed'
       EventPattern:
         source:
@@ -539,7 +542,7 @@ Resources:
                 Action:
                   - secretsmanager:GetSecretValue
                 Resource:
-                  - Fn::ImportValue: !Sub '${CognitoStackName}-AgentClientSecret'
+                  - Fn::ImportValue: !Sub '${CognitoStackName}-WebUserPoolClientSecret'
               - Effect: Allow
                 Action:
                   - kms:Decrypt
@@ -605,7 +608,7 @@ Resources:
                 Resource: '*'
       Tags:
         - Key: Name
-          Value: !Sub '${AWS::StackName}-CodeBuild-Trigger-Role'
+          Value: !Sub 'csvpc-${Environment}-CodeBuild-Trigger-Role'
         - Key: Purpose
           Value: 'CodeBuild Trigger Lambda'
 
@@ -613,7 +616,7 @@ Resources:
   CodeBuildTriggerFunction:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: !Sub '${AWS::StackName}-codebuild-trigger'
+      FunctionName: !Sub 'csvpc-${Environment}-agent-codebuild'
       Runtime: python3.12
       Handler: index.lambda_handler
       Role: !GetAtt CodeBuildTriggerLambdaRole.Arn
@@ -622,7 +625,7 @@ Resources:
         Variables:
           CODEBUILD_PROJECT_NAME: !Ref AgentDockerBuildProject
           AGENT_CLIENT_SECRET_ARN:
-            Fn::ImportValue: !Sub '${CognitoStackName}-AgentClientSecret'
+            Fn::ImportValue: !Sub '${CognitoStackName}-WebUserPoolClientSecret'
           DISCOVERY_URL: !Sub
             - 'https://cognito-idp.${AWS::Region}.amazonaws.com/${UserPoolId}/.well-known/openid-configuration'
             - UserPoolId:
@@ -818,16 +821,14 @@ Resources:
     DependsOn: AgentDockerBuildProject
     Properties:
       ServiceToken: !GetAtt CodeBuildTriggerFunction.Arn
-      ProviderName: !Sub 'AgentOAuth2Provider-${AWS::StackName}'
+      ProviderName: !Sub 'AgentOAuth2Provider-csvpc-${Environment}'
 
   # BedrockAgentCore Runtime using latest ECR image
   AgentRuntime:
     Type: AWS::BedrockAgentCore::Runtime
     DependsOn: CodeBuildTrigger
     Properties:
-      AgentRuntimeName: !Sub
-        - '${StackName}AgentRuntime'
-        - StackName: !Join ['', !Split ['-', !Ref 'AWS::StackName']]
+      AgentRuntimeName: 'csvpcAgentRuntime'
       RoleArn: !GetAtt AgentCoreRuntimeExecutionRole.Arn
       NetworkConfiguration:
         NetworkMode: "PUBLIC"       
@@ -842,14 +843,14 @@ Resources:
             - UserPoolId:
                 Fn::ImportValue: !Sub '${CognitoStackName}-UserPoolId'
           AllowedClients:
-            - Fn::ImportValue: !Sub '${CognitoStackName}-AgentClientId'
+            - Fn::ImportValue: !Sub '${CognitoStackName}-WebUserPoolClientId'
       EnvironmentVariables:
         MODEL_ID: !Ref ModelID
         MCP_REGION: !Sub '${AWS::Region}'
         MCP_ARN:
           Fn::ImportValue: !Sub '${MCPStackName}-MCPDynamoDBRuntimeArn'
-        MCP_PROVIDER_NAME: !Sub 'MCPOAuth2Provider-${MCPStackName}'
-        GATEWAY_PROVIDER_NAME: !Sub 'GatewayOAuth2Provider-${GatewayStackName}'
+        MCP_PROVIDER_NAME: !Sub 'MCPOAuth2Provider-csvpc-${Environment}'
+        GATEWAY_PROVIDER_NAME: !Sub 'GatewayOAuth2Provider-csvpc-${Environment}'
         AURORA_CLUSTER_ARN:
           Fn::ImportValue: !Sub '${AuroraStackName}-ClusterArn'
         AURORA_SECRET_ARN:
@@ -857,40 +858,10 @@ Resources:
         AURORA_DATABASE:
           Fn::ImportValue: !Sub '${AuroraStackName}-DatabaseName'
       Tags:
-        Name: !Sub '${AWS::StackName}-Agent-Runtime'
+        Name: !Sub 'csvpc-${Environment}-Agent-Runtime'
         Purpose: 'AgentCore Runtime'
 
 Outputs:
-  AgentCoreRuntimeExecutionRoleArn:
-    Description: 'ARN of the AgentCore runtime execution role'
-    Value: !GetAtt AgentCoreRuntimeExecutionRole.Arn
-    Export:
-      Name: !Sub '${AWS::StackName}-AgentCoreRuntimeExecutionRoleArn'
-
-  AgentCoreRuntimeExecutionRoleName:
-    Description: 'Name of the AgentCore runtime execution role'
-    Value: !Ref AgentCoreRuntimeExecutionRole
-    Export:
-      Name: !Sub '${AWS::StackName}-AgentCoreRuntimeExecutionRoleName'
-
-  AgentECRRepositoryUri:
-    Description: 'URI of the ECR repository for agent Docker images'
-    Value: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${AgentECRRepository}'
-    Export:
-      Name: !Sub '${AWS::StackName}-AgentECRRepositoryUri'
-
-  AgentECRRepositoryName:
-    Description: 'Name of the ECR repository'
-    Value: !Ref AgentECRRepository
-    Export:
-      Name: !Sub '${AWS::StackName}-AgentECRRepositoryName'
-
-  CodeBuildProjectName:
-    Description: 'Name of the CodeBuild project for building agent Docker images'
-    Value: !Ref AgentDockerBuildProject
-    Export:
-      Name: !Sub '${AWS::StackName}-CodeBuildProjectName'
-
   AgentRuntimeArn:
     Description: 'ARN of the BedrockAgentCore Runtime'
     Value: !GetAtt AgentRuntime.AgentRuntimeArn
@@ -908,3 +879,9 @@ Outputs:
     Value: !Ref AgentRuntime
     Export:
       Name: !Sub '${AWS::StackName}-AgentRuntimeName'
+  
+  AgentProviderName: 
+    Description: 'Name of the Agent provider'
+    Value: !Sub 'AgentOAuth2Provider-csvpc-${Environment}'
+    Export:
+      Name: !Sub '${AWS::StackName}-AgentProviderName'

@@ -1,6 +1,27 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: 'Cognito User Pool with OAuth 2.0 client credentials flow for machine-to-machine (M2M) authentication. Creates three client applications (Gateway, Agent, MCP) with scoped access and stores credentials in Secrets Manager with KMS encryption.'
 
+Parameters:
+  Environment:
+    Type: String
+    Default: 'dev'
+    AllowedValues:
+      - dev
+      - test
+      - prod
+    Description: 'Environment name for resource naming'
+
+  AdminUserEmail:
+    Type: String
+    Default: ''
+    Description: 'Optional: Admin user email to create automatically (leave empty to skip)'
+
+  AdminUserPassword:
+    Type: String
+    Default: ''
+    NoEcho: true
+    Description: 'Optional: Admin user password (leave empty for auto-generated temporary password)'
+
 Resources:
   # Cognito User Pool for M2M Authentication
   M2MUserPool:
@@ -11,7 +32,7 @@ Resources:
           - id: F78
             reason: "MFA not applicable for M2M authentication using client credentials flow"
     Properties:
-      UserPoolName: !Sub '${AWS::StackName}-m2m-pool'
+      UserPoolName: !Sub 'csvpc-${Environment}-m2m-pool'
       UsernameAttributes:
         - email
       AutoVerifiedAttributes:
@@ -24,7 +45,7 @@ Resources:
           - Name: verified_email
             Priority: 1
       UserPoolTags:
-        Name: !Sub '${AWS::StackName}-m2m-pool'
+        Name: !Sub 'csvpc-${Environment}-m2m-pool'
         Purpose: 'Machine-to-Machine Authentication'
 
   # User Pool Domain for OAuth endpoints
@@ -41,8 +62,8 @@ Resources:
     Type: AWS::Cognito::UserPoolResourceServer
     Properties:
       UserPoolId: !Ref M2MUserPool
-      Identifier: !Sub '${AWS::StackName}-resource-server'
-      Name: !Sub '${AWS::StackName} Resource Server'
+      Identifier: !Sub 'csvpc-${Environment}-resource-server'
+      Name: !Sub 'csvpc-${Environment} Resource Server'
       Scopes:
         - ScopeName: 'read'
           ScopeDescription: 'Read access to resources'
@@ -68,8 +89,8 @@ Resources:
         - client_credentials
       AllowedOAuthFlowsUserPoolClient: true
       AllowedOAuthScopes:
-        - !Sub '${AWS::StackName}-resource-server/read'
-        - !Sub '${AWS::StackName}-resource-server/gateway'
+        - !Sub 'csvpc-${Environment}-resource-server/read'
+        - !Sub 'csvpc-${Environment}-resource-server/gateway'
       RefreshTokenValidity: 1
       TokenValidityUnits:
         AccessToken: hours
@@ -77,32 +98,40 @@ Resources:
         RefreshToken: days
       PreventUserExistenceErrors: 'ENABLED'
 
-  # Agent Client for M2M Authentication
-  AgentClient:
+  # Web User Pool Client for web applications
+  WebUserPoolClient:
     Type: AWS::Cognito::UserPoolClient
     DependsOn: M2MResourceServer
     Properties:
-      ClientName: 'agentclient'
+      ClientName: 'webuserpoolclient'
       UserPoolId: !Ref M2MUserPool
-      GenerateSecret: true
-      ExplicitAuthFlows: []
+      GenerateSecret: true  # Required for client_credentials flow
+      AllowedOAuthFlows:
+        - code
+        - client_credentials
+      AllowedOAuthScopes:
+        - openid
+        - email
+        - profile
+        - !Sub 'csvpc-${Environment}-resource-server/read'
+        - !Sub 'csvpc-${Environment}-resource-server/write'
+        - !Sub 'csvpc-${Environment}-resource-server/agent'
+      AllowedOAuthFlowsUserPoolClient: true
+      CallbackURLs:
+        - http://localhost:8501/
+        - https://example.com/auth/callback
+      LogoutURLs:
+        - http://localhost:8501/
       SupportedIdentityProviders:
         - COGNITO
-      AllowedOAuthFlows:
-        - client_credentials
-      AllowedOAuthFlowsUserPoolClient: true
-      AllowedOAuthScopes:
-        - !Sub '${AWS::StackName}-resource-server/read'
-        - !Sub '${AWS::StackName}-resource-server/write'
-        - !Sub '${AWS::StackName}-resource-server/agent'
-      AccessTokenValidity: 1
-      IdTokenValidity: 1
-      RefreshTokenValidity: 1
+      AccessTokenValidity: 60
+      IdTokenValidity: 60
+      RefreshTokenValidity: 30
       TokenValidityUnits:
-        AccessToken: hours
-        IdToken: hours
+        AccessToken: minutes
+        IdToken: minutes
         RefreshToken: days
-      PreventUserExistenceErrors: 'ENABLED'
+      EnableTokenRevocation: true
 
   # MCP Client for M2M Authentication
   MCPClient:
@@ -119,8 +148,8 @@ Resources:
         - client_credentials
       AllowedOAuthFlowsUserPoolClient: true
       AllowedOAuthScopes:
-        - !Sub '${AWS::StackName}-resource-server/read'
-        - !Sub '${AWS::StackName}-resource-server/write'
+        - !Sub 'csvpc-${Environment}-resource-server/read'
+        - !Sub 'csvpc-${Environment}-resource-server/write'
       AccessTokenValidity: 1
       IdTokenValidity: 1
       RefreshTokenValidity: 1
@@ -134,7 +163,7 @@ Resources:
   GatewayClientSecret:
     Type: AWS::SecretsManager::Secret
     Properties:
-      Name: !Sub '${AWS::StackName}/gateway/client-config'
+      Name: !Sub 'csvpc-${Environment}/gateway/client-config'
       Description: 'Gateway Client configuration for M2M authentication'
       KmsKeyId: !Ref SecretsManagerKMSKey
       SecretString: !Sub |
@@ -150,15 +179,15 @@ Resources:
         - Key: Purpose
           Value: M2M-Authentication
 
-  AgentClientSecret:
+  WebUserPoolClientSecret:
     Type: AWS::SecretsManager::Secret
     Properties:
-      Name: !Sub '${AWS::StackName}/agent/client-config'
-      Description: 'Agent Client configuration for M2M authentication'
+      Name: !Sub 'csvpc-${Environment}/web/client-config'
+      Description: 'Web User Pool Client configuration for M2M authentication'
       KmsKeyId: !Ref SecretsManagerKMSKey
       SecretString: !Sub |
         {
-          "client_id": "${AgentClient}",
+          "client_id": "${WebUserPoolClient}",
           "user_pool_id": "${M2MUserPool}",
           "token_endpoint": "https://${M2MUserPoolDomain}.auth.${AWS::Region}.amazoncognito.com/oauth2/token",
           "cognito_discovery_url": "https://cognito-idp.${AWS::Region}.amazonaws.com/${M2MUserPool}/.well-known/openid-configuration"
@@ -172,7 +201,7 @@ Resources:
   MCPClientSecret:
     Type: AWS::SecretsManager::Secret
     Properties:
-      Name: !Sub '${AWS::StackName}/mcp/client-config'
+      Name: !Sub 'csvpc-${Environment}/mcp/client-config'
       Description: 'MCP Client configuration for M2M authentication'
       KmsKeyId: !Ref SecretsManagerKMSKey
       SecretString: !Sub |
@@ -222,7 +251,7 @@ Resources:
   SecretsManagerKMSKeyAlias:
     Type: AWS::KMS::Alias
     Properties:
-      AliasName: !Sub 'alias/${AWS::StackName}-secrets-manager-key'
+      AliasName: !Sub 'alias/csvpc-${Environment}-secrets-manager-key'
       TargetKeyId: !Ref SecretsManagerKMSKey
 
   # IAM Role for Lambda function
@@ -253,7 +282,7 @@ Resources:
                   - secretsmanager:GetSecretValue
                 Resource:
                   - !Ref GatewayClientSecret
-                  - !Ref AgentClientSecret
+                  - !Ref WebUserPoolClientSecret
                   - !Ref MCPClientSecret
               - Effect: Allow
                 Action:
@@ -265,8 +294,8 @@ Resources:
   ClientSecretLambda:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: !Sub '${AWS::StackName}-client-secret-handler'
-      Runtime: python3.9
+      FunctionName: !Sub 'csvpc-${Environment}-client-secret-handler'
+      Runtime: python3.12
       Handler: index.lambda_handler
       Role: !GetAtt ClientSecretLambdaRole.Arn
       Timeout: 60
@@ -357,16 +386,16 @@ Resources:
       SecretArn: !Ref GatewayClientSecret
       ClientType: Gateway
 
-  # Custom resource to update Agent client secret
-  AgentClientSecretUpdater:
+  # Custom resource to update Web User Pool client secret
+  WebUserPoolClientSecretUpdater:
     Type: AWS::CloudFormation::CustomResource
-    DependsOn: AgentClientSecret
+    DependsOn: WebUserPoolClientSecret
     Properties:
       ServiceToken: !GetAtt ClientSecretLambda.Arn
       UserPoolId: !Ref M2MUserPool
-      ClientId: !Ref AgentClient
-      SecretArn: !Ref AgentClientSecret
-      ClientType: Agent
+      ClientId: !Ref WebUserPoolClient
+      SecretArn: !Ref WebUserPoolClientSecret
+      ClientType: WebUserPool
 
   # Custom resource to update MCP client secret
   MCPClientSecretUpdater:
@@ -379,7 +408,172 @@ Resources:
       SecretArn: !Ref MCPClientSecret
       ClientType: MCP
 
+  # IAM Role for User Creation Lambda
+  UserCreationLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: CognitoUserManagement
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - cognito-idp:AdminCreateUser
+                  - cognito-idp:AdminSetUserPassword
+                  - cognito-idp:AdminAddUserToGroup
+                Resource: !GetAtt M2MUserPool.Arn
+
+  # Lambda Function for User Creation
+  UserCreationLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub 'csvpc-${Environment}-user-creation'
+      Runtime: python3.12
+      Handler: index.lambda_handler
+      Role: !GetAtt UserCreationLambdaRole.Arn
+      Timeout: 60
+      Code:
+        ZipFile: |
+          import json
+          import boto3
+          import urllib3
+          import logging
+
+          logger = logging.getLogger()
+          logger.setLevel(logging.INFO)
+
+          def lambda_handler(event, context):
+              try:
+                  logger.info(f"Received event: {json.dumps(event)}")
+
+                  request_type = event['RequestType']
+
+                  # Only create users on stack creation
+                  if request_type == 'Delete' or request_type == 'Update':
+                      send_response(event, context, 'SUCCESS', {})
+                      return
+
+                  # Get properties from the event
+                  properties = event['ResourceProperties']
+                  user_pool_id = properties['UserPoolId']
+                  user_email = properties.get('UserEmail', '')
+                  user_password = properties.get('UserPassword', '')
+
+                  # Skip if no email provided
+                  if not user_email:
+                      logger.info("No user email provided, skipping user creation")
+                      send_response(event, context, 'SUCCESS', {'UserCreated': 'false'})
+                      return
+
+                  # Initialize Cognito client
+                  cognito_client = boto3.client('cognito-idp')
+
+                  # Prepare user creation parameters
+                  create_params = {
+                      'UserPoolId': user_pool_id,
+                      'Username': user_email,
+                      'UserAttributes': [
+                          {
+                              'Name': 'email',
+                              'Value': user_email
+                          },
+                          {
+                              'Name': 'email_verified',
+                              'Value': 'true'
+                          }
+                      ],
+                      'DesiredDeliveryMediums': ['EMAIL']
+                  }
+
+                  # Add password if provided, otherwise Cognito will generate one
+                  if user_password:
+                      create_params['TemporaryPassword'] = user_password
+                      create_params['MessageAction'] = 'SUPPRESS'  # Don't send email if password provided
+
+                  # Create the user
+                  try:
+                      response = cognito_client.admin_create_user(**create_params)
+                      logger.info(f"User created successfully: {user_email}")
+
+                      # If password was provided, set it as permanent
+                      if user_password:
+                          cognito_client.admin_set_user_password(
+                              UserPoolId=user_pool_id,
+                              Username=user_email,
+                              Password=user_password,
+                              Permanent=True
+                          )
+                          logger.info(f"Password set as permanent for user: {user_email}")
+
+                      send_response(event, context, 'SUCCESS', {
+                          'UserCreated': 'true',
+                          'Username': user_email
+                      })
+
+                  except cognito_client.exceptions.UsernameExistsException:
+                      logger.info(f"User already exists: {user_email}")
+                      send_response(event, context, 'SUCCESS', {
+                          'UserCreated': 'false',
+                          'Message': 'User already exists'
+                      })
+
+              except Exception as e:
+                  logger.error(f"Error: {str(e)}", exc_info=True)
+                  send_response(event, context, 'FAILED', {'Error': str(e)})
+
+          def send_response(event, context, response_status, response_data):
+              response_body = {
+                  'Status': response_status,
+                  'Reason': f'See CloudWatch Log Stream: {context.log_stream_name}',
+                  'PhysicalResourceId': context.log_stream_name,
+                  'StackId': event['StackId'],
+                  'RequestId': event['RequestId'],
+                  'LogicalResourceId': event['LogicalResourceId'],
+                  'Data': response_data
+              }
+
+              json_response_body = json.dumps(response_body)
+
+              headers = {
+                  'content-type': '',
+                  'content-length': str(len(json_response_body))
+              }
+
+              http = urllib3.PoolManager()
+              response = http.request('PUT', event['ResponseURL'], body=json_response_body, headers=headers)
+              logger.info(f"Response status: {response.status}")
+
+  # Custom Resource to Create Admin User
+  AdminUserCreator:
+    Type: AWS::CloudFormation::CustomResource
+    Condition: CreateAdminUser
+    DependsOn: M2MUserPool
+    Properties:
+      ServiceToken: !GetAtt UserCreationLambda.Arn
+      UserPoolId: !Ref M2MUserPool
+      UserEmail: !Ref AdminUserEmail
+      UserPassword: !Ref AdminUserPassword
+
+Conditions:
+  CreateAdminUser: !Not [!Equals [!Ref AdminUserEmail, '']]
+
 Outputs:
+  StackName:
+    Description: 'Stack name for cross-stack references'
+    Value: !Ref AWS::StackName
+    Export:
+      Name: !Sub '${AWS::StackName}-StackName'
+
   UserPoolId:
     Description: 'Cognito User Pool ID'
     Value: !Ref M2MUserPool
@@ -410,11 +604,11 @@ Outputs:
     Export:
       Name: !Sub '${AWS::StackName}-GatewayClientId'
 
-  AgentClientId:
-    Description: 'Agent Client ID'
-    Value: !Ref AgentClient
+  WebUserPoolClientId:
+    Description: 'Web User Pool Client ID'
+    Value: !Ref WebUserPoolClient
     Export:
-      Name: !Sub '${AWS::StackName}-AgentClientId'
+      Name: !Sub '${AWS::StackName}-WebUserPoolClientId'
 
   MCPClientId:
     Description: 'MCP Client ID'
@@ -430,19 +624,19 @@ Outputs:
 
   GatewayScopes:
     Description: 'Available scopes for Gateway Client'
-    Value: !Sub '${AWS::StackName}-resource-server/read ${AWS::StackName}-resource-server/gateway'
+    Value: !Sub 'csvpc-${Environment}-resource-server/read csvpc-${Environment}-resource-server/gateway'
     Export:
       Name: !Sub '${AWS::StackName}-GatewayScopes'
 
-  AgentScopes:
-    Description: 'Available scopes for Agent Client'
-    Value: !Sub '${AWS::StackName}-resource-server/read ${AWS::StackName}-resource-server/write ${AWS::StackName}-resource-server/agent'
+  WebUserPoolScopes:
+    Description: 'Available scopes for Web User Pool Client'
+    Value: !Sub 'csvpc-${Environment}-resource-server/read csvpc-${Environment}-resource-server/write csvpc-${Environment}-resource-server/agent'
     Export:
-      Name: !Sub '${AWS::StackName}-AgentScopes'
+      Name: !Sub '${AWS::StackName}-WebUserPoolScopes'
 
   MCPScopes:
     Description: 'Available scopes for MCP Client'
-    Value: !Sub '${AWS::StackName}-resource-server/read ${AWS::StackName}-resource-server/write'
+    Value: !Sub 'csvpc-${Environment}-resource-server/read csvpc-${Environment}-resource-server/write'
     Export:
       Name: !Sub '${AWS::StackName}-MCPScopes'
 
@@ -452,11 +646,11 @@ Outputs:
     Export:
       Name: !Sub '${AWS::StackName}-GatewayClientSecret'
 
-  AgentClientSecret:
-    Description: 'Agent Client Secret ARN for accessing client configuration'
-    Value: !Ref AgentClientSecret
+  WebUserPoolClientSecret:
+    Description: 'Web User Pool Client Secret ARN for accessing client configuration'
+    Value: !Ref WebUserPoolClientSecret
     Export:
-      Name: !Sub '${AWS::StackName}-AgentClientSecret'
+      Name: !Sub '${AWS::StackName}-WebUserPoolClientSecret'
 
   MCPClientSecret:
     Description: 'MCP Client Secret ARN for accessing client configuration'
@@ -479,4 +673,4 @@ Outputs:
       # Get access token using client credentials:
       curl -X POST https://${M2MUserPoolDomain}.auth.${AWS::Region}.amazoncognito.com/oauth2/token \
         -H "Content-Type: application/x-www-form-urlencoded" \
-        -d "grant_type=client_credentials&client_id=${GatewayClient}&client_secret=YOUR_CLIENT_SECRET&scope=${AWS::StackName}-resource-server/read ${AWS::StackName}-resource-server/gateway"
+        -d "grant_type=client_credentials&client_id=${GatewayClient}&client_secret=YOUR_CLIENT_SECRET&scope=csvpc-${Environment}-resource-server/read csvpc-${Environment}-resource-server/gateway"

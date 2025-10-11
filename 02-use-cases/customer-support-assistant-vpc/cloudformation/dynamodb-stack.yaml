@@ -2,10 +2,14 @@ AWSTemplateFormatVersion: '2010-09-09'
 Description: 'DynamoDB tables for product reviews and catalog data with KMS encryption and point-in-time recovery. Creates tables with GSIs for efficient querying and automatically populates sample data via Lambda custom resource.'
 
 Parameters:
-  VPCStackName:
+  Environment:
     Type: String
-    Description: 'Name of the VPC stack to reference'
-
+    Default: 'dev'
+    AllowedValues:
+      - dev
+      - test
+      - prod
+    Description: 'Environment name for resource naming'
 
 Resources:
   # KMS Key for DynamoDB encryption
@@ -38,14 +42,14 @@ Resources:
   DynamoDBKMSKeyAlias:
     Type: AWS::KMS::Alias
     Properties:
-      AliasName: !Sub 'alias/${AWS::StackName}-dynamodb-key'
+      AliasName: !Sub 'alias/csvpc-${Environment}-dynamodb-key'
       TargetKeyId: !Ref DynamoDBKMSKey
 
   # Reviews DynamoDB Table
   ReviewsTable:
     Type: AWS::DynamoDB::Table
     Properties:
-      TableName: !Sub '${AWS::StackName}-reviews'
+      TableName: !Sub 'csvpc-${Environment}-reviews'
       BillingMode: PAY_PER_REQUEST
       AttributeDefinitions:
         - AttributeName: review_id
@@ -94,7 +98,7 @@ Resources:
         PointInTimeRecoveryEnabled: true
       Tags:
         - Key: Name
-          Value: !Sub '${AWS::StackName}-reviews-table'
+          Value: !Sub 'csvpc-${Environment}-reviews-table'
         - Key: Purpose
           Value: 'Product Reviews Storage'
 
@@ -102,7 +106,7 @@ Resources:
   ProductsTable:
     Type: AWS::DynamoDB::Table
     Properties:
-      TableName: !Sub '${AWS::StackName}-products'
+      TableName: !Sub 'csvpc-${Environment}-products'
       BillingMode: PAY_PER_REQUEST
       AttributeDefinitions:
         - AttributeName: product_id
@@ -159,7 +163,7 @@ Resources:
         PointInTimeRecoveryEnabled: true
       Tags:
         - Key: Name
-          Value: !Sub '${AWS::StackName}-products-table'
+          Value: !Sub 'csvpc-${Environment}-products-table'
         - Key: Purpose
           Value: 'Product Catalog Storage'
 
@@ -199,7 +203,7 @@ Resources:
   DataPopulationFunction:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: !Sub '${AWS::StackName}-data-population'
+      FunctionName: !Sub 'csvpc-${Environment}-data-population'
       Runtime: python3.13
       Handler: index.lambda_handler
       Role: !GetAtt DataPopulationLambdaRole.Arn
@@ -408,6 +412,12 @@ Resources:
         Purpose: 'DynamoDB Table Configuration'
 
 Outputs:
+  StackName:
+    Description: 'Stack name for cross-stack references'
+    Value: !Ref AWS::StackName
+    Export:
+      Name: !Sub '${AWS::StackName}-StackName'
+
   ReviewsTableName:
     Description: 'Reviews DynamoDB table name'
     Value: !Ref ReviewsTable
@@ -432,12 +442,6 @@ Outputs:
     Export:
       Name: !Sub '${AWS::StackName}-ProductsTableArn'
 
-  DynamoDBKMSKeyId:
-    Description: 'KMS Key ID for DynamoDB encryption'
-    Value: !Ref DynamoDBKMSKey
-    Export:
-      Name: !Sub '${AWS::StackName}-DynamoDBKMSKey'
-
   ReviewsTableNameParameterName:
     Description: 'SSM Parameter name for Reviews table'
     Value: !Ref ReviewsTableNameParameter
@@ -449,3 +453,9 @@ Outputs:
     Value: !Ref ProductsTableNameParameter
     Export:
       Name: !Sub '${AWS::StackName}-ProductsTableNameParameter'
+
+  DynamoDBKMSKey:
+    Description: 'KMS Key ARN for DynamoDB tables encryption'
+    Value: !GetAtt DynamoDBKMSKey.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-DynamoDBKMSKey'
