@@ -131,19 +131,24 @@ def get_or_create_resource_server(cognito, user_pool_id, RESOURCE_SERVER_ID, RES
         )
         return RESOURCE_SERVER_ID
 
-def get_or_create_m2m_client(cognito, user_pool_id, CLIENT_NAME, RESOURCE_SERVER_ID):
+def get_or_create_m2m_client(cognito, user_pool_id, CLIENT_NAME, RESOURCE_SERVER_ID, SCOPES=None):
     response = cognito.list_user_pool_clients(UserPoolId=user_pool_id, MaxResults=60)
     for client in response["UserPoolClients"]:
         if client["ClientName"] == CLIENT_NAME:
             describe = cognito.describe_user_pool_client(UserPoolId=user_pool_id, ClientId=client["ClientId"])
             return client["ClientId"], describe["UserPoolClient"]["ClientSecret"]
     print('creating new m2m client')
+
+    # Default scopes if not provided (for backward compatibility)
+    if SCOPES is None:
+        SCOPES = [f"{RESOURCE_SERVER_ID}/gateway:read", f"{RESOURCE_SERVER_ID}/gateway:write"]
+
     created = cognito.create_user_pool_client(
         UserPoolId=user_pool_id,
         ClientName=CLIENT_NAME,
         GenerateSecret=True,
         AllowedOAuthFlows=["client_credentials"],
-        AllowedOAuthScopes=[f"{RESOURCE_SERVER_ID}/gateway:read", f"{RESOURCE_SERVER_ID}/gateway:write"],
+        AllowedOAuthScopes=SCOPES,
         AllowedOAuthFlowsUserPoolClient=True,
         SupportedIdentityProviders=["COGNITO"],
         ExplicitAuthFlows=["ALLOW_REFRESH_TOKEN_AUTH"]
