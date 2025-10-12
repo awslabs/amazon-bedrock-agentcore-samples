@@ -16,7 +16,6 @@ Metadata:
       - PrivateSubnet1Cidr
       - PrivateSubnet2Cidr
       - PrivateSubnet3Cidr
-      - PrivateSubnet4Cidr
 
 Mappings:
   DynamoDBPrefixListIds:
@@ -48,11 +47,6 @@ Parameters:
     Type: String
     Default: '10.0.1.0/24'
     Description: 'CIDR block for the third private subnet'
-
-  PrivateSubnet4Cidr:
-    Type: String
-    Default: '10.0.5.0/24'
-    Description: 'CIDR block for the fourth private subnet'
 
   PrivateSubnet1Cidr:
     Type: String
@@ -107,16 +101,6 @@ Resources:
         - Key: Name
           Value: !Sub 'csvpc-${Environment}-Private-Subnet-3'
 
-  PrivateSubnet4:
-    Type: AWS::EC2::Subnet
-    Properties:
-      VpcId: !Ref VPC
-      AvailabilityZone: !Select [0, !GetAZs '']
-      CidrBlock: !Ref PrivateSubnet4Cidr
-      Tags:
-        - Key: Name
-          Value: !Sub 'csvpc-${Environment}-Private-Subnet-4'
-
   # Private Route Table (no internet routes)
   PrivateRouteTable:
     Type: AWS::EC2::RouteTable
@@ -144,12 +128,6 @@ Resources:
     Properties:
       RouteTableId: !Ref PrivateRouteTable
       SubnetId: !Ref PrivateSubnet3
-
-  PrivateSubnet4RouteTableAssociation:
-    Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties:
-      RouteTableId: !Ref PrivateRouteTable
-      SubnetId: !Ref PrivateSubnet4
 
   # VPC Flow Logs
   VPCFlowLogRole:
@@ -380,10 +358,12 @@ Resources:
             Principal: '*'
             Action:
               - dynamodb:GetItem
+              - dynamodb:Query
+              - dynamodb:Scan
               - dynamodb:DescribeTable
             Resource:
               - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/*'
-              - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:index/*'
+              - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/*/index/*'
       Tags:
         - Key: Name
           Value: !Sub 'csvpc-${Environment}-DynamoDB-GatewayEndpoint'
@@ -424,9 +404,9 @@ Resources:
       ServiceName: !Sub 'com.amazonaws.${AWS::Region}.kms'
       VpcEndpointType: Interface
       SubnetIds:
+        - !Ref PrivateSubnet1
         - !Ref PrivateSubnet2
         - !Ref PrivateSubnet3
-        - !Ref PrivateSubnet4
       SecurityGroupIds:
         - !Ref VPCEndpointSecurityGroup
       PrivateDnsEnabled: true
@@ -452,9 +432,9 @@ Resources:
       ServiceName: !Sub 'com.amazonaws.${AWS::Region}.secretsmanager'
       VpcEndpointType: Interface
       SubnetIds:
+        - !Ref PrivateSubnet1
         - !Ref PrivateSubnet2
         - !Ref PrivateSubnet3
-        - !Ref PrivateSubnet4
       SecurityGroupIds:
         - !Ref VPCEndpointSecurityGroup
       PolicyDocument:
@@ -479,9 +459,9 @@ Resources:
       ServiceName: !Sub 'com.amazonaws.${AWS::Region}.rds-data'
       VpcEndpointType: Interface
       SubnetIds:
+        - !Ref PrivateSubnet1
         - !Ref PrivateSubnet2
         - !Ref PrivateSubnet3
-        - !Ref PrivateSubnet4
       SecurityGroupIds:
         - !Ref VPCEndpointSecurityGroup
       PrivateDnsEnabled: true
@@ -715,6 +695,40 @@ Resources:
       DestinationPrefixListId: !FindInMap [DynamoDBPrefixListIds, !Ref 'AWS::Region', PrefixListId]
       Description: 'HTTPS access to DynamoDB via Gateway Endpoint'
 
+  # Security Group for Gateway Lambda Functions
+  GatewayLambdaSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: 'Security group for Gateway Lambda functions in VPC'
+      VpcId: !Ref VPC
+      SecurityGroupIngress: []
+      SecurityGroupEgress: []
+      Tags:
+        - Key: Name
+          Value: !Sub 'csvpc-${Environment}-GatewayLambda-SG'
+
+  # Security Group Rule: Allow Gateway Lambda to access VPC Endpoints
+  GatewayLambdaToVPCEndpointRule:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      GroupId: !Ref GatewayLambdaSecurityGroup
+      IpProtocol: tcp
+      FromPort: 443
+      ToPort: 443
+      DestinationSecurityGroupId: !Ref VPCEndpointSecurityGroup
+      Description: 'HTTPS access to VPC Endpoint Security Group'
+
+  # Security Group Rule: Allow Gateway Lambda to access DynamoDB Gateway Endpoint
+  GatewayLambdaToDynamoDBRule:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      GroupId: !Ref GatewayLambdaSecurityGroup
+      IpProtocol: tcp
+      FromPort: 443
+      ToPort: 443
+      DestinationPrefixListId: !FindInMap [DynamoDBPrefixListIds, !Ref 'AWS::Region', PrefixListId]
+      Description: 'HTTPS access to DynamoDB via Gateway Endpoint'
+
 Outputs:
   StackName:
     Description: 'Stack name for cross-stack references'
@@ -730,7 +744,7 @@ Outputs:
 
   PrivateSubnets:
     Description: 'A list of all private subnets'
-    Value: !Join [",", [!Ref PrivateSubnet1, !Ref PrivateSubnet2, !Ref PrivateSubnet3, !Ref PrivateSubnet4]]
+    Value: !Join [",", [!Ref PrivateSubnet1, !Ref PrivateSubnet2, !Ref PrivateSubnet3]]
     Export:
       Name: !Sub '${AWS::StackName}-PrivateSubnets'
 
@@ -756,12 +770,6 @@ Outputs:
     Export:
       Name: !Sub '${AWS::StackName}-PrivateSubnet3'
 
-  PrivateSubnet4:
-    Description: 'A reference to the private subnet in the 4th Availability Zone'
-    Value: !Ref PrivateSubnet4
-    Export:
-      Name: !Sub '${AWS::StackName}-PrivateSubnet4'
-
   PrivateRouteTable:
     Description: 'A reference to the private route table'
     Value: !Ref PrivateRouteTable
@@ -779,6 +787,12 @@ Outputs:
     Value: !Ref AgentRuntimeSecurityGroup
     Export:
       Name: !Sub '${AWS::StackName}-AgentRuntimeSecurityGroup'
+
+  GatewayLambdaSecurityGroup:
+    Description: 'Security group for Gateway Lambda functions'
+    Value: !Ref GatewayLambdaSecurityGroup
+    Export:
+      Name: !Sub '${AWS::StackName}-GatewayLambdaSecurityGroup'
 
   RDSDataVPCEndpoint:
     Description: 'VPC Endpoint for RDS Data API'

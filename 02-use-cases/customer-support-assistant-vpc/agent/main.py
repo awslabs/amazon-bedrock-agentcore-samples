@@ -2,6 +2,7 @@ from bedrock_agentcore.identity.auth import requires_access_token
 from bedrock_agentcore.runtime import BedrockAgentCoreApp
 from context import CustomerSupportContext
 from contextlib import asynccontextmanager
+from datetime import timedelta
 from mcp import stdio_client, StdioServerParameters
 from mcp.client.streamable_http import streamablehttp_client
 from strands import Agent
@@ -129,10 +130,12 @@ def initialize_clients():
         )
     )
 
+    print(gateway_access_token)
     gateway_client = MCPClient(
         lambda: streamablehttp_client(
             url=gateway_url,
             headers={"Authorization": f"Bearer {gateway_access_token}"},
+            timeout=timedelta(seconds=120),
         )
     )
 

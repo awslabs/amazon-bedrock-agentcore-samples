@@ -192,6 +192,9 @@ After deployment, you can test the system using the provided test scripts:
 Test the Agent Runtime by sending prompts directly:
 
 ```bash
+# Install dependencies
+uv sync
+
 uv run python test/connect_agent.py --prompt "Get me customer name of customer id CUST001" --stack-name customer-support-vpc
 ```
 
@@ -205,6 +208,9 @@ uv run python test/connect_agent.py --prompt "Get me customer name of customer i
 **Example queries:**
 
 ```bash
+# Install dependencies
+uv sync
+
 # Query customer information
 uv run python test/connect_agent.py --prompt "Get me customer name of customer id CUST001"
 
@@ -220,6 +226,9 @@ uv run python test/connect_agent.py --prompt "Show me reviews for product id 1"
 Test the MCP DynamoDB server and list available tools:
 
 ```bash
+# Install dependencies
+uv sync
+
 uv run python test/connect_mcp.py --stack-name customer-support-vpc
 ```
 
@@ -234,6 +243,26 @@ This script will:
 1. Connect to the MCP server
 2. List all available tools (get_reviews, get_products, etc.)
 3. Run test queries against the DynamoDB tables
+
+### Test AgentCore Gayeway
+
+```bash
+  # Install dependencies
+  uv sync
+
+  # Test the gateway
+  uv run python test/connect_gateway.py --prompt "Check warranty status for serial number LAPTOP001A1B2C" --stack-name customer-support-vpc
+
+  # With verbose logging
+  uv run python test/connect_gateway.py --prompt "Get customer profile for CUST001" --stack-name customer-support-vpc
+
+  # With custom stack name
+  uv run python test/connect_gateway.py --prompt "List all products" --stack-name customer-support-vpc
+```
+
+- `--stack-name` (optional): CloudFormation parent stack name (default: `customer-support-vpc`)
+- `--verbose` / `-v` (optional): Enable verbose logging
+- `--debug` (optional): Enable debug logging
 
 ## Streamlit
 

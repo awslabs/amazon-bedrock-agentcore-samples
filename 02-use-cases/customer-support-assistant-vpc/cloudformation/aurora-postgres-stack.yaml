@@ -172,7 +172,6 @@ Resources:
   #     VpcEndpointType: Interface
   #     SubnetIds:
   #       - Fn::ImportValue: !Sub '${VPCStackName}-PrivateSubnet2'
-  #       - Fn::ImportValue: !Sub '${VPCStackName}-PrivateSubnet4'
   #     SecurityGroupIds:
   #       - !Ref VPCEndpointSecurityGroup
   #     PolicyDocument:
@@ -196,7 +195,6 @@ Resources:
   #     VpcEndpointType: Interface
   #     SubnetIds:
   #       - Fn::ImportValue: !Sub '${VPCStackName}-PrivateSubnet2'
-  #       - Fn::ImportValue: !Sub '${VPCStackName}-PrivateSubnet4'
   #     SecurityGroupIds:
   #       - !Ref VPCEndpointSecurityGroup
   #     PolicyDocument:
@@ -217,8 +215,8 @@ Resources:
     Properties:
       DBSubnetGroupDescription: 'Subnet group for Aurora PostgreSQL cluster'
       SubnetIds:
-        - Fn::ImportValue: !Sub '${VPCStackName}-PrivateSubnet2'
-        - Fn::ImportValue: !Sub '${VPCStackName}-PrivateSubnet4'
+        - Fn::ImportValue: !Sub '${VPCStackName}-PrivateSubnet1'
+        - Fn::ImportValue: !Sub '${VPCStackName}-PrivateSubnet3'
       Tags:
         - Key: Name
           Value: !Sub 'csvpc-${Environment}-DB-SubnetGroup'
@@ -677,8 +675,8 @@ Resources:
         SecurityGroupIds:
           - !Ref LambdaSecurityGroup
         SubnetIds:
-          - Fn::ImportValue: !Sub '${VPCStackName}-PrivateSubnet2'
-          - Fn::ImportValue: !Sub '${VPCStackName}-PrivateSubnet4'
+          - Fn::ImportValue: !Sub '${VPCStackName}-PrivateSubnet1'
+          - Fn::ImportValue: !Sub '${VPCStackName}-PrivateSubnet3'
       Environment:
         Variables:
           DB_CLUSTER_ENDPOINT: !GetAtt AuroraCluster.Endpoint.Address

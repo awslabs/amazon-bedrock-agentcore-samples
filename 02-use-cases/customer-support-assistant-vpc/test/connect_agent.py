@@ -1,7 +1,6 @@
 #!/usr/bin/python
 from urllib.parse import urlencode
 import argparse
-import asyncio
 import json
 import logging
 import requests
@@ -160,7 +159,7 @@ def main():
             payload=json.dumps({"prompt": user_input, "actor_id": "DEFAULT"}),
             bearer_token=access_token,
             session_id=session_id,
-            stream=False,
+            stream=True,
         )
         # )
         print("\n")

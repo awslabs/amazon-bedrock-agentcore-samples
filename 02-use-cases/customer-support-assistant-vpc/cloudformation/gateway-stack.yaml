@@ -12,6 +12,7 @@ Metadata:
     - Label:
         default: 'Stack References'
       Parameters:
+      - VPCStackName
       - CognitoStackName
 
 Parameters:
@@ -23,6 +24,10 @@ Parameters:
       - test
       - prod
     Description: 'Environment name for resource naming'
+
+  VPCStackName:
+    Type: String
+    Description: 'Name of the VPC stack to reference for network configuration'
 
   CognitoStackName:
     Type: String
@@ -98,7 +103,7 @@ Resources:
               Service: lambda.amazonaws.com
             Action: sts:AssumeRole
       ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
       Policies:
         - PolicyName: CustomerSupportLambdaPolicy
           PolicyDocument:
@@ -282,6 +287,93 @@ Resources:
                   - secretsmanager:DeleteSecret
                 Resource: '*'
 
+  CustomerSupportGateway:
+    Type: AWS::BedrockAgentCore::Gateway
+    Properties:
+      Name: !Sub '${Environment}-customer-support-vpc'
+      AuthorizerConfiguration:
+        CustomJWTAuthorizer:
+          AllowedClients:
+            - Fn::ImportValue: !Sub '${CognitoStackName}-GatewayClientId'
+          DiscoveryUrl: !Sub
+            - 'https://cognito-idp.${AWS::Region}.amazonaws.com/${UserPoolId}/.well-known/openid-configuration'
+            - UserPoolId:
+                Fn::ImportValue: !Sub '${CognitoStackName}-UserPoolId'
+      AuthorizerType: "CUSTOM_JWT"
+      Description: "Customer Support Gateway for warranty checks and customer profile lookups"
+      ProtocolConfiguration:
+        Mcp:
+          SearchType: "SEMANTIC"
+      ProtocolType: "MCP"
+      RoleArn: !GetAtt GatewayAgentCoreRole.Arn
+      Tags:
+        Name: !Sub 'csvpc-${Environment}-CustomerSupportGateway'
+        Environment: !Ref Environment
+  
+  LambdaCustomerSupportTarget:
+    Type: AWS::BedrockAgentCore::GatewayTarget
+    Properties:
+      CredentialProviderConfigurations:
+        - CredentialProviderType: GATEWAY_IAM_ROLE
+      Description: "Customer Support Lambda Target with warranty checks and customer profile lookups"
+      GatewayIdentifier: !GetAtt CustomerSupportGateway.GatewayIdentifier
+      Name: !Sub '${Environment}-customer-support-vpc'
+      TargetConfiguration:
+        Mcp:
+          Lambda:
+            LambdaArn: !GetAtt CustomerSupportLambda.Arn
+            ToolSchema:
+              InlinePayload:
+                - Name: "get_customer_profile"
+                  Description: "Retrieve customer profile using customer ID, email, or phone number"
+                  InputSchema:
+                    Type: "object"
+                    Properties:
+                      customer_id:
+                        Type: "string"
+                        Description: "Customer ID (e.g., CUST001)"
+                      email:
+                        Type: "string"
+                        Description: "Customer email address"
+                      phone:
+                        Type: "string"
+                        Description: "Customer phone number"
+                    Required:
+                      - "customer_id"
+                  OutputSchema:
+                    Type: "object"
+                    Properties:
+                      statusCode:
+                        Type: "integer"
+                        Description: "HTTP status code"
+                      body:
+                        Type: "string"
+                        Description: "Customer profile information"
+                - Name: "check_warranty_status"
+                  Description: "Check the warranty status of a product using its serial number and optionally verify via email"
+                  InputSchema:
+                    Type: "object"
+                    Properties:
+                      serial_number:
+                        Type: "string"
+                        Description: "Product serial number (8-20 alphanumeric characters)"
+                      customer_email:
+                        Type: "string"
+                        Description: "Customer email for verification (optional)"
+                    Required:
+                      - "serial_number"
+                  OutputSchema:
+                    Type: "object"
+                    Properties:
+                      statusCode:
+                        Type: "integer"
+                        Description: "HTTP status code"
+                      body:
+                        Type: "string"
+                        Description: "Warranty status information"
+
+
+
   # Gateway Management Lambda Function
   GatewayManagementFunction:
     Type: AWS::Lambda::Function
@@ -303,7 +395,7 @@ Resources:
           import cfnresponse
           import logging
           from botocore.exceptions import ClientError
-          import time
+
           # Configure logging
           logger = logging.getLogger()
           logger.setLevel(logging.INFO)
@@ -315,15 +407,15 @@ Resources:
                   request_type = event['RequestType']
                   properties = event['ResourceProperties']
 
-                  # Initialize AWS clients
-                  gateway_client = boto3.client('bedrock-agentcore-control')
-                  identity_client = boto3.client("bedrock-agentcore-control",)
-                  ssm_client = boto3.client('ssm')
+                  # Initialize Bedrock AgentCore client
+                  identity_client = boto3.client('bedrock-agentcore-control')
 
                   if request_type == 'Create':
-                      response_data = create_gateway(gateway_client, identity_client, ssm_client, properties)
+                      response_data = create_credential_provider(identity_client, properties)
                   elif request_type == 'Delete':
-                      response_data = delete_gateway(gateway_client, identity_client, ssm_client, properties)
+                      response_data = delete_credential_provider(identity_client, properties)
+                  else:
+                      response_data = {'Message': f'No action taken for request type: {request_type}'}
 
                   cfnresponse.send(event, context, cfnresponse.SUCCESS, response_data)
 
@@ -331,12 +423,9 @@ Resources:
                   logger.error(f"Error in gateway management: {str(e)}")
                   cfnresponse.send(event, context, cfnresponse.FAILED, {'Error': str(e)})
 
-          def create_gateway(gateway_client, identity_client, ssm_client, properties):
-              """Create AgentCore Gateway"""
+          def create_credential_provider(identity_client, properties):
+              """Create OAuth2 credential provider for Gateway authentication"""
               try:
-                  gateway_name = properties['GatewayName']
-                  execution_role_arn = properties['ExecutionRoleArn']
-                  lambda_arn = properties['LambdaArn']
                   provider_name = properties['ProviderName']
 
                   # Get client credentials from Secrets Manager
@@ -350,7 +439,8 @@ Resources:
                   client_secret = secret_data['client_secret']
                   token_url = secret_data['token_endpoint']
                   auth_url = properties['DiscoveryUrl'].replace('/.well-known/openid-configuration', '/oauth2/authorize')
-                  issuer_url = f"https://cognito-idp.{boto3.Session().region_name}.amazonaws.com/{secret_data['user_pool_id']}"
+
+                  # Create OAuth2 credential provider
                   identity_client.create_oauth2_credential_provider(
                       name=provider_name,
                       credentialProviderVendor="CustomOauth2",
@@ -370,195 +460,30 @@ Resources:
                       },
                   )
 
-
-                  # Define the API specification for customer support functions
-                  lambda_target_config = {
-                      "mcp": {
-                          "lambda": {
-                              "lambdaArn": lambda_arn,
-                              "toolSchema": {"inlinePayload": [
-                                    {
-                                        "name": "get_customer_profile",
-                                        "description": "Retrieve customer profile using customer ID, email, or phone number",
-                                        "inputSchema": {
-                                            "type": "object",
-                                            "properties": {
-                                                "customer_id": {
-                                                    "type": "string"
-                                                },
-                                                "email": {
-                                                    "type": "string"
-                                                },
-                                                "phone": {
-                                                    "type": "string"
-                                                }
-                                            },
-                                            "required": [
-                                                "customer_id"
-                                            ]
-                                        }
-                                    },
-                                    {
-                                        "name": "check_warranty_status",
-                                        "description": "Check the warranty status of a product using its serial number and optionally verify via email",
-                                        "inputSchema": {
-                                            "type": "object",
-                                            "properties": {
-                                                "serial_number": {
-                                                    "type": "string"
-                                                },
-                                                "customer_email": {
-                                                    "type": "string"
-                                                }
-                                            },
-                                            "required": [
-                                                "serial_number"
-                                            ]
-                                        }
-                                    }
-                                
-                            ]},
-                          }
-                      }
-                  }
-
-                  auth_config = {
-                      "customJWTAuthorizer": {
-                          "allowedClients": [
-                              properties['GatewayClientId']
-                          ],
-                          "discoveryUrl": properties['DiscoveryUrl']
-                      }
-                  }
-
-                  # Create the gateway
-                  logger.info(f"Creating gateway: {gateway_name}")
-                  time.sleep(10)
-                  create_response = gateway_client.create_gateway(
-                      name=gateway_name,
-                      roleArn=execution_role_arn,
-                      protocolType="MCP",
-                      authorizerType="CUSTOM_JWT",
-                      authorizerConfiguration=auth_config,
-                      description="Customer Support AgentCore Gateway",
-                  )   
-
-                  gateway_id = create_response['gatewayId']
-                  gateway_arn = create_response['gatewayArn']
-                  gateway_url = create_response['gatewayUrl']
-
-                  # Store gateway information in SSM for reference
-                  ssm_client.put_parameter(
-                      Name='/app/customersupportvpc/gateway/gateway_id',
-                      Value=gateway_id,
-                      Type='String',
-                      Description='Customer Support Gateway ID'
-                  )
-
-                  ssm_client.put_parameter(
-                      Name='/app/customersupportvpc/gateway/gateway_arn',
-                      Value=gateway_arn,
-                      Type='String',
-                      Description='Customer Support Gateway ARN'
-                  )
-
-                  ssm_client.put_parameter(
-                      Name='/app/customersupportvpc/gateway/gateway_url',
-                      Value=gateway_url,
-                      Type='String',
-                      Description='Customer Support Gateway URL'
-                  )
-
-                  logger.info(f"Gateway created successfully: {gateway_id}")
-                  
-                  credential_config = [{"credentialProviderType": "GATEWAY_IAM_ROLE"}]
-                  time.sleep(10)
-                  create_target_response = gateway_client.create_gateway_target(
-                      gatewayIdentifier=gateway_id,
-                      name="LambdaUsingSDK",
-                      description="Lambda Target using SDK",
-                      targetConfiguration=lambda_target_config,
-                      credentialProviderConfigurations=credential_config,
-                  )
+                  logger.info(f"OAuth2 credential provider created successfully: {provider_name}")
 
                   return {
-                      'GatewayId': gateway_id,
-                      'GatewayArn': gateway_arn,
-                      'Message': 'Gateway created successfully'
+                      'Message': 'oauth2_credential_provider created successfully',
+                      'ProviderName': provider_name
                   }
 
               except Exception as e:
-                  logger.error(f"Error creating gateway: {str(e)}")
+                  logger.error(f"Error creating oauth2_credential_provider: {str(e)}")
                   raise
 
-          def delete_gateway(gateway_client, identity_client, ssm_client, properties):
-              """Delete AgentCore Gateway"""
-
-              provider_name = properties['ProviderName']
-
-              identity_client.delete_oauth2_credential_provider(name=provider_name)
-              
+          def delete_credential_provider(identity_client, properties):
+              """Delete OAuth2 credential provider"""
               try:
-                  # Try to get gateway ID from SSM parameter
-                  try:
-                      response = ssm_client.get_parameter(
-                          Name='/app/customersupportvpc/gateway/gateway_id'
-                      )
-                      gateway_id = response['Parameter']['Value']
+                  provider_name = properties['ProviderName']
+                  identity_client.delete_oauth2_credential_provider(name=provider_name)
+                  logger.info(f"OAuth2 credential provider deleted: {provider_name}")
 
-                      list_response = gateway_client.list_gateway_targets(
-                          gatewayIdentifier=gateway_id, maxResults=100
-                      )
-
-                      for item in list_response["items"]:
-                          target_id = item["targetId"]
-                          logger.info(f"   Deleting target: {target_id}")
-                          gateway_client.delete_gateway_target(
-                              gatewayIdentifier=gateway_id, targetId=target_id
-                          )
-                          logger.info(f"   ✅ Target {target_id} deleted")
-
-                      time.sleep(10)
-                      logger.info(f"Deleting gateway: {gateway_id}")
-                      gateway_client.delete_gateway(gatewayIdentifier=gateway_id)
-
-                      # Clean up SSM parameters
-                      try:
-                          ssm_client.delete_parameter(
-                              Name='/app/customersupportvpc/gateway/gateway_id'
-                          )
-                      except ClientError:
-                          pass
-
-                      try:
-                          ssm_client.delete_parameter(
-                              Name='/app/customersupportvpc/gateway/gateway_arn'
-                          )
-                      except ClientError:
-                          pass
-
-                      try:
-                          ssm_client.delete_parameter(
-                              Name='/app/customersupportvpc/gateway/gateway_url'
-                          )
-                      except ClientError:
-                          pass
-
-                      logger.info(f"Gateway deleted successfully: {gateway_id}")
-
-                      return {
-                          'Message': f'Gateway {gateway_id} deleted successfully'
-                      }
-
-                  except ClientError as e:
-                      if 'ParameterNotFound' in str(e):
-                          logger.info("Gateway ID parameter not found, assuming already deleted")
-                          return {'Message': 'Gateway already deleted or not found'}
-                      else:
-                          raise
+                  return {
+                      'Message': f'OAuth2 credential provider {provider_name} deleted successfully'
+                  }
 
               except Exception as e:
-                  logger.error(f"Error deleting gateway: {str(e)}")
+                  logger.error(f"Error deleting oauth2_credential_provider: {str(e)}")
                   raise
 
   # Lambda Function to Populate Synthetic Data
@@ -834,12 +759,7 @@ Resources:
       - CustomerSupportLambda
     Properties:
       ServiceToken: !GetAtt GatewayManagementFunction.Arn
-      GatewayName: !Sub 'csvpc-${Environment}-customer-support-gateway'
-      ExecutionRoleArn: !GetAtt GatewayAgentCoreRole.Arn
       ProviderName: !Sub 'GatewayOAuth2Provider-csvpc-${Environment}'
-      LambdaArn: !GetAtt CustomerSupportLambda.Arn
-      GatewayClientId:
-        Fn::ImportValue: !Sub '${CognitoStackName}-GatewayClientId'
       DiscoveryUrl: !Sub
         - 'https://cognito-idp.${AWS::Region}.amazonaws.com/${UserPoolId}/.well-known/openid-configuration'
         - UserPoolId:
@@ -854,6 +774,11 @@ Resources:
       Handler: index.lambda_handler
       Role: !GetAtt CustomerSupportLambdaRole.Arn
       Timeout: 30
+      VpcConfig:
+        SecurityGroupIds:
+          - Fn::ImportValue: !Sub '${VPCStackName}-GatewayLambdaSecurityGroup'
+        SubnetIds:
+          - Fn::ImportValue: !Sub '${VPCStackName}-PrivateSubnet2'
       Code:
         ZipFile: |
           import boto3
@@ -1127,6 +1052,39 @@ Resources:
       Tags:
         Application: CustomerSupport
 
+  # SSM Parameters for Gateway Information
+  GatewayIdParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /app/customersupportvpc/gateway/gateway_id
+      Type: String
+      Value: !GetAtt CustomerSupportGateway.GatewayIdentifier
+      Description: 'Customer Support Gateway ID'
+
+  GatewayArnParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /app/customersupportvpc/gateway/gateway_arn
+      Type: String
+      Value: !GetAtt CustomerSupportGateway.GatewayArn
+      Description: 'Customer Support Gateway ARN'
+
+  GatewayUrlParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /app/customersupportvpc/gateway/gateway_url
+      Type: String
+      Value: !GetAtt CustomerSupportGateway.GatewayUrl
+      Description: 'Customer Support Gateway URL'
+
+  GatewayOAuth2ProviderNameParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /app/customersupportvpc/gateway/oauth2_provider_name
+      Type: String
+      Value: !Sub 'GatewayOAuth2Provider-csvpc-${Environment}'
+      Description: 'OAuth2 Credential Provider Name for Gateway Authentication'
+
 Outputs:
   StackName:
     Description: 'Stack name for cross-stack references'
@@ -1148,13 +1106,25 @@ Outputs:
 
   GatewayId:
     Description: 'Customer Support Gateway ID'
-    Value: !GetAtt GatewayManagementResource.GatewayId
+    Value: !GetAtt CustomerSupportGateway.GatewayIdentifier
     Export:
-      Name: !Sub '${AWS::StackName}-GatewayId'
+      Name: !Sub '${AWS::StackName}-GatewayIdentifier'
 
   GatewayArn:
     Description: 'Customer Support Gateway ARN'
-    Value: !GetAtt GatewayManagementResource.GatewayArn
+    Value: !GetAtt CustomerSupportGateway.GatewayArn
     Export:
       Name: !Sub '${AWS::StackName}-GatewayArn'
+
+  GatewayUrl:
+    Description: 'Customer Support Gateway URL'
+    Value: !GetAtt CustomerSupportGateway.GatewayUrl
+    Export:
+      Name: !Sub '${AWS::StackName}-GatewayUrl'
+
+  GatewayTargetId:
+    Description: 'Customer Support Gateway Target ID'
+    Value: !GetAtt LambdaCustomerSupportTarget.TargetId
+    Export:
+      Name: !Sub '${AWS::StackName}-TargetId'
 

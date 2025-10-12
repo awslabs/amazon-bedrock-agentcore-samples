@@ -13,6 +13,7 @@ Metadata:
     - Label:
         default: 'Stack References'
       Parameters:
+      - VPCStackName
       - CognitoStackName
       - MCPStackName
       - GatewayStackName
@@ -27,6 +28,10 @@ Parameters:
       - test
       - prod
     Description: 'Environment name for resource naming'
+
+  VPCStackName:
+    Type: String
+    Description: 'Name of the VPC stack to reference for network configuration'
 
   CognitoStackName:
     Type: String
@@ -852,7 +857,12 @@ Resources:
       AgentRuntimeName: 'csvpcAgentRuntime'
       RoleArn: !GetAtt AgentCoreRuntimeExecutionRole.Arn
       NetworkConfiguration:
-        NetworkMode: "PUBLIC"
+        NetworkMode: "VPC"
+        NetworkModeConfig:
+          SecurityGroups: 
+            - Fn::ImportValue: !Sub '${VPCStackName}-AgentRuntimeSecurityGroup'
+          Subnets: 
+            - Fn::ImportValue: !Sub '${VPCStackName}-PrivateSubnet1'
       AgentRuntimeArtifact:
         ContainerConfiguration:
           ContainerUri: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${AgentECRRepository}:build-1'

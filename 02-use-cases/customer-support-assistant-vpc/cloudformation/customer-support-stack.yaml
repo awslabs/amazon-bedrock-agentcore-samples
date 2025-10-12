@@ -28,7 +28,6 @@ Metadata:
       - PrivateSubnet1Cidr
       - PrivateSubnet2Cidr
       - PrivateSubnet3Cidr
-      - PrivateSubnet4Cidr
 
 
 Parameters:
@@ -67,11 +66,6 @@ Parameters:
     Type: String
     Default: '10.0.1.0/24'
     Description: 'CIDR block for the third private subnet'
-
-  PrivateSubnet4Cidr:
-    Type: String
-    Default: '10.0.5.0/24'
-    Description: 'CIDR block for the fourth private subnet'
 
   # Aurora Stack Parameters
   DBMasterUsername:
@@ -117,7 +111,6 @@ Resources:
         PrivateSubnet1Cidr: !Ref PrivateSubnet1Cidr
         PrivateSubnet2Cidr: !Ref PrivateSubnet2Cidr
         PrivateSubnet3Cidr: !Ref PrivateSubnet3Cidr
-        PrivateSubnet4Cidr: !Ref PrivateSubnet4Cidr
       Tags:
         - Key: Name
           Value: !Sub '${Environment}-vpc-stack'
@@ -188,6 +181,7 @@ Resources:
       Parameters:
         Environment: !Ref Environment
         CognitoStackName: !GetAtt CognitoStack.Outputs.StackName
+        VPCStackName: !GetAtt VPCStack.Outputs.StackName
       Tags:
         - Key: Name
           Value: !Sub '${Environment}-gateway-stack'
@@ -195,7 +189,7 @@ Resources:
           Value: !Ref Environment
         - Key: StackType
           Value: 'Nested-Gateway'
-
+      
   # MCP Server Stack - MCP DynamoDB runtime layer (depends on VPC, Cognito, and DynamoDB)
   MCPServerStack:
     Type: AWS::CloudFormation::Stack
@@ -234,6 +228,7 @@ Resources:
         MCPStackName: !GetAtt MCPServerStack.Outputs.StackName
         GatewayStackName: !GetAtt GatewayStack.Outputs.StackName
         AuroraStackName: !GetAtt AuroraStack.Outputs.StackName
+        VPCStackName: !GetAtt VPCStack.Outputs.StackName
         ModelID: !Ref ModelID
       Tags:
         - Key: Name

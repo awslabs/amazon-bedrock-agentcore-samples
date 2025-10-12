@@ -1,6 +1,6 @@
 from streamlit_cookies_controller import CookieController
 from urllib.parse import urlencode
-from utils import get_ssm_parameter
+from .utils import get_ssm_parameter
 import base64
 import hashlib
 import json

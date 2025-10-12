@@ -293,6 +293,9 @@ Resources:
                 - ls -la
                 - echo "Checking for Dockerfile..."
                 - cat Dockerfile || echo "Dockerfile not found"
+                - echo "Generating unique image tag..."
+                - export IMAGE_TAG="build-${CODEBUILD_BUILD_NUMBER}"
+                - echo "Image will be tagged as ${IMAGE_TAG}"
             build:
               commands:
                 - echo "Starting parallel Docker build and ECR authentication..."
@@ -315,13 +318,14 @@ Resources:
                     exit 1
                   fi
                   echo "Both build and auth completed successfully"
-                - echo "Tagging image..."
-                - docker tag bedrock-agentcore-arm64:latest $ECR_REPOSITORY_URI:latest
+                - echo "Tagging image with unique tag ${IMAGE_TAG}..."
+                - docker tag bedrock-agentcore-arm64:latest $ECR_REPOSITORY_URI:${IMAGE_TAG}
             post_build:
               commands:
-                - echo "Pushing ARM64 image to ECR..."
-                - docker push $ECR_REPOSITORY_URI:latest
+                - echo "Pushing ARM64 image to ECR with unique tag ${IMAGE_TAG}..."
+                - docker push $ECR_REPOSITORY_URI:${IMAGE_TAG}
                 - echo "Build completed at $(date)"
+                - echo "Image tag pushed - ${IMAGE_TAG}"
       SourceVersion: refs/heads/customer-support-vpc
       TimeoutInMinutes: 30
       Tags:
@@ -819,10 +823,15 @@ Resources:
       AgentRuntimeName: 'csvpcMCPDynamoDBRuntime'
       RoleArn: !GetAtt MCPDynamoDBRuntimeExecutionRole.Arn
       NetworkConfiguration:
-        NetworkMode: "PUBLIC"
+        NetworkMode: "VPC"
+        NetworkModeConfig:
+          SecurityGroups: 
+            - Fn::ImportValue: !Sub '${VPCStackName}-MCPRuntimeSecurityGroup'
+          Subnets: 
+            - Fn::ImportValue: !Sub '${VPCStackName}-PrivateSubnet3'
       AgentRuntimeArtifact:
         ContainerConfiguration:
-          ContainerUri: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${MCPDynamoDBECRRepository}:latest'
+          ContainerUri: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${MCPDynamoDBECRRepository}:build-1'
       ProtocolConfiguration: MCP
       AuthorizerConfiguration:
         CustomJWTAuthorizer:

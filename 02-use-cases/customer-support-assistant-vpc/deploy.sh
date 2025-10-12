@@ -17,7 +17,7 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Default values
-STACK_NAME="customer-support-vpc"
+STACK_NAME_BASE="customer-support-vpc"
 ENVIRONMENT="dev"
 DB_USERNAME="postgres"
 MODEL_ID="global.anthropic.claude-sonnet-4-20250514-v1:0"
@@ -282,9 +282,10 @@ Deploy Customer Support VPC CloudFormation Stack
 
 OPTIONS:
     -b, --bucket BUCKET_NAME    S3 bucket name for templates (optional, auto-generated if not provided)
-    -s, --stack STACK_NAME      CloudFormation stack name (default: customer-support-vpc)
+    -s, --stack STACK_NAME      CloudFormation stack base name (default: customer-support-vpc)
+                                Note: Environment name will be appended automatically (e.g., customer-support-vpc-dev)
     -r, --region REGION         AWS region (default: us-west-2)
-    -e, --env ENVIRONMENT       Environment name (default: dev)
+    -e, --env ENVIRONMENT       Environment name (default: dev, appended to stack name)
     -u, --db-user USERNAME      Database master username (default: postgres)
     -m, --model MODEL_ID        Bedrock model ID (default: global.anthropic.claude-sonnet-4-20250514-v1:0)
     --email EMAIL               Admin user email (REQUIRED)
@@ -292,18 +293,22 @@ OPTIONS:
     -h, --help                  Show this help message
 
 EXAMPLES:
-    # Deploy with required credentials
+    # Deploy dev environment (creates stack: customer-support-vpc-dev)
     $0 --email admin@example.com --password 'MyP@ssw0rd123'
 
-    # Deploy with Sonnet model
-    $0 --email admin@example.com --password 'MyP@ssw0rd123' --model us.anthropic.claude-3-5-sonnet-20241022-v2:0
+    # Deploy production environment (creates stack: customer-support-vpc-prod)
+    $0 --env prod --email admin@example.com --password 'MyP@ssw0rd123'
 
-    # Deploy to specific region with custom model
+    # Deploy test environment with Sonnet model (creates stack: customer-support-vpc-test)
+    $0 --env test --email admin@example.com --password 'MyP@ssw0rd123' --model us.anthropic.claude-3-5-sonnet-20241022-v2:0
+
+    # Deploy to specific region with custom model (creates stack: customer-support-vpc-dev)
     $0 --region us-west-2 --model anthropic.claude-3-5-sonnet-20240620-v1:0 --email admin@example.com --password 'MyP@ssw0rd123'
 
-    # Full customization
+    # Full customization (creates stack: prod-support-prod)
     $0 --bucket customersupportvpc-prod \\
        --stack prod-support \\
+       --env prod \\
        --region us-east-1 \\
        --model us.anthropic.claude-3-5-sonnet-20241022-v2:0 \\
        --email admin@example.com \\
@@ -312,6 +317,7 @@ EXAMPLES:
 NOTE:
     - Admin email and password are REQUIRED for Cognito user pool
     - Password must be at least 8 characters with uppercase, lowercase, number, and special character
+    - Stack name will automatically include environment suffix (e.g., -dev, -prod, -test)
     - If bucket name is not provided, a random S3-compliant name will be generated
       with prefix 'customersupportvpc-' followed by 12 random lowercase alphanumeric characters.
 
@@ -332,6 +338,7 @@ generate_bucket_name() {
 main() {
     # Parse command line arguments
     BUCKET_NAME=""
+    CUSTOM_STACK_NAME=""
 
     while [[ $# -gt 0 ]]; do
         case $1 in
@@ -340,7 +347,7 @@ main() {
                 shift 2
                 ;;
             -s|--stack)
-                STACK_NAME="$2"
+                CUSTOM_STACK_NAME="$2"
                 shift 2
                 ;;
             -r|--region)
@@ -378,6 +385,13 @@ main() {
                 ;;
         esac
     done
+
+    # Set stack name with environment suffix
+    if [ -n "$CUSTOM_STACK_NAME" ]; then
+        STACK_NAME="${CUSTOM_STACK_NAME}-${ENVIRONMENT}"
+    else
+        STACK_NAME="${STACK_NAME_BASE}-${ENVIRONMENT}"
+    fi
 
     # Generate bucket name if not provided
     if [ -z "$BUCKET_NAME" ]; then
