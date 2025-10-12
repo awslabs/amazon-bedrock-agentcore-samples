@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from utils import get_aws_info, get_nested_stack_name, get_stack_output
+from utils import get_ssm_parameter
 from bedrock_agentcore.identity.auth import requires_access_token
 from datetime import timedelta
 from mcp import ClientSession
@@ -18,14 +18,19 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def create_mcp_client(provider_name, runtime_id):
+def create_mcp_client(provider_name, agent_arn):
     """Create MCP client with given parameters"""
 
-    # Get AWS info from boto3
-    account_id, region = get_aws_info()
+    # Extract runtime_id, region, and account_id from ARN
+    # ARN format: arn:aws:bedrock-agentcore:region:account-id:runtime/runtime-id
+    runtime_id = agent_arn.split('/')[-1]
+    arn_parts = agent_arn.split(':')
+    region = arn_parts[3]
+    account_id = arn_parts[4]
 
     print(f"📋 AWS Account ID: {account_id}")
     print(f"🌍 AWS Region: {region}")
+    print(f"🤖 MCP Runtime ID: {runtime_id}")
 
     @requires_access_token(
         provider_name=provider_name,
@@ -36,9 +41,6 @@ def create_mcp_client(provider_name, runtime_id):
     )
     async def connect(bearer_token):
         print(f"Bearer token received: {bearer_token}")
-        agent_arn = (
-            f"arn:aws:bedrock-agentcore:{region}:{account_id}:runtime/{runtime_id}"
-        )
 
         print(agent_arn)
         escaped_arn = urllib.parse.quote(agent_arn, safe="")
@@ -147,11 +149,6 @@ def create_mcp_client(provider_name, runtime_id):
 def main():
     parser = argparse.ArgumentParser(description="MCP DynamoDB CLI Tool")
     parser.add_argument(
-        "--stack-name",
-        default="customer-support-vpc",
-        help="CloudFormation stack name (default: customer-support-vpc)",
-    )
-    parser.add_argument(
         "--verbose", "-v", action="store_true", help="Enable verbose logging"
     )
     parser.add_argument("--debug", action="store_true", help="Enable debug logging")
@@ -169,25 +166,16 @@ def main():
     print("🚀 MCP DynamoDB CLI Tool")
     print("=" * 30)
 
-    # Get AWS info
-    account_id, region = get_aws_info()
-    print(f"📋 AWS Account ID: {account_id}")
-    print(f"🌍 AWS Region: {region}")
+    # Get MCP Runtime ARN and Provider Name from SSM Parameter Store
+    agent_arn = get_ssm_parameter("/app/customersupportvpc/mcp/mcp_runtime_arn")
+    provider_name = get_ssm_parameter("/app/customersupportvpc/mcp/mcp_provider_name")
 
-    # Get the nested MCPServerStack name from the parent stack
-    print(f"📦 Parent Stack Name: {args.stack_name}")
-    mcp_stack_name = get_nested_stack_name(args.stack_name, "MCPServerStack", region)
-    print(f"📦 MCP Stack Name: {mcp_stack_name}")
-
-    # Get runtime ID and provider name from the nested stack outputs
-    runtime_id = get_stack_output(mcp_stack_name, "MCPDynamoDBRuntimeId", region)
-    provider_name = get_stack_output(mcp_stack_name, "MCPProviderName", region)
-    print(f"🤖 MCP Runtime ID: {runtime_id}")
+    print(f"🤖 MCP Runtime ARN: {agent_arn}")
     print(f"🔐 OAuth2 Provider: {provider_name}")
 
     # Create and run the MCP client
     try:
-        client = create_mcp_client(provider_name, runtime_id)
+        client = create_mcp_client(provider_name, agent_arn)
         asyncio.run(client())
     except KeyboardInterrupt:
         print("\n👋 Interrupted by user")

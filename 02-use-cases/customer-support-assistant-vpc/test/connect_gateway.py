@@ -6,12 +6,7 @@ import logging
 import sys
 import traceback
 
-from utils import (
-    get_aws_info,
-    get_nested_stack_name,
-    get_stack_output,
-    get_ssm_parameter,
-)
+from utils import get_ssm_parameter
 from bedrock_agentcore.identity.auth import requires_access_token
 from datetime import timedelta
 from mcp.client.streamable_http import streamablehttp_client
@@ -99,11 +94,6 @@ def main():
         "--prompt", "-p", required=True, help="Prompt to send to the gateway agent"
     )
     parser.add_argument(
-        "--stack-name",
-        default="customer-support-vpc",
-        help="CloudFormation stack name (default: customer-support-vpc)",
-    )
-    parser.add_argument(
         "--verbose", "-v", action="store_true", help="Enable verbose logging"
     )
     parser.add_argument("--debug", action="store_true", help="Enable debug logging")
@@ -121,16 +111,6 @@ def main():
     print("🚀 Gateway MCP CLI Tool")
     print("=" * 30)
 
-    # Get AWS info
-    account_id, region = get_aws_info()
-    print(f"📋 AWS Account ID: {account_id}")
-    print(f"🌍 AWS Region: {region}")
-
-    # Get the nested GatewayStack name from the parent stack
-    print(f"📦 Parent Stack Name: {args.stack_name}")
-    gateway_stack_name = get_nested_stack_name(args.stack_name, "GatewayStack", region)
-    print(f"📦 Gateway Stack Name: {gateway_stack_name}")
-
     # Fetch access token first
     print("🔐 Acquiring OAuth2 access token...")
     try:
@@ -141,21 +121,15 @@ def main():
         print(f"❌ Failed to acquire access token: {e}")
         sys.exit(1)
 
-    # Load gateway configuration from SSM parameters or stack outputs
+    # Get gateway URL from SSM Parameter Store
     try:
-        # Try to get gateway URL from SSM parameter first
-        try:
-            gateway_url = get_ssm_parameter(
-                "/app/customersupportvpc/gateway/gateway_url"
-            )
-        except:
-            # Fallback to stack output
-            gateway_url = get_stack_output(gateway_stack_name, "GatewayUrl", region)
-
+        gateway_url = get_ssm_parameter(
+            "/app/customersupportvpc/gateway/gateway_url"
+        )
         print(f"🌐 Gateway URL: {gateway_url}")
     except Exception as e:
         logger.error(f"Error reading gateway URL: {e}")
-        print(f"❌ Error reading gateway URL from SSM/Stack: {str(e)}")
+        print(f"❌ Error reading gateway URL from SSM: {str(e)}")
         sys.exit(1)
 
     # Connect to gateway and send prompt

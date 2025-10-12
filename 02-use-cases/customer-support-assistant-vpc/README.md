@@ -9,6 +9,10 @@ This is a customer support agent implementation using Amazon Bedrock AgentCore d
 
 ![arch](./images/architecture.png)
 
+## Demo
+
+![demo](./images/demo.gif)
+
 ## Prerequisites
 
 1. **AWS Account**: You need an active AWS account with appropriate permissions
@@ -191,23 +195,7 @@ After deployment, you can test the system using the provided test scripts:
 
 Start an interactive chat session with the Agent Runtime:
 
-```bash
-# Install dependencies
-uv sync
-
-# Start interactive session
-uv run python test/connect_agent.py --stack-name customer-support-vpc
-```
-
-This will launch an interactive chat interface where you can have a conversation with the agent. Type your questions and press Enter to send them. Type `q` or `quit` to exit.
-
-**Parameters:**
-
-- `--stack-name` (optional): CloudFormation parent stack name (default: `customer-support-vpc`)
-- `--verbose` / `-v` (optional): Enable verbose logging
-- `--debug` (optional): Enable debug logging
-
-**Example session:**
+![runtime-aurora](./images/agent.png)
 
 ```bash
 # Install dependencies
@@ -215,35 +203,30 @@ uv sync
 
 # Start interactive session
 uv run python test/connect_agent.py
-
-# Then interact with the agent:
-👤 You: Get me customer name of customer id CUST001
-🤖 Assistant: [Agent response]
-
-👤 You: Check warranty status for serial number LAPTOP001A1B2C
-🤖 Assistant: [Agent response]
-
-👤 You: Show me reviews for product id 1
-🤖 Assistant: [Agent response]
-
-👤 You: quit
-👋 Goodbye!
 ```
+
+This will launch an interactive chat interface where you can have a conversation with the agent. Type your questions and press Enter to send them. Type `q` or `quit` to exit.
+
+**Parameters:**
+
+- `--verbose` / `-v` (optional): Enable verbose logging
+- `--debug` (optional): Enable debug logging
 
 ### Test MCP Server
 
 Test the MCP DynamoDB server and list available tools:
 
+![runtime-mcp](./images/mcp.png)
+
 ```bash
 # Install dependencies
 uv sync
 
-uv run python test/connect_mcp.py --stack-name customer-support-vpc
+uv run python test/connect_mcp.py
 ```
 
 **Parameters:**
 
-- `--stack-name` (optional): CloudFormation parent stack name (default: `customer-support-vpc`)
 - `--verbose` / `-v` (optional): Enable verbose logging
 - `--debug` (optional): Enable debug logging
 
@@ -255,51 +238,39 @@ This script will:
 
 ### Test AgentCore Gayeway
 
+![runtime-mcp](./images/gateway.png)
+
 ```bash
   # Install dependencies
   uv sync
 
   # Test the gateway
-  uv run python test/connect_gateway.py --prompt "Check warranty status for serial number LAPTOP001A1B2C" --stack-name customer-support-vpc
+  uv run python test/connect_gateway.py --prompt "Check warranty status for serial number LAPTOP001A1B2C" 
 
   # With verbose logging
-  uv run python test/connect_gateway.py --prompt "Get customer profile for CUST001" --stack-name customer-support-vpc
+  uv run python test/connect_gateway.py --prompt "Get customer profile for CUST001" 
 
   # With custom stack name
-  uv run python test/connect_gateway.py --prompt "List all products" --stack-name customer-support-vpc
+  uv run python test/connect_gateway.py --prompt "List all products"
 ```
 
-- `--stack-name` (optional): CloudFormation parent stack name (default: `customer-support-vpc`)
 - `--verbose` / `-v` (optional): Enable verbose logging
 - `--debug` (optional): Enable debug logging
 
-## Streamlit
+## React Frontend
 
-Run the Streamlit web interface for interactive customer support:
+Run the [frontend](./frontend/README.md) using following commands.
 
 ```bash
-# Install dependencies
-uv sync
+cd frontend
+npm install
 
-# Run the app (uses default stack name: customer-support-vpc)
-uv run streamlit run app.py --server.port 8501
+chmod +x ./setup-env.sh
+./setup-env.sh
 
-# Or with a custom stack name
-uv run streamlit run app.py --server.port 8501 -- --stack-name=customer-support-vpc
+npm run dev
+
 ```
-
-**Parameters:**
-
-- `--stack-name` (optional): CloudFormation parent stack name (default: `customer-support-vpc`)
-
-The app will automatically:
-
-1. Retrieve the agent configuration from CloudFormation
-2. Set up OAuth2 authentication via Cognito
-3. Provide an interactive chat interface
-
-> [!NOTE]
-> The Streamlit app must run on port 8501 for OAuth2 callback to work properly.
 
 ## Sample Queries
 

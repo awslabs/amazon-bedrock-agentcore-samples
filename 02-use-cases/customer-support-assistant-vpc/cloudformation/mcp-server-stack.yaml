@@ -277,7 +277,7 @@ Resources:
             Value: !Ref AWS::AccountId
       Source:
         Type: GITHUB
-        Location: 'https://github.com/EashanKaushik/amazon-bedrock-agentcore-samples-fork.git'
+        Location: 'https://github.com/awslabs/amazon-bedrock-agentcore-samples.git'
         GitCloneDepth: 1
         BuildSpec: |
           version: 0.2
@@ -844,6 +844,28 @@ Resources:
       Tags:
         Name: !Sub 'csvpc-${Environment}-MCPDynamoDB-Runtime'
         Purpose: 'MCP DynamoDB Runtime'
+
+  # SSM Parameter for MCP Runtime ARN
+  MCPRuntimeArnParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /app/customersupportvpc/mcp/mcp_runtime_arn
+      Type: String
+      Value: !GetAtt MCPDynamoDBRuntime.AgentRuntimeArn
+      Description: MCP Runtime ARN
+      Tags:
+        Application: CustomerSupportVPC
+
+  # SSM Parameter for MCP Provider Name
+  MCPProviderNameParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /app/customersupportvpc/mcp/mcp_provider_name
+      Type: String
+      Value: !Sub 'MCPOAuth2Provider-csvpc-${Environment}'
+      Description: MCP OAuth2 Provider Name
+      Tags:
+        Application: CustomerSupportVPC
 
 Outputs:
   StackName:

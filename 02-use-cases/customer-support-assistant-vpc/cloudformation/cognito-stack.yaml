@@ -627,6 +627,16 @@ Resources:
       Tags:
         Application: CustomerSupportVPC
 
+  CognitoUserPoolIdParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /app/customersupportvpc/agentcore/user_pool_id
+      Type: String
+      Value: !Ref M2MUserPool
+      Description: Cognito User Pool ID
+      Tags:
+        Application: CustomerSupportVPC
+
 Conditions:
   CreateAdminUser: !Not [!Equals [!Ref AdminUserEmail, '']]
 

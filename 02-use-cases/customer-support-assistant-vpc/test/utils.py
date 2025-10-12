@@ -2,7 +2,7 @@
 from boto3.session import Session
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 from urllib.parse import parse_qs, urlparse
 import base64
 import boto3
@@ -16,7 +16,6 @@ import threading
 import time
 import urllib
 import webbrowser
-import yaml
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -25,65 +24,10 @@ logger = logging.getLogger(__name__)
 
 
 def get_ssm_parameter(name: str, with_decryption: bool = True) -> str:
+    """Get parameter from AWS Systems Manager Parameter Store."""
     ssm = boto3.client("ssm")
-
     response = ssm.get_parameter(Name=name, WithDecryption=with_decryption)
-
     return response["Parameter"]["Value"]
-
-
-def read_config(file_path: str) -> Dict[str, Any]:
-    """
-    Read configuration from a file path. Supports JSON, YAML, and YML formats.
-
-    Args:
-        file_path (str): Path to the configuration file
-
-    Returns:
-        Dict[str, Any]: Configuration data as a dictionary
-
-    Raises:
-        FileNotFoundError: If the file doesn't exist
-        ValueError: If the file format is not supported or invalid
-        yaml.YAMLError: If YAML parsing fails
-        json.JSONDecodeError: If JSON parsing fails
-    """
-    if not os.path.exists(file_path):
-        raise FileNotFoundError(f"Configuration file not found: {file_path}")
-
-    # Get file extension to determine format
-    _, ext = os.path.splitext(file_path.lower())
-
-    try:
-        with open(file_path, "r", encoding="utf-8") as file:
-            if ext == ".json":
-                return json.load(file)
-            elif ext in [".yaml", ".yml"]:
-                return yaml.safe_load(file)
-            else:
-                # Try to auto-detect format by attempting JSON first, then YAML
-                content = file.read()
-                file.seek(0)
-
-                # Try JSON first
-                try:
-                    return json.loads(content)
-                except json.JSONDecodeError:
-                    # Try YAML
-                    try:
-                        return yaml.safe_load(content)
-                    except yaml.YAMLError:
-                        raise ValueError(
-                            f"Unsupported configuration file format: {ext}. "
-                            f"Supported formats: .json, .yaml, .yml"
-                        )
-
-    except json.JSONDecodeError as e:
-        raise ValueError(f"Invalid JSON in configuration file {file_path}: {e}")
-    except yaml.YAMLError as e:
-        raise ValueError(f"Invalid YAML in configuration file {file_path}: {e}")
-    except Exception as e:
-        raise ValueError(f"Error reading configuration file {file_path}: {e}")
 
 
 def get_token_config_path():
@@ -312,24 +256,39 @@ def invoke_endpoint(
         for line in response.iter_lines(chunk_size=1):
             if line:
                 line = line.decode("utf-8")
-                # print(line)
                 if line.startswith("data: "):
                     last_data = True
-                    line = line[6:].replace('"', "")
-                    # Replace literal \n with actual newlines
-                    line = line.replace("\\n", "\n")
-                    print(line, end="")
+                    data_content = line[6:]
+                    parsed = json.loads(data_content)
+
+                    # Check for event structure with contentBlockDelta
+                    if isinstance(parsed, dict) and "event" in parsed:
+                        event = parsed["event"]
+                        if isinstance(event, dict) and "contentBlockDelta" in event:
+                            delta = event["contentBlockDelta"].get("delta", {})
+                            if "text" in delta:
+                                text = delta["text"]
+                                # Replace literal \n with actual newlines
+                                text = text.replace("\\n", "\n")
+                                print(text, end="", flush=True)
                 elif line:
                     if last_data:
-                        line = line.replace('"', "")
-                        # Replace literal \n with actual newlines
-                        line = line.replace("\\n", "\n")
-                        print("\n" + line, end="")
+                        parsed = json.loads(line)
+                        # Check for event structure with contentBlockDelta
+                        if isinstance(parsed, dict) and "event" in parsed:
+                            event = parsed["event"]
+                            if isinstance(event, dict) and "contentBlockDelta" in event:
+                                delta = event["contentBlockDelta"].get("delta", {})
+                                if "text" in delta:
+                                    text = delta["text"]
+                                    # Replace literal \n with actual newlines
+                                    text = text.replace("\\n", "\n")
+                                    print(text, end="", flush=True)
                     last_data = False
 
 
 def get_aws_info():
-    """Get AWS account ID and region from boto3 session"""
+    """Get AWS account ID and region from boto3 session."""
     try:
         boto_session = Session()
 
@@ -356,47 +315,4 @@ def get_aws_info():
         print(
             "Please ensure AWS credentials are configured (aws configure or environment variables)"
         )
-        sys.exit(1)
-
-
-def get_nested_stack_name(parent_stack_name, logical_resource_id, region):
-    """Get the physical resource ID (stack name) of a nested stack"""
-    try:
-        cfn = boto3.client("cloudformation", region_name=region)
-        response = cfn.describe_stack_resource(
-            StackName=parent_stack_name, LogicalResourceId=logical_resource_id
-        )
-
-        physical_resource_id = response["StackResourceDetail"]["PhysicalResourceId"]
-        # Physical resource ID for nested stacks is the full stack ARN
-        # Extract just the stack name from the ARN
-        # Format: arn:aws:cloudformation:region:account:stack/stack-name/guid
-        stack_name = physical_resource_id.split("/")[-2]
-        return stack_name
-
-    except Exception as e:
-        print(f"❌ Error getting nested stack name: {e}")
-        sys.exit(1)
-
-
-def get_stack_output(stack_name, output_key, region):
-    """Get CloudFormation stack output value"""
-    try:
-        cfn = boto3.client("cloudformation", region_name=region)
-        response = cfn.describe_stacks(StackName=stack_name)
-
-        if not response["Stacks"]:
-            raise ValueError(f"Stack '{stack_name}' not found")
-
-        stack = response["Stacks"][0]
-        outputs = stack.get("Outputs", [])
-
-        for output in outputs:
-            if output["OutputKey"] == output_key:
-                return output["OutputValue"]
-
-        raise ValueError(f"Output '{output_key}' not found in stack '{stack_name}'")
-
-    except Exception as e:
-        print(f"❌ Error getting stack output: {e}")
         sys.exit(1)

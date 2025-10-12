@@ -11,10 +11,7 @@ import uuid
 from utils import (
     generate_pkce_pair,
     get_auth_code_automatically,
-    get_aws_info,
-    get_nested_stack_name,
     get_ssm_parameter,
-    get_stack_output,
     invoke_endpoint,
     load_access_token,
     save_access_token,
@@ -34,11 +31,6 @@ def main():
         description="Interactive Agent Runtime CLI Tool - Start a conversation with the customer support agent"
     )
     parser.add_argument(
-        "--stack-name",
-        default="customer-support-vpc",
-        help="CloudFormation stack name (default: customer-support-vpc)",
-    )
-    parser.add_argument(
         "--verbose", "-v", action="store_true", help="Enable verbose logging"
     )
     parser.add_argument("--debug", action="store_true", help="Enable debug logging")
@@ -56,23 +48,20 @@ def main():
     print("🚀 Agent Runtime CLI Tool")
     print("=" * 30)
 
-    # Get AWS info
-    account_id, region = get_aws_info()
+    # Get Agent ARN from SSM Parameter Store
+    agent_arn = get_ssm_parameter("/app/customersupportvpc/agentcore/agent_runtime_arn")
+    print(f"🤖 Agent ARN: {agent_arn}")
+
+    # Extract runtime_id, region, and account_id from ARN
+    # ARN format: arn:aws:bedrock-agentcore:region:account-id:runtime/runtime-id
+    runtime_id = agent_arn.split('/')[-1]
+    arn_parts = agent_arn.split(':')
+    region = arn_parts[3]
+    account_id = arn_parts[4]
+
     print(f"📋 AWS Account ID: {account_id}")
     print(f"🌍 AWS Region: {region}")
-
-    # Get the nested AgentServerStack name from the parent stack
-    print(f"📦 Parent Stack Name: {args.stack_name}")
-    agent_stack_name = get_nested_stack_name(
-        args.stack_name, "AgentServerStack", region
-    )
-    print(f"📦 Agent Stack Name: {agent_stack_name}")
-
-    # Get runtime ID and provider name from the nested stack outputs
-    runtime_id = get_stack_output(agent_stack_name, "AgentRuntimeId", region)
-    # provider_name = get_stack_output(agent_stack_name, "AgentProviderName", region)
     print(f"🤖 Agent Runtime ID: {runtime_id}")
-    # print(f"🔐 OAuth2 Provider: {provider_name}")
 
     # Try to load existing access token
     access_token = load_access_token(runtime_id)
@@ -138,8 +127,6 @@ def main():
         save_access_token(access_token, runtime_id)
         print("✅ Access token acquired and saved.")
 
-    # agent_arn = runtime_config["agents"][agent_name]["bedrock_agentcore"]["agent_arn"]
-    agent_arn = f"arn:aws:bedrock-agentcore:{region}:{account_id}:runtime/{runtime_id}"
     session_id = str(uuid.uuid4())
     print("\n🤖 Starting interactive session with agent. Type 'q' or 'quit' to exit.\n")
 
