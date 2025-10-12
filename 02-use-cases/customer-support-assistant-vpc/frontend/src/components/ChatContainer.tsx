@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { ChatMessage } from './ChatMessage'
 import { ChatInput } from './ChatInput'
-import { ScrollArea } from './ui/scroll-area'
 import { useChat } from '../hooks/useChat'
 import { fetchAuthSession } from 'aws-amplify/auth'
 import { Loader2 } from 'lucide-react'
@@ -87,8 +86,9 @@ export function ChatContainer({ user }: ChatContainerProps) {
   }
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden">
-      <ScrollArea className="flex-1 px-4 py-6">
+    <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+      {/* Scrollable message history */}
+      <div className="flex-1 overflow-y-auto px-4 py-6 min-h-0">
         <div className="max-w-4xl mx-auto space-y-4">
           {messages.map((message, index) => {
             const isLastMessage = index === messages.length - 1
@@ -116,12 +116,15 @@ export function ChatContainer({ user }: ChatContainerProps) {
 
           <div ref={messagesEndRef} />
         </div>
-      </ScrollArea>
+      </div>
 
-      <ChatInput
-        onSend={handleSendMessage}
-        disabled={isStreaming}
-      />
+      {/* Fixed chat input at bottom */}
+      <div className="flex-shrink-0">
+        <ChatInput
+          onSend={handleSendMessage}
+          disabled={isStreaming}
+        />
+      </div>
     </div>
   )
 }

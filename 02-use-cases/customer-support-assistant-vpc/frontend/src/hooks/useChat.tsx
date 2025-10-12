@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, createContext, useContext, ReactNode } from 'react';
-import type { ChatState, Message, ToolUseBlock, MessageMetadata, StreamingEvent } from '../types';
+import type { ChatState, Message, ToolUseBlock, MessageMetadata, StreamingEvent, ContentBlock } from '../types';
 import { invokeAgentStream } from '../services/chatService';
 import { generateUUID } from '../utils';
 
@@ -64,6 +64,9 @@ export function ChatProvider({ children }: ChatProviderProps) {
       const startTime = Date.now();
       let accumulatedResponse = '';
       const toolBlocks: Map<string, ToolUseBlock> = new Map();
+      // Changed: Sequential list of all content (text and tools) in order received
+      const orderedContent: Array<{ type: 'text' | 'tool'; content?: string; toolBlock?: ToolUseBlock; toolUseId?: string }> = [];
+      let currentTextBlock: { type: 'text'; content: string } | null = null;
       let metadata: MessageMetadata = {};
 
       try {
@@ -90,31 +93,58 @@ export function ChatProvider({ children }: ChatProviderProps) {
             // Handle contentBlockStart events (tool invocation start)
             if ('contentBlockStart' in innerEvent) {
               const start = innerEvent.contentBlockStart?.start;
+              const contentBlockIndex = innerEvent.contentBlockStart?.contentBlockIndex ?? 0;
+
               if (start?.toolUse) {
                 const { toolUseId, name } = start.toolUse;
-                console.log('[useChat] 🔧 Tool started:', name, toolUseId)
-                toolBlocks.set(toolUseId, {
-                  toolUseId,
-                  name,
-                  input: {},
-                  status: 'loading',
-                });
+                console.log('[useChat] 🔧 Tool started:', name, 'at index', contentBlockIndex)
+
+                // Check if we already have this tool (avoid duplicates)
+                if (!toolBlocks.has(toolUseId)) {
+                  // Finalize current text block if exists
+                  if (currentTextBlock && currentTextBlock.content) {
+                    orderedContent.push({ ...currentTextBlock });
+                    currentTextBlock = null;
+                  }
+
+                  const newToolBlock: ToolUseBlock = {
+                    toolUseId,
+                    name,
+                    input: {},
+                    status: 'loading',
+                  };
+                  toolBlocks.set(toolUseId, newToolBlock);
+
+                  // Add tool to sequential list
+                  orderedContent.push({
+                    type: 'tool',
+                    toolBlock: newToolBlock,
+                    toolUseId: toolUseId, // Store ID for later updates
+                  });
+                }
               }
             }
 
             // Handle contentBlockDelta events
             if ('contentBlockDelta' in innerEvent) {
               const delta = innerEvent.contentBlockDelta?.delta;
+              const contentBlockIndex = innerEvent.contentBlockDelta?.contentBlockIndex ?? 0;
 
               // Handle text delta
               if (delta?.text) {
-                console.log('[useChat] Adding text:', delta.text)
+                console.log('[useChat] Adding text:', delta.text, 'at index', contentBlockIndex)
                 accumulatedResponse += delta.text;
+
+                // Accumulate text in current text block
+                if (!currentTextBlock) {
+                  currentTextBlock = { type: 'text', content: '' };
+                }
+                currentTextBlock.content += delta.text;
               }
 
               // Handle tool input delta (accumulate tool input)
               if (delta?.toolUse?.input) {
-                console.log('[useChat] Tool input chunk received')
+                console.log('[useChat] Tool input chunk received at index', contentBlockIndex)
                 // Tool inputs are accumulated in the delta - we'll get the final input later
               }
             }
@@ -154,22 +184,37 @@ export function ChatProvider({ children }: ChatProviderProps) {
             if (text) {
               console.log('[useChat] Adding text (direct):', text)
               accumulatedResponse += text;
+
+              // Accumulate in current text block
+              if (!currentTextBlock) {
+                currentTextBlock = { type: 'text', content: '' };
+              }
+              currentTextBlock.content += text;
             }
           }
           // Handle simple data events
           else if ('data' in event && typeof event.data === 'string') {
             console.log('[useChat] Adding data:', event.data)
             accumulatedResponse += event.data;
+
+            // Accumulate in current text block
+            if (!currentTextBlock) {
+              currentTextBlock = { type: 'text', content: '' };
+            }
+            currentTextBlock.content += event.data;
           }
 
           // Handle message event (contains complete tool information)
           if ('message' in event) {
             const message = event.message as any;
+            console.log('[useChat] 📋 Message event received with content:', message?.content)
             if (message?.content && Array.isArray(message.content)) {
-              message.content.forEach((item: any) => {
+              message.content.forEach((item: any, idx: number) => {
                 // Handle tool use in message content
                 if (item.toolUse) {
                   const { toolUseId, name, input } = item.toolUse;
+                  console.log('[useChat] 🔧 Message contains tool:', name, 'at position', idx)
+
                   const existing = toolBlocks.get(toolUseId);
                   if (existing) {
                     // Update with complete input
@@ -178,16 +223,41 @@ export function ChatProvider({ children }: ChatProviderProps) {
                       input: input || {},
                       status: 'success',
                     });
+                  } else {
+                    // Tool wasn't captured during streaming, add it now
+                    console.log('[useChat] Adding missing tool:', name)
+
+                    // Finalize current text block if exists
+                    if (currentTextBlock && currentTextBlock.content) {
+                      orderedContent.push({ ...currentTextBlock });
+                      currentTextBlock = null;
+                    }
+
+                    const newTool: ToolUseBlock = {
+                      toolUseId,
+                      name,
+                      input: input || {},
+                      status: 'success',
+                    };
+                    toolBlocks.set(toolUseId, newTool);
+
+                    // Add to sequential list
+                    orderedContent.push({
+                      type: 'tool',
+                      toolBlock: newTool,
+                      toolUseId: toolUseId,
+                    });
                   }
                 }
                 // Handle tool result in message content
                 if (item.toolResult) {
                   const { toolUseId, content } = item.toolResult;
+                  console.log('[useChat] 📤 Message contains tool result for:', toolUseId)
                   const existing = toolBlocks.get(toolUseId);
                   if (existing) {
                     // Add result to tool block
                     const resultText = Array.isArray(content)
-                      ? content.map(c => c.text || c.json || '').join('\n')
+                      ? content.map(c => c.text || c.json || JSON.stringify(c)).join('\n')
                       : typeof content === 'string' ? content : JSON.stringify(content);
                     toolBlocks.set(toolUseId, {
                       ...existing,
@@ -272,6 +342,36 @@ export function ChatProvider({ children }: ChatProviderProps) {
             metadata.stopReason = event.stop_reason as string;
           }
 
+          // Build streaming content blocks array with updated tool data
+          const orderedContentBlocks: ContentBlock[] = [];
+
+          // Add all finalized content from orderedContent
+          for (const item of orderedContent) {
+            if (item.type === 'text' && item.content) {
+              orderedContentBlocks.push({
+                type: 'text',
+                content: item.content,
+              });
+            } else if (item.type === 'tool' && item.toolUseId) {
+              // Get latest tool state from toolBlocks map
+              const latestToolBlock = toolBlocks.get(item.toolUseId);
+              if (latestToolBlock) {
+                orderedContentBlocks.push({
+                  type: 'tool',
+                  toolBlock: latestToolBlock,
+                });
+              }
+            }
+          }
+
+          // Add current in-progress text block (for live streaming updates)
+          if (currentTextBlock && currentTextBlock.content) {
+            orderedContentBlocks.push({
+              type: 'text',
+              content: currentTextBlock.content,
+            });
+          }
+
           // Update streaming message
           setChatState((prev) => {
             const messages = [...prev.messages];
@@ -283,6 +383,7 @@ export function ChatProvider({ children }: ChatProviderProps) {
                 ...lastMessage,
                 content: accumulatedResponse,
                 toolBlocks: Array.from(toolBlocks.values()),
+                contentBlocks: orderedContentBlocks,
                 metadata: Object.keys(metadata).length > 0 ? metadata : undefined,
               };
             } else {
@@ -292,6 +393,7 @@ export function ChatProvider({ children }: ChatProviderProps) {
                 content: accumulatedResponse,
                 timestamp: Date.now(),
                 toolBlocks: Array.from(toolBlocks.values()),
+                contentBlocks: orderedContentBlocks,
                 metadata: Object.keys(metadata).length > 0 ? metadata : undefined,
               });
             }
@@ -303,8 +405,43 @@ export function ChatProvider({ children }: ChatProviderProps) {
           });
         }
 
+        // Finalize any pending text block AFTER stream completes
+        if (currentTextBlock && currentTextBlock.content) {
+          orderedContent.push({ ...currentTextBlock });
+          currentTextBlock = null;
+        }
+
+        // Build FINAL content blocks with all finalized content
+        const finalContentBlocks: ContentBlock[] = [];
+        for (const item of orderedContent) {
+          if (item.type === 'text' && item.content) {
+            finalContentBlocks.push({
+              type: 'text',
+              content: item.content,
+            });
+          } else if (item.type === 'tool' && item.toolUseId) {
+            const latestToolBlock = toolBlocks.get(item.toolUseId);
+            if (latestToolBlock) {
+              finalContentBlocks.push({
+                type: 'tool',
+                toolBlock: latestToolBlock,
+              });
+            }
+          }
+        }
+
         const elapsed = (Date.now() - startTime) / 1000;
         const totalLatencyMs = Date.now() - startTime;
+
+        console.log('[useChat] ✅ Stream complete!')
+        console.log('[useChat] 📊 Summary:')
+        console.log('  - Accumulated response length:', accumulatedResponse.length)
+        console.log('  - Total tools:', toolBlocks.size)
+        console.log('  - Tool names:', Array.from(toolBlocks.values()).map(t => t.name))
+        console.log('  - Elapsed time:', elapsed.toFixed(2), 's')
+        console.log('[useChat] 📦 Final workflow:', finalContentBlocks.map((b, i) =>
+          b.type === 'tool' ? `[${i}] 🔧 ${b.toolBlock.name}` : `[${i}] 💬 "${b.content.substring(0, 50)}..."`
+        ).join('\n'))
 
         // Finalize message with elapsed time and total latency
         setChatState((prev) => {
@@ -312,6 +449,11 @@ export function ChatProvider({ children }: ChatProviderProps) {
           const lastMessage = messages[messages.length - 1];
 
           if (lastMessage && lastMessage.role === 'assistant') {
+            console.log('[useChat] 💾 Final message state:')
+            console.log('  - Content length:', lastMessage.content.length)
+            console.log('  - Content blocks:', finalContentBlocks.length)
+            console.log('  - Tool blocks:', toolBlocks.size)
+
             // Add total latency to metadata
             const finalMetadata = {
               ...lastMessage.metadata,
@@ -325,6 +467,8 @@ export function ChatProvider({ children }: ChatProviderProps) {
             messages[messages.length - 1] = {
               ...lastMessage,
               elapsed,
+              contentBlocks: finalContentBlocks,
+              toolBlocks: Array.from(toolBlocks.values()),
               metadata: Object.keys(finalMetadata).length > 0 ? finalMetadata : undefined,
             };
           }

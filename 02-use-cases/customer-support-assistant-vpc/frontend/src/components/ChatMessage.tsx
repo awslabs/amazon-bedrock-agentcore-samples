@@ -17,6 +17,16 @@ export const ChatMessage = memo(function ChatMessage({
   const contentWithLinks = makeUrlsClickable(message.content)
   const [showMetadata, setShowMetadata] = useState(false)
 
+  // Debug logging for assistant messages
+  if (!isUser && message.contentBlocks) {
+    console.log('[ChatMessage] Rendering assistant message with', message.contentBlocks.length, 'content blocks')
+    const toolBlocks = message.contentBlocks.filter(b => b.type === 'tool')
+    if (toolBlocks.length > 0) {
+      console.log('[ChatMessage] 🔧 Rendering', toolBlocks.length, 'tool blocks:',
+        toolBlocks.map(b => b.type === 'tool' ? b.toolBlock.name : ''))
+    }
+  }
+
   return (
     <div
       className={cn(
@@ -46,25 +56,54 @@ export const ChatMessage = memo(function ChatMessage({
         </div>
 
         <div className="flex-1 min-w-0">
-          <div
-            className={cn(
-              "whitespace-pre-wrap break-words text-sm leading-relaxed",
-              isStreaming && "relative"
-            )}
-            dangerouslySetInnerHTML={{ __html: contentWithLinks }}
-          />
-
-          {isStreaming && (
-            <span className="inline-block ml-1 text-[#4fc3f7] animate-cursor-blink">▋</span>
+          {/* Always render contentBlocks if available (for ordered display) */}
+          {!isUser && message.contentBlocks && message.contentBlocks.length > 0 && (
+            <div>
+              {message.contentBlocks.map((block, index) => {
+                if (block.type === 'text') {
+                  const textWithLinks = makeUrlsClickable(block.content);
+                  const isLastBlock = index === message.contentBlocks!.length - 1;
+                  return (
+                    <div
+                      key={`text-${index}`}
+                      className={cn(
+                        "whitespace-pre-wrap break-words text-sm leading-relaxed",
+                        index > 0 && "mt-3"
+                      )}
+                    >
+                      <span dangerouslySetInnerHTML={{ __html: textWithLinks }} />
+                      {isStreaming && isLastBlock && (
+                        <span className="inline-block ml-1 text-[#4fc3f7] animate-cursor-blink">▋</span>
+                      )}
+                    </div>
+                  );
+                } else if (block.type === 'tool') {
+                  return (
+                    <div key={`tool-${block.toolBlock.toolUseId}`} className="mt-3">
+                      <ToolUseBlockComponent toolBlock={block.toolBlock} />
+                    </div>
+                  );
+                }
+                return null;
+              })}
+            </div>
           )}
 
-          {/* Tool blocks */}
-          {!isUser && message.toolBlocks && message.toolBlocks.length > 0 && (
-            <div className="mt-3">
-              {message.toolBlocks.map((toolBlock) => (
-                <ToolUseBlockComponent key={toolBlock.toolUseId} toolBlock={toolBlock} />
-              ))}
-            </div>
+          {/* Fallback for user messages or old format */}
+          {(isUser || (!message.contentBlocks || message.contentBlocks.length === 0)) && (
+            <>
+              <div
+                className={cn(
+                  "whitespace-pre-wrap break-words text-sm leading-relaxed",
+                  isStreaming && "relative"
+                )}
+                dangerouslySetInnerHTML={{ __html: contentWithLinks }}
+              />
+
+              {isStreaming && (
+                <span className="inline-block ml-1 text-[#4fc3f7] animate-cursor-blink">▋</span>
+              )}
+            </>
           )}
 
           {/* Metadata section */}

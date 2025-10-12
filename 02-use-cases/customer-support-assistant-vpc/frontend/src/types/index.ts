@@ -147,6 +147,26 @@ export interface ResultEvent {
   result: AgentResult;
 }
 
+// Add message event type
+export interface MessageEvent {
+  message: {
+    role: string;
+    content: Array<{
+      text?: string;
+      toolUse?: {
+        toolUseId: string;
+        name: string;
+        input: Record<string, any>;
+      };
+      toolResult?: {
+        toolUseId: string;
+        status?: string;
+        content: Array<{ text?: string; json?: any }> | string;
+      };
+    }>;
+  };
+}
+
 export type StreamingEvent =
   | MessageStartEvent
   | ContentBlockDeltaEvent
@@ -154,11 +174,17 @@ export type StreamingEvent =
   | ContentBlockStopEvent
   | MessageStopEvent
   | MetadataEvent
+  | MessageEvent
   | DeltaTextEvent
   | CurrentToolUseEvent
   | ToolStreamEvent
   | DataEvent
   | ResultEvent;
+
+// Content block types for ordered display
+export type ContentBlock =
+  | { type: 'text'; content: string }
+  | { type: 'tool'; toolBlock: ToolUseBlock };
 
 // Message types
 export interface Message {
@@ -167,6 +193,7 @@ export interface Message {
   elapsed?: number;
   timestamp?: number;
   toolBlocks?: ToolUseBlock[];
+  contentBlocks?: ContentBlock[]; // Ordered sequence of text and tool blocks
   metadata?: MessageMetadata;
 }
 

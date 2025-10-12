@@ -1,56 +1,57 @@
-import { useState } from 'react'
-import { ChevronDown, ChevronRight, Wrench, Loader2, CheckCircle, XCircle } from 'lucide-react'
-import { cn } from '../utils'
-import type { ToolUseBlock } from '../types'
+import { useState } from 'react';
+import { ChevronDown, ChevronRight, Wrench, Loader2, CheckCircle, XCircle } from 'lucide-react';
+import { cn } from '../utils';
+import type { ToolUseBlock } from '../types';
 
 interface ToolUseBlockProps {
-  toolBlock: ToolUseBlock
+  toolBlock: ToolUseBlock;
 }
 
 export function ToolUseBlockComponent({ toolBlock }: ToolUseBlockProps) {
-  const [showInput, setShowInput] = useState(false)
-  const [showResult, setShowResult] = useState(true)
+  const [showInput, setShowInput] = useState(false);
+  // Expand results by default to show agentic workflow
+  const [showResult, setShowResult] = useState(false);
 
   const statusIcon = {
     loading: <Loader2 className="w-4 h-4 animate-spin text-blue-400" />,
     success: <CheckCircle className="w-4 h-4 text-green-400" />,
     error: <XCircle className="w-4 h-4 text-red-400" />,
-  }[toolBlock.status || 'success']
+  }[toolBlock.status || 'success'];
 
   // Format the result - try to parse JSON from the string
   const formatResult = (result: string) => {
-    if (!result) return ''
+    if (!result) return '';
 
     // Try to extract JSON from the result string
     try {
       // Look for JSON object in the string
-      const jsonMatch = result.match(/\{[\s\S]*\}/)
+      const jsonMatch = result.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
-        const jsonObj = JSON.parse(jsonMatch[0])
+        const jsonObj = JSON.parse(jsonMatch[0]);
 
         // If it has a body field with stringified content, parse that too
         if (jsonObj.body && typeof jsonObj.body === 'string') {
           try {
             // The body might be a JSON string, try to parse and format it
-            const bodyObj = JSON.parse(jsonObj.body)
-            return JSON.stringify(bodyObj, null, 2)
+            const bodyObj = JSON.parse(jsonObj.body);
+            return JSON.stringify(bodyObj, null, 2);
           } catch {
             // If body is not JSON, just return it with newlines converted
-            return jsonObj.body.replace(/\\n/g, '\n')
+            return jsonObj.body.replace(/\\n/g, '\n');
           }
         }
 
-        return JSON.stringify(jsonObj, null, 2)
+        return JSON.stringify(jsonObj, null, 2);
       }
     } catch {
       // If JSON parsing fails, just format the string nicely
     }
 
     // Fallback: convert \n to actual newlines and return as-is
-    return result.replace(/\\n/g, '\n')
-  }
+    return result.replace(/\\n/g, '\n');
+  };
 
-  const formattedResult = toolBlock.result ? formatResult(toolBlock.result) : ''
+  const formattedResult = toolBlock.result ? formatResult(toolBlock.result) : '';
 
   return (
     <div className="my-3 rounded-lg border border-[#3a3f4b] bg-[#1a1d24] overflow-hidden">
@@ -108,5 +109,5 @@ export function ToolUseBlockComponent({ toolBlock }: ToolUseBlockProps) {
         </div>
       )}
     </div>
-  )
+  );
 }
