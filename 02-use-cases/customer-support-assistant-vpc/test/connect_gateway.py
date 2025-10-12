@@ -43,7 +43,7 @@ async def connect_to_gateway(gateway_url: str, prompt: str):
     """Connect to the gateway and send a prompt"""
 
     print(f"🔗 Gateway URL: {gateway_url}")
-
+    print(gateway_access_token)
     # Set up MCP client
     client = MCPClient(
         lambda: streamablehttp_client(

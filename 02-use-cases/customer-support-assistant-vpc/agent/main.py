@@ -1,5 +1,6 @@
 from bedrock_agentcore.identity.auth import requires_access_token
 from bedrock_agentcore.runtime import BedrockAgentCoreApp
+from prompt import SYSTEM_PROMPT
 from context import CustomerSupportContext
 from contextlib import asynccontextmanager
 from datetime import timedelta
@@ -130,7 +131,6 @@ def initialize_clients():
         )
     )
 
-    print(gateway_access_token)
     gateway_client = MCPClient(
         lambda: streamablehttp_client(
             url=gateway_url,
@@ -187,8 +187,10 @@ def initialize_clients():
     agent = Agent(
         model=model,
         tools=gateway_tools + mcp_tools + aurora_tools,
-        system_prompt="You're a helpful customer support assistant",
+        system_prompt=SYSTEM_PROMPT,
     )
+
+    agent.tool.get_table_schema()
 
     CustomerSupportContext.set_agent_ctx(agent)
     logger.info("Agent initialized successfully")

@@ -28,10 +28,11 @@ logger = logging.getLogger(__name__)
 
 
 def main():
-    """CLI tool to invoke a Bedrock agent by name."""
+    """CLI tool for interactive chat with Bedrock AgentCore."""
 
-    parser = argparse.ArgumentParser(description="Agent Runtime CLI Tool")
-    parser.add_argument("--prompt", required=True, help="Prompt to send to the agent")
+    parser = argparse.ArgumentParser(
+        description="Interactive Agent Runtime CLI Tool - Start a conversation with the customer support agent"
+    )
     parser.add_argument(
         "--stack-name",
         default="customer-support-vpc",

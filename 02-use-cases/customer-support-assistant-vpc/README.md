@@ -189,36 +189,45 @@ After deployment, you can test the system using the provided test scripts:
 
 ### Test Agent Runtime
 
-Test the Agent Runtime by sending prompts directly:
+Start an interactive chat session with the Agent Runtime:
 
 ```bash
 # Install dependencies
 uv sync
 
-uv run python test/connect_agent.py --prompt "Get me customer name of customer id CUST001" --stack-name customer-support-vpc
+# Start interactive session
+uv run python test/connect_agent.py --stack-name customer-support-vpc
 ```
+
+This will launch an interactive chat interface where you can have a conversation with the agent. Type your questions and press Enter to send them. Type `q` or `quit` to exit.
 
 **Parameters:**
 
-- `--prompt` (required): The prompt/question to send to the agent
 - `--stack-name` (optional): CloudFormation parent stack name (default: `customer-support-vpc`)
 - `--verbose` / `-v` (optional): Enable verbose logging
 - `--debug` (optional): Enable debug logging
 
-**Example queries:**
+**Example session:**
 
 ```bash
 # Install dependencies
 uv sync
 
-# Query customer information
-uv run python test/connect_agent.py --prompt "Get me customer name of customer id CUST001"
+# Start interactive session
+uv run python test/connect_agent.py
 
-# Check warranty status
-uv run python test/connect_agent.py --prompt "Check warranty status for serial number LAPTOP001A1B2C"
+# Then interact with the agent:
+👤 You: Get me customer name of customer id CUST001
+🤖 Assistant: [Agent response]
 
-# Get product reviews
-uv run python test/connect_agent.py --prompt "Show me reviews for product id 1"
+👤 You: Check warranty status for serial number LAPTOP001A1B2C
+🤖 Assistant: [Agent response]
+
+👤 You: Show me reviews for product id 1
+🤖 Assistant: [Agent response]
+
+👤 You: quit
+👋 Goodbye!
 ```
 
 ### Test MCP Server

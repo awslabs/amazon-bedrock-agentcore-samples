@@ -606,7 +606,7 @@ Resources:
           - Effect: Allow
             Principal: '*'
             Action: '*'
-            Resource: !Sub 'arn:aws:bedrock-agentcore:${AWS::Region}::gateway/*'
+            Resource: '*'
       Tags:
         - Key: Name
           Value: !Sub 'csvpc-${Environment}-BedrockAgentCoreGateway-VPCEndpoint'
