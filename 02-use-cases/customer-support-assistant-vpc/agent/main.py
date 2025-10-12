@@ -190,9 +190,9 @@ def initialize_clients():
         system_prompt=SYSTEM_PROMPT,
     )
 
-    agent.tool.get_table_schema("users")
-    agent.tool.get_table_schema("products")
-    agent.tool.get_table_schema("orders")
+    agent.tool.get_table_schema(table_name="users")
+    agent.tool.get_table_schema(table_name="products")
+    agent.tool.get_table_schema(table_name="orders")
 
     CustomerSupportContext.set_agent_ctx(agent)
     logger.info("Agent initialized successfully")

@@ -99,12 +99,9 @@ export const ChatMessage = memo(function ChatMessage({
                   {message.metadata.metrics && (
                     <div className="mb-2">
                       <div className="font-medium text-gray-400 mb-1">Performance</div>
-                      <div className="text-gray-500 space-y-1">
+                      <div className="text-gray-500">
                         {message.metadata.metrics.totalLatencyMs !== undefined && (
                           <div>Total Latency: {(message.metadata.metrics.totalLatencyMs / 1000).toFixed(2)}s</div>
-                        )}
-                        {message.metadata.metrics.latencyMs > 0 && (
-                          <div>Agent Latency: {(message.metadata.metrics.latencyMs / 1000).toFixed(2)}s</div>
                         )}
                       </div>
                     </div>

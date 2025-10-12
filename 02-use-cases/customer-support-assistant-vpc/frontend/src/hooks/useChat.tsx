@@ -87,13 +87,48 @@ export function ChatProvider({ children }: ChatProviderProps) {
           if ('event' in event && event.event && typeof event.event === 'object') {
             const innerEvent = event.event as any;
 
+            // Handle contentBlockStart events (tool invocation start)
+            if ('contentBlockStart' in innerEvent) {
+              const start = innerEvent.contentBlockStart?.start;
+              if (start?.toolUse) {
+                const { toolUseId, name } = start.toolUse;
+                console.log('[useChat] 🔧 Tool started:', name, toolUseId)
+                toolBlocks.set(toolUseId, {
+                  toolUseId,
+                  name,
+                  input: {},
+                  status: 'loading',
+                });
+              }
+            }
+
             // Handle contentBlockDelta events
             if ('contentBlockDelta' in innerEvent) {
               const delta = innerEvent.contentBlockDelta?.delta;
+
+              // Handle text delta
               if (delta?.text) {
                 console.log('[useChat] Adding text:', delta.text)
                 accumulatedResponse += delta.text;
               }
+
+              // Handle tool input delta (accumulate tool input)
+              if (delta?.toolUse?.input) {
+                console.log('[useChat] Tool input chunk received')
+                // Tool inputs are accumulated in the delta - we'll get the final input later
+              }
+            }
+
+            // Handle contentBlockStop events (tool execution complete)
+            if ('contentBlockStop' in innerEvent) {
+              const contentBlockIndex = innerEvent.contentBlockStop?.contentBlockIndex;
+              console.log('[useChat] Content block stopped at index:', contentBlockIndex)
+              // Mark all loading tools as success when content block stops
+              toolBlocks.forEach((tool, id) => {
+                if (tool.status === 'loading') {
+                  toolBlocks.set(id, { ...tool, status: 'success' });
+                }
+              });
             }
 
             // Handle messageStop events
@@ -127,22 +162,72 @@ export function ChatProvider({ children }: ChatProviderProps) {
             accumulatedResponse += event.data;
           }
 
-          // Handle current_tool_use events
+          // Handle message event (contains complete tool information)
+          if ('message' in event) {
+            const message = event.message as any;
+            if (message?.content && Array.isArray(message.content)) {
+              message.content.forEach((item: any) => {
+                // Handle tool use in message content
+                if (item.toolUse) {
+                  const { toolUseId, name, input } = item.toolUse;
+                  const existing = toolBlocks.get(toolUseId);
+                  if (existing) {
+                    // Update with complete input
+                    toolBlocks.set(toolUseId, {
+                      ...existing,
+                      input: input || {},
+                      status: 'success',
+                    });
+                  }
+                }
+                // Handle tool result in message content
+                if (item.toolResult) {
+                  const { toolUseId, content } = item.toolResult;
+                  const existing = toolBlocks.get(toolUseId);
+                  if (existing) {
+                    // Add result to tool block
+                    const resultText = Array.isArray(content)
+                      ? content.map(c => c.text || c.json || '').join('\n')
+                      : typeof content === 'string' ? content : JSON.stringify(content);
+                    toolBlocks.set(toolUseId, {
+                      ...existing,
+                      result: resultText,
+                      status: 'success',
+                    });
+                  }
+                }
+              });
+            }
+          }
+
+          // Handle current_tool_use events (if backend sends properly formatted JSON)
           if ('current_tool_use' in event) {
             const toolUse = event.current_tool_use as any;
             const { toolUseId, name, input } = toolUse;
-            toolBlocks.set(toolUseId, {
-              toolUseId,
-              name,
-              input: input || {},
-              status: 'loading',
-            });
+            console.log('[useChat] 🔧 current_tool_use:', name)
+            const existing = toolBlocks.get(toolUseId);
+            if (existing) {
+              // Update existing tool with input
+              toolBlocks.set(toolUseId, {
+                ...existing,
+                input: input || {},
+              });
+            } else {
+              // Create new tool block
+              toolBlocks.set(toolUseId, {
+                toolUseId,
+                name,
+                input: input || {},
+                status: 'loading',
+              });
+            }
           }
 
           // Handle tool stream events (results)
           if ('tool_stream_event' in event) {
             const toolStreamEvent = event.tool_stream_event as any;
             const { tool_use, data } = toolStreamEvent;
+            console.log('[useChat] 📤 tool_stream_event data:', data)
             const existing = toolBlocks.get(tool_use.toolUseId);
             if (existing) {
               toolBlocks.set(tool_use.toolUseId, {
