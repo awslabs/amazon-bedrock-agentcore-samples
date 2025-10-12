@@ -1,11 +1,29 @@
+import { useState, useEffect } from 'react'
 import { LogOut } from 'lucide-react'
 import { Button } from './ui/button'
-import { useAuth } from '../hooks/useAuth'
 import { useChat } from '../hooks/useChat'
+import { fetchAuthSession } from 'aws-amplify/auth'
 
-export function Sidebar() {
-  const { logout, tokens } = useAuth()
+interface SidebarProps {
+  signOut: () => void
+}
+
+export function Sidebar({ signOut }: SidebarProps) {
   const { sessionId, agentArn } = useChat()
+  const [accessToken, setAccessToken] = useState<string>('')
+
+  useEffect(() => {
+    const getToken = async () => {
+      try {
+        const session = await fetchAuthSession()
+        const token = session.tokens?.accessToken?.toString() || ''
+        setAccessToken(token)
+      } catch (error) {
+        console.error('Error fetching auth session:', error)
+      }
+    }
+    getToken()
+  }, [])
 
   return (
     <aside className="w-80 bg-[#1a1e27] border-r border-gray-700 flex flex-col overflow-hidden">
@@ -18,8 +36,8 @@ export function Sidebar() {
         <div>
           <h3 className="text-sm font-medium text-gray-400 mb-2">Access Token</h3>
           <div className="bg-[#23272f] border border-gray-600 rounded-lg p-3 text-xs text-gray-300 font-mono break-all max-h-32 overflow-y-auto">
-            {tokens?.access_token ? (
-              tokens.access_token.substring(0, 100) + '...'
+            {accessToken ? (
+              accessToken.substring(0, 100) + '...'
             ) : (
               'No token'
             )}
@@ -45,7 +63,7 @@ export function Sidebar() {
 
       <div className="p-4 border-t border-gray-700">
         <Button
-          onClick={logout}
+          onClick={signOut}
           variant="destructive"
           className="w-full flex items-center justify-center gap-2"
         >

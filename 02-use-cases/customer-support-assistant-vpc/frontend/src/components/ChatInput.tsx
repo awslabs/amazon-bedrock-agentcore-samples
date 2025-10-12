@@ -1,7 +1,7 @@
 import { useState, KeyboardEvent } from 'react'
 import { Send } from 'lucide-react'
 import { Button } from './ui/button'
-import { cn } from '../lib/utils'
+import { cn } from '../utils'
 
 interface ChatInputProps {
   onSend: (message: string) => void

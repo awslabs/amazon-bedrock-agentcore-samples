@@ -1,7 +1,12 @@
 import { Sidebar } from './Sidebar'
 import { ChatContainer } from './ChatContainer'
 
-export function ChatPage() {
+interface ChatPageProps {
+  signOut: () => void
+  user: any
+}
+
+export function ChatPage({ signOut, user }: ChatPageProps) {
   return (
     <div className="min-h-screen bg-[#181c24] flex flex-col">
       {/* Header */}
@@ -14,8 +19,8 @@ export function ChatPage() {
 
       {/* Main Content */}
       <div className="flex-1 flex overflow-hidden">
-        <Sidebar />
-        <ChatContainer />
+        <Sidebar signOut={signOut} />
+        <ChatContainer user={user} />
       </div>
     </div>
   )

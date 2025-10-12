@@ -1,6 +1,6 @@
 import { memo } from 'react'
 import { Bot, User } from 'lucide-react'
-import { cn, makeUrlsClickable, formatElapsedTime } from '../lib/utils'
+import { cn, makeUrlsClickable, formatElapsedTime } from '../utils'
 import type { Message } from '../types'
 
 interface ChatMessageProps {

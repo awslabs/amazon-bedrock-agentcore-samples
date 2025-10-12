@@ -134,8 +134,10 @@ Resources:
         - http://localhost:8501/
         - https://example.com/auth/callback
         - http://localhost:8080/callback
+        - http://localhost:5173/
       LogoutURLs:
         - http://localhost:8501/
+        - http://localhost:5173/
       SupportedIdentityProviders:
         - COGNITO
       AccessTokenValidity: 60

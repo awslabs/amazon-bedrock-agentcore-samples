@@ -1,16 +1,34 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ChatMessage } from './ChatMessage'
 import { ChatInput } from './ChatInput'
 import { ScrollArea } from './ui/scroll-area'
 import { useChat } from '../hooks/useChat'
-import { useAuth } from '../hooks/useAuth'
+import { fetchAuthSession } from 'aws-amplify/auth'
 import { Loader2 } from 'lucide-react'
 
-export function ChatContainer() {
+interface ChatContainerProps {
+  user: any
+}
+
+export function ChatContainer({ user }: ChatContainerProps) {
   const { messages, sendMessage, isStreaming, isInitialized, initializationError, initializeConversation } = useChat()
-  const { tokens, userClaims } = useAuth()
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const hasInitialized = useRef(false)
+  const [accessToken, setAccessToken] = useState<string>('')
+
+  // Fetch access token
+  useEffect(() => {
+    const getToken = async () => {
+      try {
+        const session = await fetchAuthSession()
+        const token = session.tokens?.accessToken?.toString() || ''
+        setAccessToken(token)
+      } catch (error) {
+        console.error('Error fetching auth session:', error)
+      }
+    }
+    getToken()
+  }, [])
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -23,25 +41,26 @@ export function ChatContainer() {
       isInitialized &&
       !hasInitialized.current &&
       messages.length === 0 &&
-      tokens &&
-      userClaims
+      accessToken &&
+      user
     ) {
       hasInitialized.current = true
+      const email = user.signInDetails?.loginId || user.username
       initializeConversation(
-        userClaims.email,
-        tokens.access_token,
-        userClaims['cognito:username']
+        email,
+        accessToken,
+        user.username
       )
     }
-  }, [isInitialized, messages.length, tokens, userClaims, initializeConversation])
+  }, [isInitialized, messages.length, accessToken, user, initializeConversation])
 
   const handleSendMessage = async (message: string) => {
-    if (!tokens || !userClaims) return
+    if (!accessToken || !user) return
 
     await sendMessage(
       message,
-      tokens.access_token,
-      userClaims['cognito:username']
+      accessToken,
+      user.username
     )
   }
 

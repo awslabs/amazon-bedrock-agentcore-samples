@@ -277,8 +277,7 @@ async def strands_agent_bedrock(payload: dict, context) -> str:
 
     # Invoke agents
     async for event in agent.stream_async(user_message):
-        if "data" in event:
-            yield event["data"]
+        yield event
 
 
 if __name__ == "__main__":
