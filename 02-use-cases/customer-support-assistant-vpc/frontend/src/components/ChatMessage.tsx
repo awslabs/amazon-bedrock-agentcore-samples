@@ -1,7 +1,8 @@
-import { memo } from 'react'
-import { Bot, User } from 'lucide-react'
+import { memo, useState } from 'react'
+import { Bot, User, ChevronDown, ChevronRight, Info } from 'lucide-react'
 import { cn, makeUrlsClickable, formatElapsedTime } from '../utils'
 import type { Message } from '../types'
+import { ToolUseBlockComponent } from './ToolUseBlock'
 
 interface ChatMessageProps {
   message: Message
@@ -14,6 +15,7 @@ export const ChatMessage = memo(function ChatMessage({
 }: ChatMessageProps) {
   const isUser = message.role === 'user'
   const contentWithLinks = makeUrlsClickable(message.content)
+  const [showMetadata, setShowMetadata] = useState(false)
 
   return (
     <div
@@ -56,7 +58,101 @@ export const ChatMessage = memo(function ChatMessage({
             <span className="inline-block ml-1 text-[#4fc3f7] animate-cursor-blink">▋</span>
           )}
 
-          {!isUser && message.elapsed !== undefined && !isStreaming && (
+          {/* Tool blocks */}
+          {!isUser && message.toolBlocks && message.toolBlocks.length > 0 && (
+            <div className="mt-3">
+              {message.toolBlocks.map((toolBlock) => (
+                <ToolUseBlockComponent key={toolBlock.toolUseId} toolBlock={toolBlock} />
+              ))}
+            </div>
+          )}
+
+          {/* Metadata section */}
+          {!isUser && message.metadata && !isStreaming && (
+            <div className="mt-3">
+              <button
+                onClick={() => setShowMetadata(!showMetadata)}
+                className="flex items-center gap-2 text-xs text-gray-500 hover:text-gray-400 transition-colors"
+              >
+                {showMetadata ? (
+                  <ChevronDown className="w-3 h-3" />
+                ) : (
+                  <ChevronRight className="w-3 h-3" />
+                )}
+                <Info className="w-3 h-3" />
+                <span>Metadata</span>
+              </button>
+
+              {showMetadata && (
+                <div className="mt-2 p-3 bg-[#1a1d24] rounded-lg border border-[#3a3f4b] text-xs">
+                  {message.metadata.usage && (
+                    <div className="mb-2">
+                      <div className="font-medium text-gray-400 mb-1">Token Usage</div>
+                      <div className="text-gray-500 space-y-1">
+                        <div>Input: {message.metadata.usage.inputTokens}</div>
+                        <div>Output: {message.metadata.usage.outputTokens}</div>
+                        <div>Total: {message.metadata.usage.totalTokens}</div>
+                      </div>
+                    </div>
+                  )}
+
+                  {message.metadata.metrics && (
+                    <div className="mb-2">
+                      <div className="font-medium text-gray-400 mb-1">Performance</div>
+                      <div className="text-gray-500 space-y-1">
+                        {message.metadata.metrics.totalLatencyMs !== undefined && (
+                          <div>Total Latency: {(message.metadata.metrics.totalLatencyMs / 1000).toFixed(2)}s</div>
+                        )}
+                        {message.metadata.metrics.latencyMs > 0 && (
+                          <div>Agent Latency: {(message.metadata.metrics.latencyMs / 1000).toFixed(2)}s</div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {message.metadata.toolMetrics && Object.keys(message.metadata.toolMetrics).length > 0 && (
+                    <div className="mb-2">
+                      <div className="font-medium text-gray-400 mb-1">Tool Metrics</div>
+                      {Object.entries(message.metadata.toolMetrics).map(([toolName, metrics]) => (
+                        <div key={toolName} className="text-gray-500 mb-1">
+                          <div className="font-medium">{toolName}</div>
+                          <div className="ml-2 space-y-0.5">
+                            <div>Invocations: {metrics.invocations}</div>
+                            <div>Avg Duration: {metrics.average_duration_seconds.toFixed(3)}s</div>
+                            <div>Total Duration: {metrics.total_duration_seconds.toFixed(3)}s</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {message.metadata.cycleDurations && message.metadata.cycleDurations.length > 0 && (
+                    <div>
+                      <div className="font-medium text-gray-400 mb-1">Event Loop Cycles</div>
+                      <div className="text-gray-500">
+                        Cycles: {message.metadata.cycleDurations.length}
+                        <div className="ml-2">
+                          {message.metadata.cycleDurations.map((duration, idx) => (
+                            <div key={idx}>Cycle {idx + 1}: {duration.toFixed(3)}s</div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {message.metadata.stopReason && (
+                    <div className="mt-2 pt-2 border-t border-[#3a3f4b]">
+                      <div className="font-medium text-gray-400">Stop Reason</div>
+                      <div className="text-gray-500">{message.metadata.stopReason}</div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Elapsed time for simple responses */}
+          {!isUser && message.elapsed !== undefined && !isStreaming && !message.metadata && (
             <div className="mt-2 text-xs text-gray-500">
               ⏱️ Response time: {formatElapsedTime(message.elapsed)}
             </div>
