@@ -7,6 +7,12 @@ This folder contains advanced observability concepts and techniques for Amazon B
 ### 01-custom-span-creation/
 Learn how to create custom spans for enhanced tracing and monitoring of your agent workflows.
 
+### 02-enable-transaction-search/
+Learn how to enable transaction search using CLI and CloudFormation
+
+### 03-data-protection/
+Learn how detect and protect sensitive information using CloudWatch Logs data protection policies and Bedrock Guardrails for Agents built on AgentCore
+
 
 ## 🚀 Getting Started
 
