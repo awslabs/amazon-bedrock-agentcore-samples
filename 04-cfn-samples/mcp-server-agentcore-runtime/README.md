@@ -21,9 +21,28 @@ When hosting tools, the Amazon Bedrock AgentCore Python SDK implements the [Stat
 
 ### Architecture
 
+![MCP Server AgentCore Runtime Architecture](architecture.png)
+
 This CloudFormation template deploys a simple MCP server with 3 tools: `add_numbers`, `multiply_numbers`, and `greet_user`.
 
-![MCP architecture](../../01-tutorials/01-AgentCore-runtime/02-hosting-MCP-server/images/hosting_mcp_server.png)
+The architecture consists of:
+
+- **User/MCP Client**: Sends requests to the MCP server with JWT authentication
+- **Amazon Cognito**: Provides JWT-based authentication
+  - User Pool with pre-created test user (testuser/MyPassword123!)
+  - User Pool Client for application access
+- **AWS CodeBuild**: Builds the ARM64 Docker container image with the MCP server
+- **Amazon ECR Repository**: Stores the container image
+- **AgentCore Runtime**: Hosts the MCP Server
+  - **MCP Server**: Exposes three tools via HTTP transport
+    - `add_numbers`: Adds two numbers
+    - `multiply_numbers`: Multiplies two numbers
+    - `greet_user`: Greets a user by name
+  - Validates JWT tokens from Cognito
+  - Processes MCP tool invocations
+- **IAM Roles**: 
+  - IAM role for CodeBuild (builds and pushes images)
+  - IAM role for AgentCore Runtime (runtime permissions)
 
 ### Key Features
 
@@ -160,4 +179,3 @@ CodeBuild automatically:
 - [CloudFormation Template Reference](https://docs.aws.amazon.com/AWSCloudFormation/latest/TemplateReference/AWS_BedrockAgentCore.html)
 - [Original Tutorial](../../01-tutorials/01-AgentCore-runtime/02-hosting-MCP-server/)
 - [Detailed Technical Guide](DETAILED_GUIDE.md)
-
