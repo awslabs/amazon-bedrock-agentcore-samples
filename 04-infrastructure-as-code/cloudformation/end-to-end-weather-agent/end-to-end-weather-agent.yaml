@@ -117,7 +117,7 @@ Resources:
   ResultsBucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: !Sub "${AWS::StackName}-agentcore-cfn-results"
+      BucketName: !Sub "${AWS::StackName}-results-${AWS::AccountId}"
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true

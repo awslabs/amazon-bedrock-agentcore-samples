@@ -8,7 +8,7 @@ set -e
 # Configuration
 STACK_NAME="${1:-weather-agent-demo}"
 REGION="${2:-us-west-2}"
-TEMPLATE_FILE="template.yaml"
+TEMPLATE_FILE="end-to-end-weather-agent.yaml"
 
 echo "=========================================="
 echo "Deploying Weather Agent Runtime"

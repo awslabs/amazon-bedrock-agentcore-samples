@@ -12,7 +12,7 @@ These CloudFormation templates enable you to:
 
 ## 📚 Available Samples
 
-### 01. [Hosting MCP Server on AgentCore Runtime](./mcp-server-agentcore-runtime/)
+### 01. [Hosting MCP Server on AgentCore Runtime](./cloudformation/mcp-server-agentcore-runtime/)
 
 Deploy a complete MCP (Model Context Protocol) server with automated Docker image building and JWT authentication.
 
@@ -34,14 +34,14 @@ Deploy a complete MCP (Model Context Protocol) server with automated Docker imag
 
 **Quick start:**
 ```bash
-cd mcp-server-agentcore-runtime
+cd cloudformation/mcp-server-agentcore-runtime
 ./deploy.sh
 ./test.sh
 ```
 
 ---
 
-### 02. [Basic Agent Runtime](./basic-runtime/)
+### 02. [Basic Agent Runtime](./cloudformation/basic-runtime/)
 
 Deploy a basic AgentCore Runtime with a simple Strands agent - no additional tools or memory.
 
@@ -61,14 +61,14 @@ Deploy a basic AgentCore Runtime with a simple Strands agent - no additional too
 ```bash
 aws cloudformation create-stack \
   --stack-name basic-agent-demo \
-  --template-body file://basic-runtime/template.yaml \
+  --template-body file://cloudformation/basic-runtime/template.yaml \
   --capabilities CAPABILITY_IAM \
   --region us-east-1
 ```
 
 ---
 
-### 03. [Multi-Agent Runtime](./multi-agent-runtime/)
+### 03. [Multi-Agent Runtime](./cloudformation/multi-agent-runtime/)
 
 Deploy a multi-agent system where Agent1 (orchestrator) can invoke Agent2 (specialist) for complex tasks.
 
@@ -90,14 +90,14 @@ Deploy a multi-agent system where Agent1 (orchestrator) can invoke Agent2 (speci
 ```bash
 aws cloudformation create-stack \
   --stack-name multi-agent-demo \
-  --template-body file://multi-agent-runtime/template.yaml \
+  --template-body file://cloudformation/multi-agent-runtime/template.yaml \
   --capabilities CAPABILITY_IAM \
   --region us-east-1
 ```
 
 ---
 
-### 04. [Weather Agent with Tools and Memory](./weather-agent-runtime/)
+### 04. [End-to-End Weather Agent with Tools and Memory](./cloudformation/end-to-end-weather-agent/)
 
 Deploy a complete weather-based activity planning agent with browser automation, code interpreter, and memory.
 
@@ -126,7 +126,7 @@ Deploy a complete weather-based activity planning agent with browser automation,
 ```bash
 aws cloudformation create-stack \
   --stack-name weather-agent-demo \
-  --template-body file://weather-agent-runtime/template.yaml \
+  --template-body file://cloudformation/end-to-end-weather-agent/end-to-end-weather-agent.yaml \
   --capabilities CAPABILITY_IAM \
   --region us-west-2
 ```
@@ -182,23 +182,24 @@ Default values:
 ## Repository Structure
 
 ```
-04-cfn-samples/
-├── README.md                          # This file
-├── mcp-server-agentcore-runtime/     # MCP Server sample
-│   ├── deploy.sh                      # Deployment script
-│   ├── test.sh                        # Testing script
-│   ├── cleanup.sh                     # Cleanup script
-│   ├── mcp-server-template.yaml       # CloudFormation template
-│   ├── get_token.py                   # Authentication helper
-│   ├── test_mcp_server.py             # MCP client test
-│   ├── README.md                      # Sample documentation
-│   └── DETAILED_GUIDE.md              # Technical deep-dive
-├── basic-runtime/                     # Basic agent sample
-│   └── template.yaml                  # CloudFormation template
-├── multi-agent-runtime/               # Multi-agent sample
-│   └── template.yaml                  # CloudFormation template
-└── weather-agent-runtime/             # Weather agent sample
-    └── template.yaml                  # CloudFormation template
+04-infrastructure-as-code/
+├── README.md                                    # This file
+└── cloudformation/                              # CloudFormation samples
+    ├── mcp-server-agentcore-runtime/           # MCP Server sample
+    │   ├── deploy.sh                            # Deployment script
+    │   ├── test.sh                              # Testing script
+    │   ├── cleanup.sh                           # Cleanup script
+    │   ├── mcp-server-template.yaml             # CloudFormation template
+    │   ├── get_token.py                         # Authentication helper
+    │   ├── test_mcp_server.py                   # MCP client test
+    │   ├── README.md                            # Sample documentation
+    │   └── DETAILED_GUIDE.md                    # Technical deep-dive
+    ├── basic-runtime/                           # Basic agent sample
+    │   └── template.yaml                        # CloudFormation template
+    ├── multi-agent-runtime/                     # Multi-agent sample
+    │   └── template.yaml                        # CloudFormation template
+    └── end-to-end-weather-agent/                # Weather agent sample
+        └── end-to-end-weather-agent.yaml        # CloudFormation template
 ```
 
 
@@ -242,5 +243,3 @@ aws service-quotas list-service-quotas \
 - [CloudFormation Best Practices](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/best-practices.html)
 - [CloudFormation Template Reference](https://docs.aws.amazon.com/AWSCloudFormation/latest/TemplateReference/AWS_BedrockAgentCore.html)
 - [Original Tutorials](../01-tutorials/)
-
-

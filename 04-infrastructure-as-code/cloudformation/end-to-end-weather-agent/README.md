@@ -1,5 +1,4 @@
-# Weather-Based Activity Planning Agent
-ded in this repository are for experimental and educational purposes only. They demonstrate concepts and techniques but are not intended for direct use in production environments.
+# End-to-End Weather Agent with Tools and Memory
 
 This CloudFormation template deploys a complete, production-ready Amazon Bedrock AgentCore Runtime with a sophisticated weather-based activity planning agent. This demonstrates the full power of AgentCore by integrating Browser tool, Code Interpreter, Memory, and S3 storage in a single deployment.
 
@@ -52,62 +51,30 @@ The Weather Activity Planner agent can:
 
 ## Architecture
 
-```
-┌──────────────────────────────────────────────────────────────────────┐
-│                       CloudFormation Stack                            │
-│                                                                       │
-│  ┌─────────────────────────────────────────────────────────────────┐ │
-│  │                    AgentCore Runtime                            │ │
-│  │  ┌───────────────────────────────────────────────────────────┐ │ │
-│  │  │         Weather Activity Planner Agent                    │ │ │
-│  │  │                                                           │ │ │
-│  │  │  Workflow:                                                │ │ │
-│  │  │  1. Extract city from query                              │ │ │
-│  │  │  2. Scrape weather data (Browser Tool) ──────────┐       │ │ │
-│  │  │  3. Generate analysis code (LLM)                 │       │ │ │
-│  │  │  4. Execute code (Code Interpreter) ─────────┐   │       │ │ │
-│  │  │  5. Get preferences (Memory) ────────────┐   │   │       │ │ │
-│  │  │  6. Generate recommendations             │   │   │       │ │ │
-│  │  │  7. Store in S3 (use_aws tool) ──────┐   │   │   │       │ │ │
-│  │  └──────────────────────────────────────│───│───│───│───────┘ │ │
-│  └───────────────────────────────────────────│───│───│───│─────────┘ │
-│                                               │   │   │   │           │
-│  ┌────────────────────────────────────────────│───│───│───│─────────┐ │
-│  │  Browser Tool                              │   │   │   │         │ │
-│  │  - WebSocket connection                    │   │   │   │         │ │
-│  │  - Puppeteer automation                    │   │   │   │         │ │
-│  │  - Weather.gov scraping                    │   │   │   │         │ │
-│  └────────────────────────────────────────────┘   │   │   │         │ │
-│                                                    │   │   │           │
-│  ┌─────────────────────────────────────────────────│───│───│────────┐ │
-│  │  Code Interpreter Tool                         │   │   │        │ │
-│  │  - Weather classification logic                │   │   │        │ │
-│  │  - Data analysis                               │   │   │        │ │
-│  └────────────────────────────────────────────────┘   │   │        │ │
-│                                                        │   │          │
-│  ┌──────────────────────────────────────────────────────│───│───────┐ │
-│  │  Memory                                             │   │       │ │
-│  │  - Activity preferences by weather type            │   │       │ │
-│  │  - User session data                               │   │       │ │
-│  │  - 30-day retention                                │   │       │ │
-│  └────────────────────────────────────────────────────┘   │       │ │
-│                                                            │         │
-│  ┌──────────────────────────────────────────────────────────│──────┐ │
-│  │  S3 Bucket (Results Storage)                            │      │ │
-│  │  - Markdown activity recommendations                    │      │ │
-│  │  - Versioning enabled                                   │      │ │
-│  │  - Private access only                                  │      │ │
-│  └─────────────────────────────────────────────────────────┘      │ │
-│                                                                      │
-│  ┌─────────────────────────────────────────────────────────────────┐ │
-│  │  Supporting Infrastructure                                      │ │
-│  │  - ECR Repository (ARM64 container image)                       │ │
-│  │  - CodeBuild (automated image building)                         │ │
-│  │  - Lambda (custom resources & memory initialization)            │ │
-│  │  - IAM Roles (comprehensive permissions)                        │ │
-│  └─────────────────────────────────────────────────────────────────┘ │
-└──────────────────────────────────────────────────────────────────────┘
-```
+![End-to-End Weather Agent Architecture](architecture.png)
+
+The architecture demonstrates a complete AgentCore deployment with multiple integrated tools:
+
+**Core Components:**
+- **User**: Sends weather-based activity planning queries
+- **AWS CodeBuild**: Builds the ARM64 Docker container image with the agent code
+- **Amazon ECR Repository**: Stores the container image
+- **AgentCore Runtime**: Hosts the Weather Activity Planner Agent
+  - **Weather Agent**: Strands agent that orchestrates multiple tools
+  - Invokes Amazon Bedrock LLMs for reasoning and code generation
+- **Browser Tool**: Web automation for scraping weather data from weather.gov
+- **Code Interpreter Tool**: Executes Python code for weather analysis
+- **Memory**: Stores user activity preferences (30-day retention)
+- **S3 Bucket**: Stores generated activity recommendations
+- **IAM Roles**: Comprehensive permissions for all components
+
+**Workflow:**
+1. User sends query: "What should I do this weekend in Richmond VA?"
+2. Agent extracts city and uses Browser Tool to scrape 8-day forecast
+3. Agent generates Python code and uses Code Interpreter to classify weather
+4. Agent retrieves user preferences from Memory
+5. Agent generates personalized recommendations
+6. Agent stores results in S3 bucket using use_aws tool
 
 ## Prerequisites
 
@@ -127,9 +94,6 @@ The Weather Activity Planner agent can:
 
 3. **Bedrock Model Access**: Enable access to Amazon Bedrock models in your AWS region
    - Navigate to [Amazon Bedrock Console](https://console.aws.amazon.com/bedrock/)
-   - Go to "Model access" and request access to:
-     - Anthropic Claude 3.7 Sonnet (for browser automation)
-     - Anthropic Claude 3.5 Sonnet or Haiku (for agent reasoning)
    - [Bedrock Model Access Guide](https://docs.aws.amazon.com/bedrock/latest/userguide/model-access.html)
 
 4. **Required Permissions**: Your AWS user/role needs permissions for:
@@ -164,7 +128,7 @@ The script will:
 # Deploy the stack
 aws cloudformation create-stack \
   --stack-name weather-agent-demo \
-  --template-body file://template.yaml \
+  --template-body file://end-to-end-weather-agent.yaml \
   --capabilities CAPABILITY_NAMED_IAM \
   --region us-west-2
 
@@ -184,7 +148,7 @@ aws cloudformation describe-stacks \
 
 1. Navigate to [CloudFormation Console](https://console.aws.amazon.com/cloudformation/)
 2. Click "Create stack" → "With new resources"
-3. Upload the `template.yaml` file
+3. Upload the `end-to-end-weather-agent.yaml` file
 4. Enter stack name: `weather-agent-demo`
 5. Review parameters (or use defaults)
 6. Check "I acknowledge that AWS CloudFormation might create IAM resources"
@@ -344,10 +308,12 @@ chmod +x cleanup.sh
 ./cleanup.sh
 ```
 
+**Note**: If cleanup fails due to active browser sessions, see the AWS CLI cleanup method below for manual session termination.
+
 ### Using AWS CLI
 
 ```bash
-# Empty the S3 bucket first (required before deletion)
+# Step 1: Empty the S3 bucket (required before deletion)
 BUCKET_NAME=$(aws cloudformation describe-stacks \
   --stack-name weather-agent-demo \
   --region us-west-2 \
@@ -356,7 +322,27 @@ BUCKET_NAME=$(aws cloudformation describe-stacks \
 
 aws s3 rm s3://$BUCKET_NAME --recursive
 
-# Delete the stack
+# Step 2: Terminate any active browser sessions
+# Get the Browser ID
+BROWSER_ID=$(aws cloudformation describe-stacks \
+  --stack-name weather-agent-demo \
+  --region us-west-2 \
+  --query 'Stacks[0].Outputs[?OutputKey==`BrowserId`].OutputValue' \
+  --output text)
+
+# List active sessions
+aws bedrock-agentcore list-browser-sessions \
+  --browser-id $BROWSER_ID \
+  --region us-west-2
+
+# Terminate each active session (replace SESSION_ID with actual session ID from list command)
+# Repeat this command for each active session
+aws bedrock-agentcore terminate-browser-session \
+  --browser-id $BROWSER_ID \
+  --session-id SESSION_ID \
+  --region us-west-2
+
+# Step 3: Delete the stack
 aws cloudformation delete-stack \
   --stack-name weather-agent-demo \
   --region us-west-2
@@ -367,14 +353,19 @@ aws cloudformation wait stack-delete-complete \
   --region us-west-2
 ```
 
+**Important**: Browser sessions are automatically created when the agent uses the browser tool. Always terminate active sessions before deleting the stack to avoid deletion failures.
+
 ### Using AWS Console
 
 1. Navigate to [S3 Console](https://console.aws.amazon.com/s3/)
-2. Find the bucket (name starts with `weather-agent-demo-agentcore-cfn-results`)
+2. Find the bucket (name format: `<stack-name>-results-<account-id>`, e.g., `weather-agent-demo-results-123456789012`)
 3. Empty the bucket
-4. Navigate to [CloudFormation Console](https://console.aws.amazon.com/cloudformation/)
-5. Select the `weather-agent-demo` stack
-6. Click "Delete"
-7. Confirm deletion
-
-
+4. Navigate to [Bedrock AgentCore Console](https://console.aws.amazon.com/bedrock-agentcore/)
+5. Go to "Browsers" in the left navigation
+6. Find your browser (name starts with `weather_agent_demo_browser`)
+7. Click on the browser name
+8. In the "Sessions" tab, terminate any active sessions
+9. Navigate to [CloudFormation Console](https://console.aws.amazon.com/cloudformation/)
+10. Select the `weather-agent-demo` stack
+11. Click "Delete"
+12. Confirm deletion

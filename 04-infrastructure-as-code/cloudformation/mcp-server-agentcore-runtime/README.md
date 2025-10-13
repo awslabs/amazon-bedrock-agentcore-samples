@@ -90,7 +90,7 @@ The CloudFormation stack creates:
 ### 1. Deploy the Stack
 
 ```bash
-cd 04-cfn-samples/mcp-server-agentcore-runtime
+cd 04-infrastructure-as-code/cloudformation/mcp-server-agentcore-runtime
 ./deploy.sh
 ```
 
