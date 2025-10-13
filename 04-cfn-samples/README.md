@@ -201,47 +201,6 @@ Default values:
     └── template.yaml                  # CloudFormation template
 ```
 
-## Why CloudFormation?
-
-**Benefits:**
-- ✅ **Repeatable** - Deploy identical infrastructure across environments
-- ✅ **Version Controlled** - Track infrastructure changes in Git
-- ✅ **Automated** - No manual console clicking
-- ✅ **Rollback** - Automatic rollback on failures
-- ✅ **Cost Tracking** - Tag resources for cost allocation
-- ✅ **Best Practices** - Built-in security and monitoring
-
-**vs. Manual Deployment:**
-- Manual: 30+ console clicks, error-prone, hard to replicate
-- CloudFormation: One command, consistent, auditable
-
-## Cost Optimization
-
-All samples include:
-- Cost estimates in their documentation
-- Resource tagging for cost tracking
-- Cleanup commands to avoid unnecessary charges
-- Recommendations for production optimization
-
-**Approximate Monthly Costs:**
-- Basic Runtime: ~$50-100
-- MCP Server: ~$50-100
-- Multi-Agent: ~$100-200
-- Weather Agent: ~$100-150
-
-**Note:** Costs vary by region and usage. Delete stacks when not in use.
-
-## Security Best Practices
-
-All templates implement:
-- Least-privilege IAM roles
-- Encrypted secrets management
-- No hardcoded credentials
-- VPC support for network isolation
-- CloudTrail integration for auditing
-- Resource tagging for governance
-
-## Troubleshooting
 
 ### Stack Creation Fails
 
@@ -284,19 +243,4 @@ aws service-quotas list-service-quotas \
 - [CloudFormation Template Reference](https://docs.aws.amazon.com/AWSCloudFormation/latest/TemplateReference/AWS_BedrockAgentCore.html)
 - [Original Tutorials](../01-tutorials/)
 
-## Contributing
 
-We welcome contributions! To add a new CloudFormation sample:
-
-1. Create a new directory: `<sample-name>/`
-2. Include required files:
-   - `template.yaml` - CloudFormation template
-   - `README.md` - Sample documentation (optional but recommended)
-3. Follow the existing pattern and structure
-4. Update this README with your sample
-
-See [CONTRIBUTING.md](../CONTRIBUTING.md) for details.
-
-## License
-
-This project is licensed under the MIT-0 License - see the [LICENSE](../LICENSE) file for details.

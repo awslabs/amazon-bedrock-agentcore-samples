@@ -686,18 +686,18 @@ Resources:
                           
                           task = f"""Instruction: Extract 8-Day Weather Forecast for {city} from weather.gov
                               Steps:
-                                  Go to https://weather.gov.
-                                  Enter “{city}” into the search box and execute the search.
-                                  On the local forecast page, click the "Printable Forecast" link.
-                                  Wait for the printable forecast page to load completely.
-                                  For each day in the forecast, extract these fields:
-                                      date (format YYYY-MM-DD)
-                                      high (highest temperature)
-                                      low (lowest temperature)
-                                      conditions (short weather summary, e.g., "Clear")
-                                      wind (wind speed as an integer; use mph or km/h as consistent)
-                                      precip (precipitation chance or amount, zero if none)
-                                  Format the extracted data as a JSON array of daily forecast objects, e.g.:
+                                  - Go to https://weather.gov.
+                                  - Enter “{city}” into the search box and Click on `GO` to execute the search.
+                                  - On the local forecast page, click the "Printable Forecast" link.
+                                  - Wait for the printable forecast page to load completely.
+                                  - For each day in the forecast, extract these fields:
+                                      - date (format YYYY-MM-DD) 
+                                      - high (highest temperature)
+                                      - low (lowest temperature)
+                                      - conditions (short weather summary, e.g., "Clear")
+                                      - wind (wind speed as an integer; use mph or km/h as consistent)
+                                      - precip (precipitation chance or amount, zero if none)
+                                  - Format the extracted data as a JSON array of daily forecast objects, e.g.:
                                       ```json
                                       [
                                       {{
@@ -720,7 +720,7 @@ Resources:
                                       // ... Repeat for each day ...
                                       ]```
 
-                                  Return only this JSON array as the final output.
+                                  - Return only this JSON array as the final output.
 
                               Additional Notes:
                                   Use null or 0 if any numeric value is missing.
@@ -829,13 +829,14 @@ Resources:
                       """Create the weather agent with all tools"""
                       system_prompt = f"""You are a Weather-Based Activity Planning Assistant.
 
-                      When a user asks about activities for a location, follow this workflow:
+                      When a user asks about activities for a location, follow below stepes Sequentially:
                       1. Extract city from user query
                       2. Call get_weather_data(city) to get weather information
                       3. Call generate_analysis_code(weather_data) to create classification code
-                      4. Call execute_code(python_code) to run the analysis
+                      4. Call execute_code(python_code) to get Day Type ( GOOD, OK , POOR ) for forecasting dates. 
                       5. Call get_activity_preferences() to get user preferences
-                      6. Provide activity recommendations based on weather and preferences in the Markdown file (results.md) and store it in S3 Bucket :  {RESULTS_BUCKET} through use_aws tool. 
+                      6. Generate Activity Recommendations based on weather and preferences that you have recieved from previous steps
+                      7. Generate the comprehensive Markdown file (results.md) and store it in S3 Bucket :  {RESULTS_BUCKET} through use_aws tool. 
                       
                       IMPORTANT: Provide complete recommendations and end your response. Do NOT ask follow-up questions or wait for additional input."""
                       
@@ -975,7 +976,7 @@ Resources:
       AgentRuntimeName: !Sub 
         - "${StackNameUnderscore}_${AgentName}"
         - StackNameUnderscore: !Join ["_", !Split ["-", !Ref "AWS::StackName"]]
-      AgentArtifact:
+      AgentRuntimeArtifact:
         ContainerConfiguration:
           ContainerUri: !Sub "${ECRRepository.RepositoryUri}:${ImageTag}"
       RoleArn: !GetAtt AgentExecutionRole.Arn

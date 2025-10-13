@@ -5,7 +5,6 @@ Uses the MCP Python client library to properly communicate with the server
 """
 
 import asyncio
-import boto3
 import sys
 from datetime import timedelta
 from mcp import ClientSession

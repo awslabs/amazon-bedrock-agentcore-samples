@@ -6,7 +6,6 @@ Matches the approach from the original tutorial
 
 import boto3
 import sys
-import os
 
 def get_token(client_id, username, password, region=None):
     """Get authentication token from Cognito."""
@@ -31,10 +30,10 @@ def get_token(client_id, username, password, region=None):
     except Exception as e:
         print(f"Error: {e}")
         print(f"\nTroubleshooting:")
-        print(f"  - Verify the Client ID is correct")
-        print(f"  - Ensure you're using the correct region")
-        print(f"  - Check that the user exists and password is correct")
-        print(f"  - Verify USER_PASSWORD_AUTH is enabled for this client")
+        print("  - Verify the Client ID is correct")
+        print("  - Ensure you're using the correct region")
+        print("  - Check that the user exists and password is correct")
+        print("  - Verify USER_PASSWORD_AUTH is enabled for this client")
         sys.exit(1)
 
 def main():

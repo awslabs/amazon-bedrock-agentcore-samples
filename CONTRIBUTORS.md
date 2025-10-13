@@ -38,4 +38,7 @@
 - chintanpatel-ai
 - Evandro Franco
 - Frank Dallezotte
-- omrsamer
+- Omar Elkharbotly
+- Chintan Patel
+- Shreyas Subramanian
+
