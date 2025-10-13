@@ -3,8 +3,8 @@ import json
 import time
 from boto3.session import Session
 import botocore
+from botocore.exceptions import ClientError
 import requests
-import os
 import time
 
 def setup_cognito_user_pool():
@@ -131,19 +131,24 @@ def get_or_create_resource_server(cognito, user_pool_id, RESOURCE_SERVER_ID, RES
         )
         return RESOURCE_SERVER_ID
 
-def get_or_create_m2m_client(cognito, user_pool_id, CLIENT_NAME, RESOURCE_SERVER_ID):
+def get_or_create_m2m_client(cognito, user_pool_id, CLIENT_NAME, RESOURCE_SERVER_ID, SCOPES=None):
     response = cognito.list_user_pool_clients(UserPoolId=user_pool_id, MaxResults=60)
     for client in response["UserPoolClients"]:
         if client["ClientName"] == CLIENT_NAME:
             describe = cognito.describe_user_pool_client(UserPoolId=user_pool_id, ClientId=client["ClientId"])
             return client["ClientId"], describe["UserPoolClient"]["ClientSecret"]
     print('creating new m2m client')
+
+    # Default scopes if not provided (for backward compatibility)
+    if SCOPES is None:
+        SCOPES = [f"{RESOURCE_SERVER_ID}/gateway:read", f"{RESOURCE_SERVER_ID}/gateway:write"]
+
     created = cognito.create_user_pool_client(
         UserPoolId=user_pool_id,
         ClientName=CLIENT_NAME,
         GenerateSecret=True,
         AllowedOAuthFlows=["client_credentials"],
-        AllowedOAuthScopes=[f"{RESOURCE_SERVER_ID}/gateway:read", f"{RESOURCE_SERVER_ID}/gateway:write"],
+        AllowedOAuthScopes=SCOPES,
         AllowedOAuthFlowsUserPoolClient=True,
         SupportedIdentityProviders=["COGNITO"],
         ExplicitAuthFlows=["ALLOW_REFRESH_TOKEN_AUTH"]
@@ -633,6 +638,7 @@ def delete_gateway(gateway_client,gatewayId):
             gatewayIdentifier = gatewayId,
             targetId = targetId
         )
+        time.sleep(5)
     print("Deleting gateway ", gatewayId)
     gateway_client.delete_gateway(gatewayIdentifier = gatewayId)
 
@@ -646,3 +652,133 @@ def delete_all_gateways(gateway_client):
             delete_gateway(gatewayId)
     except Exception as e:
         print(e)
+
+def get_current_role_arn():
+    sts_client = boto3.client("sts")
+    role_arn = sts_client.get_caller_identity()["Arn"]
+    return {role_arn}
+
+def create_gateway_invoke_tool_role(role_name, gateway_id, current_arn):
+    # Normalize current_arn
+    if isinstance(current_arn, (list, set, tuple)):
+        current_arn = list(current_arn)[0]
+    current_arn = str(current_arn)
+
+    # AWS clients
+    boto_session = Session()
+    region = boto_session.region_name
+    iam_client = boto3.client('iam', region_name=region)
+    sts_client = boto3.client("sts")
+    account_id = sts_client.get_caller_identity()["Account"]
+
+    # --- Trust policy (AssumeRolePolicyDocument) ---
+    assume_role_policy_document = {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Sid": "AssumeRoleByAgentCore",
+                "Effect": "Allow",
+                "Principal": {"Service": "bedrock-agentcore.amazonaws.com"},
+                "Action": ["sts:AssumeRole"]
+            },
+            {
+                "Sid": "AllowCallerToAssume",
+                "Effect": "Allow",
+                "Principal": {"AWS": [current_arn]},
+                "Action": ["sts:AssumeRole"]
+            }
+        ]
+    }
+    assume_role_policy_json = json.dumps(assume_role_policy_document)
+
+    # ---  Inline role policy (Bedrock gateway invoke) ---
+    role_policy = {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Effect": "Allow",
+                "Action": ["bedrock-agentcore:InvokeGateway"],
+                "Resource": f"arn:aws:bedrock-agentcore:{region}:{account_id}:gateway/{gateway_id}"
+            }
+        ]
+    }
+    role_policy_json = json.dumps(role_policy)
+
+    # --- Create or update IAM role ---
+    try:
+        agentcoregw_iam_role = iam_client.create_role(
+            RoleName=role_name,
+            AssumeRolePolicyDocument=assume_role_policy_json
+        )
+        print(f"Created new role: {role_name}")
+        time.sleep(3)
+    except iam_client.exceptions.EntityAlreadyExistsException:
+        print(f"Role '{role_name}' already exists — updating trust and inline policy.")
+        iam_client.update_assume_role_policy(
+            RoleName=role_name,
+            PolicyDocument=assume_role_policy_json
+        )
+        for policy_name in iam_client.list_role_policies(RoleName=role_name).get('PolicyNames', []):
+            iam_client.delete_role_policy(RoleName=role_name, PolicyName=policy_name)
+        agentcoregw_iam_role = iam_client.get_role(RoleName=role_name)
+
+    # Attach inline role policy (gateway invoke)
+    iam_client.put_role_policy(
+        RoleName=role_name,
+        PolicyName="AgentCorePolicy",
+        PolicyDocument=role_policy_json
+    )
+
+    role_arn = agentcoregw_iam_role['Role']['Arn']
+
+    # ---  Ensure current_arn can assume role (with retry) ---
+    arn_parts = current_arn.split(":")
+    resource_type, resource_name = arn_parts[5].split("/", 1)
+
+    assume_policy = {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Effect": "Allow",
+                "Action": "sts:AssumeRole",
+                "Resource": role_arn
+            }
+        ]
+    }
+
+    # Attach assume-role policy if user/role
+    try:
+        if resource_type == "user":
+            iam_client.put_user_policy(
+                UserName=resource_name,
+                PolicyName=f"AllowAssume_{role_name}",
+                PolicyDocument=json.dumps(assume_policy)
+            )
+        elif resource_type == "role":
+            iam_client.put_role_policy(
+                RoleName=resource_name,
+                PolicyName=f"AllowAssume_{role_name}",
+                PolicyDocument=json.dumps(assume_policy)
+            )
+    except ClientError as e:
+        print(f"Unable to attach assume-role policy: {e}")
+        print("Make sure the caller has iam:PutUserPolicy or iam:PutRolePolicy permission.")
+
+    # Retry loop for eventual consistency
+    max_retries=5
+    for i in range(max_retries):
+        try:
+            sts_client.assume_role(RoleArn=role_arn, RoleSessionName="testSession")
+            print(f"Caller {current_arn} can now assume role {role_name}")
+            break
+        except ClientError as e:
+            if "AccessDenied" in str(e):
+                print(f"Attempt {i+1}/{max_retries}: AccessDenied, retrying in 3s...")
+                time.sleep(3)
+            else:
+                raise
+    else:
+        raise RuntimeError(f"Failed to assume role {role_name} after {max_retries} retries")
+
+    print(f" Role '{role_name}' is ready and {current_arn} can invoke the Bedrock Agent Gateway.")
+    return agentcoregw_iam_role

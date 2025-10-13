@@ -38,3 +38,5 @@
 - chintanpatel-ai
 - Evandro Franco
 - greg-aws
+- Frank Dallezotte
+
