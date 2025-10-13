@@ -605,54 +605,56 @@ def delete_agentcore_runtime_execution_role():
         print(f"❌ Error during cleanup: {str(e)}")
 
 
-def agentcore_memory_cleanup():
-    control_client = boto3.client("bedrock-agentcore-control", region_name=REGION)
-
+def agentcore_memory_cleanup(memory_id: str = None):
     """List all memories and their associated strategies"""
-    next_token = None
+    control_client = boto3.client("bedrock-agentcore-control", region_name=REGION)
+    if memory_id:
+        response = control_client.delete_memory(memoryId=memory_id)
+        print(f"✅ Successfully deleted memory: {memory_id}")
+    else:
+        next_token = None
+        while True:
+            # Build request parameters
+            params = {}
+            if next_token:
+                params["nextToken"] = next_token
 
-    while True:
-        # Build request parameters
-        params = {}
-        if next_token:
-            params["nextToken"] = next_token
-
-        # List memories
-        try:
-            response = control_client.list_memories(**params)
-
-            # Process each memory
-            for memory in response.get("memories", []):
-                memory_id = memory.get("id")
-                print(f"\nMemory ID: {memory_id}")
-                print(f"Status: {memory.get('status')}")
-                response = control_client.delete_memory(memoryId=memory_id)
+            # List memories
+            try:
                 response = control_client.list_memories(**params)
-                print(f"✅ Successfully deleted memory: {memory_id}")
 
-            response = control_client.list_memories(**params)
-            # Process each memory status
-            for memory in response.get("memories", []):
-                memory_id = memory.get("id")
-                print(f"\nMemory ID: {memory_id}")
-                print(f"Status: {memory.get('status')}")
+                # Process each memory
+                for memory in response.get("memories", []):
+                    memory_id = memory.get("id")
+                    print(f"\nMemory ID: {memory_id}")
+                    print(f"Status: {memory.get('status')}")
+                    response = control_client.delete_memory(memoryId=memory_id)
+                    response = control_client.list_memories(**params)
+                    print(f"✅ Successfully deleted memory: {memory_id}")
 
-        except Exception as e:
-            print(f"⚠️  Error getting memory details: {e}")
+                response = control_client.list_memories(**params)
+                # Process each memory status
+                for memory in response.get("memories", []):
+                    memory_id = memory.get("id")
+                    print(f"\nMemory ID: {memory_id}")
+                    print(f"Status: {memory.get('status')}")
 
-        # Check for more results
-        next_token = response.get("nextToken")
-        if not next_token:
-            break
+            except Exception as e:
+                print(f"⚠️  Error getting memory details: {e}")
+            # Check for more results
+            next_token = response.get("nextToken")
+            if not next_token:
+                break
 
 
-def gateway_target_cleanup():
-    gateway_client = boto3.client(
-        "bedrock-agentcore-control",
-        region_name=REGION,
-    )
-    response = gateway_client.list_gateways()
-    gateway_id = response["items"][0]["gatewayId"]
+def gateway_target_cleanup(gateway_id: str = None):
+    if not gateway_id:
+        gateway_client = boto3.client(
+            "bedrock-agentcore-control",
+            region_name=REGION,
+        )
+        response = gateway_client.list_gateways()
+        gateway_id = response["items"][0]["gatewayId"]
     print(f"🗑️  Deleting all targets for gateway: {gateway_id}")
 
     # List and delete all targets
@@ -674,22 +676,29 @@ def gateway_target_cleanup():
     print(f"✅ Gateway {gateway_id} deleted successfully")
 
 
-def runtime_resource_cleanup():
+def runtime_resource_cleanup(runtime_arn: str = None):
     try:
         # Initialize AWS clients
         agentcore_control_client = boto3.client(
             "bedrock-agentcore-control", region_name=REGION
         )
-        ecr_client = boto3.client("ecr", region_name=REGION)
-
-        # Delete the AgentCore Runtime
-        # print("  🗑️  Deleting AgentCore Runtime...")
-        runtimes = agentcore_control_client.list_agent_runtimes()
-        for runtime in runtimes["agentRuntimes"]:
+        if runtime_arn:
+            runtime_id = runtime_arn.split(":")[-1].split("/")[-1]
             response = agentcore_control_client.delete_agent_runtime(
-                agentRuntimeId=runtime["agentRuntimeId"]
+                agentRuntimeId=runtime_id
             )
             print(f"  ✅ Agent runtime deleted: {response['status']}")
+        else:
+            ecr_client = boto3.client("ecr", region_name=REGION)
+
+            # Delete the AgentCore Runtime
+            # print("  🗑️  Deleting AgentCore Runtime...")
+            runtimes = agentcore_control_client.list_agent_runtimes()
+            for runtime in runtimes["agentRuntimes"]:
+                response = agentcore_control_client.delete_agent_runtime(
+                    agentRuntimeId=runtime["agentRuntimeId"]
+                )
+                print(f"  ✅ Agent runtime deleted: {response['status']}")
 
         # Delete the ECR repository
         print("  🗑️  Deleting ECR repository...")

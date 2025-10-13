@@ -37,3 +37,4 @@
 - Sandeep Raveesh-Babu
 - chintanpatel-ai
 - Evandro Franco
+- Frank Dallezotte
