@@ -251,7 +251,6 @@ This script will:
   uv run python test/connect_gateway.py --prompt "Get customer profile for CUST001" 
 
   # With custom stack name
-  uv run python test/connect_gateway.py --prompt "List all products"
 ```
 
 - `--verbose` / `-v` (optional): Enable verbose logging
