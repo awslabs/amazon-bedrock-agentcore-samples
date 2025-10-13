@@ -211,7 +211,7 @@ Resources:
   CognitoMachineClientIdParameter:
     Type: AWS::SSM::Parameter
     Properties:
-      Name: /app/customersupport/agentcore/machine_client_id
+      Name: /app/customersupport/agentcore/client_id
       Type: String
       Value: !Ref MachineUserPoolClient
       Description: Machine Cognito client ID
@@ -226,12 +226,12 @@ Resources:
       Value: !Ref WebUserPoolClient
       Description: Cognito client ID for web app
       Tags:
-        Application: CustomerSuppor
+        Application: CustomerSupport
 
   UserPoolIdParameter:
     Type: AWS::SSM::Parameter
     Properties:
-      Name: /app/customersupport/agentcore/userpool_id
+      Name: /app/customersupport/agentcore/pool_id
       Type: String
       Value: !Ref UserPool
       Description: Cognito client ID
