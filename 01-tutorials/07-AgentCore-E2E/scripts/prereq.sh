@@ -9,8 +9,17 @@ INFRA_STACK_NAME=${2:-CustomerSupportStackInfra}
 COGNITO_STACK_NAME=${3:-CustomerSupportStackCognito}
 INFRA_TEMPLATE_FILE="prerequisite/infrastructure.yaml"
 COGNITO_TEMPLATE_FILE="prerequisite/cognito.yaml"
-REGION=$(aws configure get region 2>/dev/null || echo "us-west-2")
 
+# First try to get region from environment variable
+if [ -z "${AWS_REGION}" ]; then
+    # If AWS_REGION is not set, try to get it from AWS CLI config
+    REGION=$(aws configure get region 2>/dev/null || echo "us-west-2")
+    # Export it as an environment variable
+    export AWS_REGION="${REGION}"
+fi
+echo "Region is set to: ${AWS_REGION}"
+export REGION="${AWS_REGION}"
+    
 
 # Get AWS Account ID with proper error handling
 echo "🔍 Getting AWS Account ID..."
@@ -20,7 +29,6 @@ if [ $? -ne 0 ] || [ -z "$ACCOUNT_ID" ] || [ "$ACCOUNT_ID" = "None" ]; then
     echo "Error: $ACCOUNT_ID"
     exit 1
 fi
-
 
 FULL_BUCKET_NAME="${BUCKET_NAME}-${ACCOUNT_ID}-${REGION}"
 ZIP_FILE="lambda.zip"

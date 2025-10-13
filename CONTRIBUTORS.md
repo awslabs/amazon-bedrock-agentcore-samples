@@ -6,6 +6,7 @@
 - aristsakpinis93
 - aurbac
 - bergjaak
+- crupakheti
 - danystinson
 - dhawalkp
 - didhd
@@ -36,3 +37,4 @@
 - Sandeep Raveesh-Babu
 - chintanpatel-ai
 - Evandro Franco
+- Frank Dallezotte
