@@ -29,7 +29,7 @@ def get_token(client_id, username, password, region=None):
     
     except Exception as e:
         print(f"Error: {e}")
-        print(f"\nTroubleshooting:")
+        print("Troubleshooting:")
         print("  - Verify the Client ID is correct")
         print("  - Ensure you're using the correct region")
         print("  - Check that the user exists and password is correct")
