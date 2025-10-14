@@ -2,7 +2,7 @@
 crewai
 crewai-tools
 aws-opentelemetry-distro~=0.12.1
-openinference-instrumentation-crewai
+opentelemetry-instrumentation-crewai
 ddgs
 boto3
 botocore

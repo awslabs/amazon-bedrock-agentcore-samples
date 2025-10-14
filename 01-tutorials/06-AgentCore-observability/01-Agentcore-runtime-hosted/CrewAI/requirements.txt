@@ -1,9 +1,10 @@
 crewai
 crewai-tools
 bedrock-agentcore
+bedrock-agentcore-starter-toolkit
 langchain-community
 ddgs
-openinference-instrumentation-crewai
+opentelemetry-instrumentation-crewai
 aws-opentelemetry-distro==0.12.1
 boto3
 botocore
