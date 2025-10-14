@@ -40,3 +40,6 @@
 - greg-aws
 - Frank Dallezotte
 - sasikiran-malladi
+- Omar Elkharbotly
+- Chintan Patel
+- Shreyas Subramanian
