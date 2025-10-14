@@ -891,6 +891,258 @@ Resources:
         Name: !Sub 'csvpc-${Environment}-Agent-Runtime'
         Purpose: 'AgentCore Runtime'
 
+  AgentRuntimeLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupClass: STANDARD
+      LogGroupName: !Sub "/aws/vendedlogs/bedrock-agentcore/${AgentRuntime.AgentRuntimeId}"
+
+  AgentRuntimeDeliverSourceApplicationLogs:
+    Type: AWS::Logs::DeliverySource
+    Properties:
+      LogType: APPLICATION_LOGS
+      Name: !Sub "${AgentRuntime.AgentRuntimeId}-logs-source"
+      ResourceArn: !GetAtt AgentRuntime.AgentRuntimeArn
+
+  AgentRuntimeDeliveryDestination:
+    Type: AWS::Logs::DeliveryDestination
+    Properties:
+      DeliveryDestinationType: "CWL"
+      DestinationResourceArn: !GetAtt AgentRuntimeLogGroup.Arn
+      Name: !Sub "${AgentRuntime.AgentRuntimeId}-logs-destination"
+
+  AgentRuntimeDeliveryApplicationLogs:
+    Type: AWS::Logs::Delivery
+    Properties:
+      DeliveryDestinationArn: !GetAtt AgentRuntimeDeliveryDestination.Arn
+      DeliverySourceName: !Sub "${AgentRuntime.AgentRuntimeId}-logs-source"
+
+  # Lambda Execution Role for X-Ray Traces Setup
+  XRayTracesSetupLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: CloudWatchLogsDeliveryPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:PutDeliverySource
+                  - logs:DeleteDeliverySource
+                  - logs:PutDeliveryDestination
+                  - logs:DeleteDeliveryDestination
+                  - logs:CreateDelivery
+                  - logs:DeleteDelivery
+                  - logs:GetDeliverySource
+                  - logs:GetDeliveryDestination
+                  - logs:GetDelivery
+                  - logs:DescribeDeliveries
+                  - logs:DescribeDeliveryDestinations
+                  - logs:DescribeDeliverySources
+                  - logs:PutSubscriptionFilter
+                  - logs:GetSubscriptionFilter
+                  - logs:DeleteSubscriptionFilter
+                  - logs:PutDeliveryDestinationPolicy
+                  - logs:GetDeliveryDestinationPolicy
+                  - logs:DeleteDeliveryDestinationPolicy
+                Resource: '*'
+        - PolicyName: AgentCoreDeliveryPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - bedrock-agentcore:AllowVendedLogDeliveryForResource
+                Resource: '*'
+        - PolicyName: XRayAccessPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
+                  - xray:GetSamplingRules
+                  - xray:GetSamplingTargets
+                  - xray:GetSamplingStatisticSummaries
+                  - xray:PutResourcePolicy
+                  - xray:ListResourcePolicies
+                Resource: '*'
+        - PolicyName: IAMPassRolePolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - iam:PassRole
+                Resource: '*'
+                Condition:
+                  StringEquals:
+                    'iam:PassedToService': 'logs.amazonaws.com'
+      Tags:
+        - Key: Name
+          Value: !Sub 'csvpc-${Environment}-XRay-Traces-Setup-Role'
+        - Key: Purpose
+          Value: 'X-Ray Traces Setup Lambda'
+
+  # Lambda Function for X-Ray Traces Setup
+  XRayTracesSetupFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub 'csvpc-${Environment}-agent-xray-traces-setup'
+      Runtime: python3.12
+      Handler: index.lambda_handler
+      Role: !GetAtt XRayTracesSetupLambdaRole.Arn
+      Timeout: 300
+      Environment:
+        Variables:
+          REGION: !Ref AWS::Region
+          RESOURCE_ID: !GetAtt AgentRuntime.AgentRuntimeId
+          RESOURCE_ARN: !GetAtt AgentRuntime.AgentRuntimeArn
+      Code:
+        ZipFile: |
+          import json
+          import boto3
+          import urllib3
+          import logging
+          import os
+
+          logger = logging.getLogger()
+          logger.setLevel(logging.INFO)
+
+          def lambda_handler(event, context):
+              try:
+                  logger.info(f"Received event: {json.dumps(event)}")
+
+                  request_type = event['RequestType']
+                  region = os.environ['REGION']
+                  resource_id = os.environ['RESOURCE_ID']
+                  resource_arn = os.environ['RESOURCE_ARN']
+
+                  logs_client = boto3.client('logs', region_name=region)
+
+                  if request_type == 'Create':
+                      logger.info("Setting up X-Ray traces delivery")
+
+                      # Create delivery source for traces
+                      traces_source_response = logs_client.put_delivery_source(
+                          name=f"{resource_id}-traces-source",
+                          logType="TRACES",
+                          resourceArn=resource_arn
+                      )
+                      logger.info(f"Created delivery source: {traces_source_response['deliverySource']['name']}")
+
+                      # Set delivery destination in XRAY
+                      traces_destination_response = logs_client.put_delivery_destination(
+                          name=f"{resource_id}-traces-destination",
+                          deliveryDestinationType='XRAY'
+                      )
+                      logger.info(f"Created delivery destination: {traces_destination_response['deliveryDestination']['name']}")
+
+                      # Create delivery
+                      traces_delivery = logs_client.create_delivery(
+                          deliverySourceName=traces_source_response['deliverySource']['name'],
+                          deliveryDestinationArn=traces_destination_response['deliveryDestination']['arn']
+                      )
+                      logger.info(f"Created delivery: {traces_delivery['delivery']['id']}")
+
+                      send_response(event, context, 'SUCCESS', {
+                          'DeliveryId': traces_delivery['delivery']['id']
+                      })
+
+                  elif request_type == 'Delete':
+                      logger.info("Cleaning up X-Ray traces delivery resources")
+
+                      try:
+                          # Delete delivery first
+                          try:
+                              logs_client.delete_delivery(
+                                  id=f"{resource_id}-traces-source"
+                              )
+                              logger.info(f"Deleted delivery")
+                          except logs_client.exceptions.ResourceNotFoundException:
+                              logger.info("Delivery not found, skipping")
+                          except Exception as e:
+                              logger.warning(f"Error deleting delivery: {str(e)}")
+
+                          # Delete delivery destination
+                          try:
+                              logs_client.delete_delivery_destination(
+                                  name=f"{resource_id}-traces-destination"
+                              )
+                              logger.info(f"Deleted delivery destination")
+                          except logs_client.exceptions.ResourceNotFoundException:
+                              logger.info("Delivery destination not found, skipping")
+                          except Exception as e:
+                              logger.warning(f"Error deleting delivery destination: {str(e)}")
+
+                          # Delete delivery source
+                          try:
+                              logs_client.delete_delivery_source(
+                                  name=f"{resource_id}-traces-source"
+                              )
+                              logger.info(f"Deleted delivery source")
+                          except logs_client.exceptions.ResourceNotFoundException:
+                              logger.info("Delivery source not found, skipping")
+                          except Exception as e:
+                              logger.warning(f"Error deleting delivery source: {str(e)}")
+
+                      except Exception as e:
+                          logger.error(f"Error during cleanup: {str(e)}")
+                          # Continue with SUCCESS to allow stack deletion
+
+                      send_response(event, context, 'SUCCESS', {})
+
+                  elif request_type == 'Update':
+                      logger.info("Stack update - no action required")
+                      send_response(event, context, 'SUCCESS', {})
+
+              except Exception as e:
+                  logger.error(f"Error: {str(e)}", exc_info=True)
+                  send_response(event, context, 'FAILED', {})
+
+          def send_response(event, context, response_status, response_data):
+              response_body = {
+                  'Status': response_status,
+                  'Reason': 'See CloudWatch Logs',
+                  'PhysicalResourceId': 'XRayTracesSetup',
+                  'StackId': event['StackId'],
+                  'RequestId': event['RequestId'],
+                  'LogicalResourceId': event['LogicalResourceId'],
+                  'Data': response_data
+              }
+
+              json_response_body = json.dumps(response_body)
+
+              headers = {
+                  'content-type': '',
+                  'content-length': str(len(json_response_body))
+              }
+
+              http = urllib3.PoolManager()
+              response = http.request('PUT', event['ResponseURL'], body=json_response_body, headers=headers)
+              logger.info(f"Response status: {response.status}")
+      Tags:
+        - Key: Name
+          Value: !Sub 'csvpc-${Environment}-XRay-Traces-Setup-Function'
+
+  # Custom Resource to Setup X-Ray Traces
+  XRayTracesSetup:
+    Type: AWS::CloudFormation::CustomResource
+    DependsOn: AgentRuntime
+    Properties:
+      ServiceToken: !GetAtt XRayTracesSetupFunction.Arn
+
   # SSM Parameter for Agent Runtime ARN
   AgentRuntimeArnParameter:
     Type: AWS::SSM::Parameter
