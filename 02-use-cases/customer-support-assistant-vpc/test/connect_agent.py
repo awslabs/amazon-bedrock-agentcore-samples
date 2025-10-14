@@ -7,7 +7,6 @@ import requests
 import sys
 import uuid
 
-
 from utils import (
     generate_pkce_pair,
     get_auth_code_automatically,
@@ -19,7 +18,8 @@ from utils import (
 
 # Set up detailed logging
 logging.basicConfig(
-    level=logging.DEBUG, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    level=logging.DEBUG,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -31,9 +31,15 @@ def main():
         description="Interactive Agent Runtime CLI Tool - Start a conversation with the customer support agent"
     )
     parser.add_argument(
-        "--verbose", "-v", action="store_true", help="Enable verbose logging"
+        "--verbose", "-v",
+        action="store_true",
+        help="Enable verbose logging"
     )
-    parser.add_argument("--debug", action="store_true", help="Enable debug logging")
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="Enable debug logging"
+    )
 
     args = parser.parse_args()
 

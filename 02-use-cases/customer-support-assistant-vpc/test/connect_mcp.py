@@ -1,19 +1,21 @@
 #!/usr/bin/env python3
 
-from utils import get_ssm_parameter
-from bedrock_agentcore.identity.auth import requires_access_token
-from datetime import timedelta
-from mcp import ClientSession
-from mcp.client.streamable_http import streamablehttp_client
 import argparse
 import asyncio
 import logging
 import sys
 import traceback
 import urllib.parse
+from bedrock_agentcore.identity.auth import requires_access_token
+from datetime import timedelta
+from mcp import ClientSession
+from mcp.client.streamable_http import streamablehttp_client
+
+from utils import get_ssm_parameter
 
 logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -58,10 +60,10 @@ def create_mcp_client(provider_name, agent_arn):
         try:
             logger.info("Creating streamable HTTP client...")
             async with streamablehttp_client(
-                mcp_url,
-                headers,
-                timeout=timedelta(seconds=120),
-                terminate_on_close=False,
+                    mcp_url,
+                    headers,
+                    timeout=timedelta(seconds=120),
+                    terminate_on_close=False,
             ) as (read_stream, write_stream, _):
                 logger.info("HTTP client created successfully")
                 logger.info("Creating MCP client session...")

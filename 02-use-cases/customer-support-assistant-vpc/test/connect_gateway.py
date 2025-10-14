@@ -1,20 +1,21 @@
 #!/usr/bin/env python3
 
-import asyncio
 import argparse
+import asyncio
 import logging
 import sys
 import traceback
-
-from utils import get_ssm_parameter
 from bedrock_agentcore.identity.auth import requires_access_token
 from datetime import timedelta
 from mcp.client.streamable_http import streamablehttp_client
-from strands.tools.mcp import MCPClient
 from strands import Agent
+from strands.tools.mcp import MCPClient
+
+from utils import get_ssm_parameter
 
 logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -91,12 +92,20 @@ def main():
 
     parser = argparse.ArgumentParser(description="Gateway MCP CLI Tool")
     parser.add_argument(
-        "--prompt", "-p", required=True, help="Prompt to send to the gateway agent"
+        "--prompt", "-p",
+        required=True,
+        help="Prompt to send to the gateway agent"
     )
     parser.add_argument(
-        "--verbose", "-v", action="store_true", help="Enable verbose logging"
+        "--verbose", "-v",
+        action="store_true",
+        help="Enable verbose logging"
     )
-    parser.add_argument("--debug", action="store_true", help="Enable debug logging")
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="Enable debug logging"
+    )
 
     args = parser.parse_args()
 
