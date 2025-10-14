@@ -1,7 +1,7 @@
 from contextvars import ContextVar
 from strands import Agent
 from strands.tools.mcp.mcp_client import MCPClient
-from typing import Optional, Any
+from typing import Optional
 
 
 class CustomerSupportContext:
