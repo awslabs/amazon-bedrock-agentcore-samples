@@ -1,0 +1,974 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Aurora PostgreSQL Serverless cluster with RDS Data API enabled. Deploys encrypted database in private subnets with automated mock data population (users, products, orders). Includes Lambda layer build pipeline for psycopg2 and custom data loader.'
+
+
+Metadata:
+  'AWS::CloudFormation::Interface':
+    ParameterGroups:
+    - Label:
+        default: 'Environment Configuration'
+      Parameters:
+      - Environment
+      - VPCStackName
+    - Label:
+        default: 'Database Configuration'
+      Parameters:
+      - DBMasterUsername
+      - DatabaseName
+      - DBInstanceClass
+      - EngineVersion
+
+Parameters:
+  Environment:
+    Type: String
+    Default: 'dev'
+    AllowedValues:
+      - dev
+      - test
+      - prod
+    Description: 'Environment name for resource naming'
+
+  VPCStackName:
+    Type: String
+    Description: 'Name of the VPC stack to reference'
+
+  DBMasterUsername:
+    Type: String
+    Default: 'postgres'
+    Description: 'Master username for the Aurora cluster'
+
+  DatabaseName:
+    Type: String
+    Default: 'sampledb'
+    Description: 'Name of the initial database to create'
+
+  DBInstanceClass:
+    Type: String
+    Default: 'db.r5.large'
+    AllowedValues:
+      - db.r5.large
+      - db.r5.xlarge
+      - db.r5.2xlarge
+      - db.r6g.large
+      - db.r6g.xlarge
+    Description: 'Instance class for Aurora cluster instances'
+
+  EngineVersion:
+    Type: String
+    Default: '15.4'
+    Description: 'PostgreSQL engine version'
+
+Resources:
+
+  # S3 Bucket for Lambda Layers
+  LayerArtifactsBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Delete
+    Properties:
+      BucketName: !Sub 'csvpc-${Environment}-lambda-layers-${AWS::AccountId}'
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      VersioningConfiguration:
+        Status: Enabled
+      Tags:
+        - Key: Name
+          Value: !Sub 'csvpc-${Environment}-lambda-layers'
+
+  # S3 Bucket Policy for Layer Artifacts
+  LayerArtifactsBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref LayerArtifactsBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: DenyInsecureConnections
+            Effect: Deny
+            Principal: '*'
+            Action: 's3:*'
+            Resource:
+              - !Sub 'arn:aws:s3:::${LayerArtifactsBucket}/*'
+              - !Sub 'arn:aws:s3:::${LayerArtifactsBucket}'
+            Condition:
+              Bool:
+                'aws:SecureTransport': 'false'
+          - Sid: AllowCodeBuildAccess
+            Effect: Allow
+            Principal:
+              AWS: !GetAtt CodeBuildServiceRole.Arn
+            Action:
+              - 's3:GetObject'
+              - 's3:PutObject'
+              - 's3:DeleteObject'
+            Resource: !Sub 'arn:aws:s3:::${LayerArtifactsBucket}/*'
+          - Sid: AllowCodeBuildListBucket
+            Effect: Allow
+            Principal:
+              AWS: !GetAtt CodeBuildServiceRole.Arn
+            Action: 's3:ListBucket'
+            Resource: !Sub 'arn:aws:s3:::${LayerArtifactsBucket}'
+
+  # Security Group for Lambda Functions
+  LambdaSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: 'Security group for Lambda functions - v2'
+      VpcId:
+        Fn::ImportValue: !Sub '${VPCStackName}-VPCID'
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: '0.0.0.0/0'
+          Description: 'Allow all outbound traffic'
+      Tags:
+        - Key: Name
+          Value: !Sub 'csvpc-${Environment}-Lambda-SG-v2'
+        - Key: Version
+          Value: 'v2'
+
+  # Security Group for Aurora
+  AuroraSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: 'Security group for Aurora PostgreSQL cluster - v2'
+      VpcId:
+        Fn::ImportValue: !Sub '${VPCStackName}-VPCID'
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 3306
+          ToPort: 3306
+          SourceSecurityGroupId: !Ref LambdaSecurityGroup
+          Description: 'PostgreSQL access from Lambda functions'
+        - IpProtocol: tcp
+          FromPort: 3306
+          ToPort: 3306
+          CidrIp: '10.0.0.0/16'
+          Description: 'PostgreSQL access within VPC'
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 10.0.0.0/16
+          Description: 'HTTPS to VPC endpoints for AWS services'
+      Tags:
+        - Key: Name
+          Value: !Sub 'csvpc-${Environment}-Aurora-SG-v2'
+        - Key: Version
+          Value: 'v2'
+
+  # VPC Endpoints for AWS Services
+  # LambdaVPCEndpoint:
+  #   Type: AWS::EC2::VPCEndpoint
+  #   Properties:
+  #     VpcId:
+  #       Fn::ImportValue: !Sub '${VPCStackName}-VPCID'
+  #     ServiceName: !Sub 'com.amazonaws.${AWS::Region}.lambda'
+  #     VpcEndpointType: Interface
+  #     SubnetIds:
+  #       - Fn::ImportValue: !Sub '${VPCStackName}-PrivateSubnet2'
+  #     SecurityGroupIds:
+  #       - !Ref VPCEndpointSecurityGroup
+  #     PolicyDocument:
+  #       Version: '2012-10-17'
+  #       Statement:
+  #         - Effect: Allow
+  #           Principal: '*'
+  #           Action:
+  #             - lambda:InvokeFunction
+  #           Resource: '*'
+  #     PrivateDnsEnabled: true
+
+  # S3 VPC Endpoint for CloudFormation responses
+  # CloudFormation VPC Endpoint
+  # CloudFormationVPCEndpoint:
+  #   Type: AWS::EC2::VPCEndpoint
+  #   Properties:
+  #     VpcId:
+  #       Fn::ImportValue: !Sub '${VPCStackName}-VPCID'
+  #     ServiceName: !Sub 'com.amazonaws.${AWS::Region}.cloudformation'
+  #     VpcEndpointType: Interface
+  #     SubnetIds:
+  #       - Fn::ImportValue: !Sub '${VPCStackName}-PrivateSubnet2'
+  #     SecurityGroupIds:
+  #       - !Ref VPCEndpointSecurityGroup
+  #     PolicyDocument:
+  #       Version: '2012-10-17'
+  #       Statement:
+  #         - Effect: Allow
+  #           Principal: '*'
+  #           Action:
+  #             - cloudformation:SignalResource
+  #             - cloudformation:DescribeStacks
+  #             - cloudformation:DescribeStackEvents
+  #           Resource: '*'
+  #     PrivateDnsEnabled: true
+
+  # DB Subnet Group
+  DBSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: 'Subnet group for Aurora PostgreSQL cluster'
+      SubnetIds:
+        - Fn::ImportValue: !Sub '${VPCStackName}-PrivateSubnet1'
+        - Fn::ImportValue: !Sub '${VPCStackName}-PrivateSubnet3'
+      Tags:
+        - Key: Name
+          Value: !Sub 'csvpc-${Environment}-DB-SubnetGroup'
+
+  # KMS Key for Aurora encryption
+  AuroraKMSKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: 'KMS Key for Aurora PostgreSQL encryption'
+      EnableKeyRotation: true
+      KeyPolicy:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: Enable IAM User Permissions
+            Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
+            Action: 'kms:*'
+            Resource: '*'
+          - Sid: Allow RDS Service
+            Effect: Allow
+            Principal:
+              Service: rds.amazonaws.com
+            Action:
+              - kms:Encrypt
+              - kms:Decrypt
+              - kms:ReEncrypt*
+              - kms:GenerateDataKey*
+              - kms:DescribeKey
+            Resource: '*'
+
+  AuroraKMSKeyAlias:
+    Type: AWS::KMS::Alias
+    Properties:
+      AliasName: !Sub 'alias/csvpc-${Environment}-aurora-postgres'
+      TargetKeyId: !Ref AuroraKMSKey
+
+  # Aurora PostgreSQL Cluster
+  AuroraCluster:
+    Type: AWS::RDS::DBCluster
+    DeletionPolicy: Snapshot
+    UpdateReplacePolicy: Snapshot
+    Properties:
+      DBClusterIdentifier: !Sub 'csvpc-${Environment}-aurora-postgres'
+      Engine: aurora-postgresql
+      EngineVersion: !Ref EngineVersion
+      MasterUsername: !Ref DBMasterUsername
+      ManageMasterUserPassword: true
+      DatabaseName: !Ref DatabaseName
+      DBSubnetGroupName: !Ref DBSubnetGroup
+      VpcSecurityGroupIds:
+        - !Ref AuroraSecurityGroup
+      StorageEncrypted: true
+      KmsKeyId: !Ref AuroraKMSKey
+      BackupRetentionPeriod: 7
+      PreferredBackupWindow: '03:00-04:00'
+      PreferredMaintenanceWindow: 'sun:04:00-sun:05:00'
+      EnableCloudwatchLogsExports:
+        - postgresql
+      EnableHttpEndpoint: true
+      DeletionProtection: false
+      Tags:
+        - Key: Name
+          Value: !Sub 'csvpc-${Environment}-Aurora-Cluster'
+
+  # Aurora Instance
+  AuroraInstance1:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      DBInstanceIdentifier: !Sub 'csvpc-${Environment}-aurora-instance-1'
+      DBClusterIdentifier: !Ref AuroraCluster
+      DBInstanceClass: !Ref DBInstanceClass
+      Engine: aurora-postgresql
+      PubliclyAccessible: false
+      MonitoringInterval: 60
+      MonitoringRoleArn: !GetAtt RDSEnhancedMonitoringRole.Arn
+      Tags:
+        - Key: Name
+          Value: !Sub 'csvpc-${Environment}-Aurora-Instance-1'
+
+  # CodeBuild Service Role
+  CodeBuildServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: codebuild.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: CodeBuildLogsPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/csvpc-${Environment}-*'
+        - PolicyName: S3LayerArtifactsPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:DeleteObject
+                Resource: !Sub 'arn:aws:s3:::${LayerArtifactsBucket}/*'
+              - Effect: Allow
+                Action:
+                  - s3:ListBucket
+                Resource: !Sub 'arn:aws:s3:::${LayerArtifactsBucket}'
+        - PolicyName: LambdaLayerPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - lambda:PublishLayerVersion
+                  - lambda:DeleteLayerVersion
+                  - lambda:GetLayerVersion
+                  - lambda:ListLayerVersions
+                Resource: !Sub 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:layer:csvpc-${Environment}-psycopg2-layer*'
+
+  # Enhanced Monitoring Role
+  RDSEnhancedMonitoringRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: monitoring.rds.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonRDSEnhancedMonitoringRole
+
+  # CodeBuild Project for psycopg2 Layer
+  Psycopg2LayerBuild:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: !Sub 'csvpc-${Environment}-psycopg2-layer-build'
+      Description: 'Build psycopg2 Lambda layer with correct architecture'
+      ServiceRole: !GetAtt CodeBuildServiceRole.Arn
+      Artifacts:
+        Type: S3
+        Location: !Ref LayerArtifactsBucket
+        Name: 'psycopg2-layer.zip'
+        Packaging: ZIP
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/amazonlinux2-x86_64-standard:5.0
+        EnvironmentVariables:
+          - Name: BUCKET_NAME
+            Value: !Ref LayerArtifactsBucket
+          - Name: LAYER_NAME
+            Value: !Sub 'csvpc-${Environment}-psycopg2-layer'
+          - Name: AWS_DEFAULT_REGION
+            Value: !Ref AWS::Region
+      Source:
+        Type: NO_SOURCE
+        BuildSpec: |
+          version: 0.2
+
+          phases:
+            install:
+              runtime-versions:
+                python: 3.13
+            pre_build:
+              commands:
+                - echo "Setting up build environment"
+                - mkdir -p /tmp/layer/python/lib/python3.13/site-packages
+            build:
+              commands:
+                - echo "Building psycopg2 for Lambda runtime"
+                - cd /tmp/layer
+                - echo "Installing psycopg2-binary which is compatible with Lambda"
+                - pip install psycopg2-binary -t python/lib/python3.13/site-packages/
+                - echo "Creating layer zip file"
+                - zip -r psycopg2-layer.zip python/
+                - echo "Layer built successfully"
+                - echo "Listing contents for verification"
+                - ls -la
+            post_build:
+              commands:
+                - echo "Uploading layer to S3"
+                - aws s3 cp psycopg2-layer.zip s3://$BUCKET_NAME/psycopg2-layer.zip
+      TimeoutInMinutes: 10
+      Tags:
+        - Key: Name
+          Value: !Sub 'csvpc-${Environment}-psycopg2-layer-build'
+
+  Psycopg2Layer:
+    Type: AWS::Lambda::LayerVersion
+    DependsOn: LayerBuildTrigger
+    Properties:
+      LayerName: !Sub 'csvpc-${Environment}-psycopg2-layer'
+      Description: psycopg2 library for PostgreSQL connections
+      Content:
+        S3Bucket: !Ref LayerArtifactsBucket
+        S3Key: psycopg2-layer.zip
+      CompatibleRuntimes:
+        - python3.13
+
+  # Lambda Execution Role for Mock Data
+  MockDataLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
+      Policies:
+        - PolicyName: SecretsManagerAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource: !GetAtt AuroraCluster.MasterUserSecret.SecretArn
+              - Effect: Allow
+                Action:
+                  - rds-data:ExecuteStatement
+                  - rds-data:BatchExecuteStatement
+                  - rds-data:BeginTransaction
+                  - rds-data:CommitTransaction
+                  - rds-data:RollbackTransaction
+                Resource: !Sub 'arn:aws:rds:${AWS::Region}:${AWS::AccountId}:cluster:${AuroraCluster}'
+
+  # Lambda Execution Role for Layer Builder
+  LayerBuilderLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: CodeBuildTriggerPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - codebuild:StartBuild
+                  - codebuild:BatchGetBuilds
+                Resource: !GetAtt Psycopg2LayerBuild.Arn
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:DeleteObject
+                  - s3:DeleteObjectVersion
+                Resource: !Sub 'arn:aws:s3:::${LayerArtifactsBucket}/*'
+              - Effect: Allow
+                Action:
+                  - s3:ListBucket
+                  - s3:ListBucketVersions
+                Resource: !Sub 'arn:aws:s3:::${LayerArtifactsBucket}'
+              - Effect: Allow
+                Action:
+                  - lambda:GetLayerVersion
+                  - lambda:ListLayerVersions
+                Resource: !Sub 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:layer:csvpc-${Environment}-psycopg2-layer*'
+
+  # Lambda Function to Trigger Layer Build
+  LayerBuilderFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub 'csvpc-${Environment}-layer-builder'
+      Runtime: python3.13
+      Handler: index.lambda_handler
+      Role: !GetAtt LayerBuilderLambdaRole.Arn
+      Timeout: 600
+      Environment:
+        Variables:
+          CODEBUILD_PROJECT: !Ref Psycopg2LayerBuild
+          BUCKET_NAME: !Ref LayerArtifactsBucket
+          LAYER_NAME: !Sub 'csvpc-${Environment}-psycopg2-layer'
+      Code:
+        ZipFile: |
+          import json
+          import boto3
+          import urllib3
+          import time
+          import os
+
+          def lambda_handler(event, context):
+              try:
+                  print(f"Received event: {json.dumps(event)}")
+
+                  request_type = event.get('RequestType', 'Create')
+                  if request_type == 'Delete':
+                      # Clean bucket contents on stack deletion
+                      bucket_name = os.environ['BUCKET_NAME']
+                      s3 = boto3.client('s3')
+
+                      print(f"Cleaning contents of bucket: {bucket_name}")
+
+                      try:
+                          # List and delete all object versions
+                          paginator = s3.get_paginator('list_object_versions')
+                          for page in paginator.paginate(Bucket=bucket_name):
+                              objects_to_delete = []
+
+                              # Add current versions
+                              for obj in page.get('Versions', []):
+                                  objects_to_delete.append({
+                                      'Key': obj['Key'],
+                                      'VersionId': obj['VersionId']
+                                  })
+
+                              # Add delete markers
+                              for obj in page.get('DeleteMarkers', []):
+                                  objects_to_delete.append({
+                                      'Key': obj['Key'],
+                                      'VersionId': obj['VersionId']
+                                  })
+
+                              # Delete objects in batches
+                              if objects_to_delete:
+                                  s3.delete_objects(
+                                      Bucket=bucket_name,
+                                      Delete={'Objects': objects_to_delete}
+                                  )
+                                  print(f"Deleted {len(objects_to_delete)} objects from {bucket_name}")
+
+                          print(f"Successfully cleaned bucket: {bucket_name}")
+                      except Exception as cleanup_error:
+                          print(f"Error during bucket cleanup: {str(cleanup_error)}")
+                          # Continue with success even if cleanup fails to avoid blocking stack deletion
+
+                      send_response(event, context, 'SUCCESS', {'Message': 'Layer builder cleanup completed'})
+                      return
+
+                  # Initialize clients
+                  codebuild = boto3.client('codebuild')
+                  s3 = boto3.client('s3')
+
+                  project_name = os.environ['CODEBUILD_PROJECT']
+                  bucket_name = os.environ['BUCKET_NAME']
+
+                  print(f"Starting CodeBuild project: {project_name}")
+
+                  # Start the build
+                  response = codebuild.start_build(projectName=project_name)
+                  build_id = response['build']['id']
+
+                  print(f"Build started with ID: {build_id}")
+
+                  # Wait for build to complete
+                  max_wait_time = 500  # seconds
+                  wait_interval = 10   # seconds
+                  elapsed_time = 0
+
+                  while elapsed_time < max_wait_time:
+                      build_status = codebuild.batch_get_builds(ids=[build_id])
+                      current_phase = build_status['builds'][0]['currentPhase']
+                      build_complete = build_status['builds'][0]['buildComplete']
+
+                      print(f"Build status: {current_phase}, Complete: {build_complete}")
+
+                      if build_complete:
+                          final_status = build_status['builds'][0]['buildStatus']
+                          print(f"Build completed with status: {final_status}")
+
+                          if final_status == 'SUCCEEDED':
+
+                              send_response(event, context, 'SUCCESS', {
+                                  'Message': 'Layer build completed successfully',
+                                  'BuildId': build_id,
+                                  'LayerName': os.environ['LAYER_NAME'],
+                              })
+                              return
+                          else:
+                              send_response(event, context, 'FAILED', {
+                                  'Error': f'Build failed with status: {final_status}',
+                                  'BuildId': build_id
+                              })
+                              return
+
+                      time.sleep(wait_interval)
+                      elapsed_time += wait_interval
+
+                  # Timeout reached
+                  send_response(event, context, 'FAILED', {
+                      'Error': 'Build timeout exceeded',
+                      'BuildId': build_id
+                  })
+
+              except Exception as e:
+                  print(f"Error: {str(e)}")
+                  send_response(event, context, 'FAILED', {'Error': str(e)})
+
+          def send_response(event, context, response_status, response_data):
+              response_body = {
+                  'Status': response_status,
+                  'Reason': f'See CloudWatch Log Stream: {context.log_stream_name}',
+                  'PhysicalResourceId': context.log_stream_name,
+                  'StackId': event['StackId'],
+                  'RequestId': event['RequestId'],
+                  'LogicalResourceId': event['LogicalResourceId'],
+                  'Data': response_data
+              }
+
+              json_response_body = json.dumps(response_body)
+
+              headers = {
+                  'content-type': '',
+                  'content-length': str(len(json_response_body))
+              }
+
+              http = urllib3.PoolManager()
+              response = http.request('PUT', event['ResponseURL'], body=json_response_body, headers=headers)
+              print(f"Response status: {response.status}")
+
+  # Custom Resource to Trigger Layer Build
+  LayerBuildTrigger:
+    Type: AWS::CloudFormation::CustomResource
+    Properties:
+      ServiceToken: !GetAtt LayerBuilderFunction.Arn
+
+  # Lambda Function to Load Mock Data
+  MockDataFunction:
+    Type: AWS::Lambda::Function
+    DependsOn:
+      - Psycopg2Layer
+      - AuroraInstance1
+    Properties:
+      FunctionName: !Sub 'csvpc-${Environment}-load-mock-data'
+      Runtime: python3.13
+      Handler: index.lambda_handler
+      Role: !GetAtt MockDataLambdaRole.Arn
+      Timeout: 600
+      Layers:
+        - !GetAtt Psycopg2Layer.LayerVersionArn
+      VpcConfig:
+        SecurityGroupIds:
+          - !Ref LambdaSecurityGroup
+        SubnetIds:
+          - Fn::ImportValue: !Sub '${VPCStackName}-PrivateSubnet1'
+          - Fn::ImportValue: !Sub '${VPCStackName}-PrivateSubnet3'
+      Environment:
+        Variables:
+          DB_CLUSTER_ENDPOINT: !GetAtt AuroraCluster.Endpoint.Address
+          DB_NAME: 'sampledb'
+          SECRET_ARN: !GetAtt AuroraCluster.MasterUserSecret.SecretArn
+      Code:
+        ZipFile: |
+          import json
+          import boto3
+          import psycopg2
+          import os
+          import logging
+          import urllib3
+          import time
+
+          logger = logging.getLogger()
+          logger.setLevel(logging.INFO)
+
+          def get_secret():
+              secret_name = os.environ['SECRET_ARN']
+              region_name = os.environ['AWS_REGION']
+
+              session = boto3.session.Session()
+              client = session.client(
+                  service_name='secretsmanager',
+                  region_name=region_name
+              )
+
+              get_secret_value_response = client.get_secret_value(
+                  SecretId=secret_name
+              )
+
+              secret = json.loads(get_secret_value_response['SecretString'])
+              return secret
+
+          def send_response(event, context, response_status, response_data):
+              response_body = {
+                  'Status': response_status,
+                  'Reason': f'See CloudWatch Log Stream: {context.log_stream_name}',
+                  'PhysicalResourceId': context.log_stream_name,
+                  'StackId': event['StackId'],
+                  'RequestId': event['RequestId'],
+                  'LogicalResourceId': event['LogicalResourceId'],
+                  # 'Data': response_data
+              }
+
+              json_response_body = json.dumps(response_body)
+
+              headers = {
+                  'content-type': '',
+                  'content-length': str(len(json_response_body))
+              }
+
+              http = urllib3.PoolManager()
+              response = http.request('PUT', event['ResponseURL'], body=json_response_body, headers=headers)
+              logger.info(f"Response status: {response.status}")
+
+          def lambda_handler(event, context):
+              try:
+                  logger.info(f"Received event: {json.dumps(event)}")
+
+                  request_type = event.get('RequestType', 'Create')
+
+                  if request_type == 'Delete':
+                      # For delete operations, just return success
+                      send_response(event, context, 'SUCCESS', {'Message': 'Mock data cleanup completed'})
+                      return
+
+                  if request_type == 'Update':
+                      # For update operations, just return success without doing anything
+                      send_response(event, context, 'SUCCESS', {'Message': 'Mock data update skipped - no action needed'})
+                      return
+
+                  # Only run mock data loading logic for Create operations
+                  if request_type != 'Create':
+                      send_response(event, context, 'SUCCESS', {'Message': f'No action for request type: {request_type}'})
+                      return
+
+                  # Get database credentials
+                  secret = get_secret()
+
+                  # Database connection parameters
+                  db_params = {
+                      'host': os.environ['DB_CLUSTER_ENDPOINT'],
+                      'database': os.environ['DB_NAME'],
+                      'user': secret['username'],
+                      'password': secret['password'],
+                      'port': 3306,
+                      'connect_timeout': 10
+                  }
+
+                  # Connect to database with retry logic
+                  max_retries = 10
+                  retry_delay = 30  # seconds
+                  conn = None
+
+                  for attempt in range(max_retries):
+                      try:
+                          logger.info(f"Attempting database connection (attempt {attempt + 1}/{max_retries}) to {db_params['host']}:{db_params['port']}")
+                          logger.info(f"Using database: {db_params['database']}, user: {db_params['user']}")
+                          conn = psycopg2.connect(**db_params)
+                          logger.info("Successfully connected to database")
+                          break
+                      except Exception as e:
+                          logger.error(f"Connection attempt {attempt + 1} failed: {str(e)}")
+                          logger.error(f"Exception type: {type(e).__name__}")
+                          if attempt < max_retries - 1:
+                              logger.info(f"Waiting {retry_delay} seconds before retry...")
+                              time.sleep(retry_delay)
+                          else:
+                              logger.error("All connection attempts failed")
+                              raise e
+
+                  cur = conn.cursor()
+
+                  # Create tables and insert mock data
+                  logger.info("Creating tables and inserting mock data")
+
+                  # Users table - linked to DynamoDB via customer_id
+                  cur.execute("""
+                      CREATE TABLE IF NOT EXISTS users (
+                          id SERIAL PRIMARY KEY,
+                          customer_id VARCHAR(20) UNIQUE NOT NULL,
+                          username VARCHAR(50) UNIQUE NOT NULL,
+                          email VARCHAR(100) UNIQUE NOT NULL,
+                          first_name VARCHAR(50),
+                          last_name VARCHAR(50),
+                          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                      )
+                  """)
+
+                  # Products table
+                  cur.execute("""
+                      CREATE TABLE IF NOT EXISTS products (
+                          id SERIAL PRIMARY KEY,
+                          name VARCHAR(100) NOT NULL,
+                          description TEXT,
+                          price DECIMAL(10,2),
+                          category VARCHAR(50),
+                          stock_quantity INTEGER DEFAULT 0,
+                          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                      )
+                  """)
+
+                  # Orders table - references customer_id for consistency
+                  cur.execute("""
+                      CREATE TABLE IF NOT EXISTS orders (
+                          id SERIAL PRIMARY KEY,
+                          customer_id VARCHAR(20) REFERENCES users(customer_id),
+                          total_amount DECIMAL(10,2),
+                          status VARCHAR(20) DEFAULT 'pending',
+                          order_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                      )
+                  """)
+
+                  # Insert mock users - linked to DynamoDB customer profiles
+                  cur.execute("""
+                      INSERT INTO users (customer_id, username, email, first_name, last_name) VALUES
+                      ('CUST001', 'john_doe', 'john.doe@example.com', 'John', 'Doe'),
+                      ('CUST002', 'jane_smith', 'jane.smith@example.com', 'Jane', 'Smith'),
+                      ('CUST003', 'bob_johnson', 'bob.johnson@example.com', 'Bob', 'Johnson'),
+                      ('CUST004', 'alice_brown', 'alice.brown@example.com', 'Alice', 'Brown'),
+                      ('CUST005', 'charlie_davis', 'charlie.davis@example.com', 'Charlie', 'Davis')
+                      ON CONFLICT (customer_id) DO NOTHING
+                  """)
+
+                  # Insert mock products
+                  cur.execute("""
+                      INSERT INTO products (name, description, price, category, stock_quantity) VALUES
+                      ('Laptop Pro', 'High-performance laptop for professionals', 1299.99, 'Electronics', 50),
+                      ('Wireless Mouse', 'Ergonomic wireless mouse', 29.99, 'Electronics', 100),
+                      ('Coffee Mug', 'Ceramic coffee mug with company logo', 12.99, 'Office Supplies', 200),
+                      ('Desk Chair', 'Comfortable ergonomic office chair', 299.99, 'Furniture', 25),
+                      ('USB Cable', 'High-speed USB-C cable', 19.99, 'Electronics', 150),
+                      ('Notebook', 'Spiral-bound notebook', 5.99, 'Office Supplies', 300),
+                      ('Monitor Stand', 'Adjustable monitor stand', 79.99, 'Office Supplies', 75),
+                      ('Keyboard', 'Mechanical keyboard with backlight', 89.99, 'Electronics', 60),
+                      ('Water Bottle', 'Stainless steel water bottle', 24.99, 'Office Supplies', 120),
+                      ('Webcam', 'HD webcam for video calls', 59.99, 'Electronics', 40)
+                  """)
+
+                  # Insert mock orders - linked to customer_id
+                  cur.execute("""
+                      INSERT INTO orders (customer_id, total_amount, status) VALUES
+                      ('CUST001', 1329.98, 'completed'),
+                      ('CUST002', 42.98, 'pending'),
+                      ('CUST003', 299.99, 'shipped'),
+                      ('CUST001', 89.99, 'completed'),
+                      ('CUST004', 37.98, 'pending')
+                  """)
+
+                  # Commit changes
+                  conn.commit()
+
+                  # Get record counts
+                  cur.execute("SELECT COUNT(*) FROM users")
+                  user_count = cur.fetchone()[0]
+
+                  cur.execute("SELECT COUNT(*) FROM products")
+                  product_count = cur.fetchone()[0]
+
+                  cur.execute("SELECT COUNT(*) FROM orders")
+                  order_count = cur.fetchone()[0]
+
+                  logger.info(f"Mock data loaded successfully: {user_count} users, {product_count} products, {order_count} orders")
+
+                  # Send success response to CloudFormation
+                  send_response(event, context, 'SUCCESS', {
+                      'Message': 'Mock data loaded successfully',
+                      'Users': user_count,
+                      'Products': product_count,
+                      'Orders': order_count
+                  })
+
+              except Exception as e:
+                  logger.error(f"Error loading mock data: {str(e)}")
+                  # Send failure response to CloudFormation
+                  send_response(event, context, 'FAILED', {'Error': str(e)})
+              finally:
+                  if 'conn' in locals():
+                      conn.close()
+
+  # Custom Resource to Trigger Mock Data Loading
+  MockDataTrigger:
+    Type: AWS::CloudFormation::CustomResource
+    DependsOn:
+      - AuroraInstance1
+      - LayerBuildTrigger
+    Properties:
+      ServiceToken: !GetAtt MockDataFunction.Arn
+
+Outputs:
+  StackName:
+    Description: 'Stack name for cross-stack references'
+    Value: !Ref AWS::StackName
+    Export:
+      Name: !Sub '${AWS::StackName}-StackName'
+
+  AuroraClusterEndpoint:
+    Description: 'Aurora PostgreSQL cluster endpoint'
+    Value: !GetAtt AuroraCluster.Endpoint.Address
+    Export:
+      Name: !Sub '${AWS::StackName}-ClusterEndpoint'
+
+  AuroraClusterPort:
+    Description: 'Aurora PostgreSQL cluster port'
+    Value: !GetAtt AuroraCluster.Endpoint.Port
+    Export:
+      Name: !Sub '${AWS::StackName}-ClusterPort'
+
+  AuroraClusterIdentifier:
+    Description: 'Aurora PostgreSQL cluster identifier'
+    Value: !Ref AuroraCluster
+    Export:
+      Name: !Sub '${AWS::StackName}-ClusterIdentifier'
+
+  AuroraClusterArn:
+    Description: 'Aurora PostgreSQL cluster ARN for RDS Data API'
+    Value: !Sub 'arn:aws:rds:${AWS::Region}:${AWS::AccountId}:cluster:${AuroraCluster}'
+    Export:
+      Name: !Sub '${AWS::StackName}-ClusterArn'
+
+  DatabaseName:
+    Description: 'Database name'
+    Value: !Ref DatabaseName
+    Export:
+      Name: !Sub '${AWS::StackName}-DatabaseName'
+
+  DBCredentialsSecret:
+    Description: 'Secrets Manager ARN for database credentials'
+    Value: !GetAtt AuroraCluster.MasterUserSecret.SecretArn
+    Export:
+      Name: !Sub '${AWS::StackName}-DBCredentialsSecret'
+
+  ConnectionString:
+    Description: 'Sample connection string for applications'
+    Value: !Sub 'postgresql://${DBMasterUsername}:PASSWORD@${AuroraCluster.Endpoint.Address}:${AuroraCluster.Endpoint.Port}/sampledb'
+
+  LayerArtifactsBucket:
+    Description: 'S3 bucket for Lambda layer artifacts'
+    Value: !Ref LayerArtifactsBucket
+    Export:
+      Name: !Sub '${AWS::StackName}-LayerArtifactsBucket'
+
+  Psycopg2LayerArn:
+    Description: 'ARN of the psycopg2 Lambda layer'
+    Value: !Sub 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:layer:csvpc-${Environment}-psycopg2-layer:1'
+    Export:
+      Name: !Sub '${AWS::StackName}-Psycopg2LayerArn'
+
+  CodeBuildProjectName:
+    Description: 'CodeBuild project name for layer builds'
+    Value: !Ref Psycopg2LayerBuild
+    Export:
+      Name: !Sub '${AWS::StackName}-CodeBuildProject'
