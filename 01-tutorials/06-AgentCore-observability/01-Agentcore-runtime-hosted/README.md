@@ -1,4 +1,4 @@
-# AgentCore Observability on Amazon CloudWatch for Bedrock AgentCore Agents 
+# AgentCore Observability on Amazon CloudWatch for Bedrock AgentCore Runtime Agents 
 
 This repository contains examples to showcase AgentCore Observability for Strands Agent  hosted on Amazon Bedrock AgentCore Runtime using Amazon OpenTelemetry Python Instrumentation and Amazon CloudWatch. Observability helps developers trace, debug, and monitor agent performance in production through unified operational dashboards. With support for OpenTelemetry compatible telemetry and detailed visualizations of each step of the agent workflow, Amazon CloudWatch GenAI Observability enables developers to easily gain visibility into agent behavior and maintain quality standards at scale.
 
@@ -21,8 +21,11 @@ The Project folder has the following:
 
 
 ### Strands Agents
-[ Strands](https://strandsagents.com/latest/) provides a framework for building LLM applications with complex workflows, focusing on model driven agentic developement.
+[Strands](https://strandsagents.com/latest/) provides a framework for building LLM applications with complex workflows, focusing on model-driven agentic development.
 
-## Clean Up 
+## Cleanup
 
-Please delete the Amazon Cloudwatch Log groups and associated resources created on Amazon CloudWatch for Observability.
+After completing the examples:
+
+1. Remove AgentCore Runtime deployments
+2. Clean up any created ECR repositories
