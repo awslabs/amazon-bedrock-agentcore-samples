@@ -123,17 +123,17 @@ aws cloudformation create-stack \
   --stack-name multi-agent-demo \
   --template-body file://template.yaml \
   --capabilities CAPABILITY_NAMED_IAM \
-  --region us-east-1
+  --region us-west-2
 
 # Wait for stack creation
 aws cloudformation wait stack-create-complete \
   --stack-name multi-agent-demo \
-  --region us-east-1
+  --region us-west-2
 
 # Get the Runtime IDs
 aws cloudformation describe-stacks \
   --stack-name multi-agent-demo \
-  --region us-east-1 \
+  --region us-west-2 \
   --query 'Stacks[0].Outputs'
 ```
 
@@ -162,7 +162,7 @@ Agent 1 is your main entry point. It will handle simple queries directly or dele
 # Get Agent1 Runtime ID
 AGENT1_ID=$(aws cloudformation describe-stacks \
   --stack-name multi-agent-demo \
-  --region us-east-1 \
+  --region us-west-2 \
   --query 'Stacks[0].Outputs[?OutputKey==`Agent1RuntimeId`].OutputValue' \
   --output text)
 
@@ -171,7 +171,7 @@ aws bedrock-agentcore invoke-agent-runtime \
   --agent-runtime-id $AGENT1_ID \
   --qualifier DEFAULT \
   --payload '{"prompt": "Hello, how are you?"}' \
-  --region us-east-1 \
+  --region us-west-2 \
   response.json
 
 # Test with a complex query (Agent1 delegates to Agent2)
@@ -179,7 +179,7 @@ aws bedrock-agentcore invoke-agent-runtime \
   --agent-runtime-id $AGENT1_ID \
   --qualifier DEFAULT \
   --payload '{"prompt": "Provide a detailed analysis of cloud computing benefits"}' \
-  --region us-east-1 \
+  --region us-west-2 \
   response.json
 
 cat response.json
@@ -208,7 +208,7 @@ You can also test Agent 2 directly to see its specialized capabilities.
 # Get Agent2 Runtime ID
 AGENT2_ID=$(aws cloudformation describe-stacks \
   --stack-name multi-agent-demo \
-  --region us-east-1 \
+  --region us-west-2 \
   --query 'Stacks[0].Outputs[?OutputKey==`Agent2RuntimeId`].OutputValue' \
   --output text)
 
@@ -217,7 +217,7 @@ aws bedrock-agentcore invoke-agent-runtime \
   --agent-runtime-id $AGENT2_ID \
   --qualifier DEFAULT \
   --payload '{"prompt": "Explain quantum computing in detail"}' \
-  --region us-east-1 \
+  --region us-west-2 \
   response.json
 ```
 
@@ -279,12 +279,12 @@ chmod +x cleanup.sh
 ```bash
 aws cloudformation delete-stack \
   --stack-name multi-agent-demo \
-  --region us-east-1
+  --region us-west-2
 
 # Wait for deletion to complete
 aws cloudformation wait stack-delete-complete \
   --stack-name multi-agent-demo \
-  --region us-east-1
+  --region us-west-2
 ```
 
 ### Using AWS Console

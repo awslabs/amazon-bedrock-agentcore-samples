@@ -740,7 +740,7 @@ Resources:
                       import uuid
                       try:
                           # Get region from environment or use default
-                          region = os.getenv('AWS_REGION', 'us-east-1')
+                          region = os.getenv('AWS_REGION', 'us-west-2')
                           agentcore_client = boto3.client('bedrock-agentcore', region_name=region)
 
                           # Invoke agent2 runtime (using AWS sample format)

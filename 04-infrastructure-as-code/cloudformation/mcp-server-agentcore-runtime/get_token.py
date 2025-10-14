@@ -40,7 +40,7 @@ def main():
         print("Usage: python get_token.py <client_id> <username> <password> [region]")
         print("\nExamples:")
         print("  python get_token.py abc123xyz testuser MyPassword123!")
-        print("  python get_token.py abc123xyz testuser MyPassword123! us-east-1")
+        print("  python get_token.py abc123xyz testuser MyPassword123! us-west-2")
         sys.exit(1)
 
     client_id = sys.argv[1]

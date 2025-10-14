@@ -4,7 +4,7 @@
 set -e
 
 STACK_NAME="${1:-mcp-server-demo}"
-REGION="${2:-us-east-1}"
+REGION="${2:-us-west-2}"
 
 echo "=========================================="
 echo "MCP Server Cleanup Script"

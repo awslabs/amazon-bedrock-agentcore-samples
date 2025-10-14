@@ -1,6 +1,6 @@
 # CloudFormation Samples for Amazon Bedrock AgentCore
 
-Production-ready CloudFormation templates for deploying Amazon Bedrock AgentCore resources.
+CloudFormation templates for deploying Amazon Bedrock AgentCore resources.
 
 ## Overview
 
@@ -63,7 +63,7 @@ aws cloudformation create-stack \
   --stack-name basic-agent-demo \
   --template-body file://cloudformation/basic-runtime/template.yaml \
   --capabilities CAPABILITY_IAM \
-  --region us-east-1
+  --region us-west-2
 ```
 
 ---
@@ -92,7 +92,7 @@ aws cloudformation create-stack \
   --stack-name multi-agent-demo \
   --template-body file://cloudformation/multi-agent-runtime/template.yaml \
   --capabilities CAPABILITY_IAM \
-  --region us-east-1
+  --region us-west-2
 ```
 
 ---
@@ -177,7 +177,7 @@ aws cloudformation delete-stack \
 
 Default values:
 - Stack name: Varies by sample (see quick start commands)
-- Region: `us-east-1` (or `us-west-2` for weather agent)
+- Region: `us-west-2`
 
 ## Repository Structure
 

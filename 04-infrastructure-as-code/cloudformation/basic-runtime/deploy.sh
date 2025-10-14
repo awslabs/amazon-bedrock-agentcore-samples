@@ -7,7 +7,7 @@ set -e
 
 # Configuration
 STACK_NAME="${1:-basic-agent-demo}"
-REGION="${2:-us-east-1}"
+REGION="${2:-us-west-2}"
 TEMPLATE_FILE="template.yaml"
 
 echo "=========================================="

@@ -47,7 +47,7 @@ The architecture consists of:
 ### Key Features
 
 * **One-Command Deployment** - Automated scripts handle everything
-* **Production-Ready** - Complete infrastructure as code
+* **Complete Infrastructure** - Full infrastructure as code
 * **Secure by Default** - JWT authentication with Cognito
 * **Automated Build** - CodeBuild creates ARM64 Docker images
 * **Easy Testing** - Automated test script included

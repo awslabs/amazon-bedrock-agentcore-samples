@@ -105,17 +105,17 @@ aws cloudformation create-stack \
   --stack-name basic-agent-demo \
   --template-body file://template.yaml \
   --capabilities CAPABILITY_NAMED_IAM \
-  --region us-east-1
+  --region us-west-2
 
 # Wait for stack creation
 aws cloudformation wait stack-create-complete \
   --stack-name basic-agent-demo \
-  --region us-east-1
+  --region us-west-2
 
 # Get the Runtime ID
 aws cloudformation describe-stacks \
   --stack-name basic-agent-demo \
-  --region us-east-1 \
+  --region us-west-2 \
   --query 'Stacks[0].Outputs[?OutputKey==`AgentRuntimeId`].OutputValue' \
   --output text
 ```
@@ -146,7 +146,7 @@ aws cloudformation describe-stacks \
 # Get the Runtime ID from stack outputs
 RUNTIME_ID=$(aws cloudformation describe-stacks \
   --stack-name basic-agent-demo \
-  --region us-east-1 \
+  --region us-west-2 \
   --query 'Stacks[0].Outputs[?OutputKey==`AgentRuntimeId`].OutputValue' \
   --output text)
 
@@ -155,7 +155,7 @@ aws bedrock-agentcore invoke-agent-runtime \
   --agent-runtime-id $RUNTIME_ID \
   --qualifier DEFAULT \
   --payload '{"prompt": "What is 2+2?"}' \
-  --region us-east-1 \
+  --region us-west-2 \
   response.json
 
 # View the response
@@ -225,12 +225,12 @@ chmod +x cleanup.sh
 ```bash
 aws cloudformation delete-stack \
   --stack-name basic-agent-demo \
-  --region us-east-1
+  --region us-west-2
 
 # Wait for deletion to complete
 aws cloudformation wait stack-delete-complete \
   --stack-name basic-agent-demo \
-  --region us-east-1
+  --region us-west-2
 ```
 
 ### Using AWS Console

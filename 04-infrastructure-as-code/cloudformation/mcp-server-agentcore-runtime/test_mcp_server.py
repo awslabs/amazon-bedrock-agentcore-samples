@@ -79,7 +79,7 @@ def main():
         print("Usage: python test_mcp_server.py <agent_arn> <bearer_token> <region>")
         print("\nExample:")
         print(
-            "  python test_mcp_server.py arn:aws:bedrock-agentcore:... eyJraWQiOiJ... us-east-1"
+            "  python test_mcp_server.py arn:aws:bedrock-agentcore:... eyJraWQiOiJ... us-west-2"
         )
         sys.exit(1)
 
