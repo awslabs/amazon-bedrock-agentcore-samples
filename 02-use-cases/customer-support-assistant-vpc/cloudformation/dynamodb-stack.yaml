@@ -1,0 +1,470 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'DynamoDB tables for product reviews and catalog data with KMS encryption and point-in-time recovery. Creates tables with GSIs for efficient querying and automatically populates sample data via Lambda custom resource.'
+
+
+Metadata:
+  'AWS::CloudFormation::Interface':
+    ParameterGroups:
+    - Label:
+        default: 'Environment Configuration'
+      Parameters:
+      - Environment
+
+Parameters:
+  Environment:
+    Type: String
+    Default: 'dev'
+    AllowedValues:
+      - dev
+      - test
+      - prod
+    Description: 'Environment name for resource naming'
+
+Resources:
+  # KMS Key for DynamoDB encryption
+  DynamoDBKMSKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: 'KMS Key for DynamoDB tables encryption'
+      EnableKeyRotation: true
+      KeyPolicy:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: Enable IAM User Permissions
+            Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
+            Action: 'kms:*'
+            Resource: '*'
+          - Sid: Allow DynamoDB Service
+            Effect: Allow
+            Principal:
+              Service: dynamodb.amazonaws.com
+            Action:
+              - kms:Encrypt
+              - kms:Decrypt
+              - kms:ReEncrypt*
+              - kms:GenerateDataKey*
+              - kms:DescribeKey
+            Resource: '*'
+
+  DynamoDBKMSKeyAlias:
+    Type: AWS::KMS::Alias
+    Properties:
+      AliasName: !Sub 'alias/csvpc-${Environment}-dynamodb-key'
+      TargetKeyId: !Ref DynamoDBKMSKey
+
+  # Reviews DynamoDB Table
+  ReviewsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub 'csvpc-${Environment}-reviews'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: review_id
+          AttributeType: S
+        - AttributeName: product_id
+          AttributeType: N
+        - AttributeName: customer_id
+          AttributeType: S
+        - AttributeName: rating
+          AttributeType: N
+        - AttributeName: created_at
+          AttributeType: S
+      KeySchema:
+        - AttributeName: review_id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: product-reviews-index
+          KeySchema:
+            - AttributeName: product_id
+              KeyType: HASH
+            - AttributeName: created_at
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        - IndexName: customer-reviews-index
+          KeySchema:
+            - AttributeName: customer_id
+              KeyType: HASH
+            - AttributeName: created_at
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        - IndexName: rating-index
+          KeySchema:
+            - AttributeName: rating
+              KeyType: HASH
+            - AttributeName: created_at
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+      SSESpecification:
+        SSEEnabled: true
+        SSEType: KMS
+        KMSMasterKeyId: !Ref DynamoDBKMSKey
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      Tags:
+        - Key: Name
+          Value: !Sub 'csvpc-${Environment}-reviews-table'
+        - Key: Purpose
+          Value: 'Product Reviews Storage'
+
+  # Products DynamoDB Table
+  ProductsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub 'csvpc-${Environment}-products'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: product_id
+          AttributeType: N
+        - AttributeName: category_id
+          AttributeType: N
+        - AttributeName: name
+          AttributeType: S
+        - AttributeName: price
+          AttributeType: N
+        - AttributeName: stock_quantity
+          AttributeType: N
+        - AttributeName: created_at
+          AttributeType: S
+      KeySchema:
+        - AttributeName: product_id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: category-products-index
+          KeySchema:
+            - AttributeName: category_id
+              KeyType: HASH
+            - AttributeName: created_at
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        - IndexName: name-index
+          KeySchema:
+            - AttributeName: name
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+        - IndexName: price-index
+          KeySchema:
+            - AttributeName: price
+              KeyType: HASH
+            - AttributeName: created_at
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        - IndexName: stock-index
+          KeySchema:
+            - AttributeName: stock_quantity
+              KeyType: HASH
+            - AttributeName: created_at
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+      SSESpecification:
+        SSEEnabled: true
+        SSEType: KMS
+        KMSMasterKeyId: !Ref DynamoDBKMSKey
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      Tags:
+        - Key: Name
+          Value: !Sub 'csvpc-${Environment}-products-table'
+        - Key: Purpose
+          Value: 'Product Catalog Storage'
+
+  # Lambda Execution Role for Data Population
+  DataPopulationLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: DynamoDBAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:PutItem
+                  - dynamodb:BatchWriteItem
+                Resource:
+                  - !GetAtt ReviewsTable.Arn
+                  - !GetAtt ProductsTable.Arn
+              - Effect: Allow
+                Action:
+                  - kms:Encrypt
+                  - kms:Decrypt
+                  - kms:GenerateDataKey
+                Resource: !GetAtt DynamoDBKMSKey.Arn
+
+  # Lambda Function to Populate DynamoDB Tables
+  DataPopulationFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub 'csvpc-${Environment}-data-population'
+      Runtime: python3.13
+      Handler: index.lambda_handler
+      Role: !GetAtt DataPopulationLambdaRole.Arn
+      Timeout: 300
+      Environment:
+        Variables:
+          REVIEWS_TABLE: !Ref ReviewsTable
+          PRODUCTS_TABLE: !Ref ProductsTable
+      Code:
+        ZipFile: |
+          import json
+          import boto3
+          import urllib3
+          import os
+          from decimal import Decimal
+
+          def lambda_handler(event, context):
+              try:
+                  print(f"Received event: {json.dumps(event)}")
+
+                  request_type = event.get('RequestType', 'Create')
+                  if request_type == 'Delete':
+                      send_response(event, context, 'SUCCESS', {'Message': 'Cleanup completed'})
+                      return
+
+                  # Initialize DynamoDB client
+                  dynamodb = boto3.resource('dynamodb')
+
+                  reviews_table = dynamodb.Table(os.environ['REVIEWS_TABLE'])
+                  products_table = dynamodb.Table(os.environ['PRODUCTS_TABLE'])
+
+                  # Sample reviews data
+                  reviews_data = [
+                      {
+                          "review_id": "1",
+                          "product_id": 1,
+                          "customer_id": "CUST001",
+                          "rating": 5,
+                          "title": "Excellent laptop!",
+                          "comment": "Great performance for work and gaming",
+                          "verified_purchase": True,
+                          "created_at": "2024-01-15T14:30:00"
+                      },
+                      {
+                          "review_id": "2",
+                          "product_id": 1,
+                          "customer_id": "CUST002",
+                          "rating": 4,
+                          "title": "Good value",
+                          "comment": "Solid laptop, slightly heavy but good specs",
+                          "verified_purchase": True,
+                          "created_at": "2024-01-20T09:15:00"
+                      },
+                      {
+                          "review_id": "3",
+                          "product_id": 2,
+                          "customer_id": "CUST003",
+                          "rating": 5,
+                          "title": "Perfect mouse",
+                          "comment": "Very comfortable and responsive",
+                          "verified_purchase": True,
+                          "created_at": "2024-01-18T16:45:00"
+                      },
+                      {
+                          "review_id": "4",
+                          "product_id": 3,
+                          "customer_id": "CUST001",
+                          "rating": 3,
+                          "title": "Expensive but nice",
+                          "comment": "Good quality mug but overpriced",
+                          "verified_purchase": False,
+                          "created_at": "2024-01-22T11:20:00"
+                      },
+                      {
+                          "review_id": "5",
+                          "product_id": 4,
+                          "customer_id": "CUST002",
+                          "rating": 5,
+                          "title": "Best chair ever!",
+                          "comment": "Super comfortable for long work sessions",
+                          "verified_purchase": True,
+                          "created_at": "2024-01-25T13:10:00"
+                      }
+                  ]
+
+                  # Sample products data
+                  products_data = [
+                      {
+                          "product_id": 1,
+                          "name": "Laptop Pro",
+                          "description": "High-performance laptop for professionals",
+                          "price": Decimal('1299.99'),
+                          "category_id": 1,
+                          "stock_quantity": 50,
+                          "created_at": "2024-01-01T00:00:00"
+                      },
+                      {
+                          "product_id": 2,
+                          "name": "Wireless Mouse",
+                          "description": "Ergonomic wireless mouse",
+                          "price": Decimal('29.99'),
+                          "category_id": 5,
+                          "stock_quantity": 100,
+                          "created_at": "2024-01-01T00:00:00"
+                      },
+                      {
+                          "product_id": 3,
+                          "name": "Coffee Mug",
+                          "description": "Ceramic coffee mug with company logo",
+                          "price": Decimal('12.99'),
+                          "category_id": 2,
+                          "stock_quantity": 200,
+                          "created_at": "2024-01-01T00:00:00"
+                      },
+                      {
+                          "product_id": 4,
+                          "name": "Desk Chair",
+                          "description": "Comfortable ergonomic office chair",
+                          "price": Decimal('299.99'),
+                          "category_id": 3,
+                          "stock_quantity": 25,
+                          "created_at": "2024-01-01T00:00:00"
+                      },
+                      {
+                          "product_id": 5,
+                          "name": "USB Cable",
+                          "description": "High-speed USB-C cable",
+                          "price": Decimal('19.99'),
+                          "category_id": 1,
+                          "stock_quantity": 150,
+                          "created_at": "2024-01-01T00:00:00"
+                      }
+                  ]
+
+                  # Populate reviews table
+                  print("Populating reviews table...")
+                  with reviews_table.batch_writer() as batch:
+                      for review in reviews_data:
+                          batch.put_item(Item=review)
+
+                  # Populate products table
+                  print("Populating products table...")
+                  with products_table.batch_writer() as batch:
+                      for product in products_data:
+                          batch.put_item(Item=product)
+
+                  print(f"Successfully populated {len(reviews_data)} reviews and {len(products_data)} products")
+
+                  send_response(event, context, 'SUCCESS', {
+                      'Message': 'DynamoDB tables populated successfully',
+                      'ReviewsCount': len(reviews_data),
+                      'ProductsCount': len(products_data)
+                  })
+
+              except Exception as e:
+                  print(f"Error populating DynamoDB tables: {str(e)}")
+                  send_response(event, context, 'FAILED', {'Error': str(e)})
+
+          def send_response(event, context, response_status, response_data):
+              response_body = {
+                  'Status': response_status,
+                  'Reason': f'See CloudWatch Log Stream: {context.log_stream_name}',
+                  'PhysicalResourceId': context.log_stream_name,
+                  'StackId': event['StackId'],
+                  'RequestId': event['RequestId'],
+                  'LogicalResourceId': event['LogicalResourceId'],
+                  'Data': response_data
+              }
+
+              json_response_body = json.dumps(response_body)
+
+              headers = {
+                  'content-type': '',
+                  'content-length': str(len(json_response_body))
+              }
+
+              http = urllib3.PoolManager()
+              response = http.request('PUT', event['ResponseURL'], body=json_response_body, headers=headers)
+              print(f"Response status: {response.status}")
+
+  # Custom Resource to Trigger Data Population
+  DataPopulationTrigger:
+    Type: AWS::CloudFormation::CustomResource
+    Properties:
+      ServiceToken: !GetAtt DataPopulationFunction.Arn
+
+  # SSM Parameters for table names
+  ReviewsTableNameParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /app/customersupportvpc/dynamodb/reviews_table_name
+      Type: String
+      Value: !Ref ReviewsTable
+      Description: 'Name of the Reviews DynamoDB table'
+      Tags:
+        Purpose: 'DynamoDB Table Configuration'
+
+  ProductsTableNameParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /app/customersupportvpc/dynamodb/products_table_name
+      Type: String
+      Value: !Ref ProductsTable
+      Description: 'Name of the Products DynamoDB table'
+      Tags:
+        Purpose: 'DynamoDB Table Configuration'
+
+Outputs:
+  StackName:
+    Description: 'Stack name for cross-stack references'
+    Value: !Ref AWS::StackName
+    Export:
+      Name: !Sub '${AWS::StackName}-StackName'
+
+  ReviewsTableName:
+    Description: 'Reviews DynamoDB table name'
+    Value: !Ref ReviewsTable
+    Export:
+      Name: !Sub '${AWS::StackName}-ReviewsTable'
+
+  ReviewsTableArn:
+    Description: 'Reviews DynamoDB table ARN'
+    Value: !GetAtt ReviewsTable.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-ReviewsTableArn'
+
+  ProductsTableName:
+    Description: 'Products DynamoDB table name'
+    Value: !Ref ProductsTable
+    Export:
+      Name: !Sub '${AWS::StackName}-ProductsTable'
+
+  ProductsTableArn:
+    Description: 'Products DynamoDB table ARN'
+    Value: !GetAtt ProductsTable.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-ProductsTableArn'
+
+  ReviewsTableNameParameterName:
+    Description: 'SSM Parameter name for Reviews table'
+    Value: !Ref ReviewsTableNameParameter
+    Export:
+      Name: !Sub '${AWS::StackName}-ReviewsTableNameParameter'
+
+  ProductsTableNameParameterName:
+    Description: 'SSM Parameter name for Products table'
+    Value: !Ref ProductsTableNameParameter
+    Export:
+      Name: !Sub '${AWS::StackName}-ProductsTableNameParameter'
+
+  DynamoDBKMSKey:
+    Description: 'KMS Key ARN for DynamoDB tables encryption'
+    Value: !GetAtt DynamoDBKMSKey.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-DynamoDBKMSKey'
