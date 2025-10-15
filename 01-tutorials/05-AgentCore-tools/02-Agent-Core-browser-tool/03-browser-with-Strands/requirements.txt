@@ -24,21 +24,6 @@ pillow>=10.0.0
 # Data processing
 numpy>=1.24.0
 
-# Standard library modules (included with Python but listed for clarity)
-# json - built-in
-# datetime - built-in  
-# pathlib - built-in
-# webbrowser - built-in
-# threading - built-in
-# http.server - built-in
-# socketserver - built-in
-# urllib.parse - built-in
-# sys - built-in
-# os - built-in
-# time - built-in
-# contextlib - built-in
-# argparse - built-in
-
 # Additional dependencies for notebook compatibility
 jupyter>=1.0.0
 ipython>=8.0.0
