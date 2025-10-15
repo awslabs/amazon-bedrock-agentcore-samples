@@ -201,49 +201,44 @@ def initialize_clients():
 @asynccontextmanager
 async def lifespan(app):
     """Application lifespan manager for startup and cleanup."""
-    try:
-        logger.info("Application starting")
-        yield  # Application runs here
+    logger.info("Application starting")
 
-    except Exception as e:
-        logger.error(f"Error during application lifespan: {e}", exc_info=True)
-        raise
+    yield  # Application runs here
 
-    finally:
-        # Cleanup
-        logger.info("Cleaning up resources")
+    # Cleanup
+    logger.info("Cleaning up resources")
 
-        mcp_client = CustomerSupportContext.get_mcp_client_ctx()
-        if mcp_client is not None:
-            try:
-                mcp_client.stop()
-                logger.info("MCP client stopped")
-            except Exception as e:
-                logger.error(f"Error stopping MCP client: {e}")
+    mcp_client = CustomerSupportContext.get_mcp_client_ctx()
+    if mcp_client is not None:
+        try:
+            mcp_client.stop()
+            logger.info("MCP client stopped")
+        except Exception as e:
+            logger.error(f"Error stopping MCP client: {e}")
 
-        gateway_client = CustomerSupportContext.get_gateway_client_ctx()
-        if gateway_client is not None:
-            try:
-                gateway_client.stop()
-                logger.info("Gateway client stopped")
-            except Exception as e:
-                logger.error(f"Error stopping gateway client: {e}")
+    gateway_client = CustomerSupportContext.get_gateway_client_ctx()
+    if gateway_client is not None:
+        try:
+            gateway_client.stop()
+            logger.info("Gateway client stopped")
+        except Exception as e:
+            logger.error(f"Error stopping gateway client: {e}")
 
-        aurora_client = CustomerSupportContext.get_aurora_mcp_client_ctx()
-        if aurora_client is not None:
-            try:
-                aurora_client.stop()
-                logger.info("Aurora client stopped")
-            except Exception as e:
-                logger.error(f"Error stopping Aurora client: {e}")
+    aurora_client = CustomerSupportContext.get_aurora_mcp_client_ctx()
+    if aurora_client is not None:
+        try:
+            aurora_client.stop()
+            logger.info("Aurora client stopped")
+        except Exception as e:
+            logger.error(f"Error stopping Aurora client: {e}")
 
 
-# app = BedrockAgentCoreApp(lifespan=lifespan)
-app = BedrockAgentCoreApp()
+app = BedrockAgentCoreApp(lifespan=lifespan)
+# app = BedrockAgentCoreApp()
 
 
 @app.entrypoint
-async def strands_agent_bedrock(payload: dict, context) -> str:
+async def strands_agent_bedrock(payload: dict, context):
     """
     Invoke the agent with a user prompt.
 
