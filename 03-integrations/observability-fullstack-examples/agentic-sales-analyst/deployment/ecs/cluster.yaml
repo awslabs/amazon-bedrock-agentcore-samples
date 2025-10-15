@@ -1,0 +1,113 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'ECS cluster and ALB for Strands Agent'
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: agentic-sales-analyst
+
+Resources:
+  ALBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub ${ProjectName}-alb-sg
+      GroupDescription: ALB security group
+      VpcId: !ImportValue
+        Fn::Sub: ${ProjectName}-vpc-id
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0  # Public access - restrict to specific IPs in production
+          Description: Allow HTTP from internet (demo application)
+
+  ECSSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub ${ProjectName}-ecs-sg
+      GroupDescription: ECS tasks security group
+      VpcId: !ImportValue
+        Fn::Sub: ${ProjectName}-vpc-id
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 3000
+          ToPort: 3000
+          SourceSecurityGroupId: !Ref ALBSecurityGroup
+          Description: Allow frontend traffic from ALB
+
+  Cluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: !Sub ${ProjectName}-cluster
+      CapacityProviders:
+        - FARGATE
+      ClusterSettings:
+        - Name: containerInsights
+          Value: enabled
+
+  ALB:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: !Sub ${ProjectName}-alb
+      Type: application
+      Scheme: internet-facing
+      Subnets:
+        - !ImportValue
+          Fn::Sub: ${ProjectName}-subnet-1-id
+        - !ImportValue
+          Fn::Sub: ${ProjectName}-subnet-2-id
+      SecurityGroups:
+        - !Ref ALBSecurityGroup
+
+  TargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: !Sub ${ProjectName}-tg
+      Port: 3000
+      Protocol: HTTP
+      TargetType: ip
+      VpcId: !ImportValue
+        Fn::Sub: ${ProjectName}-vpc-id
+      HealthCheckPath: /
+      HealthCheckIntervalSeconds: 30
+
+  # HTTP Listener (sample only - add HTTPS for production)
+  # For HTTPS: Create ACM certificate, add port 443 listener with certificate ARN
+  # See: https://docs.aws.amazon.com/elasticloadbalancing/latest/application/create-https-listener.html
+  Listener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref ALB
+      Port: 80
+      Protocol: HTTP
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref TargetGroup
+
+  LogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/bedrock-agentcore/runtimes/${ProjectName}
+      RetentionInDays: 7
+
+Outputs:
+  ClusterName:
+    Value: !Ref Cluster
+    Export:
+      Name: !Sub ${ProjectName}-cluster-name
+  ECSSecurityGroupId:
+    Value: !Ref ECSSecurityGroup
+    Export:
+      Name: !Sub ${ProjectName}-ecs-sg-id
+  TargetGroupArn:
+    Value: !Ref TargetGroup
+    Export:
+      Name: !Sub ${ProjectName}-tg-arn
+  ALBDNSName:
+    Value: !GetAtt ALB.DNSName
+    Export:
+      Name: !Sub ${ProjectName}-alb-dns
+  LogGroupName:
+    Value: !Ref LogGroup
+    Export:
+      Name: !Sub ${ProjectName}-log-group

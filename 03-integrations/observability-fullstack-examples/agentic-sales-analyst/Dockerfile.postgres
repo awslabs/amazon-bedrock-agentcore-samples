@@ -1,0 +1,10 @@
+FROM postgres:16-alpine
+
+# Copy initialization scripts and data
+COPY create_and_load_sales_data.sql /docker-entrypoint-initdb.d/
+COPY sales_data_sample_utf8.csv /docker-entrypoint-initdb.d/
+
+# Set default environment variables
+ENV POSTGRES_DB=sales_db
+ENV POSTGRES_USER=postgres
+ENV POSTGRES_PASSWORD=postgres
