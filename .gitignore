@@ -224,3 +224,4 @@ pyrightconfig.json
 
 ### Zip file for prereq infa deployment
 lambda.zip
+.kiro/
