@@ -1,5 +1,0 @@
-Resources:
-  XRayTransactionSearchConfig:
-    Type: AWS::XRay::TransactionSearchConfig
-    Properties:
-      IndexingPercentage: 50
