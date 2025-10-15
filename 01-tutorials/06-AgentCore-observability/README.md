@@ -6,6 +6,11 @@ This repository demonstrates how to implement AgentCore observability for Agents
 
 ```
 06-AgentCore-observability/
+├── 00-enable-transaction-search-template/
+│   ├── images/
+│   ├── enable_transaction_search.ipynb
+│   ├── transaction_search_config.yml
+│   ├── transaction_search.yml
 ├── 01-Agentcore-runtime-hosted/
 │   ├── images/
 │   ├── .env.example
@@ -31,6 +36,11 @@ This repository demonstrates how to implement AgentCore observability for Agents
 │       ├── .env.example
 │       ├── Custom_Span_Creation.ipynb
 │       └── requirements.txt
+│   └── 02-data-protection /
+│       ├── data/
+│       ├── images/
+│       ├── data_protection.ipynb
+│       └── requirements.txt
 ├── README.md
 └── utils.py
 ```
@@ -40,6 +50,9 @@ This repository demonstrates how to implement AgentCore observability for Agents
 This repository provides examples and tools to help developers implement observability for GenAI applications. AgentCore Observability helps developers trace, debug, and monitor agent performance in production through unified operational dashboards. With support for OpenTelemetry compatible telemetry and detailed visualizations of each step of the agent workflow, Amazon CloudWatch GenAI Observability enables developers to easily gain visibility into agent behavior and maintain quality standards at scale.
 
 ## Contents
+
+### 0. enable-transaction-search-template
+Learn how to enable transaction search using CLI and CloudFormation. This is a prerequisite for rest of the modules. 
 
 ### 1. Bedrock AgentCore Runtime Hosted (01-Agentcore-runtime-hosted)
 
@@ -58,6 +71,7 @@ Examples showcasing observability for popular open-source agent frameworks not h
 Advanced observability patterns and techniques:
 
 - **Custom Span Creation**: Learn how to create custom spans for detailed tracing and monitoring of specific operations within your agent workflows
+- **data protection**: Learn how detect and protect sensitive information using CloudWatch Logs data protection policies and Bedrock Guardrails for Agents built on AgentCore
 
 ## Getting Started
 
