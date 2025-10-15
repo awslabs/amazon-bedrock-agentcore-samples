@@ -76,8 +76,8 @@ def get_aws_account_id() -> str:
 def get_cognito_client_secret() -> str:
     client = boto3.client("cognito-idp")
     response = client.describe_user_pool_client(
-        UserPoolId=get_ssm_parameter("/app/customersupport/agentcore/userpool_id"),
-        ClientId=get_ssm_parameter("/app/customersupport/agentcore/machine_client_id"),
+        UserPoolId=get_ssm_parameter("/app/customersupport/agentcore/pool_id"),
+        ClientId=get_ssm_parameter("/app/customersupport/agentcore/client_id"),
     )
     return response["UserPoolClient"]["ClientSecret"]
 
@@ -187,11 +187,23 @@ def delete_customer_support_secret():
         return False
 
 
-def setup_cognito_user_pool():
+def get_or_create_cognito_pool(refresh_token=False):
     boto_session = Session()
     region = boto_session.region_name
     # Initialize Cognito client
     cognito_client = boto3.client("cognito-idp", region_name=region)
+    try:
+        # check for existing cognito pool
+        cognito_config_str = get_customer_support_secret()
+        cognito_config = json.loads(cognito_config_str)
+        if refresh_token:
+            cognito_config["bearer_token"] = reauthenticate_user(
+                cognito_config["client_id"], cognito_config["client_secret"]
+            )
+        return cognito_config
+    except Exception:
+        print("No existing cognito config found. Creating a new one..")
+
     try:
         # Create User Pool
         user_pool_response = cognito_client.create_user_pool(
@@ -229,10 +241,8 @@ def setup_cognito_user_pool():
             Permanent=True,
         )
 
-        app_client_id = client_id
-        key = client_secret
-        message = bytes(username + app_client_id, "utf-8")
-        key = bytes(key, "utf-8")
+        message = bytes(username + client_id, "utf-8")
+        key = bytes(client_secret, "utf-8")
         secret_hash = base64.b64encode(
             hmac.new(key, message, digestmod=hashlib.sha256).digest()
         ).decode()
@@ -242,20 +252,18 @@ def setup_cognito_user_pool():
             ClientId=client_id,
             AuthFlow="USER_PASSWORD_AUTH",
             AuthParameters={
-                "USERNAME": "testuser",
+                "USERNAME": username,
                 "PASSWORD": "MyPassword123!",
                 "SECRET_HASH": secret_hash,
             },
         )
         bearer_token = auth_response["AuthenticationResult"]["AccessToken"]
+        discovery_url = f"https://cognito-idp.{region}.amazonaws.com/{pool_id}/.well-known/openid-configuration"
         # Output the required values
         print(f"Pool id: {pool_id}")
-        print(
-            f"Discovery URL: https://cognito-idp.{region}.amazonaws.com/{pool_id}/.well-known/openid-configuration"
-        )
+        print(f"Discovery URL: {discovery_url}")
         print(f"Client ID: {client_id}")
         print(f"Bearer Token: {bearer_token}")
-
         # Return values if needed for further processing
         cognito_config = {
             "pool_id": pool_id,
@@ -263,8 +271,14 @@ def setup_cognito_user_pool():
             "client_secret": client_secret,
             "secret_hash": secret_hash,
             "bearer_token": bearer_token,
-            "discovery_url": f"https://cognito-idp.{region}.amazonaws.com/{pool_id}/.well-known/openid-configuration",
+            "discovery_url": discovery_url,
         }
+        put_ssm_parameter("/app/customersupport/agentcore/client_id", client_id)
+        put_ssm_parameter("/app/customersupport/agentcore/pool_id", pool_id)
+        put_ssm_parameter(
+            "/app/customersupport/agentcore/cognito_discovery_url", discovery_url
+        )
+        put_ssm_parameter("/app/customersupport/agentcore/client_secret", client_secret)
 
         save_customer_support_secret(json.dumps(cognito_config))
 
@@ -482,6 +496,17 @@ def create_agentcore_runtime_execution_role():
                 "Action": ["ssm:GetParameter"],
                 "Resource": [f"arn:aws:ssm:{region}:{account_id}:parameter/*"],
             },
+            {
+                "Sid": "GatewayAccess",
+                "Effect": "Allow",
+                "Action": [
+                    "bedrock-agentcore:GetGateway",
+                    "bedrock-agentcore:InvokeGateway",
+                ],
+                "Resource": [
+                    f"arn:aws:bedrock-agentcore:{region}:{account_id}:gateway/*"
+                ],
+            },
         ],
     }
 
@@ -579,64 +604,64 @@ def delete_agentcore_runtime_execution_role():
     except Exception as e:
         print(f"❌ Error during cleanup: {str(e)}")
 
-def agentcore_memory_cleanup():
-    
-    control_client = boto3.client('bedrock-agentcore-control',region_name=REGION)
-    
+
+def agentcore_memory_cleanup(memory_id: str = None):
     """List all memories and their associated strategies"""
-    next_token = None
-    
-    while True:
-        # Build request parameters
-        params = {}
-        if next_token:
-            params['nextToken'] = next_token
-        
-        # List memories
-        try:
-            response = control_client.list_memories(**params)
-            
-            # Process each memory
-            for memory in response.get('memories', []):
-                memory_id = memory.get('id')
-                print(f"\nMemory ID: {memory_id}")
-                print(f"Status: {memory.get('status')}")
-                response = control_client.delete_memory(
-                    memoryId=memory_id
-                )
+    control_client = boto3.client("bedrock-agentcore-control", region_name=REGION)
+    if memory_id:
+        response = control_client.delete_memory(memoryId=memory_id)
+        print(f"✅ Successfully deleted memory: {memory_id}")
+    else:
+        next_token = None
+        while True:
+            # Build request parameters
+            params = {}
+            if next_token:
+                params["nextToken"] = next_token
+
+            # List memories
+            try:
                 response = control_client.list_memories(**params)
-                print(f"✅ Successfully deleted memory: {memory_id}")
-                
-            response = control_client.list_memories(**params)    
-            # Process each memory status
-            for memory in response.get('memories', []):
-                memory_id = memory.get('id')
-                print(f"\nMemory ID: {memory_id}")
-                print(f"Status: {memory.get('status')}")
-                
-        except Exception as e:
-            print(f"⚠️  Error getting memory details: {e}")
-        
-        # Check for more results
-        next_token = response.get('nextToken')
-        if not next_token:
-            break
-            
-def gateway_target_cleanup():
-    
-    gateway_client = boto3.client(
-        "bedrock-agentcore-control",
-        region_name=REGION,
-    )
-    response = gateway_client.list_gateways() 
-    gateway_id = (response['items'][0]['gatewayId'])
+
+                # Process each memory
+                for memory in response.get("memories", []):
+                    memory_id = memory.get("id")
+                    print(f"\nMemory ID: {memory_id}")
+                    print(f"Status: {memory.get('status')}")
+                    response = control_client.delete_memory(memoryId=memory_id)
+                    response = control_client.list_memories(**params)
+                    print(f"✅ Successfully deleted memory: {memory_id}")
+
+                response = control_client.list_memories(**params)
+                # Process each memory status
+                for memory in response.get("memories", []):
+                    memory_id = memory.get("id")
+                    print(f"\nMemory ID: {memory_id}")
+                    print(f"Status: {memory.get('status')}")
+
+            except Exception as e:
+                print(f"⚠️  Error getting memory details: {e}")
+            # Check for more results
+            next_token = response.get("nextToken")
+            if not next_token:
+                break
+
+
+def gateway_target_cleanup(gateway_id: str = None):
+    if not gateway_id:
+        gateway_client = boto3.client(
+            "bedrock-agentcore-control",
+            region_name=REGION,
+        )
+        response = gateway_client.list_gateways()
+        gateway_id = response["items"][0]["gatewayId"]
     print(f"🗑️  Deleting all targets for gateway: {gateway_id}")
-    
+
     # List and delete all targets
     list_response = gateway_client.list_gateway_targets(
         gatewayIdentifier=gateway_id, maxResults=100
     )
-    
+
     for item in list_response["items"]:
         target_id = item["targetId"]
         print(f"   Deleting target: {target_id}")
@@ -644,49 +669,58 @@ def gateway_target_cleanup():
             gatewayIdentifier=gateway_id, targetId=target_id
         )
         print(f"   ✅ Target {target_id} deleted")
-    
+
     # Delete the gateway
     print(f"🗑️  Deleting gateway: {gateway_id}")
     gateway_client.delete_gateway(gatewayIdentifier=gateway_id)
     print(f"✅ Gateway {gateway_id} deleted successfully")
 
-def runtime_resource_cleanup():
+
+def runtime_resource_cleanup(runtime_arn: str = None):
     try:
         # Initialize AWS clients
-        agentcore_control_client = boto3.client("bedrock-agentcore-control", region_name=REGION)
-        ecr_client = boto3.client("ecr", region_name=REGION)
-        
-        # Delete the AgentCore Runtime
-        # print("  🗑️  Deleting AgentCore Runtime...")
-        runtimes = agentcore_control_client.list_agent_runtimes()
-        for runtime in runtimes['agentRuntimes']:        
+        agentcore_control_client = boto3.client(
+            "bedrock-agentcore-control", region_name=REGION
+        )
+        if runtime_arn:
+            runtime_id = runtime_arn.split(":")[-1].split("/")[-1]
             response = agentcore_control_client.delete_agent_runtime(
-                agentRuntimeId=runtime['agentRuntimeId']
+                agentRuntimeId=runtime_id
             )
             print(f"  ✅ Agent runtime deleted: {response['status']}")
-        
+        else:
+            ecr_client = boto3.client("ecr", region_name=REGION)
+
+            # Delete the AgentCore Runtime
+            # print("  🗑️  Deleting AgentCore Runtime...")
+            runtimes = agentcore_control_client.list_agent_runtimes()
+            for runtime in runtimes["agentRuntimes"]:
+                response = agentcore_control_client.delete_agent_runtime(
+                    agentRuntimeId=runtime["agentRuntimeId"]
+                )
+                print(f"  ✅ Agent runtime deleted: {response['status']}")
+
         # Delete the ECR repository
         print("  🗑️  Deleting ECR repository...")
         repositories = ecr_client.describe_repositories()
-        for repo in repositories['repositories']:
-            if 'bedrock-agentcore-customer_support_agent' in repo['repositoryName']:
+        for repo in repositories["repositories"]:
+            if "bedrock-agentcore-customer_support_agent" in repo["repositoryName"]:
                 ecr_client.delete_repository(
-                    repositoryName=repo['repositoryName'],
-                    force=True
+                    repositoryName=repo["repositoryName"], force=True
                 )
                 print(f"  ✅ ECR repository deleted: {repo['repositoryName']}")
-      
-    
+
     except Exception as e:
         print(f"  ⚠️  Error during runtime cleanup: {e}")
+
 
 def delete_observability_resources():
     # Configuration
     log_group_name = "agents/customer-support-assistant-logs"
     log_stream_name = "default"
-    
+
     logs_client = boto3.client("logs", region_name=REGION)
-    
+
     # Delete log stream first (must be done before deleting log group)
     try:
         print(f"  🗑️  Deleting log stream '{log_stream_name}'...")
@@ -699,7 +733,7 @@ def delete_observability_resources():
             print(f"  ℹ️  Log stream '{log_stream_name}' doesn't exist")
         else:
             print(f"  ⚠️  Error deleting log stream: {e}")
-    
+
     # Delete log group
     try:
         print(f"  🗑️  Deleting log group '{log_group_name}'...")
@@ -711,6 +745,7 @@ def delete_observability_resources():
         else:
             print(f"  ⚠️  Error deleting log group: {e}")
 
+
 def local_file_cleanup():
     # List of files to clean up
     files_to_delete = [
@@ -720,7 +755,7 @@ def local_file_cleanup():
         "customer_support_agent.py",
         "agent_runtime.py",
     ]
-    
+
     deleted_files = []
     missing_files = []
 
@@ -734,8 +769,10 @@ def local_file_cleanup():
                 print(f"  ⚠️  Error deleting {file}: {e}")
         else:
             missing_files.append(file)
-    
+
     if deleted_files:
         print(f"\n📁 Successfully deleted {len(deleted_files)} files")
     if missing_files:
-        print(f"ℹ️  {len(missing_files)} files were already missing: {', '.join(missing_files)}")
+        print(
+            f"ℹ️  {len(missing_files)} files were already missing: {', '.join(missing_files)}"
+        )

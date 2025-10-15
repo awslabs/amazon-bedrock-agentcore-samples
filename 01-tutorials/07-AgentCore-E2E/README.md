@@ -88,7 +88,7 @@ Each lab builds on the previous one, but you can jump ahead if you understand th
 
 Watch your architecture grow from a simple local agent to a production system:
 
-**Lab 1:** Local agent with embedded tools  
+**Lab 1:** Local agent with embedded tools
 **Lab 2:** Agent + AgentCore Memory for persistence  
 **Lab 3:** Agent + AgentCore Memory + AgentCore Gateway and AgentCore Identity for shared tools  
 **Lab 4:** Deployment to AgentCore Runtime and observability with AgentCore Observability 

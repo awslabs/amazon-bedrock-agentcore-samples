@@ -5,85 +5,93 @@ import urllib.parse
 from typing import Any, Optional
 import requests
 import streamlit as st
-from chat_utils import make_urls_clickable, create_safe_markdown_text, get_aws_region, get_ssm_parameter
+from chat_utils import (
+    make_urls_clickable,
+    create_safe_markdown_text,
+    get_aws_region,
+    get_ssm_parameter,
+)
+
 
 def invoke_endpoint_streaming(
-        agent_arn: str,
-        payload,
-        session_id: str,
-        bearer_token: str,
-        endpoint_name: str = "DEFAULT",
-    ):
-        """Invoke agent endpoint and yield streaming response chunks."""
-        # Escape agent ARN for URL
-        escaped_arn = urllib.parse.quote(agent_arn, safe="")
-        
-        # Build URL
-        # url = f"{self.dp_endpoint}/runtimes/{escaped_arn}/invocations"
-        url = f"https://bedrock-agentcore.{st.session_state['region']}.amazonaws.com/runtimes/{escaped_arn}/invocations"
+    agent_arn: str,
+    payload,
+    session_id: str,
+    bearer_token: str,
+    endpoint_name: str = "DEFAULT",
+):
+    """Invoke agent endpoint and yield streaming response chunks."""
+    # Escape agent ARN for URL
+    escaped_arn = urllib.parse.quote(agent_arn, safe="")
 
-        # Headers
-        headers = {
-            "Authorization": f"Bearer {bearer_token}",
-            "Content-Type": "application/json",
-            "X-Amzn-Bedrock-AgentCore-Runtime-Session-Id": session_id,
-        }
-        
-        # Parse the payload string back to JSON object to send properly
-        try:
-            body = json.loads(payload) if isinstance(payload, str) else payload
-        except json.JSONDecodeError:
-            # Fallback for non-JSON strings - wrap in payload object
-            print("Failed to parse payload as JSON, wrapping in payload object")
-            body = {"payload": payload}
-        
-        try:
-            # Make streaming request
-            response = requests.post(
-                url,
-                params={"qualifier": endpoint_name},
-                headers=headers,
-                json=body,
-                timeout=100,
-                stream=True,
-            )
-            response.raise_for_status()
-            
-            # Check if response is streaming
-            if "text/event-stream" in response.headers.get("content-type", ""):
-                # Handle streaming response
-                for line in response.iter_lines(chunk_size=1, decode_unicode=True):
-                    if line and line.startswith("data: "):
-                        chunk = line[6:]  # Remove "data: " prefix
-                        if chunk.strip():  # Only yield non-empty chunks
-                            yield chunk
-            else:
-                # Non-streaming response, yield entire content
-                if response.content:
-                    yield response.text
-                    
-        except requests.exceptions.RequestException as e:
-            print("Failed to invoke agent endpoint: %s", str(e))
-            raise
+    # Build URL
+    # url = f"{self.dp_endpoint}/runtimes/{escaped_arn}/invocations"
+    url = f"https://bedrock-agentcore.{st.session_state['region']}.amazonaws.com/runtimes/{escaped_arn}/invocations"
+
+    # Headers
+    headers = {
+        "Authorization": f"Bearer {bearer_token}",
+        "Content-Type": "application/json",
+        "X-Amzn-Bedrock-AgentCore-Runtime-Session-Id": session_id,
+    }
+
+    # Parse the payload string back to JSON object to send properly
+    try:
+        body = json.loads(payload) if isinstance(payload, str) else payload
+    except json.JSONDecodeError:
+        # Fallback for non-JSON strings - wrap in payload object
+        print("Failed to parse payload as JSON, wrapping in payload object")
+        body = {"payload": payload}
+
+    try:
+        # Make streaming request
+        response = requests.post(
+            url,
+            params={"qualifier": endpoint_name},
+            headers=headers,
+            json=body,
+            timeout=100,
+            stream=True,
+        )
+        response.raise_for_status()
+
+        # Check if response is streaming
+        if "text/event-stream" in response.headers.get("content-type", ""):
+            # Handle streaming response
+            for line in response.iter_lines(chunk_size=1, decode_unicode=True):
+                if line and line.startswith("data: "):
+                    chunk = line[6:]  # Remove "data: " prefix
+                    if chunk.strip():  # Only yield non-empty chunks
+                        yield chunk
+        else:
+            # Non-streaming response, yield entire content
+            if response.content:
+                yield response.text
+
+    except requests.exceptions.RequestException as e:
+        print("Failed to invoke agent endpoint: %s", str(e))
+        raise
+
 
 class ChatManager:
     def format_response_text(self, text):
         """Format response text by unescaping quotes and newlines"""
         if not text:
             return text
-        
+
         # Remove outer quotes if present
         if text.startswith('"') and text.endswith('"'):
             text = text[1:-1]
-        
+
         # Unescape common escape sequences
-        text = text.replace('\\n', '\n')
+        text = text.replace("\\n", "\n")
         text = text.replace('\\"', '"')
-        text = text.replace('\\t', '\t')
-        text = text.replace('\\r', '\r')
-        text = text.replace('\\\\', '\\')
-        
+        text = text.replace("\\t", "\t")
+        text = text.replace("\\r", "\r")
+        text = text.replace("\\\\", "\\")
+
         return text
+
     def __init__(self, agent_name: str = "default"):
         self.auth_url_matching = ".amazonaws.com/identities/oauth2/authorize"
         self.agent_name = agent_name
@@ -258,9 +266,7 @@ class ChatManager:
 
             for chunk in self.invoke_endpoint(
                 agent_arn=st.session_state["agent_arn"],
-                payload=json.dumps(
-                    {"prompt": prompt, "actor_id": actor_id}
-                ),
+                payload=json.dumps({"prompt": prompt, "actor_id": actor_id}),
                 bearer_token=bearer_token,
                 session_id=st.session_state["session_id"],
             ):
@@ -290,7 +296,7 @@ class ChatManager:
                     time.sleep(0.02)
 
             elapsed = time.time() - start_time
-            
+
             formatted_response = self.format_response_text(accumulated_response)
             clickable_streaming_text = make_urls_clickable(formatted_response)
 
