@@ -6,6 +6,7 @@
 - aristsakpinis93
 - aurbac
 - bergjaak
+- chanbi
 - crupakheti
 - danystinson
 - dhawalkp
