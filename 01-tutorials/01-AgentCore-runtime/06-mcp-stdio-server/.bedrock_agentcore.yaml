@@ -1,0 +1,34 @@
+default_agent: mcp_stdio
+agents:
+  mcp_stdio:
+    name: mcp_stdio
+    entrypoint: main.py
+    platform: linux/arm64
+    container_runtime: docker
+    aws:
+      execution_role: arn:aws:iam::416075262792:role/AmazonBedrockAgentCoreSDKRuntime-us-east-1-a1350239bb
+      execution_role_auto_create: false
+      account: '416075262792'
+      region: us-east-1
+      ecr_repository: 416075262792.dkr.ecr.us-east-1.amazonaws.com/bedrock-agentcore-mcp_stdio
+      ecr_auto_create: false
+      network_configuration:
+        network_mode: PUBLIC
+      protocol_configuration:
+        server_protocol: MCP
+      observability:
+        enabled: true
+    bedrock_agentcore:
+      agent_id: mcp_stdio-gTGNJNErHb
+      agent_arn: arn:aws:bedrock-agentcore:us-east-1:416075262792:runtime/mcp_stdio-gTGNJNErHb
+      agent_session_id: null
+    codebuild:
+      project_name: null
+      execution_role: null
+      source_bucket: null
+    authorizer_configuration:
+      customJWTAuthorizer:
+        allowedClients:
+        - 3egn0ph7mmsg19c5cvraoroo2o
+        discoveryUrl: https://cognito-idp.eu-west-1.amazonaws.com/eu-west-1_B2tQC2cD4/.well-known/openid-configuration
+    oauth_configuration: null
