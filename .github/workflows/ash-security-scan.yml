@@ -53,7 +53,7 @@ jobs:
 
       - name: Install ASH
         if: steps.changed-files.outputs.any_changed == 'true'
-        run: pip install git+https://github.com/awslabs/automated-security-helper.git@v3.0.0
+        run: pip install git+https://github.com/awslabs/automated-security-helper.git@v3.1.2
 
       - name: Create temp directory for changed files
         if: steps.changed-files.outputs.any_changed == 'true'

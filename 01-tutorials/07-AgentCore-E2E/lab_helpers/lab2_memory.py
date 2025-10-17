@@ -2,16 +2,13 @@
 """AgentCore Memory integration for Strands agents."""
 
 import logging
-import os
-import sys
 import uuid
-from typing import Dict
 
 import boto3
 from bedrock_agentcore.memory import MemoryClient
 from bedrock_agentcore.memory.constants import StrategyType
 from boto3.session import Session
-from botocore.exceptions import ClientError
+from lab_helpers.utils import get_ssm_parameter, put_ssm_parameter
 from strands.hooks import (
     AfterInvocationEvent,
     HookProvider,
@@ -23,7 +20,6 @@ boto_session = Session()
 REGION = boto_session.region_name
 
 logger = logging.getLogger(__name__)
-from scripts.utils import get_ssm_parameter, put_ssm_parameter
 
 ACTOR_ID = "customer_001"
 SESSION_ID = str(uuid.uuid4())
@@ -37,7 +33,7 @@ def create_or_get_memory_resource():
         memory_id = get_ssm_parameter("/app/customersupport/agentcore/memory_id")
         memory_client.gmcp_client.get_memory(memoryId=memory_id)
         return memory_id
-    except:
+    except Exception:
         try:
             strategies = [
                 {
@@ -66,10 +62,10 @@ def create_or_get_memory_resource():
             memory_id = response["id"]
             try:
                 put_ssm_parameter("/app/customersupport/agentcore/memory_id", memory_id)
-            except:
-                raise
+            except Exception as e:
+                raise e
             return memory_id
-        except:
+        except Exception:
             return None
 
 
@@ -133,9 +129,9 @@ class CustomerSupportMemoryHooks(HookProvider):
                 if all_context:
                     context_text = "\n".join(all_context)
                     original_text = messages[-1]["content"][0]["text"]
-                    messages[-1]["content"][0][
-                        "text"
-                    ] = f"Customer Context:\n{context_text}\n\n{original_text}"
+                    messages[-1]["content"][0]["text"] = (
+                        f"Customer Context:\n{context_text}\n\n{original_text}"
+                    )
                     logger.info(f"Retrieved {len(all_context)} customer context items")
 
             except Exception as e:
@@ -182,16 +178,3 @@ class CustomerSupportMemoryHooks(HookProvider):
         registry.add_callback(MessageAddedEvent, self.retrieve_customer_context)
         registry.add_callback(AfterInvocationEvent, self.save_support_interaction)
         logger.info("Customer support memory hooks registered")
-
-
-def get_memory_hooks():
-    """Setup memory resource and return Memory hooks for agent"""
-    memory_id = create_or_get_memory_resource()
-    memory_hooks = MemoryHook(
-        memory_client=memory_client,
-        memory_id=memory_id,
-        actor_id=ACTOR_ID,
-        session_id=SESSION_ID,
-    )
-
-    return memory_hooks

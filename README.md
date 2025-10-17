@@ -80,6 +80,39 @@ Learn how to integrate Amazon Bedrock AgentCore capabilities with popular Agenti
 Set agent-to-agent communication with A2A and different multi-agent collaboration patterns. Integrate agentic interfaces and learn how to use 
 Amazon Bedrock AgentCore with different entry points.
 
+## Running a Notebook
+
+1. Create and activate a virtual environment
+```bash
+python -m venv .venv
+source .venv/bin/activate
+```
+
+2. Install dependencies
+```bash
+pip install -r requirements.txt
+```
+
+3. Export/Activate required AWS Credentials for the notebook to run
+
+4. Register your virtual environment as a kernel for Jupyter notebook to use
+```bash
+python -m ipykernel install --user --name=notebook-venv --display-name="Python (notebook-venv)"
+```
+
+You can list your kernels using:
+```bash
+jupyter kernelspec list
+```
+
+5. Run the notebook and ensure the correct kernel is selected
+```bash
+jupyter notebook path/to/your/notebook.ipynb
+```
+
+**Important:** After opening the notebook in Jupyter, make sure to select the correct kernel by going to `Kernel` → `Change kernel` → select "Python (notebook-venv)" to ensure your virtual environment packages are available.
+
+
 ## Quick Start - [Amazon Bedrock AgentCore Runtime](https://github.com/aws/bedrock-agentcore-starter-toolkit/blob/main/documentation/docs/user-guide/runtime/quickstart.md)
 
 ### Step 1: Prerequisites

@@ -1,0 +1,239 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Master CloudFormation stack for Customer Support AI system. Orchestrates deployment of 7 nested stacks: private VPC with endpoints, Cognito M2M authentication, Aurora PostgreSQL database, DynamoDB tables, MCP server, AgentCore Gateway, and Agent runtime with configurable Bedrock model.'
+
+
+Metadata:
+  'AWS::CloudFormation::Interface':
+    ParameterGroups:
+    - Label:
+        default: 'Environment Configuration'
+      Parameters:
+      - TemplateBaseURL
+      - Environment
+      - ModelID
+    - Label:
+        default: 'Database'
+      Parameters:
+      - DBMasterUsername
+      - DatabaseName
+    - Label:
+        default: 'Frontend username/password'
+      Parameters:
+      - AdminUserEmail
+      - AdminUserPassword
+    - Label:
+        default: 'VPC Configurations'
+      Parameters:
+      - VpcCidr
+      - PrivateSubnet1Cidr
+      - PrivateSubnet2Cidr
+      - PrivateSubnet3Cidr
+
+
+Parameters:
+  # Base URL for nested stack templates (public URLs)
+  TemplateBaseURL:
+    Type: String
+    Description: 'Base URL for the nested CloudFormation templates'
+
+  # Environment parameters
+  Environment:
+    Type: String
+    Default: 'dev'
+    AllowedValues:
+      - dev
+      - test
+      - prod
+    Description: 'Environment name for resource naming'
+
+  # VPC Stack Parameters
+  VpcCidr:
+    Type: String
+    Default: '10.0.0.0/16'
+    Description: 'CIDR block for the VPC'
+
+  PrivateSubnet1Cidr:
+    Type: String
+    Default: '10.0.3.0/24'
+    Description: 'CIDR block for the first private subnet'
+
+  PrivateSubnet2Cidr:
+    Type: String
+    Default: '10.0.4.0/24'
+    Description: 'CIDR block for the second private subnet'
+
+  PrivateSubnet3Cidr:
+    Type: String
+    Default: '10.0.1.0/24'
+    Description: 'CIDR block for the third private subnet'
+
+  # Aurora Stack Parameters
+  DBMasterUsername:
+    Type: String
+    Default: 'postgres'
+    Description: 'Master username for Aurora PostgreSQL cluster'
+
+  DatabaseName:
+    Type: String
+    Default: 'sampledb'
+    Description: 'Name of the initial database'
+
+  # Agent Server Parameters
+  ModelID:
+    Type: String
+    Default: 'global.anthropic.claude-sonnet-4-20250514-v1:0'
+    Description: 'Bedrock model ID to use with Agent Runtime'
+
+  # Cognito User Parameters
+  AdminUserEmail:
+    Type: String
+    Description: 'Admin user email to create automatically in Cognito User Pool'
+    AllowedPattern: '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    ConstraintDescription: 'Must be a valid email address'
+
+  AdminUserPassword:
+    Type: String
+    NoEcho: true
+    Description: 'Admin user password (must meet Cognito password policy requirements)'
+    MinLength: 8
+    AllowedPattern: '^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#])[A-Za-z\d@$!%*?&#]{8,}$'
+    ConstraintDescription: 'Password must be at least 8 characters with uppercase, lowercase, number, and special character'
+
+Resources:
+  # VPC Stack - Foundation layer
+  VPCStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub '${TemplateBaseURL}/vpc-stack.yaml'
+      Parameters:
+        Environment: !Ref Environment
+        VpcCidr: !Ref VpcCidr
+        PrivateSubnet1Cidr: !Ref PrivateSubnet1Cidr
+        PrivateSubnet2Cidr: !Ref PrivateSubnet2Cidr
+        PrivateSubnet3Cidr: !Ref PrivateSubnet3Cidr
+      Tags:
+        - Key: Name
+          Value: !Sub '${Environment}-vpc-stack'
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: StackType
+          Value: 'Nested-VPC'
+
+  # Cognito Stack - Authentication layer (no dependencies)
+  CognitoStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub '${TemplateBaseURL}/cognito-stack.yaml'
+      Parameters:
+        Environment: !Ref Environment
+        AdminUserEmail: !Ref AdminUserEmail
+        AdminUserPassword: !Ref AdminUserPassword
+      Tags:
+        - Key: Name
+          Value: !Sub '${Environment}-cognito-stack'
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: StackType
+          Value: 'Nested-Cognito'
+
+  # Aurora PostgreSQL Stack - Database layer (depends on VPC)
+  AuroraStack:
+    Type: AWS::CloudFormation::Stack
+    DependsOn: VPCStack
+    Properties:
+      TemplateURL: !Sub '${TemplateBaseURL}/aurora-postgres-stack.yaml'
+      Parameters:
+        Environment: !Ref Environment
+        VPCStackName: !GetAtt VPCStack.Outputs.StackName
+        DBMasterUsername: !Ref DBMasterUsername
+        DatabaseName: !Ref DatabaseName
+      Tags:
+        - Key: Name
+          Value: !Sub '${Environment}-aurora-stack'
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: StackType
+          Value: 'Nested-Aurora'
+
+  # DynamoDB Stack - NoSQL data layer (depends on VPC for reference)
+  DynamoDBStack:
+    Type: AWS::CloudFormation::Stack
+    DependsOn: VPCStack
+    Properties:
+      TemplateURL: !Sub '${TemplateBaseURL}/dynamodb-stack.yaml'
+      Parameters:
+        Environment: !Ref Environment
+      Tags:
+        - Key: Name
+          Value: !Sub '${Environment}-dynamodb-stack'
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: StackType
+          Value: 'Nested-DynamoDB'
+  
+  # Gateway Stack - Application layer (depends on all other stacks)
+  GatewayStack:
+    Type: AWS::CloudFormation::Stack
+    DependsOn:
+      - CognitoStack
+    Properties:
+      TemplateURL: !Sub '${TemplateBaseURL}/gateway-stack.yaml'
+      Parameters:
+        Environment: !Ref Environment
+        CognitoStackName: !GetAtt CognitoStack.Outputs.StackName
+        VPCStackName: !GetAtt VPCStack.Outputs.StackName
+      Tags:
+        - Key: Name
+          Value: !Sub '${Environment}-gateway-stack'
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: StackType
+          Value: 'Nested-Gateway'
+      
+  # MCP Server Stack - MCP DynamoDB runtime layer (depends on VPC, Cognito, and DynamoDB)
+  MCPServerStack:
+    Type: AWS::CloudFormation::Stack
+    DependsOn:
+      - VPCStack
+      - CognitoStack
+      - DynamoDBStack
+    Properties:
+      TemplateURL: !Sub '${TemplateBaseURL}/mcp-server-stack.yaml'
+      Parameters:
+        Environment: !Ref Environment
+        VPCStackName: !GetAtt VPCStack.Outputs.StackName
+        CognitoStackName: !GetAtt CognitoStack.Outputs.StackName
+        DynamoDBStackName: !GetAtt DynamoDBStack.Outputs.StackName
+      Tags:
+        - Key: Name
+          Value: !Sub '${Environment}-mcp-server-stack'
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: StackType
+          Value: 'Nested-MCPServer'
+
+  # Agent Server Stack - AgentCore runtime layer (depends on VPC, Cognito, Aurora, MCP, and Gateway)
+  AgentServerStack:
+    Type: AWS::CloudFormation::Stack
+    DependsOn:
+      - CognitoStack
+      - AuroraStack
+      - MCPServerStack
+      - GatewayStack
+    Properties:
+      TemplateURL: !Sub '${TemplateBaseURL}/agent-server-stack.yaml'
+      Parameters:
+        Environment: !Ref Environment
+        CognitoStackName: !GetAtt CognitoStack.Outputs.StackName
+        MCPStackName: !GetAtt MCPServerStack.Outputs.StackName
+        GatewayStackName: !GetAtt GatewayStack.Outputs.StackName
+        AuroraStackName: !GetAtt AuroraStack.Outputs.StackName
+        VPCStackName: !GetAtt VPCStack.Outputs.StackName
+        ModelID: !Ref ModelID
+      Tags:
+        - Key: Name
+          Value: !Sub '${Environment}-agent-server-stack'
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: StackType
+          Value: 'Nested-AgentServer'

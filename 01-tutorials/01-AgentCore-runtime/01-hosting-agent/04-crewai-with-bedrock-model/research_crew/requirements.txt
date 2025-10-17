@@ -1,5 +1,5 @@
 crewai
 crewai-tools
-bedrock-agentcore
+bedrock-agentcore<=0.1.5
 langchain-community
 duckduckgo-search

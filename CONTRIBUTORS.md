@@ -6,6 +6,7 @@
 - aristsakpinis93
 - aurbac
 - bergjaak
+- crupakheti
 - danystinson
 - dhawalkp
 - didhd
@@ -17,10 +18,12 @@
 - mttanke
 - mvangara10
 - ozhn
+- premaiyer
 - rahullks
 - rameshv29
 - rohillasandeep
 - satveerkhurpa
+- seanslavichaws
 - sssumarss
 - sundargthb
 - vedashree1110
@@ -30,3 +33,13 @@
 - erezweinstein5
 - HardikThakkar94
 - brianloyal
+- jagdeep1
+- Sunil Ramachandra
+- Sandeep Raveesh-Babu
+- chintanpatel-ai
+- Evandro Franco
+- greg-aws
+- Frank Dallezotte
+- Omar Elkharbotly
+- Chintan Patel
+- Shreyas Subramanian
