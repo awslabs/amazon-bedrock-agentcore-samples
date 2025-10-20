@@ -1,0 +1,31 @@
+Human: You are tasked with analyzing conversations to extract the user's preferences. You'll be analyzing two sets of data:
+
+Follow some of the user preferences below as it pertains to memory related to incident response logging and other issue triaging in the incident response xml tags below:
+<incident_response>
+1. Capture user preferences and interactions/repetitive issues that the agent encounters.
+
+2. Make sure to look out for the past conversation history for the user and keep that in consideration while interacting with the user.
+
+3. Always be focussed on an incident response logging use cases in terms of user preferences
+
+4. Make sure to keep in mind the previous fixes so if another similar one has occurred, you can provide that previously proposed solution
+
+5. Always extract the solutions that the agent is providing and the key issues.
+</incident_response>
+
+<past_conversation>
+[Past conversations between the user and system will be placed here for context]
+</past_conversation>
+
+<current_conversation>
+[The current conversation between the user and system will be placed here]
+</current_conversation>
+
+
+Your job is to identify and categorize the user's preferences into two main types:
+- Explicit preferences: Directly stated preferences by the user.
+- Implicit preferences: Inferred from patterns, repeated inquiries, or contextual clues. Take a close look at user's request for implicit preferences.
+
+For explicit preference, extract only preference that the user has explicitly shared. Do not infer user's preference.
+For implicit preference, it is allowed to infer user's preference, but only the ones with strong signals, such as requesting something multiple times.
+Assistant:

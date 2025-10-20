@@ -1,0 +1,2358 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: "AgentCore Runtime"
+
+Parameters:
+  BedrockModelId:
+    Type: String
+    Description: Amazon Bedrock model id
+    Default: 'global.anthropic.claude-sonnet-4-20250514-v1:0'
+  
+  GitHubURL:
+    Type: String
+    Description: Github URL of the project
+  
+  AgentDirectory:
+    Type: String
+    Description: Agent directory with Dockerfile of agent
+
+  CognitoStackName:
+    Type: String
+    Description: Name of the Cognito CloudFormation stack to import values from
+
+Resources:
+  
+  AgentCoreRuntimeExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AssumeRolePolicy
+            Effect: Allow
+            Principal:
+              Service: bedrock-agentcore.amazonaws.com
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals:
+                'aws:SourceAccount': !Ref AWS::AccountId
+              ArnLike:
+                'aws:SourceArn': !Sub 'arn:aws:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:*'
+      Policies:
+        - PolicyName: AgentCoreRuntimeExecutionPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: ECRImageAccess
+                Effect: Allow
+                Action:
+                  - ecr:BatchGetImage
+                  - ecr:GetDownloadUrlForLayer
+                Resource:
+                  - !Sub 'arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/*'
+              - Effect: Allow
+                Action:
+                  - logs:DescribeLogStreams
+                  - logs:CreateLogGroup
+                Resource:
+                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/bedrock-agentcore/runtimes/*'
+              - Effect: Allow
+                Action:
+                  - logs:DescribeLogGroups
+                Resource:
+                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:*'
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/bedrock-agentcore/runtimes/*:log-stream:*'
+              - Sid: ECRTokenAccess
+                Effect: Allow
+                Action:
+                  - ecr:GetAuthorizationToken
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
+                  - xray:GetSamplingRules
+                  - xray:GetSamplingTargets
+                Resource: '*'
+              - Effect: Allow
+                Resource: '*'
+                Action: cloudwatch:PutMetricData
+                Condition:
+                  StringEquals:
+                    'cloudwatch:namespace': 'bedrock-agentcore'
+              - Sid: BedrockModelAccess
+                Effect: Allow
+                Action:
+                  - bedrock:InvokeModel
+                  - bedrock:InvokeModelWithResponseStream
+                Resource:
+                  - 'arn:aws:bedrock:*::foundation-model/*'
+                  - !Sub 'arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:*'
+              - Sid: SSMParameterAccess
+                Effect: Allow
+                Action:
+                  - ssm:GetParameter
+                  - ssm:GetParameters
+                Resource:
+                  - !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/*'
+              - Sid: Oauth2Token
+                Effect: Allow
+                Action:
+                  - bedrock-agentcore:GetResourceOauth2Token
+                  # TODO: Scope down
+                Resource:
+                  - '*'
+              - Sid: SecretsManager
+                Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                  # TODO: Scope down
+                Resource:
+                  - '*'
+              - Sid: MemoryAccess
+                Effect: Allow
+                Action:
+                  - bedrock-agentcore:ListMemories
+                  - bedrock-agentcore:ListMemoryRecords
+                  - bedrock-agentcore:RetrieveMemoryRecords
+                  - bedrock-agentcore:GetMemory
+                  - bedrock-agentcore:GetMemoryRecord
+                  - bedrock-agentcore:BatchCreateMemoryRecords
+                  - bedrock-agentcore:BatchDeleteMemoryRecords
+                  - bedrock-agentcore:BatchUpdateMemoryRecords
+                  - bedrock-agentcore:ListActors
+                  - bedrock-agentcore:ListEvents
+                  - bedrock-agentcore:CreateEvent
+                  - bedrock-agentcore:GetEvent
+                Resource:
+                  - !GetAtt AgentMemory.MemoryArn
+                  - !Sub '${AgentMemory.MemoryArn}/*'
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-Runtime-Role'
+
+  # ECR Repository for Agent Docker Images
+  AgentECRRepository:
+    Type: AWS::ECR::Repository
+    DeletionPolicy: Delete
+    Properties:
+      ImageScanningConfiguration:
+        ScanOnPush: true
+      LifecyclePolicy:
+        LifecyclePolicyText: |
+          {
+            "rules": [
+              {
+                "rulePriority": 1,
+                "description": "Keep last 10 images",
+                "selection": {
+                  "tagStatus": "any",
+                  "countType": "imageCountMoreThan",
+                  "countNumber": 10
+                },
+                "action": {
+                  "type": "expire"
+                }
+              }
+            ]
+          }
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-Agent-ECR-Repository'
+
+  # CodeBuild Service Role for Docker Image Build
+  CodeBuildServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: codebuild.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: CodeBuildLogsPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - "*"
+        - PolicyName: ECRAccessPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ecr:BatchCheckLayerAvailability
+                  - ecr:GetDownloadUrlForLayer
+                  - ecr:BatchGetImage
+                  - ecr:GetAuthorizationToken
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - ecr:InitiateLayerUpload
+                  - ecr:UploadLayerPart
+                  - ecr:CompleteLayerUpload
+                  - ecr:PutImage
+                Resource: !GetAtt AgentECRRepository.Arn
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-CodeBuild-Role'
+
+  # CodeBuild Project for Agent Docker Image
+  AgentDockerBuildProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Description: 'Build and push agent Docker image to ECR'
+      ServiceRole: !GetAtt CodeBuildServiceRole.Arn
+      Artifacts:
+        Type: NO_ARTIFACTS
+      Environment:
+        Type: ARM_CONTAINER
+        ComputeType: BUILD_GENERAL1_LARGE
+        Image: aws/codebuild/amazonlinux2-aarch64-standard:3.0
+        PrivilegedMode: true
+        EnvironmentVariables:
+          - Name: ECR_REPOSITORY_URI
+            Value: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${AgentECRRepository}'
+          - Name: ECR_REPOSITORY_NAME
+            Value: !Ref AgentECRRepository
+          - Name: AWS_DEFAULT_REGION
+            Value: !Ref AWS::Region
+          - Name: AWS_ACCOUNT_ID
+            Value: !Ref AWS::AccountId
+          - Name: AGENT_DIRECTORY
+            Value: !Ref AgentDirectory
+      Source:
+        Type: GITHUB
+        Location: !Ref GitHubURL
+        GitCloneDepth: 1
+        BuildSpec: |
+          version: 0.2
+          phases:
+            pre_build:
+              commands:
+                - echo "Checking current directory and contents..."
+                - pwd
+                - ls -la
+                - echo "Navigating to agent directory..."
+                - cd ${AGENT_DIRECTORY}
+                - echo "Contents of agent directory:"
+                - ls -la
+                - echo "Checking for Dockerfile..."
+                - cat Dockerfile || echo "Dockerfile not found"
+                - echo "Generating unique image tag..."
+                - export IMAGE_TAG="build-${CODEBUILD_BUILD_NUMBER}"
+                - echo "Image will be tagged as ${IMAGE_TAG}"
+            build:
+              commands:
+                - echo "Starting parallel Docker build and ECR authentication..."
+                - |
+                  docker build -t bedrock-agentcore-arm64 . &
+                  BUILD_PID=$!
+                  aws ecr get-login-password --region $AWS_DEFAULT_REGION | \
+                  docker login --username AWS --password-stdin $ECR_REPOSITORY_URI &
+                  AUTH_PID=$!
+                  echo "Waiting for Docker build to complete..."
+                  wait $BUILD_PID
+                  if [ $? -ne 0 ]; then
+                    echo "Docker build failed"
+                    exit 1
+                  fi
+                  echo "Waiting for ECR authentication to complete..."
+                  wait $AUTH_PID
+                  if [ $? -ne 0 ]; then
+                    echo "ECR authentication failed"
+                    exit 1
+                  fi
+                  echo "Both build and auth completed successfully"
+                - echo "Tagging image with unique tag ${IMAGE_TAG}..."
+                - docker tag bedrock-agentcore-arm64:latest $ECR_REPOSITORY_URI:${IMAGE_TAG}
+            post_build:
+              commands:
+                - echo "Pushing ARM64 image to ECR with unique tag ${IMAGE_TAG}..."
+                - docker push $ECR_REPOSITORY_URI:${IMAGE_TAG}
+                - echo "Build completed at $(date)"
+                - echo "Image tag pushed - ${IMAGE_TAG}"
+      SourceVersion: refs/heads/a2a_sample
+      TimeoutInMinutes: 30
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-Agent-Docker-Build'
+
+  # Lambda Execution Role for ECR Image Notification
+  ECRImageNotificationLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: ECRAccessPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ecr:DescribeImages
+                  - ecr:ListImages
+                Resource: !GetAtt AgentECRRepository.Arn
+        - PolicyName: BedrockAgentCoreAccessPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - bedrock-agentcore:ListAgentRuntimes
+                  - bedrock-agentcore:ListAgentRuntimeEndpoints
+                  - bedrock-agentcore:ListAgentRuntimeVersions
+                  - bedrock-agentcore:GetAgentRuntime
+                  - bedrock-agentcore:GetAgentRuntimeEndpoint
+                  - bedrock-agentcore:UpdateAgentRuntime
+                  - bedrock-agentcore:UpdateAgentRuntimeEndpoint
+                Resource: '*'
+        - PolicyName: IAMPassRole
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - iam:PassRole
+                Resource: !GetAtt AgentCoreRuntimeExecutionRole.Arn
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-ECR-Notification-Role'
+
+  # Lambda Function for ECR Image Notification
+  ECRImageNotificationFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Runtime: python3.13
+      Handler: index.lambda_handler
+      Role: !GetAtt ECRImageNotificationLambdaRole.Arn
+      Timeout: 300
+      Environment:
+        Variables:
+          AGENT_RUNTIME_ID: !GetAtt AgentRuntime.AgentRuntimeId
+          ECR_REPOSITORY_URI: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${AgentECRRepository}'
+          ROLE_ARN: !GetAtt AgentCoreRuntimeExecutionRole.Arn
+      Code:
+        ZipFile: |
+          import json
+          import logging
+          import boto3
+          import os
+
+          logger = logging.getLogger()
+          logger.setLevel(logging.INFO)
+
+          def lambda_handler(event, context):
+              try:
+                  logger.info(f"Received ECR event: {json.dumps(event)}")
+
+                  # Parse the ECR event
+                  detail = event.get('detail', {})
+                  repository_name = detail.get('repository-name')
+                  image_tag = detail.get('image-tag', 'latest')
+                  action = detail.get('action-type')
+                  result = detail.get('result')
+
+                  logger.info(f"ECR Event - Repository: {repository_name}, Tag: {image_tag}, Action: {action}, Result: {result}")
+
+                  # Only proceed if the push was successful
+                  if action != 'PUSH' or result != 'SUCCESS':
+                      logger.info("Skipping non-push or failed event")
+                      return {
+                          'statusCode': 200,
+                          'body': json.dumps('Event skipped - not a successful push')
+                      }
+
+                  # Get environment variables
+                  agent_runtime_id = os.environ['AGENT_RUNTIME_ID']
+                  ecr_repository_uri = os.environ['ECR_REPOSITORY_URI']
+                  role_arn = os.environ['ROLE_ARN']
+
+                  # Initialize bedrock-agentcore-control client
+                  client = boto3.client('bedrock-agentcore-control')
+
+                  # Get current runtime configuration
+                  logger.info(f"Getting current runtime configuration for: {agent_runtime_id}")
+                  get_response = client.get_agent_runtime(agentRuntimeId=agent_runtime_id)
+
+                  logger.info(f"Current runtime status: {get_response}")
+
+                  # Build new container URI with the pushed image tag
+                  new_container_uri = f"{ecr_repository_uri}:{image_tag}"
+
+                  logger.info(f"Updating runtime to use new container: {new_container_uri}")
+
+                  # Update the runtime with the new container image
+                  update_response = client.update_agent_runtime(
+                      agentRuntimeId=agent_runtime_id,
+                      agentRuntimeArtifact={
+                          'containerConfiguration': {
+                              'containerUri': new_container_uri
+                          }
+                      },
+                      roleArn=role_arn,
+                      networkConfiguration=get_response['networkConfiguration'],
+                      protocolConfiguration=get_response['protocolConfiguration'],
+                      authorizerConfiguration=get_response['authorizerConfiguration'],
+                      environmentVariables=get_response['environmentVariables'],
+                  )
+
+                  logger.info(f"Runtime updated successfully. New version: {update_response['agentRuntimeVersion']}")
+
+                  return {
+                      'statusCode': 200,
+                      'body': json.dumps({
+                          'message': 'AgentCore Runtime updated successfully',
+                          'newContainerUri': new_container_uri,
+                          'runtimeId': agent_runtime_id,
+                          'newVersion': update_response['agentRuntimeVersion']
+                      })
+                  }
+
+              except Exception as e:
+                  logger.error(f"Error processing ECR event: {str(e)}", exc_info=True)
+                  return {
+                      'statusCode': 500,
+                      'body': json.dumps({'error': str(e)})
+                  }
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-ECR-Notification-Function'
+
+  # EventBridge Permission for Lambda
+  ECRImageNotificationLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref ECRImageNotificationFunction
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt ECRImageEventRule.Arn
+
+  # EventBridge Rule for ECR Image Push
+  ECRImageEventRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub '${AWS::StackName}-agent-ecr-push-rule'
+      Description: 'Trigger Lambda when new ECR image is pushed'
+      EventPattern:
+        source:
+          - aws.ecr
+        detail-type:
+          - ECR Image Action
+        detail:
+          action-type:
+            - PUSH
+          result:
+            - SUCCESS
+          repository-name:
+            - !Ref AgentECRRepository
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt ECRImageNotificationFunction.Arn
+          Id: ECRImageNotificationTarget
+
+  # Lambda Execution Role for CodeBuild Trigger
+  CodeBuildTriggerLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: CodeBuildTriggerPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - codebuild:StartBuild
+                  - codebuild:BatchGetBuilds
+                Resource: !GetAtt AgentDockerBuildProject.Arn
+        - PolicyName: SecretsManagerAccessPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource:
+                  Fn::ImportValue: !Sub '${CognitoStackName}-MonitoringClientSecretArn'
+        - PolicyName: BedrockIdentityAccessPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - bedrock-agentcore:GetResourceOauth2Token
+                  - bedrock-agentcore:CreateOauth2CredentialProvider
+                  - bedrock-agentcore:DeleteOauth2CredentialProvider
+                  - bedrock-agentcore:UpdateOauth2CredentialProvider
+                  - bedrock-agentcore:ListOauth2CredentialProviders
+                  - bedrock-agentcore:GetOauth2CredentialProvider
+                Resource: '*'
+        - PolicyName: ECRCleanupPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ecr:ListImages
+                  - ecr:BatchDeleteImage
+                Resource: !GetAtt AgentECRRepository.Arn
+              - Effect: Allow
+                Action:
+                  - secretsmanager:CreateSecret
+                  - secretsmanager:DeleteSecret
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - bedrock-agentcore:ListWorkloadIdentities
+                  - bedrock-agentcore:UpdateWorkloadIdentity
+                  - bedrock-agentcore:DeleteWorkloadIdentity
+                  - bedrock-agentcore:CreateWorkloadIdentity
+                Resource:
+                  - !Sub 'arn:aws:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:workload-identity-directory/*/workload-identity/*'
+                  - !Sub 'arn:aws:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:workload-identity-directory/*'
+              - Effect: Allow
+                Action:
+                  - bedrock-agentcore:GetResourceOauth2Token
+                  - bedrock-agentcore:CreateOauth2CredentialProvider
+                  - bedrock-agentcore:DeleteOauth2CredentialProvider
+                  - bedrock-agentcore:UpdateOauth2CredentialProvider
+                  - bedrock-agentcore:ListOauth2CredentialProviders
+                  - bedrock-agentcore:GetOauth2CredentialProvider
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - bedrock-agentcore:GetTokenVault
+                  - bedrock-agentcore:CreateTokenVault
+                  - bedrock-agentcore:DeleteTokenVault
+                Resource: '*'
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-CodeBuild-Trigger-Role'
+
+  # Lambda Function to Trigger CodeBuild
+  CodeBuildTriggerFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-agent-codebuild'
+      Runtime: python3.13
+      Handler: index.lambda_handler
+      Role: !GetAtt CodeBuildTriggerLambdaRole.Arn
+      Timeout: 900
+      Environment:
+        Variables:
+          CODEBUILD_PROJECT_NAME: !Ref AgentDockerBuildProject
+          AGENT_CLIENT_SECRET_ARN:
+            Fn::ImportValue: !Sub '${CognitoStackName}-MonitoringClientSecretArn'
+          DISCOVERY_URL:
+            Fn::ImportValue: !Sub '${CognitoStackName}-DiscoveryUrl'
+          ECR_REPOSITORY_NAME: !Ref AgentECRRepository
+      Code:
+        ZipFile: |
+          import json
+          import boto3
+          import urllib3
+          import logging
+          import os
+          import time
+
+          logger = logging.getLogger()
+          logger.setLevel(logging.INFO)
+
+          def create_oauth2_credential_provider(secret_arn, discovery_url, provider_name):
+              try:
+                  logger.info(f"Creating OAuth2 credential provider for Agent: {provider_name}")
+
+                  # Get client credentials from Secrets Manager
+                  secrets_client = boto3.client('secretsmanager')
+                  secret_response = secrets_client.get_secret_value(SecretId=secret_arn)
+                  secret_data = json.loads(secret_response['SecretString'])
+
+                  client_id = secret_data['client_id']
+                  client_secret = secret_data['client_secret']
+                  token_url = secret_data['token_endpoint']
+                  auth_url = discovery_url.replace('/.well-known/openid-configuration', '/oauth2/authorize')
+
+                  # Create OAuth2 credential provider
+                  identity_client = boto3.client("bedrock-agentcore-control",)
+
+                  identity_client.create_oauth2_credential_provider(
+                      name=provider_name,
+                      credentialProviderVendor="CustomOauth2",
+                      oauth2ProviderConfigInput={
+                          "customOauth2ProviderConfig": {
+                              "clientId": client_id,
+                              "clientSecret": client_secret,
+                              "oauthDiscovery": {
+                                "discoveryUrl": discovery_url
+                              },
+                          }
+                      },
+                  )
+
+                  logger.info(f"OAuth2 credential provider created: {provider_name}")
+                  return provider_name
+
+              except Exception as e:
+                  logger.error(f"Failed to create OAuth2 credential provider: {str(e)}")
+                  raise e
+
+          def empty_ecr_repository(repository_name):
+              try:
+                  logger.info(f"Emptying ECR repository: {repository_name}")
+
+                  ecr_client = boto3.client('ecr')
+
+                  # List all images in the repository
+                  response = ecr_client.list_images(repositoryName=repository_name)
+
+                  if not response['imageIds']:
+                      logger.info("Repository is already empty")
+                      return
+
+                  # Delete all images
+                  logger.info(f"Deleting {len(response['imageIds'])} images from repository")
+                  ecr_client.batch_delete_image(
+                      repositoryName=repository_name,
+                      imageIds=response['imageIds']
+                  )
+
+                  logger.info(f"Successfully emptied ECR repository: {repository_name}")
+
+              except Exception as e:
+                  logger.error(f"Failed to empty ECR repository: {str(e)}")
+                  # Don't raise the exception, as we want deletion to continue
+
+          def lambda_handler(event, context):
+              try:
+                  logger.info(f"Received event: {json.dumps(event)}")
+
+                  request_type = event['RequestType']
+                  project_name = os.environ['CODEBUILD_PROJECT_NAME']
+                  agent_client_secret_arn = os.environ['AGENT_CLIENT_SECRET_ARN']
+                  discovery_url = os.environ['DISCOVERY_URL']
+                  provider_name = event['ResourceProperties']['ProviderName']
+                  ecr_repository_name = os.environ['ECR_REPOSITORY_NAME']
+
+                  if request_type == 'Create':
+                      # Create OAuth2 credential provider first
+                      create_oauth2_credential_provider(agent_client_secret_arn, discovery_url, provider_name)
+                      # Start CodeBuild project on stack creation and wait for completion
+                      codebuild = boto3.client('codebuild')
+
+                      logger.info(f"Starting CodeBuild project: {project_name}")
+
+                      response = codebuild.start_build(projectName=project_name)
+                      build_id = response['build']['id']
+
+                      logger.info(f"Build started successfully with ID: {build_id}")
+
+                      # Wait for build to complete
+                      max_wait_time = 1800  # 30 minutes
+                      wait_interval = 30    # 30 seconds
+                      elapsed_time = 0
+
+                      while elapsed_time < max_wait_time:
+                          # Check remaining Lambda execution time
+                          remaining_time = context.get_remaining_time_in_millis()
+                          if remaining_time < 60000:  # Less than 1 minute left
+                              logger.error("Lambda timeout approaching, cannot wait for build completion")
+                              send_response(event, context, 'FAILED', {})
+                              return
+
+                          build_status = codebuild.batch_get_builds(ids=[build_id])
+                          current_phase = build_status['builds'][0]['currentPhase']
+                          build_complete = build_status['builds'][0]['buildComplete']
+
+                          logger.info(f"Build status: {current_phase}, Complete: {build_complete}")
+
+                          if build_complete:
+                              final_status = build_status['builds'][0]['buildStatus']
+                              logger.info(f"Build completed with status: {final_status}")
+
+                              if final_status == 'SUCCEEDED':
+                                  send_response(event, context, 'SUCCESS', {})
+                                  return
+                              else:
+                                  send_response(event, context, 'FAILED', {})
+                                  return
+
+                          # Wait before checking again
+                          time.sleep(wait_interval)
+                          elapsed_time += wait_interval
+
+                      # Timeout reached
+                      send_response(event, context, 'FAILED', {})
+
+                  elif request_type == 'Delete':
+                      logger.info("Stack deletion - cleaning up resources")
+
+                      # Clean up ECR repository
+                      empty_ecr_repository(ecr_repository_name)
+
+                      # Clean up OAuth2 credential provider
+                      try:
+                          identity_client = boto3.client("bedrock-agentcore-control",)
+                          identity_client.delete_oauth2_credential_provider(name=provider_name)
+                          logger.info(f"OAuth2 credential provider deleted: {provider_name}")
+                      except Exception as e:
+                          logger.error(f"Failed to delete OAuth2 credential provider: {str(e)}")
+                          # Continue with deletion even if provider cleanup fails
+
+                      send_response(event, context, 'SUCCESS', {})
+
+                  elif request_type == 'Update':
+                      logger.info("Stack update - no action required")
+                      send_response(event, context, 'SUCCESS', {})
+
+              except Exception as e:
+                  logger.error(f"Error: {str(e)}")
+                  send_response(event, context, 'FAILED', {})
+
+          def send_response(event, context, response_status, response_data):
+              response_body = {
+                  'Status': response_status,
+                  'Reason': 'See CloudWatch Logs',
+                  'PhysicalResourceId': 'CodeBuildTrigger',
+                  'StackId': event['StackId'],
+                  'RequestId': event['RequestId'],
+                  'LogicalResourceId': event['LogicalResourceId'],
+                  # 'Data': response_data
+              }
+
+              json_response_body = json.dumps(response_body)
+
+              headers = {
+                  'content-type': '',
+                  'content-length': str(len(json_response_body))
+              }
+
+              http = urllib3.PoolManager()
+              response = http.request('PUT', event['ResponseURL'], body=json_response_body, headers=headers)
+              logger.info(f"Response status: {response.status}")
+
+  # Custom Resource to Trigger CodeBuild on Stack Creation
+  CodeBuildTrigger:
+    Type: AWS::CloudFormation::CustomResource
+    DependsOn: AgentDockerBuildProject
+    Properties:
+      ServiceToken: !GetAtt CodeBuildTriggerFunction.Arn
+      ProviderName: !Sub 'AgentOAuth2Provider-${AWS::StackName}'
+
+  # IAM Role for Memory Execution (required for Custom Memory Strategies)
+  MemoryExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: bedrock-agentcore.amazonaws.com
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals:
+                'aws:SourceAccount': !Ref AWS::AccountId
+              ArnLike:
+                'aws:SourceArn': !Sub 'arn:aws:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:*'
+      Policies:
+        - PolicyName: MemoryBedrockModelAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - bedrock:InvokeModel
+                  - bedrock:InvokeModelWithResponseStream
+                Resource:
+                  - 'arn:aws:bedrock:*::foundation-model/*'
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-Memory-Execution-Role'
+
+  AgentMemory:
+    Type: AWS::BedrockAgentCore::Memory
+    Properties:
+      EventExpiryDuration: 60
+      Name: !Join ['', !Split ['-', !Sub '${AWS::StackName}Memory']]
+      MemoryExecutionRoleArn: !GetAtt MemoryExecutionRole.Arn
+      MemoryStrategies: 
+        - CustomMemoryStrategy: 
+            Name: MonitoringIssueTracker
+            Namespaces:
+              - "/technical-issues/{actorId}"
+            Configuration:
+              SemanticOverride:
+                Extraction:
+                  AppendToPrompt: |
+                    Human: You are a specialized memory extraction agent for an AWS monitoring AI. Your task is to identify and extract:
+
+                    1. AWS service alerts and incidents mentioned by the user
+                    2. CloudWatch metrics, alarms, and thresholds discussed
+                    3. Resource identifiers (ARNs, IDs) and their associated metrics
+                    4. Performance anomalies and their timestamps
+                    5. Infrastructure configurations and scaling events
+                    6. Previous remediation actions taken by the user
+
+                    Only extract information that is explicitly stated by the user. Do not infer or guess information.
+                    Focus on extracting factual, operational details that would be useful for future monitoring sessions.
+                    Ignore casual conversation, greetings, or non-monitoring related information.
+
+                    Pay special attention to:
+                    - Metric values with their units and timestamps
+                    - Alarm thresholds and their current states
+                    - Service health indicators and status changes
+                    - Resource utilization patterns and trends
+                    - Log patterns and error frequencies
+
+                    IMPORTANT: For whatever information that might be helpful in downstream processes with monitoring metrics, please extract that.
+
+                    Format each extracted fact as a clear, concise statement that could stand alone as a reference point in a monitoring dashboard.
+                    Assistant:
+                  ModelId: "us.anthropic.claude-3-5-sonnet-20241022-v2:0"
+                Consolidation:
+                  AppendToPrompt: |
+                    Human: You are a monitoring knowledge manager responsible for maintaining a coherent database of AWS infrastructure and application metrics.
+
+                    When consolidating monitoring memories:
+                    - Prioritize specific metric values, timestamps, and exact resource identifiers
+                    - Preserve the chronological sequence of events for incident timelines
+                    - Maintain the relationship between alarms, metrics, and the resources they monitor
+                    - Keep distinct separation between different AWS accounts, regions, and environments
+                    - Preserve exact error messages and log patterns without paraphrasing
+                    - Update metric values while maintaining historical context and trends
+                    - Merge related incidents while preserving the complete timeline of events
+                    - Maintain clear connections between alerts and their corresponding remediation actions
+
+                    For monitoring contexts, it's critical to maintain precision in timestamps, metric values, and resource relationships.
+                    When updating existing memories with new information:
+                    - Append new metric data points while preserving historical values
+                    - Update status information while noting the time of status change
+                    - Add new observations to existing incident records when they relate to the same root cause
+                    - Create separate memories for distinct incidents even if they affect the same resource
+
+                    The monitoring knowledge base must maintain both precision and temporal context to support effective incident analysis and pattern recognition.
+                    Assistant:
+                  ModelId: "us.anthropic.claude-3-5-sonnet-20241022-v2:0"
+        - SemanticMemoryStrategy: 
+            Name: SemanticMemory
+            Namespaces:
+              - "/knowledge/{actorId}"
+        - UserPreferenceMemoryStrategy: 
+            Name: UserPreference
+            Namespaces:
+              - "/users/{actorId}"
+      Tags: 
+        Name: !Sub '${AWS::StackName}-Agent-Memory'
+
+
+  # BedrockAgentCore Runtime using build-1 ECR image (first build from CodeBuildTrigger)
+  AgentRuntime:
+    Type: AWS::BedrockAgentCore::Runtime
+    DependsOn: CodeBuildTrigger
+    Properties:
+      AgentRuntimeName: !Join ['', !Split ['-', !Sub '${AWS::StackName}']]
+      RoleArn: !GetAtt AgentCoreRuntimeExecutionRole.Arn
+      NetworkConfiguration:
+        NetworkMode: "PUBLIC"
+      AgentRuntimeArtifact:
+        ContainerConfiguration:
+          ContainerUri: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${AgentECRRepository}:build-1'
+      ProtocolConfiguration: HTTP
+      AuthorizerConfiguration:
+        CustomJWTAuthorizer:
+          DiscoveryUrl:
+            Fn::ImportValue: !Sub '${CognitoStackName}-DiscoveryUrl'
+          AllowedClients:
+            - Fn::ImportValue: !Sub '${CognitoStackName}-MonitoringClientId'
+      EnvironmentVariables:
+        MODEL_ID: !Ref BedrockModelId
+        MCP_REGION: !Sub '${AWS::Region}'
+        MEMORY_ID: !GetAtt AgentMemory.MemoryId
+        GATEWAY_PROVIDER_NAME: !Sub 'GatewayOAuth2Provider-${AWS::StackName}'
+      Tags:
+        Name: !Sub '${AWS::StackName}-Agent-Runtime'
+
+  # SSM Parameter for Agent Runtime ID
+  AgentRuntimeIdParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: '/monitoragent/agentcore/runtime-id'
+      Description: 'BedrockAgentCore Runtime ID'
+      Type: String
+      Value: !GetAtt AgentRuntime.AgentRuntimeId
+      Tags:
+        Name: !Sub '${AWS::StackName}-AgentRuntimeId-Parameter'
+
+  # SSM Parameter for OAuth2 Provider Name
+  AgentProviderNameParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: '/monitoragent/agentcore/provider-name'
+      Description: 'OAuth2 Credential Provider Name'
+      Type: String
+      Value: !Sub 'AgentOAuth2Provider-${AWS::StackName}'
+      Tags:
+        Name: !Sub '${AWS::StackName}-ProviderName-Parameter'
+
+  # IAM Role for Monitoring Tools Lambda
+  MonitoringToolsLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: CloudWatchAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - cloudwatch:DescribeAlarms
+                  - cloudwatch:GetMetricStatistics
+                  - cloudwatch:ListDashboards
+                  - cloudwatch:GetDashboard
+                  - logs:DescribeLogGroups
+                  - logs:DescribeLogStreams
+                  - logs:FilterLogEvents
+                  - logs:GetLogEvents
+                Resource: '*'
+        - PolicyName: STSAssumeRole
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - sts:AssumeRole
+                Resource: '*'
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-MonitoringTools-Lambda-Role'
+
+  # Lambda Function for Monitoring Tools
+  MonitoringToolsLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-monitoring-tools'
+      Runtime: python3.13
+      Handler: index.lambda_handler
+      Role: !GetAtt MonitoringToolsLambdaRole.Arn
+      Timeout: 300
+      MemorySize: 512
+      Layers:
+        - arn:aws:lambda:us-west-2:336392948345:layer:AWSSDKPandas-Python313:4
+      Code:
+        ZipFile: |
+          import json
+          import os
+          import boto3
+          import logging
+          import requests
+          from datetime import datetime, timedelta, timezone
+          from typing import Optional
+
+          # Configure logging
+          logger = logging.getLogger()
+          logger.setLevel(logging.INFO)
+
+          def lambda_handler(event, context):
+              """
+              Lambda handler for AgentCore Gateway monitoring tools
+              """
+              try:
+                  # Extract tool information from context
+                  tool_name = context.client_context.custom['bedrockAgentCoreToolName']
+                  logger.info(f"Original toolName: {tool_name}")
+
+                  # Handle tool name with delimiter (if present)
+                  delimiter = "___"
+                  if delimiter in tool_name:
+                      tool_name = tool_name[tool_name.index(delimiter) + len(delimiter):]
+                  logger.info(f"Converted toolName: {tool_name}")
+
+                  # Route to appropriate monitoring function
+                  if tool_name == 'list_cloudwatch_dashboards':
+                      return handle_list_dashboards(event)
+                  elif tool_name == 'fetch_cloudwatch_logs_for_service':
+                      return handle_fetch_logs(event)
+                  elif tool_name == 'get_cloudwatch_alarms_for_service':
+                      return handle_get_alarms(event)
+                  elif tool_name == 'list_log_groups':
+                      return handle_list_log_groups(event)
+                  elif tool_name == 'analyze_log_group':
+                      return handle_analyze_log_group(event)
+                  elif tool_name == 'get_dashboard_summary':
+                      return handle_get_dashboard_summary(event)
+                  elif tool_name == 'get_log_streams':
+                      return handle_get_log_streams(event)
+                  elif tool_name == 'get_metric_statistics':
+                      return handle_get_metric_statistics(event)
+                  elif tool_name == 'get_alarm_history':
+                      return handle_get_alarm_history(event)
+                  elif tool_name == 'filter_log_events':
+                      return handle_filter_log_events(event)
+                  elif tool_name == 'list_metrics':
+                      return handle_list_metrics(event)
+                  else:
+                      return {
+                          'statusCode': 400,
+                          'body': json.dumps({'error': f'Unknown tool: {tool_name}'})
+                      }
+
+              except Exception as e:
+                  logger.error(f"Error in lambda_handler: {str(e)}", exc_info=True)
+                  return {
+                      'statusCode': 500,
+                      'body': json.dumps({'error': str(e)})
+                  }
+
+          def get_cross_account_client(service_name: str, account_id: Optional[str] = None, role_name: Optional[str] = None):
+              """
+              Get boto3 client with cross-account access if credentials provided
+              """
+              if account_id and role_name:
+                  sts_client = boto3.client('sts')
+                  role_arn = f"arn:aws:iam::{account_id}:role/{role_name}"
+
+                  assumed_role = sts_client.assume_role(
+                      RoleArn=role_arn,
+                      RoleSessionName='MonitoringToolsSession'
+                  )
+
+                  credentials = assumed_role['Credentials']
+                  return boto3.client(
+                      service_name,
+                      aws_access_key_id=credentials['AccessKeyId'],
+                      aws_secret_access_key=credentials['SecretAccessKey'],
+                      aws_session_token=credentials['SessionToken']
+                  )
+              else:
+                  return boto3.client(service_name)
+
+          def handle_list_dashboards(event):
+              """List all CloudWatch dashboards"""
+              try:
+                  account_id = event.get('accountId')
+                  role_name = event.get('roleName')
+
+                  cloudwatch = get_cross_account_client('cloudwatch', account_id, role_name)
+
+                  dashboards = []
+                  paginator = cloudwatch.get_paginator('list_dashboards')
+
+                  for page in paginator.paginate():
+                      dashboards.extend(page['DashboardEntries'])
+
+                  return {
+                      'statusCode': 200,
+                      'body': json.dumps({
+                          'dashboards': dashboards,
+                          'count': len(dashboards)
+                      })
+                  }
+              except Exception as e:
+                  logger.error(f"Error listing dashboards: {str(e)}", exc_info=True)
+                  return {
+                      'statusCode': 500,
+                      'body': json.dumps({'error': str(e)})
+                  }
+
+          def handle_fetch_logs(event):
+              """Fetch CloudWatch logs for a service with time filtering and error analysis"""
+              try:
+                  service_name = event.get('serviceName')
+                  account_id = event.get('accountId')
+                  role_name = event.get('roleName')
+                  time_range_minutes = event.get('timeRangeMinutes', 60)
+                  max_logs = event.get('maxLogs', 100)
+
+                  if not service_name:
+                      return {
+                          'statusCode': 400,
+                          'body': json.dumps({'error': 'serviceName is required'})
+                      }
+
+                  logs_client = get_cross_account_client('logs', account_id, role_name)
+
+                  # Find log groups for the service (try multiple patterns)
+                  log_groups = []
+                  search_patterns = [
+                      f'/aws/{service_name}',
+                      f'/{service_name}',
+                      service_name
+                  ]
+
+                  for pattern in search_patterns:
+                      try:
+                          paginator = logs_client.get_paginator('describe_log_groups')
+                          for page in paginator.paginate(logGroupNamePrefix=pattern):
+                              log_groups.extend(page['logGroups'])
+                          if log_groups:
+                              break
+                      except Exception as e:
+                          logger.debug(f"No log groups found with pattern {pattern}: {str(e)}")
+                          continue
+
+                  if not log_groups:
+                      return {
+                          'statusCode': 404,
+                          'body': json.dumps({
+                              'message': f'No log groups found for service: {service_name}',
+                              'searchedPatterns': search_patterns
+                          })
+                      }
+
+                  # Calculate time range
+                  end_time = int(datetime.now(timezone.utc).timestamp() * 1000)
+                  start_time = int((datetime.now(timezone.utc) - timedelta(minutes=time_range_minutes)).timestamp() * 1000)
+
+                  # Collect logs from multiple log groups (up to 3)
+                  all_logs = []
+                  error_count = 0
+                  warning_count = 0
+                  log_groups_processed = []
+
+                  for log_group in log_groups[:3]:
+                      log_group_name = log_group['logGroupName']
+                      log_groups_processed.append(log_group_name)
+
+                      try:
+                          # Get recent log streams
+                          streams_response = logs_client.describe_log_streams(
+                              logGroupName=log_group_name,
+                              orderBy='LastEventTime',
+                              descending=True,
+                              limit=5
+                          )
+
+                          for stream in streams_response.get('logStreams', []):
+                              try:
+                                  events_response = logs_client.get_log_events(
+                                      logGroupName=log_group_name,
+                                      logStreamName=stream['logStreamName'],
+                                      startTime=start_time,
+                                      endTime=end_time,
+                                      limit=50
+                                  )
+
+                                  for event in events_response.get('events', []):
+                                      message = event.get('message', '')
+                                      message_lower = message.lower()
+
+                                      # Count errors and warnings
+                                      if 'error' in message_lower or 'exception' in message_lower or 'fatal' in message_lower:
+                                          error_count += 1
+                                      if 'warn' in message_lower or 'warning' in message_lower:
+                                          warning_count += 1
+
+                                      all_logs.append({
+                                          'timestamp': event.get('timestamp'),
+                                          'message': message,
+                                          'logGroup': log_group_name,
+                                          'stream': stream['logStreamName']
+                                          })
+                              except Exception as e:
+                                  logger.warning(f"Error fetching events from stream: {str(e)}")
+                                  continue
+
+                      except Exception as e:
+                          logger.warning(f"Error processing log group {log_group_name}: {str(e)}")
+                          continue
+
+                  # Sort by timestamp (most recent first)
+                  all_logs.sort(key=lambda x: x['timestamp'], reverse=True)
+                  all_logs = all_logs[:max_logs]
+
+                  return {
+                      'statusCode': 200,
+                      'body': json.dumps({
+                          'serviceName': service_name,
+                          'logGroupsFound': len(log_groups),
+                          'logGroupsProcessed': log_groups_processed,
+                          'timeRangeMinutes': time_range_minutes,
+                          'analysis': {
+                              'totalLogs': len(all_logs),
+                              'errorCount': error_count,
+                              'warningCount': warning_count
+                          },
+                          'logs': all_logs
+                      })
+                  }
+
+              except Exception as e:
+                  logger.error(f"Error fetching logs: {str(e)}", exc_info=True)
+                  return {
+                      'statusCode': 500,
+                      'body': json.dumps({'error': str(e)})
+                  }
+
+          def handle_get_alarms(event):
+              """Get CloudWatch alarms for a service with state filtering and analysis"""
+              try:
+                  service_name = event.get('serviceName')
+                  account_id = event.get('accountId')
+                  role_name = event.get('roleName')
+                  alarm_state = event.get('alarmState')  # Optional: ALARM, OK, INSUFFICIENT_DATA
+
+                  cloudwatch = get_cross_account_client('cloudwatch', account_id, role_name)
+
+                  alarms = []
+                  paginator = cloudwatch.get_paginator('describe_alarms')
+
+                  # Build pagination parameters
+                  paginate_params = {}
+                  if alarm_state:
+                      paginate_params['StateValue'] = alarm_state
+
+                  # Collect all alarms
+                  for page in paginator.paginate(**paginate_params):
+                      alarms.extend(page.get('MetricAlarms', []))
+
+                  # Filter by service name if provided
+                  if service_name:
+                      filtered_alarms = []
+                      service_lower = service_name.lower()
+
+                      for alarm in alarms:
+                          alarm_name = alarm.get('AlarmName', '').lower()
+                          alarm_namespace = alarm.get('Namespace', '').lower()
+                          alarm_dimensions = alarm.get('Dimensions', [])
+
+                          # Check if service name matches alarm name, namespace, or dimensions
+                          if (service_lower in alarm_name or
+                              service_lower in alarm_namespace or
+                              any(service_lower in str(dim.get('Value', '')).lower() for dim in alarm_dimensions)):
+                              filtered_alarms.append(alarm)
+
+                      alarms = filtered_alarms
+
+                  # Categorize alarms by state
+                  alarm_states = {
+                      'ALARM': [],
+                      'OK': [],
+                      'INSUFFICIENT_DATA': []
+                  }
+
+                  for alarm in alarms:
+                      state = alarm.get('StateValue', 'UNKNOWN')
+                      if state in alarm_states:
+                          alarm_states[state].append({
+                              'name': alarm.get('AlarmName'),
+                              'description': alarm.get('AlarmDescription'),
+                              'reason': alarm.get('StateReason'),
+                              'namespace': alarm.get('Namespace'),
+                              'metricName': alarm.get('MetricName'),
+                              'threshold': alarm.get('Threshold'),
+                              'comparisonOperator': alarm.get('ComparisonOperator'),
+                              'stateUpdatedTimestamp': alarm.get('StateUpdatedTimestamp'),
+                              'actionsEnabled': alarm.get('ActionsEnabled'),
+                              'alarmActions': alarm.get('AlarmActions', [])
+                          })
+
+                  return {
+                      'statusCode': 200,
+                      'body': json.dumps({
+                          'serviceName': service_name,
+                          'summary': {
+                              'total': len(alarms),
+                              'inAlarmState': len(alarm_states['ALARM']),
+                              'okState': len(alarm_states['OK']),
+                              'insufficientDataState': len(alarm_states['INSUFFICIENT_DATA'])
+                          },
+                          'alarmsByState': alarm_states,
+                          'allAlarms': alarms
+                      })
+                  }
+              except Exception as e:
+                  logger.error(f"Error getting alarms: {str(e)}", exc_info=True)
+                  return {
+                      'statusCode': 500,
+                      'body': json.dumps({'error': str(e)})
+                  }
+
+          def handle_list_log_groups(event):
+              """List all log groups"""
+              try:
+                  account_id = event.get('accountId')
+                  role_name = event.get('roleName')
+
+                  logs_client = get_cross_account_client('logs', account_id, role_name)
+
+                  log_groups = []
+                  paginator = logs_client.get_paginator('describe_log_groups')
+
+                  for page in paginator.paginate():
+                      log_groups.extend(page['logGroups'])
+
+                  return {
+                      'statusCode': 200,
+                      'body': json.dumps({
+                          'logGroups': [lg['logGroupName'] for lg in log_groups],
+                          'count': len(log_groups)
+                      })
+                  }
+              except Exception as e:
+                  logger.error(f"Error listing log groups: {str(e)}", exc_info=True)
+                  return {
+                      'statusCode': 500,
+                      'body': json.dumps({'error': str(e)})
+                  }
+
+          def handle_analyze_log_group(event):
+              """Analyze a specific log group with detailed metrics and recent logs"""
+              try:
+                  log_group_name = event.get('logGroupName')
+                  account_id = event.get('accountId')
+                  role_name = event.get('roleName')
+                  time_range_minutes = event.get('timeRangeMinutes', 60)  # Default to last hour
+                  max_logs = event.get('maxLogs', 100)
+
+                  if not log_group_name:
+                      return {
+                          'statusCode': 400,
+                          'body': json.dumps({'error': 'logGroupName is required'})
+                      }
+
+                  logs_client = get_cross_account_client('logs', account_id, role_name)
+
+                  # Get log group details
+                  try:
+                      log_groups_response = logs_client.describe_log_groups(
+                          logGroupNamePrefix=log_group_name,
+                          limit=1
+                      )
+                      log_groups = log_groups_response.get('logGroups', [])
+
+                      if not log_groups:
+                          return {
+                              'statusCode': 404,
+                              'body': json.dumps({'error': f'Log group not found: {log_group_name}'})
+                          }
+
+                      log_group_info = log_groups[0]
+                  except Exception as e:
+                      logger.error(f"Error describing log group: {str(e)}")
+                      return {
+                          'statusCode': 404,
+                          'body': json.dumps({'error': f'Log group not found or inaccessible: {log_group_name}'})
+                      }
+
+                  # Get recent log streams (last 10 active streams)
+                  try:
+                      streams_response = logs_client.describe_log_streams(
+                          logGroupName=log_group_name,
+                          orderBy='LastEventTime',
+                          descending=True,
+                          limit=10
+                      )
+                      log_streams = streams_response.get('logStreams', [])
+                  except Exception as e:
+                      logger.error(f"Error describing log streams: {str(e)}")
+                      log_streams = []
+
+                  # Get recent log events from the most active streams
+                  recent_logs = []
+                  error_count = 0
+                  warning_count = 0
+
+                  if log_streams:
+                      # Calculate time range
+                      end_time = int(datetime.now(timezone.utc).timestamp() * 1000)
+                      start_time = int((datetime.now(timezone.utc) - timedelta(minutes=time_range_minutes)).timestamp() * 1000)
+
+                      for stream in log_streams[:5]:  # Get logs from top 5 most recent streams
+                          try:
+                              events_response = logs_client.get_log_events(
+                                  logGroupName=log_group_name,
+                                  logStreamName=stream['logStreamName'],
+                                  startTime=start_time,
+                                  endTime=end_time,
+                                  limit=max_logs // 5  # Distribute log limit across streams
+                              )
+
+                              for event in events_response.get('events', []):
+                                  message = event.get('message', '')
+                                  # Count errors and warnings
+                                  message_lower = message.lower()
+                                  if 'error' in message_lower or 'exception' in message_lower or 'fatal' in message_lower:
+                                      error_count += 1
+                                  if 'warn' in message_lower or 'warning' in message_lower:
+                                      warning_count += 1
+
+                                  recent_logs.append({
+                                      'timestamp': event.get('timestamp'),
+                                      'message': message,
+                                      'stream': stream['logStreamName']
+                                  })
+                          except Exception as e:
+                              logger.warning(f"Error fetching logs from stream {stream['logStreamName']}: {str(e)}")
+                              continue
+
+                  # Sort logs by timestamp (most recent first)
+                  recent_logs.sort(key=lambda x: x['timestamp'], reverse=True)
+                  recent_logs = recent_logs[:max_logs]  # Limit to max_logs
+
+                  return {
+                      'statusCode': 200,
+                      'body': json.dumps({
+                          'logGroup': {
+                              'name': log_group_info.get('logGroupName'),
+                              'arn': log_group_info.get('arn'),
+                              'creationTime': log_group_info.get('creationTime'),
+                              'storedBytes': log_group_info.get('storedBytes'),
+                              'retentionInDays': log_group_info.get('retentionInDays'),
+                          },
+                          'streams': {
+                              'count': len(log_streams),
+                              'recentStreams': [s['logStreamName'] for s in log_streams[:10]]
+                          },
+                          'analysis': {
+                              'timeRangeMinutes': time_range_minutes,
+                              'totalLogs': len(recent_logs),
+                              'errorCount': error_count,
+                              'warningCount': warning_count
+                          },
+                          'recentLogs': recent_logs
+                      })
+                  }
+              except Exception as e:
+                  logger.error(f"Error analyzing log group: {str(e)}", exc_info=True)
+                  return {
+                      'statusCode': 500,
+                      'body': json.dumps({'error': str(e)})
+                  }
+
+          def handle_get_dashboard_summary(event):
+              """Get dashboard summary with parsed widgets"""
+              try:
+                  dashboard_name = event.get('dashboardName')
+                  account_id = event.get('accountId')
+                  role_name = event.get('roleName')
+
+                  if not dashboard_name:
+                      return {
+                          'statusCode': 400,
+                          'body': json.dumps({'error': 'dashboardName is required'})
+                      }
+
+                  cloudwatch = get_cross_account_client('cloudwatch', account_id, role_name)
+
+                  dashboard = cloudwatch.get_dashboard(DashboardName=dashboard_name)
+
+                  # Parse dashboard body
+                  dashboard_body = json.loads(dashboard.get('DashboardBody', '{}'))
+                  widgets = dashboard_body.get('widgets', [])
+
+                  # Extract widget information
+                  widget_summary = []
+                  for widget in widgets:
+                      properties = widget.get('properties', {})
+                      widget_summary.append({
+                          'type': widget.get('type'),
+                          'title': properties.get('title'),
+                          'metrics': properties.get('metrics', []),
+                          'region': properties.get('region')
+                      })
+
+                  return {
+                      'statusCode': 200,
+                      'body': json.dumps({
+                          'dashboardName': dashboard_name,
+                          'dashboardArn': dashboard.get('DashboardArn'),
+                          'widgetCount': len(widgets),
+                          'widgets': widget_summary,
+                          'fullDashboard': dashboard
+                      })
+                  }
+              except Exception as e:
+                  logger.error(f"Error getting dashboard summary: {str(e)}", exc_info=True)
+                  return {
+                      'statusCode': 500,
+                      'body': json.dumps({'error': str(e)})
+                  }
+
+          def handle_get_log_streams(event):
+              """Get log streams for a specific log group"""
+              try:
+                  log_group_name = event.get('logGroupName')
+                  account_id = event.get('accountId')
+                  role_name = event.get('roleName')
+                  limit = event.get('limit', 50)
+                  order_by = event.get('orderBy', 'LastEventTime')  # LastEventTime or LogStreamName
+
+                  if not log_group_name:
+                      return {
+                          'statusCode': 400,
+                          'body': json.dumps({'error': 'logGroupName is required'})
+                      }
+
+                  logs_client = get_cross_account_client('logs', account_id, role_name)
+
+                  # Get log streams
+                  streams_response = logs_client.describe_log_streams(
+                      logGroupName=log_group_name,
+                      orderBy=order_by,
+                      descending=True,
+                      limit=min(limit, 50)  # AWS limit is 50
+                  )
+
+                  streams = streams_response.get('logStreams', [])
+
+                  # Format stream information
+                  stream_info = []
+                  for stream in streams:
+                      stream_info.append({
+                          'name': stream.get('logStreamName'),
+                          'creationTime': stream.get('creationTime'),
+                          'firstEventTimestamp': stream.get('firstEventTimestamp'),
+                          'lastEventTimestamp': stream.get('lastEventTimestamp'),
+                          'lastIngestionTime': stream.get('lastIngestionTime'),
+                          'uploadSequenceToken': stream.get('uploadSequenceToken'),
+                          'storedBytes': stream.get('storedBytes')
+                      })
+
+                  return {
+                      'statusCode': 200,
+                      'body': json.dumps({
+                          'logGroupName': log_group_name,
+                          'streamCount': len(streams),
+                          'streams': stream_info
+                      })
+                  }
+              except Exception as e:
+                  logger.error(f"Error getting log streams: {str(e)}", exc_info=True)
+                  return {
+                      'statusCode': 500,
+                      'body': json.dumps({'error': str(e)})
+                  }
+
+          def handle_get_metric_statistics(event):
+              """Get CloudWatch metric statistics"""
+              try:
+                  namespace = event.get('namespace')
+                  metric_name = event.get('metricName')
+                  dimensions = event.get('dimensions', [])
+                  start_time_minutes = event.get('startTimeMinutes', 60)
+                  period = event.get('period', 300)  # 5 minutes default
+                  statistics = event.get('statistics', ['Average', 'Sum', 'Minimum', 'Maximum'])
+                  account_id = event.get('accountId')
+                  role_name = event.get('roleName')
+
+                  if not namespace or not metric_name:
+                      return {
+                          'statusCode': 400,
+                          'body': json.dumps({'error': 'namespace and metricName are required'})
+                      }
+
+                  cloudwatch = get_cross_account_client('cloudwatch', account_id, role_name)
+
+                  # Calculate time range
+                  end_time = datetime.now(timezone.utc)
+                  start_time = end_time - timedelta(minutes=start_time_minutes)
+
+                  # Get metric statistics
+                  response = cloudwatch.get_metric_statistics(
+                      Namespace=namespace,
+                      MetricName=metric_name,
+                      Dimensions=dimensions,
+                      StartTime=start_time,
+                      EndTime=end_time,
+                      Period=period,
+                      Statistics=statistics
+                  )
+
+                  datapoints = response.get('Datapoints', [])
+
+                  # Sort by timestamp
+                  datapoints.sort(key=lambda x: x['Timestamp'], reverse=True)
+
+                  return {
+                      'statusCode': 200,
+                      'body': json.dumps({
+                          'namespace': namespace,
+                          'metricName': metric_name,
+                          'dimensions': dimensions,
+                          'period': period,
+                          'startTime': start_time.isoformat(),
+                          'endTime': end_time.isoformat(),
+                          'datapointCount': len(datapoints),
+                          'datapoints': datapoints,
+                          'label': response.get('Label')
+                      }, default=str)
+                  }
+              except Exception as e:
+                  logger.error(f"Error getting metric statistics: {str(e)}", exc_info=True)
+                  return {
+                      'statusCode': 500,
+                      'body': json.dumps({'error': str(e)})
+                  }
+
+          def handle_get_alarm_history(event):
+              """Get CloudWatch alarm history"""
+              try:
+                  alarm_name = event.get('alarmName')
+                  history_item_type = event.get('historyItemType')  # ConfigurationUpdate, StateUpdate, Action
+                  start_time_hours = event.get('startTimeHours', 24)
+                  max_records = event.get('maxRecords', 100)
+                  account_id = event.get('accountId')
+                  role_name = event.get('roleName')
+
+                  if not alarm_name:
+                      return {
+                          'statusCode': 400,
+                          'body': json.dumps({'error': 'alarmName is required'})
+                      }
+
+                  cloudwatch = get_cross_account_client('cloudwatch', account_id, role_name)
+
+                  # Calculate time range
+                  end_time = datetime.now(timezone.utc)
+                  start_time = end_time - timedelta(hours=start_time_hours)
+
+                  # Build request parameters
+                  params = {
+                      'AlarmName': alarm_name,
+                      'StartDate': start_time,
+                      'EndDate': end_time,
+                      'MaxRecords': min(max_records, 100)
+                  }
+
+                  if history_item_type:
+                      params['HistoryItemType'] = history_item_type
+
+                  # Get alarm history
+                  response = cloudwatch.describe_alarm_history(**params)
+
+                  history_items = response.get('AlarmHistoryItems', [])
+
+                  # Format history items
+                  formatted_history = []
+                  for item in history_items:
+                      formatted_history.append({
+                          'timestamp': item.get('Timestamp'),
+                          'historyItemType': item.get('HistoryItemType'),
+                          'historySummary': item.get('HistorySummary'),
+                          'historyData': item.get('HistoryData')
+                      })
+
+                  return {
+                      'statusCode': 200,
+                      'body': json.dumps({
+                          'alarmName': alarm_name,
+                          'historyItemCount': len(history_items),
+                          'historyItems': formatted_history
+                      }, default=str)
+                  }
+              except Exception as e:
+                  logger.error(f"Error getting alarm history: {str(e)}", exc_info=True)
+                  return {
+                      'statusCode': 500,
+                      'body': json.dumps({'error': str(e)})
+                  }
+
+          def handle_filter_log_events(event):
+              """Filter log events using pattern matching"""
+              try:
+                  log_group_name = event.get('logGroupName')
+                  filter_pattern = event.get('filterPattern', '')
+                  log_stream_names = event.get('logStreamNames', [])
+                  start_time_minutes = event.get('startTimeMinutes', 60)
+                  limit = event.get('limit', 100)
+                  account_id = event.get('accountId')
+                  role_name = event.get('roleName')
+
+                  if not log_group_name:
+                      return {
+                          'statusCode': 400,
+                          'body': json.dumps({'error': 'logGroupName is required'})
+                      }
+
+                  logs_client = get_cross_account_client('logs', account_id, role_name)
+
+                  # Calculate time range
+                  end_time = int(datetime.now(timezone.utc).timestamp() * 1000)
+                  start_time = int((datetime.now(timezone.utc) - timedelta(minutes=start_time_minutes)).timestamp() * 1000)
+
+                  # Build request parameters
+                  params = {
+                      'logGroupName': log_group_name,
+                      'startTime': start_time,
+                      'endTime': end_time,
+                      'limit': min(limit, 10000)
+                  }
+
+                  if filter_pattern:
+                      params['filterPattern'] = filter_pattern
+
+                  if log_stream_names:
+                      params['logStreamNames'] = log_stream_names
+
+                  # Filter log events
+                  response = logs_client.filter_log_events(**params)
+
+                  events = response.get('events', [])
+
+                  # Count errors and warnings
+                  error_count = 0
+                  warning_count = 0
+
+                  for event_item in events:
+                      message = event_item.get('message', '').lower()
+                      if 'error' in message or 'exception' in message or 'fatal' in message:
+                          error_count += 1
+                      if 'warn' in message or 'warning' in message:
+                          warning_count += 1
+
+                  return {
+                      'statusCode': 200,
+                      'body': json.dumps({
+                          'logGroupName': log_group_name,
+                          'filterPattern': filter_pattern,
+                          'eventCount': len(events),
+                          'analysis': {
+                              'errorCount': error_count,
+                              'warningCount': warning_count
+                          },
+                          'events': events
+                      })
+                  }
+              except Exception as e:
+                  logger.error(f"Error filtering log events: {str(e)}", exc_info=True)
+                  return {
+                      'statusCode': 500,
+                      'body': json.dumps({'error': str(e)})
+                  }
+
+          def handle_list_metrics(event):
+              """List available CloudWatch metrics"""
+              try:
+                  namespace = event.get('namespace')
+                  metric_name = event.get('metricName')
+                  dimensions = event.get('dimensions', [])
+                  account_id = event.get('accountId')
+                  role_name = event.get('roleName')
+
+                  cloudwatch = get_cross_account_client('cloudwatch', account_id, role_name)
+
+                  # Build request parameters
+                  params = {}
+                  if namespace:
+                      params['Namespace'] = namespace
+                  if metric_name:
+                      params['MetricName'] = metric_name
+                  if dimensions:
+                      params['Dimensions'] = dimensions
+
+                  # List metrics
+                  metrics = []
+                  paginator = cloudwatch.get_paginator('list_metrics')
+
+                  for page in paginator.paginate(**params):
+                      metrics.extend(page.get('Metrics', []))
+
+                  # Group metrics by namespace
+                  metrics_by_namespace = {}
+                  for metric in metrics:
+                      ns = metric.get('Namespace', 'Unknown')
+                      if ns not in metrics_by_namespace:
+                          metrics_by_namespace[ns] = []
+                      metrics_by_namespace[ns].append({
+                          'metricName': metric.get('MetricName'),
+                          'dimensions': metric.get('Dimensions', [])
+                      })
+
+                  return {
+                      'statusCode': 200,
+                      'body': json.dumps({
+                          'totalMetrics': len(metrics),
+                          'namespaceCount': len(metrics_by_namespace),
+                          'metricsByNamespace': metrics_by_namespace,
+                          'allMetrics': metrics
+                      })
+                  }
+              except Exception as e:
+                  logger.error(f"Error listing metrics: {str(e)}", exc_info=True)
+                  return {
+                      'statusCode': 500,
+                      'body': json.dumps({'error': str(e)})
+                  }
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-MonitoringTools-Lambda'
+
+  # Lambda Execution Role for Gateway OAuth2 Setup
+  GatewayOAuth2SetupLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: SecretsManagerAccessPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource:
+                  Fn::ImportValue: !Sub '${CognitoStackName}-GatewayClientSecretArn'
+        - PolicyName: BedrockIdentityAccessPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - bedrock-agentcore:GetResourceOauth2Token
+                  - bedrock-agentcore:CreateOauth2CredentialProvider
+                  - bedrock-agentcore:DeleteOauth2CredentialProvider
+                  - bedrock-agentcore:UpdateOauth2CredentialProvider
+                  - bedrock-agentcore:ListOauth2CredentialProviders
+                  - bedrock-agentcore:GetOauth2CredentialProvider
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - secretsmanager:CreateSecret
+                  - secretsmanager:DeleteSecret
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - bedrock-agentcore:ListWorkloadIdentities
+                  - bedrock-agentcore:UpdateWorkloadIdentity
+                  - bedrock-agentcore:DeleteWorkloadIdentity
+                  - bedrock-agentcore:CreateWorkloadIdentity
+                Resource:
+                  - !Sub 'arn:aws:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:workload-identity-directory/*/workload-identity/*'
+                  - !Sub 'arn:aws:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:workload-identity-directory/*'
+              - Effect: Allow
+                Action:
+                  - bedrock-agentcore:GetTokenVault
+                  - bedrock-agentcore:CreateTokenVault
+                  - bedrock-agentcore:DeleteTokenVault
+                Resource: '*'
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-GatewayOAuth2Setup-Role'
+
+  # Lambda Function for Gateway OAuth2 Credential Provider Setup
+  GatewayOAuth2SetupFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-gateway-oauth2-setup'
+      Runtime: python3.13
+      Handler: index.lambda_handler
+      Role: !GetAtt GatewayOAuth2SetupLambdaRole.Arn
+      Timeout: 300
+      Environment:
+        Variables:
+          GATEWAY_CLIENT_SECRET_ARN:
+            Fn::ImportValue: !Sub '${CognitoStackName}-GatewayClientSecretArn'
+          DISCOVERY_URL:
+            Fn::ImportValue: !Sub '${CognitoStackName}-DiscoveryUrl'
+      Code:
+        ZipFile: |
+          import json
+          import boto3
+          import urllib3
+          import logging
+          import os
+
+          logger = logging.getLogger()
+          logger.setLevel(logging.INFO)
+
+          def create_oauth2_credential_provider(secret_arn, discovery_url, provider_name):
+              try:
+                  logger.info(f"Creating OAuth2 credential provider for Gateway: {provider_name}")
+
+                  # Get client credentials from Secrets Manager
+                  secrets_client = boto3.client('secretsmanager')
+                  secret_response = secrets_client.get_secret_value(SecretId=secret_arn)
+                  secret_data = json.loads(secret_response['SecretString'])
+
+                  client_id = secret_data['client_id']
+                  client_secret = secret_data['client_secret']
+
+                  # Create OAuth2 credential provider
+                  identity_client = boto3.client("bedrock-agentcore-control")
+
+                  identity_client.create_oauth2_credential_provider(
+                      name=provider_name,
+                      credentialProviderVendor="CustomOauth2",
+                      oauth2ProviderConfigInput={
+                          "customOauth2ProviderConfig": {
+                              "clientId": client_id,
+                              "clientSecret": client_secret,
+                              "oauthDiscovery": {
+                                "discoveryUrl": discovery_url
+                              },
+                          }
+                      },
+                  )
+
+                  logger.info(f"OAuth2 credential provider created: {provider_name}")
+                  return provider_name
+
+              except Exception as e:
+                  logger.error(f"Failed to create OAuth2 credential provider: {str(e)}")
+                  raise e
+
+          def lambda_handler(event, context):
+              try:
+                  logger.info(f"Received event: {json.dumps(event)}")
+
+                  request_type = event['RequestType']
+                  gateway_client_secret_arn = os.environ['GATEWAY_CLIENT_SECRET_ARN']
+                  discovery_url = os.environ['DISCOVERY_URL']
+                  provider_name = event['ResourceProperties']['ProviderName']
+
+                  if request_type == 'Create':
+                      create_oauth2_credential_provider(gateway_client_secret_arn, discovery_url, provider_name)
+                      send_response(event, context, 'SUCCESS', {})
+
+                  elif request_type == 'Delete':
+                      logger.info("Stack deletion - cleaning up OAuth2 credential provider")
+                      try:
+                          identity_client = boto3.client("bedrock-agentcore-control")
+                          identity_client.delete_oauth2_credential_provider(name=provider_name)
+                          logger.info(f"OAuth2 credential provider deleted: {provider_name}")
+                      except Exception as e:
+                          logger.error(f"Failed to delete OAuth2 credential provider: {str(e)}")
+                      send_response(event, context, 'SUCCESS', {})
+
+                  elif request_type == 'Update':
+                      logger.info("Stack update - no action required")
+                      send_response(event, context, 'SUCCESS', {})
+
+              except Exception as e:
+                  logger.error(f"Error: {str(e)}")
+                  send_response(event, context, 'FAILED', {})
+
+          def send_response(event, context, response_status, response_data):
+              response_body = {
+                  'Status': response_status,
+                  'Reason': 'See CloudWatch Logs',
+                  'PhysicalResourceId': 'GatewayOAuth2Setup',
+                  'StackId': event['StackId'],
+                  'RequestId': event['RequestId'],
+                  'LogicalResourceId': event['LogicalResourceId'],
+              }
+
+              json_response_body = json.dumps(response_body)
+
+              headers = {
+                  'content-type': '',
+                  'content-length': str(len(json_response_body))
+              }
+
+              http = urllib3.PoolManager()
+              response = http.request('PUT', event['ResponseURL'], body=json_response_body, headers=headers)
+              logger.info(f"Response status: {response.status}")
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-GatewayOAuth2Setup-Function'
+
+  # Custom Resource to Setup Gateway OAuth2 Credential Provider
+  GatewayOAuth2Setup:
+    Type: AWS::CloudFormation::CustomResource
+    Properties:
+      ServiceToken: !GetAtt GatewayOAuth2SetupFunction.Arn
+      ProviderName: !Sub 'GatewayOAuth2Provider-${AWS::StackName}'
+
+  GatewayAgentCoreRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - bedrock-agentcore.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+        - PolicyName: BedrockAgentPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: InvokeFunction
+                Effect: Allow
+                Action:
+                  - lambda:InvokeFunction
+                Resource:
+                  - !GetAtt MonitoringToolsLambda.Arn
+
+  # BedrockAgentCore Gateway
+  MonitoringGateway:
+    Type: AWS::BedrockAgentCore::Gateway
+    DependsOn: GatewayOAuth2Setup
+    Properties:
+      Name: !Join ['', !Split ['-', !Sub '${AWS::StackName}Gateway']]
+      Description: "Monitoring Gateway"
+      AuthorizerConfiguration:
+        CustomJWTAuthorizer:
+          DiscoveryUrl:
+            Fn::ImportValue: !Sub '${CognitoStackName}-DiscoveryUrl'
+          AllowedClients:
+            - Fn::ImportValue: !Sub '${CognitoStackName}-GatewayClientId'
+      AuthorizerType: "CUSTOM_JWT"
+      ProtocolConfiguration:
+        Mcp:
+          SearchType: "SEMANTIC"
+      ProtocolType: "MCP"
+      RoleArn: !GetAtt GatewayAgentCoreRole.Arn
+      Tags:
+        Name: !Sub '${AWS::StackName}-Monitoring-Gateway'
+
+  # BedrockAgentCore Gateway Target (Lambda)
+  MonitoringGatewayTarget:
+    Type: AWS::BedrockAgentCore::GatewayTarget
+    Properties:
+      CredentialProviderConfigurations:
+        - CredentialProviderType: GATEWAY_IAM_ROLE
+      Description: "Monitoring Lambda Target"
+      GatewayIdentifier: !GetAtt MonitoringGateway.GatewayIdentifier
+      Name: !Join ['', !Split ['-', !Sub '${AWS::StackName}Target']]
+      TargetConfiguration:
+        Mcp:
+          Lambda:
+            LambdaArn: !GetAtt MonitoringToolsLambda.Arn
+            ToolSchema:
+              InlinePayload:
+                - Name: list_cloudwatch_dashboards
+                  Description: List all CloudWatch dashboards in the AWS account
+                  InputSchema:
+                    Type: object
+                    Properties:
+                      accountId:
+                        Type: string
+                        Description: AWS account ID for cross-account access
+                      roleName:
+                        Type: string
+                        Description: IAM role name for cross-account access
+                - Name: fetch_cloudwatch_logs_for_service
+                  Description: Fetch recent CloudWatch logs for a specific AWS service with time filtering, error analysis, and counts. Searches multiple log group patterns and returns logs with error/warning counts.
+                  InputSchema:
+                    Type: object
+                    Properties:
+                      serviceName:
+                        Type: string
+                        Description: Name of the AWS service (e.g., lambda, ec2, rds, eks, etc.)
+                      timeRangeMinutes:
+                        Type: number
+                        Description: Time range in minutes to fetch logs (default 60 minutes)
+                      maxLogs:
+                        Type: number
+                        Description: Maximum number of log entries to return (default 100)
+                      accountId:
+                        Type: string
+                        Description: AWS account ID for cross-account access
+                      roleName:
+                        Type: string
+                        Description: IAM role name for cross-account access
+                    Required:
+                      - serviceName
+                - Name: get_cloudwatch_alarms_for_service
+                  Description: Get CloudWatch alarms for a specific service with state categorization and detailed alarm information including thresholds, reasons, and actions
+                  InputSchema:
+                    Type: object
+                    Properties:
+                      serviceName:
+                        Type: string
+                        Description: Name of the AWS service to get alarms for
+                      alarmState:
+                        Type: string
+                        Description: Optional filter by alarm state (ALARM, OK, or INSUFFICIENT_DATA)
+                      accountId:
+                        Type: string
+                        Description: AWS account ID for cross-account access
+                      roleName:
+                        Type: string
+                        Description: IAM role name for cross-account access
+                    Required:
+                      - serviceName
+                - Name: list_log_groups
+                  Description: List all CloudWatch log groups
+                  InputSchema:
+                    Type: object
+                    Properties:
+                      accountId:
+                        Type: string
+                        Description: AWS account ID for cross-account access
+                      roleName:
+                        Type: string
+                        Description: IAM role name for cross-account access
+                - Name: analyze_log_group
+                  Description: Analyze a specific CloudWatch log group with detailed metrics, recent logs, error counts, and warning counts from recent log streams
+                  InputSchema:
+                    Type: object
+                    Properties:
+                      logGroupName:
+                        Type: string
+                        Description: Name of the log group to analyze
+                      timeRangeMinutes:
+                        Type: number
+                        Description: Time range in minutes to analyze logs (default 60 minutes)
+                      maxLogs:
+                        Type: number
+                        Description: Maximum number of log entries to return (default 100)
+                      accountId:
+                        Type: string
+                        Description: AWS account ID for cross-account access
+                      roleName:
+                        Type: string
+                        Description: IAM role name for cross-account access
+                    Required:
+                      - logGroupName
+                - Name: get_dashboard_summary
+                  Description: Get summary of a CloudWatch dashboard with parsed widget information
+                  InputSchema:
+                    Type: object
+                    Properties:
+                      dashboardName:
+                        Type: string
+                        Description: Name of the dashboard
+                      accountId:
+                        Type: string
+                        Description: AWS account ID for cross-account access
+                      roleName:
+                        Type: string
+                        Description: IAM role name for cross-account access
+                    Required:
+                      - dashboardName
+                - Name: get_log_streams
+                  Description: Get log streams for a specific log group with ordering and metadata
+                  InputSchema:
+                    Type: object
+                    Properties:
+                      logGroupName:
+                        Type: string
+                        Description: Name of the log group to get streams for
+                      limit:
+                        Type: number
+                        Description: Maximum number of log streams to return (default 50, max 50)
+                      orderBy:
+                        Type: string
+                        Description: How to order the log streams (LastEventTime or LogStreamName, default LastEventTime)
+                      accountId:
+                        Type: string
+                        Description: AWS account ID for cross-account access
+                      roleName:
+                        Type: string
+                        Description: IAM role name for cross-account access
+                    Required:
+                      - logGroupName
+                - Name: get_metric_statistics
+                  Description: Get CloudWatch metric statistics over a time range with various statistical measures (Average, Sum, Min, Max)
+                  InputSchema:
+                    Type: object
+                    Properties:
+                      namespace:
+                        Type: string
+                        Description: CloudWatch namespace (e.g., AWS/EC2, AWS/Lambda, AWS/RDS)
+                      metricName:
+                        Type: string
+                        Description: Name of the metric (e.g., CPUUtilization, NetworkIn, Duration)
+                      dimensions:
+                        Type: array
+                        Description: Array of dimension objects with Name and Value properties to filter the metric
+                      startTimeMinutes:
+                        Type: number
+                        Description: How many minutes back to start the time range (default 60)
+                      period:
+                        Type: number
+                        Description: The granularity in seconds of the returned datapoints (default 300, i.e., 5 minutes)
+                      statistics:
+                        Type: array
+                        Description: Array of statistics to return (e.g., Average, Sum, Minimum, Maximum, SampleCount)
+                      accountId:
+                        Type: string
+                        Description: AWS account ID for cross-account access
+                      roleName:
+                        Type: string
+                        Description: IAM role name for cross-account access
+                    Required:
+                      - namespace
+                      - metricName
+                - Name: get_alarm_history
+                  Description: Get historical state changes and actions for a CloudWatch alarm
+                  InputSchema:
+                    Type: object
+                    Properties:
+                      alarmName:
+                        Type: string
+                        Description: Name of the CloudWatch alarm
+                      historyItemType:
+                        Type: string
+                        Description: Type of history items to retrieve (ConfigurationUpdate, StateUpdate, or Action)
+                      startTimeHours:
+                        Type: number
+                        Description: How many hours back to retrieve history (default 24)
+                      maxRecords:
+                        Type: number
+                        Description: Maximum number of history records to return (default 100, max 100)
+                      accountId:
+                        Type: string
+                        Description: AWS account ID for cross-account access
+                      roleName:
+                        Type: string
+                        Description: IAM role name for cross-account access
+                    Required:
+                      - alarmName
+                - Name: filter_log_events
+                  Description: Filter CloudWatch log events using pattern matching with error and warning analysis
+                  InputSchema:
+                    Type: object
+                    Properties:
+                      logGroupName:
+                        Type: string
+                        Description: Name of the log group to filter
+                      filterPattern:
+                        Type: string
+                        Description: CloudWatch Logs filter pattern (e.g., '[ERROR]', '[time, request_id, level = ERROR]')
+                      logStreamNames:
+                        Type: array
+                        Description: Array of specific log stream names to search (searches all if not specified)
+                      startTimeMinutes:
+                        Type: number
+                        Description: How many minutes back to search (default 60)
+                      limit:
+                        Type: number
+                        Description: Maximum number of log events to return (default 100, max 10000)
+                      accountId:
+                        Type: string
+                        Description: AWS account ID for cross-account access
+                      roleName:
+                        Type: string
+                        Description: IAM role name for cross-account access
+                    Required:
+                      - logGroupName
+                - Name: list_metrics
+                  Description: List all available CloudWatch metrics, optionally filtered by namespace, metric name, or dimensions
+                  InputSchema:
+                    Type: object
+                    Properties:
+                      namespace:
+                        Type: string
+                        Description: Filter by CloudWatch namespace (e.g., AWS/EC2, AWS/Lambda)
+                      metricName:
+                        Type: string
+                        Description: Filter by specific metric name
+                      dimensions:
+                        Type: array
+                        Description: Filter by dimensions (array of objects with Name and Value properties)
+                      accountId:
+                        Type: string
+                        Description: AWS account ID for cross-account access
+                      roleName:
+                        Type: string
+                        Description: IAM role name for cross-account access
+
+  GatewayUrlParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: '/monitoragent/agentcore/gateway/gateway_url'
+      Description: 'BedrockAgentCore Gateway URL'
+      Type: String
+      Value: !GetAtt MonitoringGateway.GatewayUrl
+      Tags:
+        Name: !Sub '${AWS::StackName}-GatewayURL'
+
+  # Lambda Permission for Gateway to invoke Lambda
+  MonitoringToolsLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref MonitoringToolsLambda
+      Action: lambda:InvokeFunction
+      Principal: bedrock-agentcore.amazonaws.com
+      SourceArn: !GetAtt MonitoringGateway.GatewayArn
+
+Outputs:
+  AgentRuntimeArn:
+    Description: 'ARN of the BedrockAgentCore Runtime'
+    Value: !GetAtt AgentRuntime.AgentRuntimeArn
+    Export:
+      Name: !Sub '${AWS::StackName}-AgentRuntimeArn'
+
+  AgentRuntimeId:
+    Description: 'ID of the BedrockAgentCore Runtime'
+    Value: !GetAtt AgentRuntime.AgentRuntimeId
+    Export:
+      Name: !Sub '${AWS::StackName}-AgentRuntimeId'
+
+  AgentRuntimeName:
+    Description: 'Name of the BedrockAgentCore Runtime'
+    Value: !Ref AgentRuntime
+    Export:
+      Name: !Sub '${AWS::StackName}-AgentRuntimeName'
+  
+  AgentProviderName:
+    Description: 'Name of the Agent provider'
+    Value: !Sub 'AgentOAuth2Provider-${AWS::StackName}'
+    Export:
+      Name: !Sub '${AWS::StackName}-AgentProviderName'
+
+  MonitoringGatewayId:
+    Description: 'ID of the Monitoring Gateway'
+    Value: !GetAtt MonitoringGateway.GatewayIdentifier
+    Export:
+      Name: !Sub '${AWS::StackName}-MonitoringGatewayId'
+
+  MonitoringGatewayArn:
+    Description: 'ARN of the Monitoring Gateway'
+    Value: !GetAtt MonitoringGateway.GatewayArn
+    Export:
+      Name: !Sub '${AWS::StackName}-MonitoringGatewayArn'
+
+  MonitoringGatewayTargetId:
+    Description: 'ID of the Monitoring Gateway Target'
+    Value: !GetAtt MonitoringGatewayTarget.TargetId
+    Export:
+      Name: !Sub '${AWS::StackName}-MonitoringGatewayTargetId'
+
+  GatewayProviderName:
+    Description: 'Name of the Gateway OAuth2 Provider'
+    Value: !Sub 'GatewayOAuth2Provider-${AWS::StackName}'
+    Export:
+      Name: !Sub '${AWS::StackName}-GatewayProviderName'

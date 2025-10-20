@@ -1,0 +1,61 @@
+general:
+  name: "ops-orchestrator-agent"      
+  description: "This agent has access web search functionalities and looks up remediation strategies if any errors are encountered via the monitoring agent"
+
+# This contains the model information for various agents
+# in our multi agentic system
+agent_information:
+  # Represents the system prompt templates for each agent
+  prompt_templates:
+    prompt_template_dir: prompt_template
+    # This is the system prompt for the monitoring agent that will be used 
+    # in agent creation and development
+    ops_orchestrator_agent:
+  ops_orchestrator_agent_model_info:
+    # Represents the model id that the agent will use within
+    # the strands agents SDK
+    model_id: gpt-4o-2024-08-06
+    # Represents the inference parameters that the foundation model
+    # uses at runtime during inference
+    inference_parameters:
+      # This is not an exhaustive list, it can be changed or extended
+      # based on the inference parameters that are supported
+      temperature: 0.1
+      max_tokens: 2048
+    # MEMORY CONFIGURATION FOR THE OPS ORCHESTRATOR AGENT
+    # If your memory is already created, please provide the credentials here
+    use_existing_memory: yes
+    memory_credentials:
+      # fetch this from your AWS console
+      id: <provide the memory id>
+    memory_execution_role: <provide a memory exec role>
+    memory_allocation:
+      # An actor refers to an entity such as an end user or an agent that interacts with the
+      # agent application. For example, in a coding use case, an actor is a developer asking
+      # questions to the assistant. Using the actor id helps the system know which user the
+      # memory belongs to, keeping each user's data separate and organized
+      actor_id: actor_agent_openAI2039
+
+# SSM Parameter Store configuration for API keys
+ssm_parameters:
+  region: us-west-2
+  parameters:
+    tavily_api_key: /ops-orchestrator/tavily-api-key
+    openai_api_key: /ops-orchestrator/openai-api-key
+    jira_api_key: /ops-orchestrator/jira-api-key
+
+idp_setup:
+  user_pool_id: # from the cognito config json file, but ideally from SSM or some token vault in prod
+  domain: # from the cognito config json file, but ideally from SSM or some token vault in prod
+  discovery_url: # from the cognito config json file, but ideally from SSM or some token vault in prod
+  client_secret: # from the cognito config json file, but ideally from SSM or some token vault in prod
+  client_id: # from the cognito config json file, but ideally from SSM or some token vault in prod
+  resource_server_identifier: # from the cognito config json file, but ideally from SSM or some token vault in prod
+  scopes:
+    - # from the cognito config json file, but ideally from SSM or some token vault in prod
+    - # from the cognito config json file, but ideally from SSM or some token vault in prod
+# this is information about the cloudwatch related tools that will be used
+# in the agent
+cloudwatch_agent_resources:
+  log_group_name: "agents/operations-agent"
+  log_stream_name: "operationsagent"

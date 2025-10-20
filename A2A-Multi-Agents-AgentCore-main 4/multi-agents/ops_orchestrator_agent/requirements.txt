@@ -1,0 +1,11 @@
+strands-agents
+strands-agents-tools
+bedrock-agentcore
+bedrock_agentcore_starter_toolkit
+requests
+boto3
+botocore
+openai-agents
+a2a-sdk
+tavily-python
+fastapi

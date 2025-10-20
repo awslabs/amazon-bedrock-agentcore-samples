@@ -1,0 +1,22 @@
+# Host Orchestrator Configuration
+model:
+  id: gemini-2.0-flash
+  name: Host_Orchestrator_Agent
+  temperature: 0.1
+  max_tokens: 2048
+
+# Remote agents - IDP config fetched from SSM Parameter Store
+agents:
+  - name: Monitoring_Agent
+    description: "Monitors AWS logs/metrics/dashboards, performs log analysis, manages CloudWatch alarms, and creates Jira tickets"
+    runtime_arn: 
+    region: us-west-2
+    # SSM parameter path for Cognito IDP configuration
+    ssm_idp_config_path: /a2a/agents/monitoring/idp-config
+
+  - name: OpsRemediation_Agent
+    description: "Searches for remediation strategies using web search and provides solutions for AWS-related issues"
+    runtime_arn: 
+    region: us-west-2
+    # SSM parameter path for Cognito IDP configuration
+    ssm_idp_config_path: /a2a/agents/ops-remediation/idp-config

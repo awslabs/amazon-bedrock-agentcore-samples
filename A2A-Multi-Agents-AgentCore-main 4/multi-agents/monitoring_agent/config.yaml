@@ -1,0 +1,71 @@
+general:
+  name: "multi-agent-issue-triage-agent"      
+  description: "This agentic system shows multi-agent collaboration for issue triage agent using multiple new AWS agentic primitives"
+
+# This contains the model information for various agents
+# in our multi agentic system
+agent_information:
+  # Represents the system prompt templates for each agent
+  prompt_templates:
+    prompt_template_dir: prompt_template
+    # This is the system prompt for the monitoring agent that will be used 
+    # in agent creation and development
+    monitoring_agent: monitoring_agent_prompt_template.txt
+  # Represents information about the monitoring agent
+  monitoring_agent_model_info: 
+    model_id: us.anthropic.claude-3-5-sonnet-20240620-v1:0
+    inference_parameters:
+      # This is not an exhaustive list, it can be changed or extended
+      # based on the inference parameters that are supported
+      temperature: 0.1
+      max_tokens: 2048
+    # MEMORY CONFIGURATION FOR THE MONITORING AGENT
+    # If your memory is already created, please provide the credentials here
+    use_existing_memory: no
+    memory_credentials:
+      # fetch this from your AWS console
+      id: 
+    memory_execution_role: <provide a memory execution role>
+    memory_allocation:
+      # An actor refers to an entity such as an end user or an agent that interacts with the
+      # agent application. For example, in a coding use case, an actor is a developer asking
+      # questions to the assistant. Using the actor id helps the system know which user the 
+      # memory belongs to, keeping each user's data separate and organized
+      actor_id: monitoring_actor_agent2039
+      # The session is usually a single conversation that is the interaction period between
+      # the user and the AI agent
+      # A namespace is used to logically group and organize the long term memories, these will
+      # be created on the fly using the strategies that are used in the memory for the agent.
+    # GATEWAY CONFIGURATION FOR THE MONITORING AGENT
+    gateway_config:
+      # Run the steps in the gateway_creation folder to input the parameters below
+      name: <gateway name from the console>
+      url: <gateway url from the console>
+
+# Identity Provider (IdP) setup configuration for prerequisite setup
+# after running the setup idp scripts, you will find a cognito config.json
+# to get the values from that you can input below. This can be done through
+# cognito or even through another IdP
+idp_setup:
+  user_pool_id: # From cognito but preferrably from SSM/Identity provider or some token vault in production
+  domain: # From cognito but preferrably from SSM/Identity provider or some token vault in production
+  discovery_url: # From cognito but preferrably from SSM/Identity provider or some token vault in production
+  client_secret: # From cognito but preferrably from SSM/Identity provider or some token vault in production
+  client_id: # From cognito but preferrably from SSM/Identity provider or some token vault in production
+  resource_server_identifier: # From cognito but preferrably from SSM/Identity provider or some token vault in production
+  scopes:
+    -  # From cognito but preferrably from SSM/Identity provider or some token vault in production
+    -  # From cognito but preferrably from SSM/Identity provider or some token vault in production
+
+
+# this is information about the cloudwatch related tools that will be used
+# in the agent
+cloudwatch_agent_resources:
+  # this is the log group name that will be used to create the log group
+  # and the log stream
+  # this should be the same as what is given in the .env file for 
+  # observability
+  log_group_name: "agents/monitoring-agent"
+  # this is the log stream name that will be used to create the log stream
+  # within the log group
+  log_stream_name: "monitoringagent"
