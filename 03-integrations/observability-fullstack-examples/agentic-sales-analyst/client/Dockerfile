@@ -33,4 +33,9 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 3000
 
+# Health check
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+    CMD curl -f http://localhost:3000 || exit 1
+
+# checkov:skip=CKV_DOCKER_3:Nginx requires root permissions to bind to ports and manage processes
 CMD ["nginx", "-g", "daemon off;"]

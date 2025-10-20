@@ -4,6 +4,7 @@ import json
 import logging
 import os
 import psycopg2
+from psycopg2 import sql
 import requests
 from typing import Dict, Any
 
@@ -42,138 +43,64 @@ schema_cache = None
 
 print(f"[{DEPLOYMENT_MODE.upper()}] ✅ Flask app created successfully")
 
-# amazonq-ignore-next-line
 def get_system_prompt():
     """Generate system prompt with current database schema"""
     schema = discover_schema()
     return f"""
-You are a multi-modal chat assistant with access to database and web search capabilities.
+You are a sales analyst for our company. You analyze our internal sales data and provide market context.
 
-IMPORTANT: You have two tools available:
-1. execute_sql_query - for database queries
-2. search_web - for web searches
+SCOPE: Only answer questions about our company's sales data. For unrelated questions, decline politely.
 
-CURRENT DATABASE SCHEMA:
+TOOLS:
+1. execute_sql_query - Query our sales database
+2. search_web - Get market context for our sales performance
+
+DATABASE SCHEMA:
 {schema}
 
-You MUST use these tools to get real data. DO NOT make up or hallucinate any data.
-
-For database queries:
-- CRITICAL: ONLY use tables that appear in the schema above - NO OTHER TABLES EXIST
-- Use the schema above to understand available tables and columns
-- Generate appropriate PostgreSQL queries based on user questions
-- Use proper table and column names from the schema
-- Query each table SEPARATELY unless you see explicit foreign key relationships in the schema
-- Do NOT assume relationships between tables based on similar column names
-- Only use JOINs when the schema explicitly shows foreign key constraints
+CRITICAL RULES:
+1. ALWAYS use execute_sql_query for questions about our internal sales data - never just describe what you would query
+2. Use search_web only if market context is needed to enhance database results
+3. Use only SELECT queries on tables shown in schema above
+4. Sample data shows only limited examples - ALWAYS query to discover all actual values and data patterns in the database
+5. Database contains data through 2025 - always query before saying data doesn't exist
+6. NEVER include SQL queries in the content field - only provide business insights and analysis
+7. MANDATORY: You MUST call tools, not describe what tools you would use
 
 WORKFLOW:
-1. Review conversation history (if available) to understand context
-2. MANDATORY: You MUST call at least one tool (execute_sql_query or search_web) for EVERY new question
-3. CRITICAL: For ANY question about sales, revenue, customers, or products, you MUST call execute_sql_query FIRST to check our internal data
-4. Use search_web for industry trends, market data, or external context
-5. Synthesize tool results with conversation context into a comprehensive response
-6. Return your complete analysis as JSON
+1. Analyze the question to determine what information is needed
+2. MUST call execute_sql_query if internal sales data is required
+3. Only call search_web if market context is needed to enhance database results
+4. Return JSON response with insights from tools used
 
-# amazonq-ignore-next-line
-🚨 CRITICAL RULE: NO RESPONSE WITHOUT TOOL CALLS 🚨
-- Conversation history provides CONTEXT ONLY - it does NOT replace tool calls
-- You MUST call tools for EVERY new question, even if similar questions were asked before
-- Memory helps you understand what the user is asking, but you still need fresh data from tools
-- EVERY response must be based on actual tool outputs from THIS conversation turn
+🚨 CRITICAL: ALWAYS RETURN JSON FORMAT 🚨
+EVERY response must be valid JSON - NO EXCEPTIONS
+EVEN when declining requests, you MUST return JSON format
 
-CRITICAL: After using all necessary tools, you must return your FINAL response as VALID JSON in this exact format:
+JSON OUTPUT REQUIRED:
 {{
-  "content": "Your comprehensive analysis that MUST incorporate insights from EVERY tool you used. If you used execute_sql_query, you MUST include the database insights. If you used search_web, you MUST include web research findings.",
-  "sources": [
-    {{"type": "database", "name": "Sales Database"}},
-    {{"type": "web", "title": "EXACT title from search_web tool results", "url": "EXACT URL from search_web tool results"}}
-  ]
+  "content": "Your response text here",
+  "sources": []
 }}
 
-CRITICAL JSON SYNTAX RULES:
-- ALL string values MUST be enclosed in double quotes
-- The content field value MUST be a quoted string: "content": "your text here"
-- Do NOT write: "content": your text here (missing quotes)
-- Use proper JSON syntax with commas between fields
-
-🚨 OUTPUT IN JSON FORMAT - MANDATORY 🚨
-
-Return the data as a JSON object. Ensure the response is valid JSON.
-
-JSON SCHEMA REQUIRED:
-{{
-  "content": "string - your comprehensive analysis incorporating ALL tool results",
-  "sources": [
-    // Include a source entry for EVERY tool you actually used:
-    {{"type": "database", "name": "Sales Database"}},
-    {{"type": "web", "title": "exact title from search results", "url": "exact URL"}},
-    {{"type": "api", "name": "API name", "endpoint": "endpoint used"}},
-    {{"type": "file", "name": "filename", "path": "file path"}}
-    // Add any other source types as needed based on tools used
-  ]
-}}
+EXAMPLES:
+- Sales question: {{"content": "Analysis with data", "sources": [{{"type": "database", "name": "Sales Database"}}]}}
+- Out of scope: {{"content": "I can only analyze our company's sales data", "sources": []}}
+- Error: {{"content": "Unable to process request", "sources": []}}
 
 CRITICAL JSON REQUIREMENTS:
 - Output ONLY valid JSON starting with {{ and ending with }}
 - NO text before or after the JSON object
-- NO XML tags, explanations, or commentary outside JSON
-- Include "content" field with your analysis as a string
-- Include "sources" array with entries for every tool used
-- Use exact titles/URLs from tool results in sources
+- ALWAYS include "content" field with your response as a string
+- ALWAYS include "sources" array (empty if no tools used)
+- For database sources: {{"type": "database", "name": "Sales Database"}}
+- For web sources: {{"type": "web", "title": "Exact title from search result", "url": "Exact URL from search result"}}
+- Never fabricate sources - use exact data from tool results
 
-STRICT RULES:
-- You MUST call execute_sql_query for any database-related questions
-- You MUST call search_web for any web search needs
-
-- MANDATORY: If you call execute_sql_query and get results, you MUST incorporate those database insights into your final response content
-- MANDATORY: If you call search_web and get results, you MUST incorporate those web insights into your final response content
-- SYNTHESIZE all tool results into ONE comprehensive response - DO NOT ignore any tool results
-- Include specific numbers, percentages, and data from ALL tools used
-- Provide actionable insights based on the combined data from ALL sources
-- You MUST include sources for EVERY tool you actually used
-- NEVER put document filenames in quotes within the content text - reference them without quotes or mention them only in the sources array
-- You MUST ONLY use the exact URLs returned by the search_web tool in the "results" array
-- You MUST ONLY use the exact titles returned by the search_web tool in the "results" array  
-
-- NEVER create, invent, or hallucinate any URLs, titles, or document names
-- If search_web returns no results, do not include web sources
-
-- ONLY copy the exact "url" and "title" fields from actual search_web tool responses
-
-- CRITICAL: Only reference sources that actually appear in tool outputs - NO EXCEPTIONS
-- HALLUCINATING SOURCES IS STRICTLY FORBIDDEN AND WILL CAUSE SYSTEM FAILURE
-- If you did not call a tool, do not include sources for that tool type
-- If a tool returned no relevant results, do not fabricate sources
-- VERIFICATION REQUIRED: Before adding any source, verify it appeared in actual tool output
-- MEMORY IS NOT A SOURCE: Do not create sources based on conversation memory
-- NO TOOL CALL = NO SOURCE: If you didn't execute a tool, don't claim you did
-- TOOL CALL VERIFICATION: If you didn't call search_web, you CANNOT reference web sources
-
-- TOOL CALL VERIFICATION: If you didn't call execute_sql_query, you CANNOT reference database sources
-- NO EXTERNAL KNOWLEDGE: Do not use your training data to create fake sources - only use actual tool results
-- SOURCE AUDIT: Before finalizing response, audit each source against actual tool outputs from THIS conversation turn
-- FABRICATED SOURCES = SYSTEM FAILURE: Creating sources not returned by tools will cause critical system failure
-
-🔥 FINAL RESPONSE ENFORCEMENT 🔥
-Your response must be EXACTLY:
-{{ "content": "...", "sources": [...] }}
-ANYTHING ELSE WILL CAUSE A SYSTEM FAILURE
-
-🚨 MANDATORY SOURCE VERIFICATION PROTOCOL 🚨
-BEFORE including ANY source in your response:
-1. VERIFY you actually called the corresponding tool in THIS conversation turn
-2. VERIFY the source appears in the actual tool output
-3. If you did NOT call execute_sql_query, you CANNOT include database sources
-4. If you did NOT call search_web, you CANNOT include web sources  
-
-6. NO EXCEPTIONS - Sources must come from actual tool calls in THIS turn
-7. CONVERSATION MEMORY IS NOT A VALID SOURCE
-8. YOUR TRAINING DATA IS NOT A VALID SOURCE
-9. ONLY REAL TOOL OUTPUTS FROM THIS TURN ARE VALID SOURCES
-10. IF YOU USE MEMORY: State clearly "Based on our previous conversation" and do NOT include sources array
-11. IF YOU USE TOOLS: Include only sources from actual tool calls in THIS turn
-12. NEVER CLAIM TO HAVE CALLED TOOLS WHEN YOU USED MEMORY INSTEAD
+🔥 ABSOLUTE REQUIREMENT 🔥
+Your response must be EXACTLY: {{ "content": "...", "sources": [...] }}
+NO PLAIN TEXT RESPONSES ALLOWED - SYSTEM WILL FAIL
+NEVER include SQL statements in the content - only business analysis
 """
 
 def get_database_connection():
@@ -256,16 +183,39 @@ def discover_schema():
                 schema_description += f', -- {col_comment}'
             schema_description += ')\n'
         
-        # Add sample data
+        # Add comprehensive sample data showing variety
         try:
-            # amazonq-ignore-next-line
-            cursor.execute(f'SELECT * FROM "{table_name}" LIMIT 2')
+            # Get diverse sample data instead of just first 2 rows
+            cursor.execute(
+                sql.SQL('SELECT * FROM {} ORDER BY RANDOM() LIMIT 5').format(
+                    sql.Identifier(table_name)
+                )
+            )
             sample_data = cursor.fetchall()
             if sample_data:
                 col_names = [desc[0] for desc in cursor.description]
                 sample_dict = [dict(zip(col_names, row)) for row in sample_data]
-                schema_description += f'Sample Data:\n{json.dumps(sample_dict, default=str, indent=2)}\n'
-                print(f'✅ Added sample data for {table_name}')
+                schema_description += f'SAMPLE DATA (5 RANDOM ROWS - NOT COMPLETE DATASET):\n{json.dumps(sample_dict, default=str, indent=2)}\n'
+                
+                # Add data variety summary for key categorical columns
+                categorical_cols = ['productline', 'country', 'territory', 'dealsize', 'status']
+                for col in categorical_cols:
+                    if col in [c.lower() for c in col_names]:
+                        cursor.execute(
+                            sql.SQL('SELECT {}, COUNT(*) as count FROM {} GROUP BY {} ORDER BY count DESC LIMIT 10').format(
+                                sql.Identifier(col),
+                                sql.Identifier(table_name),
+                                sql.Identifier(col)
+                            )
+                        )
+                        variety_data = cursor.fetchall()
+                        if variety_data:
+                            schema_description += f'\nDATA VARIETY - {col.upper()} (top values):\n'
+                            for value, count in variety_data:
+                                schema_description += f'- {value}: {count} records\n'
+                
+                schema_description += f'\nCRITICAL: Sample shows only 5 random rows. The actual table contains thousands more records with extensive variety in all categorical columns. ALWAYS query the database to discover all actual values and patterns.\n'
+                print(f'✅ Added comprehensive sample data for {table_name}')
         except Exception as e:
             print(f'⚠️ Could not get sample data for {table_name}: {e}')
         
@@ -424,7 +374,7 @@ def chat_message():
         data = request.get_json()
         user_message = data.get('message')  # Frontend sends 'message'
         session_id = data.get('sessionId')
-        user_id = data.get('userId', 'anonymous')
+        user_id = data.get('userId')  # Don't default to 'anonymous'
         
         # Call the main invoke function
         return invoke_agent(user_message, session_id, user_id)
@@ -439,7 +389,7 @@ def invoke():
         data = request.get_json()
         user_message = data.get('prompt')
         session_id = data.get('sessionId')
-        user_id = data.get('userId', 'anonymous')
+        user_id = data.get('userId')  # Don't default to 'anonymous'
         
         return invoke_agent(user_message, session_id, user_id)
     except Exception as e:
@@ -598,6 +548,10 @@ class MemoryHookProvider(HookProvider):
             actor_id = event.agent.state.get("actor_id")
             session_id = event.agent.state.get("session_id")
             
+            # For anonymous users, use session_id as actor_id
+            if not actor_id:
+                actor_id = session_id
+            
             if not actor_id or not session_id or not self.memory_id:
                 return
             
@@ -636,6 +590,10 @@ class MemoryHookProvider(HookProvider):
             messages = event.agent.messages
             actor_id = event.agent.state.get("actor_id")
             session_id = event.agent.state.get("session_id")
+            
+            # For anonymous users, use session_id as actor_id
+            if not actor_id:
+                actor_id = session_id
 
             # amazonq-ignore-next-line
             if messages and messages[-1]["content"][0].get("text") and self.memory_id:
@@ -698,7 +656,7 @@ def agentcore_invoke(payload):
         
         # Extract user ID from payload for AgentCore Memory
         user_id = payload.get('userId') or payload.get('user_id')
-        actor_id = user_id or session_id or "anonymous_user"
+        actor_id = user_id  # Use None for anonymous users
         
         print(f"[AgentCore Runtime] Processing message: {user_message}")
         print(f"[AgentCore Runtime] Session ID: {session_id}")
@@ -842,5 +800,9 @@ if __name__ == "__main__":
     print(f"[{DEPLOYMENT_MODE.upper()} Runtime] Starting Strands Agent with ADOT observability")
     print(f"[{DEPLOYMENT_MODE.upper()} Runtime] Available tools: execute_sql_query, search_web")
     print(f"[{DEPLOYMENT_MODE.upper()} Runtime] Deployment mode: {DEPLOYMENT_MODE}")
-    # amazonq-ignore-next-line
-    app.run(host='0.0.0.0', port=8080, debug=True, use_reloader=False)
+    
+    # Security: Only enable debug mode in local development
+    debug_mode = DEPLOYMENT_MODE == 'local'
+    # Note: host='0.0.0.0' is required for containerized deployment to accept external connections
+    # Container networking and load balancers provide the security boundary
+    app.run(host='0.0.0.0', port=8080, debug=debug_mode, use_reloader=False)  # nosec B104

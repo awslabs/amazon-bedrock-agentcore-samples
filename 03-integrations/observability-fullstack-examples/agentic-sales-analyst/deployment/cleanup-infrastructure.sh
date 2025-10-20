@@ -2,7 +2,7 @@
 set -e
 
 PROJECT_NAME=${PROJECT_NAME:-agentic-sales-analyst}
-REGION=${AWS_REGION:-us-east-1}
+REGION=${AWS_REGION:-ap-southeast-2}
 
 echo "🗑️  Cleaning up shared infrastructure"
 echo "Project: $PROJECT_NAME"
@@ -35,29 +35,29 @@ REPO_NAME="${PROJECT_NAME}"
 
 # Check if repository exists
 if aws ecr describe-repositories --repository-names $REPO_NAME --region $REGION >/dev/null 2>&1; then
-    # Get image digests
-    IMAGE_DIGESTS=$(aws ecr list-images \
+    echo "Deleting all images from $REPO_NAME..."
+    
+    # Get all image IDs (both tagged and untagged)
+    IMAGE_IDS=$(aws ecr list-images \
         --repository-name $REPO_NAME \
         --region $REGION \
-        --query 'imageIds[?imageDigest!=`null`].[imageDigest]' \
-        --output text 2>/dev/null)
+        --query 'imageIds' \
+        --output json 2>/dev/null)
     
-    if [ -n "$IMAGE_DIGESTS" ]; then
-        echo "Deleting images from $REPO_NAME..."
-        echo "$IMAGE_DIGESTS" | while read digest; do
-            if [ -n "$digest" ]; then
-                aws ecr batch-delete-image \
-                    --repository-name $REPO_NAME \
-                    --region $REGION \
-                    --image-ids imageDigest=$digest 2>/dev/null || true
-            fi
-        done
-        echo "✅ Images deleted"
+    if [ "$IMAGE_IDS" != "[]" ] && [ -n "$IMAGE_IDS" ]; then
+        # Delete all images with force flag to handle manifest lists
+        echo "Force deleting all images (including manifest lists)..."
+        aws ecr batch-delete-image \
+            --repository-name $REPO_NAME \
+            --region $REGION \
+            --image-ids "$IMAGE_IDS" \
+            --force 2>/dev/null || true
+        echo "✅ All images force deleted from $REPO_NAME"
     else
-        echo "No images to delete"
+        echo "No images to delete in $REPO_NAME"
     fi
 else
-    echo "Repository does not exist, skipping image cleanup"
+    echo "Repository $REPO_NAME does not exist, skipping image cleanup"
 fi
 
 echo ""

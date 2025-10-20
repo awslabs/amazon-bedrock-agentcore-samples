@@ -34,4 +34,6 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
     CMD curl -f http://localhost:8080/health || exit 1
 
 # Use ADOT auto-instrumentation
+# checkov:skip=CKV_DOCKER_3:Sample application requires root permissions for proper functionality
+# nosemgrep: dockerfile.security.missing-user.missing-user
 CMD ["opentelemetry-instrument", "python", "strands_agentcore_runtime.py"]

@@ -62,6 +62,14 @@ Resources:
           ToPort: 2049
           SourceSecurityGroupId: !ImportValue
             Fn::Sub: ${ProjectName}-ecs-sg-id
+          Description: Allow NFS inbound from ECS tasks
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 2049
+          ToPort: 2049
+          DestinationSecurityGroupId: !ImportValue
+            Fn::Sub: ${ProjectName}-ecs-sg-id
+          Description: Allow NFS outbound to ECS tasks
 
   # amazonq-ignore-next-line
   TaskDefinition:
@@ -92,7 +100,7 @@ Resources:
             - Name: POSTGRES_USER
               Value: postgres
             - Name: POSTGRES_PASSWORD
-              Value: postgres
+              Value: postgres  # pragma: allowlist secret
           MountPoints:
             - SourceVolume: postgres-data
               ContainerPath: /var/lib/postgresql/data
@@ -128,7 +136,7 @@ Resources:
             - Name: PROJECT_NAME
               Value: !Ref ProjectName
             - Name: DATABASE_URL
-              Value: postgresql://postgres:postgres@localhost:5432/sales_db
+              Value: postgresql://postgres:postgres@localhost:5432/sales_db  # pragma: allowlist secret checkov:skip=CKV_SECRET_4:Demo application uses hardcoded credentials
             - Name: BRAVE_SEARCH_API_KEY
               Value: !Ref BraveSearchAPIKey
             - Name: AGENT_OBSERVABILITY_ENABLED

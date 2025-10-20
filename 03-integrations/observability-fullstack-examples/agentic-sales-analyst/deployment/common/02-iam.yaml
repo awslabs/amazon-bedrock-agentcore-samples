@@ -7,7 +7,7 @@ Parameters:
     Default: agentic-sales-analyst
 
 Resources:
-  ExecutionRole:
+  ExecutionRole:  # cdk-nag: disable=AwsSolutions-IAM4:ECS requires AWS managed policy for task execution
     Type: AWS::IAM::Role
     Properties:
       RoleName: !Sub ${ProjectName}-execution-role
@@ -48,8 +48,16 @@ Resources:
             Statement:
               - Effect: Allow
                 Action:
-                  - bedrock-agentcore:*
-                Resource: '*'
+                  - bedrock-agentcore:CreateMemory
+                  - bedrock-agentcore:GetMemory
+                  - bedrock-agentcore:ListMemories
+                  - bedrock-agentcore:UpdateMemory
+                  - bedrock-agentcore:DeleteMemory
+                  - bedrock-agentcore:CreateEvent
+                  - bedrock-agentcore:GetLastKTurns
+                  - bedrock-agentcore:ListEvents
+                  - bedrock-agentcore:GetEvent
+                Resource: '*'  # cfn_nag: disable=F3 checkov:skip=CKV_AWS_111:AgentCore memory resources are created dynamically
         - PolicyName: Observability
           PolicyDocument:
             Version: '2012-10-17'

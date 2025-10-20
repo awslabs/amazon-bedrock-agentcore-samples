@@ -66,7 +66,7 @@ aws iam put-user-policy \
 
 # 3. Set environment variables
 export BRAVE_SEARCH_API_KEY=your-api-key
-export AWS_REGION=us-east-1
+export AWS_REGION=ap-southeast-2
 
 # 4. Start all services (uses your ~/.aws credentials)
 docker-compose -f docker-compose.local.yml up
@@ -190,7 +190,7 @@ cd deployment
 
 ```bash
 # AWS Configuration
-AWS_REGION=us-east-1
+AWS_REGION=ap-southeast-2
 AWS_ACCOUNT_ID=123456789012
 
 # API Keys

@@ -13,6 +13,9 @@ Resources:
       RepositoryName: !Ref ProjectName
       ImageScanningConfiguration:
         ScanOnPush: true
+      EncryptionConfiguration:
+        EncryptionType: KMS
+      ImageTagMutability: IMMUTABLE
       LifecyclePolicy:
         LifecyclePolicyText: |
           {

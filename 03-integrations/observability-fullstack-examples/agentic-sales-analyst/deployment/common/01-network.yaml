@@ -7,7 +7,7 @@ Parameters:
     Default: agentic-sales-analyst
 
 Resources:
-  VPC:
+  VPC:  # cdk-nag: disable=AwsSolutions-VPC7:Demo application does not require VPC Flow Logs
     Type: AWS::EC2::VPC
     Properties:
       CidrBlock: 10.0.0.0/16

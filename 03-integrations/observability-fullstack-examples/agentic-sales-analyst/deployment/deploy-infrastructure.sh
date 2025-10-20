@@ -3,7 +3,7 @@ set -e
 
 # Configuration
 PROJECT_NAME=${PROJECT_NAME:-agentic-sales-analyst}
-REGION=${AWS_REGION:-us-east-1}
+REGION=${AWS_REGION:-ap-southeast-2}
 
 echo "🚀 Deploying Common Infrastructure"
 echo "Project: $PROJECT_NAME"
