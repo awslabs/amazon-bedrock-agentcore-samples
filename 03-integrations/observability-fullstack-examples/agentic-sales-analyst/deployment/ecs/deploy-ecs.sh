@@ -8,6 +8,10 @@ REGION=${AWS_REGION:-ap-southeast-2}
 echo "🐳 Deploying ECS-specific resources"
 echo "Project: $PROJECT_NAME"
 echo "Region: $REGION"
+echo ""
+echo "⚠️  You need to provide BRAVE_SEARCH_API_KEY"
+read -p "Enter BRAVE_SEARCH_API_KEY: " BRAVE_API_KEY
+echo ""
 
 # Get ECR URI from infrastructure stack
 ECR_URI=$(aws cloudformation describe-stacks \
@@ -35,9 +39,6 @@ aws cloudformation deploy \
 # Step 2: Deploy ECS Service
 echo ""
 echo "🚀 Step 2: Deploying ECS service..."
-echo "⚠️  You need to provide BRAVE_SEARCH_API_KEY"
-echo ""
-read -p "Enter BRAVE_SEARCH_API_KEY: " BRAVE_API_KEY
 
 aws cloudformation deploy \
     --stack-name ${PROJECT_NAME}-ecs-service \

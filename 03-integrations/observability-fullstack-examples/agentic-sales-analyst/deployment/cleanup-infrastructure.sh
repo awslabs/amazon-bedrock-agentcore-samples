@@ -37,24 +37,29 @@ REPO_NAME="${PROJECT_NAME}"
 if aws ecr describe-repositories --repository-names $REPO_NAME --region $REGION >/dev/null 2>&1; then
     echo "Deleting all images from $REPO_NAME..."
     
-    # Get all image IDs (both tagged and untagged)
-    IMAGE_IDS=$(aws ecr list-images \
-        --repository-name $REPO_NAME \
-        --region $REGION \
-        --query 'imageIds' \
-        --output json 2>/dev/null)
+    # Get all image IDs and delete them
+    IMAGE_IDS=$(aws ecr list-images --repository-name $REPO_NAME --region $REGION --query 'imageIds' --output json)
     
     if [ "$IMAGE_IDS" != "[]" ] && [ -n "$IMAGE_IDS" ]; then
-        # Delete all images with force flag to handle manifest lists
-        echo "Force deleting all images (including manifest lists)..."
-        aws ecr batch-delete-image \
+        echo "Found images to delete, removing all..."
+        echo "$IMAGE_IDS" | aws ecr batch-delete-image \
             --repository-name $REPO_NAME \
             --region $REGION \
-            --image-ids "$IMAGE_IDS" \
-            --force 2>/dev/null || true
-        echo "✅ All images force deleted from $REPO_NAME"
+            --image-ids file:///dev/stdin || true
+        
+        # Delete any remaining images (handles manifest list dependencies)
+        REMAINING_IDS=$(aws ecr list-images --repository-name $REPO_NAME --region $REGION --query 'imageIds' --output json 2>/dev/null || echo "[]")
+        if [ "$REMAINING_IDS" != "[]" ] && [ -n "$REMAINING_IDS" ]; then
+            echo "Deleting remaining images..."
+            echo "$REMAINING_IDS" | aws ecr batch-delete-image \
+                --repository-name $REPO_NAME \
+                --region $REGION \
+                --image-ids file:///dev/stdin || true
+        fi
+        
+        echo "✅ All images deleted from $REPO_NAME"
     else
-        echo "No images to delete in $REPO_NAME"
+        echo "No images found in $REPO_NAME"
     fi
 else
     echo "Repository $REPO_NAME does not exist, skipping image cleanup"

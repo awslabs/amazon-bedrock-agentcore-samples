@@ -19,6 +19,18 @@ Parameters:
     Default: 1
 
 Resources:
+  # AgentCore Memory for conversation history
+  AgentCoreMemory:
+    Type: AWS::BedrockAgentCore::Memory
+    Properties:
+      Name: SalesAnalystMemory
+      Description: Short-term memory for sales assistant
+      EventExpiryDuration: 30
+      MemoryStrategies: []
+      Tags:
+        Project: !Ref ProjectName
+        Environment: ecs
+
   # EFS for PostgreSQL data persistence (no backup plan for sample)
   # For production: Add AWS Backup plan with daily/weekly backups
   # See: https://docs.aws.amazon.com/efs/latest/ug/awsbackup.html
@@ -74,6 +86,9 @@ Resources:
   # amazonq-ignore-next-line
   TaskDefinition:
     Type: AWS::ECS::TaskDefinition
+    DependsOn:
+      - EFSMountTarget1
+      - EFSMountTarget2
     Properties:
       Family: !Sub ${ProjectName}-task
       NetworkMode: awsvpc
@@ -202,6 +217,9 @@ Resources:
 
   Service:
     Type: AWS::ECS::Service
+    DependsOn:
+      - EFSMountTarget1
+      - EFSMountTarget2
     Properties:
       ServiceName: !Sub ${ProjectName}-service
       Cluster: !ImportValue
@@ -233,3 +251,7 @@ Resources:
 Outputs:
   ServiceName:
     Value: !GetAtt Service.Name
+  MemoryId:
+    Value: !GetAtt AgentCoreMemory.MemoryId
+    Export:
+      Name: !Sub ${ProjectName}-memory-id

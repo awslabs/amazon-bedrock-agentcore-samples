@@ -24,32 +24,12 @@ Docker Compose (3 containers):
 ### AWS Deployment
 
 **ECS**
-```
-Single Task (3 containers):
-├─ PostgreSQL - Database with EFS persistence
-├─ Backend - Python Flask + Strands SDK
-└─ Frontend - React app
-   ↓
-Application Load Balancer
-   ↓
-Internet
-```
+<!-- TODO: Add ECS architecture diagram -->
 
 **EKS (Work in Progress)**
-```
-Single Pod (3 containers):
-├─ PostgreSQL - Database with PVC persistence
-├─ Backend - Python Flask + Strands SDK
-└─ Frontend - React app
-   ↓
-Kubernetes Service (LoadBalancer)
-   ↓
-Internet
-```
+<!-- TODO: Add EKS architecture diagram -->
 
 ## Quick Start
-
-**Important:** Before starting, see [SETUP.md](SETUP.md) for required IAM permissions.
 
 ### Local Development
 
@@ -200,26 +180,6 @@ BRAVE_SEARCH_API_KEY=your-brave-api-key
 DATABASE_URL=postgresql://postgres:postgres@localhost:5432/sales_db
 ```
 
-### Optional Configuration
-
-```bash
-# Deployment
-PROJECT_NAME=agentic-sales-analyst
-DEPLOYMENT_MODE=local|ecs|eks
-
-# Observability
-AGENT_OBSERVABILITY_ENABLED=true
-OTEL_PYTHON_DISTRO=aws_distro
-```
-
-## Sample Queries
-
-Try these queries in the chat interface:
-
-1. "What were our Classic Cars sales in Q1 2025 compared to industry trends in the United States?"
-2. "What are our top sales across all transport categories?"
-3. "Compare our Q4 2024 performance across all transport product lines"
-
 ## Development
 
 ### Prerequisites
@@ -240,98 +200,6 @@ aws iam put-user-policy \
   --policy-name BedrockLocalDev \
   --policy-document file://local-dev-policy.json
 ```
-
-**Note:** Even users with `AdministratorAccess` may need this policy explicitly, as `bedrock-agentcore:*` actions are not included in standard admin policies.
-
-For AWS deployment, you need permissions to create CloudFormation stacks, IAM roles, VPC resources, ECR repositories, and ECS/EKS resources. Most users with `PowerUserAccess` or `AdministratorAccess` have these.
-
-See [SETUP.md](SETUP.md) for detailed IAM policy documentation.
-
-### Local Development Workflow
-
-```bash
-# Start services
-docker-compose -f docker-compose.local.yml up
-
-# View logs
-docker-compose -f docker-compose.local.yml logs -f
-
-# Rebuild after changes
-docker-compose -f docker-compose.local.yml up --build
-
-# Stop services
-docker-compose -f docker-compose.local.yml down
-```
-
-### Building Images
-
-```bash
-# Backend
-docker build -t agentic-sales-analyst-backend .
-
-# Frontend
-docker build -t agentic-sales-analyst-frontend ./client
-
-# PostgreSQL
-docker build -f Dockerfile.postgres -t agentic-sales-analyst-postgres .
-```
-
-## Monitoring
-
-### CloudWatch Logs
-```bash
-aws logs tail /aws/bedrock-agentcore/runtimes/agentic-sales-analyst --follow
-```
-
-### X-Ray Traces
-View in AWS Console: X-Ray → Service Map
-
-### Health Checks
-- Backend: `http://localhost:8080/health`
-- Frontend: `http://localhost:3000`
-
-## Troubleshooting
-
-### Container Issues
-```bash
-# Check container status
-docker-compose -f docker-compose.local.yml ps
-
-# View logs
-docker-compose -f docker-compose.local.yml logs backend
-
-# Restart services
-docker-compose -f docker-compose.local.yml restart
-```
-
-### Database Issues
-```bash
-# Connect to PostgreSQL
-docker-compose -f docker-compose.local.yml exec postgres psql -U postgres -d sales_db
-
-# Check data
-SELECT COUNT(*) FROM sales_data;
-```
-
-### AWS Deployment Issues
-```bash
-# ECS: Check task logs
-aws logs tail /aws/bedrock-agentcore/runtimes/agentic-sales-analyst --follow
-
-# EKS: Check pod logs (WIP)
-kubectl logs -l app=agentic-sales-analyst -c backend --tail=100 -f
-```
-
-### IAM Permission Issues
-
-**AccessDeniedException for bedrock-agentcore:**
-Your IAM user needs the BedrockLocalDev policy. Run:
-```bash
-aws iam put-user-policy --user-name YOUR_USERNAME --policy-name BedrockLocalDev --policy-document file://local-dev-policy.json
-```
-
-**Memory initialization failed:**
-Usually due to missing IAM permissions. The application will work without memory (no conversation history), but add the permissions for full functionality.
 
 ### Known Vulnerabilities
 
