@@ -1,4 +1,4 @@
-boto3
-strands-agents
-bedrock-agentcore
-bedrock-agentcore-starter-toolkit
+boto3==1.40.54
+strands-agents==1.12.0
+bedrock-agentcore==1.0.3
+bedrock-agentcore-starter-toolkit==0.1.25
