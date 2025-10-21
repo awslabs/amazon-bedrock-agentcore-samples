@@ -24,7 +24,7 @@ Docker Compose (3 containers):
 ### AWS Deployment
 
 **ECS**
-<!-- TODO: Add ECS architecture diagram -->
+![ECS Architecture](agentic-sales-analyst-solution-overview.jpg)
 
 **EKS (Work in Progress)**
 <!-- TODO: Add EKS architecture diagram -->
@@ -56,6 +56,8 @@ open http://localhost:3000
 ```
 
 ### AWS Deployment
+
+> **⚠️ WARNING:** This project creates AWS resources including VPC, ECS Fargate tasks, Application Load Balancer, EFS, ECR, and Bedrock services. You will be billed for the AWS resources used if you deploy this project. Use the cleanup scripts to remove resources when no longer needed.
 
 #### AWS Infrastructure
 ```bash
