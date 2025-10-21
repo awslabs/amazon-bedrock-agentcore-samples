@@ -4,15 +4,11 @@ A comprehensive implementation of the [Agent-to-Agent (A2A)](https://a2a-protoco
 
 ## Architecture Overview
 
-```bash
-TODO: Architecture video
-```
+![arch](./images/architecture.png)
 
 ## Demo
 
-```bash
-TODO: Demo video
-```
+![demo](./images/demo.gif)
 
 ## What is A2A?
 
