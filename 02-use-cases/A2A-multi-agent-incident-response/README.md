@@ -125,7 +125,7 @@ npm run dev
 
 ## Google ADK Web App
 
-Agent Development Kit Web is the built-in developer UI that integrated with Google Agent Development Kit for easier agent development and debug.
+[Agent Development Kit Web](https://github.com/google/adk-web) is the built-in developer UI that integrated with Google Agent Development Kit for easier agent development and debug.
 
 ![adk](./images/adk.gif)
 
@@ -134,11 +134,22 @@ Agent Development Kit Web is the built-in developer UI that integrated with Goog
 
 ## A2A Protocol Inspector
 
-The A2A Inspector is a web-based tool designed to help developers inspect, debug, and validate servers that implement the A2A (Agent2Agent) protocol. It provides a user-friendly interface to interact with an A2A agent, view communication, and ensure specification compliance.
+The [A2A Inspector](https://github.com/a2aproject/a2a-inspector) is a web-based tool designed to help developers inspect, debug, and validate servers that implement the A2A (Agent2Agent) protocol. It provides a user-friendly interface to interact with an A2A agent, view communication, and ensure specification compliance.
 
-TODO: inspector video
+![inspector](./images/inspector.gif)
 
 1. Follow Setup and Running the Application [instructions](https://github.com/a2aproject/a2a-inspector?tab=readme-ov-file#setup-and-running-the-application).
+2. Get URL and bearer token from:
+
+   ```bash
+
+   uv run monitoring_strands_agent/scripts/get_m2m_token.py   
+   # OR
+   uv run web_search_openai_agents/scripts/get_m2m_token.py   
+   ```
+
+3. Paste the URL & bearer token (`Bearer <Add Here>`) on A2A Inspector and add two headers `Authorization` and `X-Amzn-Bedrock-AgentCore-Runtime-Session-Id`. The value of `X-Amzn-Bedrock-AgentCore-Runtime-Session-Id` should be atleast 32 characters (`550e8400-e29b-41d4-a716-446655440000
+`).
 
 ## Test Scripts
 
