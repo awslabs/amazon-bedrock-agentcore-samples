@@ -1,61 +1,6 @@
 # Agent-to-Agent (A2A) Multi-Agent System on Amazon Bedrock AgentCore for Incident Response Logging
 
-A comprehensive implementation of the Agent-to-Agent (A2A) protocol using specialized agents running on Amazon Bedrock `AgentCore` runtime, demonstrating intelligent coordination for AWS infrastructure monitoring and operations management. This repository walks you through setting up three core agents to answer questions about incidents and metrics in your AWS accounts and search for best remediation strategies. A monitoring agent (built using the `Strands` Agents SDK) is responsible for handling all questions related to metrics and logs within AWS and cross AWS accounts. A remediation agent (built using `OpenAI`'s Agents SDK) is responsible to doing efficient web searches for best remediation strategies and optimization techniques that the user can ask for. Both agents run on separate runtimes as `A2A` servers and utilize all `AgentCore` primitives - memory for context management, observability for deep level analysis about both agents, gateway for access to tools (`Cloudwatch`, `JIRA` and `TAVILY` APIs) and `AgentCore` identity for enabling inbound and outbound access into the agent and then into the resources that the agent can access using OAuth 2.0 and APIs. These two agents are then managed by a host `Google ADK` agent that acts as a client and delegates tasks to each of these agents using A2A on Runtime. The Google ADK host agent runs on a separate `AgentCore` runtime of its own.
-
-## What is A2A?
-
-**Agent-to-Agent (A2A)** is an open standard protocol that enables seamless communication and collaboration between AI agents across different platforms and implementations. The A2A protocol defines:
-
-- **Agent Discovery**: Standardized agent cards that describe capabilities, skills, and communication endpoints
-- **Communication Format**: JSON-RPC 2.0-based message format for reliable agent-to-agent communication
-- **Authentication**: OAuth 2.0-based security model for secure inter-agent communication
-- **Interoperability**: Platform-agnostic design allowing agents from different frameworks to collaborate
-
-Learn more about the A2A protocol: [A2A Specification](https://a2a.foundation/)
-
-## A2A Support on Amazon Bedrock AgentCore
-
-Amazon Bedrock AgentCore provides native support for the A2A protocol, enabling you to:
-
-- **Deploy A2A-compliant agents** as runtime services with automatic endpoint management
-- **Secure authentication** via AWS Cognito OAuth 2.0 integration
-- **Agent discovery** through standardized agent card endpoints
-- **Scalable deployment** leveraging AWS infrastructure for production workloads
-- **Built-in observability** with CloudWatch integration and OpenTelemetry support
-
-AgentCore simplifies A2A agent deployment by handling infrastructure, authentication, scaling, and monitoring automatically.
-
-## System Architecture
-
-```
-┌────────────────────────────────────────────────────────────────────┐
-│                        Host Orchestrator Agent                     │
-│                    (Google ADK + A2A Protocol)                     │
-│  • Fetches IDP configuration from SSM Parameter Store              │
-│  • Discovers remote agents via agent cards                         │
-│  • Routes requests to appropriate specialist agents                │
-│  • Coordinates multi-agent collaboration                           │
-└────────────────────────────────────────────────────────────────────┘
-                                  │
-                    ┌─────────────┴──────────────┐
-                    │    A2A Protocol (OAuth)    │
-                    │   JSON-RPC 2.0 Messages    │
-                    └─────────────┬──────────────┘
-                                  │
-          ┌───────────────────────┴────────────────────────┐
-          │                                                 │
-┌─────────▼──────────────┐                   ┌────────────▼────────────┐
-│  Monitoring Agent      │                   │  Ops Orchestrator Agent │
-│  (Bedrock AgentCore)   │                   │  (Bedrock AgentCore)    │
-│                        │                   │                         │
-│  • CloudWatch logs     │                   │  • Web search for best  │
-│  • Metrics analysis    │                   │    practices            │
-│  • Dashboard review    │                   │  • JIRA ticket creation │
-│  • Alarm management    │                   │  • Remediation guidance │
-│  • A2A Server (port    │                   │  • A2A Server (port     │
-│    9000)               │                   │    9000)                │
-└────────────────────────┘                   └─────────────────────────┘
-```
+A comprehensive implementation of the [Agent-to-Agent (A2A)](https://a2a-protocol.org/latest/) protocol using specialized agents running on [Amazon Bedrock `AgentCore` runtime](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime-a2a.html), demonstrating intelligent coordination for AWS infrastructure monitoring and operations management. This repository walks you through setting up three core agents to answer questions about incidents and metrics in your AWS accounts and search for best remediation strategies. A monitoring agent (built using the [`Strands` Agents SDK](https://strandsagents.com/latest/)) is responsible for handling all questions related to metrics and logs within AWS and cross AWS accounts. A remediation agent (built using [`OpenAI`'s Agents SDK](https://openai.github.io/openai-agents-python/)) is responsible to doing efficient web searches for best remediation strategies and optimization techniques that the user can ask for. Both agents run on separate runtimes as `A2A` servers and utilize all `AgentCore` primitives - memory for context management, observability for deep level analysis about both agents, gateway for access to tools (`Cloudwatch`, `JIRA` and `TAVILY` APIs) and `AgentCore` identity for enabling inbound and outbound access into the agent and then into the resources that the agent can access using OAuth 2.0 and APIs. These two agents are then managed by a host [`Google ADK` agent](https://google.github.io/adk-docs/) that acts as a client and delegates tasks to each of these agents using A2A on Runtime. The Google ADK host agent runs on a separate `AgentCore` runtime of its own.
 
 ## Architecture Overview
 
@@ -68,6 +13,32 @@ TODO: Architecture video
 ```bash
 TODO: Demo video
 ```
+
+## What is A2A?
+
+<details>
+  <summary>Agent-to-Agent (A2A)</summary>
+   **Agent-to-Agent (A2A)** is an open standard protocol that enables seamless communication and collaboration between AI agents across different platforms and implementations. The A2A protocol defines:
+
+   - **Agent Discovery**: Standardized agent cards that describe capabilities, skills, and communication endpoints
+   - **Communication Format**: JSON-RPC 2.0-based message format for reliable agent-to-agent communication
+   - **Authentication**: OAuth 2.0-based security model for secure inter-agent communication
+   - **Interoperability**: Platform-agnostic design allowing agents from different frameworks to collaborate
+
+   Learn more about the A2A protocol: [A2A Specification](https://a2a.foundation/)
+
+   ## A2A Support on Amazon Bedrock AgentCore
+
+   Amazon Bedrock AgentCore provides native support for the A2A protocol, enabling you to:
+
+   - **Deploy A2A-compliant agents** as runtime services with automatic endpoint management
+   - **Secure authentication** via AWS Cognito OAuth 2.0 integration
+   - **Agent discovery** through standardized agent card endpoints
+   - **Scalable deployment** leveraging AWS infrastructure for production workloads
+   - **Built-in observability** with CloudWatch integration and OpenTelemetry support
+
+   AgentCore simplifies A2A agent deployment by handling infrastructure, authentication, scaling, and monitoring automatically.
+</details>
 
 ## Prerequisites
 
@@ -122,3 +93,144 @@ aws cloudformation create-stack \
     --region us-west-2
 ```
 
+### Step 3: Deploy Web Search OpenAI SDK Agent
+
+```bash
+aws cloudformation create-stack \
+    --stack-name web-search-agent-a2a \
+    --template-body file://cloudformation/web_search_agent.yaml \
+    --capabilities CAPABILITY_IAM \
+    --region us-west-2
+```
+
+### Step 4: Google ADK host agent
+
+```bash
+aws cloudformation create-stack \
+    --stack-name host-agent-a2a \
+    --template-body file://cloudformation/host_agent.yaml \
+    --capabilities CAPABILITY_IAM \
+    --region us-west-2
+```
+
+## React Frontend
+
+Run the frontend using following commands.
+
+```bash
+cd frontend
+npm install
+
+chmod +x ./setup-env.sh
+./setup-env.sh
+
+npm run dev
+```
+
+## Google ADK Web App
+
+Agent Development Kit Web is the built-in developer UI that integrated with Google Agent Development Kit for easier agent development and debug.
+
+![adk](./images/adk.gif)
+
+1. Follow setup [instructions](https://github.com/google/adk-web?tab=readme-ov-file#-prerequisite).
+2. From the root of this [project](./) run `adk web`.
+
+## A2A Protocol Inspector
+
+The A2A Inspector is a web-based tool designed to help developers inspect, debug, and validate servers that implement the A2A (Agent2Agent) protocol. It provides a user-friendly interface to interact with an A2A agent, view communication, and ensure specification compliance.
+
+TODO: inspector video
+
+1. Follow Setup and Running the Application [instructions](https://github.com/a2aproject/a2a-inspector?tab=readme-ov-file#setup-and-running-the-application).
+
+## Test Scripts
+
+Test individual agents using the interactive script:
+
+```bash
+# Test monitoring agent
+uv run test/connect_agent.py --agent monitor
+
+# Test web search agent
+uv run test/connect_agent.py --agent websearch
+
+# Test host agent
+uv run test/connect_agent.py --agent host
+```
+
+## Cleanup
+
+To remove all resources created by this solution, delete the CloudFormation stacks in reverse order of deployment:
+
+### Step 1: Delete Host Agent Stack
+
+```bash
+aws cloudformation delete-stack \
+    --stack-name host-agent-a2a \
+    --region us-west-2
+```
+
+Wait for deletion to complete:
+```bash
+aws cloudformation wait stack-delete-complete \
+    --stack-name host-agent-a2a \
+    --region us-west-2
+```
+
+### Step 2: Delete Web Search Agent Stack
+
+```bash
+aws cloudformation delete-stack \
+    --stack-name web-search-agent-a2a \
+    --region us-west-2
+```
+
+Wait for deletion to complete:
+
+```bash
+aws cloudformation wait stack-delete-complete \
+    --stack-name web-search-agent-a2a \
+    --region us-west-2
+```
+
+### Step 3: Delete Monitoring Agent Stack
+
+```bash
+aws cloudformation delete-stack \
+    --stack-name monitor-agent-a2a \
+    --region us-west-2
+```
+
+Wait for deletion to complete:
+
+```bash
+aws cloudformation wait stack-delete-complete \
+    --stack-name monitor-agent-a2a \
+    --region us-west-2
+```
+
+### Step 4: Delete Cognito Stack
+
+```bash
+aws cloudformation delete-stack \
+    --stack-name cognito-stack-a2a \
+    --region us-west-2
+```
+
+Wait for deletion to complete:
+
+```bash
+aws cloudformation wait stack-delete-complete \
+    --stack-name cognito-stack-a2a \
+    --region us-west-2
+```
+
+### Additional Cleanup (if needed)
+
+**CloudWatch Logs**: Log groups created by the agents may not be automatically deleted. Remove them manually if needed:
+
+   ```bash
+   aws logs describe-log-groups --region us-west-2 | grep -i a2a
+   aws logs delete-log-group --log-group-name <log-group-name> --region us-west-2
+   ```
