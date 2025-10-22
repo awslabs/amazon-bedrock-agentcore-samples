@@ -44,3 +44,4 @@
 - Chintan Patel
 - Shreyas Subramanian
 - David Kaleko
+- joseanavarrom
