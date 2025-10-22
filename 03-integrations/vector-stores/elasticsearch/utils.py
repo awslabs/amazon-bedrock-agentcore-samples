@@ -1,6 +1,5 @@
 import boto3
 import json
-import time
 from boto3.session import Session
 import botocore
 from botocore.exceptions import ClientError
