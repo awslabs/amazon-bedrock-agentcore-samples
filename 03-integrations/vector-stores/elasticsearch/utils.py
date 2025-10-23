@@ -84,6 +84,8 @@ def setup_cognito_user_pool():
         return None
 
 def get_or_create_user_pool(cognito, USER_POOL_NAME):
+    boto_session = Session()
+    region = boto_session.region_name
     response = cognito.list_user_pools(MaxResults=60)
     for pool in response["UserPools"]:
         if pool["Name"] == USER_POOL_NAME:
