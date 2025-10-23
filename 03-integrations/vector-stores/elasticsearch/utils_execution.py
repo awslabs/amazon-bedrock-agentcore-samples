@@ -180,7 +180,7 @@ def delete_customer_support_secret():
         secrets_client.delete_secret(
             SecretId=cognito_config_name, ForceDeleteWithoutRecovery=True
         )
-        print(f"✅ Deleted secret")
+        print("✅ Deleted secret")
         return True
     except Exception as e:
         print(f"❌ Error deleting secret: {str(e)}")

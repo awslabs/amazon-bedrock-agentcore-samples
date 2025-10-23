@@ -97,7 +97,7 @@ def get_or_create_user_pool(cognito, USER_POOL_NAME):
             domain = user_pool.get('Domain')
         
             if domain:
-                region = user_pool_id.split('_')[0] if '_' in user_pool_id else REGION
+                region = user_pool_id.split('_')[0] if '_' in user_pool_id else region
                 domain_url = f"https://{domain}.auth.{region}.amazoncognito.com"
                 print(f"Found domain for user pool {user_pool_id}: {domain} ({domain_url})")
             else:
@@ -116,7 +116,7 @@ def get_or_create_user_pool(cognito, USER_POOL_NAME):
 
 def get_or_create_resource_server(cognito, user_pool_id, RESOURCE_SERVER_ID, RESOURCE_SERVER_NAME, SCOPES):
     try:
-        existing = cognito.describe_resource_server(
+        cognito.describe_resource_server(
             UserPoolId=user_pool_id,
             Identifier=RESOURCE_SERVER_ID
         )
