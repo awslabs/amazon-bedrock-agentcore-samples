@@ -872,10 +872,20 @@ def calc_metrics(data_df: pd.DataFrame,
                 if missing_cols:
                     raise KeyError(f"Missing required columns for Ragas metrics: {missing_cols}")
                 # Calculate Ragas metrics
+                # Use a dictionary to map metric names to their corresponding function objects
+                ragas_metric_functions = {
+                    "answer_precision": answer_precision,
+                    "answer_recall": answer_recall,
+                    "answer_correctness": answer_correctness,
+                    "answer_similarity": answer_similarity
+                }
+
+                # Get the actual metric functions based on names
+                metric_functions = [ragas_metric_functions[m] for m in ragas_metric_list]
                 input_ds = Dataset.from_pandas(result_df[['Questions', 'final_answer', 'Expected Output']])
                 eval_result = evaluate(
                     input_ds,
-                    metrics=[eval(m) for m in ragas_metric_list],
+                    metrics=metric_functions,
                     llm=bedrock_model,
                     embeddings=bedrock_embeddings,
                     column_map=column_map
