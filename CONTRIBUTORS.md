@@ -37,6 +37,7 @@
 - Sunil Ramachandra
 - Sandeep Raveesh-Babu
 - chintanpatel-ai
+- saurabh-et-al
 - Evandro Franco
 - greg-aws
 - Frank Dallezotte
@@ -44,3 +45,5 @@
 - Chintan Patel
 - Shreyas Subramanian
 - aminikha
+- David Kaleko
+- joseanavarrom
