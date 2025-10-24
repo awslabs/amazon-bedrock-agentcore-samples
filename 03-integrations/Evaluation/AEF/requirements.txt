@@ -10,7 +10,7 @@ langchain-core
 openpyxl
 langchainhub
 pyarrow>=12.0.0,<18.0.0
-llama-index==0.10.13
+llama-index>=0.10.34
 torch
 chromadb
 langgraph>=0.2.38
