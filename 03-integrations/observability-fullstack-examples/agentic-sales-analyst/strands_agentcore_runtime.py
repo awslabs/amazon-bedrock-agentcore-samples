@@ -3,16 +3,19 @@
 import json
 import logging
 import os
+import re
+import sys
+import traceback
+
 import psycopg2
 from psycopg2 import sql
 import requests
-from typing import Dict, Any
-
 from strands import Agent, tool
-import boto3
+from strands.hooks import AgentInitializedEvent, HookProvider, HookRegistry, MessageAddedEvent
+from bedrock_agentcore.memory import MemoryClient
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-from opentelemetry import baggage, context
+from opentelemetry import baggage
 from opentelemetry.context import attach
 
 # Detect deployment mode
@@ -22,7 +25,6 @@ app = Flask(__name__)
 CORS(app, resources={r"/api/*": {"origins": "http://localhost:3000"}}, supports_credentials=True)
 
 # Force Flask to show application logs in container
-import sys
 sys.stdout = sys.__stdout__
 sys.stderr = sys.__stderr__
 app.logger.setLevel(logging.DEBUG)
@@ -240,14 +242,14 @@ def execute_sql_query(sql_query: str) -> str:
         database_url = os.getenv('DATABASE_URL')
         print(f"[DB Debug] DATABASE_URL exists: {bool(database_url)}")
         if database_url:
-            print(f"[DB Debug] Using DATABASE_URL connection")
+            print("[DB Debug] Using DATABASE_URL connection")
             # amazonq-ignore-next-line
             conn = get_database_connection()
         else:
-            print(f"[DB Debug] Using individual env vars")
+            print("[DB Debug] Using individual env vars")
             conn = get_database_connection()
         
-        print(f"[DB Debug] Connection successful")
+        print("[DB Debug] Connection successful")
         print(f"[DB Debug] Executing SQL: {sql_query}")
         
         # amazonq-ignore-next-line
@@ -339,7 +341,6 @@ def search_web(query: str) -> str:
     # amazonq-ignore-next-line
     except Exception as search_error:
         print(f"[Web Search Debug] ❌ Brave search error: {search_error}")
-        import traceback
         print(f"[Web Search Debug] Traceback: {traceback.format_exc()}")
         return json.dumps({"error": f"Brave search failed: {search_error}"})
     
@@ -457,9 +458,7 @@ def invoke_agent(user_message, session_id, user_id):
         response = agent(user_message)
         result = response.message['content'][0]['text']
         
-        # amazonq-ignore-next-line
         # Clean and validate JSON
-        import re
         json_match = re.search(r'\{[\s\S]*\}', result)
         if json_match:
             json_str = json_match.group(0)
@@ -522,8 +521,6 @@ def invoke_agent(user_message, session_id, user_id):
 agent = None
 
 # AgentCore Memory configuration
-from strands.hooks import AgentInitializedEvent, HookProvider, HookRegistry, MessageAddedEvent
-from bedrock_agentcore.memory import MemoryClient
 
 # Memory configuration
 REGION = os.getenv('AWS_REGION', 'ap-southeast-2')
@@ -651,7 +648,7 @@ def agentcore_invoke(payload):
             user_message = messages[0]['content'] if messages else payload.get('inputText', '')
         
         if not user_message:
-            print(f"[AgentCore Runtime] No prompt found in payload")
+            print("[AgentCore Runtime] No prompt found in payload")
             return "No prompt found in input, please provide a message"
         
         # Extract user ID from payload for AgentCore Memory
@@ -739,8 +736,6 @@ def agentcore_invoke(payload):
         print(f"[AgentCore Runtime] Raw result length: {len(result)}")
         
         # Extract and clean JSON object from response
-        import re
-        import json
         
         # Remove debug reflection text that shouldn't be in final response
         result = re.sub(r'<search_quality_reflection>.*?</search_quality_reflection>', '', result, flags=re.DOTALL)
@@ -775,9 +770,9 @@ def agentcore_invoke(payload):
             except json.JSONDecodeError as e:
                 print(f"[AgentCore Runtime] JSON validation failed: {e}")
                 print(f"[AgentCore Runtime] Error at position {e.pos}: {repr(cleaned_json[max(0, e.pos-50):e.pos+50])}")
-                print(f"[AgentCore Runtime] Keeping original response")
+                print("[AgentCore Runtime] Keeping original response")
         else:
-            print(f"[AgentCore Runtime] No JSON object found in response")
+            print("[AgentCore Runtime] No JSON object found in response")
         
         # AgentCore Memory handles conversation storage automatically via hooks
         print(f"[AgentCore Runtime] Conversation stored in AgentCore Memory for user: {actor_id}, session: {session_id}")
@@ -787,13 +782,11 @@ def agentcore_invoke(payload):
         
     except Exception as e:
         print(f"[AgentCore Runtime] ERROR: {str(e)}")
-        import traceback
         print(f"[AgentCore Runtime] Traceback: {traceback.format_exc()}")
         return f"Error processing request: {str(e)}"
 
 if __name__ == "__main__":
     # Force unbuffered output for container logging
-    import sys
     sys.stdout.flush()
     sys.stderr.flush()
     
