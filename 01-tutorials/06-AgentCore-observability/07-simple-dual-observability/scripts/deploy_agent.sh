@@ -100,7 +100,7 @@ fi
 # Run Python deployment script
 export AWS_REGION="$REGION"
 
-python3 "$SCRIPT_DIR/deploy_agent.py" \
+uv run python "$SCRIPT_DIR/deploy_agent.py" \
     --region "$REGION" \
     --name "$AGENT_NAME"
 
@@ -111,7 +111,7 @@ if [ $exit_code -ne 0 ]; then
     echo "Error: Deployment failed"
     echo ""
     echo "Common issues:"
-    echo "  1. Missing dependencies: pip install -r requirements.txt"
+    echo "  1. Missing dependencies: uv sync or pip install -r requirements.txt"
     echo "  2. AWS credentials not configured: aws configure"
     echo "  3. Docker not running (required for container build)"
     echo "  4. Insufficient IAM permissions"

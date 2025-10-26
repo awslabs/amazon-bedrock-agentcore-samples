@@ -226,13 +226,13 @@ def main():
         epilog="""
 Example usage:
     # Deploy with defaults
-    python deploy_agent.py
+    uv run python deploy_agent.py
 
     # Deploy to specific region
-    python deploy_agent.py --region us-west-2
+    uv run python deploy_agent.py --region us-west-2
 
     # Deploy with custom agent name
-    python deploy_agent.py --name MyCustomAgent
+    uv run python deploy_agent.py --name MyCustomAgent
 """
     )
 
@@ -312,7 +312,7 @@ Example usage:
     logger.info("Next Steps:")
     logger.info(f"1. Source environment: source {script_dir}/.env")
     logger.info("2. Set up CloudWatch: ./setup_cloudwatch.sh")
-    logger.info("3. Run demo: python simple_observability.py --scenario success")
+    logger.info("3. Run demo: uv run python simple_observability.py --scenario success")
     logger.info("=" * 60)
 
 
