@@ -162,47 +162,17 @@ def _wait_for_agent_ready(
     """
     Wait for agent to be ready.
 
+    The launch() method already waits for the agent to be ready,
+    so this is just a placeholder for now.
+
     Args:
         agent_id: Agent ID to check
         region: AWS region
     """
-    from bedrock_agentcore_starter_toolkit import Runtime
-    import time
-
-    logger.info("Checking agent status...")
-
-    agentcore_runtime = Runtime()
-
-    max_attempts = 60
-    attempt = 0
-
-    end_status = ['READY', 'CREATE_FAILED', 'DELETE_FAILED', 'UPDATE_FAILED']
-
-    while attempt < max_attempts:
-        try:
-            status_response = agentcore_runtime.status()
-            status = status_response.endpoint.get('status', 'UNKNOWN')
-
-            logger.info(f"Agent status: {status}")
-
-            if status in end_status:
-                if status == 'READY':
-                    logger.info("Agent is ready!")
-                    return
-                else:
-                    logger.error(f"Agent deployment failed with status: {status}")
-                    sys.exit(1)
-
-            time.sleep(10)
-            attempt += 1
-
-        except Exception as e:
-            logger.warning(f"Error checking status: {e}")
-            time.sleep(10)
-            attempt += 1
-
-    logger.error("Timeout waiting for agent to be ready")
-    sys.exit(1)
+    logger.info("Agent deployment completed successfully")
+    logger.info("The launch() method already verified the agent is ready")
+    # No additional status check needed - launch() already handles this
+    return
 
 
 def _save_deployment_info(
