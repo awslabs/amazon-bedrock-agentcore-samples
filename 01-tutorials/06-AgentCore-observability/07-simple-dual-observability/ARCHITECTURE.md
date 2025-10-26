@@ -23,8 +23,8 @@ This tutorial demonstrates **two different deployment modes** for the same agent
 Your Terminal
     ↓
 agent/weather_time_agent.py
-    ↓ (calls Claude API directly)
-Anthropic Claude API
+    ↓ (calls Bedrock Converse API)
+Amazon Bedrock (Claude Haiku 4.5)
     ↓ (tool calls)
 tools/weather_tool.py, tools/time_tool.py, tools/calculator_tool.py
     ↓
@@ -73,10 +73,10 @@ CloudWatch X-Ray + Braintrust
 
 ### Local Testing
 - Agent code runs **on your machine**
-- You call Anthropic API directly
+- You call Amazon Bedrock Converse API directly
 - Tools execute **on your machine**
-- No AWS services involved (except Bedrock for model)
-- **No observability**
+- AWS services: Bedrock only (for Claude model)
+- **No observability** (no OTEL, no tracing)
 
 ### AgentCore Runtime
 - Agent code runs **in AWS (managed by AgentCore Runtime)**

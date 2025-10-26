@@ -3,13 +3,16 @@ Strands-based agent for weather, time, and calculator queries.
 
 This agent is designed to be deployed to Amazon Bedrock AgentCore Runtime
 where it will receive automatic OpenTelemetry instrumentation.
+
+Uses Amazon Bedrock Converse API for Claude model interaction.
 """
 
+import json
 import logging
 from typing import Any, Dict, List, Optional
 
-from anthropic import Anthropic
-from pydantic import BaseModel, Field
+import boto3
+from botocore.exceptions import ClientError
 
 
 # Configure logging
@@ -81,32 +84,39 @@ class WeatherTimeAgent:
     """
     Strands-based agent with weather, time, and calculator tools.
 
-    This agent uses Claude with function calling to process user queries
-    and invoke appropriate tools. When deployed to AgentCore Runtime,
-    it receives automatic OTEL instrumentation.
+    This agent uses Amazon Bedrock Converse API with Claude to process
+    user queries and invoke appropriate tools. When deployed to AgentCore
+    Runtime, it receives automatic OTEL instrumentation.
     """
 
     def __init__(
         self,
         model_id: str = "us.anthropic.claude-haiku-4-5-20251001-v1:0",
-        anthropic_api_key: Optional[str] = None
+        region: str = "us-east-1"
     ):
         """
         Initialize the agent.
 
         Args:
             model_id: Bedrock model ID to use
-            anthropic_api_key: Anthropic API key (optional, uses env var if not provided)
+            region: AWS region for Bedrock
         """
         self.model_id = model_id
-        self.client = Anthropic(api_key=anthropic_api_key)
-        self.system_prompt = (
-            "You are a helpful assistant with access to weather, time, and calculator tools. "
-            "Use these tools to accurately answer user questions. "
-            "Always provide clear, concise responses based on the tool outputs."
-        )
+        self.region = region
+        self.bedrock = boto3.client("bedrock-runtime", region_name=region)
+        self.system_prompt = [
+            {
+                "text": (
+                    "You are a helpful assistant with access to weather, time, "
+                    "and calculator tools. Use these tools to accurately answer "
+                    "user questions. Always provide clear, concise responses "
+                    "based on the tool outputs."
+                )
+            }
+        ]
 
         logger.info(f"Initialized WeatherTimeAgent with model: {model_id}")
+        logger.info(f"Using Bedrock region: {region}")
 
 
     def _execute_tool(
@@ -173,10 +183,10 @@ class WeatherTimeAgent:
         max_iterations: int = 5
     ) -> str:
         """
-        Run the agent with a user query.
+        Run the agent with a user query using Bedrock Converse API.
 
         Uses agentic loop:
-        1. Send query to Claude with tools
+        1. Send query to Claude with tools via Bedrock
         2. If Claude wants to use a tool, execute it
         3. Send tool result back to Claude
         4. Repeat until Claude provides final answer
@@ -193,64 +203,104 @@ class WeatherTimeAgent:
         """
         logger.info(f"Agent run started with query: {query}")
 
-        messages = [{"role": "user", "content": query}]
+        messages = [
+            {
+                "role": "user",
+                "content": [{"text": query}]
+            }
+        ]
         iteration = 0
 
         while iteration < max_iterations:
             iteration += 1
             logger.debug(f"Iteration {iteration}/{max_iterations}")
 
-            # Call Claude with tools
-            response = self.client.messages.create(
-                model=self.model_id,
-                max_tokens=2048,
-                system=self.system_prompt,
-                messages=messages,
-                tools=TOOL_SCHEMAS
-            )
+            try:
+                # Call Bedrock Converse API with tools
+                response = self.bedrock.converse(
+                    modelId=self.model_id,
+                    messages=messages,
+                    system=self.system_prompt,
+                    toolConfig={
+                        "tools": [
+                            {"toolSpec": tool_spec} for tool_spec in TOOL_SCHEMAS
+                        ]
+                    },
+                    inferenceConfig={
+                        "maxTokens": 2048,
+                        "temperature": 0.7
+                    }
+                )
 
-            # Check stop reason
-            if response.stop_reason == "end_turn":
-                # Final answer
-                final_text = ""
-                for block in response.content:
-                    if hasattr(block, "text"):
-                        final_text += block.text
+                # Extract stop reason
+                stop_reason = response.get("stopReason")
+                logger.debug(f"Stop reason: {stop_reason}")
 
-                logger.info("Agent run completed successfully")
-                return final_text
+                # Get assistant message
+                assistant_content = response["output"]["message"]["content"]
 
-            elif response.stop_reason == "tool_use":
-                # Execute tool calls
-                assistant_message = {"role": "assistant", "content": response.content}
-                messages.append(assistant_message)
+                # Check stop reason
+                if stop_reason == "end_turn":
+                    # Final answer
+                    final_text = ""
+                    for block in assistant_content:
+                        if "text" in block:
+                            final_text += block["text"]
 
-                tool_results = []
+                    logger.info("Agent run completed successfully")
+                    return final_text
 
-                for block in response.content:
-                    if block.type == "tool_use":
-                        logger.info(f"Claude wants to use tool: {block.name}")
+                elif stop_reason == "tool_use":
+                    # Add assistant message to conversation
+                    messages.append({
+                        "role": "assistant",
+                        "content": assistant_content
+                    })
 
-                        # Execute tool
-                        tool_result = self._execute_tool(
-                            tool_name=block.name,
-                            tool_input=block.input
-                        )
+                    # Process tool calls
+                    tool_results = []
 
-                        # Add tool result to messages
-                        tool_results.append({
-                            "type": "tool_result",
-                            "tool_use_id": block.id,
-                            "content": str(tool_result)
-                        })
+                    for block in assistant_content:
+                        if "toolUse" in block:
+                            tool_use = block["toolUse"]
+                            tool_name = tool_use["name"]
+                            tool_input = tool_use["input"]
+                            tool_use_id = tool_use["toolUseId"]
 
-                # Add all tool results as a user message
-                messages.append({"role": "user", "content": tool_results})
+                            logger.info(f"Claude wants to use tool: {tool_name}")
 
-            else:
-                # Unexpected stop reason
-                logger.warning(f"Unexpected stop reason: {response.stop_reason}")
-                return f"Unexpected stop reason: {response.stop_reason}"
+                            # Execute tool
+                            tool_result = self._execute_tool(
+                                tool_name=tool_name,
+                                tool_input=tool_input
+                            )
+
+                            # Add tool result
+                            tool_results.append({
+                                "toolResult": {
+                                    "toolUseId": tool_use_id,
+                                    "content": [
+                                        {"text": json.dumps(tool_result)}
+                                    ]
+                                }
+                            })
+
+                    # Add tool results as user message
+                    messages.append({
+                        "role": "user",
+                        "content": tool_results
+                    })
+
+                else:
+                    # Unexpected stop reason
+                    logger.warning(f"Unexpected stop reason: {stop_reason}")
+                    return f"Unexpected stop reason: {stop_reason}"
+
+            except ClientError as e:
+                error_code = e.response.get("Error", {}).get("Code", "Unknown")
+                error_message = e.response.get("Error", {}).get("Message", str(e))
+                logger.error(f"Bedrock API error: {error_code} - {error_message}")
+                raise
 
         # Max iterations exceeded
         error_msg = f"Max iterations ({max_iterations}) exceeded"
