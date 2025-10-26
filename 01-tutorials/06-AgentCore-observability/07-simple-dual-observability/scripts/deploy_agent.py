@@ -54,8 +54,14 @@ def _validate_environment() -> None:
             # Config file not found, but that's OK - try to continue with IAM role
             logger.warning(f"Config file issue (this is OK): {e}")
             logger.info("Continuing with IAM role or environment credentials...")
-            # Create session without profile
-            session = boto3.Session(profile_name=None)
+
+            # Disable config file reading by setting environment variable
+            # This tells boto3 to skip looking for config files and use IAM role directly
+            import os
+            os.environ['AWS_CONFIG_FILE'] = '/dev/null'  # Point to empty file
+
+            # Create new session - will now skip config file and use IAM role
+            session = boto3.Session()
 
         sts = session.client('sts')
 
