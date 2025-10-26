@@ -298,10 +298,10 @@ def scenario_success(
     print("   - Gateway spans: weather tool, time tool")
     print("   - Total latency: ~1-2 seconds")
 
-    print("\n✓ Expected in Braintrust:")
-    print("   - LLM call details (model, tokens, cost)")
-    print("   - Tool execution timeline")
-    print("   - Latency breakdown by component")
+    print("\n⚠ Braintrust Integration:")
+    print("   - Requires OTEL Collector running locally or in cloud")
+    print("   - AgentCore Runtime currently exports to CloudWatch only")
+    print("   - See docs/braintrust-setup.md for collector setup")
 
 
 def scenario_error(
@@ -345,10 +345,10 @@ def scenario_error(
     print("   - Calculator tool span shows failure")
     print("   - Agent handles error gracefully")
 
-    print("\n✓ Expected in Braintrust:")
-    print("   - Error marked in timeline")
-    print("   - Exception details recorded")
-    print("   - Tool failure reason visible")
+    print("\n⚠ Braintrust Integration:")
+    print("   - Requires OTEL Collector running locally or in cloud")
+    print("   - AgentCore Runtime currently exports to CloudWatch only")
+    print("   - See docs/braintrust-setup.md for collector setup")
 
 
 def scenario_dashboard(region: str) -> None:
@@ -374,19 +374,17 @@ def scenario_dashboard(region: str) -> None:
     print("   4. Token Consumption over Time")
     print("   5. Success Rate by Query Type")
 
-    print("\nView: Braintrust Dashboard:")
+    print("\n⚠ Braintrust Dashboard (Not Currently Active):")
     print("   https://www.braintrust.dev/app")
-    print("\n   Key Metrics to Review:")
-    print("   1. LLM Performance (latency, tokens)")
-    print("   2. Token Costs (input, output, total)")
-    print("   3. Quality Scores (if evaluations configured)")
-    print("   4. Trace Search and Filtering")
-    print("   5. Error Analysis")
+    print("\n   Braintrust integration requires:")
+    print("   1. OTEL Collector running locally or in cloud")
+    print("   2. Collector configured to receive traces from agent")
+    print("   3. Collector configured to forward to Braintrust")
+    print("\n   Current Status:")
+    print("   - AgentCore Runtime exports to CloudWatch X-Ray only")
+    print("   - OTEL Collector config provided but not deployed")
+    print("   - See docs/braintrust-setup.md for setup instructions")
 
-    print("\nNote: Comparison:")
-    print("   - CloudWatch: AWS-native, integrates with alarms/dashboards")
-    print("   - Braintrust: AI-focused, specialized LLM metrics")
-    print("   - Both: Receive same OTEL traces (vendor neutral!)")
     print("\n" + "=" * 80 + "\n")
 
 
