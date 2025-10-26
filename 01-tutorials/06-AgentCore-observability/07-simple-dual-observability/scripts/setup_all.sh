@@ -9,6 +9,8 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 # Configuration
 SETUP_BRAINTRUST=false
 AWS_REGION="${AWS_REGION:-us-east-1}"
+BRAINTRUST_API_KEY="${BRAINTRUST_API_KEY:-}"
+BRAINTRUST_PROJECT_ID="${BRAINTRUST_PROJECT_ID:-}"
 
 # Help text
 show_help() {
@@ -23,24 +25,28 @@ This script orchestrates the complete deployment:
 Usage: $0 [OPTIONS]
 
 Options:
-    -h, --help              Show this help message
-    -r, --region REGION     AWS region (default: us-east-1)
-    -b, --braintrust        Include Braintrust setup (interactive)
-    -k, --api-key KEY       Braintrust API key (skip interactive setup)
+    -h, --help                      Show this help message
+    -r, --region REGION             AWS region (default: us-east-1)
+    -b, --braintrust                Include Braintrust setup (interactive)
+    -k, --api-key KEY               Braintrust API key
+    -p, --project-id ID             Braintrust project ID
 
 Environment Variables:
-    AWS_REGION              AWS region for deployment
-    BRAINTRUST_API_KEY      Braintrust API key (optional)
+    AWS_REGION                      AWS region for deployment
+    BRAINTRUST_API_KEY              Braintrust API key (optional)
+    BRAINTRUST_PROJECT_ID           Braintrust project ID (optional)
 
 Example:
     # Setup with CloudWatch only
     ./setup_all.sh
 
-    # Setup with CloudWatch and Braintrust (interactive)
+    # Setup with Braintrust using environment variables
+    export BRAINTRUST_API_KEY=bt-xxxxx
+    export BRAINTRUST_PROJECT_ID=your-project-id
     ./setup_all.sh --braintrust
 
-    # Setup with existing Braintrust API key
-    ./setup_all.sh --api-key bt-xxxxx
+    # Setup with Braintrust using command-line args
+    ./setup_all.sh --braintrust --api-key bt-xxxxx --project-id your-project-id
 
     # Setup in specific region
     ./setup_all.sh --region us-west-2
@@ -70,6 +76,12 @@ while [[ $# -gt 0 ]]; do
             SETUP_BRAINTRUST=true
             shift 2
             ;;
+        -p|--project-id)
+            BRAINTRUST_PROJECT_ID="$2"
+            export BRAINTRUST_PROJECT_ID
+            SETUP_BRAINTRUST=true
+            shift 2
+            ;;
         *)
             echo "Unknown option: $1"
             show_help
@@ -77,6 +89,23 @@ while [[ $# -gt 0 ]]; do
             ;;
     esac
 done
+
+# If --braintrust flag is set, check that we have both API key and project ID
+if [ "$SETUP_BRAINTRUST" = true ]; then
+    if [ -z "$BRAINTRUST_API_KEY" ] || [ -z "$BRAINTRUST_PROJECT_ID" ]; then
+        echo "Error: Braintrust setup requires both API key and project ID"
+        echo ""
+        echo "Provide them via:"
+        echo "  1. Command-line: --api-key KEY --project-id ID"
+        echo "  2. Environment variables: BRAINTRUST_API_KEY and BRAINTRUST_PROJECT_ID"
+        echo ""
+        echo "Get credentials from:"
+        echo "  API Key: https://www.braintrust.dev/app/settings/api-keys"
+        echo "  Project ID: From your project URL (https://www.braintrust.dev/app/ORG/p/PROJECT_ID)"
+        echo ""
+        exit 1
+    fi
+fi
 
 echo "========================================"
 echo "AGENTCORE OBSERVABILITY SETUP"
@@ -104,7 +133,19 @@ echo "========================================"
 echo "STEP 1: DEPLOYING AGENT"
 echo "========================================"
 echo ""
-"$SCRIPT_DIR/deploy_agent.sh" --region "$AWS_REGION"
+
+# Build deploy command with optional Braintrust credentials
+DEPLOY_CMD="$SCRIPT_DIR/deploy_agent.sh --region $AWS_REGION"
+
+if [ "$SETUP_BRAINTRUST" = true ]; then
+    echo "Deploying with Braintrust observability enabled..."
+    DEPLOY_CMD="$DEPLOY_CMD --braintrust-api-key $BRAINTRUST_API_KEY --braintrust-project-id $BRAINTRUST_PROJECT_ID"
+else
+    echo "Deploying with CloudWatch observability only..."
+fi
+
+echo ""
+eval "$DEPLOY_CMD"
 
 if [ $? -ne 0 ]; then
     echo "Error: Agent deployment failed"
@@ -131,23 +172,22 @@ echo ""
 read -p "CloudWatch configured successfully. Press ENTER to continue..."
 echo ""
 
-# Step 3: Setup Braintrust (if requested)
+# Step 3: Braintrust summary (if configured)
 if [ "$SETUP_BRAINTRUST" = true ]; then
     echo "========================================"
-    echo "STEP 3: SETTING UP BRAINTRUST"
+    echo "STEP 3: BRAINTRUST OBSERVABILITY"
     echo "========================================"
     echo ""
-
-    if [ -n "$BRAINTRUST_API_KEY" ]; then
-        "$SCRIPT_DIR/setup_braintrust.sh" --api-key "$BRAINTRUST_API_KEY"
-    else
-        "$SCRIPT_DIR/setup_braintrust.sh"
-    fi
-
-    if [ $? -ne 0 ]; then
-        echo "Warning: Braintrust setup failed or was skipped"
-        echo "You can run ./setup_braintrust.sh manually later"
-    fi
+    echo "✓ Braintrust observability has been configured during deployment"
+    echo ""
+    echo "The agent has been deployed with:"
+    echo "  - Strands telemetry enabled"
+    echo "  - OTEL export to Braintrust endpoint"
+    echo "  - API key and project ID configured"
+    echo ""
+    echo "Note: The setup_braintrust.sh script is not needed when deploying"
+    echo "      with Braintrust configuration. It's only for reference."
+    echo ""
 fi
 
 # Load deployment metadata
