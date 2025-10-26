@@ -1,0 +1,9 @@
+strands-agents
+strands-agents-tools
+boto3
+bedrock-agentcore<=0.1.5
+bedrock-agentcore-runtime
+pytz
+pydantic
+opentelemetry-sdk
+opentelemetry-exporter-otlp
