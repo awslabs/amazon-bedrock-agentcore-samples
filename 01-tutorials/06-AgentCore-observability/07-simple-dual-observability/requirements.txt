@@ -1,18 +1,17 @@
 # NOTE: This file is for the Docker container, NOT local development
 # Local development uses pyproject.toml (which includes bedrock-agentcore-starter-toolkit)
+# Pattern follows: 01-strands-with-bedrock-model/requirements.txt
 
 # Agent framework and tools
 strands-agents
 strands-agents-tools
 
-# AWS SDK and AgentCore Runtime
+# AWS SDK
 boto3
-bedrock-agentcore-runtime
 
 # Agent dependencies
 pytz
 pydantic
 
-# OpenTelemetry (for observability)
-opentelemetry-sdk
-opentelemetry-exporter-otlp
+# Note: OpenTelemetry is installed separately in Dockerfile
+# Note: bedrock-agentcore-runtime is provided by AgentCore Runtime environment
