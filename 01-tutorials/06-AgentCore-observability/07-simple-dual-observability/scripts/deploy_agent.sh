@@ -17,23 +17,30 @@ The actual deployment uses bedrock-agentcore-starter-toolkit.
 Usage: $0 [OPTIONS]
 
 Options:
-    -h, --help              Show this help message
-    -r, --region REGION     AWS region (default: us-east-1)
-    -n, --name NAME         Agent name (default: weather-time-observability-agent)
+    -h, --help                      Show this help message
+    -r, --region REGION             AWS region (default: us-east-1)
+    -n, --name NAME                 Agent name (default: weather-time-observability-agent)
+    --braintrust-api-key KEY        Braintrust API key (optional)
+    --braintrust-project-id ID      Braintrust project ID (optional)
 
 Environment Variables:
-    AWS_REGION              AWS region for deployment
-    BRAINTRUST_API_KEY      Braintrust API key (optional, for dual export)
+    AWS_REGION                      AWS region for deployment
+    BRAINTRUST_API_KEY              Braintrust API key (optional)
+    BRAINTRUST_PROJECT_ID           Braintrust project ID (optional)
 
 Example:
-    # Deploy with defaults (from tutorial root directory)
+    # Deploy with CloudWatch only (default)
     scripts/deploy_agent.sh
 
     # Deploy to specific region
     scripts/deploy_agent.sh --region us-west-2
 
-    # Deploy with Braintrust integration
-    export BRAINTRUST_API_KEY=your_api_key_here
+    # Deploy with Braintrust observability
+    scripts/deploy_agent.sh --braintrust-api-key bt-xxxxx --braintrust-project-id your-project-id
+
+    # Or using environment variables
+    export BRAINTRUST_API_KEY=bt-xxxxx
+    export BRAINTRUST_PROJECT_ID=your-project-id
     scripts/deploy_agent.sh
 
 Prerequisites:
@@ -48,6 +55,8 @@ EOF
 # Parse arguments
 REGION="${AWS_REGION:-us-east-1}"
 AGENT_NAME="weather_time_observability_agent"
+BRAINTRUST_API_KEY="${BRAINTRUST_API_KEY:-}"
+BRAINTRUST_PROJECT_ID="${BRAINTRUST_PROJECT_ID:-}"
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -61,6 +70,14 @@ while [[ $# -gt 0 ]]; do
             ;;
         -n|--name)
             AGENT_NAME="$2"
+            shift 2
+            ;;
+        --braintrust-api-key)
+            BRAINTRUST_API_KEY="$2"
+            shift 2
+            ;;
+        --braintrust-project-id)
+            BRAINTRUST_PROJECT_ID="$2"
             shift 2
             ;;
         *)
@@ -100,9 +117,19 @@ fi
 # Run Python deployment script
 export AWS_REGION="$REGION"
 
-uv run python "$SCRIPT_DIR/deploy_agent.py" \
-    --region "$REGION" \
-    --name "$AGENT_NAME"
+# Build command with optional Braintrust arguments
+PYTHON_CMD="uv run python $SCRIPT_DIR/deploy_agent.py --region $REGION --name $AGENT_NAME"
+
+if [ -n "$BRAINTRUST_API_KEY" ] && [ -n "$BRAINTRUST_PROJECT_ID" ]; then
+    echo "Braintrust observability: Enabled"
+    PYTHON_CMD="$PYTHON_CMD --braintrust-api-key $BRAINTRUST_API_KEY --braintrust-project-id $BRAINTRUST_PROJECT_ID"
+else
+    echo "Braintrust observability: Disabled (CloudWatch only)"
+fi
+
+echo ""
+
+eval "$PYTHON_CMD"
 
 exit_code=$?
 
