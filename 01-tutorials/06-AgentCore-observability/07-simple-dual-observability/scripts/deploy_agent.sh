@@ -47,7 +47,7 @@ EOF
 
 # Parse arguments
 REGION="${AWS_REGION:-us-east-1}"
-AGENT_NAME="weather-time-observability-agent"
+AGENT_NAME="weather_time_observability_agent"
 
 while [[ $# -gt 0 ]]; do
     case $1 in

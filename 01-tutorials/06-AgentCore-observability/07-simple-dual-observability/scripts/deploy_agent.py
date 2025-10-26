@@ -244,8 +244,8 @@ Example usage:
 
     parser.add_argument(
         "--name",
-        default="weather-time-observability-agent",
-        help="Agent name (default: weather-time-observability-agent)"
+        default="weather_time_observability_agent",
+        help="Agent name (default: weather_time_observability_agent)"
     )
 
     parser.add_argument(
