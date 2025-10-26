@@ -36,70 +36,24 @@ def _validate_environment() -> None:
         logger.error("Please install: pip install -r requirements.txt")
         sys.exit(1)
 
-    # Validate AWS credentials
-    # Note: boto3 automatically handles multiple credential sources:
-    # 1. Environment variables (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)
-    # 2. IAM role (EC2 instance profile, Cloud9, ECS task role)
-    # 3. Credentials file (~/.aws/credentials)
-    # 4. Config file (~/.aws/config)
-
-    # Validate AWS credentials by making an actual API call
-    # boto3 will automatically use credentials from (in order):
-    # 1. Environment variables (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)
-    # 2. IAM role (EC2 instance profile, Cloud9, ECS task role)
-    # 3. Credentials file (~/.aws/credentials)
-    # 4. Config file (~/.aws/config)
-    #
-    # Note: boto3 may log warnings about missing config files, but this is fine.
-    # As long as credentials can be obtained from another source (like IAM role),
-    # the validation will succeed.
-
+    # Validate AWS credentials by making an API call
+    # boto3 automatically figures out credentials from various sources:
+    # - Environment variables
+    # - IAM role (EC2/Cloud9/ECS)
+    # - Credentials file
+    # - Config file
+    # We don't care which - just validate it works
     try:
-        # Suppress config file warnings by pointing to /dev/null
-        # This allows boto3 to skip config file and use IAM role directly
-        import os
-        if not os.path.exists(os.path.expanduser('~/.aws/config')):
-            os.environ['AWS_CONFIG_FILE'] = '/dev/null'
-
-        # Create session - boto3 will try all credential sources automatically
-        session = boto3.Session()
-        sts = session.client('sts')
-
-        # Validate credentials work by making an API call
+        sts = boto3.client('sts')
         identity = sts.get_caller_identity()
         logger.info(f"AWS Account ID: {identity['Account']}")
-        logger.info(f"AWS User/Role ARN: {identity['Arn']}")
-
-        # Determine credential source for informational purposes
-        try:
-            credentials = session.get_credentials()
-            if credentials:
-                cred_method = credentials.method
-                if cred_method == 'iam-role':
-                    logger.info("Credential source: IAM role (EC2/Cloud9 instance profile)")
-                elif cred_method == 'assume-role':
-                    logger.info("Credential source: Assumed role")
-                elif cred_method == 'env':
-                    logger.info("Credential source: Environment variables")
-                elif cred_method == 'shared-credentials-file':
-                    logger.info("Credential source: ~/.aws/credentials")
-                else:
-                    logger.info(f"Credential source: {cred_method}")
-        except Exception:
-            # Credential method detection failed, but that's okay - credentials work
-            pass
+        logger.info(f"AWS Identity ARN: {identity['Arn']}")
 
     except Exception as e:
-        error_msg = str(e)
-        logger.error(f"Failed to validate AWS credentials: {error_msg}")
+        logger.error(f"Failed to validate AWS credentials: {e}")
         logger.error("")
-        logger.error("Please configure AWS credentials using one of:")
-        logger.error("  1. IAM role (if running on EC2/Cloud9) - instance must have role attached")
-        logger.error("  2. Environment variables (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)")
-        logger.error("  3. AWS CLI: aws configure")
-        logger.error("  4. Credentials file: ~/.aws/credentials")
-        logger.error("")
-        logger.error("To verify your credentials work, try: aws sts get-caller-identity")
+        logger.error("Ensure AWS credentials are configured.")
+        logger.error("Test with: aws sts get-caller-identity")
         sys.exit(1)
 
 
