@@ -6,6 +6,19 @@ set -e
 # Script directory
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
+# Auto-load .env file if it exists (in scripts/ or parent directory)
+if [ -f "$SCRIPT_DIR/.env" ]; then
+    echo "Loading environment variables from scripts/.env"
+    set -a  # Automatically export all variables
+    source "$SCRIPT_DIR/.env"
+    set +a
+elif [ -f "$SCRIPT_DIR/../.env" ]; then
+    echo "Loading environment variables from .env"
+    set -a  # Automatically export all variables
+    source "$SCRIPT_DIR/../.env"
+    set +a
+fi
+
 # Configuration
 SETUP_BRAINTRUST=false
 AWS_REGION="${AWS_REGION:-us-east-1}"
