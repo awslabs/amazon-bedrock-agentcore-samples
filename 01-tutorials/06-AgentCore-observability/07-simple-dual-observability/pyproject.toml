@@ -5,11 +5,12 @@ description = "Simple dual observability tutorial for Amazon Bedrock AgentCore"
 requires-python = ">=3.11"
 dependencies = [
     "boto3>=1.35.0",
-    "opentelemetry-sdk>=1.20.0",
-    "opentelemetry-exporter-otlp>=1.20.0",
     "pytz>=2024.1",
     "pydantic>=2.5.0",
 ]
+
+# Note: AgentCore and Strands dependencies are in requirements.txt
+# They are installed during deployment to AgentCore Runtime, not locally via uv
 
 [dependency-groups]
 dev = [
