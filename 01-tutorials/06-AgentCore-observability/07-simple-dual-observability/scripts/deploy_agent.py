@@ -103,7 +103,34 @@ def _deploy_agent(
     logger.info("  3. Deploy to AgentCore Runtime")
     logger.info("  This may take several minutes...")
 
-    launch_result = agentcore_runtime.launch()
+    try:
+        launch_result = agentcore_runtime.launch()
+    except Exception as e:
+        error_msg = str(e)
+
+        # Check for common IAM permission errors
+        if "codebuild:CreateProject" in error_msg or "AccessDeniedException" in error_msg:
+            logger.error("=" * 70)
+            logger.error("IAM PERMISSION ERROR")
+            logger.error("=" * 70)
+            logger.error("The deployment requires additional IAM permissions.")
+            logger.error("")
+            logger.error("Missing permission: codebuild:CreateProject")
+            logger.error("")
+            logger.error("Solution:")
+            logger.error("  1. Attach the policy from: docs/iam-policy-deployment.json")
+            logger.error("")
+            logger.error("  Using AWS CLI:")
+            logger.error("     aws iam put-role-policy \\")
+            logger.error("       --role-name YOUR_ROLE_NAME \\")
+            logger.error("       --policy-name BedrockAgentCoreDeployment \\")
+            logger.error("       --policy-document file://docs/iam-policy-deployment.json")
+            logger.error("")
+            logger.error("  Or see README for complete IAM setup instructions.")
+            logger.error("=" * 70)
+
+        # Re-raise the exception with more context
+        raise RuntimeError(f"Deployment failed: {error_msg}") from e
 
     logger.info("Agent launched successfully!")
 

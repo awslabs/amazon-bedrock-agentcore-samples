@@ -86,17 +86,55 @@ For comprehensive information about this observability tutorial, please refer to
 
 ### Required IAM Permissions
 
-Your IAM user or role needs permissions for:
-- `bedrock-agentcore-runtime:InvokeAgent`
-- `bedrock-agentcore:CreateAgent`
-- `bedrock-agentcore:CreateGateway`
-- `bedrock-agentcore:ConfigureObservability`
-- `bedrock:InvokeModel` (for Claude)
-- `cloudwatch:PutMetricData`
-- `xray:PutTraceSegments`
-- `logs:CreateLogGroup`
-- `logs:CreateLogStream`
-- `logs:PutLogEvents`
+The deployment process uses AWS CodeBuild to build Docker containers and deploy to AgentCore Runtime. Your IAM user or role needs comprehensive permissions.
+
+#### Quick Setup: Attach Policy
+
+A complete IAM policy is provided in [`docs/iam-policy-deployment.json`](docs/iam-policy-deployment.json).
+
+**To attach the policy:**
+
+```bash
+# Using AWS CLI
+aws iam put-user-policy \
+  --user-name YOUR_IAM_USER \
+  --policy-name BedrockAgentCoreDeployment \
+  --policy-document file://docs/iam-policy-deployment.json
+
+# Or for an IAM role
+aws iam put-role-policy \
+  --role-name YOUR_ROLE_NAME \
+  --policy-name BedrockAgentCoreDeployment \
+  --policy-document file://docs/iam-policy-deployment.json
+```
+
+#### Required Permission Categories
+
+1. **CodeBuild** (for building Docker containers):
+   - `codebuild:CreateProject`, `codebuild:UpdateProject`, `codebuild:StartBuild`
+   - `codebuild:BatchGetBuilds`, `codebuild:BatchGetProjects`
+
+2. **ECR** (for storing container images):
+   - `ecr:CreateRepository`, `ecr:GetAuthorizationToken`
+   - `ecr:PutImage`, `ecr:BatchCheckLayerAvailability`
+
+3. **S3** (for CodeBuild source storage):
+   - `s3:CreateBucket`, `s3:PutObject`, `s3:GetObject`
+
+4. **IAM** (for creating execution roles):
+   - `iam:CreateRole`, `iam:AttachRolePolicy`, `iam:PassRole`
+
+5. **Bedrock AgentCore** (for agent deployment):
+   - `bedrock-agentcore:*`
+
+6. **Bedrock** (for model invocation):
+   - `bedrock:InvokeModel`
+
+7. **CloudWatch** (for observability):
+   - `cloudwatch:PutMetricData`, `xray:PutTraceSegments`
+   - `logs:CreateLogGroup`, `logs:CreateLogStream`, `logs:PutLogEvents`
+
+See [`docs/iam-policy-deployment.json`](docs/iam-policy-deployment.json) for the complete policy.
 
 ## Use case setup
 
