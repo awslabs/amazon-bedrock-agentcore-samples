@@ -1,13 +1,12 @@
-# Deployment toolkit (required for deploying agent to AgentCore Runtime)
-bedrock-agentcore-starter-toolkit>=0.1.14
+# NOTE: This file is for the Docker container, NOT local development
+# Local development uses pyproject.toml (which includes bedrock-agentcore-starter-toolkit)
 
 # Agent framework and tools
 strands-agents
 strands-agents-tools
 
-# AWS SDK and AgentCore
+# AWS SDK and AgentCore Runtime
 boto3
-bedrock-agentcore<=0.1.5
 bedrock-agentcore-runtime
 
 # Agent dependencies
