@@ -150,9 +150,10 @@ if [ "$SETUP_BRAINTRUST" = true ]; then
     fi
 fi
 
-# Load environment configuration
-if [ -f "$SCRIPT_DIR/.env" ]; then
-    source "$SCRIPT_DIR/.env"
+# Load deployment metadata
+AGENT_ID=""
+if [ -f "$SCRIPT_DIR/.deployment_metadata.json" ]; then
+    AGENT_ID=$(jq -r '.agent_id' "$SCRIPT_DIR/.deployment_metadata.json")
 fi
 
 # Final summary
@@ -164,8 +165,7 @@ echo ""
 echo "Your AgentCore observability demo is ready!"
 echo ""
 
-if [ -f "$SCRIPT_DIR/.agent_id" ]; then
-    AGENT_ID=$(cat "$SCRIPT_DIR/.agent_id")
+if [ -n "$AGENT_ID" ]; then
     echo "Agent ID: $AGENT_ID"
 fi
 
@@ -173,10 +173,10 @@ echo "Region: $AWS_REGION"
 echo ""
 echo "Quick Start:"
 echo ""
-echo "1. Load environment variables:"
-echo "   source $SCRIPT_DIR/.env"
+echo "1. Test the agent:"
+echo "   ./test_agent.sh --test weather"
 echo ""
-echo "2. Run the demo:"
+echo "2. Run the observability demo:"
 echo "   cd $SCRIPT_DIR/.."
 echo "   python simple_observability.py --scenario all"
 echo ""

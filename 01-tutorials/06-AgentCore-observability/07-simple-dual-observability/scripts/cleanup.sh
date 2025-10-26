@@ -87,8 +87,8 @@ echo ""
 
 # Check what exists
 AGENT_ID=""
-if [ -f "$SCRIPT_DIR/.agent_id" ]; then
-    AGENT_ID=$(cat "$SCRIPT_DIR/.agent_id")
+if [ -f "$SCRIPT_DIR/.deployment_metadata.json" ]; then
+    AGENT_ID=$(jq -r '.agent_id' "$SCRIPT_DIR/.deployment_metadata.json")
     echo "- AgentCore Runtime Agent: $AGENT_ID"
 fi
 
@@ -144,19 +144,9 @@ fi
 # Delete local files
 echo "Cleaning up local configuration files..."
 
-if [ -f "$SCRIPT_DIR/.agent_id" ]; then
-    rm "$SCRIPT_DIR/.agent_id"
-    echo "Removed: .agent_id"
-fi
-
-if [ -f "$SCRIPT_DIR/.env" ]; then
-    # Backup .env before deleting
-    if [ -f "$SCRIPT_DIR/.env.backup" ]; then
-        rm "$SCRIPT_DIR/.env.backup"
-    fi
-    cp "$SCRIPT_DIR/.env" "$SCRIPT_DIR/.env.backup"
-    rm "$SCRIPT_DIR/.env"
-    echo "Removed: .env (backup saved to .env.backup)"
+if [ -f "$SCRIPT_DIR/.deployment_metadata.json" ]; then
+    rm "$SCRIPT_DIR/.deployment_metadata.json"
+    echo "Removed: .deployment_metadata.json"
 fi
 
 if [ -f "$SCRIPT_DIR/cloudwatch-urls.txt" ]; then
@@ -189,12 +179,6 @@ if [ "$KEEP_LOGS" = false ]; then
 fi
 echo "- Local configuration files"
 echo ""
-
-if [ -f "$SCRIPT_DIR/.env.backup" ]; then
-    echo "Note: Your .env file was backed up to .env.backup"
-    echo ""
-fi
-
 echo "To redeploy, run:"
 echo "  ./setup_all.sh"
 echo ""

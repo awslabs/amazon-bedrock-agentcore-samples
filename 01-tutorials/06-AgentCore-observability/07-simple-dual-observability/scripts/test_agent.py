@@ -37,16 +37,12 @@ TEST_PROMPTS: Dict[str, str] = {
 def _load_agent_metadata(
     script_dir: Path
 ) -> Dict[str, Any]:
-    """Load agent metadata from deployment files."""
+    """Load agent metadata from deployment metadata file."""
     metadata_file = script_dir / ".deployment_metadata.json"
-    agent_id_file = script_dir / ".agent_id"
 
     if metadata_file.exists():
         with open(metadata_file) as f:
             return json.load(f)
-    elif agent_id_file.exists():
-        agent_id = agent_id_file.read_text().strip()
-        return {"agent_id": agent_id}
     else:
         raise FileNotFoundError(
             "No deployment metadata found. "

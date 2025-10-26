@@ -85,8 +85,8 @@ echo "AWS Region: $AWS_REGION"
 
 # Load agent ID if available
 AGENT_ID=""
-if [ -f "$SCRIPT_DIR/.agent_id" ]; then
-    AGENT_ID=$(cat "$SCRIPT_DIR/.agent_id")
+if [ -f "$SCRIPT_DIR/.deployment_metadata.json" ]; then
+    AGENT_ID=$(jq -r '.agent_id' "$SCRIPT_DIR/.deployment_metadata.json")
     echo "Agent ID: $AGENT_ID"
 else
     echo "Warning: Agent ID not found. Run deploy_agent.sh first for full setup."

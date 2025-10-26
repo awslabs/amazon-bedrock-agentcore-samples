@@ -179,44 +179,17 @@ fi
 
 # Save configuration
 echo ""
-echo "Step 4: Save Configuration"
+echo "Step 4: Configuration Summary"
 echo "--------------------------"
 echo ""
-
-# Update or create .env file
-ENV_FILE="$SCRIPT_DIR/.env"
-
-if [ -f "$ENV_FILE" ]; then
-    # Update existing file
-    if grep -q "BRAINTRUST_API_KEY" "$ENV_FILE"; then
-        # Replace existing key
-        sed -i "s/^export BRAINTRUST_API_KEY=.*/export BRAINTRUST_API_KEY=$BRAINTRUST_API_KEY/" "$ENV_FILE"
-        sed -i "s/^# export BRAINTRUST_API_KEY=.*/export BRAINTRUST_API_KEY=$BRAINTRUST_API_KEY/" "$ENV_FILE"
-    else
-        # Add new key
-        echo "" >> "$ENV_FILE"
-        echo "# Braintrust Configuration" >> "$ENV_FILE"
-        echo "export BRAINTRUST_API_KEY=$BRAINTRUST_API_KEY" >> "$ENV_FILE"
-    fi
-    echo "Updated existing configuration: $ENV_FILE"
-else
-    # Create new file
-    cat > "$ENV_FILE" << EOF
-# AgentCore Observability Configuration
-
-# AWS Configuration
-export AWS_REGION=$AWS_REGION
-
-# OTEL Configuration
-export SERVICE_NAME=$SERVICE_NAME
-export SERVICE_VERSION=1.0.0
-export DEPLOYMENT_ENVIRONMENT=demo
-
-# Braintrust Configuration
-export BRAINTRUST_API_KEY=$BRAINTRUST_API_KEY
-EOF
-    echo "Created new configuration: $ENV_FILE"
-fi
+echo "Braintrust API Key configured successfully."
+echo ""
+echo "To use the observability demo with Braintrust, set these environment variables:"
+echo ""
+echo "  export BRAINTRUST_API_KEY=$BRAINTRUST_API_KEY"
+echo "  export AWS_REGION=$AWS_REGION"
+echo "  export SERVICE_NAME=$SERVICE_NAME"
+echo ""
 
 # Create OTEL config with Braintrust
 echo "Creating OpenTelemetry configuration..."
@@ -359,7 +332,7 @@ Your Braintrust integration is now configured and ready to use!
 If you get authentication errors:
 1. Verify your API key: \`./setup_braintrust.sh --test\`
 2. Regenerate key at: https://www.braintrust.dev/app/settings/api-keys
-3. Update .env file with new key
+3. Set BRAINTRUST_API_KEY environment variable with new key
 
 ### No Traces Appearing
 1. Check OTEL collector is running

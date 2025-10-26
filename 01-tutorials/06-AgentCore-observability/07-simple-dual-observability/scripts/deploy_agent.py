@@ -180,36 +180,13 @@ def _save_deployment_info(
     script_dir: Path
 ) -> None:
     """
-    Save deployment information to files.
+    Save deployment information to .deployment_metadata.json.
 
     Args:
         deployment_info: Deployment information dictionary
         script_dir: Directory to save files
     """
-    # Save agent ID
-    agent_id_file = script_dir / ".agent_id"
-    agent_id_file.write_text(deployment_info["agent_id"])
-    logger.info(f"Agent ID saved to: {agent_id_file}")
-
-    # Save environment configuration
-    env_file = script_dir / ".env"
-    env_content = f"""# AgentCore Runtime Agent Configuration
-export AGENTCORE_AGENT_ID={deployment_info["agent_id"]}
-export AGENTCORE_AGENT_ARN={deployment_info["agent_arn"]}
-export AWS_REGION={deployment_info["region"]}
-
-# OTEL Configuration
-export SERVICE_NAME=agentcore-observability-demo
-export SERVICE_VERSION=1.0.0
-export DEPLOYMENT_ENVIRONMENT=demo
-
-# Braintrust Configuration (optional)
-# export BRAINTRUST_API_KEY=your_api_key_here
-"""
-    env_file.write_text(env_content)
-    logger.info(f"Environment configuration saved to: {env_file}")
-
-    # Save deployment metadata
+    # Save deployment metadata as single source of truth
     metadata_file = script_dir / ".deployment_metadata.json"
     metadata_file.write_text(json.dumps(deployment_info, indent=2))
     logger.info(f"Deployment metadata saved to: {metadata_file}")
@@ -307,9 +284,9 @@ Example usage:
     logger.info(f"Region: {args.region}")
     logger.info("")
     logger.info("Next Steps:")
-    logger.info(f"1. Source environment: source {script_dir}/.env")
-    logger.info("2. Set up CloudWatch: ./setup_cloudwatch.sh")
-    logger.info("3. Run demo: uv run python simple_observability.py --scenario success")
+    logger.info("1. Test the agent: ./test_agent.sh --test weather")
+    logger.info("2. Check logs: ./check_logs.sh --time 30m")
+    logger.info("3. Run observability demo: uv run python simple_observability.py --scenario success")
     logger.info("=" * 60)
 
 

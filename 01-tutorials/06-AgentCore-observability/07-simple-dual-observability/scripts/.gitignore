@@ -1,7 +1,6 @@
 # Generated files from deployment scripts
-.agent_id
+.deployment_metadata.json
 .env
-.env.backup
 cloudwatch-urls.txt
 xray-permissions.json
 braintrust-usage.md

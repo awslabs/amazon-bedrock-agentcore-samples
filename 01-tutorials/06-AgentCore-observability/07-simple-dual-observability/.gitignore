@@ -1,12 +1,15 @@
-# Environment and secrets
-.env
-.env.local
-.env.backup
+# Generated configuration (in scripts/ subdirectory)
+scripts/.deployment_metadata.json
+scripts/.env
+scripts/.env.backup
+scripts/cloudwatch-urls.txt
+scripts/braintrust-usage.md
 
-# Generated configuration
-.agent_id
-cloudwatch-urls.txt
-braintrust-usage.md
+# Scratchpad notes (local development only)
+.scratchpad/
+
+# Files marked for deletion (temporary)
+tobedeleted/
 
 # Python
 __pycache__/

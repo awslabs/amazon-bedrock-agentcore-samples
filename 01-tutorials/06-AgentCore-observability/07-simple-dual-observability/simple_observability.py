@@ -19,11 +19,13 @@ Agent runs in AgentCore Runtime - a fully managed service for hosting agents.
 """
 
 import argparse
+import json
 import logging
 import os
 import sys
 import time
 import uuid
+from pathlib import Path
 from typing import Any, Dict, Optional
 
 import boto3
@@ -74,9 +76,28 @@ def _get_env_var(
     return value
 
 
+def _load_deployment_metadata() -> Optional[Dict[str, Any]]:
+    """
+    Load agent deployment metadata from .deployment_metadata.json.
+
+    Returns:
+        Deployment metadata dictionary or None if file doesn't exist
+    """
+    metadata_file = Path("scripts/.deployment_metadata.json")
+
+    if metadata_file.exists():
+        try:
+            with open(metadata_file) as f:
+                return json.load(f)
+        except Exception as e:
+            logger.warning(f"Failed to load deployment metadata: {e}")
+            return None
+    return None
+
+
 def _create_bedrock_client(region: str) -> boto3.client:
     """
-    Create Amazon Bedrock AgentCore Runtime client.
+    Create Amazon Bedrock AgentCore client.
 
     Args:
         region: AWS region
@@ -86,10 +107,10 @@ def _create_bedrock_client(region: str) -> boto3.client:
     """
     try:
         client = boto3.client(
-            "bedrock-agentcore-runtime",
+            "bedrock-agentcore",
             region_name=region
         )
-        logger.info(f"Created Bedrock AgentCore Runtime client for region: {region}")
+        logger.info(f"Created Bedrock AgentCore client for region: {region}")
         return client
 
     except Exception as e:
@@ -101,17 +122,19 @@ def _generate_session_id() -> str:
     """
     Generate unique session ID for trace correlation.
 
+    Session ID must be at least 33 characters for bedrock-agentcore API.
+
     Returns:
-        UUID-based session ID
+        UUID-based session ID (36 characters)
     """
-    session_id = f"demo_session_{uuid.uuid4().hex[:16]}"
+    session_id = str(uuid.uuid4())
     logger.debug(f"Generated session ID: {session_id}")
     return session_id
 
 
 def _invoke_agent(
     client: boto3.client,
-    agent_id: str,
+    agent_arn: str,
     query: str,
     session_id: str,
     enable_trace: bool = True
@@ -124,11 +147,11 @@ def _invoke_agent(
     and Braintrust (if configured).
 
     Args:
-        client: Bedrock AgentCore Runtime client
-        agent_id: ID of deployed agent
+        client: Bedrock AgentCore client
+        agent_arn: ARN of deployed agent runtime
         query: User query
         session_id: Session ID for correlation
-        enable_trace: Enable detailed tracing
+        enable_trace: Enable detailed tracing (not used in current API)
 
     Returns:
         Agent response with output and metadata
@@ -136,25 +159,41 @@ def _invoke_agent(
     Raises:
         ClientError: If agent invocation fails
     """
-    logger.info(f"Invoking agent: {agent_id}")
+    logger.info(f"Invoking agent: {agent_arn}")
     logger.info(f"Query: {query}")
     logger.info(f"Session ID: {session_id}")
 
     start_time = time.time()
 
     try:
-        response = client.invoke_agent(
-            agentId=agent_id,
-            sessionId=session_id,
-            inputText=query,
-            enableTrace=enable_trace
+        # Prepare payload
+        payload = json.dumps({"prompt": query})
+
+        response = client.invoke_agent_runtime(
+            agentRuntimeArn=agent_arn,
+            runtimeSessionId=session_id,
+            payload=payload
         )
 
         elapsed_time = time.time() - start_time
         logger.info(f"Agent response received in {elapsed_time:.2f}s")
 
+        # Parse response - handle StreamingBody
+        agent_response = None
+        if "response" in response:
+            response_body = response["response"]
+
+            if hasattr(response_body, "read"):
+                raw_data = response_body.read()
+                if isinstance(raw_data, bytes):
+                    agent_response = raw_data.decode("utf-8")
+                else:
+                    agent_response = str(raw_data)
+            elif isinstance(response_body, str):
+                agent_response = response_body
+
         return {
-            "output": response.get("output", ""),
+            "output": agent_response or "",
             "trace_id": response.get("traceId", ""),
             "session_id": session_id,
             "elapsed_time": elapsed_time
@@ -220,7 +259,7 @@ def _print_observability_links(
 
 def scenario_success(
     client: boto3.client,
-    agent_id: str,
+    agent_arn: str,
     region: str
 ) -> None:
     """
@@ -245,7 +284,7 @@ def scenario_success(
 
     result = _invoke_agent(
         client=client,
-        agent_id=agent_id,
+        agent_arn=agent_arn,
         query=query,
         session_id=session_id
     )
@@ -267,7 +306,7 @@ def scenario_success(
 
 def scenario_error(
     client: boto3.client,
-    agent_id: str,
+    agent_arn: str,
     region: str
 ) -> None:
     """
@@ -292,7 +331,7 @@ def scenario_error(
 
     result = _invoke_agent(
         client=client,
-        agent_id=agent_id,
+        agent_arn=agent_arn,
         query=query,
         session_id=session_id
     )
@@ -366,33 +405,34 @@ def main() -> None:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-    # Run all scenarios
-    python simple_observability_demo.py --agent-id abc123 --scenario all
+    # Run all scenarios (reads agent ID from .deployment_metadata.json)
+    python simple_observability.py --scenario all
 
     # Run specific scenario
-    python simple_observability_demo.py --agent-id abc123 --scenario success
+    python simple_observability.py --scenario success
+
+    # Override agent ID
+    python simple_observability.py --agent-id abc123 --scenario all
 
     # With environment variables
     export AGENTCORE_AGENT_ID=abc123
-    python simple_observability_demo.py
+    python simple_observability.py
 
     # Enable debug logging
-    python simple_observability_demo.py --agent-id abc123 --debug
+    python simple_observability.py --debug
         """
     )
 
     parser.add_argument(
         "--agent-id",
         type=str,
-        default=_get_env_var("AGENTCORE_AGENT_ID"),
-        help="AgentCore Runtime agent ID (or set AGENTCORE_AGENT_ID env var)"
+        help="AgentCore Runtime agent ID (reads from .deployment_metadata.json if not specified)"
     )
 
     parser.add_argument(
         "--region",
         type=str,
-        default=_get_env_var("AWS_REGION", DEFAULT_REGION),
-        help=f"AWS region (default: {DEFAULT_REGION})"
+        help="AWS region (reads from .deployment_metadata.json or uses us-east-1)"
     )
 
     parser.add_argument(
@@ -414,34 +454,62 @@ Examples:
     if args.debug:
         logging.getLogger().setLevel(logging.DEBUG)
 
-    if not args.agent_id:
-        logger.error("Agent ID is required. Provide via --agent-id or AGENTCORE_AGENT_ID env var")
+    # Load deployment metadata if not provided via arguments
+    metadata = _load_deployment_metadata()
+
+    # Get agent ARN from args, env var, or metadata
+    agent_arn = None
+    if args.agent_id:
+        # If agent_id is provided as arg, treat it as ARN
+        agent_arn = args.agent_id
+    elif metadata:
+        agent_arn = metadata.get("agent_arn")
+
+    if not agent_arn:
+        # Try environment variable (could be ARN or ID)
+        env_value = _get_env_var("AGENTCORE_AGENT_ID") or _get_env_var("AGENTCORE_AGENT_ARN")
+        if env_value:
+            agent_arn = env_value
+
+    if not agent_arn:
+        logger.error("Agent ARN is required.")
+        logger.error("Provide via:")
+        logger.error("  1. --agent-id command-line argument (ARN)")
+        logger.error("  2. AGENTCORE_AGENT_ARN environment variable")
+        logger.error("  3. Deploy agent first: scripts/deploy_agent.sh")
         sys.exit(1)
 
+    # Get region from args, env var, or metadata
+    region = args.region or _get_env_var("AWS_REGION")
+    if not region and metadata:
+        region = metadata.get("region")
+    if not region:
+        region = DEFAULT_REGION
+
     logger.info("Starting Simple Observability Demo")
-    logger.info(f"Agent ID: {args.agent_id}")
-    logger.info(f"Region: {args.region}")
+    logger.info(f"Agent ARN: {agent_arn}")
+    logger.info(f"Region: {region}")
     logger.info(f"Scenario: {args.scenario}")
 
-    client = _create_bedrock_client(args.region)
+    client = _create_bedrock_client(region)
 
     try:
         if args.scenario in ["success", "all"]:
-            scenario_success(client, args.agent_id, args.region)
+            scenario_success(client, agent_arn, region)
 
             if args.scenario == "all":
                 print("\nWaiting: Waiting 10 seconds for traces to propagate...\n")
                 time.sleep(10)
 
         if args.scenario in ["error", "all"]:
-            scenario_error(client, args.agent_id, args.region)
+            scenario_error(client, agent_arn, region)
 
             if args.scenario == "all":
                 print("\nWaiting: Waiting 10 seconds for traces to propagate...\n")
                 time.sleep(10)
 
         if args.scenario in ["dashboard", "all"]:
-            scenario_dashboard(args.region)
+            scenario_dashboard(region)
 
         logger.info("Demo completed successfully!")
         print("\n✓ Demo Complete!")

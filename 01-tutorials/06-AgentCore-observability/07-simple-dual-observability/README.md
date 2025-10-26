@@ -142,48 +142,47 @@ Get the agent running in 3 commands:
 
 ```bash
 # 1. Install dependencies and deploy agent
-cd scripts
 uv sync  # Install local dependencies
-./deploy_agent.sh --region us-east-1 --name weather_time_observability_agent
+scripts/deploy_agent.sh --region us-east-1 --name weather_time_observability_agent
 
 # 2. Test the agent
-./test_agent.sh --test calculator
-./test_agent.sh --test weather
-./test_agent.sh --prompt "What time is it in Tokyo?"
+scripts/test_agent.sh --test calculator
+scripts/test_agent.sh --test weather
+scripts/test_agent.sh --prompt "What time is it in Tokyo?"
 
 # 3. Check agent logs
-./check_logs.sh --time 30m
-./check_logs.sh --errors  # Show only errors
+scripts/check_logs.sh --time 30m
+scripts/check_logs.sh --errors  # Show only errors
 ```
 
 **Available test commands:**
 ```bash
 # Predefined tests
-./test_agent.sh --test weather      # Test weather tool
-./test_agent.sh --test time         # Test time tool
-./test_agent.sh --test calculator   # Test calculator tool
-./test_agent.sh --test combined     # Test multiple tools
+scripts/test_agent.sh --test weather      # Test weather tool
+scripts/test_agent.sh --test time         # Test time tool
+scripts/test_agent.sh --test calculator   # Test calculator tool
+scripts/test_agent.sh --test combined     # Test multiple tools
 
 # Custom prompts
-./test_agent.sh --prompt "Your custom question here"
+scripts/test_agent.sh --prompt "Your custom question here"
 
 # Interactive mode
-./test_agent.sh --interactive
+scripts/test_agent.sh --interactive
 
 # Show full response with traces
-./test_agent.sh --test combined --full
+scripts/test_agent.sh --test combined --full
 ```
 
 **Cleanup:**
 ```bash
 # Delete agent and all resources
-./cleanup.sh
+scripts/cleanup.sh
 
 # Or delete without prompts
-./cleanup.sh --force
+scripts/cleanup.sh --force
 
 # Keep CloudWatch logs
-./cleanup.sh --keep-logs
+scripts/cleanup.sh --keep-logs
 ```
 
 For complete setup with CloudWatch dashboards and Braintrust integration, see the detailed setup below.
@@ -207,20 +206,11 @@ pip install -r requirements.txt
 #   - Other dependencies
 ```
 
-### Step 2: Configure Environment Variables
+### Step 2: Configure Environment Variables (Optional)
 
-```bash
-# Create .env file
-cp .env.example .env
+If you plan to use Braintrust integration, get an API key from https://www.braintrust.dev/app/settings/api-keys
 
-# Edit .env with your configuration
-# Required:
-#   AWS_REGION=us-east-1
-#   BRAINTRUST_API_KEY=your_api_key_here (get from https://www.braintrust.dev/app/settings/api)
-#
-# Optional:
-#   AGENTCORE_AGENT_ID=<set-after-deployment>
-```
+The deployment scripts will automatically save agent configuration to `.deployment_metadata.json`.
 
 ### Step 3: Run Automated Setup
 
@@ -228,14 +218,13 @@ The automated setup script deploys the agent, configures CloudWatch, and sets up
 
 ```bash
 # Complete setup with CloudWatch and Braintrust
-cd scripts
-./setup_all.sh --braintrust
+scripts/setup_all.sh --braintrust
 
 # Or setup with CloudWatch only
-./setup_all.sh
+scripts/setup_all.sh
 
 # Or provide Braintrust API key directly
-./setup_all.sh --api-key bt-xxxxx
+scripts/setup_all.sh --api-key bt-xxxxx
 ```
 
 This script will:
@@ -244,18 +233,32 @@ This script will:
 3. Deploy to AgentCore Runtime with OTEL enabled
 4. Set up CloudWatch dashboard and X-Ray tracing
 5. Configure Braintrust integration (if requested)
-6. Generate `.agent_id` and `.env` files with deployment info
+6. Save deployment information to `.deployment_metadata.json`
 
-### Step 4: Load Environment Configuration
+### Step 4: Run the Observability Demo
+
+The demo automatically reads agent configuration from `.deployment_metadata.json`:
 
 ```bash
-# Load environment variables created by setup
-source scripts/.env
+# Run all observability scenarios (reads agent ID automatically)
+python simple_observability.py --scenario all
 
-# Or manually set agent ID if not using setup script
-export AGENTCORE_AGENT_ID=<your-agent-id>
-export AWS_REGION=us-east-1
+# Run specific scenario
+python simple_observability.py --scenario success
+python simple_observability.py --scenario error
+python simple_observability.py --scenario dashboard
+```
+
+With Braintrust integration:
+```bash
+# Set Braintrust API key if using Braintrust platform
 export BRAINTRUST_API_KEY=<your-api-key>
+python simple_observability.py --scenario all
+```
+
+Or simply test the agent:
+```bash
+scripts/test_agent.sh --test weather
 ```
 
 ### Manual Setup (Alternative)
@@ -401,12 +404,11 @@ To avoid unnecessary AWS charges, delete all created resources:
 ### Automated Cleanup
 
 ```bash
-# Run cleanup script from scripts directory
-cd scripts
-./cleanup.sh
+# Run cleanup script
+scripts/cleanup.sh
 
 # Or with force flag to skip confirmations
-./cleanup.sh --force
+scripts/cleanup.sh --force
 ```
 
 ### Manual Cleanup
@@ -427,8 +429,7 @@ aws cloudwatch delete-dashboards --dashboard-names AgentCore-Observability-Demo
 # Or keep for future use - free tier has no expiration
 
 # Step 4: Remove local files
-rm -f scripts/.agent_id scripts/.env
-rm -f .env
+rm -f scripts/.deployment_metadata.json
 ```
 
 ## Cost Estimate

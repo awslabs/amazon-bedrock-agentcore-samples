@@ -6,6 +6,8 @@ Deployment and setup scripts for the Simple Dual Observability Tutorial.
 
 These scripts automate the complete setup of Amazon Bedrock AgentCore observability with dual platform support (CloudWatch and Braintrust).
 
+**Note:** All commands in this documentation assume you are running from the tutorial root directory (`07-simple-dual-observability`), not from within the `scripts/` folder. Use `scripts/<script-name>.sh` to invoke the scripts.
+
 ## Scripts
 
 ### check_prerequisites.sh
@@ -14,10 +16,10 @@ Verify all prerequisites are met before running setup.
 
 ```bash
 # Run prerequisite checks
-./check_prerequisites.sh
+scripts/check_prerequisites.sh
 
 # Run with verbose output
-./check_prerequisites.sh --verbose
+scripts/check_prerequisites.sh --verbose
 ```
 
 **What it does:**
@@ -36,16 +38,16 @@ Complete end-to-end setup orchestration.
 
 ```bash
 # Setup with CloudWatch only
-./setup_all.sh
+scripts/setup_all.sh
 
 # Setup with CloudWatch and Braintrust (interactive)
-./setup_all.sh --braintrust
+scripts/setup_all.sh --braintrust
 
 # Setup with existing Braintrust API key
-./setup_all.sh --api-key bt-xxxxx
+scripts/setup_all.sh --api-key bt-xxxxx
 
 # Setup in specific region
-./setup_all.sh --region us-west-2
+scripts/setup_all.sh --region us-west-2
 ```
 
 **What it does:**
@@ -59,14 +61,14 @@ Deploy Strands agent to AgentCore Runtime.
 
 ```bash
 # Deploy with defaults
-./deploy_agent.sh
+scripts/deploy_agent.sh
 
 # Deploy with custom region and model
-./deploy_agent.sh --region us-west-2 --model anthropic.claude-3-haiku-20240307-v1:0
+scripts/deploy_agent.sh --region us-west-2 --model anthropic.claude-3-haiku-20240307-v1:0
 
 # Deploy with Braintrust integration
 export BRAINTRUST_API_KEY=your_api_key_here
-./deploy_agent.sh
+scripts/deploy_agent.sh
 ```
 
 **What it does:**
@@ -88,13 +90,13 @@ Configure CloudWatch Transaction Search and dashboard.
 
 ```bash
 # Setup with defaults
-./setup_cloudwatch.sh
+scripts/setup_cloudwatch.sh
 
 # Setup with custom region
-./setup_cloudwatch.sh --region us-west-2
+scripts/setup_cloudwatch.sh --region us-west-2
 
 # Setup with custom dashboard name
-./setup_cloudwatch.sh --dashboard MyAgentCoreDashboard
+scripts/setup_cloudwatch.sh --dashboard MyAgentCoreDashboard
 ```
 
 **What it does:**
@@ -123,13 +125,13 @@ Configure Braintrust integration for AI-focused observability.
 
 ```bash
 # Interactive setup
-./setup_braintrust.sh
+scripts/setup_braintrust.sh
 
 # Setup with existing API key
-./setup_braintrust.sh --api-key bt-xxxxx
+scripts/setup_braintrust.sh --api-key bt-xxxxx
 
 # Test existing configuration
-./setup_braintrust.sh --test
+scripts/setup_braintrust.sh --test
 ```
 
 **What it does:**
@@ -150,13 +152,13 @@ Remove all resources created by the tutorial.
 
 ```bash
 # Interactive cleanup
-./cleanup.sh
+scripts/cleanup.sh
 
 # Force cleanup without prompts
-./cleanup.sh --force
+scripts/cleanup.sh --force
 
 # Cleanup but keep logs
-./cleanup.sh --keep-logs
+scripts/cleanup.sh --keep-logs
 ```
 
 **What it does:**
@@ -175,7 +177,7 @@ Remove all resources created by the tutorial.
 ### Step 0: Check Prerequisites
 
 ```bash
-./check_prerequisites.sh
+scripts/check_prerequisites.sh
 ```
 
 Fix any issues reported before proceeding.
@@ -183,18 +185,19 @@ Fix any issues reported before proceeding.
 ### Minimal Setup (CloudWatch only)
 
 ```bash
-./setup_all.sh
-source .env
-cd ..
+scripts/setup_all.sh
+
+# Run observability demo (automatically reads agent ID from metadata)
 python simple_observability.py --scenario all
 ```
 
 ### Full Setup (CloudWatch + Braintrust)
 
 ```bash
-./setup_all.sh --braintrust
-source .env
-cd ..
+scripts/setup_all.sh --braintrust
+
+# Run observability demo with Braintrust
+export BRAINTRUST_API_KEY=your_api_key_here
 python simple_observability.py --scenario all
 ```
 
@@ -202,18 +205,16 @@ python simple_observability.py --scenario all
 
 ```bash
 # 1. Deploy agent
-./deploy_agent.sh
-source .env
+scripts/deploy_agent.sh
 
 # 2. Setup CloudWatch
-./setup_cloudwatch.sh
+scripts/setup_cloudwatch.sh
 
 # 3. (Optional) Setup Braintrust
-./setup_braintrust.sh
+scripts/setup_braintrust.sh
 
-# 4. Run demo
-cd ..
-python simple_observability.py --agent-id $AGENTCORE_AGENT_ID
+# 4. Run demo (automatically reads agent ID from .deployment_metadata.json)
+python simple_observability.py --scenario all
 ```
 
 ## Generated Files
@@ -272,17 +273,17 @@ echo "https://www.braintrust.dev/app"
 
 ```bash
 # Cleanup old agent
-./cleanup.sh
+scripts/cleanup.sh
 
 # Deploy with new configuration
-./deploy_agent.sh --model anthropic.claude-3-opus-20240229-v1:0
+scripts/deploy_agent.sh --model anthropic.claude-3-opus-20240229-v1:0
 ```
 
 ### Test Braintrust Connection
 
 ```bash
-source .env
-./setup_braintrust.sh --test
+export BRAINTRUST_API_KEY=your_api_key_here
+scripts/setup_braintrust.sh --test
 ```
 
 ## Troubleshooting
@@ -304,7 +305,7 @@ Check:
 ### No Traces in Braintrust
 
 Check:
-1. API key is valid: `./setup_braintrust.sh --test`
+1. API key is valid: `scripts/setup_braintrust.sh --test`
 2. OTEL config has Braintrust exporter enabled
 3. Network connectivity to api.braintrust.dev
 

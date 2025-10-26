@@ -26,15 +26,15 @@ Environment Variables:
     BRAINTRUST_API_KEY      Braintrust API key (optional, for dual export)
 
 Example:
-    # Deploy with defaults
-    ./deploy_agent.sh
+    # Deploy with defaults (from tutorial root directory)
+    scripts/deploy_agent.sh
 
     # Deploy to specific region
-    ./deploy_agent.sh --region us-west-2
+    scripts/deploy_agent.sh --region us-west-2
 
     # Deploy with Braintrust integration
     export BRAINTRUST_API_KEY=your_api_key_here
-    ./deploy_agent.sh
+    scripts/deploy_agent.sh
 
 Prerequisites:
     - Python 3.11+
