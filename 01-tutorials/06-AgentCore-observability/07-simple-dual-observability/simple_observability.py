@@ -95,6 +95,22 @@ def _load_deployment_metadata() -> Optional[Dict[str, Any]]:
     return None
 
 
+def _is_braintrust_enabled(metadata: Optional[Dict[str, Any]]) -> bool:
+    """
+    Check if Braintrust observability is enabled for the deployed agent.
+
+    Args:
+        metadata: Deployment metadata dictionary
+
+    Returns:
+        True if Braintrust is enabled, False otherwise
+    """
+    if metadata is None:
+        return False
+
+    return metadata.get("braintrust_enabled", False)
+
+
 def _create_bedrock_client(region: str) -> boto3.client:
     """
     Create Amazon Bedrock AgentCore client.
@@ -260,7 +276,8 @@ def _print_observability_links(
 def scenario_success(
     client: boto3.client,
     agent_arn: str,
-    region: str
+    region: str,
+    braintrust_enabled: bool = False
 ) -> None:
     """
     Scenario 1: Successful multi-tool query.
@@ -276,6 +293,12 @@ def scenario_success(
     - Tool selection span
     - Gateway execution spans (weather, time)
     - Response formatting span
+
+    Args:
+        client: Bedrock AgentCore client
+        agent_arn: ARN of deployed agent
+        region: AWS region
+        braintrust_enabled: Whether Braintrust observability is enabled
     """
     logger.info("Starting Scenario 1: Successful Multi-Tool Query")
 
@@ -298,16 +321,24 @@ def scenario_success(
     print("   - Gateway spans: weather tool, time tool")
     print("   - Total latency: ~1-2 seconds")
 
-    print("\n⚠ Braintrust Integration:")
-    print("   - Requires OTEL Collector running locally or in cloud")
-    print("   - AgentCore Runtime currently exports to CloudWatch only")
-    print("   - See docs/braintrust-setup.md for collector setup")
+    if braintrust_enabled:
+        print("\n✓ Expected in Braintrust:")
+        print("   - LLM call details (model, tokens, cost)")
+        print("   - Tool execution timeline")
+        print("   - Latency breakdown by component")
+        print("   - View at: https://www.braintrust.dev/app")
+    else:
+        print("\n⚠ Braintrust Integration:")
+        print("   - Not configured for this deployment")
+        print("   - To enable: Redeploy with --braintrust-api-key and --braintrust-project-id")
+        print("   - See README.md for setup instructions")
 
 
 def scenario_error(
     client: boto3.client,
     agent_arn: str,
-    region: str
+    region: str,
+    braintrust_enabled: bool = False
 ) -> None:
     """
     Scenario 2: Error handling demonstration.
@@ -323,6 +354,12 @@ def scenario_error(
     - Tool selection span
     - Gateway execution span (calculator) - ERROR
     - Error details in span attributes
+
+    Args:
+        client: Bedrock AgentCore client
+        agent_arn: ARN of deployed agent
+        region: AWS region
+        braintrust_enabled: Whether Braintrust observability is enabled
     """
     logger.info("Starting Scenario 2: Error Handling")
 
@@ -345,19 +382,33 @@ def scenario_error(
     print("   - Calculator tool span shows failure")
     print("   - Agent handles error gracefully")
 
-    print("\n⚠ Braintrust Integration:")
-    print("   - Requires OTEL Collector running locally or in cloud")
-    print("   - AgentCore Runtime currently exports to CloudWatch only")
-    print("   - See docs/braintrust-setup.md for collector setup")
+    if braintrust_enabled:
+        print("\n✓ Expected in Braintrust:")
+        print("   - Error flagged with details")
+        print("   - Failure rate metrics updated")
+        print("   - Error categorization and tracking")
+        print("   - View at: https://www.braintrust.dev/app")
+    else:
+        print("\n⚠ Braintrust Integration:")
+        print("   - Not configured for this deployment")
+        print("   - To enable: Redeploy with --braintrust-api-key and --braintrust-project-id")
+        print("   - See README.md for setup instructions")
 
 
-def scenario_dashboard(region: str) -> None:
+def scenario_dashboard(
+    region: str,
+    braintrust_enabled: bool = False
+) -> None:
     """
     Scenario 3: Dashboard walkthrough.
 
     Shows what to look for in pre-configured dashboards:
     - CloudWatch: request rate, latency, errors, token usage
-    - Braintrust: LLM-specific metrics, quality scores
+    - Braintrust: LLM-specific metrics, quality scores (if enabled)
+
+    Args:
+        region: AWS region
+        braintrust_enabled: Whether Braintrust observability is enabled
     """
     logger.info("Starting Scenario 3: Dashboard Walkthrough")
 
@@ -374,16 +425,23 @@ def scenario_dashboard(region: str) -> None:
     print("   4. Token Consumption over Time")
     print("   5. Success Rate by Query Type")
 
-    print("\n⚠ Braintrust Dashboard (Not Currently Active):")
-    print("   https://www.braintrust.dev/app")
-    print("\n   Braintrust integration requires:")
-    print("   1. OTEL Collector running locally or in cloud")
-    print("   2. Collector configured to receive traces from agent")
-    print("   3. Collector configured to forward to Braintrust")
-    print("\n   Current Status:")
-    print("   - AgentCore Runtime exports to CloudWatch X-Ray only")
-    print("   - OTEL Collector config provided but not deployed")
-    print("   - See docs/braintrust-setup.md for setup instructions")
+    if braintrust_enabled:
+        print("\n✓ Braintrust Dashboard:")
+        print("   https://www.braintrust.dev/app")
+        print("\n   Key Metrics to Review:")
+        print("   1. LLM Cost Tracking (per invocation)")
+        print("   2. Model Performance Metrics")
+        print("   3. Quality Scores and Evaluations")
+        print("   4. Prompt/Response Analysis")
+        print("   5. Token Usage Breakdown")
+    else:
+        print("\n⚠ Braintrust Dashboard (Not Configured):")
+        print("   https://www.braintrust.dev/app")
+        print("\n   To enable Braintrust observability:")
+        print("   1. Get Braintrust API key from: https://www.braintrust.dev/app/settings/api-keys")
+        print("   2. Get project ID from your Braintrust project URL")
+        print("   3. Redeploy agent with: scripts/deploy_agent.sh --braintrust-api-key KEY --braintrust-project-id ID")
+        print("\n   See README.md for detailed setup instructions")
 
     print("\n" + "=" * 80 + "\n")
 
@@ -484,36 +542,44 @@ Examples:
     if not region:
         region = DEFAULT_REGION
 
+    # Check if Braintrust observability is enabled
+    braintrust_enabled = _is_braintrust_enabled(metadata)
+
     logger.info("Starting Simple Observability Demo")
     logger.info(f"Agent ARN: {agent_arn}")
     logger.info(f"Region: {region}")
     logger.info(f"Scenario: {args.scenario}")
+    logger.info(f"Braintrust observability: {'Enabled' if braintrust_enabled else 'Disabled (CloudWatch only)'}")
 
     client = _create_bedrock_client(region)
 
     try:
         if args.scenario in ["success", "all"]:
-            scenario_success(client, agent_arn, region)
+            scenario_success(client, agent_arn, region, braintrust_enabled)
 
             if args.scenario == "all":
                 print("\nWaiting: Waiting 10 seconds for traces to propagate...\n")
                 time.sleep(10)
 
         if args.scenario in ["error", "all"]:
-            scenario_error(client, agent_arn, region)
+            scenario_error(client, agent_arn, region, braintrust_enabled)
 
             if args.scenario == "all":
                 print("\nWaiting: Waiting 10 seconds for traces to propagate...\n")
                 time.sleep(10)
 
         if args.scenario in ["dashboard", "all"]:
-            scenario_dashboard(region)
+            scenario_dashboard(region, braintrust_enabled)
 
         logger.info("Demo completed successfully!")
         print("\n✓ Demo Complete!")
         print("\nNext Steps:")
         print("1. Open CloudWatch X-Ray to view traces")
-        print("2. Open Braintrust dashboard to compare")
+        if braintrust_enabled:
+            print("2. Open Braintrust dashboard at https://www.braintrust.dev/app")
+            print("3. Compare observability data across both platforms")
+        else:
+            print("2. To enable Braintrust: Redeploy with --braintrust-api-key and --braintrust-project-id")
         print("3. Examine span attributes and custom metrics")
         print("4. Review dashboard panels for aggregated metrics\n")
 

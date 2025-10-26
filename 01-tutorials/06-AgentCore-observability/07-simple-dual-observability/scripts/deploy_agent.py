@@ -53,7 +53,9 @@ def _deploy_agent(
     region: str,
     entrypoint: str,
     requirements_file: str,
-    script_dir: Path
+    script_dir: Path,
+    braintrust_api_key: str = None,
+    braintrust_project_id: str = None
 ) -> dict:
     """
     Deploy agent to AgentCore Runtime.
@@ -64,6 +66,8 @@ def _deploy_agent(
         entrypoint: Path to agent entrypoint file
         requirements_file: Path to requirements.txt
         script_dir: Script directory for saving outputs
+        braintrust_api_key: Optional Braintrust API key for observability
+        braintrust_project_id: Optional Braintrust project ID
 
     Returns:
         Dictionary with deployment results
@@ -76,21 +80,32 @@ def _deploy_agent(
     boto_session = Session(region_name=region)
     agentcore_runtime = Runtime()
 
+    # Determine observability configuration
+    enable_braintrust = bool(braintrust_api_key and braintrust_project_id)
+
     # Configure the agent
     logger.info("Configuring agent deployment...")
     logger.info(f"  Agent name: {agent_name}")
     logger.info(f"  Entrypoint: {entrypoint}")
     logger.info(f"  Requirements: {requirements_file}")
     logger.info(f"  Region: {region}")
+    logger.info(f"  Braintrust observability: {'Enabled' if enable_braintrust else 'Disabled (CloudWatch only)'}")
 
-    configure_response = agentcore_runtime.configure(
-        entrypoint=entrypoint,
-        auto_create_execution_role=True,
-        auto_create_ecr=True,
-        requirements_file=requirements_file,
-        region=region,
-        agent_name=agent_name
-    )
+    configure_kwargs = {
+        "entrypoint": entrypoint,
+        "auto_create_execution_role": True,
+        "auto_create_ecr": True,
+        "requirements_file": requirements_file,
+        "region": region,
+        "agent_name": agent_name
+    }
+
+    # Disable AgentCore's built-in OTEL if using Braintrust
+    if enable_braintrust:
+        configure_kwargs["disable_otel"] = True
+        logger.info("  Disabling AgentCore OTEL (using Braintrust)")
+
+    configure_response = agentcore_runtime.configure(**configure_kwargs)
 
     logger.info("Agent configuration completed")
     logger.info(f"Configuration response: {json.dumps(configure_response, indent=2, default=str)}")
@@ -104,7 +119,20 @@ def _deploy_agent(
     logger.info("  This may take several minutes...")
 
     try:
-        launch_result = agentcore_runtime.launch()
+        launch_kwargs = {}
+
+        # Add Braintrust environment variables if enabled
+        if enable_braintrust:
+            logger.info("Configuring Braintrust OTEL export...")
+            launch_kwargs["env_vars"] = {
+                "OTEL_EXPORTER_OTLP_ENDPOINT": "https://api.braintrust.dev/otel",
+                "OTEL_EXPORTER_OTLP_HEADERS": f"Authorization=Bearer {braintrust_api_key}, x-bt-parent=project_id:{braintrust_project_id}",
+                "DISABLE_ADOT_OBSERVABILITY": "true",
+                "BRAINTRUST_API_KEY": braintrust_api_key,
+                "BRAINTRUST_PROJECT_ID": braintrust_project_id,
+            }
+
+        launch_result = agentcore_runtime.launch(**launch_kwargs)
     except Exception as e:
         error_msg = str(e)
 
@@ -149,7 +177,8 @@ def _deploy_agent(
         "agent_arn": agent_arn,
         "ecr_uri": ecr_uri,
         "region": region,
-        "agent_name": agent_name
+        "agent_name": agent_name,
+        "braintrust_enabled": enable_braintrust
     }
 
     return deployment_info
@@ -199,14 +228,23 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Example usage:
-    # Deploy with defaults
+    # Deploy with CloudWatch observability only (default)
     uv run python deploy_agent.py
+
+    # Deploy with Braintrust observability
+    uv run python deploy_agent.py \\
+        --braintrust-api-key YOUR_KEY \\
+        --braintrust-project-id YOUR_PROJECT_ID
 
     # Deploy to specific region
     uv run python deploy_agent.py --region us-west-2
 
     # Deploy with custom agent name
     uv run python deploy_agent.py --name MyCustomAgent
+
+Environment variables:
+    BRAINTRUST_API_KEY: Braintrust API key (alternative to --braintrust-api-key)
+    BRAINTRUST_PROJECT_ID: Braintrust project ID (alternative to --braintrust-project-id)
 """
     )
 
@@ -234,11 +272,32 @@ Example usage:
         help="Path to requirements file (default: requirements.txt)"
     )
 
+    parser.add_argument(
+        "--braintrust-api-key",
+        default=os.environ.get("BRAINTRUST_API_KEY"),
+        help="Braintrust API key for observability (optional, can use BRAINTRUST_API_KEY env var)"
+    )
+
+    parser.add_argument(
+        "--braintrust-project-id",
+        default=os.environ.get("BRAINTRUST_PROJECT_ID"),
+        help="Braintrust project ID (optional, can use BRAINTRUST_PROJECT_ID env var)"
+    )
+
     args = parser.parse_args()
 
     # Get script directory
     script_dir = Path(__file__).parent
     parent_dir = script_dir.parent
+
+    # Validate Braintrust configuration
+    enable_braintrust = bool(args.braintrust_api_key and args.braintrust_project_id)
+    if args.braintrust_api_key and not args.braintrust_project_id:
+        logger.error("Both --braintrust-api-key and --braintrust-project-id are required for Braintrust observability")
+        sys.exit(1)
+    if args.braintrust_project_id and not args.braintrust_api_key:
+        logger.error("Both --braintrust-api-key and --braintrust-project-id are required for Braintrust observability")
+        sys.exit(1)
 
     logger.info("=" * 60)
     logger.info("AGENTCORE AGENT DEPLOYMENT")
@@ -247,6 +306,7 @@ Example usage:
     logger.info(f"Region: {args.region}")
     logger.info(f"Entrypoint: {args.entrypoint}")
     logger.info(f"Requirements: {args.requirements}")
+    logger.info(f"Braintrust observability: {'Enabled' if enable_braintrust else 'Disabled (CloudWatch only)'}")
     logger.info("=" * 60)
 
     # Validate environment
@@ -262,7 +322,9 @@ Example usage:
         region=args.region,
         entrypoint=args.entrypoint,
         requirements_file=args.requirements,
-        script_dir=script_dir
+        script_dir=script_dir,
+        braintrust_api_key=args.braintrust_api_key,
+        braintrust_project_id=args.braintrust_project_id
     )
 
     # Wait for agent to be ready

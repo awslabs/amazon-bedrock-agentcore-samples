@@ -2,7 +2,12 @@
 
 ## Overview
 
-This tutorial demonstrates Amazon Bedrock AgentCore's automatic OpenTelemetry instrumentation with dual platform export, sending traces to both AWS-native CloudWatch and AI-focused partner platform Braintrust simultaneously. The tutorial shows how AgentCore Runtime provides zero-code observability for agents, exporting traces to multiple platforms in parallel using standard OTEL format.
+This tutorial demonstrates Amazon Bedrock AgentCore's automatic OpenTelemetry instrumentation with flexible observability options:
+
+1. **CloudWatch Observability (Default)**: Always enabled automatically with zero configuration
+2. **Braintrust Observability (Optional)**: Add AI-focused observability with LLM metrics and cost tracking
+
+The tutorial shows how AgentCore Runtime provides zero-code observability for agents deployed to the Runtime, with the option to export traces to Braintrust (an AI-focused observability platform) in addition to CloudWatch using standard OTEL format.
 
 ### Use case details
 | Information         | Details                                                                                                                             |
@@ -81,7 +86,7 @@ For comprehensive information about this observability tutorial, please refer to
 | AWS Account | Active AWS account with Bedrock access enabled in your region |
 | AWS CLI | Configured with credentials. Verify: `aws sts get-caller-identity` |
 | IAM Permissions | Required permissions for AgentCore Runtime, CloudWatch, and X-Ray (see below) |
-| Braintrust Account | Free tier account for dual platform demo. Sign up at https://www.braintrust.dev/signup |
+| Braintrust Account (Optional) | Optional free tier account for AI-focused observability. Sign up at https://www.braintrust.dev/signup |
 | Amazon Bedrock Access | Access to Claude 3.5 Haiku model in your region |
 
 ### Required IAM Permissions
@@ -143,7 +148,16 @@ Get the agent running in 3 commands:
 ```bash
 # 1. Install dependencies and deploy agent
 uv sync  # Install local dependencies
+
+# Deploy with CloudWatch observability only (default)
 scripts/deploy_agent.sh --region us-east-1 --name weather_time_observability_agent
+
+# OR deploy with Braintrust observability (requires Braintrust account)
+scripts/deploy_agent.sh \
+    --region us-east-1 \
+    --name weather_time_observability_agent \
+    --braintrust-api-key YOUR_BRAINTRUST_API_KEY \
+    --braintrust-project-id YOUR_PROJECT_ID
 
 # 2. Test the agent
 scripts/test_agent.sh --test calculator
@@ -206,11 +220,21 @@ pip install -r requirements.txt
 #   - Other dependencies
 ```
 
-### Step 2: Configure Environment Variables (Optional)
+### Step 2: Get Braintrust Credentials (Optional - for Braintrust observability)
 
-If you plan to use Braintrust integration, get an API key from https://www.braintrust.dev/app/settings/api-keys
+If you want to use Braintrust observability integration:
 
-The deployment scripts will automatically save agent configuration to `.deployment_metadata.json`.
+1. **Create a Braintrust account** at https://www.braintrust.dev/signup (free tier available)
+2. **Get your API key** from https://www.braintrust.dev/app/settings/api-keys
+3. **Get your project ID** from your Braintrust project dashboard URL:
+   - Example URL: `https://www.braintrust.dev/app/YOUR_ORG/p/YOUR_PROJECT_ID`
+   - Use `YOUR_PROJECT_ID` as the project ID
+
+You can provide these credentials:
+- Via command-line arguments: `--braintrust-api-key` and `--braintrust-project-id`
+- Via environment variables: `BRAINTRUST_API_KEY` and `BRAINTRUST_PROJECT_ID`
+
+**Note**: If you don't configure Braintrust, the agent will use CloudWatch observability only (which is always enabled by default).
 
 ### Step 3: Run Automated Setup
 

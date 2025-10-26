@@ -6,7 +6,8 @@
 bedrock-agentcore<=0.1.5
 
 # Agent framework and tools
-strands-agents
+# Note: strands-agents[otel] includes OpenTelemetry support for Braintrust
+strands-agents[otel]
 strands-agents-tools
 
 # AWS SDK
