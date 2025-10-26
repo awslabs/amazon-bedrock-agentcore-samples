@@ -160,9 +160,9 @@ scripts/deploy_agent.sh \
     --braintrust-project-id YOUR_PROJECT_ID
 
 # 2. Test the agent
-scripts/test_agent.sh --test calculator
-scripts/test_agent.sh --test weather
-scripts/test_agent.sh --prompt "What time is it in Tokyo?"
+scripts/tests/test_agent.sh --test calculator
+scripts/tests/test_agent.sh --test weather
+scripts/tests/test_agent.sh --prompt "What time is it in Tokyo?"
 
 # 3. Check agent logs
 scripts/check_logs.sh --time 30m
@@ -172,19 +172,40 @@ scripts/check_logs.sh --errors  # Show only errors
 **Available test commands:**
 ```bash
 # Predefined tests
-scripts/test_agent.sh --test weather      # Test weather tool
-scripts/test_agent.sh --test time         # Test time tool
-scripts/test_agent.sh --test calculator   # Test calculator tool
-scripts/test_agent.sh --test combined     # Test multiple tools
+scripts/tests/test_agent.sh --test weather      # Test weather tool
+scripts/tests/test_agent.sh --test time         # Test time tool
+scripts/tests/test_agent.sh --test calculator   # Test calculator tool
+scripts/tests/test_agent.sh --test combined     # Test multiple tools
 
 # Custom prompts
-scripts/test_agent.sh --prompt "Your custom question here"
+scripts/tests/test_agent.sh --prompt "Your custom question here"
 
 # Interactive mode
-scripts/test_agent.sh --interactive
+scripts/tests/test_agent.sh --interactive
 
 # Show full response with traces
-scripts/test_agent.sh --test combined --full
+scripts/tests/test_agent.sh --test combined --full
+```
+
+**Load Testing:**
+```bash
+# Run quick load test (5 min, 2 req/min) - generates observability data
+scripts/tests/run_load_test.sh quick
+
+# Run standard test (15 min, 4 req/min)
+scripts/tests/run_load_test.sh standard
+
+# Run extended test (30 min, 5 req/min) - great for demos
+scripts/tests/run_load_test.sh extended
+
+# Focus on multi-tool queries
+scripts/tests/run_load_test.sh multi-tool
+
+# Include error scenarios (30% errors)
+scripts/tests/run_load_test.sh errors
+
+# Custom configuration
+scripts/tests/run_load_test.sh --duration 20 --rate 5 --multi-tool 50
 ```
 
 **Cleanup:**
@@ -282,7 +303,7 @@ python simple_observability.py --scenario all
 
 Or simply test the agent:
 ```bash
-scripts/test_agent.sh --test weather
+scripts/tests/test_agent.sh --test weather
 ```
 
 ### Manual Setup (Alternative)
