@@ -1,0 +1,13 @@
+# Generated files from deployment scripts
+.agent_id
+.env
+.env.backup
+cloudwatch-urls.txt
+xray-permissions.json
+braintrust-usage.md
+
+# Temporary files
+*.tmp
+*.swp
+*.swo
+*~

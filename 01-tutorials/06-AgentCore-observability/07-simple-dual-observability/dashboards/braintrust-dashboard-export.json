@@ -1,0 +1,510 @@
+{
+  "dashboard_name": "AgentCore Dual Observability - Braintrust Configuration",
+  "description": "Braintrust dashboard configuration guide for AgentCore observability tutorial. Note: Braintrust uses UI-based configuration rather than JSON import. Use this as a reference for manual setup.",
+  "setup_instructions": {
+    "overview": "Braintrust dashboards are created through the web UI. This file documents the recommended configuration.",
+    "access": "https://www.braintrust.dev/app/[your-org]/experiments",
+    "authentication": "Use the BRAINTRUST_API_KEY from your environment setup"
+  },
+  "recommended_views": [
+    {
+      "view_name": "Experiment Overview",
+      "type": "experiment_list",
+      "configuration": {
+        "filters": {
+          "project": "dual-observability-demo",
+          "time_range": "last_24_hours"
+        },
+        "columns": [
+          "name",
+          "created_at",
+          "duration",
+          "num_traces",
+          "success_rate",
+          "avg_latency",
+          "total_tokens"
+        ],
+        "sort_by": "created_at",
+        "sort_order": "descending"
+      },
+      "purpose": "High-level view of all experiment runs",
+      "key_metrics_to_review": [
+        "Success rate trend over time",
+        "Average latency per experiment",
+        "Token consumption patterns",
+        "Number of traces per run"
+      ]
+    },
+    {
+      "view_name": "Trace Explorer",
+      "type": "trace_list",
+      "configuration": {
+        "filters": {
+          "project": "dual-observability-demo",
+          "time_range": "last_24_hours",
+          "tags": []
+        },
+        "columns": [
+          "input",
+          "output",
+          "duration",
+          "tokens_input",
+          "tokens_output",
+          "error",
+          "timestamp"
+        ],
+        "search_fields": [
+          "input",
+          "output",
+          "metadata"
+        ]
+      },
+      "purpose": "Detailed trace-level analysis",
+      "key_features": [
+        "Search by conversation content",
+        "Filter by success/failure",
+        "Sort by duration or token count",
+        "Click through to detailed span view"
+      ]
+    },
+    {
+      "view_name": "Span Timeline",
+      "type": "span_waterfall",
+      "configuration": {
+        "display_mode": "waterfall",
+        "show_metadata": true,
+        "expand_all": false,
+        "color_by": "span_type"
+      },
+      "purpose": "Visual execution flow analysis",
+      "key_insights": [
+        "Identify sequential vs parallel operations",
+        "Spot performance bottlenecks",
+        "See tool call timing",
+        "Understand model inference duration"
+      ]
+    },
+    {
+      "view_name": "Performance Metrics",
+      "type": "metrics_dashboard",
+      "configuration": {
+        "time_series": [
+          {
+            "metric": "latency",
+            "aggregation": ["p50", "p90", "p99", "avg"],
+            "group_by": "tool_name"
+          },
+          {
+            "metric": "token_count",
+            "aggregation": ["sum", "avg"],
+            "group_by": "token_type"
+          },
+          {
+            "metric": "success_rate",
+            "aggregation": ["percentage"],
+            "group_by": null
+          }
+        ]
+      },
+      "purpose": "Track performance trends",
+      "comparison_features": [
+        "Compare across experiments",
+        "Before/after analysis",
+        "Tool-level performance breakdown"
+      ]
+    },
+    {
+      "view_name": "Error Analysis",
+      "type": "error_explorer",
+      "configuration": {
+        "filters": {
+          "has_error": true
+        },
+        "group_by": [
+          "error_type",
+          "tool_name",
+          "error_message"
+        ],
+        "columns": [
+          "input",
+          "error_type",
+          "error_message",
+          "stack_trace",
+          "timestamp"
+        ]
+      },
+      "purpose": "Debug failures and errors",
+      "debugging_workflow": [
+        "Group errors by type to identify patterns",
+        "Review stack traces for root cause",
+        "Examine inputs that triggered errors",
+        "Track error frequency over time"
+      ]
+    },
+    {
+      "view_name": "Cost Analysis",
+      "type": "cost_dashboard",
+      "configuration": {
+        "metrics": [
+          {
+            "name": "total_tokens",
+            "split_by": ["input", "output"]
+          },
+          {
+            "name": "estimated_cost",
+            "model": "claude-3-5-sonnet-20241022",
+            "pricing": {
+              "input_tokens_per_million": 3.0,
+              "output_tokens_per_million": 15.0
+            }
+          }
+        ],
+        "time_range": "last_7_days",
+        "group_by": "experiment"
+      },
+      "purpose": "Track and optimize costs",
+      "cost_optimization_insights": [
+        "Identify expensive queries",
+        "Compare input vs output token ratios",
+        "Track cost per conversation",
+        "Spot opportunities for prompt optimization"
+      ]
+    }
+  ],
+  "custom_filters": {
+    "successful_queries": {
+      "filter": "error == null",
+      "use_case": "Analyze only successful executions"
+    },
+    "multi_tool_queries": {
+      "filter": "metadata.tool_count > 1",
+      "use_case": "Find queries using multiple tools"
+    },
+    "slow_queries": {
+      "filter": "duration > 20000",
+      "use_case": "Identify performance issues"
+    },
+    "high_token_queries": {
+      "filter": "tokens_total > 1000",
+      "use_case": "Find expensive conversations"
+    },
+    "weather_queries": {
+      "filter": "input contains 'weather'",
+      "use_case": "Track weather tool usage"
+    },
+    "calculation_queries": {
+      "filter": "input contains 'calculate' or input contains 'sqrt' or input contains 'factorial'",
+      "use_case": "Track calculator tool usage"
+    }
+  },
+  "metadata_tags": {
+    "recommended_tags": [
+      {
+        "name": "environment",
+        "values": ["dev", "staging", "production"],
+        "purpose": "Track deployment environment"
+      },
+      {
+        "name": "query_type",
+        "values": ["weather", "calculation", "multi_tool", "error_test"],
+        "purpose": "Categorize query patterns"
+      },
+      {
+        "name": "user_session",
+        "values": ["session_id"],
+        "purpose": "Group related queries"
+      },
+      {
+        "name": "model_version",
+        "values": ["claude-3-5-sonnet-20241022"],
+        "purpose": "Track model changes"
+      }
+    ]
+  },
+  "alerts_configuration": {
+    "note": "Braintrust alerts are configured in the UI under Project Settings > Alerts",
+    "recommended_alerts": [
+      {
+        "name": "High Error Rate",
+        "condition": "error_rate > 5%",
+        "window": "5 minutes",
+        "notification": "email"
+      },
+      {
+        "name": "Slow Queries",
+        "condition": "p99_latency > 30000",
+        "window": "5 minutes",
+        "notification": "slack"
+      },
+      {
+        "name": "High Token Usage",
+        "condition": "tokens_per_minute > 100000",
+        "window": "5 minutes",
+        "notification": "email"
+      }
+    ]
+  },
+  "integration_notes": {
+    "cloudwatch_correlation": {
+      "overview": "Use CloudWatch and Braintrust together for complete observability",
+      "correlation_fields": [
+        {
+          "field": "request_id",
+          "cloudwatch_location": "request_metadata.request_id",
+          "braintrust_location": "metadata.request_id",
+          "purpose": "Link CloudWatch metrics to Braintrust traces"
+        },
+        {
+          "field": "timestamp",
+          "cloudwatch_location": "@timestamp",
+          "braintrust_location": "created_at",
+          "purpose": "Time-based correlation"
+        }
+      ],
+      "workflow": [
+        "1. Notice error spike in CloudWatch metrics",
+        "2. Note timestamp of spike",
+        "3. Search Braintrust for traces in that time window",
+        "4. Filter Braintrust by has_error=true",
+        "5. Examine detailed traces and inputs",
+        "6. Identify root cause in Braintrust span details",
+        "7. Verify fix by monitoring CloudWatch metrics"
+      ]
+    }
+  },
+  "setup_steps": {
+    "step_1": {
+      "action": "Create Braintrust Project",
+      "instructions": [
+        "Navigate to https://www.braintrust.dev/app",
+        "Click 'New Project'",
+        "Name: 'dual-observability-demo'",
+        "Description: 'AgentCore observability tutorial with CloudWatch integration'"
+      ]
+    },
+    "step_2": {
+      "action": "Configure API Key",
+      "instructions": [
+        "Go to Settings > API Keys",
+        "Generate new API key",
+        "Copy key to .env file as BRAINTRUST_API_KEY",
+        "Verify key has project write permissions"
+      ]
+    },
+    "step_3": {
+      "action": "Run Initial Traces",
+      "instructions": [
+        "Run: uv run python simple_observability.py",
+        "Execute sample queries",
+        "Verify traces appear in Braintrust UI",
+        "Check experiment is created"
+      ]
+    },
+    "step_4": {
+      "action": "Create Custom Views",
+      "instructions": [
+        "Navigate to project dashboard",
+        "Create saved views for each recommended view type",
+        "Configure filters and columns as specified",
+        "Save views with descriptive names"
+      ]
+    },
+    "step_5": {
+      "action": "Set Up Alerts (Optional)",
+      "instructions": [
+        "Go to Project Settings > Alerts",
+        "Create alerts for error rate, latency, token usage",
+        "Configure notification channels",
+        "Test alerts with sample errors"
+      ]
+    }
+  },
+  "demo_walkthrough": {
+    "scenario_1_successful_query": {
+      "query": "What's the weather in Seattle and calculate the square root of 144?",
+      "braintrust_views_to_show": [
+        {
+          "view": "Trace Explorer",
+          "what_to_highlight": [
+            "Search for 'Seattle' to find this specific query",
+            "Show input and output columns",
+            "Point out duration and token counts",
+            "Note success status"
+          ]
+        },
+        {
+          "view": "Span Timeline",
+          "what_to_highlight": [
+            "Click on trace to open waterfall view",
+            "Show model call, tool calls, and response generation",
+            "Point out parallel vs sequential execution",
+            "Highlight tool call durations"
+          ]
+        },
+        {
+          "view": "Performance Metrics",
+          "what_to_highlight": [
+            "Show latency trend including this query",
+            "Compare to previous queries",
+            "Note token usage for this specific query"
+          ]
+        }
+      ]
+    },
+    "scenario_2_error_query": {
+      "query": "Calculate the factorial of -5",
+      "braintrust_views_to_show": [
+        {
+          "view": "Error Analysis",
+          "what_to_highlight": [
+            "Filter to show only errors",
+            "Show error type: ValueError",
+            "Display error message",
+            "Show stack trace for debugging"
+          ]
+        },
+        {
+          "view": "Span Timeline",
+          "what_to_highlight": [
+            "Red/highlighted error span",
+            "Show error occurred in tool call",
+            "Note shorter overall duration",
+            "Show agent's error recovery"
+          ]
+        }
+      ]
+    }
+  },
+  "ui_navigation": {
+    "main_menu": [
+      "Projects - List all projects",
+      "Experiments - View experiment runs",
+      "Traces - Detailed trace explorer",
+      "Datasets - Test data management",
+      "Settings - API keys and alerts"
+    ],
+    "experiment_view": [
+      "Summary - High-level metrics",
+      "Traces - All traces in experiment",
+      "Metrics - Performance charts",
+      "Compare - A/B testing"
+    ],
+    "trace_detail_view": [
+      "Timeline - Span waterfall",
+      "Input/Output - Conversation content",
+      "Metadata - Custom tags and fields",
+      "Raw - JSON export"
+    ]
+  },
+  "export_options": {
+    "csv_export": {
+      "available_from": "Trace Explorer view",
+      "includes": [
+        "Input text",
+        "Output text",
+        "Duration",
+        "Token counts",
+        "Error status",
+        "Metadata fields"
+      ],
+      "use_case": "Share data with stakeholders or import to other tools"
+    },
+    "json_export": {
+      "available_from": "Individual trace detail view",
+      "includes": [
+        "Complete span hierarchy",
+        "All metadata",
+        "Full input/output",
+        "Timing information"
+      ],
+      "use_case": "Detailed debugging or programmatic analysis"
+    }
+  },
+  "comparison_with_cloudwatch": {
+    "what_cloudwatch_provides": [
+      "Real-time operational metrics",
+      "Aggregated statistics (P50, P90, P99)",
+      "Alerting and notifications",
+      "AWS-native integration",
+      "Log aggregation"
+    ],
+    "what_braintrust_provides": [
+      "Detailed trace visualization",
+      "Conversation-level context",
+      "Input/output content search",
+      "A/B testing capabilities",
+      "Development workflow integration"
+    ],
+    "when_to_use_cloudwatch": [
+      "Real-time monitoring",
+      "Production alerting",
+      "Capacity planning",
+      "SLA tracking",
+      "Incident response"
+    ],
+    "when_to_use_braintrust": [
+      "Debugging specific failures",
+      "Understanding user queries",
+      "Optimizing prompts",
+      "Evaluating model changes",
+      "Development and testing"
+    ],
+    "optimal_workflow": [
+      "1. Monitor production with CloudWatch",
+      "2. Detect issues via CloudWatch alerts",
+      "3. Deep-dive in Braintrust for root cause",
+      "4. Test fixes in development with Braintrust",
+      "5. Deploy and verify with CloudWatch metrics"
+    ]
+  },
+  "troubleshooting": {
+    "traces_not_appearing": {
+      "possible_causes": [
+        "Invalid API key",
+        "Network connectivity issues",
+        "Project name mismatch",
+        "Async upload not completed"
+      ],
+      "solutions": [
+        "Verify BRAINTRUST_API_KEY in environment",
+        "Check console for error messages",
+        "Confirm project exists in Braintrust UI",
+        "Wait 10-30 seconds for async upload",
+        "Check Python traceback for errors"
+      ]
+    },
+    "missing_metadata": {
+      "possible_causes": [
+        "Metadata not logged in code",
+        "Incorrect span nesting",
+        "Braintrust SDK version mismatch"
+      ],
+      "solutions": [
+        "Review metadata logging in simple_observability.py",
+        "Update Braintrust SDK: uv add braintrust@latest",
+        "Check span hierarchy in code"
+      ]
+    },
+    "performance_issues": {
+      "possible_causes": [
+        "Synchronous logging blocking execution",
+        "Large trace payloads",
+        "Network latency to Braintrust API"
+      ],
+      "solutions": [
+        "Ensure async logging is enabled",
+        "Reduce metadata size if very large",
+        "Consider batching uploads",
+        "Check network connectivity"
+      ]
+    }
+  },
+  "best_practices": {
+    "trace_naming": "Use descriptive experiment names with dates: 'demo-YYYY-MM-DD'",
+    "metadata_strategy": "Include environment, model version, and query type in all traces",
+    "tag_consistency": "Use consistent tag values across all traces for easy filtering",
+    "cleanup": "Regularly archive old experiments to keep dashboard focused",
+    "documentation": "Document custom views and filters for team members",
+    "privacy": "Avoid logging PII in inputs/outputs; use sanitization if needed"
+  }
+}

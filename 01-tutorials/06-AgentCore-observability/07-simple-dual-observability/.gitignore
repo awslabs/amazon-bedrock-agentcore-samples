@@ -1,0 +1,35 @@
+# Environment and secrets
+.env
+.env.local
+.env.backup
+
+# Generated configuration
+.agent_id
+cloudwatch-urls.txt
+braintrust-usage.md
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Test outputs
+test-output/
+.pytest_cache/

@@ -1,0 +1,59 @@
+{
+  "name": "weather-time-assistant",
+  "description": "Simple agent for observability demo with weather, time, and calculator tools",
+  "model": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+  "systemPrompt": "You are a helpful assistant with access to weather, time, and calculator tools. Use these tools to help users with their queries about weather conditions, time in different cities, and mathematical calculations. Be clear and concise in your responses.",
+  "tools": [
+    {
+      "name": "get_weather",
+      "description": "Get current weather information for a city",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "city": {
+            "type": "string",
+            "description": "The name of the city to get weather for"
+          }
+        },
+        "required": ["city"]
+      }
+    },
+    {
+      "name": "get_time",
+      "description": "Get current time for a city or timezone",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "timezone": {
+            "type": "string",
+            "description": "The timezone name (e.g., 'America/New_York', 'Europe/London')"
+          }
+        },
+        "required": ["timezone"]
+      }
+    },
+    {
+      "name": "calculator",
+      "description": "Perform mathematical calculations",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "operation": {
+            "type": "string",
+            "enum": ["add", "subtract", "multiply", "divide", "factorial"],
+            "description": "The mathematical operation to perform"
+          },
+          "a": {
+            "type": "number",
+            "description": "First number (or the number for factorial)"
+          },
+          "b": {
+            "type": "number",
+            "description": "Second number (not used for factorial)"
+          }
+        },
+        "required": ["operation", "a"]
+      }
+    }
+  ]
+}
