@@ -136,6 +136,58 @@ aws iam put-role-policy \
 
 See [`docs/iam-policy-deployment.json`](docs/iam-policy-deployment.json) for the complete policy.
 
+## Quickstart
+
+Get the agent running in 3 commands:
+
+```bash
+# 1. Install dependencies and deploy agent
+cd scripts
+uv sync  # Install local dependencies
+./deploy_agent.sh --region us-east-1 --name weather_time_observability_agent
+
+# 2. Test the agent
+./test_agent.sh --test calculator
+./test_agent.sh --test weather
+./test_agent.sh --prompt "What time is it in Tokyo?"
+
+# 3. Check agent logs
+./check_logs.sh --time 30m
+./check_logs.sh --errors  # Show only errors
+```
+
+**Available test commands:**
+```bash
+# Predefined tests
+./test_agent.sh --test weather      # Test weather tool
+./test_agent.sh --test time         # Test time tool
+./test_agent.sh --test calculator   # Test calculator tool
+./test_agent.sh --test combined     # Test multiple tools
+
+# Custom prompts
+./test_agent.sh --prompt "Your custom question here"
+
+# Interactive mode
+./test_agent.sh --interactive
+
+# Show full response with traces
+./test_agent.sh --test combined --full
+```
+
+**Cleanup:**
+```bash
+# Delete agent and all resources
+./cleanup.sh
+
+# Or delete without prompts
+./cleanup.sh --force
+
+# Keep CloudWatch logs
+./cleanup.sh --keep-logs
+```
+
+For complete setup with CloudWatch dashboards and Braintrust integration, see the detailed setup below.
+
 ## Use case setup
 
 ### Step 1: Clone Repository and Install Dependencies

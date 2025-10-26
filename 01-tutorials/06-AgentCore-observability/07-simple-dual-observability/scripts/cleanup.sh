@@ -118,11 +118,11 @@ fi
 # Delete agent
 if [ -n "$AGENT_ID" ]; then
     echo "Deleting agent: $AGENT_ID"
-    aws bedrock-agentcore-runtime delete-agent \
-        --agent-id "$AGENT_ID" \
+    uv run python "$SCRIPT_DIR/delete_agent.py" \
         --region "$AWS_REGION" \
+        --agent-id "$AGENT_ID" \
         2>/dev/null || echo "Note: Agent may already be deleted or not found"
-    echo "Agent deletion initiated"
+    echo "Agent deletion complete"
 fi
 
 # Delete CloudWatch dashboard

@@ -2,6 +2,9 @@
 # Local development uses pyproject.toml (which includes bedrock-agentcore-starter-toolkit)
 # Pattern follows: 01-strands-with-bedrock-model/requirements.txt
 
+# AgentCore Runtime SDK (provides BedrockAgentCoreApp)
+bedrock-agentcore<=0.1.5
+
 # Agent framework and tools
 strands-agents
 strands-agents-tools
@@ -14,4 +17,3 @@ pytz
 pydantic
 
 # Note: OpenTelemetry is installed separately in Dockerfile
-# Note: bedrock-agentcore-runtime is provided by AgentCore Runtime environment
