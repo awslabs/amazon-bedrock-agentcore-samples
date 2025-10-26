@@ -1,9 +1,19 @@
+# Deployment toolkit (required for deploying agent to AgentCore Runtime)
+bedrock-agentcore-starter-toolkit>=0.1.14
+
+# Agent framework and tools
 strands-agents
 strands-agents-tools
+
+# AWS SDK and AgentCore
 boto3
 bedrock-agentcore<=0.1.5
 bedrock-agentcore-runtime
+
+# Agent dependencies
 pytz
 pydantic
+
+# OpenTelemetry (for observability)
 opentelemetry-sdk
 opentelemetry-exporter-otlp
