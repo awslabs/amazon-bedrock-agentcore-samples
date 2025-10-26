@@ -43,26 +43,26 @@ def _validate_environment() -> None:
     # 3. Credentials file (~/.aws/credentials)
     # 4. Config file (~/.aws/config)
 
+    # Validate AWS credentials by making an actual API call
+    # boto3 will automatically use credentials from (in order):
+    # 1. Environment variables (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)
+    # 2. IAM role (EC2 instance profile, Cloud9, ECS task role)
+    # 3. Credentials file (~/.aws/credentials)
+    # 4. Config file (~/.aws/config)
+    #
+    # Note: boto3 may log warnings about missing config files, but this is fine.
+    # As long as credentials can be obtained from another source (like IAM role),
+    # the validation will succeed.
+
     try:
-        from botocore.exceptions import ConfigNotFound, ProfileNotFound
+        # Suppress config file warnings by pointing to /dev/null
+        # This allows boto3 to skip config file and use IAM role directly
+        import os
+        if not os.path.exists(os.path.expanduser('~/.aws/config')):
+            os.environ['AWS_CONFIG_FILE'] = '/dev/null'
 
-        # Create session - will automatically try all credential sources
-        # boto3 may complain about missing config file, but will still work with IAM roles
-        try:
-            session = boto3.Session()
-        except (ConfigNotFound, ProfileNotFound) as e:
-            # Config file not found, but that's OK - try to continue with IAM role
-            logger.warning(f"Config file issue (this is OK): {e}")
-            logger.info("Continuing with IAM role or environment credentials...")
-
-            # Disable config file reading by setting environment variable
-            # This tells boto3 to skip looking for config files and use IAM role directly
-            import os
-            os.environ['AWS_CONFIG_FILE'] = '/dev/null'  # Point to empty file
-
-            # Create new session - will now skip config file and use IAM role
-            session = boto3.Session()
-
+        # Create session - boto3 will try all credential sources automatically
+        session = boto3.Session()
         sts = session.client('sts')
 
         # Validate credentials work by making an API call
@@ -93,23 +93,13 @@ def _validate_environment() -> None:
         error_msg = str(e)
         logger.error(f"Failed to validate AWS credentials: {error_msg}")
         logger.error("")
-
-        # Provide helpful error message based on the error type
-        if "could not be found" in error_msg and "config" in error_msg.lower():
-            logger.error("The ~/.aws/config file was not found, but this is OK if using IAM roles.")
-            logger.error("Attempting to use IAM role credentials (EC2/Cloud9 instance profile)...")
-            logger.error("")
-            logger.error("If this fails, ensure:")
-            logger.error("  1. Your EC2 instance has an IAM role attached")
-            logger.error("  2. The IAM role has necessary Bedrock and AgentCore permissions")
-            logger.error("  3. Or configure credentials: aws configure")
-        else:
-            logger.error("Please configure AWS credentials using one of:")
-            logger.error("  1. IAM role (if running on EC2/Cloud9)")
-            logger.error("  2. Environment variables (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)")
-            logger.error("  3. AWS CLI: aws configure")
-            logger.error("  4. Credentials file: ~/.aws/credentials")
-
+        logger.error("Please configure AWS credentials using one of:")
+        logger.error("  1. IAM role (if running on EC2/Cloud9) - instance must have role attached")
+        logger.error("  2. Environment variables (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)")
+        logger.error("  3. AWS CLI: aws configure")
+        logger.error("  4. Credentials file: ~/.aws/credentials")
+        logger.error("")
+        logger.error("To verify your credentials work, try: aws sts get-caller-identity")
         sys.exit(1)
 
 
