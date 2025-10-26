@@ -37,14 +37,73 @@ def _validate_environment() -> None:
         sys.exit(1)
 
     # Validate AWS credentials
+    # Note: boto3 automatically handles multiple credential sources:
+    # 1. Environment variables (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)
+    # 2. IAM role (EC2 instance profile, Cloud9, ECS task role)
+    # 3. Credentials file (~/.aws/credentials)
+    # 4. Config file (~/.aws/config)
+
     try:
-        session = boto3.Session()
+        from botocore.exceptions import ConfigNotFound, ProfileNotFound
+
+        # Create session - will automatically try all credential sources
+        # boto3 may complain about missing config file, but will still work with IAM roles
+        try:
+            session = boto3.Session()
+        except (ConfigNotFound, ProfileNotFound) as e:
+            # Config file not found, but that's OK - try to continue with IAM role
+            logger.warning(f"Config file issue (this is OK): {e}")
+            logger.info("Continuing with IAM role or environment credentials...")
+            # Create session without profile
+            session = boto3.Session(profile_name=None)
+
         sts = session.client('sts')
+
+        # Validate credentials work by making an API call
         identity = sts.get_caller_identity()
         logger.info(f"AWS Account ID: {identity['Account']}")
+        logger.info(f"AWS User/Role ARN: {identity['Arn']}")
+
+        # Determine credential source for informational purposes
+        try:
+            credentials = session.get_credentials()
+            if credentials:
+                cred_method = credentials.method
+                if cred_method == 'iam-role':
+                    logger.info("Credential source: IAM role (EC2/Cloud9 instance profile)")
+                elif cred_method == 'assume-role':
+                    logger.info("Credential source: Assumed role")
+                elif cred_method == 'env':
+                    logger.info("Credential source: Environment variables")
+                elif cred_method == 'shared-credentials-file':
+                    logger.info("Credential source: ~/.aws/credentials")
+                else:
+                    logger.info(f"Credential source: {cred_method}")
+        except Exception:
+            # Credential method detection failed, but that's okay - credentials work
+            pass
 
     except Exception as e:
-        logger.error(f"Failed to validate AWS credentials: {e}")
+        error_msg = str(e)
+        logger.error(f"Failed to validate AWS credentials: {error_msg}")
+        logger.error("")
+
+        # Provide helpful error message based on the error type
+        if "could not be found" in error_msg and "config" in error_msg.lower():
+            logger.error("The ~/.aws/config file was not found, but this is OK if using IAM roles.")
+            logger.error("Attempting to use IAM role credentials (EC2/Cloud9 instance profile)...")
+            logger.error("")
+            logger.error("If this fails, ensure:")
+            logger.error("  1. Your EC2 instance has an IAM role attached")
+            logger.error("  2. The IAM role has necessary Bedrock and AgentCore permissions")
+            logger.error("  3. Or configure credentials: aws configure")
+        else:
+            logger.error("Please configure AWS credentials using one of:")
+            logger.error("  1. IAM role (if running on EC2/Cloud9)")
+            logger.error("  2. Environment variables (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)")
+            logger.error("  3. AWS CLI: aws configure")
+            logger.error("  4. Credentials file: ~/.aws/credentials")
+
         sys.exit(1)
 
 
