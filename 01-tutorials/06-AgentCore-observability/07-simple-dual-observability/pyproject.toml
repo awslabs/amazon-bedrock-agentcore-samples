@@ -7,10 +7,11 @@ dependencies = [
     "boto3>=1.35.0",
     "pytz>=2024.1",
     "pydantic>=2.5.0",
+    "bedrock-agentcore-starter-toolkit>=0.1.14",
 ]
 
-# Note: AgentCore and Strands dependencies are in requirements.txt
-# They are installed during deployment to AgentCore Runtime, not locally via uv
+# Note: requirements.txt contains packages for the Docker container
+# pyproject.toml contains packages needed locally to run deployment scripts
 
 [dependency-groups]
 dev = [
