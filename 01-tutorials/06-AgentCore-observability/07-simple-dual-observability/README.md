@@ -75,10 +75,11 @@ For comprehensive information about this observability tutorial, please refer to
 
 | Requirement | Description |
 |-------------|-------------|
-| Python 3.11+ and `uv` | Python runtime and package manager. Install uv: `curl -LsSf https://astral.sh/uv/install.sh \| sh` |
+| Python 3.11+ | Python runtime for deployment scripts and agent code |
+| pip | Python package installer for dependencies |
+| Docker | Required for building agent containers. Install: https://docs.docker.com/get-docker/ |
 | AWS Account | Active AWS account with Bedrock access enabled in your region |
 | AWS CLI | Configured with credentials. Verify: `aws sts get-caller-identity` |
-| boto3 SDK | Python SDK for AWS. Installed automatically via uv |
 | IAM Permissions | Required permissions for AgentCore Runtime, CloudWatch, and X-Ray (see below) |
 | Braintrust Account | Free tier account for dual platform demo. Sign up at https://www.braintrust.dev/signup |
 | Amazon Bedrock Access | Access to Claude 3.5 Haiku model in your region |
@@ -106,13 +107,14 @@ Your IAM user or role needs permissions for:
 git clone https://github.com/awslabs/amazon-bedrock-agentcore-samples
 cd amazon-bedrock-agentcore-samples/01-tutorials/06-AgentCore-observability/07-simple-dual-observability
 
-# Install dependencies for local invocation
-# Note: Agent dependencies (strands-agents, bedrock-agentcore) are in requirements.txt
-# and will be installed automatically during deployment to AgentCore Runtime
-pip install boto3 pytz pydantic
-
-# Alternative: If you want to test the agent locally before deployment
+# Install deployment dependencies (required for deploying agent)
 pip install -r requirements.txt
+
+# This installs:
+#   - bedrock-agentcore-starter-toolkit (for deployment)
+#   - strands-agents (agent framework)
+#   - boto3 (AWS SDK)
+#   - Other dependencies
 ```
 
 ### Step 2: Configure Environment Variables
@@ -147,12 +149,12 @@ cd scripts
 ```
 
 This script will:
-1. Deploy the weather/time agent to AgentCore Runtime
-2. Configure MCP tools via AgentCore Gateway
-3. Set up CloudWatch dashboard and X-Ray tracing
-4. Configure Braintrust integration (if requested)
-5. Create all necessary AWS resources
-6. Generate `.agent_id` file with your agent ID
+1. Build Docker container with your Strands agent code
+2. Push container to Amazon ECR
+3. Deploy to AgentCore Runtime with OTEL enabled
+4. Set up CloudWatch dashboard and X-Ray tracing
+5. Configure Braintrust integration (if requested)
+6. Generate `.agent_id` and `.env` files with deployment info
 
 ### Step 4: Load Environment Configuration
 
