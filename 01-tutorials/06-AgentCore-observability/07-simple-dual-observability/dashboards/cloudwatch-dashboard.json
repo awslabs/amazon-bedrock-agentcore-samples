@@ -258,7 +258,7 @@
       "width": 24,
       "height": 6,
       "properties": {
-        "query": "SOURCE '/aws/lambda/agentcore-observability'\n| fields @timestamp, @message\n| filter @message like /ERROR/ or @message like /tool_call/ or @message like /Response:/\n| sort @timestamp desc\n| limit 20",
+        "query": "SOURCE '/aws/agentcore-runtime/weather-time-agent'\n| fields @timestamp, @message\n| filter @message like /ERROR/ or @message like /tool_call/ or @message like /Response:/\n| sort @timestamp desc\n| limit 20",
         "region": "us-east-1",
         "stacked": false,
         "title": "Recent Traces and Errors",

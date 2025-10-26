@@ -203,8 +203,8 @@ This:
 - Prints observability links
 
 **Analogy:**
-- `weather_time_agent.py` = Your Lambda function code
-- `simple_observability.py` = The script that invokes your Lambda
+- `weather_time_agent.py` = Your agent application code (deployed to Runtime)
+- `simple_observability.py` = The client script that invokes your deployed agent
 
 ---
 

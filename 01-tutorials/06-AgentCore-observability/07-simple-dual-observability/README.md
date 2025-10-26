@@ -46,9 +46,9 @@ This tutorial demonstrates Amazon Bedrock AgentCore's automatic OpenTelemetry in
 │  │ (AWS-native)     │  (AI platform)  │                        │
 │  └──────────────────┴─────────────────┘                        │
 │                                                                 │
-│  Key: No Lambda functions required                             │
-│       Zero code changes for observability                      │
+│  Key: Zero code changes for observability                      │
 │       Vendor-neutral OTEL format                               │
+│       Fully managed agent hosting                              │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -56,7 +56,7 @@ This tutorial demonstrates Amazon Bedrock AgentCore's automatic OpenTelemetry in
 
 - **Automatic OTEL Instrumentation**: AgentCore Runtime automatically generates OpenTelemetry traces with zero code changes
 - **Dual Platform Export**: Simultaneous trace export to CloudWatch X-Ray and Braintrust using vendor-neutral OTEL format
-- **Managed Services**: No Lambda functions or infrastructure management required
+- **Fully Managed**: AgentCore Runtime and Gateway handle all infrastructure management
 - **MCP Tool Integration**: Tools exposed via AgentCore Gateway using Model Context Protocol
 - **Comprehensive Tracing**: Captures agent invocation, model calls, tool selection, and execution spans
 - **Platform Comparison**: Demonstrates AWS-native vs AI-focused observability capabilities
@@ -391,8 +391,8 @@ rm -f .env
 
 ### Related Tutorials
 - Tutorial 02: Self-Hosted Agent Observability
-- Tutorial 05: Lambda AgentCore Invocation
 - MCP Server Configuration Guide
+- AgentCore Gateway Deep Dive
 
 ### Community
 - AWS re:Post: https://repost.aws/

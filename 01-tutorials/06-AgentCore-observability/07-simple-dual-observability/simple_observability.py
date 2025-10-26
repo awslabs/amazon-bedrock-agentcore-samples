@@ -15,7 +15,7 @@ Architecture:
         ↓ traces exported
     CloudWatch X-Ray + Braintrust
 
-No Lambda required - agent runs in AgentCore Runtime (fully managed).
+Agent runs in AgentCore Runtime - a fully managed service for hosting agents.
 """
 
 import argparse
