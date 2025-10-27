@@ -158,7 +158,7 @@ def extract_tools_info(log_entries):
         
         # Check for tool responses
         if "body" in entry_data and "content" in entry_data["body"] and "id" in entry_data["body"]:
-            tool_id = entry_data["body"].get("id")
+            # tool_id = entry_data["body"].get("id")
             content = entry_data["body"].get("content")
             
             # If this is a tool response message

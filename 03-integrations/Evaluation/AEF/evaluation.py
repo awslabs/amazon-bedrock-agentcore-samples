@@ -15,10 +15,10 @@ from langchain_community.embeddings import BedrockEmbeddings
 sys.path.append('../ragas-evaluation/src/')
 
 from ragas import evaluate
-from ragas.metrics._answer_precision import AnswerPrecision, answer_precision
-from ragas.metrics._answer_recall import AnswerRecall, answer_recall
-from ragas.metrics._answer_correctness import AnswerCorrectness, answer_correctness
-from ragas.metrics._answer_similarity import AnswerSimilarity, answer_similarity
+from ragas.metrics._answer_precision import answer_precision
+from ragas.metrics._answer_recall import answer_recall
+from ragas.metrics._answer_correctness import answer_correctness
+from ragas.metrics._answer_similarity import answer_similarity
 
 
 def get_answers_detail_langgraph(user_input, graph, agent_node_name, tool_node_name, config):
@@ -75,7 +75,7 @@ def get_answers_detail_langgraph(user_input, graph, agent_node_name, tool_node_n
         raise RuntimeError(f"Error processing graph output: {str(e)}")
 
 
-def get_answers_detail_bedrock(user_input, agentId, alias_id, session_id, config):
+def get_answers_detail_bedrock(user_input, agent_id, alias_id, session_id, config):
     """
     Process user input through a Bedrock agent and return detailed information about the interaction.
 
@@ -102,6 +102,9 @@ def get_answers_detail_bedrock(user_input, agentId, alias_id, session_id, config
         responses = []
         input_tokens = 0
         output_tokens = 0
+
+        # Create Bedrock Agent Runtime client
+        bedrock_agent_runtime_client = boto3.client('bedrock-agent-runtime')
 
         # Invoke the Bedrock agent with the user input
         agent_response = bedrock_agent_runtime_client.invoke_agent(
@@ -848,7 +851,7 @@ def calc_metrics(data_df: pd.DataFrame,
         ragas_metric_list = [m for m in metric_list if m in ragas_metrics]
 
         # Initiate LLMs
-        bedrock_config = Config(connect_timeout=120, read_timeout=120, retries={'max_attempts': 2})
+        # bedrock_config = Config(connect_timeout=120, read_timeout=120, retries={'max_attempts': 2})
         bedrock_client = boto3.client('bedrock-runtime')
         bedrock_model = ChatBedrock(model_id=eval_modelId, client=bedrock_client)
 
