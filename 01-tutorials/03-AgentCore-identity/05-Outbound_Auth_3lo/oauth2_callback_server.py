@@ -1,5 +1,6 @@
 """
-Sample OAuth2 Callback Server for Authorization Code flow ( 3LO ) with Amazon Bedrock AgentCore Identity
+Note : This sample Callback server is for development use only.
+Sample OAuth2 Callback Server for Authorization Code flow ( 3LO ) with Amazon Bedrock AgentCore Identity.
 
 This module implements a local callback server that handles OAuth2 3-legged (3LO) authentication flows
 for AgentCore Identity. It serves as an intermediary between the user's browser, external OAuth providers
@@ -49,102 +50,139 @@ logger = logging.getLogger(__name__)
 
 class SessionStore:
     """
-    Thread-safe session store for managing user token identifiers.
-    
-    This class provides session isolation by storing user tokens with unique session IDs
-    and automatic cleanup of expired sessions to prevent memory leaks.
+    Thread-safe session store for managing user token identifiers with session isolation.
     """
     
     def __init__(self, timeout_minutes: int = SESSION_TIMEOUT_MINUTES):
+        # Maps AgentCore session_id directly to user token data
         self._sessions: Dict[str, Dict] = {}
         self._lock = threading.RLock()
         self._timeout_minutes = timeout_minutes
+        # Keep track of pending sessions (user tokens stored before AgentCore session ID is known)
+        self._pending_sessions: Dict[str, Dict] = {}
     
-    def create_session(self, user_token_identifier: UserTokenIdentifier) -> str:
+    def store_user_token(self, user_token_identifier: UserTokenIdentifier, agentcore_session_id: Optional[str] = None) -> str:
         """
-        Create a new session with a unique session ID.
+        Store user token identifier with session isolation.
         
         Args:
             user_token_identifier: User token identifier to store
+            agentcore_session_id: Optional AgentCore session ID if known
             
         Returns:
-            str: Unique session ID
+            str: Session reference ID for tracking
         """
-        session_id = str(uuid.uuid4())
+        session_ref_id = str(uuid.uuid4())
+        session_data = {
+            'user_token_identifier': user_token_identifier,
+            'created_at': datetime.now(),
+            'expires_at': datetime.now() + timedelta(minutes=self._timeout_minutes),
+            'session_ref_id': session_ref_id
+        }
         
         with self._lock:
-            self._sessions[session_id] = {
-                'user_token_identifier': user_token_identifier,
-                'created_at': datetime.now(),
-                'expires_at': datetime.now() + timedelta(minutes=self._timeout_minutes)
-            }
+            if agentcore_session_id:
+                # If we have the AgentCore session ID, store directly
+                self._sessions[agentcore_session_id] = session_data
+                logger.info("Stored user token with AgentCore session ID")
+            else:
+                # Store in pending sessions until AgentCore session ID is available
+                self._pending_sessions[session_ref_id] = session_data
+                logger.info("Stored user token in pending sessions")
             
         # Clean up expired sessions
         self._cleanup_expired_sessions()
         
-        logger.info(f"Created session for user authentication")
-        return session_id
+        return session_ref_id
     
-    def get_session(self, session_id: str) -> Optional[UserTokenIdentifier]:
+    def link_agentcore_session(self, agentcore_session_id: str, session_ref_id: str) -> bool:
         """
-        Retrieve user token identifier for a given session ID.
+        Link an AgentCore session ID to a pending user session.
         
         Args:
-            session_id: Session ID to look up
+            agentcore_session_id: Session ID from AgentCore Identity
+            session_ref_id: Reference ID from store_user_token
+            
+        Returns:
+            bool: True if linking was successful
+        """
+        with self._lock:
+            if session_ref_id in self._pending_sessions:
+                session_data = self._pending_sessions.pop(session_ref_id)
+                self._sessions[agentcore_session_id] = session_data
+                logger.info("Linked AgentCore session to user token")
+                return True
+            return False
+    
+    def get_user_token_by_agentcore_session(self, agentcore_session_id: str) -> Optional[UserTokenIdentifier]:
+        """
+        Retrieve user token identifier for a given AgentCore session ID.
+        
+        Args:
+            agentcore_session_id: AgentCore session ID from callback
             
         Returns:
             UserTokenIdentifier if session exists and is valid, None otherwise
         """
         with self._lock:
-            session_data = self._sessions.get(session_id)
+            session_data = self._sessions.get(agentcore_session_id)
             
             if not session_data:
-                logger.warning(f"Session not found")
+                logger.warning(f"AgentCore session not found: {agentcore_session_id[:8]}...")
                 return None
             
             # Check if session has expired
             if datetime.now() > session_data['expires_at']:
-                logger.warning(f"Session has expired")
-                del self._sessions[session_id]
+                logger.warning(f"AgentCore session expired: {agentcore_session_id[:8]}...")
+                del self._sessions[agentcore_session_id]
                 return None
             
             return session_data['user_token_identifier']
     
-    def remove_session(self, session_id: str) -> bool:
+    def remove_session(self, agentcore_session_id: str) -> bool:
         """
         Remove a session after successful OAuth completion.
         
         Args:
-            session_id: Session ID to remove
+            agentcore_session_id: AgentCore session ID to remove
             
         Returns:
             bool: True if session was removed, False if not found
         """
         with self._lock:
-            if session_id in self._sessions:
-                del self._sessions[session_id]
-                logger.info(f"Removed session after successful OAuth completion")
+            if agentcore_session_id in self._sessions:
+                del self._sessions[agentcore_session_id]
+                logger.info("Removed session after successful OAuth completion")
                 return True
             return False
     
     def _cleanup_expired_sessions(self):
         """Clean up expired sessions to prevent memory leaks."""
         current_time = datetime.now()
-        expired_sessions = []
         
         with self._lock:
-            for session_id, session_data in self._sessions.items():
-                if current_time > session_data['expires_at']:
-                    expired_sessions.append(session_id)
-            
+            # Clean up expired main sessions
+            expired_sessions = [
+                session_id for session_id, session_data in self._sessions.items()
+                if current_time > session_data['expires_at']
+            ]
             for session_id in expired_sessions:
                 del self._sessions[session_id]
-                logger.info(f"Cleaned up expired session.")
+                logger.info("Cleaned up expired session")
+            
+            # Clean up expired pending sessions
+            expired_pending = [
+                ref_id for ref_id, session_data in self._pending_sessions.items()
+                if current_time > session_data['expires_at']
+            ]
+            for ref_id in expired_pending:
+                del self._pending_sessions[ref_id]
+                logger.info("Cleaned up expired pending session")
     
     def get_session_count(self) -> int:
         """Get the current number of active sessions."""
         with self._lock:
-            return len(self._sessions)
+            return len(self._sessions) + len(self._pending_sessions)
 
 
 class OAuth2CallbackServer:
@@ -154,10 +192,6 @@ class OAuth2CallbackServer:
     This server acts as a local callback endpoint that external OAuth providers (like Google, Github)
     redirect to after user authorization. It manages the completion of the OAuth flow by
     coordinating with AgentCore Identity service.
-    
-    SECURITY IMPROVEMENT:
-    This version implements proper session isolation using a SessionStore to prevent
-    race conditions when multiple users authenticate simultaneously.
     """
     
     def __init__(self, region: str):
@@ -183,7 +217,7 @@ class OAuth2CallbackServer:
         """
         Configure FastAPI routes for the OAuth2 callback server.
         
-        Sets up three endpoints:
+        Sets up endpoints:
         1. POST /userIdentifier/token - Store user token identifier with session isolation
         2. GET /ping - Health check endpoint
         3. GET /oauth2/callback - OAuth2 callback handler for provider redirects
@@ -197,13 +231,16 @@ class OAuth2CallbackServer:
             This endpoint creates a unique session for each user's OAuth flow,
             preventing race conditions when multiple users authenticate simultaneously.
             
+            Maintains backward compatibility with the original API while adding session isolation.
+            
             Args:
                 request_data: Dictionary containing user token information
                                            
             Returns:
-                dict: Response containing the session ID for this user's OAuth flow
+                dict: Response containing success status and session information
             """
             user_token = request_data.get("user_token")
+            
             if not user_token:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
@@ -212,11 +249,11 @@ class OAuth2CallbackServer:
             
             # Create UserTokenIdentifier from the provided token
             user_token_identifier = UserTokenIdentifier(user_token=user_token)
-            session_id = self.session_store.create_session(user_token_identifier)
+            session_ref_id = self.session_store.store_user_token(user_token_identifier)
             
             return {
                 "status": "success",
-                "session_id": session_id,
+                "session_ref_id": session_ref_id,
                 "message": "User token stored with session isolation",
                 "active_sessions": self.session_store.get_session_count()
             }
@@ -235,22 +272,21 @@ class OAuth2CallbackServer:
             }
 
         @self.app.get(OAUTH2_CALLBACK_ENDPOINT)
-        async def _handle_oauth2_callback(session_id: str, user_session: str):
+        async def _handle_oauth2_callback(session_id: str):
             """
             Handle OAuth2 callback from external providers with session isolation.
             
-            This endpoint uses session-based isolation to prevent race conditions
-            when multiple users authenticate simultaneously.
+            This endpoint receives the AgentCore session_id and looks up the associated
+            user token identifier. It implements a fallback mechanism for backward compatibility.
             
             Args:
-                session_id (str): Session identifier from OAuth provider redirect
-                user_session (str): User session ID for session isolation
+                session_id (str): Session identifier from AgentCore Identity callback
                 
             Returns:
-                dict: Success message indicating OAuth flow completion
+                HTMLResponse: Success page indicating OAuth flow completion
                 
             Raises:
-                HTTPException: If session_id is missing or user session not found
+                HTTPException: If session_id is missing or session not found
             """
             # Validate that session_id parameter is present
             if not session_id:
@@ -259,21 +295,34 @@ class OAuth2CallbackServer:
                     detail="Missing session_id query parameter",
                 )
 
-            # Validate that user_session parameter is present
-            if not user_session:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Missing user_session query parameter",
-                )
-
-            # Get user token identifier from session store
-            user_token_identifier = self.session_store.get_session(user_session)
+            # Try to get user token identifier using AgentCore session ID
+            user_token_identifier = self.session_store.get_user_token_by_agentcore_session(session_id)
             
             if not user_token_identifier:
-                logger.error(f"User session {user_session[:8]}... not found or expired")
+                # FALLBACK: For backward compatibility, check if there's exactly one pending session
+                # This handles the case where the session linking didn't happen but there's only one user
+                with self.session_store._lock:
+                    pending_sessions = list(self.session_store._pending_sessions.values())
+                    if len(pending_sessions) == 1:
+                        session_data = pending_sessions[0]
+                        # Check if not expired
+                        if datetime.now() <= session_data['expires_at']:
+                            user_token_identifier = session_data['user_token_identifier']
+                            # Move from pending to active sessions
+                            ref_id = session_data['session_ref_id']
+                            self.session_store._pending_sessions.pop(ref_id, None)
+                            self.session_store._sessions[session_id] = session_data
+                            logger.info("Used fallback: linked single pending session to AgentCore session")
+                        else:
+                            logger.error("Single pending session has expired")
+                    else:
+                        logger.error("No fallback available: {len(pending_sessions)} pending sessions")
+            
+            if not user_token_identifier:
+                logger.error(f"AgentCore session {session_id[:8]}... not found and no fallback available")
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Invalid or expired user session",
+                    detail="Invalid or expired session",
                 )
             
             # Complete the OAuth flow
@@ -282,9 +331,9 @@ class OAuth2CallbackServer:
             )
             
             # Clean up the session after successful completion
-            self.session_store.remove_session(user_session)
+            self.session_store.remove_session(session_id)
             
-            logger.info(f"OAuth flow completed successfully for session {user_session[:8]}...")
+            logger.info(f"OAuth flow completed successfully for AgentCore session {session_id[:8]}...")
 
             html_content = """
             <!DOCTYPE html>
@@ -375,7 +424,7 @@ def store_token_in_oauth2_callback_server(user_token_value: str) -> Optional[str
                                used to identify the user in the OAuth flow
     
     Returns:
-        Optional[str]: Session ID for the user's OAuth flow
+        Optional[str]: Session reference ID for tracking (for future use)
     
     Usage Context:
         Called before starting OAuth flow to ensure the callback server knows
@@ -384,7 +433,7 @@ def store_token_in_oauth2_callback_server(user_token_value: str) -> Optional[str
         
     Example:
         bearer_token = reauthenticate_user(client_id)
-        session_id = store_token_in_oauth2_callback_server(bearer_token)
+        store_token_in_oauth2_callback_server(bearer_token)
     """
     if not user_token_value:
         logger.error("Ignoring: invalid user_token provided...")
@@ -401,12 +450,12 @@ def store_token_in_oauth2_callback_server(user_token_value: str) -> Optional[str
             try:
                 response_data = response.json()
                 if response_data and isinstance(response_data, dict):
-                    session_id = response_data.get('session_id')
-                    if session_id:
-                        logger.info(f"Token stored with session isolation.")
-                        return session_id
+                    session_ref_id = response_data.get('session_ref_id')
+                    if session_ref_id:
+                        logger.info("Token stored with session isolation.")
+                        return session_ref_id
                     else:
-                        logger.error("Server response missing session_id")
+                        logger.error("Server response missing session_ref_id")
                         return None
                 else:
                     logger.error("Server returned invalid JSON response")
@@ -499,7 +548,7 @@ def main():
     AWS region with proper session isolation.
     
     Command Line Usage:
-        python oauth2_callback_server_fixed.py --region us-east-1
+        python oauth2_callback_server.py --region us-east-1
         
     The server will run until manually terminated and will handle OAuth2 callbacks
     for any AgentCore agents in the specified region with session isolation enabled.
