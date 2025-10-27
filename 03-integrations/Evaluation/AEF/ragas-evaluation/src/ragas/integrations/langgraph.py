@@ -7,7 +7,7 @@ import ragas.messages as r
 
 
 def convert_to_ragas_messages(
-    messages: List[Union[HumanMessage, SystemMessage, AIMessage, ToolMessage]]
+    messages: List[Union[HumanMessage, SystemMessage, AIMessage, ToolMessage]],
 ) -> List[Union[r.HumanMessage, r.AIMessage, r.ToolMessage]]:
     """
     Convert LangChain messages into Ragas messages for agent evaluation.

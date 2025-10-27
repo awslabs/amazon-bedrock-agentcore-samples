@@ -249,7 +249,6 @@ class Faithfulness(MetricWithLLM, SingleTurnMetric):
         returns the NLI score for each (q, c, a) pair
         """
         assert self.llm is not None, "LLM is not set"
-        
 
         statements_simplified = await self._create_statements(row, callbacks)
         if statements_simplified is None:

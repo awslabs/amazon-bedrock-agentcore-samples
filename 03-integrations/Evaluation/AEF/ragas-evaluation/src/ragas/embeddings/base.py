@@ -96,7 +96,8 @@ class BaseRagasEmbeddings(Embeddings, ABC):
         Define how Pydantic generates a schema for BaseRagasEmbeddings.
         """
         return core_schema.no_info_after_validator_function(
-            cls, core_schema.is_instance_schema(cls)  # The validator function
+            cls,
+            core_schema.is_instance_schema(cls),  # The validator function
         )
 
 
@@ -269,9 +270,9 @@ class HuggingfaceEmbeddings(BaseRagasEmbeddings):
         from sentence_transformers.SentenceTransformer import SentenceTransformer
         from torch import Tensor
 
-        assert isinstance(
-            self.model, SentenceTransformer
-        ), "Model is not of the type Bi-encoder"
+        assert isinstance(self.model, SentenceTransformer), (
+            "Model is not of the type Bi-encoder"
+        )
         embeddings = self.model.encode(
             texts, normalize_embeddings=True, **self.encode_kwargs
         )
@@ -286,9 +287,9 @@ class HuggingfaceEmbeddings(BaseRagasEmbeddings):
         from sentence_transformers.cross_encoder import CrossEncoder
         from torch import Tensor
 
-        assert isinstance(
-            self.model, CrossEncoder
-        ), "Model is not of the type CrossEncoder"
+        assert isinstance(self.model, CrossEncoder), (
+            "Model is not of the type CrossEncoder"
+        )
 
         predictions = self.model.predict(texts, **self.encode_kwargs)
 

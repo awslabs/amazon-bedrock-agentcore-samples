@@ -244,9 +244,9 @@ class FactualCorrectness(MetricWithLLM, SingleTurnMetric):
         self, response: str, callbacks: Callbacks
     ) -> t.List[str]:
         assert self.llm is not None, "LLM must be set"
-        assert (
-            self.sentence_segmenter is not None
-        ), "Sentence segmenter is not initialized"
+        assert self.sentence_segmenter is not None, (
+            "Sentence segmenter is not initialized"
+        )
 
         sentences = self.sentence_segmenter.segment(response)
         assert isinstance(sentences, list), "Segmenter must return a list of sentences"

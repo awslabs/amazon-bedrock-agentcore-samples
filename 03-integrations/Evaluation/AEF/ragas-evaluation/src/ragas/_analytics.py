@@ -106,8 +106,10 @@ class TestsetGenerationEvent(BaseEvent):
     is_experiment: bool = False
     version: str = "3"  # the version of testset generation pipeline
 
+
 def sleep_time():
     return 1
+
 
 class AnalyticsBatcher:
     def __init__(self, batch_size: int = 50, flush_interval: float = 120):

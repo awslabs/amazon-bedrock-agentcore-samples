@@ -22,7 +22,6 @@ class PromptMixin:
     """
 
     def _get_prompts(self) -> t.Dict[str, PydanticPrompt]:
-
         prompts = {}
         for key, value in inspect.getmembers(self):
             if isinstance(value, PydanticPrompt):

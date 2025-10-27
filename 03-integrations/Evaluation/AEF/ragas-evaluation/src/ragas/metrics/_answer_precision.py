@@ -79,7 +79,9 @@ example_output_1 = SentencesSimplified(
 )
 
 
-class LongFormAnswerPrompt(PydanticPrompt[AnswerPrecisionStatements, SentencesSimplified]):
+class LongFormAnswerPrompt(
+    PydanticPrompt[AnswerPrecisionStatements, SentencesSimplified]
+):
     instruction = "Given a question, an answer, and sentences from the answer analyze the complexity of each sentence given under 'sentences' and break down each sentence into one or more fully understandable statements while also ensuring no pronouns are used in each statement. Format the outputs in JSON."
     input_model = AnswerPrecisionStatements
     output_model = SentencesSimplified
@@ -173,11 +175,7 @@ class AnswerPrecision(MetricWithLLM, SingleTurnMetric):
     name: str = "answer_precision"
     _required_columns: t.Dict[MetricType, t.Set[str]] = field(
         default_factory=lambda: {
-            MetricType.SINGLE_TURN: {
-                "reference", 
-                "response", 
-                "user_input"
-            }
+            MetricType.SINGLE_TURN: {"reference", "response", "user_input"}
         }
     )
     output_type: t.Optional[MetricOutputType] = MetricOutputType.CONTINUOUS
@@ -249,7 +247,6 @@ class AnswerPrecision(MetricWithLLM, SingleTurnMetric):
         returns the NLI score for each (q, c, a) pair
         """
         assert self.llm is not None, "LLM is not set"
-        
 
         statements_simplified = await self._create_statements(row, callbacks)
         if statements_simplified is None:
@@ -262,5 +259,6 @@ class AnswerPrecision(MetricWithLLM, SingleTurnMetric):
 
         verdicts = await self._create_verdicts(row, statements, callbacks)
         return self._compute_score(verdicts)
-    
+
+
 answer_precision = AnswerPrecision()

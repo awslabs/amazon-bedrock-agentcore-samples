@@ -173,11 +173,7 @@ class AnswerRecall(MetricWithLLM, SingleTurnMetric):
     name: str = "answer_recall"
     _required_columns: t.Dict[MetricType, t.Set[str]] = field(
         default_factory=lambda: {
-            MetricType.SINGLE_TURN: {
-                "reference", 
-                "response", 
-                "user_input"
-            }
+            MetricType.SINGLE_TURN: {"reference", "response", "user_input"}
         }
     )
     output_type: t.Optional[MetricOutputType] = MetricOutputType.CONTINUOUS
@@ -249,7 +245,6 @@ class AnswerRecall(MetricWithLLM, SingleTurnMetric):
         returns the NLI score for each (q, c, a) pair
         """
         assert self.llm is not None, "LLM is not set"
-        
 
         statements_simplified = await self._create_statements(row, callbacks)
         if statements_simplified is None:
@@ -262,5 +257,6 @@ class AnswerRecall(MetricWithLLM, SingleTurnMetric):
 
         verdicts = await self._create_verdicts(row, statements, callbacks)
         return self._compute_score(verdicts)
-    
+
+
 answer_recall = AnswerRecall()
