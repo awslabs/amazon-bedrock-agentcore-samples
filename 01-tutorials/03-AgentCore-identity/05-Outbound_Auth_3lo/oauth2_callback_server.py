@@ -82,7 +82,7 @@ class SessionStore:
         # Clean up expired sessions
         self._cleanup_expired_sessions()
         
-        logger.info(f"Created session {session_id[:8]}... for user authentication")
+        logger.info(f"Created session for user authentication")
         return session_id
     
     def get_session(self, session_id: str) -> Optional[UserTokenIdentifier]:
@@ -99,12 +99,12 @@ class SessionStore:
             session_data = self._sessions.get(session_id)
             
             if not session_data:
-                logger.warning(f"Session {session_id[:8]}... not found")
+                logger.warning(f"Session not found")
                 return None
             
             # Check if session has expired
             if datetime.now() > session_data['expires_at']:
-                logger.warning(f"Session {session_id[:8]}... has expired")
+                logger.warning(f"Session has expired")
                 del self._sessions[session_id]
                 return None
             
@@ -123,7 +123,7 @@ class SessionStore:
         with self._lock:
             if session_id in self._sessions:
                 del self._sessions[session_id]
-                logger.info(f"Removed session {session_id[:8]}... after successful OAuth completion")
+                logger.info(f"Removed session after successful OAuth completion")
                 return True
             return False
     
@@ -139,7 +139,7 @@ class SessionStore:
             
             for session_id in expired_sessions:
                 del self._sessions[session_id]
-                logger.info(f"Cleaned up expired session {session_id[:8]}...")
+                logger.info(f"Cleaned up expired session.")
     
     def get_session_count(self) -> int:
         """Get the current number of active sessions."""
