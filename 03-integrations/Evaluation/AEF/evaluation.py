@@ -8,7 +8,6 @@ import sys
 import time
 from typing import List, Dict
 
-from botocore.client import Config
 from langchain_aws import ChatBedrock
 from langchain_community.embeddings import BedrockEmbeddings
 

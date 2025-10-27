@@ -3,8 +3,6 @@ import json
 import uuid
 import time
 from datetime import datetime, timedelta
-from evaluation import *
-
 
 def get_logs_by_trace_id(trace_id, log_group_names, region_name='us-east-1'):
     """
@@ -150,7 +148,7 @@ def extract_tools_info(log_entries):
                     if isinstance(item, dict) and item.get("type") == "tool_use":
                         tool_name = item.get("name")
                         tool_input = item.get("input", {})
-                        tool_id = item.get("id")
+                        # tool_id = item.get("id")
                         
                         if tool_name:
                             called_tools_list.append(tool_name)
