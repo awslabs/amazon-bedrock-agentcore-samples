@@ -403,7 +403,7 @@ def store_token_in_oauth2_callback_server(user_token_value: str) -> Optional[str
                 if response_data and isinstance(response_data, dict):
                     session_id = response_data.get('session_id')
                     if session_id:
-                        logger.info(f"Token stored with session isolation. Session ID: {session_id[:8]}...")
+                        logger.info(f"Token stored with session isolation.")
                         return session_id
                     else:
                         logger.error("Server response missing session_id")
