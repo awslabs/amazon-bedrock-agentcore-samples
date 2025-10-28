@@ -69,6 +69,11 @@ A comprehensive implementation of the [Agent-to-Agent (A2A)](https://a2a-protoco
 
 ## Deployment Steps
 
+```bash
+git clone https://github.com/awslabs/amazon-bedrock-agentcore-samples.git
+cd 02-use-cases/A2A-multi-agent-incident-response
+```
+
 ### Step 1: Deploy AWS Cognito Stack
 
 ```bash
@@ -85,26 +90,59 @@ aws cloudformation create-stack \
 aws cloudformation create-stack \
     --stack-name monitor-agent-a2a \
     --template-body file://cloudformation/monitoring_agent.yaml \
+    --parameters \
+ParameterKey=GitHubURL,\
+ParameterValue=https://github.com/awslabs/amazon-bedrock-agentcore-samples.git \
+ParameterKey=AgentDirectory,\
+ParameterValue=monitoring_agent \
+ParameterKey=CognitoStackName,\
+ParameterValue=cognito-stack-a2a \
     --capabilities CAPABILITY_IAM \
     --region us-west-2
 ```
 
 ### Step 3: Deploy Web Search OpenAI SDK Agent
 
+> [!IMPORTANT]
+> Replace the following placeholders:
+> - `<your-openai-api-key>`: Your OpenAI API key
+> - `<your-openai-model>`: OpenAI model ID (default: `gpt-4o-2024-08-06`)
+> - `<your-tavily-api-key>`: Your Tavily API key for web search
+
 ```bash
 aws cloudformation create-stack \
     --stack-name web-search-agent-a2a \
     --template-body file://cloudformation/web_search_agent.yaml \
+    --parameters \
+ParameterKey=OpenAIKey,ParameterValue=<your-openai-api-key> \
+ParameterKey=OpenAIModelId,ParameterValue=<your-openai-model> \
+ParameterKey=TavilyAPIKey,ParameterValue=<your-tavily-api-key> \
+ParameterKey=GitHubURL,ParameterValue=https://github.com/awslabs/amazon-bedrock-agentcore-samples.git \
+ParameterKey=AgentDirectory,\
+ParameterValue=web_search_openai_agents \
+ParameterKey=CognitoStackName,\
+ParameterValue=cognito-stack-a2a \
     --capabilities CAPABILITY_IAM \
     --region us-west-2
 ```
 
-### Step 4: Google ADK host agent
+### Step 4: Deploy Google ADK Host Agent
+
+> [!IMPORTANT]
+> Replace the following placeholders:
+> - `<your-google-api-key>`: Your Google API key for ADK
 
 ```bash
 aws cloudformation create-stack \
     --stack-name host-agent-a2a \
     --template-body file://cloudformation/host_agent.yaml \
+    --parameters \
+ParameterKey=GoogleApiKey,ParameterValue=<your-google-api-key> \
+ParameterKey=GitHubURL,ParameterValue=https://github.com/awslabs/amazon-bedrock-agentcore-samples.git \
+ParameterKey=AgentDirectory,\
+ParameterValue=host_adk_agent \
+ParameterKey=CognitoStackName,\
+ParameterValue=cognito-stack-a2a \
     --capabilities CAPABILITY_IAM \
     --region us-west-2
 ```

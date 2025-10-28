@@ -18,14 +18,17 @@ Parameters:
   GitHubURL:
     Type: String
     Description: Github URL of the project
-  
+    Default: https://github.com/awslabs/amazon-bedrock-agentcore-samples.git
+
   AgentDirectory:
     Type: String
     Description: Agent directory with Dockerfile of agent
+    Default: web_search_openai_agents
 
   CognitoStackName:
     Type: String
     Description: Name of the Cognito CloudFormation stack to import values from
+    
 Resources:
   AgentCoreRuntimeExecutionRole:
     Type: AWS::IAM::Role
@@ -879,7 +882,7 @@ Resources:
       AgentRuntimeArtifact:
         ContainerConfiguration:
           ContainerUri: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${AgentECRRepository}:build-1'
-      ProtocolConfiguration: HTTP
+      ProtocolConfiguration: A2A
       AuthorizerConfiguration:
         CustomJWTAuthorizer:
           DiscoveryUrl:

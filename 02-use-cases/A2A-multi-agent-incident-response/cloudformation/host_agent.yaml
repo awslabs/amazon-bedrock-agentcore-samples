@@ -9,10 +9,12 @@ Parameters:
   GitHubURL:
     Type: String
     Description: Github URL of the project
+    Default: https://github.com/awslabs/amazon-bedrock-agentcore-samples.git
 
   AgentDirectory:
     Type: String
     Description: Agent directory with Dockerfile of agent
+    Default: host_adk_agent
 
   CognitoStackName:
     Type: String
@@ -759,7 +761,7 @@ Resources:
       AgentRuntimeArtifact:
         ContainerConfiguration:
           ContainerUri: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${AgentECRRepository}:build-1'
-      ProtocolConfiguration: HTTP
+      ProtocolConfiguration: A2A
       AuthorizerConfiguration:
         CustomJWTAuthorizer:
           DiscoveryUrl:

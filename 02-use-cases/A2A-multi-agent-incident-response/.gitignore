@@ -220,3 +220,4 @@ params.json
 monitoring_strands_agent/tests/
 temp.py
 temp_agent.py
+temp.txt
