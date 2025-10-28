@@ -2,13 +2,13 @@
 
 A comprehensive implementation of the [Agent-to-Agent (A2A)](https://a2a-protocol.org/latest/) protocol using specialized agents running on [Amazon Bedrock `AgentCore` runtime](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime-a2a.html), demonstrating intelligent coordination for AWS infrastructure monitoring and operations management. This repository walks you through setting up three core agents to answer questions about incidents and metrics in your AWS accounts and search for best remediation strategies. A monitoring agent (built using the [`Strands` Agents SDK](https://strandsagents.com/latest/)) is responsible for handling all questions related to metrics and logs within AWS and cross AWS accounts. A remediation agent (built using [`OpenAI`'s Agents SDK](https://openai.github.io/openai-agents-python/)) is responsible to doing efficient web searches for best remediation strategies and optimization techniques that the user can ask for. Both agents run on separate runtimes as `A2A` servers and utilize all `AgentCore` primitives - memory for context management, observability for deep level analysis about both agents, gateway for access to tools (`Cloudwatch`, `JIRA` and `TAVILY` APIs) and `AgentCore` identity for enabling inbound and outbound access into the agent and then into the resources that the agent can access using OAuth 2.0 and APIs. These two agents are then managed by a host [`Google ADK` agent](https://google.github.io/adk-docs/) that acts as a client and delegates tasks to each of these agents using A2A on Runtime. The Google ADK host agent runs on a separate `AgentCore` runtime of its own.
 
-## Architecture Overview
-
-![arch](./images/architecture.png)
-
 ## Demo
 
 ![demo](./images/demo.gif)
+
+## Architecture Overview
+
+![arch](./images/architecture.png)
 
 ## What is A2A?
 
@@ -81,8 +81,16 @@ aws cloudformation create-stack \
     --stack-name cognito-stack-a2a \
     --template-body file://cloudformation/cognito.yaml \
     --capabilities CAPABILITY_IAM \
+    --region us-west-2 && \
+aws cloudformation wait stack-create-complete \
+    --stack-name cognito-stack-a2a \
     --region us-west-2
 ```
+
+> [!WARNING]
+> This deployment typically takes 2-3 minutes. The command will wait for
+> the stack to complete before returning. Do not proceed to Step 2 until
+> this completes successfully.
 
 ### Step 2: Deploy Monitoring Strands Agent
 
@@ -98,8 +106,17 @@ ParameterValue=monitoring_agent \
 ParameterKey=CognitoStackName,\
 ParameterValue=cognito-stack-a2a \
     --capabilities CAPABILITY_IAM \
+    --region us-west-2 && \
+aws cloudformation wait stack-create-complete \
+    --stack-name monitor-agent-a2a \
     --region us-west-2
 ```
+
+> [!WARNING]
+> This deployment typically takes 15-20 minutes due to Docker image
+> building via CodeBuild. The command will wait for the stack to complete
+> before returning. Do not proceed to Step 3 until this completes
+> successfully.
 
 ### Step 3: Deploy Web Search OpenAI SDK Agent
 
@@ -123,8 +140,17 @@ ParameterValue=web_search_openai_agents \
 ParameterKey=CognitoStackName,\
 ParameterValue=cognito-stack-a2a \
     --capabilities CAPABILITY_IAM \
+    --region us-west-2 && \
+aws cloudformation wait stack-create-complete \
+    --stack-name web-search-agent-a2a \
     --region us-west-2
 ```
+
+> [!WARNING]
+> This deployment typically takes 15-20 minutes due to Docker image
+> building via CodeBuild. The command will wait for the stack to complete
+> before returning. Do not proceed to Step 4 until this completes
+> successfully.
 
 ### Step 4: Deploy Google ADK Host Agent
 
@@ -144,8 +170,18 @@ ParameterValue=host_adk_agent \
 ParameterKey=CognitoStackName,\
 ParameterValue=cognito-stack-a2a \
     --capabilities CAPABILITY_IAM \
+    --region us-west-2 && \
+aws cloudformation wait stack-create-complete \
+    --stack-name host-agent-a2a \
     --region us-west-2
 ```
+
+> [!WARNING]
+> This deployment typically takes 15-20 minutes due to Docker image
+> building via CodeBuild. The command will wait for the stack to complete
+> before returning. Once this completes successfully, all stacks are
+> deployed and you can proceed to test the agents or run the React
+> frontend.
 
 ## React Frontend
 
