@@ -11,7 +11,7 @@ INFRA_TEMPLATE_FILE="prerequisite/infrastructure.yaml"
 COGNITO_TEMPLATE_FILE="prerequisite/cognito.yaml"
 
 # First try to get region from environment variable
-if [ -z "${AWS_REGION}" ]; then
+if [ -z "${AWS_REGION-}" ]; then
     # If AWS_REGION is not set, try to get it from AWS CLI config
     REGION=$(aws configure get region 2>/dev/null || echo "us-west-2")
     # Export it as an environment variable
