@@ -168,12 +168,17 @@ aws cloudformation describe-stacks \
 ### Using AWS CLI
 
 ```bash
-# Get the Runtime ID from stack outputs
+# Get the Runtime ID from stack outputs and construct ARN
 RUNTIME_ID=$(aws cloudformation describe-stacks \
   --stack-name weather-agent-demo \
   --region us-west-2 \
   --query 'Stacks[0].Outputs[?OutputKey==`AgentRuntimeId`].OutputValue' \
   --output text)
+
+# Get account ID and construct the ARN
+ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+REGION="us-west-2"
+RUNTIME_ARN="arn:aws:bedrock-agentcore:${REGION}:${ACCOUNT_ID}:runtime/${RUNTIME_ID}"
 
 # Get the S3 bucket name
 BUCKET_NAME=$(aws cloudformation describe-stacks \
@@ -182,11 +187,14 @@ BUCKET_NAME=$(aws cloudformation describe-stacks \
   --query 'Stacks[0].Outputs[?OutputKey==`ResultsBucket`].OutputValue' \
   --output text)
 
+# Prepare the payload (base64 encoded, note the -n flag)
+PAYLOAD=$(echo -n '{"prompt": "What should I do this weekend in Richmond VA?"}' | base64)
+
 # Invoke the agent
 aws bedrock-agentcore invoke-agent-runtime \
-  --agent-runtime-id $RUNTIME_ID \
+  --agent-runtime-arn $RUNTIME_ARN \
   --qualifier DEFAULT \
-  --payload '{"prompt": "What should I do this weekend in Richmond VA?"}' \
+  --payload $PAYLOAD \
   --region us-west-2 \
   response.json
 

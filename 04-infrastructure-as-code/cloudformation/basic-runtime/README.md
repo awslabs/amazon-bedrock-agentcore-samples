@@ -150,11 +150,19 @@ RUNTIME_ID=$(aws cloudformation describe-stacks \
   --query 'Stacks[0].Outputs[?OutputKey==`AgentRuntimeId`].OutputValue' \
   --output text)
 
+# Get account ID and construct the ARN
+ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+REGION="us-west-2"
+RUNTIME_ARN="arn:aws:bedrock-agentcore:${REGION}:${ACCOUNT_ID}:runtime/${RUNTIME_ID}"
+
+# Prepare the payload (base64 encoded, note the -n flag to avoid newlines)
+PAYLOAD=$(echo -n '{"prompt": "What is 2+2?"}' | base64)
+
 # Invoke the agent
 aws bedrock-agentcore invoke-agent-runtime \
-  --agent-runtime-id $RUNTIME_ID \
+  --agent-runtime-arn $RUNTIME_ARN \
   --qualifier DEFAULT \
-  --payload '{"prompt": "What is 2+2?"}' \
+  --payload $PAYLOAD \
   --region us-west-2 \
   response.json
 
