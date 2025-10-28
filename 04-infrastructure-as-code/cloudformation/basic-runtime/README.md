@@ -69,7 +69,7 @@ The architecture consists of:
 3. **Bedrock Model Access**: Enable access to Amazon Bedrock models in your AWS region
    - Navigate to [Amazon Bedrock Console](https://console.aws.amazon.com/bedrock/)
    - Go to "Model access" and request access to:
-     - Anthropic Claude models (recommended: Claude 3.5 Sonnet or Claude 3 Haiku)
+     - Anthropic Claude models 
    - [Bedrock Model Access Guide](https://docs.aws.amazon.com/bedrock/latest/userguide/model-access.html)
 
 4. **Required Permissions**: Your AWS user/role needs permissions for:
