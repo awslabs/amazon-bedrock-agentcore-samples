@@ -10,3 +10,5 @@ bedrock-agentcore-starter-toolkit
 streamlit
 requests
 streamlit-cognito-auth
+uvicorn
+fastapi

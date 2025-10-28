@@ -226,6 +226,8 @@ pyrightconfig.json
 lambda.zip
 .kiro/
 
+### CDK artifacts
+cdk.out/
 ### Bedrock AgentCore ###
 .bedrock_agentcore/
 .bedrock_agentcore.yaml

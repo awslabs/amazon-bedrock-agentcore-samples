@@ -55,6 +55,13 @@ For more details on AgentCore Observability, please refer to [this](https://aws.
 │   │   └── runtime_with_strands_and_langfuse.ipynb
 │   ├── images/
 │   └── README.md
+├── 05-Lambda-AgentCore-invocation/
+│   ├── .gitignore
+│   ├── agentcore_observability_lambda.ipynb
+│   ├── lambda_agentcore_invoker.py
+│   ├── mcp_agent_multi_server.py
+│   ├── README.md
+│   └── requirements.txt
 └── README.md
 ```
 
@@ -92,6 +99,14 @@ Examples of using agents hosted on Amazon Bedrock AgentCore Runtime with third-p
 
 - **Braintrust**: AI evaluation and monitoring platform
 - **Langfuse**: LLM observability and analytics
+
+### 5. Lambda AgentCore Invocation (05-Lambda-AgentCore-invocation)
+
+Learn how to invoke AgentCore Runtime agents from AWS Lambda functions with full CloudWatch observability:
+
+- **Lambda Integration**: Deploy serverless functions that invoke hosted agents
+- **MCP Multi-Server**: Use multiple MCP servers (AWS Docs + CDK) in a single agent
+- **CloudWatch GenAI Observability**: Monitor agent behavior and performance in production
 
 ## Getting Started
 
