@@ -7,6 +7,68 @@
 # Get the directory where this script is located
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# Function to generate UUID for bucket naming
+_generate_bucket_name() {
+    # Generate UUID and format as sreagent-{uuid}
+    # Format complies with S3 naming restrictions:
+    # - 3-63 characters
+    # - lowercase letters, numbers, hyphens only
+    # - starts and ends with letter/number
+    if command -v uuidgen &> /dev/null; then
+        # Use uuidgen if available (macOS, Linux with uuid-runtime)
+        UUID=$(uuidgen | tr '[:upper:]' '[:lower:]')
+    else
+        # Fall back to Python for UUID generation
+        UUID=$(python3 -c "import uuid; print(str(uuid.uuid4()))")
+    fi
+    echo "sreagent-${UUID}"
+}
+
+# Function to create S3 bucket if needed
+_create_s3_bucket() {
+    local bucket_name=$1
+    local region=$2
+
+    echo "🪣 Checking S3 bucket configuration..."
+
+    # If bucket name is empty or contains placeholder text, create one
+    if [ -z "$bucket_name" ] || [ "$bucket_name" = "your-agentcore-schemas-bucket" ] || [ "$bucket_name" = "your-bucket-name" ]; then
+        echo "ℹ️  S3 bucket not configured, creating bucket automatically..."
+        BUCKET_NAME=$(_generate_bucket_name)
+
+        echo "🔨 Creating S3 bucket: ${BUCKET_NAME}"
+
+        # Create bucket with region-appropriate command
+        if [ "$region" = "us-east-1" ]; then
+            # us-east-1 doesn't need LocationConstraint
+            if aws s3api create-bucket \
+                --bucket "${BUCKET_NAME}" \
+                --region "${region}"; then
+                echo "✅ S3 bucket created successfully: ${BUCKET_NAME}"
+            else
+                echo "❌ Failed to create S3 bucket"
+                exit 1
+            fi
+        else
+            # Other regions need LocationConstraint
+            if aws s3api create-bucket \
+                --bucket "${BUCKET_NAME}" \
+                --region "${region}" \
+                --create-bucket-configuration LocationConstraint="${region}"; then
+                echo "✅ S3 bucket created successfully: ${BUCKET_NAME}"
+            else
+                echo "❌ Failed to create S3 bucket"
+                exit 1
+            fi
+        fi
+
+        echo "${BUCKET_NAME}"
+    else
+        echo "✅ Using configured S3 bucket: ${bucket_name}"
+        echo "${bucket_name}"
+    fi
+}
+
 # Check if config.yaml exists in the script directory
 if [ ! -f "${SCRIPT_DIR}/config.yaml" ]; then
     echo "Error: config.yaml not found in ${SCRIPT_DIR}!"
@@ -57,6 +119,9 @@ GATEWAY_DESCRIPTION=$(get_config "gateway_description")
 TARGET_DESCRIPTION=$(get_config "target_description")
 CREDENTIAL_PROVIDER_NAME=$(get_config "credential_provider_name")
 
+# Create S3 bucket if not configured, or use the configured one
+S3_BUCKET=$(_create_s3_bucket "$S3_BUCKET" "$REGION")
+
 # Extract Cognito region from User Pool ID (format: region_poolId)
 COGNITO_REGION=$(echo "$USER_POOL_ID" | cut -d'_' -f1)
 
@@ -90,7 +155,7 @@ echo "Loaded configuration from config.yaml:"
 echo "  Gateway Name: ${GATEWAY_NAME}"
 echo "  Region: ${REGION}"
 echo "  Account ID: ${ACCOUNT_ID:0:4}****"
-echo "  S3 Bucket: ${S3_BUCKET}"
+echo "  S3 Bucket: ${S3_BUCKET} (auto-created if not configured)"
 echo "  S3 Path Prefix: ${S3_PATH_PREFIX}"
 echo "  Provider ARN: ${PROVIDER_ARN}"
 echo ""
