@@ -41,6 +41,7 @@
 - Evandro Franco
 - greg-aws
 - Frank Dallezotte
+- Pawan Verma
 - Omar Elkharbotly
 - Chintan Patel
 - Shreyas Subramanian
