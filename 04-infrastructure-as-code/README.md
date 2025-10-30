@@ -1,16 +1,20 @@
-# CloudFormation Samples for Amazon Bedrock AgentCore
+# Infrastructure as Code Samples for Amazon Bedrock AgentCore
 
-CloudFormation templates for deploying Amazon Bedrock AgentCore resources.
+CloudFormation templates and AWS CDK stacks for deploying Amazon Bedrock AgentCore resources.
 
 ## Overview
 
-These CloudFormation templates enable you to:
+These Infrastructure as Code samples enable you to:
 - Deploy AgentCore resources consistently across environments
 - Automate infrastructure provisioning with Infrastructure as Code
 - Maintain version control of your infrastructure
 - Implement AWS best practices for security and monitoring
 
-## 📚 Available Samples
+Choose your preferred approach:
+- **[CloudFormation](./cloudformation/)** - YAML/JSON templates for declarative infrastructure
+- **[CDK](./cdk/)** - Python code for programmatic infrastructure
+
+## 📚 CloudFormation Samples
 
 ### 01. [Hosting MCP Server on AgentCore Runtime](./cloudformation/mcp-server-agentcore-runtime/)
 
@@ -133,6 +137,37 @@ aws cloudformation create-stack \
 
 ---
 
+## 📚 CDK Samples
+
+### 01. [Basic Agent Runtime](./cdk/basic-runtime/)
+
+Deploy a basic AgentCore Runtime with a simple Strands agent using AWS CDK - no additional tools or memory.
+
+**What it deploys:**
+- Docker image asset built from local code
+- IAM role with least-privilege policies for AgentCore  
+- Basic AgentCore Runtime with simple agent
+
+**Architecture highlights:**
+- Uses `DockerImageAsset` for container image building (no CodeBuild needed)
+- Separates IAM role into its own construct (`AgentCoreRole`)
+- Uses `CfnRuntime` directly from `aws_bedrockagentcore`
+- Much cleaner than the CloudFormation equivalent
+
+**Use case:** Simple agent deployment without memory, code interpreter, or browser tools
+
+**Deployment time:** ~5-10 minutes  
+**Estimated cost:** ~$50-100/month
+
+**Quick start:**
+```bash
+cd cdk/basic-runtime
+pip install -r requirements.txt
+cdk deploy
+```
+
+---
+
 ## Prerequisites
 
 Before deploying any CloudFormation template, ensure you have:
@@ -143,7 +178,12 @@ Before deploying any CloudFormation template, ensure you have:
    aws configure
    ```
 3. **Access to Amazon Bedrock AgentCore** (preview)
-4. **IAM Permissions** to create:
+4. **For CDK samples**: Python 3.8+, AWS CDK v2 installed, and **CDK version 2.218.0 or later** (for BedrockAgentCore support)
+   ```bash
+   npm install -g aws-cdk
+   pip install aws-cdk-lib==2.218.0 constructs>=10.0.79
+   ```
+5. **IAM Permissions** to create:
    - CloudFormation stacks
    - IAM roles and policies
    - ECR repositories
@@ -184,22 +224,36 @@ Default values:
 ```
 04-infrastructure-as-code/
 ├── README.md                                    # This file
-└── cloudformation/                              # CloudFormation samples
-    ├── mcp-server-agentcore-runtime/           # MCP Server sample
-    │   ├── deploy.sh                            # Deployment script
-    │   ├── test.sh                              # Testing script
-    │   ├── cleanup.sh                           # Cleanup script
-    │   ├── mcp-server-template.yaml             # CloudFormation template
-    │   ├── get_token.py                         # Authentication helper
-    │   ├── test_mcp_server.py                   # MCP client test
-    │   ├── README.md                            # Sample documentation
-    │   └── DETAILED_GUIDE.md                    # Technical deep-dive
-    ├── basic-runtime/                           # Basic agent sample
-    │   └── template.yaml                        # CloudFormation template
-    ├── multi-agent-runtime/                     # Multi-agent sample
-    │   └── template.yaml                        # CloudFormation template
-    └── end-to-end-weather-agent/                # Weather agent sample
-        └── end-to-end-weather-agent.yaml        # CloudFormation template
+├── cloudformation/                              # CloudFormation samples
+│   ├── mcp-server-agentcore-runtime/           # MCP Server sample
+│   │   ├── deploy.sh                            # Deployment script
+│   │   ├── test.sh                              # Testing script
+│   │   ├── cleanup.sh                           # Cleanup script
+│   │   ├── mcp-server-template.yaml             # CloudFormation template
+│   │   ├── get_token.py                         # Authentication helper
+│   │   ├── test_mcp_server.py                   # MCP client test
+│   │   ├── README.md                            # Sample documentation
+│   │   └── DETAILED_GUIDE.md                    # Technical deep-dive
+│   ├── basic-runtime/                           # Basic agent sample
+│   │   └── template.yaml                        # CloudFormation template
+│   ├── multi-agent-runtime/                     # Multi-agent sample
+│   │   └── template.yaml                        # CloudFormation template
+│   └── end-to-end-weather-agent/                # Weather agent sample
+│       └── end-to-end-weather-agent.yaml        # CloudFormation template
+└── cdk/                                         # CDK samples
+    └── basic-runtime/                           # Basic agent CDK sample
+        ├── app.py                               # CDK app entry point
+        ├── basic_runtime_stack.py               # Stack definition
+        ├── requirements.txt                     # Python dependencies
+        ├── cdk.json                             # CDK configuration
+        ├── README.md                            # Sample documentation
+        ├── infra-utils/                         # Infrastructure utilities
+        │   ├── agentcore_role.py                # Dedicated role construct
+        │   └── build_trigger_lambda.py          # Lambda function for CodeBuild trigger
+        └── agent-code/                          # Agent source code
+            ├── Dockerfile
+            ├── basic_agent.py
+            └── requirements.txt
 ```
 
 

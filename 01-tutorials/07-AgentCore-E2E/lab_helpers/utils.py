@@ -483,6 +483,7 @@ def create_agentcore_runtime_execution_role():
                 "Effect": "Allow",
                 "Action": [
                     "bedrock-agentcore:CreateEvent",
+                    "bedrock-agentcore:ListEvents",
                     "bedrock-agentcore:GetMemoryRecord",
                     "bedrock-agentcore:GetMemory",
                     "bedrock-agentcore:RetrieveMemoryRecords",

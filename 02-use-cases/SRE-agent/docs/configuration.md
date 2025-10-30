@@ -156,7 +156,15 @@ user_pool_id: "YOUR_USER_POOL_ID"
 client_id: "YOUR_CLIENT_ID"
 
 # S3 Configuration
-s3_bucket: "your-agentcore-schemas-bucket"
+# OPTION 1: Auto-Create (Recommended)
+# Leave s3_bucket empty or unspecified, and create_gateway.sh will automatically create a bucket
+# with name format: sreagent-{uuid}
+s3_bucket: ""  # Leave empty for auto-creation
+
+# OPTION 2: Manual Bucket
+# Uncomment below and specify your own bucket name if you prefer to manage the bucket yourself
+# s3_bucket: "your-custom-bucket-name"
+
 s3_path_prefix: "devops-multiagent-demo"  # Path prefix for OpenAPI schema files
 
 # Provider Configuration
@@ -210,6 +218,16 @@ target_description: "S3 target for OpenAPI schema"
 - **Purpose**: User personas and preferences for memory-enhanced personalization
 - **Setup**: Edit directly to add or modify user personas
 - **Content**: Predefined user preferences (Alice: technical, Carol: executive)
+
+### S3 Bucket Configuration
+- **Location**: Specified in `gateway/config.yaml` under `s3_bucket` parameter
+- **Purpose**: Storage for OpenAPI specification files used by the gateway
+- **Auto-Creation**:
+  - If `s3_bucket` is empty or not specified in config, the `create_gateway.sh` script will automatically create a bucket
+  - Auto-created bucket naming format: `sreagent-{uuid}` (e.g., `sreagent-550e8400-e29b-41d4-a716-446655440000`)
+  - This format complies with AWS S3 bucket naming restrictions
+- **Manual Bucket**: You can also specify your own bucket name in `gateway/config.yaml` if you prefer to create and manage the bucket yourself
+- **Note**: Requires AWS credentials with S3 bucket creation permissions (`s3:CreateBucket`, `s3:PutObject`)
 
 ### OpenAPI Specifications
 - **Location**: `backend/openapi_specs/*.yaml`
