@@ -57,7 +57,7 @@ Resources:
     UpdateReplacePolicy: Delete
     Properties:
       RepositoryName: !Sub "${AWS::StackName}-${ECRRepositoryName}" 
-      ImageTagMutability: MUTABLE
+      ImageTagMutability: IMMUTABLE
       EmptyOnDelete: true
       ImageScanningConfiguration:
         ScanOnPush: true
@@ -730,6 +730,10 @@ Resources:
     Properties:
       GroupDescription: "Security group for VPC endpoints - allows HTTPS from AgentCore runtime"
       VpcId: !Ref ClientVPC
+      SecurityGroupEgress:
+      - IpProtocol: "-1"
+        CidrIp: "127.0.0.1/32"
+        Description: "Explicit deny-all egress rule for VPC endpoints (no outbound needed)"
       Tags:
         - Key: Name
           Value: !Sub "${AWS::StackName}-vpc-endpoint-sg"
@@ -902,7 +906,7 @@ Resources:
       VpcId: !Ref ClientVPC
       CidrBlock: "10.1.100.0/28" # Small subnet (16 IPs) for testing instances
       AvailabilityZone: !Select [0, !GetAZs ""] # Use first AZ
-      MapPublicIpOnLaunch: true # Auto-assign public IPs for internet access
+      MapPublicIpOnLaunch: true 
       Tags:
         - Key: Name
           Value: !Sub "${AWS::StackName}-public-subnet-1"
@@ -982,7 +986,7 @@ Resources:
                 Action:
                   - bedrock:InvokeModel
                   - bedrock:InvokeModelWithResponseStream
-                  - bedrock-agentcore:*
+                  - bedrock-agentcore:InvokeAgentRuntime
                 Resource: "*"
       Tags:
         - Key: Name
@@ -1063,7 +1067,6 @@ Resources:
         - !Ref EC2InstanceSecurityGroup
       SubnetId: !Ref ClientPublicSubnet1
       KeyName: !Ref "AWS::NoValue" # No SSH key - use SSM Session Manager instead
-      
       Tags:
         - Key: Name
           Value: !Sub "${AWS::StackName}-dev-instance"

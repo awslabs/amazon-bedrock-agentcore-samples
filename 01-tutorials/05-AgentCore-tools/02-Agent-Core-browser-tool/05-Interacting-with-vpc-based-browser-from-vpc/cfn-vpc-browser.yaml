@@ -55,7 +55,7 @@ Resources:
     UpdateReplacePolicy: Delete
     Properties:
       RepositoryName: !Sub "${AWS::StackName}-${ECRRepositoryName}"
-      ImageTagMutability: MUTABLE
+      ImageTagMutability: IMMUTABLE
       EmptyOnDelete: true
       ImageScanningConfiguration:
         ScanOnPush: true
@@ -149,12 +149,24 @@ Resources:
                   - bedrock:InvokeModel
                   - bedrock:InvokeModelWithResponseStream
                 Resource: "*"
-              - Sid: S3Access
+              - Sid: S3BucketAccess
                 Effect: Allow
                 Action:
-                  - s3:*
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:DeleteObject
+                  - s3:GetObjectVersion
+                  - s3:PutObjectAcl
                 Resource:
-                  - arn:aws:s3:::*/*
+                  - !Sub "${RecordingBucket.Arn}/*"
+              - Sid: S3BucketListAccess
+                Effect: Allow
+                Action:
+                  - s3:ListBucket
+                  - s3:GetBucketLocation
+                Resource:
+                  - !GetAtt RecordingBucket.Arn
+
       Tags:
         - Key: Name
           Value: !Sub "${AWS::StackName}-agent-execution-role"
@@ -717,6 +729,10 @@ Resources:
     Properties:
       GroupDescription: "Security group for VPC endpoints - allows HTTPS from AgentCore runtime"
       VpcId: !Ref ClientVPC
+      SecurityGroupEgress:
+      - IpProtocol: "-1"
+        CidrIp: "127.0.0.1/32"
+        Description: "Explicit deny-all egress rule for VPC endpoints (no outbound needed)"
       Tags:
         - Key: Name
           Value: !Sub "${AWS::StackName}-vpc-endpoint-sg"
@@ -1078,7 +1094,7 @@ Resources:
                 Action:
                   - bedrock:InvokeModel
                   - bedrock:InvokeModelWithResponseStream
-                  - bedrock-agentcore:*
+                  - bedrock-agentcore:InvokeAgentRuntime
                 Resource: "*"
       Tags:
         - Key: Name
@@ -1205,6 +1221,11 @@ Resources:
         RestrictPublicBuckets: true
       VersioningConfiguration:
         Status: Enabled
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+            BucketKeyEnabled: true
       Tags:
         - Key: Name
           Value: !Sub "${AWS::StackName}-browser-recording"
