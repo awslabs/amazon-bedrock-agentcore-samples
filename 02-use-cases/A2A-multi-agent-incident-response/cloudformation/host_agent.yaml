@@ -761,7 +761,7 @@ Resources:
       AgentRuntimeArtifact:
         ContainerConfiguration:
           ContainerUri: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${AgentECRRepository}:build-1'
-      ProtocolConfiguration: A2A
+      ProtocolConfiguration: HTTP
       AuthorizerConfiguration:
         CustomJWTAuthorizer:
           DiscoveryUrl:
