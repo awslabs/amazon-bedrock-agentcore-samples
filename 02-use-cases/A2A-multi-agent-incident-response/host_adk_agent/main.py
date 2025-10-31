@@ -8,8 +8,7 @@ from bedrock_agentcore import BedrockAgentCoreApp
 
 # Configure logging
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -45,21 +44,23 @@ async def call_agent(payload: dict, context):
 
     if not root_agent:
         # Import agent creation inside entrypoint so workload identity is available
-        from agent import get_agent_and_card
+        from agent import get_agent_and_card, get_root_agent
 
         logger.info("Initializing root agent and resolving agent cards...")
         # Create root agent once - LazyClientFactory creates fresh httpx clients
         # on each A2A invocation in the current event loop context
         try:
-            root_agent, agent_card = await get_agent_and_card(
+            root_agent, agents_cards = await get_agent_and_card(
                 session_id=session_id, actor_id=actor_id
             )
-            logger.info(f"Successfully initialized root agent. Agent cards: {list(agent_card.keys())}")
+            logger.info(
+                f"Successfully initialized root agent. Agent cards: {list(agents_cards.keys())}"
+            )
         except Exception as e:
             logger.error(f"Failed to initialize root agent: {e}", exc_info=True)
             raise
 
-        yield agent_card
+        yield agents_cards
 
     query = payload.get("prompt")
     logger.info(f"Processing query: {query}")

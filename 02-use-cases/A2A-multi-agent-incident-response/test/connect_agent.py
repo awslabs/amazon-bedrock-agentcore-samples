@@ -66,7 +66,7 @@ def fetch_agent_card(bearer_token: str, agent_arn: str):
 
     # Construct the URL
     url = f"https://bedrock-agentcore.{region}.amazonaws.com/runtimes/{escaped_agent_arn}/invocations/.well-known/agent-card.json"
-
+    print(f"URL: {url}")
     # Generate a unique session ID
     session_id = str(uuid4())
     logger.info(f"Fetching agent card with session ID: {session_id}")

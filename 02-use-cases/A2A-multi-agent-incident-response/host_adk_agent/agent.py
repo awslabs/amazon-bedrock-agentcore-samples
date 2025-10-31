@@ -1,14 +1,12 @@
-import asyncio
-import uuid
 from a2a.client import ClientConfig, ClientFactory
 from a2a.types import TransportProtocol
 from bedrock_agentcore.identity.auth import requires_access_token
 from google.adk.agents.llm_agent import Agent
 from google.adk.agents.remote_a2a_agent import RemoteA2aAgent
 from urllib.parse import quote
-from uuid import uuid4
 import httpx
 import os
+import uuid
 
 IS_DOCKER = os.getenv("DOCKER_CONTAINER", "0") == "1"
 
