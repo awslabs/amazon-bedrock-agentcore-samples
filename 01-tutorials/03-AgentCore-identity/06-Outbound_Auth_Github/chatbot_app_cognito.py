@@ -257,11 +257,7 @@ def main():
     import boto3
 
     # Check if configuration loading failed (genesisSessionId is optional, can be generated dynamically)
-    if (
-        agentRuntimeArn is None
-        or client_id is None
-        or region is None
-    ):
+    if agentRuntimeArn is None or client_id is None or region is None:
         st.markdown(
             """
             <div style='max-width:600px;margin:40px auto 30px auto;padding:40px 40px 36px 40px;background:linear-gradient(145deg, #2d1b1b 0%, #3d2424 50%, #2d1b1b 100%);border-radius:24px;box-shadow:0 8px 32px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,87,87,0.3);border:2px solid rgba(255,87,87,0.4);position:relative;overflow:hidden;'>
@@ -593,6 +589,7 @@ def main():
     if "genesisSessionId" not in st.session_state:
         # Generate a unique session ID for this Streamlit session if not provided in config
         import uuid
+
         st.session_state["genesisSessionId"] = (
             genesisSessionId if genesisSessionId else str(uuid.uuid4())
         )

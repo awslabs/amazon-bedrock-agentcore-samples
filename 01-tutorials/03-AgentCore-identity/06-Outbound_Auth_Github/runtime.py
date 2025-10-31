@@ -27,7 +27,11 @@ def get_data_plane_endpoint(region: str = DEFAULT_REGION) -> str:
 
 
 def get_control_plane_endpoint(region: str = DEFAULT_REGION) -> str:
-    return CP_ENDPOINT_OVERRIDE or f"https://bedrock-agentcore-control.{region}.amazonaws.com"
+    return (
+        CP_ENDPOINT_OVERRIDE
+        or f"https://bedrock-agentcore-control.{region}.amazonaws.com"
+    )
+
 
 def generate_session_id() -> str:
     """Generate session ID."""
@@ -94,12 +98,20 @@ class BedrockAgentCoreClient:
         control_plane_url = get_control_plane_endpoint(region)
         data_plane_url = get_data_plane_endpoint(region)
 
-        self.logger.debug("Initializing Bedrock AgentCore client for region: %s", region)
+        self.logger.debug(
+            "Initializing Bedrock AgentCore client for region: %s", region
+        )
         self.logger.debug("Control plane: %s", control_plane_url)
         self.logger.debug("Data plane: %s", data_plane_url)
 
-        self.client = boto3.client("bedrock-agentcore-control", region_name=region, endpoint_url=control_plane_url)
-        self.dataplane_client = boto3.client("bedrock-agentcore", region_name=region, endpoint_url=data_plane_url)
+        self.client = boto3.client(
+            "bedrock-agentcore-control",
+            region_name=region,
+            endpoint_url=control_plane_url,
+        )
+        self.dataplane_client = boto3.client(
+            "bedrock-agentcore", region_name=region, endpoint_url=data_plane_url
+        )
 
     def create_agent(
         self,
@@ -112,12 +124,16 @@ class BedrockAgentCoreClient:
         env_vars: Optional[Dict] = None,
     ) -> Dict[str, str]:
         """Create new agent."""
-        self.logger.info("Creating agent '%s' with image URI: %s", agent_name, image_uri)
+        self.logger.info(
+            "Creating agent '%s' with image URI: %s", agent_name, image_uri
+        )
         try:
             # Build parameters dict, only including optional configs when present
             params = {
                 "agentRuntimeName": agent_name,
-                "agentRuntimeArtifact": {"containerConfiguration": {"containerUri": image_uri}},
+                "agentRuntimeArtifact": {
+                    "containerConfiguration": {"containerUri": image_uri}
+                },
                 "roleArn": execution_role_arn,
             }
 
@@ -136,7 +152,12 @@ class BedrockAgentCoreClient:
             resp = self.client.create_agent_runtime(**params)
             agent_id = resp["agentRuntimeId"]
             agent_arn = resp["agentRuntimeArn"]
-            self.logger.info("Successfully created agent '%s' with ID: %s, ARN: %s", agent_name, agent_id, agent_arn)
+            self.logger.info(
+                "Successfully created agent '%s' with ID: %s, ARN: %s",
+                agent_name,
+                agent_id,
+                agent_arn,
+            )
             return {"id": agent_id, "arn": agent_arn}
         except Exception as e:
             self.logger.error("Failed to create agent '%s': %s", agent_name, str(e))
@@ -153,12 +174,16 @@ class BedrockAgentCoreClient:
         env_vars: Optional[Dict] = None,
     ) -> Dict[str, str]:
         """Update existing agent."""
-        self.logger.info("Updating agent ID '%s' with image URI: %s", agent_id, image_uri)
+        self.logger.info(
+            "Updating agent ID '%s' with image URI: %s", agent_id, image_uri
+        )
         try:
             # Build parameters dict, only including optional configs when present
             params = {
                 "agentRuntimeId": agent_id,
-                "agentRuntimeArtifact": {"containerConfiguration": {"containerUri": image_uri}},
+                "agentRuntimeArtifact": {
+                    "containerConfiguration": {"containerUri": image_uri}
+                },
                 "roleArn": execution_role_arn,
             }
 
@@ -176,7 +201,9 @@ class BedrockAgentCoreClient:
 
             resp = self.client.update_agent_runtime(**params)
             agent_arn = resp["agentRuntimeArn"]
-            self.logger.info("Successfully updated agent ID '%s', ARN: %s", agent_id, agent_arn)
+            self.logger.info(
+                "Successfully updated agent ID '%s', ARN: %s", agent_id, agent_arn
+            )
             return {"id": agent_id, "arn": agent_arn}
         except Exception as e:
             self.logger.error("Failed to update agent ID '%s': %s", agent_id, str(e))
@@ -196,13 +223,27 @@ class BedrockAgentCoreClient:
         """Create or update agent."""
         if agent_id:
             return self.update_agent(
-                agent_id, image_uri, execution_role_arn, network_config, authorizer_config, protocol_config, env_vars
+                agent_id,
+                image_uri,
+                execution_role_arn,
+                network_config,
+                authorizer_config,
+                protocol_config,
+                env_vars,
             )
         return self.create_agent(
-            agent_name, image_uri, execution_role_arn, network_config, authorizer_config, protocol_config, env_vars
+            agent_name,
+            image_uri,
+            execution_role_arn,
+            network_config,
+            authorizer_config,
+            protocol_config,
+            env_vars,
         )
 
-    def wait_for_agent_endpoint_ready(self, agent_id: str, endpoint_name: str = "DEFAULT", max_wait: int = 120) -> str:
+    def wait_for_agent_endpoint_ready(
+        self, agent_id: str, endpoint_name: str = "DEFAULT", max_wait: int = 120
+    ) -> str:
         """Wait for agent endpoint to be ready.
 
         Args:
@@ -253,7 +294,9 @@ class BedrockAgentCoreClient:
         """
         return self.client.get_agent_runtime(agentRuntimeId=agent_id)
 
-    def get_agent_runtime_endpoint(self, agent_id: str, endpoint_name: str = "DEFAULT") -> Dict:
+    def get_agent_runtime_endpoint(
+        self, agent_id: str, endpoint_name: str = "DEFAULT"
+    ) -> Dict:
         """Get agent runtime endpoint details.
 
         Args:
@@ -268,10 +311,19 @@ class BedrockAgentCoreClient:
             endpointName=endpoint_name,
         )
 
-    def invoke_endpoint(self, agent_arn: str, payload: str, session_id: str, endpoint_name: str = "DEFAULT") -> Dict:
+    def invoke_endpoint(
+        self,
+        agent_arn: str,
+        payload: str,
+        session_id: str,
+        endpoint_name: str = "DEFAULT",
+    ) -> Dict:
         """Invoke agent endpoint."""
         response = self.dataplane_client.invoke_agent_runtime(
-            agentRuntimeArn=agent_arn, qualifier=endpoint_name, runtimeSessionId=session_id, payload=payload
+            agentRuntimeArn=agent_arn,
+            qualifier=endpoint_name,
+            runtimeSessionId=session_id,
+            payload=payload,
         )
 
         return _handle_aws_response(response)
@@ -290,7 +342,9 @@ class HttpBedrockAgentCoreClient:
         self.dp_endpoint = get_data_plane_endpoint(region)
         self.logger = logging.getLogger(f"bedrock_agentcore.http_runtime.{region}")
 
-        self.logger.debug("Initializing HTTP Bedrock AgentCore client for region: %s", region)
+        self.logger.debug(
+            "Initializing HTTP Bedrock AgentCore client for region: %s", region
+        )
         self.logger.debug("Data plane: %s", self.dp_endpoint)
 
     def invoke_endpoint(
@@ -331,7 +385,9 @@ class HttpBedrockAgentCoreClient:
             body = json.loads(payload) if isinstance(payload, str) else payload
         except json.JSONDecodeError:
             # Fallback for non-JSON strings - wrap in payload object
-            self.logger.warning("Failed to parse payload as JSON, wrapping in payload object")
+            self.logger.warning(
+                "Failed to parse payload as JSON, wrapping in payload object"
+            )
             body = {"payload": payload}
 
         try:
@@ -362,18 +418,25 @@ class LocalBedrockAgentCoreClient:
         """Invoke the endpoint with the given parameters."""
         url = f"{self.endpoint}/invocations"
 
-        headers = {"Content-Type": "application/json", "AgentAccessToken": workload_access_token}
+        headers = {
+            "Content-Type": "application/json",
+            "AgentAccessToken": workload_access_token,
+        }
 
         try:
             body = json.loads(payload) if isinstance(payload, str) else payload
         except json.JSONDecodeError:
             # Fallback for non-JSON strings - wrap in payload object
-            self.logger.warning("Failed to parse payload as JSON, wrapping in payload object")
+            self.logger.warning(
+                "Failed to parse payload as JSON, wrapping in payload object"
+            )
             body = {"payload": payload}
 
         try:
             # Make request with timeout
-            response = requests.post(url, headers=headers, json=body, timeout=100, stream=True)
+            response = requests.post(
+                url, headers=headers, json=body, timeout=100, stream=True
+            )
             return _handle_http_response(response)
         except requests.exceptions.RequestException as e:
             self.logger.error("Failed to invoke agent endpoint: %s", str(e))
