@@ -1,9 +1,17 @@
 import os
+import logging
 from dotenv import load_dotenv
 from google.adk.sessions import InMemorySessionService
 from google.adk.runners import Runner
 from google.genai import types
 from bedrock_agentcore import BedrockAgentCoreApp
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 # Load environment variables from .env file
 load_dotenv()
@@ -22,6 +30,7 @@ async def call_agent(payload: dict, context):
     global root_agent
 
     session_id = context.session_id
+    logger.info(f"Received request with session_id: {session_id}")
 
     # actor_id = request_headers["x-amzn-bedrock-agentCore-runtime-custom-actor"]
 
@@ -38,15 +47,22 @@ async def call_agent(payload: dict, context):
         # Import agent creation inside entrypoint so workload identity is available
         from agent import get_agent_and_card
 
+        logger.info("Initializing root agent and resolving agent cards...")
         # Create root agent once - LazyClientFactory creates fresh httpx clients
         # on each A2A invocation in the current event loop context
-        root_agent, agent_card = await get_agent_and_card(
-            session_id=session_id, actor_id=actor_id
-        )
+        try:
+            root_agent, agent_card = await get_agent_and_card(
+                session_id=session_id, actor_id=actor_id
+            )
+            logger.info(f"Successfully initialized root agent. Agent cards: {list(agent_card.keys())}")
+        except Exception as e:
+            logger.error(f"Failed to initialize root agent: {e}", exc_info=True)
+            raise
 
         yield agent_card
 
     query = payload.get("prompt")
+    logger.info(f"Processing query: {query}")
 
     if not query:
         raise KeyError("'prompt' field is required in payload")
