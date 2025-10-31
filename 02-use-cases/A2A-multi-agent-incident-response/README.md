@@ -45,21 +45,22 @@ A comprehensive implementation of the [Agent-to-Agent (A2A)](https://a2a-protoco
 2. **AWS CLI**: Install and configure AWS CLI with your credentials
    - [Install AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html)
    - [Configure AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-quickstart.html)
+   - **Important**: Set your region to `us-west-2`
 
    ```bash
-   aws configure
+   aws configure set region us-west-2
    ```
 
-3. **Bedrock Model Access**: Enable access to Amazon Bedrock Anthropic Claude 4.0 models in your AWS region
-   - Navigate to [Amazon Bedrock Console](https://console.aws.amazon.com/bedrock/)
-   - Go to "Model access" and request access to:
-     - Anthropic Claude 4.0 Sonnet model
-     - Anthropic Claude 3.5 Haiku model
-   - [Amazon Bedrock Model Access Guide](https://docs.aws.amazon.com/bedrock/latest/userguide/model-access.html)
+3. **Python 3.8+**: Required to run the deployment scripts
 
-4. Install uv using [guide](https://docs.astral.sh/uv/getting-started/installation/).
+4. **uv**: Install uv package manager using [guide](https://docs.astral.sh/uv/getting-started/installation/)
 
-5. **Supported Regions**: This solution is currently tested and supported in the following AWS regions:
+5. **API Keys**: You'll need the following API keys (the deployment script will prompt for these):
+   - **OpenAI API Key**: Get from [OpenAI Platform](https://platform.openai.com/api-keys)
+   - **Tavily API Key**: Get from [Tavily](https://tavily.com/)
+   - **Google API Key**: Get from [Google AI Studio](https://aistudio.google.com/app/apikey)
+
+6. **Supported Regions**: This solution is currently tested and supported in the following AWS regions:
 
    | Region Code   | Region Name          | Status      |
    |---------------|----------------------|-------------|
@@ -67,121 +68,31 @@ A comprehensive implementation of the [Agent-to-Agent (A2A)](https://a2a-protoco
 
    > **Note**: To deploy in other regions, you'll need to update the DynamoDB prefix list mappings in `cloudformation/vpc-stack.yaml`. See the [VPC Stack documentation](cloudformation/vpc-stack.yaml) for details.
 
-## Deployment Steps
+## Quick Start Deployment
+
+The easiest way to deploy this solution is using our automated deployment script:
 
 ```bash
+# Clone the repository
 git clone https://github.com/awslabs/amazon-bedrock-agentcore-samples.git
 cd 02-use-cases/A2A-multi-agent-incident-response
+
+# Run the interactive deployment script
+uv run deploy.py
 ```
 
-### Step 1: Deploy AWS Cognito Stack
+The deployment script will:
 
-```bash
-aws cloudformation create-stack \
-    --stack-name cognito-stack-a2a \
-    --template-body file://cloudformation/cognito.yaml \
-    --capabilities CAPABILITY_IAM \
-    --region us-west-2 && \
-aws cloudformation wait stack-create-complete \
-    --stack-name cognito-stack-a2a \
-    --region us-west-2
-```
+1. ✅ Verify AWS CLI is installed and configured
+2. ✅ Check AWS credentials are valid
+3. ✅ Confirm region is set to `us-west-2`
+4. ✅ Interactively collect all required parameters
+5. ✅ Generate unique S3 bucket names
+6. ✅ Save configuration to `.a2a.config`
+7. ✅ Automatically deploy all stacks in the correct order
+8. ✅ Wait for each stack to complete before proceeding
 
-> [!WARNING]
-> This deployment typically takes 2-3 minutes. The command will wait for
-> the stack to complete before returning. Do not proceed to Step 2 until
-> this completes successfully.
-
-### Step 2: Deploy Monitoring Strands Agent
-
-```bash
-aws cloudformation create-stack \
-    --stack-name monitor-agent-a2a \
-    --template-body file://cloudformation/monitoring_agent.yaml \
-    --parameters \
-ParameterKey=GitHubURL,\
-ParameterValue=https://github.com/awslabs/amazon-bedrock-agentcore-samples.git \
-ParameterKey=AgentDirectory,\
-ParameterValue=monitoring_agent \
-ParameterKey=CognitoStackName,\
-ParameterValue=cognito-stack-a2a \
-    --capabilities CAPABILITY_IAM \
-    --region us-west-2 && \
-aws cloudformation wait stack-create-complete \
-    --stack-name monitor-agent-a2a \
-    --region us-west-2
-```
-
-> [!WARNING]
-> This deployment typically takes 15-20 minutes due to Docker image
-> building via CodeBuild. The command will wait for the stack to complete
-> before returning. Do not proceed to Step 3 until this completes
-> successfully.
-
-### Step 3: Deploy Web Search OpenAI SDK Agent
-
-> [!IMPORTANT]
-> Replace the following placeholders:
-> - `<your-openai-api-key>`: Your OpenAI API key
-> - `<your-openai-model>`: OpenAI model ID (default: `gpt-4o-2024-08-06`)
-> - `<your-tavily-api-key>`: Your Tavily API key for web search
-
-```bash
-aws cloudformation create-stack \
-    --stack-name web-search-agent-a2a \
-    --template-body file://cloudformation/web_search_agent.yaml \
-    --parameters \
-ParameterKey=OpenAIKey,ParameterValue=<your-openai-api-key> \
-ParameterKey=OpenAIModelId,ParameterValue=<your-openai-model> \
-ParameterKey=TavilyAPIKey,ParameterValue=<your-tavily-api-key> \
-ParameterKey=GitHubURL,ParameterValue=https://github.com/awslabs/amazon-bedrock-agentcore-samples.git \
-ParameterKey=AgentDirectory,\
-ParameterValue=web_search_openai_agents \
-ParameterKey=CognitoStackName,\
-ParameterValue=cognito-stack-a2a \
-    --capabilities CAPABILITY_IAM \
-    --region us-west-2 && \
-aws cloudformation wait stack-create-complete \
-    --stack-name web-search-agent-a2a \
-    --region us-west-2
-```
-
-> [!WARNING]
-> This deployment typically takes 15-20 minutes due to Docker image
-> building via CodeBuild. The command will wait for the stack to complete
-> before returning. Do not proceed to Step 4 until this completes
-> successfully.
-
-### Step 4: Deploy Google ADK Host Agent
-
-> [!IMPORTANT]
-> Replace the following placeholders:
-> - `<your-google-api-key>`: Your Google API key for ADK
-
-```bash
-aws cloudformation create-stack \
-    --stack-name host-agent-a2a \
-    --template-body file://cloudformation/host_agent.yaml \
-    --parameters \
-ParameterKey=GoogleApiKey,ParameterValue=<your-google-api-key> \
-ParameterKey=GitHubURL,ParameterValue=https://github.com/awslabs/amazon-bedrock-agentcore-samples.git \
-ParameterKey=AgentDirectory,\
-ParameterValue=host_adk_agent \
-ParameterKey=CognitoStackName,\
-ParameterValue=cognito-stack-a2a \
-    --capabilities CAPABILITY_IAM \
-    --region us-west-2 && \
-aws cloudformation wait stack-create-complete \
-    --stack-name host-agent-a2a \
-    --region us-west-2
-```
-
-> [!WARNING]
-> This deployment typically takes 15-20 minutes due to Docker image
-> building via CodeBuild. The command will wait for the stack to complete
-> before returning. Once this completes successfully, all stacks are
-> deployed and you can proceed to test the agents or run the React
-> frontend.
+**Total deployment time**: Approximately 10-15 minutes
 
 ## React Frontend
 
@@ -242,76 +153,38 @@ uv run test/connect_agent.py --agent host
 
 ## Cleanup
 
-To remove all resources created by this solution, delete the CloudFormation stacks in reverse order of deployment:
+### Automated Cleanup (Recommended)
 
-### Step 1: Delete Host Agent Stack
-
-```bash
-aws cloudformation delete-stack \
-    --stack-name host-agent-a2a \
-    --region us-west-2
-```
-
-Wait for deletion to complete:
-```bash
-aws cloudformation wait stack-delete-complete \
-    --stack-name host-agent-a2a \
-    --region us-west-2
-```
-
-### Step 2: Delete Web Search Agent Stack
+The easiest way to clean up all resources is using our automated cleanup script:
 
 ```bash
-aws cloudformation delete-stack \
-    --stack-name web-search-agent-a2a \
-    --region us-west-2
+# Run the cleanup script
+uv run cleanup.py
 ```
 
-Wait for deletion to complete:
+The cleanup script will:
 
-```bash
-aws cloudformation wait stack-delete-complete \
-    --stack-name web-search-agent-a2a \
-    --region us-west-2
-```
+1. 🔍 Load your deployment configuration from `.a2a.config`
+2. 📋 Show all resources that will be deleted
+3. 🔒 Require double confirmation (including typing 'DELETE')
+4. 🗑️ Delete all resources in the correct reverse order:
+   - Host Agent Stack
+   - Web Search Agent Stack
+   - Monitoring Agent Stack
+   - Cognito Stack
+   - S3 Bucket and contents
+5. ⏱️ Wait for each deletion to complete before proceeding
 
-### Step 3: Delete Monitoring Agent Stack
+**Total cleanup time**: Approximately 10-15 minutes
 
-```bash
-aws cloudformation delete-stack \
-    --stack-name monitor-agent-a2a \
-    --region us-west-2
-```
+> [!WARNING]
+> This will permanently delete all deployed resources. This action cannot be undone!
 
-Wait for deletion to complete:
+### Troubleshooting Cleanup
 
-```bash
-aws cloudformation wait stack-delete-complete \
-    --stack-name monitor-agent-a2a \
-    --region us-west-2
-```
+If cleanup fails or you encounter errors:
 
-### Step 4: Delete Cognito Stack
-
-```bash
-aws cloudformation delete-stack \
-    --stack-name cognito-stack-a2a \
-    --region us-west-2
-```
-
-Wait for deletion to complete:
-
-```bash
-aws cloudformation wait stack-delete-complete \
-    --stack-name cognito-stack-a2a \
-    --region us-west-2
-```
-
-### Additional Cleanup (if needed)
-
-**CloudWatch Logs**: Log groups created by the agents may not be automatically deleted. Remove them manually if needed:
-
-   ```bash
-   aws logs describe-log-groups --region us-west-2 | grep -i a2a
-   aws logs delete-log-group --log-group-name <log-group-name> --region us-west-2
-   ```
+1. **Check stack status** in the AWS CloudFormation console
+2. **Manual resource deletion**: Some resources may need to be deleted manually if they have dependencies
+3. **S3 bucket not empty**: Ensure the bucket is completely empty before deletion
+4. **Review CloudWatch Logs**: Check for any errors in stack deletion events

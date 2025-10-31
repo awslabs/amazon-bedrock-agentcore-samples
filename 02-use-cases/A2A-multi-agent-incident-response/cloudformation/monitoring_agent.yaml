@@ -6,7 +6,7 @@ Parameters:
     Type: String
     Description: Amazon Bedrock model id
     Default: 'global.anthropic.claude-sonnet-4-20250514-v1:0'
-  
+
   GitHubURL:
     Type: String
     Description: Github URL of the project
@@ -15,11 +15,20 @@ Parameters:
   AgentDirectory:
     Type: String
     Description: Agent directory with Dockerfile of agent
-    Default: monitoring_agent
+    Default: monitoring_strands_agent
 
   CognitoStackName:
     Type: String
     Description: Name of the Cognito CloudFormation stack to import values from
+
+  SmithyModelS3Bucket:
+    Type: String
+    Description: S3 bucket containing the Smithy model file
+
+  SmithyModelS3Key:
+    Type: String
+    Description: S3 key (path) to the Smithy model file
+    Default: 'smithy-models/monitoring-service.json'
 
 Resources:
   
@@ -133,6 +142,12 @@ Resources:
                 Resource:
                   - !GetAtt AgentMemory.MemoryArn
                   - !Sub '${AgentMemory.MemoryArn}/*'
+              - Sid: S3SmithyModelAccess
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                Resource:
+                  - !Sub 'arn:aws:s3:::${SmithyModelS3Bucket}/${SmithyModelS3Key}'
       Tags:
         - Key: Name
           Value: !Sub '${AWS::StackName}-Runtime-Role'
@@ -248,6 +263,7 @@ Resources:
                 - pwd
                 - ls -la
                 - echo "Navigating to agent directory..."
+                - cd 02-use-cases/A2A-multi-agent-incident-response/
                 - cd ${AGENT_DIRECTORY}
                 - echo "Contents of agent directory:"
                 - ls -la
@@ -286,7 +302,6 @@ Resources:
                 - docker push $ECR_REPOSITORY_URI:${IMAGE_TAG}
                 - echo "Build completed at $(date)"
                 - echo "Image tag pushed - ${IMAGE_TAG}"
-      SourceVersion: refs/heads/a2a_sample
       TimeoutInMinutes: 30
       Tags:
         - Key: Name
@@ -1176,390 +1191,8 @@ Resources:
       TargetConfiguration:
         Mcp:
           SmithyModel:
-            InlinePayload: |
-              $version: "2.0"
-
-              namespace aws.monitoring
-
-              use aws.protocols#restJson1
-
-              @restJson1
-              service CloudWatchMonitoringService {
-                  version: "2024-01-01"
-                  operations: [
-                      ListCloudWatchDashboards
-                      FetchCloudWatchLogsForService
-                      GetCloudWatchAlarmsForService
-                      ListLogGroups
-                      AnalyzeLogGroup
-                      GetDashboardSummary
-                      GetLogStreams
-                      GetMetricStatistics
-                      GetAlarmHistory
-                      FilterLogEvents
-                      ListMetrics
-                  ]
-              }
-
-              // List CloudWatch Dashboards
-              @http(method: "GET", uri: "/dashboards")
-              @readonly
-              operation ListCloudWatchDashboards {
-                  input: ListDashboardsInput
-                  output: ListDashboardsOutput
-              }
-
-              structure ListDashboardsInput {
-                  accountId: String
-                  roleName: String
-              }
-
-              structure ListDashboardsOutput {
-                  dashboards: DashboardList
-                  count: Integer
-              }
-
-              list DashboardList {
-                  member: Dashboard
-              }
-
-              structure Dashboard {
-                  dashboardName: String
-                  dashboardArn: String
-              }
-
-              // Fetch CloudWatch Logs for Service
-              @http(method: "GET", uri: "/logs/service/{serviceName}")
-              @readonly
-              operation FetchCloudWatchLogsForService {
-                  input: FetchLogsInput
-                  output: FetchLogsOutput
-              }
-
-              structure FetchLogsInput {
-                  @required
-                  @httpLabel
-                  serviceName: String
-                  @httpQuery("timeRangeMinutes")
-                  timeRangeMinutes: Integer
-                  @httpQuery("maxLogs")
-                  maxLogs: Integer
-                  @httpQuery("accountId")
-                  accountId: String
-                  @httpQuery("roleName")
-                  roleName: String
-              }
-
-              structure FetchLogsOutput {
-                  serviceName: String
-                  logGroupsFound: Integer
-                  logGroupsProcessed: StringList
-                  timeRangeMinutes: Integer
-                  analysis: LogAnalysis
-                  logs: LogEntryList
-              }
-
-              structure LogAnalysis {
-                  totalLogs: Integer
-                  errorCount: Integer
-                  warningCount: Integer
-              }
-
-              list LogEntryList {
-                  member: LogEntry
-              }
-
-              structure LogEntry {
-                  timestamp: Long
-                  message: String
-                  logGroup: String
-                  stream: String
-              }
-
-              list StringList {
-                  member: String
-              }
-
-              // Get CloudWatch Alarms for Service
-              @http(method: "GET", uri: "/alarms/service/{serviceName}")
-              @readonly
-              operation GetCloudWatchAlarmsForService {
-                  input: GetAlarmsInput
-                  output: GetAlarmsOutput
-              }
-
-              structure GetAlarmsInput {
-                  @required
-                  @httpLabel
-                  serviceName: String
-                  @httpQuery("alarmState")
-                  alarmState: String
-                  @httpQuery("accountId")
-                  accountId: String
-                  @httpQuery("roleName")
-                  roleName: String
-              }
-
-              structure GetAlarmsOutput {
-                  serviceName: String
-                  summary: AlarmSummary
-                  alarmsByState: AlarmStateMap
-              }
-
-              structure AlarmSummary {
-                  total: Integer
-                  inAlarmState: Integer
-                  okState: Integer
-                  insufficientDataState: Integer
-              }
-
-              map AlarmStateMap {
-                  key: String
-                  value: AlarmList
-              }
-
-              list AlarmList {
-                  member: Alarm
-              }
-
-              structure Alarm {
-                  name: String
-                  description: String
-                  reason: String
-                  namespace: String
-                  metricName: String
-                  threshold: Double
-                  comparisonOperator: String
-              }
-
-              // List Log Groups
-              @http(method: "GET", uri: "/log-groups")
-              @readonly
-              operation ListLogGroups {
-                  input: ListLogGroupsInput
-                  output: ListLogGroupsOutput
-              }
-
-              structure ListLogGroupsInput {
-                  @httpQuery("accountId")
-                  accountId: String
-                  @httpQuery("roleName")
-                  roleName: String
-              }
-
-              structure ListLogGroupsOutput {
-                  logGroups: StringList
-                  count: Integer
-              }
-
-              // Analyze Log Group
-              @http(method: "GET", uri: "/log-groups/{logGroupName}/analyze")
-              @readonly
-              operation AnalyzeLogGroup {
-                  input: AnalyzeLogGroupInput
-                  output: AnalyzeLogGroupOutput
-              }
-
-              structure AnalyzeLogGroupInput {
-                  @required
-                  @httpLabel
-                  logGroupName: String
-                  @httpQuery("timeRangeMinutes")
-                  timeRangeMinutes: Integer
-                  @httpQuery("maxLogs")
-                  maxLogs: Integer
-                  @httpQuery("accountId")
-                  accountId: String
-                  @httpQuery("roleName")
-                  roleName: String
-              }
-
-              structure AnalyzeLogGroupOutput {
-                  logGroup: LogGroupInfo
-                  analysis: LogAnalysis
-                  recentLogs: LogEntryList
-              }
-
-              structure LogGroupInfo {
-                  name: String
-                  arn: String
-                  storedBytes: Long
-              }
-
-              // Get Dashboard Summary
-              @http(method: "GET", uri: "/dashboards/{dashboardName}")
-              @readonly
-              operation GetDashboardSummary {
-                  input: GetDashboardInput
-                  output: GetDashboardOutput
-              }
-
-              structure GetDashboardInput {
-                  @required
-                  @httpLabel
-                  dashboardName: String
-                  @httpQuery("accountId")
-                  accountId: String
-                  @httpQuery("roleName")
-                  roleName: String
-              }
-
-              structure GetDashboardOutput {
-                  dashboardName: String
-                  dashboardArn: String
-                  widgetCount: Integer
-              }
-
-              // Get Log Streams
-              @http(method: "GET", uri: "/log-groups/{logGroupName}/streams")
-              @readonly
-              operation GetLogStreams {
-                  input: GetLogStreamsInput
-                  output: GetLogStreamsOutput
-              }
-
-              structure GetLogStreamsInput {
-                  @required
-                  @httpLabel
-                  logGroupName: String
-                  @httpQuery("limit")
-                  limit: Integer
-                  @httpQuery("orderBy")
-                  orderBy: String
-                  @httpQuery("accountId")
-                  accountId: String
-                  @httpQuery("roleName")
-                  roleName: String
-              }
-
-              structure GetLogStreamsOutput {
-                  logGroupName: String
-                  streamCount: Integer
-                  streams: LogStreamList
-              }
-
-              list LogStreamList {
-                  member: LogStream
-              }
-
-              structure LogStream {
-                  name: String
-                  lastEventTimestamp: Long
-              }
-
-              // Get Metric Statistics
-              @http(method: "GET", uri: "/metrics/statistics")
-              @readonly
-              operation GetMetricStatistics {
-                  input: GetMetricStatsInput
-                  output: GetMetricStatsOutput
-              }
-
-              structure GetMetricStatsInput {
-                  @required
-                  @httpQuery("namespace")
-                  namespace: String
-                  @required
-                  @httpQuery("metricName")
-                  metricName: String
-                  @httpQuery("startTimeMinutes")
-                  startTimeMinutes: Integer
-                  @httpQuery("period")
-                  period: Integer
-                  @httpQuery("accountId")
-                  accountId: String
-                  @httpQuery("roleName")
-                  roleName: String
-              }
-
-              structure GetMetricStatsOutput {
-                  namespace: String
-                  metricName: String
-                  datapointCount: Integer
-              }
-
-              // Get Alarm History
-              @http(method: "GET", uri: "/alarms/{alarmName}/history")
-              @readonly
-              operation GetAlarmHistory {
-                  input: GetAlarmHistoryInput
-                  output: GetAlarmHistoryOutput
-              }
-
-              structure GetAlarmHistoryInput {
-                  @required
-                  @httpLabel
-                  alarmName: String
-                  @httpQuery("historyItemType")
-                  historyItemType: String
-                  @httpQuery("startTimeHours")
-                  startTimeHours: Integer
-                  @httpQuery("maxRecords")
-                  maxRecords: Integer
-                  @httpQuery("accountId")
-                  accountId: String
-                  @httpQuery("roleName")
-                  roleName: String
-              }
-
-              structure GetAlarmHistoryOutput {
-                  alarmName: String
-                  historyItemCount: Integer
-              }
-
-              // Filter Log Events
-              @http(method: "GET", uri: "/log-groups/{logGroupName}/filter")
-              @readonly
-              operation FilterLogEvents {
-                  input: FilterLogEventsInput
-                  output: FilterLogEventsOutput
-              }
-
-              structure FilterLogEventsInput {
-                  @required
-                  @httpLabel
-                  logGroupName: String
-                  @httpQuery("filterPattern")
-                  filterPattern: String
-                  @httpQuery("startTimeMinutes")
-                  startTimeMinutes: Integer
-                  @httpQuery("limit")
-                  limit: Integer
-                  @httpQuery("accountId")
-                  accountId: String
-                  @httpQuery("roleName")
-                  roleName: String
-              }
-
-              structure FilterLogEventsOutput {
-                  logGroupName: String
-                  eventCount: Integer
-                  analysis: LogAnalysis
-              }
-
-              // List Metrics
-              @http(method: "GET", uri: "/metrics")
-              @readonly
-              operation ListMetrics {
-                  input: ListMetricsInput
-                  output: ListMetricsOutput
-              }
-
-              structure ListMetricsInput {
-                  @httpQuery("namespace")
-                  namespace: String
-                  @httpQuery("metricName")
-                  metricName: String
-                  @httpQuery("accountId")
-                  accountId: String
-                  @httpQuery("roleName")
-                  roleName: String
-              }
-
-              structure ListMetricsOutput {
-                  totalMetrics: Integer
-                  namespaceCount: Integer
-              }
+            S3:
+              Uri: !Sub 's3://${SmithyModelS3Bucket}/${SmithyModelS3Key}'
 
   GatewayUrlParameter:
     Type: AWS::SSM::Parameter

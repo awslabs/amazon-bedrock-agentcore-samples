@@ -7,7 +7,7 @@ set -e
 echo "🔧 Setting up frontend environment..."
 
 # Check for required parameter
-COGNITO_STACK_NAME=${1:-"a2a-cognito"}
+COGNITO_STACK_NAME=${1:-"cognito-stack-a2a"}
 echo "📋 Using Cognito stack name: $COGNITO_STACK_NAME"
 
 # Get AWS region and account ID

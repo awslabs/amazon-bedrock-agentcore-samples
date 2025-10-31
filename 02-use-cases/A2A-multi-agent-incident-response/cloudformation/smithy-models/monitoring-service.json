@@ -1,0 +1,907 @@
+{
+  "smithy": "2.0",
+  "metadata": {
+    "suppressions": [
+      {
+        "id": "HttpMethodSemantics",
+        "namespace": "*"
+      },
+      {
+        "id": "HttpResponseCodeSemantics",
+        "namespace": "*"
+      },
+      {
+        "id": "PaginatedTrait",
+        "namespace": "*"
+      },
+      {
+        "id": "HttpHeaderTrait",
+        "namespace": "*"
+      },
+      {
+        "id": "HttpUriConflict",
+        "namespace": "*"
+      },
+      {
+        "id": "Service",
+        "namespace": "*"
+      }
+    ]
+  },
+  "shapes": {
+    "aws.monitoring#CloudWatchMonitoringService": {
+      "type": "service",
+      "version": "2024-01-01",
+      "operations": [
+        {
+          "target": "aws.monitoring#ListCloudWatchDashboards"
+        },
+        {
+          "target": "aws.monitoring#FetchCloudWatchLogsForService"
+        },
+        {
+          "target": "aws.monitoring#GetCloudWatchAlarmsForService"
+        },
+        {
+          "target": "aws.monitoring#ListLogGroups"
+        },
+        {
+          "target": "aws.monitoring#AnalyzeLogGroup"
+        },
+        {
+          "target": "aws.monitoring#GetDashboardSummary"
+        },
+        {
+          "target": "aws.monitoring#GetLogStreams"
+        },
+        {
+          "target": "aws.monitoring#GetMetricStatistics"
+        },
+        {
+          "target": "aws.monitoring#GetAlarmHistory"
+        },
+        {
+          "target": "aws.monitoring#FilterLogEvents"
+        },
+        {
+          "target": "aws.monitoring#ListMetrics"
+        }
+      ],
+      "traits": {
+        "aws.protocols#restJson1": {},
+        "aws.auth#sigv4": {
+          "name": "monitoring"
+        },
+        "smithy.api#documentation": "CloudWatch Monitoring Service for retrieving logs, metrics, and alarms"
+      }
+    },
+    "aws.monitoring#ListCloudWatchDashboards": {
+      "type": "operation",
+      "input": {
+        "target": "aws.monitoring#ListDashboardsInput"
+      },
+      "output": {
+        "target": "aws.monitoring#ListDashboardsOutput"
+      },
+      "traits": {
+        "smithy.api#http": {
+          "method": "GET",
+          "uri": "/dashboards"
+        },
+        "smithy.api#readonly": {}
+      }
+    },
+    "aws.monitoring#ListDashboardsInput": {
+      "type": "structure",
+      "members": {
+        "accountId": {
+          "target": "smithy.api#String",
+          "traits": {
+            "smithy.api#httpQuery": "accountId"
+          }
+        },
+        "roleName": {
+          "target": "smithy.api#String",
+          "traits": {
+            "smithy.api#httpQuery": "roleName"
+          }
+        }
+      }
+    },
+    "aws.monitoring#ListDashboardsOutput": {
+      "type": "structure",
+      "members": {
+        "dashboards": {
+          "target": "aws.monitoring#DashboardList"
+        },
+        "count": {
+          "target": "smithy.api#Integer"
+        }
+      }
+    },
+    "aws.monitoring#DashboardList": {
+      "type": "list",
+      "member": {
+        "target": "aws.monitoring#Dashboard"
+      }
+    },
+    "aws.monitoring#Dashboard": {
+      "type": "structure",
+      "members": {
+        "dashboardName": {
+          "target": "smithy.api#String"
+        },
+        "dashboardArn": {
+          "target": "smithy.api#String"
+        }
+      }
+    },
+    "aws.monitoring#FetchCloudWatchLogsForService": {
+      "type": "operation",
+      "input": {
+        "target": "aws.monitoring#FetchLogsInput"
+      },
+      "output": {
+        "target": "aws.monitoring#FetchLogsOutput"
+      },
+      "traits": {
+        "smithy.api#http": {
+          "method": "GET",
+          "uri": "/logs/service/{serviceName}"
+        },
+        "smithy.api#readonly": {}
+      }
+    },
+    "aws.monitoring#FetchLogsInput": {
+      "type": "structure",
+      "members": {
+        "serviceName": {
+          "target": "smithy.api#String",
+          "traits": {
+            "smithy.api#required": {},
+            "smithy.api#httpLabel": {}
+          }
+        },
+        "timeRangeMinutes": {
+          "target": "smithy.api#Integer",
+          "traits": {
+            "smithy.api#httpQuery": "timeRangeMinutes"
+          }
+        },
+        "maxLogs": {
+          "target": "smithy.api#Integer",
+          "traits": {
+            "smithy.api#httpQuery": "maxLogs"
+          }
+        },
+        "accountId": {
+          "target": "smithy.api#String",
+          "traits": {
+            "smithy.api#httpQuery": "accountId"
+          }
+        },
+        "roleName": {
+          "target": "smithy.api#String",
+          "traits": {
+            "smithy.api#httpQuery": "roleName"
+          }
+        }
+      }
+    },
+    "aws.monitoring#FetchLogsOutput": {
+      "type": "structure",
+      "members": {
+        "serviceName": {
+          "target": "smithy.api#String"
+        },
+        "logGroupsFound": {
+          "target": "smithy.api#Integer"
+        },
+        "logGroupsProcessed": {
+          "target": "aws.monitoring#StringList"
+        },
+        "timeRangeMinutes": {
+          "target": "smithy.api#Integer"
+        },
+        "analysis": {
+          "target": "aws.monitoring#LogAnalysis"
+        },
+        "logs": {
+          "target": "aws.monitoring#LogEntryList"
+        }
+      }
+    },
+    "aws.monitoring#LogAnalysis": {
+      "type": "structure",
+      "members": {
+        "totalLogs": {
+          "target": "smithy.api#Integer"
+        },
+        "errorCount": {
+          "target": "smithy.api#Integer"
+        },
+        "warningCount": {
+          "target": "smithy.api#Integer"
+        }
+      }
+    },
+    "aws.monitoring#LogEntryList": {
+      "type": "list",
+      "member": {
+        "target": "aws.monitoring#LogEntry"
+      }
+    },
+    "aws.monitoring#LogEntry": {
+      "type": "structure",
+      "members": {
+        "timestamp": {
+          "target": "smithy.api#Long"
+        },
+        "message": {
+          "target": "smithy.api#String"
+        },
+        "logGroup": {
+          "target": "smithy.api#String"
+        },
+        "stream": {
+          "target": "smithy.api#String"
+        }
+      }
+    },
+    "aws.monitoring#StringList": {
+      "type": "list",
+      "member": {
+        "target": "smithy.api#String"
+      }
+    },
+    "aws.monitoring#GetCloudWatchAlarmsForService": {
+      "type": "operation",
+      "input": {
+        "target": "aws.monitoring#GetAlarmsInput"
+      },
+      "output": {
+        "target": "aws.monitoring#GetAlarmsOutput"
+      },
+      "traits": {
+        "smithy.api#http": {
+          "method": "GET",
+          "uri": "/alarms/service/{serviceName}"
+        },
+        "smithy.api#readonly": {}
+      }
+    },
+    "aws.monitoring#GetAlarmsInput": {
+      "type": "structure",
+      "members": {
+        "serviceName": {
+          "target": "smithy.api#String",
+          "traits": {
+            "smithy.api#required": {},
+            "smithy.api#httpLabel": {}
+          }
+        },
+        "alarmState": {
+          "target": "smithy.api#String",
+          "traits": {
+            "smithy.api#httpQuery": "alarmState"
+          }
+        },
+        "accountId": {
+          "target": "smithy.api#String",
+          "traits": {
+            "smithy.api#httpQuery": "accountId"
+          }
+        },
+        "roleName": {
+          "target": "smithy.api#String",
+          "traits": {
+            "smithy.api#httpQuery": "roleName"
+          }
+        }
+      }
+    },
+    "aws.monitoring#GetAlarmsOutput": {
+      "type": "structure",
+      "members": {
+        "serviceName": {
+          "target": "smithy.api#String"
+        },
+        "summary": {
+          "target": "aws.monitoring#AlarmSummary"
+        },
+        "alarmsByState": {
+          "target": "aws.monitoring#AlarmStateMap"
+        }
+      }
+    },
+    "aws.monitoring#AlarmSummary": {
+      "type": "structure",
+      "members": {
+        "total": {
+          "target": "smithy.api#Integer"
+        },
+        "inAlarmState": {
+          "target": "smithy.api#Integer"
+        },
+        "okState": {
+          "target": "smithy.api#Integer"
+        },
+        "insufficientDataState": {
+          "target": "smithy.api#Integer"
+        }
+      }
+    },
+    "aws.monitoring#AlarmStateMap": {
+      "type": "map",
+      "key": {
+        "target": "smithy.api#String"
+      },
+      "value": {
+        "target": "aws.monitoring#AlarmList"
+      }
+    },
+    "aws.monitoring#AlarmList": {
+      "type": "list",
+      "member": {
+        "target": "aws.monitoring#Alarm"
+      }
+    },
+    "aws.monitoring#Alarm": {
+      "type": "structure",
+      "members": {
+        "name": {
+          "target": "smithy.api#String"
+        },
+        "description": {
+          "target": "smithy.api#String"
+        },
+        "reason": {
+          "target": "smithy.api#String"
+        },
+        "namespace": {
+          "target": "smithy.api#String"
+        },
+        "metricName": {
+          "target": "smithy.api#String"
+        },
+        "threshold": {
+          "target": "smithy.api#Double"
+        },
+        "comparisonOperator": {
+          "target": "smithy.api#String"
+        }
+      }
+    },
+    "aws.monitoring#ListLogGroups": {
+      "type": "operation",
+      "input": {
+        "target": "aws.monitoring#ListLogGroupsInput"
+      },
+      "output": {
+        "target": "aws.monitoring#ListLogGroupsOutput"
+      },
+      "traits": {
+        "smithy.api#http": {
+          "method": "GET",
+          "uri": "/log-groups"
+        },
+        "smithy.api#readonly": {}
+      }
+    },
+    "aws.monitoring#ListLogGroupsInput": {
+      "type": "structure",
+      "members": {
+        "accountId": {
+          "target": "smithy.api#String",
+          "traits": {
+            "smithy.api#httpQuery": "accountId"
+          }
+        },
+        "roleName": {
+          "target": "smithy.api#String",
+          "traits": {
+            "smithy.api#httpQuery": "roleName"
+          }
+        }
+      }
+    },
+    "aws.monitoring#ListLogGroupsOutput": {
+      "type": "structure",
+      "members": {
+        "logGroups": {
+          "target": "aws.monitoring#StringList"
+        },
+        "count": {
+          "target": "smithy.api#Integer"
+        }
+      }
+    },
+    "aws.monitoring#AnalyzeLogGroup": {
+      "type": "operation",
+      "input": {
+        "target": "aws.monitoring#AnalyzeLogGroupInput"
+      },
+      "output": {
+        "target": "aws.monitoring#AnalyzeLogGroupOutput"
+      },
+      "traits": {
+        "smithy.api#http": {
+          "method": "GET",
+          "uri": "/log-groups/{logGroupName}/analyze"
+        },
+        "smithy.api#readonly": {}
+      }
+    },
+    "aws.monitoring#AnalyzeLogGroupInput": {
+      "type": "structure",
+      "members": {
+        "logGroupName": {
+          "target": "smithy.api#String",
+          "traits": {
+            "smithy.api#required": {},
+            "smithy.api#httpLabel": {}
+          }
+        },
+        "timeRangeMinutes": {
+          "target": "smithy.api#Integer",
+          "traits": {
+            "smithy.api#httpQuery": "timeRangeMinutes"
+          }
+        },
+        "maxLogs": {
+          "target": "smithy.api#Integer",
+          "traits": {
+            "smithy.api#httpQuery": "maxLogs"
+          }
+        },
+        "accountId": {
+          "target": "smithy.api#String",
+          "traits": {
+            "smithy.api#httpQuery": "accountId"
+          }
+        },
+        "roleName": {
+          "target": "smithy.api#String",
+          "traits": {
+            "smithy.api#httpQuery": "roleName"
+          }
+        }
+      }
+    },
+    "aws.monitoring#AnalyzeLogGroupOutput": {
+      "type": "structure",
+      "members": {
+        "logGroup": {
+          "target": "aws.monitoring#LogGroupInfo"
+        },
+        "analysis": {
+          "target": "aws.monitoring#LogAnalysis"
+        },
+        "recentLogs": {
+          "target": "aws.monitoring#LogEntryList"
+        }
+      }
+    },
+    "aws.monitoring#LogGroupInfo": {
+      "type": "structure",
+      "members": {
+        "name": {
+          "target": "smithy.api#String"
+        },
+        "arn": {
+          "target": "smithy.api#String"
+        },
+        "storedBytes": {
+          "target": "smithy.api#Long"
+        }
+      }
+    },
+    "aws.monitoring#GetDashboardSummary": {
+      "type": "operation",
+      "input": {
+        "target": "aws.monitoring#GetDashboardInput"
+      },
+      "output": {
+        "target": "aws.monitoring#GetDashboardOutput"
+      },
+      "traits": {
+        "smithy.api#http": {
+          "method": "GET",
+          "uri": "/dashboards/{dashboardName}"
+        },
+        "smithy.api#readonly": {}
+      }
+    },
+    "aws.monitoring#GetDashboardInput": {
+      "type": "structure",
+      "members": {
+        "dashboardName": {
+          "target": "smithy.api#String",
+          "traits": {
+            "smithy.api#required": {},
+            "smithy.api#httpLabel": {}
+          }
+        },
+        "accountId": {
+          "target": "smithy.api#String",
+          "traits": {
+            "smithy.api#httpQuery": "accountId"
+          }
+        },
+        "roleName": {
+          "target": "smithy.api#String",
+          "traits": {
+            "smithy.api#httpQuery": "roleName"
+          }
+        }
+      }
+    },
+    "aws.monitoring#GetDashboardOutput": {
+      "type": "structure",
+      "members": {
+        "dashboardName": {
+          "target": "smithy.api#String"
+        },
+        "dashboardArn": {
+          "target": "smithy.api#String"
+        },
+        "widgetCount": {
+          "target": "smithy.api#Integer"
+        }
+      }
+    },
+    "aws.monitoring#GetLogStreams": {
+      "type": "operation",
+      "input": {
+        "target": "aws.monitoring#GetLogStreamsInput"
+      },
+      "output": {
+        "target": "aws.monitoring#GetLogStreamsOutput"
+      },
+      "traits": {
+        "smithy.api#http": {
+          "method": "GET",
+          "uri": "/log-groups/{logGroupName}/streams"
+        },
+        "smithy.api#readonly": {}
+      }
+    },
+    "aws.monitoring#GetLogStreamsInput": {
+      "type": "structure",
+      "members": {
+        "logGroupName": {
+          "target": "smithy.api#String",
+          "traits": {
+            "smithy.api#required": {},
+            "smithy.api#httpLabel": {}
+          }
+        },
+        "limit": {
+          "target": "smithy.api#Integer",
+          "traits": {
+            "smithy.api#httpQuery": "limit"
+          }
+        },
+        "orderBy": {
+          "target": "smithy.api#String",
+          "traits": {
+            "smithy.api#httpQuery": "orderBy"
+          }
+        },
+        "accountId": {
+          "target": "smithy.api#String",
+          "traits": {
+            "smithy.api#httpQuery": "accountId"
+          }
+        },
+        "roleName": {
+          "target": "smithy.api#String",
+          "traits": {
+            "smithy.api#httpQuery": "roleName"
+          }
+        }
+      }
+    },
+    "aws.monitoring#GetLogStreamsOutput": {
+      "type": "structure",
+      "members": {
+        "logGroupName": {
+          "target": "smithy.api#String"
+        },
+        "streamCount": {
+          "target": "smithy.api#Integer"
+        },
+        "streams": {
+          "target": "aws.monitoring#LogStreamList"
+        }
+      }
+    },
+    "aws.monitoring#LogStreamList": {
+      "type": "list",
+      "member": {
+        "target": "aws.monitoring#LogStream"
+      }
+    },
+    "aws.monitoring#LogStream": {
+      "type": "structure",
+      "members": {
+        "name": {
+          "target": "smithy.api#String"
+        },
+        "lastEventTimestamp": {
+          "target": "smithy.api#Long"
+        }
+      }
+    },
+    "aws.monitoring#GetMetricStatistics": {
+      "type": "operation",
+      "input": {
+        "target": "aws.monitoring#GetMetricStatsInput"
+      },
+      "output": {
+        "target": "aws.monitoring#GetMetricStatsOutput"
+      },
+      "traits": {
+        "smithy.api#http": {
+          "method": "GET",
+          "uri": "/metrics/statistics"
+        },
+        "smithy.api#readonly": {}
+      }
+    },
+    "aws.monitoring#GetMetricStatsInput": {
+      "type": "structure",
+      "members": {
+        "namespace": {
+          "target": "smithy.api#String",
+          "traits": {
+            "smithy.api#required": {},
+            "smithy.api#httpQuery": "namespace"
+          }
+        },
+        "metricName": {
+          "target": "smithy.api#String",
+          "traits": {
+            "smithy.api#required": {},
+            "smithy.api#httpQuery": "metricName"
+          }
+        },
+        "startTimeMinutes": {
+          "target": "smithy.api#Integer",
+          "traits": {
+            "smithy.api#httpQuery": "startTimeMinutes"
+          }
+        },
+        "period": {
+          "target": "smithy.api#Integer",
+          "traits": {
+            "smithy.api#httpQuery": "period"
+          }
+        },
+        "accountId": {
+          "target": "smithy.api#String",
+          "traits": {
+            "smithy.api#httpQuery": "accountId"
+          }
+        },
+        "roleName": {
+          "target": "smithy.api#String",
+          "traits": {
+            "smithy.api#httpQuery": "roleName"
+          }
+        }
+      }
+    },
+    "aws.monitoring#GetMetricStatsOutput": {
+      "type": "structure",
+      "members": {
+        "namespace": {
+          "target": "smithy.api#String"
+        },
+        "metricName": {
+          "target": "smithy.api#String"
+        },
+        "datapointCount": {
+          "target": "smithy.api#Integer"
+        }
+      }
+    },
+    "aws.monitoring#GetAlarmHistory": {
+      "type": "operation",
+      "input": {
+        "target": "aws.monitoring#GetAlarmHistoryInput"
+      },
+      "output": {
+        "target": "aws.monitoring#GetAlarmHistoryOutput"
+      },
+      "traits": {
+        "smithy.api#http": {
+          "method": "GET",
+          "uri": "/alarms/{alarmName}/history"
+        },
+        "smithy.api#readonly": {}
+      }
+    },
+    "aws.monitoring#GetAlarmHistoryInput": {
+      "type": "structure",
+      "members": {
+        "alarmName": {
+          "target": "smithy.api#String",
+          "traits": {
+            "smithy.api#required": {},
+            "smithy.api#httpLabel": {}
+          }
+        },
+        "historyItemType": {
+          "target": "smithy.api#String",
+          "traits": {
+            "smithy.api#httpQuery": "historyItemType"
+          }
+        },
+        "startTimeHours": {
+          "target": "smithy.api#Integer",
+          "traits": {
+            "smithy.api#httpQuery": "startTimeHours"
+          }
+        },
+        "maxRecords": {
+          "target": "smithy.api#Integer",
+          "traits": {
+            "smithy.api#httpQuery": "maxRecords"
+          }
+        },
+        "accountId": {
+          "target": "smithy.api#String",
+          "traits": {
+            "smithy.api#httpQuery": "accountId"
+          }
+        },
+        "roleName": {
+          "target": "smithy.api#String",
+          "traits": {
+            "smithy.api#httpQuery": "roleName"
+          }
+        }
+      }
+    },
+    "aws.monitoring#GetAlarmHistoryOutput": {
+      "type": "structure",
+      "members": {
+        "alarmName": {
+          "target": "smithy.api#String"
+        },
+        "historyItemCount": {
+          "target": "smithy.api#Integer"
+        }
+      }
+    },
+    "aws.monitoring#FilterLogEvents": {
+      "type": "operation",
+      "input": {
+        "target": "aws.monitoring#FilterLogEventsInput"
+      },
+      "output": {
+        "target": "aws.monitoring#FilterLogEventsOutput"
+      },
+      "traits": {
+        "smithy.api#http": {
+          "method": "GET",
+          "uri": "/log-groups/{logGroupName}/filter"
+        },
+        "smithy.api#readonly": {}
+      }
+    },
+    "aws.monitoring#FilterLogEventsInput": {
+      "type": "structure",
+      "members": {
+        "logGroupName": {
+          "target": "smithy.api#String",
+          "traits": {
+            "smithy.api#required": {},
+            "smithy.api#httpLabel": {}
+          }
+        },
+        "filterPattern": {
+          "target": "smithy.api#String",
+          "traits": {
+            "smithy.api#httpQuery": "filterPattern"
+          }
+        },
+        "startTimeMinutes": {
+          "target": "smithy.api#Integer",
+          "traits": {
+            "smithy.api#httpQuery": "startTimeMinutes"
+          }
+        },
+        "limit": {
+          "target": "smithy.api#Integer",
+          "traits": {
+            "smithy.api#httpQuery": "limit"
+          }
+        },
+        "accountId": {
+          "target": "smithy.api#String",
+          "traits": {
+            "smithy.api#httpQuery": "accountId"
+          }
+        },
+        "roleName": {
+          "target": "smithy.api#String",
+          "traits": {
+            "smithy.api#httpQuery": "roleName"
+          }
+        }
+      }
+    },
+    "aws.monitoring#FilterLogEventsOutput": {
+      "type": "structure",
+      "members": {
+        "logGroupName": {
+          "target": "smithy.api#String"
+        },
+        "eventCount": {
+          "target": "smithy.api#Integer"
+        },
+        "analysis": {
+          "target": "aws.monitoring#LogAnalysis"
+        }
+      }
+    },
+    "aws.monitoring#ListMetrics": {
+      "type": "operation",
+      "input": {
+        "target": "aws.monitoring#ListMetricsInput"
+      },
+      "output": {
+        "target": "aws.monitoring#ListMetricsOutput"
+      },
+      "traits": {
+        "smithy.api#http": {
+          "method": "GET",
+          "uri": "/metrics"
+        },
+        "smithy.api#readonly": {}
+      }
+    },
+    "aws.monitoring#ListMetricsInput": {
+      "type": "structure",
+      "members": {
+        "namespace": {
+          "target": "smithy.api#String",
+          "traits": {
+            "smithy.api#httpQuery": "namespace"
+          }
+        },
+        "metricName": {
+          "target": "smithy.api#String",
+          "traits": {
+            "smithy.api#httpQuery": "metricName"
+          }
+        },
+        "accountId": {
+          "target": "smithy.api#String",
+          "traits": {
+            "smithy.api#httpQuery": "accountId"
+          }
+        },
+        "roleName": {
+          "target": "smithy.api#String",
+          "traits": {
+            "smithy.api#httpQuery": "roleName"
+          }
+        }
+      }
+    },
+    "aws.monitoring#ListMetricsOutput": {
+      "type": "structure",
+      "members": {
+        "totalMetrics": {
+          "target": "smithy.api#Integer"
+        },
+        "namespaceCount": {
+          "target": "smithy.api#Integer"
+        }
+      }
+    }
+  }
+}

@@ -221,3 +221,6 @@ monitoring_strands_agent/tests/
 temp.py
 temp_agent.py
 temp.txt
+
+# A2A Deployment Configuration
+.a2a.config

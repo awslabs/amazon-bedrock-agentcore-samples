@@ -40,15 +40,15 @@ async def web_search_impl(query: str, top_k: int = 5, recency_days: int | None =
         "exclude_domains": None,
     }
     if recency_days:
-        # Tavily supports time windows like 'd7', 'd30'
+        # Tavily expects: 'day', 'week', 'month', 'year' (or 'd', 'w', 'm', 'y')
         if recency_days <= 1:
-            search_kwargs["time_range"] = "d1"
+            search_kwargs["time_range"] = "day"
         elif recency_days <= 7:
-            search_kwargs["time_range"] = "d7"
+            search_kwargs["time_range"] = "week"
         elif recency_days <= 30:
-            search_kwargs["time_range"] = "d30"
+            search_kwargs["time_range"] = "month"
         else:
-            search_kwargs["time_range"] = "y1"
+            search_kwargs["time_range"] = "year"
 
     res = client.search(**search_kwargs)
     results = []
