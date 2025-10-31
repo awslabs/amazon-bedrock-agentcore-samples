@@ -1,4 +1,3 @@
-import os
 import logging
 from dotenv import load_dotenv
 from google.adk.sessions import InMemorySessionService
@@ -44,7 +43,7 @@ async def call_agent(payload: dict, context):
 
     if not root_agent:
         # Import agent creation inside entrypoint so workload identity is available
-        from agent import get_agent_and_card, get_root_agent
+        from agent import get_agent_and_card
 
         logger.info("Initializing root agent and resolving agent cards...")
         # Create root agent once - LazyClientFactory creates fresh httpx clients

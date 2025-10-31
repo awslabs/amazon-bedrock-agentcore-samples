@@ -4,7 +4,6 @@ Interactive deployment script for A2A Multi-Agent Incident Response System.
 This script collects all required parameters and stores them in .a2a.config
 """
 
-import os
 import sys
 import uuid
 import yaml
@@ -203,7 +202,7 @@ def check_aws_credentials() -> bool:
     if success:
         try:
             identity = json.loads(output)
-            print_success(f"AWS credentials are valid")
+            print_success("AWS credentials are valid")
             print_info(f"  Account: {identity.get('Account', 'N/A')}")
             print_info(f"  User/Role: {identity.get('Arn', 'N/A').split('/')[-1]}")
             return True
@@ -222,7 +221,7 @@ def check_aws_region() -> tuple:
     if success and output:
         region = output.strip()
         if region == "us-west-2":
-            print_success(f"AWS region is correctly set to us-west-2")
+            print_success("AWS region is correctly set to us-west-2")
             return (True, region)
         else:
             print_error(f"AWS region is set to '{region}' but must be 'us-west-2'")
@@ -271,7 +270,7 @@ def run_pre_checks() -> tuple:
         try:
             identity = json.loads(output)
             account_id = identity.get("Account", "N/A")
-            print_success(f"AWS credentials are valid")
+            print_success("AWS credentials are valid")
             print_info(f"  Account: {account_id}")
             print_info(f"  User/Role: {identity.get('Arn', 'N/A').split('/')[-1]}")
         except json.JSONDecodeError:
@@ -337,11 +336,13 @@ def collect_deployment_parameters(account_id: str = None) -> Dict[str, Any]:
         "region": "us-west-2",  # Fixed to us-west-2 as verified in pre-checks
         "bedrock_model_id": get_input(
             "Bedrock Model ID",
-            default=existing_config.get("aws", {}).get(
-                "bedrock_model_id", "global.anthropic.claude-sonnet-4-20250514-v1:0"
-            )
-            if use_existing
-            else "global.anthropic.claude-sonnet-4-20250514-v1:0",
+            default=(
+                existing_config.get("aws", {}).get(
+                    "bedrock_model_id", "global.anthropic.claude-sonnet-4-20250514-v1:0"
+                )
+                if use_existing
+                else "global.anthropic.claude-sonnet-4-20250514-v1:0"
+            ),
             required=True,
         ),
     }
@@ -362,9 +363,11 @@ def collect_deployment_parameters(account_id: str = None) -> Dict[str, Any]:
         while True:
             stack_name = get_input(
                 prompt,
-                default=existing_config.get("stacks", {}).get(key, default_name)
-                if use_existing
-                else default_name,
+                default=(
+                    existing_config.get("stacks", {}).get(key, default_name)
+                    if use_existing
+                    else default_name
+                ),
                 required=True,
             )
             is_valid, message = validate_stack_name(stack_name)
@@ -412,11 +415,14 @@ def collect_deployment_parameters(account_id: str = None) -> Dict[str, Any]:
     config["github"] = {
         "url": get_input(
             "GitHub Repository URL",
-            default=existing_config.get("github", {}).get(
-                "url", "https://github.com/awslabs/amazon-bedrock-agentcore-samples.git"
-            )
-            if use_existing
-            else "https://github.com/awslabs/amazon-bedrock-agentcore-samples.git",
+            default=(
+                existing_config.get("github", {}).get(
+                    "url",
+                    "https://github.com/awslabs/amazon-bedrock-agentcore-samples.git",
+                )
+                if use_existing
+                else "https://github.com/awslabs/amazon-bedrock-agentcore-samples.git"
+            ),
             required=True,
         ),
         # Agent directories are taken from CloudFormation defaults - not configurable
@@ -448,11 +454,13 @@ def collect_deployment_parameters(account_id: str = None) -> Dict[str, Any]:
             "openai": get_secret("OpenAI API Key", required=True),
             "openai_model": get_input(
                 "OpenAI Model ID",
-                default=existing_config.get("api_keys", {}).get(
-                    "openai_model", "gpt-4o-2024-08-06"
-                )
-                if use_existing
-                else "gpt-4o-2024-08-06",
+                default=(
+                    existing_config.get("api_keys", {}).get(
+                        "openai_model", "gpt-4o-2024-08-06"
+                    )
+                    if use_existing
+                    else "gpt-4o-2024-08-06"
+                ),
                 required=True,
             ),
             "tavily": get_secret("Tavily API Key", required=True),
@@ -594,7 +602,7 @@ def create_s3_bucket_and_upload(config: Dict[str, Any]) -> bool:
     )
 
     if success:
-        print_success(f"Smithy model uploaded successfully!")
+        print_success("Smithy model uploaded successfully!")
         return True
     else:
         print_error(f"Failed to upload Smithy model: {output}")
