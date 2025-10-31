@@ -20,7 +20,10 @@ user_pool_id: "YOUR_USER_POOL_ID"
 client_id: "YOUR_CLIENT_ID"
 
 # S3 Configuration
-s3_bucket: "your-agentcore-schemas-bucket"
+# AUTO-CREATE (Recommended): Leave s3_bucket empty and the create_gateway.sh script will
+# automatically create a bucket with name format: sreagent-{uuid}
+# MANUAL: Specify your own bucket name if you prefer to manage the bucket yourself
+s3_bucket: ""  # Leave empty for auto-creation, or specify your bucket name
 s3_path_prefix: "devops-multiagent-demo"  # Path prefix for OpenAPI schema files
 
 # Provider Configuration

@@ -159,30 +159,38 @@ Agent 1 is your main entry point. It will handle simple queries directly or dele
 #### Using AWS CLI
 
 ```bash
-# Get Agent1 Runtime ID
+# Get Agent1 Runtime ID and construct ARN
 AGENT1_ID=$(aws cloudformation describe-stacks \
   --stack-name multi-agent-demo \
   --region us-west-2 \
   --query 'Stacks[0].Outputs[?OutputKey==`Agent1RuntimeId`].OutputValue' \
   --output text)
 
+# Get account ID and construct the ARN
+ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+REGION="us-west-2"
+AGENT1_ARN="arn:aws:bedrock-agentcore:${REGION}:${ACCOUNT_ID}:runtime/${AGENT1_ID}"
+
 # Test with a simple query (Agent1 handles directly)
+PAYLOAD1=$(echo -n '{"prompt": "Hello, how are you?"}' | base64)
 aws bedrock-agentcore invoke-agent-runtime \
-  --agent-runtime-id $AGENT1_ID \
+  --agent-runtime-arn $AGENT1_ARN \
   --qualifier DEFAULT \
-  --payload '{"prompt": "Hello, how are you?"}' \
+  --payload $PAYLOAD1 \
   --region us-west-2 \
-  response.json
+  response1.json
 
 # Test with a complex query (Agent1 delegates to Agent2)
+PAYLOAD2=$(echo -n '{"prompt": "Provide a detailed analysis of cloud computing benefits"}' | base64)
 aws bedrock-agentcore invoke-agent-runtime \
-  --agent-runtime-id $AGENT1_ID \
+  --agent-runtime-arn $AGENT1_ARN \
   --qualifier DEFAULT \
-  --payload '{"prompt": "Provide a detailed analysis of cloud computing benefits"}' \
+  --payload $PAYLOAD2 \
   --region us-west-2 \
-  response.json
+  response2.json
 
-cat response.json
+cat response1.json
+cat response2.json
 ```
 
 ### Using AWS Console
@@ -205,20 +213,30 @@ cat response.json
 You can also test Agent 2 directly to see its specialized capabilities.
 
 ```bash
-# Get Agent2 Runtime ID
+# Get Agent2 Runtime ID and construct ARN
 AGENT2_ID=$(aws cloudformation describe-stacks \
   --stack-name multi-agent-demo \
   --region us-west-2 \
   --query 'Stacks[0].Outputs[?OutputKey==`Agent2RuntimeId`].OutputValue' \
   --output text)
 
+# Get account ID and construct the ARN
+ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+REGION="us-west-2"
+AGENT2_ARN="arn:aws:bedrock-agentcore:${REGION}:${ACCOUNT_ID}:runtime/${AGENT2_ID}"
+
+# Prepare the payload (base64 encoded, note the -n flag)
+PAYLOAD3=$(echo -n '{"prompt": "Explain quantum computing in detail"}' | base64)
+
 # Invoke Agent2 directly
 aws bedrock-agentcore invoke-agent-runtime \
-  --agent-runtime-id $AGENT2_ID \
+  --agent-runtime-arn $AGENT2_ARN \
   --qualifier DEFAULT \
-  --payload '{"prompt": "Explain quantum computing in detail"}' \
+  --payload $PAYLOAD3 \
   --region us-west-2 \
-  response.json
+  response3.json
+
+cat response3.json
 ```
 
 ## Sample Queries
