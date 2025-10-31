@@ -2,6 +2,7 @@
 
 import json
 import logging
+import os
 import time
 import urllib.parse
 import uuid
@@ -9,20 +10,14 @@ from typing import Any, Dict, Optional
 
 import boto3
 import requests
+from boto3.session import Session
 
 # from ..utils.endpoints import get_control_plane_endpoint, get_data_plane_endpoint
-
-
-"""Endpoint utilities for BedrockAgentCore services."""
-
-import os
-from typing import Optional
 
 # Environment-configurable constants with fallback defaults
 DP_ENDPOINT_OVERRIDE = os.getenv("BEDROCK_AGENTCORE_DP_ENDPOINT")
 CP_ENDPOINT_OVERRIDE = os.getenv("BEDROCK_AGENTCORE_CP_ENDPOINT")
 
-from boto3.session import Session
 boto_session = Session()
 DEFAULT_REGION = boto_session.region_name
 
