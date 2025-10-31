@@ -396,6 +396,7 @@ python-dateutil==2.9.0.post0
     #   google-cloud-bigquery
 python-dotenv==1.1.1
     # via
+    #   host-adk (pyproject.toml)
     #   google-adk
     #   litellm
     #   pydantic-settings

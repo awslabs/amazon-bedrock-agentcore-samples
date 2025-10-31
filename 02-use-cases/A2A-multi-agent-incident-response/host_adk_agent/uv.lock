@@ -1137,6 +1137,7 @@ dependencies = [
     { name = "google-adk", extra = ["a2a"] },
     { name = "httpx" },
     { name = "litellm" },
+    { name = "python-dotenv" },
 ]
 
 [package.metadata]
@@ -1147,6 +1148,7 @@ requires-dist = [
     { name = "google-adk", extras = ["a2a"], specifier = ">=1.16.0" },
     { name = "httpx" },
     { name = "litellm", specifier = ">=1.78.0" },
+    { name = "python-dotenv", specifier = ">=1.1.1" },
 ]
 
 [[package]]

@@ -115,8 +115,8 @@ class WebSearchAgentExecutor(AgentExecutor):
         if context.call_context:
             headers = context.call_context.state.get("headers", {})
             session_id = headers.get("x-amzn-bedrock-agentcore-runtime-session-id")
-            actor_id = headers.get("x-amzn-bedrock-agentcore-runtime-user-id", actor_id)
-
+            # actor_id = headers.get("x-amzn-bedrock-agentcore-runtime-user-id", actor_id)
+            actor_id = actor_id
         if not session_id:
             logger.error("Session ID is not set")
             raise ServerError(error=InvalidParamsError())

@@ -52,7 +52,7 @@ def _create_client_factory(provider_name: str, session_id: str, actor_id: str):
                 "Authorization": f"Bearer {bearer_token}",
                 "X-Amzn-Bedrock-AgentCore-Runtime-Session-Id": session_id,
                 # TODO: Actor Id
-                "X-Amzn-Bedrock-AgentCore-Runtime-User-Id": actor_id,
+                # "X-Amzn-Bedrock-AgentCore-Runtime-User-Id": actor_id,
             }
 
             return httpx.AsyncClient(

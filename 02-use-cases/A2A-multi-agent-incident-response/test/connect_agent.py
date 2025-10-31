@@ -106,7 +106,7 @@ async def send_message(
     headers = {
         "Authorization": f"Bearer {bearer_token}",
         "X-Amzn-Bedrock-AgentCore-Runtime-Session-Id": session_id,
-        "X-Amzn-Bedrock-AgentCore-Runtime-User-Id": "ActorID",
+        # "X-Amzn-Bedrock-AgentCore-Runtime-User-Id": "ActorID",
     }
 
     print("\n🤖 Assistant: ", end="", flush=True)

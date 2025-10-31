@@ -770,6 +770,7 @@ Resources:
             - Fn::ImportValue: !Sub '${CognitoStackName}-HostAgentClientId'
       EnvironmentVariables:
         GOOGLE_API_KEY: !Ref GoogleApiKey
+        GOOGLE_GENAI_USE_VERTEXAI: 0
         MCP_REGION: !Sub '${AWS::Region}'
       Tags:
         Name: !Sub '${AWS::StackName}-Agent-Runtime'
