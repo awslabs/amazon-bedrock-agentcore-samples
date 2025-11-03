@@ -1,0 +1,11 @@
+[project]
+name = "monitoring-strands-agent"
+version = "0.1.0"
+description = "Monitoring Agent using Strands SDK on AgentCore Runtime"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "bedrock-agentcore>=0.1.7",
+    "fastapi>=0.119.0",
+    "strands-agents[a2a]>=1.12.0",
+]

@@ -1,0 +1,457 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Cognito User Pool with OAuth 2.0 client credentials flow for machine-to-machine (M2M) authentication. Creates two client applications (WebSearch, Monitoring) with scoped access and stores credentials in Secrets Manager with KMS encryption.'
+
+Parameters:
+  DomainName:
+    Type: String
+    Description: Cognito user pool domain name
+    Default: 'agentcore-m2m'
+  
+
+Resources:
+  # Cognito User Pool for M2M Authentication
+  M2MUserPool:
+    Type: AWS::Cognito::UserPool
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: F78
+            reason: "MFA not applicable for M2M authentication using client credentials flow"
+    Properties:
+      UserPoolName: !Sub '${AWS::StackName}-m2m-pool'
+      UsernameAttributes:
+        - email
+      AutoVerifiedAttributes:
+        - email
+      MfaConfiguration: 'OFF'
+      AdminCreateUserConfig:
+        AllowAdminCreateUserOnly: true
+      AccountRecoverySetting:
+        RecoveryMechanisms:
+          - Name: verified_email
+            Priority: 1
+      UserPoolTags:
+        Name: !Sub '${AWS::StackName}-m2m-pool'
+
+  # User Pool Domain for OAuth endpoints
+  M2MUserPoolDomain:
+    Type: AWS::Cognito::UserPoolDomain
+    Properties:
+      Domain: !Ref DomainName
+      UserPoolId: !Ref M2MUserPool
+
+  # Resource Server for M2M scopes
+  M2MResourceServer:
+    Type: AWS::Cognito::UserPoolResourceServer
+    Properties:
+      UserPoolId: !Ref M2MUserPool
+      Identifier: !Sub '${AWS::StackName}-resource-server'
+      Name: !Sub '${AWS::StackName} Resource Server'
+      Scopes:
+        - ScopeName: 'read'
+          ScopeDescription: 'Read access to resources'
+        - ScopeName: 'write'
+          ScopeDescription: 'Write access to resources'
+        - ScopeName: 'websearch'
+          ScopeDescription: 'WebSearch agent specific access'
+        - ScopeName: 'monitoring'
+          ScopeDescription: 'Monitoring specific access'
+        - ScopeName: 'gateway'
+          ScopeDescription: 'Gateway specific access'
+        - ScopeName: 'hostagent'
+          ScopeDescription: 'Host Agent specific access'
+
+  # WebSearch Client for M2M Authentication
+  WebSearchClient:
+    Type: AWS::Cognito::UserPoolClient
+    DependsOn: M2MResourceServer
+    Properties:
+      ClientName: 'websearch-client'
+      UserPoolId: !Ref M2MUserPool
+      GenerateSecret: true
+      ExplicitAuthFlows: []
+      SupportedIdentityProviders:
+        - COGNITO
+      AllowedOAuthFlows:
+        - client_credentials
+      AllowedOAuthFlowsUserPoolClient: true
+      AllowedOAuthScopes:
+        - !Sub '${AWS::StackName}-resource-server/read'
+        - !Sub '${AWS::StackName}-resource-server/write'
+        - !Sub '${AWS::StackName}-resource-server/websearch'
+      AccessTokenValidity: 1
+      IdTokenValidity: 1
+      RefreshTokenValidity: 1
+      TokenValidityUnits:
+        AccessToken: hours
+        IdToken: hours
+        RefreshToken: days
+      PreventUserExistenceErrors: 'ENABLED'
+
+  # Monitoring Client for M2M Authentication
+  MonitoringClient:
+    Type: AWS::Cognito::UserPoolClient
+    DependsOn: M2MResourceServer
+    Properties:
+      ClientName: 'monitoring-client'
+      UserPoolId: !Ref M2MUserPool
+      GenerateSecret: true
+      ExplicitAuthFlows: []
+      SupportedIdentityProviders:
+        - COGNITO
+      AllowedOAuthFlows:
+        - client_credentials
+      AllowedOAuthFlowsUserPoolClient: true
+      AllowedOAuthScopes:
+        - !Sub '${AWS::StackName}-resource-server/read'
+        - !Sub '${AWS::StackName}-resource-server/monitoring'
+      AccessTokenValidity: 1
+      IdTokenValidity: 1
+      RefreshTokenValidity: 1
+      TokenValidityUnits:
+        AccessToken: hours
+        IdToken: hours
+        RefreshToken: days
+      PreventUserExistenceErrors: 'ENABLED'
+
+  # Gateway Client for M2M Authentication
+  GatewayClient:
+    Type: AWS::Cognito::UserPoolClient
+    DependsOn: M2MResourceServer
+    Properties:
+      ClientName: 'gateway-client'
+      UserPoolId: !Ref M2MUserPool
+      GenerateSecret: true
+      ExplicitAuthFlows: []
+      SupportedIdentityProviders:
+        - COGNITO
+      AllowedOAuthFlows:
+        - client_credentials
+      AllowedOAuthFlowsUserPoolClient: true
+      AllowedOAuthScopes:
+        - !Sub '${AWS::StackName}-resource-server/read'
+        - !Sub '${AWS::StackName}-resource-server/gateway'
+      AccessTokenValidity: 1
+      IdTokenValidity: 1
+      RefreshTokenValidity: 1
+      TokenValidityUnits:
+        AccessToken: hours
+        IdToken: hours
+        RefreshToken: days
+      PreventUserExistenceErrors: 'ENABLED'
+
+  # Host Agent Client for M2M Authentication
+  HostAgentClient:
+    Type: AWS::Cognito::UserPoolClient
+    DependsOn: M2MResourceServer
+    Properties:
+      ClientName: 'hostagent-client'
+      UserPoolId: !Ref M2MUserPool
+      GenerateSecret: true
+      ExplicitAuthFlows: []
+      SupportedIdentityProviders:
+        - COGNITO
+      AllowedOAuthFlows:
+        - client_credentials
+      AllowedOAuthFlowsUserPoolClient: true
+      AllowedOAuthScopes:
+        - !Sub '${AWS::StackName}-resource-server/read'
+        - !Sub '${AWS::StackName}-resource-server/write'
+        - !Sub '${AWS::StackName}-resource-server/hostagent'
+      AccessTokenValidity: 1
+      IdTokenValidity: 1
+      RefreshTokenValidity: 1
+      TokenValidityUnits:
+        AccessToken: hours
+        IdToken: hours
+        RefreshToken: days
+      PreventUserExistenceErrors: 'ENABLED'
+
+  # Secrets Manager Secrets for Client Configuration
+  WebSearchClientSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub '${AWS::StackName}/websearch/client-config'
+      Description: 'WebSearch Client configuration for M2M authentication'
+      SecretString: !Sub |
+        {
+          "client_id": "${WebSearchClient}",
+          "user_pool_id": "${M2MUserPool}",
+          "token_endpoint": "https://${M2MUserPoolDomain}.auth.${AWS::Region}.amazoncognito.com/oauth2/token",
+          "cognito_discovery_url": "https://cognito-idp.${AWS::Region}.amazonaws.com/${M2MUserPool}/.well-known/openid-configuration"
+        }
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-WebSearch-ClientSecret'
+
+  MonitoringClientSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub '${AWS::StackName}/monitoring/client-config'
+      Description: 'Monitoring Client configuration for M2M authentication'
+      SecretString: !Sub |
+        {
+          "client_id": "${MonitoringClient}",
+          "user_pool_id": "${M2MUserPool}",
+          "token_endpoint": "https://${M2MUserPoolDomain}.auth.${AWS::Region}.amazoncognito.com/oauth2/token",
+          "cognito_discovery_url": "https://cognito-idp.${AWS::Region}.amazonaws.com/${M2MUserPool}/.well-known/openid-configuration"
+        }
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-Monitoring-ClientSecret'
+
+  GatewayClientSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub '${AWS::StackName}/gateway/client-config'
+      Description: 'Gateway Client configuration for M2M authentication'
+      SecretString: !Sub |
+        {
+          "client_id": "${GatewayClient}",
+          "user_pool_id": "${M2MUserPool}",
+          "token_endpoint": "https://${M2MUserPoolDomain}.auth.${AWS::Region}.amazoncognito.com/oauth2/token",
+          "cognito_discovery_url": "https://cognito-idp.${AWS::Region}.amazonaws.com/${M2MUserPool}/.well-known/openid-configuration"
+        }
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-Gateway-ClientSecret'
+
+  HostAgentClientSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub '${AWS::StackName}/hostagent/client-config'
+      Description: 'Host Agent Client configuration for M2M authentication'
+      SecretString: !Sub |
+        {
+          "client_id": "${HostAgentClient}",
+          "user_pool_id": "${M2MUserPool}",
+          "token_endpoint": "https://${M2MUserPoolDomain}.auth.${AWS::Region}.amazoncognito.com/oauth2/token",
+          "cognito_discovery_url": "https://cognito-idp.${AWS::Region}.amazonaws.com/${M2MUserPool}/.well-known/openid-configuration"
+        }
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-HostAgent-ClientSecret'
+
+  # IAM Role for Lambda function
+  ClientSecretLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: CognitoClientSecretAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - cognito-idp:DescribeUserPoolClient
+                Resource: !GetAtt M2MUserPool.Arn
+              - Effect: Allow
+                Action:
+                  - secretsmanager:UpdateSecret
+                  - secretsmanager:GetSecretValue
+                Resource:
+                  - !Ref WebSearchClientSecret
+                  - !Ref MonitoringClientSecret
+                  - !Ref GatewayClientSecret
+                  - !Ref HostAgentClientSecret
+
+  # Lambda function to retrieve client secrets
+  ClientSecretLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-client-secret-handler'
+      Runtime: python3.12
+      Handler: index.lambda_handler
+      Role: !GetAtt ClientSecretLambdaRole.Arn
+      Timeout: 60
+      Code:
+        ZipFile: |
+          import json
+          import boto3
+          import urllib3
+
+          def lambda_handler(event, context):
+              try:
+                  print(f"Received event: {json.dumps(event)}")
+
+                  request_type = event['RequestType']
+                  if request_type == 'Delete':
+                      send_response(event, context, 'SUCCESS', {})
+                      return
+
+                  # Get properties from the event
+                  properties = event['ResourceProperties']
+                  user_pool_id = properties['UserPoolId']
+                  client_id = properties['ClientId']
+                  secret_arn = properties['SecretArn']
+                  client_type = properties['ClientType']
+
+                  # Initialize boto3 clients
+                  cognito_client = boto3.client('cognito-idp')
+                  secrets_client = boto3.client('secretsmanager')
+
+                  # Get client configuration from Cognito
+                  response = cognito_client.describe_user_pool_client(
+                      UserPoolId=user_pool_id,
+                      ClientId=client_id
+                  )
+
+                  user_pool_client = response['UserPoolClient']
+
+                  # Get existing secret value
+                  secret_response = secrets_client.get_secret_value(SecretId=secret_arn)
+                  secret_data = json.loads(secret_response['SecretString'])
+
+                  # Only update client_secret if the client has one (confidential clients)
+                  # Public clients (like web apps using PKCE) don't have secrets
+                  if 'ClientSecret' in user_pool_client:
+                      client_secret = user_pool_client['ClientSecret']
+                      secret_data['client_secret'] = client_secret
+                      print(f"Updated {client_type} client secret (confidential client)")
+                  else:
+                      # For public clients, set a placeholder or leave as-is
+                      secret_data['client_secret'] = secret_data.get('client_secret', 'NOT_APPLICABLE_PUBLIC_CLIENT')
+                      print(f"{client_type} is a public client (no secret)")
+
+                  # Update the secret
+                  secrets_client.update_secret(
+                      SecretId=secret_arn,
+                      SecretString=json.dumps(secret_data, indent=2)
+                  )
+
+                  print(f"Successfully updated {client_type} client configuration")
+                  send_response(event, context, 'SUCCESS', {'ClientSecretUpdated': 'true'})
+
+              except Exception as e:
+                  print(f"Error: {str(e)}")
+                  send_response(event, context, 'FAILED', {'Error': str(e)})
+
+          def send_response(event, context, response_status, response_data):
+              response_body = {
+                  'Status': response_status,
+                  'Reason': f'See CloudWatch Log Stream: {context.log_stream_name}',
+                  'PhysicalResourceId': context.log_stream_name,
+                  'StackId': event['StackId'],
+                  'RequestId': event['RequestId'],
+                  'LogicalResourceId': event['LogicalResourceId'],
+                  'Data': response_data
+              }
+
+              json_response_body = json.dumps(response_body)
+
+              headers = {
+                  'content-type': '',
+                  'content-length': str(len(json_response_body))
+              }
+
+              http = urllib3.PoolManager()
+              response = http.request('PUT', event['ResponseURL'], body=json_response_body, headers=headers)
+              print(f"Response status: {response.status}")
+
+  # Custom resource to update WebSearch client secret
+  WebSearchClientSecretUpdater:
+    Type: AWS::CloudFormation::CustomResource
+    DependsOn: WebSearchClientSecret
+    Properties:
+      ServiceToken: !GetAtt ClientSecretLambda.Arn
+      UserPoolId: !Ref M2MUserPool
+      ClientId: !Ref WebSearchClient
+      SecretArn: !Ref WebSearchClientSecret
+      ClientType: WebSearch
+
+  # Custom resource to update Monitoring client secret
+  MonitoringClientSecretUpdater:
+    Type: AWS::CloudFormation::CustomResource
+    DependsOn: MonitoringClientSecret
+    Properties:
+      ServiceToken: !GetAtt ClientSecretLambda.Arn
+      UserPoolId: !Ref M2MUserPool
+      ClientId: !Ref MonitoringClient
+      SecretArn: !Ref MonitoringClientSecret
+      ClientType: Monitoring
+
+  # Custom resource to update Gateway client secret
+  GatewayClientSecretUpdater:
+    Type: AWS::CloudFormation::CustomResource
+    DependsOn: GatewayClientSecret
+    Properties:
+      ServiceToken: !GetAtt ClientSecretLambda.Arn
+      UserPoolId: !Ref M2MUserPool
+      ClientId: !Ref GatewayClient
+      SecretArn: !Ref GatewayClientSecret
+      ClientType: Gateway
+
+  # Custom resource to update Host Agent client secret
+  HostAgentClientSecretUpdater:
+    Type: AWS::CloudFormation::CustomResource
+    DependsOn: HostAgentClientSecret
+    Properties:
+      ServiceToken: !GetAtt ClientSecretLambda.Arn
+      UserPoolId: !Ref M2MUserPool
+      ClientId: !Ref HostAgentClient
+      SecretArn: !Ref HostAgentClientSecret
+      ClientType: HostAgent
+
+Outputs:
+  DiscoveryUrl:
+    Description: 'OAuth2 Discovery URL for authentication'
+    Value: !Sub 'https://cognito-idp.${AWS::Region}.amazonaws.com/${M2MUserPool}/.well-known/openid-configuration'
+    Export:
+      Name: !Sub '${AWS::StackName}-DiscoveryUrl'
+
+  WebSearchClientId:
+    Description: 'WebSearch Client ID'
+    Value: !Ref WebSearchClient
+    Export:
+      Name: !Sub '${AWS::StackName}-WebSearchClientId'
+
+  MonitoringClientId:
+    Description: 'Monitoring Client ID'
+    Value: !Ref MonitoringClient
+    Export:
+      Name: !Sub '${AWS::StackName}-MonitoringClientId'
+
+  WebSearchClientSecretArn:
+    Description: 'WebSearch Client Secret ARN'
+    Value: !Ref WebSearchClientSecret
+    Export:
+      Name: !Sub '${AWS::StackName}-WebSearchClientSecretArn'
+
+  MonitoringClientSecretArn:
+    Description: 'Monitoring Client Secret ARN'
+    Value: !Ref MonitoringClientSecret
+    Export:
+      Name: !Sub '${AWS::StackName}-MonitoringClientSecretArn'
+
+  GatewayClientId:
+    Description: 'Gateway Client ID'
+    Value: !Ref GatewayClient
+    Export:
+      Name: !Sub '${AWS::StackName}-GatewayClientId'
+
+  GatewayClientSecretArn:
+    Description: 'Gateway Client Secret ARN'
+    Value: !Ref GatewayClientSecret
+    Export:
+      Name: !Sub '${AWS::StackName}-GatewayClientSecretArn'
+
+  HostAgentClientId:
+    Description: 'Host Agent Client ID'
+    Value: !Ref HostAgentClient
+    Export:
+      Name: !Sub '${AWS::StackName}-HostAgentClientId'
+
+  HostAgentClientSecretArn:
+    Description: 'Host Agent Client Secret ARN'
+    Value: !Ref HostAgentClientSecret
+    Export:
+      Name: !Sub '${AWS::StackName}-HostAgentClientSecretArn'
