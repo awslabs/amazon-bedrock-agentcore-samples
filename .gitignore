@@ -231,3 +231,4 @@ cdk.out/
 ### Bedrock AgentCore ###
 .bedrock_agentcore/
 .bedrock_agentcore.yaml
+**/screenshots/screenshot_*.png
