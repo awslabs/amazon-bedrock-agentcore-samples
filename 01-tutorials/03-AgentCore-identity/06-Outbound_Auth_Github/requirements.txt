@@ -3,3 +3,10 @@ strands-agents-tools
 bedrock-agentcore
 bedrock-agentcore-starter-toolkit
 httpx
+boto3
+botocore
+streamlit
+requests
+streamlit-cognito-auth
+uvicorn
+fastapi

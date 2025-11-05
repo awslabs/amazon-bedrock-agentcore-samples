@@ -5,9 +5,11 @@ Bedrock AgentCore Gateway provides customers a way to turn their existing Lambda
 
 ![How does it work](images/lambda-iam-gateway.png)
 
+![How does it work](images/lambda-gw-iam-inbound.png)
+
 
 ### Understanding the Lambda context object
-When Gateway invokes a Lambda function, it passes special context information through thecontext.client_context object. This context includes important metadata about the invocation, which your function can use to determine how to process the request.
+When Gateway invokes a Lambda function, it passes special context information through the context.client_context object. This context includes important metadata about the invocation, which your function can use to determine how to process the request.
 The following properties are available in the context.client_context.custom object:
 * bedrockagentcoreEndpointId: The ID of the Gateway endpoint that received the request.
 * bedrockagentcoreTargetId: The ID of the Gateway target that routed the request to your function.
@@ -71,7 +73,7 @@ After adding this policy, you can specify the Lambda function ARN in your Gatewa
 | Information          | Details                                                   |
 |:---------------------|:----------------------------------------------------------|
 | Tutorial type        | Interactive                                               |
-| AgentCore components | AgentCore Gateway, AgentCore Identity                     |
+| AgentCore components | AgentCore Gateway, AgentCore Identity, AWS IAM            |
 | Agentic Framework    | Strands Agents                                            |
 | LLM model            | Anthropic Claude Sonnet 3.7, Amazon Nova Pro              |
 | Tutorial components  | Creating AgentCore Gateway and Invoking AgentCore Gateway |
@@ -84,11 +86,12 @@ After adding this policy, you can specify the Lambda function ARN in your Gatewa
 ### Tutorial Key Features
 
 * Expose Lambda functions into MCP tools
-* Secure the tools call using AWS IAM and OAuth
+* Secure the tools call using OAuth and IAM
 
 ## Tutorials Overview
 
 In these tutorials we will cover the following functionality:
 
-- [Transform your AWS Lambda function into MCP tools](01-gateway-target-lambda.ipynb)
+- [Transform your AWS Lambda function into MCP tools with OAuth inbound Auth](01-gateway-target-lambda-oauth.ipynb)
 
+- [Transform your AWS Lambda function into MCP tools with AWS IAM inbound Auth](02-gateway-target-lambda-iam.ipynb)
