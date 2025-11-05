@@ -11,8 +11,6 @@ The module uses the following SSM parameters:
 
 import boto3
 import json
-from boto3.dynamodb.conditions import Key
-from typing import List, Dict, Any
 from datetime import datetime
 from .ssm_utils import load_config
 
@@ -84,4 +82,3 @@ def save_raw_query_result(user_prompt_uuid, user_prompt, sql_query, sql_query_de
         print(f"💥 Error: {str(e)}")
         print("="*70 + "\n")
         return {"success": False, "error": str(e)}
-
