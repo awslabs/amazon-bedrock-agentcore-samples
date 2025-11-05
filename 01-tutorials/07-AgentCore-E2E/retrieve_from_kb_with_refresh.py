@@ -1,22 +1,29 @@
 import os
+import json
 import boto3
 import subprocess
+import difflib
+import re
+from typing import Optional, Dict
 from bedrock_agentcore import BedrockAgentCoreApp
+from bedrock_agentcore_starter_toolkit.operations.memory.manager import MemoryManager
+from bedrock_agentcore.memory import MemoryClient
+from bedrock_agentcore.memory.constants import StrategyType
 
+
+# =========================
 # Configuration
+# =========================
 PROFILE_NAME = "975050157807_AdministratorAccess"
 REGION = "ap-southeast-2"
 KB_ID = "H3E2P93FMZ"
 
+# --- Hardcoded RapidAPI key for TravelBuddy Visa API (per your request) ---
+RAPIDAPI_KEY = "0d5fd2256bmsh4fe7ea547c4b5bap124209jsn6b09996186e0"
+
 def ensure_fresh_credentials():
     """Force refresh AWS SSO credentials before each operation"""
-    # Clear any cached credentials
-    #boto3.DEFAULT_SESSION = None
-    
-    # Create a new session with the profile
     session = boto3.Session(region_name=REGION)
-    
-    # Test the credentials
     try:
         sts = session.client('sts')
         identity = sts.get_caller_identity()
@@ -26,24 +33,23 @@ def ensure_fresh_credentials():
         print(f"✗ Credentials expired or invalid: {e}")
         print(f"Running: aws sso login --profile {PROFILE_NAME}")
         subprocess.run(["aws", "sso", "login", "--profile", PROFILE_NAME], check=True)
-        # Retry after login
         session = boto3.Session(profile_name=PROFILE_NAME, region_name=REGION)
         return session
 
-# Set environment variables
-#os.environ["AWS_PROFILE"] = PROFILE_NAME
+# Env
 os.environ["AWS_DEFAULT_REGION"] = REGION
 os.environ["KNOWLEDGE_BASE_ID"] = KB_ID
-# test aws bedrock-agent get-knowledge-base --knowledge-base-id YPMPOPGJ6H --region ap-southeast-2 --profile 975050157807_AdministratorAccess
 
-# Ensure credentials are fresh before importing strands
-#session = ensure_fresh_credentials()
-#boto3.setup_default_session(profile_name=PROFILE_NAME, region_name=REGION)
-
+# =========================
+# Strands / Bedrock imports
+# =========================
 from strands import Agent, tool
 from strands_tools import retrieve
 from strands.models.bedrock import BedrockModel
 
+# =========================
+# SYSTEM PROMPT (unchanged)
+# =========================
 SYSTEM_PROMPT =  """
 You are Rachel, the post-booking travel support assistant for Webjet’s “Go Somewhere” brand.
 
@@ -112,16 +118,16 @@ Every message should:
 4. End with a short, positive note — a sense that the customer is ready for their next somewhere.
 """
 
-# Option: Create a custom retrieve wrapper that ensures KB_ID is always set
+# =========================
+# KB Tool (unchanged)
+# =========================
 @tool
 def retrieve_from_kb(query: str, number_of_results: int = 10) -> str:
     """
     Retrieve information from the company knowledge base.
-    
     Args:
         query: The search query to find relevant documents
         number_of_results: Maximum number of results to return (default: 10)
-    
     Returns:
         Relevant information from the knowledge base
     """
@@ -135,46 +141,257 @@ def retrieve_from_kb(query: str, number_of_results: int = 10) -> str:
             "score": 0.4,
         },
     }
-    
     result = retrieve.retrieve(tool_use)
-    
     if result["status"] == "success":
         return result["content"][0]["text"]
     else:
         return f"Unable to retrieve from knowledge base. Error: {result['content'][0]['text']}"
 
+# =========================
+# Visa Requirements Tool (NEW)
+# =========================
+# TravelBuddy (RapidAPI) endpoint:
+# POST https://visa-requirement.p.rapidapi.com/v2/visa/check
+# Headers:
+#   Content-Type: application/x-www-form-urlencoded
+#   x-rapidapi-host: visa-requirement.p.rapidapi.com
+#   x-rapidapi-key: RAPIDAPI_KEY (hardcoded above)
+
+import requests
+
+ISO_FALLBACK = {
+    "US": "United States", "GB": "United Kingdom", "PK": "Pakistan",
+    "AU": "Australia", "NZ": "New Zealand", "AE": "United Arab Emirates",
+    "IN": "India", "CN": "China", "JP": "Japan", "SG": "Singapore",
+    "MY": "Malaysia", "ID": "Indonesia", "CA": "Canada", "DE": "Germany",
+    "FR": "France", "IT": "Italy", "ES": "Spain", "SA": "Saudi Arabia",
+    "BD": "Bangladesh", "LK": "Sri Lanka"
+}
+
+def _load_iso_dataset() -> Dict[str, str]:
+    try:
+        import pycountry  # type: ignore
+        data = {}
+        for c in pycountry.countries:
+            data[c.alpha_2.upper()] = getattr(c, "common_name", getattr(c, "name", "")).strip()
+        return data
+    except Exception:
+        return ISO_FALLBACK.copy()
+
+ISO_MAP = _load_iso_dataset()
+NAME_TO_CODE = {v.lower(): k for k, v in ISO_MAP.items()}
+
+def _normalize_country(value: str) -> Dict[str, str]:
+    """Return {'code','name'} from a possibly-typo'd name or 2-letter code."""
+    if not value or not isinstance(value, str):
+        raise ValueError("Country value is empty.")
+    raw = value.strip()
+    if re.fullmatch(r"[A-Za-z]{2}", raw):
+        code = raw.upper()
+        if code in ISO_MAP:
+            return {"code": code, "name": ISO_MAP[code]}
+    low = raw.lower()
+    if low in NAME_TO_CODE:
+        code = NAME_TO_CODE[low]
+        return {"code": code, "name": ISO_MAP[code]}
+    cand = difflib.get_close_matches(low, list(NAME_TO_CODE.keys()), n=1, cutoff=0.75)
+    if cand:
+        code = NAME_TO_CODE[cand[0]]
+        return {"code": code, "name": ISO_MAP[code]}
+    cand2 = difflib.get_close_matches(raw.title(), list(ISO_MAP.values()), n=1, cutoff=0.7)
+    if cand2:
+        name = cand2[0]
+        for k, v in ISO_MAP.items():
+            if v == name:
+                return {"code": k, "name": v}
+    raise ValueError(f"Could not recognize country: '{value}'")
+
+def _visa_headers() -> Dict[str, str]:
+    if not RAPIDAPI_KEY:
+        raise RuntimeError("Missing RAPIDAPI_KEY value.")
+    return {
+        "Content-Type": "application/x-www-form-urlencoded",
+        "x-rapidapi-host": "visa-requirement.p.rapidapi.com",
+        "x-rapidapi-key": RAPIDAPI_KEY,
+    }
+
+def _format_confirmation_prompt(passport_norm: Dict[str,str], dest_norm: Dict[str,str], trip_type: Optional[str]) -> str:
+    base = (
+        f"Just to confirm before I check visa rules:\n"
+        f"• Passport you HOLD: {passport_norm['name']} ({passport_norm['code']})\n"
+        f"• Destination: {dest_norm['name']} ({dest_norm['code']})\n"
+    )
+    if trip_type:
+        base += f"• Trip type/purpose: {trip_type}\n"
+    base += "• Passport validity at entry (e.g., 6 months, 3 months, valid for stay): ?\n\n"
+    base += "Reply “Yes” and provide passport validity (or correct any details) to proceed."
+    return base
+
+from strands import tool  # already imported above; kept for clarity
+
+@tool
+def check_visa_requirements(
+    passport_country: str,
+    destination_country: str,
+    trip_type: Optional[str] = None,
+    passport_validity: Optional[str] = None,
+    confirm: Optional[bool] = None
+) -> dict:
+    """
+    TravelBuddy (RapidAPI) Visa checker with cautious confirmation.
+    - Accepts country names or ISO codes (typos OK).
+    - If 'confirm' is not True, returns a confirmation prompt instead of calling the API.
+    - On confirmation, calls POST /v2/visa/check (x-www-form-urlencoded) and returns a concise summary + raw.
+
+    Args:
+      passport_country: e.g., 'PK', 'Pakistan', 'Paksitan'
+      destination_country: e.g., 'AU', 'Australia', 'Austrlia'
+      trip_type: optional free text (tourism/business/transit/etc.)
+      passport_validity: optional free text (e.g., '6 months from entry')
+      confirm: must be True to actually call the API
+
+    Returns:
+      dict with keys:
+        - needs_confirmation (bool)
+        - confirmation_prompt (str) if confirmation required
+        - understood (dict) when confirmed
+        - rules_display (list) when confirmed
+        - registration / exception / destination_info
+        - raw (the API payload)
+        - error / status_code on failures
+    """
+    # Normalize countries (handles codes & typos)
+    p = _normalize_country(passport_country)
+    d = _normalize_country(destination_country)
+
+    # Always require confirmation before calling external API
+    if confirm is not True:
+        return {
+            "needs_confirmation": True,
+            "confirmation_prompt": _format_confirmation_prompt(p, d, trip_type)
+        }
+
+    # Proceed to API call
+    url = "https://visa-requirement.p.rapidapi.com/v2/visa/check"
+    headers = _visa_headers()
+    form = {
+        "passport": p["code"],
+        "destination": d["code"],
+    }
+    try:
+        resp = requests.post(url, headers=headers, data=form, timeout=20)
+        if resp.status_code >= 400:
+            return {"error": f"API error {resp.status_code}", "status_code": resp.status_code, "body": resp.text[:800]}
+        payload = resp.json()
+        data = payload.get("data", {}) if isinstance(payload, dict) else {}
+
+        dest_info = data.get("destination", {}) or {}
+        reg = data.get("mandatory_registration")
+        rules = data.get("visa_rules", {}) or {}
+        primary = rules.get("primary_rule")
+        secondary = rules.get("secondary_rule")
+        exception = data.get("exception_rule") or data.get("exception")
+
+        # Prepare a clean display list for the model to present nicely
+        display = []
+        if primary and not secondary:
+            display.append({
+                "label": "Primary",
+                "name": primary.get("name"),
+                "duration": primary.get("duration"),
+                "color": primary.get("color")
+            })
+        elif primary and secondary:
+            p_has = bool(primary.get("duration"))
+            s_has = bool(secondary.get("duration"))
+            if p_has and s_has:
+                display.append({
+                    "label": "Primary",
+                    "name": primary.get("name"),
+                    "duration": primary.get("duration"),
+                    "color": primary.get("color")
+                })
+                display.append({
+                    "label": "Secondary",
+                    "name": secondary.get("name"),
+                    "duration": secondary.get("duration"),
+                    "color": secondary.get("color", primary.get("color"))
+                })
+            elif (not p_has) and s_has:
+                display.append({
+                    "label": "Primary / Secondary",
+                    "name": f"{primary.get('name')} / {secondary.get('name')}",
+                    "duration": secondary.get("duration"),
+                    "color": primary.get("color")
+                })
+            else:
+                display.append({
+                    "label": "Primary",
+                    "name": primary.get("name"),
+                    "duration": None,
+                    "color": primary.get("color")
+                })
+                display.append({
+                    "label": "Secondary",
+                    "name": secondary.get("name"),
+                    "duration": None,
+                    "color": secondary.get("color", primary.get("color"))
+                })
+        elif not primary and secondary:
+            display.append({
+                "label": "Secondary",
+                "name": secondary.get("name"),
+                "duration": secondary.get("duration"),
+                "color": secondary.get("color")
+            })
+
+        understood = {
+            "passport_country": p["name"],
+            "passport_code": p["code"],
+            "destination_country": d["name"],
+            "destination_code": d["code"],
+            "trip_type": trip_type,
+            "passport_validity": passport_validity or dest_info.get("passport_validity")
+        }
+
+        return {
+            "needs_confirmation": False,
+            "understood": understood,
+            "rules_display": display,
+            "registration": reg,
+            "exception": exception,
+            "destination_info": {
+                "passport_validity_hint": dest_info.get("passport_validity"),
+                "embassy_url": dest_info.get("embassy_url")
+            },
+            "raw": payload
+        }
+
+    except requests.Timeout:
+        return {"error": "Visa API request timed out.", "status_code": 504}
+    except Exception as e:
+        return {"error": f"Unexpected error: {e.__class__.__name__}: {e}"}
+
+# =========================
+# Agent wiring
+# =========================
 def create_agent_with_fresh_session():
     """Create an agent with a fresh boto3 session to avoid credential caching"""
     fresh_session = boto3.Session(region_name=REGION)
-    
-    # Create a BedrockModel with the fresh session
     model = BedrockModel(boto_session=fresh_session)
-    
-    # Create agent with the fresh model
-    # Option 1: Use the default retrieve tool (relies on KNOWLEDGE_BASE_ID env var)
-    # agent = Agent(
-    #     model=model,
-    #     tools=[retrieve],
-    #     system_prompt=SYSTEM_PROMPT
-    # )
-    
-    # Option 2: Use custom wrapper that hardcodes KB_ID
     agent = Agent(
         model=model,
-        tools=[retrieve_from_kb],
+        tools=[retrieve_from_kb, check_visa_requirements],  # add visa tool
         system_prompt=SYSTEM_PROMPT
     )
     return agent
 
 def chat_loop():
     while True:
-        #from  CAT GUIDE extracts KB "YPMPOPGJ6H"- 0 - B Airlines - 31 JUL 24.pdf  is actually 3C info. s3://bangyantest/3K.pdf' has 3U information
-        user_query = input("You: ") # e.g :what are 3C change rules? # which documents are in knowledge base YPMPOPGJ6H?
+        user_query = input("You: ")
         if user_query.lower() in ("exit","quit"):
             break
-        
         try:
-            # Create a NEW agent with fresh credentials for each query
             print("Creating agent with fresh credentials...")
             agent = create_agent_with_fresh_session()
             response = agent(user_query)
@@ -183,9 +400,10 @@ def chat_loop():
             print(f"Error: {e}")
             print("If credentials expired, run: aws sso login --profile " + PROFILE_NAME)
 
-
+# =========================
+# BedrockAgentCore entrypoint
+# =========================
 app = BedrockAgentCoreApp()
-
 
 @app.entrypoint
 def invoke(payload):
@@ -194,7 +412,6 @@ def invoke(payload):
     agent = create_agent_with_fresh_session()
     result = agent(user_message)
     return {"result": result.message}
-
 
 if __name__ == "__main__":
     app.run()
