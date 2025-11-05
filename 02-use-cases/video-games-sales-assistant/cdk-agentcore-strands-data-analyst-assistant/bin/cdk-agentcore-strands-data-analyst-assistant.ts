@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import * as cdk from 'aws-cdk-lib/core';
-import { CdkAgentcoreStrandsDataAnalystAssistantStack } from '../lib/cdk-agentcore-strands-data-analyst-assistant-stack';
+import { CdkAgentcoreStrandsDataAnalystAssistantStack } from '../cdklib/cdk-agentcore-strands-data-analyst-assistant-stack';
 
 const app = new cdk.App();
 new CdkAgentcoreStrandsDataAnalystAssistantStack(app, 'CdkAgentcoreStrandsDataAnalystAssistantStack', {
