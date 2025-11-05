@@ -40,34 +40,29 @@ def validate_configuration():
     Raises:
         ValueError: If any required configuration parameters are missing
     """
-    required_params = ["SECRET_ARN", "AURORA_RESOURCE_ARN", "DATABASE_NAME", "AWS_REGION"]
+    required_params = ["SECRET_ARN", "AURORA_RESOURCE_ARN", "DATABASE_NAME"]
     missing_params = [param for param in required_params if param not in CONFIG or not CONFIG[param]]
     
     if missing_params:
         raise ValueError(f"Missing required configuration parameters: {', '.join(missing_params)}")
 
 
-def get_rds_data_client(region_name: str):
+def get_rds_data_client():
     """
-    Creates and returns an RDS Data API client.
-    
-    Args:
-        region_name: AWS region where the Aurora Serverless cluster is located
+    Creates and returns an RDS Data API client using default AWS configuration.
         
     Returns:
         boto3.client: RDS Data API client
     """
-    session = boto3.session.Session()
-    return session.client(service_name="rds-data", region_name=region_name)
+    return boto3.client("rds-data")
 
 
-def execute_statement(sql_query: str, aws_region: str, aurora_resource_arn: str, secret_arn: str, database_name: str):
+def execute_statement(sql_query: str, aurora_resource_arn: str, secret_arn: str, database_name: str):
     """
     Executes a SQL statement using the RDS Data API.
     
     Args:
         sql_query: SQL query string to execute
-        aws_region: AWS region where the Aurora Serverless cluster is located
         aurora_resource_arn: ARN of the Aurora Serverless cluster
         secret_arn: ARN of the secret containing database credentials
         database_name: Name of the database to connect to
@@ -75,7 +70,7 @@ def execute_statement(sql_query: str, aws_region: str, aurora_resource_arn: str,
     Returns:
         dict: Response from the RDS Data API
     """
-    client = get_rds_data_client(aws_region)
+    client = get_rds_data_client()
     
     try:
         response = client.execute_statement(
@@ -140,7 +135,6 @@ def run_sql_query(sql_query: str) -> str:
         
         response = execute_statement(
             sql_query,
-            CONFIG["AWS_REGION"],
             CONFIG["AURORA_RESOURCE_ARN"],
             CONFIG["SECRET_ARN"],
             CONFIG["DATABASE_NAME"]

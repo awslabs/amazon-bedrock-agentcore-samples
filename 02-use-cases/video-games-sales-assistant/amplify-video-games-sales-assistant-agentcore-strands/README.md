@@ -22,10 +22,6 @@ The application consists of two main components:
 Before you begin, ensure you have:
 
 - [Node.js version 18+](https://nodejs.org/en/download/package-manager)
-- React Scripts installed:
-``` bash
-npm install react-scripts
-```
 
 ## Set Up the Front-End Application
 
@@ -119,7 +115,7 @@ export QUESTION_ANSWERS_TABLE_ARN="arn:aws:dynamodb:$(aws configure get region):
 echo "Table ARN: $QUESTION_ANSWERS_TABLE_ARN"
 ```
 
-3. **Add this policy** (replace `<account_id>` with your AWS account ID and `<question_answers_table_arn>` with the ARN from step 2):
+3. **Add this policy** (replace `<account_id>` with your AWS account ID, `<question_answers_table_arn>` with the ARN from step 2, and `<agent_arn>` with your AgentCore runtime ARN):
 
 > [!NOTE]
 > The AgentCore runtime ARN has been pre-configured based on your current deployment. If you're using a different AgentCore runtime, update the ARN in the BedrockAgentCorePermissions section accordingly.
@@ -154,8 +150,8 @@ echo "Table ARN: $QUESTION_ANSWERS_TABLE_ARN"
             "Effect": "Allow",
             "Action": "bedrock-agentcore:InvokeAgentRuntime",
             "Resource": [
-                "arn:aws:bedrock-agentcore:us-east-1:682830732097:runtime/agentcoredataanalystassistant-t0CttNHech",
-                "arn:aws:bedrock-agentcore:us-east-1:682830732097:runtime/agentcoredataanalystassistant-t0CttNHech/runtime-endpoint/*"
+                "<agent_arn>",
+                "<agent_arn>/runtime-endpoint/*"
             ]
         }
     ]

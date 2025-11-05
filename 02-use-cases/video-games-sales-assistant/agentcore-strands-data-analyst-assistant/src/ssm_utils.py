@@ -21,32 +21,21 @@ from botocore.exceptions import ClientError
 # Project ID for SSM parameter path prefix
 PROJECT_ID = "agentcore-data-analyst-assistant"
 
-# Default AWS region
-DEFAULT_REGION = "us-east-1"
-
-def get_ssm_client(region_name=None):
+def get_ssm_client():
     """
-    Creates and returns an SSM client.
-    
-    Args:
-        region_name: AWS region where the SSM parameters are stored
+    Creates and returns an SSM client using default AWS configuration.
         
     Returns:
         boto3.client: SSM client
     """
-    if not region_name:
-        region_name = os.environ.get("AWS_REGION", DEFAULT_REGION)
-        
-    session = boto3.session.Session()
-    return session.client(service_name="ssm", region_name=region_name)
+    return boto3.client("ssm")
 
-def get_ssm_parameter(param_name, region_name=None):
+def get_ssm_parameter(param_name):
     """
     Retrieves a parameter from AWS Systems Manager Parameter Store.
     
     Args:
         param_name: Name of the parameter without the project prefix
-        region_name: AWS region where the parameter is stored
         
     Returns:
         str: The parameter value
@@ -54,7 +43,7 @@ def get_ssm_parameter(param_name, region_name=None):
     Raises:
         ClientError: If there's an error retrieving the parameter
     """
-    client = get_ssm_client(region_name)
+    client = get_ssm_client()
     full_param_name = f"/{PROJECT_ID}/{param_name}"
     
     try:
@@ -72,12 +61,9 @@ def get_ssm_parameter(param_name, region_name=None):
         print("="*70 + "\n")
         raise
 
-def load_config(region_name=None):
+def load_config():
     """
     Loads all required configuration parameters from SSM.
-    
-    Args:
-        region_name: AWS region where the parameters are stored
         
     Returns:
         dict: Configuration dictionary with all parameters
@@ -98,16 +84,10 @@ def load_config(region_name=None):
     
     config = {}
     
-    # Get AWS region from environment or use default
-    if not region_name:
-        region_name = os.environ.get("AWS_REGION", DEFAULT_REGION)
-    
-    config["AWS_REGION"] = region_name
-    
     # Load each parameter
     for key in param_keys:
         try:
-            config[key] = get_ssm_parameter(key, region_name)
+            config[key] = get_ssm_parameter(key)
         except ClientError:
             # If MAX_RESPONSE_SIZE_BYTES is not found, use default value
             if key == "MAX_RESPONSE_SIZE_BYTES":

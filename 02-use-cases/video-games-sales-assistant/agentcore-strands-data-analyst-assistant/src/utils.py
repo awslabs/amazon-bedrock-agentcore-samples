@@ -52,7 +52,7 @@ def save_raw_query_result(user_prompt_uuid, user_prompt, sql_query, sql_query_de
         if not question_answers_table:
             return {"success": False, "error": "QUESTION_ANSWERS_TABLE not configured"}
             
-        dynamodb_client = boto3.client('dynamodb', region_name=CONFIG["AWS_REGION"])
+        dynamodb_client = boto3.client('dynamodb')
         
         response = dynamodb_client.put_item(
             TableName=question_answers_table,
@@ -73,7 +73,6 @@ def save_raw_query_result(user_prompt_uuid, user_prompt, sql_query, sql_query_de
         print("="*70)
         print(f"🆔 Session ID: {user_prompt_uuid}")
         print(f"📊 DynamoDB Table: {question_answers_table}")
-        print(f"🗄️  AWS Region: {CONFIG['AWS_REGION']}")
         print("="*70 + "\n")
         return {"success": True, "response": response}
         
