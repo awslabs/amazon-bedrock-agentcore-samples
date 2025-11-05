@@ -9,17 +9,124 @@ from bedrock_agentcore import BedrockAgentCoreApp
 from bedrock_agentcore_starter_toolkit.operations.memory.manager import MemoryManager
 from bedrock_agentcore.memory import MemoryClient
 from bedrock_agentcore.memory.constants import StrategyType
+from bedrock_agentcore.memory.integrations.strands.config import AgentCoreMemoryConfig, RetrievalConfig
+from bedrock_agentcore.memory.integrations.strands.session_manager import AgentCoreMemorySessionManager
+from lab_helpers.utils import get_ssm_parameter, put_ssm_parameter
+import time
+import uuid
+
+REGION = "ap-southeast-2"
+actorId = "1235"
+
+memory_name = "CustomerSupportMemoryV2"
+
+memory_manager = MemoryManager(region_name=REGION)
+memory = memory_manager.get_or_create_memory(
+    name=memory_name,
+    strategies=[
+                {
+                    StrategyType.USER_PREFERENCE.value: {
+                        "name": "CustomerPreferences",
+                        "description": "Captures customer preferences and behavior",
+                        "namespaces": ["support/customer/{actorId}/preferences"],
+                    }
+                },
+                {
+                    StrategyType.SEMANTIC.value: {
+                        "name": "CustomerSupportSemantic",
+                        "description": "Stores facts from conversations",
+                        "namespaces": ["support/customer/{actorId}/semantic"],
+                    }
+                },
+            ]
+)
+memory_id = memory["id"]
+put_ssm_parameter("/app/customersupport/agentcore/memory_id", memory_id)
+if memory_id:
+    print("✅ AgentCore Memory created successfully!")
+    print(f"Memory ID: {memory_id}")
+else:
+    print("Memory resource not created. Try Again !")
+
+
+if memory_id:
+    try:
+        memory_client = MemoryClient(region_name=REGION)
+        print("✅ Seeded customer history successfully")
+        print("📝 Interactions saved to Short-Term Memory")
+        print("⏳ Long-Term Memory processing will begin automatically...")
+    except Exception as e:
+        print(f"⚠️ Error seeding history: {e}")
+
+
+# Wait for Long-Term Memory processing to complete
+print("🔍 Checking for processed Long-Term Memories...")
+retries = 0
+max_retries = 1  # 1 minute wait
+
+while retries < max_retries:
+    memories = memory_client.retrieve_memories(
+        memory_id=memory_id,
+        namespace=f"support/customer/{actorId}/preferences",
+        query="can you summarize the support issue",
+    )
+
+    if memories:
+        print(
+            f"✅ Found {len(memories)} preference memories after {retries * 10} seconds!"
+        )
+        break
+
+    retries += 1
+    if retries < max_retries:
+        print(
+            f"⏳ Still processing... waiting 10 more seconds (attempt {retries}/{max_retries})"
+        )
+    else:
+        print(
+            "⚠️ Memory processing is taking longer than expected. This can happen with overloading.."
+        )
+        break
+
+print(
+    "🎯 AgentCore Memory automatically extracted these customer preferences from our seeded conversations:"
+)
+print("=" * 80)
+
+for i, memory in enumerate(memories, 1):
+    if isinstance(memory, dict):
+        content = memory.get("content", {})
+        if isinstance(content, dict):
+            text = content.get("text", "")
+            print(f"  {i}. {text}")
+
+import time
+
+# Retrieve semantic memories (factual information)
+semantic_memories = memory_client.retrieve_memories(
+    memory_id=memory_id,
+    namespace=f"support/customer/{actorId}/semantic",
+    query="information on the technical support issue",
+)
+print("🧠 AgentCore Memory identified these factual details from conversations:")
+print("=" * 80)
+if memories:
+    for i, memory in enumerate(semantic_memories, 1):
+        if isinstance(memory, dict):
+            content = memory.get("content", {})
+            if isinstance(content, dict):
+                text = content.get("text", "")
+                print(f"  {i}. {text}")
 
 
 # =========================
 # Configuration
 # =========================
 PROFILE_NAME = "975050157807_AdministratorAccess"
-REGION = "ap-southeast-2"
 KB_ID = "H3E2P93FMZ"
 
 # --- Hardcoded RapidAPI key for TravelBuddy Visa API (per your request) ---
-RAPIDAPI_KEY = "0d5fd2256bmsh4fe7ea547c4b5bap124209jsn6b09996186e0"
+RAPIDAPI_KEY = ""
 
 def ensure_fresh_credentials():
     """Force refresh AWS SSO credentials before each operation"""
@@ -56,6 +163,8 @@ You are Rachel, the post-booking travel support assistant for Webjet’s “Go S
 Your mission: help customers manage, troubleshoot, or understand their travel bookings in a warm, human, and travel-inspired way — turning potentially stressful moments (like cancellations or changes) into smoother, more reassuring experiences.
 
 Rachel is the customer’s friendly, down-to-earth travel companion — the kind who gets it when plans change. She’s quick, calm, and conversational. She mixes empathy with light humor, helping users feel understood while keeping things clear and easy.
+
+Rachel will respond in a professional way, and not use emojis.
 
 She is not here to sell — she is here to help.
 
@@ -372,16 +481,180 @@ def check_visa_requirements(
     except Exception as e:
         return {"error": f"Unexpected error: {e.__class__.__name__}: {e}"}
 
+def _expand_insurance_query(q: str) -> str:
+    """
+    Light expansion to improve recall on PDS queries without changing the user's meaning.
+    """
+    qn = (q or "").strip()
+    if not qn:
+        return qn
+    synonyms = [
+        "travel insurance", "PDS", "Product Disclosure Statement", "policy wording",
+        "benefits", "exclusions", "general exclusions", "limits", "sub-limits",
+        "excess", "pre-existing", "existing medical conditions", "pregnancy",
+        "cancellation", "luggage", "personal effects", "snow sports",
+        "adventure activities", "motorcycle", "moped", "cruise",
+        "schengen", "claims", "cooling off", "areas of travel", "extending journey",
+        "COVID-19"
+    ]
+    return f"{qn}\n\nContext: " + ", ".join(synonyms)
+
+@tool
+def insurance_kb_lookup(query: str, top_k: int = 5) -> dict:
+    """
+    Use this tool for ANY question about the Travel Insurance policy/PDS
+    (benefits, limits, exclusions, pre-existing conditions, pregnancy, luggage,
+    snow sports, claims, COVID cover, etc.).
+
+    It retrieves from the Bedrock Knowledge Base that you populated with PDS chunks.
+    If no relevant content is found, returns not_found=True with a customer-safe message.
+    """
+    expanded = _expand_insurance_query(query)
+
+    tool_use = {
+        "toolUseId": "kb_retrieve",
+        "input": {
+            "text": expanded,
+            "knowledgeBaseId": KB_ID,     # already defined in your script
+            "region": REGION,             # already defined in your script
+            "numberOfResults": int(top_k),
+            "score": 0.35,                # slightly broader recall for insurance queries
+        },
+    }
+
+    result = retrieve.retrieve(tool_use)
+
+    if result.get("status") != "success":
+        return {
+            "not_found": True,
+            "message": "I couldn’t retrieve insurance policy details right now. Please try again or ask a more specific question."
+        }
+
+    items = result.get("content", []) or []
+    texts: List[str] = []
+    sources: List[str] = []
+    for it in items:
+        t = (it or {}).get("text") or ""
+        if t.strip():
+            texts.append(t.strip())
+            # If your retriever returns metadata (e.g., filename), surface it:
+            meta = (it or {}).get("metadata") or {}
+            src = meta.get("source") or meta.get("filename") or meta.get("ChunkId") or ""
+            if src:
+                sources.append(str(src))
+
+    if not texts:
+        return {
+            "not_found": True,
+            "message": "I don’t have that specific detail from the policy. Could you clarify the benefit or section you’re after?"
+        }
+
+    # Concatenate—let the LLM summarize in Rachel’s tone
+    joined = "\n\n---\n\n".join(texts)
+    return {
+        "not_found": False,
+        "snippets": texts,
+        "combined": joined,
+        "sources": list(dict.fromkeys(sources))  # de-dup preserve order
+    }
+
+# =========================
+# Local API Tool for Confirmation Email
+# =========================
+@tool
+def send_confirmation_email(itinerary_id: str) -> dict:
+    """
+    Send confirmation email for a specific itinerary by calling the local confirmation email API.
+    
+    Args:
+        itinerary_id: The itinerary ID to send confirmation email for (e.g. "299607")
+    
+    Returns:
+        Dictionary with status and message about the email sending result
+    """
+    try:
+        # Validate itinerary ID
+        if not itinerary_id or not str(itinerary_id).strip():
+            return {
+                "success": False,
+                "message": "Itinerary ID is required to send confirmation email"
+            }
+        
+        # Clean the itinerary ID (remove any non-digit characters)
+        clean_id = re.sub(r'[^\d]', '', str(itinerary_id))
+        if not clean_id:
+            return {
+                "success": False,
+                "message": f"Invalid itinerary ID format: {itinerary_id}"
+            }
+        
+        # Local API endpoint
+        url = f"http://localhost:13276/internal/ConfirmationEmail/SendConfirmationEmail"
+        
+        # Make POST request with query parameter
+        response = requests.post(
+            url,
+            params={"itineraryId": clean_id},
+            timeout=30  # 30 second timeout
+        )
+        
+        # Check response status
+        if response.status_code == 200:
+            return {
+                "success": True,
+                "message": f"Confirmation email sent successfully for itinerary {clean_id}",
+                "itinerary_id": clean_id,
+                "status_code": response.status_code
+            }
+        else:
+            return {
+                "success": False,
+                "message": f"Failed to send confirmation email. Server returned status {response.status_code}",
+                "itinerary_id": clean_id,
+                "status_code": response.status_code,
+                "response_text": response.text[:200] if response.text else "No response text"
+            }
+            
+    except requests.exceptions.ConnectionError:
+        return {
+            "success": False,
+            "message": "Could not connect to the confirmation email service. Please ensure the local API server is running on localhost:13276",
+            "error_type": "connection_error"
+        }
+    except requests.exceptions.Timeout:
+        return {
+            "success": False,
+            "message": "Request timed out while trying to send confirmation email. The service might be busy.",
+            "error_type": "timeout"
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "message": f"Unexpected error while sending confirmation email: {str(e)}",
+            "error_type": "unexpected_error"
+        }
+
 # =========================
 # Agent wiring
 # =========================
 def create_agent_with_fresh_session():
     """Create an agent with a fresh boto3 session to avoid credential caching"""
     fresh_session = boto3.Session(region_name=REGION)
+    session_id = uuid.uuid4()
+    memory_config = AgentCoreMemoryConfig(
+        memory_id=memory_id,
+        session_id=str(session_id),
+        actor_id="123456", 
+        retrieval_config={
+            "support/customer/{actorId}/semantic": RetrievalConfig(top_k=3, relevance_score=0.2),
+            "support/customer/{actorId}/preferences": RetrievalConfig(top_k=3, relevance_score=0.2)
+        }
+    )
     model = BedrockModel(boto_session=fresh_session)
     agent = Agent(
         model=model,
-        tools=[retrieve_from_kb, check_visa_requirements],  # add visa tool
+        session_manager=AgentCoreMemorySessionManager(memory_config, REGION),
+        tools=[retrieve_from_kb, check_visa_requirements, insurance_kb_lookup, send_confirmation_email],  # add confirmation email tool
         system_prompt=SYSTEM_PROMPT
     )
     return agent

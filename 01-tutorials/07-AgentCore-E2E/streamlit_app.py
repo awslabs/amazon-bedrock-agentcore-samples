@@ -1,4 +1,3 @@
-
 import streamlit as st
 from strands import Agent, tool
 from retrieve_from_kb_with_refresh import create_agent_with_fresh_session
@@ -12,7 +11,7 @@ agent = create_agent_with_fresh_session()
 # Move image to the very top of the page (before title and page config)
 st.set_page_config(page_title="Strands Agents", page_icon="webjet-logo-au-white-2x.png", layout="wide")
 st.image("webjet-logo-au-white-2x.png", width=150)
-st.title("Ask Rache")
+st.title("Ask Rach-e")
 
 # Initialize chat history
 
