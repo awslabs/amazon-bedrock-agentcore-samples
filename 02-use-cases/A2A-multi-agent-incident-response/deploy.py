@@ -100,6 +100,15 @@ def generate_bucket_name(account_id: str = None) -> str:
     return f"a2a-smithy-models-{unique_id}"
 
 
+def generate_cognito_domain_name(account_id: str = None) -> str:
+    """Generate a unique Cognito domain name"""
+    unique_id = str(uuid.uuid4())[:8]
+    # Include account ID for better uniqueness if available
+    if account_id:
+        return f"agentcore-m2m-{account_id}-{unique_id}"
+    return f"agentcore-m2m-{unique_id}"
+
+
 def validate_bucket_name(bucket_name: str) -> tuple:
     """Validate S3 bucket name according to AWS rules"""
     if not bucket_name:
@@ -135,6 +144,25 @@ def check_s3_bucket_exists(bucket_name: str, region: str) -> bool:
         ["aws", "s3api", "head-bucket", "--bucket", bucket_name, "--region", region]
     )
     return success
+
+
+def validate_cognito_domain_name(domain_name: str) -> tuple:
+    """Validate Cognito User Pool domain name"""
+    if not domain_name:
+        return (False, "Domain name cannot be empty")
+
+    if len(domain_name) < 1 or len(domain_name) > 63:
+        return (False, "Domain name must be between 1 and 63 characters")
+
+    import re
+
+    if not re.match(r"^[a-z0-9][a-z0-9\-]*[a-z0-9]$", domain_name):
+        return (
+            False,
+            "Domain name must contain only lowercase letters, numbers, and hyphens, and must start and end with alphanumeric",
+        )
+
+    return (True, "Valid domain name")
 
 
 def validate_stack_name(stack_name: str) -> tuple:
@@ -377,6 +405,30 @@ def collect_deployment_parameters(account_id: str = None) -> Dict[str, Any]:
             else:
                 print_error(f"Invalid stack name: {message}")
 
+    # Cognito Domain Name with validation
+    print_header("Cognito Configuration")
+    default_cognito_domain = (
+        existing_config.get("cognito", {}).get("domain_name")
+        if use_existing
+        else generate_cognito_domain_name(account_id)
+    )
+
+    while True:
+        domain_name = get_input(
+            "Cognito User Pool Domain Name",
+            default=default_cognito_domain,
+            required=True,
+        )
+        is_valid, message = validate_cognito_domain_name(domain_name)
+        if is_valid:
+            config["cognito"] = {"domain_name": domain_name}
+            print_info(
+                "This unique domain prevents conflicts with existing Cognito User Pools"
+            )
+            break
+        else:
+            print_error(f"Invalid domain name: {message}")
+
     # S3 Bucket for Smithy Models with validation
     print_header("S3 Configuration")
     default_bucket = (
@@ -485,6 +537,9 @@ def display_configuration(config: Dict[str, Any]):
     print(f"  Monitoring Agent: {config['stacks']['monitoring_agent']}")
     print(f"  Web Search Agent: {config['stacks']['web_search_agent']}")
     print(f"  Host Agent: {config['stacks']['host_agent']}")
+
+    print(f"\n{Colors.BOLD}Cognito Configuration:{Colors.END}")
+    print(f"  User Pool Domain: {config['cognito']['domain_name']}")
 
     print(f"\n{Colors.BOLD}S3 Configuration:{Colors.END}")
     print(f"  Smithy Models Bucket: {config['s3']['smithy_models_bucket']}")
@@ -615,8 +670,10 @@ def deploy_cognito_stack(config: Dict[str, Any]) -> bool:
 
     stack_name = config["stacks"]["cognito"]
     region = config["aws"]["region"]
+    domain_name = config["cognito"]["domain_name"]
 
     print_info(f"Creating CloudFormation stack: {stack_name}")
+    print_info(f"Using Cognito domain: {domain_name}")
     success, output = run_command(
         [
             "aws",
@@ -626,6 +683,8 @@ def deploy_cognito_stack(config: Dict[str, Any]) -> bool:
             stack_name,
             "--template-body",
             "file://cloudformation/cognito.yaml",
+            "--parameters",
+            f"ParameterKey=DomainName,ParameterValue={domain_name}",
             "--capabilities",
             "CAPABILITY_IAM",
             "--region",

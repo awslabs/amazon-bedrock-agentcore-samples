@@ -262,7 +262,6 @@ Resources:
     Properties:
       DBClusterIdentifier: !Sub 'csvpc-${Environment}-aurora-postgres'
       Engine: aurora-postgresql
-      EngineVersion: !Ref EngineVersion
       MasterUsername: !Ref DBMasterUsername
       ManageMasterUserPassword: true
       DatabaseName: !Ref DatabaseName
