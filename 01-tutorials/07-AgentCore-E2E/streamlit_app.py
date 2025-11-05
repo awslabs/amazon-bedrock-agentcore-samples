@@ -44,5 +44,7 @@ if user_input:
 
         # Run the async stream in Streamlit
         full_response = asyncio.run(stream_response())
+        st.session_state.messages.append({"role": "assistent", "content": full_response})
+
 
 
