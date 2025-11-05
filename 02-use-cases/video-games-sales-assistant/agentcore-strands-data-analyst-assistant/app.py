@@ -119,7 +119,7 @@ def create_execute_sql_query_tool(user_prompt: str, prompt_uuid: str):
     
     Args:
         user_prompt (str): The original user question about video game sales data
-        prompt_uuid (str): Unique identifier for tracking this analysis session
+        prompt_uuid (str): Unique identifier for tracking this analysis prompt
         
     Returns:
         function: Configured SQL execution tool with video game sales context
@@ -145,7 +145,7 @@ def create_execute_sql_query_tool(user_prompt: str, prompt_uuid: str):
         print("="*60)
         print(f"📝 Analysis: {description}")
         print(f"🔍 SQL Query: {sql_query[:200]}{'...' if len(sql_query) > 200 else ''}")
-        print(f"🆔 Session UUID: {prompt_uuid}")
+        print(f"🆔 Prompt UUID: {prompt_uuid}")
         print("-"*60)
         
         try:
@@ -224,7 +224,7 @@ async def agent_invocation(payload):
     {
         "prompt": "Your video game sales analysis question",
         "bedrock_model_id": "us.anthropic.claude-3-7-sonnet-20250219-v1:0",
-        "prompt_uuid": "optional-unique-session-identifier",
+        "prompt_uuid": "optional-unique-prompt-identifier",
         "user_timezone": "US/Pacific",
         "session_id": "optional-conversation-session-id",
         "user_id": "optional-user-identifier",
@@ -249,7 +249,7 @@ async def agent_invocation(payload):
         print("="*80)
         print(f"💬 User Query: {user_message[:100]}{'...' if len(user_message) > 100 else ''}")
         print(f"🤖 Claude Model: {bedrock_model_id}")
-        print(f"🆔 Session UUID: {prompt_uuid}")
+        print(f"🆔 Prompt UUID: {prompt_uuid}")
         print(f"🌍 User Timezone: {user_timezone}")
         print(f"🔗 Conversation ID: {session_id}")
         print(f"👤 User ID: {user_id}")
@@ -303,8 +303,8 @@ async def agent_invocation(payload):
         
         print("✅ Video game sales analyst agent ready with:")
         print(f"   📝 {len(agentcore_messages)} conversation context messages")
-        print(f"   🔧 3 specialized tools (database schema, time utilities, SQL execution)")
-        print(f"   🧠 Conversation memory management enabled")
+        print("   🔧 3 specialized tools (database schema, time utilities, SQL execution)")
+        print("   � Connversation memory management enabled")
         
         print("-"*80)
         print("🚀 Starting video game sales data analysis...")
