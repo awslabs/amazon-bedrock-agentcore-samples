@@ -1,6 +1,6 @@
 # Agent Deployment - Strands Agent Infrastructure Deployment with AgentCore
 
-Deploy the Strands Agent Data Analyst Assistant for Video Game Sales using **[AWS Bedrock AgentCore](https://aws.amazon.com/bedrock/agentcore/)**'s fully managed service for scalable agent applications with **Runtime** and **Memory** capabilities.
+Deploy the Strands Agent Data Analyst Assistant for Video Game Sales using **[Amazon Bedrock AgentCore](https://aws.amazon.com/bedrock/agentcore/)**'s fully managed service for scalable agent applications with **Runtime** and **Memory** capabilities.
 
 ## Overview
 
