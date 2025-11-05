@@ -7,8 +7,8 @@ agent = create_agent_with_fresh_session()
 
 # Streamlit UI
 # UI Layout
-st.title("🤖 Strands Agents")
-st.caption("Strands Agents using Amazon Bedrock models")
+st.title("🤖 Agent Rachel")
+st.caption("Strands Agent using Amazon Bedrock models")
 st.set_page_config(page_title="Strands Agents", page_icon="🤖", layout="wide")
 
 # Initialize chat history
