@@ -5,7 +5,7 @@ import CircularProgress from "@mui/material/CircularProgress";
 import Stack from "@mui/material/Stack";
 import Fade from "@mui/material/Fade";
 
-const Answering = ({ loading }) => {
+const LoadingIndicator = ({ loading }) => {
   return (
     <Fade timeout={1000} in={loading}>
       <Stack
@@ -37,4 +37,4 @@ const Answering = ({ loading }) => {
   );
 };
 
-export default Answering;
+export default LoadingIndicator;

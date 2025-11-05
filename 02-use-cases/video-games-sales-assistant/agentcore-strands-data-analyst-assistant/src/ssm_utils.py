@@ -3,16 +3,14 @@ AWS Systems Manager Parameter Store Utilities
 
 This module provides functions to interact with AWS Systems Manager Parameter Store
 for retrieving configuration parameters. Parameters are stored with the prefix
-'/strands-data-analyst-assistant/' followed by the parameter name.
+'/agentcore-data-analyst-assistant/' followed by the parameter name.
 
-Required SSM Parameters:
+Parameters:
 - SECRET_ARN: ARN of the AWS Secrets Manager secret containing database credentials
 - AURORA_RESOURCE_ARN: ARN of the Aurora Serverless cluster
 - DATABASE_NAME: Name of the database to connect to
-
-Optional SSM Parameters:
+- MEMORY_ID: AgentCore Memory ID for conversation context management
 - QUESTION_ANSWERS_TABLE: DynamoDB table for storing query results
-- AGENT_INTERACTIONS_TABLE_NAME: DynamoDB table for storing agent interactions
 - MAX_RESPONSE_SIZE_BYTES: Maximum size of query responses in bytes (default: 25600)
 """
 
@@ -95,7 +93,6 @@ def load_config(region_name=None):
         "DATABASE_NAME",
         "QUESTION_ANSWERS_TABLE",
         "MAX_RESPONSE_SIZE_BYTES",
-        "AGENT_INTERACTIONS_TABLE_NAME",
         "MEMORY_ID"
     ]
     
@@ -116,10 +113,10 @@ def load_config(region_name=None):
             if key == "MAX_RESPONSE_SIZE_BYTES":
                 config[key] = 25600
             # If optional parameters are not found, set to None
-            elif key in ["QUESTION_ANSWERS_TABLE", "AGENT_INTERACTIONS_TABLE_NAME"]:
+            elif key in ["QUESTION_ANSWERS_TABLE"]:
                 config[key] = None
             # For required parameters, raise an exception
-            elif key in ["SECRET_ARN", "AURORA_RESOURCE_ARN", "DATABASE_NAME"]:
+            elif key in ["SECRET_ARN", "AURORA_RESOURCE_ARN", "DATABASE_NAME", "MEMORY_ID"]:
                 raise ValueError(f"Required SSM parameter /{PROJECT_ID}/{key} not found")
     
     # Convert MAX_RESPONSE_SIZE_BYTES to int if it exists
