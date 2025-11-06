@@ -2,6 +2,9 @@
 
 Deploy the back-end infrastructure for a Data Analyst Assistant for Video Game Sales using **[AWS Cloud Development Kit (CDK)](https://aws.amazon.com/cdk/)**.
 
+> [!NOTE]
+> **Working Directory**: Make sure you are in the `cdk-agentcore-strands-data-analyst-assistant/` folder before starting this tutorial. All commands in this guide should be executed from this directory.
+
 ## Overview
 
 This tutorial deploys the foundational AWS services required for the video game sales data analyst agent with the following key components:

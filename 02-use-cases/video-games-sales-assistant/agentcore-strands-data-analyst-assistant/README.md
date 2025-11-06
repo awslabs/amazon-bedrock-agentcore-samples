@@ -2,6 +2,9 @@
 
 Deploy the Strands Agent Data Analyst Assistant for Video Game Sales using **[Amazon Bedrock AgentCore](https://aws.amazon.com/bedrock/agentcore/)**'s fully managed service for scalable agent applications with **Runtime** and **Memory** capabilities.
 
+> [!NOTE]
+> **Working Directory**: Make sure you are in the `agentcore-strands-data-analyst-assistant/` folder before starting this tutorial. All commands in this guide should be executed from this directory.
+
 ## Overview
 
 This tutorial guides you through deploying a video game sales data analyst agent using Amazon Bedrock AgentCore's managed infrastructure, includes the following modular services:
