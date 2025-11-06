@@ -38,6 +38,10 @@ Each platform requires specific configuration:
 - API key from Braintrust dashboard
 - Project configuration
 
+### Instana
+- Instana key
+- Project configuration
+
 ### Langfuse
 - Public and secret keys
 - Project configuration
@@ -53,10 +57,11 @@ After completing examples:
 ## Additional Resources
 
 - [Braintrust Documentation](https://www.braintrust.dev/docs)
+- [Instana Documentation](https://www.ibm.com/docs/en/instana-observability/1.0.308?topic=overview)
 - [Langfuse Documentation](https://langfuse.com/docs)
 - [AgentCore Runtime Guide](https://docs.aws.amazon.com/bedrock-agentcore/latest/userguide/runtime.html)
 
 # Third-Party Observability for Amazon Bedrock AgentCore Agents
 
-This repository contains examples of using agents hosted on Amazon Bedrock AgentCore Runtime with third-party observability tools like Braintrust, Langfuse, and others. These examples demonstrate OpenTelemetry integration for monitoring agent performance, tracing LLM interactions, and debugging workflows.
+This repository contains examples of using agents hosted on Amazon Bedrock AgentCore Runtime with third-party observability tools like Braintrust, Instana, Langfuse, and others. These examples demonstrate OpenTelemetry integration for monitoring agent performance, tracing LLM interactions, and debugging workflows.
 
