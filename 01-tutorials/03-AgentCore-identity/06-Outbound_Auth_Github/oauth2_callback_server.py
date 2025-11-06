@@ -101,7 +101,9 @@ def get_oauth2_callback_base_url() -> str:
         logger.info(f"External OAuth callback base URL (SageMaker): {base_url}")
         return base_url
     except Exception as e:
-        logger.warning(f"Error getting SageMaker proxy URL: {e}. Falling back to localhost")
+        logger.warning(
+            f"Error getting SageMaker proxy URL: {e}. Falling back to localhost"
+        )
         return f"http://localhost:{OAUTH2_CALLBACK_SERVER_PORT}"
 
 
@@ -447,7 +449,9 @@ def main():
     host = "0.0.0.0" if _is_workshop_studio() else "127.0.0.1"
     base_url = get_oauth2_callback_base_url()
 
-    logger.info(f"Starting OAuth2 callback server on {host}:{OAUTH2_CALLBACK_SERVER_PORT}")
+    logger.info(
+        f"Starting OAuth2 callback server on {host}:{OAUTH2_CALLBACK_SERVER_PORT}"
+    )
     logger.info(f"External callback URL: {base_url}{OAUTH2_CALLBACK_ENDPOINT}")
 
     # Start the FastAPI server using uvicorn
