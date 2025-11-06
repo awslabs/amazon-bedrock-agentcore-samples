@@ -1,0 +1,50 @@
+id,age,gender,ethnicity,state,education_level,employment_status,annual_income,state_employment_rate
+1,19,Male,White,Washington,Some College,Employed,51454.8,0.9685
+2,49,Female,Asian,Texas,Some College,Employed,77964.26,0.957
+3,24,Male,White,Oregon,Bachelor,Employed,58548.07,0.9597
+4,67,Female,Pacific Islander,New Mexico,High School,Retired,35720.98,0.9378
+5,82,Female,Asian,Utah,High School,Retired,65586.34,0.9302
+6,57,Female,Hispanic,New York,Some College,Employed,88170.26,0.9481
+7,34,Male,Hispanic,Alaska,Bachelor,Employed,95818.73,0.9484
+8,52,Male,Mixed,Utah,Doctorate,Employed,160140.42,0.9302
+9,21,Female,Black,Montana,Master,Employed,106374.57,0.9251
+10,56,Male,Pacific Islander,Indiana,Master,Employed,160686.93,0.9286
+11,44,Male,Mixed,Mississippi,No Degree,Employed,37699.82,0.9632
+12,63,Female,Asian,Georgia,Bachelor,Employed,125010.73,0.9322
+13,66,Male,Native American,Vermont,Some College,Employed,95244.65,0.9424
+14,75,Male,Hispanic,Texas,Master,Retired,43650.87,0.957
+15,63,Female,Asian,Colorado,Some College,Employed,109411.95,0.9305
+16,57,Female,Asian,Georgia,High School,Employed,94439.9,0.9322
+17,60,Male,Pacific Islander,Indiana,Bachelor,Employed,105599.9,0.9286
+18,41,Female,White,Virginia,Some College,Employed,61673.5,0.931
+19,18,Female,White,Virginia,Master,Student,21180.0,0.931
+20,22,Female,Asian,New Mexico,Some College,Employed,37749.89,0.9378
+21,83,Female,Hispanic,Alaska,Master,Student,6243.23,0.9484
+22,78,Female,Native American,California,High School,Employed,113554.61,0.965
+23,26,Female,Black,New Hampshire,Doctorate,Employed,102473.69,0.9252
+24,49,Female,Black,Arizona,Bachelor,Employed,88190.27,0.9344
+25,22,Male,Asian,North Carolina,No Degree,Employed,28557.66,0.9492
+26,76,Male,Black,South Carolina,Bachelor,Retired,70745.57,0.9698
+27,19,Female,Black,Kansas,Doctorate,Student,12979.27,0.9318
+28,22,Female,Native American,South Dakota,Doctorate,Employed,77429.92,0.955
+29,34,Male,White,Utah,No Degree,Employed,39214.55,0.9302
+30,62,Male,Hispanic,Massachusetts,Some College,Unemployed,14901.8,0.9282
+31,22,Female,Hispanic,Hawaii,High School,Employed,51555.07,0.9433
+32,69,Female,Pacific Islander,New Mexico,Doctorate,Retired,72309.29,0.9378
+33,65,Male,White,Connecticut,Master,Employed,164572.68,0.9447
+34,23,Female,Native American,Utah,High School,Employed,46989.57,0.9302
+35,79,Female,Mixed,Oklahoma,Doctorate,Retired,55845.76,0.9405
+36,40,Female,Mixed,Oklahoma,Bachelor,Employed,66002.7,0.9405
+37,82,Male,Pacific Islander,Hawaii,Some College,Retired,33122.55,0.9433
+38,35,Female,Hispanic,Oklahoma,Doctorate,Unemployed,6394.51,0.9405
+39,20,Female,Native American,Wyoming,Master,Student,21571.17,0.965
+40,18,Female,Pacific Islander,South Dakota,High School,Employed,40094.84,0.955
+41,36,Male,White,Georgia,Bachelor,Employed,107006.88,0.9322
+42,76,Male,Asian,Arizona,High School,Retired,32324.68,0.9344
+43,30,Female,Hispanic,Michigan,Some College,Employed,41386.14,0.9653
+44,53,Female,Hispanic,Virginia,Bachelor,Employed,118261.79,0.931
+45,56,Female,Mixed,Illinois,Bachelor,Employed,77115.5,0.94
+46,45,Female,Hispanic,Vermont,Bachelor,Unemployed,10255.51,0.9424
+47,57,Female,Pacific Islander,Vermont,Doctorate,Employed,141813.46,0.9424
+48,81,Male,Asian,Massachusetts,Doctorate,Unemployed,14553.92,0.9282
+49,60,Male,Native American,Illinois,High School,Unemployed,5683.32,0.94

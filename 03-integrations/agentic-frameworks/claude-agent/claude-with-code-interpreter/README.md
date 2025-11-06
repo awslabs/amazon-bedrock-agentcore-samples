@@ -1,0 +1,163 @@
+# Code execution in Code Interpreter using Claude Agent
+
+This project demonstrates a [Claude agent](https://docs.claude.com/en/api/agent-sdk/overview) deployed on [AWS Bedrock AgentCore](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/) that creates [Code Interpreter](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/code-interpreter-tool.html) sessions to securely execute code within the Code Interpreter isolated sandbox environments. The agent in this example performs automated data analysis by orchestrating file transfers, code execution, and result retrieval within Code Interpreter sessions.
+
+We demonstrate this by building a Claude Agent that interprets user prompt, creates Code Interpreter session, invokes bash and code execution operations within the Code Interpreter environment, and returns a response.
+
+## Overview
+
+The project includes:
+- An agent that uses Claude to orchestrate code execution
+- An MCP server that wraps the Code Interpreter tools
+- A client to invoke the Code Interpreter APIs
+- Sample data and analysis code to demonstrate the workflow
+- Docker containerization for AgentCore deployment
+
+## Prerequisites
+
+- Python 3.11+
+- [uv](https://github.com/astral-sh/uv) - Fast Python package installer and resolver
+- Docker (for containerization)
+- AWS account access with Bedrock AgentCore permissions
+- Claude Code CLI is a dependency for Claude Agent SDK to work. This is installed via Node.js and npm.
+
+## Setup
+
+### 1. Install uv (if not installed)
+``` bash
+# macOS/Linux
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Windows
+powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
+
+# Or via pip
+pip install uv
+```
+
+### 2. Setup virtual env
+```bash
+# Create and activate a virtual environment. pyproject.toml is provided for you.
+uv sync
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+```
+
+### 2. Deploy to AgentCore using AgentCore Starter Toolkit
+```bash
+# Configure agent for deployment
+agentcore configure --entrypoint agent.py --name claude_ci_agent --disable-memory
+
+# Launch agent
+agentcore launch
+```
+
+**Note**: The Claude Agent SDK requires either `ANTHROPIC_API_KEY` or AWS Bedrock access configured as environment variables. This example uses `CLAUDE_CODE_USE_BEDROCK=1` to enable Bedrock integration
+
+You can set these environment variables in the Dockerfile or inline with the --env option. For more details on configuration options, see the [Claude Agent SDK documentation](https://docs.claude.com/en/api/agent-sdk/overview#core-concepts).
+
+**Note**: The starter toolkit automatically creates a Dockerfile and deploys agents to AgentCore Runtime. Since this example requires the Claude Code CLI as a dependency, we override with our own Dockerfile that has the added npm installation.
+
+### 3. Test your agent
+
+Use toolkit command to test agent
+```bash
+agentcore invoke '{"prompt":"Write the files in the samples folder into a code interpreter session. Check if they are created. Run data analysis on the data file using the python script."'
+```
+
+**OR** you can use the script provided in the test_scripts directory
+```bash
+uv run test_scripts/invoke_agent.py
+```
+
+**Note**: Set the `agent_arn` to your deployed agent arn in invoke_agent.py before running it.
+
+
+## What It Does
+
+The `test_scripts/invoke_agent.py` client includes a sample prompt that demonstrates the full workflow:
+
+1. **Write files** to the Code Interpreter session (from the `samples` folder)
+2. **List files** to verify they were created
+3. **Execute data analysis** on the CSV file using the code in `stats.py`
+
+This showcases how Claude can:
+- Manage an isolated Code Interpreter session
+- Transfer files to the session
+- Execute Python code within the session
+- Perform data analysis tasks
+
+## Project Structure
+
+```
+.
+├── .bedrock_agentcore/          # AgentCore deployment artifacts
+├── .bedrock_agentcore.yaml      # AgentCore configuration
+├── code_int_mcp/
+│   ├── client.py                # Client to invoke Code Interpreter APIs
+│   ├── models.py                # Pydantic data models
+│   ├── server.py                # MCP server with tools
+│   └── __init__.py
+├── samples/
+│   ├── stats.py                 # Sample analysis code
+│   └── data.csv                 # Sample data file
+├── test_scripts/
+│   ├── invoke_agent.py          # Client to invoke deployed agent
+│   └── cleanup.py               # Cleanup script
+├── agent.py                     # Main agent implementation
+├── Dockerfile                   # Container image definition
+├── pyproject.toml               # Python package configuration
+└── README.md                    # This file
+```
+
+### Understanding the agent code
+Claude Agent SDK supports two types of interactions - query() and ClaudeSDKClient. A quick comparison is provided [here](https://docs.claude.com/en/api/agent-sdk/python#quick-comparison). In this example, we specifically use the ClaudeSDKClient since it supports use of custom tools.
+
+The agent's system prompt in our example is extremely specific to use Code Interpreter tool for executing bash, file read/write operations and code. This is done to override the default behavior of Claude Agent that uses its own tools for bash, file read/write and execute code.
+
+The agent re-uses the code interpreter session id for the multi turn conversation so that the context is maintained between the turns.
+
+The Code Interprter tool operations (`code_int_mcp/server.py`) are created as custom tools for Claude Agent to use. [Custom tools](https://docs.claude.com/en/api/agent-sdk/custom-tools) allow for plugging in our own tools to Claude Agent through in process MCP server. The `code_int_mcp/client.py` is a simple class that the server uses to invoke Code Interpreter operations via boto3 SDK. The tools have to have a [specific naming format](https://docs.claude.com/en/api/agent-sdk/custom-tools#tool-name-format) for Claude agent to be able to use them. 
+
+Code Interpreter's session runs in a dedicated microVM with isolated CPU, memory and filesystem resources. It is ideal that a client re-uses the session for a user request. With that in mind, the agent takes in a payload of `prompt` and `code_int_session_id` if passed and reuses that session. Ideally we would pass sesison ids in headers in real world applications. But to demonstrate the session functionality we pass it as part of payload. The agent uses the session id to invoke the the Code interpreter tools within the same session. 
+
+In order to demonstrate how the agent works, there is extensive logging within the code. Only use them while testing. 
+
+### Understanding the test script
+`test_scripts\invoke_agent.py` uses boto3 sdk to invoke agent deployed on AgentCore Runtime agent. As the agent sends response, the script streams it on the terminal. The actions, tools invoked and the final response. 
+
+### Cleanup
+
+#### 1. Destroy agent and all its associated resources
+```bash
+agentcore destroy
+```
+
+You'll see output similar to:
+
+```bash
+⚠️  About to destroy resources for agent 'code-interpreter-with-claude'
+
+Current deployment:
+  • Agent ARN: arn:aws:bedrock-agentcore:us-west-2:XXXXXXXXXXXX:runtime/code-interpreter-with-claude-XXXXXXXXXX
+  • Agent ID: code-interpreter-with-claude-XXXXXXXXXX
+  • ECR Repository: XXXXXXXXXXXX.dkr.ecr.us-west-2.amazonaws.com/bedrock-agentcore-claude_agent_simple
+  • Execution Role: arn:aws:iam::XXXXXXXXXXXX:role/AmazonBedrockAgentCoreSDKRuntime-us-west-2-XXXXXXXXXX
+
+This will permanently delete AWS resources and cannot be undone!
+Are you sure you want to destroy the agent 'code-interpreter-with-claude' and all its resources? [y/N]: 
+```
+Type y to confirm and permanently delete the agent and all its associated resources including the ECR repository and execution role.
+
+#### 2. Terminate sessions
+If you used `test_scripts\invoke_agent.py` to test your agent, once all the prompts are processed, the code interpreter session is terminated.
+
+If you used `agentcore invoke` to test your agent, then terminate the session using the `test_scripts/cleanup.py` script. The `code-int-session-id` is returned as part of the response and printed on the terminal when the test script is executed. This is just for testing, in real production deployment, session id logging should be disabled. 
+
+```bash
+uv run test_scripts/cleanup.py --code_int_session_id="<code-int-session-id>"
+```
+
+If ever agent gets stuck and doesnt respond,  you can stop the runtime session using
+```bash
+uv run test_scripts/cleanup.py --runtime_session_id="<runtime_session_id>"
+```
