@@ -55,22 +55,19 @@ This memory store enables your agent to remember previous interactions within th
 
 Before deploying to AWS, you can test the Data Analyst Agent locally to verify functionality:
 
-1. Create a session ID for conversation tracking:
-
-```bash
-export SESSION_ID=$(uuidgen)
-```
-
-2. Start the local agent server:
+1. Start the local agent server:
 
 ```bash
 python3 app.py
 ```
 
-This launches a local server on port 8080 that simulates the AgentCore runtime environment:
-- Processes natural language queries about video game sales data
-- Uses AgentCore Memory (Short-Term Memory) to maintain conversation context
-- Maintains conversation history through the `last_k_turns` parameter
+This launches a local server on port 8080 that simulates the AgentCore runtime environment.
+
+2. In a different terminal, create a session ID for conversation tracking:
+
+```bash
+export SESSION_ID=$(uuidgen)
+```
 
 3. Test the agent with example queries using curl:
 
