@@ -213,13 +213,12 @@ def create_execute_sql_query_tool(user_prompt: str, prompt_uuid: str):
 
 @app.entrypoint
 async def agent_invocation(payload):
-    """
-    Main entry point for video game sales data analysis requests with streaming responses.
-    
+    """Main entry point for video game sales data analysis requests with streaming responses.
+
     This function processes natural language queries about video game sales data, initializes
     the Claude-powered agent with specialized tools, and streams intelligent analysis back
     to the client while maintaining conversation context.
-    
+
     Expected payload structure:
     {
         "prompt": "Your video game sales analysis question",
@@ -230,23 +229,28 @@ async def agent_invocation(payload):
         "user_id": "optional-user-identifier",
         "last_turns": "optional-number-of-conversation-turns-to-retrieve"
     }
-    
+
     Returns:
         AsyncGenerator: Yields streaming response chunks with analysis results
     """
     try:
         # Extract parameters from payload
-        user_message = payload.get("prompt", "No prompt found in input, please guide customer to create a json payload with prompt key")
-        bedrock_model_id = payload.get("bedrock_model_id", "us.anthropic.claude-3-7-sonnet-20250219-v1:0")
+        user_message = payload.get(
+            "prompt",
+            "No prompt found in input, please guide customer to create a json payload with prompt key",
+        )
+        bedrock_model_id = payload.get(
+            "bedrock_model_id", "us.anthropic.claude-3-7-sonnet-20250219-v1:0"
+        )
         prompt_uuid = payload.get("prompt_uuid", str(uuid4()))
         user_timezone = payload.get("user_timezone", "US/Pacific")
         session_id = payload.get("session_id", str(uuid4()))
         user_id = payload.get("user_id", "guest")
         last_k_turns = int(payload.get("last_k_turns", 20))
         
-        print("\n" + "="*80)
+        print("\n" + "=" * 80)
         print("🎮 VIDEO GAME SALES ANALYSIS REQUEST")
-        print("="*80)
+        print("=" * 80)
         print(f"💬 User Query: {user_message[:100]}{'...' if len(user_message) > 100 else ''}")
         print(f"🤖 Claude Model: {bedrock_model_id}")
         print(f"🆔 Prompt UUID: {prompt_uuid}")
@@ -254,19 +258,21 @@ async def agent_invocation(payload):
         print(f"🔗 Conversation ID: {session_id}")
         print(f"👤 User ID: {user_id}")
         print(f"🔄 Context Turns: {last_k_turns}")
-        print("-"*80)
+        print("-" * 80)
         
         # Initialize Claude model for video game sales analysis
         print(f"🧠 Initializing Claude model for analysis: {bedrock_model_id}")
         bedrock_model = BedrockModel(model_id=bedrock_model_id)
         print("✅ Claude model ready for video game sales analysis")
         
-        print("-"*80)
+        print("-" * 80)
         print("🧠 Retrieving conversation context from AgentCore Memory...")
-        agentcore_messages = get_agentcore_memory_messages(client, memory_id, user_id, session_id, last_k_turns)    
-        
+        agentcore_messages = get_agentcore_memory_messages(
+            client, memory_id, user_id, session_id, last_k_turns
+        )
+
         print("📋 CONVERSATION CONTEXT LOADED:")
-        print("-"*50)
+        print("-" * 50)
         if agentcore_messages:
             for i, msg in enumerate(agentcore_messages, 1):
                 role = msg.get('role', 'unknown')
