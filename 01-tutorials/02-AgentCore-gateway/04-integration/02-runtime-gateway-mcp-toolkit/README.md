@@ -22,6 +22,8 @@ The toolkit creates a complete MCP gateway and enables multiple MCP servers (Exa
 ## Prerequisites
 
 1. AWS credentials configured
+2. Python 3.8+ installed
+3. (Optional) `.env` file for Cognito user configuration
 
 ## Installation
 
@@ -36,6 +38,26 @@ git clone <repository-url>
 cd agentcore-runtime-gw-mcp-tool-kit
 pip install -e .
 ```
+
+## Configuration
+
+### Environment Variables (Optional)
+
+You can customize Cognito user credentials by creating a `.env` file in the project directory:
+
+```bash
+# .env file
+COGNITO_USERNAME=your_username
+COGNITO_TEMP_PASSWORD=your_temp_password
+COGNITO_PASSWORD=your_permanent_password
+```
+
+**Default values** (used if `.env` file is not provided):
+- `COGNITO_USERNAME`: `testuser`
+- `COGNITO_TEMP_PASSWORD`: `Temp123!`
+- `COGNITO_PASSWORD`: `MyPassword123!`
+
+**Note**: The toolkit automatically creates Cognito users with these credentials for testing purposes.
 
 ## Usage
 
@@ -171,7 +193,16 @@ Once deployed, the toolkit automatically provides all the connection information
 
 ### Gateway Connection Information
 
-The toolkit automatically displays all connection details after successful deployment:
+The toolkit automatically displays connection details and **securely saves credentials to a file** after successful deployment:
+
+#### **Secure Credential Storage**
+
+For security, sensitive credentials are saved to a secure file instead of being displayed in console logs:
+
+- **File Location**: `.agentcore-credentials-{gateway-name}.json`
+- **File Permissions**: Owner-only access (600)
+- **Console Output**: Shows `<redacted>` for sensitive values
+- **Access Method**: Use `cat .agentcore-credentials-{gateway-name}.json`
 
 **Example Output:**
 ```
@@ -180,10 +211,12 @@ GATEWAY CONNECTION INFORMATION
 ============================================================
 Gateway URL: https://my-gateway-mcp-server-123456789.gateway.bedrock-agentcore.us-east-1.amazonaws.com/mcp
 User Pool ID: us-east-1_bt4yEZFOx
-Client ID: 4stpioqj2dtmaj413loscqvgfd
-Client Secret: 15nb5p78qs2itk4f9ao5dacj6veche14l31ts06tlgf0cuo6c99e
-4stpioqj2dtmaj413loscqvgfd
-Access Token: eyJraWQiOiI2VDRER0x1SmhzSGRMUG1zaXFpTlVISHlHQlpnTkg3d0c5WU9aMDBvOFFNPSIsImFsZyI6IlJTMjU2In0.eyJzdWIiOiI0c3RwaW9xajJkdG1hajQxM2xvc2NxdmdmZCIsInRva2VuX3VzZSI6ImFjY2VzcyIsInNjb3BlIjoibXktZ2F0ZXdheS1tY3Atc2VydmVyLWlkXC9pbnZva2UiLCJhdXRoX3RpbWUiOjE3NjE5NjIzMzAsImlzcyI6Imh0dHBzOlwvXC9jb2duaXRvLWlkcC51cy1lYXN0LTEuYW1hem9uYXdzLmNvbVwvdXMtZWFzdC0xX2J0NHlFWkZPeCIsImV4cCI6MTc2MTk2NTkzMCwiaWF0IjoxNzYxOTYyMzMwLCJ2ZXJzaW9uIjoyLCJqdGkiOiI1NTlkYTA0Yy02YWU3LTRjYWMtYjhiNS0xZmYyMTE3MjJjMzYiLCJjbGllbnRfaWQiOiI0c3RwaW9xajJkdG1hajQxM2xvc2NxdmdmZCJ9
+Client ID: <redacted>
+Client Secret: <redacted>
+Access Token: <redacted>
+Credentials saved to: .agentcore-credentials-my-gateway.json
+File permissions set to owner-only access (600)
+Use: cat .agentcore-credentials-my-gateway.json
 ============================================================
 
 ✅ Setup completed successfully!
@@ -198,12 +231,18 @@ To use the MCP gateway in QDev plugin, configure it as shown below:
 ![QDev MCP Configuration](images/qdev_mcp_config.png)
 
 **Steps to configure QDev:**
-1. Copy the **Access Token** from the toolkit output (the long JWT string starting with `eyJ...`)
-2. In QDev plugin settings, add a new MCP server with:
-   - **Server URL**: Your gateway URL (e.g., `https://your-gateway-url/mcp`)
+1. **Get credentials** from the secure file:
+   ```bash
+   cat .agentcore-credentials-{gateway-name}.json
+   ```
+2. Copy the **access_token** value from the JSON file
+3. In QDev plugin settings, add a new MCP server with:
+   - **Server URL**: Use the `gateway_url` from the credentials file
    - **Authentication**: Bearer Token
-   - **Token**: Paste the access token from step 1
-3. Save the configuration and test the connection
+   - **Token**: Paste the access token from step 2
+4. Save the configuration and test the connection
+
+**Security Note**: Never share or commit the credentials file to version control.
 
 ### Live Demo Examples
 
@@ -249,6 +288,70 @@ This toolkit currently supports **Amazon Cognito OAuth2** for both inbound and o
 ### Roadmap
 - **IAM Role-based Authorization**: Support for IAM roles and policies for both inbound and outbound authentication (TO DO - planned for next release)
 
+## Security Features
+
+### **Secure Credential Management**
+- **File-based storage**: Credentials saved to secure files with restricted permissions
+- **Console masking**: Sensitive values shown as `<redacted>` in logs
+- **File permissions**: Automatic setting of owner-only access (600)
+- **Fallback protection**: Graceful handling if file operations fail
+
+### **Input Validation**
+- **Path traversal protection**: Prevents `..` in file paths
+- **File extension validation**: Ensures `.py` and `.txt` extensions
+- **JSON structure validation**: Validates runtime configuration format
+- **Required field checks**: Ensures all mandatory fields are present
+
+### **Error Handling**
+- **Specific exception handling**: Uses appropriate exception types
+- **Sanitized error messages**: Prevents information disclosure
+- **Graceful degradation**: Continues operation when possible
+- **Proper exit codes**: Returns appropriate status for automation
+
+## Cleanup
+
+### Removing Resources
+
+To clean up all resources created by the toolkit, use the cleanup script:
+
+```bash
+# Clean up specific gateway and runtimes
+python -m cleanup \
+  --gateway-name "my-gateway" \
+  --runtime-names '["runtime1", "runtime2"]' \
+  --region us-east-1
+
+# Skip confirmation prompt
+python -m cleanup \
+  --gateway-name "my-gateway" \
+  --runtime-names '["runtime1", "runtime2"]' \
+  --confirm
+```
+
+### Cleanup Options
+
+- `--gateway-name`: Name of the gateway to clean up (required)
+- `--runtime-names`: JSON array of runtime names to clean up (required)
+- `--region`: AWS region (default: us-east-1)
+- `--confirm`: Skip confirmation prompt
+
+### Resources Cleaned Up
+
+The cleanup script removes:
+- AgentCore Gateway and all targets
+- AgentCore Runtime instances
+- Cognito User Pools and domains
+- IAM roles and policies
+- OAuth2 credential providers
+
+**Note**: The cleanup script does not remove local credential files. To remove them:
+```bash
+# Remove credential files manually
+rm .agentcore-credentials-*.json
+```
+
+**Warning**: This action cannot be undone. Always confirm the resources before proceeding.
+
 ## Troubleshooting
 
 1. Ensure AWS credentials are properly configured
@@ -261,6 +364,12 @@ This toolkit currently supports **Amazon Cognito OAuth2** for both inbound and o
 8. **QDev Connection Issues**: Ensure the gateway URL ends with `/mcp` and the bearer token is correctly copied
 9. **Tool Discovery**: Use different query terms if tools are not found (try "calculator", "greet", or "tools")
 10. **Authorization Issues**: Currently only Cognito OAuth2 is supported - ensure all authentication uses Cognito tokens
+11. **Cognito User Issues**: If you encounter user creation errors, check your `.env` file configuration or use the default credentials
+12. **Cleanup Issues**: If cleanup fails, manually verify resources in AWS console and retry with specific resource names
+13. **Credential File Issues**: If credentials file cannot be created, check directory permissions and disk space
+14. **File Permission Issues**: On Windows, file permissions may not be set correctly - manually secure the credentials file
+15. **Path Validation Errors**: Ensure file paths don't contain `..` and have correct extensions (`.py`, `.txt`)
+16. **JSON Validation Errors**: Verify runtime-configs is a valid JSON array with required fields
 
 ## Example MCP Servers
 

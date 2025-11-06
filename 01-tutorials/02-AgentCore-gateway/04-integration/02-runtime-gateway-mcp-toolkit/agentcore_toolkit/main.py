@@ -5,16 +5,33 @@ Configurable setup script for creating AgentCore runtime and gateway using YAML 
 """
 
 import os
+import sys
 import boto3
+import yaml
 import logging
+import json
+import stat
+from pathlib import Path
 from bedrock_agentcore_starter_toolkit import Runtime
+from boto3.session import Session
+
 from . import utils
 
 
 class AgentCoreToolkit:
     def __init__(self, config=None):
+        if config is None:
+            raise ValueError("Configuration is required")
+
         self.config = config
-        self.region = os.environ.get("AWS_DEFAULT_REGION", self.config["aws"]["region"])
+
+        try:
+            self.region = os.environ.get(
+                "AWS_DEFAULT_REGION", self.config["aws"]["region"]
+            )
+        except (KeyError, TypeError) as e:
+            raise ValueError(f"Invalid configuration: missing 'aws.region' field: {e}")
+
         self._setup_logging()
 
     def _derive_gateway_names(self, gateway_name):
@@ -53,58 +70,85 @@ class AgentCoreToolkit:
         )
         logging.getLogger("strands").setLevel(logging.INFO)
 
-    def _check_required_files(self, runtime_config):
-        """Check if required files exist for a runtime"""
-        required_files = [
-            runtime_config["entrypoint"],
-            runtime_config["requirements_file"],
-        ]
-        for file in required_files:
-            if not os.path.exists(file):
-                raise FileNotFoundError(f"Required file {file} not found")
-        print(f"Required files found for {runtime_config['name']} ✓")
+    def _validate_runtime_config(self, runtime_config):
+        """Validate runtime configuration for security"""
+        required_fields = ["name", "entrypoint", "requirements_file"]
+        for field in required_fields:
+            if field not in runtime_config:
+                raise ValueError(f"Missing required field: {field}")
+
+        # Validate file paths
+        entrypoint = runtime_config["entrypoint"]
+        requirements_file = runtime_config["requirements_file"]
+
+        # Check for path traversal attempts
+        if ".." in entrypoint or ".." in requirements_file:
+            raise ValueError("Path traversal detected in file paths")
+
+        # Validate file extensions
+        if not entrypoint.endswith(".py"):
+            raise ValueError("Entrypoint must be a Python file (.py)")
+        if not requirements_file.endswith(".txt"):
+            raise ValueError("Requirements file must be a .txt file")
 
     def setup_gateway_cognito(self):
         """Setup Cognito resources for gateway"""
         print("Setting up Gateway Cognito resources...")
 
-        cognito = boto3.client("cognito-idp", region_name=self.region)
-        gw_config = self.config["gateway"]
+        try:
+            cognito = boto3.client("cognito-idp", region_name=self.region)
+        except Exception as e:
+            raise RuntimeError(f"Failed to create Cognito client: {e}")
+
+        try:
+            gw_config = self.config["gateway"]
+            gateway_name = gw_config["name"]
+        except KeyError as e:
+            raise ValueError(f"Missing required gateway configuration: {e}")
 
         # Derive names from gateway name
-        derived_names = self._derive_gateway_names(gw_config["name"])
+        derived_names = self._derive_gateway_names(gateway_name)
 
-        # Create user pool
-        gw_user_pool_id = utils.get_or_create_user_pool(
-            self.region, cognito, derived_names["user_pool_name"]
-        )
-        print(f"Gateway User Pool ID: {gw_user_pool_id}")
+        try:
+            # Create user pool
+            gw_user_pool_id = utils.get_or_create_user_pool(
+                cognito, derived_names["user_pool_name"]
+            )
+            print(f"Gateway User Pool ID: {gw_user_pool_id}")
 
-        # Create resource server
-        scopes = [
-            {"ScopeName": scope["name"], "ScopeDescription": scope["description"]}
-            for scope in self.config["scopes"]
-        ]
-        utils.get_or_create_resource_server(
-            cognito,
-            gw_user_pool_id,
-            derived_names["resource_server_id"],
-            derived_names["resource_server_name"],
-            scopes,
-        )
+            # Create resource server
+            if "scopes" not in self.config:
+                raise ValueError("Missing required 'scopes' configuration")
 
-        # Create client
-        scope_names = [
-            f"{derived_names['resource_server_id']}/{scope['name']}"
-            for scope in self.config["scopes"]
-        ]
-        gw_client_id, gw_client_secret = utils.get_or_create_m2m_client(
-            cognito,
-            gw_user_pool_id,
-            derived_names["client_name"],
-            derived_names["resource_server_id"],
-            scope_names,
-        )
+            scopes = [
+                {"ScopeName": scope["name"], "ScopeDescription": scope["description"]}
+                for scope in self.config["scopes"]
+            ]
+            utils.get_or_create_resource_server(
+                cognito,
+                gw_user_pool_id,
+                derived_names["resource_server_id"],
+                derived_names["resource_server_name"],
+                scopes,
+            )
+
+            # Create client
+            scope_names = [
+                f"{derived_names['resource_server_id']}/{scope['name']}"
+                for scope in self.config["scopes"]
+            ]
+            gw_client_id, gw_client_secret = utils.get_or_create_m2m_client(
+                cognito,
+                gw_user_pool_id,
+                derived_names["client_name"],
+                derived_names["resource_server_id"],
+                scope_names,
+            )
+
+        except (KeyError, TypeError) as e:
+            raise ValueError(f"Invalid configuration structure: {e}")
+        except Exception as e:
+            raise RuntimeError(f"Failed to setup gateway Cognito resources: {e}")
 
         gw_discovery_url = f"https://cognito-idp.{self.region}.amazonaws.com/{gw_user_pool_id}/.well-known/openid-configuration"
 
@@ -121,42 +165,59 @@ class AgentCoreToolkit:
         """Setup Cognito resources for a single runtime"""
         print(f"Setting up Runtime Cognito resources for {runtime_config['name']}...")
 
-        cognito = boto3.client("cognito-idp", region_name=self.region)
+        try:
+            cognito = boto3.client("cognito-idp", region_name=self.region)
+        except Exception as e:
+            raise RuntimeError(f"Failed to create Cognito client: {e}")
+
+        try:
+            runtime_name = runtime_config["name"]
+        except KeyError as e:
+            raise ValueError(f"Missing required runtime configuration: {e}")
 
         # Derive names from runtime name
-        derived_names = self._derive_runtime_names(runtime_config["name"])
+        derived_names = self._derive_runtime_names(runtime_name)
 
-        # Create user pool
-        rt_user_pool_id = utils.get_or_create_user_pool(
-            self.region, cognito, derived_names["user_pool_name"]
-        )
-        print(f"Runtime User Pool ID: {rt_user_pool_id}")
+        try:
+            # Create user pool
+            rt_user_pool_id = utils.get_or_create_user_pool(
+                cognito, derived_names["user_pool_name"]
+            )
+            print(f"Runtime User Pool ID: {rt_user_pool_id}")
 
-        # Create resource server
-        scopes = [
-            {"ScopeName": scope["name"], "ScopeDescription": scope["description"]}
-            for scope in self.config["scopes"]
-        ]
-        utils.get_or_create_resource_server(
-            cognito,
-            rt_user_pool_id,
-            derived_names["resource_server_id"],
-            derived_names["resource_server_name"],
-            scopes,
-        )
+            # Create resource server
+            if "scopes" not in self.config:
+                raise ValueError("Missing required 'scopes' configuration")
 
-        # Create client
-        scope_names = [
-            f"{derived_names['resource_server_id']}/{scope['name']}"
-            for scope in self.config["scopes"]
-        ]
-        rt_client_id, rt_client_secret = utils.get_or_create_m2m_client(
-            cognito,
-            rt_user_pool_id,
-            derived_names["client_name"],
-            derived_names["resource_server_id"],
-            scope_names,
-        )
+            scopes = [
+                {"ScopeName": scope["name"], "ScopeDescription": scope["description"]}
+                for scope in self.config["scopes"]
+            ]
+            utils.get_or_create_resource_server(
+                cognito,
+                rt_user_pool_id,
+                derived_names["resource_server_id"],
+                derived_names["resource_server_name"],
+                scopes,
+            )
+
+            # Create client
+            scope_names = [
+                f"{derived_names['resource_server_id']}/{scope['name']}"
+                for scope in self.config["scopes"]
+            ]
+            rt_client_id, rt_client_secret = utils.get_or_create_m2m_client(
+                cognito,
+                rt_user_pool_id,
+                derived_names["client_name"],
+                derived_names["resource_server_id"],
+                scope_names,
+            )
+
+        except (KeyError, TypeError) as e:
+            raise ValueError(f"Invalid configuration structure: {e}")
+        except Exception as e:
+            raise RuntimeError(f"Failed to setup runtime Cognito resources: {e}")
 
         rt_discovery_url = f"https://cognito-idp.{self.region}.amazonaws.com/{rt_user_pool_id}/.well-known/openid-configuration"
 
@@ -172,57 +233,66 @@ class AgentCoreToolkit:
         """Create AgentCore Gateway"""
         print("Creating AgentCore Gateway...")
 
-        gw_config = self.config["gateway"]
-        derived_names = self._derive_gateway_names(gw_config["name"])
+        try:
+            gw_config = self.config["gateway"]
+            derived_names = self._derive_gateway_names(gw_config["name"])
+        except KeyError as e:
+            raise ValueError(f"Missing required gateway configuration: {e}")
 
-        # Create IAM role
-        iam_role = utils.create_agentcore_gateway_role(derived_names["iam_role_name"])
-        print(f"Gateway IAM Role ARN: {iam_role['Role']['Arn']}")
+        try:
+            # Create IAM role
+            iam_role = utils.create_agentcore_gateway_role(
+                derived_names["iam_role_name"]
+            )
+            print(f"Gateway IAM Role ARN: {iam_role['Role']['Arn']}")
 
-        auth_config = {
+            auth_config = {
+                "customJWTAuthorizer": {
+                    "allowedClients": [gateway_cognito["client_id"]],
+                    "discoveryUrl": gateway_cognito["discovery_url"],
+                }
+            }
+
+            gw_info = utils.get_or_create_agentcore_gateway(
+                self.region, iam_role, auth_config, gw_config
+            )
+            return gw_info
+        except Exception as e:
+            raise RuntimeError(f"Failed to create gateway: {e}")
+
+    def _create_auth_config(self, cognito_info):
+        """Create authentication configuration"""
+        return {
             "customJWTAuthorizer": {
-                "allowedClients": [gateway_cognito["client_id"]],
-                "discoveryUrl": gateway_cognito["discovery_url"],
+                "allowedClients": [cognito_info["client_id"]],
+                "discoveryUrl": cognito_info["discovery_url"],
             }
         }
 
-        gw_info = utils.get_or_create_agentcore_gateway(
-            self.region, iam_role, auth_config, gw_config
-        )
-        return gw_info
+    def _configure_runtime(self, runtime_config, auth_config, agent_name):
+        """Configure AgentCore Runtime with provided settings"""
+        try:
+            agentcore_runtime = Runtime()
 
-    def setup_runtime(self, runtime_config, runtime_cognito):
-        """Setup and launch AgentCore Runtime"""
-        print(f"Setting up AgentCore Runtime for {runtime_config['name']}...")
+            agentcore_runtime.configure(
+                entrypoint=runtime_config["entrypoint"],
+                auto_create_execution_role=runtime_config.get(
+                    "auto_create_execution_role", True
+                ),
+                auto_create_ecr=runtime_config.get("auto_create_ecr", True),
+                requirements_file=runtime_config["requirements_file"],
+                region=self.region,
+                authorizer_configuration=auth_config,
+                protocol=runtime_config.get("protocol", "MCP"),
+                agent_name=agent_name,
+            )
+            return agentcore_runtime
+        except Exception as e:
+            raise RuntimeError(f"Failed to configure runtime: {e}")
 
-        self._check_required_files(runtime_config)
-
-        # Derive agent name from runtime name
-        derived_names = self._derive_runtime_names(runtime_config["name"])
-
-        agentcore_runtime = Runtime()
-
-        auth_config = {
-            "customJWTAuthorizer": {
-                "allowedClients": [runtime_cognito["client_id"]],
-                "discoveryUrl": runtime_cognito["discovery_url"],
-            }
-        }
-
-        response = agentcore_runtime.configure(
-            entrypoint=runtime_config["entrypoint"],
-            auto_create_execution_role=runtime_config.get(
-                "auto_create_execution_role", True
-            ),
-            auto_create_ecr=runtime_config.get("auto_create_ecr", True),
-            requirements_file=runtime_config["requirements_file"],
-            region=self.region,
-            authorizer_configuration=auth_config,
-            protocol=runtime_config.get("protocol", "MCP"),
-            agent_name=derived_names["agent_name"],
-        )
-        print(f"AgentCore Runtime configured for {runtime_config['name']}: {response}")
-        print(f"Launching MCP server {runtime_config['name']} to AgentCore Runtime...")
+    def _launch_runtime(self, agentcore_runtime, runtime_name):
+        """Launch the configured runtime and return connection info"""
+        print(f"Launching MCP server {runtime_name} to AgentCore Runtime...")
         launch_result = agentcore_runtime.launch(auto_update_on_conflict=True)
 
         agent_arn = launch_result.agent_arn
@@ -232,6 +302,36 @@ class AgentCoreToolkit:
         print(f"Agent ARN: {agent_arn}")
         return {"agent_arn": agent_arn, "agent_url": agent_url}
 
+    def setup_runtime(self, runtime_config, runtime_cognito):
+        """Setup and launch AgentCore Runtime"""
+        print(f"Setting up AgentCore Runtime for {runtime_config['name']}...")
+
+        # Derive agent name from runtime name
+        derived_names = self._derive_runtime_names(runtime_config["name"])
+
+        # Create authentication configuration
+        auth_config = self._create_auth_config(runtime_cognito)
+
+        # Configure runtime
+        agentcore_runtime = self._configure_runtime(
+            runtime_config, auth_config, derived_names["agent_name"]
+        )
+
+        # Launch runtime and return connection info
+        return self._launch_runtime(agentcore_runtime, runtime_config["name"])
+
+    def _create_target_params(
+        self, gateway_info, runtime_info, runtime_cognito, target_config, provider_arn
+    ):
+        """Create target creation parameters"""
+        return {
+            "gateway_id": gateway_info["gateway_id"],
+            "agent_url": runtime_info["agent_url"],
+            "scope_string": runtime_cognito["scope_string"],
+            "name": target_config["name"],
+            "cognito_provider_arn": provider_arn,
+        }
+
     def create_gateway_target(
         self, gateway_info, runtime_info, runtime_cognito, target_config
     ):
@@ -240,19 +340,17 @@ class AgentCoreToolkit:
         cognito_provider_arn = utils.get_or_create_oauth2_credential_provider(
             self.region, target_config["identity_provider_name"], runtime_cognito
         )
+
         print(f"Creating gateway target {target_config['name']}...")
-        # Create gateway target
-        target_creation_params = {
-            "gateway_id": gateway_info["gateway_id"],
-            "agent_url": runtime_info["agent_url"],
-            "scope_string": runtime_cognito["scope_string"],
-            "name": target_config["name"],
-            "cognito_provider_arn": cognito_provider_arn,
-        }
-        gw_target_info = utils.get_or_create_agentcore_gateway_target(
-            self.region, target_creation_params
+        target_params = self._create_target_params(
+            gateway_info,
+            runtime_info,
+            runtime_cognito,
+            target_config,
+            cognito_provider_arn,
         )
-        return gw_target_info
+
+        return utils.get_or_create_agentcore_gateway_target(self.region, target_params)
 
     def run(self):
         """Execute the complete setup process"""
@@ -289,7 +387,38 @@ class AgentCoreToolkit:
         print(f"Gateway ID: {gateway_info['gateway_id']}")
         for i, runtime_info in enumerate(runtime_infos):
             print(f"Runtime {i+1} Agent ARN: {runtime_info['agent_arn']}")
+
         return gateway_info_result
+
+    def _write_credentials_to_file(self, gateway_cognito, access_token, gateway_url):
+        """Write credentials to a secure file with restricted permissions"""
+        creds_file = f".agentcore-credentials-{self.config['gateway']['name']}.json"
+
+        credentials = {
+            "gateway_url": gateway_url,
+            "user_pool_id": gateway_cognito["user_pool_id"],
+            "client_id": gateway_cognito["client_id"],
+            "client_secret": gateway_cognito["client_secret"],
+            "access_token": access_token,
+        }
+
+        try:
+            with open(creds_file, "w") as f:
+                json.dump(credentials, f, indent=2)
+
+            # Set file permissions to owner read/write only (600)
+            os.chmod(creds_file, stat.S_IRUSR | stat.S_IWUSR)
+
+            print(f"Credentials saved to: {creds_file}")
+            print("File permissions set to owner-only access (600)")
+            print(f"Use: cat {creds_file}")
+
+        except (OSError, IOError) as e:
+            print(f"Warning: Could not write credentials file: {e}")
+            print("Credentials will be displayed in console (less secure)")
+            return False
+
+        return True
 
     def display_gateway_info(self, gateway_id, gateway_cognito):
         """Display gateway connection information"""
@@ -301,15 +430,28 @@ class AgentCoreToolkit:
         gateway_url = f"https://{gateway_id}.gateway.bedrock-agentcore.{self.config['aws']['region']}.amazonaws.com/mcp"
         print(f"Gateway URL: {gateway_url}")
 
-        # Display Cognito information
+        # Display non-sensitive information
         print(f"User Pool ID: {gateway_cognito['user_pool_id']}")
-        print(f"Client ID: {gateway_cognito['client_id']}")
-        print(f"Client Secret: {gateway_cognito['client_secret']}")
+        print(f"Client ID: <redacted>")
+        print(f"Client Secret: <redacted>")
 
         # Get access token
         access_token = self._get_access_token(gateway_cognito)
         if access_token:
-            print(f"Access Token: {access_token}")
+            print(f"Access Token: <redacted>")
+
+        # Try to write credentials to secure file
+        file_written = self._write_credentials_to_file(
+            gateway_cognito, access_token, gateway_url
+        )
+
+        # If file writing failed, display credentials in console (fallback)
+        if not file_written:
+            print(f"Client ID: {gateway_cognito['client_id']}")
+            print(f"Client Secret: {gateway_cognito['client_secret']}")
+            if access_token:
+                print(f"Access Token: {access_token}")
+
         print("=" * 60)
 
         return {
@@ -338,7 +480,16 @@ class AgentCoreToolkit:
                 scope_string,
                 self.config["aws"]["region"],
             )
-            return token_response["access_token"]
+
+            if "error" in token_response:
+                print(f"Warning: Token request failed: {token_response['error']}")
+                return None
+
+            return token_response.get("access_token")
+
+        except KeyError as e:
+            print(f"Warning: Missing required field in token response: {e}")
+            return None
         except Exception as e:
             print(f"Warning: Could not retrieve access token: {e}")
             return None
@@ -365,8 +516,19 @@ def main():
     # Parse runtime configs from JSON
     try:
         runtime_configs = json.loads(args.runtime_configs)
-    except json.JSONDecodeError:
-        print("Error: Invalid JSON format for --runtime-configs")
+
+        # Validate runtime configs structure
+        if not isinstance(runtime_configs, list):
+            raise ValueError("Runtime configs must be a JSON array")
+
+        if not runtime_configs:
+            raise ValueError("At least one runtime configuration is required")
+
+    except json.JSONDecodeError as e:
+        print(f"Error: Invalid JSON format for --runtime-configs: {e}")
+        return 1
+    except ValueError as e:
+        print(f"Error: {e}")
         return 1
 
     # Build config structure with hardcoded scope
@@ -385,8 +547,20 @@ def main():
         ],
     }
 
-    toolkit = AgentCoreToolkit(config)
-    toolkit.run()
+    try:
+        toolkit = AgentCoreToolkit(config)
+        toolkit.run()
+    except FileNotFoundError as e:
+        print(f"Error: {e}")
+        return 1
+    except ValueError as e:
+        print(f"Error: {e}")
+        return 1
+    except Exception as e:
+        print(f"Unexpected error: {e}")
+        return 1
+
+    return 0
 
 
 if __name__ == "__main__":

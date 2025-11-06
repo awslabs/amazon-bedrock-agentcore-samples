@@ -1,10 +1,29 @@
 import boto3
 import json
 import time
+import os
 from boto3.session import Session
 import botocore
 from botocore.exceptions import ClientError
 import requests
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
+
+
+def wait_for_iam_role_propagation(iam_client, role_name, max_retries=30, delay=2):
+    """Wait for IAM role to be available after creation."""
+    for i in range(max_retries):
+        try:
+            iam_client.get_role(RoleName=role_name)
+            return True
+        except iam_client.exceptions.NoSuchEntityException:
+            if i < max_retries - 1:
+                time.sleep(delay)
+            else:
+                return False
+    return False
 
 
 def setup_cognito_user_pool():
@@ -30,27 +49,29 @@ def setup_cognito_user_pool():
         )
         client_id = app_client_response["UserPoolClient"]["ClientId"]
 
+        # Get credentials from environment variables
+        username = os.getenv("COGNITO_USERNAME", "testuser")
+        temp_password = os.getenv("COGNITO_TEMP_PASSWORD", "Temp123!")
+        password = os.getenv("COGNITO_PASSWORD", "MyPassword123!")
+
         # Create User
         cognito_client.admin_create_user(
             UserPoolId=pool_id,
-            Username="testuser",
-            TemporaryPassword="Temp123!",
+            Username=username,
+            TemporaryPassword=temp_password,
             MessageAction="SUPPRESS",
         )
 
         # Set Permanent Password
         cognito_client.admin_set_user_password(
-            UserPoolId=pool_id,
-            Username="testuser",
-            Password="MyPassword123!",
-            Permanent=True,
+            UserPoolId=pool_id, Username=username, Password=password, Permanent=True
         )
 
         # Authenticate User and get Access Token
         auth_response = cognito_client.initiate_auth(
             ClientId=client_id,
             AuthFlow="USER_PASSWORD_AUTH",
-            AuthParameters={"USERNAME": "testuser", "PASSWORD": "MyPassword123!"},
+            AuthParameters={"USERNAME": username, "PASSWORD": password},
         )
         bearer_token = auth_response["AuthenticationResult"]["AccessToken"]
 
@@ -59,8 +80,8 @@ def setup_cognito_user_pool():
         print(
             f"Discovery URL: https://cognito-idp.{region}.amazonaws.com/{pool_id}/.well-known/openid-configuration"
         )
-        print(f"Client ID: {client_id}")
-        print(f"Bearer Token: {bearer_token}")
+        print(f"Client ID: <redacted>")
+        print(f"Bearer Token: <redacted>")
 
         # Return values if needed for further processing
         return {
@@ -75,7 +96,7 @@ def setup_cognito_user_pool():
         return None
 
 
-def get_or_create_user_pool(region, cognito, USER_POOL_NAME):
+def get_or_create_user_pool(cognito, USER_POOL_NAME):
     response = cognito.list_user_pools(MaxResults=60)
     for pool in response["UserPools"]:
         if pool["Name"] == USER_POOL_NAME:
@@ -87,7 +108,7 @@ def get_or_create_user_pool(region, cognito, USER_POOL_NAME):
             domain = user_pool.get("Domain")
 
             if domain:
-                region = user_pool_id.split("_")[0] if "_" in user_pool_id else region
+                region = user_pool_id.split("_")[0] if "_" in user_pool_id else REGION
                 domain_url = f"https://{domain}.auth.{region}.amazoncognito.com"
                 print(
                     f"Found domain for user pool {user_pool_id}: {domain} ({domain_url})"
@@ -225,7 +246,7 @@ def get_or_create_resource_server(
     cognito, user_pool_id, RESOURCE_SERVER_ID, RESOURCE_SERVER_NAME, SCOPES
 ):
     try:
-        cognito.describe_resource_server(
+        existing = cognito.describe_resource_server(
             UserPoolId=user_pool_id, Identifier=RESOURCE_SERVER_ID
         )
         return RESOURCE_SERVER_ID
@@ -292,8 +313,7 @@ def get_token(
             "client_secret": client_secret,
             "scope": scope_string,
         }
-        print(client_id)
-        response = requests.post(url, headers=headers, data=data)
+        response = requests.post(url, headers=headers, data=data, timeout=30)
         response.raise_for_status()
         return response.json()
 
@@ -409,8 +429,9 @@ def create_agentcore_role(agent_name):
             AssumeRolePolicyDocument=assume_role_policy_document_json,
         )
 
-        # Pause to make sure role is created
-        time.sleep(10)
+        # Wait for role to be available
+        if not wait_for_iam_role_propagation(iam_client, agentcore_role_name):
+            print(f"Warning: Role {agentcore_role_name} may not be fully propagated")
     except iam_client.exceptions.EntityAlreadyExistsException:
         print("Role already exists -- deleting and creating it again")
         policies = iam_client.list_role_policies(
@@ -496,8 +517,11 @@ def create_agentcore_gateway_role(gateway_name):
             AssumeRolePolicyDocument=assume_role_policy_document_json,
         )
 
-        # Pause to make sure role is created
-        time.sleep(10)
+        # Wait for role to be available
+        if not wait_for_iam_role_propagation(iam_client, agentcore_gateway_role_name):
+            print(
+                f"Warning: Role {agentcore_gateway_role_name} may not be fully propagated"
+            )
     except iam_client.exceptions.EntityAlreadyExistsException:
         print("Role already exists -- deleting and creating it again")
         policies = iam_client.list_role_policies(
@@ -584,8 +608,11 @@ def create_agentcore_gateway_role_s3_smithy(gateway_name):
             AssumeRolePolicyDocument=assume_role_policy_document_json,
         )
 
-        # Pause to make sure role is created
-        time.sleep(10)
+        # Wait for role to be available
+        if not wait_for_iam_role_propagation(iam_client, agentcore_gateway_role_name):
+            print(
+                f"Warning: Role {agentcore_gateway_role_name} may not be fully propagated"
+            )
     except iam_client.exceptions.EntityAlreadyExistsException:
         print("Role already exists -- deleting and creating it again")
         policies = iam_client.list_role_policies(
@@ -666,7 +693,9 @@ def create_gateway_lambda(lambda_function_code_path) -> dict[str, int]:
         )
 
         print(f"Role '{role_name}' created successfully: {role_arn}")
-        time.sleep(100)
+        # Wait for role to be available
+        if not wait_for_iam_role_propagation(iam_client, role_name):
+            print(f"Warning: Role {role_name} may not be fully propagated")
     except botocore.exceptions.ClientError as error:
         if error.response["Error"]["Code"] == "EntityAlreadyExists":
             response = iam_client.get_role(RoleName=role_name)
@@ -717,7 +746,7 @@ def create_gateway_lambda(lambda_function_code_path) -> dict[str, int]:
     return return_resp
 
 
-def delete_gateway(gateway_client, gatewayId):
+def delete_gateway_target(gateway_client, gatewayId):
     print("Deleting all targets for gateway", gatewayId)
     list_response = gateway_client.list_gateway_targets(
         gatewayIdentifier=gatewayId, maxResults=100
@@ -728,17 +757,22 @@ def delete_gateway(gateway_client, gatewayId):
         gateway_client.delete_gateway_target(
             gatewayIdentifier=gatewayId, targetId=targetId
         )
-        time.sleep(5)
-    print("Deleting gateway ", gatewayId)
-    gateway_client.delete_gateway(gatewayIdentifier=gatewayId)
+        # Brief pause for gateway target deletion
+        time.sleep(1)
 
 
-def delete_all_gateways(gateway_client):
+def delete_gateway(gateway_client, gateway_name):
+    gateway_id = None
     try:
         list_response = gateway_client.list_gateways(maxResults=100)
         for item in list_response["items"]:
-            gatewayId = item["gatewayId"]
-            delete_gateway(gatewayId)
+            print(item)
+            if item["name"] == gateway_name:
+                gateway_id = item["gatewayId"]
+                delete_gateway_target(gateway_client, gateway_id)
+                break
+        print("Deleting gateway ", gateway_id)
+        gateway_client.delete_gateway(gatewayIdentifier=gateway_id)
     except Exception as e:
         print(e)
 
@@ -801,7 +835,9 @@ def create_gateway_invoke_tool_role(role_name, gateway_id, current_arn):
             RoleName=role_name, AssumeRolePolicyDocument=assume_role_policy_json
         )
         print(f"Created new role: {role_name}")
-        time.sleep(3)
+        # Wait for role to be available
+        if not wait_for_iam_role_propagation(iam_client, role_name):
+            print(f"Warning: Role {role_name} may not be fully propagated")
     except iam_client.exceptions.EntityAlreadyExistsException:
         print(f"Role '{role_name}' already exists — updating trust and inline policy.")
         iam_client.update_assume_role_policy(
@@ -862,8 +898,8 @@ def create_gateway_invoke_tool_role(role_name, gateway_id, current_arn):
             break
         except ClientError as e:
             if "AccessDenied" in str(e):
-                print(f"Attempt {i+1}/{max_retries}: AccessDenied, retrying in 3s...")
-                time.sleep(3)
+                print(f"Attempt {i+1}/{max_retries}: AccessDenied, retrying in 1s...")
+                time.sleep(1)
             else:
                 raise
     else:
