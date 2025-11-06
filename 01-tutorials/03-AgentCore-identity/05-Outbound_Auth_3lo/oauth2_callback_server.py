@@ -26,7 +26,6 @@ import logging
 import argparse
 import requests
 import json
-import os
 
 from datetime import timedelta
 from fastapi import FastAPI, HTTPException, status
