@@ -275,109 +275,117 @@ async def agent_invocation(payload):
         print("-" * 50)
         if agentcore_messages:
             for i, msg in enumerate(agentcore_messages, 1):
-                role = msg.get('role', 'unknown')
-                role_icon = "🤖" if role == 'assistant' else "👤"
+                role = msg.get("role", "unknown")
+                role_icon = "🤖" if role == "assistant" else "👤"
                 content_text = ""
-                if 'content' in msg and msg['content']:
-                    for content_item in msg['content']:
-                        if 'text' in content_item:
-                            content_text = content_item['text']
+                if "content" in msg and msg["content"]:
+                    for content_item in msg["content"]:
+                        if "text" in content_item:
+                            content_text = content_item["text"]
                             break
-                content_preview = f"{content_text[:80]}..." if len(content_text) > 80 else content_text
+                content_preview = (
+                    f"{content_text[:80]}..." if len(content_text) > 80 else content_text
+                )
                 print(f"   {i}. {role_icon} {role.upper()}: {content_preview}")
         else:
             print("   📭 Starting new conversation (no previous context)")
-        print("-"*50)
+        print("-" * 50)
         
         # Configure system prompt with user's timezone context
         print("📝 Configuring video game sales analyst system prompt...")
         system_prompt = DATA_ANALYST_SYSTEM_PROMPT.replace("{timezone}", user_timezone)
-        print(f"✅ System prompt configured for video game sales analysis ({len(system_prompt)} characters)")
-        
-        print("-"*80)
+        print(
+            f"✅ System prompt configured for video game sales analysis ({len(system_prompt)} characters)"
+        )
+
+        print("-" * 80)
         print("🔧 Initializing video game sales analyst agent...")
-        
+
         # Create specialized agent with video game sales analysis capabilities
         agent = Agent(
             messages=agentcore_messages,
             model=bedrock_model,
             system_prompt=system_prompt,
             hooks=[MemoryHookProvider(client, memory_id, user_id, session_id, last_k_turns)],
-            tools=[get_tables_information, current_time, create_execute_sql_query_tool(user_message, prompt_uuid)],
-            callback_handler=None
+            tools=[
+                get_tables_information,
+                current_time,
+                create_execute_sql_query_tool(user_message, prompt_uuid),
+            ],
+            callback_handler=None,
         )
         
         print("✅ Video game sales analyst agent ready with:")
         print(f"   📝 {len(agentcore_messages)} conversation context messages")
         print("   🔧 3 specialized tools (database schema, time utilities, SQL execution)")
-        print("   � Connversation memory management enabled")
-        
-        print("-"*80)
+        print("   🧠 Conversation memory management enabled")
+
+        print("-" * 80)
         print("🚀 Starting video game sales data analysis...")
-        print("="*80)
+        print("=" * 80)
         
         # Stream the response
         tool_active = False
         
         async for item in agent.stream_async(user_message):
-            if 'event' in item:
-                event = item['event']
+            if "event" in item:
+                event = item["event"]
 
                 # Check for tool start
-                if 'contentBlockStart' in event and 'toolUse' in event['contentBlockStart'].get('start', {}):
+                if (
+                    "contentBlockStart" in event
+                    and "toolUse" in event["contentBlockStart"].get("start", {})
+                ):
                     tool_active = True
-                    event_formatted = {
-                        'event': event
-                    }
+                    event_formatted = {"event": event}
                     yield json.dumps(event_formatted) + "\n"
-                
+
                 # Check for tool end
-                elif 'contentBlockStop' in event and tool_active:
+                elif "contentBlockStop" in event and tool_active:
                     tool_active = False
 
-                    event_formatted = {
-                        'event': event
-                    }
+                    event_formatted = {"event": event}
                     yield json.dumps(event_formatted) + "\n"
-                
-            elif 'start_event_loop' in item:
+
+            elif "start_event_loop" in item:
                 yield json.dumps(item) + "\n"
-            elif 'current_tool_use' in item and tool_active:
-                yield json.dumps(item['current_tool_use']) + "\n"
-            elif 'data' in item:
-                yield json.dumps({"data": item['data']}) + "\n"
+            elif "current_tool_use" in item and tool_active:
+                yield json.dumps(item["current_tool_use"]) + "\n"
+            elif "data" in item:
+                yield json.dumps({"data": item["data"]}) + "\n"
 
         
     except Exception as e:
         import traceback
+
         tb = traceback.extract_tb(e.__traceback__)
         filename, line_number, function_name, text = tb[-1]
         error_message = f"Error: {str(e)} (Line {line_number} in {filename})"
-        print("\n" + "="*80)
+        print("\n" + "=" * 80)
         print("💥 VIDEO GAME SALES ANALYSIS ERROR")
-        print("="*80)
+        print("=" * 80)
         print(f"❌ Error: {str(e)}")
-        print(f"📍 Location: Line {line_number} in {filename}")
+        print(f"� Locatiion: Line {line_number} in {filename}")
         print(f"🔧 Function: {function_name}")
         if text:
             print(f"💻 Code: {text}")
-        print("="*80 + "\n")
+        print("=" * 80 + "\n")
         yield f"I apologize, but I encountered an error while analyzing your video game sales data request: {error_message}"
 
 if __name__ == "__main__":
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print("🚀 STARTING VIDEO GAMES SALES DATA ANALYST ASSISTANT")
-    print("="*80)
+    print("=" * 80)
     print("🤖 Powered by Amazon Bedrock Claude Models")
     print("🎮 Specialized in video game sales data analysis")
     print("🗄️  Connected to Aurora Serverless PostgreSQL database")
     print("🧠 Conversation memory and context management")
     print("🔧 Natural language to SQL query capabilities")
     print("📊 Real-time streaming analysis responses")
-    print("-"*80)
+    print("-" * 80)
     print("📡 Server starting on port 8080...")
     print("🌐 Health check endpoint: /ping")
     print("🎯 Analysis endpoint: /invocations")
     print("📋 Ready to analyze video game sales trends and insights!")
-    print("="*80)
+    print("=" * 80)
     app.run()
