@@ -117,7 +117,7 @@ agentcore configure \
 2. Launch the agent infrastructure:
 
 ```bash
-agentcore launch
+agentcore launch --env PROJECT_ID="agentcore-data-analyst-assistant"
 ```
 
 ## Testing the Deployed Agent

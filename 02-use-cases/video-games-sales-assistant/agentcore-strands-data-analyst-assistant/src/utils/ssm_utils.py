@@ -15,11 +15,11 @@ Parameters:
 """
 
 import boto3
+import os
 from botocore.exceptions import ClientError
 
 # Project ID for SSM parameter path prefix
-PROJECT_ID = "agentcore-data-analyst-assistant"
-
+PROJECT_ID = os.environ.get('PROJECT_ID', 'agentcore-data-analyst-assistant')
 
 def get_ssm_client():
     """
@@ -86,7 +86,12 @@ def load_config():
     # Load each parameter
     for key in param_keys:
         try:
-            config[key] = get_ssm_parameter(key)
+            value = get_ssm_parameter(key)
+            # Convert to int for specific parameters
+            if key in ["MAX_RESPONSE_SIZE_BYTES"]:
+                config[key] = int(value)
+            else:
+                config[key] = value
         except ClientError:
             # If MAX_RESPONSE_SIZE_BYTES is not found, use default value
             if key == "MAX_RESPONSE_SIZE_BYTES":
@@ -104,12 +109,5 @@ def load_config():
                 raise ValueError(
                     f"Required SSM parameter /{PROJECT_ID}/{key} not found"
                 )
-
-    # Convert MAX_RESPONSE_SIZE_BYTES to int if it exists
-    if "MAX_RESPONSE_SIZE_BYTES" in config:
-        try:
-            config["MAX_RESPONSE_SIZE_BYTES"] = int(config["MAX_RESPONSE_SIZE_BYTES"])
-        except ValueError:
-            config["MAX_RESPONSE_SIZE_BYTES"] = 25600
 
     return config

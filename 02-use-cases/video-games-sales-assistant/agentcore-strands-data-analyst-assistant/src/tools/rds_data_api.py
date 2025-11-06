@@ -19,7 +19,7 @@ import boto3
 import json
 from botocore.exceptions import ClientError
 from decimal import Decimal
-from .ssm_utils import load_config
+from src.utils import load_config
 
 # Load configuration from SSM parameters
 try:

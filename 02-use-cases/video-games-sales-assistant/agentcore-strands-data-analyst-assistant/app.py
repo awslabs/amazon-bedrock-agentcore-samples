@@ -15,6 +15,7 @@ Key Features:
 
 import logging
 import json
+import os
 from uuid import uuid4
 
 # Bedrock Agent Core imports
@@ -25,16 +26,35 @@ from strands_tools import current_time
 from strands.models import BedrockModel
 
 # Custom module imports
-from src.MemoryHookProvider import MemoryHookProvider
-from src.tools import get_tables_information, load_file_content
-from src.rds_data_api_utils import run_sql_query
-from src.utils import save_raw_query_result
-from src.ssm_utils import get_ssm_parameter
-from src.agentcore_memory_utils import get_agentcore_memory_messages
+from src.tools import get_tables_information, run_sql_query
+from src.utils import save_raw_query_result, load_file_content, load_config, get_agentcore_memory_messages, MemoryHookProvider
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("personal-agent")
+
+
+# Load configuration from SSM Parameter Store
+# Get PROJECT_ID from environment variable to construct SSM parameter paths
+PROJECT_ID = os.environ.get('PROJECT_ID', 'agentcore-data-analyst-assistant')
+
+# Load all configuration from SSM
+try:
+    config = load_config()
+    print(f"\n✅ CONFIGURATION LOADED FROM SSM")
+    print("-" * 50)
+    print(f"🔧 Project ID: {PROJECT_ID}")
+    print(f"📊 Database: {config.get('DATABASE_NAME')}")
+    print("-" * 50)
+except Exception as e:
+    print(f"\n❌ CONFIGURATION LOAD ERROR")
+    print("-" * 50)
+    print(f"🚨 Error: {e}")
+    print(f"🔧 Project ID: {PROJECT_ID}")
+    print("-" * 50)
+    # Set empty config as fallback
+    config = {}
+
 
 # Initialize AgentCore Memory configuration
 try:
@@ -43,12 +63,12 @@ try:
     print("=" * 70)
     print("📋 Loading configuration from AWS Systems Manager...")
 
-    # Retrieve memory ID from SSM Parameter Store
-    memory_id = get_ssm_parameter("MEMORY_ID")
+    # Retrieve memory ID from config
+    memory_id = config.get("MEMORY_ID")
 
     # Validate memory ID configuration
     if not memory_id or memory_id.strip() == "":
-        error_msg = "Memory ID not found in SSM. Please create AgentCore Memory first."
+        error_msg = "Memory ID not found in configuration. Please create AgentCore Memory first."
         print(f"❌ Configuration Error: {error_msg}")
         logger.error(error_msg)
         raise ValueError(error_msg)
