@@ -34,9 +34,6 @@ Amazon Bedrock AgentCore is both framework-agnostic and model-agnostic, giving y
 
 This collection provides examples and tutorials to help you understand, implement, and integrate Amazon Bedrock AgentCore capabilities into your applications.
 
-> [!IMPORTANT]
-> The examples provided in this repository are for experimental and educational purposes only. They demonstrate concepts and techniques but are not intended for direct use in production environments.
-
 ## 🎥 Video
 
 Build your first production-ready AI agent with Amazon Bedrock AgentCore. We’ll take you beyond prototyping and show you how to productionize your first agentic AI application using Amazon Bedrock AgentCore. 
