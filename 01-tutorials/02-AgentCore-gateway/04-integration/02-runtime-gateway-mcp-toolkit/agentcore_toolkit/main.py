@@ -382,12 +382,7 @@ class AgentCoreToolkit:
         gateway_info_result = self.display_gateway_info(
             gateway_info["gateway_id"], gateway_cognito
         )
-
         print("\n✅ Setup completed successfully!")
-        print(f"Gateway ID: {gateway_info['gateway_id']}")
-        for i, runtime_info in enumerate(runtime_infos):
-            print(f"Runtime {i+1} Agent ARN: {runtime_info['agent_arn']}")
-
         return gateway_info_result
 
     def _write_credentials_to_file(self, gateway_cognito, access_token, gateway_url):
@@ -428,30 +423,10 @@ class AgentCoreToolkit:
 
         # Get gateway URL
         gateway_url = f"https://{gateway_id}.gateway.bedrock-agentcore.{self.config['aws']['region']}.amazonaws.com/mcp"
-        print(f"Gateway URL: {gateway_url}")
-
-        # Display non-sensitive information
-        print(f"User Pool ID: {gateway_cognito['user_pool_id']}")
-        print(f"Client ID: <redacted>")
-        print(f"Client Secret: <redacted>")
-
         # Get access token
         access_token = self._get_access_token(gateway_cognito)
-        if access_token:
-            print(f"Access Token: <redacted>")
-
         # Try to write credentials to secure file
-        file_written = self._write_credentials_to_file(
-            gateway_cognito, access_token, gateway_url
-        )
-
-        # If file writing failed, display credentials in console (fallback)
-        if not file_written:
-            print(f"Client ID: {gateway_cognito['client_id']}")
-            print(f"Client Secret: {gateway_cognito['client_secret']}")
-            if access_token:
-                print(f"Access Token: {access_token}")
-
+        self._write_credentials_to_file(gateway_cognito, access_token, gateway_url)
         print("=" * 60)
 
         return {
