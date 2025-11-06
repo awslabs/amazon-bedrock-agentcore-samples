@@ -90,8 +90,6 @@ This showcases how Claude can:
 
 ```
 .
-├── .bedrock_agentcore/          # AgentCore deployment artifacts
-├── .bedrock_agentcore.yaml      # AgentCore configuration
 ├── code_int_mcp/
 │   ├── client.py                # Client to invoke Code Interpreter APIs
 │   ├── models.py                # Pydantic data models
