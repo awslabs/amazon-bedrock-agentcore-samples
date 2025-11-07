@@ -58,9 +58,10 @@ This memory store enables your agent to remember previous interactions within th
 
 Before deploying to AWS, you can test the Data Analyst Agent locally to verify functionality:
 
-1. Start the local agent server:
+1. Set the required environment variable and start the local agent server:
 
 ```bash
+export PROJECT_ID="agentcore-data-analyst-assistant"
 python3 app.py
 ```
 
