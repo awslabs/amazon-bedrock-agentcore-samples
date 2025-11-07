@@ -22,7 +22,7 @@ The project includes:
 - [uv](https://github.com/astral-sh/uv) - Fast Python package installer and resolver
 - Docker (for containerization)
 - AWS account access with Bedrock AgentCore permissions
-- Enable access to Anthropic models via Amazon Bedrock console
+- Enable access to Claude models via Amazon Bedrock console
 - Claude Code CLI is a dependency for Claude Agent SDK to work. This is installed via Node.js and npm.
 
 ## Setup

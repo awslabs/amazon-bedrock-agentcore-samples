@@ -23,7 +23,7 @@ def _invoke(prompt: str, session_id: str):
     logger.info("*" * 80)
 
     # Invoke the agent
-    try:
+    try:    
         response = agent_core_client.invoke_agent_runtime(
             agentRuntimeArn=agent_arn,
             runtimeSessionId=runtime_session_id,
@@ -96,7 +96,7 @@ def _invoke(prompt: str, session_id: str):
         }
 
     except ClientError as e:
-        logger.error("Request failed: %s", str(e))
+        logger.warning("Request failed: %s", str(e))
         raise
 
 
