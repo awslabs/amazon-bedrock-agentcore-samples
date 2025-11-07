@@ -9,14 +9,13 @@ from claude_agent_sdk import (
     ClaudeSDKClient,
     ToolResultBlock
 )
+from bedrock_agentcore.runtime import BedrockAgentCoreApp
 import logging
 import json
 
 # Logging setup
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-from bedrock_agentcore.runtime import BedrockAgentCoreApp
 
 app = BedrockAgentCoreApp()
 
