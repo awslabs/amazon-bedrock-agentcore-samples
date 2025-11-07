@@ -46,20 +46,29 @@ source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 ```bash
 # Configure agent for deployment
 agentcore configure --entrypoint agent.py --name claude_ci_agent --disable-memory
+```
+
+During the configuration setup, choose 2 - Container deployment type
+
+Select deployment type:
+  1. Direct Code Deploy (recommended) - Python only, no Docker required
+  2. Container - For custom runtimes or complex dependencies
+
 
 # Launch agent
+```
 agentcore launch
 ```
 
-**Note**: The Claude Agent SDK requires either `ANTHROPIC_API_KEY` or AWS Bedrock access configured as environment variables. This example uses `CLAUDE_CODE_USE_BEDROCK=1` to enable Bedrock integration
+**Note**: Record the agent arn that gets displayed once the agent launches successfully. You will need it for testing.
 
-You can set these environment variables in the Dockerfile or inline with the --env option. For more details on configuration options, see the [Claude Agent SDK documentation](https://docs.claude.com/en/api/agent-sdk/overview#core-concepts).
+**Note**: The Claude Agent SDK requires either `ANTHROPIC_API_KEY` or AWS Bedrock access configured as environment variables. This example uses `CLAUDE_CODE_USE_BEDROCK=1` to enable Bedrock integration. You can set these environment variables in the Dockerfile or inline with the --env option. For more details on configuration options, see the [Claude Agent SDK documentation](https://docs.claude.com/en/api/agent-sdk/overview#core-concepts).
 
 **Note**: The starter toolkit automatically creates a Dockerfile and deploys agents to AgentCore Runtime. Since this example requires the Claude Code CLI as a dependency, we override with our own Dockerfile that has the added npm installation.
 
 ### 3. Test your agent
 
-Use toolkit command to test agent
+Use toolkit command to test agent. Here is a sample prompt to demonstrate how Claude invokes Code Interpreter session to write files and do data analysis on them.
 ```bash
 agentcore invoke '{"prompt":"Write the files in the samples folder into a code interpreter session. Check if they are created. Run data analysis on the data file using the python script."'
 ```
@@ -69,7 +78,7 @@ agentcore invoke '{"prompt":"Write the files in the samples folder into a code i
 uv run test_scripts/invoke_agent.py
 ```
 
-**Note**: Set the `agent_arn` to your deployed agent arn in invoke_agent.py before running it.
+**Note**: Change the `agent_arn` variable to your deployed agent arn in invoke_agent.py before running the script. 
 
 
 ## What It Does

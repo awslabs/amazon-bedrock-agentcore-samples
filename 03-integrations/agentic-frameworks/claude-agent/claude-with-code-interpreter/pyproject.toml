@@ -1,5 +1,5 @@
 [project]
-name = "code-interpreter-with-claude"
+name = "claude-with-code-interpreter"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
