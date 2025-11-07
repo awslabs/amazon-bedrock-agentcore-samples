@@ -4,6 +4,9 @@ This project demonstrates a [Claude agent](https://docs.claude.com/en/api/agent-
 
 We demonstrate this by building a Claude Agent that interprets user prompt, creates Code Interpreter session, invokes bash and code execution operations within the Code Interpreter environment, and returns a response.
 
+![architecture](./images/deploy.png)
+![architecture](./images/invoke.png)
+
 ## Overview
 
 The project includes:
@@ -128,6 +131,8 @@ The Code Interprter tool operations (`code_int_mcp/server.py`) are created as cu
 Code Interpreter's session runs in a dedicated microVM with isolated CPU, memory and filesystem resources. It is ideal that a client re-uses the session for a user request. With that in mind, the agent takes in a payload of `prompt` and `code_int_session_id` if passed and reuses that session. Ideally we would pass sesison ids in headers in real world applications. But to demonstrate the session functionality we pass it as part of payload. The agent uses the session id to invoke the the Code interpreter tools within the same session. 
 
 In order to demonstrate how the agent works, there is extensive logging within the code. Only use them while testing. 
+
+Claude Agent SDK by default has a model configured, this can be changed in ClaudeAgentOptions. 
 
 ### Understanding the test script
 `test_scripts\invoke_agent.py` uses boto3 sdk to invoke agent deployed on AgentCore Runtime agent. As the agent sends response, the script streams it on the terminal. The actions, tools invoked and the final response. 
