@@ -11,7 +11,10 @@ This CDK stack deploys a basic Amazon Bedrock AgentCore Runtime with a simple St
 - [Testing](#testing)
 - [Sample Queries](#sample-queries)
 - [Cleanup](#cleanup)
+- [Cost Estimate](#cost-estimate)
 - [Troubleshooting](#troubleshooting)
+- [🤝 Contributing](#-contributing)
+- [📄 License](#-license)
 
 ## Overview
 
@@ -22,7 +25,6 @@ This CDK stack creates a minimal AgentCore deployment that includes:
 - **IAM Roles**: Provides necessary permissions
 - **CodeBuild Project**: Automatically builds the ARM64 Docker image
 - **Lambda Functions**: Custom resources for automation
-- **S3 Assets**: Source code packaging and deployment
 
 This makes it ideal for:
 - Learning AgentCore basics
@@ -31,6 +33,8 @@ This makes it ideal for:
 - Building a foundation before adding complexity
 
 ## Architecture
+
+![Basic AgentCore Runtime Architecture](architecture.png)
 
 The architecture consists of:
 
@@ -43,7 +47,6 @@ The architecture consists of:
 - **IAM Roles**: 
   - IAM role for CodeBuild (builds and pushes images)
   - IAM role for Agent Execution (runtime permissions)
-- **Amazon Bedrock LLMs**: Provides the AI model capabilities for the agent
 
 ## Prerequisites
 
@@ -70,7 +73,7 @@ The architecture consists of:
    cdk --version
    ```
 
-4. **CDK version 2.218.0 or later** (for BedrockAgentCore support)
+4. **CDK version 2.220.0 or later** (for BedrockAgentCore support)
 
 5. **Bedrock Model Access**: Enable access to Amazon Bedrock models in your AWS region
    - [Bedrock Model Access Guide](https://docs.aws.amazon.com/bedrock/latest/userguide/model-access.html)
@@ -82,9 +85,12 @@ The architecture consists of:
    - Lambda function creation
    - CodeBuild project creation
    - BedrockAgentCore resource creation
-   - S3 bucket operations (for CDK assets)
 
 ## Deployment
+
+### CDK vs CloudFormation
+
+This is the **CDK version** of the basic AgentCore runtime. If you prefer CloudFormation, see the [CloudFormation version](../../cloudformation/basic-runtime/).
 
 ### Option 1: Quick Deploy (Recommended)
 
@@ -109,22 +115,26 @@ source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 # 2. Install Python dependencies
 pip install -r requirements.txt
 
-# 2. Bootstrap CDK in your account/region (first time only)
+# 3. Bootstrap CDK in your account/region (first time only)
 cdk bootstrap
 
-# 3. Synthesize the CloudFormation template (optional)
+# 4. Synthesize the CloudFormation template (optional)
 cdk synth
 
-# 4. Deploy the stack
+# 5. Deploy the stack
 cdk deploy --require-approval never
 
-# 5. Get outputs
+# 6. Get outputs
 cdk list
 ```
 
 ### Deployment Time
 
-- **Expected Duration**: 3-5 minutes
+- **Expected Duration**: 8-12 minutes
+- **Main Steps**:
+  - Stack creation: ~2 minutes
+  - Docker image build (CodeBuild): ~5-8 minutes
+  - Runtime provisioning: ~1-2 minutes
 
 ## Testing
 
@@ -142,7 +152,7 @@ RUNTIME_ARN=$(aws cloudformation describe-stacks \
 aws bedrock-agentcore invoke-agent-runtime \
   --agent-runtime-arn $RUNTIME_ARN \
   --qualifier DEFAULT \
-  --payload $(echo '{"prompt": "What is 2+2?"}' | base64) \
+  --payload $(echo '{"prompt": "Hello, how are you?"}' | base64) \
   response.json
 
 # View the response
@@ -159,7 +169,7 @@ cat response.json
 6. Enter test payload:
    ```json
    {
-     "prompt": "What is 2+2?"
+     "prompt": "Hello, how are you?"
    }
    ```
 7. Click "Invoke"
@@ -168,29 +178,24 @@ cat response.json
 
 Try these queries to test your basic agent:
 
-1. **Simple Math**:
+1. **Simple Greeting**:
    ```json
-   {"prompt": "What is 2+2?"}
+   {"prompt": "Hello, how are you?"}
    ```
 
-2. **General Knowledge**:
+2. **Question Answering**:
    ```json
    {"prompt": "What is the capital of France?"}
    ```
 
-3. **Explanation Request**:
+3. **Creative Writing**:
    ```json
-   {"prompt": "Explain what Amazon Bedrock is in simple terms"}
+   {"prompt": "Write a short poem about clouds"}
    ```
 
-4. **Creative Task**:
+4. **Problem Solving**:
    ```json
-   {"prompt": "Write a haiku about cloud computing"}
-   ```
-
-5. **Reasoning**:
-   ```json
-   {"prompt": "If I have 5 apples and give away 2, how many do I have left?"}
+   {"prompt": "How do I bake a chocolate cake?"}
    ```
 
 ## Cleanup
@@ -221,6 +226,29 @@ aws cloudformation wait stack-delete-complete \
 3. Click "Delete"
 4. Confirm deletion
 
+## Cost Estimate
+
+### Monthly Cost Breakdown (us-east-1)
+
+| Service | Usage | Monthly Cost |
+|---------|-------|--------------|
+| **AgentCore Runtime** | 1 runtime, minimal usage | ~$5-10 |
+| **ECR Repository** | 1 repository, <1GB storage | ~$0.10 |
+| **CodeBuild** | Occasional builds | ~$1-2 |
+| **Lambda** | Custom resource executions | ~$0.01 |
+| **CloudWatch Logs** | Agent logs | ~$0.50 |
+| **Bedrock Model Usage** | Pay per token | Variable* |
+
+**Estimated Total: ~$7-13/month** (excluding Bedrock model usage)
+
+*Bedrock costs depend on your usage patterns and chosen models. See [Bedrock Pricing](https://aws.amazon.com/bedrock/pricing/) for details.
+
+### Cost Optimization Tips
+
+- **Delete when not in use**: Use `cdk destroy` to remove all resources
+- **Monitor usage**: Set up CloudWatch billing alarms
+- **Choose efficient models**: Select appropriate Bedrock models for your use case
+
 ## Troubleshooting
 
 ### CDK Bootstrap Required
@@ -250,3 +278,18 @@ Check CodeBuild logs in the AWS Console:
 1. Go to CodeBuild console
 2. Find the build project (name contains "basic-agent-build")
 3. Check build history and logs
+
+### Runtime Issues
+
+If the runtime fails to start:
+1. Check CloudWatch logs for the runtime
+2. Verify the Docker image was built successfully
+3. Ensure IAM permissions are correct
+
+## 🤝 Contributing
+
+We welcome contributions! Please see our [Contributing Guide](../../CONTRIBUTING.md) for details.
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](../../LICENSE) file for details.
