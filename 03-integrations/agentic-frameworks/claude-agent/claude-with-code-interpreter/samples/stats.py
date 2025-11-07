@@ -1,6 +1,6 @@
 import pandas as pd
 
-df = pd.read_csv('data.csv')
+df = pd.read_csv("data.csv")
 print(df.describe())
 
 for column in df.columns:
@@ -25,7 +25,9 @@ for column in df.columns:
         else:
             print("No obvious outliers detected by IQR method.")
 
-    elif pd.api.types.is_string_dtype(df[column]) or pd.api.types.is_categorical_dtype(df[column]):
+    elif pd.api.types.is_string_dtype(df[column]) or pd.api.types.is_categorical_dtype(
+        df[column]
+    ):
         # Categorical/Text column analysis
         print("Data Type: Categorical/Text")
         print(df[column].value_counts())  # Frequency distribution of unique values
