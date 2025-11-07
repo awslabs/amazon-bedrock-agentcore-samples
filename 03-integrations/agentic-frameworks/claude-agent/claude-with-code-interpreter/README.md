@@ -22,6 +22,7 @@ The project includes:
 - [uv](https://github.com/astral-sh/uv) - Fast Python package installer and resolver
 - Docker (for containerization)
 - AWS account access with Bedrock AgentCore permissions
+- Enable access to Anthropic models via Amazon Bedrock console
 - Claude Code CLI is a dependency for Claude Agent SDK to work. This is installed via Node.js and npm.
 
 ## Setup
@@ -132,7 +133,7 @@ Code Interpreter's session runs in a dedicated microVM with isolated CPU, memory
 
 In order to demonstrate how the agent works, there is extensive logging within the code. Only use them while testing. 
 
-Claude Agent SDK by default has a model configured, this can be changed in ClaudeAgentOptions. 
+Claude code by default has a model configured, but this can be changed via model property in ClaudeAgentOptions. Mode details [here](https://code.claude.com/docs/en/amazon-bedrock)
 
 ### Understanding the test script
 `test_scripts\invoke_agent.py` uses boto3 sdk to invoke agent deployed on AgentCore Runtime agent. As the agent sends response, the script streams it on the terminal. The actions, tools invoked and the final response. 

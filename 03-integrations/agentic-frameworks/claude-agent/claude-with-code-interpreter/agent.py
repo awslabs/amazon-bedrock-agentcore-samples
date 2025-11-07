@@ -35,6 +35,7 @@ async def main(payload):
 
     options = ClaudeAgentOptions(
             mcp_servers={"codeint": code_int_mcp_server},
+            model="global.anthropic.claude-sonnet-4-5-20250929-v1:0",
             allowed_tools=["mcp__codeint__execute_code","mcp__codeint__execute_command","mcp__codeint__write_files","mcp__codeint__read_files"],
             system_prompt=f"""You are an AI assistant with access to code execution tools.
 

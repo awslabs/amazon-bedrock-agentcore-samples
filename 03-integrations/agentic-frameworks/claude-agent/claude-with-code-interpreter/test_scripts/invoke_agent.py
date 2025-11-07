@@ -126,7 +126,8 @@ def main():
         print(f"\n Session ID: {result['session_id']}\n")
         session_id = result['session_id']
 
-    _cleanup(session_id)
+    if session_id:
+        _cleanup(session_id)
 
 if __name__ == "__main__":
     main()
