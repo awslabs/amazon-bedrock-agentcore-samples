@@ -1,14 +1,14 @@
 def load_file_content(file_path: str, default_content: str = None) -> str:
     """
     Load file content with optional fallback and comprehensive error handling.
-    
+
     Args:
         file_path (str): Path to the file to read
         default_content (str, optional): Fallback content if file not found
-        
+
     Returns:
         str: File content or default content if provided
-        
+
     Raises:
         FileNotFoundError: If file not found and no default provided
         Exception: For other file reading errors with detailed message

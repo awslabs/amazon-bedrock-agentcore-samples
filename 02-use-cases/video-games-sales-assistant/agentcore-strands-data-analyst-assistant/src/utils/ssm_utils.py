@@ -19,7 +19,8 @@ import os
 from botocore.exceptions import ClientError
 
 # Project ID for SSM parameter path prefix
-PROJECT_ID = os.environ.get('PROJECT_ID', 'agentcore-data-analyst-assistant')
+PROJECT_ID = os.environ.get("PROJECT_ID", "agentcore-data-analyst-assistant")
+
 
 def get_ssm_client():
     """

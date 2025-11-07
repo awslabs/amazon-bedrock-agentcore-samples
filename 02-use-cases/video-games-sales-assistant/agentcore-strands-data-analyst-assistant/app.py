@@ -27,7 +27,13 @@ from strands.models import BedrockModel
 
 # Custom module imports
 from src.tools import get_tables_information, run_sql_query
-from src.utils import save_raw_query_result, load_file_content, load_config, get_agentcore_memory_messages, MemoryHookProvider
+from src.utils import (
+    save_raw_query_result,
+    load_file_content,
+    load_config,
+    get_agentcore_memory_messages,
+    MemoryHookProvider,
+)
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -36,20 +42,18 @@ logger = logging.getLogger("personal-agent")
 
 # Load configuration from SSM Parameter Store
 # Get PROJECT_ID from environment variable to construct SSM parameter paths
-PROJECT_ID = os.environ.get('PROJECT_ID', 'agentcore-data-analyst-assistant')
+PROJECT_ID = os.environ.get("PROJECT_ID", "agentcore-data-analyst-assistant")
 
 # Load all configuration from SSM
 try:
     config = load_config()
-    print("\n" + "=" * 50)
-    print("✅ CONFIGURATION LOADED FROM SSM")
+    print(f"\n✅ CONFIGURATION LOADED FROM SSM")
     print("-" * 50)
     print(f"🔧 Project ID: {PROJECT_ID}")
     print(f"📊 Database: {config.get('DATABASE_NAME')}")
     print("-" * 50)
 except Exception as e:
-    print("\n" + "=" * 50)
-    print("❌ CONFIGURATION LOAD ERROR")
+    print(f"\n❌ CONFIGURATION LOAD ERROR")
     print("-" * 50)
     print(f"🚨 Error: {e}")
     print(f"🔧 Project ID: {PROJECT_ID}")
