@@ -47,13 +47,13 @@ PROJECT_ID = os.environ.get("PROJECT_ID", "agentcore-data-analyst-assistant")
 # Load all configuration from SSM
 try:
     config = load_config()
-    print(f"\n✅ CONFIGURATION LOADED FROM SSM")
+    print("✅ CONFIGURATION LOADED FROM SSM")
     print("-" * 50)
     print(f"🔧 Project ID: {PROJECT_ID}")
     print(f"📊 Database: {config.get('DATABASE_NAME')}")
     print("-" * 50)
 except Exception as e:
-    print(f"\n❌ CONFIGURATION LOAD ERROR")
+    print("❌ CONFIGURATION LOAD ERROR")
     print("-" * 50)
     print(f"🚨 Error: {e}")
     print(f"🔧 Project ID: {PROJECT_ID}")
