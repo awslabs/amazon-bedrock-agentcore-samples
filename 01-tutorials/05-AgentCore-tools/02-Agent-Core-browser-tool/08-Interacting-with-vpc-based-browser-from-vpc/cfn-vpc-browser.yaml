@@ -899,7 +899,7 @@ Resources:
       SourceSecurityGroupId: !Ref AgentCoreRuntimeSG
       Description: "Allow inbound HTTPS from AgentCore runtime to VPC endpoints"
 
-    # Allow Browser Tool to recieve HTTPS traffic from AgentCore Runtime
+    # Allow Browser Tool to receive HTTPS traffic from AgentCore Runtime
   BrowserToolIngressRule:
     Type: AWS::EC2::SecurityGroupIngress
     Properties:
