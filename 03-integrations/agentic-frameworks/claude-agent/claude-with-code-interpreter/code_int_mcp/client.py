@@ -45,11 +45,9 @@ class CodeInterpreterClient:
                 name=operation,
                 arguments=args if args else {},
             )
-            print(f"******Code Int response {response}")
             output = ""
             for event in response["stream"]:
                 output = json.dumps(event["result"], indent=2)
-                print(f"******Code Int output {output}")
 
             execution_time = time.time() - start_time
 

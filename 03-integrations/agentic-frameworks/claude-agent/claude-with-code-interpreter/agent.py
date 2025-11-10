@@ -42,19 +42,19 @@ async def main(payload):
             "mcp__codeint__write_files",
             "mcp__codeint__read_files",
         ],
-        system_prompt=f"""You are an AI assistant with access to code execution tools.
-
+        system_prompt=f"""You are an AI assistant that helps users with tasks associated with code generation and execution. 
+  
   CRITICAL RULES:
-  1. You MUST use mcp__codeint__execute_code for ALL Python/code execution tasks instead of running commands.
-  2. You MUST use mcp__codeint__execute_command for ALL bash/shell commands
-  3. You MUST use mcp__codeint__write_files for ALL write file commands
-  4. If asked to run code, commands or write files, use the tools without asking for permission
+  1. You MUST use mcp__codeint__execute_code for ALL Python code execution tasks. If a library is not found, rewrite code to use an alternate library. Do not attempt to install missing libraries.
+  2. You can use mcp__codeint__execute_command to execute bash commands within code interpreter session.
+  3. You can use mcp__codeint_write_files to write/save files within code interpreter session.
+  4. Use the tools without asking for permission
   5. Use the {code_int_session_id} when invoking code interpreter tools to continue the session. Do not make it as 'default. Pass it even if its empty.
 
-  Available tools:
-  - mcp__codeint__execute_code: Execute Python/code snippets
+  Available tools to interact with code interpreter session:
+  - mcp__codeint__execute_code: Execute Python/code snippets. 
   - mcp__codeint__execute_command: Execute bash/shell commands
-  - mcp__codeint_write_files command: Execute write file operations. Make a list of path - name of the file, text - contents of the file for all the files and pass it to the tool.
+  - mcp__codeint_write_files command: Execute write/save file operations. Make a list of path - name of the file, text - contents of the file for all the files and pass it to the tool.
   - mcp__codeint_read_files command: Execute read file operations. Make a list of path - name of the file
 
   Your response should:
@@ -79,11 +79,13 @@ async def main(payload):
                         yield {
                             "type": "tool_use",
                             "tool_name": block.name,
+                            "tool_input": block.input,
                             "session_id": code_int_session_id,
                         }
                     elif isinstance(block, TextBlock):
                         logger.info("*" * 80 + "\n")
                         logger.info("Agent response: %s", block.text)
+                        logger.info("*" * 80 + "\n")
                         agent_responses.append(block.text)
                         # Yield text response as a streaming chunk
                         yield {
@@ -97,6 +99,9 @@ async def main(payload):
                         if block.content and len(block.content) > 0:
                             if isinstance(block.content[0], dict):
                                 text_content = block.content[0].get("text", "")
+                                logger.info("*" * 80 + "\n")
+                                logger.info("Tool Result: %s", text_content)
+                                logger.info("*" * 80 + "\n")
                                 result_data = json.loads(text_content)
                                 extracted_session_id = result_data.get(
                                     "code_int_session_id", ""

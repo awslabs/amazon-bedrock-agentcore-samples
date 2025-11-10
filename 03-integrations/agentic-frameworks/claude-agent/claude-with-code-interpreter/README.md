@@ -1,6 +1,6 @@
 # Code execution in Code Interpreter using Claude Agent
 
-This project demonstrates a [Claude agent](https://docs.claude.com/en/api/agent-sdk/overview) deployed on [AWS Bedrock AgentCore](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/) that creates [Code Interpreter](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/code-interpreter-tool.html) sessions to securely execute code within the Code Interpreter isolated sandbox environments. The agent in this example performs automated data analysis by orchestrating file transfers, code execution, and result retrieval within Code Interpreter sessions.
+This project demonstrates a [Claude agent](https://docs.claude.com/en/api/agent-sdk/overview) deployed on [AWS Bedrock AgentCore](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/) that creates [Code Interpreter](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/code-interpreter-tool.html) sessions to securely execute code. 
 
 We demonstrate this by building a Claude Agent that interprets user prompt, creates Code Interpreter session, invokes bash and code execution operations within the Code Interpreter environment, and returns a response.
 
@@ -12,8 +12,7 @@ We demonstrate this by building a Claude Agent that interprets user prompt, crea
 The project includes:
 - An agent that uses Claude to orchestrate code execution
 - An MCP server that wraps the Code Interpreter tools
-- A client to invoke the Code Interpreter APIs
-- Sample data and analysis code to demonstrate the workflow
+- A client to invoke the Code Interpreter APIs using boto3 SDK
 - Docker containerization for AgentCore deployment
 
 ## Prerequisites
@@ -72,12 +71,22 @@ agentcore launch
 
 ### 3. Test your agent
 
-Use toolkit command to test agent. Here is a sample prompt to demonstrate how Claude invokes Code Interpreter session to write files and do data analysis on them.
+Use toolkit command to test agent. 
 ```bash
-agentcore invoke '{"prompt":"Write the files in the samples folder into a code interpreter session. Check if they are created. Run data analysis on the data file using the python script."'
+agentcore invoke '{"prompt":"Create a sample data set of a retail store orders. Create a simple data analysis on a sample dataset. Save the files."}'
 ```
 
-**OR** you can use the script provided in the test_scripts directory
+For the above prompt, the agent will 
+- interpret the prompt
+- write python code to create sample data set
+- start a code interpreter session and execute the code
+- write python code to perform data analysis
+- use the code interpreter session to execute the code for data analysis
+- use the code interpreter session to save the files 
+- send summary back to the user
+
+
+**OR** you can use the script provided in the test_scripts directory. It has a few sample prompts.
 ```bash
 uv run test_scripts/invoke_agent.py
 ```
@@ -87,17 +96,11 @@ uv run test_scripts/invoke_agent.py
 
 ## What It Does
 
-The `test_scripts/invoke_agent.py` client includes a sample prompt that demonstrates the full workflow:
-
-1. **Write files** to the Code Interpreter session (from the `samples` folder)
-2. **List files** to verify they were created
-3. **Execute data analysis** on the CSV file using the code in `stats.py`
-
-This showcases how Claude can:
-- Manage an isolated Code Interpreter session
+You can use the agent to:
+- Maintain an isolated Code Interpreter session
 - Transfer files to the session
 - Execute Python code within the session
-- Perform data analysis tasks
+- Execute bash commans
 
 ## Project Structure
 
@@ -108,9 +111,6 @@ This showcases how Claude can:
 │   ├── models.py                # Pydantic data models
 │   ├── server.py                # MCP server with tools
 │   └── __init__.py
-├── samples/
-│   ├── stats.py                 # Sample analysis code
-│   └── data.csv                 # Sample data file
 ├── test_scripts/
 │   ├── invoke_agent.py          # Client to invoke deployed agent
 │   └── cleanup.py               # Cleanup script
@@ -121,22 +121,20 @@ This showcases how Claude can:
 ```
 
 ### Understanding the agent code
-Claude Agent SDK supports two types of interactions - query() and ClaudeSDKClient. A quick comparison is provided [here](https://docs.claude.com/en/api/agent-sdk/python#quick-comparison). In this example, we specifically use the ClaudeSDKClient since it supports use of custom tools.
+Claude Agent SDK supports two types of interactions - query() and ClaudeSDKClient. A quick comparison is provided [here](https://docs.claude.com/en/api/agent-sdk/python#quick-comparison). In this example, we specifically use the ClaudeSDKClient since it supports the use of custom tools.
 
-The agent's system prompt in our example is extremely specific to use Code Interpreter tool for executing bash, file read/write operations and code. This is done to override the default behavior of Claude Agent that uses its own tools for bash, file read/write and execute code.
+The agent's system prompt in our example is extremely specific to use Code Interpreter tool for executing bash, file read/write operations and code. This is done to override the default behavior of Claude Agent that uses its own tools for these operations. The agent maintains the code interpreter session id during the complete agent session.
 
-The agent re-uses the code interpreter session id for the multi turn conversation so that the context is maintained between the turns.
+The Code Interprter tool operations (`code_int_mcp/server.py`) are created as custom tools for Claude Agent to use. [Custom tools](https://docs.claude.com/en/api/agent-sdk/custom-tools) allow for plugging in our own tools to Claude Agent through in process MCP server. The `code_int_mcp/client.py` is a simple class that the server uses to invoke Code Interpreter operations via boto3 SDK. The tools should have a [specific naming format](https://docs.claude.com/en/api/agent-sdk/custom-tools#tool-name-format) for Claude agent to be able to use them. 
 
-The Code Interprter tool operations (`code_int_mcp/server.py`) are created as custom tools for Claude Agent to use. [Custom tools](https://docs.claude.com/en/api/agent-sdk/custom-tools) allow for plugging in our own tools to Claude Agent through in process MCP server. The `code_int_mcp/client.py` is a simple class that the server uses to invoke Code Interpreter operations via boto3 SDK. The tools have to have a [specific naming format](https://docs.claude.com/en/api/agent-sdk/custom-tools#tool-name-format) for Claude agent to be able to use them. 
-
-Code Interpreter's session runs in a dedicated microVM with isolated CPU, memory and filesystem resources. It is ideal that a client re-uses the session for a user request. With that in mind, the agent takes in a payload of `prompt` and `code_int_session_id` if passed and reuses that session. Ideally we would pass sesison ids in headers in real world applications. But to demonstrate the session functionality we pass it as part of payload. The agent uses the session id to invoke the the Code interpreter tools within the same session. 
+Code Interpreter's session runs in a dedicated microVM with isolated CPU, memory and filesystem resources. It is ideal that a client re-uses the session for a user request. With that in mind, the agent takes in a payload of `prompt` and `code_int_session_id` and reuses that session. Ideally we would pass sesison ids in headers in real world applications. But to demonstrate the session functionality we pass it as part of payload. 
 
 In order to demonstrate how the agent works, there is extensive logging within the code. Only use them while testing. 
 
-Claude code by default has a model configured, but this can be changed via model property in ClaudeAgentOptions. Mode details [here](https://code.claude.com/docs/en/amazon-bedrock)
+Claude code by default has a model configured, but this can be changed via model property in ClaudeAgentOptions. More details [here](https://code.claude.com/docs/en/amazon-bedrock)
 
 ### Understanding the test script
-`test_scripts\invoke_agent.py` uses boto3 sdk to invoke agent deployed on AgentCore Runtime agent. As the agent sends response, the script streams it on the terminal. The actions, tools invoked and the final response. 
+`test_scripts\invoke_agent.py` uses boto3 sdk to invoke agent deployed on AgentCore Runtime agent. As the agent sends response, the script streams it to the terminal, this inclues actions, tools invoked and the final response. 
 
 ### Cleanup
 

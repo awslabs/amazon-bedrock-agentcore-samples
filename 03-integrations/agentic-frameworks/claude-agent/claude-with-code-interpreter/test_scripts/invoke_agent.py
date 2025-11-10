@@ -7,7 +7,7 @@ from botocore.exceptions import ClientError, ReadTimeoutError
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-agent_arn = "<agent-arn>"
+agent_arn = "arn:aws:bedrock-agentcore:us-west-2:901293660432:runtime/claude_ci_agent-xsW5gEGhrq"
 
 # Initialize the Amazon Bedrock AgentCore client
 agent_core_client = boto3.client("bedrock-agentcore")
@@ -33,7 +33,6 @@ def _invoke(prompt: str, session_id: str):
 
         # Get the StreamingBody
         streaming_body = response.get("response")
-        logger.info("StreamingBody type: %s", type(streaming_body))
 
         # Variables to accumulate the response
         content = []
@@ -60,32 +59,25 @@ def _invoke(prompt: str, session_id: str):
 
                     # Only try to parse if we have content
                     if chunk_str:
-                        try:
-                            # Try to parse each chunk as JSON
-                            chunk_data = json.loads(chunk_str)
+                        # Try to parse each chunk as JSON
+                        chunk_data = json.loads(chunk_str)
 
-                            # Handle different chunk types
-                            if chunk_data.get("type") == "text":
-                                logger.info("\n TEXT : %s", chunk_data.get("text"))
-                            elif chunk_data.get("type") == "tool_use":
-                                logger.info(
-                                    "\n TOOL USED : %s", chunk_data.get("tool_name")
-                                )
-                            elif chunk_data.get("type") == "final":
-                                logger.info(
-                                    "\n FINAL RESPONSE : %s", chunk_data.get("response")
-                                )
-                                final_response = chunk_data.get("response", "")
-                                final_session_id = chunk_data.get("session_id", "")
-
-                            # Combine all chunks to show in the final response.
-                            content.append(chunk_str)
-
-                        except json.JSONDecodeError:
-                            # If not valid JSON, just accumulate
-                            content.append(chunk_str)
+                        # Handle different chunk types
+                        if chunk_data.get("type") == "text":
+                            logger.info("\n TEXT : %s", chunk_data.get("text"))
+                        elif chunk_data.get("type") == "tool_use":
+                            logger.info(
+                                "\n TOOL USED : %s", chunk_data.get("tool_name")
+                            )
+                            logger.info(
+                                "\n TOOL INPUT : %s", chunk_data.get("tool_input")
+                            )
+                        elif chunk_data.get("type") == "final":
+                            final_response = chunk_data.get("response", "")
+                            final_session_id = chunk_data.get("session_id", "")
         except ReadTimeoutError as e:
             logger.error("Request failed: %s", str(e))
+
         logger.info("*" * 80)
         logger.info("Streaming complete")
         logger.info("*" * 80)
@@ -115,19 +107,20 @@ def _cleanup(session_id: str):
 def main():
     # List of prompts to test
     prompts = [
-        """
-            Write the files in the samples folder into a code interpreter session. 
-            Check if they are created. 
-            Run data analysis on the data file using the python script.
-"""
+        # "Calculate the sum of numbers from 1 to 100",
+        # "Write a Python function to check if a number is prime",
+        "Create a sample data set of a retail store orders. Create a simple data analysis on a sample dataset. Save the files.",
     ]
 
     session_id = ""
     for prompt in prompts:
-        print(f"\nPrompt: {prompt}")
+        logger.info("\nPrompt: %s", prompt)
         result = _invoke(prompt, session_id)
-        print(f"\n Final Response: {result['response']}")
-        print(f"\n Session ID: {result['session_id']}\n")
+        # logger.info("*" * 80)
+        # logger.info("FINAL RESPONSE")
+        # logger.info("*" * 80)
+        # logger.info("\n RESPONSE: %s", result['response'])
+        logger.info("\n SESSION ID: %s", result["session_id"])
         session_id = result["session_id"]
 
     if session_id:
