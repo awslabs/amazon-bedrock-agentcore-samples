@@ -1,7 +1,6 @@
 from strands import tool
 from src.utils import load_file_content
 
-
 @tool
 def get_tables_information() -> dict:
     """
@@ -18,12 +17,12 @@ def get_tables_information() -> dict:
     try:
         return {
             "toolUsed": "get_tables_information",
-            "information": load_file_content("tools/tables_information.txt"),
+            "information": load_file_content("src/tools/tables_information.txt"),
         }
     except FileNotFoundError:
         return {
             "toolUsed": "get_tables_information",
-            "information": "Error: tables_info.txt file not found. Please create this file with your tables information.",
+            "information": "Error: src/tools/tables_information.txt file not found. Please create this file with your tables information.",
         }
     except Exception as e:
         return {
