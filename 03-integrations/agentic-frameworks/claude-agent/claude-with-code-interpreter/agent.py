@@ -28,8 +28,6 @@ async def main(payload):
     """
     prompt = payload["prompt"]
     session_id = payload.get("session_id", "")
-
-    # Variables to capture response
     agent_responses = []
     code_int_session_id = session_id
 

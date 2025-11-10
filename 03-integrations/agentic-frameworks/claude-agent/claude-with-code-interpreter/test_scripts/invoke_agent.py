@@ -14,7 +14,6 @@ agent_core_client = boto3.client("bedrock-agentcore")
 
 
 def _invoke(prompt: str, session_id: str):
-    # Prepare the payload
     runtime_session_id = str(uuid.uuid4())
     payload = json.dumps({"prompt": prompt, "session_id": session_id}).encode()
 
@@ -30,12 +29,7 @@ def _invoke(prompt: str, session_id: str):
             payload=payload,
             qualifier="DEFAULT",
         )
-
-        # Get the StreamingBody
         streaming_body = response.get("response")
-
-        # Variables to accumulate the response
-        content = []
         final_response = ""
         final_session_id = ""
 
@@ -49,7 +43,6 @@ def _invoke(prompt: str, session_id: str):
                 if chunk:
                     chunk_str = chunk.decode("utf-8")
                     # logger.info(f"\n********STREAMING CHUNK********* %s",chunk_str)
-                    # Skip empty lines or comments
                     if not chunk_str or chunk_str.startswith(":"):
                         continue
 
@@ -57,12 +50,8 @@ def _invoke(prompt: str, session_id: str):
                     if chunk_str.startswith("data:"):
                         chunk_str = chunk_str.split(":", 1)[1].strip()
 
-                    # Only try to parse if we have content
                     if chunk_str:
-                        # Try to parse each chunk as JSON
                         chunk_data = json.loads(chunk_str)
-
-                        # Handle different chunk types
                         if chunk_data.get("type") == "text":
                             logger.info("\n TEXT : %s", chunk_data.get("text"))
                         elif chunk_data.get("type") == "tool_use":
