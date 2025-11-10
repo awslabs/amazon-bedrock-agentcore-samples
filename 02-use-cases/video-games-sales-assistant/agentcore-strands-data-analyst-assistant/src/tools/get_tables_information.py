@@ -1,6 +1,7 @@
 from strands import tool
 from src.utils import load_file_content
 
+
 @tool
 def get_tables_information() -> dict:
     """
