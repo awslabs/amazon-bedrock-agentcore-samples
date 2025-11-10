@@ -1,237 +1,273 @@
-# Device Management Chat Application
+# Frontend Module
 
-A FastAPI-based chat application that interfaces with AWS Bedrock AgentCore runtime to provide a user-friendly web interface for the Device Management system. The application features real-time chat, AWS Cognito authentication, and Docker deployment.
+## Architecture & Overview
 
-## Features
+### What is the Frontend Module?
 
-- **Real-time Chat Interface**: WebSocket-based streaming responses from the Device Management Agent
-- **AWS Cognito Authentication**: Secure user authentication and session management
-- **Responsive Design**: Works on desktop and mobile devices
-- **Docker Support**: Easy deployment with Docker Compose
-- **Session Management**: Maintains conversation context across interactions
-- **Streaming Response Handling**: Processes and displays real-time agent responses
+The Frontend Module provides a web-based user interface for the Device Management System. Built with FastAPI and WebSockets, it offers a chat-like interface where users can interact with their IoT devices using natural language queries.
 
-## Architecture
+### Key Responsibilities
+- **Web Interface**: Serve responsive HTML interface for device management
+- **Real-time Communication**: Handle WebSocket connections for live chat experience
+- **User Authentication**: Integrate with Amazon Cognito for secure user login
+- **Response Formatting**: Display device data in user-friendly formats
+- **Session Management**: Maintain user sessions and conversation context
 
-```
-├── main.py                 # FastAPI application with WebSocket endpoints
-├── auth.py                 # AWS Cognito authentication module
-├── templates/              # HTML templates
-│   ├── chat.html          # Main chat interface
-│   ├── login.html         # Cognito OAuth login page
-│   └── simple_login.html  # Simple authentication form
-├── static/                 # Static assets
-│   ├── css/styles.css     # Application styling
-│   ├── js/                # JavaScript files
-│   └── img/aws-logo.svg   # AWS branding
-├── Dockerfile             # Container configuration
-├── docker-compose.yml     # Multi-container orchestration
-└── requirements.txt       # Python dependencies
-```
+### Architecture Components
+- **FastAPI Application**: Web framework serving the interface and API endpoints
+- **WebSocket Handler**: Real-time communication with Agent Runtime
+- **Authentication System**: Amazon Cognito integration for user management
+- **Template Engine**: Jinja2 for dynamic HTML rendering
+- **Static Assets**: CSS, JavaScript, and images for the user interface
 
 ## Prerequisites
 
-- **Python 3.12** (recommended)
-- **AWS CLI** configured with appropriate credentials
-- **Docker & Docker Compose** (for containerized deployment)
-- **AWS Bedrock AgentCore** access
-- **AWS Cognito User Pool** (for authentication)
+### Required Software
+- **Python 3.10+**
+- **Web Browser** (Chrome, Firefox, Safari, Edge)
+- **Node.js** (optional, for advanced frontend development)
 
-## Environment Configuration
+### AWS Services Access
+- **Amazon Cognito** User Pool for authentication
+- **Agent Runtime** endpoint for device operations
 
-Create a `.env` file based on `.env.example`:
+### Required Dependencies
+- **FastAPI**: Web framework
+- **Uvicorn**: ASGI server
+- **WebSockets**: Real-time communication
+- **Jinja2**: Template engine
+- **Python-Jose**: JWT token handling
+
+## Deployment Steps
+
+### Option 1: Automated Setup (Recommended)
 
 ```bash
-# AWS Configuration
-AWS_REGION=us-west-2
-
-# Agent Runtime ARN
-AGENT_ARN=arn:aws:bedrock-agentcore:us-west-2:123456789012:runtime/your-agent-name
-
-# Cognito Authentication (Optional)
-COGNITO_DOMAIN=your-domain.auth.us-west-2.amazoncognito.com
-COGNITO_CLIENT_ID=your-client-id
-COGNITO_CLIENT_SECRET=your-client-secret
-COGNITO_REDIRECT_URI=http://localhost:5001/auth/callback
-COGNITO_LOGOUT_URI=http://localhost:5001/logout
-COGNITO_USER_POOL_ID=us-west-2_YourPoolId
-```
-
-## Installation & Setup
-
-### Option 1: Docker Deployment (Recommended)
-
-1. **Clone and navigate to the project**:
-   ```bash
-   cd frontend
-   ```
-
-2. **Configure environment**:
-   ```bash
-   cp .env.example .env
-   # Edit .env with your actual values
-   ```
-
-3. **Build and run with Docker Compose**:
-   ```bash
-   docker-compose up -d
-   ```
-
-4. **Access the application**:
-   - Open http://localhost:5001
-   - Login with your credentials
-   - Start chatting with the Device Management Agent
-
-### Option 2: Local Development
-
-1. **Setup Python environment**:
-   ```bash
-   python3.12 -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   ```
-
-2. **Install dependencies**:
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-3. **Run the application**:
-   ```bash
-   # Development server with auto-reload
-   uvicorn main:app --host 0.0.0.0 --port 5001 --reload
-   ```
-
-### Option 3: Automated Setup
-
-Use the provided setup script:
-```bash
+# From the frontend directory
 chmod +x setup_and_run.sh
 ./setup_and_run.sh
 ```
 
-## Key Files Description
+### Option 2: Manual Deployment
 
-### Core Application Files
+#### Step 1: Environment Configuration
+```bash
+# Create .env file
+cp .env.example .env
+# Edit with your values:
+# - MCP_SERVER_URL (from Gateway module)
+# - COGNITO_* variables for authentication
+# - HOST and PORT settings
+```
 
-- **`main.py`**: Main FastAPI application with WebSocket endpoints, streaming response handling, and session management
-- **`auth.py`**: AWS Cognito integration for user authentication and authorization
+#### Step 2: Install Dependencies
+```bash
+pip install -r requirements.txt
+```
 
-### Configuration Files
+#### Step 3: Run Development Server
+```bash
+# Local development
+python main.py
 
-- **`requirements.txt`**: Python package dependencies including FastAPI, boto3, WebSockets
-- **`Dockerfile`**: Container image configuration for Python 3.12 slim
-- **`docker-compose.yml`**: Multi-container orchestration with volume mounts for AWS credentials
-- **`.env.example`**: Template for environment variables
+# Or with uvicorn directly
+uvicorn main:app --host 127.0.0.1 --port 8000 --reload
+```
 
-### Utilities & Scripts
+#### Step 4: Docker Deployment (Optional)
+```bash
+# Build container
+docker build -t device-management-frontend .
 
-- **`setup_and_run.sh`**: Automated setup and deployment script
+# Run container
+docker run -p 5001:5001 --env-file .env device-management-frontend
+```
 
-### Frontend Assets
+### Deployment Verification
 
-- **`templates/chat.html`**: Main chat interface with WebSocket integration
-- **`templates/login.html`**: Cognito OAuth login page
-- **`templates/simple_login.html`**: Alternative simple login form
-- **`static/css/styles.css`**: Application styling and responsive design
-- **`static/img/aws-logo.svg`**: AWS branding assets
+```bash
+# Test local server
+curl http://localhost:8000/
 
-## Usage Examples
+# Test health endpoint
+curl http://localhost:8000/health
 
-Once the application is running, you can interact with the Device Management system:
+# Test WebSocket connection (requires browser or WebSocket client)
+# Open browser to http://localhost:8000 and try the chat interface
+```
 
-### Device Management Commands
-- **"List all devices"** - Display all devices in the system
-- **"Show settings for device DEV001"** - Get specific device configuration
-- **"List WiFi networks for Living Room Router"** - Show available networks
-- **"Update WiFi SSID to MyNewNetwork on device DEV001"** - Modify device settings
-- **"Show device status for DG-100005"** - Check device connectivity and status
+## Sample Queries
 
-### System Information
-- **"Show device statistics"** - Get system overview
-- **"List devices by status"** - Filter devices by connection status
-- **"Show firmware versions"** - Display firmware information across devices
+Once the frontend is running, users can interact through the web interface with these types of queries:
 
-## API Endpoints
+### Device Management Queries
+```
+"Show me all my devices"
+"List devices that are offline"
+"What's the status of device DG-10016?"
+"How many devices do I have?"
+```
 
-### WebSocket Endpoints
-- **`/ws/{client_id}`**: Real-time chat communication with streaming responses
+### Device Configuration Queries
+```
+"Get the settings for device DG-10005"
+"Show me the WiFi networks for device DG-10016"
+"What's the firmware version of device DG-10022?"
+```
 
-### HTTP Endpoints
-- **`GET /`**: Main chat interface (requires authentication)
-- **`GET /simple-login`**: Simple authentication form
-- **`POST /simple-login`**: Process simple login
-- **`GET /auth/login`**: Initiate Cognito OAuth flow
-- **`GET /auth/callback`**: Handle Cognito OAuth callback
-- **`GET /logout`**: User logout and session cleanup
+### WiFi Management Queries
+```
+"Update the WiFi SSID for device DG-10016 to 'HomeNetwork-5G'"
+"Change the security type for device DG-10005 to WPA3"
+"Show me all WiFi networks"
+```
+
+### User and Activity Queries
+```
+"Who logged in today?"
+"Show me recent activity"
+"List all users in the system"
+```
+
+### Expected User Experience
+- **Real-time Responses**: Messages stream in real-time as the agent processes them
+- **Formatted Output**: Device information displayed in readable tables and lists
+- **Error Handling**: User-friendly error messages for failed operations
+- **Session Persistence**: Login state maintained across browser sessions
+
+## Cleanup Instructions
+
+### Stop Running Services
+
+```bash
+# Stop development server
+# Press Ctrl+C if running in foreground
+
+# Stop Docker container
+docker stop device-management-frontend
+docker rm device-management-frontend
+```
+
+### Remove Docker Resources
+
+```bash
+# Remove built image
+docker rmi device-management-frontend
+
+# Clean up unused images
+docker image prune
+```
+
+### Clean Up Local Files
+
+```bash
+# Remove environment file (contains sensitive data)
+rm .env
+
+# Remove session data and cache
+rm -rf __pycache__/
+rm -rf .pytest_cache/
+
+# Remove log files if any
+rm -f *.log
+```
+
+## Configuration
+
+### Environment Variables
+
+```bash
+# Server Configuration
+HOST=127.0.0.1  # Use 0.0.0.0 for Docker
+PORT=8000
+
+# Agent Runtime Connection
+MCP_SERVER_URL=https://gateway-id.gateway.bedrock-agentcore.us-west-2.amazonaws.com
+AGENT_RUNTIME_URL=http://localhost:8080  # If using local agent runtime
+
+# Amazon Cognito Configuration (for user authentication)
+COGNITO_USERPOOL_ID=your-frontend-userpool-id
+COGNITO_APP_CLIENT_ID=your-frontend-client-id
+COGNITO_DOMAIN=your-frontend-domain.auth.us-west-2.amazoncognito.com
+COGNITO_CLIENT_SECRET=your-frontend-client-secret
+
+# CORS Configuration
+CORS_ORIGINS=http://localhost:8000,http://127.0.0.1:8000
+
+# Session Configuration
+SESSION_SECRET_KEY=your-secret-key-for-sessions
+SESSION_MAX_AGE=3600  # 1 hour
+```
+
+### Web Interface Features
+
+#### Authentication Options
+- **Amazon Cognito Login**: Full OAuth flow with hosted UI
+- **Simple Login**: Basic username/password for development/demo
+- **Session Management**: Secure session cookies with CSRF protection
+
+#### Chat Interface
+- **WebSocket Communication**: Real-time bidirectional communication
+- **Message History**: Conversation history maintained during session
+- **Typing Indicators**: Visual feedback during agent processing
+- **Error Recovery**: Automatic reconnection on connection loss
+
+#### Response Formatting
+- **Device Tables**: Formatted device listings with status indicators
+- **Configuration Displays**: Structured settings and network information
+- **Activity Logs**: Chronological user activity with timestamps
+- **Error Messages**: User-friendly error descriptions and suggestions
 
 ## Troubleshooting
 
 ### Common Issues
 
-1. **Agent Connection Errors**:
-   - Verify AGENT_ARN is correct in `.env`
-   - Check AWS credentials and permissions
-   - Ensure Bedrock AgentCore access
+**Frontend won't start**:
+- Check if port 8000 is already in use
+- Verify Python dependencies are installed
+- Ensure .env file has correct configuration
 
-2. **Authentication Issues**:
-   - Verify Cognito configuration in `.env`
-   - Check redirect URIs match Cognito settings
-   - Validate user pool and client configuration
+**Authentication failures**:
+- Verify Amazon Cognito configuration
+- Check if User Pool and App Client exist
+- Ensure CORS origins include your domain
 
-3. **Docker Issues**:
-   ```bash
-   docker-compose logs --tail=50
-   ```
-   - Check container logs for errors
-   - Verify AWS credentials mount
-   - Ensure port 5001 is available
+**WebSocket connection failures**:
+- Check if Agent Runtime is running and accessible
+- Verify MCP_SERVER_URL is correct
+- Test network connectivity to backend services
 
-4. **Streaming Response Problems**:
-   - Check WebSocket connection in browser dev tools
-   - Verify agent response format
-   - Review parsing logic in `main.py`
+**Chat interface not responding**:
+- Check browser console for JavaScript errors
+- Verify WebSocket connection is established
+- Test backend services independently
 
-### Debug Mode
+### Debug Commands
 
-Enable debug logging by setting:
 ```bash
-export PYTHONPATH=.
-export LOG_LEVEL=DEBUG
+# Test FastAPI server
+curl -v http://localhost:8000/
+
+# Check WebSocket endpoint
+curl -v -H "Connection: Upgrade" -H "Upgrade: websocket" \
+     http://localhost:8000/ws/test-client
+
+# Test authentication endpoints
+curl -v http://localhost:8000/simple-login
+
+# Check static file serving
+curl -v http://localhost:8000/static/style.css
 ```
 
-## Security Considerations
+### Browser Developer Tools
 
-- **AWS Credentials**: Never commit credentials to version control
-- **Session Security**: Uses secure random session keys
-- **CORS Configuration**: Configured for development (adjust for production)
-- **Authentication**: Supports both Cognito OAuth and simple auth modes
+1. **Console Tab**: Check for JavaScript errors
+2. **Network Tab**: Monitor WebSocket connections and HTTP requests
+3. **Application Tab**: Inspect session storage and cookies
+4. **Elements Tab**: Debug HTML/CSS rendering issues
 
-## Development
+## Integration with Other Modules
 
-### Adding New Features
-
-1. **Backend Changes**: Modify `main.py` for new endpoints or WebSocket handlers
-2. **Frontend Changes**: Update templates and static files
-3. **Authentication**: Extend `auth.py` for additional auth providers
-4. **Testing**: Add tests to verify new functionality
-
-### Deployment
-
-For production deployment:
-
-1. **Update CORS settings** in `main.py`
-2. **Configure proper SSL/TLS** certificates
-3. **Set production environment variables**
-4. **Use production-grade WSGI server** (e.g., Gunicorn)
-5. **Implement proper logging and monitoring**
-
-## Support
-
-For issues and questions:
-- Check the troubleshooting section above
-- Review application logs: `docker-compose logs`
-- Verify AWS permissions and configuration
-
-## License
-
-This project is part of the AWS Device Management system samples.
+- **Agent Runtime Module**: Communicates via WebSocket for real-time chat functionality
+- **Gateway Module**: Indirectly accessed through Agent Runtime for device operations
+- **Device Management Module**: Operations executed through the full stack (Frontend → Agent Runtime → Gateway → Lambda)

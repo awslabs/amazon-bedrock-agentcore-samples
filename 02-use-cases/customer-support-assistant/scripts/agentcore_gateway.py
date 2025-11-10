@@ -4,6 +4,7 @@ import os
 import sys
 import boto3
 import click
+import time
 
 from utils import (
     get_aws_region,
@@ -69,9 +70,30 @@ def create_gateway(gateway_name: str, api_spec: List) -> dict:
 
         click.echo(f"✅ Gateway created: {create_response['gatewayId']}")
 
+        # Wait for gateway to become ACTIVE
+        gateway_id = create_response["gatewayId"]
+        click.echo(f"⏳ Waiting for gateway to become ACTIVE...")
+        max_retries = 30
+        retry_delay = 10
+
+        for attempt in range(max_retries):
+            get_response = gateway_client.get_gateway(gatewayIdentifier=gateway_id)
+            status = get_response.get("status")
+
+            if status in ["ACTIVE", "READY"]:
+                click.echo(f"✅ Gateway is now {status}")
+                break
+            elif status in ["FAILED", "DELETING", "DELETED"]:
+                raise Exception(f"Gateway creation failed with status: {status}")
+
+            if attempt < max_retries - 1:
+                click.echo(f"   Gateway status: {status}, waiting {retry_delay}s... (attempt {attempt + 1}/{max_retries})")
+                time.sleep(retry_delay)
+            else:
+                raise Exception(f"Gateway did not become ACTIVE after {max_retries * retry_delay} seconds")
+
         # Create gateway target
         credential_config = [{"credentialProviderType": "GATEWAY_IAM_ROLE"}]
-        gateway_id = create_response["gatewayId"]
 
         create_target_response = gateway_client.create_gateway_target(
             gatewayIdentifier=gateway_id,
