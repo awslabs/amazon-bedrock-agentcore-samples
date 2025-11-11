@@ -67,7 +67,7 @@ The application is now ready to start with:
 - ✅ Graceful startup diagnostics
 
 **Architecture:**
-- **Code Generator**: Strands-Agents + Claude Sonnet 3.7
+- **Code Generator**: Strands-Agents + Claude Haiku 4.5
 - **Code Executor**: Strands-Agents + AgentCore CodeInterpreter
 - **Authentication**: AWS Profile (nmurich_dev with BedrockAgentCoreFullAccess)
 - **Execution**: Real AWS sandbox environment

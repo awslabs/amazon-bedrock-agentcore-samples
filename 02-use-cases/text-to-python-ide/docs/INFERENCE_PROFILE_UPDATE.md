@@ -7,7 +7,7 @@ The application has been updated to use **inference profile IDs** with the `us.`
 ## 🔧 **Changes Made**
 
 ### **Model IDs Updated:**
-- **✅ Primary**: `global.anthropic.claude-haiku-4-5-20251001-v1:0` (Claude Sonnet 3.7 Inference Profile)
+- **✅ Primary**: `global.anthropic.claude-haiku-4-5-20251001-v1:0` (Claude Haiku 4.5 Inference Profile)
 - **✅ Fallback**: `us.amazon.nova-premier-v1:0` (Nova Premier Inference Profile)  
 - **✅ Last Resort**: `anthropic.claude-3-5-sonnet-20241022-v2:0` (Standard Model)
 
@@ -24,7 +24,7 @@ The application has been updated to use **inference profile IDs** with the `us.`
 🤖 Attempting to use primary inference profile: global.anthropic.claude-haiku-4-5-20251001-v1:0
 ✅ Primary inference profile global.anthropic.claude-haiku-4-5-20251001-v1:0 initialized successfully
 🎯 SUCCESS: Using inference profile ID
-✅ Claude Sonnet 3.7 inference profile active
+✅ Claude Haiku 4.5 inference profile active
 ```
 
 ### **Model Hierarchy Confirmed:**
@@ -72,7 +72,7 @@ curl http://localhost:8000/health | jq '.current_model'
 
 **The application now correctly uses:**
 - **🎯 Inference Profile IDs** with `us.` prefix as requested
-- **🚀 Claude Sonnet 3.7** via optimized inference profile
+- **🚀 Claude Haiku 4.5** via optimized inference profile
 - **🔄 Nova Premier** as inference profile fallback
 - **🛡️ Standard models** as final safety net
 - **📊 Full monitoring** and status reporting
