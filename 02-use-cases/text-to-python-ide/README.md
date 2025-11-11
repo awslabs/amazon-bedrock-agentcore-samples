@@ -46,7 +46,7 @@ Text to Python IDE is a full-stack application that enables users to:
 - **Model Fallback**: Automatic failover between AI models
 
 #### **AI Models (AWS Bedrock)**
-- **Primary**: Claude Sonnet 3.7 (Inference Profile) - `us.anthropic.claude-3-7-sonnet-20250219-v1:0`
+- **Primary**: Claude Sonnet 3.7 (Inference Profile) - `global.anthropic.claude-haiku-4-5-20251001-v1:0`
 - **Fallback**: Nova Premier (Inference Profile) - `us.amazon.nova-premier-v1:0`
 - **Safety Net**: Claude 3.5 Sonnet - `anthropic.claude-3-5-sonnet-20241022-v2:0`
 

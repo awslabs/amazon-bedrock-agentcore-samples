@@ -7,7 +7,7 @@ The application has been successfully updated to use the latest and most powerfu
 ## 🤖 **New Model Hierarchy (Inference Profiles)**
 
 ### **1. Primary Model: Claude Sonnet 3.7 (Inference Profile)**
-- **Model ID**: `us.anthropic.claude-3-7-sonnet-20250219-v1:0`
+- **Model ID**: `global.anthropic.claude-haiku-4-5-20251001-v1:0`
 - **Type**: Inference Profile
 - **Status**: ✅ **ACTIVE** (Available in us-east-1)
 - **Performance**: Latest and most capable Claude model with optimized inference
@@ -51,7 +51,7 @@ def create_bedrock_model_with_fallback(aws_region: str):
 ### **Test Results**
 ```bash
 🎯 Model Fallback Testing
-✅ Selected Model: us.anthropic.claude-3-7-sonnet-20250219-v1:0
+✅ Selected Model: global.anthropic.claude-haiku-4-5-20251001-v1:0
 🎉 Using PRIMARY inference profile: Claude Sonnet 3.7
 ✅ Agents initialized successfully
 🎯 Confirmed: Using inference profile ID
@@ -61,7 +61,7 @@ def create_bedrock_model_with_fallback(aws_region: str):
 ```json
 {
   "status": "healthy",
-  "current_model": "us.anthropic.claude-3-7-sonnet-20250219-v1:0",
+  "current_model": "global.anthropic.claude-haiku-4-5-20251001-v1:0",
   "architecture": {
     "code_generation": "Strands-Agents Agent (Claude Sonnet 3.7 Inference Profile)",
     "code_execution": "Agentcore Agent (Claude Sonnet 3.7 Inference Profile)"

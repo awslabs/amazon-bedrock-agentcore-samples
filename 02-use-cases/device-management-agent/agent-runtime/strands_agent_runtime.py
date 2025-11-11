@@ -211,7 +211,7 @@ def initialize_agent():
         # Create an agent with these tools
         try:
             logger.info("Creating Strands Agent with tools...")
-            model_id = "us.anthropic.claude-3-7-sonnet-20250219-v1:0"  # Using Claude Sonnet
+            model_id = "global.anthropic.claude-haiku-4-5-20251001-v1:0"  # Using Claude Sonnet
             model = BedrockModel(model_id=model_id)
             
             agent = Agent(

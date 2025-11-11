@@ -119,7 +119,7 @@ Once deployed with observability enabled, you gain visibility into:
 The observability primitive automatically captures these metrics without additional code changes, providing production-grade monitoring capabilities out of the box.
 
 **Foundation Models**: The system supports two providers for the Claude language models:
-- **Amazon Bedrock**: Claude 3.7 Sonnet (us.anthropic.claude-3-7-sonnet-20250219-v1:0) for AWS-integrated deployments
+- **Amazon Bedrock**: Claude 3.7 Sonnet (global.anthropic.claude-haiku-4-5-20251001-v1:0) for AWS-integrated deployments
 - **Anthropic Direct**: Claude 4 Sonnet (claude-sonnet-4-20250514) for direct API access
 
 ### Development to Production Flow

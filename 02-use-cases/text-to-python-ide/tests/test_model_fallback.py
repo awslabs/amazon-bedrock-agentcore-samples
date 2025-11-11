@@ -28,7 +28,7 @@ def test_model_availability():
         
         # Test models in priority order
         test_models = [
-            ("Claude Sonnet 3.7", "us.anthropic.claude-3-7-sonnet-20250219-v1:0"),
+            ("Claude Sonnet 3.7", "global.anthropic.claude-haiku-4-5-20251001-v1:0"),
             ("Nova Premier", "us.amazon.nova-premier-v1:0"),
             ("Claude 3.5 Sonnet", "anthropic.claude-3-5-sonnet-20241022-v2:0")
         ]

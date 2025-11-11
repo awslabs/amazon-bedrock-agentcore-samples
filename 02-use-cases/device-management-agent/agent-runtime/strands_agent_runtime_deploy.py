@@ -234,7 +234,7 @@ EnvVariables = {
     "AGENT_DESCRIPTION": os.getenv("AGENT_DESCRIPTION", "Device Management Agent for IoT devices"),
     
     # Model configuration
-    "BEDROCK_MODEL_ID": os.getenv("BEDROCK_MODEL_ID", "us.anthropic.claude-3-7-sonnet-20250219-v1:0"),
+    "BEDROCK_MODEL_ID": os.getenv("BEDROCK_MODEL_ID", "global.anthropic.claude-haiku-4-5-20251001-v1:0"),
 }
 
 # Get gateway endpoint

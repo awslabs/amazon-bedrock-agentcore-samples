@@ -118,11 +118,6 @@ export QUESTION_ANSWERS_TABLE_ARN="arn:aws:dynamodb:$(aws configure get region):
 echo "Table ARN: $QUESTION_ANSWERS_TABLE_ARN"
 ```
 
-3. **Add this policy** (replace `<account_id>` with your AWS account ID, `<question_answers_table_arn>` with the ARN from step 2, and `<agent_arn>` with your AgentCore runtime ARN):
-
-> [!NOTE]
-> The AgentCore runtime ARN has been pre-configured based on your current deployment. If you're using a different AgentCore runtime, update the ARN in the BedrockAgentCorePermissions section accordingly.
-
 ``` json
 {
     "Version": "2012-10-17",
@@ -133,12 +128,21 @@ echo "Table ARN: $QUESTION_ANSWERS_TABLE_ARN"
             "Action": [
                 "bedrock:InvokeModel"
             ],
+<<<<<<< HEAD
             "Resource": [
                 "arn:aws:bedrock:*:<account_id>:inference-profile/us.anthropic.claude-3-7-sonnet-20250219-v1:0",
                 "arn:aws:bedrock:us-east-2::foundation-model/anthropic.claude-3-7-sonnet-20250219-v1:0",
                 "arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-3-7-sonnet-20250219-v1:0",
                 "arn:aws:bedrock:us-west-2::foundation-model/anthropic.claude-3-7-sonnet-20250219-v1:0"
             ]
+=======
+			"Resource": [
+				"arn:aws:bedrock:*:<account_id>:inference-profile/global.anthropic.claude-haiku-4-5-20251001-v1:0",
+				"arn:aws:bedrock:us-east-2::foundation-model/anthropic.claude-3-7-sonnet-20250219-v1:0",
+				"arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-3-7-sonnet-20250219-v1:0",
+				"arn:aws:bedrock:us-west-2::foundation-model/anthropic.claude-3-7-sonnet-20250219-v1:0"
+			]
+>>>>>>> 7703e34 (update model id to haiku 4.5)
         },
         {
             "Sid": "DynamoDB",

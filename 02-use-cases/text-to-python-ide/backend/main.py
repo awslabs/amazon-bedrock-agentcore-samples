@@ -768,7 +768,7 @@ def create_bedrock_model_with_fallback(aws_region: str):
         return _model_cache[cache_key]
     
     # Primary model: Claude Sonnet 3.7 (Inference Profile)
-    primary_model_id = "us.anthropic.claude-3-7-sonnet-20250219-v1:0"
+    primary_model_id = "global.anthropic.claude-haiku-4-5-20251001-v1:0"
     fallback_model_id = "us.amazon.nova-premier-v1:0"
     default_model_id = "anthropic.claude-3-5-sonnet-20241022-v2:0"
     
