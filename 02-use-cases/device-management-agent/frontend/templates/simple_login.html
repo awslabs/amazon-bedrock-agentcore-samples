@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -15,6 +16,7 @@
             height: 100vh;
             margin: 0;
         }
+
         .login-container {
             background-color: white;
             border-radius: 8px;
@@ -23,27 +25,33 @@
             width: 400px;
             max-width: 90%;
         }
+
         .login-header {
             text-align: center;
             margin-bottom: 30px;
         }
+
         .login-header h1 {
             color: #232f3e;
             margin-bottom: 10px;
         }
+
         .login-header p {
             color: #666;
             margin: 0;
         }
+
         .form-group {
             margin-bottom: 20px;
         }
+
         .form-group label {
             display: block;
             margin-bottom: 5px;
             font-weight: bold;
             color: #333;
         }
+
         .form-group input {
             width: 100%;
             padding: 10px;
@@ -51,6 +59,7 @@
             border-radius: 4px;
             font-size: 16px;
         }
+
         .login-button {
             background-color: #ff9900;
             color: white;
@@ -63,13 +72,16 @@
             margin-top: 20px;
             transition: background-color 0.3s;
         }
+
         .login-button:hover {
             background-color: #e88a00;
         }
+
         .aws-logo {
             width: 120px;
             margin-bottom: 20px;
         }
+
         .error-message {
             background-color: #ffebee;
             color: #c62828;
@@ -81,6 +93,7 @@
         }
     </style>
 </head>
+
 <body>
     <div class="login-container">
         <div class="login-header">
@@ -88,14 +101,16 @@
             <h1>Device Management System</h1>
             <p>Sign in to access your device management dashboard</p>
         </div>
-        
+
         {% if error %}
         <div class="error-message">
             {{ error }}
         </div>
         {% endif %}
-        
+
         <form method="post" action="/simple-login">
+            <!-- CSRF Protection: Token validated server-side to prevent cross-site request forgery -->
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <div class="form-group">
                 <label for="username">Username</label>
                 <input type="text" id="username" name="username" required>
@@ -108,4 +123,5 @@
         </form>
     </div>
 </body>
+
 </html>

@@ -1,5 +1,33 @@
 """
-Utility functions for Device Remote Management AI Agent
+Device Management System - Utility Functions
+
+This module provides utility functions and classes for the Device Management System
+agent runtime, including AWS region configuration, Amazon Cognito token management,
+and OAuth authentication helpers.
+
+Key Components:
+    - AWS region configuration utilities
+    - CognitoTokenManager: Automatic OAuth token management with refresh
+    - Authentication helpers for MCP server communication
+    - Environment variable validation and configuration
+
+Classes:
+    CognitoTokenManager: Manages OAuth tokens with automatic refresh capability
+
+Functions:
+    get_aws_region(): Retrieve AWS region from environment variables
+    get_oauth_token(): Get valid OAuth token for MCP server authentication
+
+Environment Variables:
+    AWS_REGION: AWS region (defaults to us-west-2)
+    COGNITO_DOMAIN: Amazon Cognito domain URL
+    COGNITO_CLIENT_ID: OAuth client ID
+    COGNITO_CLIENT_SECRET: OAuth client secret
+
+Example:
+    >>> token_manager = CognitoTokenManager()
+    >>> token = token_manager.get_valid_token()
+    >>> print(f"Token: {token}")
 """
 import os
 import requests
@@ -14,15 +42,41 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 
 def get_aws_region() -> str:
-    """Get AWS region from environment variables"""
+    """
+    Retrieve AWS region from environment variables.
+    
+    Returns:
+        str: AWS region name, defaults to 'us-west-2' if not specified
+        
+    Environment Variables:
+        AWS_REGION: The AWS region to use for service calls
+    """
     return os.getenv("AWS_REGION", "us-west-2")
 
-def get_aws_region() -> str:
-    """Get AWS region from environment variables"""
-    return os.getenv("AWS_REGION", "us-west-2")
 
 class CognitoTokenManager:
-    """Manages Cognito OAuth tokens with automatic refresh"""
+    """
+    Manages Amazon Cognito OAuth tokens with automatic refresh capability.
+    
+    This class handles OAuth 2.0 client credentials flow with Amazon Cognito,
+    automatically refreshing tokens when they expire and caching valid tokens
+    to minimize authentication requests.
+    
+    Attributes:
+        token (str): Current OAuth access token
+        token_expires_at (datetime): Token expiration timestamp
+        cognito_domain (str): Amazon Cognito domain URL
+        client_id (str): OAuth client ID
+        client_secret (str): OAuth client secret
+        
+    Raises:
+        ValueError: If required environment variables are missing
+        
+    Example:
+        >>> manager = CognitoTokenManager()
+        >>> token = manager.get_valid_token()
+        >>> # Token is automatically refreshed if expired
+    """
     
     def __init__(self):
         self.token = None

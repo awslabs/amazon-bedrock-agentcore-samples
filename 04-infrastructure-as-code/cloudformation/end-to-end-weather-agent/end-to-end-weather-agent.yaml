@@ -576,8 +576,7 @@ Resources:
                   boto3
                   bedrock-agentcore
                   bedrock-agentcore-starter-toolkit
-                  browser-use==0.3.2
-                  langchain-aws>=0.1.0
+                  browser-use
                   rich
                   EOF
 
@@ -592,11 +591,86 @@ Resources:
                   import asyncio
                   from contextlib import suppress
 
+                  import shutil
+                  import sys
+                  from pathlib import Path
+                  import asyncio, os
+
+
+                  def find_browser_use_path():
+                      """Automatically find the browser_use installation path"""
+                      try:
+                          import browser_use
+                          browser_use_path = Path(browser_use.__file__).parent
+                          session_file = browser_use_path / "browser" / "session.py"
+                          return str(session_file)
+                      except ImportError:
+                          print("❌ browser_use not installed. Install with: pip install browser-use")
+                          return None
+
+                  def patch_browser_use():
+
+                      # Auto-detect file path
+                      file_path = find_browser_use_path()
+                      if not file_path:
+                          return False
+                      
+                      if not os.path.exists(file_path):
+                          print(f"❌ File not found: {file_path}")
+                          return False
+                      
+                      print(f"📁 Found browser_use at: {file_path}")
+                      
+                      # Create backup
+                      backup_path = file_path + ".backup"
+                      if not os.path.exists(backup_path):
+                          shutil.copy2(file_path, backup_path)
+                          print(f"💾 Created backup: {backup_path}")
+                      else:
+                          print(f"📋 Backup already exists: {backup_path}")
+                      
+                      # Read file
+                      with open(file_path, 'r') as f:
+                          content = f.read()
+                      
+                      # Replacement 1: Add headers check after cdp_url check
+                      old1 = "if not cdp_url:\n\t\t\tprofile_kwargs['is_local'] = True"
+                      new1 = "if not cdp_url:\n\t\t\tprofile_kwargs['is_local'] = True\n\n\t\tif headers:\n\t\t\tprofile_kwargs['headers'] = headers"
+                      
+                      if old1 in content and "if headers:\n\t\t\tprofile_kwargs['headers'] = headers" not in content:
+                          content = content.replace(old1, new1)
+                          print("✅ Added headers check")
+                      elif "if headers:\n\t\t\tprofile_kwargs['headers'] = headers" in content:
+                          print("✅ Headers check already exists")
+                      else:
+                          print("⚠️ Headers check pattern not found")
+                      
+                      # Replacement 2: Add headers to CDPClient
+                      old2 = "self._cdp_client_root = CDPClient(self.cdp_url)"
+                      new2 = "self._cdp_client_root = CDPClient(self.cdp_url,  additional_headers=self.browser_profile.headers)"
+                      
+                      if old2 in content:
+                          content = content.replace(old2, new2)
+                          print("✅ Added headers to CDPClient")
+                      elif "additional_headers=self.browser_profile.headers" in content:
+                          print("✅ CDPClient headers already exists")
+                      else:
+                          print("⚠️ CDPClient pattern not found")
+                      
+                      # Write back
+                      with open(file_path, 'w') as f:
+                          f.write(content)
+                      
+                      print("🎉 Patching complete!")
+                      return True
+
+                  patch_browser_use()
+
                   from bedrock_agentcore.tools.browser_client import BrowserClient
+                  from browser_use.llm import ChatAnthropicBedrock, ChatAWSBedrock
                   from browser_use import Agent as BrowserAgent
-                  from browser_use.browser.session import BrowserSession
-                  from browser_use.browser import BrowserProfile
-                  from langchain_aws import ChatBedrockConverse
+                  from browser_use import Browser, BrowserProfile
+
                   from bedrock_agentcore.tools.code_interpreter_client import CodeInterpreter
                   from bedrock_agentcore.memory import MemoryClient
                   from rich.console import Console
@@ -608,11 +682,11 @@ Resources:
                   console = Console()
 
                   # Configuration
-                  BROWSER_ID = os.getenv('BROWSER_ID', "agentcore_dev_browser-Df3lyxkbjo")
-                  CODE_INTERPRETER_ID = os.getenv('CODE_INTERPRETER_ID', "agentcore_dev_code_interpreter-IqIg8bqnKn")
-                  MEMORY_ID = os.getenv('MEMORY_ID', "agentcore_dev_TestAgentCoreMemory-N7LCAH8ZCK")
+                  BROWSER_ID = os.getenv('BROWSER_ID', "aws.browser.v1")
+                  CODE_INTERPRETER_ID = os.getenv('CODE_INTERPRETER_ID', "aws.codeinterpreter.v1")
+                  MEMORY_ID = os.getenv('MEMORY_ID', "")
                   RESULTS_BUCKET = os.getenv('RESULTS_BUCKET', "default-results-bucket")
-                  region = 'us-west-2'
+                  region = os.getenv('AWS_REGION','us-west-2')
 
                   # Async helper functions
                   async def run_browser_task(browser_session, bedrock_chat, task: str) -> str:
@@ -652,7 +726,7 @@ Resources:
                               timeout=150000,
                           )
                           
-                          browser_session = BrowserSession(
+                          browser_session = Browser(
                               cdp_url=ws_url,
                               browser_profile=browser_profile,
                               keep_alive=True
@@ -661,9 +735,10 @@ Resources:
                           console.print("[cyan]🔄 Initializing browser session...[/cyan]")
                           await browser_session.start()
                           
-                          bedrock_chat = ChatBedrockConverse(
-                              model_id="us.anthropic.claude-3-7-sonnet-20250219-v1:0",
-                              region_name="us-west-2"
+                          # Create ChatBedrockConverse once
+                          bedrock_chat = ChatAnthropicBedrock(
+                              model='us.anthropic.claude-sonnet-4-5-20250929-v1:0',
+                              aws_region=region
                           )
                           
                           console.print("[green]✅ Browser session initialized and ready[/green]")
@@ -912,8 +987,8 @@ Resources:
                   RUN pip install -r requirements.txt
                   RUN pip install aws-opentelemetry-distro>=0.10.1
 
-                  ENV AWS_REGION=us-west-2
-                  ENV AWS_DEFAULT_REGION=us-west-2
+                  # ENV AWS_REGION=us-west-2
+                  # ENV AWS_DEFAULT_REGION=us-west-2
 
                   # Create non-root user
                   RUN useradd -m -u 1000 bedrock_agentcore
@@ -988,6 +1063,7 @@ Resources:
         CODE_INTERPRETER_ID: !GetAtt CodeInterpreterTool.CodeInterpreterId
         MEMORY_ID: !GetAtt BasicMemory.MemoryId
         RESULTS_BUCKET: !Ref ResultsBucket
+        AWS_REGION: !Sub "${AWS::Region}"
 
 
   # Browser Tool
@@ -1038,6 +1114,69 @@ Resources:
       MemoryId: !GetAtt BasicMemory.MemoryId
       Region: !Ref AWS::Region
 
+  # ========================================================================
+  # Enanbling the obeservability 
+  # ========================================================================
+
+  # CloudWatch Log Group for vended log delivery
+  BedrockAgentCoreLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/vendedlogs/bedrock-agentcore/${AgentRuntime.AgentRuntimeId}'
+      RetentionInDays: 14
+
+  # Delivery Source for Application Logs
+  LogsDeliverySource:
+    Type: AWS::Logs::DeliverySource
+    Properties:
+      Name: !Sub '${AgentRuntime.AgentRuntimeId}-logs-source'
+      LogType: 'APPLICATION_LOGS'
+      ResourceArn: !GetAtt AgentRuntime.AgentRuntimeArn
+    DependsOn:
+      - AgentRuntime
+
+  # Delivery Destination for Logs (CloudWatch Logs)
+  LogsDeliveryDestination:
+    Type: AWS::Logs::DeliveryDestination
+    Properties:
+      Name: !Sub '${AgentRuntime.AgentRuntimeId}-logs-destination'
+      DeliveryDestinationType: 'CWL'
+      DestinationResourceArn: !GetAtt BedrockAgentCoreLogGroup.Arn
+
+  # Delivery for Logs (connects logs source to logs destination)
+  LogsDelivery:
+    Type: AWS::Logs::Delivery
+    Properties:
+      DeliverySourceName: !Ref LogsDeliverySource
+      DeliveryDestinationArn: !GetAtt LogsDeliveryDestination.Arn
+    DependsOn:
+      - LogsDeliverySource
+      - LogsDeliveryDestination
+
+  # Delivery Source for Traces
+  TracesDeliverySource:
+    Type: AWS::Logs::DeliverySource
+    Properties:
+      Name: !Sub '${AgentRuntime.AgentRuntimeId}-traces-source'
+      LogType: 'TRACES'
+      ResourceArn: !GetAtt AgentRuntime.AgentRuntimeArn
+
+  # Delivery Destination for Traces (X-Ray)
+  TracesDeliveryDestination:
+    Type: AWS::Logs::DeliveryDestination
+    Properties:
+      Name: !Sub '${AgentRuntime.AgentRuntimeId}-traces-destination'
+      DeliveryDestinationType: 'XRAY'
+
+  # Delivery for Traces (connects traces source to traces destination)
+  TracesDelivery:
+    Type: AWS::Logs::Delivery
+    Properties:
+      DeliverySourceName: !Ref TracesDeliverySource
+      DeliveryDestinationArn: !GetAtt TracesDeliveryDestination.Arn
+    DependsOn:
+      - TracesDeliverySource
+      - TracesDeliveryDestination
 # ============================================================================
 # OUTPUTS SECTION - ORGANIZED BY MODULE
 # ============================================================================

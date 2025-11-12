@@ -226,6 +226,14 @@ pyrightconfig.json
 lambda.zip
 .kiro/
 
+### Customer Support Assistant specific
+02-use-cases/customer-support-assistant/.agentcore.json
+02-use-cases/customer-support-assistant/.cognito_access_token
+02-use-cases/customer-support-assistant/.scratchpad/
+02-use-cases/customer-support-assistant/gateway-config.json
+02-use-cases/customer-support-assistant/.bedrock_agentcore.yaml
+02-use-cases/customer-support-assistant/.agentcore.yaml
+02-use-cases/customer-support-assistant/scripts/get_cognito_token.sh
 ### CDK artifacts
 cdk.out/
 ### Bedrock AgentCore ###
