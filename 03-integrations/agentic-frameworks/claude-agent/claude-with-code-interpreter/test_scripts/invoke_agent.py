@@ -7,7 +7,7 @@ from botocore.exceptions import ClientError, ReadTimeoutError
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-agent_arn = "arn:aws:bedrock-agentcore:us-west-2:901293660432:runtime/claude_ci_agent-xsW5gEGhrq"
+agent_arn = "<agent-arn>"
 
 # Initialize the Amazon Bedrock AgentCore client
 agent_core_client = boto3.client("bedrock-agentcore")
