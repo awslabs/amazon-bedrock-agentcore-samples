@@ -134,13 +134,33 @@ Resources:
   CodeBuildCacheBucket:
     Type: AWS::S3::Bucket
     DeletionPolicy: Delete
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W51
+            reason: "Bucket policy not required - using IAM role-based access control"
+          - id: W35
+            reason: "Access logging not required for temporary build cache - data is not sensitive"
     Properties:
-      BucketName: !Sub '${AWS::StackName}-codebuild-cache-${AWS::AccountId}'
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      VersioningConfiguration:
+        Status: Enabled
       LifecycleConfiguration:
         Rules:
           - Id: DeleteOldCacheAfter7Days
             Status: Enabled
             ExpirationInDays: 7
+          - Id: DeleteOldVersionsAfter1Day
+            Status: Enabled
+            NoncurrentVersionExpirationInDays: 1
       Tags:
         - Key: Name
           Value: !Sub '${AWS::StackName}-CodeBuild-Cache'
@@ -240,7 +260,6 @@ Resources:
                 - pwd
                 - ls -la
                 - echo "Navigating to agent directory..."
-                - cd 02-use-cases/A2A-multi-agent-incident-response/
                 - cd ${AGENT_DIRECTORY}
                 - echo "Contents of agent directory:"
                 - ls -la
@@ -251,14 +270,9 @@ Resources:
                 - echo "Image will be tagged as ${IMAGE_TAG}"
             build:
               commands:
-                - echo "Starting parallel Docker build with cache and ECR authentication..."
+                - echo "Starting parallel Docker build and ECR authentication..."
                 - |
-                  docker buildx build \
-                    --platform linux/arm64 \
-                    --cache-from type=local,src=/root/.cache/docker \
-                    --cache-to type=local,dest=/root/.cache/docker,mode=max \
-                    --load \
-                    -t bedrock-agentcore-arm64 . &
+                  docker build --platform linux/arm64 -t bedrock-agentcore-arm64 . &
                   BUILD_PID=$!
                   aws ecr get-login-password --region $AWS_DEFAULT_REGION | \
                   docker login --username AWS --password-stdin $ECR_REPOSITORY_URI &

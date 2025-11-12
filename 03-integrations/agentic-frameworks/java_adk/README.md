@@ -57,9 +57,11 @@ cd 03-integrations/agentic-frameworks/java_adk
 
 ### Google API Key
 
+> [!IMPORTANT]  
+> Make sure to replace `<ValidAPIKey>` with valid API key from [Google](https://ai.google.dev/gemini-api/docs/api-key).
+
 ```bash
 export GOOGLE_API_KEY="<ValidAPIKey>"
-export AGENT_NAME="adkjavaagent"
 ```
 
 ### Build and Run
@@ -78,7 +80,7 @@ The application will start on `http://localhost:8080`
 ```bash
 curl -X POST http://localhost:8080/invocations \
   -H "Content-Type: application/json" \
-  -H "X-Amzn-Bedrock-AgentCore-Runtime-Session-Id: gfmeoagmreaklgmrkleafremoigrmtesogmtrskhmtkrlshmt"
+  -H "X-Amzn-Bedrock-AgentCore-Runtime-Session-Id: gfmeoagmreaklgmrkleafremoigrmtesogmtrskhmtkrlshmt" \
   -d '{"prompt": "Hello, how are you?"}'
 ```
 
@@ -92,6 +94,9 @@ curl http://localhost:8080/ping
 
 ### Step 1: Deploy CloudFormation Stack
 
+> [!IMPORTANT]  
+> Make sure to replace `<ValidAPIKey>` with valid API key from [Google](https://ai.google.dev/gemini-api/docs/api-key).
+
 ```bash
 # Deploy the CloudFormation stack
 aws cloudformation create-stack \
@@ -99,8 +104,8 @@ aws cloudformation create-stack \
   --template-body file://cloudformation/github-source.yaml \
   --capabilities CAPABILITY_IAM \
   --parameters \
-    ParameterKey=AgentName,ParameterValue=${AGENT_NAME} \
-    ParameterKey=GoogleApiKey,ParameterValue=${GOOGLE_API_KEY} \
+    ParameterKey=AgentName,ParameterValue=adkjavaagent \
+    ParameterKey=GoogleApiKey,ParameterValue=<ValidAPIKey>
 
 # Wait for stack creation to complete
 aws cloudformation wait stack-create-complete \
@@ -120,14 +125,16 @@ Once your agent is deployed, you can test it using the integration tests.
 ### Step 1: Get Agent Runtime ARN from SSM Parameter Store
 
 ```bash
-# Export the ARN directly (replace 'google-adk-agent' with your agent name)
+# Export the ARN directly (replace 'adkjavaagent' with your agent name)
 export AGENT_RUNTIME_ARN=$(aws ssm get-parameter \
-  --name "/hostagent/agentcore/google-adk-agent/runtime-arn" \
+  --name "/hostagent/agentcore/adkjavaagent/runtime-arn" \
   --query "Parameter.Value" \
   --output text )
 
 # Verify it's set
 echo $AGENT_RUNTIME_ARN
+
+export AWS_REGION="us-west-2"
 ```
 
 ### Step 2: Run Integration Tests
