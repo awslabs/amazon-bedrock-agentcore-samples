@@ -19,7 +19,7 @@ class ModelConfig(BaseModel):
 
     # Anthropic model IDs
     anthropic_model_id: str = Field(
-        default="claude-sonnet-4-20250514",
+        default="claude-haiku-4-5-20251001",
         description="Default Anthropic Claude model ID",
     )
 

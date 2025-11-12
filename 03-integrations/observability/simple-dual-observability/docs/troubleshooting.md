@@ -394,9 +394,7 @@ aws logs filter-log-events \
 
 # 2. Use faster model
 # Edit agent/weather_time_agent.py:
-# model_id = "us.anthropic.claude-haiku-4-5-20251001-v1:0"  # Fast
-# vs
-# model_id = "us.anthropic.claude-3-5-sonnet-20241022-v2:0"  # Slower but better
+# model_id = "global.anthropic.claude-haiku-4-5-20251001-v1:0"  # Recommended
 
 # 3. Optimize tool execution
 # Review tools/*.py for slow operations
