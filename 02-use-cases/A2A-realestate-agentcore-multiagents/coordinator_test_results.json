@@ -1,0 +1,57 @@
+[
+  {
+    "name": "Simple Property Search",
+    "prompt": "Find me apartments in New York under $4000 per month",
+    "error": "An error occurred (ServiceUnavailableException) when calling the ConverseStream operation (reached max retries: 4): Too many connections, please wait before trying again.",
+    "success": false,
+    "timestamp": "2025-11-11T13:32:17.564166"
+  },
+  {
+    "name": "Get Property Details",
+    "prompt": "Show me details for property PROP003",
+    "response": "Here are the details for **Property PROP003**:\n\n## Luxury Penthouse - San Francisco\n\n**Property ID:** PROP003  \n**Location:** San Francisco, CA  \n**Status:** Available \u2713\n\n### Pricing\n- **Monthly Rent:** $8,500\n\n### Property Details\n- **Type:** Apartment\n- **Bedrooms:** 3\n- **Bathrooms:** 3\n- **Size:** 2,500 sq ft\n\n### Amenities\n- Gym\n- Concierge service\n- Rooftop terrace\n- Parking\n\n### Description\nExclusive penthouse with panoramic bay views and premium finishes.\n\nThis is a luxurious 3-bedroom penthouse in San Francisco with stunning bay views and top-tier amenities. Would you like to book this property or search for other options?\n",
+    "duration": 28.494843,
+    "success": true,
+    "timestamp": "2025-11-11T13:32:48.060549"
+  },
+  {
+    "name": "Multi-Criteria Search",
+    "prompt": "I'm looking for a house with at least 3 bedrooms in Austin, Texas, budget around $3000",
+    "response": "I apologize for the continued technical difficulties with the Property Search Agent. The system is experiencing intermittent issues that are preventing me from retrieving the listings for houses in Austin, Texas with 3+ bedrooms around your $3,000 budget.\n\n**What you're looking for:**\n- Location: Austin, Texas\n- Type: House\n- Bedrooms: At least 3\n- Budget: Around $3,000/month\n\nIf you have a specific property ID you'd like to check (like the PROP003 you asked about earlier), I can try to retrieve those details. Otherwise, you may want to:\n1. Try your search again in a few moments\n2. Let me know if you'd like to search in a different location\n3. Check if there are any specific property IDs you'd like me to look up\n\nI'm sorry for the inconvenience!\n",
+    "duration": 74.988492,
+    "success": true,
+    "timestamp": "2025-11-11T13:34:05.050429"
+  },
+  {
+    "name": "Create Property Booking",
+    "prompt": "I want to book property PROP001 for Jane Smith, email jane.smith@example.com, phone 555-9876, move-in date 2025-06-15, 12 month lease",
+    "response": "The booking system indicates that the move-in date of 2025-06-15 appears to be in the past. Could you please provide a future move-in date for the booking?\n\nOnce you provide an updated move-in date, I'll process the booking for:\n- **Property:** PROP001\n- **Tenant:** Jane Smith\n- **Email:** jane.smith@example.com\n- **Phone:** 555-9876\n- **Lease Term:** 12 months\n\nPlease provide the new move-in date in YYYY-MM-DD format.\n",
+    "duration": 19.238416,
+    "success": false,
+    "timestamp": "2025-11-11T13:34:26.290104"
+  },
+  {
+    "name": "Check Booking Status",
+    "prompt": "Check the status of my booking for jane.smith@example.com",
+    "response": "I checked the booking status for **jane.smith@example.com** and there are currently **no bookings** found in the system.\n\nThis makes sense since we weren't able to complete the booking for PROP001 earlier due to the move-in date issue. \n\nWould you like to:\n1. **Complete the booking** for PROP001 with a future move-in date?\n2. **Search for properties** that might interest Jane Smith?\n3. Check a different email address?\n\nJust let me know how you'd like to proceed!\n",
+    "duration": 15.556468,
+    "success": true,
+    "timestamp": "2025-11-11T13:34:43.854922"
+  },
+  {
+    "name": "Search and Book Workflow",
+    "prompt": "Find me a luxury property in San Francisco, and if you find the penthouse (PROP003), book it for Michael Johnson, email michael.j@example.com, phone 555-1111, move-in 2025-07-01",
+    "response": "Great news! I found the luxury penthouse PROP003 in San Francisco and it's **available**! Here are the details:\n\n## Luxury Penthouse - PROP003\n\n**Location:** San Francisco, CA  \n**Status:** \u2713 Available  \n\n**Pricing:** $8,500/month\n\n**Specifications:**\n- Type: Apartment\n- Bedrooms: 3\n- Bathrooms: 3\n- Size: 2,500 sq ft\n\n**Amenities:**\n- Gym\n- Concierge service\n- Rooftop terrace\n- Parking\n\n**Description:**\nExclusive penthouse with panoramic bay views and premium finishes.\n\n---\n\n**Booking Issue:** The system indicates that the move-in date of 2025-07-01 appears to be in the past. Could you please provide a future move-in date for Michael Johnson's booking?\n\nOnce you provide an updated move-in date, I'll complete the booking for:\n- **Tenant:** Michael Johnson\n- **Email:** michael.j@example.com\n- **Phone:** 555-1111\n- **Property:** PROP003 (Luxury Penthouse)\n",
+    "duration": 35.718967,
+    "success": true,
+    "timestamp": "2025-11-11T13:35:21.574918"
+  },
+  {
+    "name": "List Customer Bookings",
+    "prompt": "Show me all bookings for customer email jane.smith@example.com",
+    "response": "I checked the system for bookings associated with **jane.smith@example.com** and found:\n\n**No bookings found** \u274c\n\nThis customer doesn't have any bookings in the system at this time. This could mean:\n- No bookings have been completed yet\n- There are no active bookings for this email address\n\nWould you like to:\n1. **Create a new booking** for Jane Smith?\n2. **Search for properties** that might interest her?\n3. **Check a different email address**?\n\nLet me know how I can help!\n",
+    "duration": 16.678157,
+    "success": true,
+    "timestamp": "2025-11-11T13:35:40.254274"
+  }
+]
