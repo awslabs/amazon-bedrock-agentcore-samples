@@ -38,6 +38,10 @@ USER bedrock_agentcore
 
 EXPOSE 8080
 
+# Add health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+  CMD python -c "import socket; sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM); result = sock.connect_ex(('localhost', 8080)); sock.close(); exit(0 if result == 0 else 1)"
+
 # Use the full module path
 
 CMD ["opentelemetry-instrument", "python", "-m", "strands_agent_runtime"]

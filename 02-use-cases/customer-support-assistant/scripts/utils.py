@@ -5,8 +5,16 @@ import os
 from typing import Dict, Any
 
 
+def _get_boto3_client(service_name: str):
+    """Get boto3 client with region from environment or default session."""
+    region = os.getenv("AWS_REGION") or boto3.session.Session().region_name
+    if not region:
+        raise ValueError("AWS_REGION must be set either as environment variable or in AWS config")
+    return boto3.client(service_name, region_name=region)
+
+
 def get_ssm_parameter(name: str, with_decryption: bool = True) -> str:
-    ssm = boto3.client("ssm")
+    ssm = _get_boto3_client("ssm")
 
     response = ssm.get_parameter(Name=name, WithDecryption=with_decryption)
 
@@ -16,7 +24,7 @@ def get_ssm_parameter(name: str, with_decryption: bool = True) -> str:
 def put_ssm_parameter(
     name: str, value: str, parameter_type: str = "String", with_encryption: bool = False
 ) -> None:
-    ssm = boto3.client("ssm")
+    ssm = _get_boto3_client("ssm")
 
     put_params = {
         "Name": name,
@@ -32,7 +40,7 @@ def put_ssm_parameter(
 
 
 def delete_ssm_parameter(name: str) -> None:
-    ssm = boto3.client("ssm")
+    ssm = _get_boto3_client("ssm")
     try:
         ssm.delete_parameter(Name=name)
     except ssm.exceptions.ParameterNotFound:
@@ -48,17 +56,19 @@ def load_api_spec(file_path: str) -> list:
 
 
 def get_aws_region() -> str:
-    session = boto3.session.Session()
-    return session.region_name
+    region = os.getenv("AWS_REGION") or boto3.session.Session().region_name
+    if not region:
+        raise ValueError("AWS_REGION must be set either as environment variable or in AWS config")
+    return region
 
 
 def get_aws_account_id() -> str:
-    sts = boto3.client("sts")
+    sts = _get_boto3_client("sts")
     return sts.get_caller_identity()["Account"]
 
 
 def get_cognito_client_secret() -> str:
-    client = boto3.client("cognito-idp")
+    client = _get_boto3_client("cognito-idp")
     response = client.describe_user_pool_client(
         UserPoolId=get_ssm_parameter("/app/customersupport/agentcore/userpool_id"),
         ClientId=get_ssm_parameter("/app/customersupport/agentcore/machine_client_id"),

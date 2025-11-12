@@ -3,7 +3,7 @@
 > [!IMPORTANT]
 > The examples provided in this repository are for experimental and educational purposes only. They demonstrate concepts and techniques but are not intended for direct use in production environments.
 
-This is a customer support agent implementation using AWS Bedrock AgentCore framework. The system provides an AI-powered customer support interface with capabilities for warranty checking, customer profile management, Google calendar integration, and Amazon Bedrock Knowledge Base retrieval.
+This is a customer support agent implementation using Amazon Bedrock AgentCore framework. The system provides an AI-powered customer support interface with capabilities for warranty checking, customer profile management, Google calendar integration, and Amazon Bedrock Knowledge Base retrieval.
 
 ![architecture](./images/architecture.png)
 
@@ -52,17 +52,117 @@ This is a customer support agent implementation using AWS Bedrock AgentCore fram
    aws configure
    ```
 
-3. **Bedrock Model Access**: Enable access to Amazon Bedrock Anthropic Claude 4.0 models in your AWS region
+3. **IAM Permissions**: Required IAM permissions for deployment and operation
+
+   Your AWS user or role needs the following permissions to successfully deploy and run this sample:
+
+   ```json
+   {
+       "Version": "2012-10-17",
+       "Statement": [
+           {
+               "Sid": "AllowS3VectorOperations",
+               "Effect": "Allow",
+               "Action": [
+                   "s3vectors:*"
+               ],
+               "Resource": "*"
+           },
+           {
+               "Sid": "AllowSSMParameterOperations",
+               "Effect": "Allow",
+               "Action": [
+                   "ssm:PutParameter",
+                   "ssm:GetParameter",
+                   "ssm:GetParameters",
+                   "ssm:GetParametersByPath",
+                   "ssm:DeleteParameter",
+                   "ssm:DeleteParameters",
+                   "ssm:DescribeParameters",
+                   "ssm:AddTagsToResource"
+               ],
+               "Resource": "*"
+           },
+           {
+               "Sid": "AllowDynamoDBOperations",
+               "Effect": "Allow",
+               "Action": [
+                   "dynamodb:DescribeTable",
+                   "dynamodb:CreateTable",
+                   "dynamodb:DeleteTable",
+                   "dynamodb:UpdateTable",
+                   "dynamodb:PutItem",
+                   "dynamodb:GetItem",
+                   "dynamodb:UpdateItem",
+                   "dynamodb:DeleteItem",
+                   "dynamodb:Query",
+                   "dynamodb:Scan",
+                   "dynamodb:BatchGetItem",
+                   "dynamodb:BatchWriteItem",
+                   "dynamodb:DescribeTimeToLive",
+                   "dynamodb:UpdateTimeToLive",
+                   "dynamodb:TagResource",
+                   "dynamodb:UntagResource",
+                   "dynamodb:ListTagsOfResource",
+                   "dynamodb:UpdateContinuousBackups",
+                   "dynamodb:DescribeContinuousBackups"
+               ],
+               "Resource": "*"
+           },
+           {
+               "Sid": "AllowCognitoOperations",
+               "Effect": "Allow",
+               "Action": [
+                   "cognito-idp:CreateUserPool",
+                   "cognito-idp:DeleteUserPool",
+                   "cognito-idp:DescribeUserPool",
+                   "cognito-idp:UpdateUserPool",
+                   "cognito-idp:CreateUserPoolClient",
+                   "cognito-idp:DeleteUserPoolClient",
+                   "cognito-idp:DescribeUserPoolClient",
+                   "cognito-idp:UpdateUserPoolClient",
+                   "cognito-idp:CreateGroup",
+                   "cognito-idp:DeleteGroup",
+                   "cognito-idp:GetGroup",
+                   "cognito-idp:UpdateGroup",
+                   "cognito-idp:ListGroups",
+                   "cognito-idp:CreateResourceServer",
+                   "cognito-idp:DeleteResourceServer",
+                   "cognito-idp:DescribeResourceServer",
+                   "cognito-idp:UpdateResourceServer",
+                   "cognito-idp:SetUserPoolMfaConfig",
+                   "cognito-idp:TagResource",
+                   "cognito-idp:UntagResource",
+                   "cognito-idp:ListTagsForResource"
+               ],
+               "Resource": "*"
+           }
+       ]
+   }
+   ```
+
+   **Additional Permissions**: Consider adding the `AmazonBedrockFullAccess` managed policy for complete Amazon Bedrock access.
+
+   **Note**: The permissions above use `"Resource": "*"` for simplicity. In production environments, you should scope these down to specific resources following the principle of least privilege.
+
+4. **Bedrock Model Access**: Enable access to Amazon Bedrock Anthropic Claude 4.0 models in your AWS region
    - Navigate to [Amazon Bedrock Console](https://console.aws.amazon.com/bedrock/)
    - Go to "Model access" and request access to:
      - Anthropic Claude 4.0 Sonnet model
      - Anthropic Claude 3.5 Haiku model
    - [Bedrock Model Access Guide](https://docs.aws.amazon.com/bedrock/latest/userguide/model-access.html)
 
-4. **Python 3.10+**: Required for running the application
+5. **Python 3.10+**: Required for running the application
    - [Python Downloads](https://www.python.org/downloads/)
 
-5. **Create OAuth 2.0 credentials for calendar access** : For Google Calendar integration
+6. **uv**: Modern Python package installer and resolver
+   - [Install uv](https://github.com/astral-sh/uv)
+
+   ```bash
+   curl -LsSf https://astral.sh/uv/install.sh | sh
+   ```
+
+7. **Create OAuth 2.0 credentials for calendar access** : For Google Calendar integration
    - Follow [Google OAuth Setup](./prerequisite/google_oauth_setup.md)
 
 ## Deploy
@@ -70,10 +170,12 @@ This is a customer support agent implementation using AWS Bedrock AgentCore fram
 1. **Create infrastructure**
 
     ```bash
-    python -m venv .venv
-    source .venv/bin/activate
-    pip install -r dev-requirements.txt
+    # Set AWS region (default is us-east-1)
+    export AWS_DEFAULT_REGION=us-east-1
 
+    # Install dependencies using uv
+    uv sync
+    source .venv/bin/activate
     chmod +x scripts/prereq.sh
     ./scripts/prereq.sh
 
@@ -81,13 +183,19 @@ This is a customer support agent implementation using AWS Bedrock AgentCore fram
     ./scripts/list_ssm_parameters.sh
     ```
 
+    > [!NOTE]
+    > The deployment defaults to `us-east-1` region. To deploy to a different region, set the `AWS_DEFAULT_REGION` environment variable before running the scripts. For example, to deploy to `us-west-2`:
+    > ```bash
+    > export AWS_DEFAULT_REGION=us-west-2
+    > ```
+
     > [!CAUTION]
     > Please prefix all the resource name with `customersupport`.
 
 2. **Create Agentcore Gateway**
 
     ```bash
-    python scripts/agentcore_gateway.py create --name customersupport-gw
+    uv run python scripts/agentcore_gateway.py create --name customersupport-gw
     ```
 
 3. **Setup Agentcore Identity**
@@ -95,9 +203,9 @@ This is a customer support agent implementation using AWS Bedrock AgentCore fram
     - **Setup Cognito Credential Provider**
 
     ```bash
-    python scripts/cognito_credentials_provider.py create --name customersupport-gateways
+    uv run python scripts/cognito_credentials_provider.py create --name customersupport-gateways
 
-    python test/test_gateway.py --prompt "Check warranty with serial number MNO33333333"
+    uv run python test/test_gateway.py --prompt "Check warranty with serial number MNO33333333"
     ```
 
     - **Setup Google Credential Provider**
@@ -105,19 +213,19 @@ This is a customer support agent implementation using AWS Bedrock AgentCore fram
     Follow instructions to setup [Google Credentials](./prerequisite/google_oauth_setup.md).
 
     ```bash
-    python scripts/google_credentials_provider.py create --name customersupport-google-calendar
+    uv run python scripts/google_credentials_provider.py create --name customersupport-google-calendar
 
-    python test/test_google_tool.py
+    uv run python test/test_google_tool.py
     ```
 
 4. **Create Memory**
 
     ```bash
-    python scripts/agentcore_memory.py create --name customersupport
+    uv run python scripts/agentcore_memory.py create --name customersupport
 
-    python test/test_memory.py load-conversation
-    python test/test_memory.py load-prompt "My preference of gaming console is V5 Pro"
-    python test/test_memory.py list-memory
+    uv run python test/test_memory.py load-conversation
+    uv run python test/test_memory.py load-prompt "My preference of gaming console is V5 Pro"
+    uv run python test/test_memory.py list-memory
     ```
 
 5. **Setup Agent Runtime**
@@ -145,7 +253,7 @@ This is a customer support agent implementation using AWS Bedrock AgentCore fram
 
   agentcore launch
 
-  python test/test_agent.py customersupport<AgentName> -p "Hi"
+  uv run python test/test_agent.py customersupport<AgentName> -p "Hi"
   ```
 
   ![code](./images/code.png)
@@ -156,7 +264,7 @@ This is a customer support agent implementation using AWS Bedrock AgentCore fram
 > Streamlit app should only run on port `8501`.
 
 ```bash
-streamlit run app.py --server.port 8501 -- --agent=customersupport<AgentName>
+uv run streamlit run app.py --server.port 8501 -- --agent=customersupport<AgentName>
 ```
 
 ## Sample Queries
@@ -178,18 +286,18 @@ streamlit run app.py --server.port 8501 -- --agent=customersupport<AgentName>
 #### Create Amazon Bedrock AgentCore Gateway
 
 ```bash
-python scripts/agentcore_gateway.py create --name my-gateway
-python scripts/agentcore_gateway.py create --name my-gateway --api-spec-file custom/path.json
+uv run python scripts/agentcore_gateway.py create --name my-gateway
+uv run python scripts/agentcore_gateway.py create --name my-gateway --api-spec-file custom/path.json
 ```
 
 #### Delete Amazon Bedrock AgentCore Gateway
 
 ```bash
 # Delete gateway (reads from gateway.config automatically)
-python scripts/agentcore_gateway.py delete
+uv run python scripts/agentcore_gateway.py delete
 
 # Delete with confirmation skip
-python scripts/agentcore_gateway.py delete --confirm
+uv run python scripts/agentcore_gateway.py delete --confirm
 ```
 
 ### Amazon Bedrock AgentCore Memory
@@ -197,18 +305,18 @@ python scripts/agentcore_gateway.py delete --confirm
 #### Create Amazon Bedrock AgentCore Memory
 
 ```bash
-python scripts/agentcore_memory.py create --name MyMemory
-python scripts/agentcore_memory.py create --name MyMemory --event-expiry-days 60
+uv run python scripts/agentcore_memory.py create --name MyMemory
+uv run python scripts/agentcore_memory.py create --name MyMemory --event-expiry-days 60
 ```
 
 #### Delete Amazon Bedrock AgentCore Memory
 
 ```bash
 # Delete memory (reads from SSM automatically)
-python scripts/agentcore_memory.py delete
+uv run python scripts/agentcore_memory.py delete
 
 # Delete with confirmation skip
-python scripts/agentcore_memory.py delete --confirm
+uv run python scripts/agentcore_memory.py delete --confirm
 ```
 
 ### Cognito Credentials Provider
@@ -216,20 +324,20 @@ python scripts/agentcore_memory.py delete --confirm
 #### Create Cognito Credentials Provider
 
 ```bash
-python scripts/cognito_credentials_provider.py create --name customersupport-gateways
+uv run python scripts/cognito_credentials_provider.py create --name customersupport-gateways
 ```
 
 #### Delete Cognito Credentials Provider
 
 ```bash
 # Delete provider (reads name from SSM automatically)
-python scripts/cognito_credentials_provider.py delete
+uv run python scripts/cognito_credentials_provider.py delete
 
 # Delete specific provider by name
-python scripts/cognito_credentials_provider.py delete --name customersupport-gateways
+uv run python scripts/cognito_credentials_provider.py delete --name customersupport-gateways
 
 # Delete with confirmation skip
-python scripts/cognito_credentials_provider.py delete --confirm
+uv run python scripts/cognito_credentials_provider.py delete --confirm
 ```
 
 ### Google Credentials Provider
@@ -237,21 +345,21 @@ python scripts/cognito_credentials_provider.py delete --confirm
 #### Create Credentials Provider
 
 ```bash
-python scripts/google_credentials_provider.py create --name customersupport-google-calendar
-python scripts/google_credentials_provider.py create --name my-provider --credentials-file /path/to/credentials.json
+uv run python scripts/google_credentials_provider.py create --name customersupport-google-calendar
+uv run python scripts/google_credentials_provider.py create --name my-provider --credentials-file /path/to/credentials.json
 ```
 
 #### Delete Credentials Provider
 
 ```bash
 # Delete provider (reads name from SSM automatically)
-python scripts/google_credentials_provider.py delete
+uv run python scripts/google_credentials_provider.py delete
 
 # Delete specific provider by name
-python scripts/google_credentials_provider.py delete --name customersupport-google-calendar
+uv run python scripts/google_credentials_provider.py delete --name customersupport-google-calendar
 
 # Delete with confirmation skip
-python scripts/google_credentials_provider.py delete --confirm
+uv run python scripts/google_credentials_provider.py delete --confirm
 ```
 
 ### Agent Runtime
@@ -260,13 +368,13 @@ python scripts/google_credentials_provider.py delete --confirm
 
 ```bash
 # Delete specific agent runtime by name
-python scripts/agentcore_agent_runtime.py customersupport
+uv run python scripts/agentcore_agent_runtime.py customersupport
 
 # Preview what would be deleted without actually deleting
-python scripts/agentcore_agent_runtime.py --dry-run customersupport
+uv run python scripts/agentcore_agent_runtime.py --dry-run customersupport
 
 # Delete any agent runtime by name
-python scripts/agentcore_agent_runtime.py <agent-name>
+uv run python scripts/agentcore_agent_runtime.py <agent-name>
 ```
 
 ## Cleanup
@@ -275,11 +383,11 @@ python scripts/agentcore_agent_runtime.py <agent-name>
 chmod +x scripts/cleanup.sh
 ./scripts/cleanup.sh
 
-python scripts/google_credentials_provider.py delete
-python scripts/cognito_credentials_provider.py delete
-python scripts/agentcore_memory.py delete
-python scripts/agentcore_gateway.py delete
-python scripts/agentcore_agent_runtime.py customersupport<AgentName>
+uv run python scripts/google_credentials_provider.py delete
+uv run python scripts/cognito_credentials_provider.py delete
+uv run python scripts/agentcore_memory.py delete
+uv run python scripts/agentcore_gateway.py delete
+uv run python scripts/agentcore_agent_runtime.py customersupport<AgentName>
 
 rm .agentcore.yaml
 rm .bedrock_agentcore.yaml

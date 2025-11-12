@@ -4,7 +4,7 @@ set -e
 set -o pipefail
 
 NAMESPACE="/app/customersupport"
-REGION=$(aws configure get region)
+REGION=$(aws configure get region || echo "${AWS_DEFAULT_REGION:-us-east-1}")
 
 echo "🔍 Listing SSM parameters under namespace: $NAMESPACE/*"
 echo "📍 Region: $REGION"

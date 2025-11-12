@@ -1,11 +1,51 @@
 """
-AWS Lambda function for Device Management MCP Tools
-Implements all MCP server tools in a single Lambda function
+Device Management System - AWS Lambda Function
+
+This module implements the core backend functionality for the Device Management System
+as an AWS Lambda function. It provides MCP (Model Context Protocol) tools for managing
+IoT devices, WiFi networks, users, and activities through Amazon DynamoDB operations.
+
+The Lambda function serves as the execution engine for all device management operations,
+receiving requests from the Amazon Bedrock AgentCore Gateway and returning formatted
+responses according to the MCP protocol specification.
+
+MCP Tools Implemented:
+    - list_devices: Retrieve all devices with their status and configuration
+    - get_device_settings: Get detailed settings for a specific device
+    - list_wifi_networks: List WiFi networks configured on a device
+    - list_users: Retrieve all users in the system
+    - query_user_activity: Query user activities within a time range
+    - update_wifi_ssid: Update the SSID of a WiFi network
+    - update_wifi_security: Update the security type of a WiFi network
+
+DynamoDB Tables:
+    - Devices: Device inventory and status information
+    - DeviceSettings: Device configuration settings
+    - WifiNetworks: WiFi network configurations per device
+    - Users: User accounts and profiles
+    - UserActivities: User activity logs and audit trail
+
+Environment Variables:
+    AWS_REGION: AWS region for DynamoDB access (defaults to us-west-2)
+
+Error Handling:
+    All functions return standardized error responses with appropriate HTTP status codes
+    and descriptive error messages for debugging and user feedback.
+
+Example Lambda Event:
+    {
+        "tool_name": "list_devices",
+        "parameters": {}
+    }
+
+Example Response:
+    {
+        "statusCode": 200,
+        "body": [{"device_id": "DG-001", "name": "Device 1", ...}]
+    }
 """
 import json
-import os
 import datetime
-import uuid
 import logging
 import boto3
 from decimal import Decimal
@@ -15,28 +55,71 @@ from boto3.dynamodb.conditions import Key, Attr
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
-# Helper function to convert datetime to ISO format string
 def datetime_to_iso(dt):
+    """
+    Convert datetime object to ISO format string.
+    
+    Args:
+        dt: datetime object or other value
+        
+    Returns:
+        str: ISO format datetime string if input is datetime, otherwise original value
+    """
     if isinstance(dt, datetime.datetime):
         return dt.isoformat()
     return dt
 
-# Helper function to handle decimal serialization for DynamoDB
+
 class DecimalEncoder(json.JSONEncoder):
+    """
+    Custom JSON encoder for handling DynamoDB Decimal types.
+    
+    DynamoDB returns numeric values as Decimal objects which are not
+    JSON serializable by default. This encoder converts Decimal objects
+    to float for JSON serialization.
+    """
+    
     def default(self, o):
+        """
+        Override default JSON encoding for Decimal objects.
+        
+        Args:
+            o: Object to encode
+            
+        Returns:
+            float: If object is Decimal, return as float
+            Any: Otherwise use default JSON encoding
+        """
         if isinstance(o, Decimal):
             return float(o)
         return super(DecimalEncoder, self).default(o)
 
+
 def json_dumps(obj):
+    """
+    JSON serialize object with Decimal handling.
+    
+    Args:
+        obj: Object to serialize
+        
+    Returns:
+        str: JSON string with Decimal objects converted to float
+    """
     return json.dumps(obj, cls=DecimalEncoder)
 
-# Initialize DynamoDB resource
+
 def get_dynamodb_resource():
-    """Get DynamoDB resource based on environment"""
-    # Always use AWS DynamoDB in us-west-2
-    aws_region = 'us-west-2'
+    """
+    Initialize and return DynamoDB resource for database operations.
     
+    Returns:
+        boto3.resource: DynamoDB resource configured for us-west-2 region
+        
+    Note:
+        Always uses us-west-2 region for consistency across deployments.
+        Assumes Lambda execution role has appropriate DynamoDB permissions.
+    """
+    aws_region = 'us-west-2'
     return boto3.resource('dynamodb', region_name=aws_region)
 
 # Define table names
