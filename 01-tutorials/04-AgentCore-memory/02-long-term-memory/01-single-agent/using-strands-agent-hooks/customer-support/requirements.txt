@@ -2,5 +2,5 @@ boto3
 strands-agents
 strands-agents-tools
 ddgs
-bedrock-agentcore
-bedrock-agentcore-starter-toolkit==0.1.19
+bedrock_agentcore==1.0.3
+bedrock-agentcore-starter-toolkit==0.1.26

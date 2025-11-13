@@ -2,6 +2,6 @@ strands-agents
 duckduckgo-search
 strands-agents-tools
 uv
-bedrock-agentcore
 ddgs
-bedrock-agentcore-starter-toolkit==0.1.19
+bedrock_agentcore==1.0.3
+bedrock-agentcore-starter-toolkit==0.1.26
