@@ -1,6 +1,6 @@
 import express, { type Request, type Response } from 'express';
 import dotenv from 'dotenv';
-import { mastra } from './mastra';
+import { mastra } from './mastra/index.js';
 
 dotenv.config();
 
@@ -48,7 +48,7 @@ app.post('/invocations', async (req: Request, res: Response) => {
     console.log('Prompt:', prompt);
 
     // Get the utility agent from Mastra
-    const agent = mastra.getAgent('utility-agent');
+    const agent = mastra.getAgent('utilityAgent');
 
     if (!agent) {
       console.error('Agent not found: utility-agent');

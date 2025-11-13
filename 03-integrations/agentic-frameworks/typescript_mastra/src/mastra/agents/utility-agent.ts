@@ -17,7 +17,7 @@ export const getCurrentTimeTool = createTool({
     timezone: z.string(),
     timestamp: z.number(),
   }),
-  execute: async ({ context }) => {
+  execute: async ({ context }: { context: { timezone: string } }) => {
     const { timezone } = context;
 
     const now = new Date();
@@ -55,11 +55,11 @@ export const calculateTool = createTool({
     operation: z.string(),
     expression: z.string(),
   }),
-  execute: async ({ context }) => {
+  execute: async ({ context }: { context: { operation: "add" | "subtract" | "multiply" | "divide", a: number, b: number } }) => {
     const { operation, a, b } = context;
 
-    let result: number;
-    let expression: string;
+    let result: number = 0;
+    let expression: string = "";
 
     switch (operation) {
       case "add":
@@ -107,7 +107,7 @@ export const generateRandomNumberTool = createTool({
     min: z.number(),
     max: z.number(),
   }),
-  execute: async ({ context }) => {
+  execute: async ({ context }: { context: { min: number, max: number } }) => {
     const { min, max } = context;
 
     if (min > max) {
@@ -129,7 +129,7 @@ export const generateRandomNumberTool = createTool({
  * A helpful assistant with access to various utility tools
  */
 export const utilityAgent = new Agent({
-  name: "utility-agent",
+  name: "utilityAgent",
   instructions: `You are a helpful assistant with access to several utility tools.
 
 Your capabilities include:
