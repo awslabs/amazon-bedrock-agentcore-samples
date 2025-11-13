@@ -84,15 +84,45 @@ async function invokeAgentRuntime(
       console.log(`   Trace ID: ${response.traceId}`);
     }
 
-    // Transform the response stream to string
+    // Stream the response as chunks arrive
     if (response.response) {
-      console.log(`\n📥 Response from agent:\n`);
-      const responseText = await response.response.transformToString();
-      console.log(responseText);
+      console.log(`\n📥 Streaming response from agent:\n`);
+
+      let fullResponse = '';
+
+      // The AWS SDK response is a StreamingBlobPayloadOutputTypes
+      // We need to handle it as a Node.js Readable stream
+      const stream = response.response as any;
+
+      // Check if stream has the transformToWebStream method (AWS SDK v3 pattern)
+      if (typeof stream.transformToWebStream === 'function') {
+        const webStream = stream.transformToWebStream();
+        const reader = webStream.getReader();
+        const decoder = new TextDecoder();
+
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            const text = decoder.decode(value, { stream: true });
+            process.stdout.write(text);
+            fullResponse += text;
+          }
+        } finally {
+          reader.releaseLock();
+        }
+      } else {
+        // Fallback to transformToString if streaming not available
+        fullResponse = await response.response.transformToString();
+        console.log(fullResponse);
+      }
+
+      console.log('\n'); // New line after streaming
 
       // Try to parse as JSON for prettier output
       try {
-        const jsonResponse = JSON.parse(responseText);
+        const jsonResponse = JSON.parse(fullResponse);
         console.log(`\n📋 Parsed response:`);
         console.log(JSON.stringify(jsonResponse, null, 2));
       } catch {

@@ -16,7 +16,7 @@ Parameters:
   GitHubURL:
     Type: String
     Description: Github URL of the project
-    Default: https://github.com/EashanKaushik/amazon-bedrock-agentcore-samples-fork.git
+    Default: https://github.com/awslabs/amazon-bedrock-agentcore-samples.git
 
   AgentDirectory:
     Type: String
@@ -300,7 +300,6 @@ Resources:
             paths:
               - '/root/.m2/**/*'
               - '/root/.cache/docker/**/*'
-      SourceVersion: refs/heads/typescript-mastra
       TimeoutInMinutes: 30
       Tags:
         - Key: Name
