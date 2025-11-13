@@ -17,7 +17,12 @@ In this tutorial we will learn how to host a Java Spring AI MCP server using Ama
 
 ### Tutorial Architecture
 
-
+This Java Spring AI MCP server has two pieces:
+- A Spring AI MCP server with a single `add` tool
+- A configuration file which sets the MCP server protocol and the server port
+ 
+The Java source code for the MCP server is in the `src/main/java/com/example/DemoApplication.java` file and uses the `@McpTool` annotation to expose the `add` tool.
+The configuration file is in the `src/main/resources/application.properties` file and sets the MCP server protocol to `stateless` and the port to `8000`.
 
 ## Run Locally
 
@@ -33,7 +38,8 @@ Prereqs:
 - Docker installed
 - [Create ECR Repo](https://us-east-1.console.aws.amazon.com/ecr/private-registry/repositories/create?region=us-east-1)
 - [Auth `docker` to ECR](https://docs.aws.amazon.com/AmazonECR/latest/userguide/registry_auth.html)
-  Create and push the image to ECR:
+
+Create and push the image to ECR:
 ```
 export ECR_REPO=<your account id>.dkr.ecr.us-east-1.amazonaws.com/<your repo path>
 
@@ -45,7 +51,46 @@ docker push $ECR_REPO
 Now create an AgentCore Runtime agent from the container image:
 1. https://us-east-1.console.aws.amazon.com/bedrock-agentcore/agents/create
 2. Select the image you just pushed, in **Inbound Auth** select MCP and **Use IAM permissions**, click "Host agent"
-3. Once the agent has been created, use the Agent Sandbox to test the agent with this input:
+3. Once the agent has been created, use the Agent Sandbox to test the agent with these inputs (MCP protocol):
+    ```json
+    {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "method": "initialize",
+      "params": {
+        "protocolVersion": "2024-11-05",
+        "capabilities": {
+          "tools": {
+          }
+        },
+        "clientInfo": {
+          "name": "ExampleClient",
+          "title": "Example Client",
+          "version": "1.0.0"
+        }
+      }
+    }
     ```
-    TODO
+
+    ```json
+    {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "method": "tools/list"
+    }
+    ```
+
+    ```json
+    {
+      "jsonrpc": "2.0",
+      "id": 2,
+      "method": "tools/call",
+      "params": {
+        "name": "add",
+        "arguments": {
+          "a": 1,
+          "b": 2
+        }
+      }
+    }
     ```
