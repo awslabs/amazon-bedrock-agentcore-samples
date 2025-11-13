@@ -16,13 +16,12 @@ Parameters:
   GitHubURL:
     Type: String
     Description: Github URL of the project
-    Default: https://github.com/awslabs/amazon-bedrock-agentcore-samples.git
+    Default: https://github.com/EashanKaushik/amazon-bedrock-agentcore-samples-fork.git
 
   AgentDirectory:
     Type: String
     Description: Agent directory with Dockerfile of agent
-    Default: host_adk_agent
-
+    Default: 03-integrations/agentic-frameworks/typescript_mastra
 
 Resources:
   AgentCoreRuntimeExecutionRole:
@@ -141,7 +140,6 @@ Resources:
           - id: W35
             reason: "Access logging not required for temporary build cache - data is not sensitive"
     Properties:
-      BucketName: !Sub '${AWS::StackName}-codebuild-cache-${AWS::AccountId}'
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
@@ -260,7 +258,6 @@ Resources:
                 - pwd
                 - ls -la
                 - echo "Navigating to agent directory..."
-                - cd 02-use-cases/A2A-multi-agent-incident-response/
                 - cd ${AGENT_DIRECTORY}
                 - echo "Contents of agent directory:"
                 - ls -la
@@ -303,6 +300,7 @@ Resources:
             paths:
               - '/root/.m2/**/*'
               - '/root/.cache/docker/**/*'
+      SourceVersion: refs/heads/typescript-mastra
       TimeoutInMinutes: 30
       Tags:
         - Key: Name
