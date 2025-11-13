@@ -1,5 +1,6 @@
 import express, { type Request, type Response } from 'express';
 import dotenv from 'dotenv';
+import { mastra } from './mastra';
 
 dotenv.config();
 
@@ -19,7 +20,7 @@ app.use(express.json());
  * - X-Amzn-Bedrock-AgentCore-Runtime-RequestId: Request ID
  * - x-amzn-bedrock-agentcore-runtime-workload-accesstoken: Access token
  */
-app.post('/invocations', (req: Request, res: Response) => {
+app.post('/invocations', async (req: Request, res: Response) => {
   try {
     const sessionId = req.headers['x-amzn-bedrock-agentcore-runtime-session-id'] as string;
     const requestId = req.headers['x-amzn-requestid'] as string;
@@ -46,15 +47,34 @@ app.post('/invocations', (req: Request, res: Response) => {
 
     console.log('Prompt:', prompt);
 
-    // Simple placeholder response (we'll add Mastra.ai later)
-    const agentResponse = {
-      message: `Placeholder response for prompt: "${prompt}" (Session: ${sessionId})`,
-      timestamp: new Date().toISOString()
+    // Get the utility agent from Mastra
+    const agent = mastra.getAgent('utility-agent');
+
+    if (!agent) {
+      console.error('Agent not found: utility-agent');
+      return res.status(500).json({
+        error: 'Agent not available',
+        message: 'The utility-agent could not be loaded'
+      });
+    }
+
+    // Generate response using the Mastra agent
+    console.log('Generating response with Mastra agent...');
+    const agentResponse = await agent.generate(prompt, {
+      maxSteps: 5, // Allow up to 5 steps for tool use
+    });
+
+    console.log('Agent response generated successfully');
+    console.log('Text:', agentResponse.text);
+
+    // Return the agent's response
+    const response = {
+      message: agentResponse.text,
+      timestamp: new Date().toISOString(),
+      sessionId: sessionId,
     };
 
-    console.log('Agent response:', agentResponse.message);
-
-    res.json(agentResponse);
+    res.json(response);
   } catch (error) {
     console.error('Error processing request:', error);
     res.status(500).json({
