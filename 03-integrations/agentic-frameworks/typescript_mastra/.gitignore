@@ -1,0 +1,34 @@
+# Node.js dependencies
+node_modules/
+
+# TypeScript compiled output
+# This assumes your TypeScript output directory is named 'dist'.
+# Adjust if your 'outDir' in tsconfig.json is different.
+dist/
+build/
+*.js.map
+*.d.ts.map
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# IDE-specific files
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Operating System files
+.DS_Store # macOS
+Thumbs.db # Windows
+
+# Log files
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Other common ignored files
+coverage/ # Test coverage reports
