@@ -17,13 +17,13 @@ public final class AgentCoreHeaders {
      * Session ID header provided by AgentCore Runtime.
      * Used to maintain conversation context across multiple invocations.
      */
-    public static final String SESSION_ID_HEADER = "X-Amzn-Bedrock-AgentCore-Runtime-Session-Id";
+    public static final String SESSION_ID_HEADER = "x-amzn-bedrock-agentcore-runtime-session-id";
 
     /**
      * Request ID header provided by AgentCore Runtime.
      * Used for tracking and debugging individual requests.
      */
-    public static final String REQUEST_ID_HEADER = "X-Amzn-Bedrock-AgentCore-Runtime-Request-Id";
+    public static final String REQUEST_ID_HEADER = "x-amzn-requestid";
 
     /**
      * Workload access token header provided by AgentCore Runtime.
