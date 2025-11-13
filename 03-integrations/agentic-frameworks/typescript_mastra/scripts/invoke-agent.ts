@@ -68,6 +68,7 @@ async function invokeAgentRuntime(
     contentType: "application/json",
     accept: "application/json",
     runtimeSessionId: runtimeSessionId,
+    qualifier: "DEFAULT"
   };
 
   try {

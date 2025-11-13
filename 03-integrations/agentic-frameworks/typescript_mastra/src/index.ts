@@ -21,8 +21,8 @@ app.use(express.json());
  */
 app.post('/invocations', (req: Request, res: Response) => {
   try {
-    const sessionId = req.headers['X-Amzn-Bedrock-AgentCore-Runtime-Session-Id'] as string;
-    const requestId = req.headers['X-Amzn-Bedrock-AgentCore-Runtime-Request-Id'] as string;
+    const sessionId = req.headers['x-amzn-bedrock-agentcore-runtime-session-id'] as string;
+    const requestId = req.headers['x-amzn-requestid'] as string;
     const accessToken = req.headers['x-amzn-bedrock-agentcore-runtime-workload-accesstoken'] as string;
 
     console.log('Received request - Session ID:', sessionId);
@@ -32,7 +32,7 @@ app.post('/invocations', (req: Request, res: Response) => {
     // Validate required header
     if (!sessionId) {
       return res.status(400).json({
-        error: 'Missing required header: X-Amzn-Bedrock-AgentCore-Runtime-Session-Id'
+        error: 'Missing required header: x-amzn-bedrock-agentcore-runtime-session-id'
       });
     }
 
