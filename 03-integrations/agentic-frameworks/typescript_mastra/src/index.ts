@@ -7,6 +7,9 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 8080;
 
+// Disable Express compression for true streaming
+app.set('x-powered-by', false);
+
 // Middleware
 app.use(express.json());
 
@@ -58,23 +61,26 @@ app.post('/invocations', async (req: Request, res: Response) => {
       });
     }
 
-    // Generate response using the Mastra agent
-    console.log('Generating response with Mastra agent...');
-    const agentResponse = await agent.generate(prompt, {
+    // Stream response using the Mastra agent
+    console.log('Streaming response with Mastra agent...');
+
+    const stream = await agent.stream(prompt, {
       maxSteps: 5, // Allow up to 5 steps for tool use
     });
 
-    console.log('Agent response generated successfully');
-    console.log('Text:', agentResponse.text);
+    console.log('Stream started');
 
-    // Return the agent's response
-    const response = {
-      message: agentResponse.text,
-      timestamp: new Date().toISOString(),
-      sessionId: sessionId,
-    };
+    // Stream the response chunks to the client immediately
+    for await (const chunk of stream.textStream) {
+      res.write(chunk);
+      // Force flush the chunk immediately (if the connection supports it)
+      if (typeof (res as any).flush === 'function') {
+        (res as any).flush();
+      }
+    }
 
-    res.json(response);
+    console.log('Stream completed');
+    res.end();
   } catch (error) {
     console.error('Error processing request:', error);
     res.status(500).json({
