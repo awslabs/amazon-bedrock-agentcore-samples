@@ -5,9 +5,6 @@ import openaiSdkIcon from '../icons/openaisdk.png'
 export function Sidebar() {
   const { sessionId, agentCards } = useChat()
 
-  console.log('[SIDEBAR] agentCards:', agentCards);
-  console.log('[SIDEBAR] agentCards keys:', agentCards ? Object.keys(agentCards) : 'null');
-
   // Map agent names to their icons
   const agentIcons: Record<string, string> = {
     'monitor_agent': strandsIcon,
