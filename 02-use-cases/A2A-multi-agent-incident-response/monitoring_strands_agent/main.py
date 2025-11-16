@@ -138,12 +138,14 @@ async def capture_session_id(request: Request, call_next):
 
     # Initialize agent components if we have a session ID and haven't initialized yet
     current_session_id = MonitoringAgentContext.get_session_id()
-    actor_id = request.headers.get("x-amzn-bedrock-agentcore-runtime-custom-actorid")
-    logger.info(request.headers)
-    if not actor_id:
-        raise Exception("Actor id is not is not set")
 
     if session_id and not current_session_id:
+        actor_id = request.headers.get(
+            "x-amzn-bedrock-agentcore-runtime-custom-actorid"
+        )
+        logger.info(request.headers)
+        if not actor_id:
+            raise Exception("Actor id is set")
         async with initialization_lock:
             # Double-check after acquiring lock
             if MonitoringAgentContext.get_session_id():
