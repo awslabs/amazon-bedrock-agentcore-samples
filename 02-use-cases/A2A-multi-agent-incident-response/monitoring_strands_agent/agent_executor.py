@@ -10,32 +10,31 @@ from a2a.types import (
 )
 from a2a.utils import new_agent_text_message, new_task
 from a2a.utils.errors import ServerError
-from agent import _call_agent_stream, create_agent
-from openai.types.responses import ResponseTextDeltaEvent
 import logging
 
 logger = logging.getLogger(__name__)
 
 
-class WebSearchAgentExecutor(AgentExecutor):
+class MonitoringAgentExecutor(AgentExecutor):
     """
-    Agent executor that wraps the OpenAI-based web search agent
-    for A2A server compatibility
+    Agent executor for the Strands-based monitoring agent
     """
 
     def __init__(self):
         """Initialize the executor"""
         self._agent = None
         self._active_tasks = {}
-        logger.info("WebSearchAgentExecutor initialized")
+        logger.info("MonitoringAgentExecutor initialized")
 
-    async def _get_agent(self, session_id: str, actor_id: str):
-        """Lazily initialize and return the agent"""
-        if self._agent is None:
-            logger.info("Creating web search agent...")
-            self._agent = create_agent(session_id=session_id, actor_id=actor_id)
-            logger.info("Web search agent created successfully")
-        return self._agent
+    async def _get_agent(self):
+        """Get the agent instance (initialized in main.py)"""
+        # Import here to avoid circular dependency
+        from main import _a2a_server
+
+        if _a2a_server is None:
+            raise RuntimeError("Agent not initialized")
+
+        return _a2a_server.agent
 
     async def _execute_streaming(
         self, agent, user_message: str, updater: TaskUpdater, task_id: str
@@ -44,48 +43,27 @@ class WebSearchAgentExecutor(AgentExecutor):
         accumulated_text = ""
 
         try:
-            async for stream_event in _call_agent_stream(agent, user_message):
-                # Check if task was cancelled
-                if not self._active_tasks.get(task_id, False):
-                    logger.info(f"Task {task_id} was cancelled during streaming")
-                    return
+            # Use the strands agent's run method
+            response = agent.run(user_message)
 
-                # Handle error events
-                if "error" in stream_event:
-                    error_msg = stream_event["error"]
-                    logger.error(f"Error in stream: {error_msg}")
-                    raise Exception(error_msg)
+            # Get the final response text
+            if hasattr(response, 'content') and response.content:
+                for content_block in response.content:
+                    if hasattr(content_block, 'text'):
+                        accumulated_text += content_block.text
 
-                # Handle streaming events
-                if "event" in stream_event:
-                    event = stream_event["event"]
-                    event_type = getattr(event, "type", None)
-                    logger.info(f"Stream event type: {event_type}")
-
-                    # Only handle raw_response_event with ResponseTextDeltaEvent
-                    if event_type == "raw_response_event" and isinstance(
-                        event.data, ResponseTextDeltaEvent
-                    ):
-                        text_chunk = event.data.delta
-                        if text_chunk:
-                            accumulated_text += text_chunk
-                            logger.debug(f"Text delta: {text_chunk}")
-                            # Send incremental update
-                            await updater.update_status(
-                                TaskState.working,
-                                new_agent_text_message(
-                                    accumulated_text,
-                                    updater.context_id,
-                                    updater.task_id,
-                                ),
-                            )
-
-                    # Log other event types for debugging but don't process them
-                    else:
-                        logger.debug(f"Ignoring event type: {event_type}")
-
-            # Add final result as artifact
+            # Send final update
             if accumulated_text:
+                await updater.update_status(
+                    TaskState.working,
+                    new_agent_text_message(
+                        accumulated_text,
+                        updater.context_id,
+                        updater.task_id,
+                    ),
+                )
+
+                # Add final result as artifact
                 await updater.add_artifact(
                     [Part(root=TextPart(text=accumulated_text))],
                     name="agent_response",
@@ -112,12 +90,13 @@ class WebSearchAgentExecutor(AgentExecutor):
             headers = context.call_context.state.get("headers", {})
             session_id = headers.get("x-amzn-bedrock-agentcore-runtime-session-id")
             actor_id = headers.get("x-amzn-bedrock-agentcore-runtime-custom-actorid")
+
         if not actor_id:
-            logger.error("Session ID is not set")
-            raise Exception(error=InvalidParamsError())
+            logger.error("Actor ID is not set")
+            raise ServerError(error=InvalidParamsError())
 
         if not session_id:
-            logger.error("Actor ID is not set")
+            logger.error("Session ID is not set")
             raise ServerError(error=InvalidParamsError())
 
         # Get or create task
@@ -142,13 +121,13 @@ class WebSearchAgentExecutor(AgentExecutor):
             logger.info(f"User message: '{user_message}'")
 
             # Get the agent instance
-            agent = await self._get_agent(session_id=session_id, actor_id=actor_id)
+            agent = await self._get_agent()
 
             # Mark task as active
             self._active_tasks[task_id] = True
 
-            # Stream the agent response
-            logger.info("Calling agent with streaming...")
+            # Execute the agent
+            logger.info("Calling agent...")
             await self._execute_streaming(agent, user_message, updater, task_id)
 
             logger.info(f"Task {task_id} completed successfully")

@@ -18,9 +18,11 @@ OpenAIAgentsInstrumentor().instrument()
 env_path = Path(__file__).parent / ".env"
 load_dotenv(dotenv_path=env_path)
 
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 runtime_url = os.getenv("AGENTCORE_RUNTIME_URL", "http://127.0.0.1:9000/")
+host, port = "0.0.0.0", 9000
 
 agent_card = AgentCard(
     name="WebSearch Agent",
@@ -67,18 +69,10 @@ server = A2AStarletteApplication(agent_card=agent_card, http_handler=request_han
 app = server.build()
 
 
-@app.route("/health", methods=["GET"])
-async def health_check(request):
-    """Health check endpoint"""
-    return JSONResponse(
-        {"status": "healthy", "agent": "websearch_agent", "version": "1.0.0"}
-    )
-
-
 @app.route("/ping", methods=["GET"])
 async def ping(request):
     """Ping endpoint"""
-    return JSONResponse({"message": "pong"})
+    return JSONResponse({"status": "healthy"})
 
 
 logger.info("✅ A2A Server configured")
@@ -87,7 +81,4 @@ logger.info(f"🏥 Health check: {runtime_url}/health")
 logger.info(f"🏓 Ping: {runtime_url}/ping")
 
 if __name__ == "__main__":
-    # Run the server
-    host, port = "0.0.0.0", 9000
-
     uvicorn.run(app, host=host, port=port)
