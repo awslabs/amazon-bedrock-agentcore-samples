@@ -339,11 +339,21 @@ Resources:
         ZipFile: |
           import json
           import logging
-          import boto3
           import os
+          import sys
+          import subprocess
+
+          # Upgrade boto3 to latest version at runtime
+          subprocess.check_call([sys.executable, "-m", "pip", "install", "--upgrade", "boto3", "-t", "/tmp"])
+          sys.path.insert(0, "/tmp")
+
+          import boto3
+          import botocore
 
           logger = logging.getLogger()
           logger.setLevel(logging.INFO)
+          logger.info(f"Using boto3 version: {boto3.__version__}")
+          logger.info(f"Using botocore version: {botocore.__version__}")
 
           def lambda_handler(event, context):
               try:
@@ -396,7 +406,7 @@ Resources:
                       roleArn=role_arn,
                       networkConfiguration=get_response['networkConfiguration'],
                       protocolConfiguration=get_response['protocolConfiguration'],
-                      requestHeaderConfiguration=get_response['requestHeaderConfiguration'],
+                      requestHeaderConfiguration={"requestHeaderAllowlist": ["X-Amzn-Bedrock-AgentCore-Runtime-Custom-Actorid"]},
                       authorizerConfiguration=get_response['authorizerConfiguration'],
                       environmentVariables=get_response['environmentVariables'],
                   )
