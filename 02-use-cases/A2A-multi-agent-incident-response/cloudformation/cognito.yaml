@@ -269,7 +269,7 @@ Resources:
     Type: AWS::Lambda::Function
     Properties:
       FunctionName: !Sub '${AWS::StackName}-client-secret-handler'
-      Runtime: python3.12
+      Runtime: python3.13
       Handler: index.lambda_handler
       Role: !GetAtt ClientSecretLambdaRole.Arn
       Timeout: 60

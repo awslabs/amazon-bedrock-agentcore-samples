@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: "AgentCore Runtime"
+Description: "Monitoring Agent Runtime - Strands-based agent with CloudWatch integration via MCP Gateway for AWS infrastructure monitoring"
 
 Parameters:
   BedrockModelId:
@@ -302,6 +302,7 @@ Resources:
                 - docker push $ECR_REPOSITORY_URI:${IMAGE_TAG}
                 - echo "Build completed at $(date)"
                 - echo "Image tag pushed - ${IMAGE_TAG}"
+      SourceVersion: refs/heads/a2a-sample      
       TimeoutInMinutes: 30
       Tags:
         - Key: Name
@@ -430,6 +431,7 @@ Resources:
                       roleArn=role_arn,
                       networkConfiguration=get_response['networkConfiguration'],
                       protocolConfiguration=get_response['protocolConfiguration'],
+                      requestHeaderConfiguration=get_response['requestHeaderConfiguration'],
                       authorizerConfiguration=get_response['authorizerConfiguration'],
                       environmentVariables=get_response['environmentVariables'],
                   )
@@ -469,7 +471,6 @@ Resources:
   ECRImageEventRule:
     Type: AWS::Events::Rule
     Properties:
-      Name: !Sub '${AWS::StackName}-agent-ecr-push-rule'
       Description: 'Trigger Lambda when new ECR image is pushed'
       EventPattern:
         source:
@@ -579,7 +580,6 @@ Resources:
   CodeBuildTriggerFunction:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: !Sub '${AWS::StackName}-agent-codebuild'
       Runtime: python3.13
       Handler: index.lambda_handler
       Role: !GetAtt CodeBuildTriggerLambdaRole.Arn
@@ -904,6 +904,9 @@ Resources:
         ContainerConfiguration:
           ContainerUri: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${AgentECRRepository}:build-1'
       ProtocolConfiguration: A2A
+      RequestHeaderConfiguration :
+        RequestHeaderAllowlist: 
+          - X-Amzn-Bedrock-AgentCore-Runtime-Custom-Actorid
       AuthorizerConfiguration:
         CustomJWTAuthorizer:
           DiscoveryUrl:

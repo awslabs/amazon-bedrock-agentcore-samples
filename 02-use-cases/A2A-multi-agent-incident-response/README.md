@@ -60,13 +60,13 @@ A comprehensive implementation of the [Agent-to-Agent (A2A)](https://a2a-protoco
    - **Tavily API Key**: Get from [Tavily](https://tavily.com/)
    - **Google API Key**: Get from [Google AI Studio](https://aistudio.google.com/app/apikey)
 
+   > **Note**: Make sure your OpenAI account has credits if you are using `gpt-4o-2024-08-06`.
+
 6. **Supported Regions**: This solution is currently tested and supported in the following AWS regions:
 
    | Region Code   | Region Name          | Status      |
    |---------------|----------------------|-------------|
    | `us-west-2`   | US West (Oregon)     | ✅ Supported |
-
-   > **Note**: To deploy in other regions, you'll need to update the DynamoDB prefix list mappings in `cloudformation/vpc-stack.yaml`. See the [VPC Stack documentation](cloudformation/vpc-stack.yaml) for details.
 
 ## Quick Start Deployment
 

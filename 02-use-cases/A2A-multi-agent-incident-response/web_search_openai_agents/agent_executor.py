@@ -109,16 +109,17 @@ class WebSearchAgentExecutor(AgentExecutor):
         """
         # Extract session and actor IDs from headers
         session_id = None
-        # TODO: Remove Actor Id
-        actor_id = "Actor1"  # Default actor ID
 
         if context.call_context:
             headers = context.call_context.state.get("headers", {})
             session_id = headers.get("x-amzn-bedrock-agentcore-runtime-session-id")
-            # actor_id = headers.get("x-amzn-bedrock-agentcore-runtime-user-id", actor_id)
-            actor_id = actor_id
-        if not session_id:
+            actor_id = headers.get("x-amzn-bedrock-agentcore-runtime-custom-actorid")
+        if not actor_id:
             logger.error("Session ID is not set")
+            raise Exception(error=InvalidParamsError())
+
+        if not session_id:
+            logger.error("Actor ID is not set")
             raise ServerError(error=InvalidParamsError())
 
         # Get or create task
