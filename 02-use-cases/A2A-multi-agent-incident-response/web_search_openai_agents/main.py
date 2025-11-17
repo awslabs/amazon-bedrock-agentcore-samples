@@ -28,7 +28,7 @@ agent_card = AgentCard(
     name="WebSearch Agent",
     description="Web search agent that provides AWS documentation and solutions by searching for relevant information",
     url=runtime_url,
-    version="1.0.0",
+    version="0.3.0",
     defaultInputModes=["text/plain"],
     defaultOutputModes=["text/plain"],
     capabilities=AgentCapabilities(streaming=True, pushNotifications=False),
