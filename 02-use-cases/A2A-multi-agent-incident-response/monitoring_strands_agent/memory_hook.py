@@ -18,6 +18,7 @@ logger = logging.getLogger()
 # Retrieval configuration class
 class RetrievalConfig:
     """Configuration for memory retrieval"""
+
     def __init__(self, top_k: int = 3, relevance_score: float = 0.2):
         self.top_k = top_k
         self.relevance_score = relevance_score
@@ -38,7 +39,9 @@ class MonitoringMemoryHooks(HookProvider):
         # Define retrieval configuration for different memory namespaces
         # These match the CloudFormation memory strategy namespaces
         self.retrieval_config = {
-            "/technical-issues/{actorId}": RetrievalConfig(top_k=3, relevance_score=0.3),
+            "/technical-issues/{actorId}": RetrievalConfig(
+                top_k=3, relevance_score=0.3
+            ),
             "/knowledge/{actorId}": RetrievalConfig(top_k=5, relevance_score=0.2),
         }
 
@@ -71,7 +74,8 @@ class MonitoringMemoryHooks(HookProvider):
 
                     # Filter by relevance score
                     filtered_memories = [
-                        memory for memory in memories
+                        memory
+                        for memory in memories
                         if memory.get("score", 0) >= config.relevance_score
                     ]
 
@@ -84,7 +88,8 @@ class MonitoringMemoryHooks(HookProvider):
                 if relevant_memories:
                     context_text = self._format_context(relevant_memories)
                     original_prompt = event.agent.system_prompt
-                    enhanced_prompt = f"{original_prompt}\n\nMonitoring Context:\n{context_text}"
+                    enhanced_prompt = f"{original_prompt}\n\n<memory-context>\n{context_text}\n</memory-context>\n"
+
                     event.agent.system_prompt = enhanced_prompt
                     logger.info(
                         f"✅ Injected {len(relevant_memories)} long-term memories into agent context"
@@ -165,7 +170,9 @@ class MonitoringMemoryHooks(HookProvider):
 
                 context = "\n".join(context_messages)
                 # Add context to agent's system prompt.
-                event.agent.system_prompt += f"\n\nRecent conversation:\n{context}"
+                event.agent.system_prompt += (
+                    f"\n\n<recent-conversation>:\n{context}\n</recent-conversation>\n"
+                )
                 logger.info(f"✅ Loaded {len(recent_turns)} conversation turns")
 
         except Exception as e:
@@ -187,4 +194,6 @@ class MonitoringMemoryHooks(HookProvider):
         registry.add_callback(MessageAddedEvent, self.retrieve_monitoring_context)
         registry.add_callback(AfterInvocationEvent, self.save_monitoring_interaction)
         registry.add_callback(AgentInitializedEvent, self.on_agent_initialized)
-        logger.info("✅ Monitoring memory hooks registered with long-term memory support")
+        logger.info(
+            "✅ Monitoring memory hooks registered with long-term memory support"
+        )

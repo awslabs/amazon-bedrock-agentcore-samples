@@ -294,7 +294,7 @@ Resources:
                 - docker push $ECR_REPOSITORY_URI:${IMAGE_TAG}
                 - echo "Build completed at $(date)"
                 - echo "Image tag pushed - ${IMAGE_TAG}"
-      # SourceVersion: refs/heads/a2a-sample
+      SourceVersion: refs/heads/a2a-sample
       TimeoutInMinutes: 30
       Tags:
         - Key: Name

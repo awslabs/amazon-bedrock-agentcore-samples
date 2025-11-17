@@ -10,6 +10,16 @@ A comprehensive implementation of the [Agent-to-Agent (A2A)](https://a2a-protoco
 
 ![arch](./images/architecture.png)
 
+> [!NOTE]
+> **Default Models**
+>
+> This solution uses the following AI models by default:
+> - **Host Agent (Google ADK)**: `gemini-2.5-flash`
+> - **Monitoring Agent (Strands)**: `global.anthropic.claude-sonnet-4-5-20250929-v1:0` (Amazon Bedrock)
+> - **Web Search Agent (OpenAI)**: `gpt-4o-2024-08-06`
+>
+> These models can be customized during deployment. The deployment script will prompt you to specify different model IDs if needed.
+
 ## What is A2A?
 
 <details>
@@ -60,7 +70,7 @@ A comprehensive implementation of the [Agent-to-Agent (A2A)](https://a2a-protoco
    - **Tavily API Key**: Get from [Tavily](https://tavily.com/)
    - **Google API Key**: Get from [Google AI Studio](https://aistudio.google.com/app/apikey)
 
-   > **Note**: Make sure your OpenAI account has credits if you are using `gpt-4o-2024-08-06`.
+   > **Note**: Make sure your OpenAI and Google account has credits if you are using paid models.
 
 6. **Supported Regions**: This solution is currently tested and supported in the following AWS regions:
 
