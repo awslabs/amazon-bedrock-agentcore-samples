@@ -116,21 +116,21 @@ def _create_client_factory(provider_name: str, session_id: str, actor_id: str):
 
 def get_root_agent(session_id: str, actor_id: str):
     # Create monitor agent
-    # monitor_agent_card_url = (
-    #     f"https://bedrock-agentcore.{region}.amazonaws.com/runtimes/"
-    #     f"{quote(MONITOR_AGENT_ARN, safe='')}/invocations/.well-known/agent-card.json"
-    # )
+    monitor_agent_card_url = (
+        f"https://bedrock-agentcore.{region}.amazonaws.com/runtimes/"
+        f"{quote(MONITOR_AGENT_ARN, safe='')}/invocations/.well-known/agent-card.json"
+    )
 
-    # monitor_agent = RemoteA2aAgent(
-    #     name="monitor_agent",
-    #     description="Agent that handles monitoring tasks.",
-    #     agent_card=monitor_agent_card_url,
-    #     a2a_client_factory=_create_client_factory(
-    #         provider_name=MONITOR_PROVIDER_NAME,
-    #         session_id=session_id,
-    #         actor_id=actor_id,
-    #     ),
-    # )
+    monitor_agent = RemoteA2aAgent(
+        name="monitor_agent",
+        description="Agent that handles monitoring tasks.",
+        agent_card=monitor_agent_card_url,
+        a2a_client_factory=_create_client_factory(
+            provider_name=MONITOR_PROVIDER_NAME,
+            session_id=session_id,
+            actor_id=actor_id,
+        ),
+    )
 
     # Create websearch agent
     websearch_agent_card_url = (
@@ -154,10 +154,7 @@ def get_root_agent(session_id: str, actor_id: str):
         model="gemini-2.0-flash",
         name="root_agent",
         instruction=SYSTEM_PROMPT,
-        sub_agents=[
-            # monitor_agent,
-            websearch_agent
-        ],
+        sub_agents=[monitor_agent, websearch_agent],
     )
 
     return root_agent
