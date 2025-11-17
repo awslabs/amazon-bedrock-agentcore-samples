@@ -147,7 +147,7 @@
           }
         },
         "creationTime": {
-          "target": "com.amazonaws.cloudwatchlogs#Timestamp",
+          "target": "smithy.api#Timestamp",
           "traits": {
             "smithy.api#documentation": "<p>The creation time of the log group, expressed as the number of milliseconds after Jan 1, 1970 00:00:00 UTC.</p>"
           }
@@ -276,14 +276,6 @@
             "name": "INFREQUENT_ACCESS"
           }
         ]
-      }
-    },
-    "com.amazonaws.cloudwatchlogs#Timestamp": {
-      "type": "long",
-      "traits": {
-        "smithy.api#range": {
-          "min": 0
-        }
       }
     },
     "com.amazonaws.cloudwatchlogs#Arn": {
@@ -513,13 +505,13 @@
           }
         },
         "startTime": {
-          "target": "com.amazonaws.cloudwatchlogs#Timestamp",
+          "target": "smithy.api#Timestamp",
           "traits": {
             "smithy.api#documentation": "<p>The start of the time range, expressed as the number of milliseconds after Jan 1, 1970 00:00:00 UTC.</p>"
           }
         },
         "endTime": {
-          "target": "com.amazonaws.cloudwatchlogs#Timestamp",
+          "target": "smithy.api#Timestamp",
           "traits": {
             "smithy.api#documentation": "<p>The end of the time range, expressed as the number of milliseconds after Jan 1, 1970 00:00:00 UTC.</p>"
           }
@@ -622,13 +614,13 @@
           }
         },
         "startTime": {
-          "target": "com.amazonaws.cloudwatchlogs#Timestamp",
+          "target": "smithy.api#Timestamp",
           "traits": {
             "smithy.api#documentation": "<p>The start of the time range, expressed as the number of milliseconds after Jan 1, 1970 00:00:00 UTC.</p>"
           }
         },
         "endTime": {
-          "target": "com.amazonaws.cloudwatchlogs#Timestamp",
+          "target": "smithy.api#Timestamp",
           "traits": {
             "smithy.api#documentation": "<p>The end of the time range, expressed as the number of milliseconds after Jan 1, 1970 00:00:00 UTC.</p>"
           }
@@ -689,16 +681,16 @@
           "target": "com.amazonaws.cloudwatchlogs#LogStreamName"
         },
         "creationTime": {
-          "target": "com.amazonaws.cloudwatchlogs#Timestamp"
+          "target": "smithy.api#Timestamp"
         },
         "firstEventTimestamp": {
-          "target": "com.amazonaws.cloudwatchlogs#Timestamp"
+          "target": "smithy.api#Timestamp"
         },
         "lastEventTimestamp": {
-          "target": "com.amazonaws.cloudwatchlogs#Timestamp"
+          "target": "smithy.api#Timestamp"
         },
         "lastIngestionTime": {
-          "target": "com.amazonaws.cloudwatchlogs#Timestamp"
+          "target": "smithy.api#Timestamp"
         },
         "uploadSequenceToken": {
           "target": "smithy.api#String"
@@ -749,13 +741,13 @@
           "target": "com.amazonaws.cloudwatchlogs#LogStreamName"
         },
         "timestamp": {
-          "target": "com.amazonaws.cloudwatchlogs#Timestamp"
+          "target": "smithy.api#Timestamp"
         },
         "message": {
           "target": "smithy.api#String"
         },
         "ingestionTime": {
-          "target": "com.amazonaws.cloudwatchlogs#Timestamp"
+          "target": "smithy.api#Timestamp"
         },
         "eventId": {
           "target": "smithy.api#String"
@@ -789,13 +781,13 @@
       "type": "structure",
       "members": {
         "timestamp": {
-          "target": "com.amazonaws.cloudwatchlogs#Timestamp"
+          "target": "smithy.api#Timestamp"
         },
         "message": {
           "target": "smithy.api#String"
         },
         "ingestionTime": {
-          "target": "com.amazonaws.cloudwatchlogs#Timestamp"
+          "target": "smithy.api#Timestamp"
         }
       }
     },
