@@ -1,6 +1,6 @@
 # import the memory client
 import logging
-from typing import Dict
+from typing import Dict, List
 from bedrock_agentcore.memory import MemoryClient
 from strands.hooks import (
     AgentInitializedEvent,
@@ -15,16 +15,17 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger()
 
 
-# Helper function to get namespaces from memory strategies list
-def get_namespaces(mem_client: MemoryClient, memory_id: str) -> Dict:
-    """Get namespace mapping for memory strategies."""
-    strategies = mem_client.get_memory_strategies(memory_id)
-    return {i["type"]: i["namespaces"][0] for i in strategies}
+# Retrieval configuration class
+class RetrievalConfig:
+    """Configuration for memory retrieval"""
+    def __init__(self, top_k: int = 3, relevance_score: float = 0.2):
+        self.top_k = top_k
+        self.relevance_score = relevance_score
 
 
-# Create monitoring memory hooks
+# Create monitoring memory hooks with long-term memory support
 class MonitoringMemoryHooks(HookProvider):
-    """Memory hooks for monitoring agent"""
+    """Memory hooks for monitoring agent - Enhanced with long-term memory"""
 
     def __init__(
         self, memory_id: str, client: MemoryClient, actor_id: str, session_id: str
@@ -33,10 +34,16 @@ class MonitoringMemoryHooks(HookProvider):
         self.client = client
         self.actor_id = actor_id
         self.session_id = session_id
-        self.namespaces = get_namespaces(self.client, self.memory_id)
+
+        # Define retrieval configuration for different memory namespaces
+        # These match the CloudFormation memory strategy namespaces
+        self.retrieval_config = {
+            "/technical-issues/{actorId}": RetrievalConfig(top_k=3, relevance_score=0.3),
+            "/knowledge/{actorId}": RetrievalConfig(top_k=5, relevance_score=0.2),
+        }
 
     def retrieve_monitoring_context(self, event: MessageAddedEvent):
-        """Retrieve monitoring context before processing queries"""
+        """Retrieve long-term monitoring context before processing queries"""
         messages = event.agent.messages
         if (
             messages[-1]["role"] == "user"
@@ -45,46 +52,63 @@ class MonitoringMemoryHooks(HookProvider):
             user_query = messages[-1]["content"][0]["text"]
 
             try:
-                # Retrieve monitoring context from all namespaces
-                all_context = []
+                # Search across different long-term memory namespaces
+                relevant_memories = []
 
-                for context_type, namespace in self.namespaces.items():
-                    # to retrieve the memory events. This API helps retrieve
-                    # the information using semantic search.
-                    # this takes the memory id, the namespace where the data is stored, and
-                    # the search query, and the top number of results to return or top k chunks
+                for namespace_template, config in self.retrieval_config.items():
+                    # Resolve namespace template with actual actor ID
+                    resolved_namespace = namespace_template.format(
+                        actorId=self.actor_id
+                    )
+
+                    # Retrieve memories from this namespace
                     memories = self.client.retrieve_memories(
                         memory_id=self.memory_id,
-                        namespace=namespace.format(actorId=self.actor_id),
+                        namespace=resolved_namespace,
                         query=user_query,
-                        top_k=3,
+                        top_k=config.top_k,
                     )
-                    for memory in memories:
-                        if isinstance(memory, dict):
-                            content = memory.get("content", {})
-                            if isinstance(content, dict):
-                                text = content.get("text", "").strip()
-                                if text:
-                                    all_context.append(
-                                        f"[{context_type.upper()}] {text}"
-                                    )
 
-                # Inject monitoring context into the query
-                if all_context:
-                    context_text = "\n".join(all_context)
-                    original_text = messages[-1]["content"][0]["text"]
-                    messages[-1]["content"][0][
-                        "text"
-                    ] = f"Monitoring Context:\n{context_text}\n\n{original_text}"
+                    # Filter by relevance score
+                    filtered_memories = [
+                        memory for memory in memories
+                        if memory.get("score", 0) >= config.relevance_score
+                    ]
+
+                    relevant_memories.extend(filtered_memories)
                     logger.info(
-                        f"Retrieved {len(all_context)} monitoring context items"
+                        f"Found {len(filtered_memories)} relevant memories in {resolved_namespace}"
+                    )
+
+                # Inject context into agent's system prompt if memories found
+                if relevant_memories:
+                    context_text = self._format_context(relevant_memories)
+                    original_prompt = event.agent.system_prompt
+                    enhanced_prompt = f"{original_prompt}\n\nMonitoring Context:\n{context_text}"
+                    event.agent.system_prompt = enhanced_prompt
+                    logger.info(
+                        f"✅ Injected {len(relevant_memories)} long-term memories into agent context"
                     )
 
             except Exception as e:
                 logger.error(f"Failed to retrieve monitoring context: {e}")
 
+    def _format_context(self, memories: List[Dict]) -> str:
+        """Format retrieved long-term memories for agent context"""
+        context_lines = []
+        for i, memory in enumerate(memories[:5], 1):  # Limit to top 5
+            content = memory.get("content", {})
+            if isinstance(content, dict):
+                text = content.get("text", "No content available").strip()
+            else:
+                text = str(content)
+            score = memory.get("score", 0)
+            context_lines.append(f"{i}. (Score: {score:.2f}) {text[:200]}...")
+
+        return "\n".join(context_lines)
+
     def save_monitoring_interaction(self, event: AfterInvocationEvent):
-        """Save monitoring interaction after agent response"""
+        """Save monitoring interaction to short-term conversational memory"""
         try:
             messages = event.agent.messages
             if len(messages) >= 2 and messages[-1]["role"] == "assistant":
@@ -104,14 +128,17 @@ class MonitoringMemoryHooks(HookProvider):
                         break
 
                 if user_query and agent_response:
-                    # Save both user query and assistant response in one call
-                    self.client.create_event(
+                    # Save to short-term conversational memory using create_event
+                    result = self.client.create_event(
                         memory_id=self.memory_id,
                         actor_id=self.actor_id,
                         session_id=self.session_id,
                         messages=[(user_query, "USER"), (agent_response, "ASSISTANT")],
                     )
-                    logger.info("Saved monitoring interaction to memory")
+                    event_id = result.get("eventId", "unknown")
+                    logger.info(
+                        f"✅ Saved monitoring interaction to short-term memory - Event ID: {event_id}"
+                    )
 
         except Exception as e:
             logger.error(f"Failed to save monitoring interaction: {e}")
@@ -145,8 +172,19 @@ class MonitoringMemoryHooks(HookProvider):
             logger.error(f"Memory load error: {e}")
 
     def register_hooks(self, registry: HookRegistry) -> None:
-        """Register monitoring memory hooks"""
+        """
+        Register monitoring memory hooks
+
+        Memory Architecture:
+        - SHORT-TERM: create_event() stores conversational turns (expires after 60 days)
+        - LONG-TERM: retrieve_memories() searches semantic/custom strategy namespaces
+          - /technical-issues/{actorId}: CustomMemoryStrategy with extraction prompts
+          - /knowledge/{actorId}: SemanticMemoryStrategy for general facts
+
+        The CustomMemoryStrategy automatically extracts monitoring facts from conversations
+        using the extraction prompts defined in CloudFormation.
+        """
         registry.add_callback(MessageAddedEvent, self.retrieve_monitoring_context)
         registry.add_callback(AfterInvocationEvent, self.save_monitoring_interaction)
         registry.add_callback(AgentInitializedEvent, self.on_agent_initialized)
-        logger.info("Monitoring memory hooks registered")
+        logger.info("✅ Monitoring memory hooks registered with long-term memory support")
