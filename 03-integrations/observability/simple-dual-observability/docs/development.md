@@ -9,7 +9,7 @@ This guide provides detailed information for developers who want to customize, e
 ### Project Organization
 
 ```
-07-simple-dual-observability/
+simple-dual-observability/
 │
 ├── agent/
 │   ├── weather_time_agent.py          # Core agent implementation

@@ -6,7 +6,7 @@ Deployment and setup scripts for the Simple Dual Observability Tutorial.
 
 These scripts automate the complete setup of Amazon Bedrock AgentCore observability with Braintrust support.
 
-**Note:** All commands in this documentation assume you are running from the tutorial root directory (`07-simple-dual-observability`), not from within the `scripts/` folder. Use `scripts/<script-name>.sh` to invoke the scripts.
+**Note:** All commands in this documentation assume you are running from the tutorial root directory (`simple-dual-observability`), not from within the `scripts/` folder. Use `scripts/<script-name>.sh` to invoke the scripts.
 
 ## Scripts
 

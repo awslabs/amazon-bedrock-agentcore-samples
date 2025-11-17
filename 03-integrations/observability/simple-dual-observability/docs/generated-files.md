@@ -20,7 +20,7 @@ This document describes all generated files, configuration files, and hidden fil
 ---
 
 ### `.env`
-**Location:** Tutorial root (`07-simple-dual-observability/.env`)
+**Location:** Tutorial root (`simple-dual-observability/.env`)
 
 **Purpose:** Stores environment variables for local development and deployment, including AWS region and optional Braintrust credentials.
 
@@ -50,7 +50,7 @@ BRAINTRUST_PROJECT_ID=your-project-id
 ---
 
 ### `.bedrock_agentcore.yaml`
-**Location:** Tutorial root (`07-simple-dual-observability/.bedrock_agentcore.yaml`)
+**Location:** Tutorial root (`simple-dual-observability/.bedrock_agentcore.yaml`)
 
 **Purpose:** Caches AgentCore Runtime configuration and state to speed up subsequent deployments and avoid recreating resources unnecessarily.
 
@@ -159,7 +159,7 @@ fi
 ---
 
 ### `Dockerfile`
-**Location:** Tutorial root (`07-simple-dual-observability/Dockerfile`)
+**Location:** Tutorial root (`simple-dual-observability/Dockerfile`)
 
 **Purpose:** Defines the Docker container image for the agent, including Python environment, dependencies, and startup command.
 
@@ -215,7 +215,7 @@ agentcore_runtime.configure(
 ---
 
 ### `.dockerignore`
-**Location:** Tutorial root (`07-simple-dual-observability/.dockerignore`)
+**Location:** Tutorial root (`simple-dual-observability/.dockerignore`)
 
 **Purpose:** Specifies files and directories to exclude from the Docker build context, reducing image size and build time.
 

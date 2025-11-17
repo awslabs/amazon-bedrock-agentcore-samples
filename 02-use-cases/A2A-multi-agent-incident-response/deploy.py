@@ -13,7 +13,7 @@ import time
 import re
 import getpass
 from pathlib import Path
-from typing import Dict, Any, Optional, Tuple, List, Callable
+from typing import Dict, Any, Optional, Tuple
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from threading import Lock
 
