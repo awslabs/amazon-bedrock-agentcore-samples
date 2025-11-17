@@ -44,9 +44,9 @@ def print_header(text: str, thread_safe: bool = False):
 
     if thread_safe:
         with print_lock:
-            print(output, end='')
+            print(output, end="")
     else:
-        print(output, end='')
+        print(output, end="")
 
 
 def print_info(text: str, thread_safe: bool = False):
@@ -226,7 +226,9 @@ def save_config(config: Dict[str, Any], config_path: Path):
     print_success(f"Configuration saved to {config_path}")
 
 
-def run_command(cmd: list, capture_output: bool = True, timeout: int = 10) -> Tuple[bool, str]:
+def run_command(
+    cmd: list, capture_output: bool = True, timeout: int = 10
+) -> Tuple[bool, str]:
     """Run a shell command and return (success, output)"""
     try:
         result = subprocess.run(
@@ -397,10 +399,11 @@ def collect_deployment_parameters(account_id: str = None) -> Dict[str, Any]:
             "Bedrock Model ID",
             default=(
                 existing_config.get("aws", {}).get(
-                    "bedrock_model_id", "global.anthropic.claude-sonnet-4-20250514-v1:0"
+                    "bedrock_model_id",
+                    "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
                 )
                 if use_existing
-                else "global.anthropic.claude-sonnet-4-20250514-v1:0"
+                else "global.anthropic.claude-sonnet-4-5-20250929-v1:0"
             ),
             required=True,
         ),
@@ -590,9 +593,14 @@ def display_configuration(config: Dict[str, Any]):
     print()
 
 
-def wait_for_stack(stack_name: str, region: str, operation: str = "create", thread_safe: bool = False) -> bool:
+def wait_for_stack(
+    stack_name: str, region: str, operation: str = "create", thread_safe: bool = False
+) -> bool:
     """Wait for CloudFormation stack operation to complete"""
-    print_info(f"Waiting for stack '{stack_name}' to complete {operation}...", thread_safe=thread_safe)
+    print_info(
+        f"Waiting for stack '{stack_name}' to complete {operation}...",
+        thread_safe=thread_safe,
+    )
 
     max_wait_time = 1800  # 30 minutes
     wait_interval = 15  # 15 seconds
@@ -620,26 +628,40 @@ def wait_for_stack(stack_name: str, region: str, operation: str = "create", thre
 
             # Check for completion statuses
             if operation == "create" and status == "CREATE_COMPLETE":
-                print_success(f"Stack '{stack_name}' created successfully!", thread_safe=thread_safe)
+                print_success(
+                    f"Stack '{stack_name}' created successfully!",
+                    thread_safe=thread_safe,
+                )
                 return True
             elif operation == "create" and status == "CREATE_FAILED":
-                print_error(f"Stack '{stack_name}' creation failed!", thread_safe=thread_safe)
+                print_error(
+                    f"Stack '{stack_name}' creation failed!", thread_safe=thread_safe
+                )
                 return False
             elif operation == "create" and status == "ROLLBACK_COMPLETE":
-                print_error(f"Stack '{stack_name}' creation failed and rolled back!", thread_safe=thread_safe)
+                print_error(
+                    f"Stack '{stack_name}' creation failed and rolled back!",
+                    thread_safe=thread_safe,
+                )
                 return False
             elif operation == "create" and status == "ROLLBACK_IN_PROGRESS":
                 print_warning(
                     f"Stack '{stack_name}' is rolling back... Status: {status}",
-                    thread_safe=thread_safe
+                    thread_safe=thread_safe,
                 )
             else:
-                print_info(f"[{stack_name}] Status: {status} (waiting...)", thread_safe=thread_safe)
+                print_info(
+                    f"[{stack_name}] Status: {status} (waiting...)",
+                    thread_safe=thread_safe,
+                )
 
         time.sleep(wait_interval)
         elapsed_time += wait_interval
 
-    print_error(f"Timeout waiting for stack '{stack_name}' (waited {max_wait_time}s)", thread_safe=thread_safe)
+    print_error(
+        f"Timeout waiting for stack '{stack_name}' (waited {max_wait_time}s)",
+        thread_safe=thread_safe,
+    )
     return False
 
 
@@ -700,7 +722,7 @@ def deploy_stack(
     parameters: list,
     region: str,
     description: str = "",
-    thread_safe: bool = False
+    thread_safe: bool = False,
 ) -> bool:
     """Generic function to deploy a CloudFormation stack"""
     if description:
@@ -708,30 +730,38 @@ def deploy_stack(
 
     print_info(f"Creating CloudFormation stack: {stack_name}", thread_safe=thread_safe)
 
-    cmd = [
-        "aws",
-        "cloudformation",
-        "create-stack",
-        "--stack-name",
-        stack_name,
-        "--template-body",
-        f"file://{template_file}",
-        "--parameters",
-    ] + parameters + [
-        "--capabilities",
-        "CAPABILITY_IAM",
-        "--region",
-        region,
-    ]
+    cmd = (
+        [
+            "aws",
+            "cloudformation",
+            "create-stack",
+            "--stack-name",
+            stack_name,
+            "--template-body",
+            f"file://{template_file}",
+            "--parameters",
+        ]
+        + parameters
+        + [
+            "--capabilities",
+            "CAPABILITY_IAM",
+            "--region",
+            region,
+        ]
+    )
 
     success, output = run_command(cmd)
 
     if success:
-        print_success(f"Stack creation initiated: {stack_name}", thread_safe=thread_safe)
+        print_success(
+            f"Stack creation initiated: {stack_name}", thread_safe=thread_safe
+        )
         return wait_for_stack(stack_name, region, "create", thread_safe=thread_safe)
     else:
         if "AlreadyExistsException" in output:
-            print_warning(f"Stack '{stack_name}' already exists", thread_safe=thread_safe)
+            print_warning(
+                f"Stack '{stack_name}' already exists", thread_safe=thread_safe
+            )
             return True
         print_error(f"Failed to create stack: {output}", thread_safe=thread_safe)
         return False
@@ -744,9 +774,11 @@ def deploy_cognito_stack(config: Dict[str, Any]) -> bool:
     return deploy_stack(
         stack_name=config["stacks"]["cognito"],
         template_file="cloudformation/cognito.yaml",
-        parameters=[f"ParameterKey=DomainName,ParameterValue={config['cognito']['domain_name']}"],
+        parameters=[
+            f"ParameterKey=DomainName,ParameterValue={config['cognito']['domain_name']}"
+        ],
         region=config["aws"]["region"],
-        description=f"Using Cognito domain: {config['cognito']['domain_name']}"
+        description=f"Using Cognito domain: {config['cognito']['domain_name']}",
     )
 
 
@@ -763,7 +795,7 @@ def deploy_monitoring_agent(config: Dict[str, Any]) -> bool:
             f"ParameterKey=SmithyModelS3Bucket,ParameterValue={config['s3']['smithy_models_bucket']}",
             f"ParameterKey=BedrockModelId,ParameterValue={config['aws']['bedrock_model_id']}",
         ],
-        region=config["aws"]["region"]
+        region=config["aws"]["region"],
     )
 
 
@@ -781,7 +813,7 @@ def deploy_web_search_agent(config: Dict[str, Any]) -> bool:
             f"ParameterKey=GitHubURL,ParameterValue={config['github']['url']}",
             f"ParameterKey=CognitoStackName,ParameterValue={config['stacks']['cognito']}",
         ],
-        region=config["aws"]["region"]
+        region=config["aws"]["region"],
     )
 
 
@@ -797,7 +829,7 @@ def deploy_host_agent(config: Dict[str, Any]) -> bool:
             f"ParameterKey=GitHubURL,ParameterValue={config['github']['url']}",
             f"ParameterKey=CognitoStackName,ParameterValue={config['stacks']['cognito']}",
         ],
-        region=config["aws"]["region"]
+        region=config["aws"]["region"],
     )
 
 
@@ -806,7 +838,7 @@ def deploy_agent_parallel(
     config: Dict[str, Any],
     stack_key: str,
     template_file: str,
-    parameters: list
+    parameters: list,
 ) -> Tuple[str, bool]:
     """Deploy an agent stack in parallel (thread-safe)"""
     try:
@@ -817,7 +849,7 @@ def deploy_agent_parallel(
             template_file=template_file,
             parameters=parameters,
             region=config["aws"]["region"],
-            thread_safe=True
+            thread_safe=True,
         )
 
         return (agent_name, success)
@@ -844,7 +876,7 @@ def deploy_agents_parallel(config: Dict[str, Any]) -> bool:
                 f"ParameterKey=CognitoStackName,ParameterValue={config['stacks']['cognito']}",
                 f"ParameterKey=SmithyModelS3Bucket,ParameterValue={config['s3']['smithy_models_bucket']}",
                 f"ParameterKey=BedrockModelId,ParameterValue={config['aws']['bedrock_model_id']}",
-            ]
+            ],
         ),
         (
             "Web Search Agent",
@@ -857,7 +889,7 @@ def deploy_agents_parallel(config: Dict[str, Any]) -> bool:
                 f"ParameterKey=TavilyAPIKey,ParameterValue={config['api_keys']['tavily']}",
                 f"ParameterKey=GitHubURL,ParameterValue={config['github']['url']}",
                 f"ParameterKey=CognitoStackName,ParameterValue={config['stacks']['cognito']}",
-            ]
+            ],
         ),
         (
             "Host Agent",
@@ -868,7 +900,7 @@ def deploy_agents_parallel(config: Dict[str, Any]) -> bool:
                 f"ParameterKey=GoogleApiKey,ParameterValue={config['api_keys']['google']}",
                 f"ParameterKey=GitHubURL,ParameterValue={config['github']['url']}",
                 f"ParameterKey=CognitoStackName,ParameterValue={config['stacks']['cognito']}",
-            ]
+            ],
         ),
     ]
 
@@ -877,8 +909,7 @@ def deploy_agents_parallel(config: Dict[str, Any]) -> bool:
     with ThreadPoolExecutor(max_workers=3) as executor:
         # Submit all deployment tasks
         future_to_agent = {
-            executor.submit(deploy_agent_parallel, *task): task[0]
-            for task in tasks
+            executor.submit(deploy_agent_parallel, *task): task[0] for task in tasks
         }
 
         # Collect results as they complete
@@ -892,7 +923,9 @@ def deploy_agents_parallel(config: Dict[str, Any]) -> bool:
                 else:
                     print_error(f"✗ {name} deployment failed", thread_safe=True)
             except Exception as e:
-                print_error(f"Exception deploying {agent_name}: {str(e)}", thread_safe=True)
+                print_error(
+                    f"Exception deploying {agent_name}: {str(e)}", thread_safe=True
+                )
                 results[agent_name] = False
 
     # Check if all deployments succeeded
@@ -932,9 +965,13 @@ def run_deployment(config: Dict[str, Any], parallel: bool = True) -> bool:
     print_header("Starting Deployment")
 
     if parallel:
-        print_warning("Using parallel deployment - approximately 7-10 minutes to complete")
+        print_warning(
+            "Using parallel deployment - approximately 7-10 minutes to complete"
+        )
     else:
-        print_warning("Using sequential deployment - approximately 10-15 minutes to complete")
+        print_warning(
+            "Using sequential deployment - approximately 10-15 minutes to complete"
+        )
 
     print_info("You can monitor progress in the AWS CloudFormation console\n")
 
