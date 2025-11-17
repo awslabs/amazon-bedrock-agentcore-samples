@@ -30,7 +30,7 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({
             </code>
           ) : (
             <code
-              className={`block p-3 rounded-lg bg-[#1a1d24] text-sm font-mono overflow-x-auto border border-[#3a3f4b] ${className}`}
+              className={`block p-2.5 my-2 rounded-lg bg-[#1a1d24] text-sm font-mono overflow-x-auto border border-[#3a3f4b] ${className}`}
               {...props}
             >
               {children}
@@ -75,21 +75,21 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({
         // Customize lists
         ul({ node, children, ...props }) {
           return (
-            <ul className="list-disc list-inside mb-2 space-y-1 text-gray-200" {...props}>
+            <ul className="list-disc list-inside mb-3 space-y-0.5 text-gray-200" {...props}>
               {children}
             </ul>
           )
         },
         ol({ node, children, ...props }) {
           return (
-            <ol className="list-decimal list-inside mb-2 space-y-1 text-gray-200" {...props}>
+            <ol className="list-decimal list-inside mb-3 space-y-0.5 text-gray-200" {...props}>
               {children}
             </ol>
           )
         },
         li({ node, children, ...props }) {
           return (
-            <li className="ml-4 text-gray-200" {...props}>
+            <li className="ml-4 mb-2 text-gray-200 leading-relaxed [&>p]:inline [&>code]:block [&>code]:my-2" {...props}>
               {children}
             </li>
           )
