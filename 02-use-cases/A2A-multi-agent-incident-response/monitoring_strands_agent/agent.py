@@ -6,7 +6,7 @@ from strands.models import BedrockModel
 from utils import create_gateway_client
 
 
-class StrandAgent:
+class MonitoringAgent:
     SUPPORTED_CONTENT_TYPES = ["text", "text/plain"]
 
     def __init__(

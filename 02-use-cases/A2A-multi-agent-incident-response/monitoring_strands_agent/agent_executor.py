@@ -11,6 +11,8 @@ from a2a.types import (
 from a2a.utils import new_agent_text_message, new_task
 from a2a.utils.errors import ServerError
 import logging
+import os
+from agent import MonitoringAgent
 
 logger = logging.getLogger(__name__)
 
@@ -26,44 +28,77 @@ class MonitoringAgentExecutor(AgentExecutor):
         self._active_tasks = {}
         logger.info("MonitoringAgentExecutor initialized")
 
-    async def _get_agent(self):
-        """Get the agent instance (initialized in main.py)"""
-        # Import here to avoid circular dependency
-        from main import _a2a_server
+    async def _get_agent(self, session_id: str, actor_id: str, workload_token: str):
+        """Get or create the agent instance"""
+        if self._agent is None:
+            logger.info("Creating monitoring agent...")
 
-        if _a2a_server is None:
-            raise RuntimeError("Agent not initialized")
+            # Get configuration from environment
+            memory_id = os.getenv("MEMORY_ID")
+            model_id = os.getenv(
+                "MODEL_ID", "global.anthropic.claude-sonnet-4-20250514-v1:0"
+            )
+            region_name = os.getenv("MCP_REGION")
 
-        return _a2a_server.agent
+            if not memory_id or not region_name:
+                raise RuntimeError(
+                    "Missing required environment variables: MEMORY_ID or MCP_REGION"
+                )
+
+            # Create agent instance
+            self._agent = MonitoringAgent(
+                memory_id=memory_id,
+                model_id=model_id,
+                region_name=region_name,
+                actor_id=actor_id,
+                session_id=session_id,
+                workload_token=workload_token,
+            )
+            logger.info("Monitoring agent created successfully")
+
+        return self._agent
 
     async def _execute_streaming(
-        self, agent, user_message: str, updater: TaskUpdater, task_id: str
+        self,
+        agent,
+        user_message: str,
+        updater: TaskUpdater,
+        task_id: str,
+        session_id: str,
     ) -> None:
         """Execute agent with streaming and update task status incrementally."""
         accumulated_text = ""
 
         try:
-            # Use the strands agent's run method
-            response = agent.run(user_message)
+            # Use the agent's stream method
+            async for event in agent.stream(user_message, session_id):
+                # Check if task was cancelled
+                if not self._active_tasks.get(task_id, False):
+                    logger.info(f"Task {task_id} was cancelled during streaming")
+                    return
 
-            # Get the final response text
-            if hasattr(response, 'content') and response.content:
-                for content_block in response.content:
-                    if hasattr(content_block, 'text'):
-                        accumulated_text += content_block.text
+                # Handle error events
+                if "error" in event:
+                    error_msg = event.get("content", "Unknown error")
+                    logger.error(f"Error in stream: {error_msg}")
+                    raise Exception(error_msg)
 
-            # Send final update
+                # Stream content updates
+                content = event.get("content", "")
+                if content and not event.get("is_task_complete", False):
+                    accumulated_text += content
+                    # Send incremental update
+                    await updater.update_status(
+                        TaskState.working,
+                        new_agent_text_message(
+                            accumulated_text,
+                            updater.context_id,
+                            updater.task_id,
+                        ),
+                    )
+
+            # Add final result as artifact
             if accumulated_text:
-                await updater.update_status(
-                    TaskState.working,
-                    new_agent_text_message(
-                        accumulated_text,
-                        updater.context_id,
-                        updater.task_id,
-                    ),
-                )
-
-                # Add final result as artifact
                 await updater.add_artifact(
                     [Part(root=TextPart(text=accumulated_text))],
                     name="agent_response",
@@ -83,13 +118,18 @@ class MonitoringAgentExecutor(AgentExecutor):
         """
         Execute the agent's logic for a given request context.
         """
-        # Extract session and actor IDs from headers
+        # Extract required headers
         session_id = None
+        actor_id = None
+        workload_token = None
 
         if context.call_context:
             headers = context.call_context.state.get("headers", {})
             session_id = headers.get("x-amzn-bedrock-agentcore-runtime-session-id")
             actor_id = headers.get("x-amzn-bedrock-agentcore-runtime-custom-actorid")
+            workload_token = headers.get(
+                "x-amzn-bedrock-agentcore-runtime-workload-accesstoken"
+            )
 
         if not actor_id:
             logger.error("Actor ID is not set")
@@ -97,6 +137,10 @@ class MonitoringAgentExecutor(AgentExecutor):
 
         if not session_id:
             logger.error("Session ID is not set")
+            raise ServerError(error=InvalidParamsError())
+
+        if not workload_token:
+            logger.error("Workload token is not set")
             raise ServerError(error=InvalidParamsError())
 
         # Get or create task
@@ -121,14 +165,16 @@ class MonitoringAgentExecutor(AgentExecutor):
             logger.info(f"User message: '{user_message}'")
 
             # Get the agent instance
-            agent = await self._get_agent()
+            agent = await self._get_agent(session_id, actor_id, workload_token)
 
             # Mark task as active
             self._active_tasks[task_id] = True
 
             # Execute the agent
             logger.info("Calling agent...")
-            await self._execute_streaming(agent, user_message, updater, task_id)
+            await self._execute_streaming(
+                agent, user_message, updater, task_id, session_id
+            )
 
             logger.info(f"Task {task_id} completed successfully")
 
