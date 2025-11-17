@@ -16,14 +16,12 @@ GATEWAY_PROVIDER_NAME = os.getenv("GATEWAY_PROVIDER_NAME")
 
 def get_gateway_url() -> str:
     """Get gateway URL from SSM (cached)."""
-    global _gateway_url
-    if _gateway_url is None:
-        response = ssm.get_parameter(
-            Name="/monitoragent/agentcore/gateway/gateway_url", WithDecryption=True
-        )
-        _gateway_url = response["Parameter"]["Value"]
-        logger.info("Gateway URL loaded from SSM")
-    return _gateway_url
+
+    response = ssm.get_parameter(
+        Name="/monitoragent/agentcore/gateway/gateway_url", WithDecryption=True
+    )
+    logger.info("Gateway URL loaded from SSM")
+    return response["Parameter"]["Value"]
 
 
 def create_gateway_client(workload_token: str) -> MCPClient:
