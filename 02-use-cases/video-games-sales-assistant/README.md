@@ -1,6 +1,9 @@
 # Deploying a Conversational Data Analyst Assistant Solution with Amazon Bedrock AgentCore
 
-This solution provides a Generative AI application reference that allows users to interact with data through a natural language interface. The solution leverages **[AWS Bedrock AgentCore](https://aws.amazon.com/bedrock/agentcore/)**, a managed service that enables you to deploy, run, and scale custom agent applications, along with the **[Strands Agents SDK](https://strandsagents.com/)** to build an agent that connects to a PostgreSQL database, providing data analysis capabilities through a web application interface.
+> [!IMPORTANT]
+> **🚀 Ready-to-Deploy Agent Web Application**: Use this reference solution to build other agent-powered web applications across different industries. Extend the agent capabilities by adding custom tools for specific industry workflows and adapt it to various business domains.
+
+This solution provides a Generative AI application reference that allows users to interact with data through a natural language interface. The solution leverages **[Amazon Bedrock AgentCore](https://aws.amazon.com/bedrock/agentcore/)**, a managed service that enables you to deploy, run, and scale custom agent applications, along with the **[Strands Agents SDK](https://strandsagents.com/)** to build an agent that connects to a PostgreSQL database, providing data analysis capabilities through a web application interface.
 
 <div align="center">
 <img src="./images/data-analyst-assistant-agentcore-strands-agents-sdk.gif" alt="Conversational Data Analyst Assistant Solution with Amazon Bedrock AgentCore">
@@ -48,7 +51,7 @@ The AWS CDK stack deploys and configures the following managed services:
 - **IAM AgentCore Execution Role**: Provides necessary permissions for Amazon Bedrock AgentCore execution
 - **VPC and Private Subnet**: Network isolation and security for database resources
 - **Amazon Aurora Serverless PostgreSQL**: Stores the video game sales data with RDS Data API integration
-- **Amazon DynamoDB**: Tracks raw query results and agent interactions
+- **Amazon DynamoDB**: Stores raw query results for data analysis audit trails
 - **Parameter Store Configuration Management**: Securely manages application configuration
 
 ### Amplify Deployment for the Front-End Application

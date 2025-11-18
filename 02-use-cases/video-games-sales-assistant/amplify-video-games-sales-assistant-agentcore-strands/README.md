@@ -1,6 +1,9 @@
 # Front-End Implementation - Integrating AgentCore with a Ready-to-Use Data Analyst Assistant Application
 
-This tutorial guides you through setting up a React Web application that integrates with your **[AWS Bedrock AgentCore](https://aws.amazon.com/bedrock/agentcore/)** deployment, creating a Data Analyst Assistant for Video Game Sales.
+This tutorial guides you through setting up a React Web application that integrates with your **[Amazon Bedrock AgentCore](https://aws.amazon.com/bedrock/agentcore/)** deployment, creating a Data Analyst Assistant for Video Game Sales.
+
+> [!NOTE]
+> **Working Directory**: Make sure you are in the `amplify-video-games-sales-assistant-agentcore-strands/` folder before starting this tutorial. All commands in this guide should be executed from this directory.
 
 ## Overview
 
@@ -22,10 +25,6 @@ The application consists of two main components:
 Before you begin, ensure you have:
 
 - [Node.js version 18+](https://nodejs.org/en/download/package-manager)
-- React Scripts installed:
-``` bash
-npm install react-scripts
-```
 
 ## Set Up the Front-End Application
 
@@ -52,6 +51,9 @@ Initialize the Amplify project:
 ``` bash
 amplify init
 ```
+
+- Do you want to continue with Amplify Gen 1? **`yes`**
+- Why would you like to use Amplify Gen 1? **`Prefer not to answer`**
 
 Use the following configuration:
 
@@ -103,7 +105,23 @@ amplify push
 After authentication deployment, you need to grant your authenticated users permission to access AWS services.
 
 1. **Find your AuthRole**: Go to AWS Console → IAM → Roles → Search for amplify-daabedrockagentcore-dev-*-authRole
-2. **Add this policy** (replace the placeholder values with your actual values from CDK outputs):
+
+2. **Get the DynamoDB Table ARN**: From your CDK project outputs, get the `QuestionAnswersTableName` value:
+
+``` bash
+# Set the stack name environment variable
+export STACK_NAME=CdkAgentcoreStrandsDataAnalystAssistantStack
+
+# Get the DynamoDB table name and construct the ARN
+export QUESTION_ANSWERS_TABLE_NAME=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" --query "Stacks[0].Outputs[?OutputKey=='QuestionAnswersTableName'].OutputValue" --output text)
+export QUESTION_ANSWERS_TABLE_ARN="arn:aws:dynamodb:$(aws configure get region):$(aws sts get-caller-identity --query Account --output text):table/$QUESTION_ANSWERS_TABLE_NAME"
+echo "Table ARN: $QUESTION_ANSWERS_TABLE_ARN"
+```
+
+3. **Add this policy** (replace `<account_id>` with your AWS account ID, `<question_answers_table_arn>` with the ARN from step 2, and `<agent_arn>` with your AgentCore runtime ARN):
+
+> [!NOTE]
+> The AgentCore runtime ARN has been pre-configured based on your current deployment. If you're using a different AgentCore runtime, update the ARN in the BedrockAgentCorePermissions section accordingly.
 
 ``` json
 {
@@ -115,12 +133,12 @@ After authentication deployment, you need to grant your authenticated users perm
             "Action": [
                 "bedrock:InvokeModel"
             ],
-			"Resource": [
-				"arn:aws:bedrock:*:<account_id>:inference-profile/us.anthropic.claude-3-7-sonnet-20250219-v1:0",
-				"arn:aws:bedrock:us-east-2::foundation-model/anthropic.claude-3-7-sonnet-20250219-v1:0",
-				"arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-3-7-sonnet-20250219-v1:0",
-				"arn:aws:bedrock:us-west-2::foundation-model/anthropic.claude-3-7-sonnet-20250219-v1:0"
-			]
+            "Resource": [
+                "arn:aws:bedrock:*:<account_id>:inference-profile/us.anthropic.claude-3-7-sonnet-20250219-v1:0",
+                "arn:aws:bedrock:us-east-2::foundation-model/anthropic.claude-3-7-sonnet-20250219-v1:0",
+                "arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-3-7-sonnet-20250219-v1:0",
+                "arn:aws:bedrock:us-west-2::foundation-model/anthropic.claude-3-7-sonnet-20250219-v1:0"
+            ]
         },
         {
             "Sid": "DynamoDB",
@@ -135,8 +153,8 @@ After authentication deployment, you need to grant your authenticated users perm
             "Effect": "Allow",
             "Action": "bedrock-agentcore:InvokeAgentRuntime",
             "Resource": [
-                "<agent_runtime_arn>",
-                "<agent_runtime_arn>/runtime-endpoint/*"
+                "<agent_arn>",
+                "<agent_arn>/runtime-endpoint/*"
             ]
         }
     ]
@@ -151,21 +169,32 @@ Rename the file **src/sample.env.js** to **src/env.js**:
 mv src/sample.env.js src/env.js
 ```
 
-In you **src/env.js** update the following environment variables
+### Get CDK Output Values
 
- - AWS Region:
-     - **AWS_REGION**
+First, get the required values from your CDK project outputs:
 
- - AgentCore and DynamoDB table name information that you can find in the CloudFormation Outputs from the CDK project:
-     - **AGENT_RUNTIME_ARN**
-     - **AGENT_ENDPOINT_NAME**
-     - **QUESTION_ANSWERS_TABLE_NAME** 
-     - **LAST_K_TURNS** AgentCore Memory value to retrieve the last K conversation turns for context memory
+``` bash
+# Set the stack name environment variable
+export STACK_NAME=CdkAgentcoreStrandsDataAnalystAssistantStack
 
- - Also, you can update the general application description:
-     - **APP_NAME**
-     - **APP_SUBJECT**
-     - **WELCOME_MESSAGE**
+# Get the DynamoDB table name and AgentCore Role ARN from CDK outputs
+export QUESTION_ANSWERS_TABLE_NAME=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" --query "Stacks[0].Outputs[?OutputKey=='QuestionAnswersTableName'].OutputValue" --output text)
+echo "Table Name: $QUESTION_ANSWERS_TABLE_NAME"
+```
+
+### Update Environment Variables
+
+In your **src/env.js** update the following environment variables:
+
+- **QUESTION_ANSWERS_TABLE_NAME**: Use the value from the command above
+- **AGENT_RUNTIME_ARN**: Your AgentCore runtime ARN (format: "arn:aws:bedrock-agentcore:region:account:runtime/runtime-name")
+- **AGENT_ENDPOINT_NAME**: Usually "DEFAULT" for the default endpoint
+- **LAST_K_TURNS**: AgentCore Memory value to retrieve the last K conversation turns for context memory (default: 10)
+
+Also, you can update the general application description:
+- **APP_NAME**: "Data Analyst Assistant"
+- **APP_SUBJECT**: "Video Games Sales"
+- **WELCOME_MESSAGE**: Your custom welcome message
   
 
 ## Test Your Data Analyst Assistant

@@ -33,6 +33,7 @@ This folder contains framework and protocol integrations that demonstrate how to
 ## 📊 Observability
 
 * **[Dynatrace](./observability/dynatrace/)**: Application performance monitoring integration with travel agent example
+* **[Simple Dual Observability](./observability/simple-dual-observability/)**: Amazon CloudWatch and Braintrust integration with automatic OpenTelemetry instrumentation for AgentCore Runtime
 
 ## 🎨 UX Examples
 
