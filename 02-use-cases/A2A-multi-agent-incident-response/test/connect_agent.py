@@ -11,9 +11,13 @@ import httpx
 import requests
 from a2a.client import A2ACardResolver, ClientConfig, ClientFactory
 from a2a.types import Message, Part, Role, TextPart
-from bedrock_agentcore.identity.auth import requires_access_token
 
-from utils import get_ssm_parameter, get_aws_info
+from utils import get_ssm_parameter, get_aws_info, get_m2m_token_for_agent
+import sys
+from pathlib import Path
+
+# Add host_adk_agent scripts to path for get_m2m_token function
+sys.path.insert(0, str(Path(__file__).parent.parent / "host_adk_agent" / "scripts"))
 
 logging.basicConfig(level=logging.WARNING)
 logger = logging.getLogger(__name__)
@@ -33,17 +37,14 @@ moniter_agent_id = get_ssm_parameter("/monitoragent/agentcore/runtime-id")
 websearch_agent_id = get_ssm_parameter("/websearchagent/agentcore/runtime-id")
 hostagent_agent_id = get_ssm_parameter("/hostagent/agentcore/runtime-id")
 
-moniter_provider_name = get_ssm_parameter("/monitoragent/agentcore/provider-name")
 moniter_agent_arn = (
     f"arn:aws:bedrock-agentcore:{region}:{account_id}:runtime/{moniter_agent_id}"
 )
 
-websearch_provider_name = get_ssm_parameter("/websearchagent/agentcore/provider-name")
 websearch_agent_arn = (
     f"arn:aws:bedrock-agentcore:{region}:{account_id}:runtime/{websearch_agent_id}"
 )
 
-hostagent_provider_name = get_ssm_parameter("/hostagent/agentcore/provider-name")
 hostagent_agent_arn = (
     f"arn:aws:bedrock-agentcore:{region}:{account_id}:runtime/{hostagent_agent_id}"
 )
@@ -274,20 +275,17 @@ def send_message_to_host(
     )
 
 
-def get_bearer_token(provider_name: str):
-    """Get bearer token for authentication (call once per session)."""
+def get_bearer_token_for_ssm_prefix(ssm_prefix: str):
+    """Get bearer token for authentication using SSM prefix."""
+    access_token, _ = get_m2m_token_for_agent(ssm_prefix)
+    return access_token
 
-    @requires_access_token(
-        provider_name=provider_name,
-        scopes=[],
-        auth_flow="M2M",
-        into="bearer_token",
-        force_authentication=True,
-    )
-    def _get_token(bearer_token: str = str()):
-        return bearer_token
 
-    return _get_token()
+def get_bearer_token_for_host_agent():
+    """Get bearer token for host agent using username/password authentication."""
+    from get_m2m_token import get_m2m_token
+
+    return get_m2m_token()
 
 
 if __name__ == "__main__":
@@ -303,23 +301,23 @@ if __name__ == "__main__":
 
     # Set variables based on agent choice
     if args.agent == "monitor":
-        selected_provider_name = moniter_provider_name
+        selected_ssm_prefix = "/monitoragent"
         selected_agent_arn = moniter_agent_arn
         print(f"\n🔍 Using Monitor Agent (ID: {moniter_agent_id})")
     elif args.agent == "websearch":
-        selected_provider_name = websearch_provider_name
+        selected_ssm_prefix = "/websearchagent"
         selected_agent_arn = websearch_agent_arn
         print(f"\n🔍 Using WebSearch Agent (ID: {websearch_agent_id})")
     else:  # host
-        selected_provider_name = hostagent_provider_name
+        selected_ssm_prefix = "/hostagent"
         selected_agent_arn = hostagent_agent_arn
         print(f"\n🔍 Using Host Agent (ID: {hostagent_agent_id})")
 
     # For host agent, use direct endpoint invocation without fetching agent card
     if args.agent == "host":
-        # Get bearer token once at the start of the session
-        print("\n🔐 Authenticating...")
-        bearer_token = get_bearer_token(selected_provider_name)
+        # Get bearer token once at the start of the session (uses username/password)
+        print("\n🔐 Authenticating with username/password...")
+        bearer_token = get_bearer_token_for_host_agent()
 
         # Start interactive session for host agent
         session_id = str(uuid4())
@@ -346,7 +344,7 @@ if __name__ == "__main__":
         # For monitor and websearch agents, use A2A protocol
         # Get bearer token once at the start of the session
         print("\n🔐 Authenticating...")
-        bearer_token = get_bearer_token(selected_provider_name)
+        bearer_token = get_bearer_token_for_ssm_prefix(selected_ssm_prefix)
 
         # Fetch and display the agent card
         print("📋 Fetching agent card...\n")

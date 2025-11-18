@@ -39,22 +39,29 @@ echo "✅ Runtime ID: $RUNTIME_ID"
 AGENT_ARN="arn:aws:bedrock-agentcore:${REGION}:${ACCOUNT_ID}:runtime/${RUNTIME_ID}"
 echo "✅ Constructed Agent ARN: $AGENT_ARN"
 
-# Fetch Cognito configuration from Secrets Manager
-echo "🔐 Fetching Cognito configuration..."
-SECRET_NAME="${COGNITO_STACK_NAME}/hostagent/client-config"
-COGNITO_CONFIG=$(aws secretsmanager get-secret-value --secret-id "$SECRET_NAME" --query SecretString --output text)
+# Fetch Cognito configuration from CloudFormation stack outputs
+echo "🔐 Fetching Cognito configuration from CloudFormation..."
+STACK_OUTPUTS=$(aws cloudformation describe-stacks --stack-name "$COGNITO_STACK_NAME" --query "Stacks[0].Outputs" --output json)
 
-if [ -z "$COGNITO_CONFIG" ]; then
-    echo "❌ Failed to fetch Cognito config from secret: $SECRET_NAME"
+if [ -z "$STACK_OUTPUTS" ] || [ "$STACK_OUTPUTS" == "null" ]; then
+    echo "❌ Failed to fetch CloudFormation stack outputs for: $COGNITO_STACK_NAME"
     echo "   Make sure the Cognito stack is deployed."
     exit 1
 fi
 
-CLIENT_ID=$(echo "$COGNITO_CONFIG" | jq -r '.client_id')
-TOKEN_ENDPOINT=$(echo "$COGNITO_CONFIG" | jq -r '.token_endpoint')
-CLIENT_SECRET=$(echo "$COGNITO_CONFIG" | jq -r '.client_secret')
+# Extract values from stack outputs
+CLIENT_ID=$(echo "$STACK_OUTPUTS" | jq -r '.[] | select(.OutputKey=="WebUserPoolClientId") | .OutputValue')
+DISCOVERY_URL=$(echo "$STACK_OUTPUTS" | jq -r '.[] | select(.OutputKey=="DiscoveryUrl") | .OutputValue')
+COGNITO_DOMAIN=$(echo "$STACK_OUTPUTS" | jq -r '.[] | select(.OutputKey=="CognitoDomain") | .OutputValue')
+USER_POOL_ID=$(echo "$DISCOVERY_URL" | cut -d'/' -f4)
+
+# Construct token endpoint from discovery URL
+# Discovery URL format: https://cognito-idp.{region}.amazonaws.com/{user_pool_id}/.well-known/openid-configuration
+TOKEN_ENDPOINT="https://cognito-idp.${REGION}.amazonaws.com/${USER_POOL_ID}/oauth2/token"
 
 echo "✅ Cognito Client ID: $CLIENT_ID"
+echo "✅ User Pool ID: $USER_POOL_ID"
+echo "✅ Cognito Domain: $COGNITO_DOMAIN"
 echo "✅ Token Endpoint: $TOKEN_ENDPOINT"
 
 # Create .env file
@@ -69,10 +76,11 @@ VITE_AWS_REGION=${REGION}
 # Host Agent Configuration
 VITE_AGENT_ARN=${AGENT_ARN}
 
-# Cognito OAuth Configuration (M2M)
+# Cognito Configuration (for Amplify Auth)
+VITE_COGNITO_USER_POOL_ID=${USER_POOL_ID}
+VITE_COGNITO_USER_POOL_CLIENT_ID=${CLIENT_ID}
+VITE_COGNITO_DOMAIN=${COGNITO_DOMAIN}
 VITE_COGNITO_TOKEN_ENDPOINT=${TOKEN_ENDPOINT}
-VITE_COGNITO_CLIENT_ID=${CLIENT_ID}
-VITE_COGNITO_CLIENT_SECRET=${CLIENT_SECRET}
 EOF
 
 echo "✅ .env file created successfully!"

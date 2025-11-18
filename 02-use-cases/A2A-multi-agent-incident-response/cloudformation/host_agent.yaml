@@ -272,7 +272,7 @@ Resources:
                 - docker push $ECR_REPOSITORY_URI:${IMAGE_TAG}
                 - echo "Build completed at $(date)"
                 - echo "Image tag pushed - ${IMAGE_TAG}"
-      SourceVersion: refs/heads/a2a-sample
+      # SourceVersion: refs/heads/a2a-sample
       TimeoutInMinutes: 30
       Tags:
         - Key: Name
@@ -492,15 +492,7 @@ Resources:
                   - codebuild:StartBuild
                   - codebuild:BatchGetBuilds
                 Resource: !GetAtt AgentDockerBuildProject.Arn
-        - PolicyName: SecretsManagerAccessPolicy
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action:
-                  - secretsmanager:GetSecretValue
-                Resource:
-                  Fn::ImportValue: !Sub '${CognitoStackName}-HostAgentClientSecretArn'
+        # Note: Host agent now uses WebUserPoolClient (public client, no secret needed)
         - PolicyName: BedrockIdentityAccessPolicy
           PolicyDocument:
             Version: '2012-10-17'
@@ -567,10 +559,6 @@ Resources:
       Environment:
         Variables:
           CODEBUILD_PROJECT_NAME: !Ref AgentDockerBuildProject
-          AGENT_CLIENT_SECRET_ARN:
-            Fn::ImportValue: !Sub '${CognitoStackName}-HostAgentClientSecretArn'
-          DISCOVERY_URL:
-            Fn::ImportValue: !Sub '${CognitoStackName}-DiscoveryUrl'
           ECR_REPOSITORY_NAME: !Ref AgentECRRepository
       Code:
         ZipFile: |
@@ -583,44 +571,6 @@ Resources:
 
           logger = logging.getLogger()
           logger.setLevel(logging.INFO)
-
-          def create_oauth2_credential_provider(secret_arn, discovery_url, provider_name):
-              try:
-                  logger.info(f"Creating OAuth2 credential provider for Agent: {provider_name}")
-
-                  # Get client credentials from Secrets Manager
-                  secrets_client = boto3.client('secretsmanager')
-                  secret_response = secrets_client.get_secret_value(SecretId=secret_arn)
-                  secret_data = json.loads(secret_response['SecretString'])
-
-                  client_id = secret_data['client_id']
-                  client_secret = secret_data['client_secret']
-                  token_url = secret_data['token_endpoint']
-                  auth_url = discovery_url.replace('/.well-known/openid-configuration', '/oauth2/authorize')
-
-                  # Create OAuth2 credential provider
-                  identity_client = boto3.client("bedrock-agentcore-control",)
-
-                  identity_client.create_oauth2_credential_provider(
-                      name=provider_name,
-                      credentialProviderVendor="CustomOauth2",
-                      oauth2ProviderConfigInput={
-                          "customOauth2ProviderConfig": {
-                              "clientId": client_id,
-                              "clientSecret": client_secret,
-                              "oauthDiscovery": {
-                                "discoveryUrl": discovery_url
-                              },
-                          }
-                      },
-                  )
-
-                  logger.info(f"OAuth2 credential provider created: {provider_name}")
-                  return provider_name
-
-              except Exception as e:
-                  logger.error(f"Failed to create OAuth2 credential provider: {str(e)}")
-                  raise e
 
           def empty_ecr_repository(repository_name):
               try:
@@ -654,14 +604,9 @@ Resources:
 
                   request_type = event['RequestType']
                   project_name = os.environ['CODEBUILD_PROJECT_NAME']
-                  agent_client_secret_arn = os.environ['AGENT_CLIENT_SECRET_ARN']
-                  discovery_url = os.environ['DISCOVERY_URL']
-                  provider_name = event['ResourceProperties']['ProviderName']
                   ecr_repository_name = os.environ['ECR_REPOSITORY_NAME']
 
                   if request_type == 'Create':
-                      # Create OAuth2 credential provider first
-                      create_oauth2_credential_provider(agent_client_secret_arn, discovery_url, provider_name)
                       # Start CodeBuild project on stack creation and wait for completion
                       codebuild = boto3.client('codebuild')
 
@@ -715,15 +660,6 @@ Resources:
                       # Clean up ECR repository
                       empty_ecr_repository(ecr_repository_name)
 
-                      # Clean up OAuth2 credential provider
-                      try:
-                          identity_client = boto3.client("bedrock-agentcore-control",)
-                          identity_client.delete_oauth2_credential_provider(name=provider_name)
-                          logger.info(f"OAuth2 credential provider deleted: {provider_name}")
-                      except Exception as e:
-                          logger.error(f"Failed to delete OAuth2 credential provider: {str(e)}")
-                          # Continue with deletion even if provider cleanup fails
-
                       send_response(event, context, 'SUCCESS', {})
 
                   elif request_type == 'Update':
@@ -762,7 +698,6 @@ Resources:
     DependsOn: AgentDockerBuildProject
     Properties:
       ServiceToken: !GetAtt CodeBuildTriggerFunction.Arn
-      ProviderName: !Sub 'HostAgentOAuth2Provider-${AWS::StackName}'
 
   # BedrockAgentCore Runtime using build-1 ECR image (first build from CodeBuildTrigger)
   AgentRuntime:
@@ -785,7 +720,7 @@ Resources:
           DiscoveryUrl:
             Fn::ImportValue: !Sub '${CognitoStackName}-DiscoveryUrl'
           AllowedClients:
-            - Fn::ImportValue: !Sub '${CognitoStackName}-HostAgentClientId'
+            - Fn::ImportValue: !Sub '${CognitoStackName}-WebUserPoolClientId'
       EnvironmentVariables:
         GOOGLE_MODEL_ID: !Ref GoogleModelId
         GOOGLE_API_KEY: !Ref GoogleApiKey
@@ -900,8 +835,7 @@ Resources:
   XRayTracesSetupFunction:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: !Sub 'csvpc-${Environment}-agent-xray-traces-setup'
-      Runtime: python3.12
+      Runtime: python3.13
       Handler: index.lambda_handler
       Role: !GetAtt XRayTracesSetupLambdaRole.Arn
       Timeout: 300

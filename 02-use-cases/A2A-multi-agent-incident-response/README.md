@@ -146,6 +146,19 @@ The [A2A Inspector](https://github.com/a2aproject/a2a-inspector) is a web-based 
 3. Paste the URL & bearer token (`Bearer <Add Here>`) on A2A Inspector and add three headers `Authorization`, `X-Amzn-Bedrock-AgentCore-Runtime-Session-Id`, and `X-Amzn-Bedrock-AgentCore-Runtime-Custom-Actorid`. The value of `X-Amzn-Bedrock-AgentCore-Runtime-Session-Id` should be atleast 32 characters (`550e8400-e29b-41d4-a716-446655440000
 `).
 
+### Bearer tokens
+
+You can obtain bearer tokens for each agent to use with tools like the A2A Inspector or for direct API testing.
+Get M2M token for the monitoring agent:
+
+```bash
+uv run monitoring_strands_agent/scripts/get_m2m_token.py
+
+uv run web_search_openai_agents/scripts/get_m2m_token.py
+
+uv run host_adk_agent/scripts/get_m2m_token.py
+```
+
 ## Test Scripts
 
 Test individual agents using the interactive script:
