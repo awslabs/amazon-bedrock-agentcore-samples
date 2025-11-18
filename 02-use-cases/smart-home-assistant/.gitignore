@@ -1,0 +1,66 @@
+# Python cache
+__pycache__
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# macOS files
+.DS_Store
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Virtual environments
+.venv/
+venv/
+env/
+.env
+.env.*
+.venv
+
+# IDE files
+.vscode/
+.idea/
+.kiro
+*.swp
+*.swo
+
+# Temporary files
+*.tmp
+*.temp
+temp/
+tmp/
+
+# Logs
+*.log
+logs/
+output.log
+
+# Agent Core Toolkit
+.bedrock_agentcore
+.bedrock_agentcore_bkp
+.bedrock_agentcore.yaml
+.bedrock_agentcore.yaml.bkp
+.dockerignore
+
+# TF
+.terraform
+.terraform.lock.hcl
+terraform.tfstate
+terraform.tfstate.backup
+terraform.tfvars
+
+# Local test files
+test_*.json
+*_test.json
+analysis_results.json
+video_analysis.json
+progress_*.json
+samples/
+layer-build/
+frames/
+videos/
+.ash

@@ -1,0 +1,11 @@
+
+bedrock-agentcore
+strands-agents
+strands-agents-tools
+mcp
+boto3
+requests
+bedrock-agentcore-starter-toolkit
+aws-opentelemetry-distro>=0.10.0
+typing
+git+https://github.com/toon-format/toon-python.git

@@ -1,0 +1,24 @@
+FROM public.ecr.aws/docker/library/python:3.11-slim
+WORKDIR /app
+
+# Instalar git
+RUN apt-get update && apt-get install -y git && rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt requirements.txt
+RUN pip install -r requirements.txt
+
+# set env var
+ENV AWS_REGION=us-east-1
+ENV AWS_DEFAULT_REGION=us-east-1
+ENV PYTHONUNBUFFERED=1
+
+# Create non-root user
+RUN useradd -m -u 1000 bedrock_agentcore
+USER bedrock_agentcore
+
+EXPOSE 8000
+
+COPY . .
+
+CMD ["python", "text_to_sql.py"]
+#CMD ["opentelemetry-instrument", "python", "text_to_sql.py"]

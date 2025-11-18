@@ -1,0 +1,27 @@
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Rounded square background with gradient -->
+  <defs>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#00D4FF;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#A260F6;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="iconGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFFFFF;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#E0E0E0;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Rounded square border -->
+  <rect x="4" y="4" width="120" height="120" rx="24" ry="24" fill="url(#bgGradient)" opacity="0.9"/>
+  
+  <!-- Ultra simple smart home icon -->
+  <g transform="translate(64, 64)">
+    <!-- Simple rounded square -->
+    <rect x="-28" y="-28" width="56" height="56" rx="8" stroke="url(#iconGradient)" stroke-width="4" fill="none"/>
+    
+    <!-- Power/smart indicator -->
+    <circle cx="0" cy="0" r="12" fill="url(#iconGradient)">
+      <animate attributeName="opacity" values="1;0.6;1" dur="2s" repeatCount="indefinite"/>
+    </circle>
+  </g>
+</svg>

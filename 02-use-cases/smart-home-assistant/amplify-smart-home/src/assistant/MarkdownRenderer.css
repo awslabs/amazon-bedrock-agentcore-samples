@@ -1,0 +1,231 @@
+/* markdown styles */
+.markdown-container {
+  max-width: 100%;
+  overflow-wrap: break-word;
+}
+
+/* Headings - Chat Optimized */
+.markdown-heading1 {
+  font-size: 1.4em;
+  margin-top: 12px;
+  margin-bottom: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.markdown-heading2 {
+  font-size: 1.25em;
+  margin-top: 10px;
+  margin-bottom: 10px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.markdown-heading3 {
+  font-size: 1.15em;
+  margin-top: 8px;
+  margin-bottom: 8px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.markdown-heading4 {
+  font-size: 1.05em;
+  margin-top: 8px;
+  margin-bottom: 8px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.markdown-heading5 {
+  font-size: 1em;
+  margin-top: 8px;
+  margin-bottom: 6px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.markdown-heading6 {
+  font-size: 0.95em;
+  margin-top: 8px;
+  margin-bottom: 6px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: rgba(156, 163, 175, 0.8); /* Light gray for dark mode with alpha */
+}
+
+/* Paragraphs */
+.markdown-paragraph {
+  margin-top: 0;
+  margin-bottom: 14px;
+  line-height: 1.5;
+}
+
+/* Links */
+.markdown-link {
+  color: rgba(96, 165, 250, 0.9); /* Light blue for dark mode with alpha */
+  text-decoration: none;
+}
+
+.markdown-link:hover {
+  text-decoration: underline;
+  color: rgba(147, 197, 253, 0.9);
+}
+
+/* Lists */
+.markdown-list {
+  padding-left: 1.5em;
+  margin-top: 0;
+  margin-bottom: 14px;
+}
+
+.markdown-list-item {
+  margin-bottom: 3px;
+  display: list-item;
+}
+
+.markdown-unordered-list {
+  list-style-type: disc;
+}
+
+.markdown-ordered-list {
+  list-style-type: decimal;
+}
+
+/* Code blocks and inline code - Dark Mode */
+.markdown-code-block {
+  background-color: rgba(255, 255, 255, 0.08); /* Enhanced semi-transparent white overlay */
+  border: 1px solid rgba(255, 255, 255, 0.15); /* Enhanced subtle transparent border */
+  border-radius: 8px;
+  padding: 16px;
+  overflow-x: auto;
+  margin-top: 0;
+  margin-bottom: 14px;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  font-size: 14px;
+  line-height: 1.5;
+  color: rgba(229, 231, 235, 0.95); /* Light gray text with alpha */
+}
+
+.markdown-inline-code {
+  background-color: rgba(255, 255, 255, 0.12); /* Enhanced semi-transparent background */
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 4px;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  font-size: 13px;
+  padding: 2px 6px;
+  margin: 0;
+  color: rgba(243, 244, 246, 0.95); /* Light text with alpha */
+}
+
+/* Blockquotes */
+.markdown-blockquote {
+  margin: 14px 0;
+  padding: 12px 16px;
+  color: rgba(209, 213, 219, 0.9); /* Lighter text with alpha */
+  background-color: rgba(255, 255, 255, 0.08); /* Enhanced subtle highlighted background */
+  border-left: 4px solid rgba(156, 163, 175, 0.8); /* Generic gray border for dark mode */
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.12); /* Enhanced subtle border */
+  border-left: 4px solid rgba(156, 163, 175, 0.8); /* Override left border with generic gray */
+}
+
+.markdown-blockquote > :first-child {
+  margin-top: 0;
+}
+
+.markdown-blockquote > :last-child {
+  margin-bottom: 0;
+}
+
+/* Tables - Dark Mode */
+.markdown-table {
+  width: 100%;
+  margin-top: 0;
+  margin-bottom: 14px;
+  border-spacing: 0;
+  border-collapse: collapse;
+  background-color: rgba(255, 255, 255, 0.06); /* Enhanced subtle transparent background */
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.15); /* Enhanced subtle transparent outer border */
+}
+
+.markdown-table th {
+  font-weight: 600;
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+  background-color: rgba(255, 255, 255, 0.08); /* Enhanced slightly more opaque header */
+  color: rgba(249, 250, 251, 0.95); /* Light header text with alpha */
+  text-align: left;
+}
+
+.markdown-table th:last-child {
+  border-right: none;
+}
+
+.markdown-table td {
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(229, 231, 235, 0.9); /* Light text with alpha */
+}
+
+.markdown-table td:last-child {
+  border-right: none;
+}
+
+.markdown-table tr:last-child td {
+  border-bottom: none;
+}
+
+.markdown-table tr:nth-child(even) {
+  background-color: rgba(255, 255, 255, 0.04); /* Enhanced subtle alternating row color */
+}
+
+.markdown-table tr:hover {
+  background-color: rgba(255, 255, 255, 0.1); /* Enhanced subtle hover effect */
+}
+
+/* Horizontal rule */
+.markdown-hr {
+  height: 1px;
+  padding: 0;
+  margin: 16px 0;
+  background-color: rgba(75, 85, 99, 0.6); /* Dark border with alpha */
+  border: 0;
+}
+
+/* Images */
+.markdown-image {
+  max-width: 100%;
+  box-sizing: content-box;
+  background-color: transparent;
+  border-radius: 6px;
+}
+
+/* Bold and italic */
+.markdown-bold {
+  font-weight: 600;
+}
+
+.markdown-italic {
+  font-style: italic;
+}
+
+/* Strike */
+.markdown-strike {
+  text-decoration: line-through;
+}
+
+/* Sub and sup */
+.markdown-sup {
+  vertical-align: super;
+  font-size: smaller;
+}
+
+.markdown-sub {
+  vertical-align: sub;
+  font-size: smaller;
+}
