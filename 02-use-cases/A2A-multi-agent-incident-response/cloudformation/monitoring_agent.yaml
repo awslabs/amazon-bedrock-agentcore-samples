@@ -953,6 +953,9 @@ Resources:
 
   AgentRuntimeDeliveryApplicationLogs:
     Type: AWS::Logs::Delivery
+    DependsOn:
+      - AgentRuntimeDeliverSourceApplicationLogs
+      - AgentRuntimeDeliveryDestination
     Properties:
       DeliveryDestinationArn: !GetAtt AgentRuntimeDeliveryDestination.Arn
       DeliverySourceName: !Sub "${AgentRuntime.AgentRuntimeId}-logs-source"
@@ -1702,6 +1705,9 @@ Resources:
 
   GatewayDeliveryApplicationLogs:
     Type: AWS::Logs::Delivery
+    DependsOn:
+      - GatewayDeliverSourceApplicationLogs
+      - GatewayDeliveryDestination
     Properties:
       DeliveryDestinationArn: !GetAtt GatewayDeliveryDestination.Arn
       DeliverySourceName: !Sub "${MonitoringGateway.GatewayIdentifier}-logs-source"
