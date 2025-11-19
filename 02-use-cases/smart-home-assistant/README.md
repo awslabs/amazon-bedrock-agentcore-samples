@@ -98,6 +98,17 @@ The Smart Home Assistant provides an intuitive conversational interface:
 
 </td>
 </tr>
+
+<tr>
+<td>
+
+### App Demo
+
+![Demo](images/smart-home-712.gif)
+
+</td>
+</tr>
+
 </table>
 
 ## Contributing
