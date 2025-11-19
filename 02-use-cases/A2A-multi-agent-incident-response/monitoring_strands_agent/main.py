@@ -11,9 +11,6 @@ import uvicorn
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-<<<<<<< HEAD
-runtime_url = os.getenv("AGENTCORE_RUNTIME_URL", "http://127.0.0.1:9000/")
-=======
 ssm = boto3.client("ssm")
 agentcore_client = boto3.client("bedrock-agentcore")
 
@@ -34,7 +31,6 @@ if not AWS_REGION:
 
 # Use the complete runtime URL from environment variable, fallback to local
 runtime_url = os.environ.get("AGENTCORE_RUNTIME_URL", "http://127.0.0.1:9000/")
->>>>>>> bb1671c (bump LLM to Haiku 4.5)
 host, port = "0.0.0.0", 9000
 
 agent_card = AgentCard(
