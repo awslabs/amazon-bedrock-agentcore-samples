@@ -42,24 +42,6 @@ TBLPROPERTIES (
   'projection.ingest_date.type'='date');
 """
 
-TABLE_DEFINITION = """
-Table Definition:
-
-### Columns
-- `timestamp_string` (string) - ISO8601 timestamp with timezone (e.g., "2025-11-13T08:30:00+01:00")
-- `stream_name` (string) - Camera identifier (e.g., "backyard")
-- `description` (string) - Natural language description of camera observation
-
-### Partition Key
-- `ingest_date` (string) - Date in YYYY-MM-DD format (UTC)
-
-### Query Requirements
-- MUST include partition filter: `WHERE ingest_date IN ('2025-11-13')` or date range
-- Use `from_iso8601_timestamp(timestamp_string)` for timestamp comparisons
-- Athena uses Presto SQL syntax
-- Available cameras: `backyard`
-"""
-
 
 def extract_sql(text):
     # Remove markdown code blocks
@@ -133,6 +115,7 @@ Rules:
 6. For date operations, use Athena-compatible date functions
 7. Limit output to 100 rows
 8. If user ask for a larger date interval (example, a week), agregate query to reduce output
+9. If user tries to inject a malfull SQL, answer explaining that it cannot be executed.
 
 Good Query Examples:
 
@@ -163,32 +146,6 @@ SQL
 
 """
 )
-
-
-# def create_camera_agent(history, question):
-#   return Agent(
-#         model=bedrock_model,
-#         system_prompt=f"""
-#     ## Instructions
-#     You are a home automation assistant analyzing camera logs.
-#     The logs contain timestamped descriptions of what the camera observed.
-#     Your job is to answer the user's question based on this history.
-#     Answer in a conversational tone and to the point.
-
-#     ## History
-#     {history}
-
-#     ## Rules
-#     - Only use information from the logs provided
-#     - Consider all timestamps and descriptions
-#     - If history is empty, state that no logs exist for the time range
-#     - Do not make up information
-#     - Use a conversational tone
-
-#     ## Question
-#     {question}
-#     """
-#   )
 
 @mcp.tool()
 def process_text_to_athena(question: str) -> str:
@@ -221,17 +178,7 @@ def process_text_to_athena(question: str) -> str:
       return encoded_query
     except Exception as e:
         return f"Error Running Athena Query - MCP: {str(e)}"
-    
-    #try:
-    # Analyze outputed query and give user a response
-    # camera_agent = create_camera_agent(query_result, question)
-    # resp_agent = camera_agent(f"Please analyze historical data and reply user question.")
-    # print(f"Model output: {str(resp_agent)}")
-    # logger.info(f"Model output: {str(resp_agent)}")
-    # #return resp_agent.__str__()
-    # return str(resp_agent)
-    #except Exception as e:
-    #    return f"Error analyzing Athena results - MCP: {str(e)}"
+
 
 if __name__ == "__main__":
     mcp.run(transport="streamable-http")

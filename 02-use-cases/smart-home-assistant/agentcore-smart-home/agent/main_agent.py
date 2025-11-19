@@ -87,7 +87,6 @@ def get_cognito_config():
 
 
 def get_token(user_pool_id: str, client_id: str, client_secret: str, scope_string: str, region: str) -> dict:
-    """Get authentication token from Cognito (based on utils.get_token)"""
     try:
         user_pool_id_without_underscore = user_pool_id.replace("_", "")
         url = f"https://{user_pool_id_without_underscore}.auth.{region}.amazoncognito.com/oauth2/token"
@@ -153,7 +152,6 @@ async def query_camera_data(question) -> str:
     mcp_server_url = config['mcp_server_url']
     if not mcp_server_url:
         return "Error: MCP_SERVER_URL environment variable not set"
-    print(f'MCP Server URL: {mcp_server_url}')
 
     # Get authentication token
     token_response = get_token(
@@ -179,7 +177,6 @@ async def query_camera_data(question) -> str:
     logger.info('Searching for MCP Tools')
     tool_search_resp = tool_search(mcp_server_url, bearer_token, "sql to athena tool")
     tool_resp_mcp = tool_search_resp[0]['name']
-    logger.info(f"Using tool: {tool_resp_mcp}")
 
     if not tool_resp_mcp:
         return f"Tool not found. Available tools: {tool_search_resp}"

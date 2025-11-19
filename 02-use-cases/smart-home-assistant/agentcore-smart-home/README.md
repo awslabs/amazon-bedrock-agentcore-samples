@@ -45,6 +45,63 @@ source .env/bin/activate
 pip install -r requirements.txt
 ```
 
+## Before Deploy Infrastructure - Video Ingestion
+
+### Connecting the agent to a camera
+
+Allowing the agent to query your cameras require the agent to have access to an API to retrieve images and videos. In this sample we use [Amazon Kinesis Video Streams](https://aws.amazon.com/kinesis/video-streams/), KVS, to securely stream video from connected devices to AWS. To get started with KVS you need a camera and a piece of hardware that connect to the camera, and send the stream to KVS. As an example, you can use a Raspberry Pi, that's either connected to a Pi camera module, or to an RTSP camera on the local network. To send the stream to AWS, you can use the AWS SDK, or the [KVS producer client](https://docs.aws.amazon.com/kinesisvideostreams/latest/dg/producer-sdk.html) which comes with a few convenience methods to help you get started quickly. Once the stream is in KVS, you can use the AWS API to get the current frame or generate videos etc.
+
+#### Ingesting a camera stream
+
+After you have set your camera to ingest video information, you should go to [camera_service.py](agent/services/camera_service.py) file and change following block to be your camera:
+
+```python
+CAMERA_STREAMS = {
+    "backyard": {
+        "stream_name": "hassela_camera_01",
+    },
+}
+```
+
+#### Accessing historical footage
+
+There are many strategies for allowing the agent to understand what the camera has observed in the past. In this sample there's a separate process that continuously queries the KVS API, getting frames with a set interval. These frames are then analysed using an LLM, and a structured log is stored S3. These logs are then accessed with SQL, using Athena, to enable the agent to on-deman retreive a log of what has transpired during specific time ranges.
+
+You will realize that this table was created into Athena using following schema:
+
+```sql
+CREATE EXTERNAL TABLE `cameras`(
+  `timestamp_string` string COMMENT 'from deserializer', 
+  `stream_name` string COMMENT 'from deserializer', 
+  `description` string COMMENT 'from deserializer')
+PARTITIONED BY ( 
+  `ingest_date` string)
+ROW FORMAT SERDE 
+  'org.openx.data.jsonserde.JsonSerDe' 
+STORED AS INPUTFORMAT 
+  'org.apache.hadoop.mapred.TextInputFormat' 
+OUTPUTFORMAT 
+  'org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat'
+TBLPROPERTIES (
+  'projection.enabled'='true', 
+  'projection.ingest_date.format'='yyyy-MM-dd-HH', 
+  'projection.ingest_date.interval'='1', 
+  'projection.ingest_date.interval.unit'='HOURS', 
+  'projection.ingest_date.range'='2024-09-01-00,NOW', 
+  'projection.ingest_date.type'='date');
+```
+
+Then, you should create a local file into [tf](tf/) folder with name `terraform.tfvars`. This file should contain following entries:
+
+```yaml
+# Local configuration
+camera_role_arn         = "<your-kvs-ARN>"
+camera_region           = "<region>"
+smart_home_bucket_name  = "<Bucket where your KVS is streaming>"
+```
+
+Finally, double check [variables.tf](tf/variables.tf) file to fill `athena_database` and `athena_workgroup` with your environment information.
+
 ### Deploy Infrastructure
 
 Deploy AWS infrastructure using Terraform:
@@ -64,32 +121,6 @@ terraform plan
 terraform apply --auto-approve
 ```
 
-### Running & Testing MCP Servers
-
-#### Start MCP Servers
-
-Terminal 1 (Sync server - port 8000):
-
-```bash
-python agent/text_to_sql.py
-```
-
-Terminal 2 (Async server - port 8001):
-
-```bash
-python agent/text_to_sql_async.py
-```
-
-### Connecting the agent to a camera
-
-#### Ingesting a camera stream
-
-Allowing the agent to query your cameras require the agent to have access to an API to retrieve images and videos. In this sample we use [Amazon Kinesis Video Streams](https://aws.amazon.com/kinesis/video-streams/), KVS, to securely stream video from connected devices to AWS. To get started with KVS you need a camera and a piece of hardware that connect to the camera, and send the stream to KVS. As an example, you can use a Raspberry Pi, that's either connected to a Pi camera module, or to an RTSP camera on the local network. To send the stream to AWS, you can use the AWS SDK, or the [KVS producer client](https://docs.aws.amazon.com/kinesisvideostreams/latest/dg/producer-sdk.html) which comes with a few convenience methods to help you get started quickly. Once the stream is in KVS, you can use the AWS API to get the current frame or generate videos etc.
-
-#### Accessing historical footage
-
-There are many strategies for allowing the agent to understand what the camera has observed in the past. In this sample there's a separate process that continuously queries the KVS API, getting frames with a set interval. These frames are then analysed using an LLM, and a structured log is stored S3. These logs are then accessed with SQL, using Athena, to enable the agent to on-deman retreive a log of what has transpired during specific time ranges.
-
 ## Next Steps
 
 After deploying the backend infrastructure, proceed to deploy the frontend application:
@@ -97,10 +128,6 @@ After deploying the backend infrastructure, proceed to deploy the frontend appli
 👉 **[Deploy the Smart Home Assistant UI](../amplify-smart-home/)**
 
 The frontend provides the conversational interface for users to interact with your AI-powered smart home assistant.
-
-## License
-
-This project is licensed under the Apache-2.0 License.
 
 ## Thanks
 

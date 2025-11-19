@@ -64,13 +64,6 @@ resource "aws_bedrockagentcore_agent_runtime" "orchestrator" {
     MEMORY_ID                = aws_bedrockagentcore_memory.orchestrator_memory.id
   }
 
-  #authorizer_configuration {
-  #  custom_jwt_authorizer {
-  #    discovery_url   = "https://cognito-idp.${local.region}.amazonaws.com/${aws_cognito_user_pool.orchestrator_pool.id}/.well-known/openid-configuration"
-  #    allowed_clients = [aws_cognito_user_pool_client.orchestrator_client.id]
-  #  }
-  #}
-
   network_configuration {
     network_mode = "PUBLIC"
   }
