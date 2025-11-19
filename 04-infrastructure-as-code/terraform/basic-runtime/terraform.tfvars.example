@@ -17,7 +17,7 @@ ecr_repository_name = "basic-agent"
 image_tag           = "latest"
 
 # AWS Configuration
-aws_region  = "us-east-1"
+aws_region  = "us-west-2"
 environment = "dev"
 
 # Optional: Environment Variables for the Agent Runtime

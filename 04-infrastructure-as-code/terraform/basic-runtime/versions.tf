@@ -10,6 +10,10 @@ terraform {
       source  = "hashicorp/null"
       version = "~> 3.0"
     }
+    time = {
+      source  = "hashicorp/time"
+      version = "~> 0.9"
+    }
   }
 }
 
@@ -21,8 +25,8 @@ provider "aws" {
       Project     = "AgentCore"
       Pattern     = "basic-runtime"
       Environment = var.environment
-      ManagedBy   = "Terraform"
       StackName   = var.stack_name
+      ManagedBy   = "Terraform"
     }
   }
 }

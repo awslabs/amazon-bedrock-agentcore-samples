@@ -177,13 +177,48 @@ terraform output
 Example output:
 ```
 agent_runtime_id = "AGENT1234567890"
-agent_runtime_arn = "arn:aws:bedrock-agentcore:us-east-1:123456789012:agent-runtime/AGENT1234567890"
-ecr_repository_url = "123456789012.dkr.ecr.us-east-1.amazonaws.com/agentcore-basic-basic-agent"
+agent_runtime_arn = "arn:aws:bedrock-agentcore:us-west-2:123456789012:agent-runtime/AGENT1234567890"
+ecr_repository_url = "123456789012.dkr.ecr.us-west-2.amazonaws.com/agentcore-basic-basic-agent"
 ```
 
 ## Testing the Agent
 
-### Option 1: Using AWS CLI
+### Prerequisites
+
+**Option 1: Using uv (Recommended)**
+
+```bash
+# Create virtual environment
+uv venv
+
+# Activate virtual environment
+source .venv/bin/activate  # On macOS/Linux
+
+# Install boto3
+uv pip install boto3
+```
+
+**Option 2: Using pip**
+
+```bash
+# Create virtual environment
+python3 -m venv .venv
+
+# Activate virtual environment
+source .venv/bin/activate  # On macOS/Linux
+
+# Install boto3
+pip install boto3
+```
+
+### Option 1: Using Test Script (Recommended)
+
+```bash
+# Run the test suite
+python test_basic_agent.py $(terraform output -raw agent_runtime_arn)
+```
+
+### Option 2: Using AWS CLI
 
 ```bash
 # Get the runtime ARN from outputs
@@ -200,7 +235,7 @@ aws bedrock-agentcore invoke-agent-runtime \
 cat response.json | jq -r '.response'
 ```
 
-### Option 2: Using AWS Console
+### Option 3: Using AWS Console
 
 1. Navigate to Amazon Bedrock console
 2. Go to AgentCore → Runtimes
@@ -270,6 +305,7 @@ basic-runtime/
 ├── buildspec.yml                # CodeBuild build specification
 ├── terraform.tfvars.example     # Example configuration
 ├── backend.tf.example           # Remote state example
+├── test_basic_agent.py          # Automated test script
 ├── agent-code/                  # Agent source code
 │   ├── basic_agent.py          # Agent implementation
 │   ├── Dockerfile              # Container configuration
@@ -292,7 +328,7 @@ If the Docker build fails:
    ```bash
    aws codebuild batch-get-builds \
      --ids $(terraform output -raw codebuild_project_name) \
-     --region us-east-1
+     --region us-west-2
    ```
 
 2. Common issues:
@@ -308,7 +344,7 @@ If the runtime creation fails:
    ```bash
    aws ecr describe-images \
      --repository-name $(terraform output -raw ecr_repository_url | cut -d'/' -f2) \
-     --region us-east-1
+     --region us-west-2
    ```
 
 2. Check IAM role permissions
@@ -348,15 +384,15 @@ Confirm all resources are deleted:
 
 ```bash
 # Check ECR repositories
-aws ecr describe-repositories --region us-east-1 | grep agentcore-basic
+aws ecr describe-repositories --region us-west-2 | grep agentcore-basic
 
 # Check AgentCore runtimes
-aws bedrock-agentcore list-agent-runtimes --region us-east-1
+aws bedrock-agentcore list-agent-runtimes --region us-west-2
 ```
 
 ## Cost Estimation
 
-### Monthly Cost Breakdown (us-east-1)
+### Monthly Cost Breakdown (us-west-2)
 
 | Service | Usage | Monthly Cost |
 |---------|-------|--------------|

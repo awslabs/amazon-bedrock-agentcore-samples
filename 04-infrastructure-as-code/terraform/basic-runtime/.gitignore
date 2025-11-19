@@ -5,6 +5,7 @@
 *.tfstate.backup
 *.tfvars
 !terraform.tfvars.example
+tfplan
 
 # Generated archives
 *.zip
