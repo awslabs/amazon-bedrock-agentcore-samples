@@ -45,22 +45,27 @@ def test_agent(client, agent_arn, test_name, prompt):
         response = client.invoke_agent_runtime(
             agentRuntimeArn=agent_arn,
             qualifier="DEFAULT",
-            payload={"prompt": prompt},
+            payload=json.dumps({"prompt": prompt}),
         )
 
         print(f"Status: {response['ResponseMetadata']['HTTPStatusCode']}")
-        print(f"Content Type: {response['ResponseMetadata']['HTTPHeaders'].get('content-type', 'N/A')}")
-        print(f"\n✅ Response:")
-
-        # Parse and display the response
+        print(f"Content Type: {response.get('contentType', 'N/A')}")
+        
+        # Read the streaming response body
+        response_text = ""
         if 'response' in response:
-            response_text = response.get('response', 'No response')
-            if isinstance(response_text, dict):
-                print(json.dumps(response_text, indent=2))
-            else:
-                print(response_text)
+            response_body = response['response'].read()
+            response_text = response_body.decode('utf-8')
+        
+        if response_text:
+            try:
+                result = json.loads(response_text)
+                response_content = result.get('response', response_text)
+                print(f"\n✅ Response:\n{response_content}")
+            except json.JSONDecodeError:
+                print(f"\n✅ Response:\n{response_text}")
         else:
-            print(json.dumps(response, indent=2, default=str))
+            print("\n⚠️  No response content received")
 
         return True
 
@@ -89,7 +94,7 @@ def main():
     print(f"\nAgent ARN: {agent_arn}\n")
 
     # Initialize boto3 client
-    client = boto3.client("bedrock-agentcore")
+    client = boto3.client("bedrock-agentcore", region_name="us-west-2")
 
     # Test cases for basic agent (no tools, just Q&A)
     tests = [
