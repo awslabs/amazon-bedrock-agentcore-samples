@@ -1,0 +1,257 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'ECS service with 3 containers: PostgreSQL, Backend, Frontend'
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: agentic-sales-analyst
+  BackendImage:
+    Type: String
+    Description: Backend container image URI
+  FrontendImage:
+    Type: String
+    Description: Frontend container image URI
+  BraveSearchAPIKey:
+    Type: String
+    NoEcho: true
+  DesiredCount:
+    Type: Number
+    Default: 1
+
+Resources:
+  # AgentCore Memory for conversation history
+  AgentCoreMemory:
+    Type: AWS::BedrockAgentCore::Memory
+    Properties:
+      Name: SalesAnalystMemory
+      Description: Short-term memory for sales assistant
+      EventExpiryDuration: 30
+      MemoryStrategies: []
+      Tags:
+        Project: !Ref ProjectName
+        Environment: ecs
+
+  # EFS for PostgreSQL data persistence (no backup plan for sample)
+  # For production: Add AWS Backup plan with daily/weekly backups
+  # See: https://docs.aws.amazon.com/efs/latest/ug/awsbackup.html
+  EFSFileSystem:
+    Type: AWS::EFS::FileSystem
+    Properties:
+      Encrypted: true
+      PerformanceMode: generalPurpose
+      ThroughputMode: bursting
+      FileSystemTags:
+        - Key: Name
+          Value: !Sub ${ProjectName}-postgres-data
+
+  EFSMountTarget1:
+    Type: AWS::EFS::MountTarget
+    Properties:
+      FileSystemId: !Ref EFSFileSystem
+      SubnetId: !ImportValue
+        Fn::Sub: ${ProjectName}-subnet-1-id
+      SecurityGroups:
+        - !Ref EFSSecurityGroup
+
+  EFSMountTarget2:
+    Type: AWS::EFS::MountTarget
+    Properties:
+      FileSystemId: !Ref EFSFileSystem
+      SubnetId: !ImportValue
+        Fn::Sub: ${ProjectName}-subnet-2-id
+      SecurityGroups:
+        - !Ref EFSSecurityGroup
+
+  EFSSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: EFS security group
+      VpcId: !ImportValue
+        Fn::Sub: ${ProjectName}-vpc-id
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 2049
+          ToPort: 2049
+          SourceSecurityGroupId: !ImportValue
+            Fn::Sub: ${ProjectName}-ecs-sg-id
+          Description: Allow NFS inbound from ECS tasks
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 2049
+          ToPort: 2049
+          DestinationSecurityGroupId: !ImportValue
+            Fn::Sub: ${ProjectName}-ecs-sg-id
+          Description: Allow NFS outbound to ECS tasks
+
+  # amazonq-ignore-next-line
+  TaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    DependsOn:
+      - EFSMountTarget1
+      - EFSMountTarget2
+    Properties:
+      Family: !Sub ${ProjectName}-task
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      Cpu: '2048'
+      Memory: '4096'
+      ExecutionRoleArn: !ImportValue
+        Fn::Sub: ${ProjectName}-execution-role-arn
+      TaskRoleArn: !ImportValue
+        Fn::Sub: ${ProjectName}-task-role-arn
+      Volumes:
+        - Name: postgres-data
+          EFSVolumeConfiguration:
+            FilesystemId: !Ref EFSFileSystem
+            TransitEncryption: ENABLED
+      ContainerDefinitions:
+        - Name: postgres
+          Image: !Sub ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${ProjectName}:postgres-latest
+          Essential: true
+          Environment:
+            - Name: POSTGRES_DB
+              Value: sales_db
+            - Name: POSTGRES_USER
+              Value: postgres
+            - Name: POSTGRES_PASSWORD
+              Value: postgres  # pragma: allowlist secret
+          MountPoints:
+            - SourceVolume: postgres-data
+              ContainerPath: /var/lib/postgresql/data
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !ImportValue
+                Fn::Sub: ${ProjectName}-log-group
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: postgres
+          HealthCheck:
+            Command:
+              - CMD-SHELL
+              - pg_isready -U postgres
+            Interval: 10
+            Timeout: 5
+            Retries: 5
+            StartPeriod: 30
+
+        - Name: backend
+          Image: !Ref BackendImage
+          Essential: true
+          PortMappings:
+            - ContainerPort: 8080
+          DependsOn:
+            - ContainerName: postgres
+              Condition: HEALTHY
+          Environment:
+            - Name: AWS_REGION
+              Value: !Ref AWS::Region
+            - Name: DEPLOYMENT_MODE
+              Value: ecs
+            - Name: PROJECT_NAME
+              Value: !Ref ProjectName
+            - Name: DATABASE_URL
+              Value: postgresql://postgres:postgres@localhost:5432/sales_db  # pragma: allowlist secret checkov:skip=CKV_SECRET_4:Demo application uses hardcoded credentials
+            - Name: BRAVE_SEARCH_API_KEY
+              Value: !Ref BraveSearchAPIKey
+            - Name: AGENT_OBSERVABILITY_ENABLED
+              Value: 'true'
+            - Name: OTEL_PYTHON_DISTRO
+              Value: aws_distro
+            - Name: OTEL_PYTHON_CONFIGURATOR
+              Value: aws_configurator
+            - Name: OTEL_EXPORTER_OTLP_PROTOCOL
+              Value: http/protobuf
+            - Name: OTEL_LOGS_EXPORTER
+              Value: otlp
+            - Name: OTEL_EXPORTER_OTLP_LOGS_PROTOCOL
+              Value: http/protobuf
+            - Name: OTEL_EXPORTER_OTLP_LOGS_HEADERS
+              Value: !Sub 'x-aws-log-group=/aws/bedrock-agentcore/runtimes/${ProjectName},x-aws-log-stream=runtime-logs,x-aws-metric-namespace=bedrock-agentcore'
+            - Name: OTEL_SERVICE_NAME
+              Value: !Ref ProjectName
+            - Name: OTEL_RESOURCE_ATTRIBUTES
+              Value: !Sub 'service.name=${ProjectName},aws.log.group.names=/aws/bedrock-agentcore/runtimes/${ProjectName}'
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !ImportValue
+                Fn::Sub: ${ProjectName}-log-group
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: backend
+          HealthCheck:
+            Command:
+              - CMD-SHELL
+              - curl -f http://localhost:8080/health || exit 1
+            Interval: 30
+            Timeout: 5
+            Retries: 3
+            StartPeriod: 60
+
+        - Name: frontend
+          Image: !Ref FrontendImage
+          Essential: true
+          PortMappings:
+            - ContainerPort: 3000
+          DependsOn:
+            - ContainerName: backend
+              Condition: HEALTHY
+          Environment:
+            - Name: REACT_APP_API_URL
+              Value: http://localhost:8080
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !ImportValue
+                Fn::Sub: ${ProjectName}-log-group
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: frontend
+          HealthCheck:
+            Command:
+              - CMD-SHELL
+              - curl -f http://localhost:3000 || exit 1
+            Interval: 30
+            Timeout: 5
+            Retries: 3
+            StartPeriod: 60
+
+  Service:
+    Type: AWS::ECS::Service
+    DependsOn:
+      - EFSMountTarget1
+      - EFSMountTarget2
+    Properties:
+      ServiceName: !Sub ${ProjectName}-service
+      Cluster: !ImportValue
+        Fn::Sub: ${ProjectName}-cluster-name
+      TaskDefinition: !Ref TaskDefinition
+      DesiredCount: !Ref DesiredCount
+      LaunchType: FARGATE
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          Subnets:
+            - !ImportValue
+              Fn::Sub: ${ProjectName}-subnet-1-id
+            - !ImportValue
+              Fn::Sub: ${ProjectName}-subnet-2-id
+          SecurityGroups:
+            - !ImportValue
+              Fn::Sub: ${ProjectName}-ecs-sg-id
+      LoadBalancers:
+        - ContainerName: frontend
+          ContainerPort: 3000
+          TargetGroupArn: !ImportValue
+            Fn::Sub: ${ProjectName}-tg-arn
+      HealthCheckGracePeriodSeconds: 60
+      DeploymentConfiguration:
+        MaximumPercent: 200
+        MinimumHealthyPercent: 100
+
+Outputs:
+  ServiceName:
+    Value: !GetAtt Service.Name
+  MemoryId:
+    Value: !GetAtt AgentCoreMemory.MemoryId
+    Export:
+      Name: !Sub ${ProjectName}-memory-id

@@ -3,12 +3,14 @@ from a2a.types import TransportProtocol
 from bedrock_agentcore.identity.auth import requires_access_token
 from google.adk.agents.llm_agent import Agent
 from google.adk.agents.remote_a2a_agent import RemoteA2aAgent
+from prompt import SYSTEM_PROMPT
 from urllib.parse import quote
 import httpx
 import os
 import uuid
 
 IS_DOCKER = os.getenv("DOCKER_CONTAINER", "0") == "1"
+GOOGLE_MODEL_ID = os.getenv("GOOGLE_MODEL_ID", "gemini-2.5-flash")
 
 if IS_DOCKER:
     from utils import get_ssm_parameter, get_aws_info
@@ -49,8 +51,7 @@ def _create_client_factory(provider_name: str, session_id: str, actor_id: str):
             headers = {
                 "Authorization": f"Bearer {bearer_token}",
                 "X-Amzn-Bedrock-AgentCore-Runtime-Session-Id": session_id,
-                # TODO: Actor Id
-                # "X-Amzn-Bedrock-AgentCore-Runtime-User-Id": actor_id,
+                "X-Amzn-Bedrock-AgentCore-Runtime-Custom-Actorid": actor_id,
             }
 
             return httpx.AsyncClient(
@@ -151,22 +152,9 @@ def get_root_agent(session_id: str, actor_id: str):
 
     # Create root agent
     root_agent = Agent(
-        model="gemini-2.0-flash",
+        model=GOOGLE_MODEL_ID,
         name="root_agent",
-        instruction="""You are an efficient orchestration agent for AWS monitoring and operations.
-
-Your role:
-1. Break down user questions into sub-tasks and delegate appropriately
-2. For monitoring tasks (metrics, logs, CloudWatch data): delegate to monitor_agent
-3. For troubleshooting, solutions, and documentation searches: delegate to websearch_agent
-4. Engage in multi-turn conversations to ensure all user needs are met
-5. Synthesize information from sub-agents to provide comprehensive responses
-
-Available sub-agents:
-- monitor_agent: Handles AWS monitoring tasks
-- websearch_agent: Web search agent for finding AWS solutions, documentation, and best practices
-
-Focus exclusively on AWS-related monitoring and operations tasks.""",
+        instruction=SYSTEM_PROMPT,
         sub_agents=[monitor_agent, websearch_agent],
     )
 

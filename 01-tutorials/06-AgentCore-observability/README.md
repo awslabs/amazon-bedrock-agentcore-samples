@@ -47,6 +47,9 @@ For more details on AgentCore Observability, please refer to [this](https://aws.
 │   │   └── requirements.txt
 │   └── README.md
 ├── 04-Agentcore-runtime-partner-observability/
+│   ├── Arize/
+│   │   ├── requirements.txt
+│   │   └── runtime_with_strands_and_arize.ipynb
 │   ├── Braintrust/
 │   │   ├── requirements.txt
 │   │   └── runtime_with_strands_and_braintrust.ipynb
@@ -97,6 +100,7 @@ Advanced observability patterns and techniques:
 
 Examples of using agents hosted on Amazon Bedrock AgentCore Runtime with third-party observability tools:
 
+- **Arize**: AI and Agent engineering platform
 - **Braintrust**: AI evaluation and monitoring platform
 - **Langfuse**: LLM observability and analytics
 

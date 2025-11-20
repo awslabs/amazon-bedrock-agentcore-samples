@@ -7,6 +7,8 @@
 - aurbac
 - bergjaak
 - brianloyal
+- chanbi
+- Chaitra Mathur (mchaitra007)
 - chintanpatel-ai
 - Chintan Patel
 - crupakheti
@@ -19,6 +21,7 @@
 - Evandro Franco
 - Fabian Rami
 - Frank Dallezotte
+- govindhi
 - Grace Lang
 - greg-aws
 - HardikThakkar94
@@ -33,6 +36,7 @@
 - mvangara10
 - Omar Elkharbotly
 - ozhn
+- patcher9
 - Polaris Jhandi
 - premaiyer
 - rahullks
@@ -44,6 +48,7 @@
 - saurabh-et-al
 - seanslavichaws
 - Shreyas Subramanian
+- spencer-zepelin
 - sssumarss
 - sundargthb
 - Sunil Ramachandra

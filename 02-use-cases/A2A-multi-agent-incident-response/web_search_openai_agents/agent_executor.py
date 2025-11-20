@@ -1,5 +1,3 @@
-import logging
-
 from a2a.server.agent_execution import AgentExecutor, RequestContext
 from a2a.server.events import EventQueue
 from a2a.server.tasks import TaskUpdater
@@ -12,9 +10,9 @@ from a2a.types import (
 )
 from a2a.utils import new_agent_text_message, new_task
 from a2a.utils.errors import ServerError
-from openai.types.responses import ResponseTextDeltaEvent
-
 from agent import _call_agent_stream, create_agent
+from openai.types.responses import ResponseTextDeltaEvent
+import logging
 
 logger = logging.getLogger(__name__)
 
@@ -109,16 +107,17 @@ class WebSearchAgentExecutor(AgentExecutor):
         """
         # Extract session and actor IDs from headers
         session_id = None
-        # TODO: Remove Actor Id
-        actor_id = "Actor1"  # Default actor ID
 
         if context.call_context:
             headers = context.call_context.state.get("headers", {})
             session_id = headers.get("x-amzn-bedrock-agentcore-runtime-session-id")
-            # actor_id = headers.get("x-amzn-bedrock-agentcore-runtime-user-id", actor_id)
-            actor_id = actor_id
-        if not session_id:
+            actor_id = headers.get("x-amzn-bedrock-agentcore-runtime-custom-actorid")
+        if not actor_id:
             logger.error("Session ID is not set")
+            raise Exception(error=InvalidParamsError())
+
+        if not session_id:
+            logger.error("Actor ID is not set")
             raise ServerError(error=InvalidParamsError())
 
         # Get or create task

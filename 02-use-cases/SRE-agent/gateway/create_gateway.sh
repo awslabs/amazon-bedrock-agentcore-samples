@@ -120,7 +120,7 @@ TARGET_DESCRIPTION=$(get_config "target_description")
 CREDENTIAL_PROVIDER_NAME=$(get_config "credential_provider_name")
 
 # Create S3 bucket if not configured, or use the configured one
-S3_BUCKET=$(_create_s3_bucket "$S3_BUCKET" "$REGION")
+S3_BUCKET=$(_create_s3_bucket "$S3_BUCKET" "$REGION" 2>/dev/null | tail -1)
 
 # Extract Cognito region from User Pool ID (format: region_poolId)
 COGNITO_REGION=$(echo "$USER_POOL_ID" | cut -d'_' -f1)

@@ -1,6 +1,89 @@
 #!/bin/bash
 
-# Deployment script for Device Management Lambda function
+################################################################################
+# Device Management Lambda Function - Deployment Script
+#
+# This script deploys the Device Management Lambda function along with all
+# required IAM roles, policies, and permissions. It handles both initial
+# deployment and updates to existing Lambda functions.
+#
+# COMPONENTS DEPLOYED:
+#   1. Lambda Function: Device management backend with MCP tools
+#   2. Lambda IAM Role: Execution role with DynamoDB permissions
+#   3. Agent Gateway IAM Role: Role for gateway to invoke Lambda
+#   4. Agent Gateway IAM Policy: Permissions for gateway operations
+#   5. Lambda Package: Zipped function code with dependencies
+#
+# IAM RESOURCES CREATED:
+#   - DeviceManagementLambdaRole: Lambda execution role
+#     * AWSLambdaBasicExecutionRole (managed policy)
+#     * DeviceManagementDynamoDBAccess (inline policy)
+#   
+#   - AgentGatewayAccessRole: Gateway access role
+#     * Assumed by bedrock-agentcore.amazonaws.com
+#     * AgentGatewayAccess policy attached
+#   
+#   - AgentGatewayAccess: Policy for gateway operations
+#     * bedrock-agentcore:*Gateway*
+#     * bedrock-agentcore:*WorkloadIdentity
+#     * bedrock-agentcore:*CredentialProvider
+#
+# DYNAMODB PERMISSIONS:
+#   - GetItem, Query, Scan, UpdateItem on tables:
+#     * Devices
+#     * DeviceSettings
+#     * WifiNetworks
+#     * Users
+#     * UserActivities (including ActivityTypeIndex GSI)
+#
+# CONFIGURATION:
+#   Environment variables (with defaults):
+#   - LAMBDA_FUNCTION_NAME: DeviceManagementLambda
+#   - LAMBDA_ROLE_NAME: DeviceManagementLambdaRole
+#   - AGENT_GATEWAY_POLICY_NAME: AgentGatewayAccess
+#   - AGENT_GATEWAY_ROLE_NAME: AgentGatewayAccessRole
+#   - AWS_REGION: us-west-2
+#
+# DEPLOYMENT PROCESS:
+#   1. Load environment variables from .env (if exists)
+#   2. Create Agent Gateway IAM policy and role
+#   3. Package Lambda function with dependencies
+#   4. Create or update Lambda function
+#   5. Export Lambda ARN to lambda_arn.txt
+#   6. Update gateway/.env with Lambda ARN and Role ARN
+#
+# USAGE:
+#   ./deploy.sh
+#
+# EXIT CODES:
+#   0 - Deployment successful
+#   Non-zero - Deployment failed (AWS CLI error)
+#
+# OUTPUTS:
+#   - lambda_arn.txt: Contains Lambda ARN for gateway configuration
+#   - gateway/.env: Updated with LAMBDA_ARN and ROLE_ARN
+#   - lambda_package.zip: Temporary package file (cleaned up)
+#
+# ENVIRONMENT FILES UPDATED:
+#   ../gateway/.env:
+#   - LAMBDA_ARN: ARN of deployed Lambda function
+#   - ROLE_ARN: ARN of Agent Gateway access role
+#
+# NOTES:
+#   - Creates IAM resources if they don't exist
+#   - Updates existing Lambda function code if already deployed
+#   - Waits 10 seconds for IAM role propagation
+#   - Supports both macOS (BSD sed) and Linux (GNU sed)
+#   - Cleans up temporary package directory and zip file
+#   - Requires AWS credentials with appropriate permissions
+#
+# PREREQUISITES:
+#   - AWS CLI installed and configured
+#   - Python 3.12 runtime available in AWS Lambda
+#   - requirements.txt with Lambda dependencies
+#   - lambda_function.py with handler implementation
+#
+################################################################################
 
 # Load environment variables from .env file if it exists
 if [ -f .env ]; then
@@ -18,12 +101,6 @@ ZIP_FILE="lambda_package.zip"
 # Get AWS account ID
 ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 echo "AWS Account ID: $ACCOUNT_ID"
-if [ $? -ne 0 ] || [ -z "$ACCOUNT_ID" ] || [ "$ACCOUNT_ID" = "None" ]; then
-    echo "❌ Failed to get AWS Account ID. Please check your AWS credentials and network connectivity."
-    echo "Error: $ACCOUNT_ID"
-    exit 1
-fi
-
 
 echo "Packaging Lambda function..."
 

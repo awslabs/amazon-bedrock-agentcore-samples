@@ -7,7 +7,7 @@ set -o pipefail
 BUCKET_NAME=${1:-customersupport}
 INFRA_STACK_NAME=${2:-CustomerSupportStackInfra}
 COGNITO_STACK_NAME=${3:-CustomerSupportStackCognito}
-REGION=$(aws configure get region)
+REGION=$(aws configure get region || echo "${AWS_DEFAULT_REGION:-us-east-1}")
 ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 FULL_BUCKET_NAME="${BUCKET_NAME}-${ACCOUNT_ID}"
 ZIP_FILE="lambda.zip"
@@ -59,6 +59,6 @@ rm -f "$ZIP_FILE"
 # ----- 5. Delete Knowledge Base -----
 
 echo "🗑️ Deleting Knowledgebase"
-python prerequisite/knowledge_base.py --mode delete
+uv run python prerequisite/knowledge_base.py --mode delete
 
 echo "✅ Deployment complete."
