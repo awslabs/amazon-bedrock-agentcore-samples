@@ -84,12 +84,42 @@ export function ChatProvider({ children }: ChatProviderProps) {
             continue
           }
 
-          // Handle first chunk as agent cards info
+          // Handle first chunk as agent cards info or error
           if (isFirstChunk) {
             isFirstChunk = false;
 
             console.log('[DEBUG] First chunk received:', JSON.stringify(event, null, 2));
             console.log('[DEBUG] Event keys:', Object.keys(event));
+
+            // Check if this is an error response
+            if ('error' in event || 'error_type' in event) {
+              console.error('[ERROR] Agent error received:', {
+                error: event.error,
+                error_type: event.error_type,
+                message: event.message,
+              });
+
+              // Display error in UI
+              const errorMessage = typeof event.error === 'string'
+                ? event.error
+                : (event.message || 'Unknown agent error');
+
+              setChatState((prev) => ({
+                ...prev,
+                messages: [
+                  ...prev.messages,
+                  {
+                    role: 'assistant',
+                    content: `⚠️ Agent Error: ${errorMessage}`,
+                    timestamp: Date.now(),
+                  },
+                ],
+                isStreaming: false,
+              }));
+
+              // Stop processing this stream
+              return;
+            }
 
             // Check if this is agent cards data (no 'event' or 'content' fields, has agent_name keys)
             const eventKeys = Object.keys(event);

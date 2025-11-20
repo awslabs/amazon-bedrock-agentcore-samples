@@ -2,15 +2,21 @@
 
 Deploy the back-end infrastructure for a Data Analyst Assistant for Video Game Sales using **[AWS Cloud Development Kit (CDK)](https://aws.amazon.com/cdk/)**.
 
+> [!NOTE]
+> **Working Directory**: Make sure you are in the `cdk-agentcore-strands-data-analyst-assistant/` folder before starting this tutorial. All commands in this guide should be executed from this directory.
+
 ## Overview
 
 This tutorial deploys the foundational AWS services required for the video game sales data analyst agent with the following key components:
 
-- **IAM AgentCore Execution Role**: Provides necessary permissions for Amazon Bedrock AgentCore execution
-- **VPC and Private Subnet**: Network isolation and security for database resources
-- **Amazon Aurora Serverless PostgreSQL**: Stores the video game sales data with RDS Data API integration
-- **Amazon DynamoDB**: Tracks raw query results and agent interactions
-- **Parameter Store Configuration Management**: Securely manages application configuration
+- **IAM AgentCore Execution Role**: Comprehensive permissions for Amazon Bedrock AgentCore execution, including access to Bedrock models, RDS Data API, DynamoDB, and Secrets Manager
+- **VPC with Public and Private Subnets**: Network isolation and security for database resources with NAT Gateway for outbound connectivity
+- **Amazon Aurora Serverless v2 PostgreSQL**: Scalable database cluster storing video game sales data with RDS Data API integration and encryption
+- **Amazon DynamoDB**: Single table for tracking SQL query results with pay-per-request billing
+- **AWS Secrets Manager**: Secure storage for database credentials
+- **Amazon S3**: Import bucket for loading data into Aurora PostgreSQL with lifecycle policies
+- **VPC Gateway Endpoints**: Cost-effective access to S3 and DynamoDB services
+- **SSM Parameter Store**: Configuration management for AgentCore runtime parameters
 
 > [!IMPORTANT]
 > Remember to clean up resources after testing to avoid unnecessary costs by following the clean-up steps provided.
@@ -32,7 +38,13 @@ aws iam create-service-linked-role --aws-service-name rds.amazonaws.com
 
 ## AWS Deployment
 
-Navigate to the CDK project folder and deploy the infrastructure:
+Navigate to the CDK project folder and install dependencies:
+
+```bash
+npm install
+```
+
+Deploy the infrastructure:
 
 ```bash
 cdk deploy
@@ -44,13 +56,13 @@ Default Parameters:
 
 Deployed Resources:
 
-- Aurora PostgreSQL Cluster
-- S3 bucket for data import
-- Secrets Manager secret for database credentials
-- DynamoDB Tables for tracking questions query details and agent interactions
-- Parameter Store for application configuration management:
-  - `/<projectId>/AGENT_INTERACTIONS_TABLE_NAME`: DynamoDB agent interactions table name
-  - `/<projectId>/AWS_REGION`: AWS region
+- **VPC**: Public/private subnets, NAT Gateway, security groups, VPC endpoints
+- **Aurora PostgreSQL Serverless v2**: Database cluster with RDS Data API
+- **DynamoDB**: Table for SQL query results
+- **S3**: Bucket for data imports with lifecycle policies
+- **Secrets Manager**: Database credentials storage
+- **IAM**: AgentCore execution role with Bedrock, RDS, DynamoDB permissions
+- **SSM Parameter Store**: Configuration parameters
   - `/<projectId>/SECRET_ARN`: Database secret ARN
   - `/<projectId>/AURORA_RESOURCE_ARN`: Aurora cluster ARN
   - `/<projectId>/DATABASE_NAME`: Database name
@@ -58,18 +70,24 @@ Deployed Resources:
   - `/<projectId>/MAX_RESPONSE_SIZE_BYTES`: Maximum response size in bytes (1MB)
   - `/<projectId>/MEMORY_ID`: AgentCore Memory ID for the Agent
 
-  These parameters are automatically retrieved by the Strands Agent to establish database connections, track interactions, and configure agent behavior.
+  These parameters are automatically retrieved by the Strands Agent to establish database connections and configure agent behavior.
 
 > [!IMPORTANT] 
 > Enhance AI safety and compliance by implementing **[Amazon Bedrock Guardrails](https://aws.amazon.com/bedrock/guardrails/)** for your AI applications with the seamless integration offered by **[Strands Agents SDK](https://strandsagents.com/latest/user-guide/safety-security/guardrails/)**.
 
 ## Load Sample Data into PostgreSQL Database
 
-1. Set up the required environment variables:
+1. Install required Python dependencies:
+
+``` bash
+pip install boto3
+```
+
+2. Set up the required environment variables:
 
 ``` bash
 # Set the stack name environment variable
-export STACK_NAME=CdkAgentCoreStrandsDataAnalystAssistantStack
+export STACK_NAME=CdkAgentcoreStrandsDataAnalystAssistantStack
 
 # Retrieve the output values and store them in environment variables
 export SECRET_ARN=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" --query "Stacks[0].Outputs[?OutputKey=='SecretARN'].OutputValue" --output text)
@@ -88,7 +106,7 @@ EOF
 
 ```
 
-2. Load sample data into PostgreSQL:
+3. Load sample data into PostgreSQL:
 
 ``` bash
 python3 resources/create-sales-database.py

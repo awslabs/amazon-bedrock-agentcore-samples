@@ -2,8 +2,7 @@
 // CUSTOMIZABLE CONFIGURATION VALUES
 // ================================
 
-// AWS Configuration - UPDATE THESE VALUES
-const AWS_REGION = "us-east-1"; // Your AWS region
+// Amazon DynamoDB
 const QUESTION_ANSWERS_TABLE_NAME = ""; // Your DynamoDB table name
 
 // Amazon Bedrock AgentCore Configuration
@@ -299,8 +298,7 @@ Example Chart Configurations:\n\
 </ChartExamples>';
 
 export {
-  // AWS Configuration
-  AWS_REGION,
+  // Amazon DynamoDB
   QUESTION_ANSWERS_TABLE_NAME,
   
   // Amazon Bedrock AgentCore

@@ -34,6 +34,10 @@ Amazon Bedrock AgentCore supports any agentic framework and model of your choice
 
 Each platform requires specific configuration:
 
+### Arize
+- API key and Space ID from Arize dashboard
+- Project configuration
+
 ### Braintrust
 - API key from Braintrust dashboard
 - Project configuration
@@ -56,6 +60,7 @@ After completing examples:
 
 ## Additional Resources
 
+- [Arize Documentation](https://arize.com/docs/ax)
 - [Braintrust Documentation](https://www.braintrust.dev/docs)
 - [Instana Documentation](https://www.ibm.com/docs/en/instana-observability/1.0.308?topic=overview)
 - [Langfuse Documentation](https://langfuse.com/docs)
@@ -63,5 +68,5 @@ After completing examples:
 
 # Third-Party Observability for Amazon Bedrock AgentCore Agents
 
-This repository contains examples of using agents hosted on Amazon Bedrock AgentCore Runtime with third-party observability tools like Braintrust, Instana, Langfuse, and others. These examples demonstrate OpenTelemetry integration for monitoring agent performance, tracing LLM interactions, and debugging workflows.
+This repository contains examples of using agents hosted on Amazon Bedrock AgentCore Runtime with third-party observability tools like Arize, Braintrust, Instana, Langfuse, and others. These examples demonstrate OpenTelemetry integration for monitoring agent performance, tracing LLM interactions, and debugging workflows.
 
