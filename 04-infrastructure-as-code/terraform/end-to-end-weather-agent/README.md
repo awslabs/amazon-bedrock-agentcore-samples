@@ -122,10 +122,11 @@ This Terraform configuration creates:
 
 3. **Python 3.11+** (for testing scripts and memory initialization)
    ```bash
+   python --version  # Verify Python 3.11 or later
    pip install boto3
    ```
    
-   **Note**: boto3 is required for:
+   **Note**: `boto3` is required for:
    - Running test scripts (`test_weather_agent.py`)
    - Automatic memory initialization during deployment
 
@@ -161,32 +162,14 @@ Edit `terraform.tfvars` with your preferred values:
 
 ### 2. Initialize Terraform
 
-Choose your state management approach:
+See [State Management Options](../README.md#state-management-options) in the main README for detailed guidance on local vs. remote state.
 
-**Option A: Local State (Quickstart)**
-
-Perfect for testing and solo development:
-
+**Quick start with local state:**
 ```bash
 terraform init
 ```
 
-State stored in local `terraform.tfstate` file.
-
-**Option B: Remote State (Teams/Production)**
-
-For team collaboration or production:
-
-```bash
-# 1. Setup (one-time)
-cp backend.tf.example backend.tf
-# Edit backend.tf with your S3 bucket + DynamoDB table
-
-# 2. Initialize
-terraform init
-```
-
-💡 **Note**: You must create the S3 bucket and DynamoDB table before running `terraform init`. See `backend.tf.example` for setup details.
+**For team collaboration, use remote state** - see the [main README](../README.md#state-management-options) for setup instructions.
 
 ### 3. Deploy
 
@@ -272,6 +255,24 @@ This pattern uses **IAM-based authentication with workload identity tokens**:
 ## Testing
 
 The included `test_weather_agent.py` script is **infrastructure-agnostic** and works with any deployment method (Terraform, CDK, CloudFormation, or manual).
+
+### Prerequisites for Testing
+
+Before testing, ensure you have the required packages installed:
+
+**Option A: Using uv (Recommended)**
+```bash
+uv venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+uv pip install boto3  # Required for agent invocation
+```
+
+**Option B: System-wide installation**
+```bash
+pip install boto3  # Required for agent invocation
+```
+
+**Note**: `boto3` is required for the test script to invoke the agent runtime via AWS API.
 
 ### Basic Testing
 

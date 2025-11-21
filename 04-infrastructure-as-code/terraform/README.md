@@ -13,6 +13,53 @@ Deploy Amazon Bedrock AgentCore resources using Terraform.
 - **Docker** (optional, for local testing)
 - Access to Amazon Bedrock AgentCore (preview)
 
+## State Management Options
+
+Terraform tracks deployed resources in a state file. Choose the approach that fits your needs:
+
+### Option A: Local State (Quickstart)
+
+Perfect for testing, learning, and solo development:
+
+```bash
+cd <sample-directory>
+terraform init
+```
+
+**Characteristics:**
+- State stored in local `terraform.tfstate` file
+- Simple setup, no additional configuration
+- Best for individual experimentation
+- Not suitable for team collaboration
+
+### Option B: Remote State (Teams/Production)
+
+Recommended for team collaboration and production environments:
+
+```bash
+cd <sample-directory>
+
+# 1. Setup (one-time per pattern)
+cp backend.tf.example backend.tf
+# Edit backend.tf with your S3 bucket and DynamoDB table
+
+# 2. Initialize with backend
+terraform init
+```
+
+**Characteristics:**
+- State stored in S3 with DynamoDB locking
+- Enables team collaboration
+- Provides state versioning and backup
+- Prevents concurrent modifications
+
+**Setup Requirements:**
+- S3 bucket for state storage
+- DynamoDB table for state locking
+- See `backend.tf.example` in each pattern for details
+
+💡 **Note**: You must create the S3 bucket and DynamoDB table before running `terraform init` with remote state. See `backend.tf.example` in each pattern directory for setup instructions.
+
 ## General Deployment Pattern
 
 ### Option 1: Using Automation Scripts (Recommended)
@@ -39,7 +86,7 @@ cd <sample-directory>
 cp terraform.tfvars.example terraform.tfvars
 # Edit terraform.tfvars with your values
 
-# 2. Initialize Terraform
+# 2. Choose state management (see State Management Options above)
 terraform init
 
 # 3. Review the plan

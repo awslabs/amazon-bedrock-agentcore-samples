@@ -14,7 +14,7 @@ This pattern demonstrates deploying an MCP (Model Context Protocol) server on Am
 - [File Structure](#file-structure)
 - [Troubleshooting](#troubleshooting)
 - [Cleanup](#cleanup)
-- [Cost Estimation](#cost-estimation)
+- [Pricing](#pricing)
 - [Next Steps](#next-steps)
 - [Resources](#resources)
 - [🤝 Contributing](#-contributing)
@@ -112,8 +112,9 @@ The `mcp-server-code/` directory contains your MCP server's source files:
    aws configure
    ```
 
-3. **Python 3.10+** (for testing scripts)
+3. **Python 3.11+** (for testing scripts)
    ```bash
+   python --version  # Verify Python 3.11 or later
    pip install boto3 mcp
    ```
 
@@ -144,32 +145,14 @@ Edit `terraform.tfvars` with your preferred values.
 
 ### 2. Initialize Terraform
 
-Choose your state management approach:
+See [State Management Options](../README.md#state-management-options) in the main README for detailed guidance on local vs. remote state.
 
-**Option A: Local State (Quickstart)**
-
-Perfect for testing and solo development:
-
+**Quick start with local state:**
 ```bash
 terraform init
 ```
 
-State stored in local `terraform.tfstate` file.
-
-**Option B: Remote State (Teams/Production)**
-
-For team collaboration or production:
-
-```bash
-# 1. Setup (one-time)
-cp backend.tf.example backend.tf
-# Edit backend.tf with your S3 bucket + DynamoDB table
-
-# 2. Initialize
-terraform init
-```
-
-💡 **Note**: You must create the S3 bucket and DynamoDB table before running `terraform init`. See `backend.tf.example` for setup details.
+**For team collaboration, use remote state** - see the [main README](../README.md#state-management-options) for setup instructions.
 
 ### 3. Review the Plan
 
@@ -232,23 +215,44 @@ test_username = "testuser"
 get_token_command = "python get_token.py 1234567890abcdefghijklmno testuser MyPassword123! us-west-2"
 ```
 
+## Authentication Model
+
+This pattern uses **Cognito JWT-based authentication**:
+
+- **JWT Tokens**: Cognito User Pool issues JWT tokens for authentication
+- **Custom JWT Authorizer**: Runtime validates JWT tokens against Cognito discovery URL
+- **Test User**: Pre-configured user (testuser/MyPassword123!) for testing
+- **Token Expiry**: JWT tokens expire after 1 hour
+- **Discovery URL**: OpenID Connect discovery endpoint for token validation
+
+**Authentication Flow:**
+1. User authenticates with Cognito User Pool
+2. Cognito issues JWT access token
+3. Client includes JWT token in MCP request headers
+4. Runtime validates token using Cognito's OIDC discovery endpoint
+5. Authorized requests processed by MCP server
+
+**Note**: This is a backend authentication pattern for MCP tool access. For user-facing applications, integrate with your identity provider or use Cognito hosted UI for end-user authentication.
+
 ## Testing the MCP Server
 
 ### Prerequisites for Testing
 
-Before testing, set up your Python environment:
+Before testing, ensure you have the required packages installed:
 
 **Option A: Using uv (Recommended)**
 ```bash
 uv venv
 source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-uv pip install boto3 mcp
+uv pip install boto3 mcp  # Both required for MCP server testing
 ```
 
 **Option B: System-wide installation**
 ```bash
-pip install boto3 mcp
+pip install boto3 mcp  # Both required for MCP server testing
 ```
+
+**Note**: Both `boto3` (for AWS API calls) and `mcp` (for MCP protocol) are required for testing the MCP server.
 
 ### Step 1: Get Authentication Token
 
@@ -523,28 +527,18 @@ aws ecr describe-repositories | grep mcp-server
 aws cognito-idp list-user-pools --max-results 10
 ```
 
-## Cost Estimation
+## Pricing
 
-### Monthly Cost Breakdown (us-west-2)
+For current pricing information, please refer to:
+- [Amazon Bedrock Pricing](https://aws.amazon.com/bedrock/pricing/)
+- [Amazon ECR Pricing](https://aws.amazon.com/ecr/pricing/)
+- [AWS CodeBuild Pricing](https://aws.amazon.com/codebuild/pricing/)
+- [Amazon Cognito Pricing](https://aws.amazon.com/cognito/pricing/)
+- [Amazon S3 Pricing](https://aws.amazon.com/s3/pricing/)
+- [Amazon CloudWatch Pricing](https://aws.amazon.com/cloudwatch/pricing/)
+- [AWS Lambda Pricing](https://aws.amazon.com/lambda/pricing/)
 
-| Service | Usage | Monthly Cost |
-|---------|-------|--------------|
-| **AgentCore Runtime** | 1 runtime, minimal usage | ~$5-10 |
-| **ECR Repository** | 1 repository, <1GB storage | ~$0.10 |
-| **CodeBuild** | Occasional builds | ~$1-2 |
-| **Cognito User Pool** | 1 user pool, minimal usage | ~$0.01 |
-| **Lambda** | Custom resource executions | ~$0.01 |
-| **CloudWatch Logs** | MCP server logs | ~$0.50 |
-| **S3 Storage** | Source code archives | ~$0.01 |
-
-**Estimated Total: ~$7-13/month**
-
-### Cost Optimization Tips
-
-- **Delete when not in use**: Use `terraform destroy` to remove all resources
-- **Monitor usage**: Set up CloudWatch billing alarms
-- **Optimize builds**: Only rebuild when code changes (automatic MD5 detection)
-- **Clean up old images**: Set ECR lifecycle policies to remove unused images
+**Note**: Actual costs depend on your usage patterns, AWS region, and specific services consumed.
 
 ## Next Steps
 

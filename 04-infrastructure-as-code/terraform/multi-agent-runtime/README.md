@@ -17,7 +17,7 @@ This Terraform module deploys a multi-agent system using Amazon Bedrock AgentCor
 - [File Structure](#file-structure)
 - [Monitoring and Observability](#monitoring-and-observability)
 - [Security](#security)
-- [Cost Estimation](#cost-estimation)
+- [Pricing](#pricing)
 - [Troubleshooting](#troubleshooting)
 - [Cleanup](#cleanup)
 - [Advanced Topics](#advanced-topics)
@@ -106,6 +106,7 @@ This Terraform configuration creates:
 
 3. **Python 3.11+** (for testing scripts)
    ```bash
+   python --version  # Verify Python 3.11 or later
    pip install boto3
    ```
 
@@ -141,32 +142,14 @@ Edit `terraform.tfvars` with your preferred values:
 
 ### 2. Initialize Terraform
 
-Choose your state management approach:
+See [State Management Options](../README.md#state-management-options) in the main README for detailed guidance on local vs. remote state.
 
-**Option A: Local State (Quickstart)**
-
-Perfect for testing and solo development:
-
+**Quick start with local state:**
 ```bash
 terraform init
 ```
 
-State stored in local `terraform.tfstate` file.
-
-**Option B: Remote State (Teams/Production)**
-
-For team collaboration or production:
-
-```bash
-# 1. Setup (one-time)
-cp backend.tf.example backend.tf
-# Edit backend.tf with your S3 bucket + DynamoDB table
-
-# 2. Initialize
-terraform init
-```
-
-💡 **Note**: You must create the S3 bucket and DynamoDB table before running `terraform init`. See `backend.tf.example` for setup details.
+**For team collaboration, use remote state** - see the [main README](../README.md#state-management-options) for setup instructions.
 
 ### 3. Deploy
 
@@ -240,6 +223,24 @@ This pattern uses **IAM-based authentication with workload identity tokens**:
 ## Testing
 
 The included `test_multi_agent.py` script is **infrastructure-agnostic** and works with any deployment method (Terraform, CDK, CloudFormation, or manual).
+
+### Prerequisites for Testing
+
+Before testing, ensure you have the required packages installed:
+
+**Option A: Using uv (Recommended)**
+```bash
+uv venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+uv pip install boto3  # Required for agent invocation
+```
+
+**Option B: System-wide installation**
+```bash
+pip install boto3  # Required for agent invocation
+```
+
+**Note**: `boto3` is required for the test script to invoke both agent runtimes via AWS API.
 
 ### Basic Testing
 
@@ -425,26 +426,16 @@ For sensitive data:
 - Pass secret ARNs as environment variables
 - Retrieve secrets at runtime in agent code
 
-## Cost Estimation
+## Pricing
 
-### Monthly Cost Breakdown (us-west-2)
+For current pricing information, please refer to:
+- [Amazon Bedrock Pricing](https://aws.amazon.com/bedrock/pricing/)
+- [Amazon ECR Pricing](https://aws.amazon.com/ecr/pricing/)
+- [AWS CodeBuild Pricing](https://aws.amazon.com/codebuild/pricing/)
+- [Amazon S3 Pricing](https://aws.amazon.com/s3/pricing/)
+- [Amazon CloudWatch Pricing](https://aws.amazon.com/cloudwatch/pricing/)
 
-| Service | Usage | Monthly Cost |
-|---------|-------|--------------|
-| **AgentCore Runtime** | 2 runtimes, minimal usage | ~$10-20 |
-| **ECR Repositories** | 2 repositories, ~250MB total | ~$0.25 |
-| **S3 Storage** | Source code archives | ~$0.05 |
-| **CodeBuild** | Occasional builds | ~$2-4 |
-| **CloudWatch Logs** | Agent logs | ~$1-2 |
-
-**Estimated Total: ~$15-30/month**
-
-### Cost Optimization Tips
-
-- Delete when not in use: `terraform destroy`
-- Set up CloudWatch billing alarms
-- Use shorter log retention periods
-- Clean up old ECR images (lifecycle policies included)
+**Note**: Actual costs depend on your usage patterns, AWS region, and specific services consumed.
 
 ## Troubleshooting
 

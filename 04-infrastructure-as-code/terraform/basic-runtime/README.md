@@ -14,7 +14,7 @@ This pattern demonstrates the simplest deployment of an AgentCore Runtime using 
 - [File Structure](#file-structure)
 - [Troubleshooting](#troubleshooting)
 - [Cleanup](#cleanup)
-- [Cost Estimation](#cost-estimation)
+- [Pricing](#pricing)
 - [Next Steps](#next-steps)
 - [Resources](#resources)
 - [🤝 Contributing](#-contributing)
@@ -77,7 +77,13 @@ The `agent-code/` directory contains your agent's source files:
    aws configure
    ```
 
-3. **Docker** (for local testing, optional)
+3. **Python 3.11+** (for testing scripts)
+   ```bash
+   python --version  # Verify Python 3.11 or later
+   pip install boto3
+   ```
+
+4. **Docker** (for local testing, optional)
 
 ### AWS Account Requirements
 
@@ -98,32 +104,14 @@ Edit `terraform.tfvars` with your preferred values.
 
 ### 2. Initialize Terraform
 
-Choose your state management approach:
+See [State Management Options](../README.md#state-management-options) in the main README for detailed guidance on local vs. remote state.
 
-**Option A: Local State (Quickstart)**
-
-Perfect for testing and solo development:
-
+**Quick start with local state:**
 ```bash
 terraform init
 ```
 
-State stored in local `terraform.tfstate` file.
-
-**Option B: Remote State (Teams/Production)**
-
-For team collaboration or production:
-
-```bash
-# 1. Setup (one-time)
-cp backend.tf.example backend.tf
-# Edit backend.tf with your S3 bucket + DynamoDB table
-
-# 2. Initialize
-terraform init
-```
-
-💡 **Note**: You must create the S3 bucket and DynamoDB table before running `terraform init`. See `backend.tf.example` for setup details.
+**For team collaboration, use remote state** - see the [main README](../README.md#state-management-options) for setup instructions.
 
 ### 3. Review the Plan
 
@@ -183,33 +171,23 @@ ecr_repository_url = "123456789012.dkr.ecr.us-west-2.amazonaws.com/agentcore-bas
 
 ## Testing the Agent
 
-### Prerequisites
+### Prerequisites for Testing
 
-**Option 1: Using uv (Recommended)**
+Before testing, ensure you have the required packages installed:
 
+**Option A: Using uv (Recommended)**
 ```bash
-# Create virtual environment
 uv venv
-
-# Activate virtual environment
-source .venv/bin/activate  # On macOS/Linux
-
-# Install boto3
-uv pip install boto3
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+uv pip install boto3  # Required for agent invocation
 ```
 
-**Option 2: Using pip**
-
+**Option B: System-wide installation**
 ```bash
-# Create virtual environment
-python3 -m venv .venv
-
-# Activate virtual environment
-source .venv/bin/activate  # On macOS/Linux
-
-# Install boto3
-pip install boto3
+pip install boto3  # Required for agent invocation
 ```
+
+**Note**: `boto3` is required for the test script to invoke the agent runtime via AWS API.
 
 ### Option 1: Using Test Script (Recommended)
 
@@ -390,27 +368,16 @@ aws ecr describe-repositories --region us-west-2 | grep agentcore-basic
 aws bedrock-agentcore list-agent-runtimes --region us-west-2
 ```
 
-## Cost Estimation
+## Pricing
 
-### Monthly Cost Breakdown (us-west-2)
+For current pricing information, please refer to:
+- [Amazon Bedrock Pricing](https://aws.amazon.com/bedrock/pricing/)
+- [Amazon ECR Pricing](https://aws.amazon.com/ecr/pricing/)
+- [AWS CodeBuild Pricing](https://aws.amazon.com/codebuild/pricing/)
+- [Amazon S3 Pricing](https://aws.amazon.com/s3/pricing/)
+- [Amazon CloudWatch Pricing](https://aws.amazon.com/cloudwatch/pricing/)
 
-| Service | Usage | Monthly Cost |
-|---------|-------|--------------|
-| **AgentCore Runtime** | 1 runtime, minimal usage | ~$5-10 |
-| **ECR Repository** | 1 repository, <1GB storage | ~$0.10 |
-| **CodeBuild** | Occasional builds | ~$1-2 |
-| **CloudWatch Logs** | Agent logs | ~$0.50 |
-| **Bedrock Model Usage** | Pay per token | Variable* |
-
-**Estimated Total: ~$7-13/month** (excluding Bedrock model usage)
-
-*Bedrock costs depend on your usage patterns and chosen models. See [Bedrock Pricing](https://aws.amazon.com/bedrock/pricing/) for details.
-
-### Cost Optimization Tips
-
-- **Delete when not in use**: Use `terraform destroy` to remove all resources
-- **Monitor usage**: Set up CloudWatch billing alarms
-- **Choose efficient models**: Select appropriate Bedrock models for your use case
+**Note**: Actual costs depend on your usage patterns, AWS region, and specific services consumed.
 
 ## Next Steps
 
