@@ -2,7 +2,7 @@
 # Cognito User Pool for JWT Authentication
 # ============================================================================
 
-resource "aws_cognito_user_pool" "this" {
+resource "aws_cognito_user_pool" "mcp_user_pool" {
   name = "${var.stack_name}-user-pool"
 
   password_policy {
@@ -31,9 +31,9 @@ resource "aws_cognito_user_pool" "this" {
 # Cognito User Pool Client
 # ============================================================================
 
-resource "aws_cognito_user_pool_client" "this" {
+resource "aws_cognito_user_pool_client" "mcp_client" {
   name         = "${var.stack_name}-client"
-  user_pool_id = aws_cognito_user_pool.this.id
+  user_pool_id = aws_cognito_user_pool.mcp_user_pool.id
 
   explicit_auth_flows = [
     "ALLOW_USER_PASSWORD_AUTH",
@@ -49,7 +49,7 @@ resource "aws_cognito_user_pool_client" "this" {
 # ============================================================================
 
 resource "aws_cognito_user" "test_user" {
-  user_pool_id = aws_cognito_user_pool.this.id
+  user_pool_id = aws_cognito_user_pool.mcp_user_pool.id
   username     = "testuser"
 
   message_action = "SUPPRESS"
@@ -67,7 +67,7 @@ resource "null_resource" "set_cognito_password" {
   provisioner "local-exec" {
     command = <<-EOT
       aws cognito-idp admin-set-user-password \
-        --user-pool-id ${aws_cognito_user_pool.this.id} \
+        --user-pool-id ${aws_cognito_user_pool.mcp_user_pool.id} \
         --username testuser \
         --password 'MyPassword123!' \
         --permanent \

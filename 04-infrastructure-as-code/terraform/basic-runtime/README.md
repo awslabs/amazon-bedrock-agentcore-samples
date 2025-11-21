@@ -177,7 +177,7 @@ terraform output
 Example output:
 ```
 agent_runtime_id = "AGENT1234567890"
-agent_runtime_arn = "arn:aws:bedrock-agentcore:us-west-2:123456789012:agent-runtime/AGENT1234567890"
+agent_runtime_arn = "arn:aws:bedrock-agentcore:<us-west-2>:123456789012:agent-runtime/AGENT1234567890"
 ecr_repository_url = "123456789012.dkr.ecr.us-west-2.amazonaws.com/agentcore-basic-basic-agent"
 ```
 

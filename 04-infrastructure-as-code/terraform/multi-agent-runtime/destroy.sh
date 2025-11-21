@@ -111,8 +111,8 @@ print_warning "========================================"
 print_warning "RESOURCE DESTRUCTION CONFIRMATION"
 print_warning "========================================"
 print_warning "This will permanently delete the following resources:"
-print_warning "  - Agent1 Runtime (Orchestrator)"
-print_warning "  - Agent2 Runtime (Specialist)"
+print_warning "  - Orchestrator Runtime"
+print_warning "  - Specialist Runtime"
 print_warning "  - 2x S3 Buckets (source code storage)"
 print_warning "  - 2x ECR Repositories (including all images)"
 print_warning "  - 2x CodeBuild Projects"
@@ -210,7 +210,7 @@ fi
 RUNTIME_COUNT=$(aws bedrock-agentcore list-agent-runtimes --region $AWS_REGION 2>/dev/null | grep "$STACK_NAME" | wc -l | tr -d ' ')
 
 if [ "$RUNTIME_COUNT" -eq 0 ]; then
-    print_success "AgentCore runtimes cleaned up (both Agent1 and Agent2)"
+    print_success "AgentCore runtimes cleaned up (Orchestrator and Specialist)"
 else
     print_warning "Found $RUNTIME_COUNT AgentCore runtimes matching '$STACK_NAME'"
     print_info "These may need manual cleanup"
@@ -220,7 +220,7 @@ fi
 S3_BUCKETS=$(aws s3api list-buckets --region $AWS_REGION 2>/dev/null | grep "$STACK_NAME" | wc -l | tr -d ' ')
 
 if [ "$S3_BUCKETS" -eq 0 ]; then
-    print_success "S3 buckets cleaned up (both Agent1 and Agent2 source buckets)"
+    print_success "S3 buckets cleaned up (Orchestrator and Specialist source buckets)"
 else
     print_warning "Found $S3_BUCKETS S3 buckets matching '$STACK_NAME'"
     print_info "These may need manual cleanup"
@@ -249,10 +249,10 @@ echo ""
 print_info "2. S3 - No buckets remaining"
 print_info "   https://console.aws.amazon.com/s3/buckets?region=$AWS_REGION"
 echo ""
-print_info "3. ECR - No repositories remaining (Agent1 & Agent2)"
+print_info "3. ECR - No repositories remaining (Orchestrator & Specialist)"
 print_info "   https://console.aws.amazon.com/ecr/repositories?region=$AWS_REGION"
 echo ""
-print_info "4. CodeBuild - No projects remaining (Agent1 & Agent2)"
+print_info "4. CodeBuild - No projects remaining (Orchestrator & Specialist)"
 print_info "   https://console.aws.amazon.com/codesuite/codebuild/projects?region=$AWS_REGION"
 echo ""
 print_info "6. CloudWatch Logs - Check for orphaned log groups"

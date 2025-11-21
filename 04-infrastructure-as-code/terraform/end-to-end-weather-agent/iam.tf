@@ -59,7 +59,7 @@ resource "aws_iam_role_policy" "agent_execution" {
           "ecr:GetDownloadUrlForLayer",
           "ecr:BatchCheckLayerAvailability"
         ]
-        Resource = aws_ecr_repository.agent.arn
+        Resource = aws_ecr_repository.weather_ecr.arn
       },
       {
         Sid      = "ECRTokenAccess"
@@ -205,7 +205,7 @@ resource "aws_iam_role_policy" "codebuild" {
           "ecr:CompleteLayerUpload"
         ]
         Resource = [
-          aws_ecr_repository.agent.arn,
+          aws_ecr_repository.weather_ecr.arn,
           "*"
         ]
       },

@@ -8,7 +8,7 @@
 
 # CloudWatch Log Group for vended log delivery
 resource "aws_cloudwatch_log_group" "agent_runtime_logs" {
-  name              = "/aws/vendedlogs/bedrock-agentcore/${aws_bedrockagentcore_agent_runtime.agent.agent_runtime_id}"
+  name              = "/aws/vendedlogs/bedrock-agentcore/${aws_bedrockagentcore_agent_runtime.weather_agent.agent_runtime_id}"
   retention_in_days = 14
 
   tags = {
@@ -17,21 +17,21 @@ resource "aws_cloudwatch_log_group" "agent_runtime_logs" {
     Module  = "Observability"
   }
 
-  depends_on = [aws_bedrockagentcore_agent_runtime.agent]
+  depends_on = [aws_bedrockagentcore_agent_runtime.weather_agent]
 }
 
 # Delivery Source for Application Logs
 resource "aws_cloudwatch_log_delivery_source" "logs" {
-  name         = "${aws_bedrockagentcore_agent_runtime.agent.agent_runtime_id}-logs-source"
+  name         = "${aws_bedrockagentcore_agent_runtime.weather_agent.agent_runtime_id}-logs-source"
   log_type     = "APPLICATION_LOGS"
-  resource_arn = aws_bedrockagentcore_agent_runtime.agent.agent_runtime_arn
+  resource_arn = aws_bedrockagentcore_agent_runtime.weather_agent.agent_runtime_arn
 
-  depends_on = [aws_bedrockagentcore_agent_runtime.agent]
+  depends_on = [aws_bedrockagentcore_agent_runtime.weather_agent]
 }
 
 # Delivery Destination for Logs (CloudWatch Logs)
 resource "aws_cloudwatch_log_delivery_destination" "logs" {
-  name = "${aws_bedrockagentcore_agent_runtime.agent.agent_runtime_id}-logs-destination"
+  name = "${aws_bedrockagentcore_agent_runtime.weather_agent.agent_runtime_id}-logs-destination"
 
   delivery_destination_configuration {
     destination_resource_arn = aws_cloudwatch_log_group.agent_runtime_logs.arn
@@ -69,16 +69,16 @@ resource "aws_cloudwatch_log_delivery" "logs" {
 
 # Delivery Source for Traces
 resource "aws_cloudwatch_log_delivery_source" "traces" {
-  name         = "${aws_bedrockagentcore_agent_runtime.agent.agent_runtime_id}-traces-source"
+  name         = "${aws_bedrockagentcore_agent_runtime.weather_agent.agent_runtime_id}-traces-source"
   log_type     = "TRACES"
-  resource_arn = aws_bedrockagentcore_agent_runtime.agent.agent_runtime_arn
+  resource_arn = aws_bedrockagentcore_agent_runtime.weather_agent.agent_runtime_arn
 
-  depends_on = [aws_bedrockagentcore_agent_runtime.agent]
+  depends_on = [aws_bedrockagentcore_agent_runtime.weather_agent]
 }
 
 # Delivery Destination for Traces (X-Ray)
 resource "aws_cloudwatch_log_delivery_destination" "traces" {
-  name                      = "${aws_bedrockagentcore_agent_runtime.agent.agent_runtime_id}-traces-destination"
+  name                      = "${aws_bedrockagentcore_agent_runtime.weather_agent.agent_runtime_id}-traces-destination"
   delivery_destination_type = "XRAY"
 
   tags = {

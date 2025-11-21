@@ -31,7 +31,7 @@ resource "aws_codebuild_project" "agent_image" {
 
     environment_variable {
       name  = "IMAGE_REPO_NAME"
-      value = aws_ecr_repository.agent.name
+      value = aws_ecr_repository.weather_ecr.name
     }
 
     environment_variable {

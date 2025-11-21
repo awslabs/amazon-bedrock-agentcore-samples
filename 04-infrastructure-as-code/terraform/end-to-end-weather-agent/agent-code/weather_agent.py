@@ -21,12 +21,24 @@ app = BedrockAgentCoreApp()
 
 console = Console()
 
-# Configuration
-BROWSER_ID = os.getenv('BROWSER_ID', "agentcore_dev_browser-Df3lyxkbjo")
-CODE_INTERPRETER_ID = os.getenv('CODE_INTERPRETER_ID', "agentcore_dev_code_interpreter-IqIg8bqnKn")
-MEMORY_ID = os.getenv('MEMORY_ID', "agentcore_dev_TestAgentCoreMemory-N7LCAH8ZCK")
-RESULTS_BUCKET = os.getenv('RESULTS_BUCKET', "default-results-bucket")
-region = 'us-west-2'
+# Configuration - All required, no defaults
+BROWSER_ID = os.getenv('BROWSER_ID')
+CODE_INTERPRETER_ID = os.getenv('CODE_INTERPRETER_ID')
+MEMORY_ID = os.getenv('MEMORY_ID')
+RESULTS_BUCKET = os.getenv('RESULTS_BUCKET')
+AWS_REGION = os.getenv('AWS_REGION')
+
+# Validate required environment variables
+required_vars = {
+    'BROWSER_ID': BROWSER_ID,
+    'CODE_INTERPRETER_ID': CODE_INTERPRETER_ID,
+    'MEMORY_ID': MEMORY_ID,
+    'RESULTS_BUCKET': RESULTS_BUCKET,
+    'AWS_REGION': AWS_REGION
+}
+missing = [k for k, v in required_vars.items() if not v]
+if missing:
+    raise EnvironmentError(f"Required environment variables not set: {', '.join(missing)}")
 
 # Async helper functions
 async def run_browser_task(browser_session, bedrock_chat, task: str) -> str:
@@ -55,7 +67,7 @@ async def run_browser_task(browser_session, bedrock_chat, task: str) -> str:
 async def initialize_browser_session():
     """Initialize Browser-use session with AgentCore WebSocket connection"""
     try:
-        client = BrowserClient(region)
+        client = BrowserClient(AWS_REGION)
         client.start(identifier=BROWSER_ID)
         
         ws_url, headers = client.generate_ws_headers()
@@ -77,7 +89,7 @@ async def initialize_browser_session():
         
         bedrock_chat = ChatBedrockConverse(
             model_id="us.anthropic.claude-3-7-sonnet-20250219-v1:0",
-            region_name="us-west-2"
+            region_name=AWS_REGION
         )
         
         console.print("[green]✅ Browser session initialized and ready[/green]")
@@ -201,7 +213,7 @@ def generate_analysis_code(weather_data: str) -> Dict[str, Any]:
 def execute_code(python_code: str) -> Dict[str, Any]:
     """Execute Python code using AgentCore Code Interpreter"""
     try:
-        code_client = CodeInterpreter('us-west-2')
+        code_client = CodeInterpreter(AWS_REGION)
         code_client.start(identifier=CODE_INTERPRETER_ID)
 
         response = code_client.invoke("executeCode", {
@@ -225,7 +237,7 @@ def execute_code(python_code: str) -> Dict[str, Any]:
 def get_activity_preferences() -> Dict[str, Any]:
     """Get activity preferences from memory"""
     try:
-        client = MemoryClient(region_name='us-west-2')
+        client = MemoryClient(region_name=AWS_REGION)
         response = client.list_events(
             memory_id=MEMORY_ID,
             actor_id="user123",

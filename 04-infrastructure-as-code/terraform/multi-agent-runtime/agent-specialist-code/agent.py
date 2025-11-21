@@ -18,7 +18,7 @@ def create_specialist_agent() -> Agent:
 
 @app.entrypoint
 async def invoke(payload=None):
-    """Main entrypoint for agent2"""
+    """Main entrypoint for specialist agent"""
     try:
         # Get the query from payload
         query = payload.get("prompt", "Hello") if payload else "Hello"
@@ -29,14 +29,14 @@ async def invoke(payload=None):
 
         return {
             "status": "success",
-            "agent": "agent2",
+            "agent": "specialist",
             "response": response.message['content'][0]['text']
         }
 
     except Exception as e:
         return {
             "status": "error",
-            "agent": "agent2",
+            "agent": "specialist",
             "error": str(e)
         }
 

@@ -31,7 +31,7 @@ resource "aws_codebuild_project" "agent_image" {
 
     environment_variable {
       name  = "IMAGE_REPO_NAME"
-      value = aws_ecr_repository.this.name
+      value = aws_ecr_repository.server_ecr.name
     }
 
     environment_variable {
@@ -72,18 +72,18 @@ resource "null_resource" "trigger_build" {
     build_project = aws_codebuild_project.agent_image.id
     image_tag     = var.image_tag
     # Trigger rebuild if ECR repository changes
-    ecr_repository = aws_ecr_repository.this.id
+    ecr_repository = aws_ecr_repository.server_ecr.id
     # Trigger rebuild when source code changes (MD5 hash)
     source_code_md5 = data.archive_file.agent_source.output_md5
   }
 
   provisioner "local-exec" {
-    command = "${path.module}/scripts/build-image.sh \"${aws_codebuild_project.agent_image.name}\" \"${data.aws_region.current.id}\" \"${aws_ecr_repository.this.name}\" \"${var.image_tag}\" \"${aws_ecr_repository.this.repository_url}\""
+    command = "${path.module}/scripts/build-image.sh \"${aws_codebuild_project.agent_image.name}\" \"${data.aws_region.current.id}\" \"${aws_ecr_repository.server_ecr.name}\" \"${var.image_tag}\" \"${aws_ecr_repository.server_ecr.repository_url}\""
   }
 
   depends_on = [
     aws_codebuild_project.agent_image,
-    aws_ecr_repository.this,
+    aws_ecr_repository.server_ecr,
     aws_iam_role_policy.codebuild,
     aws_s3_object.agent_source
   ]

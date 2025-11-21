@@ -1,110 +1,110 @@
 # ============================================================================
-# Agent1 (Orchestrator) Outputs
+# Orchestrator Agent Outputs
 # ============================================================================
 
-output "agent1_runtime_id" {
-  description = "ID of agent1 (orchestrator) runtime"
-  value       = aws_bedrockagentcore_agent_runtime.agent1.agent_runtime_id
+output "orchestrator_runtime_id" {
+  description = "ID of orchestrator agent runtime"
+  value       = aws_bedrockagentcore_agent_runtime.orchestrator.agent_runtime_id
 }
 
-output "agent1_runtime_arn" {
-  description = "ARN of agent1 (orchestrator) runtime"
-  value       = aws_bedrockagentcore_agent_runtime.agent1.agent_runtime_arn
+output "orchestrator_runtime_arn" {
+  description = "ARN of orchestrator agent runtime"
+  value       = aws_bedrockagentcore_agent_runtime.orchestrator.agent_runtime_arn
 }
 
-output "agent1_runtime_version" {
-  description = "Version of agent1 runtime"
-  value       = aws_bedrockagentcore_agent_runtime.agent1.agent_runtime_version
+output "orchestrator_runtime_version" {
+  description = "Version of orchestrator agent runtime"
+  value       = aws_bedrockagentcore_agent_runtime.orchestrator.agent_runtime_version
 }
 
-output "agent1_ecr_repository_url" {
-  description = "URL of the ECR repository for agent1"
-  value       = aws_ecr_repository.agent1.repository_url
+output "orchestrator_ecr_repository_url" {
+  description = "URL of the ECR repository for orchestrator agent"
+  value       = aws_ecr_repository.orchestrator.repository_url
 }
 
-output "agent1_execution_role_arn" {
-  description = "ARN of the agent1 execution role"
-  value       = aws_iam_role.agent1_execution.arn
+output "orchestrator_execution_role_arn" {
+  description = "ARN of the orchestrator agent execution role"
+  value       = aws_iam_role.orchestrator_execution.arn
 }
 
 # ============================================================================
-# Agent2 (Specialist) Outputs
+# Specialist Agent Outputs
 # ============================================================================
 
-output "agent2_runtime_id" {
-  description = "ID of agent2 (specialist) runtime"
-  value       = aws_bedrockagentcore_agent_runtime.agent2.agent_runtime_id
+output "specialist_runtime_id" {
+  description = "ID of specialist agent runtime"
+  value       = aws_bedrockagentcore_agent_runtime.specialist.agent_runtime_id
 }
 
-output "agent2_runtime_arn" {
-  description = "ARN of agent2 (specialist) runtime"
-  value       = aws_bedrockagentcore_agent_runtime.agent2.agent_runtime_arn
+output "specialist_runtime_arn" {
+  description = "ARN of specialist agent runtime"
+  value       = aws_bedrockagentcore_agent_runtime.specialist.agent_runtime_arn
 }
 
-output "agent2_runtime_version" {
-  description = "Version of agent2 runtime"
-  value       = aws_bedrockagentcore_agent_runtime.agent2.agent_runtime_version
+output "specialist_runtime_version" {
+  description = "Version of specialist agent runtime"
+  value       = aws_bedrockagentcore_agent_runtime.specialist.agent_runtime_version
 }
 
-output "agent2_ecr_repository_url" {
-  description = "URL of the ECR repository for agent2"
-  value       = aws_ecr_repository.agent2.repository_url
+output "specialist_ecr_repository_url" {
+  description = "URL of the ECR repository for specialist agent"
+  value       = aws_ecr_repository.specialist.repository_url
 }
 
-output "agent2_execution_role_arn" {
-  description = "ARN of the agent2 execution role"
-  value       = aws_iam_role.agent2_execution.arn
+output "specialist_execution_role_arn" {
+  description = "ARN of the specialist agent execution role"
+  value       = aws_iam_role.specialist_execution.arn
 }
 
 # ============================================================================
 # Build & Storage Outputs
 # ============================================================================
 
-output "agent1_codebuild_project_name" {
-  description = "Name of the CodeBuild project for agent1"
-  value       = aws_codebuild_project.agent1_image.name
+output "orchestrator_codebuild_project_name" {
+  description = "Name of the CodeBuild project for orchestrator agent"
+  value       = aws_codebuild_project.orchestrator_image.name
 }
 
-output "agent2_codebuild_project_name" {
-  description = "Name of the CodeBuild project for agent2"
-  value       = aws_codebuild_project.agent2_image.name
+output "specialist_codebuild_project_name" {
+  description = "Name of the CodeBuild project for specialist agent"
+  value       = aws_codebuild_project.specialist_image.name
 }
 
-output "agent1_source_bucket_name" {
-  description = "S3 bucket containing agent1 source code"
-  value       = aws_s3_bucket.agent1_source.id
+output "orchestrator_source_bucket_name" {
+  description = "S3 bucket containing orchestrator agent source code"
+  value       = aws_s3_bucket.orchestrator_source.id
 }
 
-output "agent2_source_bucket_name" {
-  description = "S3 bucket containing agent2 source code"
-  value       = aws_s3_bucket.agent2_source.id
+output "specialist_source_bucket_name" {
+  description = "S3 bucket containing specialist agent source code"
+  value       = aws_s3_bucket.specialist_source.id
 }
 
-output "agent1_source_code_md5" {
-  description = "MD5 hash of agent1 source code (triggers rebuild when changed)"
-  value       = data.archive_file.agent1_source.output_md5
+output "orchestrator_source_code_md5" {
+  description = "MD5 hash of orchestrator source code (triggers rebuild when changed)"
+  value       = data.archive_file.orchestrator_source.output_md5
 }
 
-output "agent2_source_code_md5" {
-  description = "MD5 hash of agent2 source code (triggers rebuild when changed)"
-  value       = data.archive_file.agent2_source.output_md5
+output "specialist_source_code_md5" {
+  description = "MD5 hash of specialist source code (triggers rebuild when changed)"
+  value       = data.archive_file.specialist_source.output_md5
 }
 
 # ============================================================================
 # Testing Information
 # ============================================================================
 
-output "test_agent1_command" {
-  description = "AWS CLI command to test agent1 (orchestrator)"
-  value       = "aws bedrock-agentcore invoke-agent-runtime --agent-runtime-id ${aws_bedrockagentcore_agent_runtime.agent1.agent_runtime_id} --qualifier DEFAULT --payload '{\"prompt\": \"Hello, how are you?\"}' --region ${data.aws_region.current.id} response.json"
+output "test_orchestrator_command" {
+  description = "AWS CLI command to test orchestrator agent"
+  value       = "aws bedrock-agentcore invoke-agent-runtime --agent-runtime-id ${aws_bedrockagentcore_agent_runtime.orchestrator.agent_runtime_id} --qualifier DEFAULT --payload '{\"prompt\": \"Hello, how are you?\"}' --region ${data.aws_region.current.id} response.json"
 }
 
-output "test_agent2_command" {
-  description = "AWS CLI command to test agent2 (specialist)"
-  value       = "aws bedrock-agentcore invoke-agent-runtime --agent-runtime-id ${aws_bedrockagentcore_agent_runtime.agent2.agent_runtime_id} --qualifier DEFAULT --payload '{\"prompt\": \"Explain cloud computing\"}' --region ${data.aws_region.current.id} response.json"
+output "test_specialist_command" {
+  description = "AWS CLI command to test specialist agent"
+  value       = "aws bedrock-agentcore invoke-agent-runtime --agent-runtime-id ${aws_bedrockagentcore_agent_runtime.specialist.agent_runtime_id} --qualifier DEFAULT --payload '{\"prompt\": \"Explain cloud computing\"}' --region ${data.aws_region.current.id} response.json"
 }
 
 output "test_script_command" {
   description = "Command to test multi-agent communication"
-  value       = "python test_multi_agent.py ${aws_bedrockagentcore_agent_runtime.agent1.agent_runtime_arn}"
+  value       = "python test_multi_agent.py ${aws_bedrockagentcore_agent_runtime.orchestrator.agent_runtime_arn}"
 }

@@ -12,7 +12,7 @@ Usage:
 
 Examples:
     # Test basic agent
-    python test_basic_agent.py arn:aws:bedrock-agentcore:us-west-2:123456789012:runtime/basic-agent-id
+    python test_basic_agent.py arn:aws:bedrock-agentcore:<region>:123456789012:runtime/basic-agent-id
 
     # From Terraform outputs
     python test_basic_agent.py $(terraform output -raw agent_runtime_arn)
@@ -21,6 +21,44 @@ Examples:
 import boto3
 import json
 import sys
+
+
+def extract_region_from_arn(arn):
+    """Extract AWS region from agent runtime ARN.
+    
+    ARN format: arn:aws:bedrock-agentcore:REGION:account:runtime/id
+    
+    Args:
+        arn: Agent runtime ARN string
+        
+    Returns:
+        str: AWS region code
+        
+    Raises:
+        ValueError: If ARN format is invalid or region cannot be extracted
+    """
+    try:
+        parts = arn.split(':')
+        if len(parts) < 4:
+            raise ValueError(
+                f"Invalid ARN format: {arn}\n"
+                f"Expected format: arn:aws:bedrock-agentcore:REGION:account:runtime/id"
+            )
+        
+        region = parts[3]
+        if not region:
+            raise ValueError(
+                f"Region not found in ARN: {arn}\n"
+                f"Expected format: arn:aws:bedrock-agentcore:REGION:account:runtime/id"
+            )
+        
+        return region
+        
+    except IndexError:
+        raise ValueError(
+            f"Invalid ARN format: {arn}\n"
+            f"Expected format: arn:aws:bedrock-agentcore:REGION:account:runtime/id"
+        )
 
 
 def test_agent(client, agent_arn, test_name, prompt):
@@ -81,20 +119,28 @@ def main():
         print("\nUsage:")
         print(f"  {sys.argv[0]} <agent_arn>")
         print("\nExample:")
-        print(f"  {sys.argv[0]} arn:aws:bedrock-agentcore:us-west-2:123456789012:runtime/agent-id")
+        print(f"  {sys.argv[0]} arn:aws:bedrock-agentcore:<region>:123456789012:runtime/agent-id")
         print("\nOr from Terraform:")
         print(f"  {sys.argv[0]} $(terraform output -raw agent_runtime_arn)")
         sys.exit(1)
 
     agent_arn = sys.argv[1]
 
+    # Extract region from ARN
+    try:
+        region = extract_region_from_arn(agent_arn)
+    except ValueError as e:
+        print(f"\n❌ ERROR: {e}\n")
+        sys.exit(1)
+
     print("=" * 80)
     print("BASIC AGENT TEST SUITE")
     print("=" * 80)
-    print(f"\nAgent ARN: {agent_arn}\n")
+    print(f"\nAgent ARN: {agent_arn}")
+    print(f"Region: {region}\n")
 
-    # Initialize boto3 client
-    client = boto3.client("bedrock-agentcore", region_name="us-west-2")
+    # Initialize boto3 client with extracted region
+    client = boto3.client("bedrock-agentcore", region_name=region)
 
     # Test cases for basic agent (no tools, just Q&A)
     tests = [

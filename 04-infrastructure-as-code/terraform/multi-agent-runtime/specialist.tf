@@ -1,15 +1,15 @@
 # ============================================================================
-# Agent2 (Specialist) Runtime - Independent Agent
+# Specialist Agent Runtime - Independent Agent
 # ============================================================================
 
-resource "aws_bedrockagentcore_agent_runtime" "agent2" {
-  agent_runtime_name = "${replace(var.stack_name, "-", "_")}_${var.agent2_name}"
+resource "aws_bedrockagentcore_agent_runtime" "specialist" {
+  agent_runtime_name = "${replace(var.stack_name, "-", "_")}_${var.specialist_name}"
   description        = "Specialist agent runtime for ${var.stack_name}"
-  role_arn           = aws_iam_role.agent2_execution.arn
+  role_arn           = aws_iam_role.specialist_execution.arn
 
   agent_runtime_artifact {
     container_configuration {
-      container_uri = "${aws_ecr_repository.agent2.repository_url}:${var.image_tag}"
+      container_uri = "${aws_ecr_repository.specialist.repository_url}:${var.image_tag}"
     }
   }
 
@@ -23,15 +23,15 @@ resource "aws_bedrockagentcore_agent_runtime" "agent2" {
   }
 
   tags = {
-    Name        = "${var.stack_name}-agent2-runtime"
+    Name        = "${var.stack_name}-specialist-runtime"
     Environment = "production"
     Module      = "BedrockAgentCore"
-    Agent       = "Agent2-Specialist"
+    Agent       = "Specialist"
   }
 
   depends_on = [
-    null_resource.trigger_build_agent2,
-    aws_iam_role_policy.agent2_execution,
-    aws_iam_role_policy_attachment.agent2_execution_managed
+    null_resource.trigger_build_specialist,
+    aws_iam_role_policy.specialist_execution,
+    aws_iam_role_policy_attachment.specialist_execution_managed
   ]
 }

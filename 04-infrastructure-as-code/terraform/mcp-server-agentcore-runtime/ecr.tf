@@ -2,7 +2,7 @@
 # ECR Repository - Container Registry for Agent Image
 # ============================================================================
 
-resource "aws_ecr_repository" "this" {
+resource "aws_ecr_repository" "server_ecr" {
   name                 = "${var.stack_name}-${var.ecr_repository_name}"
   image_tag_mutability = "MUTABLE"
 
@@ -19,8 +19,8 @@ resource "aws_ecr_repository" "this" {
 }
 
 # ECR Repository Policy
-resource "aws_ecr_repository_policy" "this" {
-  repository = aws_ecr_repository.this.name
+resource "aws_ecr_repository_policy" "server_ecr" {
+  repository = aws_ecr_repository.server_ecr.name
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -41,8 +41,8 @@ resource "aws_ecr_repository_policy" "this" {
 }
 
 # ECR Lifecycle Policy - Keep last 5 images
-resource "aws_ecr_lifecycle_policy" "this" {
-  repository = aws_ecr_repository.this.name
+resource "aws_ecr_lifecycle_policy" "server_ecr" {
+  repository = aws_ecr_repository.server_ecr.name
 
   policy = jsonencode({
     rules = [

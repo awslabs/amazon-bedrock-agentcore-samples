@@ -1,10 +1,10 @@
 # ============================================================================
-# CodeBuild Project - Build and Push Agent1 (Orchestrator) Docker Image
+# CodeBuild Project - Build and Push Orchestrator Agent Docker Image
 # ============================================================================
 
-resource "aws_codebuild_project" "agent1_image" {
-  name          = "${var.stack_name}-agent1-build"
-  description   = "Build Agent1 (Orchestrator) Docker image for ${var.stack_name}"
+resource "aws_codebuild_project" "orchestrator_image" {
+  name          = "${var.stack_name}-orchestrator-build"
+  description   = "Build Orchestrator agent Docker image for ${var.stack_name}"
   service_role  = aws_iam_role.codebuild.arn
   build_timeout = 60
 
@@ -31,7 +31,7 @@ resource "aws_codebuild_project" "agent1_image" {
 
     environment_variable {
       name  = "IMAGE_REPO_NAME"
-      value = aws_ecr_repository.agent1.name
+      value = aws_ecr_repository.orchestrator.name
     }
 
     environment_variable {
@@ -46,26 +46,26 @@ resource "aws_codebuild_project" "agent1_image" {
 
     environment_variable {
       name  = "AGENT_NAME"
-      value = "agent1"
+      value = "orchestrator"
     }
   }
 
   source {
     type      = "S3"
-    location  = "${aws_s3_bucket.agent1_source.id}/${aws_s3_object.agent1_source.key}"
-    buildspec = file("${path.module}/buildspec-agent1.yml")
+    location  = "${aws_s3_bucket.orchestrator_source.id}/${aws_s3_object.orchestrator_source.key}"
+    buildspec = file("${path.module}/buildspec-orchestrator.yml")
   }
 
   logs_config {
     cloudwatch_logs {
-      group_name = "/aws/codebuild/${var.stack_name}-agent1-build"
+      group_name = "/aws/codebuild/${var.stack_name}-orchestrator-build"
     }
   }
 
   tags = {
-    Name   = "${var.stack_name}-agent1-build"
+    Name   = "${var.stack_name}-orchestrator-build"
     Module = "CodeBuild"
-    Agent  = "Agent1-Orchestrator"
+    Agent  = "Orchestrator"
   }
 
   depends_on = [
@@ -74,12 +74,12 @@ resource "aws_codebuild_project" "agent1_image" {
 }
 
 # ============================================================================
-# CodeBuild Project - Build and Push Agent2 (Specialist) Docker Image
+# CodeBuild Project - Build and Push Specialist Agent Docker Image
 # ============================================================================
 
-resource "aws_codebuild_project" "agent2_image" {
-  name          = "${var.stack_name}-agent2-build"
-  description   = "Build Agent2 (Specialist) Docker image for ${var.stack_name}"
+resource "aws_codebuild_project" "specialist_image" {
+  name          = "${var.stack_name}-specialist-build"
+  description   = "Build Specialist agent Docker image for ${var.stack_name}"
   service_role  = aws_iam_role.codebuild.arn
   build_timeout = 60
 
@@ -106,7 +106,7 @@ resource "aws_codebuild_project" "agent2_image" {
 
     environment_variable {
       name  = "IMAGE_REPO_NAME"
-      value = aws_ecr_repository.agent2.name
+      value = aws_ecr_repository.specialist.name
     }
 
     environment_variable {
@@ -121,29 +121,34 @@ resource "aws_codebuild_project" "agent2_image" {
 
     environment_variable {
       name  = "AGENT_NAME"
-      value = "agent2"
+      value = "specialist"
     }
   }
 
   source {
     type      = "S3"
-    location  = "${aws_s3_bucket.agent2_source.id}/${aws_s3_object.agent2_source.key}"
-    buildspec = file("${path.module}/buildspec-agent2.yml")
+    location  = "${aws_s3_bucket.specialist_source.id}/${aws_s3_object.specialist_source.key}"
+    buildspec = file("${path.module}/buildspec-specialist.yml")
   }
 
   logs_config {
     cloudwatch_logs {
-      group_name = "/aws/codebuild/${var.stack_name}-agent2-build"
+      group_name = "/aws/codebuild/${var.stack_name}-specialist-build"
     }
   }
 
   tags = {
-    Name   = "${var.stack_name}-agent2-build"
+    Name   = "${var.stack_name}-specialist-build"
     Module = "CodeBuild"
-    Agent  = "Agent2-Specialist"
+    Agent  = "Specialist"
   }
 
   depends_on = [
     aws_iam_role_policy.codebuild
   ]
 }
+
+# ============================================================================
+# Note: Build triggers are defined in main.tf for proper sequencing
+# Specialist builds first, then Orchestrator (which depends on Specialist ARN)
+# ============================================================================

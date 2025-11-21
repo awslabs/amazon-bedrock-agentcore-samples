@@ -38,9 +38,14 @@ variable "image_tag" {
 }
 
 variable "aws_region" {
-  description = "AWS region for deployment"
+  description = "AWS region for deployment (REQUIRED)"
   type        = string
-  default     = "us-west-2"
+  # No default - must be explicitly provided
+
+  validation {
+    condition     = can(regex("^[a-z]{2}-[a-z]+-\\d{1}$", var.aws_region))
+    error_message = "Must be a valid AWS region (e.g., us-east-1, eu-west-1)"
+  }
 }
 
 variable "environment" {

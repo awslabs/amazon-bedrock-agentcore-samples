@@ -6,24 +6,63 @@ This script tests a multi-agent system with Agent-to-Agent (A2A) communication.
 It can work with agents deployed via any method (Terraform, CloudFormation, CDK, manual).
 
 Usage:
-    python test_multi_agent.py <agent1_arn> [agent2_arn]
+    python test_multi_agent.py <orchestrator_arn> [specialist_arn]
     
-    agent1_arn: ARN of the orchestrator agent (required)
-    agent2_arn: ARN of the specialist agent (optional, for independent testing)
+    orchestrator_arn: ARN of the orchestrator agent (required)
+    specialist_arn: ARN of the specialist agent (optional, for independent testing)
 
 Examples:
     # Test orchestrator with A2A communication
-    python test_multi_agent.py arn:aws:bedrock-agentcore:us-west-2:123456789012:runtime/agent1-id
+    python test_multi_agent.py arn:aws:bedrock-agentcore:<region>:123456789012:runtime/orchestrator-id
     
     # Test both agents independently
     python test_multi_agent.py \\
-        arn:aws:bedrock-agentcore:us-west-2:123456789012:runtime/agent1-id \\
-        arn:aws:bedrock-agentcore:us-west-2:123456789012:runtime/agent2-id
+        arn:aws:bedrock-agentcore:<region>:123456789012:runtime/orchestrator-id \\
+        arn:aws:bedrock-agentcore:<region>:123456789012:runtime/specialist-id
 """
 
 import boto3
 import json
 import sys
+
+
+def extract_region_from_arn(arn):
+    """Extract AWS region from agent runtime ARN.
+    
+    ARN format: arn:aws:bedrock-agentcore:REGION:account:runtime/id
+    
+    Args:
+        arn: Agent runtime ARN string
+        
+    Returns:
+        str: AWS region code
+        
+    Raises:
+        ValueError: If ARN format is invalid or region cannot be extracted
+    """
+    try:
+        parts = arn.split(':')
+        if len(parts) < 4:
+            raise ValueError(
+                f"Invalid ARN format: {arn}\n"
+                f"Expected format: arn:aws:bedrock-agentcore:REGION:account:runtime/id"
+            )
+        
+        region = parts[3]
+        if not region:
+            raise ValueError(
+                f"Region not found in ARN: {arn}\n"
+                f"Expected format: arn:aws:bedrock-agentcore:REGION:account:runtime/id"
+            )
+        
+        return region
+        
+    except IndexError:
+        raise ValueError(
+            f"Invalid ARN format: {arn}\n"
+            f"Expected format: arn:aws:bedrock-agentcore:REGION:account:runtime/id"
+        )
+
 
 def test_agent(client, agent_arn, agent_name, prompt):
     """Test a single agent with a given prompt
@@ -77,36 +116,44 @@ def test_agent(client, agent_arn, agent_name, prompt):
         print(f"\n❌ Error testing {agent_name}: {e}")
         return False
 
-def test_multi_agent(agent1_arn, agent2_arn=None):
+def test_multi_agent(orchestrator_arn, specialist_arn=None):
     """Test the multi-agent system
     
     Args:
-        agent1_arn: Agent1 (Orchestrator) runtime ARN (required)
-        agent2_arn: Agent2 (Specialist) runtime ARN (optional)
+        orchestrator_arn: Orchestrator agent runtime ARN (required)
+        specialist_arn: Specialist agent runtime ARN (optional)
     """
+    
+    # Extract region from orchestrator ARN
+    try:
+        region = extract_region_from_arn(orchestrator_arn)
+    except ValueError as e:
+        print(f"\n❌ ERROR: {e}\n")
+        sys.exit(1)
     
     print("\n" + "="*80)
     print("MULTI-AGENT SYSTEM TEST")
     print("="*80)
-    print(f"\nAgent1 (Orchestrator) ARN: {agent1_arn}")
-    if agent2_arn:
-        print(f"Agent2 (Specialist) ARN: {agent2_arn}")
+    print(f"\nOrchestrator Agent ARN: {orchestrator_arn}")
+    if specialist_arn:
+        print(f"Specialist Agent ARN: {specialist_arn}")
     else:
-        print("Agent2: Not provided (will test Agent1 only)")
+        print("Specialist Agent: Not provided (will test Orchestrator only)")
+    print(f"Region: {region}")
     
-    # Create bedrock-agentcore client
-    agentcore_client = boto3.client('bedrock-agentcore', region_name='us-west-2')
+    # Create bedrock-agentcore client with extracted region
+    agentcore_client = boto3.client('bedrock-agentcore', region_name=region)
     
     test_results = []
     
-    # Test 1: Simple query to Agent1
+    # Test 1: Simple query to Orchestrator
     print("\n" + "="*80)
-    print("TEST 1: Simple Query (Agent1)")
+    print("TEST 1: Simple Query (Orchestrator)")
     print("="*80)
     result = test_agent(
         agentcore_client,
-        agent1_arn,
-        "Agent1",
+        orchestrator_arn,
+        "Orchestrator",
         "Hello! Can you introduce yourself and your capabilities?"
     )
     test_results.append(("Simple Query", result))
@@ -117,8 +164,8 @@ def test_multi_agent(agent1_arn, agent2_arn=None):
     print("="*80)
     result = test_agent(
         agentcore_client,
-        agent1_arn,
-        "Agent1",
+        orchestrator_arn,
+        "Orchestrator",
         "I need expert analysis. Please coordinate with the specialist agent to provide a comprehensive explanation of cloud computing architectures and best practices."
     )
     test_results.append(("A2A Communication Test", result))
@@ -150,28 +197,28 @@ def main():
         print(__doc__)
         print("\n❌ ERROR: Agent runtime ARN is required")
         print("\nTo get your agent ARN:")
-        print("  - Terraform: terraform output agent1_runtime_arn")
+        print("  - Terraform: terraform output orchestrator_runtime_arn")
         print("  - CloudFormation: aws cloudformation describe-stacks --stack-name <stack> --query 'Stacks[0].Outputs'")
         print("  - CDK: cdk deploy --outputs-file outputs.json")
         print("  - Console: Check Bedrock Agent Core console")
         sys.exit(1)
     
-    agent1_arn = sys.argv[1]
-    agent2_arn = sys.argv[2] if len(sys.argv) > 2 else None
+    orchestrator_arn = sys.argv[1]
+    specialist_arn = sys.argv[2] if len(sys.argv) > 2 else None
     
     # Validate ARN format
-    if not agent1_arn.startswith("arn:aws:bedrock-agentcore:"):
-        print(f"\n❌ ERROR: Invalid ARN format for agent1: {agent1_arn}")
+    if not orchestrator_arn.startswith("arn:aws:bedrock-agentcore:"):
+        print(f"\n❌ ERROR: Invalid ARN format for orchestrator: {orchestrator_arn}")
         print("Expected format: arn:aws:bedrock-agentcore:region:account:runtime/runtime-id")
         sys.exit(1)
     
-    if agent2_arn and not agent2_arn.startswith("arn:aws:bedrock-agentcore:"):
-        print(f"\n❌ ERROR: Invalid ARN format for agent2: {agent2_arn}")
+    if specialist_arn and not specialist_arn.startswith("arn:aws:bedrock-agentcore:"):
+        print(f"\n❌ ERROR: Invalid ARN format for specialist: {specialist_arn}")
         print("Expected format: arn:aws:bedrock-agentcore:region:account:runtime/runtime-id")
         sys.exit(1)
     
     # Run tests
-    success = test_multi_agent(agent1_arn, agent2_arn)
+    success = test_multi_agent(orchestrator_arn, specialist_arn)
     sys.exit(0 if success else 1)
 
 if __name__ == "__main__":

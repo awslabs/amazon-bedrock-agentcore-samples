@@ -2,14 +2,14 @@
 # AgentCore Runtime - Main Agent Runtime Resource
 # ============================================================================
 
-resource "aws_bedrockagentcore_agent_runtime" "this" {
+resource "aws_bedrockagentcore_agent_runtime" "basic_agent" {
   agent_runtime_name = replace("${var.stack_name}_${var.agent_name}", "-", "_")
   description        = var.description
   role_arn           = aws_iam_role.agent_execution.arn
 
   agent_runtime_artifact {
     container_configuration {
-      container_uri = "${aws_ecr_repository.this.repository_url}:${var.image_tag}"
+      container_uri = "${aws_ecr_repository.agent_ecr.repository_url}:${var.image_tag}"
     }
   }
 

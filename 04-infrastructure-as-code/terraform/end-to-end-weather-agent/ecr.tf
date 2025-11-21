@@ -3,7 +3,7 @@
 # ============================================================================
 
 # Weather Agent ECR Repository
-resource "aws_ecr_repository" "agent" {
+resource "aws_ecr_repository" "weather_ecr" {
   name                 = "${var.stack_name}-${var.ecr_repository_name}"
   image_tag_mutability = "MUTABLE"
 
@@ -21,8 +21,8 @@ resource "aws_ecr_repository" "agent" {
 }
 
 # ECR Repository Policy - Weather Agent
-resource "aws_ecr_repository_policy" "agent" {
-  repository = aws_ecr_repository.agent.name
+resource "aws_ecr_repository_policy" "weather_ecr" {
+  repository = aws_ecr_repository.weather_ecr.name
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -43,8 +43,8 @@ resource "aws_ecr_repository_policy" "agent" {
 }
 
 # ECR Lifecycle Policy - Weather Agent - Keep last 5 images
-resource "aws_ecr_lifecycle_policy" "agent" {
-  repository = aws_ecr_repository.agent.name
+resource "aws_ecr_lifecycle_policy" "weather_ecr" {
+  repository = aws_ecr_repository.weather_ecr.name
 
   policy = jsonencode({
     rules = [

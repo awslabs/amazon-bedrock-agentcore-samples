@@ -172,12 +172,12 @@ print_warning "========================================"
 print_warning "DEPLOYMENT CONFIRMATION"
 print_warning "========================================"
 print_info "This will deploy the following resources:"
-print_info "  - 2x S3 Buckets (Agent1 & Agent2 source code storage)"
-print_info "  - 2x ECR Repositories (Agent1 & Agent2)"
-print_info "  - 2x CodeBuild Projects (Agent1 & Agent2)"
+print_info "  - 2x S3 Buckets (Orchestrator & Specialist source code storage)"
+print_info "  - 2x ECR Repositories (Orchestrator & Specialist)"
+print_info "  - 2x CodeBuild Projects (Orchestrator & Specialist)"
 print_info "  - IAM Roles and Policies (with A2A permissions)"
-print_info "  - Agent2 Runtime (Specialist - Independent)"
-print_info "  - Agent1 Runtime (Orchestrator - Depends on Agent2)"
+print_info "  - Specialist Runtime (Independent)"
+print_info "  - Orchestrator Runtime (Depends on Specialist)"
 echo ""
 print_info "The deployment includes:"
 print_info "  - Building ARM64 Docker images for both agents"
@@ -227,16 +227,16 @@ print_info "Retrieving deployment outputs..."
 echo ""
 
 # Get outputs
-AGENT1_ID=$(terraform output -raw agent1_runtime_id 2>/dev/null || echo "N/A")
-AGENT1_ARN=$(terraform output -raw agent1_runtime_arn 2>/dev/null || echo "N/A")
-AGENT2_ID=$(terraform output -raw agent2_runtime_id 2>/dev/null || echo "N/A")
-AGENT2_ARN=$(terraform output -raw agent2_runtime_arn 2>/dev/null || echo "N/A")
+ORCHESTRATOR_ID=$(terraform output -raw orchestrator_runtime_id 2>/dev/null || echo "N/A")
+ORCHESTRATOR_ARN=$(terraform output -raw orchestrator_runtime_arn 2>/dev/null || echo "N/A")
+SPECIALIST_ID=$(terraform output -raw specialist_runtime_id 2>/dev/null || echo "N/A")
+SPECIALIST_ARN=$(terraform output -raw specialist_runtime_arn 2>/dev/null || echo "N/A")
 
-print_success "Agent1 (Orchestrator) Runtime ID: $AGENT1_ID"
-print_success "Agent1 (Orchestrator) Runtime ARN: $AGENT1_ARN"
+print_success "Orchestrator Runtime ID: $ORCHESTRATOR_ID"
+print_success "Orchestrator Runtime ARN: $ORCHESTRATOR_ARN"
 echo ""
-print_success "Agent2 (Specialist) Runtime ID: $AGENT2_ID"
-print_success "Agent2 (Specialist) Runtime ARN: $AGENT2_ARN"
+print_success "Specialist Runtime ID: $SPECIALIST_ID"
+print_success "Specialist Runtime ARN: $SPECIALIST_ARN"
 
 echo ""
 print_info "Next Steps:"

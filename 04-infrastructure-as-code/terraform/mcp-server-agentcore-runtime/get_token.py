@@ -38,9 +38,6 @@ def get_token(client_id, username, password, region=None):
 def main():
     if len(sys.argv) < 4 or len(sys.argv) > 5:
         print("Usage: python get_token.py <client_id> <username> <password> [region]")
-        print("\nExamples:")
-        print("  python get_token.py abc123xyz testuser MyPassword123!")
-        print("  python get_token.py abc123xyz testuser MyPassword123! us-west-2")
         sys.exit(1)
 
     client_id = sys.argv[1]

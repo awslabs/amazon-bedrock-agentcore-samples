@@ -6,9 +6,6 @@ COPY requirements.txt requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt && \
     pip install --no-cache-dir aws-opentelemetry-distro==0.10.1
 
-ENV AWS_REGION=us-west-2
-ENV AWS_DEFAULT_REGION=us-west-2
-
 # Create non-root user
 RUN useradd -m -u 1000 bedrock_agentcore
 USER bedrock_agentcore

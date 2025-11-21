@@ -2,9 +2,9 @@
 # ECR Repositories - Container Registries for Agent Images
 # ============================================================================
 
-# Agent1 (Orchestrator) ECR Repository
-resource "aws_ecr_repository" "agent1" {
-  name                 = "${var.stack_name}-${var.ecr_repository_name}-agent1"
+# Orchestrator Agent ECR Repository
+resource "aws_ecr_repository" "orchestrator" {
+  name                 = "${var.stack_name}-${var.ecr_repository_name}-orchestrator"
   image_tag_mutability = "MUTABLE"
 
   image_scanning_configuration {
@@ -14,15 +14,15 @@ resource "aws_ecr_repository" "agent1" {
   force_delete = true
 
   tags = {
-    Name   = "${var.stack_name}-agent1-ecr-repository"
+    Name   = "${var.stack_name}-orchestrator-ecr-repository"
     Module = "ECR"
-    Agent  = "Agent1-Orchestrator"
+    Agent  = "Orchestrator"
   }
 }
 
-# Agent2 (Specialist) ECR Repository
-resource "aws_ecr_repository" "agent2" {
-  name                 = "${var.stack_name}-${var.ecr_repository_name}-agent2"
+# Specialist Agent ECR Repository
+resource "aws_ecr_repository" "specialist" {
+  name                 = "${var.stack_name}-${var.ecr_repository_name}-specialist"
   image_tag_mutability = "MUTABLE"
 
   image_scanning_configuration {
@@ -32,15 +32,15 @@ resource "aws_ecr_repository" "agent2" {
   force_delete = true
 
   tags = {
-    Name   = "${var.stack_name}-agent2-ecr-repository"
+    Name   = "${var.stack_name}-specialist-ecr-repository"
     Module = "ECR"
-    Agent  = "Agent2-Specialist"
+    Agent  = "Specialist"
   }
 }
 
-# ECR Repository Policy - Agent1
-resource "aws_ecr_repository_policy" "agent1" {
-  repository = aws_ecr_repository.agent1.name
+# ECR Repository Policy - Orchestrator
+resource "aws_ecr_repository_policy" "orchestrator" {
+  repository = aws_ecr_repository.orchestrator.name
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -60,9 +60,9 @@ resource "aws_ecr_repository_policy" "agent1" {
   })
 }
 
-# ECR Repository Policy - Agent2
-resource "aws_ecr_repository_policy" "agent2" {
-  repository = aws_ecr_repository.agent2.name
+# ECR Repository Policy - Specialist
+resource "aws_ecr_repository_policy" "specialist" {
+  repository = aws_ecr_repository.specialist.name
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -82,9 +82,9 @@ resource "aws_ecr_repository_policy" "agent2" {
   })
 }
 
-# ECR Lifecycle Policy - Agent1 - Keep last 5 images
-resource "aws_ecr_lifecycle_policy" "agent1" {
-  repository = aws_ecr_repository.agent1.name
+# ECR Lifecycle Policy - Orchestrator - Keep last 5 images
+resource "aws_ecr_lifecycle_policy" "orchestrator" {
+  repository = aws_ecr_repository.orchestrator.name
 
   policy = jsonencode({
     rules = [
@@ -104,9 +104,9 @@ resource "aws_ecr_lifecycle_policy" "agent1" {
   })
 }
 
-# ECR Lifecycle Policy - Agent2 - Keep last 5 images
-resource "aws_ecr_lifecycle_policy" "agent2" {
-  repository = aws_ecr_repository.agent2.name
+# ECR Lifecycle Policy - Specialist - Keep last 5 images
+resource "aws_ecr_lifecycle_policy" "specialist" {
+  repository = aws_ecr_repository.specialist.name
 
   policy = jsonencode({
     rules = [

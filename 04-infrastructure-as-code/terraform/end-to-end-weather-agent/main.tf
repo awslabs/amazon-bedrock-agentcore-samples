@@ -19,17 +19,17 @@ resource "null_resource" "trigger_build" {
   triggers = {
     build_project   = aws_codebuild_project.agent_image.id
     image_tag       = var.image_tag
-    ecr_repository  = aws_ecr_repository.agent.id
+    ecr_repository  = aws_ecr_repository.weather_ecr.id
     source_code_md5 = data.archive_file.agent_source.output_md5
   }
 
   provisioner "local-exec" {
-    command = "${path.module}/scripts/build-image.sh \"${aws_codebuild_project.agent_image.name}\" \"${data.aws_region.current.id}\" \"${aws_ecr_repository.agent.name}\" \"${var.image_tag}\" \"${aws_ecr_repository.agent.repository_url}\""
+    command = "${path.module}/scripts/build-image.sh \"${aws_codebuild_project.agent_image.name}\" \"${data.aws_region.current.id}\" \"${aws_ecr_repository.weather_ecr.name}\" \"${var.image_tag}\" \"${aws_ecr_repository.weather_ecr.repository_url}\""
   }
 
   depends_on = [
     aws_codebuild_project.agent_image,
-    aws_ecr_repository.agent,
+    aws_ecr_repository.weather_ecr,
     aws_iam_role_policy.codebuild,
     aws_s3_object.agent_source,
     time_sleep.wait_for_iam
@@ -40,14 +40,14 @@ resource "null_resource" "trigger_build" {
 # Weather Agent Runtime
 # ============================================================================
 
-resource "aws_bedrockagentcore_agent_runtime" "agent" {
+resource "aws_bedrockagentcore_agent_runtime" "weather_agent" {
   agent_runtime_name = "${replace(var.stack_name, "-", "_")}_${var.agent_name}"
   description        = "Weather agent runtime for ${var.stack_name}"
   role_arn           = aws_iam_role.agent_execution.arn
 
   agent_runtime_artifact {
     container_configuration {
-      container_uri = "${aws_ecr_repository.agent.repository_url}:${var.image_tag}"
+      container_uri = "${aws_ecr_repository.weather_ecr.repository_url}:${var.image_tag}"
     }
   }
 

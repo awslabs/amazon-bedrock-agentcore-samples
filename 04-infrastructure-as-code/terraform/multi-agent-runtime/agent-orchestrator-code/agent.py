@@ -7,20 +7,24 @@ from bedrock_agentcore.runtime import BedrockAgentCoreApp
 
 app = BedrockAgentCoreApp()
 
-# Environment variable for Agent2 ARN (will be set by CloudFormation)
-AGENT2_ARN = os.getenv('AGENT2_ARN', '')
+# Environment variable for Specialist Agent ARN (required - set by Terraform)
+SPECIALIST_ARN = os.getenv('SPECIALIST_ARN')
+if not SPECIALIST_ARN:
+    raise EnvironmentError("SPECIALIST_ARN environment variable is required")
 
-def invoke_agent2(query: str) -> str:
-    """Helper function to invoke agent2 using boto3"""
+def invoke_specialist(query: str) -> str:
+    """Helper function to invoke specialist agent using boto3"""
     import uuid
     try:
-        # Get region from environment or use default
-        region = os.getenv('AWS_REGION', 'us-west-2')
+        # Get region from environment (set by AgentCore runtime)
+        region = os.getenv('AWS_REGION')
+        if not region:
+            raise EnvironmentError("AWS_REGION environment variable is required")
         agentcore_client = boto3.client('bedrock-agentcore', region_name=region)
 
-        # Invoke agent2 runtime (using AWS sample format)
+        # Invoke specialist agent runtime (using AWS sample format)
         response = agentcore_client.invoke_agent_runtime(
-            agentRuntimeArn=AGENT2_ARN,
+            agentRuntimeArn=SPECIALIST_ARN,
             qualifier="DEFAULT",
             payload=json.dumps({"prompt": query})
         )
@@ -53,12 +57,12 @@ def invoke_agent2(query: str) -> str:
     except Exception as e:
         import traceback
         error_details = traceback.format_exc()
-        return f"Error invoking agent2: {str(e)}\nDetails: {error_details}"
+        return f"Error invoking specialist agent: {str(e)}\nDetails: {error_details}"
 
 @tool
 def call_specialist_agent(query: str) -> Dict[str, Any]:
     """
-    Call the specialist agent (agent2) for detailed analysis or complex tasks.
+    Call the specialist agent for detailed analysis or complex tasks.
     Use this tool when you need expert analysis or detailed information.
 
     Args:
@@ -67,14 +71,14 @@ def call_specialist_agent(query: str) -> Dict[str, Any]:
     Returns:
         The specialist agent's response
     """
-    result = invoke_agent2(query)
+    result = invoke_specialist(query)
     return {
         "status": "success",
         "content": [{"text": result}]
     }
 
 def create_orchestrator_agent() -> Agent:
-    """Create the orchestrator agent with the tool to call agent2"""
+    """Create the orchestrator agent with the tool to call specialist agent"""
     system_prompt = """You are an orchestrator agent.
     You can handle simple queries directly, but for complex analytical tasks,
     you should delegate to the specialist agent using the call_specialist_agent tool.
@@ -94,7 +98,7 @@ def create_orchestrator_agent() -> Agent:
 
 @app.entrypoint
 async def invoke(payload=None):
-    """Main entrypoint for agent1"""
+    """Main entrypoint for orchestrator agent"""
     try:
         # Get the query from payload
         query = payload.get("prompt", "Hello, how are you?") if payload else "Hello, how are you?"
@@ -105,14 +109,14 @@ async def invoke(payload=None):
 
         return {
             "status": "success",
-            "agent": "agent1",
+            "agent": "orchestrator",
             "response": response.message['content'][0]['text']
         }
 
     except Exception as e:
         return {
             "status": "error",
-            "agent": "agent1",
+            "agent": "orchestrator",
             "error": str(e)
         }
 

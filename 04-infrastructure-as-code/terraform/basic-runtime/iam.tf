@@ -58,7 +58,7 @@ resource "aws_iam_role_policy" "agent_execution" {
           "ecr:GetDownloadUrlForLayer",
           "ecr:BatchCheckLayerAvailability"
         ]
-        Resource = aws_ecr_repository.this.arn
+        Resource = aws_ecr_repository.agent_ecr.arn
       },
       {
         Sid      = "ECRTokenAccess"
@@ -135,7 +135,7 @@ resource "aws_iam_role_policy" "agent_execution" {
 # CodeBuild Service Role - For Docker Image Building
 # ============================================================================
 
-resource "aws_iam_role" "codebuild" {
+resource "aws_iam_role" "image_build" {
   name = "${var.stack_name}-codebuild-role"
 
   assume_role_policy = jsonencode({
@@ -156,9 +156,9 @@ resource "aws_iam_role" "codebuild" {
 }
 
 # Inline policy for CodeBuild
-resource "aws_iam_role_policy" "codebuild" {
+resource "aws_iam_role_policy" "image_build" {
   name = "CodeBuildPolicy"
-  role = aws_iam_role.codebuild.id
+  role = aws_iam_role.image_build.id
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -189,7 +189,7 @@ resource "aws_iam_role_policy" "codebuild" {
           "ecr:CompleteLayerUpload"
         ]
         Resource = [
-          aws_ecr_repository.this.arn,
+          aws_ecr_repository.agent_ecr.arn,
           "*"
         ]
       },

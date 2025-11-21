@@ -14,6 +14,7 @@ This Terraform module deploys a comprehensive weather agent using Amazon Bedrock
 - [Testing](#testing)
 - [Agent Capabilities](#agent-capabilities)
 - [Customization](#customization)
+- [File Structure](#file-structure)
 - [Monitoring and Observability](#monitoring-and-observability)
 - [Security](#security)
 - [Troubleshooting](#troubleshooting)
@@ -284,21 +285,15 @@ python test_weather_agent.py $AGENT_ARN
 
 ### Test Scenarios
 
-The script runs five comprehensive tests:
+The script runs two comprehensive tests:
 1. **Simple Weather Query**: Basic weather information request
-2. **Multi-City Comparison**: Comparing weather across multiple locations
-3. **Code Interpreter Test**: Weather data analysis with visualization
-4. **Browser Tool Test**: Web scraping for weather alerts
-5. **Travel Planning**: Complex multi-step weather analysis
+2. **Complex Query with Tools**: Demonstrates browser, code interpreter, and memory usage together
 
 ### Expected Output
 
 ```
-TEST 1: Simple weather query ✅
-TEST 2: Multi-city comparison ✅
-TEST 3: Code interpreter (analysis with visualization) ✅
-TEST 4: Browser tool (weather alerts/advisories) ✅
-TEST 5: Travel planning query ✅
+TEST 1: Simple Weather Query ✅
+TEST 2: Complex Query with Tools ✅
 
 ✅ ALL TESTS PASSED
 ```
@@ -399,6 +394,41 @@ Adjust memory retention period:
 ```hcl
 # memory.tf
 event_expiry_duration = 60  # Change from 30 to 60 days
+```
+
+## File Structure
+
+```
+end-to-end-weather-agent/
+├── agent-code/               # Weather agent source code
+│   ├── weather_agent.py      # Agent implementation
+│   ├── requirements.txt      # Python dependencies
+│   └── Dockerfile            # Container definition
+├── scripts/                  # Build automation and initialization
+│   ├── build-image.sh        # Docker build script
+│   └── init-memory.py        # Memory initialization script
+├── main.tf                   # Agent runtime configuration
+├── browser.tf                # Browser tool
+├── code_interpreter.tf       # Code interpreter tool
+├── memory.tf                 # Memory resource
+├── memory-init.tf            # Memory initialization automation
+├── observability.tf          # CloudWatch Logs and X-Ray traces
+├── iam.tf                    # IAM roles and policies
+├── s3.tf                     # S3 buckets
+├── ecr.tf                    # ECR repository
+├── codebuild.tf              # CodeBuild project
+├── outputs.tf                # Output values
+├── variables.tf              # Input variables
+├── versions.tf               # Provider versions
+├── buildspec.yml             # CodeBuild specification
+├── test_weather_agent.py     # Infrastructure-agnostic test script
+├── deploy.sh                 # Deployment automation
+├── destroy.sh                # Cleanup automation
+├── terraform.tfvars.example  # Example configuration
+├── backend.tf.example        # Remote state example
+├── .gitignore                # Git exclusions
+├── architecture.png          # Architecture diagram
+└── README.md                 # This file
 ```
 
 ## Monitoring and Observability
@@ -613,40 +643,3 @@ We welcome contributions! Please see our [Contributing Guide](../../../CONTRIBUT
 ## License
 
 This project is licensed under the MIT-0 license. See the [LICENSE](../../../LICENSE) file for details.
-
----
-
-**Project Structure:**
-```
-end-to-end-weather-agent/
-├── agent-code/               # Weather agent source code
-│   ├── weather_agent.py      # Agent implementation
-│   ├── requirements.txt      # Python dependencies
-│   └── Dockerfile            # Container definition
-├── scripts/                  # Build automation and initialization
-│   ├── build-image.sh        # Docker build script
-│   └── init-memory.py        # Memory initialization script
-├── *.tf                      # Terraform configuration files
-│   ├── main.tf               # Agent runtime
-│   ├── browser.tf            # Browser tool
-│   ├── code_interpreter.tf   # Code interpreter tool
-│   ├── memory.tf             # Memory resource
-│   ├── memory-init.tf        # Memory initialization automation
-│   ├── observability.tf      # CloudWatch Logs and X-Ray traces
-│   ├── iam.tf                # IAM roles and policies
-│   ├── s3.tf                 # S3 buckets
-│   ├── ecr.tf                # ECR repository
-│   ├── codebuild.tf          # CodeBuild project
-│   ├── outputs.tf            # Output values
-│   ├── variables.tf          # Input variables
-│   └── versions.tf           # Provider versions
-├── buildspec.yml             # CodeBuild specification
-├── test_weather_agent.py     # Infrastructure-agnostic test script
-├── deploy.sh                 # Deployment automation
-├── destroy.sh                # Cleanup automation
-├── terraform.tfvars.example  # Example configuration
-├── backend.tf.example        # Remote state example
-├── .gitignore                # Git exclusions
-├── architecture.png          # Architecture diagram
-└── README.md                 # This file
-```

@@ -14,4 +14,4 @@ EXPOSE 8000
 
 COPY . .
 
-CMD ["opentelemetry-instrument", "python", "-m", "agent1"]
+CMD ["opentelemetry-instrument", "python", "-m", "agent"]

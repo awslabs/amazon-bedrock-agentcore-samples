@@ -11,6 +11,44 @@ from mcp import ClientSession
 from mcp.client.streamable_http import streamablehttp_client
 
 
+def extract_region_from_arn(arn):
+    """Extract AWS region from agent runtime ARN.
+    
+    ARN format: arn:aws:bedrock-agentcore:REGION:account:runtime/id
+    
+    Args:
+        arn: Agent runtime ARN string
+        
+    Returns:
+        str: AWS region code
+        
+    Raises:
+        ValueError: If ARN format is invalid or region cannot be extracted
+    """
+    try:
+        parts = arn.split(':')
+        if len(parts) < 4:
+            raise ValueError(
+                f"Invalid ARN format: {arn}\n"
+                f"Expected format: arn:aws:bedrock-agentcore:REGION:account:runtime/id"
+            )
+        
+        region = parts[3]
+        if not region:
+            raise ValueError(
+                f"Region not found in ARN: {arn}\n"
+                f"Expected format: arn:aws:bedrock-agentcore:REGION:account:runtime/id"
+            )
+        
+        return region
+        
+    except IndexError:
+        raise ValueError(
+            f"Invalid ARN format: {arn}\n"
+            f"Expected format: arn:aws:bedrock-agentcore:REGION:account:runtime/id"
+        )
+
+
 async def test_mcp_server(agent_arn, bearer_token, region):
     """Test the deployed MCP server."""
 
@@ -75,17 +113,29 @@ async def test_mcp_server(agent_arn, bearer_token, region):
 
 
 def main():
-    if len(sys.argv) != 4:
-        print("Usage: python test_mcp_server.py <agent_arn> <bearer_token> <region>")
+    if len(sys.argv) < 3:
+        print("Usage: python test_mcp_server.py <agent_arn> <bearer_token> [region]")
+        print("\nRegion is optional - will be extracted from ARN if not provided")
         print("\nExample:")
         print(
-            "  python test_mcp_server.py arn:aws:bedrock-agentcore:... eyJraWQiOiJ... us-west-2"
+            "  python test_mcp_server.py arn:aws:bedrock-agentcore:<region>:... eyJraWQiOiJ..."
         )
         sys.exit(1)
 
     agent_arn = sys.argv[1]
     bearer_token = sys.argv[2]
-    region = sys.argv[3]
+    
+    # Extract region from ARN or use provided region
+    if len(sys.argv) > 3:
+        region = sys.argv[3]
+        print(f"Using provided region: {region}")
+    else:
+        try:
+            region = extract_region_from_arn(agent_arn)
+            print(f"Extracted region from ARN: {region}")
+        except ValueError as e:
+            print(f"\n❌ ERROR: {e}\n")
+            sys.exit(1)
 
     asyncio.run(test_mcp_server(agent_arn, bearer_token, region))
 

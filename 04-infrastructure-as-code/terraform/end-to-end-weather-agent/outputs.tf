@@ -4,22 +4,22 @@
 
 output "agent_runtime_id" {
   description = "ID of the weather agent runtime"
-  value       = aws_bedrockagentcore_agent_runtime.agent.agent_runtime_id
+  value       = aws_bedrockagentcore_agent_runtime.weather_agent.agent_runtime_id
 }
 
 output "agent_runtime_arn" {
   description = "ARN of the weather agent runtime"
-  value       = aws_bedrockagentcore_agent_runtime.agent.agent_runtime_arn
+  value       = aws_bedrockagentcore_agent_runtime.weather_agent.agent_runtime_arn
 }
 
 output "agent_runtime_version" {
   description = "Version of the weather agent runtime"
-  value       = aws_bedrockagentcore_agent_runtime.agent.agent_runtime_version
+  value       = aws_bedrockagentcore_agent_runtime.weather_agent.agent_runtime_version
 }
 
 output "agent_ecr_repository_url" {
   description = "URL of the ECR repository for weather agent"
-  value       = aws_ecr_repository.agent.repository_url
+  value       = aws_ecr_repository.weather_ecr.repository_url
 }
 
 output "agent_execution_role_arn" {
@@ -58,12 +58,12 @@ output "source_code_md5" {
 
 output "test_agent_command" {
   description = "AWS CLI command to test weather agent"
-  value       = "aws bedrock-agentcore invoke-agent-runtime --agent-runtime-arn ${aws_bedrockagentcore_agent_runtime.agent.agent_runtime_arn} --qualifier DEFAULT --payload '{\"prompt\": \"What's the weather like today and suggest activities?\"}' --region ${data.aws_region.current.id} response.json"
+  value       = "aws bedrock-agentcore invoke-agent-runtime --agent-runtime-arn ${aws_bedrockagentcore_agent_runtime.weather_agent.agent_runtime_arn} --qualifier DEFAULT --payload '{\"prompt\": \"What's the weather like today and suggest activities?\"}' --region ${data.aws_region.current.id} response.json"
 }
 
 output "test_script_command" {
   description = "Command to run the comprehensive test script"
-  value       = "python test_weather_agent.py ${aws_bedrockagentcore_agent_runtime.agent.agent_runtime_arn}"
+  value       = "python test_weather_agent.py ${aws_bedrockagentcore_agent_runtime.weather_agent.agent_runtime_arn}"
 }
 
 # ============================================================================

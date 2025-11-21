@@ -2,14 +2,14 @@
 # AgentCore Runtime - Main Agent Runtime Resource
 # ============================================================================
 
-resource "aws_bedrockagentcore_agent_runtime" "this" {
+resource "aws_bedrockagentcore_agent_runtime" "mcp_server" {
   agent_runtime_name = replace("${var.stack_name}_${var.agent_name}", "-", "_")
   description        = var.description
   role_arn           = aws_iam_role.agent_execution.arn
 
   agent_runtime_artifact {
     container_configuration {
-      container_uri = "${aws_ecr_repository.this.repository_url}:${var.image_tag}"
+      container_uri = "${aws_ecr_repository.server_ecr.repository_url}:${var.image_tag}"
     }
   }
 
@@ -25,8 +25,8 @@ resource "aws_bedrockagentcore_agent_runtime" "this" {
   # JWT Authorization with Cognito
   authorizer_configuration {
     custom_jwt_authorizer {
-      allowed_clients = [aws_cognito_user_pool_client.this.id]
-      discovery_url   = "https://cognito-idp.${data.aws_region.current.id}.amazonaws.com/${aws_cognito_user_pool.this.id}/.well-known/openid-configuration"
+      allowed_clients = [aws_cognito_user_pool_client.mcp_client.id]
+      discovery_url   = "https://cognito-idp.${data.aws_region.current.id}.amazonaws.com/${aws_cognito_user_pool.mcp_user_pool.id}/.well-known/openid-configuration"
     }
   }
 

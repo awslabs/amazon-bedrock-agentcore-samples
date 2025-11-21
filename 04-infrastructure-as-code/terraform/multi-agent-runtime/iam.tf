@@ -3,11 +3,11 @@ data "aws_caller_identity" "current" {}
 data "aws_region" "current" {}
 
 # ============================================================================
-# Agent1 (Orchestrator) Execution Role - For AgentCore Runtime
+# Orchestrator Agent Execution Role - For AgentCore Runtime
 # ============================================================================
 
-resource "aws_iam_role" "agent1_execution" {
-  name = "${var.stack_name}-agent1-execution-role"
+resource "aws_iam_role" "orchestrator_execution" {
+  name = "${var.stack_name}-orchestrator-execution-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -30,27 +30,27 @@ resource "aws_iam_role" "agent1_execution" {
   })
 
   tags = {
-    Name   = "${var.stack_name}-agent1-execution-role"
+    Name   = "${var.stack_name}-orchestrator-execution-role"
     Module = "IAM"
-    Agent  = "Agent1-Orchestrator"
+    Agent  = "Orchestrator"
   }
 }
 
-# Attach AWS managed policy for AgentCore - Agent1
-resource "aws_iam_role_policy_attachment" "agent1_execution_managed" {
-  role       = aws_iam_role.agent1_execution.name
+# Attach AWS managed policy for AgentCore - Orchestrator
+resource "aws_iam_role_policy_attachment" "orchestrator_execution_managed" {
+  role       = aws_iam_role.orchestrator_execution.name
   policy_arn = "arn:aws:iam::aws:policy/BedrockAgentCoreFullAccess"
 }
 
-# Inline policy for agent1 execution
-resource "aws_iam_role_policy" "agent1_execution" {
-  name = "Agent1CoreExecutionPolicy"
-  role = aws_iam_role.agent1_execution.id
+# Inline policy for orchestrator execution
+resource "aws_iam_role_policy" "orchestrator_execution" {
+  name = "OrchestratorCoreExecutionPolicy"
+  role = aws_iam_role.orchestrator_execution.id
 
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
-      # ECR Access for Agent1
+      # ECR Access for Orchestrator
       {
         Sid    = "ECRImageAccess"
         Effect = "Allow"
@@ -59,7 +59,7 @@ resource "aws_iam_role_policy" "agent1_execution" {
           "ecr:GetDownloadUrlForLayer",
           "ecr:BatchCheckLayerAvailability"
         ]
-        Resource = aws_ecr_repository.agent1.arn
+        Resource = aws_ecr_repository.orchestrator.arn
       },
       {
         Sid      = "ECRTokenAccess"
@@ -133,18 +133,18 @@ resource "aws_iam_role_policy" "agent1_execution" {
 }
 
 # ============================================================================
-# Agent1 A2A Policy - Allows Agent1 to Invoke Agent2 (Agent-to-Agent)
+# Orchestrator A2A Policy - Allows Orchestrator to Invoke Specialist
 # ============================================================================
 
-resource "aws_iam_role_policy" "agent1_invoke_agent2" {
-  name = "Agent1InvokeAgent2Policy"
-  role = aws_iam_role.agent1_execution.id
+resource "aws_iam_role_policy" "orchestrator_invoke_specialist" {
+  name = "OrchestratorInvokeSpecialistPolicy"
+  role = aws_iam_role.orchestrator_execution.id
 
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
       {
-        Sid    = "InvokeAgent2Runtime"
+        Sid    = "InvokeSpecialistRuntime"
         Effect = "Allow"
         Action = [
           "bedrock-agentcore:InvokeAgentRuntime"
@@ -156,11 +156,11 @@ resource "aws_iam_role_policy" "agent1_invoke_agent2" {
 }
 
 # ============================================================================
-# Agent2 (Specialist) Execution Role - For AgentCore Runtime
+# Specialist Agent Execution Role - For AgentCore Runtime
 # ============================================================================
 
-resource "aws_iam_role" "agent2_execution" {
-  name = "${var.stack_name}-agent2-execution-role"
+resource "aws_iam_role" "specialist_execution" {
+  name = "${var.stack_name}-specialist-execution-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -183,27 +183,27 @@ resource "aws_iam_role" "agent2_execution" {
   })
 
   tags = {
-    Name   = "${var.stack_name}-agent2-execution-role"
+    Name   = "${var.stack_name}-specialist-execution-role"
     Module = "IAM"
-    Agent  = "Agent2-Specialist"
+    Agent  = "Specialist"
   }
 }
 
-# Attach AWS managed policy for AgentCore - Agent2
-resource "aws_iam_role_policy_attachment" "agent2_execution_managed" {
-  role       = aws_iam_role.agent2_execution.name
+# Attach AWS managed policy for AgentCore - Specialist
+resource "aws_iam_role_policy_attachment" "specialist_execution_managed" {
+  role       = aws_iam_role.specialist_execution.name
   policy_arn = "arn:aws:iam::aws:policy/BedrockAgentCoreFullAccess"
 }
 
-# Inline policy for agent2 execution
-resource "aws_iam_role_policy" "agent2_execution" {
-  name = "Agent2CoreExecutionPolicy"
-  role = aws_iam_role.agent2_execution.id
+# Inline policy for specialist execution
+resource "aws_iam_role_policy" "specialist_execution" {
+  name = "SpecialistCoreExecutionPolicy"
+  role = aws_iam_role.specialist_execution.id
 
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
-      # ECR Access for Agent2
+      # ECR Access for Specialist
       {
         Sid    = "ECRImageAccess"
         Effect = "Allow"
@@ -212,7 +212,7 @@ resource "aws_iam_role_policy" "agent2_execution" {
           "ecr:GetDownloadUrlForLayer",
           "ecr:BatchCheckLayerAvailability"
         ]
-        Resource = aws_ecr_repository.agent2.arn
+        Resource = aws_ecr_repository.specialist.arn
       },
       {
         Sid      = "ECRTokenAccess"
@@ -343,8 +343,8 @@ resource "aws_iam_role_policy" "codebuild" {
           "ecr:CompleteLayerUpload"
         ]
         Resource = [
-          aws_ecr_repository.agent1.arn,
-          aws_ecr_repository.agent2.arn,
+          aws_ecr_repository.orchestrator.arn,
+          aws_ecr_repository.specialist.arn,
           "*"
         ]
       },
@@ -357,8 +357,8 @@ resource "aws_iam_role_policy" "codebuild" {
           "s3:GetObjectVersion"
         ]
         Resource = [
-          "${aws_s3_bucket.agent1_source.arn}/*",
-          "${aws_s3_bucket.agent2_source.arn}/*"
+          "${aws_s3_bucket.orchestrator_source.arn}/*",
+          "${aws_s3_bucket.specialist_source.arn}/*"
         ]
       },
       {
@@ -369,8 +369,8 @@ resource "aws_iam_role_policy" "codebuild" {
           "s3:GetBucketLocation"
         ]
         Resource = [
-          aws_s3_bucket.agent1_source.arn,
-          aws_s3_bucket.agent2_source.arn
+          aws_s3_bucket.orchestrator_source.arn,
+          aws_s3_bucket.specialist_source.arn
         ]
       }
     ]

@@ -58,7 +58,7 @@ resource "aws_iam_role_policy" "agent_execution" {
           "ecr:GetDownloadUrlForLayer",
           "ecr:BatchCheckLayerAvailability"
         ]
-        Resource = aws_ecr_repository.this.arn
+        Resource = aws_ecr_repository.server_ecr.arn
       },
       {
         Sid      = "ECRTokenAccess"
@@ -189,7 +189,7 @@ resource "aws_iam_role_policy" "codebuild" {
           "ecr:CompleteLayerUpload"
         ]
         Resource = [
-          aws_ecr_repository.this.arn,
+          aws_ecr_repository.server_ecr.arn,
           "*"
         ]
       },

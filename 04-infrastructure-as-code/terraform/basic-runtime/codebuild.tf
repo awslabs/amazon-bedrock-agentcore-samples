@@ -5,7 +5,7 @@
 resource "aws_codebuild_project" "agent_image" {
   name          = "${var.stack_name}-basic-agent-build"
   description   = "Build basic agent Docker image for ${var.stack_name}"
-  service_role  = aws_iam_role.codebuild.arn
+  service_role  = aws_iam_role.image_build.arn
   build_timeout = 60
 
   artifacts {
@@ -31,7 +31,7 @@ resource "aws_codebuild_project" "agent_image" {
 
     environment_variable {
       name  = "IMAGE_REPO_NAME"
-      value = aws_ecr_repository.this.name
+      value = aws_ecr_repository.agent_ecr.name
     }
 
     environment_variable {
@@ -72,19 +72,19 @@ resource "null_resource" "trigger_build" {
     build_project = aws_codebuild_project.agent_image.id
     image_tag     = var.image_tag
     # Trigger rebuild if ECR repository changes
-    ecr_repository = aws_ecr_repository.this.id
+    ecr_repository = aws_ecr_repository.agent_ecr.id
     # Trigger rebuild when source code changes (MD5 hash)
     source_code_md5 = data.archive_file.agent_source.output_md5
   }
 
   provisioner "local-exec" {
-    command = "${path.module}/scripts/build-image.sh \"${aws_codebuild_project.agent_image.name}\" \"${data.aws_region.current.id}\" \"${aws_ecr_repository.this.name}\" \"${var.image_tag}\" \"${aws_ecr_repository.this.repository_url}\""
+    command = "${path.module}/scripts/build-image.sh \"${aws_codebuild_project.agent_image.name}\" \"${data.aws_region.current.id}\" \"${aws_ecr_repository.agent_ecr.name}\" \"${var.image_tag}\" \"${aws_ecr_repository.agent_ecr.repository_url}\""
   }
 
   depends_on = [
     aws_codebuild_project.agent_image,
-    aws_ecr_repository.this,
-    aws_iam_role_policy.codebuild,
+    aws_ecr_repository.agent_ecr,
+    aws_iam_role_policy.image_build,
     aws_s3_object.agent_source
   ]
 }

@@ -14,6 +14,7 @@ This Terraform module deploys a multi-agent system using Amazon Bedrock AgentCor
 - [Testing](#testing)
 - [Agent Capabilities](#agent-capabilities)
 - [Customization](#customization)
+- [File Structure](#file-structure)
 - [Monitoring and Observability](#monitoring-and-observability)
 - [Security](#security)
 - [Cost Estimation](#cost-estimation)
@@ -132,8 +133,8 @@ cp terraform.tfvars.example terraform.tfvars
 ```
 
 Edit `terraform.tfvars` with your preferred values:
-- `agent1_name`: Name for the orchestrator agent (default: "OrchestratorAgent")
-- `agent2_name`: Name for the specialist agent (default: "SpecialistAgent")
+- `orchestrator_name`: Name for the orchestrator agent (default: "OrchestratorAgent")
+- `specialist_name`: Name for the specialist agent (default: "SpecialistAgent")
 - `stack_name`: Stack identifier (default: "agentcore-multi-agent")
 - `aws_region`: AWS region for deployment (default: "us-west-2")
 - `network_mode`: PUBLIC or PRIVATE networking
@@ -194,8 +195,8 @@ terraform apply
 terraform output
 
 # Get Agent ARNs
-terraform output agent1_runtime_arn
-terraform output agent2_runtime_arn
+terraform output orchestrator_runtime_arn
+terraform output specialist_runtime_arn
 ```
 
 ## Deployment Process
@@ -205,10 +206,10 @@ terraform output agent2_runtime_arn
 The deployment follows a strict sequence to ensure proper dependencies:
 
 ```
-1. S3 Buckets Creation (agent1 & agent2)
-2. ECR Repositories Creation (agent1 & agent2)
+1. S3 Buckets Creation (orchestrator & specialist)
+2. ECR Repositories Creation (orchestrator & specialist)
 3. IAM Roles Creation (with A2A permissions)
-4. CodeBuild Projects Creation (agent1 & agent2)
+4. CodeBuild Projects Creation (orchestrator & specialist)
 5. Agent2 Docker Build → Agent2 Runtime Creation
 6. Agent1 Docker Build → Agent1 Runtime Creation (depends on Agent2)
 ```
@@ -244,26 +245,24 @@ The included `test_multi_agent.py` script is **infrastructure-agnostic** and wor
 
 ```bash
 # Get ARNs from Terraform
-AGENT1_ARN=$(terraform output -raw agent1_runtime_arn)
-AGENT2_ARN=$(terraform output -raw agent2_runtime_arn)
+ORCHESTRATOR_ARN=$(terraform output -raw orchestrator_runtime_arn)
+SPECIALIST_ARN=$(terraform output -raw specialist_runtime_arn)
 
 # Test both agents
-python test_multi_agent.py $AGENT1_ARN $AGENT2_ARN
+python test_multi_agent.py $ORCHESTRATOR_ARN $SPECIALIST_ARN
 ```
 
 ### Test Scenarios
 
-The script runs three tests:
-1. **Simple Query**: Basic Agent1 invocation
-2. **A2A Communication**: Agent1 delegates to Agent2
-3. **Direct Agent2**: Independent Agent2 invocation
+The script runs two tests:
+1. **Simple Query**: Basic orchestrator invocation
+2. **A2A Communication**: Orchestrator delegates to specialist via A2A protocol
 
 ### Expected Output
 
 ```
-TEST 1: Simple greeting (Agent1) ✅
-TEST 2: Complex analysis (Agent1 - triggers A2A) ✅
-TEST 3: Direct Agent2 test (Specialist) ✅
+TEST 1: Simple Query (Orchestrator) ✅
+TEST 2: Complex Query with A2A Communication ✅
 
 ✅ ALL TESTS PASSED
 ```
@@ -300,13 +299,13 @@ TEST 3: Direct Agent2 test (Specialist) ✅
 
 1. **Edit Agent Files**
    ```bash
-   # Agent1 (Orchestrator)
-   vim agent1-code/agent1.py
-   vim agent1-code/requirements.txt
-   
-   # Agent2 (Specialist)
-   vim agent2-code/agent2.py
-   vim agent2-code/requirements.txt
+   # Orchestrator Agent
+   vim agent-orchestrator-code/agent.py
+   vim agent-orchestrator-code/requirements.txt
+
+   # Specialist Agent
+   vim agent-specialist-code/agent.py
+   vim agent-specialist-code/requirements.txt
    ```
 
 2. **Redeploy**
@@ -316,11 +315,11 @@ TEST 3: Direct Agent2 test (Specialist) ✅
 
 ### Add More Agents
 
-To add Agent3:
-1. Create `agent3-code/` directory with implementation
-2. Add `agent3.tf` for the runtime resource
+To add a new agent (e.g., Coordinator):
+1. Create `coordinator-code/` directory with implementation
+2. Add `coordinator.tf` for the runtime resource
 3. Update `s3.tf`, `ecr.tf`, `iam.tf`, `codebuild.tf`
-4. Create `buildspec-agent3.yml`
+4. Create `buildspec-coordinator.yml`
 5. Update `main.tf` for build sequence
 6. Update `outputs.tf` and `variables.tf`
 
@@ -335,16 +334,48 @@ network_mode = "PRIVATE"
 
 Requires VPC configuration (not included in this module).
 
+## File Structure
+
+```
+multi-agent-runtime/
+├── agent-orchestrator-code/           # Orchestrator agent source code
+│   ├── agent.py                 # Main agent implementation
+│   ├── Dockerfile               # Container definition
+│   └── requirements.txt         # Python dependencies
+├── agent-specialist-code/             # Specialist agent source code
+│   ├── agent.py                 # Main agent implementation
+│   ├── Dockerfile               # Container definition
+│   └── requirements.txt         # Python dependencies
+├── orchestrator.tf              # Orchestrator runtime configuration
+├── specialist.tf                # Specialist runtime configuration
+├── main.tf                      # Main Terraform configuration
+├── variables.tf                 # Input variables
+├── outputs.tf                   # Output definitions
+├── iam.tf                       # IAM roles and policies
+├── s3.tf                        # S3 buckets for source code
+├── ecr.tf                       # ECR repositories
+├── codebuild.tf                 # CodeBuild projects
+├── versions.tf                  # Terraform and provider versions
+├── buildspec-orchestrator.yml   # Orchestrator build specification
+├── buildspec-specialist.yml     # Specialist build specification
+├── terraform.tfvars.example     # Example variable values
+├── backend.tf.example           # Example backend configuration
+├── deploy.sh                    # Deployment automation script
+├── destroy.sh                   # Cleanup automation script
+├── test_multi_agent.py          # Infrastructure-agnostic test script
+└── README.md                    # This file
+```
+
 ## Monitoring and Observability
 
 ### CloudWatch Logs
 
 ```bash
-# Agent1 logs
-aws logs tail /aws/bedrock-agentcore/agentcore-multi-agent-agent1-runtime --follow
+# Orchestrator logs
+aws logs tail /aws/bedrock-agentcore/agentcore-multi-agent-orchestrator-runtime --follow
 
-# Agent2 logs
-aws logs tail /aws/bedrock-agentcore/agentcore-multi-agent-agent2-runtime --follow
+# Specialist logs
+aws logs tail /aws/bedrock-agentcore/agentcore-multi-agent-specialist-runtime --follow
 ```
 
 ### Metrics
@@ -441,10 +472,10 @@ terraform show
 terraform validate
 
 # View specific resource
-terraform state show aws_bedrockagentcore_agent_runtime.agent1
+terraform state show aws_bedrockagentcore_agent_runtime.orchestrator
 
 # Get detailed build logs
-PROJECT_NAME=$(terraform output -raw agent1_codebuild_project)
+PROJECT_NAME=$(terraform output -raw orchestrator_codebuild_project)
 aws codebuild batch-get-builds --ids $(aws codebuild list-builds-for-project --project-name $PROJECT_NAME --query 'ids[0]' --output text)
 ```
 
@@ -505,7 +536,7 @@ For multi-region:
 
 1. **Test the deployment**
    ```bash
-   python test_multi_agent.py $(terraform output -raw agent1_runtime_arn) $(terraform output -raw agent2_runtime_arn)
+   python test_multi_agent.py $(terraform output -raw orchestrator_runtime_arn) $(terraform output -raw specialist_runtime_arn)
    ```
 
 2. **Customize agents** for your specific use case
@@ -537,16 +568,3 @@ We welcome contributions! Please see our [Contributing Guide](../../../CONTRIBUT
 ## License
 
 This project is licensed under the MIT-0 license. See the [LICENSE](../../../LICENSE) file for details.
-
----
-
-**Project Structure:**
-```
-multi-agent-runtime/
-├── agent1-code/              # Orchestrator agent source
-├── agent2-code/              # Specialist agent source
-├── scripts/                  # Build automation
-├── *.tf                      # Terraform configuration
-├── buildspec-*.yml           # CodeBuild specifications
-├── test_multi_agent.py       # Infrastructure-agnostic test script
-└── README.md                 # This file
