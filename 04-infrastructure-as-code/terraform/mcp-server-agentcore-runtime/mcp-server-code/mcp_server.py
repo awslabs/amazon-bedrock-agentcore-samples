@@ -1,5 +1,4 @@
 from mcp.server.fastmcp import FastMCP
-from starlette.responses import JSONResponse
 
 mcp = FastMCP(host="0.0.0.0", stateless_http=True)
 

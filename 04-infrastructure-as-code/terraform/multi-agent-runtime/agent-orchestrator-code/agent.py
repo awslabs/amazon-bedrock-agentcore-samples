@@ -14,7 +14,6 @@ if not SPECIALIST_ARN:
 
 def invoke_specialist(query: str) -> str:
     """Helper function to invoke specialist agent using boto3"""
-    import uuid
     try:
         # Get region from environment (set by AgentCore runtime)
         region = os.getenv('AWS_REGION')
