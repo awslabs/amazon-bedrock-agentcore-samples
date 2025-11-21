@@ -1,9 +1,5 @@
 import { DynamoDBClient, QueryCommand } from "@aws-sdk/client-dynamodb";
 import {
-  BedrockAgentCoreClient,
-  InvokeAgentRuntimeCommand,
-} from "@aws-sdk/client-bedrock-agentcore";
-import {
   BedrockRuntimeClient,
   InvokeModelCommand,
 } from "@aws-sdk/client-bedrock-runtime";
@@ -17,8 +13,6 @@ import {
   QUESTION_ANSWERS_TABLE_NAME,
   MODEL_ID_FOR_CHART,
   CHART_PROMPT,
-  AGENT_RUNTIME_ARN,
-  AGENT_ENDPOINT_NAME,
 } from "../env.js";
 
 /**
@@ -149,151 +143,19 @@ export const generateChart = async (answer) => {
 };
 
 /**
- * Invokes the agent core functionality with streaming support
- * @param {string} query - The user query to send to the agent
- * @param {string} sessionId - The session ID for the conversation
- * @param {string} queryUuid - The unique UUID for this query
- * @param {string} timezone - The user's timezone
- * @param {Function} setAnswers - State setter for answers (for streaming)
- * @param {Function} setControlAnswers - State setter for control answers (for streaming)
- * @param {number} lastKTurns - Number of previous conversation turns to maintain (default: 10)
- * @returns {Promise<Object>} - The agent's response with comprehensive data
+ * Get agent responses for a specific query UUID
+ * @param {string} queryUuid - The query UUID to fetch responses for
+ * @returns {Promise<Array>} - Array of agent responses
  */
-export const invokeAgentCore = async (
-  query,
-  sessionId = null,
-  queryUuid = null,
-  timezone = null,
-  setAnswers,
-  setControlAnswers,
-  lastKTurns = 10
-) => {
+export const getAgentResponses = async (queryUuid = "") => {
+  // This is a placeholder function for agent responses
+  // In a real implementation, this would fetch additional agent response data
+  // For now, return empty array as the main response is handled in the streaming
   try {
-    const agentCore = await createAwsClient(BedrockAgentCoreClient);
-    console.log("Invoking agent core with query:", query);
-
-    // Create the payload with the actual parameters including conversation history
-    const payload = JSON.stringify({
-      prompt: query,
-      session_id: sessionId || "default-session",
-      prompt_uuid: queryUuid || "default-uuid",
-      user_timezone: timezone || "UTC",
-      last_k_turns: lastKTurns,
-    });
-
-    const input = {
-      agentRuntimeArn: AGENT_RUNTIME_ARN,
-      qualifier: AGENT_ENDPOINT_NAME,
-      payload,
-    };
-
-    console.log("Agent Core Input:", input);
-
-    const command = new InvokeAgentRuntimeCommand(input);
-    const response = await agentCore.send(command);
-
-    let completion = "";
-    let hasReceivedFirstChunk = false;
-
-    // Initialize streaming output
-    console.log("------- Agent Response (Streaming) -------");
-
-    try {
-      // Check if response has streaming capability
-      if (response.response) {
-        // Handle streaming response
-        const stream = response.response.transformToWebStream();
-        const reader = stream.getReader();
-        const decoder = new TextDecoder();
-
-        try {
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            const chunk = decoder.decode(value, { stream: true });
-            console.log("---------->");
-            console.log("Chunk received:", chunk);
-            const lines = [];
-            chunk.split("\n").forEach((line) => {
-              if (line.trim() && line.startsWith("data: ")) {
-                if (line.trim() && line.startsWith("data: ")) {
-                  const jsonString = line.replace(/^data: /, '{"data": ') + "}";
-
-                  try {
-                    const obj = JSON.parse(jsonString);
-                    lines.push(obj.data);
-                  } catch (error) {
-                    console.error("Error parsing JSON:", error);
-                  }
-                }
-              }
-            });
-            lines.forEach((line) => {
-              completion += line;
-            });
-
-            // Add initial answer object only after receiving the first chunk
-            if (!hasReceivedFirstChunk) {
-              hasReceivedFirstChunk = true;
-              setAnswers((prevState) => [
-                ...prevState,
-                { text: completion, isStreaming: true },
-              ]);
-              setControlAnswers((prevState) => [
-                ...prevState,
-                { current_tab_view: "answer" },
-              ]);
-            } else {
-              // Update the existing streaming answer with new text
-              setAnswers((prevState) => {
-                const newState = [...prevState];
-                // Find the last answer that is streaming and update it
-                for (let i = newState.length - 1; i >= 0; i--) {
-                  if (newState[i].isStreaming) {
-                    newState[i] = {
-                      ...newState[i],
-                      text: completion,
-                    };
-                    break;
-                  }
-                }
-                return newState;
-              });
-            }
-          }
-        } finally {
-          reader.releaseLock();
-        }
-      } else {
-        // Handle non-streaming response (fallback)
-        const bytes = await response.response.transformToByteArray();
-        completion = new TextDecoder().decode(bytes);
-        console.log("Agent Response Text (Non-streaming):", completion);
-
-        // For non-streaming, add the complete response
-        setAnswers((prevState) => [
-          ...prevState,
-          { text: completion, isStreaming: true },
-        ]);
-        setControlAnswers((prevState) => [
-          ...prevState,
-          { current_tab_view: "answer" },
-        ]);
-      }
-    } catch (streamError) {
-      console.error("Error processing agent response stream:", streamError);
-      throw streamError;
-    }
-
-    console.log("------- End of Agent Response -------");
-    console.log("Complete Streaming Output:", completion);
-    return {
-      sessionId,
-      completion,
-      lastKTurns,
-    };
+    console.log("Fetching agent responses for:", queryUuid);
+    return [];
   } catch (error) {
-    console.error("Error invoking agent core:", error);
-    throw error;
+    console.error("Error fetching agent responses:", error);
+    return [];
   }
 };

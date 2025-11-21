@@ -1,14 +1,42 @@
 """
-Device Remote Management AI Agent for Amazon Bedrock AgentCore Runtime
-This version is adapted to work with Amazon Bedrock AgentCore Runtime
+Device Management System - Agent Runtime
+
+This module implements the core conversational AI agent for the Device Management System
+using Amazon Bedrock AgentCore Runtime and the Strands Agents SDK. The agent handles
+natural language processing, conversation management, and tool execution for IoT device
+management operations.
+
+Key Features:
+    - Natural language understanding using Amazon Bedrock models
+    - Conversation context management with sliding window
+    - MCP (Model Context Protocol) tool integration
+    - Real-time WebSocket communication
+    - Comprehensive observability with logging and tracing
+
+Architecture:
+    - Strands Agent: Core conversational AI using Amazon Bedrock
+    - MCP Client: Communication with Gateway for tool execution
+    - Conversation Manager: Context and history management
+    - Authentication: Amazon Cognito OAuth integration
+    - Observability: CloudWatch Logs and X-Ray tracing
+
+Environment Variables:
+    MCP_SERVER_URL: Gateway endpoint for MCP tool access
+    COGNITO_DOMAIN: Amazon Cognito domain for authentication
+    COGNITO_CLIENT_ID: OAuth client ID
+    COGNITO_CLIENT_SECRET: OAuth client secret
+    AWS_REGION: AWS region for services
+
+Example Usage:
+    The agent runtime is typically deployed as a service and accessed via WebSocket
+    connections from the frontend application. It processes natural language queries
+    and executes device management operations through the MCP protocol.
 """
 import os
 import json
 import logging
 import requests
-import asyncio
 from dotenv import load_dotenv
-import utils
 import access_token
 
 # Import Strands Agents SDK
@@ -63,7 +91,7 @@ def check_mcp_server():
             logger.info("No bearer token available, trying to get one from Cognito...")
             try:
                 jwt_token = access_token.get_gateway_access_token()
-                logger.info(f"Retrieved token: {jwt_token}")
+                # Note: Not logging actual token for security reasons
                 logger.info(f"Cognito token obtained: {'Yes' if jwt_token else 'No'}")
             except Exception as e:
                 logger.error(f"Error getting Cognito token: {str(e)}", exc_info=True)
@@ -79,6 +107,7 @@ def check_mcp_server():
             
             try:
                 response = requests.post(f"{MCP_SERVER_URL}/mcp", headers=headers, json=payload, timeout=10)
+                response.raise_for_status()
                 logger.info(f"MCP server response status: {response.status_code}")
                 
                 has_tools = "tools" in response.text
@@ -91,6 +120,7 @@ def check_mcp_server():
             logger.info("No bearer token available, trying health endpoint")
             try:
                 response = requests.get(f"{MCP_SERVER_URL}/health", timeout=5)
+                response.raise_for_status()
                 logger.info(f"Health endpoint response status: {response.status_code}")
                 
                 return response.status_code == 200
@@ -116,7 +146,8 @@ def initialize_agent():
             try:
                 #jwt_token = asyncio.run(access_token.get_gateway_access_token())
                 jwt_token = access_token.get_gateway_access_token()
-                logger.info(f"Retrieved token: {jwt_token}")
+                # Note: Not logging actual token for security reasons
+                logger.info("Token retrieved successfully")
             except Exception as e:
                 logger.error(f"Error getting Cognito token: {str(e)}", exc_info=True)
         

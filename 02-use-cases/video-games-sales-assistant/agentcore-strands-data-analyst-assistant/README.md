@@ -1,6 +1,9 @@
 # Agent Deployment - Strands Agent Infrastructure Deployment with AgentCore
 
-Deploy the Strands Agent Data Analyst Assistant for Video Game Sales using **[AWS Bedrock AgentCore](https://aws.amazon.com/bedrock/agentcore/)**'s fully managed service for scalable agent applications with **Runtime** and **Memory** capabilities.
+Deploy the Strands Agent Data Analyst Assistant for Video Game Sales using **[Amazon Bedrock AgentCore](https://aws.amazon.com/bedrock/agentcore/)**'s fully managed service for scalable agent applications with **Runtime** and **Memory** capabilities.
+
+> [!NOTE]
+> **Working Directory**: Make sure you are in the `agentcore-strands-data-analyst-assistant/` folder before starting this tutorial. All commands in this guide should be executed from this directory.
 
 ## Overview
 
@@ -55,41 +58,45 @@ This memory store enables your agent to remember previous interactions within th
 
 Before deploying to AWS, you can test the Data Analyst Agent locally to verify functionality:
 
-1. Start the local agent server:
+1. Set the required environment variable and start the local agent server:
 
 ```bash
+export PROJECT_ID="agentcore-data-analyst-assistant"
 python3 app.py
 ```
 
-This launches a local server on port 8080 that simulates the AgentCore runtime environment:
-- Processes natural language queries about video game sales data
-- Uses AgentCore Memory (Short-Term Memory) to maintain conversation context
-- Maintains conversation history through the `last_k_turns` parameter
+This launches a local server on port 8080 that simulates the AgentCore runtime environment.
 
-2. Test the agent with example queries using curl:
+2. In a different terminal, create a session ID for conversation tracking:
+
+```bash
+export SESSION_ID=$(uuidgen)
+```
+
+3. Test the agent with example queries using curl:
 
 ```bash
 curl -X POST http://localhost:8080/invocations \
  -H "Content-Type: application/json" \
- -d '{"prompt": "Hello world!", "session_id": "b2e9c4f7-3a1d-8e5b-6c2f-9d4e7a8b5c3f", "last_k_turns": 20}'
- ```
-
-```bash
-curl -X POST http://localhost:8080/invocations \
- -H "Content-Type: application/json" \
- -d '{"prompt": "what is the structure of your data available?!", "session_id": "b2e9c4f7-3a1d-8e5b-6c2f-9d4e7a8b5c3f", "last_k_turns": 20}'
+ -d '{"prompt": "Hello world!", "session_id": "'$SESSION_ID'", "last_k_turns": 20}'
 ```
 
 ```bash
 curl -X POST http://localhost:8080/invocations \
  -H "Content-Type: application/json" \
- -d '{"prompt": "Which developers tend to get the best reviews?", "session_id": "b2e9c4f7-3a1d-8e5b-6c2f-9d4e7a8b5c3f", "last_k_turns": 20}'
+ -d '{"prompt": "what is the structure of your data available?!", "session_id": "'$SESSION_ID'", "last_k_turns": 20}'
 ```
 
 ```bash
 curl -X POST http://localhost:8080/invocations \
  -H "Content-Type: application/json" \
- -d '{"prompt": "Give me a summary of our conversation", "session_id": "b2e9c4f7-3a1d-8e5b-6c2f-9d4e7a8b5c3f", "last_k_turns": 20}'
+ -d '{"prompt": "Which developers tend to get the best reviews?", "session_id": "'$SESSION_ID'", "last_k_turns": 20}'
+```
+
+```bash
+curl -X POST http://localhost:8080/invocations \
+ -H "Content-Type: application/json" \
+ -d '{"prompt": "Give me a summary of our conversation", "session_id": "'$SESSION_ID'", "last_k_turns": 20}'
 ```
 
 
@@ -100,33 +107,60 @@ Deploy your agent to AWS with these simple steps:
 1. Configure the agent deployment accepting default values when prompted:
 
 ```bash
-agentcore configure --entrypoint app.py --name agentcoredataanalystassistant -er $AGENT_CORE_ROLE_EXECUTION
+agentcore configure \
+  --entrypoint app.py \
+  --name agentcoredataanalystassistant \
+  -er $AGENT_CORE_ROLE_EXECUTION \
+  --disable-memory \
+  --deployment-type container
 ```
 
 2. Launch the agent infrastructure:
 
 ```bash
-agentcore launch
+agentcore launch --env PROJECT_ID="agentcore-data-analyst-assistant"
 ```
 
 ## Testing the Deployed Agent
 
-Test your deployed agent with these example queries:
+Create a session ID for conversation tracking and test your deployed agent:
 
 ```bash
-agentcore invoke '{"prompt": "Hello world!", "session_id": "c5b8f1e4-9a2d-4c7f-8e1b-5a9c3f6d2e8a", "last_k_turns": 20}'
+export SESSION_ID=$(uuidgen)
+```
+
+Test with these example queries:
+
+```bash
+agentcore invoke '{
+  "prompt": "Hello world!", 
+  "session_id": "'$SESSION_ID'", 
+  "last_k_turns": 20
+}'
 ```
 
 ```bash
-agentcore invoke '{"prompt": "what is the structure of your data available?!", "session_id": "c5b8f1e4-9a2d-4c7f-8e1b-5a9c3f6d2e8a", "last_k_turns": 20}'
+agentcore invoke '{
+  "prompt": "what is the structure of your data available?!", 
+  "session_id": "'$SESSION_ID'", 
+  "last_k_turns": 20
+}'
 ```
 
 ```bash
-agentcore invoke '{"prompt": "Which developers tend to get the best reviews?", "session_id": "c5b8f1e4-9a2d-4c7f-8e1b-5a9c3f6d2e8a", "last_k_turns": 20}'
+agentcore invoke '{
+  "prompt": "Which developers tend to get the best reviews?", 
+  "session_id": "'$SESSION_ID'", 
+  "last_k_turns": 20
+}'
 ```
 
 ```bash
-agentcore invoke '{"prompt": "Give me a summary of our conversation", "session_id": "c5b8f1e4-9a2d-4c7f-8e1b-5a9c3f6d2e8a", "last_k_turns": 20}'
+agentcore invoke '{
+  "prompt": "Give me a summary of our conversation", 
+  "session_id": "'$SESSION_ID'", 
+  "last_k_turns": 20
+}'
 ```
 
 **Expected Behavior**: The agent responds as "Gus," a video game sales data analyst assistant who provides information about the video_games_sales_units database (64,016 game titles from 1971-2024), analyzes developer review scores, and maintains conversation context across interactions.

@@ -1,13 +1,122 @@
 """
-Generate synthetic data for Device Management Lambda
+Device Management System - Synthetic Data Generator
+
+This module generates realistic synthetic test data for the Device Management
+System, populating DynamoDB tables with devices, users, WiFi networks, device
+settings, and user activities. It ensures minimum data requirements are met
+for comprehensive testing and demonstration.
+
+The generator creates:
+- 25+ IoT devices with realistic configurations
+- 25+ device settings per device (600+ total settings)
+- 25+ WiFi networks across devices
+- 25+ user accounts with varied roles
+- 625+ user activity records (25 per user)
+
+Key Features:
+    - Realistic device models (TransPort routers, IX/EX series)
+    - Comprehensive device settings (cellular, network, system, security)
+    - Varied WiFi configurations (security types, channels, signal strength)
+    - Diverse user roles (admin, operator, viewer, technician, etc.)
+    - Rich activity history (login, config changes, firmware updates)
+    - Timestamp generation for historical data
+    - Unique email addresses to prevent conflicts
+    - ISO format datetime strings for DynamoDB compatibility
+
+Data Generation Details:
+
+    Devices (25+):
+    - Device IDs: DG-100001 to DG-100025
+    - Models: TransPort WR31/WR44, IX20/IX15, EX15/EX12, WR54/WR64
+    - Firmware versions: 5.x.x format
+    - Connection statuses: Connected, Disconnected, Dormant, Maintenance, Updating
+    - IP addresses: 192.168.x.x range
+    - MAC addresses: 00:40:9D:xx:xx:xx format
+    - Last connected: Within past 72 hours
+
+    Device Settings (25 per device):
+    - Cellular: APN, auth type, SIM PIN, band selection, roaming
+    - Network: Hostname, IP mode, DNS, gateway, MTU, IPv6
+    - System: Contact, location, description, timezone, NTP, log level
+    - Firewall: Enabled status, default policy
+    - WiFi: Channel, country, regulatory domain
+    - Security: SSH, HTTPS, password complexity
+
+    WiFi Networks (25+ total):
+    - Network IDs: wifi_1, wifi_2, etc.
+    - SSIDs: Device-Net-{device_id}-{number}
+    - Security types: WPA2-PSK, WPA3-PSK, Open, WPA-PSK, WEP, Enterprise
+    - Channels: 1, 6, 11 (2.4GHz), 36-161 (5GHz)
+    - Signal strength: -90 to -30 dBm
+    - Enabled status: Mostly enabled (80% probability)
+
+    Users (25+):
+    - User IDs: USR100001 to USR100025
+    - Usernames: firstname.lastname{number}
+    - Emails: Unique across multiple domains
+    - Roles: admin, operator, viewer, device_admin, support, manager, etc.
+    - Created dates: 30-365 days ago
+    - Last login: 1-240 hours ago
+
+    User Activities (625+ total, 25 per user):
+    - Activity types: 30 different types including:
+      * Authentication: login, logout, password_change
+      * Device operations: config_change, firmware_update, reboot
+      * User management: user_added, user_removed, permission_changed
+      * System operations: backup, restore, report_generated
+      * Network: VPN connected/disconnected, remote_access
+      * Security: certificate operations, security_scan
+    - Timestamps: Distributed over past 30 days
+    - IP addresses: Varied source IPs
+    - Descriptions: Context-specific details
+
+Environment Variables:
+    AWS_REGION: AWS region for DynamoDB (defaults to us-west-2)
+
+DynamoDB Tables Populated:
+    - Devices: Device inventory and status
+    - DeviceSettings: Configuration settings per device
+    - WifiNetworks: WiFi network configurations
+    - Users: User accounts and profiles
+    - UserActivities: Activity logs and audit trail
+
+Usage:
+    Run directly to generate data:
+    >>> python synthetic_data.py
+    
+    Import and use programmatically:
+    >>> from synthetic_data import generate_synthetic_data
+    >>> generate_synthetic_data()
+
+Output:
+    Synthetic data generated successfully!
+    - 25 devices created
+    - 25 users created
+    - 25 WiFi networks created
+    - 625 device settings created
+    - 625 user activities created
+
+Data Characteristics:
+    - All timestamps in ISO 8601 format
+    - Decimal types for numeric values (DynamoDB compatibility)
+    - Realistic value distributions (not purely random)
+    - Referential integrity (activities reference real users/devices)
+    - Varied data to test different query patterns
+
+Notes:
+    - Requires DynamoDB tables to be initialized first
+    - Calls init_db() from dynamodb_models.py automatically
+    - Uses boto3 for DynamoDB operations
+    - Generates deterministic data (same run produces similar patterns)
+    - Safe to run multiple times (creates new records)
+    - Minimum 25 items per entity type guaranteed
+    - Email uniqueness enforced with retry logic
 """
 import datetime
 import random
 import uuid
 from decimal import Decimal
 import boto3
-import os
-import json
 
 # Configure DynamoDB connection
 # Always use AWS DynamoDB in us-west-2
@@ -42,7 +151,7 @@ def create_device(device_data):
     if 'last_connected' in device_data and device_data['last_connected']:
         device_data['last_connected'] = datetime_to_iso(device_data['last_connected'])
     
-    response = table.put_item(Item=device_data)
+    table.put_item(Item=device_data)
     return device_data
 
 # Device Settings CRUD operations
@@ -60,7 +169,7 @@ def create_device_setting(device_id, setting_key, setting_value, last_updated=No
         'last_updated': datetime_to_iso(last_updated)
     }
     
-    response = table.put_item(Item=item)
+    table.put_item(Item=item)
     return item
 
 # WiFi Network CRUD operations
@@ -85,7 +194,7 @@ def create_wifi_network(network_data):
     if 'signal_strength' in network_data and network_data['signal_strength'] is not None:
         network_data['signal_strength'] = Decimal(str(network_data['signal_strength']))
     
-    response = table.put_item(Item=network_data)
+    table.put_item(Item=network_data)
     return network_data
 
 # User CRUD operations
@@ -106,7 +215,7 @@ def create_user(user_data):
     if 'last_login' in user_data and user_data['last_login']:
         user_data['last_login'] = datetime_to_iso(user_data['last_login'])
     
-    response = table.put_item(Item=user_data)
+    table.put_item(Item=user_data)
     return user_data
 
 # User Activity CRUD operations
@@ -127,7 +236,7 @@ def create_user_activity(user_id, activity_type, description=None, ip_address=No
         'ip_address': ip_address
     }
     
-    response = table.put_item(Item=item)
+    table.put_item(Item=item)
     return item
 
 def generate_synthetic_data():
@@ -355,7 +464,7 @@ def generate_synthetic_data():
                 device = random.choice(devices)
                 description = f"Imported settings to device {device['name']}"
             elif activity_type == "group_created":
-                description = f"Created device group '{random.choice(['Production', 'Testing', 'Development', 'Backup', 'Remote', 'Office', 'Warehouse'])}'"
+                description = "Created device group '{}'".format(random.choice(['Production', 'Testing', 'Development', 'Backup', 'Remote', 'Office', 'Warehouse']))
             elif activity_type == "group_modified":
                 description = f"Modified device group '{random.choice(['Production', 'Testing', 'Development', 'Backup', 'Remote', 'Office', 'Warehouse'])}'"
             elif activity_type == "permission_changed":
@@ -409,7 +518,7 @@ def generate_synthetic_data():
             create_user_activity(user['user_id'], activity_type, description, ip_address, timestamp)
             user_activities_count += 1
     
-    print(f"Synthetic data generated successfully!")
+    print("Synthetic data generated successfully!")
     print(f"- {len(devices)} devices created")
     print(f"- {len(users)} users created")
     print(f"- {wifi_count} WiFi networks created")

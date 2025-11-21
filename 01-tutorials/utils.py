@@ -8,7 +8,7 @@ PASSWORD = "MyPassword123!"
 TEMP_ADMIN_PASSWORD = "Temp123!"
 
 
-def setup_cognito_user_pool():
+def setup_cognito_user_pool(pool_name="MCPServerPool"):
     boto_session = Session()
     region = boto_session.region_name
     # Initialize Cognito client
@@ -16,7 +16,7 @@ def setup_cognito_user_pool():
     try:
         # Create User Pool
         user_pool_response = cognito_client.create_user_pool(
-            PoolName="MCPServerPool", Policies={"PasswordPolicy": {"MinimumLength": 8}}
+            PoolName=pool_name, Policies={"PasswordPolicy": {"MinimumLength": 8}}
         )
         pool_id = user_pool_response["UserPool"]["Id"]
         # Create App Client

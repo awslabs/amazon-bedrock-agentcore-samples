@@ -1,166 +1,152 @@
 # Device Management System
 
-## Overview
+## Architecture & Overview
 
-This use case implements a comprehensive Device Management System using Amazon Bedrock AgentCore. It provides a unified interface for managing IoT devices, WiFi networks, users, and activities through AWS Lambda, allowing users to interact with their smart home devices through natural language.
+### What is the Device Management System?
+
+This use case implements a comprehensive Device Management System using Amazon Bedrock AgentCore. It provides a unified interface for managing IoT devices, WiFi networks, users, and activities through natural language interactions, eliminating the need to navigate multiple device-specific applications.
 
 | Information | Details |
 |-------------|---------|
-| Use case type | Conversational |
+| Use case type | Conversational AI |
 | Agent type | Single agent |
-| Use case components | Tools, Gateway |
+| Use case components | Tools, Gateway, Runtime, Frontend |
 | Use case vertical | IoT/Smart Home |
 | Example complexity | Intermediate |
 | SDK used | Amazon Bedrock AgentCore SDK, boto3 |
 
-## Use case Architecture
+### System Architecture
 
 ![Device Management Architecture](./images/device-management-architecture.png)
 
-### Process Flow
+The Device Management System follows a modular, cloud-native architecture:
 
-1. **User Interaction**: Users interact with the Device Management system through Amazon Q or other clients that support the MCP protocol.
+#### Core Components:
+1. **User Interface**: Web application with chat interface for natural language interactions
+2. **Amazon Bedrock AgentCore Runtime**: Processes natural language requests and manages conversation context
+3. **Amazon Bedrock Gateway**: Authenticates requests and routes them to appropriate targets
+4. **AWS Lambda Function**: Executes device management operations and business logic
+5. **Amazon DynamoDB**: Stores device data, user information, and activity logs
+6. **Amazon Cognito**: Handles user authentication and authorization
 
-2. **Request Processing**:
-   - The request is sent to Amazon Bedrock AgentCore
-   - AgentCore routes the request to the appropriate Gateway
-   - The Gateway forwards the request to the Gateway Target (Lambda function)
+#### Data Flow:
+1. User submits natural language query through web interface
+2. Request is authenticated via Amazon Cognito and processed by AgentCore Runtime
+3. Runtime determines appropriate tool and sends request through Gateway
+4. Gateway routes to AWS Lambda function which queries/updates Amazon DynamoDB
+5. Results flow back through the same path with natural language response
 
-3. **Tool Execution**:
-   - The Lambda function receives the request and identifies the appropriate tool to execute
-   - The function interacts with DynamoDB tables to perform CRUD operations
-   - Results are processed and formatted according to the MCP protocol
+#### Observability:
+- **Amazon CloudWatch Logs**: Centralized logging for all components
+- **AWS X-Ray**: Distributed tracing for request flows
+- **Amazon CloudWatch Metrics**: Performance and usage metrics
 
-4. **Response Flow**:
-   - The Lambda function returns the response to the Gateway
-   - The Gateway forwards the response back to AgentCore
-   - AgentCore delivers the response to the client
+### Key Features
 
-5. **Data Flow**: All device data, user information, and configuration settings are stored in and retrieved from DynamoDB tables.
-
-6. **Observability Flow**:
-   - The AgentCore runtime sends logs to CloudWatch Logs
-   - Gateway operations are logged to dedicated CloudWatch log groups
-   - Traces are captured by AWS X-Ray
-   - Custom metrics are published to CloudWatch Metrics
-   - All observability data can be monitored through the AWS Console
-
-## Use case key Features
-
-The Device Management System provides the following capabilities:
-
-- List devices in the system
-- Get device settings
-- List WiFi networks for a device
-- Update WiFi network settings (SSID, security type)
-- List users within an account
-- Query user activity within a time period
+- **Device Management**: List devices, retrieve settings, monitor status
+- **WiFi Network Management**: View and update network configurations (SSID, security)
+- **User Management**: Manage user accounts and permissions
+- **Activity Tracking**: Query user interactions and system activities
+- **Natural Language Interface**: Conversational interactions instead of complex UIs
 
 ## Prerequisites
 
-- Python 3.10+
-- AWS account with appropriate permissions
-- boto3 and Amazon Bedrock AgentCore SDK
-- Cognito User Pool with configured app client (for Gateway/Runtime authentication)
-- Cognito User Pool with configured app client (for Frontend authentication - separate from Gateway)
-- Cognito Domain (optional but recommended for hosted UI)
-- IAM Role for Bedrock Agent Core Gateway with appropriate permissions
+### Required Software
+- **Python 3.10+**
+- **AWS CLI** (configured with appropriate permissions)
+- **Git** (for cloning the repository)
 
-Attach the below policy to your IAM role:
+### AWS Account Requirements
+- **AWS Account** with administrative permissions
+- **AWS Region**: Recommended us-west-2 (configurable)
+
+### Required AWS Services
+- **Amazon Bedrock AgentCore** access
+- **AWS Lambda** service access
+- **Amazon DynamoDB** service access
+- **Amazon Cognito** service access
+- **Amazon CloudWatch** service access
+
+### IAM Permissions
+Your AWS user/role needs permissions for:
 ```json
 {
     "Version": "2012-10-17",
     "Statement": [
         {
-            "Sid": "VisualEditor0",
             "Effect": "Allow",
             "Action": [
-                "iam:PassRole",
-                "bedrock-agentcore:*"
+                "iam:PassRole"
             ],
-            "Resource": "*"
+            "Resource": "arn:aws:iam::*:role/DeviceManagement*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "bedrock-agentcore:*",
+                "lambda:*",
+                "dynamodb:*",
+                "cognito-idp:*",
+                "logs:*"
+            ],
+            "Resource": [
+                "arn:aws:bedrock-agentcore:*:*:*",
+                "arn:aws:lambda:*:*:function:device-management-*",
+                "arn:aws:dynamodb:*:*:table/Devices*",
+                "arn:aws:cognito-idp:*:*:userpool/*",
+                "arn:aws:logs:*:*:log-group:/aws/lambda/device-management-*"
+            ]
         }
     ]
 }
 ```
 
-## Use case setup
+### Environment Setup
+1. **Clone the repository**:
+   ```bash
+   git clone <repository-url>
+   cd device-management-system
+   ```
 
-### 1. Environment Configuration
+2. **Install Python dependencies**:
+   ```bash
+   # Option 1: Install all dependencies (recommended for full setup)
+   pip install -r requirements.txt
+   
+   # Option 2: Install component-specific dependencies only
+   pip install -r device-management/requirements.txt  # Core AWS Lambda functionality
+   pip install -r gateway/requirements.txt           # Gateway creation only
+   pip install -r agent-runtime/requirements.txt     # Agent runtime only
+   pip install -r frontend/requirements.txt          # Web interface only
+   ```
 
-Create a `.env` file in the project root with the following variables:
+3. **Configure environment variables**:
+   ```bash
+   cp .env.example .env
+   # Edit .env with your specific values
+   ```
 
-```
-# AWS and endpoint configuration
-AWS_REGION=us-west-2
-ENDPOINT_URL=https://bedrock-agentcore-control.us-west-2.amazonaws.com
+## Deployment Steps
 
-# Lambda configuration
-LAMBDA_FUNCTION_NAME=DeviceManagementLambda
-LAMBDA_ARN=arn:aws:lambda:us-west-2:your-account-id:function:DeviceManagementLambda
+### Option 1: Automated Deployment (Recommended)
 
-# Gateway configuration
-GATEWAY_IDENTIFIER=your-gateway-identifier
-GATEWAY_NAME=Device-Management-Gateway
-GATEWAY_DESCRIPTION=Device Management Gateway
-ROLE_ARN=arn:aws:iam::your-account-id:role/YourGatewayRole
-
-# Gateway observability (auto-populated by deploy script)
-GATEWAY_ARN=arn:aws:bedrock-agentcore:us-west-2:your-account-id:gateway/your-gateway-id
-GATEWAY_ID=your-gateway-id
-
-# Target configuration
-TARGET_NAME=device-management-target
-TARGET_DESCRIPTION=List, Update device management activities
-
-# Cognito configuration for Gateway/Runtime
-COGNITO_USERPOOL_ID=your-gateway-cognito-userpool-id
-COGNITO_APP_CLIENT_ID=your-gateway-cognito-app-client-id
-COGNITO_DOMAIN=your-gateway-cognito-domain.auth.us-west-2.amazoncognito.com
-COGNITO_CLIENT_SECRET=your-gateway-cognito-client-secret
-
-# Cognito configuration for Frontend (separate user pool)
-FRONTEND_COGNITO_USERPOOL_ID=your-frontend-cognito-userpool-id
-FRONTEND_COGNITO_APP_CLIENT_ID=your-frontend-cognito-app-client-id
-FRONTEND_COGNITO_DOMAIN=your-frontend-cognito-domain.auth.us-west-2.amazoncognito.com
-FRONTEND_COGNITO_CLIENT_SECRET=your-frontend-cognito-client-secret
-
-# Frontend configuration (auto-populated by deploy script)
-MCP_SERVER_URL=https://your-gateway-id.gateway.bedrock-agentcore.us-west-2.amazonaws.com
-```
-
-**Note**: You can use the provided `.env.example` file as a template by copying it to `.env` and updating the placeholder values.
-
-### 2. Install Dependencies
-
-Install the required Python packages:
-
-```bash
-pip install -r requirements.txt
-```
-
-### 3. Automated Deployment
-
-You can deploy all components using the provided deployment script:
+Deploy all components with a single script:
 
 ```bash
 chmod +x deploy_all.sh
 ./deploy_all.sh
 ```
 
-The deployment script performs the following actions:
-- Deploys the Lambda function with dependencies
-- Creates and configures the gateway
-- Sets up gateway targets
-- Enables gateway observability (CloudWatch logging)
-- Configures the agent runtime
-- Sets up frontend configuration
+This script will:
+1. Deploy AWS Lambda function with dependencies
+2. Create and configure Amazon Bedrock Gateway
+3. Set up gateway targets and observability
+4. Configure agent runtime
+5. Set up frontend application
 
-### 4. Manual Deployment (Alternative)
+### Option 2: Manual Step-by-Step Deployment
 
-If you prefer to deploy components individually:
-
-#### Deploy Lambda Function
+#### Step 1: Deploy AWS Lambda Function
 ```bash
 cd device-management
 chmod +x deploy.sh
@@ -168,24 +154,16 @@ chmod +x deploy.sh
 cd ..
 ```
 
-#### Create Gateway
+#### Step 2: Create Amazon Bedrock Gateway
 ```bash
 cd gateway
 python create_gateway.py
-```
-
-#### Create Gateway Target
-```bash
 python device-management-target.py
-```
-
-#### Setup Gateway Observability
-```bash
 python gateway_observability.py
 cd ..
 ```
 
-#### Setup Agent Runtime
+#### Step 3: Setup Agent Runtime
 ```bash
 cd agent-runtime
 chmod +x setup.sh
@@ -193,122 +171,203 @@ chmod +x setup.sh
 cd ..
 ```
 
-#### Setup Frontend (Optional)
+#### Step 4: Setup Frontend (Optional)
 ```bash
 cd frontend
-chmod +x setup_and_run.sh
-./setup_and_run.sh
-cd ..
+python main.py
+# Access at http://localhost:8000
 ```
 
-### 5. Generate Test Data (Optional)
-
-To populate the tables with synthetic test data:
-
+#### Step 5: Generate Test Data
 ```bash
 cd device-management
 python synthetic_data.py
 cd ..
 ```
 
-## Execution instructions
+### Deployment Verification
 
-### 1. Test the Lambda Function
+1. **Test AWS Lambda function**:
+   ```bash
+   cd device-management
+   python test_lambda.py
+   ```
 
-You can test the Lambda function locally using the provided test script:
+2. **Verify Gateway connectivity**:
+   ```bash
+   curl -H "Authorization: Bearer <token>" \
+        https://<gateway-id>.gateway.bedrock-agentcore.<region>.amazonaws.com/mcp
+   ```
 
-```bash
-python test_lambda.py
+3. **Check Amazon DynamoDB tables**:
+   ```bash
+   aws dynamodb list-tables --region <your-region>
+   ```
+
+## Sample Queries
+
+Once deployed, you can interact with the system using natural language. Here are example queries:
+
+### Device Management Queries
+```
+"Can you list all devices in the system?"
+"Show me all dormant devices"
+"What devices are currently online?"
+"List devices that haven't connected in the last 24 hours"
 ```
 
-### 2. Invoking tools using Q CLI
-
-#### Generating the Bearer Token
-
-To generate the Bearer token required for authentication, use the following curl command to request an access token from the Cognito OAuth2 endpoint:
-
-```bash
-curl --http1.1 -X POST https://<cognito domain>.auth.us-west-2.amazoncognito.com/oauth2/token \
--H "Content-Type: application/x-www-form-urlencoded" \
--d "grant_type=client_credentials&client_id=<client id>&client_secret=<client_secret>"
+### Device Configuration Queries
+```
+"Can you show me the device settings for device ID DG-10016?"
+"What's the current firmware version for device DG-10005?"
+"Show me the configuration for all WR64 model devices"
 ```
 
-This command will return a JSON response containing the access token that should be used as the Bearer token in the MCP configuration.
+### WiFi Network Management
+```
+"Can you show me the WiFi settings for device ID DB-10005?"
+"List all WiFi networks for device DG-10016"
+"Update the SSID for device DG-10016 to 'HomeNetwork-5G'"
+"Change the security type for device DB-10005 network WN-1005-1 to WPA3"
+```
 
-#### Configuring MCP
+### User and Activity Queries
+```
+"List all users in the system"
+"Show me login activities from the last 24 hours"
+"Who accessed device DG-10016 yesterday?"
+"Query user activity for john.smith between 2023-06-20 and 2023-06-25"
+```
 
-Update the mcp.json file with this config:
+### System Information Queries
+```
+"What tools are available?"
+"How many devices are connected to the guest network?"
+"Show me all maintenance activities this week"
+```
+
+### Expected Response Format
+The system returns formatted, human-readable responses:
+
+```
+Devices in Device Remote Management System
+
+Name                  | Device ID  | Model     | Status     | IP Address      | Last Connected
+----------------------|------------|-----------|------------|-----------------|---------------
+Factory Sensor A3     | DG-10016   | Sensor-X  | Connected  | 192.168.1.16    | 2023-06-26 18:26
+Warehouse Camera      | DG-10022   | Cam-Pro   | Dormant    | 192.168.1.22    | 2023-06-10 14:45
+```
+
+## Configuration
+
+### Environment Variables
+
+The system uses environment variables for configuration. Key variables include:
+
+```bash
+# AWS Configuration
+AWS_REGION=us-west-2
+ENDPOINT_URL=https://bedrock-agentcore-control.us-west-2.amazonaws.com
+
+# AWS Lambda Configuration
+LAMBDA_ARN=arn:aws:lambda:us-west-2:account:function:DeviceManagementLambda
+
+# Gateway Configuration
+GATEWAY_IDENTIFIER=your-gateway-identifier
+MCP_SERVER_URL=https://gateway-id.gateway.bedrock-agentcore.us-west-2.amazonaws.com
+
+# Amazon Cognito Configuration
+COGNITO_USERPOOL_ID=your-cognito-userpool-id
+COGNITO_APP_CLIENT_ID=your-cognito-app-client-id
+COGNITO_DOMAIN=your-domain.auth.us-west-2.amazoncognito.com
+```
+
+### MCP Client Configuration
+
+For Amazon Q CLI integration:
+
 ```json
-cd ~/.aws/amazonq
-vi mcp.json
-## Update this json
 {
   "mcpServers": {
-    "<you_desired_mcp_server_name>": {
+    "device-management": {
       "command": "npx",
       "timeout": 60000,
       "args": [
         "mcp-remote@latest",
-        "https://<gateway id>.gateway.bedrock-agentcore.<REGION>.amazonaws.com/mcp",
+        "https://<gateway-id>.gateway.bedrock-agentcore.<region>.amazonaws.com/mcp",
         "--header",
-        "Authorization: Bearer <Bearer token>"
+        "Authorization: Bearer <bearer-token>"
       ]
     }
   }
 }
 ```
 
-Replace `<Bearer token>` with the access token obtained from the Cognito authentication request.
+## Troubleshooting
 
-### 3. Using the Web Frontend
+### Common Issues
 
-After setting up the frontend, you can interact with the Device Management system through the web interface:
+**AWS Lambda deployment failures**:
+- Check AWS IAM permissions and AWS Lambda service quotas
+- Verify Python dependencies in requirements.txt
 
-1. **Access the application**:
-   ```bash
-   # If using Docker
-   open http://localhost:5001
-   
-   # If running locally
-   open http://localhost:5001
-   ```
+**Gateway creation failures**:
+- Verify Amazon Cognito User Pool ID and App Client ID
+- Check IAM role ARN permissions
 
-2. **Authentication**:
-   - Use AWS Cognito login (if configured)
-   - Or use the simple login form with your credentials
+**Amazon DynamoDB access issues**:
+- Confirm AWS Lambda execution role has necessary permissions
+- Verify table names and regions match configuration
 
-3. **Chat Interface**:
-   - Type your device management queries in the chat interface
-   - Responses will stream in real-time from the agent
+**Authentication issues**:
+- Check Amazon Cognito configuration and token validity
+- Verify bearer token generation process
 
-### 4. Sample prompts:
+### Debug Commands
 
-1. "Can you list all the dormant devices?"
-2. "Can you update SSID for my device ID DG-10016 to XXXXXXXXXX'?"
-3. "Can you list all the available tools?"
-4. "Can you show me the device settings for the device ID DG-10016?"
-5. "Can you show me the Wifi setting for the device ID DB-10005?"
+```bash
+# Test AWS Lambda function locally
+cd device-management && python test_lambda.py
 
-## Clean up instructions
+# Check Amazon DynamoDB tables
+aws dynamodb list-tables --region us-west-2
 
-To clean up resources created by this use case:
+# Verify Gateway status
+aws bedrock-agentcore get-gateway --gateway-identifier <gateway-id>
 
-1. Delete the Lambda function:
+# Check logs
+aws logs describe-log-groups --log-group-name-prefix "/aws/bedrock-agentcore"
+```
+
+## Cleanup Instructions
+
+### Automated Cleanup
+
+```bash
+chmod +x cleanup_all.sh
+./cleanup_all.sh
+```
+
+### Manual Cleanup
+
+#### 1. Delete AWS Lambda Function
 ```bash
 aws lambda delete-function --function-name DeviceManagementLambda
 ```
 
-2. Delete the Gateway Target:
+#### 2. Delete Gateway Components
 ```bash
-aws bedrock-agentcore delete-gateway-target --gateway-identifier <your-gateway-identifier> --target-name device-management-target
+# Delete Gateway Target
+aws bedrock-agentcore delete-gateway-target \
+  --gateway-identifier <gateway-identifier> \
+  --target-name device-management-target
+
+# Delete Gateway
+aws bedrock-agentcore delete-gateway \
+  --gateway-identifier <gateway-identifier>
 ```
 
-3. Delete the Gateway (if you created a new one):
-```bash
-aws bedrock-agentcore delete-gateway --gateway-identifier <your-gateway-identifier>
-```
-
-4. Delete the DynamoDB tables (if you created them for this use case):
+#### 3. Delete Amazon DynamoDB Tables
 ```bash
 aws dynamodb delete-table --table-name Devices
 aws dynamodb delete-table --table-name DeviceSettings
@@ -317,65 +376,47 @@ aws dynamodb delete-table --table-name Users
 aws dynamodb delete-table --table-name UserActivities
 ```
 
+#### 4. Delete Amazon CloudWatch Log Groups
+```bash
+aws logs delete-log-group --log-group-name /aws/bedrock-agentcore/device-management-agent
+aws logs delete-log-group --log-group-name /aws/lambda/DeviceManagementLambda
+```
+
+#### 5. Delete IAM Roles (if created by deployment)
+```bash
+aws iam delete-role --role-name DeviceManagementLambdaRole
+aws iam delete-role --role-name AgentGatewayAccessRole
+```
+
+## Project Structure
+
+```
+device-management-system/
+├── agent-runtime/          # Agent runtime components
+│   ├── requirements.txt    # Agent runtime dependencies
+│   └── requirements-runtime.txt # Runtime-specific dependencies
+├── device-management/      # AWS Lambda function and Amazon DynamoDB setup
+│   └── requirements.txt    # Lambda function dependencies
+├── frontend/              # Web interface application
+│   └── requirements.txt    # Frontend web app dependencies
+├── gateway/               # Gateway creation and configuration
+│   └── requirements.txt    # Gateway setup dependencies
+├── images/                # Architecture diagrams
+├── .env.example          # Environment variables template
+├── requirements.txt      # Consolidated dependencies (all components)
+├── deploy_all.sh         # Automated deployment script
+├── cleanup_all.sh        # Automated cleanup script
+└── README.md             # This file
+```
+
+## Additional Resources
+
+- [Amazon Bedrock Documentation](https://docs.aws.amazon.com/bedrock/)
+- [Amazon Bedrock AgentCore Developer Guide](https://docs.aws.amazon.com/bedrock/latest/userguide/agents.html)
+- [AWS Lambda Documentation](https://docs.aws.amazon.com/lambda/)
+- [Amazon DynamoDB Documentation](https://docs.aws.amazon.com/dynamodb/)
+- [Amazon Cognito Documentation](https://docs.aws.amazon.com/cognito/)
+
 ## Disclaimer
 
 The examples provided in this repository are for experimental and educational purposes only. They demonstrate concepts and techniques but are not intended for direct use in production environments. Make sure to have Amazon Bedrock Guardrails in place to protect against prompt injection.
-
-## Additional Information
-
-### Files
-
-- `lambda_function.py`: Main Lambda handler that implements all MCP tools
-- `dynamodb_models.py`: DynamoDB table definitions and initialization
-- `synthetic_data.py`: Script to generate synthetic test data
-- `requirements.txt`: Python dependencies
-- `deploy.sh`: Deployment script for the Lambda function
-- `create_gateway.py`: Script to create a gateway for the MCP server
-- `device-management-target.py`: Script to create a gateway target for the Lambda function
-- `.env`: Environment variables configuration file
-- `test_lambda.py`: Script to test the Lambda function locally
-
-### Folders
-
-- `device-management/`: Contains the Lambda function and DynamoDB setup
-- `gateway/`: Contains gateway creation and configuration scripts
-- `agent-runtime/`: Contains agent runtime components for handling communication between frontend and backend services
-- `frontend/`: Contains the web frontend application for device management
-- `images/`: Contains architecture diagrams and documentation images
-
-### IAM Permissions
-
-The Lambda function requires the following IAM permissions:
-
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Action": [
-        "dynamodb:GetItem",
-        "dynamodb:Query",
-        "dynamodb:Scan",
-        "dynamodb:UpdateItem"
-      ],
-      "Resource": [
-        "arn:aws:dynamodb:<Region>:*:table/Devices",
-        "arn:aws:dynamodb:<Region>:*:table/DeviceSettings",
-        "arn:aws:dynamodb:<Region>:*:table/WifiNetworks",
-        "arn:aws:dynamodb:<Region>:*:table/Users",
-        "arn:aws:dynamodb:<Region>:*:table/UserActivities",
-        "arn:aws:dynamodb:<Region>:*:table/UserActivities/index/ActivityTypeIndex"
-      ]
-    }
-  ]
-}
-```
-
-### Troubleshooting
-
-- **Missing environment variables**: Ensure all required variables are set in the `.env` file
-- **Lambda deployment failures**: Check AWS IAM permissions and Lambda service quotas
-- **Gateway creation failures**: Verify the Cognito User Pool ID, App Client ID, and IAM role ARN
-- **Gateway target creation failures**: Verify the gateway identifier and Lambda ARN are correct
-- **DynamoDB access issues**: Confirm the Lambda execution role has the necessary permissions

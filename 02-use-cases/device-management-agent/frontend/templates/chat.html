@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -17,6 +18,7 @@
             font-size: 14px;
             border: 1px solid rgba(255, 255, 255, 0.2);
         }
+
         .user-name {
             font-weight: bold;
             color: white;
@@ -25,6 +27,7 @@
             white-space: nowrap;
             max-width: 120px;
         }
+
         .logout-btn {
             background-color: #ff9900;
             color: white;
@@ -35,13 +38,16 @@
             font-size: 12px;
             white-space: nowrap;
         }
+
         .logout-btn:hover {
             background-color: #e88a00;
         }
+
         .typing-indicator {
             display: inline-block;
             margin-left: 5px;
         }
+
         .typing-indicator span {
             display: inline-block;
             width: 6px;
@@ -51,17 +57,29 @@
             margin: 0 2px;
             animation: typing 1.4s infinite both;
         }
+
         .typing-indicator span:nth-child(2) {
             animation-delay: 0.2s;
         }
+
         .typing-indicator span:nth-child(3) {
             animation-delay: 0.4s;
         }
+
         @keyframes typing {
-            0% { transform: translateY(0); }
-            50% { transform: translateY(-5px); }
-            100% { transform: translateY(0); }
+            0% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-5px);
+            }
+
+            100% {
+                transform: translateY(0);
+            }
         }
+
         .device-item {
             background-color: rgba(0, 123, 255, 0.1);
             border-left: 3px solid #007bff;
@@ -69,9 +87,11 @@
             margin: 5px 0;
             border-radius: 4px;
         }
+
         .device-item strong {
             color: #007bff;
         }
+
         pre {
             background-color: #f8f9fa;
             border: 1px solid #e9ecef;
@@ -81,10 +101,12 @@
             font-family: 'Courier New', monospace;
             font-size: 0.9em;
         }
+
         pre.json {
             background-color: #f8f9fa;
             border-left: 3px solid #28a745;
         }
+
         code {
             background-color: #f8f9fa;
             padding: 2px 4px;
@@ -94,12 +116,14 @@
         }
     </style>
 </head>
+
 <body>
     <div class="container">
         <div class="sidebar">
             <h2>Device Management</h2>
             <div class="user-info">
-                <span class="user-name" title="{{ user.username if user.username else (user.name if user.name else user.email) }}">
+                <span class="user-name"
+                    title="{{ user.username if user.username else (user.name if user.name else user.email) }}">
                     {{ user.username if user.username else (user.name if user.name else user.email) }}
                 </span>
                 <a href="/logout"><button class="logout-btn">Logout</button></a>
@@ -118,7 +142,7 @@
                 </ul>
             </div>
         </div>
-        
+
         <div class="main-content">
             <div class="chat-container">
                 <div class="chat-header">
@@ -128,7 +152,8 @@
                     <div class="message system">
                         <div class="message-content">
                             <p>👋 Welcome to the Device Management Assistant!</p>
-                            <p>I can help you manage your connected devices, check their status, and update settings. Try asking me about your devices or specific settings.</p>
+                            <p>I can help you manage your connected devices, check their status, and update settings.
+                                Try asking me about your devices or specific settings.</p>
                         </div>
                     </div>
                 </div>
@@ -144,26 +169,27 @@
         const chatMessages = document.getElementById('chat-messages');
         const userInput = document.getElementById('user-input');
         const sendButton = document.getElementById('send-button');
-        
+
         // Generate a unique client ID for this session
         const clientId = Date.now() + Math.random().toString(36).substring(2);
-        
-        // WebSocket connection
-        const ws = new WebSocket(`ws://${window.location.host}/ws/${clientId}`);
-        
+
+        // WebSocket connection - use secure WebSocket if page is served over HTTPS
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const ws = new WebSocket(`${protocol}//${window.location.host}/ws/${clientId}`);
+
         // Track current response message element for streaming
         let currentResponseElement = null;
         let currentResponseContent = '';
-        
+
         // Handle WebSocket events
         ws.onopen = () => {
             console.log('WebSocket connection established');
         };
-        
+
         ws.onmessage = (event) => {
             try {
                 const data = JSON.parse(event.data);
-                
+
                 if (data.error) {
                     // Display error message
                     removeTypingIndicator();
@@ -173,7 +199,7 @@
                 } else if (data.complete || data.response || data.final_response) {
                     // Response is complete - display the final result
                     removeTypingIndicator();
-                    
+
                     let responseText = '';
                     if (data.final_response) {
                         responseText = data.final_response;
@@ -182,13 +208,13 @@
                     } else if (currentResponseContent) {
                         responseText = currentResponseContent;
                     }
-                    
+
                     if (responseText) {
                         addMessage('assistant', responseText);
                     } else {
                         addMessage('error', 'No response content received');
                     }
-                    
+
                     // Reset streaming state
                     currentResponseElement = null;
                     currentResponseContent = '';
@@ -199,10 +225,10 @@
                     // Log unexpected data format for debugging
                     console.log('Unexpected message format:', data);
                 }
-                
+
                 // Scroll to bottom
                 chatMessages.scrollTop = chatMessages.scrollHeight;
-                
+
             } catch (error) {
                 console.error('Error parsing WebSocket message:', error);
                 console.log('Raw message:', event.data);
@@ -210,20 +236,20 @@
                 addMessage('error', 'Error processing server response');
             }
         };
-        
+
         ws.onclose = () => {
             console.log('WebSocket connection closed');
             addMessage('system', 'Connection closed. Please refresh the page to reconnect.');
         };
-        
+
         ws.onerror = (error) => {
             console.error('WebSocket error:', error);
             addMessage('error', 'Connection error. Please refresh the page to try again.');
         };
-        
+
         // Send message when button is clicked
         sendButton.addEventListener('click', sendMessage);
-        
+
         // Send message when Enter key is pressed (but allow Shift+Enter for new lines)
         userInput.addEventListener('keydown', (event) => {
             if (event.key === 'Enter' && !event.shiftKey) {
@@ -231,147 +257,122 @@
                 sendMessage();
             }
         });
-        
+
         // Auto-resize textarea as user types
         userInput.addEventListener('input', () => {
             userInput.style.height = 'auto';
             userInput.style.height = (userInput.scrollHeight) + 'px';
         });
-        
+
         function sendMessage() {
             const message = userInput.value.trim();
             if (!message) return;
-            
+
             // Add user message to chat
             addMessage('user', message);
-            
+
             // Add typing indicator
             addTypingIndicator();
-            
+
             // Send message to server
             ws.send(message);
-            
+
             // Clear input
             userInput.value = '';
             userInput.style.height = 'auto';
-            
+
             // Reset current response tracking
             currentResponseElement = null;
             currentResponseContent = '';
-            
+
             // Scroll to bottom
             chatMessages.scrollTop = chatMessages.scrollHeight;
         }
-        
+
         function addMessage(role, content) {
             const messageDiv = document.createElement('div');
             messageDiv.className = `message ${role}`;
-            
+
             const contentDiv = document.createElement('div');
             contentDiv.className = 'message-content';
-            
-            // Safe formatting without innerHTML
-            if (role === 'user') {
-                contentDiv.textContent = content;
-            } else {
-                formatContentSafely(contentDiv, content);
-            }
-            
+
+            // Format the content safely
+            contentDiv.innerHTML = formatContent(content);
+
             messageDiv.appendChild(contentDiv);
             chatMessages.appendChild(messageDiv);
         }
-        
 
-        
-        function formatContentSafely(container, content) {
-            const lines = content.split('\n');
-            
-            for (let i = 0; i < lines.length; i++) {
-                const line = lines[i];
-                
-                // Handle code blocks
-                if (line.startsWith('```')) {
-                    const codeBlock = document.createElement('pre');
-                    const codeElement = document.createElement('code');
-                    
-                    // Collect code content
-                    let codeContent = '';
-                    i++; // Skip opening ```
-                    while (i < lines.length && !lines[i].startsWith('```')) {
-                        codeContent += lines[i] + '\n';
-                        i++;
-                    }
-                    
-                    codeElement.textContent = codeContent.trim();
-                    codeBlock.appendChild(codeElement);
-                    container.appendChild(codeBlock);
-                } else if (line.trim() === '') {
-                    // Empty line - add line break
-                    container.appendChild(document.createElement('br'));
-                } else {
-                    // Regular line with basic formatting
-                    const p = document.createElement('p');
-                    p.style.margin = '0.5em 0';
-                    
-                    // Handle bold text **text**
-                    if (line.includes('**')) {
-                        formatLineWithBold(p, line);
+        function formatContent(content) {
+            // Escape HTML to prevent XSS, then process markdown-like formatting
+            let formattedContent = content
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#x27;')
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')  // Bold
+                .replace(/\*(.*?)\*/g, '<em>$1</em>')              // Italic
+                .replace(/`([^`]+)`/g, '<code>$1</code>')          // Inline code
+                .replace(/\n\n/g, '<br><br>')                      // Double line breaks
+                .replace(/\n/g, '<br>');                           // Single line breaks
+
+            // Handle code blocks
+            if (formattedContent.includes('```')) {
+                const parts = formattedContent.split('```');
+                formattedContent = '';
+
+                for (let i = 0; i < parts.length; i++) {
+                    if (i % 2 === 0) {
+                        // Regular text
+                        formattedContent += parts[i];
                     } else {
-                        p.textContent = line;
+                        // Code block
+                        let codeContent = parts[i];
+                        let language = '';
+
+                        // Check if language is specified
+                        if (codeContent.includes('<br>')) {
+                            const lines = codeContent.split('<br>');
+                            language = lines[0].trim();
+                            codeContent = lines.slice(1).join('<br>').trim();
+                        }
+
+                        // Add JSON formatting for JSON code blocks
+                        const codeClass = language.toLowerCase() === 'json' ? 'json' : '';
+                        formattedContent += `<pre class="${codeClass}"><code>${codeContent}</code></pre>`;
                     }
-                    
-                    container.appendChild(p);
                 }
             }
-        }
-        
-        function formatLineWithBold(container, text) {
-            const parts = text.split('**');
-            
-            for (let i = 0; i < parts.length; i++) {
-                if (i % 2 === 0) {
-                    // Regular text
-                    if (parts[i]) {
-                        container.appendChild(document.createTextNode(parts[i]));
-                    }
-                } else {
-                    // Bold text
-                    const bold = document.createElement('strong');
-                    bold.textContent = parts[i];
-                    container.appendChild(bold);
-                }
+
+            // Handle device list formatting with better styling
+            if (formattedContent.includes('📱') || formattedContent.includes('Device List')) {
+                formattedContent = formattedContent.replace(/\*\*(\d+\.\s.*?)\*\*/g, '<div class="device-item"><strong>$1</strong></div>');
             }
+
+            return formattedContent;
         }
-        
+
         function addTypingIndicator() {
             // Remove any existing typing indicator
             removeTypingIndicator();
-            
-            // Create typing indicator safely
+
+            // Create typing indicator
             const typingDiv = document.createElement('div');
             typingDiv.className = 'message assistant typing-message';
-            
-            const contentDiv = document.createElement('div');
-            contentDiv.className = 'message-content';
-            
-            contentDiv.appendChild(document.createTextNode('Thinking'));
-            
-            const indicatorDiv = document.createElement('div');
-            indicatorDiv.className = 'typing-indicator';
-            
-            for (let i = 0; i < 3; i++) {
-                const span = document.createElement('span');
-                indicatorDiv.appendChild(span);
-            }
-            
-            contentDiv.appendChild(indicatorDiv);
-            typingDiv.appendChild(contentDiv);
+            typingDiv.innerHTML = `
+                <div class="message-content">
+                    Thinking<div class="typing-indicator">
+                        <span></span><span></span><span></span>
+                    </div>
+                </div>
+            `;
             chatMessages.appendChild(typingDiv);
-            
+
             // Scroll to bottom
             chatMessages.scrollTop = chatMessages.scrollHeight;
         }
-        
+
         function removeTypingIndicator() {
             const typingIndicator = document.querySelector('.typing-message');
             if (typingIndicator) {
@@ -380,4 +381,5 @@
         }
     </script>
 </body>
+
 </html>
