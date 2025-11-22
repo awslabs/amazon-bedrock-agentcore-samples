@@ -18,7 +18,7 @@ Putting these three agents together you get a multi-agent configuration with a s
 | Tutorial type       | Conversational                                                                   |
 | Agent type          | Multi-Agent (Supervisor calling agents as tools)                                 |
 | Agentic Framework   | Strands Agents & LangGraph                                                       |
-| LLM model           | Anthropic Claude Sonnet 3.7                                                      |
+| LLM model           | Anthropic Claude Haiku 4.5                                                      |
 | Tutorial components | Hosting agents on AgentCore Runtime and enable multi-agent collaboration         |
 | Tutorial vertical   | Cross-vertical                                                                   |
 | Example complexity  | Medium                                                                           |

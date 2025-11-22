@@ -36,9 +36,9 @@ def create_market_trends_agent():
     # Default actor_id - will be updated when user identifies themselves
     default_actor_id = "unknown-user"
 
-    # Initialize your LLM with Claude Sonnet 4 using inference profile
+    # Initialize your LLM with Claude Haiku 4.5 using inference profile
     llm = ChatBedrock(
-        model_id="us.anthropic.claude-sonnet-4-20250514-v1:0",
+        model_id="global.anthropic.claude-haiku-4-5-20251001-v1:0",
         model_kwargs={"temperature": 0.1},
     )
 

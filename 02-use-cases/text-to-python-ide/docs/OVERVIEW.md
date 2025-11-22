@@ -8,7 +8,7 @@ The AgentCore Code Interpreter is an AI-powered development tool that bridges na
 
 ### 🤖 **AI Code Generation**
 - Convert natural language descriptions into executable Python code
-- Uses Claude Sonnet 3.7 and Nova Premier models for high-quality code generation
+- Uses Claude Haiku 4.5 and Nova Premier models for high-quality code generation
 - Intelligent fallback system ensures reliability
 - Context-aware code suggestions and improvements
 
@@ -87,7 +87,7 @@ The AgentCore Code Interpreter is an AI-powered development tool that bridges na
 ## Technology Highlights
 
 ### **AI Models**
-- **Claude Sonnet 3.7**: State-of-the-art language model for code generation
+- **Claude Haiku 4.5**: State-of-the-art language model for code generation
 - **Nova Premier**: High-performance Amazon model for fallback
 - **Inference Profiles**: Optimized model deployment for better performance
 

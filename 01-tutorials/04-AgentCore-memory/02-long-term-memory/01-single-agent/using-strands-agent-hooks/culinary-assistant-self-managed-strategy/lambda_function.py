@@ -56,7 +56,7 @@ class NotificationHandler:
 class MemoryExtractor:
     """Extracts memory records from conversation payload"""
 
-    def __init__(self, model_id='anthropic.claude-3-haiku-20240307-v1:0'):
+    def __init__(self, model_id='global.anthropic.claude-haiku-4-5-20251001-v1:0'):
         self.bedrock_client = boto3.client('bedrock-runtime')
         self.model_id = model_id
 

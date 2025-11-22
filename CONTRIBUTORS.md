@@ -38,6 +38,7 @@
 - erezweinstein5
 - HardikThakkar94
 - brianloyal
+- ireneybean
 - jagdeep1
 - Sunil Ramachandra
 - Sandeep Raveesh-Babu
@@ -58,3 +59,4 @@
 - Chaitra Mathur (mchaitra007)
 - govindhi
 - Sandesh R
+- jld23

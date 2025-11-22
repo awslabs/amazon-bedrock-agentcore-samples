@@ -13,7 +13,7 @@ We will focus on creating a defense-in-depth strategy for securing your AI appli
 | Tutorial type       | Observability & Security                                                         |
 | Agent type          | Single                                                                           |
 | Agentic Framework   | Strands Agents                                                                   |
-| LLM model           | Anthropic Claude Sonnet 3.7                                                     |
+| LLM model           | Anthropic Claude Haiku 4.5                                                     |
 | Tutorial components | Data Protection, Bedrock Guardrails, CloudWatch Logs Data Protection           |
 | Tutorial vertical   | Cross-vertical                                                                   |
 | Example complexity  | Advanced                                                                         |

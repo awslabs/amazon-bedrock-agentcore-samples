@@ -20,7 +20,7 @@ const WELCOME_MESSAGE = "I'm your Video Games Sales Data Analyst, crunching data
 // ================================
 
 const MAX_LENGTH_INPUT_SEARCH = 140;
-const MODEL_ID_FOR_CHART = "us.anthropic.claude-3-7-sonnet-20250219-v1:0";
+const MODEL_ID_FOR_CHART = "global.anthropic.claude-haiku-4-5-20251001-v1:0";
 
 const CHART_PROMPT =
   '\n\
