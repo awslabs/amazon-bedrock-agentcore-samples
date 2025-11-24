@@ -9,3 +9,4 @@ uvicorn
 fastapi
 requests
 jwt
+msal # Microsoft Authentication Library
