@@ -7,3 +7,5 @@ bedrock-agentcore-starter-toolkit
 tavily-python
 uvicorn
 fastapi
+requests
+jwt
