@@ -5,9 +5,11 @@ HTML slide generator for creating presentation slides
 import os
 import uuid
 from datetime import datetime
-from typing import List, Dict, Any, Optional
-from jinja2 import Template
-from .css_generator import AdvancedCSSGenerator, StylePreferences, FontFamily
+from typing import Any, Dict, List, Optional
+
+from jinja2 import Environment, Template
+
+from .css_generator import AdvancedCSSGenerator, FontFamily, StylePreferences
 
 
 class HTMLSlideGenerator:
@@ -360,8 +362,9 @@ class HTMLSlideGenerator:
         # Generate advanced CSS
         css_content = self.css_generator.generate_advanced_css(preferences)
 
-        # Create HTML from template
-        template = Template(self.create_slide_template())
+        # Create HTML from template with autoescape enabled
+        env = Environment(autoescape=True)
+        template = env.from_string(self.create_slide_template())
         html_content = template.render(
             presentation_title=title, slides=slides, css_content=css_content
         )

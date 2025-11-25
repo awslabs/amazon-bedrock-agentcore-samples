@@ -47,10 +47,9 @@ app = Flask(__name__, template_folder="../templates", static_folder="../static")
 
 
 if not FLASK_SECRET_KEY:
-    logger.warning(
-        "⚠️  FLASK_SECRET_KEY not set - using insecure default for development only"
-    )
-    app.config["SECRET_KEY"] = "slide-deck-demo-secret-key-change-in-production"
+    import secrets
+    logger.warning("⚠️  FLASK_SECRET_KEY not set - generating random key for this session")
+    app.config["SECRET_KEY"] = secrets.token_hex(32)
 else:
     app.config["SECRET_KEY"] = FLASK_SECRET_KEY
 
@@ -389,6 +388,10 @@ def list_files():
 def download_file(filename):
     """Download a generated file"""
     try:
+        # Prevent path traversal
+        if ".." in filename or filename.startswith("/"):
+            return jsonify({"error": "Invalid filename"}), 400
+        
         filepath = os.path.join(OUTPUT_DIR, filename)
         if not os.path.exists(filepath):
             flash(f"File {filename} not found", "error")
@@ -406,6 +409,10 @@ def download_file(filename):
 def preview_file(filename):
     """Preview an HTML presentation file"""
     try:
+        # Prevent path traversal
+        if ".." in filename or filename.startswith("/"):
+            return jsonify({"error": "Invalid filename"}), 400
+        
         filepath = os.path.join(OUTPUT_DIR, filename)
         if not os.path.exists(filepath) or not filename.endswith(".html"):
             return jsonify({"error": f"HTML file {filename} not found"}), 404
