@@ -19,7 +19,7 @@ This comprehensive demo showcases the transformative power of **Agent Memory** b
 
 ![Architecture](./workflow_diagram.png)
 
-More technical workflow is described here.
+End to end technical workflow is described here.
 
 ```
 ┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
