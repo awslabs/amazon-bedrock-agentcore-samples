@@ -7,7 +7,7 @@ import uuid
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from jinja2 import Environment, Template
+from jinja2 import Environment
 
 from .css_generator import AdvancedCSSGenerator, FontFamily, StylePreferences
 
