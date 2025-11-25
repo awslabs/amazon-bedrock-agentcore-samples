@@ -22,8 +22,19 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Initialize Flask app
-app = Flask(__name__, template_folder='../templates', static_folder='../static')
-app.config['SECRET_KEY'] = os.environ.get('FLASK_SECRET_KEY', 'slide-deck-demo-secret-key-change-in-production')
+app = Flask(__name__, template_folder="../templates", static_folder="../static")
+
+# Security: Require secret key in production
+from config import FLASK_SECRET_KEY
+
+if not FLASK_SECRET_KEY:
+    logger.warning(
+        "⚠️  FLASK_SECRET_KEY not set - using insecure default for development only"
+    )
+    app.config["SECRET_KEY"] = "slide-deck-demo-secret-key-change-in-production"
+else:
+    app.config["SECRET_KEY"] = FLASK_SECRET_KEY
+
 CORS(app)
 
 # Global variables for demo

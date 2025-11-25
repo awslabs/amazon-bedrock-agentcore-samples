@@ -1,12 +1,15 @@
 """
 Configuration settings for Slide Deck Agent Demo
 """
+
 import os
 from datetime import datetime
 
 # AWS Configuration
-AWS_REGION = "us-east-1"
-BEDROCK_MODEL_ID = "global.anthropic.claude-sonnet-4-5-20250929-v1:0"
+AWS_REGION = os.getenv("AWS_REGION", "us-east-1")
+BEDROCK_MODEL_ID = os.getenv(
+    "BEDROCK_MODEL_ID", "global.anthropic.claude-sonnet-4-5-20250929-v1:0"
+)
 
 # Memory Configuration
 MEMORY_NAME = "SlideDeckAgentMemory"
@@ -23,9 +26,10 @@ TEMPLATES_DIR = os.path.join(BASE_DIR, "templates")
 STATIC_DIR = os.path.join(BASE_DIR, "static")
 
 # Web UI Configuration
-FLASK_HOST = "127.0.0.1"
-FLASK_PORT = 5001
-FLASK_DEBUG = True
+FLASK_HOST = os.getenv("FLASK_HOST", "127.0.0.1")
+FLASK_PORT = int(os.getenv("FLASK_PORT", "5001"))
+FLASK_DEBUG = os.getenv("FLASK_DEBUG", True)
+FLASK_SECRET_KEY = os.getenv("FLASK_SECRET_KEY")  # Must be set in production
 
 # Default Presentation Settings
 DEFAULT_PRESENTATION_SETTINGS = {
@@ -33,7 +37,7 @@ DEFAULT_PRESENTATION_SETTINGS = {
     "color_scheme": "blue",
     "font_family": "Arial, sans-serif",
     "slide_transition": "fade",
-    "presentation_type": "tech"
+    "presentation_type": "tech",
 }
 
 
