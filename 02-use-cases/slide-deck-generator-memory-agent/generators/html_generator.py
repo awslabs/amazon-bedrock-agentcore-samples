@@ -1,6 +1,7 @@
 """
 HTML slide generator for creating presentation slides
 """
+
 import os
 import uuid
 from datetime import datetime
@@ -24,16 +25,17 @@ class HTMLSlideGenerator:
 
         # Process bold text: **text** -> <strong>text</strong>
         import re
-        text = re.sub(r'\*\*(.*?)\*\*', r'<strong>\1</strong>', text)
+
+        text = re.sub(r"\*\*(.*?)\*\*", r"<strong>\1</strong>", text)
 
         # Process italic text: *text* -> <em>text</em>
-        text = re.sub(r'(?<!\*)\*([^*]+?)\*(?!\*)', r'<em>\1</em>', text)
+        text = re.sub(r"(?<!\*)\*([^*]+?)\*(?!\*)", r"<em>\1</em>", text)
 
         # Process inline code: `code` -> <code>code</code>
-        text = re.sub(r'`([^`]+?)`', r'<code>\1</code>', text)
+        text = re.sub(r"`([^`]+?)`", r"<code>\1</code>", text)
 
         # Process line breaks: convert both \n and \\n to <br>
-        text = text.replace('\n', '<br>').replace('\\n', '<br>')
+        text = text.replace("\n", "<br>").replace("\\n", "<br>")
 
         return text
 
@@ -140,41 +142,93 @@ class HTMLSlideGenerator:
 </html>
         """
 
-    def create_style_preferences_from_params(self, theme: str = "professional",
-                                             color_scheme: str = "blue", font_family: str = "modern",
-                                             use_gradients: bool = False, use_shadows: bool = False,
-                                             border_radius: int = 8, spacing_style: str = "comfortable",
-                                             font_size_base: int = 16, header_style: str = "bold") -> StylePreferences:
+    def create_style_preferences_from_params(
+        self,
+        theme: str = "professional",
+        color_scheme: str = "blue",
+        font_family: str = "modern",
+        use_gradients: bool = False,
+        use_shadows: bool = False,
+        border_radius: int = 8,
+        spacing_style: str = "comfortable",
+        font_size_base: int = 16,
+        header_style: str = "bold",
+    ) -> StylePreferences:
         """Create StylePreferences object from simple parameters for backward compatibility"""
 
         font_mapping = {
             "modern": FontFamily.MODERN,
             "classic": FontFamily.CLASSIC,
             "technical": FontFamily.TECHNICAL,
-            "creative": FontFamily.CREATIVE
+            "creative": FontFamily.CREATIVE,
         }
 
         # Basic color schemes for backward compatibility
         color_schemes = {
-            "blue": {"primary": "#2563eb", "secondary": "#3b82f6", "accent": "#0ea5e9",
-                     "background": "#f8fafc", "text": "#1e293b"},
-            "green": {"primary": "#16a34a", "secondary": "#22c55e", "accent": "#10b981",
-                      "background": "#f0fdf4", "text": "#14532d"},
-            "purple": {"primary": "#7c3aed", "secondary": "#8b5cf6", "accent": "#a855f7",
-                       "background": "#faf5ff", "text": "#581c87"},
-            "red": {"primary": "#dc2626", "secondary": "#ef4444", "accent": "#f87171",
-                    "background": "#fef2f2", "text": "#7f1d1d"},
+            "blue": {
+                "primary": "#2563eb",
+                "secondary": "#3b82f6",
+                "accent": "#0ea5e9",
+                "background": "#f8fafc",
+                "text": "#1e293b",
+            },
+            "green": {
+                "primary": "#16a34a",
+                "secondary": "#22c55e",
+                "accent": "#10b981",
+                "background": "#f0fdf4",
+                "text": "#14532d",
+            },
+            "purple": {
+                "primary": "#7c3aed",
+                "secondary": "#8b5cf6",
+                "accent": "#a855f7",
+                "background": "#faf5ff",
+                "text": "#581c87",
+            },
+            "red": {
+                "primary": "#dc2626",
+                "secondary": "#ef4444",
+                "accent": "#f87171",
+                "background": "#fef2f2",
+                "text": "#7f1d1d",
+            },
             # Dark color schemes for dark background preferences
-            "dark": {"primary": "#3b82f6", "secondary": "#60a5fa", "accent": "#93c5fd",
-                     "background": "#0f172a", "text": "#f1f5f9"},
-            "dark-blue": {"primary": "#3b82f6", "secondary": "#60a5fa", "accent": "#93c5fd",
-                          "background": "#1e293b", "text": "#f1f5f9"},
-            "dark-green": {"primary": "#22c55e", "secondary": "#4ade80", "accent": "#86efac",
-                           "background": "#14532d", "text": "#f0fdf4"},
-            "dark-purple": {"primary": "#a855f7", "secondary": "#c084fc", "accent": "#d8b4fe",
-                            "background": "#581c87", "text": "#faf5ff"},
-            "black": {"primary": "#6b7280", "secondary": "#9ca3af", "accent": "#d1d5db",
-                      "background": "#111827", "text": "#f9fafb"}
+            "dark": {
+                "primary": "#3b82f6",
+                "secondary": "#60a5fa",
+                "accent": "#93c5fd",
+                "background": "#0f172a",
+                "text": "#f1f5f9",
+            },
+            "dark-blue": {
+                "primary": "#3b82f6",
+                "secondary": "#60a5fa",
+                "accent": "#93c5fd",
+                "background": "#1e293b",
+                "text": "#f1f5f9",
+            },
+            "dark-green": {
+                "primary": "#22c55e",
+                "secondary": "#4ade80",
+                "accent": "#86efac",
+                "background": "#14532d",
+                "text": "#f0fdf4",
+            },
+            "dark-purple": {
+                "primary": "#a855f7",
+                "secondary": "#c084fc",
+                "accent": "#d8b4fe",
+                "background": "#581c87",
+                "text": "#faf5ff",
+            },
+            "black": {
+                "primary": "#6b7280",
+                "secondary": "#9ca3af",
+                "accent": "#d1d5db",
+                "background": "#111827",
+                "text": "#f9fafb",
+            },
         }
 
         colors = color_schemes.get(color_scheme, color_schemes["blue"])
@@ -191,22 +245,26 @@ class HTMLSlideGenerator:
             use_shadows=use_shadows,
             border_radius=border_radius,
             spacing_style=spacing_style,
-            font_size_base=font_size_base
+            font_size_base=font_size_base,
         )
 
-    def parse_content_to_slides(self, content: str, title: str = "Presentation") -> List[Dict[str, Any]]:
+    def parse_content_to_slides(
+        self, content: str, title: str = "Presentation"
+    ) -> List[Dict[str, Any]]:
         """Parse text content into slide structure"""
         slides = []
-        lines = content.strip().split('\n')
+        lines = content.strip().split("\n")
         current_slide = None
 
         # Add title slide
-        slides.append({
-            "type": "title",
-            "title": title,
-            "subtitle": "Generated Presentation",
-            "author": f"Created on {datetime.now().strftime('%B %d, %Y')}"
-        })
+        slides.append(
+            {
+                "type": "title",
+                "title": title,
+                "subtitle": "Generated Presentation",
+                "author": f"Created on {datetime.now().strftime('%B %d, %Y')}",
+            }
+        )
 
         for line in lines:
             line = line.strip()
@@ -214,33 +272,30 @@ class HTMLSlideGenerator:
                 continue
 
             # Check for slide title (starts with #)
-            if line.startswith('# '):
+            if line.startswith("# "):
                 if current_slide:
                     slides.append(current_slide)
                 current_slide = {
                     "type": "content",
                     "title": line[2:].strip(),
                     "bullet_points": [],
-                    "content": ""
+                    "content": "",
                 }
             # Check for section (starts with ##)
-            elif line.startswith('## '):
+            elif line.startswith("## "):
                 if current_slide:
                     slides.append(current_slide)
-                slides.append({
-                    "type": "section",
-                    "title": line[3:].strip()
-                })
+                slides.append({"type": "section", "title": line[3:].strip()})
                 current_slide = None
             # Check for bullet point (starts with -)
-            elif line.startswith('- '):
+            elif line.startswith("- "):
                 if current_slide:
                     bullet_text = line[2:].strip()
                     # Process markdown in bullet points
                     bullet_text = self.process_markdown(bullet_text)
                     current_slide["bullet_points"].append(bullet_text)
             # Check for bullet point (starts with *)
-            elif line.startswith('* '):
+            elif line.startswith("* "):
                 if current_slide:
                     bullet_text = line[2:].strip()
                     # Process markdown in bullet points
@@ -258,19 +313,31 @@ class HTMLSlideGenerator:
 
         # Add the last slide (only if it has content)
         if current_slide and (
-            (current_slide.get("bullet_points") and len(current_slide.get("bullet_points", [])) > 0) or
-            (current_slide.get("content") and current_slide.get("content").strip())
+            (
+                current_slide.get("bullet_points")
+                and len(current_slide.get("bullet_points", [])) > 0
+            )
+            or (current_slide.get("content") and current_slide.get("content").strip())
         ):
             slides.append(current_slide)
 
         return slides
 
-    def generate_presentation(self, content: str, title: str = "Presentation",
-                              theme: str = "professional", color_scheme: str = "blue",
-                              font_family: str = "modern", use_gradients: bool = False,
-                              use_shadows: bool = False, border_radius: int = 8,
-                              spacing_style: str = "comfortable", font_size_base: int = 16,
-                              header_style: str = "bold", preferences: Optional[StylePreferences] = None) -> str:
+    def generate_presentation(
+        self,
+        content: str,
+        title: str = "Presentation",
+        theme: str = "professional",
+        color_scheme: str = "blue",
+        font_family: str = "modern",
+        use_gradients: bool = False,
+        use_shadows: bool = False,
+        border_radius: int = 8,
+        spacing_style: str = "comfortable",
+        font_size_base: int = 16,
+        header_style: str = "bold",
+        preferences: Optional[StylePreferences] = None,
+    ) -> str:
         """Generate complete HTML presentation with advanced styling"""
 
         # Parse content into slides
@@ -279,8 +346,15 @@ class HTMLSlideGenerator:
         # Create or use provided style preferences
         if preferences is None:
             preferences = self.create_style_preferences_from_params(
-                theme, color_scheme, font_family, use_gradients, use_shadows,
-                border_radius, spacing_style, font_size_base, header_style
+                theme,
+                color_scheme,
+                font_family,
+                use_gradients,
+                use_shadows,
+                border_radius,
+                spacing_style,
+                font_size_base,
+                header_style,
             )
 
         # Generate advanced CSS
@@ -289,16 +363,14 @@ class HTMLSlideGenerator:
         # Create HTML from template
         template = Template(self.create_slide_template())
         html_content = template.render(
-            presentation_title=title,
-            slides=slides,
-            css_content=css_content
+            presentation_title=title, slides=slides, css_content=css_content
         )
 
         # Save to file
         filename = f"{title.replace(' ', '_')}_{uuid.uuid4().hex[:8]}.html"
         filepath = os.path.join(self.output_dir, filename)
 
-        with open(filepath, 'w', encoding='utf-8') as f:
+        with open(filepath, "w", encoding="utf-8") as f:
             f.write(html_content)
 
         return filepath

@@ -1,15 +1,21 @@
 """
 AgentCore Memory setup for slide deck agent with user preferences strategy
 """
+
 import logging
 import json
 import boto3
 from botocore.exceptions import ClientError
 
 # Memory management modules (based on sample)
-from bedrock_agentcore_starter_toolkit.operations.memory.manager import Memory, MemoryManager
+from bedrock_agentcore_starter_toolkit.operations.memory.manager import (
+    Memory,
+    MemoryManager,
+)
 from bedrock_agentcore_starter_toolkit.operations.memory.models.strategies import (
-    CustomUserPreferenceStrategy, ExtractionConfig, ConsolidationConfig
+    CustomUserPreferenceStrategy,
+    ExtractionConfig,
+    ConsolidationConfig,
 )
 from bedrock_agentcore.memory.session import MemorySessionManager
 
@@ -30,11 +36,11 @@ class SlideMemoryManager:
 
     def create_memory_execution_role(self) -> str:
         """Create IAM role for AgentCore Memory custom strategies"""
-        iam_client = boto3.client('iam', region_name=self.region)
+        iam_client = boto3.client("iam", region_name=self.region)
 
         # Get current AWS account ID
-        sts_client = boto3.client('sts', region_name=self.region)
-        account_id = sts_client.get_caller_identity()['Account']
+        sts_client = boto3.client("sts", region_name=self.region)
+        account_id = sts_client.get_caller_identity()["Account"]
 
         role_name = "SlideDeckAgentMemoryExecutionRole"
         role_arn = f"arn:aws:iam::{account_id}:role/{role_name}"
@@ -45,16 +51,16 @@ class SlideMemoryManager:
             "Statement": [
                 {
                     "Effect": "Allow",
-                    "Principal": {
-                        "Service": ["bedrock-agentcore.amazonaws.com"]
-                    },
+                    "Principal": {"Service": ["bedrock-agentcore.amazonaws.com"]},
                     "Action": "sts:AssumeRole",
                     "Condition": {
                         "StringEquals": {"aws:SourceAccount": account_id},
-                        "ArnLike": {"aws:SourceArn": f"arn:aws:bedrock-agentcore:{self.region}:{account_id}:*"}
-                    }
+                        "ArnLike": {
+                            "aws:SourceArn": f"arn:aws:bedrock-agentcore:{self.region}:{account_id}:*"
+                        },
+                    },
                 }
-            ]
+            ],
         }
 
         # Permissions policy for Bedrock model invocation
@@ -63,11 +69,17 @@ class SlideMemoryManager:
             "Statement": [
                 {
                     "Effect": "Allow",
-                    "Action": ["bedrock:InvokeModel", "bedrock:InvokeModelWithResponseStream"],
-                    "Resource": ["arn:aws:bedrock:*::foundation-model/*", "arn:aws:bedrock:*:*:inference-profile/*"],
-                    "Condition": {"StringEquals": {"aws:ResourceAccount": account_id}}
+                    "Action": [
+                        "bedrock:InvokeModel",
+                        "bedrock:InvokeModelWithResponseStream",
+                    ],
+                    "Resource": [
+                        "arn:aws:bedrock:*::foundation-model/*",
+                        "arn:aws:bedrock:*:*:inference-profile/*",
+                    ],
+                    "Condition": {"StringEquals": {"aws:ResourceAccount": account_id}},
                 }
-            ]
+            ],
         }
 
         try:
@@ -77,7 +89,7 @@ class SlideMemoryManager:
                 logger.info(f"✅ IAM role already exists: {role_arn}")
                 return role_arn
             except ClientError as e:
-                if e.response['Error']['Code'] != 'NoSuchEntity':
+                if e.response["Error"]["Code"] != "NoSuchEntity":
                     raise
 
             # Create the role
@@ -85,20 +97,21 @@ class SlideMemoryManager:
             iam_client.create_role(
                 RoleName=role_name,
                 AssumeRolePolicyDocument=json.dumps(trust_policy),
-                Description="Execution role for Slide Deck Agent Memory"
+                Description="Execution role for Slide Deck Agent Memory",
             )
 
             # Attach the permissions policy
             iam_client.put_role_policy(
                 RoleName=role_name,
                 PolicyName="SlideDeckMemoryBedrockAccess",
-                PolicyDocument=json.dumps(permissions_policy)
+                PolicyDocument=json.dumps(permissions_policy),
             )
 
             logger.info(f"✅ Successfully created IAM role: {role_arn}")
 
             # Wait for role propagation
             import time
+
             logger.info("⏳ Waiting for role propagation...")
             time.sleep(10)
 
@@ -127,7 +140,7 @@ class SlideMemoryManager:
 
                 Focus on explicit preferences and recurring patterns in their choices.
                 """,
-                model_id="global.anthropic.claude-sonnet-4-5-20250929-v1:0"
+                model_id="global.anthropic.claude-sonnet-4-5-20250929-v1:0",
             ),
             consolidation_config=ConsolidationConfig(
                 append_to_prompt="""
@@ -140,9 +153,9 @@ class SlideMemoryManager:
 
                 Create a clear preference profile for future slide generation.
                 """,
-                model_id="global.anthropic.claude-sonnet-4-5-20250929-v1:0"
+                model_id="global.anthropic.claude-sonnet-4-5-20250929-v1:0",
             ),
-            namespaces=["slidedecks/user/{actorId}/style_preferences"]
+            namespaces=["slidedecks/user/{actorId}/style_preferences"],
         )
 
     def create_memory(self) -> Memory:
@@ -215,7 +228,9 @@ class SlideMemoryManager:
 
 
 # Initialize logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
 
 
 def setup_slide_deck_memory() -> tuple:

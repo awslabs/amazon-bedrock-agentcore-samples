@@ -817,7 +817,8 @@ Try one of these styles and let me know what works well - I'll remember for next
         except Exception as e:
             logger.error(f"❌ Error in memory-enabled presentation creation: {e}")
             return f"❌ Sorry, I encountered an error: {
-                str(e)}\\n\\nPlease try again or contact support if the issue persists."
+                str(e)
+            }\\n\\nPlease try again or contact support if the issue persists."
 
 
 # Example usage and demo functions

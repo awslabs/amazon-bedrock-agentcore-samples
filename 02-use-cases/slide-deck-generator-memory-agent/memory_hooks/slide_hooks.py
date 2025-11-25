@@ -1,11 +1,21 @@
 """
 Memory hooks for slide deck agent - integrates user preferences with Strands agents
 """
+
 import logging
 import json
 from typing import List, Dict, Any, Optional
-from strands.hooks import AfterInvocationEvent, HookProvider, HookRegistry, MessageAddedEvent
-from bedrock_agentcore.memory.constants import ConversationalMessage, MessageRole, RetrievalConfig
+from strands.hooks import (
+    AfterInvocationEvent,
+    HookProvider,
+    HookRegistry,
+    MessageAddedEvent,
+)
+from bedrock_agentcore.memory.constants import (
+    ConversationalMessage,
+    MessageRole,
+    RetrievalConfig,
+)
 from bedrock_agentcore.memory.session import MemorySession
 from bedrock_agentcore.memory.models import MemoryRecord
 
@@ -26,7 +36,7 @@ class SlideMemoryHooks(HookProvider):
         # Configure retrieval for user preferences
         self.preference_retrieval_config = RetrievalConfig(
             top_k=5,  # Get top 5 relevant preference memories
-            relevance_score=0.2  # Lower threshold to capture more preferences
+            relevance_score=0.2,  # Lower threshold to capture more preferences
         )
 
     def _extract_message_text(self, message: Dict[str, Any]) -> Optional[str]:
@@ -76,7 +86,9 @@ class SlideMemoryHooks(HookProvider):
         except Exception:
             return False
 
-    def _parse_structured_preference(self, memory_content: Dict[str, Any]) -> Dict[str, Any]:
+    def _parse_structured_preference(
+        self, memory_content: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """Parse structured preference from memory content"""
         try:
             # The content might be JSON string or already parsed
@@ -92,24 +104,24 @@ class SlideMemoryHooks(HookProvider):
             # Ensure we have the expected structure
             if isinstance(parsed, dict):
                 return {
-                    'context': parsed.get('context', ''),
-                    'preference': parsed.get('preference', ''),
-                    'categories': parsed.get('categories', [])
+                    "context": parsed.get("context", ""),
+                    "preference": parsed.get("preference", ""),
+                    "categories": parsed.get("categories", []),
                 }
 
             # Fallback to treating as simple text
             return {
-                'context': 'Legacy format',
-                'preference': str(parsed),
-                'categories': ['general']
+                "context": "Legacy format",
+                "preference": str(parsed),
+                "categories": ["general"],
             }
         except (json.JSONDecodeError, TypeError, KeyError) as e:
             logger.debug(f"Error parsing structured preference: {e}")
             # Fallback to simple text
             return {
-                'context': 'Parsing error',
-                'preference': str(memory_content),
-                'categories': ['general']
+                "context": "Parsing error",
+                "preference": str(memory_content),
+                "categories": ["general"],
             }
 
     def retrieve_user_preferences(self, event: MessageAddedEvent):
@@ -129,43 +141,56 @@ class SlideMemoryHooks(HookProvider):
 
         try:
             # Search for user preferences in memory
-            preference_namespace = f"slidedecks/user/{self.memory_session._actor_id}/style_preferences"
+            preference_namespace = (
+                f"slidedecks/user/{self.memory_session._actor_id}/style_preferences"
+            )
             logger.info(f"🔎 Searching namespace: {preference_namespace}")
 
             # Search for relevant preferences based on the query
             preference_memories = self.memory_session.search_long_term_memories(
                 query=user_query,
                 namespace_prefix=preference_namespace,
-                top_k=self.preference_retrieval_config.top_k
+                top_k=self.preference_retrieval_config.top_k,
             )
 
-            logger.info(f"🔎 Found {len(preference_memories)} preference memories in search")
+            logger.info(
+                f"🔎 Found {len(preference_memories)} preference memories in search"
+            )
 
             # Filter by relevance score
             min_score = self.preference_retrieval_config.relevance_score
             relevant_preferences = [
-                memory for memory in preference_memories
+                memory
+                for memory in preference_memories
                 if memory.get("score", 0) >= min_score
             ]
 
-            logger.info(f"📊 Filtered to {len(relevant_preferences)} relevant preferences (min_score: {min_score})")
+            logger.info(
+                f"📊 Filtered to {len(relevant_preferences)} relevant preferences (min_score: {min_score})"
+            )
 
             if relevant_preferences:
                 # Log what preferences are being used
                 for i, pref in enumerate(relevant_preferences[:3], 1):
                     score = pref.get("score", 0)
-                    content = pref.get('content', {})
-                    pref_text = content.get('text', 'Unknown preference')[:50]
+                    content = pref.get("content", {})
+                    pref_text = content.get("text", "Unknown preference")[:50]
                     logger.info(f"   {i}. [Score: {score:.2f}] {pref_text}...")
 
                 # Format and inject preferences into agent context
                 preference_context = self._format_preferences(relevant_preferences)
                 self._inject_preference_context(event.agent, preference_context)
-                logger.info(f"✅ INJECTED {len(relevant_preferences)} user preferences into slide generation context")
-                logger.debug(f"📋 Injected context preview: {preference_context[:200]}...")
+                logger.info(
+                    f"✅ INJECTED {len(relevant_preferences)} user preferences into slide generation context"
+                )
+                logger.debug(
+                    f"📋 Injected context preview: {preference_context[:200]}..."
+                )
             else:
                 # No preferences found - this might be a new user
-                logger.info("📝 No existing user preferences found - will learn from this interaction")
+                logger.info(
+                    "📝 No existing user preferences found - will learn from this interaction"
+                )
 
         except Exception as e:
             logger.error(f"Failed to retrieve user preferences: {e}")
@@ -173,9 +198,19 @@ class SlideMemoryHooks(HookProvider):
     def _is_slide_request(self, query: str) -> bool:
         """Check if the user query is related to slide deck creation"""
         slide_keywords = [
-            "slide", "presentation", "deck", "powerpoint", "ppt",
-            "create", "generate", "make", "build",
-            "theme", "color", "style", "design"
+            "slide",
+            "presentation",
+            "deck",
+            "powerpoint",
+            "ppt",
+            "create",
+            "generate",
+            "make",
+            "build",
+            "theme",
+            "color",
+            "style",
+            "design",
         ]
         query_lower = query.lower()
         return any(keyword in query_lower for keyword in slide_keywords)
@@ -189,7 +224,7 @@ class SlideMemoryHooks(HookProvider):
         preference_lines = [
             "🎨 USER STYLE PREFERENCES DETECTED:",
             "The following learned preferences should influence your tool parameter choices:",
-            ""
+            "",
         ]
 
         # Track extracted parameters for summary
@@ -199,17 +234,19 @@ class SlideMemoryHooks(HookProvider):
             "use_shadows": None,
             "font_family": None,
             "presentation_type": None,
-            "header_style": None
+            "header_style": None,
         }
 
         # Process each preference and extract actionable parameters
-        for i, memory in enumerate(preference_memories[:5], 1):  # Increased to 5 for more context
-            memory_content = memory.get('content', {})
+        for i, memory in enumerate(
+            preference_memories[:5], 1
+        ):  # Increased to 5 for more context
+            memory_content = memory.get("content", {})
             structured_pref = self._parse_structured_preference(memory_content)
 
-            preference = structured_pref.get('preference', 'No preference available')
-            context = structured_pref.get('context', '')
-            score = memory.get('score', 0)
+            preference = structured_pref.get("preference", "No preference available")
+            context = structured_pref.get("context", "")
+            score = memory.get("score", 0)
 
             # Analyze preference text for parameters
             pref_lower = preference.lower()
@@ -220,7 +257,10 @@ class SlideMemoryHooks(HookProvider):
                     extracted_params["color_scheme"] = color
 
             # Extract gradient preferences
-            if any(term in pref_lower for term in ["solid color", "no gradient", "solid background"]):
+            if any(
+                term in pref_lower
+                for term in ["solid color", "no gradient", "solid background"]
+            ):
                 extracted_params["use_gradients"] = False
             elif "gradient" in pref_lower and "prefer" in pref_lower:
                 extracted_params["use_gradients"] = True
@@ -248,38 +288,51 @@ class SlideMemoryHooks(HookProvider):
             preference_lines.append(pref_line)
 
         # Add structured parameter recommendations
-        preference_lines.extend([
-            "",
-            "📋 RECOMMENDED TOOL PARAMETERS (based on above preferences):"
-        ])
+        preference_lines.extend(
+            ["", "📋 RECOMMENDED TOOL PARAMETERS (based on above preferences):"]
+        )
 
         param_recommendations = []
         if extracted_params["color_scheme"]:
-            param_recommendations.append(f"- color_scheme: '{extracted_params['color_scheme']}'")
+            param_recommendations.append(
+                f"- color_scheme: '{extracted_params['color_scheme']}'"
+            )
         if extracted_params["use_gradients"] is not None:
-            param_recommendations.append(f"- use_gradients: {extracted_params['use_gradients']}")
+            param_recommendations.append(
+                f"- use_gradients: {extracted_params['use_gradients']}"
+            )
         if extracted_params["use_shadows"] is not None:
-            param_recommendations.append(f"- use_shadows: {extracted_params['use_shadows']}")
+            param_recommendations.append(
+                f"- use_shadows: {extracted_params['use_shadows']}"
+            )
         if extracted_params["font_family"]:
-            param_recommendations.append(f"- font_family: '{extracted_params['font_family']}'")
+            param_recommendations.append(
+                f"- font_family: '{extracted_params['font_family']}'"
+            )
         if extracted_params["presentation_type"]:
-            param_recommendations.append(f"- presentation_type: '{extracted_params['presentation_type']}'")
+            param_recommendations.append(
+                f"- presentation_type: '{extracted_params['presentation_type']}'"
+            )
         if extracted_params["header_style"]:
-            param_recommendations.append(f"- header_style: '{extracted_params['header_style']}'")
+            param_recommendations.append(
+                f"- header_style: '{extracted_params['header_style']}'"
+            )
 
         if param_recommendations:
             preference_lines.extend(param_recommendations)
         else:
             preference_lines.append("- No specific parameter overrides detected")
 
-        preference_lines.extend([
-            "",
-            "💡 INSTRUCTIONS:",
-            "- Apply these parameters when calling create_advanced_slides_tool()",
-            "- These represent learned user preferences from past interactions",
-            "- Only override if user explicitly requests different styling in current request",
-            ""
-        ])
+        preference_lines.extend(
+            [
+                "",
+                "💡 INSTRUCTIONS:",
+                "- Apply these parameters when calling create_advanced_slides_tool()",
+                "- These represent learned user preferences from past interactions",
+                "- Only override if user explicitly requests different styling in current request",
+                "",
+            ]
+        )
 
         return "\\n".join(preference_lines)
 
@@ -322,11 +375,13 @@ class SlideMemoryHooks(HookProvider):
                 # Save the interaction to memory
                 interaction_messages = [
                     ConversationalMessage(user_query, USER),
-                    ConversationalMessage(agent_response, ASSISTANT)
+                    ConversationalMessage(agent_response, ASSISTANT),
                 ]
 
                 result = self.memory_session.add_turns(interaction_messages)
-                logger.info(f"✅ Saved slide interaction with preferences - Event ID: {result['eventId']}")
+                logger.info(
+                    f"✅ Saved slide interaction with preferences - Event ID: {result['eventId']}"
+                )
 
         except Exception as e:
             logger.error(f"Failed to save slide interaction: {e}")
@@ -336,11 +391,27 @@ class SlideMemoryHooks(HookProvider):
 
         # Look for preference indicators in user query
         preference_indicators = [
-            "prefer", "like", "want", "choose", "use",
-            "color", "theme", "style", "font", "design",
-            "blue", "green", "purple", "red",
-            "professional", "modern", "classic", "creative",
-            "tech", "business", "academic"
+            "prefer",
+            "like",
+            "want",
+            "choose",
+            "use",
+            "color",
+            "theme",
+            "style",
+            "font",
+            "design",
+            "blue",
+            "green",
+            "purple",
+            "red",
+            "professional",
+            "modern",
+            "classic",
+            "creative",
+            "tech",
+            "business",
+            "academic",
         ]
 
         combined_text = f"{user_query} {agent_response}".lower()
@@ -384,7 +455,9 @@ def create_slide_memory_hooks(memory_session: MemorySession) -> SlideMemoryHooks
 
 if __name__ == "__main__":
     # This would be used in conjunction with memory_setup.py
-    print("Slide memory hooks module - use with memory_setup.py to create full integration")
+    print(
+        "Slide memory hooks module - use with memory_setup.py to create full integration"
+    )
     print("Example usage:")
     print("  from memory_setup import setup_slide_deck_memory")
     print("  from memory_hooks.slide_hooks import create_slide_memory_hooks")

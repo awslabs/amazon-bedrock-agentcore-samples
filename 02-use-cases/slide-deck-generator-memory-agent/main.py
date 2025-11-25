@@ -32,8 +32,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 # Configure logging
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -44,7 +43,9 @@ def print_banner():
     print("🧠 SLIDE DECK AGENT DEMO - The Importance of Agent Memory")
     print("=" * 80)
     print()
-    print("This demo showcases how Agent Memory transforms AI interactions by comparing:")
+    print(
+        "This demo showcases how Agent Memory transforms AI interactions by comparing:"
+    )
     print("📊 Basic Agent:       Creates slides without learning or memory")
     print("🧠 Memory Agent:      Learns preferences and personalizes presentations")
     print()
@@ -67,8 +68,7 @@ def setup_demo_environment() -> tuple:
 
     print("   👤 Creating user session...")
     user_session = session_manager.create_memory_session(
-        actor_id=DEFAULT_USER_ID,
-        session_id=get_session_id()
+        actor_id=DEFAULT_USER_ID, session_id=get_session_id()
     )
 
     print("   🤖 Initializing memory-enabled agent...")
@@ -102,23 +102,23 @@ def run_cli_demo():
 
             choice = input("Choose option (1-6): ").strip()
 
-            if choice in ['exit', '6']:
+            if choice in ["exit", "6"]:
                 print("👋 Thank you for trying the Agent Memory demo!")
                 break
 
-            elif choice in ['help', '5']:
+            elif choice in ["help", "5"]:
                 continue
 
-            elif choice in ['1', 'basic']:
+            elif choice in ["1", "basic"]:
                 run_basic_agent_test(basic_agent)
 
-            elif choice in ['2', 'memory']:
+            elif choice in ["2", "memory"]:
                 run_memory_agent_test(memory_agent)
 
-            elif choice in ['3', 'compare']:
+            elif choice in ["3", "compare"]:
                 run_agent_comparison(basic_agent, memory_agent)
 
-            elif choice in ['4', 'prefs']:
+            elif choice in ["4", "prefs"]:
                 show_learned_preferences(memory_agent)
 
             else:
@@ -188,7 +188,9 @@ def run_agent_comparison(basic_agent, memory_agent):
     print("\\n⚖️  AGENT COMPARISON")
     print("-" * 40)
 
-    request = input("Enter request for both agents (or press Enter for sample): ").strip()
+    request = input(
+        "Enter request for both agents (or press Enter for sample): "
+    ).strip()
 
     if not request:
         request = """Create a presentation about "Digital Marketing Trends 2024" for marketing professionals.
@@ -247,20 +249,20 @@ def run_automated_demo():
             "name": "Tech Presentation - Learning Blue Preference",
             "request": """Create a presentation about "Cybersecurity Fundamentals" for IT training.
             Include threat landscape, security frameworks, best practices, and incident response.
-            I really prefer blue color schemes for technical content as they convey trust and professionalism."""
+            I really prefer blue color schemes for technical content as they convey trust and professionalism.""",
         },
         {
             "name": "Business Presentation - Learning Professional Style",
             "request": """Create a presentation about "Digital Transformation Strategy" for executives.
             Include market drivers, technology trends, implementation roadmap, and ROI analysis.
-            I like professional, corporate styling with clean fonts for business presentations."""
+            I like professional, corporate styling with clean fonts for business presentations.""",
         },
         {
             "name": "Adaptive Presentation - Testing Memory",
             "request": """Create a presentation about "AI in Finance" for financial services conference.
             Include applications, risk management, regulatory considerations, and future outlook.
-            This is a technical topic for finance professionals."""
-        }
+            This is a technical topic for finance professionals.""",
+        },
     ]
 
     for i, scenario in enumerate(scenarios, 1):
@@ -270,7 +272,7 @@ def run_automated_demo():
         # Test with basic agent
         print("\\n📊 Basic Agent Response:")
         try:
-            basic_agent.create_presentation(scenario['request'])
+            basic_agent.create_presentation(scenario["request"])
             print("✅ Created presentation with default styling")
         except Exception as e:
             print(f"❌ Error: {e}")
@@ -278,7 +280,7 @@ def run_automated_demo():
         # Test with memory agent
         print("\\n🧠 Memory Agent Response:")
         try:
-            memory_agent.create_presentation(scenario['request'])
+            memory_agent.create_presentation(scenario["request"])
             print("✅ Created presentation with learned preferences")
         except Exception as e:
             print(f"❌ Error: {e}")
@@ -313,7 +315,7 @@ def run_web_interface():
         print("📱 Press Ctrl+C to stop the server")
         print()
 
-        app.run(host='127.0.0.1', port=5000, debug=False)
+        app.run(host="127.0.0.1", port=5000, debug=False)
 
     except Exception as e:
         logger.error(f"Web interface error: {e}")
@@ -326,15 +328,13 @@ def main():
         description="Slide Deck Agent Demo - Memory Importance Demonstration"
     )
     parser.add_argument(
-        '--mode',
-        choices=['web', 'cli', 'demo', 'compare'],
-        default='web',
-        help='Demo mode (default: web)'
+        "--mode",
+        choices=["web", "cli", "demo", "compare"],
+        default="web",
+        help="Demo mode (default: web)",
     )
     parser.add_argument(
-        '--user-id',
-        default=DEFAULT_USER_ID,
-        help='User ID for memory session'
+        "--user-id", default=DEFAULT_USER_ID, help="User ID for memory session"
     )
 
     args = parser.parse_args()
@@ -342,16 +342,17 @@ def main():
     # Update global user ID if provided
     if args.user_id != DEFAULT_USER_ID:
         import config
+
         config.DEFAULT_USER_ID = args.user_id
 
     try:
-        if args.mode == 'web':
+        if args.mode == "web":
             run_web_interface()
-        elif args.mode == 'cli':
+        elif args.mode == "cli":
             run_cli_demo()
-        elif args.mode == 'demo':
+        elif args.mode == "demo":
             run_automated_demo()
-        elif args.mode == 'compare':
+        elif args.mode == "compare":
             print_banner()
             basic_agent, memory_agent, _ = setup_demo_environment()
             run_agent_comparison(basic_agent, memory_agent)

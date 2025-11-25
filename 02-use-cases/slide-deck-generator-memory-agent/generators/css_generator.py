@@ -1,6 +1,7 @@
 """
 Advanced CSS generator for dynamic presentation styling based on user preferences
 """
+
 from typing import Dict
 from dataclasses import dataclass
 from enum import Enum
@@ -16,6 +17,7 @@ class FontFamily(Enum):
 @dataclass
 class StylePreferences:
     """Data class for user style preferences"""
+
     primary_color: str = "#2563eb"
     secondary_color: str = "#3b82f6"
     accent_color: str = "#0ea5e9"
@@ -39,23 +41,23 @@ class AdvancedCSSGenerator:
             FontFamily.MODERN: {
                 "primary": "'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
                 "heading": "'Inter', sans-serif",
-                "body": "'Inter', sans-serif"
+                "body": "'Inter', sans-serif",
             },
             FontFamily.CLASSIC: {
                 "primary": "'Georgia', 'Times New Roman', Times, serif",
                 "heading": "'Georgia', serif",
-                "body": "'Georgia', serif"
+                "body": "'Georgia', serif",
             },
             FontFamily.TECHNICAL: {
                 "primary": "'JetBrains Mono', 'Consolas', 'Monaco', monospace",
                 "heading": "'JetBrains Mono', monospace",
-                "body": "'System UI', sans-serif"
+                "body": "'System UI', sans-serif",
             },
             FontFamily.CREATIVE: {
                 "primary": "'Poppins', 'Montserrat', sans-serif",
                 "heading": "'Poppins', sans-serif",
-                "body": "'Open Sans', sans-serif"
-            }
+                "body": "'Open Sans', sans-serif",
+            },
         }
 
     def get_spacing_values(self, style: str) -> Dict[str, str]:
@@ -65,20 +67,20 @@ class AdvancedCSSGenerator:
                 "slide_padding": "40px",
                 "section_margin": "20px",
                 "element_margin": "10px",
-                "line_height": "1.4"
+                "line_height": "1.4",
             },
             "comfortable": {
                 "slide_padding": "60px",
                 "section_margin": "30px",
                 "element_margin": "20px",
-                "line_height": "1.6"
+                "line_height": "1.6",
             },
             "spacious": {
                 "slide_padding": "80px",
                 "section_margin": "40px",
                 "element_margin": "30px",
-                "line_height": "1.8"
-            }
+                "line_height": "1.8",
+            },
         }
         return spacing_configs.get(style, spacing_configs["comfortable"])
 
@@ -88,19 +90,17 @@ class AdvancedCSSGenerator:
             return preferences.background_color
 
         # Create gradient using theme colors instead of hardcoded white
-        return f"linear-gradient(135deg, {
-            preferences.background_color} 0%, {
-            self.adjust_color_brightness(
-                preferences.background_color, 1.1)} 50%, {
-                preferences.primary_color} 100%)"
+        return f"linear-gradient(135deg, {preferences.background_color} 0%, {
+            self.adjust_color_brightness(preferences.background_color, 1.1)
+        } 50%, {preferences.primary_color} 100%)"
 
     def adjust_color_brightness(self, hex_color: str, factor: float) -> str:
         """Adjust color brightness by a factor"""
         # Remove # if present
-        hex_color = hex_color.lstrip('#')
+        hex_color = hex_color.lstrip("#")
 
         # Convert to RGB
-        rgb = tuple(int(hex_color[i:i + 2], 16) for i in (0, 2, 4))
+        rgb = tuple(int(hex_color[i : i + 2], 16) for i in (0, 2, 4))
 
         # Adjust brightness
         adjusted = tuple(min(255, max(0, int(c * factor))) for c in rgb)
@@ -110,7 +110,7 @@ class AdvancedCSSGenerator:
 
     def hex_to_rgb(self, hex_color: str) -> str:
         """Convert hex color to RGB string"""
-        hex_color = hex_color.lstrip('#')
+        hex_color = hex_color.lstrip("#")
         return f"{int(hex_color[:2], 16)}, {int(hex_color[2:4], 16)}, {int(hex_color[4:], 16)}"
 
     def generate_advanced_css(self, preferences: StylePreferences) -> str:
@@ -122,9 +122,14 @@ class AdvancedCSSGenerator:
         background = self.generate_gradient_background(preferences)
 
         # Shadow styles
-        box_shadow = ("0 4px 6px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.06)"
-                      if preferences.use_shadows else "none")
-        text_shadow = "0 1px 2px rgba(0, 0, 0, 0.1)" if preferences.use_shadows else "none"
+        box_shadow = (
+            "0 4px 6px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.06)"
+            if preferences.use_shadows
+            else "none"
+        )
+        text_shadow = (
+            "0 1px 2px rgba(0, 0, 0, 0.1)" if preferences.use_shadows else "none"
+        )
 
         css = f"""
         /* Advanced CSS Generated with User Preferences */
@@ -139,10 +144,10 @@ class AdvancedCSSGenerator:
             --border-radius: {preferences.border_radius}px;
             --box-shadow: {box_shadow};
             --text-shadow: {text_shadow};
-            --slide-padding: {spacing['slide_padding']};
-            --section-margin: {spacing['section_margin']};
-            --element-margin: {spacing['element_margin']};
-            --line-height: {spacing['line_height']};
+            --slide-padding: {spacing["slide_padding"]};
+            --section-margin: {spacing["section_margin"]};
+            --element-margin: {spacing["element_margin"]};
+            --line-height: {spacing["line_height"]};
         }}
 
         * {{
@@ -152,7 +157,7 @@ class AdvancedCSSGenerator:
         }}
 
         body {{
-            font-family: {fonts['primary']};
+            font-family: {fonts["primary"]};
             font-size: {preferences.font_size_base}px;
             background: {background};
             color: var(--text-color);
@@ -197,7 +202,7 @@ class AdvancedCSSGenerator:
         }}
 
         .title-slide .main-title {{
-            font-family: {fonts['heading']};
+            font-family: {fonts["heading"]};
             font-size: {preferences.font_size_base * 2.5}px;
             font-weight: {self.get_header_weight(preferences.header_style)};
             color: var(--primary-color);
@@ -225,7 +230,7 @@ class AdvancedCSSGenerator:
         }}
 
         .content-slide .slide-title {{
-            font-family: {fonts['heading']};
+            font-family: {fonts["heading"]};
             font-size: {preferences.font_size_base * 2}px;
             color: var(--primary-color);
             margin-bottom: var(--section-margin);
@@ -267,7 +272,7 @@ class AdvancedCSSGenerator:
             font-size: {preferences.font_size_base * 1.2}px;
             line-height: var(--line-height);
             margin-bottom: var(--element-margin);
-            font-family: {fonts['body']};
+            font-family: {fonts["body"]};
         }}
 
         .slide-image {{
@@ -285,7 +290,7 @@ class AdvancedCSSGenerator:
         }}
 
         .section-slide .section-title {{
-            font-family: {fonts['heading']};
+            font-family: {fonts["heading"]};
             font-size: {preferences.font_size_base * 3}px;
             color: var(--primary-color);
             font-weight: {self.get_header_weight(preferences.header_style)};
@@ -325,7 +330,7 @@ class AdvancedCSSGenerator:
             cursor: pointer;
             font-size: {preferences.font_size_base * 0.9}px;
             transition: all 0.3s ease;
-            font-family: {fonts['primary']};
+            font-family: {fonts["primary"]};
         }}
 
         .navigation button:hover {{
@@ -346,7 +351,7 @@ class AdvancedCSSGenerator:
             font-weight: 600;
             color: {preferences.text_color};
             min-width: 60px;
-            font-family: {fonts['primary']};
+            font-family: {fonts["primary"]};
         }}
 
         /* Presentation Type Specific Styles */
@@ -396,11 +401,7 @@ class AdvancedCSSGenerator:
 
     def get_header_weight(self, style: str) -> str:
         """Get font weight based on header style"""
-        weights = {
-            "bold": "700",
-            "elegant": "400",
-            "minimal": "300"
-        }
+        weights = {"bold": "700", "elegant": "400", "minimal": "300"}
         return weights.get(style, "600")
 
     def get_title_decoration(self, preferences: StylePreferences) -> str:
@@ -415,12 +416,7 @@ class AdvancedCSSGenerator:
 
     def get_bullet_style(self, presentation_type: str = "business") -> str:
         """Get bullet point style based on presentation type"""
-        styles = {
-            "tech": "▶",
-            "business": "●",
-            "academic": "■",
-            "creative": "★"
-        }
+        styles = {"tech": "▶", "business": "●", "academic": "■", "creative": "★"}
         return styles.get(presentation_type, "●")
 
     def get_list_animation(self, presentation_type: str = "business") -> str:
@@ -429,8 +425,9 @@ class AdvancedCSSGenerator:
             return "transition: transform 0.2s ease; cursor: default;"
         return ""
 
-    def get_type_specific_styles(self, presentation_type: str = "business",
-                                 preferences: StylePreferences = None) -> str:
+    def get_type_specific_styles(
+        self, presentation_type: str = "business", preferences: StylePreferences = None
+    ) -> str:
         """Get presentation type-specific CSS styles"""
         if not preferences:
             return ""
