@@ -9,6 +9,7 @@ from runtime import get_data_plane_endpoint
 import sys
 import yaml
 import boto3
+import uuid
 
 from oauth2_callback_server import store_token_in_oauth2_callback_server
 
@@ -109,7 +110,7 @@ def load_bedrock_agentcore_config():
         aws_config = agent_config.get("aws", {})
 
         # Extract required values
-        agent_session_id = bedrock_config.get("agent_session_id")
+        agent_session_id = str(uuid.uuid4())
         agent_arn = bedrock_config.get("agent_arn")
         region = aws_config.get("region")
 
@@ -385,7 +386,7 @@ def main():
         if submitted:
             with st.spinner("Authenticating with Cognito..."):
                 try:
-                    client = boto3.client("cognito-idp", region_name=region)
+                    client = boto3.client("cognito-idp", region_name="eu-west-1")
                     resp = client.initiate_auth(
                         ClientId=client_id,
                         AuthFlow="USER_PASSWORD_AUTH",
@@ -393,6 +394,13 @@ def main():
                     )
                     access_token = resp["AuthenticationResult"]["AccessToken"]
                     st.session_state["cognito_access_token"] = access_token
+                    print("registering token")
+                    resp = requests.post(
+                        "http://127.0.0.1:9090/userIdentifier/token",
+                        json={"user_token": access_token},
+                    )
+                    if resp.status_code != 200:
+                        raise Exception("Unable to register toke")
                     st.success(
                         "Cognito authentication successful! Redirecting to chatbot..."
                     )
