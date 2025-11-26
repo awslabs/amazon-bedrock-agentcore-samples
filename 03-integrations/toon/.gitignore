@@ -19,3 +19,4 @@ __pycache__
 .cdk.staging
 cdk.out
 node_modules
+mcp_json.py
