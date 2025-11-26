@@ -398,6 +398,7 @@ def main():
                     resp = requests.post(
                         "http://127.0.0.1:9090/userIdentifier/token",
                         json={"user_token": access_token},
+                        timeout=5,
                     )
                     if resp.status_code != 200:
                         raise Exception("Unable to register toke")
