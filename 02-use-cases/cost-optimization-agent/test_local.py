@@ -4,7 +4,6 @@ Demonstrates natural language understanding and intelligent tool selection
 """
 
 import asyncio
-import json
 from cost_optimization_agent import process_request
 
 

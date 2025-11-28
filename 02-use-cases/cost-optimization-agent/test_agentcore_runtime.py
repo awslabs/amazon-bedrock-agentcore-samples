@@ -101,13 +101,13 @@ def main():
 ╚══════════════════════════════════════════════════════════════════════════════╝
     """)
     
-    print(f"\n📊 Monitor logs:")
+    print("\n📊 Monitor logs:")
     agent_id = runtime_arn.split('/')[-1]
     log_group = f"/aws/bedrock-agentcore/runtimes/{agent_id}-DEFAULT"
     print(f"   aws logs tail {log_group} --follow")
     
-    print(f"\n🔗 CloudWatch Dashboard:")
-    print(f"   https://console.aws.amazon.com/cloudwatch/home?region=us-east-1#gen-ai-observability/agent-core")
+    print("\n🔗 CloudWatch Dashboard:")
+    print("   https://console.aws.amazon.com/cloudwatch/home?region=us-east-1#gen-ai-observability/agent-core")
 
 
 if __name__ == "__main__":

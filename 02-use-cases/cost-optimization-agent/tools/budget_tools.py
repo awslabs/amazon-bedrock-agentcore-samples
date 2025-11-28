@@ -5,7 +5,6 @@ Provides budget tracking, forecasting, and alerting capabilities
 
 import boto3
 from datetime import datetime, timedelta
-from typing import Optional
 import json
 
 
