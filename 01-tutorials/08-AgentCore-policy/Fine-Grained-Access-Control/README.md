@@ -27,11 +27,11 @@ Policy for Amazon Bedrock AgentCore enables fine-grained access control for AI a
 
 ### Tutorial Details
 
-| Information          | Details                   |
-| :------------------- | :------------------------ |
-| AgentCore components | Gateway, Identity, Policy |
-| Example complexity   | Intermediate              |
-| SDK used             | boto3, requests           |
+| Information          | Details                                                 |
+|:---------------------|:--------------------------------------------------------|
+| AgentCore components | Gateway, Identity, Policy                               |
+| Example complexity   | Intermediate                                            |
+| SDK used             | boto3, requests                                         |
 
 ## Prerequisites
 
@@ -59,12 +59,12 @@ Open [policy_for_agentcore_tutorial.ipynb](policy_for_agentcore_tutorial.ipynb)
 
 ## Cedar Policy Syntax
 
-| Pattern            | Cedar Syntax                                    |
-| ------------------ | ----------------------------------------------- |
-| Check claim exists | `principal.hasTag("claim_name")`                |
-| Exact match        | `principal.getTag("claim_name") == "value"`     |
-| Pattern match      | `principal.getTag("claim_name") like "*value*"` |
-| Input validation   | `context.input.field <= value`                  |
+| Pattern | Cedar Syntax |
+|---------|-------------|
+| Check claim exists | `principal.hasTag("claim_name")` |
+| Exact match | `principal.getTag("claim_name") == "value"` |
+| Pattern match | `principal.getTag("claim_name") like "*value*"` |
+| Input validation | `context.input.field <= value` |
 
 ## Test Scenarios
 
