@@ -100,11 +100,6 @@ A simple echo server for testing WebSocket connectivity and authentication.
 ### Setup
 
 ```bash
-# AWS Credentials (if not using AWS CLI profile)
-export AWS_ACCESS_KEY_ID=your_access_key_id
-export AWS_SECRET_ACCESS_KEY=your_secret_access_key
-# export AWS_SESSION_TOKEN=your_session_token  # Only if using temporary credentials
-
 # Required
 export ACCOUNT_ID=your_aws_account_id
 

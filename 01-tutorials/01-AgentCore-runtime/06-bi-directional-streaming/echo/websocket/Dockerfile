@@ -11,7 +11,6 @@ COPY websocket_echo_agent.py ./
 
 # Expose port
 EXPOSE 8080
-EXPOSE 8081
 
 # Run application directly
 CMD ["python", "websocket_echo_agent.py"]

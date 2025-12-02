@@ -527,7 +527,7 @@
             const messages = document.getElementById('messages');
             const message = document.createElement('div');
             message.className = 'message ' + type;
-            message.innerHTML = content;
+            message.textContent = content;
             messages.appendChild(message);
             messages.scrollTop = messages.scrollHeight;
         }
@@ -544,11 +544,21 @@
             const isAudioEvent = type === 'audioInput' || type === 'audioOutput';
             const dataClass = isAudioEvent ? 'event-data audio-event' : 'event-data';
             
-            event.innerHTML = `
-                <div class="event-time">${time} ${arrow}</div>
-                <div class="event-type">${type}</div>
-                <div class="${dataClass}">${dataStr}</div>
-            `;
+            const timeDiv = document.createElement('div');
+            timeDiv.className = 'event-time';
+            timeDiv.textContent = `${time} ${arrow}`;
+
+            const typeDiv = document.createElement('div');
+            typeDiv.className = 'event-type';
+            typeDiv.textContent = type;
+
+            const dataDiv = document.createElement('div');
+            dataDiv.className = dataClass;
+            dataDiv.textContent = dataStr;
+
+            event.appendChild(timeDiv);
+            event.appendChild(typeDiv);
+            event.appendChild(dataDiv);
             
             events.appendChild(event);
             events.scrollTop = events.scrollHeight;
@@ -686,8 +696,8 @@
             toggleBtn.disabled = true;
             toggleBtn.textContent = '⏳ Starting...';
             
-            document.getElementById('messages').innerHTML = '';
-            document.getElementById('events').innerHTML = '';
+            document.getElementById('messages').textContent = '';
+            document.getElementById('events').textContent = '';
             
             const websocketUrl = document.getElementById('websocketUrl').value.trim();
             

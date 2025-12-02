@@ -138,9 +138,7 @@ async def refresh_credentials_from_imds():
                 os.environ["AWS_SECRET_ACCESS_KEY"] = creds["SecretAccessKey"]
                 os.environ["AWS_SESSION_TOKEN"] = creds["Token"]
                 
-                logger.info(f"✅ Credentials refreshed from IMDS using {imds_result['method_used']}")
-                logger.info(f"   IAM Role: {imds_result['role_name']}")
-                logger.info(f"   Expires at: {creds['Expiration']}")
+                logger.info(f"✅ Credentials refreshed from IMD.")
                 
                 # Parse expiration time and calculate refresh interval
                 # Refresh 5 minutes before expiration
@@ -209,9 +207,7 @@ async def startup_event():
             os.environ["AWS_SECRET_ACCESS_KEY"] = creds["SecretAccessKey"]
             os.environ["AWS_SESSION_TOKEN"] = creds["Token"]
             
-            logger.info(f"✅ Initial credentials loaded from IMDS using {imds_result['method_used']}")
-            logger.info(f"   IAM Role: {imds_result['role_name']}")
-            logger.info(f"   Expires at: {creds['Expiration']}")
+            logger.info(f"✅ Initial credentials loaded from IMDS.")
             
             # Start background task to refresh credentials
             credential_refresh_task = asyncio.create_task(refresh_credentials_from_imds())

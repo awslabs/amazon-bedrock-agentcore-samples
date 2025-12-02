@@ -67,8 +67,7 @@ async def main():
     
     # Run servers on both ports concurrently
     await asyncio.gather(
-        run_server(host, 8080),
-        run_server(host, 8081)
+        run_server(host, 8080)
     )
 
 if __name__ == "__main__":
