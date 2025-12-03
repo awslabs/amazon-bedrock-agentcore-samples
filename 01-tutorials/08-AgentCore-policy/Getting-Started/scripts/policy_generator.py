@@ -6,13 +6,8 @@ Generates Cedar policies from natural language input using boto3 APIs.
 
 """
 
-import argparse
 import json
 import logging
-import random
-import re
-import string
-import sys
 import time
 import uuid
 from datetime import datetime
@@ -20,7 +15,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import boto3
-from botocore.exceptions import ClientError, NoCredentialsError
+from botocore.exceptions import ClientError
 
 # ============================================================================
 # CONFIGURATION CONSTANTS
@@ -66,10 +61,10 @@ class PolicyGenerator:
                 region_name=REGION
             )
             logger.info("Successfully created boto3 client")
-        except Exception as e:
-            logger.error("Failed to create boto3 client: %s", e)
+        except Exception as exc:
+            logger.error("Failed to create boto3 client: %s", exc)
             raise
-    
+
 
     def list_policy_engines(self) -> List[Dict[str, Any]]:
         """List all policy engines"""
@@ -79,8 +74,8 @@ class PolicyGenerator:
             policy_engines = response.get('policyEngines', [])
             logger.info("Found %d policy engines", len(policy_engines))
             return policy_engines
-        except ClientError as e:
-            logger.error("Error listing policy engines: %s", e)
+        except ClientError as exc:
+            logger.error("Error listing policy engines: %s", exc)
             return []
 
     def create_policy_engine(self, name: str) -> Optional[str]:
@@ -102,8 +97,8 @@ class PolicyGenerator:
                 self._save_policy_engine_to_config(policy_engine_id, policy_engine_arn)
 
             return policy_engine_id
-        except ClientError as e:
-            logger.error("Error creating policy engine: %s", e)
+        except ClientError as exc:
+            logger.error("Error creating policy engine: %s", exc)
             return None
 
     def get_policy_engine(self, policy_engine_id: str) -> Optional[Dict[str, Any]]:
@@ -114,8 +109,8 @@ class PolicyGenerator:
                 policyEngineId=policy_engine_id
             )
             return response
-        except ClientError as e:
-            logger.error("Error getting policy engine: %s", e)
+        except ClientError as exc:
+            logger.error("Error getting policy engine: %s", exc)
             return None
 
     def wait_for_policy_engine_active(
@@ -124,8 +119,10 @@ class PolicyGenerator:
         timeout: int = 300
     ) -> bool:
         """Wait for policy engine to reach ACTIVE state"""
-        logger.info("Waiting for policy engine %s to become ACTIVE (timeout: %ds)",
-                    policy_engine_id, timeout)
+        logger.info(
+            "Waiting for policy engine %s to become ACTIVE (timeout: %ds)",
+            policy_engine_id, timeout
+        )
         start_time = time.time()
         poll_count = 0
 
@@ -158,7 +155,7 @@ class PolicyGenerator:
             timeout, poll_count
         )
         return False
-    
+
     @staticmethod
     def _save_policy_engine_to_config(policy_engine_id: str, policy_engine_arn: str) -> None:
         """Save policy engine details to gateway_config.json if it exists"""
@@ -195,8 +192,8 @@ class PolicyGenerator:
             else:
                 logger.debug("gateway_config.json already has policy engine details")
 
-        except Exception as e:
-            logger.warning("Could not save to gateway_config.json: %s", e)
+        except Exception as exc:
+            logger.warning("Could not save to gateway_config.json: %s", exc)
 
 
 def setup_logging(verbose: bool = False):

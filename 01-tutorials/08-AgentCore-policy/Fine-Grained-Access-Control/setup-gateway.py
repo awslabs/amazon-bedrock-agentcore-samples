@@ -5,12 +5,11 @@ Run this first: python setup_gateway.py
 If a Gateway already exists (from gateway_config.json), it will be reused.
 """
 
-import boto3
-from bedrock_agentcore_starter_toolkit.operations.gateway.client import GatewayClient
 import json
 import logging
-import os
 from pathlib import Path
+import boto3
+from bedrock_agentcore_starter_toolkit.operations.gateway.client import GatewayClient
 
 
 def load_existing_config() -> dict | None:
@@ -18,33 +17,37 @@ def load_existing_config() -> dict | None:
     config_path = Path("gateway_config.json")
     if not config_path.exists():
         return None
-    
+
     try:
-        with open(config_path, 'r') as f:
+        with open(config_path, 'r', encoding='utf-8') as f:
             config = json.load(f)
-        
+
         # Check if config has required gateway fields (not placeholders)
         if config.get('gateway_id') and '<' not in config.get('gateway_id', '<'):
             return config
     except (json.JSONDecodeError, IOError):
         pass
-    
+
     return None
 
 
-def get_existing_gateway(region: str, gateway_id: str = None, gateway_name: str = None) -> dict | None:
+def get_existing_gateway(
+    region: str,
+    gateway_id: str = None,
+    gateway_name: str = None
+) -> dict | None:
     """Check if gateway exists by ID or name and return its details."""
     boto_client = boto3.client('bedrock-agentcore-control', region_name=region)
-    
+
     # Try by ID first
     if gateway_id:
         try:
             gateway = boto_client.get_gateway(gatewayIdentifier=gateway_id)
             if gateway and gateway.get('status') in ['READY', 'ACTIVE']:
                 return gateway
-        except Exception as e:
-            print(f"  Could not retrieve gateway by ID {gateway_id}: {e}")
-    
+        except Exception as exc:
+            print(f"  Could not retrieve gateway by ID {gateway_id}: {exc}")
+
     # Try to find by name
     if gateway_name:
         try:
@@ -54,13 +57,14 @@ def get_existing_gateway(region: str, gateway_id: str = None, gateway_name: str 
                     # Get full gateway details
                     full_gw = boto_client.get_gateway(gatewayIdentifier=gw['gatewayId'])
                     return full_gw
-        except Exception as e:
-            print(f"  Could not search for gateway by name: {e}")
-    
+        except Exception as exc:
+            print(f"  Could not search for gateway by name: {exc}")
+
     return None
 
 
 def setup_gateway():
+    """Setup AgentCore Gateway with Lambda target and policy engine."""
     # Configuration
     region = "us-east-1"
 
@@ -72,7 +76,7 @@ def setup_gateway():
     client.logger.setLevel(logging.INFO)
 
     # Gateway name used for this tutorial
-    GATEWAY_NAME = 'TestGWforPolicyEngine'
+    gateway_name = 'TestGWforPolicyEngine'
 
     # Check for existing configuration or gateway
     existing_config = load_existing_config()
@@ -82,13 +86,15 @@ def setup_gateway():
     if existing_config:
         print("📋 Found existing gateway_config.json")
         gateway_id = existing_config.get('gateway_id')
-        
+
         # Try to retrieve the existing gateway
         print(f"  Checking if gateway '{gateway_id}' exists...")
         gateway = get_existing_gateway(region, gateway_id=gateway_id)
-        
+
         if gateway:
-            print(f"✓ Reusing existing gateway: {gateway.get('gatewayUrl', gateway_id)}\n")
+            print(
+                f"✓ Reusing existing gateway: {gateway.get('gatewayUrl', gateway_id)}\n"
+            )
             # Reuse existing client_info if available
             if existing_config.get('client_info'):
                 cognito_response = {"client_info": existing_config['client_info']}
@@ -97,13 +103,16 @@ def setup_gateway():
 
     # If no gateway yet, check if one exists by name
     if not gateway:
-        print(f"🔍 Checking for existing gateway named '{GATEWAY_NAME}'...")
-        gateway = get_existing_gateway(region, gateway_name=GATEWAY_NAME)
+        print(f"🔍 Checking for existing gateway named '{gateway_name}'...")
+        gateway = get_existing_gateway(region, gateway_name=gateway_name)
         if gateway:
             print(f"✓ Found existing gateway: {gateway.get('gatewayUrl')}\n")
 
     # Get user inputs
-    role_arn = input("Enter role ARN to which you added the Trust relationship (or press Enter to create one): ").strip() or None
+    role_arn = input(
+        "Enter role ARN to which you added the Trust relationship "
+        "(or press Enter to create one): "
+    ).strip() or None
     lambda_arn = input("Enter Lambda ARN: ").strip()
 
     if not lambda_arn:
@@ -120,7 +129,7 @@ def setup_gateway():
     if not gateway:
         print("Step 2: Creating Gateway...")
         gateway = client.create_mcp_gateway(
-            name=GATEWAY_NAME,
+            name=gateway_name,
             role_arn=role_arn,
             authorizer_config=cognito_response.get("authorizer_config"),
             enable_semantic_search=True,
@@ -131,14 +140,18 @@ def setup_gateway():
 
     # Add Lambda target (or reuse existing)
     print("Step 3: Adding Lambda target...")
-    
-    TARGET_NAME = "RefundToolTarget"
+
+    target_name = "RefundToolTarget"
 
     # Define the refund tool schema
     refund_tool_schema = [
         {
             "name": "refund",
-            "description": "Processes customer refunds by validating the refund amount, customer ID, and reason. Returns a refund ID and confirmation details upon successful processing.",
+            "description": (
+                "Processes customer refunds by validating the refund amount, "
+                "customer ID, and reason. Returns a refund ID and confirmation "
+                "details upon successful processing."
+            ),
             "inputSchema": {
                 "type": "object",
                 "description": "Input parameters for processing a customer refund",
@@ -160,7 +173,7 @@ def setup_gateway():
     try:
         lambda_target = client.create_mcp_gateway_target(
             gateway=gateway,
-            name=TARGET_NAME,
+            name=target_name,
             target_type="lambda",
             target_payload={
                 "lambdaArn": lambda_arn,
@@ -171,9 +184,9 @@ def setup_gateway():
             credentials=None,
         )
         print("✓ Lambda target added\n")
-    except Exception as e:
-        if "ConflictException" in str(type(e).__name__) or "already exists" in str(e):
-            print(f"✓ Lambda target '{TARGET_NAME}' already exists, reusing\n")
+    except Exception as exc:
+        if "ConflictException" in str(type(exc).__name__) or "already exists" in str(exc):
+            print(f"✓ Lambda target '{target_name}' already exists, reusing\n")
             # Target already exists, just use the gateway ARN
             lambda_target = {"gatewayArn": gateway.get("gatewayArn")}
         else:
@@ -188,7 +201,7 @@ def setup_gateway():
         "client_info": cognito_response.get("client_info")
     }
 
-    with open("gateway_config.json", "w") as f:
+    with open("gateway_config.json", "w", encoding='utf-8') as f:
         json.dump(config, f, indent=2)
 
     print("=" * 60)
