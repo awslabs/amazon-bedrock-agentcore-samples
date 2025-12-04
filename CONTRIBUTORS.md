@@ -67,3 +67,6 @@
 - Sindhura Palakodety
 - Bhuvan Annamreddi
 - GengisAWS
+- Sparsh Wadhwa (SparshWadhwa)
+- Bharathi Srinivasan
+
