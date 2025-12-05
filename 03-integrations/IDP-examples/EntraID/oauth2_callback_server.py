@@ -13,7 +13,7 @@ Key Components:
 
 Usage Context:
 This server is used in conjunction with agents running on AgentCore Runtime that need to access external resources
-(like Google Calendar, Microsoft Entra) on behalf of authenticated users. 
+(like Google Calendar, Microsoft Entra) on behalf of authenticated users.
 
 The typical flow involves:
   1. Agent requests access to external resource
@@ -161,10 +161,10 @@ class OAuth2CallbackServer:
             if not session_id:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Missing session_id query parameter",
+                    detail="Missing session_id url query parameter",
                 )
             
-            # use cookie value if available, otherwise, use value stored on the server memory
+            # use browser cookie value if available, otherwise, use value stored on the server memory
             user_identifier = UserTokenIdentifier(user_token=user_token_identifier) \
                         if user_token_identifier \
                         else self.user_token_identifier
