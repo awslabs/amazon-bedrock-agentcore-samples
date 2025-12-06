@@ -1,23 +1,28 @@
-# Amazon Bedrock AgentCore Policy - Getting Started Demo
+# Amazon Bedrock AgentCore Policy - Natural Language Policy Authoring
 # Python dependencies
 
 # Core AWS SDK
-boto3>=1.34.0
-botocore>=1.34.0
+boto3
+botocore
 
-# AgentCore Toolkit
-bedrock-agentcore-starter-toolkit>=0.1.0
+# AgentCore packages
+bedrock-agentcore
+bedrock-agentcore-starter-toolkit
+
+# Agentic frameworks
+strands-agents
+strands-agents-tools
+
+# MCP protocol
+mcp>=1.9.0
 
 # HTTP requests
-requests>=2.31.0
+requests
 
-# Jupyter notebook support
-jupyter>=1.0.0
-ipykernel>=6.25.0
-notebook>=7.0.0
+# Python package installer
+uv
 
-# Data handling
-python-dateutil>=2.8.2
-
-# Logging and utilities
-python-json-logger>=2.0.7
+# Jupyter notebook support (optional, for local development)
+ipython
+ipykernel
+jupyterlab

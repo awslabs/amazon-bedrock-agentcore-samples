@@ -1,2 +1,23 @@
+# Amazon Bedrock AgentCore Policy - Fine-Grained Access Control
+# Python dependencies
+
+# Core AWS SDK
 boto3
+botocore
+
+# AgentCore packages
+bedrock-agentcore
+bedrock-agentcore-starter-toolkit
+
+# Agentic frameworks
+strands-agents
+strands-agents-tools
+
+# MCP protocol
+mcp>=1.9.0
+
+# HTTP requests
 requests
+
+# Python package installer
+uv
