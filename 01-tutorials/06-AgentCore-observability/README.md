@@ -67,9 +67,6 @@ For more details on AgentCore Observability, please refer to [this](https://aws.
 │   ├── Langfuse/
 │   │   ├── requirements.txt
 │   │   └── runtime_with_strands_and_langfuse.ipynb
-│   ├── OpenLIT/
-│   │   ├── requirements.txt
-│   │   └── runtime_with_strands_and_openlit.ipynb
 │   ├── images/
 │   └── README.md
 ├── 05-Lambda-AgentCore-invocation/
@@ -119,7 +116,6 @@ Examples of using agents hosted on Amazon Bedrock AgentCore Runtime with third-p
 - **Datadog**: Unified observability platform for monitoring, APM, logs, and traces
 - **Instana**: Real-Time APM and Observability Platform
 - **Langfuse**: LLM observability and analytics
-- **OpenLIT**: Open-source observability platform for LLM applications
 
 ### 5. Lambda AgentCore Invocation (05-Lambda-AgentCore-invocation)
 
