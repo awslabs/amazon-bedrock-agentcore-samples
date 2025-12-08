@@ -68,3 +68,5 @@
 - Bhuvan Annamreddi
 - Sparsh Wadhwa (SparshWadhwa)
 - Lana Zhang
+- Bharathi Srinivasan
+
