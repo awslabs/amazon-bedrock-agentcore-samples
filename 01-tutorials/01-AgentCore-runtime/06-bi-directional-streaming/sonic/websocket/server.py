@@ -377,13 +377,13 @@ async def websocket_endpoint(websocket: WebSocket):
                     logger.error(f"Invalid JSON received from WebSocket: {e}")
                     try:
                         await websocket.send_json({"type": "error", "message": "Invalid JSON format"})
-                    except Exception as e:
+                    except Exception:
                         pass
                 except Exception as exp:
                     logger.error(f"Error processing WebSocket message: {exp}", exc_info=True)
                     try:
                         await websocket.send_json({"type": "error", "message": str(exp)})
-                    except Exception as e:
+                    except Exception:
                         pass
                         
             except WebSocketDisconnect as e:
@@ -400,7 +400,7 @@ async def websocket_endpoint(websocket: WebSocket):
         logger.error(f"WebSocket handler error: {e}", exc_info=True)
         try:
             await websocket.send_json({"type": "error", "message": "WebSocket handler error"})
-        except Exception as e:
+        except Exception:
             pass
     finally:
         # Clean up resources
