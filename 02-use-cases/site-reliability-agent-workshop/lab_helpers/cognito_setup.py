@@ -590,8 +590,8 @@ def setup_cognito_complete() -> Dict[str, Any]:
     print("\n" + "="*70)
     print("✅ COGNITO SETUP COMPLETE")
     print("="*70)
-    print(f"\nAll configuration stored in SSM Parameter Store under /aiml301/cognito/*")
-    print(f"Reference copy saved to cognito_config.json\n")
+    print("\nAll configuration stored in SSM Parameter Store under /aiml301/cognito/*")
+    print("Reference copy saved to cognito_config.json\n")
 
     return cognito_config
 
@@ -625,14 +625,14 @@ def cleanup_cognito(user_pool_id: Optional[str] = None) -> None:
 
             if domain:
                 print(f"  Found domain: {domain}")
-                print(f"  Deleting domain...")
+                print("  Deleting domain...")
                 setup.cognito.delete_user_pool_domain(
                     Domain=domain,
                     UserPoolId=user_pool_id
                 )
                 print(f"  ✅ Domain deleted: {domain}")
             else:
-                print(f"  No domain configured")
+                print("  No domain configured")
         except Exception as e:
             print(f"  ⚠️  Could not check/delete domain: {e}")
 
@@ -653,7 +653,7 @@ def cleanup_cognito(user_pool_id: Optional[str] = None) -> None:
             try:
                 delete_parameter(param_path)
                 deleted_count += 1
-            except:
+            except Exception:
                 pass  # Parameter might not exist
 
         print(f"  ✅ Deleted {deleted_count} SSM parameters")

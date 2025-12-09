@@ -33,8 +33,6 @@ import time
 import shutil
 import os
 import logging
-from typing import Optional
-import botocore
 from lab_helpers.constants import PARAMETER_PATHS
 from lab_helpers.lab_03.configure_logging import cleanup_runtime_logging
 from botocore.exceptions import ClientError
