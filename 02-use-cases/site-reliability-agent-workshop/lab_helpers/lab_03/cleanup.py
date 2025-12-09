@@ -175,15 +175,15 @@ def cleanup_lab_03(region_name: str = "us-west-2", verbose: bool = True) -> None
                         SecretId=secret_name,
                         ForceDeleteWithoutRecovery=True
                     )
-                    print(f"  ✓ Secret deleted: {secret_name}")
+                    print("  ✓ Secret deleted!")
                 except Exception as e:
                     error_str = str(e)
                     if "ResourceNotFoundException" not in error_str:
                         # Check if it's owned by bedrock-agentcore-identity (expected)
                         if "bedrock-agentcore-identity" in error_str:
-                            print(f"  ℹ Secret {secret_name} is service-owned - will be auto-deleted when provider is removed")
+                            print("  ℹ Secret is service-owned - will be auto-deleted when provider is removed")
                         else:
-                            print(f"  ⚠ Failed to delete secret {secret_name}: {error_str}")
+                            print(f"  ⚠ Failed to delete secret: {error_str}")
         else:
             print("  ✓ No OAuth2 m2m credentials secrets found")
 

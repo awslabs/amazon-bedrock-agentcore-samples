@@ -43,7 +43,6 @@ def put_parameter(key, value, description="", region_name=None, overwrite=True):
         # DEBUG: Log parameter write attempt
         effective_region = region_name if region_name else DEFAULT_AWS_REGION
         print(f"🔍 DEBUG: put_parameter() called")
-        print(f"   Key: {key}")
         if is_sensitive:
             print(f"   Value: ****")
         else:
@@ -73,11 +72,11 @@ def put_parameter(key, value, description="", region_name=None, overwrite=True):
         if parameter_exists:
             if str(value) == existing_value:
                 print(f"   → Action: SKIP (same value)")
-                print(f"✓ Parameter already exists with same value: {key}")
+                print("✓ Parameter already exists with same value.")
                 return existing['Parameter']['Version']
             elif not overwrite:
                 print(f"   → Action: SKIP (overwrite=False)")
-                print(f"⚠ Parameter exists but overwrite=False: {key}")
+                print("⚠ Parameter exists but overwrite=False")
                 return existing['Parameter']['Version']
             else:
                 action = "UPDATED"
@@ -98,10 +97,9 @@ def put_parameter(key, value, description="", region_name=None, overwrite=True):
         version = response['Version']
         print(f"   ✅ put_parameter() succeeded")
         print(f"   Version: {version}")
-        print(f"✓ Parameter {action}: {key}")
         return version
     except Exception as e:
-        print(f"❌ Error storing parameter {key}: {e}")
+        print(f"❌ Error storing parameter: {e}")
         import traceback
         print(f"Traceback:")
         traceback.print_exc()
@@ -126,11 +124,11 @@ def get_parameter(key, default=None, region_name=None):
         return response['Parameter']['Value']
     except ssm.exceptions.ParameterNotFound:
         if default is not None:
-            print(f"⚠ Parameter not found: {key}, using default")
+            print("⚠ Parameter not found, using default")
             return default
         else:
             effective_region = region_name if region_name else DEFAULT_AWS_REGION
-            print(f"❌ Parameter not found: {key}")
+            print("❌ Parameter not found.")
             print(f"   Region: {effective_region}")
             print(f"   Check:")
             print(f"     • Is this parameter stored in Parameter Store?")
@@ -139,7 +137,7 @@ def get_parameter(key, default=None, region_name=None):
             raise
     except Exception as e:
         effective_region = region_name if region_name else DEFAULT_AWS_REGION
-        print(f"❌ Error retrieving parameter {key}: {e}")
+        print(f"❌ Error retrieving parameter: {e}")
         print(f"   Region: {effective_region}")
         raise
 

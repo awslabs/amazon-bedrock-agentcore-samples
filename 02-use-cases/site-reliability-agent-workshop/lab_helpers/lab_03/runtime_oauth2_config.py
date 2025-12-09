@@ -112,14 +112,8 @@ class RuntimeOAuth2Configuration:
             }
         }
 
-        print("Runtime OAuth2 Validation Configuration:")
-        print(f"  Inbound Auth Type: {runtime_oauth2_config['inbound_auth_type']}")
-        print(f"  Issuer: {runtime_oauth2_config['oauth2_config']['issuer']}")
-        print(f"  JWKS URI: {runtime_oauth2_config['oauth2_config']['jwks_uri']}")
-        print(f"  Required Scopes: {', '.join(runtime_oauth2_config['scope_config']['required_scopes'])}")
-        print(f"  Validate Signature: {runtime_oauth2_config['token_validation']['validate_signature']}")
-        print(f"  Validate Expiration: {runtime_oauth2_config['token_validation']['validate_expiration']}\n")
-
+        print("Runtime OAuth2 Validation Configuration built")
+        
         # Save configuration to SSM
         put_parameter(
             f"/{self.prefix}/lab-03/runtime-oauth2-config",

@@ -635,10 +635,8 @@ def display_configuration(config: Dict[str, Any]):
 
     print(f"\n{Colors.BOLD}API Keys:{Colors.END}")
     print(f"  OpenAI API Key: {'*' * 20} (configured)")
-    print(f"  OpenAI Model: {config['api_keys']['openai_model']}")
     print(f"  Tavily API Key: {'*' * 20} (configured)")
     print(f"  Google API Key: {'*' * 20} (configured)")
-    print(f"  Google Model: {config['api_keys']['google_model']}")
 
     print()
 

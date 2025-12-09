@@ -295,7 +295,7 @@ class CognitoSetup:
                 Username=username,
                 GroupName=group_name
             )
-            print(f"✅ User {username} added to group '{group_name}'")
+            print("✅ User added to group!")
         except Exception as e:
             print(f"❌ Error adding user to group: {e}")
             raise
@@ -591,23 +591,6 @@ def setup_cognito_complete() -> Dict[str, Any]:
     print("\n" + "="*70)
     print("✅ COGNITO SETUP COMPLETE")
     print("="*70)
-    print(f"\nKey Configuration:")
-    print(f"  User Pool ID: {cognito_config['user_pool_id']}")
-    print(f"  Domain: {cognito_config['domain']}")
-    print(f"  Token Endpoint: {cognito_config['token_endpoint']}")
-    print(f"\n  User Auth Client:")
-    print(f"    • Client ID: {cognito_config['user_auth_client']['client_id']}")
-    print(f"    • OAuth Flows: {', '.join(cognito_config['user_auth_client']['oauth_flows'])}")
-    print(f"    • OAuth Scopes: openid, profile, email, custom scopes")
-    print(f"\n  M2M Client:")
-    print(f"    • Client ID: {cognito_config['m2m_client']['client_id']}")
-    print(f"    • Client Secret: ****")
-    print(f"\n  Groups Created:")
-    print(f"    • sre (Precedence: 10) - Tools: generate_remediation_plan")
-    print(f"    • approvers (Precedence: 5) - Tools: execute_remediation_step, validate_remediation_environment")
-    print(f"\n  Users Created:")
-    print(f"    • Test User (SRE): **** (password: ****)")
-    print(f"    • Approver User: **** (password: ****)")
     print(f"\nAll configuration stored in SSM Parameter Store under /aiml301/cognito/*")
     print(f"Reference copy saved to cognito_config.json\n")
 

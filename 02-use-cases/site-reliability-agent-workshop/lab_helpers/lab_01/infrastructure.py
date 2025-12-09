@@ -95,10 +95,9 @@ def verify_dynamodb_tables(resources: Dict[str, str], region_name: str, profile_
             try:
                 response = dynamodb.describe_table(TableName=table_name)
                 status = response['Table']['TableStatus']
-                billing_mode = response['Table']['BillingModeSummary']['BillingMode']
 
                 if status == 'ACTIVE':
-                    print(f"  ✅ Table {table_name}: {status} ({billing_mode})")
+                    print(f"  ✅ Table {table_name}: {status} (billing mode set)")
                 else:
                     print(f"  ⚠️  Table {table_name}: {status}")
                     all_active = False
