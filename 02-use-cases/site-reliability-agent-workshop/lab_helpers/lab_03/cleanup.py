@@ -134,7 +134,7 @@ def cleanup_lab_03(region_name: str = "us-west-2", verbose: bool = True) -> None
                     error_str = str(e)
                     # Check if it's already deleted or doesn't exist
                     if "ResourceNotFoundException" in error_str or "does not exist" in error_str.lower():
-                        print(f"  ✓ Provider already deleted or not found (ok)")
+                        print("  ✓ Provider already deleted or not found (ok)")
                         provider_deleted = True
                     else:
                         print(f"  ⚠ Failed to delete provider {provider_name}: {error_str}")
@@ -142,7 +142,6 @@ def cleanup_lab_03(region_name: str = "us-west-2", verbose: bool = True) -> None
         except ssm_client.exceptions.ParameterNotFound:
             if verbose:
                 print("  ℹ Provider ARN not found in Parameter Store (ok)")
-            provider_deleted = True
 
     except Exception as e:
         print(f"  ⚠ OAuth2 cleanup error: {e}")
@@ -272,7 +271,6 @@ def cleanup_lab_03(region_name: str = "us-west-2", verbose: bool = True) -> None
         runtime_deleted = False
         runtime_id_for_logging = None
         prefixes = ["aiml301_sre_agentcore", "aiml301-sre-agentcore", "aiml301", "lab-03"]
-        runtime_name_patterns = ["aiml301_sre_agentcore_remediation_runtime", "remediation_runtime", "remediation-runtime"]
 
         # First, try to get runtime info from Parameter Store
         for prefix in prefixes:
@@ -307,19 +305,19 @@ def cleanup_lab_03(region_name: str = "us-west-2", verbose: bool = True) -> None
                                 runtime_id = param_value.strip()
 
                         if runtime_id:
-                            print(f"  Found runtime ID: ****")
+                            print("  Found runtime ID: ****")
                             runtime_id_for_logging = runtime_id
 
                             # Clean up CloudWatch Logs Delivery BEFORE deleting runtime
                             try:
-                                print(f"  Cleaning up CloudWatch Logs Delivery for runtime...")
+                                print("  Cleaning up CloudWatch Logs Delivery for runtime...")
                                 cleanup_runtime_logging(runtime_id, region=region_name)
                             except Exception as e:
                                 print(f"  ⚠ CloudWatch Logs Delivery cleanup warning: {e}")
 
                             try:
                                 agentcore_client.delete_agent_runtime(agentRuntimeId=runtime_id)
-                                print(f"  ✓ Runtime deletion initiated: ****")
+                                print("  ✓ Runtime deletion initiated: ****")
 
                                 # Wait for Runtime to be fully deleted
                                 print("  ⏳ Waiting for Runtime deletion to complete...")
@@ -337,12 +335,12 @@ def cleanup_lab_03(region_name: str = "us-west-2", verbose: bool = True) -> None
                                         if current_status == 'DELETING':
                                             continue
                                     except agentcore_client.exceptions.ResourceNotFoundException:
-                                        print(f"  ✓ Runtime fully deleted: ****")
+                                        print("  ✓ Runtime fully deleted: ****")
                                         runtime_deleted = True
                                         break
                                     except Exception as e:
                                         if "not found" in str(e).lower():
-                                            print(f"  ✓ Runtime fully deleted: ****")
+                                            print("  ✓ Runtime fully deleted: ****")
                                             runtime_deleted = True
                                             break
                                         else:
@@ -383,19 +381,18 @@ def cleanup_lab_03(region_name: str = "us-west-2", verbose: bool = True) -> None
                     runtime_name = rt['agentRuntimeName'].lower()
                     if 'remediation' in runtime_name or 'aiml301' in runtime_name:
                         runtime_id = rt['agentRuntimeId']
-                        runtime_id_for_logging = runtime_id
                         print(f"  Found runtime: {rt['agentRuntimeName']}")
 
                         # Clean up CloudWatch Logs Delivery BEFORE deleting runtime
                         try:
-                            print(f"  Cleaning up CloudWatch Logs Delivery for runtime...")
+                            print("  Cleaning up CloudWatch Logs Delivery for runtime...")
                             cleanup_runtime_logging(runtime_id, region=region_name)
                         except Exception as e:
                             print(f"  ⚠ CloudWatch Logs Delivery cleanup warning: {e}")
 
                         try:
                             agentcore_client.delete_agent_runtime(agentRuntimeId=runtime_id)
-                            print(f"  ✓ Runtime deletion initiated: ****")
+                            print("  ✓ Runtime deletion initiated: ****")
 
                             # Wait for Runtime to be fully deleted
                             print("  ⏳ Waiting for Runtime deletion to complete...")
@@ -418,7 +415,7 @@ def cleanup_lab_03(region_name: str = "us-west-2", verbose: bool = True) -> None
                                     break
                                 except Exception as e:
                                     if "not found" in str(e).lower():
-                                        print(f"  ✓ Runtime fully deleted: ****")
+                                        print("  ✓ Runtime fully deleted: ****")
                                         runtime_deleted = True
                                         break
                                     else:

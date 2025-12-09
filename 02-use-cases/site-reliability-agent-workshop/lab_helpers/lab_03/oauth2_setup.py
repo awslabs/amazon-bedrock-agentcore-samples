@@ -63,9 +63,9 @@ class OAuth2CredentialProviderSetup:
             print("   Ensure Lab-01 Cognito setup has been completed first")
             raise
 
-        print(f"✅ Retrieved M2M credentials from Cognito")
+        print("✅ Retrieved M2M credentials from Cognito")
         print(f"   - M2M Client ID: {m2m_client_id}")
-        print(f"   - M2M Client Secret: ****")
+        print("   - M2M Client Secret: ****")
         print(f"   - User Pool ID: {user_pool_id}")
 
         # Build discovery URL for OAuth2 discovery endpoint
@@ -100,7 +100,7 @@ class OAuth2CredentialProviderSetup:
             provider_arn = response['oAuth2CredentialProviderArn']
             secret_arn = response.get('secretArn', '')
 
-            print(f"✅ OAuth2 credential provider created")
+            print("✅ OAuth2 credential provider created")
 
             # Store configuration
             oauth2_config = {
@@ -127,7 +127,7 @@ class OAuth2CredentialProviderSetup:
                 json.dumps(oauth2_config)
             )
 
-            print(f"\n✅ OAuth2 configuration saved to SSM Parameter Store")
+            print("\n✅ OAuth2 configuration saved to SSM Parameter Store")
 
             return oauth2_config
 
@@ -189,7 +189,7 @@ class OAuth2CredentialProviderSetup:
 
         target_name = f"{self.prefix}-runtime-m2m-target"
 
-        print(f"Creating Gateway target with OAuth2 M2M authentication:")
+        print("Creating Gateway target with OAuth2 M2M authentication:")
         print(f"  - Gateway ID: {gateway_id}")
         print(f"  - Runtime ARN: {runtime_arn}")
         print(f"  - Target Name: {target_name}")
