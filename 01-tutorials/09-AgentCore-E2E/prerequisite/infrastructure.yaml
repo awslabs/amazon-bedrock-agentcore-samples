@@ -537,6 +537,7 @@ Resources:
                   - logs:CreateLogGroup
                   - logs:CreateLogStream
                   - logs:PutLogEvents
+                  - logs:PutDeliverySource
                 Resource: arn:aws:logs:*:*:*
   # Custom resource to trigger Lambda function
   PopulateData:
