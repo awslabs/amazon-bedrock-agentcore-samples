@@ -135,7 +135,6 @@ def cleanup_lab_03(region_name: str = "us-west-2", verbose: bool = True) -> None
                     # Check if it's already deleted or doesn't exist
                     if "ResourceNotFoundException" in error_str or "does not exist" in error_str.lower():
                         print("  ✓ Provider already deleted or not found (ok)")
-                        provider_deleted = True
                     else:
                         print(f"  ⚠ Failed to delete provider {provider_name}: {error_str}")
 
@@ -306,7 +305,6 @@ def cleanup_lab_03(region_name: str = "us-west-2", verbose: bool = True) -> None
 
                         if runtime_id:
                             print("  Found runtime ID: ****")
-                            runtime_id_for_logging = runtime_id
 
                             # Clean up CloudWatch Logs Delivery BEFORE deleting runtime
                             try:
@@ -410,7 +408,7 @@ def cleanup_lab_03(region_name: str = "us-west-2", verbose: bool = True) -> None
                                     if current_status == 'DELETING':
                                         continue
                                 except agentcore_client.exceptions.ResourceNotFoundException:
-                                    print(f"  ✓ Runtime fully deleted: ****")
+                                    print("  ✓ Runtime fully deleted: ****")
                                     runtime_deleted = True
                                     break
                                 except Exception as e:
@@ -467,7 +465,7 @@ def cleanup_lab_03(region_name: str = "us-west-2", verbose: bool = True) -> None
                 print(f"  ✓ Code interpreter deleted: {interpreter_id}")
             except Exception as e:
                 if "ResourceNotFoundException" in str(e) or "not found" in str(e).lower():
-                    print(f"  ✓ Code interpreter already deleted (ok)")
+                    print("  ✓ Code interpreter already deleted (ok)")
                 else:
                     print(f"  ⚠ Failed to delete code interpreter: {e}")
         else:
@@ -573,7 +571,7 @@ def cleanup_lab_03(region_name: str = "us-west-2", verbose: bool = True) -> None
             if '__pycache__' in pycache and os.path.isdir(pycache):
                 try:
                     shutil.rmtree(pycache)
-                    print(f"  ✓ Deleted: __pycache__")
+                    print("  ✓ Deleted: __pycache__")
                 except Exception as e:
                     print(f"  ⚠ Failed to delete __pycache__: {e}")
 
