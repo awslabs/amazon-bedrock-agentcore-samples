@@ -104,7 +104,7 @@ class CognitoSetup:
         print(f"Creating Resource Server: {resource_server_id}...")
 
         try:
-            response = self.cognito.create_resource_server(
+            self.cognito.create_resource_server(
                 UserPoolId=user_pool_id,
                 Identifier=resource_server_id,
                 Name=resource_server_name,
@@ -210,8 +210,7 @@ class CognitoSetup:
             client_secret = response['UserPoolClient']['ClientSecret']
 
             print(f"✅ M2M Client created: {client_id}")
-            print(f"   ⚠️  Client secret: ****")
-            print(f"   ⚠️  Store client secret securely (AWS Secrets Manager recommended)")
+            print("   ⚠️  Store client secret securely (AWS Secrets Manager recommended)")
 
             return client_id, client_secret
 
@@ -232,7 +231,7 @@ class CognitoSetup:
         print(f"Creating User Pool Domain: {domain_prefix}...")
 
         try:
-            response = self.cognito.create_user_pool_domain(
+            self.cognito.create_user_pool_domain(
                 Domain=domain_prefix,
                 UserPoolId=user_pool_id
             )
@@ -383,7 +382,7 @@ class CognitoSetup:
         Update User Auth Client to support OAuth flows and custom scopes.
         This enables ID tokens with rich claims (email, groups, etc.)
         """
-        print(f"Updating User Auth Client for OAuth support...")
+        print("Updating User Auth Client for OAuth support...")
 
         try:
             self.cognito.update_user_pool_client(
@@ -426,10 +425,10 @@ class CognitoSetup:
                 PreventUserExistenceErrors='ENABLED'
             )
 
-            print(f"✅ User Auth Client updated with OAuth support")
-            print(f"   • OAuth flows: code, implicit")
-            print(f"   • Scopes: openid, profile, email, custom scopes")
-            print(f"   • ID Token will include email and cognito:groups claims")
+            print("✅ User Auth Client updated with OAuth support")
+            print("   • OAuth flows: code, implicit")
+            print("   • Scopes: openid, profile, email, custom scopes")
+            print("   • ID Token will include email and cognito:groups claims")
 
         except Exception as e:
             print(f"❌ Error updating User Auth Client: {e}")
