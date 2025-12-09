@@ -1,7 +1,6 @@
 import asyncio
 import json
 import logging
-import warnings
 import os
 import uvicorn
 import requests
@@ -138,7 +137,7 @@ async def refresh_credentials_from_imds():
                 os.environ["AWS_SECRET_ACCESS_KEY"] = creds["SecretAccessKey"]
                 os.environ["AWS_SESSION_TOKEN"] = creds["Token"]
                 
-                logger.info(f"✅ Credentials refreshed from IMD.")
+                logger.info("✅ Credentials refreshed from IMD.")
                 
                 # Parse expiration time and calculate refresh interval
                 # Refresh 5 minutes before expiration
@@ -207,7 +206,7 @@ async def startup_event():
             os.environ["AWS_SECRET_ACCESS_KEY"] = creds["SecretAccessKey"]
             os.environ["AWS_SESSION_TOKEN"] = creds["Token"]
             
-            logger.info(f"✅ Initial credentials loaded from IMDS.")
+            logger.info("✅ Initial credentials loaded from IMDS.")
             
             # Start background task to refresh credentials
             credential_refresh_task = asyncio.create_task(refresh_credentials_from_imds())
@@ -282,7 +281,7 @@ async def websocket_endpoint(websocket: WebSocket):
         while True:
             try:
                 message = await websocket.receive_text()
-                logger.debug(f"Received message from client")
+                logger.debug("Received message from client")
                 
                 try:
                     data = json.loads(message)
@@ -378,13 +377,13 @@ async def websocket_endpoint(websocket: WebSocket):
                     logger.error(f"Invalid JSON received from WebSocket: {e}")
                     try:
                         await websocket.send_json({"type": "error", "message": "Invalid JSON format"})
-                    except:
+                    except Exception as e:
                         pass
                 except Exception as exp:
                     logger.error(f"Error processing WebSocket message: {exp}", exc_info=True)
                     try:
                         await websocket.send_json({"type": "error", "message": str(exp)})
-                    except:
+                    except Exception as e:
                         pass
                         
             except WebSocketDisconnect as e:
@@ -401,7 +400,7 @@ async def websocket_endpoint(websocket: WebSocket):
         logger.error(f"WebSocket handler error: {e}", exc_info=True)
         try:
             await websocket.send_json({"type": "error", "message": "WebSocket handler error"})
-        except:
+        except Exception as e:
             pass
     finally:
         # Clean up resources

@@ -4,7 +4,6 @@ import websockets
 import sys
 import json
 import argparse
-import pdb
 import logging
 import os
 
