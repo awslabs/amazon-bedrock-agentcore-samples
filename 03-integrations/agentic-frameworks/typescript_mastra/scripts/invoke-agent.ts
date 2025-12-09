@@ -36,7 +36,7 @@ async function getAgentRuntimeArn(agentName: string, region: string): Promise<st
     console.log(`✅ Retrieved ARN: ${response.Parameter.Value}`);
     return response.Parameter.Value;
   } catch (error) {
-    console.error(`❌ Failed to retrieve parameter ${parameterName}:`, error);
+    console.error('❌ Failed to retrieve parameter:', parameterName, error);
     throw error;
   }
 }
