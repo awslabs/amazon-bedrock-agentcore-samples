@@ -11,7 +11,26 @@ import uvicorn
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-runtime_url = os.getenv("AGENTCORE_RUNTIME_URL", "http://127.0.0.1:9000/")
+ssm = boto3.client("ssm")
+agentcore_client = boto3.client("bedrock-agentcore")
+
+# Configuration with validation
+MODEL_ID = os.getenv("MODEL_ID", "global.anthropic.claude-haiku-4-5-20251001-v1:0")
+
+MEMORY_ID = os.getenv("MEMORY_ID")
+if not MEMORY_ID:
+    raise RuntimeError("Missing MEMORY_ID environment variable")
+
+GATEWAY_PROVIDER_NAME = os.getenv("GATEWAY_PROVIDER_NAME")
+if not GATEWAY_PROVIDER_NAME:
+    raise RuntimeError("Missing GATEWAY_PROVIDER_NAME environment variable")
+
+AWS_REGION = os.getenv("MCP_REGION")
+if not AWS_REGION:
+    raise RuntimeError("Missing MCP_REGION environment variable")
+
+# Use the complete runtime URL from environment variable, fallback to local
+runtime_url = os.environ.get("AGENTCORE_RUNTIME_URL", "http://127.0.0.1:9000/")
 host, port = "0.0.0.0", 9000
 
 agent_card = AgentCard(

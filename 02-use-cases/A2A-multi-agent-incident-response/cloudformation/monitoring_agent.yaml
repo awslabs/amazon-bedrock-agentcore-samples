@@ -5,7 +5,7 @@ Parameters:
   BedrockModelId:
     Type: String
     Description: Amazon Bedrock model id
-    Default: 'global.anthropic.claude-sonnet-4-20250514-v1:0'
+    Default: 'global.anthropic.claude-haiku-4-5-20251001-v1:0'
 
   GitHubURL:
     Type: String
@@ -864,7 +864,7 @@ Resources:
 
                     Format each extracted fact as a clear, concise statement that could stand alone as a reference point in a monitoring dashboard.
                     Assistant:
-                  ModelId: "us.anthropic.claude-3-5-sonnet-20241022-v2:0"
+                  ModelId: "global.anthropic.claude-haiku-4-5-20251001-v1:0"
                 Consolidation:
                   AppendToPrompt: |
                     Human: You are a monitoring knowledge manager responsible for maintaining a coherent database of AWS infrastructure and application metrics.
@@ -888,7 +888,7 @@ Resources:
 
                     The monitoring knowledge base must maintain both precision and temporal context to support effective incident analysis and pattern recognition.
                     Assistant:
-                  ModelId: "us.anthropic.claude-3-5-sonnet-20241022-v2:0"
+                  ModelId: "global.anthropic.claude-haiku-4-5-20251001-v1:0"
         - SemanticMemoryStrategy: 
             Name: SemanticMemory
             Namespaces:

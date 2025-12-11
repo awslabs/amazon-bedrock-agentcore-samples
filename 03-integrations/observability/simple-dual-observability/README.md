@@ -2,22 +2,22 @@
 
 ## Overview
 
-This tutorial demonstrates Amazon Bedrock AgentCore's automatic OpenTelemetry instrumentation with flexible observability options:
+This tutorial demonstrates two observability approaches for Amazon Bedrock AgentCore agents:
 
-1. **CloudWatch Observability (Default)**: Always enabled automatically with zero configuration
-2. **Braintrust Observability (Optional)**: Add AI-focused observability with LLM metrics and cost tracking
+1. **CloudWatch Observability (Default & Always Active)**: AgentCore Runtime automatically provides vended traces to CloudWatch Logs with zero configuration
+2. **Braintrust Observability (Optional)**: Add AI-focused observability by exporting OpenTelemetry traces from the agent to Braintrust platform
 
-The tutorial shows how AgentCore Runtime provides zero-code observability for agents deployed to the Runtime, with the option to export traces to Braintrust (an AI-focused observability platform) in addition to CloudWatch using standard OTEL format.
+The tutorial shows how AgentCore Runtime provides automatic observability via CloudWatch, with the optional ability to add AI-focused monitoring through Braintrust by exporting OpenTelemetry traces from your Strands agent. Note: CloudWatch traces are provided by AgentCore Runtime infrastructure, while Braintrust receives OTEL traces directly from your agent code.
 
 ### Use case details
 | Information         | Details                                                                                                                             |
 |---------------------|-------------------------------------------------------------------------------------------------------------------------------------|
 | Use case type       | observability, monitoring                                                                                                           |
 | Agent type          | Single agent with tools                                                                                                             |
-| Use case components | AgentCore Runtime, Strands Agent, built-in tools, OTEL dual export                                                               |
+| Use case components | AgentCore Runtime, Strands Agent, built-in tools, dual-platform observability (CloudWatch + Braintrust)                          |
 | Use case vertical   | DevOps, Platform Engineering, AI Operations                                                                                        |
 | Example complexity  | Intermediate                                                                                                                        |
-| SDK used            | Amazon Bedrock AgentCore Runtime, boto3, OpenTelemetry                                                                             |
+| SDK used            | Amazon Bedrock AgentCore Runtime, boto3, OpenTelemetry, Strands                                                                   |
 
 ## Assets
 
@@ -30,51 +30,53 @@ The tutorial shows how AgentCore Runtime provides zero-code observability for ag
 ### Use case Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│  TUTORIAL ARCHITECTURE                                          │
-│                                                                 │
-│  Your Laptop                                                    │
-│    ↓ (runs simple_observability.py or test_agent.sh)          │
-│  Python CLI Script (boto3 client)                              │
-│    ↓ (API call: invoke_agent)                                  │
-│  AgentCore Runtime (Managed Service)                           │
-│    ↓ (automatic OTEL instrumentation)                          │
-│  Strands Agent (deployed to Runtime)                           │
-│    ├─ Weather Tool (built-in)                                  │
-│    ├─ Time Tool (built-in)                                     │
-│    └─ Calculator Tool (built-in)                               │
-│    ↓ (traces exported automatically)                           │
-│                                                                 │
-│  ┌──────────────────┬─────────────────┐                        │
-│  │ CloudWatch Logs  │  Braintrust     │                        │
-│  │ + X-Ray Traces   │  (AI platform)  │                        │
-│  └──────────────────┴─────────────────┘                        │
-│                                                                 │
-│  Key: Zero code changes for observability                      │
-│       Vendor-neutral OTEL format                               │
-│       Fully managed agent hosting                              │
-└─────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────┐
+│  OBSERVABILITY ARCHITECTURE                                         │
+│                                                                     │
+│  Your Laptop                                                        │
+│    ↓ (runs simple_observability.py or test_agent.sh)              │
+│  Python CLI Script (boto3 client)                                  │
+│    ↓ (API call: invoke_agent)                                      │
+│  AgentCore Runtime (Managed Service)                               │
+│    ├─ Automatic CloudWatch Instrumentation (AgentCore managed)    │
+│    │  └─ Vended traces to CloudWatch Logs                         │
+│    ├─ Strands Agent (deployed to Runtime)                         │
+│    │  ├─ Weather Tool (built-in)                                  │
+│    │  ├─ Time Tool (built-in)                                     │
+│    │  └─ Calculator Tool (built-in)                               │
+│    │  └─ OTEL Exporter (optional, if BRAINTRUST_API_KEY is set)  │
+│    │                                                               │
+│  ┌──────────────────────────┬────────────────────────────────────┐
+│  │ CloudWatch Logs          │ Braintrust (Optional)              │
+│  │ (from AgentCore Runtime) │ (from Strands OTEL export)         │
+│  │ Always enabled           │ Only if BRAINTRUST_API_KEY is set  │
+│  └──────────────────────────┴────────────────────────────────────┘
+│                                                                     │
+│  Key: CloudWatch = automatic infrastructure-level observability    │
+│       Braintrust = optional agent-level OTEL export (if enabled)   │
+│       Different trace sources, complementary platforms             │
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
 ### Use case key Features
 
-- **Automatic OTEL Instrumentation**: AgentCore Runtime automatically generates OpenTelemetry traces with zero code changes
-- **Dual Platform Export**: Simultaneous trace export to CloudWatch Logs/X-Ray and Braintrust using vendor-neutral OTEL format
-- **Fully Managed**: AgentCore Runtime handles all infrastructure management and automatic instrumentation
+- **Automatic CloudWatch Observability**: AgentCore Runtime automatically provides vended traces to CloudWatch Logs with zero code changes
+- **Optional Braintrust Export**: Strands agent can optionally export OpenTelemetry traces directly to Braintrust platform for AI-focused monitoring
+- **Dual-Platform Capability**: View the same agent execution in CloudWatch (AWS-native) and optionally in Braintrust (AI-focused) using different trace sources
+- **Fully Managed Runtime**: AgentCore Runtime handles all infrastructure management and automatic CloudWatch instrumentation
 - **Built-in Tools**: Strands agent with weather, time, and calculator tools for demonstration
-- **Comprehensive Tracing**: Captures agent invocation, model calls, tool selection, and execution spans
-- **Platform Comparison**: Demonstrates AWS-native vs AI-focused observability capabilities
+- **Comprehensive Tracing**: Captures agent invocation, model calls, tool selection, and execution spans in both platforms
+- **Platform Comparison**: Demonstrates AWS-native vs AI-focused observability strengths and trade-offs
 
 ## Detailed Documentation
 
 For comprehensive information about this observability tutorial, please refer to the following detailed documentation:
 
 ### Observability Guides
-- **[Observability Architecture](docs/observability-architecture.md)** - OTEL architecture, log types, trace correlation, and platform design
-- **[Observability Options](docs/observability-options.md)** - Comparison of three deployment approaches and what each platform shows
+- **[Observability Options](docs/observability-options.md)** - Comparison of three deployment approaches, actual CloudWatch logs, and what each platform captures
+- **[Design & Architecture](docs/design.md)** - System architecture, component interactions, and OTEL flow diagrams
 
 ### Setup and Configuration
-- **[System Design](docs/design.md)** - Architecture overview, component interactions, and OTEL flow diagrams
 - **[Braintrust Setup](docs/braintrust-setup.md)** - Braintrust account creation, API key management, and dashboard configuration
 
 ### Demonstrations and Development
@@ -101,7 +103,7 @@ Watch these short videos to see the tutorial in action:
 | Docker | Required for building agent containers. Install: https://docs.docker.com/get-docker/ |
 | AWS Account | Active AWS account with Bedrock access enabled in your region |
 | AWS CLI | Configured with credentials. Verify: `aws sts get-caller-identity` |
-| IAM Permissions | Required permissions for AgentCore Runtime, CloudWatch, and X-Ray (see below) |
+| IAM Permissions | Required permissions for AgentCore Runtime and CloudWatch (see below) |
 | Braintrust Account (Optional) | Optional free tier account for AI-focused observability. Sign up at https://www.braintrust.dev/signup. See [Braintrust Setup](docs/braintrust-setup.md) for detailed configuration. |
 | Amazon Bedrock Access | Access to Claude 3.5 Haiku model in your region |
 
@@ -152,8 +154,7 @@ aws iam put-role-policy \
    - `bedrock:InvokeModel`
 
 7. **CloudWatch** (for observability):
-   - `cloudwatch:PutMetricData`, `xray:PutTraceSegments`
-   - `logs:CreateLogGroup`, `logs:CreateLogStream`, `logs:PutLogEvents`
+   - `cloudwatch:PutMetricData`, `logs:CreateLogGroup`, `logs:CreateLogStream`, `logs:PutLogEvents`
 
 See [`docs/iam-policy-deployment.json`](docs/iam-policy-deployment.json) for the complete policy.
 
@@ -177,6 +178,7 @@ cp .env.example .env
 | Variable | Required | Purpose |
 |----------|----------|---------|
 | `AWS_REGION` | No | AWS region for deployment (default: `us-east-1`) |
+| `AWS_PROFILE` | No | AWS credential profile (default: `default`). Use if you have multiple profiles configured locally |
 | `BRAINTRUST_API_KEY` | Conditional | Braintrust API key for dual observability (optional) |
 | `BRAINTRUST_PROJECT_ID` | Conditional | Braintrust project ID for dual observability (optional) |
 | `AGENTCORE_AGENT_ID` | No | Agent ID (auto-saved to `.deployment_metadata.json` after deployment) |
@@ -186,6 +188,108 @@ cp .env.example .env
 - `.env.example` is committed as a template for reference
 - Braintrust credentials are optional - omit them to use CloudWatch observability only
 - For security, never commit actual credentials to the repository
+
+### AWS Credential Configuration
+
+If running from your local machine (not from an AWS compute instance like EC2), configure AWS credentials using one of these methods:
+
+**Option 1: Using AWS CLI Configuration (Recommended)**
+
+Configure credentials using AWS CLI with named profiles:
+
+```bash
+# Set up a new profile (interactive)
+aws configure --profile dev-profile
+
+# This will prompt for:
+# - AWS Access Key ID
+# - AWS Secret Access Key
+# - Default region
+# - Default output format
+
+# Then specify the profile in .env or when running commands
+export AWS_PROFILE=dev-profile
+scripts/deploy_agent.sh
+```
+
+**Option 2: Using Environment Variables**
+
+Set credentials directly as environment variables:
+
+```bash
+export AWS_ACCESS_KEY_ID=your-access-key
+export AWS_SECRET_ACCESS_KEY=your-secret-key
+export AWS_REGION=us-east-1
+scripts/deploy_agent.sh
+```
+
+**Option 3: Using IAM Role (For EC2 instances)**
+
+If running on an EC2 instance or other AWS compute service, an IAM role is automatically available. No manual credential configuration is needed:
+
+```bash
+# Simply run without setting credentials
+scripts/deploy_agent.sh  # Uses IAM role automatically
+```
+
+**Option 4: Use .env File with Profile**
+
+Store your profile preference in `.env`:
+
+```bash
+# .env file
+AWS_PROFILE=dev-profile
+AWS_REGION=us-east-1
+```
+
+Then run without additional environment variables:
+
+```bash
+scripts/deploy_agent.sh  # Uses AWS_PROFILE from .env
+```
+
+**Verify Credentials Are Working:**
+
+```bash
+# Check which AWS account/user is configured
+aws sts get-caller-identity
+
+# Expected output:
+# {
+#     "UserId": "AIDAI...",
+#     "Account": "123456789012",
+#     "Arn": "arn:aws:iam::123456789012:user/your-username"
+# }
+```
+
+For detailed AWS CLI credential configuration, see [AWS CLI Configuration Guide](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-files.html).
+
+### Automatic Deployment Metadata Loading
+
+After deploying your agent with `scripts/deploy_agent.sh`, the script automatically saves deployment information (including agent ID and ARN) to `.deployment_metadata.json` in the `scripts/` directory.
+
+**Key benefit**: You don't always need to manually set the `AGENTCORE_AGENT_ID` environment variable. When running the demo or test scripts, the code automatically reads the agent ID from `.deployment_metadata.json` if the environment variable is not set.
+
+**Priority order** for agent ID resolution:
+1. Command-line argument: `--agent-id <agent-id>`
+2. Deployment metadata file: `scripts/.deployment_metadata.json` (if it exists)
+3. Environment variable: `AGENTCORE_AGENT_ID` or `AGENTCORE_AGENT_ARN`
+
+This means after your initial deployment, you can simply run:
+```bash
+# These commands will work without setting AGENTCORE_AGENT_ID
+# because the agent ID is automatically loaded from .deployment_metadata.json
+uv run python simple_observability.py --scenario all
+scripts/tests/test_agent.sh --test weather
+```
+
+The metadata file contains:
+- `agent_id`: The unique identifier for your agent
+- `agent_arn`: The full Amazon Resource Name for your agent
+- `deployment_timestamp`: When the agent was deployed
+- Other deployment configuration
+
+**Note**: If you delete your agent using `scripts/delete_agent.py`, the metadata file is also cleaned up, and you'll need to redeploy before running the demo scripts again.
 
 ## Quickstart
 
@@ -198,10 +302,9 @@ uv sync
 # 2. Deploy agent (with optional Braintrust observability)
 # Option A: Use .env file (recommended for repeated deployments)
 cp .env.example .env
-# Edit .env - add your Braintrust credentials:
-#   BRAINTRUST_API_KEY=your-api-key
-#   BRAINTRUST_PROJECT_ID=your-project-id
-# Agent will automatically export OTEL traces to both CloudWatch and Braintrust
+# Edit .env - add your Braintrust credentials (optional):
+#   BRAINTRUST_API_KEY=bt-xxxxxxxxxxxxxxxxxxxxx
+# CloudWatch tracing is automatic. Braintrust is optional (only if BRAINTRUST_API_KEY is set)
 scripts/deploy_agent.sh
 
 # Option B: CloudWatch observability only (default, no Braintrust)
@@ -213,21 +316,25 @@ scripts/deploy_agent.sh --region us-west-2  # Will use credentials from .env
 
 # Option D: Override both .env and command-line arguments
 # Add exact parameter names to .env first:
-#   BRAINTRUST_API_KEY=sk-your-actual-key
-#   BRAINTRUST_PROJECT_ID=your-actual-project-id
+#   BRAINTRUST_API_KEY=bt-xxxxxxxxxxxxxxxxxxxxx
 # Then deploy with command-line overrides:
 scripts/deploy_agent.sh \
     --region us-east-1 \
-    --braintrust-api-key sk-your-override-key \
-    --braintrust-project-id your-override-project-id
-# Agent will export OTEL metrics and traces to Braintrust
+    --braintrust-api-key bt-xxxxxxxxxxxxxxxxxxxxx
+# Agent will export OTEL traces to Braintrust (CloudWatch is automatic)
 
-# Option E: Call deploy_agent.py directly (advanced)
+# Option E: Update existing agent (auto-update on conflict)
+# Use this flag to update an already-deployed agent instead of creating a new one:
+scripts/deploy_agent.sh --auto-update-on-conflict
+# This is useful when redeploying after running delete_agent.py
+
+# Option F: Call deploy_agent.py directly (advanced)
 # Both deploy_agent.sh and deploy_agent.py support the same arguments:
 uv run python scripts/deploy_agent.py \
     --region us-east-1 \
-    --braintrust-api-key sk-your-api-key \
-    --braintrust-project-id your-project-id
+    --braintrust-api-key sk-user-xxxxxxxxxxxxxxxxxxxxx \
+    --braintrust-project-id proj-xxxxxxxxxxxxxxxxxxxxx \
+    --auto-update-on-conflict
 
 # 3. Test the agent
 scripts/tests/test_agent.sh --test calculator
@@ -246,6 +353,7 @@ scripts/tests/test_agent.sh --prompt "What time is it in Tokyo?"
 # If you skip this step, you will NOT see traces in CloudWatch!
 
 # 5. Check CloudWatch logs to see traces
+# Using the shell script (simple):
 # View logs from the last 30 minutes
 scripts/check_logs.sh --time 30m
 
@@ -257,58 +365,51 @@ scripts/check_logs.sh --follow
 
 # View logs from the last hour
 scripts/check_logs.sh --time 1h
+
+# Or using the Python script for more options (see CloudWatch Logs section below):
+uv run python scripts/get_cw_logs.py --follow
 ```
 
-**Available test commands:**
+## Deployment Scenarios
+
+### Initial Deployment
+
+For the first deployment, use any of the options in the Quickstart section:
+
 ```bash
-# Predefined tests
-scripts/tests/test_agent.sh --test weather      # Test weather tool
-scripts/tests/test_agent.sh --test time         # Test time tool
-scripts/tests/test_agent.sh --test calculator   # Test calculator tool
-scripts/tests/test_agent.sh --test combined     # Test multiple tools
-
-# Custom prompts
-scripts/tests/test_agent.sh --prompt "Your custom question here"
-
-# Interactive mode
-scripts/tests/test_agent.sh --interactive
-
-# Show full response with traces
-scripts/tests/test_agent.sh --test combined --full
+scripts/deploy_agent.sh
 ```
 
-**Load Testing:**
+This creates a new agent with a unique agent ID and saves deployment metadata to `.deployment_metadata.json`.
+
+### Redeploying After Agent Deletion
+
+If you've deleted an agent using `scripts/delete_agent.py` and want to redeploy:
+
 ```bash
-# Run quick load test (5 min, 2 req/min) - generates observability data
-scripts/tests/run_load_test.sh quick
+# After running: uv run python scripts/delete_agent.py
+# This deletes the agent and cleans up metadata files
 
-# Run standard test (15 min, 4 req/min)
-scripts/tests/run_load_test.sh standard
-
-# Run extended test (30 min, 5 req/min) - great for demos
-scripts/tests/run_load_test.sh extended
-
-# Focus on multi-tool queries
-scripts/tests/run_load_test.sh multi-tool
-
-# Include error scenarios (30% errors)
-scripts/tests/run_load_test.sh errors
-
-# Custom configuration
-scripts/tests/run_load_test.sh --duration 20 --rate 5 --multi-tool 50
+# To redeploy the agent with auto-update on conflict:
+scripts/deploy_agent.sh --auto-update-on-conflict
 ```
 
-**Cleanup:**
+The `--auto-update-on-conflict` flag tells the deployment script to:
+- Check if an agent with the same name already exists
+- If it does, automatically update it instead of failing
+- Recreate `.deployment_metadata.json` with the new agent ID
+
+### Updating an Existing Agent
+
+To update agent code without deleting and redeploying:
+
 ```bash
-# Delete agent and all resources
-scripts/cleanup.sh
-
-# Or delete without prompts
-scripts/cleanup.sh --force
-
-# Keep CloudWatch logs
-scripts/cleanup.sh --keep-logs
+# Modify your agent code (e.g., agent/weather_time_agent.py)
+# Then redeploy with auto-update:
+scripts/deploy_agent.sh --auto-update-on-conflict
 ```
+
+This is faster than the delete-and-redeploy workflow and preserves existing observability data.
 
 For detailed configuration and setup instructions, see:
 - **[Braintrust Setup](docs/braintrust-setup.md)** - Braintrust account creation, API key management, and dashboard setup
@@ -331,14 +432,15 @@ After deploying your agent with `scripts/deploy_agent.sh`, follow these steps:
 **⚠️ If you skip this step, you WILL NOT see any traces in CloudWatch!**
 
 Once tracing is enabled, you can:
-- View full distributed traces in CloudWatch X-Ray
+- View CloudWatch Logs for the Agent
 - See all spans (LLM calls, tool invocations, agent reasoning)
 - Correlate logs with traces using trace IDs
-- Export the same traces to Braintrust (if configured)
 
 ## Running the tutorial
 
 The demo script provides three scenarios demonstrating different observability features.
+
+The agent ID is automatically loaded from `.deployment_metadata.json` (see [Automatic Deployment Metadata Loading](#automatic-deployment-metadata-loading) above), so you don't need to specify `--agent-id` unless you want to override it.
 
 ### Run All Scenarios (Recommended)
 
@@ -346,7 +448,11 @@ Run all three scenarios sequentially with automatic delays between each:
 
 ```bash
 # From tutorial root directory
-python simple_observability.py --agent-id $AGENTCORE_AGENT_ID --scenario all
+# The agent ID is automatically loaded from .deployment_metadata.json
+uv run python simple_observability.py --scenario all
+
+# Or explicitly provide the agent ID
+uv run python simple_observability.py --agent-id $AGENTCORE_AGENT_ID --scenario all
 ```
 
 ### Run Individual Scenarios
@@ -356,7 +462,11 @@ python simple_observability.py --agent-id $AGENTCORE_AGENT_ID --scenario all
 Demonstrates successful agent execution with multiple tool calls:
 
 ```bash
-python simple_observability.py --agent-id $AGENTCORE_AGENT_ID --scenario success
+# Automatically uses agent ID from .deployment_metadata.json
+uv run python simple_observability.py --scenario success
+
+# Or explicitly provide the agent ID
+uv run python simple_observability.py --agent-id $AGENTCORE_AGENT_ID --scenario success
 ```
 
 Query: "What's the weather in Seattle and what time is it there?"
@@ -372,7 +482,11 @@ Expected behavior:
 Demonstrates error propagation and handling through observability:
 
 ```bash
-python simple_observability.py --agent-id $AGENTCORE_AGENT_ID --scenario error
+# Automatically uses agent ID from .deployment_metadata.json
+uv run python simple_observability.py --scenario error
+
+# Or explicitly provide the agent ID
+uv run python simple_observability.py --agent-id $AGENTCORE_AGENT_ID --scenario error
 ```
 
 Query: "Calculate the factorial of -5"
@@ -383,35 +497,32 @@ Expected behavior:
 - Error status recorded in spans
 - Graceful error handling visible in traces
 
-**Scenario 3: Dashboard Walkthrough**
-
-Displays links and guidance for viewing dashboards:
-
-```bash
-python simple_observability.py --agent-id $AGENTCORE_AGENT_ID --scenario dashboard
-```
-
-This scenario does not invoke the agent - it provides links and explains what to look for in CloudWatch and Braintrust dashboards.
-
 ### Additional Options
 
 ```bash
 # Enable debug logging for detailed execution traces
-python simple_observability.py --agent-id $AGENTCORE_AGENT_ID --scenario all --debug
+# (agent ID automatically loaded from .deployment_metadata.json)
+uv run python simple_observability.py --scenario all --debug
 
 # Specify different AWS region
-python simple_observability.py --agent-id $AGENTCORE_AGENT_ID --region us-west-2 --scenario success
+uv run python simple_observability.py --region us-west-2 --scenario success
 
-# Using environment variables only (no command-line args)
+# Override metadata with explicit agent ID
+uv run python simple_observability.py --agent-id <your-agent-id> --scenario success
+
+# Using environment variables (as fallback if metadata file not found)
 export AGENTCORE_AGENT_ID=abc123xyz
-python simple_observability.py
+uv run python simple_observability.py
+
+# Minimal command (uses defaults from .deployment_metadata.json)
+uv run python simple_observability.py
 ```
 
 ## Expected Results
 
-### CloudWatch X-Ray Traces
+### CloudWatch Logs
 
-View CloudWatch logs and X-Ray traces using the check_logs.sh script and AWS Console:
+View CloudWatch logs using the check_logs.sh script and AWS Console:
 
 **Using check_logs.sh Script (Recommended for Quick Review):**
 ```bash
@@ -428,21 +539,13 @@ scripts/check_logs.sh --errors
 scripts/check_logs.sh --time 1h
 ```
 
-**Using CloudWatch X-Ray Console (Detailed Visualization):**
-
-1. Open CloudWatch Console: https://console.aws.amazon.com/cloudwatch
-2. Navigate to X-Ray > Traces
-3. Filter by time range (last 5 minutes)
-4. Search for trace IDs printed by the script
-
 **What You'll See:**
-- Agent invocation span (root span)
-- Tool selection span (reasoning phase)
-- Gateway execution spans (one per tool)
-- Response formatting span
-- Total latency and individual span durations
-- Error spans highlighted in red (Scenario 2)
-- Span attributes: model ID, token counts, tool names
+- Agent execution timestamps
+- Tool invocation logs
+- Model calls and responses
+- Execution status and completion messages
+- Error messages and stack traces (Scenario 2)
+- Performance metrics and latencies
 
 ### Braintrust Traces
 
@@ -464,32 +567,32 @@ View the same traces in Braintrust with AI-focused metrics:
 
 ### Platform Comparison
 
-**CloudWatch Strengths:**
+**CloudWatch (Automatic, Infrastructure-Level Traces from AgentCore Runtime):**
 - Native AWS integration with other services
 - CloudWatch Alarms for automated alerting
 - VPC Flow Logs correlation
 - Longer retention options (up to 10 years)
 - Integration with AWS Systems Manager and AWS Config
+- Receives vended traces from AgentCore Runtime
 
-**Braintrust Strengths:**
+**Braintrust (Optional, Agent-Level OTEL Traces from Strands Agent):**
 - AI-focused metrics (quality scores, hallucination detection)
 - LLM cost tracking across providers
 - Prompt version comparison and A/B testing
 - Evaluation frameworks for quality assurance
 - Specialized AI/ML visualizations and analytics
+- Requires `BRAINTRUST_API_KEY` environment variable
 
-**Both Platforms:**
-- Receive identical OTEL traces (vendor-neutral format)
+**Both Platforms Provide:**
 - Real-time trace ingestion
 - Query by trace ID or session ID
 - Span-level detail with attributes
 - Support for distributed tracing
+- **Note**: Different trace sources (vended traces vs OTEL format), not identical
 
 ## Cleanup
 
 To avoid unnecessary AWS charges, delete all created resources:
-
-### Automated Cleanup
 
 ```bash
 # Run cleanup script
@@ -499,74 +602,11 @@ scripts/cleanup.sh
 scripts/cleanup.sh --force
 ```
 
-### Manual Cleanup
-
-If you prefer manual cleanup:
-
-```bash
-# Step 1: Delete AgentCore agent
-aws bedrock-agentcore delete-agent --agent-id $AGENTCORE_AGENT_ID
-
-# Step 2: Delete CloudWatch resources
-aws logs delete-log-group --log-group-name /aws/agentcore/observability
-aws cloudwatch delete-dashboards --dashboard-names AgentCore-Observability-Demo
-
-# Step 3: Clean up Braintrust (via web UI)
-# Navigate to https://www.braintrust.dev/app
-# Delete project: "agentcore-observability-demo"
-# Or keep for future use - free tier has no expiration
-
-# Step 4: Remove local files
-rm -f scripts/.deployment_metadata.json
-```
-
-## Cost Estimate
-
-### AWS Costs
-
-**AgentCore Runtime:**
-- Free tier: 1,000 agent invocations per month
-- After free tier: $0.002 per invocation
-- This tutorial: ~3 invocations = FREE (within free tier)
-
-**LLM Model (Claude 3.5 Haiku):**
-- Input tokens: ~500 tokens per query = ~1,500 total
-- Output tokens: ~200 tokens per response = ~600 total
-- Cost per run: ~$0.01
-
-**CloudWatch X-Ray:**
-- Free tier: 100,000 traces per month
-- After free tier: $5 per 1 million traces
-- This tutorial: 3 traces = FREE (within free tier)
-
-**CloudWatch Logs:**
-- Free tier: 5 GB per month
-- After free tier: $0.50 per GB
-- This tutorial: <1 MB = FREE (within free tier)
-
-**Total AWS Cost:** ~$0.01 per tutorial run (LLM charges only)
-
-### Braintrust Costs
-
-**Free Tier (Forever):**
-- Unlimited traces
-- Unlimited projects
-- 7-day trace retention
-- All core features included
-
-**This Tutorial:** FREE (uses free tier)
-
-### Total Cost Estimate
-
-**First Run:** ~$0.01 (one-time setup + LLM)
-**Subsequent Runs:** ~$0.01 per run (LLM only)
-**Monthly Cost:** <$1.00 for occasional testing and learning
-
 ## Additional Resources
 
 ### Documentation
 - [Amazon Bedrock AgentCore Documentation](https://docs.aws.amazon.com/bedrock/latest/userguide/agentcore.html)
-- [CloudWatch X-Ray Documentation](https://docs.aws.amazon.com/xray/latest/devguide/)
+- [CloudWatch Logs Documentation](https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/)
 - [Braintrust Documentation](https://www.braintrust.dev/docs)
 - [OpenTelemetry Specification](https://opentelemetry.io/docs/)
 

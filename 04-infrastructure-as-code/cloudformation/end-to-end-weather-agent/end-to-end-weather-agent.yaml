@@ -735,10 +735,9 @@ Resources:
                           console.print("[cyan]🔄 Initializing browser session...[/cyan]")
                           await browser_session.start()
                           
-                          # Create ChatBedrockConverse once
-                          bedrock_chat = ChatAnthropicBedrock(
-                              model='us.anthropic.claude-sonnet-4-5-20250929-v1:0',
-                              aws_region=region
+                          bedrock_chat = ChatBedrockConverse(
+                              model_id="global.anthropic.claude-haiku-4-5-20251001-v1:0",
+                              region_name="us-west-2"
                           )
                           
                           console.print("[green]✅ Browser session initialized and ready[/green]")

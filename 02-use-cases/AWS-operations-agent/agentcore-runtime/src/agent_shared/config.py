@@ -63,7 +63,7 @@ def get_model_settings():
     # Default values
     defaults = {
         'region_name': 'us-east-1',
-        'model_id': 'anthropic.claude-3-5-sonnet-20241022-v2:0',
+        'model_id': 'global.anthropic.claude-haiku-4-5-20251001-v1:0',
         'temperature': 0.7,
         'max_tokens': 4096
     }

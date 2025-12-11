@@ -98,7 +98,7 @@ def insurance_quote_agent(question: str, history: List[Dict[str, str]]) -> Dict[
             # Create an agent with Claude 3.7 Sonnet and our tools
             # Create agent without chat_history parameter
             agent = Agent(
-                model="us.anthropic.claude-3-7-sonnet-20250219-v1:0",
+                model="global.anthropic.claude-haiku-4-5-20251001-v1:0",
                 tools=tools,
                 system_prompt=INSURANCE_SYSTEM_PROMPT,
                 callback_handler=None

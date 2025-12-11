@@ -131,10 +131,12 @@ class MarketTrendsAgentDeployer:
                     "Effect": "Allow",
                     "Action": [
                         "bedrock-agentcore:ListMemories",
+                        "bedrock-agentcore:ListEvents",
                         "bedrock-agentcore:CreateEvent",
                         "bedrock-agentcore:RetrieveMemories",
                         "bedrock-agentcore:GetMemoryStrategies",
                         "bedrock-agentcore:DeleteMemory",
+                        "bedrock-agentcore:GetMemory",
                     ],
                     "Resource": [
                         f"arn:aws:bedrock-agentcore:{self.region}:{account_id}:memory/*"
@@ -145,10 +147,16 @@ class MarketTrendsAgentDeployer:
                     "Effect": "Allow",
                     "Action": [
                         "bedrock-agentcore:GetBrowserSession",
+                        "bedrock-agentcore:StartBrowserSession",
+                        "bedrock-agentcore:StopBrowserSession",
                         "bedrock-agentcore:CreateBrowserSession",
                         "bedrock-agentcore:DeleteBrowserSession",
+                        "bedrock-agentcore:ConnectBrowserAutomationStream",
                     ],
-                    "Resource": "*",
+                    "Resource": [
+                        f"arn:aws:bedrock-agentcore:{self.region}:{account_id}:browser-custom/*",
+                        f"arn:aws:bedrock-agentcore:*:aws:browser/*"
+                    ],
                 },
                 {
                     "Effect": "Allow",
