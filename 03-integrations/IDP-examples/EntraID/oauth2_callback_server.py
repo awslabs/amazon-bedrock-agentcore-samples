@@ -8,7 +8,7 @@ for AgentCore Identity. It serves as an intermediary between the user's browser,
 Key Components:
 - FastAPI server running locally
 - Handles OAuth2 callback redirects from external providers
-- Manages user token storage and session completion
+- Manages user identifier storage and session completion
 - Provides health check endpoint for readiness verification
 
 Usage Context:
@@ -32,17 +32,16 @@ from typing import Annotated
 from datetime import datetime, timedelta, timezone
 from fastapi import Cookie, FastAPI, HTTPException, status
 from fastapi.responses import HTMLResponse, JSONResponse
-from bedrock_agentcore.services.identity import IdentityClient, UserTokenIdentifier
+from bedrock_agentcore.services.identity import IdentityClient, UserIdIdentifier
 
 
 # Configuration constants for the OAuth2 callback server
 OAUTH2_CALLBACK_SERVER_PORT = 9090  # Port where the callback server listens
 PING_ENDPOINT = "/ping"  # Health check endpoint
 OAUTH2_CALLBACK_ENDPOINT = "/oauth2/callback"  # OAuth2 callback endpoint for provider redirects
-USER_IDENTIFIER_ENDPOINT = "/userIdentifier/token"  # Endpoint to store user token identifiers
+USER_IDENTIFIER_ENDPOINT = "/userIdentifier/userId"  # Endpoint to store userId identifiers
 
 logger = logging.getLogger(__name__)
-
 
 class OAuth2CallbackServer:
     """
@@ -54,7 +53,7 @@ class OAuth2CallbackServer:
     
     The server maintains:
     - An AgentCore Identity client for API communication
-    - User token identifier for session binding
+    - UserId identifier for session binding
     - FastAPI application with configured routes
     """
     
@@ -67,10 +66,7 @@ class OAuth2CallbackServer:
         """
         # Initialize AgentCore Identity client for the specified region
         self.identity_client = IdentityClient(region=region)
-        
-        # Storage for user token identifier - used to bind OAuth sessions to specific users
-        # This is set via the USER_IDENTIFIER_ENDPOINT before OAuth flow begins
-        self.user_token_identifier = None
+        self.user_id_identifier = None
         
         self.app = FastAPI()
         
@@ -82,37 +78,34 @@ class OAuth2CallbackServer:
         Configure FastAPI routes for the OAuth2 callback server.
         
         Sets up three endpoints:
-        1. POST /userIdentifier/token - Store user token identifier for session binding
+        1. POST /userIdentifier/userId - Store userId identifier for session binding
         2. GET /ping - Health check endpoint
         3. GET /oauth2/callback - OAuth2 callback handler for provider redirects
         """
         
         @self.app.post(USER_IDENTIFIER_ENDPOINT)
-        async def _store_user_token(user_token_identifier_value: UserTokenIdentifier) -> JSONResponse:
+        async def _store_user_id(user_id_identifier_value: UserIdIdentifier) -> JSONResponse:
             """
-            Store user token identifier for OAuth session binding.
+            Store userId identifier for OAuth session binding.
             
             This endpoint is called before initiating the OAuth flow to associate
-            the upcoming OAuth session with a specific user. The user token identifier
-            is typically derived from the user's JWT token from inbound authentication.
+            the upcoming OAuth session with a specific user.
             
             Args:
-                user_token_identifier_value: UserTokenIdentifier object containing
+                user_id_identifier_value: UserIdIdentifier object containing
                                            user identification information
             """
-            if not user_token_identifier_value:
+            if not user_id_identifier_value:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Missing user_identifier value",
                 )
             
-            # store in memory and in the browser cookies.
-            self.user_token_identifier = user_token_identifier_value
-            
+            self.user_id_identifier = user_id_identifier_value
             response = JSONResponse(status_code=status.HTTP_200_OK, content={'status': 'success'})
             response.set_cookie(
-                key='user_token_identifier',
-                value=user_token_identifier_value.user_token, 
+                key='user_id_identifier',
+                value=user_id_identifier_value.user_id, 
                 secure=True,
                 httponly=True,
                 expires=datetime.now(timezone.utc) + timedelta(hours=1),
@@ -133,7 +126,7 @@ class OAuth2CallbackServer:
         @self.app.get(OAUTH2_CALLBACK_ENDPOINT)
         async def _handle_oauth2_callback(
             session_id: str, 
-            user_token_identifier : Annotated[str | None, Cookie()] = None) -> HTMLResponse:
+            user_id_identifier : Annotated[str | None, Cookie()] = None) -> HTMLResponse:
             """
             Handle OAuth2 callback from external providers.
             
@@ -149,13 +142,13 @@ class OAuth2CallbackServer:
             
             Args:
                 session_id (str): Session identifier from OAuth provider redirect
-                user_token_identifier (str): UserToken stored in browser cookies
+                user_id_identifier (str): UserId stored in browser cookies
                 
             Returns:
                 dict: Success message indicating OAuth flow completion
                 
             Raises:
-                HTTPException: If session_id is missing or user_token_identifier not set
+                HTTPException: If session_id is missing or user_id_identifier not set
             """
             # Validate that session_id parameter is present
             if not session_id:
@@ -165,17 +158,17 @@ class OAuth2CallbackServer:
                 )
             
             # use browser cookie value if available, otherwise, use value stored on the server memory
-            user_identifier = UserTokenIdentifier(user_token=user_token_identifier) \
-                        if user_token_identifier \
-                        else self.user_token_identifier
+            user_identifier = UserIdIdentifier(user_id=user_id_identifier) \
+                        if user_id_identifier \
+                        else self.user_id_identifier
 
-            # Ensure user token identifier was previously stored
-            # This is required to bind the OAuth session to the correct user
+            # Ensure user identifier was previously stored in browser cookies.
+            # This is required to bind the OAuth session to the correct user.
             if not user_identifier:
-                logger.error("No configured user token identifier")
+                logger.error("No configured user identifier")
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="No user token identifier configured",
+                    detail="No user identifier configured",
                 )
             
             # Complete the OAuth flow by calling AgentCore Identity service
@@ -253,37 +246,16 @@ def get_oauth2_callback_url() -> str:
     return f"http://localhost:{OAUTH2_CALLBACK_SERVER_PORT}{OAUTH2_CALLBACK_ENDPOINT}"
 
 
-def store_token_in_oauth2_callback_server(user_token_value: str):
-    """
-    Store user token identifier in the running OAuth2 callback server.
-    
-    This function sends a POST request to the callback server to store the user's
-    token identifier before initiating the OAuth flow. The token identifier is
-    used to bind the OAuth session to the specific user.
-    
-    Args:
-        user_token_value (str): User token (typically JWT access token from Cognito)
-                               used to identify the user in the OAuth flow
-    
-    Usage Context:
-        Called before starting OAuth flow to ensure the callback server knows
-        which user the OAuth session belongs to. This is critical for proper
-        session binding in multi-user scenarios.
-        
-    Example:
-        # Before invoking agent that requires OAuth
-        bearer_token = reauthenticate_user(client_id)
-        store_token_in_oauth2_callback_server(bearer_token)
-    """
-    if user_token_value:
+def store_user_id_in_oauth2_callback_server(user_id_value: str):
+    if user_id_value:
         response = requests.post(
             f"http://localhost:{OAUTH2_CALLBACK_SERVER_PORT}{USER_IDENTIFIER_ENDPOINT}",
-            json={"user_token": user_token_value},
+            json={"user_id": user_id_value},
             timeout=2,
         )
         response.raise_for_status()
     else:
-        logger.error("Ignoring: invalid user_token provided...")
+        logger.error("Ignoring: invalid user_id provided...")
 
 
 def wait_for_oauth2_server_to_be_ready(
