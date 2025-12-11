@@ -67,5 +67,7 @@
 - Sindhura Palakodety
 - Bhuvan Annamreddi
 - Sparsh Wadhwa (SparshWadhwa)
+- Lana Zhang
 - Bharathi Srinivasan
+- Antonio Rodriguez (rodzanto)
 

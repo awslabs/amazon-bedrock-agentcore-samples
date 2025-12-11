@@ -7,7 +7,6 @@ across multiple AWS accounts and regions.
 """
 
 import boto3
-import json
 from lab_helpers.constants import PARAMETER_PATHS
 from lab_helpers.config import AWS_REGION as DEFAULT_AWS_REGION
 
@@ -43,9 +42,8 @@ def put_parameter(key, value, description="", region_name=None, overwrite=True):
         # DEBUG: Log parameter write attempt
         effective_region = region_name if region_name else DEFAULT_AWS_REGION
         print(f"🔍 DEBUG: put_parameter() called")
-        print(f"   Key: {key}")
         if is_sensitive:
-            print(f"   Value: ****")
+            print("   Value: ****")
         else:
             print(f"   Value length: {len(str(value))} chars")
         print(f"   Region: {effective_region}")
@@ -58,12 +56,12 @@ def put_parameter(key, value, description="", region_name=None, overwrite=True):
             parameter_exists = True
             existing_value = existing['Parameter']['Value']
             if is_sensitive:
-                print(f"   Existing value: ****")
+                print("   Existing value: ****")
             else:
                 print(f"   Existing value found: {len(existing_value)} chars")
         except ssm.exceptions.ParameterNotFound:
             parameter_exists = False
-            print(f"   Existing value: None")
+            print("   Existing value: None")
         except Exception as e:
             # If error checking, proceed with put_parameter (will fail if appropriate)
             print(f"   Error checking existence: {e}")
@@ -72,22 +70,20 @@ def put_parameter(key, value, description="", region_name=None, overwrite=True):
         # Determine action and provide feedback
         if parameter_exists:
             if str(value) == existing_value:
-                print(f"   → Action: SKIP (same value)")
-                print(f"✓ Parameter already exists with same value: {key}")
+                print("   → Action: SKIP (same value)")
+                print("✓ Parameter already exists with same value.")
                 return existing['Parameter']['Version']
             elif not overwrite:
-                print(f"   → Action: SKIP (overwrite=False)")
-                print(f"⚠ Parameter exists but overwrite=False: {key}")
+                print("   → Action: SKIP (overwrite=False)")
+                print("⚠ Parameter exists but overwrite=False")
                 return existing['Parameter']['Version']
             else:
-                action = "UPDATED"
-                print(f"   → Action: UPDATED")
+                print("   → Action: UPDATED")
         else:
-            action = "CREATED"
-            print(f"   → Action: CREATED")
+            print("   → Action: CREATED")
 
         # Store parameter
-        print(f"   🔄 Calling ssm.put_parameter()...")
+        print("   🔄 Calling ssm.put_parameter()...")
         response = ssm.put_parameter(
             Name=key,
             Value=str(value),
@@ -96,14 +92,13 @@ def put_parameter(key, value, description="", region_name=None, overwrite=True):
             Overwrite=overwrite
         )
         version = response['Version']
-        print(f"   ✅ put_parameter() succeeded")
+        print("   ✅ put_parameter() succeeded")
         print(f"   Version: {version}")
-        print(f"✓ Parameter {action}: {key}")
         return version
     except Exception as e:
-        print(f"❌ Error storing parameter {key}: {e}")
+        print(f"❌ Error storing parameter: {e}")
         import traceback
-        print(f"Traceback:")
+        print("Traceback:")
         traceback.print_exc()
         raise
 
@@ -126,20 +121,20 @@ def get_parameter(key, default=None, region_name=None):
         return response['Parameter']['Value']
     except ssm.exceptions.ParameterNotFound:
         if default is not None:
-            print(f"⚠ Parameter not found: {key}, using default")
+            print("⚠ Parameter not found, using default")
             return default
         else:
             effective_region = region_name if region_name else DEFAULT_AWS_REGION
-            print(f"❌ Parameter not found: {key}")
+            print("❌ Parameter not found.")
             print(f"   Region: {effective_region}")
-            print(f"   Check:")
-            print(f"     • Is this parameter stored in Parameter Store?")
-            print(f"     • Was the prerequisite lab (Lab-01) run first?")
-            print(f"     • Is it in a different region?")
+            print("   Check:")
+            print("     • Is this parameter stored in Parameter Store?")
+            print("     • Was the prerequisite lab (Lab-01) run first?")
+            print("     • Is it in a different region?")
             raise
     except Exception as e:
         effective_region = region_name if region_name else DEFAULT_AWS_REGION
-        print(f"❌ Error retrieving parameter {key}: {e}")
+        print(f"❌ Error retrieving parameter: {e}")
         print(f"   Region: {effective_region}")
         raise
 

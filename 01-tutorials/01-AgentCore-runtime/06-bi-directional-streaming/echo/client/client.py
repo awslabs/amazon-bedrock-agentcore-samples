@@ -4,7 +4,6 @@ import websockets
 import sys
 import json
 import argparse
-import pdb
 import logging
 import os
 
@@ -16,8 +15,8 @@ logging.basicConfig(level=logging.DEBUG)
 websockets_logger = logging.getLogger('websockets')
 websockets_logger.setLevel(logging.DEBUG)
 
-async def test_websocket(runtime_arn, session_id, auth_type='headers', invalid_signature=False):
-    uri, headers = prepare_connection(runtime_arn, auth_type, session_id, invalid_signature)
+async def test_websocket(runtime_arn, session_id, auth_type='headers'):
+    uri, headers = prepare_connection(runtime_arn, auth_type, session_id)
 
     try:
         async with websockets.connect(uri, additional_headers=headers, open_timeout=130, ping_interval=20, ping_timeout=10) as websocket:
@@ -53,9 +52,7 @@ if __name__ == "__main__":
     parser.add_argument('--session-id', help='Session ID (auto-generated if not provided)')
     parser.add_argument('--auth-type', choices=['headers', 'query', 'oauth'], default='headers', 
                        help='Authentication type: headers (SigV4 headers), query (SigV4 query parameters), or oauth (Bearer token)')
-    parser.add_argument('--invalid-signature', action='store_true', 
-                       help='Send invalid signature (only works with query auth type)')
     args = parser.parse_args()
     
-    success = asyncio.run(test_websocket(args.runtime_arn, args.session_id, args.auth_type, args.invalid_signature))
+    success = asyncio.run(test_websocket(args.runtime_arn, args.session_id, args.auth_type))
     sys.exit(0 if success else 1)

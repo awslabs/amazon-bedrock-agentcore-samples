@@ -15,7 +15,8 @@ sts_client = boto3.client("sts")
 REGION = boto3.session.Session().region_name
 
 username = "testuser"
-secret_name = "customer_support_agent"
+sm_name = "customer_support_agent"
+
 
 role_name = f"CustomerSupportAssistantBedrockAgentCoreRole-{REGION}"
 policy_name = f"CustomerSupportAssistantBedrockAgentCorePolicy-{REGION}"
@@ -144,13 +145,13 @@ def save_customer_support_secret(secret_value):
 
     try:
         secrets_client.create_secret(
-            Name=secret_name,
+            Name=sm_name,
             SecretString=secret_value,
             Description="Secret containing the Cognito Configuration for the Customer Support Agent",
         )
         print("✅ Created secret")
     except secrets_client.exceptions.ResourceExistsException:
-        secrets_client.update_secret(SecretId=secret_name, SecretString=secret_value)
+        secrets_client.update_secret(SecretId=sm_name, SecretString=secret_value)
         print("✅ Updated existing secret")
     except Exception as e:
         print(f"❌ Error saving secret: {str(e)}")
@@ -164,7 +165,7 @@ def get_customer_support_secret():
     region = boto_session.region_name
     secrets_client = boto3.client("secretsmanager", region_name=region)
     try:
-        response = secrets_client.get_secret_value(SecretId=secret_name)
+        response = secrets_client.get_secret_value(SecretId=sm_name)
         return response["SecretString"]
     except Exception as e:
         print(f"❌ Error getting secret: {str(e)}")
@@ -178,9 +179,9 @@ def delete_customer_support_secret():
     secrets_client = boto3.client("secretsmanager", region_name=region)
     try:
         secrets_client.delete_secret(
-            SecretId=secret_name, ForceDeleteWithoutRecovery=True
+            SecretId=sm_name, ForceDeleteWithoutRecovery=True
         )
-        print(f"✅ Deleted secret: {secret_name}")
+        print("✅ Deleted secret!")
         return True
     except Exception as e:
         print(f"❌ Error deleting secret: {str(e)}")
