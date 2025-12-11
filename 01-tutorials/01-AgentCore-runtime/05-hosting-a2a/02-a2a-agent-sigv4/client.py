@@ -65,28 +65,32 @@ def format_agent_response(event):
     """Extract and format agent response for human readability."""
     # Handle tuple response (event might be (response, metadata))
     response = event[0] if isinstance(event, tuple) else event
-    
-    if hasattr(response, 'artifacts') and response.artifacts and len(response.artifacts) > 0:
+
+    if (
+        hasattr(response, "artifacts")
+        and response.artifacts
+        and len(response.artifacts) > 0
+    ):
         artifact = response.artifacts[0]
         if artifact.parts and len(artifact.parts) > 0:
             return artifact.parts[0].root.text
 
     # Fallback: concatenate all agent messages from history
-    if hasattr(response, 'history'):
+    if hasattr(response, "history"):
         agent_messages = [
             msg.parts[0].root.text
             for msg in response.history
             if msg.role.value == "agent" and msg.parts
         ]
         return "".join(agent_messages)
-    
+
     # Last resort: return string representation
     return str(response)
 
 
 async def test_agent(agent_arn: str, message: str):
     """Test the A2A agent with IAM authentication."""
-    
+
     # Get AWS session and credentials
     boto_session = boto3.Session()
     region = boto_session.region_name
@@ -115,12 +119,11 @@ async def test_agent(agent_arn: str, message: str):
         async with httpx.AsyncClient(
             timeout=DEFAULT_TIMEOUT, auth=auth, headers=headers
         ) as httpx_client:
-            
             # Get agent card
             logger.info("Fetching agent card...")
             resolver = A2ACardResolver(httpx_client=httpx_client, base_url=runtime_url)
             agent_card = await resolver.get_agent_card()
-            
+
             logger.info(f"Agent: {agent_card.name}")
             logger.info(f"Description: {agent_card.description}")
 
@@ -144,22 +147,26 @@ async def test_agent(agent_arn: str, message: str):
     except Exception as e:
         logger.error(f"Error: {e}")
         import traceback
+
         traceback.print_exc()
         sys.exit(1)
 
 
 async def main():
     """Main function to test the agent."""
-    
+
     # Get agent ARN from environment or command line
     import os
+
     agent_arn = os.environ.get("AGENT_ARN")
-    
+
     if not agent_arn:
         if len(sys.argv) > 1:
             agent_arn = sys.argv[1]
         else:
-            logger.error("Please provide AGENT_ARN environment variable or as command line argument")
+            logger.error(
+                "Please provide AGENT_ARN environment variable or as command line argument"
+            )
             sys.exit(1)
 
     # Test messages
