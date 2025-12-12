@@ -1,6 +1,27 @@
 import type { StreamingEvent } from '../types'
 
 /**
+ * Decode JWT token and extract the "sub" claim
+ */
+function extractSubFromToken(token: string): string {
+  try {
+    // JWT format: header.payload.signature
+    const parts = token.split('.')
+    if (parts.length !== 3) {
+      console.warn('[CHAT_SERVICE] Invalid JWT token format')
+      return 'unknown'
+    }
+
+    // Decode the payload (second part)
+    const payload = JSON.parse(atob(parts[1]))
+    return payload.sub || 'unknown'
+  } catch (error) {
+    console.error('[CHAT_SERVICE] Failed to decode JWT token:', error)
+    return 'unknown'
+  }
+}
+
+/**
  * Invoke Bedrock AgentCore endpoint with streaming
  * Returns parsed streaming events as JSON objects
  */
@@ -15,10 +36,14 @@ export async function* invokeAgentStream(
   const escapedArn = encodeURIComponent(agentArn)
   const url = `https://bedrock-agentcore.${region}.amazonaws.com/runtimes/${escapedArn}/invocations`
 
+  // Extract sub claim from bearer token
+  const subClaim = extractSubFromToken(bearerToken)
+
   const headers = {
     'Authorization': `Bearer ${bearerToken}`,
     'Content-Type': 'application/json',
     'X-Amzn-Bedrock-AgentCore-Runtime-Session-Id': sessionId,
+    'X-Amzn-Bedrock-AgentCore-Runtime-Custom-Actorid': subClaim,
   }
 
   const body = JSON.stringify({

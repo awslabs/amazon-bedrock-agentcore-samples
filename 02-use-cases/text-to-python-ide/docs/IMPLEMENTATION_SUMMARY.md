@@ -171,7 +171,7 @@ python test_agentcore_integration.py
 | Component | Status | Details |
 |-----------|--------|---------|
 | **AWS Authentication** | ✅ Working | Profile-based auth implemented |
-| **Code Generation** | ✅ Working | Strands + Claude Sonnet 3.7 |
+| **Code Generation** | ✅ Working | Strands + Claude Haiku 4.5 |
 | **Code Execution** | ✅ Working | Strands simulation (AgentCore fallback) |
 | **Frontend** | ✅ Working | React + Cloudscape components |
 | **Backend API** | ✅ Working | FastAPI with all endpoints |

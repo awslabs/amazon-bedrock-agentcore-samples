@@ -3,6 +3,7 @@ import { Bot, User, ChevronDown, ChevronRight, Info } from 'lucide-react'
 import { cn, makeUrlsClickable, formatElapsedTime } from '../utils'
 import type { Message } from '../types'
 import { ToolUseBlockComponent } from './ToolUseBlock'
+import { MarkdownRenderer } from './MarkdownRenderer'
 import strandsIcon from '../icons/strands.png'
 import openaiSdkIcon from '../icons/openaisdk.png'
 
@@ -59,17 +60,16 @@ export const ChatMessage = memo(function ChatMessage({
             <div>
               {message.contentBlocks.map((block, index) => {
                 if (block.type === 'text') {
-                  const textWithLinks = makeUrlsClickable(block.content);
                   const isLastBlock = index === message.contentBlocks!.length - 1;
                   return (
                     <div
                       key={`text-${index}`}
                       className={cn(
-                        "whitespace-pre-wrap break-words text-sm leading-relaxed",
+                        "break-words text-sm leading-relaxed",
                         index > 0 && "mt-3"
                       )}
                     >
-                      <span dangerouslySetInnerHTML={{ __html: textWithLinks }} />
+                      <MarkdownRenderer content={block.content} />
                       {isStreaming && isLastBlock && (
                         <span className="inline-block ml-1 text-[#4fc3f7] animate-cursor-blink">▋</span>
                       )}
@@ -110,13 +110,19 @@ export const ChatMessage = memo(function ChatMessage({
           {/* Fallback for user messages or old format */}
           {(isUser || (!message.contentBlocks || message.contentBlocks.length === 0)) && (
             <>
-              <div
-                className={cn(
-                  "whitespace-pre-wrap break-words text-sm leading-relaxed",
-                  isStreaming && "relative"
-                )}
-                dangerouslySetInnerHTML={{ __html: contentWithLinks }}
-              />
+              {isUser ? (
+                <div
+                  className={cn(
+                    "whitespace-pre-wrap break-words text-sm leading-relaxed",
+                    isStreaming && "relative"
+                  )}
+                  dangerouslySetInnerHTML={{ __html: contentWithLinks }}
+                />
+              ) : (
+                <div className={cn("break-words text-sm leading-relaxed", isStreaming && "relative")}>
+                  <MarkdownRenderer content={message.content} />
+                </div>
+              )}
 
               {isStreaming && (
                 <span className="inline-block ml-1 text-[#4fc3f7] animate-cursor-blink">▋</span>

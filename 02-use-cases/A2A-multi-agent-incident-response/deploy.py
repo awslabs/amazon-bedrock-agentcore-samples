@@ -9,8 +9,13 @@ import uuid
 import yaml
 import subprocess
 import json
+import time
+import re
+import getpass
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Tuple
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from threading import Lock
 
 
 class Colors:
@@ -27,31 +32,61 @@ class Colors:
     UNDERLINE = "\033[4m"
 
 
-def print_header(text: str):
+# Thread-safe print lock for parallel deployments
+print_lock = Lock()
+
+
+def print_header(text: str, thread_safe: bool = False):
     """Print a formatted header"""
-    print(f"\n{Colors.HEADER}{Colors.BOLD}{'=' * 70}{Colors.END}")
-    print(f"{Colors.HEADER}{Colors.BOLD}{text.center(70)}{Colors.END}")
-    print(f"{Colors.HEADER}{Colors.BOLD}{'=' * 70}{Colors.END}\n")
+    output = f"\n{Colors.HEADER}{Colors.BOLD}{'=' * 70}{Colors.END}\n"
+    output += f"{Colors.HEADER}{Colors.BOLD}{text.center(70)}{Colors.END}\n"
+    output += f"{Colors.HEADER}{Colors.BOLD}{'=' * 70}{Colors.END}\n"
+
+    if thread_safe:
+        with print_lock:
+            print(output, end="")
+    else:
+        print(output, end="")
 
 
-def print_info(text: str):
+def print_info(text: str, thread_safe: bool = False):
     """Print info message"""
-    print(f"{Colors.CYAN}ℹ {text}{Colors.END}")
+    output = f"{Colors.CYAN}ℹ {text}{Colors.END}"
+    if thread_safe:
+        with print_lock:
+            print(output)
+    else:
+        print(output)
 
 
-def print_success(text: str):
+def print_success(text: str, thread_safe: bool = False):
     """Print success message"""
-    print(f"{Colors.GREEN}✓ {text}{Colors.END}")
+    output = f"{Colors.GREEN}✓ {text}{Colors.END}"
+    if thread_safe:
+        with print_lock:
+            print(output)
+    else:
+        print(output)
 
 
-def print_warning(text: str):
+def print_warning(text: str, thread_safe: bool = False):
     """Print warning message"""
-    print(f"{Colors.YELLOW}⚠ {text}{Colors.END}")
+    output = f"{Colors.YELLOW}⚠ {text}{Colors.END}"
+    if thread_safe:
+        with print_lock:
+            print(output)
+    else:
+        print(output)
 
 
-def print_error(text: str):
+def print_error(text: str, thread_safe: bool = False):
     """Print error message"""
-    print(f"{Colors.RED}✗ {text}{Colors.END}")
+    output = f"{Colors.RED}✗ {text}{Colors.END}"
+    if thread_safe:
+        with print_lock:
+            print(output)
+    else:
+        print(output)
 
 
 def get_input(prompt: str, default: Optional[str] = None, required: bool = True) -> str:
@@ -76,8 +111,6 @@ def get_input(prompt: str, default: Optional[str] = None, required: bool = True)
 
 def get_secret(prompt: str, required: bool = True) -> str:
     """Get sensitive input (like API keys)"""
-    import getpass
-
     display_prompt = f"{Colors.BLUE}{prompt}: {Colors.END}"
 
     while True:
@@ -100,7 +133,16 @@ def generate_bucket_name(account_id: str = None) -> str:
     return f"a2a-smithy-models-{unique_id}"
 
 
-def validate_bucket_name(bucket_name: str) -> tuple:
+def generate_cognito_domain_name(account_id: str = None) -> str:
+    """Generate a unique Cognito domain name"""
+    unique_id = str(uuid.uuid4())[:8]
+    # Include account ID for better uniqueness if available
+    if account_id:
+        return f"agentcore-m2m-{account_id}-{unique_id}"
+    return f"agentcore-m2m-{unique_id}"
+
+
+def validate_bucket_name(bucket_name: str) -> Tuple[bool, str]:
     """Validate S3 bucket name according to AWS rules"""
     if not bucket_name:
         return (False, "Bucket name cannot be empty")
@@ -112,8 +154,6 @@ def validate_bucket_name(bucket_name: str) -> tuple:
         return (False, "Bucket name must begin and end with a letter or number")
 
     # Check for invalid characters and patterns
-    import re
-
     if not re.match(r"^[a-z0-9][a-z0-9\-]*[a-z0-9]$", bucket_name):
         return (
             False,
@@ -137,15 +177,30 @@ def check_s3_bucket_exists(bucket_name: str, region: str) -> bool:
     return success
 
 
-def validate_stack_name(stack_name: str) -> tuple:
+def validate_cognito_domain_name(domain_name: str) -> Tuple[bool, str]:
+    """Validate Cognito User Pool domain name"""
+    if not domain_name:
+        return (False, "Domain name cannot be empty")
+
+    if len(domain_name) < 1 or len(domain_name) > 63:
+        return (False, "Domain name must be between 1 and 63 characters")
+
+    if not re.match(r"^[a-z0-9][a-z0-9\-]*[a-z0-9]$", domain_name):
+        return (
+            False,
+            "Domain name must contain only lowercase letters, numbers, and hyphens, and must start and end with alphanumeric",
+        )
+
+    return (True, "Valid domain name")
+
+
+def validate_stack_name(stack_name: str) -> Tuple[bool, str]:
     """Validate CloudFormation stack name"""
     if not stack_name:
         return (False, "Stack name cannot be empty")
 
     if len(stack_name) > 128:
         return (False, "Stack name must be 128 characters or fewer")
-
-    import re
 
     if not re.match(r"^[a-zA-Z][a-zA-Z0-9\-]*$", stack_name):
         return (
@@ -171,13 +226,19 @@ def save_config(config: Dict[str, Any], config_path: Path):
     print_success(f"Configuration saved to {config_path}")
 
 
-def run_command(cmd: list, capture_output: bool = True) -> tuple:
+def run_command(
+    cmd: list, capture_output: bool = True, timeout: int = 10
+) -> Tuple[bool, str]:
     """Run a shell command and return (success, output)"""
     try:
         result = subprocess.run(
-            cmd, capture_output=capture_output, text=True, timeout=10
+            cmd, capture_output=capture_output, text=True, timeout=timeout, check=False
         )
         return (result.returncode == 0, result.stdout.strip() if capture_output else "")
+    except subprocess.TimeoutExpired:
+        return (False, f"Command timed out after {timeout} seconds")
+    except FileNotFoundError:
+        return (False, f"Command not found: {cmd[0]}")
     except Exception as e:
         return (False, str(e))
 
@@ -215,7 +276,7 @@ def check_aws_credentials() -> bool:
         return False
 
 
-def check_aws_region() -> tuple:
+def check_aws_region() -> Tuple[bool, Optional[str]]:
     """Check if AWS region is configured and is us-west-2"""
     success, output = run_command(["aws", "configure", "get", "region"])
     if success and output:
@@ -250,7 +311,7 @@ def check_bedrock_model_access() -> bool:
         return True  # Don't fail on this check, just warn
 
 
-def run_pre_checks() -> tuple:
+def run_pre_checks() -> Tuple[bool, Optional[str]]:
     """Run all pre-deployment checks and return (success, account_id)"""
     print_header("Pre-Deployment Checks")
     print_info("Verifying prerequisites...\n")
@@ -269,9 +330,9 @@ def run_pre_checks() -> tuple:
     if success:
         try:
             identity = json.loads(output)
-            account_id = identity.get("Account", "N/A")
+            account_id = identity.get("Account")
             print_success("AWS credentials are valid")
-            print_info(f"  Account: {account_id}")
+            print_info(f"  Account: {account_id or 'N/A'}")
             print_info(f"  User/Role: {identity.get('Arn', 'N/A').split('/')[-1]}")
         except json.JSONDecodeError:
             print_error("Failed to parse AWS identity")
@@ -338,10 +399,11 @@ def collect_deployment_parameters(account_id: str = None) -> Dict[str, Any]:
             "Bedrock Model ID",
             default=(
                 existing_config.get("aws", {}).get(
-                    "bedrock_model_id", "global.anthropic.claude-sonnet-4-20250514-v1:0"
+                    "bedrock_model_id",
+                    "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
                 )
                 if use_existing
-                else "global.anthropic.claude-sonnet-4-20250514-v1:0"
+                else "global.anthropic.claude-sonnet-4-5-20250929-v1:0"
             ),
             required=True,
         ),
@@ -376,6 +438,63 @@ def collect_deployment_parameters(account_id: str = None) -> Dict[str, Any]:
                 break
             else:
                 print_error(f"Invalid stack name: {message}")
+
+    # Cognito Domain Name with validation
+    print_header("Cognito Configuration")
+    default_cognito_domain = (
+        existing_config.get("cognito", {}).get("domain_name")
+        if use_existing
+        else generate_cognito_domain_name(account_id)
+    )
+
+    while True:
+        domain_name = get_input(
+            "Cognito User Pool Domain Name",
+            default=default_cognito_domain,
+            required=True,
+        )
+        is_valid, message = validate_cognito_domain_name(domain_name)
+        if is_valid:
+            config["cognito"] = {"domain_name": domain_name}
+            print_info(
+                "This unique domain prevents conflicts with existing Cognito User Pools"
+            )
+            break
+        else:
+            print_error(f"Invalid domain name: {message}")
+
+    # Admin User Configuration
+    print()
+    print_info("Admin User Configuration for Cognito User Pool")
+    print_info("This user will be created automatically in the user pool")
+    print()
+
+    admin_email = get_input(
+        "Admin User Email",
+        default=(
+            existing_config.get("cognito", {}).get("admin_email")
+            if use_existing
+            else ""
+        ),
+        required=True,
+    )
+
+    # Validate email format
+    import re
+    email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    while not re.match(email_pattern, admin_email):
+        print_error("Invalid email format. Please enter a valid email address.")
+        admin_email = get_input("Admin User Email", required=True)
+
+    config["cognito"]["admin_email"] = admin_email
+
+    print_info("Admin password (optional - leave empty for auto-generated temporary password)")
+    admin_password = get_secret(
+        "Admin User Password (press Enter to skip)",
+        required=False,
+    )
+
+    config["cognito"]["admin_password"] = admin_password if admin_password else ""
 
     # S3 Bucket for Smithy Models with validation
     print_header("S3 Configuration")
@@ -465,6 +584,17 @@ def collect_deployment_parameters(account_id: str = None) -> Dict[str, Any]:
             ),
             "tavily": get_secret("Tavily API Key", required=True),
             "google": get_secret("Google API Key (for ADK)", required=True),
+            "google_model": get_input(
+                "Google Model ID",
+                default=(
+                    existing_config.get("api_keys", {}).get(
+                        "google_model", "gemini-2.5-flash"
+                    )
+                    if use_existing
+                    else "gemini-2.5-flash"
+                ),
+                required=True,
+            ),
         }
     else:
         config["api_keys"] = existing_config.get("api_keys", {})
@@ -486,6 +616,14 @@ def display_configuration(config: Dict[str, Any]):
     print(f"  Web Search Agent: {config['stacks']['web_search_agent']}")
     print(f"  Host Agent: {config['stacks']['host_agent']}")
 
+    print(f"\n{Colors.BOLD}Cognito Configuration:{Colors.END}")
+    print(f"  User Pool Domain: {config['cognito']['domain_name']}")
+    print(f"  Admin User Email: {config['cognito']['admin_email']}")
+    if config['cognito'].get('admin_password'):
+        print(f"  Admin User Password: {'*' * 20} (configured)")
+    else:
+        print("  Admin User Password: (auto-generated temporary password will be sent via email)")
+
     print(f"\n{Colors.BOLD}S3 Configuration:{Colors.END}")
     print(f"  Smithy Models Bucket: {config['s3']['smithy_models_bucket']}")
 
@@ -497,18 +635,20 @@ def display_configuration(config: Dict[str, Any]):
 
     print(f"\n{Colors.BOLD}API Keys:{Colors.END}")
     print(f"  OpenAI API Key: {'*' * 20} (configured)")
-    print(f"  OpenAI Model: {config['api_keys']['openai_model']}")
     print(f"  Tavily API Key: {'*' * 20} (configured)")
     print(f"  Google API Key: {'*' * 20} (configured)")
 
     print()
 
 
-def wait_for_stack(stack_name: str, region: str, operation: str = "create") -> bool:
+def wait_for_stack(
+    stack_name: str, region: str, operation: str = "create", thread_safe: bool = False
+) -> bool:
     """Wait for CloudFormation stack operation to complete"""
-    import time
-
-    print_info(f"Waiting for stack '{stack_name}' to complete {operation}...")
+    print_info(
+        f"Waiting for stack '{stack_name}' to complete {operation}...",
+        thread_safe=thread_safe,
+    )
 
     max_wait_time = 1800  # 30 minutes
     wait_interval = 15  # 15 seconds
@@ -536,25 +676,40 @@ def wait_for_stack(stack_name: str, region: str, operation: str = "create") -> b
 
             # Check for completion statuses
             if operation == "create" and status == "CREATE_COMPLETE":
-                print_success(f"Stack '{stack_name}' created successfully!")
+                print_success(
+                    f"Stack '{stack_name}' created successfully!",
+                    thread_safe=thread_safe,
+                )
                 return True
             elif operation == "create" and status == "CREATE_FAILED":
-                print_error(f"Stack '{stack_name}' creation failed!")
+                print_error(
+                    f"Stack '{stack_name}' creation failed!", thread_safe=thread_safe
+                )
                 return False
             elif operation == "create" and status == "ROLLBACK_COMPLETE":
-                print_error(f"Stack '{stack_name}' creation failed and rolled back!")
+                print_error(
+                    f"Stack '{stack_name}' creation failed and rolled back!",
+                    thread_safe=thread_safe,
+                )
                 return False
             elif operation == "create" and status == "ROLLBACK_IN_PROGRESS":
                 print_warning(
-                    f"Stack '{stack_name}' is rolling back... Status: {status}"
+                    f"Stack '{stack_name}' is rolling back... Status: {status}",
+                    thread_safe=thread_safe,
                 )
             else:
-                print_info(f"Stack status: {status} (waiting...)")
+                print_info(
+                    f"[{stack_name}] Status: {status} (waiting...)",
+                    thread_safe=thread_safe,
+                )
 
         time.sleep(wait_interval)
         elapsed_time += wait_interval
 
-    print_error(f"Timeout waiting for stack '{stack_name}' (waited {max_wait_time}s)")
+    print_error(
+        f"Timeout waiting for stack '{stack_name}' (waited {max_wait_time}s)",
+        thread_safe=thread_safe,
+    )
     return False
 
 
@@ -609,23 +764,79 @@ def create_s3_bucket_and_upload(config: Dict[str, Any]) -> bool:
         return False
 
 
-def deploy_cognito_stack(config: Dict[str, Any]) -> bool:
-    """Deploy Cognito CloudFormation stack"""
-    print_header("Step 1: Deploy Cognito Stack")
+def upload_template_to_s3(
+    template_file: str, bucket_name: str, region: str, thread_safe: bool = False
+) -> Optional[str]:
+    """Upload CloudFormation template to S3 and return the S3 URL"""
+    template_name = Path(template_file).name
+    s3_key = f"cloudformation-templates/{template_name}"
+    s3_url = f"https://{bucket_name}.s3.{region}.amazonaws.com/{s3_key}"
 
-    stack_name = config["stacks"]["cognito"]
-    region = config["aws"]["region"]
+    print_info(f"Uploading template {template_name} to S3...", thread_safe=thread_safe)
 
-    print_info(f"Creating CloudFormation stack: {stack_name}")
     success, output = run_command(
+        [
+            "aws",
+            "s3",
+            "cp",
+            template_file,
+            f"s3://{bucket_name}/{s3_key}",
+            "--region",
+            region,
+        ]
+    )
+
+    if success:
+        print_success(f"Template uploaded to S3: {s3_key}", thread_safe=thread_safe)
+        return s3_url
+    else:
+        print_error(
+            f"Failed to upload template to S3: {output}", thread_safe=thread_safe
+        )
+        return None
+
+
+def deploy_stack(
+    stack_name: str,
+    template_file: str,
+    parameters: list,
+    region: str,
+    bucket_name: Optional[str] = None,
+    description: str = "",
+    thread_safe: bool = False,
+) -> bool:
+    """Generic function to deploy a CloudFormation stack (always via S3)"""
+    if description:
+        print_info(description, thread_safe=thread_safe)
+
+    print_info(f"Creating CloudFormation stack: {stack_name}", thread_safe=thread_safe)
+
+    # Always use S3 for consistency and to avoid size limits
+    if not bucket_name:
+        print_error(
+            "S3 bucket required for stack deployment but not provided.",
+            thread_safe=thread_safe,
+        )
+        return False
+
+    print_info("Uploading template to S3 before deployment", thread_safe=thread_safe)
+    s3_url = upload_template_to_s3(template_file, bucket_name, region, thread_safe)
+    if not s3_url:
+        return False
+
+    cmd = (
         [
             "aws",
             "cloudformation",
             "create-stack",
             "--stack-name",
             stack_name,
-            "--template-body",
-            "file://cloudformation/cognito.yaml",
+            "--template-url",
+            s3_url,
+            "--parameters",
+        ]
+        + parameters
+        + [
             "--capabilities",
             "CAPABILITY_IAM",
             "--region",
@@ -633,135 +844,213 @@ def deploy_cognito_stack(config: Dict[str, Any]) -> bool:
         ]
     )
 
+    success, output = run_command(cmd)
+
     if success:
-        print_success(f"Stack creation initiated: {stack_name}")
-        return wait_for_stack(stack_name, region, "create")
+        print_success(
+            f"Stack creation initiated: {stack_name}", thread_safe=thread_safe
+        )
+        return wait_for_stack(stack_name, region, "create", thread_safe=thread_safe)
     else:
         if "AlreadyExistsException" in output:
-            print_warning(f"Stack '{stack_name}' already exists")
+            print_warning(
+                f"Stack '{stack_name}' already exists", thread_safe=thread_safe
+            )
             return True
-        print_error(f"Failed to create stack: {output}")
+        print_error(f"Failed to create stack: {output}", thread_safe=thread_safe)
         return False
+
+
+def deploy_cognito_stack(config: Dict[str, Any]) -> bool:
+    """Deploy Cognito CloudFormation stack"""
+    print_header("Step 1: Deploy Cognito Stack")
+
+    parameters = [
+        f"ParameterKey=DomainName,ParameterValue={config['cognito']['domain_name']}",
+        f"ParameterKey=AdminUserEmail,ParameterValue={config['cognito']['admin_email']}",
+    ]
+
+    # Only add AdminUserPassword if provided
+    if config['cognito'].get('admin_password'):
+        parameters.append(
+            f"ParameterKey=AdminUserPassword,ParameterValue={config['cognito']['admin_password']}"
+        )
+
+    return deploy_stack(
+        stack_name=config["stacks"]["cognito"],
+        template_file="cloudformation/cognito.yaml",
+        parameters=parameters,
+        region=config["aws"]["region"],
+        bucket_name=config["s3"]["smithy_models_bucket"],
+        description=f"Using Cognito domain: {config['cognito']['domain_name']}, Admin user: {config['cognito']['admin_email']}",
+    )
 
 
 def deploy_monitoring_agent(config: Dict[str, Any]) -> bool:
     """Deploy Monitoring Agent CloudFormation stack"""
     print_header("Step 2: Deploy Monitoring Agent")
 
-    stack_name = config["stacks"]["monitoring_agent"]
-    region = config["aws"]["region"]
-
-    print_info(f"Creating CloudFormation stack: {stack_name}")
-    success, output = run_command(
-        [
-            "aws",
-            "cloudformation",
-            "create-stack",
-            "--stack-name",
-            stack_name,
-            "--template-body",
-            "file://cloudformation/monitoring_agent.yaml",
-            "--parameters",
+    return deploy_stack(
+        stack_name=config["stacks"]["monitoring_agent"],
+        template_file="cloudformation/monitoring_agent.yaml",
+        parameters=[
             f"ParameterKey=GitHubURL,ParameterValue={config['github']['url']}",
             f"ParameterKey=CognitoStackName,ParameterValue={config['stacks']['cognito']}",
             f"ParameterKey=SmithyModelS3Bucket,ParameterValue={config['s3']['smithy_models_bucket']}",
             f"ParameterKey=BedrockModelId,ParameterValue={config['aws']['bedrock_model_id']}",
-            "--capabilities",
-            "CAPABILITY_IAM",
-            "--region",
-            region,
-        ]
+        ],
+        region=config["aws"]["region"],
+        bucket_name=config["s3"]["smithy_models_bucket"],
     )
-
-    if success:
-        print_success(f"Stack creation initiated: {stack_name}")
-        return wait_for_stack(stack_name, region, "create")
-    else:
-        if "AlreadyExistsException" in output:
-            print_warning(f"Stack '{stack_name}' already exists")
-            return True
-        print_error(f"Failed to create stack: {output}")
-        return False
 
 
 def deploy_web_search_agent(config: Dict[str, Any]) -> bool:
     """Deploy Web Search Agent CloudFormation stack"""
     print_header("Step 3: Deploy Web Search Agent")
 
-    stack_name = config["stacks"]["web_search_agent"]
-    region = config["aws"]["region"]
-
-    print_info(f"Creating CloudFormation stack: {stack_name}")
-    success, output = run_command(
-        [
-            "aws",
-            "cloudformation",
-            "create-stack",
-            "--stack-name",
-            stack_name,
-            "--template-body",
-            "file://cloudformation/web_search_agent.yaml",
-            "--parameters",
+    return deploy_stack(
+        stack_name=config["stacks"]["web_search_agent"],
+        template_file="cloudformation/web_search_agent.yaml",
+        parameters=[
             f"ParameterKey=OpenAIKey,ParameterValue={config['api_keys']['openai']}",
             f"ParameterKey=OpenAIModelId,ParameterValue={config['api_keys']['openai_model']}",
             f"ParameterKey=TavilyAPIKey,ParameterValue={config['api_keys']['tavily']}",
             f"ParameterKey=GitHubURL,ParameterValue={config['github']['url']}",
             f"ParameterKey=CognitoStackName,ParameterValue={config['stacks']['cognito']}",
-            "--capabilities",
-            "CAPABILITY_IAM",
-            "--region",
-            region,
-        ]
+        ],
+        region=config["aws"]["region"],
+        bucket_name=config["s3"]["smithy_models_bucket"],
     )
-
-    if success:
-        print_success(f"Stack creation initiated: {stack_name}")
-        return wait_for_stack(stack_name, region, "create")
-    else:
-        if "AlreadyExistsException" in output:
-            print_warning(f"Stack '{stack_name}' already exists")
-            return True
-        print_error(f"Failed to create stack: {output}")
-        return False
 
 
 def deploy_host_agent(config: Dict[str, Any]) -> bool:
     """Deploy Host Agent CloudFormation stack"""
     print_header("Step 4: Deploy Host Agent")
 
-    stack_name = config["stacks"]["host_agent"]
-    region = config["aws"]["region"]
-
-    print_info(f"Creating CloudFormation stack: {stack_name}")
-    success, output = run_command(
-        [
-            "aws",
-            "cloudformation",
-            "create-stack",
-            "--stack-name",
-            stack_name,
-            "--template-body",
-            "file://cloudformation/host_agent.yaml",
-            "--parameters",
+    return deploy_stack(
+        stack_name=config["stacks"]["host_agent"],
+        template_file="cloudformation/host_agent.yaml",
+        parameters=[
             f"ParameterKey=GoogleApiKey,ParameterValue={config['api_keys']['google']}",
+            f"ParameterKey=GoogleModelId,ParameterValue={config['api_keys']['google_model']}",
             f"ParameterKey=GitHubURL,ParameterValue={config['github']['url']}",
             f"ParameterKey=CognitoStackName,ParameterValue={config['stacks']['cognito']}",
-            "--capabilities",
-            "CAPABILITY_IAM",
-            "--region",
-            region,
-        ]
+        ],
+        region=config["aws"]["region"],
+        bucket_name=config["s3"]["smithy_models_bucket"],
     )
 
-    if success:
-        print_success(f"Stack creation initiated: {stack_name}")
-        return wait_for_stack(stack_name, region, "create")
+
+def deploy_agent_parallel(
+    agent_name: str,
+    config: Dict[str, Any],
+    stack_key: str,
+    template_file: str,
+    parameters: list,
+) -> Tuple[str, bool]:
+    """Deploy an agent stack in parallel (thread-safe)"""
+    try:
+        print_header(f"Deploying {agent_name}", thread_safe=True)
+
+        success = deploy_stack(
+            stack_name=config["stacks"][stack_key],
+            template_file=template_file,
+            parameters=parameters,
+            region=config["aws"]["region"],
+            bucket_name=config["s3"]["smithy_models_bucket"],
+            thread_safe=True,
+        )
+
+        return (agent_name, success)
+    except Exception as e:
+        print_error(f"Error deploying {agent_name}: {str(e)}", thread_safe=True)
+        return (agent_name, False)
+
+
+def deploy_agents_parallel(config: Dict[str, Any]) -> bool:
+    """Deploy all three agent stacks in parallel"""
+    print_header("Steps 2-4: Deploy Agent Stacks (Parallel)")
+    print_info("Deploying Monitoring, Web Search, and Host agents in parallel...")
+    print_warning("This is faster but may produce interleaved output\n")
+
+    # Prepare deployment tasks
+    tasks = [
+        (
+            "Monitoring Agent",
+            config,
+            "monitoring_agent",
+            "cloudformation/monitoring_agent.yaml",
+            [
+                f"ParameterKey=GitHubURL,ParameterValue={config['github']['url']}",
+                f"ParameterKey=CognitoStackName,ParameterValue={config['stacks']['cognito']}",
+                f"ParameterKey=SmithyModelS3Bucket,ParameterValue={config['s3']['smithy_models_bucket']}",
+                f"ParameterKey=BedrockModelId,ParameterValue={config['aws']['bedrock_model_id']}",
+            ],
+        ),
+        (
+            "Web Search Agent",
+            config,
+            "web_search_agent",
+            "cloudformation/web_search_agent.yaml",
+            [
+                f"ParameterKey=OpenAIKey,ParameterValue={config['api_keys']['openai']}",
+                f"ParameterKey=OpenAIModelId,ParameterValue={config['api_keys']['openai_model']}",
+                f"ParameterKey=TavilyAPIKey,ParameterValue={config['api_keys']['tavily']}",
+                f"ParameterKey=GitHubURL,ParameterValue={config['github']['url']}",
+                f"ParameterKey=CognitoStackName,ParameterValue={config['stacks']['cognito']}",
+            ],
+        ),
+        (
+            "Host Agent",
+            config,
+            "host_agent",
+            "cloudformation/host_agent.yaml",
+            [
+                f"ParameterKey=GoogleApiKey,ParameterValue={config['api_keys']['google']}",
+                f"ParameterKey=GoogleModelId,ParameterValue={config['api_keys']['google_model']}",
+                f"ParameterKey=GitHubURL,ParameterValue={config['github']['url']}",
+                f"ParameterKey=CognitoStackName,ParameterValue={config['stacks']['cognito']}",
+            ],
+        ),
+    ]
+
+    # Deploy agents in parallel using ThreadPoolExecutor
+    results = {}
+    with ThreadPoolExecutor(max_workers=3) as executor:
+        # Submit all deployment tasks
+        future_to_agent = {
+            executor.submit(deploy_agent_parallel, *task): task[0] for task in tasks
+        }
+
+        # Collect results as they complete
+        for future in as_completed(future_to_agent):
+            agent_name = future_to_agent[future]
+            try:
+                name, success = future.result()
+                results[name] = success
+                if success:
+                    print_success(f"✓ {name} deployment completed", thread_safe=True)
+                else:
+                    print_error(f"✗ {name} deployment failed", thread_safe=True)
+            except Exception as e:
+                print_error(
+                    f"Exception deploying {agent_name}: {str(e)}", thread_safe=True
+                )
+                results[agent_name] = False
+
+    # Check if all deployments succeeded
+    all_success = all(results.values())
+
+    print()
+    if all_success:
+        print_success("All agent stacks deployed successfully!")
     else:
-        if "AlreadyExistsException" in output:
-            print_warning(f"Stack '{stack_name}' already exists")
-            return True
-        print_error(f"Failed to create stack: {output}")
-        return False
+        print_error("One or more agent stacks failed to deploy")
+        for agent, success in results.items():
+            status = "✓" if success else "✗"
+            print_info(f"  {status} {agent}: {'Success' if success else 'Failed'}")
+
+    return all_success
 
 
 def print_cleanup_instructions():
@@ -781,10 +1070,19 @@ def print_cleanup_instructions():
     print()
 
 
-def run_deployment(config: Dict[str, Any]) -> bool:
+def run_deployment(config: Dict[str, Any], parallel: bool = True) -> bool:
     """Run all deployment steps"""
     print_header("Starting Deployment")
-    print_warning("This will take approximately 10-15 minutes to complete")
+
+    if parallel:
+        print_warning(
+            "Using parallel deployment - approximately 7-10 minutes to complete"
+        )
+    else:
+        print_warning(
+            "Using sequential deployment - approximately 10-15 minutes to complete"
+        )
+
     print_info("You can monitor progress in the AWS CloudFormation console\n")
 
     # Step 0: Create S3 bucket and upload Smithy model
@@ -803,27 +1101,36 @@ def run_deployment(config: Dict[str, Any]) -> bool:
 
     print()
 
-    # Step 2: Deploy Monitoring Agent
-    if not deploy_monitoring_agent(config):
-        print_error("Failed at Step 2: Monitoring Agent deployment")
-        print_cleanup_instructions()
-        return False
+    # Steps 2-4: Deploy agent stacks
+    if parallel:
+        # Deploy all three agents in parallel
+        if not deploy_agents_parallel(config):
+            print_error("Failed at Steps 2-4: Agent stack deployments")
+            print_cleanup_instructions()
+            return False
+    else:
+        # Deploy agents sequentially (original behavior)
+        # Step 2: Deploy Monitoring Agent
+        if not deploy_monitoring_agent(config):
+            print_error("Failed at Step 2: Monitoring Agent deployment")
+            print_cleanup_instructions()
+            return False
 
-    print()
+        print()
 
-    # Step 3: Deploy Web Search Agent
-    if not deploy_web_search_agent(config):
-        print_error("Failed at Step 3: Web Search Agent deployment")
-        print_cleanup_instructions()
-        return False
+        # Step 3: Deploy Web Search Agent
+        if not deploy_web_search_agent(config):
+            print_error("Failed at Step 3: Web Search Agent deployment")
+            print_cleanup_instructions()
+            return False
 
-    print()
+        print()
 
-    # Step 4: Deploy Host Agent
-    if not deploy_host_agent(config):
-        print_error("Failed at Step 4: Host Agent deployment")
-        print_cleanup_instructions()
-        return False
+        # Step 4: Deploy Host Agent
+        if not deploy_host_agent(config):
+            print_error("Failed at Step 4: Host Agent deployment")
+            print_cleanup_instructions()
+            return False
 
     print()
     print_header("Deployment Complete!")
@@ -891,7 +1198,17 @@ def main():
 
             if deploy_now:
                 print()
-                if run_deployment(config):
+
+                # Ask about parallel deployment
+                use_parallel = get_input(
+                    "Use parallel deployment for faster execution? (yes/no)",
+                    default="yes",
+                    required=True,
+                ).lower() in ["yes", "y"]
+
+                print()
+
+                if run_deployment(config, parallel=use_parallel):
                     sys.exit(0)
                 else:
                     sys.exit(1)

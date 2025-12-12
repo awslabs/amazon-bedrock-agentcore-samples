@@ -16,6 +16,15 @@
         },
         {
           "target": "com.amazonaws.cloudwatchlogs#GetLogEvents"
+        },
+        {
+          "target": "com.amazonaws.cloudwatch#ListMetrics"
+        },
+        {
+          "target": "com.amazonaws.cloudwatch#GetMetricStatistics"
+        },
+        {
+          "target": "com.amazonaws.cloudwatch#DescribeAlarms"
         }
       ],
       "traits": {
@@ -138,7 +147,7 @@
           }
         },
         "creationTime": {
-          "target": "com.amazonaws.cloudwatchlogs#Timestamp",
+          "target": "smithy.api#Timestamp",
           "traits": {
             "smithy.api#documentation": "<p>The creation time of the log group, expressed as the number of milliseconds after Jan 1, 1970 00:00:00 UTC.</p>"
           }
@@ -267,14 +276,6 @@
             "name": "INFREQUENT_ACCESS"
           }
         ]
-      }
-    },
-    "com.amazonaws.cloudwatchlogs#Timestamp": {
-      "type": "long",
-      "traits": {
-        "smithy.api#range": {
-          "min": 0
-        }
       }
     },
     "com.amazonaws.cloudwatchlogs#Arn": {
@@ -504,13 +505,13 @@
           }
         },
         "startTime": {
-          "target": "com.amazonaws.cloudwatchlogs#Timestamp",
+          "target": "smithy.api#Timestamp",
           "traits": {
             "smithy.api#documentation": "<p>The start of the time range, expressed as the number of milliseconds after Jan 1, 1970 00:00:00 UTC.</p>"
           }
         },
         "endTime": {
-          "target": "com.amazonaws.cloudwatchlogs#Timestamp",
+          "target": "smithy.api#Timestamp",
           "traits": {
             "smithy.api#documentation": "<p>The end of the time range, expressed as the number of milliseconds after Jan 1, 1970 00:00:00 UTC.</p>"
           }
@@ -613,13 +614,13 @@
           }
         },
         "startTime": {
-          "target": "com.amazonaws.cloudwatchlogs#Timestamp",
+          "target": "smithy.api#Timestamp",
           "traits": {
             "smithy.api#documentation": "<p>The start of the time range, expressed as the number of milliseconds after Jan 1, 1970 00:00:00 UTC.</p>"
           }
         },
         "endTime": {
-          "target": "com.amazonaws.cloudwatchlogs#Timestamp",
+          "target": "smithy.api#Timestamp",
           "traits": {
             "smithy.api#documentation": "<p>The end of the time range, expressed as the number of milliseconds after Jan 1, 1970 00:00:00 UTC.</p>"
           }
@@ -680,16 +681,16 @@
           "target": "com.amazonaws.cloudwatchlogs#LogStreamName"
         },
         "creationTime": {
-          "target": "com.amazonaws.cloudwatchlogs#Timestamp"
+          "target": "smithy.api#Timestamp"
         },
         "firstEventTimestamp": {
-          "target": "com.amazonaws.cloudwatchlogs#Timestamp"
+          "target": "smithy.api#Timestamp"
         },
         "lastEventTimestamp": {
-          "target": "com.amazonaws.cloudwatchlogs#Timestamp"
+          "target": "smithy.api#Timestamp"
         },
         "lastIngestionTime": {
-          "target": "com.amazonaws.cloudwatchlogs#Timestamp"
+          "target": "smithy.api#Timestamp"
         },
         "uploadSequenceToken": {
           "target": "smithy.api#String"
@@ -740,13 +741,13 @@
           "target": "com.amazonaws.cloudwatchlogs#LogStreamName"
         },
         "timestamp": {
-          "target": "com.amazonaws.cloudwatchlogs#Timestamp"
+          "target": "smithy.api#Timestamp"
         },
         "message": {
           "target": "smithy.api#String"
         },
         "ingestionTime": {
-          "target": "com.amazonaws.cloudwatchlogs#Timestamp"
+          "target": "smithy.api#Timestamp"
         },
         "eventId": {
           "target": "smithy.api#String"
@@ -780,13 +781,13 @@
       "type": "structure",
       "members": {
         "timestamp": {
-          "target": "com.amazonaws.cloudwatchlogs#Timestamp"
+          "target": "smithy.api#Timestamp"
         },
         "message": {
           "target": "smithy.api#String"
         },
         "ingestionTime": {
-          "target": "com.amazonaws.cloudwatchlogs#Timestamp"
+          "target": "smithy.api#Timestamp"
         }
       }
     },
@@ -822,6 +823,445 @@
         "smithy.api#documentation": "<p>The specified resource does not exist.</p>",
         "smithy.api#error": "client",
         "smithy.api#httpError": 404
+      }
+    },
+    "com.amazonaws.cloudwatch#ListMetrics": {
+      "type": "operation",
+      "input": {
+        "target": "com.amazonaws.cloudwatch#ListMetricsRequest"
+      },
+      "output": {
+        "target": "com.amazonaws.cloudwatch#ListMetricsResponse"
+      },
+      "traits": {
+        "smithy.api#documentation": "<p>List the specified metrics. You can use the returned metrics with GetMetricStatistics to get statistical data.</p>",
+        "smithy.api#paginated": {
+          "inputToken": "NextToken",
+          "outputToken": "NextToken",
+          "items": "Metrics"
+        }
+      }
+    },
+    "com.amazonaws.cloudwatch#ListMetricsRequest": {
+      "type": "structure",
+      "members": {
+        "Namespace": {
+          "target": "smithy.api#String",
+          "traits": {
+            "smithy.api#documentation": "<p>The metric namespace to filter against. Only the namespace that matches exactly will be returned.</p>"
+          }
+        },
+        "MetricName": {
+          "target": "smithy.api#String",
+          "traits": {
+            "smithy.api#documentation": "<p>The name of the metric to filter against. Only the metrics with names that match exactly will be returned.</p>"
+          }
+        },
+        "Dimensions": {
+          "target": "com.amazonaws.cloudwatch#DimensionFilters",
+          "traits": {
+            "smithy.api#documentation": "<p>The dimensions to filter against. Only the dimensions that match exactly will be returned.</p>"
+          }
+        },
+        "NextToken": {
+          "target": "smithy.api#String",
+          "traits": {
+            "smithy.api#documentation": "<p>The token returned by a previous call to indicate that there is more data available.</p>"
+          }
+        },
+        "RecentlyActive": {
+          "target": "smithy.api#String",
+          "traits": {
+            "smithy.api#documentation": "<p>To filter the results to show only metrics that have had data points published in the past three hours, specify this parameter with a value of PT3H.</p>"
+          }
+        }
+      }
+    },
+    "com.amazonaws.cloudwatch#ListMetricsResponse": {
+      "type": "structure",
+      "members": {
+        "Metrics": {
+          "target": "com.amazonaws.cloudwatch#Metrics",
+          "traits": {
+            "smithy.api#documentation": "<p>The metrics that match your request.</p>"
+          }
+        },
+        "NextToken": {
+          "target": "smithy.api#String",
+          "traits": {
+            "smithy.api#documentation": "<p>The token that marks the start of the next batch of returned results.</p>"
+          }
+        }
+      }
+    },
+    "com.amazonaws.cloudwatch#GetMetricStatistics": {
+      "type": "operation",
+      "input": {
+        "target": "com.amazonaws.cloudwatch#GetMetricStatisticsRequest"
+      },
+      "output": {
+        "target": "com.amazonaws.cloudwatch#GetMetricStatisticsResponse"
+      },
+      "traits": {
+        "smithy.api#documentation": "<p>Gets statistics for the specified metric.</p>"
+      }
+    },
+    "com.amazonaws.cloudwatch#GetMetricStatisticsRequest": {
+      "type": "structure",
+      "members": {
+        "Namespace": {
+          "target": "smithy.api#String",
+          "traits": {
+            "smithy.api#required": {},
+            "smithy.api#documentation": "<p>The namespace of the metric.</p>"
+          }
+        },
+        "MetricName": {
+          "target": "smithy.api#String",
+          "traits": {
+            "smithy.api#required": {},
+            "smithy.api#documentation": "<p>The name of the metric.</p>"
+          }
+        },
+        "Dimensions": {
+          "target": "com.amazonaws.cloudwatch#Dimensions",
+          "traits": {
+            "smithy.api#documentation": "<p>The dimensions for the metric.</p>"
+          }
+        },
+        "StartTime": {
+          "target": "smithy.api#Timestamp",
+          "traits": {
+            "smithy.api#required": {},
+            "smithy.api#documentation": "<p>The time stamp that determines the first data point to return.</p>"
+          }
+        },
+        "EndTime": {
+          "target": "smithy.api#Timestamp",
+          "traits": {
+            "smithy.api#required": {},
+            "smithy.api#documentation": "<p>The time stamp that determines the last data point to return.</p>"
+          }
+        },
+        "Period": {
+          "target": "smithy.api#Integer",
+          "traits": {
+            "smithy.api#required": {},
+            "smithy.api#documentation": "<p>The granularity, in seconds, of the returned data points.</p>"
+          }
+        },
+        "Statistics": {
+          "target": "com.amazonaws.cloudwatch#Statistics",
+          "traits": {
+            "smithy.api#documentation": "<p>The metric statistics, other than percentile. For percentile statistics, use ExtendedStatistics.</p>"
+          }
+        },
+        "Unit": {
+          "target": "smithy.api#String",
+          "traits": {
+            "smithy.api#documentation": "<p>The unit for a given metric.</p>"
+          }
+        }
+      }
+    },
+    "com.amazonaws.cloudwatch#GetMetricStatisticsResponse": {
+      "type": "structure",
+      "members": {
+        "Label": {
+          "target": "smithy.api#String",
+          "traits": {
+            "smithy.api#documentation": "<p>A label for the specified metric.</p>"
+          }
+        },
+        "Datapoints": {
+          "target": "com.amazonaws.cloudwatch#Datapoints",
+          "traits": {
+            "smithy.api#documentation": "<p>The data points for the specified metric.</p>"
+          }
+        }
+      }
+    },
+    "com.amazonaws.cloudwatch#DescribeAlarms": {
+      "type": "operation",
+      "input": {
+        "target": "com.amazonaws.cloudwatch#DescribeAlarmsRequest"
+      },
+      "output": {
+        "target": "com.amazonaws.cloudwatch#DescribeAlarmsResponse"
+      },
+      "traits": {
+        "smithy.api#documentation": "<p>Retrieves the specified alarms.</p>",
+        "smithy.api#paginated": {
+          "inputToken": "NextToken",
+          "outputToken": "NextToken",
+          "pageSize": "MaxRecords",
+          "items": "MetricAlarms"
+        }
+      }
+    },
+    "com.amazonaws.cloudwatch#DescribeAlarmsRequest": {
+      "type": "structure",
+      "members": {
+        "AlarmNames": {
+          "target": "com.amazonaws.cloudwatch#AlarmNames",
+          "traits": {
+            "smithy.api#documentation": "<p>The names of the alarms to retrieve information about.</p>"
+          }
+        },
+        "AlarmNamePrefix": {
+          "target": "smithy.api#String",
+          "traits": {
+            "smithy.api#documentation": "<p>An alarm name prefix. If you specify this parameter, you receive information about all alarms that have names that start with this prefix.</p>"
+          }
+        },
+        "StateValue": {
+          "target": "smithy.api#String",
+          "traits": {
+            "smithy.api#documentation": "<p>Specify this parameter to receive information only about alarms that are currently in the state that you specify.</p>"
+          }
+        },
+        "ActionPrefix": {
+          "target": "smithy.api#String",
+          "traits": {
+            "smithy.api#documentation": "<p>Use this parameter to filter the results of the operation to only those alarms that use a certain alarm action.</p>"
+          }
+        },
+        "MaxRecords": {
+          "target": "smithy.api#Integer",
+          "traits": {
+            "smithy.api#documentation": "<p>The maximum number of alarm descriptions to retrieve.</p>"
+          }
+        },
+        "NextToken": {
+          "target": "smithy.api#String",
+          "traits": {
+            "smithy.api#documentation": "<p>The token returned by a previous call to indicate that there is more data available.</p>"
+          }
+        }
+      }
+    },
+    "com.amazonaws.cloudwatch#DescribeAlarmsResponse": {
+      "type": "structure",
+      "members": {
+        "MetricAlarms": {
+          "target": "com.amazonaws.cloudwatch#MetricAlarms",
+          "traits": {
+            "smithy.api#documentation": "<p>The information about any metric alarms returned by the operation.</p>"
+          }
+        },
+        "NextToken": {
+          "target": "smithy.api#String",
+          "traits": {
+            "smithy.api#documentation": "<p>The token that marks the start of the next batch of returned results.</p>"
+          }
+        }
+      }
+    },
+    "com.amazonaws.cloudwatch#Metrics": {
+      "type": "list",
+      "member": {
+        "target": "com.amazonaws.cloudwatch#Metric"
+      }
+    },
+    "com.amazonaws.cloudwatch#Metric": {
+      "type": "structure",
+      "members": {
+        "Namespace": {
+          "target": "smithy.api#String",
+          "traits": {
+            "smithy.api#documentation": "<p>The namespace of the metric.</p>"
+          }
+        },
+        "MetricName": {
+          "target": "smithy.api#String",
+          "traits": {
+            "smithy.api#documentation": "<p>The name of the metric.</p>"
+          }
+        },
+        "Dimensions": {
+          "target": "com.amazonaws.cloudwatch#Dimensions",
+          "traits": {
+            "smithy.api#documentation": "<p>The dimensions for the metric.</p>"
+          }
+        }
+      }
+    },
+    "com.amazonaws.cloudwatch#Dimensions": {
+      "type": "list",
+      "member": {
+        "target": "com.amazonaws.cloudwatch#Dimension"
+      }
+    },
+    "com.amazonaws.cloudwatch#Dimension": {
+      "type": "structure",
+      "members": {
+        "Name": {
+          "target": "smithy.api#String",
+          "traits": {
+            "smithy.api#required": {},
+            "smithy.api#documentation": "<p>The name of the dimension.</p>"
+          }
+        },
+        "Value": {
+          "target": "smithy.api#String",
+          "traits": {
+            "smithy.api#required": {},
+            "smithy.api#documentation": "<p>The value of the dimension.</p>"
+          }
+        }
+      }
+    },
+    "com.amazonaws.cloudwatch#DimensionFilters": {
+      "type": "list",
+      "member": {
+        "target": "com.amazonaws.cloudwatch#DimensionFilter"
+      }
+    },
+    "com.amazonaws.cloudwatch#DimensionFilter": {
+      "type": "structure",
+      "members": {
+        "Name": {
+          "target": "smithy.api#String",
+          "traits": {
+            "smithy.api#required": {},
+            "smithy.api#documentation": "<p>The dimension name to be matched.</p>"
+          }
+        },
+        "Value": {
+          "target": "smithy.api#String",
+          "traits": {
+            "smithy.api#documentation": "<p>The value of the dimension to be matched.</p>"
+          }
+        }
+      }
+    },
+    "com.amazonaws.cloudwatch#Statistics": {
+      "type": "list",
+      "member": {
+        "target": "smithy.api#String"
+      }
+    },
+    "com.amazonaws.cloudwatch#Datapoints": {
+      "type": "list",
+      "member": {
+        "target": "com.amazonaws.cloudwatch#Datapoint"
+      }
+    },
+    "com.amazonaws.cloudwatch#Datapoint": {
+      "type": "structure",
+      "members": {
+        "Timestamp": {
+          "target": "smithy.api#Timestamp",
+          "traits": {
+            "smithy.api#documentation": "<p>The time stamp used for the data point.</p>"
+          }
+        },
+        "SampleCount": {
+          "target": "smithy.api#Double",
+          "traits": {
+            "smithy.api#documentation": "<p>The number of metric values that contributed to the aggregate value of this data point.</p>"
+          }
+        },
+        "Average": {
+          "target": "smithy.api#Double",
+          "traits": {
+            "smithy.api#documentation": "<p>The average of the metric values that correspond to the data point.</p>"
+          }
+        },
+        "Sum": {
+          "target": "smithy.api#Double",
+          "traits": {
+            "smithy.api#documentation": "<p>The sum of the metric values for the data point.</p>"
+          }
+        },
+        "Minimum": {
+          "target": "smithy.api#Double",
+          "traits": {
+            "smithy.api#documentation": "<p>The minimum metric value for the data point.</p>"
+          }
+        },
+        "Maximum": {
+          "target": "smithy.api#Double",
+          "traits": {
+            "smithy.api#documentation": "<p>The maximum metric value for the data point.</p>"
+          }
+        },
+        "Unit": {
+          "target": "smithy.api#String",
+          "traits": {
+            "smithy.api#documentation": "<p>The standard unit for the data point.</p>"
+          }
+        }
+      }
+    },
+    "com.amazonaws.cloudwatch#MetricAlarms": {
+      "type": "list",
+      "member": {
+        "target": "com.amazonaws.cloudwatch#MetricAlarm"
+      }
+    },
+    "com.amazonaws.cloudwatch#MetricAlarm": {
+      "type": "structure",
+      "members": {
+        "AlarmName": {
+          "target": "smithy.api#String",
+          "traits": {
+            "smithy.api#documentation": "<p>The name of the alarm.</p>"
+          }
+        },
+        "AlarmDescription": {
+          "target": "smithy.api#String",
+          "traits": {
+            "smithy.api#documentation": "<p>The description of the alarm.</p>"
+          }
+        },
+        "StateValue": {
+          "target": "smithy.api#String",
+          "traits": {
+            "smithy.api#documentation": "<p>The state value for the alarm.</p>"
+          }
+        },
+        "StateReason": {
+          "target": "smithy.api#String",
+          "traits": {
+            "smithy.api#documentation": "<p>An explanation for the alarm state, in text format.</p>"
+          }
+        },
+        "MetricName": {
+          "target": "smithy.api#String",
+          "traits": {
+            "smithy.api#documentation": "<p>The name of the metric associated with the alarm.</p>"
+          }
+        },
+        "Namespace": {
+          "target": "smithy.api#String",
+          "traits": {
+            "smithy.api#documentation": "<p>The namespace of the metric associated with the alarm.</p>"
+          }
+        },
+        "Threshold": {
+          "target": "smithy.api#Double",
+          "traits": {
+            "smithy.api#documentation": "<p>The value to compare with the specified statistic.</p>"
+          }
+        },
+        "ComparisonOperator": {
+          "target": "smithy.api#String",
+          "traits": {
+            "smithy.api#documentation": "<p>The arithmetic operation to use when comparing the specified statistic and threshold.</p>"
+          }
+        }
+      }
+    },
+    "com.amazonaws.cloudwatch#AlarmNames": {
+      "type": "list",
+      "member": {
+        "target": "smithy.api#String"
+      },
+      "traits": {
+        "smithy.api#length": {
+          "max": 100
+        }
       }
     }
   }

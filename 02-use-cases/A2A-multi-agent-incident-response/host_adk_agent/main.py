@@ -6,9 +6,7 @@ from google.genai import types
 from bedrock_agentcore import BedrockAgentCoreApp
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Load environment variables from .env file
@@ -30,13 +28,12 @@ async def call_agent(payload: dict, context):
     session_id = context.session_id
     logger.info(f"Received request with session_id: {session_id}")
 
-    # actor_id = request_headers["x-amzn-bedrock-agentCore-runtime-custom-actor"]
+    actor_id = context.request_headers[
+        "x-amzn-bedrock-agentcore-runtime-custom-actorid"
+    ]
 
-    # if not actor_id:
-    #     raise Exception("Actor id is not is not set")
-    # TODO: Actor Id
-    # Ensure session exists before running
-    actor_id = "Actor1"
+    if not actor_id:
+        raise Exception("Actor id is not is not set")
 
     if not session_id:
         raise Exception("Context session_id is not set")

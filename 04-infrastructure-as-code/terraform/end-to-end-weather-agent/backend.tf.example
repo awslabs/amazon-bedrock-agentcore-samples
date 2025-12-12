@@ -1,0 +1,33 @@
+# ============================================================================
+# Terraform Backend Configuration - Remote State Storage
+# ============================================================================
+# This is an example backend configuration for storing Terraform state remotely
+# Copy this file to backend.tf and customize with your backend settings
+# Example: cp backend.tf.example backend.tf
+
+# IMPORTANT: Uncomment and configure ONE of the backend options below
+
+# Option 1: S3 Backend (Recommended for AWS)
+# terraform {
+#   backend "s3" {
+#     bucket         = "your-terraform-state-bucket"
+#     key            = "agentcore/weather-agent/terraform.tfstate"
+#     region         = "us-west-2"
+#     encrypt        = true
+#     dynamodb_table = "terraform-state-lock"
+#   }
+# }
+
+# Option 2: Terraform Cloud
+# terraform {
+#   cloud {
+#     organization = "your-organization"
+#     workspaces {
+#       name = "agentcore-weather-agent"
+#     }
+#   }
+# }
+
+# Option 3: Local Backend (Default - No configuration needed)
+# State will be stored locally in terraform.tfstate
+# Not recommended for team environments or production use

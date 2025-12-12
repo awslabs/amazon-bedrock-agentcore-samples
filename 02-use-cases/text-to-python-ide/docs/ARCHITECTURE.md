@@ -68,7 +68,7 @@ The AgentCore Code Interpreter follows a modern three-tier architecture:
 - **Technology**: AWS Bedrock + AgentCore
 - **Purpose**: AI model inference and code execution
 - **Components**:
-  - **Claude Sonnet 3.7**: Primary AI model (inference profile)
+  - **Claude Haiku 4.5**: Primary AI model (inference profile)
   - **Nova Premier**: Fallback AI model (inference profile)
   - **Claude 3.5 Sonnet**: Safety net model
   - **AgentCore**: Sandboxed Python execution environment
@@ -127,7 +127,7 @@ Results → Frontend → Formatted Display
 | | Strands-Agents | AI agent orchestration |
 | | Python 3.8+ | Runtime environment |
 | **AI Services** | AWS Bedrock | AI model hosting |
-| | Claude Sonnet 3.7 | Primary language model |
+| | Claude Haiku 4.5 | Primary language model |
 | | Nova Premier | Fallback language model |
 | **Execution** | AgentCore | Sandboxed code execution |
 | **Infrastructure** | AWS | Cloud platform |

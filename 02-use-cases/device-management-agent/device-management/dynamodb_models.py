@@ -1,11 +1,178 @@
 """
-DynamoDB models for Device Management Lambda
+Device Management System - DynamoDB Table Models and Initialization
+
+This module defines the DynamoDB table schemas and provides initialization
+functions for the Device Management System. It creates and manages five
+DynamoDB tables with appropriate key schemas, indexes, and provisioned
+throughput settings.
+
+The module manages:
+- Table schema definitions for all five DynamoDB tables
+- Primary key and sort key configurations
+- Global Secondary Indexes (GSI) for efficient querying
+- Provisioned throughput settings
+- Table creation and initialization
+- Helper functions for datetime and Decimal handling
+
+DynamoDB Tables:
+
+    1. Devices Table:
+       - Primary Key: device_id (String, HASH)
+       - Attributes: name, model, firmware_version, connection_status,
+                    ip_address, mac_address, last_connected
+       - Purpose: Store device inventory and status information
+
+    2. DeviceSettings Table:
+       - Primary Key: device_id (String, HASH)
+       - Sort Key: setting_key (String, RANGE)
+       - Attributes: setting_value, last_updated
+       - Purpose: Store device configuration settings (key-value pairs)
+
+    3. WifiNetworks Table:
+       - Primary Key: device_id (String, HASH)
+       - Sort Key: network_id (String, RANGE)
+       - Attributes: ssid, security_type, enabled, channel,
+                    signal_strength, last_updated
+       - Purpose: Store WiFi network configurations per device
+
+    4. Users Table:
+       - Primary Key: user_id (String, HASH)
+       - GSI 1: EmailIndex (email as HASH)
+       - GSI 2: UsernameIndex (username as HASH)
+       - Attributes: username, email, first_name, last_name, role,
+                    created_at, last_login
+       - Purpose: Store user accounts and profiles
+
+    5. UserActivities Table:
+       - Primary Key: user_id (String, HASH)
+       - Sort Key: timestamp (String, RANGE)
+       - GSI: ActivityTypeIndex (activity_type as HASH, timestamp as RANGE)
+       - Attributes: activity_type, description, ip_address
+       - Purpose: Store user activity logs and audit trail
+
+Key Features:
+    - Composite primary keys for efficient queries
+    - Global Secondary Indexes for alternate access patterns
+    - Provisioned throughput (5 RCU/5 WCU for tables, 2 RCU/2 WCU for GSIs)
+    - Automatic table creation with wait for active state
+    - Idempotent initialization (skips existing tables)
+    - Helper functions for data type conversions
+
+Global Secondary Indexes:
+
+    EmailIndex (Users table):
+    - Partition Key: email
+    - Purpose: Query users by email address
+    - Use case: Login, user lookup by email
+
+    UsernameIndex (Users table):
+    - Partition Key: username
+    - Purpose: Query users by username
+    - Use case: User search, username validation
+
+    ActivityTypeIndex (UserActivities table):
+    - Partition Key: activity_type
+    - Sort Key: timestamp
+    - Purpose: Query activities by type and time range
+    - Use case: Activity reports, security audits
+
+Helper Functions:
+
+    datetime_to_iso(dt):
+    - Converts datetime objects to ISO 8601 strings
+    - Handles DynamoDB datetime storage requirements
+    - Returns original value if not datetime
+
+    json_dumps(obj):
+    - JSON serialization with Decimal handling
+    - Uses DecimalEncoder for DynamoDB Decimal types
+    - Converts Decimal to float for JSON compatibility
+
+    get_dynamodb_resource():
+    - Creates boto3 DynamoDB resource
+    - Configured for us-west-2 region
+    - Returns resource for table operations
+
+Table Creation Functions:
+
+    create_devices_table():
+    - Creates Devices table with device_id as primary key
+    - Returns table object
+
+    create_device_settings_table():
+    - Creates DeviceSettings table with composite key
+    - device_id (HASH) + setting_key (RANGE)
+    - Returns table object
+
+    create_wifi_networks_table():
+    - Creates WifiNetworks table with composite key
+    - device_id (HASH) + network_id (RANGE)
+    - Returns table object
+
+    create_users_table():
+    - Creates Users table with user_id as primary key
+    - Includes EmailIndex and UsernameIndex GSIs
+    - Returns table object
+
+    create_user_activities_table():
+    - Creates UserActivities table with composite key
+    - user_id (HASH) + timestamp (RANGE)
+    - Includes ActivityTypeIndex GSI
+    - Returns table object
+
+    init_db():
+    - Initializes all tables if they don't exist
+    - Waits for tables to become active
+    - Returns True on success, False on failure
+    - Idempotent (safe to run multiple times)
+
+Environment Variables:
+    AWS_REGION: AWS region for DynamoDB (defaults to us-west-2)
+
+Usage:
+    Initialize tables:
+    >>> from dynamodb_models import init_db
+    >>> init_db()
+    
+    Run as script:
+    >>> python dynamodb_models.py
+    
+    Use helper functions:
+    >>> from dynamodb_models import datetime_to_iso, json_dumps
+    >>> iso_string = datetime_to_iso(datetime.now())
+    >>> json_string = json_dumps({"value": Decimal("123.45")})
+
+Output:
+    Creating table Devices...
+    Creating table DeviceSettings...
+    Creating table WifiNetworks...
+    Creating table Users...
+    Creating table UserActivities...
+    Created tables: Devices, DeviceSettings, WifiNetworks, Users, UserActivities
+    DynamoDB tables initialized successfully.
+
+Provisioned Throughput:
+    - Tables: 5 Read Capacity Units, 5 Write Capacity Units
+    - GSIs: 2 Read Capacity Units, 2 Write Capacity Units
+    - Suitable for development and testing
+    - Consider on-demand billing for production
+
+Data Types:
+    - Strings: device_id, setting_key, ssid, email, etc.
+    - Numbers: Stored as Decimal (DynamoDB requirement)
+    - Booleans: enabled status
+    - Timestamps: ISO 8601 strings (YYYY-MM-DDTHH:MM:SS)
+
+Notes:
+    - Always uses us-west-2 region for consistency
+    - Tables are created with provisioned capacity mode
+    - GSIs enable efficient querying by alternate keys
+    - Waits for table creation to complete before returning
+    - Skips tables that already exist (no error)
+    - Requires appropriate IAM permissions for DynamoDB
 """
 import boto3
-import os
-import uuid
 import datetime
-from boto3.dynamodb.conditions import Key, Attr
 from decimal import Decimal
 import json
 
