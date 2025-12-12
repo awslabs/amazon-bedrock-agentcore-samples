@@ -111,7 +111,7 @@ markdown-it-py==4.0.0
     # via rich
 markupsafe==3.0.3
     # via jinja2
-mcp==1.17.0
+mcp==1.23.0
     # via openai-agents
 mdurl==0.1.2
     # via markdown-it-py
