@@ -140,22 +140,18 @@ jupyter notebook multi-agent-healthcare-memory.ipynb
 ```
 
 2. Run cells sequentially:
-   - **Step 1**: Install dependencies
-   - **Step 2**: Create IAM role for memory execution
-   - **Step 3**: Configure memory strategy (enter memory name and patient ID)
-   - **Step 3b**: Create or find memory
-   - **Step 4**: Initialize data plane client with branching
-   - **Step 5**: Configure HealthLake (create new or use existing)
-   - **Step 6**: Create agents with dynamic HealthLake tools
-   - **Step 7**: Test with interactive chat
-   - **Step 8**: Verify short-term memory (events)
-   - **Step 9**: Check long-term memory (episodes and reflections)
+   - **Step 1**: Environment Setup
+   - **Step 2**: Configure HealthLake Datastore
+   - **Step 3**: Create Memory with Episodic Strategy
+   - **Step 4**: Create Memory Hook Provider with Branch Support
+   - **Step 5**: Create Multi-Agent Healthcare Architecture with Memory Branching
+   - **Step 6**: Test with interactive chat
+   - **Step 7**: Inspect healthcare memory branches
+   - **Step 8**: Validate long-term memory (episodes and reflections)
 
 ### Interactive Inputs
 
 The notebook prompts for:
-- **Memory name**: Custom name or auto-generated unique name
-- **Patient ID**: Your patient ID or demo default
 - **HealthLake datastore ID**: Existing datastore or create new with Synthea data
 - **HealthLake region**: AWS region for HealthLake
 
@@ -248,6 +244,18 @@ Agent(
 
 ## Troubleshooting
 
+### Branch Creation Errors
+If you see "Branch rootEventId is required when creating a branch":
+- **Restart the Jupyter kernel** (Kernel → Restart)
+- **Re-run all cells** from the beginning to reload the corrected `HealthcareMemoryHooks` class
+- The fix ensures the main branch has an initial event before forking specialized agent branches
+
+### Memory Hook Errors
+If you see "MemorySession.add_turns() got an unexpected keyword argument 'branch_name'":
+- This indicates the notebook is using cached/old code
+- **Restart the kernel** and re-run all cells to pick up the API fixes
+- The corrected code uses `branch={"name": branch_name}` format
+
 ### Model Not Available
 If you see "serviceUnavailableException", ensure:
 - Using global inference profile: `global.anthropic.claude-sonnet-4-20250514-v1:0`
@@ -284,10 +292,6 @@ If needed, you can also delete resources manually:
 ```bash
 # Delete memory
 aws bedrock-agentcore-cp delete-memory --memory-id <MEMORY_ID> --region us-east-1
-
-# Delete IAM role
-aws iam delete-role-policy --role-name AgentCoreMemoryExecutionRole --policy-name BedrockModelAccess
-aws iam delete-role --role-name AgentCoreMemoryExecutionRole
 
 # Delete HealthLake datastore
 aws healthlake delete-fhir-datastore --datastore-id <DATASTORE_ID> --region <REGION>
