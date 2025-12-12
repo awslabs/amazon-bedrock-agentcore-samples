@@ -274,6 +274,4 @@ aws healthlake delete-fhir-datastore --datastore-id <DATASTORE_ID> --region <REG
 - [HealthLake FHIR API](https://docs.aws.amazon.com/healthlake/latest/devguide/working-with-FHIR-healthlake.html)
 - [Memory Branching Patterns](https://docs.aws.amazon.com/bedrock/latest/userguide/agentcore-memory-branching.html)
 
-## License
 
-This sample code is made available under the MIT-0 license. See the LICENSE file.
