@@ -343,7 +343,7 @@ typing-inspection==0.4.1
     #   pydantic-settings
 tzdata==2025.2
     # via pandas
-urllib3==2.5.0
+urllib3==2.6.0
     # via
     #   bedrock-agentcore
     #   bedrock-agentcore-starter-toolkit
