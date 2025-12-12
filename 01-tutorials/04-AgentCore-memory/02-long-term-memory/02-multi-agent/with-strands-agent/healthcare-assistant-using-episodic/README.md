@@ -1,8 +1,8 @@
 # Multi-Agent Healthcare System with Episodic Memory
 
-> **Amazon Enhances AgentCore Memory with Episodic Memory, Enabling AI Agents to Learn From Experience**
->
-> *New episodic memory capability helps developers capture and leverage prior experiences of AI agents, improving decision-making in complex tasks.*
+Episodic memory captures meaningful interaction slices, identifying important moments and summarizing them into compact, organized records for focused retrieval without noise.
+
+Reflections analyze episodes to surface insights, patterns, and conclusions—helping the system understand why events matter and how they should influence future behavior, turning experience into actionable guidance.
 
 A comprehensive example demonstrating **multi-agent coordination with episodic memory** using Amazon Bedrock AgentCore Memory. This tutorial shows how AI agents can learn from past interactions and improve decision-making over time.
 
@@ -14,42 +14,18 @@ This tutorial showcases a healthcare assistant system with:
 - **Demographics Agent**: Manages patient demographic information
 - **Medication Agent**: Handles medication and prescription queries
 
-Each agent maintains isolated short-term memory through **memory branching**, while sharing long-term insights through **episodic memory with custom strategies**.
+Each agent maintains isolated short-term memory through **memory branching**, while sharing long-term insights through **episodic memory strategies**.
 
 ## Architecture
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    Supervisor Agent                         │
-│              (Routes to specialized agents)                 │
-└────────────┬────────────┬────────────┬─────────────────────┘
-             │            │            │
-    ┌────────▼───┐  ┌────▼─────┐  ┌──▼──────────┐
-    │   Claims   │  │Demographics│  │ Medication  │
-    │   Agent    │  │   Agent    │  │   Agent     │
-    └────────────┘  └────────────┘  └─────────────┘
-         │               │                 │
-         └───────────────┴─────────────────┘
-                         │
-              ┌──────────▼──────────┐
-              │  AgentCore Memory   │
-              │  with Branching     │
-              └─────────────────────┘
-                         │
-         ┌───────────────┴───────────────┐
-         │                               │
-    ┌────▼─────────────┐    ┌───────────▼──────┐
-    │ Short-Term       │    │ Long-Term         │
-    │ (Events)         │    │ (Episodes +       │
-    │ Per Branch       │    │  Reflections)     │
-    └──────────────────┘    └───────────────────┘
-```
+<div style="text-align:left">
+    <img src="architecture.png" width="75%" />
+</div>
 
 ## Memory Strategy
 
-### Episodic Override with Custom Prompts
+### Episodic 
 
-The system uses a custom episodic memory strategy with:
+The system uses a episodic memory strategy with:
 
 **Extraction**: Converts conversation events into structured episodes
 - Prompt: "Extract patient interactions with healthcare agents"
@@ -60,7 +36,7 @@ The system uses a custom episodic memory strategy with:
 
 **Reflection**: Generates cross-session insights
 - Prompt: "Generate insights from patient care patterns"
-- Namespace: `healthcare/{actorId}` (shared across all sessions)
+- Namespace: `healthcare/{actorId}` (exact namespace prefix)
 
 ### Memory Branching
 
@@ -136,14 +112,14 @@ aws configure
 
 1. Open the notebook:
 ```bash
-jupyter notebook multi-agent-healthcare-memory.ipynb
+jupyter notebook healthcare-data-assistant.ipynb
 ```
 
 2. Run cells sequentially:
    - **Step 1**: Environment Setup
    - **Step 2**: Configure HealthLake Datastore
-   - **Step 3**: Create Memory with Episodic Strategy
-   - **Step 4**: Create Memory Hook Provider with Branch Support
+   - **Step 3**: Create Memory as tool for Long-term memory with Episodic Strategy
+   - **Step 4**: Create Memory Hook Provider with Branch Support for Short-term memory
    - **Step 5**: Create Multi-Agent Healthcare Architecture with Memory Branching
    - **Step 6**: Test with interactive chat
    - **Step 7**: Inspect healthcare memory branches
@@ -178,7 +154,7 @@ Type `quit`, `exit`, or `q` to end the chat session.
 After running the notebook, you can visualize the memory using the memory browser:
 
 1. Note the Memory ID from the configuration summary
-2. Open memory browser at `http://localhost:8000`
+2. Open - [Memory Browser](https://github.com/awslabs/amazon-bedrock-agentcore-samples/tree/main/01-tutorials/04-AgentCore-memory/03-advanced-patterns/04-memory-browser) - Visualize and explore memory events, episodes, and reflections at `http://localhost:8000`
 3. Enter the Memory ID to explore:
    - **Short-term memory**: Events by branch
    - **Episodes**: Session-level consolidated memories
@@ -204,7 +180,7 @@ After running the notebook, you can visualize the memory using the memory browse
 ### 4. HealthLake Integration
 - Dynamic FHIR queries
 - Real-time patient data access
-- Synthea synthetic data support
+- All data is synthetic (generated by Synthea) - no real patient information is used
 
 ## Customization
 
@@ -223,14 +199,6 @@ allergy_agent = Agent(
 )
 ```
 
-### Modifying Memory Strategy
-
-Edit the `override_strategy` in Step 3 to customize:
-- Extraction prompts
-- Consolidation logic
-- Reflection generation
-- Namespace patterns
-
 ### Using Different Models
 
 Change the `model` parameter in agent creation:
@@ -241,6 +209,10 @@ Agent(
     tools=[...]
 )
 ```
+## Additional Resources
+
+- [Episodic Memory Best Practices](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/episodic-memory-strategy.html#memory-episodic-retrieve-episodes) - Learn how to retrieve episodes to improve agentic performance
+
 
 ## Troubleshooting
 
@@ -270,8 +242,7 @@ Verify IAM permissions include:
 ### Memory Creation Failed
 Check that:
 - IAM role has Bedrock invoke permissions
-- Trust policy includes gamma endpoints for preprod
-- Memory execution role ARN is correct
+
 
 ## Cleanup
 
@@ -280,7 +251,6 @@ After completing the tutorial, you can clean up resources to avoid ongoing charg
 1. Run the **Cleanup** cell at the end of the notebook
 2. You'll be prompted to delete:
    - **Memory**: AgentCore Memory instance
-   - **IAM Role**: Memory execution role
    - **HealthLake Datastore**: FHIR datastore (optional)
 
 Each resource can be deleted independently based on your needs.
