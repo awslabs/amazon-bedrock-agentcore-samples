@@ -265,7 +265,7 @@ markupsafe==3.0.3
     # via
     #   jinja2
     #   mako
-mcp==1.17.0
+mcp==1.23.0
     # via google-adk
 multidict==6.7.0
     # via
@@ -496,7 +496,7 @@ tzlocal==5.3.1
     # via google-adk
 uritemplate==4.2.0
     # via google-api-python-client
-urllib3==2.5.0
+urllib3==2.6.0
     # via
     #   bedrock-agentcore
     #   botocore

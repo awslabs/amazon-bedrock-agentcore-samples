@@ -76,7 +76,7 @@ docstring-parser==0.17.0
     # via
     #   bedrock-agentcore-starter-toolkit
     #   strands-agents
-fonttools==4.59.2
+fonttools==4.61.0
     # via matplotlib
 frozendict==2.4.6
     # via yfinance
@@ -137,7 +137,7 @@ markupsafe==3.0.2
     # via jinja2
 matplotlib==3.10.6
     # via finance-assistant (pyproject.toml)
-mcp==1.13.1
+mcp==1.23.0
     # via strands-agents
 mdurl==0.1.2
     # via markdown-it-py
@@ -343,7 +343,7 @@ typing-inspection==0.4.1
     #   pydantic-settings
 tzdata==2025.2
     # via pandas
-urllib3==2.5.0
+urllib3==2.6.0
     # via
     #   bedrock-agentcore
     #   bedrock-agentcore-starter-toolkit

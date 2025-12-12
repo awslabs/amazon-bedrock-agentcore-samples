@@ -20,7 +20,7 @@ NC='\033[0m' # No Color
 STACK_NAME_BASE="customer-support-vpc"
 ENVIRONMENT="dev"
 DB_USERNAME="postgres"
-MODEL_ID="global.anthropic.claude-sonnet-4-20250514-v1:0"
+MODEL_ID="global.anthropic.claude-haiku-4-5-20251001-v1:0"
 REGION="us-west-2"
 ADMIN_EMAIL=""
 ADMIN_PASSWORD=""
@@ -287,7 +287,7 @@ OPTIONS:
     -r, --region REGION         AWS region (default: us-west-2)
     -e, --env ENVIRONMENT       Environment name (default: dev, appended to stack name)
     -u, --db-user USERNAME      Database master username (default: postgres)
-    -m, --model MODEL_ID        Bedrock model ID (default: global.anthropic.claude-sonnet-4-20250514-v1:0)
+    -m, --model MODEL_ID        Bedrock model ID (default: global.anthropic.claude-haiku-4-5-20251001-v1:0)
     --email EMAIL               Admin user email (REQUIRED)
     --password PASSWORD         Admin user password (REQUIRED, min 8 chars with uppercase, lowercase, number, special char)
     -h, --help                  Show this help message
@@ -299,18 +299,18 @@ EXAMPLES:
     # Deploy production environment (creates stack: customer-support-vpc-prod)
     $0 --env prod --email admin@example.com --password 'MyP@ssw0rd123'
 
-    # Deploy test environment with Sonnet model (creates stack: customer-support-vpc-test)
-    $0 --env test --email admin@example.com --password 'MyP@ssw0rd123' --model us.anthropic.claude-3-5-sonnet-20241022-v2:0
+    # Deploy test environment with Haiku model (creates stack: customer-support-vpc-test)
+    $0 --env test --email admin@example.com --password 'MyP@ssw0rd123' --model global.anthropic.claude-haiku-4-5-20251001-v1:0
 
     # Deploy to specific region with custom model (creates stack: customer-support-vpc-dev)
-    $0 --region us-west-2 --model anthropic.claude-3-5-sonnet-20240620-v1:0 --email admin@example.com --password 'MyP@ssw0rd123'
+    $0 --region us-west-2 --model global.anthropic.claude-haiku-4-5-20251001-v1:0 --email admin@example.com --password 'MyP@ssw0rd123'
 
     # Full customization (creates stack: prod-support-prod)
     $0 --bucket customersupportvpc-prod \\
        --stack prod-support \\
        --env prod \\
        --region us-east-1 \\
-       --model us.anthropic.claude-3-5-sonnet-20241022-v2:0 \\
+       --model global.anthropic.claude-haiku-4-5-20251001-v1:0 \\
        --email admin@example.com \\
        --password 'MyP@ssw0rd123'
 

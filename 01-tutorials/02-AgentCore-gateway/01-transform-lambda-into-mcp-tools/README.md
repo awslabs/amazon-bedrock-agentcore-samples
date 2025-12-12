@@ -75,7 +75,7 @@ After adding this policy, you can specify the Lambda function ARN in your Gatewa
 | Tutorial type        | Interactive                                               |
 | AgentCore components | AgentCore Gateway, AgentCore Identity, AWS IAM            |
 | Agentic Framework    | Strands Agents                                            |
-| LLM model            | Anthropic Claude Sonnet 3.7, Amazon Nova Pro              |
+| LLM model            | Anthropic Claude Haiku 4.5, Amazon Nova Pro              |
 | Tutorial components  | Creating AgentCore Gateway and Invoking AgentCore Gateway |
 | Tutorial vertical    | Cross-vertical                                            |
 | Example complexity   | Easy                                                      |

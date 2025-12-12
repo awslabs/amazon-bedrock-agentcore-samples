@@ -120,7 +120,7 @@ class AgentCoreConfigManager:
         
         return {
             "region_name": aws_config.get("region", "us-east-1"),
-            "model_id": agents_config.get("modelid", "us.anthropic.claude-3-7-sonnet-20250219-v1:0"),
+            "model_id": agents_config.get("modelid", "global.anthropic.claude-haiku-4-5-20251001-v1:0"),
             "temperature": 0.7,  # Default from current usage
             "max_tokens": 4096   # Default from current usage
         }

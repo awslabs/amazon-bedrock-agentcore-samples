@@ -81,7 +81,7 @@ Parameters:
   # Agent Server Parameters
   ModelID:
     Type: String
-    Default: 'global.anthropic.claude-sonnet-4-20250514-v1:0'
+    Default: 'global.anthropic.claude-haiku-4-5-20251001-v1:0'
     Description: 'Bedrock model ID to use with Agent Runtime'
 
   # Cognito User Parameters

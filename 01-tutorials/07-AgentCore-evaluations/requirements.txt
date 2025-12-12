@@ -1,0 +1,4 @@
+boto3>=1.42.0
+strands-agents
+strands-agents-tools
+ipywidgets
