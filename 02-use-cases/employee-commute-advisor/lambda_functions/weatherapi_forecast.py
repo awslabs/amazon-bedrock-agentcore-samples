@@ -102,7 +102,8 @@ def fetch_weather_forecast(location, days, api_key):
         url = f"http://api.weatherapi.com/v1/forecast.json"
         url += f"?key={api_key}&q={encoded_location}&days={days}&aqi=no&alerts=yes"
         
-        print(f"Weather API URL: {url.replace(api_key, 'REDACTED')}")
+        # Log only the endpoint being called (without sensitive parameters)
+        print(f"Fetching weather data via WeatherAPI")
         
         # Make the API request
         response = http.request('GET', url)

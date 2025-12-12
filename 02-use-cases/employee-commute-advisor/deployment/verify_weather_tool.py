@@ -33,9 +33,7 @@ def check_lambda_function():
         # Check if API key is configured
         env_vars = response.get('Environment', {}).get('Variables', {})
         if 'WEATHERAPI_KEY' in env_vars:
-            key = env_vars['WEATHERAPI_KEY']
-            masked_key = key[:8] + "***" if len(key) > 8 else "***"
-            print(f"✅ API key configured: {masked_key}")
+            print("✅ API key is configured")
             return True, lambda_client
         else:
             print("❌ WEATHERAPI_KEY environment variable not set!")

@@ -130,7 +130,8 @@ def geocode_address(address, api_key):
         url = f"https://api.tomtom.com/search/2/search/{encoded_address}.json"
         url += f"?key={api_key}&limit=1&typeahead=false"
         
-        print(f"Geocoding URL: {url.replace(api_key, 'REDACTED')}")
+        # Log only the endpoint being called (without sensitive parameters)
+        print(f"Geocoding address via TomTom Search API")
         
         # Make the API request
         response = http.request('GET', url)
@@ -199,7 +200,9 @@ def calculate_route_with_traffic(from_coords, to_coords, api_key, departure_time
         ]
         
         full_url = url + "?" + "&".join(params)
-        print(f"Routing URL: {full_url.replace(api_key, 'REDACTED')}")
+        
+        # Log only the endpoint being called (without sensitive parameters)
+        print(f"Calculating route via TomTom Routing API")
         
         # Make the API request
         response = http.request('GET', full_url)

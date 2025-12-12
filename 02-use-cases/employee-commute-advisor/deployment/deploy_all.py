@@ -172,9 +172,7 @@ def configure_tomtom_api_key(region):
             }
         )
         
-        # Mask key for display
-        masked_key = api_key[:8] + "***" if len(api_key) > 8 else "***"
-        print(f"✅ TomTom API key configured: {masked_key}")
+        print("✅ TomTom API key configured successfully")
         return True
         
     except Exception as e:
@@ -215,9 +213,7 @@ def configure_weatherapi_key(region):
             }
         )
         
-        # Mask key for display
-        masked_key = api_key[:8] + "***" if len(api_key) > 8 else "***"
-        print(f"✅ WeatherAPI key configured: {masked_key}")
+        print("✅ WeatherAPI key configured successfully")
         return True
         
     except Exception as e:

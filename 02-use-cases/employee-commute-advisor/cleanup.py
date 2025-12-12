@@ -269,18 +269,20 @@ def cleanup_secrets():
     ]
     
     for secret_name in secrets:
+        # Use generic identifier for logging to avoid exposing secret names
+        secret_identifier = f"secret_{secrets.index(secret_name) + 1}_of_{len(secrets)}"
         try:
-            print(f"Deleting secret: {secret_name}")
+            print(f"Deleting {secret_identifier}...")
             secrets_client.delete_secret(
                 SecretId=secret_name,
                 ForceDeleteWithoutRecovery=True
             )
-            print(f"✅ Secret deleted: {secret_name}")
+            print(f"✅ {secret_identifier} deleted")
         except Exception as e:
             if 'ResourceNotFoundException' in str(e):
-                print(f"✅ Secret already deleted: {secret_name}")
+                print(f"✅ {secret_identifier} already deleted")
             else:
-                print(f"⚠️  Error deleting secret {secret_name}: {e}")
+                print(f"⚠️  Error deleting {secret_identifier}: {e}")
 
 def main():
     """Main cleanup function"""
