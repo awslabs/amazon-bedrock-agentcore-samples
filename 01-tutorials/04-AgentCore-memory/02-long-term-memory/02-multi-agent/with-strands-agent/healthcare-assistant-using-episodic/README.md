@@ -55,10 +55,8 @@ Each agent operates on its own memory branch:
 ## Prerequisites
 
 ### AWS Services
-- **Amazon Bedrock**: Access to Claude Sonnet 4 model
-- **Amazon Bedrock AgentCore Memory**: For episodic memory with custom strategies
-  - Requires gamma endpoints access for episodic override features
-  - IAM role for memory execution
+- **Amazon Bedrock**: Access to Claude Sonnet 4 model 
+- **Amazon Bedrock AgentCore Memory**: For episodic memory strategy
 - **Amazon HealthLake** (optional): FHIR datastore with patient data
   - Can create new datastore with Synthea data during setup
   - Or use existing datastore
@@ -128,7 +126,7 @@ jupyter notebook healthcare-data-assistant.ipynb
 ### Interactive Inputs
 
 The notebook prompts for:
-- **HealthLake datastore ID**: Existing datastore or create new with Synthea data
+- **HealthLake datastore ID**: Existing datastore or create new with Synthea data ( no real patient information is used)
 - **HealthLake region**: AWS region for HealthLake
 
 ### Testing the System
@@ -173,7 +171,7 @@ After running the notebook, you can visualize the memory using the memory browse
 - Shared session context
 
 ### 3. Episodic Memory
-- Custom extraction, consolidation, and reflection prompts
+- extraction, consolidation, and reflection prompts
 - Session-level episodes
 - Patient-level reflections
 
