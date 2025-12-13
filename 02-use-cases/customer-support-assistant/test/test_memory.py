@@ -22,7 +22,7 @@ SESSION_ID = str(uuid.uuid4())
 MEMORY_ID = get_ssm_parameter("/app/customersupport/agentcore/memory_id")
 
 model = BedrockModel(
-    model_id="us.anthropic.claude-3-5-haiku-20241022-v1:0",
+    model_id="global.anthropic.claude-haiku-4-5-20251001-v1:0",
 )
 
 memory_client = boto3.client("bedrock-agentcore")

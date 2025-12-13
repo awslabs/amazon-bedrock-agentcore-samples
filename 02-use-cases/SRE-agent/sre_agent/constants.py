@@ -19,13 +19,13 @@ class ModelConfig(BaseModel):
 
     # Anthropic model IDs
     anthropic_model_id: str = Field(
-        default="claude-sonnet-4-20250514",
+        default="claude-haiku-4-5-20251001",
         description="Default Anthropic Claude model ID",
     )
 
     # Amazon Bedrock model IDs
     bedrock_model_id: str = Field(
-        default="us.anthropic.claude-3-7-sonnet-20250219-v1:0",
+        default="global.anthropic.claude-haiku-4-5-20251001-v1:0",
         description="Default Amazon Bedrock Claude model ID",
     )
 

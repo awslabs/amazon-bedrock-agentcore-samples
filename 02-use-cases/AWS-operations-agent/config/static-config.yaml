@@ -8,7 +8,7 @@ aws:
 
 # Model Settings (used by agents via get_model_settings())
 agents:
-  modelid: "us.anthropic.claude-3-7-sonnet-20250219-v1:0"
+  modelid: "global.anthropic.claude-haiku-4-5-20251001-v1:0"
   max_concurrent: 2
   payload_formats:
     diy: "direct"

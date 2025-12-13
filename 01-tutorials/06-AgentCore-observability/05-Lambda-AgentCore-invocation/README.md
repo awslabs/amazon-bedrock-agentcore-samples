@@ -26,7 +26,7 @@ Note: Dockerfile is generated dynamically in the notebook and not tracked in git
 | Tutorial type      | Conversational                                                                   |
 | Agent type         | Single                                                                           |
 | Agentic Framework  | Strands Agents                                                                   |
-| LLM model          | Anthropic Claude Sonnet 3.7                                                      |
+| LLM model          | Anthropic Claude Haiku 4.5                                                      |
 | Tutorial components| Lambda invocation, AgentCore Runtime, MCP servers, CloudWatch Observability     |
 | Example complexity | Advanced                                                                         |
 | SDK used           | Amazon BedrockAgentCore Python SDK, boto3, AWS Lambda                           |

@@ -863,7 +863,7 @@ Resources:
                     For explicit preference, extract only preference that the user has explicitly shared. Do not infer user's preference.
                     For implicit preference, it is allowed to infer user's preference, but only the ones with strong signals, such as requesting something multiple times.
                     Assistant:
-                  ModelId: "us.anthropic.claude-3-5-sonnet-20241022-v2:0"
+                  ModelId: "global.anthropic.claude-haiku-4-5-20251001-v1:0"
         - SemanticMemoryStrategy: 
             Name: SemanticMemory
             Namespaces:

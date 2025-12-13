@@ -30,21 +30,21 @@ This application uses a **hybrid multi-agent architecture** with **correct Agent
 
 The application uses an intelligent model fallback system with **inference profiles**:
 
-1. **Primary**: Claude Sonnet 3.7 (`us.anthropic.claude-3-7-sonnet-20250219-v1:0`)
+1. **Primary**: Claude Haiku 4.5 (`global.anthropic.claude-haiku-4-5-20251001-v1:0`)
 2. **Fallback**: Nova Premier (`us.amazon.nova-premier-v1:0`) 
 3. **Last Resort**: Claude 3.5 Sonnet (`anthropic.claude-3-5-sonnet-20241022-v2:0`)
 
 The system automatically detects model availability and selects the best available option.
 
 1. **Code Generator Agent** (Strands-Agents Framework):
-   - Uses **Claude Sonnet 3.7** (primary) or **Nova Premier** (fallback) via strands-agents
+   - Uses **Claude Haiku 4.5** (primary) or **Nova Premier** (fallback) via strands-agents
    - Generates clean, executable Python code from natural language
    - Optimized for code generation tasks
    - Returns pure Python code without explanations
 
 2. **Code Executor Agent** (Hybrid Strands-Agents + AgentCore):
    - **Primary Mode**: Strands-Agents Agent with AgentCore CodeInterpreter tool
-   - **Model**: Same as Code Generator (Claude Sonnet 3.7 → Nova Premier → Claude 3.5 Sonnet)
+   - **Model**: Same as Code Generator (Claude Haiku 4.5 → Nova Premier → Claude 3.5 Sonnet)
    - Uses `code_session` from AgentCore for real code execution
    - Executes Python code in AWS-managed sandboxed environment
 
@@ -140,7 +140,7 @@ npm start
 
 ### 1. Code Generation
 - Enter a natural language prompt describing what you want the code to do
-- Click "Generate Code" to create Python code using Claude Sonnet 3.7 via Strands Agent
+- Click "Generate Code" to create Python code using Claude Haiku 4.5 via Strands Agent
 - **Generated code is automatically loaded into the Code Editor**
 - Preview the generated code before editing or executing
 - Choose to execute immediately or edit before execution
