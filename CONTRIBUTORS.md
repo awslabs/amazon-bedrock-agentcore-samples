@@ -6,22 +6,33 @@
 - aristsakpinis93
 - aurbac
 - bergjaak
+- bioerrorlog
+- chanbi
+- crupakheti
 - danystinson
 - dhawalkp
 - didhd
 - EashanKaushik
+- Fabian Rami
 - Grace Lang
+- Hari Tripathi
+- Joshua Samuel
 - khastation
 - manchandakp
+- madhurprash
 - Meghana Ashok
 - mttanke
 - mvangara10
+- nilakshdas
 - ozhn
+- Polaris Jhandi
+- premaiyer
 - rahullks
 - rameshv29
 - rohillasandeep
 - satveerkhurpa
 - seanslavichaws
+- Shanicus Yee
 - sssumarss
 - sundargthb
 - vedashree1110
@@ -31,5 +42,33 @@
 - erezweinstein5
 - HardikThakkar94
 - brianloyal
+- ireneybean
+- jagdeep1
+- Sunil Ramachandra
 - Sandeep Raveesh-Babu
 - chintanpatel-ai
+- saurabh-et-al
+- Evandro Franco
+- greg-aws
+- Frank Dallezotte
+- patcher9
+- Omar Elkharbotly
+- Chintan Patel
+- Shreyas Subramanian
+- David Kaleko
+- sasikiran-malladi
+- sunkavar
+- joseanavarrom
+- spencer-zepelin
+- Chaitra Mathur (mchaitra007)
+- govindhi
+- Sandesh R
+- jld23
+- mani-aiml
+- Sindhura Palakodety
+- Bhuvan Annamreddi
+- Sparsh Wadhwa (SparshWadhwa)
+- Lana Zhang
+- Bharathi Srinivasan
+- Antonio Rodriguez (rodzanto)
+

@@ -79,7 +79,11 @@
         </div>
         {% endif %}
         
+        {% if login_url and (login_url.startswith('https://') or login_url.startswith('http://')) %}
         <a href="{{ login_url }}">
+        {% else %}
+        <a href="#">
+        {% endif %}
             <button class="login-button">Sign in with Amazon Cognito</button>
         </a>
     </div>

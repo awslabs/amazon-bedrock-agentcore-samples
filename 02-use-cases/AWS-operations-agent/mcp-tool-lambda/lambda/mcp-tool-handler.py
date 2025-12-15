@@ -128,7 +128,7 @@ def handle_aws_service_tool(tool_name: str, event: Dict[str, Any]) -> Dict[str, 
         # Initialize Bedrock model
         bedrock_model = BedrockModel(
             region_name='us-east-1',
-            model_id='us.anthropic.claude-3-5-haiku-20241022-v1:0', #'us.anthropic.claude-3-7-sonnet-20250219-v1:0',
+            model_id='global.anthropic.claude-haiku-4-5-20251001-v1:0',
             temperature=0.1
         )
         

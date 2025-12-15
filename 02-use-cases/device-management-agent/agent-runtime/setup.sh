@@ -1,7 +1,72 @@
 #!/bin/bash
 
-# Setup script for Device Management Agent Runtime
-# This script creates a Cognito OAuth2 credential provider
+################################################################################
+# Device Management Agent Runtime - Cognito OAuth2 Setup Script
+#
+# This script automates the creation of an Amazon Cognito OAuth2 credential
+# provider for the Device Management Agent Runtime. It validates environment
+# configuration, installs required Python dependencies, and creates the
+# credential provider using the AgentCore identity management system.
+#
+# PURPOSE:
+#   Configure OAuth2 authentication for the agent runtime to communicate
+#   with the Bedrock AgentCore Gateway using Cognito credentials.
+#
+# PREREQUISITES:
+#   - Python 3 installed and available in PATH
+#   - .env file with required Cognito configuration
+#   - AWS credentials configured (aws configure)
+#   - boto3, click, and python-dotenv packages (auto-installed)
+#
+# REQUIRED ENVIRONMENT VARIABLES (.env file):
+#   COGNITO_CLIENT_ID       - OAuth client ID from Cognito App Client
+#   COGNITO_CLIENT_SECRET   - OAuth client secret from Cognito App Client
+#   COGNITO_DISCOVERY_URL   - OIDC discovery endpoint URL
+#   COGNITO_AUTH_URL        - Authorization endpoint URL
+#   COGNITO_TOKEN_URL       - Token endpoint URL
+#   AWS_REGION              - AWS region for AgentCore operations
+#
+# WHAT THIS SCRIPT DOES:
+#   1. Validates .env file exists with required variables
+#   2. Checks Python 3 installation
+#   3. Installs required Python packages from requirements-runtime.txt
+#   4. Creates Cognito OAuth2 credential provider via CLI tool
+#   5. Stores provider name in .env file for future reference
+#
+# CREDENTIAL PROVIDER:
+#   - Default name: device-management-cognito-provider-29-jul
+#   - Custom name: Pass as argument (./setup.sh my-custom-name)
+#   - Stored in: .env file as COGNITO_PROVIDER_NAME
+#
+# USAGE:
+#   Using default provider name:
+#   ./setup.sh
+#
+#   Using custom provider name:
+#   ./setup.sh my-custom-provider-name
+#
+# EXIT CODES:
+#   0 - Setup completed successfully
+#   1 - .env file not found or missing required variables
+#   1 - Python 3 not installed
+#   1 - Credential provider creation failed
+#
+# OUTPUTS:
+#   - Credential provider created in AWS
+#   - Provider name stored in .env file
+#   - Success message with next steps
+#
+# NEXT STEPS:
+#   1. Run the agent runtime: python3 strands-agent-runtime.py
+#   2. Check CloudWatch Logs: /aws/bedrock-agentcore/device-management-agent
+#   3. View X-Ray traces for performance monitoring
+#
+# NOTES:
+#   - Provider name is stored in .env for easy reference
+#   - Can be deleted later using: python3 cognito_credentials_provider.py delete
+#   - Requires appropriate IAM permissions for AgentCore operations
+#
+################################################################################
 
 set -e  # Exit on any error
 

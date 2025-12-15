@@ -3,8 +3,8 @@ import json
 import time
 from boto3.session import Session
 import botocore
+from botocore.exceptions import ClientError
 import requests
-import os
 import time
 
 def setup_cognito_user_pool():
@@ -131,19 +131,24 @@ def get_or_create_resource_server(cognito, user_pool_id, RESOURCE_SERVER_ID, RES
         )
         return RESOURCE_SERVER_ID
 
-def get_or_create_m2m_client(cognito, user_pool_id, CLIENT_NAME, RESOURCE_SERVER_ID):
+def get_or_create_m2m_client(cognito, user_pool_id, CLIENT_NAME, RESOURCE_SERVER_ID, SCOPES=None):
     response = cognito.list_user_pool_clients(UserPoolId=user_pool_id, MaxResults=60)
     for client in response["UserPoolClients"]:
         if client["ClientName"] == CLIENT_NAME:
             describe = cognito.describe_user_pool_client(UserPoolId=user_pool_id, ClientId=client["ClientId"])
             return client["ClientId"], describe["UserPoolClient"]["ClientSecret"]
     print('creating new m2m client')
+
+    # Default scopes if not provided (for backward compatibility)
+    if SCOPES is None:
+        SCOPES = [f"{RESOURCE_SERVER_ID}/gateway:read", f"{RESOURCE_SERVER_ID}/gateway:write"]
+
     created = cognito.create_user_pool_client(
         UserPoolId=user_pool_id,
         ClientName=CLIENT_NAME,
         GenerateSecret=True,
         AllowedOAuthFlows=["client_credentials"],
-        AllowedOAuthScopes=[f"{RESOURCE_SERVER_ID}/gateway:read", f"{RESOURCE_SERVER_ID}/gateway:write"],
+        AllowedOAuthScopes=SCOPES,
         AllowedOAuthFlowsUserPoolClient=True,
         SupportedIdentityProviders=["COGNITO"],
         ExplicitAuthFlows=["ALLOW_REFRESH_TOKEN_AUTH"]
@@ -436,6 +441,94 @@ def create_agentcore_gateway_role(gateway_name):
     return agentcore_iam_role
 
 
+def create_agentcore_gateway_role_with_region(gateway_name, region):
+    """
+    Create an IAM role for AgentCore Gateway with explicit region specification.
+    
+    Args:
+        gateway_name: Name of the gateway
+        region: AWS region where the gateway will be deployed
+    
+    Returns:
+        IAM role response
+    """
+    iam_client = boto3.client('iam')
+    agentcore_gateway_role_name = f'agentcore-{gateway_name}-role'
+    account_id = boto3.client("sts").get_caller_identity()["Account"]
+    
+    role_policy = {
+        "Version": "2012-10-17",
+        "Statement": [{
+            "Sid": "VisualEditor0",
+            "Effect": "Allow",
+            "Action": [
+                "bedrock-agentcore:*",
+                "bedrock:*",
+                "agent-credential-provider:*",
+                "iam:PassRole",
+                "secretsmanager:GetSecretValue",
+                "lambda:InvokeFunction"
+            ],
+            "Resource": "*"
+        }]
+    }
+
+    assume_role_policy_document = {
+        "Version": "2012-10-17",
+        "Statement": [{
+            "Sid": "AssumeRolePolicy",
+            "Effect": "Allow",
+            "Principal": {"Service": "bedrock-agentcore.amazonaws.com"},
+            "Action": "sts:AssumeRole",
+            "Condition": {
+                "StringEquals": {"aws:SourceAccount": f"{account_id}"},
+                "ArnLike": {"aws:SourceArn": f"arn:aws:bedrock-agentcore:{region}:{account_id}:*"}
+            }
+        }]
+    }
+
+    assume_role_policy_document_json = json.dumps(assume_role_policy_document)
+    role_policy_document = json.dumps(role_policy)
+    
+    try:
+        agentcore_iam_role = iam_client.create_role(
+            RoleName=agentcore_gateway_role_name,
+            AssumeRolePolicyDocument=assume_role_policy_document_json
+        )
+        time.sleep(10)
+    except iam_client.exceptions.EntityAlreadyExistsException:
+        print("Role already exists -- deleting and creating it again")
+        policies = iam_client.list_role_policies(
+            RoleName=agentcore_gateway_role_name,
+            MaxItems=100
+        )
+        print("policies:", policies)
+        for policy_name in policies['PolicyNames']:
+            iam_client.delete_role_policy(
+                RoleName=agentcore_gateway_role_name,
+                PolicyName=policy_name
+            )
+        print(f"deleting {agentcore_gateway_role_name}")
+        iam_client.delete_role(RoleName=agentcore_gateway_role_name)
+        print(f"recreating {agentcore_gateway_role_name}")
+        agentcore_iam_role = iam_client.create_role(
+            RoleName=agentcore_gateway_role_name,
+            AssumeRolePolicyDocument=assume_role_policy_document_json
+        )
+
+    print(f"attaching role policy {agentcore_gateway_role_name}")
+    try:
+        iam_client.put_role_policy(
+            PolicyDocument=role_policy_document,
+            PolicyName="AgentCorePolicy",
+            RoleName=agentcore_gateway_role_name
+        )
+    except Exception as e:
+        print(e)
+
+    return agentcore_iam_role
+
+
 def create_agentcore_gateway_role_s3_smithy(gateway_name):
     iam_client = boto3.client('iam')
     agentcore_gateway_role_name = f'agentcore-{gateway_name}-role'
@@ -633,6 +726,7 @@ def delete_gateway(gateway_client,gatewayId):
             gatewayIdentifier = gatewayId,
             targetId = targetId
         )
+        time.sleep(5)
     print("Deleting gateway ", gatewayId)
     gateway_client.delete_gateway(gatewayIdentifier = gatewayId)
 
@@ -646,3 +740,500 @@ def delete_all_gateways(gateway_client):
             delete_gateway(gatewayId)
     except Exception as e:
         print(e)
+
+def get_current_role_arn():
+    sts_client = boto3.client("sts")
+    role_arn = sts_client.get_caller_identity()["Arn"]
+    return {role_arn}
+
+def create_gateway_invoke_tool_role(role_name, gateway_id, current_arn):
+    # Normalize current_arn
+    if isinstance(current_arn, (list, set, tuple)):
+        current_arn = list(current_arn)[0]
+    current_arn = str(current_arn)
+
+    # AWS clients
+    boto_session = Session()
+    region = boto_session.region_name
+    iam_client = boto3.client('iam', region_name=region)
+    sts_client = boto3.client("sts")
+    account_id = sts_client.get_caller_identity()["Account"]
+
+    # --- Trust policy (AssumeRolePolicyDocument) ---
+    assume_role_policy_document = {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Sid": "AssumeRoleByAgentCore",
+                "Effect": "Allow",
+                "Principal": {"Service": "bedrock-agentcore.amazonaws.com"},
+                "Action": ["sts:AssumeRole"]
+            },
+            {
+                "Sid": "AllowCallerToAssume",
+                "Effect": "Allow",
+                "Principal": {"AWS": [current_arn]},
+                "Action": ["sts:AssumeRole"]
+            }
+        ]
+    }
+    assume_role_policy_json = json.dumps(assume_role_policy_document)
+
+    # ---  Inline role policy (Bedrock gateway invoke) ---
+    role_policy = {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Effect": "Allow",
+                "Action": ["bedrock-agentcore:InvokeGateway"],
+                "Resource": f"arn:aws:bedrock-agentcore:{region}:{account_id}:gateway/{gateway_id}"
+            }
+        ]
+    }
+    role_policy_json = json.dumps(role_policy)
+
+    # --- Create or update IAM role ---
+    try:
+        agentcoregw_iam_role = iam_client.create_role(
+            RoleName=role_name,
+            AssumeRolePolicyDocument=assume_role_policy_json
+        )
+        print(f"Created new role: {role_name}")
+        time.sleep(3)
+    except iam_client.exceptions.EntityAlreadyExistsException:
+        print(f"Role '{role_name}' already exists — updating trust and inline policy.")
+        iam_client.update_assume_role_policy(
+            RoleName=role_name,
+            PolicyDocument=assume_role_policy_json
+        )
+        for policy_name in iam_client.list_role_policies(RoleName=role_name).get('PolicyNames', []):
+            iam_client.delete_role_policy(RoleName=role_name, PolicyName=policy_name)
+        agentcoregw_iam_role = iam_client.get_role(RoleName=role_name)
+
+    # Attach inline role policy (gateway invoke)
+    iam_client.put_role_policy(
+        RoleName=role_name,
+        PolicyName="AgentCorePolicy",
+        PolicyDocument=role_policy_json
+    )
+
+    role_arn = agentcoregw_iam_role['Role']['Arn']
+
+    # ---  Ensure current_arn can assume role (with retry) ---
+    arn_parts = current_arn.split(":")
+    resource_type, resource_name = arn_parts[5].split("/", 1)
+
+    assume_policy = {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Effect": "Allow",
+                "Action": "sts:AssumeRole",
+                "Resource": role_arn
+            }
+        ]
+    }
+
+    # Attach assume-role policy if user/role
+    try:
+        if resource_type == "user":
+            iam_client.put_user_policy(
+                UserName=resource_name,
+                PolicyName=f"AllowAssume_{role_name}",
+                PolicyDocument=json.dumps(assume_policy)
+            )
+        elif resource_type == "role":
+            iam_client.put_role_policy(
+                RoleName=resource_name,
+                PolicyName=f"AllowAssume_{role_name}",
+                PolicyDocument=json.dumps(assume_policy)
+            )
+    except ClientError as e:
+        print(f"Unable to attach assume-role policy: {e}")
+        print("Make sure the caller has iam:PutUserPolicy or iam:PutRolePolicy permission.")
+
+    # Retry loop for eventual consistency
+    max_retries=5
+    for i in range(max_retries):
+        try:
+            sts_client.assume_role(RoleArn=role_arn, RoleSessionName="testSession")
+            print(f"Caller {current_arn} can now assume role {role_name}")
+            break
+        except ClientError as e:
+            if "AccessDenied" in str(e):
+                print(f"Attempt {i+1}/{max_retries}: AccessDenied, retrying in 3s...")
+                time.sleep(3)
+            else:
+                raise
+    else:
+        raise RuntimeError(f"Failed to assume role {role_name} after {max_retries} retries")
+
+    print(f" Role '{role_name}' is ready and {current_arn} can invoke the Bedrock Agent Gateway.")
+    return agentcoregw_iam_role
+
+def get_client_secrets(cognito_client, user_pool_id, client_configs):
+    print("Retrieving client secrets from Cognito...")
+    client_secrets = {}
+    
+    for client_config in client_configs:
+        try:
+            response = cognito_client.describe_user_pool_client(
+                UserPoolId=user_pool_id,
+                ClientId=client_config['client_id']
+            )
+            client_secrets[client_config['client_id']] = response['UserPoolClient']['ClientSecret']
+            print(f"  ✓ Retrieved secret for {client_config['name']}")
+        except Exception as e:
+            print(f"  ✗ Failed to get secret for {client_config['name']}: {e}")
+    
+    print(f"\n✓ Retrieved {len(client_secrets)} client secrets")
+    return client_secrets
+
+def create_dynamodb_table(table_name, key_schema, attribute_definitions, region='us-east-1'):
+    """
+    Create DynamoDB table with specified schema.
+    """
+    dynamodb_client = boto3.client('dynamodb', region_name=region)
+    
+    try:
+        response = dynamodb_client.create_table(
+            TableName=table_name,
+            KeySchema=key_schema,
+            AttributeDefinitions=attribute_definitions,
+            BillingMode='PAY_PER_REQUEST'
+        )
+        
+        print(f"✓ Table created: {table_name}")
+        
+        # Wait for table to be active
+        waiter = dynamodb_client.get_waiter('table_exists')
+        waiter.wait(TableName=table_name)
+        print(f"  Table is active")
+        
+        return table_name
+        
+    except ClientError as e:
+        if e.response['Error']['Code'] == 'ResourceInUseException':
+            print(f"⚠ Table already exists: {table_name}")
+            return table_name
+        else:
+            raise
+
+
+def batch_write_dynamodb(table_name, items, region='us-east-1'):
+    """
+    Batch write items to DynamoDB table.
+    """
+    from datetime import datetime
+    
+    dynamodb = boto3.resource('dynamodb', region_name=region)
+    table = dynamodb.Table(table_name)
+    
+    # Batch write
+    with table.batch_writer() as batch:
+        for item in items:
+            # Add timestamps if not present
+            if 'CreatedAt' not in item:
+                item['CreatedAt'] = datetime.utcnow().isoformat()
+            if 'UpdatedAt' not in item:
+                item['UpdatedAt'] = datetime.utcnow().isoformat()
+            batch.put_item(Item=item)
+    
+    print(f"✓ Wrote {len(items)} items to {table_name}")
+    return len(items)
+
+
+def create_lambda_role_with_policies(role_name, policy_statements, description='Lambda execution role'):
+    iam_client = boto3.client('iam')
+    
+    # Trust policy for Lambda
+    trust_policy = {
+        "Version": "2012-10-17",
+        "Statement": [{
+            "Effect": "Allow",
+            "Principal": {"Service": "lambda.amazonaws.com"},
+            "Action": "sts:AssumeRole"
+        }]
+    }
+    
+    try:
+        role_response = iam_client.create_role(
+            RoleName=role_name,
+            AssumeRolePolicyDocument=json.dumps(trust_policy),
+            Description=description
+        )
+        role_arn = role_response['Role']['Arn']
+        print(f"✓ IAM role created: {role_name}")
+        
+    except ClientError as e:
+        if e.response['Error']['Code'] == 'EntityAlreadyExists':
+            print(f"⚠ Role already exists: {role_name}")
+            role_response = iam_client.get_role(RoleName=role_name)
+            role_arn = role_response['Role']['Arn']
+        else:
+            raise
+    
+    # Attach basic Lambda execution policy
+    iam_client.attach_role_policy(
+        RoleName=role_name,
+        PolicyArn='arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+    )
+    
+    # Attach custom policies if provided
+    if policy_statements:
+        custom_policy = {
+            "Version": "2012-10-17",
+            "Statement": policy_statements
+        }
+        
+        try:
+            iam_client.put_role_policy(
+                RoleName=role_name,
+                PolicyName='CustomPolicy',
+                PolicyDocument=json.dumps(custom_policy)
+            )
+            print(f"  ✓ Custom policy attached")
+        except Exception as e:
+            print(f"  ⚠ Policy error: {e}")
+    
+    # Wait for role to propagate
+    time.sleep(10)
+    
+    return role_arn
+
+
+def deploy_lambda_function(function_name, role_arn, lambda_code_path, environment_vars=None, description='Lambda function', timeout=30, memory_size=256, region='us-east-1'):
+    """
+    Deploy Lambda function from Python code file.
+    """
+    import zipfile
+    import io
+    from pathlib import Path
+    
+    lambda_client = boto3.client('lambda', region_name=region)
+    
+    # Read Lambda code
+    lambda_code_path = Path(lambda_code_path)
+    if not lambda_code_path.exists():
+        raise FileNotFoundError(f"Lambda code not found: {lambda_code_path}")
+    
+    with open(lambda_code_path, 'r') as f:
+        lambda_code = f.read()
+    
+    # Create deployment package
+    zip_buffer = io.BytesIO()
+    with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+        zip_file.writestr('lambda_function.py', lambda_code)
+    
+    zip_buffer.seek(0)
+    deployment_package = zip_buffer.read()
+    
+    # Build function config
+    function_config = {
+        'FunctionName': function_name,
+        'Runtime': 'python3.9',
+        'Role': role_arn,
+        'Handler': 'lambda_function.lambda_handler',
+        'Code': {'ZipFile': deployment_package},
+        'Description': description,
+        'Timeout': timeout,
+        'MemorySize': memory_size
+    }
+    
+    # Add environment variables if provided
+    if environment_vars:
+        function_config['Environment'] = {'Variables': environment_vars}
+    
+    try:
+        response = lambda_client.create_function(**function_config)
+        lambda_arn = response['FunctionArn']
+        print(f"✓ Lambda created: {function_name}")
+        
+    except ClientError as e:
+        if e.response['Error']['Code'] == 'ResourceConflictException':
+            print(f"⚠ Lambda already exists: {function_name}")
+            response = lambda_client.get_function(FunctionName=function_name)
+            lambda_arn = response['Configuration']['FunctionArn']
+        else:
+            raise
+    
+    return lambda_arn
+
+def grant_gateway_invoke_permission(function_name, region='us-east-1'):
+    """
+    Grant Gateway permission to invoke the Lambda interceptor.
+    
+    Args:
+        function_name: Name of the Lambda function
+        region: AWS region
+    """
+    lambda_client = boto3.client('lambda', region_name=region)
+    sts_client = boto3.client('sts')
+    account_id = sts_client.get_caller_identity()['Account']
+    
+    try:
+        lambda_client.add_permission(
+            FunctionName=function_name,
+            StatementId='AllowGatewayInvoke',
+            Action='lambda:InvokeFunction',
+            Principal='bedrock-agentcore.amazonaws.com',
+            SourceArn=f'arn:aws:bedrock-agentcore:{region}:{account_id}:gateway/*'
+        )
+        print(f"✓ Gateway invoke permission added to Lambda")
+        print(f"  Principal: bedrock-agentcore.amazonaws.com")
+        
+    except ClientError as e:
+        if e.response['Error']['Code'] == 'ResourceConflictException':
+            print(f"⚠ Permission already exists (this is fine)")
+        else:
+            print(f"⚠ Error adding permission: {e}")
+            raise
+
+
+def create_lambda_role(role_name, description='Lambda execution role'):
+    """
+    Create basic IAM role for Lambda with execution permissions.
+    
+    Args:
+        role_name (str): Name of the IAM role
+        description (str): Role description
+        
+    Returns:
+        str: Role ARN
+    """
+    iam_client = boto3.client('iam')
+    
+    # Trust policy for Lambda
+    trust_policy = {
+        "Version": "2012-10-17",
+        "Statement": [{
+            "Effect": "Allow",
+            "Principal": {"Service": "lambda.amazonaws.com"},
+            "Action": "sts:AssumeRole"
+        }]
+    }
+    
+    try:
+        role_response = iam_client.create_role(
+            RoleName=role_name,
+            AssumeRolePolicyDocument=json.dumps(trust_policy),
+            Description=description
+        )
+        role_arn = role_response['Role']['Arn']
+        print(f"✓ IAM role created: {role_name}")
+        
+    except ClientError as e:
+        if e.response['Error']['Code'] == 'EntityAlreadyExists':
+            print(f"⚠ Role already exists: {role_name}")
+            role_response = iam_client.get_role(RoleName=role_name)
+            role_arn = role_response['Role']['Arn']
+        else:
+            raise
+    
+    # Attach basic Lambda execution policy
+    iam_client.attach_role_policy(
+        RoleName=role_name,
+        PolicyArn='arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+    )
+    
+    # Wait for role to propagate
+    time.sleep(10)
+    
+    return role_arn
+
+
+def delete_gateway_targets(gateway_client, gateway_id, target_ids):
+    """
+    Delete multiple gateway targets.
+    """
+    print(f"Deleting {len(target_ids)} gateway targets...")
+    for target_id in target_ids:
+        try:
+            gateway_client.delete_gateway_target(
+                gatewayIdentifier=gateway_id,
+                targetId=target_id
+            )
+            print(f"  ✓ Deleted target: {target_id}")
+        except Exception as e:
+            print(f"  ✗ Failed to delete target {target_id}: {e}")
+        time.sleep(2)
+
+
+def delete_lambda_functions(function_names, region='us-east-1'):
+    """
+    Delete multiple Lambda functions.
+    """
+    lambda_client = boto3.client('lambda', region_name=region)
+    print(f"Deleting {len(function_names)} Lambda functions...")
+    
+    for function_name in function_names:
+        try:
+            lambda_client.delete_function(FunctionName=function_name)
+            print(f"  ✓ Deleted Lambda: {function_name}")
+        except ClientError as e:
+            if e.response['Error']['Code'] != 'ResourceNotFoundException':
+                print(f"  ✗ Failed to delete {function_name}: {e}")
+        time.sleep(1)
+
+
+def delete_iam_role(role_name):
+    """
+    Delete IAM role and its attached policies.
+
+    """
+    iam_client = boto3.client('iam')
+    
+    try:
+        # Detach managed policies
+        attached_policies = iam_client.list_attached_role_policies(RoleName=role_name)
+        for policy in attached_policies['AttachedPolicies']:
+            iam_client.detach_role_policy(
+                RoleName=role_name,
+                PolicyArn=policy['PolicyArn']
+            )
+        
+        # Delete inline policies
+        inline_policies = iam_client.list_role_policies(RoleName=role_name)
+        for policy_name in inline_policies['PolicyNames']:
+            iam_client.delete_role_policy(
+                RoleName=role_name,
+                PolicyName=policy_name
+            )
+        
+        # Delete role
+        iam_client.delete_role(RoleName=role_name)
+        print(f"✓ Deleted IAM role: {role_name}")
+        
+    except ClientError as e:
+        if e.response['Error']['Code'] != 'NoSuchEntity':
+            print(f"✗ Failed to delete role {role_name}: {e}")
+
+
+def delete_cognito_user_pool(user_pool_id, region='us-east-1'):
+    """
+    Delete Cognito user pool.
+    
+    """
+    cognito_client = boto3.client('cognito-idp', region_name=region)
+    
+    try:
+        cognito_client.delete_user_pool(UserPoolId=user_pool_id)
+        print(f"✓ Deleted Cognito user pool: {user_pool_id}")
+    except ClientError as e:
+        if e.response['Error']['Code'] != 'ResourceNotFoundException':
+            print(f"✗ Failed to delete user pool: {e}")
+
+
+def delete_dynamodb_table(table_name, region='us-east-1'):
+    """
+    Delete DynamoDB table.
+
+    """
+    dynamodb_client = boto3.client('dynamodb', region_name=region)
+    
+    try:
+        dynamodb_client.delete_table(TableName=table_name)
+        print(f"✓ Deleted DynamoDB table: {table_name}")
+    except ClientError as e:
+        if e.response['Error']['Code'] != 'ResourceNotFoundException':
+            print(f"✗ Failed to delete table: {e}")

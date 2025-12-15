@@ -1,17 +1,108 @@
 """
-Authentication module for Cognito integration
+Device Management Frontend - Amazon Cognito Authentication Module
+
+This module provides comprehensive authentication functionality for the Device
+Management System frontend using Amazon Cognito OAuth 2.0 and JWT validation.
+It handles user login, token exchange, session management, and authorization
+for the FastAPI web application.
+
+The module implements:
+- Amazon Cognito Hosted UI integration for OAuth login
+- Authorization code exchange for access tokens
+- JWT token validation using JWKS (JSON Web Key Set)
+- Session-based authentication with cookie support
+- Simple login fallback for development/testing
+- User information extraction from JWT claims
+
+Key Features:
+    - OAuth 2.0 authorization code flow with Cognito
+    - JWT signature verification using RSA public keys
+    - Token expiration and audience validation
+    - Session middleware integration for FastAPI
+    - Dual authentication support (Cognito + Simple login)
+    - Automatic JWKS fetching and caching
+    - Logout with Cognito hosted UI redirect
+
+Authentication Flow:
+    1. User clicks login → Redirected to Cognito Hosted UI
+    2. User authenticates → Cognito redirects with authorization code
+    3. Backend exchanges code for tokens (access + ID tokens)
+    4. Backend validates ID token signature and claims
+    5. User info stored in session
+    6. Subsequent requests use session authentication
+
+Environment Variables Required:
+    COGNITO_DOMAIN: Cognito domain (e.g., domain.auth.region.amazoncognito.com)
+    COGNITO_CLIENT_ID: OAuth client ID from Cognito App Client
+    COGNITO_CLIENT_SECRET: OAuth client secret from Cognito App Client
+    COGNITO_REDIRECT_URI: OAuth callback URL (e.g., http://localhost:5001/auth/callback)
+    COGNITO_LOGOUT_URI: Logout redirect URL (e.g., http://localhost:5001/simple-login)
+    AWS_REGION: AWS region for Cognito User Pool
+    COGNITO_USER_POOL_ID: Cognito User Pool ID for JWKS validation
+
+Functions:
+    get_jwks(): Fetch and cache JSON Web Key Set from Cognito
+    get_login_url(): Generate Cognito Hosted UI login URL
+    get_logout_url(): Generate Cognito Hosted UI logout URL
+    exchange_code_for_tokens(): Exchange authorization code for tokens
+    validate_token(): Validate JWT token signature and claims
+    get_current_user(): Get authenticated user from session or cookie
+    login_required(): FastAPI dependency for protected routes
+
+JWT Validation:
+    - Fetches public keys from Cognito JWKS endpoint
+    - Verifies RSA signature using matching key ID (kid)
+    - Validates token expiration (exp claim)
+    - Validates audience (client_id claim)
+    - Extracts user claims (sub, email, name)
+
+Session Management:
+    - User info stored in FastAPI session
+    - Session includes: sub, email, name, access_token, id_token
+    - Simple login fallback stores username in cookie
+    - Session cleared on logout
+
+Example Usage:
+    In FastAPI routes:
+    >>> @app.get("/protected")
+    >>> async def protected_route(request: Request):
+    >>>     user = await get_current_user(request)
+    >>>     if not user:
+    >>>         return RedirectResponse(url="/login")
+    >>>     return {"user": user}
+    
+    With dependency injection:
+    >>> @app.get("/profile")
+    >>> async def profile(user: dict = Depends(login_required)):
+    >>>     return {"user": user}
+
+Security Features:
+    - JWT signature verification prevents token tampering
+    - Token expiration prevents replay attacks
+    - Audience validation prevents token misuse
+    - HTTPS required for production (OAuth redirect URIs)
+    - Client secret kept server-side (not exposed to browser)
+
+Error Handling:
+    - Invalid tokens raise HTTPException with 401 status
+    - Missing authentication redirects to login
+    - Token exchange failures return error details
+    - JWKS fetch failures logged and handled gracefully
+
+Notes:
+    - JWKS is cached globally to minimize API calls
+    - Simple login is for development only (no password validation)
+    - Production should use Cognito authentication exclusively
+    - Session middleware must be configured in main.py
+    - Logout clears both session and cookies
 """
 import os
-import base64
-import json
 import logging
 from urllib.parse import urlencode
 from typing import Optional, Dict, Any
 
 import httpx
-from fastapi import Request, HTTPException, Depends
-from fastapi.responses import RedirectResponse
-from starlette.middleware.sessions import SessionMiddleware
+from fastapi import Request, HTTPException
 from jose import jwk, jwt
 from jose.utils import base64url_decode
 

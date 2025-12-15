@@ -9,7 +9,7 @@ INFRA_STACK_NAME=${2:-CustomerSupportStackInfra}
 COGNITO_STACK_NAME=${3:-CustomerSupportStackCognito}
 INFRA_TEMPLATE_FILE="prerequisite/infrastructure.yaml"
 COGNITO_TEMPLATE_FILE="prerequisite/cognito.yaml"
-REGION=$(aws configure get region)
+REGION=$(aws configure get region || echo "${AWS_DEFAULT_REGION:-us-east-1}")
 ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 FULL_BUCKET_NAME="${BUCKET_NAME}-${ACCOUNT_ID}"
 ZIP_FILE="lambda.zip"
@@ -97,6 +97,8 @@ echo "🔍 Fetching Knowledge Base and Data Source IDs from SSM..."
 
 # ----- 6. Create Knowledge Base -----
 
-python prerequisite/knowledge_base.py --mode create
+# Export region for Python script
+export AWS_DEFAULT_REGION="$REGION"
+uv run python prerequisite/knowledge_base.py --mode create
 
 echo "✅ Deployment complete."

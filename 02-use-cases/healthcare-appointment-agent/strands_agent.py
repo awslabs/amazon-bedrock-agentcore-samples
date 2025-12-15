@@ -47,7 +47,7 @@ if __name__ == "__main__":
     client = MCPClient(lambda: streamablehttp_client(gatewayEndpoint,headers={"Authorization": f"Bearer {jwtToken}"}))
 
     bedrockmodel = BedrockModel(
-        model_id="us.anthropic.claude-3-5-sonnet-20240620-v1:0",
+        model_id="global.anthropic.claude-haiku-4-5-20251001-v1:0",
         temperature=0.7,
         streaming=True,
         boto_session=boto_session

@@ -1,0 +1,13 @@
+[project]
+name = "customer-support-assistant-vpc"
+version = "0.1.0"
+description = "Customer Support Assistant"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "bedrock-agentcore>=0.1.7",
+    "boto3>=1.40.50",
+    "mcp>=1.17.0",
+    "requests>=2.32.5",
+    "strands-agents>=1.12.0",
+]

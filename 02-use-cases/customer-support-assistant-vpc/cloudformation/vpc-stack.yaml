@@ -1,0 +1,801 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Private VPC with 4 isolated subnets and VPC endpoints for AWS services (no internet gateway). Includes endpoints for Bedrock, ECR, CloudWatch, DynamoDB, Aurora, and Secrets Manager to enable secure communication without public internet access.'
+
+
+Metadata:
+  'AWS::CloudFormation::Interface':
+    ParameterGroups:
+    - Label:
+        default: 'Environment Configuration'
+      Parameters:
+      - Environment
+    - Label:
+        default: 'VPC Configuration'
+      Parameters:
+      - VpcCidr
+      - PrivateSubnet1Cidr
+      - PrivateSubnet2Cidr
+      - PrivateSubnet3Cidr
+
+Mappings:
+  DynamoDBPrefixListIds:
+    us-east-1:
+      PrefixListId: pl-02cd2c6b
+    us-east-2:
+      PrefixListId: pl-4ca54025
+    us-west-1:
+      PrefixListId: pl-6ea54007
+    us-west-2:
+      PrefixListId: pl-00a54069
+
+Parameters:
+  Environment:
+    Type: String
+    Default: 'dev'
+    AllowedValues:
+      - dev
+      - test
+      - prod
+    Description: 'Environment name for resource naming'
+
+  VpcCidr:
+    Type: String
+    Default: '10.0.0.0/16'
+    Description: 'CIDR block for the VPC'
+
+  PrivateSubnet3Cidr:
+    Type: String
+    Default: '10.0.1.0/24'
+    Description: 'CIDR block for the third private subnet'
+
+  PrivateSubnet1Cidr:
+    Type: String
+    Default: '10.0.3.0/24'
+    Description: 'CIDR block for the first private subnet'
+
+  PrivateSubnet2Cidr:
+    Type: String
+    Default: '10.0.4.0/24'
+    Description: 'CIDR block for the second private subnet'
+
+Resources:
+  # VPC
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VpcCidr
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      Tags:
+        - Key: Name
+          Value: !Sub 'csvpc-${Environment}-VPC'
+
+  # Private Subnets (no internet access)
+  PrivateSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [0, !GetAZs '']
+      CidrBlock: !Ref PrivateSubnet1Cidr
+      Tags:
+        - Key: Name
+          Value: !Sub 'csvpc-${Environment}-Private-Subnet-1'
+
+  PrivateSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [1, !GetAZs '']
+      CidrBlock: !Ref PrivateSubnet2Cidr
+      Tags:
+        - Key: Name
+          Value: !Sub 'csvpc-${Environment}-Private-Subnet-2'
+
+  PrivateSubnet3:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [2, !GetAZs '']
+      CidrBlock: !Ref PrivateSubnet3Cidr
+      Tags:
+        - Key: Name
+          Value: !Sub 'csvpc-${Environment}-Private-Subnet-3'
+
+  # Private Route Table (no internet routes)
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub 'csvpc-${Environment}-Private-Routes'
+
+  # Associate Private Subnets with Private Route Table
+  PrivateSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      SubnetId: !Ref PrivateSubnet1
+
+  PrivateSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      SubnetId: !Ref PrivateSubnet2
+
+  PrivateSubnet3RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      SubnetId: !Ref PrivateSubnet3
+
+  # VPC Flow Logs
+  VPCFlowLogRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: vpc-flow-logs.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: VPCFlowLogPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                  - logs:DescribeLogGroups
+                  - logs:DescribeLogStreams
+                Resource:
+                  - '*'
+
+  VPCFlowLogKMSKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: 'KMS Key for VPC Flow Logs encryption'
+      EnableKeyRotation: true
+      KeyPolicy:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: Enable IAM User Permissions
+            Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
+            Action: 'kms:*'
+            Resource: '*'
+          - Sid: Allow CloudWatch Logs
+            Effect: Allow
+            Principal:
+              Service: !Sub 'logs.${AWS::Region}.amazonaws.com'
+            Action:
+              - kms:Encrypt
+              - kms:Decrypt
+              - kms:ReEncrypt*
+              - kms:GenerateDataKey*
+              - kms:DescribeKey
+            Resource: '*'
+
+  VPCFlowLogKMSKeyAlias:
+    Type: AWS::KMS::Alias
+    Properties:
+      AliasName: !Sub 'alias/csvpc-${Environment}-vpc-flowlogs'
+      TargetKeyId: !Ref VPCFlowLogKMSKey
+
+  VPCFlowLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Delete
+    Properties:
+      RetentionInDays: 7
+      KmsKeyId: !GetAtt VPCFlowLogKMSKey.Arn
+
+  VPCFlowLog:
+    Type: AWS::EC2::FlowLog
+    Properties:
+      ResourceType: VPC
+      ResourceId: !Ref VPC
+      TrafficType: ALL
+      LogDestinationType: cloud-watch-logs
+      LogDestination: !GetAtt VPCFlowLogGroup.Arn
+      DeliverLogsPermissionArn: !GetAtt VPCFlowLogRole.Arn
+      Tags:
+        - Key: Name
+          Value: !Sub 'csvpc-${Environment}-VPC-FlowLog'
+
+  # Security Group for VPC Endpoints
+  VPCEndpointSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: 'Security group for VPC endpoints'
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: !Ref VpcCidr
+          Description: 'HTTPS access from Private VPC'
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 127.0.0.1/32
+          Description: 'Explicit deny - no outbound access required for Interfaces and VPC endpoints'
+      Tags:
+        - Key: Name
+          Value: !Sub 'csvpc-${Environment}-VPCEndpoint-SG'
+
+  # VPC Endpoint for CloudWatch Logs
+  CloudWatchLogsVPCEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref VPC
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.logs'
+      VpcEndpointType: Interface
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+        - !Ref PrivateSubnet3
+      SecurityGroupIds:
+        - !Ref VPCEndpointSecurityGroup
+      PrivateDnsEnabled: true
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: '*'
+            Action:
+              - logs:PutLogEvents
+              - logs:PutRetentionPolicy
+              - logs:DescribeLogStreams
+              - logs:DescribeLogGroups
+              - logs:CreateLogStream
+              - logs:CreateLogGroup
+            Resource:
+              - '*'
+      Tags:
+        - Key: Name
+          Value: !Sub 'csvpc-${Environment}-CloudWatch-Logs-VPCEndpoint'
+
+  # VPC Endpoint for CloudWatch Monitoring
+  CloudWatchMonitoringVPCEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref VPC
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.monitoring'
+      VpcEndpointType: Interface
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+        - !Ref PrivateSubnet3
+      SecurityGroupIds:
+        - !Ref VPCEndpointSecurityGroup
+      PrivateDnsEnabled: true
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: '*'
+            Action:
+              - cloudwatch:PutMetricData
+            Resource:
+              - '*'
+      Tags:
+        - Key: Name
+          Value: !Sub 'csvpc-${Environment}-CloudWatch-Monitoring-VPCEndpoint'
+
+  # VPC Endpoint for ECR Docker Registry
+  ECRDockerVPCEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref VPC
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.ecr.dkr'
+      VpcEndpointType: Interface
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+        - !Ref PrivateSubnet3
+      SecurityGroupIds:
+        - !Ref VPCEndpointSecurityGroup
+      PrivateDnsEnabled: true
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: '*'
+            Action:
+              - ecr:GetDownloadUrlForLayer
+              - ecr:BatchGetImage
+              - ecr:BatchCheckLayerAvailability
+            Resource: '*'
+      Tags:
+        - Key: Name
+          Value: !Sub 'csvpc-${Environment}-ECR-Docker-VPCEndpoint'
+
+  # VPC Endpoint for ECR API
+  ECRAPIVPCEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref VPC
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.ecr.api'
+      VpcEndpointType: Interface
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+        - !Ref PrivateSubnet3
+      SecurityGroupIds:
+        - !Ref VPCEndpointSecurityGroup
+      PrivateDnsEnabled: true
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: '*'
+            Action:
+              - ecr:GetAuthorizationToken
+            Resource: '*'
+      Tags:
+        - Key: Name
+          Value: !Sub 'csvpc-${Environment}-ECR-API-VPCEndpoint'
+
+  # Gateway Endpoint for DynamoDB
+  DynamoDBGatewayEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref VPC
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.dynamodb'
+      VpcEndpointType: Gateway
+      RouteTableIds:
+        - !Ref PrivateRouteTable
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: '*'
+            Action:
+              - dynamodb:GetItem
+              - dynamodb:Query
+              - dynamodb:Scan
+              - dynamodb:DescribeTable
+            Resource:
+              - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/*'
+              - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/*/index/*'
+      Tags:
+        - Key: Name
+          Value: !Sub 'csvpc-${Environment}-DynamoDB-GatewayEndpoint'
+
+  # VPC Endpoint for SSM Parameter Store
+  SSMVPCEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref VPC
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.ssm'
+      VpcEndpointType: Interface
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+        - !Ref PrivateSubnet3
+      SecurityGroupIds:
+        - !Ref VPCEndpointSecurityGroup
+      PrivateDnsEnabled: true
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: '*'
+            Action:
+              - ssm:GetParameter
+              - ssm:GetParameters
+            Resource:
+              - !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/app/customersupportvpc/*'
+      Tags:
+        - Key: Name
+          Value: !Sub 'csvpc-${Environment}-SSM-VPCEndpoint'
+
+  # VPC Endpoint for KMS
+  KMSVPCEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref VPC
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.kms'
+      VpcEndpointType: Interface
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+        - !Ref PrivateSubnet3
+      SecurityGroupIds:
+        - !Ref VPCEndpointSecurityGroup
+      PrivateDnsEnabled: true
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: '*'
+            Action:
+              - kms:Decrypt
+              - kms:GenerateDataKey
+              - kms:DescribeKey
+            Resource:
+              - '*'
+      Tags:
+        - Key: Name
+          Value: !Sub 'csvpc-${Environment}-KMS-VPCEndpoint'
+
+  SecretsManagerVPCEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref VPC
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.secretsmanager'
+      VpcEndpointType: Interface
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+        - !Ref PrivateSubnet3
+      SecurityGroupIds:
+        - !Ref VPCEndpointSecurityGroup
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: '*'
+            Action:
+              - secretsmanager:GetSecretValue
+              - secretsmanager:DescribeSecret
+            Resource: '*'
+      PrivateDnsEnabled: true
+      Tags:
+        - Key: Name
+          Value: !Sub 'csvpc-${Environment}-SecretsManager-VPCEndpoint'
+
+  # VPC Endpoint for RDS Data API
+  RDSDataVPCEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref VPC
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.rds-data'
+      VpcEndpointType: Interface
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+        - !Ref PrivateSubnet3
+      SecurityGroupIds:
+        - !Ref VPCEndpointSecurityGroup
+      PrivateDnsEnabled: true
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: '*'
+            Action:
+              - rds-data:ExecuteStatement
+              - rds-data:BatchExecuteStatement
+              - rds-data:BeginTransaction
+              - rds-data:CommitTransaction
+              - rds-data:RollbackTransaction
+            Resource: '*'
+      Tags:
+        - Key: Name
+          Value: !Sub 'csvpc-${Environment}-RDS-Data-VPCEndpoint'
+
+  S3VPCEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref VPC
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.s3'
+      VpcEndpointType: Gateway
+      RouteTableIds:
+        - !Ref PrivateRouteTable
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: '*'
+            Action:
+              - s3:GetObject
+              - s3:PutObject
+            Resource:
+              - 'arn:aws:s3:::cloudformation-custom-resource-response-*/*'
+      Tags:
+        - Key: Name
+          Value: !Sub 'csvpc-${Environment}-S3-VPCEndpoint'
+          
+  # VPC Endpoint for X-Ray
+  XRayVPCEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref VPC
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.xray'
+      VpcEndpointType: Interface
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+        - !Ref PrivateSubnet3
+      SecurityGroupIds:
+        - !Ref VPCEndpointSecurityGroup
+      PrivateDnsEnabled: true
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: '*'
+            Action:
+              - xray:PutTraceSegments
+              - xray:PutTelemetryRecords
+              - xray:GetSamplingRules
+              - xray:GetSamplingTargets
+              - xray:GetSamplingStatisticSummaries
+            Resource: '*'
+      Tags:
+        - Key: Name
+          Value: !Sub 'csvpc-${Environment}-XRay-VPCEndpoint'
+
+  # VPC Endpoint for Bedrock Runtime
+  BedrockRuntimeVPCEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref VPC
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.bedrock-runtime'
+      VpcEndpointType: Interface
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+        - !Ref PrivateSubnet3
+      SecurityGroupIds:
+        - !Ref VPCEndpointSecurityGroup
+      PrivateDnsEnabled: true
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: '*'
+            Action:
+              - bedrock:InvokeModel
+              - bedrock:InvokeModelWithResponseStream
+            Resource: '*'
+      Tags:
+        - Key: Name
+          Value: !Sub 'csvpc-${Environment}-BedrockRuntime-VPCEndpoint'
+
+  # VPC Endpoint for Bedrock AgentCore
+  BedrockAgentCoreVPCEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref VPC
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.bedrock-agentcore'
+      VpcEndpointType: Interface
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+        - !Ref PrivateSubnet3
+      SecurityGroupIds:
+        - !Ref VPCEndpointSecurityGroup
+      PrivateDnsEnabled: true
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: '*'
+            Action:
+              - '*'
+            Resource: "*"
+      Tags:
+        - Key: Name
+          Value: !Sub 'csvpc-${Environment}-BedrockAgentCore-VPCEndpoint'
+
+  # VPC Endpoint for Bedrock AgentCore Gateway
+  BedrockAgentCoreGatewayVPCEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref VPC
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.bedrock-agentcore.gateway'
+      VpcEndpointType: Interface
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+        - !Ref PrivateSubnet3
+      SecurityGroupIds:
+        - !Ref VPCEndpointSecurityGroup
+      PrivateDnsEnabled: true
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: '*'
+            Action: '*'
+            Resource: '*'
+      Tags:
+        - Key: Name
+          Value: !Sub 'csvpc-${Environment}-BedrockAgentCoreGateway-VPCEndpoint'
+
+  # VPC Endpoint for STS
+  # STSVPCEndpoint:
+  #   Type: AWS::EC2::VPCEndpoint
+  #   Properties:
+  #     VpcId: !Ref VPC
+  #     ServiceName: !Sub 'com.amazonaws.${AWS::Region}.sts'
+  #     VpcEndpointType: Interface
+  #     SubnetIds:
+  #       - !Ref PrivateSubnet1
+  #       - !Ref PrivateSubnet2
+  #       - !Ref PrivateSubnet3
+  #     SecurityGroupIds:
+  #       - !Ref VPCEndpointSecurityGroup
+  #     PrivateDnsEnabled: true
+  #     PolicyDocument:
+  #       Version: '2012-10-17'
+  #       Statement:
+  #         - Effect: Allow
+  #           Principal: '*'
+  #           Action:
+  #             - sts:AssumeRole
+  #             - sts:GetCallerIdentity
+  #             - sts:GetSessionToken
+  #           Resource: '*'
+  #     Tags:
+  #       - Key: Name
+  #         Value: !Sub '${AWS::StackName}-STS-VPCEndpoint'
+
+  # Security Group for MCP Runtime
+  AgentRuntimeSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: 'Security group for Agent Runtime'
+      VpcId: !Ref VPC
+      SecurityGroupIngress: []
+      SecurityGroupEgress: []
+      Tags:
+        - Key: Name
+          Value: !Sub 'csvpc-${Environment}-AgentRuntime-SG'
+
+  AgentRuntimeToVPCEndpointRule:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      GroupId: !Ref AgentRuntimeSecurityGroup
+      IpProtocol: tcp
+      FromPort: 443
+      ToPort: 443
+      DestinationSecurityGroupId: !Ref VPCEndpointSecurityGroup
+      Description: 'HTTPS access to VPC Endpoint Security Group'
+
+  MCPRuntimeSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: 'Security group for MCP Runtime'
+      VpcId: !Ref VPC
+      SecurityGroupIngress: []
+      SecurityGroupEgress: []
+      Tags:
+        - Key: Name
+          Value: !Sub 'csvpc-${Environment}-MCPRuntime-SG'
+
+  
+  # Security Group Rule: Allow MCP Runtime to access VPC Endpoints
+  MCPRuntimeToVPCEndpointRule:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      GroupId: !Ref MCPRuntimeSecurityGroup
+      IpProtocol: tcp
+      FromPort: 443
+      ToPort: 443
+      DestinationSecurityGroupId: !Ref VPCEndpointSecurityGroup
+      Description: 'HTTPS access to VPC Endpoint Security Group'
+
+  # Security Group Rule: Allow MCP Runtime to access DynamoDB
+  MCPRuntimeToDynamoDBRule:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      GroupId: !Ref MCPRuntimeSecurityGroup
+      IpProtocol: tcp
+      FromPort: 443
+      ToPort: 443
+      DestinationPrefixListId: !FindInMap [DynamoDBPrefixListIds, !Ref 'AWS::Region', PrefixListId]
+      Description: 'HTTPS access to DynamoDB via Gateway Endpoint'
+
+  # Security Group for Gateway Lambda Functions
+  GatewayLambdaSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: 'Security group for Gateway Lambda functions in VPC'
+      VpcId: !Ref VPC
+      SecurityGroupIngress: []
+      SecurityGroupEgress: []
+      Tags:
+        - Key: Name
+          Value: !Sub 'csvpc-${Environment}-GatewayLambda-SG'
+
+  # Security Group Rule: Allow Gateway Lambda to access VPC Endpoints
+  GatewayLambdaToVPCEndpointRule:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      GroupId: !Ref GatewayLambdaSecurityGroup
+      IpProtocol: tcp
+      FromPort: 443
+      ToPort: 443
+      DestinationSecurityGroupId: !Ref VPCEndpointSecurityGroup
+      Description: 'HTTPS access to VPC Endpoint Security Group'
+
+  # Security Group Rule: Allow Gateway Lambda to access DynamoDB Gateway Endpoint
+  GatewayLambdaToDynamoDBRule:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      GroupId: !Ref GatewayLambdaSecurityGroup
+      IpProtocol: tcp
+      FromPort: 443
+      ToPort: 443
+      DestinationPrefixListId: !FindInMap [DynamoDBPrefixListIds, !Ref 'AWS::Region', PrefixListId]
+      Description: 'HTTPS access to DynamoDB via Gateway Endpoint'
+
+Outputs:
+  StackName:
+    Description: 'Stack name for cross-stack references'
+    Value: !Ref AWS::StackName
+    Export:
+      Name: !Sub '${AWS::StackName}-StackName'
+
+  VPC:
+    Description: 'A reference to the created VPC'
+    Value: !Ref VPC
+    Export:
+      Name: !Sub '${AWS::StackName}-VPCID'
+
+  PrivateSubnets:
+    Description: 'A list of all private subnets'
+    Value: !Join [",", [!Ref PrivateSubnet1, !Ref PrivateSubnet2, !Ref PrivateSubnet3]]
+    Export:
+      Name: !Sub '${AWS::StackName}-PrivateSubnets'
+
+  DynamoDBPrefixListId:
+    Description: 'DynamoDB Prefix List ID used for security group rules'
+    Value: !FindInMap [DynamoDBPrefixListIds, !Ref 'AWS::Region', PrefixListId]
+
+  PrivateSubnet1RDSDataVPCEndpoint:
+    Description: 'A reference to the private subnet in the 1st Availability Zone'
+    Value: !Ref PrivateSubnet1
+    Export:
+      Name: !Sub '${AWS::StackName}-PrivateSubnet1'
+
+  PrivateSubnet2:
+    Description: 'A reference to the private subnet in the 2nd Availability Zone'
+    Value: !Ref PrivateSubnet2
+    Export:
+      Name: !Sub '${AWS::StackName}-PrivateSubnet2'
+
+  PrivateSubnet3:
+    Description: 'A reference to the private subnet in the 3rd Availability Zone'
+    Value: !Ref PrivateSubnet3
+    Export:
+      Name: !Sub '${AWS::StackName}-PrivateSubnet3'
+
+  PrivateRouteTable:
+    Description: 'A reference to the private route table'
+    Value: !Ref PrivateRouteTable
+    Export:
+      Name: !Sub '${AWS::StackName}-PrivateRouteTable'
+
+  MCPRuntimeSecurityGroup:
+    Description: 'Security group for MCP Runtime'
+    Value: !Ref MCPRuntimeSecurityGroup
+    Export:
+      Name: !Sub '${AWS::StackName}-MCPRuntimeSecurityGroup'
+
+  AgentRuntimeSecurityGroup:
+    Description: 'Security group for Agent Runtime'
+    Value: !Ref AgentRuntimeSecurityGroup
+    Export:
+      Name: !Sub '${AWS::StackName}-AgentRuntimeSecurityGroup'
+
+  GatewayLambdaSecurityGroup:
+    Description: 'Security group for Gateway Lambda functions'
+    Value: !Ref GatewayLambdaSecurityGroup
+    Export:
+      Name: !Sub '${AWS::StackName}-GatewayLambdaSecurityGroup'
+
+  RDSDataVPCEndpoint:
+    Description: 'VPC Endpoint for RDS Data API'
+    Value: !Ref RDSDataVPCEndpoint
+    Export:
+      Name: !Sub '${AWS::StackName}-RDSDataVPCEndpoint'

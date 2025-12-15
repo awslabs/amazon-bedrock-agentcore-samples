@@ -28,7 +28,7 @@ def test_model_availability():
         
         # Test models in priority order
         test_models = [
-            ("Claude Sonnet 3.7", "us.anthropic.claude-3-7-sonnet-20250219-v1:0"),
+            ("Claude Haiku 4.5", "global.anthropic.claude-haiku-4-5-20251001-v1:0"),
             ("Nova Premier", "us.amazon.nova-premier-v1:0"),
             ("Claude 3.5 Sonnet", "anthropic.claude-3-5-sonnet-20241022-v2:0")
         ]
@@ -119,7 +119,7 @@ def main():
         print(f"✅ Selected Model: {model_id}")
         
         if "claude-3-7-sonnet" in model_id:
-            print("🎉 Using PRIMARY model: Claude Sonnet 3.7")
+            print("🎉 Using PRIMARY model: Claude Haiku 4.5")
         elif "nova-premier" in model_id:
             print("⚠️  Using FALLBACK model: Nova Premier")
         elif "claude-3-5-sonnet" in model_id:
