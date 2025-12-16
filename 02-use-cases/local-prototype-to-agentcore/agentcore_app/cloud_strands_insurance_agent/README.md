@@ -80,7 +80,7 @@ MCP_SERVER_URL="your-gateway-mcp-url"
 MCP_ACCESS_TOKEN="your-access-token"
 
 # Model configuration
-MODEL_NAME="us.anthropic.claude-3-7-sonnet-20250219-v1:0"
+MODEL_NAME="global.anthropic.claude-haiku-4-5-20251001-v1:0"
 
 # Optional: Gateway info file path (for refreshing tokens)
 GATEWAY_INFO_FILE="../cloud_mcp_server/gateway_info.json"
@@ -209,7 +209,7 @@ def invoke(payload):
     with gateway_client:
         tools = gateway_client.list_tools_sync()
         agent = Agent(
-            model="us.anthropic.claude-3-7-sonnet-20250219-v1:0",
+            model="global.anthropic.claude-haiku-4-5-20251001-v1:0",
             tools=tools,
             system_prompt="You are an insurance agent assistant..."
         )

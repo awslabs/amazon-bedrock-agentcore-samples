@@ -33,7 +33,7 @@ Learn to host a CrewAI agent using Amazon Bedrock models with comprehensive obse
 ## Key Features
 
 * CrewAI travel agent with web search capabilities
-* Amazon Bedrock models (Anthropic Claude Sonnet 3.7)
+* Amazon Bedrock models (Anthropic Claude Haiku 4.5)
 * AgentCore Runtime hosting
 * CloudWatch observability and tracing
 

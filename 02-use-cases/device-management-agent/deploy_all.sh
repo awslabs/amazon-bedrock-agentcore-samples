@@ -1,7 +1,74 @@
 #!/bin/bash
 
-# Deployment workflow script for Device Management System
-# This script deploys all components in the correct order
+################################################################################
+# Device Management System - Complete Deployment Script
+#
+# This script orchestrates the end-to-end deployment of the Device Management
+# System, deploying all components in the correct order with proper dependency
+# management and configuration updates.
+#
+# DEPLOYMENT WORKFLOW:
+#   1. Prerequisites validation (AWS CLI, Python, pip, AWS credentials)
+#   2. Device Management Lambda function deployment
+#   3. Gateway creation with Cognito OAuth authentication
+#   4. Gateway target configuration with MCP tools
+#   5. Gateway observability setup (CloudWatch Logs, X-Ray)
+#   6. Agent Runtime deployment with OpenTelemetry instrumentation
+#   7. Frontend configuration updates
+#
+# COMPONENTS DEPLOYED:
+#   - AWS Lambda: Device management backend with DynamoDB integration
+#   - IAM Roles: Lambda execution role and Agent Gateway access role
+#   - Gateway: Bedrock AgentCore Gateway with JWT authentication
+#   - Gateway Target: MCP tools mapped to Lambda function
+#   - Observability: CloudWatch Logs delivery and X-Ray tracing
+#   - Agent Runtime: Strands Agent with MCP client integration
+#   - Docker: Containerized agent runtime with OpenTelemetry
+#
+# PREREQUISITES:
+#   - AWS CLI installed and configured
+#   - Python 3.8+ installed
+#   - pip package manager
+#   - Valid AWS credentials with appropriate permissions
+#   - .env files configured in gateway/ and agent-runtime/ directories
+#
+# ENVIRONMENT FILES UPDATED:
+#   - gateway/.env: Lambda ARN, Gateway ID, Gateway ARN, Role ARN
+#   - agent-runtime/.env: Gateway URL, MCP server URL
+#   - agent-runtime/requirements-runtime.txt: Observability packages
+#   - agent-runtime/Dockerfile: OpenTelemetry configuration
+#
+# USAGE:
+#   ./deploy_all.sh
+#
+# EXIT CODES:
+#   0 - Successful deployment
+#   1 - Prerequisites check failed
+#   1 - Lambda deployment failed
+#   1 - Gateway creation failed
+#   1 - Agent runtime deployment failed
+#
+# OUTPUTS:
+#   - Lambda ARN saved to device-management/lambda_arn.txt
+#   - Gateway URL displayed at completion
+#   - CloudWatch Logs group: /aws/bedrock-agentcore/device-management-agent
+#   - X-Ray traces enabled for agent runtime
+#
+# NOTES:
+#   - Script exits on first error (set -e)
+#   - Creates .env files if they don't exist (requires manual configuration)
+#   - Updates existing .env files with deployment outputs
+#   - Supports both macOS and Linux (sed command compatibility)
+#   - Adds observability packages to requirements-runtime.txt
+#   - Configures OpenTelemetry instrumentation in Dockerfile
+#
+# NEXT STEPS AFTER DEPLOYMENT:
+#   1. Generate synthetic data: cd device-management && python synthetic_data.py
+#   2. Set up frontend: Follow instructions in frontend/README.md
+#   3. Test the system: Use Q CLI or chat application
+#   4. Monitor: Check CloudWatch Logs and X-Ray traces
+#
+################################################################################
 
 set -e  # Exit on error
 

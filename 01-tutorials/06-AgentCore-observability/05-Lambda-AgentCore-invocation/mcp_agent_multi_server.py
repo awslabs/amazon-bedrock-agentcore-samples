@@ -30,7 +30,7 @@ def create_cdk_client():
 
 # Function to create agent with tools from both MCP servers
 def create_agent():
-    model_id = "us.anthropic.claude-3-7-sonnet-20250219-v1:0"
+    model_id = "global.anthropic.claude-haiku-4-5-20251001-v1:0"
     model = BedrockModel(model_id=model_id)
 
     aws_docs_client = create_aws_docs_client()

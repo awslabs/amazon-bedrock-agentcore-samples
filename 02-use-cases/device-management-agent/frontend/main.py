@@ -1,12 +1,52 @@
 """
-FastAPI application for Device Management using Bedrock AgentCore
+Device Management System - Frontend Web Application
+
+This module implements the web-based user interface for the Device Management System
+using FastAPI, WebSockets, and Amazon Cognito authentication. It provides a chat-like
+interface where users can interact with their IoT devices using natural language.
+
+Key Features:
+    - Real-time chat interface using WebSockets
+    - Amazon Cognito authentication integration
+    - Session management with CSRF protection
+    - Responsive web design with Jinja2 templates
+    - CORS configuration for secure cross-origin requests
+    - Error handling and user-friendly messaging
+
+Architecture:
+    - FastAPI: Web framework and API endpoints
+    - WebSocket: Real-time communication with Agent Runtime
+    - Jinja2: HTML template rendering
+    - Session Middleware: Secure session management
+    - CORS Middleware: Cross-origin request handling
+    - Authentication: Amazon Cognito OAuth integration
+
+Routes:
+    GET /: Main chat interface (requires authentication)
+    GET /login: Amazon Cognito login page
+    GET /simple-login: Simple login form for development
+    POST /simple-login: Process simple login
+    GET /auth/callback: OAuth callback handler
+    GET /logout: User logout
+    WebSocket /ws/{client_id}: Real-time chat communication
+
+Environment Variables:
+    HOST: Server host (default: 127.0.0.1)
+    PORT: Server port (default: 8000)
+    CORS_ORIGINS: Allowed CORS origins
+    COGNITO_*: Amazon Cognito configuration
+    AGENT_ARN: Amazon Bedrock AgentCore runtime ARN
+
+Example:
+    Run the application:
+    >>> python main.py
+    >>> # Access at http://localhost:8000
 """
 import os
 import json
 import logging
-import uuid
 import secrets
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Optional
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect, HTTPException, Depends, Form
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
@@ -18,7 +58,7 @@ from dotenv import load_dotenv
 import boto3
 
 # Import authentication module
-from auth import get_login_url, exchange_code_for_tokens, validate_token, get_current_user, login_required, get_logout_url
+from auth import get_login_url, exchange_code_for_tokens, validate_token, get_current_user, login_required
 
 # Load environment variables
 load_dotenv()
@@ -38,11 +78,12 @@ app.add_middleware(
 )
 
 # Add CORS middleware
+cors_origins = os.getenv("CORS_ORIGINS", "http://localhost:8000,http://127.0.0.1:8000").split(",")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=cors_origins,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
 
@@ -58,24 +99,59 @@ if not AGENT_ARN:
     logger.error("AGENT_ARN environment variable is not set")
     raise ValueError("AGENT_ARN environment variable is required")
 
-# Models
+# Pydantic Models
 class Message(BaseModel):
+    """
+    Represents a chat message in the conversation.
+    
+    Attributes:
+        role (str): The role of the message sender ('user' or 'assistant')
+        content (str): The message content/text
+    """
     role: str
     content: str
 
+
 class ChatRequest(BaseModel):
+    """
+    Request model for chat API endpoints.
+    
+    Attributes:
+        messages (List[Message]): List of messages in the conversation
+    """
     messages: List[Message]
 
-# Connection manager for WebSockets
+
 class ConnectionManager:
+    """
+    Manages WebSocket connections for real-time chat functionality.
+    
+    This class handles WebSocket connection lifecycle, message routing,
+    and session management for the chat interface. Each client connection
+    is identified by a unique client_id and can maintain conversation
+    context through runtime session IDs.
+    
+    Attributes:
+        active_connections (Dict[str, WebSocket]): Map of client_id to WebSocket
+        session_ids (Dict[str, str]): Map of client_id to runtime_session_id
+    """
+    
     def __init__(self):
+        """Initialize the connection manager with empty connection pools."""
         self.active_connections: Dict[str, WebSocket] = {}
-        self.session_ids: Dict[str, str] = {}  # Map client_id to runtime_session_id
+        self.session_ids: Dict[str, str] = {}
 
     async def connect(self, websocket: WebSocket, client_id: str):
+        """
+        Accept a new WebSocket connection and register the client.
+        
+        Args:
+            websocket (WebSocket): The WebSocket connection to accept
+            client_id (str): Unique identifier for the client connection
+        """
         await websocket.accept()
         self.active_connections[client_id] = websocket
-        self.session_ids[client_id] = None  # Initialize with no session
+        self.session_ids[client_id] = None
 
     def disconnect(self, client_id: str):
         if client_id in self.active_connections:
@@ -357,7 +433,6 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                 session_id = manager.get_session_id(client_id)
                 
                 # Invoke the agent with retry logic
-                import time
                 from botocore.exceptions import ClientError
                 
                 max_retries = 3
@@ -387,8 +462,9 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                     except ClientError as e:
                         if e.response['Error']['Code'] == 'throttlingException' and attempt < max_retries - 1:
                             logger.warning(f"Throttling exception encountered. Retrying in {retry_delay} seconds...")
-                            await manager.send_message(json.dumps({"status": f"Rate limited. Retrying in {retry_delay} seconds..."}), client_id)
-                            time.sleep(retry_delay)
+                            await manager.send_message(json.dumps({"status": "Rate limited. Retrying in {} seconds...".format(retry_delay)}), client_id)
+                            import asyncio
+                            await asyncio.sleep(retry_delay)
                             # Exponential backoff
                             retry_delay *= 2
                         else:
@@ -404,9 +480,6 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                     logger.warning("No runtimeSessionId in response")
                     # Keep using the existing session ID if available
                     new_session_id = session_id
-                
-                # Process streaming response
-                full_response = ""
                 
                 # Handle streaming response from AgentCore
                 if isinstance(boto3_response, dict) and "response" in boto3_response:
@@ -606,11 +679,23 @@ async def simple_login_page(request: Request):
     if user:
         return RedirectResponse(url="/")
     
-    return templates.TemplateResponse("simple_login.html", {"request": request})
+    # Generate CSRF token
+    csrf_token = secrets.token_urlsafe(32)
+    request.session["csrf_token"] = csrf_token
+    
+    return templates.TemplateResponse("simple_login.html", {"request": request, "csrf_token": csrf_token})
 
 @app.post("/simple-login")
-async def simple_login_submit(request: Request, username: str = Form(...), password: str = Form(...)):
+async def simple_login_submit(request: Request, username: str = Form(...), password: str = Form(...), csrf_token: str = Form(...)):
     """Process simple login form"""
+    # Validate CSRF token
+    session_csrf_token = request.session.get("csrf_token")
+    if not session_csrf_token or csrf_token != session_csrf_token:
+        raise HTTPException(status_code=403, detail="Invalid CSRF token")
+    
+    # Clear the used CSRF token
+    request.session.pop("csrf_token", None)
+    
     # For demo purposes, accept any username/password
     # In a real application, you would validate against a database or other authentication system
     
@@ -628,4 +713,6 @@ async def simple_login_submit(request: Request, username: str = Form(...), passw
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    import os
+    host = os.getenv("HOST", "127.0.0.1")  # Default to localhost for security
+    uvicorn.run("main:app", host=host, port=8000, reload=True)

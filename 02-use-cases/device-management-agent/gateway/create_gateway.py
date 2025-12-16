@@ -1,5 +1,43 @@
+"""
+Amazon Bedrock AgentCore Gateway Creation Script
+
+This script creates and configures an Amazon Bedrock AgentCore Gateway for the
+Device Management System. The gateway serves as the secure entry point for
+MCP (Model Context Protocol) requests, handling authentication via Amazon Cognito
+and routing requests to the appropriate AWS Lambda function targets.
+
+The script performs the following operations:
+1. Load configuration from environment variables
+2. Configure Amazon Cognito JWT authentication
+3. Create the Amazon Bedrock AgentCore Gateway
+4. Update environment variables with gateway information
+
+Environment Variables Required:
+    AWS_REGION: AWS region for gateway deployment
+    ENDPOINT_URL: Amazon Bedrock AgentCore control endpoint
+    COGNITO_USERPOOL_ID: Amazon Cognito User Pool ID for authentication
+    COGNITO_CLIENT_ID: Amazon Cognito App Client ID
+    ROLE_ARN: IAM role ARN with bedrock-agentcore permissions
+    GATEWAY_NAME: Name for the gateway (optional)
+    GATEWAY_DESCRIPTION: Description for the gateway (optional)
+
+Environment Variables Updated:
+    GATEWAY_ID: Generated gateway identifier
+    GATEWAY_ARN: Generated gateway ARN
+    GATEWAY_IDENTIFIER: Alias for GATEWAY_ID
+
+Example Usage:
+    python create_gateway.py
+
+Output:
+    Gateway created successfully!
+    Gateway ID: gateway-12345
+    Gateway ARN: arn:aws:bedrock-agentcore:region:account:gateway/gateway-12345
+"""
+
 import boto3
 import os
+import sys
 from dotenv import load_dotenv, set_key
 from bedrock_agentcore_starter_toolkit.operations.gateway import GatewayClient
 
@@ -18,8 +56,8 @@ GATEWAY_NAME = os.getenv('GATEWAY_NAME', 'Device-Management-Gateway')
 ROLE_ARN = os.getenv('ROLE_ARN')
 GATEWAY_DESCRIPTION = os.getenv('GATEWAY_DESCRIPTION', 'Device Management Gateway')
 
-print(ENDPOINT_URL)
-print(AWS_REGION)
+print("Endpoint URL: {}".format(ENDPOINT_URL))
+print("AWS Region: {}".format(AWS_REGION))
 
 # Initialize the Bedrock Agent Core Control client
 bedrock_agent_core_client = boto3.client(
@@ -49,7 +87,7 @@ try:
     # Print the gateway ID and other information
     gateway_id = create_response.get('gatewayId')
     gateway_arn = create_response.get('gatewayArn')
-    print(f"Gateway created successfully!")
+    print("Gateway created successfully!")
     print(f"Gateway ID: {gateway_id}")
     print(f"Gateway ARN: {gateway_arn}")
     print(f"Creation Time: {create_response.get('creationTime')}")
@@ -75,4 +113,4 @@ try:
 
 except Exception as e:
     print(f"Error creating gateway: {e}")
-    exit(1)
+    sys.exit(1)

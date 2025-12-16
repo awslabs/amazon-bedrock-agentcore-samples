@@ -1,6 +1,100 @@
 #!/bin/bash
 
-# Setup and run script for Device Management Chat Application
+################################################################################
+# Device Management Chat Application - Setup and Run Script
+#
+# This script provides automated setup and execution of the Device Management
+# Chat Application frontend. It supports both Docker-based deployment and
+# local Python development environments with automatic detection.
+#
+# DEPLOYMENT OPTIONS:
+#   1. Docker Deployment (Recommended):
+#      - Uses docker-compose for containerized deployment
+#      - Automatic dependency management
+#      - Consistent environment across systems
+#      - Port 5001 exposed for web access
+#
+#   2. Local Python Deployment:
+#      - Uses virtual environment (venv)
+#      - Python 3.12 recommended (falls back to Python 3.x)
+#      - Manual dependency installation via pip
+#      - Development mode with auto-reload
+#
+# PREREQUISITES:
+#   Docker Deployment:
+#   - Docker installed and running
+#   - docker-compose installed
+#   - .env file configured (created from .env.example if missing)
+#
+#   Local Python Deployment:
+#   - Python 3.8+ installed (3.12 recommended)
+#   - pip package manager
+#   - .env file configured
+#
+# REQUIRED ENVIRONMENT VARIABLES (.env file):
+#   AWS_REGION              - AWS region for services
+#   AGENT_ARN               - ARN of deployed agent runtime
+#   COGNITO_DOMAIN          - Cognito domain for authentication (optional)
+#   COGNITO_CLIENT_ID       - OAuth client ID (optional)
+#   COGNITO_CLIENT_SECRET   - OAuth client secret (optional)
+#   COGNITO_REDIRECT_URI    - OAuth redirect URI (optional)
+#
+# WHAT THIS SCRIPT DOES:
+#   1. Detects available deployment method (Docker or Python)
+#   2. Checks for .env file (creates from template if missing)
+#   3. Docker: Builds and starts containers with docker-compose
+#   4. Python: Creates venv, installs dependencies, runs uvicorn
+#   5. Displays access URL and management commands
+#
+# DOCKER DEPLOYMENT:
+#   Build and start:
+#   - docker-compose up -d
+#   
+#   View logs:
+#   - docker-compose logs -f
+#   
+#   Stop:
+#   - docker-compose down
+#
+# LOCAL PYTHON DEPLOYMENT:
+#   Virtual environment:
+#   - Created in ./venv directory
+#   - Activated automatically by script
+#   
+#   Server:
+#   - uvicorn with auto-reload enabled
+#   - Listens on 0.0.0.0:5001
+#
+# USAGE:
+#   ./setup_and_run.sh
+#
+# ACCESS:
+#   Web Application: http://localhost:5001
+#   
+#   Docker Logs: docker-compose logs -f
+#   Docker Stop: docker-compose down
+#
+# EXIT CODES:
+#   0 - Setup and run successful
+#   1 - .env file missing (created, requires configuration)
+#   1 - Python not found (local deployment)
+#
+# FEATURES:
+#   - Automatic deployment method detection
+#   - .env file creation from template
+#   - Virtual environment management
+#   - Dependency installation
+#   - User-friendly status messages with emojis
+#   - Clear next steps instructions
+#
+# NOTES:
+#   - Docker deployment is preferred for production
+#   - Local deployment is better for development
+#   - Script exits after creating .env file (requires manual configuration)
+#   - Python version detection with fallback support
+#   - Supports both Python 3.12 and earlier versions
+#
+################################################################################
 
 echo "🚀 Setting up Device Management Chat Application..."
 

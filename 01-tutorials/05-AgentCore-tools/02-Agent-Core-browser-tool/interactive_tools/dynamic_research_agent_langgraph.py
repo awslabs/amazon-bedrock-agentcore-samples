@@ -34,7 +34,7 @@ class AgentState(TypedDict):
 class ResearchAgent:
     """Streamlined research agent"""
     
-    def __init__(self, region: str = "us-west-2", model: str = "anthropic.claude-3-5-sonnet-20240620-v1:0"):
+    def __init__(self, region: str = "us-west-2", model: str = "global.anthropic.claude-haiku-4-5-20251001-v1:0"):
         self.region = region
         self.model = model
         self.llm = ChatBedrockConverse(
