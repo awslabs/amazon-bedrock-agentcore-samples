@@ -104,8 +104,7 @@ class S2sSessionManager:
                 self._initialize_client()
         except Exception as ex:
             self.is_active = False
-            print(f"Failed to initialize Bedrock client: {str(ex)}")
-            logger.error(f"Failed to initialize Bedrock client: {str(ex)}")
+            logger.error("Failed to initialize Bedrock client")
             raise
 
         try:
@@ -128,8 +127,7 @@ class S2sSessionManager:
             return self
         except Exception as e:
             self.is_active = False
-            print(f"Failed to initialize stream: {str(e)}")
-            logger.error(f"Failed to initialize stream: {e}")
+            logger.error("Failed to initialize stream.")
             raise
     
     async def send_raw_event(self, event_data):
@@ -152,7 +150,7 @@ class S2sSessionManager:
                 await self.close()
             
         except Exception as e:
-            logger.error(f"Error sending event to Bedrock: {e}", exc_info=True)
+            logger.error("Error sending event to Bedrock")
             # Don't close the stream on send errors, let Bedrock handle it
             # The response processing loop will detect if the stream is broken
     
@@ -181,7 +179,7 @@ class S2sSessionManager:
             except asyncio.CancelledError:
                 break
             except Exception as e:
-                logger.error(f"Error processing audio: {e}", exc_info=True)
+                logger.error("Error processing audio.")
     
     def add_audio_chunk(self, prompt_name, content_name, audio_data):
         """Add an audio chunk to the queue."""
