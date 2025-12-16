@@ -7,7 +7,7 @@ import json
 import secrets
 import string
 from http.server import HTTPServer, BaseHTTPRequestHandler
-from urllib.parse import urlparse, parse_qs
+from urllib.parse import urlparse
 
 # Import from root-level websocket_helpers
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../..'))
