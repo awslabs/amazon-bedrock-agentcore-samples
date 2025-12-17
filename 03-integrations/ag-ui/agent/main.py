@@ -20,7 +20,7 @@ from ag_ui_strands import (
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field
 from strands import Agent, tool
-from strands.models.openai import OpenAIModel
+from strands.models.bedrock import BedrockModel
 
 load_dotenv()
 
@@ -124,11 +124,9 @@ shared_state_config = StrandsAgentConfig(
     },
 )
 
-# Initialize OpenAI model
-api_key = os.getenv("OPENAI_API_KEY", "")
-model = OpenAIModel(
-    client_args={"api_key": api_key},
-    model_id="gpt-4o",
+# Initialize Bedrock model
+model = BedrockModel(
+    model_id="us.anthropic.claude-sonnet-4-5-20250929-v1:0",
 )
 
 system_prompt = (
@@ -152,11 +150,13 @@ agui_agent = StrandsAgent(
 )
 
 # Create the FastAPI app
-agent_path = os.getenv("AGENT_PATH", "/")
-app = create_strands_app(agui_agent, agent_path)
+app = create_strands_app(agui_agent, "/invocations")
+@app.get("/ping")
+async def ping():
+    return {"status": "ok"}
 
 if __name__ == "__main__":
     import uvicorn
 
-    port  = int(os.getenv("AGENT_PORT", 8000))
+    port  = int(os.getenv("AGENT_PORT", 8080))
     uvicorn.run("main:app", host="0.0.0.0", port=port, reload=True)
