@@ -6,6 +6,7 @@
 - aristsakpinis93
 - aurbac
 - bergjaak
+- bioerrorlog
 - chanbi
 - crupakheti
 - danystinson
@@ -70,4 +71,5 @@
 - Lana Zhang
 - Bharathi Srinivasan
 - Antonio Rodriguez (rodzanto)
-
+- otamaryx
+- kevlw

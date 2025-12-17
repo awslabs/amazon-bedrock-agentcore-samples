@@ -5,7 +5,7 @@ WebSocket Helper Functions for AWS Bedrock AgentCore
 This module provides utilities for creating WebSocket connections to AWS Bedrock AgentCore
 with various authentication methods (SigV4 headers, SigV4 query parameters, OAuth).
 """
-import random
+import secrets
 import string
 import os
 from urllib.parse import urlparse
@@ -68,7 +68,7 @@ def prepare_connection(runtime_arn, auth_type='headers', session_id=None):
     region = os.getenv('AWS_REGION', 'us-east-1')
     
     if session_id is None:
-        session_id = ''.join(random.choices(string.ascii_letters + string.digits, k=50))
+        session_id = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(50))
     
     uri = f"wss://bedrock-agentcore.{region}.amazonaws.com/runtimes/{runtime_arn}/ws?qualifier=DEFAULT"
     
