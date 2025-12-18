@@ -31,7 +31,7 @@ A comprehensive implementation of the [Agent-to-Agent (A2A)](https://a2a-protoco
    - **Authentication**: OAuth 2.0-based security model for secure inter-agent communication
    - **Interoperability**: Platform-agnostic design allowing agents from different frameworks to collaborate
 
-   Learn more about the A2A protocol: [A2A Specification](https://a2a.foundation/)
+   Learn more about the A2A protocol: [A2A Specification](https://a2a-protocol.org/)
 
    ## A2A Support on Amazon Bedrock AgentCore
 
