@@ -140,7 +140,7 @@ class OAuth2CallbackServer:
                 with open(".agentcore.json") as agent_config:
                     config = json.load(agent_config)
                     return config.get("user_id")
-            except:
+            except Exception:
                 return None
 
         def _get_user_identifier(
