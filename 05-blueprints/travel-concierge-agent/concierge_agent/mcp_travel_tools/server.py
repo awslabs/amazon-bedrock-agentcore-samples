@@ -61,8 +61,8 @@ def load_api_keys():
 # Load API keys before importing tools
 load_api_keys()
 
-# Import tools after API keys are loaded  # noqa: E402
-from tools import (
+# Import tools after API keys are loaded
+from tools import (  # noqa: E402
     serp_search_tool,
     serp_hotel_search,
     # get_flight_offers,

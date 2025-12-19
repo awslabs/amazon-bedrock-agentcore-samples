@@ -20,7 +20,6 @@ For most testing, use test-gateway.py instead.
 
 import asyncio
 import sys
-import json
 from pathlib import Path
 from datetime import timedelta
 

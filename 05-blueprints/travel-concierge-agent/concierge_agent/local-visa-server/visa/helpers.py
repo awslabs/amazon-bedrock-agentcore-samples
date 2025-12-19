@@ -3,11 +3,9 @@ import json
 import time
 import hashlib
 import hmac
-import requests
 import logging
 import base64
 import ntplib
-import os
 import uuid
 from datetime import datetime, timezone
 from jwcrypto import jwk,jwe

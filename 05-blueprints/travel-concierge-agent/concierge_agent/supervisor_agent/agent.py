@@ -1,5 +1,4 @@
 import os
-import sys
 import logging
 import boto3
 from strands import Agent

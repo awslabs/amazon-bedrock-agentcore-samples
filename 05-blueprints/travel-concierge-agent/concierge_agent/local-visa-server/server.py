@@ -16,9 +16,7 @@ Then your React UI at http://localhost:3000 can call:
 
 from flask import Flask, jsonify, request
 # from flask_cors import CORS  # Not needed - API Gateway handles CORS
-import sys
 import traceback
-import os
 import uuid
 import hashlib
 import json

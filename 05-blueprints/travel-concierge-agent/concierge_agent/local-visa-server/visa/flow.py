@@ -1,13 +1,9 @@
-import boto3
 import json
 import time
 import hashlib
-import hmac
 import requests
 import logging
 import base64
-import ntplib
-import os
 import uuid
 from visa.helpers import get_secret, generate_x_pay_token, encrypt_card_data, decrypt_token_info, create_email_hash, encrypt_payload, decrypt_rsa
 from visa.secure_token import get_secure_token_direct
