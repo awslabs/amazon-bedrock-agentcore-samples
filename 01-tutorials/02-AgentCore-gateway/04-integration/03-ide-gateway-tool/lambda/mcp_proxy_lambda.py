@@ -314,7 +314,7 @@ def get_api_url(event):
         return f"https://{domain}/{stage}"
     elif domain:
         return f"https://{domain}"
-    return f"http://localhost"
+    return "http://localhost"
 
 
 def json_response(status_code, body):
