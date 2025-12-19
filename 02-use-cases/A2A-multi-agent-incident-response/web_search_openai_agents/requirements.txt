@@ -111,7 +111,7 @@ markdown-it-py==4.0.0
     # via rich
 markupsafe==3.0.3
     # via jinja2
-mcp==1.17.0
+mcp==1.23.0
     # via openai-agents
 mdurl==0.1.2
     # via markdown-it-py
@@ -252,7 +252,7 @@ sniffio==1.3.1
     #   openai
 sse-starlette==3.0.2
     # via mcp
-starlette==0.48.0
+starlette==0.49.1
     # via
     #   bedrock-agentcore
     #   mcp
@@ -286,7 +286,7 @@ typing-inspection==0.4.2
     # via
     #   pydantic
     #   pydantic-settings
-urllib3==2.5.0
+urllib3==2.6.0
     # via
     #   bedrock-agentcore
     #   bedrock-agentcore-starter-toolkit

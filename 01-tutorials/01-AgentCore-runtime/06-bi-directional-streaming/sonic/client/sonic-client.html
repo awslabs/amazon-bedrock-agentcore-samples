@@ -426,6 +426,13 @@
             background: #667eea;
             border-radius: 2px;
         }
+        
+        .text-input-section {
+            padding: 10px;
+            border-top: 1px solid #e0e0e0;
+            background: #f8f9fa;
+            flex-shrink: 0;
+        }
     </style>
 </head>
 <body>
@@ -483,6 +490,12 @@
                 <div class="panel">
                     <h2>💬 Conversation</h2>
                     <div id="messages"></div>
+                    <div class="text-input-section">
+                        <div class="input-group">
+                            <input type="text" id="textInput" placeholder="Type your message here..." disabled>
+                            <button id="sendBtn" onclick="sendTextMessage()" disabled>Send</button>
+                        </div>
+                    </div>
                 </div>
                 <div class="panel">
                     <div class="panel-header">
@@ -567,6 +580,8 @@
         function updateStatus(connected, recording = false) {
             const status = document.getElementById('status');
             const toggleBtn = document.getElementById('toggleBtn');
+            const textInput = document.getElementById('textInput');
+            const sendBtn = document.getElementById('sendBtn');
             
             if (connected) {
                 status.textContent = recording ? '🔴 Recording' : '🟢 Connected';
@@ -574,12 +589,16 @@
                 toggleBtn.textContent = '🛑 End Conversation';
                 toggleBtn.className = 'connected';
                 toggleBtn.disabled = false;
+                textInput.disabled = false;
+                sendBtn.disabled = false;
             } else {
                 status.textContent = '⚫ Disconnected';
                 status.className = 'disconnected';
                 toggleBtn.textContent = '🚀 Start Conversation';
                 toggleBtn.className = '';
                 toggleBtn.disabled = false;
+                textInput.disabled = true;
+                sendBtn.disabled = true;
             }
         }
         
@@ -1139,6 +1158,77 @@
             isRecording = false;
             addMessage('⏹️ Session stopped', 'system');
         }
+
+        function sendTextMessage() {
+            const textInput = document.getElementById('textInput');
+            const message = textInput.value.trim();
+            
+            if (!message || !ws || ws.readyState !== WebSocket.OPEN || !sessionStarted) {
+                return;
+            }
+            
+            // Generate a new content name for this text message
+            const newTextContentName = 'text_' + generateId();
+            
+            // Send contentStart event
+            const contentStart = {
+                event: {
+                    contentStart: {
+                        promptName: promptName,
+                        contentName: newTextContentName,
+                        role: "USER",
+                        type: "TEXT",
+                        interactive: true,
+                        textInputConfiguration: {
+                            mediaType: "text/plain"
+                        }
+                    }
+                }
+            };
+            ws.send(JSON.stringify(contentStart));
+            addEvent('sent', 'contentStart (TEXT)', contentStart);
+            
+            // Send textInput event
+            const textInputEvent = {
+                event: {
+                    textInput: {
+                        promptName: promptName,
+                        contentName: newTextContentName,
+                        content: message
+                    }
+                }
+            };
+            ws.send(JSON.stringify(textInputEvent));
+            addEvent('sent', 'textInput', textInputEvent);
+            
+            // Send contentEnd event
+            const contentEnd = {
+                event: {
+                    contentEnd: {
+                        promptName: promptName,
+                        contentName: newTextContentName
+                    }
+                }
+            };
+            ws.send(JSON.stringify(contentEnd));
+            addEvent('sent', 'contentEnd', contentEnd);
+            
+            // Add message to conversation
+            addMessage(`💬 You: ${message}`, 'user');
+            
+            // Clear input
+            textInput.value = '';
+        }
+
+        // Add Enter key handler for text input
+        document.addEventListener('DOMContentLoaded', function() {
+            const textInput = document.getElementById('textInput');
+            textInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    sendTextMessage();
+                }
+            });
+        });
 
     </script>
 </body>

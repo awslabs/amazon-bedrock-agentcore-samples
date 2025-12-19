@@ -4,7 +4,7 @@ import os
 import sys
 import webbrowser
 import json
-import random
+import secrets
 import string
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse
@@ -58,7 +58,7 @@ class StrandsClientHandler(BaseHTTPRequestHandler):
         try:
             # Read the HTML template
             html_path = os.path.join(os.path.dirname(__file__), "strands-client.html")
-            with open(html_path, "r") as f:
+            with open(html_path, "r", encoding="utf-8") as f:
                 html_content = f.read()
 
             # Inject the WebSocket URL if provided
@@ -234,7 +234,7 @@ Examples:
     print("=" * 70)
 
     websocket_url = None
-    session_id = "".join(random.choices(string.ascii_letters + string.digits, k=50))
+    session_id = "".join(secrets.choice(string.ascii_letters + string.digits) for _ in range(50))
     is_presigned = False
 
     try:
