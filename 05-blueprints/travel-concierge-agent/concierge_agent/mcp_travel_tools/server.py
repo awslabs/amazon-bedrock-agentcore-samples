@@ -24,7 +24,9 @@ if not REGION:
 ssm_client = boto3.client("ssm", region_name=REGION)
 
 # Create MCP server
-mcp = FastMCP("Travel Tools", host="0.0.0.0", stateless_http=True) # nosec B104:standard pattern for containerized MCP serverss
+mcp = FastMCP(
+    "Travel Tools", host="0.0.0.0", stateless_http=True
+)  # nosec B104:standard pattern for containerized MCP serverss
 
 
 def get_ssm_parameter(parameter_name: str) -> str | None:
@@ -80,10 +82,10 @@ from tools import (  # noqa: E402
 # def travel_get_weather(city: str) -> str:
 #     """
 #     Get 5-day weather forecast for a city.
-    
+
 #     Args:
 #         city: City name (e.g., "Paris", "Tokyo", "New York")
-    
+
 #     Returns:
 #         Weather forecast with daily temperatures and conditions.
 #     """
@@ -94,10 +96,10 @@ from tools import (  # noqa: E402
 def travel_search(query: str) -> str:
     """
     Search the internet for travel-related information.
-    
+
     Args:
         query: Search query (e.g., "best restaurants in Rome", "Tokyo travel tips")
-    
+
     Returns:
         Search results with titles, snippets, and source URLs.
     """
@@ -115,7 +117,7 @@ def travel_search(query: str) -> str:
 # ) -> dict:
 #     """
 #     Search for flight offers between two cities.
-    
+
 #     Args:
 #         origin: Origin airport IATA code (e.g., "BOS", "JFK", "LAX")
 #         destination: Destination airport IATA code (e.g., "PAR", "ROM", "TYO")
@@ -123,7 +125,7 @@ def travel_search(query: str) -> str:
 #         adults: Number of adult passengers (default: 1)
 #         max_price: Maximum price filter (default: 400)
 #         currency: Currency code (default: "USD")
-    
+
 #     Returns:
 #         Flight offers with pricing and schedule details.
 #     """
@@ -138,13 +140,13 @@ def travel_search(query: str) -> str:
 # ) -> dict:
 #     """
 #     Search for hotels in a city.
-    
+
 #     Args:
 #         city_code: City IATA code (e.g., "ROM", "NYC", "PAR", "MAD", "BOS")
 #         ratings: Hotel star ratings to filter (e.g., "3,4,5" for 3+ stars)
 #         amenities: Amenities filter. Options: SWIMMING_POOL, SPA, FITNESS_CENTER,
 #                    AIR_CONDITIONING, RESTAURANT, PARKING, PETS_ALLOWED, WIFI, etc.
-    
+
 #     Returns:
 #         Hotel listings with names, ratings, and amenities.
 #     """
@@ -183,13 +185,12 @@ def travel_hotel_search(query: str, check_in_date: str, check_out_date: str) -> 
     return serp_hotel_search(query, check_in_date, check_out_date)
 
 
-
 @mcp.tool()
 def travel_flight_search(
     departure_id: str,
     arrival_id: str,
     outbound_date: str,
-    return_date: Optional[str] = None
+    return_date: Optional[str] = None,
 ) -> str:
     """
     Search for flights using Google Flights via SerpAPI.

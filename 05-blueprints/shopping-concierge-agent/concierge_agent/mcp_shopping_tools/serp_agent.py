@@ -3,12 +3,14 @@ from typing import Any, Dict
 from mcp.server import FastMCP
 from serp_tools import search_products, generate_packing_list
 
-REGION = os.getenv('AWS_REGION')
+REGION = os.getenv("AWS_REGION")
 if not REGION:
-    raise ValueError('AWS_REGION environment variable is required')
+    raise ValueError("AWS_REGION environment variable is required")
 
 # Create MCP server
-mcp = FastMCP("Shopping Assistant Agent", host="0.0.0.0", stateless_http=True) # nosec B104:standard pattern for containerized MCP servers
+mcp = FastMCP(
+    "Shopping Assistant Agent", host="0.0.0.0", stateless_http=True
+)  # nosec B104:standard pattern for containerized MCP servers
 
 
 @mcp.tool()

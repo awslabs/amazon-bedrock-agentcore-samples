@@ -77,6 +77,7 @@ Your goal is to help users plan successful and enjoyable trips.
 # GATEWAY CLIENT FOR TRAVEL TOOLS
 # =============================================================================
 
+
 def get_travel_tools_client() -> MCPClient:
     """Get MCPClient filtered for travel tools only."""
     return get_gateway_client("^traveltools___")
@@ -97,41 +98,42 @@ bedrock_model = BedrockModel(
 # TRAVEL SUBAGENT TOOL
 # =============================================================================
 
+
 @tool
 async def travel_assistant(query: str, user_id: str = "", session_id: str = ""):
     """
     Process travel planning queries using specialized travel tools.
-    
+
     AVAILABLE TOOLS:
     - travel_search: Internet search for travel info (query)
     - travel_places_search: Find restaurants, attractions via Google Places (query)
     - travel_hotel_search: Search hotels (query, check_in_date YYYY-MM-DD, check_out_date YYYY-MM-DD)
     - travel_flight_search: Search flights (departure_id, arrival_id as airport codes, outbound_date YYYY-MM-DD, optional return_date)
-    
+
     ROUTE HERE FOR:
     - Flight searches: "Find flights from BOS to PAR on 2025-12-20"
     - Hotel searches: "Hotels in Rome from 2025-12-20 to 2025-12-25"
     - Restaurant/attraction searches: "Best sushi restaurants in Tokyo"
     - General travel info: "What to do in Barcelona", "Travel tips for Japan"
     - Trip planning: "Plan a 3-day itinerary for Madrid"
-    
+
     IMPORTANT: Include specific dates (YYYY-MM-DD format) and airport codes when available.
     For flights, use 3-letter airport codes (BOS, JFK, CDG, NRT, etc.).
-    
+
     Args:
         query: The travel request with as much detail as possible.
         user_id: User identifier for personalization.
         session_id: Session identifier for context.
-    
+
     Returns:
         Travel information, search results, or recommendations.
         Will retry searches with refined queries if initial results are insufficient.
     """
     try:
         logger.info(f"Travel subagent (async) processing: {query[:100]}...")
-        
+
         travel_client = get_travel_tools_client()
-        
+
         agent = Agent(
             name="travel_agent",
             model=bedrock_model,
@@ -140,10 +142,10 @@ async def travel_assistant(query: str, user_id: str = "", session_id: str = ""):
             trace_attributes={
                 "user.id": user_id,
                 "session.id": session_id,
-                "agent.type": "travel_subagent"
-            }
+                "agent.type": "travel_subagent",
+            },
         )
-        
+
         result = ""
         async for event in agent.stream_async(query):
             if "data" in event:
@@ -152,9 +154,9 @@ async def travel_assistant(query: str, user_id: str = "", session_id: str = ""):
                 yield {"current_tool_use": event["current_tool_use"]}
             if "result" in event:
                 result = str(event["result"])
-        
+
         yield {"result": result}
-    
+
     except Exception as e:
         logger.error(f"Travel subagent async error: {e}", exc_info=True)
         yield {"error": str(e)}

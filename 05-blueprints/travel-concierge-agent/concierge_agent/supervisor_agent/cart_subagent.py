@@ -111,6 +111,7 @@ Your primary goal is to ensure accurate and efficient cart operations with clear
 # GATEWAY CLIENT FOR CART TOOLS
 # =============================================================================
 
+
 def get_cart_tools_client() -> MCPClient:
     """Get MCPClient filtered for cart tools only."""
     return get_gateway_client("^carttools___")
@@ -131,11 +132,12 @@ bedrock_model = BedrockModel(
 # CART SUBAGENT TOOL
 # =============================================================================
 
+
 @tool
 async def cart_manager(query: str, user_id: str = "", session_id: str = ""):
     """
     Process shopping cart and payment operations.
-    
+
     AVAILABLE TOOLS:
     - get_cart: View cart contents (user_id)
     - add_to_cart: Add products (user_id, items list with asin/title/price)
@@ -148,7 +150,7 @@ async def cart_manager(query: str, user_id: str = "", session_id: str = ""):
     - confirm_purchase: Execute purchase after confirmation (user_id)
     - onboard_card: Add payment card (user_id, card details)
     - get_visa_iframe_config: Get secure card entry config (user_id)
-    
+
     ROUTE HERE FOR:
     - View cart: "What's in my cart?", "Show my cart"
     - Add items: "Add this hotel to cart", "Add the flight"
@@ -156,12 +158,12 @@ async def cart_manager(query: str, user_id: str = "", session_id: str = ""):
     - Clear cart: "Empty my cart", "Clear everything"
     - Checkout: "Buy these items", "Checkout", "Purchase"
     - Payment: "Add a payment card", "Setup payment method"
-    
+
     Args:
         query: The cart/payment request.
         user_id: User identifier (REQUIRED for all cart operations).
         session_id: Session identifier for context.
-    
+
     Returns:
         Cart operation result or payment status.
     """
@@ -181,9 +183,9 @@ async def cart_manager(query: str, user_id: str = "", session_id: str = ""):
         - remove_from_cart(user_id="{user_id}", identifiers=[...], item_type="product")
 
         DO NOT ask the user for their user_id - you already have it: {user_id}"""
-        
+
         cart_client = get_cart_tools_client()
-        
+
         agent = Agent(
             name="cart_agent",
             model=bedrock_model,
@@ -192,10 +194,10 @@ async def cart_manager(query: str, user_id: str = "", session_id: str = ""):
             trace_attributes={
                 "user.id": user_id,
                 "session.id": session_id,
-                "agent.type": "cart_subagent"
-            }
+                "agent.type": "cart_subagent",
+            },
         )
-        
+
         result = ""
         async for event in agent.stream_async(query):
             if "data" in event:
@@ -204,9 +206,9 @@ async def cart_manager(query: str, user_id: str = "", session_id: str = ""):
                 yield {"current_tool_use": event["current_tool_use"]}
             if "result" in event:
                 result = str(event["result"])
-        
+
         yield {"result": result}
-    
+
     except Exception as e:
         logger.error(f"Cart subagent async error: {e}", exc_info=True)
         yield {"error": str(e)}

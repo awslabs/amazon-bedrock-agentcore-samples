@@ -3,6 +3,7 @@ Lambda handler for Visa Proxy Server
 
 Wraps the Flask application using Mangum adapter to make it compatible with AWS Lambda.
 """
+
 import json
 import traceback
 
@@ -37,17 +38,19 @@ def handler(event, context):
     # Check if initialization failed
     if _handler is None:
         return {
-            'statusCode': 500,
-            'headers': {
-                'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-                'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+            "statusCode": 500,
+            "headers": {
+                "Content-Type": "application/json",
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+                "Access-Control-Allow-Headers": "Content-Type, Authorization",
             },
-            'body': json.dumps({
-                'error': 'Lambda initialization failed',
-                'message': _init_error or 'Unknown initialization error'
-            })
+            "body": json.dumps(
+                {
+                    "error": "Lambda initialization failed",
+                    "message": _init_error or "Unknown initialization error",
+                }
+            ),
         }
 
     # Normal request handling
@@ -56,18 +59,18 @@ def handler(event, context):
         response = _handler(event, context)
 
         # Ensure CORS headers are present in response
-        if 'headers' not in response:
-            response['headers'] = {}
+        if "headers" not in response:
+            response["headers"] = {}
 
         # Add CORS headers if not already present (Flask-CORS should add them)
         cors_headers = {
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-            'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type, Authorization",
         }
         for header, value in cors_headers.items():
-            if header not in response['headers']:
-                response['headers'][header] = value
+            if header not in response["headers"]:
+                response["headers"][header] = value
 
         print(f"Lambda response: {json.dumps(response)}")
         return response
@@ -78,15 +81,12 @@ def handler(event, context):
 
         # Return error response with CORS headers
         return {
-            'statusCode': 500,
-            'headers': {
-                'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-                'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+            "statusCode": 500,
+            "headers": {
+                "Content-Type": "application/json",
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+                "Access-Control-Allow-Headers": "Content-Type, Authorization",
             },
-            'body': json.dumps({
-                'error': 'Internal server error',
-                'message': str(e)
-            })
+            "body": json.dumps({"error": "Internal server error", "message": str(e)}),
         }

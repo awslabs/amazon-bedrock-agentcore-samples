@@ -34,6 +34,7 @@ AMADEUS_SECRET = os.getenv("AMADEUS_SECRET")
 # CITY DATABASE
 # =============================================================================
 
+
 def load_cities(filepath: str) -> list[dict[str, Any]]:
     """Load city database from CSV file."""
     cities = []
@@ -41,13 +42,15 @@ def load_cities(filepath: str) -> list[dict[str, Any]]:
         with open(filepath, newline="", encoding="utf-8") as f:
             reader = csv.DictReader(f)
             for row in reader:
-                cities.append({
-                    "city": row["city"].strip(),
-                    "country": row.get("country", "").strip(),
-                    "latitude": float(row["lat"]),
-                    "longitude": float(row["lng"]),
-                    "population": row["population"],
-                })
+                cities.append(
+                    {
+                        "city": row["city"].strip(),
+                        "country": row.get("country", "").strip(),
+                        "latitude": float(row["lat"]),
+                        "longitude": float(row["lng"]),
+                        "population": row["population"],
+                    }
+                )
     except FileNotFoundError:
         print(f"Warning: City database not found at {filepath}")
     except Exception as e:
@@ -67,22 +70,19 @@ def get_city_database() -> tuple[list[dict], list[str]]:
 CITIES, CITY_NAMES = get_city_database()
 
 
-def match_city(user_input: str, top_n: int = 3, score_cutoff: int = 80) -> list[tuple[str, dict]]:
+def match_city(
+    user_input: str, top_n: int = 3, score_cutoff: int = 80
+) -> list[tuple[str, dict]]:
     """Match user input to city using fuzzy matching."""
     if not CITY_NAMES:
         return []
-    
+
     matches = process.extract(
-        user_input.lower(),
-        CITY_NAMES,
-        scorer=fuzz.WRatio,
-        limit=top_n
+        user_input.lower(), CITY_NAMES, scorer=fuzz.WRatio, limit=top_n
     )
-    
+
     return [
-        (match, CITIES[idx])
-        for match, score, idx in matches
-        if score >= score_cutoff
+        (match, CITIES[idx]) for match, score, idx in matches if score >= score_cutoff
     ]
 
 
@@ -90,14 +90,15 @@ def match_city(user_input: str, top_n: int = 3, score_cutoff: int = 80) -> list[
 # WEATHER TOOL
 # =============================================================================
 
+
 def call_openweather_api(lat: str, lon: str, call_type: str = "forecast") -> str | None:
     """Call OpenWeatherMap API."""
     if not OPENWEATHER_API_KEY:
         return None
-    
+
     url = f"https://api.openweathermap.org/data/2.5/{call_type}"
     params = {"lat": lat, "lon": lon, "appid": OPENWEATHER_API_KEY}
-    
+
     try:
         response = requests.get(url, params=params, timeout=10)
         response.raise_for_status()
@@ -111,33 +112,33 @@ def process_weather_forecast(weather_json: dict) -> list[str]:
     """Process weather data into daily summaries."""
     if not weather_json or "list" not in weather_json:
         return []
-    
+
     daily_forecast = {}
-    
+
     for entry in weather_json["list"]:
         try:
             dt = datetime.strptime(entry["dt_txt"], "%Y-%m-%d %H:%M:%S")
             day = dt.date()
             hour = dt.hour
-            
+
             if hour == 12 and day not in daily_forecast:
                 daily_forecast[day] = entry
             elif day not in daily_forecast:
                 daily_forecast[day] = entry
         except (KeyError, ValueError):
             continue
-    
+
     forecast_output = []
     for day in sorted(daily_forecast.keys()):
         try:
             entry = daily_forecast[day]
             desc = entry["weather"][0]["description"].title()
             temp_k = entry["main"]["temp"]
-            temp_f = round((temp_k - 273.15) * 9/5 + 32)
+            temp_f = round((temp_k - 273.15) * 9 / 5 + 32)
             forecast_output.append(f"{day.strftime('%A, %b %d')}: {desc}, {temp_f}°F")
         except (KeyError, IndexError):
             continue
-    
+
     return forecast_output
 
 
@@ -145,35 +146,35 @@ def get_weather(city: str) -> str:
     """Get 5-day weather forecast for a city."""
     if not OPENWEATHER_API_KEY:
         return "Error: OpenWeather API key not configured."
-    
+
     try:
         # Match city to database
         matches = match_city(city, score_cutoff=70)
-        
+
         if not matches:
             return f"Error: Could not find city '{city}' in database."
-        
+
         # Use best match
         _, city_data = matches[0]
         lat = str(city_data["latitude"])
         lon = str(city_data["longitude"])
         matched_city = city_data["city"]
         country = city_data["country"]
-        
+
         # Call API
         weather_raw = call_openweather_api(lat, lon, "forecast")
         if not weather_raw:
             return "Error: Could not retrieve weather data."
-        
+
         weather_json = json.loads(weather_raw)
         forecast_lines = process_weather_forecast(weather_json)
-        
+
         if not forecast_lines:
             return "Error: No forecast data available."
-        
+
         header = f"5-Day Forecast for {matched_city}, {country}:\n"
         return header + "\n".join(forecast_lines)
-    
+
     except Exception as e:
         return f"Error: {str(e)}"
 
@@ -182,28 +183,29 @@ def get_weather(city: str) -> str:
 # SEARCH TOOL
 # =============================================================================
 
+
 def search_tool(query: str) -> str:
     """Perform internet search using Tavily."""
     if not TAVILY_API_KEY:
         return "Error: Tavily API key not configured."
-    
+
     try:
         client = TavilyClient(TAVILY_API_KEY)
         response = client.search(query=query, max_results=5)
-        
+
         if not response or "results" not in response:
             return "No search results found."
-        
+
         formatted = []
         for i, result in enumerate(response["results"], 1):
             title = result.get("title", "No title")
             content = result.get("content", "")[:200]
             url = result.get("url", "")
-            
+
             formatted.append(f"{i}. **{title}**\n   {content}...\n   Source: {url}")
-        
+
         return "\n\n".join(formatted) if formatted else "No results found."
-    
+
     except Exception as e:
         return f"Search error: {str(e)}"
 
@@ -212,13 +214,14 @@ def search_tool(query: str) -> str:
 # AMADEUS API (Flights & Hotels)
 # =============================================================================
 
+
 def get_amadeus_token() -> str | None:
     """Get OAuth token for Amadeus API."""
     if not AMADEUS_PUBLIC or not AMADEUS_SECRET:
         return None
-    
+
     token_url = "https://test.api.amadeus.com/v1/security/oauth2/token"
-    
+
     try:
         response = requests.post(
             token_url,
@@ -226,15 +229,15 @@ def get_amadeus_token() -> str | None:
             data={
                 "grant_type": "client_credentials",
                 "client_id": AMADEUS_PUBLIC,
-                "client_secret": AMADEUS_SECRET
+                "client_secret": AMADEUS_SECRET,
             },
-            timeout=10
+            timeout=10,
         )
-        
+
         if response.status_code == 200:
             return response.json().get("access_token")
         return None
-    
+
     except Exception as e:
         print(f"Amadeus token error: {e}")
         return None
@@ -246,13 +249,13 @@ def get_flight_offers(
     departure_date: str,
     adults: int = 1,
     max_price: int = 400,
-    currency: str = "USD"
+    currency: str = "USD",
 ) -> dict:
     """Search for flight offers."""
     token = get_amadeus_token()
     if not token:
         return {"error": "Amadeus API not configured or token failed."}
-    
+
     try:
         response = requests.get(
             "https://test.api.amadeus.com/v2/shopping/flight-offers",
@@ -263,47 +266,51 @@ def get_flight_offers(
                 "departureDate": departure_date,
                 "adults": adults,
                 "currencyCode": currency,
-                "maxPrice": max_price
+                "maxPrice": max_price,
             },
-            timeout=15
+            timeout=15,
         )
-        
+
         if response.status_code == 200:
             return response.json()
-        return {"error": f"Flight search failed: {response.status_code}", "details": response.text}
-    
+        return {
+            "error": f"Flight search failed: {response.status_code}",
+            "details": response.text,
+        }
+
     except Exception as e:
         return {"error": f"Flight search error: {str(e)}"}
 
 
 def get_hotel_data(
-    city_code: str,
-    ratings: str = "4,5",
-    amenities: str = "AIR_CONDITIONING"
+    city_code: str, ratings: str = "4,5", amenities: str = "AIR_CONDITIONING"
 ) -> dict:
     """Search for hotels in a city."""
     token = get_amadeus_token()
     if not token:
         return {"error": "Amadeus API not configured or token failed."}
-    
+
     try:
         params = {"cityCode": city_code}
         if ratings:
             params["ratings"] = ratings
         if amenities:
             params["amenities"] = amenities
-        
+
         response = requests.get(
             "https://test.api.amadeus.com/v1/reference-data/locations/hotels/by-city",
             headers={"Authorization": f"Bearer {token}"},
             params=params,
-            timeout=15
+            timeout=15,
         )
-        
+
         if response.status_code == 200:
             return response.json()
-        return {"error": f"Hotel search failed: {response.status_code}", "details": response.text}
-    
+        return {
+            "error": f"Hotel search failed: {response.status_code}",
+            "details": response.text,
+        }
+
     except Exception as e:
         return {"error": f"Hotel search error: {str(e)}"}
 
@@ -312,27 +319,28 @@ def get_hotel_data(
 # GOOGLE PLACES TOOL
 # =============================================================================
 
+
 def google_places_search(query: str) -> dict:
     """Search for places using Google Places API."""
     if not GOOGLE_MAPS_KEY:
         return {"error": "Google Maps API key not configured."}
-    
+
     try:
         response = requests.post(
             "https://places.googleapis.com/v1/places:searchText",
             headers={
                 "Content-Type": "application/json",
                 "X-Goog-Api-Key": GOOGLE_MAPS_KEY,
-                "X-Goog-FieldMask": "places.displayName,places.formattedAddress,places.priceLevel,places.googleMapsUri,places.rating"
+                "X-Goog-FieldMask": "places.displayName,places.formattedAddress,places.priceLevel,places.googleMapsUri,places.rating",
             },
             json={"textQuery": query},
-            timeout=10
+            timeout=10,
         )
-        
+
         if response.status_code == 200:
             return response.json()
         return {"error": f"Places search failed: {response.status_code}"}
-    
+
     except Exception as e:
         return {"error": f"Places search error: {str(e)}"}
 
@@ -345,9 +353,9 @@ def serp_search_tool(query: str) -> str:
     try:
         # Search using SerpAPI
         params = {
-            "engine": "google", # google_hotels, # google_flights
+            "engine": "google",  # google_hotels, # google_flights
             "q": query,
-            "api_key": SERP_API_KEY
+            "api_key": SERP_API_KEY,
         }
 
         search = GoogleSearch(params)
@@ -404,7 +412,7 @@ def serp_hotel_search(query: str, check_in_date: str, check_out_date: str) -> st
             "q": query,
             "check_in_date": check_in_date,
             "check_out_date": check_out_date,
-            "api_key": SERP_API_KEY
+            "api_key": SERP_API_KEY,
         }
 
         search = GoogleSearch(params)
@@ -427,7 +435,7 @@ def serp_hotel_search(query: str, check_in_date: str, check_out_date: str) -> st
                     # Extract numeric value from strings like "3-star hotel" or just "3"
                     if isinstance(hotel_class, str):
                         # Try to extract the first number from the string
-                        match = re.search(r'\d+', hotel_class)
+                        match = re.search(r"\d+", hotel_class)
                         if match:
                             stars = int(match.group())
                             result_text += f" {'⭐' * stars}"
@@ -482,7 +490,9 @@ def serp_hotel_search(query: str, check_in_date: str, check_out_date: str) -> st
             formatted.append(result_text)
 
         header = f"Hotel Search Results for '{query}' ({check_in_date} to {check_out_date}):\n\n"
-        return header + "\n\n".join(formatted) if formatted else "No hotel results found."
+        return (
+            header + "\n\n".join(formatted) if formatted else "No hotel results found."
+        )
 
     except Exception as e:
         return f"Hotel search error: {str(e)}"
@@ -492,7 +502,7 @@ def serp_flight_search(
     departure_id: str,
     arrival_id: str,
     outbound_date: str,
-    return_date: Optional[str] = None
+    return_date: Optional[str] = None,
 ) -> str:
     """
     Search for flights using SerpAPI Google Flights engine.
@@ -516,7 +526,7 @@ def serp_flight_search(
             "departure_id": departure_id,
             "arrival_id": arrival_id,
             "outbound_date": outbound_date,
-            "api_key": SERP_API_KEY
+            "api_key": SERP_API_KEY,
         }
 
         # Add return date if provided
@@ -569,7 +579,9 @@ def serp_flight_search(
                         duration = layover.get("duration", 0)
                         hours = duration // 60
                         minutes = duration % 60
-                        layover_details.append(f"{layover.get('id', 'Unknown')} ({hours}h {minutes}m)")
+                        layover_details.append(
+                            f"{layover.get('id', 'Unknown')} ({hours}h {minutes}m)"
+                        )
                     result_text += f"\n   Layovers: {', '.join(layover_details)}"
 
                 # Carbon emissions
@@ -577,7 +589,9 @@ def serp_flight_search(
                 if carbon:
                     diff = carbon.get("difference_percent", 0)
                     this_flight = carbon.get("this_flight", 0) / 1000  # Convert to kg
-                    result_text += f"\n   Carbon: {this_flight:.0f} kg ({diff:+d}% vs typical)"
+                    result_text += (
+                        f"\n   Carbon: {this_flight:.0f} kg ({diff:+d}% vs typical)"
+                    )
 
                 formatted.append(result_text)
 
@@ -621,7 +635,9 @@ def serp_flight_search(
                         duration = layover.get("duration", 0)
                         hours = duration // 60
                         minutes = duration % 60
-                        layover_details.append(f"{layover.get('id', 'Unknown')} ({hours}h {minutes}m)")
+                        layover_details.append(
+                            f"{layover.get('id', 'Unknown')} ({hours}h {minutes}m)"
+                        )
                     result_text += f"\n   Layovers: {', '.join(layover_details)}"
 
                 # Carbon emissions
@@ -629,7 +645,9 @@ def serp_flight_search(
                 if carbon:
                     diff = carbon.get("difference_percent", 0)
                     this_flight = carbon.get("this_flight", 0) / 1000  # Convert to kg
-                    result_text += f"\n   Carbon: {this_flight:.0f} kg ({diff:+d}% vs typical)"
+                    result_text += (
+                        f"\n   Carbon: {this_flight:.0f} kg ({diff:+d}% vs typical)"
+                    )
 
                 formatted.append(result_text)
 

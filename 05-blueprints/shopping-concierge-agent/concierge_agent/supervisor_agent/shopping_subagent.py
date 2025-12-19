@@ -1,7 +1,7 @@
 """
 Shopping Subagent
 
-A subagent that handles product search and shopping-related queries by connecting 
+A subagent that handles product search and shopping-related queries by connecting
 to shopping tools via the gateway. Exposed as a tool for the main supervisor agent.
 """
 
@@ -66,6 +66,7 @@ Your goal is to help users find the right products for their travel needs.
 # GATEWAY CLIENT FOR SHOPPING TOOLS
 # =============================================================================
 
+
 def get_shopping_tools_client() -> MCPClient:
     """
     Get MCPClient connected to shopping tools via gateway.
@@ -87,6 +88,7 @@ bedrock_model = BedrockModel(
 # =============================================================================
 # SHOPPING SUBAGENT TOOL
 # =============================================================================
+
 
 @tool
 async def shopping_assistant(query: str, user_id: str = "", session_id: str = ""):
@@ -115,9 +117,9 @@ async def shopping_assistant(query: str, user_id: str = "", session_id: str = ""
     """
     try:
         logger.info(f"Shopping subagent (async) processing: {query[:100]}...")
-        
+
         shopping_client = get_shopping_tools_client()
-        
+
         agent = Agent(
             name="shopping_agent",
             model=bedrock_model,
@@ -126,10 +128,10 @@ async def shopping_assistant(query: str, user_id: str = "", session_id: str = ""
             trace_attributes={
                 "user.id": user_id,
                 "session.id": session_id,
-                "agent.type": "shopping_subagent"
-            }
+                "agent.type": "shopping_subagent",
+            },
         )
-        
+
         result = ""
         async for event in agent.stream_async(query):
             if "data" in event:
@@ -138,9 +140,9 @@ async def shopping_assistant(query: str, user_id: str = "", session_id: str = ""
                 yield {"current_tool_use": event["current_tool_use"]}
             if "result" in event:
                 result = str(event["result"])
-        
+
         yield {"result": result}
-    
+
     except Exception as e:
         logger.error(f"Shopping subagent async error: {e}", exc_info=True)
         yield {"error": str(e)}

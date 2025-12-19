@@ -15,17 +15,20 @@ from serp_tools import search_products, generate_packing_list
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-REGION = os.getenv('AWS_REGION')
+REGION = os.getenv("AWS_REGION")
 if not REGION:
-    raise ValueError('AWS_REGION environment variable is required')
+    raise ValueError("AWS_REGION environment variable is required")
 
 # Create MCP server
-mcp = FastMCP("Shopping Tools", host="0.0.0.0", stateless_http=True) # nosec B104:standard pattern for containerized MCP servers
+mcp = FastMCP(
+    "Shopping Tools", host="0.0.0.0", stateless_http=True
+)  # nosec B104:standard pattern for containerized MCP servers
 
 
 # =============================================================================
 # MCP TOOLS - Raw tool exposure
 # =============================================================================
+
 
 @mcp.tool()
 def single_productsearch(user_id: str, question: str) -> Dict[str, Any]:
@@ -43,7 +46,9 @@ def single_productsearch(user_id: str, question: str) -> Dict[str, Any]:
 
 
 @mcp.tool()
-def generate_packinglist_with_productASINS(user_id: str, question: str) -> Dict[str, Any]:
+def generate_packinglist_with_productASINS(
+    user_id: str, question: str
+) -> Dict[str, Any]:
     """
     Generate a packing list with product recommendations for a trip using SerpAPI.
 
