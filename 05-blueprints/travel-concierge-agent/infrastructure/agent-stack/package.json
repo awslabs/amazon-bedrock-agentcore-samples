@@ -1,0 +1,20 @@
+{
+  "name": "agent-stack",
+  "version": "1.0.0",
+  "scripts": {
+    "deploy": "cdk deploy --require-approval never",
+    "destroy": "cdk destroy"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "aws-cdk": "^2.225.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3"
+  },
+  "dependencies": {
+    "@aws-cdk/aws-bedrock-agentcore-alpha": "^2.225.0-alpha.0",
+    "aws-cdk-lib": "^2.225.0",
+    "constructs": "^10.3.0",
+    "source-map-support": "^0.5.21"
+  }
+}
