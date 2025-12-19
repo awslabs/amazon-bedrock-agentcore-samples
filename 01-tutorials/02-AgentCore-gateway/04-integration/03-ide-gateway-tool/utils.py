@@ -234,74 +234,77 @@ def create_agentcore_role(agent_name):
 
 # Additional utility functions for Cognito and Gateway management
 
+
 def get_or_create_user_pool(cognito_client, pool_name):
     """
     Get existing user pool by name or create a new one.
     Returns the user pool ID.
     """
     # Check if pool already exists
-    paginator = cognito_client.get_paginator('list_user_pools')
+    paginator = cognito_client.get_paginator("list_user_pools")
     for page in paginator.paginate(MaxResults=60):
-        for pool in page['UserPools']:
-            if pool['Name'] == pool_name:
-                return pool['Id']
-    
+        for pool in page["UserPools"]:
+            if pool["Name"] == pool_name:
+                return pool["Id"]
+
     # Create new pool
     response = cognito_client.create_user_pool(
-        PoolName=pool_name,
-        Policies={'PasswordPolicy': {'MinimumLength': 8}}
+        PoolName=pool_name, Policies={"PasswordPolicy": {"MinimumLength": 8}}
     )
-    return response['UserPool']['Id']
+    return response["UserPool"]["Id"]
 
 
-def get_or_create_resource_server(cognito_client, user_pool_id, identifier, name, scopes):
+def get_or_create_resource_server(
+    cognito_client, user_pool_id, identifier, name, scopes
+):
     """
     Get existing resource server or create a new one.
     """
     try:
         cognito_client.describe_resource_server(
-            UserPoolId=user_pool_id,
-            Identifier=identifier
+            UserPoolId=user_pool_id, Identifier=identifier
         )
         return  # Already exists
     except cognito_client.exceptions.ResourceNotFoundException:
         pass
-    
+
     cognito_client.create_resource_server(
-        UserPoolId=user_pool_id,
-        Identifier=identifier,
-        Name=name,
-        Scopes=scopes
+        UserPoolId=user_pool_id, Identifier=identifier, Name=name, Scopes=scopes
     )
 
 
-def get_or_create_m2m_client(cognito_client, user_pool_id, client_name, resource_server_id, scope_names):
+def get_or_create_m2m_client(
+    cognito_client, user_pool_id, client_name, resource_server_id, scope_names
+):
     """
     Get existing M2M client or create a new one.
     Returns (client_id, client_secret).
     """
     # Check if client exists
-    paginator = cognito_client.get_paginator('list_user_pool_clients')
+    paginator = cognito_client.get_paginator("list_user_pool_clients")
     for page in paginator.paginate(UserPoolId=user_pool_id, MaxResults=60):
-        for client in page['UserPoolClients']:
-            if client['ClientName'] == client_name:
+        for client in page["UserPoolClients"]:
+            if client["ClientName"] == client_name:
                 # Get client details including secret
                 details = cognito_client.describe_user_pool_client(
-                    UserPoolId=user_pool_id,
-                    ClientId=client['ClientId']
+                    UserPoolId=user_pool_id, ClientId=client["ClientId"]
                 )
-                return details['UserPoolClient']['ClientId'], details['UserPoolClient'].get('ClientSecret')
-    
+                return details["UserPoolClient"]["ClientId"], details[
+                    "UserPoolClient"
+                ].get("ClientSecret")
+
     # Create new client
     response = cognito_client.create_user_pool_client(
         UserPoolId=user_pool_id,
         ClientName=client_name,
         GenerateSecret=True,
-        AllowedOAuthFlows=['client_credentials'],
+        AllowedOAuthFlows=["client_credentials"],
         AllowedOAuthScopes=scope_names,
-        AllowedOAuthFlowsUserPoolClient=True
+        AllowedOAuthFlowsUserPoolClient=True,
     )
-    return response['UserPoolClient']['ClientId'], response['UserPoolClient']['ClientSecret']
+    return response["UserPoolClient"]["ClientId"], response["UserPoolClient"][
+        "ClientSecret"
+    ]
 
 
 def get_token(user_pool_id, client_id, client_secret, scope_string, REGION):
@@ -310,45 +313,40 @@ def get_token(user_pool_id, client_id, client_secret, scope_string, REGION):
     """
     import base64
     import requests
-    
+
     # For client credentials, we need to use the domain
     # First, get or create a domain
-    cognito = boto3.client('cognito-idp', region_name=REGION)
-    
+    cognito = boto3.client("cognito-idp", region_name=REGION)
+
     try:
         domain_response = cognito.describe_user_pool(UserPoolId=user_pool_id)
-        domain = domain_response['UserPool'].get('Domain')
-        
+        domain = domain_response["UserPool"].get("Domain")
+
         if not domain:
             # Create a domain
             import random
             import string
+
             domain = f"agentcore-{''.join(random.choices(string.ascii_lowercase + string.digits, k=8))}"
-            cognito.create_user_pool_domain(
-                Domain=domain,
-                UserPoolId=user_pool_id
-            )
+            cognito.create_user_pool_domain(Domain=domain, UserPoolId=user_pool_id)
             time.sleep(2)
     except Exception as e:
         print(f"Domain setup error: {e}")
         raise
-    
+
     # Token endpoint
     token_endpoint = f"https://{domain}.auth.{REGION}.amazoncognito.com/oauth2/token"
-    
+
     # Prepare credentials
     credentials = base64.b64encode(f"{client_id}:{client_secret}".encode()).decode()
-    
+
     headers = {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'Authorization': f'Basic {credentials}'
+        "Content-Type": "application/x-www-form-urlencoded",
+        "Authorization": f"Basic {credentials}",
     }
-    
-    data = {
-        'grant_type': 'client_credentials',
-        'scope': scope_string
-    }
-    
+
+    data = {"grant_type": "client_credentials", "scope": scope_string}
+
     response = requests.post(token_endpoint, headers=headers, data=data)
     response.raise_for_status()
     return response.json()
@@ -361,16 +359,15 @@ def delete_gateway(gateway_client, gatewayId):
     # First, list and delete all targets
     try:
         targets = gateway_client.list_gateway_targets(gatewayIdentifier=gatewayId)
-        for target in targets.get('items', []):
+        for target in targets.get("items", []):
             print(f"  Deleting target: {target['targetId']}")
             gateway_client.delete_gateway_target(
-                gatewayIdentifier=gatewayId,
-                targetIdentifier=target['targetId']
+                gatewayIdentifier=gatewayId, targetIdentifier=target["targetId"]
             )
             time.sleep(2)
     except Exception as e:
         print(f"  Warning listing/deleting targets: {e}")
-    
+
     # Delete the gateway
     gateway_client.delete_gateway(gatewayIdentifier=gatewayId)
     print(f"  Gateway {gatewayId} deleted")
@@ -380,21 +377,18 @@ def delete_cognito_user_pool(user_pool_id, region):
     """
     Delete a Cognito user pool and its domain.
     """
-    cognito = boto3.client('cognito-idp', region_name=region)
-    
+    cognito = boto3.client("cognito-idp", region_name=region)
+
     # Delete domain first if exists
     try:
         pool_info = cognito.describe_user_pool(UserPoolId=user_pool_id)
-        domain = pool_info['UserPool'].get('Domain')
+        domain = pool_info["UserPool"].get("Domain")
         if domain:
-            cognito.delete_user_pool_domain(
-                Domain=domain,
-                UserPoolId=user_pool_id
-            )
+            cognito.delete_user_pool_domain(Domain=domain, UserPoolId=user_pool_id)
             time.sleep(2)
     except Exception as e:
         print(f"  Warning deleting domain: {e}")
-    
+
     # Delete the user pool
     cognito.delete_user_pool(UserPoolId=user_pool_id)
     print(f"  User pool {user_pool_id} deleted")
@@ -404,24 +398,24 @@ def delete_iam_role(role_name):
     """
     Delete an IAM role and its attached policies.
     """
-    iam = boto3.client('iam')
-    
+    iam = boto3.client("iam")
+
     # Detach managed policies
     try:
         attached = iam.list_attached_role_policies(RoleName=role_name)
-        for policy in attached['AttachedPolicies']:
-            iam.detach_role_policy(RoleName=role_name, PolicyArn=policy['PolicyArn'])
+        for policy in attached["AttachedPolicies"]:
+            iam.detach_role_policy(RoleName=role_name, PolicyArn=policy["PolicyArn"])
     except Exception as e:
         print(f"  Warning detaching policies: {e}")
-    
+
     # Delete inline policies
     try:
         inline = iam.list_role_policies(RoleName=role_name)
-        for policy_name in inline['PolicyNames']:
+        for policy_name in inline["PolicyNames"]:
             iam.delete_role_policy(RoleName=role_name, PolicyName=policy_name)
     except Exception as e:
         print(f"  Warning deleting inline policies: {e}")
-    
+
     # Delete the role
     iam.delete_role(RoleName=role_name)
     print(f"  IAM role {role_name} deleted")
