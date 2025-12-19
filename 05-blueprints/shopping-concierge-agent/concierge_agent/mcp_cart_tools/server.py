@@ -10,7 +10,7 @@ import time
 import boto3
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import List, Dict, Any
 from mcp.server import FastMCP
 from dynamodb_manager import DynamoDBManager

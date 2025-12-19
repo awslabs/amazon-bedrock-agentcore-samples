@@ -9,14 +9,8 @@ import base64
 import ntplib
 import os
 import uuid
-from datetime import datetime, timezone
-from jwcrypto import jwk,jwe
-from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric import padding
-from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-from cryptography import x509
-from visa.helpers import get_secret, generate_x_pay_token, get_ntp_time, encrypt_card_data, decrypt_token_info, create_email_hash, encrypt_payload, decrypt_rsa
+from visa.helpers import get_secret, generate_x_pay_token, encrypt_card_data, decrypt_token_info, create_email_hash, encrypt_payload, decrypt_rsa
+from visa.secure_token import get_secure_token_direct
 
 
 # Configure logging
@@ -97,7 +91,6 @@ def enroll_pan(email, pan_data, client_app_id, client_wallet_account_id="4001006
 
     # Generate x_request_id if not provided (this starts the VPP session)
     if not x_request_id:
-        import uuid
         x_request_id = str(uuid.uuid4())
         logger.info(f"Generated new x-request-id: {x_request_id}")
 
@@ -147,12 +140,12 @@ def enroll_pan(email, pan_data, client_app_id, client_wallet_account_id="4001006
     logger.info("\n" + "=" * 80)
     logger.info("REQUEST DETAILS")
     logger.info("=" * 80)
-    logger.info(f"Method: POST")
+    logger.info("Method: POST")
     logger.info(f"URL: {url}")
-    logger.info(f"\nRequest Headers:")
+    logger.info("\nRequest Headers:")
     for key, value in headers.items():
         logger.info(f"  {key}: {value}")
-    logger.info(f"\nRequest Body:")
+    logger.info("\nRequest Body:")
     logger.info(payload)
 
     logger.info("\n" + "=" * 80)
@@ -164,7 +157,7 @@ def enroll_pan(email, pan_data, client_app_id, client_wallet_account_id="4001006
         response = requests.post(url, headers=headers, data=payload, timeout=300)
         response.raise_for_status()
 
-        logger.info(f"\nResponse Body (Parsed JSON):")
+        logger.info("\nResponse Body (Parsed JSON):")
         response_json = response.json()
         logger.info(json.dumps(response_json, indent=2))
 
@@ -224,7 +217,6 @@ def provision_token(vpan_enrollment_id, email, client_app_id, client_wallet_acco
 
     if not x_request_id:
         logger.warning("No x-request-id provided - VPP session continuity may be broken!")
-        import uuid
         x_request_id = str(uuid.uuid4())
 
     resource_path = f"vts/panEnrollments/{vpan_enrollment_id}/provisionedTokens"
@@ -243,7 +235,7 @@ def provision_token(vpan_enrollment_id, email, client_app_id, client_wallet_acco
         user_agent = browser_data.get("userAgent", "Unknown")
         device_id = hashlib.md5(user_agent.encode(), usedforsecurity=False).hexdigest()[:16]
 
-        risk_data = {
+        _risk_data = {
             "deviceFingerprint": {
                 "deviceID": device_id,
                 "deviceType": "WEB",
@@ -255,7 +247,7 @@ def provision_token(vpan_enrollment_id, email, client_app_id, client_wallet_acco
         }
     else:
         logger.warning("⚠️  No browser data provided - using dummy device data")
-        risk_data = {
+        _risk_data = {
             "deviceFingerprint": {
                 "deviceID": "device-12345",
                 "deviceType": "MOBILE",
@@ -289,10 +281,10 @@ def provision_token(vpan_enrollment_id, email, client_app_id, client_wallet_acco
         "x-request-id": x_request_id
     }
 
-    logger.info(f"\nRequest Headers:")
+    logger.info("\nRequest Headers:")
     for key, value in headers.items():
         logger.info(f"  {key}: {value}")
-    logger.info(f"\nRequest Body:")
+    logger.info("\nRequest Body:")
     logger.info(payload)
 
     # Make the request
@@ -300,7 +292,7 @@ def provision_token(vpan_enrollment_id, email, client_app_id, client_wallet_acco
         response = requests.post(url, headers=headers, data=payload, timeout=300)
         response.raise_for_status()
 
-        logger.info(f"\nResponse Body (Parsed JSON):")
+        logger.info("\nResponse Body (Parsed JSON):")
         response_json = response.json()
         logger.info(json.dumps(response_json, indent=2))
 
@@ -366,33 +358,34 @@ def decrypt_and_store_token(enc_token_info):
         logger.error(f"Error: {str(e)}")
         raise
 
-def get_secure_token(client_app_id, headless=False):
+def get_secure_token(api_key, client_app_id, headless=False):
     """
     Step 4: Get Visa secure token using automated browser workflow
-    
+
     Args:
+        api_key: Your Visa API key
         client_app_id: Client application ID (default: "VICTestAccountTR")
         headless: Run browser in headless mode (default: False)
-    
+
     Returns:
         str: The secureToken string, or None if failed
     """
     logger.info("=" * 80)
     logger.info("Getting Visa Secure Token")
     logger.info("=" * 80)
-    
-    secure_token = get_visa_secure_token(
+
+    result = get_secure_token_direct(
         api_key=api_key,
-        client_app_id=client_app_id,
-        headless=headless
+        client_app_id=client_app_id
     )
-    
-    if secure_token:
+
+    if result and 'secureToken' in result:
+        secure_token = result['secureToken']
         logger.info(f"Successfully retrieved secure token: {secure_token[:60]}...")
+        return secure_token
     else:
         logger.error("Failed to retrieve secure token")
-    
-    return secure_token
+        return None
 
 def device_attestation_authenticate(
     email,
@@ -486,7 +479,7 @@ def device_attestation_authenticate(
         response = requests.post(url, headers=headers, data=payload, timeout=300)
         response.raise_for_status()
 
-        logger.info(f"\nResponse Body (Parsed JSON):")
+        logger.info("\nResponse Body (Parsed JSON):")
         response_json = response.json()
         logger.info(json.dumps(response_json, indent=2))
 
@@ -571,7 +564,7 @@ def device_binding(secure_token, email, provisioned_token_id, browser_data, clie
         response = requests.post(url, headers=headers, data=payload, timeout=300)
         response.raise_for_status()
 
-        logger.info(f"\nResponse Body (Parsed JSON):")
+        logger.info("\nResponse Body (Parsed JSON):")
         response_json = response.json()
         logger.info(json.dumps(response_json, indent=2))
 
@@ -651,7 +644,7 @@ def step_up(provisioned_token_id, identifier, client_app_id, client_reference_id
         response = requests.put(url, headers=headers, data=payload, timeout=300)
         response.raise_for_status()
 
-        logger.info(f"\nResponse Body (Parsed JSON):")
+        logger.info("\nResponse Body (Parsed JSON):")
         response_json = response.json()
         logger.info(json.dumps(response_json, indent=2))
 
@@ -726,7 +719,7 @@ def validate_otp(provisioned_token_id, otp_value, client_app_id, client_referenc
         response = requests.post(url, headers=headers, data=payload, timeout=300)
         response.raise_for_status()
 
-        logger.info(f"\nResponse Body (Parsed JSON):")
+        logger.info("\nResponse Body (Parsed JSON):")
         response_json = response.json()
         logger.info(json.dumps(response_json, indent=2))
 
@@ -799,18 +792,18 @@ def device_attestation_register(provisioned_token_id, email, secure_token, brows
     payload_dict["encAuthenticationData"] = encAuthenticationData
 
     if secure_token and secure_token.startswith('ezAwMX06'):
-        logger.info(f"Including encAuthenticationData with consumer email for iframe flow")
+        logger.info("Including encAuthenticationData with consumer email for iframe flow")
     else:
-        logger.info(f"Including encAuthenticationData with consumer email for OAuth flow")
+        logger.info("Including encAuthenticationData with consumer email for OAuth flow")
 
     if secure_token:
         payload_dict["sessionContext"] = {"secureToken": secure_token}
         if secure_token.startswith('ezAwMX06'):
-            logger.info(f"Including sessionContext with iframe secure token")
+            logger.info("Including sessionContext with iframe secure token")
         else:
-            logger.info(f"Including sessionContext with OAuth secure token")
+            logger.info("Including sessionContext with OAuth secure token")
     else:
-        logger.info(f"No secure token provided - skipping sessionContext")
+        logger.info("No secure token provided - skipping sessionContext")
 
     payload = json.dumps(payload_dict)
 
@@ -834,7 +827,7 @@ def device_attestation_register(provisioned_token_id, email, secure_token, brows
         response = requests.post(url, headers=headers, data=payload, timeout=300)
         response.raise_for_status()
 
-        logger.info(f"\nResponse Body (Parsed JSON):")
+        logger.info("\nResponse Body (Parsed JSON):")
         response_json = response.json()
         logger.info(json.dumps(response_json, indent=2))
 
@@ -875,7 +868,7 @@ def passkey_creation(request_id, endpoint, identifier, payload, client_app_id, c
     logger.info("=" * 80)
     logger.info("Passkey Creation Flow")
 
-    resource_path = f"vts/auth/authenticate"
+    resource_path = "vts/auth/authenticate"
     url = f"https://sbx.vts.auth.visa.com/vts/auth/authenticate?apiKey={api_key}&clientAppID={client_app_id}"
     logger.info(f"Target URL: {url}")
 
@@ -899,7 +892,7 @@ def passkey_creation(request_id, endpoint, identifier, payload, client_app_id, c
         response = requests.post(url, data=payload,  timeout=300)
         response.raise_for_status()
 
-        logger.info(f"\nResponse Body (Parsed JSON):")
+        logger.info("\nResponse Body (Parsed JSON):")
         response_json = response.json()
         logger.info(json.dumps(response_json, indent=2))
 
@@ -1010,7 +1003,7 @@ def vic_enroll_card(email, provisioned_token_id, client_app_id, client_reference
     query_string = f"apikey={api_key}"
 
     # Debug logging for x-pay-token generation
-    logger.info(f"X-PAY-TOKEN generation params:")
+    logger.info("X-PAY-TOKEN generation params:")
     logger.info(f"  resource_path: {resource_path}")
     logger.info(f"  query_string: {query_string}")
     logger.info(f"  body_length: {len(enc_data_str)}")
@@ -1029,7 +1022,7 @@ def vic_enroll_card(email, provisioned_token_id, client_app_id, client_reference
     }
 
     logger.info(f"Target URL: {url}")
-    logger.info(f"\nRequest Headers:")
+    logger.info("\nRequest Headers:")
     for key, value in headers.items():
         if 'token' in key.lower() or 'key' in key.lower():
             logger.info(f"  {key}: {value[:20]}...")
@@ -1042,24 +1035,24 @@ def vic_enroll_card(email, provisioned_token_id, client_app_id, client_reference
         
         # Log response details BEFORE raising for status
         logger.info(f"\nResponse Status Code: {response.status_code}")
-        logger.info(f"Response Headers:")
+        logger.info("Response Headers:")
         for key, value in response.headers.items():
             logger.info(f"  {key}: {value}")
         
-        logger.info(f"\nRaw Response Body:")
+        logger.info("\nRaw Response Body:")
         logger.info(response.text)
         
         response.raise_for_status()
 
         response_json = response.json()
-        logger.info(f"\nResponse Body (Parsed JSON):")
+        logger.info("\nResponse Body (Parsed JSON):")
         logger.info(json.dumps(response_json, indent=2))
 
         # Decrypt response using RSA decryption (not symmetric)
         enc_response_data = response_json.get('encData')
         if enc_response_data:
             decrypted_response = decrypt_rsa(enc_response_data)
-            logger.info(f"\nDecrypted Response:")
+            logger.info("\nDecrypted Response:")
             logger.info(json.dumps(decrypted_response, indent=2))
 
             logger.info("\n" + "=" * 80)
@@ -1080,10 +1073,10 @@ def vic_enroll_card(email, provisioned_token_id, client_app_id, client_reference
         logger.error("=" * 80)
         logger.error(f"Status Code: {e.response.status_code}")
         logger.error(f"Error: {str(e)}")
-        logger.error(f"\nResponse Headers:")
+        logger.error("\nResponse Headers:")
         for key, value in e.response.headers.items():
             logger.error(f"  {key}: {value}")
-        logger.error(f"\nResponse Body:")
+        logger.error("\nResponse Body:")
         logger.error(e.response.text)
         raise
     except Exception as e:
@@ -1224,14 +1217,14 @@ def vic_initiate_purchase_instructions(
         response.raise_for_status()
 
         response_json = response.json()
-        logger.info(f"\nResponse Body (Parsed JSON):")
+        logger.info("\nResponse Body (Parsed JSON):")
         logger.info(json.dumps(response_json, indent=2))
 
         # Decrypt response using RSA decryption
         enc_response_data = response_json.get('encData')
         if enc_response_data:
             decrypted_response = decrypt_rsa(enc_response_data)
-            logger.info(f"\nDecrypted Response:")
+            logger.info("\nDecrypted Response:")
             logger.info(json.dumps(decrypted_response, indent=2))
 
             logger.info("\n" + "=" * 80)
@@ -1253,10 +1246,10 @@ def vic_initiate_purchase_instructions(
         logger.error("=" * 80)
         logger.error(f"Status Code: {e.response.status_code}")
         logger.error(f"Error: {str(e)}")
-        logger.error(f"\nResponse Headers:")
+        logger.error("\nResponse Headers:")
         for key, value in e.response.headers.items():
             logger.error(f"  {key}: {value}")
-        logger.error(f"\nResponse Body:")
+        logger.error("\nResponse Body:")
         logger.error(e.response.text)
         raise
     except Exception as e:
@@ -1355,14 +1348,14 @@ def vic_get_payment_credentials(
         response.raise_for_status()
 
         response_json = response.json()
-        logger.info(f"\nResponse Body (Parsed JSON):")
+        logger.info("\nResponse Body (Parsed JSON):")
         logger.info(json.dumps(response_json, indent=2))
 
         # Decrypt response using RSA
         enc_response_data = response_json.get('encData')
         if enc_response_data:
             decrypted_response = decrypt_rsa(enc_response_data)
-            logger.info(f"\nDecrypted Response:")
+            logger.info("\nDecrypted Response:")
             logger.info(json.dumps(decrypted_response, indent=2))
 
             # Extract and decode signedPayload to get cryptogram

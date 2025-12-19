@@ -2,7 +2,7 @@ import json
 import os
 import logging
 import boto3
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict
 from serpapi import GoogleSearch
 
 logger = logging.getLogger(__name__)
@@ -218,7 +218,7 @@ def generate_packing_list(user_id: str, question: str) -> Dict[str, Any]:
                 asins_dict[item] = item_asins
 
                 answer += f"📦 {item.title()}\n"
-                answer += f"   Recommended products:\n"
+                answer += "   Recommended products:\n"
 
                 for i, product in enumerate(products[:3], 1):
                     price_str = f"${product['price']}" if isinstance(product['price'], (int, float)) else product['price']

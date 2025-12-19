@@ -50,14 +50,14 @@ def test_tool_organization(all_tools: list) -> list:
     travel_tools = [t for t in all_tools if t["name"].startswith("travel")]
     itinerary_tools = [t for t in all_tools if t["name"].startswith("itinerary")]
     
-    print(f"\n📊 Tool Distribution:")
+    print("\n📊 Tool Distribution:")
     print(f"   Cart tools: {len(cart_tools)}")
     print(f"   Travel tools: {len(travel_tools)}")
     print(f"   Itinerary tools: {len(itinerary_tools)}")
     print(f"   Total tools: {len(all_tools)}")
     
     # Test 1: Cart tools exist
-    print(f"\n🧪 Test 1: Cart tools available")
+    print("\n🧪 Test 1: Cart tools available")
     if len(cart_tools) >= 5:
         print(f"   {Fore.GREEN}✓ Found {len(cart_tools)} cart tools{Style.RESET_ALL}")
         results.append(True)
@@ -66,7 +66,7 @@ def test_tool_organization(all_tools: list) -> list:
         results.append(False)
     
     # Test 2: Travel tools exist
-    print(f"\n🧪 Test 2: Travel tools available")
+    print("\n🧪 Test 2: Travel tools available")
     if len(travel_tools) >= 3:
         print(f"   {Fore.GREEN}✓ Found {len(travel_tools)} travel tools{Style.RESET_ALL}")
         results.append(True)
@@ -75,7 +75,7 @@ def test_tool_organization(all_tools: list) -> list:
         results.append(False)
     
     # Test 3: Itinerary tools exist
-    print(f"\n🧪 Test 3: Itinerary tools available")
+    print("\n🧪 Test 3: Itinerary tools available")
     if len(itinerary_tools) >= 3:
         print(f"   {Fore.GREEN}✓ Found {len(itinerary_tools)} itinerary tools{Style.RESET_ALL}")
         results.append(True)
@@ -84,7 +84,7 @@ def test_tool_organization(all_tools: list) -> list:
         results.append(False)
     
     # Test 4: Tool naming convention
-    print(f"\n🧪 Test 4: Tool naming convention")
+    print("\n🧪 Test 4: Tool naming convention")
     valid_prefixes = ["carttools", "traveltools", "itinerarytools", "x_amz_bedrock_agentcore"]
     naming_ok = True
     for tool in all_tools:
@@ -108,7 +108,6 @@ def create_gateway_mcp_client(access_token: str, gateway_url: str, tool_filter_p
     Create MCP client with tool filtering - same approach as gateway_client.py.
     Default prefix is "gateway" for all tools.
     """
-    from strands.tools.mcp import MCPClient
     from mcp.client.streamable_http import streamablehttp_client
     
     tool_filters = {"allowed": [re.compile(tool_filter_pattern)]}
@@ -128,10 +127,9 @@ def test_mcpclient_tool_filters(gateway_url: str, access_token: str) -> list:
     print("\n" + "=" * 60)
     print(f"{Fore.CYAN}MCPCLIENT TOOL_FILTERS TESTS{Style.RESET_ALL}")
     print("=" * 60)
-    print(f"Testing the exact same filtering approach used by agents")
+    print("Testing the exact same filtering approach used by agents")
     
     try:
-        from strands.tools.mcp import MCPClient
     except ImportError as e:
         print(f"\n   {Fore.YELLOW}⚠ Cannot import strands: {e}{Style.RESET_ALL}")
         return []

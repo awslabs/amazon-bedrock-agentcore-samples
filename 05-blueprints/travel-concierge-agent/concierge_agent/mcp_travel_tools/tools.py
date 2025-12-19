@@ -427,7 +427,6 @@ def serp_hotel_search(query: str, check_in_date: str, check_out_date: str) -> st
                     # Extract numeric value from strings like "3-star hotel" or just "3"
                     if isinstance(hotel_class, str):
                         # Try to extract the first number from the string
-                        import re
                         match = re.search(r'\d+', hotel_class)
                         if match:
                             stars = int(match.group())

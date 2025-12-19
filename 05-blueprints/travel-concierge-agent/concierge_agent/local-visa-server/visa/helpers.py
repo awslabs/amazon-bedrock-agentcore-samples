@@ -11,11 +11,6 @@ import os
 import uuid
 from datetime import datetime, timezone
 from jwcrypto import jwk,jwe
-from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric import padding
-from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-from cryptography import x509
 
 
 # Configure logging
@@ -76,7 +71,7 @@ def generate_x_pay_token(shared_secret, resource_path, query_string, request_bod
     ).hexdigest()
    
     token = f"xv2:{timestamp}:{hmac_digest}"
-    logger.info(f"X-PAY-TOKEN generated successfully")
+    logger.info("X-PAY-TOKEN generated successfully")
     return token
 
 
@@ -101,7 +96,7 @@ def get_ntp_time():
             logger.info(f"  Querying NTP server: {ntp_server}")
             response = client.request(ntp_server, version=3, timeout=5)
             ntp_time_seconds = int(response.tx_time)
-            ntp_time_readable = datetime.fromtimestamp(response.tx_time, tz=timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')
+            _ntp_time_readable = datetime.fromtimestamp(response.tx_time, tz=timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')
             logger.info(f"  NTP time retrieved successfully from {ntp_server}")
             return ntp_time_seconds
         except Exception as e:

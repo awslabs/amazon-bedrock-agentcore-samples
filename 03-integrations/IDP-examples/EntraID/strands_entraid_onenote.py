@@ -1,8 +1,6 @@
 import os
-import datetime  
 import json
 import asyncio
-import traceback
 import requests
 
 from strands import Agent
@@ -14,7 +12,7 @@ from strands.models.bedrock import BedrockModel
 os.environ["STRANDS_OTEL_ENABLE_CONSOLE_EXPORT"] = "true"
 os.environ["OTEL_PYTHON_EXCLUDED_URLS"] = "/ping,/invocations"
 
-SCOPES = [f'api://fec53ef5-97d8-41a2-a604-ae8fab22ec51/read']
+SCOPES = ['api://fec53ef5-97d8-41a2-a604-ae8fab22ec51/read']
 SCOPES = os.environ["scope"]
 
 entra_access_token = None  # Global variable to store the access token
@@ -187,7 +185,7 @@ async def agent_task(user_message: str):
             except Exception as auth_error:
                 # print("Exception occurred:")
                 # traceback.print_exc()
-                print(f"auth_error:", auth_error)
+                print("auth_error:", auth_error)
                 await queue.put(f"Authentication failed: {str(auth_error)}")
         
         await queue.put(response.message)
@@ -210,7 +208,6 @@ async def need_token_3LO_async(*, access_token: str):
     print("Got access token....", access_token)
     return access_token
 
-from fastapi.responses import StreamingResponse
 
 @app.entrypoint
 async def agent_invocation(payload):

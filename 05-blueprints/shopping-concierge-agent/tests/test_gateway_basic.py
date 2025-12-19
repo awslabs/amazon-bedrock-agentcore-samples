@@ -49,13 +49,13 @@ def test_tool_organization(all_tools: list) -> list:
     cart_tools = [t for t in all_tools if t["name"].startswith("cart")]
     shopping_tools = [t for t in all_tools if t["name"].startswith("shopping")]
     
-    print(f"\n📊 Tool Distribution:")
+    print("\n📊 Tool Distribution:")
     print(f"   Cart tools: {len(cart_tools)}")
     print(f"   Shopping tools: {len(shopping_tools)}")
     print(f"   Total tools: {len(all_tools)}")
     
     # Test 1: Cart tools exist
-    print(f"\n🧪 Test 1: Cart tools available")
+    print("\n🧪 Test 1: Cart tools available")
     if len(cart_tools) >= 5:
         print(f"   {Fore.GREEN}✓ Found {len(cart_tools)} cart tools{Style.RESET_ALL}")
         results.append(True)
@@ -64,7 +64,7 @@ def test_tool_organization(all_tools: list) -> list:
         results.append(False)
     
     # Test 2: Shopping tools exist
-    print(f"\n🧪 Test 2: Shopping tools available")
+    print("\n🧪 Test 2: Shopping tools available")
     if len(shopping_tools) >= 2:
         print(f"   {Fore.GREEN}✓ Found {len(shopping_tools)} shopping tools{Style.RESET_ALL}")
         results.append(True)
@@ -73,7 +73,7 @@ def test_tool_organization(all_tools: list) -> list:
         results.append(False)
     
     # Test 3: Tool naming convention
-    print(f"\n🧪 Test 3: Tool naming convention")
+    print("\n🧪 Test 3: Tool naming convention")
     valid_prefixes = ["carttools", "shoppingtools", "x_amz_bedrock_agentcore"]
     naming_ok = True
     for tool in all_tools:
@@ -97,7 +97,6 @@ def create_gateway_mcp_client(access_token: str, gateway_url: str, tool_filter_p
     Create MCP client with tool filtering - same approach as gateway_client.py.
     Default prefix is "gateway" for all tools.
     """
-    from strands.tools.mcp import MCPClient
     from mcp.client.streamable_http import streamablehttp_client
     
     tool_filters = {"allowed": [re.compile(tool_filter_pattern)]}
@@ -117,10 +116,9 @@ def test_mcpclient_tool_filters(gateway_url: str, access_token: str) -> list:
     print("\n" + "=" * 60)
     print(f"{Fore.CYAN}MCPCLIENT TOOL_FILTERS TESTS{Style.RESET_ALL}")
     print("=" * 60)
-    print(f"Testing the exact same filtering approach used by agents")
+    print("Testing the exact same filtering approach used by agents")
     
     try:
-        from strands.tools.mcp import MCPClient
     except ImportError as e:
         print(f"\n   {Fore.YELLOW}⚠ Cannot import strands: {e}{Style.RESET_ALL}")
         return []

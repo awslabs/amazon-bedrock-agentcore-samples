@@ -23,13 +23,8 @@ from pathlib import Path
 import requests
 from colorama import Fore, Style, init
 
-<<<<<<<< HEAD:tests/test_agent_remote.py
 # Add tests folder to path for utils import
 sys.path.insert(0, str(Path(__file__).parent))
-========
-# Add parent to path for utils import
-sys.path.insert(0, str(Path(__file__).parent.parent))
->>>>>>>> feature/lambda_mcp:tests/travel/test_agent_remote.py
 from utils import (
     print_msg, print_section, get_agent_config,
     generate_session_id, process_streaming_response, REGION

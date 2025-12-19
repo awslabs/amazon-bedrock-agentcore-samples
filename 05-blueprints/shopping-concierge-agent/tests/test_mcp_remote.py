@@ -22,13 +22,13 @@ import asyncio
 import sys
 import json
 from pathlib import Path
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 import boto3
 
 # Add parent to path for utils import
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from utils import print_msg, print_section, get_oauth_token, get_stack_exports, REGION
+from utils import print_msg, print_section, get_oauth_token, REGION
 
 
 async def test_mcp_server():
@@ -89,7 +89,7 @@ async def test_mcp_server():
         "Content-Type": "application/json"
     }
     
-    print(f"\nConnecting to MCP server...")
+    print("\nConnecting to MCP server...")
     print(f"URL: {mcp_url[:80]}...")
     
     try:

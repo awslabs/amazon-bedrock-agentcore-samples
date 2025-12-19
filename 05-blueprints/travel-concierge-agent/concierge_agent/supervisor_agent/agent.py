@@ -2,14 +2,11 @@ import os
 import sys
 import logging
 import boto3
-from botocore.exceptions import ClientError
-from pathlib import Path
-from strands import Agent, tool
+from strands import Agent
 from strands.models import BedrockModel
 from bedrock_agentcore.runtime import BedrockAgentCoreApp
 from bedrock_agentcore.memory.integrations.strands.session_manager import AgentCoreMemorySessionManager
 from bedrock_agentcore.memory.integrations.strands.config import AgentCoreMemoryConfig
-from datetime import datetime
 import json
 import traceback
 

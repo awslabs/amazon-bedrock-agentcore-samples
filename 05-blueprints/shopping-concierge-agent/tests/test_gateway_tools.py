@@ -27,7 +27,6 @@ import csv
 from pathlib import Path
 from typing import Dict, List, Any, Tuple
 from dataclasses import dataclass
-from datetime import datetime
 
 import requests
 from colorama import Fore, Style, init

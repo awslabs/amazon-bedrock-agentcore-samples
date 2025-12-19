@@ -142,7 +142,7 @@ def get_secure_token_endpoint():
 
         result = get_secure_token_direct(api_key, CLIENT_APP_ID)
 
-        print(f"✅ SecureToken obtained successfully")
+        print("✅ SecureToken obtained successfully")
 
         return jsonify({
             'success': True,
@@ -204,7 +204,7 @@ def onboard_card_endpoint():
         if not secure_token:
             raise Exception("Secure token not provided from iframe session")
 
-        print(f"✅ Using SecureToken from iframe")
+        print("✅ Using SecureToken from iframe")
 
         # Log browser data for debugging
         if browser_data:
@@ -343,7 +343,7 @@ def device_attestation_endpoint():
                 transaction_amount
             )
 
-            print(f"✅ Device attestation authenticate completed")
+            print("✅ Device attestation authenticate completed")
             # Extract action from nested authenticationContext
             action = result.get('authenticationContext', {}).get('action')
             print(f"Action: {action}")
@@ -369,7 +369,7 @@ def device_attestation_endpoint():
                 x_request_id
             )
 
-            print(f"✅ Device attestation register completed")
+            print("✅ Device attestation register completed")
             print(f"Has authenticationContext: {'authenticationContext' in result}")
 
             return jsonify({
@@ -409,7 +409,7 @@ def complete_passkey_endpoint():
         print("\n=== POST /api/visa/complete-passkey ===")
 
         # Import flow functions
-        flow = lazy_import_flow()
+        _flow = lazy_import_flow()
 
         data = get_request_json()
         v_provisioned_token_id = data.get('vProvisionedTokenId')
@@ -436,7 +436,7 @@ def complete_passkey_endpoint():
             'hint': hint
         }
 
-        print(f"✅ Passkey registration completed")
+        print("✅ Passkey registration completed")
 
         return jsonify({
             'success': True,
@@ -508,7 +508,7 @@ def device_binding_endpoint():
             x_request_id
         )
 
-        print(f"✅ Device binding completed")
+        print("✅ Device binding completed")
         print(f"Status: {result.get('status')}")
         print(f"Step-up options: {len(result.get('stepUpRequest', []))}")
 
@@ -577,7 +577,7 @@ def step_up_endpoint():
             x_request_id
         )
 
-        print(f"✅ Step-up option selected")
+        print("✅ Step-up option selected")
 
         return jsonify({
             'success': True,
@@ -641,7 +641,7 @@ def validate_otp_endpoint():
             x_request_id
         )
 
-        print(f"✅ OTP validated")
+        print("✅ OTP validated")
         print(f"Status: {result.get('status')}")
 
         return jsonify({
@@ -879,7 +879,7 @@ def vic_payment_credentials_endpoint():
             transaction_amount
         )
 
-        print(f"✅ Payment credentials retrieved")
+        print("✅ Payment credentials retrieved")
 
         return jsonify({
             'success': True,

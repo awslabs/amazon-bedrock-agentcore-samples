@@ -29,7 +29,6 @@ import csv
 from pathlib import Path
 from typing import Dict, List, Any, Tuple, Optional
 from dataclasses import dataclass, field
-from datetime import datetime
 
 import requests
 from colorama import Fore, Style, init
@@ -130,7 +129,7 @@ class AgentTrajectoryTester:
                     tool_names = [t.strip() for t in row['expected_tools'].split(',')]
                     try:
                         tool_inputs = json.loads(row.get('expected_tools_input', '[]'))
-                    except:
+                    except (json.JSONDecodeError, ValueError, TypeError):
                         tool_inputs = [{}] * len(tool_names)
                     
                     for i, name in enumerate(tool_names):
@@ -335,7 +334,7 @@ class AgentTrajectoryTester:
                         try:
                             inp = delta["toolUse"]["input"]
                             current_tool_input = json.loads(inp) if isinstance(inp, str) else inp
-                        except:
+                        except (json.JSONDecodeError, ValueError, TypeError, KeyError):
                             pass
                     
                     if event.get("contentBlockStop") and current_tool_name:
