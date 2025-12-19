@@ -259,7 +259,7 @@ def proxy_to_gateway(event):
                 data = json.loads(resp_body)
                 if is_elicitation(data) and CALLBACK_LAMBDA_URL:
                     store_token_for_3lo(req_headers.get('Authorization', ''))
-            except:
+            except (json.JSONDecodeError, KeyError):
                 pass
             
             return {

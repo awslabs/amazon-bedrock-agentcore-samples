@@ -311,9 +311,6 @@ def get_token(user_pool_id, client_id, client_secret, scope_string, REGION):
     import base64
     import requests
     
-    # Get the token endpoint
-    token_url = f"https://cognito-idp.{REGION}.amazonaws.com/{user_pool_id}"
-    
     # For client credentials, we need to use the domain
     # First, get or create a domain
     cognito = boto3.client('cognito-idp', region_name=REGION)
