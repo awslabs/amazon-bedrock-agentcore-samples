@@ -43,13 +43,13 @@ def get_secret(secret_name, region_name="us-east-1"):
         or "pem" in secret_name.lower()
     ):
         # Replace literal \n with actual newlines
-            # codeql[py/clear-text-logging-sensitive-data] Logs processing status only, not secret content
+        # codeql[py/clear-text-logging-sensitive-data] Logs processing status only, not secret content
         if "\\n" in secret_value:
             logger.info(f"  Processing {secret_name}...")
             secret_value = secret_value.replace("\\n", "\n")
             # codeql[py/clear-text-logging-sensitive-data] Logs processing status only, not secret content
         # Replace literal \r with actual carriage returns
-            # codeql[py/clear-text-logging-sensitive-data] Logs processing status only, not secret content
+        # codeql[py/clear-text-logging-sensitive-data] Logs processing status only, not secret content
         if "\\r" in secret_value:
             logger.info(f"  Processing {secret_name}...")
             # codeql[py/clear-text-logging-sensitive-data] Logs processing status only, not secret content
