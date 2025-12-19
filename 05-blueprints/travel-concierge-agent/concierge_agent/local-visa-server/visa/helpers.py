@@ -21,55 +21,63 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+
+def _redact_sensitive(value: str, show_chars: int = 4) -> str:
+    """Redact sensitive information, showing only first few characters."""
+    if not value or not isinstance(value, str):
+        return "[REDACTED]"
+    if len(value) <= show_chars:
+        return "[REDACTED]"
+    return f"{value[:show_chars]}...{'*' * 8}"
+
+
 def get_secret(secret_name, region_name="us-east-1"):
     logger.info(f"Fetching secret: {secret_name} from region: {region_name}")
     client = boto3.client('secretsmanager', region_name=region_name)
     response = client.get_secret_value(SecretId=secret_name)
     secret_value = response['SecretString']
-    
+
     # For PEM files (certificates/keys), replace common escape sequences if accidentally stored
     if 'cert' in secret_name.lower() or 'key' in secret_name.lower() or 'pem' in secret_name.lower():
         # Replace literal \n with actual newlines
         if '\\n' in secret_value:
-            logger.info(f"  Detected escaped newlines in {secret_name}, fixing...")
+            logger.info(f"  Processing {secret_name}...")
             secret_value = secret_value.replace('\\n', '\n')
         # Replace literal \r with actual carriage returns
         if '\\r' in secret_value:
-            logger.info(f"  Detected escaped carriage returns in {secret_name}, fixing...")
+            logger.info(f"  Processing {secret_name}...")
             secret_value = secret_value.replace('\\r', '\r')
         # Remove any quotes that might wrap the entire PEM
         if secret_value.startswith('"') and secret_value.endswith('"'):
-            logger.info(f"  Detected quotes wrapping {secret_name}, removing...")
+            logger.info(f"  Processing {secret_name}...")
             secret_value = secret_value[1:-1]
         if secret_value.startswith("'") and secret_value.endswith("'"):
-            logger.info(f"  Detected single quotes wrapping {secret_name}, removing...")
+            logger.info(f"  Processing {secret_name}...")
             secret_value = secret_value[1:-1]
     else:
         # For non-PEM secrets, strip whitespace and quotes
         secret_value = secret_value.strip().strip('"')
-    
+
     logger.info(f"Successfully retrieved secret: {secret_name}")
     return secret_value
 
 
 def generate_x_pay_token(shared_secret, resource_path, query_string, request_body=""):
     logger.info("Generating X-PAY-TOKEN")
-    logger.info(f"  Resource Path: {resource_path}")
-    logger.info(f"  Query String: {query_string}")
-    logger.info(f"  Request Body Length: {len(request_body)} bytes")
-   
+    # Sensitive data redacted from logs for security
+
     timestamp = str(int(time.time()))
-    logger.info(f"  Timestamp: {timestamp}")
-   
+
     message = timestamp + resource_path + query_string + request_body
-    logger.info(f"  Message length: {len(message)}")
-   
+
+    # SHA256 is mandated by Visa API specification - cannot use stronger algorithm
+    # See: https://developer.visa.com/pages/working-with-visa-apis/two-way-ssl
     hmac_digest = hmac.new(
         shared_secret.encode('utf-8'),
         message.encode('utf-8'),
-        hashlib.sha256
+        hashlib.sha256  # nosec - Required by Visa API
     ).hexdigest()
-   
+
     token = f"xv2:{timestamp}:{hmac_digest}"
     logger.info("X-PAY-TOKEN generated successfully")
     return token

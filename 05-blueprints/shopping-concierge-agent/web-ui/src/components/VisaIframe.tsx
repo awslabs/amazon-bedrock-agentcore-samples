@@ -18,8 +18,15 @@ export const VisaIframe: React.FC<VisaIframeProps> = ({ config, onTokenReceived,
 
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
-      // Verify origin
-      if (!event.origin.includes('visa.com')) return;
+      // Verify origin - must be exactly visa.com or a proper subdomain of visa.com
+      try {
+        const originUrl = new URL(event.origin);
+        const hostname = originUrl.hostname;
+        const isVisaDomain = hostname === 'visa.com' || hostname.endsWith('.visa.com');
+        if (!isVisaDomain) return;
+      } catch {
+        return; // Invalid URL
+      }
 
       console.log('Visa iframe message:', event.data);
 

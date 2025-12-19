@@ -102,7 +102,7 @@ def enroll_pan(email, pan_data, client_app_id, client_wallet_account_id="4001006
     # Build query string and URL
     query_string_for_token = f"apiKey={api_key}"
     url = f"https://cert.api.visa.com/vts/panEnrollments?apiKey={api_key}"
-    logger.info(f"Target URL: {url}")
+    logger.info(f"Target URL: {url.split("?")[0]}...")  # API key redacted
 
     # Build payload (no indentation for HMAC calculation)
     payload = json.dumps({
@@ -159,7 +159,7 @@ def enroll_pan(email, pan_data, client_app_id, client_wallet_account_id="4001006
 
         logger.info("\nResponse Body (Parsed JSON):")
         response_json = response.json()
-        logger.info(json.dumps(response_json, indent=2))
+        logger.info("[Response data redacted for security]")
 
         # Validate response contains required field
         if 'vPanEnrollmentID' not in response_json:
@@ -221,7 +221,7 @@ def provision_token(vpan_enrollment_id, email, client_app_id, client_wallet_acco
 
     resource_path = f"vts/panEnrollments/{vpan_enrollment_id}/provisionedTokens"
     url = f"https://cert.api.visa.com/vts/panEnrollments/{vpan_enrollment_id}/provisionedTokens?apiKey={api_key}"
-    logger.info(f"Target URL: {url}")
+    logger.info(f"Target URL: {url.split("?")[0]}...")  # API key redacted
 
     hash_email = create_email_hash(email)
 
@@ -294,7 +294,7 @@ def provision_token(vpan_enrollment_id, email, client_app_id, client_wallet_acco
 
         logger.info("\nResponse Body (Parsed JSON):")
         response_json = response.json()
-        logger.info(json.dumps(response_json, indent=2))
+        logger.info("[Response data redacted for security]")
 
         # Validate response contains required fields
         if 'tokenInfo' not in response_json or 'encTokenInfo' not in response_json['tokenInfo']:
@@ -422,7 +422,7 @@ def device_attestation_authenticate(
 
     resource_path = f"vts/provisionedTokens/{provisioned_token_id}/attestation/options"
     url = f"https://cert.api.visa.com/vts/provisionedTokens/{provisioned_token_id}/attestation/options?apiKey={api_key}"
-    logger.info(f"Target URL: {url}")
+    logger.info(f"Target URL: {url.split("?")[0]}...")  # API key redacted
 
     # FIXED: Encrypt consumer email info, NOT pan_data
     to_be_encrypted = {"consumerInfo": {"emailAddress": email}}
@@ -481,7 +481,7 @@ def device_attestation_authenticate(
 
         logger.info("\nResponse Body (Parsed JSON):")
         response_json = response.json()
-        logger.info(json.dumps(response_json, indent=2))
+        logger.info("[Response data redacted for security]")
 
         logger.info("\n" + "=" * 80)
         logger.info("Device Attestation Authenticate completed successfully")
@@ -530,7 +530,7 @@ def device_binding(secure_token, email, provisioned_token_id, browser_data, clie
 
     resource_path = f"vts/provisionedTokens/{provisioned_token_id}/deviceBinding"
     url = f"https://cert.api.visa.com/vts/provisionedTokens/{provisioned_token_id}/deviceBinding?apiKey={api_key}"
-    logger.info(f"Target URL: {url}")
+    logger.info(f"Target URL: {url.split("?")[0]}...")  # API key redacted
 
     hash_email = create_email_hash(email)
 
@@ -566,7 +566,7 @@ def device_binding(secure_token, email, provisioned_token_id, browser_data, clie
 
         logger.info("\nResponse Body (Parsed JSON):")
         response_json = response.json()
-        logger.info(json.dumps(response_json, indent=2))
+        logger.info("[Response data redacted for security]")
 
         logger.info("\n" + "=" * 80)
         logger.info("Device Binding  completed successfully")
@@ -615,7 +615,7 @@ def step_up(provisioned_token_id, identifier, client_app_id, client_reference_id
 
     resource_path = f"vts/provisionedTokens/{provisioned_token_id}/stepUpOptions/method"
     url = f"https://cert.api.visa.com/vts/provisionedTokens/{provisioned_token_id}/stepUpOptions/method?apiKey={api_key}"
-    logger.info(f"Target URL: {url}")
+    logger.info(f"Target URL: {url.split("?")[0]}...")  # API key redacted
 
     timestamp = str(int(time.time()))
     logger.info(f"  Timestamp: {timestamp}")
@@ -646,7 +646,7 @@ def step_up(provisioned_token_id, identifier, client_app_id, client_reference_id
 
         logger.info("\nResponse Body (Parsed JSON):")
         response_json = response.json()
-        logger.info(json.dumps(response_json, indent=2))
+        logger.info("[Response data redacted for security]")
 
         logger.info("\n" + "=" * 80)
         logger.info("Device Set Up completed successfully")
@@ -689,7 +689,7 @@ def validate_otp(provisioned_token_id, otp_value, client_app_id, client_referenc
 
     resource_path = f"vts/provisionedTokens/{provisioned_token_id}/stepUpOptions/validateOTP"
     url = f"https://cert.api.visa.com/vts/provisionedTokens/{provisioned_token_id}/stepUpOptions/validateOTP?apiKey={api_key}"
-    logger.info(f"Target URL: {url}")
+    logger.info(f"Target URL: {url.split("?")[0]}...")  # API key redacted
 
     timestamp = str(int(time.time()))
     logger.info(f"  Timestamp: {timestamp}")
@@ -721,7 +721,7 @@ def validate_otp(provisioned_token_id, otp_value, client_app_id, client_referenc
 
         logger.info("\nResponse Body (Parsed JSON):")
         response_json = response.json()
-        logger.info(json.dumps(response_json, indent=2))
+        logger.info("[Response data redacted for security]")
 
         logger.info("\n" + "=" * 80)
         logger.info("Validate OTP completed successfully")
@@ -764,7 +764,7 @@ def device_attestation_register(provisioned_token_id, email, secure_token, brows
 
     resource_path = f"vts/provisionedTokens/{provisioned_token_id}/attestation/options"
     url = f"https://cert.api.visa.com/vts/provisionedTokens/{provisioned_token_id}/attestation/options?apiKey={api_key}"
-    logger.info(f"Target URL: {url}")
+    logger.info(f"Target URL: {url.split("?")[0]}...")  # API key redacted
 
     payload_dict = {
         "authenticationPreferencesRequested": {
@@ -829,7 +829,7 @@ def device_attestation_register(provisioned_token_id, email, secure_token, brows
 
         logger.info("\nResponse Body (Parsed JSON):")
         response_json = response.json()
-        logger.info(json.dumps(response_json, indent=2))
+        logger.info("[Response data redacted for security]")
 
         logger.info("\n" + "=" * 80)
         logger.info("Device Attestation Register completed successfully")
@@ -870,7 +870,7 @@ def passkey_creation(request_id, endpoint, identifier, payload, client_app_id, c
 
     resource_path = "vts/auth/authenticate"
     url = f"https://sbx.vts.auth.visa.com/vts/auth/authenticate?apiKey={api_key}&clientAppID={client_app_id}"
-    logger.info(f"Target URL: {url}")
+    logger.info(f"Target URL: {url.split("?")[0]}...")  # API key redacted
 
     payload = json.dumps({
         "requestID": request_id,
@@ -894,7 +894,7 @@ def passkey_creation(request_id, endpoint, identifier, payload, client_app_id, c
 
         logger.info("\nResponse Body (Parsed JSON):")
         response_json = response.json()
-        logger.info(json.dumps(response_json, indent=2))
+        logger.info("[Response data redacted for security]")
 
         logger.info("\n" + "=" * 80)
         logger.info("Passkey Creation Flow completed successfully")
@@ -1021,7 +1021,7 @@ def vic_enroll_card(email, provisioned_token_id, client_app_id, client_reference
         "x-pay-token": x_pay_token,
     }
 
-    logger.info(f"Target URL: {url}")
+    logger.info(f"Target URL: {url.split("?")[0]}...")  # API key redacted
     logger.info("\nRequest Headers:")
     for key, value in headers.items():
         if 'token' in key.lower() or 'key' in key.lower():
@@ -1046,7 +1046,7 @@ def vic_enroll_card(email, provisioned_token_id, client_app_id, client_reference
 
         response_json = response.json()
         logger.info("\nResponse Body (Parsed JSON):")
-        logger.info(json.dumps(response_json, indent=2))
+        logger.info("[Response data redacted for security]")
 
         # Decrypt response using RSA decryption (not symmetric)
         enc_response_data = response_json.get('encData')
@@ -1209,7 +1209,7 @@ def vic_initiate_purchase_instructions(
         "x-request-id": client_reference_id,
     }
 
-    logger.info(f"Target URL: {url}")
+    logger.info(f"Target URL: {url.split("?")[0]}...")  # API key redacted
     logger.info(f"Request Body (truncated): {enc_data_str[:100]}...")
 
     try:
@@ -1218,7 +1218,7 @@ def vic_initiate_purchase_instructions(
 
         response_json = response.json()
         logger.info("\nResponse Body (Parsed JSON):")
-        logger.info(json.dumps(response_json, indent=2))
+        logger.info("[Response data redacted for security]")
 
         # Decrypt response using RSA decryption
         enc_response_data = response_json.get('encData')
@@ -1340,7 +1340,7 @@ def vic_get_payment_credentials(
         "x-request-id": client_reference_id,
     }
 
-    logger.info(f"Target URL: {url}")
+    logger.info(f"Target URL: {url.split("?")[0]}...")  # API key redacted
     logger.info(f"Request Body (truncated): {enc_data_str[:100]}...")
 
     try:
@@ -1349,7 +1349,7 @@ def vic_get_payment_credentials(
 
         response_json = response.json()
         logger.info("\nResponse Body (Parsed JSON):")
-        logger.info(json.dumps(response_json, indent=2))
+        logger.info("[Response data redacted for security]")
 
         # Decrypt response using RSA
         enc_response_data = response_json.get('encData')

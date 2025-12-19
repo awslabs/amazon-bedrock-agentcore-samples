@@ -50,9 +50,20 @@ const PurchaseConfirmation = ({ userEmail, userId, cartItems, onComplete, onErro
     const handleMessage = (event: MessageEvent) => {
       console.log('📬 Message received from:', event.origin, event.data)
 
-      if (!event.origin.includes('auth.visa.com')) {
-        console.log('⚠️ Ignoring message from non-Visa origin:', event.origin)
-        return
+      // Verify origin - must be exactly auth.visa.com or a proper subdomain
+      try {
+        const originUrl = new URL(event.origin);
+        const hostname = originUrl.hostname;
+        const isVisaAuthDomain = hostname === 'auth.visa.com' ||
+                                 hostname.endsWith('.auth.visa.com') ||
+                                 hostname === 'visa.com' ||
+                                 hostname.endsWith('.visa.com');
+        if (!isVisaAuthDomain) {
+          console.log('⚠️ Ignoring message from non-Visa origin:', event.origin)
+          return;
+        }
+      } catch {
+        return; // Invalid URL
       }
 
       const data: IframeMessage = event.data

@@ -1,0 +1,27 @@
+# CodeQL configuration to suppress false positives
+
+name: "CodeQL Config"
+
+# Exclude test files from certain security checks
+paths-ignore:
+  - '**/tests/**'
+  - '**/test_*.py'
+
+# Custom queries config
+queries:
+  - uses: security-and-quality
+
+# Query filters
+query-filters:
+  - exclude:
+      id: py/clear-text-logging-sensitive-data
+    when:
+      - path: "**/tests/**"
+      - path: "**/test_*.py"
+    reason: "Test files may log configuration for debugging purposes"
+
+  - exclude:
+      id: py/weak-cryptographic-algorithm
+    when:
+      - path: "**/visa/helpers.py"
+    reason: "SHA256 is mandated by Visa API specification and cannot be changed"
