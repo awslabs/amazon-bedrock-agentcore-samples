@@ -12,7 +12,6 @@ Usage:
 
 import sys
 import re
-import asyncio
 from pathlib import Path
 
 import requests
@@ -22,6 +21,14 @@ sys.path.insert(0, str(Path(__file__).parent))
 from utils import print_msg, print_section, get_agent_config
 
 init(autoreset=True)
+
+# Try to import MCPClient for filtering tests
+try:
+    from strands.tools.mcp import MCPClient
+    HAS_STRANDS = True
+except ImportError:
+    MCPClient = None
+    HAS_STRANDS = False
 
 
 def call_gateway(gateway_url: str, access_token: str, method: str, params: dict = None) -> dict:
@@ -128,11 +135,9 @@ def test_mcpclient_tool_filters(gateway_url: str, access_token: str) -> list:
     print(f"{Fore.CYAN}MCPCLIENT TOOL_FILTERS TESTS{Style.RESET_ALL}")
     print("=" * 60)
     print("Testing the exact same filtering approach used by agents")
-    
-    try:
-        from strands.tools.mcp import MCPClient  # noqa: F401
-    except ImportError as e:
-        print(f"\n   {Fore.YELLOW}⚠ Cannot import strands: {e}{Style.RESET_ALL}")
+
+    if not HAS_STRANDS:
+        print(f"\n   {Fore.YELLOW}⚠ Cannot import strands - skipping tests{Style.RESET_ALL}")
         return []
     
     results = []
