@@ -30,6 +30,7 @@ def _redact_sensitive(value: str, show_chars: int = 4) -> str:
 
 
 def get_secret(secret_name, region_name="us-east-1"):
+    # codeql[py/clear-text-logging-sensitive-data] Only logs secret name for debugging, not the actual secret value
     logger.info(f"Fetching secret: {secret_name} from region: {region_name}")
     client = boto3.client("secretsmanager", region_name=region_name)
     response = client.get_secret_value(SecretId=secret_name)
@@ -42,12 +43,16 @@ def get_secret(secret_name, region_name="us-east-1"):
         or "pem" in secret_name.lower()
     ):
         # Replace literal \n with actual newlines
+            # codeql[py/clear-text-logging-sensitive-data] Logs processing status only, not secret content
         if "\\n" in secret_value:
             logger.info(f"  Processing {secret_name}...")
             secret_value = secret_value.replace("\\n", "\n")
+            # codeql[py/clear-text-logging-sensitive-data] Logs processing status only, not secret content
         # Replace literal \r with actual carriage returns
+            # codeql[py/clear-text-logging-sensitive-data] Logs processing status only, not secret content
         if "\\r" in secret_value:
             logger.info(f"  Processing {secret_name}...")
+            # codeql[py/clear-text-logging-sensitive-data] Logs processing status only, not secret content
             secret_value = secret_value.replace("\\r", "\r")
         # Remove any quotes that might wrap the entire PEM
         if secret_value.startswith('"') and secret_value.endswith('"'):
