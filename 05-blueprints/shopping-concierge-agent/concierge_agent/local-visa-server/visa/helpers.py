@@ -142,7 +142,7 @@ def encrypt_card_data(payload, encryption_api_key, encryption_shared_secret):
     # Step 3: Create symmetric key from shared secret
     key_bytes = hashlib.sha256(
         encryption_shared_secret.encode("utf-8")
-    ).digest()  # lgtm[py/weak-cryptographic-algorithm] Required by Visa API
+    ).digest()  # CodeQL[py/weak-cryptographic-algorithm] SHA256 is mandated by Visa API specification
 
     # Create JWK object for symmetric key
     symmetric_key = jwk.JWK(
@@ -185,7 +185,7 @@ def decrypt_token_info(encrypted_jwe, encryption_shared_secret):
     # Step 1: Create symmetric key from shared secret
     key_bytes = hashlib.sha256(
         encryption_shared_secret.encode("utf-8")
-    ).digest()  # lgtm[py/weak-cryptographic-algorithm] Required by Visa API
+    ).digest()  # CodeQL[py/weak-cryptographic-algorithm] SHA256 is mandated by Visa API specification
     symmetric_key = jwk.JWK(
         kty="oct", k=base64.urlsafe_b64encode(key_bytes).decode("utf-8").rstrip("=")
     )
@@ -205,7 +205,7 @@ def create_email_hash(email):
     """Create a compliant email hash for Visa API"""
     email_hash = hashlib.sha256(
         email.lower().encode("utf-8")
-    ).digest()  # lgtm[py/weak-cryptographic-algorithm] Required by Visa API
+    ).digest()  # CodeQL[py/weak-cryptographic-algorithm] SHA256 is mandated by Visa API specification
     url_safe = base64.urlsafe_b64encode(email_hash).decode("utf-8").rstrip("=")
     return url_safe[:48]
 

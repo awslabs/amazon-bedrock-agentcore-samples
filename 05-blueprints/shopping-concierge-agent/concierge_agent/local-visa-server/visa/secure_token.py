@@ -28,7 +28,7 @@ def generate_proof_challenge():
     # Generate challenge (SHA256 of verifier)
     challenge_bytes = hashlib.sha256(
         verifier.encode("utf-8")
-    ).digest()  # lgtm[py/weak-cryptographic-algorithm] Required by Visa API
+    ).digest()  # CodeQL[py/weak-cryptographic-algorithm] SHA256 is mandated by Visa API specification
     challenge = base64.urlsafe_b64encode(challenge_bytes).decode("utf-8").rstrip("=")
 
     return verifier, challenge
