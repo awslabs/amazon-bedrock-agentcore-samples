@@ -980,7 +980,6 @@ def passkey_creation(
 
     resource_path = "vts/auth/authenticate"
     url = f"https://sbx.vts.auth.visa.com/vts/auth/authenticate?apiKey={api_key}&clientAppID={client_app_id}"
-    logger.info(f"Target URL: {url.split('?')[0]}...")  # API key redacted
 
     payload = json.dumps(
         {
