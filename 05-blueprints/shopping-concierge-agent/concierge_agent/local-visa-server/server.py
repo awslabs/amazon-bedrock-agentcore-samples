@@ -245,10 +245,8 @@ def onboard_card_endpoint():
             browser_data=browser_data,
             x_request_id=x_request_id,
         )
-        print(f"📦 Provision result keys: {provision_result.keys()}")
-        print(f"📦 Full provision result: {provision_result}")
+        print(f"📦 Provision result keys: {provision_result.keys()}")        
         v_provisioned_token_id = provision_result["vProvisionedTokenID"]
-        print(f"📦 Extracted vProvisionedTokenId: {v_provisioned_token_id}")
 
         result = {
             "vPanEnrollmentID": vpan_enrollment_id,

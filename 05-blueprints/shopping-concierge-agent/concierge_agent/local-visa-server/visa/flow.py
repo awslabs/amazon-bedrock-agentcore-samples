@@ -1022,9 +1022,7 @@ def passkey_creation(
         logger.error(
             f"Response status code: {response.status_code if 'response' in locals() else 'N/A'}"
         )
-        logger.error(
-            f"Response text: {response.text if 'response' in locals() else 'No response'}"
-        )
+
         raise
     except requests.exceptions.RequestException as e:
         logger.error("\n" + "=" * 80)
@@ -1032,7 +1030,6 @@ def passkey_creation(
         logger.error("=" * 80)
         logger.error(f"Error: {str(e)}")
         if "response" in locals():
-            logger.error(f"Response status code: {response.status_code}")
             logger.error(f"Response text: {response.text}")
         raise
     except Exception as e:
