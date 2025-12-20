@@ -14,12 +14,13 @@ import base64
 import uuid
 from pathlib import Path
 from typing import Dict, Tuple
+import os
 import boto3
 from colorama import Fore, Style, init
 
 init(autoreset=True)
 
-REGION = "us-east-1"
+REGION = os.environ.get("AWS_REGION", "us-east-1")
 
 
 def print_msg(message: str, level: str = "info") -> None:
