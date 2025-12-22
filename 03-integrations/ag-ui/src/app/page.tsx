@@ -8,11 +8,17 @@ import {
 } from "@copilotkit/react-core";
 import { CopilotKitCSSProperties, CopilotSidebar } from "@copilotkit/react-ui";
 import { useEffect, useState } from "react";
+import { useSession, signIn } from "next-auth/react";
 import { DefaultToolComponent } from "@/components/default-tool-ui";
 import { WeatherCard } from "@/components/weather";
 
 export default function CopilotKitPage() {
+  const { status } = useSession();
   const [themeColor, setThemeColor] = useState("#6366f1");
+
+  useEffect(() => {
+    if (status === "unauthenticated") signIn();
+  }, [status]);
 
   useEffect(() => {
     console.log(themeColor);
@@ -32,6 +38,8 @@ export default function CopilotKitPage() {
       setThemeColor(theme_color);
     },
   });
+
+  if (status !== "authenticated") return null;
 
   return (
     <main

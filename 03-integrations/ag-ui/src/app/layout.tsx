@@ -1,3 +1,5 @@
+import { SessionProvider } from "next-auth/react"
+
 import type { Metadata } from "next";
 
 import { CopilotKit } from "@copilotkit/react-core";
@@ -17,9 +19,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={"antialiased"}>
-        <CopilotKit runtimeUrl="/api/copilotkit" agent="strands_agent">
-          {children}
-        </CopilotKit>
+        <SessionProvider basePath="/auth">
+          <CopilotKit runtimeUrl="/api/copilotkit" agent="strands_agent">
+            {children}
+          </CopilotKit>
+        </SessionProvider>
       </body>
     </html>
   );

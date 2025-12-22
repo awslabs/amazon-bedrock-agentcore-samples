@@ -117,3 +117,75 @@ uv sync
 
 ## Additional steps
 ...
+Enable model access, deploy in US
+AgentCore CLI
+
+
+
+Set the AWS region
+AWS_REGION="us-west-2"
+
+...
+
+# 1. Create User Pool
+
+export USER_POOL_ID=$(aws cognito-idp create-user-pool \
+  --pool-name "AgentCoreAgUiPool" \
+  --policies '{"PasswordPolicy":{"MinimumLength":8}}' \
+  --region ${AWS_REGION} \
+  --query 'UserPool.Id' --output text)
+export DISCOVERY_URL="https://cognito-idp.${AWS_REGION}.amazonaws.com/${USER_POOL_ID}/.well-known/openid-configuration"
+
+# 2. Create App Client and set CLIENT_ID
+export CLIENT_ID=$(aws cognito-idp create-user-pool-client \
+  --user-pool-id ${USER_POOL_ID} \
+  --client-name "AgentCoreAgUiPoolClient" \
+  --no-generate-secret \
+  --explicit-auth-flows "ALLOW_USER_PASSWORD_AUTH" "ALLOW_REFRESH_TOKEN_AUTH" \
+  --region ${AWS_REGION} \
+  --query 'UserPoolClient.ClientId' --output text)
+
+# 3. Create User (replace USER_POOL_ID)
+aws cognito-idp admin-create-user \
+  --user-pool-id ${USER_POOL_ID} \
+  --username "testuser" \
+  --temporary-password "Temp1234" \
+  --message-action "SUPPRESS" \
+  --region ${AWS_REGION}
+
+# 4. Set Permanent Password (replace USER_POOL_ID)
+aws cognito-idp admin-set-user-password \
+  --user-pool-id ${USER_POOL_ID} \
+  --username "testuser" \
+  --password "MyPassword123" \
+  --permanent \
+  --region ${AWS_REGION}
+
+# 5. Authenticate and get tokens (replace CLIENT_ID)
+export TOKEN=$(aws cognito-idp initiate-auth \
+  --client-id ${CLIENT_ID} \
+  --auth-flow "USER_AUTH" \
+  --auth-parameters "USERNAME=testuser,PASSWORD=MyPassword123, SECRET_HASH=gSUfqO3PCHbC7mABj5eh6gT6BOGmdr1Ii+W2+e/mvDQ=" \
+  --region ${AWS_REGION} | jq -r '.AuthenticationResult.AccessToken')
+
+echo -n "testuser384u6og70fhln7hgu6ogefa7mi" | openssl dgst -sha256 -hmac an5mbj95b46sc94l4pjglbpptluv9ft7v4q3hrqbdc4n899d779 -binary | openssl enc -base64
+
+cd agent
+agentcore configure -e main.py --name ag_ui_agent --requirements-file pyproject.toml --deployment-type container --disable-memory --authorizer-config "{\"customJWTAuthorizer\":{\"discoveryUrl\":\"$DISCOVERY_URL\",\"allowedClients\":[\"$CLIENT_ID\"]}}" --non-interactive --region ${AWS_REGION}
+agentcore launch
+
+
+export STRANDS_AGENT_URL="https://bedrock-agentcore.us-west-2.amazonaws.com/runtimes/arn%3Aaws%3Abedrock-agentcore%3Aus-west-2%3A536253303170%3Aruntime%2Fag_ui_agent-Z2gtJJ7cmm/invocations?qualifier=DEFAULT"
+
+
+npm install
+npm dev:ui
+
+export BEDROCK_AGENT_CORE_ENDPOINT_URL="https://bedrock-agentcore.us-west-2.amazonaws.com"
+export ESCAPED_AGENT_ARN="arn%3Aaws%3Abedrock-agentcore%3Aus-west-2%3A536253303170%3Aruntime%2Fag_ui_agent-Z2gtJJ7cmm"
+curl -v -X POST "${BEDROCK_AGENT_CORE_ENDPOINT_URL}/runtimes/${ESCAPED_AGENT_ARN}/invocations?qualifier=DEFAULT" \
+-H "Authorization: Bearer ${TOKEN}" \
+-H "X-Amzn-Trace-Id: your-trace-id" \
+-H "Content-Type: application/json" \
+-H "X-Amzn-Bedrock-AgentCore-Runtime-Session-Id: 1234567890123456789012345678901234567890" \
+-d @test_input.json
