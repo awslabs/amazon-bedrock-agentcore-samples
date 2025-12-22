@@ -141,7 +141,9 @@ class OAuth2CallbackServer:
                     config = json.load(agent_config)
                     return config.get("user_id")
             except Exception as e:
-                logger.debug(f"Failed to parse identity SDK config from '.agentcore.json': {repr(e)}")
+                logger.debug(
+                    f"Failed to parse identity SDK config from '.agentcore.json': {repr(e)}"
+                )
                 return None
 
         def _get_user_identifier(
