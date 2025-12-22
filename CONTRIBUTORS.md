@@ -73,3 +73,6 @@
 - Antonio Rodriguez (rodzanto)
 - otamaryx
 - kevlw
+- iprivit
+- vargas-dann-0896
+- razkenari
