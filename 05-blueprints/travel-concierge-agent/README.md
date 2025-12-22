@@ -89,6 +89,11 @@ See the [Deployment Guide](DEPLOYMENT.md#prerequisites) for detailed requirement
 ## Architecture
 ![travel arch](docs/Travel_Agent_VISA.png)
 
+## Demo
+ <video src="docs/visa_travel_assistant_demo.mp4" poster="docs/video-thumbnail.png" controls width="700">
+    Demo video showing travel agent in action
+  </video>
+
 ## Configuration
 
 ### API Keys (Optional)

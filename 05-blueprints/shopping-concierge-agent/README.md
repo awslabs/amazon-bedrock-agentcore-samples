@@ -54,9 +54,13 @@ sample-concierge-agent/
 ## Data Flow
 ![shopping data flow](docs/shopping_data_flow.png)
 
-
 ## Architecture
 ![shopping arch](docs/Shopping_Agent_VISA.png)
+
+## Demo
+ <video src="docs/visa_shopping_agent_demo.mp4" poster="docs/video-thumbnail.png" controls width="700">
+    Demo video showing shopping agent in action
+  </video>
 
 ## Configuration
 
