@@ -137,7 +137,7 @@ class OAuth2CallbackServer:
 
         def _try_parse_identity_sdk_config() -> Optional[str]:
             try:
-                with open(".agentcore.json") as agent_config:
+                with open(".agentcore.json", encoding="utf-8") as agent_config:
                     config = json.load(agent_config)
                     return config.get("user_id")
             except Exception as e:
