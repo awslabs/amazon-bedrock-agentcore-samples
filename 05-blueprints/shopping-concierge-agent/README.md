@@ -71,6 +71,6 @@ For detailed configuration including:
 
 See the **[Deployment Guide](DEPLOYMENT.md)**.
 
-## License
-
-This project is provided as a sample implementation for educational purposes, it is NOT PRODUCTION READY. Please ensure compliance with your organization's policies and AWS service terms.
+> [!NOTE]
+> This project is provided as a sample implementation for educational purposes, it is NOT PRODUCTION READY.
+>  Please ensure compliance with your organization's policies and AWS service terms.

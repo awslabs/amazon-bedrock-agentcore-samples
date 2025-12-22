@@ -118,6 +118,6 @@ See the [Deployment Guide - Clean Up](DEPLOYMENT.md#clean-up) for partial cleanu
 
 For detailed deployment instructions, troubleshooting, and configuration options, see the [Deployment Guide](DEPLOYMENT.md).
 
-## License
-
-This project is provided as a sample implementation for educational purposes, it is NOT PRODUCTION READY. Please ensure compliance with your organization's policies and AWS service terms.
+> [!NOTE]
+> This project is provided as a sample implementation for educational purposes, it is NOT PRODUCTION READY.
+>  Please ensure compliance with your organization's policies and AWS service terms.
