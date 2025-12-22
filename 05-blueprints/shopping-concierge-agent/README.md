@@ -58,7 +58,7 @@ sample-concierge-agent/
 ![shopping arch](docs/Shopping_Agent_VISA.png)
 
 ## Demo
-![shopping agent demo](https://github.com/user-attachments/assets/232827d1-8cf0-4a48-a73d-6bcc62108cee)
+![Shopping Agent Demo](docs/demo.gif)
 
 ## Configuration
 
