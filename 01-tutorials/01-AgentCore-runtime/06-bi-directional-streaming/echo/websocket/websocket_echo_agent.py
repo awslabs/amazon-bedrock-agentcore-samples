@@ -28,13 +28,13 @@ async def websocket_endpoint(websocket: WebSocket):
                 message = await websocket.receive_text()
                 logger.info(f"Agent runtime received text: {message}")
                 await websocket.send_text(message)
-            except:
+            except Exception:
                 # Try to receive binary message
                 try:
                     data = await websocket.receive_bytes()
                     logger.info(f"Agent runtime received binary: {len(data)} bytes")
                     await websocket.send_bytes(data)
-                except:
+                except Exception:
                     # If neither works, break the loop
                     break
             
@@ -44,7 +44,7 @@ async def websocket_endpoint(websocket: WebSocket):
         logger.error(f"Agent runtime WebSocket error: {e}")
         try:
             await websocket.close()
-        except:
+        except Exception:
             pass
 
 async def run_server(host: str, port: int):
@@ -67,8 +67,7 @@ async def main():
     
     # Run servers on both ports concurrently
     await asyncio.gather(
-        run_server(host, 8080),
-        run_server(host, 8081)
+        run_server(host, 8080)
     )
 
 if __name__ == "__main__":

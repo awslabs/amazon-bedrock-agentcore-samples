@@ -104,7 +104,7 @@ class CognitoSetup:
         print(f"Creating Resource Server: {resource_server_id}...")
 
         try:
-            response = self.cognito.create_resource_server(
+            self.cognito.create_resource_server(
                 UserPoolId=user_pool_id,
                 Identifier=resource_server_id,
                 Name=resource_server_name,
@@ -210,8 +210,7 @@ class CognitoSetup:
             client_secret = response['UserPoolClient']['ClientSecret']
 
             print(f"✅ M2M Client created: {client_id}")
-            print(f"   ⚠️  Client secret: ****")
-            print(f"   ⚠️  Store client secret securely (AWS Secrets Manager recommended)")
+            print("   ⚠️  Store client secret securely (AWS Secrets Manager recommended)")
 
             return client_id, client_secret
 
@@ -232,7 +231,7 @@ class CognitoSetup:
         print(f"Creating User Pool Domain: {domain_prefix}...")
 
         try:
-            response = self.cognito.create_user_pool_domain(
+            self.cognito.create_user_pool_domain(
                 Domain=domain_prefix,
                 UserPoolId=user_pool_id
             )
@@ -295,7 +294,7 @@ class CognitoSetup:
                 Username=username,
                 GroupName=group_name
             )
-            print(f"✅ User {username} added to group '{group_name}'")
+            print("✅ User added to group!")
         except Exception as e:
             print(f"❌ Error adding user to group: {e}")
             raise
@@ -383,7 +382,7 @@ class CognitoSetup:
         Update User Auth Client to support OAuth flows and custom scopes.
         This enables ID tokens with rich claims (email, groups, etc.)
         """
-        print(f"Updating User Auth Client for OAuth support...")
+        print("Updating User Auth Client for OAuth support...")
 
         try:
             self.cognito.update_user_pool_client(
@@ -426,10 +425,10 @@ class CognitoSetup:
                 PreventUserExistenceErrors='ENABLED'
             )
 
-            print(f"✅ User Auth Client updated with OAuth support")
-            print(f"   • OAuth flows: code, implicit")
-            print(f"   • Scopes: openid, profile, email, custom scopes")
-            print(f"   • ID Token will include email and cognito:groups claims")
+            print("✅ User Auth Client updated with OAuth support")
+            print("   • OAuth flows: code, implicit")
+            print("   • Scopes: openid, profile, email, custom scopes")
+            print("   • ID Token will include email and cognito:groups claims")
 
         except Exception as e:
             print(f"❌ Error updating User Auth Client: {e}")
@@ -591,25 +590,8 @@ def setup_cognito_complete() -> Dict[str, Any]:
     print("\n" + "="*70)
     print("✅ COGNITO SETUP COMPLETE")
     print("="*70)
-    print(f"\nKey Configuration:")
-    print(f"  User Pool ID: {cognito_config['user_pool_id']}")
-    print(f"  Domain: {cognito_config['domain']}")
-    print(f"  Token Endpoint: {cognito_config['token_endpoint']}")
-    print(f"\n  User Auth Client:")
-    print(f"    • Client ID: {cognito_config['user_auth_client']['client_id']}")
-    print(f"    • OAuth Flows: {', '.join(cognito_config['user_auth_client']['oauth_flows'])}")
-    print(f"    • OAuth Scopes: openid, profile, email, custom scopes")
-    print(f"\n  M2M Client:")
-    print(f"    • Client ID: {cognito_config['m2m_client']['client_id']}")
-    print(f"    • Client Secret: ****")
-    print(f"\n  Groups Created:")
-    print(f"    • sre (Precedence: 10) - Tools: generate_remediation_plan")
-    print(f"    • approvers (Precedence: 5) - Tools: execute_remediation_step, validate_remediation_environment")
-    print(f"\n  Users Created:")
-    print(f"    • Test User (SRE): **** (password: ****)")
-    print(f"    • Approver User: **** (password: ****)")
-    print(f"\nAll configuration stored in SSM Parameter Store under /aiml301/cognito/*")
-    print(f"Reference copy saved to cognito_config.json\n")
+    print("\nAll configuration stored in SSM Parameter Store under /aiml301/cognito/*")
+    print("Reference copy saved to cognito_config.json\n")
 
     return cognito_config
 
@@ -643,14 +625,14 @@ def cleanup_cognito(user_pool_id: Optional[str] = None) -> None:
 
             if domain:
                 print(f"  Found domain: {domain}")
-                print(f"  Deleting domain...")
+                print("  Deleting domain...")
                 setup.cognito.delete_user_pool_domain(
                     Domain=domain,
                     UserPoolId=user_pool_id
                 )
                 print(f"  ✅ Domain deleted: {domain}")
             else:
-                print(f"  No domain configured")
+                print("  No domain configured")
         except Exception as e:
             print(f"  ⚠️  Could not check/delete domain: {e}")
 
@@ -671,7 +653,7 @@ def cleanup_cognito(user_pool_id: Optional[str] = None) -> None:
             try:
                 delete_parameter(param_path)
                 deleted_count += 1
-            except:
+            except Exception:
                 pass  # Parameter might not exist
 
         print(f"  ✅ Deleted {deleted_count} SSM parameters")

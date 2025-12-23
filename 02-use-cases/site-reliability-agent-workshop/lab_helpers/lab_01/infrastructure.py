@@ -80,8 +80,8 @@ def verify_dynamodb_tables(resources: Dict[str, str], region_name: str, profile_
         else:
             dynamodb = boto3.client('dynamodb', region_name=region_name)
 
-        metrics_table = resources.get('metrics_table_name')
-        incidents_table = resources.get('incidents_table_name')
+        #metrics_table = resources.get('metrics_table_name')
+        #incidents_table = resources.get('incidents_table_name')
         crm_activities_table = resources.get('crm_activities_table_name')
         crm_customers_table = resources.get('crm_customers_table_name')
         crm_deals_table = resources.get('crm_deals_table_name')
@@ -95,10 +95,9 @@ def verify_dynamodb_tables(resources: Dict[str, str], region_name: str, profile_
             try:
                 response = dynamodb.describe_table(TableName=table_name)
                 status = response['Table']['TableStatus']
-                billing_mode = response['Table']['BillingModeSummary']['BillingMode']
 
                 if status == 'ACTIVE':
-                    print(f"  ✅ Table {table_name}: {status} ({billing_mode})")
+                    print(f"  ✅ Table {table_name}: {status} (billing mode set)")
                 else:
                     print(f"  ⚠️  Table {table_name}: {status}")
                     all_active = False
@@ -146,7 +145,7 @@ def verify_alb_health(resources: Dict[str, str], region_name: str, profile_name:
 
         all_healthy = True
         for alb in sre_albs:
-            alb_name = alb['LoadBalancerName']
+            #alb_name = alb['LoadBalancerName']
 
             # Get target groups for this ALB
             target_groups = elbv2.describe_target_groups(

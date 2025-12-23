@@ -1,0 +1,11 @@
+
+__pycache__
+.env
+.venv
+.DS_Store
+.vscode
+.kiro
+.bedrock_agentcore.yaml
+.dockerignore
+.agentcore.json
+Dockerfile

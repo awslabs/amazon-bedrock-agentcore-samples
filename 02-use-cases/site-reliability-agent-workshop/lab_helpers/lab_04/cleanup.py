@@ -33,7 +33,6 @@ import time
 import shutil
 import os
 import logging
-from typing import Optional
 
 from lab_helpers.constants import PARAMETER_PATHS
 from lab_helpers.lab_04.configure_logging import cleanup_runtime_logging
@@ -135,8 +134,7 @@ def cleanup_lab_04(region_name: str = "us-west-2", verbose: bool = True) -> None
                     error_str = str(e)
                     # Check if it's already deleted or doesn't exist
                     if "ResourceNotFoundException" in error_str or "does not exist" in error_str.lower():
-                        print(f"  ✓ Provider already deleted or not found (ok)")
-                        provider_deleted = True
+                        print("  ✓ Provider already deleted or not found (ok)")
                     else:
                         print(f"  ⚠ Failed to delete provider {provider_name}: {error_str}")
 
@@ -174,15 +172,15 @@ def cleanup_lab_04(region_name: str = "us-west-2", verbose: bool = True) -> None
                         SecretId=secret_name,
                         ForceDeleteWithoutRecovery=True
                     )
-                    print(f"  ✓ Secret deleted: {secret_name}")
+                    print("  ✓ Secret deleted!")
                 except Exception as e:
                     error_str = str(e)
                     if "ResourceNotFoundException" not in error_str:
                         # Check if it's owned by bedrock-agentcore-identity (expected)
                         if "bedrock-agentcore-identity" in error_str:
-                            print(f"  ℹ Secret {secret_name} is service-owned - will be auto-deleted when provider is removed")
+                            print("  ℹ Secret is service-owned - will be auto-deleted when provider is removed")
                         else:
-                            print(f"  ⚠ Failed to delete secret {secret_name}: {error_str}")
+                            print(f"  ⚠ Failed to delete secret: {error_str}")
         else:
             print("  ✓ No OAuth2 m2m credentials secrets found")
 
@@ -273,8 +271,6 @@ def cleanup_lab_04(region_name: str = "us-west-2", verbose: bool = True) -> None
         runtime_deleted = False
         runtime_id_for_logging = None
         prefixes = ["aiml301_sre_agentcore", "aiml301-sre-agentcore", "aiml301", "lab-03"]
-        runtime_name_patterns = ["aiml301_sre_agentcore_prevention_runtime", "prevention_runtime", "prevention-runtime"]
-
         # First, try to get runtime info from Parameter Store
         for prefix in prefixes:
             if runtime_deleted:
@@ -313,14 +309,14 @@ def cleanup_lab_04(region_name: str = "us-west-2", verbose: bool = True) -> None
 
                             # Clean up CloudWatch Logs Delivery BEFORE deleting runtime
                             try:
-                                print(f"  Cleaning up CloudWatch Logs Delivery for runtime...")
+                                print("  Cleaning up CloudWatch Logs Delivery for runtime...")
                                 cleanup_runtime_logging(runtime_id, region=region_name)
                             except Exception as e:
                                 print(f"  ⚠ CloudWatch Logs Delivery cleanup warning: {e}")
 
                             try:
                                 agentcore_client.delete_agent_runtime(agentRuntimeId=runtime_id)
-                                print(f"  ✓ Runtime deletion initiated: ****")
+                                print("  ✓ Runtime deletion initiated: ****")
 
                                 # Wait for Runtime to be fully deleted
                                 print("  ⏳ Waiting for Runtime deletion to complete...")

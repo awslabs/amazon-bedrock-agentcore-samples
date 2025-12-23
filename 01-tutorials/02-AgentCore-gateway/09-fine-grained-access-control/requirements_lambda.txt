@@ -1,1 +1,1 @@
-python-jose==3.3.0
+python-jose==3.4.0

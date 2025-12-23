@@ -20,7 +20,7 @@ Token Validation Flow:
 
 import json
 import boto3
-from typing import Dict, Optional, List
+from typing import Dict, Optional
 from lab_helpers.config import AWS_REGION, AWS_PROFILE
 from lab_helpers.parameter_store import get_parameter, put_parameter
 from lab_helpers.constants import PARAMETER_PATHS
@@ -75,12 +75,12 @@ class RuntimeOAuth2Configuration:
                     "region": self.region
                 }
 
-                print(f"✅ Retrieved Cognito configuration from SSM")
+                print("✅ Retrieved Cognito configuration from SSM")
             except Exception as e:
                 print(f"❌ Failed to retrieve Cognito configuration: {e}")
                 raise
 
-        print(f"\nRuntime OAuth2 Configuration:")
+        print("\nRuntime OAuth2 Configuration:")
         print(f"  Runtime ID: {runtime_id}")
         print(f"  User Pool: {cognito_config['user_pool_id']}")
         print(f"  M2M Client: {cognito_config['m2m_client_id']}")
@@ -112,21 +112,15 @@ class RuntimeOAuth2Configuration:
             }
         }
 
-        print("Runtime OAuth2 Validation Configuration:")
-        print(f"  Inbound Auth Type: {runtime_oauth2_config['inbound_auth_type']}")
-        print(f"  Issuer: {runtime_oauth2_config['oauth2_config']['issuer']}")
-        print(f"  JWKS URI: {runtime_oauth2_config['oauth2_config']['jwks_uri']}")
-        print(f"  Required Scopes: {', '.join(runtime_oauth2_config['scope_config']['required_scopes'])}")
-        print(f"  Validate Signature: {runtime_oauth2_config['token_validation']['validate_signature']}")
-        print(f"  Validate Expiration: {runtime_oauth2_config['token_validation']['validate_expiration']}\n")
-
+        print("Runtime OAuth2 Validation Configuration built")
+        
         # Save configuration to SSM
         put_parameter(
             f"/{self.prefix}/lab-03/runtime-oauth2-config",
             json.dumps(runtime_oauth2_config, indent=2)
         )
 
-        print(f"✅ Runtime OAuth2 configuration saved to SSM Parameter Store")
+        print("✅ Runtime OAuth2 configuration saved to SSM Parameter Store")
 
         return runtime_oauth2_config
 
@@ -195,12 +189,12 @@ class RuntimeOAuth2Configuration:
                 PolicyDocument=json.dumps(token_validation_policy)
             )
 
-            print(f"✅ Runtime IAM role updated with token validation permissions")
+            print("✅ Runtime IAM role updated with token validation permissions")
             print(f"   Policy: {self.prefix}-runtime-token-validation-policy")
-            print(f"   Permissions:")
-            print(f"     • Cognito JWKS access")
-            print(f"     • User pool inspection")
-            print(f"     • Token validation logging\n")
+            print("   Permissions:")
+            print("     • Cognito JWKS access")
+            print("     • User pool inspection")
+            print("     • Token validation logging\n")
 
         except Exception as e:
             print(f"❌ Failed to update IAM role: {e}")
@@ -470,7 +464,7 @@ def setup_runtime_oauth2_validation_complete(
         validation_code
     )
 
-    print(f"✅ Token validation code saved to SSM Parameter Store")
-    print(f"   Path: /aiml301/lab-03/runtime-token-validation-code\n")
+    print("✅ Token validation code saved to SSM Parameter Store")
+    print("   Path: /aiml301/lab-03/runtime-token-validation-code\n")
 
     return runtime_oauth2_config

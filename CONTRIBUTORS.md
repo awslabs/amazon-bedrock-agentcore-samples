@@ -6,6 +6,7 @@
 - aristsakpinis93
 - aurbac
 - bergjaak
+- bioerrorlog
 - chanbi
 - crupakheti
 - danystinson
@@ -67,5 +68,11 @@
 - Sindhura Palakodety
 - Bhuvan Annamreddi
 - Sparsh Wadhwa (SparshWadhwa)
+- Lana Zhang
 - Bharathi Srinivasan
-
+- Antonio Rodriguez (rodzanto)
+- otamaryx
+- kevlw
+- iprivit
+- vargas-dann-0896
+- razkenari

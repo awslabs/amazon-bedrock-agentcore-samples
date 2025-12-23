@@ -77,6 +77,20 @@ Learn how to integrate Amazon Bedrock AgentCore capabilities with popular Agenti
 Set agent-to-agent communication with A2A and different multi-agent collaboration patterns. Integrate agentic interfaces and learn how to use 
 Amazon Bedrock AgentCore with different entry points.
 
+### 🏗️ [`04-infrastructure-as-code/`](./04-infrastructure-as-code/)
+**Deployment Automation & Infrastructure**
+
+Deploy Amazon Bedrock AgentCore resources Infrastructure as code. We are providing examples using CloudFormation, AWS CDK, or Terraform.
+
+Automate infrastructure provisioning with production-ready templates for basic runtimes, MCP servers, multi-agent systems, and complete agent solutions with tools and memory.
+
+### 🚀 [`05-blueprints/`](./05-blueprints/)
+**Full-Stack Reference Applications**
+
+Jump-start your development with complete, deployment-ready agentic applications built on Amazon Bedrock AgentCore.
+
+Each blueprint provides a comprehensive foundation with integrated services, authentication, and business logic that you can customize and deploy for your use case.
+
 ## Running a Notebook
 
 1. Create and activate a virtual environment

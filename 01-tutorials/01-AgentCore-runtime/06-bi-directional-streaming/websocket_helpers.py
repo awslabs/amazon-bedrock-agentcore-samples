@@ -5,7 +5,7 @@ WebSocket Helper Functions for AWS Bedrock AgentCore
 This module provides utilities for creating WebSocket connections to AWS Bedrock AgentCore
 with various authentication methods (SigV4 headers, SigV4 query parameters, OAuth).
 """
-import random
+import secrets
 import string
 import os
 from urllib.parse import urlparse
@@ -31,7 +31,7 @@ def create_signed_headers(url, region=None, service='bedrock-agentcore'):
     return dict(request.headers)
 
 
-def create_presigned_url(url, region=None, service='bedrock-agentcore', expires=300, invalid_signature=False):
+def create_presigned_url(url, region=None, service='bedrock-agentcore', expires=300):
     """Create AWS SigV4 presigned URL for WebSocket connection"""
     if region is None:
         region = os.getenv('AWS_REGION', 'us-west-2')
@@ -48,14 +48,6 @@ def create_presigned_url(url, region=None, service='bedrock-agentcore', expires=
     )
     SigV4QueryAuth(credentials, service, region, expires=expires).add_auth(request)
     
-    if invalid_signature:
-        import re
-        signature_match = re.search(r'X-Amz-Signature=([^&]+)', request.url)
-        if signature_match:
-            original_sig = signature_match.group(1)
-            invalid_sig = original_sig[:-1] + ('a' if original_sig[-1] != 'a' else 'b')
-            request.url = request.url.replace(f'X-Amz-Signature={original_sig}', f'X-Amz-Signature={invalid_sig}')
-    
     return request.url.replace("https://", "wss://")
 
 
@@ -71,17 +63,17 @@ def create_websocket_headers(session_id):
     }
 
 
-def prepare_connection(runtime_arn, auth_type='headers', session_id=None, invalid_signature=False):
+def prepare_connection(runtime_arn, auth_type='headers', session_id=None):
     """Prepare WebSocket URI and headers for connection"""
     region = os.getenv('AWS_REGION', 'us-east-1')
     
     if session_id is None:
-        session_id = ''.join(random.choices(string.ascii_letters + string.digits, k=50))
+        session_id = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(50))
     
     uri = f"wss://bedrock-agentcore.{region}.amazonaws.com/runtimes/{runtime_arn}/ws?qualifier=DEFAULT"
     
     if auth_type == 'query':
-        uri = create_presigned_url(uri, invalid_signature=invalid_signature)
+        uri = create_presigned_url(uri)
         headers = create_websocket_headers(session_id)
     elif auth_type == 'oauth':
         token = os.getenv('BEARER_TOKEN')
