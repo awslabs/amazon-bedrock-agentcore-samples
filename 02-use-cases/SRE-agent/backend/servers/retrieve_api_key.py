@@ -190,9 +190,6 @@ def retrieve_api_key(
     secrets_manager_arn = api_key_secret_arn.get("secretArn")
     if not secrets_manager_arn:
         logger.error("No secretArn found in apiKeySecretArn")
-        logger.error(
-            f"Available fields in apiKeySecretArn: {list(api_key_secret_arn.keys())}"
-        )
         return None
     logger.info(f"Using Secrets Manager ARN: {secrets_manager_arn}")
     # Retrieve the API key from Secrets Manager
