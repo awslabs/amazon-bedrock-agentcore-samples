@@ -74,3 +74,6 @@
 - otamaryx
 - kevlw
 - Shahrukh Hussain Shaikh
+- iprivit
+- vargas-dann-0896
+- razkenari

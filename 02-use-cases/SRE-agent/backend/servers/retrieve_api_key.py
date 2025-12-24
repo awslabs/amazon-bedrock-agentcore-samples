@@ -28,9 +28,7 @@ logger = logging.getLogger(__name__)
 # Configuration constants
 DEFAULT_CREDENTIAL_PROVIDER_NAME = "sre-agent-api-key-credential-provider"
 DEFAULT_REGION = "us-east-1"
-DEFAULT_ENDPOINT_URL = (
-    "https://us-east-1.prod.agent-credential-provider.cognito.aws.dev"
-)
+DEFAULT_ENDPOINT_URL = "https://bedrock-agentcore-control.us-east-1.amazonaws.com"
 
 
 def _create_acps_client(region: str, endpoint_url: str) -> Any:
@@ -192,7 +190,6 @@ def retrieve_api_key(
     secrets_manager_arn = api_key_secret_arn.get("secretArn")
     if not secrets_manager_arn:
         logger.error("No secretArn found in apiKeySecretArn")
-        logger.error(f"Available fields in apiKeySecretArn: {list(api_key_secret_arn.keys())}")
         return None
     logger.info(f"Using Secrets Manager ARN: {secrets_manager_arn}")
     # Retrieve the API key from Secrets Manager
@@ -251,7 +248,9 @@ def main() -> None:
     if api_key:
         print("✅ Successfully retrieved API key")
         # Do not print the full API key.
-        print("ℹ️ API key has been securely retrieved and is available for programmatic use.")
+        print(
+            "ℹ️ API key has been securely retrieved and is available for programmatic use."
+        )
     else:
         print("❌ Failed to retrieve API key")
 
