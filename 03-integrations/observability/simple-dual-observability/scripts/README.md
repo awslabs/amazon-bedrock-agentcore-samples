@@ -60,7 +60,7 @@ Deploy Strands agent to AgentCore Runtime.
 scripts/deploy_agent.sh
 
 # Deploy with custom region and model
-scripts/deploy_agent.sh --region us-west-2 --model anthropic.claude-3-haiku-20240307-v1:0
+scripts/deploy_agent.sh --region us-west-2 --model global.anthropic.claude-haiku-4-5-20251001-v1:0
 
 # Deploy with Braintrust integration
 export BRAINTRUST_API_KEY=your_api_key_here
@@ -197,7 +197,7 @@ echo "https://www.braintrust.dev/app"
 scripts/cleanup.sh
 
 # Deploy with new configuration
-scripts/deploy_agent.sh --model anthropic.claude-3-opus-20240229-v1:0
+scripts/deploy_agent.sh --model global.anthropic.claude-haiku-4-5-20251001-v1:0
 ```
 
 ## Troubleshooting

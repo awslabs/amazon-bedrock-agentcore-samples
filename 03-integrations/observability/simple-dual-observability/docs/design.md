@@ -47,19 +47,16 @@ Amazon Bedrock AgentCore Runtime (Managed Service)
     v (your agent runs here with automatic OTEL)
 agent/weather_time_agent.py (deployed and hosted)
     |
-    v (tool calls routed through Gateway)
-AgentCore Gateway (Managed Service)
-    |
-    v (MCP protocol)
+    v (tool calls via MCP)
 MCP Tools (weather, time, calculator)
     |
     v (traces exported automatically)
     |
     +------------------+------------------+
-    |                  |                  |
-    v                  v                  v
-CloudWatch X-Ray   Braintrust      OTEL Collector
-(AWS-native)     (AI platform)    (optional local)
+    |                  |
+    v                  v
+CloudWatch Logs    Braintrust
+(AWS-native)     (AI platform)
 
 Observability: FULL - automatic OTEL tracing
 Purpose: Production deployment with zero-code observability
@@ -100,7 +97,7 @@ response = client.invoke_agent(
 - Loads deployed agent code
 - Injects automatic OTEL instrumentation
 - Manages agent lifecycle
-- Routes tool calls to Gateway
+- Routes tool calls to MCP tools
 - Exports traces to configured platforms
 
 **Automatic Instrumentation**:
@@ -137,23 +134,7 @@ response = client.invoke_agent(
 4. Claude provides final answer -> Return to user
 ```
 
-### 4. AgentCore Gateway (Managed Service)
-
-**Purpose**: Exposes tools via Model Context Protocol (MCP)
-
-**Responsibilities**:
-- Hosts MCP tool servers
-- Authenticates tool requests
-- Routes tool calls to implementations
-- Records tool execution spans
-- Handles tool errors gracefully
-
-**MCP Tools Provided**:
-1. **Weather Tool**: Returns weather information for cities
-2. **Time Tool**: Returns current time for timezones
-3. **Calculator Tool**: Performs mathematical operations
-
-### 5. MCP Tools (tools/*.py)
+### 4. MCP Tools (tools/*.py)
 
 **Purpose**: Tool implementations executed by agent
 
@@ -194,15 +175,13 @@ def calculator(
     # Demonstrates error handling (factorial of negative number)
 ```
 
-### 6. OTEL Collector (config/otel_config.yaml)
+### 5. Telemetry Instrumentation (Strands Library)
 
-**Purpose**: Receives traces and exports to multiple platforms
+**Purpose**: Automatically instruments agent code and exports traces to multiple platforms
 
 **Configuration**:
 
-**Receivers**:
-- OTLP/gRPC on port 4317
-- OTLP/HTTP on port 4318
+The Strands telemetry library automatically configures:
 
 **Processors**:
 - Batch processor (groups spans for efficiency)
@@ -210,33 +189,27 @@ def calculator(
 - Memory limiter (prevents OOM)
 
 **Exporters**:
-1. **AWS CloudWatch EMF**: Exports metrics and traces
-2. **OTLP/Braintrust**: Exports to Braintrust platform
-3. **Logging**: Debug output (optional)
+1. **OTLP/Braintrust**: Exports to Braintrust platform (when BRAINTRUST_API_KEY is configured)
+2. **CloudWatch Logs**: Captured automatically by AgentCore Runtime
+3. **Logging**: Debug output to stdout (optional)
 
-**Configuration Example**:
-```yaml
-exporters:
-  awsemf:
-    region: us-east-1
-    namespace: AgentCore/Observability
-    log_group_name: /aws/agentcore/traces
+**Configuration**:
+All configuration is handled via environment variables:
+- `BRAINTRUST_API_KEY`: API key for Braintrust platform
+- `OTEL_*`: Standard OpenTelemetry environment variables
+- `BEDROCK_*`: Bedrock-specific configuration
 
-  otlp/braintrust:
-    endpoint: https://api.braintrust.dev/otel
-    headers:
-      Authorization: Bearer ${BRAINTRUST_API_KEY}
-```
+The agent uses the Strands telemetry library which automatically configures OTLP exporters based on these environment variables. No static YAML configuration file is needed.
 
-### 7. CloudWatch X-Ray
+### 6. CloudWatch Logs
 
-**Purpose**: AWS-native observability and tracing
+**Purpose**: AWS-native application logging and observability
 
 **Capabilities**:
-- Distributed trace visualization
-- Service maps
-- Latency analysis
-- Error tracking
+- Real-time log stream viewing
+- Structured logging with timestamps
+- Tool execution tracking
+- Error and exception logging
 - Integration with CloudWatch Alarms
 
 **Data Captured**:
@@ -247,7 +220,7 @@ exporters:
 - Error messages and stack traces
 - Custom attributes (model, tokens, etc.)
 
-### 8. Braintrust
+### 7. Braintrust
 
 **Purpose**: AI-focused observability and quality monitoring
 
@@ -350,46 +323,50 @@ Root Span Status: OK
 Child Span Status: ERROR (calculator span)
 ```
 
-## Dual Export Strategy
+## Dual-Platform Observability Strategy
 
-### Why Dual Export?
+### Why Dual-Platform Observability?
 
-Exporting to both CloudWatch and Braintrust provides complementary capabilities:
+This tutorial demonstrates two distinct observability mechanisms that work together:
 
-**CloudWatch Benefits**:
-- Native AWS integration
+**CloudWatch Observability (Automatic, from AgentCore Runtime)**:
+- Always enabled with zero configuration
+- Receives vended traces from AgentCore Runtime infrastructure
+- Native AWS integration with CloudWatch Logs
 - CloudWatch Alarms for alerting
-- Long-term retention
+- Long-term retention policies
 - VPC integration
-- Cost-effective for AWS workloads
 
-**Braintrust Benefits**:
-- AI-specific metrics
-- LLM cost tracking
-- Quality evaluations
-- Better visualizations
-- Prompt management
+**Braintrust Observability (Optional, from Strands Agent)**:
+- Opt-in via `BRAINTRUST_API_KEY` environment variable
+- Receives OpenTelemetry traces directly from the Strands agent
+- AI-specific metrics (LLM tokens, costs, quality)
+- Better LLM-focused visualizations
+- Evaluations and prompt management
+- Independent of AWS infrastructure
 
-**Both receive identical OTEL traces** - vendor-neutral format prevents lock-in.
+**Key Difference**: CloudWatch traces come from AgentCore Runtime infrastructure (vended format), while Braintrust traces come from your Strands agent code (OTEL format). These are complementary, not redundant.
 
 ### Export Architecture
 
 ```
-AgentCore Runtime (generates OTEL spans)
+AgentCore Runtime (with Strands telemetry)
     |
     v
-OTEL Collector (configured for dual export)
+OTLP Exporter (environment variable configured)
     |
     +------------------+------------------+
     |                  |                  |
     v                  v                  v
-AWS EMF           OTLP/Braintrust    Logging
-Exporter          Exporter           Exporter
+CloudWatch Logs   OTLP/Braintrust    Logging
+(AgentCore)       Exporter           Exporter
     |                  |                  |
     v                  v                  v
-CloudWatch        Braintrust API     stdout
-X-Ray, Logs       Platform           (debug)
+CloudWatch Logs   Braintrust API     stdout
+(OTEL traces)     Platform           (debug)
 ```
+
+**Note**: Configuration is purely environment variable-based using the Strands telemetry library. No external OTEL Collector or static YAML configuration is required.
 
 ### Trace Correlation
 
@@ -423,10 +400,11 @@ Results: Identical spans visible in both platforms
 3. **Runtime starts trace**: Creates root span with trace ID
 4. **Agent code executes**: Calls Bedrock Converse API
 5. **Claude selects tools**: Instrumented as child spans
-6. **Tools execute via Gateway**: Each tool call is a span
+6. **Tools execute via MCP**: Each tool call is a span
 7. **Agent aggregates results**: Final response span
-8. **Traces export**: OTEL collector sends to both platforms
-9. **User views traces**: Same data in CloudWatch and Braintrust
+8. **CloudWatch logging**: AgentCore Runtime automatically exports application logs to CloudWatch Logs
+9. **Braintrust export** (optional): If BRAINTRUST_API_KEY is set, Strands agent exports OTEL traces to Braintrust
+10. **User views traces**: CloudWatch (always available) and optionally Braintrust (if configured)
 
 ## Performance Characteristics
 
@@ -462,7 +440,7 @@ For production scale, see production deployment guides.
 ### Authentication
 
 **AgentCore Runtime**: Uses IAM permissions
-**AgentCore Gateway**: MCP authentication
+**MCP Tools**: Executed with agent permissions
 **Braintrust**: API key in OTEL config
 **CloudWatch**: IAM role permissions
 
@@ -482,7 +460,7 @@ For production scale, see production deployment guides.
 ### Network Security
 
 **AgentCore Runtime**: Private AWS network
-**Gateway**: HTTPS/MCP over TLS
+**MCP Tools**: Local execution within runtime
 **OTEL Export**: HTTPS to CloudWatch and Braintrust
 **No public endpoints exposed** by default
 
@@ -558,7 +536,6 @@ docker logs otel-collector --follow
 
 After understanding the architecture:
 
-1. Review [CloudWatch Setup](cloudwatch-setup.md) for AWS configuration
-2. Review [Braintrust Setup](braintrust-setup.md) for platform setup
-3. Review [Development Guide](development.md) for customization
-4. Review [Troubleshooting](troubleshooting.md) for common issues
+1. Review [Braintrust Setup](braintrust-setup.md) for Braintrust platform configuration
+2. Review [Development Guide](development.md) for agent customization
+3. Review [Troubleshooting](troubleshooting.md) for CloudWatch and common issues

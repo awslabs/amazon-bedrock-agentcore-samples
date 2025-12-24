@@ -1,0 +1,36 @@
+# ============================================================================
+# End-to-End Weather Agent - Example Configuration
+# ============================================================================
+# Copy this file to terraform.tfvars and customize
+# Example: cp terraform.tfvars.example terraform.tfvars
+
+# Agent Configuration
+agent_name  = "WeatherAgent"
+memory_name = "WeatherAgentMemory"
+stack_name  = "agentcore-weather"
+
+# Network Configuration
+network_mode = "PUBLIC" # PUBLIC or PRIVATE
+
+# Container Configuration
+ecr_repository_name = "weather-agent"
+image_tag           = "latest"
+
+# AWS Configuration
+aws_region  = "us-west-2"
+environment = "dev"
+
+# Optional: Environment Variables (if needed for custom configurations)
+# environment_variables = {
+#   LOG_LEVEL = "INFO"
+# }
+
+# Notes:
+# - Weather Agent: Full-featured agent with Browser, Code Interpreter, and Memory
+# - Browser Tool: Web scraping and data collection capability
+# - Code Interpreter: Python code execution for data analysis
+# - Memory: Persistent conversation memory with weather activity preferences
+# - S3 Results Bucket: Storage for agent-generated artifacts (charts, data files)
+# - Agent code in agent-code/ directory
+# - Memory initialized with activity preferences (good/ok/poor weather)
+# - Test with: python test_weather_agent.py

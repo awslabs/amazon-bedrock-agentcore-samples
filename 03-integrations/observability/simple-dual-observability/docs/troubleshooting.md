@@ -23,7 +23,7 @@ uv run python agent/weather_time_agent.py  # This will NOT work
 The `agent/weather_time_agent.py` file is **not meant to run locally**. It's containerized and deployed to Amazon Bedrock AgentCore Runtime, where:
 - All dependencies (including `strands-agents`) are pre-installed in the Docker image
 - Automatic OpenTelemetry instrumentation is applied by the runtime
-- The agent handles incoming requests from AgentCore Gateway
+- The agent executes with full instrumentation and tool access
 
 **Correct Way to Use the Agent**:
 
@@ -171,32 +171,28 @@ ToolExecutionError: Tool 'get_weather' not found in gateway
 ```
 
 **Causes**:
-1. MCP tools not configured in Gateway
-2. Gateway not accessible
+1. MCP tools not configured in agent
+2. Tool server not accessible
 3. Tool name mismatch
-4. Gateway authentication failure
+4. Tool authentication failure
 
 **Solutions**:
 
 ```bash
-# 1. Verify Gateway configuration
-aws bedrock-agentcore describe-gateway \
-  --gateway-id $GATEWAY_ID \
+# 1. Verify agent configuration
+aws bedrock-agentcore describe-agent \
+  --agent-id $AGENTCORE_AGENT_ID \
   --region $AWS_REGION
 
-# 2. List available tools
-aws bedrock-agentcore list-gateway-tools \
-  --gateway-id $GATEWAY_ID \
-  --region $AWS_REGION
+# 2. Check tool implementation
+ls -la tools/*.py
 
 # 3. Redeploy agent with correct tool configuration
 cd scripts
 ./deploy_agent.sh
 
-# 4. Check Gateway health
-aws bedrock-agentcore get-gateway-health \
-  --gateway-id $GATEWAY_ID \
-  --region $AWS_REGION
+# 4. Test tool execution directly
+python -c "from tools import get_weather; print(get_weather('Paris'))"
 ```
 
 ### Tool Returns Error
@@ -225,56 +221,84 @@ python simple_observability.py --agent-id $AGENTCORE_AGENT_ID --scenario error
 # 2. Check tool implementation
 cat tools/calculator_tool.py
 
-# 3. View error in traces
-# CloudWatch X-Ray: Error span should be highlighted
+# 3. View error in logs
+# CloudWatch Logs: Error message should be in runtime-logs
 # Braintrust: Error annotation should be visible
 
 # 4. Test tool directly
 python -c "from tools import calculator; print(calculator('factorial', -5, None))"
 ```
 
-## Trace Visibility Issues
+## Logs and Metrics Issues
 
-### Traces Not Appearing in CloudWatch
+### Logs Not Appearing in CloudWatch
 
-**Problem**: No traces visible in CloudWatch X-Ray after 5 minutes
+**Problem**: CloudWatch Logs show no entries after running the agent
 
 **Causes**:
-1. Observability not configured
-2. Sampling rate set to 0
+1. Agent not deployed
+2. Log group doesn't exist
 3. IAM permissions missing
-4. X-Ray disabled
+4. Agent execution failed
 
 **Solutions**:
 
 ```bash
-# 1. Verify observability configuration
+# 1. Verify agent exists and is deployed
 aws bedrock-agentcore describe-agent \
   --agent-id $AGENTCORE_AGENT_ID \
-  --region $AWS_REGION \
-  --query 'agent.observabilityConfig'
-
-# 2. Check sampling rate
-aws xray get-sampling-rules --region $AWS_REGION
-
-# 3. Enable X-Ray if disabled
-aws bedrock-agentcore configure-observability \
-  --agent-id $AGENTCORE_AGENT_ID \
-  --config '{
-    "exporters": [{
-      "type": "cloudwatch",
-      "enabled": true,
-      "config": {"xrayEnabled": true}
-    }]
-  }' \
   --region $AWS_REGION
 
-# 4. Wait and retry
-sleep 180  # Wait 3 minutes for propagation
-python simple_observability.py --agent-id $AGENTCORE_AGENT_ID --scenario success
+# 2. Check that log group exists
+aws logs describe-log-groups --region $AWS_REGION | grep bedrock-agentcore
 
-# 5. Check CloudWatch Logs for errors
-aws logs tail /aws/agentcore/observability --follow
+# 3. View recent log streams
+aws logs describe-log-streams \
+  --log-group-name /aws/bedrock-agentcore/runtimes/<agent-id>-DEFAULT \
+  --region $AWS_REGION
+
+# 4. Tail logs in real-time
+aws logs tail /aws/bedrock-agentcore/runtimes/<agent-id>-DEFAULT --follow --region $AWS_REGION
+
+# 5. Run test to generate logs
+python simple_observability.py --agent-id $AGENTCORE_AGENT_ID --scenario success
+```
+
+### Observability Configuration
+
+**Understanding CloudWatch Logs Streams**:
+
+When Braintrust is **NOT configured**:
+- CloudWatch receives both runtime-logs and structured OTEL data
+- Full operational visibility available in logs
+- Good for debugging and development
+
+When Braintrust **IS configured** (BRAINTRUST_API_KEY set):
+- CloudWatch receives application logs (runtime-logs stream)
+- Detailed OTEL data goes to Braintrust instead
+- CloudWatch Logs still show agent activity and status
+- This is expected behavior to avoid duplicate log storage
+
+**Verification**:
+
+```bash
+# 1. Check that CloudWatch Logs are being written
+aws logs tail /aws/bedrock-agentcore/runtimes/<agent-id>-DEFAULT --since 5m
+
+# Expected output:
+# [runtime-logs] Agent invoked with prompt: ...
+# [runtime-logs] Agent initialized with tools: ...
+# [runtime-logs] Agent invocation completed successfully
+
+# 2. Verify agent execution completed
+aws logs filter-log-events \
+  --log-group-name /aws/bedrock-agentcore/runtimes/<agent-id>-DEFAULT \
+  --filter-pattern "completed" \
+  --region $AWS_REGION
+
+# 3. If using Braintrust, verify traces are in Braintrust dashboard
+# Navigate to https://www.braintrust.dev/app and check your project
+# Traces should appear within 1-2 minutes of running the agent
 ```
 
 ### Traces Not Appearing in Braintrust
@@ -283,35 +307,32 @@ aws logs tail /aws/agentcore/observability --follow
 
 **Causes**:
 1. Invalid Braintrust API key
-2. OTEL collector not configured
+2. BRAINTRUST_API_KEY environment variable not set
 3. Network connectivity issues
 4. Project name mismatch
 
 **Solutions**:
 
 ```bash
-# 1. Verify API key
+# 1. Verify API key is set
+echo "BRAINTRUST_API_KEY: $BRAINTRUST_API_KEY"
+
+# 2. Verify API key is valid
 curl -H "Authorization: Bearer $BRAINTRUST_API_KEY" \
   https://api.braintrust.dev/v1/auth/verify
 
-# 2. Check OTEL config
-cat config/otel_config.yaml | grep braintrust -A 10
-
-# 3. Test connectivity
+# 3. Test connectivity to Braintrust OTEL endpoint
 curl -I https://api.braintrust.dev/otel/v1/traces
 
 # 4. Verify project exists
 # Navigate to https://www.braintrust.dev/app
 # Check project: agentcore-observability-demo exists
 
-# 5. Check OTEL collector logs
-docker logs otel-collector 2>&1 | grep braintrust
+# 5. Check agent logs for telemetry initialization
+uv run python -m weather_time_agent 2>&1 | grep -i "telemetry\|braintrust\|initialized"
 
-# 6. Manually export test trace
-curl -X POST https://api.braintrust.dev/otel/v1/traces \
-  -H "Authorization: Bearer $BRAINTRUST_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{"resourceSpans": []}'
+# 6. For deployed agents, verify BRAINTRUST_API_KEY is in environment
+aws bedrock-agentcore get-agent --agent-id $AGENT_ID --region $AWS_REGION | jq '.agent.envVars'
 ```
 
 ### Incomplete Traces
@@ -320,7 +341,7 @@ curl -X POST https://api.braintrust.dev/otel/v1/traces \
 
 **Causes**:
 1. Agent timeout during execution
-2. OTEL collector buffer overflow
+2. Batch processor not flushing spans
 3. Span attribute size limits exceeded
 4. Network interruption during export
 
@@ -330,15 +351,14 @@ curl -X POST https://api.braintrust.dev/otel/v1/traces \
 # 1. Check agent execution completed
 aws logs filter-log-events \
   --log-group-name /aws/agentcore/observability \
-  --filter-pattern '"AgentInvocation" "COMPLETED"' \
+  --filter-pattern '"COMPLETED"' \
   --region $AWS_REGION
 
-# 2. Increase OTEL collector memory limit
-# Edit config/otel_config.yaml:
-# memory_limiter:
-#   limit_mib: 1024  # Increase from 512
+# 2. Force span flush by checking logs
+# The agent automatically flushes spans on completion
+# Check for "Strands telemetry initialized successfully" in logs
 
-# 3. Check for dropped spans
+# 3. Check for dropped spans in CloudWatch
 aws logs filter-log-events \
   --log-group-name /aws/agentcore/observability \
   --filter-pattern '"dropped_spans"' \
@@ -346,7 +366,11 @@ aws logs filter-log-events \
 
 # 4. Reduce span attribute size
 # Attributes should be < 1000 characters
-# Check agent code for large attributes
+# Check agent code for large attributes in logger statements
+# Use logging.basicConfig to limit message size
+
+# 5. Increase agent timeout if spans are missing due to premature termination
+# Update agent configuration in AgentCore console
 ```
 
 ## Performance Problems
@@ -364,15 +388,13 @@ aws logs filter-log-events \
 **Solutions**:
 
 ```bash
-# 1. Check trace timeline to identify bottleneck
-# CloudWatch X-Ray > Traces > Select trace > View timeline
-# Look for longest span
+# 1. Check logs to identify bottleneck
+# Review CloudWatch Logs for timing messages
+# Look for operations taking longest time
 
 # 2. Use faster model
 # Edit agent/weather_time_agent.py:
-# model_id = "us.anthropic.claude-haiku-4-5-20251001-v1:0"  # Fast
-# vs
-# model_id = "us.anthropic.claude-3-5-sonnet-20241022-v2:0"  # Slower but better
+# model_id = "global.anthropic.claude-haiku-4-5-20251001-v1:0"  # Recommended
 
 # 3. Optimize tool execution
 # Review tools/*.py for slow operations
@@ -448,10 +470,10 @@ aws logs put-retention-policy \
   --retention-in-days 1 \
   --region $AWS_REGION
 
-# 4. Reduce X-Ray sampling
-aws xray update-sampling-rule \
-  --rule-name AgentCore-Demo-Sampling \
-  --sampling-rule-update '{"FixedRate": 0.1}' \
+# 4. Adjust CloudWatch log retention
+aws logs put-retention-policy \
+  --log-group-name /aws/agentcore/observability \
+  --retention-in-days 7 \
   --region $AWS_REGION
 
 # 5. Enable AWS Cost Explorer
@@ -859,7 +881,7 @@ curl -X POST https://api.braintrust.dev/otel \
 If issues persist after troubleshooting:
 
 1. Review [System Design](design.md) for architecture understanding
-2. Review [CloudWatch Setup](cloudwatch-setup.md) for configuration details
-3. Review [Braintrust Setup](braintrust-setup.md) for platform configuration
-4. Review [Development Guide](development.md) for code customization
+2. Review [Braintrust Setup](braintrust-setup.md) for platform configuration
+3. Review [Development Guide](development.md) for code customization
+4. Check [Observability Options](observability-options.md) for alternative approaches
 5. Contact AWS Support or open GitHub issue with diagnostic information

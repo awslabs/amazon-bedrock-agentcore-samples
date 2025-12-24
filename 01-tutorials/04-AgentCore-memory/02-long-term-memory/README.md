@@ -102,11 +102,11 @@ Allows customization of prompts for extraction and consolidation, providing flex
             "semanticOverride": { # You can also override Summary or User Preferences.
                 "extraction": {
                     "appendToPrompt": "Extract specific information based on custom criteria",
-                    "modelId": "anthropic.claude-3-sonnet-20240229-v1:0",
+                    "modelId": "global.anthropic.claude-haiku-4-5-20251001-v1:0",
                 },
                 "consolidation": {
                     "appendToPrompt": "Consolidate extracted information in a specific format",
-                    "modelId": "anthropic.claude-3-sonnet-20240229-v1:0",
+                    "modelId": "global.anthropic.claude-haiku-4-5-20251001-v1:0",
                 }
             }
         }

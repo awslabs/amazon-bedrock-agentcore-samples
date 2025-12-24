@@ -13,7 +13,7 @@ import time
 import re
 import getpass
 from pathlib import Path
-from typing import Dict, Any, Optional, Tuple, List, Callable
+from typing import Dict, Any, Optional, Tuple
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from threading import Lock
 
@@ -463,6 +463,39 @@ def collect_deployment_parameters(account_id: str = None) -> Dict[str, Any]:
         else:
             print_error(f"Invalid domain name: {message}")
 
+    # Admin User Configuration
+    print()
+    print_info("Admin User Configuration for Cognito User Pool")
+    print_info("This user will be created automatically in the user pool")
+    print()
+
+    admin_email = get_input(
+        "Admin User Email",
+        default=(
+            existing_config.get("cognito", {}).get("admin_email")
+            if use_existing
+            else ""
+        ),
+        required=True,
+    )
+
+    # Validate email format
+    import re
+    email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    while not re.match(email_pattern, admin_email):
+        print_error("Invalid email format. Please enter a valid email address.")
+        admin_email = get_input("Admin User Email", required=True)
+
+    config["cognito"]["admin_email"] = admin_email
+
+    print_info("Admin password (optional - leave empty for auto-generated temporary password)")
+    admin_password = get_secret(
+        "Admin User Password (press Enter to skip)",
+        required=False,
+    )
+
+    config["cognito"]["admin_password"] = admin_password if admin_password else ""
+
     # S3 Bucket for Smithy Models with validation
     print_header("S3 Configuration")
     default_bucket = (
@@ -551,6 +584,17 @@ def collect_deployment_parameters(account_id: str = None) -> Dict[str, Any]:
             ),
             "tavily": get_secret("Tavily API Key", required=True),
             "google": get_secret("Google API Key (for ADK)", required=True),
+            "google_model": get_input(
+                "Google Model ID",
+                default=(
+                    existing_config.get("api_keys", {}).get(
+                        "google_model", "gemini-2.5-flash"
+                    )
+                    if use_existing
+                    else "gemini-2.5-flash"
+                ),
+                required=True,
+            ),
         }
     else:
         config["api_keys"] = existing_config.get("api_keys", {})
@@ -574,6 +618,11 @@ def display_configuration(config: Dict[str, Any]):
 
     print(f"\n{Colors.BOLD}Cognito Configuration:{Colors.END}")
     print(f"  User Pool Domain: {config['cognito']['domain_name']}")
+    print(f"  Admin User Email: {config['cognito']['admin_email']}")
+    if config['cognito'].get('admin_password'):
+        print(f"  Admin User Password: {'*' * 20} (configured)")
+    else:
+        print("  Admin User Password: (auto-generated temporary password will be sent via email)")
 
     print(f"\n{Colors.BOLD}S3 Configuration:{Colors.END}")
     print(f"  Smithy Models Bucket: {config['s3']['smithy_models_bucket']}")
@@ -586,7 +635,6 @@ def display_configuration(config: Dict[str, Any]):
 
     print(f"\n{Colors.BOLD}API Keys:{Colors.END}")
     print(f"  OpenAI API Key: {'*' * 20} (configured)")
-    print(f"  OpenAI Model: {config['api_keys']['openai_model']}")
     print(f"  Tavily API Key: {'*' * 20} (configured)")
     print(f"  Google API Key: {'*' * 20} (configured)")
 
@@ -716,19 +764,65 @@ def create_s3_bucket_and_upload(config: Dict[str, Any]) -> bool:
         return False
 
 
+def upload_template_to_s3(
+    template_file: str, bucket_name: str, region: str, thread_safe: bool = False
+) -> Optional[str]:
+    """Upload CloudFormation template to S3 and return the S3 URL"""
+    template_name = Path(template_file).name
+    s3_key = f"cloudformation-templates/{template_name}"
+    s3_url = f"https://{bucket_name}.s3.{region}.amazonaws.com/{s3_key}"
+
+    print_info(f"Uploading template {template_name} to S3...", thread_safe=thread_safe)
+
+    success, output = run_command(
+        [
+            "aws",
+            "s3",
+            "cp",
+            template_file,
+            f"s3://{bucket_name}/{s3_key}",
+            "--region",
+            region,
+        ]
+    )
+
+    if success:
+        print_success(f"Template uploaded to S3: {s3_key}", thread_safe=thread_safe)
+        return s3_url
+    else:
+        print_error(
+            f"Failed to upload template to S3: {output}", thread_safe=thread_safe
+        )
+        return None
+
+
 def deploy_stack(
     stack_name: str,
     template_file: str,
     parameters: list,
     region: str,
+    bucket_name: Optional[str] = None,
     description: str = "",
     thread_safe: bool = False,
 ) -> bool:
-    """Generic function to deploy a CloudFormation stack"""
+    """Generic function to deploy a CloudFormation stack (always via S3)"""
     if description:
         print_info(description, thread_safe=thread_safe)
 
     print_info(f"Creating CloudFormation stack: {stack_name}", thread_safe=thread_safe)
+
+    # Always use S3 for consistency and to avoid size limits
+    if not bucket_name:
+        print_error(
+            "S3 bucket required for stack deployment but not provided.",
+            thread_safe=thread_safe,
+        )
+        return False
+
+    print_info("Uploading template to S3 before deployment", thread_safe=thread_safe)
+    s3_url = upload_template_to_s3(template_file, bucket_name, region, thread_safe)
+    if not s3_url:
+        return False
 
     cmd = (
         [
@@ -737,8 +831,8 @@ def deploy_stack(
             "create-stack",
             "--stack-name",
             stack_name,
-            "--template-body",
-            f"file://{template_file}",
+            "--template-url",
+            s3_url,
             "--parameters",
         ]
         + parameters
@@ -771,14 +865,24 @@ def deploy_cognito_stack(config: Dict[str, Any]) -> bool:
     """Deploy Cognito CloudFormation stack"""
     print_header("Step 1: Deploy Cognito Stack")
 
+    parameters = [
+        f"ParameterKey=DomainName,ParameterValue={config['cognito']['domain_name']}",
+        f"ParameterKey=AdminUserEmail,ParameterValue={config['cognito']['admin_email']}",
+    ]
+
+    # Only add AdminUserPassword if provided
+    if config['cognito'].get('admin_password'):
+        parameters.append(
+            f"ParameterKey=AdminUserPassword,ParameterValue={config['cognito']['admin_password']}"
+        )
+
     return deploy_stack(
         stack_name=config["stacks"]["cognito"],
         template_file="cloudformation/cognito.yaml",
-        parameters=[
-            f"ParameterKey=DomainName,ParameterValue={config['cognito']['domain_name']}"
-        ],
+        parameters=parameters,
         region=config["aws"]["region"],
-        description=f"Using Cognito domain: {config['cognito']['domain_name']}",
+        bucket_name=config["s3"]["smithy_models_bucket"],
+        description=f"Using Cognito domain: {config['cognito']['domain_name']}, Admin user: {config['cognito']['admin_email']}",
     )
 
 
@@ -796,6 +900,7 @@ def deploy_monitoring_agent(config: Dict[str, Any]) -> bool:
             f"ParameterKey=BedrockModelId,ParameterValue={config['aws']['bedrock_model_id']}",
         ],
         region=config["aws"]["region"],
+        bucket_name=config["s3"]["smithy_models_bucket"],
     )
 
 
@@ -814,6 +919,7 @@ def deploy_web_search_agent(config: Dict[str, Any]) -> bool:
             f"ParameterKey=CognitoStackName,ParameterValue={config['stacks']['cognito']}",
         ],
         region=config["aws"]["region"],
+        bucket_name=config["s3"]["smithy_models_bucket"],
     )
 
 
@@ -826,10 +932,12 @@ def deploy_host_agent(config: Dict[str, Any]) -> bool:
         template_file="cloudformation/host_agent.yaml",
         parameters=[
             f"ParameterKey=GoogleApiKey,ParameterValue={config['api_keys']['google']}",
+            f"ParameterKey=GoogleModelId,ParameterValue={config['api_keys']['google_model']}",
             f"ParameterKey=GitHubURL,ParameterValue={config['github']['url']}",
             f"ParameterKey=CognitoStackName,ParameterValue={config['stacks']['cognito']}",
         ],
         region=config["aws"]["region"],
+        bucket_name=config["s3"]["smithy_models_bucket"],
     )
 
 
@@ -849,6 +957,7 @@ def deploy_agent_parallel(
             template_file=template_file,
             parameters=parameters,
             region=config["aws"]["region"],
+            bucket_name=config["s3"]["smithy_models_bucket"],
             thread_safe=True,
         )
 
@@ -898,6 +1007,7 @@ def deploy_agents_parallel(config: Dict[str, Any]) -> bool:
             "cloudformation/host_agent.yaml",
             [
                 f"ParameterKey=GoogleApiKey,ParameterValue={config['api_keys']['google']}",
+                f"ParameterKey=GoogleModelId,ParameterValue={config['api_keys']['google_model']}",
                 f"ParameterKey=GitHubURL,ParameterValue={config['github']['url']}",
                 f"ParameterKey=CognitoStackName,ParameterValue={config['stacks']['cognito']}",
             ],

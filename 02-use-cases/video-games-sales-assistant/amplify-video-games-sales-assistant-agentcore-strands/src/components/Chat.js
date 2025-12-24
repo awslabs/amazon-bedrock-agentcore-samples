@@ -16,29 +16,29 @@ import { v4 as uuidv4 } from "uuid";
 import InsightsOutlinedIcon from "@mui/icons-material/InsightsOutlined";
 import QuestionAnswerOutlinedIcon from "@mui/icons-material/QuestionAnswerOutlined";
 import TableRowsRoundedIcon from "@mui/icons-material/TableRowsRounded";
-import { WELCOME_MESSAGE, MAX_LENGTH_INPUT_SEARCH, LAST_K_TURNS } from "../env";
+import { WELCOME_MESSAGE, MAX_LENGTH_INPUT_SEARCH } from "../env";
 import MyChart from "./MyChart.js";
-import Answering from "./Answering.js";
+import LoadingIndicator from "./LoadingIndicator.js";
 import QueryResultsDisplay from "./QueryResultsDisplay";
+import ToolBox from "./ToolBox";
 import { alpha } from "@mui/material/styles";
 import {
-  getQueryResults,
   generateChart,
-  invokeAgentCore,
 } from "../utils/AwsCalls";
+import { getAnswer } from "../utils/AgentCoreCall";
 import MarkdownRenderer from "./MarkdownRenderer.js";
 
-const Chat = ({ userName = "Guest User" }) => {
+const Chat = () => {
   const [totalAnswers, setTotalAnswers] = React.useState(0);
   const [enabled, setEnabled] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
   const [controlAnswers, setControlAnswers] = React.useState([]);
   const [answers, setAnswers] = React.useState([]);
   const [query, setQuery] = React.useState("");
-  const [sessionId, setSessionId] = React.useState(uuidv4());
+  const [sessionId] = React.useState(uuidv4());
   const [errorMessage, setErrorMessage] = React.useState("");
   const [height, setHeight] = React.useState(480);
-  const [size, setSize] = React.useState([0, 0]);
+  const [currentWorkingToolId, setCurrentWorkingToolId] = React.useState(null);
 
   const borderRadius = 8;
 
@@ -51,7 +51,6 @@ const Chat = ({ userName = "Guest User" }) => {
 
   useLayoutEffect(() => {
     function updateSize() {
-      setSize([window.innerWidth, window.innerHeight]);
       const myh = window.innerHeight - 220;
       if (myh < 346) {
         setHeight(346);
@@ -78,6 +77,51 @@ const Chat = ({ userName = "Guest User" }) => {
     return () => (effectRan.current = true);
   }, []);
 
+  // Handle chart generation when queryResults are available
+  useEffect(() => {
+    const generateChartForAnswer = async (answerIndex, answer) => {
+      if (answer.queryResults && answer.chart === "loading") {
+        try {
+          const chartData = await generateChart(answer);
+          console.log("--------- Answer after chart generation ------");
+          console.log(chartData);
+
+          setAnswers((prevState) => {
+            const newState = [...prevState];
+            if (newState[answerIndex]) {
+              newState[answerIndex] = {
+                ...newState[answerIndex],
+                chart: chartData,
+              };
+            }
+            return newState;
+          });
+
+          setTotalAnswers((prevState) => prevState + 1);
+        } catch (error) {
+          console.error("Chart generation failed:", error);
+          setAnswers((prevState) => {
+            const newState = [...prevState];
+            if (newState[answerIndex]) {
+              newState[answerIndex] = {
+                ...newState[answerIndex],
+                chart: { rationale: "Error generating chart" },
+              };
+            }
+            return newState;
+          });
+        }
+      }
+    };
+
+    // Check all answers for pending chart generation
+    answers.forEach((answer, index) => {
+      if (answer.queryResults && answer.chart === "loading") {
+        generateChartForAnswer(index, answer);
+      }
+    });
+  }, [answers]);
+
   const handleQuery = (event) => {
     if (event.target.value.length > 0 && loading === false && query !== "")
       setEnabled(true);
@@ -87,128 +131,30 @@ const Chat = ({ userName = "Guest User" }) => {
 
   const handleKeyPress = (event) => {
     if (event.code === "Enter" && loading === false && query !== "") {
-      getAnswer(query);
+      handleGetAnswer(query);
     }
   };
 
   const handleClick = async (e) => {
     e.preventDefault();
     if (query !== "") {
-      getAnswer(query);
+      handleGetAnswer(query);
     }
   };
 
-  const getAnswer = async (my_query) => {
+  const handleGetAnswer = async (my_query) => {
     if (!loading && my_query !== "") {
-      setControlAnswers((prevState) => [...prevState, {}]);
-      setAnswers((prevState) => [...prevState, { query: my_query }]);
-      setEnabled(false);
-      setLoading(true);
-      setErrorMessage("");
-      setQuery("");
-
-      try {
-        const queryUuid = uuidv4();
-        const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-
-        // Use invokeAgentCore with streaming support via setters
-        const {
-          completion,
-          usage,
-          totalInputTokens,
-          totalOutputTokens,
-          runningTraces,
-          countRationals,
-        } = await invokeAgentCore(
-          my_query,
-          sessionId,
-          queryUuid,
-          timezone,
-          setAnswers, // Pass setAnswers for streaming updates
-          setControlAnswers, // Pass setControlAnswers for streaming updates
-          LAST_K_TURNS
-        );
-
-        let json = {
-          text: completion,
-          usage,
-          totalInputTokens,
-          totalOutputTokens,
-          runningTraces,
-          queryUuid,
-          countRationals,
-        };
-
-        const queryResults = await getQueryResults(queryUuid);
-        console.log(queryResults);
-        if (queryResults.length > 0) {
-          json.chart = "loading";
-          json.queryResults = queryResults;
-        }
-
-        console.log(json);
-
-        // Update the final answer with complete data
-        setAnswers((prevState) => {
-          const newState = [...prevState];
-          for (let i = newState.length - 1; i >= 0; i--) {
-            if (newState[i].isStreaming) {
-              newState[i] = json;
-              break;
-            }
-          }
-          return newState;
-        });
-
-        setLoading(false);
-        setEnabled(false);
-
-        if (queryResults.length > 0) {
-          json.chart = await generateChart(json);
-          console.log("--------- Answer after chart generation ------");
-          console.log(json);
-
-          // Update again with chart data
-          setAnswers((prevState) => {
-            const newState = [...prevState];
-            for (let i = newState.length - 1; i >= 0; i--) {
-              if (newState[i].queryUuid === queryUuid) {
-                newState[i] = json;
-                break;
-              }
-            }
-            return newState;
-          });
-
-          setTotalAnswers((prevState) => prevState + 1);
-        } else {
-          console.log("------- Answer without chart-------");
-          console.log(json);
-          setTotalAnswers((prevState) => prevState + 1);
-        }
-      } catch (error) {
-        console.log("Call failed: ", error);
-        setErrorMessage(error.toString());
-        setLoading(false);
-        setEnabled(false);
-
-        // Update the streaming answer with error state
-        setAnswers((prevState) => {
-          const newState = [...prevState];
-          for (let i = newState.length - 1; i >= 0; i--) {
-            if (newState[i].isStreaming) {
-              newState[i] = {
-                ...newState[i],
-                text: "Error occurred while getting response",
-                isStreaming: false,
-                error: true,
-              };
-              break;
-            }
-          }
-          return newState;
-        });
-      }
+      await getAnswer(
+        my_query,
+        sessionId,
+        setControlAnswers,
+        setAnswers,
+        setEnabled,
+        setLoading,
+        setErrorMessage,
+        setQuery,
+        setCurrentWorkingToolId
+      );
     }
   };
 
@@ -252,7 +198,7 @@ const Chat = ({ userName = "Guest User" }) => {
           <ul style={{ paddingBottom: 14, margin: 0, listStyleType: "none" }}>
             {answers.map((answer, index) => (
               <li key={"meg" + index} style={{ marginBottom: 0 }}>
-                {answer.hasOwnProperty("text") && answer.text !== "" && (
+                {answer.hasOwnProperty("text") && answer.text.length > 0 && (
                   <Box
                     sx={{
                       borderRadius: borderRadius,
@@ -293,7 +239,35 @@ const Chat = ({ userName = "Guest User" }) => {
                             }}
                           >
                             <Typography component="div" variant="body1">
-                              <MarkdownRenderer content={answer.text} />
+                              {answer.text.map((item, itemIndex) => {
+                                if (item.type === "text") {
+                                  return (
+                                    <MarkdownRenderer
+                                      key={itemIndex}
+                                      content={item.content}
+                                    />
+                                  );
+                                } else if (item.type === "tool") {
+                                  return (
+                                    <Fade
+                                      key={itemIndex}
+                                      in={true}
+                                      timeout={{ enter: 600, exit: 400 }}
+                                      style={{
+                                        transition: 'opacity 0.6s cubic-bezier(0.4, 0.0, 0.2, 1)'
+                                      }}
+                                    >
+                                      <Box>
+                                        <ToolBox
+                                          item={item}
+                                          isLoading={currentWorkingToolId === item.toolUseId}
+                                        />
+                                      </Box>
+                                    </Fade>
+                                  );
+                                }
+                                return null;
+                              })}
                             </Typography>
                           </Box>
                         </Grow>
@@ -540,8 +514,45 @@ const Chat = ({ userName = "Guest User" }) => {
             ))}
 
             {loading && (
-              <Box sx={{ p: 0, pl: 1, mb: 2, mt: 1 }}>
-                <Answering loading={loading} />
+              <Box
+                sx={{
+                  p: 0,
+                  pl: 0.5,
+                  mt: 1,
+                  height: loading ? "48px" : "0px",
+                  overflow: "hidden",
+                  display: "flex",
+                  justifyContent: "left",
+                  transition: "height 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
+                }}
+              >
+                <Grow
+                  in={loading}
+                  timeout={{ enter: 800, exit: 400 }}
+                  style={{
+                    transformOrigin: "top left",
+                  }}
+                >
+                  <Box sx={{ width: "100%" }}>
+                    <Fade
+                      in={loading}
+                      timeout={{ enter: 600, exit: 300 }}
+                      style={{
+                        transitionDelay: loading ? '100ms' : '0ms'
+                      }}
+                    >
+                      <Box
+                        sx={{
+                          transform: loading ? "translateY(0)" : "translateY(10px)",
+                          transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
+                          opacity: loading ? 1 : 0,
+                        }}
+                      >
+                        <LoadingIndicator loading={loading} />
+                      </Box>
+                    </Fade>
+                  </Box>
+                </Grow>
               </Box>
             )}
 

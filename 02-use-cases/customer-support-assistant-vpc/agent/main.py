@@ -29,7 +29,7 @@ def get_required_env(name: str) -> str:
 
 
 # Environment variables - validated but not initialized
-MODEL_ID = os.getenv("MODEL_ID", "us.anthropic.claude-3-5-haiku-20241022-v1:0")
+MODEL_ID = os.getenv("MODEL_ID", "global.anthropic.claude-haiku-4-5-20251001-v1:0")
 MCP_REGION = get_required_env("MCP_REGION")
 MCP_ARN = get_required_env("MCP_ARN")
 GATEWAY_PROVIDER_NAME = get_required_env("GATEWAY_PROVIDER_NAME")

@@ -10,6 +10,7 @@ import os
 import uuid
 
 IS_DOCKER = os.getenv("DOCKER_CONTAINER", "0") == "1"
+GOOGLE_MODEL_ID = os.getenv("GOOGLE_MODEL_ID", "gemini-2.5-flash")
 
 if IS_DOCKER:
     from utils import get_ssm_parameter, get_aws_info
@@ -151,7 +152,7 @@ def get_root_agent(session_id: str, actor_id: str):
 
     # Create root agent
     root_agent = Agent(
-        model="gemini-2.0-flash",
+        model=GOOGLE_MODEL_ID,
         name="root_agent",
         instruction=SYSTEM_PROMPT,
         sub_agents=[monitor_agent, websearch_agent],

@@ -2,8 +2,7 @@
 // CUSTOMIZABLE CONFIGURATION VALUES
 // ================================
 
-// AWS Configuration - UPDATE THESE VALUES
-const AWS_REGION = "us-east-1"; // Your AWS region
+// Amazon DynamoDB
 const QUESTION_ANSWERS_TABLE_NAME = ""; // Your DynamoDB table name
 
 // Amazon Bedrock AgentCore Configuration
@@ -21,7 +20,7 @@ const WELCOME_MESSAGE = "I'm your Video Games Sales Data Analyst, crunching data
 // ================================
 
 const MAX_LENGTH_INPUT_SEARCH = 140;
-const MODEL_ID_FOR_CHART = "us.anthropic.claude-3-7-sonnet-20250219-v1:0";
+const MODEL_ID_FOR_CHART = "global.anthropic.claude-haiku-4-5-20251001-v1:0";
 
 const CHART_PROMPT =
   '\n\
@@ -299,8 +298,7 @@ Example Chart Configurations:\n\
 </ChartExamples>';
 
 export {
-  // AWS Configuration
-  AWS_REGION,
+  // Amazon DynamoDB
   QUESTION_ANSWERS_TABLE_NAME,
   
   // Amazon Bedrock AgentCore

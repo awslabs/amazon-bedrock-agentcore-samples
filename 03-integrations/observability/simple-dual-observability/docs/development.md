@@ -24,9 +24,6 @@ simple-dual-observability/
 │
 ├── simple_observability.py            # Main demo script
 │
-├── config/
-│   └── otel_config.yaml               # OpenTelemetry collector config
-│
 ├── scripts/
 │   ├── deploy_agent.sh                # Deploy agent to Runtime
 │   ├── setup_cloudwatch.sh            # Configure CloudWatch
@@ -40,10 +37,11 @@ simple-dual-observability/
 │
 └── docs/
     ├── design.md                      # Architecture documentation
-    ├── cloudwatch-setup.md            # CloudWatch guide
     ├── braintrust-setup.md            # Braintrust guide
+    ├── development.md                 # This file
     ├── troubleshooting.md             # Troubleshooting guide
-    └── development.md                 # This file
+    ├── observability-options.md       # Observability approaches and CloudWatch logs
+    └── generated-files.md             # Generated files guide
 ```
 
 ## Local Testing
@@ -472,31 +470,26 @@ def _execute_tool(self, tool_name: str, tool_input: Dict[str, Any]):
 
 ### Configuring Additional Exporters
 
-Add more export destinations in `config/otel_config.yaml`:
+The Strands telemetry library supports configuring additional exporters via environment variables. To add more export destinations, set the appropriate OTEL environment variables:
 
-```yaml
-exporters:
-  # Existing exporters: awsemf, otlp/braintrust
+```bash
+# Configure OTEL to use multiple OTLP exporters
+export OTEL_TRACES_EXPORTER=otlp
+export OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
 
-  # Add Datadog
-  datadog:
-    api:
-      key: ${DATADOG_API_KEY}
-      site: datadoghq.com
+# Braintrust (already configured by default if BRAINTRUST_API_KEY is set)
+export BRAINTRUST_API_KEY=sk-xxxxx
 
-  # Add Honeycomb
-  otlp/honeycomb:
-    endpoint: https://api.honeycomb.io/v1/traces
-    headers:
-      x-honeycomb-team: ${HONEYCOMB_API_KEY}
+# Add Datadog exporter
+export OTEL_EXPORTER_OTLP_ENDPOINT=https://api.datadoghq.com/v1/traces
+export DD_API_KEY=${DATADOG_API_KEY}
 
-service:
-  pipelines:
-    traces:
-      receivers: [otlp]
-      processors: [memory_limiter, resource, batch]
-      exporters: [awsemf, otlp/braintrust, datadog, otlp/honeycomb, logging]
+# Add Honeycomb exporter
+export OTEL_EXPORTER_OTLP_ENDPOINT=https://api.honeycomb.io/v1/traces
+export HONEYCOMB_API_KEY=${HONEYCOMB_API_KEY}
 ```
+
+For advanced configuration, consult the [OpenTelemetry Environment Variable Specification](https://opentelemetry.io/docs/specs/otel/protocol/exporter/).
 
 ## Testing Strategies
 

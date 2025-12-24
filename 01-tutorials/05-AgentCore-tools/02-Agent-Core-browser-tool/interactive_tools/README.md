@@ -43,12 +43,12 @@ python -m interactive_tools.dynamic_research_agent_langgraph
 ### Bedrock Model Access
 The dynamic research agent example uses Claude models in Amazon Bedrock:
 - You need access to Anthropic Claude models in your AWS account
-- The default model is `anthropic.claude-3-5-sonnet-20240620-v1:0`
+- The default model is `global.anthropic.claude-haiku-4-5-20251001-v1:0`
 - You can change the model by modifying this line in `dynamic_research_agent_langgraph.py`:
   ```python
   # Line 38 in DynamicResearchAgent.__init__()
   self.llm = ChatBedrockConverse(
-      model="anthropic.claude-3-5-sonnet-20240620-v1:0", # <- Change this to your preferred model
+      model="global.anthropic.claude-haiku-4-5-20251001-v1:0", # <- Change this to your preferred model
       region_name=region
   )
   ```

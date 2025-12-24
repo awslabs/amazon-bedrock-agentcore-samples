@@ -9,8 +9,6 @@ Architecture:
         ↓ boto3 API call
     AgentCore Runtime (managed service)
         ↓ agent execution with automatic OTEL
-    AgentCore Gateway (managed service)
-        ↓ tool calls via MCP
     MCP Tools (weather, time, calculator)
         ↓ traces exported
     CloudWatch (GenAI Observability or APM) + Braintrust
@@ -269,7 +267,7 @@ def scenario_success(
     Expected trace:
     - Agent invocation span
     - Tool selection span
-    - Gateway execution spans (weather, time)
+    - Tool execution spans (weather, time)
     - Response formatting span
 
     Args:
@@ -291,7 +289,7 @@ def scenario_success(
     print("✓ Expected in CloudWatch GenAI Observability:")
     print("   - Agent invocation span")
     print("   - Tool selection span (reasoning)")
-    print("   - Gateway spans: weather tool, time tool")
+    print("   - Tool execution spans: weather tool, time tool")
     print("   - Total latency: ~1-2 seconds")
 
     if braintrust_enabled:
@@ -322,7 +320,7 @@ def scenario_error(
     Expected trace:
     - Agent invocation span
     - Tool selection span
-    - Gateway execution span (calculator) - ERROR
+    - Tool execution span (calculator) - ERROR
     - Error details in span attributes
 
     Args:

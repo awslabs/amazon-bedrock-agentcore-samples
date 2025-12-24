@@ -25,7 +25,7 @@ def get_stock_data_with_browser(playwright: Playwright, symbol: str) -> str:
 
             # Use LLM to extract stock data
             llm = ChatBedrock(
-                model_id="us.anthropic.claude-sonnet-4-20250514-v1:0",
+                model_id="global.anthropic.claude-haiku-4-5-20251001-v1:0",
                 region_name="us-east-1",
             )
             prompt = "Extract stock price and key information for {} from this page content. Be concise:\n\n{}".format(
@@ -160,7 +160,7 @@ def search_news_with_browser(
 
             # Use LLM to extract headlines and highlights
             llm = ChatBedrock(
-                model_id="us.anthropic.claude-sonnet-4-20250514-v1:0",
+                model_id="global.anthropic.claude-haiku-4-5-20251001-v1:0",
                 region_name="us-east-1",
             )
 
