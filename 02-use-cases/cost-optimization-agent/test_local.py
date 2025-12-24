@@ -61,7 +61,7 @@ async def main():
     
     # Test 3: Specific service query
     await test_query(
-        "How much am I spending on Bedrock?",
+        "How much am I spending on Amazon Bedrock?",
         "Service-Specific Cost Analysis"
     )
     

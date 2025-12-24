@@ -49,7 +49,7 @@ class CostOptimizationAgentDeployer:
             "Version": "2012-10-17",
             "Statement": [
                 {
-                    "Sid": "BedrockModelInvocation",
+                    "Sid": "AmazonBedrockModelInvocation",
                     "Effect": "Allow",
                     "Action": [
                         "bedrock:InvokeModel",
@@ -462,8 +462,6 @@ def check_prerequisites():
         "cost_optimization_agent.py",
         "tools/cost_explorer_tools.py",
         "tools/budget_tools.py",
-        "tools/optimization_tools.py",
-        "tools/memory_tools.py",
         "tools/__init__.py",
         "pyproject.toml",
     ]

@@ -78,7 +78,7 @@ def main():
     test_queries = [
         "Are my costs higher than usual?",
         "Show me my top 3 most expensive services",
-        "How much am I spending on Bedrock?",
+        "How much am I spending on Amazon Bedrock?",
     ]
     
     results = []

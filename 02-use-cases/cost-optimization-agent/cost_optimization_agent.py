@@ -151,7 +151,7 @@ def get_current_month_costs() -> str:
     )
 
 
-# Initialize the Strands Agent with Bedrock model
+# Initialize the Strands Agent with Amazon Bedrock model
 # Use inference profile for cross-region access
 model = BedrockModel(model_id=MODEL_ID)
 

@@ -1,5 +1,8 @@
 # Cost Optimization Agent - Architecture
 
+Copyright (c) 2024 Amazon Web Services, Inc.
+Licensed under the Apache License 2.0 - see [LICENSE](../../LICENSE) file for details
+
 ## Overview
 
 The Cost Optimization Agent is a **single-agent LLM-powered assistant** that helps users monitor, analyze, and optimize their AWS costs through natural language conversations. It uses one intelligent agent with multiple tool functions, not a multi-agent system.
@@ -18,7 +21,7 @@ The Cost Optimization Agent is a **single-agent LLM-powered assistant** that hel
                              │ "Are my costs higher than usual?"
                              ↓
 ┌─────────────────────────────────────────────────────────────────┐
-│              AWS Bedrock AgentCore Runtime                      │
+│              Amazon Bedrock AgentCore Runtime                      │
 │  • HTTP Server (/invocations endpoint)                          │
 │  • Request/Response handling                                    │
 │  • Streaming support                                            │
@@ -92,7 +95,7 @@ The Cost Optimization Agent is a **single-agent LLM-powered assistant** that hel
 
 ## Component Details
 
-### 1. AWS Bedrock AgentCore Runtime
+### 1. Amazon Bedrock AgentCore Runtime
 
 **Purpose:** Production-grade hosting platform for the agent
 
@@ -160,7 +163,7 @@ agent = Agent(
 
 ---
 
-### 4. Claude 3.5 Sonnet
+### 4. Claude 3.5 Sonnet (via Amazon Bedrock)
 
 **Purpose:** Large Language Model for understanding and reasoning
 
@@ -376,7 +379,7 @@ def analyze_cost_anomalies(days: int = 7) -> str:
                          │ Deploy
                          ↓
 ┌─────────────────────────────────────────────────────────────┐
-│              AWS Bedrock AgentCore Runtime                  │
+│              Amazon Bedrock AgentCore Runtime                  │
 │  • Pulls image from ECR                                     │
 │  • Runs container                                           │
 │  • Exposes /invocations endpoint                            │
@@ -406,6 +409,25 @@ def analyze_cost_anomalies(days: int = 7) -> str:
 │  • Least privilege access                                   │
 └─────────────────────────────────────────────────────────────┘
 ```
+
+### Data Encryption and Key Management
+
+#### Encryption at Rest
+- **AgentCore Memory**: Uses AWS-managed encryption at rest with AWS KMS keys
+- **CloudWatch Logs**: Configured with KMS encryption for log data protection
+- **ECR Images**: Container images are encrypted at rest using AWS-managed keys
+- **SSM Parameters**: Configuration parameters are encrypted using AWS KMS
+
+#### Key Management Strategy
+- **AWS-Managed Keys**: Primary encryption uses AWS-managed KMS keys for simplicity and security
+- **Key Rotation**: Automatic key rotation is enabled for all AWS-managed keys
+- **Key Access Controls**: IAM policies restrict key access to authorized services and roles only
+- **Audit Trail**: All key usage is logged in AWS CloudTrail for compliance monitoring
+
+#### Encryption in Transit
+- **HTTPS/TLS**: All API communications use HTTPS with TLS 1.2 or higher
+- **Internal Communications**: AgentCore components communicate over encrypted channels
+- **AWS API Calls**: All AWS service interactions use encrypted HTTPS connections
 
 ---
 
@@ -439,7 +461,7 @@ def analyze_cost_anomalies(days: int = 7) -> str:
 ### Per Query Costs:
 ```
 AWS API Calls:        ~$0.01
-LLM Inference:        ~$0.003 (Claude 3.5 Sonnet)
+LLM Inference:        ~$0.003 (Claude 3.5 Sonnet via Amazon Bedrock)
 AgentCore Runtime:    Pay per invocation
 ─────────────────────────────────
 Total:                ~$0.013 per query
@@ -487,12 +509,43 @@ Total:                ~$0.013 per query
 
 ---
 
+## Bias and Fairness Considerations
+
+The Cost Optimization Agent is designed with the following bias and fairness considerations:
+
+### Balanced Service Recommendations
+- **Equal Analysis**: The agent analyzes all AWS services with equal weight and does not favor specific services or vendors
+- **Data-Driven Decisions**: Recommendations are based solely on usage patterns, costs, and performance metrics rather than subjective preferences
+- **Service Agnostic**: The agent does not have built-in preferences for particular AWS services or third-party solutions
+
+### Performance Impact Safeguards
+- **Conservative Approach**: The agent includes safeguards against over-aggressive cost cutting that could negatively impact system performance
+- **Risk Assessment**: Each recommendation includes an assessment of potential performance implications
+- **Gradual Changes**: The agent recommends incremental changes rather than dramatic cost reductions that could cause service disruptions
+
+### Multi-Account and Multi-Team Fairness
+- **Equitable Analysis**: In multi-account scenarios, the agent provides fair analysis across all accounts regardless of usage volume
+- **Team Neutrality**: Cost allocation and recommendations are based on actual usage patterns, not team size or organizational hierarchy
+- **Proportional Recommendations**: Optimization suggestions are proportional to actual usage and spending patterns
+
+### Transparency and Explainability
+- **Clear Methodology**: All recommendations include explanations of the analysis methodology and data sources used
+- **Confidence Levels**: The agent provides confidence levels for recommendations when possible
+- **Limitation Acknowledgment**: The agent explicitly acknowledges limitations in its analysis and recommends human review for significant changes
+
+### Human Oversight Requirements
+- **Critical Decision Points**: Recommendations that could significantly impact production systems require explicit human approval
+- **Threshold-Based Escalation**: Changes exceeding predefined cost or performance thresholds are flagged for human review
+- **Audit Trail**: All recommendations and their outcomes are tracked for continuous improvement and bias detection
+
+---
+
 ## Summary
 
 The Cost Optimization Agent uses a modern, LLM-powered architecture that combines:
-- **AWS Bedrock AgentCore** for production hosting
+- **Amazon Bedrock AgentCore** for production hosting
 - **Strands** for intelligent orchestration
-- **Claude 3.5 Sonnet** for natural language understanding
+- **Amazon Bedrock's Claude 3.5 Sonnet** for natural language understanding
 - **Decorated Python tools** for AWS API integration
 
 This architecture enables natural language interactions, intelligent tool selection, and conversational responses while maintaining production-grade reliability and scalability.
