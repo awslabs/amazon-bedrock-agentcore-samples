@@ -12,9 +12,7 @@ import time
 from pathlib import Path
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 
@@ -127,9 +125,7 @@ class CostOptimizationAgentDeployer:
                     "Sid": "ECRImageAccess",
                     "Effect": "Allow",
                     "Action": ["ecr:BatchGetImage", "ecr:GetDownloadUrlForLayer"],
-                    "Resource": [
-                        f"arn:aws:ecr:{self.region}:{account_id}:repository/*"
-                    ],
+                    "Resource": [f"arn:aws:ecr:{self.region}:{account_id}:repository/*"],
                 },
                 {
                     "Sid": "ECRTokenAccess",
@@ -147,9 +143,7 @@ class CostOptimizationAgentDeployer:
                 {
                     "Effect": "Allow",
                     "Action": ["logs:DescribeLogGroups"],
-                    "Resource": [
-                        f"arn:aws:logs:{self.region}:{account_id}:log-group:*"
-                    ],
+                    "Resource": [f"arn:aws:logs:{self.region}:{account_id}:log-group:*"],
                 },
                 {
                     "Effect": "Allow",
@@ -180,9 +174,7 @@ class CostOptimizationAgentDeployer:
                         "bedrock-agentcore:DeleteMemory",
                         "bedrock-agentcore:GetMemory",
                     ],
-                    "Resource": [
-                        f"arn:aws:bedrock-agentcore:{self.region}:{account_id}:memory/*"
-                    ],
+                    "Resource": [f"arn:aws:bedrock-agentcore:{self.region}:{account_id}:memory/*"],
                 },
                 {
                     "Sid": "BedrockAgentCoreCodeInterpreter",
@@ -219,9 +211,7 @@ class CostOptimizationAgentDeployer:
             )
 
             # Attach the comprehensive execution policy
-            logger.info(
-                f"📋 Attaching comprehensive execution policy to role: {role_name}"
-            )
+            logger.info(f"📋 Attaching comprehensive execution policy to role: {role_name}")
             self.iam_client.put_role_policy(
                 RoleName=role_name,
                 PolicyName="CostOptimizationAgentComprehensivePolicy",
@@ -269,23 +259,16 @@ class CostOptimizationAgentDeployer:
             try:
                 response = self.ssm_client.get_parameter(Name=param_name)
                 existing_memory_arn = response["Parameter"]["Value"]
-                logger.info(
-                    f"✅ Found existing memory ARN in SSM: {existing_memory_arn}"
-                )
+                logger.info(f"✅ Found existing memory ARN in SSM: {existing_memory_arn}")
                 return existing_memory_arn
             except self.ssm_client.exceptions.ParameterNotFound:
-                logger.info(
-                    "No existing memory ARN found in SSM, creating new memory..."
-                )
+                logger.info("No existing memory ARN found in SSM, creating new memory...")
 
             # Check if memory exists by name
             try:
                 memories = memory_client.list_memories()
                 for memory in memories:
-                    if (
-                        memory.get("name") == memory_name
-                        and memory.get("status") == "ACTIVE"
-                    ):
+                    if memory.get("name") == memory_name and memory.get("status") == "ACTIVE":
                         memory_arn = memory["arn"]
                         logger.info(f"✅ Found existing active memory: {memory_arn}")
 
@@ -490,6 +473,7 @@ def check_prerequisites():
         ce_client = boto3.client("ce")
         # Try a simple API call
         from datetime import datetime, timedelta
+
         end_date = datetime.now().strftime("%Y-%m-%d")
         start_date = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
         ce_client.get_cost_and_usage(
@@ -521,12 +505,8 @@ def main():
         default="CostOptimizationAgentRole",
         help="IAM role name (default: CostOptimizationAgentRole)",
     )
-    parser.add_argument(
-        "--region", default="us-east-1", help="AWS region (default: us-east-1)"
-    )
-    parser.add_argument(
-        "--skip-checks", action="store_true", help="Skip prerequisite checks"
-    )
+    parser.add_argument("--region", default="us-east-1", help="AWS region (default: us-east-1)")
+    parser.add_argument("--skip-checks", action="store_true", help="Skip prerequisite checks")
 
     args = parser.parse_args()
 
@@ -538,9 +518,7 @@ def main():
     # Create deployer and deploy
     deployer = CostOptimizationAgentDeployer(region=args.region)
 
-    runtime_arn = deployer.deploy_agent(
-        agent_name=args.agent_name, role_name=args.role_name
-    )
+    runtime_arn = deployer.deploy_agent(agent_name=args.agent_name, role_name=args.role_name)
 
     if runtime_arn:
         logger.info("\n🎯 Deployment completed successfully!")

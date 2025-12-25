@@ -17,7 +17,7 @@ from tools.cost_explorer_tools import (
 from tools.budget_tools import get_all_budgets
 
 # Configuration - can be overridden via environment variables
-MODEL_ID = os.getenv('MODEL_ID', 'us.anthropic.claude-3-5-sonnet-20241022-v2:0')
+MODEL_ID = os.getenv("MODEL_ID", "us.anthropic.claude-3-5-sonnet-20241022-v2:0")
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -26,15 +26,16 @@ logger = logging.getLogger(__name__)
 # Initialize the AgentCore Runtime App
 app = BedrockAgentCoreApp()
 
+
 # Define tools with proper decorators for LLM
 @tool
 def analyze_cost_anomalies(days: int = 7) -> str:
     """
     Detect unusual cost spikes or anomalies in AWS spending.
-    
+
     Args:
         days: Number of days to analyze (default: 7)
-    
+
     Returns:
         str: Detailed anomaly detection results
     """
@@ -47,7 +48,7 @@ def get_budget_information() -> str:
     """
     Retrieve all AWS budgets and their current status.
     Shows budget limits, actual spend, and forecasted spend.
-    
+
     Returns:
         str: Comprehensive budget status information
     """
@@ -59,14 +60,15 @@ def get_budget_information() -> str:
 def forecast_future_costs(days_ahead: int = 30) -> str:
     """
     Predict future AWS costs using machine learning.
-    
+
     Args:
         days_ahead: Number of days to forecast (default: 30)
-    
+
     Returns:
         str: Cost forecast with confidence intervals
     """
     from datetime import datetime, timedelta
+
     logger.info(f"Generating cost forecast for next {days_ahead} days...")
     forecast_start = datetime.now().strftime("%Y-%m-%d")
     forecast_end = (datetime.now() + timedelta(days=days_ahead)).strftime("%Y-%m-%d")
@@ -77,12 +79,12 @@ def forecast_future_costs(days_ahead: int = 30) -> str:
 def get_service_cost_breakdown(service_name: str = None, time_period: str = "LAST_30_DAYS") -> str:
     """
     Get detailed cost breakdown for AWS services.
-    
+
     Args:
-        service_name: Specific service name (e.g., "Amazon Bedrock", "Amazon EC2"). 
+        service_name: Specific service name (e.g., "Amazon Bedrock", "Amazon EC2").
                      If None, returns all services.
         time_period: Time period to analyze (default: "LAST_30_DAYS")
-    
+
     Returns:
         str: Service cost breakdown with totals
     """
@@ -93,34 +95,31 @@ def get_service_cost_breakdown(service_name: str = None, time_period: str = "LAS
         # Get all services and return top 10
         from datetime import datetime, timedelta
         import json
-        
+
         end_date = datetime.now().strftime("%Y-%m-%d")
         start_date = (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d")
-        
+
         costs_raw = get_cost_and_usage(
-            start_date,
-            end_date,
-            "MONTHLY",
-            [{"Type": "DIMENSION", "Key": "SERVICE"}]
+            start_date, end_date, "MONTHLY", [{"Type": "DIMENSION", "Key": "SERVICE"}]
         )
-        
+
         try:
             costs_data = json.loads(costs_raw)
             all_services = {}
-            
+
             for result in costs_data.get("results", []):
                 for group in result.get("groups", []):
                     service_name = group["keys"][0]
                     cost = group["cost"]
                     all_services[service_name] = all_services.get(service_name, 0) + cost
-            
+
             sorted_services = sorted(all_services.items(), key=lambda x: x[1], reverse=True)
             top_10 = sorted_services[:10]
-            
+
             response = "Top 10 Most Expensive AWS Services (Last 30 Days):\n\n"
             for i, (service, cost) in enumerate(top_10, 1):
                 response += f"{i}. {service}: ${cost:.2f}\n"
-            
+
             total = sum(all_services.values())
             response += f"\nTotal Cost: ${total:.2f}"
             return response
@@ -133,21 +132,19 @@ def get_service_cost_breakdown(service_name: str = None, time_period: str = "LAS
 def get_current_month_costs() -> str:
     """
     Get detailed daily cost breakdown for the current month.
-    
+
     Returns:
         str: Daily cost breakdown with service-level details
     """
     from datetime import datetime
+
     logger.info("Fetching current month costs...")
-    
+
     start_of_month = datetime.now().replace(day=1).strftime("%Y-%m-%d")
     end_date = datetime.now().strftime("%Y-%m-%d")
-    
+
     return get_cost_and_usage(
-        start_of_month,
-        end_date,
-        "DAILY",
-        [{"Type": "DIMENSION", "Key": "SERVICE"}]
+        start_of_month, end_date, "DAILY", [{"Type": "DIMENSION", "Key": "SERVICE"}]
     )
 
 
@@ -190,7 +187,7 @@ Cost Optimization Best Practices to recommend:
 - Set up budget alerts to catch cost spikes early
 - Use AWS Cost Explorer regularly for trend analysis
 
-Always be proactive in identifying cost-saving opportunities!"""
+Always be proactive in identifying cost-saving opportunities!""",
 )
 
 
@@ -198,47 +195,49 @@ Always be proactive in identifying cost-saving opportunities!"""
 async def process_request(payload):
     """
     AgentCore Runtime handler function with LLM-powered tool selection
-    
+
     Args:
         payload: Event payload containing 'prompt', 'message', 'query', or 'inputText'
-    
+
     Yields:
         dict: Response chunks for streaming
     """
     logger.info(f"Received request with payload keys: {payload.keys()}")
-    
+
     # Extract prompt from various possible fields
     prompt = (
-        payload.get("prompt") or 
-        payload.get("message") or 
-        payload.get("query") or 
-        payload.get("inputText") or
-        payload.get("input")
+        payload.get("prompt")
+        or payload.get("message")
+        or payload.get("query")
+        or payload.get("inputText")
+        or payload.get("input")
     )
-    
+
     if not prompt:
         yield {"error": "No prompt provided. Please include a query in your request."}
         return
-    
+
     # Get user/session context
     user_id = payload.get("user_id", "default_user")
     session_id = payload.get("session_id", "default_session")
-    
+
     logger.info(f"Processing query for user {user_id}, session {session_id}: {prompt}")
-    
+
     try:
         # Let the LLM decide which tools to use and how to respond!
         async for event in agent.stream_async(prompt):
             if "data" in event:
                 # Stream text chunks to the client
                 yield {"type": "chunk", "data": event["data"]}
-        
+
         # Signal completion
         yield {"type": "complete"}
-    
+
     except Exception as e:
         logger.error(f"Error processing query: {str(e)}", exc_info=True)
-        yield {"error": f"Error processing your request: {str(e)}\n\nPlease try rephrasing your question or contact support if the issue persists."}
+        yield {
+            "error": f"Error processing your request: {str(e)}\n\nPlease try rephrasing your question or contact support if the issue persists."
+        }
 
 
 # Run the AgentCore Runtime App
