@@ -1,0 +1,37 @@
+###### CORE solution configurations
+#### This section includes configurations for the Agentic AI Foundation itself
+
+## Container build
+## Uncomment the below line if you use 'finch' instead of Docker:
+# container_image_build_tool = "finch"
+
+## Naming AWS resources to be deployed
+# IAM execution role used by the agent
+bedrock_role_name = "agentic-ai-bedrock-role"
+# Cognito User Pool
+user_pool_name = "agentic-ai-user-pool"
+# Knowledge Base Stack Variables
+kb_stack_name = "agentic-ai-kb"
+kb_bucket_name = "agentic-ai-kb-bucket"
+
+###### EXTERNAL component configurations
+#### This section configures separately-deployed components of the platform
+
+## GenAI Model Gateway
+gateway_url = "https://your-gateway-url.example.com"
+gateway_api_key = "your-gateway-api-key"  # nosec B105
+
+## (Optional) Langfuse - tracing and observability
+langfuse_host = "https://cloud.langfuse.com"
+langfuse_public_key = "your-langfuse-public-key"  # nosec B105
+langfuse_secret_key = "your-langfuse-secret-key"  # nosec B105
+
+## (Optional) Tavily - web search for agents
+# Tavily (Optional, for agent web search tool)
+# tavily_api_key = "your-tavily-api-key"  # nosec B105
+
+## (Optional) Zendesk - ticketing
+# Zendesk (Optional, for agent ticketing tool)
+# zendesk_domain = "your-subdomain"
+# zendesk_email = "your-email@example.com"
+# zendesk_api_token = "your-zendesk-api-token"  # nosec B105
