@@ -23,6 +23,16 @@ class CostOptimizationAgentDeployer:
         self.region = region
         self.iam_client = boto3.client("iam", region_name=region)
         self.ssm_client = boto3.client("ssm", region_name=region)
+        
+        # Resource tags for consistent tagging
+        self.resource_tags = [
+            {"Key": "Project", "Value": "bedrock-agentcore-cost-optimization"},
+            {"Key": "Agent", "Value": "cost_optimization_agent"},
+            {"Key": "ManagedBy", "Value": "bedrock-agentcore-samples"},
+        ]
+        
+        # Tags as dict for services that need that format
+        self.resource_tags_dict = {tag["Key"]: tag["Value"] for tag in self.resource_tags}
 
     def create_execution_role(self, role_name: str) -> str:
         """Create IAM execution role with all required permissions"""
@@ -208,6 +218,7 @@ class CostOptimizationAgentDeployer:
                 RoleName=role_name,
                 AssumeRolePolicyDocument=json.dumps(trust_policy),
                 Description="Execution role for Cost Optimization Agent with comprehensive permissions",
+                Tags=self.resource_tags,
             )
 
             # Attach the comprehensive execution policy
@@ -250,8 +261,8 @@ class CostOptimizationAgentDeployer:
         try:
             from bedrock_agentcore.memory import MemoryClient
             from bedrock_agentcore.memory.constants import StrategyType
+            import uuid
 
-            memory_name = "CostOptimizationAgentMultiStrategy"
             memory_client = MemoryClient(region_name=self.region)
 
             # Check if memory ARN already exists in SSM
@@ -260,33 +271,65 @@ class CostOptimizationAgentDeployer:
                 response = self.ssm_client.get_parameter(Name=param_name)
                 existing_memory_arn = response["Parameter"]["Value"]
                 logger.info(f"✅ Found existing memory ARN in SSM: {existing_memory_arn}")
-                return existing_memory_arn
+                
+                # Verify the memory still exists
+                try:
+                    memory_id = existing_memory_arn.split("/")[-1]
+                    memory_info = memory_client.get_memory(memory_id)
+                    if memory_info.get("status") == "ACTIVE":
+                        logger.info("✅ Existing memory is active and ready to use")
+                        return existing_memory_arn
+                    else:
+                        logger.info(f"⚠️ Existing memory status: {memory_info.get('status')}, creating new one")
+                except Exception as e:
+                    logger.info(f"⚠️ Existing memory not accessible: {e}, creating new one")
+                    
             except self.ssm_client.exceptions.ParameterNotFound:
                 logger.info("No existing memory ARN found in SSM, creating new memory...")
 
-            # Check if memory exists by name
+            # Check if memory exists by name and clean up any inactive ones
             try:
                 memories = memory_client.list_memories()
                 for memory in memories:
-                    if memory.get("name") == memory_name and memory.get("status") == "ACTIVE":
-                        memory_arn = memory["arn"]
-                        logger.info(f"✅ Found existing active memory: {memory_arn}")
+                    if (memory.get("name", "").startswith("CostOptimizationAgentMultiStrategy") or
+                        memory.get("id", "").startswith("CostOptimizationAgentMultiStrategy")):
+                        memory_id = memory.get("id")
+                        status = memory.get("status")
+                        logger.info(f"Found existing memory: {memory_id} (status: {status})")
+                        
+                        if status == "ACTIVE":
+                            memory_arn = memory["arn"]
+                            logger.info(f"✅ Using existing active memory: {memory_arn}")
 
-                        # Store in SSM for future use
-                        self.ssm_client.put_parameter(
-                            Name=param_name,
-                            Value=memory_arn,
-                            Type="String",
-                            Overwrite=True,
-                            Description="Memory ARN for Cost Optimization Agent",
-                        )
-                        logger.info("💾 Stored existing memory ARN in SSM")
-                        return memory_arn
+                            # Store in SSM for future use
+                            try:
+                                self.ssm_client.put_parameter(
+                                    Name=param_name,
+                                    Value=memory_arn,
+                                    Type="String",
+                                    Description="Memory ARN for Cost Optimization Agent",
+                                    Tags=self.resource_tags,
+                                )
+                                logger.info("💾 Stored existing memory ARN in SSM with tags")
+                            except Exception as ssm_error:
+                                logger.warning(f"⚠️ Could not store in SSM: {ssm_error}")
+                            
+                            return memory_arn
+                        elif status in ["FAILED", "DELETING"]:
+                            logger.info(f"Cleaning up inactive memory: {memory_id}")
+                            try:
+                                memory_client.delete_memory(memory_id)
+                                logger.info(f"✅ Cleaned up inactive memory: {memory_id}")
+                            except Exception as e:
+                                logger.warning(f"⚠️ Could not clean up memory {memory_id}: {e}")
+                                
             except Exception as e:
                 logger.warning(f"Error checking existing memories: {e}")
 
-            # Create new memory
-            logger.info("🧠 Creating new AgentCore Memory...")
+            # Create new memory with unique name
+            unique_suffix = str(uuid.uuid4()).replace('-', '')[:8]
+            memory_name = f"CostOptimizationAgentMultiStrategy_{unique_suffix}"
+            logger.info(f"🧠 Creating new AgentCore Memory: {memory_name}")
 
             strategies = [
                 {
@@ -318,14 +361,48 @@ class CostOptimizationAgentDeployer:
             logger.info(f"✅ Memory created successfully: {memory_arn}")
 
             # Store memory ARN in SSM Parameter Store
-            self.ssm_client.put_parameter(
-                Name=param_name,
-                Value=memory_arn,
-                Type="String",
-                Overwrite=True,
-                Description="Memory ARN for Cost Optimization Agent",
-            )
-            logger.info("💾 Memory ARN stored in SSM Parameter Store")
+            try:
+                # First try to create the parameter with tags
+                self.ssm_client.put_parameter(
+                    Name=param_name,
+                    Value=memory_arn,
+                    Type="String",
+                    Description="Memory ARN for Cost Optimization Agent",
+                    Tags=self.resource_tags,
+                )
+                logger.info("💾 Memory ARN stored in SSM Parameter Store with tags")
+            except self.ssm_client.exceptions.ParameterAlreadyExistsException:
+                # Parameter exists, update it without tags
+                self.ssm_client.put_parameter(
+                    Name=param_name,
+                    Value=memory_arn,
+                    Type="String",
+                    Overwrite=True,
+                    Description="Memory ARN for Cost Optimization Agent",
+                )
+                logger.info("💾 Memory ARN updated in SSM Parameter Store")
+                
+                # Add tags separately for existing parameter
+                try:
+                    self.ssm_client.add_tags_to_resource(
+                        ResourceType="Parameter",
+                        ResourceId=param_name,
+                        Tags=self.resource_tags,
+                    )
+                    logger.info("🏷️ Added tags to existing SSM parameter")
+                except Exception as tag_error:
+                    logger.warning(f"⚠️ Could not add tags to SSM parameter: {tag_error}")
+            except Exception as e:
+                # If tags fail, try without tags
+                logger.warning(f"⚠️ Could not create parameter with tags: {e}")
+                self.ssm_client.put_parameter(
+                    Name=param_name,
+                    Value=memory_arn,
+                    Type="String",
+                    Overwrite=True,
+                    Description="Memory ARN for Cost Optimization Agent",
+                )
+                logger.info("💾 Memory ARN stored in SSM Parameter Store (without tags)")
 
             return memory_arn
 
