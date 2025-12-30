@@ -46,31 +46,124 @@ For detailed architecture and design decisions, see [ARCHITECTURE.md](ARCHITECTU
 ## Quick Start
 
 ### Prerequisites
-- Python 3.10+
-- AWS CLI configured with Cost Explorer, Budgets, and Bedrock permissions
-- Amazon Bedrock access in your AWS account
+
+**AWS Requirements:**
+- AWS CLI configured with administrator access (or specific permissions listed below)
+- AWS account with Amazon Bedrock enabled in **us-east-1** region
+- **Claude 3.5 Sonnet model access enabled** in Amazon Bedrock (go to Bedrock Console → Model Access)
+- AWS Cost Explorer enabled in your account (may take 24 hours after first enabling)
+
+**Development Environment:**
+- Python 3.10 or higher
+- Git (to clone the repository)
+
+**Required AWS Permissions:**
+Your AWS credentials need the following permissions:
+- `bedrock:InvokeModel` (for Claude 3.5 Sonnet)
+- `ce:*` (Cost Explorer access)
+- `budgets:*` (Budget management)
+- `iam:*` (for creating execution roles)
+- `bedrock-agentcore:*` (for AgentCore operations)
+- `ecr:*` (for container registry)
+- `codebuild:*` (for building containers)
 
 ### Installation
-```bash
-pip install -r requirements.txt
-```
+
+1. **Clone the repository and navigate to the project:**
+   ```bash
+   git clone https://github.com/awslabs/amazon-bedrock-agentcore-samples.git
+   cd amazon-bedrock-agentcore-samples/02-use-cases/cost-optimization-agent
+   ```
+
+2. **Install dependencies:**
+   
+   **Option A: Using pip (standard)**
+   ```bash
+   pip install -r requirements.txt
+   ```
+   
+   **Option B: Using uv (recommended for faster installs)**
+   ```bash
+   # Install uv first if you don't have it
+   pip install uv
+   
+   # Install dependencies
+   uv sync
+   ```
 
 ### Usage
 
-**Local Testing:**
+**Step 1: Local Testing (Optional but Recommended)**
 ```bash
 python test_local.py
 ```
+*This runs a comprehensive test suite with 6 different scenarios demonstrating the agent's natural language understanding and intelligent tool selection*
 
-**Deploy to AgentCore:**
+**What You'll See:**
+- With valid AWS credentials: Detailed cost analysis and recommendations for each test query
+- Without valid credentials: Credential errors but demonstrates the agent's structure and capabilities
+
+**Step 2: Deploy to AgentCore**
 ```bash
 python deploy.py
 ```
+*This creates AWS resources and deploys the agent to AgentCore Runtime (takes 3-5 minutes)*
 
-**Test Deployed Agent:**
+**Step 3: Test Deployed Agent**
 ```bash
 python test_agentcore_runtime.py
 ```
+*This tests the deployed agent running on AWS with real cost data and intelligent responses*
+
+### Troubleshooting
+
+**Common Issues:**
+
+1. **"The security token included in the request is invalid"**
+   - **Cause**: AWS credentials are expired, invalid, or not configured
+   - **Solution**: 
+     ```bash
+     aws configure
+     # OR refresh your AWS SSO session
+     aws sso login --profile your-profile
+     ```
+
+2. **"Cost Explorer access denied"** 
+   - **Cause**: Cost Explorer not enabled or insufficient permissions
+   - **Solution**: Enable Cost Explorer in AWS Console → Billing → Cost Explorer (may take 24 hours)
+
+3. **"Bedrock access denied"** 
+   - **Cause**: Claude 3.5 Sonnet model not enabled
+   - **Solution**: Go to Bedrock Console → Model Access → Enable Claude 3.5 Sonnet
+
+4. **"Region not supported"** 
+   - **Cause**: Using wrong region for Bedrock
+   - **Solution**: Ensure you're using us-east-1 region
+
+5. **"No matching distribution found for bedrock-agentcore>=1.0.0 or bedrock-agentcore-starter-toolkit>=1.0.0"**
+   - **Cause**: Version mismatch in requirements (latest available version is 0.2.5)
+   - **Solution**: ✅ **FIXED** - Both requirements.txt and pyproject.toml now use >=0.2.0 for compatibility
+
+6. **"Import errors"** 
+   - **Cause**: Not in correct directory or dependencies not installed
+   - **Solution**: Ensure you're in `02-use-cases/cost-optimization-agent` and run `pip install -r requirements.txt`
+
+**Testing Without Valid AWS Credentials:**
+The local test (`python test_local.py`) will show credential errors but still demonstrates the agent's functionality:
+- ✅ Dependencies load correctly
+- ✅ Agent initializes and processes queries  
+- ✅ Natural language understanding works
+- ✅ Tool selection logic functions
+- ✅ Comprehensive test suite runs (6 different scenarios)
+- ❌ AWS API calls fail (expected without valid credentials)
+
+**Testing With Valid AWS Credentials:**
+With proper AWS credentials, you'll see:
+- ✅ Complete cost analysis with real data for all 6 test scenarios
+- ✅ Intelligent recommendations based on your actual usage
+- ✅ Successful integration with Cost Explorer, Budgets, and CloudWatch APIs
+- ✅ Natural language responses with specific cost optimization suggestions
+- ✅ Demonstration of superior LLM-based tool selection vs keyword matching
 
 For comprehensive deployment instructions, monitoring, and troubleshooting, see [DEPLOYMENT.md](DEPLOYMENT.md).
 

@@ -30,6 +30,8 @@ env/
 .agent_arn
 .agentcore.yaml
 .bedrock_agentcore.yaml
+Dockerfile
+.dockerignore
 
 # IDE
 .vscode/
