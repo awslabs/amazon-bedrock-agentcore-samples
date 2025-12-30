@@ -49,6 +49,7 @@ downloads/
 eggs/
 .eggs/
 lib/
+!05-blueprints/**/lib/
 lib64/
 parts/
 sdist/
