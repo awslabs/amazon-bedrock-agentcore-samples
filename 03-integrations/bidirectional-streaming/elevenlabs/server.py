@@ -5,7 +5,6 @@ and coordinates between the frontend and the bidirectional agent.
 """
 
 import asyncio
-import base64
 import json
 import logging
 import os

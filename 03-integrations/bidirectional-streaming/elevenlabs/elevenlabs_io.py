@@ -8,18 +8,12 @@ of ElevenLabs TTS for better voice quality.
 import asyncio
 import base64
 import logging
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any
 
 from elevenlabs.client import AsyncElevenLabs
 from strands.experimental.bidi.types.events import (
-    AudioChannel,
-    AudioSampleRate,
-    BidiAudioInputEvent,
-    BidiAudioStreamEvent,
     BidiOutputEvent,
     BidiInputEvent,
-    BidiTextInputEvent,
-    BidiTranscriptStreamEvent,
 )
 from strands.experimental.bidi.types.io import BidiInput, BidiOutput
 
