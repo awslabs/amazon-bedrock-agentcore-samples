@@ -187,12 +187,12 @@ async def shutdown_event():
 
 @app.get("/ping")
 async def ping():
-    return JSONResponse({"status": "ok"})
+    return JSONResponse({"status": "healthy"})
 
 
 @app.get("/health")
 async def health_check():
-    return JSONResponse({"status": "healthy"})
+    return JSONResponse({"status": "ok"})
 
 
 @app.websocket("/ws")
