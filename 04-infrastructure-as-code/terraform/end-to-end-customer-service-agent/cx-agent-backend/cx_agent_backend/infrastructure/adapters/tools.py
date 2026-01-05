@@ -286,7 +286,6 @@ def web_search(query: str) -> str:
         tavily_secret = secret_reader.read_secret("tavily_key")
         tavily_api_key = json.loads(tavily_secret)["tavily_key"]
         logger.debug("Retrieved Tavily API credentials")
-        logger.info(tavily_api_key)
     except Exception as e:
         logger.error("Failed to retrieve Tavily credentials: %s", str(e))
         tavily_api_key = None
