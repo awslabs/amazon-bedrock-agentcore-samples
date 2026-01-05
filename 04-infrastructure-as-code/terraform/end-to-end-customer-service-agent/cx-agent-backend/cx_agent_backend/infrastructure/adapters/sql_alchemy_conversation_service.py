@@ -3,7 +3,9 @@ import uuid
 
 from sqlalchemy.orm import Session
 
-from cx_agent_backend.domain.repositories.conversation_repository import ConversationRepository
+from cx_agent_backend.domain.repositories.conversation_repository import (
+    ConversationRepository,
+)
 from cx_agent_backend.domain.entities.conversation import Conversation, Message
 from cx_agent_backend.presentation.schemas.conversation_schemas import (
     ConversationSchema,

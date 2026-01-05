@@ -55,10 +55,18 @@ class CreateConversationRequest(BaseModel):
 class FeedbackRequest(BaseModel):
     """Feedback request."""
 
-    run_id: str = Field(..., min_length=1, description="Message ID to record feedback for")
-    session_id: str = Field(..., min_length=1, description="Session ID for the conversation")
-    score: float = Field(..., ge=0.0, le=1.0, description="Feedback score between 0.0 and 1.0")
-    comment: str = Field(default="", max_length=1000, description="Optional feedback comment")
+    run_id: str = Field(
+        ..., min_length=1, description="Message ID to record feedback for"
+    )
+    session_id: str = Field(
+        ..., min_length=1, description="Session ID for the conversation"
+    )
+    score: float = Field(
+        ..., ge=0.0, le=1.0, description="Feedback score between 0.0 and 1.0"
+    )
+    comment: str = Field(
+        default="", max_length=1000, description="Optional feedback comment"
+    )
 
 
 class SendMessageRequest(BaseModel):
@@ -69,7 +77,9 @@ class SendMessageRequest(BaseModel):
     model: str = Field(default="gpt-4o-mini", min_length=1)
     user_id: str | None = Field(None, min_length=1, max_length=100)
     feedback: FeedbackRequest | None = None
-    langfuse_tags: list[str] = Field(default_factory=list, description="Tags to add to Langfuse trace")
+    langfuse_tags: list[str] = Field(
+        default_factory=list, description="Tags to add to Langfuse trace"
+    )
 
 
 class SendMessageResponse(BaseModel):
@@ -79,6 +89,7 @@ class SendMessageResponse(BaseModel):
     status: str = "success"
     tools_used: list[str] = Field(default_factory=list)
     metadata: dict = Field(default_factory=dict)
+
 
 class HealthResponse(BaseModel):
     """Health check response model."""

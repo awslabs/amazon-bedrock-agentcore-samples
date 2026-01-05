@@ -1,4 +1,5 @@
 """Application settings using Pydantic Settings."""
+
 from os import environ
 
 from pydantic import Field
@@ -30,7 +31,9 @@ class Settings(BaseSettings):
 
     # AWS Settings
     aws_region: str = Field(
-        default=environ.get("AWS_REGION", environ.get("AWS_DEFAULT_REGION", "eu-central-1")),
+        default=environ.get(
+            "AWS_REGION", environ.get("AWS_DEFAULT_REGION", "eu-central-1")
+        ),
         description="AWS region",
     )
 

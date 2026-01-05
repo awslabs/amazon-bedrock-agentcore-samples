@@ -40,7 +40,8 @@ def main():
     )
 
     # Custom CSS for better design
-    st.markdown("""
+    st.markdown(
+        """
     <style>
     .stButton > button {
         border-radius: 20px;
@@ -58,27 +59,29 @@ def main():
         margin: 10px 0;
     }
     </style>
-    """, unsafe_allow_html=True)
+    """,
+        unsafe_allow_html=True,
+    )
 
     st.title("🤖 CX Agent Chat")
-    if st.session_state.get('use_agentcore', False):
+    if st.session_state.get("use_agentcore", False):
         st.caption("Powered by AWS Bedrock AgentCore Runtime")
     else:
         st.caption("Powered by LiteLLM Gateway hosted on AWS")
 
     init_session_state()
-    
+
     # Render configuration
     config_valid = render_agentcore_config()
     model = render_sidebar()
 
     # Initialize client based on configuration
     if st.session_state.use_agentcore and config_valid:
-        auth_token = st.session_state.get('auth_token', '')
+        auth_token = st.session_state.get("auth_token", "")
         client = AgentCoreClient(
             agent_runtime_arn=st.session_state.agent_runtime_arn,
             region=st.session_state.region,
-            auth_token=auth_token
+            auth_token=auth_token,
         )
         if auth_token:
             st.info("🚀 Connected to AgentCore Runtime")
@@ -110,11 +113,17 @@ def main():
         with st.spinner("Thinking..."):
             if isinstance(client, AgentCoreClient):
                 response = client.send_message(
-                    st.session_state.conversation_id, prompt, model, st.session_state.user_id
+                    st.session_state.conversation_id,
+                    prompt,
+                    model,
+                    st.session_state.user_id,
                 )
             else:
                 response = client.send_message(
-                    st.session_state.conversation_id, prompt, model, st.session_state.user_id
+                    st.session_state.conversation_id,
+                    prompt,
+                    model,
+                    st.session_state.user_id,
                 )
 
             if response:
@@ -123,15 +132,15 @@ def main():
                     "model": model,
                     "status": response.get("status", "success"),
                 }
-                
+
                 # Add tools_used to metadata if available
                 if "tools_used" in response and response["tools_used"]:
                     metadata["tools_used"] = ",".join(response["tools_used"])
-                
+
                 # Add all metadata from API response
                 if "metadata" in response and response["metadata"]:
                     metadata.update(response["metadata"])
-                
+
                 assistant_message = Message(
                     role="assistant",
                     content=response.get("response", response.get("message", "")),

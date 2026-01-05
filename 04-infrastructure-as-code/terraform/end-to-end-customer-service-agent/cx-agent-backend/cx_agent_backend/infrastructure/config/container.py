@@ -7,12 +7,18 @@ from cx_agent_backend.domain.services.conversation_service import ConversationSe
 from cx_agent_backend.infrastructure.adapters.memory_conversation_repository import (
     MemoryConversationRepository,
 )
-from cx_agent_backend.infrastructure.adapters.langgraph_agent_service import LangGraphAgentService
-from cx_agent_backend.infrastructure.adapters.bedrock_guardrail_service import BedrockGuardrailService
+from cx_agent_backend.infrastructure.adapters.langgraph_agent_service import (
+    LangGraphAgentService,
+)
+from cx_agent_backend.infrastructure.adapters.bedrock_guardrail_service import (
+    BedrockGuardrailService,
+)
 from cx_agent_backend.infrastructure.adapters.openai_llm_service import OpenAILLMService
 from cx_agent_backend.infrastructure.config.settings import settings
 from cx_agent_backend.infrastructure.aws.secret_reader import AWSSecretsReader
-from cx_agent_backend.infrastructure.aws.parameter_store_reader import AWSParameterStoreReader
+from cx_agent_backend.infrastructure.aws.parameter_store_reader import (
+    AWSParameterStoreReader,
+)
 
 
 class Container(containers.DeclarativeContainer):

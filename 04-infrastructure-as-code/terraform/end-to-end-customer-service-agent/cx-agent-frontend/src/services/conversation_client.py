@@ -14,16 +14,25 @@ class ConversationClient:
         self.session = requests.Session()
 
     def send_message(
-        self, conversation_id: str, content: str, model: str, user_id: str = None, feedback: Optional[Dict] = None
+        self,
+        conversation_id: str,
+        content: str,
+        model: str,
+        user_id: str = None,
+        feedback: Optional[Dict] = None,
     ) -> Optional[Dict]:
         """Send a message to the conversation with optional feedback."""
         try:
-            payload = {"prompt": content, "conversation_id": conversation_id, "model": model}
+            payload = {
+                "prompt": content,
+                "conversation_id": conversation_id,
+                "model": model,
+            }
             if user_id:
                 payload["user_id"] = user_id
             if feedback:
                 payload["feedback"] = feedback
-            
+
             response = self.session.post(
                 f"{self.base_url}/invocations",
                 json={"input": payload},
@@ -35,7 +44,7 @@ class ConversationClient:
                 return {
                     "response": result["output"].get("message", ""),
                     "metadata": result["output"].get("metadata", {}),
-                    "tools_used": result["output"].get("tools_used", [])
+                    "tools_used": result["output"].get("tools_used", []),
                 }
             return result
         except Exception as e:
@@ -45,22 +54,31 @@ class ConversationClient:
     def get_conversation(self, conversation_id: str) -> Optional[Dict]:
         """Get conversation details."""
         try:
-            response = self.session.get(
-                f"{self.base_url}/api/v1/{conversation_id}"
-            )
+            response = self.session.get(f"{self.base_url}/api/v1/{conversation_id}")
             response.raise_for_status()
             return response.json()
         except Exception as e:
             st.error(f"Failed to get conversation: {e}")
             return None
 
-    def submit_feedback(self, run_id: str, session_id: str, score: float, comment: str = "") -> bool:
+    def submit_feedback(
+        self, run_id: str, session_id: str, score: float, comment: str = ""
+    ) -> bool:
         """Submit feedback for a message."""
         try:
             response = self.session.post(
                 f"{self.base_url}/invocations",
-                json={"input": {"feedback": {"run_id": run_id, "session_id": session_id, "score": score, "comment": comment}}},
-                timeout=30
+                json={
+                    "input": {
+                        "feedback": {
+                            "run_id": run_id,
+                            "session_id": session_id,
+                            "score": score,
+                            "comment": comment,
+                        }
+                    }
+                },
+                timeout=30,
             )
             response.raise_for_status()
             return True

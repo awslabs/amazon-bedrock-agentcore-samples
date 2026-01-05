@@ -1,12 +1,11 @@
 """FastAPI router for conversation endpoints."""
 
 import logging
+import time
 from uuid import UUID
 
 from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Depends, HTTPException, status
-
-logger = logging.getLogger(__name__)
 
 from cx_agent_backend.domain.entities.conversation import Conversation, Message
 from cx_agent_backend.domain.services.conversation_service import ConversationService
@@ -20,13 +19,14 @@ from cx_agent_backend.presentation.schemas.conversation_schemas import (
     SendMessageResponse,
 )
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/api/v1", tags=["conversations"])
 
 
 @router.get("/ping", response_model=HealthResponse)
 async def ping() -> HealthResponse:
     """Health check endpoint."""
-    import time
     return HealthResponse(time_of_last_update=int(time.time()))
 
 
@@ -107,26 +107,28 @@ async def send_message(
             feedback_score = 1 if request.feedback.score > 0.5 else 0
             user_id = request.user_id or "default_user"
             await conversation_service.log_feedback(
-                user_id, 
-                request.feedback.session_id, 
-                request.feedback.run_id, 
-                feedback_score, 
-                request.feedback.comment
+                user_id,
+                request.feedback.session_id,
+                request.feedback.run_id,
+                feedback_score,
+                request.feedback.comment,
             )
-        
+
         # If no prompt, this is feedback-only request
         if not request.prompt:
             if not request.feedback:
-                raise HTTPException(status_code=400, detail="Either prompt or feedback must be provided")
+                raise HTTPException(
+                    status_code=400, detail="Either prompt or feedback must be provided"
+                )
             return SendMessageResponse(response="Feedback received", tools_used=[])
-        
+
         # Use existing conversation or create new one
         conversation_id = request.conversation_id
         user_id = request.user_id or "default_user"
         if not conversation_id:
             conversation = await conversation_service.start_conversation(user_id)
             conversation_id = conversation.id
-            
+
         message, tools_used = await conversation_service.send_message(
             conversation_id=conversation_id,
             user_id=user_id,
@@ -134,11 +136,9 @@ async def send_message(
             model=request.model,
             langfuse_tags=request.langfuse_tags,
         )
-        
+
         return SendMessageResponse(
-            response=message.content, 
-            tools_used=tools_used,
-            metadata=message.metadata
+            response=message.content, tools_used=tools_used, metadata=message.metadata
         )
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
@@ -160,6 +160,3 @@ async def get_user_conversations(
     """Get all conversations for a user."""
     conversations = await conversation_service.get_user_conversations(user_id)
     return [_conversation_to_schema(conv) for conv in conversations]
-
-
-

@@ -74,7 +74,10 @@ class Conversation:
 
     @classmethod
     def create(
-        cls, user_id: str, metadata: dict[str, Any] | None = None, conversation_id: UUID | None = None
+        cls,
+        user_id: str,
+        metadata: dict[str, Any] | None = None,
+        conversation_id: UUID | None = None,
     ) -> "Conversation":
         """Create a new conversation."""
         now = datetime.utcnow()

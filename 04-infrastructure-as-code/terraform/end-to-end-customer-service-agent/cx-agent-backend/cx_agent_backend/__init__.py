@@ -10,8 +10,8 @@ import structlog
 # Basic terminal logging:
 logging.basicConfig(
     level=environ.get("LOG_LEVEL", "INFO").upper(),
-    format='%(asctime)s %(name)s [%(levelname)s] %(message)s',
-    datefmt='%Y-%m-%dT%H:%M:%S'
+    format="%(asctime)s %(name)s [%(levelname)s] %(message)s",
+    datefmt="%Y-%m-%dT%H:%M:%S",
 )
 
 # Structured logging:

@@ -4,11 +4,21 @@ import logging
 from uuid import UUID
 
 from cx_agent_backend.domain.entities.conversation import Conversation, Message
-from cx_agent_backend.domain.repositories.conversation_repository import ConversationRepository
-from cx_agent_backend.domain.services.agent_service import AgentRequest, AgentService, AgentType
-from cx_agent_backend.domain.services.guardrail_service import GuardrailAssessment, GuardrailService
+from cx_agent_backend.domain.repositories.conversation_repository import (
+    ConversationRepository,
+)
+from cx_agent_backend.domain.services.agent_service import (
+    AgentRequest,
+    AgentService,
+    AgentType,
+)
+from cx_agent_backend.domain.services.guardrail_service import (
+    GuardrailAssessment,
+    GuardrailService,
+)
 
 logger = logging.getLogger(__name__)
+
 
 class ConversationService:
     """Service for conversation business logic."""
@@ -30,7 +40,13 @@ class ConversationService:
         return conversation
 
     async def send_message(
-        self, conversation_id: UUID, user_id: str, content: str, model: str, langfuse_tags: list[str] = None, jwt_token: str = None
+        self,
+        conversation_id: UUID,
+        user_id: str,
+        content: str,
+        model: str,
+        langfuse_tags: list[str] = None,
+        jwt_token: str = None,
     ) -> tuple[Message, list[str]]:
         """Send a message and get AI response."""
         # Get or create conversation
@@ -73,23 +89,29 @@ class ConversationService:
             jwt_token=jwt_token,
         )
         agent_response = await self._agent_service.process_request(agent_request)
-        
 
         # Create AI message with citations
         ai_metadata = {
             "agent_type": agent_response.agent_type.value,
             "tools_used": ",".join(agent_response.tools_used),
         }
-        
+
         # Add citations if available
         if "citations" in agent_response.metadata:
             import json
-            ai_metadata["citations"] = json.dumps(agent_response.metadata["citations"]) if isinstance(agent_response.metadata["citations"], list) else agent_response.metadata["citations"]
+
+            ai_metadata["citations"] = (
+                json.dumps(agent_response.metadata["citations"])
+                if isinstance(agent_response.metadata["citations"], list)
+                else agent_response.metadata["citations"]
+            )
         if "knowledge_base_id" in agent_response.metadata:
-            ai_metadata["knowledge_base_id"] = agent_response.metadata["knowledge_base_id"]
+            ai_metadata["knowledge_base_id"] = agent_response.metadata[
+                "knowledge_base_id"
+            ]
         if agent_response.trace_id:
             ai_metadata["trace_id"] = agent_response.trace_id
-        
+
         logger.info("AI metadata: %s", ai_metadata)
 
         ai_message = Message.create_assistant_message(
@@ -125,6 +147,15 @@ class ConversationService:
         """Get all conversations for a user."""
         return await self._conversation_repo.get_by_user_id(user_id)
 
-    async def log_feedback(self, user_id: str, session_id: str, message_id: str, score: int, comment: str = "") -> None:
+    async def log_feedback(
+        self,
+        user_id: str,
+        session_id: str,
+        message_id: str,
+        score: int,
+        comment: str = "",
+    ) -> None:
         """Log user feedback."""
-        logger.info(f"[FEEDBACK] Received feedback - user_id: {user_id}, session_id: {session_id}, message_id: {message_id}, score: {score}, comment: {comment}")
+        logger.info(
+            f"[FEEDBACK] Received feedback - user_id: {user_id}, session_id: {session_id}, message_id: {message_id}, score: {score}, comment: {comment}"
+        )

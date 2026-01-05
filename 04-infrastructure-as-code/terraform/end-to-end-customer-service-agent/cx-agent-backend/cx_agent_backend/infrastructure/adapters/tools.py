@@ -8,7 +8,9 @@ import json
 
 from cx_agent_backend.infrastructure.config.settings import settings
 from cx_agent_backend.infrastructure.aws.secret_reader import AWSSecretsReader
-from cx_agent_backend.infrastructure.aws.parameter_store_reader import AWSParameterStoreReader
+from cx_agent_backend.infrastructure.aws.parameter_store_reader import (
+    AWSParameterStoreReader,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -16,21 +18,22 @@ logger = logging.getLogger(__name__)
 secret_reader = AWSSecretsReader()
 parameter_store_reader = AWSParameterStoreReader()
 
+
 def _get_kb_retriever():
     """Create and return a Knowledge Base retriever instance."""
     logger.debug("Initializing Knowledge Base retriever")
-    
+
     try:
         kb_id = parameter_store_reader.get_parameter("/amazon/kb_id")
         if not kb_id:
             logger.error("Bedrock Knowledge Base ID not configured in parameter store")
             raise ValueError("Bedrock Knowledge Base ID not configured")
-        
+
         logger.debug("Retrieved Knowledge Base ID: %s", kb_id)
-        
+
         session = boto3.Session(region_name=settings.aws_region)
         logger.debug("Created AWS session for region: %s", settings.aws_region)
-        
+
         retriever = AmazonKnowledgeBasesRetriever(
             knowledge_base_id=kb_id,
             aws_session=session,
@@ -43,7 +46,7 @@ def _get_kb_retriever():
         )
         logger.debug("Knowledge Base retriever initialized successfully")
         return retriever
-    
+
     except Exception as e:
         logger.error("Failed to initialize Knowledge Base retriever: %s", str(e))
         raise
@@ -53,24 +56,26 @@ def _get_kb_retriever():
 def retrieve_context(query: str) -> dict:
     """Retrieve context from the Knowledge Base to answer frequently asked questions."""
     logger.info("Retrieving context for query: %s...", query[:100])
-    
+
     try:
         retriever = _get_kb_retriever()
         kb_id = parameter_store_reader.get_parameter("/amazon/kb_id")
         logger.debug("Knowledge Base retriever initialized successfully")
-        
+
         retrieved_docs = retriever.invoke(input=query)
         logger.info("Retrieved %s documents from knowledge base", len(retrieved_docs))
 
         document_summaries = []
         citations = []
-        
+
         for i, doc in enumerate(retrieved_docs, 1):
             # Extract S3 URI from metadata
-            s3_uri = doc.metadata.get("location", {}).get("s3Location", {}).get("uri", "")
+            s3_uri = (
+                doc.metadata.get("location", {}).get("s3Location", {}).get("uri", "")
+            )
             if not s3_uri:
                 s3_uri = doc.metadata.get("source", "")
-            
+
             summary = {
                 "id": doc.metadata.get("id", f"doc-{i}"),
                 "source": doc.metadata.get("source", "Unknown"),
@@ -81,29 +86,35 @@ def retrieve_context(query: str) -> dict:
                 "knowledge_base_id": kb_id,
             }
             document_summaries.append(summary)
-            
+
             # Create citation entry
             citation = {
                 "source": summary["title"],
                 "s3_uri": s3_uri,
                 "knowledge_base_id": kb_id,
-                "relevance_score": summary["relevance_score"]
+                "relevance_score": summary["relevance_score"],
             }
             citations.append(citation)
             print(json.dumps(citation))
-            
+
             logger.debug("Processed document %s: %s...", i, summary["title"][:50])
 
-        logger.info("Successfully retrieved and processed %s documents", len(document_summaries))
+        logger.info(
+            "Successfully retrieved and processed %s documents", len(document_summaries)
+        )
         return {
             "retrieved_documents": document_summaries,
             "citations": citations,
-            "knowledge_base_id": kb_id
+            "knowledge_base_id": kb_id,
         }
-    
+
     except Exception as e:
         logger.error("Failed to retrieve context: %s", str(e))
-        return {"retrieved_documents": [], "citations": [], "error": f"Knowledge base retrieval failed: {str(e)}"}
+        return {
+            "retrieved_documents": [],
+            "citations": [],
+            "error": f"Knowledge base retrieval failed: {str(e)}",
+        }
 
 
 @tool
@@ -181,18 +192,18 @@ def create_support_ticket(
     try:
         url = f"https://{subdomain}.zendesk.com/api/v2/tickets.json"
         logger.debug("Making POST request to Zendesk API endpoint")
-        
+
         response = requests.post(
             url, headers=headers, data=json.dumps({"ticket": ticket_data}), timeout=61
         )
-        
+
         logger.info("Zendesk API response status: %s", response.status_code)
         response.raise_for_status()
-        
+
         result = response.json()
         ticket_id = result.get("ticket", {}).get("id", "unknown")
         logger.info("Successfully created Zendesk ticket with ID")
-        
+
         return result
     except requests.exceptions.RequestException as e:
         logger.error("Zendesk API request failed: %s", str(e))
@@ -213,7 +224,9 @@ def get_support_tickets(
     import requests
     import base64
 
-    logger.info("Fetching support tickets - Status: %s, Limit: %s", status or 'all', limit)
+    logger.info(
+        "Fetching support tickets - Status: %s, Limit: %s", status or "all", limit
+    )
     logger.debug("Sort parameters - By: %s, Order: %s", sort_by, sort_order)
 
     try:
@@ -258,16 +271,16 @@ def get_support_tickets(
     try:
         url = f"https://{subdomain}.zendesk.com/api/v2/tickets.json"
         logger.debug("Making GET request to Zendesk tickets API endpoint")
-        
+
         response = requests.get(url, headers=headers, params=params, timeout=61)
         logger.info("Zendesk API response status: %s", response.status_code)
-        
+
         response.raise_for_status()
         result = response.json()
-        
+
         ticket_count = len(result.get("tickets", []))
         logger.info("Successfully fetched %s tickets from Zendesk", ticket_count)
-        
+
         return result
     except requests.exceptions.RequestException as e:
         logger.error("Zendesk API request failed: %s", str(e))
@@ -281,7 +294,7 @@ def get_support_tickets(
 def web_search(query: str) -> str:
     """Search the web for information using Tavily API."""
     logger.info("Performing web search for query: %s...", query[:100])
-    
+
     try:
         tavily_secret = secret_reader.read_secret("tavily_key")
         tavily_api_key = json.loads(tavily_secret)["tavily_key"]
@@ -299,19 +312,20 @@ def web_search(query: str) -> str:
 
     try:
         from tavily import TavilyClient
+
         logger.debug("Tavily client imported successfully")
 
         client = TavilyClient(api_key=tavily_api_key)
         logger.debug("Tavily client initialized")
-        
+
         response = client.search(query)
         logger.info("Web search completed successfully for query: %s...", query[:50])
-        
+
         # Log response summary without full content
         if isinstance(response, dict) and "results" in response:
             result_count = len(response.get("results", []))
             logger.debug("Web search returned %s results", result_count)
-        
+
         return str(response)
     except ImportError as e:
         logger.error("Tavily client not installed: %s", str(e))
