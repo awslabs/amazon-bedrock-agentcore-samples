@@ -22,28 +22,23 @@ REGION = os.getenv("AWS_REGION", "us-east-1")
 # =============================================================================
 
 SHOPPING_AGENT_PROMPT = """
-You are a shopping assistant designed to help users find products and create packing lists for travel.
+You are a shopping assistant designed to help users find products.
 For reference, today's date is December 3rd, 2025.
 
 Your primary responsibilities include:
 1. Searching for products based on user queries
-2. Generating packing lists with product recommendations
-3. Providing product information including ASINs (Amazon Standard Identification Numbers)
-4. Helping users find the right products for their travel needs
+2. Providing product information including product IDs and links
+3. Helping users find the right products for their needs
 
 You have access to the following tools:
-- `search_products_tool`: Search for products via Serp API Amazon search
-- `generate_packing_list_tool`: Generate packing lists with product recommendations
+- `search_products_tool`: Search for products via Google Shopping using Serp API
 
 IMPORTANT GUIDELINES:
 
-1. When users ask about products or shopping, use the appropriate tool
-2. For general product searches, use search_products_tool
-3. For packing list generation, use generate_packing_list_tool
-4. Always include product ASINs when available, but not in the form of raw ASINs, instead display a link to the Amazon product page, like so: https://www.amazon.com/dp/B08T1MQZRH/?th=1
-5. Provide clear product descriptions and recommendations
-6. Ask clarifying questions if the user's request is unclear
-
+1. When users ask about products or shopping, use the search_products_tool
+2. Always include product links when available - products come from various retailers via Google Shopping
+3. Provide clear product descriptions and recommendations
+4. Ask clarifying questions if the user's request is unclear
 
 RETRY STRATEGY:
 - If a search returns no results or irrelevant results, retry with a refined query
@@ -53,12 +48,11 @@ RETRY STRATEGY:
 
 When responding:
 - Be clear and helpful
-- Include product details like names, descriptions, and ASINs
-- Organize packing lists by category (clothing, electronics, toiletries, etc.)
-- Provide context-appropriate recommendations based on the user's travel plans
+- Include product details like names, descriptions, prices, and links
 - Format responses in an easy-to-read manner
+- Products are sourced from various retailers via Google Shopping
 
-Your goal is to help users find the right products for their travel needs.
+Your goal is to help users find the right products for their needs.
 """
 
 
@@ -96,15 +90,13 @@ async def shopping_assistant(query: str, user_id: str = "", session_id: str = ""
     Handle product search and shopping queries.
 
     AVAILABLE TOOLS:
-    - search_products_tool(user_id, question): Search Amazon for products matching query
-    - generate_packing_list_tool(user_id, question): Generate packing list with product recommendations
+    - search_products_tool(user_id, question): Search Google Shopping for products matching query
 
     ROUTE HERE FOR:
-    - Product searches: "Find me a travel backpack", "Search for waterproof jackets"
-    - Packing lists: "What do I need for a beach vacation?", "Generate packing list for Europe trip"
-    - Shopping recommendations: "What products should I buy for hiking?"
+    - Product searches: "Find me a backpack", "Search for waterproof jackets", "Look for wireless headphones"
+    - Shopping recommendations: "What are good running shoes?", "Show me laptops under $1000"
 
-    IMPORTANT: Results include ASINs and product links for adding to cart.
+    IMPORTANT: Results include product IDs and links from various retailers via Google Shopping.
     Will retry searches with refined queries if initial results are insufficient.
 
     Args:
@@ -113,7 +105,7 @@ async def shopping_assistant(query: str, user_id: str = "", session_id: str = ""
         session_id: Session identifier for context.
 
     Returns:
-        Product recommendations with ASINs, prices, and Amazon links.
+        Product recommendations with product IDs, prices, and links from various retailers.
     """
     try:
         logger.info(f"Shopping subagent (async) processing: {query[:100]}...")

@@ -60,7 +60,7 @@ def get_cart(user_id: str) -> List[Dict[str, Any]]:
         manager = get_dynamodb_manager()
         items = manager.get_wishlist_items(user_id)
 
-        # Group items by ASIN
+        # Group items by product ID (stored in asin field)
         item_groups = {}
         for item in items:
             key = item.get("asin", "")
@@ -117,10 +117,8 @@ def add_to_cart(user_id: str, items: List[Dict[str, Any]]) -> None:
         manager = get_dynamodb_manager()
 
         for item in items:
-            # Generate URL from ASIN if not provided
-            if "url" not in item and "link" not in item and item.get("asin"):
-                item["url"] = f"https://www.amazon.com/dp/{item['asin']}"
-            elif "link" in item and "url" not in item:
+            # Use link field if provided, otherwise use url field
+            if "link" in item and "url" not in item:
                 item["url"] = item["link"]
             item_with_type = {**item, "item_type": "product"}
             manager.add_wishlist_item(user_id, item_with_type)
@@ -137,13 +135,13 @@ def remove_from_cart(
     Removes specific items from the user's shopping cart by identifier.
 
     Use the 'identifier' field from get_cart() results.
-    For products: use ASIN
+    For products: use product ID (stored in asin field)
     For hotels: use hotel_id
     For flights: use flight_id
 
     Args:
         user_id: The user ID
-        identifiers: List of identifiers (ASINs, hotel_ids, or flight_ids)
+        identifiers: List of identifiers (product IDs, hotel_ids, or flight_ids)
         item_type: Type of item - 'product', 'hotel', or 'flight'
     """
     try:
