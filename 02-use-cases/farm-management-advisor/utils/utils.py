@@ -255,6 +255,12 @@ def create_agentcore_mem_role(agent_mem_name):
                 "Effect": "Allow",
                 "Principal": {"Service": "bedrock-agentcore.amazonaws.com"},
                 "Action": "sts:AssumeRole",
+                "Condition": {
+                    "StringEquals": {"aws:SourceAccount": account_id},
+                    "ArnLike": {
+                        "aws:SourceArn": f"arn:aws:bedrock-agentcore:{region}:{account_id}:*"
+                    },
+                },
             }
         ],
     }

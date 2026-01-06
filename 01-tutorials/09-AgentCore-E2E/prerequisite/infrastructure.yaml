@@ -537,6 +537,7 @@ Resources:
                   - logs:CreateLogGroup
                   - logs:CreateLogStream
                   - logs:PutLogEvents
+                  - logs:PutDeliverySource
                 Resource: arn:aws:logs:*:*:*
   # Custom resource to trigger Lambda function
   PopulateData:
@@ -602,6 +603,41 @@ Resources:
                   - dynamodb:GetItem
                   - dynamodb:DescribeTable
                 Resource: !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${WarrantyTable}
+
+        - PolicyName: cloudwatch-logs-access
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Sid: CloudWatchLogReadStatement
+                Effect: Allow
+                Action:
+                  - logs:DescribeLogGroups
+                  - logs:GetQueryResults
+                  - logs:StartQuery
+                Resource: "*"
+              - Sid: CloudWatchLogWriteStatement
+                Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/bedrock-agentcore/evaluations/*"
+              - Sid: CloudWatchIndexPolicyStatement
+                Effect: Allow
+                Action:
+                  - logs:DescribeIndexPolicies
+                  - logs:PutIndexPolicy
+                Resource:
+                  - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:aws/spans"
+                  - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:aws/spans:*"
+              - Sid: BedrockInvokeStatement
+                Effect: Allow
+                Action:
+                  - bedrock:InvokeModel
+                  - bedrock:InvokeModelWithResponseStream
+                Resource:
+                  - "arn:aws:bedrock:*::foundation-model/*"
+                  - !Sub "arn:aws:bedrock:*:${AWS::AccountId}:inference-profile/*"
 
   DDGSLayer:
     Type: AWS::Lambda::LayerVersion

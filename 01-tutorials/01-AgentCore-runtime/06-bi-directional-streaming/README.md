@@ -19,9 +19,9 @@ All samples use a unified setup and cleanup process through the root `setup.sh` 
 
 ---
 
-## Sonic Sample - Native Nova Sonic Implementation
+## Sonic Sample - Native Nova Sonic 2 Implementation
 
-This sample deploys a **native Amazon Nova Sonic Python WebSocket server** directly to AgentCore. It provides full control over the Nova Sonic protocol with direct event handling, giving you complete visibility into session management, audio streaming, and response generation.
+This sample deploys a **native Amazon Nova Sonic 2 Python WebSocket server** directly to AgentCore. It provides full control over the Nova Sonic protocol with direct event handling, giving you complete visibility into session management, audio streaming, and response generation.
 
 **Architecture:** 
 

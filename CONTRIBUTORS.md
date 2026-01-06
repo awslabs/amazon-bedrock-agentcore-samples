@@ -6,6 +6,7 @@
 - aristsakpinis93
 - aurbac
 - bergjaak
+- bioerrorlog
 - chanbi
 - crupakheti
 - danystinson
@@ -36,6 +37,7 @@
 - sundargthb
 - vedashree1110
 - vedashreevinay
+- Venkatakrishna Pullela
 - vgodwinamz
 - w601sxs
 - erezweinstein5
@@ -69,4 +71,9 @@
 - Sparsh Wadhwa (SparshWadhwa)
 - Lana Zhang
 - Bharathi Srinivasan
-
+- Antonio Rodriguez (rodzanto)
+- otamaryx
+- kevlw
+- iprivit
+- vargas-dann-0896
+- razkenari

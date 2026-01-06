@@ -14,6 +14,11 @@ For more details on AgentCore Observability, please refer to [this](https://aws.
 │   │   ├── images/
 │   │   ├── requirements.txt
 │   │   └── runtime-with-crewai-and-bedrock-models.ipynb
+│   ├── LlamaIndex/
+│   │   ├── images/
+│   │   ├── requirements.txt
+│   │   ├── runtime_with_llamaindex_and_bedrock_models.ipynb
+│   │   └── README.md
 │   ├── Strands Agents/
 │   │   ├── images/
 │   │   ├── requirements.txt
