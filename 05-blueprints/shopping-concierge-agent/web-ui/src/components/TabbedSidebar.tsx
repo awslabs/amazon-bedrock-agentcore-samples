@@ -154,7 +154,7 @@ const TabbedSidebar: React.FC<TabbedSidebarProps> = ({ user, messages = [], refr
         )}
         {item.url && (
           <span className="text-xs text-blue-600">
-            View on Amazon →
+            View Product →
           </span>
         )}
       </div>
