@@ -78,7 +78,7 @@ def search_google_shopping_products(query: str, max_results: int = 10) -> Dict[s
             product_info = {
                 "asin": product.get("product_id", ""),  # Store product_id in asin field for compatibility
                 "title": product.get("title", ""),
-                "link": product.get("link", ""),
+                "link": product.get("product_link", ""),  # Google Shopping product comparison page
                 "price": price_value,
                 "rating": product.get("rating", 0),
                 "reviews": product.get("reviews", 0),
