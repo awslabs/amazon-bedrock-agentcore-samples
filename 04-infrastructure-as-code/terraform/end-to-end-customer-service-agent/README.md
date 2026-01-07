@@ -43,7 +43,7 @@ Strong foundational or "platform" capabilities increase the speed and success ra
 ### Multi-provider Generative AI Gateway
 Centralized model management and routing system that provides:
 - **Multi-model Support**: Access to numerous large language models (LLMs) through a unified, industry-standard API gateway based on OpenAI API standards
-- **Load Balancing**: Intelligent request distribution across model endpoints based on uase, cost and latency
+- **Load Balancing**: Intelligent request distribution across model endpoints based on usage, cost and latency
 - **Usage and cost** tracking across providers
 - **Rate Limiting**: Set model, key, team, user-level budgets for added governance
 
