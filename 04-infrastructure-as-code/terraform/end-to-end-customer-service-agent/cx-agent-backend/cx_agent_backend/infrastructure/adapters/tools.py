@@ -146,7 +146,7 @@ def create_support_ticket(
         email = zendesk_credentials["zendesk_email"]
         api_token = zendesk_credentials["zendesk_api_token"]
     except Exception as e:
-        logger.error("Failed to retrieve Zendesk credentials: %s", str(e))
+        logger.error("Failed to retrieve Zendesk credentials")
 
     # If credentials not configured, return mock response
     if not all([subdomain, email, api_token]):
@@ -235,7 +235,7 @@ def get_support_tickets(
         api_token = zendesk_credentials["zendesk_api_token"]
         logger.debug("Retrieved Zendesk credentials for domain")
     except Exception as e:
-        logger.error("Failed to retrieve Zendesk credentials: %s", str(e))
+        logger.error("Failed to retrieve Zendesk credentials")
 
 
     # If credentials not configured, return mock response
@@ -297,7 +297,7 @@ def web_search(query: str) -> str:
         tavily_api_key = json.loads(tavily_secret)["tavily_key"]
         logger.debug("Retrieved Tavily API credentials")
     except Exception as e:
-        logger.error("Failed to retrieve Tavily credentials: %s", str(e))
+        logger.error("Failed to retrieve Tavily credentials")
         tavily_api_key = None
 
     # If API key not configured, return mock response
