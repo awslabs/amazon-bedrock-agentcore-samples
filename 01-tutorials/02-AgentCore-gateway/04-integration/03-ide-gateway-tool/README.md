@@ -77,13 +77,11 @@ This example could be also deployed with local callback and proxy servers. Havin
 
 ### Why the Proxy Architecture is Needed
 
-This solution uses Amazon API Gateway + AWS Lambda functions as a proxy layer between VS Code and AgentCore Gateway. This architecture addresses two MCP specification requirements that are currently not natively supported:
+This solution uses Amazon API Gateway + AWS Lambda functions as a proxy layer between VS Code and AgentCore Gateway. This architecture is needed for two reasons:
 
-1. **OAuth 2.0 Protected Resource Metadata (RFC 9728)**: The MCP specification requires MCP servers to expose `/.well-known/oauth-protected-resource` so clients can discover the authorization server. The MCP Proxy Lambda serves this metadata, pointing clients to the proxy's OAuth endpoints. While native RFC 9728 support in AgentCore Gateway is explored, this proxy provides the required metadata discovery.
+1. **OAuth Authorization Server Facade**: VS Code's MCP client expects to interact with OAuth endpoints (`/authorize`, `/token`) at the MCP server URL. AgentCore Gateway validates incoming JWTs but doesn't act as an OAuth Authorization Server. The MCP Proxy Lambda provides this facade, proxying OAuth requests to Cognito while handling redirect interception and state management. The proxy also serves its own RFC 9728 Protected Resource Metadata (`/.well-known/oauth-protected-resource`) because the `resource` identifier must match the URL the client connects to (the proxy URL), not the underlying Gateway URL.
 
-2. **3LO Callback Handling with Session Binding**: When a user completes 3LO consent (e.g., granting Confluence access), the OAuth callback must be received and the `CompleteResourceTokenAuth` API must be called with the user's identity to bind the token. The Callback Lambda handles this flow. While a managed 3LO callback endpoint is explored, this Lambda provides the callback handling and session binding.
-
-The proxy also handles OAuth authorization code flow mechanics (redirect interception, state management, token exchange) that allow VS Code's MCP client to authenticate via Cognito before accessing the Gateway.
+2. **3LO Callback Handling with Session Binding**: When a user completes 3LO consent (e.g., granting Confluence access), the OAuth callback must be received and the `CompleteResourceTokenAuth` API must be called with the user's identity to bind the token. The Callback Lambda handles this flow. While a managed 3LO callback endpoint is being added to AgentCore Gateway, this Lambda provides the callback handling and session binding.
 
 ### MCP-Protocol-Version Header
 
