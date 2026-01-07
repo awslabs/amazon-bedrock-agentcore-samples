@@ -85,6 +85,7 @@ class LangGraphAgentService(AgentService):
                         "client_secret": client_secret,
                     },
                     headers={"Content-Type": "application/x-www-form-urlencoded"},
+                    timeout=10
                 )
 
                 if token_response.status_code != 200:

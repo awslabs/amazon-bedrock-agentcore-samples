@@ -31,6 +31,7 @@ def fetch_access_token(client_id, client_secret, token_url):
         token_url,
         data=data,
         headers={"Content-Type": "application/x-www-form-urlencoded"},
+        timeout=10
     )
     print(f"Token response status: {response.status_code}")
     print(f"Token response: {response.text}")
@@ -69,6 +70,7 @@ def fetch_access_token(client_id, client_secret, token_url):
             token_url,
             data=data,
             headers={"Content-Type": "application/x-www-form-urlencoded"},
+            timeout=10
         )
         print(
             f"With scopes - Status: {response2.status_code}, Response: {response2.text}"
@@ -117,7 +119,8 @@ async def test_mcp_gateway():
 
         # Test the gateway URL directly first
         test_response = requests.get(
-            gateway_url, headers={"Authorization": f"Bearer {access_token}"}
+            gateway_url, headers={"Authorization": f"Bearer {access_token}"},
+            timeout=10
         )
         print(f"Direct gateway test - Status: {test_response.status_code}")
         print(f"Direct gateway test - Response: {test_response.text[:200]}...")
