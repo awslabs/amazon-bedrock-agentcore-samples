@@ -74,7 +74,13 @@ resource "aws_iam_role_policy" "rotation_lambda_secrets" {
           "secretsmanager:PutSecretValue",
           "secretsmanager:UpdateSecretVersionStage"
         ]
-        Resource = "*"
+        Resource = [
+          aws_secretsmanager_secret.cognito_client_secret.arn,
+          aws_secretsmanager_secret.zendesk_credentials.arn,
+          aws_secretsmanager_secret.langfuse_credentials.arn,
+          aws_secretsmanager_secret.gateway_credentials.arn,
+          aws_secretsmanager_secret.tavily_key.arn
+        ]
       }
     ]
   })
