@@ -1,0 +1,3 @@
+[tools]
+terraform = "1"
+uv = "0.7"
