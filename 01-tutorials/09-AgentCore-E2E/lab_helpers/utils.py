@@ -168,7 +168,7 @@ def get_customer_support_secret():
         response = secrets_client.get_secret_value(SecretId=sm_name)
         return response["SecretString"]
     except Exception as e:
-        print(f"❌ Error getting secret: {str(e)}")
+        print(f"Error getting secret: {str(e)}")
         return None
 
 
@@ -178,9 +178,7 @@ def delete_customer_support_secret():
     region = boto_session.region_name
     secrets_client = boto3.client("secretsmanager", region_name=region)
     try:
-        secrets_client.delete_secret(
-            SecretId=sm_name, ForceDeleteWithoutRecovery=True
-        )
+        secrets_client.delete_secret(SecretId=sm_name, ForceDeleteWithoutRecovery=True)
         print("✅ Deleted secret!")
         return True
     except Exception as e:
