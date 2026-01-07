@@ -6,10 +6,16 @@ Simplified evaluation script for agent performance
 import os
 import time
 import json
+import logging
 import requests
 import pandas as pd
 from datetime import datetime
 from langfuse import get_client
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
 
 
 def load_groundtruth(file_path="groundtruth.json"):
@@ -185,9 +191,15 @@ def extract_metrics(langfuse, trace_ids):
                                         for c in citations
                                         if isinstance(c, dict)
                                     ]
-                                except (json.JSONDecodeError, ValueError, TypeError):
+                                except (
+                                    json.JSONDecodeError,
+                                    ValueError,
+                                    TypeError,
+                                ) as e:
                                     # Skip malformed citation data in metadata
-                                    pass
+                                    logging.warning(
+                                        f"Skipping malformed citation data in metadata: {e}"
+                                    )
 
                     # Fallback: try to get from tool message content
                     if not retrieval_scores:
@@ -212,9 +224,15 @@ def extract_metrics(langfuse, trace_ids):
                                             for c in citations
                                             if isinstance(c, dict)
                                         ]
-                                except (json.JSONDecodeError, ValueError, TypeError):
+                                except (
+                                    json.JSONDecodeError,
+                                    ValueError,
+                                    TypeError,
+                                ) as e:
                                     # Skip malformed tool content data
-                                    pass
+                                    logging.warning(
+                                        f"Skipping malformed tool content data: {e}"
+                                    )
 
                     # Extract tool latencies
                     tool_latencies = {}
@@ -229,9 +247,11 @@ def extract_metrics(langfuse, trace_ids):
                             "final_response": final_response,
                             "tool_calls": tool_calls,
                             "retrieval_scores": retrieval_scores,
-                            "trace_success": trace.level != "ERROR"
-                            if hasattr(trace, "level")
-                            else True,
+                            "trace_success": (
+                                trace.level != "ERROR"
+                                if hasattr(trace, "level")
+                                else True
+                            ),
                             "total_latency": obs.latency if obs.latency else 0,
                             "tool_latencies": tool_latencies,
                         }
@@ -267,9 +287,9 @@ def evaluate_tools(metrics_df, test_results):
                     for c in citations
                     if isinstance(c, dict)
                 ]
-            except (json.JSONDecodeError, ValueError, TypeError):
+            except (json.JSONDecodeError, ValueError, TypeError) as e:
                 # Skip malformed citations in test results
-                pass
+                logging.warning(f"Skipping malformed citations in test results: {e}")
 
         # Extract tools from tools_used metadata
         actual_tools = set()
@@ -425,9 +445,9 @@ def main():
                         "trace_id": test.get("trace_id", "unknown"),
                         "user_query": test["query"],
                         "final_response": "",  # Will be empty without Langfuse data
-                        "tool_calls": [test.get("tools_used")]
-                        if test.get("tools_used")
-                        else [],
+                        "tool_calls": (
+                            [test.get("tools_used")] if test.get("tools_used") else []
+                        ),
                         "retrieval_scores": [],
                         "trace_success": True,
                         "total_latency": 0,
@@ -500,49 +520,59 @@ def main():
             result = {
                 "trace_id": test["trace_id"],
                 "query": test["query"],
-                "response": trace_match.iloc[0]["final_response"]
-                if not trace_match.empty
-                else "",
+                "response": (
+                    trace_match.iloc[0]["final_response"]
+                    if not trace_match.empty
+                    else ""
+                ),
                 "model_used": test.get("model_used"),
                 "timestamp": test.get("timestamp"),
                 "tools_used_metadata": test.get("tools_used"),
                 "expected_tools": test["expected_tools"],
-                "actual_tools": eval_match.iloc[0]["actual_tools"]
-                if not eval_match.empty
-                else [],
-                "tool_accuracy": eval_match.iloc[0]["tool_accuracy"]
-                if not eval_match.empty
-                else 0,
-                "retrieval_score": eval_match.iloc[0]["retrieval_score"]
-                if not eval_match.empty
-                else None,
-                "all_retrieval_scores": eval_match.iloc[0]["all_retrieval_scores"]
-                if not eval_match.empty
-                else [],
-                "trace_success": trace_match.iloc[0]["trace_success"]
-                if not trace_match.empty
-                else True,
-                "total_latency_ms": trace_match.iloc[0]["total_latency"]
-                if not trace_match.empty
-                else 0,
-                "retrieve_context_latency_ms": trace_match.iloc[0][
-                    "tool_latencies"
-                ].get("retrieve_context", 0)
-                if not trace_match.empty
-                and isinstance(trace_match.iloc[0]["tool_latencies"], dict)
-                else 0,
-                "web_search_latency_ms": trace_match.iloc[0]["tool_latencies"].get(
-                    "web_search", 0
-                )
-                if not trace_match.empty
-                and isinstance(trace_match.iloc[0]["tool_latencies"], dict)
-                else 0,
-                "create_support_ticket_latency_ms": trace_match.iloc[0][
-                    "tool_latencies"
-                ].get("create_support_ticket", 0)
-                if not trace_match.empty
-                and isinstance(trace_match.iloc[0]["tool_latencies"], dict)
-                else 0,
+                "actual_tools": (
+                    eval_match.iloc[0]["actual_tools"] if not eval_match.empty else []
+                ),
+                "tool_accuracy": (
+                    eval_match.iloc[0]["tool_accuracy"] if not eval_match.empty else 0
+                ),
+                "retrieval_score": (
+                    eval_match.iloc[0]["retrieval_score"]
+                    if not eval_match.empty
+                    else None
+                ),
+                "all_retrieval_scores": (
+                    eval_match.iloc[0]["all_retrieval_scores"]
+                    if not eval_match.empty
+                    else []
+                ),
+                "trace_success": (
+                    trace_match.iloc[0]["trace_success"]
+                    if not trace_match.empty
+                    else True
+                ),
+                "total_latency_ms": (
+                    trace_match.iloc[0]["total_latency"] if not trace_match.empty else 0
+                ),
+                "retrieve_context_latency_ms": (
+                    trace_match.iloc[0]["tool_latencies"].get("retrieve_context", 0)
+                    if not trace_match.empty
+                    and isinstance(trace_match.iloc[0]["tool_latencies"], dict)
+                    else 0
+                ),
+                "web_search_latency_ms": (
+                    trace_match.iloc[0]["tool_latencies"].get("web_search", 0)
+                    if not trace_match.empty
+                    and isinstance(trace_match.iloc[0]["tool_latencies"], dict)
+                    else 0
+                ),
+                "create_support_ticket_latency_ms": (
+                    trace_match.iloc[0]["tool_latencies"].get(
+                        "create_support_ticket", 0
+                    )
+                    if not trace_match.empty
+                    and isinstance(trace_match.iloc[0]["tool_latencies"], dict)
+                    else 0
+                ),
             }
 
             # Add response quality if available
