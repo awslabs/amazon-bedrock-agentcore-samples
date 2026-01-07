@@ -147,8 +147,6 @@ def create_support_ticket(
         api_token = zendesk_credentials["zendesk_api_token"]
     except Exception as e:
         logger.error("Failed to retrieve Zendesk credentials: %s", str(e))
-        zendesk_credentials = {}
-        subdomain = email = api_token = None
 
     # If credentials not configured, return mock response
     if not all([subdomain, email, api_token]):
@@ -202,7 +200,7 @@ def create_support_ticket(
 
         result = response.json()
         ticket_id = result.get("ticket", {}).get("id", "unknown")
-        logger.info("Successfully created Zendesk ticket with ID")
+        logger.info(f"Successfully created Zendesk ticket with ID: {ticket_id}")
 
         return result
     except requests.exceptions.RequestException as e:
@@ -238,8 +236,7 @@ def get_support_tickets(
         logger.debug("Retrieved Zendesk credentials for domain")
     except Exception as e:
         logger.error("Failed to retrieve Zendesk credentials: %s", str(e))
-        zendesk_credentials = {}
-        subdomain = email = api_token = None
+
 
     # If credentials not configured, return mock response
     if not all([subdomain, email, api_token]):

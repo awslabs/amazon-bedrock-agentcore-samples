@@ -96,7 +96,9 @@ async def test_mcp_gateway():
         # Get client credentials from parameter store
         CLIENT_ID = parameter_store_reader.get_parameter("/cognito/client_id")
         client_secret = secret_reader.read_secret("cognito_client_secret")
-        TOKEN_URL = "https://agentic-ai-user-pool-vz48xvzu.auth.eu-central-1.amazoncognito.com/oauth2/token"
+        TOKEN_URL = parameter_store_reader.get_parameter(
+                    "/cognito/oauth_token_url"
+                )
         if not all([CLIENT_ID, client_secret, TOKEN_URL]):
             print("Error: Missing Cognito credentials in parameter store")
             print(f"CLIENT_ID: {'✓' if CLIENT_ID else '✗'}")

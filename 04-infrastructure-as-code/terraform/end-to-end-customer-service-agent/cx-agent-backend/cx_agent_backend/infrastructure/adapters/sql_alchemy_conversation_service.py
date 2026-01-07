@@ -15,7 +15,7 @@ from cx_agent_backend.presentation.schemas.conversation_schemas import (
 
 
 class SQLAlchemyConversationRepository(ConversationRepository):
-    def _init_(self, session: Session):
+    def __init__(self, session: Session):
         self.session = session
 
     def save(self, conversation: Conversation) -> None:

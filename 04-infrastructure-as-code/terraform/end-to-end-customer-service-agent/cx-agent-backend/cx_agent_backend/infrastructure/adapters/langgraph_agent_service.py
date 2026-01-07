@@ -347,8 +347,13 @@ class LangGraphAgentService(AgentService):
                             citations.extend(tool_response["citations"])
                         if "knowledge_base_id" in tool_response:
                             knowledge_base_id = tool_response["knowledge_base_id"]
-                except (json.JSONDecodeError, TypeError, AttributeError):
-                    pass
+                except (json.JSONDecodeError, TypeError, AttributeError) as exc:
+                    logger.debug(
+                        "Failed to parse tool message content for citations; "
+                        "content=%r; error=%s",
+                        msg.content,
+                        exc,
+                    )
 
         # Remove duplicates
         tools_used = list(set(tools_used))

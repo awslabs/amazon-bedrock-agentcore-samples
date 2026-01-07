@@ -186,6 +186,7 @@ def extract_metrics(langfuse, trace_ids):
                                         if isinstance(c, dict)
                                     ]
                                 except (json.JSONDecodeError, ValueError, TypeError):
+                                    # Skip malformed citation data in metadata
                                     pass
 
                     # Fallback: try to get from tool message content
@@ -212,6 +213,7 @@ def extract_metrics(langfuse, trace_ids):
                                             if isinstance(c, dict)
                                         ]
                                 except (json.JSONDecodeError, ValueError, TypeError):
+                                    # Skip malformed tool content data
                                     pass
 
                     # Extract tool latencies
@@ -266,6 +268,7 @@ def evaluate_tools(metrics_df, test_results):
                     if isinstance(c, dict)
                 ]
             except (json.JSONDecodeError, ValueError, TypeError):
+                # Skip malformed citations in test results
                 pass
 
         # Extract tools from tools_used metadata
@@ -564,6 +567,7 @@ def main():
                     )
                     result.update(scores)
                 except Exception:
+                    # Fallback to zero scores if response quality evaluation fails
                     result.update(
                         {"faithfulness": 0, "correctness": 0, "helpfulness": 0}
                     )
