@@ -62,25 +62,25 @@ def handle_oauth_metadata(event):
 
 
 def handle_protected_resource_metadata(event):
-    """Proxy OAuth Protected Resource Metadata from Gateway."""
-    gateway_base = GATEWAY_URL.rstrip("/").replace("/mcp", "")
-    metadata_url = f"{gateway_base}/.well-known/oauth-protected-resource"
+    """Serve OAuth Protected Resource Metadata (RFC 9728).
 
-    try:
-        req = urllib.request.Request(metadata_url)
-        with urllib.request.urlopen(req, timeout=10) as resp:
-            if resp.status == 200:
-                return json_response(200, json.loads(resp.read().decode()))
-    except Exception as e:
-        print(f"Error fetching Gateway metadata: {e}")
+    The proxy acts as the MCP server from the client's perspective, so the
+    resource identifier must be the proxy URL (API Gateway), not the underlying
+    AgentCore Gateway URL. This ensures the 'resource' parameter in OAuth token
+    requests matches this metadata, avoiding resource mismatch errors.
 
-    # Fallback
+    Note: We intentionally do NOT proxy the AgentCore Gateway's metadata here
+    because that would return the Gateway URL as the resource, causing a mismatch
+    when the client (VS Code) uses the proxy URL in its token requests.
+    """
     api_url = get_api_url(event)
     return json_response(
         200,
         {
             "resource": api_url,
             "authorization_servers": [api_url],
+            "bearer_methods_supported": ["header"],
+            "scopes_supported": ["openid", "profile", "email"],
         },
     )
 

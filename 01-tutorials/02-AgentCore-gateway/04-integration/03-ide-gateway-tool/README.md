@@ -75,6 +75,16 @@ This example could be also deployed with local callback and proxy servers. Havin
 
 ## Key Technical Details
 
+### Why the Proxy Architecture is Needed
+
+This solution uses Amazon API Gateway + AWS Lambda functions as a proxy layer between VS Code and AgentCore Gateway. This architecture addresses two MCP specification requirements that are currently not natively supported:
+
+1. **OAuth 2.0 Protected Resource Metadata (RFC 9728)**: The MCP specification requires MCP servers to expose `/.well-known/oauth-protected-resource` so clients can discover the authorization server. The MCP Proxy Lambda serves this metadata, pointing clients to the proxy's OAuth endpoints. While native RFC 9728 support in AgentCore Gateway is explored, this proxy provides the required metadata discovery.
+
+2. **3LO Callback Handling with Session Binding**: When a user completes 3LO consent (e.g., granting Confluence access), the OAuth callback must be received and the `CompleteResourceTokenAuth` API must be called with the user's identity to bind the token. The Callback Lambda handles this flow. While a managed 3LO callback endpoint is explored, this Lambda provides the callback handling and session binding.
+
+The proxy also handles OAuth authorization code flow mechanics (redirect interception, state management, token exchange) that allow VS Code's MCP client to authenticate via Cognito before accessing the Gateway.
+
 ### MCP-Protocol-Version Header
 
 The `MCP-Protocol-Version: 2025-11-25` header is required for 3LO elicitation. Configure in VS Code's `mcp.json`:
