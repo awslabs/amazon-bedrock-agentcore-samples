@@ -2,6 +2,7 @@
 
 - aarora79
 - akshseh
+- anajmi
 - architec
 - aristsakpinis93
 - aurbac
