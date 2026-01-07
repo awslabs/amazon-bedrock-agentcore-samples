@@ -140,8 +140,8 @@ async def cart_manager(query: str, user_id: str = "", session_id: str = ""):
 
     AVAILABLE TOOLS:
     - get_cart(user_id): View cart contents
-    - add_to_cart(user_id, items): Add products - items list requires asin, title, price
-    - remove_from_cart(user_id, identifiers, item_type): Remove items by identifier (asin for products)
+    - add_to_cart(user_id, items): Add products - items list requires asin (product_id), title, price, link (product URL)
+    - remove_from_cart(user_id, identifiers, item_type): Remove items by identifier (product_id for products)
     - clear_cart(user_id): Empty entire cart
     - check_user_has_payment_card(user_id): Check if user has payment method
     - request_purchase_confirmation(user_id): Get purchase summary before checkout
@@ -152,7 +152,7 @@ async def cart_manager(query: str, user_id: str = "", session_id: str = ""):
 
     ROUTE HERE FOR:
     - View cart: "What's in my cart?", "Show my cart"
-    - Add products: "Add this to cart" (needs asin, title, price)
+    - Add products: "Add this to cart" (needs product_id in asin field, title, price)
     - Remove items: "Remove this from cart"
     - Clear cart: "Empty my cart", "Clear everything"
     - Checkout: "Buy these items", "Checkout", "Purchase"
@@ -177,9 +177,12 @@ async def cart_manager(query: str, user_id: str = "", session_id: str = ""):
         Example tool calls:
         - get_cart(user_id="{user_id}")
         - clear_cart(user_id="{user_id}")
-        - add_to_cart(user_id="{user_id}", items=[{{"asin": "123", "title": "Product", "price": "$10", "item_type": "product"}}])
-        - add_to_cart(user_id="{user_id}", items=[{{"asin": "", "title": "Hotel Name", "price": "$100", "item_type": "hotel", "hotel_id": "h123", "city_code": "NYC"}}])
-        - remove_from_cart(user_id="{user_id}", identifiers=[...], item_type="product")
+        - add_to_cart(user_id="{user_id}", items=[{{"asin": "product_id_123", "title": "Product", "price": "$10", "link": "https://www.google.com/shopping/...", "item_type": "product"}}])
+        - add_to_cart(user_id="{user_id}", items=[{{"asin": "", "title": "Hotel Name", "price": "$100", "link": "https://hotel.com/...", "item_type": "hotel", "hotel_id": "h123", "city_code": "NYC"}}])
+        - remove_from_cart(user_id="{user_id}", identifiers=["product_id_123"], item_type="product")
+
+        IMPORTANT: Always include the 'link' field when adding products to cart - this ensures users can view/purchase the product later.
+        For products from Google Shopping, the product_id is stored in the 'asin' field for compatibility.
 
         DO NOT ask the user for their user_id - you already have it: {user_id}"""
 

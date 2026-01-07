@@ -39,9 +39,9 @@ def get_serpapi_key() -> str:
     return get_ssm_parameter("/concierge-agent/shopping/serp-api-key", region)
 
 
-def search_amazon_products(query: str, max_results: int = 10) -> Dict[str, Any]:
+def search_google_shopping_products(query: str, max_results: int = 10) -> Dict[str, Any]:
     """
-    Search for products on Amazon using SerpAPI.
+    Search for products on Google Shopping using SerpAPI.
 
     Args:
         query: Search query for products
@@ -53,11 +53,10 @@ def search_amazon_products(query: str, max_results: int = 10) -> Dict[str, Any]:
     try:
         api_key = get_serpapi_key()
 
-        # Search Amazon using SerpAPI
+        # Search Google Shopping using SerpAPI
         params = {
-            "engine": "amazon",
-            "amazon_domain": "amazon.com",
-            "k": query,
+            "engine": "google_shopping",
+            "q": query,
             "api_key": api_key,
         }
 
@@ -66,34 +65,38 @@ def search_amazon_products(query: str, max_results: int = 10) -> Dict[str, Any]:
 
         # Extract product information
         products = []
-        organic_results = results.get("organic_results", [])[:max_results]
+        shopping_results = results.get("shopping_results", [])[:max_results]
 
-        for product in organic_results:
+        for product in shopping_results:
+            # Extract price value
+            price_value = "N/A"
+            if "price" in product:
+                price_value = product["price"]
+            elif "extracted_price" in product:
+                price_value = product["extracted_price"]
+
             product_info = {
-                "asin": product.get("asin", ""),
+                "asin": product.get("product_id", ""),  # Store product_id in asin field for compatibility
                 "title": product.get("title", ""),
-                "link": product.get("link", ""),
-                "price": (
-                    product.get("price", {}).get("value", 0)
-                    if isinstance(product.get("price"), dict)
-                    else product.get("price", "N/A")
-                ),
+                "link": product.get("product_link", ""),  # Google Shopping product comparison page
+                "price": price_value,
                 "rating": product.get("rating", 0),
                 "reviews": product.get("reviews", 0),
                 "thumbnail": product.get("thumbnail", ""),
+                "source": product.get("source", ""),
             }
             products.append(product_info)
 
         return {"success": True, "products": products, "total_results": len(products)}
 
     except Exception as e:
-        logger.error(f"Error searching Amazon products: {e}")
+        logger.error(f"Error searching Google Shopping products: {e}")
         return {"success": False, "error": str(e), "products": [], "total_results": 0}
 
 
 def search_products(user_id: str, question: str) -> Dict[str, Any]:
     """
-    Process a product search request from user by searching products on Amazon via SerpAPI.
+    Process a product search request from user by searching products on Google Shopping via SerpAPI.
 
     Args:
         user_id: The unique identifier of the user for whom products are being searched.
@@ -102,14 +105,14 @@ def search_products(user_id: str, question: str) -> Dict[str, Any]:
     Returns:
         Dict: A dictionary called 'product_list' with search results
             - 'answer': Description of found products or error message
-            - 'asins': List of ASINs found
+            - 'asins': List of product IDs found (stored in 'asins' field for compatibility)
             - 'products': List of product details
     """
     try:
         logger.info(f"Processing product search for user {user_id}: {question}")
 
         # Search for products
-        search_results = search_amazon_products(question)
+        search_results = search_google_shopping_products(question)
 
         if not search_results["success"]:
             return {
@@ -140,7 +143,9 @@ def search_products(user_id: str, question: str) -> Dict[str, Any]:
             answer += f"   Price: {price_str}\n"
             if product.get("rating"):
                 answer += f"   Rating: {product['rating']}/5 ({product.get('reviews', 0)} reviews)\n"
-            answer += f"   ASIN: {product['asin']}\n"
+            answer += f"   Product ID: {product['asin']}\n"
+            if product.get('source'):
+                answer += f"   Source: {product['source']}\n"
             answer += f"   Link: {product['link']}\n\n"
 
         return {"answer": answer.strip(), "asins": asins, "products": products}
@@ -151,128 +156,4 @@ def search_products(user_id: str, question: str) -> Dict[str, Any]:
             "answer": f"An error occurred while searching for products: {str(e)}",
             "asins": [],
             "products": [],
-        }
-
-
-def generate_packing_list(user_id: str, question: str) -> Dict[str, Any]:
-    """
-    Process a user request to generate a packing list with product recommendations.
-    Uses AI to generate a packing list and then searches Amazon for product recommendations
-    for each item using SerpAPI.
-
-    Args:
-        user_id: The unique identifier of the user for whom products are being searched.
-        question: User's query text requesting packing list (e.g., "I'm going to Hawaii for a week")
-
-    Returns:
-        Dict: called packing_list with results
-            - 'answer': Formatted packing list with product recommendations
-            - 'asins': Dict mapping packing list items to ASINs
-            - 'items': List of packing list items with product details
-    """
-    try:
-        logger.info(f"Generating packing list for user {user_id}: {question}")
-
-        # Define common packing list categories based on the query
-        # This is a simplified approach - in production, you might use an LLM to generate this
-        packing_items = []
-
-        # Extract trip context from question
-        question_lower = question.lower()
-
-        # Basic packing items everyone needs
-        base_items = ["travel backpack", "toiletry bag", "phone charger"]
-
-        # Add context-specific items
-        if any(
-            word in question_lower for word in ["beach", "hawaii", "tropical", "ocean"]
-        ):
-            packing_items.extend(
-                [
-                    "sunscreen SPF 50",
-                    "beach towel",
-                    "swimsuit",
-                    "flip flops",
-                    "sunglasses",
-                ]
-            )
-        elif any(word in question_lower for word in ["ski", "snow", "winter", "cold"]):
-            packing_items.extend(
-                [
-                    "winter jacket",
-                    "thermal underwear",
-                    "ski goggles",
-                    "gloves",
-                    "beanie",
-                ]
-            )
-        elif any(word in question_lower for word in ["hiking", "camping", "outdoor"]):
-            packing_items.extend(
-                [
-                    "hiking boots",
-                    "water bottle",
-                    "first aid kit",
-                    "flashlight",
-                    "sleeping bag",
-                ]
-            )
-        elif any(word in question_lower for word in ["business", "work", "conference"]):
-            packing_items.extend(
-                ["business casual clothes", "laptop bag", "power bank", "notebook"]
-            )
-        else:
-            # Generic travel items
-            packing_items.extend(["travel pillow", "luggage tags", "packing cubes"])
-
-        packing_items = base_items + packing_items
-
-        # Search for products for each packing item
-        results = []
-        asins_dict = {}
-
-        answer = f"Packing list for: {question}\n\n"
-
-        for item in packing_items[:7]:  # Limit to 7 items to avoid too many API calls
-            logger.info(f"Searching products for: {item}")
-            search_results = search_amazon_products(item, max_results=3)
-
-            if search_results["success"] and search_results["products"]:
-                products = search_results["products"]
-                item_asins = [p["asin"] for p in products if p.get("asin")]
-                asins_dict[item] = item_asins
-
-                answer += f"📦 {item.title()}\n"
-                answer += "   Recommended products:\n"
-
-                for i, product in enumerate(products[:3], 1):
-                    price_str = (
-                        f"${product['price']}"
-                        if isinstance(product["price"], (int, float))
-                        else product["price"]
-                    )
-                    answer += f"   {i}. {product['title'][:60]}...\n"
-                    answer += f"      Price: {price_str}"
-                    if product.get("rating"):
-                        answer += f" | Rating: {product['rating']}/5"
-                    answer += f"\n      ASIN: {product['asin']}\n"
-
-                answer += "\n"
-
-                results.append({"item": item, "products": products})
-
-        if not results:
-            return {
-                "answer": "Unable to generate packing list with product recommendations at this time.",
-                "asins": {},
-                "items": [],
-            }
-
-        return {"answer": answer.strip(), "asins": asins_dict, "items": results}
-
-    except Exception as e:
-        logger.error(f"Error in generate_packinglist_with_productASINS: {e}")
-        return {
-            "answer": f"An error occurred while generating packing list: {str(e)}",
-            "asins": {},
-            "items": [],
         }

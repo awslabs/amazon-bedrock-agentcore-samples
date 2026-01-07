@@ -9,7 +9,7 @@ import os
 import logging
 from typing import Dict, Any
 from mcp.server import FastMCP
-from serp_tools import search_products, generate_packing_list
+from serp_tools import search_products
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -33,33 +33,16 @@ mcp = FastMCP(
 @mcp.tool()
 def single_productsearch(user_id: str, question: str) -> Dict[str, Any]:
     """
-    Search for products on Amazon based on user query using SerpAPI.
+    Search for products on Google Shopping based on user query using SerpAPI.
 
     Args:
         user_id: User identifier
         question: Product search query (e.g., "waterproof hiking boots")
 
     Returns:
-        Product search results with ASINs, product details, and formatted answer
+        Product search results with product IDs, product details, and formatted answer
     """
     return search_products(user_id, question)
-
-
-@mcp.tool()
-def generate_packinglist_with_productASINS(
-    user_id: str, question: str
-) -> Dict[str, Any]:
-    """
-    Generate a packing list with product recommendations for a trip using SerpAPI.
-
-    Args:
-        user_id: User identifier
-        question: Trip details for packing list (e.g., "5-day beach vacation in Hawaii")
-
-    Returns:
-        Packing list with product recommendations, ASINs, and formatted answer
-    """
-    return generate_packing_list(user_id, question)
 
 
 # =============================================================================
