@@ -89,7 +89,7 @@ Each agent operates on its own memory branch:
 ```
 
 ### Python Environment
-- Python 3.9+
+- Python 3.10+
 - Jupyter Notebook or JupyterLab
 
 ## Installation
@@ -157,6 +157,8 @@ After running the notebook, you can visualize the memory using the memory browse
    - **Short-term memory**: Events by branch
    - **Episodes**: Session-level consolidated memories
    - **Reflections**: Patient-level insights
+
+**⏱️ Note**: Episode and reflection generation takes 10-15 minutes after conversations. Check back later if no episodes/reflections appear immediately.
 
 ## Key Concepts Demonstrated
 
