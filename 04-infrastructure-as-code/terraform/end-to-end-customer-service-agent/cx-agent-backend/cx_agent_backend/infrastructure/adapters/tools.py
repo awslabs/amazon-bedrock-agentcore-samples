@@ -200,7 +200,7 @@ def create_support_ticket(
 
         result = response.json()
         ticket_id = result.get("ticket", {}).get("id", "unknown")
-        logger.info(f"Successfully created Zendesk ticket with ID: {ticket_id}")
+        logger.info(f"Successfully created Zendesk ticket with ID")
 
         return result
     except requests.exceptions.RequestException as e:
