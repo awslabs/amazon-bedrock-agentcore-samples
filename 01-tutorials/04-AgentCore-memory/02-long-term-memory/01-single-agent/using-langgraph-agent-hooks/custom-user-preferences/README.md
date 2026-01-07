@@ -1,19 +1,15 @@
-# LangGraph v1.0 Agent with Memory Middlewares
+# LangGraph Agent with AgentCore Memory Middlewares
 
-This tutorial demonstrates how to integrate Amazon Bedrock AgentCore Memory with a LangGraph v1.0 agent using the **new middleware pattern**.
+This tutorial demonstrates how to integrate Amazon Bedrock AgentCore Memory with a LangGraph agent using **middlewares** to enable long-term memory across conversation sessions.
 
-## What's New in LangGraph v1.0
+## Architecture
 
-| Old (Deprecated) | New (v1.0) |
-|------------------|------------|
-| `from langgraph.prebuilt import create_react_agent` | `from langchain.agents import create_agent` |
-| `pre_model_hook=..., post_model_hook=...` | `middleware=[...]` |
-| Functions as parameters | Decorators: `@before_model`, `@after_model` |
+![Architecture](architecture.png)
 
 ## Key Features
 
-- **`@before_model` middleware**: Retrieves relevant user preferences from AgentCore Memory before LLM invocation
-- **`@after_model` middleware**: Saves conversation to AgentCore Memory for long-term extraction
+- **`@before_agent` middleware**: Retrieves relevant user preferences from AgentCore Memory once per agent call
+- **`@after_agent` middleware**: Saves conversation to AgentCore Memory for long-term extraction
 - **Built-in Memory Strategies**: Uses `USER_PREFERENCE` and `SEMANTIC` strategies (no IAM role required)
 - **MemoryManager**: Simplified memory creation from the starter toolkit
 
@@ -37,15 +33,15 @@ memory = memory_manager.get_or_create_memory(
 ## Middleware Pattern
 
 ```python
-from langchain.agents.middleware import before_model, after_model, AgentState
+from langchain.agents.middleware import before_agent, after_agent, AgentState
 from langgraph.runtime import Runtime
 
-@before_model
+@before_agent
 def retrieve_from_memory(state: AgentState, runtime: Runtime):
     # Retrieve memories and inject into context
     ...
 
-@after_model
+@after_agent
 def save_to_memory(state: AgentState, runtime: Runtime):
     # Save conversation to AgentCore Memory
     ...
@@ -75,10 +71,6 @@ pip install -r requirements.txt
 
 | File | Description |
 |------|-------------|
-| `nutrition-assistant-with-middlewares.ipynb` | Main tutorial notebook |
+| `nutrition-assistant-with-user-preference-saving.ipynb` | Main tutorial notebook |
+| `architecture.png` | Architecture diagram |
 | `requirements.txt` | Python dependencies |
-
-## Related Examples
-
-- [`using-langgraph-agent-hooks`](../using-langgraph-agent-hooks/) - Deprecated approach using `pre_model_hook`/`post_model_hook`
-
