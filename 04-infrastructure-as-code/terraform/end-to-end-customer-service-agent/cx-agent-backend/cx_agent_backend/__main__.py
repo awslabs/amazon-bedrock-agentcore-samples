@@ -1,4 +1,4 @@
-"""Main entrypoint for running the agent server (uvicorn-fronted FastAPI)"""
+"""Main entrypoint for running the agent server (uvicorn-hosted FastAPI)"""
 
 import uvicorn
 
