@@ -8,12 +8,10 @@ import re
 import sys
 import yaml
 import boto3
-import logging
 import uuid
+from oauth2_callback_server import store_token_in_oauth2_callback_server
 
 logger = logging.getLogger()
-
-from oauth2_callback_server import store_token_in_oauth2_callback_server
 
 qualifier = "DEFAULT"
 # Configurable context window for chat history
