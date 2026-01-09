@@ -3,3 +3,5 @@ elevenlabs>=1.0.0
 python-dotenv>=1.0.0
 fastapi>=0.115.0
 uvicorn[standard]>=0.32.0
+pyaudio==0.2.14
+prompt_toolkit==3.0.52
