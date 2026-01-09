@@ -88,7 +88,7 @@ async def test_mcp_gateway():
 
     try:
         # Get gateway URL from parameter store
-        gateway_url = parameter_store_reader.get_parameter("/amazon/gateway_url")
+        gateway_url = parameter_store_reader.get_parameter("/amazon/gateway_url", decrypt=True)
         if not gateway_url:
             print("Error: Gateway URL not found in parameter store")
             return
@@ -96,10 +96,10 @@ async def test_mcp_gateway():
         print(f"Gateway URL: {gateway_url}")
 
         # Get client credentials from parameter store
-        CLIENT_ID = parameter_store_reader.get_parameter("/cognito/client_id")
+        CLIENT_ID = parameter_store_reader.get_parameter("/cognito/client_id", decrypt=True)
         client_secret = secret_reader.read_secret("cognito_client_secret")
         TOKEN_URL = parameter_store_reader.get_parameter(
-                    "/cognito/oauth_token_url"
+                    "/cognito/oauth_token_url", decrypt=True
                 )
         if not all([CLIENT_ID, client_secret, TOKEN_URL]):
             print("Error: Missing Cognito credentials in parameter store")

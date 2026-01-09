@@ -153,7 +153,7 @@ resource "aws_lambda_function" "tavily_search" {
   filename         = "tavily_lambda.zip"
   function_name    = "tavily-search-function"
   role            = aws_iam_role.lambda_role.arn
-  handler         = "index.handler"
+  handler         = "tavily_search.handler"
   runtime         = "python3.9"
   timeout         = 30
 

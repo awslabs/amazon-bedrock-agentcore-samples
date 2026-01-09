@@ -68,7 +68,7 @@ class LangGraphAgentService(AgentService):
                     "/amazon/gateway_url", decrypt=True
                 )
                 client_id = parameter_store_reader.get_parameter("/cognito/client_id", decrypt=True)
-                client_secret = secret_reader.read_secret("cognito_client_secret-b0439fb2")
+                client_secret = secret_reader.read_secret("cognito_client_secret")
                 token_url = parameter_store_reader.get_parameter(
                     "/cognito/oauth_token_url", decrypt=True
                 )
@@ -269,7 +269,7 @@ class LangGraphAgentService(AgentService):
                     )
 
         # Get memory parameters from environment or request
-        stm_memory_id = parameter_store_reader.get_parameter("/amazon/ac_stm_memory_id")
+        stm_memory_id = parameter_store_reader.get_parameter("/amazon/ac_stm_memory_id", decrypt=True)
         if not stm_memory_id:
             logger.error("STM Memory ID not configured in parameter store")
             raise ValueError("STM Memory ID not configured")

@@ -1,7 +1,3 @@
-resource "random_id" "secret_suffix" {
-  byte_length = 4
-}
-
 # KMS key for secrets encryption
 resource "aws_kms_key" "secrets_key" {
   description = "KMS key for Secrets Manager encryption"
@@ -94,7 +90,7 @@ resource "aws_lambda_permission" "allow_secrets_manager" {
 }
 
 resource "aws_secretsmanager_secret" "cognito_client_secret" {
-  name       = "cognito_client_secret-${random_id.secret_suffix.hex}"
+  name       = "cognito_client_secret"
   kms_key_id = aws_kms_key.secrets_key.key_id
 }
 
@@ -113,7 +109,7 @@ resource "aws_secretsmanager_secret_rotation" "cognito_client_secret" {
 }
 
 resource "aws_secretsmanager_secret" "zendesk_credentials" {
-  name       = "zendesk_credentials-${random_id.secret_suffix.hex}"
+  name       = "zendesk_credentials"
   kms_key_id = aws_kms_key.secrets_key.key_id
 }
 
@@ -136,7 +132,7 @@ resource "aws_secretsmanager_secret_rotation" "zendesk_credentials" {
 }
 
 resource "aws_secretsmanager_secret" "langfuse_credentials" {
-  name       = "langfuse_credentials-${random_id.secret_suffix.hex}"
+  name       = "langfuse_credentials"
   kms_key_id = aws_kms_key.secrets_key.key_id
 }
 
@@ -159,7 +155,7 @@ resource "aws_secretsmanager_secret_rotation" "langfuse_credentials" {
 }
 
 resource "aws_secretsmanager_secret" "gateway_credentials" {
-  name       = "gateway_credentials-${random_id.secret_suffix.hex}"
+  name       = "gateway_credentials"
   kms_key_id = aws_kms_key.secrets_key.key_id
 }
 
@@ -181,7 +177,7 @@ resource "aws_secretsmanager_secret_rotation" "gateway_credentials" {
 }
 
 resource "aws_secretsmanager_secret" "tavily_key" {
-  name       = "tavily_key-${random_id.secret_suffix.hex}"
+  name       = "tavily_key"
   kms_key_id = aws_kms_key.secrets_key.key_id
 }
 

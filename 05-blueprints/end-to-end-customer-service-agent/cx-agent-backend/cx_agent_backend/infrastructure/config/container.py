@@ -29,7 +29,7 @@ class Container(containers.DeclarativeContainer):
     secret_reader = AWSSecretsReader()
     parameter_store_reader = AWSParameterStoreReader()
 
-    gateway_secret = json.loads(secret_reader.read_secret("gateway_credentials-b0439fb2"))
+    gateway_secret = json.loads(secret_reader.read_secret("gateway_credentials"))
 
     # Repositories
     conversation_repository = providers.Singleton(MemoryConversationRepository)
@@ -38,7 +38,7 @@ class Container(containers.DeclarativeContainer):
     guardrail_service = (
         providers.Singleton(
             BedrockGuardrailService,
-            guardrail_id=parameter_store_reader.get_parameter("/amazon/guardrail_id"),
+            guardrail_id=parameter_store_reader.get_parameter("/amazon/guardrail_id", decrypt=True),
             region=settings.aws_region,
         )
         if settings.guardrails_enabled
