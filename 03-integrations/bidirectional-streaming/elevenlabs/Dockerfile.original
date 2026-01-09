@@ -5,12 +5,22 @@ WORKDIR /app
 RUN pip install --upgrade pip
 
 # Install system dependencies for PyAudio and other packages
+RUN apt-get update && apt-get install -y \
+    portaudio19-dev \
+    gcc \
+    g++ \
+    make \
+    libasound2-dev \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set a fallback version for setuptools-scm (in case git metadata is missing)
+ENV SETUPTOOLS_SCM_PRETEND_VERSION=0.1.7
 
 # Copy requirements and install remaining dependencies
 COPY requirements.txt ./
-COPY strands_agents-1.20.1.dev5+g9c3223db2-py3-none-any.whl ./
+
 RUN pip install -r requirements.txt
-RUN pip install strands_agents-1.20.1.dev5+g9c3223db2-py3-none-any.whl[bidi]
 
 # Copy agent file
 COPY server.py ./
