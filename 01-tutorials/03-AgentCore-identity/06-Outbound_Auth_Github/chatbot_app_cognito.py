@@ -7,9 +7,9 @@ import logging
 import re
 import sys
 import yaml
+import uuid
 import boto3
 from oauth2_callback_server import store_token_in_oauth2_callback_server
-import uuid
 
 logger = logging.getLogger()
 
@@ -136,7 +136,7 @@ def load_bedrock_agentcore_config():
             raise ValueError("region not found in aws configuration")
 
         return {
-            "genesisSessionId": agent_session_id,
+            "agentSessionId": agent_session_id,
             "agentRuntimeArn": agent_arn,
             "client_id": client_id,
             "region": region,
@@ -155,13 +155,13 @@ def load_bedrock_agentcore_config():
 # Load configuration
 try:
     config = load_bedrock_agentcore_config()
-    genesisSessionId = config["genesisSessionId"]
+    agentSessionId = config["agentSessionId"]
     agentRuntimeArn = config["agentRuntimeArn"]
     client_id = config["client_id"]
     region = config["region"]
 except Exception as config_error:
     # These will be None if config loading fails, and we'll handle it in the main function
-    genesisSessionId = None
+    agentSessionId = None
     agentRuntimeArn = None
     client_id = None
     region = None
@@ -260,12 +260,7 @@ def main():
     import boto3
 
     # Check if configuration loading failed
-    if (
-        genesisSessionId is None
-        or agentRuntimeArn is None
-        or client_id is None
-        or region is None
-    ):
+    if agentRuntimeArn is None or client_id is None or region is None:
         st.markdown(
             f"""
             <div style='max-width:600px;margin:40px auto 30px auto;padding:40px 40px 36px 40px;background:linear-gradient(145deg, #2d1b1b 0%, #3d2424 50%, #2d1b1b 100%);border-radius:24px;box-shadow:0 8px 32px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,87,87,0.3);border:2px solid rgba(255,87,87,0.4);position:relative;overflow:hidden;'>
@@ -283,7 +278,6 @@ def main():
                     <h4 style='color:#ff7675;margin:0 0 12px 0;font-weight:600;'>Required Configuration:</h4>
                     <ul style='color:#fab1a0;margin:0;padding-left:20px;'>
                         <li>Ensure <code>.bedrock_agentcore.yaml</code> exists in the current directory</li>
-                        <li>Verify <code>agent_session_id</code> is present in the bedrock_agentcore section</li>
                         <li>Verify <code>agent_arn</code> is present in the bedrock_agentcore section</li>
                         <li>Verify <code>allowedClients</code> is present in the authorizer_configuration section</li>
                         <li>Verify <code>region</code> is present in the aws section</li>
@@ -594,9 +588,9 @@ def main():
     # Initialize chat history
     if "messages" not in st.session_state:
         st.session_state.messages = []
-    if "genesisSessionId" not in st.session_state:
-        st.session_state["genesisSessionId"] = (
-            genesisSessionId if genesisSessionId else str(uuid.uuid4())
+    if "agentSessionId" not in st.session_state:
+        st.session_state["agentSessionId"] = (
+            agentSessionId if agentSessionId else str(uuid.uuid4())
         )
 
     # Display chat messages from history on app rerun
@@ -665,7 +659,7 @@ def main():
 
             try:
                 # Setup streaming client
-                session_id = st.session_state.get("genesisSessionId")
+                session_id = st.session_state.get("agentSessionId")
                 context = build_context(st.session_state.messages, CONTEXT_WINDOW)
                 payload = json.dumps({"prompt": context})
                 bearer_token = st.session_state.get("cognito_access_token")

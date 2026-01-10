@@ -45,11 +45,14 @@ async def on_auth_url(url: str):
     await queue.put(f"Authorization url: {url}")
 
 
-@tool(
-    name="Get_calendar_events_today",
-    description="Retrieves the calendar events for the day from your Google Calendar",
-)
+@tool
 def inspect_github_repos() -> str:
+    """Inspect and list the user's private GitHub repositories.
+
+    Returns:
+        str: A JSON string containing the list of repositories and their details
+    """
+
     # We use nested function so that the tool signature derivation does not consider the access_token parameter
     @requires_access_token(
         provider_name="github-provider",
