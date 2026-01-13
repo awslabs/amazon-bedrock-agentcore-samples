@@ -85,18 +85,19 @@ async def get_calendar():
             today_start = datetime.datetime.now().replace(
                 hour=0, minute=0, second=0, microsecond=0
             )
+            # We use a fixed Time Zone. In a real application this would be
+            # derived from the user interacting with the agent
+            tz = "00:00"
             today_end = today_start.replace(hour=23, minute=59, second=59)
-
-            # Format with CDT timezone (-05:00)
-            timeMin = today_start.strftime("%Y-%m-%dT00:00:00-05:00")
-            timeMax = today_end.strftime("%Y-%m-%dT23:59:59-05:00")
+            time_min = today_start.strftime(f"%Y-%m-%dT00:00:00-{tz}")
+            time_max = today_end.strftime(f"%Y-%m-%dT23:59:59-{tz}")
 
             events_result = (
                 service.events()
                 .list(
                     calendarId="primary",
-                    timeMin=timeMin,
-                    timeMax=timeMax,
+                    timeMin=time_min,
+                    timeMax=time_max,
                     singleEvents=True,
                     orderBy="startTime",
                 )
