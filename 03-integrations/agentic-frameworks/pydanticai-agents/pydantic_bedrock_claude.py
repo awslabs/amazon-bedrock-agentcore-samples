@@ -3,12 +3,17 @@ from pydantic_ai.agent import Agent, RunContext
 
 from datetime import datetime
 import json
+import os
 from bedrock_agentcore.runtime import BedrockAgentCoreApp
 from pydantic_ai.models.bedrock import BedrockConverseModel
+from pydantic_ai.providers.bedrock import BedrockProvider
 
 app = BedrockAgentCoreApp()
 
-model = BedrockConverseModel('global.anthropic.claude-haiku-4-5-20251001-v1:0')
+model = BedrockConverseModel(
+    'global.anthropic.claude-haiku-4-5-20251001-v1:0',
+    provider=BedrockProvider(region_name=os.getenv('AWS_REGION'))
+)
 dummy_agent = Agent(
     model=model,
     system_prompt="You're a helpful assistant. Use the tools available for you to answer questions."
