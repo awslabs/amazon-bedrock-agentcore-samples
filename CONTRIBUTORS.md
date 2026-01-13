@@ -2,6 +2,7 @@
 
 - aarora79
 - akshseh
+- anajmi
 - architec
 - aristsakpinis93
 - aurbac
@@ -77,3 +78,4 @@
 - iprivit
 - vargas-dann-0896
 - razkenari
+- Kostas Tzouvanas
