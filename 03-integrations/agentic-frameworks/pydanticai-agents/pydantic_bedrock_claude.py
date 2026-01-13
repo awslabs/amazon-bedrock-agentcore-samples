@@ -2,7 +2,6 @@
 from pydantic_ai.agent import Agent, RunContext
 
 from datetime import datetime
-import json
 import os
 from bedrock_agentcore.runtime import BedrockAgentCoreApp
 from pydantic_ai.models.bedrock import BedrockConverseModel
@@ -30,7 +29,7 @@ def get_current_date(ctx: RunContext[datetime]):
 @dummy_agent.tool
 def get_weather(ctx: RunContext[str]):
         # Simulated weather data
-  return f"Sunny"
+  return "Sunny"
 
 @app.entrypoint
 def pydantic_bedrock_claude_main(payload):
