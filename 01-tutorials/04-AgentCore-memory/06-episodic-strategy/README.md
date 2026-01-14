@@ -64,11 +64,13 @@ Episodes and reflections are stored in configurable namespaces:
 # Store episodes at actor level (recommended for most use cases)
 "namespaces": ["workflow/actor/{actorId}/episodes"]
 
-# Reflections can span actors for broader insights
-"reflectionNamespaces": ["workflow/actor/{actorId}/reflections"]
+# Reflections must be same as or prefix of episodic namespace
+"reflectionConfiguration": {
+    "namespaces": ["workflow/actor/{actorId}"]  # Prefix of episodes namespace
+}
 ```
 
-**Privacy Note**: Reflections can span multiple actors. Consider privacy implications when retrieving cross-actor reflections.
+**Important**: The reflection namespace must be the same as or a prefix of the episodic namespace. For example, if episodes are at `debug/actor/{actorId}/episodes`, reflections should be at `debug/actor/{actorId}` (prefix).
 
 ## Architecture
 
