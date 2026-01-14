@@ -347,11 +347,6 @@ def main():
     print(f"   Region: {config.region}")
     print(f"   Gateway ARN: {config.gateway_arn or 'Not configured'}")
     
-    # Confirm deployment
-    response = input("\nProceed with deployment? (yes/no): ")
-    if response.lower() not in ['yes', 'y']:
-        print("Deployment cancelled")
-        sys.exit(0)
     
     try:
         # Step 1: Create IAM role

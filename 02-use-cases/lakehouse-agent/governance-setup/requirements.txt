@@ -1,4 +1,0 @@
-# SageMaker Unified Studio (DataZone) Setup Requirements
-
-boto3>=1.34.0
-python-dotenv>=1.0.0

@@ -477,8 +477,10 @@ class CognitoSetup:
             print(f"   Updating with reference configuration...")
             
             # Update with reference configuration
-            client_config['ClientId'] = client_id
-            self.cognito.update_user_pool_client(**client_config)
+            # Remove GenerateSecret as it's not valid for update_user_pool_client
+            update_config = {k: v for k, v in client_config.items() if k != 'GenerateSecret'}
+            update_config['ClientId'] = client_id
+            self.cognito.update_user_pool_client(**update_config)
             
             # Get updated client to retrieve secret
             updated_client = self.cognito.describe_user_pool_client(

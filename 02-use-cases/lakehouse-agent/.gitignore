@@ -30,6 +30,9 @@ Thumbs.db
 # AWS
 .aws/
 *.pem
+.env
+.env.local
+.env.*.local
 
 # Logs
 *.log

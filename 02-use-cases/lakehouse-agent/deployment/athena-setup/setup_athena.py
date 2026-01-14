@@ -10,9 +10,11 @@ This script:
 
 Usage:
     python setup_athena.py --bucket-name BUCKET_NAME
+    python setup_athena.py  # Reads bucket name from SSM
 
 Arguments:
-    --bucket-name: (Required) Base name for S3 bucket. Will be prefixed with {account_id}-{region_name}-
+    --bucket-name: (Optional) Base name for S3 bucket. Will be prefixed with {account_id}-{region_name}-
+                   If not provided, reads from SSM parameter /app/lakehouse-agent/s3-bucket-name
                    Example: --bucket-name my-lakehouse creates bucket 123456789012-us-east-1-my-lakehouse
 """
 
@@ -560,14 +562,49 @@ def main():
     )
     parser.add_argument(
         '--bucket-name',
-        required=True,
-        help='Base name for S3 bucket (will be prefixed with {account_id}-{region_name}-). Example: my-lakehouse'
+        required=False,
+        default=None,
+        help='Base name for S3 bucket (will be prefixed with {account_id}-{region_name}-). '
+             'If not provided, reads from SSM parameter /app/lakehouse-agent/s3-bucket-name. '
+             'Example: my-lakehouse'
     )
 
     args = parser.parse_args()
 
+    bucket_name = args.bucket_name
+    
+    # If bucket name not provided, try to read from SSM
+    if not bucket_name:
+        print("📋 No --bucket-name provided, reading from SSM Parameter Store...")
+        try:
+            session = boto3.Session()
+            ssm = boto3.client('ssm', region_name=session.region_name)
+            response = ssm.get_parameter(Name='/app/lakehouse-agent/s3-bucket-name')
+            full_bucket_name = response['Parameter']['Value']
+            print(f"✅ Found bucket name in SSM: {full_bucket_name}")
+            
+            # Extract the base name by removing the account-region prefix
+            # Format is: {account_id}-{region}-{base_name}
+            sts = boto3.client('sts')
+            account_id = sts.get_caller_identity()['Account']
+            region = session.region_name
+            prefix = f"{account_id}-{region}-"
+            
+            if full_bucket_name.startswith(prefix):
+                bucket_name = full_bucket_name[len(prefix):]
+                print(f"   Extracted base name: {bucket_name}")
+            else:
+                # Use the full bucket name as-is (might be a custom name)
+                bucket_name = full_bucket_name
+                print(f"   Using full bucket name: {bucket_name}")
+                
+        except Exception as e:
+            print(f"❌ Error reading bucket name from SSM: {e}")
+            print("   Please provide --bucket-name argument or set SSM parameter /app/lakehouse-agent/s3-bucket-name")
+            sys.exit(1)
+
     # Run setup
-    setup = AthenaSetup(bucket_base_name=args.bucket_name)
+    setup = AthenaSetup(bucket_base_name=bucket_name)
     setup.setup()
 
 if __name__ == '__main__':

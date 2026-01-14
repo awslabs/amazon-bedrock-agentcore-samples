@@ -100,8 +100,10 @@ class SecureAthenaClaimsTools:
         Returns:
             Athena client with scoped credentials
         """
-        credentials = self._get_credentials_with_session_tag(user_id)
-
+        if self.rls_role_arn:
+            credentials = self._get_credentials_with_session_tag(user_id)
+        else:
+            credentials = {}
         return boto3.client(
             'athena',
             region_name=self.region,

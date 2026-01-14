@@ -47,8 +47,12 @@ class SSMConfig:
         # Load configuration from SSM
         self.s3_bucket_name = self._get_parameter('/app/lakehouse-agent/s3-bucket-name')
         self.database_name = self._get_parameter('/app/lakehouse-agent/database-name')
-        self.rls_role_arn = self._get_parameter('/app/lakehouse-agent/rls-role-arn')
         self.cognito_user_pool_arn = self._get_parameter('/app/lakehouse-agent/cognito-user-pool-arn')
+        try:
+            self.rls_role_arn = self._get_parameter('/app/lakehouse-agent/rls-role-arn')
+        except:
+            print("Deploying without LakeFormation RBAC.")
+            self.rls_role_arn = None
 
         # Constants
         self.security_mode = 'lakeformation'
@@ -76,7 +80,6 @@ class SSMConfig:
         return all([
             self.s3_bucket_name,
             self.database_name,
-            self.rls_role_arn,
             self.region,
             self.account_id
         ])
@@ -144,93 +147,163 @@ def create_runtime_role(config: SSMConfig):
         ]
     }
     
-    # Permissions policy
+    # Permissions policy - base statements
+    statements = [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "athena:StartQueryExecution",
+                "athena:GetQueryExecution",
+                "athena:GetQueryResults",
+                "athena:StopQueryExecution",
+                "athena:GetWorkGroup"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "glue:GetDatabase",
+                "glue:GetTable",
+                "glue:GetTables",
+                "glue:GetPartition",
+                "glue:GetPartitions"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "s3:GetObject",
+                "s3:ListBucket",
+                "s3:PutObject",
+                "s3:GetBucketLocation"
+            ],
+            "Resource": [
+                f"arn:aws:s3:::{config.s3_bucket_name}/*",
+                f"arn:aws:s3:::{config.s3_bucket_name}"
+            ]
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "lakeformation:GetDataAccess"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "logs:*"
+            ],
+            "Resource": [
+                f"arn:aws:logs:{config.region}:{config.account_id}:log-group:/aws/bedrock-agentcore/*",
+                f"arn:aws:logs:{config.region}:{config.account_id}:log-group:/aws/agentcore/*"
+            ]
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "ecr:GetAuthorizationToken",
+                "ecr:BatchCheckLayerAvailability",
+                "ecr:GetDownloadUrlForLayer",
+                "ecr:BatchGetImage"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "ssm:GetParameter",
+                "ssm:GetParameters"
+            ],
+            "Resource": f"arn:aws:ssm:{config.region}:{config.account_id}:parameter/app/lakehouse-agent/*"
+        }
+    ]
+    
+    # Add STS AssumeRole permission only if rls_role_arn is set
+    if config.rls_role_arn:
+        statements.append({
+            "Effect": "Allow",
+            "Action": [
+                "sts:AssumeRole",
+                "sts:TagSession"
+            ],
+            "Resource": config.rls_role_arn
+        })
+    
     permissions_policy = {
         "Version": "2012-10-17",
-        "Statement": [
-            {
-                "Effect": "Allow",
-                "Action": [
-                    "athena:StartQueryExecution",
-                    "athena:GetQueryExecution",
-                    "athena:GetQueryResults",
-                    "athena:StopQueryExecution",
-                    "athena:GetWorkGroup"
-                ],
-                "Resource": "*"
-            },
-            {
-                "Effect": "Allow",
-                "Action": [
-                    "glue:GetDatabase",
-                    "glue:GetTable",
-                    "glue:GetTables",
-                    "glue:GetPartition",
-                    "glue:GetPartitions"
-                ],
-                "Resource": "*"
-            },
-            {
-                "Effect": "Allow",
-                "Action": [
-                    "s3:GetObject",
-                    "s3:ListBucket",
-                    "s3:PutObject"
-                ],
-                "Resource": [
-                    f"arn:aws:s3:::{config.s3_bucket_name}/*",
-                    f"arn:aws:s3:::{config.s3_bucket_name}"
-                ]
-            },
-            {
-                "Effect": "Allow",
-                "Action": [
-                    "sts:AssumeRole",
-                    "sts:TagSession"
-                ],
-                "Resource": config.rls_role_arn
-            },
-            {
-                "Effect": "Allow",
-                "Action": [
-                    "lakeformation:GetDataAccess"
-                ],
-                "Resource": "*"
-            },
-            {
-                "Effect": "Allow",
-                "Action": [
-                    "logs:*"
-                ],
-                "Resource": [
-                    f"arn:aws:logs:{config.region}:{config.account_id}:log-group:/aws/bedrock-agentcore/*",
-                    f"arn:aws:logs:{config.region}:{config.account_id}:log-group:/aws/agentcore/*"
-                ]
-            },
-            {
-                "Effect": "Allow",
-                "Action": [
-                    "ecr:GetAuthorizationToken",
-                    "ecr:BatchCheckLayerAvailability",
-                    "ecr:GetDownloadUrlForLayer",
-                    "ecr:BatchGetImage"
-                ],
-                "Resource": "*"
-            },
-            {
-                "Effect": "Allow",
-                "Action": [
-                    "ssm:GetParameter",
-                    "ssm:GetParameters"
-                ],
-                "Resource": f"arn:aws:ssm:{config.region}:{config.account_id}:parameter/app/lakehouse-agent/*"
-            }
-        ]
+        "Statement": statements
     }
     
     try:
         # Create role
         print(f"Creating IAM role: {role_name}")
+        response = iam.create_role(
+            RoleName=role_name,
+            AssumeRolePolicyDocument=json.dumps(trust_policy),
+            Description='AgentCore Runtime execution role for lakehouse data MCP server'
+        )
+        role_arn = response['Role']['Arn']
+        print(json.dumps(permissions_policy))
+        # Attach inline policy
+        iam.put_role_policy(
+            RoleName=role_name,
+            PolicyName='AgentCoreRuntimePermissions',
+            PolicyDocument=json.dumps(permissions_policy)
+        )
+        
+        print(f"✅ Created IAM role: {role_arn}")
+        return role_arn
+        
+    except iam.exceptions.EntityAlreadyExistsException:
+        print(f"ℹ️  Role {role_name} already exists, deleting and recreating...")
+        
+        # Delete inline policies
+        try:
+            policy_names = iam.list_role_policies(RoleName=role_name)['PolicyNames']
+            for policy_name in policy_names:
+                print(f"   Deleting inline policy: {policy_name}")
+                iam.delete_role_policy(RoleName=role_name, PolicyName=policy_name)
+        except Exception as e:
+            print(f"   ⚠️  Error deleting inline policies: {e}")
+        
+        # Detach managed policies
+        try:
+            attached_policies = iam.list_attached_role_policies(RoleName=role_name)['AttachedPolicies']
+            for policy in attached_policies:
+                print(f"   Detaching managed policy: {policy['PolicyArn']}")
+                iam.detach_role_policy(RoleName=role_name, PolicyArn=policy['PolicyArn'])
+        except Exception as e:
+            print(f"   ⚠️  Error detaching managed policies: {e}")
+        
+        # Remove from instance profiles
+        try:
+            instance_profiles = iam.list_instance_profiles_for_role(RoleName=role_name)['InstanceProfiles']
+            for profile in instance_profiles:
+                print(f"   Removing from instance profile: {profile['InstanceProfileName']}")
+                iam.remove_role_from_instance_profile(
+                    InstanceProfileName=profile['InstanceProfileName'],
+                    RoleName=role_name
+                )
+        except Exception as e:
+            print(f"   ⚠️  Error removing from instance profiles: {e}")
+        
+        # Delete the role
+        try:
+            iam.delete_role(RoleName=role_name)
+            print(f"   ✅ Deleted existing role")
+        except Exception as e:
+            print(f"   ❌ Error deleting role: {e}")
+            raise
+        
+        # Wait a moment for IAM to propagate
+        import time
+        time.sleep(2)
+        
+        # Recreate the role
+        print(f"   Creating new role: {role_name}")
         response = iam.create_role(
             RoleName=role_name,
             AssumeRolePolicyDocument=json.dumps(trust_policy),
@@ -245,23 +318,7 @@ def create_runtime_role(config: SSMConfig):
             PolicyDocument=json.dumps(permissions_policy)
         )
         
-        print(f"✅ Created IAM role: {role_arn}")
-        return role_arn
-        
-    except iam.exceptions.EntityAlreadyExistsException:
-        print(f"ℹ️  Role {role_name} already exists, retrieving ARN")
-        response = iam.get_role(RoleName=role_name)
-        role_arn = response['Role']['Arn']
-        
-        # Update the role policy to ensure it has all required permissions
-        print(f"   Updating role policy with latest permissions...")
-        iam.put_role_policy(
-            RoleName=role_name,
-            PolicyName='AgentCoreRuntimePermissions',
-            PolicyDocument=json.dumps(permissions_policy)
-        )
-        print(f"   ✅ Role policy updated")
-        
+        print(f"✅ Recreated IAM role: {role_arn}")
         return role_arn
 
 
@@ -381,23 +438,12 @@ def main():
         print("\n📝 Please run the setup scripts first.")
         sys.exit(1)
     
-    if not config.rls_role_arn:
-        print("\n❌ Error: Lake Formation RLS is not configured!")
-        print("\n📝 Setup Lake Formation:")
-        print("   cd athena-setup")
-        print("   python setup_lake_formation.py")
-        sys.exit(1)
     
     print("✅ Configuration validated")
     
     # Print configuration summary
     config.print_status()
     
-    # Confirm deployment
-    response = input("\nProceed with deployment? (yes/no): ")
-    if response.lower() not in ['yes', 'y']:
-        print("Deployment cancelled")
-        sys.exit(0)
     
     try:
         # Step 1: Create IAM role

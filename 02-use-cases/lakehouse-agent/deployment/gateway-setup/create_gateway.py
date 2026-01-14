@@ -166,6 +166,66 @@ class GatewaySetup:
             ]
         }
         
+        # Policy document with all required permissions
+        policy_document = {
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Sid": "InvokeRuntimeTarget",
+                    "Effect": "Allow",
+                    "Action": [
+                        "bedrock-agentcore:InvokeAgentRuntime",
+                        "bedrock-agentcore:InvokeAgentRuntimeForUser",
+                        "bedrock-agentcore:InvokeGateway"
+                    ],
+                    "Resource": "*"
+                },
+                {
+                    "Sid": "InvokeLambda",
+                    "Effect": "Allow",
+                    "Action": [
+                        "lambda:InvokeFunction"
+                    ],
+                    "Resource": f"arn:aws:lambda:{self.config.region}:{self.config.account_id}:function:*"
+                },
+                {
+                    "Sid": "WorkloadIdentity",
+                    "Effect": "Allow",
+                    "Action": [
+                        "bedrock-agentcore:GetWorkloadAccessToken",
+                        "bedrock-agentcore:GetWorkloadAccessTokenForJWT",
+                        "bedrock-agentcore:GetWorkloadAccessTokenForUserId",
+                        "bedrock-agentcore:CreateWorkloadIdentity"
+                    ],
+                    "Resource": [
+                        f"arn:aws:bedrock-agentcore:{self.config.region}:{self.config.account_id}:workload-identity-directory/default",
+                        f"arn:aws:bedrock-agentcore:{self.config.region}:{self.config.account_id}:workload-identity-directory/default/workload-identity/*"
+                    ]
+                },
+                {
+                    "Sid": "OAuth2Credentials",
+                    "Effect": "Allow",
+                    "Action": [
+                        "bedrock-agentcore:GetResourceOauth2Token"
+                    ],
+                    "Resource": [
+                        f"arn:aws:bedrock-agentcore:{self.config.region}:{self.config.account_id}:token-vault/default",
+                        f"arn:aws:bedrock-agentcore:{self.config.region}:{self.config.account_id}:token-vault/*/oauth2credentialprovider/*",
+                        f"arn:aws:bedrock-agentcore:{self.config.region}:{self.config.account_id}:workload-identity-directory/default",
+                        f"arn:aws:bedrock-agentcore:{self.config.region}:{self.config.account_id}:workload-identity-directory/default/workload-identity/*"
+                    ]
+                },
+                {
+                    "Sid": "SecretsManagerAccess",
+                    "Effect": "Allow",
+                    "Action": [
+                        "secretsmanager:GetSecretValue"
+                    ],
+                    "Resource": f"arn:aws:secretsmanager:{self.config.region}:{self.config.account_id}:secret:*"
+                }
+            ]
+        }
+        
         try:
             print(f"🔑 Creating IAM role: {role_name}")
             response = iam.create_role(
@@ -176,27 +236,7 @@ class GatewaySetup:
             role_arn = response['Role']['Arn']
             print(f"✅ Created IAM role: {role_arn}")
             
-            # Attach policy to invoke Lambda and Runtime
-            policy_document = {
-                "Version": "2012-10-17",
-                "Statement": [
-                    {
-                        "Effect": "Allow",
-                        "Action": [
-                            "lambda:InvokeFunction"
-                        ],
-                        "Resource": f"arn:aws:lambda:{self.config.region}:{self.config.account_id}:function:*"
-                    },
-                    {
-                        "Effect": "Allow",
-                        "Action": [
-                            "bedrock-agentcore:InvokeRuntime"
-                        ],
-                        "Resource": f"arn:aws:bedrock-agentcore:{self.config.region}:{self.config.account_id}:runtime/*"
-                    }
-                ]
-            }
-            
+            # Attach policy
             iam.put_role_policy(
                 RoleName=role_name,
                 PolicyName='GatewayExecutionPolicy',
@@ -207,39 +247,69 @@ class GatewaySetup:
             return role_arn
             
         except iam.exceptions.EntityAlreadyExistsException:
-            print(f"ℹ️  Role {role_name} already exists, retrieving ARN")
-            response = iam.get_role(RoleName=role_name)
+            print(f"ℹ️  Role {role_name} already exists, deleting and recreating...")
+            
+            # Delete inline policies
+            try:
+                policy_names = iam.list_role_policies(RoleName=role_name)['PolicyNames']
+                for policy_name in policy_names:
+                    print(f"   Deleting inline policy: {policy_name}")
+                    iam.delete_role_policy(RoleName=role_name, PolicyName=policy_name)
+            except Exception as e:
+                print(f"   ⚠️  Error deleting inline policies: {e}")
+            
+            # Detach managed policies
+            try:
+                attached_policies = iam.list_attached_role_policies(RoleName=role_name)['AttachedPolicies']
+                for policy in attached_policies:
+                    print(f"   Detaching managed policy: {policy['PolicyArn']}")
+                    iam.detach_role_policy(RoleName=role_name, PolicyArn=policy['PolicyArn'])
+            except Exception as e:
+                print(f"   ⚠️  Error detaching managed policies: {e}")
+            
+            # Remove from instance profiles
+            try:
+                instance_profiles = iam.list_instance_profiles_for_role(RoleName=role_name)['InstanceProfiles']
+                for profile in instance_profiles:
+                    print(f"   Removing from instance profile: {profile['InstanceProfileName']}")
+                    iam.remove_role_from_instance_profile(
+                        InstanceProfileName=profile['InstanceProfileName'],
+                        RoleName=role_name
+                    )
+            except Exception as e:
+                print(f"   ⚠️  Error removing from instance profiles: {e}")
+            
+            # Delete the role
+            try:
+                iam.delete_role(RoleName=role_name)
+                print(f"   ✅ Deleted existing role")
+            except Exception as e:
+                print(f"   ❌ Error deleting role: {e}")
+                raise
+            
+            # Wait for IAM propagation
+            import time
+            time.sleep(2)
+            
+            # Recreate the role
+            print(f"   Creating new role: {role_name}")
+            response = iam.create_role(
+                RoleName=role_name,
+                AssumeRolePolicyDocument=json.dumps(trust_policy),
+                Description='IAM role for AgentCore Gateway'
+            )
             role_arn = response['Role']['Arn']
             
-            # Update policy to ensure it has latest permissions
-            print(f"   Updating role policy...")
-            policy_document = {
-                "Version": "2012-10-17",
-                "Statement": [
-                    {
-                        "Effect": "Allow",
-                        "Action": [
-                            "lambda:InvokeFunction"
-                        ],
-                        "Resource": f"arn:aws:lambda:{self.config.region}:{self.config.account_id}:function:*"
-                    },
-                    {
-                        "Effect": "Allow",
-                        "Action": [
-                            "bedrock-agentcore:InvokeRuntime"
-                        ],
-                        "Resource": f"arn:aws:bedrock-agentcore:{self.config.region}:{self.config.account_id}:runtime/*"
-                    }
-                ]
-            }
-            
+            # Attach policy
             iam.put_role_policy(
                 RoleName=role_name,
                 PolicyName='GatewayExecutionPolicy',
                 PolicyDocument=json.dumps(policy_document)
             )
-            print(f"✅ Using existing role: {role_arn}")
+            
+            print(f"✅ Recreated IAM role: {role_arn}")
             return role_arn
+            
         except Exception as e:
             print(f"❌ Error creating role: {e}")
             raise
@@ -600,12 +670,6 @@ def main():
     print(f"   Interceptor: {config.interceptor_lambda_arn}")
     print(f"   Cognito User Pool: {config.cognito_user_pool_arn}")
     print(f"   Client ID: {config.cognito_app_client_id}")
-    
-    # Confirm creation
-    response = input("\nProceed with gateway creation? (yes/no): ")
-    if response.lower() not in ['yes', 'y']:
-        print("Gateway creation cancelled")
-        sys.exit(0)
     
     try:
         # Create gateway

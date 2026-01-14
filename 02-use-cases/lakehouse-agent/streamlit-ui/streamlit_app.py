@@ -164,7 +164,7 @@ def set_new_password(username: str, new_password: str, session: str, user_pool_i
         st.error(f"❌ Failed to set new password: {e}")
         return None
 
-def invoke_agent(runtime_arn: str, prompt: str, access_token: str, region: str) -> str:
+def invoke_agent(runtime_arn: str, prompt: str, access_token: str, id_token: str, region: str) -> str:
     """Invoke AgentCore Runtime with OAuth bearer token via HTTPS"""
     try:
         import requests
@@ -184,7 +184,7 @@ def invoke_agent(runtime_arn: str, prompt: str, access_token: str, region: str) 
         }
         
         # Prepare payload
-        payload = {"prompt": prompt, "bearer_token": access_token}
+        payload = {"prompt": prompt, "bearer_token": access_token, "id_token": id_token}
         
         st.info(f"🔗 Invoking AgentCore Runtime with OAuth")
         
@@ -415,6 +415,7 @@ if prompt:
             st.session_state.runtime_arn,
             prompt,
             st.session_state.access_token,
+            st.session_state.id_token,
             config.get('region', 'us-east-1')
         )
         try:
