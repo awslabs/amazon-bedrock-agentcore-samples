@@ -8,7 +8,7 @@ failed, enabling it to resolve similar issues more efficiently over time.
 
 Tutorial Details:
 - Tutorial type: Long term Episodic
-- Agent type: Code Debugging Assistant  
+- Agent type: Code Debugging Assistant
 - Agentic Framework: Strands Agents
 - LLM model: Anthropic Claude Haiku 4.5
 - Components: AgentCore Episodic Memory with Reflections
@@ -34,12 +34,19 @@ from typing import Dict
 
 from botocore.exceptions import ClientError
 from strands import Agent, tool
-from strands.hooks import AfterInvocationEvent, HookProvider, HookRegistry, MessageAddedEvent
+from strands.hooks import (
+    AfterInvocationEvent,
+    HookProvider,
+    HookRegistry,
+    MessageAddedEvent,
+)
 
 from bedrock_agentcore.memory import MemoryClient
 from bedrock_agentcore.memory.constants import StrategyType
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger("code-assistant")
 
 # %%
@@ -67,9 +74,7 @@ strategies = [
             "name": "DebuggingEpisodes",
             "description": "Captures debugging sessions and generates reflections on successful patterns",
             "namespaces": ["debug/actor/{actorId}/episodes"],
-            "reflectionConfiguration": {
-                "namespaces": ["debug/actor/{actorId}"]
-            }
+            "reflectionConfiguration": {"namespaces": ["debug/actor/{actorId}"]},
         }
     }
 ]
@@ -82,12 +87,16 @@ try:
         description="Episodic memory for code debugging assistant",
         event_expiry_days=180,  # Keep episodes for 6 months
     )
-    memory_id = memory['id']
+    memory_id = memory["id"]
     logger.info(f"✅ Created memory: {memory_id}")
 except ClientError as e:
-    if e.response['Error']['Code'] == 'ValidationException' and "already exists" in str(e):
+    if e.response["Error"]["Code"] == "ValidationException" and "already exists" in str(
+        e
+    ):
         memories = client.list_memories()
-        memory_id = next((m['id'] for m in memories if m['id'].startswith(memory_name)), None)
+        memory_id = next(
+            (m["id"] for m in memories if m["id"].startswith(memory_name)), None
+        )
         logger.info(f"Memory already exists. Using: {memory_id}")
     else:
         raise
@@ -103,15 +112,16 @@ print(json.dumps(strategies, indent=2, default=str))
 # %% [markdown]
 # ## Step 3: Create Debugging Tools
 
+
 # %%
 @tool
 def analyze_error(error_message: str, code_snippet: str) -> str:
     """Analyze an error message and code snippet to identify potential causes.
-    
+
     Args:
         error_message: The error message to analyze
         code_snippet: The relevant code snippet
-    
+
     Returns:
         Analysis of potential causes and suggested fixes
     """
@@ -123,22 +133,22 @@ def analyze_error(error_message: str, code_snippet: str) -> str:
         "AttributeError": "Object doesn't have this attribute. Verify object type and available methods.",
         "ImportError": "Module import failed. Check module installation and import path.",
     }
-    
+
     for error_type, analysis in analyses.items():
         if error_type in error_message:
             return f"Analysis: {analysis}\n\nCode context:\n{code_snippet[:200]}"
-    
+
     return f"General error analysis needed for: {error_message}"
 
 
 @tool
 def suggest_fix(error_type: str, context: str) -> str:
     """Suggest a fix for a specific error type.
-    
+
     Args:
         error_type: The type of error (e.g., TypeError, KeyError)
         context: Additional context about the error
-    
+
     Returns:
         Suggested fix with code example
     """
@@ -149,25 +159,26 @@ def suggest_fix(error_type: str, context: str) -> str:
         "AttributeError": "Add hasattr check: `if hasattr(obj, 'attr'):`",
         "ImportError": "Try: `pip install module_name` or check PYTHONPATH",
     }
-    
+
     fix = fixes.get(error_type, "Review the error context and stack trace for clues.")
     return f"Suggested fix for {error_type}:\n{fix}\n\nContext: {context}"
 
 
-@tool  
+@tool
 def run_test(test_description: str) -> str:
     """Simulate running a test to verify a fix.
-    
+
     Args:
         test_description: Description of what to test
-    
+
     Returns:
         Test result (pass/fail with details)
     """
     # Simulate test execution
     import random
+
     passed = random.random() > 0.3  # 70% success rate for demo
-    
+
     if passed:
         return f"✅ TEST PASSED: {test_description}"
     else:
@@ -184,6 +195,7 @@ logger.info("✅ Debugging tools ready")
 # - Saves debugging interactions as events for episode extraction
 # - Episodes are automatically detected and extracted by AgentCore
 
+
 # %%
 def get_namespaces(mem_client: MemoryClient, memory_id: str) -> Dict:
     """Get namespace mapping for memory strategies."""
@@ -193,36 +205,36 @@ def get_namespaces(mem_client: MemoryClient, memory_id: str) -> Dict:
         reflection_config = strategy.get("reflectionConfiguration", {})
         result[strategy["type"]] = {
             "namespaces": strategy.get("namespaces", []),
-            "reflectionNamespaces": reflection_config.get("namespaces", [])
+            "reflectionNamespaces": reflection_config.get("namespaces", []),
         }
     return result
 
 
 class EpisodicMemoryHooks(HookProvider):
     """Memory hooks for episodic memory with reflections."""
-    
+
     def __init__(self, memory_id: str, client: MemoryClient):
         self.memory_id = memory_id
         self.client = client
         self.namespaces = get_namespaces(self.client, self.memory_id)
-    
+
     def retrieve_episodes_and_reflections(self, event: MessageAddedEvent):
         """Retrieve relevant episodes and reflections before processing."""
         messages = event.agent.messages
         if messages[-1]["role"] != "user" or "toolResult" in messages[-1]["content"][0]:
             return
-            
+
         user_query = messages[-1]["content"][0]["text"]
         actor_id = event.agent.state.get("actor_id")
-        
+
         if not actor_id:
             logger.warning("Missing actor_id in agent state")
             return
-        
+
         try:
             all_context = []
             episodic_config = self.namespaces.get("EPISODIC", {})
-            
+
             # Retrieve relevant episodes (indexed by "intent")
             for namespace_template in episodic_config.get("namespaces", []):
                 namespace = namespace_template.format(actorId=actor_id)
@@ -230,17 +242,17 @@ class EpisodicMemoryHooks(HookProvider):
                     memory_id=self.memory_id,
                     namespace=namespace,
                     query=user_query,  # Episodes indexed by intent
-                    top_k=3
+                    top_k=3,
                 )
-                
+
                 for episode in episodes:
                     if isinstance(episode, dict):
-                        content = episode.get('content', {})
+                        content = episode.get("content", {})
                         if isinstance(content, dict):
-                            text = content.get('text', '').strip()
+                            text = content.get("text", "").strip()
                             if text:
                                 all_context.append(f"[PAST EPISODE] {text}")
-            
+
             # Retrieve reflections (indexed by "use case")
             for namespace_template in episodic_config.get("reflectionNamespaces", []):
                 namespace = namespace_template.format(actorId=actor_id)
@@ -248,17 +260,17 @@ class EpisodicMemoryHooks(HookProvider):
                     memory_id=self.memory_id,
                     namespace=namespace,
                     query=user_query,  # Reflections indexed by use case
-                    top_k=2
+                    top_k=2,
                 )
-                
+
                 for reflection in reflections:
                     if isinstance(reflection, dict):
-                        content = reflection.get('content', {})
+                        content = reflection.get("content", {})
                         if isinstance(content, dict):
-                            text = content.get('text', '').strip()
+                            text = content.get("text", "").strip()
                             if text:
                                 all_context.append(f"[REFLECTION] {text}")
-            
+
             # Inject context into query
             if all_context:
                 context_text = "\n".join(all_context)
@@ -267,23 +279,23 @@ class EpisodicMemoryHooks(HookProvider):
                     f"Past Experience:\n{context_text}\n\nCurrent Query: {original_text}"
                 )
                 logger.info(f"Retrieved {len(all_context)} episodes/reflections")
-                
+
         except Exception as e:
             logger.error(f"Failed to retrieve episodes: {e}")
-    
+
     def save_debugging_interaction(self, event: AfterInvocationEvent):
         """Save debugging interaction for episode extraction."""
         try:
             messages = event.agent.messages
             if len(messages) < 2 or messages[-1]["role"] != "assistant":
                 return
-            
+
             # Collect the full interaction including tool uses
             interaction_messages = []
             for msg in messages:
                 role = msg["role"].upper()
                 content = msg["content"]
-                
+
                 if isinstance(content, list):
                     for item in content:
                         if "text" in item:
@@ -294,34 +306,41 @@ class EpisodicMemoryHooks(HookProvider):
                             tool_text = f"[TOOL: {tool_info.get('name', 'unknown')}]"
                             interaction_messages.append((tool_text, "TOOL"))
                         elif "toolResult" in item:
-                            result = item["toolResult"].get("content", [{}])[0].get("text", "")
-                            interaction_messages.append((f"[RESULT: {result[:200]}]", "TOOL"))
-            
+                            result = (
+                                item["toolResult"]
+                                .get("content", [{}])[0]
+                                .get("text", "")
+                            )
+                            interaction_messages.append(
+                                (f"[RESULT: {result[:200]}]", "TOOL")
+                            )
+
             if interaction_messages:
                 actor_id = event.agent.state.get("actor_id")
                 session_id = event.agent.state.get("session_id")
-                
+
                 if not actor_id or not session_id:
                     logger.warning("Missing actor_id or session_id")
                     return
-                
+
                 # Save event - AgentCore will automatically detect episode completion
                 self.client.create_event(
                     memory_id=self.memory_id,
                     actor_id=actor_id,
                     session_id=session_id,
-                    messages=interaction_messages
+                    messages=interaction_messages,
                 )
                 logger.info("Saved debugging interaction for episode extraction")
-                
+
         except Exception as e:
             logger.error(f"Failed to save interaction: {e}")
-    
+
     def register_hooks(self, registry: HookRegistry) -> None:
         """Register episodic memory hooks."""
         registry.add_callback(MessageAddedEvent, self.retrieve_episodes_and_reflections)
         registry.add_callback(AfterInvocationEvent, self.save_debugging_interaction)
         logger.info("Episodic memory hooks registered")
+
 
 # %% [markdown]
 # ## Step 5: Create Code Debugging Agent
@@ -349,7 +368,7 @@ Always:
 1. Analyze the error systematically
 2. Reference relevant past experience if available
 3. Suggest specific fixes with code examples
-4. Verify fixes work when possible"""
+4. Verify fixes work when possible""",
 )
 
 print("✅ Code debugging agent created with episodic memory")
@@ -367,20 +386,34 @@ past_sessions = [
     ("Let me analyze this KeyError issue.", "ASSISTANT"),
     ("[TOOL: analyze_error]", "TOOL"),
     ("[RESULT: Dictionary key not found. Verify key exists before access.]", "TOOL"),
-    ("The issue is that 'email' key doesn't exist. Use user.get('email', '') for safe access.", "ASSISTANT"),
+    (
+        "The issue is that 'email' key doesn't exist. Use user.get('email', '') for safe access.",
+        "ASSISTANT",
+    ),
     ("[TOOL: suggest_fix]", "TOOL"),
     ("[RESULT: Use safe access: value = dict.get('key', default_value)]", "TOOL"),
-    ("Fixed! I changed to user.get('email', 'no-email@example.com') and it works.", "USER"),
+    (
+        "Fixed! I changed to user.get('email', 'no-email@example.com') and it works.",
+        "USER",
+    ),
     ("[TOOL: run_test]", "TOOL"),
     ("[RESULT: ✅ TEST PASSED: KeyError fix verification]", "TOOL"),
-    ("Great! The fix is verified. Remember to always use .get() for optional dictionary keys.", "ASSISTANT"),
-    
+    (
+        "Great! The fix is verified. Remember to always use .get() for optional dictionary keys.",
+        "ASSISTANT",
+    ),
     # Session 2: TypeError debugging
-    ("TypeError: can't multiply sequence by non-int of type 'str' in my calculation.", "USER"),
+    (
+        "TypeError: can't multiply sequence by non-int of type 'str' in my calculation.",
+        "USER",
+    ),
     ("This is a type coercion issue. Let me analyze.", "ASSISTANT"),
     ("[TOOL: analyze_error]", "TOOL"),
     ("[RESULT: Type mismatch detected. Check variable types.]", "TOOL"),
-    ("You're trying to multiply a string by another string. Convert to int first: int(value) * multiplier", "ASSISTANT"),
+    (
+        "You're trying to multiply a string by another string. Convert to int first: int(value) * multiplier",
+        "ASSISTANT",
+    ),
     ("[TOOL: run_test]", "TOOL"),
     ("[RESULT: ✅ TEST PASSED: Type conversion fix]", "TOOL"),
     ("That fixed it! I added int() conversion before the multiplication.", "USER"),
@@ -391,7 +424,7 @@ try:
         memory_id=memory_id,
         actor_id=DEVELOPER_ID,
         session_id="seed_session_001",
-        messages=past_sessions
+        messages=past_sessions,
     )
     print("✅ Seeded past debugging episodes")
     print("⏳ Note: Episode extraction happens in background (~1 minute)")
@@ -405,17 +438,23 @@ except Exception as e:
 
 # %%
 # Test 1: Similar KeyError issue - should reference past episode
-response1 = debug_agent("I'm getting KeyError: 'username' when I try to access config['username']")
+response1 = debug_agent(
+    "I'm getting KeyError: 'username' when I try to access config['username']"
+)
 print(f"Agent: {response1}")
 
 # %%
 # Test 2: New TypeError - should apply learned patterns
-response2 = debug_agent("Getting TypeError when concatenating: result = count + ' items'")
+response2 = debug_agent(
+    "Getting TypeError when concatenating: result = count + ' items'"
+)
 print(f"Agent: {response2}")
 
 # %%
 # Test 3: IndexError - new error type
-response3 = debug_agent("IndexError: list index out of range when accessing items[5] but list has 3 items")
+response3 = debug_agent(
+    "IndexError: list index out of range when accessing items[5] but list has 3 items"
+)
 print(f"Agent: {response3}")
 
 # %%
@@ -434,12 +473,16 @@ print(f"Agent: {response4}")
 
 # %%
 # Test 5: Learning from reflection - agent should recognize pattern
-response5 = debug_agent("Another KeyError! This time accessing data['timestamp'] in my logging code.")
+response5 = debug_agent(
+    "Another KeyError! This time accessing data['timestamp'] in my logging code."
+)
 print(f"Agent: {response5}")
 
 # %%
 # Test 6: Completely new error type to see how agent handles unknowns
-response6 = debug_agent("RecursionError: maximum recursion depth exceeded in my tree traversal function")
+response6 = debug_agent(
+    "RecursionError: maximum recursion depth exceeded in my tree traversal function"
+)
 print(f"Agent: {response6}")
 
 # %% [markdown]
@@ -454,46 +497,46 @@ episodic_config = get_namespaces(client, memory_id).get("EPISODIC", {})
 # Check episodes
 for namespace_template in episodic_config.get("namespaces", []):
     namespace = namespace_template.format(actorId=DEVELOPER_ID)
-    
+
     try:
         episodes = client.retrieve_memories(
             memory_id=memory_id,
             namespace=namespace,
             query="debugging error fix",
-            top_k=5
+            top_k=5,
         )
-        
+
         print(f"\nEPISODES ({len(episodes)} found):")
         for i, episode in enumerate(episodes, 1):
             if isinstance(episode, dict):
-                content = episode.get('content', {})
+                content = episode.get("content", {})
                 if isinstance(content, dict):
-                    text = content.get('text', '')[:200] + "..."
+                    text = content.get("text", "")[:200] + "..."
                     print(f"  {i}. {text}")
-                    
+
     except Exception as e:
         print(f"Error retrieving episodes: {e}")
 
 # Check reflections
 for namespace_template in episodic_config.get("reflectionNamespaces", []):
     namespace = namespace_template.format(actorId=DEVELOPER_ID)
-    
+
     try:
         reflections = client.retrieve_memories(
             memory_id=memory_id,
             namespace=namespace,
             query="debugging patterns",
-            top_k=3
+            top_k=3,
         )
-        
+
         print(f"\nREFLECTIONS ({len(reflections)} found):")
         for i, reflection in enumerate(reflections, 1):
             if isinstance(reflection, dict):
-                content = reflection.get('content', {})
+                content = reflection.get("content", {})
                 if isinstance(content, dict):
-                    text = content.get('text', '')[:200] + "..."
+                    text = content.get("text", "")[:200] + "..."
                     print(f"  {i}. {text}")
-                    
+
     except Exception as e:
         print(f"Error retrieving reflections: {e}")
 
