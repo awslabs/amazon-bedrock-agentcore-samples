@@ -41,7 +41,7 @@ def lambda_handler(event, context):
     }
     """
     try:
-        print(f"AgentCore Invoker Lambda started")
+        print("AgentCore Invoker Lambda started")
         print(f"Event: {json.dumps(event)}")
         
         # Extract payload

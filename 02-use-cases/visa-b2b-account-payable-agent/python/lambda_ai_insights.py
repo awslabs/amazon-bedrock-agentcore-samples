@@ -2,7 +2,7 @@ import json
 import boto3
 import psycopg2
 from datetime import datetime, timedelta
-from decimal import Decimal
+# from decimal import Decimal
 import os
 
 # AWS clients

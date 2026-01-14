@@ -16,7 +16,7 @@ import boto3
 import json
 import sys
 import time
-import uuid
+# import uuid
 from pathlib import Path
 
 # Configuration
@@ -38,17 +38,24 @@ def get_or_create_bucket(s3_client, region):
         # Check if bucket exists
         s3_client.head_bucket(Bucket=bucket_name)
         print(f"✓ Using existing S3 bucket: {bucket_name}")
-    except:
+    except s3_client.exceptions.NoSuchBucket:
         # Create bucket
         print(f"Creating S3 bucket: {bucket_name}")
-        if region == 'us-east-1':
-            s3_client.create_bucket(Bucket=bucket_name)
-        else:
-            s3_client.create_bucket(
-                Bucket=bucket_name,
-                CreateBucketConfiguration={'LocationConstraint': region}
-            )
-        print(f"✓ Created S3 bucket: {bucket_name}")
+        try:
+            if region == 'us-east-1':
+                s3_client.create_bucket(Bucket=bucket_name)
+            else:
+                s3_client.create_bucket(
+                    Bucket=bucket_name,
+                    CreateBucketConfiguration={'LocationConstraint': region}
+                )
+            print(f"✓ Created S3 bucket: {bucket_name}")
+        except Exception as e:
+            print(f"✗ Failed to create S3 bucket: {e}")
+            raise
+    except Exception as e:
+        print(f"✗ Error checking bucket: {e}")
+        raise
     
     return bucket_name
 
@@ -56,7 +63,7 @@ def upload_openapi_spec(s3_client, bucket_name, spec_path):
     """Upload OpenAPI spec to S3"""
     object_key = "visa-b2b-stub-openapi.json"
     
-    print(f"Uploading OpenAPI spec to S3...")
+    print("Uploading OpenAPI spec to S3...")
     with open(spec_path, 'rb') as f:
         s3_client.put_object(
             Bucket=bucket_name,
@@ -171,13 +178,13 @@ def create_gateway(agentcore_client, role_arn):
         gateway_id = response['gatewayId']
         gateway_url = response['gatewayUrl']
         
-        print(f"✓ Created Gateway:")
+        print("✓ Created Gateway:")
         print(f"  Gateway ID: {gateway_id}")
         print(f"  Gateway URL: {gateway_url}")
         
     except agentcore_client.exceptions.ConflictException:
         # Gateway already exists, get its details
-        print(f"✓ Gateway already exists, retrieving details...")
+        print("✓ Gateway already exists, retrieving details...")
         
         # List gateways to find ours
         list_response = agentcore_client.list_gateways()
@@ -214,7 +221,7 @@ def create_api_key_credential_provider(identity_client):
         print(f"✓ Created credential provider: {provider_arn}")
     except (identity_client.exceptions.ConflictException, identity_client.exceptions.ValidationException):
         # Provider already exists, get its ARN
-        print(f"✓ Credential provider already exists")
+        print("✓ Credential provider already exists")
         response = identity_client.get_api_key_credential_provider(name=provider_name)
         provider_arn = response['credentialProviderArn']
         print(f"  Provider ARN: {provider_arn}")

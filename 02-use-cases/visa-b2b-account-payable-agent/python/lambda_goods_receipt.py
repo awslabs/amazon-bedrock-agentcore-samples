@@ -1,6 +1,6 @@
 import json
 import boto3
-from datetime import datetime
+# from datetime import datetime
 import os
 import base64
 import urllib3
@@ -308,7 +308,7 @@ def lambda_handler(event, context):
                 print(f"Full extracted string: {extracted_data_str}")
                 raise Exception(f"Failed to parse Bedrock response as JSON: {str(e)}")
             
-            print(f"GR data extracted successfully")
+            print("GR data extracted successfully")
             print(f"BOL: {gr_data.get('bol_number', 'N/A')}, PO: {gr_data.get('po_reference', 'N/A')}")
             
             # Send to API

@@ -20,7 +20,7 @@ import uuid
 import os
 import base64
 import urllib3
-import urllib.parse
+# import urllib.parse
 # XML imports removed - Bedrock generates XML directly
 
 s3 = boto3.client('s3')
@@ -238,7 +238,8 @@ def send_invoice_to_api(extracted_data, source_file_key, iso20022_file_key=None,
                     return {'status': 'duplicate', 'id': invoice_id, 'message': 'Invoice already exists'}
                 else:
                     return {'status': 'duplicate', 'message': 'Invoice already exists'}
-            except:
+            except Exception as e:
+                print(f"duplicate: Invoice already exists {str(e)}")
                 return {'status': 'duplicate', 'message': 'Invoice already exists'}
         else:
             error_msg = f"API returned status {response.status}: {response.data.decode('utf-8')}"
@@ -547,7 +548,8 @@ def validate_iso20022_xml(xml_content):
                     for i in range(start, end):
                         marker = ">>>" if i == line_num - 1 else "   "
                         print(f"{marker} {i+1}: {lines[i]}")
-        except:
+        except Exception as e:
+            print(f"Exception: {str(e)}")
             pass
         
         return False, errors
@@ -661,7 +663,7 @@ def _process_and_generate_payment_file(payment_data, is_csv, is_invoice, key, jo
     print("Calling Bedrock to generate ISO 20022 XML...")
     xml_content = generate_iso20022_xml_with_bedrock(payment_data, is_csv=is_csv, is_invoice=is_invoice)
     
-    print(f"XML content received from Bedrock")
+    print("XML content received from Bedrock")
     
     # Validate XML
     is_valid, errors = validate_iso20022_xml(xml_content)
@@ -804,7 +806,7 @@ def lambda_handler(event, context):
                     print(f"Raw response from Bedrock: {extracted_data_str[:500]}")  # Log first 500 chars
                     raise Exception(f"Failed to parse invoice data as JSON: {str(json_err)}")
                 
-                print(f"Invoice data extracted successfully")
+                print("Invoice data extracted successfully")
                 
                 # Send invoice data to RTP API for database storage
                 # NO ISO20022 file generation here - Payment Agent will decide payment method
@@ -816,7 +818,7 @@ def lambda_handler(event, context):
                     
                     # Handle duplicate case - still mark as completed since processing succeeded
                     if api_response.get('status') == 'duplicate':
-                        print(f"Invoice already exists - marking job as completed with existing invoice ID")
+                        print("Invoice already exists - marking job as completed with existing invoice ID")
                         # For duplicates, use the existing invoice ID if available
                         if job_id:
                             if invoice_id and invoice_id != 'N/A':
@@ -849,7 +851,7 @@ def lambda_handler(event, context):
                 
             elif is_csv:
                 # CSV FLOW: Generate ISO20022 file immediately (bulk processing)
-                print(f"CSV file detected, passing raw content to Bedrock")
+                print("CSV file detected, passing raw content to Bedrock")
                 file_content = response['Body'].read().decode('utf-8')
                 payment_data = file_content
                 
@@ -875,7 +877,7 @@ def lambda_handler(event, context):
                 
             else:
                 # JSON FLOW: Generate ISO20022 file immediately (bulk processing)
-                print(f"JSON file detected, parsing structure")
+                print("JSON file detected, parsing structure")
                 file_content = response['Body'].read().decode('utf-8')
                 payment_data = json.loads(file_content)
                 

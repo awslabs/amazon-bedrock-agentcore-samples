@@ -130,7 +130,7 @@ def main():
     
     # Verify tools
     print("-" * 70)
-    # verify_expected_tools(tools)
+    verify_expected_tools(tools)
     
     print()
     print("=" * 70)
