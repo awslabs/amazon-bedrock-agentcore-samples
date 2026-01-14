@@ -391,7 +391,10 @@ export class InvoiceService {
     const vendorRepo = dataSource.getRepository(Vendor);
 
     // Strip vendor codes in parentheses: "Global Parts Ltd (GLOBAL003)" → "Global Parts Ltd"
-    const cleanName = supplierData.name.replace(/\s*\([^)]*\)\s*$/g, '').trim();
+    const lastParenIndex = supplierData.name.lastIndexOf('(');
+    const cleanName = lastParenIndex >= 0 
+      ? supplierData.name.substring(0, lastParenIndex).trim()
+      : supplierData.name.trim();
 
     // Try exact match first with cleaned name
     let existing = await vendorRepo.findOne({
@@ -443,6 +446,13 @@ export class InvoiceService {
   }
 
   private levenshteinDistance(str1: string, str2: string): number {
+    // Limit string length to prevent DoS attacks
+    const MAX_LENGTH = 1000;
+    if (str1.length > MAX_LENGTH || str2.length > MAX_LENGTH) {
+      // Return max distance for strings that are too long
+      return Math.max(str1.length, str2.length);
+    }
+  
     const matrix: number[][] = [];
 
     for (let i = 0; i <= str2.length; i++) {

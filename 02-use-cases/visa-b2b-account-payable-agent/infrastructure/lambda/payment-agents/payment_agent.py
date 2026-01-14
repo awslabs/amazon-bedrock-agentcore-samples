@@ -272,7 +272,7 @@ async def execute_visa_payment(invoice_data, payment_id):
                 print(f"Warning: Failed to retrieve CVV2. Response: {cvv2_data}")
                 cvv = None  # Continue without CVV2
             else:
-                print(f"CVV2 retrieved successfully: {cvv}")
+                print("CVV2 retrieved successfully")
                 
         except Exception as cvv_error:
             print(f"Warning: GetSecurityCode failed: {str(cvv_error)}")
