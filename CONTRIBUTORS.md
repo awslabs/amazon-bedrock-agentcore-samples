@@ -79,3 +79,4 @@
 - vargas-dann-0896
 - razkenari
 - Kostas Tzouvanas
+- richatt
