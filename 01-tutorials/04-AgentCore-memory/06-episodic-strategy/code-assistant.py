@@ -27,17 +27,20 @@ You'll learn to:
 # !pip install -qr requirements.txt
 
 # %%
-import logging
 import json
-from typing import Dict, List
+import logging
 from datetime import datetime
+from typing import Dict
+
 from botocore.exceptions import ClientError
+from strands import Agent, tool
+from strands.hooks import AfterInvocationEvent, HookProvider, HookRegistry, MessageAddedEvent
+
+from bedrock_agentcore.memory import MemoryClient
+from bedrock_agentcore.memory.constants import StrategyType
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger("code-assistant")
-
-from strands import Agent, tool
-from strands.hooks import AfterInvocationEvent, HookProvider, HookRegistry, MessageAddedEvent
 
 # %%
 # Configuration
@@ -54,9 +57,6 @@ SESSION_ID = f"debug_{datetime.now().strftime('%Y%m%d%H%M%S')}"
 # - Generates reflections that identify patterns across episodes
 
 # %%
-from bedrock_agentcore.memory import MemoryClient
-from bedrock_agentcore.memory.constants import StrategyType
-
 client = MemoryClient(region_name=REGION)
 memory_name = "CodeAssistantEpisodicMemory"
 
