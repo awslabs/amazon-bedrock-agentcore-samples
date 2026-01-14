@@ -315,11 +315,11 @@ This section provides manual command-line deployment instructions as an alternat
 
 | Phase | Component | Command | Duration |
 |-------|-----------|---------|----------|
-| 1 | Athena Database | `python setup_athena.py` | 15 min |
-| 2 | Cognito User Pool | `python setup_cognito.py` | 15 min |
-| 3 | MCP Server | `python deploy_runtime.py --yes` | 30 min |
-| 4 | Gateway & Interceptor | `python deploy_interceptor.py` + `python create_gateway.py --yes` | 30 min |
-| 5 | Lakehouse Agent | `python deploy_lakehouse_agent.py --yes` | 30 min |
+| 1 | Athena Database | `python setup_athena.py` | 5 min |
+| 2 | Cognito User Pool | `python setup_cognito.py` | 5 min |
+| 3 | MCP Server | `python deploy_runtime.py --yes` | 10 min |
+| 4 | Gateway & Interceptor | `python deploy_interceptor.py` + `python create_gateway.py --yes` | 5 min |
+| 5 | Lakehouse Agent | `python deploy_lakehouse_agent.py --yes` | 5 min |
 | 6 | Streamlit UI | `streamlit run streamlit_app.py` | 5 min |
 
 
