@@ -1,6 +1,6 @@
-# Health Lakehouse Agent with OAuth Authentication
+# Lakehouse Agent with OAuth Authentication
 
-A lakehouse data processing system demonstrating Amazon Bedrock AgentCore capabilities with end-to-end OAuth authentication and conversational AI for data queries.
+A lakehouse data processing system demonstrating Amazon Bedrock AgentCore capabilities with end-to-end OAuth authentication, row-level security based on federated user identity, and conversational AI for data queries.
 
 ## Table of Contents
 
@@ -26,10 +26,12 @@ This system showcases a lakehouse data processing application with:
 - **AgentCore Gateway** with JWT token validation via interceptor Lambda
 - **MCP Server** connecting to AWS Athena for data queries
 - **OAuth credentials** propagated through the entire stack (UI → Agent → Gateway → MCP → Athena)
+- **Row-Level Security** enforced through AWS Lake Formation based on federated user identity
 
 ### What Makes This Production-Ready
 
 ✅ **End-to-End OAuth**: JWT bearer tokens validated at every layer
+✅ **Row-Level Security**: Lake Formation policies enforce data access based on federated user identity
 ✅ **Conversational AI**: Natural language interface for data queries
 ✅ **Scalable Architecture**: AgentCore Runtime and Gateway for production workloads
 ✅ **Full Audit Trail**: CloudTrail logs all data access with user identity
@@ -175,9 +177,10 @@ Key Points:
 ### Security Features
 
 - **🔒 End-to-End OAuth**: JWT bearer tokens with multi-layer validation
-- **📊 Fine-Grained Access Control**: JWT scopes determine which tools users can access
-- **🔄 Token Propagation**: User identity flows through entire system
-- **🔍 Full Audit Trail**: CloudTrail logs all data access with user identity
+- **� Rowe-Level Security**: Lake Formation policies restrict data access based on federated user identity
+- **� Fine-GPrained Access Control**: JWT scopes determine which tools users can access
+- **�  Token Propagation**: User identity flows through entire system
+- **� Full AudiIt Trail**: CloudTrail logs all data access with user identity
 - **🛡️ Gateway Interceptor**: Policy-based tool access enforcement
 
 ### Application Features
@@ -270,6 +273,7 @@ jupyter notebook
 5. **04-deploy-gateway.ipynb** - Deploy Gateway with JWT interceptor
 6. **05-deploy-agent.ipynb** - Deploy conversational AI agent
 7. **06-streamlit-ui-deployment.ipynb** - Test end-to-end flow with OAuth
+8. **07-optional-cleanup.ipynb** - Clean up all deployed resources (optional)
 
 **Total deployment time**: ~2-3 hours
 
@@ -290,6 +294,16 @@ Each notebook:
 - **Gateway**: Request routing with JWT validation
 - **Agent**: Conversational AI on AgentCore Runtime
 - **Test Users**: user001@example.com, user002@example.com (password: TempPass123!)
+
+### Cleanup
+
+To remove all deployed resources, run **07-optional-cleanup.ipynb**. This notebook will:
+- Delete all AgentCore Runtimes and Gateways
+- Delete Lambda functions
+- Delete Cognito User Pool
+- Delete Athena database and tables
+- Optionally delete S3 bucket and data
+- Delete all SSM parameters
 
 ### Quick Test
 
