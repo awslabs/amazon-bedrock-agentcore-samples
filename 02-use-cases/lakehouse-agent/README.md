@@ -43,9 +43,13 @@ This system showcases a lakehouse data processing application with:
 
 ### High-Level Architecture
 
+![Lakehouse Agent Architecture](Lakehouse-agent-architecture.png)
+
+
+### Authentication flow
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                        User Layer                                │
+│                        User Layer                               │
 │  ┌────────────────┐                                             │
 │  │ Streamlit UI   │ OAuth login via Cognito                     │
 │  │ + Cognito Auth │                                             │
@@ -54,9 +58,9 @@ This system showcases a lakehouse data processing application with:
             │ Bearer Token (JWT with user identity)
             │
 ┌───────────▼─────────────────────────────────────────────────────┐
-│                      AI Agent Layer                              │
+│                      AI Agent Layer                             │
 │  ┌────────────────┐                                             │
-│  │  Lakehouse Agent  │ Strands-based conversational agent       │
+│  │Lakehouse Agent │ Strands-based conversational agent          │
 │  │ AgentCore      │ Natural language data processing            │
 │  │ Runtime        │                                             │
 │  └────────┬───────┘                                             │
@@ -64,19 +68,19 @@ This system showcases a lakehouse data processing application with:
             │ Bearer Token + Tool Request
             │
 ┌───────────▼─────────────────────────────────────────────────────┐
-│                Gateway & Policy Layer                            │
-│  ┌──────────────────────────────────────────────────────────┐  │
-│  │  AgentCore Gateway + Interceptor Lambda                  │  │
-│  │  - Validates JWT tokens                                  │  │
-│  │  - Extracts user identity (email)                        │  │
-│  │  - Enforces scope-based tool access                      │  │
-│  │  - Adds user identity to request headers                 │  │
-│  └────────┬───────────────────────────────────────────────────┘  │
+│                Gateway & Policy Layer                           │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │  AgentCore Gateway + Interceptor Lambda                  │   │
+│  │  - Validates JWT tokens                                  │   │
+│  │  - Extracts user identity (email)                        │   │
+│  │  - Enforces scope-based tool access                      │   │
+│  │  - Adds user identity to request headers                 │   │
+│  └────────┬─────────────────────────────────────────────────┘   │
 └───────────┼─────────────────────────────────────────────────────┘
             │ User Identity + Tool Request
             │
 ┌───────────▼─────────────────────────────────────────────────────┐
-│                    Tool Execution Layer                          │
+│                    Tool Execution Layer                         │
 │  ┌────────────────────────────────────────────────────────────┐ │
 │  │  MCP Server (AgentCore Runtime)                            │ │
 │  │  Athena connector for data queries                         │ │
@@ -87,8 +91,8 @@ This system showcases a lakehouse data processing application with:
 └───────────┼─────────────────────────────────────────────────────┘
             │ Athena Query
             │
-┌───────────▼─────────────────────────────────────────────────────┐
-│                       Data Layer                                 │
+┌───────────▼────────────────────────────────────────────────────┐
+│                       Data Layer                               │
 │  ┌──────────────────────────────────────────────────────────┐  │
 │  │  AWS Athena + Glue Data Catalog                          │  │
 │  │  • lakehouse_db database                                 │  │
@@ -97,7 +101,7 @@ This system showcases a lakehouse data processing application with:
 │  │  • Executes queries and returns results                  │  │
 │  │  • S3 backend for data storage                           │  │
 │  └──────────────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────────┘
+└────────────────────────────────────────────────────────────────┘
 ```
 
 ### Data Flow Example: User Query
@@ -226,6 +230,15 @@ Key Points:
 ```bash
 # Python 3.10 or later
 python --version
+
+# Create virtual environment
+python -m venv .venv
+
+# Activate virtual environment
+# On macOS/Linux:
+source .venv/bin/activate
+# On Windows:
+# .venv\Scripts\activate
 
 # Install dependencies
 pip install -r requirements.txt
