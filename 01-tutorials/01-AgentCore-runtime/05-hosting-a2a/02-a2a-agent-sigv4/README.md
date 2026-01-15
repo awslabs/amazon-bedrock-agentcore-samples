@@ -7,14 +7,14 @@ This sample demonstrates how to deploy an A2A (Agent-to-Agent) agent on Amazon B
 ```
 ┌─────────────┐         IAM Auth          ┌──────────────────┐
 │   Client    │ ────────────────────────> │  A2A Agent       │
-│  (SigV4)    │                            │  (AgentCore)     │
-└─────────────┘                            └──────────────────┘
+│  (SigV4)    │                           │  (AgentCore)     │
+└─────────────┘                           └──────────────────┘
 ```
 
 ## Key Features
 
 * A2A protocol for agent-to-agent communication
-* AWS IAM (SigV4) authentication - no token management required
+* AWS IAM (SigV4) authentication
 * Strands framework for agent implementation
 * Deployment to AgentCore Runtime
 
