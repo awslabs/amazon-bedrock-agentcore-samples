@@ -271,6 +271,7 @@ resource "aws_bedrockagentcore_agent_runtime" "agent_runtime" {
     server_protocol = "HTTP"
   }
   environment_variables = {
+    "AWS_REGION" = data.aws_region.current.name
     "LOG_LEVEL" = "INFO"
     "OTEL_EXPORTER_OTLP_ENDPOINT" = "${var.langfuse_host}/api/public/otel"
     "OTEL_EXPORTER_OTLP_HEADERS" = "Authorization=Basic ${base64encode("${var.langfuse_public_key}:${var.langfuse_secret_key}")}"
