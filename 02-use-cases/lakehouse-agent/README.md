@@ -51,9 +51,9 @@ This system showcases a lakehouse data processing application with:
 ┌─────────────────────────────────────────────────────────────────┐
 │                        User Layer                               │
 │  ┌────────────────┐                                             │
-│  │ Streamlit UI   │ OAuth login via Cognito                     │
-│  │ + Cognito Auth │                                             │
-│  └────────┬───────┘                                             │
+│  │ Streamlit UI   │ OAuth login via Cognito (USER CREDENTIALS)  │
+│  │ + Cognito Auth │ Client: lakehouse-client                    │
+│  └────────┬───────┘                 │
 └───────────┼─────────────────────────────────────────────────────┘
             │ Bearer Token (JWT with user identity)
             │
@@ -62,8 +62,8 @@ This system showcases a lakehouse data processing application with:
 │  ┌────────────────┐                                             │
 │  │Lakehouse Agent │ Strands-based conversational agent          │
 │  │ AgentCore      │ Natural language data processing            │
-│  │ Runtime        │                                             │
-│  └────────┬───────┘                                             │
+│  │ Runtime        │ JWT Authorizer validates USER token         │
+│  └────────┬───────┘ Allowed: lakehouse-client (user auth)       │
 └───────────┼─────────────────────────────────────────────────────┘
             │ Bearer Token + Tool Request
             │
@@ -71,20 +71,27 @@ This system showcases a lakehouse data processing application with:
 │                Gateway & Policy Layer                           │
 │  ┌──────────────────────────────────────────────────────────┐   │
 │  │  AgentCore Gateway + Interceptor Lambda                  │   │
-│  │  - Validates JWT tokens                                  │   │
+│  │  - Validates JWT tokens (USER token from agent)          │   │
 │  │  - Extracts user identity (email)                        │   │
 │  │  - Enforces scope-based tool access                      │   │
 │  │  - Adds user identity to request headers                 │   │
+│  │  JWT Inbound: lakehouse-client (user auth)               │   │
+│  │                                                          │   │
+│  │  OAuth Provider: lakehouse-mcp-m2m-oauth-provider        │   │
+│  │  - Gateway obtains M2M token for MCP Runtime             │   │
+│  │  - Client: lakehouse-m2m-client (M2M only)               │   │
 │  └────────┬─────────────────────────────────────────────────┘   │
 └───────────┼─────────────────────────────────────────────────────┘
-            │ User Identity + Tool Request
+            │ M2M Token + User Identity + Tool Request
             │
 ┌───────────▼─────────────────────────────────────────────────────┐
 │                    Tool Execution Layer                         │
 │  ┌────────────────────────────────────────────────────────────┐ │
 │  │  MCP Server (AgentCore Runtime)                            │ │
 │  │  Athena connector for data queries                         │ │
-│  │  - Receives user_id from Gateway                           │ │
+│  │  JWT Authorizer validates M2M token                        │ │
+│  │  Allowed: lakehouse-m2m-client (M2M only)                  │ │
+│  │  - Receives user_id from Gateway (X-User-Principal)        │ │
 │  │  - Executes Athena queries                                 │ │
 │  │  - Returns query results                                   │ │
 │  └────────┬───────────────────────────────────────────────────┘ │
