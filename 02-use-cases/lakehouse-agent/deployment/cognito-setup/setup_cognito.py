@@ -408,94 +408,63 @@ class CognitoSetup:
     
     def create_m2m_client(self, user_pool_id: str) -> Dict:
         """
-        Create M2M-only app client by copying configuration from reference client.
-        Reference client ID: 54sj5fk27eqtbt5c7rghv1fjkq (known working M2M client)
-        
+        Create M2M-only app client with client_credentials OAuth flow.
+
         Args:
             user_pool_id: Cognito User Pool ID
-            
+
         Returns:
             Dictionary with client_id and client_secret
         """
         print(f"\n🤖 Creating M2M-only app client...")
-        
-        # Get reference M2M client configuration
-        reference_client_id = '54sj5fk27eqtbt5c7rghv1fjkq'
-        print(f"   Using reference client: {reference_client_id}")
-        
-        try:
-            ref_response = self.cognito.describe_user_pool_client(
-                UserPoolId=user_pool_id,
-                ClientId=reference_client_id
-            )
-            ref_config = ref_response['UserPoolClient']
-            print(f"   ✅ Reference configuration loaded")
-            print(f"      ExplicitAuthFlows: {ref_config.get('ExplicitAuthFlows', [])}")
-            print(f"      AllowedOAuthFlows: {ref_config.get('AllowedOAuthFlows', [])}")
-            print(f"      SupportedIdentityProviders: {ref_config.get('SupportedIdentityProviders', [])}")
-        except Exception as e:
-            print(f"   ⚠️  Could not read reference client: {e}")
-            print(f"   Using default M2M configuration")
-            ref_config = {
-                'ExplicitAuthFlows': [],
-                'AllowedOAuthFlows': ['client_credentials'],
-                'AllowedOAuthScopes': [
-                    'lakehouse-api/claims.query',
-                    'lakehouse-api/claims.submit',
-                    'lakehouse-api/claims.update',
-                    'lakehouse-api/claims.approve'
-                ],
-                'AllowedOAuthFlowsUserPoolClient': True,
-                'SupportedIdentityProviders': []
-            }
-        
+
         # Check for existing M2M client
         existing_m2m_client = self.get_user_pool_client(user_pool_id, 'lakehouse-m2m-client')
-        
-        # Prepare configuration (copy from reference)
+
+        # M2M client configuration (client_credentials flow only)
         client_config = {
             'UserPoolId': user_pool_id,
             'ClientName': 'lakehouse-m2m-client',
             'GenerateSecret': True,
-            'ExplicitAuthFlows': ref_config.get('ExplicitAuthFlows', []),
-            'AllowedOAuthFlows': ref_config.get('AllowedOAuthFlows', ['client_credentials']),
-            'AllowedOAuthScopes': ref_config.get('AllowedOAuthScopes', [
+            'ExplicitAuthFlows': [],  # No user auth flows for M2M
+            'AllowedOAuthFlows': ['client_credentials'],  # Only client_credentials
+            'AllowedOAuthScopes': [
                 'lakehouse-api/claims.query',
                 'lakehouse-api/claims.submit',
                 'lakehouse-api/claims.update',
                 'lakehouse-api/claims.approve'
-            ]),
-            'AllowedOAuthFlowsUserPoolClient': ref_config.get('AllowedOAuthFlowsUserPoolClient', True),
-            'SupportedIdentityProviders': ref_config.get('SupportedIdentityProviders', []),
-            'CallbackURLs': ref_config.get('CallbackURLs', ['https://localhost']),  # Dummy URL for M2M
+            ],
+            'AllowedOAuthFlowsUserPoolClient': True,
+            'SupportedIdentityProviders': [],  # No identity providers for M2M
+            'CallbackURLs': ['https://localhost'],  # Dummy URL for M2M
             'PreventUserExistenceErrors': 'ENABLED'
         }
         
         if existing_m2m_client:
             client_id = existing_m2m_client['ClientId']
             print(f"ℹ️  M2M App Client exists: {client_id}")
-            print(f"   Updating with reference configuration...")
-            
-            # Update with reference configuration
+            print(f"   Updating configuration...")
+
+            # Update with M2M configuration
             # Remove GenerateSecret as it's not valid for update_user_pool_client
             update_config = {k: v for k, v in client_config.items() if k != 'GenerateSecret'}
             update_config['ClientId'] = client_id
             self.cognito.update_user_pool_client(**update_config)
-            
+
             # Get updated client to retrieve secret
             updated_client = self.cognito.describe_user_pool_client(
                 UserPoolId=user_pool_id,
                 ClientId=client_id
             )
             client_secret = updated_client['UserPoolClient'].get('ClientSecret')
-            print(f"✅ M2M App Client updated (copied from reference)")
+            print(f"✅ M2M App Client updated with client_credentials flow")
         else:
-            # Create with reference configuration
+            # Create with M2M configuration
             client_response = self.cognito.create_user_pool_client(**client_config)
             client_id = client_response['UserPoolClient']['ClientId']
             client_secret = client_response['UserPoolClient'].get('ClientSecret')
             print(f"✅ M2M App Client created: {client_id}")
-            print(f"   Configuration: Copied from reference {reference_client_id}")
+            print(f"   Configuration: client_credentials flow only")
         
         return {
             'client_id': client_id,
