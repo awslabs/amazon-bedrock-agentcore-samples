@@ -26,12 +26,12 @@ This system showcases a lakehouse data processing application with:
 - **AgentCore Gateway** with JWT token validation via interceptor Lambda
 - **MCP Server** connecting to AWS Athena for data queries
 - **OAuth credentials** propagated through the entire stack (UI → Agent → Gateway → MCP → Athena)
-- **Row-Level Security** enforced through AWS Lake Formation based on federated user identity
+- **Row-Level Security** enforced through federated user identity
 
 ### What Makes This Production-Ready
 
 ✅ **End-to-End OAuth**: JWT bearer tokens validated at every layer
-✅ **Row-Level Security**: Lake Formation policies enforce data access based on federated user identity
+✅ **Row-Level Security**: Agentcore lambda interceptors translate user tokens to user identity which is passed on to the MCP server to ensure row-level access control
 ✅ **Conversational AI**: Natural language interface for data queries
 ✅ **Scalable Architecture**: AgentCore Runtime and Gateway for production workloads
 ✅ **Full Audit Trail**: CloudTrail logs all data access with user identity

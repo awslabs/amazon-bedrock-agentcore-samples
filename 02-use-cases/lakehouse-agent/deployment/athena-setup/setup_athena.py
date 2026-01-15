@@ -15,7 +15,7 @@ Usage:
 Arguments:
     --bucket-name: (Optional) Base name for S3 bucket. Will be prefixed with {account_id}-{region_name}-
                    If not provided, reads from SSM parameter /app/lakehouse-agent/s3-bucket-name
-                   Example: --bucket-name my-lakehouse creates bucket 123456789012-us-east-1-my-lakehouse
+                   Example: --bucket-name my-lakehouse creates bucket XXXXXXXXXXXX-us-east-1-my-lakehouse
 """
 
 import boto3
