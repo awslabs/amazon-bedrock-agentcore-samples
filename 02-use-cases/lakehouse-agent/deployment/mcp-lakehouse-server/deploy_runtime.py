@@ -48,10 +48,9 @@ class SSMConfig:
         self.s3_bucket_name = self._get_parameter('/app/lakehouse-agent/s3-bucket-name')
         self.database_name = self._get_parameter('/app/lakehouse-agent/database-name')
         self.cognito_user_pool_arn = self._get_parameter('/app/lakehouse-agent/cognito-user-pool-arn')
-        try:
-            self.rls_role_arn = self._get_parameter('/app/lakehouse-agent/rls-role-arn')
-        except:
-            print("Deploying without LakeFormation RBAC.")
+        self.rls_role_arn = self._get_parameter('/app/lakehouse-agent/rls-role-arn', required=False)
+        if not self.rls_role_arn:
+            print("⚠️  Deploying without LakeFormation RLS.")
             self.rls_role_arn = None
 
         # Constants
@@ -62,18 +61,22 @@ class SSMConfig:
         print(f"   Region: {self.region}")
         print(f"   Account: {self.account_id}")
     
-    def _get_parameter(self, parameter_name: str) -> str:
+    def _get_parameter(self, parameter_name: str, required: bool = True) -> str:
         """Get parameter value from SSM Parameter Store."""
         try:
             response = self.ssm.get_parameter(Name=parameter_name)
             return response['Parameter']['Value']
         except self.ssm.exceptions.ParameterNotFound:
-            print(f"❌ SSM parameter {parameter_name} not found")
-            print(f"   Please run the setup scripts first")
-            sys.exit(1)
+            if required:
+                print(f"❌ SSM parameter {parameter_name} not found")
+                print(f"   Please run the setup scripts first")
+                sys.exit(1)
+            return None
         except Exception as e:
-            print(f"❌ Error retrieving parameter {parameter_name}: {e}")
-            sys.exit(1)
+            if required:
+                print(f"❌ Error retrieving parameter {parameter_name}: {e}")
+                sys.exit(1)
+            return None
     
     def is_valid(self) -> bool:
         """Check if all required configuration is present."""
