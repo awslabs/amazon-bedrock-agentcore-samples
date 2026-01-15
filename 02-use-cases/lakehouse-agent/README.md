@@ -53,7 +53,7 @@ This system showcases a lakehouse data processing application with:
 │  ┌────────────────┐                                             │
 │  │ Streamlit UI   │ OAuth login via Cognito (USER CREDENTIALS)  │
 │  │ + Cognito Auth │ Client: lakehouse-client                    │
-│  └────────┬───────┘                 │
+│  └────────┬───────┘                                             │
 └───────────┼─────────────────────────────────────────────────────┘
             │ Bearer Token (JWT with user identity)
             │
@@ -189,7 +189,7 @@ Key Points:
 
 - **🔒 End-to-End OAuth**: JWT bearer tokens with multi-layer validation
 - **� Rowe-Level Security**: Lake Formation policies restrict data access based on federated user identity
-- **� Fine-GPrained Access Control**: JWT scopes determine which tools users can access
+- **� Fine-Grained Access Control**: JWT scopes determine which tools users can access
 - **�  Token Propagation**: User identity flows through entire system
 - **� Full AudiIt Trail**: CloudTrail logs all data access with user identity
 - **🛡️ Gateway Interceptor**: Policy-based tool access enforcement
