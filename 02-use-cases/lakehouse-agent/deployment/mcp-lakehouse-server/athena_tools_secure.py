@@ -1,20 +1,16 @@
 """
-Secure Athena Tools using AWS Lake Formation with Session Tags
+Secure Athena Tools
 
 This implementation uses AWS Lake Formation for row-level security:
 - User identity passed as session tags when assuming IAM role
-- Lake Formation enforces filtering at query engine level
 - NO application-level SQL manipulation
 - NO SQL injection risk
-- Fully auditable through CloudTrail
 
 Security Flow:
 1. Gateway interceptor extracts user_id from JWT
 2. MCP server receives user_id in headers
 3. MCP server assumes IAM role WITH session tag: user_id=<actual_user>
 4. Athena queries use those credentials
-5. Lake Formation automatically filters: WHERE user_id = <session_tag>
-6. Query engine enforces filter BEFORE execution
 """
 
 import boto3
@@ -42,7 +38,7 @@ class SecureAthenaClaimsTools:
             region: AWS region
             database_name: Athena database name
             s3_output_location: S3 location for query results
-            rls_role_arn: IAM role ARN with Lake Formation data filter permissions
+            rls_role_arn: IAM role ARN with Lake Formation data filter permissions if setup 
         """
         self.region = region
         self.database_name = database_name
@@ -191,13 +187,16 @@ class SecureAthenaClaimsTools:
         except Exception as e:
             raise Exception(f"Error executing secure Athena query: {str(e)}")
 
+    # TODO Lakeformation as of now does not support dynamic query filters. https://docs.aws.amazon.com/lake-formation/latest/dg/data-filtering-notes.html 
+    # https://repost.aws/questions/QUjGeTaN2US8mjiON0nzDJzw/dynamic-filter-on-lake-formation
+    # The below mechanism can be used for static filters in the query if required. Retaining this method for future use
     def query_claims(
         self,
         user_id: str,
         filters: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """
-        Query claims - Lake Formation automatically filters by user_id.
+        Query claims
 
         NOTICE: No user_id in WHERE clause! Lake Formation adds it automatically.
 
