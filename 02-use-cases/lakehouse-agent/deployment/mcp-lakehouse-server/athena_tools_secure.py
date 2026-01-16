@@ -1,7 +1,7 @@
 """
 Secure Athena Tools
 
-This implementation uses AWS Lake Formation for row-level security:
+This implementation uses user based filtering for row-level security:
 - User identity passed as session tags when assuming IAM role
 - NO application-level SQL manipulation
 - NO SQL injection risk
