@@ -188,7 +188,7 @@ Key Points:
 ### Security Features
 
 - **🔒 End-to-End OAuth**: JWT bearer tokens with multi-layer validation
-- **� Rowe-Level Security**: Lake Formation policies restrict data access based on federated user identity
+- **� Row-Level Security**: Agentcore Lambda interceptor translates JWT tokens on federated user identity to user principals 
 - **� Fine-Grained Access Control**: JWT scopes determine which tools users can access
 - **�  Token Propagation**: User identity flows through entire system
 - **� Full AudiIt Trail**: CloudTrail logs all data access with user identity
@@ -432,12 +432,12 @@ Test queries:
 
 ### User-Specific Data Access Demo
 
-The lakehouse agent implements row-level security (RLS) through Lake Formation, ensuring users only see data they're authorized to access. Based on the logged-in user, you can see how user-specific datasets are shared in the screenshots below:
+The lakehouse agent implements row-level security (RLS) through Agentcore Lambda interceptors, ensuring users only see data they're authorized to access. Based on the logged-in user, you can see how user-specific datasets are shared in the screenshots below:
 
 #### Test User 1 - Limited Access
 ![Test User 1 - Lakehouse Agent](screenshots/testuser1-lakehouseagent.png)
 
-**User**: `testuser1` - Shows limited dataset access based on user permissions. This user can only see claims and data that they are authorized to view through Lake Formation row-level security policies.
+**User**: `testuser1` - Shows limited dataset access based on user permissions. This user can only see claims and data that they are authorized to view through row-level filters.
 
 #### Test User 2 - Different Data Scope  
 ![Test User 2 - Lakehouse Agent](screenshots/testuser2-lakehouseagent.png)
@@ -447,7 +447,6 @@ The lakehouse agent implements row-level security (RLS) through Lake Formation, 
 **Key Security Features Demonstrated**:
 - ✅ **Row-Level Security**: Each user sees only their authorized data
 - ✅ **OAuth Integration**: User identity flows from Cognito through the entire system
-- ✅ **Lake Formation Policies**: Data access controlled at the database level
 - ✅ **Consistent Experience**: Same interface, personalized data based on user context
 
 ---
