@@ -81,3 +81,5 @@
 - razkenari
 - Kostas Tzouvanas
 - richatt
+- Elior Farajpur
+- Itay Atas
