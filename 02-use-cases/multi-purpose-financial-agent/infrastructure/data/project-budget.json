@@ -1,0 +1,184 @@
+{
+  "agentcore-demo-projects-budget": [
+    {
+      "PutRequest": {
+        "Item": {
+          "projectId": { "S": "PROJ-001" },
+          "projectName": { "S": "GenAI Customer Support Bot" },
+          "department": { "S": "Engineering" },
+          "projectType": { "S": "New Feature" },
+          "description": { "S": "Integration of LLM for automated L1 support tickets" },
+          "projectOwnerId": { "S": "EMP010" },
+          "totalBudget": { "N": "75000" },
+          "spentAmount": { "N": "32500" },
+          "currency": { "S": "USD" },
+          "status": { "S": "In Progress" },
+          "fiscalYear": { "N": "2024" },
+          "tags": { "L": [ { "S": "AI" }, { "S": "R&D" }, { "S": "Cloud" } ] }
+        }
+      }
+    },
+    {
+      "PutRequest": {
+        "Item": {
+          "projectId": { "S": "PROJ-002" },
+          "projectName": { "S": "CI/CD Pipeline Migration" },
+          "department": { "S": "DevOps" },
+          "projectType": { "S": "Infrastructure" },
+          "description": { "S": "Migrating legacy Jenkins pipelines to GitHub Actions" },
+          "projectOwnerId": { "S": "EMP003" },
+          "totalBudget": { "N": "25000" },
+          "spentAmount": { "N": "5000" },
+          "currency": { "S": "USD" },
+          "status": { "S": "Planning" },
+          "fiscalYear": { "N": "2024" },
+          "tags": { "L": [ { "S": "DevOps" }, { "S": "Automation" }, { "S": "Tooling" } ] }
+        }
+      }
+    },
+    {
+      "PutRequest": {
+        "Item": {
+          "projectId": { "S": "PROJ-003" },
+          "projectName": { "S": "Q4 Digital Ad Spend" },
+          "department": { "S": "Marketing" },
+          "projectType": { "S": "Marketing Campaign" },
+          "description": { "S": "PPC and Social Media allocation for holiday season" },
+          "projectOwnerId": { "S": "EMP009" },
+          "totalBudget": { "N": "150000" },
+          "spentAmount": { "N": "120000" },
+          "currency": { "S": "USD" },
+          "status": { "S": "Active" },
+          "fiscalYear": { "N": "2024" },
+          "tags": { "L": [ { "S": "Ads" }, { "S": "Growth" }, { "S": "Social Media" } ] }
+        }
+      }
+    },
+    {
+      "PutRequest": {
+        "Item": {
+          "projectId": { "S": "PROJ-004" },
+          "projectName": { "S": "Salesforce Licensing Renewal" },
+          "department": { "S": "Sales" },
+          "projectType": { "S": "Software Purchase" },
+          "description": { "S": "Annual enterprise license renewal for 50 seats" },
+          "projectOwnerId": { "S": "EMP008" },
+          "totalBudget": { "N": "85000" },
+          "spentAmount": { "N": "85000" },
+          "currency": { "S": "USD" },
+          "status": { "S": "Completed" },
+          "fiscalYear": { "N": "2023" },
+          "tags": { "L": [ { "S": "SaaS" }, { "S": "OpEx" }, { "S": "CRM" } ] }
+        }
+      }
+    },
+    {
+      "PutRequest": {
+        "Item": {
+          "projectId": { "S": "PROJ-005" },
+          "projectName": { "S": "Mobile App Redesign (React Native)" },
+          "department": { "S": "Engineering" },
+          "projectType": { "S": "New Feature" },
+          "description": { "S": "Complete UI overhaul of the iOS and Android apps" },
+          "projectOwnerId": { "S": "EMP006" },
+          "totalBudget": { "N": "45000" },
+          "spentAmount": { "N": "15000" },
+          "currency": { "S": "USD" },
+          "status": { "S": "At Risk" },
+          "fiscalYear": { "N": "2024" },
+          "tags": { "L": [ { "S": "Frontend" }, { "S": "Mobile" }, { "S": "UX" } ] }
+        }
+      }
+    },
+    {
+      "PutRequest": {
+        "Item": {
+          "projectId": { "S": "PROJ-006" },
+          "projectName": { "S": "SOC2 Compliance Audit" },
+          "department": { "S": "Engineering" },
+          "projectType": { "S": "Compliance" },
+          "description": { "S": "Third-party security audit and penetration testing fees" },
+          "projectOwnerId": { "S": "EMP010" },
+          "totalBudget": { "N": "22000" },
+          "spentAmount": { "N": "12000" },
+          "currency": { "S": "USD" },
+          "status": { "S": "In Progress" },
+          "fiscalYear": { "N": "2024" },
+          "tags": { "L": [ { "S": "Security" }, { "S": "Compliance" }, { "S": "Legal" } ] }
+        }
+      }
+    },
+    {
+      "PutRequest": {
+        "Item": {
+          "projectId": { "S": "PROJ-007" },
+          "projectName": { "S": "Engineering Laptop Refresh" },
+          "department": { "S": "IT/Ops" },
+          "projectType": { "S": "Hardware" },
+          "description": { "S": "Procurement of 20 MacBook Pro M3 Max units" },
+          "projectOwnerId": { "S": "EMP001" },
+          "totalBudget": { "N": "60000" },
+          "spentAmount": { "N": "59500" },
+          "currency": { "S": "USD" },
+          "status": { "S": "Completed" },
+          "fiscalYear": { "N": "2024" },
+          "tags": { "L": [ { "S": "Hardware" }, { "S": "Equipment" }, { "S": "CapEx" } ] }
+        }
+      }
+    },
+    {
+      "PutRequest": {
+        "Item": {
+          "projectId": { "S": "PROJ-008" },
+          "projectName": { "S": "Global Tech Conference Booth" },
+          "department": { "S": "Sales" },
+          "projectType": { "S": "Events" },
+          "description": { "S": "Sponsorship and booth setup for CES 2024" },
+          "projectOwnerId": { "S": "EMP004" },
+          "totalBudget": { "N": "30000" },
+          "spentAmount": { "N": "12000" },
+          "currency": { "S": "USD" },
+          "status": { "S": "Active" },
+          "fiscalYear": { "N": "2024" },
+          "tags": { "L": [ { "S": "Events" }, { "S": "Travel" }, { "S": "Marketing" } ] }
+        }
+      }
+    },
+    {
+      "PutRequest": {
+        "Item": {
+          "projectId": { "S": "PROJ-009" },
+          "projectName": { "S": "Financial Forecasting Tool" },
+          "department": { "S": "Finance" },
+          "projectType": { "S": "SaaS Subscription" },
+          "description": { "S": "Implementation of Anaplan for budget planning" },
+          "projectOwnerId": { "S": "EMP007" },
+          "totalBudget": { "N": "55000" },
+          "spentAmount": { "N": "20000" },
+          "currency": { "S": "USD" },
+          "status": { "S": "Review" },
+          "fiscalYear": { "N": "2024" },
+          "tags": { "L": [ { "S": "Finance" }, { "S": "SaaS" }, { "S": "Analytics" } ] }
+        }
+      }
+    },
+    {
+      "PutRequest": {
+        "Item": {
+          "projectId": { "S": "PROJ-010" },
+          "projectName": { "S": "SEO & Content Optimization" },
+          "department": { "S": "Marketing" },
+          "projectType": { "S": "Consulting Services" },
+          "description": { "S": "External agency contract for improving organic search rank" },
+          "projectOwnerId": { "S": "EMP002" },
+          "totalBudget": { "N": "20000" },
+          "spentAmount": { "N": "18500" },
+          "currency": { "S": "USD" },
+          "status": { "S": "Near Completion" },
+          "fiscalYear": { "N": "2024" },
+          "tags": { "L": [ { "S": "SEO" }, { "S": "Content" }, { "S": "Agency" } ] }
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,75 @@
+[
+  {
+    "name": "get_project",
+    "description": "Retrieves detailed information about a specific project by its Project ID. Returns budget details, owner, status, and description.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "projectId": {
+          "description": "The unique project identifier (e.g., PROJ-001, PROJ-010)",
+          "type": "string"
+        }
+      },
+      "required": [
+        "projectId"
+      ]
+    }
+  },
+  {
+    "name": "list_department_projects",
+    "description": "Lists all projects assigned to a specific department. Returns the count and details of projects for that department.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "department": {
+          "description": "The department name (e.g., Engineering, Marketing, DevOps, Sales, Finance)",
+          "type": "string"
+        }
+      },
+      "required": [
+        "department"
+      ]
+    }
+  },
+  {
+    "name": "filter_by_budget",
+    "description": "Finds projects within a specified total budget range. Can specify a minimum budget, a maximum budget, or both to filter the project list.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "min_budget": {
+          "description": "Minimum budget amount in USD (e.g., 10000). Optional.",
+          "type": "number"
+        },
+        "max_budget": {
+          "description": "Maximum budget amount in USD (e.g., 50000). Optional.",
+          "type": "number"
+        }
+      }
+    }
+  },
+  {
+    "name": "list_by_status",
+    "description": "Filters projects based on their current operational status (e.g., finding all projects that are 'At Risk' or 'Completed').",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "description": "The status of the project (e.g., Active, In Progress, Completed, At Risk, Planning)",
+          "type": "string"
+        }
+      },
+      "required": [
+        "status"
+      ]
+    }
+  },
+  {
+    "name": "list_all_projects",
+    "description": "Retrieves the complete list of all projects across the organization. Use this for general queries or overviews when no specific filter is requested.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {}
+    }
+  }
+]

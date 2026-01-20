@@ -1,0 +1,18 @@
+# Core Frameworks
+strands-agents>=0.1.0
+langchain-aws>=0.2.0
+langchain-core>=0.3.0
+langgraph>=0.2.0
+
+# AWS Bedrock AgentCore (includes code interpreter, gateway, and identity tools)
+bedrock-agentcore>=0.1.0
+
+# AWS SDK
+boto3>=1.28.0
+botocore>=1.31.0
+
+# MCP (Model Context Protocol) - for Gateway integration
+mcp>=0.9.0
+
+# HTTP Requests (for Cognito authentication)
+requests>=2.31.0
