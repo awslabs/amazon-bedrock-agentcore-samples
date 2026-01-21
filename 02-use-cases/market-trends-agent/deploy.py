@@ -156,7 +156,7 @@ class MarketTrendsAgentDeployer:
                     ],
                     "Resource": [
                         f"arn:aws:bedrock-agentcore:{self.region}:{account_id}:browser-custom/*",
-                        f"arn:aws:bedrock-agentcore:*:aws:browser/*"
+                        "arn:aws:bedrock-agentcore:*:aws:browser/*"
                     ],
                 },
                 {
