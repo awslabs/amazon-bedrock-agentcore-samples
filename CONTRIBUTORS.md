@@ -72,6 +72,7 @@
 - Sparsh Wadhwa (SparshWadhwa)
 - Lana Zhang
 - Bharathi Srinivasan
+- Trevor Schiavone
 - Antonio Rodriguez (rodzanto)
 - otamaryx
 - kevlw
@@ -80,3 +81,4 @@
 - razkenari
 - Kostas Tzouvanas
 - richatt
+- Hideki Tane

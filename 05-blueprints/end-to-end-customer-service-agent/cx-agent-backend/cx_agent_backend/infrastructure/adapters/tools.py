@@ -337,7 +337,7 @@ def web_search(query: str) -> str:
 # Available tools
 tools = [
     # web_search,  # Commented out - using gateway integration instead
-    #retrieve_context,
-    #create_support_ticket,
-    #get_support_tickets,
+    retrieve_context,
+    create_support_ticket,
+    get_support_tickets,
 ]
