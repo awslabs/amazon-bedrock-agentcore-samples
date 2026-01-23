@@ -6,10 +6,17 @@ This module provides a centralized way to create and validate AWS sessions,
 with special handling for AWS SSO authentication. It addresses common issues
 with SSO token expiration and profile detection.
 
+Features:
+- Automatic fallback from expired .env credentials to AWS SSO profiles
+- Clear error messages with remediation steps
+- Support for container IAM roles (Lambda, ECS, EKS)
+- Flexible credential priority: Container IAM > Env vars > SSO profiles
+
 Usage:
     from utils.aws_session_utils import get_aws_session, load_env_credentials
 
     # Load credentials from .env file and get session
+    # If .env credentials are invalid/expired, automatically falls back to SSO
     load_env_credentials()
     session, region, account_id = get_aws_session()
 
@@ -133,13 +140,21 @@ def get_aws_session(
     verbose: bool = True
 ) -> Tuple[boto3.Session, str, str]:
     """
-    Create and validate AWS session with SSO support.
+    Create and validate AWS session with SSO support and automatic fallback.
 
     This function:
     1. Detects AWS profile from environment variables or parameters
     2. Creates boto3 session with correct profile
     3. Validates credentials are available and not expired
-    4. Provides clear error messages with remediation steps
+    4. Automatically falls back to AWS SSO/profile if environment credentials fail
+    5. Provides clear error messages with remediation steps
+
+    Credential priority order:
+    1. Container IAM role (if running in Lambda/ECS/EKS)
+    2. Environment variables (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)
+       - If invalid/expired, automatically clears them and falls back to SSO
+    3. AWS SSO profile (from AWS_PROFILE or AWS_DEFAULT_PROFILE)
+    4. Default AWS credentials
 
     Args:
         profile_name: Optional AWS profile name to use. If not provided,
@@ -152,8 +167,8 @@ def get_aws_session(
         Tuple of (boto3.Session, region_name: str, account_id: str)
 
     Raises:
-        ValueError: If credentials are not configured or invalid
-        SystemExit: On unrecoverable authentication errors
+        ValueError: If container credentials validation fails
+        SystemExit: On unrecoverable authentication errors when no fallback available
 
     Examples:
         >>> session, region, account = get_aws_session()
@@ -232,13 +247,22 @@ def get_aws_session(
             
             return session, region, account_id
         except Exception as e:
-            print(f"❌ Failed to validate AWS credentials: {e}")
-            print("\nPlease check your .env file and ensure:")
-            print("1. AWS_ACCESS_KEY_ID is correct")
-            print("2. AWS_SECRET_ACCESS_KEY is correct")
-            print("3. AWS_SESSION_TOKEN is valid (if using STS credentials)")
-            print("4. Credentials have not expired")
-            raise ValueError(f"Environment credential validation failed: {e}") from e
+            if verbose:
+                print(f"⚠️  Environment credentials validation failed: {e}")
+                print("   Clearing invalid environment credentials...")
+                print("   Attempting fallback to AWS profile/SSO...\n")
+
+            # Clear invalid environment credentials to allow fallback
+            cleared_keys = []
+            for key in ['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'AWS_SESSION_TOKEN']:
+                if key in os.environ:
+                    del os.environ[key]
+                    cleared_keys.append(key)
+
+            if verbose and cleared_keys:
+                print(f"   Cleared: {', '.join(cleared_keys)}")
+
+            # Don't raise - fall through to profile/SSO section below
 
     # Determine which profile to use (for local development)
     detected_profile = _detect_profile(profile_name, verbose)

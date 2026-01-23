@@ -23,22 +23,30 @@ def init_aws(
     verbose: bool = True
 ) -> Tuple[boto3.Session, str, str]:
     """
-    Initialize AWS session for notebook use.
-    
+    Initialize AWS session for notebook use with automatic SSO fallback.
+
     This function:
     1. Loads credentials from .env file (if it exists)
     2. Creates and validates AWS session
-    3. Returns session, region, and account_id
-    
+    3. Automatically falls back to AWS SSO if .env credentials are invalid/expired
+    4. Returns session, region, and account_id
+
+    Credential priority order:
+    - Container IAM role (if running in Lambda/ECS/EKS)
+    - Environment variables from .env file
+      * If invalid/expired, automatically clears them and falls back to SSO
+    - AWS SSO profile (from AWS_PROFILE or AWS_DEFAULT_PROFILE)
+    - Default AWS credentials
+
     Args:
         env_path: Path to .env file. Default is '.env' in current directory.
         profile_name: Optional AWS profile name to use.
         region_name: Optional AWS region to use.
         verbose: If True, print status messages. Default True.
-        
+
     Returns:
         Tuple of (boto3.Session, region_name: str, account_id: str)
-        
+
     Example:
         >>> from utils.notebook_init import init_aws
         >>> session, region, account_id = init_aws()
