@@ -3,7 +3,7 @@
 | Information         | Details                                                      |
 |:--------------------|:-------------------------------------------------------------|
 | Tutorial type       | Long term Episodic                                           |
-| Agent type          | Code Debugging Assistant                                      |
+| Agent type          | Meeting Notes Assistant                                      |
 | Agentic Framework   | Strands Agents                                               |
 | LLM model           | Anthropic Claude Haiku 4.5                                   |
 | Tutorial components | AgentCore Episodic Memory with Reflections, Hooks            |
@@ -42,11 +42,11 @@ Episodic memory is unique because it:
 
 Ideal use cases include:
 
+- **Meeting assistants**: Track decisions, action items, and follow-ups across meetings
 - **Customer support conversations**: Learn from successful resolution patterns
 - **Agent-driven workflows**: Remember which tool combinations work best
-- **Code assistants**: Track debugging approaches that resolved issues
-- **Troubleshooting flows**: Identify common failure modes and solutions
 - **Personal productivity tools**: Adapt to user working patterns over time
+- **Project management**: Identify recurring blockers and successful strategies
 
 ## Strategy Steps
 
@@ -62,29 +62,30 @@ Episodes and reflections are stored in configurable namespaces:
 
 ```python
 # Store episodes at actor level (recommended for most use cases)
-"namespaces": ["workflow/actor/{actorId}/episodes"]
+"namespaces": ["meetings/actor/{actorId}/episodes"]
 
 # Reflections must be same as or prefix of episodic namespace
 "reflectionConfiguration": {
-    "namespaces": ["workflow/actor/{actorId}"]  # Prefix of episodes namespace
+    "namespaces": ["meetings/actor/{actorId}"]  # Prefix of episodes namespace
 }
 ```
 
-**Important**: The reflection namespace must be the same as or a prefix of the episodic namespace. For example, if episodes are at `debug/actor/{actorId}/episodes`, reflections should be at `debug/actor/{actorId}` (prefix).
+**Important**: The reflection namespace must be the same as or a prefix of the episodic namespace. For example, if episodes are at `meetings/actor/{actorId}/episodes`, reflections should be at `meetings/actor/{actorId}` (prefix).
 
 ## Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                        Code Debugging Assistant                              │
+│                        Meeting Notes Assistant                               │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                              │
 │  ┌──────────────┐     ┌──────────────────────────────────────────────────┐  │
-│  │   Developer  │     │              Strands Agent                        │  │
-│  │              │────▶│  ┌─────────────────────────────────────────────┐  │  │
-│  │  "KeyError   │     │  │           System Prompt                     │  │  │
-│  │   in my      │     │  │  "You are an expert debugging assistant..." │  │  │
-│  │   code..."   │     │  └─────────────────────────────────────────────┘  │  │
+│  │  Meeting     │     │              Strands Agent                        │  │
+│  │ Participant  │────▶│  ┌─────────────────────────────────────────────┐  │  │
+│  │              │     │  │           System Prompt                     │  │  │
+│  │  "Let's      │     │  │  "You are a meeting assistant that tracks   │  │  │
+│  │  discuss     │     │  │   decisions and action items..."            │  │  │
+│  │  Q3 goals"   │     │  └─────────────────────────────────────────────┘  │  │
 │  └──────────────┘     │                      │                            │  │
 │                       │                      ▼                            │  │
 │                       │  ┌─────────────────────────────────────────────┐  │  │
@@ -98,7 +99,8 @@ Episodes and reflections are stored in configurable namespaces:
 │                       │             │                    │                │  │
 │                       │  ┌──────────┴────────────────────┴─────────────┐  │  │
 │                       │  │              Tools                          │  │  │
-│                       │  │  analyze_error │ suggest_fix │ run_test     │  │  │
+│                       │  │  capture_action | identify_decision |       │  │  │
+│                       │  │  summarize_discussion | track_followup      │  │  │
 │                       │  └─────────────────────────────────────────────┘  │  │
 │                       └──────────────────────────────────────────────────┘  │
 │                                          │                                   │
@@ -112,38 +114,38 @@ Episodes and reflections are stored in configurable namespaces:
 │  │  │   │  Extraction  │──▶│ Consolidation │──▶│   Reflection    │   │  │  │
 │  │  │   │              │   │               │   │                 │   │  │  │
 │  │  │   │ Detect when  │   │ Combine into  │   │ Generate cross- │   │  │  │
-│  │  │   │ episode ends │   │ single record │   │ episode insights│   │  │  │
+│  │  │   │ meeting ends │   │ single record │   │ meeting insights│   │  │  │
 │  │  │   └──────────────┘   └───────────────┘   └─────────────────┘   │  │  │
 │  │  └─────────────────────────────────────────────────────────────────┘  │  │
 │  │                                                                        │  │
 │  │  ┌─────────────────────────────┐  ┌─────────────────────────────────┐ │  │
 │  │  │        Episodes             │  │         Reflections             │ │  │
-│  │  │  /debug/actor/{id}/episodes │  │  /debug/actor/{id}/reflections  │ │  │
+│  │  │ /meetings/actor/{id}/episodes│  │/meetings/actor/{id}/reflections │ │  │
 │  │  │                             │  │                                 │ │  │
-│  │  │  • Situation                │  │  • Successful patterns          │ │  │
-│  │  │  • Intent                   │  │  • Common failure modes         │ │  │
-│  │  │  • Assessment               │  │  • Best practices               │ │  │
-│  │  │  • Justification            │  │  • Lessons learned              │ │  │
+│  │  │  • Meeting purpose          │  │  • Effective meeting patterns   │ │  │
+│  │  │  • Key decisions made       │  │  • Action item completion rate  │ │  │
+│  │  │  • Action items assigned    │  │  • Participant preferences      │ │  │
+│  │  │  • Follow-up status         │  │  • Common blockers              │ │  │
 │  │  └─────────────────────────────┘  └─────────────────────────────────┘ │  │
 │  └───────────────────────────────────────────────────────────────────────┘  │
 │                                                                              │
 └─────────────────────────────────────────────────────────────────────────────┘
 
 Data Flow:
-1. Developer asks debugging question
-2. MessageAdded hook retrieves relevant past episodes & reflections
-3. Agent processes query with historical context
-4. Agent uses tools (analyze_error, suggest_fix, run_test)
+1. Meeting participant discusses topics
+2. MessageAdded hook retrieves relevant past meeting episodes & reflections
+3. Agent processes discussion with historical context
+4. Agent uses tools (capture_action, identify_decision, summarize_discussion, track_followup)
 5. AfterInvocation hook saves interaction as event
-6. AgentCore extracts episodes when conversation completes (~1 min)
-7. Reflections generated across multiple episodes (background)
+6. AgentCore extracts episodes when meeting completes (~1 min)
+7. Reflections generated across multiple meetings (background)
 ```
 
 ## Available Sample Notebooks
 
 | Framework | Use Case | Description | Notebook |
 |-----------|----------|-------------|----------|
-| Strands Agent | Code Assistant | Debugging assistant that learns from successful resolution patterns | [code-assistant.ipynb](./code-assistant.ipynb) |
+| Strands Agent | Meeting Notes | Meeting assistant that tracks decisions, action items, and learns from past meetings | [meeting-notes-assistant.ipynb](./meeting-notes-assistant.ipynb) |
 
 ## Getting Started
 
@@ -153,51 +155,52 @@ Data Flow:
 
 ## Sample Prompts
 
-Try these debugging queries to test episodic memory learning:
+Try these meeting scenarios to test episodic memory learning:
 
-### 1. Similar Error Recall
-**Prompt**: "I'm getting KeyError: 'username' when accessing config['username']"
+### 1. Follow-up on Previous Decision
+**Prompt**: "Let's revisit the Q3 marketing budget we discussed last week"
 
-**Expected Behavior**: Agent references past KeyError episode and suggests using `.get()` method for safe dictionary access.
+**Expected Behavior**: Agent recalls past episode with budget discussion, retrieves previous decisions, and references context from that meeting.
 
-### 2. Pattern Application
-**Prompt**: "TypeError when concatenating: result = count + ' items'"
+### 2. Action Item Check
+**Prompt**: "Did we assign someone to handle the website redesign?"
 
-**Expected Behavior**: Agent applies learned type conversion patterns from past episodes.
+**Expected Behavior**: Agent retrieves past episodes where website redesign was discussed, identifies assigned action items and owner.
 
-### 3. Generalization
-**Prompt**: "IndexError: list index out of range when accessing items[5] but list has 3 items"
+### 3. Recurring Meeting Pattern
+**Prompt**: "We need to plan the weekly sprint review meeting"
 
-**Expected Behavior**: Agent generalizes from past episodes to suggest bounds checking before list access.
+**Expected Behavior**: Agent applies learned patterns from past sprint reviews (e.g., "Team prefers 30-min format" or "Always include demo time").
 
-### 4. Complex Workflow
-**Prompt**: "My function processes a list of users but crashes with KeyError sometimes"
+### 4. New Meeting with Context
+**Prompt**: "Let's have a quick sync about the product launch timeline. We need to finalize dates."
 
-**Expected Behavior**: Multi-step debugging using tools, demonstrating how the agent chains analyze_error, suggest_fix, and run_test.
+**Expected Behavior**: Multi-step meeting facilitation using tools to capture decisions, identify action items, and track follow-ups.
 
-### 5. Pattern Recognition
-**Prompt**: "Another KeyError! This time accessing data['timestamp'] in my logging code."
+### 5. Participant Preference Recognition
+**Prompt**: "Sarah wants to discuss the technical architecture for the new feature"
 
-**Expected Behavior**: Agent recognizes the KeyError pattern and immediately suggests the defensive .get() approach without needing detailed analysis.
+**Expected Behavior**: Agent recognizes Sarah's preferences from past meetings (e.g., "Sarah prefers detailed diagrams" or "Technical meetings with Sarah typically need 1 hour").
 
-### 6. Unknown Error
-**Prompt**: "RecursionError: maximum recursion depth exceeded in my tree traversal function"
+### 6. New Topic
+**Prompt**: "We need to discuss the company's sustainability initiative for the first time"
 
-**Expected Behavior**: Agent acknowledges this is a new error type with no past episodes, provides general guidance on recursion limits and base cases.
+**Expected Behavior**: Agent acknowledges this is a new topic with no past episodes, provides general meeting structure, captures decisions and action items for future reference.
 
 ## Key Concepts
 
 ### Episodes vs Reflections
 
 **Episodes** capture individual interaction sequences:
-- A debugging session where the agent tried multiple approaches
-- A customer support conversation that resolved an issue
-- A data processing workflow with specific parameters
+- A project planning meeting where decisions were made
+- A sprint retrospective with action items assigned
+- A budget review discussion with specific outcomes
 
 **Reflections** analyze patterns across episodes:
-- Which tool combinations consistently succeed
-- Common failure modes and their resolutions
-- Best practices extracted from successful episodes
+- Which meeting formats work best for different teams
+- Common blockers that repeatedly surface
+- Action item completion rates by team member
+- Participant communication preferences
 
 ### Retrieval Best Practices
 
@@ -238,7 +241,7 @@ After mastering episodic memory:
 ### Empty Reflection Results
 **Issue**: Reflections namespace returns no results
 
-**Solution**: Reflections are generated after multiple episodes are collected. Run additional debugging sessions with varied scenarios to accumulate episodes. Reflection generation happens in the background and may take several minutes.
+**Solution**: Reflections are generated after multiple episodes are collected. Run additional meeting sessions with varied scenarios to accumulate episodes. Reflection generation happens in the background and may take several minutes.
 
 ### Memory Creation Fails with "Already Exists"
 **Issue**: Memory resource with same name already exists

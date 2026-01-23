@@ -1,14 +1,15 @@
 """
-AgentCore Episodic Memory - Code Debugging Assistant
+AgentCore Episodic Memory - Meeting Notes Assistant
 
-This tutorial demonstrates how to build a code debugging assistant using
+This tutorial demonstrates how to build a meeting notes assistant using
 Strands agents integrated with AgentCore Episodic Memory. The agent learns
-from past debugging sessions, remembering which approaches worked and which
-failed, enabling it to resolve similar issues more efficiently over time.
+from past meetings, remembering decisions made, action items assigned, and
+participant preferences, enabling it to provide context-aware assistance
+across recurring meetings.
 
 Tutorial Details:
 - Tutorial type: Long term Episodic
-- Agent type: Code Debugging Assistant
+- Agent type: Meeting Notes Assistant
 - Agentic Framework: Strands Agents
 - LLM model: Anthropic Claude Haiku 4.5
 - Components: AgentCore Episodic Memory with Reflections
@@ -16,8 +17,8 @@ Tutorial Details:
 You'll learn to:
 - Set up AgentCore Memory with the Episodic strategy
 - Create memory hooks for automatic episode capture
-- Retrieve past episodes and reflections to improve agent performance
-- Build an agent that learns from experience
+- Retrieve past meeting episodes and reflections
+- Build an agent that learns meeting patterns and participant preferences
 """
 
 # %% [markdown]
@@ -47,13 +48,13 @@ from bedrock_agentcore.memory.constants import StrategyType
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
-logger = logging.getLogger("code-assistant")
+logger = logging.getLogger("meeting-notes-assistant")
 
 # %%
 # Configuration
 REGION = "us-west-2"
-DEVELOPER_ID = "developer_001"
-SESSION_ID = f"debug_{datetime.now().strftime('%Y%m%d%H%M%S')}"
+PARTICIPANT_ID = "participant_001"
+SESSION_ID = f"meeting_{datetime.now().strftime('%Y%m%d%H%M%S')}"
 
 # %% [markdown]
 # ## Step 2: Create Memory Resource with Episodic Strategy
@@ -65,16 +66,16 @@ SESSION_ID = f"debug_{datetime.now().strftime('%Y%m%d%H%M%S')}"
 
 # %%
 client = MemoryClient(region_name=REGION)
-memory_name = "CodeAssistantEpisodicMemory"
+memory_name = "MeetingNotesEpisodicMemory"
 
 # Define episodic memory strategy
 strategies = [
     {
         StrategyType.EPISODIC.value: {
-            "name": "DebuggingEpisodes",
-            "description": "Captures debugging sessions and generates reflections on successful patterns",
-            "namespaces": ["debug/actor/{actorId}/episodes"],
-            "reflectionConfiguration": {"namespaces": ["debug/actor/{actorId}"]},
+            "name": "MeetingEpisodes",
+            "description": "Captures meeting discussions and generates reflections on meeting patterns",
+            "namespaces": ["meetings/actor/{actorId}/episodes"],
+            "reflectionConfiguration": {"namespaces": ["meetings/actor/{actorId}"]},
         }
     }
 ]
@@ -84,7 +85,7 @@ try:
     memory = client.create_memory_and_wait(
         name=memory_name,
         strategies=strategies,
-        description="Episodic memory for code debugging assistant",
+        description="Episodic memory for meeting notes assistant",
         event_expiry_days=180,  # Keep episodes for 6 months
     )
     memory_id = memory["id"]
@@ -110,89 +111,120 @@ strategies = client.get_memory_strategies(memory_id)
 print(json.dumps(strategies, indent=2, default=str))
 
 # %% [markdown]
-# ## Step 3: Create Debugging Tools
+# ## Step 3: Create Meeting Management Tools
 
 
 # %%
 @tool
-def analyze_error(error_message: str, code_snippet: str) -> str:
-    """Analyze an error message and code snippet to identify potential causes.
+def capture_action_item(task: str, owner: str, due_date: str) -> str:
+    """Capture an action item from the meeting discussion.
 
     Args:
-        error_message: The error message to analyze
-        code_snippet: The relevant code snippet
+        task: Description of the task to be completed
+        owner: Person responsible for completing the task
+        due_date: When the task should be completed
 
     Returns:
-        Analysis of potential causes and suggested fixes
+        Confirmation of action item capture with details
     """
-    # Simulate error analysis
-    analyses = {
-        "TypeError": "Type mismatch detected. Check variable types and function signatures.",
-        "KeyError": "Dictionary key not found. Verify key exists before access or use .get().",
-        "IndexError": "List index out of range. Check list length before accessing indices.",
-        "AttributeError": "Object doesn't have this attribute. Verify object type and available methods.",
-        "ImportError": "Module import failed. Check module installation and import path.",
+    action_items = {
+        "website": "Website redesign - assigned to Sarah, due next Friday",
+        "budget": "Review Q3 budget allocation - assigned to Mike, due this week",
+        "presentation": "Prepare stakeholder presentation - assigned to Alex, due Monday",
+        "testing": "Complete user testing for new feature - assigned to QA team, due end of sprint",
     }
 
-    for error_type, analysis in analyses.items():
-        if error_type in error_message:
-            return f"Analysis: {analysis}\n\nCode context:\n{code_snippet[:200]}"
+    # Simulate action item storage
+    for keyword, stored_item in action_items.items():
+        if keyword in task.lower():
+            return f"✅ ACTION ITEM CAPTURED:\n{stored_item}\n\nNote: {task}"
 
-    return f"General error analysis needed for: {error_message}"
+    return f"✅ ACTION ITEM CAPTURED:\nTask: {task}\nOwner: {owner}\nDue: {due_date}"
 
 
 @tool
-def suggest_fix(error_type: str, context: str) -> str:
-    """Suggest a fix for a specific error type.
+def identify_decision(decision: str, context: str) -> str:
+    """Identify and record a key decision made during the meeting.
 
     Args:
-        error_type: The type of error (e.g., TypeError, KeyError)
-        context: Additional context about the error
+        decision: The decision that was made
+        context: Context or reasoning behind the decision
 
     Returns:
-        Suggested fix with code example
+        Confirmation of decision recording with summary
     """
-    fixes = {
-        "TypeError": "Add type checking: `if isinstance(var, expected_type):`",
-        "KeyError": "Use safe access: `value = dict.get('key', default_value)`",
-        "IndexError": "Add bounds check: `if index < len(list):`",
-        "AttributeError": "Add hasattr check: `if hasattr(obj, 'attr'):`",
-        "ImportError": "Try: `pip install module_name` or check PYTHONPATH",
+    decisions = {
+        "budget": "Approved Q3 marketing budget increase of 15%",
+        "launch": "Product launch date set for November 15th",
+        "vendor": "Selected AWS as cloud infrastructure provider",
+        "process": "Adopted agile sprint methodology for project management",
     }
 
-    fix = fixes.get(error_type, "Review the error context and stack trace for clues.")
-    return f"Suggested fix for {error_type}:\n{fix}\n\nContext: {context}"
+    # Simulate decision recording
+    for keyword, stored_decision in decisions.items():
+        if keyword in decision.lower():
+            return f"📌 DECISION RECORDED:\n{stored_decision}\n\nRationale: {context}"
+
+    return f"📌 DECISION RECORDED:\n{decision}\n\nContext: {context}"
 
 
 @tool
-def run_test(test_description: str) -> str:
-    """Simulate running a test to verify a fix.
+def summarize_discussion(topic: str, key_points: str) -> str:
+    """Summarize a discussion topic with key points.
 
     Args:
-        test_description: Description of what to test
+        topic: The discussion topic
+        key_points: Main points covered in the discussion
 
     Returns:
-        Test result (pass/fail with details)
+        Structured summary of the discussion
     """
-    # Simulate test execution
-    import random
+    # Simulate discussion summarization
+    return f"""📝 DISCUSSION SUMMARY:
 
-    passed = random.random() > 0.3  # 70% success rate for demo
+Topic: {topic}
 
-    if passed:
-        return f"✅ TEST PASSED: {test_description}"
-    else:
-        return f"❌ TEST FAILED: {test_description} - Additional debugging needed"
+Key Points:
+{key_points}
+
+Next Steps: Review in next meeting"""
 
 
-logger.info("✅ Debugging tools ready")
+@tool
+def track_followup(previous_item: str, status: str) -> str:
+    """Track follow-up status of previous action items or decisions.
+
+    Args:
+        previous_item: Description of the item to follow up on
+        status: Current status (completed, in-progress, blocked, pending)
+
+    Returns:
+        Follow-up status with details
+    """
+    # Simulate follow-up tracking
+    statuses = {
+        "completed": "✅ COMPLETED",
+        "in-progress": "🔄 IN PROGRESS",
+        "blocked": "🚫 BLOCKED",
+        "pending": "⏳ PENDING",
+    }
+
+    status_emoji = statuses.get(status.lower(), "❓ UNKNOWN")
+
+    return f"""{status_emoji}
+Item: {previous_item}
+Status: {status}
+Last Updated: {datetime.now().strftime("%Y-%m-%d")}"""
+
+
+logger.info("✅ Meeting management tools ready")
 
 # %% [markdown]
 # ## Step 4: Create Episodic Memory Hook Provider
 #
 # The hook provider:
-# - Retrieves relevant past episodes and reflections before processing queries
-# - Saves debugging interactions as events for episode extraction
+# - Retrieves relevant past meeting episodes and reflections before processing queries
+# - Saves meeting interactions as events for episode extraction
 # - Episodes are automatically detected and extracted by AgentCore
 
 
@@ -283,8 +315,8 @@ class EpisodicMemoryHooks(HookProvider):
         except Exception as e:
             logger.error(f"Failed to retrieve episodes: {e}")
 
-    def save_debugging_interaction(self, event: AfterInvocationEvent):
-        """Save debugging interaction for episode extraction."""
+    def save_meeting_interaction(self, event: AfterInvocationEvent):
+        """Save meeting interaction for episode extraction."""
         try:
             messages = event.agent.messages
             if len(messages) < 2 or messages[-1]["role"] != "assistant":
@@ -330,7 +362,7 @@ class EpisodicMemoryHooks(HookProvider):
                     session_id=session_id,
                     messages=interaction_messages,
                 )
-                logger.info("Saved debugging interaction for episode extraction")
+                logger.info("Saved meeting interaction for episode extraction")
 
         except Exception as e:
             logger.error(f"Failed to save interaction: {e}")
@@ -338,150 +370,175 @@ class EpisodicMemoryHooks(HookProvider):
     def register_hooks(self, registry: HookRegistry) -> None:
         """Register episodic memory hooks."""
         registry.add_callback(MessageAddedEvent, self.retrieve_episodes_and_reflections)
-        registry.add_callback(AfterInvocationEvent, self.save_debugging_interaction)
+        registry.add_callback(AfterInvocationEvent, self.save_meeting_interaction)
         logger.info("Episodic memory hooks registered")
 
 
 # %% [markdown]
-# ## Step 5: Create Code Debugging Agent
+# ## Step 5: Create Meeting Notes Agent
 
 # %%
 episodic_hooks = EpisodicMemoryHooks(memory_id, client)
 
-debug_agent = Agent(
+meeting_agent = Agent(
     hooks=[episodic_hooks],
     model="global.anthropic.claude-haiku-4-5-20251001-v1:0",
-    tools=[analyze_error, suggest_fix, run_test],
-    state={"actor_id": DEVELOPER_ID, "session_id": SESSION_ID},
-    system_prompt="""You are an expert code debugging assistant with memory of past debugging sessions.
+    tools=[
+        capture_action_item,
+        identify_decision,
+        summarize_discussion,
+        track_followup,
+    ],
+    state={"actor_id": PARTICIPANT_ID, "session_id": SESSION_ID},
+    system_prompt="""You are an expert meeting assistant with memory of past meetings.
 
 Your role:
-- Help developers identify and fix code errors
-- Use past episodes to recognize similar issues you've solved before
-- Apply reflections to avoid approaches that previously failed
-- Document your debugging process for future learning
+- Help facilitate productive meetings by tracking decisions and action items
+- Use past meeting episodes to provide relevant context and history
+- Apply reflections about what works well for different teams and participants
+- Remember participant preferences and communication styles
 
-When you see [PAST EPISODE] context, use it to inform your approach.
+When you see [PAST EPISODE] context, use it to inform your responses.
 When you see [REFLECTION] context, apply those learned patterns.
 
 Always:
-1. Analyze the error systematically
-2. Reference relevant past experience if available
-3. Suggest specific fixes with code examples
-4. Verify fixes work when possible""",
+1. Listen for key decisions and action items
+2. Reference relevant past meetings when helpful
+3. Track follow-ups on previous action items
+4. Summarize discussions clearly and concisely""",
 )
 
-print("✅ Code debugging agent created with episodic memory")
+print("✅ Meeting notes agent created with episodic memory")
 
 # %% [markdown]
-# ## Step 6: Seed Past Debugging Episodes
+# ## Step 6: Seed Past Meeting Episodes
 #
-# Let's add some previous debugging sessions to demonstrate episodic memory.
+# Let's add some previous meeting sessions to demonstrate episodic memory.
 
 # %%
-# Seed with previous debugging sessions
+# Seed with previous meeting sessions
 past_sessions = [
-    # Session 1: KeyError debugging
-    ("I'm getting a KeyError when accessing user['email'] in my Flask app.", "USER"),
-    ("Let me analyze this KeyError issue.", "ASSISTANT"),
-    ("[TOOL: analyze_error]", "TOOL"),
-    ("[RESULT: Dictionary key not found. Verify key exists before access.]", "TOOL"),
+    # Session 1: Sprint planning meeting
+    ("Let's plan the Q3 sprint. We need to prioritize features.", "USER"),
+    ("I'll help capture the key decisions and action items.", "ASSISTANT"),
     (
-        "The issue is that 'email' key doesn't exist. Use user.get('email', '') for safe access.",
-        "ASSISTANT",
-    ),
-    ("[TOOL: suggest_fix]", "TOOL"),
-    ("[RESULT: Use safe access: value = dict.get('key', default_value)]", "TOOL"),
-    (
-        "Fixed! I changed to user.get('email', 'no-email@example.com') and it works.",
+        "We should focus on the user authentication feature first. It's blocking other work.",
         "USER",
     ),
-    ("[TOOL: run_test]", "TOOL"),
-    ("[RESULT: ✅ TEST PASSED: KeyError fix verification]", "TOOL"),
+    ("[TOOL: identify_decision]", "TOOL"),
     (
-        "Great! The fix is verified. Remember to always use .get() for optional dictionary keys.",
+        "[RESULT: 📌 DECISION RECORDED: Prioritize user authentication feature for Q3 sprint]",
+        "TOOL",
+    ),
+    (
+        "Noted. User authentication is the priority. Who will lead this?",
         "ASSISTANT",
     ),
-    # Session 2: TypeError debugging
     (
-        "TypeError: can't multiply sequence by non-int of type 'str' in my calculation.",
+        "Sarah can handle the authentication work. She has experience with OAuth.",
         "USER",
     ),
-    ("This is a type coercion issue. Let me analyze.", "ASSISTANT"),
-    ("[TOOL: analyze_error]", "TOOL"),
-    ("[RESULT: Type mismatch detected. Check variable types.]", "TOOL"),
+    ("[TOOL: capture_action_item]", "TOOL"),
     (
-        "You're trying to multiply a string by another string. Convert to int first: int(value) * multiplier",
+        "[RESULT: ✅ ACTION ITEM CAPTURED: Implement user authentication - Sarah - Due: End of sprint]",
+        "TOOL",
+    ),
+    (
+        "Perfect! I've captured that Sarah will implement user authentication by end of sprint.",
         "ASSISTANT",
     ),
-    ("[TOOL: run_test]", "TOOL"),
-    ("[RESULT: ✅ TEST PASSED: Type conversion fix]", "TOOL"),
-    ("That fixed it! I added int() conversion before the multiplication.", "USER"),
+    # Session 2: Budget review meeting
+    (
+        "We need to discuss the Q3 marketing budget. Costs are higher than expected.",
+        "USER",
+    ),
+    ("Let me help track this discussion.", "ASSISTANT"),
+    ("[TOOL: summarize_discussion]", "TOOL"),
+    (
+        "[RESULT: 📝 DISCUSSION SUMMARY: Q3 marketing budget - costs exceeding projections]",
+        "TOOL",
+    ),
+    (
+        "I propose we increase the budget by 15% to account for the new campaigns.",
+        "USER",
+    ),
+    ("[TOOL: identify_decision]", "TOOL"),
+    (
+        "[RESULT: 📌 DECISION RECORDED: Approved Q3 marketing budget increase of 15%]",
+        "TOOL",
+    ),
+    (
+        "Decision captured. Is there a follow-up needed?",
+        "ASSISTANT",
+    ),
+    ("Yes, Mike needs to update the financial forecast by end of week.", "USER"),
+    ("[TOOL: capture_action_item]", "TOOL"),
+    (
+        "[RESULT: ✅ ACTION ITEM CAPTURED: Update financial forecast - Mike - Due: End of week]",
+        "TOOL",
+    ),
 ]
 
 try:
     client.create_event(
         memory_id=memory_id,
-        actor_id=DEVELOPER_ID,
+        actor_id=PARTICIPANT_ID,
         session_id="seed_session_001",
         messages=past_sessions,
     )
-    print("✅ Seeded past debugging episodes")
+    print("✅ Seeded past meeting episodes")
     print("⏳ Note: Episode extraction happens in background (~1 minute)")
 except Exception as e:
     print(f"⚠️ Error seeding history: {e}")
 
 # %% [markdown]
-# ## Step 7: Test Debugging Scenarios
+# ## Step 7: Test Meeting Scenarios
 #
 # The agent should now leverage past episodes and reflections.
 
 # %%
-# Test 1: Similar KeyError issue - should reference past episode
-response1 = debug_agent(
-    "I'm getting KeyError: 'username' when I try to access config['username']"
+# Test 1: Follow-up on previous decision - should reference past episode
+response1 = meeting_agent(
+    "Let's revisit the Q3 sprint priorities we discussed last week. What was decided?"
 )
 print(f"Agent: {response1}")
 
 # %%
-# Test 2: New TypeError - should apply learned patterns
-response2 = debug_agent(
-    "Getting TypeError when concatenating: result = count + ' items'"
+# Test 2: Action item check - should retrieve past action items
+response2 = meeting_agent(
+    "Did we assign someone to handle the user authentication feature?"
 )
 print(f"Agent: {response2}")
 
 # %%
-# Test 3: IndexError - new error type
-response3 = debug_agent(
-    "IndexError: list index out of range when accessing items[5] but list has 3 items"
-)
+# Test 3: Budget follow-up - should reference past budget discussion
+response3 = meeting_agent("What was the outcome of the Q3 marketing budget discussion?")
 print(f"Agent: {response3}")
 
 # %%
-# Test 4: Multi-step debugging workflow
-response4 = debug_agent("""
-I have a complex issue. My function processes a list of users:
+# Test 4: New meeting with multiple actions
+response4 = meeting_agent("""
+We're having a product launch planning meeting. Key points:
+- Launch date: November 15th
+- Marketing team needs 2 weeks prep time
+- Sarah will coordinate with vendors
+- Mike needs to finalize pricing by next Friday
 
-def process_users(users):
-    for user in users:
-        email = user['email']
-        send_notification(email)
-
-It crashes with KeyError sometimes. How do I make it robust?
+Can you capture the decisions and action items?
 """)
 print(f"Agent: {response4}")
 
 # %%
-# Test 5: Learning from reflection - agent should recognize pattern
-response5 = debug_agent(
-    "Another KeyError! This time accessing data['timestamp'] in my logging code."
+# Test 5: Pattern recognition - agent should remember participant preferences
+response5 = meeting_agent(
+    "Sarah wants to discuss technical architecture for the new feature. What format works best?"
 )
 print(f"Agent: {response5}")
 
 # %%
-# Test 6: Completely new error type to see how agent handles unknowns
-response6 = debug_agent(
-    "RecursionError: maximum recursion depth exceeded in my tree traversal function"
+# Test 6: Completely new topic - no past context
+response6 = meeting_agent(
+    "We need to discuss the company's sustainability initiative for the first time. Let's brainstorm ideas."
 )
 print(f"Agent: {response6}")
 
@@ -496,13 +553,13 @@ episodic_config = get_namespaces(client, memory_id).get("EPISODIC", {})
 
 # Check episodes
 for namespace_template in episodic_config.get("namespaces", []):
-    namespace = namespace_template.format(actorId=DEVELOPER_ID)
+    namespace = namespace_template.format(actorId=PARTICIPANT_ID)
 
     try:
         episodes = client.retrieve_memories(
             memory_id=memory_id,
             namespace=namespace,
-            query="debugging error fix",
+            query="meeting decisions action items",
             top_k=5,
         )
 
@@ -519,13 +576,13 @@ for namespace_template in episodic_config.get("namespaces", []):
 
 # Check reflections
 for namespace_template in episodic_config.get("reflectionNamespaces", []):
-    namespace = namespace_template.format(actorId=DEVELOPER_ID)
+    namespace = namespace_template.format(actorId=PARTICIPANT_ID)
 
     try:
         reflections = client.retrieve_memories(
             memory_id=memory_id,
             namespace=namespace,
-            query="debugging patterns",
+            query="meeting patterns effectiveness",
             top_k=3,
         )
 
