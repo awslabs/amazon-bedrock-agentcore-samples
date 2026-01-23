@@ -60,14 +60,21 @@ def get_config() -> Dict[str, Optional[str]]:
     """
     config = {}
     
-    # Get region from boto3 session (auto-detected)
+    # Get region from boto3 session with proper fallback
     try:
         session = boto3.Session()
-        config['region'] = session.region_name
+        config['region'] = (
+            session.region_name or
+            os.environ.get('AWS_REGION') or
+            os.environ.get('AWS_DEFAULT_REGION') or
+            'us-east-1'
+        )
+        if not session.region_name:
+            logger.warning("⚠️  No region in AWS config, using fallback")
         logger.info(f"✅ Region: {config['region']}")
     except Exception as e:
         logger.warning(f"⚠️  Could not detect region: {e}")
-        config['region'] = 'us-east-1'  # Default
+        config['region'] = 'us-east-1'
     
     # Try to get Gateway ARN from environment variable first
     config['gateway_arn'] = os.environ.get('GATEWAY_ARN')

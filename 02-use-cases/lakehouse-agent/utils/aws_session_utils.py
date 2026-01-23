@@ -221,10 +221,25 @@ def get_aws_session(
         # Use environment variables directly (bypasses SSO)
         if verbose:
             print("🔑 Using AWS credentials from environment variables")
-        
-        # Get region from environment or use default
-        region = os.environ.get('AWS_DEFAULT_REGION') or os.environ.get('AWS_REGION') or region_name or 'us-east-1'
-        
+
+        # Detect region from multiple sources with proper priority
+        # 1. Explicit parameter, 2. Environment vars, 3. AWS config, 4. Default
+        if region_name:
+            region = region_name
+        else:
+            # Try environment variables first
+            region = os.environ.get('AWS_DEFAULT_REGION') or os.environ.get('AWS_REGION')
+            if not region:
+                # Try to get from AWS config (without credentials first)
+                try:
+                    temp_session = boto3.Session()
+                    region = temp_session.region_name
+                except:
+                    pass
+            # Final fallback
+            if not region:
+                region = 'us-east-1'
+
         # Create session with environment credentials
         session = boto3.Session(
             aws_access_key_id=os.environ.get('AWS_ACCESS_KEY_ID'),
@@ -354,7 +369,15 @@ def _detect_region_simple(region_name: Optional[str]) -> str:
     if region:
         return region
 
-    # Default to us-east-1
+    # Try to get from AWS config
+    try:
+        temp_session = boto3.Session()
+        if temp_session.region_name:
+            return temp_session.region_name
+    except:
+        pass
+
+    # Default to us-east-1 as last resort
     return 'us-east-1'
 
 
@@ -384,6 +407,8 @@ def _detect_region(
             print(f"🌍 Using region from {env_var}: {region}")
         return region
 
+    # No region found anywhere - use default
+    region = 'us-east-1'
     if verbose:
         print(f"⚠️  No AWS region configured, using default: {region}")
         print("   To set your region:")

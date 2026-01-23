@@ -52,14 +52,21 @@ def get_config() -> Dict[str, Optional[str]]:
     
     config = {}
     
-    # Get region from boto3 session
+    # Get region from boto3 session with proper fallback
     try:
         session = boto3.Session()
-        config['region'] = session.region_name
+        config['region'] = (
+            session.region_name or
+            os.environ.get('AWS_REGION') or
+            os.environ.get('AWS_DEFAULT_REGION') or
+            'us-east-1'
+        )
+        if not session.region_name:
+            print("⚠️  No region in AWS config, using fallback")
         print(f"✅ Region: {config['region']}")
     except Exception as e:
         print(f"⚠️  Could not detect region: {e}")
-        config['region'] = 'us-west-1'
+        config['region'] = 'us-east-1'
     
     # Get account ID
     try:

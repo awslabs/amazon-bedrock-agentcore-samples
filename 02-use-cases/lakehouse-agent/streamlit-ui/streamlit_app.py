@@ -6,6 +6,7 @@ import requests
 import json
 import uuid
 import boto3
+import os
 from typing import Optional
 
 st.set_page_config(page_title="Lakehouse Data Assistant", page_icon="🏥", layout="wide")
@@ -30,9 +31,15 @@ def load_config_from_ssm():
     """Load configuration from SSM Parameter Store"""
     try:
         session = boto3.Session()
-        region = session.region_name
+        # Get region with proper fallback
+        region = (
+            session.region_name or
+            os.environ.get('AWS_REGION') or
+            os.environ.get('AWS_DEFAULT_REGION') or
+            'us-east-1'
+        )
         ssm = boto3.client('ssm', region_name=region)
-        
+
         config = {}
         params = {
             'runtime_arn': '/app/lakehouse-agent/agent-runtime-arn',
@@ -41,19 +48,28 @@ def load_config_from_ssm():
             'cognito_domain': '/app/lakehouse-agent/cognito-domain',
             'cognito_region': '/app/lakehouse-agent/cognito-region'
         }
-        
+
         for key, param_name in params.items():
             try:
                 response = ssm.get_parameter(Name=param_name)
                 config[key] = response['Parameter']['Value']
             except:
                 config[key] = None
-        
+
         config['region'] = region
         return config
     except Exception as e:
         st.error(f"Failed to load config from SSM: {e}")
-        return {}
+        # Return config with at least region set
+        session = boto3.Session()
+        return {
+            'region': (
+                session.region_name or
+                os.environ.get('AWS_REGION') or
+                os.environ.get('AWS_DEFAULT_REGION') or
+                'us-east-1'
+            )
+        }
 
 def authenticate_user(username: str, password: str, user_pool_id: str, client_id: str, region: str) -> Optional[dict]:
     """Authenticate user with Cognito using USER_PASSWORD_AUTH flow"""
@@ -295,7 +311,7 @@ with st.sidebar:
                                 password,
                                 config['cognito_user_pool_id'],
                                 config['cognito_app_client_id'],
-                                config.get('cognito_region', config.get('region', 'us-east-1'))
+                                config.get('cognito_region') or config.get('region')
                             )
                             
                             if result:
@@ -334,7 +350,7 @@ with st.sidebar:
                                 challenge['session'],
                                 config['cognito_user_pool_id'],
                                 config['cognito_app_client_id'],
-                                config.get('cognito_region', config.get('region', 'us-east-1'))
+                                config.get('cognito_region') or config.get('region')
                             )
                             
                             if result:
@@ -411,12 +427,13 @@ if prompt:
 
     with st.chat_message("assistant"):
         config = st.session_state.cognito_config
+        # Config should always have region from load_config_from_ssm
         response = invoke_agent(
             st.session_state.runtime_arn,
             prompt,
             st.session_state.access_token,
             st.session_state.id_token,
-            config.get('region', 'us-east-1')
+            config.get('region')  # Should always be set from load_config_from_ssm
         )
         try:
             data = json.loads(response)
