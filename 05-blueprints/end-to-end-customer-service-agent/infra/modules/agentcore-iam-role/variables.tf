@@ -26,3 +26,13 @@ variable "agent_memory_arn" {
   default     = ""
   type        = string
 }
+
+variable "secrets_kms_key_arn" {
+  description = "ARN of the KMS key used to encrypt secrets"
+  type        = string
+}
+
+variable "parameters_kms_key_arn" {
+  description = "ARN of the KMS key used to encrypt parameters"
+  type        = string
+}
