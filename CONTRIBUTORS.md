@@ -80,5 +80,8 @@
 - vargas-dann-0896
 - razkenari
 - Kostas Tzouvanas
+- Sunita Koppar (skoppar)
+- Gi Kim (giryoong)
 - richatt
 - joyanta3105
+- Hideki Tane
