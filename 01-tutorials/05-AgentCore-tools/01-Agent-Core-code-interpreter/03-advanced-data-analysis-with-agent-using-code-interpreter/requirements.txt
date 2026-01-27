@@ -1,7 +1,13 @@
 boto3
 bedrock-agentcore
 strands-agents>=0.1.8
-strands-agents-tools>=0.1.6
+strands-agents-tools
 langchain-aws
-langchain
+langchain-classic
+langchain-core
 pandas
+nvidia-ml-py3
+faiss-cpu
+numpy
+jsonschema
+transformers>=4.30.0
