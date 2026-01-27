@@ -648,11 +648,12 @@ def agentcore_memory_cleanup(memory_id: str = None):
 
 
 def gateway_target_cleanup(gateway_id: str = None):
+    gateway_client = boto3.client(
+        "bedrock-agentcore-control",
+        region_name=REGION,
+    )
+
     if not gateway_id:
-        gateway_client = boto3.client(
-            "bedrock-agentcore-control",
-            region_name=REGION,
-        )
         response = gateway_client.list_gateways()
         gateway_id = response["items"][0]["gatewayId"]
     print(f"🗑️  Deleting all targets for gateway: {gateway_id}")
@@ -776,3 +777,35 @@ def local_file_cleanup():
         print(
             f"ℹ️  {len(missing_files)} files were already missing: {', '.join(missing_files)}"
         )
+
+def policy_engine_cleanup(policy_engine_id: str = None):
+    policy_client = boto3.client(
+        "bedrock-agentcore-control",
+        region_name=REGION,
+    )
+    
+    if not policy_engine_id:
+        response = policy_client.list_policy_engines()
+        policy_engine_id = response["policyEngines"][0]["policyEngineId"]
+    
+    print(f"🗑️  Deleting all policies for policy engine: {policy_engine_id}")
+       
+    # List and delete all policies
+    list_response = policy_client.list_policies(
+        policyEngineId=policy_engine_id,
+        maxResults=100
+    )
+    
+    for item in list_response["policies"]:
+        policy_id = item["policyId"]
+        print(f"   Deleting policy: {policy_id}")
+        policy_client.delete_policy(
+            policyEngineId=policy_engine_id,
+            policyId=policy_id
+        )
+        print(f"   ✅ Policy {policy_id} deleted")
+    
+    # Delete the policy engine
+    print(f"🗑️  Deleting policy engine: {policy_engine_id}")
+    policy_client.delete_policy_engine(policyEngineId=policy_engine_id)
+    print(f"✅ Policy engine {policy_engine_id} deleted successfully")
