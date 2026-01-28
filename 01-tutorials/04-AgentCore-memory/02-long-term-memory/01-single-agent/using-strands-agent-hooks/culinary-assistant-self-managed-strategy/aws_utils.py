@@ -436,7 +436,7 @@ class AWSUtils:
                         'customMemoryStrategy': {
                             'name': strategy_name,
                             'description': 'Custom self-managed memory strategy',
-                            # 'namespaces': ['/interests/actor/{actorId}/session/{sessionId}'],
+                            # 'namespaces': ['/interests/actor/{actorId}/session/{sessionId}/'],
                             'configuration': {
                                 'selfManagedConfiguration': {
                                     'triggerConditions': [

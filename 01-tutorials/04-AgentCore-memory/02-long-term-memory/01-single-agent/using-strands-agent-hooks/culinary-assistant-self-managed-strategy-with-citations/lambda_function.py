@@ -143,7 +143,7 @@ Conversation:
 
             # For this demo we'll focus only on user interests with a hierarchical namespace
             # Format: /interests/actor/{actorId}/session/{sessionId}
-            namespace = f"/interests/actor/{actor_id}/session/{session_id}"
+            namespace = f"/interests/actor/{actor_id}/session/{session_id}/"
 
             # Build citation information to link long-term memory back to short-term memory source
             citation_info = {

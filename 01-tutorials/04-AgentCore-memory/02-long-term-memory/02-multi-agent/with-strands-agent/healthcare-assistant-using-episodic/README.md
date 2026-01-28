@@ -29,14 +29,14 @@ The system uses a episodic memory strategy with:
 
 **Extraction**: Converts conversation events into structured episodes
 - Prompt: "Extract patient interactions with healthcare agents"
-- Namespace: `healthcare/{actorId}/{sessionId}`
+- Namespace: `healthcare/{actorId}/{sessionId}/`
 
 **Consolidation**: Merges related episodes
 - Prompt: "Consolidate healthcare conversations"
 
 **Reflection**: Generates cross-session insights
 - Prompt: "Generate insights from patient care patterns"
-- Namespace: `healthcare/{actorId}` (exact namespace prefix)
+- Namespace: `healthcare/{actorId}/` (exact namespace prefix)
 
 ### Memory Branching
 
