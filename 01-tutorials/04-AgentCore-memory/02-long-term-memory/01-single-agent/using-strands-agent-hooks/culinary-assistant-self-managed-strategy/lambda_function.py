@@ -211,7 +211,7 @@ class MemoryIngestor:
         try:
             logger.info(f"Ingesting {len(batch_records)} memory records")
 
-            response = self.agentcore_client.batch_create_memory_records(
+            self.agentcore_client.batch_create_memory_records(
                 memoryId=memory_id,
                 records=batch_records,
                 clientToken=str(uuid.uuid4())
