@@ -138,7 +138,7 @@ context = AgentCoreMemoryContext(
     actor_id="user-id",
     memory_id=memory_id,
     session_id="session-id",
-    namespace="/domain-specific"
+    namespace="/domain-specific/"
 )
 agentcore_memory = AgentCoreMemory(context=context)
 ```
@@ -157,7 +157,7 @@ context = AgentCoreMemoryContext(
     actor_id="advisor-id",      # Same actor across sessions
     memory_id=memory_id,        # Same memory store
     session_id="q1-session",    # Different per interaction
-    namespace="/domain-specific"
+    namespace="/domain-specific/"
 )
 ```
 
