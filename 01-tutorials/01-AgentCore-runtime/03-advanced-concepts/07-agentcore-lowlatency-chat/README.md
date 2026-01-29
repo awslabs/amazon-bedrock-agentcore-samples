@@ -1,5 +1,7 @@
 # AgentCore Warmup Demo
 
+## Introduction
+
 A demonstration application showcasing how pre-emptive warmup of AgentCore runtime reduces latency in agentic chatbots.
 AgentCore Runtime can deploy agent code using code deployment or container deployment.
 When AgentCore Runtime receives the first invocation, it allocates a new VM. In case of container deployment there are 10 VM in a warm pool, and up to 10 new sessions are served from that pool, with sub-second cold starts. From the 11th session, new VMs must be allocated, the container downloaded and started. This will make the cold start longer and dependent on the size of the container.
@@ -271,7 +273,7 @@ async function waitForWarmup(sessionId: string): Promise<void> {
 }
 
 export async function invokeAgentStream() {
-// ... parameters
+  // ... parameters
   // If this is a prompt request (not a ping), wait for warmup first
   if (payload.prompt && !payload.ping) {
     await waitForWarmup(sessionId);
@@ -341,3 +343,14 @@ The app reads configuration from:
 
 - `.bedrock_agentcore.yaml`: Agent configuration including ARN and region
 - `.agentcore_identity_cognito_user.json`: Cognito authentication credentials
+
+## Cleanup
+
+To clean up resources created during the setup, run the following commands:
+
+```bash
+uvx --from bedrock-agentcore-starter-toolkit agentcore destroy
+uvx --from bedrock-agentcore-starter-toolkit agentcore identity cleanup
+```
+
+This will remove the deployed agent and associated Cognito resources.
