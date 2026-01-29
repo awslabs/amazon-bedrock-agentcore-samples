@@ -345,7 +345,7 @@ export const TreasuryDashboard: React.FC = () => {
                 <YAxis stroke="#666" />
                 <Tooltip
                   contentStyle={{ borderRadius: 8, border: '1px solid #e0e0e0' }}
-                  formatter={(value: number) => formatCurrency(value)}
+                  formatter={(value: number | undefined) => value !== undefined ? formatCurrency(value) : ''}
                 />
                 <Legend />
                 <Line
