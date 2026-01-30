@@ -3,6 +3,7 @@ import hashlib
 import hmac
 import json
 import os
+import time
 from typing import Any, Dict
 
 import boto3
@@ -663,6 +664,7 @@ def gateway_target_cleanup(gateway_id: str = None):
         gatewayIdentifier=gateway_id, maxResults=100
     )
 
+    targets_deleted = False
     for item in list_response["items"]:
         target_id = item["targetId"]
         print(f"   Deleting target: {target_id}")
@@ -670,7 +672,13 @@ def gateway_target_cleanup(gateway_id: str = None):
             gatewayIdentifier=gateway_id, targetId=target_id
         )
         print(f"   ✅ Target {target_id} deleted")
+        targets_deleted = True
 
+    # Wait for target deletions to propagate
+    if targets_deleted:
+        print("⏳ Waiting for target deletions to propagate...")
+        time.sleep(5)
+        
     # Delete the gateway
     print(f"🗑️  Deleting gateway: {gateway_id}")
     gateway_client.delete_gateway(gatewayIdentifier=gateway_id)
@@ -683,6 +691,7 @@ def runtime_resource_cleanup(runtime_arn: str = None):
         agentcore_control_client = boto3.client(
             "bedrock-agentcore-control", region_name=REGION
         )
+        ecr_client = boto3.client("ecr", region_name=REGION)
         if runtime_arn:
             runtime_id = runtime_arn.split(":")[-1].split("/")[-1]
             response = agentcore_control_client.delete_agent_runtime(
@@ -690,8 +699,6 @@ def runtime_resource_cleanup(runtime_arn: str = None):
             )
             print(f"  ✅ Agent runtime deleted: {response['status']}")
         else:
-            ecr_client = boto3.client("ecr", region_name=REGION)
-
             # Delete the AgentCore Runtime
             # print("  🗑️  Deleting AgentCore Runtime...")
             runtimes = agentcore_control_client.list_agent_runtimes()
@@ -795,7 +802,8 @@ def policy_engine_cleanup(policy_engine_id: str = None):
         policyEngineId=policy_engine_id,
         maxResults=100
     )
-    
+
+    policies_deleted = False
     for item in list_response["policies"]:
         policy_id = item["policyId"]
         print(f"   Deleting policy: {policy_id}")
@@ -804,6 +812,11 @@ def policy_engine_cleanup(policy_engine_id: str = None):
             policyId=policy_id
         )
         print(f"   ✅ Policy {policy_id} deleted")
+    
+    # Wait for policy deletions to propagate before deleting the engine
+    if policies_deleted:
+        print("⏳ Waiting for policy deletions to propagate...")
+        time.sleep(5)  # 5 seconds is usually sufficient
     
     # Delete the policy engine
     print(f"🗑️  Deleting policy engine: {policy_engine_id}")
