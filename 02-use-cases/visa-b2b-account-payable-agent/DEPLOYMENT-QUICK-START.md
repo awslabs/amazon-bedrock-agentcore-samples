@@ -199,8 +199,9 @@ echo "VITE_API_BASE_URL=$(aws cloudformation describe-stacks --stack-name RtpOve
 npm install
 ```
 
-```bash
 ### Local Development
+
+```bash
 npm run dev
 ```
 
