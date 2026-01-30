@@ -14,7 +14,10 @@ exports.virtualCardRequisition = async (event) => {
   // Generate random card details
   const requisitionId = Math.floor(Math.random() * 1000000000).toString();
   const accountNumber = '4' + Math.floor(Math.random() * 1000000000000000).toString().padStart(15, '0');
-  const expirationDate = '12/2025';
+  const now = new Date();
+  const futureExpiry = new Date(now.getFullYear() + 3, now.getMonth());
+  const expiryMonth = String(futureExpiry.getMonth() + 1).padStart(2, '0');
+  const expirationDate = `${expiryMonth}/${futureExpiry.getFullYear()}`;
   
   return {
     statusCode: 200,
