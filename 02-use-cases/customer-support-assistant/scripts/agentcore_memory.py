@@ -70,21 +70,21 @@ def create(name, ssm_param, event_expiry_days):
             StrategyType.SEMANTIC.value: {
                 "name": "fact_extractor",
                 "description": "Extracts and stores factual information",
-                "namespaces": ["support/user/{actorId}/facts"],
+                "namespaces": ["support/user/{actorId}/facts/"],
             },
         },
         {
             StrategyType.SUMMARY.value: {
                 "name": "conversation_summary",
                 "description": "Captures summaries of conversations",
-                "namespaces": ["support/user/{actorId}/{sessionId}"],
+                "namespaces": ["support/user/{actorId}/{sessionId}/"],
             },
         },
         {
             StrategyType.USER_PREFERENCE.value: {
                 "name": "user_preferences",
                 "description": "Captures user preferences and settings",
-                "namespaces": ["support/user/{actorId}/preferences"],
+                "namespaces": ["support/user/{actorId}/preferences/"],
             },
         },
     ]

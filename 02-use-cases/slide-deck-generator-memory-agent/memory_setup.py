@@ -155,7 +155,7 @@ class SlideMemoryManager:
                 """,
                 model_id="global.anthropic.claude-sonnet-4-5-20250929-v1:0",
             ),
-            namespaces=["slidedecks/user/{actorId}/style_preferences"],
+            namespaces=["slidedecks/user/{actorId}/style_preferences/"],
         )
 
     def create_memory(self) -> Memory:

@@ -155,7 +155,7 @@ def list_memory():
     click.echo(f"Actor facts {ACTOR_ID}")
     list_memory_records = memory_client.list_memory_records(
         memoryId=MEMORY_ID,
-        namespace=f"support/user/{ACTOR_ID}/facts",
+        namespace=f"support/user/{ACTOR_ID}/facts/",
     )
 
     for list_memory_record in list_memory_records["memoryRecordSummaries"]:
@@ -166,7 +166,7 @@ def list_memory():
     click.echo(f"Conversation Summary for {first_session}")
     list_memory_records = memory_client.list_memory_records(
         memoryId=MEMORY_ID,
-        namespace=f"support/user/{ACTOR_ID}/{first_session}",
+        namespace=f"support/user/{ACTOR_ID}/{first_session}/",
     )
 
     for list_memory_record in list_memory_records["memoryRecordSummaries"]:
@@ -177,7 +177,7 @@ def list_memory():
     click.echo(f"User Preferences {ACTOR_ID}")
     list_memory_records = memory_client.list_memory_records(
         memoryId=MEMORY_ID,
-        namespace=f"support/user/{ACTOR_ID}/preferences",
+        namespace=f"support/user/{ACTOR_ID}/preferences/",
     )
 
     for list_memory_record in list_memory_records["memoryRecordSummaries"]:

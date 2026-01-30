@@ -251,7 +251,7 @@ def delete_memory():
         if memory_session_manager and memory_agent and memory_session:
             # Get the user namespace for preferences
             user_id = DEFAULT_USER_ID
-            namespace = f"slidedecks/user/{user_id}/style_preferences"
+            namespace = f"slidedecks/user/{user_id}/style_preferences/"
 
             logger.info(f"🗑️ Searching for memory records in namespace: {namespace}")
 

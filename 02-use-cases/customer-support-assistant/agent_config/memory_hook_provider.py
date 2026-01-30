@@ -78,14 +78,14 @@ class MemoryHook(HookProvider):
 
                 if messages[-1]["role"] == "user":
                     self._add_context_user_query(
-                        namespace=f"support/user/{self.actor_id}/preferences",
+                        namespace=f"support/user/{self.actor_id}/preferences/",
                         query=messages[-1]["content"][0]["text"],
                         init_content="These are user preferences:",
                         event=event,
                     )
 
                     self._add_context_user_query(
-                        namespace=f"support/user/{self.actor_id}/facts",
+                        namespace=f"support/user/{self.actor_id}/facts/",
                         query=messages[-1]["content"][0]["text"],
                         init_content="These are user facts:",
                         event=event,

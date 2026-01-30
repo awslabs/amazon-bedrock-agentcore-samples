@@ -273,14 +273,14 @@ class MarketTrendsAgentDeployer:
                     StrategyType.USER_PREFERENCE.value: {
                         "name": "BrokerPreferences",
                         "description": "Captures broker preferences, risk tolerance, and investment styles",
-                        "namespaces": ["market-trends/broker/{actorId}/preferences"],
+                        "namespaces": ["market-trends/broker/{actorId}/preferences/"],
                     }
                 },
                 {
                     StrategyType.SEMANTIC.value: {
                         "name": "MarketTrendsSemantic",
                         "description": "Stores financial facts, market analysis, and investment insights",
-                        "namespaces": ["market-trends/broker/{actorId}/semantic"],
+                        "namespaces": ["market-trends/broker/{actorId}/semantic/"],
                     }
                 },
             ]

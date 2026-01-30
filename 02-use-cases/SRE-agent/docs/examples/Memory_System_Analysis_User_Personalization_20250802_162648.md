@@ -226,7 +226,7 @@ Both reports benefited from accumulated infrastructure knowledge:
 #### User Preferences Strategy
 ```
 Strategy ID: user_preferences-WOYPeH7V1L
-Namespaces: /sre/users/{user}/preferences
+Namespaces: /sre/users/{user}/preferences/
 ```
 - Successfully stored and retrieved user-specific communication, escalation, and workflow preferences
 - Applied preferences consistently across different investigation sessions
@@ -235,7 +235,7 @@ Namespaces: /sre/users/{user}/preferences
 #### Infrastructure Knowledge Strategy  
 ```
 Strategy ID: infrastructure_knowledge-4tyBHMG8lM
-Namespaces: /sre/infrastructure/{user}/{session}
+Namespaces: /sre/infrastructure/{user}/{session}/
 ```
 - Accumulated technical knowledge about recurring infrastructure issues
 - Provided historical context for current investigations
@@ -310,9 +310,9 @@ auto_generate_summaries: True
 
 ### Memory Namespace Structure
 ```
-/sre/users/{user_id}/preferences
-/sre/infrastructure/{user_id}/{session_id}
-/sre/investigations/{user_id}/{session_id}
+/sre/users/{user_id}/preferences/
+/sre/infrastructure/{user_id}/{session_id}/
+/sre/investigations/{user_id}/{session_id}/
 ```
 
 ### Parsing Strategy Enhancement

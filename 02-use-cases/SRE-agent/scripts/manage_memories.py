@@ -65,18 +65,19 @@ def _read_memory_id() -> str:
 def _extract_actor_from_namespace(namespace: str, memory_type: str) -> str:
     """Extract actor ID from memory namespace."""
     if memory_type == "preferences":
-        # Preferences namespace format: /sre/users/{user_id}/preferences
+        # Preferences namespace format: /sre/users/{user_id}/preferences/
         prefix = "/sre/users/"
-        suffix = "/preferences"
+        suffix = "/preferences/"
         if namespace.startswith(prefix) and namespace.endswith(suffix):
             # Extract user_id from between prefix and suffix
             user_id = namespace[len(prefix) : -len(suffix)]
             return user_id
     else:
-        # Other namespace format: /sre/{memory_type}/{actor_id}
+        # Other namespace format: /sre/{memory_type}/{actor_id}/
         prefix = f"/sre/{memory_type}/"
         if namespace.startswith(prefix):
-            return namespace[len(prefix) :]
+            actor_id = namespace[len(prefix) :]
+            return actor_id.rstrip("/")
     return "unknown"
 
 
@@ -126,9 +127,9 @@ def _list_memories_for_type(
 
             # Use different namespace patterns for different memory types
             if memory_type == "preferences":
-                namespace = "/sre/users"  # For user preferences: /sre/users/{user_id}/preferences
+                namespace = "/sre/users/"  # For user preferences: /sre/users/{user_id}/preferences/
             else:
-                namespace = f"/sre/{memory_type}"  # For infrastructure/investigations: /sre/{type}/{actor_id}
+                namespace = f"/sre/{memory_type}/"  # For infrastructure/investigations: /sre/{type}/{actor_id}/
 
             memories = client.client.retrieve_memories(
                 memory_id=client.memory_id,

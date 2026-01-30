@@ -98,7 +98,7 @@ class SavePreferenceTool(BaseTool):
     - actor_id: str (REQUIRED - use the user_id from content.user_id, NOT the agent actor_id)
     
     CRITICAL: For preferences, actor_id MUST be the user_id (e.g., "Alice") to ensure 
-    preferences are saved to the correct user namespace (/sre/users/{user_id}/preferences).
+    preferences are saved to the correct user namespace (/sre/users/{user_id}/preferences/).
     """
     args_schema: Type[BaseModel] = SavePreferenceInput
 

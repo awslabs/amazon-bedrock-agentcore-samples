@@ -365,7 +365,7 @@ The presentation includes:
         try:
             # Search for user preferences in memory
             preference_namespace = (
-                f"slidedecks/user/{self.memory_session._actor_id}/style_preferences"
+                f"slidedecks/user/{self.memory_session._actor_id}/style_preferences/"
             )
 
             preference_memories = self.memory_session.search_long_term_memories(
@@ -517,7 +517,7 @@ The presentation includes:
             # Get user preferences first
             preference_memories = self.memory_session.search_long_term_memories(
                 query=f"{presentation_topic} {audience} {context}",
-                namespace_prefix=f"slidedecks/user/{self.memory_session._actor_id}/style_preferences",
+                namespace_prefix=f"slidedecks/user/{self.memory_session._actor_id}/style_preferences/",
                 top_k=3,
             )
 

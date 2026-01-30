@@ -142,7 +142,7 @@ class SlideMemoryHooks(HookProvider):
         try:
             # Search for user preferences in memory
             preference_namespace = (
-                f"slidedecks/user/{self.memory_session._actor_id}/style_preferences"
+                f"slidedecks/user/{self.memory_session._actor_id}/style_preferences/"
             )
             logger.info(f"🔎 Searching namespace: {preference_namespace}")
 
