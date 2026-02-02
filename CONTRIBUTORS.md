@@ -80,3 +80,5 @@
 - razkenari
 - Kostas Tzouvanas
 - richatt
+- Bhuvan Chowdary Annamreddi
+- Jacob Beard
