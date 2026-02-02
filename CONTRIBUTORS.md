@@ -72,6 +72,7 @@
 - Sparsh Wadhwa (SparshWadhwa)
 - Lana Zhang
 - Bharathi Srinivasan
+- Trevor Schiavone
 - Antonio Rodriguez (rodzanto)
 - otamaryx
 - kevlw
@@ -82,3 +83,9 @@
 - richatt
 - Bhuvan Chowdary Annamreddi
 - Jacob Beard
+- Sunita Koppar (skoppar)
+- Gi Kim (giryoong)
+- richatt
+- Hideki Tane
+- xinaizha
+- Traci Lim (longwind48)

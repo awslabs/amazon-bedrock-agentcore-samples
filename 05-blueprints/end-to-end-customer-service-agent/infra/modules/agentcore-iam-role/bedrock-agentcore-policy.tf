@@ -213,6 +213,17 @@ resource "aws_iam_policy" "config_permissions" {
           "arn:aws:secretsmanager:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:secret:gateway_credentials*",
           "arn:aws:secretsmanager:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:secret:tavily_key*"
         ]
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "kms:Decrypt",
+          "kms:DescribeKey"
+        ]
+        Resource = [
+          var.secrets_kms_key_arn,
+          var.parameters_kms_key_arn
+        ]
       }
     ]
   })

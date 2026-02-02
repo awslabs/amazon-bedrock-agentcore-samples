@@ -32,7 +32,7 @@ class Settings(BaseSettings):
     # AWS Settings
     aws_region: str = Field(
         default=environ.get(
-            "AWS_REGION", environ.get("AWS_DEFAULT_REGION", "eu-central-1")
+            "AWS_REGION", environ.get("AWS_DEFAULT_REGION", "us-west-2")
         ),
         description="AWS region",
     )
