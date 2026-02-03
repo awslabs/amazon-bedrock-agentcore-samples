@@ -96,7 +96,7 @@ exports.getPaymentDetails = async (event) => {
 // Get Security Code (CVV2) handler
 exports.getSecurityCode = async (event) => {
   const body = typeof event.body === 'string' ? JSON.parse(event.body) : event.body;
-  const { messageId, accountNumber, expirationDate } = body;
+  const { messageId, accountNumber } = body;
 
   // Log only non-sensitive identifiers to avoid exposing card data
   console.log('GetSecurityCode called with:', JSON.stringify({ messageId }, null, 2));
