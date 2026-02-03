@@ -43,7 +43,7 @@ exports.processPayments = async (event) => {
   console.log('ProcessPayments called with:', JSON.stringify(event, null, 2));
   
   const body = typeof event.body === 'string' ? JSON.parse(event.body) : event.body;
-  const { messageId, buyerId, virtualCardId, amount } = body;
+  const { messageId, buyerId, amount } = body;
   
   // Generate tracking number
   const trackingNumber = Math.floor(Math.random() * 10000000000).toString();
