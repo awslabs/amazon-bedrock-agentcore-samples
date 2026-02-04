@@ -166,8 +166,8 @@ After authentication deployment, you need to grant your authenticated users perm
             "Effect": "Allow",
             "Action": "bedrock-agentcore:InvokeAgentRuntime",
             "Resource": [
-                "<agent_arn>",
-                "<agent_arn>/runtime-endpoint/*"
+                "<agent_runtime_arn>",
+                "<agent_runtime_arn>/runtime-endpoint/*"
             ]
         }
     ]

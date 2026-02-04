@@ -231,6 +231,10 @@ curl -X POST http://localhost:8080/invocations \
 
 Once deployed and data is loaded, you can invoke the agent using the AgentCore Runtime Endpoint. The endpoint name is available in the stack outputs as `AgentEndpointName`.
 
+## Next Step
+
+You can now proceed to the **[Front-End Implementation - Integrating AgentCore with a Ready-to-Use Data Analyst Assistant Application](../amplify-video-games-sales-assistant-agentcore-strands/))**.
+
 ## Cleaning-up Resources (Optional)
 
 To avoid unnecessary charges, delete the CDK stack:
