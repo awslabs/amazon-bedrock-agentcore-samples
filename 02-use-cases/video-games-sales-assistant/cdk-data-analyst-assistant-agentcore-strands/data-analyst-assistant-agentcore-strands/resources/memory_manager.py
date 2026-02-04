@@ -140,7 +140,7 @@ def main():
         
         memory_id = create_memory(memory_name=memory_name, parameter_store_name=parameter_store_name)
         if memory_id:
-            print(f"✅ Memory created successfully!")
+            print("✅ Memory created successfully!")
             print(f"Memory ID: {memory_id}")
             print(f"Memory ID stored in parameter store: {parameter_store_name}")
         else:

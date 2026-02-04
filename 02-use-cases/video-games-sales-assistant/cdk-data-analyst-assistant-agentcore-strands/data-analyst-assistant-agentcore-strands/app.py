@@ -29,7 +29,6 @@ from src.tools import get_tables_information, run_sql_query
 from src.utils import (
     save_raw_query_result,
     load_file_content,
-    load_config,
     get_agentcore_memory_messages,
     MemoryHookProvider,
 )
