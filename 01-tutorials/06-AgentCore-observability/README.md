@@ -64,6 +64,9 @@ For more details on AgentCore Observability, please refer to [this](https://aws.
 │   ├── Langfuse/
 │   │   ├── requirements.txt
 │   │   └── runtime_with_strands_and_langfuse.ipynb
+│   ├── Okahu/
+│   │   ├── requirements.txt
+│   │   └── runtime_with_strands_and_okahu.ipynb
 │   ├── images/
 │   └── README.md
 ├── 05-Lambda-AgentCore-invocation/
@@ -112,6 +115,7 @@ Examples of using agents hosted on Amazon Bedrock AgentCore Runtime with third-p
 - **Braintrust**: AI evaluation and monitoring platform
 - **Instana**: Real-Time APM and Observability Platform
 - **Langfuse**: LLM observability and analytics
+- **Okahu**: LLM observability to troubleshoot, find Root Cause Analysis in production
 
 ### 5. Lambda AgentCore Invocation (05-Lambda-AgentCore-invocation)
 

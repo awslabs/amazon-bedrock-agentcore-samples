@@ -1,0 +1,10 @@
+uv
+ddgs
+boto3
+bedrock-agentcore
+bedrock-agentcore-starter-toolkit
+strands-agents
+strands-agents-tools
+urllib3<2.4.0,>=1.24.2
+starlette<0.49.0,>=0.40.0
+monocle-apptrace
