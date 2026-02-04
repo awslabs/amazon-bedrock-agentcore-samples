@@ -129,12 +129,19 @@ EOF
 
 After authentication deployment, you need to grant your authenticated users permission to access AWS services.
 
-1. **Find your AuthRole**: Go to AWS Console → IAM → Roles → Search for amplify-daabedrockagentcore-dev-*-authRole
+1. **Find your AuthRole**: Go to AWS Console → IAM → Roles → Search for `amplify-daabedrockagentcore-dev-*-authRole`
 
-2. **Add this policy** (replace `<account_id>` with your AWS account ID, use `QUESTION_ANSWERS_TABLE_ARN` and `AGENT_RUNTIME_ARN` from the CDK output values above):
+2. **Add an inline policy**: Click on the role → **Add permissions** → **Create inline policy** → Select **JSON** tab
 
-> [!NOTE]
-> The AgentCore runtime ARN has been pre-configured based on your current deployment. If you're using a different AgentCore runtime, update the ARN in the BedrockAgentCorePermissions section accordingly.
+3. **Copy the policy below** and replace the following placeholders with your actual values:
+
+   | Placeholder | Replace With | Example |
+   |-------------|--------------|---------|
+   | `<account_id>` | Your AWS Account ID (12-digit number) | `123456789012` |
+   | `<question_answers_table_arn>` | `QUESTION_ANSWERS_TABLE_ARN` from CDK outputs above | `arn:aws:dynamodb:us-east-1:123456789012:table/QuestionAnswers-xxx` |
+   | `<agent_runtime_arn>` | `AGENT_RUNTIME_ARN` from CDK outputs above | `arn:aws:bedrock-agentcore:us-east-1:123456789012:runtime/data-analyst-xxx` |
+
+**Policy to copy (replace placeholders):**
 
 ``` json
 {
@@ -173,6 +180,8 @@ After authentication deployment, you need to grant your authenticated users perm
     ]
 }
 ```
+
+4. **Save the policy** with a name like `DataAnalystAssistantPermissions`
 
 ## Configure Environment Variables
 
