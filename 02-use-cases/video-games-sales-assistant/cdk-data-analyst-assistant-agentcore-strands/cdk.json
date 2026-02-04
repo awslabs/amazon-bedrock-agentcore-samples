@@ -1,5 +1,5 @@
 {
-  "app": "npx ts-node --prefer-ts-exts bin/cdk-agentcore-strands-data-analyst-assistant.ts",
+  "app": "npx ts-node --prefer-ts-exts bin/cdk-data-analyst-assistant-agentcore-strands.ts",
   "watch": {
     "include": [
       "**"

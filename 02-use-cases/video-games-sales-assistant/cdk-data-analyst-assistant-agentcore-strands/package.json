@@ -1,8 +1,8 @@
 {
-  "name": "cdk-agentcore-strands-data-analyst-assistant",
+  "name": "cdk-data-analyst-assistant-agentcore-strands",
   "version": "0.1.0",
   "bin": {
-    "cdk-agentcore-strands-data-analyst-assistant": "bin/cdk-agentcore-strands-data-analyst-assistant.js"
+    "cdk-data-analyst-assistant-agentcore-strands": "bin/cdk-data-analyst-assistant-agentcore-strands.js"
   },
   "scripts": {
     "build": "tsc",
@@ -13,9 +13,9 @@
   "devDependencies": {
     "@types/jest": "^29.5.14",
     "@types/node": "22.7.9",
-    "aws-cdk": "2.1031.1",
     "jest": "^29.7.0",
     "ts-jest": "^29.2.5",
+    "aws-cdk": "2.1031.2",
     "ts-node": "^10.9.2",
     "typescript": "~5.6.3"
   },

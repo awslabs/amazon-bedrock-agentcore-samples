@@ -28,7 +28,6 @@ class MemoryHookProvider(HookProvider):
     initializes and saving messages as they are added to the conversation.
 
     Attributes:
-        memory_client: Client for interacting with Bedrock Agent Core memory
         memory_id: ID of the memory resource
         actor_id: ID of the user/actor
         session_id: ID of the current conversation session
@@ -37,7 +36,6 @@ class MemoryHookProvider(HookProvider):
 
     def __init__(
         self,
-        memory_client: MemoryClient,
         memory_id: str,
         actor_id: str,
         session_id: str,
@@ -47,13 +45,12 @@ class MemoryHookProvider(HookProvider):
         Initialize the memory hook provider.
 
         Args:
-            memory_client: Client for interacting with Bedrock Agent Core memory
             memory_id: ID of the memory resource
             actor_id: ID of the user/actor
             session_id: ID of the current conversation session
             last_k_turns: Number of conversation turns to retrieve from history (default: 20)
         """
-        self.memory_client = memory_client
+        self.memory_client = MemoryClient()
         self.memory_id = memory_id
         self.actor_id = actor_id
         self.session_id = session_id

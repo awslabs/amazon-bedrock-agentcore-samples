@@ -20,7 +20,6 @@ from uuid import uuid4
 
 # Bedrock Agent Core imports
 from bedrock_agentcore import BedrockAgentCoreApp
-from bedrock_agentcore.memory import MemoryClient
 from strands import Agent, tool
 from strands_tools import current_time
 from strands.models import BedrockModel
@@ -39,59 +38,11 @@ from src.utils import (
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("personal-agent")
 
+# Retrieve AgentCore Memory ID
+memory_id = os.environ.get("MEMORY_ID")
 
-# Load configuration from SSM Parameter Store
-# Get PROJECT_ID from environment variable to construct SSM parameter paths
-PROJECT_ID = os.environ.get("PROJECT_ID", "agentcore-data-analyst-assistant")
-
-# Load all configuration from SSM
-try:
-    config = load_config()
-    print("✅ CONFIGURATION LOADED FROM SSM")
-    print("-" * 50)
-    print(f"🔧 Project ID: {PROJECT_ID}")
-    print(f"📊 Database: {config.get('DATABASE_NAME')}")
-    print("-" * 50)
-except Exception as e:
-    print("❌ CONFIGURATION LOAD ERROR")
-    print("-" * 50)
-    print(f"🚨 Error: {e}")
-    print(f"🔧 Project ID: {PROJECT_ID}")
-    print("-" * 50)
-    # Set empty config as fallback
-    config = {}
-
-
-# Initialize AgentCore Memory configuration
-try:
-    print("\n" + "=" * 70)
-    print("🚀 INITIALIZING VIDEO GAMES SALES ANALYST ASSISTANT")
-    print("=" * 70)
-    print("📋 Loading configuration from AWS Systems Manager...")
-
-    # Retrieve memory ID from config
-    memory_id = config.get("MEMORY_ID")
-
-    # Validate memory ID configuration
-    if not memory_id or memory_id.strip() == "":
-        error_msg = "Memory ID not found in configuration. Please create AgentCore Memory first."
-        print(f"❌ Configuration Error: {error_msg}")
-        logger.error(error_msg)
-        raise ValueError(error_msg)
-
-    print(f"✅ Memory ID retrieved: {memory_id}")
-
-    # Initialize AgentCore Memory Client
-    print("🧠 Connecting to AgentCore Memory service...")
-    client = MemoryClient()
-    print("✅ Memory client connected successfully")
-    print("=" * 70 + "\n")
-
-except Exception as e:
-    print(f"💥 INITIALIZATION FAILED: {str(e)}")
-    print("=" * 70 + "\n")
-    logger.error(f"Failed to initialize AgentCore Memory: {e}")
-    raise
+# Retrieve Bedrock Model ID
+bedrock_model_id_env = os.environ.get("BEDROCK_MODEL_ID", "global.anthropic.claude-haiku-4-5-20251001-v1:0")
 
 
 # Initialize the Bedrock Agent Core app
@@ -244,7 +195,8 @@ async def agent_invocation(payload):
 
     Expected payload structure:
     {
-        model_id="global.anthropic.claude-haiku-4-5-20251001-v1:0",        
+        "prompt": "Your video game sales analysis question",
+        "prompt_uuid": "optional-unique-prompt-identifier",
         "user_timezone": "US/Pacific",
         "session_id": "optional-conversation-session-id",
         "user_id": "optional-user-identifier",
@@ -260,9 +212,6 @@ async def agent_invocation(payload):
             "prompt",
             "No prompt found in input, please guide customer to create a json payload with prompt key",
         )
-        bedrock_model_id = payload.get(
-            "bedrock_model_id", "global.anthropic.claude-haiku-4-5-20251001-v1:0"
-        )   
         prompt_uuid = payload.get("prompt_uuid", str(uuid4()))
         user_timezone = payload.get("user_timezone", "US/Pacific")
         session_id = payload.get("session_id", str(uuid4()))
@@ -275,7 +224,7 @@ async def agent_invocation(payload):
         print(
             f"💬 User Query: {user_message[:100]}{'...' if len(user_message) > 100 else ''}"
         )
-        print(f"🤖 Claude Model: {bedrock_model_id}")
+        print(f"🤖 Claude Model: {bedrock_model_id_env}")
         print(f"🆔 Prompt UUID: {prompt_uuid}")
         print(f"🌍 User Timezone: {user_timezone}")
         print(f"🔗 Conversation ID: {session_id}")
@@ -284,14 +233,14 @@ async def agent_invocation(payload):
         print("-" * 80)
 
         # Initialize Claude model for video game sales analysis
-        print(f"🧠 Initializing Claude model for analysis: {bedrock_model_id}")
-        bedrock_model = BedrockModel(model_id=bedrock_model_id)
+        print(f"🧠 Initializing Claude model for analysis: {bedrock_model_id_env}")
+        bedrock_model = BedrockModel(model_id=bedrock_model_id_env)
         print("✅ Claude model ready for video game sales analysis")
 
         print("-" * 80)
         print("🧠 Retrieving conversation context from AgentCore Memory...")
         agentcore_messages = get_agentcore_memory_messages(
-            client, memory_id, user_id, session_id, last_k_turns
+            memory_id, user_id, session_id, last_k_turns
         )
 
         print("📋 CONVERSATION CONTEXT LOADED:")
@@ -332,7 +281,7 @@ async def agent_invocation(payload):
             model=bedrock_model,
             system_prompt=system_prompt,
             hooks=[
-                MemoryHookProvider(client, memory_id, user_id, session_id, last_k_turns)
+                MemoryHookProvider(memory_id, user_id, session_id, last_k_turns)
             ],
             tools=[
                 get_tables_information,

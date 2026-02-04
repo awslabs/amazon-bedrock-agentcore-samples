@@ -15,7 +15,7 @@ The application consists of two main components:
 - **Amazon Bedrock AgentCore Integration:**:
     - Uses your AgentCore deployment for data analysis and natural language processing
     - The application invokes the Amazon Bedrock AgentCore for interacting with the assistant
-    - Directly invokes Claude 3.7 Sonnet model for chart generation and visualization
+    - Directly invokes Claude Haiku 4.5 model for chart generation and visualization
 
 > [!IMPORTANT]
 > This sample application is for demonstration purposes only and is not production-ready. Please validate the code against your organization's security best practices.
@@ -100,25 +100,38 @@ amplify push
 > [!NOTE]
 > This creates a Cognito User Pool and Identity Pool in your AWS account for user authentication. AWS credentials for the Front-End Application are automatically managed through Cognito.
 
+## Get CDK Output Values
+
+Get the required values from your CDK project outputs. These values are needed for configuring AuthRole permissions and environment variables:
+
+``` bash
+# Set the stack name environment variable
+export STACK_NAME=CdkDataAnalystAssistantAgentcoreStrandsStack
+
+# Get the values from CDK outputs
+export QUESTION_ANSWERS_TABLE_NAME=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" --query "Stacks[0].Outputs[?OutputKey=='QuestionAnswersTableName'].OutputValue" --output text)
+export QUESTION_ANSWERS_TABLE_ARN=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" --query "Stacks[0].Outputs[?OutputKey=='QuestionAnswersTableArn'].OutputValue" --output text)
+export AGENT_RUNTIME_ARN=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" --query "Stacks[0].Outputs[?OutputKey=='AgentRuntimeArn'].OutputValue" --output text)
+export AGENT_ENDPOINT_NAME=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" --query "Stacks[0].Outputs[?OutputKey=='AgentEndpointName'].OutputValue" --output text)
+
+cat << EOF
+# DynamoDB Resources
+QUESTION_ANSWERS_TABLE_NAME: ${QUESTION_ANSWERS_TABLE_NAME}
+QUESTION_ANSWERS_TABLE_ARN: ${QUESTION_ANSWERS_TABLE_ARN}
+
+# AgentCore Resources
+AGENT_RUNTIME_ARN: ${AGENT_RUNTIME_ARN}
+AGENT_ENDPOINT_NAME: ${AGENT_ENDPOINT_NAME}
+EOF
+```
+
 ## Configure AuthRole Permissions
 
 After authentication deployment, you need to grant your authenticated users permission to access AWS services.
 
 1. **Find your AuthRole**: Go to AWS Console → IAM → Roles → Search for amplify-daabedrockagentcore-dev-*-authRole
 
-2. **Get the DynamoDB Table ARN**: From your CDK project outputs, get the `QuestionAnswersTableName` value:
-
-``` bash
-# Set the stack name environment variable
-export STACK_NAME=CdkAgentcoreStrandsDataAnalystAssistantStack
-
-# Get the DynamoDB table name and construct the ARN
-export QUESTION_ANSWERS_TABLE_NAME=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" --query "Stacks[0].Outputs[?OutputKey=='QuestionAnswersTableName'].OutputValue" --output text)
-export QUESTION_ANSWERS_TABLE_ARN="arn:aws:dynamodb:$(aws configure get region):$(aws sts get-caller-identity --query Account --output text):table/$QUESTION_ANSWERS_TABLE_NAME"
-echo "Table ARN: $QUESTION_ANSWERS_TABLE_ARN"
-```
-
-3. **Add this policy** (replace `<account_id>` with your AWS account ID, `<question_answers_table_arn>` with the ARN from step 2, and `<agent_arn>` with your AgentCore runtime ARN):
+2. **Add this policy** (replace `<account_id>` with your AWS account ID, use `QUESTION_ANSWERS_TABLE_ARN` and `AGENT_RUNTIME_ARN` from the CDK output values above):
 
 > [!NOTE]
 > The AgentCore runtime ARN has been pre-configured based on your current deployment. If you're using a different AgentCore runtime, update the ARN in the BedrockAgentCorePermissions section accordingly.
@@ -169,22 +182,7 @@ Rename the file **src/sample.env.js** to **src/env.js**:
 mv src/sample.env.js src/env.js
 ```
 
-### Get CDK Output Values
-
-First, get the required values from your CDK project outputs:
-
-``` bash
-# Set the stack name environment variable
-export STACK_NAME=CdkAgentcoreStrandsDataAnalystAssistantStack
-
-# Get the DynamoDB table name and AgentCore Role ARN from CDK outputs
-export QUESTION_ANSWERS_TABLE_NAME=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" --query "Stacks[0].Outputs[?OutputKey=='QuestionAnswersTableName'].OutputValue" --output text)
-echo "Table Name: $QUESTION_ANSWERS_TABLE_NAME"
-```
-
-### Update Environment Variables
-
-In your **src/env.js** update the following environment variables:
+In your **src/env.js** update the following environment variables using the CDK output values from above:
 
 - **QUESTION_ANSWERS_TABLE_NAME**: Use the value from the command above
 - **AGENT_RUNTIME_ARN**: Your AgentCore runtime ARN (format: "arn:aws:bedrock-agentcore:region:account:runtime/runtime-name")

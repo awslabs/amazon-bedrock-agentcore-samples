@@ -15,7 +15,6 @@ logger = logging.getLogger("agentcore-memory-utils")
 
 
 def get_agentcore_memory_messages(
-    memory_client: MemoryClient,
     memory_id: str,
     actor_id: str,
     session_id: str,
@@ -28,7 +27,6 @@ def get_agentcore_memory_messages(
     and formats them in the standard message format with role and content structure.
 
     Args:
-        memory_client: Client for interacting with Bedrock Agent Core memory
         memory_id: ID of the memory resource
         actor_id: ID of the user/actor
         session_id: ID of the current conversation session
@@ -45,6 +43,8 @@ def get_agentcore_memory_messages(
         Exception: If there's an error retrieving messages from memory
     """
     try:
+        # Initialize memory client
+        memory_client = MemoryClient()
         # Pretty console output for memory retrieval start
         print("\n" + "=" * 70)
         print("🧠 AGENTCORE MEMORY RETRIEVAL")

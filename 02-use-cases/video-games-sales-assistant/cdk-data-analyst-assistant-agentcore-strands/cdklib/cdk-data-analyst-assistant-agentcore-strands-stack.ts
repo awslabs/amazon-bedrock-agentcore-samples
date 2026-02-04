@@ -19,8 +19,11 @@ import * as s3 from "aws-cdk-lib/aws-s3";
 import * as iam from "aws-cdk-lib/aws-iam";
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as ssm from 'aws-cdk-lib/aws-ssm';
+import * as ecr_assets from 'aws-cdk-lib/aws-ecr-assets';
+import * as path from 'path';
+import { aws_bedrockagentcore as bedrockagentcore } from 'aws-cdk-lib';
 
-export class CdkAgentcoreStrandsDataAnalystAssistantStack extends cdk.Stack {
+export class CdkDataAnalystAssistantAgentcoreStrandsStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
@@ -32,7 +35,7 @@ export class CdkAgentcoreStrandsDataAnalystAssistantStack extends cdk.Stack {
     const projectId = new cdk.CfnParameter(this, "ProjectId", {
       type: "String",
       description: "Project identifier used for naming resources",
-      default: "agentcore-data-analyst-assistant",
+      default: "data-analyst-assistant-agentcore",
     });
 
     // Name of the Aurora PostgreSQL database
@@ -40,6 +43,13 @@ export class CdkAgentcoreStrandsDataAnalystAssistantStack extends cdk.Stack {
       type: "String",
       description: "The database name",
       default: "video_games_sales",
+    });
+
+    // Bedrock model ID for the agent
+    const bedrockModelId = new cdk.CfnParameter(this, "BedrockModelId", {
+      type: "String",
+      description: "The Bedrock model ID for the agent",
+      default: "global.anthropic.claude-haiku-4-5-20251001-v1:0",
     });
 
     // ================================
@@ -111,6 +121,13 @@ export class CdkAgentcoreStrandsDataAnalystAssistantStack extends cdk.Stack {
       }
     );
 
+    // Allow inbound PostgreSQL traffic from the same security group
+    sg_db.addIngressRule(
+      sg_db,
+      ec2.Port.tcp(5432),
+      "Allow PostgreSQL access from within the same security group"
+    );
+
     // Database credentials stored in AWS Secrets Manager
     const databaseUsername = "postgres";
     const secret = new rds.DatabaseSecret(this, "AssistantSecret", {
@@ -122,6 +139,33 @@ export class CdkAgentcoreStrandsDataAnalystAssistantStack extends cdk.Stack {
     const auroraS3Role = new iam.Role(this, "AuroraS3Role", {
       assumedBy: new iam.ServicePrincipal("rds.amazonaws.com"),
     });
+
+    // ================================
+    // S3 STORAGE
+    // ================================
+
+    // S3 bucket containing data for import into Aurora PostgreSQL
+    const importBucket = new s3.Bucket(this, "ImportBucket", {
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+      autoDeleteObjects: true,
+      lifecycleRules: [
+        {
+          expiration: cdk.Duration.days(7), // Auto-delete objects after 7 days
+        },
+      ],
+    });
+
+    // Grant S3 access to the Aurora role for data imports
+    auroraS3Role.addToPolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ["s3:GetObject", "s3:ListBucket", "s3:GetBucketLocation"],
+        resources: [
+          importBucket.bucketArn,
+          `${importBucket.bucketArn}/*`,
+        ],
+      })
+    );
 
     // Aurora PostgreSQL Serverless v2 cluster containing video games sales data
     let cluster = new rds.DatabaseCluster(this, "AssistantCluster", {
@@ -360,19 +404,7 @@ export class CdkAgentcoreStrandsDataAnalystAssistantStack extends cdk.Stack {
       }
     );
 
-    // Grant S3 access to the role
-    auroraS3Role.addToPolicy(
-      new iam.PolicyStatement({
-        effect: iam.Effect.ALLOW,
-        actions: ["s3:GetObject", "s3:ListBucket", "s3:GetBucketLocation"],
-        resources: [
-          `arn:aws:s3:::${projectId.valueAsString}-${this.region}-${this.account}-import`,
-          `arn:aws:s3:::${projectId.valueAsString}-${this.region}-${this.account}-import/*`,
-        ],
-      })
-    );
-
-    // Add additional RDS permissions
+    // Add additional RDS permissions to Aurora S3 role
     auroraS3Role.addToPolicy(
       new iam.PolicyStatement({
         effect: iam.Effect.ALLOW,
@@ -389,20 +421,68 @@ export class CdkAgentcoreStrandsDataAnalystAssistantStack extends cdk.Stack {
     );
 
     // ================================
-    // S3 STORAGE
+    // DOCKER IMAGE ASSET
     // ================================
 
-    // S3 bucket containing data for import into Aurora PostgreSQL
-    const importBucket = new s3.Bucket(this, "ImportBucket", {
-      bucketName: `${projectId.valueAsString}-${this.region}-${this.account}-import`,
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
-      autoDeleteObjects: true,
-      lifecycleRules: [
-        {
-          expiration: cdk.Duration.days(7), // Auto-delete objects after 7 days
-        },
-      ],
+    // Build and push Docker image automatically during CDK deployment
+    // DockerImageAsset creates and manages its own ECR repository
+    const dockerImageAsset = new ecr_assets.DockerImageAsset(this, 'RuntimeDockerImage', {
+      directory: path.join(__dirname, '../data-analyst-assistant-agentcore-strands'),
+      platform: ecr_assets.Platform.LINUX_ARM64
     });
+
+    // ================================
+    // BEDROCK AGENTCORE MEMORY
+    // ================================
+
+    // Short-term memory for AgentCore to maintain conversation context
+    const uniqueSuffix = cdk.Names.uniqueId(this).slice(-8).toLowerCase().replace(/[^a-z0-9]/g, '');
+    const agentMemory = new bedrockagentcore.CfnMemory(this, 'AgentMemory', {
+      name: `DataAnalystAssistantMemory_${uniqueSuffix}`,
+      eventExpiryDuration: 7, // Events expire after 7 days
+      memoryExecutionRoleArn: agentCoreRole.roleArn,
+      description: 'Short-term memory for data analyst assistant conversations',
+    });
+
+    // ================================
+    // BEDROCK AGENTCORE RUNTIME
+    // ================================
+
+    // AgentCore Runtime with container type for the data analyst assistant
+    const agentRuntime = new bedrockagentcore.CfnRuntime(this, 'AgentRuntime', {
+      agentRuntimeName: `DataAnalystRuntime_${uniqueSuffix}`,
+      agentRuntimeArtifact: {
+        containerConfiguration: {
+          containerUri: dockerImageAsset.imageUri,
+        },
+      },
+      networkConfiguration: {
+        networkMode: 'PUBLIC',
+      },
+      roleArn: agentCoreRole.roleArn,
+      description: 'Container runtime for video games sales data analyst assistant',
+      environmentVariables: {
+        PROJECT_ID: projectId.valueAsString,
+        MEMORY_ID: agentMemory.attrMemoryId,
+        BEDROCK_MODEL_ID: bedrockModelId.valueAsString,
+      },
+    });
+    
+    agentRuntime.addDependency(agentMemory);
+
+    // ================================
+    // BEDROCK AGENTCORE RUNTIME ENDPOINT
+    // ================================
+
+    // Runtime endpoint for invoking the data analyst assistant
+    const runtimeEndpoint = new bedrockagentcore.CfnRuntimeEndpoint(this, 'RuntimeEndpoint', {
+      agentRuntimeId: agentRuntime.attrAgentRuntimeId,
+      name: `DataAnalystEndpoint_${uniqueSuffix}`,
+      description: 'Endpoint for invoking the video games sales data analyst assistant',
+    });
+
+    // Endpoint depends on runtime being created first
+    runtimeEndpoint.addDependency(agentRuntime);
 
     // ================================
     // SSM PARAMETERS
@@ -444,10 +524,10 @@ export class CdkAgentcoreStrandsDataAnalystAssistantStack extends cdk.Stack {
       type: 'String'
     });
 
-    new ssm.CfnParameter(this, 'MemoryIdParam', {
-      name: `/${projectId.valueAsString}/MEMORY_ID`,
-      value: "AssistantAgentMemoryIdToBeCreated",
-      description: 'Memory ID for the agent',
+    new ssm.CfnParameter(this, 'BedrockModelIdParam', {
+      name: `/${projectId.valueAsString}/BEDROCK_MODEL_ID`,
+      value: bedrockModelId.valueAsString,
+      description: 'Bedrock model ID for the agent',
       type: 'String'
     });
 
@@ -481,18 +561,29 @@ export class CdkAgentcoreStrandsDataAnalystAssistantStack extends cdk.Stack {
       exportName: `${projectId.valueAsString}-QuestionAnswersTableName`,
     });
 
-    new cdk.CfnOutput(this, "AgentCoreMyRoleARN", {
-      value: agentCoreRole.roleArn,
-      description: "The ARN of the AgentCoreMyRole",
-      exportName: `${projectId.valueAsString}-AgentCoreMyRoleARN`,
+    new cdk.CfnOutput(this, "QuestionAnswersTableArn", {
+      value: rawQueryResults.tableArn,
+      description: "The ARN of the DynamoDB table for storing query results",
+      exportName: `${projectId.valueAsString}-QuestionAnswersTableArn`,
     });
 
-    new cdk.CfnOutput(this, "MemoryIdSSMParameter", {
-      value: `/${projectId.valueAsString}/MEMORY_ID`,
-      description: "The SSM parameter name for the memory ID",
-      exportName: `${projectId.valueAsString}-MemoryIdSSMParameter`,
+    new cdk.CfnOutput(this, "AgentRuntimeArn", {
+      value: agentRuntime.attrAgentRuntimeArn,
+      description: "The ARN of the AgentCore runtime",
+      exportName: `${projectId.valueAsString}-AgentRuntimeArn`,
     });
 
+    new cdk.CfnOutput(this, "AgentEndpointName", {
+      value: runtimeEndpoint.name,
+      description: "The name of the AgentCore runtime endpoint",
+      exportName: `${projectId.valueAsString}-AgentEndpointName`,
+    });
+
+    new cdk.CfnOutput(this, "MemoryId", {
+      value: agentMemory.attrMemoryId,
+      description: "The ID of the AgentCore Memory",
+      exportName: `${projectId.valueAsString}-MemoryId`,
+    });
 
   }
 }
