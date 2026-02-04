@@ -31,6 +31,8 @@ def get_account_id():
 
 def get_or_create_bucket(s3_client, region):
     """Create or use existing S3 bucket for OpenAPI specs"""
+    from botocore.exceptions import ClientError
+    
     account_id = get_account_id()
     bucket_name = f"agentcore-gateway-specs-{account_id}"
     
@@ -38,24 +40,26 @@ def get_or_create_bucket(s3_client, region):
         # Check if bucket exists
         s3_client.head_bucket(Bucket=bucket_name)
         print(f"✓ Using existing S3 bucket: {bucket_name}")
-    except s3_client.exceptions.NoSuchBucket:
-        # Create bucket
-        print(f"Creating S3 bucket: {bucket_name}")
-        try:
-            if region == 'us-east-1':
-                s3_client.create_bucket(Bucket=bucket_name)
-            else:
-                s3_client.create_bucket(
-                    Bucket=bucket_name,
-                    CreateBucketConfiguration={'LocationConstraint': region}
-                )
-            print(f"✓ Created S3 bucket: {bucket_name}")
-        except Exception as e:
-            print(f"✗ Failed to create S3 bucket: {e}")
+    except ClientError as e:
+        error_code = e.response['Error']['Code']
+        if error_code == '404' or error_code == 'NoSuchBucket':
+            # Create bucket
+            print(f"Creating S3 bucket: {bucket_name}")
+            try:
+                if region == 'us-east-1':
+                    s3_client.create_bucket(Bucket=bucket_name)
+                else:
+                    s3_client.create_bucket(
+                        Bucket=bucket_name,
+                        CreateBucketConfiguration={'LocationConstraint': region}
+                    )
+                print(f"✓ Created S3 bucket: {bucket_name}")
+            except Exception as create_error:
+                print(f"✗ Failed to create S3 bucket: {create_error}")
+                raise
+        else:
+            print(f"✗ Error checking bucket: {e}")
             raise
-    except Exception as e:
-        print(f"✗ Error checking bucket: {e}")
-        raise
     
     return bucket_name
 

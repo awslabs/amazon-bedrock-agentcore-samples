@@ -193,17 +193,19 @@ aws cloudformation describe-stacks \
 
 ## Configure Frontend
 
-### Local Development
-
 ```bash
 cd rtp-overlay
 echo "VITE_API_BASE_URL=$(aws cloudformation describe-stacks --stack-name RtpOverlayLambdaStack --region us-east-1 --query 'Stacks[0].Outputs[?OutputKey==`ApiUrl`].OutputValue' --output text)" > .env
 npm install
+```
+
+### Local Development
+
+```bash
 npm run dev
 ```
 
 Open: <http://localhost:5173>  
-Login: admin / admin123
 
 ### Test Both Portals
 
