@@ -33,6 +33,10 @@ EXPOSE 9000
 EXPOSE 8000
 EXPOSE 8080
 
+# Health check using the /ping endpoint
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8080/ping', timeout=5)" || exit 1
+
 # Copy entire project (respecting .dockerignore)
 COPY . .
 
