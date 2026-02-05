@@ -14,6 +14,7 @@
 - dhawalkp
 - didhd
 - EashanKaushik
+- ezzara
 - Fabian Rami
 - Grace Lang
 - Hari Tripathi

@@ -15,7 +15,6 @@ local_file_path = "resources/database/video_games_sales_no_headers.csv"
 s3_file_name = "video_games_sales_no_headers.csv"
 
 try:
-
     # Upload file to S3
     s3_client = boto3.client("s3")
     s3_client.upload_file(
@@ -30,7 +29,7 @@ try:
     client = boto3.client("rds-data")
 
     # Create table
-    query1 = """ CREATE TABLE video_games_sales_units (
+    query1 = """ CREATE TABLE IF NOT EXISTS video_games_sales_units (
         title TEXT,
         console TEXT,
         genre TEXT,
@@ -56,7 +55,7 @@ try:
     print("Query response: " + str(response))
 
     # Create AWS S3 extension
-    query2 = "CREATE EXTENSION aws_s3 CASCADE;"
+    query2 = "CREATE EXTENSION IF NOT EXISTS aws_s3 CASCADE;"
 
     response = client.execute_statement(
         resourceArn=aurora_serverless_db_cluster_arn,
@@ -69,12 +68,13 @@ try:
     print("Query: " + query2)
     print("Query response: " + str(response))
 
-    # Import data from S3
+    # Import data from S3 using IAM role credentials
+    # Note: This uses the IAM role associated with the Aurora cluster via s3ImportRole
     query3 = f""" 
     SELECT aws_s3.table_import_from_s3(
     'video_games_sales_units',
     'title,console,genre,publisher,developer,critic_score,total_sales,na_sales,jp_sales,pal_sales,other_sales,release_date',
-    'DELIMITER ''|''', 
+    '(FORMAT csv, DELIMITER ''|'', HEADER false)', 
     aws_commons.create_s3_uri('{data_source_bucket_name}', '{s3_file_name}', '{region}')
     ); """
 

@@ -3,5 +3,5 @@ strands-agents-tools
 typing
 boto3
 bedrock-agentcore
-bedrock-agentcore-starter-toolkit>=0.1.34
+bedrock-agentcore-starter-toolkit
 botocore

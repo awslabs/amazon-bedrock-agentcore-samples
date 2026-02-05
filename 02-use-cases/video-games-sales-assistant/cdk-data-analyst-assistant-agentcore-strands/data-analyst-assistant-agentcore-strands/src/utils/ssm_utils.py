@@ -9,7 +9,6 @@ Parameters:
 - SECRET_ARN: ARN of the AWS Secrets Manager secret containing database credentials
 - AURORA_RESOURCE_ARN: ARN of the Aurora Serverless cluster
 - DATABASE_NAME: Name of the database to connect to
-- MEMORY_ID: AgentCore Memory ID for conversation context management
 - QUESTION_ANSWERS_TABLE: DynamoDB table for storing query results
 - MAX_RESPONSE_SIZE_BYTES: Maximum size of query responses in bytes (default: 25600)
 """
@@ -79,7 +78,6 @@ def load_config():
         "DATABASE_NAME",
         "QUESTION_ANSWERS_TABLE",
         "MAX_RESPONSE_SIZE_BYTES",
-        "MEMORY_ID",
     ]
 
     config = {}
@@ -105,7 +103,6 @@ def load_config():
                 "SECRET_ARN",
                 "AURORA_RESOURCE_ARN",
                 "DATABASE_NAME",
-                "MEMORY_ID",
             ]:
                 raise ValueError(
                     f"Required SSM parameter /{PROJECT_ID}/{key} not found"
