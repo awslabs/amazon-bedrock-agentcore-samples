@@ -382,38 +382,38 @@ curl -X POST ${API_URL}/auth/login \
 
 ### Step 15: Configure Frontend
 
-#### Local Development
-
 ```bash
 cd rtp-overlay
-
-# Set API URL
-echo "VITE_API_BASE_URL=<your-api-url>" > .env
-
-# Install and run
+echo "VITE_API_BASE_URL=$(aws cloudformation describe-stacks --stack-name RtpOverlayLambdaStack --region us-east-1 --query 'Stacks[0].Outputs[?OutputKey==`ApiUrl`].OutputValue' --output text)" > .env
 npm install
+```
+
+### Local Development
+
+```bash
 npm run dev
 ```
 
-**Buyer Portal URL:** <http://localhost:5173>
+Open: <http://localhost:5173>  
 
-**Default login:**
-- Username: `admin`
-- Password: `admin123`
+### Test Both Portals
 
-**Supplier Portal URL:** <http://localhost:5173/supplier/login>
+**Buyer Portal** (Main Application):
 
-**Supplier login:**
-- Use Payment ID or Tracking Number from a processed payment
+- URL: <http://localhost:5173>
+- Login: admin / admin123
+- Features: Invoice management, payment processing, virtual card display
 
-#### Deploy to AWS Amplify (Optional)
+**Supplier Portal** (External Access):
 
-For production deployment:
+- URL: <http://localhost:5173/supplier/login>
+- Login: Use Payment ID or Tracking Number from processed payment
+- Features: View virtual card details, copy card information
+
+### Deploy to Amplify (Optional)
 
 ```bash
 cd rtp-overlay
-
-# Build and create deployment package
 ./build-and-zip.sh
 ```
 

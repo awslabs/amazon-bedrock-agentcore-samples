@@ -40,14 +40,14 @@ def create_or_get_memory_resource():
                     StrategyType.USER_PREFERENCE.value: {
                         "name": "CustomerPreferences",
                         "description": "Captures customer preferences and behavior",
-                        "namespaces": ["support/customer/{actorId}/preferences/"],
+                        "namespaces": ["support/customer/{actorId}/preferences"],
                     }
                 },
                 {
                     StrategyType.SEMANTIC.value: {
                         "name": "CustomerSupportSemantic",
                         "description": "Stores facts from conversations",
-                        "namespaces": ["support/customer/{actorId}/semantic/"],
+                        "namespaces": ["support/customer/{actorId}/semantic"],
                     }
                 },
             ]

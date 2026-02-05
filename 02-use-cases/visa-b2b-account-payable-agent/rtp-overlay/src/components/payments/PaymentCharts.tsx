@@ -163,7 +163,7 @@ export const PaymentCharts: React.FC<PaymentChartsProps> = ({
                   tickFormatter={formatCurrency}
                 />
                 <Tooltip
-                  formatter={(value: number) => formatCurrency(value)}
+                  formatter={(value: number | undefined) => value !== undefined ? formatCurrency(value) : ''}
                   contentStyle={{
                     backgroundColor: 'white',
                     border: '1px solid #e0e0e0',
@@ -247,7 +247,7 @@ export const PaymentCharts: React.FC<PaymentChartsProps> = ({
                   tickFormatter={formatCurrency}
                 />
                 <Tooltip
-                  formatter={(value: number) => formatCurrency(value)}
+                  formatter={(value: number | undefined) => value !== undefined ? formatCurrency(value) : ''}
                   contentStyle={{
                     backgroundColor: 'white',
                     border: '1px solid #e0e0e0',
