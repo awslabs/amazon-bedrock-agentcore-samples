@@ -41,7 +41,9 @@ logger = logging.getLogger("personal-agent")
 memory_id = os.environ.get("MEMORY_ID")
 
 # Retrieve Bedrock Model ID
-bedrock_model_id_env = os.environ.get("BEDROCK_MODEL_ID", "global.anthropic.claude-haiku-4-5-20251001-v1:0")
+bedrock_model_id_env = os.environ.get(
+    "BEDROCK_MODEL_ID", "global.anthropic.claude-haiku-4-5-20251001-v1:0"
+)
 
 
 # Initialize the Bedrock Agent Core app
@@ -279,9 +281,7 @@ async def agent_invocation(payload):
             messages=agentcore_messages,
             model=bedrock_model,
             system_prompt=system_prompt,
-            hooks=[
-                MemoryHookProvider(memory_id, user_id, session_id, last_k_turns)
-            ],
+            hooks=[MemoryHookProvider(memory_id, user_id, session_id, last_k_turns)],
             tools=[
                 get_tables_information,
                 current_time,
