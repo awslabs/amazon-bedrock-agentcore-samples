@@ -15,7 +15,6 @@ local_file_path = "resources/database/video_games_sales_no_headers.csv"
 s3_file_name = "video_games_sales_no_headers.csv"
 
 try:
-
     # Upload file to S3
     s3_client = boto3.client("s3")
     s3_client.upload_file(
