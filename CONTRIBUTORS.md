@@ -14,6 +14,7 @@
 - dhawalkp
 - didhd
 - EashanKaushik
+- ezzara
 - Fabian Rami
 - Grace Lang
 - Hari Tripathi
@@ -86,3 +87,4 @@
 - Hideki Tane
 - xinaizha
 - Traci Lim (longwind48)
+- Jerad Engebreth (jcengebreth)
