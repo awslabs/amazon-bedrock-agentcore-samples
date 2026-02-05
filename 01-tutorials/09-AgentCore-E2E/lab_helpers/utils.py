@@ -678,7 +678,7 @@ def gateway_target_cleanup(gateway_id: str = None):
     if targets_deleted:
         print("⏳ Waiting for target deletions to propagate...")
         time.sleep(5)
-        
+
     # Delete the gateway
     print(f"🗑️  Deleting gateway: {gateway_id}")
     gateway_client.delete_gateway(gatewayIdentifier=gateway_id)
@@ -785,40 +785,37 @@ def local_file_cleanup():
             f"ℹ️  {len(missing_files)} files were already missing: {', '.join(missing_files)}"
         )
 
+
 def policy_engine_cleanup(policy_engine_id: str = None):
     policy_client = boto3.client(
         "bedrock-agentcore-control",
         region_name=REGION,
     )
-    
+
     if not policy_engine_id:
         response = policy_client.list_policy_engines()
         policy_engine_id = response["policyEngines"][0]["policyEngineId"]
-    
+
     print(f"🗑️  Deleting all policies for policy engine: {policy_engine_id}")
-       
+
     # List and delete all policies
     list_response = policy_client.list_policies(
-        policyEngineId=policy_engine_id,
-        maxResults=100
+        policyEngineId=policy_engine_id, maxResults=100
     )
 
     policies_deleted = False
     for item in list_response["policies"]:
         policy_id = item["policyId"]
         print(f"   Deleting policy: {policy_id}")
-        policy_client.delete_policy(
-            policyEngineId=policy_engine_id,
-            policyId=policy_id
-        )
+        policy_client.delete_policy(policyEngineId=policy_engine_id, policyId=policy_id)
         print(f"   ✅ Policy {policy_id} deleted")
         policies_deleted = True
-    
+
     # Wait for policy deletions to propagate before deleting the engine
     if policies_deleted:
         print("⏳ Waiting for policy deletions to propagate...")
         time.sleep(5)  # 5 seconds is usually sufficient
-    
+
     # Delete the policy engine
     print(f"🗑️  Deleting policy engine: {policy_engine_id}")
     policy_client.delete_policy_engine(policyEngineId=policy_engine_id)
