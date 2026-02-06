@@ -25,6 +25,10 @@ module "bedrock_role" {
   role_name                = var.bedrock_role_name
   knowledge_base_id        = module.kb_stack.knowledge_base_id
   guardrail_id             = module.guardrail.guardrail_id
+  secrets_kms_key_arn      = module.secrets.kms_key_arn
+  parameters_kms_key_arn   = module.parameters.kms_key_arn
+
+  depends_on = [module.secrets, module.parameters]
 }
 
 # Knowledge Base Stack
@@ -267,13 +271,13 @@ resource "aws_bedrockagentcore_agent_runtime" "agent_runtime" {
     server_protocol = "HTTP"
   }
   environment_variables = {
+    "AWS_REGION" = data.aws_region.current.name
     "LOG_LEVEL" = "INFO"
     "OTEL_EXPORTER_OTLP_ENDPOINT" = "${var.langfuse_host}/api/public/otel"
     "OTEL_EXPORTER_OTLP_HEADERS" = "Authorization=Basic ${base64encode("${var.langfuse_public_key}:${var.langfuse_secret_key}")}"
-    "DISABLE_ADOT_OBSERVABILITY" = "true",
-    "LANGSMITH_OTEL_ENABLED" = "true",
+    "LANGSMITH_OTEL_ENABLED" = "true"
     "LANGSMITH_TRACING" = "true"
-
+    "DISABLE_ADOT_OBSERVABILITY" = "true"
   }
 
 }

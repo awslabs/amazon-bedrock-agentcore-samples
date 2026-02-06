@@ -14,6 +14,7 @@
 - dhawalkp
 - didhd
 - EashanKaushik
+- ezzara
 - Fabian Rami
 - Grace Lang
 - Hari Tripathi
@@ -72,6 +73,7 @@
 - Sparsh Wadhwa (SparshWadhwa)
 - Lana Zhang
 - Bharathi Srinivasan
+- Trevor Schiavone
 - Antonio Rodriguez (rodzanto)
 - otamaryx
 - kevlw
@@ -83,3 +85,10 @@
 - Will Ensor
 - Osman Santos
 - David Kaleko
+- Sunita Koppar (skoppar)
+- Gi Kim (giryoong)
+- richatt
+- Hideki Tane
+- xinaizha
+- Traci Lim (longwind48)
+- Jerad Engebreth (jcengebreth)

@@ -22,3 +22,8 @@ output "tavily_key_arn" {
   description = "ARN of the Tavily API key secret"
   value       = aws_secretsmanager_secret.tavily_key.arn
 }
+
+output "kms_key_arn" {
+  description = "ARN of the KMS key used for secrets encryption"
+  value       = aws_kms_key.secrets_key.arn
+}

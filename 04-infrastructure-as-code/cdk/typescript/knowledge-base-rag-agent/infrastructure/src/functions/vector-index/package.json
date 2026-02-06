@@ -1,0 +1,12 @@
+{
+  "name": "vector-index-lambda",
+  "version": "1.0.0",
+  "description": "Lambda function to create a vector index in OpenSearch Serverless",
+  "main": "index.js",
+  "dependencies": {
+    "@aws-sdk/client-opensearchserverless": "^3.0.0",
+    "@aws-sdk/signature-v4": "^3.0.0",
+    "@aws-sdk/credential-provider-node": "^3.0.0",
+    "@aws-crypto/sha256-js": "^4.0.0"
+  }
+}

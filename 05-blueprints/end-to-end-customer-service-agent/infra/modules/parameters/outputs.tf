@@ -22,3 +22,8 @@ output "client_id_parameter_name" {
   description = "Name of the client ID parameter"
   value       = aws_ssm_parameter.client_id.name
 }
+
+output "kms_key_arn" {
+  description = "ARN of the KMS key used for parameters encryption"
+  value       = aws_kms_key.parameter_key.arn
+}

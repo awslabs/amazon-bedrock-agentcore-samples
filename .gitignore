@@ -50,6 +50,7 @@ eggs/
 .eggs/
 lib/
 !05-blueprints/**/lib/
+!02-use-cases/visa-b2b-account-payable-agent/infrastructure/lib/
 lib64/
 parts/
 sdist/
@@ -241,3 +242,5 @@ cdk.out/
 .bedrock_agentcore/
 .bedrock_agentcore.yaml
 .vscode/
+
+node_modules
