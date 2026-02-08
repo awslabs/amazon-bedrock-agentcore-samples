@@ -186,10 +186,16 @@ The script uses the **[video_games_sales_no_headers.csv](./resources/database/vi
 
 Before deploying to AWS, you can test the Data Analyst Agent locally to verify functionality:
 
-1. Navigate to the agent folder and start the local agent server:
+1. Navigate to the agent folder and install the required dependencies:
 
 ```bash
 cd data-analyst-assistant-agentcore-strands
+pip install -r requirements.txt
+```
+
+2. Start the local agent server:
+
+```bash
 python3 app.py
 ```
 
