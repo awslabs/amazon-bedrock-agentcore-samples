@@ -12,7 +12,7 @@ These Infrastructure as Code samples enable you to:
 
 Choose your preferred approach:
 - **[CloudFormation](./cloudformation/)** - YAML/JSON templates for declarative infrastructure
-- **[CDK](./cdk/)** - Python code for programmatic infrastructure
+- **[CDK](./cdk/)** - Python or TypeScript code for programmatic infrastructure
 - **[Terraform](./terraform/)** - HCL code for declarative infrastructure with state management
 
 ## Samples
@@ -29,7 +29,7 @@ Deploy a simple AgentCore Runtime with a basic Strands agent - no additional too
 **Deployment time:** ~5-15 minutes  
 **Estimated cost:** ~$50-100/month
 
-**Implementation:** [CloudFormation](./cloudformation/basic-runtime/) | [CDK](./cdk/basic-runtime/) | [Terraform](./terraform/basic-runtime/)
+**Implementation:** [CloudFormation](./cloudformation/basic-runtime/) | [CDK](./cdk/python/basic-runtime/) | [Terraform](./terraform/basic-runtime/)
 
 ### 2. MCP Server on AgentCore Runtime
 Deploy a complete MCP (Model Context Protocol) server with automated Docker building and JWT authentication.
@@ -43,7 +43,7 @@ Deploy a complete MCP (Model Context Protocol) server with automated Docker buil
 **Deployment time:** ~10-15 minutes  
 **Estimated cost:** ~$50-100/month
 
-**Implementation:** [CloudFormation](./cloudformation/mcp-server-agentcore-runtime/) | [CDK](./cdk/mcp-server-agentcore-runtime/) | [Terraform](./terraform/mcp-server-agentcore-runtime/)
+**Implementation:** [CloudFormation](./cloudformation/mcp-server-agentcore-runtime/) | [CDK](./cdk/python/mcp-server-agentcore-runtime/) | [Terraform](./terraform/mcp-server-agentcore-runtime/)
 
 ### 3. Multi-Agent Runtime
 Deploy a multi-agent system where Agent1 (orchestrator) can invoke Agent2 (specialist) for complex tasks.
@@ -57,7 +57,7 @@ Deploy a multi-agent system where Agent1 (orchestrator) can invoke Agent2 (speci
 **Deployment time:** ~15-20 minutes  
 **Estimated cost:** ~$100-200/month
 
-**Implementation:** [CloudFormation](./cloudformation/multi-agent-runtime/) | [CDK](./cdk/multi-agent-runtime/) | [Terraform](./terraform/multi-agent-runtime/)
+**Implementation:** [CloudFormation](./cloudformation/multi-agent-runtime/) | [CDK](./cdk/python/multi-agent-runtime/) | [Terraform](./terraform/multi-agent-runtime/)
 
 ### 4. End-to-End Weather Agent with Tools and Memory
 Deploy a complete weather-based activity planning agent with browser automation, code interpreter, and memory.
@@ -73,7 +73,7 @@ Deploy a complete weather-based activity planning agent with browser automation,
 **Deployment time:** ~15-20 minutes  
 **Estimated cost:** ~$100-150/month
 
-**Implementation:** [CloudFormation](./cloudformation/end-to-end-weather-agent/) | [CDK](./cdk/end-to-end-weather-agent/) | [Terraform](./terraform/end-to-end-weather-agent/)
+**Implementation:** [CloudFormation](./cloudformation/end-to-end-weather-agent/) | [CDK](./cdk/python/end-to-end-weather-agent/) | [Terraform](./terraform/end-to-end-weather-agent/)
 
 ## Prerequisites
 
@@ -109,12 +109,15 @@ For Terraform samples, also install:
 │   ├── mcp-server-agentcore-runtime/
 │   ├── multi-agent-runtime/
 │   └── end-to-end-weather-agent/
-├── cdk/                              # CDK samples
+├── cdk/                              # CDK samples (Python & TypeScript)
 │   ├── README.md                     # CDK-specific guide
-│   ├── basic-runtime/
-│   ├── mcp-server-agentcore-runtime/
-│   ├── multi-agent-runtime/
-│   └── end-to-end-weather-agent/
+│   ├── python/                       # Python CDK samples
+│   │   ├── basic-runtime/
+│   │   ├── mcp-server-agentcore-runtime/
+│   │   ├── multi-agent-runtime/
+│   │   └── end-to-end-weather-agent/
+│   └── typescript/                   # TypeScript CDK samples
+│       └── knowledge-base-rag-agent/
 └── terraform/                        # Terraform samples
     ├── README.md                     # Terraform-specific guide
     ├── basic-runtime/
