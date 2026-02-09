@@ -1,6 +1,6 @@
 # A2A Real Estate AgentCore Multi-Agents
 
-A production-ready AI-powered real estate platform built with AWS Bedrock AgentCore, featuring multi-agent coordination using the A2A (Agent-to-Agent) protocol with OAuth 2.0 authentication.
+A sample AI-powered real estate platform built with AWS Bedrock AgentCore, featuring multi-agent coordination using the A2A (Agent-to-Agent) protocol with OAuth 2.0 authentication.
 
 ## 🎬 Demo
 
@@ -49,7 +49,7 @@ This system demonstrates a sophisticated multi-agent architecture with direct UI
 - **OAuth 2.0 Security**: Secure authentication using AWS Cognito
 - **Professional UI**: Modern React TypeScript interface
 - **Real-time Communication**: Async message handling with streaming support
-- **Production Ready**: Deployed on AWS Bedrock AgentCore serverless runtime
+- **Serverless Deployment**: Deployed on AWS Bedrock AgentCore serverless runtime
 
 ## 📋 Prerequisites
 

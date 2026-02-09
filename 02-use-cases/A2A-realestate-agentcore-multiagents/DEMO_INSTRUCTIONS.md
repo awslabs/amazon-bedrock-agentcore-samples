@@ -79,7 +79,7 @@ The UI will open at: http://localhost:3000
 
 ### Introduction (1 minute)
 
-"I'm going to demonstrate a production-ready multi-agent system built on AWS Bedrock AgentCore. This system uses three AI agents that communicate using the A2A protocol with OAuth 2.0 security."
+"I'm going to demonstrate a sample multi-agent system built on AWS Bedrock AgentCore. This system uses three AI agents that communicate using the A2A protocol with OAuth 2.0 security."
 
 **Show Architecture:**
 - Point to the UI (React frontend)
@@ -295,7 +295,7 @@ A: Costs include: AgentCore runtime (pay-per-invocation), Claude model usage (pe
 
 ## 🎬 Closing
 
-"This demonstrates a production-ready multi-agent system with:
+"This demonstrates a sample multi-agent system with:
 - Secure OAuth 2.0 authentication
 - Industry-standard A2A protocol
 - Serverless deployment on AWS
