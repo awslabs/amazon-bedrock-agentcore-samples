@@ -50,7 +50,7 @@ class AgentTester:
             print(f"✗ Error: {config_file} not found")
             sys.exit(1)
         
-        with open(file_path, 'r') as f:
+        with open(file_path, 'r', encoding='utf-8') as f:
             return json.load(f)
     
     def load_deployment(self, deployment_file):
@@ -62,7 +62,7 @@ class AgentTester:
             print("Please deploy agents first: python deploy_agents_with_oauth.py")
             sys.exit(1)
         
-        with open(file_path, 'r') as f:
+        with open(file_path, 'r', encoding='utf-8') as f:
             return json.load(f)
     
     def load_bearer_token(self):
@@ -75,7 +75,7 @@ class AgentTester:
             print("Please generate token first: python generate_bearer_token.py")
             sys.exit(1)
         
-        with open(file_path, 'r') as f:
+        with open(file_path, 'r', encoding='utf-8') as f:
             token_data = json.load(f)
             return token_data['access_token']
     

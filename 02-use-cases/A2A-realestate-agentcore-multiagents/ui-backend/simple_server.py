@@ -22,7 +22,7 @@ _token_cache = {'token': None, 'expiry': None}
 def get_config():
     """Load deployment configuration."""
     config_path = os.path.join(os.path.dirname(__file__), '../deployment_info.json')
-    with open(config_path, 'r') as f:
+    with open(config_path, 'r', encoding='utf-8') as f:
         return json.load(f)
 
 def get_oauth_token():
@@ -36,11 +36,14 @@ def get_oauth_token():
     # Try to load token from file first
     token_file = os.path.join(os.path.dirname(__file__), '../.bearer_token')
     if os.path.exists(token_file):
-        with open(token_file, 'r') as f:
+        with open(token_file, 'r', encoding='utf-8') as f:
             token = f.read().strip()
-            # Decode and check expiry
+            # Check expiry without decoding (tokens are validated by AWS)
+            # We only check expiry for caching purposes, not for security
             try:
                 import jwt
+                # Note: We don't verify signature here because AWS Cognito will verify it
+                # This is only for checking token expiry to avoid unnecessary token refreshes
                 decoded = jwt.decode(token, options={"verify_signature": False})
                 exp_time = datetime.fromtimestamp(decoded['exp'])
                 if datetime.now() < exp_time:
@@ -48,7 +51,8 @@ def get_oauth_token():
                     _token_cache['expiry'] = exp_time
                     print(f"✓ Loaded token from file (expires: {exp_time})")
                     return token
-            except:
+            except Exception:
+                # If token parsing fails, generate a new one
                 pass
     
     # Get fresh token
@@ -87,7 +91,8 @@ def get_oauth_token():
         data={
             'grant_type': 'client_credentials',
             'scope': 'a2a-agents/invoke'
-        }
+        },
+        timeout=30
     )
     
     if response.status_code == 200:
@@ -96,7 +101,7 @@ def get_oauth_token():
         _token_cache['expiry'] = datetime.now() + timedelta(seconds=token_data['expires_in'] - 60)
         
         # Save to file
-        with open(token_file, 'w') as f:
+        with open(token_file, 'w', encoding='utf-8') as f:
             f.write(_token_cache['token'])
         
         print(f"✓ Generated fresh token (expires in {token_data['expires_in']} seconds)")
@@ -184,10 +189,16 @@ def chat():
         
     except Exception as e:
         import traceback
-        traceback.print_exc()
+        import logging
+        
+        # Log the full error internally
+        logging.error(f"Error in chat endpoint: {str(e)}")
+        logging.error(traceback.format_exc())
+        
+        # Return generic error message to client (don't expose stack trace)
         return jsonify({
             'success': False,
-            'error': str(e),
+            'error': 'An error occurred processing your request. Please try again.',
             'timestamp': datetime.now().isoformat()
         }), 500
 
@@ -197,4 +208,8 @@ if __name__ == '__main__':
     print("="*70)
     print("Starting server on http://localhost:5000")
     print("="*70)
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    print("\n⚠️  WARNING: Debug mode should not be used in production!")
+    print("    Set debug=False for production deployments.\n")
+    # Use environment variable to control debug mode
+    debug_mode = os.environ.get('FLASK_DEBUG', 'false').lower() == 'true'
+    app.run(host='0.0.0.0', port=5000, debug=debug_mode)

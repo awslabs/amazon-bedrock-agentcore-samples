@@ -48,14 +48,14 @@ property_search_arn = None
 property_booking_arn = None
 
 try:
-    with open("../propertysearchagent_strands/.agent_arn", "r") as f:
+    with open("../propertysearchagent_strands/.agent_arn", "r", encoding='utf-8') as f:
         property_search_arn = f.read().strip()
     print(f"✓ Property Search Agent ARN: {property_search_arn}")
 except FileNotFoundError:
     print("⚠ Property Search Agent ARN not found - deploy it first")
 
 try:
-    with open("../propertybookingagent_strands/.agent_arn", "r") as f:
+    with open("../propertybookingagent_strands/.agent_arn", "r", encoding='utf-8') as f:
         property_booking_arn = f.read().strip()
     print(f"✓ Property Booking Agent ARN: {property_booking_arn}")
 except FileNotFoundError:
@@ -93,7 +93,7 @@ try:
     print(f"Agent ID: {launch_result.agent_id}")
     print()
     
-    with open(".agent_arn", "w") as f:
+    with open(".agent_arn", "w", encoding='utf-8') as f:
         f.write(launch_result.agent_arn)
     print("✓ Agent ARN saved to .agent_arn")
     print()

@@ -64,7 +64,7 @@ def get_bearer_token_from_cognito():
             logger.error(f"Cognito config not found in env vars or file: {config_file}")
             raise ValueError("Cognito configuration not found")
         
-        with open(config_file, 'r') as f:
+        with open(config_file, 'r', encoding='utf-8') as f:
             config = json.load(f)
         
         token_url = config['token_endpoint']
@@ -85,7 +85,7 @@ def get_bearer_token_from_cognito():
     }
     
     import requests
-    response = requests.post(token_url, headers=headers, data=data)
+    response = requests.post(token_url, headers=headers, data=data, timeout=30)
     
     if response.status_code == 200:
         token_data = response.json()

@@ -33,7 +33,7 @@ print()
 # Update .bedrock_agentcore.yaml with environment variables
 config_path = Path(".bedrock_agentcore.yaml")
 
-with open(config_path, 'r') as f:
+with open(config_path, 'r', encoding='utf-8') as f:
     config = yaml.safe_load(f)
 
 # Add environment variables to the realestate_coordinator agent
@@ -45,7 +45,7 @@ if 'agents' in config and 'realestate_coordinator' in config['agents']:
     config['agents']['realestate_coordinator']['environment']['PROPERTY_BOOKING_AGENT_URL'] = booking_url
     
     # Write back
-    with open(config_path, 'w') as f:
+    with open(config_path, 'w', encoding='utf-8') as f:
         yaml.dump(config, f, default_flow_style=False, sort_keys=False)
     
     print("✓ Configuration updated with environment variables")
@@ -57,7 +57,7 @@ print()
 
 import subprocess
 result = subprocess.run(['agentcore', 'launch', '-a', 'realestate_coordinator'], 
-                       capture_output=False, text=True)
+                       capture_output=False, text=True, check=False)
 
 if result.returncode == 0:
     print()

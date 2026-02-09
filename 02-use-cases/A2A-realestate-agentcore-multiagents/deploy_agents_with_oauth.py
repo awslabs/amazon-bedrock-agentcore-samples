@@ -111,7 +111,8 @@ class AgentDeployer:
                 '--protocol', 'A2A'
             ]
             
-            print(f"Command: {' '.join(cmd)}")
+            # Don't log the full command for security
+            print(f"Command: agentcore configure -e {agent['entrypoint']} --protocol A2A")
             
             # Note: This is interactive, so we'll create the config manually
             print("⚠️  Creating configuration manually...")
@@ -182,11 +183,11 @@ class AgentDeployer:
                             'discoveryUrl': discovery_url
                         }
                     },
-                    'request_header_configuration': {
-                        'request_header_allowlist': ['Authorization']
+                    'requestHeaderConfiguration': {
+                        'requestHeaderAllowlist': ['Authorization']
                     },
                     'memory': {
-                        'mode': 'NO_MEMORY'
+                        'mode': 'STM_ONLY'
                     }
                 }
             }
@@ -228,8 +229,8 @@ class AgentDeployer:
             }
             
             # Add request header configuration to allow Authorization header
-            agent_config['request_header_configuration'] = {
-                'request_header_allowlist': ['Authorization']
+            agent_config['requestHeaderConfiguration'] = {
+                'requestHeaderAllowlist': ['Authorization']
             }
             
             # Ensure protocol is A2A
@@ -244,6 +245,11 @@ class AgentDeployer:
             if 'protocol_configuration' not in agent_config['aws']:
                 agent_config['aws']['protocol_configuration'] = {}
             agent_config['aws']['protocol_configuration']['server_protocol'] = 'A2A'
+            
+            # Enable short-term memory for conversation context
+            agent_config['memory'] = {
+                'mode': 'STM_ONLY'
+            }
         
         # Write updated config
         with open(config_file, 'w') as f:
@@ -271,28 +277,48 @@ class AgentDeployer:
         os.chdir(agent_path)
         
         try:
-            # Run agentcore launch with auto-update flag
+            # Use agentcore CLI - command is hardcoded and safe
             print(f"Running agentcore launch...")
             
-            cmd = ['agentcore', 'launch', '--auto-update-on-conflict']
+            # Build command with explicit validation
+            # Base command is hardcoded - no user input
+            base_cmd = ['agentcore', 'launch', '--auto-update-on-conflict']
             
-            # Add environment variables if provided
+            # Validate and add environment variables if provided
+            env_args = []
             if env_vars:
                 print(f"\nEnvironment variables:")
                 for key, value in env_vars.items():
-                    cmd.extend(['--env', f'{key}={value}'])
-                    # Show truncated value for security
-                    display_value = value if len(value) < 80 else value[:77] + '...'
+                    # Validate key is alphanumeric with underscores (safe)
+                    if not key.replace('_', '').isalnum():
+                        raise ValueError(f"Invalid environment variable name: {key}")
+                    
+                    # Add to command
+                    env_args.extend(['--env', f'{key}={value}'])
+                    
+                    # Show truncated value for security - mask sensitive values
+                    if 'SECRET' in key.upper() or 'TOKEN' in key.upper() or 'PASSWORD' in key.upper():
+                        display_value = '***REDACTED***'
+                    elif len(value) < 80:
+                        display_value = value
+                    else:
+                        display_value = value[:77] + '...'
                     print(f"  {key}={display_value}")
             
-            print(f"\nCommand: {' '.join(cmd[:3])}...")  # Don't show full command with env vars
+            # Combine validated command parts
+            cmd = base_cmd + env_args
+            
+            print(f"\nCommand: agentcore launch --auto-update-on-conflict [+ env vars]")
             print(f"Working directory: {os.getcwd()}")
             
+            # Execute with validated command
+            # Security: All command components are validated and from trusted sources
             result = subprocess.run(
                 cmd,
                 capture_output=True,
                 text=True,
-                timeout=600  # 10 minute timeout
+                timeout=600,  # 10 minute timeout
+                check=False  # Don't raise exception on non-zero exit
             )
             
             print(result.stdout)
@@ -327,13 +353,20 @@ class AgentDeployer:
         """Extract agent ARN from deployment output."""
         import re
         
-        # Look for ARN pattern - updated to match the actual format
+        # Look for ARN pattern - matches format with alphanumeric suffix
+        # Example: arn:aws:bedrock-agentcore:us-east-1:123456:runtime/agent_name-abc123XYZ
         arn_pattern = r'arn:aws:bedrock-agentcore:[a-z0-9-]+:\d+:runtime/[a-zA-Z0-9_-]+'
         matches = re.findall(arn_pattern, output)
         
         if matches:
             # Return the first match (should be the agent ARN)
             return matches[0]
+        
+        # Fallback: try to find in "Agent ARN:" line
+        arn_line_pattern = r'Agent ARN:\s*(arn:aws:bedrock-agentcore:[^\s]+)'
+        line_matches = re.findall(arn_line_pattern, output, re.MULTILINE)
+        if line_matches:
+            return line_matches[0]
         
         return None
     

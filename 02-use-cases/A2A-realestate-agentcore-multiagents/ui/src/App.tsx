@@ -31,7 +31,7 @@ function App() {
     // Add welcome message
     setMessages([{
       id: '1',
-      text: "Hello! I'm your Real Estate Agent (A2A) powered by Amazon AgentCore. I can help you search for properties and make bookings. What are you looking for today?",
+      text: "Hello! I'm your Real Estate Agent (A2A) powered by Amazon Bedrock AgentCore. I can help you search for properties and make bookings. What are you looking for today?",
       sender: 'agent',
       timestamp: new Date()
     }]);

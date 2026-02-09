@@ -19,23 +19,27 @@ def main():
         print("Please deploy agents first: python deploy_agents_with_oauth.py")
         sys.exit(1)
     
-    with open('deployment_info.json', 'r') as f:
+    with open('deployment_info.json', 'r', encoding='utf-8') as f:
         deployment_info = json.load(f)
     
     # Always generate a fresh bearer token (tokens expire in 60 minutes)
     print("\n🔑 Generating fresh OAuth bearer token...")
-    import subprocess
-    result = subprocess.run(['python', 'get_fresh_token.py'], capture_output=True, text=True)
-    if result.returncode != 0:
+    
+    # Import the token generation function instead of using subprocess
+    from get_fresh_token import generate_fresh_token
+    
+    access_token, expires_at = generate_fresh_token('deployment_info.json')
+    
+    if not access_token:
         print("❌ Failed to generate token")
-        print(result.stderr)
         sys.exit(1)
     
     print("✅ Fresh token generated")
     
+    # Token is already saved to file by generate_fresh_token()
     # Read the token
     token_file = '.bearer_token'
-    with open(token_file, 'r') as f:
+    with open(token_file, 'r', encoding='utf-8') as f:
         bearer_token = f.read().strip()
     
     # Get coordinator agent ARN
@@ -66,7 +70,7 @@ REACT_APP_API_MODE=direct
 """
     
     env_file = 'ui/.env.local'
-    with open(env_file, 'w') as f:
+    with open(env_file, 'w', encoding='utf-8') as f:
         f.write(env_content)
     
     print(f"\n✅ Configuration generated successfully!")

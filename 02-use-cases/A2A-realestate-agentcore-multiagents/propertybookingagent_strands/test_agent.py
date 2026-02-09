@@ -21,12 +21,12 @@ credentials = boto_session.get_credentials()
 
 # Read agent ARN from file
 try:
-    with open(".agent_arn", "r") as f:
+    with open(".agent_arn", "r", encoding='utf-8') as f:
         agent_arn = f.read().strip()
 except FileNotFoundError:
     print("Error: .agent_arn file not found")
     print("Please deploy the agent first: python deploy_to_agentcore.py")
-    exit(1)
+    sys.exit(1)
 
 print("=" * 70)
 print("Property Booking Agent - Test Suite")

@@ -231,7 +231,7 @@ class CognitoSetup:
         print("="*70)
         
         config_file = 'cognito_config.json'
-        with open(config_file, 'w') as f:
+        with open(config_file, 'w', encoding='utf-8') as f:
             json.dump(config, f, indent=2)
         
         print(f"✓ Configuration saved to: {config_file}")
@@ -291,6 +291,8 @@ class CognitoSetup:
         print(f"Client ID: {client_id}")
         print(f"Discovery URL: {discovery_url}")
         print(f"\nConfiguration saved to: {config_file}")
+        print("\n⚠️  SECURITY NOTE: Client secret has been saved to cognito_config.json")
+        print("    Keep this file secure and never commit it to version control!")
         
         print("\n" + "="*70)
         print("NEXT STEPS")

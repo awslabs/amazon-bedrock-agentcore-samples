@@ -29,7 +29,7 @@ async def quick_test():
     script_dir = os.path.dirname(os.path.abspath(__file__))
     deployment_file = os.path.join(script_dir, 'deployment_info.json')
     
-    with open(deployment_file, 'r') as f:
+    with open(deployment_file, 'r', encoding='utf-8') as f:
         deployment_info = json.load(f)
     
     # Set agent URLs
@@ -54,7 +54,7 @@ async def quick_test():
     
     # Load bearer token
     token_file = os.path.join(script_dir, '.bearer_token')
-    with open(token_file, 'r') as f:
+    with open(token_file, 'r', encoding='utf-8') as f:
         os.environ['BEARER_TOKEN'] = f.read().strip()
     print(f"   ✓ Bearer token loaded")
     

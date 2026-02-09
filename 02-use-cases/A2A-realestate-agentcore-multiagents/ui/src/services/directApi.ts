@@ -4,6 +4,9 @@ import axios from 'axios';
 const BEARER_TOKEN = process.env.REACT_APP_BEARER_TOKEN || '';
 const COORDINATOR_AGENT_ARN = process.env.REACT_APP_COORDINATOR_AGENT_ARN || '';
 
+// Persistent session ID for conversation context
+let CONVERSATION_SESSION_ID: string | null = null;
+
 export interface AgentResponse {
   success: boolean;
   response: string;
@@ -17,16 +20,42 @@ function getAgentUrl(arn: string): string {
 }
 
 function generateUUID(): string {
+  // Use crypto.randomUUID() if available (modern browsers)
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  
+  // Fallback to crypto.getRandomValues for better randomness
+  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+    const bytes = new Uint8Array(16);
+    crypto.getRandomValues(bytes);
+    
+    // Set version (4) and variant bits
+    bytes[6] = (bytes[6] & 0x0f) | 0x40;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+    
+    const hex = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+    return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+  }
+  
+  // Last resort fallback (should not be used in production)
+  console.warn('Using insecure random number generation. Please use a modern browser.');
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
     const r = Math.random() * 16 | 0;
-    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    const v = c === 'x' ? r : ((r & 0x3) | 0x8);
     return v.toString(16);
   });
 }
 
 async function callAgent(agentArn: string, message: string): Promise<string> {
   const url = getAgentUrl(agentArn);
-  const sessionId = generateUUID();
+  
+  // Use persistent session ID for conversation continuity
+  if (!CONVERSATION_SESSION_ID) {
+    CONVERSATION_SESSION_ID = generateUUID();
+    console.log('🔑 New conversation session started:', CONVERSATION_SESSION_ID);
+  }
+  
   const messageId = generateUUID();
   
   const jsonrpcRequest = {
@@ -46,7 +75,7 @@ async function callAgent(agentArn: string, message: string): Promise<string> {
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${BEARER_TOKEN}`,
-      'X-Amzn-Bedrock-AgentCore-Runtime-Session-Id': sessionId
+      'X-Amzn-Bedrock-AgentCore-Runtime-Session-Id': CONVERSATION_SESSION_ID
     },
     timeout: 120000 // 2 minutes
   });
