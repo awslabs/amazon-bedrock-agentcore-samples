@@ -24,7 +24,16 @@ The solution deploys:
 - **BrowserName**: Name for the browser (default: `secure_browser`)
 - **BucketConfigForOutput**: S3 bucket name for browser recordings
 
-## Testing the Firewall
+## Testing
+
+### Option 1 - Jupyter Notebook
+
+If you wanna a straitghforward step-by-step, you can open [verify_domain_filtering.ipynb](verify_domain_filtering.ipynb) and run the step by step.
+
+
+### Option 2 - Python Code
+
+If you wanna go direct trough the code, you can go with Python files and code. 
 
 After deployment, get the AgentCore Browser identifier. You can get it from command line:
 
@@ -40,7 +49,7 @@ or from AWS Console, from output information on Cloud Formation stack:
 
 ![browser-output](img/cfn-output.png)
 
-**Important: `test_firewall.py` script expect the browser identified into BROWSER_ID env variable.**
+**Important: `verify_domain_filtering.py` script expect the browser identified into BROWSER_ID env variable.**
 
 Test the domain filtering using the provided Python script:
 
@@ -50,12 +59,12 @@ pip install -r requirements.txt
 playwright install chromium
 
 # Run tests
-python test_firewall.py
+python verify_domain_filtering.py
 ```
 
 ### Test Script
 
-The `test_firewall.py` script validates:
+The `verify_domain_filtering.py` script validates:
 - ✅ Allowed domains (example.com, wikipedia.org) - should succeed
 - ❌ Denied domains (facebook.com, twitter.com) - should be blocked
 - ❌ Unlisted domains - should be blocked (default deny)
@@ -63,7 +72,8 @@ The `test_firewall.py` script validates:
 ## Files
 
 - **agentcore-browser-firewall.yaml**: CloudFormation template with complete infrastructure
-- **test_firewall.py**: Automated test script using Playwright to verify firewall rules
+- **verify_domain_filtering.py**: Automated test script using Playwright to verify firewall rules
+- **verify_domain_filtering.ipynb**: Jupyter notebook with step-by-step
 
 ## Monitoring
 

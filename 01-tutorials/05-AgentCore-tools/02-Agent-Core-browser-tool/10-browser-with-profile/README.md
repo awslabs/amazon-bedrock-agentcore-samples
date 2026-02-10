@@ -5,8 +5,7 @@ This example demonstrates how to use [browser profiles](https://docs.aws.amazon.
 ## Overview
 
 Browser profiles allow you to:
-- **Persist session data**: Save cookies, local storage, and session state
-- **Reuse authentication**: Maintain logged-in states across sessions
+- **Persist session data**: Save cookies and local storage
 - **Simulate user behavior**: Test workflows that require persistent browser state
 - **Share context**: Use the same profile across multiple browser sessions
 
@@ -15,9 +14,12 @@ Browser profiles allow you to:
 - E-commerce testing with persistent shopping carts
 - Testing authenticated workflows without re-login
 - Multi-step user journeys that span multiple sessions
-- Session state management for web automation
 
 ## Getting Started
+
+### Pre-requisites
+
+Before start, you should navigate through [sample-ecommerce](sample-ecommerce/README.md) and follow instructions to deploy fake e-commerce that will be used in this example.
 
 ### Installation
 
@@ -38,14 +40,14 @@ The [browser-profile.ipynb](browser-profile.ipynb) notebook demonstrates:
 
 ### 2. First Session
 - Start browser session
-- Navigate to Amazon.com
-- Add product to cart
+- Navigate to Cloud Front DNS (which is pointing to S3 bucket with our fake e-commerce)
+- Add products to the cart
 - **Save session to profile**
 - Stop session
 
 ### 3. Second Session
 - Start new session **with saved profile**
-- Navigate to cart
+- Navigate to the cart
 - Verify product persists from previous session
 
 ### 4. Optional: Download Recordings
@@ -65,8 +67,6 @@ The [browser-profile.ipynb](browser-profile.ipynb) notebook demonstrates:
 A browser profile stores session information including:
 - Cookies
 - Local storage
-- Session storage
-- IndexedDB data
 
 ### Profile Lifecycle
 1. **Create profile**: `create_browser_profile()`
