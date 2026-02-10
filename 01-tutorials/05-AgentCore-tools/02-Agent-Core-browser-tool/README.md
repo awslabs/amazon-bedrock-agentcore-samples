@@ -81,5 +81,8 @@ These tutorials demonstrate AgentCore Browser Tool capabilities across different
 **Domain Filtering**
 - [Browser with Domain Filtering using AWS Network Firewall](09-browser-with-domain-filtering/) - Deploy AgentCore Browser in a VPC with Network Firewall for allowlist/denylist domain filtering
 
+**Proxy Routing**
+- [Browser with Squid Proxy](11-browser-with-proxy/) - Route browser traffic through an authenticated Squid proxy with access logs shipped to S3
+
 **Browser Profiles**
 - [Browser with Persistent Profiles](10-browser-with-profile/browser-profile.ipynb) - Persist and reuse browser session data (cookies, local storage) across multiple sessions
