@@ -13,7 +13,7 @@ class AgentConfig:
     # AWS Configuration
     region: str = os.environ.get("AWS_REGION", "us-west-2")
     
-    llm_model_id: str = "us.anthropic.claude-3-7-sonnet-20250219-v1:0"
+    llm_model_id: str = "global.anthropic.claude-haiku-4-5-20251001-v1:0"
     
     # Get AWS Account ID automatically
     @property

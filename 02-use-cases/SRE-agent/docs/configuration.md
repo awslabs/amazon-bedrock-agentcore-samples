@@ -149,7 +149,7 @@ account_id: "YOUR_ACCOUNT_ID"
 region: "us-east-1"
 role_name: "YOUR_ROLE_NAME"
 endpoint_url: "https://bedrock-agentcore-control.us-east-1.amazonaws.com"
-credential_provider_endpoint_url: "https://us-east-1.prod.agent-credential-provider.cognito.aws.dev"
+credential_provider_endpoint_url: "https://bedrock-agentcore-control.us-east-1.amazonaws.com"
 
 # Cognito Configuration
 user_pool_id: "YOUR_USER_POOL_ID"

@@ -55,7 +55,7 @@ chmod +x deploy.sh
 
 ./deploy.sh --help
 # Or customize the model
-./deploy.sh --model global.anthropic.claude-sonnet-4-20250514-v1:0 --region us-west-2 --env dev --email <EmailAddress> --password <Password>
+./deploy.sh --model global.anthropic.claude-haiku-4-5-20251001-v1:0 --region us-west-2 --env dev --email <EmailAddress> --password <Password>
 
 
 ```

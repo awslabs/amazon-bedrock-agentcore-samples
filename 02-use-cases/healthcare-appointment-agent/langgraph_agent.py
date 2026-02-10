@@ -40,7 +40,7 @@ async def main(gateway_endpoint, jwt_token):
 
     LLM = init_chat_model(
         client=bedrock_client,
-        model="us.anthropic.claude-3-5-sonnet-20240620-v1:0",
+        model="global.anthropic.claude-haiku-4-5-20251001-v1:0",
         model_provider="bedrock_converse",
         temperature=0.7
     )

@@ -50,7 +50,7 @@ from langgraph.prebuilt import ToolNode, tools_condition
 
 # Initialize the LLM with Bedrock
 llm = init_chat_model(
-    "us.anthropic.claude-3-5-haiku-20241022-v1:0",
+    "global.anthropic.claude-haiku-4-5-20251001-v1:0",
     model_provider="bedrock_converse",
 )
 

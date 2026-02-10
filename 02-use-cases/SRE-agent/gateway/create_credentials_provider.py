@@ -31,9 +31,7 @@ logger = logging.getLogger(__name__)
 # Configuration constants
 DEFAULT_CREDENTIAL_PROVIDER_NAME = "sre-agent-api-key-credential-provider"
 DEFAULT_REGION = "us-east-1"
-DEFAULT_ENDPOINT_URL = (
-    "https://us-east-1.prod.agent-credential-provider.cognito.aws.dev"
-)
+DEFAULT_ENDPOINT_URL = "https://bedrock-agentcore-control.us-east-1.amazonaws.com"
 MAX_RETRIES = 3
 INITIAL_RETRY_DELAY = 5
 PROPAGATION_DELAY = 15
