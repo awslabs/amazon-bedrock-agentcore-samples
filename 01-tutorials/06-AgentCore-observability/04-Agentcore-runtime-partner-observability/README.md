@@ -52,8 +52,9 @@ Each platform requires specific configuration:
 - Project configuration
 
 ### Datadog
-- API key from Datadog dashboard
-- Datadog site configuration (US1, US3, US5, EU1, AP1)
+- API key from Datadog dashboard (Organization Settings → API Keys)
+- Datadog site/region (US1, US3, US5, EU1, AP1) — determines the OTLP endpoint
+- Uses Strands built-in telemetry with OTLP export directly to Datadog (no Datadog Agent required)
 
 ### Instana
 - Instana key
@@ -86,8 +87,3 @@ After completing examples:
 - [Langfuse Documentation](https://langfuse.com/docs)
 - [OpenLIT Documentation](https://docs.openlit.io/)
 - [AgentCore Runtime Guide](https://docs.aws.amazon.com/bedrock-agentcore/latest/userguide/runtime.html)
-
-# Third-Party Observability for Amazon Bedrock AgentCore Agents
-
-This repository contains examples of using agents hosted on Amazon Bedrock AgentCore Runtime with third-party observability tools like Arize, Braintrust, Instana, Langfuse, and others. These examples demonstrate OpenTelemetry integration for monitoring agent performance, tracing LLM interactions, and debugging workflows.
-
