@@ -64,6 +64,7 @@ Move from local tools to shared, enterprise-ready services.
 - Centralized tool management
 - JWT-based authentication
 - Integration with existing AWS Lambda functions
+- (Optional) Fine-grained access control with Cedar policies (e.g., deny web search for "iPhone 8" keywords)
 
 **What you'll learn:** AgentCore Gateway and AgentCore Identity for secure tool sharing
 

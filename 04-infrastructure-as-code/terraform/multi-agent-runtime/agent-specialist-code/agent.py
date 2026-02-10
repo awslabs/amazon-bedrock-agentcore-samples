@@ -3,6 +3,7 @@ from bedrock_agentcore.runtime import BedrockAgentCoreApp
 
 app = BedrockAgentCoreApp()
 
+
 def create_specialist_agent() -> Agent:
     """Create a specialist agent that handles specific analytical tasks"""
     system_prompt = """You are a specialist analytical agent.
@@ -10,10 +11,8 @@ def create_specialist_agent() -> Agent:
     When asked questions, provide thorough, well-reasoned responses with specific details.
     Focus on accuracy and completeness in your answers."""
 
-    return Agent(
-        system_prompt=system_prompt,
-        name="SpecialistAgent"
-    )
+    return Agent(system_prompt=system_prompt, name="SpecialistAgent")
+
 
 @app.entrypoint
 async def invoke(payload=None):
@@ -29,15 +28,12 @@ async def invoke(payload=None):
         return {
             "status": "success",
             "agent": "specialist",
-            "response": response.message['content'][0]['text']
+            "response": response.message["content"][0]["text"],
         }
 
     except Exception as e:
-        return {
-            "status": "error",
-            "agent": "specialist",
-            "error": str(e)
-        }
+        return {"status": "error", "agent": "specialist", "error": str(e)}
+
 
 if __name__ == "__main__":
     app.run()
