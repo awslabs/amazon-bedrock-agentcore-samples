@@ -75,3 +75,11 @@ These tutorials demonstrate AgentCore Browser Tool capabilities across different
 **VPC Configuration**
 - [Connecting Public Browser from Private VPC](07-connecting-public-browser-from-private-vpc/01-connecting-public-browser-from-private-vpc-runtime.ipynb)
 - [Interacting with VPC-based Browser from VPC](08-Interacting-with-vpc-based-browser-from-vpc/01-Interacting-with-vpc-based-browser-from-vpc.ipynb)
+
+### Security & Configuration
+
+**Domain Filtering**
+- [Browser with Domain Filtering using AWS Network Firewall](09-browser-with-domain-filtering/) - Deploy AgentCore Browser in a VPC with Network Firewall for allowlist/denylist domain filtering
+
+**Browser Profiles**
+- [Browser with Persistent Profiles](10-browser-with-profile/browser-profile.ipynb) - Persist and reuse browser session data (cookies, local storage) across multiple sessions

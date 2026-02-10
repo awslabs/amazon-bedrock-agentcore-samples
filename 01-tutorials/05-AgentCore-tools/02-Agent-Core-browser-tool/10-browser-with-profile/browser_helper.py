@@ -7,16 +7,13 @@ from botocore.awsrequest import AWSRequest
 
 session = boto3.Session()
 REGION = session.region_name
-browser_session = boto3.client('bedrock-agentcore')
 
 
 def get_signed_headers(ws_url):
     """Get SigV4 signed headers for WebSocket connection."""
     credentials = session.get_credentials()
     https_url = ws_url.replace("wss://", "https://")
-    print(f'hhtp url: {https_url}')
     parsed = urlparse(https_url)
-    print(f'Parsed URL: {parsed}')
 
     request = AWSRequest(
         method="GET",
