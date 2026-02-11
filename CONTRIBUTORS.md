@@ -88,3 +88,4 @@
 - xinaizha
 - Traci Lim (longwind48)
 - Jerad Engebreth (jcengebreth)
+- Takaaki Tsunoda (taka2noda)
