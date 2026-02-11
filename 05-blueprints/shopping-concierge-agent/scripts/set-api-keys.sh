@@ -3,7 +3,7 @@
 # Script to set API keys in AWS Systems Manager Parameter Store
 # Usage: ./scripts/set-api-keys.sh
 
-REGION="us-east-1"
+REGION="${AWS_REGION:-us-east-1}"
 
 echo "🔑 Setting API keys in AWS Systems Manager Parameter Store..."
 echo ""

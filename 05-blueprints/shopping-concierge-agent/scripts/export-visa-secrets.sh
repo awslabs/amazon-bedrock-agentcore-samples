@@ -4,7 +4,8 @@
 
 set -e
 
-REGION="us-east-1"
+# Use AWS_REGION environment variable, fallback to us-east-1
+REGION="${AWS_REGION:-us-east-1}"
 
 echo "🔐 Storing Visa secrets in AWS Secrets Manager..."
 echo ""
