@@ -4,6 +4,9 @@ set -e
 
 echo "🚀 Setting up Web UI environment..."
 
+# Use AWS_REGION environment variable, fallback to us-east-1
+REGION="${AWS_REGION:-us-east-1}"
+
 # Get deployment ID
 DEPLOYMENT_ID=$(node -p "require('./deployment-config.json').deploymentId" 2>/dev/null || echo "default")
 STACK_NAME="AgentStack-${DEPLOYMENT_ID}"
@@ -28,7 +31,7 @@ fi
 
 # Get CDK outputs from CloudFormation
 echo "📊 Querying ${STACK_NAME}..."
-CDK_OUTPUTS=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" --region us-east-1 --query "Stacks[0].Outputs" --output json 2>/dev/null) || {
+CDK_OUTPUTS=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" --region "$REGION" --query "Stacks[0].Outputs" --output json 2>/dev/null) || {
     echo "❌ Could not query ${STACK_NAME}. Deploy agent stack first."
     exit 1
 }
@@ -43,7 +46,7 @@ GATEWAY_ID=$(echo "$CDK_OUTPUTS" | jq -r '.[] | select(.OutputKey=="GatewayId") 
 # Get Visa Lambda proxy URL from VisaLambdaStack
 VISA_STACK_NAME="VisaLambdaStack-${DEPLOYMENT_ID}"
 echo "📊 Querying ${VISA_STACK_NAME}..."
-VISA_OUTPUTS=$(aws cloudformation describe-stacks --stack-name "$VISA_STACK_NAME" --region us-east-1 --query "Stacks[0].Outputs" --output json 2>/dev/null) || {
+VISA_OUTPUTS=$(aws cloudformation describe-stacks --stack-name "$VISA_STACK_NAME" --region "$REGION" --query "Stacks[0].Outputs" --output json 2>/dev/null) || {
     echo "⚠️  Could not query ${VISA_STACK_NAME}. Visa Lambda not deployed - using mock mode."
     VISA_PROXY_URL=""
 }
@@ -63,7 +66,7 @@ if [[ ! -f "amplify_outputs.json" ]]; then
     exit 1
 fi
 
-REGION=$(jq -r '.custom.region // "us-east-1"' amplify_outputs.json)
+REGION=$(jq -r --arg default "$REGION" '.custom.region // $default' amplify_outputs.json)
 USER_POOL_ID=$(jq -r '.auth.user_pool_id // empty' amplify_outputs.json)
 USER_POOL_CLIENT_ID=$(jq -r '.auth.user_pool_client_id // empty' amplify_outputs.json)
 
