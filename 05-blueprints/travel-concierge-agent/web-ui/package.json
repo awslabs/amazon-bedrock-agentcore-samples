@@ -13,7 +13,7 @@
     "@aws-amplify/ui-react": "^6.0.0",
     "@aws-sdk/client-bedrock-agentcore": "^3.0.0",
     "@aws-sdk/client-dynamodb": "^3.896.0",
-    "@aws-sdk/credential-providers": "^3.0.0",
+    "@aws-sdk/credential-providers": "^3.987.0",
     "aws-amplify": "^6.0.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
