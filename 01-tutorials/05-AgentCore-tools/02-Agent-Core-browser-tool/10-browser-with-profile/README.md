@@ -55,6 +55,12 @@ The [browser-profile.ipynb](browser-profile.ipynb) notebook demonstrates:
 - Convert to rrweb format
 - Replay session in notebook
 
+### 5. Troubleshooting
+- Profile not loading: Ensure the profile was saved before stopping the session
+- Permission errors: Verify IAM role has SaveBrowserSessionProfile permission
+- Session timeout: Browser sessions have a maximum duration; save profiles before timeout
+- **Expired Cookies:** Cookies have their own expiration times set by websites. Browser profiles preserve cookies, but expired cookies are automatically removed by the browser according to their expiration dates
+
 ## Files
 
 - **browser-profile.ipynb**: Complete tutorial notebook with step-by-step examples
