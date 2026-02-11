@@ -298,6 +298,11 @@ Resources:
             Principal:
               Service: bedrock-agentcore.amazonaws.com
             Action: sts:AssumeRole
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref AWS::AccountId
+              ArnLike:
+                aws:SourceArn: !Sub 'arn:aws:bedrock-agentcore:*:${AWS::AccountId}:*'
       Policies:
         - PolicyName: ReadProxySecret
           PolicyDocument:
