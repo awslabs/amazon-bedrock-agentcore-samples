@@ -17,6 +17,7 @@
 - Fabian Rami
 - Grace Lang
 - Hari Tripathi
+- jorporta
 - Joshua Samuel
 - khastation
 - manchandakp
@@ -86,4 +87,3 @@
 - Hideki Tane
 - xinaizha
 - Traci Lim (longwind48)
-- jorporta
