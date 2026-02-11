@@ -25,7 +25,6 @@ Before start, you should navigate through [sample-ecommerce](sample-ecommerce/RE
 
 ```bash
 pip install -r requirements.txt
-playwright install chromium
 ```
 
 ## Notebook Walkthrough

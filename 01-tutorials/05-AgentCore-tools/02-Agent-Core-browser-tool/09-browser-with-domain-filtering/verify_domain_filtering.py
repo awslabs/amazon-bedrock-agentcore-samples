@@ -70,7 +70,7 @@ async def main(ws_url, session_id):
     ]
 
     async with async_playwright() as p:
-        print(f"Connecting to browser...")
+        print("Connecting to browser...")
         browser = await p.chromium.connect_over_cdp(ws_url, headers=headers)
         page = browser.contexts[0].pages[0] if browser.contexts else await browser.new_context().new_page()
 

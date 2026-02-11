@@ -46,7 +46,6 @@ async def main():
     print(f"Browser ID:       {browser_id}")
     print(f"Squid private IP: {squid_ip}")
     print(f"Squid public IP:  {squid_public_ip}")
-    print(f"Secret ARN:       {secret_arn}")
 
     proxy_config = {
         "proxies": [{

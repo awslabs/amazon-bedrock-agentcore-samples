@@ -9,13 +9,13 @@ This example deploys an Amazon Bedrock AgentCore Browser that routes all web tra
 │  VPC (10.0.0.0/16)                                  │
 │                                                     │
 │  ┌─────────────────────┐  ┌──────────────────────┐  │
-│  │  Private Subnet      │  │  Public Subnet        │  │
-│  │                      │  │                        │  │
-│  │  AgentCore Browser   │──│  Squid EC2 (:3128)    │──── Internet
-│  │  (VPC mode)          │  │  ├─ basic auth         │  │
-│  │                      │  │  ├─ access logs → S3   │  │
-│  └─────────────────────┘  │  └─ creds ← Secrets Mgr│  │
-│                            └──────────────────────┘  │
+│  │  Private Subnet     │  │  Public Subnet       │  │
+│  │                     │  │                      │  │
+│  │  AgentCore Browser  │──│  Squid EC2 (:3128)   │──── Internet
+│  │  (VPC mode)         │  │  ├─ basic auth       │  │
+│  │                     │  │  ├─ access logs → S3 │  │
+│  └─────────────────────┘  │  └─ creds ← Secrets Mgr │
+│                           └──────────────────────┘  │
 │                                                     │
 │  S3 Bucket (squid-logs)    Secrets Manager (creds)  │
 └─────────────────────────────────────────────────────┘
@@ -65,15 +65,14 @@ aws cloudformation describe-stacks \
 
 ```bash
 pip install -r requirements.txt
-playwright install chromium
-jupyter notebook verify_proxy.ipynb
 ```
+
+Load `verify_proxy.ipynb` in Kiro IDE or your favorite IDE.
 
 ### Option B: Script
 
 ```bash
 pip install -r requirements.txt
-playwright install chromium
 python verify_proxy.py
 ```
 
