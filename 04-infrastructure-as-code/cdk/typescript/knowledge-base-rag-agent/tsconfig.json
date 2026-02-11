@@ -1,0 +1,24 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "."
+  },
+  "include": [
+    "scripts/**/*",
+    "lambda/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "cdk.out",
+    "dist",
+    "build",
+    "coverage",
+    "infrastructure",
+    "web-console"
+  ],
+  "references": [
+    { "path": "./infrastructure" },
+    { "path": "./web-console" }
+  ]
+}
