@@ -156,14 +156,8 @@ Resources:
   BrowserSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: AgentCore Browser — allows outbound to Squid proxy only
+      GroupDescription: "Allows outbound to Squid proxy only"
       VpcId: !Ref VPC
-      SecurityGroupEgress:
-        - IpProtocol: tcp
-          FromPort: 3128
-          ToPort: 3128
-          DestinationSecurityGroupId: !Ref SquidSecurityGroup
-          Description: Squid proxy
       Tags:
         - Key: Name
           Value: !Sub '${AWS::StackName}-browser-sg'
@@ -171,14 +165,8 @@ Resources:
   SquidSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: Squid proxy — accepts from browser, allows outbound internet
+      GroupDescription: "Squid proxy accepts from browser allows outbound internet"
       VpcId: !Ref VPC
-      SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: 3128
-          ToPort: 3128
-          SourceSecurityGroupId: !Ref BrowserSecurityGroup
-          Description: Browser proxy traffic
       SecurityGroupEgress:
         - IpProtocol: tcp
           FromPort: 443
@@ -193,6 +181,27 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub '${AWS::StackName}-squid-sg'
+
+  # Separate ingress/egress rules to break circular dependency
+  BrowserToSquidEgress:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      GroupId: !Ref BrowserSecurityGroup
+      IpProtocol: tcp
+      FromPort: 3128
+      ToPort: 3128
+      DestinationSecurityGroupId: !Ref SquidSecurityGroup
+      Description: Squid proxy
+
+  SquidFromBrowserIngress:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref SquidSecurityGroup
+      IpProtocol: tcp
+      FromPort: 3128
+      ToPort: 3128
+      SourceSecurityGroupId: !Ref BrowserSecurityGroup
+      Description: Browser proxy traffic
 
   # Self-referencing rule: Squid needs HTTPS to S3/Secrets Manager via VPC endpoints
   SquidSecurityGroupSelfIngress:
@@ -217,9 +226,8 @@ Resources:
       BucketName: !Sub '${AWS::StackName}-squid-logs-${AWS::AccountId}'
       BucketEncryption:
         ServerSideEncryptionConfiguration:
-          - ServerSideEncryptionRule:
-              ServerSideEncryptionByDefault:
-                SSEAlgorithm: AES256
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
       LifecycleConfiguration:
         Rules:
           - Id: ExpireOldLogs
@@ -244,7 +252,7 @@ Resources:
         SecretStringTemplate: '{"username": "proxyuser"}'
         GenerateStringKey: password
         PasswordLength: 24
-        ExcludeCharacters: '"@/\:$`!#%^&*(){}[]|<>?'
+        ExcludeCharacters: '"/\:`,^(){}[]|<>?~'
 
   #############################################################################
   # IAM — Squid EC2 Instance Role

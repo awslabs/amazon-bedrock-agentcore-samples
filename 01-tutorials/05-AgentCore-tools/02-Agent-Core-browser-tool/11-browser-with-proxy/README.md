@@ -25,7 +25,9 @@ The browser's security group only allows egress to Squid on port 3128 — there 
 
 ## Quick Deploy
 
-[![Launch Stack](https://s3.amazonaws.com/cloudformation-examples/cloudformation-launch-stack.png)](https://console.aws.amazon.com/cloudformation/home#/stacks/create/review?templateURL=https://raw.githubusercontent.com/aws-samples/amazon-bedrock-agentcore-samples/main/01-tutorials/05-AgentCore-tools/02-Agent-Core-browser-tool/11-browser-with-proxy/agentcore-browser-proxy.yaml&stackName=agentcore-browser-proxy)
+To create the stack using CloudFormation, use following script:
+
+[![Launch Stack](https://s3.amazonaws.com/cloudformation-examples/cloudformation-launch-stack.png)](agentcore-browser-proxy.yaml)
 
 ### Parameters
 

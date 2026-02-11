@@ -13,7 +13,9 @@ The solution deploys:
 
 ## Quick Deploy
 
-[![Launch Stack](https://s3.amazonaws.com/cloudformation-examples/cloudformation-launch-stack.png)](https://console.aws.amazon.com/cloudformation/home#/stacks/create/review?templateURL=https://raw.githubusercontent.com/aws-samples/amazon-bedrock-agentcore-samples/main/01-tutorials/05-AgentCore-tools/02-Agent-Core-browser-tool/09-browser-with-domain-filtering/agentcore-browser-firewall.yaml&stackName=agentcore-browser-firewall)
+To create the stack using CloudFormation, use following script:
+
+[![Launch Stack](https://s3.amazonaws.com/cloudformation-examples/cloudformation-launch-stack.png)](agentcore-browser-firewall.yaml)
 
 ### Parameters
 
