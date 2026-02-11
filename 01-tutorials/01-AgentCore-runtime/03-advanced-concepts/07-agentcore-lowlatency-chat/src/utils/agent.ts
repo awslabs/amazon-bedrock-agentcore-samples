@@ -54,19 +54,21 @@ export async function invokeAgent(
   region: string,
   sessionId: string,
   payload: { prompt?: string; ping?: string },
-  accessToken: string,
+  accessToken: string | null,
 ): Promise<InvokeResult> {
   const startTime = performance.now();
 
   try {
     const url = buildAgentCoreUrl(agentArn, region);
-
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      "X-Amzn-Bedrock-AgentCore-Runtime-Session-Id": sessionId,
+    };
+    if (accessToken) {
+      headers["Authorization"] = `Bearer ${accessToken}`;
+    }
     const response = await axios.post(url, payload, {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-        "X-Amzn-Bedrock-AgentCore-Runtime-Session-Id": sessionId,
-      },
+      headers,
     });
 
     const endTime = performance.now();
@@ -94,7 +96,7 @@ export async function invokeAgentStream(
   region: string,
   sessionId: string,
   payload: { prompt?: string; ping?: string },
-  accessToken: string,
+  accessToken: string | null,
   onChunk: (chunk: string) => void,
 ): Promise<{
   latency: number;
@@ -112,14 +114,16 @@ export async function invokeAgentStream(
 
   try {
     const url = buildAgentCoreUrl(agentArn, region);
-
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      "X-Amzn-Bedrock-AgentCore-Runtime-Session-Id": sessionId,
+    };
+    if (accessToken) {
+      headers["Authorization"] = `Bearer ${accessToken}`;
+    }
     const response = await fetch(url, {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-        "X-Amzn-Bedrock-AgentCore-Runtime-Session-Id": sessionId,
-      },
+      headers,
       body: JSON.stringify(payload),
     });
 
@@ -208,7 +212,15 @@ export async function invokeAgentStream(
 export function generateSessionId(): string {
   // Generate a session ID that is at least 33 characters long
   const timestamp = Date.now();
-  const random1 = Math.random().toString(36).substring(2, 15);
-  const random2 = Math.random().toString(36).substring(2, 15);
+
+  // Use Web Crypto API for cryptographically secure random values
+  const array1 = new Uint32Array(2);
+  const array2 = new Uint32Array(2);
+  crypto.getRandomValues(array1);
+  crypto.getRandomValues(array2);
+
+  const random1 = Array.from(array1, (num) => num.toString(36)).join("");
+  const random2 = Array.from(array2, (num) => num.toString(36)).join("");
+
   return `session-${timestamp}-${random1}-${random2}`;
 }

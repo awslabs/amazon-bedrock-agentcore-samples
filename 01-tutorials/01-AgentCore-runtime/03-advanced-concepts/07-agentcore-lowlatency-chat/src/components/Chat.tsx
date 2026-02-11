@@ -10,7 +10,7 @@ import type { AppConfig, Message } from "../types";
 
 interface ChatProps {
   config: AppConfig;
-  accessToken: string;
+  accessToken: string | null;
   onLogout: () => void;
 }
 
