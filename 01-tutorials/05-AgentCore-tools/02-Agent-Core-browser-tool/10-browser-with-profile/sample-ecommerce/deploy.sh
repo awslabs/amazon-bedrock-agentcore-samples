@@ -3,7 +3,7 @@
 # Configuration
 STACK_NAME="sample-ecommerce-stack"
 BUCKET_NAME="sample-ecommerce-static-site-$(date +%s)"
-REGION="us-east-1"
+REGION="${AWS_DEFAULT_REGION:-$(aws configure get region 2>/dev/null || echo us-east-1)}"
 
 echo "Creating S3 bucket if it doesn't exist..."
 
