@@ -1,0 +1,39 @@
+{
+  "name": "sample-concierge-agent",
+  "version": "1.0.0",
+  "description": "Generic AI agent streaming UI for concierge anget with AWS Amplify",
+  "type": "module",
+  "scripts": {
+    "dev": "npm run dev --workspace=web-ui",
+    "build": "npm run build --workspace=web-ui",
+    "deploy:amplify": "npx ampx sandbox --once --identifier $(node -p \"require('./deployment-config.json').deploymentId\")",
+    "deploy:mcp": "find concierge_agent/mcp_* -name Dockerfile -exec touch {} \\; && cd infrastructure/mcp-servers && npm install && cdk deploy --all --require-approval never",
+    "deploy:agent": "cd infrastructure/agent-stack && npm install && cdk deploy --require-approval never && cd ../.. && ./scripts/sync-gateway.sh",
+    "deploy:visa-lambda": "cd infrastructure/visa-lambda-stack && npm install && cdk deploy --context deploymentId=$(node -p \"require('../../deployment-config.json').deploymentId\") --require-approval never",
+    "deploy:frontend": "cd infrastructure/frontend-stack && npm install && cdk deploy --require-approval never && cd ../.. && ./scripts/deploy-frontend.sh",
+    "deploy:frontend:mock": "cd infrastructure/frontend-stack && npm install && cdk deploy --require-approval never && cd ../.. && ./scripts/deploy-frontend.sh --mock",
+    "deploy": "npm run deploy:amplify && npm run deploy:mcp && npm run deploy:agent && npm run deploy:visa-lambda",
+    "clean:amplify": "npx ampx sandbox delete",
+    "clean:mcp": "cd infrastructure/mcp-servers && cdk destroy",
+    "clean:agent": "cd infrastructure/agent-stack && cdk destroy",
+    "clean:visa-lambda": "cd infrastructure/visa-lambda-stack && cdk destroy --context deploymentId=$(node -p \"require('../../deployment-config.json').deploymentId\")",
+    "clean:frontend": "cd infrastructure/frontend-stack && cdk destroy",
+    "clean": "npm run clean:frontend && npm run clean:agent && npm run clean:mcp && npm run clean:visa-lambda && npm run clean:amplify"
+  },
+  "workspaces": [
+    "web-ui",
+    "amplify"
+  ],
+  "devDependencies": {
+    "@aws-amplify/backend": "^1.0.4",
+    "@aws-amplify/backend-cli": "^1.0.4",
+    "@vitejs/plugin-basic-ssl": "^2.1.0",
+    "aws-cdk": "^2.110.1",
+    "aws-cdk-lib": "^2.110.1",
+    "constructs": "^10.0.0",
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "aws4": "^1.13.2"
+  }
+}

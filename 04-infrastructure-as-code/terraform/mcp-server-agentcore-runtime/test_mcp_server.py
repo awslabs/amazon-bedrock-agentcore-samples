@@ -13,35 +13,35 @@ from mcp.client.streamable_http import streamablehttp_client
 
 def extract_region_from_arn(arn):
     """Extract AWS region from agent runtime ARN.
-    
+
     ARN format: arn:aws:bedrock-agentcore:REGION:account:runtime/id
-    
+
     Args:
         arn: Agent runtime ARN string
-        
+
     Returns:
         str: AWS region code
-        
+
     Raises:
         ValueError: If ARN format is invalid or region cannot be extracted
     """
     try:
-        parts = arn.split(':')
+        parts = arn.split(":")
         if len(parts) < 4:
             raise ValueError(
                 f"Invalid ARN format: {arn}\n"
                 f"Expected format: arn:aws:bedrock-agentcore:REGION:account:runtime/id"
             )
-        
+
         region = parts[3]
         if not region:
             raise ValueError(
                 f"Region not found in ARN: {arn}\n"
                 f"Expected format: arn:aws:bedrock-agentcore:REGION:account:runtime/id"
             )
-        
+
         return region
-        
+
     except IndexError:
         raise ValueError(
             f"Invalid ARN format: {arn}\n"
@@ -124,7 +124,7 @@ def main():
 
     agent_arn = sys.argv[1]
     bearer_token = sys.argv[2]
-    
+
     # Extract region from ARN or use provided region
     if len(sys.argv) > 3:
         region = sys.argv[3]

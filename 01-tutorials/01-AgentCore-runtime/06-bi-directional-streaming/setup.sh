@@ -177,7 +177,7 @@ else
     fi
 
     # Substitute ACCOUNT_ID in agent_role.json
-    AGENT_ROLE_POLICY=$(cat ./agent_role.json | sed "s/\${ACCOUNT_ID}/$ACCOUNT_ID/g")
+    AGENT_ROLE_POLICY=$(sed "s/\${ACCOUNT_ID}/$ACCOUNT_ID/g" < ./agent_role.json)
 
     echo "   Creating IAM role..."
     # Create the IAM role

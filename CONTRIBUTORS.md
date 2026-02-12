@@ -2,6 +2,7 @@
 
 - aarora79
 - akshseh
+- anajmi
 - architec
 - aristsakpinis93
 - aurbac
@@ -13,6 +14,7 @@
 - dhawalkp
 - didhd
 - EashanKaushik
+- ezzara
 - Fabian Rami
 - Grace Lang
 - Hari Tripathi
@@ -37,6 +39,7 @@
 - sundargthb
 - vedashree1110
 - vedashreevinay
+- Venkatakrishna Pullela
 - vgodwinamz
 - w601sxs
 - erezweinstein5
@@ -70,5 +73,19 @@
 - Sparsh Wadhwa (SparshWadhwa)
 - Lana Zhang
 - Bharathi Srinivasan
+- Trevor Schiavone
 - Antonio Rodriguez (rodzanto)
-
+- otamaryx
+- kevlw
+- iprivit
+- vargas-dann-0896
+- razkenari
+- Kostas Tzouvanas
+- Sunita Koppar (skoppar)
+- Gi Kim (giryoong)
+- richatt
+- Hideki Tane
+- xinaizha
+- Traci Lim (longwind48)
+- Jerad Engebreth (jcengebreth)
+- Roberto Catalano

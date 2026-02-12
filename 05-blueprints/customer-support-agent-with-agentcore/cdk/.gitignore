@@ -1,0 +1,12 @@
+node_modules
+
+# CDK asset staging directory
+.cdk.staging
+cdk.out
+
+# Compiled output (keep source .ts files)
+*.js
+*.d.ts
+!jest.config.js
+!bin/*.ts
+!lib/**/*.ts
