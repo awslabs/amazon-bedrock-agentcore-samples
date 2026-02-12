@@ -18,11 +18,12 @@ STACK_NAME = "agentcore-browser-proxy"
 
 session = boto3.Session()
 REGION = session.region_name
-browser_client = boto3.client("bedrock-agentcore")
+print(f"Region: {REGION}")
+browser_client = session.client("bedrock-agentcore")
 
 
 def get_stack_outputs():
-    cfn = boto3.client("cloudformation")
+    cfn = session.client("cloudformation")
     stacks = cfn.describe_stacks(StackName=STACK_NAME)["Stacks"]
     return {o["OutputKey"]: o["OutputValue"] for o in stacks[0]["Outputs"]}
 
@@ -48,15 +49,15 @@ async def main():
     print(f"Squid public IP:  {squid_public_ip}")
 
     proxy_config = {
-        "proxies": [{
-            "externalProxy": {
-                "server": squid_ip,
-                "port": 3128,
-                "credentials": {
-                    "basicAuth": {"secretArn": secret_arn}
-                },
+        "proxies": [
+            {
+                "externalProxy": {
+                    "server": squid_ip,
+                    "port": 3128,
+                    "credentials": {"basicAuth": {"secretArn": secret_arn}},
+                }
             }
-        }]
+        ]
     }
 
     print("\nStarting browser session with proxy configuration...")
@@ -85,14 +86,18 @@ async def main():
             )
 
             print("\nChecking browser's public IP via icanhazip.com...")
-            await page.goto("https://icanhazip.com", timeout=15000, wait_until="domcontentloaded")
+            await page.goto(
+                "https://icanhazip.com", timeout=15000, wait_until="domcontentloaded"
+            )
             observed_ip = (await page.inner_text("body")).strip()
 
             print(f"\n{'=' * 50}")
             print(f"Expected IP (Squid public): {squid_public_ip}")
             print(f"Observed IP (browser):      {observed_ip}")
             match = observed_ip == squid_public_ip
-            print(f"Result: {'PASS' if match else 'FAIL'} — traffic {'is' if match else 'is NOT'} routed through proxy")
+            print(
+                f"Result: {'PASS' if match else 'FAIL'} — traffic {'is' if match else 'is NOT'} routed through proxy"
+            )
             print(f"{'=' * 50}")
 
             await browser.close()

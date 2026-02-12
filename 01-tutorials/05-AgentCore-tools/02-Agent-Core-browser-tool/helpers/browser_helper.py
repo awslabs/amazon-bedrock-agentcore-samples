@@ -15,11 +15,7 @@ def get_signed_headers(ws_url):
     https_url = ws_url.replace("wss://", "https://")
     parsed = urlparse(https_url)
 
-    request = AWSRequest(
-        method="GET",
-        url=https_url,
-        headers={"host": parsed.netloc}
-    )
+    request = AWSRequest(method="GET", url=https_url, headers={"host": parsed.netloc})
     SigV4Auth(credentials, "bedrock-agentcore", REGION).add_auth(request)
     return {k: v for k, v in request.headers.items()}
 

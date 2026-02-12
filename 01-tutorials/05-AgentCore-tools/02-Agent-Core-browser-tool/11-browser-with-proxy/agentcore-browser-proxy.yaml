@@ -252,7 +252,8 @@ Resources:
         SecretStringTemplate: '{"username": "proxyuser"}'
         GenerateStringKey: password
         PasswordLength: 24
-        ExcludeCharacters: '"/\:`,^(){}[]|<>?~'
+        ExcludePunctuation: true
+        IncludeSpace: false
 
   #############################################################################
   # IAM — Squid EC2 Instance Role
@@ -354,8 +355,9 @@ Resources:
           USERNAME=$(echo "$SECRET" | jq -r .username)
           PASSWORD=$(echo "$SECRET" | jq -r .password)
 
-          # Create htpasswd file for basic auth
-          htpasswd -bc /etc/squid/passwd "$USERNAME" "$PASSWORD"
+          # Create htpasswd file for basic auth (stdin avoids passwords
+          # starting with '-' being parsed as htpasswd flags)
+          printf '%s' "$PASSWORD" | htpasswd -ci /etc/squid/passwd "$USERNAME"
           chown squid:squid /etc/squid/passwd
 
           # Write Squid configuration
