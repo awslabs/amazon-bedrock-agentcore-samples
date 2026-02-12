@@ -345,7 +345,9 @@ Resources:
           exec > /var/log/user-data.log 2>&1
 
           # Install Squid and utilities
-          dnf install -y squid httpd-tools jq
+          dnf install -y squid httpd-tools jq cronie
+          systemctl enable crond
+          systemctl start crond
 
           # Read proxy credentials from Secrets Manager
           SECRET=$(aws secretsmanager get-secret-value \
