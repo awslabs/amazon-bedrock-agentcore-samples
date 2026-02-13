@@ -137,6 +137,7 @@ class MarketTrendsAgentDeployer:
                         "bedrock-agentcore:GetMemoryStrategies",
                         "bedrock-agentcore:DeleteMemory",
                         "bedrock-agentcore:GetMemory",
+                        "bedrock-agentcore:RetrieveMemoryRecords",
                     ],
                     "Resource": [
                         f"arn:aws:bedrock-agentcore:{self.region}:{account_id}:memory/*"
@@ -155,7 +156,7 @@ class MarketTrendsAgentDeployer:
                     ],
                     "Resource": [
                         f"arn:aws:bedrock-agentcore:{self.region}:{account_id}:browser-custom/*",
-                        f"arn:aws:bedrock-agentcore:*:aws:browser/*"
+                        "arn:aws:bedrock-agentcore:*:aws:browser/*"
                     ],
                 },
                 {

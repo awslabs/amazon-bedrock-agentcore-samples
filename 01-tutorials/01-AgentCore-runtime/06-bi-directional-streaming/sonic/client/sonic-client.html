@@ -374,6 +374,27 @@
             color: #d4d4d4;
             border-radius: 3px;
             animation: slideIn 0.2s ease;
+            max-height: 150px;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+        
+        .event::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .event::-webkit-scrollbar-track {
+            background: #1e1e1e;
+            border-radius: 3px;
+        }
+        
+        .event::-webkit-scrollbar-thumb {
+            background: #667eea;
+            border-radius: 3px;
+        }
+        
+        .event::-webkit-scrollbar-thumb:hover {
+            background: #7e8ef0;
         }
         
         .event.sent { 
@@ -408,25 +429,6 @@
             font-size: 9px;
         }
         
-        .event-data.audio-event {
-            max-height: 100px;
-            overflow-y: auto;
-            overflow-x: hidden;
-        }
-        
-        .event-data.audio-event::-webkit-scrollbar {
-            width: 4px;
-        }
-        
-        .event-data.audio-event::-webkit-scrollbar-track {
-            background: #1e1e1e;
-        }
-        
-        .event-data.audio-event::-webkit-scrollbar-thumb {
-            background: #667eea;
-            border-radius: 2px;
-        }
-        
         .text-input-section {
             padding: 10px;
             border-top: 1px solid #e0e0e0;
@@ -448,10 +450,10 @@
             <div class="config-section">
                 <div class="form-group">
                     <label for="websocketUrl">🔗 WebSocket URL</label>
-                    <input type="text" id="websocketUrl" placeholder="ws://localhost:8081/ws" value="ws://localhost:8081/ws">
-                    <small style="color: #666; font-size: 12px; margin-top: 4px; display: block;">
+                    <input style="display:none" type="text" id="websocketUrl" placeholder="ws://localhost:8081/ws" value="ws://localhost:8081/ws">
+                    <!-- <small style="color: #666; font-size: 12px; margin-top: 4px; display: block;">
                         Enter the WebSocket server URL (default: ws://localhost:8081/ws)
-                    </small>
+                    </small> -->
                 </div>
                 <div class="form-group">
                     <label for="voiceSelect">🎤 Voice</label>
@@ -499,7 +501,7 @@
                 </div>
                 <div class="panel">
                     <div class="panel-header">
-                        <h2>📡 Events</h2>
+                        <h2>📡 Raw Events</h2>
                         <div class="event-filter">
                             <input type="text" id="eventFilter" placeholder="🔍 Filter events by keyword..." oninput="filterEvents()" />
                         </div>
@@ -520,6 +522,62 @@
         let textContentName = null;
         let currentGenerationStage = null;  // Track generation stage from contentStart
         let sessionStarted = false;  // Track if session has been started
+        let activeAudioSources = [];  // Track active audio sources for interruption
+        let isInterrupted = false;  // Track if we're in an interrupted state
+        
+        // Transcript buffering for smoother display
+        let transcriptBuffer = {
+            user: { text: '', timer: null, element: null },
+            assistant: { text: '', timer: null, element: null }
+        };
+        const TRANSCRIPT_BUFFER_DELAY = 1000; // 1 second delay before finalizing
+        
+        function handleBufferedTranscript(role, text) {
+            // Validate role to prevent issues
+            const allowedRoles = ['user', 'assistant'];
+            if (!allowedRoles.includes(role)) {
+                console.warn(`Invalid role: ${role}`);
+                return;
+            }
+            
+            const buffer = transcriptBuffer[role];
+            
+            // Clear existing timer
+            if (buffer.timer) {
+                clearTimeout(buffer.timer);
+            }
+            
+            // Append new text
+            buffer.text += (buffer.text ? ' ' : '') + text;
+            
+            // Update or create message element
+            if (buffer.element && buffer.element.parentNode) {
+                // Update existing message
+                const prefix = role === 'user' ? '🎤 User' : '🔊 Assistant';
+                buffer.element.textContent = `${prefix}: ${buffer.text}`;
+            } else {
+                // Create new message
+                const prefix = role === 'user' ? '🎤 User' : '🔊 Assistant';
+                buffer.element = addMessage(`${prefix}: ${buffer.text}`, role);
+            }
+            
+            // Set timer to finalize the message
+            buffer.timer = setTimeout(() => {
+                buffer.text = '';
+                buffer.element = null;
+                buffer.timer = null;
+            }, TRANSCRIPT_BUFFER_DELAY);
+        }
+        
+        function clearTranscriptBuffers() {
+            // Clear all buffers and timers
+            for (let role in transcriptBuffer) {
+                if (transcriptBuffer[role].timer) {
+                    clearTimeout(transcriptBuffer[role].timer);
+                }
+                transcriptBuffer[role] = { text: '', timer: null, element: null };
+            }
+        }
     
         function filterEvents() {
             const filterInput = document.getElementById('eventFilter');
@@ -543,6 +601,7 @@
             message.textContent = content;
             messages.appendChild(message);
             messages.scrollTop = messages.scrollHeight;
+            return message;
         }
         
         function addEvent(direction, type, data) {
@@ -554,9 +613,6 @@
             const arrow = direction === 'sent' ? '⬆️' : '⬇️';
             const dataStr = typeof data === 'object' ? JSON.stringify(data, null, 2) : data;
             
-            const isAudioEvent = type === 'audioInput' || type === 'audioOutput';
-            const dataClass = isAudioEvent ? 'event-data audio-event' : 'event-data';
-            
             const timeDiv = document.createElement('div');
             timeDiv.className = 'event-time';
             timeDiv.textContent = `${time} ${arrow}`;
@@ -566,7 +622,7 @@
             typeDiv.textContent = type;
 
             const dataDiv = document.createElement('div');
-            dataDiv.className = dataClass;
+            dataDiv.className = 'event-data';
             dataDiv.textContent = dataStr;
 
             event.appendChild(timeDiv);
@@ -669,10 +725,12 @@
             if (!audioPlaybackContext) {
                 audioPlaybackContext = new AudioContext({ sampleRate: sampleRate });
                 nextPlayTime = audioPlaybackContext.currentTime;
+                console.log('Created new audio context');
             }
             
             if (audioPlaybackContext.state === 'suspended') {
                 await audioPlaybackContext.resume();
+                console.log('Resumed audio context');
             }
     
             const binaryString = atob(base64Audio);
@@ -698,8 +756,59 @@
             const source = audioPlaybackContext.createBufferSource();
             source.buffer = buffer;
             source.connect(audioPlaybackContext.destination);
+            
+            // Track this source for potential interruption
+            activeAudioSources.push(source);
+            console.log(`Queued audio chunk (${activeAudioSources.length} active sources), duration: ${buffer.duration.toFixed(2)}s, scheduled at: ${nextPlayTime.toFixed(2)}s`);
+            
+            // Remove from tracking when it ends
+            source.onended = () => {
+                const index = activeAudioSources.indexOf(source);
+                if (index > -1) {
+                    activeAudioSources.splice(index, 1);
+                    console.log(`Audio chunk ended (${activeAudioSources.length} remaining)`);
+                }
+            };
+            
             source.start(nextPlayTime);
             nextPlayTime += buffer.duration;
+        }
+        
+        function stopAllAudio() {
+            console.log('🛑 stopAllAudio called - performing barge-in audio cleanup');
+            
+            // Stop all active audio sources immediately
+            let stoppedCount = 0;
+            const sourcesToStop = [...activeAudioSources]; // Create a copy to avoid modification during iteration
+            
+            sourcesToStop.forEach(source => {
+                try {
+                    source.stop(0); // Stop immediately at time 0
+                    source.disconnect(); // Disconnect from destination
+                    stoppedCount++;
+                } catch (e) {
+                    // Source may have already stopped or finished naturally
+                    console.debug('Could not stop audio source:', e.message);
+                }
+            });
+            
+            console.log(`✅ Stopped ${stoppedCount} audio sources`);
+            activeAudioSources = [];
+            
+            // Close and reset audio context to ensure complete silence
+            if (audioPlaybackContext) {
+                try {
+                    // Close the context to stop all audio immediately
+                    audioPlaybackContext.close();
+                    console.log('✅ Audio context closed - all audio stopped');
+                } catch (e) {
+                    console.error('❌ Error closing audio context:', e);
+                }
+                audioPlaybackContext = null;
+                nextPlayTime = 0;
+            }
+            
+            console.log('✅ Barge-in complete - ready for new audio');
         }
     
         function generateId(length = 10) {
@@ -717,6 +826,8 @@
             
             document.getElementById('messages').textContent = '';
             document.getElementById('events').textContent = '';
+            clearTranscriptBuffers();
+            isInterrupted = false; // Reset interrupted state
             
             const websocketUrl = document.getElementById('websocketUrl').value.trim();
             
@@ -897,6 +1008,15 @@
                     const eventType = Object.keys(data.event)[0];
                     const eventData = data.event[eventType];
                     
+                    // EVENT FORMAT NOTES:
+                    // Sonic uses nested event structure: { event: { eventType: { ...data } } }
+                    // Strands uses flat structure: { type: 'event_type', ...data }
+                    // 
+                    // BARGE-IN (Interruption) Handling:
+                    // - Sonic: contentEnd event with stopReason='INTERRUPTION'
+                    // - Strands: dedicated 'bidi_interruption' event
+                    // Both trigger the same behavior: stop audio, clear buffers, show message
+                    
                     // Log received events (truncate audio)
                     if (eventType === 'audioOutput') {
                         addEvent('received', eventType, { ...eventData, content: `[${eventData.content?.length || 0} bytes]` });
@@ -905,6 +1025,40 @@
                     }
                     
                     switch (eventType) {
+                        case 'contentEnd':
+                            // Log all contentEnd events for debugging
+                            const stopReason = eventData.stopReason || 'NONE';
+                            console.log('contentEnd received:', {
+                                type: eventData.type,
+                                role: eventData.role,
+                                stopReason: stopReason,
+                                contentName: eventData.contentName,
+                                rawEventData: eventData
+                            });
+                            
+                            // Handle interruption (barge-in) - check case-insensitively
+                            // This is triggered when user speaks while assistant is responding
+                            // Note: stopReason can be 'INTERRUPTED' or 'INTERRUPTION' depending on the event
+                            const stopReasonUpper = stopReason.toUpperCase();
+                            if (stopReasonUpper === 'INTERRUPTED' || stopReasonUpper === 'INTERRUPTION') {
+                                console.log('✅ INTERRUPTION detected via contentEnd - performing barge-in');
+                                isInterrupted = true;
+                                
+                                // Add visual feedback in conversation panel
+                                addMessage('🚫 [Interrupted - Barge-in detected]', 'system');
+                                
+                                // Clear any buffered transcripts
+                                clearTranscriptBuffers();
+                                
+                                // Stop all audio playback immediately
+                                stopAllAudio();
+                            } else {
+                                console.log(`No interruption - stopReason is: "${stopReason}"`);
+                            }
+                            
+                            // Reset generation stage when content ends
+                            currentGenerationStage = null;
+                            break;
                         case 'contentStart':
                             // Track generation stage from additionalModelFields
                             if (eventData.additionalModelFields) {
@@ -915,38 +1069,29 @@
                                     console.error('Failed to parse additionalModelFields:', e);
                                 }
                             }
-                            break;
-                        case 'contentEnd':
-                            // Handle interruption (barge-in)
-                            if (eventData.stopReason === 'INTERRUPTION') {
-                                addMessage('[Interrupted]', 'system');
-                                // Stop audio playback immediately
-                                if (audioPlaybackContext) {
-                                    audioPlaybackContext.close();
-                                    audioPlaybackContext = null;
-                                    nextPlayTime = 0;
-                                }
-                            }
                             
-                            // Reset generation stage when content ends
-                            currentGenerationStage = null;
-                            
-                            // Log contentEnd with type AUDIO to console for debugging only
-                            if (eventData.type === 'AUDIO') {
-                                const stopReason = eventData.stopReason || 'unknown';
-                                console.log(`Received contentEnd with type AUDIO, stopReason: ${stopReason}`);
+                            // Reset interrupted flag when new content starts
+                            if (eventData.role === 'ASSISTANT' && eventData.type === 'AUDIO') {
+                                isInterrupted = false;
+                                console.log('New assistant audio content starting - reset interrupted flag');
                             }
                             break;
                         case 'interruption':
-                            // Handle explicit interruption event (similar to strands bidi_interruption)
-                            addMessage('[Interrupted]', 'system');
-                            if (audioPlaybackContext) {
-                                audioPlaybackContext.close();
-                                audioPlaybackContext = null;
-                                nextPlayTime = 0;
-                            }
+                            // Handle explicit interruption event (alternative format)
+                            // Note: Sonic typically uses contentEnd with stopReason='INTERRUPTION'
+                            // but this handler is kept for compatibility if server sends explicit interruption events
+                            console.log('⚠️ Explicit interruption event received (alternative format)');
+                            isInterrupted = true;
+                            addMessage('🚫 [Interrupted - Barge-in detected]', 'system');
+                            clearTranscriptBuffers();
+                            stopAllAudio();
                             break;
                         case 'audioOutput':
+                            // Skip audio playback if we're in an interrupted state
+                            if (isInterrupted) {
+                                console.log('Skipping audio playback - interrupted state');
+                                break;
+                            }
                             await playAudioOutput(eventData.content, 24000);
                             break;
                         case 'textOutput':
@@ -959,8 +1104,8 @@
                                 (role === 'user' && currentGenerationStage === 'FINAL');
                             
                             if (shouldDisplay) {
-                                const prefix = role === 'user' ? '🎤 User' : '🔊 Assistant';
-                                addMessage(`${prefix}: ${eventData.content}`, role);
+                                // Use buffered transcript handling for smoother display
+                                handleBufferedTranscript(role, eventData.content);
                             }
                             break;
                         case 'toolUse':
@@ -1029,11 +1174,9 @@
                     });
                     
                     updateStatus(false);
+                    clearTranscriptBuffers();
                     if (isRecording) stopRecording();
-                    if (audioPlaybackContext) {
-                        audioPlaybackContext.close();
-                        audioPlaybackContext = null;
-                    }
+                    stopAllAudio();
                 };
             } catch (error) {
                 addMessage(`❌ Failed to connect: ${error.message}`, 'system');
@@ -1130,11 +1273,20 @@
                         };
                         ws.send(JSON.stringify(payload));
                         
-                        // Log audio chunks less frequently
+                        // Log audio chunks less frequently with truncated content
                         audioChunkCount++;
                         if (audioChunkCount % 10 === 0) {
-                            // Show raw event with full audio data
-                            addEvent('sent', 'audioInput', payload);
+                            // Truncate audio content for display
+                            const truncatedPayload = {
+                                event: {
+                                    audioInput: {
+                                        promptName: promptName,
+                                        contentName: audioContentName,
+                                        content: `[${base64Audio.length} bytes]`
+                                    }
+                                }
+                            };
+                            addEvent('sent', 'audioInput', truncatedPayload);
                         }
                     }
                 };

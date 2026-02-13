@@ -23,12 +23,13 @@ The typical flow involves:
 """
 
 import time
+import json
 import uvicorn
 import logging
 import argparse
 import requests
 
-from typing import Annotated
+from typing import Annotated, Optional
 from datetime import datetime, timedelta, timezone
 from fastapi import Cookie, FastAPI, HTTPException, status
 from fastapi.responses import HTMLResponse, JSONResponse
@@ -134,6 +135,46 @@ class OAuth2CallbackServer:
                 status_code=status.HTTP_200_OK, content={"status": "success"}
             )
 
+        def _try_parse_identity_sdk_config() -> Optional[str]:
+            try:
+                with open(".agentcore.json", encoding="utf-8") as agent_config:
+                    config = json.load(agent_config)
+                    return config.get("user_id")
+            except Exception as e:
+                logger.debug(
+                    f"Failed to parse identity SDK config from '.agentcore.json': {repr(e)}"
+                )
+                return None
+
+        def _get_user_identifier(
+            user_id_identifier: Optional[str] = None,
+        ) -> Optional[UserIdIdentifier]:
+            """
+            Retrieve user identifier with fallback logic.
+
+            Priority order:
+            1. Browser cookie value (passed as parameter)
+            2. Server memory value (instance attribute)
+            3. Identity SDK config parsing
+
+            Args:
+                user_id_identifier: Optional user ID from browser cookie
+
+            Returns:
+                UserIdIdentifier instance or None if no valid identifier found
+            """
+            if user_id_identifier:
+                return UserIdIdentifier(user_id=user_id_identifier)
+
+            if self.user_id_identifier:
+                return self.user_id_identifier
+
+            user_id = _try_parse_identity_sdk_config()
+            if user_id:
+                return UserIdIdentifier(user_id=user_id)
+
+            return None
+
         @self.app.get(OAUTH2_CALLBACK_ENDPOINT)
         async def _handle_oauth2_callback(
             session_id: str, user_id_identifier: Annotated[str | None, Cookie()] = None
@@ -168,14 +209,9 @@ class OAuth2CallbackServer:
                     detail="Missing session_id url query parameter",
                 )
 
-            # use browser cookie value if available, otherwise, use value stored on the server memory
-            user_identifier = (
-                UserIdIdentifier(user_id=user_id_identifier)
-                if user_id_identifier
-                else self.user_id_identifier
-            )
+            # use browser cookie value if available, otherwise, use value stored on the server memory or config
+            user_identifier = _get_user_identifier(user_id_identifier)
 
-            # Ensure user identifier was previously stored in browser cookies.
             # This is required to bind the OAuth session to the correct user.
             if not user_identifier:
                 logger.error("No configured user identifier")

@@ -25,35 +25,35 @@ import sys
 
 def extract_region_from_arn(arn):
     """Extract AWS region from agent runtime ARN.
-    
+
     ARN format: arn:aws:bedrock-agentcore:REGION:account:runtime/id
-    
+
     Args:
         arn: Agent runtime ARN string
-        
+
     Returns:
         str: AWS region code
-        
+
     Raises:
         ValueError: If ARN format is invalid or region cannot be extracted
     """
     try:
-        parts = arn.split(':')
+        parts = arn.split(":")
         if len(parts) < 4:
             raise ValueError(
                 f"Invalid ARN format: {arn}\n"
                 f"Expected format: arn:aws:bedrock-agentcore:REGION:account:runtime/id"
             )
-        
+
         region = parts[3]
         if not region:
             raise ValueError(
                 f"Region not found in ARN: {arn}\n"
                 f"Expected format: arn:aws:bedrock-agentcore:REGION:account:runtime/id"
             )
-        
+
         return region
-        
+
     except IndexError:
         raise ValueError(
             f"Invalid ARN format: {arn}\n"
@@ -88,17 +88,17 @@ def test_agent(client, agent_arn, test_name, prompt):
 
         print(f"Status: {response['ResponseMetadata']['HTTPStatusCode']}")
         print(f"Content Type: {response.get('contentType', 'N/A')}")
-        
+
         # Read the streaming response body
         response_text = ""
-        if 'response' in response:
-            response_body = response['response'].read()
-            response_text = response_body.decode('utf-8')
-        
+        if "response" in response:
+            response_body = response["response"].read()
+            response_text = response_body.decode("utf-8")
+
         if response_text:
             try:
                 result = json.loads(response_text)
-                response_content = result.get('response', response_text)
+                response_content = result.get("response", response_text)
                 print(f"\n✅ Response:\n{response_content}")
             except json.JSONDecodeError:
                 print(f"\n✅ Response:\n{response_text}")
@@ -119,7 +119,9 @@ def main():
         print("\nUsage:")
         print(f"  {sys.argv[0]} <agent_arn>")
         print("\nExample:")
-        print(f"  {sys.argv[0]} arn:aws:bedrock-agentcore:<region>:123456789012:runtime/agent-id")
+        print(
+            f"  {sys.argv[0]} arn:aws:bedrock-agentcore:<region>:123456789012:runtime/agent-id"
+        )
         print("\nOr from Terraform:")
         print(f"  {sys.argv[0]} $(terraform output -raw agent_runtime_arn)")
         sys.exit(1)

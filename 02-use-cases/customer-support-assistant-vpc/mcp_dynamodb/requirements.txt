@@ -210,7 +210,7 @@ uvicorn==0.37.0
     # via
     #   bedrock-agentcore
     #   mcp
-werkzeug==3.1.4
+werkzeug
     # via openapi-core
 zipp==3.23.0
     # via importlib-metadata

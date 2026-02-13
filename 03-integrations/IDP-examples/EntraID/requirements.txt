@@ -5,7 +5,7 @@ strands-agents
 strands-agents-tools
 tavily-python
 uv
-jwt
+PyJWT
 msal # Microsoft Authentication Library
 uvicorn
 fastapi

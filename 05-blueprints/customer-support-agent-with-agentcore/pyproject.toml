@@ -1,0 +1,25 @@
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "supportAgentDemo"
+version = "0.1.0"
+requires-python = ">=3.10"
+
+dependencies = [
+    "bedrock-agentcore >= 1.2.1",
+    "mcp >= 1.19.0",
+    "pyjwt>=2.11.0",
+    "pytest >= 7.0.0",
+    "pytest-asyncio >= 0.21.0",
+    "requests >= 2.32.5",
+    "strands-agents >= 1.25.0",
+    "strands-agents-tools >= 0.2.20",
+]
+
+[dependency-groups]
+dev = [
+    "bedrock-agentcore-starter-toolkit>=0.2.10",
+]

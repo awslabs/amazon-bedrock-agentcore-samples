@@ -202,10 +202,12 @@ async def websocket_endpoint(websocket: WebSocket):
     voice_id = websocket.query_params.get("voice_id", "matthew")
     logger.info(f"Connection from {websocket.client}, voice: {voice_id}")
 
+    agent = None
+
     try:
         model = BidiNovaSonicModel(
             region="us-east-1",
-            model_id="amazon.nova-sonic-v1:0",
+            model_id="amazon.nova-2-sonic-v1:0",
             provider_config={
                 "audio": {
                     "input_sample_rate": 16000,
@@ -222,7 +224,24 @@ async def websocket_endpoint(websocket: WebSocket):
             system_prompt="You are a helpful assistant with access to a calculator tool.",
         )
 
-        await agent.run(inputs=[websocket.receive_json], outputs=[websocket.send_json])
+        async def handle_websocket_input():
+            """Handle incoming messages from the client, filtering text vs audio."""
+            while True:
+                message = await websocket.receive_json()
+
+                # Check if it's a text message from the client
+                if message.get("type") == "text_input":
+                    text = message.get("text", "")
+                    logger.info(f"Received text input: {text}")
+                    # Send the text to the agent
+                    await agent.send(text)
+                    # Continue to next message without returning this one
+                    continue
+                else:
+                    # Pass through other message types (like audio) to agent.run
+                    return message
+
+        await agent.run(inputs=[handle_websocket_input], outputs=[websocket.send_json])
 
     except WebSocketDisconnect:
         logger.info("Client disconnected")
