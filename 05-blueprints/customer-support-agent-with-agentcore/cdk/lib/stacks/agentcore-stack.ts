@@ -152,7 +152,7 @@ export class AgentCoreStack extends cdk.Stack {
 
         cognitoUserPool.addDomain(`${props.appName}-CognitoDomain`, {
             cognitoDomain: {
-                domainPrefix: `${props.appName.toLowerCase()}-${region}`,
+                domainPrefix: `${props.appName.toLowerCase()}-${cdk.Aws.ACCOUNT_ID}-${region}`,
             },
         });
 
@@ -484,7 +484,7 @@ export class AgentCoreStack extends cdk.Stack {
         new cdk.CfnOutput(this, 'UserPoolId', { value: cognitoUserPool.userPoolId });
         new cdk.CfnOutput(this, 'ClientId', { value: cognitoUserAppClient.userPoolClientId });
         new cdk.CfnOutput(this, 'CognitoDomain', {
-            value: `${props.appName.toLowerCase()}-${region}.auth.${region}.amazoncognito.com`,
+            value: `${props.appName.toLowerCase()}-${accountId}-${region}.auth.${region}.amazoncognito.com`,
         });
         new cdk.CfnOutput(this, 'Region', { value: region });
         new cdk.CfnOutput(this, 'AccountId', { value: accountId });
