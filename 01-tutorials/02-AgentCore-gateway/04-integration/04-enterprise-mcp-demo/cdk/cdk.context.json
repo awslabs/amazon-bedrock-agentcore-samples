@@ -1,0 +1,7 @@
+{
+  "deploymentType": "API_GATEWAY",
+  "domainName": "",
+  "hostedZoneName": "",
+  "hostedZoneId": "",
+  "certificateArn": ""
+}
