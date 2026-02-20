@@ -26,7 +26,6 @@ A2A-realestate-agents/
 ├── 🐍 get_fresh_token.py                 # Generate OAuth tokens
 │
 ├── 🧪 test_coordinator_quick.py          # Quick coordinator test
-├── 🧪 test_deployed_agents.py            # Comprehensive agent tests
 │
 ├── 📁 ui/                                # React TypeScript UI
 │   ├── public/
@@ -96,7 +95,6 @@ A2A-realestate-agents/
 
 ### Tests
 - **test_coordinator_quick.py**: Quick test of coordinator with sub-agents
-- **test_deployed_agents.py**: Comprehensive tests for all agents
 
 ### UI Application
 - **ui/**: Modern React TypeScript application
@@ -147,7 +145,6 @@ A2A-realestate-agents/
 
 ### For Testing
 1. `test_coordinator_quick.py` - Quick validation
-2. `test_deployed_agents.py` - Full test suite
 
 ### For Development
 1. `ui/src/App.tsx` - Main UI component

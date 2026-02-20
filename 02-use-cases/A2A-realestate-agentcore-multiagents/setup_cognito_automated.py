@@ -194,7 +194,7 @@ class CognitoSetup:
                 if existing_domain:
                     print(f"✓ User pool already has domain: {existing_domain}")
                     return existing_domain
-            except:
+            except Exception:
                 pass
             
             # Create domain

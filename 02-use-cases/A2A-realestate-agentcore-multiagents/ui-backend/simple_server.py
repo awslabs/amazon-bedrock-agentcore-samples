@@ -36,24 +36,17 @@ def get_oauth_token():
     # Try to load token from file first
     token_file = os.path.join(os.path.dirname(__file__), '../.bearer_token')
     if os.path.exists(token_file):
-        with open(token_file, 'r', encoding='utf-8') as f:
-            token = f.read().strip()
-            # Check expiry without decoding (tokens are validated by AWS)
-            # We only check expiry for caching purposes, not for security
-            try:
-                import jwt
-                # Note: We don't verify signature here because AWS Cognito will verify it
-                # This is only for checking token expiry to avoid unnecessary token refreshes
-                decoded = jwt.decode(token, options={"verify_signature": False})
-                exp_time = datetime.fromtimestamp(decoded['exp'])
-                if datetime.now() < exp_time:
+        # Use file modification time + 50 minutes as expiry (Cognito tokens last 60 min)
+        file_mtime = datetime.fromtimestamp(os.path.getmtime(token_file))
+        token_expiry = file_mtime + timedelta(minutes=50)
+        if datetime.now() < token_expiry:
+            with open(token_file, 'r', encoding='utf-8') as f:
+                token = f.read().strip()
+                if token:
                     _token_cache['token'] = token
-                    _token_cache['expiry'] = exp_time
-                    print(f"✓ Loaded token from file (expires: {exp_time})")
+                    _token_cache['expiry'] = token_expiry
+                    print(f"✓ Loaded token from file (expires: {token_expiry})")
                     return token
-            except Exception:
-                # If token parsing fails, generate a new one
-                pass
     
     # Get fresh token
     print("Generating fresh OAuth token...")
@@ -212,4 +205,5 @@ if __name__ == '__main__':
     print("    Set debug=False for production deployments.\n")
     # Use environment variable to control debug mode
     debug_mode = os.environ.get('FLASK_DEBUG', 'false').lower() == 'true'
+    # Local development only — use gunicorn/waitress for production
     app.run(host='0.0.0.0', port=5000, debug=debug_mode)

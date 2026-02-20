@@ -136,9 +136,6 @@ Deployment info saved to `deployment_info.json`.
 ### Step 3: Verify Deployment
 
 ```bash
-# Test individual agents
-python test_deployed_agents.py
-
 # Quick coordinator test
 python test_coordinator_quick.py
 ```
@@ -400,7 +397,7 @@ agentcore list
 agentcore logs <agent-name> --tail 50
 
 # Test agent directly
-python test_deployed_agents.py --agent <agent-name> --message "test"
+python test_coordinator_quick.py
 
 # Restart agent (redeploy)
 cd <agent-directory>

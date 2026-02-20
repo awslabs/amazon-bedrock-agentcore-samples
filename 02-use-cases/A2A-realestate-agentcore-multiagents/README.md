@@ -138,19 +138,6 @@ The UI provides quick action buttons for common queries:
 ```bash
 # Quick test with OAuth
 python test_coordinator_quick.py
-
-# Comprehensive test
-python test_deployed_agents.py
-```
-
-### Test Individual Agents
-
-```bash
-# Test property search agent
-python test_deployed_agents.py --agent property_search_agent --message "Find apartments in NYC"
-
-# Test property booking agent
-python test_deployed_agents.py --agent property_booking_agent --message "List all bookings"
 ```
 
 ## 📁 Project Structure
@@ -190,7 +177,6 @@ A2A-realestate-agentcore-multiagents/
 ├── generate_ui_config.py            # Generate UI configuration
 ├── get_fresh_token.py               # Token generation
 ├── test_coordinator_quick.py        # Quick test script
-├── test_deployed_agents.py          # Comprehensive tests
 │
 ├── start-ui.sh                      # UI startup script
 │
@@ -314,7 +300,7 @@ python get_fresh_token.py
 
 ```bash
 # Test agent directly
-python test_deployed_agents.py --agent property_search_agent --message "test"
+python test_coordinator_quick.py
 
 # Check AgentCore logs
 agentcore logs property_search_agent

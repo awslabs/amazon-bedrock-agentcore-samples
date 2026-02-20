@@ -14,6 +14,7 @@ cognito_config.json
 # AgentCore configuration
 .bedrock_agentcore.yaml
 */.bedrock_agentcore.yaml
+.agent_arn
 */.agent_arn
 
 # Python
