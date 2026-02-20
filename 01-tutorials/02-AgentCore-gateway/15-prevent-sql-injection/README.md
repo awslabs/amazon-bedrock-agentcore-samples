@@ -30,7 +30,7 @@ This comprehensive approach to database security delivers several key benefits, 
 | Interceptor types        | AWS Lambda (REQUEST)                                                        |
 | Inbound Auth IdP         | Amazon Cognito (CUSTOM_JWT authorizer)                                      |
 | Security Pattern         | SQL injection detection using pattern matching                              |
-| Tutorial components      | Gateway, Lambda Interceptor, Amazon Cognito, MCP tools                      |
+| Tutorial components      | Amazon Bedrock AgentCore Gateway, AWS Lambda Interceptor, Amazon Cognito, MCP tools |
 | Tutorial vertical        | Cross-vertical (applicable to any AI agent with database access)            |
 | Example complexity       | Intermediate                                                                 |
 | SDK used                 | boto3                                                                        |
