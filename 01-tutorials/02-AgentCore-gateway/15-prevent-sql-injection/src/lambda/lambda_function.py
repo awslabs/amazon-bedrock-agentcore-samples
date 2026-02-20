@@ -1,13 +1,36 @@
 """
-SQL Injection Prevention Interceptor for Gateway MCP REQUESTS
+SQL Injection Prevention Interceptor (Gateway REQUEST Interceptor)
 
-Intercepts tools/call requests and analyzes tool arguments for SQL injection patterns
-before they reach database tools. Fails closed on detection or errors.
+Purpose
+- Intercepts MCP tools/call requests and evaluates tool arguments before they reach
+  backend database tools.
+- Provides deterministic, tool-level enforcement to prevent unsafe SQL execution.
+- Fails closed: blocks requests when suspicious patterns are detected or when validation
+  and analysis fail.
 
-NOTE: This is a demo/testing implementation showing pattern-based SQL injection detection.
-For production, implement your own security logic in this Lambda - you can integrate with
-any security service, validation library, or custom business logic as needed.
+Scope
+- Operates on tool arguments (tool inputs), not on the original user prompt.
+- Executes at the tool boundary, before any database interaction occurs.
+- Intended to prevent the agent or caller from passing raw or unsafe SQL content to
+  database-facing tools.
 
+Extensibility
+Because this control is implemented as AWS Lambda, you can integrate:
+- Schema and contract validation libraries
+- Policy engines and authorization checks (tenant, role, action allow lists)
+- Internal security services and compliance logic
+- Third-party paid security services via SDKs or API calls (e.g., risk scoring, DLP,
+  threat intelligence, API security platforms)
+- Centralized logging and monitoring systems for audit and incident response
+
+Production Considerations
+This implementation uses heuristic pattern detection to identify common SQL injection
+techniques. For production systems, avoid accepting raw SQL from agents and prefer:
+- Structured tool contracts (query templates or JSON intent with typed parameters)
+- Allow-listed operations, tables, and fields
+- Strict schema validation and bounds checking
+- Tenant isolation and least-privilege access
+- Parameterized queries / prepared statements in the database layer
 """
 
 import json
