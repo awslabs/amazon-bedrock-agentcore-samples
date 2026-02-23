@@ -1,5 +1,4 @@
 from strands import Agent, tool
-from strands_tools import file_write
 from strands.models import BedrockModel
 from bedrock_agentcore.runtime import BedrockAgentCoreApp, PingStatus
 import argparse
@@ -21,7 +20,8 @@ from tools import (
     generate_team_velocity_chart,
     build_metrics_forecast_model,
     generate_metrics_forecast_chart,
-    upload_report_to_s3
+    upload_report_to_s3,
+    save_report
 )
 
 app = BedrockAgentCoreApp()
@@ -49,7 +49,7 @@ weekly_update_agent = Agent(
         generate_team_velocity_chart,
         build_metrics_forecast_model,
         generate_metrics_forecast_chart,
-        file_write,
+        save_report,
         upload_report_to_s3
     ],
     system_prompt="""You are a Weekly Update Generator agent. Your role is to:
@@ -58,7 +58,8 @@ weekly_update_agent = Agent(
 2. Analyze data quality and cross-reference information
 3. Generate visualizations (bug charts, metrics charts, project timeline, team velocity, forecast charts)
 4. Synthesize information into a comprehensive markdown report
-5. Upload the final report and charts to S3
+5. Save the report using file_write tool to weekly_report_output/weekly_report.md
+6. Upload the final report and charts to S3 using upload_report_to_s3
 
 When generating reports, follow this structure:
 
@@ -94,7 +95,11 @@ When generating reports, follow this structure:
 
 Do not include markdown image syntax (![...]) in the report. The charts are generated and uploaded to S3 separately.
 
-Work systematically through data collection, analysis, visualization, and synthesis."""
+IMPORTANT: After creating the report content, you MUST:
+1. Use file_write to save it to 'weekly_report_output/weekly_report.md'
+2. Then call upload_report_to_s3 to upload everything to S3
+
+Work systematically through data collection, analysis, visualization, synthesis, saving, and uploading."""
 )
 
 # Track active tasks count for ping handler

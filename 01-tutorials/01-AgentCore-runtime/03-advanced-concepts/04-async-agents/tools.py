@@ -27,6 +27,68 @@ from email.mime.image import MIMEImage
 # S3 configuration for report uploads
 S3_BUCKET = 'a-sample-dataset-6'  # Will be updated by update_demo_dates.py
 S3_PREFIX = 'weekly_reports'
+DEMO_DATA_PREFIX = 'demo_data'  # S3 prefix for demo data
+
+
+def download_demo_data_from_s3():
+    """
+    Download all demo data from S3 to local /tmp/demo_data directory.
+    This is called once at agent startup.
+    """
+    import os
+    import boto3
+    
+    s3_client = boto3.client('s3')
+    local_base = '/tmp/demo_data'
+    
+    print(f"📥 Downloading demo data from s3://{S3_BUCKET}/{DEMO_DATA_PREFIX}/")
+    
+    try:
+        # List all objects under demo_data prefix
+        paginator = s3_client.get_paginator('list_objects_v2')
+        pages = paginator.paginate(Bucket=S3_BUCKET, Prefix=DEMO_DATA_PREFIX + '/')
+        
+        file_count = 0
+        for page in pages:
+            if 'Contents' not in page:
+                continue
+                
+            for obj in page['Contents']:
+                s3_key = obj['Key']
+                
+                # Skip directory markers
+                if s3_key.endswith('/'):
+                    continue
+                
+                # Calculate local path
+                relative_path = s3_key[len(DEMO_DATA_PREFIX)+1:]  # Remove 'demo_data/' prefix
+                local_path = os.path.join(local_base, relative_path)
+                
+                # Create directory if needed
+                os.makedirs(os.path.dirname(local_path), exist_ok=True)
+                
+                # Download file
+                s3_client.download_file(S3_BUCKET, s3_key, local_path)
+                file_count += 1
+        
+        print(f"✅ Downloaded {file_count} files to {local_base}")
+        
+        # Update all file paths to use /tmp/demo_data
+        return local_base
+        
+    except Exception as e:
+        print(f"❌ Error downloading demo data: {e}")
+        import traceback
+        traceback.print_exc()
+        raise
+
+
+# Download demo data at module import time
+try:
+    download_demo_data_from_s3()
+except Exception as e:
+    print(f"⚠️ Warning: Could not download demo data: {e}")
+
 
 
 @tool
@@ -34,7 +96,7 @@ def read_project_status() -> str:
     """Read and summarize project status from CSV file."""
     try:
         # Find the latest week file dynamically
-        project_dir = "demo_data/project_status"
+        project_dir = "/tmp/demo_data/project_status"
         files = [f for f in os.listdir(project_dir) if f.startswith('projects_week_') and f.endswith('.csv')]
         if not files:
             return "Error: No project status files found"
@@ -61,7 +123,7 @@ def read_project_status() -> str:
 def read_team_updates() -> str:
     """Read all team member updates from markdown files."""
     try:
-        updates_dir = "demo_data/team_updates"
+        updates_dir = "/tmp/demo_data/team_updates"
         files = [f for f in os.listdir(updates_dir) if f.endswith('.md')]
         
         summary = f"Found {len(files)} team updates:\n\n"
@@ -109,7 +171,7 @@ def read_metrics() -> str:
     """Read KPI metrics from CSV file."""
     try:
         # Find the latest week file dynamically
-        metrics_dir = "demo_data/metrics"
+        metrics_dir = "/tmp/demo_data/metrics"
         files = [f for f in os.listdir(metrics_dir) if f.startswith('kpis_week_') and f.endswith('.csv')]
         if not files:
             return "Error: No metrics files found"
@@ -138,7 +200,7 @@ def read_bug_tracker() -> str:
     """Read bug/issue tracker data from JSON file."""
     try:
         # Find the latest week file dynamically
-        issues_dir = "demo_data/issues"
+        issues_dir = "/tmp/demo_data/issues"
         files = [f for f in os.listdir(issues_dir) if f.startswith('bug_tracker_week_') and f.endswith('.json')]
         if not files:
             return "Error: No bug tracker files found"
@@ -172,7 +234,7 @@ def read_bug_tracker() -> str:
 def read_meeting_notes() -> str:
     """Read meeting notes from markdown files."""
     try:
-        notes_dir = "demo_data/meeting_notes"
+        notes_dir = "/tmp/demo_data/meeting_notes"
         files = [f for f in os.listdir(notes_dir) if f.endswith('.md')]
         
         summary = f"Meeting Notes ({len(files)} meetings):\n\n"
@@ -202,7 +264,14 @@ def read_meeting_notes() -> str:
 def generate_bug_severity_chart() -> str:
     """Generate a pie chart showing bug distribution by severity."""
     try:
-        with open("demo_data/issues/bug_tracker_week_04.json", "r") as f:
+        # Find the latest week file dynamically
+        issues_dir = "/tmp/demo_data/issues"
+        files = [f for f in os.listdir(issues_dir) if f.startswith('bug_tracker_week_') and f.endswith('.json')]
+        if not files:
+            return "Error: No bug tracker files found"
+        latest_file = sorted(files)[-1]
+        
+        with open(os.path.join(issues_dir, latest_file), "r") as f:
             data = json.load(f)
         
         summary = data['summary']
@@ -217,8 +286,8 @@ def generate_bug_severity_chart() -> str:
         plt.title('Bug Distribution by Severity', fontsize=14, fontweight='bold')
         plt.axis('equal')
         
-        os.makedirs("weekly_report_output", exist_ok=True)
-        output_path = "weekly_report_output/bug_severity_chart.png"
+        os.makedirs("/tmp/weekly_report_output", exist_ok=True)
+        output_path = "/tmp/weekly_report_output/bug_severity_chart.png"
         plt.savefig(output_path, dpi=150, bbox_inches='tight')
         plt.close()
         
@@ -231,8 +300,15 @@ def generate_bug_severity_chart() -> str:
 def generate_metrics_trend_chart() -> str:
     """Generate a faceted bar chart showing current vs target for key metrics."""
     try:
+        # Find the latest week file dynamically
+        metrics_dir = "/tmp/demo_data/metrics"
+        files = [f for f in os.listdir(metrics_dir) if f.startswith('kpis_week_') and f.endswith('.csv')]
+        if not files:
+            return "Error: No metrics files found"
+        latest_file = sorted(files)[-1]
+        
         metrics = []
-        with open("demo_data/metrics/kpis_week_04.csv", "r") as f:
+        with open(os.path.join(metrics_dir, latest_file), "r") as f:
             reader = csv.DictReader(f)
             for row in reader:
                 metrics.append(row)
@@ -332,8 +408,8 @@ def generate_metrics_trend_chart() -> str:
                     fontsize=16, fontweight='bold', y=0.995)
         plt.tight_layout()
         
-        os.makedirs("weekly_report_output", exist_ok=True)
-        output_path = "weekly_report_output/metrics_status_chart.png"
+        os.makedirs("/tmp/weekly_report_output", exist_ok=True)
+        output_path = "/tmp/weekly_report_output/metrics_status_chart.png"
         plt.savefig(output_path, dpi=150, bbox_inches='tight')
         plt.close()
         
@@ -353,30 +429,45 @@ def extract_structured_data():
     
     # Extract project data
     try:
-        with open("demo_data/project_status/projects_week_04.csv", "r") as f:
-            reader = csv.DictReader(f)
-            data["projects"] = list(reader)
+        # Find the latest week file dynamically
+        project_dir = "/tmp/demo_data/project_status"
+        files = [f for f in os.listdir(project_dir) if f.startswith('projects_week_') and f.endswith('.csv')]
+        if files:
+            latest_file = sorted(files)[-1]
+            with open(os.path.join(project_dir, latest_file), "r") as f:
+                reader = csv.DictReader(f)
+                data["projects"] = list(reader)
     except Exception as e:
         print(f"Warning: Could not read projects: {e}")
     
     # Extract metrics data
     try:
-        with open("demo_data/metrics/kpis_week_04.csv", "r") as f:
-            reader = csv.DictReader(f)
-            data["metrics"] = list(reader)
+        # Find the latest week file dynamically
+        metrics_dir = "/tmp/demo_data/metrics"
+        files = [f for f in os.listdir(metrics_dir) if f.startswith('kpis_week_') and f.endswith('.csv')]
+        if files:
+            latest_file = sorted(files)[-1]
+            with open(os.path.join(metrics_dir, latest_file), "r") as f:
+                reader = csv.DictReader(f)
+                data["metrics"] = list(reader)
     except Exception as e:
         print(f"Warning: Could not read metrics: {e}")
     
     # Extract bug data
     try:
-        with open("demo_data/issues/bug_tracker_week_04.json", "r") as f:
-            data["bugs"] = json.load(f)
+        # Find the latest week file dynamically
+        issues_dir = "/tmp/demo_data/issues"
+        files = [f for f in os.listdir(issues_dir) if f.startswith('bug_tracker_week_') and f.endswith('.json')]
+        if files:
+            latest_file = sorted(files)[-1]
+            with open(os.path.join(issues_dir, latest_file), "r") as f:
+                data["bugs"] = json.load(f)
     except Exception as e:
         print(f"Warning: Could not read bugs: {e}")
     
     # Extract team updates
     try:
-        updates_dir = "demo_data/team_updates"
+        updates_dir = "/tmp/demo_data/team_updates"
         for filename in os.listdir(updates_dir):
             if filename.endswith('.md'):
                 with open(os.path.join(updates_dir, filename), 'r') as f:
@@ -418,7 +509,7 @@ def extract_structured_data():
     
     # Extract meeting notes
     try:
-        notes_dir = "demo_data/meeting_notes"
+        notes_dir = "/tmp/demo_data/meeting_notes"
         for filename in os.listdir(notes_dir):
             if filename.endswith('.md'):
                 with open(os.path.join(notes_dir, filename), 'r') as f:
@@ -452,15 +543,22 @@ def analyze_data_quality() -> str:
         issues = []
         warnings = []
         
+        # Find the latest week file dynamically
+        project_dir = "/tmp/demo_data/project_status"
+        files = [f for f in os.listdir(project_dir) if f.startswith('projects_week_') and f.endswith('.csv')]
+        if not files:
+            return "Error: No project status files found"
+        latest_file = sorted(files)[-1]
+        
         # Check project data
-        with open("demo_data/project_status/projects_week_04.csv", "r") as f:
+        with open(os.path.join(project_dir, latest_file), "r") as f:
             reader = csv.DictReader(f)
             projects = list(reader)
             if len(projects) < 3:
                 warnings.append("Low number of projects tracked")
         
         # Check team updates
-        updates_dir = "demo_data/team_updates"
+        updates_dir = "/tmp/demo_data/team_updates"
         update_count = len([f for f in os.listdir(updates_dir) if f.endswith('.md')])
         if update_count < 3:
             warnings.append("Not all team members submitted updates")
@@ -476,8 +574,15 @@ def cross_reference_data() -> str:
     """Cross-reference bugs mentioned in team updates with bug tracker."""
     try:
         
+        # Find the latest week file dynamically
+        issues_dir = "/tmp/demo_data/issues"
+        files = [f for f in os.listdir(issues_dir) if f.startswith('bug_tracker_week_') and f.endswith('.json')]
+        if not files:
+            return "Error: No bug tracker files found"
+        latest_file = sorted(files)[-1]
+        
         # Load bug tracker
-        with open("demo_data/issues/bug_tracker_week_04.json", "r") as f:
+        with open(os.path.join(issues_dir, latest_file), "r") as f:
             bug_data = json.load(f)
         
         # Extract bug IDs
@@ -488,7 +593,7 @@ def cross_reference_data() -> str:
             all_bugs.append(issue['id'])
         
         # Check team updates for bug mentions
-        updates_dir = "demo_data/team_updates"
+        updates_dir = "/tmp/demo_data/team_updates"
         mentions = 0
         for filename in os.listdir(updates_dir):
             if filename.endswith('.md'):
@@ -512,7 +617,7 @@ def analyze_sentiment() -> str:
         positive_indicators = ['completed', 'success', 'achieved', 'improved', 'excellent', 'great']
         concern_indicators = ['blocker', 'delayed', 'issue', 'problem', 'concern', 'risk']
         
-        updates_dir = "demo_data/team_updates"
+        updates_dir = "/tmp/demo_data/team_updates"
         sentiment_scores = []
         
         for filename in os.listdir(updates_dir):
@@ -537,8 +642,14 @@ def analyze_sentiment() -> str:
 def calculate_risk_scores() -> str:
     """Calculate risk scores for projects based on multiple factors."""
     try:
+        # Find the latest week file dynamically
+        project_dir = "/tmp/demo_data/project_status"
+        files = [f for f in os.listdir(project_dir) if f.startswith('projects_week_') and f.endswith('.csv')]
+        if not files:
+            return "Error: No project status files found"
+        latest_file = sorted(files)[-1]
         
-        with open("demo_data/project_status/projects_week_04.csv", "r") as f:
+        with open(os.path.join(project_dir, latest_file), "r") as f:
             reader = csv.DictReader(f)
             projects = list(reader)
         
@@ -575,8 +686,14 @@ def calculate_risk_scores() -> str:
 def generate_project_timeline_chart() -> str:
     """Generate a timeline chart showing project milestones."""
     try:
+        # Find the latest week file dynamically
+        project_dir = "/tmp/demo_data/project_status"
+        files = [f for f in os.listdir(project_dir) if f.startswith('projects_week_') and f.endswith('.csv')]
+        if not files:
+            return "Error: No project status files found"
+        latest_file = sorted(files)[-1]
         
-        with open("demo_data/project_status/projects_week_04.csv", "r") as f:
+        with open(os.path.join(project_dir, latest_file), "r") as f:
             reader = csv.DictReader(f)
             projects = list(reader)
         
@@ -616,7 +733,7 @@ def generate_project_timeline_chart() -> str:
         ax.legend(handles=legend_elements, loc='lower right')
         
         plt.tight_layout()
-        output_path = "weekly_report_output/project_timeline_chart.png"
+        output_path = "/tmp/weekly_report_output/project_timeline_chart.png"
         plt.savefig(output_path, dpi=150, bbox_inches='tight')
         plt.close()
         
@@ -631,15 +748,22 @@ def build_metrics_forecast_model() -> str:
     """Build regression models to forecast metric trends for next 4 weeks."""
     try:
         
+        # Find the latest week file dynamically
+        metrics_dir = "/tmp/demo_data/metrics"
+        files = [f for f in os.listdir(metrics_dir) if f.startswith('kpis_week_') and f.endswith('.csv')]
+        if not files:
+            return "Error: No metrics files found"
+        latest_file = sorted(files)[-1]
+        
         # Load current metrics
-        with open("demo_data/metrics/kpis_week_04.csv", "r") as f:
+        with open(os.path.join(metrics_dir, latest_file), "r") as f:
             reader = csv.DictReader(f)
             metrics = list(reader)
         
         
         # Load historical data from CSV
         historical_data = {}
-        with open("demo_data/metrics/kpis_historical.csv", "r") as f:
+        with open("/tmp/demo_data/metrics/kpis_historical.csv", "r") as f:
             reader = csv.DictReader(f)
             for row in reader:
                 metric_name = row['metric_name']
@@ -705,8 +829,8 @@ def build_metrics_forecast_model() -> str:
         print(f"✓ Forecast models trained: Average R² = {avg_r2:.3f}")
         
         # Save forecast data for chart generation (only keep recent 12 weeks for visualization)
-        os.makedirs("weekly_report_output", exist_ok=True)
-        forecast_file = "weekly_report_output/metrics_forecast.json"
+        os.makedirs("/tmp/weekly_report_output", exist_ok=True)
+        forecast_file = "/tmp/weekly_report_output/metrics_forecast.json"
         
         # Keep only the most recent 12 weeks for cleaner visualization
         recent_historical = {}
@@ -736,7 +860,7 @@ def generate_metrics_forecast_chart() -> str:
     try:
         
         # Load forecast data
-        with open("weekly_report_output/metrics_forecast.json", "r") as f:
+        with open("/tmp/weekly_report_output/metrics_forecast.json", "r") as f:
             data = json.load(f)
         
         historical = data['historical']
@@ -814,7 +938,7 @@ def generate_metrics_forecast_chart() -> str:
                     fontsize=14, fontweight='bold', y=0.995)
         plt.tight_layout()
         
-        output_path = "weekly_report_output/metrics_forecast_chart.png"
+        output_path = "/tmp/weekly_report_output/metrics_forecast_chart.png"
         plt.savefig(output_path, dpi=150, bbox_inches='tight')
         plt.close()
         
@@ -830,7 +954,7 @@ def generate_team_velocity_chart() -> str:
     try:
         print("⚡ Generating team velocity analysis...")
         
-        updates_dir = "demo_data/team_updates"
+        updates_dir = "/tmp/demo_data/team_updates"
         team_stats = []
         
         for filename in os.listdir(updates_dir):
@@ -876,7 +1000,7 @@ def generate_team_velocity_chart() -> str:
         plt.xticks(rotation=45, ha='right')
         plt.tight_layout()
         
-        output_path = "weekly_report_output/team_velocity_chart.png"
+        output_path = "/tmp/weekly_report_output/team_velocity_chart.png"
         plt.savefig(output_path, dpi=150, bbox_inches='tight')
         plt.close()
         
@@ -898,8 +1022,8 @@ def save_report(report_content: str) -> str:
         Success message with file path
     """
     try:
-        os.makedirs("weekly_report_output", exist_ok=True)
-        output_path = "weekly_report_output/weekly_report.md"
+        os.makedirs("/tmp/weekly_report_output", exist_ok=True)
+        output_path = "/tmp/weekly_report_output/weekly_report.md"
         
         with open(output_path, 'w', encoding='utf-8') as f:
             f.write(report_content)
@@ -923,7 +1047,7 @@ def upload_report_to_s3() -> str:
         if not bucket or bucket == 'your-bucket-name':
             return "Error: No S3 bucket configured. Set S3_BUCKET in tools.py"
         
-        report_dir = "weekly_report_output"
+        report_dir = "/tmp/weekly_report_output"
         
         # Initialize S3 client
         s3_client = boto3.client('s3')
@@ -948,6 +1072,18 @@ def upload_report_to_s3() -> str:
         ]
         
         print(f"📤 Uploading to s3://{bucket}/{s3_prefix}/{week_folder}/")
+        
+        # Debug: Check current working directory and list files
+        import os
+        print(f"🔍 Current working directory: {os.getcwd()}")
+        print(f"🔍 Checking for report_dir: {report_dir}")
+        if os.path.exists(report_dir):
+            print(f"✓ Directory exists, contents: {os.listdir(report_dir)}")
+        else:
+            print(f"❌ Directory does not exist!")
+            # Try to create it
+            os.makedirs(report_dir, exist_ok=True)
+            print(f"✓ Created directory: {report_dir}")
         
         for filename in files_to_upload:
             filepath = os.path.join(report_dir, filename)
