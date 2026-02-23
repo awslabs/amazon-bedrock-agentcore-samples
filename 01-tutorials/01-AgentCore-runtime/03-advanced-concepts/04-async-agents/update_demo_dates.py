@@ -140,20 +140,6 @@ def rename_files_with_week(demo_data_path, week_num, week_dates):
                 print(f"✓ Renamed {file_path.name} → {new_name}")
 
 
-def create_s3_folder(bucket_name, folder_name):
-    """Create a folder in S3 bucket by uploading an empty object with trailing slash."""
-    s3_client = boto3.client('s3')
-    
-    try:
-        # S3 folders are created by uploading an empty object with a trailing slash
-        s3_client.put_object(Bucket=bucket_name, Key=f"{folder_name}/")
-        print(f"✓ Created folder: s3://{bucket_name}/{folder_name}/")
-        return True
-    except ClientError as e:
-        print(f"✗ Failed to create folder {folder_name}/: {e}")
-        return False
-
-
 def upload_to_s3(demo_data_path, bucket_name, prefix='demo_data'):
     """Upload all demo data files to S3 bucket."""
     s3_client = boto3.client('s3')
@@ -299,10 +285,6 @@ Examples:
         # Update tools.py configuration with the bucket name
         print("\n📝 Updating tools.py configuration...")
         update_tools_config(args.bucket)
-        
-        # Create weekly_report_output folder
-        print("\n📁 Creating output folder...")
-        create_s3_folder(args.bucket, 'weekly_report_output')
         
         # Upload demo data
         upload_to_s3(demo_data_path, args.bucket, args.prefix)

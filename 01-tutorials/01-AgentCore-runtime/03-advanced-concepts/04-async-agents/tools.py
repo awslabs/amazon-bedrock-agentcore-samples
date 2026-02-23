@@ -870,7 +870,7 @@ def generate_metrics_forecast_chart() -> str:
         # Select top 4 metrics to visualize
         metric_names = list(historical.keys())[:4]
         
-        fig, axes = plt.subplots(2, 2, figsize=(14, 10))
+        fig, axes = plt.subplots(2, 2, figsize=(14, 8))
         axes = axes.flatten()
         
         for idx, metric_name in enumerate(metric_names):
@@ -935,11 +935,11 @@ def generate_metrics_forecast_chart() -> str:
                    color='#ff8800', style='italic', fontweight='bold')
         
         plt.suptitle(f'Metrics Forecast - Next 4 Weeks (Trained on {current_week} weeks of data)', 
-                    fontsize=14, fontweight='bold', y=0.995)
-        plt.tight_layout()
+                    fontsize=14, fontweight='bold', y=0.98)
+        plt.subplots_adjust(left=0.08, right=0.95, top=0.88, bottom=0.08, hspace=0.4, wspace=0.25)
         
         output_path = "/tmp/weekly_report_output/metrics_forecast_chart.png"
-        plt.savefig(output_path, dpi=150, bbox_inches='tight')
+        plt.savefig(output_path, dpi=150)
         plt.close()
         
         print(f"✓ Forecast visualization generated")
