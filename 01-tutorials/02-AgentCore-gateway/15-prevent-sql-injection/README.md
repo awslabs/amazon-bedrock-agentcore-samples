@@ -1,5 +1,8 @@
 # Preventing SQL Injection Attacks with Amazon Bedrock AgentCore Gateway Interceptors
 
+> [!CAUTION]
+> The examples provided in this repository are for experimental and educational purposes only. They demonstrate concepts and techniques but are not intended for direct use in production environments. Make sure to have Amazon Bedrock Guardrails in place to protect against [prompt injection](https://docs.aws.amazon.com/bedrock/latest/userguide/prompt-injection.html).
+
 ## Overview
 
 Modern AI agent systems often interact with databases to retrieve, update, or analyze data. When agents dynamically generate queries or accept user inputs that influence database operations, SQL injection vulnerabilities become a critical security concern. Traditional SQL injection risks are amplified in AI systems because agents may dynamically construct SQL statements, prompt manipulation can influence tool arguments, and tool contracts may allow flexible or free-form inputs that bypass traditional input validation.

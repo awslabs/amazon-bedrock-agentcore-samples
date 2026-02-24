@@ -43,6 +43,7 @@ MAX_STRING_LENGTH = 10000
 
 SQL_INJECTION_PATTERNS = [
     (r';[\s\n]*\b(SELECT|INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|TRUNCATE|EXEC|EXECUTE)\b', 'STACKED_QUERY'),
+    (r'\b(DROP|TRUNCATE)\b[\s\n]+\b(TABLE|DATABASE|SCHEMA)\b', 'DANGEROUS_DDL'),
     (r'--', 'SQL_COMMENT_DASH'),
     (r'/\*', 'SQL_COMMENT_OPEN'),
     (r'\*/', 'SQL_COMMENT_CLOSE'),
@@ -53,6 +54,16 @@ SQL_INJECTION_PATTERNS = [
     (r'\bSLEEP\b[\s\n]*\(', 'TIME_SLEEP'),
     (r'\bWAITFOR\b[\s\n]+\bDELAY\b', 'TIME_WAITFOR'),
     (r'\bBENCHMARK\b[\s\n]*\(', 'TIME_BENCHMARK'),
+(r'\b(EXEC|EXECUTE|sp_executesql)\b', 'DYNAMIC_SQL'),
+(r'\b(ALTER|RENAME|GRANT|REVOKE)\b[\s\n]+\b(TABLE|DATABASE|USER)\b', 'DANGEROUS_DDL_EXTENDED'),
+(r'\bCONCAT\b[\s\n]*\(', 'STRING_CONCAT'),
+(r'\bCHR\b[\s\n]*\(|\bCHAR\b[\s\n]*\(', 'CHAR_ENCODING'),
+(r'\bSUBSTRING\b[\s\n]*\(|\bSUBSTR\b[\s\n]*\(', 'SUBSTRING_PROBE'),
+(r'\bCONVERT\b[\s\n]*\(|\bCAST\b[\s\n]*\(', 'TYPE_CONVERSION'),
+(r'0x[0-9a-fA-F]+', 'HEX_ENCODING'),
+(r'\bINFORMATION_SCHEMA\b', 'SCHEMA_ENUMERATION'),
+(r'\bLOAD_FILE\b|\bINTO\b[\s\n]+\bOUTFILE\b', 'FILE_OPERATIONS'),
+
 ]
 
 COMPILED_PATTERNS = [(re.compile(pattern, re.IGNORECASE | re.MULTILINE), rule_id) 
