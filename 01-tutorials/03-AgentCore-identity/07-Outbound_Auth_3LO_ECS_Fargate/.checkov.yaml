@@ -1,0 +1,15 @@
+# Checkov configuration
+# https://www.checkov.io/2.Basics/CLI%20Command%20Reference.html
+
+framework:
+  - cloudformation
+  - dockerfile
+
+soft-fail: false
+compact: true
+quiet: true
+
+# Skip checks that are not applicable to this sample
+skip-check:
+  - CKV_AWS_7  # KMS key rotation not needed for this sample
+  - CKV_DOCKER_2  # HEALTHCHECK handled by ECS task definition, not Dockerfile
