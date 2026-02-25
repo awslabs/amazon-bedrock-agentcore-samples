@@ -292,6 +292,51 @@ Echo test PASSED
 
 ---
 
+## Session Lifecycle Best Practices
+
+AgentCore Runtime sessions consume memory (measured in GBHours) while active. Billing continues until the session is explicitly stopped or the runtime is deleted. Follow these practices to manage costs and avoid orphaned resources:
+
+### Always Clean Up
+
+After finishing with a tutorial, run the cleanup script to delete the agent runtime and stop billing:
+
+```bash
+./cleanup.sh <folder>   # e.g., ./cleanup.sh strands
+```
+
+### Cleanup Ordering
+
+The cleanup script follows a specific teardown order to maintain security and avoid authorization gaps:
+
+1. **Stop active sessions** (`stop-runtime-session`) — releases individual session microVMs
+2. **Delete agent runtime** (`delete-agent-runtime`) — tears down the entire deployment and stops GBHours billing
+3. **Delete ECR repository** — removes container images
+4. **Delete IAM role** — removes authorization last, so the runtime never runs without proper controls
+
+### Idle Timeout
+
+In production, configure an idle timeout during session creation to automatically stop inactive sessions. This reduces the window of exposure for unused sessions and prevents unexpected costs if cleanup is missed.
+
+### Error-Safe Cleanup
+
+The `cleanup.sh` script uses `set +e` and per-step error handling so that a failure in one cleanup step does not prevent the remaining steps from executing. If cleanup is interrupted (e.g., Ctrl+C), re-run the script to retry any failed steps.
+
+### Stopping Individual Sessions
+
+For production workloads where you want to end a user session without tearing down the entire runtime, use the `stop-runtime-session` API:
+
+```bash
+aws bedrock-agentcore stop-runtime-session \
+    --agent-runtime-arn "<agent-arn>" \
+    --runtime-session-id "<session-id>" \
+    --qualifier DEFAULT \
+    --region <region>
+```
+
+This releases the session's microVM resources immediately rather than waiting for the idle timeout.
+
+---
+
 ## How Deployment Works
 
 The `setup.sh` script automates the complete deployment:
