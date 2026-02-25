@@ -10,10 +10,19 @@ uploads the updated data to an S3 bucket.
 import json
 import re
 import argparse
+import platform
 from datetime import datetime, timedelta
 from pathlib import Path
 import boto3
 from botocore.exceptions import ClientError
+
+
+# Detect if running on Windows to disable emojis
+IS_WINDOWS = platform.system() == 'Windows'
+
+def get_symbol(emoji, fallback):
+    """Return emoji on non-Windows systems, fallback text on Windows."""
+    return fallback if IS_WINDOWS else emoji
 
 
 def get_current_week_info():
@@ -64,7 +73,7 @@ def update_json_dates(file_path, week_dates):
     with open(file_path, 'w') as f:
         json.dump(data, f, indent=2)
     
-    print(f"✓ Updated {file_path.name}")
+    print(f"{get_symbol('✓', '+')} Updated {file_path.name}")
 
 
 def update_markdown_dates(file_path, week_dates):
@@ -90,7 +99,7 @@ def update_markdown_dates(file_path, week_dates):
     with open(file_path, 'w') as f:
         f.write(content)
     
-    print(f"✓ Updated {file_path.name}")
+    print(f"{get_symbol('✓', '+')} Updated {file_path.name}")
 
 
 def update_csv_dates(file_path, week_dates):
@@ -114,7 +123,7 @@ def update_csv_dates(file_path, week_dates):
     with open(file_path, 'w') as f:
         f.writelines(updated_lines)
     
-    print(f"✓ Updated {file_path.name}")
+    print(f"{get_symbol('✓', '+')} Updated {file_path.name}")
 
 
 def rename_files_with_week(demo_data_path, week_num, week_dates):
@@ -137,14 +146,14 @@ def rename_files_with_week(demo_data_path, week_num, week_dates):
             if new_name != file_path.name:
                 new_path = file_path.parent / new_name
                 file_path.rename(new_path)
-                print(f"✓ Renamed {file_path.name} → {new_name}")
+                print(f"{get_symbol('✓', '+')} Renamed {file_path.name} {get_symbol('→', '->')} {new_name}")
 
 
 def upload_to_s3(demo_data_path, bucket_name, prefix='demo_data'):
     """Upload all demo data files to S3 bucket."""
     s3_client = boto3.client('s3')
     
-    print(f"\n📤 Uploading to S3 bucket: {bucket_name}")
+    print(f"\nUploading to S3 bucket: {bucket_name}")
     print(f"   Prefix: {prefix}/\n")
     
     uploaded_files = []
@@ -172,11 +181,11 @@ def upload_to_s3(demo_data_path, bucket_name, prefix='demo_data'):
                     ExtraArgs={'ContentType': content_type}
                 )
                 uploaded_files.append(s3_key)
-                print(f"✓ Uploaded {s3_key}")
+                print(f"{get_symbol('✓', '+')} Uploaded {s3_key}")
             except ClientError as e:
-                print(f"✗ Failed to upload {s3_key}: {e}")
+                print(f"{get_symbol('✗', 'X')} Failed to upload {s3_key}: {e}")
     
-    print(f"\n✅ Uploaded {len(uploaded_files)} files to s3://{bucket_name}/{prefix}/")
+    print(f"\n{get_symbol('✅', 'SUCCESS:')} Uploaded {len(uploaded_files)} files to s3://{bucket_name}/{prefix}/")
     return uploaded_files
 
 
@@ -186,7 +195,7 @@ def update_tools_config(bucket_name):
     tools_file = script_dir / 'tools.py'
     
     if not tools_file.exists():
-        print(f"⚠️  tools.py not found at {tools_file}")
+        print(f"{get_symbol('⚠️', 'WARNING:')} tools.py not found at {tools_file}")
         return False
     
     try:
@@ -200,7 +209,7 @@ def update_tools_config(bucket_name):
         
         if re.search(bucket_pattern, content):
             content = re.sub(bucket_pattern, bucket_replacement, content)
-            print(f"✓ Updated S3_BUCKET in tools.py to: {bucket_name}")
+            print(f"{get_symbol('✓', '+')} Updated S3_BUCKET in tools.py to: {bucket_name}")
             
             # Write back
             with open(tools_file, 'w') as f:
@@ -208,11 +217,11 @@ def update_tools_config(bucket_name):
             
             return True
         else:
-            print("⚠️  Could not find S3_BUCKET configuration in tools.py")
+            print(f"{get_symbol('⚠️', 'WARNING:')} Could not find S3_BUCKET configuration in tools.py")
             return False
         
     except Exception as e:
-        print(f"❌ Error updating tools.py: {e}")
+        print(f"{get_symbol('❌', 'ERROR:')} Error updating tools.py: {e}")
         return False
 
 
@@ -257,7 +266,7 @@ Examples:
     week_num, week_dates = get_current_week_info()
     monday = week_dates['monday']
     
-    print(f"\n📅 Updating demo data to current week:")
+    print(f"\n{get_symbol('📅', 'CALENDAR:')} Updating demo data to current week:")
     print(f"   Week {week_num} of {monday.year}")
     print(f"   Week of {monday.strftime('%B %d, %Y')}\n")
     
@@ -277,19 +286,19 @@ Examples:
             elif file_path.suffix == '.csv':
                 update_csv_dates(file_path, week_dates)
     
-    print(f"\n✅ Demo data updated successfully!")
+    print(f"\n{get_symbol('✅', 'SUCCESS:')} Demo data updated successfully!")
     print(f"   All dates now reflect week {week_num} ({monday.strftime('%B %d - %B %d, %Y')})")
     
     # Upload to S3 if bucket specified
     if args.bucket:
         # Update tools.py configuration with the bucket name
-        print("\n📝 Updating tools.py configuration...")
+        print(f"\n{get_symbol('📝', 'NOTE:')} Updating tools.py configuration...")
         update_tools_config(args.bucket)
         
         # Upload demo data
         upload_to_s3(demo_data_path, args.bucket, args.prefix)
     else:
-        print("\n💡 Tip: Use --bucket to upload data to S3 for AgentCore deployment")
+        print(f"\n{get_symbol('💡', 'TIP:')} Use --bucket to upload data to S3 for AgentCore deployment")
 
 
 if __name__ == '__main__':

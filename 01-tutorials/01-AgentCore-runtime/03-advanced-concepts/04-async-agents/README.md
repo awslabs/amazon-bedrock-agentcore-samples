@@ -1,27 +1,25 @@
-# Weekly Status Report Generator with Amazon Bedrock AgentCore Runtime (Asynchronous Agent)
+# Weekly Status Report Generator with Amazon Bedrock AgentCore Runtime
 
 ## Overview
 
-In this tutorial we will learn how to build and deploy an automated weekly status report generator using Amazon Bedrock AgentCore Runtime as an **asynchronous agent**. This demonstrates how to invoke agents asynchronously for tasks that don't require immediate responses. The agent collects data from multiple sources (team updates, meeting notes, metrics, bug trackers), performs analysis, generates visualizations, and uploads comprehensive reports to S3.
+In this tutorial we will learn how to build and deploy an automated weekly status report generator using Amazon Bedrock AgentCore Runtime. The agent collects data from multiple sources (team updates, meeting notes, metrics, bug trackers), performs analysis, generates visualizations, and uploads comprehensive reports to S3.
 
 ### Tutorial Details
 
 | Information         | Details                                                                          |
 |:--------------------|:---------------------------------------------------------------------------------|
 | Tutorial type       | Data Analysis & Reporting                                                        |
-| Agent type          | Single (Asynchronous)                                                            |
+| Agent type          | Single                                                                           |
 | Agentic Framework   | Strands Agents                                                                   |
-| LLM model           | Anthropic 4.5                                                        |
-| Tutorial components | Asynchronous agent invocation, multi-tool agent, data analysis, visualization, S3 integration, AgentCore Runtime|
+| LLM model           | Anthropic Claude Sonnet 4                                                        |
+| Tutorial components | Multi-tool agent, data analysis, visualization, S3 integration, AgentCore Runtime|
 | Tutorial vertical   | Business Operations & Reporting                                                  |
 | Example complexity  | Intermediate                                                                     |
 | SDK used            | Amazon BedrockAgentCore Python SDK, boto3, matplotlib, scikit-learn              |
 
 ### Tutorial Architecture
 
-This tutorial demonstrates how to deploy a sophisticated reporting agent to AgentCore runtime and invoke it **asynchronously**. Asynchronous invocation is ideal for tasks like report generation that may take several minutes to complete, allowing you to trigger the agent and check results later without maintaining an open connection.
-
-The agent uses multiple tools to:
+This tutorial demonstrates how to deploy a reporting agent to AgentCore runtime. The agent uses multiple tools to:
 - Read and analyze data from various sources (CSV, JSON, Markdown files)
 - Perform sentiment analysis and risk scoring
 - Generate data visualizations (charts and graphs)
@@ -30,17 +28,14 @@ The agent uses multiple tools to:
 
 The agent orchestrates 16 different tools to create comprehensive weekly status reports automatically.
 
+![Architecture Diagram](images/architecture.png)
+
 ### Tutorial Key Features
 
-* Asynchronous agent invocation
-* Hosting complex multi-tool agents on Amazon Bedrock AgentCore Runtime
+* Hosting an asynchronous multi-tool agent on Amazon Bedrock AgentCore Runtime
 * Using Amazon Bedrock models (Claude Sonnet 4)
 * Using Strands Agents framework
-* Data analysis and cross-referencing across multiple sources
-* Automated visualization generation with matplotlib
-* Machine learning forecasting with scikit-learn
-* S3 integration for data storage and report delivery
-* Dynamic demo data generation and date management
+
 
 ## Prerequisites
 
@@ -48,6 +43,25 @@ The agent orchestrates 16 different tools to create comprehensive weekly status 
 - Python 3.12+
 - AWS CLI configured with appropriate credentials
 - S3 bucket for storing demo data and reports
+
+## Project Structure
+
+```
+
+├── weekly_update_agentcore.py          # Main agent definition
+├── tools.py                             # All tool functions (16 tools)
+├── weekly_update_agentcore_notebook.ipynb  # Deployment notebook
+├── update_demo_dates.py                 # Demo data management script
+├── requirements.txt                     # Python dependencies
+└── demo_data/                          # Sample data directory
+    ├── team_updates/                   # Team member updates (Markdown)
+    ├── meeting_notes/                  # Meeting notes (Markdown)
+    ├── metrics/                        # KPI metrics (CSV)
+    ├── issues/                         # Bug tracker data (JSON)
+    └── project_status/                 # Project status (CSV)
+```
+
+
 
 ## What the Agent Does
 
@@ -81,3 +95,4 @@ When invoked, the agent:
    - Uploads the markdown report
    - Uploads all generated charts
    - Organizes by year and week: `s3://bucket/weekly_reports/2026/week_09_2026-02-23/`
+

@@ -73,3 +73,6 @@ tests/
 cdk/
 terraform/
 mcp/lambda/
+
+# Dockerfile itself
+Dockerfile
