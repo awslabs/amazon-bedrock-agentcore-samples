@@ -25,10 +25,21 @@ check_cmd npm      "Comes with Node.js"
 check_cmd docker   "Install: https://docs.docker.com/desktop/setup/install/mac-install/"
 check_cmd aws      "Install: https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html"
 
+# Verify AWS CLI version >= 2.32.0 (required for `aws login`)
+REQUIRED_CLI_VERSION="2.32.0"
+AWS_CLI_VERSION=$(aws --version 2>&1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+if [ -n "$AWS_CLI_VERSION" ]; then
+    if [ "$(printf '%s\n' "$REQUIRED_CLI_VERSION" "$AWS_CLI_VERSION" | sort -V | head -n1)" != "$REQUIRED_CLI_VERSION" ]; then
+        echo "WARNING: AWS CLI version $AWS_CLI_VERSION detected. 'aws login' requires v$REQUIRED_CLI_VERSION+." >&2
+        echo "         Update: https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html" >&2
+    fi
+fi
+
 # Verify AWS credentials
 if ! aws sts get-caller-identity &>/dev/null; then
     echo "ERROR: AWS credentials are not configured or expired." >&2
-    echo "       Run 'aws configure' or refresh your credentials first." >&2
+    echo "       Run 'aws login' to authenticate, or 'aws configure' to set up credentials." >&2
+    echo "       Details: https://docs.aws.amazon.com/signin/latest/userguide/command-line-sign-in.html" >&2
     exit 1
 fi
 
@@ -36,6 +47,18 @@ fi
 if ! docker info &>/dev/null 2>&1; then
     echo "ERROR: Docker daemon is not running. Start Docker Desktop or the Docker service." >&2
     exit 1
+fi
+
+# Check Bedrock model access for required model (Claude Sonnet 4.5)
+# Bedrock auto-enables all serverless models, but Anthropic requires a one-time usage form.
+REQUIRED_MODEL="anthropic.claude-sonnet-4-5-20250929-v1:0"
+if ! aws bedrock get-foundation-model --model-identifier "$REQUIRED_MODEL" \
+    --query 'modelDetails.modelLifecycle.status' --output text 2>/dev/null | grep -qi "ACTIVE"; then
+    echo "WARNING: Could not verify Bedrock model access for Claude Sonnet 4.5 ($REQUIRED_MODEL)." >&2
+    echo "         Anthropic models require a one-time usage form. Complete it in the Bedrock" >&2
+    echo "         console Playground by selecting any Anthropic Claude model." >&2
+    echo "         Details: https://aws.amazon.com/blogs/security/simplified-amazon-bedrock-model-access/" >&2
+    echo "         The deploy will continue, but the agent will fail to invoke without model access." >&2
 fi
 
 echo "    All checks passed."
