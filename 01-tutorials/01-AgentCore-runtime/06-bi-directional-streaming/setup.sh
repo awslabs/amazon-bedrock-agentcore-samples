@@ -216,21 +216,6 @@ else
 fi
 
 # Step 4: Create agent with SigV4
-# ============================================================================
-# Session Lifecycle Note:
-# Creating an agent runtime starts billing for memory consumption (GBHours).
-# The runtime remains active and billable until explicitly deleted via
-# `aws bedrock-agentcore-control delete-agent-runtime` or the cleanup script.
-#
-# To manage costs:
-#   - Always run ./cleanup.sh <folder> when you're done with the tutorial
-#   - In production, configure an idle timeout during session creation to
-#     automatically stop inactive sessions
-#   - Use stop-runtime-session to end individual user sessions without
-#     tearing down the entire runtime
-#
-# See cleanup.sh for the recommended teardown ordering.
-# ============================================================================
 echo -e "${YELLOW}🤖 Step 4: Creating Bedrock Agent with SigV4...${NC}"
 
 # Generate random 4-character alphanumeric ID
@@ -347,11 +332,7 @@ echo -e "${YELLOW}2. Or manually start the client:${NC}"
 echo "   export AWS_REGION=\"$AWS_REGION\""
 echo "   python $WEBSOCKET_FOLDER/client/client.py --runtime-arn \"$AGENT_ARN\""
 echo ""
-echo -e "${YELLOW}3. When done, clean up resources (important — stops billing):${NC}"
+echo -e "${YELLOW}3. When done, clean up resources:${NC}"
 echo "   ./cleanup.sh $WEBSOCKET_FOLDER"
-echo ""
-echo -e "${YELLOW}⚠️  Session Lifecycle Reminder:${NC}"
-echo "   The agent runtime is now active and consuming memory (GBHours)."
-echo "   Always run cleanup.sh when you're done to stop billing."
 echo ""
 echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
