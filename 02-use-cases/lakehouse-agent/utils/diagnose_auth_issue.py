@@ -140,7 +140,7 @@ def main():
         try:
             cognito = boto3.client('cognito-idp', region_name=cognito_region)
             
-            username = 'user001@example.com'
+            username = 'policyholder001@example.com'
             password = 'TempPass123!'
             
             # Get client secret

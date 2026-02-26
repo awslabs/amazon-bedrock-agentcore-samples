@@ -9,7 +9,10 @@ A lakehouse data processing system demonstrating Amazon Bedrock AgentCore capabi
 - [Key Features](#key-features)
 - [Prerequisites](#prerequisites)
 - [Quick Start](#quick-start)
-- [Deployment Steps](#deployment-steps)
+- [Option A: Deploy via Jupyter Notebooks](#option-a-deploy-via-jupyter-notebooks)
+- [Option B: Deploy via CLI Scripts](#option-b-deploy-via-cli-scripts)
+- [What Gets Deployed](#what-gets-deployed)
+- [Cleanup](#cleanup)
 - [Testing](#testing)
 - [Usage Examples](#usage-examples)
 - [Troubleshooting](#troubleshooting)
@@ -117,7 +120,7 @@ This system showcases a lakehouse data processing application with:
 1. User Login
    Streamlit UI → Cognito → Returns JWT with user identity
    JWT contains: {
-     "email": "user001@example.com",
+     "email": "policyholder001@example.com",
      "scope": "lakehouse-api/claims.query"
    }
 
@@ -151,9 +154,9 @@ This system showcases a lakehouse data processing application with:
    Interceptor Lambda:
    - Validates JWT signature ✓
    - Checks token expiration ✓
-   - Extracts user identity: "user001@example.com"
+   - Extracts user identity: "policyholder001@example.com"
    - Validates scope: "claims.query" ✓
-   - Adds header: X-User-Principal: user001@example.com
+   - Adds header: X-User-Principal: policyholder001@example.com
 
    Gateway → MCP Server (with user context)
 
@@ -254,150 +257,143 @@ pip install -r requirements.txt
 
 ## Quick Start
 
-The fastest way to deploy the complete system is through the provided Jupyter notebooks. Run them in sequence:
-
 ### Prerequisites
 
-Ensure you have AWS credentials configured:
+Ensure you have AWS credentials configured using one of these methods:
 
 ```bash
-# Option 1: Using .env file (Recommended)
-# Create a .env file in this directory with your AWS credentials:
-# AWS_ACCESS_KEY_ID=your-access-key-id
-# AWS_SECRET_ACCESS_KEY=your-secret-access-key
-# AWS_SESSION_TOKEN=your-session-token  # Optional, for STS credentials
-# AWS_DEFAULT_REGION=us-east-1
-
-# Option 2: If using SSO
+# Option 1: AWS SSO (Recommended)
 export AWS_PROFILE=your-profile-name
 aws sso login --profile your-profile-name
 
-# Option 3: If using access keys
+# Option 2: Access keys / temporary credentials
 aws configure
 ```
 
-### Deployment via Notebooks
+### Choose Your Deployment Path
+
+There are two ways to deploy the Lakehouse Agent system:
+
+| | Jupyter Notebooks | CLI Scripts |
+|---|---|---|
+| **Best for** | Learning, exploration, step-by-step walkthrough | DevOps, automation, CI/CD pipelines |
+| **Guide** | Notebooks in this directory (`00-` through `07-`) | [deployment/README.md](deployment/README.md) |
+| **Interactivity** | Cell-by-cell execution with inline output | Command-line with terminal output |
+| **Cleanup** | `07-optional-cleanup.ipynb` | Dedicated `cleanup_*.py` scripts per step |
+
+Both paths deploy the same resources and use SSM Parameter Store to share configuration between steps.
+
+---
+
+## Option A: Deploy via Jupyter Notebooks
 
 Start Jupyter and run the notebooks in order:
 
 ```bash
+cd 02-use-cases/lakehouse-agent
+source .venv/bin/activate
 jupyter notebook
 ```
 
-**Notebook Sequence**:
+| Notebook | Description |
+|----------|-------------|
+| `00-prerequisites-setup.ipynb` | Configure environment, create S3 bucket |
+| `01-deploy-s3tables.ipynb` | Deploy S3 Tables with Lake Formation integration and sample data |
+| `02-deploy-cognito.ipynb` | Set up Cognito User Pool with OAuth and test users |
+| `03-deploy-mcp-server.ipynb` | Deploy MCP Athena server on AgentCore Runtime |
+| `04-deploy-gateway.ipynb` | Deploy Gateway with request/response interceptors |
+| `05-deploy-agent.ipynb` | Deploy conversational AI agent on AgentCore Runtime |
+| `06-streamlit-ui-deployment.ipynb` | Launch Streamlit UI and test end-to-end flow |
+| `07-optional-cleanup.ipynb` | Clean up all deployed resources |
 
-1. **00-prerequisites-setup.ipynb** - Configure environment and create S3 bucket
-2. **01-deploy-athena.ipynb** - Deploy Athena database with sample data
-3. **02-deploy-cognito.ipynb** - Set up OAuth with Cognito user pool
-4. **03-deploy-mcp-server.ipynb** - Deploy MCP server on AgentCore Runtime
-5. **04-deploy-gateway.ipynb** - Deploy Gateway with JWT interceptor
-6. **05-deploy-agent.ipynb** - Deploy conversational AI agent
-7. **06-streamlit-ui-deployment.ipynb** - Test end-to-end flow with OAuth
-8. **07-optional-cleanup.ipynb** - Clean up all deployed resources (optional)
+Each notebook explains what it deploys, shows progress, saves configuration to SSM, and can be re-run safely.
 
-**Total deployment time**: ~2-3 hours
-
-**Credential Loading**: All notebooks use centralized credential loading that automatically detects and uses credentials from your `.env` file, environment variables, or AWS SSO (in that order of priority). No need to configure credentials separately in each notebook.
-
-Each notebook:
-- Explains what it deploys
-- Shows progress and outputs
-- Saves configuration to SSM Parameter Store
-- Can be re-run safely (idempotent where possible)
-
-### What Gets Deployed
-
-- **S3 Bucket**: Data storage for Athena
-- **Athena Database**: `lakehouse_db` with `claims` and `users` tables
-- **Cognito User Pool**: OAuth authentication with test users
-- **MCP Server**: Tool execution layer on AgentCore Runtime
-- **Gateway**: Request routing with JWT validation
-- **Agent**: Conversational AI on AgentCore Runtime
-- **Test Users**: user001@example.com, user002@example.com (password: TempPass123!)
-
-### Cleanup
-
-To remove all deployed resources, run **07-optional-cleanup.ipynb**. This notebook will:
-- Delete all AgentCore Runtimes and Gateways
-- Delete Lambda functions
-- Delete Cognito User Pool
-- Delete Athena database and tables
-- Optionally delete S3 bucket and data
-- Delete all SSM parameters
-
-### Quick Test
-
-After deployment, test with:
-
-```python
-# In notebook 06 or programmatically
-Query: "Show me all claims"
-Expected: Conversational response with claims data
-```
-
-### Manual Deployment (Alternative)
-
-If you prefer command-line deployment instead of notebooks, see the [Deployment Steps](#deployment-steps) section below.
+All notebooks use centralized credential loading that automatically detects credentials from your `.env` file, environment variables, or AWS SSO (in that order of priority).
 
 ---
 
-## Deployment Steps
+## Option B: Deploy via CLI Scripts
 
-This section provides manual command-line deployment instructions as an alternative to the notebooks.
+For command-line deployment, follow the detailed guide in [deployment/README.md](deployment/README.md).
 
-### Complete Deployment Roadmap
-
-| Phase | Component | Command | Duration |
-|-------|-----------|---------|----------|
-| 1 | Athena Database | `python setup_athena.py` | 5 min |
-| 2 | Cognito User Pool | `python setup_cognito.py` | 5 min |
-| 3 | MCP Server | `python deploy_runtime.py --yes` | 10 min |
-| 4 | Gateway & Interceptor | `python deploy_interceptor.py` + `python create_gateway.py --yes` | 5 min |
-| 5 | Lakehouse Agent | `python deploy_lakehouse_agent.py --yes` | 5 min |
-| 6 | Streamlit UI | `streamlit run streamlit_app.py` | 5 min |
-
-
-**Total Time**: ~2.5 hours
-
-### Manual Deployment Commands
-
-If deploying via command line instead of notebooks:
+Quick summary of the deployment sequence:
 
 ```bash
-# Step 1: Deploy Athena
-cd athena-setup
-python setup_athena.py
+cd 02-use-cases/lakehouse-agent/deployment
 
-# Step 2: Deploy Cognito
-cd ../cognito-setup
-python setup_cognito.py
+# Step 1: Cognito User Pool + OAuth
+cd 1-cognito-setup && python setup_cognito.py
 
-# Step 3: Deploy MCP Server
-cd ../mcp-lakehouse-server
-python deploy_runtime.py --yes
+# Step 2: IAM tenant roles (policyholders, adjusters, administrators)
+cd ../2-lakehouse-tenant-roles-setup && python setup_iam_roles.py
 
-# Step 4: Deploy Gateway & Interceptor
-cd ../gateway-setup/interceptor
-python deploy_interceptor.py
-cd ..
-python create_gateway.py --yes
+# Step 3: S3 Tables + Lake Formation + sample data
+cd ../3-s3tables-setup
+python integrate_s3tables_lakeformation.py
+python setup_s3tables.py
+python setup_lakeformation_permissions.py
+python load_sample_data.py
 
-# Step 5: Deploy Agent
-cd ../lakehouse-agent
-python deploy_lakehouse_agent.py --yes
+# Step 4: MCP Server on AgentCore Runtime
+cd ../4-mcp-lakehouse-server && python deploy_runtime.py --yes
 
-# Step 6: Test
-cd ..
-streamlit run streamlit_app.py
+# Step 5: Gateway interceptors + Gateway
+cd ../5-gateway-setup/interceptor-request && ./deploy.sh
+cd ../interceptor-response && ./deploy.sh
+cd .. && python create_gateway.py --yes
+
+# Step 6: Lakehouse Agent on AgentCore Runtime
+cd ../6-lakehouse-agent && python deploy_lakehouse_agent.py --yes
+
+# Step 7: Streamlit UI
+cd ../../streamlit-ui && streamlit run streamlit_app.py
 ```
 
-### Key Configuration Features
+See [deployment/README.md](deployment/README.md) for full details including Lake Formation admin setup, SSM parameters created at each step, and cleanup instructions.
 
-**All scripts use**:
-- ✅ **AWS session utility** (`aws_session_utils.py`) for SSO support
-- ✅ **SSM Parameter Store** for sharing configuration
-- ✅ **Automatic region detection** from AWS credentials
-- ✅ **--yes flags** for notebook automation (skip interactive prompts)
+---
+
+## What Gets Deployed
+
+- **Cognito User Pool**: OAuth authentication with test users and groups
+- **IAM Tenant Roles**: Per-group roles with Athena/S3/Lake Formation permissions
+- **S3 Tables**: `claims` and `users` tables with Lake Formation row-level security
+- **S3 Bucket**: Athena query results storage
+- **MCP Server**: Athena tool execution layer on AgentCore Runtime
+- **Gateway**: Request routing with JWT validation and request/response interceptors
+- **Agent**: Conversational AI on AgentCore Runtime (Strands framework)
+- **DynamoDB Table**: Tenant-to-role mapping for interceptor authorization
+- **Test Users**: policyholder001@example.com, adjuster001@example.com, admin@example.com (password: `TempPass123!`)
+
+### Quick Test
+
+After deployment, open the Streamlit UI at http://localhost:8501 and try:
+
+```
+Query: "Show me all claims"
+Expected: Conversational response with claims data filtered by your user's permissions
+```
+
+---
+
+## Cleanup
+
+**Notebooks**: Run `07-optional-cleanup.ipynb` — calls each cleanup script in reverse order.
+
+**CLI**: Each deployment step has a dedicated cleanup script. Run in reverse order:
+
+```bash
+cd deployment/6-lakehouse-agent   && python cleanup_agent.py
+cd ../5-gateway-setup             && python cleanup_gateway.py
+cd ../4-mcp-lakehouse-server      && python cleanup_runtime.py
+cd ../3-s3tables-setup            && python cleanup_s3tables.py
+cd ../2-lakehouse-tenant-roles-setup && python cleanup_iam_roles.py
+cd ../1-cognito-setup             && python cleanup_cognito.py
+```
+
+All cleanup scripts support `--keep-ssm` to preserve SSM parameters for re-deployment.
+
+See [deployment/README.md](deployment/README.md) for full cleanup details.
 
 ---
 
@@ -515,8 +511,8 @@ Processed Date: 2024-01-18"
 
 | Issue | Cause | Solution |
 |-------|-------|----------|
-| **AWS credentials not found** | Missing .env file or invalid credentials | Create .env file with valid AWS credentials |
-| **Token has expired** | STS credentials expired | Update .env with fresh credentials or use SSO |
+| **AWS credentials not found** | No active credentials | Run `aws sso login` or `aws configure` |
+| **Token has expired** | STS/SSO credentials expired | Re-authenticate with `aws sso login` or refresh credentials |
 | **No credentials** | AWS_PROFILE not set (SSO) | `export AWS_PROFILE=your-profile` |
 | **Bearer token required** | No token in request | Ensure token in Authorization header |
 | **Invalid token** | Token expired or wrong client | Get new token from Cognito |
@@ -525,41 +521,10 @@ Processed Date: 2024-01-18"
 
 ### Credential Troubleshooting
 
-#### .env File Issues
-
-**Error: "AWS credentials not found" or "No credentials configured"**
-```bash
-# Check if .env file exists
-ls -la .env
-
-# If missing, create it with your credentials:
-cat > .env << EOF
-AWS_ACCESS_KEY_ID=your-access-key-id
-AWS_SECRET_ACCESS_KEY=your-secret-access-key
-AWS_SESSION_TOKEN=your-session-token
-AWS_DEFAULT_REGION=us-east-1
-EOF
-```
-
-**Error: "Token has expired" (when using STS credentials)**
-```bash
-# Get new temporary credentials and update .env file
-# Example using assume-role:
-aws sts assume-role --role-arn arn:aws:iam::ACCOUNT:role/ROLE --role-session-name session
-
-# Then update .env with the new credentials
-```
-
-**Error: "Environment variables not loaded"**
-- Restart Jupyter kernel to reload environment variables
-- Ensure `.env` file is in the correct directory (`02-use-cases/lakehouse-agent/`)
-- Check file permissions: `chmod 600 .env`
-
-### AWS SSO Troubleshooting
+#### AWS SSO Issues
 
 **Error: "Token has expired and refresh failed"**
 ```bash
-# Solution: Re-login
 aws sso logout
 aws sso login --profile your-profile-name
 ```
@@ -628,7 +593,7 @@ Expected:
 ```
 INFO Bearer token extracted from MCP gateway request
 INFO Token validation successful
-INFO User: user001@example.com
+INFO User: policyholder001@example.com
 ```
 
 ---
@@ -637,52 +602,61 @@ INFO User: user001@example.com
 
 ```
 lakehouse-agent/
+├── utils/                                  # Shared utilities
+│   ├── aws_session_utils.py                #   AWS SSO session management
+│   └── notebook_init.py                    #   Notebook initialization helper
 │
-├── 📦 Utilities
-│   └── aws_session_utils.py        # AWS SSO session management
+├── 00-prerequisites-setup.ipynb            # Notebook: environment setup
+├── 01-deploy-s3tables.ipynb                # Notebook: S3 Tables + Lake Formation
+├── 02-deploy-cognito.ipynb                 # Notebook: Cognito OAuth
+├── 03-deploy-mcp-server.ipynb              # Notebook: MCP server deployment
+├── 04-deploy-gateway.ipynb                 # Notebook: Gateway + interceptors
+├── 05-deploy-agent.ipynb                   # Notebook: Agent deployment
+├── 06-streamlit-ui-deployment.ipynb        # Notebook: Streamlit UI test
+├── 07-optional-cleanup.ipynb               # Notebook: Resource cleanup
 │
-├── 🗄️ Data Layer
-│   └── athena-setup/
-│       ├── setup_athena.py         # Athena database setup
-│       ├── create_tables.sql       # Table definitions
-│       └── sample_data.sql         # Sample data
+├── deployment/                             # CLI deployment scripts
+│   ├── README.md                           #   Full CLI deployment guide
+│   ├── 1-cognito-setup/
+│   │   ├── setup_cognito.py                #   Cognito User Pool + OAuth
+│   │   ├── deploy_post_auth_lambda.sh      #   Login audit Lambda
+│   │   └── cleanup_cognito.py
+│   ├── 2-lakehouse-tenant-roles-setup/
+│   │   ├── setup_iam_roles.py              #   IAM roles per tenant group
+│   │   └── cleanup_iam_roles.py
+│   ├── 3-s3tables-setup/
+│   │   ├── integrate_s3tables_lakeformation.py  # Lake Formation integration
+│   │   ├── setup_s3tables.py               #   S3 Tables bucket + tables
+│   │   ├── setup_lakeformation_permissions.py   # Row-level security
+│   │   ├── load_sample_data.py             #   Sample claims/users data
+│   │   ├── verify_setup.py                 #   Verify deployment
+│   │   └── cleanup_s3tables.py
+│   ├── 4-mcp-lakehouse-server/
+│   │   ├── server.py                       #   MCP server (Athena tools)
+│   │   ├── athena_tools_secure.py          #   Secure Athena query tools
+│   │   ├── deploy_runtime.py               #   AgentCore Runtime deployment
+│   │   └── cleanup_runtime.py
+│   ├── 5-gateway-setup/
+│   │   ├── interceptor-request/            #   Request interceptor Lambda
+│   │   │   ├── deploy.sh
+│   │   │   ├── lambda_function.py
+│   │   │   ├── token_exchange.py
+│   │   │   ├── tool_validation.py
+│   │   │   └── setup_dynamodb_tenant_role_maps.py
+│   │   ├── interceptor-response/           #   Response interceptor Lambda
+│   │   │   ├── deploy.sh
+│   │   │   └── lambda_function.py
+│   │   ├── create_gateway.py               #   AgentCore Gateway creation
+│   │   └── cleanup_gateway.py
+│   └── 6-lakehouse-agent/
+│       ├── lakehouse_agent.py              #   Strands-based agent
+│       ├── deploy_lakehouse_agent.py       #   AgentCore Runtime deployment
+│       └── cleanup_agent.py
 │
-├── 🔐 Identity Layer
-│   └── cognito-setup/
-│       └── setup_cognito.py        # Cognito OAuth setup
+├── streamlit-ui/
+│   └── streamlit_app.py                    # Streamlit UI with Cognito OAuth
 │
-├── 🌐 Gateway Layer
-│   └── gateway-setup/
-│       ├── create_gateway.py       # Gateway creation
-│       └── interceptor/
-│           ├── lambda_function.py  # JWT validator
-│           └── deploy_interceptor.py # Deployment script
-│
-├── 🔧 Tool Layer
-│   └── mcp-lakehouse-server/
-│       ├── server.py               # MCP server
-│       ├── athena_tools.py         # Athena query tools
-│       ├── requirements.txt        # Dependencies
-│       └── deploy_runtime.py       # Deployment script
-│
-├── 🤖 Agent Layer
-│   └── lakehouse-agent/
-│       ├── lakehouse_agent.py      # Strands-based agent
-│       ├── requirements.txt        # Dependencies
-│       └── deploy_lakehouse_agent.py # Deployment script
-│
-├── 🖥️ UI Layer
-│   └── streamlit-ui/
-│       ├── streamlit_app.py        # Main UI application
-│       └── requirements.txt        # Dependencies
-│
-└── 🧪 Testing
-    └── tests/
-        ├── test_athena.py          # Database tests
-        ├── test_cognito.py         # Auth tests
-        ├── test_gateway.py         # Gateway tests
-        ├── test_agent.py           # Agent tests
-        └── test_end_to_end.py      # Integration tests
+└── test/                                   # Test scripts
 ```
 
 ---

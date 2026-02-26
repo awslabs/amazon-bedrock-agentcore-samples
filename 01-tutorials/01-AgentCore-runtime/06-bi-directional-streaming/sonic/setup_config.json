@@ -1,0 +1,13 @@
+{
+  "timestamp": "2026-02-04T19:27:44Z",
+  "websocket_folder": "sonic",
+  "aws_region": "us-west-2",
+  "account_id": "000384376621",
+  "iam_role_name": "WebSocketSonicAgentRole",
+  "ecr_repo_name": "agentcore_sonic_images",
+  "agent_name": "websocket_sonic_agent",
+  "agent_runtime_name": "websocket_sonic_agent_sigv4_553a",
+  "agent_arn": "arn:aws:bedrock-agentcore:us-west-2:000384376621:runtime/websocket_sonic_agent_sigv4_553a-sG6FYT5sDK",
+  "iam_role_arn": "arn:aws:iam::000384376621:role/WebSocketSonicAgentRole",
+  "ecr_image": "000384376621.dkr.ecr.us-west-2.amazonaws.com/agentcore_sonic_images:websocket_sonic_agent"
+}
