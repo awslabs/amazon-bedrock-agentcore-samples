@@ -49,6 +49,18 @@ if ! docker info &>/dev/null 2>&1; then
     exit 1
 fi
 
+# Check npm cache ownership (root-owned files from a previous sudo npm install will cause EACCES)
+NPM_CACHE_DIR="${HOME}/.npm"
+if [ -d "$NPM_CACHE_DIR" ]; then
+    NPM_CACHE_OWNER=$(ls -ld "$NPM_CACHE_DIR" | awk '{print $3}')
+    if [ "$NPM_CACHE_OWNER" != "$(whoami)" ]; then
+        echo "ERROR: npm cache directory ($NPM_CACHE_DIR) is owned by '$NPM_CACHE_OWNER' instead of '$(whoami)'." >&2
+        echo "       This was likely caused by a previous 'sudo npm install'." >&2
+        echo "       Fix: sudo chown -R \$(whoami) $NPM_CACHE_DIR" >&2
+        exit 1
+    fi
+fi
+
 # Check Bedrock model access for required model (Claude Sonnet 4.5)
 # Bedrock auto-enables all serverless models, but Anthropic requires a one-time usage form.
 REQUIRED_MODEL="anthropic.claude-sonnet-4-5-20250929-v1:0"
@@ -195,7 +207,7 @@ echo ""
 echo "Next steps:"
 echo ""
 echo "  1. Check agent status:"
-echo "       agentcore status"
+echo "       uv run agentcore status"
 echo ""
 echo "  2. Create a Cognito user:"
 echo "       uv run scripts/cognito-user.py --create"
@@ -204,7 +216,7 @@ echo "  3. Log in and set your bearer token:"
 echo "       eval \$(uv run scripts/cognito-user.py --login --export)"
 echo ""
 echo "  4. Invoke the agent:"
-echo "       agentcore invoke '{\"prompt\": \"Who am I?\"}'"
+echo "       uv run agentcore invoke '{\"prompt\": \"Who am I?\"}'"
 echo ""
 echo "  To tear down all resources later:"
 echo "       scripts/teardown.sh"
