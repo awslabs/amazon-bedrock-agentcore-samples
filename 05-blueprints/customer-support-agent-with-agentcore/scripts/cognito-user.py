@@ -433,8 +433,7 @@ def main():
         print("  - At least one lowercase letter (a-z)")
         print("  - At least one number (0-9)")
         print("  - At least one special character (e.g. !@#$%^&*)\n")
-        password = getpass.getpass("Password: "
-        )
+        password = getpass.getpass("Password: ")
         if not password:
             print("Error: password is required", file=sys.stderr)
             sys.exit(1)
