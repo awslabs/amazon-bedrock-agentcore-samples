@@ -121,12 +121,26 @@ def create_user(email, group=DEFAULT_GROUP, password=None):
         print(f"User already exists: {email}")
 
     # Set a permanent password (skip FORCE_CHANGE_PASSWORD state)
-    client.admin_set_user_password(
-        UserPoolId=USER_POOL_ID,
-        Username=email,
-        Password=password,
-        Permanent=True,
-    )
+    try:
+        client.admin_set_user_password(
+            UserPoolId=USER_POOL_ID,
+            Username=email,
+            Password=password,
+            Permanent=True,
+        )
+    except client.exceptions.InvalidPasswordException:
+        print(
+            "\nError: Password does not meet Cognito requirements.\n"
+            "Password must contain ALL of the following:\n"
+            "  - At least 8 characters\n"
+            "  - At least one uppercase letter (A-Z)\n"
+            "  - At least one lowercase letter (a-z)\n"
+            "  - At least one number (0-9)\n"
+            "  - At least one special character (e.g. !@#$%^&*)\n"
+            "\nPlease re-run --create and try again.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
     print(f"Password set for: {email}")
 
     # Add user to group
@@ -401,16 +415,25 @@ def main():
         sys.exit(1)
 
     if args.create:
-        print("Use an email matching the backend mock data:")
-        print("  John Doe  → john@example.com")
-        print("  Jane Smith → jane@example.com")
+        print("Choose a demo user:\n")
+        print("  1) john@example.com  (John Doe)")
+        print("  2) jane@example.com  (Jane Smith)")
         print()
-        email = input("Email: ").strip()
-        if not email:
-            print("Error: email is required", file=sys.stderr)
+        choice = input("Enter 1 or 2: ").strip()
+        if choice == "1":
+            email = "john@example.com"
+        elif choice == "2":
+            email = "jane@example.com"
+        else:
+            print("Error: please enter 1 or 2", file=sys.stderr)
             sys.exit(1)
-        password = getpass.getpass(
-            "Password (must include uppercase, lowercase, number, and symbol): "
+        print("\nPassword requirements:")
+        print("  - At least 8 characters")
+        print("  - At least one uppercase letter (A-Z)")
+        print("  - At least one lowercase letter (a-z)")
+        print("  - At least one number (0-9)")
+        print("  - At least one special character (e.g. !@#$%^&*)\n")
+        password = getpass.getpass("Password: "
         )
         if not password:
             print("Error: password is required", file=sys.stderr)
