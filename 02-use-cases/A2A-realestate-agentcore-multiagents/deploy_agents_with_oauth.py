@@ -9,7 +9,6 @@ import sys
 import json
 import subprocess
 import time
-from pathlib import Path
 
 class AgentDeployer:
     def __init__(self, config_file='cognito_config.json'):
@@ -103,13 +102,7 @@ class AgentDeployer:
                 return True
             
             # Run agentcore configure
-            print(f"Running agentcore configure...")
-            
-            cmd = [
-                'agentcore', 'configure',
-                '-e', agent['entrypoint'],
-                '--protocol', 'A2A'
-            ]
+            print("Running agentcore configure...")
             
             # Don't log the full command for security
             print(f"Command: agentcore configure -e {agent['entrypoint']} --protocol A2A")
@@ -201,7 +194,7 @@ class AgentDeployer:
         print(f"✓ Created configuration: {config_file}")
         print(f"  OAuth Client ID: {self.config['client_id']}")
         print(f"  Discovery URL: {self.config['discovery_url']}")
-        print(f"  Request Header Allowlist: Authorization")
+        print("  Request Header Allowlist: Authorization")
     
     def update_agent_config(self, config_file):
         """Update existing agent configuration with OAuth settings."""
@@ -240,7 +233,7 @@ class AgentDeployer:
             # Add account ID if missing
             if 'account' not in agent_config['aws']:
                 agent_config['aws']['account'] = account_id
-                print(f"✓ Added AWS account ID to configuration")
+                print("✓ Added AWS account ID to configuration")
             
             if 'protocol_configuration' not in agent_config['aws']:
                 agent_config['aws']['protocol_configuration'] = {}
@@ -256,7 +249,7 @@ class AgentDeployer:
             yaml.dump(config, f, default_flow_style=False, sort_keys=False)
         
         print(f"✓ Updated OAuth configuration in {config_file}")
-        print(f"  Request Header Allowlist: Authorization")
+        print("  Request Header Allowlist: Authorization")
     
     def deploy_agent(self, agent, env_vars=None):
         """Deploy agent using agentcore launch.
@@ -278,7 +271,7 @@ class AgentDeployer:
         
         try:
             # Use agentcore CLI - command is hardcoded and safe
-            print(f"Running agentcore launch...")
+            print("Running agentcore launch...")
             
             # Build command with explicit validation
             # Base command is hardcoded - no user input
@@ -287,7 +280,7 @@ class AgentDeployer:
             # Validate and add environment variables if provided
             env_args = []
             if env_vars:
-                print(f"\nEnvironment variables:")
+                print("\nEnvironment variables:")
                 for key, value in env_vars.items():
                     # Validate key is alphanumeric with underscores (safe)
                     if not key.replace('_', '').isalnum():
@@ -308,7 +301,7 @@ class AgentDeployer:
             # Combine validated command parts
             cmd = base_cmd + env_args
             
-            print(f"\nCommand: agentcore launch --auto-update-on-conflict [+ env vars]")
+            print("\nCommand: agentcore launch --auto-update-on-conflict [+ env vars]")
             print(f"Working directory: {os.getcwd()}")
             
             # Execute with validated command
@@ -324,7 +317,7 @@ class AgentDeployer:
             print(result.stdout)
             
             if result.returncode != 0:
-                print(f"✗ Deployment failed:")
+                print("✗ Deployment failed:")
                 print(result.stderr)
                 os.chdir(original_dir)
                 return False
@@ -341,7 +334,7 @@ class AgentDeployer:
             return True
             
         except subprocess.TimeoutExpired:
-            print(f"✗ Deployment timed out after 10 minutes")
+            print("✗ Deployment timed out after 10 minutes")
             os.chdir(original_dir)
             return False
         except Exception as e:

@@ -25,7 +25,7 @@ function generateUUID(): string {
     return crypto.randomUUID();
   }
   
-  // Fallback to crypto.getRandomValues for better randomness
+  // Fallback to crypto.getRandomValues
   if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
     const bytes = new Uint8Array(16);
     crypto.getRandomValues(bytes);
@@ -38,13 +38,7 @@ function generateUUID(): string {
     return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
   }
   
-  // Last resort fallback (should not be used in production)
-  console.warn('Using insecure random number generation. Please use a modern browser.');
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-    const r = Math.random() * 16 | 0;
-    const v = c === 'x' ? r : ((r & 0x3) | 0x8);
-    return v.toString(16);
-  });
+  throw new Error('No secure random number generator available. Please use a modern browser.');
 }
 
 async function callAgent(agentArn: string, message: string): Promise<string> {
