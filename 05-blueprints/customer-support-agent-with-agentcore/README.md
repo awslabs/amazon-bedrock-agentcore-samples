@@ -166,7 +166,7 @@ Now add policies to control which tools the agent can call and under what condit
 
 ### 5a. Create a Policy Engine
 
-1. Open the **AWS Console**(confirm region) > **Amazon Bedrock** > **AgentCore** > **Policy Engine**, click **Create policy engine**
+1. Open the **AWS Console** (confirm region), search for **Amazon Bedrock AgentCore** in the search bar, then navigate to **Policy Engine** and click **Create policy engine**
 2. Click Add policies, select supportAgentDemo gateway in resource scope dropdown.
 
 
