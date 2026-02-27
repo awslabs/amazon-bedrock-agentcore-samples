@@ -312,7 +312,6 @@ def _check_port_available(port):
 
 def run_callback_server(port=3000):
     """Start local HTTP server to capture callback."""
-    _check_port_available(port)
     server = http.server.HTTPServer(("localhost", port), CallbackHandler)
     server.timeout = 120
     server.handle_request()
@@ -337,6 +336,7 @@ def do_logout():
 
 def do_login(export_mode=False):
     """Run OAuth PKCE login flow. In export mode, print only the export line to stdout."""
+    _check_port_available(3000)
     code_verifier, code_challenge = generate_pkce()
     auth_url = build_auth_url(code_challenge)
 
