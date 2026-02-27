@@ -24,6 +24,7 @@ import http.server
 import json
 import pathlib
 import secrets
+import socket
 import subprocess
 import sys
 import urllib.parse
@@ -293,8 +294,25 @@ class CallbackHandler(http.server.BaseHTTPRequestHandler):
             self.end_headers()
 
 
+def _check_port_available(port):
+    """Check if a port is available and exit with a helpful message if not."""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        try:
+            s.bind(("localhost", port))
+        except OSError:
+            print(
+                f"Error: Port {port} is already in use.\n"
+                f"The OAuth callback requires port {port}. "
+                "Free it and try again:\n\n"
+                f"  lsof -ti:{port} | xargs kill\n",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+
+
 def run_callback_server(port=3000):
     """Start local HTTP server to capture callback."""
+    _check_port_available(port)
     server = http.server.HTTPServer(("localhost", port), CallbackHandler)
     server.timeout = 120
     server.handle_request()
@@ -304,6 +322,7 @@ def run_callback_server(port=3000):
 
 def do_logout():
     """Logout the current Cognito session."""
+    _check_port_available(3000)
     params = {"client_id": CLIENT_ID, "logout_uri": "http://localhost:3000/logout"}
     logout_url = f"https://{COGNITO_DOMAIN}/logout?{urllib.parse.urlencode(params)}"
 
