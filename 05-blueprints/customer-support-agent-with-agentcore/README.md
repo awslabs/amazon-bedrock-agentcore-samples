@@ -84,8 +84,6 @@ The agent uses **Anthropic Claude Sonnet 4.6** via a [global inference profile](
 3. Complete the one-time usage form when prompted
 4. If completed from your AWS organization management account, this enables Anthropic models across all member accounts
 
-> **Note:** You can also complete this form via the API. See the [simplified model access blog post](https://aws.amazon.com/blogs/security/simplified-amazon-bedrock-model-access/) for details.
-
 > **Changing the model:** The model ID is configured in [`src/model/load.py`](src/model/load.py). To use a different model, update the `MODEL_ID` variable to any [supported Bedrock model ID](https://docs.aws.amazon.com/bedrock/latest/userguide/inference-profiles-support.html) and redeploy.
 
 ---
