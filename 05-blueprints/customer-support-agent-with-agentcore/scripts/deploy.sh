@@ -69,7 +69,7 @@ REQUIRED_MODEL="global.anthropic.claude-sonnet-4-6"
 echo "    Verifying Bedrock model access ($REQUIRED_MODEL)..."
 if BODY_FILE=$(mktemp 2>/dev/null) && \
    echo -n '{"anthropic_version":"bedrock-2023-05-31","max_tokens":32,"messages":[{"role":"user","content":"hi"}]}' > "$BODY_FILE" && \
-   timeout 10 aws bedrock-runtime invoke-model --model-id "$REQUIRED_MODEL" \
+   aws bedrock-runtime invoke-model --model-id "$REQUIRED_MODEL" \
        --content-type "application/json" --accept "application/json" \
        --cli-connect-timeout 5 --cli-read-timeout 10 \
        --body "fileb://$BODY_FILE" /dev/null > /dev/null 2>&1; then
