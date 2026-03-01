@@ -20,7 +20,7 @@ check_cmd() {
 
 echo "==> Pre-flight checks"
 check_cmd uv       "Install: https://docs.astral.sh/uv/getting-started/installation/"
-check_cmd node     "Install: nvm install 20 && nvm use 20"
+check_cmd node     "Install nvm (https://github.com/nvm-sh/nvm#installing-and-updating), then run: nvm install 20 && nvm use 20"
 check_cmd npm      "Comes with Node.js"
 check_cmd docker   "Install: https://docs.docker.com/desktop/setup/install/mac-install/"
 check_cmd aws      "Install: https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html"
@@ -61,11 +61,11 @@ if [ -d "$NPM_CACHE_DIR" ]; then
     fi
 fi
 
-# Check Bedrock model access for required model (Claude Sonnet 4.6)
+# Check Bedrock model access for required model (Claude Sonnet 4.5)
 # Bedrock auto-enables all serverless models, but Anthropic requires a one-time usage form.
 # Note: This tests the *deployer's* credentials. The agent runtime uses its own execution role,
 # so a failure here does not necessarily mean the deployed agent will fail.
-REQUIRED_MODEL="global.anthropic.claude-sonnet-4-6"
+REQUIRED_MODEL="global.anthropic.claude-sonnet-4-5-20250929-v1:0"
 echo "    Verifying Bedrock model access ($REQUIRED_MODEL)..."
 if BODY_FILE=$(mktemp 2>/dev/null) && \
    echo -n '{"anthropic_version":"bedrock-2023-05-31","max_tokens":32,"messages":[{"role":"user","content":"hi"}]}' > "$BODY_FILE" && \

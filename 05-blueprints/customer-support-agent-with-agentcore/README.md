@@ -22,36 +22,29 @@ A production-ready AI customer support agent built on **Amazon Bedrock AgentCore
 
 ### Clone the Repository
 
-Verify git is installed:
+1. **Verify git is installed:**
 
-```bash
-git --version
-```
+   ```bash
+   git --version
+   ```
 
-If not installed, get it from [git-scm.com/install/mac](https://git-scm.com/install/mac).
+   If git is not installed, you can get it from [git-scm.com/install/mac](https://git-scm.com/install/mac).
 
-Then clone and navigate to the project:
+2. **Clone and navigate to the project:**
 
-```bash
-git clone https://github.com/awslabs/amazon-bedrock-agentcore-samples.git
-cd amazon-bedrock-agentcore-samples/05-blueprints/customer-support-agent-with-agentcore
-```
+   ```bash
+   git clone https://github.com/awslabs/amazon-bedrock-agentcore-samples.git
+   cd amazon-bedrock-agentcore-samples/05-blueprints/customer-support-agent-with-agentcore
+   ```
 
-### Tools
+### Required Tools
 
 | Tool | Version | Install |
 |------|---------|---------|
-| **uv** (Python + packages) | Latest | [Install guide](https://docs.astral.sh/uv/getting-started/installation/). `uv` automatically downloads Python 3.10+ when you run `uv sync`. |
-| **Node.js** | 20+ | Install via [nvm](https://github.com/nvm-sh/nvm#installing-and-updating) — `nvm install 20 && nvm use 20` |
-| **Docker** | Latest | [Docker Desktop](https://docs.docker.com/desktop/setup/install/mac-install/) or [Finch](https://runfinch.com/docs/getting-started/installation/) |
+| **uv** (Python + packages) | Latest | [Install guide](https://docs.astral.sh/uv/getting-started/installation/) |
+| **Node.js** | 20+ | First install [nvm](https://github.com/nvm-sh/nvm#installing-and-updating), then run: `nvm install 20 && nvm use 20` |
+| **Docker** | Latest | [Docker Desktop](https://docs.docker.com/desktop/setup/install/mac-install/) |
 | **AWS CLI** | **v2.32.0+** | [Install guide](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) |
-
-The following are also required but **installed automatically** by `scripts/deploy.sh` — no manual setup needed:
-
-| Tool | Installed via |
-|------|---------------|
-| **AWS CDK** v2 | `npm install` |
-| **AgentCore CLI** | `uv sync` |
 
 > **Tip:** `scripts/deploy.sh` runs pre-flight checks for all of the above — tools, CLI version, AWS credentials, Docker, and Bedrock model access — and will warn you with actionable guidance if anything is missing.
 
@@ -65,26 +58,35 @@ The following are also required but **installed automatically** by `scripts/depl
    aws login
    ```
 
-   This opens your browser — sign in with your AWS console credentials. [More details](https://docs.aws.amazon.com/signin/latest/userguide/command-line-sign-in.html).
+   This opens your browser — sign in with your AWS console credentials.
 
 2. **Verify credentials:**
 
    ```bash
    aws sts get-caller-identity
    ```
+[More details on aws login and credentials](https://docs.aws.amazon.com/signin/latest/userguide/command-line-sign-in.html).
 
-> **Note:** The demo deploys CDK stacks (Lambda, Cognito, ECR, IAM roles, CloudWatch) and uses the AgentCore Starter Toolkit, which together require broad permissions. For the simplest setup, attach **`AdministratorAccess`** and **`SignInLocalDevelopmentAccess`** to your IAM user (IAM Console → Users → your user → Add permissions → Attach policies directly). For minimum permissions, see [AgentCore Starter Toolkit permissions](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime-permissions.html#runtime-permissions-starter-toolkit).
+> **Note:** The demo deploys CDK stacks (Lambda, Cognito, ECR, IAM roles, CloudWatch), which together require broad permissions. For the simplest setup, ensure **`AdministratorAccess`** and **`SignInLocalDevelopmentAccess`** is attached to your IAM user (IAM Console → Users → your user → Add permissions → Attach policies directly). For minimum permissions, see [AgentCore Starter Toolkit permissions](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime-permissions.html#runtime-permissions-starter-toolkit).
 
 ### Enable Anthropic Model Access
 
-The agent uses **Anthropic Claude Sonnet 4.6** via a [global inference profile](https://docs.aws.amazon.com/bedrock/latest/userguide/inference-profiles-support.html). Since October 2025, Amazon Bedrock [auto-enables all serverless foundation models](https://aws.amazon.com/about-aws/whats-new/2025/10/amazon-bedrock-automatic-enablement-serverless-foundation-models/). However, **Anthropic models require a one-time usage form** before first use:
+The agent uses **Anthropic Claude Sonnet 4.5** via a [global inference profile](https://docs.aws.amazon.com/bedrock/latest/userguide/inference-profiles-support.html). Since October 2025, Amazon Bedrock [auto-enables all serverless foundation models](https://aws.amazon.com/about-aws/whats-new/2025/10/amazon-bedrock-automatic-enablement-serverless-foundation-models/). However, **Anthropic models require a one-time usage form** before first use:
 
 1. Open the [Amazon Bedrock console](https://console.aws.amazon.com/bedrock/) and go to the **Playground**
-2. Select any **Anthropic Claude** model
+2. Select **Anthropic Claude Sonnet 4.5**
 3. Complete the one-time usage form when prompted
 4. If completed from your AWS organization management account, this enables Anthropic models across all member accounts
 
-> **Changing the model:** The model ID is configured in [`src/model/load.py`](src/model/load.py). To use a different model, update the `MODEL_ID` variable to any [supported Bedrock model ID](https://docs.aws.amazon.com/bedrock/latest/userguide/inference-profiles-support.html) and redeploy.
+> **Changing the model:** The model ID is configured in [`src/model/load.py`](src/model/load.py). Update the `MODEL_ID` variable and redeploy. Alternatives:
+>
+> | Model | Global Inference Profile ID |
+> |-------|---------------------------|
+> | Claude Sonnet 4.5 (default) | `global.anthropic.claude-sonnet-4-5-20250929-v1:0` |
+> | Claude Haiku 4.5 (faster, lower cost) | `global.anthropic.claude-haiku-4-5-20251001-v1:0` |
+> | Claude Sonnet 4.6 | `global.anthropic.claude-sonnet-4-6` |
+>
+> See [supported inference profiles](https://docs.aws.amazon.com/bedrock/latest/userguide/inference-profiles-support.html) for the full list.
 
 ---
 
@@ -101,7 +103,7 @@ scripts/deploy.sh
 > **Already deployed?** Run `uv run agentcore status` first. If the agent shows `READY` or `ACTIVE`, skip to Step 2.
 
 This deploys:
-- **AgentCore Runtime** — containerized agent running Claude Sonnet 4.6
+- **AgentCore Runtime** — containerized agent running Claude Sonnet 4.5
 - **AgentCore Gateway** — MCP-based tool gateway with JWT authorization
 - **AgentCore Memory** — persistent memory scoped per user
 - **Cognito User Pool** — user authentication
