@@ -28,7 +28,7 @@ A production-ready AI customer support agent built on **Amazon Bedrock AgentCore
    git --version
    ```
 
-   If not installed, get it from [git-scm.com/install/mac](https://git-scm.com/install/mac).
+   If git is not installed, you can get it from [git-scm.com/install/mac](https://git-scm.com/install/mac).
 
 2. **Clone and navigate to the project:**
 
