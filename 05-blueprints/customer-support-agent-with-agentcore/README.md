@@ -57,7 +57,7 @@ A production-ready AI customer support agent built on **Amazon Bedrock AgentCore
 
 ### Enable Anthropic Model Access
 
-The agent uses **Anthropic Claude Sonnet 4.5** via a [global inference profile](https://docs.aws.amazon.com/bedrock/latest/userguide/inference-profiles-support.html). Since October 2025, Amazon Bedrock [auto-enables all serverless foundation models](https://aws.amazon.com/about-aws/whats-new/2025/10/amazon-bedrock-automatic-enablement-serverless-foundation-models/). However, **Anthropic models require a one-time usage form** before first use:
+The agent uses **Anthropic Claude Sonnet 4.6** via a [global inference profile](https://docs.aws.amazon.com/bedrock/latest/userguide/inference-profiles-support.html). Since October 2025, Amazon Bedrock [auto-enables all serverless foundation models](https://aws.amazon.com/about-aws/whats-new/2025/10/amazon-bedrock-automatic-enablement-serverless-foundation-models/). However, **Anthropic models require a one-time usage form** before first use:
 
 1. Open the [Amazon Bedrock console](https://console.aws.amazon.com/bedrock/) and go to the **Playground**
 2. Select any **Anthropic Claude** model
@@ -81,7 +81,7 @@ scripts/deploy.sh
 > **Already deployed?** Run `uv run agentcore status` first. If the agent shows `READY` or `ACTIVE`, skip to Step 2.
 
 This deploys:
-- **AgentCore Runtime** — containerized agent running Claude Sonnet 4.5
+- **AgentCore Runtime** — containerized agent running Claude Sonnet 4.6
 - **AgentCore Gateway** — MCP-based tool gateway with JWT authorization
 - **AgentCore Memory** — persistent memory scoped per user
 - **Cognito User Pool** — user authentication

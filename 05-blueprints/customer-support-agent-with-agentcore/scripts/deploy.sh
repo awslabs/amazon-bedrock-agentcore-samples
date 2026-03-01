@@ -61,15 +61,26 @@ if [ -d "$NPM_CACHE_DIR" ]; then
     fi
 fi
 
-# Check Bedrock model access for required model (Claude Sonnet 4.5)
+# Check Bedrock model access for required model (Claude Sonnet 4.6)
 # Bedrock auto-enables all serverless models, but Anthropic requires a one-time usage form.
-REQUIRED_MODEL="anthropic.claude-sonnet-4-5-20250929-v1:0"
-if ! aws bedrock get-foundation-model --model-identifier "$REQUIRED_MODEL" \
-    --query 'modelDetails.modelLifecycle.status' --output text 2>/dev/null | grep -qi "ACTIVE"; then
-    echo "WARNING: Could not verify Bedrock model access for Claude Sonnet 4.5 ($REQUIRED_MODEL)." >&2
-    echo "         Anthropic models require a one-time usage form. Complete it in the Bedrock" >&2
-    echo "         console Playground by selecting any Anthropic Claude model." >&2
-    echo "         Details: https://aws.amazon.com/blogs/security/simplified-amazon-bedrock-model-access/" >&2
+REQUIRED_MODEL="global.anthropic.claude-sonnet-4-6"
+echo "    Verifying Bedrock model access ($REQUIRED_MODEL)..."
+if echo '{"anthropic_version":"bedrock-2023-05-31","max_tokens":32,"messages":[{"role":"user","content":"hi"}]}' \
+    | aws bedrock-runtime invoke-model --model-id "$REQUIRED_MODEL" \
+        --content-type "application/json" --accept "application/json" \
+        --body fileb:///dev/stdin /dev/null 2>/dev/null; then
+    echo "    Model access verified."
+else
+    echo "WARNING: Could not invoke Bedrock model ($REQUIRED_MODEL)." >&2
+    echo "         This can happen for two reasons:" >&2
+    echo "" >&2
+    echo "         1. Anthropic first-time usage form not completed." >&2
+    echo "            Complete it in the Bedrock console Playground by selecting any Anthropic Claude model." >&2
+    echo "            Details: https://aws.amazon.com/blogs/security/simplified-amazon-bedrock-model-access/" >&2
+    echo "" >&2
+    echo "         2. Missing IAM permissions for bedrock:InvokeModel." >&2
+    echo "            Ensure your IAM user/role has the required Bedrock permissions." >&2
+    echo "" >&2
     echo "         The deploy will continue, but the agent will fail to invoke without model access." >&2
 fi
 
