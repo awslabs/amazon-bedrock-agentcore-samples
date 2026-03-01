@@ -20,7 +20,7 @@ check_cmd() {
 
 echo "==> Pre-flight checks"
 check_cmd uv       "Install: https://docs.astral.sh/uv/getting-started/installation/"
-check_cmd node     "Install: nvm install 20 && nvm use 20"
+check_cmd node     "Install nvm (https://github.com/nvm-sh/nvm#installing-and-updating), then run: nvm install 20 && nvm use 20"
 check_cmd npm      "Comes with Node.js"
 check_cmd docker   "Install: https://docs.docker.com/desktop/setup/install/mac-install/"
 check_cmd aws      "Install: https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html"
