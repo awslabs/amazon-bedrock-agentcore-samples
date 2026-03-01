@@ -4,16 +4,16 @@ Create Cognito users and obtain OAuth tokens for the AgentCore demo.
 
 Usage:
     # Create a user (prompts for email and password interactively)
-    python scripts/cognito-user.py --create
+    uv run scripts/cognito-user.py --create
 
     # Login and print the export command
-    python scripts/cognito-user.py --login
+    uv run scripts/cognito-user.py --login
 
     # Login and output only the export line (for eval)
-    eval $(python scripts/cognito-user.py --login --export)
+    eval $(uv run scripts/cognito-user.py --login --export)
 
     # Logout current session (to switch users)
-    python scripts/cognito-user.py --logout
+    uv run scripts/cognito-user.py --logout
 """
 
 import argparse
@@ -156,7 +156,7 @@ def create_user(email, group=DEFAULT_GROUP, password=None):
         print(f"Warning: could not add to group '{group}': {e}", file=sys.stderr)
 
     print("\nUser ready. Login with:")
-    print("  eval $(python scripts/cognito-user.py --login --export)")
+    print("  eval $(uv run scripts/cognito-user.py --login --export)")
 
 
 # ---------------------------------------------------------------------------

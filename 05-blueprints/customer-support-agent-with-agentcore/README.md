@@ -20,7 +20,22 @@ A production-ready AI customer support agent built on **Amazon Bedrock AgentCore
 
 ## Prerequisites
 
-> **Tip:** `scripts/deploy.sh` runs pre-flight checks for all of the below — tools, CLI version, AWS credentials, Docker, and Bedrock model access — and will warn you with actionable guidance if anything is missing.
+### Clone the Repository
+
+Verify git is installed:
+
+```bash
+git --version
+```
+
+If not installed, get it from [git-scm.com/install/mac](https://git-scm.com/install/mac).
+
+Then clone and navigate to the project:
+
+```bash
+git clone https://github.com/awslabs/amazon-bedrock-agentcore-samples.git
+cd amazon-bedrock-agentcore-samples/05-blueprints/customer-support-agent-with-agentcore
+```
 
 ### Tools
 
@@ -30,18 +45,21 @@ A production-ready AI customer support agent built on **Amazon Bedrock AgentCore
 | **Node.js** | 20+ | Install via [nvm](https://github.com/nvm-sh/nvm#installing-and-updating) — `nvm install 20 && nvm use 20` |
 | **Docker** | Latest | [Docker Desktop](https://docs.docker.com/desktop/setup/install/mac-install/) or [Finch](https://runfinch.com/docs/getting-started/installation/) |
 | **AWS CLI** | **v2.32.0+** | [Install guide](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) |
-| **AWS CDK** | v2 | Auto-installed as a project dependency by `scripts/deploy.sh` via `npm install` |
-| **AgentCore CLI** | Latest | Auto-installed as a project dependency by `scripts/deploy.sh` via `uv sync` |
 
-> **Important:** The `aws login` command requires AWS CLI **v2.32.0 or later**. Run `aws --version` to check. If your version is older, [update the CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) before proceeding.
+The following are also required but **installed automatically** by `scripts/deploy.sh` — no manual setup needed:
+
+| Tool | Installed via |
+|------|---------------|
+| **AWS CDK** v2 | `npm install` |
+| **AgentCore CLI** | `uv sync` |
+
+> **Tip:** `scripts/deploy.sh` runs pre-flight checks for all of the above — tools, CLI version, AWS credentials, Docker, and Bedrock model access — and will warn you with actionable guidance if anything is missing.
 
 ### AWS Credentials & Permissions
 
-1. **Attach IAM policies** to your IAM user. The demo deploys CDK stacks (Lambda, Cognito, ECR, IAM roles, CloudWatch) and uses the AgentCore Starter Toolkit, which together require broad permissions. For the simplest setup, attach **`AdministratorAccess`**. You will also need **`SignInLocalDevelopmentAccess`** for `aws login` to work. Both can be attached in the IAM Console → Users → your user → Add permissions → Attach policies directly.
+> **Important:** The `aws login` command requires AWS CLI **v2.32.0 or later**. Run `aws --version` to check. If your version is older, [update the CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) before proceeding.
 
-   For minimum permissions, see [AgentCore Starter Toolkit permissions](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime-permissions.html#runtime-permissions-starter-toolkit).
-
-2. **Log in** via the AWS CLI:
+1. **Log in** via the AWS CLI:
 
    ```bash
    aws login
@@ -49,22 +67,24 @@ A production-ready AI customer support agent built on **Amazon Bedrock AgentCore
 
    This opens your browser — sign in with your AWS console credentials. [More details](https://docs.aws.amazon.com/signin/latest/userguide/command-line-sign-in.html).
 
-3. **Verify credentials:**
+2. **Verify credentials:**
 
    ```bash
    aws sts get-caller-identity
    ```
 
+> **Note:** The demo deploys CDK stacks (Lambda, Cognito, ECR, IAM roles, CloudWatch) and uses the AgentCore Starter Toolkit, which together require broad permissions. For the simplest setup, attach **`AdministratorAccess`** and **`SignInLocalDevelopmentAccess`** to your IAM user (IAM Console → Users → your user → Add permissions → Attach policies directly). For minimum permissions, see [AgentCore Starter Toolkit permissions](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime-permissions.html#runtime-permissions-starter-toolkit).
+
 ### Enable Anthropic Model Access
 
-The agent uses **Anthropic Claude Sonnet 4.5** via a [global inference profile](https://docs.aws.amazon.com/bedrock/latest/userguide/inference-profiles-support.html). Since October 2025, Amazon Bedrock [auto-enables all serverless foundation models](https://aws.amazon.com/about-aws/whats-new/2025/10/amazon-bedrock-automatic-enablement-serverless-foundation-models/). However, **Anthropic models require a one-time usage form** before first use:
+The agent uses **Anthropic Claude Sonnet 4.6** via a [global inference profile](https://docs.aws.amazon.com/bedrock/latest/userguide/inference-profiles-support.html). Since October 2025, Amazon Bedrock [auto-enables all serverless foundation models](https://aws.amazon.com/about-aws/whats-new/2025/10/amazon-bedrock-automatic-enablement-serverless-foundation-models/). However, **Anthropic models require a one-time usage form** before first use:
 
 1. Open the [Amazon Bedrock console](https://console.aws.amazon.com/bedrock/) and go to the **Playground**
 2. Select any **Anthropic Claude** model
 3. Complete the one-time usage form when prompted
 4. If completed from your AWS organization management account, this enables Anthropic models across all member accounts
 
-> **Note:** You can also complete this form via the API. See the [simplified model access blog post](https://aws.amazon.com/blogs/security/simplified-amazon-bedrock-model-access/) for details.
+> **Changing the model:** The model ID is configured in [`src/model/load.py`](src/model/load.py). To use a different model, update the `MODEL_ID` variable to any [supported Bedrock model ID](https://docs.aws.amazon.com/bedrock/latest/userguide/inference-profiles-support.html) and redeploy.
 
 ---
 
@@ -81,7 +101,7 @@ scripts/deploy.sh
 > **Already deployed?** Run `uv run agentcore status` first. If the agent shows `READY` or `ACTIVE`, skip to Step 2.
 
 This deploys:
-- **AgentCore Runtime** — containerized agent running Claude Sonnet 4.5
+- **AgentCore Runtime** — containerized agent running Claude Sonnet 4.6
 - **AgentCore Gateway** — MCP-based tool gateway with JWT authorization
 - **AgentCore Memory** — persistent memory scoped per user
 - **Cognito User Pool** — user authentication
