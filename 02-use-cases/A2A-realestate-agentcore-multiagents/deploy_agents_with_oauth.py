@@ -280,7 +280,6 @@ class AgentDeployer:
             # Validate and add environment variables if provided
             env_args = []
             if env_vars:
-                print("\nEnvironment variables:")
                 for key, value in env_vars.items():
                     # Validate key is alphanumeric with underscores (safe)
                     if not key.replace('_', '').isalnum():
@@ -288,21 +287,11 @@ class AgentDeployer:
                     
                     # Add to command
                     env_args.extend(['--env', f'{key}={value}'])
-                    
-                    # Show truncated value for security - mask sensitive values
-                    if 'SECRET' in key.upper() or 'TOKEN' in key.upper() or 'PASSWORD' in key.upper():
-                        display_value = '***REDACTED***'
-                    elif len(value) < 80:
-                        display_value = value
-                    else:
-                        display_value = value[:77] + '...'
-                    print(f"  {key}={display_value}")
             
             # Combine validated command parts
             cmd = base_cmd + env_args
             
             print("\nCommand: agentcore launch --auto-update-on-conflict [+ env vars]")
-            print(f"Working directory: {os.getcwd()}")
             
             # Execute with validated command
             # Security: All command components are validated and from trusted sources
