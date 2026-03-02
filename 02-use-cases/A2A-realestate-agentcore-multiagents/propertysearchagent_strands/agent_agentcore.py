@@ -29,7 +29,7 @@ strands_agent = create_property_search_agent()
 
 # Create A2A server
 # Port 9000 is required for AgentCore A2A protocol
-host = "0.0.0.0"
+host = "0.0.0.0"  # nosec B104 - required for AgentCore A2A protocol
 port = 9000
 
 # Create A2A server with serve_at_root=True for AgentCore

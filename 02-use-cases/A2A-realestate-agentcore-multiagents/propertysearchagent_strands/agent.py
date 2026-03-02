@@ -396,7 +396,7 @@ def create_a2a_server() -> A2AServer:
     """
     agent = create_property_search_agent()
     
-    host = os.getenv("AGENT_HOST", "0.0.0.0")
+    host = os.getenv("AGENT_HOST", "0.0.0.0")  # nosec B104 - required for container deployment
     port = int(os.getenv("AGENT_PORT", "5002"))
     version = os.getenv("AGENT_VERSION", "1.0.0")
     

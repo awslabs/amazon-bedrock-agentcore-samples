@@ -45,7 +45,7 @@ class BearerTokenMiddleware(BaseHTTPMiddleware):
 
 # AgentCore runtime URL
 runtime_url = os.environ.get('AGENTCORE_RUNTIME_URL', 'http://127.0.0.1:9000/')
-host = os.getenv("AGENT_HOST", "0.0.0.0")
+host = os.getenv("AGENT_HOST", "0.0.0.0")  # nosec B104 - required for AgentCore A2A protocol
 port = int(os.getenv("AGENT_PORT", "9000"))
 
 # Create the coordinator agent
