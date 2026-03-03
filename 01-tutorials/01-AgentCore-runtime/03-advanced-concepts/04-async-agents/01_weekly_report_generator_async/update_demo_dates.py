@@ -133,7 +133,7 @@ def rename_files_with_week(demo_data_path, week_num, week_dates):
     # Patterns to update
     patterns = [
         (r'_week_\d{2}\.', f'_week_{week_num:02d}.'),
-        (r'_jan_\d{2}\.', f"_{monday.strftime('%b').lower()}_{monday.day:02d}."),
+        (r'_(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)_\d{2}\.', f"_{monday.strftime('%b').lower()}_{monday.day:02d}."),
     ]
     
     for file_path in demo_data_path.rglob('*'):
@@ -192,7 +192,7 @@ def upload_to_s3(demo_data_path, bucket_name, prefix='demo_data'):
 def update_tools_config(bucket_name):
     """Update S3_BUCKET configuration in tools.py file."""
     script_dir = Path(__file__).parent
-    tools_file = script_dir / 'tools.py'
+    tools_file = script_dir / 'agent' / 'tools.py'
     
     if not tools_file.exists():
         print(f"{get_symbol('⚠️', 'WARNING:')} tools.py not found at {tools_file}")

@@ -16,7 +16,7 @@
       "severity": "Critical",
       "status": "In Progress",
       "assigned_to": "Alex Rivera",
-      "opened_date": "2026-02-23",
+      "opened_date": "2026-03-02",
       "description": "Users in EU unable to complete checkout with Visa cards",
       "customer_impact": "High - affecting 15% of EU transactions"
     },
@@ -26,7 +26,7 @@
       "severity": "Critical",
       "status": "In Progress",
       "assigned_to": "Priya Patel",
-      "opened_date": "2026-02-24",
+      "opened_date": "2026-03-03",
       "description": "Large data exports lock tables and slow down entire system",
       "customer_impact": "Medium - 3 enterprise customers affected"
     }
@@ -38,7 +38,7 @@
       "severity": "High",
       "status": "Open",
       "assigned_to": "Jordan Lee",
-      "opened_date": "2026-03-01"
+      "opened_date": "2026-03-08"
     },
     {
       "id": "BUG-2894",
@@ -46,7 +46,7 @@
       "severity": "High",
       "status": "In Review",
       "assigned_to": "Samantha Brooks",
-      "opened_date": "2026-02-23"
+      "opened_date": "2026-03-02"
     },
     {
       "id": "BUG-2899",
@@ -54,7 +54,7 @@
       "severity": "High",
       "status": "Open",
       "assigned_to": "Alex Rivera",
-      "opened_date": "2026-02-24"
+      "opened_date": "2026-03-03"
     }
   ],
   "recently_closed": [
@@ -62,14 +62,14 @@
       "id": "BUG-2847",
       "title": "Payment processing timeout errors",
       "severity": "Critical",
-      "closed_date": "2026-02-24",
+      "closed_date": "2026-03-03",
       "resolution": "Fixed connection pooling configuration"
     },
     {
       "id": "BUG-2856",
       "title": "Dashboard loading slowly for large datasets",
       "severity": "High",
-      "closed_date": "2026-02-23",
+      "closed_date": "2026-03-02",
       "resolution": "Implemented query optimization and caching"
     }
   ]
