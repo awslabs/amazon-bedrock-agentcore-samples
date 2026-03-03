@@ -20,16 +20,73 @@ A production-ready AI customer support agent built on **Amazon Bedrock AgentCore
 
 ## Prerequisites
 
+### Clone the Repository
+
+1. **Verify git is installed:**
+
+   ```bash
+   git --version
+   ```
+
+   If git is not installed, you can get it from [git-scm.com/install/mac](https://git-scm.com/install/mac).
+
+2. **Clone and navigate to the project:**
+
+   ```bash
+   git clone https://github.com/awslabs/amazon-bedrock-agentcore-samples.git
+   cd amazon-bedrock-agentcore-samples/05-blueprints/customer-support-agent-with-agentcore
+   ```
+
+### Required Tools
+
 | Tool | Version | Install |
 |------|---------|---------|
-| **uv** (Python + packages) | Latest | [Install guide](https://docs.astral.sh/uv/getting-started/installation/). `uv` automatically downloads Python 3.10+ when you run `uv sync`. |
-| **Node.js** | 20+ | Install via [nvm](https://github.com/nvm-sh/nvm#installing-and-updating) — `nvm install 20 && nvm use 20` |
-| **Docker** | Latest | [Docker Desktop](https://docs.docker.com/desktop/setup/install/mac-install/) or [Finch](https://runfinch.com/docs/getting-started/installation/) |
-| **AWS CDK** | v2 | [Install guide](https://docs.aws.amazon.com/cdk/v2/guide/prerequisites.html) |
-| **AWS CLI** | v2 | [Install guide](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) |
-| **AgentCore CLI** | Latest | Added to project's dev dependency so automatically installed with `uv sync`, alternatively run `uv pip install bedrock-agentcore-starter-toolkit` |
+| **uv** (Python + packages) | Latest | [Install guide](https://docs.astral.sh/uv/getting-started/installation/) |
+| **Node.js** | 20+ | First install [nvm](https://github.com/nvm-sh/nvm#installing-and-updating), then run: `nvm install 20 && nvm use 20` |
+| **Docker** | Latest | [Docker Desktop](https://docs.docker.com/desktop/setup/install/mac-install/) |
+| **AWS CLI** | **v2.32.0+** | [Install guide](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) |
 
-You will also need **AWS credentials** configured with permissions to your account. This can be accessed via `aws login`, [more details](https://docs.aws.amazon.com/signin/latest/userguide/command-line-sign-in.html). For minimum IAM permissions required, see [AgentCore Starter Toolkit permissions](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime-permissions.html#runtime-permissions-starter-toolkit).
+> **Tip:** `scripts/deploy.sh` runs pre-flight checks for all of the above — tools, CLI version, AWS credentials, Docker, and Bedrock model access — and will warn you with actionable guidance if anything is missing.
+
+### AWS Credentials & Permissions
+
+> **Important:** The `aws login` command requires AWS CLI **v2.32.0 or later**. Run `aws --version` to check. If your version is older, [update the CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) before proceeding.
+
+1. **Log in** via the AWS CLI:
+
+   ```bash
+   aws login
+   ```
+
+   This opens your browser — sign in with your AWS console credentials.
+
+2. **Verify credentials:**
+
+   ```bash
+   aws sts get-caller-identity
+   ```
+[More details on aws login and credentials](https://docs.aws.amazon.com/signin/latest/userguide/command-line-sign-in.html).
+
+> **Note:** The demo deploys CDK stacks (Lambda, Cognito, ECR, IAM roles, CloudWatch), which together require broad permissions. For the simplest setup, ensure **`AdministratorAccess`** and **`SignInLocalDevelopmentAccess`** is attached to your IAM user (IAM Console → Users → your user → Add permissions → Attach policies directly). For minimum permissions, see [AgentCore Starter Toolkit permissions](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime-permissions.html#runtime-permissions-starter-toolkit).
+
+### Enable Anthropic Model Access
+
+The agent uses **Anthropic Claude Sonnet 4.5** via a [global inference profile](https://docs.aws.amazon.com/bedrock/latest/userguide/inference-profiles-support.html). Since October 2025, Amazon Bedrock [auto-enables all serverless foundation models](https://aws.amazon.com/about-aws/whats-new/2025/10/amazon-bedrock-automatic-enablement-serverless-foundation-models/). However, **Anthropic models require a one-time usage form** before first use:
+
+1. Open the [Amazon Bedrock console](https://console.aws.amazon.com/bedrock/) and go to the **Playground**
+2. Select **Anthropic Claude Sonnet 4.5**
+3. Complete the one-time usage form when prompted
+4. If completed from your AWS organization management account, this enables Anthropic models across all member accounts
+
+> **Changing the model:** The model ID is configured in [`src/model/load.py`](src/model/load.py). Update the `MODEL_ID` variable and redeploy. Alternatives:
+>
+> | Model | Global Inference Profile ID |
+> |-------|---------------------------|
+> | Claude Sonnet 4.5 (default) | `global.anthropic.claude-sonnet-4-5-20250929-v1:0` |
+> | Claude Haiku 4.5 (faster, lower cost) | `global.anthropic.claude-haiku-4-5-20251001-v1:0` |
+> | Claude Sonnet 4.6 | `global.anthropic.claude-sonnet-4-6` |
+>
+> See [supported inference profiles](https://docs.aws.amazon.com/bedrock/latest/userguide/inference-profiles-support.html) for the full list.
 
 ---
 
@@ -43,7 +100,7 @@ scripts/deploy.sh
 
 > **Note:** The first deploy takes a while — CDK builds a Docker image, pushes it to ECR, and provisions all resources (Runtime, Gateway, Memory, Cognito, Lambdas).
 
-> **Already deployed?** Run `agentcore status` first. If the agent shows `READY` or `ACTIVE`, skip to Step 2.
+> **Already deployed?** Run `uv run agentcore status` first. If the agent shows `READY` or `ACTIVE`, skip to Step 2.
 
 This deploys:
 - **AgentCore Runtime** — containerized agent running Claude Sonnet 4.5
@@ -55,7 +112,7 @@ This deploys:
 Verify it's running:
 
 ```bash
-agentcore status
+uv run agentcore status
 ```
 
 ---
@@ -94,7 +151,7 @@ This opens your browser for a Cognito login, then sets the bearer token as an en
 With your token set, invoke the agent:
 
 ```bash
-agentcore invoke '{"prompt": "Who am I?"}'
+uv run agentcore invoke '{"prompt": "Who am I?"}'
 ```
 
 The agent identifies you from the JWT token — your email, group, and permissions. No API keys or service accounts. Real user identity flows end-to-end.
@@ -102,11 +159,11 @@ The agent identifies you from the JWT token — your email, group, and permissio
 Now try fetching orders and processing a refund:
 
 ```bash
-agentcore invoke '{"prompt": "Show me my recent orders"}'
+uv run agentcore invoke '{"prompt": "Show me my recent orders"}'
 ```
 
 ```bash
-agentcore invoke '{"prompt": "I need a refund for order ORD-12420. The phone case was damaged."}'
+uv run agentcore invoke '{"prompt": "I need a refund for order ORD-12420. The phone case was damaged."}'
 ```
 
 The refund succeeds. At this point there is **no policy restricting** the refund amount — the agent can process any amount.
@@ -118,7 +175,7 @@ The refund succeeds. At this point there is **no policy restricting** the refund
 Try a large refund to establish a baseline:
 
 ```bash
-agentcore invoke '{"prompt": "I need a refund of $399 for order ORD-12430. The monitor has dead pixels."}'
+uv run agentcore invoke '{"prompt": "I need a refund of $399 for order ORD-12430. The monitor has dead pixels."}'
 ```
 
 The refund goes through because no Cedar policy is in place to block it. The agent has unrestricted access to the `process_refund` tool.
@@ -131,7 +188,7 @@ Now add policies to control which tools the agent can call and under what condit
 
 ### 5a. Create a Policy Engine
 
-1. Open the **AWS Console**(confirm region) > **Amazon Bedrock** > **AgentCore** > **Policy Engine**, click **Create policy engine**
+1. Open the **AWS Console** (confirm region), search for **Amazon Bedrock AgentCore** in the search bar, then navigate to **Policy Engine** and click **Create policy engine**
 2. Click Add policies, select supportAgentDemo gateway in resource scope dropdown.
 
 
@@ -178,7 +235,7 @@ User Request → AgentCore Runtime → AgentCore Gateway → Cedar Policy Engine
 Try the same large refund again:
 
 ```bash
-agentcore invoke '{"prompt": "I need a full refund for order ORD-12300. The shoes dont fit."}'
+uv run agentcore invoke '{"prompt": "I need a full refund for order ORD-12300. The shoes dont fit."}'
 ```
 
 This time the refund is **blocked** by the AgentCore policy. The agent receives a policy violation from the Gateway and informs the user.
@@ -191,7 +248,8 @@ The key takeaway: the agent can be jailbroken, the model can hallucinate, but th
 
 | Problem | Solution |
 |---------|----------|
-| `agentcore: command not found` | Run `uv pip install bedrock-agentcore-starter-toolkit` |
+| `aws: error: argument command: Invalid choice 'login'` | AWS CLI version is below v2.32.0. [Update to latest](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) |
+| `agentcore: command not found` | Use `uv run agentcore` (installed in project venv), or install globally: `uv pip install bedrock-agentcore-starter-toolkit` |
 | Token script fails to open browser | Copy the URL from terminal output and open manually |
 | "Unauthorized" when invoking | Token expired (1 hour). Re-run `eval $(uv run scripts/cognito-user.py --login --export)` |
 | CDK deploy fails | Ensure Docker is running. Check credentials: `aws sts get-caller-identity` |
@@ -206,9 +264,10 @@ The key takeaway: the agent can be jailbroken, the model can hallucinate, but th
 
 Every agent invocation is instrumented with OpenTelemetry out of the box. To inspect traces:
 
-1. Open the **AWS Console** in `us-west-2` or appropriate region where agent is deployed
-2. Navigate to **CloudWatch** > **GenAI Observability** > **Bedrock AgentCore**
-3. In All Sessions tab, filter by session ID matching your invocations
+1. Navigate to **CloudWatch** → **GenAI Observability** → **Bedrock AgentCore**
+2. In All Sessions tab, filter by session ID matching your invocations
+
+> **Note:** If this is your first time using traces, CloudWatch will show a banner prompting you to enable **Transaction Search** — this is a one-time account setup.
 
 Each trace shows:
 - **Full request lifecycle** — from initial request through to response
@@ -223,13 +282,13 @@ No custom logging code is required. AgentCore instruments all of this automatica
 
 ### Session IDs
 
-By default, each `agentcore invoke` call generates a new session. To start a named session, pass a session ID with the `-s` flag once — the AgentCore CLI remembers it for subsequent invocations:
+By default, each `uv run agentcore invoke` call generates a new session. To start a named session, pass a session ID with the `-s` flag once — the AgentCore CLI remembers it for subsequent invocations:
 
 ```bash
-agentcore invoke -s $(uuidgen) '{"prompt": "Show me my recent orders"}'
+uv run agentcore invoke -s $(uuidgen) '{"prompt": "Show me my recent orders"}'
 
 # Subsequent calls automatically use the same session
-agentcore invoke '{"prompt": "Refund the headphones"}'
+uv run agentcore invoke '{"prompt": "Refund the headphones"}'
 ```
 
 The agent runtime and memory (preferences, facts, session summaries) is scoped per session and user. Using the same session lets the agent reference earlier parts of the conversation.
