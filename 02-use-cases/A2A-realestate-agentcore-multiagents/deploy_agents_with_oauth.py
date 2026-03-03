@@ -334,9 +334,23 @@ class AgentDeployer:
     def extract_agent_arn(self, output):
         """Extract agent ARN from deployment output."""
         import re
+        import yaml
         
-        # Look for ARN pattern - matches format with alphanumeric suffix
-        # Example: arn:aws:bedrock-agentcore:us-east-1:123456:runtime/agent_name-abc123XYZ
+        # First try: read from .bedrock_agentcore.yaml (most reliable)
+        config_file = '.bedrock_agentcore.yaml'
+        if os.path.exists(config_file):
+            try:
+                with open(config_file, 'r') as f:
+                    config = yaml.safe_load(f)
+                for agent_name, agent_config in config.get('agents', {}).items():
+                    # Check nested bedrock_agentcore section
+                    bc = agent_config.get('bedrock_agentcore', {})
+                    if bc and bc.get('agent_arn'):
+                        return bc['agent_arn']
+            except Exception:
+                pass
+        
+        # Fallback: parse from CLI output
         arn_pattern = r'arn:aws:bedrock-agentcore:[a-z0-9-]+:\d+:runtime/[a-zA-Z0-9_-]+'
         matches = re.findall(arn_pattern, output)
         

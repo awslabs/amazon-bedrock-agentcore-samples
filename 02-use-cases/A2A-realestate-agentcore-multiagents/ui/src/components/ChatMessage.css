@@ -1,46 +1,38 @@
 .chat-message {
   display: flex;
-  gap: 1rem;
-  animation: slideIn 0.3s ease-out;
+  gap: 0.6rem;
+  padding: 0.5rem 0;
+  animation: fadeIn 0.25s ease-out;
 }
 
-@keyframes slideIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-.chat-message.user {
-  flex-direction: row-reverse;
-}
+.chat-message.user { flex-direction: row-reverse; }
 
 .message-avatar {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.5rem;
+  font-size: 0.85rem;
   flex-shrink: 0;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  font-family: var(--font-mono);
 }
 
 .chat-message.user .message-avatar {
-  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-  box-shadow: 0 4px 12px rgba(245, 87, 108, 0.3);
+  background: var(--blue-dim);
+  border-color: var(--blue-border);
+  color: var(--blue);
 }
 
-.message-content {
-  flex: 1;
-  max-width: 70%;
-}
+.message-content { flex: 1; max-width: 78%; }
 
 .chat-message.user .message-content {
   display: flex;
@@ -52,89 +44,77 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.25rem;
 }
 
-.chat-message.user .message-header {
-  flex-direction: row-reverse;
-}
+.chat-message.user .message-header { flex-direction: row-reverse; }
 
 .message-sender {
-  font-weight: 600;
-  font-size: 0.85rem;
-  color: #374151;
+  font-family: var(--font-mono);
+  font-weight: 500;
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
 }
 
 .message-time {
-  font-size: 0.75rem;
-  color: #9ca3af;
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  color: var(--text-muted);
+  opacity: 0.6;
 }
 
 .message-text {
-  padding: 1rem 1.25rem;
-  border-radius: 15px;
-  line-height: 1.6;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius);
+  line-height: 1.7;
+  font-size: 0.84rem;
   word-wrap: break-word;
 }
 
 .chat-message.agent .message-text {
-  background: #f3f4f6;
-  color: #1f2937;
-  border-bottom-left-radius: 5px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
 }
 
 .chat-message.user .message-text {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  border-bottom-right-radius: 5px;
+  background: var(--blue-dim);
+  border: 1px solid var(--blue-border);
+  color: var(--blue);
 }
 
-.message-text p {
-  margin: 0 0 0.75rem 0;
-}
-
-.message-text p:last-child {
-  margin-bottom: 0;
-}
-
-.message-text strong {
-  font-weight: 600;
-}
-
-.message-text ul,
-.message-text ol {
-  margin: 0.5rem 0;
-  padding-left: 1.5rem;
-}
-
-.message-text li {
-  margin: 0.25rem 0;
-}
+.message-text p { margin: 0 0 0.5rem 0; }
+.message-text p:last-child { margin-bottom: 0; }
+.message-text strong { font-weight: 600; color: var(--accent); }
+.chat-message.user .message-text strong { color: var(--blue); }
+.message-text ul, .message-text ol { margin: 0.35rem 0; padding-left: 1.2rem; }
+.message-text li { margin: 0.15rem 0; }
+.message-text li::marker { color: var(--text-muted); }
 
 .message-text code {
-  background: rgba(0, 0, 0, 0.1);
-  padding: 0.2rem 0.4rem;
-  border-radius: 4px;
-  font-size: 0.9em;
+  font-family: var(--font-mono);
+  background: rgba(0, 212, 170, 0.08);
+  color: var(--accent);
+  padding: 0.1rem 0.3rem;
+  border-radius: 2px;
+  font-size: 0.8em;
 }
 
-.chat-message.user .message-text code {
-  background: rgba(255, 255, 255, 0.2);
+.message-text pre {
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.75rem;
+  overflow-x: auto;
+  margin: 0.5rem 0;
 }
+
+.message-text pre code { background: none; padding: 0; font-size: 0.78rem; }
 
 @media (max-width: 768px) {
-  .message-content {
-    max-width: 85%;
-  }
-
-  .message-avatar {
-    width: 35px;
-    height: 35px;
-    font-size: 1.2rem;
-  }
-
-  .message-text {
-    padding: 0.875rem 1rem;
-    font-size: 0.95rem;
-  }
+  .message-content { max-width: 90%; }
+  .message-avatar { width: 28px; height: 28px; font-size: 0.75rem; }
+  .message-text { padding: 0.6rem 0.8rem; font-size: 0.82rem; }
 }

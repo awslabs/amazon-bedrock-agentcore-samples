@@ -1,8 +1,8 @@
 import axios from 'axios';
 
 // Load configuration from environment or config file
-const BEARER_TOKEN = process.env.REACT_APP_BEARER_TOKEN || '';
-const COORDINATOR_AGENT_ARN = process.env.REACT_APP_COORDINATOR_AGENT_ARN || '';
+const BEARER_TOKEN = import.meta.env.VITE_BEARER_TOKEN || '';
+const COORDINATOR_AGENT_ARN = import.meta.env.VITE_COORDINATOR_AGENT_ARN || '';
 
 // Persistent session ID for conversation context
 let CONVERSATION_SESSION_ID: string | null = null;
@@ -87,7 +87,7 @@ async function callAgent(agentArn: string, message: string): Promise<string> {
 export const checkHealth = async (): Promise<{ status: string; timestamp: string }> => {
   // Check if token and coordinator ARN are configured
   if (!BEARER_TOKEN || !COORDINATOR_AGENT_ARN) {
-    throw new Error('Configuration missing. Please set REACT_APP_BEARER_TOKEN and REACT_APP_COORDINATOR_AGENT_ARN.');
+    throw new Error('Configuration missing. Please set VITE_BEARER_TOKEN and VITE_COORDINATOR_AGENT_ARN.');
   }
   
   return {

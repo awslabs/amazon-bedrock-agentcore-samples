@@ -2,65 +2,24 @@
   "name": "real-estate-ui",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
   "dependencies": {
-    "@testing-library/jest-dom": "^5.17.0",
-    "@testing-library/react": "^13.4.0",
-    "@testing-library/user-event": "^13.5.0",
-    "@types/jest": "^27.5.2",
-    "@types/node": "^16.18.0",
-    "@types/react": "^18.2.0",
-    "@types/react-dom": "^18.2.0",
     "axios": "^1.7.9",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-markdown": "^9.0.0",
-    "react-scripts": "5.0.1",
-    "typescript": "^4.9.5",
-    "web-vitals": "^2.1.4"
+    "react-markdown": "^9.0.0"
   },
-  "overrides": {
-    "minimatch": ">=10.0.0",
-    "node-forge": ">=1.3.2",
-    "nth-check": ">=2.0.1",
-    "postcss": ">=8.4.31",
-    "glob": ">=11.0.0",
-    "ajv": ">=8.18.0",
-    "js-yaml": ">=4.1.1",
-    "lodash": ">=4.17.22",
-    "jsonpath": ">=1.1.2",
-    "mdast-util-to-hast": ">=13.2.1",
-    "rollup": ">=4.0.0",
-    "qs": ">=6.14.0",
-    "serialize-javascript": ">=7.0.3",
-    "webpack-dev-server": ">=5.0.0",
-    "bfj": ">=9.1.3"
+  "devDependencies": {
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "@vitejs/plugin-react": "^4.3.0",
+    "typescript": "^5.5.0",
+    "vite": "^6.0.0"
   },
   "scripts": {
-    "start": "react-scripts start",
-    "build": "react-scripts build",
-    "test": "react-scripts test",
-    "eject": "react-scripts eject"
-  },
-  "eslintConfig": {
-    "extends": [
-      "react-app",
-      "react-app/jest"
-    ]
-  },
-  "browserslist": {
-    "production": [
-      ">0.2%",
-      "not dead",
-      "not op_mini all"
-    ],
-    "development": [
-      "last 1 chrome version",
-      "last 1 firefox version",
-      "last 1 safari version"
-    ]
-  },
-  "proxy": "http://localhost:5000",
-  "devDependencies": {
-    "@types/hast": "^3.0.4"
+    "start": "vite",
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
   }
 }

@@ -4,8 +4,7 @@ import ChatMessage from './components/ChatMessage';
 import { sendMessage, checkHealth } from './services/api';
 import * as directApi from './services/directApi';
 
-// Check if using direct API mode
-const API_MODE = process.env.REACT_APP_API_MODE || 'proxy';
+const API_MODE = import.meta.env.VITE_API_MODE || 'proxy';
 const api = API_MODE === 'direct' ? directApi : { sendMessage, checkHealth };
 
 interface Message {
@@ -23,12 +22,10 @@ function App() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Check API health on mount
     api.checkHealth()
       .then(() => setIsConnected(true))
       .catch(() => setIsConnected(false));
 
-    // Add welcome message
     setMessages([{
       id: '1',
       text: "Hello! I'm your Real Estate Agent (A2A) powered by Amazon Bedrock AgentCore. I can help you search for properties and make bookings. What are you looking for today?",
@@ -38,7 +35,6 @@ function App() {
   }, []);
 
   useEffect(() => {
-    // Scroll to bottom when messages change
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
@@ -58,23 +54,19 @@ function App() {
 
     try {
       const response = await api.sendMessage(inputValue);
-      
-      const agentMessage: Message = {
+      setMessages(prev => [...prev, {
         id: (Date.now() + 1).toString(),
         text: response.response,
         sender: 'agent',
         timestamp: new Date()
-      };
-
-      setMessages(prev => [...prev, agentMessage]);
+      }]);
     } catch (error) {
-      const errorMessage: Message = {
+      setMessages(prev => [...prev, {
         id: (Date.now() + 1).toString(),
         text: `Sorry, I encountered an error: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again.`,
         sender: 'agent',
         timestamp: new Date()
-      };
-      setMessages(prev => [...prev, errorMessage]);
+      }]);
     } finally {
       setIsLoading(false);
     }
@@ -89,32 +81,31 @@ function App() {
 
   const quickActions = [
     "Find apartments in New York under $4000",
+    "Show me 2-bedroom houses in Seattle",
     "Search for luxury properties in San Francisco",
     "List all available bookings"
   ];
-
-  const handleQuickAction = (action: string) => {
-    setInputValue(action);
-  };
 
   return (
     <div className="App">
       <header className="app-header">
         <div className="header-content">
-          <h1>🏠 Real Estate Agent (A2A)</h1>
-          <p>Powered by Amazon AgentCore</p>
+          <div className="header-left">
+            <div className="header-logo">
+              <span>A2A</span>
+              REAL ESTATE AGENT
+            </div>
+            <div className="header-divider"></div>
+            <div className="header-nav">
+              <span className="header-nav-item active">⬡ Chat</span>
+            </div>
+          </div>
           <div className="status-indicator">
             <span className={`status-dot ${isConnected ? 'connected' : 'disconnected'}`}></span>
             <span className="status-text">{isConnected ? 'Connected' : 'Disconnected'}</span>
           </div>
         </div>
       </header>
-
-      {API_MODE === 'direct' && (
-        <div className="token-warning">
-          ⚠️ OAuth token expires in 60 minutes. If you get authentication errors, restart the UI with <code>./start-ui.sh</code>
-        </div>
-      )}
 
       <main className="app-main">
         <div className="chat-container">
@@ -125,11 +116,9 @@ function App() {
             {isLoading && (
               <div className="loading-indicator">
                 <div className="typing-dots">
-                  <span></span>
-                  <span></span>
-                  <span></span>
+                  <span></span><span></span><span></span>
                 </div>
-                <span className="loading-text">Agent is thinking...</span>
+                <span className="loading-text">Thinking...</span>
               </div>
             )}
             <div ref={messagesEndRef} />
@@ -143,7 +132,7 @@ function App() {
                   <button
                     key={index}
                     className="quick-action-btn"
-                    onClick={() => handleQuickAction(action)}
+                    onClick={() => setInputValue(action)}
                   >
                     {action}
                   </button>
@@ -155,7 +144,7 @@ function App() {
           <div className="input-container">
             <textarea
               className="message-input"
-              placeholder="Type your message here... (Press Enter to send)"
+              placeholder="Type your message... (Press Enter to send)"
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyPress={handleKeyPress}
@@ -166,15 +155,16 @@ function App() {
               className="send-button"
               onClick={handleSend}
               disabled={isLoading || !inputValue.trim()}
+              aria-label="Send message"
             >
-              {isLoading ? '⏳' : '📤'}
+              {isLoading ? '...' : '→'}
             </button>
           </div>
         </div>
       </main>
 
       <footer className="app-footer">
-        <p>Powered by AWS Bedrock AgentCore • A2A Protocol • OAuth 2.0</p>
+        <p>Powered by Amazon Bedrock AgentCore</p>
       </footer>
     </div>
   );

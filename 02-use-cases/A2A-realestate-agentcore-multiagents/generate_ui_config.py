@@ -60,13 +60,13 @@ def main():
 # Generated: {json.loads(json.dumps(deployment_info))['timestamp']}
 
 # OAuth Bearer Token (expires in 60 minutes)
-REACT_APP_BEARER_TOKEN={bearer_token}
+VITE_BEARER_TOKEN={bearer_token}
 
 # Coordinator Agent ARN (orchestrates sub-agents via A2A protocol)
-REACT_APP_COORDINATOR_AGENT_ARN={coordinator_agent_arn}
+VITE_COORDINATOR_AGENT_ARN={coordinator_agent_arn}
 
 # API Mode (direct = connect directly to AWS coordinator)
-REACT_APP_API_MODE=direct
+VITE_API_MODE=direct
 """
     
     env_file = 'ui/.env.local'
