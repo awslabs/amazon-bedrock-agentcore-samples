@@ -264,9 +264,10 @@ The key takeaway: the agent can be jailbroken, the model can hallucinate, but th
 
 Every agent invocation is instrumented with OpenTelemetry out of the box. To inspect traces:
 
-1. Open the **AWS Console** in `us-west-2` or appropriate region where agent is deployed
-2. Navigate to **CloudWatch** > **GenAI Observability** > **Bedrock AgentCore**
-3. In All Sessions tab, filter by session ID matching your invocations
+1. Navigate to **CloudWatch** → **GenAI Observability** → **Bedrock AgentCore**
+2. In All Sessions tab, filter by session ID matching your invocations
+
+> **Note:** If this is your first time using traces, CloudWatch will show a banner prompting you to enable **Transaction Search** — this is a one-time account setup.
 
 Each trace shows:
 - **Full request lifecycle** — from initial request through to response
