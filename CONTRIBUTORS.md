@@ -89,3 +89,5 @@
 - Traci Lim (longwind48)
 - Jerad Engebreth (jcengebreth)
 - Roberto Catalano
+- afarntrog
+- Sid Ahmed boudboub (sierrabravo98)
