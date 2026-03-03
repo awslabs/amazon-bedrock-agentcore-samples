@@ -20,7 +20,7 @@ check_cmd() {
 
 echo "==> Pre-flight checks"
 check_cmd uv       "Install: https://docs.astral.sh/uv/getting-started/installation/"
-check_cmd node     "Install: nvm install 20 && nvm use 20"
+check_cmd node     "Install nvm (https://github.com/nvm-sh/nvm#installing-and-updating), then run: nvm install 20 && nvm use 20"
 check_cmd npm      "Comes with Node.js"
 check_cmd docker   "Install: https://docs.docker.com/desktop/setup/install/mac-install/"
 check_cmd aws      "Install: https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html"
@@ -63,14 +63,32 @@ fi
 
 # Check Bedrock model access for required model (Claude Sonnet 4.5)
 # Bedrock auto-enables all serverless models, but Anthropic requires a one-time usage form.
-REQUIRED_MODEL="anthropic.claude-sonnet-4-5-20250929-v1:0"
-if ! aws bedrock get-foundation-model --model-identifier "$REQUIRED_MODEL" \
-    --query 'modelDetails.modelLifecycle.status' --output text 2>/dev/null | grep -qi "ACTIVE"; then
-    echo "WARNING: Could not verify Bedrock model access for Claude Sonnet 4.5 ($REQUIRED_MODEL)." >&2
-    echo "         Anthropic models require a one-time usage form. Complete it in the Bedrock" >&2
-    echo "         console Playground by selecting any Anthropic Claude model." >&2
-    echo "         Details: https://aws.amazon.com/blogs/security/simplified-amazon-bedrock-model-access/" >&2
-    echo "         The deploy will continue, but the agent will fail to invoke without model access." >&2
+# Note: This tests the *deployer's* credentials. The agent runtime uses its own execution role,
+# so a failure here does not necessarily mean the deployed agent will fail.
+REQUIRED_MODEL="global.anthropic.claude-sonnet-4-5-20250929-v1:0"
+echo "    Verifying Bedrock model access ($REQUIRED_MODEL)..."
+if BODY_FILE=$(mktemp 2>/dev/null) && \
+   echo -n '{"anthropic_version":"bedrock-2023-05-31","max_tokens":32,"messages":[{"role":"user","content":"hi"}]}' > "$BODY_FILE" && \
+   aws bedrock-runtime invoke-model --model-id "$REQUIRED_MODEL" \
+       --content-type "application/json" --accept "application/json" \
+       --cli-connect-timeout 5 --cli-read-timeout 10 \
+       --body "fileb://$BODY_FILE" /dev/null > /dev/null 2>&1; then
+    rm -f "$BODY_FILE"
+    echo "    Model access verified."
+else
+    rm -f "${BODY_FILE:-}"
+    echo "WARNING: Could not invoke Bedrock model ($REQUIRED_MODEL)." >&2
+    echo "         Possible reasons:" >&2
+    echo "" >&2
+    echo "         1. Anthropic first-time usage form not completed." >&2
+    echo "            Complete it in the Bedrock console Playground by selecting any Anthropic Claude model." >&2
+    echo "            Details: https://aws.amazon.com/blogs/security/simplified-amazon-bedrock-model-access/" >&2
+    echo "" >&2
+    echo "         2. Your current IAM identity lacks bedrock:InvokeModel permission." >&2
+    echo "            Note: the deployed agent uses its own execution role, so this may not" >&2
+    echo "            be a problem. Verify after deployment with: uv run agentcore invoke" >&2
+    echo "" >&2
+    echo "         The deploy will continue." >&2
 fi
 
 echo "    All checks passed."
