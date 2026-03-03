@@ -1,6 +1,6 @@
 # A2A Real Estate AgentCore Multi-Agents
 
-A sample AI-powered real estate platform built with AWS Bedrock AgentCore, featuring multi-agent coordination using the A2A (Agent-to-Agent) protocol with OAuth 2.0 authentication.
+A sample AI-powered real estate platform built with Amazon Bedrock AgentCore, featuring multi-agent coordination using the A2A (Agent-to-Agent) protocol with OAuth 2.0 authentication.
 
 ## 🎬 Demo
 
@@ -10,46 +10,18 @@ A sample AI-powered real estate platform built with AWS Bedrock AgentCore, featu
 
 ## 🏗️ Architecture
 
-This system demonstrates a sophisticated multi-agent architecture with direct UI-to-agent communication:
+This system demonstrates a multi-agent architecture with direct UI-to-agent communication:
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                     React Web UI                             │
-│                  (localhost:3000)                            │
-│         • OAuth Token Management                             │
-│         • Direct AWS Connection                              │
-└────────────────────┬────────────────────────────────────────┘
-                     │ A2A Protocol + OAuth
-                     │ (Direct to AWS)
-                     ▼
-┌─────────────────────────────────────────────────────────────┐
-│              AWS Bedrock AgentCore                           │
-│                                                              │
-│  ┌──────────────────────────────────────────────────────┐  │
-│  │                Coordinator Agent                      │  │
-│  │         • Orchestrates sub-agents                     │  │
-│  │         • Natural language understanding              │  │
-│  └────────┬───────────────────────────────┬──────────────┘  │
-│           │ A2A Protocol                  │ A2A Protocol    │
-│           ▼                               ▼                 │
-│  ┌────────────────────────┐      ┌──────────────────────┐  │
-│  │ Property Search Agent  │      │ Property Booking Agent│  │
-│  │ • Search properties    │      │ • Create bookings     │  │
-│  │ • Filter by criteria   │      │ • Check status        │  │
-│  └────────────────────────┘      └──────────────────────┘  │
-│                                                              │
-│         Multi-Agent Coordination via A2A Protocol            │
-└─────────────────────────────────────────────────────────────┘
-```
+![Architecture Diagram](assets/architecture.png)
 
 ### Key Features
 
 - **Multi-Agent Coordination**: Coordinator agent orchestrates specialized agents
 - **A2A Protocol**: Industry-standard agent-to-agent communication
-- **OAuth 2.0 Security**: Secure authentication using AWS Cognito
+- **OAuth 2.0 Security**: Secure authentication using Amazon Cognito
 - **Professional UI**: Modern React TypeScript interface
 - **Real-time Communication**: Async message handling with streaming support
-- **Serverless Deployment**: Deployed on AWS Bedrock AgentCore serverless runtime
+- **Serverless Deployment**: Deployed on Amazon Bedrock AgentCore serverless runtime
 
 ## 📋 Prerequisites
 
@@ -57,7 +29,7 @@ This system demonstrates a sophisticated multi-agent architecture with direct UI
 - **Node.js 16+** and npm
 - **AWS Account** with appropriate permissions
 - **AWS CLI** configured with credentials
-- **AgentCore CLI** installed (`pip install bedrock-agentcore-cli`)
+- **Amazon AgentCore CLI** installed (`pip install bedrock-agentcore-cli`)
 
 ## 🚀 Quick Start
 
@@ -138,53 +110,7 @@ The UI provides quick action buttons for common queries:
 ```bash
 # Quick test with OAuth
 python test_coordinator_quick.py
-```
 
-## 📁 Project Structure
-
-```
-A2A-realestate-agentcore-multiagents/
-├── ui/                              # React TypeScript UI
-│   ├── src/
-│   │   ├── components/
-│   │   │   ├── ChatMessage.tsx      # Message component
-│   │   │   └── ChatMessage.css
-│   │   ├── services/
-│   │   │   ├── api.ts               # API client
-│   │   │   └── directApi.ts         # Direct AWS connection
-│   │   ├── App.tsx                  # Main app component
-│   │   ├── App.css
-│   │   └── index.tsx
-│   ├── public/
-│   └── package.json
-│
-├── propertysearchagent_strands/     # Property search agent
-│   ├── agent.py                     # Search logic
-│   ├── agent_agentcore.py           # AgentCore entry point
-│   └── requirements.txt
-│
-├── propertybookingagent_strands/    # Property booking agent
-│   ├── agent.py                     # Booking logic
-│   ├── agent_agentcore.py           # AgentCore entry point
-│   └── requirements.txt
-│
-├── common/                          # Shared utilities
-│   └── utils/
-│       └── logging_config.py
-│
-├── setup_cognito_automated.py       # Cognito setup script
-├── deploy_agents_with_oauth.py      # Deployment script
-├── generate_ui_config.py            # Generate UI configuration
-├── get_fresh_token.py               # Token generation
-├── test_coordinator_quick.py        # Quick test script
-│
-├── start-ui.sh                      # UI startup script
-│
-├── assets/                          # Media assets
-│   └── demo.gif                     # Demo animation
-│
-└── README.md                        # This file
-```
 
 ## 🔧 Configuration
 
@@ -230,7 +156,7 @@ Created by `deploy_agents_with_oauth.py`. Contains deployment details:
 Created by `deploy_agents_with_oauth.py`. Contains AgentCore configuration.
 ⚠️ **Excluded from Git** - Contains account-specific settings.
 
-### Template Files (Safe to commit)
+### Template Files
 
 - `.env.example` - Template for .env file
 - `.bedrock_agentcore.yaml.example` - Template for AgentCore config
@@ -244,20 +170,6 @@ Created by `deploy_agents_with_oauth.py`. Contains AgentCore configuration.
 - **Automatic Token Generation**: Fresh tokens generated on each UI start
 - **No Credentials in Code**: All secrets fetched from AWS at runtime
 
-### Sensitive Files (Never Commit!)
-The following files contain sensitive information and are excluded from Git:
-- `.env` - Contains Cognito client secret
-- `ui/.env.local` - Contains OAuth bearer token
-- `.bearer_token` - OAuth access token
-- `deployment_info.json` - Account-specific deployment details
-- `.bedrock_agentcore.yaml` - Account-specific agent configuration
-
-### Best Practices
-1. ✅ Always use the provided scripts (`setup_cognito_automated.py`, `start-ui.sh`)
-2. ✅ Never commit `.env` or token files
-3. ✅ Rotate credentials if accidentally exposed
-4. ✅ Use `.gitignore` to prevent accidental commits
-5. ✅ Keep your AWS credentials secure
 
 ## 🐛 Troubleshooting
 
@@ -296,40 +208,9 @@ python get_fresh_token.py
 ./start-ui.sh
 ```
 
-### Agent not responding
-
-```bash
-# Test agent directly
-python test_coordinator_quick.py
-
-# Check AgentCore logs
-agentcore logs property_search_agent
-```
-
-## 🤝 Contributing
-
-This is a demonstration project showcasing AWS Bedrock AgentCore capabilities with A2A protocol and OAuth authentication.
-
-## 🆘 Support
-
-For issues related to:
-- **AgentCore**: Check [AWS Bedrock AgentCore Documentation](https://docs.aws.amazon.com/bedrock/)
-- **A2A Protocol**: See A2A specification
-- **This Project**: Check troubleshooting section above
 
 ## Authors
 
 - **Mitul Patel** - Sr. Specialist Solutions Architect (Generative AI), AWS
 - **Ramprasath S** - Senior Applied AI Architect, AWS
 
-## Security
-
-See [CONTRIBUTING](CONTRIBUTING.md#security-issue-notifications) for more information.
-
-## License
-
-This library is licensed under the MIT-0 License. See the LICENSE file.
-
----
-
-**Built with AWS Bedrock AgentCore, Strands Framework, and A2A Protocol**
