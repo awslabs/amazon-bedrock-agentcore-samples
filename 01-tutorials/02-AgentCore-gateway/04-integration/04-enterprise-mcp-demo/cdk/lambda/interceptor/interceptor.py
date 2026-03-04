@@ -43,16 +43,18 @@ def lambda_handler(event, context):
                 logger.info(
                     f"Gateway response body: {json.dumps(response_body, indent=2)}"
                 )
-            content = (
-                response_body.get("result", {}).get("content", [])[0].get("text", {})
-                if response_body
-                else None
-            )
 
             logger.info(f"Processing RESPONSE interceptor - MCP method: {mcp_method}")
 
             if mcp_method == "tools/call" and response_body:
                 logger.info("tools/call response detected in RESPONSE interceptor")
+                content = (
+                    response_body.get("result", {})
+                    .get("content", [])[0]
+                    .get("text", {})
+                    if response_body
+                    else None
+                )
                 if GUARDRAIL_ID:
                     response = client.apply_guardrail(
                         guardrailIdentifier=GUARDRAIL_ID,
