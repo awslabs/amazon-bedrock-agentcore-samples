@@ -78,6 +78,8 @@ A comprehensive implementation of the [Agent-to-Agent (A2A)](https://a2a-protoco
    |---------------|----------------------|-------------|
    | `us-west-2`   | US West (Oregon)     | ✅ Supported |
 
+It is important to note that this sample is restricted to us-west-2 region, however Amazon Bedrock AgentCore Runtime supports A2A protocol in various other regions as well. Please find the supported regions [here](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/agentcore-regions.html). 
+
 ## Quick Start Deployment
 
 The easiest way to deploy this solution is using our automated deployment script:
