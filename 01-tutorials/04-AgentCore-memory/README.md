@@ -64,7 +64,7 @@ Explore the memory capabilities through our organized tutorials:
 | Long-Term   | Strands Hooks       | Math Assistant     | [math-assistant.ipynb](./02-long-term-memory/01-single-agent/using-strands-agent-hooks/simple-math-assistant/math-assistant.ipynb) |
 | Long-Term   | Strands Tool        | Culinary Assistant | [culinary-assistant.ipynb](./02-long-term-memory/01-single-agent/using-strands-agent-memory-tool/culinary-assistant.ipynb)         |
 | Long-Term   | Strands Multi-Agent | Travel Booking     | [travel-booking-assistant.ipynb](./02-long-term-memory/02-multi-agent/with-strands-agent/travel-booking-assistant.ipynb)           |
-| Episodic    | Strands Hooks       | Code Assistant     | [code-assistant.ipynb](./06-episodic-strategy/code-assistant.ipynb)                                                                |
+| Episodic    | Strands Hooks       | Meeting Notes Assistant | [meeting-notes-assistant.ipynb](./02-long-term-memory/01-single-agent/using-strands-agent-hooks/meeting-notes-assistant-using-episodic/meeting-notes-assistant.ipynb)                                         |
 
 ## Prerequisites
 
