@@ -213,8 +213,7 @@ if __name__ == "__main__":
     # Validate environment variables
     if not os.getenv("ELEVENLABS_API_KEY"):
         raise ValueError(
-            "ELEVENLABS_API_KEY environment variable not set. "
-            "Add it to your .env file."
+            "ELEVENLABS_API_KEY environment variable not set. Add it to your .env file."
         )
 
     # Run server with uvicorn
