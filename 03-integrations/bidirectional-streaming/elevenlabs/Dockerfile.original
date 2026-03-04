@@ -26,6 +26,10 @@ RUN pip install -r requirements.txt
 COPY server.py ./
 COPY elevenlabs_io.py ./
 
+# Create non-root user
+RUN useradd -m -u 1000 app
+USER app
+
 # Set environment variables
 ENV HOST="0.0.0.0"
 ENV PORT=8080
