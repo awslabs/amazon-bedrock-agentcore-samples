@@ -28,12 +28,17 @@ def lambda_handler(event, context):
         logger.info(f"Received event: {json.dumps(event, indent=2)}")
 
         # Check if this is a REQUEST or RESPONSE interceptor based on presence of gatewayResponse
-        if "gatewayResponse" in mcp_data and mcp_data["gatewayResponse"] is not None:
+        if (
+            "gatewayResponse" in mcp_data
+            and mcp_data["gatewayResponse"] is not None
+        ):
             logger.info("This is a RESPONSE interceptor")
 
             # Get the request body to check the method (method is in the request, not response)
             request_body = mcp_data.get("gatewayRequest", {}).get("body", {})
-            response_body = mcp_data.get("gatewayResponse", {}).get("body", {}) or {}
+            response_body = (
+                mcp_data.get("gatewayResponse", {}).get("body", {}) or {}
+            )
 
             if request_body:
                 mcp_method = request_body.get("method", "unknown")
@@ -48,7 +53,13 @@ def lambda_handler(event, context):
 
             if mcp_method == "tools/call" and response_body:
                 logger.info("tools/call response detected in RESPONSE interceptor")
-                content = response_body.get("result", {}).get("content", [])[0].get("text", {}) if response_body else None
+                content = (
+                    response_body.get("result", {}).get("content", [])[0].get(
+                        "text", {}
+                    )
+                    if response_body
+                    else None
+                )
                 if GUARDRAIL_ID:
                     response = client.apply_guardrail(
                         guardrailIdentifier=GUARDRAIL_ID,
@@ -66,11 +77,15 @@ def lambda_handler(event, context):
                     )
                     if response.get("action", None) == "GUARDRAIL_INTERVENED":
                         logger.warning("Guardrail intervened on the content. Details:")
-                        logger.warning(response.get("outputs", [{}])[0].get("text", {}))
+                        logger.warning(
+                            response.get("outputs", [{}])[0].get("text", {})
+                        )
                         body_transformed = response_body
                         body_transformed["result"]["content"][0] = {
                             "type": "text",
-                            "text": response.get("outputs", [{}])[0].get("text", {}),
+                            "text": response.get("outputs", [{}])[0].get(
+                                "text", {}
+                            ),
                         }
                         statusCode = 403
                         response = {
