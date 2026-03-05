@@ -28,7 +28,7 @@ This tutorial demonstrates how to deploy a reporting agent to AgentCore runtime.
 
 The agent orchestrates 16 different tools to create comprehensive weekly status reports automatically.
 
-![Architecture Diagram](images/architecture.png)
+![Architecture Diagram](01_weekly_report_generator_async/images/architecture.png)
 
 ### Tutorial Key Features
 
@@ -47,10 +47,11 @@ The agent orchestrates 16 different tools to create comprehensive weekly status 
 ## Project Structure
 
 ```
-├── weekly_update_agentcore_deploy.ipynb  # Deployment notebook
-├── images/                               # Architecture diagrams
-└── 01_weekly_report_generator_async/    # Agent code and data
-    ├── agent/                           # Agent implementation
+├── README.md                              # This file
+└── 01_weekly_report_generator_async/     # Agent code and data
+    ├── weekly_update_agentcore_deploy.ipynb  # Deployment notebook
+    ├── images/                            # Architecture diagrams
+    ├── agent/                             # Agent implementation
     │   ├── agent.py                     # Main agent definition
     │   ├── tools.py                     # All tool functions (16 tools)
     │   ├── requirements.txt             # Python dependencies
