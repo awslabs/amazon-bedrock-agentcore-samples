@@ -22,8 +22,7 @@ from datetime import datetime
 from typing import Dict, List, Optional
 
 # FastMCP for MCP protocol implementation
-from fastmcp import FastMCP
-
+from mcp.server.fastmcp import FastMCP
 # Strands framework
 from strands import Agent
 from strands.models import BedrockModel
@@ -213,25 +212,25 @@ logger.info("=" * 80)
 
 
 # Run the FastMCP server
-if __name__ == "__main__":
-    # AgentCore Runtime requires stateless streamable-HTTP transport (NOT stdio)
-    # Per AWS docs: https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime-mcp.html
-    # - Transport: streamable-http (stateless, HTTP-based)
-    # - Port: 8000 (MCP protocol requirement)
-    # - Host: 0.0.0.0 (listen on all interfaces)
 
-    logger.info("=" * 80)
-    logger.info("🚀 PHASE 2: FastMCP Server Startup")
-    logger.info("=" * 80)
-    logger.info("Starting FastMCP server with streamable-http transport on port 8000")
-    logger.debug(f"[DIAGNOSTIC] FastMCP instance: {mcp}")
-    logger.debug(f"[DIAGNOSTIC] FastMCP tools: {mcp.list_tools() if hasattr(mcp, 'list_tools') else 'method not available'}")
-    logger.info("=" * 80)
+# AgentCore Runtime requires stateless streamable-HTTP transport (NOT stdio)
+# Per AWS docs: https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime-mcp.html
+# - Transport: streamable-http (stateless, HTTP-based)
+# - Port: 8000 (MCP protocol requirement)
+# - Host: 0.0.0.0 (listen on all interfaces)
 
-    try:
-        logger.info("🔌 Calling mcp.run(transport='streamable-http')...")
-        mcp.run(transport="streamable-http")
-    except Exception as e:
-        logger.error("❌ FastMCP server failed to start", exc_info=True)
-        logger.error(f"Exception: {e}")
-        raise
+logger.info("=" * 80)
+logger.info("🚀 PHASE 2: FastMCP Server Startup")
+logger.info("=" * 80)
+logger.info("Starting FastMCP server with streamable-http transport on port 8000")
+logger.debug(f"[DIAGNOSTIC] FastMCP instance: {mcp}")
+logger.debug(f"[DIAGNOSTIC] FastMCP tools: {mcp.list_tools() if hasattr(mcp, 'list_tools') else 'method not available'}")
+logger.info("=" * 80)
+
+try:
+    logger.info("🔌 Calling mcp.run(transport='streamable-http')...")
+    mcp.run(transport="streamable-http")
+except Exception as e:
+    logger.error("❌ FastMCP server failed to start", exc_info=True)
+    logger.error(f"Exception: {e}")
+    raise
