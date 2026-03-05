@@ -22,5 +22,5 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-    "bedrock-agentcore-starter-toolkit>=0.2.10",
+    "bedrock-agentcore-starter-toolkit>=0.3.2",
 ]
