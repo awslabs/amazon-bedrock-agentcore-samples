@@ -14,12 +14,10 @@ def multiply_numbers(a: int, b: int) -> int:
     """Multiply two numbers together"""
     return a * b
 
-
 @mcp.tool()
-def greet_user(name: str) -> str:
-    """Greet a user by name"""
-    return f"Hello, {name}! Nice to meet you."
-
+def divide_numbers(a: int, b: int) -> int:
+    """divide two numbers """
+    return a / b
 
 if __name__ == "__main__":
     mcp.run(transport="streamable-http")
