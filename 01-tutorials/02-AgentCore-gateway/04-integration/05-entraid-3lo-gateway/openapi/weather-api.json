@@ -11,6 +11,11 @@
       "description": "Weather API endpoint (replaced by setup.sh)"
     }
   ],
+  "security": [
+    {
+      "entraId": ["api://<APP_B_CLIENT_ID>/weather.read"]
+    }
+  ],
   "paths": {
     "/weather": {
       "get": {

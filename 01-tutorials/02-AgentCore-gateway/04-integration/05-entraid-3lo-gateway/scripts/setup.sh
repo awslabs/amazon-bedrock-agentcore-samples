@@ -244,7 +244,7 @@ SECRET_RESPONSE=$(curl -s -X POST "https://graph.microsoft.com/v1.0/applications
   -H "Content-Type: application/json" \
   -d "{\"passwordCredential\": {\"displayName\": \"agentcore-3lo-secret\"}}")
 
-APP_B_SECRET=$(echo "$SECRET_RESPONSE" | jq -r '.secretText')
+APP_B_SECRET=$(echo "$SECRET_RESPONSE" | jq -r '.secretText')  # pragma: allowlist secret
 if [ "$APP_B_SECRET" = "null" ] || [ -z "$APP_B_SECRET" ]; then
   echo "✗ Failed to create client secret:"
   echo "$SECRET_RESPONSE" | jq .

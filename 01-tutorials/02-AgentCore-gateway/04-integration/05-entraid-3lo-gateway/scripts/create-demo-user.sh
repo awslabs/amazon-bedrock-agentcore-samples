@@ -57,7 +57,7 @@ fi
 
 # Auto-generate password if not provided
 if [ -z "$PASSWORD" ]; then
-  PASSWORD="Demo$(date +%s | shasum | head -c 8)!Aa1"
+  PASSWORD="Demo$(date +%s | shasum | head -c 8)!Aa1"  # pragma: allowlist secret
 fi
 
 EMAIL="${USERNAME}@${DOMAIN}"

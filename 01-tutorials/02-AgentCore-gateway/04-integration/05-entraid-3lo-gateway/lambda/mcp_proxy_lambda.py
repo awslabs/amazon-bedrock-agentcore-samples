@@ -595,7 +595,7 @@ def handle_authorize(event):
     across Lambda invocations (Lambda is stateless).
     """
     params = event.get("queryStringParameters", {}) or {}
-    print(f"=== HANDLE_AUTHORIZE (EntraID) ===")
+    print("=== HANDLE_AUTHORIZE (EntraID) ===")
     print(f"Original params: {json.dumps(params)}")
 
     # Remove unsupported parameters
@@ -652,7 +652,7 @@ def handle_callback(event):
     encoded_state = params.get("state", "")
     error = params.get("error", "")
 
-    print(f"=== HANDLE_CALLBACK (EntraID) ===")
+    print("=== HANDLE_CALLBACK (EntraID) ===")
     if error:
         return json_response(400, {"error": error, "error_description": params.get("error_description", "")})
 
@@ -701,8 +701,12 @@ def handle_token(event):
     # Without it, EntraID returns AADSTS9002327: "may only be redeemed via cross-origin requests".
     req.add_header("Origin", get_api_url(event))
 
+    # Validate URL scheme to prevent file:// or other unexpected schemes (bandit B310)
+    if not req.full_url.startswith("https://"):
+        return json_response(400, {"error": "Invalid token endpoint URL scheme"})
+
     try:
-        with urllib.request.urlopen(req, timeout=30) as resp:
+        with urllib.request.urlopen(req, timeout=30) as resp:  # nosec B310
             token_data = json.loads(resp.read().decode())
             if "created_at" not in token_data:
                 token_data["created_at"] = int(time.time() * 1000)
@@ -742,6 +746,10 @@ def proxy_to_gateway(event):
         body = base64.b64decode(body)
 
     target_url = GATEWAY_URL
+
+    # Validate URL scheme to prevent file:// or other unexpected schemes (bandit B310)
+    if not target_url.startswith("https://"):
+        return json_response(502, {"error": "Invalid gateway URL scheme"})
 
     req_headers = {
         "Content-Type": headers.get("content-type", "application/json"),
@@ -785,7 +793,7 @@ def proxy_to_gateway(event):
             )
         )
 
-        with urllib.request.urlopen(req, timeout=60) as resp:
+        with urllib.request.urlopen(req, timeout=60) as resp:  # nosec B310
             resp_body = resp.read().decode()
             print(resp_body)
             resp_headers = {
