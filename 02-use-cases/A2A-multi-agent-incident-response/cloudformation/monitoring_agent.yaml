@@ -821,6 +821,7 @@ Resources:
                   - bedrock:InvokeModelWithResponseStream
                 Resource:
                   - 'arn:aws:bedrock:*::foundation-model/*'
+                  - 'arn:aws:bedrock:*:*:inference-profile/*'
       Tags:
         - Key: Name
           Value: !Sub '${AWS::StackName}-Memory-Execution-Role'

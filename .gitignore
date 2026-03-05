@@ -48,7 +48,9 @@ dist/
 downloads/
 eggs/
 .eggs/
+
 lib/
+!01-tutorials/02-AgentCore-gateway/04-integration/04-enterprise-mcp-demo/cdk/lib
 !05-blueprints/**/lib/
 !02-use-cases/visa-b2b-account-payable-agent/infrastructure/lib/
 !04-infrastructure-as-code/cdk/typescript/knowledge-base-rag-agent/infrastructure/lib/

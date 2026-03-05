@@ -4,6 +4,7 @@ from a2a.server.tasks import InMemoryTaskStore
 from a2a.types import AgentCapabilities, AgentCard, AgentSkill
 from agent_executor import MonitoringAgentExecutor
 from starlette.responses import JSONResponse
+import boto3
 import logging
 import os
 import uvicorn

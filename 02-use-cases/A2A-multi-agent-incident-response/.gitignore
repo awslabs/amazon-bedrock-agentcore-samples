@@ -224,3 +224,5 @@ temp.txt
 
 # A2A Deployment Configuration
 .a2a.config
+# frontend/package-lock.json
+.a2a copy.config
