@@ -1,6 +1,6 @@
 from mcp.server.fastmcp import FastMCP
 
-mcp = FastMCP(host="127.0.0.1", stateless_http=True)
+mcp = FastMCP(host="0.0.0.0", stateless_http=True)
 
 
 @mcp.tool()
