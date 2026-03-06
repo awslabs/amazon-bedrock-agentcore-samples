@@ -1,0 +1,157 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Agent & Gateway Registry Platform - Infrastructure
+
+Parameters:
+  GatewayRegion:
+    Type: String
+    Default: us-east-1
+
+Resources:
+  # DynamoDB Table
+  RegistryTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: agent-registry
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: PK
+          AttributeType: S
+        - AttributeName: SK
+          AttributeType: S
+      KeySchema:
+        - AttributeName: PK
+          KeyType: HASH
+        - AttributeName: SK
+          KeyType: RANGE
+
+  # ECR Repository
+  EcrRepository:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: agent-registry-platform
+      ImageScanningConfiguration:
+        ScanOnPush: true
+
+  # Cognito User Pool (dashboard auth)
+  CognitoPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: agent-registry-platform
+      AutoVerifiedAttributes:
+        - email
+      UsernameAttributes:
+        - email
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireUppercase: true
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: false
+
+  CognitoClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      UserPoolId: !Ref CognitoPool
+      ClientName: agent-registry-web
+      GenerateSecret: false
+      ExplicitAuthFlows:
+        - ALLOW_USER_SRP_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+
+  # App Runner IAM Roles
+  AppRunnerInstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: AgentRegistryAppRunnerInstance
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: tasks.apprunner.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: AgentRegistryAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: dynamodb:*
+                Resource: !GetAtt RegistryTable.Arn
+              - Effect: Allow
+                Action: bedrock-agentcore:*
+                Resource: '*'
+              - Effect: Allow
+                Action: cognito-idp:*
+                Resource: '*'
+              - Effect: Allow
+                Action: secretsmanager:GetSecretValue
+                Resource: '*'
+
+  AppRunnerEcrRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: AgentRegistryAppRunnerECR
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: build.apprunner.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSAppRunnerServicePolicyForECRAccess
+
+  # App Runner Service
+  AppRunnerService:
+    Type: AWS::AppRunner::Service
+    DependsOn:
+      - AppRunnerInstanceRole
+      - AppRunnerEcrRole
+    Properties:
+      ServiceName: agent-registry-platform
+      SourceConfiguration:
+        AuthenticationConfiguration:
+          AccessRoleArn: !GetAtt AppRunnerEcrRole.Arn
+        ImageRepository:
+          ImageIdentifier: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/agent-registry-platform:latest'
+          ImageRepositoryType: ECR
+          ImageConfiguration:
+            Port: '8080'
+            RuntimeEnvironmentVariables:
+              - Name: GATEWAY_REGION
+                Value: !Ref GatewayRegion
+              - Name: DYNAMODB_TABLE
+                Value: agent-registry
+              - Name: COGNITO_PLATFORM_POOL_ID
+                Value: !Ref CognitoPool
+              - Name: COGNITO_PLATFORM_CLIENT_ID
+                Value: !Ref CognitoClient
+              - Name: AUTH_SECRET
+                Value: !Sub '${AWS::StackId}-auth-secret'
+      InstanceConfiguration:
+        Cpu: '1024'
+        Memory: '2048'
+        InstanceRoleArn: !GetAtt AppRunnerInstanceRole.Arn
+      HealthCheckConfiguration:
+        Protocol: HTTP
+        Path: /
+        Interval: 10
+        Timeout: 5
+        HealthyThreshold: 1
+        UnhealthyThreshold: 5
+
+Outputs:
+  AppUrl:
+    Value: !GetAtt AppRunnerService.ServiceUrl
+  ServiceArn:
+    Value: !GetAtt AppRunnerService.ServiceArn
+  EcrUri:
+    Value: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/agent-registry-platform'
+  CognitoPoolId:
+    Value: !Ref CognitoPool
+  CognitoClientId:
+    Value: !Ref CognitoClient
+  DynamoDBTable:
+    Value: !Ref RegistryTable
