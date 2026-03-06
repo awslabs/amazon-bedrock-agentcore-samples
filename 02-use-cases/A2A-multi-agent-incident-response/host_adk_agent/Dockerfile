@@ -22,6 +22,10 @@ RUN uv pip install -r requirements.txt
 
 RUN uv pip install aws-opentelemetry-distro>=0.10.1
 
+# Remove GCP logging exporter — it's incompatible with opentelemetry-sdk>=1.33
+# (tries to import removed LogData) and is unnecessary on AWS
+RUN uv pip uninstall opentelemetry-exporter-gcp-logging
+
 
 # Signal that this is running in Docker for host binding logic
 ENV DOCKER_CONTAINER=1

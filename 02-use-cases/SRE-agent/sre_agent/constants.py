@@ -63,7 +63,7 @@ class AWSConfig(BaseModel):
     )
 
     credential_provider_endpoint_url: str = Field(
-        default="https://us-east-1.prod.agent-credential-provider.cognito.aws.dev",
+        default="https://bedrock-agentcore-control.us-east-1.amazonaws.com",
         description="AWS credential provider endpoint URL",
     )
 

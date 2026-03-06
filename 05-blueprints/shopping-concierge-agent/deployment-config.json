@@ -1,0 +1,4 @@
+{
+  "deploymentId": "shopping",
+  "description": "Unique identifier for this deployment. Change this for each separate deployment in the same AWS account."
+}

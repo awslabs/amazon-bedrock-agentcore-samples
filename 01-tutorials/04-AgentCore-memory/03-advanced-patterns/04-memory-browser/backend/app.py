@@ -1252,15 +1252,15 @@ async def list_namespaces_v2(query: ListNamespacesQuery):
             try:
                 # Common namespace patterns for AgentCore Memory
                 namespace_patterns = [
-                    "support/user/DEFAULT",
-                    "support/user/DEFAULT/facts",
-                    "support/user/DEFAULT/preferences",
-                    "support/user/DEFAULT/context",
-                    "support/user/DEFAULT/summaries",
-                    "facts",
-                    "preferences",
-                    "context",
-                    "summaries",
+                    "support/user/DEFAULT/",
+                    "support/user/DEFAULT/facts/",
+                    "support/user/DEFAULT/preferences/",
+                    "support/user/DEFAULT/context/",
+                    "support/user/DEFAULT/summaries/",
+                    "facts/",
+                    "preferences/",
+                    "context/",
+                    "summaries/",
                 ]
 
                 found_namespaces = []

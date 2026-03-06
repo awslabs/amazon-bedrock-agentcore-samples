@@ -1,4 +1,5 @@
 import { BedrockAgentCoreClient, InvokeAgentRuntimeCommand } from "@aws-sdk/client-bedrock-agentcore";
+import * as crypto from "crypto";
 import { SSMClient, GetParameterCommand } from "@aws-sdk/client-ssm";
 
 /**
@@ -35,7 +36,7 @@ async function getAgentRuntimeArn(agentName: string, region: string): Promise<st
     console.log(`✅ Retrieved ARN: ${response.Parameter.Value}`);
     return response.Parameter.Value;
   } catch (error) {
-    console.error(`❌ Failed to retrieve parameter ${parameterName}:`, error);
+    console.error('❌ Failed to retrieve parameter:', parameterName, error);
     throw error;
   }
 }
@@ -49,7 +50,8 @@ async function invokeAgentRuntime(
 
   // Generate a unique session ID for this invocation (minimum 33 characters)
   const timestamp = Date.now();
-  const randomPart = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+  // Generate cryptographically secure random part (26 base36 chars from 16 bytes)
+  const randomPart = crypto.randomBytes(16).toString("base36");
   const runtimeSessionId = `session-${timestamp}-${randomPart}`;
 
   console.log(`\n📤 Invoking agent runtime...`);

@@ -622,7 +622,7 @@ def display_configuration(config: Dict[str, Any]):
     if config['cognito'].get('admin_password'):
         print(f"  Admin User Password: {'*' * 20} (configured)")
     else:
-        print(f"  Admin User Password: (auto-generated temporary password will be sent via email)")
+        print("  Admin User Password: (auto-generated temporary password will be sent via email)")
 
     print(f"\n{Colors.BOLD}S3 Configuration:{Colors.END}")
     print(f"  Smithy Models Bucket: {config['s3']['smithy_models_bucket']}")
@@ -635,10 +635,8 @@ def display_configuration(config: Dict[str, Any]):
 
     print(f"\n{Colors.BOLD}API Keys:{Colors.END}")
     print(f"  OpenAI API Key: {'*' * 20} (configured)")
-    print(f"  OpenAI Model: {config['api_keys']['openai_model']}")
     print(f"  Tavily API Key: {'*' * 20} (configured)")
     print(f"  Google API Key: {'*' * 20} (configured)")
-    print(f"  Google Model: {config['api_keys']['google_model']}")
 
     print()
 
@@ -816,12 +814,12 @@ def deploy_stack(
     # Always use S3 for consistency and to avoid size limits
     if not bucket_name:
         print_error(
-            f"S3 bucket required for stack deployment but not provided.",
+            "S3 bucket required for stack deployment but not provided.",
             thread_safe=thread_safe,
         )
         return False
 
-    print_info(f"Uploading template to S3 before deployment", thread_safe=thread_safe)
+    print_info("Uploading template to S3 before deployment", thread_safe=thread_safe)
     s3_url = upload_template_to_s3(template_file, bucket_name, region, thread_safe)
     if not s3_url:
         return False

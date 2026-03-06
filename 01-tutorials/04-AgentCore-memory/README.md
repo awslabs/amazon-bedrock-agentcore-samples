@@ -38,11 +38,12 @@ Persistent information extracted and stored across multiple conversations, inclu
 
 ## Memory Strategy Types
 
-AgentCore Memory supports four strategy types:
+AgentCore Memory supports five strategy types:
 
 - **Semantic Memory**: Stores factual information using vector embeddings for similarity search
 - **Summary Memory**: Creates and maintains conversation summaries for context preservation
 - **User Preference Memory**: Tracks user-specific preferences and settings
+- **Episodic Memory**: Captures meaningful interaction sequences with automatic episode detection, consolidation, and reflection generation
 - **Custom Memory**: Allows customization of extraction and consolidation logic
 
 ## Getting Started
@@ -63,6 +64,7 @@ Explore the memory capabilities through our organized tutorials:
 | Long-Term   | Strands Hooks       | Math Assistant     | [math-assistant.ipynb](./02-long-term-memory/01-single-agent/using-strands-agent-hooks/simple-math-assistant/math-assistant.ipynb) |
 | Long-Term   | Strands Tool        | Culinary Assistant | [culinary-assistant.ipynb](./02-long-term-memory/01-single-agent/using-strands-agent-memory-tool/culinary-assistant.ipynb)         |
 | Long-Term   | Strands Multi-Agent | Travel Booking     | [travel-booking-assistant.ipynb](./02-long-term-memory/02-multi-agent/with-strands-agent/travel-booking-assistant.ipynb)           |
+| Episodic    | Strands Hooks       | Meeting Notes Assistant | [meeting-notes-assistant.ipynb](./02-long-term-memory/01-single-agent/using-strands-agent-hooks/meeting-notes-assistant-using-episodic/meeting-notes-assistant.ipynb)                                         |
 
 ## Prerequisites
 

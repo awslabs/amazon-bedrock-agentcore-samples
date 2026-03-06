@@ -31,7 +31,7 @@ A comprehensive implementation of the [Agent-to-Agent (A2A)](https://a2a-protoco
    - **Authentication**: OAuth 2.0-based security model for secure inter-agent communication
    - **Interoperability**: Platform-agnostic design allowing agents from different frameworks to collaborate
 
-   Learn more about the A2A protocol: [A2A Specification](https://a2a.foundation/)
+   Learn more about the A2A protocol: [A2A Specification](https://a2a-protocol.org/)
 
    ## A2A Support on Amazon Bedrock AgentCore
 
@@ -77,6 +77,8 @@ A comprehensive implementation of the [Agent-to-Agent (A2A)](https://a2a-protoco
    | Region Code   | Region Name          | Status      |
    |---------------|----------------------|-------------|
    | `us-west-2`   | US West (Oregon)     | ✅ Supported |
+
+It is important to note that this sample is restricted to us-west-2 region, however Amazon Bedrock AgentCore Runtime supports A2A protocol in various other regions as well. Please find the supported regions [here](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/agentcore-regions.html). 
 
 ## Quick Start Deployment
 

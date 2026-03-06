@@ -35,31 +35,30 @@ The following architecture diagram illustrates a reference solution for a genera
 > [!IMPORTANT]
 > This sample application is meant for demo purposes and is not production ready. Please make sure to validate the code with your organizations security best practices.
 
-### AgentCore Runtime & Memory Infrastructure
-
-**Amazon Bedrock AgentCore** is a fully managed service that enables you to deploy, run, and scale your custom agent applications with built-in runtime and memory capabilities.
-
-- **[Amazon Bedrock AgentCore Runtime](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/agents-tools-runtime.html)**: Provides the managed execution environment with invocation endpoints (`/invocations`) and health monitoring (`/ping`) for your agent instances
-- **[Amazon Bedrock AgentCore Memory](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/memory.html)**: A fully managed service that gives AI agents the ability to remember, learn, and evolve through interactions by capturing events, transforming them into memories, and retrieving relevant context when needed
-
-The AgentCore infrastructure handles all storage complexity and provides efficient retrieval without requiring developers to manage underlying infrastructure, ensuring continuity and traceability across agent interactions.
-
 ### CDK Infrastructure Deployment
 
 The AWS CDK stack deploys and configures the following managed services:
 
-- **IAM AgentCore Execution Role**: Provides necessary permissions for Amazon Bedrock AgentCore execution
-- **VPC and Private Subnet**: Network isolation and security for database resources
-- **Amazon Aurora Serverless PostgreSQL**: Stores the video game sales data with RDS Data API integration
+**Amazon Bedrock AgentCore Resources:**
+- **[AgentCore Runtime](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/agents-tools-runtime.html)**: Provides the managed execution environment with invocation endpoints (`/invocations`) and health monitoring (`/ping`) for your agent instances
+- **[AgentCore Memory](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/memory.html)**: A fully managed service that gives AI agents the ability to remember, learn, and evolve through interactions by capturing events, transforming them into memories, and retrieving relevant context when needed
+
+The AgentCore infrastructure handles all storage complexity and provides efficient retrieval without requiring developers to manage underlying infrastructure, ensuring continuity and traceability across agent interactions.
+
+**Data Source and VPC Infrastructure:**
+- **VPC with Public and Private Subnets**: Network isolation and security for database resources
+- **Amazon Aurora Serverless v2 PostgreSQL**: Stores the video game sales data with RDS Data API integration
 - **Amazon DynamoDB**: Stores raw query results for data analysis audit trails
-- **Parameter Store Configuration Management**: Securely manages application configuration
+- **AWS Secrets Manager**: Secure storage for database credentials
+- **Amazon S3**: Import bucket for loading data into Aurora PostgreSQL
+- **SSM Parameter Store**: Configuration management for AgentCore runtime parameters
 
 ### Amplify Deployment for the Front-End Application
 
 - **React Web Application**: Delivers the user interface for the assistant
     - Uses Amazon Cognito for user authentication and permissions management
     - The application invokes the Amazon Bedrock AgentCore for interacting with the assistant
-    - For chart generation, the application directly invokes the Claude 3.7 Sonnet model
+    - For chart generation, the application directly invokes the Claude Haiku 4.5 model
 
 ### Strands Agent Features
 
@@ -81,18 +80,17 @@ The AWS CDK stack deploys and configures the following managed services:
 The **user interaction workflow** operates as follows:
 
 - The web application sends user business questions to the AgentCore Invoke
-- The Strands Agent (powered by Claude 3.7 Sonnet) processes natural language and determines when to execute database queries
+- The Strands Agent (powered by Claude Haiku 4.5) processes natural language and determines when to execute database queries
 - The agent's built-in tools execute SQL queries against the Aurora PostgreSQL database and formulate an answer to the question
 - AgentCore Memory captures session interactions and retrieves previous conversations for context
 - After the agent's response is received by the web application, the raw data query results are retrieved from the DynamoDB table to display both the answer and the corresponding records
-- For chart generation, the application invokes a model (powered by Claude 3.7 Sonnet) to analyze the agent's answer and raw data query results to generate the necessary data to render an appropriate chart visualization
+- For chart generation, the application invokes a model (powered by Claude Haiku 4.5) to analyze the agent's answer and raw data query results to generate the necessary data to render an appropriate chart visualization
 
 ## Deployment Instructions
 
 The deployment consists of two main steps:
 
-1. **Back-End Deployment - [Data Source and Configuration Management Deployment with CDK](./cdk-agentcore-strands-data-analyst-assistant/)**
-1. **Agent Deployment - [Strands Agent Infrastructure Deployment with AgentCore](./agentcore-strands-data-analyst-assistant/)**
+1. **Back-End Deployment - [Amazon Bedrock AgentCore and Data Source Deployment with CDK](./cdk-data-analyst-assistant-agentcore-strands/)**
 2. **Front-End Implementation - [Integrating AgentCore with a Ready-to-Use Data Analyst Assistant Application](./amplify-video-games-sales-assistant-agentcore-strands/)**
 
 > [!NOTE]
