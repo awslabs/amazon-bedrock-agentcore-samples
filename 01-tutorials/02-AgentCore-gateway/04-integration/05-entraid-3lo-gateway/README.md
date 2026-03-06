@@ -32,7 +32,7 @@ export CDK_DEFAULT_REGION=<your-region>
 
 For a CIAM (External ID) tenant:
 ```bash
-cd cdk-entraid
+cd 05-entraid-3lo-gateway
 ./scripts/setup.sh \
   --tenant-id <your-tenant-id> \
   --tenant-type ciam \
@@ -43,7 +43,7 @@ cd cdk-entraid
 
 For a standard EntraID tenant:
 ```bash
-cd cdk-entraid
+cd 05-entraid-3lo-gateway
 ./scripts/setup.sh \
   --tenant-id <your-tenant-id> \
   --tenant-type standard \
