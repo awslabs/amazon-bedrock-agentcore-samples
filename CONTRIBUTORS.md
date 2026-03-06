@@ -3,6 +3,7 @@
 - aarora79
 - akshseh
 - anajmi
+- amit-lulla
 - architec
 - aristsakpinis93
 - aurbac
