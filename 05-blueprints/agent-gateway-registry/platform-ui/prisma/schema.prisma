@@ -1,0 +1,65 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model McpServer {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  owner       String?
+  repoUrl     String?
+  runtimeArn  String?
+  version     String   @default("1.0.0")
+  tags        String   @default("[]")
+  gatewayName String?
+  targetName  String?
+  protocol    String   @default("mcp")
+  endpointUrl String?
+  agentCard   String?
+  skills      String   @default("[]")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  tools       RegistryTool[]
+}
+
+model RegistryTool {
+  id          String    @id @default(cuid())
+  name        String
+  shortName   String
+  description String?
+  inputSchema String?
+  serverId    String
+  server      McpServer @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+
+  @@unique([serverId, shortName])
+}
+
+model AccessRequest {
+  id          String   @id @default(cuid())
+  requester   String
+  serverId    String
+  toolNames   String   @default("[]")
+  status      String   @default("PENDING")
+  approver    String?
+  createdAt   DateTime @default(now())
+  resolvedAt  DateTime?
+}
+
+model ToolTrace {
+  id         String   @id @default(cuid())
+  gateway    String
+  clientId   String
+  clientName String?
+  toolName   String
+  target     String?
+  status     String   @default("OK")
+  latencyMs  Int      @default(0)
+  error      String?
+  createdAt  DateTime @default(now())
+}
