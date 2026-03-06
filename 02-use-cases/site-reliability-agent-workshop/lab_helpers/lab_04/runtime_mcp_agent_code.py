@@ -14,12 +14,7 @@ Deployed to AgentCore Runtime for serverless execution
 """
 
 import os
-import json
-import boto3
 import logging
-import uuid
-from datetime import datetime
-from typing import Dict, List, Optional
 
 # FastMCP for MCP protocol implementation
 from mcp.server.fastmcp import FastMCP
@@ -92,7 +87,7 @@ def initialize_browser(region=AWS_REGION):
         return True
     except Exception as e:
         BROWSER_AVAILABLE = False
-        logger.error(f"❌ AgentCore Browser initialization failed", exc_info=True)
+        logger.error("❌ AgentCore Browser initialization failed", exc_info=True)
         logger.warning(f"⚠️ AgentCore Browser not available: {e}")
         return False
 
@@ -179,7 +174,7 @@ def research_agent(research_topic_query: str):
 
 
     except Exception as e:
-        logger.error(f"❌ Failed to setup prevention agent", exc_info=True)
+        logger.error("❌ Failed to setup prevention agent", exc_info=True)
         logger.error(f"Exception: {e}")
         return f"Error: Failed to initialize agent - {str(e)}"
 
