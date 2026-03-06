@@ -94,3 +94,7 @@
 - Nadhya Polanco
 - afarntrog
 - Sid Ahmed boudboub (sierrabravo98)
+- Gan Luan
+- Will Ensor
+- Osman Santos
+- David Kaleko
