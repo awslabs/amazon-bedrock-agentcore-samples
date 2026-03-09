@@ -12,7 +12,7 @@ from config import CdkConfig
 
 from .compute import Alb, EcsService
 from .networking import Vpc
-from .security import Identity
+from .security import Identity, Waf
 from .storage import Storage
 
 
@@ -68,6 +68,12 @@ class Agent(Construct):
             vpc=vpc.vpc,
             certificate=certificate,
             access_logs_bucket=storage.access_logs_bucket,
+        )
+
+        Waf(
+            self,
+            "Waf",
+            alb_arn=alb.alb.load_balancer_arn,
         )
 
         ecs_service = EcsService(

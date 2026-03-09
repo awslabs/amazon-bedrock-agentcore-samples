@@ -3,5 +3,6 @@
 """Security constructs package."""
 
 from .identity import Identity
+from .waf import Waf
 
-__all__ = ["Identity"]
+__all__ = ["Identity", "Waf"]
