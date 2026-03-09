@@ -1,6 +1,7 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: MIT-0
 
+# checkov:skip=CKV_DOCKER_2:Healthcheck is configured in ECS task definition
 FROM --platform=linux/arm64 public.ecr.aws/docker/library/python:3.13-slim-trixie
 
 WORKDIR /app

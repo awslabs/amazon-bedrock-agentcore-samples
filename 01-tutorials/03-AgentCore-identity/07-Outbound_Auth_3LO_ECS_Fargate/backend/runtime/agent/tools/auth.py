@@ -83,8 +83,8 @@ def requires_access_token(
                 )
                 kwargs[into] = token
                 return await func(*args, **kwargs)
-            except Exception as e:
-                logger.exception("Error in requires_access_token decorator: %s", e)
+            except Exception:
+                logger.exception("Error in requires_access_token decorator")
                 raise
 
         return wrapper

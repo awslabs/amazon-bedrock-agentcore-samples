@@ -77,7 +77,7 @@ echo ""
 echo "Deploying with CDK..."
 uv run cdk bootstrap --qualifier sample3lo --toolkit-stack-name CDKToolkit-sample3lo
 
-uv run cdk synth --quiet &&  uv run checkov -d cdk.out
+uv run cdk synth --quiet && uv run checkov -d cdk.out --framework cloudformation dockerfile --compact --quiet
 
 uv run cdk deploy --all --require-approval never
 
