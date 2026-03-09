@@ -94,3 +94,4 @@
 - Nadhya Polanco
 - afarntrog
 - Sid Ahmed boudboub (sierrabravo98)
+- Emanuele Levi

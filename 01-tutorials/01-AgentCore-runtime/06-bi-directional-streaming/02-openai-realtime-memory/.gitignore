@@ -1,0 +1,43 @@
+# Virtual environments
+.venv*/
+venv/
+env/
+
+# Environment variables / secrets
+.env
+.env.*
+*.pem
+*.key
+
+# AWS credentials
+.aws/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# macOS
+.DS_Store
+
+# Logs
+*.log
+logs/
+
+# Distribution / packaging
+*.whl
+*.tar.gz

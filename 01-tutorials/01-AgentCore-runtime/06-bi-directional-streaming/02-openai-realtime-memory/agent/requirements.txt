@@ -1,0 +1,11 @@
+uvicorn[standard]==0.34.2
+fastapi==0.123.9
+strands-agents[bidi-all]==1.21.0
+strands-agents-tools==0.2.18
+requests>=2.32.3
+aws_sdk_bedrock_runtime==0.2.0
+pyaudio==0.2.14
+prompt_toolkit==3.0.52
+websockets==15.0.1
+aws-opentelemetry-distro>=0.10.0
+bedrock-agentcore
