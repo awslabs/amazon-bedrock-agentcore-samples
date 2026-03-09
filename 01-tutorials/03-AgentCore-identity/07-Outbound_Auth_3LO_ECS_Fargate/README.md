@@ -27,6 +27,63 @@ When the agent needs to access an external service on behalf of a user, see [OAu
 5. OAuth Callback Service completes the flow by calling `complete_resource_token_auth()` to bind the token to the user
 6. Subsequent agent requests automatically receive the user's access token
 
+## Key Concepts
+
+- **Workload Access Token**: A token (workloadIdentityToken) used for authentication that represents the workload identity and the user
+- **Session URI**: Tracks the authorization flow state across multiple requests and responses during the OAuth2 authentication process
+- **Token Vault**: Secure storage where OAuth tokens are stored
+- **Callback Service**: Confirms the user authentication session for obtaining OAuth2.0 tokens for a resource
+
+## Flow Phases
+
+1. **Get workload access token**: The workload obtains a token from AgentCore Identity that represents both the workload and the user
+2. **Request OAuth authorization**: The workload requests an OAuth token, receiving an authorization URL
+3. **User authorizes with OAuth provider**: The user grants permission for the workload to access their resources on the 3rd party tool
+4. **Complete authorization via callback**: The callback service confirms the user authentication session and completes the token binding
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant User as Authenticated User
+    participant Workload as Agent Workload<br>(ECS Task)
+    participant Identity as AgentCore Identity
+    participant Tool as Identity Provider
+    participant Callback as Callback Service <br>(ECS Task)
+
+    Note over User,Callback: 1. Get workload access token
+
+    User->>Workload: Send request (identified by userId)
+    
+    Workload->>Identity: GetWorkloadAccessTokenForUserId<br/>(workloadName, userId)
+    Identity-->>Workload: workloadAccessToken
+    
+    Note over User,Callback: 2. Request OAuth authorization
+    
+    Workload->>Identity: GetResourceOAuth2Token<br/>(workloadAccessToken, providerName,<br/>callbackUrl, scopes)
+    Identity->>Identity: Create sessionURI<br/>(tracks OAuth flow state)
+    Identity-->>Workload: authorizationUrl + sessionURI
+    
+    Workload-->>User: Return authorizationUrl
+    
+    Note over User,Callback: 3. User authorizes with OAuth provider
+    
+    User->>Tool: Click authorization URL<br/>Authorize agentic workload
+    Tool-->>Identity: Authorization code
+    Identity-->>User: Redirect to callbackUrl<br/>with sessionURI
+    
+    Note over User,Callback: 4. Complete authorization via callback
+    
+    User->>Callback: Follow redirect (with sessionURI)
+    Callback->>Identity: CompleteResourceTokenAuth<br/>(sessionURI, userId)
+    Identity->>Identity: Validate and store OAuth token
+    Identity-->>Callback: Success
+    Callback-->>User: Authorization complete
+```
+
+For more detailed flow diagrams, see:
+- [Inbound Authentication Flow](docs/inbound.md) - ALB OIDC authentication with Entra ID
+- [Outbound Authorization Flow](docs/outbound.md) - GitHub OAuth with AgentCore Identity
+
 ## Prerequisites
 
 Before deploying this sample, ensure you have:
