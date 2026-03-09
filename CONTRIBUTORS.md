@@ -95,3 +95,7 @@
 - afarntrog
 - Sid Ahmed boudboub (sierrabravo98)
 - joyanta3105
+- Gan Luan
+- Will Ensor
+- Osman Santos
+- David Kaleko
