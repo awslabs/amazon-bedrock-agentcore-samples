@@ -1,0 +1,14 @@
+[project]
+name = "16-elevenlabs-bidi-agent"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "bedrock-agentcore>=1.1.2",
+    "bedrock-agentcore-starter-toolkit>=0.2.5",
+    "dotenv>=0.9.9",
+    "ipykernel>=7.1.0",
+    "requests>=2.32.5",
+    "strands-agents>=1.20.0",
+]

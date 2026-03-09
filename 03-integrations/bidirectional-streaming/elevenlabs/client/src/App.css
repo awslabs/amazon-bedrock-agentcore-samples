@@ -1,0 +1,491 @@
+/**
+ * STRANDS CLIENT - APPLICATION STYLES
+ * 
+ * This file demonstrates how to customize Strands components through CSS.
+ * The Strands component library provides default styles (in styles.css) that can
+ * be overridden here using CSS class selectors.
+ * 
+ * THEMING APPROACH:
+ * - Components automatically apply semantic CSS classes (.message, .message-user, .event, etc.)
+ * - Default grayscale theme is provided by the component library
+ * - Custom themes can be created by targeting .theme-{name} classes
+ * - No JavaScript conditional logic needed - pure CSS overrides
+ * 
+ * HOW TO CUSTOMIZE:
+ * 1. Target component classes: .message-user, .message-assistant, .event-sent, etc.
+ * 2. Use theme scoping: .theme-calm .message-user { ... }
+ * 3. Apply gradients, colors, borders, shadows to match your brand
+ */
+
+* {
+  box-sizing: border-box;
+}
+
+/* ============================================
+   APPLICATION CSS VARIABLES
+   ============================================
+   These variables are for the demo app layout only.
+   Component variables (--bidi-*) are defined in styles.css
+   ============================================ */
+:root {
+  /* App layout colors */
+  --app-bg: #f5f5f7;
+  --app-content-bg: #ffffff;
+  --app-border: #e5e7eb;
+
+  /* Form elements */
+  --form-bg: #ffffff;
+  --form-label: #374151;
+  --form-text: #111827;
+  --form-border: #d1d5db;
+  --form-disabled-bg: #f9fafb;
+  --form-disabled-text: #9ca3af;
+  --form-help-text: #6b7280;
+
+  /* Buttons */
+  --button-bg: #ffffff;
+  --button-text: #374151;
+  --button-border: #d1d5db;
+  --button-hover-bg: #f9fafb;
+  --button-hover-border: #9ca3af;
+  --button-active-bg: #f3f4f6;
+  --button-primary-bg: #111827;
+  --button-primary-text: #ffffff;
+  --button-primary-hover: #1f2937;
+
+  /* Panels */
+  --panel-bg: #ffffff;
+  --panel-border: #e5e7eb;
+  --panel-header-bg: #ffffff;
+  --panel-header-text: #111827;
+
+  /* Status */
+  --status-connected-bg: #ecfdf5;
+  --status-connected-text: #047857;
+  --status-connected-border: #a7f3d0;
+  --status-disconnected-bg: #fef2f2;
+  --status-disconnected-text: #dc2626;
+  --status-disconnected-border: #fecaca;
+}
+
+/* ============================================
+   APPLICATION LAYOUT
+   These styles are specific to this demo app,
+   not related to component customization
+   ============================================ */
+.strands-container {
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
+    Arial, sans-serif;
+  background: var(--app-bg);
+  min-height: 100vh;
+  padding: 20px;
+}
+
+.strands-content {
+  max-width: 1600px;
+  margin: 0 auto;
+  background: var(--app-content-bg);
+  border-radius: 12px;
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.08),
+    0 1px 2px rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+  height: calc(100vh - 40px);
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--app-border);
+  padding: 20px 24px;
+}
+
+.status {
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-weight: 500;
+  font-size: 13px;
+  transition: all 0.2s ease;
+  min-width: 140px;
+  text-align: center;
+  border: 1px solid;
+}
+
+.status.connected {
+  background: var(--status-connected-bg);
+  color: var(--status-connected-text);
+  border-color: var(--status-connected-border);
+}
+
+.status.disconnected {
+  background: var(--status-disconnected-bg);
+  color: var(--status-disconnected-text);
+  border-color: var(--status-disconnected-border);
+}
+
+.controls {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+  align-items: center;
+}
+
+button {
+  padding: 10px 20px;
+  margin: 5px;
+  border: 1px solid var(--button-border);
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: var(--button-bg);
+  color: var(--button-text);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+button:hover:not(:disabled) {
+  background: var(--button-hover-bg);
+  border-color: var(--button-hover-border);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+button:active:not(:disabled) {
+  background: var(--button-active-bg);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+button[data-state="connected"] {
+  background: var(--button-primary-bg);
+  color: var(--button-primary-text);
+  border-color: var(--button-primary-bg);
+}
+
+button[data-state="connected"]:hover:not(:disabled) {
+  background: var(--button-primary-hover);
+  border-color: var(--button-primary-hover);
+}
+
+.config-section {
+  background: var(--form-bg);
+  padding: 16px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  border: 1px solid var(--app-border);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.form-group {
+  margin-bottom: 0;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 500;
+  color: var(--form-label);
+  font-size: 13px;
+}
+
+.form-group input,
+.form-group select {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid var(--form-border);
+  border-radius: 6px;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  font-family: inherit;
+  background: var(--form-bg);
+  color: var(--form-text);
+}
+
+.form-group input:focus,
+.form-group select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.form-group input:disabled {
+  background: var(--form-disabled-bg);
+  color: var(--form-disabled-text);
+  cursor: not-allowed;
+}
+
+.form-group small {
+  color: var(--form-help-text);
+  font-size: 12px;
+  margin-top: 6px;
+  display: block;
+}
+
+.panels-container {
+  display: flex;
+  gap: 20px;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.panel {
+  flex: 1;
+  background: var(--panel-bg);
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--panel-border);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.panel h2 {
+  margin: 0;
+  padding: 12px 16px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--panel-header-text);
+  background: var(--panel-header-bg);
+  border-bottom: 1px solid var(--panel-border);
+  flex-shrink: 0;
+}
+
+/* Theme selector styling */
+.theme-selector {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--form-disabled-bg);
+  border-radius: 6px;
+  border: 1px solid var(--app-border);
+}
+
+.theme-selector label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--form-label);
+  margin: 0;
+}
+
+.theme-selector select {
+  padding: 6px 10px;
+  border: 1px solid var(--form-border);
+  border-radius: 4px;
+  font-size: 13px;
+  background: var(--form-bg);
+  color: var(--form-text);
+  cursor: pointer;
+}
+
+.theme-selector select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+}
+
+/* ============================================
+   COMPONENT CUSTOMIZATION - DEFAULT THEME
+   ============================================
+   The component library provides grayscale defaults.
+   You can override these by targeting component classes:
+   
+   MESSAGE CLASSES:
+   - .messages          (container)
+   - .message           (individual message)
+   - .message-user      (user messages)
+   - .message-assistant (AI responses)
+   - .message-system    (system notifications)
+   - .message-tool      (tool execution results)
+   
+   EVENT CLASSES:
+   - .events            (container)
+   - .event             (individual event)
+   - .event-sent        (outgoing events)
+   - .event-received    (incoming events)
+   - .event-time        (timestamp)
+   - .event-type        (event type label)
+   - .event-data        (event payload)
+   ============================================ */
+
+/* ============================================
+   DARK THEME
+   ============================================
+   Dark theme for application layout only.
+   Component styles (messages, events) use --bidi-* variables
+   from styles.css which are automatically updated by the
+   .bidi-dark class in that file.
+   ============================================ */
+.bidi-dark {
+  /* App layout variables only (no --bidi prefix) */
+  --app-bg: #0f172a;
+  --app-content-bg: #1e293b;
+  --app-border: #334155;
+
+  --form-bg: #0f172a;
+  --form-label: #e2e8f0;
+  --form-text: #f1f5f9;
+  --form-border: #334155;
+  --form-disabled-bg: #1e293b;
+  --form-disabled-text: #64748b;
+  --form-help-text: #94a3b8;
+
+  --button-bg: #1e293b;
+  --button-text: #f1f5f9;
+  --button-border: #334155;
+  --button-hover-bg: #334155;
+  --button-hover-border: #475569;
+  --button-active-bg: #0f172a;
+  --button-primary-bg: #3b82f6;
+  --button-primary-text: #ffffff;
+  --button-primary-hover: #2563eb;
+
+  --panel-bg: #1e293b;
+  --panel-border: #334155;
+  --panel-header-bg: #0f172a;
+  --panel-header-text: #f1f5f9;
+
+  --status-connected-bg: #064e3b;
+  --status-connected-text: #6ee7b7;
+  --status-connected-border: #047857;
+  --status-disconnected-bg: #7f1d1d;
+  --status-disconnected-text: #fca5a5;
+  --status-disconnected-border: #dc2626;
+}
+
+/* ============================================
+   CUSTOM THEME EXAMPLE - "CALM" THEME
+   ============================================
+   This demonstrates how to create a complete
+   custom theme with a specific color palette.
+   
+   COLOR PALETTE:
+   - Beige: #d4b5a0, #e8d5c4, #f5ebe0
+   - Orange: #d2401e, #b8351a
+   - Green: #6b8e6f, #3d5a3f, #4a6b4d
+   
+   THEMING PATTERN:
+   1. Scope all styles with .theme-calm
+   2. Use gradients for depth and visual interest
+   3. Maintain consistent color hierarchy
+   4. Apply shadows for elevation
+   ============================================ */
+.theme-calm {
+  background: linear-gradient(135deg, #e8d5c4 0%, #d4b5a0 100%);
+}
+
+.theme-calm .strands-content {
+  background: linear-gradient(to bottom, #ffffff 0%, #f5ebe0 100%);
+  border-color: #d4b5a0;
+}
+
+.theme-calm .config-section {
+  background: linear-gradient(135deg, #f5ebe0 0%, #e8d5c4 100%);
+  border-color: #d4b5a0;
+}
+
+.theme-calm .panel {
+  background: linear-gradient(to bottom, #fef9f5 0%, #ffffff 100%);
+  border-color: #d4b5a0;
+}
+
+.theme-calm .panel h2 {
+  background: linear-gradient(135deg, #d4b5a0 0%, #c9a88f 100%);
+  color: #5a3a2a;
+  border-color: #d4b5a0;
+}
+
+/* Calm theme - Override CSS Variables */
+.theme-calm {
+  /* Message colors - calm theme */
+  --bidi-message-user-bg: #d2401e;
+  --bidi-message-user-text: #ffffff;
+
+  --bidi-message-assistant-streaming-bg: #f5ebe0;
+  --bidi-message-assistant-streaming-text: #8a6f5a;
+
+  --bidi-message-assistant-final-border: #d4b5a0;
+  --bidi-message-assistant-final-text: #5a3a2a;
+
+  --bidi-message-system-bg: #e8d5c4;
+  --bidi-message-system-text: #d2401e;
+  --bidi-message-system-border: #d4b5a0;
+
+  --bidi-message-tool-bg: #e8f4ea;
+  --bidi-message-tool-text: #3d5a3f;
+  --bidi-message-tool-border: #6b8e6f;
+
+  /* Event colors - calm theme */
+  --bidi-events-bg: #3d5a3f;
+
+  --bidi-event-bg: #4a6b4d;
+  --bidi-event-text: #d4e8d6;
+  --bidi-event-border: #6b8e6f;
+
+  --bidi-event-sent-bg: #5a7c5e;
+  --bidi-event-sent-border: #8ab88f;
+
+  --bidi-event-received-bg: #d2401e;
+  --bidi-event-received-border: #ff6b4a;
+
+  --bidi-event-time-text: #b8d4bb;
+  --bidi-event-type-text: #f5ebe0;
+  --bidi-event-data-text: #c9e4cc;
+
+  /* Scrollbar colors - calm theme */
+  --bidi-scrollbar-track: #f5ebe0;
+  --bidi-scrollbar-thumb: #d4b5a0;
+  --bidi-scrollbar-thumb-hover: #c9a88f;
+
+  --bidi-events-scrollbar-track: #2d4a2f;
+  --bidi-events-scrollbar-thumb: #6b8e6f;
+  --bidi-events-scrollbar-thumb-hover: #8ab88f;
+}
+
+/* Calm theme - Additional styling overrides */
+.theme-calm .bidi-message-user {
+  box-shadow: 0 4px 12px rgba(210, 64, 30, 0.3);
+}
+
+.theme-calm .bidi-event {
+  box-shadow: 0 2px 8px rgba(107, 142, 111, 0.2);
+}
+
+/* Calm theme - Status indicators */
+.theme-calm .status.connected {
+  background: linear-gradient(135deg, #d4e8d6 0%, #b8d4bb 100%);
+  color: #3d5a3f;
+  border-color: #6b8e6f;
+}
+
+.theme-calm .status.disconnected {
+  background: linear-gradient(135deg, #ffd4c8 0%, #ffb8a5 100%);
+  color: #8a1e0a;
+  border-color: #d2401e;
+}
+
+/* Calm theme - Buttons */
+.theme-calm button {
+  background: linear-gradient(135deg, #ffffff 0%, #f5ebe0 100%);
+  border-color: #d4b5a0;
+  color: #5a3a2a;
+}
+
+.theme-calm button:hover:not(:disabled) {
+  background: linear-gradient(135deg, #f5ebe0 0%, #e8d5c4 100%);
+  border-color: #c9a88f;
+}
+
+.theme-calm button[data-state="connected"] {
+  background: linear-gradient(135deg, #d2401e 0%, #b8351a 100%);
+  color: #ffffff;
+  border-color: #d2401e;
+}
+
+.theme-calm button[data-state="connected"]:hover:not(:disabled) {
+  background: linear-gradient(135deg, #b8351a 0%, #9e2d16 100%);
+  border-color: #b8351a;
+}
