@@ -1,0 +1,422 @@
+# AgentCore Identity Sample - Git Ignore File
+
+# ============================================================================
+# Environment & Secrets
+# ============================================================================
+.env
+.env.local
+.env.*.local
+.env.development
+.env.staging
+.env.production
+*.env
+secrets.json
+credentials.json
+config.json
+
+# ============================================================================
+# Python
+# ============================================================================
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+pip-log.txt
+pip-delete-this-directory.txt
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+cover/
+test-results/
+test-output/
+
+# Translations
+*.mo
+*.pot
+
+# Django stuff:
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+
+# Flask stuff:
+instance/
+.webassets-cache
+
+# Scrapy stuff:
+.scrapy
+
+# Sphinx documentation
+docs/_build/
+docs/_static/
+docs/_templates/
+
+# PyBuilder
+.pybuilder/
+target/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+*.ipynb
+
+# IPython
+profile_default/
+ipython_config.py
+
+# pyenv
+.python-version
+
+# pipenv
+Pipfile.lock
+
+# poetry
+poetry.lock
+
+# pdm
+.pdm.toml
+__pypackages__/
+
+# PEP 582
+__pypackages__/
+
+# Celery
+celerybeat-schedule
+celerybeat.pid
+
+# SageMath parsed files
+*.sage.py
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Spyder project settings
+.spyderproject
+.spyproject
+
+# Rope project settings
+.ropeproject
+
+# mkdocs documentation
+/site
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# pytype static type analyzer
+.pytype/
+
+# Cython debug symbols
+cython_debug/
+
+# ============================================================================
+# IDEs and Editors
+# ============================================================================
+
+# VS Code
+.vscode/
+*.code-workspace
+.history/
+
+# PyCharm
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+*~
+.vim/
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+
+# Eclipse
+.project
+.pydevproject
+.settings/
+
+# ============================================================================
+# Operating System
+# ============================================================================
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+.DocumentRevisions-V100
+.fseventsd
+.TemporaryItems
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# ============================================================================
+# AWS & CDK
+# ============================================================================
+
+# CDK
+cdk.out/
+cdk.context.json
+.cdk.staging/
+node_modules/
+package-lock.json
+
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+terraform.tfvars
+
+# CloudFormation
+*.template
+packaged.yaml
+
+# SAM
+.aws-sam/
+samconfig.toml
+
+# ============================================================================
+# Auth0
+# ============================================================================
+auth0-config.json
+auth0-secrets.json
+
+# ============================================================================
+# Streamlit
+# ============================================================================
+.streamlit/secrets.toml
+.streamlit/config.toml
+
+# ============================================================================
+# Logs
+# ============================================================================
+*.log
+logs/
+*.log.*
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+
+# ============================================================================
+# Temporary Files
+# ============================================================================
+tmp/
+temp/
+*.tmp
+*.temp
+*.bak
+*.backup
+*.swp
+*.swo
+
+# ============================================================================
+# Database
+# ============================================================================
+*.db
+*.sqlite
+*.sqlite3
+*.rdb
+
+# ============================================================================
+# Security & Credentials
+# ============================================================================
+*.pem
+*.key
+*.cert
+*.crt
+*.p12
+*.pfx
+id_rsa
+id_rsa.pub
+*.ppk
+authorized_keys
+known_hosts
+
+# ============================================================================
+# Build & Deployment
+# ============================================================================
+build/
+dist/
+out/
+target/
+*.zip
+*.tar.gz
+*.tgz
+*.tar
+*.jar
+*.war
+
+# ============================================================================
+# Node.js (for CDK)
+# ============================================================================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+.npm
+.eslintcache
+.node_repl_history
+*.tgz
+.yarn-integrity
+.env.test
+.env.production
+.vercel
+.next
+out
+
+# ============================================================================
+# Documentation
+# ============================================================================
+# Keep documentation but ignore build artifacts
+# docs/_build/
+# site/
+
+# ============================================================================
+# Project-Specific
+# ============================================================================
+
+# Test data
+test_data/
+fixtures/
+mock_data/
+
+# Local configuration
+local.config.json
+local.settings.py
+
+# Cache
+.cache/
+*.cache
+
+# Session data
+sessions/
+*.session
+
+# User data
+user_data/
+customer_data/
+
+# ============================================================================
+# Allow Important Files
+# ============================================================================
+# Explicitly include these files if needed
+
+# !.env.example
+# !README.md
+# !LICENSE
+# !.gitignore
+
+# Session/working notes (not for version control)
+SESSION_NOTES.md
+CLAUDE_CONTEXT.md
+CLAUDE.md
+*_NOTES.md
+.claude/
+
+# Temporary project files
+CODE_CLEANUP_REPORT.md
+CONTAINER_MIGRATION_READY.md
+SHARED_STATE.md
+
+# Secrets and environment-specific config
+.env.local
+.env.*.local
+*.secret
+*credentials*
+
+# Never commit AWS account IDs
+# Use environment variables instead: export AWS_ACCOUNT_ID=your-account-id
+TODO.md
+
+# Development files (not for public distribution)
+update_agents.py
+test_direct_invocation.py
+client/streamlit_app/PROJECT_SUMMARY.md
+client/streamlit_app/INDEX.md
+client/streamlit_app/.oauth_state/
+client/streamlit_app/logs/
