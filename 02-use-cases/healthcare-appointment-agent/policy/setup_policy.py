@@ -6,7 +6,7 @@ deterministic, tool-level access control:
 
   1. Identity-Based   — patients can only read their own records
   2. Scope-Based R/W  — OAuth scopes gate read vs write tools
-  3. Time-Based       — booking restricted to clinic hours (8–17)
+  3. Time-Based       — getSlots restricted to clinic hours (9 AM–9 PM UTC)
   4. Forbid           — hard deny on patient booking (overrides all permits)
 
 How it works:
@@ -27,7 +27,6 @@ from pathlib import Path
 
 import boto3
 from botocore.exceptions import ClientError
-
 
 ENGINE_NAME = "HealthcarePolicyEngine"
 
@@ -60,6 +59,7 @@ def get_session(config):
 
 # ── Policy Engine helpers ───────────────────────────────────────────────
 
+
 def find_engine(client):
     """Return (engine_id, engine_arn) if the engine already exists, else (None, None)."""
     for eng in client.list_policy_engines().get("policyEngines", []):
@@ -90,7 +90,7 @@ def create_engine(client):
         eng = client.get_policy_engine(policyEngineId=eid)
         status = eng.get("status", "UNKNOWN")
         if status == "ACTIVE":
-            print(f"   ✅ Engine is ACTIVE")
+            print("   ✅ Engine is ACTIVE")
             break
     else:
         print(f"   ⚠️  Engine status: {status} — proceeding anyway")
@@ -129,6 +129,7 @@ def attach_engine(client, gateway_id, engine_arn, mode="ENFORCE"):
 
 # ── Individual policy creators ──────────────────────────────────────────
 
+
 def _create_policy(client, engine_id, name, description, statement):
     """Helper: create a single policy, skip if it already exists."""
     try:
@@ -154,10 +155,11 @@ def create_identity_policies(client, engine_id, gateway_arn):
     print("\n📋 Policy 1: Identity-Based Access")
 
     _create_policy(
-        client, engine_id,
+        client,
+        engine_id,
         "IdentityGetPatient",
         "Patient can read their own patient record (patient_id matches claim)",
-        f'''permit(
+        f"""permit(
   principal,
   action == AgentCore::Action::"Target1___getPatient",
   resource == AgentCore::Gateway::"{gateway_arn}"
@@ -167,14 +169,15 @@ def create_identity_policies(client, engine_id, gateway_arn):
   context.input has patient_id &&
   principal.hasTag("patient_id") &&
   context.input.patient_id == principal.getTag("patient_id")
-}};''',
+}};""",
     )
 
     _create_policy(
-        client, engine_id,
+        client,
+        engine_id,
         "IdentitySearchImmunization",
         "Patient can search their own immunization records (search_value matches claim)",
-        f'''permit(
+        f"""permit(
   principal,
   action == AgentCore::Action::"Target1___searchImmunization",
   resource == AgentCore::Gateway::"{gateway_arn}"
@@ -184,7 +187,7 @@ def create_identity_policies(client, engine_id, gateway_arn):
   context.input has search_value &&
   principal.hasTag("patient_id") &&
   context.input.search_value == principal.getTag("patient_id")
-}};''',
+}};""",
     )
 
 
@@ -193,10 +196,11 @@ def create_scope_policies(client, engine_id, gateway_arn):
     print("\n📋 Policy 2: Scope-Based Read/Write Separation")
 
     _create_policy(
-        client, engine_id,
+        client,
+        engine_id,
         "ScopeReadTools",
         "Tokens with healthcare.read scope can use read tools (getPatient, searchImmunization, getSlots)",
-        f'''permit(
+        f"""permit(
   principal,
   action in [
     AgentCore::Action::"Target1___getPatient",
@@ -207,21 +211,22 @@ def create_scope_policies(client, engine_id, gateway_arn):
 ) when {{
   principal.hasTag("scope") &&
   principal.getTag("scope") like "*healthcare.read*"
-}};''',
+}};""",
     )
 
     _create_policy(
-        client, engine_id,
+        client,
+        engine_id,
         "ScopeWriteTools",
         "Tokens with healthcare.write scope can book appointments",
-        f'''permit(
+        f"""permit(
   principal,
   action == AgentCore::Action::"Target1___bookAppointment",
   resource == AgentCore::Gateway::"{gateway_arn}"
 ) when {{
   principal.hasTag("scope") &&
   principal.getTag("scope") like "*healthcare.write*"
-}};''',
+}};""",
     )
 
 
@@ -239,17 +244,18 @@ def create_time_policies(client, engine_id, gateway_arn):
     print("\n📋 Use Case 3: Time-Based Access — Clinic Hours")
 
     _create_policy(
-        client, engine_id,
+        client,
+        engine_id,
         "ClinicHoursGetSlots",
         "Allow getSlots only between 9 AM and 9 PM UTC (uses gateway system clock)",
-        f'''permit(
+        f"""permit(
   principal,
   action == AgentCore::Action::"Target1___getSlots",
   resource == AgentCore::Gateway::"{gateway_arn}"
 ) when {{
   (!(((context.system.now).toTime()) < (duration("9h")))) &&
   ((((context.system.now).toTime()) <= (duration("21h"))))
-}};''',
+}};""",
     )
 
 
@@ -258,21 +264,23 @@ def create_forbid_policies(client, engine_id, gateway_arn):
     print("\n📋 Policy 4: Forbid Rules — Hard Boundaries")
 
     _create_policy(
-        client, engine_id,
+        client,
+        engine_id,
         "ForbidPatientBooking",
         "Hard deny: patients cannot book appointments (forbid overrides permit)",
-        f'''forbid(
+        f"""forbid(
   principal,
   action == AgentCore::Action::"Target1___bookAppointment",
   resource == AgentCore::Gateway::"{gateway_arn}"
 ) when {{
   principal.hasTag("role") &&
   principal.getTag("role") == "patient"
-}};''',
+}};""",
     )
 
 
 # ── Cleanup ─────────────────────────────────────────────────────────────
+
 
 def cleanup(client, gateway_id):
     """Detach engine from gateway, delete all policies, delete engine."""
@@ -314,11 +322,14 @@ def cleanup(client, gateway_id):
 
 # ── Main ────────────────────────────────────────────────────────────────
 
+
 def main():
     parser = argparse.ArgumentParser(
         description="Setup Cedar policies for Healthcare Appointment Agent",
     )
-    parser.add_argument("--cleanup", action="store_true", help="Remove engine and all policies")
+    parser.add_argument(
+        "--cleanup", action="store_true", help="Remove engine and all policies"
+    )
     args = parser.parse_args()
 
     print("=" * 70)
@@ -359,13 +370,13 @@ def main():
     print(f"   Policies: {len(policies)}")
     for p in policies:
         print(f"     • {p['name']}")
-    print(f"\n   Mode: ENFORCE")
-    print(f"\n📋 Policies deployed:")
-    print(f"   1. Identity-based — patients read only own data")
-    print(f"   2. Scope-based R/W — OAuth scopes gate read vs write tools")
-    print(f"   3. Time-based — getSlots restricted to clinic hours (9 AM–9 PM UTC)")
-    print(f"   4. Forbid — hard deny patient booking")
-    print(f"\n▶️  Next: python policy/test_policy.py")
+    print("\n   Mode: ENFORCE")
+    print("\n📋 Policies deployed:")
+    print("   1. Identity-based — patients read only own data")
+    print("   2. Scope-based R/W — OAuth scopes gate read vs write tools")
+    print("   3. Time-based — getSlots restricted to clinic hours (9 AM–9 PM UTC)")
+    print("   4. Forbid — hard deny patient booking")
+    print("\n▶️  Next: python policy/test_policy.py")
     print("=" * 70)
 
 

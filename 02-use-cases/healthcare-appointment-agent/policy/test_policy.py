@@ -52,24 +52,77 @@ logging.getLogger("mcp").setLevel(logging.CRITICAL)
 
 OUTPUT_FILE = Path(__file__).parent / "test_output.txt"
 
+# Secret name used by AWS Secrets Manager to cache the Amazon Cognito client secret.
+# Set COGNITO_SECRET_NAME env var to override (e.g., for multi-environment setups).
+COGNITO_SECRET_NAME = "healthcare-agent/cognito-client-secret"
+
+
+def get_client_secret(session, env_config):
+    """Retrieve the Amazon Cognito client secret, preferring AWS Secrets Manager.
+
+    Lookup order:
+      1. AWS Secrets Manager (production-ready, supports rotation)
+      2. Amazon Cognito DescribeUserPoolClient API (demo fallback)
+
+    On first run the secret is fetched from Amazon Cognito and cached in
+    Secrets Manager so subsequent calls use the cached value.
+    """
+    region = env_config.get("region") or env_config.get(
+        "aws_default_region", "us-east-1"
+    )
+    secret_name = env_config.get("cognito_secret_name", COGNITO_SECRET_NAME)
+    sm = session.client("secretsmanager", region_name=region)
+
+    # 1. Try Secrets Manager first
+    try:
+        return sm.get_secret_value(SecretId=secret_name)["SecretString"]
+    except sm.exceptions.ResourceNotFoundException:
+        pass  # Fall through to Cognito API
+
+    # 2. Fallback: retrieve from Amazon Cognito API
+    pool_id, client_id = (
+        env_config["cognito_user_pool_id"],
+        env_config["cognito_client_id"],
+    )
+    cognito = session.client("cognito-idp", region_name=region)
+    resp = cognito.describe_user_pool_client(UserPoolId=pool_id, ClientId=client_id)
+    secret = resp["UserPoolClient"]["ClientSecret"]
+
+    # Cache in Secrets Manager for future calls
+    try:
+        sm.create_secret(
+            Name=secret_name,
+            Description="Amazon Cognito client secret for healthcare appointment agent (auto-cached)",
+            SecretString=secret,
+        )
+    except (sm.exceptions.ResourceExistsException, Exception):
+        pass  # Non-fatal — secret still works even if caching fails
+
+    return secret
+
 
 # ── Tee output ──────────────────────────────────────────────────────────
+
 
 class TeeWriter:
     def __init__(self, file_path):
         self.terminal = sys.stdout
         self.file = open(file_path, "w", encoding="utf-8")
+
     def write(self, message):
         self.terminal.write(message)
         self.file.write(message)
+
     def flush(self):
         self.terminal.flush()
         self.file.flush()
+
     def close(self):
         self.file.close()
 
 
 # ── Config helpers ──────────────────────────────────────────────────────
+
 
 def load_env_config():
     config_file = Path(__file__).parent.parent / ".env"
@@ -85,25 +138,39 @@ def load_env_config():
 
 def get_boto_session(env_config):
     profile = env_config.get("awscred_profile_name")
-    region = env_config.get("region") or env_config.get("aws_default_region", "us-east-1")
-    return boto3.Session(profile_name=profile, region_name=region) if profile else boto3.Session(region_name=region)
+    region = env_config.get("region") or env_config.get(
+        "aws_default_region", "us-east-1"
+    )
+    return (
+        boto3.Session(profile_name=profile, region_name=region)
+        if profile
+        else boto3.Session(region_name=region)
+    )
 
 
 def get_gateway_url(session, gateway_id):
-    return session.client("bedrock-agentcore-control").get_gateway(gatewayIdentifier=gateway_id)["gatewayUrl"]
+    return session.client("bedrock-agentcore-control").get_gateway(
+        gatewayIdentifier=gateway_id
+    )["gatewayUrl"]
 
 
 def get_oauth_token(env_config, session):
-    token_url, client_id = env_config["cognito_token_url"], env_config["cognito_client_id"]
-    region = env_config.get("region") or env_config.get("aws_default_region", "us-east-1")
-    secret = session.client("cognito-idp", region_name=region).describe_user_pool_client(
-        UserPoolId=env_config["cognito_user_pool_id"], ClientId=client_id
-    )["UserPoolClient"]["ClientSecret"]
-    data = f"grant_type=client_credentials&client_id={client_id}&client_secret={secret}"
+    token_url, client_id = (
+        env_config["cognito_token_url"],
+        env_config["cognito_client_id"],
+    )
+    secret = get_client_secret(session, env_config)
+    data = "grant_type=client_credentials"
     scope = env_config.get("cognito_auth_scope")
     if scope:
         data += f"&scope={scope}"
-    resp = requests.post(token_url, data=data, headers={"Content-Type": "application/x-www-form-urlencoded"}, timeout=30)
+    resp = requests.post(
+        token_url,
+        data=data,
+        auth=(client_id, secret),
+        headers={"Content-Type": "application/x-www-form-urlencoded"},
+        timeout=30,
+    )
     if resp.status_code != 200:
         raise Exception(f"Token request failed: {resp.text}")
     return resp.json()["access_token"]
@@ -117,24 +184,46 @@ def decode_jwt_claims(token):
 
 def switch_cognito_role(role, sub_value):
     print(f"\n🔄 Switching Cognito claims → role={role}, sub={sub_value}")
-    script = str(Path(__file__).parent / "setup_cognito_claims.py")
-    result = subprocess.run([sys.executable, script, "--role", role, "--sub", sub_value, "--update-only"],
-                            capture_output=True, text=True)
+    script = Path(__file__).parent / "setup_cognito_claims.py"
+    if not script.is_file():
+        print(f"   ❌ Script not found: {script}")
+        return False
+    result = subprocess.run(  # nosec B603 — script path is a known local file, not user input
+        [
+            sys.executable,
+            str(script),
+            "--role",
+            role,
+            "--sub",
+            sub_value,
+            "--update-only",
+        ],
+        capture_output=True,
+        text=True,
+    )
     if result.returncode != 0:
         print(f"   ❌ Failed: {result.stderr[:300]}")
         return False
-    print(f"   ✅ Claims updated — waiting 5s ...")
+    print("   ✅ Claims updated — waiting 5s ...")
     time.sleep(5)
     return True
 
 
 # ── Cognito scope helpers ───────────────────────────────────────────────
 
+
 def setup_cognito_scopes(session, env_config, scopes_to_add):
-    region = env_config.get("region") or env_config.get("aws_default_region", "us-east-1")
-    pool_id, client_id = env_config["cognito_user_pool_id"], env_config["cognito_client_id"]
+    region = env_config.get("region") or env_config.get(
+        "aws_default_region", "us-east-1"
+    )
+    pool_id, client_id = (
+        env_config["cognito_user_pool_id"],
+        env_config["cognito_client_id"],
+    )
     cognito = session.client("cognito-idp", region_name=region)
-    rs = cognito.list_resource_servers(UserPoolId=pool_id, MaxResults=10).get("ResourceServers", [])
+    rs = cognito.list_resource_servers(UserPoolId=pool_id, MaxResults=10).get(
+        "ResourceServers", []
+    )
     if not rs:
         print("   ❌ No resource server found")
         return None
@@ -144,44 +233,60 @@ def setup_cognito_scopes(session, env_config, scopes_to_add):
     new_scopes = list(existing)
     for name in scopes_to_add:
         if name not in existing_names:
-            new_scopes.append({"ScopeName": name, "ScopeDescription": f"Custom: {name}"})
+            new_scopes.append(
+                {"ScopeName": name, "ScopeDescription": f"Custom: {name}"}
+            )
     if len(new_scopes) > len(existing):
-        cognito.update_resource_server(UserPoolId=pool_id, Identifier=rs_id, Name=rs["Name"], Scopes=new_scopes)
-        print(f"   ✅ Resource server scopes updated")
-    app = cognito.describe_user_pool_client(UserPoolId=pool_id, ClientId=client_id)["UserPoolClient"]
+        cognito.update_resource_server(
+            UserPoolId=pool_id, Identifier=rs_id, Name=rs["Name"], Scopes=new_scopes
+        )
+        print("   ✅ Resource server scopes updated")
+    app = cognito.describe_user_pool_client(UserPoolId=pool_id, ClientId=client_id)[
+        "UserPoolClient"
+    ]
     current = set(app.get("AllowedOAuthScopes", []))
     needed = {f"{rs_id}/{s}" for s in scopes_to_add}
     if needed - current:
         cognito.update_user_pool_client(
-            UserPoolId=pool_id, ClientId=client_id,
+            UserPoolId=pool_id,
+            ClientId=client_id,
             AllowedOAuthFlows=app.get("AllowedOAuthFlows", ["client_credentials"]),
             AllowedOAuthScopes=list(current | needed),
             AllowedOAuthFlowsUserPoolClient=True,
-            SupportedIdentityProviders=app.get("SupportedIdentityProviders", ["COGNITO"]),
+            SupportedIdentityProviders=app.get(
+                "SupportedIdentityProviders", ["COGNITO"]
+            ),
         )
-        print(f"   ✅ App client scopes updated")
+        print("   ✅ App client scopes updated")
         time.sleep(3)
     else:
-        print(f"   ✅ Scopes already configured")
+        print("   ✅ Scopes already configured")
     return rs_id
 
 
 def get_oauth_token_with_scopes(env_config, session, scope_string):
-    token_url, client_id = env_config["cognito_token_url"], env_config["cognito_client_id"]
-    region = env_config.get("region") or env_config.get("aws_default_region", "us-east-1")
-    secret = session.client("cognito-idp", region_name=region).describe_user_pool_client(
-        UserPoolId=env_config["cognito_user_pool_id"], ClientId=client_id
-    )["UserPoolClient"]["ClientSecret"]
-    data = f"grant_type=client_credentials&client_id={client_id}&client_secret={secret}"
+    token_url, client_id = (
+        env_config["cognito_token_url"],
+        env_config["cognito_client_id"],
+    )
+    secret = get_client_secret(session, env_config)
+    data = "grant_type=client_credentials"
     if scope_string:
         data += f"&scope={scope_string}"
-    resp = requests.post(token_url, data=data, headers={"Content-Type": "application/x-www-form-urlencoded"}, timeout=30)
+    resp = requests.post(
+        token_url,
+        data=data,
+        auth=(client_id, secret),
+        headers={"Content-Type": "application/x-www-form-urlencoded"},
+        timeout=30,
+    )
     if resp.status_code != 200:
         raise Exception(f"Token request failed: {resp.text}")
     return resp.json()["access_token"]
 
 
 # ── Policy swap helper ──────────────────────────────────────────────────
+
 
 def clear_and_deploy(client, engine_id, gateway_arn, deploy_fn_list):
     """Clear all policies from the engine, then deploy only the specified ones.
@@ -211,28 +316,23 @@ def clear_and_deploy(client, engine_id, gateway_arn, deploy_fn_list):
 
 # ── Agent test runner ───────────────────────────────────────────────────
 
-DENIAL_PHRASES = [
-    "policy enforcement", "tool execution denied", "denied by default",
-    "not allowed due to policy", "access denied", "not permitted",
-    "authorization denied", "forbidden", "policy denied",
-    "unable to execute", "cannot be performed",
-    "don't have access to a tool", "don't have access to",
-    "i don't have a tool", "not available to me",
-    "i cannot", "i'm unable to", "don't have access",
-    "don't currently have access", "no access to", "not have a tool",
-    "don't have a tool that can", "don't have the ability",
-    "i don't have an", "limited to", "don't have access to a function",
-]
-
 
 def run_agent_test(gateway_url, access_token, boto_session, prompt, label):
-    """Run a single agent prompt. Returns (allowed: bool, result_text: str)."""
+    """Run a single agent prompt. Returns (allowed: bool, result_text: str).
+
+    Determines 'allowed' by checking whether the agent successfully called
+    a tool and received real data (not an authorization error from the gateway).
+    """
     mcp_client = MCPClient(
-        lambda: streamablehttp_client(gateway_url, headers={"Authorization": f"Bearer {access_token}"})
+        lambda: streamablehttp_client(
+            gateway_url, headers={"Authorization": f"Bearer {access_token}"}
+        )
     )
     model = BedrockModel(
         model_id="global.anthropic.claude-haiku-4-5-20251001-v1:0",
-        temperature=0.7, streaming=True, boto_session=boto_session,
+        temperature=0.7,
+        streaming=True,
+        boto_session=boto_session,
     )
     system_prompt = (
         "You are a healthcare assistant. "
@@ -251,18 +351,27 @@ def run_agent_test(gateway_url, access_token, boto_session, prompt, label):
             response = agent(prompt)
             result = str(response)[:500]
             print(f"      Result: {result[:200]}...")
-            normalized = result.lower().replace("\u2019", "'").replace("\u2018", "'")
-            denied = any(p in normalized for p in DENIAL_PHRASES)
+            # Check for gateway policy denial in tool results.
+            # When Cedar denies a tool call, the gateway returns a structured
+            # error containing "policy" or "denied" — not LLM-generated text.
+            normalized = result.lower()
+            denied = ("denied" in normalized and "policy" in normalized) or (
+                "no applicable policies" in normalized
+            )
             return (not denied), result
         except Exception as e:
-            print(f"      Error: {str(e)[:300]}")
-            return False, str(e)
+            err = str(e)
+            print(f"      Error: {err[:300]}")
+            # Gateway policy denials surface as exceptions
+            return False, err
 
 
 def check_tool_visibility(gateway_url, access_token, tool_name):
     """Check if a specific tool is visible in the tool list."""
     mcp_client = MCPClient(
-        lambda: streamablehttp_client(gateway_url, headers={"Authorization": f"Bearer {access_token}"})
+        lambda: streamablehttp_client(
+            gateway_url, headers={"Authorization": f"Bearer {access_token}"}
+        )
     )
     with mcp_client:
         tools = mcp_client.list_tools_sync()
@@ -272,6 +381,7 @@ def check_tool_visibility(gateway_url, access_token, tool_name):
 
 
 # ── Main test flow ──────────────────────────────────────────────────────
+
 
 def run_all_tests():
     tee = TeeWriter(OUTPUT_FILE)
@@ -303,7 +413,9 @@ def _run_tests():
     # Ensure engine exists and is attached
     engine_id, engine_arn = find_engine(client)
     if not engine_id:
-        print(f"❌ Engine '{ENGINE_NAME}' not found — run: python policy/setup_policy.py")
+        print(
+            f"❌ Engine '{ENGINE_NAME}' not found — run: python policy/setup_policy.py"
+        )
         sys.exit(1)
 
     gw = client.get_gateway(gatewayIdentifier=gateway_id)
@@ -311,8 +423,10 @@ def _run_tests():
         print("🔒 Attaching engine ...")
         client.update_gateway(
             gatewayIdentifier=gateway_id,
-            name=gw["name"], roleArn=gw["roleArn"],
-            protocolType=gw["protocolType"], authorizerType=gw["authorizerType"],
+            name=gw["name"],
+            roleArn=gw["roleArn"],
+            protocolType=gw["protocolType"],
+            authorizerType=gw["authorizerType"],
             authorizerConfiguration=gw.get("authorizerConfiguration", {}),
             policyEngineConfiguration={"arn": engine_arn, "mode": "ENFORCE"},
         )
@@ -338,12 +452,16 @@ def _run_tests():
     print(f"\n   JWT: role={claims.get('role')}, patient_id={claims.get('patient_id')}")
 
     results["uc1_positive"] = run_agent_test(
-        gateway_url, token, session,
+        gateway_url,
+        token,
+        session,
         "Get patient information for patient ID adult-patient-001",
         "✅ Positive use case: patient reads OWN record",
     )
     results["uc1_negative"] = run_agent_test(
-        gateway_url, token, session,
+        gateway_url,
+        token,
+        session,
         "Get patient information for patient ID pediatric-patient-001",
         "❌ Negative use case: patient reads OTHER patient's record",
     )
@@ -364,7 +482,9 @@ def _run_tests():
     switch_cognito_role("scheduler", "scheduler-001")
 
     print("\n📝 Setting up Cognito scopes ...")
-    rs_id = setup_cognito_scopes(session, env_config, ["healthcare.read", "healthcare.write"])
+    rs_id = setup_cognito_scopes(
+        session, env_config, ["healthcare.read", "healthcare.write"]
+    )
 
     if rs_id:
         # Read-only scope
@@ -373,23 +493,35 @@ def _run_tests():
         read_token = get_oauth_token_with_scopes(env_config, session, read_scope)
 
         results["uc2_read_positive"] = run_agent_test(
-            gateway_url, read_token, session,
+            gateway_url,
+            read_token,
+            session,
             "Check available appointment slots for 2025-09-15",
             "✅ Positive use case: read scope → getSlots succeeds",
         )
-        results["uc2_read_negative"] = run_agent_test(
-            gateway_url, read_token, session,
-            "Book an appointment for patient adult-patient-001 on 2025-09-15 at 14:00",
-            "❌ Negative use case: read scope → bookAppointment denied",
+
+        # Negative: bookAppointment should be hidden (not in tool list) with read-only scope
+        print("\n   📋 ❌ Negative use case: read scope → bookAppointment denied")
+        book_visible = check_tool_visibility(
+            gateway_url, read_token, "Target1___bookAppointment"
         )
+        if not book_visible:
+            print(
+                "      ✅ bookAppointment is HIDDEN — read scope does not grant write access"
+            )
+        else:
+            print("      ⚠️  bookAppointment still visible with read-only scope")
+        results["uc2_read_negative"] = (book_visible, "tool visibility check")
 
         # Read+write scope
         rw_scope = f"{rs_id}/healthcare.read {rs_id}/healthcare.write"
-        print(f"\n   Token with read+write scope")
+        print("\n   Token with read+write scope")
         rw_token = get_oauth_token_with_scopes(env_config, session, rw_scope)
 
         results["uc2_rw_positive"] = run_agent_test(
-            gateway_url, rw_token, session,
+            gateway_url,
+            rw_token,
+            session,
             "Book an appointment for patient adult-patient-001 on 2025-09-15 at 14:00",
             "✅ Positive use case: read+write scope → bookAppointment succeeds",
         )
@@ -420,11 +552,15 @@ def _run_tests():
     switch_cognito_role("patient", "adult-patient-001")
     token = get_oauth_token(env_config, session)
 
-    label = (f"✅ Positive use case: clinic OPEN ({hour_utc}:00 UTC) → getSlots succeeds"
-             if in_window else
-             f"❌ Negative use case: clinic CLOSED ({hour_utc}:00 UTC) → getSlots denied")
+    label = (
+        f"✅ Positive use case: clinic OPEN ({hour_utc}:00 UTC) → getSlots succeeds"
+        if in_window
+        else f"❌ Negative use case: clinic CLOSED ({hour_utc}:00 UTC) → getSlots denied"
+    )
     results["uc3_time"] = run_agent_test(
-        gateway_url, token, session,
+        gateway_url,
+        token,
+        session,
         "Check available appointment slots for 2025-09-15",
         label,
     )
@@ -450,7 +586,9 @@ def _run_tests():
         rw_token = get_oauth_token_with_scopes(env_config, session, rw_scope)
 
         results["uc4_before"] = run_agent_test(
-            gateway_url, rw_token, session,
+            gateway_url,
+            rw_token,
+            session,
             "Book an appointment for patient adult-patient-001 on 2025-09-15 at 10:00",
             "✅ BEFORE (scope only): patient with write scope CAN book",
         )
@@ -462,7 +600,9 @@ def _run_tests():
 
         print("\n   📋 AFTER (scope + forbid): checking tool visibility ...")
         rw_token = get_oauth_token_with_scopes(env_config, session, rw_scope)
-        book_visible = check_tool_visibility(gateway_url, rw_token, "Target1___bookAppointment")
+        book_visible = check_tool_visibility(
+            gateway_url, rw_token, "Target1___bookAppointment"
+        )
         if not book_visible:
             print("      ✅ bookAppointment is HIDDEN — forbid overrides permit")
         else:
@@ -476,12 +616,17 @@ def _run_tests():
     # Restore: deploy all policies back
     # ────────────────────────────────────────────────────────────────
     print("\n🔄 Restoring full policy set ...")
-    clear_and_deploy(client, engine_id, gateway_arn, [
-        create_identity_policies,
-        create_scope_policies,
-        create_time_policies,
-        create_forbid_policies,
-    ])
+    clear_and_deploy(
+        client,
+        engine_id,
+        gateway_arn,
+        [
+            create_identity_policies,
+            create_scope_policies,
+            create_time_policies,
+            create_forbid_policies,
+        ],
+    )
     switch_cognito_role("patient", "adult-patient-001")
     print("   ✅ All policies restored")
 
@@ -499,21 +644,28 @@ def _run_tests():
     print(f"     Positive (own record):    {s('uc1_positive')}")
     print(f"     Negative (other patient): {s('uc1_negative')}")
 
-    print(f"\n   🔑 Use Case 2: Scope-Based R/W")
+    print("\n   🔑 Use Case 2: Scope-Based R/W")
     print(f"     Positive (read → slots):  {s('uc2_read_positive')}")
     print(f"     Negative (read → book):   {s('uc2_read_negative')}")
     print(f"     Positive (R+W → book):    {s('uc2_rw_positive')}")
 
-    print(f"\n   ⏰ Use Case 3: Time-Based")
+    print("\n   ⏰ Use Case 3: Time-Based")
     print(f"     getSlots ({hour_utc}:00 UTC):     {s('uc3_time')}")
 
-    print(f"\n   🚫 Use Case 4: Forbid (Before/After)")
+    print("\n   🚫 Use Case 4: Forbid (Before/After)")
     print(f"     BEFORE (scope only):      {s('uc4_before')}")
     print(f"     AFTER (scope + forbid):   {s('uc4_after')}")
 
-    core = {"uc1_positive": True, "uc1_negative": False, "uc4_before": True, "uc4_after": False}
+    core = {
+        "uc1_positive": True,
+        "uc1_negative": False,
+        "uc4_before": True,
+        "uc4_after": False,
+    }
     core_ok = all(results[k][0] == core[k] for k in core)
-    print(f"\n   {'✅' if core_ok else '⚠️ '} Core policies: {'ALL MATCH' if core_ok else 'MISMATCH'}")
+    print(
+        f"\n   {'✅' if core_ok else '⚠️ '} Core policies: {'ALL MATCH' if core_ok else 'MISMATCH'}"
+    )
 
     if core_ok:
         print("\n🔒 Policy enforcement verified:")

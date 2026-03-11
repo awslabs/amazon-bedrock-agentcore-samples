@@ -1,18 +1,18 @@
 """
-Setup Cognito Pre-Token-Generation Lambda trigger to inject custom claims
+Setup Amazon Cognito Pre-Token-Generation AWS Lambda trigger to inject custom claims
 (role, patient_id) into JWT tokens for Cedar policy evaluation.
 
 How it works:
-  - Cognito's Pre-Token-Generation V3_0 trigger fires before issuing a token.
-  - Our Lambda reads role/sub from its environment variables and injects them
+  - The Amazon Cognito Pre-Token-Generation V3_0 trigger fires before issuing a token.
+  - The AWS Lambda function reads role/sub from its environment variables and injects them
     as custom claims via claimsToAddOrOverride in the access token.
   - Cedar policies then evaluate these claims via principal.getTag("role")
     and principal.getTag("patient_id").
   - Switching roles is just a Lambda env var update — no redeployment needed.
 
 In production, these claims would come from the user's identity provider
-(e.g., Cognito user attributes, SAML assertions, or OIDC claims) via the
-authorization code flow. This Lambda simulates that for demo purposes.
+(e.g., Amazon Cognito user attributes, SAML assertions, or OIDC claims) via the
+authorization code flow. This AWS Lambda function simulates that for demo purposes.
 
 Usage:
   # Set up with patient role (default)
@@ -31,14 +31,13 @@ Usage:
   python policy/setup_cognito_claims.py --verify
 
 Requirements:
-  - Cognito User Pool must be Essentials or Plus tier (for V3_0 triggers)
-  - IAM permissions: cognito-idp:*, lambda:*, iam:*
+  - Amazon Cognito User Pool must be Essentials or Plus tier (for V3_0 triggers)
+  - AWS Identity and Access Management (IAM) permissions: cognito-idp:*, lambda:*, iam:*
 """
 
 import argparse
 import json
 import os
-import sys
 import time
 import zipfile
 import tempfile
@@ -91,6 +90,50 @@ def lambda_handler(event, context):
 '''
 
 
+# Secret name used by AWS Secrets Manager to cache the Amazon Cognito client secret.
+COGNITO_SECRET_NAME = "healthcare-agent/cognito-client-secret"
+
+
+def get_client_secret(session):
+    """Retrieve the Amazon Cognito client secret, preferring AWS Secrets Manager.
+
+    Lookup order:
+      1. AWS Secrets Manager (production-ready, supports rotation)
+      2. Amazon Cognito DescribeUserPoolClient API (demo fallback)
+
+    On first run the secret is fetched from Amazon Cognito and cached in
+    Secrets Manager so subsequent calls use the cached value.
+    """
+    region = os.getenv("aws_default_region", "us-east-1")
+    secret_name = os.getenv("cognito_secret_name", COGNITO_SECRET_NAME)
+    sm = session.client("secretsmanager", region_name=region)
+
+    # 1. Try Secrets Manager first
+    try:
+        return sm.get_secret_value(SecretId=secret_name)["SecretString"]
+    except sm.exceptions.ResourceNotFoundException:
+        pass  # Fall through to Amazon Cognito API
+
+    # 2. Fallback: retrieve from Amazon Cognito API
+    pool_id = os.getenv("cognito_user_pool_id")
+    client_id = os.getenv("cognito_client_id")
+    cognito = session.client("cognito-idp", region_name=region)
+    resp = cognito.describe_user_pool_client(UserPoolId=pool_id, ClientId=client_id)
+    secret = resp["UserPoolClient"]["ClientSecret"]
+
+    # Cache in Secrets Manager for future calls
+    try:
+        sm.create_secret(
+            Name=secret_name,
+            Description="Amazon Cognito client secret for healthcare appointment agent (auto-cached)",
+            SecretString=secret,
+        )
+    except (sm.exceptions.ResourceExistsException, Exception):
+        pass  # Non-fatal — secret still works even if caching fails
+
+    return secret
+
+
 def get_session():
     """Create boto3 session with profile support."""
     profile = os.getenv("awscred_profile_name")
@@ -105,7 +148,7 @@ def get_account_id(session):
 
 
 def ensure_essentials_tier(session):
-    """Check and upgrade Cognito User Pool to Essentials tier if needed."""
+    """Check and upgrade Amazon Cognito User Pool to Essentials tier if needed."""
     pool_id = os.getenv("cognito_user_pool_id")
     region = os.getenv("aws_default_region", "us-east-1")
     cognito = session.client("cognito-idp", region_name=region)
@@ -192,7 +235,7 @@ def create_or_update_lambda(session, role, sub_value, children=""):
         iam.create_role(
             RoleName=role_name,
             AssumeRolePolicyDocument=json.dumps(trust_policy),
-            Description="Role for Cognito pre-token-generation Lambda",
+            Description="Role for Amazon Cognito pre-token-generation AWS Lambda function",
         )
         iam.attach_role_policy(
             RoleName=role_name,
@@ -215,14 +258,14 @@ def create_or_update_lambda(session, role, sub_value, children=""):
         Code={"ZipFile": zip_content},
         Environment=env_vars,
         Timeout=10,
-        Description="Injects role/sub claims into Cognito JWT tokens for Cedar policy evaluation",
+        Description="Injects role/sub claims into Amazon Cognito JWT tokens for Cedar policy evaluation",
     )
     print(f"   ✅ Created Lambda: {response['FunctionArn']}")
     return response["FunctionArn"]
 
 
 def add_cognito_permission(session, lambda_arn):
-    """Allow Cognito to invoke the Lambda."""
+    """Allow Amazon Cognito to invoke the AWS Lambda function."""
     region = os.getenv("aws_default_region", "us-east-1")
     pool_id = os.getenv("cognito_user_pool_id")
     account_id = get_account_id(session)
@@ -246,7 +289,7 @@ def add_cognito_permission(session, lambda_arn):
 
 
 def attach_trigger(session, lambda_arn):
-    """Attach Lambda as Pre-Token-Generation V3_0 trigger to Cognito."""
+    """Attach AWS Lambda as Pre-Token-Generation V3_0 trigger to Amazon Cognito."""
     region = os.getenv("aws_default_region", "us-east-1")
     pool_id = os.getenv("cognito_user_pool_id")
     cognito = session.client("cognito-idp", region_name=region)
@@ -267,7 +310,7 @@ def attach_trigger(session, lambda_arn):
         UserPoolId=pool_id,
         LambdaConfig=lambda_config,
     )
-    print(f"   ✅ Pre-Token-Generation V3_0 trigger attached")
+    print("   ✅ Pre-Token-Generation V3_0 trigger attached")
     print(f"   Lambda: {lambda_arn}")
 
 
@@ -293,24 +336,22 @@ def verify_token(session):
     """Get a fresh token and decode it to verify claims."""
     import requests as req
 
-    pool_id = os.getenv("cognito_user_pool_id")
     client_id = os.getenv("cognito_client_id")
     token_url = os.getenv("cognito_token_url")
     scope = os.getenv("cognito_auth_scope", "")
-    region = os.getenv("aws_default_region", "us-east-1")
 
-    cognito = session.client("cognito-idp", region_name=region)
-    secret = cognito.describe_user_pool_client(
-        UserPoolId=pool_id, ClientId=client_id
-    )["UserPoolClient"]["ClientSecret"]
+    # Demo: retrieves client secret from Amazon Cognito API.
+    # Production: store client secrets in AWS Secrets Manager.
+    secret = get_client_secret(session)
 
-    data = f"grant_type=client_credentials&client_id={client_id}&client_secret={secret}"
+    data = "grant_type=client_credentials"
     if scope:
         data += f"&scope={scope}"
 
     resp = req.post(
         token_url,
         data=data,
+        auth=(client_id, secret),
         headers={"Content-Type": "application/x-www-form-urlencoded"},
         timeout=30,
     )
@@ -319,6 +360,7 @@ def verify_token(session):
         return
 
     import base64
+
     token = resp.json()["access_token"]
     payload = token.split(".")[1]
     payload += "=" * (4 - len(payload) % 4)
@@ -331,12 +373,14 @@ def verify_token(session):
     # Check for our custom claims
     has_role = "role" in claims or "custom:role" in claims
     has_pid = "patient_id" in claims
-    print(f"\n   Custom claims present: role={'✅' if has_role else '❌'}, patient_id={'✅' if has_pid else '❌'}")
+    print(
+        f"\n   Custom claims present: role={'✅' if has_role else '❌'}, patient_id={'✅' if has_pid else '❌'}"
+    )
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Setup Cognito claims for Cedar policy evaluation",
+        description="Setup Amazon Cognito claims for Cedar policy evaluation",
         epilog="""
 Examples:
   # First-time setup with patient role
@@ -350,10 +394,22 @@ Examples:
         """,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    parser.add_argument("--role", default="patient", help="Role claim value (default: patient)")
-    parser.add_argument("--sub", default="adult-patient-001", help="Sub claim value (default: adult-patient-001)")
-    parser.add_argument("--update-only", action="store_true", help="Only update Lambda env vars (skip setup)")
-    parser.add_argument("--verify", action="store_true", help="Get a token and show decoded claims")
+    parser.add_argument(
+        "--role", default="patient", help="Role claim value (default: patient)"
+    )
+    parser.add_argument(
+        "--sub",
+        default="adult-patient-001",
+        help="Sub claim value (default: adult-patient-001)",
+    )
+    parser.add_argument(
+        "--update-only",
+        action="store_true",
+        help="Only update Lambda env vars (skip setup)",
+    )
+    parser.add_argument(
+        "--verify", action="store_true", help="Get a token and show decoded claims"
+    )
 
     args = parser.parse_args()
     session = get_session()
@@ -391,10 +447,12 @@ Examples:
     print("=" * 70)
     print(f"   Lambda: {LAMBDA_FUNCTION_NAME}")
     print(f"   Claims: role={args.role}, sub={args.sub}")
-    print(f"\n   To switch roles:")
-    print(f"     python policy/setup_cognito_claims.py --role doctor --sub doctor-001 --update-only")
-    print(f"   To verify:")
-    print(f"     python policy/setup_cognito_claims.py --verify")
+    print("\n   To switch roles:")
+    print(
+        "     python policy/setup_cognito_claims.py --role doctor --sub doctor-001 --update-only"
+    )
+    print("   To verify:")
+    print("     python policy/setup_cognito_claims.py --verify")
     print("=" * 70)
 
 

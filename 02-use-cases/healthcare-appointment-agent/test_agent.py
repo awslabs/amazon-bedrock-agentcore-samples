@@ -1,4 +1,5 @@
 """Non-interactive test script using the sample prompts from the readme."""
+
 from strands.models import BedrockModel
 from mcp.client.streamable_http import streamablehttp_client
 from strands.tools.mcp.mcp_client import MCPClient
@@ -32,19 +33,25 @@ TEST_PROMPTS = [
     "Yes, please book the first available slot",
 ]
 
-(boto_session, agentcore_client) = utils.create_agentcore_client()
+boto_session, agentcore_client = utils.create_agentcore_client()
 
-gatewayEndpoint = utils.get_gateway_endpoint(agentcore_client=agentcore_client, gateway_id=GATEWAY_ID)
+gatewayEndpoint = utils.get_gateway_endpoint(
+    agentcore_client=agentcore_client, gateway_id=GATEWAY_ID
+)
 print(f"Gateway Endpoint: {gatewayEndpoint}\n")
 
 jwtToken = utils.get_oath_token(boto_session)
-client = MCPClient(lambda: streamablehttp_client(gatewayEndpoint, headers={"Authorization": f"Bearer {jwtToken}"}))
+client = MCPClient(
+    lambda: streamablehttp_client(
+        gatewayEndpoint, headers={"Authorization": f"Bearer {jwtToken}"}
+    )
+)
 
 bedrockmodel = BedrockModel(
     model_id="global.anthropic.claude-haiku-4-5-20251001-v1:0",
     temperature=0.7,
     streaming=False,
-    boto_session=boto_session
+    boto_session=boto_session,
 )
 
 with client:
@@ -54,9 +61,9 @@ with client:
     agent = Agent(model=bedrockmodel, tools=tools, system_prompt=systemPrompt)
 
     for prompt in TEST_PROMPTS:
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
         print(f"👤 Prompt: {prompt}")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
         response = agent(prompt)
         print(f"🤖 Response: {response}\n")
 
