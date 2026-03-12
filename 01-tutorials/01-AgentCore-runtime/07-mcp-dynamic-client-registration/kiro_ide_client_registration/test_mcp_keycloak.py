@@ -52,6 +52,7 @@ def register_client_dcr() -> str:
         url,
         headers={"Authorization": f"Bearer {INITIAL_ACCESS_TOKEN}", "Content-Type": "application/json"},
         json={"clientId": client_id, "redirectUris": [REDIRECT_URI], "publicClient": True},
+        timeout=30,
     )
     resp.raise_for_status()
     return resp.json()["clientId"]
@@ -106,6 +107,7 @@ def get_token_via_browser(client_id: str) -> str:
             "redirect_uri": REDIRECT_URI,
             "code_verifier": code_verifier,
         },
+        timeout=30,
     )
     resp.raise_for_status()
     return resp.json()["access_token"]

@@ -305,7 +305,7 @@ Result: 30
 ### Tutorial Architecture
 
 ```
-IDE (Kiro/Cursor) → MCP Proxy (local) → Keycloak (Google OAuth) → AgentCore (remote MCP)
+IDE (Kiro) → MCP Proxy (local) → Keycloak (Google OAuth) → AgentCore (remote MCP)
                           │
                           ├─ 1. DCR: Register client dynamically (IAT)
                           ├─ 2. Browser: Google OAuth login
@@ -349,9 +349,9 @@ IDE (Kiro/Cursor) → MCP Proxy (local) → Keycloak (Google OAuth) → AgentCor
 
 ## IDE Integration
 
-### Cursor IDE
+### Kiro IDE
 
-Add to `.cursor/mcp.json`:
+Add to `.kiro/mcp.json`:
 
 ```json
 {
