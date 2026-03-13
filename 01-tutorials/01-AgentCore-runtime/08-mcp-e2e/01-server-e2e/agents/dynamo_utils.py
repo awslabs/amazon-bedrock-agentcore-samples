@@ -1,6 +1,6 @@
 import boto3
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Dict, List
 from decimal import Decimal
 
 class FinanceDB:

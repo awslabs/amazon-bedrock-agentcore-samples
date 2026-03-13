@@ -23,7 +23,7 @@ End-to-end tutorials demonstrating MCP (Model Context Protocol) server and clien
     <tr>
       <td>Tools (output schema)</td>
       <td><code>output schema</code></td>
-      <td align="center">TBD</td>
+      <td align="center">✅</td>
     </tr>
     <tr>
       <td>Resources</td>
@@ -60,7 +60,7 @@ End-to-end tutorials demonstrating MCP (Model Context Protocol) server and clien
     <tr>
       <td>Transports</td>
       <td><code>response streaming</code></td>
-      <td align="center">TBD</td>
+      <td align="center">✅</td>
     </tr>
     <tr>
       <td rowspan="4"><strong>MCP Utilities</strong></td>

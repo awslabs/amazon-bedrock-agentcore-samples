@@ -11,8 +11,8 @@ from typing import Optional
 username = "testuser"
 sm_name = "mcp_sample_agent"
 
-SAMPLE_ROLE_NAME = f"MCPDemoBedrockAgentCoreRole"
-POLICY_NAME = f"AWSMCPtBedrockAgentCorePolicy"
+SAMPLE_ROLE_NAME = "MCPDemoBedrockAgentCoreRole"
+POLICY_NAME = "AWSMCPtBedrockAgentCorePolicy"
 
 
 def get_customer_support_secret():
@@ -235,7 +235,7 @@ def create_agentcore_runtime_execution_role(role_name: str) -> Optional[str]:
                 "Action": ["logs:DescribeLogStreams", "logs:CreateLogGroup"],
                 "Resource": [
                     f"arn:aws:logs:{region}:{account_id}:log-group:"
-                    f"/aws/bedrock-agentcore/runtimes/*"
+                    "/aws/bedrock-agentcore/runtimes/*"
                 ],
             },
             {
@@ -250,7 +250,7 @@ def create_agentcore_runtime_execution_role(role_name: str) -> Optional[str]:
                 "Action": ["logs:CreateLogStream", "logs:PutLogEvents"],
                 "Resource": [
                     f"arn:aws:logs:{region}:{account_id}:log-group:"
-                    f"/aws/bedrock-agentcore/runtimes/*:log-stream:*"
+                    "/aws/bedrock-agentcore/runtimes/*:log-stream:*"
                 ],
             },
             {
@@ -291,7 +291,7 @@ def create_agentcore_runtime_execution_role(role_name: str) -> Optional[str]:
                     f"arn:aws:bedrock-agentcore:{region}:{account_id}:"
                     f"workload-identity-directory/default",
                     f"arn:aws:bedrock-agentcore:{region}:{account_id}:"
-                    f"workload-identity-directory/default/workload-identity/*",
+                    "workload-identity-directory/default/workload-identity/*",
                 ],
             },
             {
