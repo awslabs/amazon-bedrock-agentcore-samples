@@ -9,7 +9,7 @@ from typing import Optional
 
 
 username = "testuser"
-sm_name = "customer_support_agent"
+sm_name = "mcp_sample_agent"
 
 SAMPLE_ROLE_NAME = f"MCPDemoBedrockAgentCoreRole"
 POLICY_NAME = f"AWSMCPtBedrockAgentCorePolicy"
