@@ -81,7 +81,7 @@ After completing examples:
 - [Arize Documentation](https://arize.com/docs/ax)
 - [Braintrust Documentation](https://www.braintrust.dev/docs)
 - [Datadog Documentation](https://docs.datadoghq.com/)
-- [Datadog APM](https://docs.datadoghq.com/tracing/)
+- [Datadog LLM Observability](https://docs.datadoghq.com/llm_observability/)
 - [Datadog OpenTelemetry](https://docs.datadoghq.com/opentelemetry/)
 - [Instana Documentation](https://www.ibm.com/docs/en/instana-observability/1.0.308?topic=overview)
 - [Langfuse Documentation](https://langfuse.com/docs)
