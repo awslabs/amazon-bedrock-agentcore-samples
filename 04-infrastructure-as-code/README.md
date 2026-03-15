@@ -15,7 +15,7 @@ Choose your preferred approach:
 
 - **[CloudFormation](./cloudformation/)** - YAML/JSON templates for declarative infrastructure
 - **[CDK](./cdk/)** - Python or TypeScript code for programmatic infrastructure
-- **[Pulumi](./pulumi/)** - TypeScript code for infrastructure with built-in state management and secrets
+- **[Pulumi](./pulumi/)** - TypeScript or Python code for infrastructure with built-in state management and secrets
 - **[Terraform](./terraform/)** - HCL code for declarative infrastructure with state management
 
 ## Samples
@@ -34,7 +34,7 @@ Deploy a simple AgentCore Runtime with a basic Strands agent - no additional too
 **Deployment time:** ~5-15 minutes  
 **Estimated cost:** ~$50-100/month
 
-**Implementation:** [CloudFormation](./cloudformation/basic-runtime/) | [CDK](./cdk/python/basic-runtime/) | [Pulumi](./pulumi/typescript/basic-runtime/) | [Terraform](./terraform/basic-runtime/)
+**Implementation:** [CloudFormation](./cloudformation/basic-runtime/) | [CDK](./cdk/python/basic-runtime/) | [Pulumi (TypeScript)](./pulumi/typescript/basic-runtime/) | [Pulumi (Python)](./pulumi/python/basic-runtime/) | [Terraform](./terraform/basic-runtime/)
 
 ### 2. MCP Server on AgentCore Runtime
 
@@ -50,7 +50,7 @@ Deploy a complete MCP (Model Context Protocol) server with automated Docker buil
 **Deployment time:** ~10-15 minutes  
 **Estimated cost:** ~$50-100/month
 
-**Implementation:** [CloudFormation](./cloudformation/mcp-server-agentcore-runtime/) | [CDK](./cdk/python/mcp-server-agentcore-runtime/) | [Pulumi](./pulumi/typescript/mcp-server-agentcore-runtime/) | [Terraform](./terraform/mcp-server-agentcore-runtime/)
+**Implementation:** [CloudFormation](./cloudformation/mcp-server-agentcore-runtime/) | [CDK](./cdk/python/mcp-server-agentcore-runtime/) | [Pulumi (TypeScript)](./pulumi/typescript/mcp-server-agentcore-runtime/) | [Pulumi (Python)](./pulumi/python/mcp-server-agentcore-runtime/) | [Terraform](./terraform/mcp-server-agentcore-runtime/)
 
 ### 3. Multi-Agent Runtime
 
@@ -66,7 +66,7 @@ Deploy a multi-agent system where Agent1 (orchestrator) can invoke Agent2 (speci
 **Deployment time:** ~15-20 minutes  
 **Estimated cost:** ~$100-200/month
 
-**Implementation:** [CloudFormation](./cloudformation/multi-agent-runtime/) | [CDK](./cdk/python/multi-agent-runtime/) | [Pulumi](./pulumi/typescript/multi-agent-runtime/) | [Terraform](./terraform/multi-agent-runtime/)
+**Implementation:** [CloudFormation](./cloudformation/multi-agent-runtime/) | [CDK](./cdk/python/multi-agent-runtime/) | [Pulumi (TypeScript)](./pulumi/typescript/multi-agent-runtime/) | [Pulumi (Python)](./pulumi/python/multi-agent-runtime/) | [Terraform](./terraform/multi-agent-runtime/)
 
 ### 4. End-to-End Weather Agent with Tools and Memory
 
@@ -84,7 +84,7 @@ Deploy a complete weather-based activity planning agent with browser automation,
 **Deployment time:** ~15-20 minutes  
 **Estimated cost:** ~$100-150/month
 
-**Implementation:** [CloudFormation](./cloudformation/end-to-end-weather-agent/) | [CDK](./cdk/python/end-to-end-weather-agent/) | [Pulumi](./pulumi/typescript/end-to-end-weather-agent/) | [Terraform](./terraform/end-to-end-weather-agent/)
+**Implementation:** [CloudFormation](./cloudformation/end-to-end-weather-agent/) | [CDK](./cdk/python/end-to-end-weather-agent/) | [Pulumi (TypeScript)](./pulumi/typescript/end-to-end-weather-agent/) | [Pulumi (Python)](./pulumi/python/end-to-end-weather-agent/) | [Terraform](./terraform/end-to-end-weather-agent/)
 
 ## Prerequisites
 
@@ -109,7 +109,8 @@ For CDK samples, also install:
 For Pulumi samples, also install:
 
 - [Pulumi CLI](https://www.pulumi.com/docs/install/)
-- Node.js 18+ and npm
+- Node.js 18+ and npm (for TypeScript samples)
+- Python 3.11+ and [uv](https://docs.astral.sh/uv/) (for Python samples)
 
 For Terraform samples, also install:
 
@@ -136,9 +137,14 @@ For Terraform samples, also install:
 │   │   └── end-to-end-weather-agent/
 │   └── typescript/                   # TypeScript CDK samples
 │       └── knowledge-base-rag-agent/
-├── pulumi/                           # Pulumi samples (TypeScript)
+├── pulumi/                           # Pulumi samples (TypeScript & Python)
 │   ├── README.md                     # Pulumi-specific guide
-│   └── typescript/
+│   ├── typescript/                   # TypeScript Pulumi samples
+│   │   ├── basic-runtime/
+│   │   ├── mcp-server-agentcore-runtime/
+│   │   ├── multi-agent-runtime/
+│   │   └── end-to-end-weather-agent/
+│   └── python/                       # Python Pulumi samples
 │       ├── basic-runtime/
 │       ├── mcp-server-agentcore-runtime/
 │       ├── multi-agent-runtime/
