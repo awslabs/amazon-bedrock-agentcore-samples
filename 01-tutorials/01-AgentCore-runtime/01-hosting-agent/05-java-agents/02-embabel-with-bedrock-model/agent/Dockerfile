@@ -1,12 +1,12 @@
 # Build stage
-FROM --platform=linux/arm64 amazoncorretto:21-al2023 AS builder
+FROM amazoncorretto:21-al2023 AS builder
 WORKDIR /app
 COPY pom.xml .
 COPY src ./src
 RUN yum install -y maven && mvn clean package -DskipTests
 
 # Runtime stage — Ubuntu for Playwright/Chromium support
-FROM --platform=linux/arm64 ubuntu:22.04
+FROM ubuntu:22.04
 WORKDIR /app
 
 ENV DEBIAN_FRONTEND=noninteractive

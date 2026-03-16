@@ -21,8 +21,12 @@ All existing tutorials in this repository use Python. These Java tutorials show 
 | Agent framework      | Strands / LangGraph / CrewAI    | Spring AI ChatClient / Embabel GOAP               |
 | Runtime starter      | `bedrock-agentcore-sdk`         | `spring-ai-agentcore-runtime-starter`              |
 | Browser integration  | Direct SDK call                 | `spring-ai-agentcore-browser` + `ChatClient`       |
-| Container base       | Python slim                     | Amazon Corretto 21 ARM64                           |
+| Container base       | Python slim                     | Amazon Corretto 21                                 |
 | Build tool           | pip / poetry                    | Maven                                              |
+
+## Spring AI AgentCore Library
+
+These tutorials use the [spring-ai-agentcore](https://github.com/spring-ai-community/spring-ai-agentcore) community library — a Spring Boot starter that enables existing Spring Boot applications to conform to the Amazon AgentCore Runtime contract with minimal configuration. It provides auto-configured `/invoke` and `/ping` endpoints, the `@AgentCoreInvocation` annotation, SSE streaming support, AgentCore Memory integration, browser automation, and more.
 
 ## Prerequisites
 

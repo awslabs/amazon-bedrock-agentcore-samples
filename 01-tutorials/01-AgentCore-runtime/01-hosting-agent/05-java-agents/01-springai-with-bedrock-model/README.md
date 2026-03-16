@@ -10,14 +10,18 @@ This is the Java equivalent of the Python [Strands with Bedrock model](../../01-
 
 | Information         | Details                                                                                  |
 |:--------------------|:-----------------------------------------------------------------------------------------|
-| Tutorial type       | Conversational                                                                           |
+| Tutorial type       | Hosting Tools                                                                            |
 | Agent type          | Single                                                                                   |
 | Agentic Framework   | Spring AI                                                                                |
 | LLM model           | Anthropic Claude Haiku 4.5                                                               |
-| Tutorial components | Hosting agent on AgentCore Runtime. Using Spring AI ChatClient and Amazon Bedrock Model   |
+| Tutorial components | Hosting agent on AgentCore Runtime. Using Spring AI ChatClient and Amazon Bedrock Model  |
 | Tutorial vertical   | Cross-vertical                                                                           |
 | Example complexity  | Easy                                                                                     |
 | SDK used            | spring-ai-agentcore-runtime-starter (Java) and AWS CDK                                   |
+
+### Library
+
+This tutorial uses the [spring-ai-agentcore](https://github.com/spring-ai-community/spring-ai-agentcore) community library, a Spring Boot starter that auto-configures AgentCore Runtime endpoints and provides the `@AgentCoreInvocation` annotation.
 
 ### Tutorial Key Features
 
@@ -25,7 +29,7 @@ This is the Java equivalent of the Python [Strands with Bedrock model](../../01-
 * Hosting Spring Boot agents on Amazon Bedrock AgentCore Runtime
 * Using Spring AI `ChatClient` with Amazon Bedrock models
 * `@AgentCoreInvocation` annotation as the Java equivalent of Python's `@app.entrypoint`
-* Corretto 21 ARM64 Docker image
+* Corretto 21 Docker image
 * CDK infrastructure with `CfnRuntime` L1 construct
 
 ## Prerequisites
@@ -97,10 +101,12 @@ RUNTIME_ARN=$(aws cloudformation describe-stacks \
   --query 'Stacks[0].Outputs[?OutputKey==`AgentRuntimeArn`].OutputValue' \
   --output text)
 
-aws bedrock-agentcore invoke-runtime \
+aws bedrock-agentcore invoke-agent-runtime \
   --agent-runtime-arn "$RUNTIME_ARN" \
+  --cli-binary-format raw-in-base64-out \
+  --content-type "application/json" \
   --payload '{"message": "What is Amazon Bedrock AgentCore?"}' \
-  --output text
+  /dev/stdout
 ```
 
 ## How It Works

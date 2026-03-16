@@ -3,10 +3,10 @@
 #######################################################################
 # build-and-push.sh
 #
-# Build ARM64 Docker image and push to Amazon ECR
+# Build Docker image and push to Amazon ECR
 #
-# This script builds the Spring Boot agent application as an ARM64
-# Docker image and pushes it to Amazon ECR.
+# This script builds the Spring Boot agent application as a Docker
+# image and pushes it to Amazon ECR.
 #######################################################################
 
 set -e
@@ -24,7 +24,7 @@ usage() {
     cat << EOF
 Usage: $(basename "$0") [OPTIONS]
 
-Build ARM64 Docker image and push to Amazon ECR.
+Build Docker image and push to Amazon ECR.
 
 Required:
   -r, --region          AWS region (e.g., us-east-1)
@@ -138,20 +138,17 @@ fi
 log_info "Prerequisites validated successfully"
 
 #######################################################################
-# Build Docker image for ARM64
+# Build Docker image
 #######################################################################
 FULL_IMAGE_URI="${ECR_URI}:${IMAGE_TAG}"
 
-log_info "Building ARM64 Docker image..."
-log_info "  Platform: linux/arm64"
+log_info "Building Docker image..."
 log_info "  Image: $FULL_IMAGE_URI"
 
 # Get the directory where this script is located
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Build the image with ARM64 platform
 docker build \
-    --platform linux/arm64 \
     --tag "$FULL_IMAGE_URI" \
     "$SCRIPT_DIR"
 

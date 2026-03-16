@@ -18,8 +18,10 @@ public class AgentApplication {
      * Minimal conversational agent hosted on AgentCore Runtime.
      * Receives a user message via the /invoke endpoint and returns the LLM response.
      */
+    public record AgentRequest(String message) {}
+
     @Service
-    static class ConversationalAgent {
+    public static class ConversationalAgent {
 
         private final ChatClient chatClient;
 
@@ -30,8 +32,8 @@ public class AgentApplication {
         }
 
         @AgentCoreInvocation
-        public String chat(String userMessage) {
-            return chatClient.prompt(userMessage).call().content();
+        public String chat(AgentRequest request) {
+            return chatClient.prompt(request.message()).call().content();
         }
     }
 }

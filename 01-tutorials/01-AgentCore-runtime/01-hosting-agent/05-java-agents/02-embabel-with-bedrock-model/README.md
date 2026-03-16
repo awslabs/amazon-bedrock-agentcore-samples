@@ -21,6 +21,10 @@ For the minimal Spring AI agent, see [01-springai-with-bedrock-model](../01-spri
 | Example complexity  | Intermediate                                                                                     |
 | SDK used            | spring-ai-agentcore-runtime-starter, spring-ai-agentcore-browser, embabel-agent-starter, AWS CDK |
 
+### Library
+
+This tutorial uses the [spring-ai-agentcore](https://github.com/spring-ai-community/spring-ai-agentcore) community library, a Spring Boot starter that auto-configures AgentCore Runtime endpoints, provides the `@AgentCoreInvocation` annotation, and includes the `spring-ai-agentcore-browser` module for browser automation.
+
 ### Tutorial Key Features
 
 * Embabel GOAP planning with `@Agent`, `@Action`, `@AchievesGoal` annotations
