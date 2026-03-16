@@ -234,7 +234,7 @@ def get_aws_session(
                 try:
                     temp_session = boto3.Session()
                     region = temp_session.region_name
-                except:
+                except Exception:
                     pass
             # Final fallback
             if not region:
@@ -374,7 +374,7 @@ def _detect_region_simple(region_name: Optional[str]) -> str:
         temp_session = boto3.Session()
         if temp_session.region_name:
             return temp_session.region_name
-    except:
+    except Exception:
         pass
 
     # Default to us-east-1 as last resort
@@ -435,7 +435,7 @@ def _print_success_message(
         if hasattr(credentials, 'method'):
             method_str = str(credentials.method).lower()
             is_sso = 'sso' in method_str
-    except:
+    except Exception:
         pass
 
     if is_sso:

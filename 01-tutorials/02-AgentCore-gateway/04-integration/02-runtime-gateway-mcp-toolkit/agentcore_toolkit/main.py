@@ -242,7 +242,7 @@ class AgentCoreToolkit:
         try:
             # Create IAM role
             iam_role = utils.create_agentcore_gateway_role(
-                derived_names["iam_role_name"]
+                derived_names["iam_role_name"], region=self.region
             )
             print(f"Gateway IAM Role ARN: {iam_role['Role']['Arn']}")
 
@@ -272,6 +272,11 @@ class AgentCoreToolkit:
     def _configure_runtime(self, runtime_config, auth_config, agent_name):
         """Configure AgentCore Runtime with provided settings"""
         try:
+            # Remove shared Dockerfile so it gets regenerated for this runtime
+            dockerfile_path = Path.cwd() / "Dockerfile"
+            if dockerfile_path.exists():
+                dockerfile_path.unlink()
+
             agentcore_runtime = Runtime()
 
             agentcore_runtime.configure(

@@ -21,3 +21,8 @@ python-dateutil>=2.8.2
 
 # Logging and utilities
 python-json-logger>=2.0.7
+
+# Strands
+strands-agents
+strands-agents-tools
+uvicorn[standard]

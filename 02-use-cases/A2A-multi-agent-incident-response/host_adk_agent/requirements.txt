@@ -62,7 +62,9 @@ click==8.3.0
 cloudpickle==3.1.1
     # via google-cloud-aiplatform
 cryptography==46.0.3
-    # via authlib
+    # via
+    #   authlib
+    #   pyjwt
 distro==1.9.0
     # via openai
 docstring-parser==0.17.0
@@ -387,6 +389,8 @@ pydantic-core==2.41.4
     # via pydantic
 pydantic-settings==2.11.0
     # via mcp
+pyjwt==2.11.0
+    # via mcp
 pyparsing==3.2.5
     # via httplib2
 python-dateutil==2.9.0.post0
@@ -450,7 +454,7 @@ sqlparse==0.5.3
     # via google-cloud-spanner
 sse-starlette==3.0.2
     # via mcp
-starlette==0.49.1
+starlette==0.48.0
     # via
     #   bedrock-agentcore
     #   fastapi
@@ -470,7 +474,9 @@ tqdm==4.67.1
     #   openai
 typing-extensions==4.15.0
     # via
+    #   aiosignal
     #   alembic
+    #   anyio
     #   bedrock-agentcore
     #   fastapi
     #   google-adk
@@ -478,6 +484,7 @@ typing-extensions==4.15.0
     #   google-genai
     #   grpcio
     #   huggingface-hub
+    #   mcp
     #   openai
     #   opentelemetry-api
     #   opentelemetry-exporter-otlp-proto-http
@@ -486,10 +493,13 @@ typing-extensions==4.15.0
     #   opentelemetry-semantic-conventions
     #   pydantic
     #   pydantic-core
+    #   referencing
     #   sqlalchemy
+    #   starlette
     #   typing-inspection
 typing-inspection==0.4.2
     # via
+    #   mcp
     #   pydantic
     #   pydantic-settings
 tzlocal==5.3.1

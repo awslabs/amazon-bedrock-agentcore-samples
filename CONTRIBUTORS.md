@@ -3,7 +3,9 @@
 - aarora79
 - akshseh
 - anajmi
+- amit-lulla
 - architec
+- arunskum
 - aristsakpinis93
 - aurbac
 - bergjaak
@@ -89,5 +91,10 @@
 - Traci Lim (longwind48)
 - Jerad Engebreth (jcengebreth)
 - Roberto Catalano
+- Nadhya Polanco
 - afarntrog
 - Sid Ahmed boudboub (sierrabravo98)
+- Gan Luan
+- Will Ensor
+- Osman Santos
+- David Kaleko

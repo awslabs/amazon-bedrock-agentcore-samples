@@ -40,6 +40,8 @@ certifi==2025.10.5
     #   httpcore
     #   httpx
     #   requests
+cffi==2.0.0
+    # via cryptography
 chardet==5.2.0
     # via prance
 charset-normalizer==3.4.3
@@ -50,6 +52,8 @@ click==8.3.0
     #   uvicorn
 colorama==0.4.6
     # via griffe
+cryptography==46.0.5
+    # via pyjwt
 distro==1.9.0
     # via openai
 docstring-parser==0.17.0
@@ -177,6 +181,8 @@ pyasn1-modules==0.4.2
     # via google-auth
 pycodestyle==2.14.0
     # via autopep8
+pycparser==3.0
+    # via cffi
 pydantic==2.12.0
     # via
     #   a2a-sdk
@@ -192,6 +198,8 @@ pydantic-settings==2.11.0
     # via mcp
 pygments==2.19.2
     # via rich
+pyjwt==2.11.0
+    # via mcp
 python-dateutil==2.9.0.post0
     # via botocore
 python-dotenv==1.1.1
@@ -270,8 +278,10 @@ types-requests==2.32.4.20250913
     # via openai-agents
 typing-extensions==4.15.0
     # via
+    #   anyio
     #   bedrock-agentcore
     #   bedrock-agentcore-starter-toolkit
+    #   mcp
     #   openai
     #   openai-agents
     #   openinference-instrumentation-openai-agents
@@ -280,10 +290,13 @@ typing-extensions==4.15.0
     #   opentelemetry-semantic-conventions
     #   pydantic
     #   pydantic-core
+    #   referencing
+    #   starlette
     #   typer
     #   typing-inspection
 typing-inspection==0.4.2
     # via
+    #   mcp
     #   pydantic
     #   pydantic-settings
 urllib3==2.6.0

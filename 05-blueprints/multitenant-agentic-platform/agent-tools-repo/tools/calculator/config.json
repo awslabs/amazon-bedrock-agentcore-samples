@@ -1,0 +1,23 @@
+{
+  "name": "calculator",
+  "displayName": "Calculator",
+  "description": "Perform mathematical calculations and evaluations",
+  "category": "utility",
+  "version": "1.0.0",
+  "dependencies": [],
+  "parameters": {
+    "expression": {
+      "type": "string",
+      "description": "Mathematical expression to evaluate"
+    }
+  },
+  "permissions": [],
+  "icon": "🧮",
+  "author": "Agent Tools Team",
+  "license": "MIT",
+  "supportedFunctions": [
+    "abs", "round", "min", "max", "sum", "pow",
+    "sqrt", "sin", "cos", "tan", "log", "log10",
+    "exp", "floor", "ceil", "pi", "e"
+  ]
+}
