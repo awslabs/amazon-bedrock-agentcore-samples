@@ -17,7 +17,7 @@ Our tutorials are organized by Amazon Bedrock AgentCore components:
 * **Policy**: Amazon Bedrock AgentCore Policy enables developers to define and enforce security controls for AI agent interactions with tools by creating a protective boundary around agent operations. Using Cedar language policies, it provides declarative security with runtime enforcement to prevent data leakage, business rule violations, and authority overreach.
 
 
-Additionally, we provide an **end-to-end** example that demonstrate how to combine these components in practical scenarios.
+Additionally, we provide an **end-to-end** workshop, an incremental example that demonstrates how to combine these components in practical scenarios.
 
 ## Amazon Bedrock AgentCore
 
