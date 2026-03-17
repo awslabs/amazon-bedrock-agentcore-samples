@@ -134,6 +134,12 @@ aws bedrock-agentcore invoke-agent-runtime \
   /dev/stdout
 ```
 
+## Resources
+
+* [spring-ai-agentcore](https://github.com/spring-ai-community/spring-ai-agentcore) — Spring Boot starter for AgentCore Runtime integration, including the `spring-ai-agentcore-browser` module used in this tutorial
+* [Embabel Agent Framework (GitHub)](https://github.com/embabel/embabel-agent) — Source code and wiki with quick-start guide, configuration reference, and examples
+* [Embabel Agent Framework (Docs)](https://docs.embabel.com/) — Official user guide covering GOAP planning, annotations, Blackboard model, and more
+
 ## Cleanup
 
 ```bash
