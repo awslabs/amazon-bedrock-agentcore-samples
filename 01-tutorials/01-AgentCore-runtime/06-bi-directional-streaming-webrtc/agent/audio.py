@@ -49,6 +49,7 @@ class OutputTrack(MediaStreamTrack):
         self._fifo = av.AudioFifo()
         self._start_time = None
         self._timestamp = 0
+        self._muted = False
 
     async def recv(self):
         """Return the next 20ms audio frame, paced to real-time."""
@@ -66,10 +67,13 @@ class OutputTrack(MediaStreamTrack):
         if delay > 0:
             await asyncio.sleep(delay)
 
-        # Read exactly one frame from FIFO, or silence if not enough buffered
-        frame = self._fifo.read(SAMPLES_PER_FRAME, partial=False)
-        if frame is None:
+        # Return silence if muted (barge-in) or buffer empty
+        if self._muted:
             frame = _SILENCE
+        else:
+            frame = self._fifo.read(SAMPLES_PER_FRAME, partial=False)
+            if frame is None:
+                frame = _SILENCE
 
         frame.pts = self._timestamp
         frame.time_base = fractions.Fraction(1, OUTPUT_SAMPLE_RATE)
@@ -77,8 +81,14 @@ class OutputTrack(MediaStreamTrack):
         self._frame_count += 1
         return frame
 
+    def clear(self):
+        """Stop playback and discard all buffered audio (barge-in)."""
+        self._muted = True
+        self._fifo = av.AudioFifo()
+
     def add_audio(self, audio_bytes):
         """Buffer PCM bytes from Nova Sonic. AudioFifo handles chunking."""
+        self._muted = False
         frame = AudioFrame(
             format="s16", layout="mono", samples=len(audio_bytes) // BYTES_PER_SAMPLE
         )

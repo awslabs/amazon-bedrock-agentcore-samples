@@ -187,6 +187,7 @@ async def run_session(audio_in, audio_out, region, pc_id):
     # The ready event gates audio sending until Nova Sonic acknowledges the session.
     # The 0.5s timeout is a fallback in case the first event is delayed.
     ready = asyncio.Event()
+    content_roles = {}  # contentId -> role
 
     async def receive_responses():
         try:
@@ -201,12 +202,30 @@ async def run_session(audio_in, audio_out, region, pc_id):
                 if not ready.is_set():
                     ready.set()
 
-                if "audioOutput" in event:
+                if "contentStart" in event:
+                    cs = event["contentStart"]
+                    if cid := cs.get("contentId"):
+                        content_roles[cid] = cs.get("role", "ASSISTANT")
+                elif "audioOutput" in event:
                     audio_out.add_audio(
                         base64.b64decode(event["audioOutput"]["content"])
                     )
                 elif "textOutput" in event:
-                    logger.info(f"Nova Sonic: {event['textOutput']['content']}")
+                    to = event["textOutput"]
+                    content = to["content"]
+                    role = content_roles.get(to.get("contentId"), "ASSISTANT")
+                    # Barge-in: Nova Sonic sends this before contentEnd INTERRUPTED
+                    if "interrupted" in content and "true" in content:
+                        logger.info("Barge-in detected, clearing audio queue")
+                        audio_out.clear()
+                    else:
+                        label = "User" if role == "USER" else "Nova Sonic"
+                        logger.info(f"{label}: {content}")
+                elif "contentEnd" in event:
+                    ce = event["contentEnd"]
+                    if ce.get("stopReason") == "INTERRUPTED":
+                        audio_out.clear()
+                    content_roles.pop(ce.get("contentId"), None)
         except Exception as e:
             logger.error(f"Receive error: {e}")
 
