@@ -4,7 +4,7 @@
 
 In this tutorial we will learn how to host a Java/Spring AI agent on Amazon Bedrock AgentCore Runtime.
 
-This is the Java equivalent of the Python [Strands with Bedrock model](../../01-strands-with-bedrock-model) tutorial. For the Embabel GOAP agent with AgentCore Browser, see [02-embabel-with-bedrock-model](../02-embabel-with-bedrock-model).
+This is the Java equivalent of the Python [Strands with Bedrock model](../../01-strands-with-bedrock-model) tutorial.
 
 ### Tutorial Details
 
