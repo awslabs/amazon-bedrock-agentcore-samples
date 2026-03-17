@@ -126,10 +126,12 @@ RUNTIME_ARN=$(aws cloudformation describe-stacks \
   --query 'Stacks[0].Outputs[?OutputKey==`AgentRuntimeArn`].OutputValue' \
   --output text)
 
-aws bedrock-agentcore invoke-runtime \
+aws bedrock-agentcore invoke-agent-runtime \
   --agent-runtime-arn "$RUNTIME_ARN" \
+  --cli-binary-format raw-in-base64-out \
+  --content-type "application/json" \
   --payload '{"claims": ["Amazon S3 was launched in 2006", "Spring Boot requires Java 17 or later"]}' \
-  --output text
+  /dev/stdout
 ```
 
 ## Cleanup

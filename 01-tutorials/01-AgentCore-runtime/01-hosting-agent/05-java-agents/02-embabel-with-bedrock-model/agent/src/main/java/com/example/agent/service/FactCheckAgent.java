@@ -135,7 +135,7 @@ public class FactCheckAgent {
 
         String summary = ctx.promptRunner().createObject(prompt, String.class);
         log.info("Generated fact-check report");
-        return new FactCheckReport(summary);
+        return new FactCheckReport(summary, verified.results());
     }
 
     private static String extractJson(String raw) {
