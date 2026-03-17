@@ -15,41 +15,41 @@ AgentCore services work independently or together, with any agentic framework (S
 
 ## Tutorials
 
-### 01 - [Runtime](01-AgentCore-runtime/) | [Docs](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/agents-tools-runtime.html) | [Deep Dive Video](https://www.youtube.com/live/wizEw5a4gvM?si=7owv5C-kgU8UTzPl)
+### 01 - [Runtime](01-AgentCore-runtime/)
 
-Deploy and scale AI agents on a secure, serverless runtime -- regardless of framework, protocol, or model. Covers hosting agents, MCP servers, A2A, and bi-directional streaming.
+Deploy and scale AI agents on a secure, serverless runtime -- regardless of framework, protocol, or model. Covers hosting agents, MCP servers, A2A, and bi-directional streaming. ([Docs](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/agents-tools-runtime.html) · [Deep Dive Video](https://www.youtube.com/live/wizEw5a4gvM?si=7owv5C-kgU8UTzPl))
 
-### 02 - [Gateway](02-AgentCore-gateway/) | [Docs](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/gateway.html) | [Deep Dive Video](https://www.youtube.com/live/atWXM5lziY8?si=qKEzTbU1-15B8pQ0)
+### 02 - [Gateway](02-AgentCore-gateway/)
 
-Turn APIs, Lambda functions, and existing services into MCP-compatible tools without managing integrations. Includes examples for auth, access control, sensitive data masking, and more.
+Turn APIs, Lambda functions, and existing services into MCP-compatible tools without managing integrations. Includes examples for auth, access control, sensitive data masking, and more. ([Docs](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/gateway.html) · [Deep Dive Video](https://www.youtube.com/live/atWXM5lziY8?si=qKEzTbU1-15B8pQ0))
 
-### 03 - [Identity](03-AgentCore-identity/) | [Docs](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/identity.html) | [Deep Dive Video](https://www.youtube.com/live/wv2doVDF7KQ?si=sxt2lOufwt7cOeUY)
+### 03 - [Identity](03-AgentCore-identity/)
 
-Manage agent identity and access across AWS services and third-party apps (Slack, Zoom) using standard identity providers (Okta, Entra, Cognito). Covers inbound auth, outbound auth, and 3LO flows.
+Manage agent identity and access across AWS services and third-party apps (Slack, Zoom) using standard identity providers (Okta, Entra, Cognito). Covers inbound auth, outbound auth, and 3LO flows. ([Docs](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/identity.html) · [Deep Dive Video](https://www.youtube.com/live/wv2doVDF7KQ?si=sxt2lOufwt7cOeUY))
 
-### 04 - [Memory](04-AgentCore-memory/) | [Docs](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/memory.html) | [Deep Dive Video](https://www.youtube.com/live/-N4v6-kJgwA)
+### 04 - [Memory](04-AgentCore-memory/)
 
-Add fully managed memory to your agents for personalized experiences. Explore short-term memory, long-term memory, branching, and security patterns.
+Add fully managed memory to your agents for personalized experiences. Explore short-term memory, long-term memory, branching, and security patterns. ([Docs](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/memory.html) · [Deep Dive Video](https://www.youtube.com/live/-N4v6-kJgwA))
 
-### 05 - [Tools](05-AgentCore-tools/) | [Code Interpreter Docs](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/code-interpreter-tool.html) | [Browser Tool Docs](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/browser-tool.html) | [Deep Dive Video](https://www.youtube.com/live/z3lAJ-Nf_lk?si=Tf45AR3mZVo9rweL)
+### 05 - [Tools](05-AgentCore-tools/)
 
-Use AgentCore's built-in tools: **Code Interpreter** for secure code execution, and **Browser Tool** for web navigation and form completion.
+Use AgentCore's built-in tools: **Code Interpreter** for secure code execution, and **Browser Tool** for web navigation and form completion. ([Code Interpreter Docs](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/code-interpreter-tool.html) · [Browser Tool Docs](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/browser-tool.html) · [Deep Dive Video](https://www.youtube.com/live/z3lAJ-Nf_lk?si=Tf45AR3mZVo9rweL))
 
-### 06 - [Observability](06-AgentCore-observability/) | [Docs](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/observability.html) | [Deep Dive Video](https://www.youtube.com/watch?v=wWQgawUPr1k)
+### 06 - [Observability](06-AgentCore-observability/)
 
-Trace, debug, and monitor agent performance with OpenTelemetry-compatible telemetry. Works for agents hosted on Runtime, self-hosted agents, Lambda-based agents, and EKS-hosted agents.
+Trace, debug, and monitor agent performance with OpenTelemetry-compatible telemetry. Works for agents hosted on Runtime, self-hosted agents, Lambda-based agents, and EKS-hosted agents. ([Docs](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/observability.html) · [Deep Dive Video](https://www.youtube.com/watch?v=wWQgawUPr1k))
 
-### 07 - [Evaluations](07-AgentCore-evaluations/) | [Docs](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/evaluations.html) | [Deep Dive Video](https://www.youtube.com/live/i0h7xA8cqYs?si=ZSR_-iQRjju-2H04)
+### 07 - [Evaluations](07-AgentCore-evaluations/)
 
-Assess agent quality with built-in and custom evaluators across dimensions like correctness, helpfulness, and safety. Includes creating evaluators, running evaluations, and using results.
+Assess agent quality with built-in and custom evaluators across dimensions like correctness, helpfulness, and safety. Includes creating evaluators, running evaluations, and using results. ([Docs](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/evaluations.html) · [Deep Dive Video](https://www.youtube.com/live/i0h7xA8cqYs?si=ZSR_-iQRjju-2H04))
 
-### 08 - [Policy](08-AgentCore-policy/) | [Docs](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/policy.html) | [Deep Dive Video](https://www.youtube.com/watch?v=q_9htaugcgI)
+### 08 - [Policy](08-AgentCore-policy/)
 
-Define and enforce security controls using Cedar language policies to prevent data leakage and authority overreach. Covers natural language policy authoring and fine-grained access control.
+Define and enforce security controls using Cedar language policies to prevent data leakage and authority overreach. Covers natural language policy authoring and fine-grained access control. ([Docs](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/policy.html) · [Deep Dive Video](https://www.youtube.com/watch?v=q_9htaugcgI))
 
-### 09 - [End-to-End Workshop](09-AgentCore-E2E/) | [Deep Dive Video](https://youtu.be/gI_qvheaSoA?si=Pa6VzGXzopuX_koW&t=490)
+### 09 - [End-to-End Workshop](09-AgentCore-E2E/)
 
-Build a complete agent step by step, combining Runtime, Gateway, Identity, Memory, and more into a production-ready solution.
+Build a complete agent step by step, combining Runtime, Gateway, Identity, Memory, and more into a production-ready solution. ([Deep Dive Video](https://youtu.be/gI_qvheaSoA?si=Pa6VzGXzopuX_koW&t=490))
 
 ## Where to Start
 
