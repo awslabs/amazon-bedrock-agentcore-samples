@@ -1,0 +1,10 @@
+strands-agents
+strands-agents-tools
+ag-ui-strands
+fastapi
+uvicorn
+pydantic
+python-dotenv
+uv
+boto3
+websockets
