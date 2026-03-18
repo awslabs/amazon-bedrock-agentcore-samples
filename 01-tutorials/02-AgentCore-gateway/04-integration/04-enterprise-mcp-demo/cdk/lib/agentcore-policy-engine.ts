@@ -73,6 +73,13 @@ export class AgentCorePolicyEngine extends Construct {
         resources: ['*'],
       }),
     );
+    this.policyFunction.addToRolePolicy(
+      new PolicyStatement({
+        effect: Effect.ALLOW,
+        actions: ['iam:GetRole', 'iam:GetRolePolicy', 'iam:ListAttachedRolePolicies', 'iam:ListRolePolicies'],
+        resources: ["arn:aws:iam::*:role/*"],
+      }),
+    );
 
     // Grant permission to pass the gateway role if provided
     if (props.gatewayRole) {

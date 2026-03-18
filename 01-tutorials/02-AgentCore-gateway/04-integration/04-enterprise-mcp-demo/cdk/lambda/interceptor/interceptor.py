@@ -56,7 +56,7 @@ def lambda_handler(event, context):
                     else None
                 )
                 if GUARDRAIL_ID:
-                    response = client.apply_guardrail(
+                    gr_response = client.apply_guardrail(
                         guardrailIdentifier=GUARDRAIL_ID,
                         guardrailVersion=GUARDRAIL_VERSION,
                         source="INPUT",
@@ -70,13 +70,14 @@ def lambda_handler(event, context):
                         ],
                         outputScope="FULL",
                     )
-                    if response.get("action", None) == "GUARDRAIL_INTERVENED":
+                    if gr_response.get("action", None) == "GUARDRAIL_INTERVENED":
                         logger.warning("Guardrail intervened on the content. Details:")
-                        logger.warning(response.get("outputs", [{}])[0].get("text", {}))
+                        guardrail_text = gr_response.get("outputs", [{}])[0].get("text", "")
+                        logger.warning(guardrail_text)
                         body_transformed = response_body
                         body_transformed["result"]["content"][0] = {
                             "type": "text",
-                            "text": response.get("outputs", [{}])[0].get("text", {}),
+                            "text": guardrail_text,
                         }
                         statusCode = 403
                         response = {
@@ -135,7 +136,7 @@ def lambda_handler(event, context):
             if mcp_method == "tools/call" and request_body:
                 # This is a REQUEST interceptor
                 if GUARDRAIL_ID:
-                    response = client.apply_guardrail(
+                    gr_response = client.apply_guardrail(
                         guardrailIdentifier=GUARDRAIL_ID,
                         guardrailVersion=GUARDRAIL_VERSION,
                         source="INPUT",
@@ -149,29 +150,34 @@ def lambda_handler(event, context):
                         ],
                         outputScope="FULL",
                     )
-                    logger.info(f"Guardrail response: {response}")
+                    logger.info(f"Guardrail response: {gr_response}")
 
-                    if response.get("action", None) == "GUARDRAIL_INTERVENED":
+                    if gr_response.get("action", None) == "GUARDRAIL_INTERVENED":
                         logger.warning("Guardrail intervened on the content. Details:")
-                        logger.warning(
-                            json.dumps(
-                                response.get("outputs", [{}])[0].get("text", {}),
-                                indent=2,
-                            )
-                        )
-                        logger.info(
-                            f"Interceptor response after guardrail intervention: {response}"
-                        )
-                        return {
+                        guardrail_text = gr_response.get("outputs", [{}])[0].get("text", "{}")
+                        logger.warning(guardrail_text)
+
+                        # Parse the guardrail output back to a dict since the gateway
+                        # expects body to be a JSON object, not a string
+                        try:
+                            transformed_body = json.loads(guardrail_text)
+                        except (json.JSONDecodeError, TypeError):
+                            # If guardrail output isn't valid JSON, pass through original request
+                            logger.error("Guardrail output is not valid JSON, passing through original request")
+                            transformed_body = request_body
+
+                        response = {
                             "interceptorOutputVersion": "1.0",
                             "mcp": {
                                 "transformedGatewayRequest": {
-                                    "body": response.get("outputs", [{}])[0].get(
-                                        "text", {}
-                                    ),
+                                    "body": transformed_body,
                                 }
                             },
                         }
+                        logger.info(
+                            f"Interceptor response after guardrail intervention: {response}"
+                        )
+                        return response
                     else:
                         logger.info(
                             "Guardrail did not intervene. Passing through original request."

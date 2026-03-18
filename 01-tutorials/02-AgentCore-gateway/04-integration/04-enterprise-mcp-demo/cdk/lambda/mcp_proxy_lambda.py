@@ -20,6 +20,13 @@ GATEWAY_URL = os.environ.get("GATEWAY_URL", "")
 COGNITO_DOMAIN = os.environ.get("COGNITO_DOMAIN", "")
 CLIENT_ID = os.environ.get("CLIENT_ID", "")
 CLIENT_SECRET = os.environ.get("CLIENT_SECRET", "")
+CALLBACK_LAMBDA_URL = os.environ.get("CALLBACK_LAMBDA_URL", "")
+RESOURCE_SERVER_ID = os.environ.get("RESOURCE_SERVER_ID","")
+
+# Allowed redirect URIs for the OAuth callback, passed from CDK as a
+# JSON-encoded list.  Must match the Cognito client's registered callbackUrls
+# to prevent open-redirect attacks.
+ALLOWED_REDIRECT_URIS = json.loads(os.environ.get("ALLOWED_REDIRECT_URIS", "[]"))
 
 
 def sign_request(request):
@@ -103,7 +110,7 @@ def handle_oauth_metadata(event):
         "authorization_endpoint": f"{api_url}/authorize",
         "token_endpoint": f"{api_url}/token",
         "registration_endpoint": f"{api_url}/register",
-        "scopes_supported": ["openid", "profile", "email"],
+        "scopes_supported": ["openid", "profile", "email", f"{RESOURCE_SERVER_ID}/mcp.read", f"{RESOURCE_SERVER_ID}/mcp.write"],
         "response_types_supported": ["code"],
         "grant_types_supported": ["authorization_code", "refresh_token"],
         "token_endpoint_auth_methods_supported": ["none", "client_secret_post"],
@@ -125,6 +132,7 @@ def handle_protected_resource_metadata(event):
             "resource": f"{api_url}/mcp",
             "authorization_servers": [api_url],
             "bearer_methods_supported": ["header"],
+            "scopes_supported": ["openid", "profile", "email", f"{RESOURCE_SERVER_ID}/mcp.read", f"{RESOURCE_SERVER_ID}/mcp.write"],
         },
     )
 
@@ -144,10 +152,10 @@ def handle_authorize(event):
         print(f"Removing 'resource' parameter: {params['resource']}")
         params.pop("resource", None)
 
-    # Fix scope parameter: convert + to spaces (Cognito expects space-separated scopes)
+    # Fix scope parameter: URL-decode and normalize spaces
     if "scope" in params:
-        # In URL encoding, + represents a space, so replace + with actual spaces
-        params["scope"] = params["scope"].replace("+", " ")
+        # URL-decode first (handles %2F etc.), then normalize + to spaces
+        params["scope"] = urllib.parse.unquote(params["scope"]).replace("+", " ")
         print(f"Fixed scope parameter: {params['scope']}")
 
     # Override client_id
@@ -244,6 +252,26 @@ def handle_callback(event):
 
     if not original_redirect_uri:
         return json_response(400, {"error": "Missing redirect_uri in state"})
+
+    # Validate redirect_uri against the allowlist to prevent open-redirect attacks.
+    # A crafted state blob could otherwise redirect the authorization code to an
+    # attacker-controlled URL.
+    #
+    # Localhost URIs with any port are allowed because IDE clients (VS Code, Kiro)
+    # spin up an ephemeral local server on a random port for the OAuth callback.
+    normalized = original_redirect_uri.rstrip("/")
+    parsed = urllib.parse.urlparse(normalized)
+    is_localhost = (
+        parsed.scheme == "http"
+        and parsed.hostname in ("localhost", "127.0.0.1")
+    )
+    allowed_normalized = [u.rstrip("/") for u in ALLOWED_REDIRECT_URIS]
+    if not is_localhost and normalized not in allowed_normalized:
+        print(f"Rejected redirect_uri not in allowlist: {original_redirect_uri}")
+        print(f"Normalized redirect_uri: {normalized}")
+        print(f"Allowed URIs (raw): {ALLOWED_REDIRECT_URIS}")
+        print(f"Allowed URIs (normalized): {allowed_normalized}")
+        return json_response(400, {"error": "invalid_redirect_uri"})
 
     # Forward to VS Code's callback with original state
     forward_params = urllib.parse.urlencode({"code": code, "state": original_state})
