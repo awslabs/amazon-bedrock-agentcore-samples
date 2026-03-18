@@ -11,11 +11,6 @@
       "description": "Weather API endpoint (replaced by setup.sh)"
     }
   ],
-  "security": [
-    {
-      "entraId": ["api://<APP_B_CLIENT_ID>/weather.read"]
-    }
-  ],
   "paths": {
     "/weather": {
       "get": {
@@ -69,28 +64,9 @@
             "description": "Unauthorized - invalid or missing token"
           }
         },
-        "security": [
-          {
-            "entraId": ["api://<APP_B_CLIENT_ID>/weather.read"]
-          }
-        ]
+        "security": []
       }
     }
   },
-  "components": {
-    "securitySchemes": {
-      "entraId": {
-        "type": "oauth2",
-        "flows": {
-          "authorizationCode": {
-            "authorizationUrl": "https://<AUTHORITY_HOST>/<TENANT_ID>/oauth2/v2.0/authorize",
-            "tokenUrl": "https://<AUTHORITY_HOST>/<TENANT_ID>/oauth2/v2.0/token",
-            "scopes": {
-              "api://<APP_B_CLIENT_ID>/weather.read": "Read weather data"
-            }
-          }
-        }
-      }
-    }
-  }
+  "components": {}
 }
