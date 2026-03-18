@@ -1,28 +1,13 @@
-# End-to-end Customer Support Agent with AgentCore
+# End-to-End Customer Support Agent with AgentCore
 
-In this tutorial we will move a customer support agent from prototype to production using Amazon Bedrock AgentCore services.
-
-## What You'll Build
-
-A complete customer support system that starts as a simple prototype and evolves into a scalable and secure sample application.
-
-Your final system will handle real customer conversations with memory, shared tools, and a web interface.
+Move a customer support agent from prototype to production using Amazon Bedrock AgentCore services. Across six labs, you'll build a complete system that handles real customer conversations with memory, shared tools, observability, and a web interface.
 
 > [!IMPORTANT]
-> The examples provided here is for educational purposes. It demonstrates how the different services from AgentCore are used on the process of migrating an agentic use case from prototype to production. As such, it is not intended for direct use in production environments.
-
-**Journey Overview:**
-
-- Start with a basic agent prototype (20 mins)
-- Add conversation memory across sessions (20 mins)
-- Share tools securely across multiple agents (30 mins)
-- Deploy to production with observability (30 mins)
-- Set up continuous quality evaluation (10 mins)
-- Build a customer-facing web app (20 mins)
+> This workshop is for educational purposes. It demonstrates how AgentCore services are used when migrating an agentic use case from prototype to production. It is not intended for direct use in production environments.
 
 ## Architecture Overview
 
-By the end of the 6 labs of this tutorial you will have created the following architecture
+By the end of the 6 labs, you will have built the following architecture:
 
 <div style="text-align:left">
     <img src="images/architecture_lab6_streamlit.png" width="100%"/>
@@ -30,92 +15,100 @@ By the end of the 6 labs of this tutorial you will have created the following ar
 
 ## Prerequisites
 
-- AWS account with Bedrock access
-- Python 3.10+
-- AWS CLI configured
-- Amazon Nova 2 Lite enabled in Bedrock
-
-## Labs
-
-### Lab 1: Create Agent Prototype
-
-Build a prototype of a customer support agent with three core tools:
-
-- Return policy lookup
-- Product information search
-- Web search for troubleshooting
-
-**What you'll learn:** Basic agent creation with Strands Agents and tool integration
-
-### Lab 2: Add Memory
-
-Transform your "goldfish agent" into one that remembers customers across conversations.
-
-- Persistent conversation history
-- Customer preference extraction
-- Cross-session context awareness
-
-**What you'll learn:** AgentCore Memory for both short-term and long-term persistence
-
-### Lab 3: Scale with Gateway & Identity
-
-Move from local tools to shared, enterprise-ready services.
-
-- Centralized tool management
-- JWT-based authentication
-- Integration with existing AWS Lambda functions
-- (Optional) Fine-grained access control with Cedar policies (e.g., deny web search for "iPhone 8" keywords)
-
-**What you'll learn:** AgentCore Gateway and AgentCore Identity for secure tool sharing
-
-### Lab 4: Deploy to Production
-
-Deploy your agent to handle real traffic with full observability.
-
-- Fully managed deployment
-- Session Continuity and Session Isolation
-- CloudWatch Observability integration
-
-**What you'll learn:** AgentCore Runtime with production-grade observability
-
-### Lab 5: Evaluate Agent Performance
-
-Set up continuous quality monitoring for your production agent.
-
-- Online evaluation configuration
-- Built-in quality metrics
-- Real-time performance dashboards
-
-**What you'll learn:** AgentCore Evaluations for production quality monitoring
-
-### Lab 6: Build Customer Interface
-
-Create a web app customers can actually use.
-
-- Streamlit-based chat interface
-- Real-time response streaming
-- Session management and authentication
-
-**What you'll learn:** Frontend integration with secure agent endpoints
+- You need an AWS account with access to Amazon Bedrock.
+- Python 3.10+ must be installed locally.
+- The AWS CLI must be configured with appropriate credentials.
+- Amazon Nova 2 Lite must be enabled in your [Amazon Bedrock model access](https://docs.aws.amazon.com/bedrock/latest/userguide/model-access.html) settings.
 
 ## Getting Started
 
-1. Clone this repository
-2. Install dependencies: `pip install -r requirements.txt`
-3. Configure AWS credentials
-4. Start with [Lab 1](lab-01-create-an-agent.ipynb)
+### If you are running this as a self-paced lab (not using an AWS Workshop account)
 
-Each lab builds on the previous one, but you can jump ahead if you understand the concepts.
+Before starting Lab 1, you need to provision the required infrastructure (Lambda functions, DynamoDB tables, IAM roles, Cognito user pool, and a Bedrock Knowledge Base). Follow these steps:
 
-## Architecture Evolution
+1. Verify your IAM role has the [required permissions](https://catalog.us-east-1.prod.workshops.aws/workshops/850fcd5c-fd1f-48d7-932c-ad9babede979/en-US/00-prerequisites/02-self-paced) for the workshop, including the [IAM policies, AWS managed policies, and trust relationships](https://catalog.us-east-1.prod.workshops.aws/workshops/850fcd5c-fd1f-48d7-932c-ad9babede979/en-US/00-prerequisites/02-self-paced#iam-policy-for-bedrock-agentcore-workshop) described in the workshop prerequisites.
+2. Run the prerequisite script to deploy the CloudFormation stacks:
 
-Watch your architecture grow from a simple local agent to a production system:
+```bash
+bash scripts/prereq.sh
+```
 
-**Lab 1:** Local agent with embedded tools
-**Lab 2:** Agent + AgentCore Memory for persistence  
-**Lab 3:** Agent + AgentCore Memory + AgentCore Gateway and AgentCore Identity for shared tools  
-**Lab 4:** Deployment to AgentCore Runtime and observability with AgentCore Observability
-**Lab 5:** Production quality monitoring with AgentCore Evaluations
-**Lab 6:** Customer-facing application with authentication
+This script creates an S3 bucket, packages and uploads the Lambda code, and deploys two CloudFormation stacks (infrastructure and Cognito) that provision all the backing resources used across the labs.
 
-Ready to build? [Start with Lab 1 →](lab-01-create-an-agent.ipynb)
+### Install dependencies and start Lab 1
+
+```bash
+pip install -r requirements.txt
+```
+
+Then open [Lab 1](lab-01-create-an-agent.ipynb) and follow along. Each lab builds on the previous one.
+
+## Labs
+
+| Lab | Title                                                                | Notebook                                   | Time    | What You'll Learn                                         |
+| --- | -------------------------------------------------------------------- | ------------------------------------------ | ------- | --------------------------------------------------------- |
+| 1   | [Create Agent Prototype](#lab-1-create-agent-prototype)              | [Notebook](lab-01-create-an-agent.ipynb)   | ~20 min | Agent creation with Strands Agents and tool integration   |
+| 2   | [Add Memory](#lab-2-add-memory)                                      | [Notebook](lab-02-agentcore-memory.ipynb)  | ~20 min | AgentCore Memory for short-term and long-term persistence |
+| 3   | [Scale with Gateway & Identity](#lab-3-scale-with-gateway--identity) | [Notebook](lab-03-agentcore-gateway.ipynb) | ~30 min | AgentCore Gateway and Identity for secure tool sharing    |
+| 4   | [Deploy to Production](#lab-4-deploy-to-production)                  | [Notebook](lab-04-agentcore-runtime.ipynb) | ~30 min | AgentCore Runtime with production-grade Observability     |
+| 5   | [Evaluate Agent Performance](#lab-5-evaluate-agent-performance)      | [Notebook](lab-05-agentcore-evals.ipynb)   | ~10 min | AgentCore Evaluations for quality monitoring              |
+| 6   | [Build Customer Interface](#lab-6-build-customer-interface)          | [Notebook](lab-06-frontend.ipynb)          | ~20 min | Frontend integration with secure agent endpoints          |
+
+### Lab 1: Create Agent Prototype
+
+Build a customer support agent prototype using Strands Agents and Amazon Nova 2 Lite with four core tools:
+
+- Look up return policies for different product categories.
+- Search product information and specifications.
+- Search the web for troubleshooting help.
+- Query a Bedrock Knowledge Base for technical support documentation.
+
+### Lab 2: Add Memory
+
+Transform your "goldfish agent" into one that remembers customers across conversations using AgentCore Memory:
+
+- Store conversation history persistently with short-term memory.
+- Extract customer preferences and behavioral patterns with long-term memory.
+- Maintain context awareness across multiple sessions so the agent can personalize responses.
+
+### Lab 3: Scale with Gateway & Identity
+
+Move from local tools to shared, enterprise-ready services using AgentCore Gateway and AgentCore Identity:
+
+- Centralize tool management by exposing Lambda functions as MCP-compatible tools through AgentCore Gateway.
+- Secure your gateway endpoint with JWT-based authentication using Amazon Cognito.
+- Integrate existing AWS Lambda functions (warranty check, web search) without rewriting tool code.
+- (Optional) Define fine-grained access control with Cedar policies using AgentCore Policy to restrict specific tool invocations.
+
+### Lab 4: Deploy to Production
+
+Deploy your agent to AgentCore Runtime to handle real traffic with full observability:
+
+- Deploy your agent to a fully managed, serverless runtime with minimal code changes (only four lines added).
+- Enable session continuity and session isolation so each customer gets a separate conversation context.
+- Monitor agent behavior through CloudWatch GenAI Observability with automatic tracing and metrics.
+
+### Lab 5: Evaluate Agent Performance
+
+Set up continuous quality monitoring for your production agent using AgentCore Evaluations:
+
+- Configure online evaluation with built-in evaluators for goal success rate, correctness, and tool selection accuracy.
+- Generate test interactions and review evaluation results through AgentCore Observability dashboards.
+- Use quality metrics to identify areas for improvement and maintain high agent performance.
+
+### Lab 6: Build Customer Interface
+
+Create a Streamlit web app that customers can use to interact with your deployed agent:
+
+- Provide a chat interface with real-time response streaming powered by AgentCore Runtime.
+- Implement secure user authentication through Amazon Cognito.
+- Manage user sessions with persistent conversation history via AgentCore Memory.
+
+## Optional Labs
+
+- [Identity Deep Dive](Optional-lab-identity.ipynb) -- Integrate Google Calendar via AgentCore Identity using OAuth2 3LO flows, enabling your agent to create events and retrieve calendars on behalf of authenticated users.
+- [Observability Deep Dive](Optional-lab-agentcore-observability.ipynb) -- Set up AgentCore Observability for agents running outside of AgentCore Runtime using AWS OpenTelemetry Python instrumentation and CloudWatch GenAI Observability.
+
+## Cleanup
+
+When you're done, run the [Cleanup notebook](lab-07-cleanup.ipynb) to tear down all resources created during the workshop.

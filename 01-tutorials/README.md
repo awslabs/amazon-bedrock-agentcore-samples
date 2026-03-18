@@ -1,36 +1,63 @@
 # 📚 Amazon Bedrock AgentCore Tutorials
 
-Welcome to the tutorials section of the Amazon Bedrock AgentCore samples repository! 
+This folder contains Hands-on tutorials for building, deploying, and managing AI agents with Amazon Bedrock AgentCore.
 
-This folder contains interactive, notebook-based tutorials designed to help you learn 
-the fundamental capabilities of Amazon Bedrock AgentCore through hands-on examples.
-
-Our tutorials are organized by Amazon Bedrock AgentCore components:
-
-* **Runtime**: Amazon Bedrock AgentCore Runtime is a secure, serverless runtime capability that empowers organizations to deploy and scale both AI agents and tools, regardless of framework, protocol, or model choice—enabling rapid prototyping, seamless scaling, and accelerated time to market
-* **Gateway**: AI agents need tools to perform real-world tasks—from searching databases to sending messages. Amazon Bedrock AgentCore Gateway automatically converts APIs, Lambda functions, and existing services into MCP-compatible tools so developers can quickly make these essential capabilities available to agents without managing integrations. 
-* **Memory**: Amazon Bedrock AgentCore Memory makes it easy for developer to build rich, personalized agent experiences with fully-manged memory infrastructure and the ability to customize memory for your needs.
-* **Identity**: Amazon Bedrock AgentCore Identity provides seamless agent identity and access management across AWS services and third-party applications such as Slack and Zoom while supporting any standard identity providers such as Okta, Entra, and Amazon Cognito.
-* **Tools**: Amazon Bedrock AgentCore provides two built-in tools to simplify your agentic AI application development: Amazon Bedrock AgentCore **Code Interpreter** tool enables AI agents to write and execute code securely, enhancing their accuracy and expanding their ability to solve complex end-to-end tasks. Amazon Bedrock AgentCore **Browser Tool** is an enterprise-grade capability that enables AI agents to navigate websites, complete multi-step forms, and perform complex web-based tasks with human-like precision within a fully managed, secure sandbox environment with low latency
-* **Observability**: Observability helps developers trace, debug, and monitor agent performance through unified operational dashboards. With support for OpenTelemetry compatible telemetry and detailed visualizations of each step of the agent workflow, Amazon Bedrock AgentCore Observability enables developers to easily gain visibility into agent behavior and maintain quality standards at scale.
-* **Evaluation**: Amazon Bedrock AgentCore Evaluations helps developers optimize agent quality based on real-world interactions. It provides built-in and custom evaluators with both on-demand and online evaluation capabilities to assess agent decision quality and performance outcomes across critical dimensions like correctness, helpfulness, and safety.
-* **Policy**: Amazon Bedrock AgentCore Policy enables developers to define and enforce security controls for AI agent interactions with tools by creating a protective boundary around agent operations. Using Cedar language policies, it provides declarative security with runtime enforcement to prevent data leakage, business rule violations, and authority overreach.
-
-
-Additionally, we provide an **end-to-end** workshop, an incremental example that demonstrates how to combine these components in practical scenarios.
-
-## Amazon Bedrock AgentCore
-
-The Amazon Bedrock AgentCore services can be used independently or combined to create production ready agents. They work with any agentic framework (such as Strands Agents, LangChain, LangGraph or CrewAI) and any model, available on Amazon Bedrock or not.
+AgentCore services work independently or together, with any agentic framework (Strands Agents, LangChain, LangGraph, CrewAI, etc.) and any model.
 
 ![Amazon Bedrock AgentCore Overview](images/agentcore_overview.png)
 
-In these tutorials, we will learn how to use each service individually and combined.
+## Prerequisites
 
-## 🎯 Who These Tutorials Are For
+- An AWS account with Amazon Bedrock access
+- Python 3.10+ and Jupyter Notebook (or JupyterLab)
+- AWS CLI configured with appropriate credentials
+- Basic familiarity with AI agents and AWS services
 
-These tutorials are perfect for:
+## Tutorials
 
- - Getting started with Amazon Bedrock AgentCore
- - Understanding core concepts before building advanced applications
- - Getting a solid foundation in AI agent development using Amazon Bedrock AgentCore
+### 01 - [Runtime](01-AgentCore-runtime/)
+
+Deploy and scale AI agents on a secure, serverless runtime -- regardless of framework, protocol, or model. Covers hosting agents, MCP servers, A2A, and bi-directional streaming. ([Docs](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/agents-tools-runtime.html) · [Deep Dive Video](https://www.youtube.com/live/wizEw5a4gvM?si=7owv5C-kgU8UTzPl))
+
+### 02 - [Gateway](02-AgentCore-gateway/)
+
+Turn APIs, Lambda functions, and existing services into MCP-compatible tools without managing integrations. Includes examples for auth, access control, sensitive data masking, and more. ([Docs](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/gateway.html) · [Deep Dive Video](https://www.youtube.com/live/atWXM5lziY8?si=qKEzTbU1-15B8pQ0))
+
+### 03 - [Identity](03-AgentCore-identity/)
+
+Manage agent identity and access across AWS services and third-party apps (Slack, Zoom) using standard identity providers (Okta, Entra, Cognito). Covers inbound auth, outbound auth, and 3LO flows. ([Docs](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/identity.html) · [Deep Dive Video](https://www.youtube.com/live/wv2doVDF7KQ?si=sxt2lOufwt7cOeUY))
+
+### 04 - [Memory](04-AgentCore-memory/)
+
+Add fully managed memory to your agents for personalized experiences. Explore short-term memory, long-term memory, branching, and security patterns. ([Docs](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/memory.html) · [Deep Dive Video](https://www.youtube.com/live/-N4v6-kJgwA))
+
+### 05 - [Tools](05-AgentCore-tools/)
+
+Use AgentCore's built-in tools: **Code Interpreter** for secure code execution, and **Browser Tool** for web navigation and form completion. ([Code Interpreter Docs](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/code-interpreter-tool.html) · [Browser Tool Docs](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/browser-tool.html) · [Deep Dive Video](https://www.youtube.com/live/z3lAJ-Nf_lk?si=Tf45AR3mZVo9rweL))
+
+### 06 - [Observability](06-AgentCore-observability/)
+
+Trace, debug, and monitor agent performance with OpenTelemetry-compatible telemetry. Works for agents hosted on Runtime, self-hosted agents, Lambda-based agents, and EKS-hosted agents. ([Docs](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/observability.html) · [Deep Dive Video](https://www.youtube.com/watch?v=wWQgawUPr1k))
+
+### 07 - [Evaluations](07-AgentCore-evaluations/)
+
+Assess agent quality with built-in and custom evaluators across dimensions like correctness, helpfulness, and safety. Includes creating evaluators, running evaluations, and using results. ([Docs](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/evaluations.html) · [Deep Dive Video](https://www.youtube.com/live/i0h7xA8cqYs?si=ZSR_-iQRjju-2H04))
+
+### 08 - [Policy](08-AgentCore-policy/)
+
+Define and enforce security controls using Cedar language policies to prevent data leakage and authority overreach. Covers natural language policy authoring and fine-grained access control. ([Docs](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/policy.html) · [Deep Dive Video](https://www.youtube.com/watch?v=q_9htaugcgI))
+
+### 09 - [End-to-End Workshop](09-AgentCore-E2E/)
+
+Build a complete agent step by step, combining Runtime, Gateway, Identity, Memory, and more into a production-ready solution. ([Deep Dive Video](https://youtu.be/gI_qvheaSoA?si=Pa6VzGXzopuX_koW&t=490))
+
+## Where to Start
+
+- **New to AgentCore?** Start with [01 - Runtime](01-AgentCore-runtime/) and work through the tutorials in order.
+- **Looking for a specific capability?** Jump directly to any tutorial -- each one is self-contained.
+- **Want the full picture?** The [End-to-End Workshop](09-AgentCore-E2E/) ties all the components together.
+
+## Resources
+
+- [Amazon Bedrock AgentCore Documentation](https://docs.aws.amazon.com/bedrock-agentcore/) -- Official developer guide and API reference
+- [AgentCore Deep Dives Playlist](https://www.youtube.com/live/wzIQDPFQx30?si=K4EgotJ6DDj7Ri41) -- Video playlist covering each component in detail
