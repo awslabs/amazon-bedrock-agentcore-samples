@@ -764,6 +764,7 @@ export class EnterpriseMcpInfraStack extends cdk.Stack {
           },
         ],
         removalPolicy: cdk.RemovalPolicy.DESTROY,
+        autoDeleteObjects: true, // NOTE: set to false in production to prevent accidental log loss
       });
 
       // Create Application Load Balancer.
@@ -1016,7 +1017,8 @@ export class EnterpriseMcpInfraStack extends cdk.Stack {
                 "bedrock-agentcore:GetResourceOauth2Token",
                 "bedrock-agentcore:GetPolicyEngine",
                 "bedrock-agentcore:AuthorizeAction",
-                "bedrock-agentcore:PartiallyAuthorizeActions"
+                "bedrock-agentcore:PartiallyAuthorizeActions",
+                "bedrock-agentcore:CheckAuthorizePermissions"
               ],
               resources: ["*"],
               effect: iam.Effect.ALLOW,
@@ -1317,8 +1319,11 @@ def handler(event, context):
     );
 
     // Associate with gateway AFTER all policies are added
-    agentCorePolicyEngine.associateWithGateway(gateway.gatewayId, 'ENFORCE');
+    agentCorePolicyEngine.associateWithGateway(gateway.gatewayId, 'LOG_ONLY');
     agentCorePolicyEngine.node.addDependency(interceptorLambda); // Ensure interceptor Lambda is created before policy engine association
+
+    // Ensure the gateway VPC resource policy is applied after all Cedar policies
+    gatewayPolicy.node.addDependency(agentCorePolicyEngine);
 
     // =============================================================================
     // OUTPUTS
