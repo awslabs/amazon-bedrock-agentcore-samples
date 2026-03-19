@@ -68,7 +68,19 @@ fi
 echo "✅ S3 bucket ownership verified"
 
 # ----- 2. Zip Lambda code -----
-sudo apt install zip
+if ! command -v zip &> /dev/null; then
+    echo "⚙️ 'zip' not found. Attempting to install..."
+    if command -v brew &> /dev/null; then
+        brew install zip
+    elif command -v apt-get &> /dev/null; then
+        sudo apt-get install -y zip
+    elif command -v yum &> /dev/null; then
+        sudo yum install -y zip
+    else
+        echo "❌ Could not install 'zip'. Please install it manually and re-run."
+        exit 1
+    fi
+fi
 echo "📦 Zipping contents of $LAMBDA_SRC into $ZIP_FILE..."
 cd "$LAMBDA_SRC"
 zip -r "../../../$ZIP_FILE" . > /dev/null
