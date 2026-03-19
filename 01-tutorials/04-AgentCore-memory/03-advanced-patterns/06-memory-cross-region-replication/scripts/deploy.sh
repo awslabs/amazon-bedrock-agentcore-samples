@@ -146,16 +146,18 @@ aws cloudformation deploy \
   --no-fail-on-empty-changeset
 
 # --- Step 6: Seed DynamoDB ---
-echo ">>> Seeding active region record..."
-aws dynamodb put-item \
-  --region "${PRIMARY_REGION}" \
-  --table-name AgentCoreMemoryReplicationConfig \
-  --item "{
-    \"PK\": {\"S\": \"ACTIVE_REGION\"},
-    \"region\": {\"S\": \"${PRIMARY_REGION}\"},
-    \"updated_at\": {\"S\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"},
-    \"updated_by\": {\"S\": \"deploy-script\"}
-  }"
+echo ">>> Seeding config table..."
+DEPLOY_TS="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+for ITEM_JSON in \
+  "{\"PK\":{\"S\":\"ACTIVE_REGION\"},\"region\":{\"S\":\"${PRIMARY_REGION}\"},\"updated_at\":{\"S\":\"${DEPLOY_TS}\"},\"updated_by\":{\"S\":\"deploy-script\"}}" \
+  "{\"PK\":{\"S\":\"MEMORY_ID_PRIMARY\"},\"memory_id\":{\"S\":\"${PRIMARY_MEMORY_ID}\"},\"region\":{\"S\":\"${PRIMARY_REGION}\"}}" \
+  "{\"PK\":{\"S\":\"MEMORY_ID_SECONDARY\"},\"memory_id\":{\"S\":\"${SECONDARY_MEMORY_ID}\"},\"region\":{\"S\":\"${SECONDARY_REGION}\"}}"
+do
+  aws dynamodb put-item \
+    --region "${PRIMARY_REGION}" \
+    --table-name AgentCoreMemoryReplicationConfig \
+    --item "${ITEM_JSON}"
+done
 
 echo ""
 echo "=== Deployment Complete ==="

@@ -6,16 +6,7 @@ AgentCore Memory stores long-term knowledge for AI agents — user preferences, 
 
 ## Architecture
 
-```
-Primary (us-east-1)                    Secondary (us-west-2)
-AgentCore Memory ──► Kinesis ──► Lambda ──writes──► AgentCore Memory
-                                   │                        │
-                                   ▼                        ▼
-                                SQS DLQ                  Kinesis ──► Lambda (idle)
-                                                         (streaming OFF by default)
-
-                    DynamoDB Global Table (active region tracking)
-```
+![Architecture](images/architecture.png)
 
 ### How It Works
 
