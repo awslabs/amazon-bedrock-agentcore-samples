@@ -15,6 +15,7 @@ dependencies = [
     "pyjwt>=2.11.0",
     "pytest >= 7.0.0",
     "pytest-asyncio >= 0.21.0",
+    "chardet >= 3.0.2, < 6.0.0",
     "requests >= 2.32.5",
     "strands-agents >= 1.25.0",
     "strands-agents-tools >= 0.2.20",
@@ -22,5 +23,5 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-    "bedrock-agentcore-starter-toolkit>=0.2.10",
+    "bedrock-agentcore-starter-toolkit>=0.3.2",
 ]

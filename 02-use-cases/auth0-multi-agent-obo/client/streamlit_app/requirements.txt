@@ -1,0 +1,27 @@
+# Streamlit Application Requirements
+# AgentCore Identity Sample - Client Application
+
+# Web Framework
+streamlit>=1.28.0
+
+# OAuth and HTTP
+requests>=2.31.0
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+
+# AWS SDK
+boto3>=1.28.0
+botocore>=1.31.0
+
+# JWT and Cryptography
+pyjwt>=2.8.0
+cryptography>=41.0.0
+
+# Python utilities
+python-dotenv>=1.0.0
+
+# Type hints and validation
+pydantic>=2.4.0
+
+# Date and time utilities
+python-dateutil>=2.8.2

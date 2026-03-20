@@ -1,0 +1,19 @@
+{
+  "name": "datetime",
+  "displayName": "Date & Time",
+  "description": "Get current date, time, and timezone information",
+  "category": "utility",
+  "version": "1.0.0",
+  "dependencies": ["pytz"],
+  "parameters": {
+    "timezone": {
+      "type": "string",
+      "default": "UTC",
+      "description": "IANA timezone name (e.g., 'America/New_York', 'Europe/London', 'Asia/Tokyo')"
+    }
+  },
+  "permissions": [],
+  "icon": "🕐",
+  "author": "Agent Tools Team",
+  "license": "MIT"
+}
