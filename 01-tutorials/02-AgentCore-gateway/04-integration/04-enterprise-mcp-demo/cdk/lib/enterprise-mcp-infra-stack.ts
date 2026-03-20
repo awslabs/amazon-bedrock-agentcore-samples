@@ -1338,7 +1338,7 @@ def handler(event, context):
     );
 
     // Associate with gateway AFTER all policies are added
-    agentCorePolicyEngine.associateWithGateway(gateway.gatewayId, 'LOG_ONLY');
+    agentCorePolicyEngine.associateWithGateway(gateway.gatewayId, 'ENFORCE');
     agentCorePolicyEngine.node.addDependency(interceptorLambda); // Ensure interceptor Lambda is created before policy engine association
 
     // Ensure the gateway VPC resource policy is applied after all Cedar policies
