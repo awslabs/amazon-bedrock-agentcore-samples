@@ -68,6 +68,10 @@ export class EnterpriseMcpInfraStack extends cdk.Stack {
     const hostedZoneId = this.node.tryGetContext("hostedZoneId") || "";
     const certificateArn = this.node.tryGetContext("certificateArn") || "";
 
+    // MCP metadata key for path-based routing (reverse DNS notation)
+    // Used in _meta field to filter tools by target
+    const mcpMetadataKey = this.node.tryGetContext("mcpMetadataKey") || "com.example/target";
+
     // =============================================================================
     // RESOURCE SERVER IDENTIFIER
     // The resource server identifier doubles as the OAuth audience claim
@@ -614,6 +618,8 @@ export class EnterpriseMcpInfraStack extends cdk.Stack {
         RESOURCE_SERVER_ID: resourceServerIdentifier,
         COGNITO_USER_POOL_ID: userPool.userPoolId,
         COGNITO_REGION: this.region,
+        // MCP metadata key for path-based routing
+        MCP_METADATA_KEY: mcpMetadataKey,
       },
     });
 
@@ -706,7 +712,8 @@ export class EnterpriseMcpInfraStack extends cdk.Stack {
       reservedConcurrentExecutions: 50,
       environment: {
         "GUARDRAIL_ID": guardrails.attrGuardrailId,
-        "GUARDRAIL_VERSION": guardrails.attrVersion
+        "GUARDRAIL_VERSION": guardrails.attrVersion,
+        "MCP_METADATA_KEY": mcpMetadataKey,
       },
     });
 
@@ -923,6 +930,18 @@ export class EnterpriseMcpInfraStack extends cdk.Stack {
         conditions: [
           hostHeaderCondition,
           elbv2.ListenerCondition.pathPatterns(["/register"]),
+        ],
+        targetGroups: [proxyTargetGroup],
+      });
+
+      // MCP routes - wildcard pattern for dynamic target filtering
+      // Matches: /mcp, /gitlab/mcp, /weather/mcp, /inventory/mcp, /*/mcp
+      // No need to update ALB when adding new tool groups!
+      mainListener.addTargetGroups("ProxyMcpWildcardRule", {
+        priority: 95,
+        conditions: [
+          hostHeaderCondition,
+          elbv2.ListenerCondition.pathPatterns(["/mcp", "/*/mcp"]),
         ],
         targetGroups: [proxyTargetGroup],
       });
