@@ -1,0 +1,83 @@
+{
+  "region": "us-east-1",
+  "lambdas": {
+    "FinancialReportTool": "arn:aws:lambda:us-east-1:849138760372:function:FinancialReportTool",
+    "TradeExecutionTool": "arn:aws:lambda:us-east-1:849138760372:function:TradeExecutionTool"
+  },
+  "gateway": {
+    "gateway_url": "https://gw-financialdataplatform-a1po7jzypj.gateway.bedrock-agentcore.us-east-1.amazonaws.com/mcp",
+    "gateway_id": "gw-financialdataplatform-a1po7jzypj",
+    "gateway_arn": "arn:aws:bedrock-agentcore:us-east-1:849138760372:gateway/gw-financialdataplatform-a1po7jzypj",
+    "gateway_name": "GW-FinancialDataPlatform",
+    "client_info": {
+      "client_id": "616unb1i6nbq670imektce8fli",
+      "client_secret": "hpgqq4mfg08sr24f96271n2tidtino09p80bovm001ipa58iauh",
+      "user_pool_id": "us-east-1_uikC4OoL3",
+      "token_endpoint": "https://agentcore-8a86a759.auth.us-east-1.amazoncognito.com/oauth2/token",
+      "scope": "FinancialDataPlatformGateway/invoke",
+      "domain_prefix": "agentcore-8a86a759"
+    }
+  },
+  "rbac_manifest": {
+    "FinancialReportTarget___get_financial_report": {
+      "target_name": "FinancialReportTarget",
+      "function_name": "get_financial_report",
+      "description": "Retrieve financial reports from the data platform. Restricted to internal data classification and approved geographic regions.",
+      "rbac": {
+        "allowed_roles": [
+          "analyst",
+          "senior-analyst",
+          "manager"
+        ],
+        "data_classification": "internal",
+        "requires_approval": false,
+        "constraints": {
+          "classification_level": {
+            "type": "string",
+            "enum": [
+              "internal"
+            ],
+            "description": "Only internal classification is permitted"
+          },
+          "region": {
+            "type": "string",
+            "enum": [
+              "US",
+              "EU",
+              "APAC"
+            ],
+            "description": "Allowed geographic regions"
+          }
+        }
+      }
+    },
+    "TradeExecutionTarget___execute_trade": {
+      "target_name": "TradeExecutionTarget",
+      "function_name": "execute_trade",
+      "description": "Execute financial trades on the platform. Restricted to authorised traders; trade amount capped at $500K.",
+      "rbac": {
+        "allowed_roles": [
+          "trader",
+          "portfolio-manager"
+        ],
+        "data_classification": "restricted",
+        "requires_approval": true,
+        "approval_threshold": 100000,
+        "constraints": {
+          "amount": {
+            "type": "integer",
+            "max": 500000,
+            "description": "Maximum single-trade amount in USD"
+          }
+        }
+      }
+    }
+  },
+  "review_infra": {
+    "sns_topic_arn": "arn:aws:sns:us-east-1:849138760372:AgentCorePolicy-HumanReview-1773414929",
+    "sqs_queue_url": "https://sqs.us-east-1.amazonaws.com/849138760372/AgentCorePolicy-ApprovalQueue-1773414929",
+    "sqs_queue_arn": "arn:aws:sqs:us-east-1:849138760372:AgentCorePolicy-ApprovalQueue-1773414929"
+  },
+  "policy_engine_id": "FinancialDataPlatformPolicyEngine-2fjmexk68_",
+  "policy_engine_arn": "arn:aws:bedrock-agentcore:us-east-1:849138760372:policy-engine/FinancialDataPlatformPolicyEngine-2fjmexk68_"
+}
