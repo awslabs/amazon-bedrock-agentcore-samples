@@ -28,7 +28,7 @@
   </p>
 </div>
 
-Welcome to the Amazon Bedrock AgentCore Samples repository! 
+Welcome to the Amazon Bedrock AgentCore Samples repository!
 
 Amazon Bedrock AgentCore is both framework-agnostic and model-agnostic, giving you the flexibility to deploy and operate advanced AI agents securely and at scale. Whether you’re building with [Strands Agents](https://strandsagents.com/latest/), [CrewAI](https://www.crewai.com/), [LangGraph](https://www.langchain.com/langgraph), [LlamaIndex](https://www.llamaindex.ai/), or any other framework—and running them on any Large Language Model (LLM)—Amazon Bedrock AgentCore provides the infrastructure to support them. By eliminating the undifferentiated heavy lifting of building and managing specialized agent infrastructure, Amazon Bedrock AgentCore lets you bring your preferred framework and model, and deploy without rewriting code.
 
@@ -36,7 +36,7 @@ This collection provides examples and tutorials to help you understand, implemen
 
 ## 🎥 Video
 
-Build your first production-ready AI agent with Amazon Bedrock AgentCore. We’ll take you beyond prototyping and show you how to productionize your first agentic AI application using Amazon Bedrock AgentCore. 
+Build your first production-ready AI agent with Amazon Bedrock AgentCore. We’ll take you beyond prototyping and show you how to productionize your first agentic AI application using Amazon Bedrock AgentCore.
 
 <p align="center">
   <a href="https://www.youtube.com/watch?v=wzIQDPFQx30"><img src="https://markdown-videos-api.jorgenkh.no/youtube/wzIQDPFQx30?width=640&height=360&filetype=jpeg" /></a>
@@ -45,26 +45,27 @@ Build your first production-ready AI agent with Amazon Bedrock AgentCore. We’l
 ## 📁 Repository Structure
 
 ### 📚 [`01-tutorials/`](./01-tutorials/)
+
 **Interactive Learning & Foundation**
 
 This folder contains notebook-based tutorials that teach you the fundamentals of Amazon Bedrock AgentCore capabilities through hands-on examples.
 
 The structure is divided by AgentCore component:
-* **[Runtime](./01-tutorials/01-AgentCore-runtime)**: Amazon Bedrock AgentCore Runtime is a secure, serverless runtime capability that empowers organizations to deploy and scale both AI agents and tools, regardless of framework, protocol, or model choice—enabling rapid prototyping, seamless scaling, and accelerated time to market
-* **[Gateway](./01-tutorials/02-AgentCore-gateway)**: AI agents need tools to perform real-world tasks—from searching databases to sending messages. Amazon Bedrock AgentCore Gateway automatically converts APIs, Lambda functions, and existing services into MCP-compatible tools so developers can quickly make these essential capabilities available to agents without managing integrations. 
-* **[Memory](./01-tutorials/04-AgentCore-memory)**: Amazon Bedrock AgentCore Memory makes it easy for developer to build rich, personalized agent experiences with fully-manged memory infrastructure and the ability to customize memory for your needs.
-* **[Identity](./01-tutorials/03-AgentCore-identity)**: Amazon Bedrock AgentCore Identity provides seamless agent identity and access management across AWS services and third-party applications such as Slack and Zoom while supporting any standard identity providers such as Okta, Entra, and Amazon Cognito.
-* **[Tools](./01-tutorials/05-AgentCore-tools)**: Amazon Bedrock AgentCore provides two built-in tools to simplify your agentic AI application development: Amazon Bedrock AgentCore **Code Interpreter** tool enables AI agents to write and execute code securely, enhancing their accuracy and expanding their ability to solve complex end-to-end tasks. Amazon Bedrock AgentCore **Browser Tool** is an enterprise-grade capability that enables AI agents to navigate websites, complete multi-step forms, and perform complex web-based tasks with human-like precision within a fully managed, secure sandbox environment with low latency
-* **[Observability](./01-tutorials/06-AgentCore-observability)**: Amazon Bedrock AgentCore Observability helps developers trace, debug, and monitor agent performance through unified operational dashboards. With support for OpenTelemetry compatible telemetry and detailed visualizations of each step of the agent workflow, Amazon Bedrock AgentCore Observability enables developers to easily gain visibility into agent behavior and maintain quality standards at scale.
-* **[Evaluation](./01-tutorials/07-AgentCore-evaluations)**: Amazon Bedrock AgentCore Evaluations helps you optimize your agent's quality based on real-world interactions. It provides built-in and custom evaluators with both on-demand and online evaluation capabilities, enabling you to test agents during development and monitor production agents with continuous performance assessment across critical dimensions like correctness, helpfulness, and safety.
-* **[Policy](./01-tutorials/08-AgentCore-policy)**: Amazon Bedrock AgentCore Policy enables fine-grained access control for AI agents using Cedar policies. It evaluates requests in real-time to determine whether tool invocations should be allowed or denied based on identity attributes, input parameters, and custom business rules, helping you enforce governance and compliance requirements at scale.
 
-* **[AgentCore end-to-end](./01-tutorials/09-AgentCore-E2E)**: In this tutorial we will move a customer support agent from prototype to production using Amazon Bedrock AgentCore services.
-
+- **[Runtime](./01-tutorials/01-AgentCore-runtime)**: Amazon Bedrock AgentCore Runtime is a secure, serverless runtime capability that empowers organizations to deploy and scale both AI agents and tools, regardless of framework, protocol, or model choice—enabling rapid prototyping, seamless scaling, and accelerated time to market. ([Docs](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/agents-tools-runtime.html) · [Deep Dive Video](https://www.youtube.com/live/wizEw5a4gvM?si=7owv5C-kgU8UTzPl))
+- **[Gateway](./01-tutorials/02-AgentCore-gateway)**: AI agents need tools to perform real-world tasks—from searching databases to sending messages. Amazon Bedrock AgentCore Gateway automatically converts APIs, Lambda functions, and existing services into MCP-compatible tools so developers can quickly make these essential capabilities available to agents without managing integrations. ([Docs](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/gateway.html) · [Deep Dive Video](https://www.youtube.com/live/atWXM5lziY8?si=qKEzTbU1-15B8pQ0))
+- **[Identity](./01-tutorials/03-AgentCore-identity)**: Amazon Bedrock AgentCore Identity provides seamless agent identity and access management across AWS services and third-party applications such as Slack and Zoom while supporting any standard identity providers such as Okta, Entra, and Amazon Cognito. ([Docs](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/identity.html) · [Deep Dive Video](https://www.youtube.com/live/wv2doVDF7KQ?si=sxt2lOufwt7cOeUY))
+- **[Memory](./01-tutorials/04-AgentCore-memory)**: Amazon Bedrock AgentCore Memory makes it easy for developer to build rich, personalized agent experiences with fully-managed memory infrastructure and the ability to customize memory for your needs. ([Docs](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/memory.html) · [Deep Dive Video](https://www.youtube.com/live/-N4v6-kJgwA))
+- **[Tools](./01-tutorials/05-AgentCore-tools)**: Amazon Bedrock AgentCore provides two built-in tools to simplify your agentic AI application development: Amazon Bedrock AgentCore **Code Interpreter** tool enables AI agents to write and execute code securely, enhancing their accuracy and expanding their ability to solve complex end-to-end tasks. Amazon Bedrock AgentCore **Browser Tool** is an enterprise-grade capability that enables AI agents to navigate websites, complete multi-step forms, and perform complex web-based tasks with human-like precision within a fully managed, secure sandbox environment with low latency. ([Code Interpreter Docs](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/code-interpreter-tool.html) · [Browser Tool Docs](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/browser-tool.html) · [Deep Dive Video](https://www.youtube.com/live/z3lAJ-Nf_lk?si=Tf45AR3mZVo9rweL))
+- **[Observability](./01-tutorials/06-AgentCore-observability)**: Amazon Bedrock AgentCore Observability helps developers trace, debug, and monitor agent performance through unified operational dashboards. With support for OpenTelemetry compatible telemetry and detailed visualizations of each step of the agent workflow, Amazon Bedrock AgentCore Observability enables developers to easily gain visibility into agent behavior and maintain quality standards at scale. ([Docs](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/observability.html) · [Deep Dive Video](https://www.youtube.com/watch?v=wWQgawUPr1k))
+- **[Evaluation](./01-tutorials/07-AgentCore-evaluations)**: Amazon Bedrock AgentCore Evaluations helps you optimize your agent's quality based on real-world interactions. It provides built-in and custom evaluators with both on-demand and online evaluation capabilities, enabling you to test agents during development and monitor production agents with continuous performance assessment across critical dimensions like correctness, helpfulness, and safety. ([Docs](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/evaluations.html) · [Deep Dive Video](https://www.youtube.com/live/i0h7xA8cqYs?si=ZSR_-iQRjju-2H04))
+- **[Policy](./01-tutorials/08-AgentCore-policy)**: Amazon Bedrock AgentCore Policy enables fine-grained access control for AI agents using Cedar policies. It evaluates requests in real-time to determine whether tool invocations should be allowed or denied based on identity attributes, input parameters, and custom business rules, helping you enforce governance and compliance requirements at scale. ([Docs](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/policy.html) · [Deep Dive Video](https://www.youtube.com/watch?v=q_9htaugcgI))
+- **[AgentCore end-to-end](./01-tutorials/09-AgentCore-E2E)**: In this tutorial we will move a customer support agent from prototype to production using Amazon Bedrock AgentCore services. ([Deep Dive Video](https://youtu.be/gI_qvheaSoA?si=Pa6VzGXzopuX_koW&t=490))
 
 The examples provided as perfect for beginners and those looking to understand the underlying concepts before building AI Agents applications.
 
 ### 💡 [`02-use-cases/`](./02-use-cases/)
+
 **End-to-end Applications**
 
 Explore practical use case implementations that demonstrate how to apply Amazon Bedrock AgentCore capabilities to solve real business problems.
@@ -72,14 +73,16 @@ Explore practical use case implementations that demonstrate how to apply Amazon 
 Each use case includes complete implementation focused on the AgentCore components with detailed explanations.
 
 ### 🔌 [`03-integrations/`](./03-integrations/)
+
 **Framework & Protocol Integration**
 
 Learn how to integrate Amazon Bedrock AgentCore capabilities with popular Agentic frameworks such as Strands Agents, LangChain and CrewAI.
 
-Set agent-to-agent communication with A2A and different multi-agent collaboration patterns. Integrate agentic interfaces and learn how to use 
+Set agent-to-agent communication with A2A and different multi-agent collaboration patterns. Integrate agentic interfaces and learn how to use
 Amazon Bedrock AgentCore with different entry points.
 
 ### 🏗️ [`04-infrastructure-as-code/`](./04-infrastructure-as-code/)
+
 **Deployment Automation & Infrastructure**
 
 Deploy Amazon Bedrock AgentCore resources Infrastructure as code. We are providing examples using CloudFormation, AWS CDK, or Terraform.
@@ -87,6 +90,7 @@ Deploy Amazon Bedrock AgentCore resources Infrastructure as code. We are providi
 Automate infrastructure provisioning with production-ready templates for basic runtimes, MCP servers, multi-agent systems, and complete agent solutions with tools and memory.
 
 ### 🚀 [`05-blueprints/`](./05-blueprints/)
+
 **Full-Stack Reference Applications**
 
 Jump-start your development with complete, deployment-ready agentic applications built on Amazon Bedrock AgentCore.
@@ -96,12 +100,14 @@ Each blueprint provides a comprehensive foundation with integrated services, aut
 ## Running a Notebook
 
 1. Create and activate a virtual environment
+
 ```bash
 python -m venv .venv
 source .venv/bin/activate
 ```
 
 2. Install dependencies
+
 ```bash
 pip install -r requirements.txt
 ```
@@ -109,22 +115,24 @@ pip install -r requirements.txt
 3. Export/Activate required AWS Credentials for the notebook to run
 
 4. Register your virtual environment as a kernel for Jupyter notebook to use
+
 ```bash
 python -m ipykernel install --user --name=notebook-venv --display-name="Python (notebook-venv)"
 ```
 
 You can list your kernels using:
+
 ```bash
 jupyter kernelspec list
 ```
 
 5. Run the notebook and ensure the correct kernel is selected
+
 ```bash
 jupyter notebook path/to/your/notebook.ipynb
 ```
 
 **Important:** After opening the notebook in Jupyter, make sure to select the correct kernel by going to `Kernel` → `Change kernel` → select "Python (notebook-venv)" to ensure your virtual environment packages are available.
-
 
 ## Quick Start - [Amazon Bedrock AgentCore Runtime](https://github.com/aws/bedrock-agentcore-starter-toolkit/blob/main/documentation/docs/user-guide/runtime/quickstart.md)
 
@@ -135,9 +143,9 @@ jupyter notebook path/to/your/notebook.ipynb
 - [Docker](https://www.docker.com/) or [Finch](https://runfinch.com/) installed and running - only for local development
 - Model Access: Anthropic Claude 4.0 enabled in [Amazon Bedrock console](https://docs.aws.amazon.com/bedrock/latest/userguide/model-access-modify.html)
 - AWS Permissions:
-    - `BedrockAgentCoreFullAccess` managed policy
-    - `AmazonBedrockFullAccess` managed policy
-    - `Caller permissions`: See detailed policy [here](https://github.com/aws/bedrock-agentcore-starter-toolkit/blob/main/documentation/docs/user-guide/runtime/permissions.md#developercaller-permissions)
+  - `BedrockAgentCoreFullAccess` managed policy
+  - `AmazonBedrockFullAccess` managed policy
+  - `Caller permissions`: See detailed policy [here](https://github.com/aws/bedrock-agentcore-starter-toolkit/blob/main/documentation/docs/user-guide/runtime/permissions.md#developercaller-permissions)
 
 ### Step 2: Install and Create Your Agent
 
@@ -165,6 +173,7 @@ def invoke(payload):
 if __name__ == "__main__":
     app.run()
 ```
+
 Create `requirements.txt`:
 
 ```bash
@@ -173,6 +182,7 @@ bedrock-agentcore
 strands-agents
 EOF
 ```
+
 ### Step 3: Test Locally
 
 ```bash
@@ -184,6 +194,7 @@ curl -X POST http://localhost:8080/invocations \
   -H "Content-Type: application/json" \
   -d '{"prompt": "Hello!"}'
 ```
+
 Success: You should see a response like {"result": "Hello! I'm here to help..."}
 
 ### Step 4: Deploy to AWS
@@ -199,7 +210,7 @@ agentcore invoke '{"prompt": "tell me a joke"}'
 
 Congratulations! Your agent is now running on Amazon Bedrock AgentCore Runtime!
 
-Follow quickstart guides for [Gateway](https://github.com/aws/bedrock-agentcore-starter-toolkit/blob/main/documentation/docs/user-guide/gateway/quickstart.md), [Identity](https://github.com/aws/bedrock-agentcore-starter-toolkit/blob/main/documentation/docs/user-guide/identity/quickstart.md), [Memory](https://github.com/aws/bedrock-agentcore-starter-toolkit/blob/main/documentation/docs/user-guide/memory/quickstart.md), [Observability](https://github.com/aws/bedrock-agentcore-starter-toolkit/blob/main/documentation/docs/user-guide/observability/quickstart.md), and [builtin-tools](https://github.com/aws/bedrock-agentcore-starter-toolkit/tree/main/documentation/docs/user-guide/builtin-tools). 
+Follow quickstart guides for [Gateway](https://github.com/aws/bedrock-agentcore-starter-toolkit/blob/main/documentation/docs/user-guide/gateway/quickstart.md), [Identity](https://github.com/aws/bedrock-agentcore-starter-toolkit/blob/main/documentation/docs/user-guide/identity/quickstart.md), [Memory](https://github.com/aws/bedrock-agentcore-starter-toolkit/blob/main/documentation/docs/user-guide/memory/quickstart.md), [Observability](https://github.com/aws/bedrock-agentcore-starter-toolkit/blob/main/documentation/docs/user-guide/observability/quickstart.md), and [builtin-tools](https://github.com/aws/bedrock-agentcore-starter-toolkit/tree/main/documentation/docs/user-guide/builtin-tools).
 
 ## 🔗 Related Links:
 
@@ -217,11 +228,9 @@ We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.
 - Reporting issues
 - Suggesting enhancements
 
-
 ## 📄 License
 
 This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
-
 
 ## Contributors
 

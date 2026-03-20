@@ -68,7 +68,27 @@ fi
 echo "✅ S3 bucket ownership verified"
 
 # ----- 2. Zip Lambda code -----
-sudo apt install zip
+if ! command -v zip >/dev/null 2>&1; then
+  echo "zip not found, attempting to install..."
+
+  if [ "$(id -u)" -ne 0 ]; then
+    SUDO="sudo"
+  else
+    SUDO=""
+  fi
+  if command -v apt-get >/dev/null 2>&1; then
+    $SUDO apt-get update -y && $SUDO apt-get install -y zip
+  elif command -v yum >/dev/null 2>&1; then
+    $SUDO yum install -y zip
+  elif command -v dnf >/dev/null 2>&1; then
+    $SUDO dnf install -y zip
+  elif [ "$(uname)" = "Darwin" ] && command -v brew >/dev/null 2>&1; then
+    brew install zip
+  else
+    echo "❌ Could not find a supported package manager. Please install 'zip' manually and re-run this script."
+    exit 1
+  fi
+fi
 echo "📦 Zipping contents of $LAMBDA_SRC into $ZIP_FILE..."
 cd "$LAMBDA_SRC"
 zip -r "../../../$ZIP_FILE" . > /dev/null
