@@ -25,7 +25,32 @@ bedrock-iam-policy.json - Minimal IAM policy for Nova Sonic
 
 - **Python 3.12+** (required for aws-sdk-bedrock-runtime)
 - AWS credentials configured
-- **VPC with a private subnet and a public subnet (with NAT and Internet Gateway)** for AgentCore Runtime deployment — the agent needs internet egress to reach KVS TURN servers. See [Internet access considerations](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/agentcore-vpc.html#:~:text=region%20if%20different.-,Internet%20access%20considerations,-When%20you%20connect).
+- **VPC with internet egress** for AgentCore Runtime deployment (see setup below)
+
+## VPC Setup for AgentCore Runtime
+
+The agent needs internet egress to reach KVS TURN servers for WebRTC connectivity. If you already have a VPC with a private subnet that has NAT gateway access, skip to [Deploying to AgentCore Runtime](#deploying-to-agentcore-runtime).
+
+### 1. Create a VPC with public and private subnets
+
+1. Open the [VPC console](https://console.aws.amazon.com/vpc/)
+2. Click **Create VPC**
+3. Select **VPC and more**
+4. Set a name (e.g. `webrtc-bot-example`)
+5. Keep the default CIDR (`10.0.0.0/16`)
+6. Set **Number of Availability Zones** to **1**
+7. Set **Number of public subnets** to **1**
+8. Set **Number of private subnets** to **1**
+9. Set **NAT gateways** to **In 1 AZ**
+10. Click **Create VPC**
+
+### 2. Note the IDs
+
+From the VPC console, copy:
+- **Private subnet ID** (e.g. `subnet-0123456789abcdef0`) — this is where the agent runs
+- **Security group ID** — the default security group created with the VPC (e.g. `sg-0123456789abcdef0`)
+
+You'll use these in the `agentcore configure` step below.
 
 ## Local Setup
 
@@ -80,7 +105,7 @@ agentcore configure \
   --non-interactive
 ```
 
-VPC mode is required so the agent can reach KVS TURN servers for WebRTC connectivity.
+VPC network mode is required because PUBLIC network mode does not support outbound UDP connectivity. 
 
 ### 3. Deploy
 
