@@ -11,6 +11,7 @@ Usage:
 
 import boto3
 import json
+import os
 import subprocess
 import sys
 
@@ -29,19 +30,32 @@ def get_bearer_token(config: dict) -> str:
     return auth["AuthenticationResult"]["AccessToken"]
 
 
+def _find_project_dir() -> str:
+    base = os.path.dirname(os.path.abspath(__file__))
+    for entry in os.listdir(base):
+        candidate = os.path.join(base, entry)
+        if os.path.isdir(candidate) and os.path.isdir(os.path.join(candidate, "agentcore")):
+            return candidate
+    raise FileNotFoundError("No agentcore project directory found. Run 'agentcore create' first.")
+
+
 def get_agent_arn() -> str:
     """Read the deployed agent ARN from agentcore status."""
+    project_dir = _find_project_dir()
     result = subprocess.run(
         ["agentcore", "status", "--json"],
         capture_output=True,
         text=True,
+        cwd=project_dir,
     )
     if result.returncode != 0:
         raise RuntimeError(f"agentcore status failed:\n{result.stderr}")
-    status = json.loads(result.stdout)
+    import re
+    clean = re.sub(r"\x1b\[[0-9;?]*[a-zA-Z]", "", result.stdout).strip()
+    status = json.loads(clean)
     for resource in status.get("resources", []):
-        if resource.get("type") == "agent" and resource.get("state") == "deployed":
-            arn = resource.get("agentRuntimeArn")
+        if resource.get("resourceType") == "agent" and resource.get("deploymentState") == "deployed":
+            arn = resource.get("identifier")
             if arn:
                 return arn
     raise ValueError("No deployed agent found. Run 'agentcore deploy -y' first.")
@@ -98,12 +112,20 @@ def main():
     print(f"  Prompt: '{prompt}'")
 
     try:
+        def _inject_bearer(request, **kwargs):
+            request.headers["Authorization"] = f"Bearer {bearer_token}"
+
+        client.meta.events.register(
+            "before-send.bedrock-agentcore.InvokeAgentRuntime", _inject_bearer
+        )
         resp = client.invoke_agent_runtime(
             agentRuntimeArn=agent_arn,
             runtimeUserId=config["username"],
             qualifier="DEFAULT",
             payload=json.dumps({"prompt": prompt}),
-            bearerToken=bearer_token,
+        )
+        client.meta.events.unregister(
+            "before-send.bedrock-agentcore.InvokeAgentRuntime", _inject_bearer
         )
         result = parse_event_stream(resp)
         print(f"\nAgent response:\n{result}")
