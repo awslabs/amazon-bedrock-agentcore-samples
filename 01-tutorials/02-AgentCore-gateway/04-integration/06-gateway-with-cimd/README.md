@@ -1,161 +1,203 @@
-# VS Code + AgentCore Gateway: Serverless OAuth Proxy
+# AgentCore Gateway with CIMD OAuth Flow
 
 ## Overview
 
-This document explains how to connect **Visual Studio Code with Copilot** to **Amazon Bedrock AgentCore Gateway** using a **serverless OAuth proxy** deployed on AWS, with **Atlassian Confluence** as a backend tool using **OAuth 2.0 Authorization Code Grant (3LO)** for user-delegated access.
+This sample demonstrates **CIMD (Client ID Metadata Document)** OAuth flow with Amazon Bedrock AgentCore Gateway, enabling **dynamic OAuth client registration** for VS Code Copilot integration. Instead of using pre-registered client IDs, CIMD uses a **URL as the client_id** that points to a JSON document describing the OAuth client configuration.
 
-**Key Benefit**: No local servers required. The OAuth proxy and callback handler run as Lambda functions behind API Gateway in AWS, allowing developers to connect VS Code directly to a cloud endpoint.
+**Key Innovation**: This eliminates manual OAuth client pre-registration by allowing the authorization server to dynamically discover and register clients by fetching their metadata from a URL.
 
-**Note**: This example requires `MCP-Protocol-Version: 2025-11-25` which adds URL elicitation, configured in VS Code's `mcp.json` using the `headers` field.
+## What is CIMD?
+
+### Traditional OAuth vs CIMD
+
+| Aspect                    | Traditional OAuth                   | CIMD OAuth                                                       |
+| ------------------------- | ----------------------------------- | ---------------------------------------------------------------- |
+| **client_id**             | Static string (e.g., `"abc123xyz"`) | URL (e.g., `"https://api.example.com/.well-known/oauth-client"`) |
+| **Registration**          | Manual pre-registration required    | Automatic via URL resolution                                     |
+| **Configuration Updates** | Must update auth server console     | Update JSON document at URL                                      |
+| **Deployment**            | Multi-step setup process            | Deploy and use immediately                                       |
+
+### How CIMD Works
+
+1. Client provides a URL as the `client_id` (e.g., `https://api.example.com/.well-known/oauth-client`)
+2. Authorization server fetches the JSON document from that URL
+3. The document contains OAuth client metadata (redirect URIs, grant types, etc.)
+4. Authorization server dynamically registers or validates the client
+5. OAuth flow proceeds normally
+
+**Example CIMD Document**:
+
+```json
+{
+  "redirect_uris": [
+    "vscode://github.copilot/oauth/callback",
+    "https://my-api.example.com/callback"
+  ],
+  "grant_types": ["authorization_code", "refresh_token"],
+  "response_types": ["code"],
+  "token_endpoint_auth_method": "none"
+}
+```
 
 ## Architecture
 
-![VS Code + AgentCore Gateway Serverless OAuth Proxy](generated-diagrams/vscode-agentcore-serverless-proxy.png)
-
-**Flow Summary:**
-1. VS Code connects to Amazon API Gateway (public endpoint) via MCP/HTTP
-2. MCP Proxy Lambda handles OAuth metadata discovery and callback interception
-3. User authenticates with Cognito via browser
-4. Proxy Lambda forwards authenticated requests to AgentCore Gateway with JWT
-5. AgentCore Gateway returns 3LO elicitation when Confluence access is needed
-6. User grants consent in browser via Atlassian OAuth
-7. Callback Lambda receives authorization code and calls `CompleteResourceTokenAuth`
-8. AgentCore Gateway can now call Confluence API on behalf of user (tokens cached by AgentCore Identity)
+```
+┌─────────────────────────┐
+│  VS Code with Copilot   │
+│  CIMD Client            │
+│  client_id = URL        │
+└───────────┬─────────────┘
+            │ MCP over HTTP
+            │ OAuth with CIMD
+            ▼
+┌─────────────────────────────────────────┐
+│  AWS API Gateway + Lambda               │
+│  ┌────────────────────────────────────┐ │
+│  │  MCP Proxy Lambda                  │ │
+│  │  • CIMD resolution                 │ │
+│  │  • Dynamic Cognito client creation │ │
+│  │  • OAuth metadata endpoints        │ │
+│  │  • MCP forwarding                  │ │
+│  └────────────────────────────────────┘ │
+│  ┌────────────────────────────────────┐ │
+│  │  Callback Lambda                   │ │
+│  │  • 3LO OAuth callbacks             │ │
+│  │  • CompleteResourceTokenAuth       │ │
+│  └────────────────────────────────────┘ │
+└──────┬──────────────────────┬───────────┘
+       │                      │
+       │ Inbound Auth         │ 3LO Callback
+       ▼                      ▼
+┌──────────────┐      ┌────────────────┐
+│   Cognito    │      │  AgentCore     │
+│  User Pool   │      │  Identity      │
+└──────┬───────┘      └────────────────┘
+       │ JWT
+       ▼
+┌─────────────────────────────────────────┐
+│  Amazon Bedrock AgentCore Gateway       │
+│  • MCP server                           │
+│  • JWT authentication (inbound)         │
+│  • 3LO OAuth (outbound to Confluence)   │
+└──────────────┬──────────────────────────┘
+               │ OAuth 3LO
+               ▼
+┌─────────────────────────────────────────┐
+│  Atlassian Confluence                   │
+│  • OAuth 2.0 provider                   │
+│  • REST API v2                          │
+└─────────────────────────────────────────┘
+```
 
 ## Two OAuth Flows
 
-| Flow | Purpose | Direction | When |
-|------|---------|-----------|------|
-| **Inbound Auth** | VS Code authenticates to AgentCore Gateway | VS Code → Cognito → AgentCore Gateway | On MCP server connection |
-| **Outbound Auth (3LO)** | AgentCore Gateway accesses Confluence on behalf of user | AgentCore Gateway → Atlassian → User consent | On first Confluence tool call |
+This implementation uses **two distinct OAuth flows**:
 
-### Token Lifetime and Consent Persistence
+### 1. Inbound Authentication (VS Code → AgentCore Gateway)
 
-**How often will users be prompted for Confluence consent?**
+| Property           | Value                                                 |
+| ------------------ | ----------------------------------------------------- |
+| **Purpose**        | Authenticate VS Code user to access AgentCore Gateway |
+| **OAuth Provider** | Amazon Cognito                                        |
+| **Flow Type**      | Authorization Code Grant **with CIMD**                |
+| **When**           | On MCP server connection                              |
+| **Token Type**     | JWT (short-lived)                                     |
+| **Innovation**     | Uses CIMD for dynamic client registration             |
 
-AgentCore Identity manages 3LO tokens automatically:
-- When the user completes 3LO, AgentCore stores both the access token and refresh token
-- On subsequent tool calls, AgentCore uses the stored token — no user interaction
-- When the access token expires, AgentCore automatically refreshes it using the refresh token
+**Flow Steps**:
 
-**Consent lifetime is controlled by Atlassian (the OAuth provider), not AgentCore:**
-- Atlassian refresh tokens are long-lived (~90 days of inactivity)
-- As long as the token is used periodically, users won't be re-prompted
-- Re-consent is required if: (a) user revokes access in Atlassian settings, (b) refresh token expires from inactivity, or (c) the app's requested scopes change
+1. VS Code provides CIMD URL as `client_id`
+2. MCP Proxy Lambda fetches metadata from the URL
+3. Lambda creates Cognito user pool client dynamically
+4. User authenticates with Cognito (username/password)
+5. Cognito issues JWT access token
+6. VS Code includes JWT in all MCP requests
 
-**The `offline_access` scope** (configured in the notebook) is what enables refresh tokens. Without it, users would need to re-authenticate every time the access token expires (typically 1 hour).
+### 2. Outbound Authentication (AgentCore Gateway → Confluence)
 
-**Note**: Cognito handles only inbound auth (VS Code → AgentCore Gateway). The 3LO tokens for Confluence are managed entirely by AgentCore Identity.
+| Property           | Value                                                       |
+| ------------------ | ----------------------------------------------------------- |
+| **Purpose**        | AgentCore Gateway accesses Confluence API on behalf of user |
+| **OAuth Provider** | Atlassian                                                   |
+| **Flow Type**      | Three-Legged OAuth (3LO)                                    |
+| **When**           | First Confluence tool call                                  |
+| **Token Type**     | Access + Refresh tokens (long-lived)                        |
+| **Management**     | Automatic by AgentCore Identity                             |
 
-## Serverless vs Local Proxy
+**Flow Steps**:
 
-This example could be also deployed with local callback and proxy servers. Having those in the AWS cloud offers advantages, detailed below.
+1. AgentCore Gateway detects missing Confluence token
+2. Returns `-32042` elicitation error with authorization URL
+3. User grants consent in browser
+4. Atlassian redirects to Callback Lambda
+5. Lambda calls `CompleteResourceTokenAuth`
+6. AgentCore caches tokens and auto-refreshes
 
-| Aspect | Local Proxy (notebook 02) | Serverless Proxy (notebook 03) |
-|--------|---------------------------|--------------------------------|
-| **Setup** | Run 2 local Python servers | Deploy once via notebook |
-| **Developer Experience** | Start servers before each session | Just configure VS Code |
-| **Endpoint** | `http://127.0.0.1:8080` | `https://<api-id>.execute-api.<region>.amazonaws.com` |
-| **Scalability** | Single developer | Team-wide deployment |
-| **Cost** | Free (local) | Pay-per-use (Lambda + API Gateway) |
+## Key Components
 
-## Components
+![compoenents](./generated-diagrams/vscode-agentcore-serverless-proxy.png)
 
-| Component | Purpose |
-|-----------|---------|
-| **Amazon API Gateway** | Public HTTPS endpoint for VS Code (HTTP API) |
-| **MCP Proxy Lambda** | OAuth metadata, callback interception, token proxying, MCP forwarding |
-| **Callback Lambda** | 3LO OAuth callbacks, `CompleteResourceTokenAuth` |
-| **Cognito User Pool** | JWT tokens for inbound authentication |
-| **AgentCore Gateway** | AWS-managed MCP server with Confluence target |
+### Infrastructure (CDK)
 
-**Note on terminology**: This architecture uses two different "gateways":
-- **Amazon API Gateway**: The HTTP API that exposes Lambda functions as a public endpoint
-- **AgentCore Gateway**: The AWS-managed MCP server that routes tool calls to Confluence
+- **Amazon API Gateway (HTTP API)**: Public HTTPS endpoint for VS Code
+- **MCP Proxy Lambda** ([mcp_proxy_lambda.py](lambda/mcp_proxy_lambda.py)): CIMD resolution, OAuth metadata, MCP forwarding
+- **Callback Lambda** ([callback_lambda.py](lambda/callback_lambda.py)): 3LO OAuth callback handling
+- **Amazon Cognito User Pool**: JWT token issuance with dynamic clients
+- **Amazon Bedrock AgentCore Gateway**: MCP server with Cognito JWT auth
+- **IAM Roles**: Permissions for Lambda and AgentCore Gateway
 
-## Key Technical Details
+### Key Features
 
-### MCP-Protocol-Version Header
+1. **CIMD Resolution**: Dynamically creates Cognito clients by fetching metadata from URL
+2. **Stateless OAuth**: Encodes state in OAuth state parameter
+3. **3LO Token Management**: Automatic token refresh by AgentCore Identity
+4. **MCP Protocol 2025-11-25**: Supports URL elicitation for 3LO flows
 
-The `MCP-Protocol-Version: 2025-11-25` header is required for 3LO elicitation. Configure in VS Code's `mcp.json`:
+## Prerequisites
 
-```json
-{
-  "servers": {
-    "agentcore-confluence": {
-      "type": "http",
-      "url": "https://<api-gateway-url>",
-      "headers": {
-        "MCP-Protocol-Version": "2025-11-25"
-      }
-    }
-  }
-}
-```
-
-### 3LO Elicitation Response
-
-When a tool requires user OAuth consent, the gateway returns error code `-32042`:
-
-```json
-{
-  "error": {
-    "code": -32042,
-    "message": "This request requires more information.",
-    "data": {
-      "elicitations": [{
-        "mode": "url",
-        "elicitationId": "...",
-        "url": "https://bedrock-agentcore.us-west-2.amazonaws.com/identities/oauth2/authorize?...",
-        "message": "Please login to this URL for authorization."
-      }]
-    }
-  }
-}
-```
+- Python 3.10+
+- Node.js 18+ (for CDK)
+- AWS CLI configured with credentials
+- AWS permissions for:
+  - Lambda, API Gateway, Cognito, IAM
+  - Bedrock AgentCore (control plane + data plane)
+- Atlassian Cloud account with Confluence
+- VS Code 1.107+ with GitHub Copilot (for MCP support)
 
 ## Setup
 
-### Prerequisites
-- Python 3.10+
-- AWS credentials configured with permissions for Lambda, API Gateway, Cognito, IAM, and Bedrock AgentCore
-- Atlassian Cloud account with Confluence
-- VS Code 1.107+ with GitHub Copilot - This version adds support for the 3LO URL elicitation
-
 ### Step 1: Create Atlassian OAuth App
+
 1. Go to https://developer.atlassian.com/console/myapps/
 2. Create → OAuth 2.0 integration
-3. Under **Permissions**, add these **granular scopes** for Confluence:
+3. Under **Permissions**, add Confluence **granular scopes**:
    - `read:space:confluence`
    - `read:page:confluence`
-4. Copy Client ID and Client Secret
-5. Add the AgentCore callback URL (shown after running notebook)
+4. Copy **Client ID** and **Client Secret**
+5. Note: You'll add the callback URL after deployment (Step 2)
 
-**Note**: The `offline_access` scope (for refresh tokens) is a standard OAuth scope — you don't configure it in the console. It's automatically requested by AgentCore when making the authorization request.
+### Step 2: Deploy Infrastructure
 
-### Step 2: Run the Setup Notebook
+Open and run the Jupyter notebook [01_vscode_agentcore_confluence_serverless_cdk.ipynb](./01_vscode_agentcore_confluence_serverless_cdk.ipynb)
 
-Run `01_vscode_agentcore_confluence_serverless.ipynb` to create:
-- API Gateway with Lambda integrations
-- MCP Proxy Lambda function
-- Callback Lambda function
-- Cognito User Pool with app client
-- AgentCore Gateway with Cognito JWT auth
-- Atlassian credential provider
-- Confluence target with 3LO OAuth
+The notebook will:
 
-The notebook outputs the API Gateway URL and VS Code configuration.
+- Create Cognito user (username: `vscode-user`, password: `TempPassword123!`)
+- Configure Atlassian credential provider for 3LO OAuth in AgentCore Identity
+- Create Confluence target in AgentCore Gateway
+
+**Important**: After creating the credential provider, copy the **AgentCore callback URL** from the notebook output and add it to your Atlassian OAuth app settings.
 
 ### Step 3: Configure VS Code
 
-Add to `.vscode/mcp.json` (values from notebook output):
+Create or update `.vscode/mcp.json` with the configuration from notebook output:
 
 ```json
 {
   "servers": {
     "agentcore-confluence": {
       "type": "http",
-      "url": "https://<api-gateway-id>.execute-api.<region>.amazonaws.com",
+      "url": "https://<api-gateway-id>.execute-api.<region>.amazonaws.com/mcp",
       "headers": {
         "MCP-Protocol-Version": "2025-11-25"
       }
@@ -164,57 +206,161 @@ Add to `.vscode/mcp.json` (values from notebook output):
 }
 ```
 
+**Note**: The `MCP-Protocol-Version: 2025-11-25` header is **required** for 3LO URL elicitation support.
+
 ### Step 4: Connect and Use
-1. Reload VS Code
-2. Complete Cognito OAuth when prompted (user: `vscode-user`, password: `TempPassword123!`)
-3. Use Confluence tools - 3LO consent will be triggered on first use
-4. After granting Atlassian consent, retry the tool call
 
-## Troubleshooting
-
-### "Cannot initiate authorization code grant flow"
-**Cause**: Gateway not receiving `MCP-Protocol-Version: 2025-11-25` header.
-**Solution**: Add `"headers": {"MCP-Protocol-Version": "2025-11-25"}` to your mcp.json config.
-
-### "Client is not enabled for OAuth2.0 flows"
-**Cause**: Cognito app client missing `AllowedOAuthFlowsUserPoolClient=True`.
-**Solution**: Re-run the notebook to recreate resources.
-
-### "redirect_mismatch" from Cognito
-**Cause**: Callback URL not registered in Cognito.
-**Solution**: Ensure the API Gateway callback URL is registered. Re-run notebook if needed.
-
-### Lambda timeout errors
-**Cause**: Lambda function timing out during MCP forwarding.
-**Solution**: Increase Lambda timeout in AWS Console or re-deploy with higher timeout.
-
-### 3LO completed but tool still fails
-**Cause**: VS Code doesn't auto-retry after 3LO completion.
-**Solution**: Invoke the tool again after completing the 3LO flow in the browser.
+1. **Reload VS Code** to activate the MCP server
+2. **Authenticate with Cognito** when prompted:
+   - Username: `vscode-user`
+   - Password: `TempPassword123!` (or your custom password)
+3. **Use Confluence tools** in Copilot (e.g., "List my Confluence spaces")
+4. **Grant Atlassian consent** when prompted (first tool call only)
+5. **Retry the tool** after granting consent
 
 ## Files
 
-| File | Description |
-|------|-------------|
-| `01_vscode_agentcore_confluence_serverless.ipynb` | Setup notebook for serverless deployment |
-| `lambda/mcp_proxy_lambda.py` | MCP Proxy Lambda source code |
-| `lambda/callback_lambda.py` | 3LO Callback Lambda source code |
+| File                                                                                                       | Description                           |
+| ---------------------------------------------------------------------------------------------------------- | ------------------------------------- | --- | ------------------------------------ |
+| [01_vscode_agentcore_confluence_serverless_cdk.ipynb](01_vscode_agentcore_confluence_serverless_cdk.ipynb) | Setup notebook for CDK deployment     |     | CDK infrastructure code (TypeScript) |
+| [cdk/lib/cdk-stack.ts](cdk/lib/cdk-stack.ts)                                                               | Main CDK stack definition             |
+| [lambda/mcp_proxy_lambda.py](lambda/mcp_proxy_lambda.py)                                                   | MCP Proxy Lambda with CIMD resolution |
+| [lambda/callback_lambda.py](lambda/callback_lambda.py)                                                     | 3LO OAuth callback handler            |
+| [CIMD_OAUTH_FLOW.md](CIMD_OAUTH_FLOW.md)                                                                   | Detailed technical documentation      |
+
+### "Cannot initiate authorization code grant flow"
+
+**Cause**: Missing `MCP-Protocol-Version: 2025-11-25` header.
+
+**Solution**: Add to `mcp.json`:
+
+```json
+"headers": {
+  "MCP-Protocol-Version": "2025-11-25"
+}
+```
+
+### "Unable to fetch client metadata from URL"
+
+**Cause**: CIMD URL not accessible or malformed JSON.
+
+**Solution**:
+
+1. Check Lambda CloudWatch logs for detailed errors
+2. Verify Lambda has internet access (NAT Gateway if in VPC)
+3. Test URL manually: `curl https://your-cimd-url`
+
+### "redirect_uri_mismatch" from Cognito
+
+**Cause**: Callback URL not registered in OAuth provider.
+
+**Solution**:
+
+1. Ensure API Gateway callback URL is in Cognito allowed list
+2. Re-run notebook to recreate resources with correct URLs
+
+### 3LO completed but tool still fails
+
+**Cause**: VS Code doesn't auto-retry after 3LO completion.
+
+**Solution**: Manually retry the tool call after completing the OAuth flow in the browser.
+
+### Lambda timeout errors
+
+**Cause**: Lambda function timing out during MCP forwarding.
+
+**Solution**: Increase Lambda timeout in CDK stack or AWS Console (currently 60s for proxy, 30s for callback)
+
+## Security Considerations
+
+### CIMD URL Validation
+
+The current implementation fetches metadata from any URL provided as `client_id`. For production:
+
+1. **Validate URL scheme** (only allow HTTPS)
+2. **Implement domain allowlist**
+3. **Set fetch timeout** (prevent long-running requests)
+4. **Validate JSON structure** before parsing
+
+Example validation:
+
+```python
+def validate_cimd_url(url):
+    parsed = urllib.parse.urlparse(url)
+    if parsed.scheme != 'https':
+        raise ValueError("CIMD URL must use HTTPS")
+    if parsed.hostname not in ALLOWED_DOMAINS:
+        raise ValueError("CIMD URL must be from trusted domain")
+```
+
+### Token Storage
+
+The Callback Lambda uses **in-memory dictionary** for token storage (not production-ready). For production:
+
+1. Use **DynamoDB** with TTL for temporary token storage
+2. Encrypt tokens at rest with **AWS KMS**
+3. Implement token rotation policies
 
 ## Cleanup
 
-Run the cleanup cell at the end of the notebook, or run Step 1b on a fresh notebook execution to delete:
-- API Gateway
-- Lambda functions
-- AgentCore Gateway and targets
-- Credential providers
-- Cognito User Pool
-- IAM roles
+Run the cleanup cell at the end of the notebook, or manually delete resources:
 
-## References
+```python
+# In notebook - Step 1b: Cleanup
+# Deletes:
+# - AgentCore Gateway Targets
+# - Credential providers
 
+```
+
+Or delete the CDK stack:
+
+```bash
+cd cdk
+npx cdk destroy
+```
+
+## Learn More
+
+- [CIMD_OAUTH_FLOW.md](CIMD_OAUTH_FLOW.md) - Detailed technical documentation with flow diagrams
 - [MCP Specification 2025-11-25](https://modelcontextprotocol.io/specification/2025-11-25)
 - [VS Code MCP Documentation](https://code.visualstudio.com/docs/copilot/customization/mcp-servers)
 - [AgentCore Gateway Documentation](https://docs.aws.amazon.com/bedrock-agentcore/)
-- [AWS Lambda Documentation](https://docs.aws.amazon.com/lambda/)
-- [Amazon API Gateway Documentation](https://docs.aws.amazon.com/apigateway/)
-- [Confluence REST API v2](https://developer.atlassian.com/cloud/confluence/rest/v2/)
+- [OAuth 2.0 Dynamic Client Registration (RFC 7591)](https://datatracker.ietf.org/doc/html/rfc7591)
+- [Atlassian OAuth 2.0 (3LO)](https://developer.atlassian.com/cloud/confluence/oauth-2-3lo-apps/)
+
+## Benefits of CIMD
+
+### vs Traditional OAuth Setup
+
+| Traditional OAuth                      | CIMD OAuth                               |
+| -------------------------------------- | ---------------------------------------- |
+| 1. Manually register client in console | 1. Deploy application with CIMD endpoint |
+| 2. Copy client_id and client_secret    | 2. Use CIMD URL as client_id             |
+| 3. Configure redirect_uris in console  | 3. OAuth proxy handles registration      |
+| 4. Hard-code client_id in application  |                                          |
+| 5. Deploy application                  |                                          |
+
+### Multi-Environment Deployment
+
+- **Traditional**: Create separate client registrations for dev/staging/prod
+- **CIMD**: Single implementation, URL includes environment context:
+  ```
+  https://dev-api.example.com/.well-known/oauth-client
+  https://prod-api.example.com/.well-known/oauth-client
+  ```
+
+### Configuration Updates
+
+- **Traditional**: Update auth server console + redeploy application
+- **CIMD**: Update JSON document, redeploy application
+
+## Related Samples
+
+- **03-gateway-with-cognito**: Basic Cognito authentication without CIMD
+- **05-entraid-3lo-gateway**: Similar architecture using Microsoft Entra ID
+- **04-gateway-with-3lo-oauth**: Local proxy server version
+
+## Contributing
+
+This sample is part of the [Amazon Bedrock AgentCore Samples](https://github.com/aws-samples/amazon-bedrock-agentcore-samples) repository. See the main repository for contribution guidelines.
