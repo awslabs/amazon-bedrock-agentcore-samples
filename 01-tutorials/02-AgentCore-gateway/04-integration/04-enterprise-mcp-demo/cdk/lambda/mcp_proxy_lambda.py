@@ -370,7 +370,7 @@ def proxy_to_gateway(event):
         else:
             logger.debug(f"Path '{path}' does not match target pattern, no filtering")
     else:
-        logger.debug(f"Default path '/mcp' - returning all tools (no filtering)")
+        logger.debug("Default path '/mcp' - returning all tools (no filtering)")
 
     # === INJECT INTO MCP _meta ONLY IF TARGET FILTER EXISTS ===
     if method == "POST" and body:
