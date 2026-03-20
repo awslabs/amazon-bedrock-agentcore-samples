@@ -13,7 +13,6 @@ import json
 import logging
 import time
 import boto3
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -31,9 +30,6 @@ def setup_review_infrastructure(region: str) -> dict:
     """
     sns = boto3.client("sns", region_name=region)
     sqs = boto3.client("sqs", region_name=region)
-    sts = boto3.client("sts", region_name=region)
-
-    account_id = sts.get_caller_identity()["Account"]
     suffix = int(time.time())
 
     # SNS topic

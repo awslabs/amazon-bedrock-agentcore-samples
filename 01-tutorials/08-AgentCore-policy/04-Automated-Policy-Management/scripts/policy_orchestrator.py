@@ -18,7 +18,6 @@ before the agent is created, so tool functions can reference it via closure.
 import json
 import logging
 import time
-from typing import Optional
 
 import boto3
 import requests

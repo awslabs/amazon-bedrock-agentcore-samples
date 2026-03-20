@@ -15,7 +15,6 @@ import io
 import json
 import logging
 import os
-import sys
 import time
 import zipfile
 from pathlib import Path
@@ -297,7 +296,7 @@ def setup_infrastructure(region: str = "us-east-1") -> dict:
     gateway_arn = financial_target.get("gatewayArn")
     print("   FinancialReportTarget attached")
 
-    trade_target = gw_client.create_mcp_gateway_target(
+    gw_client.create_mcp_gateway_target(
         gateway=gateway,
         name="TradeExecutionTarget",
         target_type="lambda",
