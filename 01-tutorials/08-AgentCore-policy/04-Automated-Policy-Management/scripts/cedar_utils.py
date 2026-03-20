@@ -44,9 +44,7 @@ def rbac_to_natural_language(action_key: str, manifest_entry: dict) -> str:
     principal_clause = "Allow all principals"
 
     # Build action clause
-    action_clause = (
-        f"to invoke the {function_name} tool on the {target_name} target"
-    )
+    action_clause = f"to invoke the {function_name} tool on the {target_name} target"
 
     # Build condition clauses from parameter constraints only
     conditions = []
@@ -56,9 +54,7 @@ def rbac_to_natural_language(action_key: str, manifest_entry: dict) -> str:
             vals = " or ".join(f'"{v}"' for v in constraint["enum"])
             conditions.append(f"the {param_name} is {vals}")
         elif c_type == "integer" and "max" in constraint:
-            conditions.append(
-                f"the {param_name} does not exceed {constraint['max']}"
-            )
+            conditions.append(f"the {param_name} does not exceed {constraint['max']}")
 
     # Assemble
     parts = [principal_clause, action_clause]
@@ -114,9 +110,7 @@ def generate_cedar_from_nl(
         return None
 
     # Return the first generated Cedar statement
-    cedar_stmt = (
-        generated[0].get("definition", {}).get("cedar", {}).get("statement")
-    )
+    cedar_stmt = generated[0].get("definition", {}).get("cedar", {}).get("statement")
     return cedar_stmt
 
 

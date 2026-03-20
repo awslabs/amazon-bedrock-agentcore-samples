@@ -69,6 +69,7 @@ def configure_orchestrator(
 # Helper: fetch OAuth token
 # ---------------------------------------------------------------------------
 
+
 def _fetch_token() -> str:
     ci = _CTX["client_info"]
     resp = requests.post(
@@ -88,6 +89,7 @@ def _fetch_token() -> str:
 # ---------------------------------------------------------------------------
 # Strands tools
 # ---------------------------------------------------------------------------
+
 
 @tool
 def list_gateway_tools() -> str:
@@ -219,7 +221,9 @@ def generate_cedar_policy(action_key: str, nl_statement: str) -> str:
                     "next_step": "Call request_human_approval with this action_key",
                 }
             )
-        err_msg = "NL2Cedar API returned no Cedar policy. Do not retry — move to next tool."
+        err_msg = (
+            "NL2Cedar API returned no Cedar policy. Do not retry — move to next tool."
+        )
         print(f"\n[CEDAR ERROR for {action_key}] {err_msg}\n")
         return json.dumps({"error": err_msg, "action_key": action_key})
     except Exception as e:
@@ -285,9 +289,9 @@ def request_human_approval(action_key: str) -> str:
 
     # Interactive approval
     while True:
-        decision = input(
-            f"\nApprove policy for '{action_key}'? [yes/no]: "
-        ).strip().lower()
+        decision = (
+            input(f"\nApprove policy for '{action_key}'? [yes/no]: ").strip().lower()
+        )
         if decision in ("yes", "y"):
             # Store approved policy in context — create_policy_in_engine reads it
             _CTX["approved_policies"][action_key] = cedar_statement
@@ -345,11 +349,7 @@ def create_policy_in_engine(action_key: str) -> str:
         policy_engine_id = _CTX["policy_engine_id"]
 
         # Derive a short policy name from the action key
-        safe_name = (
-            action_key.replace("___", "_")
-            .replace("-", "_")
-            .lower()[:60]
-        )
+        safe_name = action_key.replace("___", "_").replace("-", "_").lower()[:60]
         policy_name = f"auto_{safe_name}"
 
         resp = boto_client.create_policy(

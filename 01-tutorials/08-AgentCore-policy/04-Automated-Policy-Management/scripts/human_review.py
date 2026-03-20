@@ -21,6 +21,7 @@ logger = logging.getLogger(__name__)
 # Infrastructure setup
 # ---------------------------------------------------------------------------
 
+
 def setup_review_infrastructure(region: str) -> dict:
     """
     Create the SNS topic and SQS queue for human review notifications.
@@ -117,6 +118,7 @@ def subscribe_email_to_topic(
 # Notification
 # ---------------------------------------------------------------------------
 
+
 def build_review_notification(
     tool_action_key: str,
     nl_statement: str,
@@ -194,6 +196,7 @@ def send_policy_for_review(
 # ---------------------------------------------------------------------------
 # Cleanup
 # ---------------------------------------------------------------------------
+
 
 def cleanup_review_infrastructure(
     region: str,
