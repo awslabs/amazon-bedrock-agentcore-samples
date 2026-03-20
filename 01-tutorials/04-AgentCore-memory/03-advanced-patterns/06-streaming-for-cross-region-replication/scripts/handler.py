@@ -43,11 +43,17 @@ def lambda_handler(event, context):
                 base64.b64decode(record["kinesis"]["data"]).decode("utf-8")
             )
         except Exception as e:
-            logger.error(json.dumps({
-                "action": "malformed_record",
-                "error": str(e),
-                "kinesis_sequence": record.get("kinesis", {}).get("sequenceNumber", "N/A"),
-            }))
+            logger.error(
+                json.dumps(
+                    {
+                        "action": "malformed_record",
+                        "error": str(e),
+                        "kinesis_sequence": record.get("kinesis", {}).get(
+                            "sequenceNumber", "N/A"
+                        ),
+                    }
+                )
+            )
             _safe_dlq_send({"raw_record": str(record)}, "malformed", str(e))
             continue
 
@@ -55,21 +61,41 @@ def lambda_handler(event, context):
         event_type = stream_event.get("eventType", "Unknown")
         record_id = stream_event.get("memoryRecordId", "N/A")
 
-        logger.info(json.dumps({
-            "action": "received",
-            "event_type": event_type,
-            "memory_record_id": record_id,
-        }))
+        logger.info(
+            json.dumps(
+                {
+                    "action": "received",
+                    "event_type": event_type,
+                    "memory_record_id": record_id,
+                }
+            )
+        )
 
         if event_type in SKIP_EVENTS:
             continue
 
         if event_type not in REPLICABLE_EVENTS:
-            logger.warning(json.dumps({"action": "skipped", "event_type": event_type, "reason": "unknown event type"}))
+            logger.warning(
+                json.dumps(
+                    {
+                        "action": "skipped",
+                        "event_type": event_type,
+                        "reason": "unknown event type",
+                    }
+                )
+            )
             continue
 
         if _is_replicated(stream_event):
-            logger.info(json.dumps({"action": "skipped", "memory_record_id": record_id, "reason": "replicated prefix"}))
+            logger.info(
+                json.dumps(
+                    {
+                        "action": "skipped",
+                        "memory_record_id": record_id,
+                        "reason": "replicated prefix",
+                    }
+                )
+            )
             continue
 
         memory_record_text = stream_event.get("memoryRecordText")
@@ -79,7 +105,9 @@ def lambda_handler(event, context):
 
         try:
             _replicate(stream_event)
-            logger.info(json.dumps({"action": "replicated", "memory_record_id": record_id}))
+            logger.info(
+                json.dumps({"action": "replicated", "memory_record_id": record_id})
+            )
         except ClientError as e:
             code = e.response["Error"]["Code"]
             if code in RETRYABLE_ERRORS:
@@ -113,37 +141,63 @@ def _replicate(stream_event):
 
     response = remote_client.batch_create_memory_records(
         memoryId=REMOTE_MEMORY_ID,
-        records=[{
-            "requestIdentifier": request_id,
-            "content": {"text": stream_event["memoryRecordText"]},
-            "namespaces": replicated_namespaces,
-            "timestamp": timestamp,
-        }],
+        records=[
+            {
+                "requestIdentifier": request_id,
+                "content": {"text": stream_event["memoryRecordText"]},
+                "namespaces": replicated_namespaces,
+                "timestamp": timestamp,
+            }
+        ],
     )
 
     failed = response.get("failedRecords", [])
     if failed:
         raise ClientError(
-            {"Error": {"Code": "BatchPartialFailure", "Message": failed[0].get("errorMessage", "unknown")}},
+            {
+                "Error": {
+                    "Code": "BatchPartialFailure",
+                    "Message": failed[0].get("errorMessage", "unknown"),
+                }
+            },
             "BatchCreateMemoryRecords",
         )
 
 
 def _safe_dlq_send(stream_event, error_type, error_message):
     record_id = stream_event.get("memoryRecordId", "N/A")
-    logger.error(json.dumps({"action": "dlq", "memory_record_id": record_id, "error_type": error_type, "error_message": error_message}))
-    try:
-        sqs_client.send_message(
-            QueueUrl=DLQ_URL,
-            MessageBody=json.dumps({
-                "source_region": LOCAL_REGION,
-                "event_type": stream_event.get("eventType", "Unknown"),
-                "memory_id": stream_event.get("memoryId", ""),
+    logger.error(
+        json.dumps(
+            {
+                "action": "dlq",
                 "memory_record_id": record_id,
                 "error_type": error_type,
                 "error_message": error_message,
-                "original_event": stream_event,
-            }),
+            }
+        )
+    )
+    try:
+        sqs_client.send_message(
+            QueueUrl=DLQ_URL,
+            MessageBody=json.dumps(
+                {
+                    "source_region": LOCAL_REGION,
+                    "event_type": stream_event.get("eventType", "Unknown"),
+                    "memory_id": stream_event.get("memoryId", ""),
+                    "memory_record_id": record_id,
+                    "error_type": error_type,
+                    "error_message": error_message,
+                    "original_event": stream_event,
+                }
+            ),
         )
     except Exception as dlq_err:
-        logger.error(json.dumps({"action": "dlq_write_failed", "memory_record_id": record_id, "dlq_error": str(dlq_err)}))
+        logger.error(
+            json.dumps(
+                {
+                    "action": "dlq_write_failed",
+                    "memory_record_id": record_id,
+                    "dlq_error": str(dlq_err),
+                }
+            )
+        )
