@@ -58,13 +58,21 @@ def lambda_handler(event, context):
                     target_filter = meta.get(MCP_METADATA_KEY)
 
                 if target_filter:
-                    logger.info(f"Target filter from _meta: {MCP_METADATA_KEY} = '{target_filter}'")
-                    logger.info(f"Will filter tools to only those starting with '{target_filter}___'")
+                    logger.info(
+                        f"Target filter from _meta: {MCP_METADATA_KEY} = '{target_filter}'"
+                    )
+                    logger.info(
+                        f"Will filter tools to only those starting with '{target_filter}___'"
+                    )
                 else:
-                    logger.info("No target filter in _meta - returning ALL tools (no filtering)")
+                    logger.info(
+                        "No target filter in _meta - returning ALL tools (no filtering)"
+                    )
 
                 # Filter tools if target filter is specified
-                if "result" in response_body and "tools" in response_body.get("result", {}):
+                if "result" in response_body and "tools" in response_body.get(
+                    "result", {}
+                ):
                     result = response_body["result"]
                     original_tools = result.get("tools", [])
 
@@ -73,11 +81,14 @@ def lambda_handler(event, context):
                     if target_filter:
                         # Filter by gateway target name prefix (format: "target___tool")
                         filtered_tools = [
-                            tool for tool in original_tools
+                            tool
+                            for tool in original_tools
                             if tool.get("name", "").startswith(f"{target_filter}___")
                         ]
 
-                        logger.info(f"Filtered to {len(filtered_tools)} tools for target '{target_filter}'")
+                        logger.info(
+                            f"Filtered to {len(filtered_tools)} tools for target '{target_filter}'"
+                        )
 
                         # Log matched tools
                         if filtered_tools:
@@ -90,15 +101,15 @@ def lambda_handler(event, context):
                         # Log filtering summary
                         removed = len(original_tools) - len(filtered_tools)
                         if removed > 0:
-                            logger.info(f"Filtered out {removed} tools not matching target")
+                            logger.info(
+                                f"Filtered out {removed} tools not matching target"
+                            )
 
                         # Create filtered response
                         filtered_body = {
                             "jsonrpc": response_body.get("jsonrpc", "2.0"),
                             "id": response_body.get("id"),
-                            "result": {
-                                "tools": filtered_tools
-                            }
+                            "result": {"tools": filtered_tools},
                         }
 
                         # Preserve _meta from response if present
@@ -118,7 +129,9 @@ def lambda_handler(event, context):
                         return response
                     else:
                         # No filtering - log all tools and return unchanged
-                        logger.info(f"No filtering applied - returning all {len(original_tools)} tools")
+                        logger.info(
+                            f"No filtering applied - returning all {len(original_tools)} tools"
+                        )
                         logger.info("Available tools:")
                         for tool in original_tools:
                             logger.info(f"  - {tool.get('name')}")
@@ -149,7 +162,9 @@ def lambda_handler(event, context):
                     )
                     if gr_response.get("action", None) == "GUARDRAIL_INTERVENED":
                         logger.warning("Guardrail intervened on the content. Details:")
-                        guardrail_text = gr_response.get("outputs", [{}])[0].get("text", "")
+                        guardrail_text = gr_response.get("outputs", [{}])[0].get(
+                            "text", ""
+                        )
                         logger.warning(guardrail_text)
                         body_transformed = response_body
                         body_transformed["result"]["content"][0] = {
@@ -231,7 +246,9 @@ def lambda_handler(event, context):
 
                     if gr_response.get("action", None) == "GUARDRAIL_INTERVENED":
                         logger.warning("Guardrail intervened on the content. Details:")
-                        guardrail_text = gr_response.get("outputs", [{}])[0].get("text", "{}")
+                        guardrail_text = gr_response.get("outputs", [{}])[0].get(
+                            "text", "{}"
+                        )
                         logger.warning(guardrail_text)
 
                         # Parse the guardrail output back to a dict since the gateway
@@ -240,7 +257,9 @@ def lambda_handler(event, context):
                             transformed_body = json.loads(guardrail_text)
                         except (json.JSONDecodeError, TypeError):
                             # If guardrail output isn't valid JSON, pass through original request
-                            logger.error("Guardrail output is not valid JSON, passing through original request")
+                            logger.error(
+                                "Guardrail output is not valid JSON, passing through original request"
+                            )
                             transformed_body = request_body
 
                         response = {

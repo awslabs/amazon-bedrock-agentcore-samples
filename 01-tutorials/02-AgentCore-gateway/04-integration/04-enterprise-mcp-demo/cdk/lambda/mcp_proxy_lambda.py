@@ -26,7 +26,7 @@ COGNITO_DOMAIN = os.environ.get("COGNITO_DOMAIN", "")
 CLIENT_ID = os.environ.get("CLIENT_ID", "")
 CLIENT_SECRET = os.environ.get("CLIENT_SECRET", "")
 CALLBACK_LAMBDA_URL = os.environ.get("CALLBACK_LAMBDA_URL", "")
-RESOURCE_SERVER_ID = os.environ.get("RESOURCE_SERVER_ID","")
+RESOURCE_SERVER_ID = os.environ.get("RESOURCE_SERVER_ID", "")
 MCP_METADATA_KEY = os.environ.get("MCP_METADATA_KEY", "com.example/target")
 
 # Allowed redirect URIs for the OAuth callback, passed from CDK as a
@@ -116,7 +116,13 @@ def handle_oauth_metadata(event):
         "authorization_endpoint": f"{api_url}/authorize",
         "token_endpoint": f"{api_url}/token",
         "registration_endpoint": f"{api_url}/register",
-        "scopes_supported": ["openid", "profile", "email", f"{RESOURCE_SERVER_ID}/mcp.read", f"{RESOURCE_SERVER_ID}/mcp.write"],
+        "scopes_supported": [
+            "openid",
+            "profile",
+            "email",
+            f"{RESOURCE_SERVER_ID}/mcp.read",
+            f"{RESOURCE_SERVER_ID}/mcp.write",
+        ],
         "response_types_supported": ["code"],
         "grant_types_supported": ["authorization_code", "refresh_token"],
         "token_endpoint_auth_methods_supported": ["none", "client_secret_post"],
@@ -138,7 +144,13 @@ def handle_protected_resource_metadata(event):
             "resource": f"{api_url}/mcp",
             "authorization_servers": [api_url],
             "bearer_methods_supported": ["header"],
-            "scopes_supported": ["openid", "profile", "email", f"{RESOURCE_SERVER_ID}/mcp.read", f"{RESOURCE_SERVER_ID}/mcp.write"],
+            "scopes_supported": [
+                "openid",
+                "profile",
+                "email",
+                f"{RESOURCE_SERVER_ID}/mcp.read",
+                f"{RESOURCE_SERVER_ID}/mcp.write",
+            ],
         },
     )
 
@@ -267,13 +279,15 @@ def handle_callback(event):
     # spin up an ephemeral local server on a random port for the OAuth callback.
     normalized = original_redirect_uri.rstrip("/")
     parsed = urllib.parse.urlparse(normalized)
-    is_localhost = (
-        parsed.scheme == "http"
-        and parsed.hostname in ("localhost", "127.0.0.1")
+    is_localhost = parsed.scheme == "http" and parsed.hostname in (
+        "localhost",
+        "127.0.0.1",
     )
     allowed_normalized = [u.rstrip("/") for u in ALLOWED_REDIRECT_URIS]
     if not is_localhost and normalized not in allowed_normalized:
-        logger.warning(f"Rejected redirect_uri not in allowlist: {original_redirect_uri}")
+        logger.warning(
+            f"Rejected redirect_uri not in allowlist: {original_redirect_uri}"
+        )
         logger.debug(f"Normalized redirect_uri: {normalized}")
         logger.debug(f"Allowed URIs (raw): {ALLOWED_REDIRECT_URIS}")
         logger.debug(f"Allowed URIs (normalized): {allowed_normalized}")
@@ -379,7 +393,10 @@ def proxy_to_gateway(event):
             mcp_request = json.loads(body if isinstance(body, str) else body.decode())
 
             # Only inject _meta if we have a target filter AND it's a tool-related method
-            if target_filter and mcp_request.get("method") in ["tools/list", "tools/call"]:
+            if target_filter and mcp_request.get("method") in [
+                "tools/list",
+                "tools/call",
+            ]:
                 # Ensure _meta exists
                 if "_meta" not in mcp_request:
                     mcp_request["_meta"] = {}
@@ -388,12 +405,18 @@ def proxy_to_gateway(event):
                 mcp_request["_meta"][MCP_METADATA_KEY] = target_filter
 
                 logger.info(f"Injected _meta: {MCP_METADATA_KEY} = '{target_filter}'")
-                logger.debug(f"Modified MCP request: {json.dumps(mcp_request, indent=2)}")
+                logger.debug(
+                    f"Modified MCP request: {json.dumps(mcp_request, indent=2)}"
+                )
             else:
                 if not target_filter:
-                    logger.debug("No target filter - NOT injecting _meta (will return all tools)")
+                    logger.debug(
+                        "No target filter - NOT injecting _meta (will return all tools)"
+                    )
                 else:
-                    logger.debug(f"Method '{mcp_request.get('method')}' - not injecting _meta")
+                    logger.debug(
+                        f"Method '{mcp_request.get('method')}' - not injecting _meta"
+                    )
 
             # Re-serialize (possibly modified) request
             body = json.dumps(mcp_request).encode()
@@ -474,7 +497,9 @@ def proxy_to_gateway(event):
                 )
                 www_auth_rewritten = www_auth.replace(gateway_base, api_url)
                 resp_headers["WWW-Authenticate"] = www_auth_rewritten
-                logger.debug(f"Rewrote WWW-Authenticate: {www_auth} -> {www_auth_rewritten}")
+                logger.debug(
+                    f"Rewrote WWW-Authenticate: {www_auth} -> {www_auth_rewritten}"
+                )
 
             return {
                 "statusCode": resp.status,

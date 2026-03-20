@@ -106,7 +106,9 @@ def lambda_handler(event, context):
                 f"{RESOURCE_SERVER_ID}/mcp.write",
                 f"{RESOURCE_SERVER_ID}/mcp.read",
             ]
-            logger.info("Suppressed mcp.write and mcp.read scopes for readonly test user")
+            logger.info(
+                "Suppressed mcp.write and mcp.read scopes for readonly test user"
+            )
 
         logger.info(
             f"Added custom claims to ID token and Access token: "
