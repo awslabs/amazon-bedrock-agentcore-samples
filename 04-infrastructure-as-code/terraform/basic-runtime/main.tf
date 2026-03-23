@@ -17,6 +17,8 @@ resource "aws_bedrockagentcore_agent_runtime" "basic_agent" {
     network_mode = var.network_mode
   }
 
+
+
   environment_variables = merge(
     {
       AWS_REGION         = var.aws_region
