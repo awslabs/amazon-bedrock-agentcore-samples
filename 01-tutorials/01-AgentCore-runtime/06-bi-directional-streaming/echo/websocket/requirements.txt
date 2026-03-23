@@ -1,3 +1,0 @@
-uvicorn[standard]
-fastapi
-websockets
