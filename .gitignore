@@ -247,3 +247,6 @@ cdk.out/
 .vscode/
 
 node_modules
+
+# Test downloads - not for version control
+Test-Downloads/
