@@ -168,6 +168,6 @@ async def websocket_endpoint(websocket: WebSocket):
 
 
 if __name__ == "__main__":
-    host = os.environ.get("AGENT_RUNTIME_HOST", "0.0.0.0")
+    host = os.environ.get("AGENT_RUNTIME_HOST", "0.0.0.0")  # nosec B104 - binding to all interfaces required for container runtime
     port = int(os.environ.get("AGENT_PORT", 8080))
     uvicorn.run(app, host=host, port=port, log_level="info")
