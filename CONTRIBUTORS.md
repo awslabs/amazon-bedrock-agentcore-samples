@@ -98,4 +98,4 @@
 - Will Ensor
 - Osman Santos
 - David Kaleko
-- kolaak
+- Dumitru Pascu (dumip)
