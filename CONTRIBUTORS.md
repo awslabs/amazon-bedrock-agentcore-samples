@@ -98,3 +98,4 @@
 - Will Ensor
 - Osman Santos
 - David Kaleko
+- Dumitru Pascu (dumip)
