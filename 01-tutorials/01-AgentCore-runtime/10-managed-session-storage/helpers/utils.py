@@ -1,7 +1,4 @@
 import os
-import base64
-import hashlib
-import hmac
 import json
 import boto3
 from boto3.session import Session
@@ -10,58 +7,10 @@ from typing import Optional
 
 SAMPLE_ROLE_NAME = "SessionDemoBedrockAgentCoreRole"
 POLICY_NAME = "AWSMCPtBedrockAgentCorePolicy"
-#S3_PREFIX = "SessionDemoBucket"
 
 def get_aws_account_id() -> str:
     sts = boto3.client("sts")
     return sts.get_caller_identity()["Account"]
-
-
-# def create_s3_bucket() -> Optional[str]:
-#     """Create S3 bucket for session storage."""
-#     s3 = boto3.client("s3")
-#     boto_session = Session()
-#     region = boto_session.region_name
-#     account_id = get_aws_account_id()
-    
-#     bucket_name = f"{S3_PREFIX.lower()}-{account_id}-{region}"
-    
-#     try:
-#         if region == "us-east-1":
-#             s3.create_bucket(Bucket=bucket_name)
-#         else:
-#             s3.create_bucket(
-#                 Bucket=bucket_name,
-#                 CreateBucketConfiguration={"LocationConstraint": region}
-#             )
-#         print(f"✅ Created S3 bucket: {bucket_name}")
-#         return bucket_name
-#     except s3.exceptions.BucketAlreadyOwnedByYou:
-#         print(f"ℹ️ Bucket {bucket_name} already exists")
-#         return bucket_name
-#     except Exception as e:
-#         print(f"❌ Error creating S3 bucket: {str(e)}")
-#         return None
-
-
-# def upload_file_to_s3(file_path: str, s3_prefix: str) -> Optional[str]:
-#     """Upload file to S3 bucket."""
-#     s3 = boto3.client("s3")
-#     boto_session = Session()
-#     region = boto_session.region_name
-#     account_id = get_aws_account_id()
-    
-#     bucket_name = f"{S3_PREFIX.lower()}-{account_id}-{region}"
-#     file_name = os.path.basename(file_path)
-#     s3_key = f"{s3_prefix}/{file_name}"
-    
-#     try:
-#         s3.upload_file(file_path, bucket_name, s3_key)
-#         print(f"✅ Uploaded {file_path} to s3://{bucket_name}/{s3_key}")
-#         return f"s3://{bucket_name}/{s3_key}"
-#     except Exception as e:
-#         print(f"❌ Error uploading file: {str(e)}")
-#         return None
 
 
 def create_agentcore_runtime_execution_role(role_name: str) -> Optional[str]:
@@ -186,35 +135,7 @@ def create_agentcore_runtime_execution_role(role_name: str) -> Optional[str]:
                     "arn:aws:bedrock:*::foundation-model/*",
                     f"arn:aws:bedrock:{region}:{account_id}:*",
                 ],
-            }#,
-            # {
-            #     "Sid": "S3BucketAccess",
-            #     "Effect": "Allow",
-            #     "Action": [
-            #         "s3:GetObject",
-            #         "s3:PutObject",
-            #         "s3:DeleteObject",
-            #         "s3:ListBucket"
-            #     ],
-            #     "Resource": [
-            #         f"arn:aws:s3:::{S3_PREFIX.lower()}-{account_id}-{region}",
-            #         f"arn:aws:s3:::{S3_PREFIX.lower()}-{account_id}-{region}/*"
-            #     ],
-            # },
-            # {
-            #     "Sid": "AllowAgentToUseMemory",
-            #     "Effect": "Allow",
-            #     "Action": [
-            #         "bedrock-agentcore:CreateEvent",
-            #         "bedrock-agentcore:GetMemoryRecord",
-            #         "bedrock-agentcore:GetMemory",
-            #         "bedrock-agentcore:RetrieveMemoryRecords",
-            #         "bedrock-agentcore:ListMemoryRecords",
-            #     ],
-            #     "Resource": [
-            #         f"arn:aws:bedrock-agentcore:{region}:{account_id}:*"
-            #     ],
-            # }
+            }
         ],
     }
 

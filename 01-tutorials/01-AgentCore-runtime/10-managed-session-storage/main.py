@@ -1,5 +1,4 @@
 import os
-import boto3
 from bedrock_agentcore import BedrockAgentCoreApp
 from claude_agent_sdk import (
     query,
