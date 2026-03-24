@@ -65,7 +65,6 @@ During agent execution, the backend emits a stream of typed events:
 ## Prerequisites
 
 - Python 3.12+
-- Docker installed and running
 - AWS credentials with Bedrock model access (`us.anthropic.claude-sonnet-4-20250514-v1:0`)
 - `bedrock-agentcore-starter-toolkit` (installed by notebook)
 
@@ -123,7 +122,7 @@ Both transports stream the same AG-UI events. The agent code handles both via Fa
 
 | Issue | Solution |
 |:------|:---------|
-| `CREATE_FAILED` on launch | Check Docker is running; verify ECR permissions |
+| `CREATE_FAILED` on launch | Verify IAM permissions; check CloudWatch logs |
 | 401/403 on SSE | Refresh Bearer token (Cognito) or re-sign request (SigV4) |
 | WebSocket connection refused | Ensure `protocol='AGUI'` was set during configure |
 | Agent returns empty response | Check CloudWatch logs; verify Bedrock model access |
@@ -134,5 +133,4 @@ Both transports stream the same AG-UI events. The agent code handles both via Fa
 
 Each notebook includes a cleanup cell that deletes:
 - AgentCore Runtime
-- ECR repository
 - Cognito User Pool (Cognito notebook only)
