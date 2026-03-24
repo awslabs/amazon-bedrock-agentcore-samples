@@ -1,44 +1,36 @@
 """
 Setup script: Creates AgentCore Identity credential providers for:
-  1. M2M (machine-to-machine): OAuth2 client credentials grant
-  2. Auth Code (3LO): Authorization code grant (Google Calendar example)
 
-The M2M provider can be created with the CLI:
-    agentcore add identity --name M2MProvider --type oauth ...
+  1. M2M  — OAuth2 client credentials (Cognito machine client from cognito_config.json)
+  2. GitHub 3LO — Authorization code grant for GitHub repository access
+  3. Google 3LO — Authorization code grant for Google Calendar access
 
-The 3LO Google provider requires the bedrock_agentcore SDK (vendor-specific config).
-This script creates both programmatically for convenience.
+Run setup_cognito.py first — M2M credentials are read from cognito_config.json.
 
 Usage:
     python setup_oauth_providers.py
 
 Prerequisites:
-    - For M2M:  Any OAuth2 server supporting client_credentials grant
-    - For 3LO:  A Google Cloud project with Calendar API enabled and
-                OAuth 2.0 credentials (Web application type).
-                See README.md Step 4 for Google setup instructions.
-
-Environment variables (or .env file):
-    M2M_CLIENT_ID       OAuth2 client ID for M2M service account
-    M2M_CLIENT_SECRET   OAuth2 client secret for M2M service account
-    M2M_DISCOVERY_URL   OIDC discovery URL of the M2M authorization server
-    GOOGLE_CLIENT_ID    Google OAuth2 client ID
-    GOOGLE_CLIENT_SECRET Google OAuth2 client secret
+    - cognito_config.json (from setup_cognito.py)
+    - .env file (or environment variables) with:
+        GITHUB_CLIENT_ID        GitHub OAuth App client ID
+        GITHUB_CLIENT_SECRET    GitHub OAuth App client secret
+        GOOGLE_CLIENT_ID        Google OAuth2 client ID
+        GOOGLE_CLIENT_SECRET    Google OAuth2 client secret
 
 Outputs:
-    oauth_config.json   Provider names and callback URLs
+    oauth_config.json   Provider names and AgentCore callback URLs
 """
 
 import os
 import json
-import boto3
 from boto3.session import Session
 
 try:
     from dotenv import load_dotenv
     load_dotenv(override=True)
 except ImportError:
-    pass  # python-dotenv is optional
+    pass
 
 try:
     from bedrock_agentcore.services.identity import IdentityClient
@@ -49,108 +41,121 @@ except ImportError:
     )
 
 
-def create_m2m_provider(identity_client: IdentityClient, region: str) -> dict:
-    """
-    Create a credential provider for M2M (client credentials) flow.
+def create_m2m_provider(identity_client: IdentityClient) -> dict:
+    """Create M2M provider using Cognito machine client from cognito_config.json."""
+    try:
+        with open("cognito_config.json") as f:
+            cognito_config = json.load(f)
+    except FileNotFoundError:
+        print("  Skipping M2M: cognito_config.json not found. Run setup_cognito.py first.")
+        return {"name": "M2MProvider", "skipped": True}
 
-    This can also be created with the CLI:
-        agentcore add identity \\
-          --name M2MProvider \\
-          --type oauth \\
-          --discovery-url $M2M_DISCOVERY_URL \\
-          --client-id $M2M_CLIENT_ID \\
-          --client-secret $M2M_CLIENT_SECRET \\
-          --scopes api:read,api:write
-    """
-    client_id = os.environ.get("M2M_CLIENT_ID", "")
-    client_secret = os.environ.get("M2M_CLIENT_SECRET", "")
-    discovery_url = os.environ.get("M2M_DISCOVERY_URL", "")
+    client_id = cognito_config.get("m2m_client_id", "")
+    client_secret = cognito_config.get("m2m_client_secret", "")
+    token_endpoint = cognito_config.get("m2m_token_endpoint", "")
+    region = cognito_config.get("region", "")
+    pool_id = cognito_config.get("pool_id", "")
 
-    if not all([client_id, client_secret, discovery_url]):
-        print("  Skipping M2M provider (M2M_CLIENT_ID/SECRET/DISCOVERY_URL not set).")
-        print("  Create it manually with:")
-        print("    agentcore add identity --name M2MProvider --type oauth \\")
-        print("      --discovery-url YOUR_DISCOVERY_URL \\")
-        print("      --client-id YOUR_CLIENT_ID \\")
-        print("      --client-secret YOUR_CLIENT_SECRET")
+    if not all([client_id, client_secret, token_endpoint]):
+        print("  Skipping M2M: m2m fields missing from cognito_config.json.")
+        print("  Re-run setup_cognito.py to regenerate.")
         return {"name": "M2MProvider", "skipped": True}
 
     print("Creating M2M (client credentials) credential provider...")
-    provider = identity_client.create_oauth2_credential_provider(
-        name="M2MProvider",
-        credentialProviderVendor="CustomOauth2",
-        oauth2ProviderConfigInput={
+    provider = identity_client.create_oauth2_credential_provider({
+        "name": "M2MProvider",
+        "credentialProviderVendor": "CustomOauth2",
+        "oauth2ProviderConfigInput": {
             "customOauth2ProviderConfig": {
                 "clientId": client_id,
                 "clientSecret": client_secret,
-                "authorizationServerMetadata": {
-                    "issuer": discovery_url.replace(
-                        "/.well-known/openid-configuration", ""
-                    )
+                "oauthDiscovery": {
+                    "discoveryUrl": f"https://cognito-idp.{region}.amazonaws.com/{pool_id}/.well-known/openid-configuration",
                 },
             }
         },
-    )
+    })
     print(f"  Created: {provider.get('name')}")
     return {"name": "M2MProvider", "provider": provider}
 
 
-def create_google_3lo_provider(identity_client: IdentityClient) -> dict:
-    """
-    Create a credential provider for Google OAuth2 3-legged (auth code) flow.
+def create_github_3lo_provider(identity_client: IdentityClient) -> dict:
+    """Create GitHub OAuth2 3LO credential provider."""
+    client_id = os.environ.get("GITHUB_CLIENT_ID", "")
+    client_secret = os.environ.get("GITHUB_CLIENT_SECRET", "")
 
-    AgentCore Identity handles:
-    - Generating the authorization URL for user consent
-    - Exchanging the auth code for tokens
-    - Storing and refreshing tokens securely
-    - Session binding to prevent CSRF
-    """
+    if not all([client_id, client_secret]):
+        print("  Skipping GitHub 3LO (GITHUB_CLIENT_ID/SECRET not set).")
+        return {"name": "GitHub3LOProvider", "skipped": True}
+
+    print("Creating GitHub OAuth2 (authorization code / 3LO) credential provider...")
+    provider = identity_client.create_oauth2_credential_provider({
+        "name": "GitHub3LOProvider",
+        "credentialProviderVendor": "GithubOauth2",
+        "oauth2ProviderConfigInput": {
+            "githubOauth2ProviderConfig": {
+                "clientId": client_id,
+                "clientSecret": client_secret,
+            }
+        },
+    })
+    callback_url = provider.get("callbackUrl", "")
+    print(f"  Created: {provider.get('name')}")
+    print(f"\n  IMPORTANT: Add this callback URL to your GitHub OAuth App:")
+    print(f"  {callback_url}")
+    print(f"  (GitHub -> Settings -> Developer settings -> OAuth Apps -> your app -> Authorization callback URL)")
+    return {"name": "GitHub3LOProvider", "callback_url": callback_url, "provider": provider}
+
+
+def create_google_3lo_provider(identity_client: IdentityClient) -> dict:
+    """Create Google OAuth2 3LO credential provider."""
     client_id = os.environ.get("GOOGLE_CLIENT_ID", "")
     client_secret = os.environ.get("GOOGLE_CLIENT_SECRET", "")
 
     if not all([client_id, client_secret]):
-        print("  Skipping Google 3LO provider (GOOGLE_CLIENT_ID/SECRET not set).")
-        print("  Set them in a .env file and re-run this script.")
+        print("  Skipping Google 3LO (GOOGLE_CLIENT_ID/SECRET not set).")
         return {"name": "Google3LOProvider", "skipped": True}
 
     print("Creating Google OAuth2 (authorization code / 3LO) credential provider...")
-    provider = identity_client.create_oauth2_credential_provider(
-        name="Google3LOProvider",
-        credentialProviderVendor="GoogleOauth2",
-        oauth2ProviderConfigInput={
+    provider = identity_client.create_oauth2_credential_provider({
+        "name": "Google3LOProvider",
+        "credentialProviderVendor": "GoogleOauth2",
+        "oauth2ProviderConfigInput": {
             "googleOauth2ProviderConfig": {
                 "clientId": client_id,
                 "clientSecret": client_secret,
             }
         },
-    )
+    })
     callback_url = provider.get("callbackUrl", "")
     print(f"  Created: {provider.get('name')}")
-    print(f"\n  IMPORTANT: Register this callback URL in Google Cloud Console:")
-    print(f"  Callback URL: {callback_url}")
-    print(f"  (APIs & Services > Credentials > OAuth 2.0 Client IDs > Authorised redirect URIs)")
-
+    print(f"\n  IMPORTANT: Add this callback URL to your Google OAuth App:")
+    print(f"  {callback_url}")
+    print(f"  (Google Cloud Console -> APIs & Services -> Credentials -> OAuth 2.0 Client IDs -> Authorised redirect URIs)")
     return {"name": "Google3LOProvider", "callback_url": callback_url, "provider": provider}
 
 
 def main():
     session = Session()
-    region = session.region_name
-    identity_client = IdentityClient(region=region)
+    identity_client = IdentityClient(region=session.region_name)
 
     results = {}
 
-    print("=== M2M Credential Provider ===")
-    results["m2m"] = create_m2m_provider(identity_client, region)
+    print("=== M2M Credential Provider (Cognito client credentials) ===")
+    results["m2m"] = create_m2m_provider(identity_client)
+
+    print("\n=== GitHub 3LO Credential Provider ===")
+    results["github_3lo"] = create_github_3lo_provider(identity_client)
 
     print("\n=== Google 3LO Credential Provider ===")
     results["google_3lo"] = create_google_3lo_provider(identity_client)
 
     with open("oauth_config.json", "w") as f:
-        # Only save non-sensitive metadata
         json.dump(
             {
                 "m2m_provider_name": results["m2m"]["name"],
+                "github_3lo_provider_name": results["github_3lo"]["name"],
+                "github_callback_url": results["github_3lo"].get("callback_url", ""),
                 "google_3lo_provider_name": results["google_3lo"]["name"],
                 "google_callback_url": results["google_3lo"].get("callback_url", ""),
             },
@@ -159,6 +164,17 @@ def main():
         )
 
     print("\nOAuth provider configuration saved to oauth_config.json")
+
+    github_url = results["github_3lo"].get("callback_url")
+    google_url = results["google_3lo"].get("callback_url")
+    if github_url or google_url:
+        print("\n=== Action Required: Register Callback URLs ===")
+        if github_url:
+            print(f"GitHub OAuth App -> Authorization callback URL:")
+            print(f"  {github_url}")
+        if google_url:
+            print(f"Google Cloud Console -> Authorised redirect URIs:")
+            print(f"  {google_url}")
 
 
 if __name__ == "__main__":

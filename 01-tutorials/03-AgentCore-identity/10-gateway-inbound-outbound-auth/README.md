@@ -183,7 +183,9 @@ agentcore add agent \
   --type byo \
   --code-location ../app/MyAgent \
   --entrypoint main.py \
-  --language Python
+  --language Python \
+  --framework Strands \
+  --model-provider Bedrock
 ```
 
 Set the gateway URL as an environment variable by adding it to the agent spec in `agentcore/agentcore.json`. Get the URL after first deploy with `agentcore status`, or the CLI may inject it automatically via `AGENTCORE_GATEWAY_URL`.
@@ -204,7 +206,20 @@ agentcore status
 
 ---
 
-## Step 8: Test Inbound and Outbound Auth
+## Step 8: Configure Inbound Auth and IAM Permissions
+
+The agentcore CLI does not yet apply `authorizationConfiguration` via `agentcore.json`. Run this post-deploy script once to configure JWT inbound auth, set the gateway URL environment variable, and attach the required IAM policy:
+
+```bash
+cd ..
+python configure_inbound_auth.py
+```
+
+Wait ~30 seconds for changes to propagate.
+
+---
+
+## Step 9: Test Inbound and Outbound Auth
 
 ```bash
 cd ..
@@ -239,7 +254,7 @@ The agent code has no knowledge of the upstream credentials — they are managed
 
 ---
 
-## Step 9: Cleanup
+## Step 10: Cleanup
 
 ```bash
 cd GatewayAuthDemo

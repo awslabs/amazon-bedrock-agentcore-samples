@@ -1,14 +1,17 @@
 """
-AgentCore Runtime agent demonstrating two outbound OAuth2 flows:
+AgentCore Runtime agent demonstrating three outbound auth flows:
 
   1. M2M (machine-to-machine / client credentials):
-     The agent calls an internal API as itself, using a service account.
-     @requires_access_token with auth_flow="M2M" — no user interaction needed.
+     The agent calls an internal API as a service account — no user interaction.
+     Uses @requires_access_token with auth_flow="M2M".
 
-  2. Auth Code / 3LO (authorization code / user federation):
-     The agent accesses Google Calendar on behalf of the authenticated user.
-     @requires_access_token with auth_flow="USER_FEDERATION" — triggers a
-     consent URL on first access; subsequent calls use stored tokens.
+  2. GitHub Auth Code (3LO / USER_FEDERATION):
+     The agent lists the user's GitHub repositories.
+     First call returns a consent URL; subsequent calls use stored tokens.
+
+  3. Google Auth Code (3LO / USER_FEDERATION):
+     The agent reads the user's Google Calendar events.
+     First call returns a consent URL; subsequent calls use stored tokens.
 
 Inbound Auth: Cognito JWT (configured in agentcore/agentcore.json).
 """
@@ -22,13 +25,26 @@ from strands import Agent, tool
 from strands.models import BedrockModel
 from bedrock_agentcore.runtime import BedrockAgentCoreApp
 from bedrock_agentcore.identity.auth import requires_access_token
+from bedrock_agentcore.services.identity import TokenPoller
+
+
+class _NonBlockingPoller(TokenPoller):
+    """Returns immediately so the consent URL can be passed to the user.
+
+    On first call (no token yet): on_auth_url is called with the URL, then
+    this poller returns "" immediately instead of blocking. The tool returns
+    the consent URL to the agent. On the second invocation (after the user
+    completes consent), GetResourceOauth2Token returns the token directly.
+    """
+    async def poll_for_token(self) -> str:
+        return ""
 
 app = BedrockAgentCoreApp()
 _model = BedrockModel(model_id="us.anthropic.claude-haiku-4-5-20251001-v1:0")
 
 # ---------------------------------------------------------------------------
-# M2M: client credentials grant
-# The agent authenticates as a service account (no user involved).
+# M2M: client credentials grant (Cognito machine client)
+# The agent authenticates as a service account — no user involved.
 # ---------------------------------------------------------------------------
 
 _m2m_token_cache: dict = {}
@@ -37,10 +53,9 @@ _m2m_token_cache: dict = {}
 @requires_access_token(
     provider_name="M2MProvider",
     auth_flow="M2M",
-    scopes=["api:read"],
+    scopes=["https://api.m2m-demo.internal/read"],
 )
 async def _fetch_m2m_token(*, access_token: str) -> None:
-    """Fetch M2M access token from AgentCore Identity."""
     _m2m_token_cache["token"] = access_token
 
 
@@ -56,84 +71,152 @@ async def call_internal_api(endpoint: str) -> str:
 
     token = _m2m_token_cache.get("token", "")
     base_url = os.environ.get("INTERNAL_API_BASE_URL", "https://api.example.internal")
-
-    # In production: use the token to authenticate to the internal service
     print(f"[M2M] Calling {base_url}{endpoint} with token: {token[:20]}...")
 
-    # Simulated response for demo purposes
-    return json.dumps({"status": "ok", "endpoint": endpoint, "timestamp": datetime.now(timezone.utc).isoformat()})
+    # Simulated response — replace with real httpx call in production
+    return json.dumps({
+        "status": "ok",
+        "endpoint": endpoint,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    })
 
 
 # ---------------------------------------------------------------------------
-# Auth Code / 3LO: authorization code grant (Google Calendar)
-# The agent accesses the user's Google Calendar.
-# On first call: returns a consent URL for the user to visit.
-# On subsequent calls: uses stored tokens automatically.
+# GitHub 3LO: authorization code grant
+# The agent lists the user's GitHub repositories.
 # ---------------------------------------------------------------------------
 
-_google_token_cache: dict = {}
-_auth_url_cache: dict = {}
+_github_auth_url_cache: dict = {}
 
 
-def _on_auth_url(url: str) -> None:
-    """Called by AgentCore Identity when user consent is required."""
-    _auth_url_cache["url"] = url
-    print(f"\n[3LO] User consent required. Visit this URL to authorize Google Calendar access:\n{url}\n")
-
-
-@requires_access_token(
-    provider_name="Google3LOProvider",
-    auth_flow="USER_FEDERATION",
-    scopes=["https://www.googleapis.com/auth/calendar.readonly"],
-    on_auth_url=_on_auth_url,
-)
-async def _fetch_google_token(*, access_token: str) -> None:
-    """Fetch Google OAuth2 token from AgentCore Identity."""
-    _google_token_cache["token"] = access_token
+def _on_github_auth_url(url: str) -> None:
+    _github_auth_url_cache["url"] = url
 
 
 @tool
-async def get_calendar_events() -> str:
+def get_github_repos() -> str:
+    """List the authenticated user's GitHub repositories.
+
+    On first call, returns an authorization URL if consent is needed.
+    After the user grants access, call this tool again to retrieve repos.
+    """
+    callback_url = os.environ.get("CALLBACK_URL", "http://localhost:9090/oauth2/callback")
+
+    @requires_access_token(
+        provider_name="GitHub3LOProvider",
+        auth_flow="USER_FEDERATION",
+        scopes=["repo", "read:user"],
+        on_auth_url=_on_github_auth_url,
+        callback_url=callback_url,
+        token_poller=_NonBlockingPoller(),
+    )
+    def _fetch_and_list(access_token: str = "") -> str:
+        if not access_token:
+            auth_url = _github_auth_url_cache.get("url", "")
+            if auth_url:
+                return (
+                    f"GitHub authorization required. Please visit this URL and grant access:\n"
+                    f"{auth_url}\n\n"
+                    "After authorizing, invoke the agent again to retrieve your repositories."
+                )
+            return "GitHub authorization required. Please try again in a moment."
+
+        with httpx.Client() as client:
+            user_resp = client.get(
+                "https://api.github.com/user",
+                headers={"Authorization": f"Bearer {access_token}"},
+            )
+            user_resp.raise_for_status()
+            username = user_resp.json().get("login", "Unknown")
+
+            repos_resp = client.get(
+                f"https://api.github.com/search/repositories?q=user:{username}",
+                headers={"Authorization": f"Bearer {access_token}"},
+            )
+            repos_resp.raise_for_status()
+            repos = repos_resp.json().get("items", [])
+
+        if not repos:
+            return f"No repositories found for GitHub user '{username}'."
+
+        lines = [f"GitHub repositories for {username}:"]
+        for repo in repos:
+            line = f"  - {repo['name']}"
+            if repo.get("language"):
+                line += f" ({repo['language']})"
+            if repo.get("description"):
+                line += f": {repo['description']}"
+            lines.append(line)
+        return "\n".join(lines)
+
+    return _fetch_and_list()
+
+
+# ---------------------------------------------------------------------------
+# Google 3LO: authorization code grant
+# The agent reads the user's Google Calendar events.
+# ---------------------------------------------------------------------------
+
+_google_auth_url_cache: dict = {}
+
+
+def _on_google_auth_url(url: str) -> None:
+    _google_auth_url_cache["url"] = url
+
+
+@tool
+def get_calendar_events() -> str:
     """Get today's Google Calendar events for the authenticated user.
 
-    On first call, this will return an authorization URL.
-    After the user grants consent, call this tool again to get events.
+    On first call, returns an authorization URL if consent is needed.
+    After the user grants access, call this tool again to retrieve events.
     """
-    if "token" not in _google_token_cache:
-        await _fetch_google_token(access_token="")
-
-    if "url" in _auth_url_cache and "token" not in _google_token_cache:
-        return (
-            f"User authorization required. Please visit this URL and grant access:\n"
-            f"{_auth_url_cache['url']}\n\n"
-            "After authorizing, invoke the agent again to retrieve your calendar events."
-        )
-
-    token = _google_token_cache.get("token", "")
+    callback_url = os.environ.get("CALLBACK_URL", "http://localhost:9090/oauth2/callback")
     today = datetime.now(timezone.utc).date().isoformat()
 
-    async with httpx.AsyncClient() as http_client:
-        resp = await http_client.get(
-            "https://www.googleapis.com/calendar/v3/calendars/primary/events",
-            headers={"Authorization": f"Bearer {token}"},
-            params={
-                "timeMin": f"{today}T00:00:00Z",
-                "timeMax": f"{today}T23:59:59Z",
-                "singleEvents": "true",
-                "orderBy": "startTime",
-            },
-        )
-        resp.raise_for_status()
-        events = resp.json().get("items", [])
+    @requires_access_token(
+        provider_name="Google3LOProvider",
+        auth_flow="USER_FEDERATION",
+        scopes=["https://www.googleapis.com/auth/calendar.readonly"],
+        on_auth_url=_on_google_auth_url,
+        callback_url=callback_url,
+        token_poller=_NonBlockingPoller(),
+    )
+    def _fetch_and_list(access_token: str = "") -> str:
+        if not access_token:
+            auth_url = _google_auth_url_cache.get("url", "")
+            if auth_url:
+                return (
+                    f"Google authorization required. Please visit this URL and grant access:\n"
+                    f"{auth_url}\n\n"
+                    "After authorizing, invoke the agent again to retrieve your calendar events."
+                )
+            return "Google authorization required. Please try again in a moment."
 
-    if not events:
-        return f"No calendar events found for today ({today})."
+        with httpx.Client() as client:
+            resp = client.get(
+                "https://www.googleapis.com/calendar/v3/calendars/primary/events",
+                headers={"Authorization": f"Bearer {access_token}"},
+                params={
+                    "timeMin": f"{today}T00:00:00Z",
+                    "timeMax": f"{today}T23:59:59Z",
+                    "singleEvents": "true",
+                    "orderBy": "startTime",
+                },
+            )
+            resp.raise_for_status()
+            events = resp.json().get("items", [])
 
-    lines = [f"Calendar events for {today}:"]
-    for event in events:
-        start = event.get("start", {}).get("dateTime", event.get("start", {}).get("date", ""))
-        lines.append(f"  - {start}: {event.get('summary', '(no title)')}")
-    return "\n".join(lines)
+        if not events:
+            return f"No calendar events found for today ({today})."
+
+        lines = [f"Google Calendar events for {today}:"]
+        for event in events:
+            start = event.get("start", {}).get("dateTime", event.get("start", {}).get("date", ""))
+            lines.append(f"  - {start}: {event.get('summary', '(no title)')}")
+        return "\n".join(lines)
+
+    return _fetch_and_list()
 
 
 # ---------------------------------------------------------------------------
@@ -150,11 +233,13 @@ async def handler(payload: dict) -> str:
     if _agent is None:
         _agent = Agent(
             model=_model,
-            tools=[call_internal_api, get_calendar_events],
+            tools=[call_internal_api, get_github_repos, get_calendar_events],
             system_prompt=(
-                "You are a helpful assistant. "
-                "You can call internal APIs (using secure M2M credentials) "
-                "and check the user's Google Calendar (using their delegated OAuth2 access)."
+                "You are a helpful assistant with access to three capabilities:\n"
+                "1. call_internal_api — calls an internal service using M2M credentials (no user consent needed)\n"
+                "2. get_github_repos — lists the user's GitHub repositories (requires GitHub OAuth consent on first use)\n"
+                "3. get_calendar_events — gets today's Google Calendar events (requires Google OAuth consent on first use)\n"
+                "For OAuth flows, return the authorization URL to the user and ask them to complete consent."
             ),
         )
 

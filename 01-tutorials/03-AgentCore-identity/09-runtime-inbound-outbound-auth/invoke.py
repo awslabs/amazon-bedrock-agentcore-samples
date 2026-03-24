@@ -11,6 +11,10 @@ Usage:
     prompt defaults to "What is the weather in Seattle?"
 """
 
+import warnings
+warnings.filterwarnings("ignore", category=Warning, module="requests")
+warnings.filterwarnings("ignore", message="urllib3")
+
 import boto3
 import json
 import os
@@ -73,15 +77,30 @@ def get_agent_arn(region: str) -> str:
 
 def parse_event_stream(response: dict) -> str:
     """Extract text from the boto3 EventStream response."""
-    events = []
+    parts = []
     for event in response.get("response", []):
         raw = event if isinstance(event, bytes) else event.get("chunk", {}).get("bytes", b"")
         if raw:
             try:
-                events.append(json.loads(raw.decode("utf-8")))
+                decoded = json.loads(raw.decode("utf-8"))
+                if isinstance(decoded, str):
+                    parts.append(decoded)
+                elif isinstance(decoded, dict):
+                    content = decoded.get("content", [])
+                    for c in content:
+                        if isinstance(c, dict) and c.get("type") == "text":
+                            parts.append(c["text"])
+                        elif isinstance(c, str):
+                            parts.append(c)
+                    if not content and "message" in decoded:
+                        msg = decoded["message"]
+                        if isinstance(msg, dict):
+                            for c in msg.get("content", []):
+                                if isinstance(c, dict) and c.get("type") == "text":
+                                    parts.append(c["text"])
             except Exception:
-                events.append(raw.decode("utf-8"))
-    return str(events)
+                parts.append(raw.decode("utf-8"))
+    return "\n".join(parts) if parts else "(no response)"
 
 
 def main():

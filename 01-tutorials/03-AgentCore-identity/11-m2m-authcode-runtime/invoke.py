@@ -19,12 +19,17 @@ Usage:
     python invoke.py --flow authcode
 """
 
+import warnings
+warnings.filterwarnings("ignore", category=Warning, module="requests")
+warnings.filterwarnings("ignore", message="urllib3")
+
 import argparse
 import json
 import os
 import subprocess
 import sys
 import time
+import webbrowser
 
 import boto3
 
@@ -80,15 +85,30 @@ def get_agent_arn() -> str:
 
 
 def parse_event_stream(response: dict) -> str:
-    events = []
+    parts = []
     for event in response.get("response", []):
         raw = event if isinstance(event, bytes) else event.get("chunk", {}).get("bytes", b"")
         if raw:
             try:
-                events.append(json.loads(raw.decode("utf-8")))
+                decoded = json.loads(raw.decode("utf-8"))
+                if isinstance(decoded, str):
+                    parts.append(decoded)
+                elif isinstance(decoded, dict):
+                    content = decoded.get("content", [])
+                    for c in content:
+                        if isinstance(c, dict) and c.get("type") == "text":
+                            parts.append(c["text"])
+                        elif isinstance(c, str):
+                            parts.append(c)
+                    if not content and "message" in decoded:
+                        msg = decoded["message"]
+                        if isinstance(msg, dict):
+                            for c in msg.get("content", []):
+                                if isinstance(c, dict) and c.get("type") == "text":
+                                    parts.append(c["text"])
             except Exception:
-                events.append(raw.decode("utf-8"))
-    return str(events)
+                parts.append(raw.decode("utf-8"))
+    return "\n".join(parts) if parts else "(no response)"
 
 
 def invoke(client, agent_arn: str, prompt: str, bearer_token: str, user_id: str, region: str) -> str:
@@ -120,8 +140,24 @@ def test_m2m(client, agent_arn: str, bearer_token: str, config: dict):
     print(f"\nAgent response:\n{result}")
 
 
-def test_authcode(client, agent_arn: str, bearer_token: str, config: dict):
-    print("\n=== Auth Code (3LO) Flow Test ===")
+def test_authcode(client, agent_arn: str, bearer_token: str, config: dict, provider: str = "google"):
+    provider_config = {
+        "github": {
+            "prompt": "List my GitHub repositories.",
+            "consent_keywords": ["github", "oauth", "http"],
+            "wait_message": "Waiting for you to complete the GitHub consent flow...",
+            "reinvoke_message": "Re-invoking agent to retrieve GitHub repositories...",
+        },
+        "google": {
+            "prompt": "What is on my Google Calendar today?",
+            "consent_keywords": ["google", "oauth", "http"],
+            "wait_message": "Waiting for you to complete the Google consent flow...",
+            "reinvoke_message": "Re-invoking agent to retrieve calendar events...",
+        },
+    }
+    cfg = provider_config[provider]
+
+    print(f"\n=== Auth Code (3LO) Flow Test — {provider.capitalize()} ===")
     print("Starting OAuth2 callback server...")
 
     server_proc = subprocess.Popen(
@@ -137,8 +173,7 @@ def test_authcode(client, agent_arn: str, bearer_token: str, config: dict):
         store_token_in_oauth2_callback_server(bearer_token)
         print(f"  Callback URL: {get_oauth2_callback_url()}")
 
-        # First invocation: triggers consent URL
-        prompt = "What is on my Google Calendar today?"
+        prompt = cfg["prompt"]
         print(f"\nPrompt: '{prompt}'")
         print("Invoking agent (first call — expect consent URL)...")
 
@@ -146,12 +181,21 @@ def test_authcode(client, agent_arn: str, bearer_token: str, config: dict):
         print(f"\nAgent response:\n{result}")
 
         # If response contains an auth URL, wait for user to complete consent
-        if "http" in result.lower() and ("google" in result.lower() or "oauth" in result.lower()):
-            print("\nWaiting for you to complete the Google consent flow...")
+        result_lower = result.lower()
+        if "http" in result_lower and any(kw in result_lower for kw in cfg["consent_keywords"]):
+            # Extract and auto-open the consent URL
+            import re
+            urls = re.findall(r'https?://[^\s\'")\]]+', str(result))
+            if urls:
+                consent_url = urls[0]
+                print(f"\nConsent URL: {consent_url}")
+                print("Opening in your browser automatically...")
+                webbrowser.open(consent_url)
+            print(f"\n{cfg['wait_message']}")
             print("After authorizing in your browser, press Enter to re-invoke the agent.")
             input()
 
-            print("Re-invoking agent to retrieve calendar events...")
+            print(cfg["reinvoke_message"])
             result2 = invoke(
                 client, agent_arn, prompt, bearer_token, config["username"], config["region"]
             )
@@ -169,6 +213,12 @@ def main():
         choices=["m2m", "authcode", "both"],
         default="both",
         help="Which flow to test (default: both)",
+    )
+    parser.add_argument(
+        "--provider",
+        choices=["github", "google"],
+        default="google",
+        help="3LO provider for authcode flow: github or google (default: google)",
     )
     args = parser.parse_args()
 
@@ -193,7 +243,7 @@ def main():
         test_m2m(boto_client, agent_arn, bearer_token, config)
 
     if args.flow in ("authcode", "both"):
-        test_authcode(boto_client, agent_arn, bearer_token, config)
+        test_authcode(boto_client, agent_arn, bearer_token, config, provider=args.provider)
 
 
 if __name__ == "__main__":

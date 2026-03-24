@@ -48,7 +48,17 @@ For detailed technical information, see [How AgentCore Identity Works](02-how_it
 
 ## Tutorial Examples
 
-This tutorial includes four hands-on examples demonstrating different authentication scenarios:
+### CLI-Based Examples (Recommended)
+
+These examples use the `agentcore` CLI and follow the current recommended format:
+
+| Example | Type | Description |
+|---------|------|-------------|
+| **[Runtime Inbound + Outbound Auth](09-runtime-inbound-outbound-auth)** | Inbound + Outbound | Cognito JWT inbound auth on Runtime; API key outbound via AgentCore Identity |
+| **[Gateway Inbound + Outbound Auth](10-gateway-inbound-outbound-auth)** | Inbound + Outbound | Cognito JWT on Gateway; OAuth2 client credentials to upstream MCP server |
+| **[M2M + Auth Code Flows](11-m2m-authcode-runtime)** | Inbound + Outbound | Cognito JWT inbound; M2M (client credentials) + GitHub/Google 3LO outbound |
+
+### Notebook-Based Examples (Legacy)
 
 | Example | Type | Description |
 |---------|------|-------------|
@@ -56,12 +66,6 @@ This tutorial includes four hands-on examples demonstrating different authentica
 | **[Outbound Auth Example](04-Outbound%20Auth%20example)** | Outbound | Agent access to external services with Strands and OpenAI |
 | **[3-Legged OAuth](05-Outbound_Auth_3lo)** | Outbound | User-delegated access with Cognito and 3-legged OAuth flow with Google |
 | **[GitHub Integration](06-Outbound_Auth_Github)** | Outbound | GitHub API access using 3-legged OAuth authentication |
-
-Each example includes:
-- Complete Jupyter notebook walkthrough
-- Step-by-step setup instructions
-- Code samples and explanations
-- Best practices and security considerations
 
 ## Getting Started
 

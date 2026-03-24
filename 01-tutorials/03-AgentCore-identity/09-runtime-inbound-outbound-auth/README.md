@@ -99,7 +99,9 @@ agentcore add agent \
   --type byo \
   --code-location ../app/MyAgent \
   --entrypoint main.py \
-  --language Python
+  --language Python \
+  --framework Strands \
+  --model-provider Bedrock
 ```
 
 ---

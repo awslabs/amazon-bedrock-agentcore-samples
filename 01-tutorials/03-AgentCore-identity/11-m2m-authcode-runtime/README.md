@@ -180,7 +180,9 @@ agentcore add agent \
   --type byo \
   --code-location ../app/MyAgent \
   --entrypoint main.py \
-  --language Python
+  --language Python \
+  --framework Strands \
+  --model-provider Bedrock
 ```
 
 ---
@@ -274,15 +276,22 @@ print(f"IAM policy attached to role: {role_name}")
 agentcore deploy -y
 ```
 
-Then attach the IAM policy:
+---
+
+## Step 9: Configure Inbound Auth and IAM Permissions
+
+The agentcore CLI does not yet apply `authorizationConfiguration` via `agentcore.json`. Run this post-deploy script once to configure JWT inbound auth and attach the required IAM policy for outbound credential retrieval:
 
 ```bash
-python ../run_post_deploy_iam.py
+cd ..
+python configure_inbound_auth.py
 ```
+
+Wait ~30 seconds for changes to propagate.
 
 ---
 
-## Step 9: Test M2M Flow
+## Step 10: Test M2M Flow
 
 ```bash
 cd ..
@@ -303,7 +312,7 @@ The M2M token is fetched silently using client credentials — no browser intera
 
 ---
 
-## Step 10: Test Auth Code (3LO) Flow
+## Step 11: Test Auth Code (3LO) Flow
 
 ```bash
 python invoke.py --flow authcode
@@ -342,7 +351,7 @@ Calendar events for 2025-03-20:
 
 ---
 
-## Step 11: Cleanup
+## Step 12: Cleanup
 
 ```bash
 cd M2MAuthDemo
