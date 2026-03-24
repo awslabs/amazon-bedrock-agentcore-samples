@@ -89,22 +89,30 @@ def create_github_3lo_provider(identity_client: IdentityClient) -> dict:
         return {"name": "GitHub3LOProvider", "skipped": True}
 
     print("Creating GitHub OAuth2 (authorization code / 3LO) credential provider...")
-    provider = identity_client.create_oauth2_credential_provider({
-        "name": "GitHub3LOProvider",
-        "credentialProviderVendor": "GithubOauth2",
-        "oauth2ProviderConfigInput": {
-            "githubOauth2ProviderConfig": {
-                "clientId": client_id,
-                "clientSecret": client_secret,
-            }
-        },
-    })
-    callback_url = provider.get("callbackUrl", "")
-    print(f"  Created: {provider.get('name')}")
+    try:
+        provider = identity_client.create_oauth2_credential_provider({
+            "name": "GitHub3LOProvider",
+            "credentialProviderVendor": "GithubOauth2",
+            "oauth2ProviderConfigInput": {
+                "githubOauth2ProviderConfig": {
+                    "clientId": client_id,
+                    "clientSecret": client_secret,
+                }
+            },
+        })
+        callback_url = provider.get("callbackUrl", "")
+        print(f"  Created: {provider.get('name')}")
+    except Exception as e:
+        if "already exists" in str(e).lower():
+            print("  GitHub3LOProvider already exists.")
+            existing = identity_client.cp_client.get_oauth2_credential_provider(name="GitHub3LOProvider")
+            callback_url = existing.get("callbackUrl", "")
+        else:
+            raise
     print(f"\n  IMPORTANT: Add this callback URL to your GitHub OAuth App:")
     print(f"  {callback_url}")
     print(f"  (GitHub -> Settings -> Developer settings -> OAuth Apps -> your app -> Authorization callback URL)")
-    return {"name": "GitHub3LOProvider", "callback_url": callback_url, "provider": provider}
+    return {"name": "GitHub3LOProvider", "callback_url": callback_url}
 
 
 def create_google_3lo_provider(identity_client: IdentityClient) -> dict:
@@ -117,22 +125,30 @@ def create_google_3lo_provider(identity_client: IdentityClient) -> dict:
         return {"name": "Google3LOProvider", "skipped": True}
 
     print("Creating Google OAuth2 (authorization code / 3LO) credential provider...")
-    provider = identity_client.create_oauth2_credential_provider({
-        "name": "Google3LOProvider",
-        "credentialProviderVendor": "GoogleOauth2",
-        "oauth2ProviderConfigInput": {
-            "googleOauth2ProviderConfig": {
-                "clientId": client_id,
-                "clientSecret": client_secret,
-            }
-        },
-    })
-    callback_url = provider.get("callbackUrl", "")
-    print(f"  Created: {provider.get('name')}")
+    try:
+        provider = identity_client.create_oauth2_credential_provider({
+            "name": "Google3LOProvider",
+            "credentialProviderVendor": "GoogleOauth2",
+            "oauth2ProviderConfigInput": {
+                "googleOauth2ProviderConfig": {
+                    "clientId": client_id,
+                    "clientSecret": client_secret,
+                }
+            },
+        })
+        callback_url = provider.get("callbackUrl", "")
+        print(f"  Created: {provider.get('name')}")
+    except Exception as e:
+        if "already exists" in str(e).lower():
+            print("  Google3LOProvider already exists.")
+            existing = identity_client.cp_client.get_oauth2_credential_provider(name="Google3LOProvider")
+            callback_url = existing.get("callbackUrl", "")
+        else:
+            raise
     print(f"\n  IMPORTANT: Add this callback URL to your Google OAuth App:")
     print(f"  {callback_url}")
     print(f"  (Google Cloud Console -> APIs & Services -> Credentials -> OAuth 2.0 Client IDs -> Authorised redirect URIs)")
-    return {"name": "Google3LOProvider", "callback_url": callback_url, "provider": provider}
+    return {"name": "Google3LOProvider", "callback_url": callback_url}
 
 
 def main():
