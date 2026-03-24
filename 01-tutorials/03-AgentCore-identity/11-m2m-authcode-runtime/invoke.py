@@ -185,7 +185,7 @@ def test_authcode(client, agent_arn: str, bearer_token: str, config: dict, provi
         if "http" in result_lower and any(kw in result_lower for kw in cfg["consent_keywords"]):
             # Extract and auto-open the consent URL
             import re
-            urls = re.findall(r'https?://[^\s\'")\]]+', str(result))
+            urls = re.findall(r'https?://[^\s\'")*\]]+', str(result))
             if urls:
                 consent_url = urls[0]
                 print(f"\nConsent URL: {consent_url}")
