@@ -103,7 +103,6 @@ def get_agent():
 
     model = BedrockModel(
         model_id="us.anthropic.claude-sonnet-4-20250514-v1:0",
-        region_name="us-west-2",
     )
 
     strands_agent = Agent(
