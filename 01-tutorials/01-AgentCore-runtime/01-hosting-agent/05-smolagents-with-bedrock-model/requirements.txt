@@ -1,0 +1,4 @@
+smolagents
+boto3
+bedrock-agentcore
+bedrock-agentcore-starter-toolkit
