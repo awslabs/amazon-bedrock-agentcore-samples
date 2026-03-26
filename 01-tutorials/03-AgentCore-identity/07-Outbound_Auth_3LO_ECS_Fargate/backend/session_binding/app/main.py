@@ -8,7 +8,7 @@ import logging
 from fastapi import FastAPI
 
 from backend.session_binding.app.config import get_settings
-from backend.session_binding.app.routers import callback, health
+from backend.session_binding.app.routers import session_binding, health
 
 settings = get_settings()
 
@@ -24,5 +24,5 @@ app = FastAPI(
     version="1.0.0",
 )
 
-app.include_router(callback.router)
+app.include_router(session_binding.router)
 app.include_router(health.router)

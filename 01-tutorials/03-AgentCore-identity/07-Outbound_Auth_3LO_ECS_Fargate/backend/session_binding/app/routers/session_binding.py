@@ -36,7 +36,7 @@ def get_current_user(
 
 
 @router.get("/session-binding", response_class=HTMLResponse)
-async def oauth_callback(
+async def oauth_session_binding(
     session_id: str = Query(..., description="Session URI from AgentCore Identity"),
     user_id: str = Depends(get_current_user),
     settings: Settings = Depends(get_settings),
