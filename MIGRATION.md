@@ -133,6 +133,7 @@ agentcore invoke
 - **Idempotent** — You can safely re-run `agentcore import` if something goes wrong. Already-imported resources are skipped.
 - **Undeployed agents** — Agents that haven't been deployed yet (no `agent_id` in YAML) are imported as config-only — no CloudFormation operations are performed for them.
 - **Memory environment variables** — If your agent code references memory IDs via environment variables, the import will display a diff-style hint showing any mismatches to address.
+- **Execution role** — The existing execution role on your runtime is preserved during import. The imported agent will continue to use its original execution role, and the CLI will not manage or modify it.
 - **Shared memory** — If multiple agents share the same memory, the import deduplicates it into a single memory resource.
 
 ## Project Structure Comparison
