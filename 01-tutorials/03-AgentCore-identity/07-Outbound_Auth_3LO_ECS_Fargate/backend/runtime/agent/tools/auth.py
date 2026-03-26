@@ -47,7 +47,7 @@ def requires_access_token(
         auth_flow: Authentication flow type ("M2M" or "USER_FEDERATION")
         workload_access_token: The workload access token (explicit, not from context)
         session_binding_url: Session Binding URL pointing to the customer-managed service that completes the session binding
-        on_auth_url: Callback for handling authorization URLs
+        on_auth_url: Handler invoked with the authorization URL when user authorization is required
         force_authentication: Force re-authentication
         token_poller: Custom token poller implementation
         custom_state: State for callback verification
