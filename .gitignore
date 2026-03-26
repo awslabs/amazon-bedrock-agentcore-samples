@@ -252,3 +252,7 @@ node_modules
 
 # Test downloads - not for version control
 Test-Downloads/
+
+### Docker ###
+Dockerfile
+.dockerignore
