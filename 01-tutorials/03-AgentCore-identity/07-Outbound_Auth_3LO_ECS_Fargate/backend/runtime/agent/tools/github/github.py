@@ -48,7 +48,7 @@ class GitHubTools:
             scopes=scopes,
             auth_flow="USER_FEDERATION",
             workload_access_token=self.config.workload_access_token,
-            base_url=self.config.base_url,
+            session_binding_url=self.config.session_binding_url,
             on_auth_url=self._on_auth_url,
             region=self.config.aws_region,
         )

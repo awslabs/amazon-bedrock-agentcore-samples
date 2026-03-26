@@ -9,7 +9,7 @@ import pytest
 from fastapi.testclient import TestClient
 from moto import mock_aws
 
-from backend.oauth_callback.app.config import get_settings as get_oauth_settings
+from backend.session_binding.app.config import get_settings as get_oauth_settings
 from backend.runtime.app.config import get_settings
 
 TEST_BUCKET_NAME = "test-bucket"
@@ -107,7 +107,7 @@ def env_vars(monkeypatch):
     monkeypatch.setenv("AWS_REGION", TEST_AWS_REGION)
     monkeypatch.setenv("IDENTITY_AWS_REGION", TEST_AWS_REGION)
     monkeypatch.setenv("INFERENCE_PROFILE_ID", "test-profile")
-    monkeypatch.setenv("BASE_URL", "http://localhost:8080")
+    monkeypatch.setenv("SESSION_BINDING_URL", "http://localhost:8080/oauth2/session-binding")
     monkeypatch.setenv("WORKLOAD_IDENTITY_NAME", "test-workload")
     monkeypatch.setenv("S3_BUCKET_NAME", TEST_BUCKET_NAME)
     get_settings.cache_clear()
@@ -125,6 +125,6 @@ def agent_client():
 @pytest.fixture
 def oauth_client():
     """Create test client for OAuth sidecar."""
-    from backend.oauth_callback.app.main import app
+    from backend.session_binding.app.main import app
 
     return TestClient(app)
