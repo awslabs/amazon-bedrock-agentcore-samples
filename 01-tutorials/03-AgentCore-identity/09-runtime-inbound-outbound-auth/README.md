@@ -73,11 +73,11 @@ This creates:
 - An App Client with `USER_PASSWORD_AUTH` enabled
 - Saves pool ID, client ID, and discovery URL to `cognito_config.json`
 
-Take note of the two values printed at the end — you will need them in Step 5:
+Take note of the two values printed at the end — you will need them in Step 4:
 
 ```
-discoveryUrl : https://cognito-idp.<region>.amazonaws.com/<pool_id>/.well-known/openid-configuration
-allowedClients: ["<client_id>"]
+--discovery-url    https://cognito-idp.<region>.amazonaws.com/<pool_id>/.well-known/openid-configuration
+--allowed-clients  <client_id>
 ```
 
 ---
@@ -93,6 +93,8 @@ cd RuntimeAuthDemo
 
 ## Step 4: Add the Agent (Bring Your Own Code)
 
+Use the `--authorizer-type CUSTOM_JWT` flags to configure inbound JWT auth at deploy time. Replace the placeholder values with the discovery URL and client ID from Step 2:
+
 ```bash
 agentcore add agent \
   --name MyAgent \
@@ -101,7 +103,10 @@ agentcore add agent \
   --entrypoint main.py \
   --language Python \
   --framework Strands \
-  --model-provider Bedrock
+  --model-provider Bedrock \
+  --authorizer-type CUSTOM_JWT \
+  --discovery-url YOUR_COGNITO_DISCOVERY_URL \
+  --allowed-clients YOUR_COGNITO_CLIENT_ID
 ```
 
 ---
@@ -120,46 +125,7 @@ agentcore add identity \
 
 ---
 
-## Step 6: Configure Inbound JWT Auth
-
-Open `agentcore/agentcore.json` and add the `authorizationConfiguration` block to your agent spec. Replace the placeholder values with the `discoveryUrl` and `client_id` from Step 2:
-
-```json
-{
-  "name": "RuntimeAuthDemo",
-  "version": 1,
-  "agents": [
-    {
-      "type": "AgentCoreRuntime",
-      "name": "MyAgent",
-      "build": "CodeZip",
-      "entrypoint": "main.py",
-      "codeLocation": "app/MyAgent/",
-      "runtimeVersion": "PYTHON_3_12",
-      "authorizationConfiguration": {
-        "authorizationType": "CUSTOM_JWT",
-        "customJWTAuthorizer": {
-          "discoveryUrl": "YOUR_COGNITO_DISCOVERY_URL",
-          "allowedClients": ["YOUR_COGNITO_CLIENT_ID"]
-        }
-      }
-    }
-  ],
-  "memories": [],
-  "credentials": [
-    {
-      "type": "ApiKeyCredentialProvider",
-      "name": "OutboundApiKey"
-    }
-  ],
-  "evaluators": [],
-  "onlineEvalConfigs": []
-}
-```
-
----
-
-## Step 7: Deploy
+## Step 6: Deploy
 
 ```bash
 agentcore deploy -y
@@ -173,7 +139,7 @@ agentcore status
 
 ---
 
-## Step 8: Test Inbound and Outbound Auth
+## Step 7: Test Inbound and Outbound Auth
 
 Go back to the sample root directory and run the invoke script:
 
@@ -202,7 +168,7 @@ The weather in Seattle is currently Sunny, 72F.
 
 ---
 
-## Step 9: Cleanup
+## Step 8: Cleanup
 
 ```bash
 cd RuntimeAuthDemo

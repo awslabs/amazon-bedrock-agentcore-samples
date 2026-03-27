@@ -119,9 +119,9 @@ def setup_cognito():
         json.dump(config, f, indent=2)
 
     print("\nCognito setup complete!")
-    print("\nValues for agentcore.json (runtime inbound auth):")
-    print(f"  discoveryUrl : {discovery_url}")
-    print(f'  allowedClients: ["{user_client_id}"]')
+    print("\nSave these values for Step 6 (agentcore add agent):")
+    print(f"  --discovery-url    {discovery_url}")
+    print(f"  --allowed-clients  {user_client_id}")
     print("\nM2M (client credentials):")
     print(f"  tokenEndpoint: {token_endpoint}")
     print(f"  clientId     : {machine_client_id}")

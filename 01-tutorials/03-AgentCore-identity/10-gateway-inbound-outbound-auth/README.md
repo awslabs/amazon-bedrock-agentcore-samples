@@ -83,8 +83,8 @@ Take note of the values printed at the end — you will need them in Step 4:
 --discovery-url    https://cognito-idp.<region>.amazonaws.com/<pool_id>/.well-known/openid-configuration
 --allowed-audience <pool_id>
 --allowed-clients  <user_client_id>
---agent-client-id  <agent_client_id>
---agent-client-secret  <from cognito_config.json>
+--client-id        <agent_client_id>
+--client-secret    <from cognito_config.json>
 ```
 
 ---
@@ -109,8 +109,8 @@ agentcore add gateway \
   --discovery-url YOUR_COGNITO_DISCOVERY_URL \
   --allowed-audience YOUR_POOL_ID \
   --allowed-clients YOUR_USER_CLIENT_ID \
-  --agent-client-id YOUR_AGENT_CLIENT_ID \
-  --agent-client-secret YOUR_AGENT_CLIENT_SECRET
+  --client-id YOUR_AGENT_CLIENT_ID \
+  --client-secret YOUR_AGENT_CLIENT_SECRET
 ```
 
 The CLI automatically creates a **managed OAuth credential** so the agent can obtain Bearer tokens to call the gateway. This credential appears in `agentcore/agentcore.json` as `"managed": true`.
@@ -185,10 +185,13 @@ agentcore add agent \
   --entrypoint main.py \
   --language Python \
   --framework Strands \
-  --model-provider Bedrock
+  --model-provider Bedrock \
+  --authorizer-type CUSTOM_JWT \
+  --discovery-url YOUR_COGNITO_DISCOVERY_URL \
+  --allowed-clients YOUR_USER_CLIENT_ID
 ```
 
-Set the gateway URL as an environment variable by adding it to the agent spec in `agentcore/agentcore.json`. Get the URL after first deploy with `agentcore status`, or the CLI may inject it automatically via `AGENTCORE_GATEWAY_URL`.
+Replace `YOUR_COGNITO_DISCOVERY_URL` and `YOUR_USER_CLIENT_ID` with values from `cognito_config.json`. This configures JWT inbound auth on the runtime at deploy time.
 
 ---
 
@@ -206,9 +209,9 @@ agentcore status
 
 ---
 
-## Step 8: Configure Inbound Auth and IAM Permissions
+## Step 8: Post-Deploy Configuration
 
-The agentcore CLI does not yet apply `authorizationConfiguration` via `agentcore.json`. Run this post-deploy script once to configure JWT inbound auth, set the gateway URL environment variable, and attach the required IAM policy:
+Run this post-deploy script to apply JWT inbound auth on the runtime, set the gateway URL environment variable, attach IAM permissions for outbound credential retrieval, and ensure the managed gateway credential exists:
 
 ```bash
 cd ..

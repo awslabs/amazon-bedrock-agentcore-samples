@@ -81,9 +81,9 @@ def setup_cognito():
         json.dump(config, f, indent=2)
 
     print("\nCognito setup complete!")
-    print(f"\nSave these values for Step 5 (agentcore.json):")
-    print(f"  discoveryUrl : {discovery_url}")
-    print(f"  allowedClients: [\"{client_id}\"]")
+    print(f"\nSave these values for Step 4 (agentcore add agent):")
+    print(f"  --discovery-url    {discovery_url}")
+    print(f"  --allowed-clients  {client_id}")
     print(f"\nConfiguration saved to cognito_config.json")
 
     return config

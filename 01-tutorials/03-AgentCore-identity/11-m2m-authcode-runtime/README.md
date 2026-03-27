@@ -80,10 +80,10 @@ python setup_cognito.py
 
 Creates a Cognito User Pool and test user. Saves `cognito_config.json`.
 
-Note the values printed:
+Note the values printed for Step 6:
 ```
-discoveryUrl : https://cognito-idp.<region>.amazonaws.com/<pool_id>/.well-known/openid-configuration
-allowedClients: ["<client_id>"]
+--discovery-url    https://cognito-idp.<region>.amazonaws.com/<pool_id>/.well-known/openid-configuration
+--allowed-clients  <client_id>
 ```
 
 ---
@@ -182,95 +182,17 @@ agentcore add agent \
   --entrypoint main.py \
   --language Python \
   --framework Strands \
-  --model-provider Bedrock
+  --model-provider Bedrock \
+  --authorizer-type CUSTOM_JWT \
+  --discovery-url YOUR_COGNITO_DISCOVERY_URL \
+  --allowed-clients YOUR_COGNITO_CLIENT_ID
 ```
+
+Replace `YOUR_COGNITO_DISCOVERY_URL` and `YOUR_COGNITO_CLIENT_ID` with the values printed by `setup_cognito.py` in Step 2.
 
 ---
 
-## Step 7: Configure Inbound JWT Auth
-
-Open `agentcore/agentcore.json` and add `authorizationConfiguration` to the agent spec:
-
-```json
-{
-  "name": "M2MAuthDemo",
-  "version": 1,
-  "agents": [
-    {
-      "type": "AgentCoreRuntime",
-      "name": "MyAgent",
-      "build": "CodeZip",
-      "entrypoint": "main.py",
-      "codeLocation": "app/MyAgent/",
-      "runtimeVersion": "PYTHON_3_12",
-      "authorizationConfiguration": {
-        "authorizationType": "CUSTOM_JWT",
-        "customJWTAuthorizer": {
-          "discoveryUrl": "YOUR_COGNITO_DISCOVERY_URL",
-          "allowedClients": ["YOUR_COGNITO_CLIENT_ID"]
-        }
-      }
-    }
-  ],
-  "memories": [],
-  "credentials": [
-    { "type": "OAuthCredentialProvider", "name": "M2MProvider" },
-    { "type": "OAuthCredentialProvider", "name": "Google3LOProvider" }
-  ],
-  "evaluators": [],
-  "onlineEvalConfigs": []
-}
-```
-
-Also add the IAM policies needed to retrieve credentials. After deploying, attach these to the auto-created role:
-
-```python
-# run_post_deploy_iam.py
-import boto3, json, subprocess
-
-region = boto3.session.Session().region_name
-account = boto3.client("sts").get_caller_identity()["Account"]
-
-# Get the role ARN from the deployed runtime
-result = subprocess.run(["agentcore", "status", "--json"], capture_output=True, text=True)
-import json as _json
-status = _json.loads(result.stdout)
-agent = next(r for r in status["resources"] if r["type"] == "agent")
-agent_runtime_id = agent["agentRuntimeId"]
-
-ctrl = boto3.client("bedrock-agentcore-control", region_name=region)
-runtime = ctrl.get_agent_runtime(agentRuntimeId=agent_runtime_id)
-role_name = runtime["roleArn"].split("/")[-1]
-
-iam = boto3.client("iam")
-iam.put_role_policy(
-    RoleName=role_name,
-    PolicyName="AgentCoreIdentityOutbound",
-    PolicyDocument=json.dumps({
-        "Version": "2012-10-17",
-        "Statement": [
-            {
-                "Effect": "Allow",
-                "Action": [
-                    "bedrock-agentcore:GetResourceApiKey",
-                    "bedrock-agentcore:GetResourceOauth2Token",
-                ],
-                "Resource": "*",
-            },
-            {
-                "Effect": "Allow",
-                "Action": ["secretsmanager:GetSecretValue"],
-                "Resource": f"arn:aws:secretsmanager:{region}:{account}:secret:bedrock-agentcore*",
-            },
-        ],
-    }),
-)
-print(f"IAM policy attached to role: {role_name}")
-```
-
----
-
-## Step 8: Deploy
+## Step 7: Deploy
 
 ```bash
 agentcore deploy -y
@@ -278,9 +200,9 @@ agentcore deploy -y
 
 ---
 
-## Step 9: Configure Inbound Auth and IAM Permissions
+## Step 8: Post-Deploy Configuration
 
-The agentcore CLI does not yet apply `authorizationConfiguration` via `agentcore.json`. Run this post-deploy script once to configure JWT inbound auth and attach the required IAM policy for outbound credential retrieval:
+The CLI now applies JWT auth at deploy time. Run this post-deploy script to attach the required IAM permissions, KMS access for the token vault, and register callback URLs for 3LO flows:
 
 ```bash
 cd ..
@@ -291,7 +213,7 @@ Wait ~30 seconds for changes to propagate.
 
 ---
 
-## Step 10: Test M2M Flow
+## Step 9: Test M2M Flow
 
 ```bash
 cd ..
@@ -312,7 +234,7 @@ The M2M token is fetched silently using client credentials — no browser intera
 
 ---
 
-## Step 11: Test Auth Code (3LO) Flow
+## Step 10: Test Auth Code (3LO) Flow
 
 ```bash
 python invoke.py --flow authcode
@@ -351,7 +273,7 @@ Calendar events for 2025-03-20:
 
 ---
 
-## Step 12: Cleanup
+## Step 11: Cleanup
 
 ```bash
 cd M2MAuthDemo

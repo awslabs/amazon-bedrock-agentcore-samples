@@ -1,9 +1,11 @@
 """
-Post-deploy script: Configures Cognito JWT inbound auth on the AgentCore Runtime
-and attaches the IAM policy needed for outbound identity credential retrieval.
+Post-deploy script: Applies JWT inbound auth on the runtime, sets the gateway
+URL environment variable, attaches IAM permissions for outbound credential
+retrieval, and ensures the managed gateway credential exists.
 
-The agentcore CLI does not yet expose authorizationConfiguration in agentcore.json,
-so this script applies it via the boto3 control plane API after deployment.
+Note: The CLI correctly applies authorizerConfiguration for standalone runtimes
+(samples 09, 11), but when a project has both an agent and a gateway, the
+agent's auth config is not applied during deploy. This script works around that.
 
 Run this once after 'agentcore deploy -y'.
 
@@ -79,7 +81,9 @@ def main():
     gateway_url = get_gateway_url(region)
     print(f"Gateway URL: {gateway_url}")
 
-    # Configure JWT inbound auth + gateway env var
+    # Configure JWT inbound auth + gateway URL env var
+    # Note: The CLI should apply authorizerConfiguration from agentcore.json,
+    # but currently does not when the project also contains a gateway.
     ctrl.update_agent_runtime(
         agentRuntimeId=runtime_id,
         agentRuntimeArtifact=current["agentRuntimeArtifact"],
@@ -93,7 +97,7 @@ def main():
         },
         environmentVariables={"AGENTCORE_GATEWAY_URL": gateway_url},
     )
-    print("JWT inbound auth configured.")
+    print("JWT inbound auth and gateway URL configured.")
 
     # Attach IAM policy for AgentCore Identity outbound credential retrieval
     print(f"Attaching IAM policy to role: {role_name}")

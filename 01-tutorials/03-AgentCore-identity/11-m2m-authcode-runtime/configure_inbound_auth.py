@@ -1,8 +1,8 @@
 """
-Post-deploy script: Configures Cognito JWT inbound auth on the AgentCore Runtime.
+Post-deploy script: Attaches IAM permissions for outbound credential retrieval,
+KMS access for the token vault, and registers OAuth2 callback URLs for 3LO flows.
 
-The agentcore CLI does not yet expose authorizationConfiguration in agentcore.json,
-so this script applies it via the boto3 control plane API after deployment.
+JWT inbound auth is now handled natively by the CLI via agentcore.json.
 
 Run this once after 'agentcore deploy -y'.
 
@@ -53,29 +53,12 @@ def main():
         sys.exit(1)
 
     runtime_id = get_runtime_id()
-    print(f"Configuring JWT inbound auth on runtime: {runtime_id}")
+    print(f"Configuring post-deploy permissions on runtime: {runtime_id}")
 
     ctrl = boto3.client("bedrock-agentcore-control", region_name=config["region"])
 
-    # Fetch current runtime config — update_agent_runtime requires existing fields
+    # Fetch current runtime config to extract role ARN
     current = ctrl.get_agent_runtime(agentRuntimeId=runtime_id)
-
-    ctrl.update_agent_runtime(
-        agentRuntimeId=runtime_id,
-        agentRuntimeArtifact=current["agentRuntimeArtifact"],
-        roleArn=current["roleArn"],
-        networkConfiguration=current["networkConfiguration"],
-        authorizerConfiguration={
-            "customJWTAuthorizer": {
-                "discoveryUrl": config["discovery_url"],
-                "allowedClients": [config["client_id"]],
-            }
-        },
-    )
-
-    print("JWT inbound auth configured.")
-    print(f"  Discovery URL : {config['discovery_url']}")
-    print(f"  Allowed Client: {config['client_id']}")
 
     # Attach IAM policy for AgentCore Identity outbound credential retrieval
     region = config["region"]

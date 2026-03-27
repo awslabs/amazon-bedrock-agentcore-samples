@@ -102,8 +102,8 @@ def setup_cognito():
     print(f"  --discovery-url    {discovery_url}")
     print(f"  --allowed-audience {pool_id}")
     print(f"  --allowed-clients  {user_client_id}")
-    print(f"  --agent-client-id  {agent_client_id}")
-    print(f"  --agent-client-secret  (saved to cognito_config.json)")
+    print(f"  --client-id        {agent_client_id}")
+    print(f"  --client-secret    (saved to cognito_config.json)")
     print(f"\nConfiguration saved to cognito_config.json")
 
     return config
