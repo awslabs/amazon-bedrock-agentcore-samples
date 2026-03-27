@@ -81,8 +81,7 @@ Take note of the values printed at the end — you will need them in Step 4:
 
 ```
 --discovery-url    https://cognito-idp.<region>.amazonaws.com/<pool_id>/.well-known/openid-configuration
---allowed-audience <pool_id>
---allowed-clients  <user_client_id>
+--allowed-clients  <user_client_id>,<agent_client_id>
 --client-id        <agent_client_id>
 --client-secret    <from cognito_config.json>
 ```
@@ -107,8 +106,7 @@ agentcore add gateway \
   --name MyGateway \
   --authorizer-type CUSTOM_JWT \
   --discovery-url YOUR_COGNITO_DISCOVERY_URL \
-  --allowed-audience YOUR_POOL_ID \
-  --allowed-clients YOUR_USER_CLIENT_ID \
+  --allowed-clients YOUR_USER_CLIENT_ID,YOUR_AGENT_CLIENT_ID \
   --client-id YOUR_AGENT_CLIENT_ID \
   --client-secret YOUR_AGENT_CLIENT_SECRET
 ```

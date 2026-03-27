@@ -7,8 +7,11 @@ The @requires_api_key decorator fetches the stored API key from AgentCore Identi
 (backed by Secrets Manager) so the key never appears in environment variables or code.
 """
 
+import json
 import os
 import asyncio
+
+import httpx
 from strands import Agent, tool
 from strands.models import BedrockModel
 from bedrock_agentcore.runtime import BedrockAgentCoreApp
@@ -30,12 +33,37 @@ async def _fetch_api_key(*, api_key: str) -> None:
 def get_weather(location: str) -> str:
     """Get the current weather for a location.
 
-    In production, use the outbound API key (os.environ["OUTBOUND_API_KEY"])
-    to call a real weather API.
+    Calls the wttr.in weather API. Also demonstrates that the outbound API key
+    was securely retrieved from AgentCore Identity (backed by Secrets Manager).
+
+    Args:
+        location: City name or location (e.g. "Seattle", "London")
     """
     api_key = os.environ.get("OUTBOUND_API_KEY", "")
-    print(f"Using API key (first 8 chars): {api_key[:8]}...")
-    return f"Sunny, 72F in {location}"
+    print(f"[OutboundAuth] API key retrieved (first 8 chars): {api_key[:8]}...")
+
+    # Call a real weather API
+    try:
+        resp = httpx.get(f"https://wttr.in/{location}?format=j1", timeout=10)
+        resp.raise_for_status()
+        data = resp.json()
+        current = data.get("current_condition", [{}])[0]
+        area = data.get("nearest_area", [{}])[0]
+        area_name = area.get("areaName", [{}])[0].get("value", location)
+        country = area.get("country", [{}])[0].get("value", "")
+
+        return json.dumps({
+            "location": f"{area_name}, {country}",
+            "temperature_f": current.get("temp_F", "N/A"),
+            "temperature_c": current.get("temp_C", "N/A"),
+            "condition": current.get("weatherDesc", [{}])[0].get("value", "N/A"),
+            "humidity": f"{current.get('humidity', 'N/A')}%",
+            "wind_mph": current.get("windspeedMiles", "N/A"),
+            "feels_like_f": current.get("FeelsLikeF", "N/A"),
+            "outbound_api_key_status": f"Retrieved from AgentCore Identity (first 8 chars: {api_key[:8]}...)",
+        }, indent=2)
+    except Exception as exc:
+        return f"Weather API error: {exc}. API key status: {'retrieved' if api_key else 'missing'}"
 
 
 @tool

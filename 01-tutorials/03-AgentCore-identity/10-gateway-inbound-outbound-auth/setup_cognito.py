@@ -31,6 +31,22 @@ def setup_cognito():
     pool_id = pool["UserPool"]["Id"]
     print(f"  Pool ID: {pool_id}")
 
+    # Domain is required for the client_credentials (M2M) token endpoint
+    domain_prefix = f"gateway-demo-{pool_id.split('_')[1].lower()}"
+    print(f"Creating Cognito domain '{domain_prefix}'...")
+    cognito.create_user_pool_domain(UserPoolId=pool_id, Domain=domain_prefix)
+    token_endpoint = f"https://{domain_prefix}.auth.{region}.amazoncognito.com/oauth2/token"
+    print(f"  Token endpoint: {token_endpoint}")
+
+    # Resource server (required for client_credentials scopes)
+    print("Creating resource server...")
+    cognito.create_resource_server(
+        UserPoolId=pool_id,
+        Identifier="https://gateway.demo.internal",
+        Name="GatewayDemoAPI",
+        Scopes=[{"ScopeName": "access", "ScopeDescription": "Gateway access"}],
+    )
+
     print("Creating App Client (user-facing)...")
     user_client = cognito.create_user_pool_client(
         UserPoolId=pool_id,
@@ -41,7 +57,7 @@ def setup_cognito():
     user_client_id = user_client["UserPoolClient"]["ClientId"]
     print(f"  User Client ID: {user_client_id}")
 
-    # A separate app client for the agent to authenticate with the gateway
+    # Agent client for authenticating with the gateway (client_credentials grant)
     print("Creating App Client (agent-facing, with client secret)...")
     agent_client = cognito.create_user_pool_client(
         UserPoolId=pool_id,
@@ -49,8 +65,8 @@ def setup_cognito():
         GenerateSecret=True,
         ExplicitAuthFlows=["ALLOW_USER_PASSWORD_AUTH", "ALLOW_REFRESH_TOKEN_AUTH"],
         AllowedOAuthFlows=["client_credentials"],
-        AllowedOAuthScopes=[],
-        AllowedOAuthFlowsUserPoolClient=False,
+        AllowedOAuthScopes=["https://gateway.demo.internal/access"],
+        AllowedOAuthFlowsUserPoolClient=True,
     )
     agent_client_id = agent_client["UserPoolClient"]["ClientId"]
     agent_client_secret = agent_client["UserPoolClient"]["ClientSecret"]

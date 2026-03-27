@@ -16,6 +16,7 @@ AgentCore Runtime agent demonstrating three outbound auth flows:
 Inbound Auth: Cognito JWT (configured in agentcore/agentcore.json).
 """
 
+import base64
 import json
 import os
 from datetime import datetime, timezone
@@ -59,9 +60,26 @@ async def _fetch_m2m_token(*, access_token: str) -> None:
     _m2m_token_cache["token"] = access_token
 
 
+def _decode_jwt_payload(token: str) -> dict:
+    """Decode a JWT token's payload without verification (for display only)."""
+    try:
+        payload_b64 = token.split(".")[1]
+        # Add padding if needed
+        padding = 4 - len(payload_b64) % 4
+        if padding != 4:
+            payload_b64 += "=" * padding
+        return json.loads(base64.urlsafe_b64decode(payload_b64))
+    except Exception:
+        return {}
+
+
 @tool
 async def call_internal_api(endpoint: str) -> str:
-    """Call an internal/downstream API using the M2M service account token.
+    """Call an internal API using the M2M service account token.
+
+    Demonstrates the client_credentials OAuth2 grant: the agent authenticates
+    as a service account (no user interaction), obtains an access token, and
+    uses it to call a real downstream API.
 
     Args:
         endpoint: The API path to call (e.g. "/api/v1/status")
@@ -70,15 +88,44 @@ async def call_internal_api(endpoint: str) -> str:
         await _fetch_m2m_token(access_token="")
 
     token = _m2m_token_cache.get("token", "")
-    base_url = os.environ.get("INTERNAL_API_BASE_URL", "https://api.example.internal")
-    print(f"[M2M] Calling {base_url}{endpoint} with token: {token[:20]}...")
+    if not token:
+        return "Failed to obtain M2M token. Check the M2MProvider credential configuration."
 
-    # Simulated response — replace with real httpx call in production
+    # Decode the JWT to show what the M2M token contains
+    claims = _decode_jwt_payload(token)
+    token_info = {
+        "issuer": claims.get("iss", "unknown"),
+        "client_id": claims.get("client_id", claims.get("sub", "unknown")),
+        "scopes": claims.get("scope", "none"),
+        "token_use": claims.get("token_use", "unknown"),
+        "expires_at": datetime.fromtimestamp(claims["exp"], tz=timezone.utc).isoformat() if "exp" in claims else "unknown",
+    }
+
+    # Call the real downstream API with the M2M token
+    base_url = os.environ.get("INTERNAL_API_BASE_URL", "https://wttr.in")
+    target_url = f"{base_url}{endpoint}"
+
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.get(
+                target_url,
+                headers={"Authorization": f"Bearer {token}"},
+            )
+            api_response = resp.text[:500]
+            status_code = resp.status_code
+    except Exception as exc:
+        api_response = f"Connection error: {exc}"
+        status_code = 0
+
     return json.dumps({
-        "status": "ok",
-        "endpoint": endpoint,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-    })
+        "m2m_authentication": "success",
+        "token_claims": token_info,
+        "api_call": {
+            "url": target_url,
+            "status_code": status_code,
+            "response_preview": api_response[:300],
+        },
+    }, indent=2)
 
 
 # ---------------------------------------------------------------------------
@@ -236,10 +283,13 @@ async def handler(payload: dict) -> str:
             tools=[call_internal_api, get_github_repos, get_calendar_events],
             system_prompt=(
                 "You are a helpful assistant with access to three capabilities:\n"
-                "1. call_internal_api — calls an internal service using M2M credentials (no user consent needed)\n"
+                "1. call_internal_api(endpoint) — calls a downstream API using M2M credentials (no user consent). "
+                "The base URL defaults to https://wttr.in so you can get weather with endpoint='/{city}?format=j1'. "
+                "Use this for ANY request that involves calling an API or getting weather data.\n"
                 "2. get_github_repos — lists the user's GitHub repositories (requires GitHub OAuth consent on first use)\n"
                 "3. get_calendar_events — gets today's Google Calendar events (requires Google OAuth consent on first use)\n"
-                "For OAuth flows, return the authorization URL to the user and ask them to complete consent."
+                "For OAuth flows, return the authorization URL to the user and ask them to complete consent.\n"
+                "Always use your tools — never say you can't do something if a tool can handle it."
             ),
         )
 
