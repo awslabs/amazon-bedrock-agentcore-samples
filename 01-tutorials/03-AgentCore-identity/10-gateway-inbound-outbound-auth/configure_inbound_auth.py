@@ -99,6 +99,19 @@ def main():
     )
     print("JWT inbound auth and gateway URL configured.")
 
+    # Fix Cognito agent client OAuth settings (CDK deploy resets these)
+    cognito = boto3.client("cognito-idp", region_name=region)
+    print("Fixing Cognito agent client OAuth config...")
+    cognito.update_user_pool_client(
+        UserPoolId=config["pool_id"],
+        ClientId=config["agent_client_id"],
+        AllowedOAuthFlows=["client_credentials"],
+        AllowedOAuthScopes=["https://gateway.demo.internal/access"],
+        AllowedOAuthFlowsUserPoolClient=True,
+        ExplicitAuthFlows=["ALLOW_USER_PASSWORD_AUTH", "ALLOW_REFRESH_TOKEN_AUTH"],
+    )
+    print("Cognito agent client OAuth config fixed.")
+
     # Attach IAM policy for AgentCore Identity outbound credential retrieval
     print(f"Attaching IAM policy to role: {role_name}")
     iam.put_role_policy(
