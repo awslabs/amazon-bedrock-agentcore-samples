@@ -59,6 +59,7 @@ def requires_access_token(
         Decorator function
 
     """
+
     def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
         client = IdentityClient(region)
 
