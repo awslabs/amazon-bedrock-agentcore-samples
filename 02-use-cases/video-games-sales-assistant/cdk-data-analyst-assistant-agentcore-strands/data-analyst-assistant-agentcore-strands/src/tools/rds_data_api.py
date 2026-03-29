@@ -51,9 +51,15 @@ def run_sql_query(sql_query: str) -> str:
         max_response_size = int(os.environ.get("MAX_RESPONSE_SIZE_BYTES", "1048576"))
 
         if not aurora_resource_arn or not readonly_secret_arn or not database_name:
-            return json.dumps({"error": "Missing required database configuration (READONLY_SECRET_ARN, AURORA_RESOURCE_ARN, DATABASE_NAME)"})
+            return json.dumps(
+                {
+                    "error": "Missing required database configuration (READONLY_SECRET_ARN, AURORA_RESOURCE_ARN, DATABASE_NAME)"
+                }
+            )
 
-        response = execute_statement(sql_query, aurora_resource_arn, readonly_secret_arn, database_name)
+        response = execute_statement(
+            sql_query, aurora_resource_arn, readonly_secret_arn, database_name
+        )
 
         if "error" in response:
             return json.dumps({"error": f"Query execution failed: {response['error']}"})
@@ -70,7 +76,9 @@ def run_sql_query(sql_query: str) -> str:
                 record = {}
                 for i, value in enumerate(row):
                     for value_type, actual_value in value.items():
-                        if value_type == "numberValue" and isinstance(actual_value, Decimal):
+                        if value_type == "numberValue" and isinstance(
+                            actual_value, Decimal
+                        ):
                             record[column_names[i]] = float(actual_value)
                         else:
                             record[column_names[i]] = actual_value

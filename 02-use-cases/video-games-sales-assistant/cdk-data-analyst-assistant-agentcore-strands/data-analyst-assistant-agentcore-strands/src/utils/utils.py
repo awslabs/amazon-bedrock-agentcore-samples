@@ -48,7 +48,9 @@ def save_raw_query_result(
             },
         )
 
-        print(f"✅ Analysis data saved to DynamoDB ({question_answers_table}), session: {user_prompt_uuid}")
+        print(
+            f"✅ Analysis data saved to DynamoDB ({question_answers_table}), session: {user_prompt_uuid}"
+        )
         return {"success": True, "response": response}
 
     except Exception as e:
