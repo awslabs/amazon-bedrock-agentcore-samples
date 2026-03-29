@@ -1,0 +1,38 @@
+# AWS CDK Core Dependencies
+# These packages are required for AWS CDK infrastructure as code
+
+# Core CDK library
+aws-cdk-lib==2.120.0
+
+# CDK constructs library
+constructs>=10.0.0,<11.0.0
+
+# Python type checking (optional but recommended)
+# mypy==1.7.1
+# types-setuptools==69.0.0
+
+# Testing dependencies (optional)
+# pytest==7.4.3
+# pytest-cov==4.1.0
+
+# AWS SDK for Python (Boto3) - useful for custom resources
+# boto3>=1.34.0
+
+# JSON Web Token handling (for Auth0 integration)
+# PyJWT==2.8.0
+# cryptography>=41.0.0
+
+# Additional utilities
+# python-dotenv==1.0.0  # For loading environment variables from .env files
+
+# Note: Install these dependencies with:
+# pip install -r requirements.txt
+#
+# For development:
+# pip install -e .
+#
+# To synthesize CloudFormation templates:
+# cdk synth
+#
+# To deploy (when implemented):
+# cdk deploy --all

@@ -321,11 +321,11 @@ def get_token(
         return {"error": str(err)}
 
 
-def create_agentcore_role(agent_name):
+def create_agentcore_role(agent_name, region=None):
     iam_client = boto3.client("iam")
     agentcore_role_name = f"agentcore-{agent_name}-role"
-    boto_session = Session()
-    region = boto_session.region_name
+    if region is None:
+        region = Session().region_name
     account_id = boto3.client("sts").get_caller_identity()["Account"]
     role_policy = {
         "Version": "2012-10-17",
@@ -464,11 +464,11 @@ def create_agentcore_role(agent_name):
     return agentcore_iam_role
 
 
-def create_agentcore_gateway_role(gateway_name):
+def create_agentcore_gateway_role(gateway_name, region=None):
     iam_client = boto3.client("iam")
     agentcore_gateway_role_name = f"agentcore-{gateway_name}-role"
-    boto_session = Session()
-    region = boto_session.region_name
+    if region is None:
+        region = Session().region_name
     account_id = boto3.client("sts").get_caller_identity()["Account"]
     role_policy = {
         "Version": "2012-10-17",
@@ -554,11 +554,11 @@ def create_agentcore_gateway_role(gateway_name):
     return agentcore_iam_role
 
 
-def create_agentcore_gateway_role_s3_smithy(gateway_name):
+def create_agentcore_gateway_role_s3_smithy(gateway_name, region=None):
     iam_client = boto3.client("iam")
     agentcore_gateway_role_name = f"agentcore-{gateway_name}-role"
-    boto_session = Session()
-    region = boto_session.region_name
+    if region is None:
+        region = Session().region_name
     account_id = boto3.client("sts").get_caller_identity()["Account"]
     role_policy = {
         "Version": "2012-10-17",

@@ -1,0 +1,66 @@
+{
+  "version": "1.0.0",
+  "description": "Agent tools catalog for modular agent composition",
+  "tools": [
+    {
+      "id": "web-search",
+      "name": "Web Search",
+      "description": "Search the web and retrieve information using DuckDuckGo",
+      "category": "information",
+      "icon": "🔍",
+      "path": "tools/web-search/tool.py",
+      "configPath": "tools/web-search/config.json",
+      "version": "1.0.0"
+    },
+    {
+      "id": "calculator",
+      "name": "Calculator",
+      "description": "Perform mathematical calculations and evaluations",
+      "category": "utility",
+      "icon": "🧮",
+      "path": "tools/calculator/tool.py",
+      "configPath": "tools/calculator/config.json",
+      "version": "1.0.0"
+    },
+    {
+      "id": "datetime",
+      "name": "Date & Time",
+      "description": "Get current date, time, and timezone information",
+      "category": "utility",
+      "icon": "🕐",
+      "path": "tools/datetime/tool.py",
+      "configPath": "tools/datetime/config.json",
+      "version": "1.0.0"
+    },
+    {
+      "id": "database-query",
+      "name": "Database Query",
+      "description": "Query databases using SQL with AWS RDS Data API",
+      "category": "data",
+      "icon": "🗄️",
+      "path": "tools/database-query/tool.py",
+      "configPath": "tools/database-query/config.json",
+      "version": "1.0.0"
+    },
+    {
+      "id": "email-sender",
+      "name": "Email Sender",
+      "description": "Send emails using AWS SES",
+      "category": "communication",
+      "icon": "📧",
+      "path": "tools/email-sender/tool.py",
+      "configPath": "tools/email-sender/config.json",
+      "version": "1.0.0"
+    },
+    {
+      "id": "web-crawler",
+      "name": "Web Crawler",
+      "description": "Crawl and extract content from websites using Crawl4AI",
+      "category": "information",
+      "icon": "🕷️",
+      "path": "tools/web-crawler/tool.py",
+      "configPath": "tools/web-crawler/config.json",
+      "version": "1.0.0"
+    }
+  ]
+}
