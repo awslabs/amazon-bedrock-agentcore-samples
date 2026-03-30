@@ -14,7 +14,9 @@ class GitHubProject(BaseModel):
     description: str | None = Field(default=None, description="Repository description")
     stargazers_count: int = Field(default=0, description="Number of stars")
     forks_count: int = Field(default=0, description="Number of forks")
-    private: bool = Field(default=False, description="Whether the repository is private")
+    private: bool = Field(
+        default=False, description="Whether the repository is private"
+    )
     html_url: str = Field(description="URL to the repository")
 
 
