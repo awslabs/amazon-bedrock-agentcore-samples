@@ -26,7 +26,9 @@ class TestInvocationsEndpoint:
     def test_invoke_agent_success(self, agent_client, s3_bucket):
         with (
             patch("backend.shared.alb_auth.verify_alb_jwt") as mock_verify,
-            patch("botocore.client.BaseClient._make_api_call", new=mock_bedrock_api_call),
+            patch(
+                "botocore.client.BaseClient._make_api_call", new=mock_bedrock_api_call
+            ),
         ):
             mock_verify.return_value = {"sub": "test-user-id", "email": TEST_USER_EMAIL}
             response = agent_client.post(
@@ -48,7 +50,9 @@ class TestInvocationsEndpoint:
             "/invocations",
             json={"session_id": "test-session", "user_message": "Hello"},
         )
-        assert response.status_code == 422  # FastAPI returns 422 for missing required header
+        assert (
+            response.status_code == 422
+        )  # FastAPI returns 422 for missing required header
 
     def test_invoke_agent_missing_fields(self, agent_client):
         with patch("backend.shared.alb_auth.verify_alb_jwt") as mock_verify:

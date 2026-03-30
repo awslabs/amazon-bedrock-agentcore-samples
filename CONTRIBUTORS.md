@@ -98,6 +98,7 @@
 - Will Ensor
 - Osman Santos
 - David Kaleko
+- Rajesh Sitaraman (rjesh-git)
 - Diego Brasil
 - Dumitru Pascu (dumip)
 

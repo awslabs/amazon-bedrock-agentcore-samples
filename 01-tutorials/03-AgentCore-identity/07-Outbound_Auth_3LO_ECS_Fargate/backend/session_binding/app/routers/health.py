@@ -5,7 +5,7 @@
 
 from fastapi import APIRouter, Depends
 
-from backend.oauth_callback.app.config import Settings, get_settings
+from backend.session_binding.app.config import Settings, get_settings
 
 router = APIRouter(tags=["health"])
 

@@ -38,13 +38,14 @@ Once deployed, your AgentCore Runtime architecture in AWS looks as following:
 
 ## Tutorial Examples
 
-This tutorial includes three hands-on examples to get you started:
+This tutorial includes four hands-on examples to get you started:
 
 | Example                                                                | Framework      | Model          | Description                                |
 | ---------------------------------------------------------------------- | -------------- | -------------- | ------------------------------------------ |
 | **[01-strands-with-bedrock-model](01-strands-with-bedrock-model)**     | Strands Agents | Amazon Bedrock | Basic agent hosting with AWS native models |
 | **[02-langgraph-with-bedrock-model](02-langgraph-with-bedrock-model)** | LangGraph      | Amazon Bedrock | LangGraph agent workflows                  |
 | **[03-strands-with-openai-model](03-strands-with-openai-model)**       | Strands Agents | OpenAI         | Integration with external LLM providers    |
+| **[06-strands-with-skills](06-strands-with-skills)**                   | Strands Agents | Amazon Bedrock | Skills-based agent hosting with AgentSkills plugin |
 
 ## Key Benefits
 
