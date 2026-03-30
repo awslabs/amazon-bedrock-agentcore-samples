@@ -26,7 +26,7 @@ When hosting agents, the SDK automatically:
 
 ![Hosting agent](images/hosting_agent_python_sdk.png)
 
-Once your agent is prepared for deployment on AgentCore Runtime, you can use the Amazon Bedrock AgentCore StarterKit to deploy it to deploy it to AgentCore Runtime.
+Once your agent is prepared for deployment on AgentCore Runtime, you can use the Amazon Bedrock AgentCore StarterKit to deploy it to AgentCore Runtime.
 
 With the Starter Kit you can configure your agent deployment, launch it to create an Amazon ECR repository with the Agent's configuration and the AgentCore Runtime endpoint and invoke the created endpoint for validation.
 
