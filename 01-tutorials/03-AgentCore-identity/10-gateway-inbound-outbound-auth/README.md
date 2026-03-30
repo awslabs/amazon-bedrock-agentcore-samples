@@ -265,6 +265,20 @@ The agent code has no knowledge of the upstream credentials — they are managed
 
 ---
 
+## Streamlit UI (Optional)
+
+For an interactive browser-based experience instead of the CLI:
+
+```bash
+pip install streamlit
+cd ..
+streamlit run streamlit_app.py
+```
+
+Log in, then use the chat interface to test gateway tools (get_time, echo). Clear the Bearer Token field in the sidebar to test 403 rejection.
+
+---
+
 ## Step 10: Cleanup
 
 ```bash

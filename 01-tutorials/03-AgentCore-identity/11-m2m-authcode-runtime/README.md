@@ -283,6 +283,20 @@ Calendar events for 2025-03-20:
 
 ---
 
+## Streamlit UI (Optional)
+
+For an interactive browser-based experience instead of the CLI:
+
+```bash
+pip install streamlit
+cd ..
+streamlit run streamlit_app.py
+```
+
+Log in, select a flow (M2M / GitHub 3LO / Google 3LO), then use the chat interface. For 3LO flows, the app handles the consent URL and callback server automatically.
+
+---
+
 ## Step 11: Cleanup
 
 ```bash

@@ -183,6 +183,20 @@ The weather in Seattle is currently Sunny, 72F.
 
 ---
 
+## Streamlit UI (Optional)
+
+For an interactive browser-based experience instead of the CLI:
+
+```bash
+pip install streamlit
+cd ..
+streamlit run streamlit_app.py
+```
+
+Log in, then use the chat interface to test weather queries. Clear the Bearer Token field in the sidebar to test 403 rejection.
+
+---
+
 ## Step 8: Cleanup
 
 ```bash
