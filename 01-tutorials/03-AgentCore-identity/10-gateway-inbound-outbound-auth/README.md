@@ -125,61 +125,21 @@ The CLI automatically creates a **managed OAuth credential** so the agent can ob
 
 ---
 
-## Step 5: Add Gateway Target with OAuth Outbound Auth
+## Step 5: Add Gateway Target
 
-Add an upstream MCP server as a target. The gateway will authenticate to it using OAuth2 client credentials:
+Add the MCP server (deployed in Step 1) as a gateway target. Use the endpoint URL from `mcp_server_config.json`:
 
 ```bash
 agentcore add gateway-target \
   --name MyTools \
   --type mcp-server \
-  --endpoint https://YOUR_MCP_SERVER/mcp \
-  --gateway MyGateway \
-  --outbound-auth oauth \
-  --oauth-client-id YOUR_UPSTREAM_CLIENT_ID \
-  --oauth-client-secret YOUR_UPSTREAM_CLIENT_SECRET \
-  --oauth-discovery-url https://YOUR_UPSTREAM_IDP/.well-known/openid-configuration
+  --endpoint YOUR_MCP_SERVER_ENDPOINT \
+  --gateway MyGateway
 ```
 
-> **Testing without an MCP server?** Omit `--outbound-auth` and use any reachable MCP endpoint, or set `--outbound-auth none`:
-> ```bash
-> agentcore add gateway-target \
->   --name MyTools \
->   --type mcp-server \
->   --endpoint https://YOUR_MCP_SERVER/mcp \
->   --gateway MyGateway
-> ```
-
-The resulting `agentcore/mcp.json` will look like:
-
-```json
-{
-  "agentCoreGateways": [
-    {
-      "name": "MyGateway",
-      "authorizerType": "CUSTOM_JWT",
-      "authorizerConfiguration": {
-        "customJwtAuthorizer": {
-          "discoveryUrl": "YOUR_COGNITO_DISCOVERY_URL",
-          "allowedAudience": ["YOUR_POOL_ID"],
-          "allowedClients": ["YOUR_USER_CLIENT_ID"]
-        }
-      },
-      "targets": [
-        {
-          "name": "MyTools",
-          "targetType": "mcpServer",
-          "endpoint": "https://YOUR_MCP_SERVER/mcp",
-          "outboundAuth": {
-            "type": "OAUTH",
-            "credentialName": "MyToolsOAuth"
-          }
-        }
-      ]
-    }
-  ]
-}
-```
+> Replace `YOUR_MCP_SERVER_ENDPOINT` with the endpoint printed by `setup_mcp_server.py` (e.g. `https://abc123.execute-api.us-east-1.amazonaws.com/mcp`).
+>
+> To add OAuth outbound auth to the target (if your MCP server requires it), use `--outbound-auth oauth --credential-name YOUR_CREDENTIAL`.
 
 ---
 
