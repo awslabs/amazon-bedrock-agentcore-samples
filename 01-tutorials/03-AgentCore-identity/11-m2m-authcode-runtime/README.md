@@ -170,6 +170,16 @@ agentcore create --name M2MAuthDemo --defaults --no-agent
 cd M2MAuthDemo
 ```
 
+Set your deployment target (the CLI creates an empty `aws-targets.json`):
+
+```bash
+cat > agentcore/aws-targets.json << 'EOF'
+[{"name":"default","description":"Default deployment target","account":"YOUR_AWS_ACCOUNT_ID","region":"us-east-1"}]
+EOF
+```
+
+> Replace `YOUR_AWS_ACCOUNT_ID` with your 12-digit AWS account ID. Find it with `aws sts get-caller-identity --query Account --output text`.
+
 ---
 
 ## Step 6: Add the Agent
