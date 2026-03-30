@@ -116,7 +116,7 @@ agentcore add agent \
 Store the API key that the agent will use to call an external service:
 
 ```bash
-agentcore add identity \
+agentcore add credential \
   --name OutboundApiKey \
   --api-key YOUR_API_KEY_HERE
 ```
@@ -173,7 +173,7 @@ The weather in Seattle is currently Sunny, 72F.
 ```bash
 cd RuntimeAuthDemo
 agentcore remove agent --name MyAgent --force
-agentcore remove identity --name OutboundApiKey --force
+agentcore remove credential --name OutboundApiKey --force
 ```
 
 Delete Cognito resources:

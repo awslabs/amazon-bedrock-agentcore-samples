@@ -93,7 +93,7 @@ Note the values printed for Step 6:
 ### Option A — CLI (recommended)
 
 ```bash
-agentcore add identity \
+agentcore add credential \
   --name M2MProvider \
   --type oauth \
   --discovery-url https://YOUR_AUTH_SERVER/.well-known/openid-configuration \
@@ -278,8 +278,8 @@ Calendar events for 2025-03-20:
 ```bash
 cd M2MAuthDemo
 agentcore remove agent --name MyAgent --force
-agentcore remove identity --name M2MProvider --force
-agentcore remove identity --name Google3LOProvider --force
+agentcore remove credential --name M2MProvider --force
+agentcore remove credential --name Google3LOProvider --force
 ```
 
 Delete Cognito resources:
