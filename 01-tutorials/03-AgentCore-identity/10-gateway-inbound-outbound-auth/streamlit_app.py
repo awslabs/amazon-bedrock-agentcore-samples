@@ -11,8 +11,6 @@ Run:
 
 import json
 import os
-import re
-import subprocess
 import time
 
 import boto3
@@ -43,11 +41,6 @@ def _find_project_dir() -> str:
     raise FileNotFoundError("No agentcore project directory found. Run 'agentcore create' first.")
 
 
-def _clean_ansi(text: str) -> str:
-    """Strip ANSI escape codes from CLI output."""
-    return re.sub(r"\x1b\[[0-9;?]*[a-zA-Z]", "", text).strip()
-
-
 @st.cache_data(ttl=300)
 def load_cognito_config() -> dict:
     """Load cognito_config.json from the sample directory."""
@@ -58,21 +51,19 @@ def load_cognito_config() -> dict:
 
 @st.cache_data(ttl=120, show_spinner="Resolving agent ARN...")
 def resolve_agent_arn() -> str:
-    """Read the deployed agent ARN via agentcore status --json."""
+    """Read the deployed agent ARN from deployed-state.json."""
     project_dir = _find_project_dir()
-    result = subprocess.run(
-        ["agentcore", "status", "--json"],
-        capture_output=True,
-        text=True,
-        cwd=project_dir,
-    )
-    if result.returncode != 0:
-        raise RuntimeError(f"agentcore status failed:\n{result.stderr}")
-    clean = _clean_ansi(result.stdout)
-    status = json.loads(clean)
-    for resource in status.get("resources", []):
-        if resource.get("resourceType") == "agent" and resource.get("deploymentState") == "deployed":
-            arn = resource.get("identifier")
+    state_file = os.path.join(project_dir, "agentcore", ".cli", "deployed-state.json")
+    if not os.path.exists(state_file):
+        raise FileNotFoundError(
+            "No deployed-state.json found. Run 'agentcore deploy -y' first."
+        )
+    with open(state_file) as f:
+        state = json.load(f)
+    for target in state.get("targets", {}).values():
+        agents = target.get("resources", {}).get("agents", {})
+        for agent_info in agents.values():
+            arn = agent_info.get("runtimeArn")
             if arn:
                 return arn
     raise ValueError("No deployed agent found. Run 'agentcore deploy -y' first.")
@@ -80,23 +71,20 @@ def resolve_agent_arn() -> str:
 
 @st.cache_data(ttl=120, show_spinner="Resolving gateway URL...")
 def resolve_gateway_url() -> str:
-    """Attempt to read the gateway URL from agentcore status or config."""
+    """Attempt to read the gateway URL from deployed-state.json."""
     try:
         project_dir = _find_project_dir()
-        result = subprocess.run(
-            ["agentcore", "status", "--json"],
-            capture_output=True,
-            text=True,
-            cwd=project_dir,
-        )
-        if result.returncode == 0:
-            clean = _clean_ansi(result.stdout)
-            status = json.loads(clean)
-            for resource in status.get("resources", []):
-                if resource.get("resourceType") == "gateway":
-                    url = resource.get("url") or resource.get("identifier", "")
-                    if url:
-                        return url
+        state_file = os.path.join(project_dir, "agentcore", ".cli", "deployed-state.json")
+        if not os.path.exists(state_file):
+            return "N/A"
+        with open(state_file) as f:
+            state = json.load(f)
+        for target in state.get("targets", {}).values():
+            gateways = target.get("resources", {}).get("gateways", {})
+            for gw_info in gateways.values():
+                url = gw_info.get("gatewayUrl") or gw_info.get("url", "")
+                if url:
+                    return url
     except Exception:
         pass
     return "N/A"

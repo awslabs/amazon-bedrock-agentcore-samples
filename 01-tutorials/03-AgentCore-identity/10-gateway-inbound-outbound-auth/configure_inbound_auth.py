@@ -16,8 +16,6 @@ Usage:
 import boto3
 import json
 import os
-import re
-import subprocess
 import sys
 
 
@@ -32,18 +30,17 @@ def find_project_dir() -> str:
 
 def get_runtime_id() -> str:
     project_dir = find_project_dir()
-    result = subprocess.run(
-        ["agentcore", "status", "--json"],
-        capture_output=True,
-        text=True,
-        cwd=project_dir,
-    )
-    clean = re.sub(r"\x1b\[[0-9;?]*[a-zA-Z]", "", result.stdout).strip()
-    status = json.loads(clean)
-    for resource in status.get("resources", []):
-        if resource.get("resourceType") == "agent" and resource.get("deploymentState") == "deployed":
-            arn = resource.get("identifier", "")
-            return arn.split("/")[-1]
+    state_file = os.path.join(project_dir, "agentcore", ".cli", "deployed-state.json")
+    if not os.path.exists(state_file):
+        raise FileNotFoundError("No deployed-state.json found. Run 'agentcore deploy -y' first.")
+    with open(state_file) as f:
+        state = json.load(f)
+    for target in state.get("targets", {}).values():
+        agents = target.get("resources", {}).get("agents", {})
+        for agent_info in agents.values():
+            rid = agent_info.get("runtimeId")
+            if rid:
+                return rid
     raise ValueError("No deployed agent found. Run 'agentcore deploy -y' first.")
 
 
