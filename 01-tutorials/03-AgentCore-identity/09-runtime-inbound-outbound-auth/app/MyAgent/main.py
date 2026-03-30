@@ -31,39 +31,57 @@ async def _fetch_api_key(*, api_key: str) -> None:
 
 @tool
 def get_weather(location: str) -> str:
-    """Get the current weather for a location.
+    """Get the current weather for a location using Google Maps Weather API.
 
-    Calls the wttr.in weather API. Also demonstrates that the outbound API key
-    was securely retrieved from AgentCore Identity (backed by Secrets Manager).
+    The API key is securely retrieved from AgentCore Identity at runtime
+    via @requires_api_key. It is never hardcoded or stored in env vars.
 
     Args:
-        location: City name or location (e.g. "Seattle", "London")
+        location: City name (e.g. "Seattle", "London", "New York")
     """
     api_key = os.environ.get("OUTBOUND_API_KEY", "")
-    print(f"[OutboundAuth] API key retrieved (first 8 chars): {api_key[:8]}...")
+    if not api_key:
+        return "API key not available. Run setup and deploy first."
 
-    # Call a real weather API
     try:
-        resp = httpx.get(f"https://wttr.in/{location}?format=j1", timeout=10)
-        resp.raise_for_status()
-        data = resp.json()
-        current = data.get("current_condition", [{}])[0]
-        area = data.get("nearest_area", [{}])[0]
-        area_name = area.get("areaName", [{}])[0].get("value", location)
-        country = area.get("country", [{}])[0].get("value", "")
+        # First geocode the location to get lat/lng
+        geo_resp = httpx.get(
+            "https://maps.googleapis.com/maps/api/geocode/json",
+            params={"address": location, "key": api_key},
+            timeout=10,
+        )
+        geo_resp.raise_for_status()
+        geo_data = geo_resp.json()
+        if not geo_data.get("results"):
+            return f"Location '{location}' not found."
+        lat = geo_data["results"][0]["geometry"]["location"]["lat"]
+        lng = geo_data["results"][0]["geometry"]["location"]["lng"]
+        formatted = geo_data["results"][0].get("formatted_address", location)
+
+        # Get weather for the coordinates
+        weather_resp = httpx.post(
+            f"https://weather.googleapis.com/v1/currentConditions:lookup?key={api_key}",
+            json={"location": {"latitude": lat, "longitude": lng}},
+            timeout=10,
+        )
+        weather_resp.raise_for_status()
+        w = weather_resp.json()
 
         return json.dumps({
-            "location": f"{area_name}, {country}",
-            "temperature_f": current.get("temp_F", "N/A"),
-            "temperature_c": current.get("temp_C", "N/A"),
-            "condition": current.get("weatherDesc", [{}])[0].get("value", "N/A"),
-            "humidity": f"{current.get('humidity', 'N/A')}%",
-            "wind_mph": current.get("windspeedMiles", "N/A"),
-            "feels_like_f": current.get("FeelsLikeF", "N/A"),
-            "outbound_api_key_status": f"Retrieved from AgentCore Identity (first 8 chars: {api_key[:8]}...)",
+            "location": formatted,
+            "temperature_f": round(w.get("temperature", {}).get("degrees", 0) * 9/5 + 32),
+            "temperature_c": round(w.get("temperature", {}).get("degrees", 0)),
+            "condition": w.get("weatherCondition", {}).get("description", {}).get("text", "N/A"),
+            "humidity": f"{w.get('relativeHumidity', 'N/A')}%",
+            "wind_mph": round(w.get("wind", {}).get("speed", {}).get("value", 0) * 0.621),
+            "api_key_source": "AgentCore Identity (retrieved at runtime via @requires_api_key)",
         }, indent=2)
+    except httpx.HTTPStatusError as exc:
+        if exc.response.status_code in (401, 403):
+            return f"Invalid or unauthorized API key ({exc.response.status_code}). Check the OutboundApiKey credential in AgentCore Identity."
+        return f"Weather API error: {exc.response.status_code} {exc.response.text[:200]}"
     except Exception as exc:
-        return f"Weather API error: {exc}. API key status: {'retrieved' if api_key else 'missing'}"
+        return f"Weather API error: {exc}"
 
 
 @tool

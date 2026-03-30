@@ -123,15 +123,22 @@ agentcore add agent \
 
 ## Step 5: Add Outbound Identity Credential
 
-Store the API key that the agent will use to call an external service:
+The agent calls the [Google Maps Weather API](https://developers.google.com/maps/documentation/weather/overview) which requires an API key. Get one:
+
+1. Go to [Google Cloud Console](https://console.cloud.google.com/) and create/select a project
+2. Enable the **Weather API** and **Geocoding API** (APIs & Services > Library)
+3. Create an API key (APIs & Services > Credentials > Create Credentials > API key)
+4. See the [getting started guide](https://developers.google.com/maps/documentation/weather/get-api-key)
+
+Store it securely in AgentCore Identity:
 
 ```bash
 agentcore add credential \
   --name OutboundApiKey \
-  --api-key YOUR_API_KEY_HERE
+  --api-key YOUR_GOOGLE_MAPS_API_KEY
 ```
 
-> Replace `YOUR_API_KEY_HERE` with the actual API key for your downstream service (e.g., OpenAI, weather API). The CLI stores it securely in AWS Secrets Manager via AgentCore Identity.
+> The CLI stores the key in AWS Secrets Manager via AgentCore Identity. At runtime, the agent retrieves it with `@requires_api_key("OutboundApiKey")`. The key never appears in code or environment variables.
 
 ---
 
