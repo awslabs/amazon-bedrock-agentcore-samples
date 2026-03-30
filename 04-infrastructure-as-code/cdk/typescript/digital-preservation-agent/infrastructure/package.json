@@ -1,0 +1,28 @@
+{
+  "name": "digital-preservation-agent",
+  "version": "1.0.0",
+  "description": "CDK TypeScript stack deploying a document processing agent with Apache Tika on ECS Fargate, AgentCore Gateway, and AgentCore Runtime",
+  "main": "bin/app.js",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc -w",
+    "cdk": "cdk",
+    "synth": "cdk synth",
+    "deploy": "cdk deploy",
+    "destroy": "cdk destroy",
+    "diff": "cdk diff"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.0",
+    "aws-cdk": "^2.244.0",
+    "cdk-nag": "^2.28.196",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.6.0"
+  },
+  "dependencies": {
+    "@aws-cdk/aws-bedrock-agentcore-alpha": "2.244.0-alpha.0",
+    "aws-cdk-lib": "^2.244.0",
+    "constructs": "^10.4.2",
+    "source-map-support": "^0.5.21"
+  }
+}

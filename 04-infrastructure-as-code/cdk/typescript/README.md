@@ -26,6 +26,7 @@ cdk deploy --all
 ## Samples
 
 - **[knowledge-base-rag-agent/](./knowledge-base-rag-agent/)** - Full-stack RAG agent with Knowledge Base, OpenSearch Serverless, web interface, and Cognito authentication
+- **[digital-preservation-agent/](./digital-preservation-agent/)** - Document processing agent with Apache Tika on ECS Fargate, AgentCore Gateway, and AgentCore Runtime
 
 ## TypeScript CDK Advantages
 

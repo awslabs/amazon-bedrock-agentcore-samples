@@ -7,7 +7,7 @@ Deploy Amazon Bedrock AgentCore resources using AWS CDK in Python or TypeScript.
 | Language | Description | Samples |
 |----------|-------------|---------|
 | **[Python](./python/)** | Familiar syntax for Python developers, quick prototyping | 4 samples |
-| **[TypeScript](./typescript/)** | Strong typing, rich npm ecosystem, compile-time checks | 1 sample |
+| **[TypeScript](./typescript/)** | Strong typing, rich npm ecosystem, compile-time checks | 2 samples |
 
 ## Prerequisites
 
@@ -41,6 +41,7 @@ Deploy Amazon Bedrock AgentCore resources using AWS CDK in Python or TypeScript.
 | Sample | Description |
 |--------|-------------|
 | [knowledge-base-rag-agent](./typescript/knowledge-base-rag-agent/) | Full-stack RAG agent with Knowledge Base, OpenSearch Serverless, web interface, and Cognito authentication |
+| [digital-preservation-agent](./typescript/digital-preservation-agent/) | Digital preservation agent with Apache Tika, Siegfried, DROID, and MediaInfo on ECS Fargate, AgentCore Gateway (MCP), and AgentCore Runtime |
 
 ## CDK Advantages Over CloudFormation
 

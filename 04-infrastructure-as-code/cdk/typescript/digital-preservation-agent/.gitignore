@@ -1,0 +1,11 @@
+node_modules/
+cdk.out/
+cdk.context.json
+dist/
+*.js
+*.d.ts
+*.js.map
+!jest.config.js
+.env
+__pycache__/
+*.pyc
