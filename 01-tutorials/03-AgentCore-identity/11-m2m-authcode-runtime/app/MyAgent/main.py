@@ -16,7 +16,6 @@ AgentCore Runtime agent demonstrating three outbound auth flows:
 Inbound Auth: Cognito JWT (configured in agentcore/agentcore.json).
 """
 
-import base64
 import json
 import os
 from datetime import datetime, timezone
@@ -60,29 +59,19 @@ async def _fetch_m2m_token(*, access_token: str) -> None:
     _m2m_token_cache["token"] = access_token
 
 
-def _decode_jwt_payload(token: str) -> dict:
-    """Decode a JWT token's payload without verification (for display only)."""
-    try:
-        payload_b64 = token.split(".")[1]
-        # Add padding if needed
-        padding = 4 - len(payload_b64) % 4
-        if padding != 4:
-            payload_b64 += "=" * padding
-        return json.loads(base64.urlsafe_b64decode(payload_b64))
-    except Exception:
-        return {}
-
-
 @tool
-async def call_internal_api(endpoint: str) -> str:
-    """Call an internal API using the M2M service account token.
+async def get_weather_m2m(location: str) -> str:
+    """Get weather using M2M (client credentials) authentication.
 
     Demonstrates the client_credentials OAuth2 grant: the agent authenticates
     as a service account (no user interaction), obtains an access token, and
-    uses it to call a real downstream API.
+    uses it to call the OpenWeatherMap API.
+
+    The M2M token proves the agent's identity. The API key is passed separately.
+    This shows two auth mechanisms working together.
 
     Args:
-        endpoint: The API path to call (e.g. "/api/v1/status")
+        location: City name (e.g. "Seattle", "London", "New York")
     """
     if "token" not in _m2m_token_cache:
         await _fetch_m2m_token(access_token="")
@@ -91,41 +80,40 @@ async def call_internal_api(endpoint: str) -> str:
     if not token:
         return "Failed to obtain M2M token. Check the M2MProvider credential configuration."
 
-    # Decode the JWT to show what the M2M token contains
-    claims = _decode_jwt_payload(token)
-    token_info = {
-        "issuer": claims.get("iss", "unknown"),
-        "client_id": claims.get("client_id", claims.get("sub", "unknown")),
-        "scopes": claims.get("scope", "none"),
-        "token_use": claims.get("token_use", "unknown"),
-        "expires_at": datetime.fromtimestamp(claims["exp"], tz=timezone.utc).isoformat() if "exp" in claims else "unknown",
-    }
-
-    # Call the real downstream API with the M2M token
-    base_url = os.environ.get("INTERNAL_API_BASE_URL", "https://wttr.in")
-    target_url = f"{base_url}{endpoint}"
+    # The API key can be stored as an env var or retrieved from AgentCore Identity
+    api_key = os.environ.get("OPENWEATHERMAP_API_KEY", "")
+    if not api_key:
+        # Return token info to show M2M auth worked, even without API key
+        return json.dumps({
+            "m2m_auth": "success",
+            "note": "M2M token obtained. Set OPENWEATHERMAP_API_KEY env var or add an OutboundApiKey credential to call the weather API.",
+            "token_preview": token[:40] + "...",
+        }, indent=2)
 
     try:
-        async with httpx.AsyncClient(timeout=15) as client:
+        async with httpx.AsyncClient(timeout=10) as client:
             resp = await client.get(
-                target_url,
-                headers={"Authorization": f"Bearer {token}"},
+                "https://api.openweathermap.org/data/2.5/weather",
+                params={"q": location, "appid": api_key, "units": "imperial"},
             )
-            api_response = resp.text[:500]
-            status_code = resp.status_code
-    except Exception as exc:
-        api_response = f"Connection error: {exc}"
-        status_code = 0
+            resp.raise_for_status()
+            data = resp.json()
 
-    return json.dumps({
-        "m2m_authentication": "success",
-        "token_claims": token_info,
-        "api_call": {
-            "url": target_url,
-            "status_code": status_code,
-            "response_preview": api_response[:300],
-        },
-    }, indent=2)
+        return json.dumps({
+            "m2m_auth": "success (client_credentials token obtained)",
+            "location": f"{data.get('name', location)}, {data.get('sys', {}).get('country', '')}",
+            "temperature_f": round(data["main"]["temp"]),
+            "feels_like_f": round(data["main"]["feels_like"]),
+            "condition": data["weather"][0]["description"],
+            "humidity": f"{data['main']['humidity']}%",
+            "wind_mph": round(data["wind"]["speed"]),
+        }, indent=2)
+    except httpx.HTTPStatusError as exc:
+        if exc.response.status_code == 401:
+            return "Invalid OpenWeatherMap API key."
+        return f"Weather API error: {exc.response.status_code}"
+    except Exception as exc:
+        return f"Error: {exc}"
 
 
 # ---------------------------------------------------------------------------
@@ -280,12 +268,11 @@ async def handler(payload: dict) -> str:
     if _agent is None:
         _agent = Agent(
             model=_model,
-            tools=[call_internal_api, get_github_repos, get_calendar_events],
+            tools=[get_weather_m2m, get_github_repos, get_calendar_events],
             system_prompt=(
                 "You are a helpful assistant with access to three capabilities:\n"
-                "1. call_internal_api(endpoint) — calls a downstream API using M2M credentials (no user consent). "
-                "The base URL defaults to https://wttr.in so you can get weather with endpoint='/{city}?format=j1'. "
-                "Use this for ANY request that involves calling an API or getting weather data.\n"
+                "1. get_weather_m2m(location) — gets weather using M2M credentials (no user consent). "
+                "Uses OpenWeatherMap API with client_credentials token.\n"
                 "2. get_github_repos — lists the user's GitHub repositories (requires GitHub OAuth consent on first use)\n"
                 "3. get_calendar_events — gets today's Google Calendar events (requires Google OAuth consent on first use)\n"
                 "For OAuth flows, return the authorization URL to the user and ask them to complete consent.\n"

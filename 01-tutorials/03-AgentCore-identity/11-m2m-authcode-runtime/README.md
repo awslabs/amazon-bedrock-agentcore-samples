@@ -225,6 +225,15 @@ Wait ~30 seconds for changes to propagate.
 
 ## Step 9: Test M2M Flow
 
+The M2M tool calls the [OpenWeatherMap API](https://openweathermap.org/api) using a client credentials token. If you completed Sample 09, you already have an API key. Set it as an environment variable on the deployed runtime:
+
+```bash
+# Add your OpenWeatherMap API key (same key from Sample 09, or get a free one at openweathermap.org)
+# The key is passed as an env var to the runtime
+```
+
+Then test:
+
 ```bash
 cd ..
 python invoke.py --flow m2m
@@ -234,10 +243,9 @@ Expected output:
 
 ```
 === M2M Flow Test ===
-The agent will call an internal API using client credentials (no user consent needed).
 
 Agent response:
-The internal API at /api/v1/status returned: {"status": "ok", ...}
+The weather in Seattle is 47F, partly cloudy...
 ```
 
 The M2M token is fetched silently using client credentials — no browser interaction required.

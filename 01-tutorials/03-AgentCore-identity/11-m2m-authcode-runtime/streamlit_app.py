@@ -45,7 +45,7 @@ FLOW_HEADERS = {
     "google": ("Google Calendar Flow", "Agent reads your calendar after you consent"),
 }
 PRESET_BUTTONS = {
-    "m2m": "Get the weather in Seattle using M2M credentials",
+    "m2m": "What's the weather in Seattle?",
     "github": "List my GitHub repositories",
     "google": "Show today's calendar events",
 }
