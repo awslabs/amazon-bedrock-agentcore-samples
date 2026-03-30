@@ -28,19 +28,37 @@ def find_project_dir() -> str:
     raise FileNotFoundError("No agentcore project directory found. Run 'agentcore create' first.")
 
 
+def _find_in_json(obj, key):
+    """Recursively search for a key in nested JSON."""
+    if isinstance(obj, dict):
+        if key in obj:
+            return obj[key]
+        for v in obj.values():
+            result = _find_in_json(v, key)
+            if result:
+                return result
+    elif isinstance(obj, list):
+        for item in obj:
+            result = _find_in_json(item, key)
+            if result:
+                return result
+    return None
+
+
 def get_runtime_id() -> str:
+    """Read the deployed runtime ID from deployed-state.json.
+
+    Searches for runtimeId recursively to work across CLI versions.
+    """
     project_dir = find_project_dir()
     state_file = os.path.join(project_dir, "agentcore", ".cli", "deployed-state.json")
     if not os.path.exists(state_file):
         raise FileNotFoundError("No deployed-state.json found. Run 'agentcore deploy -y' first.")
     with open(state_file) as f:
         state = json.load(f)
-    for target in state.get("targets", {}).values():
-        agents = target.get("resources", {}).get("agents", {})
-        for agent_info in agents.values():
-            rid = agent_info.get("runtimeId")
-            if rid:
-                return rid
+    rid = _find_in_json(state, "runtimeId")
+    if rid:
+        return rid
     raise ValueError("No deployed agent found. Run 'agentcore deploy -y' first.")
 
 

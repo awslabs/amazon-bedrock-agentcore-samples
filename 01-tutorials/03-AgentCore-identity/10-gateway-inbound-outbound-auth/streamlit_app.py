@@ -32,6 +32,23 @@ SAMPLE_DIR = os.path.dirname(os.path.abspath(__file__))
 # Helper functions (reused from invoke.py patterns)
 # ---------------------------------------------------------------------------
 
+def _find_in_json(obj, key):
+    """Recursively search for a key in nested JSON."""
+    if isinstance(obj, dict):
+        if key in obj:
+            return obj[key]
+        for v in obj.values():
+            result = _find_in_json(v, key)
+            if result:
+                return result
+    elif isinstance(obj, list):
+        for item in obj:
+            result = _find_in_json(item, key)
+            if result:
+                return result
+    return None
+
+
 def _find_project_dir() -> str:
     """Find the agentcore project subdirectory."""
     for entry in os.listdir(SAMPLE_DIR):
@@ -51,7 +68,10 @@ def load_cognito_config() -> dict:
 
 @st.cache_data(ttl=120, show_spinner="Resolving agent ARN...")
 def resolve_agent_arn() -> str:
-    """Read the deployed agent ARN from deployed-state.json."""
+    """Read the deployed agent ARN from deployed-state.json.
+
+    Searches for runtimeArn recursively to work across CLI versions.
+    """
     project_dir = _find_project_dir()
     state_file = os.path.join(project_dir, "agentcore", ".cli", "deployed-state.json")
     if not os.path.exists(state_file):
@@ -60,18 +80,18 @@ def resolve_agent_arn() -> str:
         )
     with open(state_file) as f:
         state = json.load(f)
-    for target in state.get("targets", {}).values():
-        agents = target.get("resources", {}).get("agents", {})
-        for agent_info in agents.values():
-            arn = agent_info.get("runtimeArn")
-            if arn:
-                return arn
+    arn = _find_in_json(state, "runtimeArn")
+    if arn:
+        return arn
     raise ValueError("No deployed agent found. Run 'agentcore deploy -y' first.")
 
 
 @st.cache_data(ttl=120, show_spinner="Resolving gateway URL...")
 def resolve_gateway_url() -> str:
-    """Attempt to read the gateway URL from deployed-state.json."""
+    """Attempt to read the gateway URL from deployed-state.json.
+
+    Searches for gatewayUrl recursively to work across CLI versions.
+    """
     try:
         project_dir = _find_project_dir()
         state_file = os.path.join(project_dir, "agentcore", ".cli", "deployed-state.json")
@@ -79,12 +99,9 @@ def resolve_gateway_url() -> str:
             return "N/A"
         with open(state_file) as f:
             state = json.load(f)
-        for target in state.get("targets", {}).values():
-            gateways = target.get("resources", {}).get("gateways", {})
-            for gw_info in gateways.values():
-                url = gw_info.get("gatewayUrl") or gw_info.get("url", "")
-                if url:
-                    return url
+        url = _find_in_json(state, "gatewayUrl")
+        if url:
+            return url
     except Exception:
         pass
     return "N/A"

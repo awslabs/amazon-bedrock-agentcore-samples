@@ -51,25 +51,37 @@ def _find_project_dir() -> str:
 def get_agent_arn(region: str) -> str:
     """Read the deployed agent ARN from deployed-state.json.
 
-    This avoids depending on 'agentcore status --json' output format
-    which changes between CLI versions.
+    Searches for runtimeArn recursively to work across CLI versions
+    (0.3.x uses 'agents', 0.4.x may use 'runtimes').
     """
     project_dir = _find_project_dir()
     state_file = os.path.join(project_dir, "agentcore", ".cli", "deployed-state.json")
     if not os.path.exists(state_file):
         raise FileNotFoundError(
-            f"No deployed-state.json found at {state_file}.\n"
-            "Run 'agentcore deploy -y' first."
+            "No deployed-state.json found. Run 'agentcore deploy -y' first."
         )
     with open(state_file) as f:
         state = json.load(f)
-    # Walk the deployed state to find any runtime ARN
-    for target in state.get("targets", {}).values():
-        agents = target.get("resources", {}).get("agents", {})
-        for agent_info in agents.values():
-            arn = agent_info.get("runtimeArn")
-            if arn:
-                return arn
+
+    # Recursively search for runtimeArn in the state JSON
+    def _find_arn(obj):
+        if isinstance(obj, dict):
+            if "runtimeArn" in obj:
+                return obj["runtimeArn"]
+            for v in obj.values():
+                result = _find_arn(v)
+                if result:
+                    return result
+        elif isinstance(obj, list):
+            for item in obj:
+                result = _find_arn(item)
+                if result:
+                    return result
+        return None
+
+    arn = _find_arn(state)
+    if arn:
+        return arn
     raise ValueError(
         "No deployed agent found in deployed-state.json. Run 'agentcore deploy -y' first."
     )
