@@ -353,6 +353,7 @@ if not st.session_state.logged_in:
 
                     # Commit to session state
                     st.session_state.jwt_token = token
+                    st.session_state.bearer_input = token  # pre-fill the token field
                     st.session_state.username = username
                     st.session_state.logged_in = True
                     st.session_state.agent_arn = agent_arn
@@ -405,7 +406,6 @@ with st.sidebar:
     st.caption("Auto-filled after login. Clear to test 403 rejection.")
     bearer_input = st.text_area(
         "Bearer Token",
-        value=st.session_state.jwt_token or "",
         height=80,
         key="bearer_input",
         label_visibility="collapsed",

@@ -299,6 +299,7 @@ if not st.session_state.logged_in:
                 with st.spinner("Authenticating with Cognito..."):
                     token = get_bearer_token(login_config)
                 st.session_state.jwt_token = token
+                st.session_state.bearer_input = token  # pre-fill token field
                 st.session_state.logged_in = True
                 st.session_state.username = username
 
@@ -364,7 +365,6 @@ with st.sidebar:
     st.caption("Auto-filled after login. Clear it to test 403 rejection.")
     bearer_input = st.text_area(
         "Bearer Token",
-        value=st.session_state.jwt_token or "",
         height=80,
         key="bearer_input",
         label_visibility="collapsed",
