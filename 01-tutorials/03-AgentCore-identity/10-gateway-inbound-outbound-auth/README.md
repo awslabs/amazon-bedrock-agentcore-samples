@@ -289,9 +289,3 @@ print("Cognito User Pool deleted.")
 ```
 
 ---
-
-## Next Steps
-
-- [Runtime Inbound and Outbound Auth](../09-runtime-inbound-outbound-auth/) — protect Runtime directly (no gateway)
-- [M2M and Auth Code flows](../11-m2m-authcode-runtime/) — client credentials and 3-legged OAuth flows
-- [EntraID IDP examples](../08-IDP-examples/EntraID/) — replace Cognito with Microsoft Entra ID

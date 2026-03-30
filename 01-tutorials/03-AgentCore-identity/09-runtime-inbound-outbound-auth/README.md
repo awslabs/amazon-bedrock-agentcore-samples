@@ -216,9 +216,3 @@ print("Cognito User Pool deleted.")
 | **Inbound JWT validation** | AgentCore Runtime checks `Authorization: Bearer <token>` against the Cognito JWKS endpoint before executing the agent |
 | **Outbound API key** | `@requires_api_key(provider_name="OutboundApiKey")` calls `bedrock-agentcore:GetResourceApiKey` + `secretsmanager:GetSecretValue` at runtime |
 | **Zero-secret agent code** | API keys live in Secrets Manager; agent code only sees them in-memory via the decorator |
-
-## Next Steps
-
-- [Gateway Inbound and Outbound Auth](../10-gateway-inbound-outbound-auth/) — protect a Gateway endpoint and add OAuth outbound auth to upstream targets
-- [M2M and Auth Code flows](../11-m2m-authcode-runtime/) — client credentials (2LO) and authorization code (3LO) flows
-- [EntraID IDP examples](../08-IDP-examples/EntraID/) — replace Cognito with Microsoft Entra ID

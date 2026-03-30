@@ -316,9 +316,3 @@ print("Cognito User Pool deleted.")
 | **Auth Code / 3LO** | `auth_flow="USER_FEDERATION"` — First call returns a consent URL via `on_auth_url` callback. After consent, AgentCore Identity stores tokens and refreshes automatically. |
 | **Session binding** | `oauth2_callback_server.py` verifies the OAuth callback came from the same user who invoked the agent, preventing CSRF/session fixation attacks. |
 | **Token storage** | All tokens are stored in AgentCore Identity (backed by Secrets Manager). The agent code only receives tokens in-memory via decorators. |
-
-## Next Steps
-
-- [Runtime Inbound + Outbound Auth](../09-runtime-inbound-outbound-auth/) — simpler API key outbound example
-- [Gateway Inbound + Outbound Auth](../10-gateway-inbound-outbound-auth/) — gateway-level auth
-- Replace Cognito with [EntraID](../08-IDP-examples/EntraID/) or [Okta](../08-IDP-examples/Okta/)
