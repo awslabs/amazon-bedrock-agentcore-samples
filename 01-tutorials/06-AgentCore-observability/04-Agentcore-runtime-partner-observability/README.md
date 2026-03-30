@@ -50,6 +50,10 @@ Each platform requires specific configuration:
 - Public and secret keys
 - Project configuration
 
+### Okahu
+- API key
+- Application configuration
+
 ## Cleanup
 
 After completing examples:
@@ -64,6 +68,7 @@ After completing examples:
 - [Braintrust Documentation](https://www.braintrust.dev/docs)
 - [Instana Documentation](https://www.ibm.com/docs/en/instana-observability/1.0.308?topic=overview)
 - [Langfuse Documentation](https://langfuse.com/docs)
+- [Okahu Documentation](https://docs.okahu.ai/)
 - [AgentCore Runtime Guide](https://docs.aws.amazon.com/bedrock-agentcore/latest/userguide/runtime.html)
 
 # Third-Party Observability for Amazon Bedrock AgentCore Agents
