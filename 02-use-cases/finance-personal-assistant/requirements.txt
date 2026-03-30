@@ -226,7 +226,7 @@ pydantic-core==2.33.2
     # via pydantic
 pydantic-settings==2.10.1
     # via mcp
-pygments==2.19.2
+pygments==2.20.0
     # via rich
 pyjwt==2.10.1
     # via strands-agents-tools
