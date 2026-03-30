@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Memory Agent{% endblock %}
+{% block content %}
+<div class="card">
+    <h1>🧠 Memory Agent</h1>
+    <p>Learns your style preferences over time and creates personalized presentations.</p>
+    <textarea id="request" rows="4" placeholder="Describe the presentation you want to create..."></textarea>
+    <br><br>
+    <button class="btn btn-primary" onclick="createPresentation()">Create Presentation</button>
+    <button class="btn btn-secondary" onclick="getPreferences()" style="margin-left:8px;">View My Preferences</button>
+    <button class="btn btn-secondary" onclick="deleteMemory()" style="margin-left:8px;">Clear Memory</button>
+    <div class="loading" id="loading">⏳ Generating presentation...</div>
+    <div id="result"></div>
+</div>
+<script>
+async function createPresentation() {
+    const req = document.getElementById('request').value.trim();
+    if (!req) { alert('Please enter a presentation request.'); return; }
+    document.getElementById('loading').style.display = 'block';
+    document.getElementById('result').style.display = 'none';
+    const resp = await fetch('/create-memory', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({request: req})
+    });
+    const data = await resp.json();
+    document.getElementById('loading').style.display = 'none';
+    const result = document.getElementById('result');
+    result.style.display = 'block';
+    result.textContent = data.error ? '❌ ' + data.error : '✅ ' + data.result;
+}
+async function getPreferences() {
+    const resp = await fetch('/get-preferences');
+    const data = await resp.json();
+    const result = document.getElementById('result');
+    result.style.display = 'block';
+    result.textContent = data.error ? '❌ ' + data.error : JSON.stringify(data.preferences, null, 2);
+}
+async function deleteMemory() {
+    if (!confirm('Clear all memory preferences?')) return;
+    const resp = await fetch('/delete-memory', {method: 'POST', headers: {'Content-Type': 'application/json'}});
+    const data = await resp.json();
+    const result = document.getElementById('result');
+    result.style.display = 'block';
+    result.textContent = data.error ? '❌ ' + data.error : '✅ ' + data.message;
+}
+</script>
+{% endblock %}

@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Basic Agent{% endblock %}
+{% block content %}
+<div class="card">
+    <h1>🤖 Basic Agent</h1>
+    <p>Creates presentations using default settings. No memory of past preferences.</p>
+    <textarea id="request" rows="4" placeholder="Describe the presentation you want to create..."></textarea>
+    <br><br>
+    <button class="btn btn-secondary" onclick="createPresentation()">Create Presentation</button>
+    <div class="loading" id="loading">⏳ Generating presentation...</div>
+    <div id="result"></div>
+</div>
+<script>
+async function createPresentation() {
+    const req = document.getElementById('request').value.trim();
+    if (!req) { alert('Please enter a presentation request.'); return; }
+    document.getElementById('loading').style.display = 'block';
+    document.getElementById('result').style.display = 'none';
+    const resp = await fetch('/create-basic', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({request: req})
+    });
+    const data = await resp.json();
+    document.getElementById('loading').style.display = 'none';
+    const result = document.getElementById('result');
+    result.style.display = 'block';
+    result.textContent = data.error ? '❌ ' + data.error : '✅ ' + data.result;
+}
+</script>
+{% endblock %}

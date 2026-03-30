@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Compare Agents{% endblock %}
+{% block content %}
+<div class="card">
+    <h1>⚖️ Compare Agents</h1>
+    <p>Run both agents with the same request to see how memory improves results over time.</p>
+    <textarea id="request" rows="4" placeholder="Describe the presentation you want to create..."></textarea>
+    <br><br>
+    <button class="btn btn-primary" onclick="compareAgents()">Compare Both Agents</button>
+    <div class="loading" id="loading">⏳ Running both agents...</div>
+</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:0;">
+    <div class="card" id="basic-card" style="display:none;">
+        <h2>🤖 Basic Agent</h2>
+        <div id="basic-result"></div>
+    </div>
+    <div class="card" id="memory-card" style="display:none;">
+        <h2>🧠 Memory Agent</h2>
+        <div id="memory-result"></div>
+    </div>
+</div>
+<script>
+async function compareAgents() {
+    const req = document.getElementById('request').value.trim();
+    if (!req) { alert('Please enter a presentation request.'); return; }
+    document.getElementById('loading').style.display = 'block';
+    document.getElementById('basic-card').style.display = 'none';
+    document.getElementById('memory-card').style.display = 'none';
+    const resp = await fetch('/compare-agents', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({request: req})
+    });
+    const data = await resp.json();
+    document.getElementById('loading').style.display = 'none';
+    if (data.error) { alert('❌ ' + data.error); return; }
+    document.getElementById('basic-card').style.display = 'block';
+    document.getElementById('memory-card').style.display = 'block';
+    document.getElementById('basic-result').textContent = data.basic_result.result;
+    document.getElementById('memory-result').textContent = data.memory_result.result;
+}
+</script>
+{% endblock %}
