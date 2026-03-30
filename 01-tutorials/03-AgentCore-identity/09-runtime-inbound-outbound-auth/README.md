@@ -123,19 +123,17 @@ agentcore add agent \
 
 ## Step 5: Add Outbound Identity Credential
 
-The agent calls the [Google Maps Weather API](https://developers.google.com/maps/documentation/weather/overview) which requires an API key. Get one:
+The agent calls the [OpenWeatherMap API](https://openweathermap.org/api) which requires an API key. Get a free one:
 
-1. Go to [Google Cloud Console](https://console.cloud.google.com/) and create/select a project
-2. Enable the **Weather API** and **Geocoding API** (APIs & Services > Library)
-3. Create an API key (APIs & Services > Credentials > Create Credentials > API key)
-4. See the [getting started guide](https://developers.google.com/maps/documentation/weather/get-api-key)
+1. Sign up at [openweathermap.org](https://home.openweathermap.org/users/sign_up) (free tier)
+2. Go to [API keys](https://home.openweathermap.org/api_keys) and copy your key
 
 Store it securely in AgentCore Identity:
 
 ```bash
 agentcore add credential \
   --name OutboundApiKey \
-  --api-key YOUR_GOOGLE_MAPS_API_KEY
+  --api-key YOUR_OPENWEATHERMAP_API_KEY
 ```
 
 > The CLI stores the key in AWS Secrets Manager via AgentCore Identity. At runtime, the agent retrieves it with `@requires_api_key("OutboundApiKey")`. The key never appears in code or environment variables.

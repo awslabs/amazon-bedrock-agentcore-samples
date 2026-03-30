@@ -31,7 +31,7 @@ async def _fetch_api_key(*, api_key: str) -> None:
 
 @tool
 def get_weather(location: str) -> str:
-    """Get the current weather for a location using Google Maps Weather API.
+    """Get the current weather using OpenWeatherMap API.
 
     The API key is securely retrieved from AgentCore Identity at runtime
     via @requires_api_key. It is never hardcoded or stored in env vars.
@@ -44,41 +44,26 @@ def get_weather(location: str) -> str:
         return "API key not available. Run setup and deploy first."
 
     try:
-        # First geocode the location to get lat/lng
-        geo_resp = httpx.get(
-            "https://maps.googleapis.com/maps/api/geocode/json",
-            params={"address": location, "key": api_key},
+        resp = httpx.get(
+            "https://api.openweathermap.org/data/2.5/weather",
+            params={"q": location, "appid": api_key, "units": "imperial"},
             timeout=10,
         )
-        geo_resp.raise_for_status()
-        geo_data = geo_resp.json()
-        if not geo_data.get("results"):
-            return f"Location '{location}' not found."
-        lat = geo_data["results"][0]["geometry"]["location"]["lat"]
-        lng = geo_data["results"][0]["geometry"]["location"]["lng"]
-        formatted = geo_data["results"][0].get("formatted_address", location)
-
-        # Get weather for the coordinates
-        weather_resp = httpx.post(
-            f"https://weather.googleapis.com/v1/currentConditions:lookup?key={api_key}",
-            json={"location": {"latitude": lat, "longitude": lng}},
-            timeout=10,
-        )
-        weather_resp.raise_for_status()
-        w = weather_resp.json()
+        resp.raise_for_status()
+        data = resp.json()
 
         return json.dumps({
-            "location": formatted,
-            "temperature_f": round(w.get("temperature", {}).get("degrees", 0) * 9/5 + 32),
-            "temperature_c": round(w.get("temperature", {}).get("degrees", 0)),
-            "condition": w.get("weatherCondition", {}).get("description", {}).get("text", "N/A"),
-            "humidity": f"{w.get('relativeHumidity', 'N/A')}%",
-            "wind_mph": round(w.get("wind", {}).get("speed", {}).get("value", 0) * 0.621),
+            "location": f"{data.get('name', location)}, {data.get('sys', {}).get('country', '')}",
+            "temperature_f": round(data["main"]["temp"]),
+            "feels_like_f": round(data["main"]["feels_like"]),
+            "condition": data["weather"][0]["description"],
+            "humidity": f"{data['main']['humidity']}%",
+            "wind_mph": round(data["wind"]["speed"]),
             "api_key_source": "AgentCore Identity (retrieved at runtime via @requires_api_key)",
         }, indent=2)
     except httpx.HTTPStatusError as exc:
-        if exc.response.status_code in (401, 403):
-            return f"Invalid or unauthorized API key ({exc.response.status_code}). Check the OutboundApiKey credential in AgentCore Identity."
+        if exc.response.status_code == 401:
+            return "Invalid API key. Check the OutboundApiKey credential in AgentCore Identity."
         return f"Weather API error: {exc.response.status_code} {exc.response.text[:200]}"
     except Exception as exc:
         return f"Weather API error: {exc}"
