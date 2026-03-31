@@ -29,7 +29,7 @@ sequenceDiagram
 
     %% 2. Generate authorization URL
     App->>ID: GetResourceOAuth2Token<br/>(providerName, workload_access_token, scopes)
-    ID-->>App: GitHub authorization URL + session URI
+    ID-->>App: GitHub authorization URL + session URI<br/>(includes Callback URL for GitHub redirect)
     App-->>ALB: GitHub authorization URL + session URI
     ALB-->>U: GitHub authorization URL + session URI
 
@@ -37,11 +37,11 @@ sequenceDiagram
 
     %% 3. Authorize & obtain access token
     U->>OAuth: Sign in & authorize agent access
-    OAuth-->>ID: GitHub authorization code
-    ID-->>ALB: Redirect to callback endpoint<br/>with session URI
-    ALB->>App: Forward to /oauth2/callback (with headers)
+    OAuth-->>ID: Authorization code<br/>(to Callback URL on AgentCore Identity)
+    ID-->>ALB: Redirect to Session Binding URL<br/>with session URI
+    ALB->>App: Forward to /oauth2/session-binding (with headers)
     activate App
-    Note over App: OAuth Callback Service<br/>(separate ECS container)
+    Note over App: Session Binding Service<br/>(separate ECS container)
     App->>ID: CompleteResourceTokenAuth request<br/>with currently logged-in user and session URI
     ID->>OAuth: Validate logged-in user vs session<br/>Request OAuth2 access token (with authorization code)
     OAuth-->>ID: GitHub OAuth2 access token

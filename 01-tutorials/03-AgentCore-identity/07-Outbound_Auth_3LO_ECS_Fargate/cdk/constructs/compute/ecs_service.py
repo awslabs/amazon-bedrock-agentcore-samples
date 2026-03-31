@@ -1,6 +1,6 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: MIT-0
-"""ECS service construct for agent and OAuth callback services."""
+"""ECS service construct for agent and session binding services."""
 
 from aws_cdk import Aws, Duration, RemovalPolicy
 from aws_cdk import aws_ec2 as ec2
@@ -17,7 +17,7 @@ from config import OidcConfig
 
 
 class EcsService(Construct):
-    """ECS Cluster with Agent and OAuth Callback services."""
+    """ECS Cluster with Agent and Session Binding services."""
 
     def __init__(
         self,
@@ -137,7 +137,8 @@ class EcsService(Construct):
                             f":workload-identity-directory/default/workload-identity/{workload_identity_name}",
                             f"arn:aws:bedrock-agentcore:{identity_aws_region}:{account_id}"
                             f":token-vault/default/oauth2credentialprovider/{github_provider_name}",
-                            f"arn:aws:bedrock-agentcore:{identity_aws_region}:{account_id}" ":token-vault/default",
+                            f"arn:aws:bedrock-agentcore:{identity_aws_region}:{account_id}"
+                            ":token-vault/default",
                         ],
                     ),
                 ],
@@ -156,16 +157,16 @@ class EcsService(Construct):
             )
         )
 
-        self.oauth_callback_task_role = iam.Role(
+        self.session_binding_task_role = iam.Role(
             self,
-            "OAuthCallbackTaskRole",
+            "SessionBindingTaskRole",
             assumed_by=iam.ServicePrincipal("ecs-tasks.amazonaws.com"),
         )
 
-        self.oauth_callback_task_role.attach_inline_policy(
+        self.session_binding_task_role.attach_inline_policy(
             iam.Policy(
                 self,
-                "OAuthCallbackAgentCorePolicy",
+                "SessionBindingAgentCorePolicy",
                 statements=[
                     iam.PolicyStatement(
                         sid="AllowCompleteResourceTokenAuth",
@@ -176,7 +177,8 @@ class EcsService(Construct):
                             ":workload-identity-directory/default",
                             f"arn:aws:bedrock-agentcore:{identity_aws_region}:{account_id}"
                             f":workload-identity-directory/default/workload-identity/{workload_identity_name}",
-                            f"arn:aws:bedrock-agentcore:{identity_aws_region}:{account_id}" ":token-vault/default",
+                            f"arn:aws:bedrock-agentcore:{identity_aws_region}:{account_id}"
+                            ":token-vault/default",
                             f"arn:aws:bedrock-agentcore:{identity_aws_region}:{account_id}"
                             f":token-vault/default/oauth2credentialprovider/{github_provider_name}",
                         ],
@@ -185,7 +187,7 @@ class EcsService(Construct):
             )
         )
 
-        self.oauth_callback_task_role.add_to_policy(
+        self.session_binding_task_role.add_to_policy(
             iam.PolicyStatement(
                 sid="AllowSecretsManagerAccess",
                 effect=iam.Effect.ALLOW,
@@ -225,7 +227,9 @@ class EcsService(Construct):
                 platform=ecr_assets.Platform.LINUX_ARM64,
                 file="runtime/Dockerfile",
             ),
-            logging=ecs.LogDrivers.aws_logs(stream_prefix="agent", log_group=agent_log_group),
+            logging=ecs.LogDrivers.aws_logs(
+                stream_prefix="agent", log_group=agent_log_group
+            ),
             environment=environment_vars,
             health_check=ecs.HealthCheck(
                 command=["CMD-SHELL", "curl -f http://localhost:8080/ping || exit 1"],
@@ -237,18 +241,18 @@ class EcsService(Construct):
         )
         self.agent_container.add_port_mappings(ecs.PortMapping(container_port=8080))
 
-        oauth_callback_log_group = logs.LogGroup(
+        session_binding_log_group = logs.LogGroup(
             self,
-            "OAuthCallbackLogGroup",
+            "SessionBindingLogGroup",
             retention=logs.RetentionDays.ONE_WEEK,
             removal_policy=RemovalPolicy.DESTROY,
             encryption_key=kms_key,
         )
 
-        self.oauth_callback_task_definition = ecs.FargateTaskDefinition(
+        self.session_binding_task_definition = ecs.FargateTaskDefinition(
             self,
-            "OAuthCallbackTaskDef",
-            task_role=self.oauth_callback_task_role,
+            "SessionBindingTaskDef",
+            task_role=self.session_binding_task_role,
             cpu=256,
             memory_limit_mib=512,
             runtime_platform=ecs.RuntimePlatform(
@@ -257,28 +261,34 @@ class EcsService(Construct):
             ),
         )
 
-        self.oauth_callback_container = self.oauth_callback_task_definition.add_container(
-            "OAuthCallback",
-            image=ecs.ContainerImage.from_asset(
-                "backend",
-                asset_name=f"oauth-callback-{suffix}",
-                platform=ecr_assets.Platform.LINUX_ARM64,
-                file="oauth_callback/Dockerfile",
-            ),
-            logging=ecs.LogDrivers.aws_logs(stream_prefix="oauth-callback", log_group=oauth_callback_log_group),
-            environment=environment_vars,
-            health_check=ecs.HealthCheck(
-                command=[
-                    "CMD-SHELL",
-                    "curl -f http://localhost:8080/ping || exit 1",
-                ],
-                interval=Duration.seconds(30),
-                timeout=Duration.seconds(5),
-                retries=3,
-                start_period=Duration.seconds(60),
-            ),
+        self.session_binding_container = (
+            self.session_binding_task_definition.add_container(
+                "SessionBinding",
+                image=ecs.ContainerImage.from_asset(
+                    "backend",
+                    asset_name=f"session-binding-{suffix}",
+                    platform=ecr_assets.Platform.LINUX_ARM64,
+                    file="session_binding/Dockerfile",
+                ),
+                logging=ecs.LogDrivers.aws_logs(
+                    stream_prefix="session-binding", log_group=session_binding_log_group
+                ),
+                environment=environment_vars,
+                health_check=ecs.HealthCheck(
+                    command=[
+                        "CMD-SHELL",
+                        "curl -f http://localhost:8080/ping || exit 1",
+                    ],
+                    interval=Duration.seconds(30),
+                    timeout=Duration.seconds(5),
+                    retries=3,
+                    start_period=Duration.seconds(60),
+                ),
+            )
         )
-        self.oauth_callback_container.add_port_mappings(ecs.PortMapping(container_port=8080))
+        self.session_binding_container.add_port_mappings(
+            ecs.PortMapping(container_port=8080)
+        )
 
         self.agent_service = ecs.FargateService(
             self,
@@ -287,17 +297,21 @@ class EcsService(Construct):
             task_definition=self.agent_task_definition,
             desired_count=1,
             security_groups=[self.security_group],
-            vpc_subnets=ec2.SubnetSelection(subnet_type=ec2.SubnetType.PRIVATE_WITH_EGRESS),
+            vpc_subnets=ec2.SubnetSelection(
+                subnet_type=ec2.SubnetType.PRIVATE_WITH_EGRESS
+            ),
         )
 
-        self.oauth_callback_service = ecs.FargateService(
+        self.session_binding_service = ecs.FargateService(
             self,
-            "OAuthCallbackService",
+            "SessionBindingService",
             cluster=self.cluster,
-            task_definition=self.oauth_callback_task_definition,
+            task_definition=self.session_binding_task_definition,
             desired_count=1,
             security_groups=[self.security_group],
-            vpc_subnets=ec2.SubnetSelection(subnet_type=ec2.SubnetType.PRIVATE_WITH_EGRESS),
+            vpc_subnets=ec2.SubnetSelection(
+                subnet_type=ec2.SubnetType.PRIVATE_WITH_EGRESS
+            ),
         )
 
         agent_target_group = elbv2.ApplicationTargetGroup(
@@ -309,29 +323,37 @@ class EcsService(Construct):
             health_check=elbv2.HealthCheck(path="/ping"),
             vpc=vpc,
         )
-        # Agent Target Group
-        callback_target_group = elbv2.ApplicationTargetGroup(
+        # Session Binding Target Group
+        session_binding_target_group = elbv2.ApplicationTargetGroup(
             self,
-            "CallbackTargetGroup",
+            "SessionBindingTargetGroup",
             port=8080,
             protocol=elbv2.ApplicationProtocol.HTTP,
-            targets=[self.oauth_callback_service],
+            targets=[self.session_binding_service],
             health_check=elbv2.HealthCheck(path="/ping"),
             vpc=vpc,
         )
 
-        oidc_credentials = secretsmanager.Secret.from_secret_name_v2(self, "OIDCCredentials", oidc_config.secret_name)
+        oidc_credentials = secretsmanager.Secret.from_secret_name_v2(
+            self, "OIDCCredentials", oidc_config.secret_name
+        )
 
         listener.add_action(
             "EntraIdAction",
-            priority=10,
-            conditions=[elbv2.ListenerCondition.path_patterns(["/invocations", "/docs", "/openapi.json"])],
+            priority=11,
+            conditions=[
+                elbv2.ListenerCondition.path_patterns(
+                    ["/invocations", "/docs", "/openapi.json"]
+                )
+            ],
             action=elbv2.ListenerAction.authenticate_oidc(
                 issuer=oidc_config.issuer,
                 authorization_endpoint=oidc_config.authorization_endpoint,
                 token_endpoint=oidc_config.token_endpoint,
                 user_info_endpoint=oidc_config.user_info_endpoint,
-                client_id=oidc_credentials.secret_value_from_json("client_id").to_string(),
+                client_id=oidc_credentials.secret_value_from_json(
+                    "client_id"
+                ).to_string(),
                 client_secret=oidc_credentials.secret_value_from_json("client_secret"),
                 scope=oidc_config.scope,
                 session_timeout=Duration.minutes(5),
@@ -340,19 +362,23 @@ class EcsService(Construct):
         )
 
         listener.add_action(
-            "CallbackAction",
-            priority=21,
-            conditions=[elbv2.ListenerCondition.path_patterns(["/oauth2/callback"])],
+            "SessionBindingAction",
+            priority=22,
+            conditions=[
+                elbv2.ListenerCondition.path_patterns(["/oauth2/session-binding"])
+            ],
             action=elbv2.ListenerAction.authenticate_oidc(
                 issuer=oidc_config.issuer,
                 authorization_endpoint=oidc_config.authorization_endpoint,
                 token_endpoint=oidc_config.token_endpoint,
                 user_info_endpoint=oidc_config.user_info_endpoint,
-                client_id=oidc_credentials.secret_value_from_json("client_id").to_string(),
+                client_id=oidc_credentials.secret_value_from_json(
+                    "client_id"
+                ).to_string(),
                 client_secret=oidc_credentials.secret_value_from_json("client_secret"),
                 scope=oidc_config.scope,
                 session_timeout=Duration.minutes(5),
-                next=elbv2.ListenerAction.forward([callback_target_group]),
+                next=elbv2.ListenerAction.forward([session_binding_target_group]),
             ),
         )
 

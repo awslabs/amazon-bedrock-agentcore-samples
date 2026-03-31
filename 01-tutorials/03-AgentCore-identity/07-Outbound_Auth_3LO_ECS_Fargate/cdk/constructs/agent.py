@@ -1,6 +1,6 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: MIT-0
-"""Main Agent construct for ECS service with OAuth callback."""
+"""Main Agent construct for ECS service with session binding."""
 
 from aws_cdk import CfnOutput, Stack
 from aws_cdk import aws_certificatemanager as acm
@@ -17,7 +17,7 @@ from .storage import Storage
 
 
 class Agent(Construct):
-    """Main Agent construct that provisions ECS service with OAuth callback."""
+    """Main Agent construct that provisions ECS service with session binding."""
 
     def __init__(
         self,
@@ -89,7 +89,7 @@ class Agent(Construct):
                 "IDENTITY_AWS_REGION": config.identity_aws_region,
                 "ENVIRONMENT": config.suffix,
                 "S3_BUCKET_NAME": storage.sessions_bucket.bucket_name,
-                "BASE_URL": f"https://{app_domain}",
+                "SESSION_BINDING_URL": f"https://{app_domain}/oauth2/session-binding",
                 "INFERENCE_PROFILE_ID": config.inference_profile_id,
                 "GITHUB_PROVIDER_NAME": config.github_provider_name,
                 "GITHUB_API_BASE": config.github_api_base,
@@ -105,7 +105,7 @@ class Agent(Construct):
 
         storage.sessions_bucket.grant_read_write(ecs_service.agent_task_role)
 
-        identity.kms_key.grant_encrypt_decrypt(ecs_service.oauth_callback_task_role)
+        identity.kms_key.grant_encrypt_decrypt(ecs_service.session_binding_task_role)
 
         route53.ARecord(
             self,
