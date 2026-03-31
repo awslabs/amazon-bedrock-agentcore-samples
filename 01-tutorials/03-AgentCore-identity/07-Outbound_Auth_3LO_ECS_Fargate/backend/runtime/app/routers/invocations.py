@@ -27,7 +27,9 @@ async def invoke_agent(
 ) -> StreamingResponse:
     """Invoke agent with streaming response."""
     try:
-        agentcore = boto3.client("bedrock-agentcore", region_name=settings.identity_aws_region)
+        agentcore = boto3.client(
+            "bedrock-agentcore", region_name=settings.identity_aws_region
+        )
         response = agentcore.get_workload_access_token_for_user_id(
             workloadName=settings.workload_identity_name, userId=user_id
         )
@@ -45,4 +47,6 @@ async def invoke_agent(
 
     except Exception as e:
         logger.exception("Agent invocation failed")
-        raise HTTPException(status_code=500, detail=f"Agent invocation failed: {str(e)}") from e
+        raise HTTPException(
+            status_code=500, detail=f"Agent invocation failed: {str(e)}"
+        ) from e

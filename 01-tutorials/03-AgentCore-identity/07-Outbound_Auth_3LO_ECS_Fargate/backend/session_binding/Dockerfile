@@ -12,13 +12,13 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y curl && rm -rf /v
 RUN adduser --disabled-password --gecos "" appuser
 
 # Copy uv-generated requirements and install
-COPY oauth_callback/requirements.txt .
+COPY session_binding/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code preserving structure
-COPY oauth_callback/app/ ./backend/oauth_callback/app/
+COPY session_binding/app/ ./backend/session_binding/app/
 COPY shared/ ./backend/shared/
-COPY oauth_callback/main.py .
+COPY session_binding/main.py .
 
 USER appuser
 

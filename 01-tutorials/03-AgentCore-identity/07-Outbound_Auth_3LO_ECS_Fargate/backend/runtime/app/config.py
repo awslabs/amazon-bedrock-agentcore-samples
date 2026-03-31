@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     identity_aws_region: str = "eu-central-1"
     s3_bucket_name: str
     inference_profile_id: str
-    base_url: str
+    session_binding_url: str
     github_provider_name: str = "github"
     github_api_base: str = "https://api.github.com"
     workload_identity_name: str

@@ -1,14 +1,14 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: MIT-0
 
-"""OAuth callback service - FastAPI application."""
+"""Session binding service - FastAPI application."""
 
 import logging
 
 from fastapi import FastAPI
 
-from backend.oauth_callback.app.config import get_settings
-from backend.oauth_callback.app.routers import callback, health
+from backend.session_binding.app.config import get_settings
+from backend.session_binding.app.routers import session_binding, health
 
 settings = get_settings()
 
@@ -19,10 +19,10 @@ logging.basicConfig(
 )
 
 app = FastAPI(
-    title="OAuth Callback Service",
-    description="Handles OAuth2 3LO callbacks from AgentCore Identity",
+    title="Session Binding Service",
+    description="Handles OAuth2 3LO session binding from AgentCore Identity",
     version="1.0.0",
 )
 
-app.include_router(callback.router)
+app.include_router(session_binding.router)
 app.include_router(health.router)

@@ -20,6 +20,7 @@ This folder contains end-to-end applications that demonstrate how to apply Amazo
 * **[SRE Agent](./SRE-agent/)**: Site reliability engineering assistant with multi-agent LangGraph workflows
 * **[Text to Python IDE](./text-to-python-ide/)**: Code generation and execution environment with AgentCore Code Interpreter
 * **[Video Games Sales Assistant](./video-games-sales-assistant/)**: Data analysis assistant with Amplify frontend and CDK deployment
+* **[Claude Code Gateway MCP Server](./claude-code-gateway-mcp-server/)**: Integrate Claude Code with MCP Server using AgentCore Gateway for dynamic tool loading and centralized access
 
 ## 🏗️ Architecture Patterns
 

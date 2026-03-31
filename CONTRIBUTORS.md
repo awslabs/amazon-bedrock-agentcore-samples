@@ -101,3 +101,7 @@
 - Sebastian Mathalikunnel (smathalikunnel)
 - Diego Brasil
 - Dumitru Pascu (dumip)
+- Rajesh Sitaraman (rjesh-git)
+- Diego Brasil
+- Dumitru Pascu (dumip)
+- Eitan Sela

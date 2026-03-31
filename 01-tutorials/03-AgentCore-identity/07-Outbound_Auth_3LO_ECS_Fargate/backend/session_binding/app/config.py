@@ -13,7 +13,7 @@ class Settings(BaseSettings):
 
     log_level: str = "INFO"
     environment: str = "unknown"
-    service_name: str = "oauth-callback"
+    service_name: str = "session-binding"
     aws_region: str = "eu-central-1"
     identity_aws_region: str | None = None
 
