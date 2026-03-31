@@ -27,13 +27,7 @@ Text-to-SQL Data Analyst Assistant enables users to:
 
 ## 🏗️ Architecture
 
-```
-User → CloudFront → API Gateway → Lambda → AgentCore Runtime
-                                                ├── Strands Agent (Claude Sonnet 4)
-                                                ├── discover_schema() → Glue Data Catalog
-                                                ├── execute_query() → Athena → S3 (Parquet)
-                                                └── AgentCore Memory (STM + LTM)
-```
+![Text-to-SQL Data Analyst Architecture](docs/architecture.png)
 
 ### Component Details
 
