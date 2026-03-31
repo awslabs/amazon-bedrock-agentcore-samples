@@ -88,82 +88,7 @@ Note the values printed for Step 6:
 
 ---
 
-## Step 3: Set Up M2M Credential Provider
-
-### Option A — CLI (recommended)
-
-```bash
-agentcore add credential \
-  --name M2MProvider \
-  --type oauth \
-  --discovery-url https://YOUR_AUTH_SERVER/.well-known/openid-configuration \
-  --client-id YOUR_M2M_CLIENT_ID \
-  --client-secret YOUR_M2M_CLIENT_SECRET \
-  --scopes api:read,api:write
-```
-
-### Option B — Script
-
-Create a `.env` file:
-
-```bash
-M2M_CLIENT_ID=your-client-id
-M2M_CLIENT_SECRET=your-client-secret
-M2M_DISCOVERY_URL=https://your-auth-server/.well-known/openid-configuration
-```
-
-Then run:
-
-```bash
-python setup_oauth_providers.py
-```
-
----
-
-## Step 4: Set Up Google OAuth2 Provider (3LO / Auth Code)
-
-### 4a. Configure Google Cloud
-
-1. Go to [Google Cloud Console](https://console.cloud.google.com/) and create a project (or select existing)
-2. Enable **Google Calendar API** (APIs & Services > Library > Google Calendar API > Enable)
-3. Configure OAuth Consent Screen (APIs & Services > OAuth consent screen):
-   - App name, support email, developer contact
-   - Under **Scopes**: add `https://www.googleapis.com/auth/calendar.readonly`
-   - Under **Test users**: add your Gmail address
-4. Create OAuth 2.0 credentials (APIs & Services > Credentials > Create Credentials > OAuth client ID):
-   - Application type: **Web application**
-   - Note the **Client ID** and **Client Secret**
-
-### 4b. Create the Google 3LO Credential Provider
-
-Add to your `.env` file:
-
-```bash
-GOOGLE_CLIENT_ID=your-google-client-id
-GOOGLE_CLIENT_SECRET=your-google-client-secret
-```
-
-Run the setup script:
-
-```bash
-python setup_oauth_providers.py
-```
-
-The script prints:
-```
-IMPORTANT: Register this callback URL in Google Cloud Console:
-  Callback URL: https://agentcore.amazonaws.com/identities/.../callback
-```
-
-### 4c. Register the Callback URL
-
-1. Go to Google Cloud Console > Credentials > your OAuth 2.0 Client ID
-2. Under **Authorised redirect URIs**, add the callback URL printed above
-3. Click **Save**
-
----
-
-## Step 5: Create the AgentCore Project
+## Step 3: Create the AgentCore Project
 
 ```bash
 agentcore create --name M2MAuthDemo --defaults --no-agent
@@ -182,7 +107,38 @@ EOF
 
 ---
 
-## Step 6: Add the Agent
+## Step 4: Set Up OAuth Credential Providers
+
+Create the M2M and 3LO credential providers. Create a `.env` file with your OAuth credentials:
+
+```bash
+# For M2M — use the Cognito machine client from Step 2
+M2M_CLIENT_ID=YOUR_MACHINE_CLIENT_ID
+M2M_CLIENT_SECRET=YOUR_MACHINE_CLIENT_SECRET
+M2M_DISCOVERY_URL=https://cognito-idp.<region>.amazonaws.com/<pool_id>/.well-known/openid-configuration
+
+# For GitHub 3LO (optional)
+GITHUB_CLIENT_ID=your-github-client-id
+GITHUB_CLIENT_SECRET=your-github-client-secret
+
+# For Google 3LO (optional)
+GOOGLE_CLIENT_ID=your-google-client-id
+GOOGLE_CLIENT_SECRET=your-google-client-secret
+```
+
+Then run the setup script from the sample root:
+
+```bash
+cd ..
+python setup_oauth_providers.py
+cd M2MAuthDemo
+```
+
+The script creates the credential providers in AgentCore Identity and prints callback URLs. Register those URLs in your GitHub OAuth App and/or Google Cloud Console.
+
+---
+
+## Step 5: Add the Agent
 
 ```bash
 agentcore add agent \
@@ -202,7 +158,7 @@ Replace `YOUR_COGNITO_DISCOVERY_URL` and `YOUR_COGNITO_CLIENT_ID` with the value
 
 ---
 
-## Step 7: Deploy
+## Step 6: Deploy
 
 ```bash
 agentcore deploy -y
@@ -210,7 +166,7 @@ agentcore deploy -y
 
 ---
 
-## Step 8: Post-Deploy Configuration
+## Step 7: Post-Deploy Configuration
 
 The CLI now applies JWT auth at deploy time. Run this post-deploy script to attach the required IAM permissions, KMS access for the token vault, and register callback URLs for 3LO flows:
 
@@ -223,7 +179,7 @@ Wait ~30 seconds for changes to propagate.
 
 ---
 
-## Step 9: Test M2M Flow
+## Step 8: Test M2M Flow
 
 The M2M tool calls the [OpenWeatherMap API](https://openweathermap.org/api) using a client credentials token. If you completed Sample 09, you already have an API key. Set it as an environment variable on the deployed runtime:
 
@@ -252,7 +208,7 @@ The M2M token is fetched silently using client credentials — no browser intera
 
 ---
 
-## Step 10: Test Auth Code (3LO) Flow
+## Step 9: Test Auth Code (3LO) Flow
 
 ```bash
 python invoke.py --flow authcode
@@ -305,7 +261,7 @@ Log in, select a flow (M2M / GitHub 3LO / Google 3LO), then use the chat interfa
 
 ---
 
-## Step 11: Cleanup
+## Step 10: Cleanup
 
 ```bash
 cd M2MAuthDemo
