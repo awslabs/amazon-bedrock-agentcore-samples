@@ -30,7 +30,7 @@ def requires_access_token(
     scopes: list[str],
     auth_flow: Literal["M2M", "USER_FEDERATION"],
     workload_access_token: str | None = None,
-    base_url: str | None = None,
+    session_binding_url: str | None = None,
     on_auth_url: Callable[[str], Any] | None = None,
     force_authentication: bool = False,
     token_poller: TokenPoller | None = None,
@@ -46,9 +46,8 @@ def requires_access_token(
         scopes: OAuth2 scopes to request
         auth_flow: Authentication flow type ("M2M" or "USER_FEDERATION")
         workload_access_token: The workload access token (explicit, not from context)
-        base_url: OAuth2 callback URL (base URL, correlation ID added if user_id provided)
-        user_id: User ID for correlation ID generation (if provided, appends correlation to callback_url)
-        on_auth_url: Callback for handling authorization URLs
+        session_binding_url: Session Binding URL pointing to the customer-managed service that completes the session binding
+        on_auth_url: Handler invoked with the authorization URL when user authorization is required
         force_authentication: Force re-authentication
         token_poller: Custom token poller implementation
         custom_state: State for callback verification
@@ -74,7 +73,7 @@ def requires_access_token(
                     agent_identity_token=workload_access_token,
                     scopes=scopes,
                     auth_flow=auth_flow,
-                    callback_url=base_url + "/oauth2/callback",
+                    callback_url=session_binding_url,
                     on_auth_url=on_auth_url,
                     force_authentication=force_authentication,
                     token_poller=token_poller,

@@ -9,7 +9,9 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class OidcConfig(BaseSettings):
     """OIDC configuration for ALB authentication. Loaded from environment variables or .env file."""
 
-    model_config = SettingsConfigDict(env_prefix="OIDC_", env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_prefix="OIDC_", env_file=".env", env_file_encoding="utf-8", extra="ignore"
+    )
 
     issuer: str = Field(description="OIDC issuer URL")
     authorization_endpoint: str = Field(description="Authorization endpoint URL")
@@ -28,7 +30,9 @@ class OidcConfig(BaseSettings):
 class DnsConfig(BaseSettings):
     """DNS configuration for Route 53. Loaded from environment variables or .env file."""
 
-    model_config = SettingsConfigDict(env_prefix="DNS_", env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_prefix="DNS_", env_file=".env", env_file_encoding="utf-8", extra="ignore"
+    )
 
     domain_name: str = Field(description="Domain name for the application")
     hosted_zone_id: str = Field(description="Route53 hosted zone ID")
@@ -37,8 +41,12 @@ class DnsConfig(BaseSettings):
 class CdkConfig(BaseModel):
     """CDK deployment configuration."""
 
-    aws_region: str = Field(default="eu-west-1", description="AWS region for main stack deployment")
-    identity_aws_region: str = Field(default="eu-central-1", description="AWS region for identity stack deployment")
+    aws_region: str = Field(
+        default="eu-west-1", description="AWS region for main stack deployment"
+    )
+    identity_aws_region: str = Field(
+        default="eu-central-1", description="AWS region for identity stack deployment"
+    )
     aws_account: str | None = Field(default=None, description="AWS account ID")
     suffix: str = Field(default="sample", description="Suffix for resource naming")
 
