@@ -181,11 +181,15 @@ Wait ~30 seconds for changes to propagate.
 
 ## Step 8: Test M2M Flow
 
-The M2M tool calls the [OpenWeatherMap API](https://openweathermap.org/api) using a client credentials token. If you completed Sample 09, you already have an API key. Set it as an environment variable on the deployed runtime:
+The M2M tool calls the [OpenWeatherMap API](https://openweathermap.org/api) using a client credentials token plus an API key from AgentCore Identity.
+
+If you already completed [Sample 09](../09-runtime-inbound-outbound-auth/), the `OutboundApiKey` credential already exists. Otherwise, get a free API key at [openweathermap.org](https://home.openweathermap.org/users/sign_up) and add it:
 
 ```bash
-# Add your OpenWeatherMap API key (same key from Sample 09, or get a free one at openweathermap.org)
-# The key is passed as an env var to the runtime
+cd M2MAuthDemo
+agentcore add credential --name OutboundApiKey --api-key YOUR_OPENWEATHERMAP_KEY
+agentcore deploy -y
+cd ..
 ```
 
 Then test:
