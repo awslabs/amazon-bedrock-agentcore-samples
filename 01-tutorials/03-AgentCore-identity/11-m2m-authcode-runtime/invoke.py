@@ -147,8 +147,8 @@ def invoke(client, agent_arn: str, prompt: str, bearer_token: str, user_id: str,
 
 def test_m2m(client, agent_arn: str, bearer_token: str, config: dict):
     print("\n=== M2M Flow Test ===")
-    print("The agent will call an internal API using client credentials (no user consent needed).")
-    prompt = "Check the status of the internal API at /api/v1/status"
+    print("The agent will get weather data using M2M client credentials (no user consent needed).")
+    prompt = "What is the weather in Seattle?"
     print(f"Prompt: '{prompt}'")
 
     result = invoke(client, agent_arn, prompt, bearer_token, config["username"], config["region"])

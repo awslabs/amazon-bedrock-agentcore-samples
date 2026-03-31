@@ -24,7 +24,7 @@ import httpx
 from strands import Agent, tool
 from strands.models import BedrockModel
 from bedrock_agentcore.runtime import BedrockAgentCoreApp
-from bedrock_agentcore.identity.auth import requires_access_token
+from bedrock_agentcore.identity.auth import requires_access_token, requires_api_key
 from bedrock_agentcore.services.identity import TokenPoller
 
 
@@ -48,6 +48,12 @@ _model = BedrockModel(model_id="us.anthropic.claude-haiku-4-5-20251001-v1:0")
 # ---------------------------------------------------------------------------
 
 _m2m_token_cache: dict = {}
+_api_key_cache: dict = {}
+
+
+@requires_api_key(provider_name="OutboundApiKey")
+async def _fetch_api_key(*, api_key: str) -> None:
+    _api_key_cache["key"] = api_key
 
 
 @requires_access_token(
@@ -80,15 +86,12 @@ async def get_weather_m2m(location: str) -> str:
     if not token:
         return "Failed to obtain M2M token. Check the M2MProvider credential configuration."
 
-    # The API key can be stored as an env var or retrieved from AgentCore Identity
-    api_key = os.environ.get("OPENWEATHERMAP_API_KEY", "")
+    # Fetch API key from AgentCore Identity (same as sample 09)
+    if "key" not in _api_key_cache:
+        await _fetch_api_key(api_key="")
+    api_key = _api_key_cache.get("key", "")
     if not api_key:
-        # Return token info to show M2M auth worked, even without API key
-        return json.dumps({
-            "m2m_auth": "success",
-            "note": "M2M token obtained. Set OPENWEATHERMAP_API_KEY env var or add an OutboundApiKey credential to call the weather API.",
-            "token_preview": token[:40] + "...",
-        }, indent=2)
+        return "OpenWeatherMap API key not found. Add an OutboundApiKey credential."
 
     try:
         async with httpx.AsyncClient(timeout=10) as client:
