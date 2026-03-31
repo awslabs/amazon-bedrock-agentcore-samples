@@ -2,7 +2,7 @@
 
 ## Overview
 
-This tutorial demonstrates end-to-end evaluation of an agentic application using Amazon Bedrock AgentCore's two primary evaluation interfaces: **EvaluationClient** and **EvaluationRunner**. Both are used with ground-truth reference inputs to measure factual correctness, goal achievement, and tool-use accuracy.
+This tutorial demonstrates end-to-end evaluation of an agentic application using Amazon Bedrock AgentCore's two primary evaluation interfaces: **EvaluationClient** and **OnDemandEvaluationDatasetRunner**. Both are used with ground-truth reference inputs to measure factual correctness, goal achievement, and tool-use accuracy.
 
 The tutorial uses an **HR Assistant agent** for Acme Corp — a Strands agent that helps employees with PTO management, HR policy lookups, benefits information, and pay stubs.
 
@@ -14,13 +14,13 @@ The tutorial uses an **HR Assistant agent** for Acme Corp — a Strands agent th
 - How to define an evaluation dataset with `TurnByTurnScenario` and `Turn`
 - How to run automated dataset evaluations with `EvaluationRunner`
 - How to interpret built-in evaluator results for trajectory, correctness, and goal-success metrics
+- How to create **custom LLM-as-a-judge evaluators** with ground-truth placeholders
 
 ## Prerequisites
 
 Before running this tutorial, ensure you have:
 
 - Python 3.10+
-- Docker running locally (for agent container image build)
 - AWS credentials with permissions for:
   - AgentCore Runtime (`bedrock-agentcore:*`)
   - AgentCore Evaluations (`bedrock-agentcore:Evaluate`)
@@ -46,10 +46,11 @@ A single self-contained notebook that walks through the full evaluation workflow
 |---|---|
 | 1 | Install dependencies |
 | 2 | Configure AWS session and region |
-| 3 | Deploy the HR Assistant agent to AgentCore Runtime |
+| 3a | Deploy the HR Assistant agent to AgentCore Runtime |
+| 3b | **Create custom LLM-as-a-judge evaluators** with ground-truth placeholders |
 | 4 | Invoke the agent to generate sessions with CloudWatch spans |
 | 5 | **EvaluationClient** — evaluate existing sessions with ground truth |
-| 6 | **EvaluationRunner** — automated dataset evaluation |
+| 6 | **OnDemandEvaluationDatasetRunner** — automated dataset evaluation |
 | 7 | Cleanup |
 
 ## EvaluationClient vs EvaluationRunner
@@ -57,7 +58,6 @@ A single self-contained notebook that walks through the full evaluation workflow
 | | EvaluationClient | EvaluationRunner |
 |---|---|---|
 | **When to use** | You already have recorded sessions | You have a test dataset |
-| **Agent invocation** | Not included — evaluates existing sessions | Automatic — invokes your agent for every scenario |
 | **Input** | `session_id` + `agent_id` | `Dataset` of `TurnByTurnScenario` objects |
 | **Best for** | Post-hoc analysis, debugging, incident investigation | Regression testing, CI/CD pipelines, batch evaluation |
 
@@ -73,7 +73,33 @@ A single self-contained notebook that walks through the full evaluation workflow
 
 Evaluators that don't require ground truth (`Builtin.Helpfulness`, `Builtin.ResponseRelevance`) can be included in the same call — each evaluator reads only the fields it needs.
 
-The same fields apply to `TurnByTurnScenario` objects in `EvaluationRunner` datasets.
+The same fields apply to `PredefinedScenario` objects in `OnDemandEvaluationDatasetRunner` datasets.
+
+## Custom Evaluators with Ground Truth
+
+In addition to built-in evaluators, you can define **custom LLM-as-a-judge evaluators** with
+evaluation criteria written in natural language. Custom evaluators support the same ground-truth
+fields through **placeholders** that the service substitutes at evaluation time.
+
+### Placeholder reference
+
+| Level | Placeholder | Filled from |
+|---|---|---|
+| TRACE | `{assistant_turn}` | Agent's actual response for that turn |
+| TRACE | `{expected_response}` | `ReferenceInputs.expected_response` |
+| TRACE | `{context}` | Conversation context preceding the turn |
+| SESSION | `{actual_tool_trajectory}` | Tools the agent called during the session |
+| SESSION | `{expected_tool_trajectory}` | `ReferenceInputs.expected_trajectory` |
+| SESSION | `{assertions}` | `ReferenceInputs.assertions` |
+| SESSION | `{available_tools}` | Tools available to the agent |
+
+
+The notebook demonstrates two custom evaluators:
+
+| Evaluator | Level | Placeholders | Description |
+|---|---|---|---|
+| `HRResponseSimilarity` | TRACE | `{assistant_turn}`, `{expected_response}` | Scores how closely the agent's response matches the expected answer |
+| `HRAssertionChecker` | SESSION | `{actual_tool_trajectory}`, `{expected_tool_trajectory}`, `{assertions}` | Scores whether the agent called the right tools and satisfied all assertions |
 
 ## Built-in Evaluators Used
 
@@ -109,14 +135,9 @@ The notebook evaluates five scenarios that cover different evaluation patterns:
 
 | Scenario | Turns | Key evaluators |
 |---|---|---|
-| PTO balance check | 1 | Correctness, Helpfulness |
-| PTO submission | 1 | GoalSuccessRate, Trajectory, Correctness |
+| PTO balance check | 1 | Correctness, Helpfulness, **HRResponseSimilarity** (custom) |
+| PTO submission | 1 | GoalSuccessRate, Trajectory, Correctness, **HRResponseSimilarity** (custom) |
 | Pay stub lookup | 1 | Correctness, GoalSuccessRate |
-| PTO planning session | 3 | GoalSuccessRate, TrajectoryExactOrderMatch |
+| PTO planning session | 3 | GoalSuccessRate, TrajectoryExactOrderMatch, **HRAssertionChecker** (custom) |
 | New employee onboarding | 4 | GoalSuccessRate, TrajectoryAnyOrderMatch |
 
-## Next Steps
-
-- **[programmatic_evaluators/](../programmatic_evaluators/)** — Extend evaluations with Lambda-backed code evaluators for deterministic, business-rule-driven scoring.
-- Review evaluation results to identify scenarios where the agent calls the wrong tool or returns inaccurate facts.
-- Integrate `EvaluationRunner` into your CI/CD pipeline to catch regressions automatically.
