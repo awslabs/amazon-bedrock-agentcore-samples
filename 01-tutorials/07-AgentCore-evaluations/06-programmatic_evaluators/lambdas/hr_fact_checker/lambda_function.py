@@ -1,3 +1,4 @@
+# pylint: disable=duplicate-code
 """
 HRFactChecker — Code-Based Evaluator (SESSION level)
 
@@ -10,9 +11,10 @@ Returns:
     label       — "PASS" (all), "PARTIAL" (>=50%), "FAIL" (<50%), "SKIP" (no checks triggered)
     explanation — which checks passed/failed
 """
+
 import re
 
-from bedrock_agentcore.evaluation import (
+from bedrock_agentcore.evaluation import (  # pylint: disable=no-name-in-module
     EvaluatorInput,
     EvaluatorOutput,
     custom_code_based_evaluator,
@@ -21,7 +23,7 @@ from bedrock_agentcore.evaluation import (
 # Ground-truth registry (mirrors agent mock data)
 PTO_BALANCES = {
     "EMP-001": {"remaining": 10, "total": 15, "used": 5},
-    "EMP-002": {"remaining": 3,  "total": 15, "used": 12},
+    "EMP-002": {"remaining": 3, "total": 15, "used": 12},
     "EMP-042": {"remaining": 13, "total": 20, "used": 7},
 }
 
@@ -32,37 +34,73 @@ PAY_STUBS = {
 }
 
 MONTH_NAMES = {
-    "01": ["january", "jan"], "02": ["february", "feb"],
-    "03": ["march", "mar"],   "04": ["april", "apr"],
-    "05": ["may"],            "06": ["june", "jun"],
-    "07": ["july", "jul"],    "08": ["august", "aug"],
-    "09": ["september", "sep"], "10": ["october", "oct"],
-    "11": ["november", "nov"], "12": ["december", "dec"],
+    "01": ["january", "jan"],
+    "02": ["february", "feb"],
+    "03": ["march", "mar"],
+    "04": ["april", "apr"],
+    "05": ["may"],
+    "06": ["june", "jun"],
+    "07": ["july", "jul"],
+    "08": ["august", "aug"],
+    "09": ["september", "sep"],
+    "10": ["october", "oct"],
+    "11": ["november", "nov"],
+    "12": ["december", "dec"],
 }
 
 POLICY_FACTS_BY_TOPIC = {
     "pto": [
-        ("PTO accrual 15 days",       [r"15\s*days?(\s*of\s*PTO|\s*per\s*year)", r"PTO.{0,30}15\s*days?"]),
+        (
+            "PTO accrual 15 days",
+            [r"15\s*days?(\s*of\s*PTO|\s*per\s*year)", r"PTO.{0,30}15\s*days?"],
+        ),
         ("PTO advance notice 2 days", [r"2\s*business\s*days?", r"2-business-day"]),
     ],
     "remote_work": [
-        ("Remote work 3 days/week",   [r"3\s*days?\s*(per|a)\s*week", r"up\s*to\s*3\s*days?"]),
-        ("Core hours 10am-3pm",       [r"10\s*[Aa]\.?[Mm]\.?.*3\s*[Pp]\.?[Mm]", r"10am.*3pm"]),
+        (
+            "Remote work 3 days/week",
+            [r"3\s*days?\s*(per|a)\s*week", r"up\s*to\s*3\s*days?"],
+        ),
+        (
+            "Core hours 10am-3pm",
+            [r"10\s*[Aa]\.?[Mm]\.?.*3\s*[Pp]\.?[Mm]", r"10am.*3pm"],
+        ),
     ],
     "parental_leave": [
-        ("Primary leave 16 weeks",    [r"16\s*weeks?", r"primary.*16\s*weeks?"]),
-        ("Secondary leave 6 weeks",   [r"6\s*weeks?",  r"secondary.*6\s*weeks?"]),
+        ("Primary leave 16 weeks", [r"16\s*weeks?", r"primary.*16\s*weeks?"]),
+        ("Secondary leave 6 weeks", [r"6\s*weeks?", r"secondary.*6\s*weeks?"]),
     ],
     "401k": [
-        ("401k 4% match",             [r"4%?\s*(of\s*salary)?.*match", r"matches?\s*4%"]),
-        ("401k 3-year vesting",       [r"3[-\s]year\s*vest", r"vests?\s*over\s*3"]),
+        ("401k 4% match", [r"4%?\s*(of\s*salary)?.*match", r"matches?\s*4%"]),
+        ("401k 3-year vesting", [r"3[-\s]year\s*vest", r"vests?\s*over\s*3"]),
     ],
     "health": [
-        ("Health 90% coverage",       [r"90%?\s*(of\s*premiums?|coverage)", r"covers?\s*90%"]),
+        (
+            "Health 90% coverage",
+            [r"90%?\s*(of\s*premiums?|coverage)", r"covers?\s*90%"],
+        ),
     ],
 }
 
 _THINKING_RE = re.compile(r"<thinking>.*?</thinking>", re.DOTALL)
+
+
+def _collect_span_texts(span: dict) -> list:
+    """Extract all non-empty response texts from a single invoke_agent span."""
+    texts = []
+    for se in span.get("span_events", []):
+        body = se.get("body", {})
+        if not isinstance(body, dict):
+            continue
+        for msg in body.get("output", {}).get("messages", []):
+            content = msg.get("content", {})
+            if isinstance(content, dict):
+                text = content.get("message", "")
+                if text:
+                    cleaned = _THINKING_RE.sub("", text).strip()
+                    if cleaned:
+                        texts.append(cleaned)
+    return texts
 
 
 def _parse_spans(spans: list) -> tuple:
@@ -75,18 +113,7 @@ def _parse_spans(spans: list) -> tuple:
         op = attrs.get("gen_ai.operation.name", "")
         # Collect all invoke_agent response texts (multi-turn sessions)
         if "invoke_agent" in name:
-            for se in span.get("span_events", []):
-                body = se.get("body", {})
-                if not isinstance(body, dict):
-                    continue
-                for msg in body.get("output", {}).get("messages", []):
-                    content = msg.get("content", {})
-                    if isinstance(content, dict):
-                        text = content.get("message", "")
-                        if text:
-                            cleaned = _THINKING_RE.sub("", text).strip()
-                            if cleaned:
-                                response_parts.append(cleaned)
+            response_parts.extend(_collect_span_texts(span))
         # Tool calls
         if op == "execute_tool":
             tool_name = attrs.get("gen_ai.tool.name", "")
@@ -98,8 +125,11 @@ def _parse_spans(spans: list) -> tuple:
 
 
 @custom_code_based_evaluator()
-def lambda_handler(input: EvaluatorInput, context) -> EvaluatorOutput:
-    spans = input.session_spans
+def lambda_handler(  # pylint: disable=too-many-branches,too-many-locals,too-many-statements
+    evaluator_input: EvaluatorInput, _context
+) -> EvaluatorOutput:
+    """Validate HR fact accuracy across all turns of a session."""
+    spans = evaluator_input.session_spans
     all_text, tool_names = _parse_spans(spans)
     all_text_lower = all_text.lower()
 
@@ -111,14 +141,18 @@ def lambda_handler(input: EvaluatorInput, context) -> EvaluatorOutput:
             if emp_id not in all_text:
                 continue
             correct = str(facts["remaining"])
+            near_remaining = rf"\b{re.escape(correct)}\b.{{0,30}}remaining"
+            near_value = rf"remaining.{{0,30}}\b{re.escape(correct)}\b"
             remaining_pattern = re.compile(
-                rf"\b{re.escape(correct)}\b.{{0,30}}remaining|remaining.{{0,30}}\b{re.escape(correct)}\b",
-                re.IGNORECASE
+                f"{near_remaining}|{near_value}",
+                re.IGNORECASE,
             )
             check = f"PTO balance {emp_id} = {correct} remaining"
             checks_run.append(check)
             correct_val = bool(re.search(rf"\b{re.escape(correct)}\b", all_text))
-            if bool(remaining_pattern.search(all_text)) or (correct_val and "remaining" in all_text_lower):
+            if bool(remaining_pattern.search(all_text)) or (
+                correct_val and "remaining" in all_text_lower
+            ):
                 checks_passed.append(check)
             else:
                 checks_failed.append(f"{check}: value not found near 'remaining'")
@@ -131,10 +165,15 @@ def lambda_handler(input: EvaluatorInput, context) -> EvaluatorOutput:
         month_variants = MONTH_NAMES.get(month_num, [])
         if not (year in all_text and any(m in all_text_lower for m in month_variants)):
             continue
-        for field, expected_val in [("gross", figures["gross"]), ("net", figures["net"])]:
+        for field, expected_val in [
+            ("gross", figures["gross"]),
+            ("net", figures["net"]),
+        ]:
             check = f"Pay stub {emp_id} {period} {field} = ${expected_val}"
             checks_run.append(check)
-            amount_re = re.compile(r"\$?\s*" + re.escape(expected_val).replace(",", ",?"), re.IGNORECASE)
+            amount_re = re.compile(
+                r"\$?\s*" + re.escape(expected_val).replace(",", ",?"), re.IGNORECASE
+            )
             if amount_re.search(all_text):
                 checks_passed.append(check)
             else:
@@ -153,11 +192,11 @@ def lambda_handler(input: EvaluatorInput, context) -> EvaluatorOutput:
     # 4. Policy fact checks
     if "lookup_hr_policy" in tool_names or "get_benefits_summary" in tool_names:
         kw_topic_map = [
-            ("pto",           ["paid time off", "pto policy", "pto accrual"]),
-            ("remote_work",   ["remote work", "work remotely"]),
-            ("parental_leave",["parental leave", "maternity", "paternity"]),
-            ("401k",          ["401(k)", "401k", "employer match"]),
-            ("health",        ["health insurance", "health plan", "hmo", "ppo", "hdhp"]),
+            ("pto", ["paid time off", "pto policy", "pto accrual"]),
+            ("remote_work", ["remote work", "work remotely"]),
+            ("parental_leave", ["parental leave", "maternity", "paternity"]),
+            ("401k", ["401(k)", "401k", "employer match"]),
+            ("health", ["health insurance", "health plan", "hmo", "ppo", "hdhp"]),
         ]
         for topic, keywords in kw_topic_map:
             if not any(kw in all_text_lower for kw in keywords):

@@ -38,7 +38,8 @@ _HR_POLICIES = {
         "PTO cannot be taken in advance of accrual."
     ),
     "remote_work": (
-        "Remote Work Policy: Employees may work remotely up to 3 days per week with manager approval. "
+        "Remote Work Policy: Employees may work remotely up to 3 days per week"
+        " with manager approval. "
         "Core collaboration hours are 10am-3pm local time. "
         "A dedicated workspace with reliable internet (25 Mbps+) is required. "
         "Employees must be reachable via Slack and email during core hours."
@@ -83,25 +84,44 @@ _BENEFITS = {
     "life_insurance": (
         "Life Insurance: Basic life insurance of 2x annual salary provided at no cost. "
         "Employees may purchase supplemental coverage up to 5x salary during open enrollment. "
-        "Accidental death and dismemberment (AD&D) coverage equal to basic life benefit is included."
+        "Accidental death and dismemberment (AD&D) coverage equal to"
+        " basic life benefit is included."
     ),
 }
 
 _PAY_STUBS = {
     ("EMP-001", "2025-12"): {
-        "gross_pay": 8333.33, "federal_tax": 1458.33, "state_tax": 416.67,
-        "social_security": 516.67, "medicare": 120.83, "health_premium": 125.00,
-        "401k_contribution": 333.33, "net_pay": 5362.50, "period": "December 2025",
+        "gross_pay": 8333.33,
+        "federal_tax": 1458.33,
+        "state_tax": 416.67,
+        "social_security": 516.67,
+        "medicare": 120.83,
+        "health_premium": 125.00,
+        "401k_contribution": 333.33,
+        "net_pay": 5362.50,
+        "period": "December 2025",
     },
     ("EMP-001", "2026-01"): {
-        "gross_pay": 8333.33, "federal_tax": 1458.33, "state_tax": 416.67,
-        "social_security": 516.67, "medicare": 120.83, "health_premium": 125.00,
-        "401k_contribution": 333.33, "net_pay": 5362.50, "period": "January 2026",
+        "gross_pay": 8333.33,
+        "federal_tax": 1458.33,
+        "state_tax": 416.67,
+        "social_security": 516.67,
+        "medicare": 120.83,
+        "health_premium": 125.00,
+        "401k_contribution": 333.33,
+        "net_pay": 5362.50,
+        "period": "January 2026",
     },
     ("EMP-042", "2026-01"): {
-        "gross_pay": 10416.67, "federal_tax": 1875.00, "state_tax": 520.83,
-        "social_security": 645.83, "medicare": 151.04, "health_premium": 200.00,
-        "401k_contribution": 416.67, "net_pay": 6607.30, "period": "January 2026",
+        "gross_pay": 10416.67,
+        "federal_tax": 1875.00,
+        "state_tax": 520.83,
+        "social_security": 645.83,
+        "medicare": 151.04,
+        "health_premium": 200.00,
+        "401k_contribution": 416.67,
+        "net_pay": 6607.30,
+        "period": "January 2026",
     },
 }
 
@@ -111,6 +131,7 @@ _PTO_REQUEST_COUNTER = {"n": 0}
 # ---------------------------------------------------------------------------
 # Strands tools
 # ---------------------------------------------------------------------------
+
 
 @tool
 def get_pto_balance(employee_id: str) -> dict:
@@ -157,7 +178,9 @@ def submit_pto_request(
         "end_date": end_date,
         "reason": reason,
         "status": "APPROVED",
-        "message": f"PTO request {request_id} approved for {employee_id} from {start_date} to {end_date}.",
+        "message": (
+            f"PTO request {request_id} approved for {employee_id} from {start_date} to {end_date}."
+        ),
     }
 
 
@@ -176,7 +199,10 @@ def lookup_hr_policy(topic: str) -> dict:
     text = _HR_POLICIES.get(key)
     if text:
         return {"topic": topic, "policy_text": text}
-    return {"topic": topic, "error": f"Policy '{topic}' not found. Available: {list(_HR_POLICIES.keys())}"}
+    return {
+        "topic": topic,
+        "error": f"Policy '{topic}' not found. Available: {list(_HR_POLICIES.keys())}",
+    }
 
 
 @tool
@@ -185,7 +211,8 @@ def get_benefits_summary(benefit_type: str) -> dict:
     Return a summary of a specific employee benefit.
 
     Args:
-        benefit_type: Type of benefit. Supported values: health, dental, vision, 401k, life_insurance
+        benefit_type: Type of benefit. Supported values:
+            health, dental, vision, 401k, life_insurance
 
     Returns:
         Dict with benefit_type and summary text.
@@ -194,7 +221,10 @@ def get_benefits_summary(benefit_type: str) -> dict:
     text = _BENEFITS.get(key)
     if text:
         return {"benefit_type": benefit_type, "summary": text}
-    return {"benefit_type": benefit_type, "error": f"Benefit '{benefit_type}' not found. Available: {list(_BENEFITS.keys())}"}
+    return {
+        "benefit_type": benefit_type,
+        "error": f"Benefit '{benefit_type}' not found. Available: {list(_BENEFITS.keys())}",
+    }
 
 
 @tool
@@ -212,7 +242,11 @@ def get_pay_stub(employee_id: str, period: str) -> dict:
     stub = _PAY_STUBS.get((employee_id, period))
     if stub:
         return {"employee_id": employee_id, **stub}
-    return {"employee_id": employee_id, "period": period, "error": f"Pay stub not found for {employee_id} period {period}."}
+    return {
+        "employee_id": employee_id,
+        "period": period,
+        "error": f"Pay stub not found for {employee_id} period {period}.",
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -233,7 +267,13 @@ policy details, benefit amounts, or pay information — look them up.
 Be concise, professional, and friendly."""
 
 _MODEL = BedrockModel(model_id="us.amazon.nova-lite-v1:0")
-_TOOLS = [get_pto_balance, submit_pto_request, lookup_hr_policy, get_benefits_summary, get_pay_stub]
+_TOOLS = [
+    get_pto_balance,
+    submit_pto_request,
+    lookup_hr_policy,
+    get_benefits_summary,
+    get_pay_stub,
+]
 
 # Session cache: session_id -> Agent (preserves conversation history across turns)
 _SESSION_AGENTS: dict[str, Agent] = {}
