@@ -109,24 +109,49 @@ EOF
 
 ## Step 4: Set Up OAuth Credential Providers
 
-Create the M2M and 3LO credential providers. Create a `.env` file with your OAuth credentials:
+### 4a. Create a GitHub OAuth App (for GitHub 3LO)
+
+1. Go to [github.com](https://github.com) > **Settings** > **Developer settings** > **OAuth Apps**
+2. Click **New OAuth App** and fill in:
+   - **Application Name**: Any name (e.g. "AgentCore GitHub Demo")
+   - **Homepage URL**: `https://github.com/awslabs/amazon-bedrock-agentcore-samples`
+   - **Authorization callback URL**: `https://bedrock-agentcore.us-east-1.amazonaws.com/identities/oauth2/callback/placeholder` (you will update this after running the setup script)
+3. Click **Register application**
+4. Copy the **Client ID** and generate a **Client Secret** (save it — shown only once)
+
+### 4b. Create a Google OAuth App (for Google 3LO)
+
+1. Go to [Google Cloud Console](https://console.developers.google.com/) and create/select a project
+2. Go to **APIs & Services > Library**, search for **Google Calendar API**, and click **Enable**
+3. Go to **APIs & Services > OAuth consent screen**, click **Get started**:
+   - Fill in App Name, Support Email
+   - Select audience type (External for testing), click through to finish
+4. Go to **APIs & Services > OAuth consent screen > Audience**, click **+ Add Users** and add your Gmail address
+5. Go to **APIs & Services > Credentials**, click **Create Credentials > OAuth client ID**:
+   - Application type: **Web application**
+   - Name: Any name
+   - Click **Create**, then copy the **Client ID** and **Client Secret**
+6. Go to **APIs & Services > Credentials**, click your OAuth client, then **Data access** > **Add or remove scopes**:
+   - Add `https://www.googleapis.com/auth/calendar.readonly` under "Manually add scopes"
+   - Click **Update**, then **Save**
+
+### 4c. Create the `.env` file and run the setup script
+
+Create a `.env` file in the sample root directory with your credentials:
 
 ```bash
-# For M2M — use the Cognito machine client from Step 2
-M2M_CLIENT_ID=YOUR_MACHINE_CLIENT_ID
-M2M_CLIENT_SECRET=YOUR_MACHINE_CLIENT_SECRET
+M2M_CLIENT_ID=YOUR_COGNITO_MACHINE_CLIENT_ID
+M2M_CLIENT_SECRET=YOUR_COGNITO_MACHINE_CLIENT_SECRET
 M2M_DISCOVERY_URL=https://cognito-idp.<region>.amazonaws.com/<pool_id>/.well-known/openid-configuration
-
-# For GitHub 3LO (optional)
-GITHUB_CLIENT_ID=your-github-client-id
-GITHUB_CLIENT_SECRET=your-github-client-secret
-
-# For Google 3LO (optional)
-GOOGLE_CLIENT_ID=your-google-client-id
-GOOGLE_CLIENT_SECRET=your-google-client-secret
+GITHUB_CLIENT_ID=YOUR_GITHUB_CLIENT_ID
+GITHUB_CLIENT_SECRET=YOUR_GITHUB_CLIENT_SECRET
+GOOGLE_CLIENT_ID=YOUR_GOOGLE_CLIENT_ID
+GOOGLE_CLIENT_SECRET=YOUR_GOOGLE_CLIENT_SECRET
 ```
 
-Then run the setup script from the sample root:
+> The M2M values come from `cognito_config.json` (Step 2). Use `machine_client_id` and `machine_client_secret`.
+
+Then run:
 
 ```bash
 cd ..
@@ -134,7 +159,13 @@ python setup_oauth_providers.py
 cd M2MAuthDemo
 ```
 
-The script creates the credential providers in AgentCore Identity and prints callback URLs. Register those URLs in your GitHub OAuth App and/or Google Cloud Console.
+The script prints callback URLs for each provider.
+
+### 4d. Register callback URLs
+
+**GitHub**: Go to your OAuth App settings > **Authorization callback URL** > paste the GitHub callback URL from the script output > click **Update application**.
+
+**Google**: Go to Google Cloud Console > **APIs & Services > Credentials** > click your OAuth client > under **Authorised redirect URIs** > add the Google callback URL from the script output > click **Save**.
 
 ---
 
