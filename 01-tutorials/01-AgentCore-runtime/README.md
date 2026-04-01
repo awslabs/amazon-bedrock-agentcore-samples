@@ -41,6 +41,7 @@ The runtime is suitable for a wide range of applications, including:
 In these tutorials we will cover the following functionality:
 
 - [Hosting agents](01-hosting-agent)
-- [Hosting MCP Servers](02-hosting-MCP-server)
+- [Hosting Pythong MCP Servers](02-hosting-MCP-server)
+- [Hosting Java Spring AI MCP Servers](07-hosting-java-spring-ai-mcp)
 - [Advanced Concepts](03-advanced-concepts)
 
