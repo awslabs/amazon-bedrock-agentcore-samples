@@ -1,3 +1,4 @@
+# pylint: disable=duplicate-code
 """
 HRResponseLength — Code-Based Evaluator (TRACE level)
 
@@ -10,9 +11,10 @@ Returns:
     label       — "PASS" or "FAIL"
     explanation — actual length and acceptable range
 """
+
 import re
 
-from bedrock_agentcore.evaluation import (
+from bedrock_agentcore.evaluation import (  # pylint: disable=no-name-in-module
     EvaluatorInput,
     EvaluatorOutput,
     custom_code_based_evaluator,
@@ -24,58 +26,68 @@ MAX_LENGTH = 600
 _THINKING_RE = re.compile(r"<thinking>.*?</thinking>", re.DOTALL)
 
 
+def _first_clean_message(span: dict) -> str:
+    """Return the first non-empty cleaned message from a span's events."""
+    for se in span.get("span_events", []):
+        body = se.get("body", {})
+        if not isinstance(body, dict):
+            continue
+        for msg in body.get("output", {}).get("messages", []):
+            content = msg.get("content", {})
+            if isinstance(content, dict):
+                text = content.get("message", "")
+                if text:
+                    cleaned = _THINKING_RE.sub("", text).strip()
+                    if cleaned:
+                        return cleaned
+    return ""
+
+
 def _extract_final_response(spans: list) -> str:
     """Extract final visible response text from the invoke_agent span."""
     for span in spans:
         name = (span.get("name") or "").lower()
         if "invoke_agent" not in name:
             continue
+        text = _first_clean_message(span)
+        if text:
+            return text
+    return ""
+
+
+def _extract_fallback_response(spans: list) -> str:
+    """Fallback: scan all span_events for any non-empty content message."""
+    for span in reversed(spans):
         for se in span.get("span_events", []):
             body = se.get("body", {})
             if not isinstance(body, dict):
                 continue
-            for msg in body.get("output", {}).get("messages", []):
+            for msg in (body.get("output", {}) or {}).get("messages", []):
                 content = msg.get("content", {})
-                if isinstance(content, dict):
-                    text = content.get("message", "")
-                    if text:
-                        cleaned = _THINKING_RE.sub("", text).strip()
-                        if cleaned:
-                            return cleaned
+                text = (
+                    (content.get("message") or "") if isinstance(content, dict) else ""
+                )
+                cleaned = _THINKING_RE.sub("", text).strip()
+                if cleaned and not cleaned.startswith("[{"):
+                    return cleaned
     return ""
 
 
 @custom_code_based_evaluator()
-def lambda_handler(input: EvaluatorInput, context) -> EvaluatorOutput:
-    spans = input.session_spans
+def lambda_handler(evaluator_input: EvaluatorInput, _context) -> EvaluatorOutput:
+    """Evaluate response length for a single agent trace."""
+    spans = evaluator_input.session_spans
 
     # For TRACE level, target_trace_id identifies which trace to evaluate.
-    # The decorator already sets input.target_trace_id from the event payload.
-    if input.evaluation_level == "TRACE" and input.target_trace_id:
-        spans = [s for s in spans
-                 if s.get("traceId") == input.target_trace_id
-                 or s.get("trace_id") == input.target_trace_id]
+    if evaluator_input.evaluation_level == "TRACE" and evaluator_input.target_trace_id:
+        spans = [
+            s
+            for s in spans
+            if s.get("traceId") == evaluator_input.target_trace_id
+            or s.get("trace_id") == evaluator_input.target_trace_id
+        ]
 
-    output_text = _extract_final_response(spans)
-
-    if not output_text:
-        # Fallback: try any span_events with a non-empty content message
-        for span in reversed(spans):
-            for se in span.get("span_events", []):
-                body = se.get("body", {})
-                if not isinstance(body, dict):
-                    continue
-                for msg in (body.get("output", {}) or {}).get("messages", []):
-                    content = msg.get("content", {})
-                    text = (content.get("message") or "") if isinstance(content, dict) else ""
-                    cleaned = _THINKING_RE.sub("", text).strip()
-                    if cleaned and not cleaned.startswith("[{"):
-                        output_text = cleaned
-                        break
-                if output_text:
-                    break
-            if output_text:
-                break
+    output_text = _extract_final_response(spans) or _extract_fallback_response(spans)
 
     if not output_text:
         return EvaluatorOutput(
@@ -98,7 +110,7 @@ def lambda_handler(input: EvaluatorInput, context) -> EvaluatorOutput:
                 f"[{MIN_LENGTH}, {MAX_LENGTH}]."
             ),
         )
-    elif length < MIN_LENGTH:
+    if length < MIN_LENGTH:
         return EvaluatorOutput(
             value=0.0,
             label="FAIL",
@@ -107,12 +119,11 @@ def lambda_handler(input: EvaluatorInput, context) -> EvaluatorOutput:
                 f'Preview: "{output_text[:60]}..."'
             ),
         )
-    else:
-        return EvaluatorOutput(
-            value=0.0,
-            label="FAIL",
-            explanation=(
-                f"Response length {length} chars exceeds maximum {MAX_LENGTH}. "
-                "Consider a more concise answer."
-            ),
-        )
+    return EvaluatorOutput(
+        value=0.0,
+        label="FAIL",
+        explanation=(
+            f"Response length {length} chars exceeds maximum {MAX_LENGTH}. "
+            "Consider a more concise answer."
+        ),
+    )
