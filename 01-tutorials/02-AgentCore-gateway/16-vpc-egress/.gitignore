@@ -240,3 +240,6 @@ __marimo__/
 02-peering.ipynb
 02-cross-account.ipynb
 !lib/ 
+
+vpc-outputs-w.json
+vpc-outputs-e.json
