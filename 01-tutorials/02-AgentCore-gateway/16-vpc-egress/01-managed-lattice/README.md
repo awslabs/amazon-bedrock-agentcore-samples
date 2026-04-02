@@ -69,24 +69,7 @@ Example from the [Getting Started lab](./01-getting-started.ipynb):
 
 VPC Lattice requires a **publicly resolvable domain** for the resource configuration. If your target endpoint uses a domain that is not publicly resolvable (e.g., a Route 53 private hosted zone), you must set `routingDomain` to an intermediate publicly resolvable domain.
 
-| Scenario | Endpoint | routingDomain | Example |
-|----------|----------|---------------|---------|
-| **Private API Gateway** (VPCE) | `{api-id}-{vpce-id}.execute-api.{region}.amazonaws.com` | Not needed (already publicly resolvable) | [Getting Started lab](./01-getting-started.ipynb) |
-| **Internal ALB** (public domain) | `mcp.example.com` | Not needed (public CNAME to ALB) | [ECS lab](../04-ecs-deployment/) |
-| **Internal NLB** (private domain) | `internal-mcp.example.com` | `*.elb.amazonaws.com` (NLB DNS) | [EKS lab](../05-eks-deployment/) |
-
 When `routingDomain` is set, AgentCore routes traffic through the routing domain but sends requests with the actual endpoint domain as the TLS SNI hostname, so your resource receives requests addressed to its actual domain.
-
-## Traffic flow
-
-```
-AgentCore Gateway
-  → Amazon VPC Lattice
-    → Resource Gateway ENIs (in your VPC subnets)
-      → Your private resource (API Gateway, ALB, NLB, etc.)
-```
-
-All traffic stays on the AWS network. No internet exposure.
 
 ## Labs
 

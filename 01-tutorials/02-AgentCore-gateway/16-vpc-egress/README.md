@@ -50,8 +50,8 @@ Private connectivity is established using [Amazon VPC Lattice](https://docs.aws.
 
 These labs are tested in **us-west-2** (primary region). Ensure AgentCore Gateway and its features are available in your region: see [AgentCore supported regions](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/agentcore-regions.html). The following labs require additional setup:
 
-- [VPC Peering lab](./01-managed-lattice/02-peering.ipynb): requires a VPC in **us-east-1** (deployed in Lab 0, Step 5)
-- [Cross-Account lab](./02-self-managed-lattice/02-cross-account.ipynb): requires a **second AWS account** with a VPC in us-west-2 (deployed in Lab 0, Step 7)
+- VPC Peering lab (coming soon): requires a VPC in **us-east-1** (deployed in Lab 0, Step 5)
+- Cross-Account lab (coming soon): requires a **second AWS account** with a VPC in us-west-2 (deployed in Lab 0, Step 7)
 
 ### Prerequisites for all labs
 
