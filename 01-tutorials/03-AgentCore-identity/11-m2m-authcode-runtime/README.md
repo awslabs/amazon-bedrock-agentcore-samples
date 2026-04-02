@@ -117,6 +117,9 @@ EOF
    - **Homepage URL**: `https://github.com/awslabs/amazon-bedrock-agentcore-samples`
    - **Authorization callback URL**: `https://bedrock-agentcore.us-east-1.amazonaws.com/identities/oauth2/callback/placeholder` (you will update this after running the setup script)
 3. Click **Register application**
+
+![GitHub OAuth App Setup](images/github_details.png)
+
 4. Copy the **Client ID** and generate a **Client Secret** (save it — shown only once)
 
 ### 4b. Create a Google OAuth App (for Google 3LO)
