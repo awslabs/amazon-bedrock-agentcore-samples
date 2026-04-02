@@ -50,6 +50,13 @@ Each platform requires specific configuration:
 - Public and secret keys
 - Project configuration
 
+### Datadog
+- API key from [Datadog dashboard](https://app.datadoghq.com/organization-settings/api-keys)
+- Datadog site (e.g., `datadoghq.com`, `datadoghq.eu`)
+- Two deployment options:
+  - **Starter Toolkit** (`runtime_with_strands_and_datadog.ipynb`) — uses the Python starter toolkit
+  - **AgentCore CLI** (`runtime_with_strands_and_datadog_agentcore_cli.ipynb`) — uses the AgentCore CLI with CDK/CloudFormation infrastructure-as-code
+
 ## Cleanup
 
 After completing examples:
@@ -64,9 +71,10 @@ After completing examples:
 - [Braintrust Documentation](https://www.braintrust.dev/docs)
 - [Instana Documentation](https://www.ibm.com/docs/en/instana-observability/1.0.308?topic=overview)
 - [Langfuse Documentation](https://langfuse.com/docs)
+- [Datadog Documentation](https://docs.datadoghq.com/tracing/)
 - [AgentCore Runtime Guide](https://docs.aws.amazon.com/bedrock-agentcore/latest/userguide/runtime.html)
 
 # Third-Party Observability for Amazon Bedrock AgentCore Agents
 
-This repository contains examples of using agents hosted on Amazon Bedrock AgentCore Runtime with third-party observability tools like Arize, Braintrust, Instana, Langfuse, and others. These examples demonstrate OpenTelemetry integration for monitoring agent performance, tracing LLM interactions, and debugging workflows.
+This repository contains examples of using agents hosted on Amazon Bedrock AgentCore Runtime with third-party observability tools like Arize, Braintrust, Datadog, Instana, Langfuse, and others. These examples demonstrate OpenTelemetry integration for monitoring agent performance, tracing LLM interactions, and debugging workflows.
 
