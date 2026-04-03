@@ -14,9 +14,10 @@ export class AgentCoreGatewayStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: AgentCoreGatewayStackProps) {
     super(scope, id, props);
 
-    const gatewayName = props?.gatewayName ?? 'ac-gateway-mcp-server';
+    const accountId = cdk.Stack.of(this).account;
+    const gatewayName = props?.gatewayName ?? `ac-gw-vpc-egress-${accountId}`;
 
-    this.gateway = new agentcore.Gateway(this, 'McpGateway', {
+    this.gateway = new agentcore.Gateway(this, 'VpcEgressGateway', {
       gatewayName,
       description: 'AgentCore Gateway with MCP Server target',
       protocolConfiguration: new agentcore.McpProtocolConfiguration({
@@ -27,7 +28,6 @@ export class AgentCoreGatewayStack extends cdk.Stack {
     });
 
     const region = cdk.Stack.of(this).region;
-    const accountId = cdk.Stack.of(this).account;
 
     // AgentCore permissions (workload identity, token vault, gateway, secrets)
     this.gateway.role!.addToPrincipalPolicy(new iam.PolicyStatement({

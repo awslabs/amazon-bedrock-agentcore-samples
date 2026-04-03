@@ -1,55 +1,57 @@
 import * as cdk from 'aws-cdk-lib/core';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
-import * as acmpca from 'aws-cdk-lib/aws-acmpca';
 import * as elbv2 from 'aws-cdk-lib/aws-elasticloadbalancingv2';
 import * as elbv2targets from 'aws-cdk-lib/aws-elasticloadbalancingv2-targets';
 import * as route53 from 'aws-cdk-lib/aws-route53';
+import * as route53targets from 'aws-cdk-lib/aws-route53-targets';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import { NagSuppressions } from 'cdk-nag';
 import { Construct } from 'constructs';
 
-export interface PrivateDnsPrivateCertStackProps extends cdk.StackProps {
+/**
+ * Deploys an EC2 instance running a REST API behind an internal ALB
+ * with a public certificate, and a Route 53 private hosted zone
+ * that resolves to the ALB within the VPC.
+ *
+ * This represents a setup where the domain is only resolvable inside
+ * the VPC (private hosted zone), but the TLS certificate is publicly
+ * trusted. VPC Lattice requires a publicly resolvable domain — the
+ * routingDomain (ALB DNS) provides this.
+ */
+export interface PrivateDomainStackProps extends cdk.StackProps {
   vpc: ec2.IVpc;
   baseDomain: string;
-  certificateAuthorityArn: string;
   publicCertArn: string;
 }
 
-export class PrivateDnsPrivateCertStack extends cdk.Stack {
-  constructor(scope: Construct, id: string, props: PrivateDnsPrivateCertStackProps) {
+export class PrivateDomainStack extends cdk.Stack {
+  public readonly instance: ec2.Instance;
+  public readonly ec2Sg: ec2.SecurityGroup;
+
+  constructor(scope: Construct, id: string, props: PrivateDomainStackProps) {
     super(scope, id, props);
 
-    const privateDomain = `test7.internal.${props.baseDomain}`;
-
-    // --- Private Certificate (represents customer's existing private cert) ---
-    // This cert is issued by AWS Private CA. AgentCore cannot verify it because
-    // it only trusts public CAs. The ALB workaround below solves this.
-    const privateCert = new acm.PrivateCertificate(this, 'PrivateCert', {
-      domainName: privateDomain,
-      certificateAuthority: acmpca.CertificateAuthority.fromCertificateAuthorityArn(
-        this, 'CA', props.certificateAuthorityArn,
-      ),
-    });
+    const publicCert = acm.Certificate.fromCertificateArn(this, 'PublicCert', props.publicCertArn);
 
     // --- EC2 Instance running simple REST API on HTTP :8000 ---
-    const ec2Sg = new ec2.SecurityGroup(this, 'Ec2Sg', {
+    this.ec2Sg = new ec2.SecurityGroup(this, 'Ec2Sg', {
       vpc: props.vpc,
       description: 'Simple API EC2 instance',
       allowAllOutbound: true,
     });
-    ec2Sg.applyRemovalPolicy(cdk.RemovalPolicy.RETAIN);
+    this.ec2Sg.applyRemovalPolicy(cdk.RemovalPolicy.RETAIN);
 
-    const instance = new ec2.Instance(this, 'SimpleApiInstance', {
+    this.instance = new ec2.Instance(this, 'SimpleApiInstance', {
       vpc: props.vpc,
       instanceType: ec2.InstanceType.of(ec2.InstanceClass.T3, ec2.InstanceSize.MICRO),
       machineImage: ec2.MachineImage.latestAmazonLinux2023(),
       vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS },
-      securityGroup: ec2Sg,
+      securityGroup: this.ec2Sg,
       ssmSessionPermissions: true,
     });
 
-    instance.addUserData(
+    this.instance.addUserData(
       '#!/bin/bash',
       'dnf update -y',
       'dnf install -y python3-pip',
@@ -104,26 +106,10 @@ export class PrivateDnsPrivateCertStack extends cdk.Stack {
       'systemctl start simple-api',
     );
 
-    // --- Route 53 Private Hosted Zone ---
-    // Maps test7.internal.{baseDomain} to the EC2 private IP.
-    // This domain is only resolvable inside the VPC.
-    const privateZone = new route53.PrivateHostedZone(this, 'PrivateZone', {
-      zoneName: `internal.${props.baseDomain}`,
-      vpc: props.vpc,
-    });
-
-    new route53.ARecord(this, 'Ec2Record', {
-      zone: privateZone,
-      recordName: 'test7',
-      target: route53.RecordTarget.fromIpAddresses(instance.instancePrivateIp),
-    });
-
-    // --- Internal ALB with public cert (the workaround) ---
-    // AgentCore requires a publicly trusted TLS certificate. Since the customer's
-    // resource uses a private cert, we place an ALB in front with a public cert.
+    // --- Internal ALB with public certificate ---
     const albSg = new ec2.SecurityGroup(this, 'AlbSg', {
       vpc: props.vpc,
-      description: 'Internal ALB - HTTPS from VPC',
+      description: 'Internal ALB with public cert - HTTPS from VPC',
       allowAllOutbound: true,
     });
     albSg.applyRemovalPolicy(cdk.RemovalPolicy.RETAIN);
@@ -133,14 +119,11 @@ export class PrivateDnsPrivateCertStack extends cdk.Stack {
       'Allow HTTPS from VPC',
     );
 
-    // Allow ALB to reach EC2 on port 8000
-    ec2Sg.addIngressRule(
+    this.ec2Sg.addIngressRule(
       albSg,
       ec2.Port.tcp(8000),
       'Allow traffic from ALB',
     );
-
-    const publicCert = acm.Certificate.fromCertificateArn(this, 'PublicCert', props.publicCertArn);
 
     const accessLogBucket = new s3.Bucket(this, 'AlbAccessLogs', {
       removalPolicy: cdk.RemovalPolicy.DESTROY,
@@ -159,7 +142,6 @@ export class PrivateDnsPrivateCertStack extends cdk.Stack {
 
     alb.logAccessLogs(accessLogBucket, 'alb-logs');
 
-    // HTTPS listener with public cert — terminates TLS and forwards HTTP to EC2
     const httpsListener = alb.addListener('HttpsListener', {
       port: 443,
       protocol: elbv2.ApplicationProtocol.HTTPS,
@@ -169,7 +151,7 @@ export class PrivateDnsPrivateCertStack extends cdk.Stack {
     httpsListener.addTargets('Ec2Target', {
       port: 8000,
       protocol: elbv2.ApplicationProtocol.HTTP,
-      targets: [new elbv2targets.InstanceTarget(instance, 8000)],
+      targets: [new elbv2targets.InstanceTarget(this.instance, 8000)],
       healthCheck: {
         path: '/health',
         port: '8000',
@@ -177,10 +159,33 @@ export class PrivateDnsPrivateCertStack extends cdk.Stack {
       },
     });
 
+    // --- Route 53 Private Hosted Zone ---
+    // This domain only resolves inside the VPC. VPC Lattice cannot use it
+    // for its resource configuration — that's what routingDomain solves.
+    const privateZone = new route53.PrivateHostedZone(this, 'PrivateZone', {
+      zoneName: `internal.${props.baseDomain}`,
+      vpc: props.vpc,
+    });
+
+    new route53.ARecord(this, 'AlbAliasRecord', {
+      zone: privateZone,
+      recordName: 'api',
+      target: route53.RecordTarget.fromAlias(
+        new route53targets.LoadBalancerTarget(alb),
+      ),
+    });
+
+    // Also add a direct EC2 record for the "no ALB" scenario explanation
+    new route53.ARecord(this, 'Ec2DirectRecord', {
+      zone: privateZone,
+      recordName: 'direct',
+      target: route53.RecordTarget.fromIpAddresses(this.instance.instancePrivateIp),
+    });
+
     // --- Outputs ---
     new cdk.CfnOutput(this, 'AlbDnsName', {
       value: alb.loadBalancerDnsName,
-      description: 'Internal ALB DNS name (publicly resolvable, use as routingDomain)',
+      description: 'Internal ALB DNS (publicly resolvable — use as routingDomain)',
     });
 
     new cdk.CfnOutput(this, 'AlbSgId', {
@@ -188,12 +193,17 @@ export class PrivateDnsPrivateCertStack extends cdk.Stack {
     });
 
     new cdk.CfnOutput(this, 'Ec2InstanceId', {
-      value: instance.instanceId,
+      value: this.instance.instanceId,
       description: 'SSM Session Manager: aws ssm start-session --target <id>',
     });
 
     new cdk.CfnOutput(this, 'Ec2PrivateIp', {
-      value: instance.instancePrivateIp,
+      value: this.instance.instancePrivateIp,
+    });
+
+    new cdk.CfnOutput(this, 'PrivateDomainAlb', {
+      value: `api.internal.${props.baseDomain}`,
+      description: 'Private domain pointing to ALB (only resolvable inside VPC)',
     });
 
     new cdk.CfnOutput(this, 'ApiKey', {
@@ -201,14 +211,9 @@ export class PrivateDnsPrivateCertStack extends cdk.Stack {
       description: 'API key for the simple REST API (x-api-key header)',
     });
 
-    new cdk.CfnOutput(this, 'PrivateDomainName', {
-      value: privateDomain,
-      description: 'Private domain name (only resolvable inside VPC)',
-    });
-
-    new cdk.CfnOutput(this, 'PrivateCertArn', {
-      value: privateCert.certificateArn,
-      description: 'Private certificate ARN (not usable with AgentCore directly)',
+    new cdk.CfnOutput(this, 'PrivateDomainDirect', {
+      value: `direct.internal.${props.baseDomain}`,
+      description: 'Private domain pointing to EC2 IP directly (only resolvable inside VPC)',
     });
 
     NagSuppressions.addStackSuppressions(this, [

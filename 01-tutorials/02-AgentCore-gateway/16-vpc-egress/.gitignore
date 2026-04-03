@@ -234,7 +234,6 @@ __marimo__/
 .streamlit/secrets.toml
 
 .claude
-03-advanced-concepts
 04-ecs-deployment
 05-eks-deployment
 02-peering.ipynb
@@ -243,3 +242,6 @@ __marimo__/
 
 vpc-outputs-w.json
 vpc-outputs-e.json
+02-private-certificate-authority.ipynb
+03-self-signed-certificate.ipynb
+04-private-domain-and-certificate.ipynb

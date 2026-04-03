@@ -9,6 +9,10 @@ import { PrivateApigwStack } from '../lib/test4-private-apigw-stack';
 import { PrivateApiPublicCertStack } from '../lib/test5-private-api-public-cert-stack';
 import { PublicDnsPrivateCertStack } from '../lib/test6-public-dns-private-cert-stack';
 import { PrivateDnsPrivateCertStack } from '../lib/test7-private-dns-private-cert-stack';
+import { PrivateCertBackendStack } from '../lib/private-cert-backend-stack';
+import { PublicCertProxyStack } from '../lib/public-cert-proxy-stack';
+import { PrivateDomainStack } from '../lib/private-domain-stack';
+import { ShortLivedCaStack } from '../lib/shared/short-lived-ca-stack';
 import { EksClusterStack } from '../lib/shared/eks-cluster-stack';
 import { PrivateCaStack } from '../lib/shared/private-ca-stack';
 import { AgentCoreGatewayStack } from '../lib/shared/agentcore-gateway-stack';
@@ -129,10 +133,62 @@ new AgentCoreGatewayStack(app, 'SharedAgentCoreGateway', {
   env: envA,
 });
 
-// Test 7: Private DNS + Private Certificate
-new PrivateDnsPrivateCertStack(app, 'Test7-PrivateDnsPrivateCert', {
+// Test 7: Private DNS + Private Certificate (requires publicCertArn for ALB workaround)
+if (publicCertArn) {
+  new PrivateDnsPrivateCertStack(app, 'Test7-PrivateDnsPrivateCert', {
+    env: envA,
+    vpc: vpcUsWest2.vpc,
+    baseDomain,
+    certificateAuthorityArn: privateCa.caArn,
+    publicCertArn,
+  });
+}
+
+// Private domain lab: ALB with public cert + private hosted zone
+if (publicCertArn) {
+  new PrivateDomainStack(app, 'PrivateDomain', {
+    env: envA,
+    vpc: vpcUsWest2.vpc,
+    baseDomain,
+    publicCertArn,
+  });
+}
+
+// Short-lived Private CA ($50/month) for the private-certificate-authority lab
+const shortLivedCa = new ShortLivedCaStack(app, 'ShortLivedPrivateCa', {
+  env: envA,
+  baseDomain,
+});
+
+// Private CA lab: backend with private CA cert + proxy with public cert
+const privateCaBackend = new PrivateCertBackendStack(app, 'PrivateCaBackend', {
   env: envA,
   vpc: vpcUsWest2.vpc,
   baseDomain,
-  certificateAuthorityArn: privateCa.caArn,
+  certificateAuthorityArn: shortLivedCa.caArn,
 });
+
+if (publicCertArn) {
+  new PublicCertProxyStack(app, 'PrivateCaProxy', {
+    env: envA,
+    vpc: vpcUsWest2.vpc,
+    publicCertArn,
+    backendInstance: privateCaBackend.instance,
+  });
+}
+
+// Self-signed lab: backend with self-signed cert + proxy with public cert
+const selfSignedBackend = new PrivateCertBackendStack(app, 'SelfSignedBackend', {
+  env: envA,
+  vpc: vpcUsWest2.vpc,
+  baseDomain,
+});
+
+if (publicCertArn) {
+  new PublicCertProxyStack(app, 'SelfSignedProxy', {
+    env: envA,
+    vpc: vpcUsWest2.vpc,
+    publicCertArn,
+    backendInstance: selfSignedBackend.instance,
+  });
+}

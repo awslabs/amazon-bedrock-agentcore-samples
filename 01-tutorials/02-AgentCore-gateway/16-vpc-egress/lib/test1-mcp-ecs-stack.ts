@@ -188,6 +188,7 @@ export class McpEcsStack extends cdk.Stack {
       { id: 'AwsSolutions-IAM5', reason: 'ECS task execution role wildcards required for ECR image pulls and log writes' },
       { id: 'AwsSolutions-ECS2', reason: 'No secrets in environment variables' },
       { id: 'AwsSolutions-IAM4', reason: 'SSM managed policy required for Session Manager access on bastion' },
+      { id: 'AwsSolutions-EC26', reason: 'EBS encryption not needed for bastion test instance' },
       { id: 'AwsSolutions-EC28', reason: 'Detailed monitoring not needed for bastion test instance' },
       { id: 'AwsSolutions-EC29', reason: 'Bastion is ephemeral test instance, no termination protection needed' },
       { id: 'AwsSolutions-S1', reason: 'Access log bucket does not need its own access logs' },

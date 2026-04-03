@@ -37,6 +37,17 @@ Private connectivity is established using [Amazon VPC Lattice](https://docs.aws.
 
 > **Note:** In these labs, AgentCore Gateway is configured with **Cognito for inbound authentication** and **no authorization between the AgentCore Gateway and targets**. This is done to keep the focus on VPC connectivity patterns. For production workloads, you can configure any OAuth 2.0 compliant identity provider for inbound authentication (e.g., Entra ID, Auth0, Okta): see [Identity provider setup](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/identity-idps.html). For outbound authorization between AgentCore Gateway and your targets, we recommend setting up [AgentCore Gateway Identity credential management](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/gateway-identity.html).
 
+### Cost Warnings
+
+| Resource | Cost | Labs |
+|----------|------|------|
+| **AWS Private CA** (short-lived mode) | $50/month | 02-private-certificate-authority |
+| **Internal ALB** | ~$0.0225/hour + LCU charges | All labs |
+| **EC2 instance** (t3.micro) | ~$0.0104/hour | All labs |
+| **NAT Gateway** | ~$0.045/hour + data processing | All labs (via VPC stack) |
+
+Make sure to run the **Cleanup** section in each notebook after completing the lab to avoid ongoing charges.
+
 | Lab | Folder | Description |
 |-----|--------|-------------|
 | **Prerequisites** | [`00-prerequisites/`](./00-prerequisites/) | Deploy VPCs across accounts and regions, bootstrap CDK, and set up the shared AgentCore Gateway with Cognito M2M authentication. All subsequent labs depend on this. |
