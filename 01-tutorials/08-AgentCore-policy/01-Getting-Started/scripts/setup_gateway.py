@@ -20,7 +20,10 @@ def _find_gateway_by_name(region: str) -> str | None:
     try:
         resp = client.list_gateways()
         for gw in resp.get("items", []):
-            if gw.get("name") == GATEWAY_NAME and gw.get("status") in ["READY", "ACTIVE"]:
+            if gw.get("name") == GATEWAY_NAME and gw.get("status") in [
+                "READY",
+                "ACTIVE",
+            ]:
                 return gw["gatewayId"]
     except Exception:
         pass
@@ -31,16 +34,18 @@ def _delete_gateway(region: str, gateway_id: str) -> None:
     """Delete all targets then the gateway itself, waiting for targets to clear."""
     client = boto3.client("bedrock-agentcore-control", region_name=region)
     try:
-        targets = client.list_gateway_targets(gatewayIdentifier=gateway_id).get("items", [])
+        targets = client.list_gateway_targets(gatewayIdentifier=gateway_id).get(
+            "items", []
+        )
         for t in targets:
             client.delete_gateway_target(
                 gatewayIdentifier=gateway_id, targetId=t["targetId"]
             )
         # Wait until all targets are gone (deletion is asynchronous)
         for _ in range(30):
-            remaining = client.list_gateway_targets(
-                gatewayIdentifier=gateway_id
-            ).get("items", [])
+            remaining = client.list_gateway_targets(gatewayIdentifier=gateway_id).get(
+                "items", []
+            )
             if not remaining:
                 break
             time.sleep(3)
@@ -80,7 +85,9 @@ def setup_gateway():
 
     region = existing_config.get("region")
     if not region:
-        raise ValueError("Region not found in config.json. Please run deploy_lambdas.py first.")
+        raise ValueError(
+            "Region not found in config.json. Please run deploy_lambdas.py first."
+        )
 
     print(f"Region: {region}\n")
 
@@ -90,7 +97,9 @@ def setup_gateway():
     if saved_gw_id:
         boto_ctrl = boto3.client("bedrock-agentcore-control", region_name=region)
         try:
-            gw_status = boto_ctrl.get_gateway(gatewayIdentifier=saved_gw_id).get("status")
+            gw_status = boto_ctrl.get_gateway(gatewayIdentifier=saved_gw_id).get(
+                "status"
+            )
             if gw_status in ("READY", "ACTIVE"):
                 print(f"✅ Reusing existing gateway from config: {saved_gw_id}")
                 print(f"   Gateway URL: {saved_gateway.get('gateway_url')}")
@@ -102,7 +111,9 @@ def setup_gateway():
     # --- No config: detect and remove stale gateway by name ---------------
     stale_id = _find_gateway_by_name(region)
     if stale_id:
-        print(f"⚠️  Found stale gateway '{GATEWAY_NAME}' ({stale_id}) with no saved config.")
+        print(
+            f"⚠️  Found stale gateway '{GATEWAY_NAME}' ({stale_id}) with no saved config."
+        )
         print("   Deleting it so a fresh one can be created...")
         _delete_gateway(region, stale_id)
     # -----------------------------------------------------------------------

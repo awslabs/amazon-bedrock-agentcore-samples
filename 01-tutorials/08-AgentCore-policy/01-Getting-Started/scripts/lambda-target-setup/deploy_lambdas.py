@@ -140,9 +140,15 @@ def main():
     print("=" * 70)
 
     # Parse arguments
-    parser = argparse.ArgumentParser(description="Deploy Lambda functions for AgentCore Policy demo")
-    parser.add_argument("--region", type=str, default=None, help="AWS region to deploy into")
-    parser.add_argument("--role-arn", type=str, default=None, help="IAM role ARN for Lambda execution")
+    parser = argparse.ArgumentParser(
+        description="Deploy Lambda functions for AgentCore Policy demo"
+    )
+    parser.add_argument(
+        "--region", type=str, default=None, help="AWS region to deploy into"
+    )
+    parser.add_argument(
+        "--role-arn", type=str, default=None, help="IAM role ARN for Lambda execution"
+    )
     args = parser.parse_args()
 
     # Resolve region
