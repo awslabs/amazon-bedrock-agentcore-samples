@@ -53,7 +53,7 @@ Make sure to run the **Cleanup** section in each notebook after completing the l
 | **Prerequisites** | [`00-prerequisites/`](./00-prerequisites/) | Deploy VPCs across accounts and regions, bootstrap CDK, and set up the shared AgentCore Gateway with Cognito M2M authentication. All subsequent labs depend on this. |
 | **Managed Lattice** | [`01-managed-lattice/`](./01-managed-lattice/) | Getting started with AgentCore-managed VPC Lattice. AgentCore automatically creates the Resource Gateway, Resource Configuration, and service network association. Includes a VPC peering example. |
 | **Self-Managed Lattice** | [`02-self-managed-lattice/`](./02-self-managed-lattice/) | Create and manage VPC Lattice Resource Gateways and Resource Configurations yourself. Includes cross-account connectivity via AWS Resource Access Manager (RAM). |
-| **Advanced Concepts** (coming soon) | `03-advanced-concepts/` | Explores private domains (Route 53 private hosted zones), private certificates (AWS Private CA), and combinations of both with AgentCore Gateway VPC egress. |
+| **Advanced Concepts**  | [`03-advanced-concepts/`](./03-advanced-concepts/) | Explores private domains (Route 53 private hosted zones), private certificates (AWS Private CA), and combinations of both with AgentCore Gateway VPC egress. |
 | **ECS Deployment** (coming soon) | `04-ecs-deployment/` | Deploy MCP servers on Amazon ECS Fargate behind an internal ALB with TLS termination, then connect to AgentCore Gateway using managed VPC Lattice. |
 | **EKS Deployment** (coming soon) | `05-eks-deployment/` | Deploy MCP servers and REST APIs on Amazon EKS behind an internal NLB with TLS termination, using private hosted zones and `routingDomain` for private DNS patterns. |
 
