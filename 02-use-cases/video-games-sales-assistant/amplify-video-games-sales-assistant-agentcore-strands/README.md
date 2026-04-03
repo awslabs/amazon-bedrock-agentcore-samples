@@ -195,6 +195,9 @@ Under **App settings → Advanced settings → Environment variables**, add:
 | `MODEL_ID_FOR_CHART` | No | Bedrock model for chart generation | `us.anthropic.claude-haiku-4-5-20251001-v1:0` |
 | `QUESTION_ANSWERS_TABLE_NAME` | Yes | DynamoDB table for agent query results | — |
 
+> [!NOTE]
+> These environment variables are passed to the Next.js runtime via `next.config.mjs`. If you add new server-side env vars, make sure to also register them in that file for Amplify Hosting SSR to pick them up.
+
 ### 3. Deploy
 
 Review and click **Save and deploy**. Amplify runs the build pipeline defined in `amplify.yml`:
