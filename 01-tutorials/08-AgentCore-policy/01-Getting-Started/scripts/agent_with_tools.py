@@ -88,7 +88,7 @@ class AgentSession:
             response = session.invoke("What tools do you have?")
     """
 
-    def __init__(self, model_id="amazon.nova-lite-v1:0", verbose=True):
+    def __init__(self, model_id="us.amazon.nova-lite-v1:0", verbose=True):
         self.model_id = model_id
         self.verbose = verbose
         self.mcp_client = None
@@ -111,7 +111,7 @@ class AgentSession:
         CLIENT_SECRET = client_info["client_secret"]
         TOKEN_URL = client_info["token_endpoint"]
         self.gateway_url = gateway_config["gateway_url"]
-        region = self.config.get("region", "us-east-1")
+        region = self.config.get("region")
 
         # Set AWS region
         os.environ["AWS_DEFAULT_REGION"] = region
