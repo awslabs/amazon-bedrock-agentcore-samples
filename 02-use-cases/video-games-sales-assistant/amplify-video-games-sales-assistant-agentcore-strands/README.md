@@ -58,10 +58,12 @@ export STACK_NAME=CdkDataAnalystAssistantAgentcoreStrandsStack
 
 export QUESTION_ANSWERS_TABLE_NAME=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" --query "Stacks[0].Outputs[?OutputKey=='QuestionAnswersTableName'].OutputValue" --output text)
 export AGENT_RUNTIME_ARN=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" --query "Stacks[0].Outputs[?OutputKey=='AgentRuntimeArn'].OutputValue" --output text)
+export MEMORY_ID=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" --query "Stacks[0].Outputs[?OutputKey=='MemoryId'].OutputValue" --output text)
 
 sed -i.bak \
   -e "s|AGENT_RUNTIME_ARN=.*|AGENT_RUNTIME_ARN=\"${AGENT_RUNTIME_ARN}\"|" \
   -e "s|QUESTION_ANSWERS_TABLE_NAME=.*|QUESTION_ANSWERS_TABLE_NAME=\"${QUESTION_ANSWERS_TABLE_NAME}\"|" \
+  -e "s|MEMORY_ID=.*|MEMORY_ID=\"${MEMORY_ID}\"|" \
   .env.local && rm -f .env.local.bak
 
 echo "✅ .env.local configured successfully"
@@ -75,6 +77,9 @@ cat .env.local
 
 This project uses **Amplify Gen 2** to deploy authentication (Cognito User Pool + Identity Pool) and IAM policies. Unlike the original React app where you manually configure IAM roles, Amplify Gen 2 handles everything through code in `amplify/backend.ts`.
 
+> [!NOTE]
+> The authenticated user's Cognito `sub` (unique user ID) is sent as `user_id` in every agent request. The backend uses this as the `actorId` for AgentCore Memory, ensuring each user has isolated short-term and long-term memory namespaces. A new `sessionId` is generated per page load for short-term conversation scoping, while long-term facts persist across all sessions for the same user.
+
 ### Start the Amplify Sandbox
 
 The sandbox deploys a personal cloud environment to your AWS account. Run in a separate terminal:
@@ -82,6 +87,7 @@ The sandbox deploys a personal cloud environment to your AWS account. Run in a s
 ```bash
 QUESTION_ANSWERS_TABLE_NAME="$QUESTION_ANSWERS_TABLE_NAME" \
 AGENT_RUNTIME_ARN="$AGENT_RUNTIME_ARN" \
+MEMORY_ID="$MEMORY_ID" \
 pnpm ampx sandbox
 ```
 
@@ -96,9 +102,10 @@ Watching for file changes...
 Once `amplify_outputs.json` is generated, the sandbox has finished its work. You can safely press `Ctrl+C` to stop the watcher — the cloud resources (Cognito, IAM policies) stay deployed. Only keep it running if you plan to make changes to files in `amplify/` and want them hot-deployed.
 
 > [!NOTE]
-> The sandbox automatically creates a Cognito User Pool, Identity Pool, and attaches three inline IAM policies to the authenticated role:
+> The sandbox automatically creates a Cognito User Pool, Identity Pool, and attaches four inline IAM policies to the authenticated role:
 > - **DynamoDBReadPolicy** — Read access to the query results table
 > - **BedrockAgentCorePolicy** — Permission to invoke the AgentCore runtime
+> - **BedrockAgentCoreMemoryPolicy** — Permission to list and retrieve long-term memory records
 > - **BedrockInvokeModelPolicy** — Permission to invoke Bedrock models for chart generation
 >
 > No manual IAM configuration is needed.
@@ -189,7 +196,7 @@ Under **App settings → Advanced settings → Environment variables**, add:
 | `APP_DESCRIPTION` | Yes | Subtitle on the sign-in page | `Video Games Sales Data Analyst powered by Amazon Bedrock AgentCore` |
 | `AGENT_RUNTIME_ARN` | Yes | Bedrock AgentCore runtime ARN | — |
 | `AGENT_ENDPOINT_NAME` | No | Agent endpoint | `DEFAULT` |
-| `LAST_K_TURNS` | No | Conversation memory depth | `10` |
+| `MEMORY_ID` | Yes | AgentCore Memory ID for long-term memory | — |
 | `WELCOME_MESSAGE` | No | Chat welcome message | `I'm your AI Data Analyst, crunching data for insights.` |
 | `MAX_LENGTH_INPUT_SEARCH` | No | Max characters for assistant input | `500` |
 | `MODEL_ID_FOR_CHART` | No | Bedrock model for chart generation | `us.anthropic.claude-haiku-4-5-20251001-v1:0` |
@@ -238,6 +245,7 @@ These run directly in the browser using Cognito Identity Pool credentials obtain
 | Service | SDK Client | File | Purpose |
 |---|---|---|---|
 | Bedrock AgentCore | `BedrockAgentCoreClient` | `agent-core-call.ts` | Streaming agent invocation — sends user questions and processes real-time response chunks |
+| Bedrock AgentCore | `BedrockAgentCoreClient` | `aws-calls.ts` | Long-term memory — lists extracted facts from the `/facts/{actorId}` namespace |
 | Bedrock Runtime | `BedrockRuntimeClient` | `aws-calls.ts` | Chart generation — sends agent answers to Claude Haiku to produce ApexCharts configurations |
 
 ### Server-Side AWS Calls
@@ -250,25 +258,31 @@ These run on the Next.js server through API routes.
 
 ## Application Features
 
-Congratulations! Your Data Analyst Assistant can provide you with the following conversational experience:
+The following images showcase a conversational experience analysis that includes: natural language answers, the reasoning process used by the LLM to generate SQL queries, the database records retrieved from those queries, and the resulting chart visualizations.
 
-![Video Games Sales Assistant](../images/preview.png)
+- **AgentCore data analyst assistant welcome with Memory Facts access**
 
-- **Conversational interface with an agent responding to user questions**
+![Welcome screen with AgentCore branding](../images/preview.png)
 
-![Video Games Sales Assistant](../images/preview1.png)
+- **Long-term Memory Facts from AgentCore Memory**
 
-- **Raw query results displayed in tabular format**
+![Memory Facts panel with extracted knowledge](../images/preview1.png)
 
-![Video Games Sales Assistant](../images/preview2.png)
+- **Conversational agent with tool use and reasoning**
 
-- **Chart visualization generated from the agent's answer and the data query results (created using [Apexcharts](https://apexcharts.com/))**
+![Agent conversation with SQL query execution](../images/preview2.png)
 
-![Video Games Sales Assistant](../images/preview3.png)
+- **Raw query results in tabular format**
 
-- **Summary and conclusion derived from the data analysis conversation**
+![Query results displayed as data table](../images/preview3.png)
 
-![Video Games Sales Assistant](../images/preview4.png)
+- **Auto-generated chart from answer and data**
+
+![Chart visualization from query results](../images/preview4.png)
+
+- **Conversation summary and data analysis conclusion**
+
+![Summary and conclusion of analysis conversation](../images/preview5.png)
 
 ## Thank You
 

@@ -18,6 +18,7 @@ import * as s3 from "aws-cdk-lib/aws-s3";
 import * as iam from "aws-cdk-lib/aws-iam";
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as ecr_assets from 'aws-cdk-lib/aws-ecr-assets';
+import * as logs from 'aws-cdk-lib/aws-logs';
 import * as path from 'path';
 import { aws_bedrockagentcore as bedrockagentcore } from 'aws-cdk-lib';
 
@@ -414,16 +415,25 @@ export class CdkDataAnalystAssistantAgentcoreStrandsStack extends cdk.Stack {
     });
 
     // ================================
-    // BEDROCK AGENTCORE MEMORY
+    // BEDROCK AGENTCORE MEMORY (LTM)
     // ================================
 
-    // Short-term memory for AgentCore to maintain conversation context
+    // Long-term memory with semantic strategy for AgentCore
     const uniqueSuffix = cdk.Names.uniqueId(this).slice(-8).toLowerCase().replace(/[^a-z0-9]/g, '');
     const agentMemory = new bedrockagentcore.CfnMemory(this, 'AgentMemory', {
       name: `DataAnalystAssistantMemory_${uniqueSuffix}`,
-      eventExpiryDuration: 7, // Events expire after 7 days
+      eventExpiryDuration: 90, // Events expire after 90 days
       memoryExecutionRoleArn: agentCoreRole.roleArn,
-      description: 'Short-term memory for data analyst assistant conversations',
+      description: 'Long-term semantic memory for data analyst assistant conversations',
+      memoryStrategies: [
+        {
+          semanticMemoryStrategy: {
+            name: 'Facts',
+            description: 'Extracts and stores facts about video game sales data analysis conversations',
+            namespaces: ['/facts/{actorId}'],
+          },
+        },
+      ],
     });
 
     // ================================
@@ -469,6 +479,39 @@ export class CdkDataAnalystAssistantAgentcoreStrandsStack extends cdk.Stack {
 
     // Endpoint depends on runtime being created first
     runtimeEndpoint.addDependency(agentRuntime);
+
+    // ================================
+    // OBSERVABILITY - LOG DELIVERY
+    // ================================
+
+    // CloudWatch Log Group for AgentCore Memory vended log delivery
+    const memoryLogGroup = new logs.LogGroup(this, 'MemoryLogGroup', {
+      logGroupName: `/aws/vendedlogs/bedrock-agentcore/memory/${agentMemory.attrMemoryId}`,
+      retention: logs.RetentionDays.TWO_WEEKS,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
+
+    // Delivery Source — connects the Memory resource as a log source
+    const memoryLogSource = new logs.CfnDeliverySource(this, 'MemoryLogSource', {
+      name: `mem-${uniqueSuffix}-log-src`,
+      logType: 'APPLICATION_LOGS',
+      resourceArn: `arn:aws:bedrock-agentcore:${this.region}:${this.account}:memory/${agentMemory.attrMemoryId}`,
+    });
+    memoryLogSource.addDependency(agentMemory);
+
+    // Delivery Destination — CloudWatch Logs
+    const memoryLogDestination = new logs.CfnDeliveryDestination(this, 'MemoryLogDestination', {
+      name: `mem-${uniqueSuffix}-log-dst`,
+      destinationResourceArn: memoryLogGroup.logGroupArn,
+    });
+
+    // Delivery — connects source to destination
+    const memoryLogDelivery = new logs.CfnDelivery(this, 'MemoryLogDelivery', {
+      deliverySourceName: memoryLogSource.ref,
+      deliveryDestinationArn: memoryLogDestination.attrArn,
+    });
+    memoryLogDelivery.addDependency(memoryLogSource);
+    memoryLogDelivery.addDependency(memoryLogDestination);
 
     // ================================
     // CLOUDFORMATION OUTPUTS

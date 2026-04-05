@@ -15,9 +15,9 @@ import type { Answer, ControlAnswer, MessageItem } from '../types';
 interface GetAnswerParams {
   query: string;
   sessionId: string;
+  userId: string;
   agentRuntimeArn: string;
   agentEndpointName: string;
-  lastKTurns: number;
   questionAnswersTableName: string;
   auth: CognitoAuthParams;
   setControlAnswers: React.Dispatch<React.SetStateAction<ControlAnswer[]>>;
@@ -32,9 +32,9 @@ interface GetAnswerParams {
 export const getAnswer = async ({
   query: myQuery,
   sessionId,
+  userId,
   agentRuntimeArn,
   agentEndpointName,
-  lastKTurns,
   questionAnswersTableName,
   auth,
   setControlAnswers,
@@ -70,9 +70,9 @@ export const getAnswer = async ({
     const payload = JSON.stringify({
       prompt: myQuery,
       session_id: sessionId,
+      user_id: userId,
       prompt_uuid: queryUuid,
       user_timezone: timezone,
-      last_k_turns: lastKTurns,
     });
 
     const input = {

@@ -11,7 +11,7 @@ This CDK stack deploys a complete data analyst assistant powered by Amazon Bedro
 
 ### Amazon Bedrock AgentCore Resources
 
-- **AgentCore Memory**: Short-term memory for maintaining conversation context with 7-day event expiration
+- **AgentCore Memory**: Long-term semantic memory with a "Facts" strategy (`/facts/{actorId}` namespace) for extracting and persisting knowledge across sessions per user, plus short-term event-based conversation history with 90-day retention. Includes CloudWatch Logs delivery for observability
 - **AgentCore Runtime**: Container-based runtime hosting the Strands Agent with ARM64 architecture
 - **AgentCore Runtime Endpoint**: HTTP endpoint for invoking the data analyst assistant
 
@@ -81,7 +81,7 @@ Default Parameters:
 ### Deployed Resources
 
 **AgentCore Resources:**
-- AgentCore Memory with 7-day event expiration
+- AgentCore Memory with semantic "Facts" strategy, `/facts/{actorId}` namespace, 90-day event retention, and CloudWatch Logs delivery
 - AgentCore Runtime (container-based, ARM64)
 - AgentCore Runtime Endpoint
 - ECR repository with agent container image
@@ -118,6 +118,15 @@ After deployment, the stack exports:
 
 > [!IMPORTANT] 
 > Enhance AI safety and compliance by implementing **[Amazon Bedrock Guardrails](https://aws.amazon.com/bedrock/guardrails/)** for your AI applications with the seamless integration offered by **[Strands Agents SDK](https://strandsagents.com/latest/user-guide/safety-security/guardrails/)**.
+
+### How Memory Works
+
+The agent uses the [AgentCoreMemorySessionManager](https://strandsagents.com/docs/community/session-managers/agentcore-memory/) (Strands integration) to manage both short-term and long-term memory automatically:
+
+- **Short-term memory (STM)**: Scoped by `actorId` + `sessionId`. Stores raw conversation events within a session. Each page load generates a new `sessionId`, so STM only contains the current conversation.
+- **Long-term memory (LTM)**: Scoped by `/facts/{actorId}` namespace. After events are saved, AgentCore asynchronously extracts facts using the semantic strategy and stores them per user. When a new session starts, the agent searches this namespace using the user's query via vector similarity, retrieving relevant knowledge from all past sessions.
+- **Per-user isolation**: The `actorId` is the Cognito user `sub`, so each user's facts are completely isolated from other users.
+- **Async extraction**: LTM extraction takes 20-40 seconds after events are saved. Within the same session, STM handles continuity. LTM provides cross-session knowledge.
 
 ## Set Up the PostgreSQL Database
 
@@ -236,25 +245,25 @@ export SESSION_ID=$(uuidgen)
 ```bash
 curl -X POST http://localhost:8080/invocations \
 -H "Content-Type: application/json" \
--d '{"prompt": "Hello world!", "session_id": "'$SESSION_ID'", "last_k_turns": 20}'
+-d '{"prompt": "Hello world!", "session_id": "'$SESSION_ID'", "user_id": "local-test-user"}'
 ```
 
 ```bash
 curl -X POST http://localhost:8080/invocations \
 -H "Content-Type: application/json" \
--d '{"prompt": "what is the structure of your data available?!", "session_id": "'$SESSION_ID'", "last_k_turns": 20}'
+-d '{"prompt": "what is the structure of your data available?!", "session_id": "'$SESSION_ID'", "user_id": "local-test-user"}'
 ```
 
 ```bash
 curl -X POST http://localhost:8080/invocations \
 -H "Content-Type: application/json" \
--d '{"prompt": "Which developers tend to get the best reviews?", "session_id": "'$SESSION_ID'", "last_k_turns": 20}'
+-d '{"prompt": "Which developers tend to get the best reviews?", "session_id": "'$SESSION_ID'", "user_id": "local-test-user"}'
 ```
 
 ```bash
 curl -X POST http://localhost:8080/invocations \
 -H "Content-Type: application/json" \
--d '{"prompt": "Give me a summary of our conversation", "session_id": "'$SESSION_ID'", "last_k_turns": 20}'
+-d '{"prompt": "Give me a summary of our conversation", "session_id": "'$SESSION_ID'", "user_id": "local-test-user"}'
 ```
 
 ## Invoking the Agent
@@ -276,3 +285,4 @@ cdk destroy
 ## License
 
 This project is licensed under the Apache-2.0 License.
+
