@@ -5,7 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { DynamoDBClient, QueryCommand } from '@aws-sdk/client-dynamodb';
-import { getAwsClient } from '@/lib/aws-client';
+import { getAwsClient } from '@/utils/aws-client';
 
 export async function POST(req: NextRequest) {
   try {

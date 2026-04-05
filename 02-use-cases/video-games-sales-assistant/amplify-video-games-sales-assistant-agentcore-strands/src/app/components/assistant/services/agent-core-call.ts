@@ -8,7 +8,7 @@ import {
   BedrockAgentCoreClient,
   InvokeAgentRuntimeCommand,
 } from '@aws-sdk/client-bedrock-agentcore';
-import { getAwsClient, type CognitoAuthParams } from '@/lib/aws-client';
+import { getAwsClient, type CognitoAuthParams } from '@/utils/aws-client';
 import { getQueryResults } from './aws-calls';
 import type { Answer, ControlAnswer, MessageItem } from '../types';
 

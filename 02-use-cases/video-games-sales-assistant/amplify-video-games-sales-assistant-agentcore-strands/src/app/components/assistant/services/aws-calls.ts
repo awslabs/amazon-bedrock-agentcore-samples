@@ -7,7 +7,7 @@ import {
   BedrockAgentCoreClient,
   ListMemoryRecordsCommand,
 } from '@aws-sdk/client-bedrock-agentcore';
-import { getAwsClient, type CognitoAuthParams } from '@/lib/aws-client';
+import { getAwsClient, type CognitoAuthParams } from '@/utils/aws-client';
 import type { QueryResult, ChartData, Answer } from '../types';
 import {
   extractBetweenTags,

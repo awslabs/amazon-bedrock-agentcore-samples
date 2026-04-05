@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { fetchAuthSession, getCurrentUser } from 'aws-amplify/auth';
-import type { CognitoAuthParams } from '@/lib/aws-client';
+import type { CognitoAuthParams } from '@/utils/aws-client';
 import type { Answer, ControlAnswer, ChartConfig, AssistantConfig } from '../types';
 import { getAnswer } from '../services/agent-core-call';
 import { generateChart, getMemoryFacts, type MemoryFact } from '../services/aws-calls';
