@@ -33,7 +33,7 @@ def get_agent_service(settings: Settings = Depends(get_settings)) -> AgentServic
             identity_aws_region=settings.identity_aws_region,
             s3_bucket_name=settings.s3_bucket_name,
             inference_profile_id=settings.inference_profile_id,
-            base_url=settings.base_url,
+            session_binding_url=settings.session_binding_url,
             github_provider_name=settings.github_provider_name,
             github_api_base=settings.github_api_base,
         )

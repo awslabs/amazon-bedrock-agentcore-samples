@@ -58,6 +58,9 @@ For more details on AgentCore Observability, please refer to [this](https://aws.
 │   ├── Braintrust/
 │   │   ├── requirements.txt
 │   │   └── runtime_with_strands_and_braintrust.ipynb
+│   ├── Datadog/
+│   │   ├── requirements.txt
+│   │   └── runtime_with_strands_and_datadog.ipynb
 │   ├── Instana/
 │   │   ├── requirements.txt
 │   │   └── runtime_with_strands_and_instana.ipynb
@@ -110,6 +113,7 @@ Examples of using agents hosted on Amazon Bedrock AgentCore Runtime with third-p
 
 - **Arize**: AI and Agent engineering platform
 - **Braintrust**: AI evaluation and monitoring platform
+- **Datadog**: Unified observability platform for monitoring, APM, logs, and traces
 - **Instana**: Real-Time APM and Observability Platform
 - **Langfuse**: LLM observability and analytics
 

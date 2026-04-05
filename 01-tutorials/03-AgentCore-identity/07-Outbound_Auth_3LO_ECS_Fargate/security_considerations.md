@@ -6,7 +6,7 @@ This sample uses AWS-managed and customer-managed KMS encryption:
 
 **Customer-Managed KMS Key (Included):**
 
-- Amazon CloudWatch Logs (Agent and OAuth Callback services)
+- Amazon CloudWatch Logs (Agent and Session Binding services)
 - Amazon S3 sessions bucket
 
 **AWS-Managed Encryption Keys:**

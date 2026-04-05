@@ -9,7 +9,9 @@ from strands.session import SessionManager
 from backend.runtime.agent.tools.github import GitHubConfig, GitHubTools
 
 
-def agent_factory(session_manager: SessionManager, github_config: GitHubConfig, model: BedrockModel) -> Agent:
+def agent_factory(
+    session_manager: SessionManager, github_config: GitHubConfig, model: BedrockModel
+) -> Agent:
     """Create agent with GitHub tools."""
     github_tools = GitHubTools(config=github_config)
 
