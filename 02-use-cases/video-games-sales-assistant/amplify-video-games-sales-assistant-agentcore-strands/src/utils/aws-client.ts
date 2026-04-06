@@ -19,7 +19,7 @@ export interface CognitoAuthParams {
   identityPoolId: string;
   /** Cognito User Pool ID from amplify_outputs.json */
   userPoolId: string;
-  /** AWS region — defaults to us-east-1 */
+  /** AWS region — auto-detected from identityPoolId if not provided */
   region?: string;
 }
 
@@ -43,7 +43,7 @@ export function getAwsClient<T>(
   ClientClass: new (config: { region: string; credentials: ReturnType<typeof fromCognitoIdentityPool> }) => T,
   { idToken, identityPoolId, userPoolId, region }: CognitoAuthParams
 ): T {
-  const resolvedRegion = region || 'us-east-1';
+  const resolvedRegion = region || identityPoolId.split(':')[0] || 'us-east-1';
 
   const credentials = fromCognitoIdentityPool({
     clientConfig: { region: resolvedRegion },

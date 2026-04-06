@@ -11,9 +11,9 @@ This CDK stack deploys a complete data analyst assistant powered by Amazon Bedro
 
 ### Amazon Bedrock AgentCore Resources
 
-- **AgentCore Memory**: Long-term semantic memory with a "Facts" strategy (`/facts/{actorId}` namespace) for extracting and persisting knowledge across sessions per user, plus short-term event-based conversation history with 90-day retention. Includes CloudWatch Logs delivery for observability
-- **AgentCore Runtime**: Container-based runtime hosting the Strands Agent with ARM64 architecture
-- **AgentCore Runtime Endpoint**: HTTP endpoint for invoking the data analyst assistant
+- **AgentCore Memory**: Long-term semantic memory with a "Facts" strategy (`/facts/{actorId}` namespace) for extracting and persisting knowledge across sessions per user, plus short-term event-based conversation history with 90-day retention
+- **AgentCore Runtime**: Container-based runtime hosting the Strands Agent with ARM64 architecture and DEFAULT endpoint
+- **Observability**: CloudWatch Logs delivery for runtime application logs and memory extraction, plus X-Ray traces for runtime invocations
 
 ### Data Source and VPC Infrastructure
 
@@ -81,10 +81,15 @@ Default Parameters:
 ### Deployed Resources
 
 **AgentCore Resources:**
-- AgentCore Memory with semantic "Facts" strategy, `/facts/{actorId}` namespace, 90-day event retention, and CloudWatch Logs delivery
-- AgentCore Runtime (container-based, ARM64)
-- AgentCore Runtime Endpoint
+- AgentCore Memory with semantic "Facts" strategy, `/facts/{actorId}` namespace, and 90-day event retention
+- AgentCore Runtime (container-based, ARM64) with DEFAULT endpoint
 - ECR repository with agent container image
+
+**Observability:**
+- Runtime application logs → CloudWatch Logs (`/aws/vendedlogs/bedrock-agentcore/<runtimeId>`)
+- Runtime traces → AWS X-Ray
+- Memory extraction logs → CloudWatch Logs (`/aws/vendedlogs/bedrock-agentcore/memory/<memoryId>`)
+- All log groups configured with 14-day retention
 
 **Data Infrastructure:**
 - VPC with public/private subnets, NAT Gateway, security groups, VPC endpoints
@@ -114,7 +119,6 @@ After deployment, the stack exports:
 - `QuestionAnswersTableName`: DynamoDB table name
 - `QuestionAnswersTableArn`: DynamoDB table ARN
 - `AgentRuntimeArn`: AgentCore runtime ARN
-- `AgentEndpointName`: AgentCore runtime endpoint name
 
 > [!IMPORTANT] 
 > Enhance AI safety and compliance by implementing **[Amazon Bedrock Guardrails](https://aws.amazon.com/bedrock/guardrails/)** for your AI applications with the seamless integration offered by **[Strands Agents SDK](https://strandsagents.com/latest/user-guide/safety-security/guardrails/)**.
@@ -148,7 +152,6 @@ export STACK_NAME=CdkDataAnalystAssistantAgentcoreStrandsStack
 export BEDROCK_MODEL_ID=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" --query "Stacks[0].Parameters[?ParameterKey=='BedrockModelId'].ParameterValue" --output text)
 export MEMORY_ID=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" --query "Stacks[0].Outputs[?OutputKey=='MemoryId'].OutputValue" --output text)
 export AGENT_RUNTIME_ARN=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" --query "Stacks[0].Outputs[?OutputKey=='AgentRuntimeArn'].OutputValue" --output text)
-export AGENT_ENDPOINT_NAME=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" --query "Stacks[0].Outputs[?OutputKey=='AgentEndpointName'].OutputValue" --output text)
 
 # Database resources
 export SECRET_ARN=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" --query "Stacks[0].Outputs[?OutputKey=='SecretARN'].OutputValue" --output text)
@@ -174,7 +177,6 @@ BEDROCK_MODEL_ID: ${BEDROCK_MODEL_ID}
 # AgentCore Resources
 MEMORY_ID: ${MEMORY_ID}
 AGENT_RUNTIME_ARN: ${AGENT_RUNTIME_ARN}
-AGENT_ENDPOINT_NAME: ${AGENT_ENDPOINT_NAME}
 
 # Database Resources
 SECRET_ARN: ${SECRET_ARN}

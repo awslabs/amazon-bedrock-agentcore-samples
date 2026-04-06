@@ -231,6 +231,7 @@ async def agent_invocation(payload):
         # Initialize session manager (explicit close instead of context manager for async generator)
         session_manager = AgentCoreMemorySessionManager(
             agentcore_memory_config=agentcore_memory_config,
+            region_name=os.environ.get("AWS_REGION", "us-east-1"),
         )
 
         try:
@@ -300,9 +301,11 @@ async def agent_invocation(payload):
 
         # Send error as a proper data chunk so the frontend renders it as a normal
         # assistant message and the user can continue the conversation.
+        error_detail = str(e)[:200]
         error_msg = (
             "I'm sorry, I encountered a temporary issue processing your request. "
-            "Please try again — I'm ready to help with your video game sales analysis."
+            "Please try again — I'm ready to help with your video game sales analysis. "
+            f"(Details: {error_detail})"
         )
         yield json.dumps({"data": error_msg}) + "\n"
 

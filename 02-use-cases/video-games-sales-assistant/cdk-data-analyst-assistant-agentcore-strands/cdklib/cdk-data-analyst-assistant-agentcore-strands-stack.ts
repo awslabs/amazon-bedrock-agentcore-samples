@@ -484,6 +484,63 @@ export class CdkDataAnalystAssistantAgentcoreStrandsStack extends cdk.Stack {
     // OBSERVABILITY - LOG DELIVERY
     // ================================
 
+    // --- AgentCore Runtime Logs ---
+
+    // CloudWatch Log Group for AgentCore Runtime application logs
+    const runtimeLogGroup = new logs.LogGroup(this, 'RuntimeLogGroup', {
+      logGroupName: `/aws/vendedlogs/bedrock-agentcore/${agentRuntime.attrAgentRuntimeId}`,
+      retention: logs.RetentionDays.TWO_WEEKS,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
+
+    // Delivery Source — Runtime application logs
+    const runtimeLogSource = new logs.CfnDeliverySource(this, 'RuntimeLogSource', {
+      name: `rt-${uniqueSuffix}-log-src`,
+      logType: 'APPLICATION_LOGS',
+      resourceArn: agentRuntime.attrAgentRuntimeArn,
+    });
+    runtimeLogSource.addDependency(agentRuntime);
+
+    // Delivery Destination — CloudWatch Logs for runtime
+    const runtimeLogDestination = new logs.CfnDeliveryDestination(this, 'RuntimeLogDestination', {
+      name: `rt-${uniqueSuffix}-log-dst`,
+      destinationResourceArn: runtimeLogGroup.logGroupArn,
+    });
+
+    // Delivery — connects runtime source to destination
+    const runtimeLogDelivery = new logs.CfnDelivery(this, 'RuntimeLogDelivery', {
+      deliverySourceName: runtimeLogSource.ref,
+      deliveryDestinationArn: runtimeLogDestination.attrArn,
+    });
+    runtimeLogDelivery.addDependency(runtimeLogSource);
+    runtimeLogDelivery.addDependency(runtimeLogDestination);
+
+    // --- AgentCore Runtime Traces (X-Ray) ---
+
+    // Delivery Source — Runtime traces
+    const runtimeTracesSource = new logs.CfnDeliverySource(this, 'RuntimeTracesSource', {
+      name: `rt-${uniqueSuffix}-trc-src`,
+      logType: 'TRACES',
+      resourceArn: agentRuntime.attrAgentRuntimeArn,
+    });
+    runtimeTracesSource.addDependency(agentRuntime);
+
+    // Delivery Destination — X-Ray for traces
+    const runtimeTracesDestination = new logs.CfnDeliveryDestination(this, 'RuntimeTracesDestination', {
+      name: `rt-${uniqueSuffix}-trc-dst`,
+      deliveryDestinationType: 'XRAY',
+    });
+
+    // Delivery — connects traces source to X-Ray destination
+    const runtimeTracesDelivery = new logs.CfnDelivery(this, 'RuntimeTracesDelivery', {
+      deliverySourceName: runtimeTracesSource.ref,
+      deliveryDestinationArn: runtimeTracesDestination.attrArn,
+    });
+    runtimeTracesDelivery.addDependency(runtimeTracesSource);
+    runtimeTracesDelivery.addDependency(runtimeTracesDestination);
+
+    // --- AgentCore Memory Logs ---
+
     // CloudWatch Log Group for AgentCore Memory vended log delivery
     const memoryLogGroup = new logs.LogGroup(this, 'MemoryLogGroup', {
       logGroupName: `/aws/vendedlogs/bedrock-agentcore/memory/${agentMemory.attrMemoryId}`,
@@ -551,12 +608,7 @@ export class CdkDataAnalystAssistantAgentcoreStrandsStack extends cdk.Stack {
       value: agentRuntime.attrAgentRuntimeArn,
       description: "The ARN of the AgentCore runtime",
     });
-
-    new cdk.CfnOutput(this, "AgentEndpointName", {
-      value: runtimeEndpoint.name,
-      description: "The name of the AgentCore runtime endpoint",
-    });
-
+    
     new cdk.CfnOutput(this, "MemoryId", {
       value: agentMemory.attrMemoryId,
       description: "The ID of the AgentCore Memory",
