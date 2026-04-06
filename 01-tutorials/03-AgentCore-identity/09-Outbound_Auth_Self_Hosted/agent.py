@@ -1,7 +1,6 @@
 import json
 import os
 import sys
-import time
 import base64
 import webbrowser
 import threading
