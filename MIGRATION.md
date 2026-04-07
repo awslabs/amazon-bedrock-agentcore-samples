@@ -33,7 +33,7 @@ uv tool uninstall bedrock-agentcore-starter-toolkit # if installed via uv
 Create a new AgentCore CLI project that will receive the imported resources:
 
 ```bash
-agentcore create --name my-project
+agentcore create --name my-project --no-agent
 cd my-project
 ```
 
