@@ -48,25 +48,18 @@ For detailed technical information, see [How AgentCore Identity Works](02-how_it
 
 ## Tutorial Examples
 
-### CLI-Based Examples (Recommended)
-
-These examples use the `agentcore` CLI and follow the current recommended format:
-
-| Example | Type | Description |
-|---------|------|-------------|
-| **[Runtime Inbound + Outbound Auth](10-runtime-inbound-outbound-auth)** | Inbound + Outbound | Cognito JWT inbound auth on Runtime; API key outbound via AgentCore Identity |
-| **[Gateway Inbound + Outbound Auth](11-gateway-inbound-outbound-auth)** | Inbound + Outbound | Cognito JWT on Gateway; OAuth2 client credentials to upstream MCP server |
-| **[M2M + 3LO Auth Flows](12-m2m-3lo-runtime)** | Inbound + Outbound | Cognito JWT inbound; M2M (client credentials) + GitHub/Google 3LO outbound |
-
-### Notebook-Based Examples (Legacy)
-
-| Example | Type | Description |
-|---------|------|-------------|
-| **[Inbound Auth Example](03-Inbound%20Auth%20example)** | Inbound | User authentication with Strands agents and Bedrock models |
-| **[Outbound Auth Example](04-Outbound%20Auth%20example)** | Outbound | Agent access to external services with Strands and OpenAI |
-| **[3-Legged OAuth](05-Outbound_Auth_3lo)** | Outbound | User-delegated access with Cognito and 3-legged OAuth flow with Google |
-| **[GitHub Integration](06-Outbound_Auth_Github)** | Outbound | GitHub API access using 3-legged OAuth authentication |
-| **[Self-Hosted Agent OAuth](09-Outbound_Auth_Self_Hosted)** | Outbound | OAuth token management for a self-hosted local agent using a custom provider |
+| # | Example | Type | Method | Description |
+|---|---------|------|--------|-------------|
+| 03 | **[Inbound Auth](03-Inbound%20Auth%20example)** | Inbound | Notebook | User authentication with Strands agents and Bedrock models |
+| 04 | **[Outbound Auth](04-Outbound%20Auth%20example)** | Outbound | Notebook | Agent access to external services with Strands and OpenAI |
+| 05 | **[Google 3LO](05-Outbound_Auth_3lo)** | Outbound | Notebook | User-delegated access with Cognito and 3-legged OAuth flow with Google |
+| 06 | **[GitHub 3LO](06-Outbound_Auth_Github)** | Outbound | Notebook | GitHub API access using 3-legged OAuth authentication |
+| 07 | **[3LO on ECS Fargate](07-Outbound_Auth_3LO_ECS_Fargate)** | Outbound | Notebook | 3-legged OAuth deployed on ECS Fargate |
+| 08 | **[IDP Examples](08-IDP-examples)** | Inbound | Notebook | Identity provider examples (EntraID, Okta) |
+| 09 | **[Self-Hosted Agent OAuth](09-Outbound_Auth_Self_Hosted)** | Outbound | Notebook | OAuth token management for a self-hosted local agent |
+| 10 | **[Runtime Inbound + Outbound Auth](10-runtime-inbound-outbound-auth)** | Inbound + Outbound | CLI | Cognito JWT on Runtime; API key outbound via AgentCore Identity |
+| 11 | **[Gateway Inbound + Outbound Auth](11-gateway-inbound-outbound-auth)** | Inbound + Outbound | CLI | Cognito JWT on Gateway; OAuth2 to upstream MCP server |
+| 12 | **[M2M + 3LO Auth Flows](12-m2m-3lo-runtime)** | Inbound + Outbound | CLI | M2M (client credentials) + GitHub/Google 3LO outbound |
 
 ## Getting Started
 
