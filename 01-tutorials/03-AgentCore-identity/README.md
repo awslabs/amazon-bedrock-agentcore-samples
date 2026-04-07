@@ -66,6 +66,7 @@ These examples use the `agentcore` CLI and follow the current recommended format
 | **[Outbound Auth Example](04-Outbound%20Auth%20example)** | Outbound | Agent access to external services with Strands and OpenAI |
 | **[3-Legged OAuth](05-Outbound_Auth_3lo)** | Outbound | User-delegated access with Cognito and 3-legged OAuth flow with Google |
 | **[GitHub Integration](06-Outbound_Auth_Github)** | Outbound | GitHub API access using 3-legged OAuth authentication |
+| **[Self-Hosted Agent OAuth](09-Outbound_Auth_Self_Hosted)** | Outbound | OAuth token management for a self-hosted local agent using a custom provider |
 
 ## Getting Started
 

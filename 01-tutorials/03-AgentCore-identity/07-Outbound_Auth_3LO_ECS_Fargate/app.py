@@ -13,7 +13,8 @@ from config import CdkConfig
 app = cdk.App()
 
 config = CdkConfig(
-    aws_account=app.node.try_get_context("aws_account") or os.environ.get("CDK_DEFAULT_ACCOUNT"),
+    aws_account=app.node.try_get_context("aws_account")
+    or os.environ.get("CDK_DEFAULT_ACCOUNT"),
 )
 
 identity_stack = IdentityStack(

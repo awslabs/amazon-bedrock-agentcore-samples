@@ -1,57 +1,58 @@
 {
-  "name": "amplify-video-games-sales-assistant-strands",
-  "version": "0.1.1",
-  "author": "Uriel Ramirez (beralfon@amazon.com)",
+  "name": "nextjs-amplify-app",
+  "version": "0.1.0",
   "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "sandbox": "npx ampx sandbox",
+    "sandbox:delete": "npx ampx sandbox delete"
+  },
   "dependencies": {
-    "@aws-amplify/ui-react": "^6.12.0",
-    "@aws-sdk/client-bedrock-agentcore": "^3.847.0",
-    "@aws-sdk/client-bedrock-runtime": "^3.846.0",
-    "@aws-sdk/client-dynamodb": "^3.846.0",
-    "@aws-sdk/credential-providers": "^3.846.0",
-    "@aws-sdk/lib-dynamodb": "^3.846.0",
-    "@emotion/react": "^11.14.0",
-    "@emotion/styled": "^11.14.0",
-    "@fontsource/roboto": "^5.2.5",
-    "@mui/icons-material": "^7.0.1",
-    "@mui/material": "^7.0.1",
-    "@testing-library/dom": "^10.4.0",
-    "@testing-library/jest-dom": "^6.6.3",
-    "@testing-library/react": "^16.2.0",
-    "@testing-library/user-event": "^13.5.0",
-    "aws-amplify": "^6.15.5",
-    "react": "^19.1.0",
-    "react-apexcharts": "^1.7.0",
-    "react-dom": "^19.1.0",
+    "@aws-amplify/backend": "^1.21.0",
+    "@aws-amplify/backend-cli": "^1.8.2",
+    "@aws-amplify/ui-react": "^6.15.1",
+    "@aws-sdk/client-bedrock-agent-runtime": "^3.1000.0",
+    "@aws-sdk/client-bedrock-agentcore": "^3.1014.0",
+    "@aws-sdk/client-bedrock-runtime": "^3.1014.0",
+    "@aws-sdk/client-dynamodb": "^3.1000.0",
+    "@aws-sdk/client-s3": "^3.1000.0",
+    "@aws-sdk/credential-providers": "^3.1000.0",
+    "@aws-sdk/util-dynamodb": "^3.996.1",
+    "@tailwindcss/postcss": "^4.2.2",
+    "apexcharts": "^5.10.4",
+    "aws-amplify": "^6.16.2",
+    "next": "16.1.7",
+    "postcss": "^8.5.8",
+    "react": "19.2.3",
+    "react-apexcharts": "^2.1.0",
+    "react-dom": "19.2.3",
     "react-markdown": "^10.1.0",
-    "react-scripts": "^5.0.1",
     "rehype-raw": "^7.0.0",
     "remark-gfm": "^4.0.1",
-    "uuid": "^11.1.0",
-    "web-vitals": "^2.1.4"
+    "tailwindcss": "^4.2.2",
+    "uuid": "^13.0.0"
   },
-  "scripts": {
-    "start": "react-scripts start",
-    "build": "react-scripts build",
-    "test": "react-scripts test",
-    "eject": "react-scripts eject"
+  "devDependencies": {
+    "@types/node": "^22.15.0",
+    "@types/react": "19.2.14",
+    "@types/uuid": "^11.0.0",
+    "aws-cdk-lib": "^2.241.0",
+    "constructs": "^10.5.1",
+    "eslint": "^9",
+    "eslint-config-next": "16.1.7"
   },
-  "eslintConfig": {
-    "extends": [
-      "react-app",
-      "react-app/jest"
-    ]
-  },
-  "browserslist": {
-    "production": [
-      ">0.2%",
-      "not dead",
-      "not op_mini all"
-    ],
-    "development": [
-      "last 1 chrome version",
-      "last 1 firefox version",
-      "last 1 safari version"
-    ]
+  "pnpm": {
+    "overrides": {
+      "handlebars": ">=4.7.9",
+      "minimatch@>=10.0.0 <10.2.3": ">=10.2.3",
+      "immutable@<3.8.3": ">=3.8.3",
+      "brace-expansion": ">=5.0.5",
+      "yaml@>=1.0.0 <1.10.3": "1.10.3",
+      "lodash": ">=4.18.0",
+      "lodash-es": ">=4.18.0"
+    }
   }
 }

@@ -7,8 +7,53 @@ import json
 import logging
 import sys
 import time
+import boto3
 from pathlib import Path
 from bedrock_agentcore_starter_toolkit.operations.gateway.client import GatewayClient
+
+GATEWAY_NAME = "GW-Insurance-Underwriting"
+
+
+def _find_gateway_by_name(region: str) -> str | None:
+    """Return the gateway ID if a gateway with GATEWAY_NAME already exists."""
+    client = boto3.client("bedrock-agentcore-control", region_name=region)
+    try:
+        resp = client.list_gateways()
+        for gw in resp.get("items", []):
+            if gw.get("name") == GATEWAY_NAME and gw.get("status") in [
+                "READY",
+                "ACTIVE",
+            ]:
+                return gw["gatewayId"]
+    except Exception:
+        pass
+    return None
+
+
+def _delete_gateway(region: str, gateway_id: str) -> None:
+    """Delete all targets then the gateway itself, waiting for targets to clear."""
+    client = boto3.client("bedrock-agentcore-control", region_name=region)
+    try:
+        targets = client.list_gateway_targets(gatewayIdentifier=gateway_id).get(
+            "items", []
+        )
+        for t in targets:
+            client.delete_gateway_target(
+                gatewayIdentifier=gateway_id, targetId=t["targetId"]
+            )
+        # Wait until all targets are gone (deletion is asynchronous)
+        for _ in range(30):
+            remaining = client.list_gateway_targets(gatewayIdentifier=gateway_id).get(
+                "items", []
+            )
+            if not remaining:
+                break
+            time.sleep(3)
+        client.delete_gateway(gatewayIdentifier=gateway_id)
+        print(f"   Deleted stale gateway and {len(targets)} target(s): {gateway_id}")
+        time.sleep(5)
+    except Exception as exc:
+        print(f"   Warning: could not delete gateway {gateway_id}: {exc}")
 
 
 def load_config():
@@ -32,15 +77,47 @@ def load_config():
 def setup_gateway():
     """Setup AgentCore Gateway with Insurance Underwriting Lambda targets"""
 
-    # Configuration
-    region = "us-east-1"
+    print("🚀 Setting up AgentCore Gateway for Insurance Underwriting...\n")
 
-    print("🚀 Setting up AgentCore Gateway for Insurance Underwriting...")
-    print(f"Region: {region}\n")
-
-    # Load existing configuration
+    # Load existing configuration (contains the region set by deploy_lambdas.py)
     print("📦 Loading configuration...")
     existing_config, config_file = load_config()
+
+    region = existing_config.get("region")
+    if not region:
+        raise ValueError(
+            "Region not found in config.json. Please run deploy_lambdas.py first."
+        )
+
+    print(f"Region: {region}\n")
+
+    # --- Idempotency: reuse existing gateway if config is complete --------
+    saved_gateway = existing_config.get("gateway", {})
+    saved_gw_id = saved_gateway.get("gateway_id")
+    if saved_gw_id:
+        boto_ctrl = boto3.client("bedrock-agentcore-control", region_name=region)
+        try:
+            gw_status = boto_ctrl.get_gateway(gatewayIdentifier=saved_gw_id).get(
+                "status"
+            )
+            if gw_status in ("READY", "ACTIVE"):
+                print(f"✅ Reusing existing gateway from config: {saved_gw_id}")
+                print(f"   Gateway URL: {saved_gateway.get('gateway_url')}")
+                print("=" * 70)
+                return existing_config
+        except Exception:
+            print(f"   Gateway {saved_gw_id} not found in AWS — will create fresh.")
+
+    # --- No config: detect and remove stale gateway by name ---------------
+    stale_id = _find_gateway_by_name(region)
+    if stale_id:
+        print(
+            f"⚠️  Found stale gateway '{GATEWAY_NAME}' ({stale_id}) with no saved config."
+        )
+        print("   Deleting it so a fresh one can be created...")
+        _delete_gateway(region, stale_id)
+    # -----------------------------------------------------------------------
+
     lambda_config = existing_config.get("lambdas", {})
 
     if not lambda_config:
@@ -67,7 +144,7 @@ def setup_gateway():
     # Step 2: Create Gateway (role will be auto-created)
     print("\n📝 Step 2: Creating AgentCore Gateway...")
     gateway = client.create_mcp_gateway(
-        name="GW-Insurance-Underwriting",
+        name=GATEWAY_NAME,
         role_arn=None,  # Let the toolkit create the role
         authorizer_config=cognito_response["authorizer_config"],
         enable_semantic_search=True,
@@ -213,7 +290,7 @@ def setup_gateway():
         "gateway_url": gateway["gatewayUrl"],
         "gateway_id": gateway["gatewayId"],
         "gateway_arn": gateway_arn or gateway.get("gatewayArn"),
-        "gateway_name": "GW-Insurance-Underwriting",
+        "gateway_name": GATEWAY_NAME,
         "client_info": cognito_response["client_info"],
     }
 

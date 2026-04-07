@@ -3,7 +3,7 @@
 > [!IMPORTANT]
 > **🚀 Ready-to-Deploy Agent Web Application**: Use this reference solution to build other agent-powered web applications across different industries. Extend the agent capabilities by adding custom tools for specific industry workflows and adapt it to various business domains.
 
-This solution provides a Generative AI application reference that allows users to interact with data through a natural language interface. The solution leverages **[Amazon Bedrock AgentCore](https://aws.amazon.com/bedrock/agentcore/)**, a managed service that enables you to deploy, run, and scale custom agent applications, along with the **[Strands Agents SDK](https://strandsagents.com/)** to build an agent that connects to a PostgreSQL database, providing data analysis capabilities through a web application interface.
+This solution provides a Generative AI application reference that allows users to interact with data through a natural language interface. The solution leverages **[Amazon Bedrock AgentCore](https://aws.amazon.com/bedrock/agentcore/)**, a managed service that enables you to deploy, run, and scale custom agent applications, along with the **[Strands Agents SDK](https://strandsagents.com/)** to build an agent that connects to a PostgreSQL database, providing data analysis capabilities through a Next.js web application built with **[AWS Amplify Gen 2](https://docs.amplify.aws/)**.
 
 <div align="center">
 <img src="./images/data-analyst-assistant-agentcore-strands-agents-sdk.gif" alt="Conversational Data Analyst Assistant Solution with Amazon Bedrock AgentCore">
@@ -49,16 +49,18 @@ The AgentCore infrastructure handles all storage complexity and provides efficie
 - **VPC with Public and Private Subnets**: Network isolation and security for database resources
 - **Amazon Aurora Serverless v2 PostgreSQL**: Stores the video game sales data with RDS Data API integration
 - **Amazon DynamoDB**: Stores raw query results for data analysis audit trails
-- **AWS Secrets Manager**: Secure storage for database credentials
+- **AWS Secrets Manager**: Secure storage for database credentials (admin and read-only)
 - **Amazon S3**: Import bucket for loading data into Aurora PostgreSQL
-- **SSM Parameter Store**: Configuration management for AgentCore runtime parameters
+
+All configuration values (database ARNs, secret ARNs, model ID, etc.) are passed directly as environment variables to the AgentCore Runtime — no SSM Parameter Store required.
 
 ### Amplify Deployment for the Front-End Application
 
-- **React Web Application**: Delivers the user interface for the assistant
-    - Uses Amazon Cognito for user authentication and permissions management
-    - The application invokes the Amazon Bedrock AgentCore for interacting with the assistant
-    - For chart generation, the application directly invokes the Claude Haiku 4.5 model
+- **Next.js Web Application (Amplify Gen 2)**: Delivers the user interface for the assistant
+    - Uses Amazon Cognito (via Amplify Gen 2) for user authentication and IAM permissions — no manual IAM configuration needed
+    - The application invokes Amazon Bedrock AgentCore for interacting with the assistant (client-side streaming)
+    - For chart generation, the application directly invokes the Claude Haiku 4.5 model (client-side)
+    - DynamoDB query results are fetched through a Next.js API route (server-side)
 
 ### Strands Agent Features
 
@@ -69,7 +71,7 @@ The AgentCore infrastructure handles all storage complexity and provides efficie
 | Model Provider | Amazon Bedrock |
 
 > [!NOTE]
-> The React Web Application uses Amazon Cognito for user authentication and permissions management, providing secure access to Amazon Bedrock AgentCore and Amazon DynamoDB services through authenticated user roles.
+> The Next.js Web Application uses Amazon Cognito (deployed by Amplify Gen 2) for user authentication and permissions management, providing secure access to Amazon Bedrock AgentCore and Amazon DynamoDB services through authenticated user roles.
 
 > [!TIP]
 > You can also change the data source to connect to your preferred database engine by adapting the Agent's instructions and tool implementations.
@@ -79,11 +81,11 @@ The AgentCore infrastructure handles all storage complexity and provides efficie
 
 The **user interaction workflow** operates as follows:
 
-- The web application sends user business questions to the AgentCore Invoke
+- The web application sends user business questions to the AgentCore Invoke (via client-side streaming)
 - The Strands Agent (powered by Claude Haiku 4.5) processes natural language and determines when to execute database queries
 - The agent's built-in tools execute SQL queries against the Aurora PostgreSQL database and formulate an answer to the question
 - AgentCore Memory captures session interactions and retrieves previous conversations for context
-- After the agent's response is received by the web application, the raw data query results are retrieved from the DynamoDB table to display both the answer and the corresponding records
+- After the agent's streaming response completes, the raw data query results are fetched from DynamoDB through a Next.js API route to display both the answer and the corresponding records
 - For chart generation, the application invokes a model (powered by Claude Haiku 4.5) to analyze the agent's answer and raw data query results to generate the necessary data to render an appropriate chart visualization
 
 ## Deployment Instructions
@@ -91,7 +93,7 @@ The **user interaction workflow** operates as follows:
 The deployment consists of two main steps:
 
 1. **Back-End Deployment - [Amazon Bedrock AgentCore and Data Source Deployment with CDK](./cdk-data-analyst-assistant-agentcore-strands/)**
-2. **Front-End Implementation - [Integrating AgentCore with a Ready-to-Use Data Analyst Assistant Application](./amplify-video-games-sales-assistant-agentcore-strands/)**
+2. **Front-End Implementation - [Integrating AgentCore with a Ready-to-Use Data Analyst Assistant Application (Next.js)](./amplify-video-games-sales-assistant-agentcore-strands/)**
 
 > [!NOTE]
 > *It is recommended to use the Oregon (us-west-2) or N. Virginia (us-east-1) regions to deploy the application.*
