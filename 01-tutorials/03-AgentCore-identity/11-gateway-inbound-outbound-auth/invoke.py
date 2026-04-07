@@ -10,13 +10,14 @@ Usage:
 """
 
 import warnings
-warnings.filterwarnings("ignore", category=Warning, module="requests")
-warnings.filterwarnings("ignore", message="urllib3")
 
 import boto3
 import json
 import os
 import sys
+
+warnings.filterwarnings("ignore", category=Warning, module="requests")
+warnings.filterwarnings("ignore", message="urllib3")
 
 
 def get_bearer_token(config: dict) -> str:
@@ -123,7 +124,7 @@ def main():
     print(f"  Agent ARN: {agent_arn}")
 
     # --- Test 1: No bearer token ---
-    print(f"\n[Test 1] Invoking WITHOUT bearer token (expect AccessDeniedException)...")
+    print("\n[Test 1] Invoking WITHOUT bearer token (expect AccessDeniedException)...")
     try:
         resp = client.invoke_agent_runtime(
             agentRuntimeArn=agent_arn,
@@ -138,7 +139,7 @@ def main():
         print(f"  Error: {type(exc).__name__}: {exc}")
 
     # --- Test 2: Valid user bearer token ---
-    print(f"\n[Test 2] Invoking WITH Cognito bearer token (expect success)...")
+    print("\n[Test 2] Invoking WITH Cognito bearer token (expect success)...")
     bearer_token = get_bearer_token(config)
     print(f"  Token obtained (first 20 chars): {bearer_token[:20]}...")
     print(f"  Prompt: '{prompt}'")

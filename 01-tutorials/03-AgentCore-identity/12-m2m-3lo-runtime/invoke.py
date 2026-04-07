@@ -20,15 +20,12 @@ Usage:
 """
 
 import warnings
-warnings.filterwarnings("ignore", category=Warning, module="requests")
-warnings.filterwarnings("ignore", message="urllib3")
 
 import argparse
 import json
 import os
 import subprocess
 import sys
-import time
 import webbrowser
 
 import boto3
@@ -38,6 +35,9 @@ from oauth2_callback_server import (
     wait_for_oauth2_server_to_be_ready,
     get_oauth2_callback_url,
 )
+
+warnings.filterwarnings("ignore", category=Warning, module="requests")
+warnings.filterwarnings("ignore", message="urllib3")
 
 
 def get_bearer_token(config: dict) -> str:

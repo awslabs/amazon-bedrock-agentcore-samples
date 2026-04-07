@@ -109,9 +109,9 @@ def create_github_3lo_provider(identity_client: IdentityClient) -> dict:
             callback_url = existing.get("callbackUrl", "")
         else:
             raise
-    print(f"\n  IMPORTANT: Add this callback URL to your GitHub OAuth App:")
+    print("\n  IMPORTANT: Add this callback URL to your GitHub OAuth App:")
     print(f"  {callback_url}")
-    print(f"  (GitHub -> Settings -> Developer settings -> OAuth Apps -> your app -> Authorization callback URL)")
+    print("  (GitHub -> Settings -> Developer settings -> OAuth Apps -> your app -> Authorization callback URL)")
     return {"name": "GitHub3LOProvider", "callback_url": callback_url}
 
 
@@ -145,9 +145,9 @@ def create_google_3lo_provider(identity_client: IdentityClient) -> dict:
             callback_url = existing.get("callbackUrl", "")
         else:
             raise
-    print(f"\n  IMPORTANT: Add this callback URL to your Google OAuth App:")
+    print("\n  IMPORTANT: Add this callback URL to your Google OAuth App:")
     print(f"  {callback_url}")
-    print(f"  (Google Cloud Console -> APIs & Services -> Credentials -> OAuth 2.0 Client IDs -> Authorised redirect URIs)")
+    print("  (Google Cloud Console -> APIs & Services -> Credentials -> OAuth 2.0 Client IDs -> Authorised redirect URIs)")
     return {"name": "Google3LOProvider", "callback_url": callback_url}
 
 
@@ -186,10 +186,10 @@ def main():
     if github_url or google_url:
         print("\n=== Action Required: Register Callback URLs ===")
         if github_url:
-            print(f"GitHub OAuth App -> Authorization callback URL:")
+            print("GitHub OAuth App -> Authorization callback URL:")
             print(f"  {github_url}")
         if google_url:
-            print(f"Google Cloud Console -> Authorised redirect URIs:")
+            print("Google Cloud Console -> Authorised redirect URIs:")
             print(f"  {google_url}")
 
 

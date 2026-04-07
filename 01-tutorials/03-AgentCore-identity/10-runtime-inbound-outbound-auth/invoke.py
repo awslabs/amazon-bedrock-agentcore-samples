@@ -12,14 +12,14 @@ Usage:
 """
 
 import warnings
-warnings.filterwarnings("ignore", category=Warning, module="requests")
-warnings.filterwarnings("ignore", message="urllib3")
 
 import boto3
 import json
 import os
-import subprocess
 import sys
+
+warnings.filterwarnings("ignore", category=Warning, module="requests")
+warnings.filterwarnings("ignore", message="urllib3")
 
 
 def get_bearer_token(config: dict) -> str:

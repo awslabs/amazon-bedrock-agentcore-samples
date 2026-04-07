@@ -229,7 +229,7 @@ def main():
         apigw.create_stage(ApiId=api_id, StageName="$default", AutoDeploy=True)
 
     endpoint = f"https://{api_id}.execute-api.{region}.amazonaws.com/mcp"
-    print(f"\n=== MCP Server Ready ===")
+    print("\n=== MCP Server Ready ===")
     print(f"Endpoint: {endpoint}")
 
     config = {"endpoint": endpoint, "api_id": api_id, "function_name": FUNCTION_NAME}

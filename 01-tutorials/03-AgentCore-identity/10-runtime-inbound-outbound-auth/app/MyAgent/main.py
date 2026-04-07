@@ -9,7 +9,6 @@ The @requires_api_key decorator fetches the stored API key from AgentCore Identi
 
 import json
 import os
-import asyncio
 
 import httpx
 from strands import Agent, tool

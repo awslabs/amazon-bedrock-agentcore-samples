@@ -114,13 +114,13 @@ def setup_cognito():
         json.dump(config, f, indent=2)
 
     print("\nCognito setup complete!")
-    print(f"\nValues for Step 3 (agentcore add gateway):")
+    print("\nValues for Step 3 (agentcore add gateway):")
     print(f"  --discovery-url    {discovery_url}")
     print(f"  --allowed-audience {pool_id}")
     print(f"  --allowed-clients  {user_client_id}")
     print(f"  --client-id        {agent_client_id}")
-    print(f"  --client-secret    (saved to cognito_config.json)")
-    print(f"\nConfiguration saved to cognito_config.json")
+    print("  --client-secret    (saved to cognito_config.json)")
+    print("\nConfiguration saved to cognito_config.json")
 
     return config
 

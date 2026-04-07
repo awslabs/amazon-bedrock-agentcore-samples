@@ -12,7 +12,6 @@ The agent retrieves a Bearer token for the Gateway via AgentCore Identity
 to discover and invoke tools.
 """
 
-import json
 import os
 
 import httpx
