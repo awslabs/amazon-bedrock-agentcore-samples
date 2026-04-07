@@ -3,7 +3,7 @@
 > [!IMPORTANT]
 > This sample uses synthetic HR data for demonstration purposes only. No real employee data is processed. Review IAM permissions before deploying in production.
 
-A role-based HR data access agent with automatic **field-level DLP redaction** using Amazon Bedrock AgentCore. The agent enforces data access policies based on each caller's OAuth 2.0 scopes — without changing application code.
+A role-based HR data access agent with automatic **scope-based field redaction** using Amazon Bedrock AgentCore. The agent enforces data access policies based on each caller's OAuth 2.0 scopes — without changing application code.
 
 **Key capabilities:**
 - **AgentCore Runtime** — hosts the Strands Agent; receives user prompts and drives MCP tool calls via the Gateway
@@ -29,7 +29,7 @@ A role-based HR data access agent with automatic **field-level DLP redaction** u
 | 7 | Gateway calls the **Lambda target** (HR Data Provider) with the transformed request, using AgentCore Identity for outbound auth |
 | 8 | Lambda returns the full (unredacted) response |
 | 9 | Gateway passes the response to the **Response Interceptor Lambda** |
-| 10 | Response Interceptor applies field-level DLP redaction and filters tool discovery by scope; transformed response returned to the Runtime |
+| 10 | Response Interceptor applies field-level redaction and filters tool discovery by scope; transformed response returned to the Runtime |
 
 ## Demo
 
@@ -37,9 +37,9 @@ A role-based HR data access agent with automatic **field-level DLP redaction** u
 |:---:|:---:|
 | ![HR Manager](docs/screenshots/hr-manager.png) | ![Employee](docs/screenshots/employee.png) |
 
-> Same query, same agent, different OAuth scopes — DLP redaction applied automatically by the Response Interceptor.
+> Same query, same agent, different OAuth scopes — field redaction applied automatically by the Response Interceptor.
 
-> See [per-persona request flow](docs/diagrams/flow.md) for a detailed sequence diagram with DLP redaction steps.
+> See [per-persona request flow](docs/diagrams/flow.md) for a detailed sequence diagram with per-persona field redaction steps.
 
 ## Reference
 
@@ -101,7 +101,7 @@ python scripts/agentcore_gateway.py create --config prerequisite/prereqs_config.
 
 ### Step 4: Create the Cedar Policy Engine
 
-Attaches the Cedar Policy Engine and creates the three HR DLP authorization policies. Uses a two-phase `update_gateway` approach: Phase A attaches the engine **without interceptors** so Cedar's internal schema initialization call succeeds, then Phase B restores the interceptors once policies are ACTIVE.
+Attaches the Cedar Policy Engine and creates the three HR authorization policies. Uses a two-phase `update_gateway` approach: Phase A attaches the engine **without interceptors** so Cedar's internal schema initialization call succeeds, then Phase B restores the interceptors once policies are ACTIVE.
 
 ```bash
 python scripts/create_cedar_policies.py --region us-east-1 --env dev
@@ -130,13 +130,13 @@ python scripts/agentcore_agent_runtime.py create
 streamlit run app.py
 ```
 
-Open http://localhost:8501. Select a persona, click **Get OAuth Token**, then ask a question such as *"Show me John Smith's compensation"*. Switch personas to see DLP redaction applied automatically.
+Open http://localhost:8501. Select a persona, click **Get OAuth Token**, then ask a question such as *"Show me John Smith's compensation"*. Switch personas to see field redaction applied automatically.
 
 ## Testing
 
 > **Note:** Cedar defaults to `LOG_ONLY` mode — policies log decisions but do not block requests. Tests will pass in either mode; switch to `ENFORCE` only when ready for production.
 
-### Verify DLP redaction
+### Verify field redaction
 
 ```bash
 python test/test_dlp_redaction.py
@@ -222,7 +222,7 @@ role-based-hr-data-agent/
 │   ├── cedar/             # Cedar authorization policies
 │   ├── infrastructure.yaml
 │   └── cognito.yaml
-├── test/                  # Gateway, agent, and DLP redaction tests
+├── test/                  # Gateway, agent, and field redaction tests
 ├── app.py                 # Streamlit entry point
 ├── main.py                # AgentCore Runtime entry point
 └── requirements.txt
