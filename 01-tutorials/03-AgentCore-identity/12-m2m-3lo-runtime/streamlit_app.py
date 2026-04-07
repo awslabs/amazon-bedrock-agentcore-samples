@@ -1,5 +1,5 @@
 """
-Streamlit UI for AgentCore Identity Sample 11: M2M + 3LO Auth Flows.
+Streamlit UI for AgentCore Identity Sample 12: M2M + 3LO Auth Flows.
 
 Provides a two-screen experience:
   Screen 1 -- Centered login card (no sidebar)
@@ -55,7 +55,7 @@ PRESET_BUTTONS = {
 # Page configuration
 # ---------------------------------------------------------------------------
 st.set_page_config(
-    page_title="Sample 11: M2M + 3LO Auth",
+    page_title="Sample 12: M2M + 3LO Auth",
     page_icon="\U0001f510",
     layout="wide",
 )
@@ -419,7 +419,7 @@ if not st.session_state.logged_in:
         st.markdown('<div class="login-card">', unsafe_allow_html=True)
         st.markdown('<p class="login-title">AgentCore M2M + 3LO Auth Demo</p>', unsafe_allow_html=True)
         st.markdown(
-            '<p class="login-subtitle">Sample 11: Client Credentials + Authorization Code Flows</p>',
+            '<p class="login-subtitle">Sample 12: Client Credentials + Authorization Code Flows</p>',
             unsafe_allow_html=True,
         )
         st.markdown(

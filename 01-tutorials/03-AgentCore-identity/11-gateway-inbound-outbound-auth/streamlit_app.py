@@ -1,5 +1,5 @@
 """
-Streamlit UI for AgentCore Identity Sample 10 — Gateway Inbound + Outbound Auth.
+Streamlit UI for AgentCore Identity Sample 11 — Gateway Inbound + Outbound Auth.
 
 Provides a two-screen experience:
   Screen 1 — Centered login card (no sidebar)
@@ -20,7 +20,7 @@ import streamlit as st
 # Page config
 # ---------------------------------------------------------------------------
 st.set_page_config(
-    page_title="Sample 10: Gateway Auth",
+    page_title="Sample 11: Gateway Auth",
     page_icon="\U0001f510",
     layout="wide",
 )
@@ -269,7 +269,7 @@ if not st.session_state.logged_in:
         )
         st.markdown(
             "<p style='text-align:center; color:grey; margin-top:0.25rem; font-size:1.1rem'>"
-            "Sample 10: Gateway JWT + MCP Tools</p>",
+            "Sample 11: Gateway JWT + MCP Tools</p>",
             unsafe_allow_html=True,
         )
         st.markdown(

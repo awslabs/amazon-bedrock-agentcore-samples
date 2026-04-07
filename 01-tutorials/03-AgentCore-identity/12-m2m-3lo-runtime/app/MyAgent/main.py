@@ -86,7 +86,7 @@ async def get_weather_m2m(location: str) -> str:
     if not token:
         return "Failed to obtain M2M token. Check the M2MProvider credential configuration."
 
-    # Fetch API key from AgentCore Identity (same as sample 09)
+    # Fetch API key from AgentCore Identity (same as sample 10)
     if "key" not in _api_key_cache:
         await _fetch_api_key(api_key="")
     api_key = _api_key_cache.get("key", "")

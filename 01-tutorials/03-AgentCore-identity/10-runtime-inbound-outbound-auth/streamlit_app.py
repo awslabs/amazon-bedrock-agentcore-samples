@@ -1,5 +1,5 @@
 """
-Streamlit UI for AgentCore Identity Sample 09: Runtime Inbound + Outbound Auth.
+Streamlit UI for AgentCore Identity Sample 10: Runtime Inbound + Outbound Auth.
 
 Demonstrates invoking an AgentCore Runtime with and without a Cognito JWT bearer token.
 
@@ -18,7 +18,7 @@ import streamlit as st
 # Page config
 # ---------------------------------------------------------------------------
 st.set_page_config(
-    page_title="Sample 09: Runtime Auth",
+    page_title="Sample 10: Runtime Auth",
     page_icon="\U0001f510",
     layout="wide",
 )
@@ -299,7 +299,7 @@ if not st.session_state.logged_in:
             unsafe_allow_html=True,
         )
         st.markdown(
-            "<p class='login-subtitle'>Sample 09: Inbound JWT + Outbound API Key</p>",
+            "<p class='login-subtitle'>Sample 10: Inbound JWT + Outbound API Key</p>",
             unsafe_allow_html=True,
         )
         st.markdown(

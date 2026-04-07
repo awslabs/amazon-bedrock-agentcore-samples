@@ -217,7 +217,7 @@ Wait ~30 seconds for changes to propagate.
 
 The M2M tool calls the [OpenWeatherMap API](https://openweathermap.org/api) using a client credentials token plus an API key from AgentCore Identity.
 
-If you already completed [Sample 09](../09-runtime-inbound-outbound-auth/), the `OutboundApiKey` credential already exists. Otherwise, get a free API key at [openweathermap.org](https://home.openweathermap.org/users/sign_up) and add it:
+If you already completed [Sample 10](../10-runtime-inbound-outbound-auth/), the `OutboundApiKey` credential already exists. Otherwise, get a free API key at [openweathermap.org](https://home.openweathermap.org/users/sign_up) and add it:
 
 ```bash
 cd M2MAuthDemo
