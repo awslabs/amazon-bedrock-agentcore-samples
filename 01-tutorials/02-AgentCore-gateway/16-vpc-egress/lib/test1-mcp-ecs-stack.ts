@@ -1,14 +1,14 @@
-import * as cdk from 'aws-cdk-lib/core';
-import { Platform } from 'aws-cdk-lib/aws-ecr-assets';
-import * as acm from 'aws-cdk-lib/aws-certificatemanager';
-import * as ec2 from 'aws-cdk-lib/aws-ec2';
-import * as ecs from 'aws-cdk-lib/aws-ecs';
-import * as elbv2 from 'aws-cdk-lib/aws-elasticloadbalancingv2';
-import * as logs from 'aws-cdk-lib/aws-logs';
-import * as s3 from 'aws-cdk-lib/aws-s3';
-import * as servicediscovery from 'aws-cdk-lib/aws-servicediscovery';
-import { NagSuppressions } from 'cdk-nag';
-import { Construct } from 'constructs';
+import * as cdk from "aws-cdk-lib/core";
+import { Platform } from "aws-cdk-lib/aws-ecr-assets";
+import * as acm from "aws-cdk-lib/aws-certificatemanager";
+import * as ec2 from "aws-cdk-lib/aws-ec2";
+import * as ecs from "aws-cdk-lib/aws-ecs";
+import * as elbv2 from "aws-cdk-lib/aws-elasticloadbalancingv2";
+import * as logs from "aws-cdk-lib/aws-logs";
+import * as s3 from "aws-cdk-lib/aws-s3";
+import * as servicediscovery from "aws-cdk-lib/aws-servicediscovery";
+import { NagSuppressions } from "cdk-nag";
+import { Construct } from "constructs";
 
 export interface McpEcsStackProps extends cdk.StackProps {
   vpc: ec2.IVpc;
@@ -21,53 +21,62 @@ export class McpEcsStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: McpEcsStackProps) {
     super(scope, id, props);
 
-    const certificate = acm.Certificate.fromCertificateArn(this, 'AlbCert', props.certificateArn);
+    const certificate = acm.Certificate.fromCertificateArn(
+      this,
+      "AlbCert",
+      props.certificateArn,
+    );
 
-    const cluster = new ecs.Cluster(this, 'McpCluster', {
+    const cluster = new ecs.Cluster(this, "McpCluster", {
       vpc: props.vpc,
       containerInsightsV2: ecs.ContainerInsights.ENHANCED,
     });
 
-    const namespace = new servicediscovery.PrivateDnsNamespace(this, 'McpNamespace', {
-      name: 'mcp.local',
-      vpc: props.vpc,
-    });
+    const namespace = new servicediscovery.PrivateDnsNamespace(
+      this,
+      "McpNamespace",
+      {
+        name: "mcp.local",
+        vpc: props.vpc,
+      },
+    );
 
-    const mcpImage = ecs.ContainerImage.fromAsset('docker/fastmcp-mock', {
+    const mcpImage = ecs.ContainerImage.fromAsset("docker/fastmcp-mock", {
       platform: Platform.LINUX_AMD64,
     });
 
-    const serviceSg = new ec2.SecurityGroup(this, 'McpServiceSg', {
+    const serviceSg = new ec2.SecurityGroup(this, "McpServiceSg", {
       vpc: props.vpc,
-      description: 'MCP ECS Service - VPC only',
+      description: "MCP ECS Service - VPC only",
       allowAllOutbound: true,
     });
     serviceSg.addIngressRule(
       ec2.Peer.ipv4(props.vpc.vpcCidrBlock),
       ec2.Port.tcp(8000),
-      'Allow MCP traffic from VPC',
+      "Allow MCP traffic from VPC",
     );
 
     // --- Internal ALB with public cert ---
-    const albSg = new ec2.SecurityGroup(this, 'McpAlbSg', {
+    const albSg = new ec2.SecurityGroup(this, "McpAlbSg", {
       vpc: props.vpc,
-      description: 'MCP ALB - HTTPS from VPC',
+      description: "MCP ALB - HTTPS from VPC",
       allowAllOutbound: true,
     });
+    albSg.applyRemovalPolicy(cdk.RemovalPolicy.RETAIN);
     albSg.addIngressRule(
       ec2.Peer.ipv4(props.vpc.vpcCidrBlock),
       ec2.Port.tcp(443),
-      'Allow HTTPS from VPC',
+      "Allow HTTPS from VPC",
     );
 
     // Allow ALB to reach ECS tasks on port 8000
     serviceSg.addIngressRule(
       albSg,
       ec2.Port.tcp(8000),
-      'Allow traffic from ALB',
+      "Allow traffic from ALB",
     );
 
-    const accessLogBucket = new s3.Bucket(this, 'McpAlbAccessLogs', {
+    const accessLogBucket = new s3.Bucket(this, "McpAlbAccessLogs", {
       removalPolicy: cdk.RemovalPolicy.DESTROY,
       autoDeleteObjects: true,
       enforceSSL: true,
@@ -75,60 +84,68 @@ export class McpEcsStack extends cdk.Stack {
       lifecycleRules: [{ expiration: cdk.Duration.days(30) }],
     });
 
-    const alb = new elbv2.ApplicationLoadBalancer(this, 'McpAlb', {
+    const alb = new elbv2.ApplicationLoadBalancer(this, "McpAlb", {
       vpc: props.vpc,
       internetFacing: false,
       securityGroup: albSg,
       vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS },
     });
 
-    alb.logAccessLogs(accessLogBucket, 'alb-logs');
+    alb.logAccessLogs(accessLogBucket, "alb-logs");
 
     // HTTPS listener with public cert
-    const httpsListener = alb.addListener('HttpsListener', {
+    const httpsListener = alb.addListener("HttpsListener", {
       port: 443,
       protocol: elbv2.ApplicationProtocol.HTTPS,
       certificates: [certificate],
     });
 
     // Fargate target group
-    const fargateTargetGroup = new elbv2.ApplicationTargetGroup(this, 'FargateTargetGroup', {
-      vpc: props.vpc,
-      port: 8000,
-      protocol: elbv2.ApplicationProtocol.HTTP,
-      targetType: elbv2.TargetType.IP,
-      healthCheck: {
-        path: '/health',
-        port: '8000',
-        healthyHttpCodes: '200,404,405',
+    const fargateTargetGroup = new elbv2.ApplicationTargetGroup(
+      this,
+      "FargateTargetGroup",
+      {
+        vpc: props.vpc,
+        port: 8000,
+        protocol: elbv2.ApplicationProtocol.HTTP,
+        targetType: elbv2.TargetType.IP,
+        healthCheck: {
+          path: "/health",
+          port: "8000",
+          healthyHttpCodes: "200,404,405",
+        },
       },
-    });
+    );
 
-    httpsListener.addTargetGroups('DefaultRoute', {
+    httpsListener.addTargetGroups("DefaultRoute", {
       targetGroups: [fargateTargetGroup],
     });
 
     // --- Fargate Service ---
-    const fargateTaskDef = new ecs.FargateTaskDefinition(this, 'McpFargateTaskDef', {
-      memoryLimitMiB: 512,
-      cpu: 256,
-    });
+    const fargateTaskDef = new ecs.FargateTaskDefinition(
+      this,
+      "McpFargateTaskDef",
+      {
+        memoryLimitMiB: 512,
+        cpu: 256,
+      },
+    );
 
-    const fargateLogGroup = new logs.LogGroup(this, 'McpFargateLogGroup', {
+    const fargateLogGroup = new logs.LogGroup(this, "McpFargateLogGroup", {
       retention: logs.RetentionDays.ONE_MONTH,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
 
-    fargateTaskDef.addContainer('McpContainer', {
+    fargateTaskDef.addContainer("McpContainer", {
       image: mcpImage,
       portMappings: [{ containerPort: 8000 }],
       logging: ecs.LogDrivers.awsLogs({
         logGroup: fargateLogGroup,
-        streamPrefix: 'mcp-fargate',
+        streamPrefix: "mcp-fargate",
       }),
     });
 
-    const fargateService = new ecs.FargateService(this, 'McpFargateService', {
+    const fargateService = new ecs.FargateService(this, "McpFargateService", {
       cluster,
       taskDefinition: fargateTaskDef,
       desiredCount: 1,
@@ -137,7 +154,7 @@ export class McpEcsStack extends cdk.Stack {
       assignPublicIp: false,
       circuitBreaker: { enable: true, rollback: true },
       cloudMapOptions: {
-        name: 'mcp-fargate',
+        name: "mcp-fargate",
         cloudMapNamespace: namespace,
         dnsRecordType: servicediscovery.DnsRecordType.A,
       },
@@ -146,15 +163,18 @@ export class McpEcsStack extends cdk.Stack {
     fargateService.attachToApplicationTargetGroup(fargateTargetGroup);
 
     // --- Bastion for SSM testing ---
-    const bastionSg = new ec2.SecurityGroup(this, 'BastionSg', {
+    const bastionSg = new ec2.SecurityGroup(this, "BastionSg", {
       vpc: props.vpc,
-      description: 'Bastion - outbound only for SSM',
+      description: "Bastion - outbound only for SSM",
       allowAllOutbound: true,
     });
 
-    const bastion = new ec2.Instance(this, 'Bastion', {
+    const bastion = new ec2.Instance(this, "Bastion", {
       vpc: props.vpc,
-      instanceType: ec2.InstanceType.of(ec2.InstanceClass.T3, ec2.InstanceSize.MICRO),
+      instanceType: ec2.InstanceType.of(
+        ec2.InstanceClass.T3,
+        ec2.InstanceSize.MICRO,
+      ),
       machineImage: ec2.MachineImage.latestAmazonLinux2023(),
       vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS },
       securityGroup: bastionSg,
@@ -162,37 +182,69 @@ export class McpEcsStack extends cdk.Stack {
     });
 
     // Allow bastion to test ALB and MCP tasks
-    albSg.addIngressRule(bastionSg, ec2.Port.tcp(443), 'Allow bastion to test ALB HTTPS');
-    serviceSg.addIngressRule(bastionSg, ec2.Port.tcp(8000), 'Allow bastion to test MCP directly');
+    albSg.addIngressRule(
+      bastionSg,
+      ec2.Port.tcp(443),
+      "Allow bastion to test ALB HTTPS",
+    );
+    serviceSg.addIngressRule(
+      bastionSg,
+      ec2.Port.tcp(8000),
+      "Allow bastion to test MCP directly",
+    );
 
     // --- Outputs ---
-    new cdk.CfnOutput(this, 'AlbDnsName', {
+    new cdk.CfnOutput(this, "AlbDnsName", {
       value: alb.loadBalancerDnsName,
-      description: 'Internal ALB DNS name (publicly resolvable, private IP)',
+      description:
+        "Internal ALB DNS name (publicly resolvable, used as routingDomain)",
     });
 
-    new cdk.CfnOutput(this, 'AlbArn', {
-      value: alb.loadBalancerArn,
-    });
-
-    new cdk.CfnOutput(this, 'AlbSgId', {
+    new cdk.CfnOutput(this, "AlbSgId", {
       value: albSg.securityGroupId,
     });
 
-    new cdk.CfnOutput(this, 'BastionInstanceId', {
+    new cdk.CfnOutput(this, "BastionInstanceId", {
       value: bastion.instanceId,
-      description: 'SSM Session Manager: aws ssm start-session --target <id>',
+      description: "SSM Session Manager: aws ssm start-session --target <id>",
     });
 
     NagSuppressions.addStackSuppressions(this, [
-      { id: 'AwsSolutions-IAM5', reason: 'ECS task execution role wildcards required for ECR image pulls and log writes' },
-      { id: 'AwsSolutions-ECS2', reason: 'No secrets in environment variables' },
-      { id: 'AwsSolutions-IAM4', reason: 'SSM managed policy required for Session Manager access on bastion' },
-      { id: 'AwsSolutions-EC26', reason: 'EBS encryption not needed for bastion test instance' },
-      { id: 'AwsSolutions-EC28', reason: 'Detailed monitoring not needed for bastion test instance' },
-      { id: 'AwsSolutions-EC29', reason: 'Bastion is ephemeral test instance, no termination protection needed' },
-      { id: 'AwsSolutions-S1', reason: 'Access log bucket does not need its own access logs' },
-      { id: 'AwsSolutions-EC23', reason: 'ALB is internal, SG allows VPC CIDR only' },
+      {
+        id: "AwsSolutions-IAM5",
+        reason:
+          "ECS task execution role wildcards required for ECR image pulls and log writes",
+      },
+      {
+        id: "AwsSolutions-ECS2",
+        reason: "No secrets in environment variables",
+      },
+      {
+        id: "AwsSolutions-IAM4",
+        reason:
+          "SSM managed policy required for Session Manager access on bastion",
+      },
+      {
+        id: "AwsSolutions-EC26",
+        reason: "EBS encryption not needed for bastion test instance",
+      },
+      {
+        id: "AwsSolutions-EC28",
+        reason: "Detailed monitoring not needed for bastion test instance",
+      },
+      {
+        id: "AwsSolutions-EC29",
+        reason:
+          "Bastion is ephemeral test instance, no termination protection needed",
+      },
+      {
+        id: "AwsSolutions-S1",
+        reason: "Access log bucket does not need its own access logs",
+      },
+      {
+        id: "AwsSolutions-EC23",
+        reason: "ALB is internal, SG allows VPC CIDR only",
+      },
     ]);
   }
 }

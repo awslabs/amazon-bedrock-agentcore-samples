@@ -76,7 +76,7 @@ When `routingDomain` is set, AgentCore routes traffic through the routing domain
 | Notebook | Description |
 |----------|-------------|
 | [01-getting-started.ipynb](./01-getting-started.ipynb) | Deploy a private API Gateway with mock integrations and connect it to AgentCore Gateway. No domain or certificate needed — uses the API-VPCE DNS format. |
-| 02-peering.ipynb (coming soon) | Connect to a private resource in a peered VPC using managed VPC Lattice. |
+| [02-peering.ipynb](./02-peering.ipynb) | Connect to a Private API Gateway in a peered VPC (cross-region) using managed VPC Lattice and VPC peering. |
 
 ## License
 

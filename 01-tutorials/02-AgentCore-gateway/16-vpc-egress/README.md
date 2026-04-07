@@ -44,7 +44,8 @@ Private connectivity is established using [Amazon VPC Lattice](https://docs.aws.
 | **AWS Private CA** (short-lived mode) | $50/month | 02-private-certificate-authority |
 | **Internal ALB** | ~$0.0225/hour + LCU charges | All labs |
 | **EC2 instance** (t3.micro) | ~$0.0104/hour | All labs |
-| **NAT Gateway** | ~$0.045/hour + data processing | All labs (via VPC stack) |
+| **NAT Gateway** | ~$0.045/hour + data processing | All labs (via VPC stack), 04-static-gateway-ip |
+| **Elastic IP** (associated) | No charge | 04-static-gateway-ip |
 
 Make sure to run the **Cleanup** section in each notebook after completing the lab to avoid ongoing charges.
 
@@ -53,16 +54,16 @@ Make sure to run the **Cleanup** section in each notebook after completing the l
 | **Prerequisites** | [`00-prerequisites/`](./00-prerequisites/) | Deploy VPCs across accounts and regions, bootstrap CDK, and set up the shared AgentCore Gateway with Cognito M2M authentication. All subsequent labs depend on this. |
 | **Managed Lattice** | [`01-managed-lattice/`](./01-managed-lattice/) | Getting started with AgentCore-managed VPC Lattice. AgentCore automatically creates the Resource Gateway, Resource Configuration, and service network association. Includes a VPC peering example. |
 | **Self-Managed Lattice** | [`02-self-managed-lattice/`](./02-self-managed-lattice/) | Create and manage VPC Lattice Resource Gateways and Resource Configurations yourself. Includes cross-account connectivity via AWS Resource Access Manager (RAM). |
-| **Advanced Concepts**  | [`03-advanced-concepts/`](./03-advanced-concepts/) | Explores private domains (Route 53 private hosted zones), private certificates (AWS Private CA), and combinations of both with AgentCore Gateway VPC egress. |
-| **ECS Deployment** (coming soon) | `04-ecs-deployment/` | Deploy MCP servers on Amazon ECS Fargate behind an internal ALB with TLS termination, then connect to AgentCore Gateway using managed VPC Lattice. |
-| **EKS Deployment** (coming soon) | `05-eks-deployment/` | Deploy MCP servers and REST APIs on Amazon EKS behind an internal NLB with TLS termination, using private hosted zones and `routingDomain` for private DNS patterns. |
+| **Advanced Concepts**  | [`03-advanced-concepts/`](./03-advanced-concepts/) | Explores private domains (Route 53 private hosted zones), private certificates (AWS Private CA and self-signed), and static IP egress (NAT Gateway with Elastic IP for allowlisting) with AgentCore Gateway VPC egress. |
+| **ECS Deployment** | [`04-ecs-deployment/`](./04-ecs-deployment/) | Deploy MCP servers on Amazon ECS Fargate behind an internal ALB with TLS termination, then connect to AgentCore Gateway using managed VPC Lattice. |
+| **EKS Deployment** | [`05-eks-deployment/`](./05-eks-deployment/) | Deploy MCP servers and REST APIs on Amazon EKS behind an internal NLB with TLS termination, using private hosted zones and `routingDomain` for private DNS patterns. |
 
 ### Regions and accounts
 
 These labs are tested in **us-west-2** (primary region). Ensure AgentCore Gateway and its features are available in your region: see [AgentCore supported regions](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/agentcore-regions.html). The following labs require additional setup:
 
-- VPC Peering lab (coming soon): requires a VPC in **us-east-1** (deployed in Lab 0, Step 5)
-- Cross-Account lab (coming soon): requires a **second AWS account** with a VPC in us-west-2 (deployed in Lab 0, Step 7)
+- [VPC Peering lab](./01-managed-lattice/02-peering.ipynb): requires a VPC in **us-east-1** (deployed in Lab 0, Step 5)
+- [Cross-Account lab](./02-self-managed-lattice/02-cross-account.ipynb): requires a **second AWS account** with a VPC in us-west-2 (deployed in Lab 0, Step 7)
 
 ### Prerequisites for all labs
 
