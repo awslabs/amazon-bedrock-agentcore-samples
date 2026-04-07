@@ -1,0 +1,242 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  Role-Based HR Data Agent — Infrastructure
+  Deploys: Lambda HR Provider, Request/Response Interceptors, IAM roles,
+  and SSM parameters for AgentCore Gateway integration.
+
+Parameters:
+  LambdaS3Bucket:
+    Type: String
+    Description: S3 bucket containing the Lambda deployment ZIP
+  LambdaS3Key:
+    Type: String
+    Default: hr-data-provider/deployment.zip
+  InterceptorS3Key:
+    Type: String
+    Default: hr-interceptors/deployment.zip
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues: [dev, staging, prod]
+
+Resources:
+
+  # ---------------------------------------------------------------------------
+  # IAM — Lambda execution role
+  # ---------------------------------------------------------------------------
+  HRLambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub hr-dlp-lambda-role-${Environment}
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: {Service: lambda.amazonaws.com}
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: SSMReadPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: [ssm:GetParameter, ssm:GetParameters]
+                Resource: !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/app/hrdlp/*
+
+  # ---------------------------------------------------------------------------
+  # IAM — AgentCore Gateway execution role
+  # ---------------------------------------------------------------------------
+  AgentCoreGatewayRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub hr-dlp-gateway-role-${Environment}
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: {Service: bedrock-agentcore.amazonaws.com}
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: InvokeLambdaPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: lambda:InvokeFunction
+                Resource:
+                  - !GetAtt HRDataProviderLambda.Arn
+                  - !GetAtt RequestInterceptorLambda.Arn
+                  - !GetAtt ResponseInterceptorLambda.Arn
+        - PolicyName: AgentCoreGatewayPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              # Required for Cedar policy evaluation (AuthorizeAction) and
+              # general AgentCore Gateway operations (interceptor invocation,
+              # JWT validation, tool routing).
+              - Effect: Allow
+                Action: bedrock-agentcore:*
+                Resource: "*"
+
+  # ---------------------------------------------------------------------------
+  # IAM — AgentCore Runtime execution role
+  # ---------------------------------------------------------------------------
+  AgentCoreRuntimeRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub hr-dlp-runtime-role-${Environment}
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: {Service: bedrock-agentcore.amazonaws.com}
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonBedrockFullAccess
+      Policies:
+        - PolicyName: SSMPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: [ssm:GetParameter, ssm:PutParameter]
+                Resource: !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/app/hrdlp/*
+        - PolicyName: AgentCoreRuntimePolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              # CloudWatch Logs — runtime writes execution logs to its own log group.
+              # DescribeLogStreams/Groups required for the AgentCore service to
+              # locate and tail the runtime log group on behalf of the caller.
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                  - logs:DescribeLogStreams
+                  - logs:DescribeLogGroups
+                Resource:
+                  - !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/bedrock-agentcore/runtimes/*
+                  - !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:*
+              # X-Ray — distributed tracing for runtime invocations
+              - Effect: Allow
+                Action:
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
+                  - xray:GetSamplingRules
+                  - xray:GetSamplingTargets
+                Resource: "*"
+              # AgentCore — GetWorkloadAccessTokenForUserId is needed to authenticate
+              # outbound Gateway requests. CreateWorkloadIdentity is needed on first
+              # runtime initialisation to register the runtime's workload identity.
+              - Effect: Allow
+                Action:
+                  - bedrock-agentcore:GetWorkloadAccessTokenForUserId
+                  - bedrock-agentcore:CreateWorkloadIdentity
+                Resource: "*"
+
+  # ---------------------------------------------------------------------------
+  # Lambda — HR Data Provider
+  # ---------------------------------------------------------------------------
+  HRDataProviderLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub hr-data-provider-lambda-${Environment}
+      Description: HR data provider for role-based-hr-data-agent
+      Runtime: python3.11
+      Handler: lambda_handler.lambda_handler
+      Role: !GetAtt HRLambdaExecutionRole.Arn
+      Timeout: 30
+      MemorySize: 256
+      Code:
+        S3Bucket: !Ref LambdaS3Bucket
+        S3Key: !Ref LambdaS3Key
+
+  # ---------------------------------------------------------------------------
+  # Lambda — Request Interceptor
+  # ---------------------------------------------------------------------------
+  RequestInterceptorLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub hr-request-interceptor-lambda-${Environment}
+      Description: AgentCore Gateway Request Interceptor — tenant injection + scope normalization
+      Runtime: python3.11
+      Handler: request_interceptor.lambda_handler
+      Role: !GetAtt HRLambdaExecutionRole.Arn
+      Timeout: 10
+      MemorySize: 128
+      Code:
+        S3Bucket: !Ref LambdaS3Bucket
+        S3Key: !Ref InterceptorS3Key
+
+  # ---------------------------------------------------------------------------
+  # Lambda — Response Interceptor
+  # ---------------------------------------------------------------------------
+  ResponseInterceptorLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub hr-response-interceptor-lambda-${Environment}
+      Description: AgentCore Gateway Response Interceptor — DLP field-level redaction
+      Runtime: python3.11
+      Handler: response_interceptor.lambda_handler
+      Role: !GetAtt HRLambdaExecutionRole.Arn
+      Timeout: 10
+      MemorySize: 128
+      Code:
+        S3Bucket: !Ref LambdaS3Bucket
+        S3Key: !Ref InterceptorS3Key
+
+  # ---------------------------------------------------------------------------
+  # SSM Parameters
+  # ---------------------------------------------------------------------------
+  SSMLambdaArn:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /app/hrdlp/lambda-arn
+      Type: String
+      Value: !GetAtt HRDataProviderLambda.Arn
+
+  SSMGatewayRoleArn:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /app/hrdlp/gateway-role-arn
+      Type: String
+      Value: !GetAtt AgentCoreGatewayRole.Arn
+
+  SSMRuntimeRoleArn:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /app/hrdlp/runtime-role-arn
+      Type: String
+      Value: !GetAtt AgentCoreRuntimeRole.Arn
+
+  SSMRequestInterceptorArn:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /app/hrdlp/request-interceptor-arn
+      Type: String
+      Value: !GetAtt RequestInterceptorLambda.Arn
+
+  SSMResponseInterceptorArn:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /app/hrdlp/response-interceptor-arn
+      Type: String
+      Value: !GetAtt ResponseInterceptorLambda.Arn
+
+Outputs:
+  LambdaArn:
+    Value: !GetAtt HRDataProviderLambda.Arn
+    Export: {Name: !Sub "${AWS::StackName}-LambdaArn"}
+  GatewayRoleArn:
+    Value: !GetAtt AgentCoreGatewayRole.Arn
+    Export: {Name: !Sub "${AWS::StackName}-GatewayRoleArn"}
+  RuntimeRoleArn:
+    Value: !GetAtt AgentCoreRuntimeRole.Arn
+    Export: {Name: !Sub "${AWS::StackName}-RuntimeRoleArn"}
+  RequestInterceptorArn:
+    Value: !GetAtt RequestInterceptorLambda.Arn
+  ResponseInterceptorArn:
+    Value: !GetAtt ResponseInterceptorLambda.Arn
