@@ -54,9 +54,9 @@ These examples use the `agentcore` CLI and follow the current recommended format
 
 | Example | Type | Description |
 |---------|------|-------------|
-| **[Runtime Inbound + Outbound Auth](09-runtime-inbound-outbound-auth)** | Inbound + Outbound | Cognito JWT inbound auth on Runtime; API key outbound via AgentCore Identity |
-| **[Gateway Inbound + Outbound Auth](10-gateway-inbound-outbound-auth)** | Inbound + Outbound | Cognito JWT on Gateway; OAuth2 client credentials to upstream MCP server |
-| **[M2M + Auth Code Flows](11-m2m-authcode-runtime)** | Inbound + Outbound | Cognito JWT inbound; M2M (client credentials) + GitHub/Google 3LO outbound |
+| **[Runtime Inbound + Outbound Auth](10-runtime-inbound-outbound-auth)** | Inbound + Outbound | Cognito JWT inbound auth on Runtime; API key outbound via AgentCore Identity |
+| **[Gateway Inbound + Outbound Auth](11-gateway-inbound-outbound-auth)** | Inbound + Outbound | Cognito JWT on Gateway; OAuth2 client credentials to upstream MCP server |
+| **[M2M + 3LO Auth Flows](12-m2m-3lo-runtime)** | Inbound + Outbound | Cognito JWT inbound; M2M (client credentials) + GitHub/Google 3LO outbound |
 
 ### Notebook-Based Examples (Legacy)
 
