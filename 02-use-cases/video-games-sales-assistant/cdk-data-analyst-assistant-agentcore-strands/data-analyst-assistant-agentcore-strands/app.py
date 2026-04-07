@@ -45,7 +45,6 @@ bedrock_model_id_env = os.environ.get(
     "BEDROCK_MODEL_ID", "global.anthropic.claude-haiku-4-5-20251001-v1:0"
 )
 
-
 # Initialize the Bedrock Agent Core app
 app = BedrockAgentCoreApp()
 
