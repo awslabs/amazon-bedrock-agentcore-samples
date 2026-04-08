@@ -1,8 +1,4 @@
-import argparse
-import base64
 import json
-import sys
-import time
 
 import boto3
 from botocore.auth import SigV4Auth

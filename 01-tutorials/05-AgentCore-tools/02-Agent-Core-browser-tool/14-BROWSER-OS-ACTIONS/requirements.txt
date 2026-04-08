@@ -1,4 +1,2 @@
 boto3 >= 1.42.84
 requests
-playwright
-Pillow
