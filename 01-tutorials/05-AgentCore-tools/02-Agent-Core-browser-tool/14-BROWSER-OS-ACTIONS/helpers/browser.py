@@ -1,6 +1,5 @@
 import json
 
-import boto3
 from botocore.auth import SigV4Auth
 from botocore.awsrequest import AWSRequest
 from botocore.session import Session as BotocoreSession
