@@ -44,7 +44,7 @@ The AWS CDK stack deploys and configures the following managed services:
 - **[AgentCore Memory](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/memory.html)**: A fully managed service that gives AI agents the ability to remember, learn, and evolve through interactions. Configured with:
   - **Short-term memory (STM)**: Event-based conversation history scoped per user and session, providing immediate conversational context within a session
   - **Long-term memory (LTM)**: A semantic "Facts" strategy that asynchronously extracts knowledge from conversations and stores it in per-user namespaces (`/facts/{actorId}`). Facts persist across sessions and are retrieved via vector similarity search, enabling the agent to recall insights from previous conversations
-  - **Observability**: CloudWatch Logs delivery for monitoring memory extraction and consolidation operations
+- **Observability**: Runtime application logs and memory extraction logs delivered to CloudWatch Logs, plus runtime traces to AWS X-Ray — all with 14-day retention
 
 The AgentCore infrastructure handles all storage complexity and provides efficient retrieval without requiring developers to manage underlying infrastructure, ensuring continuity and traceability across agent interactions.
 

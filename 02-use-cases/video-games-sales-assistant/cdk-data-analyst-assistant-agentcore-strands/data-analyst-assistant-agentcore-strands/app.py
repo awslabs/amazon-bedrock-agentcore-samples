@@ -182,6 +182,7 @@ async def agent_invocation(payload):
         user_timezone = payload.get("user_timezone", "US/Pacific")
         session_id = payload.get("session_id", str(uuid4()))
         user_id = payload.get("user_id", "guest")
+        user_name = payload.get("user_name", "User")
 
         print("\n" + "=" * 80)
         print("🎮 VIDEO GAME SALES ANALYSIS REQUEST")
@@ -194,6 +195,7 @@ async def agent_invocation(payload):
         print(f"🌍 User Timezone: {user_timezone}")
         print(f"🔗 Session ID: {session_id}")
         print(f"👤 User ID: {user_id}")
+        print(f"👤 User Name: {user_name}")
         print("-" * 80)
 
         # Initialize Claude model
@@ -222,8 +224,10 @@ async def agent_invocation(payload):
         print(f"🔗 Session ID: {session_id}")
         print("📊 LTM retrieval: /facts/{actorId} (top_k=5, relevance>=0.3)")
 
-        # Configure system prompt with user's timezone context
-        system_prompt = DATA_ANALYST_SYSTEM_PROMPT.replace("{timezone}", user_timezone)
+        # Configure system prompt with user context
+        system_prompt = DATA_ANALYST_SYSTEM_PROMPT.replace(
+            "{timezone}", user_timezone
+        ).replace("{user_name}", user_name)
 
         print("-" * 80)
         print("🔧 Initializing agent with AgentCoreMemorySessionManager...")

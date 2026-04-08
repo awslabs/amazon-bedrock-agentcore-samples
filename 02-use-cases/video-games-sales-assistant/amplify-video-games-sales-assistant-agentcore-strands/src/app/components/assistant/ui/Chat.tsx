@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { fetchAuthSession, getCurrentUser } from 'aws-amplify/auth';
+import { fetchAuthSession, getCurrentUser, fetchUserAttributes } from 'aws-amplify/auth';
 import type { CognitoAuthParams } from '@/utils/aws-client';
 import type { Answer, ControlAnswer, ChartConfig, AssistantConfig } from '../types';
 import { getAnswer } from '../services/agent-core-call';
@@ -23,6 +23,7 @@ export default function Chat({ config, identityPoolId, userPoolId }: ChatProps) 
   const [query, setQuery] = useState('');
   const [sessionId] = useState(uuidv4());
   const [userId, setUserId] = useState('guest');
+  const [userName, setUserName] = useState('Guest');
   const [errorMessage, setErrorMessage] = useState('');
   const [currentWorkingToolId, setCurrentWorkingToolId] = useState<string | null>(null);
   const [inputHovered, setInputHovered] = useState(false);
@@ -35,12 +36,17 @@ export default function Chat({ config, identityPoolId, userPoolId }: ChatProps) 
   const [memoryLoading, setMemoryLoading] = useState(false);
   const maxLength = config.maxLengthInputSearch ?? 500;
 
-  // Resolve Cognito user ID on mount for memory scoping
+  // Resolve Cognito user ID and name on mount
   useEffect(() => {
     (async () => {
       try {
         const user = await getCurrentUser();
         setUserId(user.userId);
+        const loginId = user.signInDetails?.loginId || '';
+        const fallback = loginId.split('@')[0];
+        setUserName(fallback.charAt(0).toUpperCase() + fallback.slice(1).toLowerCase());
+        const attrs = await fetchUserAttributes();
+        if (attrs.name) setUserName(attrs.name);
       } catch { /* keep guest fallback */ }
     })();
   }, []);
@@ -129,7 +135,7 @@ export default function Chat({ config, identityPoolId, userPoolId }: ChatProps) 
     isSubmittingRef.current = true;
     try {
       const auth = await getAuth();
-      await getAnswer({ query: myQuery, sessionId, userId, agentRuntimeArn: config.agentRuntimeArn, agentEndpointName: config.agentEndpointName, questionAnswersTableName: config.questionAnswersTableName, auth, setControlAnswers, setAnswers, setEnabled, setLoading, setErrorMessage, setQuery, setCurrentWorkingToolId });
+      await getAnswer({ query: myQuery, sessionId, userId, userName, agentRuntimeArn: config.agentRuntimeArn, agentEndpointName: config.agentEndpointName, questionAnswersTableName: config.questionAnswersTableName, auth, setControlAnswers, setAnswers, setEnabled, setLoading, setErrorMessage, setQuery, setCurrentWorkingToolId });
     } catch (err) { setErrorMessage(String(err)); setLoading(false); } finally { isSubmittingRef.current = false; }
   };
   const handleShowTab = (index: number, type: 'answer' | 'records' | 'chart') => () => {

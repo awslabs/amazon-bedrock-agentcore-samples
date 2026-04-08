@@ -16,6 +16,7 @@ interface GetAnswerParams {
   query: string;
   sessionId: string;
   userId: string;
+  userName: string;
   agentRuntimeArn: string;
   agentEndpointName: string;
   questionAnswersTableName: string;
@@ -33,6 +34,7 @@ export const getAnswer = async ({
   query: myQuery,
   sessionId,
   userId,
+  userName,
   agentRuntimeArn,
   agentEndpointName,
   questionAnswersTableName,
@@ -71,6 +73,7 @@ export const getAnswer = async ({
       prompt: myQuery,
       session_id: sessionId,
       user_id: userId,
+      user_name: userName,
       prompt_uuid: queryUuid,
       user_timezone: timezone,
     });
