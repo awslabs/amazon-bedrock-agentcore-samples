@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "private": true,
   "dependencies": {
-    "@aws-sdk/client-bedrock-agentcore": "^3.887.0",
-    "@aws-sdk/credential-providers": "^3.887.0",
+    "@aws-sdk/client-bedrock-agentcore": "^3.1027.0",
+    "@aws-sdk/credential-providers": "^3.1027.0",
     "@testing-library/jest-dom": "^5.16.4",
     "@testing-library/react": "^13.3.0",
     "@testing-library/user-event": "^13.5.0",
