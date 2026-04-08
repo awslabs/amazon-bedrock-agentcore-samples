@@ -28,17 +28,13 @@ def create_agentcore_execution_role(role_name: str) -> Optional[str]:
             {
                 "Sid": "AssumeRolePolicy",
                 "Effect": "Allow",
-                "Principal": {"Service": [
-                                "bedrock-agentcore.amazonaws.com"
-                                ]
-                },
+                "Principal": {"Service": ["bedrock-agentcore.amazonaws.com"]},
                 "Action": "sts:AssumeRole",
                 "Condition": {
                     "StringEquals": {"aws:SourceAccount": account_id},
                     "ArnLike": {
                         "aws:SourceArn": (
-                            f"arn:aws:bedrock-agentcore:{region}:"
-                            f"{account_id}:*"
+                            f"arn:aws:bedrock-agentcore:{region}:{account_id}:*"
                         )
                     },
                 },
@@ -56,11 +52,9 @@ def create_agentcore_execution_role(role_name: str) -> Optional[str]:
                 "Action": [
                     "bedrock-agentcore:InvokeBrowser",
                     "bedrock-agentcore:StartBrowserSession",
-                    "bedrock-agentcore:StopBrowserSession"
+                    "bedrock-agentcore:StopBrowserSession",
                 ],
-                "Resource": [
-                    f"arn:aws:bedrock-agentcore:{region}:{account_id}:*"
-                ],
+                "Resource": [f"arn:aws:bedrock-agentcore:{region}:{account_id}:*"],
             }
         ],
     }
@@ -80,8 +74,7 @@ def create_agentcore_execution_role(role_name: str) -> Optional[str]:
             RoleName=role_name,
             AssumeRolePolicyDocument=json.dumps(trust_policy),
             Description=(
-                "IAM role for Amazon Bedrock AgentCore "
-                "with required permissions"
+                "IAM role for Amazon Bedrock AgentCore with required permissions"
             ),
         )
 
@@ -158,11 +151,7 @@ def delete_agentcore_execution_role(role_name: str) -> None:
 def local_file_cleanup() -> None:
     """Clean up local files created during the tutorial."""
     # List of files to clean up
-    files_to_delete = [
-        "Dockerfile",
-        ".dockerignore",
-        ".bedrock_agentcore.yaml"
-    ]
+    files_to_delete = ["Dockerfile", ".dockerignore", ".bedrock_agentcore.yaml"]
 
     deleted_files = []
     missing_files = []

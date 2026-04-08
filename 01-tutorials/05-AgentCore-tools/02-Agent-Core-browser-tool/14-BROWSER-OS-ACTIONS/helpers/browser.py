@@ -14,7 +14,10 @@ def get_credentials(profile=None):
     session = BotocoreSession()
     if profile:
         session.set_config_variable("profile", profile)
-    return session.get_credentials().get_frozen_credentials(), session.get_config_variable("region") or "us-west-2"
+    return (
+        session.get_credentials().get_frozen_credentials(),
+        session.get_config_variable("region") or "us-west-2",
+    )
 
 
 def signed_request(method, url, *, headers=None, body=None, region, credentials):
@@ -29,13 +32,29 @@ def signed_request(method, url, *, headers=None, body=None, region, credentials)
     return resp
 
 
-def invoke(base_url, session_id, action, *, region, credentials, browser_id="aws.browser.v1", extra_headers=None):
+def invoke(
+    base_url,
+    session_id,
+    action,
+    *,
+    region,
+    credentials,
+    browser_id="aws.browser.v1",
+    extra_headers=None,
+):
     """Call InvokeBrowser with the given action payload."""
     url = f"{base_url}/browsers/{browser_id}/sessions/invoke"
     hdrs = {SESSION_HEADER: session_id}
     if extra_headers:
         hdrs.update(extra_headers)
-    return signed_request("POST", url, headers=hdrs, body={"action": action}, region=region, credentials=credentials)
+    return signed_request(
+        "POST",
+        url,
+        headers=hdrs,
+        body={"action": action},
+        region=region,
+        credentials=credentials,
+    )
 
 
 def start_session(base_url, browser_id, *, region, credentials):
