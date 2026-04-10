@@ -1,3 +1,0 @@
-/Users/singwvin/amazon-bedrock-agentcore-samples/01-tutorials/10-Agent-Registry/01-advanced/registry-synchronize-mcpserver/.ash/ash_output/ash.log
-/Users/singwvin/amazon-bedrock-agentcore-samples/01-tutorials/10-Agent-Registry/01-advanced/registry-synchronize-mcpserver/registry-synchronize-mcpserver-arch.png
-/Users/singwvin/amazon-bedrock-agentcore-samples/01-tutorials/10-Agent-Registry/01-advanced/registry-synchronize-mcpserver/registry_synchronize_mcpserver.ipynb
