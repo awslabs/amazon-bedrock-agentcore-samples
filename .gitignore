@@ -262,3 +262,6 @@ Dockerfile
 
 ### ASH ###
 .ash/
+
+### PowerPoint ###
+01-tutorials/10-Agent-Registry/01-advanced/planner-executor-pattern/images/planner-executor-architecture.pptx

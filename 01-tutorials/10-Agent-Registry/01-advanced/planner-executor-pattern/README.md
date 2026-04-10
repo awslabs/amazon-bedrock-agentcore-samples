@@ -63,14 +63,6 @@ that this notebook loads automatically.
 
 ![Planner + Executor architecture](images/planner-executor-architecture.png)
 
-## Sections
-1. Setup
-2. Obtain OAuth2 Token
-3. Create Registry & Register All 12 Tools
-4. Build Planner Agent
-5. Build Executor Agent
-6. Run Planner + Executor Locally (3 scenarios)
-7. Token/Cost Comparison
-8. Deploy to AgentCore Runtime
-9. Invoke Deployed Agent
-10. Cleanup
+## Tutorial
+
+- [Planner Executor Pattern](planner-executor.ipynb)
