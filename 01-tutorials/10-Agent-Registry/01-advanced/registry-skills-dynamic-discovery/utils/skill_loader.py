@@ -140,7 +140,7 @@ def load_skill_from_registry(search_response, record_index=0, base_dir="./skills
     skill_md_path = os.path.join(skill_dir, "SKILL.md")
     with open(skill_md_path, "w", encoding="utf-8") as f:
         f.write(skill_md_content)
-    print(f"  Written: SKILL.md")
+    print("  Written: SKILL.md")
 
     # 4. Download remaining files from GitHub repo
     repo_info = skill_def.get("repository", {})
