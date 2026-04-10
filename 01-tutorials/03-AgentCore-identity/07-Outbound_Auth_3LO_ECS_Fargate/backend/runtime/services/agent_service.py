@@ -24,7 +24,7 @@ class AgentService:
         identity_aws_region: str,
         s3_bucket_name: str,
         inference_profile_id: str,
-        base_url: str,
+        session_binding_url: str,
         github_provider_name: str,
         github_api_base: str,
     ):
@@ -33,7 +33,7 @@ class AgentService:
         self.identity_aws_region = identity_aws_region
         self.s3_bucket_name = s3_bucket_name
         self.inference_profile_id = inference_profile_id
-        self.base_url = base_url
+        self.session_binding_url = session_binding_url
         self.github_provider_name = github_provider_name
         self.github_api_base = github_api_base
 
@@ -52,16 +52,20 @@ class AgentService:
         )
 
         github_config = GitHubConfig(
-            base_url=self.base_url,
+            session_binding_url=self.session_binding_url,
             github_api_base=self.github_api_base,
             provider_name=self.github_provider_name,
             aws_region=self.identity_aws_region,
             workload_access_token=workload_access_token,
         )
 
-        model = BedrockModel(region_name=self.aws_region, model_id=self.inference_profile_id)
+        model = BedrockModel(
+            region_name=self.aws_region, model_id=self.inference_profile_id
+        )
 
-        return agent_factory(session_manager=session_manager, model=model, github_config=github_config)
+        return agent_factory(
+            session_manager=session_manager, model=model, github_config=github_config
+        )
 
     async def stream_response(
         self,

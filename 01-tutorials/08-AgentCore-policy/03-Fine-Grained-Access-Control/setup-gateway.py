@@ -5,7 +5,7 @@ Usage:
     python setup-gateway.py [--region REGION] [--role-arn ROLE_ARN]
 
 Options:
-    --region REGION      AWS region (defaults to current session region or us-east-1)
+    --region REGION      AWS region (defaults to current session region)
     --role-arn ROLE_ARN  IAM role ARN with trust relationship (creates one if not provided)
 
 This script will:
@@ -256,7 +256,12 @@ def create_refund_lambda(region: str, function_name: str = "RefundLambda") -> st
 def get_default_region() -> str:
     """Get the default AWS region from the current session or environment."""
     session = boto3.Session()
-    return session.region_name or os.environ.get("AWS_DEFAULT_REGION", "us-east-1")
+    region = session.region_name or os.environ.get("AWS_DEFAULT_REGION")
+    if not region:
+        raise ValueError(
+            "AWS region not configured. Pass --region or set AWS_DEFAULT_REGION."
+        )
+    return region
 
 
 def setup_gateway(region: str = None, role_arn: str = None):
@@ -264,7 +269,7 @@ def setup_gateway(region: str = None, role_arn: str = None):
     Setup AgentCore Gateway with Lambda target and policy engine.
 
     Args:
-        region: AWS region (defaults to session region or us-east-1)
+        region: AWS region (defaults to current session region)
         role_arn: IAM role ARN with trust relationship (creates one if not provided)
     """
     # Use provided region or get default
@@ -428,7 +433,7 @@ if __name__ == "__main__":
         "--region",
         type=str,
         default=None,
-        help="AWS region (defaults to current session region or us-east-1)",
+        help="AWS region (defaults to current session region; required if not configured)",
     )
     parser.add_argument(
         "--role-arn",

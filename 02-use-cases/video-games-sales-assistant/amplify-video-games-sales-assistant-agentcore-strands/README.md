@@ -1,6 +1,8 @@
-# Front-End Implementation - Integrating AgentCore with a Ready-to-Use Data Analyst Assistant Application
+# Front-End Implementation - Integrating AgentCore with a Ready-to-Use Data Analyst Assistant Application (Next.js)
 
-This tutorial guides you through setting up a React Web application that integrates with your **[Amazon Bedrock AgentCore](https://aws.amazon.com/bedrock/agentcore/)** deployment, creating a Data Analyst Assistant for Video Game Sales.
+This tutorial guides you through setting up a Next.js web application that integrates with your **[Amazon Bedrock AgentCore](https://aws.amazon.com/bedrock/agentcore/)** deployment, creating a Data Analyst Assistant for Video Game Sales.
+
+This is the Next.js + Amplify Gen 2 version of the original React application. It uses the same AgentCore backend but replaces the React + Amplify Gen 1 frontend with a modern Next.js App Router architecture, Tailwind CSS, and Amplify Gen 2 for authentication and IAM.
 
 > [!NOTE]
 > **Working Directory**: Make sure you are in the `amplify-video-games-sales-assistant-agentcore-strands/` folder before starting this tutorial. All commands in this guide should be executed from this directory.
@@ -11,10 +13,10 @@ By the end of this tutorial, you'll have a fully functional Generative AI web ap
 
 The application consists of two main components:
 
-- **React Web Application**: Provides the user interface and handles user interactions
-- **Amazon Bedrock AgentCore Integration:**:
+- **Next.js Web Application**: Provides the user interface with server components, protected routes, and streaming chat
+- **Amazon Bedrock AgentCore Integration:**
     - Uses your AgentCore deployment for data analysis and natural language processing
-    - The application invokes the Amazon Bedrock AgentCore for interacting with the assistant
+    - The application invokes Amazon Bedrock AgentCore for interacting with the assistant
     - Directly invokes Claude Haiku 4.5 model for chart generation and visualization
 
 > [!IMPORTANT]
@@ -25,198 +27,93 @@ The application consists of two main components:
 Before you begin, ensure you have:
 
 - [Node.js version 18+](https://nodejs.org/en/download/package-manager)
+- [pnpm](https://pnpm.io/installation)
+- [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2.html) configured with credentials
+- A deployed Amazon Bedrock AgentCore runtime (from the CDK stack in this repository)
+
+Verify credentials:
+
+```bash
+aws sts get-caller-identity
+```
 
 ## Set Up the Front-End Application
 
 ### Install Dependencies
 
-Navigate to the React application folder (amplify-video-games-sales-assistant-agentcore-strands/) and install the dependencies:
+Navigate to the application folder and install the dependencies:
 
-``` bash
-npm install
+```bash
+pnpm install
 ```
-
-### Install Amplify CLI
-
-Install the Amplify CLI globally:
-
-``` bash
-npm install -g @aws-amplify/cli
-```
-
-### Initialize Amplify Project
-
-Initialize the Amplify project:
-
-``` bash
-amplify init
-```
-
-- Do you want to continue with Amplify Gen 1? **`yes`**
-- Why would you like to use Amplify Gen 1? **`Prefer not to answer`**
-
-Use the following configuration:
-
-- ? Enter a name for the project: **`daabedrockagentcore`**
-
-Use the following default configuration:
-- Name: **daabedrockagentcore**
-- Environment: dev
-- Default editor: Visual Studio Code
-- App type: javascript
-- Javascript framework: react
-- Source Directory Path: src
-- Distribution Directory Path: build
-- Build Command: npm run-script build
-- Start Command: npm run-script start
-
-- ? Initialize the project with the above configuration? **`Yes`**
-- ? Select the authentication method you want to use: **`AWS profile`**
-
-### Add Authentication
-
-Add Amazon Cognito authentication to enable user sign-in:
-
-``` bash
-amplify add auth
-```
-
-Use the following configuration:
-
-- Do you want to use the default authentication and security configuration?: **`Default configuration`**
-- How do you want users to be able to sign in?: **`Email`**
-- Do you want to configure advanced settings?: **`No, I am done`**
-
-### Deploy Backend Resources
-
-Deploy the authentication resources to AWS:
-
-``` bash
-amplify push
-```
-
-- ? Are you sure you want to continue? **`Yes`**
-
-> [!NOTE]
-> This creates a Cognito User Pool and Identity Pool in your AWS account for user authentication. AWS credentials for the Front-End Application are automatically managed through Cognito.
-
-## Get CDK Output Values
-
-Get the required values from your CDK project outputs. These values are needed for configuring AuthRole permissions and environment variables:
-
-``` bash
-# Set the stack name environment variable
-export STACK_NAME=CdkDataAnalystAssistantAgentcoreStrandsStack
-
-# Get the values from CDK outputs
-export QUESTION_ANSWERS_TABLE_NAME=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" --query "Stacks[0].Outputs[?OutputKey=='QuestionAnswersTableName'].OutputValue" --output text)
-export QUESTION_ANSWERS_TABLE_ARN=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" --query "Stacks[0].Outputs[?OutputKey=='QuestionAnswersTableArn'].OutputValue" --output text)
-export AGENT_RUNTIME_ARN=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" --query "Stacks[0].Outputs[?OutputKey=='AgentRuntimeArn'].OutputValue" --output text)
-export AGENT_ENDPOINT_NAME=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" --query "Stacks[0].Outputs[?OutputKey=='AgentEndpointName'].OutputValue" --output text)
-
-cat << EOF
-# DynamoDB Resources
-QUESTION_ANSWERS_TABLE_NAME: ${QUESTION_ANSWERS_TABLE_NAME}
-QUESTION_ANSWERS_TABLE_ARN: ${QUESTION_ANSWERS_TABLE_ARN}
-
-# AgentCore Resources
-AGENT_RUNTIME_ARN: ${AGENT_RUNTIME_ARN}
-AGENT_ENDPOINT_NAME: ${AGENT_ENDPOINT_NAME}
-EOF
-```
-
-## Configure AuthRole Permissions
-
-After authentication deployment, you need to grant your authenticated users permission to access AWS services.
-
-1. **Find your AuthRole**: Go to AWS Console → IAM → Roles → Search for `amplify-daabedrockagentcore-dev-*-authRole`
-
-2. **Add an inline policy**: Click on the role → **Add permissions** → **Create inline policy** → Select **JSON** tab
-
-3. **Copy the policy below** and replace the following placeholders with your actual values:
-
-   | Placeholder | Replace With | Example |
-   |-------------|--------------|---------|
-   | `<account_id>` | Your AWS Account ID (12-digit number) | `123456789012` |
-   | `<question_answers_table_arn>` | `QUESTION_ANSWERS_TABLE_ARN` from CDK outputs above | `arn:aws:dynamodb:us-east-1:123456789012:table/QuestionAnswers-xxx` |
-   | `<agent_runtime_arn>` | `AGENT_RUNTIME_ARN` from CDK outputs above | `arn:aws:bedrock-agentcore:us-east-1:123456789012:runtime/data-analyst-xxx` |
-
-**Policy to copy (replace placeholders):**
-
-``` json
-{
-    "Version": "2012-10-17",
-    "Statement": [
-        {
-            "Sid": "InvokeBedrockModel",
-            "Effect": "Allow",
-            "Action": [
-                "bedrock:InvokeModel"
-            ],
-			"Resource": [
-				"arn:aws:bedrock:us-east-1:<account_id>:inference-profile/us.anthropic.claude-haiku-4-5-20251001-v1:0",
-				"arn:aws:bedrock:us-east-2:<account_id>:inference-profile/us.anthropic.claude-haiku-4-5-20251001-v1:0",
-				"arn:aws:bedrock:us-west-2:<account_id>:inference-profile/us.anthropic.claude-haiku-4-5-20251001-v1:0",
-				"arn:aws:bedrock:us-east-2::foundation-model/anthropic.claude-haiku-4-5-20251001-v1:0",
-				"arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-haiku-4-5-20251001-v1:0",
-				"arn:aws:bedrock:us-west-2::foundation-model/anthropic.claude-haiku-4-5-20251001-v1:0"
-			]
-        },
-        {
-            "Sid": "DynamoDB",
-            "Effect": "Allow",
-            "Action": [
-                "dynamodb:Query"
-            ],
-            "Resource": "<question_answers_table_arn>"
-        },
-        {
-            "Sid": "BedrockAgentCorePermissions",
-            "Effect": "Allow",
-            "Action": "bedrock-agentcore:InvokeAgentRuntime",
-            "Resource": [
-                "<agent_runtime_arn>",
-                "<agent_runtime_arn>/runtime-endpoint/*"
-            ]
-        }
-    ]
-}
-```
-
-4. **Save the policy** with a name like `DataAnalystAssistantPermissions`
 
 ## Configure Environment Variables
 
-Rename the file **src/sample.env.js** to **src/env.js**:
+Run the following script to automatically copy the example file, fetch the CDK output values, and update your `.env.local`:
 
-``` bash
-mv src/sample.env.js src/env.js
+```bash
+cp .env.local.example .env.local
+
+export STACK_NAME=CdkDataAnalystAssistantAgentcoreStrandsStack
+
+export QUESTION_ANSWERS_TABLE_NAME=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" --query "Stacks[0].Outputs[?OutputKey=='QuestionAnswersTableName'].OutputValue" --output text)
+export AGENT_RUNTIME_ARN=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" --query "Stacks[0].Outputs[?OutputKey=='AgentRuntimeArn'].OutputValue" --output text)
+
+sed -i.bak \
+  -e "s|AGENT_RUNTIME_ARN=.*|AGENT_RUNTIME_ARN=\"${AGENT_RUNTIME_ARN}\"|" \
+  -e "s|QUESTION_ANSWERS_TABLE_NAME=.*|QUESTION_ANSWERS_TABLE_NAME=\"${QUESTION_ANSWERS_TABLE_NAME}\"|" \
+  .env.local && rm -f .env.local.bak
+
+echo "✅ .env.local configured successfully"
+cat .env.local
 ```
 
-In your **src/env.js** update the following environment variables using the CDK output values from above:
+> [!NOTE]
+> All variables are server-side only (no `NEXT_PUBLIC_` prefix). Client components receive values as props from server component wrappers — they are never exposed to the browser. You can also manually edit `.env.local` using `.env.local.example` as a reference.
 
-- **QUESTION_ANSWERS_TABLE_NAME**: Use the value from the command above
-- **AGENT_RUNTIME_ARN**: Your AgentCore runtime ARN (format: "arn:aws:bedrock-agentcore:region:account:runtime/runtime-name")
-- **AGENT_ENDPOINT_NAME**: Usually "DEFAULT" for the default endpoint
-- **LAST_K_TURNS**: AgentCore Memory value to retrieve the last K conversation turns for context memory (default: 10)
+## Deploy Authentication and IAM Permissions
 
-Also, you can update the general application description:
-- **APP_NAME**: "Data Analyst Assistant"
-- **APP_SUBJECT**: "Video Games Sales"
-- **WELCOME_MESSAGE**: Your custom welcome message
-  
+This project uses **Amplify Gen 2** to deploy authentication (Cognito User Pool + Identity Pool) and IAM policies. Unlike the original React app where you manually configure IAM roles, Amplify Gen 2 handles everything through code in `amplify/backend.ts`.
+
+### Start the Amplify Sandbox
+
+The sandbox deploys a personal cloud environment to your AWS account. Run in a separate terminal:
+
+```bash
+QUESTION_ANSWERS_TABLE_NAME="$QUESTION_ANSWERS_TABLE_NAME" \
+AGENT_RUNTIME_ARN="$AGENT_RUNTIME_ARN" \
+pnpm ampx sandbox
+```
+
+These environment variables are read at CDK synth time by `amplify/backend.ts` to scope IAM policies. Wait until you see:
+
+```
+✔ Deployment completed
+File written: amplify_outputs.json
+Watching for file changes...
+```
+
+Once `amplify_outputs.json` is generated, the sandbox has finished its work. You can safely press `Ctrl+C` to stop the watcher — the cloud resources (Cognito, IAM policies) stay deployed. Only keep it running if you plan to make changes to files in `amplify/` and want them hot-deployed.
+
+> [!NOTE]
+> The sandbox automatically creates a Cognito User Pool, Identity Pool, and attaches three inline IAM policies to the authenticated role:
+> - **DynamoDBReadPolicy** — Read access to the query results table
+> - **BedrockAgentCorePolicy** — Permission to invoke the AgentCore runtime
+> - **BedrockInvokeModelPolicy** — Permission to invoke Bedrock models for chart generation
+>
+> No manual IAM configuration is needed.
 
 ## Test Your Data Analyst Assistant
 
 Start the application locally:
 
-``` bash
-npm start
+```bash
+pnpm dev
 ```
 
-The application will open in your browser at http://localhost:3000.
+The application will open in your browser at [http://localhost:3000](http://localhost:3000).
 
-First-Time access:
+First-time access:
 1. **Create Account**: Click "Create Account" and use your email address
 2. **Verify Email**: Check your email for a verification code
 3. **Sign In**: Use your email and password to sign in
@@ -271,31 +168,85 @@ Which are the most popular consoles and why?
 Give me a short summary and conclusion of our conversation.
 ```
 
-## Deploy your Application with Amplify Hosting
+## Deploy Your Application with Amplify Hosting
 
-To deploy your application yu can use AWS Amplify Hosting:
+To deploy your application you can use AWS Amplify Hosting.
 
-### Add Hosting
+> [!IMPORTANT]
+> Amplify Hosting requires a Git-based repository. This project must be pushed to its own repository on one of the supported providers: **GitHub**, **Bitbucket**, **GitLab**, or **AWS CodeCommit**. If this project lives inside a monorepo, push only this folder as a standalone repo before connecting it to Amplify. See [Getting started with Amplify Hosting](https://docs.aws.amazon.com/amplify/latest/userguide/getting-started.html) for details.
 
-Add hosting to your Amplify project:
+### 1. Connect Repository
 
-``` bash
-amplify add hosting
+Open the [Amplify Console](https://console.aws.amazon.com/amplify/), click **Create new app**, and select your Git provider and branch.
+
+### 2. Configure Environment Variables
+
+Under **App settings → Advanced settings → Environment variables**, add:
+
+| Variable | Required | Purpose | Default |
+|---|---|---|---|
+| `APP_NAME` | Yes | Display name in the UI header | `Data Analyst Assistant` |
+| `APP_DESCRIPTION` | Yes | Subtitle on the sign-in page | `Video Games Sales Data Analyst powered by Amazon Bedrock AgentCore` |
+| `AGENT_RUNTIME_ARN` | Yes | Bedrock AgentCore runtime ARN | — |
+| `AGENT_ENDPOINT_NAME` | No | Agent endpoint | `DEFAULT` |
+| `LAST_K_TURNS` | No | Conversation memory depth | `10` |
+| `WELCOME_MESSAGE` | No | Chat welcome message | `I'm your AI Data Analyst, crunching data for insights.` |
+| `MAX_LENGTH_INPUT_SEARCH` | No | Max characters for assistant input | `500` |
+| `MODEL_ID_FOR_CHART` | No | Bedrock model for chart generation | `us.anthropic.claude-haiku-4-5-20251001-v1:0` |
+| `QUESTION_ANSWERS_TABLE_NAME` | Yes | DynamoDB table for agent query results | — |
+
+> [!NOTE]
+> These environment variables are passed to the Next.js runtime via `next.config.mjs`. If you add new server-side env vars, make sure to also register them in that file for Amplify Hosting SSR to pick them up.
+
+### 3. Deploy
+
+Review and click **Save and deploy**. Amplify runs the build pipeline defined in `amplify.yml`:
+
+- **Backend phase** — Deploys the CDK stack (Cognito + IAM policies)
+- **Frontend phase** — Builds the Next.js app with environment variables baked into the server-side bundle
+
+## Clean Up Resources
+
+To avoid incurring ongoing costs, remove the resources created by this tutorial:
+
+1. **Delete the Amplify Hosting app**: Amplify Console → App settings → General settings → **Delete app**. This removes hosting and the backend stack (Cognito, IAM roles).
+
+2. **Delete the sandbox** (if still running):
+
+```bash
+pnpm ampx sandbox delete
 ```
 
-Use the following configuration:
-- Select the plugin module: `Hosting with Amplify Console`
-- Type: `Manual deployment`
+> [!NOTE]
+> These steps remove only the front-end resources (Cognito, IAM roles, hosting). External resources like DynamoDB tables and Bedrock AgentCore runtimes are managed by the CDK stack and must be deleted separately.
 
-### Publish Application
+## AWS Service Calls and Routes
 
-Build and deploy your application:
+### Routes
 
-``` bash
-amplify publish
-```
+| Path | Method | Access | Description |
+|---|---|---|---|
+| `/` | GET | Public | Redirects to `/app` |
+| `/app` | GET | Public | Sign in / sign up (Amplify Authenticator) |
+| `/app/assistant` | GET | Protected | AI Assistant chat interface |
+| `/api/agent/query-results` | POST | Authenticated | Fetch query results from DynamoDB |
 
-This will build your React application and deploy it to AWS Amplify Hosting. You'll receive a URL where your application is accessible.
+### Client-Side AWS Calls
+
+These run directly in the browser using Cognito Identity Pool credentials obtained via `src/lib/aws-client.ts`.
+
+| Service | SDK Client | File | Purpose |
+|---|---|---|---|
+| Bedrock AgentCore | `BedrockAgentCoreClient` | `agent-core-call.ts` | Streaming agent invocation — sends user questions and processes real-time response chunks |
+| Bedrock Runtime | `BedrockRuntimeClient` | `aws-calls.ts` | Chart generation — sends agent answers to Claude Haiku to produce ApexCharts configurations |
+
+### Server-Side AWS Calls
+
+These run on the Next.js server through API routes.
+
+| Service | SDK Client | File | Purpose |
+|---|---|---|---|
+| DynamoDB | `DynamoDBClient` | `api/agent/query-results/route.ts` | Queries the results table by `queryUuid` to fetch SQL results stored by the agent |
 
 ## Application Features
 
@@ -311,7 +262,7 @@ Congratulations! Your Data Analyst Assistant can provide you with the following 
 
 ![Video Games Sales Assistant](../images/preview2.png)
 
-- **Chart visualization generated from the agent's answer and the data query results (created using [Apexcharts](https://apexcharts.com/))**.
+- **Chart visualization generated from the agent's answer and the data query results (created using [Apexcharts](https://apexcharts.com/))**
 
 ![Video Games Sales Assistant](../images/preview3.png)
 

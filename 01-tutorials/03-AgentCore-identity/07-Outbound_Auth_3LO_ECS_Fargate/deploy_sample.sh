@@ -67,8 +67,8 @@ echo "Exporting dependencies with uv..."
 echo "  Exporting backend/runtime/requirements.txt..."
 uv export --format requirements-txt --only-group runtime --no-hashes > backend/runtime/requirements.txt
 
-echo "  Exporting backend/oauth_callback/requirements.txt..."
-uv export --format requirements-txt --only-group oauth --no-hashes > backend/oauth_callback/requirements.txt
+echo "  Exporting backend/session_binding/requirements.txt..."
+uv export --format requirements-txt --only-group oauth --no-hashes > backend/session_binding/requirements.txt
 
 echo "✓ Dependencies exported"
 echo ""
