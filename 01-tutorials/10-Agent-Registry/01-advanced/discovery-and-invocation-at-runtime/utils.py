@@ -104,7 +104,7 @@ def fetch_oauth_token(cognito_domain, client_id, client_secret, scopes, region, 
             token = resp.json()["access_token"]
             print(f"  OAuth2 token obtained (length={len(token)})")
             return token
-        except Exception as e:
+        except Exception:
             if attempt < max_retries - 1:
                 print(f"  Waiting for Cognito DNS (attempt {attempt + 1}/{max_retries})...")
                 time.sleep(10)
@@ -257,9 +257,9 @@ def write_agent_files():
 # Step 3 helpers — Registry metadata parsing and dynamic tool creation
 # ═══════════════════════════════════════════════════════════════════════════════
 
-import uuid
-from strands import tool
-from strands.tools.mcp import MCPClient
+import uuid  # noqa: E402
+from strands import tool  # noqa: E402
+from strands.tools.mcp import MCPClient  # noqa: E402
 
 
 def parse_server_metadata(record):

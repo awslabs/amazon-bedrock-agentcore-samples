@@ -1,4 +1,4 @@
-# Discovery and Invocation at Runtime Using AWS Agent Registry
+# Discovering Tools and Agents at Runtime Using AWS Agent Registry
 
 ## Overview
 

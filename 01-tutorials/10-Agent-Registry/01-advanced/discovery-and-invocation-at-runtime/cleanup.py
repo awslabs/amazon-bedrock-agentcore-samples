@@ -13,7 +13,6 @@ import os
 import time
 import shutil
 import boto3
-import json
 
 # Re-create AWS clients in case kernel was restarted
 try:
@@ -33,7 +32,6 @@ except NameError:
 # locals().get() / globals().get() may not find them reliably in all IPython versions.
 def _safe_get(name):
     """Get a variable from the notebook namespace, returning None if not set."""
-    import sys
     # Try IPython's user namespace first (most reliable for %run -i)
     try:
         ip = get_ipython()
