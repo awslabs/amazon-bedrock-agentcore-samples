@@ -12,14 +12,14 @@ This notebook focuses on the push-based approach for Metadata Synchronization. I
 
 The solution supports both single-account and cross-account architectures.
 
-Note that the Lambda handles the business logic of detecting and pushing tool changes. The notebook includes steps to create the registry and register the MCP server record, but these can also be done separately if you already have a registry set up. See the [Known Limitations](#known-limitations) section for details on versioning and approval behavior.
+Note that the Lambda handles the business logic of detecting and pushing tool changes. The notebook includes steps to create the registry and register the MCP server record, but these can also be done separately if you already have a registry set up. 
+See the [Known Limitations](#known-limitations) section for details on versioning and approval behavior.
 
 ## Prerequisites
 
-- An AWS account with IAM credentials that have permissions to create Lambda functions, IAM roles, and EventBridge rules.
+- An AWS account with IAM credentials that have permissions to create Lambda functions, IAM roles, and EventBridge rules. It should also have a policy which allows required AWS Agent Registry fucntions. 
 - An MCP server deployed on AgentCore Runtime with Cognito OAuth configured for authentication.
-- An AWS Agent Registry with a record already created for the MCP server. The record's `server.inlineContent` must contain the runtime ARN.
-- The registry record must be in APPROVED status for the Lambda to match and update it.
+- The notebook helps create Agent Registry and MCP server record in it. In case the Registry or MCP record is already existing, those cells can be skipped. 
 - Python 3.10+ with boto3 installed (the notebook handles installation via `requirements.txt`).
 - For cross-account setups, AWS CLI profiles configured for both Account A and Account B.
 
@@ -95,7 +95,7 @@ All resources can be deployed using the `deploy_lambda_push_sync.ipynb` notebook
 | 3. Create Registry Record | Creates a registry record for the MCP server with the runtime ARN in the server schema. |
 | 3.1 Approve Record | Moves the record through DRAFT → PENDING_APPROVAL → APPROVED so the Lambda can sync to it. |
 | 4. Create AgentCore Identity Credential Providers | Creates a workload identity for the Lambda and OAuth2 credential providers for each MCP server account. |
-| 5. Create IAM Role | Creates the Lambda execution role with permissions for registry access, AgentCore Identity, and Secrets Manager. |
+| 5. Create IAM Role for Lambda | Creates the Lambda execution role with permissions for registry access, AgentCore Identity, and Secrets Manager. |
 | 6. Build and Create Lambda | Packages `handler.py` along with `boto3`, `botocore`, and `requests` into a zip, then creates or updates the Lambda function. |
 | 7. Create EventBridge Rule | Creates an EventBridge rule that matches `UpdateAgentRuntime` CloudTrail events and targets the Lambda function. |
 | 8. Cross-Account Setup (optional) | Grants Account B permission to send events to Account A's bus, and creates the forwarding IAM role and EventBridge rule in Account B. |
@@ -209,15 +209,6 @@ Each MCP server account requires a Cognito user pool with an app client configur
 | Requirements  | A Cognito user pool with an app client and a resource server with a defined scope. |
 | Managed by    | An AgentCore Identity credential provider in Account A.               |
 
-### Adding a New Account
-
-To add a new MCP server account to the push sync pipeline, follow these steps:
-
-1. In the new account, create an EventBridge forwarding rule and IAM role following the same pattern as Account B.
-2. In Account A, add the new account ID to the event bus permission so it can forward events.
-3. In Account A, create a credential provider in AgentCore Identity with the new account's Cognito configuration.
-4. In Account A, add a `CREDENTIAL_PROVIDER_{new_acct_id}` environment variable to the Lambda function.
-5. In Account A, create and approve a registry record with the new MCP server's runtime URL in the `server.inlineContent` field.
 
 ## Testing
 
@@ -293,12 +284,3 @@ The following table lists common issues and their resolutions:
 | Auth error (credential provider)     | Wrong provider name for account          | Check the `CREDENTIAL_PROVIDER_{ACCT_ID}` environment variable on the Lambda. |
 | Registry update fails                | Lambda role missing permissions          | Add `bedrock-agentcore:UpdateRegistryRecord` to the Lambda role. |
 | `no_change` when expecting update    | Tools are identical                      | Verify that the tool names, descriptions, or inputSchemas actually differ. |
-
-## Files
-
-| File                  | Purpose                                          |
-|-----------------------|--------------------------------------------------|
-| `handler.py`          | The Lambda function code that handles events and syncs tools to the registry. |
-| `deploy_lambda_push_sync.ipynb` | The deployment notebook that provisions all required AWS resources. |
-| `requirements.txt`    | Python dependencies required by the notebook (boto3 >= 1.42.87, requests). |
-| `.env`                | Local configuration file with credentials (gitignored and not committed to the repository). |

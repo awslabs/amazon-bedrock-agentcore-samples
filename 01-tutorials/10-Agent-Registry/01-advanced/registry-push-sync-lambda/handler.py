@@ -121,7 +121,7 @@ def call_tools_list(mcp_url, token):
     )
     init_resp.raise_for_status()
     session_id = init_resp.headers.get("Mcp-Session-Id")
-    init_result = _parse_sse_json(init_resp.text)
+    init_result = _parse_sse_json(init_resp.text)  # noqa: F841 — parsed to validate response
     print(f"MCP session initialized, session_id={session_id}")
 
     # Step 2: Call tools/list
@@ -317,10 +317,10 @@ def sync_registry_if_changed(mcp_tools, mcp_url):
     if removed:
         print(f"  Removed: {removed}")
     if not added and not removed:
-        print(f"  Tool definitions changed (same names, different schemas/descriptions)")
+        print("  Tool definitions changed (same names, different schemas/descriptions)")
 
     tool_schema_content = json.dumps({"tools": mcp_tools})
-    resp = client.update_registry_record(
+    client.update_registry_record(
         registryId=registry_id,
         recordId=record_id,
         descriptors={
