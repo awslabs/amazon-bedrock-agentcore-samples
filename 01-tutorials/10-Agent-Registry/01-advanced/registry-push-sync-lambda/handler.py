@@ -29,17 +29,21 @@ import boto3
 
 def get_bearer_token(account_id=None):
     """Get OAuth bearer token via AgentCore Identity credential provider.
-    
+
     Two-step process:
       1. Get a workload access token from AgentCore Identity (identifies this Lambda)
       2. Use it to fetch an OAuth token from the credential provider (M2M flow)
-    
+
     The credential provider stores the Cognito/OAuth config securely in AgentCore
     Identity, so no client secrets are needed in Lambda env vars.
     """
     acct = account_id or ""
-    provider_name = os.environ.get(f"CREDENTIAL_PROVIDER_{acct}") or os.environ.get("CREDENTIAL_PROVIDER", "")
-    scope_str = os.environ.get(f"CREDENTIAL_SCOPE_{acct}") or os.environ.get("CREDENTIAL_SCOPE", "")
+    provider_name = os.environ.get(f"CREDENTIAL_PROVIDER_{acct}") or os.environ.get(
+        "CREDENTIAL_PROVIDER", ""
+    )
+    scope_str = os.environ.get(f"CREDENTIAL_SCOPE_{acct}") or os.environ.get(
+        "CREDENTIAL_SCOPE", ""
+    )
     scopes = [s.strip() for s in scope_str.split(",") if s.strip()] if scope_str else []
     workload_name = os.environ.get("WORKLOAD_IDENTITY_NAME", "")
 
@@ -56,9 +60,13 @@ def get_bearer_token(account_id=None):
         workloadName=workload_name,
     )
     print(f"Workload access token response keys: {list(wat_response.keys())}")
-    workload_token = wat_response.get("workloadAccessToken") or wat_response.get("accessToken", "")
+    workload_token = wat_response.get("workloadAccessToken") or wat_response.get(
+        "accessToken", ""
+    )
     if not workload_token:
-        raise ValueError(f"No access token in workload response: {list(wat_response.keys())}")
+        raise ValueError(
+            f"No access token in workload response: {list(wat_response.keys())}"
+        )
 
     # Step 2: Use workload token to get OAuth token from the credential provider
     response = client.get_resource_oauth2_token(
@@ -80,7 +88,7 @@ def _parse_sse_json(body):
     # SSE format: lines like "event: message\ndata: {...}\n\n"
     for line in text.splitlines():
         if line.startswith("data:"):
-            return json.loads(line[len("data:"):].strip())
+            return json.loads(line[len("data:") :].strip())
     raise ValueError(f"Could not parse response: {text[:200]}")
 
 
@@ -98,7 +106,7 @@ def _mcp_headers(token, session_id=None):
 
 def call_tools_list(mcp_url, token):
     """Call the MCP server's initialize + tools/list methods and return the result.
-    
+
     MCP streamable-http requires initialize before tools/list.
     The session_id from initialize is passed to tools/list if the server uses sessions.
     """
@@ -108,7 +116,9 @@ def call_tools_list(mcp_url, token):
 
     # Step 1: Initialize MCP session
     init_payload = {
-        "jsonrpc": "2.0", "id": "init-1", "method": "initialize",
+        "jsonrpc": "2.0",
+        "id": "init-1",
+        "method": "initialize",
         "params": {
             "protocolVersion": "2025-03-26",
             "capabilities": {},
@@ -117,7 +127,10 @@ def call_tools_list(mcp_url, token):
     }
 
     init_resp = requests.post(
-        mcp_url, json=init_payload, headers=_mcp_headers(token), timeout=30,
+        mcp_url,
+        json=init_payload,
+        headers=_mcp_headers(token),
+        timeout=30,
     )
     init_resp.raise_for_status()
     session_id = init_resp.headers.get("Mcp-Session-Id")
@@ -126,13 +139,17 @@ def call_tools_list(mcp_url, token):
 
     # Step 2: Call tools/list
     list_payload = {
-        "jsonrpc": "2.0", "id": "list-1",
-        "method": "tools/list", "params": {},
+        "jsonrpc": "2.0",
+        "id": "list-1",
+        "method": "tools/list",
+        "params": {},
     }
 
     list_resp = requests.post(
-        mcp_url, json=list_payload,
-        headers=_mcp_headers(token, session_id), timeout=30,
+        mcp_url,
+        json=list_payload,
+        headers=_mcp_headers(token, session_id),
+        timeout=30,
     )
     list_resp.raise_for_status()
     return _parse_sse_json(list_resp.text)
@@ -140,7 +157,7 @@ def call_tools_list(mcp_url, token):
 
 def _extract_mcp_url(event):
     """Extract MCP URL and account ID from a CloudTrail UpdateAgentRuntime event.
-    
+
     Returns:
         (mcp_url, account_id) tuple. Both None if extraction fails.
     """
@@ -164,12 +181,12 @@ def _extract_mcp_url(event):
 
 def _find_record_by_mcp_url(client, registry_id, mcp_url):
     """Search registry records to find one whose server schema contains the runtime ARN.
-    
+
     Tries three matching strategies:
       1. Decoded ARN (e.g. arn:aws:bedrock-agentcore:...:runtime/TrimMCP-xxx)
       2. URL-encoded ARN (e.g. arn%3Aaws%3Abedrock-agentcore%3A...%2FTrimMCP-xxx)
       3. Full MCP URL match
-    
+
     Returns:
         (record_id, full_record) tuple. Both None if no match found.
     """
@@ -182,7 +199,9 @@ def _find_record_by_mcp_url(client, registry_id, mcp_url):
         runtime_marker = "/runtimes/"
         idx = decoded_url.find(runtime_marker)
         if idx >= 0:
-            runtime_arn = decoded_url[idx + len(runtime_marker):].split("/invocations")[0]
+            runtime_arn = decoded_url[idx + len(runtime_marker) :].split(
+                "/invocations"
+            )[0]
         else:
             runtime_arn = None
     except Exception:
@@ -192,15 +211,21 @@ def _find_record_by_mcp_url(client, registry_id, mcp_url):
     record_list = records.get("registryRecords", [])
     print(f"Found {len(record_list)} registry records")
     for rec in record_list:
-        record_id = rec.get("registryRecordId") or rec.get("recordId") or rec.get("id", "")
+        record_id = (
+            rec.get("registryRecordId") or rec.get("recordId") or rec.get("id", "")
+        )
         record_name = rec.get("name", "?")
         record_status = rec.get("status", "?")
-        print(f"  Record: {record_id} | {record_name} | status={record_status} | keys={list(rec.keys())}")
+        print(
+            f"  Record: {record_id} | {record_name} | status={record_status} | keys={list(rec.keys())}"
+        )
         if not record_id:
             print(f"  Warning: could not get record ID from: {list(rec.keys())}")
             continue
         if record_status == "DRAFT":
-            print(f"  Skipping DRAFT record {record_id} ({record_name}) — must be APPROVED first")
+            print(
+                f"  Skipping DRAFT record {record_id} ({record_name}) — must be APPROVED first"
+            )
             continue
         try:
             full = client.get_registry_record(
@@ -214,15 +239,28 @@ def _find_record_by_mcp_url(client, registry_id, mcp_url):
 
             # Match on runtime ARN (decoded or encoded) in the server schema
             if runtime_arn and runtime_arn in inline:
-                print(f"Found matching record (by ARN): {record_id} ({rec.get('name', '?')})")
+                print(
+                    f"Found matching record (by ARN): {record_id} ({rec.get('name', '?')})"
+                )
                 return record_id, full
             # Also check URL-encoded ARN
-            encoded_arn = runtime_arn.replace(":", "%3A").replace("/", "%2F") if runtime_arn else None
+            encoded_arn = (
+                runtime_arn.replace(":", "%3A").replace("/", "%2F")
+                if runtime_arn
+                else None
+            )
             if encoded_arn and encoded_arn in inline:
-                print(f"Found matching record (by encoded ARN): {record_id} ({rec.get('name', '?')})")
+                print(
+                    f"Found matching record (by encoded ARN): {record_id} ({rec.get('name', '?')})"
+                )
                 return record_id, full
-            if mcp_url in inline or urllib.parse.unquote(mcp_url).rstrip("?qualifier=DEFAULT") in inline:
-                print(f"Found matching record (by URL): {record_id} ({rec.get('name', '?')})")
+            if (
+                mcp_url in inline
+                or urllib.parse.unquote(mcp_url).rstrip("?qualifier=DEFAULT") in inline
+            ):
+                print(
+                    f"Found matching record (by URL): {record_id} ({rec.get('name', '?')})"
+                )
                 return record_id, full
         except Exception as e:
             print(f"Error checking record {record_id}: {e}")
@@ -236,7 +274,7 @@ def _find_record_by_mcp_url(client, registry_id, mcp_url):
 
 def _get_registry_client():
     """Create a boto3 client for the AWS Agent Registry control plane.
-    
+
     Uses the bedrock-agentcore-control service model included in boto3 >= 1.42.87.
     """
     region = os.environ.get("AWS_REGION", "us-west-2")
@@ -247,11 +285,13 @@ def _normalize_tools(tools):
     """Normalize tool list for comparison — extract name, description, inputSchema."""
     normalized = []
     for t in sorted(tools, key=lambda x: x.get("name", "")):
-        normalized.append({
-            "name": t.get("name", ""),
-            "description": t.get("description", ""),
-            "inputSchema": t.get("inputSchema", {}),
-        })
+        normalized.append(
+            {
+                "name": t.get("name", ""),
+                "description": t.get("description", ""),
+                "inputSchema": t.get("inputSchema", {}),
+            }
+        )
     return normalized
 
 
@@ -271,14 +311,14 @@ def _get_registry_tools_from_record(full_record):
 
 def sync_registry_if_changed(mcp_tools, mcp_url):
     """Compare MCP server tools with AWS Agent Registry record tools. Update only if different.
-    
+
     Steps:
       1. Find the AWS Agent Registry record matching this MCP server's URL
       2. Extract existing tools from the record's tools.inlineContent
       3. Normalize both tool lists (sort by name, compare name/description/inputSchema)
       4. If identical → skip update
       5. If different → log the diff and update the registry record
-    
+
     Returns:
         dict with 'action' key: 'no_change', 'updated', or 'skipped'
     """
@@ -299,13 +339,21 @@ def sync_registry_if_changed(mcp_tools, mcp_url):
     registry_normalized = _normalize_tools(registry_tools)
 
     if mcp_normalized == registry_normalized:
-        print(f"No change detected. Registry record {record_id} is up to date "
-              f"({len(registry_tools)} tools).")
-        return {"action": "no_change", "record_id": record_id, "tool_count": len(registry_tools)}
+        print(
+            f"No change detected. Registry record {record_id} is up to date "
+            f"({len(registry_tools)} tools)."
+        )
+        return {
+            "action": "no_change",
+            "record_id": record_id,
+            "tool_count": len(registry_tools),
+        }
 
     # Tools differ — update the registry
-    print(f"Change detected! Registry has {len(registry_tools)} tools, "
-          f"MCP server has {len(mcp_tools)} tools.")
+    print(
+        f"Change detected! Registry has {len(registry_tools)} tools, "
+        f"MCP server has {len(mcp_tools)} tools."
+    )
 
     # Log the diff
     mcp_names = {t["name"] for t in mcp_normalized}
@@ -339,15 +387,21 @@ def sync_registry_if_changed(mcp_tools, mcp_url):
         },
     )
     print(f"Updated registry record {record_id} in registry {registry_id}")
-    return {"action": "updated", "record_id": record_id,
-            "old_count": len(registry_tools), "new_count": len(mcp_tools)}
+    return {
+        "action": "updated",
+        "record_id": record_id,
+        "old_count": len(registry_tools),
+        "new_count": len(mcp_tools),
+    }
 
 
 def handler(event, context):
     """Lambda entry point. Triggered by EventBridge on UpdateAgentRuntime events."""
     mcp_url, account_id = _extract_mcp_url(event)
     if not mcp_url:
-        print(f"Could not extract mcp_url from event: {json.dumps(event, default=str)[:500]}")
+        print(
+            f"Could not extract mcp_url from event: {json.dumps(event, default=str)[:500]}"
+        )
         return {"statusCode": 400, "body": "Could not extract mcp_url"}
 
     print(f"Received event for MCP server: {mcp_url} (account: {account_id})")
@@ -364,10 +418,13 @@ def handler(event, context):
 
     return {
         "statusCode": 200,
-        "body": json.dumps({
-            "mcp_url": mcp_url,
-            "tool_count": len(tools),
-            "tools": [t["name"] for t in tools],
-            "sync": sync_result,
-        }, default=str),
+        "body": json.dumps(
+            {
+                "mcp_url": mcp_url,
+                "tool_count": len(tools),
+                "tools": [t["name"] for t in tools],
+                "sync": sync_result,
+            },
+            default=str,
+        ),
     }
