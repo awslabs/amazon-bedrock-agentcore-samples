@@ -1,4 +1,4 @@
-# Registry URL Synchronization
+# Synchronize MCP and A2A Server Metadata with Registry
 
 Auto-populate registry records by pointing to an MCP server or A2A agent URL. The registry connects to the endpoint, fetches metadata (tools, server info, agent card), and populates the record — no manual entry needed.
 
@@ -181,16 +181,6 @@ ac.create_gateway(
 
 Failed records include a `statusReason` field with the error details (e.g., connection timeout, auth failure, invalid response).
 
-## Governance Flow
-
-URL-synced records follow the same approval workflow as manually created records:
-
-```
-CREATING → DRAFT → SUBMITTED → APPROVED → (searchable via data plane)
-                                    ↓
-                              Re-sync → DRAFT (new revision, old stays searchable)
-```
-
 ## Prerequisites
 
 ### 1. Python dependencies
@@ -267,5 +257,6 @@ Registries created before the URL sync feature was deployed lack the workload id
 
 | File | Description |
 |---|---|
-| `url_synchronization.ipynb` | Interactive notebook covering all sync scenarios end-to-end |
-| `README.md` | This guide |
+| [`url_synchronization.ipynb`](url_synchronization.ipynb) | Interactive notebook covering all sync scenarios end-to-end: public MCP, A2A agent cards, OAuth-protected servers, re-sync, failure handling, and governance workflow |
+| [`utils.py`](utils.py) | Shared helpers used by the notebook — `create_registry()` provisions a new registry and waits until READY, `seed()` populates it with inline MCP records and an optional URL-synced record, `search()` queries the data-plane search index, `wait_for_search_index()` polls until all records are indexed, and `delete_registry()` tears down records and the registry itself |
+| [`README.md`](README.md) | This guide |
