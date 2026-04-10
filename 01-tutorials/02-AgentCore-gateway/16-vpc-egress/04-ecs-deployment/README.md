@@ -3,6 +3,9 @@
 
 # ECS Deployment
 
+> This feature is made available to you as a "Beta Service" as defined in the [AWS Service Terms](https://aws.amazon.com/service-terms/). It is subject to your Agreement with AWS and the AWS Service Terms.
+
+
 Deploy MCP servers on Amazon ECS and connect them to AgentCore Gateway using VPC egress.
 
 ## Architecture

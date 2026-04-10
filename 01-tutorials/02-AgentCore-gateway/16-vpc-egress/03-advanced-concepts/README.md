@@ -3,6 +3,9 @@
 
 # Advanced Concepts
 
+> This feature is made available to you as a "Beta Service" as defined in the [AWS Service Terms](https://aws.amazon.com/service-terms/). It is subject to your Agreement with AWS and the AWS Service Terms.
+
+
 This section covers private DNS, private certificates, static IP egress, and the patterns needed to make them work with AgentCore Gateway VPC egress.
 
 

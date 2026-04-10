@@ -69,11 +69,16 @@ export class McpEcsStack extends cdk.Stack {
       "Allow HTTPS from VPC",
     );
 
-    // Allow ALB to reach ECS tasks on port 8000
+    // Allow ALB to reach ECS tasks on ports 8000 and 8001
     serviceSg.addIngressRule(
       albSg,
       ec2.Port.tcp(8000),
-      "Allow traffic from ALB",
+      "Allow traffic from ALB to MCP server",
+    );
+    serviceSg.addIngressRule(
+      albSg,
+      ec2.Port.tcp(8001),
+      "Allow traffic from ALB to Stock MCP server",
     );
 
     const accessLogBucket = new s3.Bucket(this, "McpAlbAccessLogs", {
@@ -162,6 +167,78 @@ export class McpEcsStack extends cdk.Stack {
 
     fargateService.attachToApplicationTargetGroup(fargateTargetGroup);
 
+    // --- Stock MCP Server (second MCP server, same ALB, path-based routing) ---
+    // The stock server mounts at /stock-mcp/ so ALB forwards /stock-mcp/* as-is.
+    const stockImage = ecs.ContainerImage.fromAsset("docker/stock-mcp-mock", {
+      platform: Platform.LINUX_AMD64,
+    });
+
+    const stockTargetGroup = new elbv2.ApplicationTargetGroup(
+      this,
+      "StockTargetGroup",
+      {
+        vpc: props.vpc,
+        port: 8001,
+        protocol: elbv2.ApplicationProtocol.HTTP,
+        targetType: elbv2.TargetType.IP,
+        healthCheck: {
+          path: "/stock-mcp/",
+          port: "8001",
+          healthyHttpCodes: "200,404,405,406",
+        },
+      },
+    );
+
+    httpsListener.addTargetGroups("StockMcpRoute", {
+      targetGroups: [stockTargetGroup],
+      priority: 1,
+      conditions: [elbv2.ListenerCondition.pathPatterns(["/stock-mcp/*"])],
+    });
+
+    const stockTaskDef = new ecs.FargateTaskDefinition(
+      this,
+      "StockMcpTaskDef",
+      {
+        memoryLimitMiB: 512,
+        cpu: 256,
+      },
+    );
+
+    const stockLogGroup = new logs.LogGroup(this, "StockMcpLogGroup", {
+      retention: logs.RetentionDays.ONE_MONTH,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
+
+    stockTaskDef.addContainer("StockMcpContainer", {
+      image: stockImage,
+      portMappings: [{ containerPort: 8001 }],
+      logging: ecs.LogDrivers.awsLogs({
+        logGroup: stockLogGroup,
+        streamPrefix: "stock-mcp",
+      }),
+    });
+
+    const stockService = new ecs.FargateService(
+      this,
+      "StockMcpFargateService",
+      {
+        cluster,
+        taskDefinition: stockTaskDef,
+        desiredCount: 1,
+        vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS },
+        securityGroups: [serviceSg],
+        assignPublicIp: false,
+        circuitBreaker: { enable: true, rollback: true },
+        cloudMapOptions: {
+          name: "stock-mcp",
+          cloudMapNamespace: namespace,
+          dnsRecordType: servicediscovery.DnsRecordType.A,
+        },
+      },
+    );
+
+    stockService.attachToApplicationTargetGroup(stockTargetGroup);
+
     // --- Bastion for SSM testing ---
     const bastionSg = new ec2.SecurityGroup(this, "BastionSg", {
       vpc: props.vpc,
@@ -191,6 +268,11 @@ export class McpEcsStack extends cdk.Stack {
       bastionSg,
       ec2.Port.tcp(8000),
       "Allow bastion to test MCP directly",
+    );
+    serviceSg.addIngressRule(
+      bastionSg,
+      ec2.Port.tcp(8001),
+      "Allow bastion to test Stock MCP directly",
     );
 
     // --- Outputs ---

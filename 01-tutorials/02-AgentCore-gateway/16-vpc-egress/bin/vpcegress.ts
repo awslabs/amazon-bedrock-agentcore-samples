@@ -102,7 +102,7 @@ const eksCluster = new EksClusterStack(app, "SharedEksCluster", {
   vpc: vpcUsWest2.vpc,
 });
 
-// MCP Server on EKS (requires publicCertArn)
+// MCP Server on EKS (requires NGINX Ingress + publicCertArn for NLB TLS)
 if (publicCertArn) {
   new McpEksStack(app, "McpEks", {
     env: envA,

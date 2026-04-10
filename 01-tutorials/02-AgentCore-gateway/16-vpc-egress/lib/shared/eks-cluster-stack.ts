@@ -71,6 +71,10 @@ export class EksClusterStack extends cdk.Stack {
       namespace: "kube-system",
     });
 
+    // IAM policy derived from the official AWS Load Balancer Controller docs:
+    // https://kubernetes-sigs.github.io/aws-load-balancer-controller/
+    // Wildcard resources are required because the controller manages NLBs/ALBs
+    // whose ARNs are not known at deploy time.
     const lbControllerPolicy = new iam.Policy(this, "LbControllerPolicy", {
       statements: [
         new iam.PolicyStatement({
@@ -177,6 +181,7 @@ export class EksClusterStack extends cdk.Stack {
       repository: "https://aws.github.io/eks-charts",
       namespace: "kube-system",
       release: "aws-load-balancer-controller",
+      wait: true,
       values: {
         clusterName: this.cluster.clusterName,
         serviceAccount: {
@@ -188,6 +193,29 @@ export class EksClusterStack extends cdk.Stack {
       },
     });
     lbControllerChart.node.addDependency(lbControllerSa);
+
+    // --- NGINX Ingress Controller (no Service — NLB is created in McpEksStack) ---
+    const nginxIngressChart = this.cluster.addHelmChart("NginxIngress", {
+      chart: "ingress-nginx",
+      repository: "https://kubernetes.github.io/ingress-nginx",
+      namespace: "ingress-nginx",
+      release: "ingress-nginx",
+      createNamespace: true,
+      values: {
+        controller: {
+          // Disable the default LoadBalancer Service — the NLB is created
+          // explicitly in McpEksStack with numeric targetPort to avoid
+          // named-port resolution issues with the AWS LB Controller.
+          service: {
+            enabled: false,
+          },
+          config: {
+            "use-forwarded-headers": "true",
+          },
+        },
+      },
+    });
+    nginxIngressChart.node.addDependency(lbControllerChart);
 
     const suppressions = [
       {

@@ -3,6 +3,8 @@
 
 # EKS Deployment
 
+> This feature is made available to you as a "Beta Service" as defined in the [AWS Service Terms](https://aws.amazon.com/service-terms/). It is subject to your Agreement with AWS and the AWS Service Terms.
+
 Deploy MCP servers and REST APIs on Amazon EKS and connect them to AgentCore Gateway using VPC egress.
 
 ## Scope
@@ -13,18 +15,20 @@ The labs in this section use a **private hosted zone** with a **public certifica
 
 ![arch](./images/eks-mcp.png)
 
-An internal Network Load Balancer (NLB) sits in front of the EKS services. The NLB provides:
+An [NGINX Ingress Controller](https://kubernetes.github.io/ingress-nginx/) runs behind a single internal Network Load Balancer (NLB). The NLB provides:
 
 - **Static IPs**: one per AZ, useful for allowlisting
-- **TLS termination**: terminates TLS with an ACM public certificate and forwards plain TCP to EKS pods
-- **Layer 4 routing**: lower latency than ALB, no HTTP parsing overhead
+- **TLS termination**: terminates TLS with an ACM public certificate and forwards plain HTTP to NGINX
+
+NGINX performs **path-based routing** to multiple backend services, so a single NLB can serve multiple MCP servers (e.g., `/mcp-server/mcp` and `/stock-mcp/mcp`).
 
 ```bash
 AgentCore Gateway
   → VPC Lattice (routingDomain: NLB *.elb.amazonaws.com)
     → Resource Gateway ENIs
       → Internal NLB (TLS :443, public cert)
-        → EKS Pods (HTTP :8000 or :8080)
+        → NGINX Ingress (HTTP :80, path-based routing)
+          → EKS Pods (HTTP :8000 or :8080)
 ```
 
 ## Prerequisites
@@ -39,7 +43,7 @@ AgentCore Gateway
 
 | Notebook | Description |
 |----------|-------------|
-| [mcp-server-gateway-managed.ipynb](./mcp-server-gateway-managed.ipynb) | Deploy a FastMCP server on EKS behind an internal NLB, with a private hosted zone and `routingDomain`. Uses managed VPC Lattice. |
+| [mcp-server-gateway-managed.ipynb](./mcp-server-gateway-managed.ipynb) | Deploy FastMCP servers on EKS behind an NGINX Ingress Controller (single NLB, path-based routing), with a private hosted zone and `routingDomain`. Uses managed VPC Lattice. |
 | [api-server-gateway-managed.ipynb](./api-server-gateway-managed.ipynb) | Deploy a REST API (FastAPI) on EKS behind an internal NLB, connected to AgentCore Gateway with an OpenAPI schema. Uses private hosted zone and `routingDomain`. |
 
 ## License
