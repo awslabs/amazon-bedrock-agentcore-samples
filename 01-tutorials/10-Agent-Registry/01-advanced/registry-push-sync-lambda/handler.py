@@ -16,7 +16,6 @@ Env vars per account (replace {ACCT} with the 12-digit account ID):
   CREDENTIAL_SCOPE_{ACCT}    — OAuth scope for the MCP server (optional)
 
 Global env vars:
-  REGISTRY_CP_ENDPOINT    — AWS Agent Registry control plane endpoint
   REGISTRY_ID             — Registry ID to search and update records in
   WORKLOAD_IDENTITY_NAME  — AgentCore workload identity name for this Lambda
 """
@@ -238,17 +237,10 @@ def _find_record_by_mcp_url(client, registry_id, mcp_url):
 def _get_registry_client():
     """Create a boto3 client for the AWS Agent Registry control plane.
     
-    Uses the bedrock-agentcore-registry-control service model included
-    in boto3 >= 1.42.87.
+    Uses the bedrock-agentcore-control service model included in boto3 >= 1.42.87.
     """
-    endpoint = os.environ.get("REGISTRY_CP_ENDPOINT", "https://bedrock-agentcore-control.us-west-2.amazonaws.com")
     region = os.environ.get("AWS_REGION", "us-west-2")
-
-    return boto3.client(
-        "bedrock-agentcore-control",
-        endpoint_url=endpoint,
-        region_name=region,
-    )
+    return boto3.client("bedrock-agentcore-control", region_name=region)
 
 
 def _normalize_tools(tools):

@@ -12,7 +12,7 @@ This notebook focuses on the push-based approach for Metadata Synchronization. I
 
 The solution supports both single-account and cross-account architectures.
 
-Note that the Lambda handles the business logic of detecting and pushing tool changes, but the developer is responsible for ensuring that a registry record exists and is properly configured for each MCP server before the sync can work. See the [Known Limitations](#known-limitations) section for details.
+Note that the Lambda handles the business logic of detecting and pushing tool changes. The notebook includes steps to create the registry and register the MCP server record, but these can also be done separately if you already have a registry set up. See the [Known Limitations](#known-limitations) section for details on versioning and approval behavior.
 
 ## Prerequisites
 
@@ -90,17 +90,19 @@ All resources can be deployed using the `deploy_lambda_push_sync.ipynb` notebook
 | Notebook Section | What It Does |
 |-----------------|--------------|
 | 0. Install Dependencies | Installs boto3 and botocore from requirements.txt. |
-| 1. Configuration | Sets the AWS region, registry ID, credential provider names per account, and cross-account IDs. |
-| 2. Create AgentCore Identity Credential Providers | Creates a workload identity for the Lambda and OAuth2 credential providers for each MCP server account. |
-| 3. Create IAM Role | Creates the Lambda execution role with permissions for registry access, AgentCore Identity, and Secrets Manager. |
-| 4. Build and Create Lambda | Packages `handler.py` and the custom service model into a zip file, then creates or updates the Lambda function with the appropriate environment variables. |
-| 5. Create EventBridge Rule | Creates an EventBridge rule that matches `UpdateAgentRuntime` CloudTrail events and targets the Lambda function. |
-| 6. Cross-Account Setup (optional) | Grants Account B permission to send events to Account A's bus, and creates the forwarding IAM role and EventBridge rule in Account B. |
-| | **Deployment is complete after section 6. The sections below are optional.** |
-| 7. Test the Lambda | Manually invokes the Lambda with a synthetic CloudTrail event. |
-| 8. Check Lambda Logs | Displays the most recent CloudWatch log stream for the Lambda function. |
-| 9. Approve a Registry Record | Moves a registry record through the DRAFT → PENDING_APPROVAL → APPROVED workflow. |
-| 10. Cleanup | Tears down all resources created by the notebook, including Account A resources, Account B resources, and AgentCore Identity resources. |
+| 1. Configuration | Sets the AWS region, Lambda name, registry name, MCP server details, credential provider names per account, and cross-account IDs. |
+| 2. Create Registry | Creates an AWS Agent Registry and waits for it to become READY. |
+| 3. Create Registry Record | Creates a registry record for the MCP server with the runtime ARN in the server schema. |
+| 3.1 Approve Record | Moves the record through DRAFT → PENDING_APPROVAL → APPROVED so the Lambda can sync to it. |
+| 4. Create AgentCore Identity Credential Providers | Creates a workload identity for the Lambda and OAuth2 credential providers for each MCP server account. |
+| 5. Create IAM Role | Creates the Lambda execution role with permissions for registry access, AgentCore Identity, and Secrets Manager. |
+| 6. Build and Create Lambda | Packages `handler.py` along with `boto3`, `botocore`, and `requests` into a zip, then creates or updates the Lambda function. |
+| 7. Create EventBridge Rule | Creates an EventBridge rule that matches `UpdateAgentRuntime` CloudTrail events and targets the Lambda function. |
+| 8. Cross-Account Setup (optional) | Grants Account B permission to send events to Account A's bus, and creates the forwarding IAM role and EventBridge rule in Account B. |
+| | **Deployment is complete after section 8. The sections below are optional.** |
+| 9. Test the Lambda | Manually invokes the Lambda with a synthetic CloudTrail event. |
+| 10. Check Lambda Logs | Displays the most recent CloudWatch log stream for the Lambda function. |
+| 11. Cleanup | Tears down all resources created by the notebook, including the registry, records, Account A resources, Account B resources, and AgentCore Identity resources. |
 
 ## Resource Details
 
@@ -141,7 +143,6 @@ The following environment variables are configured on the Lambda function. Note 
 
 | Variable                          | Description                                              |
 |-----------------------------------|----------------------------------------------------------|
-| `REGISTRY_CP_ENDPOINT`            | The AWS Agent Registry control plane endpoint URL.        |
 | `REGISTRY_ID`                     | The registry ID to search and update records in.          |
 | `WORKLOAD_IDENTITY_NAME`          | The AgentCore workload identity name for this Lambda.     |
 | `CREDENTIAL_PROVIDER_{ACCT_ID}`   | The AgentCore Identity credential provider name for each MCP server account. |
@@ -269,7 +270,7 @@ aws lambda update-function-code \
 
 ## Known Limitations
 
-The Lambda function updates existing registry records but does not create new ones. A matching registry record must already exist in the registry with the MCP server's runtime ARN in its `server.inlineContent` field. If no matching record is found, the sync is skipped.
+The Lambda function updates existing registry records but does not create new ones. A matching registry record must already exist in the registry with the MCP server's runtime ARN in its `server.inlineContent` field. The notebook handles this in sections 2 and 3, but if you skip those steps, you must create the record manually. If no matching record is found, the sync is skipped.
 
 Record versioning is not currently implemented. When tools change, the Lambda updates the existing record in place regardless of the nature of the change. This means minor changes such as a tool description update are treated the same way as major changes such as new tools being added, tools being removed, or input schema mutations. A future improvement could distinguish between minor and major version changes — for example, creating a new record version for breaking changes and deprecating the older one.
 
