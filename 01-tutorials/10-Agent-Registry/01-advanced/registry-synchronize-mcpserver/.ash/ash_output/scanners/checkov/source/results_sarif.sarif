@@ -1,0 +1,1 @@
+{"$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/sarif-2.1/schema/sarif-schema-2.1.0.json", "version": "2.1.0", "runs": [{"tool": {"driver": {"name": "Checkov", "version": "3.2.505", "informationUri": "https://checkov.io", "rules": [], "organization": "bridgecrew"}}, "results": []}]}
