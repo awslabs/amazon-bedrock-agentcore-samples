@@ -11,7 +11,7 @@ This folder contains the setup notebook and reference guides needed before runni
 
 | Notebook | Description |
 |----------|-------------|
-| [00-vpc-gateway-setup.ipynb](./00-vpc-gateway-setup.ipynb) | Deploys the foundational infrastructure: VPCs across two regions (us-west-2, us-east-1), bootstraps CDK, and creates the shared AgentCore Gateway with Cognito M2M authentication. All subsequent labs depend on this notebook. |
+| [00-vpc-gateway-setup.ipynb](./00-vpc-gateway-setup.ipynb) | Deploys the foundational infrastructure: VPCs across two regions (us-west-2, us-east-1), bootstraps CDK, and creates the shared AgentCore Gateway with Cognito M2M authentication. Includes optional sections for [VPC Peering](../01-managed-lattice/02-peering.ipynb) (us-east-1 VPC + API Gateway + peering connection) and [Cross-Account](../02-self-managed-lattice/02-cross-account.ipynb) (Account B VPC) setup. All subsequent labs depend on this notebook. |
 
 ## Domain and Certificate Guides
 
