@@ -40,8 +40,8 @@ ACCOUNT_ID = os.getenv("AWS_ACCOUNT_ID")
 AUTH0_DOMAIN = os.getenv("AUTH0_DOMAIN")
 AUDIENCE = os.getenv("AUTH0_AUDIENCE")
 
-def _registry_arn(registry_id=None):
-    return f"arn:aws:bedrock-agentcore:{REGION}:{ACCOUNT_ID}:registry/{registry_id or REGISTRY_ID}"
+def _registry_arn(registry_id):
+    return f"arn:aws:bedrock-agentcore:{REGION}:{ACCOUNT_ID}:registry/{registry_id}"
 
 
 def _cp_client():
@@ -99,9 +99,8 @@ def create_registry(name="auth0-oauth-registry", description="Registry with Auth
     return result
 
 
-def update_registry_audience_with_mcp_url(registry_id=None):
+def update_registry_audience_with_mcp_url(registry_id):
     """Add the MCP endpoint URL to the registry's allowedAudience."""
-    registry_id = registry_id or REGISTRY_ID
     cp = _cp_client()
     dp = _dp_client()
     registry = cp.get_registry(registryId=registry_id)
@@ -174,12 +173,11 @@ RECORDS = [
 ]
 
 
-def seed(registry_id=None):
+def seed(registry_id):
     """Create records, submit for approval, and approve them.
 
     Returns list of created record dicts.
     """
-    registry_id = registry_id or REGISTRY_ID
     cp = _cp_client()
     created = []
     for rec in RECORDS:
@@ -214,9 +212,8 @@ def seed(registry_id=None):
     return created
 
 
-def delete_registry(registry_id=None):
+def delete_registry(registry_id):
     """Delete all records in a registry, then delete the registry itself."""
-    registry_id = registry_id or REGISTRY_ID
     cp = _cp_client()
     records = cp.list_registry_records(registryId=registry_id).get('registryRecords', [])
     for rec in records:
