@@ -23,7 +23,11 @@ Usage:
     python seed_records.py
 """
 
-import boto3, json, logging, os, time
+import boto3
+import json
+import logging
+import os
+import time
 from pathlib import Path
 from dotenv import load_dotenv
 
