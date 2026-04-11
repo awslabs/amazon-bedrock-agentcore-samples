@@ -2,7 +2,6 @@ import boto3
 import json
 import time
 import botocore.exceptions
-from boto3.session import Session
 
 
 def assume_role(role_arn, session_name="my-session"):
@@ -14,12 +13,6 @@ def assume_role(role_arn, session_name="my-session"):
     )
     creds = response["Credentials"]
     print(f"Assumed role: {response['AssumedRoleUser']['Arn']}")
-    print(f"Expires: {creds['Expiration']}")
-
-    # Export format for shell
-    print(f"\nexport AWS_ACCESS_KEY_ID=\"{creds['AccessKeyId']}\"")
-    print(f"export AWS_SECRET_ACCESS_KEY=\"{creds['SecretAccessKey']}\"")
-    print(f"export AWS_SESSION_TOKEN=\"{creds['SessionToken']}\"")
 
     return creds
 
@@ -58,19 +51,6 @@ def wait_for_record_ready(publisher_cp_client, registry_id, record_id, interval=
 
 print("Helper functions defined: pp, wait_for_record_ready")
 
-def wait_for_registry(registry_id, interval=5):
-    while True:
-        resp = cp_client.get_registry(registryId=registry_id)
-        status = resp["status"]
-        print(f"  Registry Status: {status}")
-        if status == "READY":
-            resp.pop("ResponseMetadata", None)
-            print(json.dumps(resp, indent=2, default=str))
-            return resp
-        if status.endswith("_FAILED"):
-            raise Exception(f"Registry failed: {status} - {resp.get('statusReason')}")
-        time.sleep(interval)
-
 def filter_pending_records(records):
     """Return only records with status PENDING_APPROVAL."""
     return [r for r in records if r.get("status") == "PENDING_APPROVAL"]
@@ -100,7 +80,7 @@ def list_records_with_ids(client, registry_id, **kwargs):
     return raw_body.get('data', {}).get('registryRecords', [])
 
 
-def get_or_select_registry(cp_client, registry_id=None):
+def get_or_select_registry(cp_client, registry_id=None, AWS_REGION="us-west-2"):
     """List registries and return (registry_id, registry_arn) for a READY registry.
 
     Args:
@@ -143,7 +123,7 @@ def get_or_select_registry(cp_client, registry_id=None):
         return rid, rarn
 
     except botocore.exceptions.EndpointConnectionError as e:
-        print(f"❌ Cannot reach bedrock-agentcore-control in {aws_region}. Error: {e}")
+        print(f"❌ Cannot reach bedrock-agentcore-control in {AWS_REGION}. Error: {e}")
         raise
     except botocore.exceptions.ClientError as e:
         code = e.response["Error"]["Code"]
