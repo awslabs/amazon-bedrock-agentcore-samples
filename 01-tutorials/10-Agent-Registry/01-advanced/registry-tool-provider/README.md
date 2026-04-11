@@ -40,12 +40,57 @@ Same agent, same code, different tools per request. When a team adds a new tool 
 
 ## Prerequisites
 
-| Prerequisite | Details | Notes |
-|---|---|---|
-| Python dependencies | `boto3>=1.42.87`, `strands-agents`, `httpx` | boto3 >= 1.42.87 includes Agent Registry APIs natively |
-| IAM — `SearchRegistryRecords`, `GetRegistryRecord` | Resource: `arn:aws:bedrock-agentcore:REGION:ACCOUNT_ID:registry/*` | Required for semantic search and fetching record descriptors |
-| IAM — `InvokeAgentRuntime` | Resource: `arn:aws:bedrock-agentcore:REGION:ACCOUNT_ID:runtime/*` | Only needed if your registry contains A2A agent records |
-| Gateway URL + token function | AgentCore Gateway endpoint and a function returning a Bearer token | Required for invoking MCP tools through the Gateway |
+### IAM Policy
+
+```json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "RegistryRecordManagement",
+            "Effect": "Allow",
+            "Action": [
+                "bedrock-agentcore:CreateRegistryRecord",
+                "bedrock-agentcore:GetRegistryRecord",
+                "bedrock-agentcore:UpdateRegistryRecord",
+                "bedrock-agentcore:ListRegistryRecords",
+                "bedrock-agentcore:DeleteRegistryRecord"
+            ],
+            "Resource": [
+                "arn:aws:bedrock-agentcore:REGION:ACCOUNT_ID:registry/*",
+                "arn:aws:bedrock-agentcore:REGION:ACCOUNT_ID:registry/*/record/*"
+            ]
+        },
+        {
+            "Sid": "RegistryManagement",
+            "Effect": "Allow",
+            "Action": [
+                "bedrock-agentcore:CreateRegistry",
+                "bedrock-agentcore:GetRegistry",
+                "bedrock-agentcore:ListRegistries"
+            ],
+            "Resource": "arn:aws:bedrock-agentcore:REGION:ACCOUNT_ID:*"
+        },
+        {
+            "Sid": "OAuthTokenForSync",
+            "Effect": "Allow",
+            "Action": "bedrock-agentcore:GetResourceOauth2Token",
+            "Resource": "arn:aws:bedrock-agentcore:REGION:ACCOUNT_ID:token-vault/*/oauth2credentialprovider/*"
+        },
+        {
+            "Sid": "IAMPassRoleForSync",
+            "Effect": "Allow",
+            "Action": "iam:PassRole",
+            "Resource": "arn:aws:iam::ACCOUNT_ID:role/*",
+            "Condition": {
+                "StringEquals": {
+                    "iam:PassedToService": "bedrock-agentcore.amazonaws.com"
+                }
+            }
+        }
+    ]
+}
+```
 
 ## Key Benefits
 

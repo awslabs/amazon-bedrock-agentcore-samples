@@ -10,25 +10,66 @@ Catalog MCP servers and A2A agents by pointing to their URLs — the registry au
 
 ## Prerequisites
 
-### 2. IAM Policy
+### IAM Policy
 
-| Action | Resource | Notes |
-|---|---|---|
-| `bedrock-agentcore:CreateRegistryRecord`, `GetRegistryRecord`, `UpdateRegistryRecord`, `ListRegistryRecords`, `DeleteRegistryRecord` | `arn:aws:bedrock-agentcore:REGION:ACCOUNT_ID:registry/*`, `…/registry/*/record/*` | Core record CRUD |
-| `bedrock-agentcore:CreateRegistry`, `GetRegistry`, `ListRegistries` | `arn:aws:bedrock-agentcore:REGION:ACCOUNT_ID:*` | Registry management |
-| `bedrock-agentcore:GetResourceOauth2Token` | `arn:aws:bedrock-agentcore:REGION:ACCOUNT_ID:token-vault/*/oauth2credentialprovider/*` | OAuth sync only |
-| `iam:PassRole` (condition: `PassedToService = bedrock-agentcore.amazonaws.com`) | `arn:aws:iam::ACCOUNT_ID:role/*` | IAM sync only |
+```json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "RegistryRecordManagement",
+            "Effect": "Allow",
+            "Action": [
+                "bedrock-agentcore:CreateRegistryRecord",
+                "bedrock-agentcore:GetRegistryRecord",
+                "bedrock-agentcore:UpdateRegistryRecord",
+                "bedrock-agentcore:ListRegistryRecords",
+                "bedrock-agentcore:DeleteRegistryRecord"
+            ],
+            "Resource": [
+                "arn:aws:bedrock-agentcore:REGION:ACCOUNT_ID:registry/*",
+                "arn:aws:bedrock-agentcore:REGION:ACCOUNT_ID:registry/*/record/*"
+            ]
+        },
+        {
+            "Sid": "RegistryManagement",
+            "Effect": "Allow",
+            "Action": [
+                "bedrock-agentcore:CreateRegistry",
+                "bedrock-agentcore:GetRegistry",
+                "bedrock-agentcore:ListRegistries"
+            ],
+            "Resource": "arn:aws:bedrock-agentcore:REGION:ACCOUNT_ID:*"
+        },
+        {
+            "Sid": "OAuthTokenForSync",
+            "Effect": "Allow",
+            "Action": "bedrock-agentcore:GetResourceOauth2Token",
+            "Resource": "arn:aws:bedrock-agentcore:REGION:ACCOUNT_ID:token-vault/*/oauth2credentialprovider/*"
+        },
+        {
+            "Sid": "IAMPassRoleForSync",
+            "Effect": "Allow",
+            "Action": "iam:PassRole",
+            "Resource": "arn:aws:iam::ACCOUNT_ID:role/*",
+            "Condition": {
+                "StringEquals": {
+                    "iam:PassedToService": "bedrock-agentcore.amazonaws.com"
+                }
+            }
+        }
+    ]
+}
+```
 
-### 3. New registry required
+### New registry required
 
 Registries created before the URL sync feature was deployed lack the workload identity needed for credential resolution. **Create a new registry** to use OAuth or IAM sync.
 
 ## Tutorial Examples
 
-| File | Description |
-|---|---|
-| [`url_synchronization.ipynb`](url_synchronization.ipynb) | Interactive notebook covering all sync scenarios end-to-end: public MCP, A2A agent cards, OAuth-protected servers, re-sync, failure handling, and governance workflow |
-| [`utils.py`](utils.py) | Shared helpers used by the notebook — `create_registry()` provisions a new registry and waits until READY, `seed()` populates it with inline MCP records and an optional URL-synced record, `search()` queries the data-plane search index, `wait_for_search_index()` polls until all records are indexed, and `delete_registry()` tears down records and the registry itself |
+[`url_synchronization.ipynb`](url_synchronization.ipynb): Interactive notebook covering all sync scenarios end-to-end: public MCP, A2A agent cards, OAuth-protected servers, re-sync, failure handling, and governance workflow
+
 
 ## Key Benefits
 
