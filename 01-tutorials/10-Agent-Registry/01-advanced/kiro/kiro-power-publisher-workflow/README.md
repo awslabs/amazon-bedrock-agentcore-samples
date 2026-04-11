@@ -152,3 +152,19 @@ To assume the publisher IAM role, your IAM user must be granted `sts:AssumeRole`
 ## Next Steps
 
 Once prerequisites are met, you are now ready to use **AWS Agent Registry** Kiro Power for the publisher workflow.
+
+---
+
+## Sample Prompts
+
+> Tip: If you are in a single Kiro IDE session, you don't have to mention the registry name every time — Kiro remembers it from context.
+
+1. "List all registries in my account in the us-west-2 region"
+2. "Show me the list of records in registry `<REGISTRY-NAME>`"
+3. "Create a new MCP server record in registry `<REGISTRY-NAME>` for my `<YOUR-TOOL>`"
+4. "Create an A2A agent card record for my `<YOUR-AGENT>` in registry `<REGISTRY-NAME>`"
+5. "Show all records in `PENDING_APPROVAL` state"
+6. "Submit all records in `DRAFT` status for approval in registry `<REGISTRY-NAME>`"
+7. "Show me the details of record `<RECORD-ID>`"
+8. "Update the description of record `<RECORD-ID>` in registry `<REGISTRY-NAME>`"
+9. "Delete all records in registry `<REGISTRY-NAME>`"
