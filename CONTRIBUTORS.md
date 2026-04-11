@@ -108,5 +108,6 @@
 - Swara Gandhi
 - Shubham Gupta (guptashs)
 - Vibhu Pareek (vibhup)
-- Richa Gupta
+- Richa Gupta (richagpt)
 - Chandra Dhandapani
+- Anant Murarka (anantmu)
