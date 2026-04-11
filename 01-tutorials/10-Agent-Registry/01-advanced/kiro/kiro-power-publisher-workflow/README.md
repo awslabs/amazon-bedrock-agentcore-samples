@@ -2,7 +2,7 @@
 
 ## Overview
 
-Kiro Powers bundle MCP tools, steering files, and hooks into a single install, giving your agents specialized knowledge without overwhelming them with context.
+Kiro Powers bundle MCP tools, steering files, and hooks into a single install, giving your agents specialized knowledge without overwhelming them with context. Learn more in the [Kiro Powers Documentation](https://kiro.dev/docs/powers/).
 
 This Kiro Power enables the **publisher persona** to create, manage, and submit agent/MCP records to the AWS Agent Registry.
 
