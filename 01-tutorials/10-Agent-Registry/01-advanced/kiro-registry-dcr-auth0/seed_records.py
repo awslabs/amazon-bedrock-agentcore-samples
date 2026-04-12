@@ -40,21 +40,28 @@ ACCOUNT_ID = os.getenv("AWS_ACCOUNT_ID")
 AUTH0_DOMAIN = os.getenv("AUTH0_DOMAIN")
 AUDIENCE = os.getenv("AUTH0_AUDIENCE")
 
+
 def _registry_arn(registry_id):
     return f"arn:aws:bedrock-agentcore:{REGION}:{ACCOUNT_ID}:registry/{registry_id}"
 
 
 def _cp_client():
-    return boto3.client('bedrock-agentcore-control', region_name=REGION)
+    return boto3.client("bedrock-agentcore-control", region_name=REGION)
+
 
 def _dp_client():
-    return boto3.client('bedrock-agentcore', region_name=REGION)
+    return boto3.client("bedrock-agentcore", region_name=REGION)
 
 
 # ── Registry ──────────────────────────────────────────────────────────────────
 
-def create_registry(name="auth0-oauth-registry", description="Registry with Auth0 OAuth authentication",
-                    poll_interval=5, max_wait=150):
+
+def create_registry(
+    name="auth0-oauth-registry",
+    description="Registry with Auth0 OAuth authentication",
+    poll_interval=5,
+    max_wait=150,
+):
     """Create an AgentCore registry with Auth0 CUSTOM_JWT authorizer.
 
     Returns dict with registryId, registryArn, and status.
@@ -126,7 +133,6 @@ def update_registry_audience_with_mcp_url(registry_id):
     return cp.get_registry(registryId=registry_id)
 
 
-
 # ── Seed ──────────────────────────────────────────────────────────────────────
 
 RECORDS = [
@@ -134,41 +140,88 @@ RECORDS = [
         "name": "weather_agent",
         "description": "Retrieves current weather conditions and 5-day forecasts for any city worldwide. Provides temperature, humidity, wind speed, and precipitation data.",
         "descriptorType": "CUSTOM",
-        "descriptors": {"custom": {"inlineContent": json.dumps({
-            "type": "http-agent", "team": "Platform",
-            "capabilities": ["current weather", "5-day forecast", "severe weather alerts"],
-            "endpoint": "https://api.example.com/weather",
-        })}},
+        "descriptors": {
+            "custom": {
+                "inlineContent": json.dumps(
+                    {
+                        "type": "http-agent",
+                        "team": "Platform",
+                        "capabilities": [
+                            "current weather",
+                            "5-day forecast",
+                            "severe weather alerts",
+                        ],
+                        "endpoint": "https://api.example.com/weather",
+                    }
+                )
+            }
+        },
     },
     {
         "name": "order_status_agent",
         "description": "Tracks order status, shipping updates, and estimated delivery times for e-commerce orders. Integrates with major carriers like UPS, FedEx, and USPS.",
         "descriptorType": "CUSTOM",
-        "descriptors": {"custom": {"inlineContent": json.dumps({
-            "type": "http-agent", "team": "Commerce",
-            "capabilities": ["order tracking", "shipping status", "delivery estimates", "return status"],
-            "endpoint": "https://api.example.com/orders",
-        })}},
+        "descriptors": {
+            "custom": {
+                "inlineContent": json.dumps(
+                    {
+                        "type": "http-agent",
+                        "team": "Commerce",
+                        "capabilities": [
+                            "order tracking",
+                            "shipping status",
+                            "delivery estimates",
+                            "return status",
+                        ],
+                        "endpoint": "https://api.example.com/orders",
+                    }
+                )
+            }
+        },
     },
     {
         "name": "customer_support_agent",
         "description": "Handles customer inquiries, processes refunds, and escalates issues. Uses knowledge base for FAQ resolution and sentiment analysis for prioritization.",
         "descriptorType": "CUSTOM",
-        "descriptors": {"custom": {"inlineContent": json.dumps({
-            "type": "http-agent", "team": "Support",
-            "capabilities": ["FAQ resolution", "refund processing", "ticket escalation", "sentiment analysis"],
-            "endpoint": "https://api.example.com/support",
-        })}},
+        "descriptors": {
+            "custom": {
+                "inlineContent": json.dumps(
+                    {
+                        "type": "http-agent",
+                        "team": "Support",
+                        "capabilities": [
+                            "FAQ resolution",
+                            "refund processing",
+                            "ticket escalation",
+                            "sentiment analysis",
+                        ],
+                        "endpoint": "https://api.example.com/support",
+                    }
+                )
+            }
+        },
     },
     {
         "name": "inventory_lookup_agent",
         "description": "Checks real-time product inventory across warehouses and stores. Supports SKU lookup, stock level alerts, and reorder recommendations.",
         "descriptorType": "CUSTOM",
-        "descriptors": {"custom": {"inlineContent": json.dumps({
-            "type": "http-agent", "team": "Supply Chain",
-            "capabilities": ["stock levels", "warehouse lookup", "reorder alerts", "SKU search"],
-            "endpoint": "https://api.example.com/inventory",
-        })}},
+        "descriptors": {
+            "custom": {
+                "inlineContent": json.dumps(
+                    {
+                        "type": "http-agent",
+                        "team": "Supply Chain",
+                        "capabilities": [
+                            "stock levels",
+                            "warehouse lookup",
+                            "reorder alerts",
+                            "SKU search",
+                        ],
+                        "endpoint": "https://api.example.com/inventory",
+                    }
+                )
+            }
+        },
     },
 ]
 
@@ -198,11 +251,14 @@ def seed(registry_id):
         for rec in created:
             try:
                 cp.submit_registry_record_for_approval(
-                    registryId=registry_id, recordId=rec["recordId"],
+                    registryId=registry_id,
+                    recordId=rec["recordId"],
                 )
                 cp.update_registry_record_status(
-                    registryId=registry_id, recordId=rec["recordId"],
-                    status="APPROVED", statusReason="Auto-seed",
+                    registryId=registry_id,
+                    recordId=rec["recordId"],
+                    status="APPROVED",
+                    statusReason="Auto-seed",
                 )
                 logger.info("  ✓ %s approved", rec["name"])
             except Exception as e:
@@ -215,14 +271,16 @@ def seed(registry_id):
 def delete_registry(registry_id):
     """Delete all records in a registry, then delete the registry itself."""
     cp = _cp_client()
-    records = cp.list_registry_records(registryId=registry_id).get('registryRecords', [])
+    records = cp.list_registry_records(registryId=registry_id).get(
+        "registryRecords", []
+    )
     for rec in records:
-        rid = rec['recordId']
-        logger.info('Deleting record %s...', rid)
+        rid = rec["recordId"]
+        logger.info("Deleting record %s...", rid)
         cp.delete_registry_record(registryId=registry_id, recordId=rid)
-    logger.info('Deleting registry %s...', registry_id)
+    logger.info("Deleting registry %s...", registry_id)
     resp = cp.delete_registry(registryId=registry_id)
-    logger.info('Registry %s status: %s', registry_id, resp.get('status'))
+    logger.info("Registry %s status: %s", registry_id, resp.get("status"))
     return resp
 
 
