@@ -234,14 +234,9 @@ __marimo__/
 .streamlit/secrets.toml
 
 .claude
-04-ecs-deployment
-05-eks-deployment
-02-peering.ipynb
-02-cross-account.ipynb
 !lib/ 
 
 vpc-outputs-w.json
 vpc-outputs-e.json
-02-private-certificate-authority.ipynb
-03-self-signed-certificate.ipynb
-04-private-domain-and-certificate.ipynb
+cdk-mcp.out/
+cdk-eks.out/

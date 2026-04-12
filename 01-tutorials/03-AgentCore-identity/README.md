@@ -46,24 +46,6 @@ AgentCore Identity implements a comprehensive workflow that orchestrates authent
 
 For detailed technical information, see [How AgentCore Identity Works](02-how_it_works.md).
 
-## Tutorial Examples
-
-This tutorial includes four hands-on examples demonstrating different authentication scenarios:
-
-| Example | Type | Description |
-|---------|------|-------------|
-| **[Inbound Auth Example](03-Inbound%20Auth%20example)** | Inbound | User authentication with Strands agents and Bedrock models |
-| **[Outbound Auth Example](04-Outbound%20Auth%20example)** | Outbound | Agent access to external services with Strands and OpenAI |
-| **[3-Legged OAuth](05-Outbound_Auth_3lo)** | Outbound | User-delegated access with Cognito and 3-legged OAuth flow with Google |
-| **[GitHub Integration](06-Outbound_Auth_Github)** | Outbound | GitHub API access using 3-legged OAuth authentication |
-| **[Self-Hosted Agent OAuth](09-Outbound_Auth_Self_Hosted)** | Outbound | OAuth token management for a self-hosted local agent using a custom provider |
-
-Each example includes:
-- Complete Jupyter notebook walkthrough
-- Step-by-step setup instructions
-- Code samples and explanations
-- Best practices and security considerations
-
 ## Getting Started
 
 1. **Read the Introduction**: Start with [Getting Started](01-getting_started.md) to understand AgentCore Identity concepts
@@ -90,6 +72,21 @@ AgentCore Identity integrates seamlessly with other AgentCore components:
 - **AgentCore Gateway**: Secures access to tools and external APIs  
 - **AgentCore Memory**: Maintains secure access to user-specific memory stores
 - **Third-Party Services**: Enables secure integration with external APIs and services
+
+## Tutorial Examples
+
+| # | Example | Type | Method | Description |
+|---|---------|------|--------|-------------|
+| 03 | **[Inbound Auth](03-Inbound%20Auth%20example)** | Inbound | Notebook | User authentication with Strands agents and Bedrock models |
+| 04 | **[Outbound Auth](04-Outbound%20Auth%20example)** | Outbound | Notebook | Agent access to external services with Strands and OpenAI |
+| 05 | **[Google 3LO](05-Outbound_Auth_3lo)** | Outbound | Notebook | User-delegated access with Cognito and 3-legged OAuth flow with Google |
+| 06 | **[GitHub 3LO](06-Outbound_Auth_Github)** | Outbound | Notebook | GitHub API access using 3-legged OAuth authentication |
+| 07 | **[3LO on ECS Fargate](07-Outbound_Auth_3LO_ECS_Fargate)** | Outbound | Notebook | 3-legged OAuth deployed on ECS Fargate |
+| 08 | **[IDP Examples](08-IDP-examples)** | Inbound + Outbound | Notebook | Identity provider examples (EntraID, Okta) |
+| 09 | **[Self-Hosted Agent OAuth](09-Outbound_Auth_Self_Hosted)** | Outbound | Notebook | OAuth token management for a self-hosted local agent |
+| 10 | **[Runtime Inbound + Outbound Auth](10-runtime-inbound-outbound-auth)** | Inbound + Outbound | CLI | Cognito JWT on Runtime; API key outbound via AgentCore Identity |
+| 11 | **[Gateway Inbound + Outbound Auth](11-gateway-inbound-outbound-auth)** | Inbound + Outbound | CLI | Cognito JWT on Gateway; OAuth2 to upstream MCP server |
+| 12 | **[M2M + 3LO Auth Flows](12-m2m-3lo-runtime)** | Inbound + Outbound | CLI | M2M (client credentials) + GitHub/Google 3LO outbound |
 
 ## Next Steps
 
