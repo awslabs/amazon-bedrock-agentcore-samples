@@ -18,7 +18,7 @@ Text-to-SQL Data Analyst Assistant enables users to:
 
 - 🤖 **AI-Powered SQL Generation** using Claude Sonnet 4 via Strands Agents SDK
 - 🗄️ **Automatic Schema Discovery** from AWS Glue Data Catalog
-- 🔒 **4-Layer Security**: Bedrock Guardrails → System Prompt → PolicyValidator → Lake Formation
+- 🔒 **4-Layer Security**: Amazon Bedrock Guardrails → System Prompt → PolicyValidator → AWS Lake Formation
 - 🧠 **Dual Memory**: STM (session context) + LTM (learned SQL patterns, TTL 90 days)
 - ⚙️ **YAML-Driven Configuration**: Define tables in `config/tables.yaml`, business context in `config/system_prompt.yaml`
 - 🏗️ **CDK Infrastructure**: One-command deployment of Glue, Athena, S3, Lambda, API Gateway, CloudFront
@@ -43,7 +43,7 @@ Text-to-SQL Data Analyst Assistant enables users to:
 - **PolicyValidator**: Code-level SQL validation — rejects DDL/DML, auto-applies LIMIT
 - **System Prompt**: Loaded dynamically from `config/system_prompt.yaml` with business dictionary and few-shot examples
 
-#### AI Model (AWS Bedrock)
+#### AI Model (Amazon Bedrock)
 - Primary: Claude Sonnet 4 — `us.anthropic.claude-sonnet-4-20250514-v1:0`
 
 #### Semantic Layer (AWS Glue + Athena)
@@ -55,15 +55,15 @@ Text-to-SQL Data Analyst Assistant enables users to:
 
 | Service | Purpose |
 |---------|---------|
-| Bedrock AgentCore | Agent runtime with conversational memory (STM + LTM) |
-| Claude Sonnet 4 (Bedrock) | LLM for SQL generation and response formatting |
+| Amazon Bedrock AgentCore | Agent runtime with conversational memory (STM + LTM) |
+| Claude Sonnet 4 (Amazon Bedrock) | LLM for SQL generation and response formatting |
 | AWS Glue Data Catalog | Schema registry / semantic layer |
 | Amazon Athena | Serverless SQL engine over S3 |
 | Amazon S3 | Data lake (Parquet) + frontend hosting |
 | AWS Lambda | Backend orchestrator |
 | Amazon API Gateway | REST API with CORS |
 | Amazon CloudFront | CDN for frontend + API proxy |
-| Bedrock Guardrails | Content filtering (hate, violence, prompt injection) |
+| Amazon Bedrock Guardrails | Content filtering (hate, violence, prompt injection) |
 | AWS CDK | Infrastructure as Code |
 
 ## 🚀 Quick Start
@@ -83,7 +83,13 @@ Text-to-SQL Data Analyst Assistant enables users to:
 cd 02-use-cases/text-to-sql-data-analyst
 
 python3 -m venv .venv
+
+# macOS / Linux
 source .venv/bin/activate
+
+# Windows
+.venv\Scripts\activate
+
 pip install -r requirements.txt
 
 cp .env.example .env
@@ -154,6 +160,22 @@ curl -X POST http://localhost:8080/invocations \
 
 ## 📋 Usage
 
+### Sample Queries
+
+Once deployed, try these example queries in the web interface:
+
+| Natural Language Query | What It Does |
+|----------------------|--------------|
+| "How many customers do we have?" | Counts all records in the customers table |
+| "What are the top 10 best-selling products?" | Ranks products by total sales volume |
+| "Show me total revenue by month for 2024" | Aggregates sales by month |
+| "Which customers spent more than $500?" | Filters customers by total purchase amount |
+| "What is the average ticket per customer segment?" | Calculates average sale amount grouped by segment |
+| "List products with low stock (less than 50 units)" | Filters products by inventory level |
+| "Who are our premium customers?" | Finds customers in the premium segment |
+
+You can customize the example queries shown in the UI by editing `config/system_prompt.yaml`.
+
 ### Asking Questions
 
 1. Open the frontend URL (CloudFront output from CDK deploy)
@@ -204,10 +226,10 @@ text-to-sql-data-analyst/
 ### 4-Layer Validation
 
 ```
-Layer 1: Bedrock Guardrails    → Blocks inappropriate content before LLM
-Layer 2: System Prompt         → Instructs SELECT-only, LIMIT required
-Layer 3: PolicyValidator       → Code-level SQL validation (rejects DDL/DML)
-Layer 4: Lake Formation        → IAM-level permissions (SELECT only on specific tables)
+Layer 1: Amazon Bedrock Guardrails → Blocks inappropriate content before LLM
+Layer 2: System Prompt             → Instructs SELECT-only, LIMIT required
+Layer 3: PolicyValidator           → Code-level SQL validation (rejects DDL/DML)
+Layer 4: AWS Lake Formation        → IAM-level permissions (SELECT only on specific tables)
 ```
 
 ### Important
@@ -239,3 +261,7 @@ agentcore destroy
 ## 📄 License
 
 This project is licensed under the Apache-2.0 License.
+
+## 📚 Additional Resources
+
+For a detailed technical deep dive including request flow analysis, scaling strategies, and cost breakdowns, see [docs/DEEP-DIVE.md](docs/DEEP-DIVE.md).
