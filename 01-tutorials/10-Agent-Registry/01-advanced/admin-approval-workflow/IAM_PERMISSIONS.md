@@ -2,18 +2,117 @@
 
 Create IAM user or role with the following permissions.
 
-## Policy for AWS Agent Registry control plane and data plane operations (Publisher + Administrator)
-For comprehensive permissions, you can use the **BedrockAgentCoreFullAccess** managed policy.
-
-For fine grained access, you can build an IAM policy as per the [documentation](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/registry-iam-permissions.html).
-
-## Permissions Required to deploy the required CI/CD stack such as DynamoDB and AWS Lambda etc.
 > **Before using these policies**, replace every occurrence of `YOUR_ACCOUNT_ID` with your 12-digit AWS account ID.
 > Run the following command to find it:
 > ```bash
 > aws sts get-caller-identity --query Account --output text
 > ```
 > Then do a find-and-replace of `YOUR_ACCOUNT_ID` in the JSON below before attaching the policy.
+
+## Policy for AWS Agent Registry access (Administrator)
+
+```json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "AllowCreatingAndListingRegistries",
+            "Effect": "Allow",
+            "Action": [
+                "bedrock-agentcore:CreateRegistry",
+                "bedrock-agentcore:ListRegistries"
+            ],
+            "Resource": ["arn:aws:bedrock-agentcore:*:YOUR_ACCOUNT_ID:*"]
+        },
+        {
+            "Sid": "AllowGetUpdateDeleteRegistry",
+            "Effect": "Allow",
+            "Action": [
+                "bedrock-agentcore:GetRegistry",
+                "bedrock-agentcore:UpdateRegistry",
+                "bedrock-agentcore:DeleteRegistry"
+            ],
+            "Resource": ["arn:aws:bedrock-agentcore:*:YOUR_ACCOUNT_ID:registry/*"]
+        },
+        {
+            "Sid": "AllowCreatingAndListingRegistryRecords",
+            "Effect": "Allow",
+            "Action": [
+                "bedrock-agentcore:CreateRegistryRecord",
+                "bedrock-agentcore:ListRegistryRecords"
+            ],
+            "Resource": ["arn:aws:bedrock-agentcore:*:YOUR_ACCOUNT_ID:registry/*"]
+        },
+        {
+            "Sid": "AllowRecordLevelOperations",
+            "Effect": "Allow",
+            "Action": [
+                "bedrock-agentcore:GetRegistryRecord",
+                "bedrock-agentcore:UpdateRegistryRecord",
+                "bedrock-agentcore:DeleteRegistryRecord",
+                "bedrock-agentcore:SubmitRegistryRecordForApproval"
+            ],
+            "Resource": ["arn:aws:bedrock-agentcore:*:YOUR_ACCOUNT_ID:registry/*/record/*"]
+        },
+        {
+            "Sid": "AllowApproveRejectDeprecateRecords",
+            "Effect": "Allow",
+            "Action": ["bedrock-agentcore:UpdateRegistryRecordStatus"],
+            "Resource": ["arn:aws:bedrock-agentcore:*:YOUR_ACCOUNT_ID:registry/*/record/*"]
+        },
+        {
+            "Sid": "AdditionalPermissionForRegistryManagedWorkloadIdentity",
+            "Effect": "Allow",
+            "Action": ["bedrock-agentcore:*WorkloadIdentity"],
+            "Resource": ["arn:aws:bedrock-agentcore:*:YOUR_ACCOUNT_ID:workload-identity-directory/default/workload-identity/*"]
+        }
+    ]
+}
+```
+
+## Policy for AWS Agent Registry access (Publisher)
+
+```json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "AllowListingAllRegistries",
+            "Effect": "Allow",
+            "Action": ["bedrock-agentcore:ListRegistries"],
+            "Resource": ["arn:aws:bedrock-agentcore:*:YOUR_ACCOUNT_ID:*"]
+        },
+        {
+            "Sid": "AllowGetRegistry",
+            "Effect": "Allow",
+            "Action": ["bedrock-agentcore:GetRegistry"],
+            "Resource": ["arn:aws:bedrock-agentcore:*:YOUR_ACCOUNT_ID:registry/*"]
+        },
+        {
+            "Sid": "AllowCreatingAndListingRegistryRecords",
+            "Effect": "Allow",
+            "Action": [
+                "bedrock-agentcore:CreateRegistryRecord",
+                "bedrock-agentcore:ListRegistryRecords"
+            ],
+            "Resource": ["arn:aws:bedrock-agentcore:*:YOUR_ACCOUNT_ID:registry/*"]
+        },
+        {
+            "Sid": "AllowRecordLevelOperations",
+            "Effect": "Allow",
+            "Action": [
+                "bedrock-agentcore:GetRegistryRecord",
+                "bedrock-agentcore:UpdateRegistryRecord",
+                "bedrock-agentcore:DeleteRegistryRecord",
+                "bedrock-agentcore:SubmitRegistryRecordForApproval"
+            ],
+            "Resource": ["arn:aws:bedrock-agentcore:*:YOUR_ACCOUNT_ID:registry/*/record/*"]
+        }
+    ]
+}
+```
+
+## Permissions Required to deploy the required CI/CD stack such as DynamoDB and AWS Lambda etc.
 
 ```json
 {
