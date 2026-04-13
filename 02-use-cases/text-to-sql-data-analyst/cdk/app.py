@@ -3,13 +3,13 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """
-CDK App — Text-to-SQL with Bedrock AgentCore
+CDK App — Text-to-SQL with Amazon Bedrock AgentCore
 
 Deploys the complete infrastructure:
 - Data Lake (S3) + Glue Data Catalog (from config/tables.yaml)
 - Backend (Lambda + API Gateway)
 - Frontend (S3 + CloudFront)
-- Bedrock Guardrails
+- Amazon Bedrock Guardrails
 """
 
 import os

@@ -2,7 +2,7 @@
 
 ## 1. Architecture Overview
 
-**Main flow:** User → CloudFront → API Gateway → Lambda → Bedrock Guardrails → Claude Sonnet 4 (Strands SDK) → Glue/Athena/S3
+**Main flow:** User → CloudFront → API Gateway → Lambda → Amazon Bedrock Guardrails → Claude Sonnet 4 (Strands SDK) → Glue/Athena/S3
 
 **Dual memory:** STM (active session) + Semantic Memory (SQL patterns, TTL 90 days)
 
@@ -15,7 +15,7 @@
 | CloudFront | CDN for static frontend | ~$0.01/mo (free tier) |
 | API Gateway | REST API with CORS | ~$3.50/million requests |
 | Lambda | Orchestrator (Python 3.11, 512MB, ARM64) | ~$0.20/million invocations |
-| Bedrock AgentCore | Agent runtime with memory | Included with Bedrock |
+| Amazon Bedrock AgentCore | Agent runtime with memory | Included with Amazon Bedrock |
 | Claude Sonnet 4 | LLM for SQL generation + responses | ~$3/1M input + $15/1M output tokens |
 | Glue Data Catalog | Table and column metastore | Free (first 1M objects) |
 | Athena | Serverless SQL engine over S3 | $5/TB scanned |
@@ -144,7 +144,7 @@ Claude Sonnet 4 adds a semantic inference layer that doesn't exist in traditiona
 ## 4. Security Layers
 
 ```
-┌─ LAYER 1: Bedrock Guardrails ────────────────────────┐
+┌─ LAYER 1: Amazon Bedrock Guardrails ─────────────────┐
 │  ✓ Blocks politics, religion, violence, sexual, hate  │
 │  ✓ Blocks prompt injection                            │
 │  ✗ Evaluates BEFORE Claude processes                  │
@@ -192,7 +192,7 @@ Claude Sonnet 4                       Sonnet 4 (complex) + Haiku (simple)
 | Improvement | Current Latency | Target | How |
 |-------------|----------------|--------|-----|
 | DynamoDB cache | 12-15s (first) | <500ms (cache hit) | Hash query → cached response with TTL |
-| Provisioned Throughput | Variable | Consistent | Reserve Claude capacity in Bedrock |
+| Provisioned Throughput | Variable | Consistent | Reserve Claude capacity in Amazon Bedrock |
 | Athena provisioned | ~700ms | ~200ms | Reserved capacity for frequent queries |
 | Pre-loaded schema | 600ms (Glue call) | 0ms | Inject schema in system prompt |
 | Model routing | 12-15s always | 3-5s (simple) | Haiku for COUNT/simple, Sonnet for JOINs |
@@ -238,7 +238,7 @@ PHASE 3 (3-4 weeks): Enterprise
 | LLM Model | Claude Sonnet 4 (choice) | AWS proprietary | Salesforce proprietary | GPT-4 (Microsoft) |
 | Base cost | ~$20/mo | ~$25/user/mo | ~$75/user/mo | ~$30/user/mo |
 | Native Data Lake | Yes (Glue + Athena + S3) | Yes | No (needs connector) | No (needs connector) |
-| Guardrails | Bedrock Guardrails | Basic | No | Basic |
+| Guardrails | Amazon Bedrock Guardrails | Basic | No | Basic |
 | Conversational memory | STM + LTM (AgentCore) | Yes | No | Limited |
 
 ---

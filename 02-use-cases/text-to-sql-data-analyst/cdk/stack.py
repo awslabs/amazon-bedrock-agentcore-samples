@@ -2,12 +2,12 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """
-CDK Stack — Text-to-SQL with Bedrock AgentCore
+CDK Stack — Text-to-SQL with Amazon Bedrock AgentCore
 
 Reads table definitions from config/tables.yaml and deploys:
 - S3 Data Lake + Athena results bucket
 - Glue Database + Tables (dynamic from YAML)
-- Bedrock Guardrails
+- Amazon Bedrock Guardrails
 - Lambda + API Gateway (backend)
 - S3 + CloudFront (frontend)
 """
@@ -131,7 +131,7 @@ class TextToSQLStack(Stack):
             table.add_dependency(self.glue_database)
 
     def _create_guardrails(self):
-        """Create Bedrock Guardrails for content filtering."""
+        """Create Amazon Bedrock Guardrails for content filtering."""
         self.guardrail = bedrock.CfnGuardrail(
             self, "ContentGuardrail",
             name=f"{self.project_name}-content-guardrail",
@@ -197,7 +197,7 @@ class TextToSQLStack(Stack):
                 )
             ],
         )
-        # Permissions for Glue, Athena, S3, Bedrock
+        # Permissions for Glue, Athena, S3, Amazon Bedrock
         for actions, resources in [
             (
                 ["glue:GetDatabase", "glue:GetDatabases", "glue:GetTable", "glue:GetTables"],
@@ -335,5 +335,5 @@ class TextToSQLStack(Stack):
         CfnOutput(
             self, "GuardrailId",
             value=self.guardrail.attr_guardrail_id,
-            description="Bedrock Guardrail ID",
+            description="Amazon Bedrock Guardrail ID",
         )
