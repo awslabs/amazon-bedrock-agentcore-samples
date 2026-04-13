@@ -67,7 +67,7 @@ As an Administrator, you can use the **AWS CLI** commands included in the notifi
 
 ## Prerequisites
 
-- IAM credentials with appropriate permissions (see [`IAM_PERMISSIONS.md`](../../IAM_PERMISSIONS.md)). This tutorial requires both admin and publisher permissions. In addition, the following permissions are required to deploy and destroy the CI/CD stack:
+- IAM credentials with appropriate permissions (see [`IAM_PERMISSIONS.md`](./IAM_PERMISSIONS.md)). In addition to Agent Registry related operations, the following permissions are being used:
 
   | Service | Permissions |
   |:--------|:------------|

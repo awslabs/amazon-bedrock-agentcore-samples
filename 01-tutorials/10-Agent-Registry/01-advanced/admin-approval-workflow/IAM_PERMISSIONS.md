@@ -4,7 +4,8 @@ Create IAM user or role with the following permissions.
 
 ## Policy for AWS Agent Registry control plane and data plane operations (Publisher + Administrator)
 For comprehensive permissions, you can use the **BedrockAgentCoreFullAccess** managed policy.
-For fine grained access, you can build an IAM policy as per the [documentation](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/registry-iam-permissions.html)
+
+For fine grained access, you can build an IAM policy as per the [documentation](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/registry-iam-permissions.html).
 
 ## Permissions Required to deploy the required CI/CD stack such as DynamoDB and AWS Lambda etc.
 > **Before using these policies**, replace every occurrence of `YOUR_ACCOUNT_ID` with your 12-digit AWS account ID.
