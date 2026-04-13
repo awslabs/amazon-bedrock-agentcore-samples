@@ -20,17 +20,27 @@ Resources:
   # ---------------------------------------------------------------------------
   HRUserPool:
     Type: AWS::Cognito::UserPool
+    Metadata:
+      cdk_nag:
+        rules_to_suppress:
+          - id: AwsSolutions-COG2
+            reason: "Sample/demo environment — MFA kept optional to reduce setup friction for demonstration purposes"
     Properties:
       UserPoolName: !Sub hr-dlp-user-pool-${Environment}
       AutoVerifiedAttributes: [email]
       UsernameAttributes: [email]
+      MfaConfiguration: OPTIONAL
+      EnabledMfas:
+        - SOFTWARE_TOKEN_MFA
+      UserPoolAddOns:
+        AdvancedSecurityMode: ENFORCED
       Policies:
         PasswordPolicy:
           MinimumLength: 8
           RequireUppercase: true
           RequireLowercase: true
           RequireNumbers: true
-          RequireSymbols: false
+          RequireSymbols: true
       Schema:
         - Name: role
           AttributeDataType: String
@@ -111,7 +121,7 @@ Resources:
     Properties:
       ClientName: hr-dlp-web-client
       UserPoolId: !Ref HRUserPool
-      GenerateSecret: true
+      GenerateSecret: true  # pragma: allowlist secret
       AllowedOAuthFlows: [code]
       AllowedOAuthFlowsUserPoolClient: true
       AllowedOAuthScopes:
@@ -142,7 +152,7 @@ Resources:
     Properties:
       ClientName: hr-dlp-machine-client
       UserPoolId: !Ref HRUserPool
-      GenerateSecret: true
+      GenerateSecret: true  # pragma: allowlist secret
       AllowedOAuthFlows: [client_credentials]
       AllowedOAuthFlowsUserPoolClient: true
       AllowedOAuthScopes:

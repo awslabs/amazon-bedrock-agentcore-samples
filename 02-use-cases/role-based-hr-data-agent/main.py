@@ -41,4 +41,4 @@ async def agent_invocation(payload: dict, context) -> dict:
     return await run_agent_task(payload, context, gateway_url, session_id)
 
 
-app.run()
+app.run()  # nosemgrep: python.flask.security.audit.app-run-security-config.avoid_using_app_run_directly

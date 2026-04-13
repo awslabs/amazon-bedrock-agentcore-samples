@@ -285,7 +285,7 @@ def _init_state():
     import uuid
     defaults = {
         "selected_persona": "HR Manager",
-        "token": None,
+        "token": None,  # nosec B105 - not a hardcoded password; None is the initial unauthenticated state
         "tools": [],
         "logs": [],
         "llm_response": None,

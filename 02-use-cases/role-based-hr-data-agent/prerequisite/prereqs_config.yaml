@@ -7,7 +7,7 @@ aws:
 
 lambda:
   function_name: hr-data-provider-lambda
-  runtime: python3.11
+  runtime: python3.13
   timeout: 30
   memory: 256
   handler: lambda_handler.lambda_handler

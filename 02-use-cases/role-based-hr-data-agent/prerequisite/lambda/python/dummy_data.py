@@ -13,7 +13,7 @@ from typing import Any, Dict, List, Optional
 
 def get_dummy_employees(tenant_id: str) -> List[Dict[str, Any]]:
     """Generate consistent synthetic employees for the given tenant."""
-    seed = int(hashlib.md5(tenant_id.encode()).hexdigest()[:8], 16)
+    seed = int(hashlib.md5(tenant_id.encode(), usedforsecurity=False).hexdigest()[:8], 16)
     random.seed(seed)
 
     base = [

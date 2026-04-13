@@ -5,6 +5,28 @@
     "version": "1.0.0",
     "description": "HR data tools exposed via AgentCore Gateway with role-based DLP enforcement"
   },
+  "components": {
+    "securitySchemes": {
+      "AgentCoreGateway": {
+        "type": "oauth2",
+        "description": "OAuth 2.0 scopes enforced by AgentCore Gateway via Cedar Policy Engine and Cognito client_credentials flow",
+        "flows": {
+          "clientCredentials": {
+            "tokenUrl": "https://{cognitoDomain}/oauth2/token",
+            "scopes": {
+              "hr-dlp-gateway/read": "Basic employee search access",
+              "hr-dlp-gateway/pii": "Access to PII fields (email, phone, emergency contact)",
+              "hr-dlp-gateway/address": "Access to address fields",
+              "hr-dlp-gateway/comp": "Access to compensation data (salary, bonus, stock options)"
+            }
+          }
+        }
+      }
+    }
+  },
+  "security": [
+    { "AgentCoreGateway": ["hr-dlp-gateway/read"] }
+  ],
   "paths": {
     "/search_employee": {
       "post": {

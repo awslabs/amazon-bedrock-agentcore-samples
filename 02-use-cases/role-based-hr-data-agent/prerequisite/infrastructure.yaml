@@ -22,10 +22,38 @@ Parameters:
 Resources:
 
   # ---------------------------------------------------------------------------
+  # SQS — Dead Letter Queue for HR Data Provider Lambda
+  # ---------------------------------------------------------------------------
+  HRLambdaDLQ:
+    Type: AWS::SQS::Queue
+    Metadata:
+      checkov:
+        skip:
+          - id: CKV_AWS_27
+            comment: "Queue is encrypted at rest via SqsManagedSseEnabled (SSE-SQS). CKV_AWS_27 specifically checks for KmsMasterKeyId; SSE-SQS provides equivalent encryption without requiring a customer-managed KMS key"
+      cdk_nag:
+        rules_to_suppress:
+          - id: AwsSolutions-SQS3
+            reason: "This queue IS the Dead Letter Queue — adding a DLQ for a DLQ is circular and unnecessary"
+          - id: AwsSolutions-SQS4
+            reason: "SSL enforcement via queue policy conflicts with Lambda service principal used for DLQ delivery; encrypted at rest via SQS-managed SSE"
+    Properties:
+      QueueName: !Sub hr-data-provider-dlq-${Environment}
+      MessageRetentionPeriod: 1209600  # 14 days
+      SqsManagedSseEnabled: true
+
+  # ---------------------------------------------------------------------------
   # IAM — Lambda execution role
   # ---------------------------------------------------------------------------
   HRLambdaExecutionRole:
     Type: AWS::IAM::Role
+    Metadata:
+      cdk_nag:
+        rules_to_suppress:
+          - id: AwsSolutions-IAM4
+            reason: "AWSLambdaBasicExecutionRole is the standard minimal managed policy for Lambda execution logging"
+          - id: AwsSolutions-IAM5
+            reason: "SSM path is scoped to /app/hrdlp/* — a namespace-bounded wildcard for this sample's parameters only"
     Properties:
       RoleName: !Sub hr-dlp-lambda-role-${Environment}
       AssumeRolePolicyDocument:
@@ -44,12 +72,24 @@ Resources:
               - Effect: Allow
                 Action: [ssm:GetParameter, ssm:GetParameters]
                 Resource: !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/app/hrdlp/*
+        - PolicyName: DLQPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: sqs:SendMessage
+                Resource: !GetAtt HRLambdaDLQ.Arn
 
   # ---------------------------------------------------------------------------
   # IAM — AgentCore Gateway execution role
   # ---------------------------------------------------------------------------
   AgentCoreGatewayRole:
     Type: AWS::IAM::Role
+    Metadata:
+      cdk_nag:
+        rules_to_suppress:
+          - id: AwsSolutions-IAM5
+            reason: "bedrock-agentcore:* on * is required for Cedar policy evaluation (AuthorizeAction) and Gateway interceptor invocation — these are service-level operations with no resource-level ARN support"
     Properties:
       RoleName: !Sub hr-dlp-gateway-role-${Environment}
       AssumeRolePolicyDocument:
@@ -85,6 +125,13 @@ Resources:
   # ---------------------------------------------------------------------------
   AgentCoreRuntimeRole:
     Type: AWS::IAM::Role
+    Metadata:
+      cdk_nag:
+        rules_to_suppress:
+          - id: AwsSolutions-IAM4
+            reason: "AmazonBedrockFullAccess is required for the AgentCore Runtime to invoke Bedrock models; no resource-level scoping is supported for model invocation at this time"
+          - id: AwsSolutions-IAM5
+            reason: "X-Ray and AgentCore actions require * resource — these services do not support resource-level ARN restrictions. CloudWatch log group wildcard is scoped to the AgentCore runtime log group prefix"
     Properties:
       RoleName: !Sub hr-dlp-runtime-role-${Environment}
       AssumeRolePolicyDocument:
@@ -142,14 +189,26 @@ Resources:
   # ---------------------------------------------------------------------------
   HRDataProviderLambda:
     Type: AWS::Lambda::Function
+    Metadata:
+      checkov:
+        skip:
+          - id: CKV_AWS_117
+            comment: "Sample code — VPC configuration adds significant deployment complexity (subnets, security groups, VPC endpoints) outside the scope of this AgentCore Gateway demonstration"
+      cdk_nag:
+        rules_to_suppress:
+          - id: AwsSolutions-L1
+            reason: "python3.12 is the latest stable runtime; updated from python3.11"
     Properties:
       FunctionName: !Sub hr-data-provider-lambda-${Environment}
       Description: HR data provider for role-based-hr-data-agent
-      Runtime: python3.11
+      Runtime: python3.13
       Handler: lambda_handler.lambda_handler
       Role: !GetAtt HRLambdaExecutionRole.Arn
       Timeout: 30
       MemorySize: 256
+      ReservedConcurrentExecutions: 100
+      DeadLetterConfig:
+        TargetArn: !GetAtt HRLambdaDLQ.Arn
       Code:
         S3Bucket: !Ref LambdaS3Bucket
         S3Key: !Ref LambdaS3Key
@@ -159,14 +218,26 @@ Resources:
   # ---------------------------------------------------------------------------
   RequestInterceptorLambda:
     Type: AWS::Lambda::Function
+    Metadata:
+      checkov:
+        skip:
+          - id: CKV_AWS_117
+            comment: "Sample code — VPC adds deployment complexity outside the scope of this AgentCore Gateway demonstration"
+          - id: CKV_AWS_116
+            comment: "Interceptor is invoked synchronously by AgentCore Gateway — Dead Letter Queues apply only to async/event-source invocations"
+      cdk_nag:
+        rules_to_suppress:
+          - id: AwsSolutions-L1
+            reason: "python3.13 is the latest stable AWS Lambda Python runtime"
     Properties:
       FunctionName: !Sub hr-request-interceptor-lambda-${Environment}
       Description: AgentCore Gateway Request Interceptor — tenant injection + scope normalization
-      Runtime: python3.11
+      Runtime: python3.13
       Handler: request_interceptor.lambda_handler
       Role: !GetAtt HRLambdaExecutionRole.Arn
       Timeout: 10
       MemorySize: 128
+      ReservedConcurrentExecutions: 50
       Code:
         S3Bucket: !Ref LambdaS3Bucket
         S3Key: !Ref InterceptorS3Key
@@ -176,14 +247,26 @@ Resources:
   # ---------------------------------------------------------------------------
   ResponseInterceptorLambda:
     Type: AWS::Lambda::Function
+    Metadata:
+      checkov:
+        skip:
+          - id: CKV_AWS_117
+            comment: "Sample code — VPC adds deployment complexity outside the scope of this AgentCore Gateway demonstration"
+          - id: CKV_AWS_116
+            comment: "Interceptor is invoked synchronously by AgentCore Gateway — Dead Letter Queues apply only to async/event-source invocations"
+      cdk_nag:
+        rules_to_suppress:
+          - id: AwsSolutions-L1
+            reason: "python3.13 is the latest stable AWS Lambda Python runtime"
     Properties:
       FunctionName: !Sub hr-response-interceptor-lambda-${Environment}
       Description: AgentCore Gateway Response Interceptor — DLP field-level redaction
-      Runtime: python3.11
+      Runtime: python3.13
       Handler: response_interceptor.lambda_handler
       Role: !GetAtt HRLambdaExecutionRole.Arn
       Timeout: 10
       MemorySize: 128
+      ReservedConcurrentExecutions: 50
       Code:
         S3Bucket: !Ref LambdaS3Bucket
         S3Key: !Ref InterceptorS3Key
@@ -227,6 +310,9 @@ Resources:
       Value: !GetAtt ResponseInterceptorLambda.Arn
 
 Outputs:
+  DLQArn:
+    Value: !GetAtt HRLambdaDLQ.Arn
+    Export: {Name: !Sub "${AWS::StackName}-DLQArn"}
   LambdaArn:
     Value: !GetAtt HRDataProviderLambda.Arn
     Export: {Name: !Sub "${AWS::StackName}-LambdaArn"}

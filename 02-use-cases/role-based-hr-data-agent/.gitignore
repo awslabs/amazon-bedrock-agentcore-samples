@@ -15,6 +15,9 @@ env/
 dist/
 build/
 
+# ASH security scan output (generated reports — not source)
+.ash/ash_output/
+
 # Test and coverage
 .pytest_cache/
 .mypy_cache/

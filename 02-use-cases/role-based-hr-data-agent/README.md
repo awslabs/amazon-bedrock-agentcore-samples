@@ -1,7 +1,20 @@
 # Role-Based HR Data Agent
 
 > [!IMPORTANT]
-> This sample uses synthetic HR data for demonstration purposes only. No real employee data is processed. Review IAM permissions before deploying in production.
+> This sample is for experimental and educational purposes only. It demonstrates concepts and techniques but is not intended for direct use in production environments.
+
+> [!IMPORTANT]
+> This sample uses synthetic HR data for demonstration purposes only. No real employee data is processed.
+
+**Important:**
+- This application **is not intended** for direct use in production environments.
+- The code and architecture presented here are examples and may not meet all security, scalability, or compliance requirements for your specific use case.
+- Before deploying any similar system in a production environment, it is crucial to:
+  - Conduct thorough testing and security audits
+  - Ensure compliance with all relevant regulations and industry standards
+  - Optimize for your specific performance and scalability needs
+  - Implement proper error handling, logging, and monitoring
+  - Follow all AWS best practices for production deployments
 
 A role-based HR data access agent with automatic **scope-based field redaction** using Amazon Bedrock AgentCore. The agent enforces data access policies based on each caller's OAuth 2.0 scopes — without changing application code.
 
@@ -233,6 +246,14 @@ role-based-hr-data-agent/
 ```bash
 bash scripts/cleanup.sh --region us-east-1 --env dev
 ```
+
+> **Note (macOS / Windows):** After cleanup, the Cognito User Pool Domain (`hr-dlp-agent-*`) can take 30–60 seconds to fully de-register in AWS's DNS layer. If you immediately re-run `prereq.sh` and the Cognito stack fails with `Internal error reported from downstream service during operation 'CreateUserPoolDomain'`, wait 30 seconds and retry:
+> ```bash
+> aws cloudformation delete-stack --stack-name hr-dlp-cognito-dev
+> aws cloudformation wait stack-delete-complete --stack-name hr-dlp-cognito-dev
+> # wait 30 seconds, then:
+> bash scripts/prereq.sh --region us-east-1 --env dev
+> ```
 
 ## Contributing
 
