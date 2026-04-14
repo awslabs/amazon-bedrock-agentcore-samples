@@ -31,7 +31,7 @@ dev = [
     "httpx>=0.25.0",
     "ipykernel>=6.30.1",
     "mypy>=1.7.0",
-    "pytest>=7.4.0",
+    "pytest>=9.0.3",
     "pytest-asyncio>=0.21.0",
     "ruff>=0.1.0",
 ]
