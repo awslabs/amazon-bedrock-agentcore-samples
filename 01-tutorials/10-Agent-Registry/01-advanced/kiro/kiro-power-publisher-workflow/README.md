@@ -45,18 +45,24 @@ These two files are packaged together and loaded dynamically as per the user que
 
 ## Activate the Power
 
-Install this power directly in Kiro using the GitHub URL below:
+First, clone the repository if you haven't already:
 
-[Publisher Kiro Power for AWS Agent Registry on Github](https://github.com/awslabs/agentcore-samples/tree/main/01-tutorials/10-Agent-Registry/01-advanced/kiro/kiro-power-publisher-workflow/aws-agent-registry)
+```bash
+git clone https://github.com/awslabs/agentcore-samples.git
+```
 
-In Kiro, open the Powers panel, select "Add Custom Power -> Import Power from Github", and paste the link above.
+Then, in Kiro open the Powers panel, select "Add Custom Power -> Import Power from Local Path", and provide the path to the power directory:
+
+```
+<PATH-TO-CLONED-REPO>/01-tutorials/10-Agent-Registry/01-advanced/kiro/kiro-power-publisher-workflow/aws-agent-registry
+```
 
 <div style="text-align:left">
     <img src="images/activate-kiro-power.png" width="100%"/>
 </div>
 
 <div style="text-align:left">
-    <img src="images/import-from-github.png" width="100%"/>
+    <img src="images/aws-agent-registry-local.png" width="100%"/>
 </div>
 
 <div style="text-align:left">
