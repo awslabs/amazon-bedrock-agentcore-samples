@@ -1,5 +1,5 @@
 """
-HRDataAgent — Strands-based agent that connects to AgentCore Gateway via MCP/JSON-RPC.
+HRDataAgent — Strands-based agent that connects to Amazon Bedrock AgentCore Gateway via MCP/JSON-RPC.
 
 Discovers tools dynamically from the Gateway (filtered per OAuth scope) and
 invokes them over HTTP JSON-RPC. All field-level DLP redaction is applied

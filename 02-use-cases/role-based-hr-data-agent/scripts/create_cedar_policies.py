@@ -2,7 +2,7 @@
 import os, sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 """
-Creates the Cedar Policy Engine, attaches it to the AgentCore Gateway,
+Creates the Cedar Policy Engine, attaches it to the Amazon Bedrock AgentCore Gateway,
 and creates the three HR DLP authorization policies.
 
 This must run AFTER agentcore_gateway.py create (needs gateway-id, gateway-arn,

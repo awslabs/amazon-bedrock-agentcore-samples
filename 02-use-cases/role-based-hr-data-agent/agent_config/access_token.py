@@ -1,7 +1,7 @@
 """
-M2M (machine-to-machine) access token acquisition for AgentCore Gateway.
+M2M (machine-to-machine) access token acquisition for Amazon Bedrock AgentCore Gateway.
 
-Fetches a Cognito client_credentials token and caches it for reuse.
+Fetches an Amazon Cognito client_credentials token and caches it for reuse.
 """
 
 import logging

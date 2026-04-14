@@ -1,7 +1,7 @@
 """
 HR Data Provider Lambda — main entry point.
 
-Routes AgentCore Gateway tool calls to the appropriate HR handler.
+Routes Amazon Bedrock AgentCore Gateway tool calls to the appropriate HR handler.
 All data is returned unredacted; the Gateway Response Interceptor
 applies field-level DLP based on the caller's OAuth scopes.
 """

@@ -1,5 +1,5 @@
 """
-Streamlit entry point for the Role-Based HR Data Agent demo.
+Streamlit entry point for the Role-Based HR Data Agent demo (Amazon Bedrock AgentCore Runtime).
 
 Handles OAuth callback, authentication check, and chat interface rendering.
 """

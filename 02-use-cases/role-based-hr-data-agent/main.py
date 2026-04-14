@@ -1,5 +1,5 @@
 """
-AgentCore Runtime entry point for the Role-Based HR Data Agent.
+Amazon Bedrock AgentCore Runtime entry point for the Role-Based HR Data Agent.
 
 Reads configuration from SSM, then delegates to agent_task for async workflow.
 """

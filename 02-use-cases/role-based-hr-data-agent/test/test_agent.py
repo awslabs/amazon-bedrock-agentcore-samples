@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Agent smoke test — sends a natural language prompt to the AgentCore Runtime
+Agent smoke test — sends a natural language prompt to the Amazon Bedrock AgentCore Runtime
 and prints the response. Tests the full flow: Runtime → Gateway → Lambda → Redaction.
 
 Usage:

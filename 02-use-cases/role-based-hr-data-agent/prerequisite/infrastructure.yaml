@@ -22,7 +22,7 @@ Parameters:
 Resources:
 
   # ---------------------------------------------------------------------------
-  # SQS — Dead Letter Queue for HR Data Provider Lambda
+  # Amazon SQS — Dead Letter Queue for HR Data Provider Lambda
   # ---------------------------------------------------------------------------
   HRLambdaDLQ:
     Type: AWS::SQS::Queue
@@ -37,13 +37,16 @@ Resources:
             reason: "This queue IS the Dead Letter Queue — adding a DLQ for a DLQ is circular and unnecessary"
           - id: AwsSolutions-SQS4
             reason: "SSL enforcement via queue policy conflicts with Lambda service principal used for DLQ delivery; encrypted at rest via SQS-managed SSE"
+      guard:
+        SuppressedRules:
+          - SQS_QUEUE_KMS_MASTER_KEY_ID_RULE  # Encrypted via SSE-SQS (SqsManagedSseEnabled: true); rule checks for KmsMasterKeyId only — equivalent encryption provided without a customer-managed KMS key
     Properties:
       QueueName: !Sub hr-data-provider-dlq-${Environment}
       MessageRetentionPeriod: 1209600  # 14 days
       SqsManagedSseEnabled: true
 
   # ---------------------------------------------------------------------------
-  # IAM — Lambda execution role
+  # AWS Identity and Access Management (IAM) — Lambda execution role
   # ---------------------------------------------------------------------------
   HRLambdaExecutionRole:
     Type: AWS::IAM::Role
@@ -54,6 +57,9 @@ Resources:
             reason: "AWSLambdaBasicExecutionRole is the standard minimal managed policy for Lambda execution logging"
           - id: AwsSolutions-IAM5
             reason: "SSM path is scoped to /app/hrdlp/* — a namespace-bounded wildcard for this sample's parameters only"
+      guard:
+        SuppressedRules:
+          - IAM_NO_INLINE_POLICY_CHECK  # Inline policies are scoped exclusively to this role; sample code — converting to standalone managed policies adds complexity without security benefit
     Properties:
       RoleName: !Sub hr-dlp-lambda-role-${Environment}
       AssumeRolePolicyDocument:
@@ -81,7 +87,7 @@ Resources:
                 Resource: !GetAtt HRLambdaDLQ.Arn
 
   # ---------------------------------------------------------------------------
-  # IAM — AgentCore Gateway execution role
+  # IAM — Amazon Bedrock AgentCore Gateway execution role
   # ---------------------------------------------------------------------------
   AgentCoreGatewayRole:
     Type: AWS::IAM::Role
@@ -90,6 +96,9 @@ Resources:
         rules_to_suppress:
           - id: AwsSolutions-IAM5
             reason: "bedrock-agentcore:* on * is required for Cedar policy evaluation (AuthorizeAction) and Gateway interceptor invocation — these are service-level operations with no resource-level ARN support"
+      guard:
+        SuppressedRules:
+          - IAM_NO_INLINE_POLICY_CHECK  # Inline policies are scoped exclusively to this role; sample code — converting to standalone managed policies adds complexity without security benefit
     Properties:
       RoleName: !Sub hr-dlp-gateway-role-${Environment}
       AssumeRolePolicyDocument:
@@ -121,7 +130,7 @@ Resources:
                 Resource: "*"
 
   # ---------------------------------------------------------------------------
-  # IAM — AgentCore Runtime execution role
+  # IAM — Amazon Bedrock AgentCore Runtime execution role
   # ---------------------------------------------------------------------------
   AgentCoreRuntimeRole:
     Type: AWS::IAM::Role
@@ -132,6 +141,9 @@ Resources:
             reason: "AmazonBedrockFullAccess is required for the AgentCore Runtime to invoke Bedrock models; no resource-level scoping is supported for model invocation at this time"
           - id: AwsSolutions-IAM5
             reason: "X-Ray and AgentCore actions require * resource — these services do not support resource-level ARN restrictions. CloudWatch log group wildcard is scoped to the AgentCore runtime log group prefix"
+      guard:
+        SuppressedRules:
+          - IAM_NO_INLINE_POLICY_CHECK  # Inline policies are scoped exclusively to this role; sample code — converting to standalone managed policies adds complexity without security benefit
     Properties:
       RoleName: !Sub hr-dlp-runtime-role-${Environment}
       AssumeRolePolicyDocument:
@@ -185,7 +197,7 @@ Resources:
                 Resource: "*"
 
   # ---------------------------------------------------------------------------
-  # Lambda — HR Data Provider
+  # AWS Lambda — HR Data Provider
   # ---------------------------------------------------------------------------
   HRDataProviderLambda:
     Type: AWS::Lambda::Function
@@ -197,7 +209,10 @@ Resources:
       cdk_nag:
         rules_to_suppress:
           - id: AwsSolutions-L1
-            reason: "python3.12 is the latest stable runtime; updated from python3.11"
+            reason: "python3.13 is the latest stable AWS Lambda Python runtime"
+      guard:
+        SuppressedRules:
+          - LAMBDA_INSIDE_VPC  # Sample code — VPC configuration adds significant deployment complexity outside the scope of this AgentCore Gateway demonstration
     Properties:
       FunctionName: !Sub hr-data-provider-lambda-${Environment}
       Description: HR data provider for role-based-hr-data-agent
@@ -214,7 +229,7 @@ Resources:
         S3Key: !Ref LambdaS3Key
 
   # ---------------------------------------------------------------------------
-  # Lambda — Request Interceptor
+  # AWS Lambda — Request Interceptor
   # ---------------------------------------------------------------------------
   RequestInterceptorLambda:
     Type: AWS::Lambda::Function
@@ -229,6 +244,10 @@ Resources:
         rules_to_suppress:
           - id: AwsSolutions-L1
             reason: "python3.13 is the latest stable AWS Lambda Python runtime"
+      guard:
+        SuppressedRules:
+          - LAMBDA_INSIDE_VPC   # Sample code — VPC adds deployment complexity outside the scope of this AgentCore Gateway demonstration
+          - LAMBDA_DLQ_CHECK    # Interceptor is invoked synchronously by AgentCore Gateway — DLQs apply only to async/event-source invocations
     Properties:
       FunctionName: !Sub hr-request-interceptor-lambda-${Environment}
       Description: AgentCore Gateway Request Interceptor — tenant injection + scope normalization
@@ -243,7 +262,7 @@ Resources:
         S3Key: !Ref InterceptorS3Key
 
   # ---------------------------------------------------------------------------
-  # Lambda — Response Interceptor
+  # AWS Lambda — Response Interceptor
   # ---------------------------------------------------------------------------
   ResponseInterceptorLambda:
     Type: AWS::Lambda::Function
@@ -258,6 +277,10 @@ Resources:
         rules_to_suppress:
           - id: AwsSolutions-L1
             reason: "python3.13 is the latest stable AWS Lambda Python runtime"
+      guard:
+        SuppressedRules:
+          - LAMBDA_INSIDE_VPC   # Sample code — VPC adds deployment complexity outside the scope of this AgentCore Gateway demonstration
+          - LAMBDA_DLQ_CHECK    # Interceptor is invoked synchronously by AgentCore Gateway — DLQs apply only to async/event-source invocations
     Properties:
       FunctionName: !Sub hr-response-interceptor-lambda-${Environment}
       Description: AgentCore Gateway Response Interceptor — DLP field-level redaction

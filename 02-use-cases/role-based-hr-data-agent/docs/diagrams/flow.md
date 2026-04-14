@@ -5,7 +5,7 @@ sequenceDiagram
     participant HRM as 👔 HR Manager<br/>(read, pii, address, comp)
     participant HRS as 👨‍💼 HR Specialist<br/>(read, pii)
     participant EMP as 👤 Employee<br/>(read)
-    participant RT as 🤖 AgentCore Runtime<br/>(Strands Agent)
+    participant RT as 🤖 Amazon Bedrock AgentCore Runtime<br/>(Strands Agent)
     participant GW as 🔒 Gateway
     participant RI as 🛡️ Response Interceptor<br/>(DLP + tool filter)
     participant CP as 📜 Cedar Policy<br/>Engine

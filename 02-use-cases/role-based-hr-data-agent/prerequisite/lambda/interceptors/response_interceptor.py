@@ -1,5 +1,5 @@
 """
-AgentCore Gateway Response Interceptor — DLP enforcement.
+Amazon Bedrock AgentCore Gateway Response Interceptor — DLP enforcement.
 
 Processes AgentCore response interceptor payloads to:
 - Filter tool discovery (tools/list) based on caller OAuth scopes

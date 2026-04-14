@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Gateway smoke test — connects to the AgentCore Gateway and exercises MCP tools directly.
+Gateway smoke test — connects to the Amazon Bedrock AgentCore Gateway and exercises MCP tools directly.
 
 Usage:
   python test/test_gateway.py --persona hr-manager --query "Find all engineers"

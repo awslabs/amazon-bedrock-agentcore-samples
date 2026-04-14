@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-DLP redaction verification test — calls the Gateway directly as each persona
+DLP redaction verification test — calls the Amazon Bedrock AgentCore Gateway directly as each persona
 and verifies that the correct fields are (or are not) redacted.
 
 Usage:

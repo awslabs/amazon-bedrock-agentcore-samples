@@ -1,5 +1,5 @@
 """
-Async agent workflow orchestration.
+Async agent workflow orchestration for the Amazon Bedrock AgentCore Runtime.
 
 Wires together: context setup → token extraction → agent invocation → response.
 """

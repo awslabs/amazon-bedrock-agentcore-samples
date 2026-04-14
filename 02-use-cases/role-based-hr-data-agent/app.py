@@ -3,9 +3,9 @@
 HR DLP Demo — Streamlit frontend.
 
 All configuration is read dynamically from SSM Parameter Store on startup:
-  /app/hrdlp/runtime-url            — AgentCore Runtime invocation URL
-  /app/hrdlp/gateway-url            — AgentCore Gateway MCP endpoint
-  /app/hrdlp/cognito-token-url      — Cognito OAuth2 token endpoint
+  /app/hrdlp/runtime-url            — Amazon Bedrock AgentCore Runtime invocation URL
+  /app/hrdlp/gateway-url            — Amazon Bedrock AgentCore Gateway MCP endpoint
+  /app/hrdlp/cognito-token-url      — Amazon Cognito OAuth2 token endpoint
   /app/hrdlp/personas/*/client-id   — Per-persona Cognito app client ID
   /app/hrdlp/personas/*/client-secret — Per-persona client secret (SecureString)
 

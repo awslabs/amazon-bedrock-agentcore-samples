@@ -2,7 +2,7 @@
 import os, sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 """
-CLI for creating and deleting the AgentCore Gateway for role-based-hr-data-agent.
+CLI for creating and deleting the Amazon Bedrock AgentCore Gateway for role-based-hr-data-agent.
 
 Usage:
   python scripts/agentcore_gateway.py create --config prerequisite/prereqs_config.yaml

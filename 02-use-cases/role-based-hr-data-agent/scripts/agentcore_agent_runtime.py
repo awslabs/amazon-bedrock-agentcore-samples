@@ -2,7 +2,7 @@
 import os, sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 """
-CLI for managing the AgentCore Runtime for role-based-hr-data-agent.
+CLI for managing the Amazon Bedrock AgentCore Runtime for role-based-hr-data-agent.
 
 Usage:
   python scripts/agentcore_agent_runtime.py create --s3-bucket <bucket>

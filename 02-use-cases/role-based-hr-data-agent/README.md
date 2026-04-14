@@ -19,8 +19,8 @@
 A role-based HR data access agent with automatic **scope-based field redaction** using Amazon Bedrock AgentCore. The agent enforces data access policies based on each caller's OAuth 2.0 scopes — without changing application code.
 
 **Key capabilities:**
-- **AgentCore Runtime** — hosts the Strands Agent; receives user prompts and drives MCP tool calls via the Gateway
-- **AgentCore Gateway** — central policy enforcement point; routes every `tools/list` and `tools/call` through interceptors and Cedar
+- **Amazon Bedrock AgentCore Runtime** — hosts the Strands Agent; receives user prompts and drives MCP tool calls via the Gateway
+- **Amazon Bedrock AgentCore Gateway** — central policy enforcement point; routes every `tools/list` and `tools/call` through interceptors and Cedar
 - **Request Interceptor** — decodes JWT and injects tenant context on every `tools/call`
 - **Cedar Policy Engine** — Allow/Deny per tool based on OAuth scopes
 - **Response Interceptor** — hides tools from `tools/list` and redacts fields on `tools/call` responses
@@ -58,7 +58,7 @@ A role-based HR data access agent with automatic **scope-based field redaction**
 
 ### Scope → Field Mapping
 
-The Lambda target returns full unredacted records for every caller. The Response Interceptor applies field-level redaction based on the caller's OAuth scopes — ensuring sensitive fields never reach the agent or the user unless the persona has explicit permission. This mapping is defined in `_redact_employee()` in [`prerequisite/lambda/interceptors/response_interceptor.py`](prerequisite/lambda/interceptors/response_interceptor.py). To extend redaction to other data sources (DynamoDB, RDS, S3), update the field lists in that function — the Gateway interceptor pattern applies identically regardless of what the Lambda target reads from.
+The Lambda target returns full unredacted records for every caller. The Response Interceptor applies field-level redaction based on the caller's OAuth scopes — sensitive fields are withheld from the agent and the user unless the persona has explicit permission. This mapping is defined in `_redact_employee()` in [`prerequisite/lambda/interceptors/response_interceptor.py`](prerequisite/lambda/interceptors/response_interceptor.py). To extend redaction to other data sources (DynamoDB, RDS, S3), update the field lists in that function — the Gateway interceptor pattern applies identically regardless of what the Lambda target reads from.
 
 | Scope | Redacted fields |
 |---|---|
@@ -147,7 +147,7 @@ Open http://localhost:8501. Select a persona, click **Get OAuth Token**, then as
 
 ## Testing
 
-> **Note:** Cedar defaults to `LOG_ONLY` mode — policies log decisions but do not block requests. Tests will pass in either mode; switch to `ENFORCE` only when ready for production.
+> **Note:** Cedar defaults to `LOG_ONLY` mode — policies log decisions but do not block requests. Tests are expected to pass in either mode; switch to `ENFORCE` only when ready for production.
 
 ### Verify field redaction
 
@@ -215,7 +215,7 @@ aws ssm get-parameters-by-path --path /app/hrdlp --recursive --query "Parameters
 ```
 
 **Runtime returns 403 after update**
-`update-agent-runtime` resets fields not explicitly passed. Always run the full update:
+`update-agent-runtime` resets fields not explicitly passed. Run the full update command:
 ```bash
 python scripts/agentcore_agent_runtime.py update
 ```

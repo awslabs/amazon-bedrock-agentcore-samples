@@ -14,13 +14,13 @@ logger = logging.getLogger(__name__)
 
 
 def get_ssm_parameter(name: str, decrypt: bool = True) -> Optional[str]:
-    """Retrieve a parameter from AWS SSM Parameter Store."""
+    """Retrieve a parameter from AWS Systems Manager Parameter Store."""
     try:
         client = boto3.client("ssm")
         response = client.get_parameter(Name=name, WithDecryption=decrypt)
         return response["Parameter"]["Value"]
     except ClientError as e:
-        logger.warning(f"SSM parameter not found: {name} — {e}")
+        logger.warning("AWS Systems Manager parameter not found: %s — %s", name, e.response["Error"]["Code"])
         return None
 
 

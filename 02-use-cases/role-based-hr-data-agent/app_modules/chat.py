@@ -1,5 +1,5 @@
 """
-Chat manager — sends messages to the AgentCore Runtime and streams responses.
+Chat manager — sends messages to the Amazon Bedrock AgentCore Runtime and streams responses.
 """
 
 import json

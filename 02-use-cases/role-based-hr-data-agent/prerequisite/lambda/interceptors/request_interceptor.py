@@ -1,5 +1,5 @@
 """
-AgentCore Gateway Request Interceptor.
+Amazon Bedrock AgentCore Gateway Request Interceptor.
 
 Processes AgentCore interceptor payloads to:
 - Decode JWT and resolve tenant context (client_id → tenantId/role/department)
