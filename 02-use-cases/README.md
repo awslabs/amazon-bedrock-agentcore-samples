@@ -12,6 +12,7 @@ This folder contains end-to-end applications that demonstrate how to apply Amazo
 * **[Device Management Agent](./device-management-agent/)**: IoT device management system with Cognito authentication and real-time monitoring
 * **[Enterprise Web Intelligence Agent](./enterprise-web-intelligence-agent/)**: Web research and analysis agent using browser tools for competitive intelligence
 * **[Farm Management Advisor](./farm-management-advisor/)**: Agricultural advisory system with plant detection, weather forecasting, and care recommendations
+* **[Auth0 Multi-Agent OBO](./auth0-multi-agent-obo/)**: RFC 8693 On-Behalf-Of token exchange with Auth0 PKCE — coordinator exchanges user JWT for attenuated per-agent tokens in a multi-agent financial services system
 * **[Finance Personal Assistant](./finance-personal-assistant/)**: Personal budget management with multi-agent workflows and guardrails
 * **[Healthcare Appointment Agent](./healthcare-appointment-agent/)**: FHIR-compliant healthcare appointment scheduling with patient data integration
 * **[Local Prototype to AgentCore](./local-prototype-to-agentcore/)**: Migration guide from local development to production AgentCore deployment
@@ -19,6 +20,7 @@ This folder contains end-to-end applications that demonstrate how to apply Amazo
 * **[SRE Agent](./SRE-agent/)**: Site reliability engineering assistant with multi-agent LangGraph workflows
 * **[Text to Python IDE](./text-to-python-ide/)**: Code generation and execution environment with AgentCore Code Interpreter
 * **[Video Games Sales Assistant](./video-games-sales-assistant/)**: Data analysis assistant with Amplify frontend and CDK deployment
+* **[Claude Code Gateway MCP Server](./claude-code-gateway-mcp-server/)**: Integrate Claude Code with MCP Server using AgentCore Gateway for dynamic tool loading and centralized access
 
 ## 🏗️ Architecture Patterns
 

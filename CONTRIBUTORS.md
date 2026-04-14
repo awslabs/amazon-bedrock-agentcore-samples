@@ -99,3 +99,16 @@
 - Will Ensor
 - Osman Santos
 - David Kaleko
+- Sebastian Mathalikunnel (smathalikunnel)
+- Diego Brasil
+- Dumitru Pascu (dumip)
+- Rajesh Sitaraman (rjesh-git)
+- Diego Brasil
+- Dumitru Pascu (dumip)
+- Eitan Sela
+- Swara Gandhi
+- Shubham Gupta (guptashs)
+- Vibhu Pareek (vibhup)
+- Richa Gupta (richagpt)
+- Chandra Dhandapani
+- Anant Murarka (anantmu)

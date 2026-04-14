@@ -1,0 +1,8 @@
+# False positives: JWT header fragment {"alg":"HS256","typ":"JWT"} in deleted test file
+# File: tests/unit/test_jwt_validator.py (removed in 4a2684f)
+93772ea208b9c0e10305399f9b1653d5402b2372:tests/unit/test_jwt_validator.py:generic-api-key:77
+93772ea208b9c0e10305399f9b1653d5402b2372:tests/unit/test_jwt_validator.py:generic-api-key:175
+
+# False positive: Auth0 client ID (public PKCE, not a secret) hardcoded in early commit
+# File: update_agents.py (hardcoded values replaced with env vars in 89a1cdd)
+ec4f58d11b53be030e149b3ce597c162363a19b7:update_agents.py:generic-api-key:14

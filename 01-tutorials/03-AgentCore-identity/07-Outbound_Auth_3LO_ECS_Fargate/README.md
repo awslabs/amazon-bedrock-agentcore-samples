@@ -7,10 +7,10 @@ This sample demonstrates how to build an AI agent on Amazon ECS Fargate that use
 ![Architecture Diagram](sample-agent-3lo-architecture.drawio.png)
 
 
-1. The requests arrive at the Amazon Application Load Balancer, which authenticates the user using the [ALB OIDC authentication flow](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/listener-authenticate-users.html) with [Microsoft Entra ID](https://learn.microsoft.com/en-gb/entra/fundamentals/what-is-entra) as the Identity Provider, though any OIDC-compliant Identity Provider is supported. The traffic is encrypted using HTTPS, which requires a public hosted zone on Amazon Route 53 and a certificate from Amazon Certificate Manager. An A record (alias) in the hosted zone routes the traffic to the load balancer. The load balancer fronts the ECS cluster with two services: the Agentic Workload and the OAuth Callback. The load balancer passes the `x-amzn-oidc-data` header, which contains the user claims in JSON Web Token (JWT) format, allowing the unique identification of the user through the `sub` field.
+1. The requests arrive at the Amazon Application Load Balancer, which authenticates the user using the [ALB OIDC authentication flow](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/listener-authenticate-users.html) with [Microsoft Entra ID](https://learn.microsoft.com/en-gb/entra/fundamentals/what-is-entra) as the Identity Provider, though any OIDC-compliant Identity Provider is supported. The traffic is encrypted using HTTPS, which requires a public hosted zone on Amazon Route 53 and a certificate from Amazon Certificate Manager. An A record (alias) in the hosted zone routes the traffic to the load balancer. The load balancer fronts the ECS cluster with two services: the Agentic Workload and the Session Binding Service. The load balancer passes the `x-amzn-oidc-data` header, which contains the user claims in JSON Web Token (JWT) format, allowing the unique identification of the user through the `sub` field.
 2. The Agentic Workload is a [FastAPI](https://fastapi.tiangolo.com/) server with the `/invocations` method, which takes a `sessionId` and `message` as input and passes them to an agent implemented using Strands Agents, though any agent SDK such as LangChain or LangGraph can be used, as the request intake is handled by the FastAPI server independently of the agent SDK. The agent invokes the LLM on Amazon Bedrock, stores the session in an Amazon S3 bucket using the user's `sub` claim as a key prefix to ensure session isolation between users, and has tools to perform actions on the user's behalf on GitHub, which requires the user's access token.
-3. Amazon Bedrock AgentCore Identity (AC Identity) provides a workload identity for the agentic workload and the OAuth provider configuration for GitHub, which includes the well-known configuration of GitHub and the credentials for the registered app on GitHub. This allows the agent to retrieve the access token from the AC Identity Token Vault. If the access token is not available, has expired, or has been revoked, AC Identity returns an authorization URL that includes the callback URL pointing to the callback service and a session ID bound to the user to identify the flow.
-4. The callback service processes the callback URL once the authorization by the user has been granted in GitHub. It takes the session id from the callback URL and the `sub` from the `x-amzn-oidc-data` header to complete OAuth flow.
+3. Amazon Bedrock AgentCore Identity (AC Identity) provides a workload identity for the agentic workload and the OAuth provider configuration for GitHub, which includes the well-known configuration of GitHub and the credentials for the registered app on GitHub. This allows the agent to retrieve the access token from the AC Identity Token Vault. If the access token is not available, has expired, or has been revoked, AC Identity returns an authorization URL for the user to authorize access with the Authorization Server, along with a session URI to identify the flow.
+4. The session binding service processes the callback URL once the authorization by the user has been granted in GitHub. It takes the session id from the callback URL and the `sub` from the `x-amzn-oidc-data` header to complete OAuth flow.
 5. The end user invokes the agentic workload through the `/docs` endpoint, which renders the OpenAPI spec as HTML, serving as a minimal UI sufficient for demo purposes.
 
 Logs are captured in Amazon CloudWatch, and access logs for both the load balancer and the S3 bucket are stored in a dedicated S3 bucket. The container images for the ECS services are stored in and pulled from Amazon ECR. A set of basic AWS WAF rules is attached to the load balancer to provide baseline protection against common web exploits. All data is encrypted using an Amazon KMS customer managed key (CMK), except for the access logs bucket, which uses Amazon S3 managed encryption (SSE-S3) as required by the service
@@ -23,8 +23,8 @@ When the agent needs to access an external service on behalf of a user, see [OAu
 1. Agent requests an access token from AgentCore Identity
 2. If no valid token exists, AgentCore returns an authorization URL
 3. User clicks the URL and authenticates with the external service (e.g., GitHub)
-4. External service redirects to the OAuth Callback Service endpoint
-5. OAuth Callback Service completes the flow by calling `complete_resource_token_auth()` to bind the token to the user
+4. External service redirects to the Session Binding Service endpoint
+5. Session Binding Service completes the flow by calling `complete_resource_token_auth()` to bind the token to the user
 6. Subsequent agent requests automatically receive the user's access token
 
 ## Key Concepts
@@ -32,14 +32,14 @@ When the agent needs to access an external service on behalf of a user, see [OAu
 - **Workload Access Token**: A token (workloadIdentityToken) used for authentication that represents the workload identity and the user
 - **Session URI**: Tracks the authorization flow state across multiple requests and responses during the OAuth2 authentication process
 - **Token Vault**: Secure storage where OAuth tokens are stored
-- **Callback Service**: Confirms the user authentication session for obtaining OAuth2.0 tokens for a resource
+- **Session Binding Service**: Confirms the user authentication session for obtaining OAuth2.0 tokens for a resource
 
 ## Flow Phases
 
 1. **Get workload access token**: The workload obtains a token from AgentCore Identity that represents both the workload and the user
 2. **Request OAuth authorization**: The workload requests an OAuth token, receiving an authorization URL
 3. **User authorizes with OAuth provider**: The user grants permission for the workload to access their resources on the 3rd party tool
-4. **Complete authorization via callback**: The callback service confirms the user authentication session and completes the token binding
+4. **Complete authorization via session binding**: The session binding service confirms the user authentication session and completes the token binding
 
 ```mermaid
 sequenceDiagram
@@ -48,7 +48,7 @@ sequenceDiagram
     participant Workload as Agent Workload<br>(ECS Task)
     participant Identity as AgentCore Identity
     participant Tool as Identity Provider
-    participant Callback as Callback Service <br>(ECS Task)
+    participant Callback as Session Binding Service <br>(ECS Task)
 
     Note over User,Callback: 1. Get workload access token
 
@@ -59,7 +59,7 @@ sequenceDiagram
     
     Note over User,Callback: 2. Request OAuth authorization
     
-    Workload->>Identity: GetResourceOAuth2Token<br/>(workloadAccessToken, providerName,<br/>callbackUrl, scopes)
+    Workload->>Identity: GetResourceOAuth2Token<br/>(workloadAccessToken, providerName,<br/>sessionBindingUrl, scopes)
     Identity->>Identity: Create sessionURI<br/>(tracks OAuth flow state)
     Identity-->>Workload: authorizationUrl + sessionURI
     
@@ -69,7 +69,7 @@ sequenceDiagram
     
     User->>Tool: Click authorization URL<br/>Authorize agentic workload
     Tool-->>Identity: Authorization code
-    Identity-->>User: Redirect to callbackUrl<br/>with sessionURI
+    Identity-->>User: Redirect to Session Binding URL<br/>with sessionURI
     
     Note over User,Callback: 4. Complete authorization via callback
     

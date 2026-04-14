@@ -2,16 +2,17 @@
 Deploy Lambda functions and save their ARNs to config.json
 
 Usage:
-    python deploy_lambdas.py [role_arn]
+    python deploy_lambdas.py --region REGION [--role-arn ROLE_ARN]
 
 Examples:
     # Use existing role
-    python deploy_lambdas.py arn:aws:iam::123456789012:role/MyLambdaRole
+    python deploy_lambdas.py --region us-west-2 --role-arn arn:aws:iam::123456789012:role/MyLambdaRole
 
     # Create new role automatically
-    python deploy_lambdas.py
+    python deploy_lambdas.py --region us-west-2
 """
 
+import argparse
 import boto3
 import zipfile
 import io
@@ -116,7 +117,7 @@ def deploy_lambda(lambda_client, function_name, js_file, role_arn):
         return None
 
 
-def save_config(lambda_arns, output_file="config.json"):
+def save_config(lambda_arns, region, output_file="config.json"):
     """Save Lambda ARNs to config.json in the Getting-Started directory"""
 
     # Get the script directory (lambda-target-setup)
@@ -126,7 +127,7 @@ def save_config(lambda_arns, output_file="config.json"):
     getting_started_dir = os.path.dirname(os.path.dirname(script_dir))
     config_path = os.path.join(getting_started_dir, output_file)
 
-    config = {"lambdas": lambda_arns, "region": "us-east-1"}
+    config = {"lambdas": lambda_arns, "region": region}
 
     with open(config_path, "w") as f:
         json.dump(config, f, indent=2)
@@ -138,13 +139,37 @@ def main():
     print("🚀 Deploying Lambda Functions\n")
     print("=" * 70)
 
-    # Initialize AWS clients
-    lambda_client = boto3.client("lambda", region_name="us-east-1")
-    iam_client = boto3.client("iam", region_name="us-east-1")
+    # Parse arguments
+    parser = argparse.ArgumentParser(
+        description="Deploy Lambda functions for AgentCore Policy demo"
+    )
+    parser.add_argument(
+        "--region", type=str, default=None, help="AWS region to deploy into"
+    )
+    parser.add_argument(
+        "--role-arn", type=str, default=None, help="IAM role ARN for Lambda execution"
+    )
+    args = parser.parse_args()
 
-    # Check if role ARN is provided as argument
-    if len(sys.argv) >= 2:
-        role_arn = sys.argv[1]
+    # Resolve region
+    region = args.region
+    if not region:
+        session = boto3.Session()
+        region = session.region_name
+    if not region:
+        region = input("Enter AWS region (e.g., us-east-1, us-west-2): ").strip()
+        if not region:
+            print("❌ Error: AWS region is required")
+            sys.exit(1)
+
+    print(f"\nRegion: {region}")
+
+    # Initialize AWS clients
+    lambda_client = boto3.client("lambda", region_name=region)
+    iam_client = boto3.client("iam", region_name=region)
+
+    if args.role_arn:
+        role_arn = args.role_arn
 
         # Validate role ARN format
         if not role_arn.startswith("arn:aws:iam::"):
@@ -185,7 +210,7 @@ def main():
 
     # Save configuration
     if lambda_arns:
-        save_config(lambda_arns)
+        save_config(lambda_arns, region)
 
     print("=" * 70)
     print(f"\n✅ Deployment complete! {len(lambda_arns)}/3 functions deployed.")

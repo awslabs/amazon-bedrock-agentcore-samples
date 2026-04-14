@@ -16,7 +16,9 @@ class AuthorizationRequiredError(Exception):
 class ApiError(Exception):
     """Raised when external API call fails."""
 
-    def __init__(self, provider: str, message: str, status_code: int | None = None) -> None:
+    def __init__(
+        self, provider: str, message: str, status_code: int | None = None
+    ) -> None:
         """Initialize with provider, message, and optional status code."""
         self.provider = provider
         self.status_code = status_code
