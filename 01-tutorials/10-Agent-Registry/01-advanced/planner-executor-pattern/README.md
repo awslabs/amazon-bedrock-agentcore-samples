@@ -53,7 +53,7 @@ In this solution you will be using **real deployed services** — 9 MCP tools on
 ![Planner + Executor architecture](images/planner-executor-architecture.png)
 
 ## Tutorial
-You will find below 3 notebooks to be executed in order for walking through the solution. The first 2 notebooks will deploy the MCP servers and A2A agents to Amazon AgentCore Gateway and Amazon AgentCore Runtime. Once you have real MCP servers and A2A agents running on AgentCore, use the Planner Executor notebook for performing dynamic discovery of MCP Servers and A2A agents from AWS Agent Registry and run end to end e-commerce scenarios.
+You will find below 3 notebooks to be executed in order for walking through the solution. The first 2 notebooks will deploy the MCP servers and A2A agents to Amazon AgentCore Gateway and Amazon AgentCore Runtime. These notebooks will create mcp_tools_config.json and a2a_agents_config.json files respectively contaning the metadata needed for AWS Registry. Use the Planner Executor notebook to register the MCP servers and A2A agents with AWS Registry, performing dynamic discovery of MCP Servers and A2A agents from AWS Agent Registry and run end to end e-commerce scenarios.
 
 1. [Deploy MCP Servers](00-deploy-sample-mcp-tools.ipynb)
 2. [Deploy A2A Agents](00-deploy-sample-a2a-agents.ipynb)
