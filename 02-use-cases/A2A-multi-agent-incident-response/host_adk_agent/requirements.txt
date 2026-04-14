@@ -81,7 +81,7 @@ frozenlist==1.8.0
     #   aiosignal
 fsspec==2025.9.0
     # via huggingface-hub
-google-adk==1.16.0
+google-adk==1.28.1
     # via host-adk (pyproject.toml)
 google-api-core==2.26.0
     # via
