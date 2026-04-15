@@ -134,7 +134,7 @@ python-dateutil==2.9.0.post0
     # via botocore
 python-dotenv==1.1.1
     # via pydantic-settings
-python-multipart==0.0.20
+python-multipart==0.0.26
     # via mcp
 referencing==0.37.0
     # via
