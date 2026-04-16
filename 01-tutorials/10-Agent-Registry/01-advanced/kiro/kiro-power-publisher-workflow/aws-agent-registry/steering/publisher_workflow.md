@@ -327,3 +327,119 @@ for r in all_records:
     except Exception as e:
         print(f"  FAILED:  {r['name']} ({r['recordId']}) — {e}")
 ```
+
+---
+
+## 8. Update a Record
+
+Update a `DRAFT` record using PATCH semantics with `optionalValue` wrappers. Only records in `DRAFT` status can be updated.
+
+Create or update src/update_registry_record.py
+
+```python
+updated_tool_schema = json.dumps({
+    "tools": [
+        {
+            "name": "list_transactions",
+            "description": "List payment transactions for a customer with optional date filtering",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "customer_id": {"type": "string", "description": "Unique customer identifier"},
+                    "start_date":  {"type": "string", "description": "Start date filter (ISO 8601)"},
+                    "end_date":    {"type": "string", "description": "End date filter (ISO 8601)"},
+                    "status": {
+                        "type": "string",
+                        "description": "Filter by transaction status",
+                        "enum": ["pending", "completed", "failed", "refunded"],
+                    },
+                },
+                "required": ["customer_id"],
+            },
+        }
+    ]
+})
+
+update_resp = cp_client.update_registry_record(
+    registryId=REGISTRY_ID,
+    recordId=MCP_RECORD_ID,
+    descriptors={
+        "optionalValue": {
+            "mcp": {
+                "optionalValue": {
+                    "tools": {
+                        "optionalValue": {
+                            "inlineContent": updated_tool_schema,
+                        }
+                    }
+                }
+            }
+        }
+    },
+)
+
+print("Update submitted — waiting for record to settle...")
+updated_record = utils.wait_for_record_ready(cp_client, REGISTRY_ID, MCP_RECORD_ID)
+print("\nUpdated record:")
+utils.pp(updated_record)
+```
+
+---
+
+## 9. Create A2A Record with URL Synchronization
+
+Create an A2A record that automatically synchronizes its agent card from a live URL endpoint. Use `synchronizationType="URL"` with IAM credentials to fetch the agent card directly from a deployed AgentCore Runtime agent.
+
+Create or update src/create_registry_record_a2a_url_sync.py
+
+```python
+from botocore.exceptions import ClientError
+
+A2A_RECORD_ID = None
+
+try:
+    resp = cp_client.create_registry_record(
+        registryId=REGISTRY_ID,
+        name=AGENT_NAME,
+        description="A2A agent record synchronized from a live AgentCore Runtime endpoint",
+        descriptorType="A2A",
+        synchronizationType="URL",
+        synchronizationConfiguration={
+            "fromUrl": {
+                "url": agent_card_url,  # e.g. https://bedrock-agentcore.<region>.amazonaws.com/runtimes/<encoded-arn>/invocations/.well-known/agent-card.json
+                "credentialProviderConfigurations": [
+                    {
+                        "credentialProviderType": "IAM",
+                        "credentialProvider": {
+                            "iamCredentialProvider": {
+                                "roleArn": PUBLISHER_ROLE_ARN,
+                                "service": "bedrock-agentcore",
+                                "region": AWS_REGION,
+                            }
+                        },
+                    }
+                ],
+            }
+        },
+        recordVersion="1.0",
+    )
+    A2A_RECORD_ID = resp["recordArn"].split("/")[-1]
+    print(f"Created A2A record: {A2A_RECORD_ID}")
+    print(f"Record ARN: {resp['recordArn']}")
+
+except ClientError as e:
+    if e.response["Error"]["Code"] == "ConflictException":
+        print(f"Record '{AGENT_NAME}' already exists — looking it up...")
+        records = cp_client.list_registry_records(registryId=REGISTRY_ID)
+        for rec in records.get("registryRecords", []):
+            if rec["name"] == AGENT_NAME:
+                A2A_RECORD_ID = rec["registryRecordId"]
+                break
+        print(f"  Using existing record: {A2A_RECORD_ID}")
+    else:
+        raise
+
+print(f"\nA2A_RECORD_ID = {A2A_RECORD_ID}")
+```
+
+> Note: `agent_card_url` is the `/.well-known/agent-card.json` endpoint of your deployed A2A agent on AgentCore Runtime. The IAM role specified in `roleArn` must have permission to invoke the runtime endpoint.
