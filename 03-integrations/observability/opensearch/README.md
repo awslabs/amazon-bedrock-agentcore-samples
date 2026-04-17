@@ -53,78 +53,10 @@ Before proceeding, you need an OpenSearch cluster and Data Prepper instance to r
 
 #### Option 1: Docker Deployment (Quickest for Testing)
 
-Deploy OpenSearch and Data Prepper using Docker Compose:
-
-```yaml
-# docker-compose.yml
-version: '3'
-services:
-  opensearch:
-    image: opensearchproject/opensearch:latest
-    environment:
-      - discovery.type=single-node
-      - DISABLE_SECURITY_PLUGIN=true
-    ports:
-      - "9200:9200"
-
-  data-prepper:
-    image: opensearchproject/data-prepper:latest
-    volumes:
-      - ./pipelines.yaml:/usr/share/data-prepper/pipelines/pipelines.yaml
-    ports:
-      - "21890:21890"  # OTLP trace source
-      - "21891:21891"  # OTLP metrics source
-    depends_on:
-      - opensearch
-
-  opensearch-dashboards:
-    image: opensearchproject/opensearch-dashboards:latest
-    environment:
-      - OPENSEARCH_HOSTS=["http://opensearch:9200"]
-      - DISABLE_SECURITY_DASHBOARDS_PLUGIN=true
-    ports:
-      - "5601:5601"
-    depends_on:
-      - opensearch
-```
-
-Create a `pipelines.yaml` for Data Prepper:
-
-```yaml
-# pipelines.yaml
-otel-trace-pipeline:
-  source:
-    otel_trace_source:
-      port: 21890
-  processor:
-    - trace_peer_forwarder:
-  sink:
-    - opensearch:
-        hosts: ["http://opensearch:9200"]
-        index_type: trace-analytics-raw
-
-otel-service-map-pipeline:
-  source:
-    pipeline:
-      name: "otel-trace-pipeline"
-  processor:
-    - service_map:
-  sink:
-    - opensearch:
-        hosts: ["http://opensearch:9200"]
-        index_type: trace-analytics-service-map
-
-otel-metrics-pipeline:
-  source:
-    otel_metrics_source:
-      port: 21891
-  processor:
-    - otel_metrics:
-  sink:
-    - opensearch:
-        hosts: ["http://opensearch:9200"]
-        index: otel-metrics
-```
+This sample includes ready-to-use Docker Compose and Data Prepper configuration files:
+- [`docker-compose.yml`](./docker-compose.yml) — OpenSearch, Data Prepper, and OpenSearch Dashboards
+- [`pipelines.yaml`](./pipelines.yaml) — Data Prepper pipeline configuration for traces, service map, and metrics
+- [`data-prepper-config.yaml`](./data-prepper-config.yaml) — Data Prepper server configuration
 
 Start the services:
 
@@ -144,7 +76,7 @@ For production use, deploy with [Amazon OpenSearch Service](https://aws.amazon.c
 1. Create an Amazon OpenSearch Service domain via the AWS Console or CLI
 2. Enable the [Trace Analytics](https://docs.aws.amazon.com/opensearch-service/latest/developerguide/trace-analytics.html) feature
 3. Set up [Amazon OpenSearch Ingestion](https://docs.aws.amazon.com/opensearch-service/latest/developerguide/ingestion.html) (managed Data Prepper) to receive OTLP data
-4. Configure the ingestion pipeline endpoint as your `OTEL_ENDPOINT`
+4. Configure the ingestion pipeline endpoint as your `OTEL_TRACES_ENDPOINT` and `OTEL_METRICS_ENDPOINT`
 
 For Amazon OpenSearch Ingestion, authentication is handled via IAM (SigV4). Refer to the [Amazon OpenSearch Ingestion documentation](https://docs.aws.amazon.com/opensearch-service/latest/developerguide/ingestion.html) for pipeline configuration details.
 
