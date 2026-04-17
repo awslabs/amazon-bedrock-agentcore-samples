@@ -1,7 +1,6 @@
-version: '3'
 services:
   opensearch:
-    image: opensearchproject/opensearch:2.19.1
+    image: opensearchproject/opensearch:latest
     environment:
       - discovery.type=single-node
       - DISABLE_SECURITY_PLUGIN=true
@@ -15,7 +14,7 @@ services:
       retries: 10
 
   data-prepper:
-    image: opensearchproject/data-prepper:latest
+    image: opensearchproject/data-prepper:2
     volumes:
       - ./pipelines.yaml:/usr/share/data-prepper/pipelines/pipelines.yaml
       - ./data-prepper-config.yaml:/usr/share/data-prepper/config/data-prepper-config.yaml
@@ -27,7 +26,7 @@ services:
         condition: service_healthy
 
   opensearch-dashboards:
-    image: opensearchproject/opensearch-dashboards:2.19.1
+    image: opensearchproject/opensearch-dashboards:latest
     environment:
       - OPENSEARCH_HOSTS=["http://opensearch:9200"]
       - DISABLE_SECURITY_DASHBOARDS_PLUGIN=true

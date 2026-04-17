@@ -16,14 +16,14 @@ def init():
     Data Prepper is an OpenSearch community project that accepts OTLP data
     and writes it to OpenSearch indices for Trace Analytics.
 
-    Data Prepper runs separate pipelines for traces and metrics on different ports:
+    Data Prepper exposes gRPC endpoints for OTLP ingestion:
       - OTEL_TRACES_ENDPOINT (default http://localhost:21890) for traces
       - OTEL_METRICS_ENDPOINT (default http://localhost:21891) for metrics
     """
     auth = read_secret("opensearch_auth")
-    headers = {}
+    metadata = []
     if auth:
-        headers["Authorization"] = f"Basic {auth}"
+        metadata.append(("authorization", f"Basic {auth}"))
 
     OTEL_TRACES_ENDPOINT = os.environ.get(
         "OTEL_TRACES_ENDPOINT",
@@ -35,8 +35,8 @@ def init():
     )
 
     from opentelemetry import trace, metrics
-    from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
-    from opentelemetry.exporter.otlp.proto.http.metric_exporter import (
+    from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+    from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import (
         OTLPMetricExporter,
     )
     from opentelemetry.sdk.metrics import MeterProvider
@@ -54,8 +54,9 @@ def init():
     provider = TracerProvider(resource=resource)
     processor = SimpleSpanProcessor(
         OTLPSpanExporter(
-            endpoint=f"{OTEL_TRACES_ENDPOINT}/v1/traces",
-            headers=headers if headers else None,
+            endpoint=OTEL_TRACES_ENDPOINT,
+            headers=metadata if metadata else None,
+            insecure=True,
         )
     )
     provider.add_span_processor(processor)
@@ -63,8 +64,9 @@ def init():
 
     reader = PeriodicExportingMetricReader(
         OTLPMetricExporter(
-            endpoint=f"{OTEL_METRICS_ENDPOINT}/v1/metrics",
-            headers=headers if headers else None,
+            endpoint=OTEL_METRICS_ENDPOINT,
+            headers=metadata if metadata else None,
+            insecure=True,
         )
     )
     provider = MeterProvider(

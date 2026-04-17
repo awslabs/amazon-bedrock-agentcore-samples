@@ -2,20 +2,11 @@ otel-trace-pipeline:
   source:
     otel_trace_source:
       port: 21890
-  processor:
-    - trace_peer_forwarder:
+      ssl: false
   sink:
     - opensearch:
         hosts: ["http://opensearch:9200"]
         index_type: trace-analytics-raw
-
-otel-service-map-pipeline:
-  source:
-    pipeline:
-      name: "otel-trace-pipeline"
-  processor:
-    - service_map:
-  sink:
     - opensearch:
         hosts: ["http://opensearch:9200"]
         index_type: trace-analytics-service-map
@@ -24,6 +15,7 @@ otel-metrics-pipeline:
   source:
     otel_metrics_source:
       port: 21891
+      ssl: false
   processor:
     - otel_metrics:
   sink:

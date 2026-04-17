@@ -20,7 +20,7 @@ This example contains a demo of a Personal Assistant Agent built on top of [Bedr
 Bedrock AgentCore comes with [Observability](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/observability.html) support out-of-the-box.
 Hence, we just need to register an [OpenTelemetry SDK](https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/overview.md#sdk) to send the data to OpenSearch via Data Prepper.
 
-[Data Prepper](https://opensearch.org/docs/latest/data-prepper/) is an OpenSearch community project that acts as an OpenTelemetry collector. It accepts OTLP data over HTTP and writes it to OpenSearch indices for Trace Analytics visualization.
+[Data Prepper](https://opensearch.org/docs/latest/data-prepper/) is an OpenSearch community project that acts as an OpenTelemetry collector. It accepts OTLP data over gRPC and writes it to OpenSearch indices for Trace Analytics visualization.
 
 We simplified this process, hiding all the complexity inside [opensearch.py](./opensearch.py).
 Data Prepper runs separate pipelines for traces and metrics on different ports. Configure the following env vars to point to your Data Prepper instance:
