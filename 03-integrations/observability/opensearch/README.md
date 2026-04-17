@@ -23,7 +23,9 @@ Hence, we just need to register an [OpenTelemetry SDK](https://github.com/open-t
 [Data Prepper](https://opensearch.org/docs/latest/data-prepper/) is an OpenSearch community project that acts as an OpenTelemetry collector. It accepts OTLP data over HTTP and writes it to OpenSearch indices for Trace Analytics visualization.
 
 We simplified this process, hiding all the complexity inside [opensearch.py](./opensearch.py).
-For sending data to your OpenSearch cluster, you can configure the `OTEL_ENDPOINT` env var with your Data Prepper OTLP endpoint, for example: `http://localhost:4318`.
+Data Prepper runs separate pipelines for traces and metrics on different ports. Configure the following env vars to point to your Data Prepper instance:
+- `OTEL_TRACES_ENDPOINT` (default: `http://localhost:21890`) — for trace data
+- `OTEL_METRICS_ENDPOINT` (default: `http://localhost:21891`) — for metric data
 
 If your Data Prepper instance requires authentication, credentials will be read from your filesystem under `/etc/secrets/opensearch_auth` (Base64-encoded `username:password`) or from the environment variable `OPENSEARCH_AUTH`.
 
@@ -70,9 +72,8 @@ services:
     volumes:
       - ./pipelines.yaml:/usr/share/data-prepper/pipelines/pipelines.yaml
     ports:
-      - "4318:4318"    # OTLP HTTP receiver
-      - "21890:21890"  # Data Prepper OTLP traces
-      - "21891:21891"  # Data Prepper OTLP metrics
+      - "21890:21890"  # OTLP trace source
+      - "21891:21891"  # OTLP metrics source
     depends_on:
       - opensearch
 
@@ -133,7 +134,7 @@ docker compose up -d
 
 This will start:
 - OpenSearch at `http://localhost:9200`
-- Data Prepper accepting OTLP at `http://localhost:4318`
+- Data Prepper accepting traces at `http://localhost:21890` and metrics at `http://localhost:21891`
 - OpenSearch Dashboards at `http://localhost:5601`
 
 #### Option 2: Amazon OpenSearch Service (Production-Ready)
@@ -152,8 +153,9 @@ For Amazon OpenSearch Ingestion, authentication is handled via IAM (SigV4). Refe
 Once OpenSearch and Data Prepper are deployed, set the environment variables:
 
 ```bash
-# Point to your Data Prepper OTLP endpoint
-export OTEL_ENDPOINT=http://localhost:4318
+# Point to your Data Prepper trace and metric endpoints
+export OTEL_TRACES_ENDPOINT=http://localhost:21890
+export OTEL_METRICS_ENDPOINT=http://localhost:21891
 
 # Optional: If authentication is required (Base64-encoded username:password)
 export OPENSEARCH_AUTH=YWRtaW46YWRtaW4=

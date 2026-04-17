@@ -16,20 +16,22 @@ def init():
     Data Prepper is an OpenSearch community project that accepts OTLP data
     and writes it to OpenSearch indices for Trace Analytics.
 
-    By default, Data Prepper listens on:
-      - Port 21890 for traces (OTLP/HTTP)
-      - Port 21891 for metrics (OTLP/HTTP)
-
-    Configure OTEL_ENDPOINT to point to your Data Prepper instance.
+    Data Prepper runs separate pipelines for traces and metrics on different ports:
+      - OTEL_TRACES_ENDPOINT (default http://localhost:21890) for traces
+      - OTEL_METRICS_ENDPOINT (default http://localhost:21891) for metrics
     """
     auth = read_secret("opensearch_auth")
     headers = {}
     if auth:
         headers["Authorization"] = f"Basic {auth}"
 
-    OTEL_ENDPOINT = os.environ.get(
-        "OTEL_ENDPOINT",
-        "http://localhost:4318",  # Data Prepper OTLP HTTP endpoint
+    OTEL_TRACES_ENDPOINT = os.environ.get(
+        "OTEL_TRACES_ENDPOINT",
+        "http://localhost:21890",  # Data Prepper otel_trace_source default port
+    )
+    OTEL_METRICS_ENDPOINT = os.environ.get(
+        "OTEL_METRICS_ENDPOINT",
+        "http://localhost:21891",  # Data Prepper otel_metrics_source default port
     )
 
     from opentelemetry import trace, metrics
@@ -52,7 +54,7 @@ def init():
     provider = TracerProvider(resource=resource)
     processor = SimpleSpanProcessor(
         OTLPSpanExporter(
-            endpoint=f"{OTEL_ENDPOINT}/v1/traces",
+            endpoint=f"{OTEL_TRACES_ENDPOINT}/v1/traces",
             headers=headers if headers else None,
         )
     )
@@ -61,7 +63,7 @@ def init():
 
     reader = PeriodicExportingMetricReader(
         OTLPMetricExporter(
-            endpoint=f"{OTEL_ENDPOINT}/v1/metrics",
+            endpoint=f"{OTEL_METRICS_ENDPOINT}/v1/metrics",
             headers=headers if headers else None,
         )
     )
