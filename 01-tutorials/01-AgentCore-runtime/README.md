@@ -8,13 +8,15 @@ Amazon BedrockAgentCore Python SDK provides a lightweight wrapper that helps you
 
 All you need to do is decorate your function with the `@app.entrypoint` decorator and use the `configure` and `launch` capabilities of the SDK to deploy your agent to AgentCore Runtime. Your application is then able to invoke this agent using the SDK or any of the AWS's developer tools such as boto3, AWS SDK for JavaScript or the AWS SDK for Java.
 
+AgentCore Runtime also supports creating agents with any programming language and agent framework.
+
 ![Runtime Overview](images/runtime_overview.png)
 
 ## Key Features
 
 ### Framework and Model Flexibility
 
-- Deploy agents and tools from any framework (such as Strands Agents, LangChain, LangGraph, CrewAI) 
+- Deploy agents and tools from any framework (such as Strands Agents, LangChain, LangGraph, CrewAI, Spring AI)
 - Using any model (in Amazon Bedrock or not)
 
 ### Integration
@@ -40,7 +42,8 @@ The runtime is suitable for a wide range of applications, including:
 
 In these tutorials we will cover the following functionality:
 
-- [Hosting agents](01-hosting-agent)
+- [Hosting Python agents](01-hosting-agent)
+- [Hosting a Java Spring AI Agents](06-hosting-java-spring-ai-agent)
 - [Hosting MCP Servers](02-hosting-MCP-server)
 - [Advanced Concepts](03-advanced-concepts)
 
