@@ -56,22 +56,66 @@ function AssistantContent({ assistantConfig }: { assistantConfig: AssistantConfi
         }}
       >
         <h1 className="text-lg sm:text-xl font-semibold text-purple-700" style={{ letterSpacing: '-0.01em' }}>{assistantConfig.appName}</h1>
-        <div className="flex items-center gap-3">
-          <span className="text-sm text-gray-700 hidden sm:inline">{userName}</span>
+        <div className="flex items-center gap-2">
+          {/* Memory button */}
+          {assistantConfig.memoryId && (
+            <button
+              onClick={() => window.dispatchEvent(new CustomEvent('open-memory-panel'))}
+              className="flex"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '5px 12px 5px 8px',
+                color: '#7c3aed',
+                cursor: 'pointer',
+                background: 'transparent',
+                border: '1px solid transparent',
+                borderRadius: 8,
+                fontSize: 13,
+                fontWeight: 500,
+                transition: 'all 0.15s',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(124,58,237,0.06)'; e.currentTarget.style.borderColor = 'rgba(124,58,237,0.2)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'transparent'; }}
+              aria-label="View memory facts"
+              title="Long-term memory"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/images/agentcore-memory.png" alt="" width={18} height={18} style={{ width: 18, height: 18 }} />
+              <span className="hidden sm:inline">Memory Facts</span>
+            </button>
+          )}
+
+          {/* Separator */}
+          <div style={{ width: 1, height: 24, background: '#e5e7eb', margin: '0 4px' }} />
+
+          {/* User name */}
+          <span className="text-sm text-gray-600 hidden sm:inline" style={{ fontWeight: 500 }}>{userName}</span>
+
+          {/* Sign out button */}
           <button
             onClick={handleSignOut}
-            className="p-1.5"
             style={{
-              color: '#7c3aed',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 5,
+              padding: '5px 10px',
+              color: '#6b7280',
               cursor: 'pointer',
-              background: 'none',
-              border: 'none',
-              transition: 'color 0.15s',
+              background: 'transparent',
+              border: '1px solid transparent',
+              borderRadius: 8,
+              fontSize: 13,
+              fontWeight: 500,
+              transition: 'all 0.15s',
             }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(0,0,0,0.04)'; e.currentTarget.style.borderColor = '#e5e7eb'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'transparent'; }}
             aria-label="Sign out"
             title="Sign out"
           >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3-3l3-3m0 0l-3-3m3 3H9" />
             </svg>
           </button>

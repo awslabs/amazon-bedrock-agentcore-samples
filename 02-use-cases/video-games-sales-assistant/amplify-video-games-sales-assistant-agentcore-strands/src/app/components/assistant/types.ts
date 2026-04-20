@@ -52,10 +52,10 @@ export interface ControlAnswer {
 export interface AssistantConfig {
   agentRuntimeArn: string;
   agentEndpointName: string;
-  lastKTurns: number;
   welcomeMessage: string;
   appName: string;
   modelIdForChart: string;
   questionAnswersTableName: string;
+  memoryId: string;
   maxLengthInputSearch?: number;
 }

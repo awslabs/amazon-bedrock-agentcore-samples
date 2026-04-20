@@ -3,7 +3,11 @@
 // (same as original React app) since it needs Cognito credentials.
 
 import { BedrockRuntimeClient, InvokeModelCommand } from '@aws-sdk/client-bedrock-runtime';
-import { getAwsClient, type CognitoAuthParams } from '@/lib/aws-client';
+import {
+  BedrockAgentCoreClient,
+  ListMemoryRecordsCommand,
+} from '@aws-sdk/client-bedrock-agentcore';
+import { getAwsClient, type CognitoAuthParams } from '@/utils/aws-client';
 import type { QueryResult, ChartData, Answer } from '../types';
 import {
   extractBetweenTags,
@@ -130,5 +134,72 @@ export const generateChart = async (
     return {
       rationale: 'Error generating or parsing chart data.',
     };
+  }
+};
+
+
+export interface MemoryFact {
+  memoryRecordId: string;
+  content: string;
+  createdAt: string;
+  namespace: string;
+}
+
+/**
+ * Fetch long-term memory facts for the current user from AgentCore Memory.
+ */
+export const getMemoryFacts = async (
+  memoryId: string,
+  userId: string,
+  auth: CognitoAuthParams
+): Promise<MemoryFact[]> => {
+  const client = getAwsClient(BedrockAgentCoreClient, auth);
+  const namespace = `facts/${userId}/`;
+
+  const namespacesToTry = [
+    `facts/${userId}/`,
+    `/facts/${userId}/`,
+    `facts/${userId}`,
+    `/facts/${userId}`,
+  ];
+
+  console.log('🧠 Fetching memory facts:', { memoryId, userId, namespacesToTry });
+
+  try {
+    for (const ns of namespacesToTry) {
+      console.log(`🧠 Trying namespace: "${ns}"`);
+      const command = new ListMemoryRecordsCommand({
+        memoryId,
+        namespace: ns,
+      });
+
+      const response = await client.send(command);
+      const records = response.memoryRecordSummaries || [];
+      console.log(`🧠 Namespace "${ns}" returned ${records.length} records`);
+
+      if (records.length > 0) {
+        console.log('🧠 Full response:', JSON.stringify(response, null, 2));
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const facts = records.map((record: any) => ({
+          memoryRecordId: record.memoryRecordId || record.id || '',
+          content: record.content?.text || JSON.stringify(record.content) || '',
+          createdAt: record.createdAt || record.createdTimestamp || '',
+          namespace: record.namespace || ns,
+        }));
+
+        facts.forEach((fact: MemoryFact, i: number) => {
+          console.log(`🧠 Fact ${i + 1}:`, fact.content.slice(0, 100));
+        });
+
+        return facts;
+      }
+    }
+
+    console.log('🧠 No facts found in any namespace pattern');
+    return [];
+  } catch (error) {
+    console.error('❌ Failed to fetch memory facts:', { memoryId, error });
+    return [];
   }
 };

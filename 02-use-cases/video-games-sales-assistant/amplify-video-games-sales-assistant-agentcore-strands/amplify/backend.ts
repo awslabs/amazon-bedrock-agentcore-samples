@@ -83,6 +83,22 @@ if (AGENT_RUNTIME_ARN) {
   );
 }
 
+// ─── Bedrock AgentCore Memory: read long-term memory facts ──────────────────
+authenticatedRole.attachInlinePolicy(
+  new Policy(stack, 'BedrockAgentCoreMemoryPolicy', {
+    statements: [
+      new PolicyStatement({
+        effect: Effect.ALLOW,
+        actions: [
+          'bedrock-agentcore:ListMemoryRecords',
+          'bedrock-agentcore:RetrieveMemoryRecords',
+        ],
+        resources: ['*'],
+      }),
+    ],
+  })
+);
+
 // ─── Bedrock: invoke model for chart generation ─────────────────────────────
 // Cross-region inference profiles (us.anthropic.*) route requests to multiple
 // regions. The policy must cover all regions the profile may use.

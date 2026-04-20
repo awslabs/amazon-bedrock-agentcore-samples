@@ -143,7 +143,7 @@ AgentCore uses your credentials (via Forward Access Sessions) to associate the r
 | Notebook | Description |
 |----------|-------------|
 | [01-getting-started.ipynb](./01-getting-started.ipynb) | Create a self-managed Resource Gateway and Resource Configuration, then connect to AgentCore Gateway. |
-| 02-cross-account.ipynb (coming soon) | Share a Resource Configuration across accounts using AWS RAM. |
+| [02-cross-account.ipynb](./02-cross-account.ipynb) | Share a Resource Configuration across accounts using AWS RAM. |
 
 ## License
 

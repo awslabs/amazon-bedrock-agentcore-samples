@@ -3,7 +3,10 @@
 
 # Advanced Concepts
 
-This section covers private DNS, private certificates, and the patterns needed to make them work with AgentCore Gateway VPC egress.
+> This feature is made available to you as a "Beta Service" as defined in the [AWS Service Terms](https://aws.amazon.com/service-terms/). It is subject to your Agreement with AWS and the AWS Service Terms.
+
+
+This section covers private DNS, private certificates, static IP egress, and the patterns needed to make them work with AgentCore Gateway VPC egress.
 
 
 ## Private DNS: Routing Domain
@@ -66,14 +69,30 @@ AgentCore Gateway
 
 For domain and certificate setup guides, see the [Prerequisites](../00-prerequisites/) folder.
 
+## Static Gateway IP
+
+If your external MCP server requires IP-based allowlisting, you can route AgentCore Gateway traffic through a **NAT Gateway with an Elastic IP** in your VPC. This gives all outbound traffic a static, known source IP that the MCP server operator can allowlist.
+
+![arch](./images/gateway-static-ip.png)
+
+### How it works
+
+1. Use **VPC egress** (managed VPC Lattice) to route AgentCore Gateway traffic into your VPC through a Resource Gateway
+2. Place the Resource Gateway ENIs in a **private subnet** that routes outbound traffic (0.0.0.0/0) through a NAT Gateway
+3. The NAT Gateway has an **Elastic IP** — a static, public IP address
+4. All traffic to external MCP servers exits through this Elastic IP
+5. The MCP server allowlists the Elastic IP — only traffic from your AgentCore Gateway is accepted
+
+For high availability, deploy one NAT Gateway per Availability Zone. Each NAT Gateway has its own Elastic IP, so provide all EIPs to the MCP server for allowlisting.
+
 ## Labs
 
 | Notebook | Description |
 |----------|-------------|
 | [01-private-domain.ipynb](./01-private-domain.ipynb) | Use a private hosted zone with `routingDomain` and a public certificate. |
-| 02-private-certificate-authority.ipynb (coming soon) | Set up AWS Private CA and use the ALB workaround for private certificates. |
-| 03-self-signed-certificate.ipynb (coming soon) | Use the ALB workaround for self-signed certificates (no Private CA cost). |
-| 04-private-domain-and-certificate.ipynb (coming soon) | Combine private DNS and private certificates with the ALB workaround pattern. |
+| [02-private-certificate-authority.ipynb](./02-private-certificate-authority.ipynb) | Use the ALB workaround for APIs with AWS Private CA certificates. |
+| [03-self-signed-certificate.ipynb](./03-self-signed-certificate.ipynb) | Use the ALB workaround for APIs with self-signed certificates (no Private CA cost). |
+| [04-static-gateway-ip.ipynb](./04-static-gateway-ip.ipynb) | Route AgentCore Gateway traffic through a NAT Gateway with a static Elastic IP for allowlisting. |
 
 ## License
 
