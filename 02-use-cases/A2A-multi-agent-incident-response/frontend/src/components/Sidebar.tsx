@@ -2,7 +2,11 @@ import { useChat } from '../hooks/useChat'
 import strandsIcon from '../icons/strands.png'
 import openaiSdkIcon from '../icons/openaisdk.png'
 
-export function Sidebar() {
+interface SidebarProps {
+  signOut: () => void
+}
+
+export function Sidebar({ signOut }: SidebarProps) {
   const { sessionId, agentCards } = useChat()
 
   // Map agent names to their icons
@@ -71,6 +75,24 @@ export function Sidebar() {
             </div>
           </div>
         )}
+      </div>
+
+      {/* Action Buttons */}
+      <div className="flex-shrink-0 p-6 border-t border-gray-700">
+        <div className="flex gap-2">
+          <button
+            onClick={() => window.location.reload()}
+            className="flex-1 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm font-medium"
+          >
+            New Session
+          </button>
+          <button
+            onClick={signOut}
+            className="flex-1 px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors text-sm font-medium"
+          >
+            Sign Out
+          </button>
+        </div>
       </div>
     </aside>
   )

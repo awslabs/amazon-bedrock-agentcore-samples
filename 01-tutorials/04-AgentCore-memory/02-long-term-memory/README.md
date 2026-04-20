@@ -49,7 +49,7 @@ Stores factual information extracted from conversations using vector embeddings 
     "semanticMemoryStrategy": {
         "name": "FactExtractor",
         "description": "Extracts and stores factual information",
-        "namespaces": ["support/user/{actorId}/facts"]
+        "namespaces": ["support/user/{actorId}/facts/"]
     }
 }
 ```
@@ -65,7 +65,7 @@ Creates and maintains summaries of conversations to preserve context for long in
     "summaryMemoryStrategy": {
         "name": "ConversationSummary",
         "description": "Maintains conversation summaries",
-        "namespaces": ["support/summaries/{sessionId}"]
+        "namespaces": ["support/summaries/{sessionId}/"]
     }
 }
 ```
@@ -81,7 +81,7 @@ Tracks user-specific preferences and settings to personalize interactions.
     "userPreferenceMemoryStrategy": {
         "name": "UserPreferences",
         "description": "Captures user preferences and settings",
-        "namespaces": ["support/user/{actorId}/preferences"]
+        "namespaces": ["support/user/{actorId}/preferences"/]
     }
 }
 ```
@@ -97,16 +97,16 @@ Allows customization of prompts for extraction and consolidation, providing flex
     "customMemoryStrategy": {
         "name": "CustomExtractor",
         "description": "Custom memory extraction logic",
-        "namespaces": ["user/custom/{actorId}"],
+        "namespaces": ["user/custom/{actorId}/"],
         "configuration": {
             "semanticOverride": { # You can also override Summary or User Preferences.
                 "extraction": {
                     "appendToPrompt": "Extract specific information based on custom criteria",
-                    "modelId": "anthropic.claude-3-sonnet-20240229-v1:0",
+                    "modelId": "global.anthropic.claude-haiku-4-5-20251001-v1:0",
                 },
                 "consolidation": {
                     "appendToPrompt": "Consolidate extracted information in a specific format",
-                    "modelId": "anthropic.claude-3-sonnet-20240229-v1:0",
+                    "modelId": "global.anthropic.claude-haiku-4-5-20251001-v1:0",
                 }
             }
         }

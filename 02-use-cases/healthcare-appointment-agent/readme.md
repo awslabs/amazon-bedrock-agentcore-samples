@@ -3,12 +3,12 @@
 ## Overview
 An AI agent for immunization related healthcare appointments built with **Amazon Bedrock AgentCore Gateway** using the **Model Context Protocol (MCP)** to expose the tools. This AI agent supports enquiring about current immunization status/schedule, checking appointment slots and booking appointments. It also provides personalized experience by knowing the logged in user (adult) and his/her children and uses **AWS Healthlake** as **FHIR R4** (Fast Healthcare Interoperability Resources) database.
 
-### Uase case details
+### Use case details
 | Information         | Details                                                                                                                             |
 |---------------------|-------------------------------------------------------------------------------------------------------------------------------------|
 | Use case type       | Conversational                                                                                                                      |
 | Agent type          | Single Agent                                                                                                                        |
-| Use case components | Amazon Bedrock AgentCore related components: Gateway and Identity                                                                   |
+| Use case components | Amazon Bedrock AgentCore related components: Gateway, Identity, and Policy (optional)                                              |
 |  					  | Other Components: Amazon Cognito, AWS Healthlake, Amazon API Gateway and AWS Lambda                                                 |
 |  					  | MCP Tools: MCP tools are exposed to Bedrock AgentCore Gateway using OpenAPI specification                                          |
 | Use case vertical   | Healthcare                                                                                                                          |
@@ -20,6 +20,12 @@ An AI agent for immunization related healthcare appointments built with **Amazon
 ![Image1](static/healthcare_gateway_flow.png)
 
 ### Use case key Features
+- **Patient-Scoped Access Control**: Optional AgentCore Policy integration ensures patients can only access their own healthcare data
+- **FHIR R4 Compliance**: Uses AWS HealthLake as a FHIR-compliant healthcare database
+- **Immunization Management**: Check immunization status, schedules, and pending vaccinations
+- **Appointment Booking**: Search available slots and book appointments
+- **Identity-Aware**: Knows the logged-in user and their family members
+- **Multi-Framework Support**: Works with both Strands and LangGraph agents
 
 ## Prerequisites
 **Note: These steps are designed to work in us-east-1 and us-west-2 regions.**
@@ -204,8 +210,39 @@ python langgraph_agent.py --gateway_id <gateway_id_here>
 
 ![Image1](static/appointment_agent_demo.gif)
 
+## Optional: Add Policy-Based Access Control
+
+To add patient-scoped access control using Amazon Bedrock AgentCore Policy, see the [policy/README.md](policy/README.md) for detailed instructions.
+
+This optional feature adds:
+- **Patient Access Control**: Patients can only view and manage their own healthcare data
+- **Provider Full Access**: Healthcare providers (doctors, nurses, admins) have unrestricted access
+- **Cedar Policies**: Declarative security policies with runtime enforcement
+
+**Quick Setup:**
+```bash
+# After setting up the gateway, add policy enforcement
+python policy/setup_policy.py --gateway_id <gateway_id_here>
+
+# Test policy enforcement
+python policy/test_policy.py
+
+# Run agent with policy enforcement (same command as before)
+python strands_agent.py --gateway_id <gateway_id_here>
+```
+
 
 ## Clean up instructions
+### Optional: Remove Policy Enforcement
+
+If you added policy enforcement, remove it first:
+
+```bash
+python policy/cleanup_policy.py --gateway_id <gateway_id_here>
+```
+
+### Clean up Infrastructure
+
 Disable Cognito Auth with API Gateway
 
 ```

@@ -10,6 +10,16 @@ A comprehensive implementation of the [Agent-to-Agent (A2A)](https://a2a-protoco
 
 ![arch](./images/architecture.png)
 
+> [!NOTE]
+> **Default Models**
+>
+> This solution uses the following AI models by default:
+> - **Host Agent (Google ADK)**: `gemini-2.5-flash`
+> - **Monitoring Agent (Strands)**: `global.anthropic.claude-sonnet-4-5-20250929-v1:0` (Amazon Bedrock)
+> - **Web Search Agent (OpenAI)**: `gpt-4o-2024-08-06`
+>
+> These models can be customized during deployment. The deployment script will prompt you to specify different model IDs if needed.
+
 ## What is A2A?
 
 <details>
@@ -21,7 +31,7 @@ A comprehensive implementation of the [Agent-to-Agent (A2A)](https://a2a-protoco
    - **Authentication**: OAuth 2.0-based security model for secure inter-agent communication
    - **Interoperability**: Platform-agnostic design allowing agents from different frameworks to collaborate
 
-   Learn more about the A2A protocol: [A2A Specification](https://a2a.foundation/)
+   Learn more about the A2A protocol: [A2A Specification](https://a2a-protocol.org/)
 
    ## A2A Support on Amazon Bedrock AgentCore
 
@@ -60,13 +70,15 @@ A comprehensive implementation of the [Agent-to-Agent (A2A)](https://a2a-protoco
    - **Tavily API Key**: Get from [Tavily](https://tavily.com/)
    - **Google API Key**: Get from [Google AI Studio](https://aistudio.google.com/app/apikey)
 
-   > **Note**: Make sure your OpenAI account has credits if you are using `gpt-4o-2024-08-06`.
+   > **Note**: Make sure your OpenAI and Google account has credits if you are using paid models.
 
 6. **Supported Regions**: This solution is currently tested and supported in the following AWS regions:
 
    | Region Code   | Region Name          | Status      |
    |---------------|----------------------|-------------|
    | `us-west-2`   | US West (Oregon)     | ✅ Supported |
+
+It is important to note that this sample is restricted to us-west-2 region, however Amazon Bedrock AgentCore Runtime supports A2A protocol in various other regions as well. Please find the supported regions [here](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/agentcore-regions.html). 
 
 ## Quick Start Deployment
 
@@ -135,6 +147,19 @@ The [A2A Inspector](https://github.com/a2aproject/a2a-inspector) is a web-based 
 
 3. Paste the URL & bearer token (`Bearer <Add Here>`) on A2A Inspector and add three headers `Authorization`, `X-Amzn-Bedrock-AgentCore-Runtime-Session-Id`, and `X-Amzn-Bedrock-AgentCore-Runtime-Custom-Actorid`. The value of `X-Amzn-Bedrock-AgentCore-Runtime-Session-Id` should be atleast 32 characters (`550e8400-e29b-41d4-a716-446655440000
 `).
+
+### Bearer tokens
+
+You can obtain bearer tokens for each agent to use with tools like the A2A Inspector or for direct API testing.
+Get M2M token for the monitoring agent:
+
+```bash
+uv run monitoring_strands_agent/scripts/get_m2m_token.py
+
+uv run web_search_openai_agents/scripts/get_m2m_token.py
+
+uv run host_adk_agent/scripts/get_m2m_token.py
+```
 
 ## Test Scripts
 

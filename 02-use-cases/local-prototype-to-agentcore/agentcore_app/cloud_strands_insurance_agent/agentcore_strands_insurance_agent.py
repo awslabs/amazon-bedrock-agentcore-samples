@@ -112,7 +112,7 @@ def insurance_quote_agent(question: str):
             logger.info(f"Connected to MCP server, found {len(tools)} tools")
             
             # Get model name from environment or use default
-            model_name = os.getenv("MODEL_NAME", "us.anthropic.claude-3-7-sonnet-20250219-v1:0")
+            model_name = os.getenv("MODEL_NAME", "global.anthropic.claude-haiku-4-5-20251001-v1:0")
             
             # Create an agent with our tools
             agent = Agent(

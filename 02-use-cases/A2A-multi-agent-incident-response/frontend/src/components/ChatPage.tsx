@@ -3,7 +3,12 @@ import { Sidebar } from './Sidebar';
 import { ChatContainer } from './ChatContainer';
 import adkIcon from '../icons/adk.png';
 
-export function ChatPage() {
+interface ChatPageProps {
+  signOut: () => void
+  user: any
+}
+
+export function ChatPage({ signOut, user }: ChatPageProps) {
   const [sidebarWidth, setSidebarWidth] = useState(320); // Initial width in pixels (w-80 = 320px)
   const [isResizing, setIsResizing] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
@@ -57,7 +62,7 @@ export function ChatPage() {
       {/* Main Content - Takes remaining height */}
       <div className="flex-1 flex overflow-hidden min-h-0">
         <div ref={sidebarRef} style={{ width: `${sidebarWidth}px` }}>
-          <Sidebar />
+          <Sidebar signOut={signOut} />
         </div>
 
         {/* Resize Handle */}
@@ -66,8 +71,8 @@ export function ChatPage() {
           className="w-1 bg-gray-700 hover:bg-blue-500 cursor-col-resize transition-colors flex-shrink-0"
         />
 
-        <div className="flex-1 min-w-0">
-          <ChatContainer />
+        <div className="flex-1 min-w-0 flex flex-col h-full">
+          <ChatContainer user={user} />
         </div>
       </div>
     </div>

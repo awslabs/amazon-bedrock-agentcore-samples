@@ -1,0 +1,17 @@
+# Python virtual environments
+cx-agent-backend/cx/
+**/venv/
+**/__pycache__/
+
+# Terraform
+infra/.terraform/
+*.tfstate
+*.tfstate.backup
+terraform.tfvars
+
+# Build artifacts
+*.zip
+
+# IDE
+.vscode/
+.idea/

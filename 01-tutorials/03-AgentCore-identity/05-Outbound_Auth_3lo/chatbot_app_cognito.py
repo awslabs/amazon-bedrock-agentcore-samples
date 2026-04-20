@@ -5,12 +5,13 @@ import requests
 import urllib.parse
 import logging
 import re
-from runtime import get_data_plane_endpoint
 import sys
 import yaml
+import uuid
 import boto3
-
 from oauth2_callback_server import store_token_in_oauth2_callback_server
+
+logger = logging.getLogger()
 
 qualifier = "DEFAULT"
 # Configurable context window for chat history
@@ -25,25 +26,25 @@ def get_streamlit_url():
             domain_id = data["DomainId"]
             space_name = data["SpaceName"]
     except FileNotFoundError:
-        print(
+        logger.info(
             "Resource-metadata.json file not found -- running outside SageMaker Studio"
         )
         domain_id = None
         space_name = None
         # sys.exit(1)
     except json.JSONDecodeError:
-        print("Error: Invalid JSON format in resource-metadata.json")
+        logger.info("Error: Invalid JSON format in resource-metadata.json")
         sys.exit(1)
     except KeyError as e:
-        print(f"Error: Required key {e} not found in JSON")
+        logger.info(f"Error: Required key {e} not found in JSON")
         sys.exit(1)
 
     # Now you can use domain_id and space_name variables in your code
-    # print(f"Domain ID: {domain_id}")
-    # print(f"Space Name: {space_name}")
-    print("Please use the following to login and test the Streamlit Application")
-    print("Username:       testuser")
-    print("Password:       MyPassword123!")
+    # logger.info(f"Domain ID: {domain_id}")
+    # logger.info(f"Space Name: {space_name}")
+    logger.info("Please use the following to login and test the Streamlit Application")
+    logger.info("Username:       testuser")
+    logger.info("Password:       MyPassword123!")
     if domain_id is not None:
         sagemaker_client = boto3.client("sagemaker")
         # Replace 'your-space-name' and 'your-domain-id' with your actual values
@@ -123,10 +124,7 @@ def load_bedrock_agentcore_config():
         client_id = allowed_clients[0] if allowed_clients else None
 
         # Validate required fields
-        if not agent_session_id:
-            raise ValueError(
-                "agent_session_id not found in bedrock_agentcore configuration"
-            )
+
         if not agent_arn:
             raise ValueError("agent_arn not found in bedrock_agentcore configuration")
         if not client_id:
@@ -137,7 +135,7 @@ def load_bedrock_agentcore_config():
             raise ValueError("region not found in aws configuration")
 
         return {
-            "genesisSessionId": agent_session_id,
+            "agentSessionId": agent_session_id,
             "agentRuntimeArn": agent_arn,
             "client_id": client_id,
             "region": region,
@@ -156,13 +154,13 @@ def load_bedrock_agentcore_config():
 # Load configuration
 try:
     config = load_bedrock_agentcore_config()
-    genesisSessionId = config["genesisSessionId"]
+    agentSessionId = config["agentSessionId"]
     agentRuntimeArn = config["agentRuntimeArn"]
     client_id = config["client_id"]
     region = config["region"]
 except Exception as config_error:
     # These will be None if config loading fails, and we'll handle it in the main function
-    genesisSessionId = None
+    agentSessionId = None
     agentRuntimeArn = None
     client_id = None
     region = None
@@ -175,7 +173,7 @@ class StreamingHttpBedrockAgentCoreClient:
     def __init__(self, region: str):
         """Initialize StreamingHttpBedrockAgentCoreClient."""
         self.region = region
-        self.dp_endpoint = get_data_plane_endpoint(region)
+        self.dp_endpoint = f"https://bedrock-agentcore.{region}.amazonaws.com"
         self.logger = logging.getLogger(
             f"bedrock_agentcore.streaming_http_runtime.{region}"
         )
@@ -261,14 +259,9 @@ def main():
     import boto3
 
     # Check if configuration loading failed
-    if (
-        genesisSessionId is None
-        or agentRuntimeArn is None
-        or client_id is None
-        or region is None
-    ):
+    if agentRuntimeArn is None or client_id is None or region is None:
         st.markdown(
-            """
+            f"""
             <div style='max-width:600px;margin:40px auto 30px auto;padding:40px 40px 36px 40px;background:linear-gradient(145deg, #2d1b1b 0%, #3d2424 50%, #2d1b1b 100%);border-radius:24px;box-shadow:0 8px 32px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,87,87,0.3);border:2px solid rgba(255,87,87,0.4);position:relative;overflow:hidden;'>
                 <div style='position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg, #ff5757, #ff4757, #ff3838);'></div>
                 <div style='text-align:center;margin-bottom:32px;'>
@@ -284,7 +277,6 @@ def main():
                     <h4 style='color:#ff7675;margin:0 0 12px 0;font-weight:600;'>Required Configuration:</h4>
                     <ul style='color:#fab1a0;margin:0;padding-left:20px;'>
                         <li>Ensure <code>.bedrock_agentcore.yaml</code> exists in the current directory</li>
-                        <li>Verify <code>agent_session_id</code> is present in the bedrock_agentcore section</li>
                         <li>Verify <code>agent_arn</code> is present in the bedrock_agentcore section</li>
                         <li>Verify <code>allowedClients</code> is present in the authorizer_configuration section</li>
                         <li>Verify <code>region</code> is present in the aws section</li>
@@ -595,9 +587,9 @@ def main():
     # Initialize chat history
     if "messages" not in st.session_state:
         st.session_state.messages = []
-    if "genesisSessionId" not in st.session_state:
-        st.session_state["genesisSessionId"] = (
-            genesisSessionId  # Initialize from config
+    if "agentSessionId" not in st.session_state:
+        st.session_state["agentSessionId"] = (
+            agentSessionId if agentSessionId else str(uuid.uuid4())
         )
 
     # Display chat messages from history on app rerun
@@ -666,7 +658,7 @@ def main():
 
             try:
                 # Setup streaming client
-                session_id = st.session_state.get("genesisSessionId")
+                session_id = st.session_state.get("agentSessionId")
                 context = build_context(st.session_state.messages, CONTEXT_WINDOW)
                 payload = json.dumps({"prompt": context})
                 bearer_token = st.session_state.get("cognito_access_token")
@@ -736,7 +728,7 @@ def main():
 
                                         if json_end != -1:
                                             json_str = json_str[:json_end]
-                                            print(
+                                            logger.info(
                                                 f"Extracted JSON: {json_str}"
                                             )  # Debug print
                                             response_data = json.loads(json_str)
@@ -751,13 +743,15 @@ def main():
                                                 formatted_response = response_data[
                                                     "content"
                                                 ][0]["text"]
-                                                print(
+                                                logger.info(
                                                     f"Extracted text: {formatted_response}"
                                                 )  # Debug print
 
                             except (json.JSONDecodeError, KeyError, IndexError) as e:
-                                print(f"JSON parsing error: {e}")
-                                print(f"Accumulated response: {accumulated_response}")
+                                logger.info(f"JSON parsing error: {e}")
+                                logger.info(
+                                    f"Accumulated response: {accumulated_response}"
+                                )
                                 # Fallback to show full response for debugging
                                 formatted_response = accumulated_response
                             break

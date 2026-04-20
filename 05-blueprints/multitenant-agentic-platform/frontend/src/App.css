@@ -1,0 +1,107 @@
+/* Minimal custom styles - HeroUI v3 handles most styling */
+
+/* Custom utility classes for spacing and layout */
+.space-y-1 > * + * { margin-top: 0.25rem; }
+.space-y-2 > * + * { margin-top: 0.5rem; }
+.space-y-4 > * + * { margin-top: 1rem; }
+.space-y-6 > * + * { margin-top: 1.5rem; }
+
+/* Table styles */
+table {
+  border-collapse: collapse;
+  font-family: inherit;
+}
+
+th, td {
+  text-align: left;
+  font-family: inherit;
+}
+
+/* Code styling - use monospace font */
+code {
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace);
+}
+
+/* Ensure charts use the same font */
+.recharts-wrapper,
+.recharts-text,
+.recharts-cartesian-axis-tick-value {
+  font-family: var(--font-sans, ui-sans-serif, system-ui, sans-serif) !important;
+}
+
+/* Smooth transitions - exclude font properties */
+* {
+  transition-property: background-color, border-color, color, opacity, transform;
+  transition-duration: 150ms;
+  transition-timing-function: ease;
+}
+
+/* Modal Advanced Configuration - Form field visibility improvements */
+.bg-surface-secondary input,
+.bg-surface-secondary textarea {
+  background-color: #fff !important;
+  border: 1px solid rgba(0, 0, 0, 0.3) !important;
+  border-radius: 0.5rem;
+}
+
+.bg-surface-secondary input:focus,
+.bg-surface-secondary textarea:focus {
+  border-color: #0066cc !important;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(0, 102, 204, 0.2);
+}
+
+/* Select/Dropdown styling with custom class */
+.modal-select-trigger {
+  background-color: #fff !important;
+  border: 1px solid rgba(0, 0, 0, 0.3) !important;
+  border-radius: 0.5rem !important;
+}
+
+.modal-select-trigger:hover {
+  border-color: rgba(0, 0, 0, 0.5) !important;
+}
+
+.modal-select-trigger:focus {
+  border-color: #0066cc !important;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(0, 102, 204, 0.2);
+}
+
+/* Checkbox styling with custom class */
+.modal-checkbox-control {
+  background-color: #fff !important;
+  border: 2px solid rgba(0, 0, 0, 0.4) !important;
+  border-radius: 0.25rem !important;
+  width: 1.25rem !important;
+  height: 1.25rem !important;
+  min-width: 1.25rem !important;
+  min-height: 1.25rem !important;
+}
+
+.modal-checkbox-control:hover {
+  border-color: rgba(0, 0, 0, 0.6) !important;
+}
+
+.modal-checkbox[data-selected] .modal-checkbox-control,
+.modal-checkbox-control[data-selected] {
+  background-color: #0066cc !important;
+  border-color: #0066cc !important;
+}
+
+/* Dark mode adjustments */
+[data-theme="dark"] .bg-surface-secondary input,
+[data-theme="dark"] .bg-surface-secondary textarea {
+  background-color: #333 !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
+}
+
+[data-theme="dark"] .modal-select-trigger {
+  background-color: #333 !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
+}
+
+[data-theme="dark"] .modal-checkbox-control {
+  background-color: #333 !important;
+  border-color: rgba(255, 255, 255, 0.4) !important;
+}

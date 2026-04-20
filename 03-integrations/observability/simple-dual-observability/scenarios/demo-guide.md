@@ -28,7 +28,7 @@ uv run python simple_observability.py --agent-id $AGENTCORE_AGENT_ID --scenario 
 ## Scenario 1: Successful Multi-Tool Query
 
 ### Purpose
-Demonstrate successful agent execution with multiple tool calls, showcasing how traces flow through both CloudWatch and Braintrust.
+Demonstrate successful agent execution with multiple tool calls, showcasing traces in CloudWatch (automatic) and optionally in Braintrust (if configured).
 
 ### Query
 ```
@@ -341,7 +341,7 @@ Total demonstration time: 3-4 minutes
 ## Scenario 3: Dashboard Review
 
 ### Purpose
-Walk through both CloudWatch and Braintrust dashboards to show comprehensive observability coverage.
+Walk through CloudWatch and Braintrust dashboards to show observability coverage. CloudWatch shows automatic infrastructure-level traces; Braintrust shows agent-level OTEL traces (if configured).
 
 ### How to Run
 
@@ -699,7 +699,7 @@ If primary demo queries fail, use these alternatives:
 ### Demo Success Checklist
 
 - [ ] Successfully executed multi-tool query
-- [ ] Showed both CloudWatch and Braintrust traces
+- [ ] Showed CloudWatch traces (automatic) and Braintrust traces (if configured)
 - [ ] Demonstrated error handling
 - [ ] Explained key metrics and their business value
 - [ ] Connected operational and development workflows
