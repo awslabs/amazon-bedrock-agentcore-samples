@@ -12,4 +12,7 @@ dependencies = [
     "strands-agents-tools",
     "strands-agents",
     "opentelemetry-sdk",
+    "opentelemetry-exporter-otlp-proto-http",
+    "ddgs",
+    "requests",
 ]
