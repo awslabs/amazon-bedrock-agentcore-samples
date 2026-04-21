@@ -124,7 +124,7 @@ class SREMemoryClient:
                     memory_id=self.memory_id,
                     name="user_preferences",
                     description="User preferences for escalation, notification, and workflows",
-                    namespaces=["/sre/users/{actorId}/preferences"],
+                    namespaces=["/sre/users/{actorId}/preferences/"],
                 )
                 logger.info("Added user preferences strategy")
             else:
@@ -137,7 +137,7 @@ class SREMemoryClient:
                     memory_id=self.memory_id,
                     name="infrastructure_knowledge",
                     description="Infrastructure knowledge including dependencies and patterns",
-                    namespaces=["/sre/infrastructure/{actorId}/{sessionId}"],
+                    namespaces=["/sre/infrastructure/{actorId}/{sessionId}/"],
                 )
                 logger.info("Added infrastructure knowledge strategy")
             else:
@@ -152,7 +152,7 @@ class SREMemoryClient:
                     memory_id=self.memory_id,
                     name="investigation_summaries",
                     description="Investigation summaries with timeline and findings",
-                    namespaces=["/sre/investigations/{actorId}/{sessionId}"],
+                    namespaces=["/sre/investigations/{actorId}/{sessionId}/"],
                 )
                 logger.info("Added investigation summaries strategy")
             else:
@@ -297,11 +297,11 @@ class SREMemoryClient:
         """Get the appropriate namespace for a memory type and actor.
 
         Based on the namespace templates defined in memory initialization:
-        - preferences: /sre/users/{actorId}/preferences (no sessionId - always user-wide)
-        - infrastructure: /sre/infrastructure/{actorId}/{sessionId} (session-specific) or
-                         /sre/infrastructure/{actorId} (cross-session when session_id=None)
-        - investigations: /sre/investigations/{actorId}/{sessionId} (session-specific) or
-                         /sre/investigations/{actorId} (cross-session when session_id=None)
+        - preferences: /sre/users/{actorId}/preferences/ (no sessionId - always user-wide)
+        - infrastructure: /sre/infrastructure/{actorId}/{sessionId}/ (session-specific) or
+                         /sre/infrastructure/{actorId}/ (cross-session when session_id=None)
+        - investigations: /sre/investigations/{actorId}/{sessionId}/ (session-specific) or
+                         /sre/investigations/{actorId}/ (cross-session when session_id=None)
 
         Args:
             memory_type: Type of memory (preferences, infrastructure, investigations)
@@ -310,23 +310,23 @@ class SREMemoryClient:
         """
         if memory_type == "preferences":
             # Preferences are always user-wide, ignore session_id
-            return f"/sre/users/{actor_id}/preferences"
+            return f"/sre/users/{actor_id}/preferences/"
         elif memory_type == "infrastructure":
             if session_id is None:
                 # Cross-session search: use base namespace to search across all sessions
-                return f"/sre/infrastructure/{actor_id}"
+                return f"/sre/infrastructure/{actor_id}/"
             else:
                 # Session-specific search: include session_id in namespace
-                return f"/sre/infrastructure/{actor_id}/{session_id}"
+                return f"/sre/infrastructure/{actor_id}/{session_id}/"
         elif memory_type == "investigations":
             if session_id is None:
                 # Cross-session search: use base namespace to search across all sessions
-                return f"/sre/investigations/{actor_id}"
+                return f"/sre/investigations/{actor_id}/"
             else:
                 # Session-specific search: include session_id in namespace
-                return f"/sre/investigations/{actor_id}/{session_id}"
+                return f"/sre/investigations/{actor_id}/{session_id}/"
         else:
-            return f"/sre/default/{actor_id}"
+            return f"/sre/default/{actor_id}/"
 
     def _find_existing_memory(self) -> Optional[Dict[str, Any]]:
         """Find existing memory by name."""

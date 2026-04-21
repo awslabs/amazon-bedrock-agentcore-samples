@@ -516,11 +516,11 @@ class MemoryHookProvider:
         memories_by_agent = {}
 
         for memory in memories:
-            # Extract agent from namespace (format: /sre/infrastructure/{agent_id})
+            # Extract agent from namespace (format: /sre/infrastructure/{agent_id}/)
             namespaces = memory.get("namespaces", [])
             if namespaces and len(namespaces) > 0:
                 namespace = namespaces[0]
-                # Extract agent_id from namespace like "/sre/infrastructure/kubernetes-agent"
+                # Extract agent_id from namespace like "/sre/infrastructure/kubernetes-agent/"
                 parts = namespace.split("/")
                 if (
                     len(parts) >= 4

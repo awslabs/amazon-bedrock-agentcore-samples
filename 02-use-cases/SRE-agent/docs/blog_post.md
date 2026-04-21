@@ -67,11 +67,11 @@ The system showcases the power of Amazon Bedrock AgentCore by utilizing multiple
 
 **AgentCore Memory**: Transforms the SRE Agent from a stateless system into an intelligent, learning assistant that personalizes investigations based on user preferences and historical context. The memory system provides three distinct strategies:
 
-- **User Preferences Strategy** (`/sre/users/{user_id}/preferences`): Stores individual user preferences for investigation style, communication channels, escalation procedures, and report formatting. For example, Alice (Technical SRE) receives detailed systematic analysis with troubleshooting steps, while Carol (Executive/Director) receives business-focused summaries with impact analysis.
+- **User Preferences Strategy** (`/sre/users/{user_id}/preferences/`): Stores individual user preferences for investigation style, communication channels, escalation procedures, and report formatting. For example, Alice (Technical SRE) receives detailed systematic analysis with troubleshooting steps, while Carol (Executive/Director) receives business-focused summaries with impact analysis.
 
-- **Infrastructure Knowledge Strategy** (`/sre/infrastructure/{user_id}/{session_id}`): Accumulates domain expertise across investigations, allowing agents to learn from past discoveries. When the Kubernetes agent identifies a memory leak pattern, this knowledge becomes available for future investigations, enabling faster root cause identification.
+- **Infrastructure Knowledge Strategy** (`/sre/infrastructure/{user_id}/{session_id}/`): Accumulates domain expertise across investigations, allowing agents to learn from past discoveries. When the Kubernetes agent identifies a memory leak pattern, this knowledge becomes available for future investigations, enabling faster root cause identification.
 
-- **Investigation Memory Strategy** (`/sre/investigations/{user_id}/{session_id}`): Maintains historical context of past incidents and their resolutions. This enables the system to suggest proven remediation approaches and avoid anti-patterns that previously failed.
+- **Investigation Memory Strategy** (`/sre/investigations/{user_id}/{session_id}/`): Maintains historical context of past incidents and their resolutions. This enables the system to suggest proven remediation approaches and avoid anti-patterns that previously failed.
 
 The memory system demonstrates its value through personalized investigations. When both Alice and Carol investigate "API response times have degraded 3x in the last hour," they receive identical technical findings but completely different presentations:
 
@@ -356,9 +356,9 @@ for strategy in strategies:
 ```
 
 The three strategies each serve distinct purposes:
-- **User Preferences**: `/sre/users/{user_id}/preferences` - Individual investigation styles and communication preferences
-- **Infrastructure Knowledge**: `/sre/infrastructure/{user_id}/{session_id}` - Domain expertise accumulated across investigations
-- **Investigation Summaries**: `/sre/investigations/{user_id}/{session_id}` - Historical incident patterns and resolutions
+- **User Preferences**: `/sre/users/{user_id}/preferences/` - Individual investigation styles and communication preferences
+- **Infrastructure Knowledge**: `/sre/infrastructure/{user_id}/{session_id}/` - Domain expertise accumulated across investigations
+- **Investigation Summaries**: `/sre/investigations/{user_id}/{session_id}/` - Historical incident patterns and resolutions
 
 #### Step 2: Load User Personas and Preferences
 
@@ -403,7 +403,7 @@ memory_client.create_event(
 
 # Memory system automatically:
 # 1. Checks all strategy namespaces
-# 2. Matches actor_id "Alice" to /sre/users/Alice/preferences
+# 2. Matches actor_id "Alice" to /sre/users/Alice/preferences/
 # 3. Stores event in User Preferences Strategy
 # 4. Makes event available for future retrievals
 ```

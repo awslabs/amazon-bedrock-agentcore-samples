@@ -339,14 +339,14 @@ class CostOptimizationAgentDeployer:
                     StrategyType.USER_PREFERENCE.value: {
                         "name": "TeamPreferences",
                         "description": "Stores team preferences, budget allocations, and notification settings",
-                        "namespaces": ["cost-optimization/team/{actorId}/preferences"],
+                        "namespaces": ["cost-optimization/team/{actorId}/preferences/"],
                     }
                 },
                 {
                     StrategyType.SEMANTIC.value: {
                         "name": "CostBaselinesSemantic",
                         "description": "Maintains cost baselines, historical patterns, and optimization outcomes",
-                        "namespaces": ["cost-optimization/baselines"],
+                        "namespaces": ["cost-optimization/baselines/"],
                     }
                 },
             ]

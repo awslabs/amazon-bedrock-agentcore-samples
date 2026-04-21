@@ -49,9 +49,9 @@ The memory system uses Amazon Bedrock AgentCore Memory's sophisticated event-bas
 ### Memory Strategies and Namespaces
 When the SRE Agent initializes, it creates three memory strategies with specific namespace patterns:
 
-1. **User Preferences Strategy**: Namespace pattern `/sre/users/{user_id}/preferences`
-2. **Infrastructure Knowledge Strategy**: Namespace pattern `/sre/infrastructure/{user_id}/{session_id}`  
-3. **Investigation Memory Strategy**: Namespace pattern `/sre/investigations/{user_id}/{session_id}`
+1. **User Preferences Strategy**: Namespace pattern `/sre/users/{user_id}/preferences/`
+2. **Infrastructure Knowledge Strategy**: Namespace pattern `/sre/infrastructure/{user_id}/{session_id}/`  
+3. **Investigation Memory Strategy**: Namespace pattern `/sre/investigations/{user_id}/{session_id}/`
 
 ### How Namespace Routing Works
 The key insight is that **the SRE Agent only needs to provide the actor_id** when calling `create_event()`. Amazon Bedrock AgentCore Memory automatically:
@@ -64,9 +64,9 @@ The key insight is that **the SRE Agent only needs to provide the actor_id** whe
 ### Actor ID Design for Memory Namespace Isolation
 The memory system uses a consistent actor_id strategy to ensure proper namespace isolation:
 
-- **User preferences**: Use user_id as actor_id (e.g., "Alice") for personal namespaces (`/sre/users/Alice/preferences`)
+- **User preferences**: Use user_id as actor_id (e.g., "Alice") for personal namespaces (`/sre/users/Alice/preferences/`)
 - **Infrastructure knowledge**: Use agent-specific actor_ids (e.g., "kubernetes-agent") for domain expertise namespaces
-- **Investigation summaries**: Use user_id as actor_id for personal investigation history (`/sre/investigations/Alice`)
+- **Investigation summaries**: Use user_id as actor_id for personal investigation history (`/sre/investigations/Alice/`)
 - **Conversation memory**: Use user_id to maintain personal conversation context
 
 This design ensures that:
@@ -93,7 +93,7 @@ memory_client.create_event(
 
 # Amazon Bedrock AgentCore Memory automatically:
 # 1. Checks all strategy namespaces for this memory
-# 2. Matches actor_id "Alice" to namespace "/sre/users/Alice/preferences" 
+# 2. Matches actor_id "Alice" to namespace "/sre/users/Alice/preferences/" 
 # 3. Stores event in User Preferences Strategy
 # 4. Makes event available for future retrievals
 ```
@@ -293,7 +293,7 @@ Here's a real example from `agent.log` showing how the planning agent retrieves 
 
 # Planning agent tool calls to gather context
 2025-08-03 17:49:01,067,p1290668,{tools.py:317},INFO,retrieve_memory called: type=preference, query='user settings communication escalation notification', actor_id=Alice -> Alice, max_results=5
-2025-08-03 17:49:01,067,p1290668,{client.py:236},INFO,Retrieving preferences memories: actor_id=Alice, namespace=/sre/users/Alice/preferences, query='user settings communication escalation notification'
+2025-08-03 17:49:01,067,p1290668,{client.py:236},INFO,Retrieving preferences memories: actor_id=Alice, namespace=/sre/users/Alice/preferences/, query='user settings communication escalation notification'
 ```
 
 This shows the planning agent:
