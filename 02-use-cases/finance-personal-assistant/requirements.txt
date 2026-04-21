@@ -127,7 +127,7 @@ kiwisolver==1.4.9
     # via matplotlib
 lazy-object-proxy==1.12.0
     # via openapi-spec-validator
-lxml==6.0.1
+lxml==6.1.0
     # via readabilipy
 markdown-it-py==4.0.0
     # via rich
