@@ -145,7 +145,7 @@ pyperclip==1.11.0
     # via fastmcp
 python-dateutil==2.9.0.post0
     # via botocore
-python-dotenv==1.1.1
+python-dotenv==1.2.2
     # via
     #   fastmcp
     #   pydantic-settings
