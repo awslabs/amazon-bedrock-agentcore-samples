@@ -17,9 +17,6 @@ def lambda_handler(event, context):
         while True:
             scan_kwargs = {
                 "FilterExpression": Attr("aggregation_key").begins_with("tenant:"),
-                # Only retrieve fields needed by the frontend
-                "ProjectionExpression": "aggregation_key, tenant_id, total_tokens, token_limit, #ts",
-                "ExpressionAttributeNames": {"#ts": "timestamp"}  # 'timestamp' is a reserved word
             }
             
             if last_evaluated_key:

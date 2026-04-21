@@ -33,7 +33,10 @@ class AgentRuntimeConstruct(Construct):
                                 "bedrock:InvokeModel",
                                 "bedrock:InvokeModelWithResponseStream",
                             ],
-                            resources=[f"arn:aws:bedrock:{region}::foundation-model/*"],
+                            resources=[
+                                "arn:aws:bedrock:*::foundation-model/*",
+                                "arn:aws:bedrock:*:*:inference-profile/*",
+                            ],
                         ),
                         # AgentCore runtime permissions
                         iam.PolicyStatement(
