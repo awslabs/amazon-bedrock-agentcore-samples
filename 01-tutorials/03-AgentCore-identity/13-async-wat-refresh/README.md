@@ -125,6 +125,5 @@ aws cognito-idp delete-user-pool --user-pool-id $POOL_ID --region us-east-1
 
 ## Related
 
-- [AgentCore Thread Utils library](https://gitlab.aws.dev/guilhg/AgentCoreThreadUtils) — full library with tests and documentation
 - [AgentCore Identity - Getting Started](../01-getting_started.md)
 - [AgentCore Identity - How It Works](../02-how_it_works.md)
