@@ -113,3 +113,7 @@
 - Richa Gupta (richagpt)
 - Chandra Dhandapani
 - Anant Murarka (anantmu)
+- Guilherme Greco
+- Alex Rosa
+- André Weber
+- Eduardo Henrique de Souza Mendes
