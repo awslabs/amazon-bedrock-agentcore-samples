@@ -157,7 +157,7 @@ def get_or_create_m2m_client(cognito, user_pool_id, CLIENT_NAME, RESOURCE_SERVER
 
 def get_token(user_pool_id: str, client_id: str, client_secret: str, scope_string: str, REGION: str) -> dict:
     try:
-        user_pool_id_without_underscore = user_pool_id.replace("_", "")
+        user_pool_id_without_underscore = user_pool_id.replace("_", "").lower()
         url = f"https://{user_pool_id_without_underscore}.auth.{REGION}.amazoncognito.com/oauth2/token"
         headers = {"Content-Type": "application/x-www-form-urlencoded"}
         data = {

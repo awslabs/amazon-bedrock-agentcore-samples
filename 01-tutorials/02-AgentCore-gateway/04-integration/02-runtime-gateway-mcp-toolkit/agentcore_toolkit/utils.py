@@ -304,7 +304,7 @@ def get_token(
     REGION: str,
 ) -> dict:
     try:
-        user_pool_id_without_underscore = user_pool_id.replace("_", "")
+        user_pool_id_without_underscore = user_pool_id.replace("_", "").lower()
         url = f"https://{user_pool_id_without_underscore}.auth.{REGION}.amazoncognito.com/oauth2/token"
         headers = {"Content-Type": "application/x-www-form-urlencoded"}
         data = {
