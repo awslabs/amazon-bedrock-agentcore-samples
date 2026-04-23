@@ -73,6 +73,7 @@
 - mani-aiml
 - Sindhura Palakodety
 - Bhuvan Annamreddi
+- GengisAWS
 - Sparsh Wadhwa (SparshWadhwa)
 - Lana Zhang
 - Bharathi Srinivasan

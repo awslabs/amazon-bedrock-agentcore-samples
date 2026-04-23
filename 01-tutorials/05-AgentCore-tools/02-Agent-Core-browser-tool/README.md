@@ -59,6 +59,9 @@ These tutorials demonstrate AgentCore Browser Tool capabilities across different
 **Strands Examples**
 - [Getting Started with Bedrock AgentCore Browser Tool and Strands](04-browser-with-Strands/01_getting_started-agentcore-browser-tool-with-strands.ipynb)
 
+**Google ADK Examples**
+- [AgentCore Browser Tool with Playwright and Google ADK on Runtime](09-browser-with-playwright-ADK/01-agentcore-browser-tool-adk-playwright-runtime.ipynb)
+
 ### Advanced Features
 
 **Observability**
