@@ -25,6 +25,8 @@ Resources:
         rules_to_suppress:
           - id: AwsSolutions-COG2
             reason: "Sample/demo environment — MFA kept optional to reduce setup friction for demonstration purposes"
+          - id: AwsSolutions-COG8
+            reason: "Cognito Advanced Security Features (plus tier) not required for sample/demo environment — adds cost without demo value"
     Properties:
       UserPoolName: !Sub hr-dlp-user-pool-${Environment}
       AutoVerifiedAttributes: [email]

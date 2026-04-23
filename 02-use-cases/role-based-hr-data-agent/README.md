@@ -16,18 +16,25 @@
   - Implement proper error handling, logging, and monitoring
   - Follow all AWS best practices for production deployments
 
-A role-based HR data access agent with automatic **scope-based field redaction** using Amazon Bedrock AgentCore. The agent enforces data access policies based on each caller's OAuth 2.0 scopes — without changing application code.
+## Overview
 
-**Key capabilities:**
-- **Amazon Bedrock AgentCore Runtime** — hosts the Strands Agent; receives user prompts and drives MCP tool calls via the Gateway
-- **Amazon Bedrock AgentCore Gateway** — central policy enforcement point; routes every `tools/list` and `tools/call` through interceptors and Cedar
-- **Request Interceptor** — decodes JWT and injects tenant context on every `tools/call`
-- **Cedar Policy Engine** — Allow/Deny per tool based on OAuth scopes
-- **Response Interceptor** — hides tools from `tools/list` and redacts fields on `tools/call` responses
-- **Multi-tenant isolation** — tenant resolved from OAuth `client_id`; no custom JWT claims needed
-- **Cognito OAuth 2.0** — `client_credentials` with custom scopes per persona
+A role-based HR data access agent with automatic **scope-based field redaction** using Amazon Bedrock AgentCore. The agent enforces fine-grained data access policies based on each caller's OAuth 2.0 scopes — without changing application code.
 
-> **Note:** This sample uses AWS Lambda as the AgentCore Gateway target.
+**Key Capabilities:**
+- **Field-Level Data Loss Prevention (DLP)**: Automatically redacts sensitive fields (salary, email, address) based on caller's OAuth scopes
+- **Role-Based Access Control**: Four personas (HR Manager, HR Specialist, Employee, Admin) with different permission levels
+- **Cedar Authorization**: Policy-based tool access control evaluated at the Gateway
+- **Multi-Tenant Isolation**: Tenant context automatically injected from OAuth client ID
+- **Request/Response Interception**: JWT decoding and field redaction via Lambda interceptors
+- **Amazon Cognito OAuth 2.0**: Client credentials flow with custom scopes per persona
+
+**Architecture Components:**
+- **Amazon Bedrock AgentCore Runtime** — hosts the Strands Agent; receives user prompts and orchestrates MCP tool calls
+- **Amazon Bedrock AgentCore Gateway** — central policy enforcement point with JWT authentication, Cedar policies, and Lambda interceptors
+- **Request Interceptor Lambda** — decodes JWT, injects tenant context into every tool call
+- **Cedar Policy Engine** — evaluates Allow/Deny decisions per tool based on OAuth scopes
+- **Response Interceptor Lambda** — applies field-level redaction and filters tool discovery
+- **HR Data Provider Lambda** — MCP server providing three tools: search_employee, get_employee_profile, get_employee_compensation
 
 ![Architecture](docs/screenshots/full-architecture.png)
 
@@ -79,24 +86,35 @@ Step 2 (`prereq.sh`) creates a Cognito User Pool with a resource server (`hr-dlp
 
 ## Prerequisites
 
-- AWS account with Amazon Bedrock AgentCore access (us-east-1)
-- **Claude Haiku 4.5** enabled via cross-region inference (CRIS) in your account
-- Python 3.10+
-- AWS CLI configured (`aws configure`)
+**AWS Requirements:**
+- AWS account with Amazon Bedrock AgentCore access
+- AWS CLI configured with administrator access (or IAM permissions for Lambda, Cognito, AgentCore, IAM, S3, SSM)
+- **Supported Region**: `us-east-1` (Amazon Bedrock AgentCore availability)
+- **Claude Haiku 4.5** model access enabled in Amazon Bedrock via cross-region inference (CRIS)
+  - Navigate to [Amazon Bedrock Console](https://console.aws.amazon.com/bedrock/)
+  - Go to "Model access" and enable Claude Haiku 4.5
+
+**Development Environment:**
+- Python 3.10 or higher
 - [uv](https://docs.astral.sh/uv/) (recommended) or pip
+- Git (to clone the repository)
 
-## Setup
+## Quick Start
 
-### Step 1: Clone and install
+### Step 1: Clone and install dependencies
 
 ```bash
 git clone https://github.com/awslabs/agentcore-samples.git
 cd agentcore-samples/02-use-cases/role-based-hr-data-agent
 
+# Option A: Using uv (recommended)
 uv sync
+
+# Option B: Using pip
+pip install -r requirements.txt
 ```
 
-### Step 2: Deploy infrastructure
+### Step 2: Deploy prerequisites
 
 Packages Lambda functions and deploys CloudFormation stacks for Lambda, IAM, and Cognito. Stores all resource IDs in SSM under `/app/hrdlp/*`.
 
@@ -104,29 +122,67 @@ Packages Lambda functions and deploys CloudFormation stacks for Lambda, IAM, and
 bash scripts/prereq.sh --region us-east-1 --env dev
 ```
 
-### Step 3: Create the AgentCore Gateway
+### Step 3: Deploy Amazon Bedrock AgentCore infrastructure
 
-Creates the Gateway with JWT authorizer, Lambda target (3 HR tools), and request/response interceptors. The Lambda target **must** be attached before Step 4 — Cedar builds its policy schema from the registered tool names.
+Package the runtime agent and deploy Gateway, GatewayTarget, Cedar Policy Engine, and Runtime via CloudFormation (~5-6 minutes):
+
+```bash
+bash scripts/package_runtime.sh
+bash scripts/deploy_cfn.sh us-east-1 dev
+```
+
+**What this deploys:**
+- **1 Amazon Bedrock AgentCore Gateway** with JWT authentication and Lambda interceptors
+- **1 GatewayTarget** (Lambda MCP server with 3 HR tools: search_employee, get_employee_profile, get_employee_compensation)
+- **1 Cedar Policy Engine** with 3 authorization policies (default: LOG_ONLY mode)
+- **1 Amazon Bedrock AgentCore Runtime** (Strands agent)
+- All resource IDs written to AWS Systems Manager Parameter Store (`/app/hrdlp/*`)
+
+**Cedar Policy Modes:**
+- `LOG_ONLY` (default): Policies log decisions but do not block requests
+- `ENFORCE`: Policies block unauthorized requests
+
+To deploy in ENFORCE mode:
+```bash
+bash scripts/deploy_cfn.sh us-east-1 dev ENFORCE
+```
+
+### Step 4: Run the Streamlit app
+
+```bash
+streamlit run app.py
+```
+
+Open http://localhost:8501. Select a persona, click **Get OAuth Token**, then ask a question such as *"Show me John Smith's compensation"*. Switch personas to see field redaction applied automatically.
+
+---
+
+### Alternative: Manual boto3 deployment (legacy)
+
+<details>
+<summary>Click to expand legacy 5-step boto3 deployment</summary>
+
+If you need to deploy AgentCore resources individually via boto3 instead of CloudFormation:
+
+**Step 3a: Create the AgentCore Gateway**
 
 ```bash
 python scripts/agentcore_gateway.py create --config prerequisite/prereqs_config.yaml
 ```
 
-### Step 4: Create the Cedar Policy Engine
-
-Attaches the Cedar Policy Engine and creates the three HR authorization policies. Uses a two-phase `update_gateway` approach: Phase A attaches the engine **without interceptors** so Cedar's internal schema initialization call succeeds, then Phase B restores the interceptors once policies are ACTIVE.
+**Step 3b: Create the Cedar Policy Engine**
 
 ```bash
 python scripts/create_cedar_policies.py --region us-east-1 --env dev
 ```
 
-Default mode is `LOG_ONLY`. Switch to enforcement for production:
+Default mode is `LOG_ONLY`. Switch to enforcement:
 
 ```bash
 python scripts/create_cedar_policies.py --mode ENFORCE
 ```
 
-### Step 5: Deploy the AgentCore Runtime
+**Step 3c: Deploy the AgentCore Runtime**
 
 ```bash
 bash scripts/package_runtime.sh
@@ -137,17 +193,23 @@ aws s3 cp dist/runtime.zip s3://${BUCKET}/hr-data-agent/runtime.zip
 python scripts/agentcore_agent_runtime.py create
 ```
 
-### Step 6: Run the Streamlit app
+> **Note:** The boto3 scripts (`agentcore_gateway.py`, `create_cedar_policies.py`, `agentcore_agent_runtime.py`) are maintained for backwards compatibility and advanced use cases. The CloudFormation approach (Step 3 above) is recommended for most deployments.
 
-```bash
-streamlit run app.py
-```
-
-Open http://localhost:8501. Select a persona, click **Get OAuth Token**, then ask a question such as *"Show me John Smith's compensation"*. Switch personas to see field redaction applied automatically.
+</details>
 
 ## Testing
 
 > **Note:** Cedar defaults to `LOG_ONLY` mode — policies log decisions but do not block requests. Tests are expected to pass in either mode; switch to `ENFORCE` only when ready for production.
+
+### Quick validation (20 tests)
+
+Validates the full CloudFormation deployment across all personas:
+
+```bash
+bash run_quick_validation.sh
+```
+
+Expected: `20/20 PASS` — verifies Gateway, Runtime, interceptors, Cedar policies, and role-based access control.
 
 ### Verify field redaction
 
@@ -190,6 +252,44 @@ aws logs tail /aws/lambda/hr-response-interceptor-lambda-${ENV} --since 1h --fol
 
 ## Troubleshooting
 
+**CloudFormation stack fails to create**
+Check CloudFormation Events in the AWS console for detailed error messages. Common causes:
+- Missing prerequisites: Ensure Step 2 (`prereq.sh`) completed successfully
+- SSM parameters missing: `aws ssm get-parameters-by-path --path /app/hrdlp --recursive`
+- Region mismatch: Gateway, Runtime, and Lambda must be in the same region
+- **PropertyValidation error**: Gateway names must use hyphens (not underscores), Runtime names must use underscores (not hyphens). See `CLOUDFORMATION_MIGRATION_SUMMARY.md` for details.
+
+**Runtime `CREATE_FAILED` — ARM64 binary incompatibility**
+macOS packaging pulled darwin binaries. Delete the old zip and repackage:
+```bash
+rm -f dist/runtime.zip && bash scripts/package_runtime.sh
+```
+
+**SSM parameters missing when running the app**
+Complete Steps 2–3 first. Verify all parameters are present:
+```bash
+aws ssm get-parameters-by-path --path /app/hrdlp --recursive --query "Parameters[].Name" --output text
+```
+
+**Cedar policy failures (LOG_ONLY mode)**
+Cedar defaults to `LOG_ONLY` — policies log decisions but do not block requests. To enforce:
+```bash
+bash scripts/deploy_cfn.sh us-east-1 dev ENFORCE
+```
+
+**Stale Runtime exists before create**
+`cleanup_cfn.sh` can miss runtimes. Verify before redeploying:
+```bash
+aws bedrock-agentcore-control list-agent-runtimes --region us-east-1
+```
+
+---
+
+### Troubleshooting (legacy boto3 deployment)
+
+<details>
+<summary>Click to expand legacy troubleshooting</summary>
+
 **Cedar `CREATE_FAILED: An internal error occurred during creation`**
 Cedar's schema initialization failed — usually the engine is in a corrupted state from a prior failed run. Clean up and redeploy from Step 2:
 ```bash
@@ -202,23 +302,13 @@ No Lambda target is registered. Complete Step 3 before running Step 4.
 python scripts/agentcore_gateway.py create --config prerequisite/prereqs_config.yaml
 ```
 
-**Runtime `CREATE_FAILED` — ARM64 binary incompatibility**
-macOS packaging pulled darwin binaries. Delete the old zip and repackage:
-```bash
-rm -f dist/runtime.zip && bash scripts/package_runtime.sh
-```
-
-**SSM parameters missing when running the app**
-Complete Steps 2–5 first. Verify all parameters are present:
-```bash
-aws ssm get-parameters-by-path --path /app/hrdlp --recursive --query "Parameters[].Name" --output text
-```
-
 **Runtime returns 403 after update**
 `update-agent-runtime` resets fields not explicitly passed. Run the full update command:
 ```bash
 python scripts/agentcore_agent_runtime.py update
 ```
+
+</details>
 
 ## Project Structure
 
@@ -242,6 +332,18 @@ role-based-hr-data-agent/
 ```
 
 ## Cleanup
+
+**If deployed via CloudFormation (Step 3 — recommended):**
+
+```bash
+# Delete AgentCore infrastructure (Gateway, GatewayTarget, Runtime, Cedar policies)
+bash scripts/cleanup_cfn.sh us-east-1 dev
+
+# Delete prerequisites (Lambda, Cognito, IAM, S3)
+bash scripts/cleanup.sh --region us-east-1 --env dev
+```
+
+**If deployed via boto3 (legacy manual deployment):**
 
 ```bash
 bash scripts/cleanup.sh --region us-east-1 --env dev
