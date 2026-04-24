@@ -59,15 +59,35 @@ def fetch_agent_runtimes(region: str = "us-east-1") -> List[Dict]:
 def fetch_agent_runtime_versions(
     agent_runtime_id: str, region: str = "us-east-1"
 ) -> List[Dict]:
-    """Fetch versions for a specific agent runtime"""
+    """Fetch ALL versions for a specific agent runtime using pagination"""
     try:
         client = boto3.client("bedrock-agentcore-control", region_name=region)
-        response = client.list_agent_runtime_versions(agentRuntimeId=agent_runtime_id)
+        all_versions = []
+        next_token = None
+
+        # Paginate through all results
+        while True:
+            params = {
+                "agentRuntimeId": agent_runtime_id,
+                "maxResults": 100
+            }
+            if next_token:
+                params["nextToken"] = next_token
+
+            response = client.list_agent_runtime_versions(**params)
+
+            # Add this page of results
+            all_versions.extend(response.get("agentRuntimes", []))
+
+            # Check if there are more pages
+            next_token = response.get("nextToken")
+            if not next_token:
+                break
 
         # Filter only READY versions
         ready_versions = [
             version
-            for version in response.get("agentRuntimes", [])
+            for version in all_versions
             if version.get("status") == "READY"
         ]
 
