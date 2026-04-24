@@ -1,0 +1,12 @@
+# Runtime dependencies for the 08-isolated-integration helper scripts.
+# Requires Python 3.12+.
+#
+# boto3 1.42 ships the bedrock-agentcore + bedrock-agentcore-control services
+# in its service model; older releases don't know the service names at all.
+# botocore and urllib3 install automatically as transitive dependencies.
+#
+# A generous floor (not an exact pin) is used because this tutorial targets
+# the AgentCore preview and newer releases may fix response-shape quirks
+# (e.g. HarnessMemoryConfiguration tagged-union parsing).
+
+boto3>=1.42.0
