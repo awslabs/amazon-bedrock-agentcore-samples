@@ -12,7 +12,6 @@ Usage:
 
 import boto3
 import os
-import sys
 
 
 def get_ssm_param(ssm: boto3.client, name: str) -> str:
