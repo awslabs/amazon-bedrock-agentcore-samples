@@ -25,8 +25,8 @@ import logging
 import os
 import boto3
 from typing import Dict, Any, Optional
+import urllib.parse
 import urllib.request
-import base64
 from jose import jwt, JWTError
 
 # Import token exchange module
@@ -110,6 +110,31 @@ def get_config() -> Dict[str, str]:
     return _config
 
 
+def _fetch_https_json(url: str) -> Dict[str, Any]:
+    """
+    Fetch a JSON document from an https URL.
+
+    Rejects any URL whose scheme is not ``https`` so that file:// and custom
+    schemes cannot be passed to urllib.request.urlopen (Bandit B310 concern).
+
+    Args:
+        url: Absolute URL to fetch
+
+    Returns:
+        Parsed JSON body
+
+    Raises:
+        ValueError: If the URL scheme is not https
+    """
+    parsed = urllib.parse.urlparse(url)
+    if parsed.scheme != "https":
+        raise ValueError(f"Only https URLs are allowed, got: {url}")
+
+    request = urllib.request.Request(url)  # nosec B310
+    with urllib.request.urlopen(request) as response:  # nosec B310
+        return json.loads(response.read())
+
+
 def get_cognito_public_keys() -> Dict[str, Any]:
     """
     Fetch Cognito public keys for JWT validation.
@@ -127,10 +152,9 @@ def get_cognito_public_keys() -> Dict[str, Any]:
         jwks_url = f"{config['issuer']}/.well-known/jwks.json"
         logger.info(f"Fetching JWKS from: {jwks_url}")
 
-        with urllib.request.urlopen(jwks_url) as response:
-            _jwks = json.loads(response.read())
-            logger.info("Successfully fetched Cognito public keys")
-            return _jwks
+        _jwks = _fetch_https_json(jwks_url)
+        logger.info("Successfully fetched Cognito public keys")
+        return _jwks
     except Exception as e:
         logger.error(f"Error fetching Cognito public keys: {str(e)}")
         raise
