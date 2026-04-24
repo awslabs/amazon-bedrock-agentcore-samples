@@ -27,7 +27,12 @@ import requests
 
 # --- Configuration ---
 REGION = os.environ.get("AWS_REGION", "us-east-1")
-TEST_PASSWORD = "TempPass123!"
+# Default matches the shared sample password set by Phase 1 setup_cognito.py.
+# Override with LAKEHOUSE_TEST_PASSWORD env var when running against a custom setup.
+TEST_PASSWORD = os.environ.get(
+    "LAKEHOUSE_TEST_PASSWORD",
+    "TempPass123!",  # pragma: allowlist secret
+)
 TARGET_NAME = "lakehouse-mcp-target"
 
 
