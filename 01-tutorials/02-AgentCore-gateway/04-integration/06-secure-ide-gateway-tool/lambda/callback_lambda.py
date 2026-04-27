@@ -65,9 +65,9 @@ def _get_access_token_from_cookies(event):
     refresh_token = ""
     for cookie in event.get("cookies", []):
         if cookie.startswith("access_token="):
-            access_token = cookie[len("access_token="):]
+            access_token = cookie[len("access_token=") :]
         elif cookie.startswith("refresh_token="):
-            refresh_token = cookie[len("refresh_token="):]
+            refresh_token = cookie[len("refresh_token=") :]
 
     if access_token:
         payload = _verify_cognito_jwt(access_token)
@@ -112,7 +112,9 @@ def handle_oauth_callback(event):
         return _result_page("Error", "Missing session_id parameter.", success=False)
 
     # Authenticate the user from cookies
-    access_token, cookie_payload, refreshed_token = _get_access_token_from_cookies(event)
+    access_token, cookie_payload, refreshed_token = _get_access_token_from_cookies(
+        event
+    )
     if not cookie_payload:
         return_to = _build_current_url(event)
         return {
