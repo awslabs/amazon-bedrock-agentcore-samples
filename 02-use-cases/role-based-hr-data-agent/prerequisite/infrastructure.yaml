@@ -27,6 +27,10 @@ Resources:
   HRLambdaDLQ:
     Type: AWS::SQS::Queue
     Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: CFN_NAG_W48
+            reason: "Queue is encrypted via SqsManagedSseEnabled (SSE-SQS); customer-managed KMS key not required for demo — SSE-SQS provides equivalent at-rest encryption"
       checkov:
         skip:
           - id: CKV_AWS_27
@@ -51,6 +55,10 @@ Resources:
   HRLambdaExecutionRole:
     Type: AWS::IAM::Role
     Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: CFN_NAG_W28
+            reason: "Explicit role name required for SSM parameter references and cross-stack resource lookup in demo deployment scripts"
       cdk_nag:
         rules_to_suppress:
           - id: AwsSolutions-IAM4
@@ -92,10 +100,16 @@ Resources:
   AgentCoreGatewayRole:
     Type: AWS::IAM::Role
     Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: CFN_NAG_W11
+            reason: "bedrock-agentcore actions do not support resource-level ARN restrictions — these are service-level operations that require Resource: '*'"
+          - id: CFN_NAG_W28
+            reason: "Explicit role name required for SSM parameter references and cross-stack resource lookup in demo deployment scripts"
       cdk_nag:
         rules_to_suppress:
           - id: AwsSolutions-IAM5
-            reason: "bedrock-agentcore:* on * is required for Cedar policy evaluation (AuthorizeAction) and Gateway interceptor invocation — these are service-level operations with no resource-level ARN support"
+            reason: "bedrock-agentcore actions do not support resource-level ARN restrictions — these are service-level operations with no resource-level ARN support"
       guard:
         SuppressedRules:
           - IAM_NO_INLINE_POLICY_CHECK  # Inline policies are scoped exclusively to this role; sample code — converting to standalone managed policies adds complexity without security benefit
@@ -122,11 +136,16 @@ Resources:
           PolicyDocument:
             Version: "2012-10-17"
             Statement:
-              # Required for Cedar policy evaluation (AuthorizeAction) and
-              # general AgentCore Gateway operations (interceptor invocation,
-              # JWT validation, tool routing).
+              # Required for Cedar policy evaluation and Gateway operations.
+              # Explicit actions listed to satisfy least-privilege requirements.
               - Effect: Allow
-                Action: bedrock-agentcore:*
+                Action:
+                  - bedrock-agentcore:AuthorizeAction           # Cedar policy evaluation (single action)
+                  - bedrock-agentcore:PartiallyAuthorizeActions # Cedar policy evaluation (batch actions)
+                  - bedrock-agentcore:InvokeGateway             # Gateway request handling
+                  - bedrock-agentcore:GetGatewayTarget          # Tool routing/discovery
+                  - bedrock-agentcore:GetPolicyEngine           # Cedar engine lookup
+                  - bedrock-agentcore:InvokeInterceptor         # Request/response interceptor invocation
                 Resource: "*"
 
   # ---------------------------------------------------------------------------
@@ -135,6 +154,12 @@ Resources:
   AgentCoreRuntimeRole:
     Type: AWS::IAM::Role
     Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: CFN_NAG_W11
+            reason: "X-Ray (xray:*) and AgentCore (bedrock-agentcore:GetWorkloadAccessTokenForUserId, CreateWorkloadIdentity) actions do not support resource-level ARN restrictions — these are service-level operations"
+          - id: CFN_NAG_W28
+            reason: "Explicit role name required for SSM parameter references and cross-stack resource lookup in demo deployment scripts"
       cdk_nag:
         rules_to_suppress:
           - id: AwsSolutions-IAM4
@@ -202,6 +227,10 @@ Resources:
   HRDataProviderLambda:
     Type: AWS::Lambda::Function
     Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: CFN_NAG_W89
+            reason: "Sample code — VPC configuration adds significant deployment complexity (subnets, security groups, VPC endpoints) outside the scope of this AgentCore Gateway demonstration"
       checkov:
         skip:
           - id: CKV_AWS_117
@@ -234,6 +263,10 @@ Resources:
   RequestInterceptorLambda:
     Type: AWS::Lambda::Function
     Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: CFN_NAG_W89
+            reason: "Sample code — VPC adds deployment complexity outside the scope of this AgentCore Gateway demonstration"
       checkov:
         skip:
           - id: CKV_AWS_117
@@ -267,6 +300,10 @@ Resources:
   ResponseInterceptorLambda:
     Type: AWS::Lambda::Function
     Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: CFN_NAG_W89
+            reason: "Sample code — VPC adds deployment complexity outside the scope of this AgentCore Gateway demonstration"
       checkov:
         skip:
           - id: CKV_AWS_117
