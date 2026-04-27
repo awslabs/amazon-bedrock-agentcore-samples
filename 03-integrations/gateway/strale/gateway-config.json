@@ -8,7 +8,7 @@
         "searchType": "SEMANTIC"
       }
     },
-    "description": "AgentCore Gateway with Strale trust & compliance capabilities"
+    "description": "AgentCore Gateway with Strale data capabilities"
   },
   "target": {
     "name": "strale-mcp-server",

@@ -1,13 +1,13 @@
-# Connecting External MCP Servers to AgentCore: Strale Trust & Compliance
+# Connecting External MCP Servers to AgentCore: Strale Data Capabilities
 
 > [!IMPORTANT]
 > This is an educational example. Review the code and understand the resources created before running in your AWS account.
 
 ## Overview
 
-This example connects [Strale](https://strale.dev) — a trust and quality infrastructure platform with 250+ verified data capabilities — to Amazon Bedrock AgentCore Gateway as a remote MCP server. Once connected, any agent using the gateway can validate IBANs, look up companies across 27 country registries, screen against sanctions lists, extract structured data from URLs, and more.
+This example connects [Strale](https://strale.dev) — a catalog of data capabilities for AI agents — to Amazon Bedrock AgentCore Gateway as a remote MCP server. Once connected, any agent using the gateway can validate IBANs, look up companies across 27 country registries, screen against sanctions lists, extract structured data from URLs, and more.
 
-Strale's MCP server uses Streamable HTTP transport at `https://api.strale.io/mcp`. AgentCore's semantic tool search makes all 250+ capabilities discoverable by description, not just by name.
+Strale's MCP server uses Streamable HTTP transport at `https://api.strale.io/mcp`. AgentCore's semantic tool search makes capabilities discoverable by description, not just by name.
 
 | Information          | Details                                    |
 |:---------------------|:-------------------------------------------|
@@ -24,7 +24,7 @@ Strale's MCP server uses Streamable HTTP transport at `https://api.strale.io/mcp
 ┌──────────────┐     ┌─────────────────────┐     ┌──────────────────┐
 │              │     │  AgentCore Gateway   │     │  Strale MCP      │
 │  Your Agent  │────▶│  (Semantic Search)   │────▶│  api.strale.io   │
-│  (Strands)   │     │                     │     │  250+ tools      │
+│  (Strands)   │     │                     │     │  catalog tools   │
 └──────────────┘     └─────────────────────┘     └──────────────────┘
        │                      │                          │
        │ Claude Sonnet        │ JWT Auth                 │ Bearer Token
@@ -84,7 +84,7 @@ response = client.create_gateway(
             'searchType': 'SEMANTIC'
         }
     },
-    description='Gateway with Strale trust & compliance capabilities'
+    description='Gateway with Strale data capabilities'
 )
 
 gateway_id = response['gatewayId']
@@ -129,9 +129,9 @@ After registration, AgentCore automatically discovers Strale's 8 meta-tools:
 
 | Tool | Description |
 |------|-------------|
-| `strale_search` | Search 250+ capabilities by keyword |
+| `strale_search` | Browse the capability catalog by keyword |
 | `strale_execute` | Run any capability by slug |
-| `strale_trust_profile` | Check quality score before calling |
+| `strale_trust_profile` | Check Strale Quality Score (SQS) before calling |
 | `strale_balance` | Check wallet balance |
 | `strale_ping` | Health check |
 | `strale_getting_started` | Free capabilities with examples |
