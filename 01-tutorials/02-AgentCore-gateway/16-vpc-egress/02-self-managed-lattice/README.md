@@ -3,8 +3,6 @@
 
 # Self-Managed Amazon VPC Lattice
 
-> This feature is made available to you as a "Beta Service" as defined in the [AWS Service Terms](https://aws.amazon.com/service-terms/). It is subject to your Agreement with AWS and the AWS Service Terms.
-
 You create the VPC Lattice resource gateway and resource configuration yourself, then provide the resource configuration identifier to AgentCore. Use this option for cross-account connectivity, if you already have VPC Lattice resources set up, or if you need fine-grained control over the Lattice configuration.
 
 ![arch](./images/create-target.png)
@@ -20,7 +18,7 @@ You create the VPC Lattice resource gateway and resource configuration yourself,
 
 Before creating a gateway target with a self-managed private endpoint, complete the following steps.
 
-- Make sure you have correct IAM permissions for [AgentCore Gateway managed Amazon VPC Lattice](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/vpc-egress-private-endpoints.html#lattice-vpc-egress-self-managed-lattice)
+- Make sure you have correct IAM permissions for [AgentCore Gateway managed VPC resource](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/vpc-egress-private-endpoints.html#lattice-vpc-egress-self-managed-lattice)
 
 ### Step 1: Create a Resource Gateway
 

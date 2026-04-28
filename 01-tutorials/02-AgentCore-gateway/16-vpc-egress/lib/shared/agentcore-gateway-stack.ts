@@ -55,7 +55,7 @@ export class AgentCoreGatewayStack extends cdk.Stack {
       }),
     );
 
-    // EC2 permissions for managed VPC Lattice (Resource Gateway ENI provisioning)
+    // EC2 permissions for managed VPC resource (Resource Gateway ENI provisioning)
     this.gateway.role!.addToPrincipalPolicy(
       new iam.PolicyStatement({
         actions: [
