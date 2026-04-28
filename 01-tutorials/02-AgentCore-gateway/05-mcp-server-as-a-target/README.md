@@ -1,56 +1,74 @@
 # Integrate your MCP Server with AgentCore Gateway
 
 ## Overview
-Amazon Bedrock AgentCore Gateway now supports MCP servers as native targets alongside existing REST APIs and AWS Lambda functions. This enhancement allows organizations to integrate their MCP server implementations through a unified interface, eliminating the need for writing custom client code per MCP Server. The Gateway addresses key enterprise challenges in scaling AI agent deployments across multiple teams and servers by centralizing tool management, authentication, and routing.
+Amazon Bedrock AgentCore Gateway supports MCP servers as native targets alongside REST APIs and AWS Lambda functions. This lets you integrate existing MCP server implementations through one unified interface — no per-server client code, no per-team gateway sprawl, and one place to centralize tool management, authentication, routing, and protocol upgrades.
 
-The Gateway employs a centralized management framework that simplifies tool discovery, standardizes security protocols, and reduces operational complexity when scaling from dozens to hundreds of MCP servers. This unified approach allows enterprises to maintain consistent security and operational standards while efficiently managing their AI agent infrastructure through a single interface, eliminating the need for multiple separate gateways and reducing the overall maintenance burden.
+The Gateway is a centralized management framework for tool/prompt/resource discovery, security, and routing — letting enterprises scale from dozens to hundreds of MCP servers behind a single endpoint without fragmenting their security and operational standards.
 
 ![How does it work](images/mcp-server-target.png)
 
-### Refreshing tool definitions of your MCP servers in AgentCore Gateway
-The SynchronizeGateway API enables on-demand synchronization of tools from MCP server targets through a sequence of carefully orchestrated steps. An Ops Admin initiates the process by making a SynchronizeGateway API call to the AgentCore Gateway, launching an asynchronous operation to update tool definitions. This control is particularly valuable after modifying MCP server configurations.
+### MCP primitives forwarded by the Gateway
+For each MCP server target, the Gateway forwards all three MCP primitive types:
 
-For OAuth-authenticated targets, the AgentCore Gateway first communicates with the AgentCore Identity service to obtain and validate credentials. The Identity service acts as an OAuth resource credentials provider, returning the necessary tokens. If credential validation fails at this stage, the synchronization process immediately terminates, and the target transitions to a FAILED state.
+- **Tools** — `tools/list` (cached or live, depending on the target's `listingMode`) and `tools/call` (always live).
+- **Prompts** — `prompts/list` (cached or live) and `prompts/get` (always live). Prompt names are auto-prefixed `{targetName}___{promptName}` (triple underscore — same convention as tools).
+- **Resources** — `resources/list`, `resources/templates/list` (cached or live) and `resources/read` (always live). Resource URIs are returned **as-is** (no prefix); cross-target URI collisions are resolved by `resourcePriority` (lower wins; default 1000).
 
-Upon successful authentication (or immediately for targets configured without authentication), the Gateway initializes a session with the MCP server, establishing a secure connection. The Gateway then makes paginated calls using the tools/list capability, processing tools in efficient batches of 100 to optimize performance and resource utilization. 
+> **Security warning for resources** (verbatim from the AWS docs): resource URIs are not validated or sanitized by the gateway. A malicious or compromised MCP server target could return URIs pointing to internal endpoints (SSRF) or local filesystem paths (e.g. `file:///etc/passwd`). Validate and sanitize URIs from untrusted targets before following them.
 
-As tools are retrieved, the Gateway normalizes their definitions by adding target-specific prefixes to prevent naming conflicts with other targets. This normalization process maintains consistency while preserving essential metadata from the original MCP server definitions. Throughout the process, the Gateway enforces a strict limit of 10,000 tools per target to ensure system stability. The API implements optimistic locking during synchronization to prevent concurrent modifications that could lead to inconsistent states. The cached tool definitions ensure consistent high performance for ListTools operations between synchronizations.
+### Three ways to keep the catalog in sync
+Tool, prompt, and resource definitions on an MCP server change over time. AgentCore Gateway has three mechanisms for keeping its catalog in sync with what each MCP server target actually exposes:
 
-![How does it work](images/mcp-server-target-explicit-sync.png)
+1. **Explicit synchronization** — call `SynchronizeGatewayTargets` on demand after the upstream MCP server changes.
+2. **Implicit synchronization** — `CreateGatewayTarget` and `UpdateGatewayTarget` always re-read the upstream server's catalog as part of the operation.
+3. **Dynamic listing** (`listingMode='DYNAMIC'`) — Gateway forwards every list request (`tools/list`, `prompts/list`, `resources/list`, `resources/templates/list`) live to the MCP server, so no synchronization is ever required.
 
-### Implicit synchronization of tools schema
-During CreateGatewayTarget and UpdateGatewayTarget operations, AgentCore Gateway automatically syncs tool schemas that differs from the explicit SynchronizeGateway API. This built-in sync ensures new or updated MCP targets are ready for immediate use and maintains data consistency. While this makes create/update operations slower compared to other target types, it guarantees that targets marked as READY have valid tool definitions and prevents issues from targets with unvalidated tool definitions.
+(1) and (2) are **control-plane operations on `listingMode='DEFAULT'` targets** — they populate the Gateway's catalog *cache* that DEFAULT-mode list calls will be answered from. `CreateGatewayTarget` is the very first cache fill (implicit at create time); `UpdateGatewayTarget` refills it as a side effect of every update; `SynchronizeGatewayTargets` is the on-demand refill in between. DYNAMIC-mode targets skip this cache entirely — the gateway proxies each list call straight through to the server, so no `Synchronize`/`Update` call ever needs to run on them.
 
-![How does it work](images/mcp-server-target-implicit-sync.png)
+> **DYNAMIC compatibility caveats:** `listingMode='DYNAMIC'` is rejected on gateways with `searchType='SEMANTIC'` and is incompatible with outbound three-legged OAuth (3LO). Notebook 02 stands up its own gateway with `searchType='NONE'` for the dynamic-listing demo for this reason.
+
+#### Explicit sync (control plane → cache fill)
+![Explicit sync](images/mcp-server-target-explicit-sync.png)
+
+#### Implicit sync (during Create/UpdateGatewayTarget)
+![Implicit sync](images/mcp-server-target-implicit-sync.png)
 
 ### Tutorial Details
 
-
-| Information          | Details                                                                |
-|:---------------------|:-----------------------------------------------------------------------|
-| Tutorial type        | Interactive                                                            |
-| AgentCore components | AgentCore Gateway, AgentCore Identity, AgentCore Runtime               |
-| Agentic Framework    | Strands Agents                                                         |
-| Gateway Target Type  | MCP Server                                                             |
-| Inbound Auth IdP     | Amazon Cognito, but can use others                                     |
-| Outbound Auth        | Amazon Cognito, but can use others                                     |
-| LLM model            | Anthropic Claude Sonnet 4                                              |
-| Tutorial components  | Creating AgentCore Gateway with MCP Target and synchronize the tools   |
-| Tutorial vertical    | Cross-vertical                                                         |
-| Example complexity   | Easy                                                                   |
-| SDK used             | boto3                                                                  |
+| Information          | Details                                                                                  |
+|:---------------------|:-----------------------------------------------------------------------------------------|
+| Tutorial type        | Interactive                                                                              |
+| AgentCore components | AgentCore Gateway, AgentCore Identity, AgentCore Runtime                                 |
+| Agentic Framework    | Strands Agents                                                                           |
+| Gateway Target type  | MCP server                                                                               |
+| MCP primitives       | Tools, Prompts, Resources (static and templated)                                         |
+| Inbound Auth IdP     | Amazon Cognito, but can use others                                                       |
+| Outbound Auth        | Amazon Cognito, but can use others                                                       |
+| LLM model            | Anthropic Claude Haiku 4.5                                                               |
+| Tutorial components  | Tools/prompts/resources via Gateway, `resourcePriority`, explicit/implicit/dynamic sync  |
+| Tutorial vertical    | Cross-vertical                                                                           |
+| Example complexity   | Easy                                                                                     |
+| SDK used             | boto3                                                                                    |
 
 ## Tutorial Architecture
 
 ### Tutorial Key Features
 
-* Integrate the MCP Server with AgentCore Gateway
-* Perform explicit and implicit synchronization to refresh tool definitions
+* Integrate an MCP Server with AgentCore Gateway
+* Use **tools**, **prompts**, and **resources** (static + templated) through the Gateway
+* Combine multiple MCP server targets on one gateway, with `resourcePriority` for resource-URI conflict resolution (demoed against the public **Exa MCP server**)
+* Refresh the Gateway's tool/prompt/resource catalog via **explicit** sync (`SynchronizeGatewayTargets`), **implicit** sync (`UpdateGatewayTarget`), or skip caching entirely with **`listingMode='DYNAMIC'`**
+
+## Repository contents
+
+- `01-mcp-server-target.ipynb` — main workshop. Creates the gateway, deploys a FastMCP server (with all four MCP primitive types), wires it in as a target, then walks through tools, prompts, resources, and a `resourcePriority` shadow demo against the public Exa MCP server (`https://mcp.exa.ai/mcp`).
+- `02-mcp-target-synchronization.ipynb` — standalone follow-up workshop demonstrating all three catalog-sync mechanisms (explicit `SynchronizeGatewayTargets`, implicit `UpdateGatewayTarget`, and `listingMode='DYNAMIC'`) including the per-target cursor pagination behavior across DEFAULT and DYNAMIC targets.
+- `gateway_mcp_client.py` — small `GatewayMCPClient` helper used by both notebooks. Wraps bearer-token auth, the `MCP-Protocol-Version` header, JSON-RPC envelope, and per-target pagination (`list_all_tools()`, `list_all_prompts()`, `list_all_resources()`, `list_all_resource_templates()` follow `nextCursor` until exhausted).
+- `runtime_deploy.py` — `deploy_mcp_server(...)` helper wrapping the AgentCore Runtime configure + launch + URL-derivation boilerplate into one call, returning a `DeployedRuntime` dataclass.
 
 ## Tutorials Overview
 
 In these tutorials we will cover the following functionality:
 
-- [Integrate the MCP Server with AgentCore Gateway](01-mcp-server-target.ipynb)
-- [Perform explicit and implicit synchronization to refresh tool definitions](02-mcp-target-synchronization.ipynb)
-
+- [Integrate the MCP Server with AgentCore Gateway — tools, prompts, resources, `resourcePriority`](01-mcp-server-target.ipynb)
+- [Refresh the Gateway's catalog: explicit sync, implicit sync, and dynamic listing](02-mcp-target-synchronization.ipynb)
