@@ -62,11 +62,11 @@ Episodes and reflections are stored in configurable namespaces:
 
 ```python
 # Store episodes at actor level (recommended for most use cases)
-"namespaces": ["meetings/actor/{actorId}/episodes"]
+"namespaceTemplates": ["meetings/actor/{actorId}/episodes"]
 
 # Reflections must be same as or prefix of episodic namespace
 "reflectionConfiguration": {
-    "namespaces": ["meetings/actor/{actorId}"]  # Prefix of episodes namespace
+    "namespaceTemplates": ["meetings/actor/{actorId}"]  # Prefix of episodes namespace
 }
 ```
 

@@ -98,3 +98,13 @@ a {
   overflow-y: auto !important;
   -webkit-overflow-scrolling: touch;
 }
+
+/* Memory panel — full width on tablet and below, constrained on desktop */
+.memory-panel {
+  max-width: 100%;
+}
+@media (min-width: 1024px) {
+  .memory-panel {
+    max-width: 480px;
+  }
+}
