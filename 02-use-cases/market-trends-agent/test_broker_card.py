@@ -20,7 +20,8 @@ def test_broker_card_conversation():
     with open(".agent_arn", "r") as f:
         runtime_arn = f.read().strip()
 
-    client = boto3.client("bedrock-agentcore", region_name="us-east-1")
+    region = os.getenv("AWS_REGION", "us-east-1")
+    client = boto3.client("bedrock-agentcore", region_name=region)
 
     # Create consistent session ID for memory persistence across interactions (min 33 chars)
     session_id = "broker-card-test-session-2025-memory-persistence"
@@ -47,8 +48,9 @@ Recent Interests: blockchain technology, NFTs, metaverse"""
     try:
         # Configure client with longer timeout for complex broker card processing
         config = Config(read_timeout=120)
+        region = os.getenv("AWS_REGION", "us-east-1")
         client = boto3.client(
-            "bedrock-agentcore", region_name="us-east-1", config=config
+            "bedrock-agentcore", region_name=region, config=config
         )
 
         response = client.invoke_agent_runtime(

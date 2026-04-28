@@ -10,6 +10,8 @@ import os
 import time
 import logging
 
+AWS_REGION = os.getenv("AWS_REGION", "us-east-1")
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
@@ -31,7 +33,7 @@ def load_agent_arn():
 def invoke_agent(runtime_arn: str, prompt: str, session_id: str = None) -> str:
     """Invoke the deployed agent with a prompt"""
     try:
-        client = boto3.client("bedrock-agentcore", region_name="us-east-1")
+        client = boto3.client("bedrock-agentcore", region_name=AWS_REGION)
 
         # Prepare the payload
         payload = json.dumps({"prompt": prompt}).encode("utf-8")
