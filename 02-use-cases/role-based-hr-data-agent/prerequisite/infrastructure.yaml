@@ -102,14 +102,12 @@ Resources:
     Metadata:
       cfn_nag:
         rules_to_suppress:
-          - id: CFN_NAG_W11
-            reason: "bedrock-agentcore actions do not support resource-level ARN restrictions — these are service-level operations that require Resource: '*'"
           - id: CFN_NAG_W28
             reason: "Explicit role name required for SSM parameter references and cross-stack resource lookup in demo deployment scripts"
       cdk_nag:
         rules_to_suppress:
           - id: AwsSolutions-IAM5
-            reason: "bedrock-agentcore actions do not support resource-level ARN restrictions — these are service-level operations with no resource-level ARN support"
+            reason: "Wildcard in resource ARN is scoped to this account's Gateway, GatewayTarget, and PolicyEngine resources only"
       guard:
         SuppressedRules:
           - IAM_NO_INLINE_POLICY_CHECK  # Inline policies are scoped exclusively to this role; sample code — converting to standalone managed policies adds complexity without security benefit
@@ -138,6 +136,7 @@ Resources:
             Statement:
               # Required for Cedar policy evaluation and Gateway operations.
               # Explicit actions listed to satisfy least-privilege requirements.
+              # Resource scoped to this account's AgentCore Gateways and Policy Engines.
               - Effect: Allow
                 Action:
                   - bedrock-agentcore:AuthorizeAction           # Cedar policy evaluation (single action)
@@ -146,7 +145,10 @@ Resources:
                   - bedrock-agentcore:GetGatewayTarget          # Tool routing/discovery
                   - bedrock-agentcore:GetPolicyEngine           # Cedar engine lookup
                   - bedrock-agentcore:InvokeInterceptor         # Request/response interceptor invocation
-                Resource: "*"
+                Resource:
+                  - !Sub "arn:aws:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:gateway/*"
+                  - !Sub "arn:aws:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:gateway-target/*"
+                  - !Sub "arn:aws:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:policy-engine/*"
 
   # ---------------------------------------------------------------------------
   # IAM — Amazon Bedrock AgentCore Runtime execution role
@@ -157,7 +159,7 @@ Resources:
       cfn_nag:
         rules_to_suppress:
           - id: CFN_NAG_W11
-            reason: "X-Ray (xray:*) and AgentCore (bedrock-agentcore:GetWorkloadAccessTokenForUserId, CreateWorkloadIdentity) actions do not support resource-level ARN restrictions — these are service-level operations"
+            reason: "X-Ray actions (xray:PutTraceSegments, xray:PutTelemetryRecords, xray:GetSamplingRules, xray:GetSamplingTargets) do not support resource-level ARN restrictions — these are service-level operations"
           - id: CFN_NAG_W28
             reason: "Explicit role name required for SSM parameter references and cross-stack resource lookup in demo deployment scripts"
       cdk_nag:
@@ -165,7 +167,7 @@ Resources:
           - id: AwsSolutions-IAM4
             reason: "AmazonBedrockFullAccess is required for the AgentCore Runtime to invoke Bedrock models; no resource-level scoping is supported for model invocation at this time"
           - id: AwsSolutions-IAM5
-            reason: "X-Ray and AgentCore actions require * resource — these services do not support resource-level ARN restrictions. CloudWatch log group wildcard is scoped to the AgentCore runtime log group prefix"
+            reason: "X-Ray actions require * resource — no ARN support. CloudWatch log group wildcard is scoped to AgentCore runtime prefix. AgentCore workload-identity wildcard is scoped to default directory"
       guard:
         SuppressedRules:
           - IAM_NO_INLINE_POLICY_CHECK  # Inline policies are scoped exclusively to this role; sample code — converting to standalone managed policies adds complexity without security benefit
@@ -219,7 +221,9 @@ Resources:
                 Action:
                   - bedrock-agentcore:GetWorkloadAccessTokenForUserId
                   - bedrock-agentcore:CreateWorkloadIdentity
-                Resource: "*"
+                Resource:
+                  - !Sub "arn:aws:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:workload-identity-directory/default"
+                  - !Sub "arn:aws:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:workload-identity-directory/default/workload-identity/*"
 
   # ---------------------------------------------------------------------------
   # AWS Lambda — HR Data Provider
