@@ -110,15 +110,15 @@ def create_agent():
 agent = create_agent()
 
 @app.entrypoint
-def langgraph_bedrock(payload):
+async def langgraph_bedrock(payload, context):
     """
     Invoke the agent with a payload
     """
     user_input = payload.get("prompt")
-    
+
     # Create the input in the format expected by LangGraph
-    response = agent.invoke({"messages": [HumanMessage(content=user_input)]})
-    
+    response = await agent.ainvoke({"messages": [HumanMessage(content=user_input)]})
+
     # Extract the final message content
     return response["messages"][-1].content
 

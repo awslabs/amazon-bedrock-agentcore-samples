@@ -36,7 +36,8 @@ return deterministic mock data, making evaluation results fully reproducible.
 ┌─────────────────────────────────────────────────────────────────────────┐
 │  Tutorial Notebook (groundtruth_evaluations.ipynb)                      │
 │                                                                         │
-│  Step 1  ──► bedrock-agentcore-starter-toolkit                         │
+│  Step 1  ──► AgentCore CLI + boto3                                      │
+│               │  agentcore create + agentcore deploy                    │
 │               │  CodeBuild builds image, pushes to ECR                  │
 │               └──► AgentCore Runtime  (HR Assistant Agent)              │
 │                         │  invoke_agent_runtime()                       │
@@ -67,13 +68,14 @@ return deterministic mock data, making evaluation results fully reproducible.
 | CloudWatch Logs | Stores session spans; queried by `CloudWatchAgentSpanCollector` |
 | `bedrock-agentcore-control` | Control plane — creates custom evaluators and agent runtimes |
 | Evaluate API (`bedrock-agentcore`) | Data plane — scores sessions against evaluator definitions |
-| Starter Toolkit | Builds the Docker image via CodeBuild and registers the runtime; no local Docker required |
+| AgentCore CLI + boto3 | Deploys agent via CodeBuild (no local Docker required); boto3 used for status polling and invocation |
 
 ---
 
 ## Prerequisites
 
 - **Python 3.10+** with the packages in `requirements.txt`
+- **Node.js** with `npm install -g @aws/agentcore@0.11.0` for the AgentCore CLI
 - **AWS credentials** configured (e.g. via `aws configure` or environment variables) with
   permissions for:
   - `bedrock-agentcore:*` — invoke agent runtime and call Evaluate API
@@ -86,13 +88,70 @@ return deterministic mock data, making evaluation results fully reproducible.
   - `codebuild:StartBuild`, `codebuild:BatchGetBuilds` — image build via CodeBuild
   - `iam:CreateRole`, `iam:AttachRolePolicy`, `iam:PassRole` — auto-create execution roles
   - `s3:PutObject`, `s3:GetObject` — CodeBuild source upload
-- **No local Docker required** — the starter toolkit builds the container image via
+- **No local Docker required** — the AgentCore CLI builds the container image via
   AWS CodeBuild
 
 Install dependencies:
 
 ```bash
 pip install -r requirements.txt
+```
+
+---
+
+## CLI Commands
+
+Install the AgentCore CLI (version pinned for reproducibility):
+
+```bash
+npm install -g @aws/agentcore@0.11.0
+```
+
+Deploy the HR Assistant agent:
+
+```bash
+# CLI names must be alphanumeric only (no underscores/hyphens), max 23 chars
+# Scaffold a Strands project (creates hrassisteval/ subdirectory)
+agentcore create --name hrassisteval --framework Strands --model-provider Bedrock --defaults
+
+# Copy agent code into the app directory
+cp hr_assistant_agent.py hrassisteval/app/hrassisteval/
+
+# Deploy (builds image via CodeBuild — no local Docker required)
+# Use -y for non-interactive mode
+cd hrassisteval
+agentcore deploy -y
+
+# Check deployment status
+agentcore status
+```
+
+Invoke the deployed agent:
+
+```bash
+agentcore invoke "What is the PTO balance for EMP-001?" --stream
+```
+
+Create a custom evaluator (boto3 — no CLI command available for custom evaluators):
+
+```python
+import boto3
+cp = boto3.client("bedrock-agentcore-control", region_name="us-east-1")
+result = cp.create_evaluator(
+    evaluatorName="HRResponseSimilarity_abc12345",
+    level="TRACE",
+    evaluatorConfig={...},
+)
+```
+
+Run an on-demand evaluation:
+
+```bash
+agentcore run eval \
+  --runtime hrassisteval \
+  --evaluator Builtin.Correctness \
+  --evaluator Builtin.GoalSuccessRate \
+  --session-id <session-id>
 ```
 
 ---
@@ -121,7 +180,7 @@ jupyter nbconvert --to notebook --execute --inplace groundtruth_evaluations.ipyn
 |---|---|---|
 | **1 — Install** | `install` | Installs `bedrock-agentcore`, `strands-agents`, and other dependencies |
 | **2 — Configure** | `setup` | Creates a boto3 session and sets `REGION` |
-| **3a — Deploy agent** | `nn72gdo2s4h`, `deploy`, `wait-deploy`, `agent-config` | Writes `hr_assistant_agent.py`, builds image via CodeBuild, creates/updates the AgentCore Runtime, polls until `READY` |
+| **3a — Deploy agent** | `nn72gdo2s4h`, `deploy`, `wait-deploy`, `agent-config` | Writes `hr_assistant_agent.py`, scaffolds CLI project, builds image via CodeBuild (`agentcore deploy`), polls until `READY` via boto3 |
 | **3b — Create evaluators** | `76hyptexblj` | Creates `HRResponseSimilarity` (TRACE) and `HRAssertionChecker` (SESSION) custom evaluators via `bedrock-agentcore-control` |
 | **4 — Invoke agent** | `invoke-single`, `invoke-multi`, `invoke-onboard` | Runs 5 sessions (single- and multi-turn), waits 60 s for CloudWatch ingestion |
 | **5 — EvaluationClient** | `ec-*` | Evaluates each session by session ID using built-in and custom evaluators |
@@ -324,7 +383,7 @@ eval_client._evaluator_level_cache[custom_evaluator_id] = "TRACE"
 | `groundtruth_evaluations.ipynb` | Main tutorial notebook — self-contained, end-to-end |
 | `requirements.txt` | Python dependencies installed into the agent container |
 
-`hr_assistant_agent.py` and `.bedrock_agentcore.yaml` are generated at runtime (by the `%%writefile` notebook cell and the starter toolkit respectively)
+`hr_assistant_agent.py` is written by the `%%writefile` notebook cell. The deploy directory `_deploy_hr_assistant/` and its `agentcore.yaml` are created by `agentcore create` during the `deploy` cell.
 
 ---
 
@@ -342,7 +401,7 @@ Or via the AWS CLI:
 
 ```bash
 aws bedrock-agentcore delete-agent-runtime \
-    --agent-runtime-id hr_assistant_eval_tutorial-xfZ3yiH356 \
+    --agent-runtime-id hrassisteval-xfZ3yiH356 \
     --region us-east-1
 ```
 
@@ -361,7 +420,7 @@ for evaluator_id in [CUSTOM_RESPONSE_SIMILARITY_ID, CUSTOM_ASSERTION_CHECKER_ID]
 
 ```bash
 aws ecr delete-repository \
-    --repository-name bedrock-agentcore-hr_assistant_eval_tutorial \
+    --repository-name bedrock-agentcore-hrassisteval \
     --region us-east-1 \
     --force
 ```
@@ -370,7 +429,7 @@ aws ecr delete-repository \
 
 ```bash
 aws logs delete-log-group \
-    --log-group-name /aws/bedrock-agentcore/runtimes/hr_assistant_eval_tutorial-xfZ3yiH356-DEFAULT \
+    --log-group-name /aws/bedrock-agentcore/runtimes/hrassisteval-xfZ3yiH356-DEFAULT \
     --region us-east-1
 ```
 

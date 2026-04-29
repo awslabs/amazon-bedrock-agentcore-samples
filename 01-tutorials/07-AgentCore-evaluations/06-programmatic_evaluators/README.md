@@ -8,6 +8,27 @@ The tutorial demonstrates code-based evaluators in **both on-demand and online e
 
 ---
 
+## Key Concepts
+
+### Code-Based vs Built-in Evaluators
+
+| | Built-in (LLM-as-judge) | Code-based (Lambda) |
+|---|---|---|
+| **Judge** | LLM with a fixed evaluation prompt | Your custom Lambda function |
+| **Output** | Probabilistic score with explanation | Deterministic score |
+| **Cost** | LLM inference per evaluation | Lambda invocation  |
+| **Best for** | Nuanced qualitative assessment | Exact data validation, business rules |
+| **Customizable** | Limited (fixed prompt templates) | Fully customizable |
+
+### Evaluator Levels
+
+| Level | Invoked | Use when |
+|---|---|---|
+| **TRACE** | Once per agent response (turn) | Per-response checks, e.g. length, format |
+| **SESSION** | Once per conversation session | End-to-end fact accuracy across all turns |
+
+---
+
 ## Setup with AgentCore CLI
 
 The fastest way to bootstrap and deploy the agent is with the [AgentCore CLI](https://github.com/aws/agentcore-cli) (`0.11.0`).
@@ -135,26 +156,6 @@ agentcore add online-eval \
 > You can also use the notebook (Step 10) to create the online eval config programmatically
 > using the boto3 SDK, without needing a project directory.
 
----
-
-## Key Concepts
-
-### Code-Based vs Built-in Evaluators
-
-| | Built-in (LLM-as-judge) | Code-based (Lambda) |
-|---|---|---|
-| **Judge** | LLM with a fixed evaluation prompt | Your custom Lambda function |
-| **Output** | Probabilistic score with explanation | Deterministic score |
-| **Cost** | LLM inference per evaluation | Lambda invocation  |
-| **Best for** | Nuanced qualitative assessment | Exact data validation, business rules |
-| **Customizable** | Limited (fixed prompt templates) | Fully customizable |
-
-### Evaluator Levels
-
-| Level | Invoked | Use when |
-|---|---|---|
-| **TRACE** | Once per agent response (turn) | Per-response checks, e.g. length, format |
-| **SESSION** | Once per conversation session | End-to-end fact accuracy across all turns |
 
 ### SDK v1.6 Lambda Contract
 
