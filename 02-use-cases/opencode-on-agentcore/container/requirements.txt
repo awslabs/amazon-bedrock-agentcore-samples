@@ -1,0 +1,6 @@
+boto3==1.42.88
+fastmcp==3.2.0
+bedrock-agentcore==1.6.1
+opentelemetry-api==1.40.0
+aws-opentelemetry-distro==0.17.0
+python-json-logger==3.3.0

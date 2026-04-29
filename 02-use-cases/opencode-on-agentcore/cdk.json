@@ -1,0 +1,20 @@
+{
+  "app": ".venv/bin/python3 app.py",
+  "context": {
+    "account": "",
+    "region": "",
+    "availability_zones": [],
+    "default_model_id": "global.anthropic.claude-opus-4-6-v1",
+    "task_timeout_minutes_default": 10,
+    "task_timeout_minutes_max": 30,
+    "cloudwatch_log_retention_days": 90,
+    "daily_cost_budget_usd": 50,
+    "enable_cloudtrail": false,
+    "@aws-cdk/aws-lambda:recognizeLayerVersion": true,
+    "@aws-cdk/core:stackRelativeExports": true,
+    "@aws-cdk/aws-ec2:uniqueImdsv2TemplateName": true,
+    "@aws-cdk/core:enablePartitionLiterals": true,
+    "@aws-cdk/aws-iam:minimizePolicies": true,
+    "@aws-cdk/customresources:installLatestAwsSdkDefault": false
+  }
+}
