@@ -2,8 +2,7 @@
 # Install with: pip install -r requirements.txt
 
 # AgentCore Starter Toolkit
-bedrock-agentcore>=0.1.0
-bedrock-agentcore-starter-toolkit>=0.1.0
+bedrock-agentcore
 
 # AWS SDK
 boto3>=1.34.0

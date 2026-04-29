@@ -345,8 +345,7 @@ class AgentCoreCleanup:
         self._print(f"\n🌐 Deleting MCP Gateway: {gateway_id}", Colors.YELLOW)
 
         try:
-            from bedrock_agentcore_starter_toolkit.operations.gateway.client import (
-                GatewayClient,
+                            GatewayClient,
             )
 
             # Initialize Gateway client

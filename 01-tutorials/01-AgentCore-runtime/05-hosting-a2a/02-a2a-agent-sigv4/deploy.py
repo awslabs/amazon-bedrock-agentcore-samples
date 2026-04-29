@@ -12,7 +12,6 @@ is missing permissions. If this happens, manually add the permissions
 from execution-role-policy.json to the role and run again.
 """
 
-from bedrock_agentcore_starter_toolkit import Runtime
 from boto3.session import Session
 
 # Setup

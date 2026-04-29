@@ -29,8 +29,6 @@ from datetime import datetime, timezone
 from typing import Dict, Optional
 
 import boto3
-from bedrock_agentcore_starter_toolkit.operations.gateway.client import GatewayClient
-from bedrock_agentcore_starter_toolkit.operations.runtime.launch import (
     launch_bedrock_agentcore,
 )
 
