@@ -10,6 +10,7 @@ This demonstrates the correct way users should interact with the Market Trends A
 
 import boto3
 import json
+import os
 from botocore.config import Config
 
 

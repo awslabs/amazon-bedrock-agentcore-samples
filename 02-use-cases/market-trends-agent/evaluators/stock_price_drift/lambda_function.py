@@ -112,12 +112,19 @@ _NON_TICKERS: frozenset = frozenset({
 
 
 def _fetch_reference_price(ticker: str) -> Optional[float]:
+    url = YAHOO_CHART_URL.format(symbol=ticker)
+    # Defense-in-depth: the URL is a compile-time constant pointing at
+    # Yahoo Finance over https, but we still reject anything that isn't
+    # https to shut the door on file:// / ftp:// / custom handlers.
+    if not url.startswith("https://"):
+        raise ValueError(f"refusing non-https reference URL: {url!r}")
     req = urllib.request.Request(
-        YAHOO_CHART_URL.format(symbol=ticker),
+        url,
         headers={"User-Agent": USER_AGENT, "Accept": "application/json"},
     )
     try:
-        with urllib.request.urlopen(req, timeout=HTTP_TIMEOUT_S) as resp:
+        # Scheme pinned to https above; ticker is regex-validated.
+        with urllib.request.urlopen(req, timeout=HTTP_TIMEOUT_S) as resp:  # nosec B310  # noqa: S310
             payload = json.loads(resp.read().decode("utf-8"))
     except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as exc:
         logger.warning("reference lookup failed for %s: %s", ticker, exc)
