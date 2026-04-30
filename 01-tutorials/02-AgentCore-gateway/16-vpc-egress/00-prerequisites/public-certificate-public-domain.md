@@ -24,7 +24,7 @@ dig @8.8.8.8 mcp.example.com → 10.0.2.52, 10.0.3.60 (private IPs)
 
 ## When to use this
 
-- Simplest setup: no `routingDomain` needed since the domain is already publicly resolvable
+- Simplest setup: domain resolves globally, no DNS workaround needed
 - You're comfortable with the domain name being visible in public DNS
 - You have a domain with a public hosted zone in Route 53 (same or different account)
 

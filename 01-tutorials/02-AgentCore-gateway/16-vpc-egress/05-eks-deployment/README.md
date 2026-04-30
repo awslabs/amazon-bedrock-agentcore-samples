@@ -3,7 +3,6 @@
 
 # EKS Deployment
 
-> This feature is made available to you as a "Beta Service" as defined in the [AWS Service Terms](https://aws.amazon.com/service-terms/). It is subject to your Agreement with AWS and the AWS Service Terms.
 
 Deploy MCP servers and REST APIs on Amazon EKS and connect them to AgentCore Gateway using VPC egress.
 
@@ -43,7 +42,7 @@ AgentCore Gateway
 
 | Notebook | Description |
 |----------|-------------|
-| [mcp-server-gateway-managed.ipynb](./mcp-server-gateway-managed.ipynb) | Deploy FastMCP servers on EKS behind an NGINX Ingress Controller (single NLB, path-based routing), with a private hosted zone and `routingDomain`. Uses managed VPC Lattice. |
+| [mcp-server-gateway-managed.ipynb](./mcp-server-gateway-managed.ipynb) | Deploy FastMCP servers on EKS behind an NGINX Ingress Controller (single NLB, path-based routing), with a private hosted zone and `routingDomain`. Uses managed VPC resource. |
 | [api-server-gateway-managed.ipynb](./api-server-gateway-managed.ipynb) | Deploy a REST API (FastAPI) on EKS behind an internal NLB, connected to AgentCore Gateway with an OpenAPI schema. Uses private hosted zone and `routingDomain`. |
 
 ## License

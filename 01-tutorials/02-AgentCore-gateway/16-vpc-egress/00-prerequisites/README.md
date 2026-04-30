@@ -11,20 +11,13 @@ This folder contains the setup notebook and reference guides needed before runni
 
 | Notebook | Description |
 |----------|-------------|
-| [00-vpc-gateway-setup.ipynb](./00-vpc-gateway-setup.ipynb) | Deploys the foundational infrastructure: VPCs across two regions (us-west-2, us-east-1), bootstraps CDK, and creates the shared AgentCore Gateway with Cognito M2M authentication. Includes optional sections for [VPC Peering](../01-managed-lattice/02-peering.ipynb) (us-east-1 VPC + API Gateway + peering connection) and [Cross-Account](../02-self-managed-lattice/02-cross-account.ipynb) (Account B VPC) setup. All subsequent labs depend on this notebook. |
+| [00-vpc-gateway-setup.ipynb](./00-vpc-gateway-setup.ipynb) | Deploys the foundational infrastructure: VPCs across two regions (us-west-2, us-east-1), bootstraps CDK, and creates the shared AgentCore Gateway with Cognito M2M authentication. Includes optional sections for [VPC Peering](../01-managed-vpc-resource/02-peering.ipynb) (us-east-1 VPC + API Gateway + peering connection) and [Cross-Account](../02-self-managed-lattice/02-cross-account.ipynb) (Account B VPC) setup. All subsequent labs depend on this notebook. |
 
 ## Domain and Certificate Guides
 
 AgentCore Gateway VPC egress requires a **publicly trusted TLS certificate** on the target endpoint. Depending on whether your DNS is public or private, different patterns apply. These guides explain each combination:
 
-### Concept Guides
-
-| Guide | Description |
-|-------|-------------|
-| [Public Certificate + Public Domain](./public-certificate-public-domain.md) | Domain is publicly resolvable (resolves to private IPs). Simplest setup: no `routingDomain` needed. |
-| [Public Certificate + Private Domain](./public-certificate-private-domain.md) | Domain resolves only inside the VPC. Uses `routingDomain` to route via the load balancer's publicly resolvable DNS. |
-| [Private Certificate + Public Domain](./private-certificate-public-domain.md) | Not directly supported by AgentCore. Workaround: place a load balancer with a public cert in front. |
-| [Private Certificate + Private Domain](./private-certificate-private-domain.md) | Not directly supported by AgentCore. Workaround: public cert on load balancer + `routingDomain` for private DNS. |
+> **If your VPC has DNS enabled, AgentCore Gateway VPC egress reaches private endpoints via Private DNS automatically. If DNS is not enabled in your VPC, use `routingDomain` as a fallback.**
 
 ### How-To Guides
 

@@ -102,3 +102,4 @@ In these tutorials we will cover the following functionality:
 - [Transforming AWS Lambda function into MCP tools](01-transform-lambda-into-mcp-tools)
 - [Transforming APIs into MCP tools](02-transform-apis-into-mcp-tools)
 - [Discovering MCP tools](03-discover-mcp-tools)
+- [Inbound Auth Code Flow with Okta](17-inbound-auth-code-flow-okta)
