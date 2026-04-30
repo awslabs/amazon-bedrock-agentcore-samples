@@ -60,7 +60,9 @@ def _summarise(events: List[Dict]) -> Dict[str, List[Dict]]:
     by_eval: Dict[str, List[Dict]] = defaultdict(list)
     for ev in events:
         attrs = (ev or {}).get("attributes") or {}
-        name = attrs.get("gen_ai.evaluation.name") or ev.get("evaluatorName") or "unknown"
+        name = (
+            attrs.get("gen_ai.evaluation.name") or ev.get("evaluatorName") or "unknown"
+        )
         by_eval[name].append(ev)
     return by_eval
 
@@ -68,8 +70,12 @@ def _summarise(events: List[Dict]) -> Dict[str, List[Dict]]:
 def main() -> int:
     p = argparse.ArgumentParser()
     p.add_argument("--log-group", help="Override results log group")
-    p.add_argument("--minutes", type=int, default=DEFAULT_WINDOW_MIN, help="Lookback window")
-    p.add_argument("--raw", action="store_true", help="Print raw events instead of summary")
+    p.add_argument(
+        "--minutes", type=int, default=DEFAULT_WINDOW_MIN, help="Lookback window"
+    )
+    p.add_argument(
+        "--raw", action="store_true", help="Print raw events instead of summary"
+    )
     args = p.parse_args()
 
     log_group = args.log_group or _load_log_group()
@@ -92,7 +98,9 @@ def main() -> int:
             if value is None:
                 value = row.get("value")
             explanation = (
-                attrs.get("gen_ai.evaluation.explanation") or row.get("explanation") or ""
+                attrs.get("gen_ai.evaluation.explanation")
+                or row.get("explanation")
+                or ""
             )
             session_id = attrs.get("session.id") or "?"
             trace_id = row.get("traceId") or "?"

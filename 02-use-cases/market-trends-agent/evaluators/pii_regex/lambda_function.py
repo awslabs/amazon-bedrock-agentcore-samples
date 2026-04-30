@@ -38,7 +38,9 @@ PATTERNS: List[Tuple[str, re.Pattern[str]]] = [
 ]
 
 
-def _filter_trace_spans(spans: Iterable[Dict[str, Any]], target: Dict[str, Any]) -> List[Dict[str, Any]]:
+def _filter_trace_spans(
+    spans: Iterable[Dict[str, Any]], target: Dict[str, Any]
+) -> List[Dict[str, Any]]:
     trace_ids = (target or {}).get("traceIds") or []
     if not trace_ids:
         return list(spans)

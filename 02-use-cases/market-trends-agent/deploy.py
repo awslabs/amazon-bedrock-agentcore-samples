@@ -158,7 +158,7 @@ class MarketTrendsAgentDeployer:
                     ],
                     "Resource": [
                         f"arn:aws:bedrock-agentcore:{self.region}:{account_id}:browser-custom/*",
-                        "arn:aws:bedrock-agentcore:*:aws:browser/*"
+                        "arn:aws:bedrock-agentcore:*:aws:browser/*",
                     ],
                 },
                 {
@@ -344,6 +344,7 @@ class MarketTrendsAgentDeployer:
 
         # Poll until the build finishes (max ~20 min).
         import time as _time
+
         for _ in range(120):
             _time.sleep(10)
             builds = codebuild.batch_get_builds(ids=[build_id])["builds"]
@@ -430,7 +431,9 @@ class MarketTrendsAgentDeployer:
             ecr_image_uri = self._trigger_codebuild(agent_name)
 
             # Step 4: Create / update the runtime via bedrock-agentcore-control
-            runtime_arn = self._ensure_runtime(agent_name, execution_role_arn, ecr_image_uri)
+            runtime_arn = self._ensure_runtime(
+                agent_name, execution_role_arn, ecr_image_uri
+            )
 
             arn_file = Path(".agent_arn")
             arn_file.write_text(runtime_arn)
@@ -455,6 +458,7 @@ class MarketTrendsAgentDeployer:
             return None
         except Exception as exc:
             import traceback
+
             logger.error("Deployment failed: %s\n%s", exc, traceback.format_exc())
             return None
 

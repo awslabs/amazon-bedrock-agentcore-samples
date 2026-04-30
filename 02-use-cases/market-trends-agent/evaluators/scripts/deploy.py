@@ -55,11 +55,35 @@ ONLINE_CFG_NAME = "market_trends_online_code_eval"
 # Each tuple: (folder_name, lambda_function_name, evaluator_name, level, extra_timeout)
 # evaluator_name regex is [a-zA-Z][a-zA-Z0-9_]{0,47} — NO HYPHENS.
 EVALUATORS: List[Tuple[str, str, str, str, int]] = [
-    ("schema_validator",      "market-trends-eval-schema-validator",   "mt_schema_validator",      "TRACE",   30),
-    ("stock_price_drift",     "market-trends-eval-stock-price-drift",  "mt_stock_price_drift",     "TRACE",   60),
-    ("pii_regex",             "market-trends-eval-pii-regex",          "mt_pii_regex",             "TRACE",   30),
-    ("pii_comprehend",        "market-trends-eval-pii-comprehend",     "mt_pii_comprehend",        "SESSION", 60),
-    ("workflow_contract_gsr", "market-trends-eval-workflow-contract",  "mt_workflow_contract_gsr", "SESSION", 30),
+    (
+        "schema_validator",
+        "market-trends-eval-schema-validator",
+        "mt_schema_validator",
+        "TRACE",
+        30,
+    ),
+    (
+        "stock_price_drift",
+        "market-trends-eval-stock-price-drift",
+        "mt_stock_price_drift",
+        "TRACE",
+        60,
+    ),
+    ("pii_regex", "market-trends-eval-pii-regex", "mt_pii_regex", "TRACE", 30),
+    (
+        "pii_comprehend",
+        "market-trends-eval-pii-comprehend",
+        "mt_pii_comprehend",
+        "SESSION",
+        60,
+    ),
+    (
+        "workflow_contract_gsr",
+        "market-trends-eval-workflow-contract",
+        "mt_workflow_contract_gsr",
+        "SESSION",
+        30,
+    ),
 ]
 
 
@@ -115,7 +139,9 @@ def _ensure_role(
     return resp["Role"]["Arn"]
 
 
-def _ensure_inline_policy(iam, role_name: str, policy_name: str, policy: Dict[str, Any]) -> None:
+def _ensure_inline_policy(
+    iam, role_name: str, policy_name: str, policy: Dict[str, Any]
+) -> None:
     iam.put_role_policy(
         RoleName=role_name, PolicyName=policy_name, PolicyDocument=json.dumps(policy)
     )
@@ -125,7 +151,9 @@ def _eval_exec_role(iam) -> str:
     trust = json.loads((IAM_DIR / "trust-policy.json").read_text())
     perms = json.loads((IAM_DIR / "permissions-policy.json").read_text())
     arn = _ensure_role(
-        iam, EVAL_ROLE_NAME, trust,
+        iam,
+        EVAL_ROLE_NAME,
+        trust,
         description="AgentCore Evaluations: invoke Market Trends evaluator Lambdas",
     )
     _ensure_inline_policy(iam, EVAL_ROLE_NAME, EVAL_ROLE_POLICY_NAME, perms)
@@ -165,7 +193,12 @@ def _lambda_exec_role(iam) -> str:
             },
         ],
     }
-    arn = _ensure_role(iam, LAMBDA_ROLE_NAME, trust, "Execution role for Market Trends evaluator Lambdas")
+    arn = _ensure_role(
+        iam,
+        LAMBDA_ROLE_NAME,
+        trust,
+        "Execution role for Market Trends evaluator Lambdas",
+    )
     _ensure_inline_policy(iam, LAMBDA_ROLE_NAME, LAMBDA_ROLE_POLICY_NAME, perms)
     LOG.info("Lambda execution role ready: %s", arn)
     return arn
@@ -189,7 +222,9 @@ def _deploy_lambda(
     try:
         lam.get_function(FunctionName=function_name)
         LOG.info("Updating Lambda %s", function_name)
-        lam.update_function_code(FunctionName=function_name, ZipFile=zip_bytes, Publish=True)
+        lam.update_function_code(
+            FunctionName=function_name, ZipFile=zip_bytes, Publish=True
+        )
         waiter.wait(FunctionName=function_name)
         lam.update_function_configuration(
             FunctionName=function_name,
@@ -263,7 +298,9 @@ def _find_evaluator(cp, base_name: str) -> Optional[str]:
         kwargs = {"nextToken": token}
 
 
-def _register_evaluator(cp, name: str, level: str, lambda_arn: str, timeout: int) -> str:
+def _register_evaluator(
+    cp, name: str, level: str, lambda_arn: str, timeout: int
+) -> str:
     existing = _find_evaluator(cp, name)
     if existing:
         LOG.info("Evaluator %s already registered: %s", name, existing)
@@ -298,7 +335,9 @@ def _runtime_log_group_and_service(agent_runtime_arn: str) -> Tuple[str, str]:
     return log_group, service_name
 
 
-def _create_online_config(cp, evaluator_ids: List[str], exec_role_arn: str, agent_runtime_arn: str) -> str:
+def _create_online_config(
+    cp, evaluator_ids: List[str], exec_role_arn: str, agent_runtime_arn: str
+) -> str:
     log_group, service_name = _runtime_log_group_and_service(agent_runtime_arn)
 
     # If an active config with our name prefix exists, reuse it.
@@ -365,7 +404,9 @@ def main() -> int:
         eid = _register_evaluator(cp, ev_name, level, fn_arn, timeout)
         evaluator_ids.append(eid)
 
-    cfg_id = _create_online_config(cp, evaluator_ids, eval_exec_role_arn, agent_runtime_arn)
+    cfg_id = _create_online_config(
+        cp, evaluator_ids, eval_exec_role_arn, agent_runtime_arn
+    )
 
     summary = {
         "accountId": account_id,

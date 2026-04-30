@@ -50,9 +50,7 @@ Recent Interests: blockchain technology, NFTs, metaverse"""
         # Configure client with longer timeout for complex broker card processing
         config = Config(read_timeout=120)
         region = os.getenv("AWS_REGION", "us-east-1")
-        client = boto3.client(
-            "bedrock-agentcore", region_name=region, config=config
-        )
+        client = boto3.client("bedrock-agentcore", region_name=region, config=config)
 
         response = client.invoke_agent_runtime(
             agentRuntimeArn=runtime_arn,

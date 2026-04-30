@@ -25,7 +25,9 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 DRIFT_THRESHOLD_PCT = float(os.environ.get("DRIFT_THRESHOLD_PCT", "2.0"))
-YAHOO_CHART_URL = "https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?interval=1d&range=1d"
+YAHOO_CHART_URL = (
+    "https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?interval=1d&range=1d"
+)
 HTTP_TIMEOUT_S = 4.0
 USER_AGENT = "market-trends-eval/1.0"
 
@@ -67,7 +69,9 @@ def _response_text(spans: Iterable[Dict[str, Any]]) -> str:
     return "\n".join(chunks)
 
 
-def _filter_trace_spans(spans: Iterable[Dict[str, Any]], target: Dict[str, Any]) -> List[Dict[str, Any]]:
+def _filter_trace_spans(
+    spans: Iterable[Dict[str, Any]], target: Dict[str, Any]
+) -> List[Dict[str, Any]]:
     trace_ids = (target or {}).get("traceIds") or []
     if not trace_ids:
         return list(spans)
@@ -95,20 +99,82 @@ def _extract_ticker_price_pairs(text: str) -> List[Tuple[str, float]]:
     return list(seen.items())
 
 
-_NON_TICKERS: frozenset = frozenset({
-    # Currency / markets
-    "USD", "EUR", "GBP", "JPY", "CNY", "INR", "BPS", "EDT", "EST", "UTC", "ET", "PT",
-    # Corporate / finance jargon
-    "CEO", "CFO", "COO", "CTO", "EPS", "IPO", "GDP", "CPI", "PPI", "ROI", "ROE",
-    "PE", "PB", "EV", "DCF", "LBO", "MBO", "MBS", "NAV", "SEC", "FED", "IRS",
-    "ETF", "MRS", "LTM", "TTM", "YTD", "WTD", "MTD", "QTD", "AUM", "NYSE",
-    # Common
-    "AI", "API", "SDK", "LLM", "AM", "PM", "MOU", "NDA", "KYC", "AML",
-    # Quarters
-    "Q1", "Q2", "Q3", "Q4", "FY", "FYE",
-    # Letters used in ranges/labels
-    "P", "S", "T", "M", "B", "K", "N",
-})
+_NON_TICKERS: frozenset = frozenset(
+    {
+        # Currency / markets
+        "USD",
+        "EUR",
+        "GBP",
+        "JPY",
+        "CNY",
+        "INR",
+        "BPS",
+        "EDT",
+        "EST",
+        "UTC",
+        "ET",
+        "PT",
+        # Corporate / finance jargon
+        "CEO",
+        "CFO",
+        "COO",
+        "CTO",
+        "EPS",
+        "IPO",
+        "GDP",
+        "CPI",
+        "PPI",
+        "ROI",
+        "ROE",
+        "PE",
+        "PB",
+        "EV",
+        "DCF",
+        "LBO",
+        "MBO",
+        "MBS",
+        "NAV",
+        "SEC",
+        "FED",
+        "IRS",
+        "ETF",
+        "MRS",
+        "LTM",
+        "TTM",
+        "YTD",
+        "WTD",
+        "MTD",
+        "QTD",
+        "AUM",
+        "NYSE",
+        # Common
+        "AI",
+        "API",
+        "SDK",
+        "LLM",
+        "AM",
+        "PM",
+        "MOU",
+        "NDA",
+        "KYC",
+        "AML",
+        # Quarters
+        "Q1",
+        "Q2",
+        "Q3",
+        "Q4",
+        "FY",
+        "FYE",
+        # Letters used in ranges/labels
+        "P",
+        "S",
+        "T",
+        "M",
+        "B",
+        "K",
+        "N",
+    }
+)
 
 
 def _fetch_reference_price(ticker: str) -> Optional[float]:
@@ -134,7 +200,12 @@ def _fetch_reference_price(ticker: str) -> Optional[float]:
     if not results:
         return None
     meta = (results[0] or {}).get("meta") or {}
-    for key in ("regularMarketPrice", "postMarketPrice", "preMarketPrice", "previousClose"):
+    for key in (
+        "regularMarketPrice",
+        "postMarketPrice",
+        "preMarketPrice",
+        "previousClose",
+    ):
         value = meta.get(key)
         if isinstance(value, (int, float)) and value > 0:
             return float(value)
@@ -171,7 +242,9 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 checked.append(f"{ticker}=unverifiable")
                 continue
             drift_pct = abs(quoted - ref) / ref * 100.0
-            checked.append(f"{ticker} quoted={quoted:.2f} ref={ref:.2f} drift={drift_pct:.2f}%")
+            checked.append(
+                f"{ticker} quoted={quoted:.2f} ref={ref:.2f} drift={drift_pct:.2f}%"
+            )
             if drift_pct > DRIFT_THRESHOLD_PCT:
                 drifts.append(f"{ticker} ({drift_pct:.2f}%)")
 
@@ -179,7 +252,8 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             return {
                 "label": "PASS",
                 "value": 1.0,
-                "explanation": "All ticker+price pairs within drift threshold. " + "; ".join(checked),
+                "explanation": "All ticker+price pairs within drift threshold. "
+                + "; ".join(checked),
             }
 
         return {

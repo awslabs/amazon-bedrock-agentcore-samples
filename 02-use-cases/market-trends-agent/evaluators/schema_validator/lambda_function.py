@@ -78,7 +78,9 @@ def _tool_name(attrs: Dict[str, Any], span_name: str) -> str:
     return span_name or ""
 
 
-def _filter_trace_spans(spans: Iterable[Dict[str, Any]], target: Dict[str, Any]) -> List[Dict[str, Any]]:
+def _filter_trace_spans(
+    spans: Iterable[Dict[str, Any]], target: Dict[str, Any]
+) -> List[Dict[str, Any]]:
     trace_ids = (target or {}).get("traceIds") or []
     if not trace_ids:
         return list(spans)

@@ -29,6 +29,7 @@ LOG = logging.getLogger("invoke-agent")
 
 REGION = os.environ.get("AWS_REGION", "us-west-2")
 
+
 def _resolve_agent_arn() -> str:
     """Resolve the agent runtime ARN from env var or .agent_arn file."""
     from_env = os.environ.get("AGENT_RUNTIME_ARN", "")
@@ -43,6 +44,7 @@ def _resolve_agent_arn() -> str:
         "AGENT_RUNTIME_ARN not set and .agent_arn not found. "
         "Deploy the agent first or set: export AGENT_RUNTIME_ARN=<your-runtime-arn>"
     )
+
 
 AGENT_RUNTIME_ARN = _resolve_agent_arn()
 

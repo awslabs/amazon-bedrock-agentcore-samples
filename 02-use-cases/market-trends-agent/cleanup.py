@@ -42,7 +42,9 @@ class MarketTrendsAgentCleaner:
             from bedrock_agentcore.memory import MemoryClient
 
             self.memory_client = MemoryClient(region_name=region)
-            self.agentcore_control = boto3.client("bedrock-agentcore-control", region_name=region)
+            self.agentcore_control = boto3.client(
+                "bedrock-agentcore-control", region_name=region
+            )
             self.agentcore_available = True
         except ImportError:
             logger.warning(
