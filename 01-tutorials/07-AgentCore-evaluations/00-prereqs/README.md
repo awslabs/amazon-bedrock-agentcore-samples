@@ -68,9 +68,17 @@ Deploy the Strands agent:
 # CLI names must be alphanumeric only (no underscores/hyphens), max 23 chars
 agentcore create --name acevalstrands2 --framework Strands --model-provider Bedrock --defaults
 
-# Copy your agent code into the project, then deploy
+# Copy your agent code into the project
 cp eval_agent_strands.py acevalstrands2/app/acevalstrands2/main.py
 cd acevalstrands2
+
+# Populate aws-targets.json (agentcore create --defaults leaves it empty;
+# agentcore deploy -y requires a "default" target entry with account + region)
+ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+REGION=$(aws configure get region)
+echo "[{\"name\": \"default\", \"description\": \"Default target\", \"account\": \"$ACCOUNT_ID\", \"region\": \"$REGION\"}]" > agentcore/aws-targets.json
+
+# Deploy
 agentcore deploy -y
 
 # Check deployment status
@@ -86,6 +94,12 @@ Deploy the LangGraph agent:
 agentcore create --name acevallanggraph2 --framework LangChain_LangGraph --model-provider Bedrock --defaults
 cp eval_agent_langgraph.py acevallanggraph2/app/acevallanggraph2/main.py
 cd acevallanggraph2
+
+# Populate aws-targets.json
+ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+REGION=$(aws configure get region)
+echo "[{\"name\": \"default\", \"description\": \"Default target\", \"account\": \"$ACCOUNT_ID\", \"region\": \"$REGION\"}]" > agentcore/aws-targets.json
+
 agentcore deploy -y
 agentcore invoke "How much is 2+2?" --stream
 ```

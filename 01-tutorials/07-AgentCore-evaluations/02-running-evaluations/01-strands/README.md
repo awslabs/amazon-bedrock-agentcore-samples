@@ -43,6 +43,11 @@ Before starting these tutorials, ensure you have:
 - Generated at least one session with traces by invoking your agent
 - Python 3.10+ installed
 - AWS credentials configured with appropriate permissions
+- Required Python packages installed:
+
+```bash
+pip install boto3>=1.42.0 "bedrock-agentcore>=1.5.0" strands-agents strands-agents-tools
+```
 
 ### Tutorial Structure
 
@@ -157,6 +162,52 @@ agentcore deploy
 agentcore pause online-eval strandsevalconfig
 agentcore resume online-eval strandsevalconfig
 ```
+
+### Create IAM Role for Online Evaluation
+
+Before creating an online evaluation config via boto3, you need an IAM role that the evaluation service can assume. This role grants permissions to read CloudWatch Logs and invoke Bedrock models:
+
+```bash
+# Create the IAM role with a trust policy for bedrock-agentcore
+aws iam create-role \
+  --role-name AgentCoreOnlineEvaluationRole \
+  --assume-role-policy-document '{
+    "Version": "2012-10-17",
+    "Statement": [{
+      "Effect": "Allow",
+      "Principal": {"Service": "bedrock-agentcore.amazonaws.com"},
+      "Action": "sts:AssumeRole"
+    }]
+  }' \
+  --description "IAM role for AgentCore online evaluation"
+
+# Attach the inline policy granting CloudWatch Logs and Bedrock permissions
+aws iam put-role-policy \
+  --role-name AgentCoreOnlineEvaluationRole \
+  --policy-name AgentCoreOnlineEvalPolicy \
+  --policy-document '{
+    "Version": "2012-10-17",
+    "Statement": [
+      {
+        "Effect": "Allow",
+        "Action": [
+          "logs:FilterLogEvents", "logs:GetLogEvents",
+          "logs:DescribeLogGroups", "logs:DescribeLogStreams",
+          "logs:StartQuery", "logs:GetQueryResults", "logs:StopQuery",
+          "logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"
+        ],
+        "Resource": "*"
+      },
+      {
+        "Effect": "Allow",
+        "Action": ["bedrock:InvokeModel", "bedrock:InvokeModelWithResponseStream"],
+        "Resource": "*"
+      }
+    ]
+  }'
+```
+
+Wait about 10 seconds for IAM propagation before creating the online evaluation config.
 
 Using the AgentCore SDK directly (Python):
 

@@ -138,6 +138,8 @@ class EvaluationClient:
         - Spans with gen_ai.* attributes (LLM calls, agent operations)
         - Log events with conversation data (input/output messages)
 
+        All items must have start_time / end_time fields to pass API validation.
+
         Args:
             raw_spans: List of raw span/log documents
 
@@ -146,6 +148,18 @@ class EvaluationClient:
         """
         relevant_spans = []
         for span_doc in raw_spans:
+            # Skip entries missing required timestamp fields
+            has_start = span_doc.get("startTimeUnixNano") or span_doc.get("start_time")
+            has_end = span_doc.get("endTimeUnixNano") or span_doc.get("end_time")
+            if not has_start or not has_end:
+                # For log events, try to populate from timeUnixNano
+                time_nano = span_doc.get("timeUnixNano")
+                if time_nano:
+                    span_doc.setdefault("startTimeUnixNano", time_nano)
+                    span_doc.setdefault("endTimeUnixNano", time_nano)
+                else:
+                    continue
+
             attributes = span_doc.get("attributes", {})
             if any(k.startswith("gen_ai") for k in attributes.keys()):
                 relevant_spans.append(span_doc)

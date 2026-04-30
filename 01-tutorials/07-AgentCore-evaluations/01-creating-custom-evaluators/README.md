@@ -98,43 +98,62 @@ Install the AgentCore CLI:
 npm install -g @aws/agentcore@0.11.0
 ```
 
-List built-in evaluators via Python (no AWS CLI subcommand exists for this):
+List built-in evaluators:
 
-```python
+```bash
+aws bedrock-agentcore-control list-evaluators --region us-east-1
+```
+
+Or via Python (run from the terminal):
+
+```bash
+python3 -c "
 import boto3
-cp = boto3.client("bedrock-agentcore-control", region_name="us-east-1")
+cp = boto3.client('bedrock-agentcore-control', region_name='us-east-1')
 response = cp.list_evaluators()
-for ev in response["evaluators"]:
-    print(ev["evaluatorId"], ev["evaluatorType"], ev["status"])
+for ev in response['evaluators']:
+    print(ev['evaluatorId'], ev['evaluatorType'], ev['status'])
+"
+```
+
+Get details of a specific built-in evaluator:
+
+```bash
+aws bedrock-agentcore-control get-evaluator --evaluator-id Builtin.Correctness --region us-east-1
 ```
 
 Create a custom evaluator via CLI (from inside your project directory):
 
 ```bash
-# Add a custom evaluator to your project config using CLI flags:
+# Add a custom evaluator to your project config:
 agentcore add evaluator \
   --name response_quality_for_scope \
   --level TRACE \
-  --model "global.anthropic.claude-sonnet-4-5-20250929-v1:0" \
-  --instructions "Evaluate whether the agent response is relevant and accurate. Context: {context}" \
-  --rating-scale 1-5-quality
+  --config metric.json
 
 # Then deploy to create the evaluator in AWS:
 agentcore deploy
 ```
 
-Create a custom evaluator directly via boto3:
+Create a custom evaluator directly via Python (run from the `01-creating-custom-evaluators` directory where `metric.json` is located):
 
-```python
-import boto3
+```bash
+python3 -c "
+import boto3, json, uuid
 
-cp = boto3.client("bedrock-agentcore-control", region_name="us-east-1")
+cp = boto3.client('bedrock-agentcore-control', region_name='us-east-1')
+
+with open('metric.json') as f:
+    eval_config = json.load(f)
+
+evaluator_name = f'response_quality_for_scope_{uuid.uuid4().hex[:8]}'
 result = cp.create_evaluator(
-    evaluatorName="response_quality_for_scope",
-    level="TRACE",
+    evaluatorName=evaluator_name,
+    level='TRACE',
     evaluatorConfig=eval_config,
 )
-evaluator_id = result["evaluatorId"]
+print(f'Created evaluator: {result[\"evaluatorId\"]}')
+"
 ```
 
 ## Cleanup
@@ -147,12 +166,15 @@ aws bedrock-agentcore-control delete-evaluator \
   --region us-east-1
 ```
 
-Or via Python:
+Or via Python (run from the terminal):
 
-```python
+```bash
+python3 -c "
 import boto3
-cp = boto3.client("bedrock-agentcore-control", region_name="us-east-1")
-cp.delete_evaluator(evaluatorId="<evaluator-id>")
+cp = boto3.client('bedrock-agentcore-control', region_name='us-east-1')
+cp.delete_evaluator(evaluatorId='<evaluator-id>')
+print('Evaluator deleted.')
+"
 ```
 
 ## Next Steps
