@@ -3,9 +3,9 @@
 ## Introduction
 
 This tutorial demonstrates end-to-end evaluation of an agentic application using
-[**Amazon Bedrock AgentCore Evaluations**](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/evaluations.html) with ground-truth reference inputs. It covers
-the two primary evaluation interfaces — `EvaluationClient` and
-`OnDemandEvaluationDatasetRunner` — and shows how to create **custom LLM-as-a-judge
+[**Amazon Bedrock AgentCore Evaluations**](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/evaluations.html) with ground-truth reference inputs — using **direct `boto3` calls** throughout, so every AWS API call is visible and can be copied into customer pipelines. It covers
+the three primary evaluation operations on the `bedrock-agentcore` client — `evaluate`,
+`start_batch_evaluation`, and `get_batch_evaluation` — and shows how to create **custom LLM-as-a-judge
 evaluators** that use ground-truth placeholders to tailor scoring criteria to your
 application domain.
 
@@ -18,9 +18,9 @@ return deterministic mock data, making evaluation results fully reproducible.
 
 | Concept | Description |
 |---|---|
-| `EvaluationClient` | Evaluate specific existing CloudWatch sessions against ground-truth references |
-| `OnDemandEvaluationDatasetRunner` | Define a test dataset, auto-invoke the agent per scenario, and evaluate the results |
-| `ReferenceInputs` | Supply `expected_response`, `expected_trajectory`, and `assertions` as ground truth |
+| `bedrock-agentcore.evaluate` | Evaluate a specific existing CloudWatch session against ground-truth references |
+| `bedrock-agentcore.start_batch_evaluation` / `get_batch_evaluation` | Submit many sessions in a single call and poll for per-evaluator summaries |
+| `evaluationReferenceInputs` | Supply `expectedResponse`, `expectedTrajectory`, and `assertions` as ground truth |
 | Custom evaluators | Create LLM-as-a-judge evaluators with domain-specific instructions and ground-truth placeholders |
 
 
@@ -36,26 +36,28 @@ return deterministic mock data, making evaluation results fully reproducible.
 ┌─────────────────────────────────────────────────────────────────────────┐
 │  Tutorial Notebook (groundtruth_evaluations.ipynb)                      │
 │                                                                         │
-│  Step 1  ──► bedrock-agentcore-starter-toolkit                         │
-│               │  CodeBuild builds image, pushes to ECR                  │
+│  Steps 3-5 ──► bedrock-agentcore-control + Docker CLI                  │
+│               │  docker build, docker push, create_agent_runtime        │
 │               └──► AgentCore Runtime  (HR Assistant Agent)              │
 │                         │  invoke_agent_runtime()                       │
-│  Step 2  ──► bedrock-agentcore-control ──► Custom Evaluators           │
+│  Step 7   ──► bedrock-agentcore-control ──► Custom Evaluators          │
 │               create_evaluator()                                        │
 │                                                                         │
-│  Step 3   ──► AgentCore Runtime  (generate sessions)                    │
+│  Step 6   ──► AgentCore Runtime  (generate sessions)                    │
 │               │  OTel spans ──► CloudWatch Logs                         │
 │                                                                         │
-│  Step 4   ──► EvaluationClient.run()                                    │
-│               │  CloudWatchAgentSpanCollector reads spans               │
-│               └──► Evaluate API  ──► Built-in + Custom Evaluators       │
-│                                       └──► Scores & Explanations        │
+│  Step 8   ──► bedrock-agentcore.evaluate()                              │
+│               │  Per-session, on-demand scoring                         │
+│               └──► Built-in + Custom Evaluators                         │
+│                    └──► Scores & Explanations                           │
 │                                                                         │
-│  Step 5   ──► OnDemandEvaluationDatasetRunner.run()                     │
-│               │  Invokes agent per scenario                             │
-│               │  Waits for CloudWatch ingestion                         │
-│               └──► Evaluate API  ──► Built-in + Custom Evaluators       │
-│                                       └──► Per-scenario Results         │
+│  Step 9   ──► Python loop over dataset scenarios                        │
+│               │  invoke_agent_runtime per scenario                      │
+│               └──► Collect sessionIds for Step 10                       │
+│                                                                         │
+│  Step 10  ──► bedrock-agentcore.start_batch_evaluation()                │
+│               │  Poll get_batch_evaluation until terminal               │
+│               └──► evaluationResults.evaluatorSummaries                 │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -64,10 +66,10 @@ return deterministic mock data, making evaluation results fully reproducible.
 | Component | Role |
 |---|---|
 | AgentCore Runtime | Hosts the containerised HR Assistant, emits OTel spans to CloudWatch |
-| CloudWatch Logs | Stores session spans; queried by `CloudWatchAgentSpanCollector` |
+| CloudWatch Logs | Stores session spans; queried by the Evaluate / StartBatchEvaluation APIs via `sessionSource.cloudWatchSource` |
 | `bedrock-agentcore-control` | Control plane — creates custom evaluators and agent runtimes |
-| Evaluate API (`bedrock-agentcore`) | Data plane — scores sessions against evaluator definitions |
-| Starter Toolkit | Builds the Docker image via CodeBuild and registers the runtime; no local Docker required |
+| `bedrock-agentcore` | Data plane — invokes the runtime AND runs evaluations (`evaluate`, `start_batch_evaluation`, `get_batch_evaluation`) on the same client |
+| Docker CLI | Builds and pushes the agent container image to ECR locally (no CodeBuild) |
 
 ---
 
@@ -83,11 +85,9 @@ return deterministic mock data, making evaluation results fully reproducible.
     `logs:GetQueryResults` — read CloudWatch spans
   - `ecr:GetAuthorizationToken`, `ecr:BatchCheckLayerAvailability`,
     `ecr:InitiateLayerUpload`, `ecr:PutImage` — push container image
-  - `codebuild:StartBuild`, `codebuild:BatchGetBuilds` — image build via CodeBuild
   - `iam:CreateRole`, `iam:AttachRolePolicy`, `iam:PassRole` — auto-create execution roles
-  - `s3:PutObject`, `s3:GetObject` — CodeBuild source upload
-- **No local Docker required** — the starter toolkit builds the container image via
-  AWS CodeBuild
+- **Local Docker required** — the notebook builds the container image locally with
+  `docker build` and pushes it to ECR (no CodeBuild dependency)
 
 Install dependencies:
 
@@ -119,68 +119,96 @@ jupyter nbconvert --to notebook --execute --inplace groundtruth_evaluations.ipyn
 
 | Step | Cell(s) | What happens |
 |---|---|---|
-| **1 — Install** | `install` | Installs `bedrock-agentcore`, `strands-agents`, and other dependencies |
-| **2 — Configure** | `setup` | Creates a boto3 session and sets `REGION` |
-| **3a — Deploy agent** | `nn72gdo2s4h`, `deploy`, `wait-deploy`, `agent-config` | Writes `hr_assistant_agent.py`, builds image via CodeBuild, creates/updates the AgentCore Runtime, polls until `READY` |
-| **3b — Create evaluators** | `76hyptexblj` | Creates `HRResponseSimilarity` (TRACE) and `HRAssertionChecker` (SESSION) custom evaluators via `bedrock-agentcore-control` |
-| **4 — Invoke agent** | `invoke-single`, `invoke-multi`, `invoke-onboard` | Runs 5 sessions (single- and multi-turn), waits 60 s for CloudWatch ingestion |
-| **5 — EvaluationClient** | `ec-*` | Evaluates each session by session ID using built-in and custom evaluators |
-| **6 — DatasetRunner** | `runner-*` | Defines a 5-scenario dataset, invokes the agent per scenario, waits 180 s, evaluates all scenarios |
-| **7 — Cleanup** | `cleanup` | (Commented out) Deletes the agent runtime |
+| **1 — Install** | `install` | Installs `boto3>=1.43.0` and the Strands agent runtime |
+| **2 — Configure** | `setup` | Creates `cp` (`bedrock-agentcore-control`) and `bac` (`bedrock-agentcore`) boto3 clients |
+| **3 — Agent source** | `agent-source` | Writes `hr_assistant_agent.py` via `%%writefile` |
+| **4 — Deploy agent** | `ecr-login`, `docker-build`, `docker-push`, `create-runtime` | ECR login, `docker build`, `docker push`, then `cp.create_agent_runtime` / `update_agent_runtime` with idempotency via `list_agent_runtimes` |
+| **5 — Wait READY** | `wait-ready` | Polls `cp.get_agent_runtime` until the runtime reaches `READY` |
+| **6 — Invoke agent** | `invoke-sessions` | Runs 5 sessions (single- and multi-turn), waits 60 s for CloudWatch ingestion |
+| **7 — Create evaluators** | `create-evals` | Creates `HRResponseSimilarity` (TRACE) and `HRAssertionChecker` (SESSION) custom evaluators via `cp.create_evaluator` |
+| **8 — Per-session eval** | `adhoc-eval` | Calls `bac.evaluate` per `(sessionId, evaluatorId)` pair; prints results as a markdown table |
+| **9 — Dataset eval** | `dataset-eval` | Python loop over the same 5 scenarios — invokes the agent per scenario and collects sessionIds |
+| **10 — Batch eval** | `batch-eval-start`, `batch-eval-poll`, `batch-eval-results` | `bac.start_batch_evaluation`, poll `get_batch_evaluation` until terminal, render `evaluatorSummaries` |
+| **Cleanup** | `cleanup` | (Commented out) Deletes the agent runtime, custom evaluators, ECR repo, and log group |
 
-### Using `EvaluationClient` directly
+### Evaluate a single session with `bac.evaluate(...)`
 
 ```python
-from bedrock_agentcore.evaluation import EvaluationClient, ReferenceInputs
-from datetime import timedelta
+import boto3
 
-ec = EvaluationClient(region_name="us-east-1")
+bac = boto3.client("bedrock-agentcore", region_name="us-east-1")
 
-results = ec.run(
-    evaluator_ids=["Builtin.Correctness", "Builtin.GoalSuccessRate", MY_CUSTOM_EVAL_ID],
-    session_id="<session-id>",
-    agent_id="<agent-id>",
-    look_back_time=timedelta(hours=2),
-    reference_inputs=ReferenceInputs(
-        expected_response="Employee EMP-001 has 10 remaining PTO days.",
-        assertions=["Agent called get_pto_balance", "Agent reported 10 remaining days"],
-        expected_trajectory=["get_pto_balance"],
-    ),
+resp = bac.evaluate(
+    evaluatorId="Builtin.Correctness",
+    evaluationInput={
+        "sessionSpans": [{
+            "sessionId": "<session-id>",
+            "logGroupNames": ["aws/spans", CW_LOG_GROUP],
+        }],
+    },
+    evaluationTarget={"sessionId": "<session-id>"},
+    evaluationReferenceInputs=[{
+        "expectedResponse": "Employee EMP-001 has 10 remaining PTO days.",
+        "expectedTrajectory": {"toolNames": ["get_pto_balance"]},
+        "assertions": [
+            {"text": "Agent called get_pto_balance"},
+            {"text": "Agent reported 10 remaining days"},
+        ],
+    }],
 )
+
+for result in resp.get("evaluationResult", {}).get("results", []):
+    print(result.get("evaluatorId"), result.get("value"), result.get("label"))
 ```
 
-### Using `OnDemandEvaluationDatasetRunner` directly
+### Evaluate many sessions at once with `start_batch_evaluation`
 
 ```python
-from bedrock_agentcore.evaluation import (
-    Dataset, PredefinedScenario, Turn,
-    EvaluationRunConfig, EvaluatorConfig,
-    OnDemandEvaluationDatasetRunner,
-    CloudWatchAgentSpanCollector,
-)
+import boto3, uuid, time
 
-dataset = Dataset(scenarios=[
-    PredefinedScenario(
-        scenario_id="pto-check",
-        turns=[Turn(
-            input="What is the PTO balance for EMP-001?",
-            expected_response="EMP-001 has 10 remaining PTO days.",
-        )],
-        expected_trajectory=["get_pto_balance"],
-        assertions=["Agent reported 10 remaining PTO days"],
-    ),
-])
+bac = boto3.client("bedrock-agentcore", region_name="us-east-1")
 
-runner = OnDemandEvaluationDatasetRunner(region="us-east-1")
-result = runner.run(
-    config=EvaluationRunConfig(
-        evaluator_config=EvaluatorConfig(evaluator_ids=["Builtin.Correctness"]),
-        evaluation_delay_seconds=180,
-    ),
-    dataset=dataset,
-    agent_invoker=my_invoker_fn,
-    span_collector=CloudWatchAgentSpanCollector(log_group_name=CW_LOG_GROUP, region="us-east-1"),
+start_resp = bac.start_batch_evaluation(
+    name=f"gt-batch-{uuid.uuid4().hex[:8]}",
+    evaluationConfig={
+        "evaluators": [
+            {"evaluatorId": "Builtin.Correctness"},
+            {"evaluatorId": "Builtin.GoalSuccessRate"},
+            {"evaluatorId": "Builtin.TrajectoryExactOrderMatch"},
+        ],
+    },
+    sessionSource={
+        "cloudWatchSource": {
+            "serviceNames": [SERVICE_NAME],
+            "logGroupNames": ["aws/spans", CW_LOG_GROUP],
+            "sessionInput": {"sessionIds": [sid_1, sid_2, sid_3]},
+        },
+    },
+    sessionMetadata=[
+        {
+            "sessionId": sid_1,
+            "testScenarioId": "pto-balance-check",
+            "groundTruth": {"inline": {
+                "expectedTrajectory": {"toolNames": ["get_pto_balance"]},
+                "assertions": [{"text": "Agent reported 10 remaining PTO days"}],
+            }},
+        },
+        # ...one entry per sessionId
+    ],
+    clientToken=str(uuid.uuid4()),
 )
+batch_id = start_resp["batchEvaluateId"]
+
+while True:
+    resp = bac.get_batch_evaluation(batchEvaluateId=batch_id)
+    if resp["status"] in {"COMPLETED", "FAILED", "STOPPED"}:
+        break
+    time.sleep(30)
+
+for summary in resp["evaluationResults"]["evaluatorSummaries"]:
+    stats = summary.get("statistics", {})
+    print(summary["evaluatorId"], stats.get("averageScore"),
+          summary.get("totalEvaluated"), summary.get("totalFailed"))
 ```
 
 ---
@@ -278,23 +306,19 @@ result = cp.create_evaluator(
 custom_evaluator_id = result["evaluatorId"]
 ```
 
-Pass `custom_evaluator_id` to `EvaluationClient.run()` or `EvaluatorConfig` like any
-built-in evaluator ID. Seed the level cache to avoid an extra `get_evaluator` lookup:
-
-```python
-eval_client._evaluator_level_cache[custom_evaluator_id] = "TRACE"
-```
+Pass `custom_evaluator_id` to `bac.evaluate(evaluatorId=...)` or include it in
+`start_batch_evaluation(evaluationConfig={"evaluators": [...]})` like any built-in evaluator ID.
 
 ### Custom evaluators in this tutorial
 
 | Evaluator | Level | Placeholders used | Where used |
 |---|---|---|---|
-| `HRResponseSimilarity` | TRACE | `{assistant_turn}`, `{expected_response}` | EvaluationClient (Steps 5a, 5b), DatasetRunner (Step 6) |
-| `HRAssertionChecker` | SESSION | `{actual_tool_trajectory}`, `{expected_tool_trajectory}`, `{assertions}` | EvaluationClient (Step 5d, multi-turn), DatasetRunner (Step 6) |
+| `HRResponseSimilarity` | TRACE | `{assistant_turn}`, `{expected_response}` | Per-session `bac.evaluate` (Step 8), batch eval (Step 10) |
+| `HRAssertionChecker` | SESSION | `{actual_tool_trajectory}`, `{expected_tool_trajectory}`, `{assertions}` | Per-session `bac.evaluate` on multi-turn sessions (Step 8d), batch eval (Step 10) |
 
 > **Note:** SESSION-level custom evaluators require a session with multiple tool calls to
-> extract a meaningful trajectory. They are used on multi-turn sessions in Step 5d and on
-> all DatasetRunner scenarios in Step 6, where a 180-second ingestion delay ensures span
+> extract a meaningful trajectory. They are used on multi-turn sessions in Step 8 and on
+> all dataset scenarios in Step 10, where a 180-second ingestion delay ensures span
 > data is complete before evaluation.
 
 ---
@@ -322,9 +346,9 @@ eval_client._evaluator_level_cache[custom_evaluator_id] = "TRACE"
 | File | Description |
 |---|---|
 | `groundtruth_evaluations.ipynb` | Main tutorial notebook — self-contained, end-to-end |
-| `requirements.txt` | Python dependencies installed into the agent container |
+| `requirements.txt` | Python dependencies (kernel-side + agent container) |
 
-`hr_assistant_agent.py` and `.bedrock_agentcore.yaml` are generated at runtime (by the `%%writefile` notebook cell and the starter toolkit respectively)
+`hr_assistant_agent.py` is generated at runtime by the `%%writefile` notebook cell and baked into the container image by `docker build`.
 
 ---
 
