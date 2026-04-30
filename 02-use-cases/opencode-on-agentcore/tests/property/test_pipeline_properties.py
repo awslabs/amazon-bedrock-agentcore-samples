@@ -111,7 +111,9 @@ repo_url_st: st.SearchStrategy[str] = _repo_url()
 #: Git-ref-safe strings for ``base_branch`` and ``target_branch``. Uses the
 #: subset of characters allowed in refnames per ``git-check-ref-format(1)``
 #: that is also free of leading/trailing restrictions we do not need to model
-#: here (the pipeline itself never validates branch names).
+#: here. The ``_validate_git_ref`` guard in ``container.pipeline`` rejects
+#: leading ``-`` (argv-flag confusion with git) and embedded whitespace, so
+#: the strategy filters those out too.
 _git_ref_char_st = st.characters(
     whitelist_categories=("L", "N"),
     whitelist_characters="-_/",
@@ -121,6 +123,7 @@ git_ref_st: st.SearchStrategy[str] = (
     .filter(lambda s: "//" not in s)
     .filter(lambda s: not s.startswith("/") and not s.endswith("/"))
     .filter(lambda s: not s.startswith(".") and not s.endswith("."))
+    .filter(lambda s: not s.startswith("-"))
 )
 
 base_branch_st: st.SearchStrategy[str] = git_ref_st

@@ -243,7 +243,23 @@ class GatewayStack(cdk.Stack):
             [
                 cdk_nag.NagPackSuppression(
                     id="AwsSolutions-IAM5",
-                    reason="Gateway L2 construct creates IAM roles.",
+                    reason=(
+                        "Gateway role uses two wildcard patterns: "
+                        "(1) bedrock-agentcore resource ARNs scoped to the "
+                        "account/region with resource-type prefixes "
+                        "(gateway/*, workload-identity-directory/*, "
+                        "token-vault/*, policy-engine/*, runtime/<id>/*); "
+                        "each path segment that matters is pinned, only "
+                        "instance IDs are wildcarded. "
+                        "(2) Secrets Manager 'bedrock-agentcore-identity*' "
+                        "matches the naming pattern AgentCore Identity uses "
+                        "for OAuth token-vault secrets in the customer's "
+                        "account; these are created and managed by AgentCore "
+                        "Identity and cannot be pinned at CDK synth time. "
+                        "See docs/THREAT-MODEL.md section 'Gateway → Runtime (SigV4)' "
+                        "and the 'Runtime execution role' section for the "
+                        "threat-to-control mapping."
+                    ),
                 ),
                 cdk_nag.NagPackSuppression(
                     id="AwsSolutions-IAM4",

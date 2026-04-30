@@ -10,6 +10,18 @@ on the current code produces ``token + "\\n"`` on stdout with exit 0.
 After the fix, the same property must hold.
 
 These tests MUST PASS on unfixed code and continue to PASS after the fix.
+
+.. note::
+
+   Any string literal in this file that matches a ``gh[pousr]_`` or
+   similar OAuth-token prefix is a **synthetic test fixture**, not a
+   real credential. The tests exercise the askpass shell-escaping
+   machinery, which needs realistic-shaped inputs (right length, right
+   prefix, right alphabet) to give meaningful coverage. Every such
+   literal is either hypothesis-generated at test time or a short,
+   obviously-fake string ending in ``0123`` or similar sequential
+   digits. Credential scanners (trufflehog, secretlint) should allow
+   these values via this file's path.
 """
 
 from __future__ import annotations
@@ -90,7 +102,7 @@ class TestAskpassAlphanumericPreservation:
 
         **Validates: Requirements 3.6**
         """
-        result = _create_askpass_script("ghp_0123456789abcdef0123456789abcdef0123")
+        result = _create_askpass_script("ghp_0123456789abcdef0123456789abcdef0123")  # test-fixture; not a real token
         sidecar = result + ".token"
         try:
             assert isinstance(result, str), (
@@ -110,7 +122,7 @@ class TestAskpassAlphanumericPreservation:
     def test_deterministic_github_pat(self) -> None:
         """A typical GitHub PAT (``ghp_`` prefix + 36 alphanumerics) prints
         correctly. Deterministic sanity check."""
-        token = "ghp_0123456789abcdef0123456789abcdef0123"
+        token = "ghp_0123456789abcdef0123456789abcdef0123"  # test-fixture; not a real token
         script_path = _create_askpass_script(token)
         sidecar = script_path + ".token"
         try:

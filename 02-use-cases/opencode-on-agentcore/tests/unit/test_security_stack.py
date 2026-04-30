@@ -358,6 +358,87 @@ class TestCloudTrailConditional:
         rules = enc_config.get("ServerSideEncryptionConfiguration", [])
         assert len(rules) > 0, "CloudTrail bucket missing encryption configuration"
 
+    def test_cloudtrail_bucket_blocks_public_access(self):
+        """CloudTrail S3 bucket must have all four Block Public Access flags set.
+
+        Verifies the PCSR Holmes finding (Rule 9, S3 Security Fundamentals)
+        that the bucket blocks public ACLs, public policies, and ignores
+        any that slip through. All four flags are required - a missing
+        flag here means the CloudTrail audit log can leak.
+        """
+        template = _build_security_template({"enable_cloudtrail": True})
+        tpl = template.to_json()
+        trail_buckets = [
+            res for lid, res in tpl["Resources"].items()
+            if res["Type"] == "AWS::S3::Bucket"
+        ]
+        assert len(trail_buckets) >= 1, "No S3 bucket found for CloudTrail"
+        props = trail_buckets[0]["Properties"]
+        pab = props.get("PublicAccessBlockConfiguration", {})
+        for key in (
+            "BlockPublicAcls",
+            "BlockPublicPolicy",
+            "IgnorePublicAcls",
+            "RestrictPublicBuckets",
+        ):
+            assert pab.get(key) is True, (
+                f"CloudTrail bucket must set {key}=true; got {pab}"
+            )
+
+    def test_cloudtrail_bucket_enforces_ssl(self):
+        """CloudTrail S3 bucket policy must deny non-TLS requests.
+
+        ``enforce_ssl=True`` on the CDK Bucket emits a bucket policy
+        statement with ``Condition: {Bool: {aws:SecureTransport: false}}``
+        and ``Effect: Deny``. Without this, clients can read or write
+        the bucket over plain HTTP.
+        """
+        template = _build_security_template({"enable_cloudtrail": True})
+        tpl = template.to_json()
+        bucket_policies = [
+            res for lid, res in tpl["Resources"].items()
+            if res["Type"] == "AWS::S3::BucketPolicy"
+        ]
+        assert len(bucket_policies) >= 1, "No S3 bucket policy attached to CloudTrail bucket"
+        found_tls_deny = False
+        for bp in bucket_policies:
+            stmts = bp["Properties"].get("PolicyDocument", {}).get("Statement", [])
+            for stmt in stmts:
+                if stmt.get("Effect") != "Deny":
+                    continue
+                cond = stmt.get("Condition", {})
+                secure = cond.get("Bool", {}).get("aws:SecureTransport")
+                if secure in ("false", False):
+                    found_tls_deny = True
+                    break
+            if found_tls_deny:
+                break
+        assert found_tls_deny, (
+            "CloudTrail bucket policy must Deny any request where "
+            "aws:SecureTransport is false (enforce_ssl=True on the "
+            "underlying Bucket)."
+        )
+
+    def test_cloudtrail_bucket_versioned(self):
+        """CloudTrail S3 bucket must have versioning enabled.
+
+        Versioning protects the audit log from accidental or malicious
+        overwrite. Without it, a compromised caller with S3 PutObject
+        permission on an existing log key can rewrite history in-place.
+        """
+        template = _build_security_template({"enable_cloudtrail": True})
+        tpl = template.to_json()
+        trail_buckets = [
+            res for lid, res in tpl["Resources"].items()
+            if res["Type"] == "AWS::S3::Bucket"
+        ]
+        assert len(trail_buckets) >= 1, "No S3 bucket found for CloudTrail"
+        versioning = trail_buckets[0]["Properties"].get("VersioningConfiguration", {})
+        assert versioning.get("Status") == "Enabled", (
+            f"CloudTrail bucket must have VersioningConfiguration.Status=Enabled; "
+            f"got {versioning}"
+        )
+
     def test_no_s3_bucket_when_cloudtrail_disabled(self):
         """No S3 bucket created when CloudTrail is disabled."""
         template = _build_security_template({"enable_cloudtrail": False})

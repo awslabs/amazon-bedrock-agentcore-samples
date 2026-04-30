@@ -33,6 +33,46 @@ logger = logging.getLogger(__name__)
 OPENCODE_BINARY = os.environ.get("OPENCODE_BINARY", "/usr/local/bin/opencode")
 
 
+def _validate_opencode_binary(path: str) -> None:
+    """Fail fast at server startup if ``OPENCODE_BINARY`` is unusable.
+
+    Called once from ``container/code_mcp_server.py`` before the
+    FastMCP server starts listening; not called per-invocation, so
+    unit tests of ``run_opencode_acp_impl`` that mock
+    ``asyncio.create_subprocess_exec`` are unaffected.
+
+    The binary path is deployment-time config (read once at import),
+    not user input, so this is defence in depth rather than sandbox
+    boundary enforcement. We check:
+
+    * The value is a non-empty string.
+    * The path is absolute. ``subprocess.create_subprocess_exec`` with
+      a relative name would resolve via ``$PATH``, which is noisy
+      inside the microVM and makes it harder to reason about which
+      binary actually ran.
+    * The path exists and is an executable regular file.
+
+    Raised as ``RuntimeError`` so the startup path surfaces the
+    misconfiguration with a clear message rather than a generic
+    ``FileNotFoundError`` from deep inside ``create_subprocess_exec``
+    on the first incoming request.
+    """
+    if not isinstance(path, str) or not path:
+        raise RuntimeError("OPENCODE_BINARY must be a non-empty string")
+    if not os.path.isabs(path):
+        raise RuntimeError(
+            f"OPENCODE_BINARY must be an absolute path; got {path!r}"
+        )
+    if not os.path.isfile(path):
+        raise RuntimeError(
+            f"OPENCODE_BINARY does not exist or is not a regular file: {path!r}"
+        )
+    if not os.access(path, os.X_OK):
+        raise RuntimeError(
+            f"OPENCODE_BINARY is not executable: {path!r}"
+        )
+
+
 class OpenCodeResult(TypedDict):
     stdout: str
     stderr: str

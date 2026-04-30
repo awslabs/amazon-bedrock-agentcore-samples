@@ -1,3 +1,6 @@
+<!-- Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved. -->
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+
 # Timeout Cascade
 
 This document describes the timeout values at each layer of the OpenCode on AgentCore stack, the expected behavior when each layer times out, and the recommended timeout ordering to prevent orphaned background work.

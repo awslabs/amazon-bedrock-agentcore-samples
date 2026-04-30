@@ -1,10 +1,13 @@
+<!-- Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved. -->
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+
 # Troubleshooting
 
 Common problems seen during deploy, redeploy, and cleanup, and how to get past them.
 
 ## "Resource already exists" errors after a previous deployment
 
-Several resources use `RETAIN` removal policy (DynamoDB table, S3 bucket, ECR repository, CloudWatch log groups) to prevent accidental data loss. After `cdk destroy`, these resources remain and will cause "already exists" errors on the next `cdk deploy`. Run the cleanup script before redeploying:
+Several resources use `RETAIN` removal policy (DynamoDB table, S3 bucket, ECR repository, CloudWatch log groups) to prevent accidental data loss. After `cdk destroy`, these resources remain and can cause "already exists" errors on the next `cdk deploy`. Run the cleanup script before redeploying:
 
 ```bash
 export AWS_REGION=us-east-1   # match your target region
@@ -29,7 +32,7 @@ Run `cdk bootstrap aws://<account>/<region>` before the first deployment to a ne
 
 ## GitHub OAuth App not working
 
-Ensure the callback URL in your GitHub OAuth App matches the provider-specific URL from AgentCore Identity. Run `./scripts/setup-oauth-app.sh` — it displays the correct callback URL after registering the provider. The URL format is `https://bedrock-agentcore.<region>.amazonaws.com/identities/oauth2/callback/<provider-uuid>`, where the UUID is assigned when the credential provider is created.
+Verify the callback URL in your GitHub OAuth App matches the provider-specific URL from AgentCore Identity. Run `./scripts/setup-oauth-app.sh` — it displays the correct callback URL after registering the provider. The URL format is `https://bedrock-agentcore.<region>.amazonaws.com/identities/oauth2/callback/<provider-uuid>`, where the UUID is assigned when the credential provider is created.
 
 ## Gateway targets not working
 

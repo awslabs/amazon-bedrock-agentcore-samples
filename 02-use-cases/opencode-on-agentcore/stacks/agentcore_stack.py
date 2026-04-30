@@ -331,9 +331,25 @@ class AgentCoreStack(cdk.Stack):
             [cdk_nag.NagPackSuppression(
                 id="AwsSolutions-IAM5",
                 reason=(
-                    "DynamoDB index/* for GSI queries. "
-                    "CloudWatch Logs/Metrics, ECR GetAuthorizationToken, X-Ray, "
-                    "and AgentCore Identity require wildcard resources."
+                    "Runtime execution role: each wildcard is either forced by "
+                    "the AWS service (no resource-level permissions available) "
+                    "or scoped to a resource prefix we own. Specifically: "
+                    "(1) DynamoDB 'index/*' follows the canonical GSI pattern "
+                    "(table ARN is pinned; only GSI names are wildcarded). "
+                    "(2) CloudWatch 'PutMetricData' and X-Ray 'PutTraceSegments' "
+                    "are documented by AWS as not supporting resource-level IAM "
+                    "(see IAM Service Authorization Reference). "
+                    "(3) CloudWatch Logs 'CreateLogStream/PutLogEvents' target "
+                    "log group ARNs owned by this stack; wildcards are on log "
+                    "stream name within those groups. "
+                    "(4) ECR 'GetAuthorizationToken' is an account-level API "
+                    "that mandates Resource: '*'. "
+                    "(5) AgentCore Identity 'GetWorkloadAccessToken' and "
+                    "'GetResourceOauth2Token' scope to the workload identity "
+                    "name; the service currently requires wildcard resources "
+                    "on these actions. "
+                    "See docs/THREAT-MODEL.md section 'Runtime execution role' "
+                    "for the threat mapping."
                 ),
             )],
             apply_to_children=True,
@@ -344,11 +360,24 @@ class AgentCoreStack(cdk.Stack):
             [
                 cdk_nag.NagPackSuppression(
                     id="AwsSolutions-EC23",
-                    reason="Egress restricted to port 443 via security group; AWS service traffic routed through VPC endpoints; internet access via NAT Gateway for git hosts (no FQDN filtering in v1).",
+                    reason=(
+                        "Security group egress is restricted to TCP/443; "
+                        "AWS service traffic routes through VPC endpoints "
+                        "(the CIDR 0.0.0.0/0 only reaches public git hosts "
+                        "via NAT Gateway). FQDN-level egress filtering is "
+                        "documented as a residual risk in "
+                        "docs/HARDENING.md#known-limitations; production "
+                        "deployments are expected to add AWS Network "
+                        "Firewall rules or a forward proxy."
+                    ),
                 ),
                 cdk_nag.NagPackSuppression(
                     id="CdkNagValidationFailure",
-                    reason="Security group egress uses 0.0.0.0/0 for port 443.",
+                    reason=(
+                        "Follow-on finding from AwsSolutions-EC23 for the "
+                        "same 0.0.0.0/0:443 rule; see the EC23 reason above "
+                        "and docs/HARDENING.md#known-limitations."
+                    ),
                 ),
             ],
         )

@@ -1,10 +1,13 @@
+<!-- Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved. -->
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+
 # Architecture
 
 This document is the architecture deep dive for the sample. It expands on the high-level Mermaid graph in the top-level [README](../README.md#architecture) with a component-by-component walkthrough, three message-flow sequence diagrams (sync, async, cancellation), the DynamoDB job-lifecycle state diagram, and the CDK stack layout.
 
 ## Architecture Walkthrough
 
-A request starts at your MCP client and flows through every component in the top-level architecture graph. This section walks through each component and why it's there.
+A request starts at your MCP client and flows through every component in the top-level architecture graph. This section walks through each component and why it's there. Service names are introduced at first mention: Amazon Bedrock AgentCore (AgentCore), Amazon Virtual Private Cloud (Amazon VPC), Amazon Bedrock, and AWS Key Management Service (AWS KMS); subsequent mentions use the short form.
 
 ### MCP Client -> AgentCore Gateway
 

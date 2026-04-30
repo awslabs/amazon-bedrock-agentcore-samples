@@ -110,6 +110,65 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+# Schemes we accept for ``repo_url``. ``https://`` is the pipeline's
+# only tested path; ``git@`` SSH is included because the clone helper
+# forwards it to git directly, but see the hardening note in
+# ``docs/HARDENING.md`` about egress filtering.
+_ALLOWED_REPO_SCHEMES = ("https://", "git@")
+
+# Characters that must never appear in a ``repo_url`` or a git ref,
+# even though ``subprocess.run`` uses list-form argv. Blocking them
+# early produces a clearer error than letting git reject the URL.
+_URL_FORBIDDEN_CHARS = ("\x00", "\n", "\r", " ", "\t")
+
+
+def _validate_repo_url(repo_url: str) -> None:
+    """Reject malformed or suspicious ``repo_url`` values.
+
+    The clone helper invokes git via ``subprocess.run`` with list-form
+    argv, so there is no shell-injection surface; this validator's
+    purpose is to fail fast on obviously malformed input (empty
+    string, embedded control characters, unsupported scheme) rather
+    than surfacing a cryptic git error five frames deeper. See PCSR
+    triage (Rule 11) for context.
+    """
+    if not isinstance(repo_url, str) or not repo_url:
+        raise ValueError("repo_url must be a non-empty string")
+    if len(repo_url) > 2048:
+        raise ValueError(f"repo_url too long ({len(repo_url)} chars, max 2048)")
+    for bad in _URL_FORBIDDEN_CHARS:
+        if bad in repo_url:
+            raise ValueError(
+                f"repo_url contains forbidden character {bad!r}"
+            )
+    if not repo_url.startswith(_ALLOWED_REPO_SCHEMES):
+        raise ValueError(
+            f"repo_url must start with one of {_ALLOWED_REPO_SCHEMES}; "
+            f"got {repo_url[:64]!r}"
+        )
+
+
+def _validate_git_ref(ref: str, label: str) -> None:
+    """Reject empty or obviously malformed git refs (branch names).
+
+    Git itself enforces strict rules on ref names, but we reject the
+    common pathological shapes up-front so the caller gets a clearer
+    error: empty, whitespace, leading ``-`` (which git can confuse
+    for a CLI flag), or embedded control characters.
+    """
+    if not isinstance(ref, str) or not ref:
+        raise ValueError(f"{label} must be a non-empty string")
+    if len(ref) > 255:
+        raise ValueError(f"{label} too long ({len(ref)} chars, max 255)")
+    if ref.startswith("-"):
+        raise ValueError(f"{label} must not start with '-'; got {ref!r}")
+    for bad in _URL_FORBIDDEN_CHARS:
+        if bad in ref:
+            raise ValueError(
+                f"{label} contains forbidden character {bad!r}"
+            )
+
+
 # ---------------------------------------------------------------------------
 # Public entry point
 # ---------------------------------------------------------------------------
@@ -154,6 +213,11 @@ async def run_coding_pipeline(
 
     See ``design.md`` section "Algorithmic Pseudocode" for the full spec.
     """
+    _validate_repo_url(repo_url)
+    _validate_git_ref(base_branch, "base_branch")
+    if target_branch:
+        _validate_git_ref(target_branch, "target_branch")
+
     start_time = time.time()
 
     await write_job_record(

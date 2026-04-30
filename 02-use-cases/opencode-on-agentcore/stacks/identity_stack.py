@@ -148,7 +148,18 @@ class IdentityStack(cdk.Stack):
             [
                 cdk_nag.NagPackSuppression(
                     id="AwsSolutions-IAM5",
-                    reason="AgentCore Identity credential provider APIs require wildcard resources.",
+                    reason=(
+                        "AgentCore Identity credential-provider APIs "
+                        "(Create/Update/Delete/GetOauth2CredentialProvider, "
+                        "CreateTokenVault) do not support resource-level "
+                        "permissions in the IAM Service Authorization "
+                        "Reference today; they must be granted on "
+                        "Resource: '*'. The Lambda runs only as a custom "
+                        "resource during stack deploy/update/delete, not on "
+                        "the request path. See docs/THREAT-MODEL.md section "
+                        "'Runtime execution role' for context on AgentCore "
+                        "Identity API scoping."
+                    ),
                 ),
                 cdk_nag.NagPackSuppression(
                     id="AwsSolutions-IAM4",

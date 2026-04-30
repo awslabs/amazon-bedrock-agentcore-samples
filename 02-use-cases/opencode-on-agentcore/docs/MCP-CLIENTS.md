@@ -1,3 +1,6 @@
+<!-- Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved. -->
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+
 # MCP Clients
 
 This document is the client-configuration guide for connecting to the deployed AgentCore Gateway. It covers the three supported authentication options, per-client config file locations for Kiro, Claude Desktop, and Cursor, and how to obtain a Cognito ID token for token-based auth.
@@ -56,7 +59,7 @@ Uses [`scripts/mcp-opencode-client.sh`](../scripts/mcp-opencode-client.sh) to ac
 
 Paste a Bearer token directly into the MCP client config. Simple to set up, but requires manual token refresh.
 
-> **Security warning:** Cognito ID tokens expire after **24 hours** and must be manually refreshed. The token is visible in the config file on disk. **Do not** commit it to version control, paste it in screenshots, or share it in support tickets. Use **Option A** (auto-refresh wrapper) for regular use.
+> **Security warning:** Cognito ID tokens expire after **24 hours** and must be manually refreshed. Pasting a token directly into the MCP client config writes it to disk in plaintext. Do not commit it to version control, paste it in screenshots, or share it in support tickets. Prefer **Option A** (auto-refresh wrapper, nothing on disk) or, for higher-assurance environments, a system keychain or secrets manager that injects the token at launch time rather than storing it in a plaintext config file.
 
 **Configuration example:**
 

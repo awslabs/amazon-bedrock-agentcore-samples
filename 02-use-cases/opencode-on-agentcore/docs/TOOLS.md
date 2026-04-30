@@ -1,3 +1,6 @@
+<!-- Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved. -->
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+
 # Tools
 
 Reference for the six MCP tools the sample exposes through the AgentCore Gateway. All tools are routed to a single MCP Server target named `opencode`, so the effective Cedar action identifiers are `opencode___{tool}` with three underscores.

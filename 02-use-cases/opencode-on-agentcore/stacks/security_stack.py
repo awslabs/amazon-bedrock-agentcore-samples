@@ -221,14 +221,26 @@ class SecurityStack(cdk.Stack):
                 trail_bucket,
                 [cdk_nag.NagPackSuppression(
                     id="AwsSolutions-S1",
-                    reason="CloudTrail bucket does not need server access logging — it IS the audit log destination.",
+                    reason=(
+                        "CloudTrail bucket is the audit-log destination itself; "
+                        "enabling server access logging on it would create a "
+                        "recursive logging chain with no additional audit value. "
+                        "Aligned with AWS Well-Architected SEC04-BP02 guidance "
+                        "on logging destinations."
+                    ),
                 )],
             )
             cdk_nag.NagSuppressions.add_resource_suppressions(
                 self.trail,
                 [cdk_nag.NagPackSuppression(
                     id="AwsSolutions-IAM5",
-                    reason="CloudTrail auto-created CW role needs wildcard on log stream.",
+                    reason=(
+                        "CloudTrail service-linked CloudWatch Logs role uses a "
+                        "wildcard on log-stream ARN within a log group owned by "
+                        "this stack; the log group ARN itself is pinned. "
+                        "Wildcard scope: 'log-stream:*' within 'log-group:/aws/"
+                        "cloudtrail/opencode/*'."
+                    ),
                 )],
                 apply_to_children=True,
             )
@@ -248,7 +260,12 @@ class SecurityStack(cdk.Stack):
             self.cmk,
             [cdk_nag.NagPackSuppression(
                 id="AwsSolutions-KMS5",
-                reason="Key rotation is enabled via enable_key_rotation=True.",
+                reason=(
+                    "Key rotation is enabled via enable_key_rotation=True; "
+                    "AWS KMS rotates the key material annually. Key "
+                    "management strategy is documented in "
+                    "docs/HARDENING.md#key-management-strategy."
+                ),
             )],
         )
 
@@ -257,7 +274,13 @@ class SecurityStack(cdk.Stack):
             [
                 cdk_nag.NagPackSuppression(
                     id="AwsSolutions-COG2",
-                    reason="MFA not enforced — primary users authenticate via OAuth through AgentCore Gateway.",
+                    reason=(
+                        "MFA is not enforced on the sample user pool because "
+                        "this is a demo-scoped deployment. Production adopters "
+                        "are expected to enable MFA per Cognito documentation; "
+                        "the residual risk is called out in "
+                        "docs/HARDENING.md#known-limitations."
+                    ),
                 ),
                 cdk_nag.NagPackSuppression(
                     id="AwsSolutions-COG1",

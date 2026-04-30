@@ -627,5 +627,15 @@ async def cancel_task(job_id: str, _user_id: str = "") -> dict:
 # Entrypoint
 # ---------------------------------------------------------------------------
 if __name__ == "__main__":
+    # Fail fast if OPENCODE_BINARY is misconfigured, so a broken
+    # container fails at startup instead of on the first coding tool
+    # call. See container.tools.run_opencode_acp._validate_opencode_binary
+    # for the contract.
+    from container.tools.run_opencode_acp import (
+        OPENCODE_BINARY,
+        _validate_opencode_binary,
+    )
+    _validate_opencode_binary(OPENCODE_BINARY)
+
     logger.info("Starting FastMCP on port 8000 (%.1fs since module load)", time.time() - _startup_start)
     mcp.run(transport="streamable-http", host="0.0.0.0", port=8000)

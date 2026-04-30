@@ -1,6 +1,9 @@
+<!-- Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved. -->
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+
 # Hardening
 
-This is the production-hardening guide for the sample. The defaults in the CDK stacks optimize for cost and simplicity so you can stand up a dev or demo deployment quickly. The notes below describe how to take that deployment closer to production-ready: highly available NAT, enforced Cedar policies, budget alerts, and the known limitations you should design around.
+This is the production-hardening guide for the sample. It covers Amazon Virtual Private Cloud (Amazon VPC), Amazon Bedrock, Amazon Bedrock AgentCore, and AWS Key Management Service (AWS KMS) configuration choices that differ between a demo deployment and a production one. The defaults in the CDK stacks optimize for cost and simplicity so you can stand up a dev or demo deployment quickly. The notes below describe how to take that deployment closer to production-ready: highly available NAT, enforced Cedar policies, budget alerts, and the known limitations you should design around. Controls are listed from highest to lowest operational impact.
 
 ## NAT Gateway High Availability
 
@@ -29,9 +32,26 @@ Once you've reviewed the CloudWatch logs and confirmed the policies match your i
 
 Use [`../scripts/create-policies.py`](../scripts/create-policies.py) as a template. Action names follow the `{target}___{tool}` format (e.g., `opencode___run_coding_task`), and the resource must reference the specific gateway ARN. Use `validationMode="IGNORE_ALL_FINDINGS"` for policies referencing tools discovered dynamically.
 
+## Key Management Strategy
+
+The sample provisions a single customer-managed AWS KMS key (CMK) in [`../stacks/security_stack.py`](../stacks/security_stack.py) and threads it through every stack that needs encryption at rest. Summary:
+
+- **Key type:** Symmetric customer-managed CMK, one per deployment.
+- **Rotation:** Automatic rotation is enabled (`enable_key_rotation=True`). AWS KMS rotates the key material annually; no action required on your part.
+- **Key policy:** The default key policy permits the account root and grants use to the stack-created roles (Runtime execution role, Gateway role, Lambda roles). Review and tighten if you need to constrain which principals can use the key.
+- **Alias:** `alias/opencode-cmk-{region}` for easy lookup.
+- **Removal policy:** `RETAIN`, so `cdk destroy` does not delete the key. This prevents accidental loss of encrypted data in DynamoDB, CloudWatch Logs, Secrets Manager, or S3. Use [`../scripts/cleanup-retained-resources.sh`](../scripts/cleanup-retained-resources.sh) to remove the CMK alias and schedule key deletion when you're done with the sample.
+- **Services using the CMK:** AWS Secrets Manager (OAuth app credentials), Amazon DynamoDB (job records), Amazon CloudWatch Logs (all log groups), Amazon S3 (CloudTrail bucket when enabled). Amazon Bedrock AgentCore managed resources (Gateway, Runtime, Policy Engine, Identity Vault) are encrypted with AWS-owned keys by default; these can be switched to customer-managed keys via the relevant service-level configuration if your threat model requires it.
+
+For a production deployment, consider:
+
+1. Splitting the CMK into per-data-type keys (one for secrets, one for logs, one for DynamoDB) if you need separate key policies or rotation schedules.
+2. Adding explicit condition keys (`kms:ViaService`, `kms:CallerAccount`) to the key policy.
+3. Enabling AWS CloudTrail data events on the CMK for full key-usage auditing.
+
 ## AWS Budgets for Cost Control
 
-The `daily_cost_budget_usd` value in `cdk.json` (default: `50`) is a **reference value only**. It is not enforced by the stack -- there is no AWS Budget, alarm, or throttle created automatically. If Bedrock costs exceed this amount, nothing will stop or alert you unless you set up monitoring yourself.
+The `daily_cost_budget_usd` value in `cdk.json` (default: `50`) is a **reference value only**. It is not enforced by the stack -- there is no AWS Budget, alarm, or throttle created automatically. If Bedrock costs exceed this amount, no default alert fires unless you set up monitoring yourself.
 
 To catch runaway Bedrock costs, create an AWS Budget with daily notifications:
 
@@ -67,6 +87,19 @@ For full setup options, see the [AWS Budgets documentation](https://docs.aws.ama
 
 - **Outbound traffic from the microVM is not FQDN-restricted in v1.** The security group limits egress to port 443; AWS service traffic routes through VPC endpoints. Git clone and push traffic to any HTTPS host on the public internet is unfiltered via the NAT Gateway.
 - **GSI1 hot-partition scaling cap.** The admin-monitoring GSI (`status#{status}`) has only 4 partition key values. At high volume this hits the ~3k RCU / 1k WCU per-partition limit. A sharding strategy is documented in [`../stacks/job_store_stack.py`](../stacks/job_store_stack.py) for when scale warrants it.
+- **Amazon Cognito MFA is not enforced on the sample user pool.** The user pool is demo-scoped; you are responsible for enabling MFA ([Cognito MFA configuration](https://docs.aws.amazon.com/cognito/latest/developerguide/user-pool-settings-mfa.html)) and enforcing password policies suitable for your environment before routing real users through it.
+- **No prompt-injection or output-content filter is applied to LLM I/O.** The pipeline relies on the upstream Amazon Bedrock model's built-in safety filters, a credential scanner ([`container/tools/scan_and_strip_credentials.py`](../container/tools/scan_and_strip_credentials.py)) that removes common credential patterns from pushed output, Cedar policies scoped to specific `opencode___{tool}` action ARNs, and microVM isolation per session. For stronger guarantees, layer on an [Amazon Bedrock Guardrail](https://docs.aws.amazon.com/bedrock/latest/userguide/guardrails.html) and extend the credential scanner's regex set.
+
+## Third-party dependencies and AI components
+
+This sample uses two third-party components at runtime, both referenced (not vendored) via standard package installers:
+
+- **[OpenCode](https://opencode.ai)** - MIT-licensed AI coding agent, installed at container build time from the upstream installer script ([`../container/Dockerfile`](../container/Dockerfile)). Upstream source: https://github.com/sst/opencode. Pin the version explicitly in the Dockerfile for reproducibility before promoting to production.
+- **[FastMCP](https://gofastmcp.com)** - MIT-licensed MCP server framework, installed from PyPI via [`../container/requirements.txt`](../container/requirements.txt).
+
+The LLM itself is Amazon Bedrock-hosted Anthropic Claude, a pre-approved model available through the Amazon Bedrock marketplace. Bedrock enforces its own content filters and safety controls upstream of this sample; customer-side responsibility is limited to model access control via IAM (scoped to specific model ARNs in [`../stacks/agentcore_stack.py`](../stacks/agentcore_stack.py)) and application-level input/output sanitization.
+
+The sample processes user-supplied git repositories as transient input to the LLM. Repositories are cloned into the per-session Firecracker microVM, fed to OpenCode, and discarded when the session ends. They are not logged, persisted to customer-owned storage, or redistributed. The credential scanner runs between LLM output and the git push to reduce the risk of secrets leaking into the PR.
 
 ## Deployment Notes
 

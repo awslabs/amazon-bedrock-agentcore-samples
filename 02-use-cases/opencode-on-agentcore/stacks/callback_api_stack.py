@@ -223,7 +223,16 @@ class CallbackApiStack(cdk.Stack):
             [
                 cdk_nag.NagPackSuppression(
                     id="AwsSolutions-IAM5",
-                    reason="CompleteResourceTokenAuth requires wildcard resources.",
+                    reason=(
+                        "bedrock-agentcore:CompleteResourceTokenAuth does not "
+                        "support resource-level permissions in the IAM Service "
+                        "Authorization Reference today; the action must be "
+                        "granted on Resource: '*'. The Lambda is a "
+                        "short-lived authorizer invoked only from the OAuth "
+                        "callback HTTP API route (Lambda authorizer gated). "
+                        "See docs/THREAT-MODEL.md section 'OAuth 3LO callback' "
+                        "for the compensating controls."
+                    ),
                 ),
                 cdk_nag.NagPackSuppression(
                     id="AwsSolutions-IAM4",

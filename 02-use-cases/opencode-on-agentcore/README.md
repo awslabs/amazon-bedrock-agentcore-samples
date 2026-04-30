@@ -393,7 +393,7 @@ This sample is meant to illustrate how AgentCore's building blocks compose into 
 
 ## Cleanup
 
-Several resources (DynamoDB table, S3 bucket, ECR repository, CloudWatch log groups) use a `RETAIN` removal policy so a `cdk destroy` never silently drops data. The tradeoff is that these resources survive the destroy and will cause "already exists" errors on the next deploy unless you clean them up.
+Several resources (DynamoDB table, S3 bucket, ECR repository, CloudWatch log groups) use a `RETAIN` removal policy so a `cdk destroy` does not silently drop data. The tradeoff is that these resources survive the destroy and can cause "already exists" errors on the next deploy unless you clean them up.
 
 ```bash
 cdk destroy --all
@@ -418,7 +418,30 @@ Per-task cost is dominated by Bedrock token usage and Firecracker compute time. 
 
 ## Security
 
-This sample ships with sensible defaults for a dev or demo deployment. For production use, review [docs/HARDENING.md](docs/HARDENING.md) for NAT Gateway high availability, Cedar policy enforcement, AWS Budgets setup, and known limitations.
+> **This is sample code for non-production usage.** You should work with your security and legal teams to meet your organizational security, regulatory, and compliance requirements before deployment. Deploying this sample creates AWS resources that may incur charges; review the cost section above.
+
+**You are responsible** for validating this sample against your own security, compliance, and regulatory requirements before deployment. The defaults optimize for cost and clarity in a demo deployment and are not intended to pass a production-grade review as-is.
+
+### Shared responsibility in this sample
+
+The sample uses several AWS services, each of which is governed by the [AWS Shared Responsibility Model](https://aws.amazon.com/compliance/shared-responsibility-model/). The table below summarizes which concerns AWS manages for you and which you are expected to manage yourself when adopting this sample.
+
+| Concern | AWS manages | You manage |
+|---------|-------------|------------|
+| Underlying Amazon Bedrock AgentCore control plane and data plane | ✅ | |
+| AgentCore Identity Vault (OAuth token storage at rest) | ✅ | |
+| Amazon Bedrock model hosting, runtime isolation, and upstream model safety filters | ✅ | |
+| AWS KMS CMK lifecycle (rotation is enabled, but you own the key policy) | partial | ✅ |
+| Amazon Cognito user pool lifecycle (create, disable, MFA policy, password reset) | | ✅ |
+| Cedar policy content, scope, and switching from `LOG_ONLY` to `ENFORCE` | | ✅ |
+| IAM role policies used by the stacks (review, scope, add conditions) | | ✅ |
+| Reviewing AWS CloudTrail logs and GenAI observability dashboards for anomalies | | ✅ |
+| Upstream OpenCode binary integrity and version pinning (installed at container build time) | | ✅ |
+| GitHub OAuth App registration, scopes, and credential rotation | | ✅ |
+| VPC egress filtering (NAT allows all outbound port 443 by default) | | ✅ |
+| AWS Budgets, alarms, and cost controls | | ✅ |
+
+See [docs/HARDENING.md](docs/HARDENING.md) for production hardening steps (NAT Gateway HA, Cedar enforce mode, AWS Budgets, and known limitations) and [docs/THREAT-MODEL.md](docs/THREAT-MODEL.md) for the STRIDE analysis, trust boundaries, and residual risks.
 
 ## Related Links
 
