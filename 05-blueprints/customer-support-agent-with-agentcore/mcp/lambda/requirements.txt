@@ -1,1 +1,0 @@
-# Add requirements needed for the lambda handler. For example boto3

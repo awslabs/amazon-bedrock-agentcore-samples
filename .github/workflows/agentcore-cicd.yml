@@ -1,0 +1,109 @@
+name: AgentCore CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '04-infrastructure-as-code/cloudformation/**'
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+  SAMPLE_NAME: basic-runtime
+
+jobs:
+  lint-and-test:
+    name: Lint & Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install cfn-lint
+        run: pip install cfn-lint
+
+      - name: Run cfn-lint
+        working-directory: ./04-infrastructure-as-code/cloudformation
+        run: |
+          echo "Linting CloudFormation templates..."
+          cfn-lint **/*.yaml
+
+  deploy-dev:
+    name: Deploy to Dev
+    needs: lint-and-test
+    runs-on: ubuntu-latest
+    environment: dev
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          # Use either OIDC Role or Access Keys
+          # role-to-assume: arn:aws:iam::123456789012:role/GitHubActionsRole
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+      - name: Deploy Dev Environment
+        working-directory: ./04-infrastructure-as-code/cloudformation
+        run: |
+          chmod +x deploy-env.sh
+          bash deploy-env.sh dev ${{ env.SAMPLE_NAME }} ${{ env.AWS_REGION }}
+
+  promote-qa:
+    name: Promote to QA
+    needs: deploy-dev
+    runs-on: ubuntu-latest
+    environment: qa
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+      - name: Deploy QA Environment
+        working-directory: ./04-infrastructure-as-code/cloudformation
+        run: |
+          chmod +x deploy-env.sh
+          bash deploy-env.sh qa ${{ env.SAMPLE_NAME }} ${{ env.AWS_REGION }}
+
+  deploy-prod:
+    name: Deploy to Prod (Controlled)
+    needs: promote-qa
+    runs-on: ubuntu-latest
+    # The 'prod' environment in GitHub settings should be configured 
+    # to require manual approval before this job can run.
+    environment: prod
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+      - name: Deploy Prod Environment
+        working-directory: ./04-infrastructure-as-code/cloudformation
+        run: |
+          chmod +x deploy-env.sh
+          bash deploy-env.sh prod ${{ env.SAMPLE_NAME }} ${{ env.AWS_REGION }}
