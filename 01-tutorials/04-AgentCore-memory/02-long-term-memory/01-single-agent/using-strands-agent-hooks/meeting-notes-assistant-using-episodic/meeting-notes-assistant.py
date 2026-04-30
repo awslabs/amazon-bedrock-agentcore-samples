@@ -74,8 +74,8 @@ strategies = [
         StrategyType.EPISODIC.value: {
             "name": "MeetingEpisodes",
             "description": "Captures meeting discussions and generates reflections on meeting patterns",
-            "namespaceTemplates": ["meetings/actor/{actorId}/episodes"],
-            "reflectionConfiguration": {"namespaceTemplates": ["meetings/actor/{actorId}"]},
+            "namespaceTemplates": ["/meetings/actor/{actorId}/episodes/"],
+            "reflectionConfiguration": {"namespaceTemplates": ["/meetings/actor/{actorId}/"]},
         }
     }
 ]
