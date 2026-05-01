@@ -1,23 +1,23 @@
-"""Deploy the Shopping Concierge agent to AgentCore Runtime using boto3 directly.
+"""Deploy the Shopping Concierge agent to AgentCore Runtime using CodeZip (no Docker).
 
-Run from the notebook via: %run deploy_agent.py
+Run from the notebook via: %run -i deploy_shopping_concierge_agent.py
 
 Expects REGION to be set in the caller's namespace (Step 2 config cell).
 Sets in the caller's namespace: AGENT_ID, AGENT_ARN, RUNTIME_ARN,
     SERVICE_NAME, LOG_GROUP, SPANS_LOG_GROUP
 """
 
-import base64
+import io
 import json
-import subprocess
 import time
-from pathlib import Path
+import zipfile
 
 import boto3
 
-# REGION must already be set in the notebook before %run
+# REGION must already be set in the notebook before %run -i
+
 cp = boto3.client("bedrock-agentcore-control", region_name=REGION)  # noqa: F821
-ecr = boto3.client("ecr", region_name=REGION)  # noqa: F821
+s3 = boto3.client("s3", region_name=REGION)  # noqa: F821
 sts = boto3.client("sts", region_name=REGION)  # noqa: F821
 iam = boto3.client("iam")
 
@@ -25,13 +25,12 @@ ACCOUNT_ID = sts.get_caller_identity()["Account"]
 
 # ---- Config ----
 AGENT_NAME = "shopping_concierge_eval"
-ECR_REPOSITORY_NAME = "shopping-concierge-eval"
-IMAGE_TAG = "latest"
-ECR_URI = f"{ACCOUNT_ID}.dkr.ecr.{REGION}.amazonaws.com/{ECR_REPOSITORY_NAME}"  # noqa: F821
-IMAGE_URI = f"{ECR_URI}:{IMAGE_TAG}"
+S3_BUCKET = f"agentcore-deploy-{ACCOUNT_ID}-{REGION}"  # noqa: F821
+S3_KEY = f"{AGENT_NAME}/code.zip"
+RUNTIME_VERSION = "PYTHON_3_12"
 
 print(f"ACCOUNT_ID : {ACCOUNT_ID}")
-print(f"IMAGE_URI  : {IMAGE_URI}")
+print(f"S3_BUCKET  : {S3_BUCKET}")
 
 # ---- 0. Ensure execution role ----
 ROLE_NAME = "AgentCoreExecutionRole"
@@ -68,46 +67,29 @@ except iam.exceptions.NoSuchEntityException:
     print("Waiting 10s for IAM propagation ...")
     time.sleep(10)
 
-# ---- 1. Ensure ECR repo ----
+# ---- 1. Ensure S3 bucket ----
 try:
-    ecr.describe_repositories(repositoryNames=[ECR_REPOSITORY_NAME])
-    print(f"ECR repo '{ECR_REPOSITORY_NAME}' exists.")
-except ecr.exceptions.RepositoryNotFoundException:
-    ecr.create_repository(repositoryName=ECR_REPOSITORY_NAME)
-    print(f"Created ECR repo '{ECR_REPOSITORY_NAME}'.")
+    s3.head_bucket(Bucket=S3_BUCKET)
+    print(f"S3 bucket '{S3_BUCKET}' exists.")
+except s3.exceptions.ClientError:
+    create_args = {"Bucket": S3_BUCKET}
+    if REGION != "us-east-1":  # noqa: F821
+        create_args["CreateBucketConfiguration"] = {"LocationConstraint": REGION}  # noqa: F821
+    s3.create_bucket(**create_args)
+    print(f"Created S3 bucket '{S3_BUCKET}'.")
 
-# ---- 2. ECR login ----
-token = ecr.get_authorization_token()["authorizationData"][0]["authorizationToken"]
-endpoint = f"{ACCOUNT_ID}.dkr.ecr.{REGION}.amazonaws.com"  # noqa: F821
-user, passwd = base64.b64decode(token).decode().split(":")
-subprocess.run(
-    ["docker", "login", "--username", user, "--password-stdin", endpoint],
-    input=passwd.encode(),
-    check=True,
-)
-print("ECR login successful.")
+# ---- 2. Zip and upload agent code ----
+print("Zipping agent code ...")
+buf = io.BytesIO()
+with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+    zf.write("shopping_concierge_agent.py", "shopping_concierge_agent.py")
+    zf.write("requirements.txt", "requirements.txt")
+buf.seek(0)
 
-# ---- 3. Docker build ----
-# Generate a Dockerfile if one doesn't exist (the repo .gitignore excludes Dockerfile)
-if not Path("Dockerfile").exists():
-    Path("Dockerfile").write_text(
-        "FROM public.ecr.aws/docker/library/python:3.11-slim\n"
-        "WORKDIR /app\n"
-        "COPY requirements.txt ./\n"
-        "RUN pip install --no-cache-dir -r requirements.txt\n"
-        "COPY shopping_concierge_agent.py ./main.py\n"
-        'CMD ["python", "main.py"]\n'
-    )
-    print("Generated Dockerfile.")
+s3.put_object(Bucket=S3_BUCKET, Key=S3_KEY, Body=buf.getvalue())
+print(f"Uploaded s3://{S3_BUCKET}/{S3_KEY} ({len(buf.getvalue())} bytes)")
 
-subprocess.run(["docker", "build", "-t", IMAGE_URI, "."], check=True)
-print("Docker build complete.")
-
-# ---- 4. Docker push ----
-subprocess.run(["docker", "push", IMAGE_URI], check=True)
-print("Docker push complete.")
-
-# ---- 5. Create/Update runtime ----
+# ---- 3. Create/Update runtime ----
 existing_id = None
 existing_arn = None
 paginator = cp.get_paginator("list_agent_runtimes")
@@ -120,25 +102,31 @@ for page in paginator.paginate():
     if existing_id:
         break
 
-args = {
+runtime_args = {
     "agentRuntimeName": AGENT_NAME,
-    "agentRuntimeArtifact": {"containerConfiguration": {"containerUri": IMAGE_URI}},
+    "agentRuntimeArtifact": {
+        "codeConfiguration": {
+            "code": {"s3": {"bucket": S3_BUCKET, "prefix": S3_KEY}},
+            "runtime": RUNTIME_VERSION,
+            "entryPoint": ["shopping_concierge_agent.py"],
+        },
+    },
     "roleArn": AGENT_EXECUTION_ROLE_ARN,
     "networkConfiguration": {"networkMode": "PUBLIC"},
 }
 
 if existing_id:
     print(f"Updating runtime {existing_id} ...")
-    cp.update_agent_runtime(agentRuntimeId=existing_id, **args)
+    cp.update_agent_runtime(agentRuntimeId=existing_id, **runtime_args)
     AGENT_ID = existing_id
     AGENT_ARN = existing_arn
 else:
     print(f"Creating runtime '{AGENT_NAME}' ...")
-    resp = cp.create_agent_runtime(**args)
+    resp = cp.create_agent_runtime(**runtime_args)
     AGENT_ID = resp["agentRuntimeId"]
     AGENT_ARN = resp["agentRuntimeArn"]
 
-# ---- 6. Wait for READY ----
+# ---- 4. Wait for READY ----
 print("Waiting for READY ...")
 for elapsed in range(0, 600, 15):
     status = cp.get_agent_runtime(agentRuntimeId=AGENT_ID).get("status", "UNKNOWN")
