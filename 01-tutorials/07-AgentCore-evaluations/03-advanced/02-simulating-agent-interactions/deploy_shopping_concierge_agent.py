@@ -12,13 +12,15 @@ CodeBuild image builds, ECR push, OTel instrumentation, and runtime creation.
 
 import subprocess
 import time
+import uuid
 
 import boto3
 
-_REGION = REGION or "us-east-1"  # noqa: F821
+_REGION = REGION  # noqa: F821
+_AGENT_NAME = f"shopping_concierge_{uuid.uuid4().hex[:8]}"
 
 # ---- 1. Configure ----
-print("Configuring agent ...")
+print(f"Configuring agent '{_AGENT_NAME}' ...")
 subprocess.run(
     [
         "agentcore",
@@ -26,7 +28,7 @@ subprocess.run(
         "--entrypoint",
         "shopping_concierge_agent.py",
         "--name",
-        "shopping_concierge_eval",
+        _AGENT_NAME,
         "--region",
         _REGION,
         "--requirements-file",
@@ -53,7 +55,7 @@ AGENT_ARN = ""
 paginator = cp.get_paginator("list_agent_runtimes")
 for page in paginator.paginate():
     for rt in page.get("agentRuntimes", []):
-        if rt.get("agentRuntimeName") == "shopping_concierge_eval":
+        if rt.get("agentRuntimeName") == _AGENT_NAME:
             AGENT_ID = rt["agentRuntimeId"]
             AGENT_ARN = rt["agentRuntimeArn"]
             break
@@ -61,7 +63,7 @@ for page in paginator.paginate():
         break
 
 if not AGENT_ID:
-    raise RuntimeError("Could not find shopping_concierge_eval runtime after deploy")
+    raise RuntimeError(f"Could not find {_AGENT_NAME} runtime after deploy")
 
 # ---- 4. Wait for READY ----
 print("Waiting for READY ...")
@@ -80,7 +82,7 @@ else:
 RUNTIME_ARN = AGENT_ARN
 # Convention: {agentRuntimeName}.{endpointName}
 # See https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/batch-evaluations-start.html
-SERVICE_NAME = "shopping_concierge_eval.DEFAULT"
+SERVICE_NAME = f"{_AGENT_NAME}.DEFAULT"
 LOG_GROUP = f"/aws/bedrock-agentcore/runtimes/{AGENT_ID}-DEFAULT"
 SPANS_LOG_GROUP = "aws/spans"
 

@@ -11,13 +11,15 @@ CodeBuild image builds, ECR push, OTel instrumentation, and runtime creation.
 
 import subprocess
 import time
+import uuid
 
 import boto3
 
-_REGION = REGION or "us-east-1"  # noqa: F821
+_REGION = REGION  # noqa: F821
+_AGENT_NAME = f"hr_assistant_{uuid.uuid4().hex[:8]}"
 
 # ---- 1. Configure ----
-print("Configuring agent ...")
+print(f"Configuring agent '{_AGENT_NAME}' ...")
 subprocess.run(
     [
         "agentcore",
@@ -25,7 +27,7 @@ subprocess.run(
         "--entrypoint",
         "hr_assistant_agent.py",
         "--name",
-        "hr_assistant_eval_tutorial",
+        _AGENT_NAME,
         "--region",
         _REGION,
         "--requirements-file",
@@ -53,7 +55,7 @@ AGENT_ARN = ""
 paginator = cp.get_paginator("list_agent_runtimes")
 for page in paginator.paginate():
     for rt in page.get("agentRuntimes", []):
-        if rt.get("agentRuntimeName") == "hr_assistant_eval_tutorial":
+        if rt.get("agentRuntimeName") == _AGENT_NAME:
             AGENT_ID = rt["agentRuntimeId"]
             AGENT_ARN = rt["agentRuntimeArn"]
             break
@@ -61,7 +63,7 @@ for page in paginator.paginate():
         break
 
 if not AGENT_ID:
-    raise RuntimeError("Could not find hr_assistant_eval_tutorial runtime after deploy")
+    raise RuntimeError(f"Could not find {_AGENT_NAME} runtime after deploy")
 
 # ---- 4. Wait for READY ----
 if AGENT_ID:
