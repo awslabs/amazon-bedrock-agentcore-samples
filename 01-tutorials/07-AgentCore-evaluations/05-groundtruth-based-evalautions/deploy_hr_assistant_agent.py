@@ -152,7 +152,8 @@ runtime_args = {
 
 if existing_id:
     print(f"Updating runtime {existing_id} ...")
-    cp.update_agent_runtime(agentRuntimeId=existing_id, **runtime_args)
+    update_args = {k: v for k, v in runtime_args.items() if k != "agentRuntimeName"}
+    cp.update_agent_runtime(agentRuntimeId=existing_id, **update_args)
     AGENT_ID = existing_id
     AGENT_ARN = existing_arn
 else:
