@@ -25,7 +25,7 @@
     "apexcharts": "^5.10.4",
     "aws-amplify": "^6.16.2",
     "next": "16.1.7",
-    "postcss": "^8.5.8",
+    "postcss": "^8.5.10",
     "react": "19.2.3",
     "react-apexcharts": "^2.1.0",
     "react-dom": "19.2.3",
