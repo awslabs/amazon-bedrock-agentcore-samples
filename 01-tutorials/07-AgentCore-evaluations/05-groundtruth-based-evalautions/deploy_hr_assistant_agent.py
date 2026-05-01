@@ -45,39 +45,23 @@ subprocess.run(
 )
 print("Deploy complete.")
 
-# ---- 3. Get status to extract AGENT_ID and AGENT_ARN ----
-print("\nRetrieving agent status ...")
-result = subprocess.run(
-    ["agentcore", "status", "--verbose"],
-    capture_output=True,
-    text=True,
-)
-print(result.stdout)
-
-# Parse agent info from the agentcore CLI config
-import yaml  # noqa: E402
-from pathlib import Path  # noqa: E402
-
-config_path = Path(".bedrock_agentcore.yaml")
-if config_path.exists():
-    with open(config_path) as f:
-        config = yaml.safe_load(f)
-    AGENT_ID = config.get("agent_id", "")
-    AGENT_ARN = config.get("agent_arn", "")
-else:
-    # Fallback: query the control plane directly
-    cp = boto3.client("bedrock-agentcore-control", region_name=_REGION)
-    paginator = cp.get_paginator("list_agent_runtimes")
-    AGENT_ID = ""
-    AGENT_ARN = ""
-    for page in paginator.paginate():
-        for rt in page.get("agentRuntimes", []):
-            if rt.get("agentRuntimeName") == "hr_assistant_eval_tutorial":
-                AGENT_ID = rt["agentRuntimeId"]
-                AGENT_ARN = rt["agentRuntimeArn"]
-                break
-        if AGENT_ID:
+# ---- 3. Get AGENT_ID and AGENT_ARN from the control plane ----
+print("\nRetrieving agent info ...")
+cp = boto3.client("bedrock-agentcore-control", region_name=_REGION)
+AGENT_ID = ""
+AGENT_ARN = ""
+paginator = cp.get_paginator("list_agent_runtimes")
+for page in paginator.paginate():
+    for rt in page.get("agentRuntimes", []):
+        if rt.get("agentRuntimeName") == "hr_assistant_eval_tutorial":
+            AGENT_ID = rt["agentRuntimeId"]
+            AGENT_ARN = rt["agentRuntimeArn"]
             break
+    if AGENT_ID:
+        break
+
+if not AGENT_ID:
+    raise RuntimeError("Could not find hr_assistant_eval_tutorial runtime after deploy")
 
 # ---- 4. Wait for READY ----
 if AGENT_ID:
