@@ -78,7 +78,9 @@ else:
 
 # ---- Set variables for the notebook ----
 RUNTIME_ARN = AGENT_ARN
-SERVICE_NAME = "shopping_concierge_eval"
+# Convention: {agentRuntimeName}.{endpointName}
+# See https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/batch-evaluations-start.html
+SERVICE_NAME = f"shopping_concierge_eval.DEFAULT"
 LOG_GROUP = f"/aws/bedrock-agentcore/runtimes/{AGENT_ID}-DEFAULT"
 SPANS_LOG_GROUP = "aws/spans"
 
