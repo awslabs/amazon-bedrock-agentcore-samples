@@ -90,7 +90,7 @@ if os.path.exists(BUILD_DIR):
     shutil.rmtree(BUILD_DIR)
 os.makedirs(BUILD_DIR)
 
-# Install deps into the build dir
+# Install deps into the build dir (target: Linux ARM64 = AgentCore Runtime on Graviton)
 subprocess.run(
     [
         sys.executable,
@@ -101,6 +101,13 @@ subprocess.run(
         "requirements.txt",
         "-t",
         BUILD_DIR,
+        "--platform",
+        "manylinux2014_aarch64",
+        "--only-binary=:all:",
+        "--python-version",
+        "3.12",
+        "--implementation",
+        "cp",
         "-q",
     ],
     check=True,
