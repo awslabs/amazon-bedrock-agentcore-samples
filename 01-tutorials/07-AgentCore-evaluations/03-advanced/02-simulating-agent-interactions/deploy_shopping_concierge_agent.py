@@ -6,7 +6,7 @@ Expects REGION to be set in the caller's namespace (Step 2 config cell).
 Sets in the caller's namespace: AGENT_ID, AGENT_ARN, RUNTIME_ARN,
     SERVICE_NAME, LOG_GROUP, SPANS_LOG_GROUP
 
-Uses the agentcore CLI (from bedrock-agentcore-starter-toolkit) which handles
+Uses the agentcore CLI (from bedrock-agentcore) which handles
 CodeBuild image builds, ECR push, OTel instrumentation, and runtime creation.
 """
 

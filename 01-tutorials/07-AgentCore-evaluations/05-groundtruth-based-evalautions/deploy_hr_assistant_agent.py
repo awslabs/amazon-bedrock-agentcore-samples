@@ -5,7 +5,7 @@ Run from the notebook via: %run -i deploy_hr_assistant_agent.py
 Expects REGION to be set in the caller's namespace (Step 2 config cell).
 Sets in the caller's namespace: AGENT_ID, AGENT_ARN, CW_LOG_GROUP, agentcore_client
 
-Uses the agentcore CLI (from bedrock-agentcore-starter-toolkit) which handles
+Uses the agentcore CLI (from bedrock-agentcore) which handles
 CodeBuild image builds, ECR push, OTel instrumentation, and runtime creation.
 """
 
