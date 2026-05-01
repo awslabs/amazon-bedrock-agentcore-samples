@@ -4,18 +4,23 @@ Run from the notebook via: %run -i deploy_hr_assistant_agent.py
 
 Expects REGION to be set in the caller's namespace (Step 2 config cell).
 Sets in the caller's namespace: AGENT_ID, AGENT_ARN, CW_LOG_GROUP, agentcore_client
+
+The script pip-installs dependencies into a local directory, zips everything
+together, and uploads to S3. This avoids the 30s cold-start timeout that
+occurs when CodeZip has to install deps at runtime.
 """
 
-import io
 import json
+import os
+import shutil
+import subprocess
+import sys
 import time
-import zipfile
 
 import boto3
 
 # REGION must already be set in the notebook before %run -i
 
-# ---- Clients ----
 cp = boto3.client("bedrock-agentcore-control", region_name=REGION)  # noqa: F821
 s3 = boto3.client("s3", region_name=REGION)  # noqa: F821
 sts = boto3.client("sts", region_name=REGION)  # noqa: F821
@@ -28,6 +33,7 @@ AGENT_NAME = "hr_assistant_eval_tutorial"
 S3_BUCKET = f"agentcore-deploy-{ACCOUNT_ID}-{REGION}"  # noqa: F821
 S3_KEY = f"{AGENT_NAME}/code.zip"
 RUNTIME_VERSION = "PYTHON_3_12"
+BUILD_DIR = "_build_pkg"
 
 print(f"ACCOUNT_ID : {ACCOUNT_ID}")
 print(f"S3_BUCKET  : {S3_BUCKET}")
@@ -78,16 +84,45 @@ except s3.exceptions.ClientError:
     s3.create_bucket(**create_args)
     print(f"Created S3 bucket '{S3_BUCKET}'.")
 
-# ---- 2. Zip and upload agent code ----
-print("Zipping agent code ...")
-buf = io.BytesIO()
-with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
-    zf.write("hr_assistant_agent.py", "hr_assistant_agent.py")
-    zf.write("requirements.txt", "requirements.txt")
-buf.seek(0)
+# ---- 2. Build zip with pre-installed deps ----
+print("Installing dependencies into build directory ...")
+if os.path.exists(BUILD_DIR):
+    shutil.rmtree(BUILD_DIR)
+os.makedirs(BUILD_DIR)
 
-s3.put_object(Bucket=S3_BUCKET, Key=S3_KEY, Body=buf.getvalue())
-print(f"Uploaded s3://{S3_BUCKET}/{S3_KEY} ({len(buf.getvalue())} bytes)")
+# Install deps into the build dir
+subprocess.run(
+    [
+        sys.executable,
+        "-m",
+        "pip",
+        "install",
+        "-r",
+        "requirements.txt",
+        "-t",
+        BUILD_DIR,
+        "-q",
+    ],
+    check=True,
+)
+
+# Copy agent source into build dir
+shutil.copy2("hr_assistant_agent.py", os.path.join(BUILD_DIR, "hr_assistant_agent.py"))
+
+# Zip everything
+print("Creating deployment zip ...")
+zip_path = shutil.make_archive("_deploy_package", "zip", BUILD_DIR)
+zip_size = os.path.getsize(zip_path)
+print(f"Zip size: {zip_size / 1024 / 1024:.1f} MB")
+
+# Upload to S3
+print(f"Uploading to s3://{S3_BUCKET}/{S3_KEY} ...")
+s3.upload_file(zip_path, S3_BUCKET, S3_KEY)
+print("Upload complete.")
+
+# Cleanup build artifacts
+os.remove(zip_path)
+shutil.rmtree(BUILD_DIR)
 
 # ---- 3. Create/Update runtime ----
 existing_id = None
