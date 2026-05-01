@@ -2,10 +2,10 @@
 
 ## Introduction
 
-This tutorial demonstrates end-to-end evaluation of an agentic application using
+This tutorial demonstrates evaluation of an agentic application using
 [**Amazon Bedrock AgentCore Evaluations**](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/evaluations.html) with ground-truth reference inputs. It covers
 three evaluation interfaces and shows how to create **custom LLM-as-a-judge
-evaluators** that use ground-truth placeholders to tailor scoring criteria to your
+evaluators** that use ground-truth placeholders to define scoring criteria for your
 application domain.
 
 The tutorial deploys an **HR Assistant agent** for Acme Corp, a
