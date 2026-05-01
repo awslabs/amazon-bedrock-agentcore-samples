@@ -10,6 +10,7 @@ import base64
 import json
 import subprocess
 import time
+from pathlib import Path
 
 import boto3
 
@@ -89,6 +90,18 @@ subprocess.run(
 print("ECR login successful.")
 
 # ---- 3. Docker build ----
+# Generate a Dockerfile if one doesn't exist (the repo .gitignore excludes Dockerfile)
+if not Path("Dockerfile").exists():
+    Path("Dockerfile").write_text(
+        "FROM public.ecr.aws/docker/library/python:3.11-slim\n"
+        "WORKDIR /app\n"
+        "COPY requirements.txt ./\n"
+        "RUN pip install --no-cache-dir -r requirements.txt\n"
+        "COPY hr_assistant_agent.py ./main.py\n"
+        'CMD ["python", "main.py"]\n'
+    )
+    print("Generated Dockerfile.")
+
 subprocess.run(["docker", "build", "-t", IMAGE_URI, "."], check=True)
 print("Docker build complete.")
 
