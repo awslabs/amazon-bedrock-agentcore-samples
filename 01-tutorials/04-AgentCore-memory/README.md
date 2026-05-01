@@ -1,18 +1,6 @@
 # Amazon Bedrock AgentCore Memory
 
-## Overview
-
-Memory is a critical component of Agent intelligence. Large Language Models (LLMs) lack persistent memory across conversations. Amazon Bedrock AgentCore Memory addresses this by providing a managed service that enables AI agents to maintain relevant context across sessions, deliver personalized experiences and help the agent to learn over time.
-
-## Key Capabilities
-
-- **Core Infrastructure**: Serverless setup with built-in encryption and observability
-- **Event Storage**: Raw event storage (conversation history/checkpointing) with branching support
-- **Strategy Management**: Configurable extraction strategies (SEMANTIC, SUMMARY, USER_PREFERENCES, EPISODIC, SELF_MANAGED)
-- **Memory Records Extraction**: Automatic extraction of facts, preferences, and summaries based on configured strategies
-- **Semantic Search**: Vector-based retrieval of relevant memories using natural language queries
-
-## How AgentCore Memory Works
+## Architecture
 
 ![high_level_workflow](./images/high_level_memory.png)
 
@@ -26,7 +14,21 @@ Immediate conversation context and session-based information that provides conti
 
 Persistent information extracted and stored across multiple conversations, including facts, preferences, and summaries that enable personalized experiences over time.
 
-## Memory Architecture
+## What is AgentCore Memory?
+
+Memory is a critical component of Agent intelligence. Large Language Models (LLMs) lack persistent memory across conversations. Amazon Bedrock AgentCore Memory addresses this by providing a managed service that enables AI agents to maintain relevant context across sessions, deliver personalized experiences and help the agent to learn over time.
+
+### Key Capabilities
+
+- **Core Infrastructure**: Serverless setup with built-in encryption and observability
+- **Event Storage**: Raw event storage (conversation history/checkpointing) with branching support
+- **Strategy Management**: Configurable extraction strategies (SEMANTIC, SUMMARY, USER_PREFERENCES, EPISODIC, SELF_MANAGED)
+- **Memory Records Extraction**: Automatic extraction of facts, preferences, and summaries based on configured strategies
+- **Semantic Search**: Vector-based retrieval of relevant memories using natural language queries
+
+### How AgentCore Memory Works
+
+AgentCore Memory operates with the following workflow:
 
 1. **Conversation Storage**: Complete conversations are saved in raw form for immediate access
 2. **Strategy Processing**: Configured strategies automatically analyze conversations in the background
@@ -34,7 +36,7 @@ Persistent information extracted and stored across multiple conversations, inclu
 4. **Organized Storage**: Extracted information is stored in structured namespaces for efficient retrieval
 5. **Semantic Retrieval**: Natural language queries can retrieve relevant memories using vector similarity
 
-## Memory Strategy Types
+### Memory Strategy Types
 
 AgentCore Memory supports five strategy types:
 
@@ -43,6 +45,86 @@ AgentCore Memory supports five strategy types:
 - **User Preference Memory**: Tracks user-specific preferences and settings
 - **Episodic Memory**: Captures meaningful interaction sequences with automatic episode detection, consolidation, and reflection generation
 - **Self-managed Memory**: Allows customization of extraction and consolidation logic
+
+## CLI Commands
+
+The **AgentCore CLI** (`@aws/agentcore`, version `0.11.0`) provides the fastest way to scaffold, configure, and deploy memory-enabled agents without writing infrastructure code.
+
+### Install the CLI
+
+```bash
+npm install -g @aws/agentcore@0.11.0
+agentcore --version   # should print 0.11.0
+```
+
+### Configure AWS credentials
+
+```bash
+aws configure
+# Or set environment variables:
+# export AWS_ACCESS_KEY_ID=<your-key>
+# export AWS_SECRET_ACCESS_KEY=<your-secret>
+# export AWS_DEFAULT_REGION=us-east-1
+```
+
+### Create a project with memory
+
+```bash
+# Create an agent project with short-term + long-term memory
+agentcore create \
+  --name MyMemoryAgent \
+  --framework Strands \
+  --model-provider Bedrock \
+  --memory longAndShortTerm \
+  --defaults
+
+cd MyMemoryAgent
+```
+
+### Add memory to an existing project
+
+```bash
+# Add semantic + user-preference memory
+agentcore add memory \
+  --name SharedMemory \
+  --strategies SEMANTIC,USER_PREFERENCE \
+  --expiry 30
+
+# Add short-term memory only
+agentcore add memory \
+  --name SessionMemory \
+  --strategies SEMANTIC \
+  --expiry 7
+```
+
+### Deploy to AgentCore Runtime
+
+```bash
+agentcore deploy
+agentcore status
+```
+
+### Invoke the deployed agent
+
+```bash
+agentcore invoke "Hello, do you remember my name?" --stream
+```
+
+### View logs and traces
+
+```bash
+agentcore logs
+agentcore traces list --limit 10
+```
+
+### Cleanup
+
+To remove all deployed resources (agent runtime, memory store, IAM roles, ECR repository, CloudFormation stack):
+
+```bash
+agentcore remove all
+agentcore deploy
+```
 
 ## Folder Structure
 
@@ -142,6 +224,8 @@ AgentCore Memory supports five strategy types:
 
 - [Amazon Bedrock AgentCore Memory Documentation](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/memory.html)
 - [Deep Dive Video](https://www.youtube.com/live/-N4v6-kJgwA)
+- [AgentCore CLI documentation](https://github.com/aws/agentcore-cli)
+- [Amazon Bedrock AgentCore documentation](https://docs.aws.amazon.com/bedrock-agentcore/)
 
 ## Prerequisites
 
@@ -149,3 +233,5 @@ AgentCore Memory supports five strategy types:
 - AWS account with Amazon Bedrock access
 - Jupyter Notebook environment
 - Required Python packages (see individual sample `requirements.txt` files)
+- Node.js 20.x (for AgentCore CLI)
+- AWS CLI 2.x with credentials configured
