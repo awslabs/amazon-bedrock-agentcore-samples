@@ -1,12 +1,12 @@
 """
-HR Assistant Agent — Strands agent deployed on Bedrock AgentCore Runtime.
+HR Assistant Agent: Strands agent deployed on Bedrock AgentCore Runtime.
 
 Tools (deterministic / mock data for reproducible evaluations):
-  get_pto_balance        — remaining PTO days for an employee
-  submit_pto_request     — request time off
-  lookup_hr_policy       — company policy documents
-  get_benefits_summary   — health, dental, vision, 401k, life insurance details
-  get_pay_stub           — pay stub for a given period
+  get_pto_balance        - remaining PTO days for an employee
+  submit_pto_request     - request time off
+  lookup_hr_policy       - company policy documents
+  get_benefits_summary   - health, dental, vision, 401k, life insurance details
+  get_pay_stub           - pay stub for a given period
 """
 
 import logging
@@ -259,7 +259,7 @@ You help employees with:
 - Retrieving pay stub information
 
 Always use the available tools to answer questions accurately. Do not make up
-policy details, benefit amounts, or pay information — look them up.
+policy details, benefit amounts, or pay information. Look them up.
 Be concise, professional, and friendly."""
 
 _MODEL = BedrockModel(model_id="us.amazon.nova-lite-v1:0")

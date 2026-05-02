@@ -1,4 +1,4 @@
-"""Shopping Concierge agent — used by Strands-AgentCore-ShoppingConcierge.ipynb.
+"""Shopping Concierge agent: used by Strands-AgentCore-ShoppingConcierge.ipynb.
 
 A Strands agent with eight tools over a deterministic mock product catalog,
 mock shopping carts, and mock orders. The mock data makes evaluation results
@@ -155,7 +155,7 @@ def search_products(query: str, category: str = None, max_price: float = None) -
         text = f"{p['name']} {p['description']} {p['category']}".lower()
         if any(word in text for word in query_lower.split()):
             results.append(
-                f"{pid}: {p['name']} — ${p['price']:.2f} | Rating: {p['rating']} | Stock: {p['stock']}"
+                f"{pid}: {p['name']} - ${p['price']:.2f} | Rating: {p['rating']} | Stock: {p['stock']}"
             )
     if not results:
         return f"No products found matching '{query}'" + (
@@ -187,7 +187,7 @@ def add_to_cart(product_id: str, quantity: int, session_id: str = "default") -> 
     if not p:
         return f"Cannot add to cart: product {product_id} not found."
     if p["stock"] < quantity:
-        return f"Cannot add {quantity} units — only {p['stock']} in stock."
+        return f"Cannot add {quantity} units - only {p['stock']} in stock."
     cart = _carts.setdefault(session_id, [])
     # Update existing item or add new
     for item in cart:
@@ -230,7 +230,7 @@ def checkout(
 
     cart = _carts.get(session_id, [])
     if not cart:
-        return "Cannot checkout — cart is empty."
+        return "Cannot checkout - cart is empty."
     total = sum(i["quantity"] * i["price_each"] for i in cart)
     order_id = f"ORD-SC-{uuid.uuid4().hex[:6].upper()}"
     # Clear cart after checkout
@@ -293,7 +293,7 @@ def initiate_return(order_id: str, reason: str) -> str:
     if not order:
         return f"Order {order_id} not found."
     if order["status"] != "delivered":
-        return f"Cannot return order {order_id} — it must be delivered first (current: {order['status']})."
+        return f"Cannot return order {order_id} - it must be delivered first (current: {order['status']})."
     return (
         f"Return initiated for order {order_id}.\n"
         f"Reason: {reason}\n"
