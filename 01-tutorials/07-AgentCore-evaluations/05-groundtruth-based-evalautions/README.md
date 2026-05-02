@@ -90,16 +90,16 @@ return deterministic mock data, making evaluation results fully reproducible.
 - **Python 3.10+** with the packages in `requirements.txt`
 - **AWS credentials** configured (e.g. via `aws configure` or environment variables) with
   permissions for:
-  - `bedrock-agentcore:*` — invoke agent runtime and call Evaluate API
+  - `bedrock-agentcore:*`: invoke agent runtime and call Evaluate API
   - `bedrock-agentcore-control:CreateAgentRuntime`, `UpdateAgentRuntime`,
-    `GetAgentRuntime`, `CreateEvaluator` — deploy agent and register evaluators
+    `GetAgentRuntime`, `CreateEvaluator`: deploy agent and register evaluators
   - `logs:FilterLogEvents`, `logs:DescribeLogGroups`, `logs:StartQuery`,
-    `logs:GetQueryResults` — read CloudWatch spans
+    `logs:GetQueryResults`: read CloudWatch spans
   - `ecr:GetAuthorizationToken`, `ecr:BatchCheckLayerAvailability`,
-    `ecr:InitiateLayerUpload`, `ecr:PutImage` — push container image
-  - `codebuild:StartBuild`, `codebuild:BatchGetBuilds` — image build via CodeBuild
-  - `iam:CreateRole`, `iam:AttachRolePolicy`, `iam:PassRole` — auto-create execution roles
-  - `s3:PutObject`, `s3:GetObject` — CodeBuild source upload
+    `ecr:InitiateLayerUpload`, `ecr:PutImage`: push container image
+  - `codebuild:StartBuild`, `codebuild:BatchGetBuilds`: image build via CodeBuild
+  - `iam:CreateRole`, `iam:AttachRolePolicy`, `iam:PassRole`: auto-create execution roles
+  - `s3:PutObject`, `s3:GetObject`: CodeBuild source upload
 
 Install dependencies:
 
@@ -131,14 +131,14 @@ jupyter nbconvert --to notebook --execute --inplace groundtruth_evaluations.ipyn
 
 | Step | What happens |
 |---|---|
-| **1 — Install** | Installs `bedrock-agentcore`, `strands-agents`, and other dependencies |
-| **2 — Configure** | Creates a boto3 session and sets `REGION` |
-| **3 — Deploy agent** | Runs `deploy_hr_assistant_agent.py` via `%run -i`; uses `agentcore` CLI to build, push, and create the runtime |
-| **4 — Invoke agent** | Runs 5 sessions (single- and multi-turn), waits 60s for CloudWatch ingestion |
+| **1: Install** | Installs `bedrock-agentcore`, `strands-agents`, and other dependencies |
+| **2: Configure** | Creates a boto3 session and sets `REGION` |
+| **3: Deploy agent** | Runs `deploy_hr_assistant_agent.py` via `%run -i`; uses `agentcore` CLI to build, push, and create the runtime |
+| **4: Invoke agent** | Runs 5 sessions (single- and multi-turn), waits 60s for CloudWatch ingestion |
 | **Custom evaluators** | Creates `HRResponseSimilarity` (TRACE) and `HRAssertionChecker` (SESSION) custom evaluators |
-| **5 — EvaluationClient** | Evaluates each session by session ID using built-in and custom evaluators |
-| **6 — OnDemandEvaluationDatasetRunner** | Defines a 5-scenario dataset, invokes the agent per scenario, waits 180s, evaluates all scenarios |
-| **7 — BatchEvaluationRunner** | Runs the same dataset through `BatchEvaluationRunner` for aggregate scores per evaluator |
+| **5: EvaluationClient** | Evaluates each session by session ID using built-in and custom evaluators |
+| **6: OnDemandEvaluationDatasetRunner** | Defines a 5-scenario dataset, invokes the agent per scenario, waits 180s, evaluates all scenarios |
+| **7: BatchEvaluationRunner** | Runs the same dataset through `BatchEvaluationRunner` for aggregate scores per evaluator |
 | **Cleanup** | (Commented out) Deletes the agent runtime |
 
 ### Using `EvaluationClient` directly
