@@ -10,7 +10,7 @@ scoped to A/B test resources in your account:
 
     "Condition": {
         "StringEquals": {"aws:SourceAccount": "<account-id>"},
-        "ArnLike":      {"aws:SourceArn": "arn:aws:bedrock-agentcore:*:<account-id>:ab-test/*"}
+        "ArnLike":      {"aws:SourceArn": "arn:aws:bedrock-agentcore:*:<account-id>:*"}
     }
 
 The permissions policy uses explicit least-privilege statements:
@@ -23,6 +23,8 @@ The permissions policy uses explicit least-privilege statements:
   BedrockAgentCoreMemory     — memory CRUD scoped to memory/*
   BedrockAgentCoreBrowser    — browser session ops scoped to browser resources
   SSMParameterAccess         — GetParameter/PutParameter scoped to market-trends-agent/*
+  InvokeAgentRuntime         — bedrock-agentcore:InvokeAgentRuntime scoped to runtime/*
+                               (required when gateway forwards requests via GATEWAY_IAM_ROLE)
   ABTestAgentCoreResources   — GetGateway, GetGatewayTarget, ListGatewayTargets,
                                CreateGatewayRule, UpdateGatewayRule, GetGatewayRule,
                                DeleteGatewayRule, ListGatewayRules,
@@ -30,9 +32,10 @@ The permissions policy uses explicit least-privilege statements:
                                GetConfigurationBundle, GetConfigurationBundleVersion,
                                ListConfigurationBundleVersions
                                scoped to account ARNs with aws:ResourceAccount condition
-  ABTestCloudWatchLogs       — DescribeIndexPolicies, PutIndexPolicy, StartQuery,
-                               GetQueryResults, StopQuery, FilterLogEvents, GetLogEvents
-                               scoped to evaluations/* and aws/spans log groups
+  ABTestCloudWatchLogs       — CreateLogGroup, CreateLogStream, PutLogEvents,
+                               DescribeLogGroups/Streams, DescribeIndexPolicies, PutIndexPolicy,
+                               StartQuery, GetQueryResults, StopQuery, FilterLogEvents, GetLogEvents
+                               scoped to evaluations/*, runtimes/*, and aws/spans log groups
 """
 
 import argparse
@@ -86,7 +89,7 @@ class MarketTrendsAgentDeployer:
                             "aws:SourceAccount": account_id,
                         },
                         "ArnLike": {
-                            "aws:SourceArn": f"arn:aws:bedrock-agentcore:*:{account_id}:ab-test/*",
+                            "aws:SourceArn": f"arn:aws:bedrock-agentcore:*:{account_id}:*",
                         },
                     },
                 }
@@ -219,6 +222,14 @@ class MarketTrendsAgentDeployer:
                     "Sid": "SSMParameterAccess",
                 },
                 {
+                    "Sid": "InvokeAgentRuntime",
+                    "Effect": "Allow",
+                    "Action": ["bedrock-agentcore:InvokeAgentRuntime"],
+                    "Resource": [
+                        f"arn:aws:bedrock-agentcore:{self.region}:{account_id}:runtime/*"
+                    ],
+                },
+                {
                     "Sid": "ABTestAgentCoreResources",
                     "Effect": "Allow",
                     "Action": [
@@ -247,6 +258,11 @@ class MarketTrendsAgentDeployer:
                     "Sid": "ABTestCloudWatchLogs",
                     "Effect": "Allow",
                     "Action": [
+                        "logs:CreateLogGroup",
+                        "logs:CreateLogStream",
+                        "logs:PutLogEvents",
+                        "logs:DescribeLogGroups",
+                        "logs:DescribeLogStreams",
                         "logs:DescribeIndexPolicies",
                         "logs:PutIndexPolicy",
                         "logs:StartQuery",
@@ -257,6 +273,9 @@ class MarketTrendsAgentDeployer:
                     ],
                     "Resource": [
                         f"arn:aws:logs:*:{account_id}:log-group:/aws/bedrock-agentcore/evaluations/*",
+                        f"arn:aws:logs:*:{account_id}:log-group:/aws/bedrock-agentcore/evaluations/*:*",
+                        f"arn:aws:logs:*:{account_id}:log-group:/aws/bedrock-agentcore/runtimes/*",
+                        f"arn:aws:logs:*:{account_id}:log-group:/aws/bedrock-agentcore/runtimes/*:*",
                         f"arn:aws:logs:*:{account_id}:log-group:aws/spans",
                         f"arn:aws:logs:*:{account_id}:log-group:aws/spans:*",
                     ],

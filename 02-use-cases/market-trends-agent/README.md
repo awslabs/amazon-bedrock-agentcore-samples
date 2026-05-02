@@ -2,7 +2,7 @@
 
 ## Overview
 
-This use case implements an intelligent financial analysis agent using Amazon Bedrock AgentCore that provides real-time market intelligence, stock analysis, and personalized investment recommendations. The agent combines LLM-powered analysis with live market data and maintains persistent memory of broker preferences across sessions.
+This use case implements an intelligent financial analysis agent using Amazon Bedrock AgentCore that provides real-time market intelligence, stock analysis, and personalized investment recommendations. The agent combines LLM-powered analysis with live market data and maintains persistent memory of broker preferences across sessions. This sample also demonstrates how to cuse custom code based evalautions from AgentCore Evaluations, and the continuous agent improvement loop using AgentCore Optimization.
 
 ## Use Case Architecture
 
@@ -346,7 +346,7 @@ Evaluate  →  Recommend  →  Bundle  →  A/B Test  →  Promote
 |-------|-------------|--------------|
 | **Evaluate** | Measure current agent quality with batch or simulated evaluations | Batch evaluation |
 | **Recommend** | AI analyzes production traces and generates improved system prompt and tool descriptions | Recommendation API |
-| **Bundle** | Package original (control) and improved (treatment) configurations without redeploying | Configuration Bundle |
+| **Configuration Bundle** | Package original (control) and improved (treatment) configurations without redeploying | Configuration Bundle |
 | **A/B Test** | Route live traffic through the gateway and compare variants statistically | A/B Test |
 | **Promote** | Apply the winning configuration as the new default | Update bundle / promote runtime |
 
@@ -356,7 +356,7 @@ Evaluate  →  Recommend  →  Bundle  →  A/B Test  →  Promote
 # Step 1: Run a simulated dataset evaluation to establish baseline scores
 export AGENT_RUNTIME_ARN=$(cat .agent_arn)
 export AWS_REGION=us-west-2
-uv run python optimization/simulated_eval.py
+uv run python optimization/user_simulated_dataset.py
 
 # Step 2: Run the full optimization cycle (baseline eval → recommendations → A/B test)
 uv run python optimization/optimize_agent.py
@@ -376,7 +376,7 @@ uv run python optimization/optimize_agent.py --cleanup --state-file optimization
 
 ### Simulated Dataset Evaluation
 
-`optimization/simulated_eval.py` runs a batch evaluation where an LLM-backed actor plays the role of an investment broker — no pre-scripted turn sequences needed.
+`optimization/user_simulated_dataset.py` runs a batch evaluation where an LLM-backed actor plays the role of an investment broker — no pre-scripted turn sequences needed.
 
 ```
 Actor (LLM) ──turns──▶ Market Trends Agent ──spans──▶ CloudWatch
@@ -416,7 +416,7 @@ dp.start_recommendation(
             "systemPrompt": {"text": CURRENT_SYSTEM_PROMPT},
             "agentTraces": {
                 "cloudwatchLogs": {
-                    "logGroupArns": [SPANS_LOG_ARN, LOG_GROUP_ARN],
+                    "logGroupArns": [LOG_GROUP_ARN],
                     "serviceNames": [SERVICE_NAME],
                     "startTime": start_dt,
                     "endTime": now,
@@ -453,17 +453,22 @@ User request
                                            [A/B Test Results]
 ```
 
-**Config bundle hook** — for the agent to use the injected configuration, add a hook to `market_trends_agent.py`:
+**Config bundle hook** — for the agent to read the injected configuration at invocation time, call `BedrockAgentCoreContext.get_config_bundle()` inside the entrypoint:
 
 ```python
-SYSTEM_PROMPT = "..."   # default system prompt
+from bedrock_agentcore.runtime import BedrockAgentCoreContext
 
-@app.config_bundle_hook
-def _config_bundle_hook(config: dict) -> None:
-    """Called at startup when a configuration bundle is injected via baggage header."""
-    global SYSTEM_PROMPT
-    if "system_prompt" in config:
-        SYSTEM_PROMPT = config["system_prompt"]
+DEFAULT_SYSTEM_PROMPT = "..."   # fallback when no bundle is injected
+
+@app.entrypoint
+async def invoke(payload, context):
+    bundle = BedrockAgentCoreContext.get_config_bundle()
+    system_prompt = DEFAULT_SYSTEM_PROMPT
+    tool_descs = {}
+    if bundle:
+        system_prompt = bundle.get("system_prompt", DEFAULT_SYSTEM_PROMPT)
+        tool_descs = bundle.get("tool_descriptions", {})
+    # apply system_prompt and tool_descs to the agent ...
 ```
 
 This lets you test any prompt change — including AI-generated recommendations — against live traffic without touching the deployed container.
@@ -552,14 +557,40 @@ for m in results.get("evaluatorMetrics", []):
 
 | Script | What it does |
 |--------|-------------|
-| `optimization/simulated_eval.py` | Batch evaluation with LLM actor-driven conversations |
-| `optimization/optimize_agent.py` | Full cycle: eval → recommendations → bundles → A/B tests |
+| `optimization/custom_evaluators.py` | Create/manage 3 custom LLM-as-a-judge evaluators (market data accuracy, broker personalization, financial professionalism) |
+| `optimization/user_simulated_dataset.py` | Standalone batch evaluation with LLM actor-driven broker conversations |
+| `optimization/optimize_agent.py` | Full cycle: traffic → baseline eval → SP/TD recommendations → config bundles → A/B tests |
 
 ```
 optimization/
-├── simulated_eval.py    # LLM actor-driven batch evaluation (5 broker scenarios)
-└── optimize_agent.py    # Full optimization cycle (Phases 1–8)
+├── custom_evaluators.py       # Create/reuse custom LLM-as-a-judge evaluators
+├── user_simulated_dataset.py  # LLM actor-driven batch evaluation (5 broker scenarios)
+└── optimize_agent.py          # Full optimization cycle (Phases 1–8)
 ```
+
+**Running order:**
+
+```bash
+# Optional: create custom domain-specific evaluators first
+uv run python optimization/custom_evaluators.py
+
+# Standalone simulated eval (independent, can run any time)
+uv run python optimization/user_simulated_dataset.py
+
+# Full optimization cycle (phases run in order: 2→1→3→4→5→6)
+uv run python optimization/optimize_agent.py --phases 1 2 3 4 5 6
+
+# Resume specific phases from a saved state file
+uv run python optimization/optimize_agent.py --phases 6 --state-file optimization/state.json
+
+# Promote winning treatment into control bundle after Phase 6
+uv run python optimization/optimize_agent.py --phases 5p --state-file optimization/state.json
+
+# Clean up all optimization resources
+uv run python optimization/optimize_agent.py --cleanup --state-file optimization/state.json
+```
+
+> **Note:** `optimize_agent.py` requires `AGENT_ROLE_NAME=MarketTrendsAgentRole` (the role created by `deploy.py`). Use `PYTHONUNBUFFERED=1 python -u` to see live output.
 
 ---
 
@@ -645,7 +676,7 @@ uv run python cleanup.py --dry-run
 uv run python cleanup.py --skip-iam
 
 # Cleanup in different region
-uv run python cleanup.py --region us-west-2
+uv run python cleanup.py --region "<aws_region>"
 ```
 
 **What gets cleaned up:**
