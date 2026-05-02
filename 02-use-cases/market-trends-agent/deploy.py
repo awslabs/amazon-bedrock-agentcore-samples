@@ -2,6 +2,37 @@
 """
 Complete Market Trends Agent Deployment Script
 Handles IAM role creation, permissions, container deployment, and agent setup
+
+IAM Role Setup
+--------------
+The execution role trusts bedrock-agentcore.amazonaws.com with a condition
+scoped to A/B test resources in your account:
+
+    "Condition": {
+        "StringEquals": {"aws:SourceAccount": "<account-id>"},
+        "ArnLike":      {"aws:SourceArn": "arn:aws:bedrock-agentcore:*:<account-id>:ab-test/*"}
+    }
+
+The permissions policy uses explicit least-privilege statements:
+
+  BedrockModelInvocation     — bedrock:InvokeModel* scoped to foundation models
+  ECRImageAccess             — ecr:BatchGetImage, GetDownloadUrlForLayer
+  CloudWatch Logs (runtime)  — CreateLogGroup/Stream, PutLogEvents scoped to runtimes/*
+  XRay                       — PutTraceSegments, PutTelemetryRecords, GetSamplingRules/Targets
+  GetAgentAccessToken        — GetWorkloadAccessToken* scoped to workload identity
+  BedrockAgentCoreMemory     — memory CRUD scoped to memory/*
+  BedrockAgentCoreBrowser    — browser session ops scoped to browser resources
+  SSMParameterAccess         — GetParameter/PutParameter scoped to market-trends-agent/*
+  ABTestAgentCoreResources   — GetGateway, GetGatewayTarget, ListGatewayTargets,
+                               CreateGatewayRule, UpdateGatewayRule, GetGatewayRule,
+                               DeleteGatewayRule, ListGatewayRules,
+                               GetOnlineEvaluationConfig, GetEvaluator,
+                               GetConfigurationBundle, GetConfigurationBundleVersion,
+                               ListConfigurationBundleVersions
+                               scoped to account ARNs with aws:ResourceAccount condition
+  ABTestCloudWatchLogs       — DescribeIndexPolicies, PutIndexPolicy, StartQuery,
+                               GetQueryResults, StopQuery, FilterLogEvents, GetLogEvents
+                               scoped to evaluations/* and aws/spans log groups
 """
 
 import argparse
@@ -29,7 +60,18 @@ class MarketTrendsAgentDeployer:
         self.ssm_client = boto3.client("ssm", region_name=region)
 
     def create_execution_role(self, role_name: str) -> str:
-        """Create IAM execution role with all required permissions"""
+        """Create IAM execution role with least-privilege permissions.
+
+        Trust policy: bedrock-agentcore.amazonaws.com, conditioned on
+        aws:SourceAccount and aws:SourceArn scoped to ab-test/* resources.
+
+        Permissions: explicit statements for runtime, memory, browser, SSM,
+        A/B test gateway/eval/bundle reads, and CloudWatch Logs score aggregation.
+        See module docstring for the full statement breakdown.
+        """
+
+        # Get account ID for trust policy and resource ARNs
+        account_id = boto3.client("sts").get_caller_identity()["Account"]
 
         # Trust policy for Bedrock AgentCore
         trust_policy = {
@@ -39,12 +81,17 @@ class MarketTrendsAgentDeployer:
                     "Effect": "Allow",
                     "Principal": {"Service": "bedrock-agentcore.amazonaws.com"},
                     "Action": "sts:AssumeRole",
+                    "Condition": {
+                        "StringEquals": {
+                            "aws:SourceAccount": account_id,
+                        },
+                        "ArnLike": {
+                            "aws:SourceArn": f"arn:aws:bedrock-agentcore:*:{account_id}:ab-test/*",
+                        },
+                    },
                 }
             ],
         }
-
-        # Get account ID and region for specific resource ARNs
-        account_id = boto3.client("sts").get_caller_identity()["Account"]
 
         # Comprehensive execution policy with least privilege permissions
         execution_policy = {
@@ -170,6 +217,49 @@ class MarketTrendsAgentDeployer:
                     ],
                     "Resource": f"arn:aws:ssm:{self.region}:{account_id}:parameter/bedrock-agentcore/market-trends-agent/*",
                     "Sid": "SSMParameterAccess",
+                },
+                {
+                    "Sid": "ABTestAgentCoreResources",
+                    "Effect": "Allow",
+                    "Action": [
+                        "bedrock-agentcore:GetGateway",
+                        "bedrock-agentcore:GetGatewayTarget",
+                        "bedrock-agentcore:ListGatewayTargets",
+                        "bedrock-agentcore:CreateGatewayRule",
+                        "bedrock-agentcore:UpdateGatewayRule",
+                        "bedrock-agentcore:GetGatewayRule",
+                        "bedrock-agentcore:DeleteGatewayRule",
+                        "bedrock-agentcore:ListGatewayRules",
+                        "bedrock-agentcore:GetOnlineEvaluationConfig",
+                        "bedrock-agentcore:GetEvaluator",
+                        "bedrock-agentcore:GetConfigurationBundle",
+                        "bedrock-agentcore:GetConfigurationBundleVersion",
+                        "bedrock-agentcore:ListConfigurationBundleVersions",
+                    ],
+                    "Resource": f"arn:aws:bedrock-agentcore:*:{account_id}:*",
+                    "Condition": {
+                        "StringEquals": {
+                            "aws:ResourceAccount": account_id,
+                        }
+                    },
+                },
+                {
+                    "Sid": "ABTestCloudWatchLogs",
+                    "Effect": "Allow",
+                    "Action": [
+                        "logs:DescribeIndexPolicies",
+                        "logs:PutIndexPolicy",
+                        "logs:StartQuery",
+                        "logs:GetQueryResults",
+                        "logs:StopQuery",
+                        "logs:FilterLogEvents",
+                        "logs:GetLogEvents",
+                    ],
+                    "Resource": [
+                        f"arn:aws:logs:*:{account_id}:log-group:/aws/bedrock-agentcore/evaluations/*",
+                        f"arn:aws:logs:*:{account_id}:log-group:aws/spans",
+                        f"arn:aws:logs:*:{account_id}:log-group:aws/spans:*",
+                    ],
                 },
             ],
         }
