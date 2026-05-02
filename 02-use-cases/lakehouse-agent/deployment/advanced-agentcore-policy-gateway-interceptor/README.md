@@ -3,14 +3,49 @@
 This CDK project extends the lakehouse-agent sample with a layered security
 architecture that combines **Cedar-based AgentCore Policy** and a **Design 3
 Request Interceptor Lambda**. It implements the three patterns described in
-the blog post *"Build Secure AI Agent Behavior with Policy and Lambda
-Interceptors in Amazon Bedrock AgentCore"*:
+the blog post _"Build Secure AI Agent Behavior with Policy and Lambda
+Interceptors in Amazon Bedrock AgentCore"_:
 
-| Design | Mechanism | Demo rule |
-|---|---|---|
-| **Design 1 — Policy Only** | Cedar `forbid` rule on the Gateway | Policyholders cannot invoke `get_claims_summary` |
-| **Design 2 — Interceptor Only** | Request Interceptor performs `sts:AssumeRole` to scope credentials, so Lake Formation applies row- and column-level security | Each user sees only their own rows and permitted columns |
-| **Design 3 — Policy + Interceptor** | Interceptor injects `geography`, Cedar evaluates `context.input.geography` | EU users cannot invoke `query_claims` or `get_claim_details` |
+| Design                              | Mechanism                                                                                                                    | Demo rule                                                    |
+| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| **Design 1 — Policy Only**          | Cedar `forbid` rule on the Gateway                                                                                           | Policyholders cannot invoke `get_claims_summary`             |
+| **Design 2 — Interceptor Only**     | Request Interceptor performs `sts:AssumeRole` to scope credentials, so Lake Formation applies row- and column-level security | Each user sees only their own rows and permitted columns     |
+| **Design 3 — Policy + Interceptor** | Interceptor injects `geography`, Cedar evaluates `context.input.geography`                                                   | EU users cannot invoke `query_claims` or `get_claim_details` |
+
+## Architecture
+
+The three designs differ in _where_ the access decision is made. Each diagram
+below highlights the control point exercised at request time.
+
+### Design 1 — Policy Only
+
+![Design 1 — Policy Only](./images/design_1.png)
+
+The AgentCore Gateway evaluates Cedar policies before forwarding the request to
+the MCP server. Access control is **declarative** — the Policy Engine denies
+disallowed tool invocations (for example, `get_claims_summary` for
+policyholders) without any custom Lambda logic in the request path.
+
+### Design 2 — Interceptor Only
+
+![Design 2 — Interceptor Only](./images/design_2.png)
+
+The Request Interceptor Lambda performs `sts:AssumeRole` to downscope the
+credentials passed to the MCP server based on the user's tenant role mapping.
+The downstream query to Athena / S3 Tables then runs under a tenant-scoped
+role, letting **Lake Formation** apply row- and column-level security
+transparently.
+
+### Design 3 — Policy + Interceptor
+
+![Design 3 — Policy + Interceptor](./images/design_3.png)
+
+Combines both control points: the Request Interceptor enriches the request by
+injecting `geography` (and still downscopes credentials), then the Policy
+Engine evaluates Cedar rules against that attribute via
+`context.input.geography`. This enables **attribute-based access control**
+(e.g., blocking `query_claims` / `get_claim_details` for EU users) that
+neither Design 1 nor Design 2 can express on its own.
 
 ## Prerequisites
 
@@ -128,12 +163,12 @@ Results: 13/13 passed
 
 ## What the policies enforce
 
-| Policy file | Pattern | Effect |
-|---|---|---|
-| `permit_all.cedar` | Baseline permit | Without this, AgentCore defaults to deny-by-default once a Policy Engine is attached |
-| `forbid_policyholder_summary.cedar` | Design 1 | Blocks `get_claims_summary` when `principal.getTag("cognito:groups") like "*policyholders*"` |
-| `forbid_eu_individual_claims.cedar` | Design 3 | Blocks `query_claims` and `get_claim_details` when `context.input.geography == "EU"` |
-| `forbid_restricted_geography.cedar` | Design 3 | Blocks every tool when `context.input.geography == "RESTRICTED"` |
+| Policy file                         | Pattern         | Effect                                                                                       |
+| ----------------------------------- | --------------- | -------------------------------------------------------------------------------------------- |
+| `permit_all.cedar`                  | Baseline permit | Without this, AgentCore defaults to deny-by-default once a Policy Engine is attached         |
+| `forbid_policyholder_summary.cedar` | Design 1        | Blocks `get_claims_summary` when `principal.getTag("cognito:groups") like "*policyholders*"` |
+| `forbid_eu_individual_claims.cedar` | Design 3        | Blocks `query_claims` and `get_claim_details` when `context.input.geography == "EU"`         |
+| `forbid_restricted_geography.cedar` | Design 3        | Blocks every tool when `context.input.geography == "RESTRICTED"`                             |
 
 The `geography` attribute is injected by the Design 3 Request Interceptor at
 `params.arguments.geography` (top level). Cedar maps that to
@@ -192,16 +227,16 @@ See [../README.md](../README.md) for details.
 
 ## Troubleshooting
 
-| Symptom | Cause | Fix |
-|---|---|---|
-| `CfnPolicy` → `CREATE_FAILED` with `InterceptorException` | The Gateway still had the JWT-validating Interceptor attached while Cedar tried its internal MCP validation | Re-run `scripts/pre-deploy.sh` (it detaches Interceptors) then `cdk deploy` again |
-| All tool calls return 500 | After detach, the Response Interceptor Lambda was missing when CDK re-attached | Deploy the Response Interceptor first: `deployment/5-gateway-setup/interceptor-response/deploy.sh` |
-| `permit_all` fails with "Overly Permissive" | `validationMode: FAIL_ON_ANY_FINDINGS` on a broad permit | PolicyStack already uses `IGNORE_ALL_FINDINGS` for `permit_all` — rerun `cdk deploy` |
-| `context.input` returns `attribute not found` | Cedar rule used a wildcard `action` | List tools explicitly in `action in [...]` (see `forbid_eu_individual_claims.cedar`) |
-| Every tool returns DENY after deploy | `permit_all` is not `ACTIVE` | Re-check `list_policies` status; if not ACTIVE, re-run `cdk deploy` |
+| Symptom                                                   | Cause                                                                                                       | Fix                                                                                                |
+| --------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `CfnPolicy` → `CREATE_FAILED` with `InterceptorException` | The Gateway still had the JWT-validating Interceptor attached while Cedar tried its internal MCP validation | Re-run `scripts/pre-deploy.sh` (it detaches Interceptors) then `cdk deploy` again                  |
+| All tool calls return 500                                 | After detach, the Response Interceptor Lambda was missing when CDK re-attached                              | Deploy the Response Interceptor first: `deployment/5-gateway-setup/interceptor-response/deploy.sh` |
+| `permit_all` fails with "Overly Permissive"               | `validationMode: FAIL_ON_ANY_FINDINGS` on a broad permit                                                    | PolicyStack already uses `IGNORE_ALL_FINDINGS` for `permit_all` — rerun `cdk deploy`               |
+| `context.input` returns `attribute not found`             | Cedar rule used a wildcard `action`                                                                         | List tools explicitly in `action in [...]` (see `forbid_eu_individual_claims.cedar`)               |
+| Every tool returns DENY after deploy                      | `permit_all` is not `ACTIVE`                                                                                | Re-check `list_policies` status; if not ACTIVE, re-run `cdk deploy`                                |
 
 ## References
 
-- Blog post: *Build Secure AI Agent Behavior with Policy and Lambda Interceptors in Amazon Bedrock AgentCore*
+- Blog post: _Build Secure AI Agent Behavior with Policy and Lambda Interceptors in Amazon Bedrock AgentCore_
 - [Phase 1 deployment guide](../README.md)
 - [lakehouse-agent README](../../README.md)
