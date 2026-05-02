@@ -4,8 +4,8 @@ A Strands agent with eight tools over a deterministic mock product catalog,
 mock shopping carts, and mock orders. The mock data makes evaluation results
 fully reproducible across runs.
 
-Deployed to AgentCore Runtime via `docker build` + `cp.create_agent_runtime`
-from the companion notebook — see Step 3 of `Strands-AgentCore-ShoppingConcierge.ipynb`.
+Deployed to AgentCore Runtime via the `agentcore` CLI.
+See Step 3 of `Strands-AgentCore-ShoppingConcierge.ipynb`.
 """
 
 from strands import Agent, tool
