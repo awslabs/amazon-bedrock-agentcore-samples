@@ -431,7 +431,7 @@ def delete_all() -> None:
         print(f"Deleting {name}: {eid} ...")
         try:
             ctrl.delete_evaluator(evaluatorId=eid)
-            print(f"  Deleted.")
+            print("  Deleted.")
         except Exception as exc:
             print(f"  Skipped: {exc}")
     IDS_FILE.unlink(missing_ok=True)
