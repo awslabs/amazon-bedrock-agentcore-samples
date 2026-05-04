@@ -3,6 +3,10 @@
 .memory_id
 .bedrock_agentcore.yaml
 
+# Optimization runtime state (account-specific resource IDs, regenerated each run)
+optimization/state.json
+optimization/custom_evaluator_ids.json
+
 # Python
 __pycache__/
 *.py[cod]
