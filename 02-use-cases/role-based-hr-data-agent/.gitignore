@@ -1,0 +1,46 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+.Python
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Build / packaging artifacts
+dist/
+build/
+
+# ASH security scan output (generated reports — not source)
+.ash/ash_output/
+
+# Test and coverage
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Credentials and secrets
+.env
+.env.*
+persona_app_clients.json
+
+# macOS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+*.log
+
+# Backup files
+*.bak
+
+# Claude Code workspace instructions
+CLAUDE.md

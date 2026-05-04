@@ -1,3 +1,5 @@
+import os
+
 from langchain_core.tools import tool
 from langchain_aws import ChatBedrock
 from typing import Dict
@@ -146,7 +148,7 @@ def generate_market_summary_for_broker(
         # Create tailored prompt
         llm = ChatBedrock(
             model_id="global.anthropic.claude-haiku-4-5-20251001-v1:0",
-            region_name="us-east-1",
+            region_name=os.getenv("AWS_REGION", "us-east-1"),
         )
 
         prompt = f"""
