@@ -1,80 +1,45 @@
-# AgentCore Memory: Short-Term Memory
+# AgentCore Memory — Short-term memory
 
-## Overview
+Short-term memory stores raw conversation turns (events) scoped to an actor and session, plus branching for exploratory or parallel flows. It provides immediate, low-latency context for a conversation without background processing.
 
-Short-term memory in Amazon Bedrock AgentCore provides immediate conversation context and session-based information management. It enables AI agents to maintain continuity within a single interaction or closely related sessions, ensuring coherent and contextually aware responses throughout a conversation.
+## Folder layout
 
-## What is Short-Term Memory?
+| Folder | Purpose |
+|---|---|
+| [`01-core-features/`](./01-core-features/) | Framework-agnostic primitives: events, metadata filtering, actor/session isolation, event branching |
+| [`02-single-agent/`](./02-single-agent/) | Framework integrations (Strands, LangGraph, LlamaIndex) with the three patterns: built-in hook, custom hook, memory-as-tool |
+| [`03-multi-agent/`](./03-multi-agent/) | Multi-agent STM with shared context, including parallel branching |
 
-Short-term memory focuses on:
+## The three integration patterns (per framework)
 
-- **Session Continuity**: Maintaining context within a single conversation session
-- **Immediate Context**: Preserving recent conversation history for coherent responses
-- **Temporary State**: Managing transient information that's relevant for the current interaction
-- **Conversation Flow**: Ensuring smooth transitions between topics within a session
+| Pattern | What it is | When to use |
+|---|---|---|
+| **Built-in hook** | Use the framework's out-of-the-box AgentCore memory hook | Fastest path; standard save/retrieve lifecycle |
+| **Custom hook** | Subclass/implement your own hook | Conditional logic, custom retrieval, orchestration |
+| **Memory-as-tool** | Expose memory operations as tools the agent calls | Agent decides when to recall/save |
 
-## How Short-Term Memory Works in AgentCore
+## Framework × pattern notebooks
 
-### Event Storage
+### Single-agent
 
-AgentCore Memory stores complete conversation events in raw form, providing immediate access to:
+| Framework | Built-in hook | Custom hook | Memory-as-tool |
+|---|---|---|---|
+| Strands | [`personal-agent.ipynb`](./02-single-agent/with-strands-agent/personal-agent.ipynb) | [`personal-agent-memory-manager.ipynb`](./02-single-agent/with-strands-agent/personal-agent-memory-manager.ipynb) | _gap_ |
+| LangGraph | [`math-agent-with-checkpointing.ipynb`](./02-single-agent/with-langgraph-agent/math-agent-with-checkpointing.ipynb) | [`personal-fitness-coach.ipynb`](./02-single-agent/with-langgraph-agent/personal-fitness-coach.ipynb) | [`support-agent-human-in-the-loop.ipynb`](./02-single-agent/with-langgraph-agent/support-agent-human-in-the-loop.ipynb) |
+| LlamaIndex | _gap_ | _gap_ | four domain examples in [`with-llamaindex-agent/`](./02-single-agent/with-llamaindex-agent/) |
 
-- Last `k` User messages and agent responses
-- Conversation metadata (timestamps, session IDs, actor IDs)
-- Branching conversation paths for complex interactions
+**Branching** (Strands): [`travel-planning-branching/`](./02-single-agent/with-strands-agent/travel-planning-branching/)
 
-### Session Management
+### Multi-agent (Strands)
 
-Short-term memory operates at the session level:
+- Built-in hook: [`travel-planning-agent.ipynb`](./03-multi-agent/with-strands-agent/travel-planning-agent.ipynb)
+- Custom hook: [`travel-planning-agent-memory-manager.ipynb`](./03-multi-agent/with-strands-agent/travel-planning-agent-memory-manager.ipynb)
+- Parallel branching: [`multi-agent-parallel-branches/`](./03-multi-agent/with-strands-agent/multi-agent-parallel-branches/)
 
-- Each conversation session maintains its own context
-- Related sessions can share context through session grouping
-- Automatic cleanup of expired session data (based on the configured TTL)
+> Framework × pattern classifications above reflect the current intent; the corresponding notebooks keep their original filenames in this pass. See [`../journal.md`](../journal.md) for the restructure plan and known gaps.
 
-### Real-Time Access
+## Next steps
 
-Unlike long-term memory strategies that process in the background, short-term memory provides:
-
-- Immediate retrieval of recent conversation history
-- Conversation Continuation when a session discontinues or the agent fails.
-- Real-time context updates as conversations progress
-- Low-latency access to session-specific information
-
-## Best Practices
-
-1. **Context Window Management**: Monitor context usage to prevent overflow
-2. **Session Boundaries**: Clearly define when sessions begin and end
-3. **Memory Cleanup**: Implement appropriate cleanup policies for expired sessions
-4. **Error Handling**: Handle memory retrieval failures gracefully
-5. **Performance Optimization**: Use efficient querying patterns (e.g. via Summary Strategy in long term) for large conversation histories
-
-## Integration with Frameworks
-
-Short-term memory integrates seamlessly with popular agentic frameworks:
-
-- **Strands Agent**: Native integration with conversation hooks
-- **LangGraph**: State management integration
-- **Custom Frameworks**: Direct API access for flexible implementation
-
-## Available Sample Notebooks
-
-Explore these hands-on examples to learn short-term memory implementation:
-
-| Framework     | Use Case        | Description                                                                                            | Notebook                                                                                                                   | Architecture                                                           |
-| ------------- | --------------- | ------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| Strands Agent | Personal Agent  | AI assistant that maintains conversation context and remembers user interactions within a session      | [personal-agent.ipynb](./01-single-agent/with-strands-agent/personal-agent.ipynb)                                          | [View](./01-single-agent/with-strands-agent/architecture.png)          |
-| LangGraph     | Fitness Coach   | Personal fitness coach that tracks workout progress and maintains context throughout training sessions | [personal-fitness-coach.ipynb](./01-single-agent/with-langgraph-agent/personal-fitness-coach.ipynb)                        | [View](./01-single-agent/with-langgraph-agent/images/architecture.png) |
-| LangGraph     | Support Agent   | Customer support agent with human-in-the-loop capabilities for complex issue resolution                | [support-agent-human-in-the-loop.ipynb](./01-single-agent/with-langgraph-agent/support-agent-human-in-the-loop.ipynb)      | [View](./01-single-agent/with-langgraph-agent/images/architecture.png) |
-| LangGraph     | Math Agent      | Mathematical problem-solving agent with multi-step persistence for complex calculations                | [math-agent-with-multi-step-persistence.ipynb](./01-single-agent/with-langgraph-agent/math-agent-with-checkpointing.ipynb) | [View](./01-single-agent/with-langgraph-agent/images/architecture.png) |
-| Strands Agent | Travel Planning | Collaborative agents that share context while planning complex travel itineraries                      | [travel-planning-agent.ipynb](./02-multi-agent/with-strands-agent/travel-planning-agent.ipynb)                             | [View](./02-multi-agent/with-strands-agent/architecture.png)           |
-
-## Getting Started
-
-1. Choose a sample that matches your use case
-2. Navigate to the sample folder
-3. Install requirements: `pip install -r requirements.txt`
-4. Open the Jupyter notebook and follow the step-by-step implementation
-
-## Next Steps
-
-Once you're comfortable with short-term memory, explore [Long-Term Memory](../02-long-term-memory/) to learn about persistent memory strategies that work across multiple conversations and sessions.
+- Learn the primitives: [`01-core-features/`](./01-core-features/)
+- Cross-session persistence: [`../02-long-term-memory/`](../02-long-term-memory/)
+- Security and isolation: [`../04-security-patterns/`](../04-security-patterns/)
