@@ -269,18 +269,13 @@ The [agentcore CLI](https://github.com/aws/agentcore-cli) provides a convenient 
 
 **Install the CLI:**
 ```bash
-npm install -g @aws/agentcore-cli
+npm install -g @aws/agentcore
 ```
 > See the [AgentCore CLI repository](https://github.com/aws/agentcore-cli) for alternative install methods and latest version info.
 
 **Create a code-based evaluator:**
-```bash
-agentcore eval evaluator create \
-  --name "mt_schema_validator" \
-  --level TRACE \
-  --lambda-arn "arn:aws:lambda:us-west-2:<account>:function:market-trends-eval-schema-validator" \
-  --lambda-timeout 30
-```
+
+> **Note:** Code-based (Lambda-backed) evaluators are not configurable via the CLI. Use the `deploy.py` script under `evaluators/scripts/` which calls `bedrock-agentcore-control` directly, or register them via the AWS console/SDK.
 
 **Add an online evaluation config to your project:**
 ```bash
@@ -312,8 +307,8 @@ agentcore logs evals
 
 **Pause / resume online evaluation:**
 ```bash
-agentcore pause online-eval --name "market_trends_online_code_eval"
-agentcore resume online-eval --name "market_trends_online_code_eval"
+agentcore pause online-eval market_trends_online_code_eval
+agentcore resume online-eval market_trends_online_code_eval
 ```
 
 > **Note:** The `deploy.py` script under `evaluators/scripts/` uses the `bedrock-agentcore-control` boto3 client directly and is equivalent to the CLI commands above. Use whichever approach fits your workflow.

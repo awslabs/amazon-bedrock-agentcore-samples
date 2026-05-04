@@ -79,7 +79,12 @@ Target-Based A/B Architecture (Phased Rollout):
 
 - AWS account with Bedrock AgentCore access enabled
 - AWS CLI configured: `aws configure` (or set `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_DEFAULT_REGION`)
-- IAM permissions: `bedrock-agentcore:*`, `bedrock:InvokeModel`, `iam:*`, `s3:*`, `logs:*`, `xray:*`
+- IAM caller permissions (see [optimization prerequisites](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/optimization-prereqs.html)):
+  - `bedrock-agentcore:GetConfigurationBundle*`, `ListConfigurationBundleVersions`, `CreateConfigurationBundle`, `UpdateConfigurationBundle`, `DeleteConfigurationBundle` (ConfigurationBundles)
+  - `bedrock-agentcore:StartRecommendation`, `GetRecommendation` (Recommendations)
+  - `bedrock-agentcore:StartABTest`, `StopABTest`, `GetABTest`, `DeleteABTest`, `ListABTests` (ABTesting)
+  - `logs:GetLogEvents`, `FilterLogEvents`, `StartQuery`, `GetQueryResults` on `runtimes/*` log groups (CloudWatchLogs)
+  - `iam:CreateRole`, `AttachRolePolicy`, `PassRole` to create the execution role for the A/B test
 - Python 3.10 or later
 
 ### Option 1: Jupyter Notebook
@@ -105,7 +110,7 @@ The same workflow can be driven entirely from the command line. Install the CLI:
 
 ```bash
 npm install -g @aws/agentcore
-agentcore --version   # should print 0.11.0 or later
+agentcore --version   # should print 0.13.0 or later
 ```
 
 See the [CLI Examples](#agentcore-cli-examples) section below for the full command sequence.
@@ -139,81 +144,93 @@ agentcore deploy
 # Invoke the agent to generate traffic
 agentcore invoke \
   --runtime HRAssistant \
-  --payload '{"prompt": "Employee ID: EMP-001. What is my PTO balance?"}' \
+  --prompt "Employee ID: EMP-001. What is my PTO balance?" \
   --session-id $(python3 -c "import uuid; print(uuid.uuid4())")
 
-# Run batch evaluation against recent sessions
-agentcore run eval \
+# Run batch evaluation across all sessions
+agentcore run batch-evaluation \
   --runtime HRAssistant \
-  --evaluator Builtin.GoalSuccessRate \
-  --evaluator Builtin.Helpfulness \
-  --evaluator Builtin.Correctness
+  --evaluator Builtin.GoalSuccessRate Builtin.Helpfulness Builtin.Correctness
 ```
 
 ### Step 3: Get Recommendations
 
 ```bash
 # System prompt recommendation (optimize for GoalSuccessRate)
+# Use --inline with the current prompt, or --prompt-file ./system-prompt.txt
 agentcore run recommendation \
   --runtime HRAssistant \
   --type system-prompt \
-  --evaluator Builtin.GoalSuccessRate
+  --evaluator Builtin.GoalSuccessRate \
+  --inline "You are an HR assistant for Acme Corp. Help employees with PTO, policies, benefits, and pay stubs."
 
 # Tool description recommendation
 agentcore run recommendation \
   --runtime HRAssistant \
-  --type tool-description
+  --type tool-description \
+  --tools "get_pto_balance:Get the PTO balance for an employee" \
+  --tools "get_policy:Look up an HR policy by name"
 ```
 
 ### Step 4: Create Configuration Bundles
 
 ```bash
-# Create control bundle (original prompt)
-agentcore create bundle \
+# Create control bundle (original prompt) using {{runtime:<name>}} placeholder
+agentcore add config-bundle \
   --name HRControl \
-  --runtime HRAssistant \
-  --system-prompt "$(cat original_prompt.txt)"
+  --components '{"{{runtime:HRAssistant}}": {"configuration": {"systemPrompt": "'"$(cat original_prompt.txt)"'"}}}'
+agentcore deploy
 
 # Create treatment bundle (recommended prompt)
-agentcore create bundle \
+agentcore add config-bundle \
   --name HRTreatment \
-  --runtime HRAssistant \
-  --system-prompt "$(cat recommended_prompt.txt)"
+  --components '{"{{runtime:HRAssistant}}": {"configuration": {"systemPrompt": "'"$(cat recommended_prompt.txt)"'"}}}'
+agentcore deploy
+
+# View version IDs (needed for the A/B test below)
+agentcore cb versions --bundle HRControl --json
+agentcore cb versions --bundle HRTreatment --json
 ```
 
 ### Step 5a: A/B Test — Config-Bundle Routing
 
 ```bash
 # Create gateway
-agentcore create gateway --name HRGateway --authorizer-type AWS_IAM
+agentcore add gateway --name HRGateway --authorizer-type AWS_IAM
 
 # Create gateway target
-agentcore create gateway-target \
+agentcore add gateway-target \
   --gateway HRGateway \
   --name HRAgentV1 \
+  --type mcp-server \
   --runtime HRAssistant
 
 # Create online evaluation config
 agentcore add online-eval \
   --name HROnlineEval \
   --runtime HRAssistant \
-  --evaluator Builtin.GoalSuccessRate \
-  --evaluator Builtin.Helpfulness \
+  --evaluator Builtin.GoalSuccessRate Builtin.Helpfulness \
   --sampling-rate 100 \
   --enable-on-create
+agentcore deploy
 
 # Create A/B test with config-bundle routing (50/50 split)
-agentcore create ab-test \
+# Replace <control-version-id> and <treatment-version-id> with IDs from: agentcore cb versions --bundle HRControl --json
+agentcore add ab-test \
   --name HRBundleABTest \
-  --gateway HRGateway \
+  --runtime HRAssistant \
   --control-bundle HRControl \
+  --control-version <control-version-id> \
   --treatment-bundle HRTreatment \
+  --treatment-version <treatment-version-id> \
   --control-weight 50 \
   --treatment-weight 50 \
-  --online-eval HROnlineEval
+  --online-eval HROnlineEval \
+  --enable
+agentcore deploy
 
 # Monitor results
-agentcore get ab-test --name HRBundleABTest --watch
+agentcore ab-test HRBundleABTest
 ```
 
 ### Step 5b: A/B Test — Target-Based Routing (Phased Rollout)
@@ -223,56 +240,64 @@ agentcore get ab-test --name HRBundleABTest --watch
 agentcore create --name HRAssistantV2 --framework Strands --model-provider Bedrock --defaults
 cp hr_assistant_agent.py app/HRAssistantV2/main.py
 # (Apply v2 code changes to main.py)
-agentcore deploy --project HRAssistantV2
+cd HRAssistantV2 && agentcore deploy
 
 # Add v2 gateway target
-agentcore create gateway-target \
+agentcore add gateway-target \
   --gateway HRGateway \
   --name HRAgentV2 \
+  --type mcp-server \
   --runtime HRAssistantV2
 
 # Create online eval config for v2
 agentcore add online-eval \
   --name HROnlineEvalV2 \
   --runtime HRAssistantV2 \
-  --evaluator Builtin.GoalSuccessRate \
-  --evaluator Builtin.Helpfulness \
+  --evaluator Builtin.GoalSuccessRate Builtin.Helpfulness \
   --sampling-rate 100 \
   --enable-on-create
+agentcore deploy
+
+# Register named endpoints for each runtime version (required for target-based mode)
+agentcore add runtime-endpoint --runtime HRAssistant   --name v1
+agentcore add runtime-endpoint --runtime HRAssistantV2 --name v2
+agentcore deploy
 
 # Create A/B test with target-based routing (90/10 canary)
-agentcore create ab-test \
+agentcore add ab-test \
   --name HRTargetABTest \
-  --gateway HRGateway \
-  --control-target HRAgentV1 \
-  --treatment-target HRAgentV2 \
+  --mode target-based \
+  --control-endpoint v1 \
+  --treatment-endpoint v2 \
   --control-weight 90 \
   --treatment-weight 10 \
-  --online-eval-control HROnlineEval \
-  --online-eval-treatment HROnlineEvalV2
+  --control-online-eval HROnlineEval \
+  --treatment-online-eval HROnlineEvalV2 \
+  --enable
+agentcore deploy
 
 # Monitor canary results
-agentcore get ab-test --name HRTargetABTest --watch
+agentcore ab-test HRTargetABTest
 
-# If v2 wins, ramp up traffic (update weights)
-agentcore update ab-test --name HRTargetABTest --control-weight 50 --treatment-weight 50
-agentcore update ab-test --name HRTargetABTest --control-weight 0  --treatment-weight 100
+# If v2 wins, stop the test
+agentcore stop ab-test HRTargetABTest
 ```
 
 ### Step 6: Cleanup
 
 ```bash
-agentcore delete ab-test --name HRBundleABTest
-agentcore delete ab-test --name HRTargetABTest
-agentcore delete online-eval --name HROnlineEval
-agentcore delete online-eval --name HROnlineEvalV2
-agentcore delete bundle --name HRControl
-agentcore delete bundle --name HRTreatment
-agentcore delete gateway-target --gateway HRGateway --name HRAgentV1
-agentcore delete gateway-target --gateway HRGateway --name HRAgentV2
-agentcore delete gateway --name HRGateway
-agentcore delete --name HRAssistant
-agentcore delete --name HRAssistantV2
+agentcore stop ab-test HRBundleABTest
+agentcore stop ab-test HRTargetABTest
+agentcore remove ab-test --name HRBundleABTest
+agentcore remove ab-test --name HRTargetABTest
+agentcore remove online-eval --name HROnlineEval
+agentcore remove online-eval --name HROnlineEvalV2
+agentcore remove config-bundle --name HRControl
+agentcore remove config-bundle --name HRTreatment
+agentcore remove gateway --name HRGateway
+agentcore remove agent --name HRAssistant
+agentcore remove agent --name HRAssistantV2
+agentcore deploy -y
 ```
 
 ---

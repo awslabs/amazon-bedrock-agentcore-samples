@@ -35,9 +35,15 @@ import boto3
 
 parser = argparse.ArgumentParser(description="Deploy HR Assistant to AgentCore Runtime")
 parser.add_argument("--name", required=True, help="Runtime name (alphanumeric)")
-parser.add_argument("--region", default=os.environ.get("AWS_DEFAULT_REGION", "us-east-1"))
-parser.add_argument("--version", default="v1", choices=["v1", "v2"],
-                    help="Agent version: v1=baseline, v2=enhanced (extra tool + improved prompt)")
+parser.add_argument(
+    "--region", default=os.environ.get("AWS_DEFAULT_REGION", "us-east-1")
+)
+parser.add_argument(
+    "--version",
+    default="v1",
+    choices=["v1", "v2"],
+    help="Agent version: v1=baseline, v2=enhanced (extra tool + improved prompt)",
+)
 args = parser.parse_args()
 
 RUNTIME_NAME = args.name
@@ -61,58 +67,68 @@ S3_KEY = f"{RUNTIME_NAME}/deployment_package.zip"
 BUILD_DIR = Path(f"/tmp/{RUNTIME_NAME}_build")
 STATE_FILE = Path(f"agent_state_{RUNTIME_NAME}.json")
 
-print(f"Deploying {RUNTIME_NAME} (version={VERSION}) to {REGION} (account={ACCOUNT_ID})")
+print(
+    f"Deploying {RUNTIME_NAME} (version={VERSION}) to {REGION} (account={ACCOUNT_ID})"
+)
 
 # ---------------------------------------------------------------------------
 # IAM role
 # ---------------------------------------------------------------------------
 
-TRUST_POLICY = json.dumps({
-    "Version": "2012-10-17",
-    "Statement": [{
-        "Effect": "Allow",
-        "Principal": {"Service": "bedrock-agentcore.amazonaws.com"},
-        "Action": "sts:AssumeRole",
-        "Condition": {
-            "StringEquals": {
-                "aws:SourceAccount": ACCOUNT_ID,
-            },
-            "ArnLike": {
-                "aws:SourceArn": f"arn:aws:bedrock-agentcore:*:{ACCOUNT_ID}:*",
-            },
-        },
-    }],
-})
-
-PERMISSIONS_POLICY = json.dumps({
-    "Version": "2012-10-17",
-    "Statement": [{
-        "Effect": "Allow",
-        "Action": [
-            "bedrock-agentcore:*",
-            "bedrock:InvokeModel",
-            "bedrock:InvokeModelWithResponseStream",
-            "logs:CreateLogGroup",
-            "logs:CreateLogStream",
-            "logs:PutLogEvents",
-            "logs:DescribeLogGroups",
-            "logs:DescribeIndexPolicies",
-            "logs:PutIndexPolicy",
-            "logs:FilterLogEvents",
-            "logs:GetLogEvents",
-            "logs:StartQuery",
-            "logs:GetQueryResults",
-            "logs:StopQuery",
-            "cloudwatch:*",
-            "xray:PutTraceSegments",
-            "xray:PutTelemetryRecords",
-            "sts:AssumeRole",
-            "s3:GetObject",
-            "s3:ListBucket",
+TRUST_POLICY = json.dumps(
+    {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Effect": "Allow",
+                "Principal": {"Service": "bedrock-agentcore.amazonaws.com"},
+                "Action": "sts:AssumeRole",
+                "Condition": {
+                    "StringEquals": {
+                        "aws:SourceAccount": ACCOUNT_ID,
+                    },
+                    "ArnLike": {
+                        "aws:SourceArn": f"arn:aws:bedrock-agentcore:*:{ACCOUNT_ID}:*",
+                    },
+                },
+            }
         ],
-        "Resource": "*",
-    }],
-})
+    }
+)
+
+PERMISSIONS_POLICY = json.dumps(
+    {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Effect": "Allow",
+                "Action": [
+                    "bedrock-agentcore:*",
+                    "bedrock:InvokeModel",
+                    "bedrock:InvokeModelWithResponseStream",
+                    "logs:CreateLogGroup",
+                    "logs:CreateLogStream",
+                    "logs:PutLogEvents",
+                    "logs:DescribeLogGroups",
+                    "logs:DescribeIndexPolicies",
+                    "logs:PutIndexPolicy",
+                    "logs:FilterLogEvents",
+                    "logs:GetLogEvents",
+                    "logs:StartQuery",
+                    "logs:GetQueryResults",
+                    "logs:StopQuery",
+                    "cloudwatch:*",
+                    "xray:PutTraceSegments",
+                    "xray:PutTelemetryRecords",
+                    "sts:AssumeRole",
+                    "s3:GetObject",
+                    "s3:ListBucket",
+                ],
+                "Resource": "*",
+            }
+        ],
+    }
+)
 
 try:
     resp = iam.create_role(RoleName=ROLE_NAME, AssumeRolePolicyDocument=TRUST_POLICY)
@@ -215,11 +231,12 @@ def build_v2_code() -> str:
     # Update the DEFAULT_SYSTEM_PROMPT to v2 version
     base = base.replace(
         'DEFAULT_SYSTEM_PROMPT = """You are a helpful HR Assistant for Acme Corp.',
-        f'DEFAULT_SYSTEM_PROMPT = """{V2_SYSTEM_PROMPT[V2_SYSTEM_PROMPT.index("You"):]}'
-        .rstrip() + '\n\n# (below replaced by v2)\n_PLACEHOLDER_',
+        f'DEFAULT_SYSTEM_PROMPT = """{V2_SYSTEM_PROMPT[V2_SYSTEM_PROMPT.index("You") :]}'.rstrip()
+        + "\n\n# (below replaced by v2)\n_PLACEHOLDER_",
     )
     # Simpler approach: replace the DEFAULT_SYSTEM_PROMPT variable entirely
     import re
+
     # Replace the multiline DEFAULT_SYSTEM_PROMPT
     new_prompt = f'DEFAULT_SYSTEM_PROMPT = """{V2_SYSTEM_PROMPT}"""\n'
     base = re.sub(
@@ -253,14 +270,20 @@ PKG_DIR.mkdir(parents=True)
 print(f"Installing dependencies for ARM64 into {PKG_DIR}...")
 subprocess.run(
     [
-        sys.executable, "-m", "pip", "install",
+        sys.executable,
+        "-m",
+        "pip",
+        "install",
         "strands-agents[otel]",
         "bedrock-agentcore",
         "aws-opentelemetry-distro",
-        "-t", str(PKG_DIR),
-        "--platform", "manylinux2014_aarch64",
+        "-t",
+        str(PKG_DIR),
+        "--platform",
+        "manylinux2014_aarch64",
         "--only-binary=:all:",
-        "--python-version", "3.13",
+        "--python-version",
+        "3.13",
         "--quiet",
     ],
     check=True,

@@ -31,10 +31,10 @@ authoring hundreds of fixed turn sequences.
 Public documentation
 --------------------
   Evaluating agents:
-  https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/evaluating-agents.html
+  https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/evaluations.html
 
   Simulated datasets:
-  https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/evaluation-simulated-scenarios.html
+  https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/simulation.html
 """
 
 import json
@@ -64,6 +64,7 @@ from bedrock_agentcore.evaluation import (
 # ---------------------------------------------------------------------------
 
 REGION = os.environ.get("AWS_REGION", "us-west-2")
+
 
 # Agent ARN: read from .agent_arn file or AGENT_RUNTIME_ARN env var
 def _load_agent_arn() -> str:
@@ -99,6 +100,7 @@ _BUILTIN_EVALUATOR_IDS = [
     "Builtin.Correctness",
 ]
 
+
 def _load_evaluator_ids() -> list[str]:
     """Return built-in evaluator IDs plus any custom evaluators that have been created."""
     ids = list(_BUILTIN_EVALUATOR_IDS)
@@ -112,7 +114,9 @@ def _load_evaluator_ids() -> list[str]:
                 + "\n".join(f"  {name}: {eid}" for name, eid in custom.items())
             )
         else:
-            print("custom_evaluator_ids.json is empty — using built-in evaluators only.")
+            print(
+                "custom_evaluator_ids.json is empty — using built-in evaluators only."
+            )
     else:
         print(
             "No custom_evaluator_ids.json found. Using built-in evaluators only.\n"
@@ -120,6 +124,7 @@ def _load_evaluator_ids() -> list[str]:
             "  uv run python optimization/custom_evaluators.py"
         )
     return ids
+
 
 EVALUATOR_IDS = _load_evaluator_ids()
 
@@ -481,7 +486,9 @@ def main() -> None:
                 evaluated = getattr(es, "total_evaluated", 0) or 0
                 print(f"{name:<42} {avg:>10}  {evaluated:>10}")
         else:
-            print("\nNo evaluator summaries returned (evaluation may still be in progress).")
+            print(
+                "\nNo evaluator summaries returned (evaluation may still be in progress)."
+            )
             print(
                 "Re-run with the batch eval ID to check:\n"
                 f"  aws bedrock-agentcore get-batch-evaluation "
@@ -513,7 +520,9 @@ def main() -> None:
                     label = attrs.get("gen_ai.evaluation.score.label", "?")
                     explanation = attrs.get("gen_ai.evaluation.explanation", "")
                     sid = attrs.get("session.id", "?")
-                    print(f"  [{name}] score={score} label={label} session={str(sid)[:36]}")
+                    print(
+                        f"  [{name}] score={score} label={label} session={str(sid)[:36]}"
+                    )
                     if explanation:
                         print(f"    {str(explanation)[:140]}")
         except LookupError as exc:

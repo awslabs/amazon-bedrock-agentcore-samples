@@ -131,7 +131,7 @@ the full policy document):
 Public documentation
 --------------------
   Optimization overview:
-  https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/optimize-agents.html
+  https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/optimization.html
 
   Configuration bundles:
   https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/configuration-bundles.html
@@ -140,10 +140,10 @@ Public documentation
   https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/ab-testing.html
 
   Recommendations:
-  https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/recommendations.html
+  https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/optimization-recommendations.html
 
   Batch evaluation:
-  https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/batch-evaluation.html
+  https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/batch-evaluations.html
 """
 
 import argparse
@@ -255,14 +255,23 @@ CURRENT_TOOL_DESCRIPTIONS = {
 
 # Representative broker sessions used for baseline traffic and recommendations
 BASELINE_SESSIONS = [
-    ("Marcus Rivera", "I have exposure to XOM and CVX — what's the current situation in energy?"),
-    ("Sarah Chen", "Give me a quick briefing on the healthcare sector. Any GLP-1 news?"),
+    (
+        "Marcus Rivera",
+        "I have exposure to XOM and CVX — what's the current situation in energy?",
+    ),
+    (
+        "Sarah Chen",
+        "Give me a quick briefing on the healthcare sector. Any GLP-1 news?",
+    ),
     ("Yuval Bing", "I need NVDA and MSFT prices with a quick tech sector overview."),
     ("Marcus Rivera", "How is the financials sector looking? Thinking about JPM."),
     ("Sarah Chen", "What are the ESG trends in Europe right now? Any relevant ETFs?"),
     ("Yuval Bing", "Search for latest AI semiconductor news from Bloomberg."),
     ("Marcus Rivera", "Is it a good time to add energy exposure or reduce?"),
-    ("Sarah Chen", "I want to set up my broker profile: ESG focus, $200M AUM, healthcare specialist."),
+    (
+        "Sarah Chen",
+        "I want to set up my broker profile: ESG focus, $200M AUM, healthcare specialist.",
+    ),
     ("Yuval Bing", "Compare NVDA and AMD — which is better positioned right now?"),
     ("Marcus Rivera", "What's happening with crude oil prices today?"),
 ]
@@ -351,13 +360,11 @@ def _fetch_eval_scores(batch_eval_id: str) -> dict:
     log_group = "/aws/bedrock-agentcore/evaluations/batch-evaluations/results/default"
     log_stream = f"run-{batch_eval_id}"
     try:
-        events = (
-            logs.get_log_events(
-                logGroupName=log_group,
-                logStreamName=log_stream,
-                startFromHead=True,
-            ).get("events", [])
-        )
+        events = logs.get_log_events(
+            logGroupName=log_group,
+            logStreamName=log_stream,
+            startFromHead=True,
+        ).get("events", [])
         by_eval: dict = defaultdict(list)
         for e in events:
             try:
@@ -373,9 +380,7 @@ def _fetch_eval_scores(batch_eval_id: str) -> dict:
                     by_eval[eid].append(float(score))
             except (json.JSONDecodeError, KeyError, TypeError):
                 continue
-        return {
-            eid: round(sum(v) / len(v), 4) for eid, v in by_eval.items() if v
-        }
+        return {eid: round(sum(v) / len(v), 4) for eid, v in by_eval.items() if v}
     except Exception as exc:
         logger.warning("CW score fetch failed: %s", exc)
         return {}
@@ -619,9 +624,7 @@ def phase4_td_recommendation() -> dict:
         type="TOOL_DESCRIPTION_RECOMMENDATION",
         recommendationConfig={
             "toolDescriptionRecommendationConfig": {
-                "toolDescription": {
-                    "toolDescriptionText": {"tools": tools_list}
-                },
+                "toolDescription": {"toolDescriptionText": {"tools": tools_list}},
                 "agentTraces": {
                     "cloudwatchLogs": {
                         "logGroupArns": [SPANS_LOG_ARN, LOG_GROUP_ARN],
@@ -650,9 +653,8 @@ def phase4_td_recommendation() -> dict:
     recommended_tools = dict(CURRENT_TOOL_DESCRIPTIONS)
 
     if result.get("status") == "COMPLETED":
-        td_data = (
-            result.get("recommendationResult", {})
-            .get("toolDescriptionRecommendationResult", {})
+        td_data = result.get("recommendationResult", {}).get(
+            "toolDescriptionRecommendationResult", {}
         )
         returned_tools = td_data.get("tools", [])
         tool_keys = list(CURRENT_TOOL_DESCRIPTIONS.keys())
@@ -717,10 +719,12 @@ def phase5_create_bundles(
         bundleName=f"mt_control_{uuid.uuid4().hex[:6]}",
         description="Market Trends Agent control variant — original system prompt and tool descriptions",
         components={
-            AGENT_ARN: {"configuration": {
-                "system_prompt": CURRENT_SYSTEM_PROMPT,
-                "tool_descriptions": CURRENT_TOOL_DESCRIPTIONS,
-            }}
+            AGENT_ARN: {
+                "configuration": {
+                    "system_prompt": CURRENT_SYSTEM_PROMPT,
+                    "tool_descriptions": CURRENT_TOOL_DESCRIPTIONS,
+                }
+            }
         },
         commitMessage="Control: original system prompt and tool descriptions (baseline)",
         clientToken=str(uuid.uuid4()),
@@ -736,10 +740,12 @@ def phase5_create_bundles(
         bundleName=f"mt_treatment_{uuid.uuid4().hex[:6]}",
         description="Market Trends Agent treatment variant — recommended system prompt and tool descriptions",
         components={
-            AGENT_ARN: {"configuration": {
-                "system_prompt": recommended_prompt,
-                "tool_descriptions": recommended_tool_descs,
-            }}
+            AGENT_ARN: {
+                "configuration": {
+                    "system_prompt": recommended_prompt,
+                    "tool_descriptions": recommended_tool_descs,
+                }
+            }
         },
         commitMessage="Treatment: AI-recommended system prompt + improved tool descriptions (Phase 3/4)",
         clientToken=str(uuid.uuid4()),
@@ -872,10 +878,12 @@ def phase5_promote_bundle(
     promote_resp = ctrl.update_configuration_bundle(
         bundleId=control_bundle_id,
         components={
-            AGENT_ARN: {"configuration": {
-                "system_prompt": recommended_prompt,
-                "tool_descriptions": recommended_tool_descs,
-            }}
+            AGENT_ARN: {
+                "configuration": {
+                    "system_prompt": recommended_prompt,
+                    "tool_descriptions": recommended_tool_descs,
+                }
+            }
         },
         parentVersionIds=[control_bundle_version],
         commitMessage="Promote treatment: AI-recommended config validated by A/B test (Phase 6)",
@@ -996,9 +1004,7 @@ def phase6_ab_bundle_test(
     target_id = tgt_resp["targetId"]
     _state["gateway_target_id"] = target_id
     for i in range(30):
-        tgt = ctrl.get_gateway_target(
-            gatewayIdentifier=gw_id, targetId=target_id
-        )
+        tgt = ctrl.get_gateway_target(gatewayIdentifier=gw_id, targetId=target_id)
         if tgt.get("status") == "READY":
             break
         print(f"  Target poll {i + 1}: {tgt.get('status')}")
@@ -1091,7 +1097,9 @@ def phase6_ab_bundle_test(
     )
     online_eval_id = online_eval_resp["onlineEvaluationConfigId"]
     online_eval_arn = online_eval_resp["onlineEvaluationConfigArn"]
-    _state.update({"online_eval_id": online_eval_id, "online_eval_arn": online_eval_arn})
+    _state.update(
+        {"online_eval_id": online_eval_id, "online_eval_arn": online_eval_arn}
+    )
     print(f"Online eval config: {online_eval_id}")
 
     # --- 6e. Create the A/B test ---
@@ -1300,16 +1308,16 @@ def _print_ab_interpretation(results: dict, label: str) -> None:
             # Prefer API-provided percentChange; fall back to manual calculation
             pct_change = vr.get("percentChange")
             if pct_change is None and cs_mean and t1_mean and float(cs_mean) != 0:
-                pct_change = (
-                    (float(t1_mean) - float(cs_mean)) / float(cs_mean) * 100
-                )
+                pct_change = (float(t1_mean) - float(cs_mean)) / float(cs_mean) * 100
             pct_str = f"{pct_change:+.1f}%" if pct_change is not None else "N/A"
             print(f"\n  {name}:")
             print(f"    p-value={p_value}  change={pct_str}  significant={sig}")
             # p < 0.05 + positive change → treatment wins
             if sig and pct_change is not None and pct_change > 0:
                 print("    RESULT: T1 wins (statistically significant improvement)")
-                print("    ACTION: Run Phase 5p to promote treatment bundle as new default")
+                print(
+                    "    ACTION: Run Phase 5p to promote treatment bundle as new default"
+                )
             # p < 0.05 + negative change → treatment regressed
             elif sig and pct_change is not None and pct_change < 0:
                 print("    RESULT: T1 regressed (statistically significant decline)")
@@ -1385,7 +1393,9 @@ def phase7_ab_target_routing(
         try:
             ab = dp.get_ab_test(abTestId=bundle_ab_id)
             if ab.get("executionStatus") == "RUNNING":
-                print("Pausing config-bundle A/B test to allow target routing to start...")
+                print(
+                    "Pausing config-bundle A/B test to allow target routing to start..."
+                )
                 dp.update_ab_test(abTestId=bundle_ab_id, executionStatus="PAUSED")
                 time.sleep(5)
         except Exception as exc:
@@ -1467,9 +1477,7 @@ def phase7_ab_target_routing(
                 {"name": "T1", "onlineEvaluationConfigArn": oe_v2_arn},
             ]
         },
-        gatewayFilter={
-            "targetPaths": [f"/{target_name_v1}/*"]
-        },
+        gatewayFilter={"targetPaths": [f"/{target_name_v1}/*"]},
         variants=[
             {
                 "name": "C",
@@ -1517,7 +1525,7 @@ def phase7_ab_target_routing(
         "  Promote (100%): full cutover to v2\n"
         "\nTo update the traffic split:\n"
         f"  aws bedrock-agentcore update-ab-test --ab-test-id {target_ab_id} \\\n"
-        "    --variants '[{\"name\":\"C\",\"weight\":50},{\"name\":\"T1\",\"weight\":50}]' \\\n"
+        '    --variants \'[{"name":"C","weight":50},{"name":"T1","weight":50}]\' \\\n'
         f"    --region {REGION}"
     )
 
@@ -1614,9 +1622,7 @@ def phase8_cleanup(state: dict) -> None:
             t_id = state.get(t_key)
             if t_id:
                 try:
-                    ctrl.delete_gateway_target(
-                        gatewayIdentifier=gw_id, targetId=t_id
-                    )
+                    ctrl.delete_gateway_target(gatewayIdentifier=gw_id, targetId=t_id)
                     time.sleep(3)
                     print(f"Deleted gateway target ({t_label}): {t_id}")
                 except Exception as exc:

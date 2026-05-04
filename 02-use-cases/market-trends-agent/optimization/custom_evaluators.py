@@ -38,8 +38,6 @@ Public documentation
   Custom evaluators:
   https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/custom-evaluators.html
 
-  Evaluator levels (TRACE / SESSION / SPAN):
-  https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/evaluation-levels.html
 """
 
 import argparse

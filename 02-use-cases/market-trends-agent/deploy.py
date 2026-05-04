@@ -89,7 +89,7 @@ class MarketTrendsAgentDeployer:
                             "aws:SourceAccount": account_id,
                         },
                         "ArnLike": {
-                            "aws:SourceArn": f"arn:aws:bedrock-agentcore:*:{account_id}:*",
+                            "aws:SourceArn": f"arn:aws:bedrock-agentcore:*:{account_id}:ab-test/*",
                         },
                     },
                 }
@@ -258,11 +258,7 @@ class MarketTrendsAgentDeployer:
                     "Sid": "ABTestCloudWatchLogs",
                     "Effect": "Allow",
                     "Action": [
-                        "logs:CreateLogGroup",
-                        "logs:CreateLogStream",
-                        "logs:PutLogEvents",
                         "logs:DescribeLogGroups",
-                        "logs:DescribeLogStreams",
                         "logs:DescribeIndexPolicies",
                         "logs:PutIndexPolicy",
                         "logs:StartQuery",
@@ -274,8 +270,6 @@ class MarketTrendsAgentDeployer:
                     "Resource": [
                         f"arn:aws:logs:*:{account_id}:log-group:/aws/bedrock-agentcore/evaluations/*",
                         f"arn:aws:logs:*:{account_id}:log-group:/aws/bedrock-agentcore/evaluations/*:*",
-                        f"arn:aws:logs:*:{account_id}:log-group:/aws/bedrock-agentcore/runtimes/*",
-                        f"arn:aws:logs:*:{account_id}:log-group:/aws/bedrock-agentcore/runtimes/*:*",
                         f"arn:aws:logs:*:{account_id}:log-group:aws/spans",
                         f"arn:aws:logs:*:{account_id}:log-group:aws/spans:*",
                     ],
