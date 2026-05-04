@@ -18,6 +18,7 @@ import * as s3 from "aws-cdk-lib/aws-s3";
 import * as iam from "aws-cdk-lib/aws-iam";
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as ecr_assets from 'aws-cdk-lib/aws-ecr-assets';
+import * as logs from 'aws-cdk-lib/aws-logs';
 import * as path from 'path';
 import { aws_bedrockagentcore as bedrockagentcore } from 'aws-cdk-lib';
 
@@ -414,16 +415,25 @@ export class CdkDataAnalystAssistantAgentcoreStrandsStack extends cdk.Stack {
     });
 
     // ================================
-    // BEDROCK AGENTCORE MEMORY
+    // BEDROCK AGENTCORE MEMORY (LTM)
     // ================================
 
-    // Short-term memory for AgentCore to maintain conversation context
+    // Long-term memory with semantic strategy for AgentCore
     const uniqueSuffix = cdk.Names.uniqueId(this).slice(-8).toLowerCase().replace(/[^a-z0-9]/g, '');
     const agentMemory = new bedrockagentcore.CfnMemory(this, 'AgentMemory', {
       name: `DataAnalystAssistantMemory_${uniqueSuffix}`,
-      eventExpiryDuration: 7, // Events expire after 7 days
+      eventExpiryDuration: 90, // Events expire after 90 days
       memoryExecutionRoleArn: agentCoreRole.roleArn,
-      description: 'Short-term memory for data analyst assistant conversations',
+      description: 'Long-term semantic memory for data analyst assistant conversations',
+      memoryStrategies: [
+        {
+          semanticMemoryStrategy: {
+            name: 'Facts',
+            description: 'Extracts and stores facts about video game sales data analysis conversations',
+            namespaces: ['/facts/{actorId}'],
+          },
+        },
+      ],
     });
 
     // ================================
@@ -471,6 +481,96 @@ export class CdkDataAnalystAssistantAgentcoreStrandsStack extends cdk.Stack {
     runtimeEndpoint.addDependency(agentRuntime);
 
     // ================================
+    // OBSERVABILITY - LOG DELIVERY
+    // ================================
+
+    // --- AgentCore Runtime Logs ---
+
+    // CloudWatch Log Group for AgentCore Runtime application logs
+    const runtimeLogGroup = new logs.LogGroup(this, 'RuntimeLogGroup', {
+      logGroupName: `/aws/vendedlogs/bedrock-agentcore/${agentRuntime.attrAgentRuntimeId}`,
+      retention: logs.RetentionDays.TWO_WEEKS,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
+
+    // Delivery Source — Runtime application logs
+    const runtimeLogSource = new logs.CfnDeliverySource(this, 'RuntimeLogSource', {
+      name: `rt-${uniqueSuffix}-log-src`,
+      logType: 'APPLICATION_LOGS',
+      resourceArn: agentRuntime.attrAgentRuntimeArn,
+    });
+    runtimeLogSource.addDependency(agentRuntime);
+
+    // Delivery Destination — CloudWatch Logs for runtime
+    const runtimeLogDestination = new logs.CfnDeliveryDestination(this, 'RuntimeLogDestination', {
+      name: `rt-${uniqueSuffix}-log-dst`,
+      destinationResourceArn: runtimeLogGroup.logGroupArn,
+    });
+
+    // Delivery — connects runtime source to destination
+    const runtimeLogDelivery = new logs.CfnDelivery(this, 'RuntimeLogDelivery', {
+      deliverySourceName: runtimeLogSource.ref,
+      deliveryDestinationArn: runtimeLogDestination.attrArn,
+    });
+    runtimeLogDelivery.addDependency(runtimeLogSource);
+    runtimeLogDelivery.addDependency(runtimeLogDestination);
+
+    // --- AgentCore Runtime Traces (X-Ray) ---
+
+    // Delivery Source — Runtime traces
+    const runtimeTracesSource = new logs.CfnDeliverySource(this, 'RuntimeTracesSource', {
+      name: `rt-${uniqueSuffix}-trc-src`,
+      logType: 'TRACES',
+      resourceArn: agentRuntime.attrAgentRuntimeArn,
+    });
+    runtimeTracesSource.addDependency(agentRuntime);
+
+    // Delivery Destination — X-Ray for traces
+    const runtimeTracesDestination = new logs.CfnDeliveryDestination(this, 'RuntimeTracesDestination', {
+      name: `rt-${uniqueSuffix}-trc-dst`,
+      deliveryDestinationType: 'XRAY',
+    });
+
+    // Delivery — connects traces source to X-Ray destination
+    const runtimeTracesDelivery = new logs.CfnDelivery(this, 'RuntimeTracesDelivery', {
+      deliverySourceName: runtimeTracesSource.ref,
+      deliveryDestinationArn: runtimeTracesDestination.attrArn,
+    });
+    runtimeTracesDelivery.addDependency(runtimeTracesSource);
+    runtimeTracesDelivery.addDependency(runtimeTracesDestination);
+
+    // --- AgentCore Memory Logs ---
+
+    // CloudWatch Log Group for AgentCore Memory vended log delivery
+    const memoryLogGroup = new logs.LogGroup(this, 'MemoryLogGroup', {
+      logGroupName: `/aws/vendedlogs/bedrock-agentcore/memory/${agentMemory.attrMemoryId}`,
+      retention: logs.RetentionDays.TWO_WEEKS,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
+
+    // Delivery Source — connects the Memory resource as a log source
+    const memoryLogSource = new logs.CfnDeliverySource(this, 'MemoryLogSource', {
+      name: `mem-${uniqueSuffix}-log-src`,
+      logType: 'APPLICATION_LOGS',
+      resourceArn: `arn:aws:bedrock-agentcore:${this.region}:${this.account}:memory/${agentMemory.attrMemoryId}`,
+    });
+    memoryLogSource.addDependency(agentMemory);
+
+    // Delivery Destination — CloudWatch Logs
+    const memoryLogDestination = new logs.CfnDeliveryDestination(this, 'MemoryLogDestination', {
+      name: `mem-${uniqueSuffix}-log-dst`,
+      destinationResourceArn: memoryLogGroup.logGroupArn,
+    });
+
+    // Delivery — connects source to destination
+    const memoryLogDelivery = new logs.CfnDelivery(this, 'MemoryLogDelivery', {
+      deliverySourceName: memoryLogSource.ref,
+      deliveryDestinationArn: memoryLogDestination.attrArn,
+    });
+    memoryLogDelivery.addDependency(memoryLogSource);
+    memoryLogDelivery.addDependency(memoryLogDestination);
+
+    // ================================
     // CLOUDFORMATION OUTPUTS
     // ================================
 
@@ -508,12 +608,7 @@ export class CdkDataAnalystAssistantAgentcoreStrandsStack extends cdk.Stack {
       value: agentRuntime.attrAgentRuntimeArn,
       description: "The ARN of the AgentCore runtime",
     });
-
-    new cdk.CfnOutput(this, "AgentEndpointName", {
-      value: runtimeEndpoint.name,
-      description: "The name of the AgentCore runtime endpoint",
-    });
-
+    
     new cdk.CfnOutput(this, "MemoryId", {
       value: agentMemory.attrMemoryId,
       description: "The ID of the AgentCore Memory",

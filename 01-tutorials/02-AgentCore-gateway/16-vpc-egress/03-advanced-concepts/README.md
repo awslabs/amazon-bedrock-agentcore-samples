@@ -3,12 +3,14 @@
 
 # Advanced Concepts
 
-This section covers private DNS, private certificates, and the patterns needed to make them work with AgentCore Gateway VPC egress.
+This section covers private DNS, private certificates, static IP egress, and the patterns needed to make them work with AgentCore Gateway VPC egress.
 
 
-## Private DNS: Routing Domain
+## Disabled VPC DNS: Routing Domain
 
-Amazon VPC Lattice requires that the domain used in a resource configuration be publicly resolvable. If your private endpoint uses a domain that is only resolvable within your VPC (for example, a Route 53 private hosted zone), you must use the `routingDomain` field.
+> **Use `routingDomain` only when DNS is not enabled in your VPC.** If your VPC has DNS enabled (the default), AgentCore Gateway VPC egress reaches private endpoints via Private DNS automatically — no `routingDomain` needed.
+
+Amazon VPC Lattice requires that the domain used in a resource configuration be resolvable. If your VPC does not have DNS enabled and your private endpoint uses a domain that is only resolvable within your VPC (for example, a Route 53 private hosted zone), use the `routingDomain` field as a fallback.
 
 ![arch](./images/private-domain.png)
 
@@ -31,21 +33,11 @@ The routing domain can be any publicly resolvable domain that routes to your pri
 | **Internal NLB** | `internal-<name>-<id>.us-west-2.elb.amazonaws.com` | Private DNS name of the resource behind the NLB |
 | **VPC Endpoint (VPCE)** | `<vpce-id>.execute-api.<region>.vpce.amazonaws.com` | Private API Gateway hostname (e.g., `https://<api-id>.execute-api.<region>.amazonaws.com`) |
 
-### Traffic flow with routing domain
-
-```
-1. AgentCore resolves the VPC Lattice-generated DNS name to reach the resource gateway
-2. Traffic enters your VPC through the resource gateway, addressed to the routing domain
-3. The routing domain (ALB/NLB/VPCE) forwards the request to your private resource
-4. The TLS SNI header contains the actual target domain, so your resource receives
-   the request with the correct hostname
-```
-
-> **Note:** The `routingDomain` field is only available for the `managedLatticeResource` option. For self-managed Lattice, configure the routing domain directly in your resource configuration when you create it.
-
 ## Private Certificates: ALB Workaround
 
 VPC egress requires your target endpoint to have a **publicly trusted TLS certificate**. If your private resource uses a certificate issued by a private certificate authority (CA), the recommended workaround is to place an internal Application Load Balancer (ALB) in front of your resource.
+
+![privateCA](./images/private-ca.png)
 
 ### How it works
 
@@ -66,14 +58,30 @@ AgentCore Gateway
 
 For domain and certificate setup guides, see the [Prerequisites](../00-prerequisites/) folder.
 
+## Static Gateway IP
+
+If your external MCP server requires IP-based allowlisting, you can route AgentCore Gateway traffic through a **NAT Gateway with an Elastic IP** in your VPC. This gives all outbound traffic a static, known source IP that the MCP server operator can allowlist.
+
+![arch](./images/gateway-static-ip.png)
+
+### How it works
+
+1. Use **VPC egress** (managed VPC resource) to route AgentCore Gateway traffic into your VPC through a Resource Gateway
+2. Place the Resource Gateway ENIs in a **private subnet** that routes outbound traffic (0.0.0.0/0) through a NAT Gateway
+3. The NAT Gateway has an **Elastic IP** — a static, public IP address
+4. All traffic to external MCP servers exits through this Elastic IP
+5. The MCP server allowlists the Elastic IP — only traffic from your AgentCore Gateway is accepted
+
+For high availability, deploy one NAT Gateway per Availability Zone. Each NAT Gateway has its own Elastic IP, so provide all EIPs to the MCP server for allowlisting.
+
 ## Labs
 
 | Notebook | Description |
 |----------|-------------|
-| [01-private-domain.ipynb](./01-private-domain.ipynb) | Use a private hosted zone with `routingDomain` and a public certificate. |
-| 02-private-certificate-authority.ipynb (coming soon) | Set up AWS Private CA and use the ALB workaround for private certificates. |
-| 03-self-signed-certificate.ipynb (coming soon) | Use the ALB workaround for self-signed certificates (no Private CA cost). |
-| 04-private-domain-and-certificate.ipynb (coming soon) | Combine private DNS and private certificates with the ALB workaround pattern. |
+| [01-private-domain.ipynb](./01-private-domain.ipynb) | Connect AgentCore Gateway to a privately resolvable endpoint |
+| [02-private-certificate-authority.ipynb](./02-private-certificate-authority.ipynb) | Use the ALB workaround for APIs with AWS Private CA certificates. |
+| [03-self-signed-certificate.ipynb](./03-self-signed-certificate.ipynb) | Use the ALB workaround for APIs with self-signed certificates (no Private CA cost). |
+| [04-static-gateway-ip.ipynb](./04-static-gateway-ip.ipynb) | Route AgentCore Gateway traffic through a NAT Gateway with a static Elastic IP for allowlisting. |
 
 ## License
 

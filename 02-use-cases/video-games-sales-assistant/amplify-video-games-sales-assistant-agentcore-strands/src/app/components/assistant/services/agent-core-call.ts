@@ -8,16 +8,17 @@ import {
   BedrockAgentCoreClient,
   InvokeAgentRuntimeCommand,
 } from '@aws-sdk/client-bedrock-agentcore';
-import { getAwsClient, type CognitoAuthParams } from '@/lib/aws-client';
+import { getAwsClient, type CognitoAuthParams } from '@/utils/aws-client';
 import { getQueryResults } from './aws-calls';
 import type { Answer, ControlAnswer, MessageItem } from '../types';
 
 interface GetAnswerParams {
   query: string;
   sessionId: string;
+  userId: string;
+  userName: string;
   agentRuntimeArn: string;
   agentEndpointName: string;
-  lastKTurns: number;
   questionAnswersTableName: string;
   auth: CognitoAuthParams;
   setControlAnswers: React.Dispatch<React.SetStateAction<ControlAnswer[]>>;
@@ -32,9 +33,10 @@ interface GetAnswerParams {
 export const getAnswer = async ({
   query: myQuery,
   sessionId,
+  userId,
+  userName,
   agentRuntimeArn,
   agentEndpointName,
-  lastKTurns,
   questionAnswersTableName,
   auth,
   setControlAnswers,
@@ -70,9 +72,10 @@ export const getAnswer = async ({
     const payload = JSON.stringify({
       prompt: myQuery,
       session_id: sessionId,
+      user_id: userId,
+      user_name: userName,
       prompt_uuid: queryUuid,
       user_timezone: timezone,
-      last_k_turns: lastKTurns,
     });
 
     const input = {

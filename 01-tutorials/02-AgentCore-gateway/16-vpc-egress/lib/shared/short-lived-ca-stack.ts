@@ -1,6 +1,6 @@
-import * as cdk from 'aws-cdk-lib/core';
-import * as acmpca from 'aws-cdk-lib/aws-acmpca';
-import { Construct } from 'constructs';
+import * as cdk from "aws-cdk-lib/core";
+import * as acmpca from "aws-cdk-lib/aws-acmpca";
+import { Construct } from "constructs";
 
 /**
  * AWS Private CA in short-lived certificate mode ($50/month instead of $400/month).
@@ -17,38 +17,38 @@ export class ShortLivedCaStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: ShortLivedCaStackProps) {
     super(scope, id, props);
 
-    const ca = new acmpca.CfnCertificateAuthority(this, 'ShortLivedCA', {
-      type: 'ROOT',
-      keyAlgorithm: 'RSA_2048',
-      signingAlgorithm: 'SHA256WITHRSA',
-      usageMode: 'SHORT_LIVED_CERTIFICATE',
+    const ca = new acmpca.CfnCertificateAuthority(this, "ShortLivedCA", {
+      type: "ROOT",
+      keyAlgorithm: "RSA_2048",
+      signingAlgorithm: "SHA256WITHRSA",
+      usageMode: "SHORT_LIVED_CERTIFICATE",
       subject: {
         commonName: `Short-Lived CA - ${props.baseDomain}`,
-        organization: 'VPC Egress Testing',
+        organization: "VPC Egress Testing",
       },
     });
 
-    const caCert = new acmpca.CfnCertificate(this, 'RootCACert', {
+    const caCert = new acmpca.CfnCertificate(this, "RootCACert", {
       certificateAuthorityArn: ca.attrArn,
       certificateSigningRequest: ca.attrCertificateSigningRequest,
-      signingAlgorithm: 'SHA256WITHRSA',
-      templateArn: 'arn:aws:acm-pca:::template/RootCACertificate/V1',
+      signingAlgorithm: "SHA256WITHRSA",
+      templateArn: "arn:aws:acm-pca:::template/RootCACertificate/V1",
       validity: {
-        type: 'YEARS',
+        type: "YEARS",
         value: 10,
       },
     });
 
-    new acmpca.CfnCertificateAuthorityActivation(this, 'RootCAActivation', {
+    new acmpca.CfnCertificateAuthorityActivation(this, "RootCAActivation", {
       certificateAuthorityArn: ca.attrArn,
       certificate: caCert.attrCertificate,
     });
 
     this.caArn = ca.attrArn;
 
-    new cdk.CfnOutput(this, 'CertificateAuthorityArn', {
+    new cdk.CfnOutput(this, "CertificateAuthorityArn", {
       value: ca.attrArn,
-      exportName: 'ShortLivedCaArn',
+      exportName: "ShortLivedCaArn",
     });
   }
 }

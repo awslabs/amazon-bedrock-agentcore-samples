@@ -25,12 +25,13 @@ dig (from inside VPC) internal-mcp.example.com → 10.0.2.52 (load balancer priv
 
 ## How does this work with AgentCore Gateway?
 
-AgentCore Gateway requires a publicly resolvable domain for VPC Lattice routing. Since the domain is private, you use the **`routingDomain`** parameter:
+With **Private DNS** enabled on the VPC Lattice Resource Gateway (the default in Gateway-managed mode), AgentCore uses your VPC's DNS resolver to look up the endpoint domain. Because your VPC is associated with the private hosted zone, `internal-mcp.example.com` resolves to the internal load balancer's private IPs, and TLS completes against the publicly trusted certificate on the load balancer.
 
-- **`endpoint`**: `https://internal-mcp.example.com/mcp` (private DNS)
-- **`routingDomain`**: `internal-xxx.elb.amazonaws.com` (load balancer DNS: publicly resolvable)
+- **`endpoint`**: `https://internal-mcp.example.com/mcp` (resolves via your VPC's private hosted zone)
+- **VPC requirement**: `enableDnsSupport` and `enableDnsHostnames` must be `true` on the VPC (the default)
+- **Private hosted zone**: must be associated with the VPC that the Resource Gateway lives in
 
-VPC Lattice uses `routingDomain` for traffic routing while AgentCore invokes the endpoint domain.
+> The private hosted zone association is the #1 missable prerequisite. Verify from an EC2 instance inside the VPC with `dig internal-mcp.example.com` before expecting AgentCore to reach the endpoint.
 
 ## When to use this
 
@@ -43,7 +44,7 @@ VPC Lattice uses `routingDomain` for traffic routing while AgentCore invokes the
 
 ```
 AgentCore Gateway
-  → VPC Lattice (routes via routingDomain: *.elb.amazonaws.com)
+  → VPC Lattice Resource Gateway (resolves domain via VPC private DNS)
     → Resource Gateway ENIs
       → Internal Load Balancer (TLS termination with public cert)
         → Your private resource

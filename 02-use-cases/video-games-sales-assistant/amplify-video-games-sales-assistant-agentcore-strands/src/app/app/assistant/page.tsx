@@ -6,11 +6,11 @@ export default function AssistantPage() {
   const assistantConfig: AssistantConfig = {
     agentRuntimeArn: process.env.AGENT_RUNTIME_ARN || '',
     agentEndpointName: process.env.AGENT_ENDPOINT_NAME || 'DEFAULT',
-    lastKTurns: parseInt(process.env.LAST_K_TURNS || '10', 10),
     welcomeMessage: process.env.WELCOME_MESSAGE || "I'm your AI Data Analyst, crunching data for insights.",
     appName: process.env.APP_NAME || 'Data Analyst Assistant',
     modelIdForChart: process.env.MODEL_ID_FOR_CHART || 'us.anthropic.claude-haiku-4-5-20251001-v1:0',
     questionAnswersTableName: process.env.QUESTION_ANSWERS_TABLE_NAME || '',
+    memoryId: process.env.MEMORY_ID || '',
     maxLengthInputSearch: parseInt(process.env.MAX_LENGTH_INPUT_SEARCH || '500', 10),
   };
 

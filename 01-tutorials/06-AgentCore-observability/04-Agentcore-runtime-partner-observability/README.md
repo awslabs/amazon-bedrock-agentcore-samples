@@ -13,6 +13,7 @@ The publish folder contains:
 - **Arize**: AI and Agent engineering platform
 - **Braintrust**: AI evaluation and monitoring platform
 - **Datadog**: Unified observability platform for monitoring, APM, logs, and traces
+- **Honeycomb**: Observability platform built for high-cardinality exploration
 - **Instana**: Real-Time APM and Observability Platform
 - **Langfuse**: LLM observability and analytics
 - **OpenLIT**: Open-source observability platform for LLM applications

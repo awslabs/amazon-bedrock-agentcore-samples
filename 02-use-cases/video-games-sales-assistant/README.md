@@ -1,7 +1,7 @@
 # Deploying a Conversational Data Analyst Assistant Solution with Amazon Bedrock AgentCore
 
 > [!IMPORTANT]
-> **🚀 Ready-to-Deploy Agent Web Application**: Use this reference solution to build other agent-powered web applications across different industries. Extend the agent capabilities by adding custom tools for specific industry workflows and adapt it to various business domains.
+> **🚀 Ready-to-Deploy Agent Web Application**: Use this reference solution to build agent-powered web applications across different industries. Adapt it to your business domain by adding custom agent tools for specific workflows. To accelerate development, use **[Kiro](https://kiro.dev/)** with its **[Powers](https://kiro.dev/powers/)** for Strands Agents SDK, Amazon Bedrock AgentCore, and AWS Amplify, along with the **[AWS CDK MCP Server](https://awslabs.github.io/mcp/servers/cdk-mcp-server)** for infrastructure guidance — so you can extend this solution **without starting from scratch**.
 
 This solution provides a Generative AI application reference that allows users to interact with data through a natural language interface. The solution leverages **[Amazon Bedrock AgentCore](https://aws.amazon.com/bedrock/agentcore/)**, a managed service that enables you to deploy, run, and scale custom agent applications, along with the **[Strands Agents SDK](https://strandsagents.com/)** to build an agent that connects to a PostgreSQL database, providing data analysis capabilities through a Next.js web application built with **[AWS Amplify Gen 2](https://docs.amplify.aws/)**.
 
@@ -41,7 +41,10 @@ The AWS CDK stack deploys and configures the following managed services:
 
 **Amazon Bedrock AgentCore Resources:**
 - **[AgentCore Runtime](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/agents-tools-runtime.html)**: Provides the managed execution environment with invocation endpoints (`/invocations`) and health monitoring (`/ping`) for your agent instances
-- **[AgentCore Memory](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/memory.html)**: A fully managed service that gives AI agents the ability to remember, learn, and evolve through interactions by capturing events, transforming them into memories, and retrieving relevant context when needed
+- **[AgentCore Memory](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/memory.html)**: A fully managed service that gives AI agents the ability to remember, learn, and evolve through interactions. Configured with:
+  - **Short-term memory (STM)**: Event-based conversation history scoped per user and session, providing immediate conversational context within a session
+  - **Long-term memory (LTM)**: A semantic "Facts" strategy that asynchronously extracts knowledge from conversations and stores it in per-user namespaces (`/facts/{actorId}`). Facts persist across sessions and are retrieved via vector similarity search, enabling the agent to recall insights from previous conversations
+- **Observability**: Runtime application logs and memory extraction logs delivered to CloudWatch Logs, plus runtime traces to AWS X-Ray — all with 14-day retention
 
 The AgentCore infrastructure handles all storage complexity and provides efficient retrieval without requiring developers to manage underlying infrastructure, ensuring continuity and traceability across agent interactions.
 
@@ -57,10 +60,11 @@ All configuration values (database ARNs, secret ARNs, model ID, etc.) are passed
 ### Amplify Deployment for the Front-End Application
 
 - **Next.js Web Application (Amplify Gen 2)**: Delivers the user interface for the assistant
-    - Uses Amazon Cognito (via Amplify Gen 2) for user authentication and IAM permissions — no manual IAM configuration needed
+    - Uses Amazon Cognito (via Amplify Gen 2) for user authentication and IAM permissions — no manual IAM configuration needed. Each authenticated user's Cognito `sub` is used as the `actorId` for memory, ensuring isolated per-user memory namespaces
     - The application invokes Amazon Bedrock AgentCore for interacting with the assistant (client-side streaming)
     - For chart generation, the application directly invokes the Claude Haiku 4.5 model (client-side)
     - DynamoDB query results are fetched through a Next.js API route (server-side)
+    - A Memory Facts panel lets users view the long-term knowledge extracted from their conversations by AgentCore Memory
 
 ### Strands Agent Features
 
@@ -84,7 +88,7 @@ The **user interaction workflow** operates as follows:
 - The web application sends user business questions to the AgentCore Invoke (via client-side streaming)
 - The Strands Agent (powered by Claude Haiku 4.5) processes natural language and determines when to execute database queries
 - The agent's built-in tools execute SQL queries against the Aurora PostgreSQL database and formulate an answer to the question
-- AgentCore Memory captures session interactions and retrieves previous conversations for context
+- AgentCore Memory manages conversation context through the `AgentCoreMemorySessionManager` integration. STM provides conversation continuity within a session (scoped by `sessionId`), while LTM retrieves relevant facts from the `/facts/{actorId}` namespace across all past sessions for that user. LTM extraction is asynchronous (20-40 seconds after events are saved)
 - After the agent's streaming response completes, the raw data query results are fetched from DynamoDB through a Next.js API route to display both the answer and the corresponding records
 - For chart generation, the application invokes a model (powered by Claude Haiku 4.5) to analyze the agent's answer and raw data query results to generate the necessary data to render an appropriate chart visualization
 
@@ -105,23 +109,29 @@ The deployment consists of two main steps:
 
 The following images showcase a conversational experience analysis that includes: natural language answers, the reasoning process used by the LLM to generate SQL queries, the database records retrieved from those queries, and the resulting chart visualizations.
 
-![Video Games Sales Assistant](./images/preview.png)
+- **AgentCore data analyst assistant welcome with Memory Facts access**
 
-- **Conversational interface with an agent responding to user questions**
+![Welcome screen with AgentCore branding](./images/preview.png)
 
-![Video Games Sales Assistant](./images/preview1.png)
+- **Long-term Memory Facts from AgentCore Memory**
 
-- **Raw query results displayed in tabular format**
+![Memory Facts panel with extracted knowledge](./images/preview1.png)
 
-![Video Games Sales Assistant](./images/preview2.png)
+- **Conversational agent with tool use and reasoning**
 
-- **Chart visualization generated from the agent's answer and the data query results (created using [Apexcharts](https://apexcharts.com/))**.
+![Agent conversation with SQL query execution](./images/preview2.png)
 
-![Video Games Sales Assistant](./images/preview3.png)
+- **Raw query results in tabular format**
 
-- **Summary and conclusion derived from the data analysis conversation**
+![Query results displayed as data table](./images/preview3.png)
 
-![Video Games Sales Assistant](./images/preview4.png)
+- **Auto-generated chart from answer and data**
+
+![Chart visualization from query results](./images/preview4.png)
+
+- **Conversation summary and data analysis conclusion**
+
+![Summary and conclusion of analysis conversation](./images/preview5.png)
 
 ## Thank You
 
