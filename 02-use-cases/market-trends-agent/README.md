@@ -2,7 +2,7 @@
 
 ## Overview
 
-This use case implements an intelligent financial analysis agent using Amazon Bedrock AgentCore that provides real-time market intelligence, stock analysis, and personalized investment recommendations. The agent combines LLM-powered analysis with live market data and maintains persistent memory of broker preferences across sessions. This sample also demonstrates how to cuse custom code based evalautions from AgentCore Evaluations, and the continuous agent improvement loop using AgentCore Optimization.
+This use case implements an intelligent financial analysis agent using Amazon Bedrock AgentCore that provides real-time market intelligence, stock analysis, and personalized investment recommendations. The agent combines LLM-powered analysis with live market data and maintains persistent memory of broker preferences across sessions. This sample also demonstrates how to use custom code-based evaluations from AgentCore Evaluations, and the continuous agent improvement loop using AgentCore Optimization.
 
 ## Use Case Architecture
 
@@ -12,7 +12,7 @@ This use case implements an intelligent financial analysis agent using Amazon Be
 |-------------|---------|
 | Use case type | Conversational |
 | Agent type | Graph |
-| Use case components | Memory, Tools, Browser Automation, Custom Code-Based Evaluators |
+| Use case components | Memory, Tools, Browser Automation, Custom Code-Based Evaluators, AgentCore Optimization |
 | Use case vertical | Financial Services |
 | Example complexity | Advanced |
 | SDK used | Amazon Bedrock AgentCore SDK, LangGraph, Playwright |
@@ -29,6 +29,16 @@ This use case implements an intelligent financial analysis agent using Amazon Be
 ### Custom Code-Based Evaluators
 
 Five Lambda-backed code-based evaluators continuously monitor agent quality in production. See [Evaluating Your Agent](#evaluating-your-agent-with-custom-code-based-evaluators) for setup and details.
+
+### AgentCore Optimization
+
+[AgentCore Optimization](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/optimization.html) closes the loop between evaluation findings and validated improvements. It introduces three capabilities that together form a continuous improvement cycle:
+
+- **Recommendations**: AI-generated improvements to system prompts and tool descriptions, derived from real agent traces and a target evaluator metric. The service identifies failure patterns and proposes specific, targeted changes — no manual prompt engineering required.
+- **Configuration Bundles**: Versioned, immutable snapshots of agent configuration (system prompts, model IDs, tool descriptions) that decouple agent behavior from code. You can swap configurations at invocation time via a `baggage` header without redeploying the container.
+- **A/B Testing**: Controlled traffic splitting through AgentCore Gateway, with online evaluation scoring each session and reporting statistical significance across variants. Supports both config-bundle variants (same runtime, different prompts) and target-based variants (different runtime endpoints for code-level changes).
+
+See [Systematic Agent Quality Improvement](#systematic-agent-quality-improvement) for the full walkthrough.
 
 ---
 
@@ -334,7 +344,7 @@ aws iam delete-role --role-name MarketTrendsEvalLambdaRole
 
 ## Systematic Agent Quality Improvement
 
-Once your agent is deployed and instrumented with evaluators, the real work begins: closing the loop between evaluation results and agent improvements. AgentCore provides a built-in optimization cycle that takes you from raw evaluation scores to statistically validated improvements — without manual prompt engineering or guesswork.
+Once your agent is deployed and instrumented with evaluators, the real work begins: closing the loop between evaluation results and agent improvements. [AgentCore Optimization](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/optimization.html) provides a built-in improvement cycle that takes you from raw evaluation scores to statistically validated improvements — without manual prompt engineering or guesswork. See [How it works](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/optimization-how-it-works.html) for a full description of the cycle.
 
 The cycle has five stages:
 
@@ -396,7 +406,7 @@ The actor drives realistic multi-turn conversations based on an `ActorProfile` (
 | `sim-financials-stock-comparison` | Value/dividend investor, bank specialist | Compare JPM, GS, BAC ahead of earnings |
 | `sim-portfolio-risk-review` | Energy sector broker, risk-aware | Assess XOM/CVX exposure given oil volatility |
 
-**Why simulated evaluation?** Hand-authored test scenarios tell you whether the agent handles *known* cases correctly, but miss edge cases and natural user variation. Simulated scenarios expose gaps that fixed scripts miss and scale scenario coverage without writing hundreds of multi-turn sequences. See the [simulated scenarios documentation](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/evaluation-simulated-scenarios.html) for full details.
+**Why simulated evaluation?** Hand-authored test scenarios tell you whether the agent handles *known* cases correctly, but miss edge cases and natural user variation. Simulated scenarios expose gaps that fixed scripts miss and scale scenario coverage without writing hundreds of multi-turn sequences. See the [simulated scenarios documentation](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/simulation.html) for full details.
 
 ### Optimization Recommendations
 
@@ -432,7 +442,7 @@ dp.start_recommendation(
 )
 ```
 
-See: [Optimization recommendations documentation](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/recommendations.html)
+See: [Optimization recommendations documentation](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/optimization-recommendations.html)
 
 ### Configuration Bundle Testing (A/B — Prompt and Config Changes)
 
@@ -689,38 +699,6 @@ uv run python cleanup.py --region "<aws_region>"
 - IAM roles and policies (unless `--skip-iam`)
 - Local deployment files
 
----
-
-## Troubleshooting
-
-### Common Issues
-
-1. **Throttling Errors**: Wait a few minutes between requests. Check CloudWatch logs for details.
-
-2. **Permission Errors**: The deployment script creates all required IAM permissions. Check AWS credentials are configured correctly.
-
-3. **`CodeBuild project 'bedrock-agentcore-<agent>-builder' not found`**: On a brand-new account or with a new `--agent-name`, run `agentcore deploy` from the [AgentCore CLI](https://github.com/aws/agentcore-cli) once to bootstrap the CodeBuild project and S3 source bucket. `deploy.py` is designed for subsequent re-deploys.
-
-4. **`ValidationException: The specified image identifier does not exist in the repository`** during `CreateAgentRuntime`: the CodeBuild buildspec tags the pushed image with a fixed version tag, not `:latest`. Retag the pushed digest and re-run:
-   ```bash
-   MANIFEST=$(aws ecr batch-get-image --repository-name bedrock-agentcore-<agent-name> \
-     --image-ids imageTag=<version-tag> --region us-west-2 \
-     --query 'images[0].imageManifest' --output text)
-   aws ecr put-image --repository-name bedrock-agentcore-<agent-name> \
-     --image-tag latest --image-manifest "$MANIFEST" --region us-west-2
-   ```
-
-5. **`Memory with name MarketTrendsAgentMultiStrategy already exists`** right after `cleanup.py`: AgentCore Memory deletion takes ~3 minutes to propagate. Wait until `aws bedrock-agentcore-control list-memories --region us-west-2` stops listing the deleted memory, then re-run `deploy.py`.
-
-6. **Evaluator ResourceNotFoundException**: Ensure evaluators are registered against the production control plane (`bedrock-agentcore-control`), not a custom/gamma endpoint. Re-run `evaluators/scripts/deploy.py`.
-
-7. **Online eval config not scoring traffic**: Confirm `AGENT_RUNTIME_ARN` matches your deployed agent. The log group name is derived from the ARN; a mismatch means no spans are read.
-
-8. **No evaluation results appearing in CloudWatch**: Online evaluation scores sessions 5–10 minutes after session end. `results.py` returning 0 events immediately after generating traffic is expected — wait a few minutes and retry.
-
-9. **Memory Instance Duplicates**: If you see multiple memory instances, run `uv run python cleanup.py` then redeploy.
-
----
 
 ## Security
 
