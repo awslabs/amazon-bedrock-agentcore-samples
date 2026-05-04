@@ -205,7 +205,7 @@ else
 fi
 
 # Origin verify secret
-DEFAULT_SECRET="geo-agent-cf-origin-$(date +%Y)"
+DEFAULT_SECRET="geo-origin-$(openssl rand -hex 16 2>/dev/null || date +%s%N)"
 read -rp "Origin verify secret [$DEFAULT_SECRET]: " ORIGIN_SECRET
 ORIGIN_SECRET="${ORIGIN_SECRET:-$DEFAULT_SECRET}"
 

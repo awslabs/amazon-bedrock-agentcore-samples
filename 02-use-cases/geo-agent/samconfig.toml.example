@@ -10,12 +10,12 @@ capabilities = "CAPABILITY_IAM"
 image_repositories = []
 
 # --- Option A: Create a new CloudFront distribution ---
-# parameter_overrides = "TableName=\"geo-content\" DefaultOriginHost=\"news.example.com\" OriginVerifySecret=\"geo-agent-cf-origin-2026\" CreateDistribution=\"true\""
+# parameter_overrides = "TableName=\"geo-content\" DefaultOriginHost=\"news.example.com\" OriginVerifySecret=\"YOUR_SECRET_HERE\" CreateDistribution=\"true\""
 
 # --- Option B: Use an existing CloudFront distribution ---
-# parameter_overrides = "TableName=\"geo-content\" DefaultOriginHost=\"news.example.com\" OriginVerifySecret=\"geo-agent-cf-origin-2026\" CloudFrontDistributionArn=\"arn:aws:cloudfront::YOUR_ACCOUNT_ID:distribution/YOUR_DISTRIBUTION_ID\" SetupCfOrigin=\"true\" CffArn=\"arn:aws:cloudfront::YOUR_ACCOUNT_ID:function/geo-bot-router-oac\" CffBehaviorPath=\"*\""
+# parameter_overrides = "TableName=\"geo-content\" DefaultOriginHost=\"news.example.com\" OriginVerifySecret=\"YOUR_SECRET_HERE\" CloudFrontDistributionArn=\"arn:aws:cloudfront::YOUR_ACCOUNT_ID:distribution/YOUR_DISTRIBUTION_ID\" SetupCfOrigin=\"true\" CffArn=\"arn:aws:cloudfront::YOUR_ACCOUNT_ID:function/geo-bot-router-oac\" CffBehaviorPath=\"*\""
 
-parameter_overrides = "TableName=\"geo-content\" DefaultOriginHost=\"YOUR_ORIGIN_HOST\" OriginVerifySecret=\"geo-agent-cf-origin-2026\" CreateDistribution=\"true\""
+parameter_overrides = "TableName=\"geo-content\" DefaultOriginHost=\"YOUR_ORIGIN_HOST\" OriginVerifySecret=\"YOUR_SECRET_HERE\" CreateDistribution=\"true\""
 
 [default.global.parameters]
 region = "us-east-1"

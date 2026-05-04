@@ -5,9 +5,22 @@ fallback HTML tag-stripping parser for environments without it.
 """
 
 import requests
+from urllib.parse import urlparse
 
 DEFAULT_UA = "Mozilla/5.0 (compatible; GEOAgent/1.0)"
 BOT_UA = "Mozilla/5.0 (compatible; GPTBot/1.0; +https://openai.com/gptbot)"
+
+_BLOCKED_HOSTS = {"localhost", "127.0.0.1", "169.254.169.254", "[::1]"}
+
+
+def _validate_url(url: str) -> None:
+    """Validate that a URL is safe to fetch (not internal/private)."""
+    parsed = urlparse(url)
+    if parsed.scheme not in ("https", "http"):
+        raise ValueError(f"Blocked: unsupported scheme '{parsed.scheme}'")
+    host = parsed.hostname or ""
+    if host in _BLOCKED_HOSTS or host.startswith(("10.", "172.", "192.168.")):
+        raise ValueError(f"Blocked: disallowed host '{host}'")
 
 
 def fetch_page_text(url: str, include_links: bool = False, user_agent: str = DEFAULT_UA) -> str:
@@ -21,6 +34,7 @@ def fetch_page_text(url: str, include_links: bool = False, user_agent: str = DEF
         include_links: Whether to preserve links in extracted text (for llms.txt).
         user_agent: Custom User-Agent string for the request.
     """
+    _validate_url(url)
     headers = {"User-Agent": user_agent}
     resp = requests.get(url, headers=headers, timeout=30)
     resp.raise_for_status()

@@ -18,7 +18,7 @@ Parameters:
     Description: Default origin host for reconstructing original URLs
   OriginVerifySecret:
     Type: String
-    Default: "geo-agent-cf-origin-2026"
+    NoEcho: true
     Description: Shared secret for defense-in-depth origin verification
   CloudFrontDistributionArn:
     Type: String
@@ -244,8 +244,7 @@ Resources:
         PriceClass: PriceClass_All
         DefaultRootObject: ""
         ViewerCertificate:
-          AcmCertificateArn: !Ref AcmCertificateArn
-          SslSupportMethod: sni-only
+          CloudFrontDefaultCertificate: true
           MinimumProtocolVersion: TLSv1.2_2021
         Logging:
           Bucket: !GetAtt GeoDistributionLogBucket.DomainName
@@ -356,6 +355,8 @@ Resources:
   GeoContentTable:
     Type: AWS::DynamoDB::Table
     Condition: ShouldCreateTable
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     Properties:
       TableName: !Ref TableName
       BillingMode: PAY_PER_REQUEST
@@ -387,6 +388,8 @@ Resources:
       CodeUri: lambda/
       MemorySize: 256
       Timeout: 90
+      ReservedConcurrentExecutions: 100
+      Tracing: Active
       Environment:
         Variables:
           GEO_TABLE_NAME: !Ref TableName
@@ -437,6 +440,12 @@ Resources:
   # ============================================================
   # Lambda: async worker — invokes AgentCore to generate content
   # ============================================================
+  GeoGeneratorDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub "${AWS::StackName}-generator-dlq"
+      MessageRetentionPeriod: 1209600
+
   GeoGeneratorFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -446,6 +455,11 @@ Resources:
       CodeUri: lambda/
       MemorySize: 512
       Timeout: 120
+      ReservedConcurrentExecutions: 10
+      Tracing: Active
+      DeadLetterQueue:
+        Type: SQS
+        TargetArn: !GetAtt GeoGeneratorDLQ.Arn
       Environment:
         Variables:
           GEO_TABLE_NAME: !Ref TableName
@@ -490,6 +504,8 @@ Resources:
       CodeUri: lambda/
       MemorySize: 128
       Timeout: 30
+      ReservedConcurrentExecutions: 50
+      Tracing: Active
       Environment:
         Variables:
           GEO_TABLE_NAME: !Ref TableName

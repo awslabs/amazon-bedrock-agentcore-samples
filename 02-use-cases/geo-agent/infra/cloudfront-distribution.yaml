@@ -25,7 +25,7 @@ Parameters:
       Get from geo-backend stack output: OacId
   OriginVerifySecret:
     Type: String
-    Default: "geo-agent-cf-origin-2026"
+    NoEcho: true
     Description: Shared secret for x-origin-verify header
   PriceClass:
     Type: String

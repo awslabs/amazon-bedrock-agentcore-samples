@@ -20,13 +20,32 @@ Properties (from CloudFormation):
 
 import json
 import boto3
+from urllib.parse import urlparse
 from urllib.request import urlopen, Request as UrlRequest
 
 cf = boto3.client("cloudfront")
 
+_ALLOWED_RESPONSE_URL_SUFFIXES = [
+    ".s3.amazonaws.com",
+    ".s3-external-1.amazonaws.com",
+    ".s3.us-east-1.amazonaws.com",
+]
+
 
 def _send_cfn_response(event, context, status, data=None):
-    """Send a response to CloudFormation for the Custom Resource lifecycle."""
+    """Send a response to CloudFormation for the Custom Resource lifecycle.
+
+    Validates that ResponseURL points to an Amazon S3 pre-signed URL
+    (the only legitimate destination for CloudFormation Custom Resource responses)
+    to prevent server-side request forgery.
+    """
+    response_url = event["ResponseURL"]
+    parsed = urlparse(response_url)
+    if parsed.scheme != "https" or not any(
+        parsed.hostname.endswith(suffix) for suffix in _ALLOWED_RESPONSE_URL_SUFFIXES
+    ):
+        raise ValueError(f"Untrusted ResponseURL hostname: {parsed.hostname}")
+
     body = json.dumps({
         "Status": status,
         "Reason": f"See CloudWatch Log Stream: {context.log_stream_name}",
@@ -36,10 +55,10 @@ def _send_cfn_response(event, context, status, data=None):
         "LogicalResourceId": event["LogicalResourceId"],
         "Data": data or {},
     })
-    req = UrlRequest(event["ResponseURL"], data=body.encode("utf-8"), method="PUT")
+    req = UrlRequest(response_url, data=body.encode("utf-8"), method="PUT")
     req.add_header("Content-Type", "")
     req.add_header("Content-Length", str(len(body)))
-    urlopen(req)
+    urlopen(req, timeout=10)
 
 
 def handler(event, context):

@@ -26,7 +26,7 @@ import time
 import uuid
 from datetime import datetime, timezone
 from decimal import Decimal
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlparse
 from urllib.request import urlopen, Request
 
 import boto3
@@ -37,7 +37,7 @@ GENERATOR_FUNCTION_NAME = os.environ.get("GENERATOR_FUNCTION_NAME", "")
 DEFAULT_ORIGIN_HOST = os.environ.get("DEFAULT_ORIGIN_HOST", "")
 AGENT_RUNTIME_ARN = os.environ.get("AGENT_RUNTIME_ARN", "")
 AGENTCORE_REGION = os.environ.get("AGENTCORE_REGION", "us-east-1")
-ORIGIN_VERIFY_SECRET = os.environ.get("ORIGIN_VERIFY_SECRET", "geo-agent-cf-origin-2026")
+ORIGIN_VERIFY_SECRET = os.environ.get("ORIGIN_VERIFY_SECRET", "")
 GEO_TTL_SECONDS = int(os.environ.get("GEO_TTL_SECONDS", "86400"))  # 24h default
 PROCESSING_TIMEOUT_SECONDS = int(os.environ.get("PROCESSING_TIMEOUT_SECONDS", "300"))  # 5min default
 CF_DISTRIBUTION_ID = os.environ.get("CF_DISTRIBUTION_ID", "")
@@ -136,7 +136,21 @@ def _mark_processing(ddb_key, original_url, host="", mode="passthrough"):
 
 
 def _fetch_original(url):
-    """Fetch the original page content from the origin site."""
+    """Fetch the original page content from the origin site.
+
+    Validates the URL scheme and host before making the request
+    to prevent server-side request forgery.
+    """
+    parsed = urlparse(url)
+    if parsed.scheme not in ("https", "http"):
+        print(f"Blocked fetch: invalid scheme '{parsed.scheme}' in {url}")
+        return None, None
+    if not parsed.hostname or parsed.hostname in ("localhost", "127.0.0.1", "169.254.169.254"):
+        print(f"Blocked fetch: disallowed host '{parsed.hostname}' in {url}")
+        return None, None
+    if parsed.hostname.startswith(("10.", "172.", "192.168.")):
+        print(f"Blocked fetch: private IP range in {url}")
+        return None, None
     try:
         req = Request(url, headers={"User-Agent": "Mozilla/5.0"})
         with urlopen(req, timeout=10) as resp:
