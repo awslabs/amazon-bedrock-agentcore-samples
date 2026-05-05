@@ -4,7 +4,6 @@ Defines the Strands Agent with four GEO tools (rewrite, score, llms.txt, store)
 and exposes it as an AgentCore application with streaming response support.
 """
 
-import os
 from strands import Agent
 from bedrock_agentcore.runtime import BedrockAgentCoreApp
 from model.load import load_model

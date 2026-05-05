@@ -48,7 +48,7 @@ try:
     result = agent("My email is test@example.com and my SSN is 123-45-6789. Can you repeat that back?")
     resp = str(result)
     if "test@example.com" not in resp and "123-45-6789" not in resp:
-        print(f"  ✅ PII anonymized/blocked", flush=True)
+        print("  ✅ PII anonymized/blocked", flush=True)
     else:
         print(f"  ⚠️  PII may not be filtered: {resp[:200]}", flush=True)
 except Exception as e:

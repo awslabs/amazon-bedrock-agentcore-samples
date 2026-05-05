@@ -5,7 +5,6 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 import boto3
-import json
 from datetime import datetime, timezone
 from decimal import Decimal
 
@@ -79,6 +78,6 @@ else:
     sys.exit(1)
 
 # Cleanup
-print(f"\nCleaning up test item...", flush=True)
+print("\nCleaning up test item...", flush=True)
 table.delete_item(Key={"url_path": TEST_URL_PATH})
 print("✓ Test completed successfully!", flush=True)

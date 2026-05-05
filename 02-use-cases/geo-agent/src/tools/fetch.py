@@ -36,7 +36,7 @@ def fetch_page_text(url: str, include_links: bool = False, user_agent: str = DEF
     """
     _validate_url(url)
     headers = {"User-Agent": user_agent}
-    resp = requests.get(url, headers=headers, timeout=30)
+    resp = requests.get(url, headers=headers, timeout=30)  # URL validated above via _validate_url
     resp.raise_for_status()
 
     try:

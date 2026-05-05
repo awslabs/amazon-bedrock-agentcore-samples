@@ -1,20 +1,16 @@
 import sys
 import os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
-
-print("Starting...", flush=True)
+from datetime import datetime, timezone
 
 import boto3
-print("boto3 imported", flush=True)
-
 import requests
-print("requests imported", flush=True)
-
 import trafilatura
-print("trafilatura imported", flush=True)
 
-from tools.sanitize import sanitize_web_content
-print("sanitize imported", flush=True)
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
+
+from tools.sanitize import sanitize_web_content  # noqa: E402
+
+print("All imports successful", flush=True)
 
 URL = "https://alb.kgg23.com/world/3149599"
 URL_PATH = "/world/3149599"
@@ -32,7 +28,6 @@ geo_content = f"<html><body><h1>GEO Optimized</h1><article>{clean}</article></bo
 print("Writing to DDB...", flush=True)
 dynamodb = boto3.resource("dynamodb", region_name=REGION)
 table = dynamodb.Table(TABLE_NAME)
-from datetime import datetime, timezone
 table.put_item(Item={
     "url_path": URL_PATH,
     "geo_content": geo_content,

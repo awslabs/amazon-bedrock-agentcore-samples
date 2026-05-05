@@ -20,7 +20,6 @@ Usage:
 
 import argparse
 import json
-import os
 import re
 import sys
 import time
@@ -181,7 +180,7 @@ def run_full_test(site_key: str, url: str, quick: bool = False) -> TestResult:
     print(f"{'='*70}")
 
     # Step 1: Purge
-    print(f"\n--- Step 1: Purge cache ---")
+    print("\n--- Step 1: Purge cache ---")
     try:
         resp = requests.get(_bot_url(url, purge="true"), headers={"User-Agent": UA_BOT}, timeout=15)
         result.step("purge", resp.status_code == 200, {"status": resp.status_code})
@@ -190,7 +189,7 @@ def run_full_test(site_key: str, url: str, quick: bool = False) -> TestResult:
 
     if quick:
         # Quick mode: passthrough only
-        print(f"\n--- Step 2: Passthrough mode ---")
+        print("\n--- Step 2: Passthrough mode ---")
         try:
             start = time.time()
             resp = requests.get(_bot_url(url), headers={"User-Agent": UA_BOT}, timeout=30)
@@ -208,7 +207,7 @@ def run_full_test(site_key: str, url: str, quick: bool = False) -> TestResult:
         return result
 
     # Step 2: Sync mode — full generation
-    print(f"\n--- Step 2: Sync mode (wait for AgentCore) ---")
+    print("\n--- Step 2: Sync mode (wait for AgentCore) ---")
     try:
         start = time.time()
         resp = requests.get(_bot_url(url, mode="sync"), headers={"User-Agent": UA_BOT}, timeout=80)
@@ -229,7 +228,7 @@ def run_full_test(site_key: str, url: str, quick: bool = False) -> TestResult:
         return result  # can't continue if sync failed
 
     # Step 3: Cache hit — re-request should serve from cache
-    print(f"\n--- Step 3: Cache hit verification ---")
+    print("\n--- Step 3: Cache hit verification ---")
     try:
         start = time.time()
         resp = requests.get(_bot_url(url), headers={"User-Agent": UA_BOT}, timeout=15)
@@ -249,7 +248,7 @@ def run_full_test(site_key: str, url: str, quick: bool = False) -> TestResult:
         result.step("cache_hit", False, {"error": str(e)})
 
     # Step 4: DDB score check
-    print(f"\n--- Step 4: DDB score tracking ---")
+    print("\n--- Step 4: DDB score tracking ---")
     # Scores are updated async, wait a bit
     time.sleep(3)
     scores = check_ddb_scores(site_key, url)
@@ -269,7 +268,7 @@ def run_full_test(site_key: str, url: str, quick: bool = False) -> TestResult:
         result.step("score_tracking", True, {"note": "scores still computing (async)"})
 
     # Step 5: Passthrough mode — purge and verify passthrough behavior
-    print(f"\n--- Step 5: Passthrough mode ---")
+    print("\n--- Step 5: Passthrough mode ---")
     try:
         requests.get(_bot_url(url, purge="true"), headers={"User-Agent": UA_BOT}, timeout=15)
         start = time.time()
@@ -338,7 +337,7 @@ def main():
             icon = "✓" if s["passed"] else "✗"
             print(f"    {icon} {s['name']}")
 
-    log_file = save_results(results)
+    save_results(results)
 
     all_passed = all(r.passed for r in results)
     print(f"\nOverall: {'✓ ALL PASSED' if all_passed else '✗ SOME FAILED'}")

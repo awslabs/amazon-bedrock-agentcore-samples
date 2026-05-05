@@ -7,7 +7,6 @@ and stale processing record recovery.
 import sys
 import os
 import json
-import time
 from unittest.mock import patch, MagicMock
 from datetime import datetime, timezone, timedelta
 

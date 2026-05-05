@@ -10,7 +10,7 @@ from urllib.parse import urlparse, urlencode, parse_qs, urlunparse
 
 from strands import tool
 
-from tools.fetch import fetch_page_text, DEFAULT_UA, BOT_UA
+from tools.fetch import DEFAULT_UA, BOT_UA, _validate_url
 from tools.sanitize import sanitize_web_content
 
 EVAL_SYSTEM_PROMPT = """You are a GEO (Generative Engine Optimization) scoring expert.
@@ -94,10 +94,11 @@ def _fetch_and_prepare(url: str, user_agent: str = DEFAULT_UA) -> str | None:
     """
     import requests as _requests
     try:
+        _validate_url(url)
         headers = {"User-Agent": user_agent}
-        resp = _requests.get(url, headers=headers, timeout=30)
+        resp = _requests.get(url, headers=headers, timeout=30)  # URL validated above via _validate_url
         resp.raise_for_status()
-    except Exception:
+    except (ValueError, Exception):
         return None
 
     if resp.headers.get("X-GEO-Optimized") == "true":

@@ -12,8 +12,6 @@ import sys
 import os
 import json
 import boto3
-from datetime import datetime, timezone
-from decimal import Decimal
 
 REGION = os.environ.get("AWS_REGION", "us-east-1")
 TABLE_NAME = os.environ.get("GEO_TABLE_NAME", "geo-content")
