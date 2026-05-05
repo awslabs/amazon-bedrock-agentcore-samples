@@ -1,8 +1,11 @@
 import json
 import logging
+import os
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
+
+RESOURCE_SERVER_ID = os.environ.get("RESOURCE_SERVER_ID", "")
 
 
 def lambda_handler(event, context):
@@ -27,6 +30,10 @@ def lambda_handler(event, context):
         if email == "vscode-admin@example.com":
             # Example: Set custom tag based on email
             custom_tag = "admin_user"
+        elif email == "vscode-readonly@example.com":
+            # Test user with limited scopes — only mcp.read, no mcp.write
+            # Used to verify the gateway rejects requests with insufficient scopes
+            custom_tag = "readonly_user"
         else:
             custom_tag = "regular_user"
 
@@ -74,13 +81,34 @@ def lambda_handler(event, context):
                 "claimsToAddOrOverride"
             ] = {}
 
-        # Add email and user_tag to access token
+        # Add email, user_tag, and aud to access token
         event["response"]["claimsAndScopeOverrideDetails"]["accessTokenGeneration"][
             "claimsToAddOrOverride"
         ]["email"] = email
         event["response"]["claimsAndScopeOverrideDetails"]["accessTokenGeneration"][
             "claimsToAddOrOverride"
         ]["user_tag"] = custom_tag
+        # Inject the audience claim so the proxy Lambda and AgentCore Gateway
+        # can verify the token is scoped to this resource server.
+        # Cognito requires aud to match the current session's app client ID.
+        client_id = event.get("callerContext", {}).get("clientId", "")
+        if client_id:
+            event["response"]["claimsAndScopeOverrideDetails"]["accessTokenGeneration"][
+                "claimsToAddOrOverride"
+            ]["aud"] = client_id
+
+        # For the readonly test user, suppress the mcp.write and mcp.read scopes so the
+        # gateway rejects write operations with insufficient_scope.
+        if custom_tag == "readonly_user":
+            event["response"]["claimsAndScopeOverrideDetails"]["accessTokenGeneration"][
+                "scopesToSuppress"
+            ] = [
+                f"{RESOURCE_SERVER_ID}/mcp.write",
+                f"{RESOURCE_SERVER_ID}/mcp.read",
+            ]
+            logger.info(
+                "Suppressed mcp.write and mcp.read scopes for readonly test user"
+            )
 
         logger.info(
             f"Added custom claims to ID token and Access token: "
