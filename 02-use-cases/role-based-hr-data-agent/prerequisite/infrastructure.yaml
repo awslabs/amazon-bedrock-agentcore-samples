@@ -1,0 +1,392 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  Role-Based HR Data Agent — Infrastructure
+  Deploys: Lambda HR Provider, Request/Response Interceptors, IAM roles,
+  and SSM parameters for AgentCore Gateway integration.
+
+Parameters:
+  LambdaS3Bucket:
+    Type: String
+    Description: S3 bucket containing the Lambda deployment ZIP
+  LambdaS3Key:
+    Type: String
+    Default: hr-data-provider/deployment.zip
+  InterceptorS3Key:
+    Type: String
+    Default: hr-interceptors/deployment.zip
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues: [dev, staging, prod]
+
+Resources:
+
+  # ---------------------------------------------------------------------------
+  # Amazon SQS — Dead Letter Queue for HR Data Provider Lambda
+  # ---------------------------------------------------------------------------
+  HRLambdaDLQ:
+    Type: AWS::SQS::Queue
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: CFN_NAG_W48
+            reason: "Queue is encrypted via SqsManagedSseEnabled (SSE-SQS); customer-managed KMS key not required for demo — SSE-SQS provides equivalent at-rest encryption"
+      checkov:
+        skip:
+          - id: CKV_AWS_27
+            comment: "Queue is encrypted at rest via SqsManagedSseEnabled (SSE-SQS). CKV_AWS_27 specifically checks for KmsMasterKeyId; SSE-SQS provides equivalent encryption without requiring a customer-managed KMS key"
+      cdk_nag:
+        rules_to_suppress:
+          - id: AwsSolutions-SQS3
+            reason: "This queue IS the Dead Letter Queue — adding a DLQ for a DLQ is circular and unnecessary"
+          - id: AwsSolutions-SQS4
+            reason: "SSL enforcement via queue policy conflicts with Lambda service principal used for DLQ delivery; encrypted at rest via SQS-managed SSE"
+      guard:
+        SuppressedRules:
+          - SQS_QUEUE_KMS_MASTER_KEY_ID_RULE  # Encrypted via SSE-SQS (SqsManagedSseEnabled: true); rule checks for KmsMasterKeyId only — equivalent encryption provided without a customer-managed KMS key
+    Properties:
+      QueueName: !Sub hr-data-provider-dlq-${Environment}
+      MessageRetentionPeriod: 1209600  # 14 days
+      SqsManagedSseEnabled: true
+
+  # ---------------------------------------------------------------------------
+  # AWS Identity and Access Management (IAM) — Lambda execution role
+  # ---------------------------------------------------------------------------
+  HRLambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: CFN_NAG_W28
+            reason: "Explicit role name required for SSM parameter references and cross-stack resource lookup in demo deployment scripts"
+      cdk_nag:
+        rules_to_suppress:
+          - id: AwsSolutions-IAM4
+            reason: "AWSLambdaBasicExecutionRole is the standard minimal managed policy for Lambda execution logging"
+          - id: AwsSolutions-IAM5
+            reason: "SSM path is scoped to /app/hrdlp/* — a namespace-bounded wildcard for this sample's parameters only"
+      guard:
+        SuppressedRules:
+          - IAM_NO_INLINE_POLICY_CHECK  # Inline policies are scoped exclusively to this role; sample code — converting to standalone managed policies adds complexity without security benefit
+    Properties:
+      RoleName: !Sub hr-dlp-lambda-role-${Environment}
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: {Service: lambda.amazonaws.com}
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: SSMReadPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: [ssm:GetParameter, ssm:GetParameters]
+                Resource: !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/app/hrdlp/*
+        - PolicyName: DLQPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: sqs:SendMessage
+                Resource: !GetAtt HRLambdaDLQ.Arn
+
+  # ---------------------------------------------------------------------------
+  # IAM — Amazon Bedrock AgentCore Gateway execution role
+  # ---------------------------------------------------------------------------
+  AgentCoreGatewayRole:
+    Type: AWS::IAM::Role
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: CFN_NAG_W28
+            reason: "Explicit role name required for SSM parameter references and cross-stack resource lookup in demo deployment scripts"
+      cdk_nag:
+        rules_to_suppress:
+          - id: AwsSolutions-IAM5
+            reason: "Wildcard in resource ARN is scoped to this account's Gateway, GatewayTarget, and PolicyEngine resources only"
+      guard:
+        SuppressedRules:
+          - IAM_NO_INLINE_POLICY_CHECK  # Inline policies are scoped exclusively to this role; sample code — converting to standalone managed policies adds complexity without security benefit
+    Properties:
+      RoleName: !Sub hr-dlp-gateway-role-${Environment}
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: {Service: bedrock-agentcore.amazonaws.com}
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: InvokeLambdaPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: lambda:InvokeFunction
+                Resource:
+                  - !GetAtt HRDataProviderLambda.Arn
+                  - !GetAtt RequestInterceptorLambda.Arn
+                  - !GetAtt ResponseInterceptorLambda.Arn
+        - PolicyName: AgentCoreGatewayPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              # Required for Cedar policy evaluation and Gateway operations.
+              # Explicit actions listed to satisfy least-privilege requirements.
+              # Resource scoped to this account's AgentCore Gateways and Policy Engines.
+              - Effect: Allow
+                Action:
+                  - bedrock-agentcore:AuthorizeAction           # Cedar policy evaluation (single action)
+                  - bedrock-agentcore:PartiallyAuthorizeActions # Cedar policy evaluation (batch actions)
+                  - bedrock-agentcore:InvokeGateway             # Gateway request handling
+                  - bedrock-agentcore:GetGatewayTarget          # Tool routing/discovery
+                  - bedrock-agentcore:GetPolicyEngine           # Cedar engine lookup
+                  - bedrock-agentcore:InvokeInterceptor         # Request/response interceptor invocation
+                Resource:
+                  - !Sub "arn:aws:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:gateway/*"
+                  - !Sub "arn:aws:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:gateway-target/*"
+                  - !Sub "arn:aws:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:policy-engine/*"
+
+  # ---------------------------------------------------------------------------
+  # IAM — Amazon Bedrock AgentCore Runtime execution role
+  # ---------------------------------------------------------------------------
+  AgentCoreRuntimeRole:
+    Type: AWS::IAM::Role
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: CFN_NAG_W11
+            reason: "X-Ray actions (xray:PutTraceSegments, xray:PutTelemetryRecords, xray:GetSamplingRules, xray:GetSamplingTargets) do not support resource-level ARN restrictions — these are service-level operations"
+          - id: CFN_NAG_W28
+            reason: "Explicit role name required for SSM parameter references and cross-stack resource lookup in demo deployment scripts"
+      cdk_nag:
+        rules_to_suppress:
+          - id: AwsSolutions-IAM4
+            reason: "AmazonBedrockFullAccess is required for the AgentCore Runtime to invoke Bedrock models; no resource-level scoping is supported for model invocation at this time"
+          - id: AwsSolutions-IAM5
+            reason: "X-Ray actions require * resource — no ARN support. CloudWatch log group wildcard is scoped to AgentCore runtime prefix. AgentCore workload-identity wildcard is scoped to default directory"
+      guard:
+        SuppressedRules:
+          - IAM_NO_INLINE_POLICY_CHECK  # Inline policies are scoped exclusively to this role; sample code — converting to standalone managed policies adds complexity without security benefit
+    Properties:
+      RoleName: !Sub hr-dlp-runtime-role-${Environment}
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: {Service: bedrock-agentcore.amazonaws.com}
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonBedrockFullAccess
+      Policies:
+        - PolicyName: SSMPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: [ssm:GetParameter, ssm:PutParameter]
+                Resource: !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/app/hrdlp/*
+        - PolicyName: AgentCoreRuntimePolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              # CloudWatch Logs — runtime writes execution logs to its own log group.
+              # DescribeLogStreams/Groups required for the AgentCore service to
+              # locate and tail the runtime log group on behalf of the caller.
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                  - logs:DescribeLogStreams
+                  - logs:DescribeLogGroups
+                Resource:
+                  - !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/bedrock-agentcore/runtimes/*
+                  - !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:*
+              # X-Ray — distributed tracing for runtime invocations
+              - Effect: Allow
+                Action:
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
+                  - xray:GetSamplingRules
+                  - xray:GetSamplingTargets
+                Resource: "*"
+              # AgentCore — GetWorkloadAccessTokenForUserId is needed to authenticate
+              # outbound Gateway requests. CreateWorkloadIdentity is needed on first
+              # runtime initialisation to register the runtime's workload identity.
+              - Effect: Allow
+                Action:
+                  - bedrock-agentcore:GetWorkloadAccessTokenForUserId
+                  - bedrock-agentcore:CreateWorkloadIdentity
+                Resource:
+                  - !Sub "arn:aws:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:workload-identity-directory/default"
+                  - !Sub "arn:aws:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:workload-identity-directory/default/workload-identity/*"
+
+  # ---------------------------------------------------------------------------
+  # AWS Lambda — HR Data Provider
+  # ---------------------------------------------------------------------------
+  HRDataProviderLambda:
+    Type: AWS::Lambda::Function
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: CFN_NAG_W89
+            reason: "Sample code — VPC configuration adds significant deployment complexity (subnets, security groups, VPC endpoints) outside the scope of this AgentCore Gateway demonstration"
+      checkov:
+        skip:
+          - id: CKV_AWS_117
+            comment: "Sample code — VPC configuration adds significant deployment complexity (subnets, security groups, VPC endpoints) outside the scope of this AgentCore Gateway demonstration"
+      cdk_nag:
+        rules_to_suppress:
+          - id: AwsSolutions-L1
+            reason: "python3.13 is the latest stable AWS Lambda Python runtime"
+      guard:
+        SuppressedRules:
+          - LAMBDA_INSIDE_VPC  # Sample code — VPC configuration adds significant deployment complexity outside the scope of this AgentCore Gateway demonstration
+    Properties:
+      FunctionName: !Sub hr-data-provider-lambda-${Environment}
+      Description: HR data provider for role-based-hr-data-agent
+      Runtime: python3.13
+      Handler: lambda_handler.lambda_handler
+      Role: !GetAtt HRLambdaExecutionRole.Arn
+      Timeout: 30
+      MemorySize: 256
+      ReservedConcurrentExecutions: 100
+      DeadLetterConfig:
+        TargetArn: !GetAtt HRLambdaDLQ.Arn
+      Code:
+        S3Bucket: !Ref LambdaS3Bucket
+        S3Key: !Ref LambdaS3Key
+
+  # ---------------------------------------------------------------------------
+  # AWS Lambda — Request Interceptor
+  # ---------------------------------------------------------------------------
+  RequestInterceptorLambda:
+    Type: AWS::Lambda::Function
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: CFN_NAG_W89
+            reason: "Sample code — VPC adds deployment complexity outside the scope of this AgentCore Gateway demonstration"
+      checkov:
+        skip:
+          - id: CKV_AWS_117
+            comment: "Sample code — VPC adds deployment complexity outside the scope of this AgentCore Gateway demonstration"
+          - id: CKV_AWS_116
+            comment: "Interceptor is invoked synchronously by AgentCore Gateway — Dead Letter Queues apply only to async/event-source invocations"
+      cdk_nag:
+        rules_to_suppress:
+          - id: AwsSolutions-L1
+            reason: "python3.13 is the latest stable AWS Lambda Python runtime"
+      guard:
+        SuppressedRules:
+          - LAMBDA_INSIDE_VPC   # Sample code — VPC adds deployment complexity outside the scope of this AgentCore Gateway demonstration
+          - LAMBDA_DLQ_CHECK    # Interceptor is invoked synchronously by AgentCore Gateway — DLQs apply only to async/event-source invocations
+    Properties:
+      FunctionName: !Sub hr-request-interceptor-lambda-${Environment}
+      Description: AgentCore Gateway Request Interceptor — tenant injection + scope normalization
+      Runtime: python3.13
+      Handler: request_interceptor.lambda_handler
+      Role: !GetAtt HRLambdaExecutionRole.Arn
+      Timeout: 10
+      MemorySize: 128
+      ReservedConcurrentExecutions: 50
+      Code:
+        S3Bucket: !Ref LambdaS3Bucket
+        S3Key: !Ref InterceptorS3Key
+
+  # ---------------------------------------------------------------------------
+  # AWS Lambda — Response Interceptor
+  # ---------------------------------------------------------------------------
+  ResponseInterceptorLambda:
+    Type: AWS::Lambda::Function
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: CFN_NAG_W89
+            reason: "Sample code — VPC adds deployment complexity outside the scope of this AgentCore Gateway demonstration"
+      checkov:
+        skip:
+          - id: CKV_AWS_117
+            comment: "Sample code — VPC adds deployment complexity outside the scope of this AgentCore Gateway demonstration"
+          - id: CKV_AWS_116
+            comment: "Interceptor is invoked synchronously by AgentCore Gateway — Dead Letter Queues apply only to async/event-source invocations"
+      cdk_nag:
+        rules_to_suppress:
+          - id: AwsSolutions-L1
+            reason: "python3.13 is the latest stable AWS Lambda Python runtime"
+      guard:
+        SuppressedRules:
+          - LAMBDA_INSIDE_VPC   # Sample code — VPC adds deployment complexity outside the scope of this AgentCore Gateway demonstration
+          - LAMBDA_DLQ_CHECK    # Interceptor is invoked synchronously by AgentCore Gateway — DLQs apply only to async/event-source invocations
+    Properties:
+      FunctionName: !Sub hr-response-interceptor-lambda-${Environment}
+      Description: AgentCore Gateway Response Interceptor — DLP field-level redaction
+      Runtime: python3.13
+      Handler: response_interceptor.lambda_handler
+      Role: !GetAtt HRLambdaExecutionRole.Arn
+      Timeout: 10
+      MemorySize: 128
+      ReservedConcurrentExecutions: 50
+      Code:
+        S3Bucket: !Ref LambdaS3Bucket
+        S3Key: !Ref InterceptorS3Key
+
+  # ---------------------------------------------------------------------------
+  # SSM Parameters
+  # ---------------------------------------------------------------------------
+  SSMLambdaArn:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /app/hrdlp/lambda-arn
+      Type: String
+      Value: !GetAtt HRDataProviderLambda.Arn
+
+  SSMGatewayRoleArn:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /app/hrdlp/gateway-role-arn
+      Type: String
+      Value: !GetAtt AgentCoreGatewayRole.Arn
+
+  SSMRuntimeRoleArn:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /app/hrdlp/runtime-role-arn
+      Type: String
+      Value: !GetAtt AgentCoreRuntimeRole.Arn
+
+  SSMRequestInterceptorArn:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /app/hrdlp/request-interceptor-arn
+      Type: String
+      Value: !GetAtt RequestInterceptorLambda.Arn
+
+  SSMResponseInterceptorArn:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /app/hrdlp/response-interceptor-arn
+      Type: String
+      Value: !GetAtt ResponseInterceptorLambda.Arn
+
+Outputs:
+  DLQArn:
+    Value: !GetAtt HRLambdaDLQ.Arn
+    Export: {Name: !Sub "${AWS::StackName}-DLQArn"}
+  LambdaArn:
+    Value: !GetAtt HRDataProviderLambda.Arn
+    Export: {Name: !Sub "${AWS::StackName}-LambdaArn"}
+  GatewayRoleArn:
+    Value: !GetAtt AgentCoreGatewayRole.Arn
+    Export: {Name: !Sub "${AWS::StackName}-GatewayRoleArn"}
+  RuntimeRoleArn:
+    Value: !GetAtt AgentCoreRuntimeRole.Arn
+    Export: {Name: !Sub "${AWS::StackName}-RuntimeRoleArn"}
+  RequestInterceptorArn:
+    Value: !GetAtt RequestInterceptorLambda.Arn
+  ResponseInterceptorArn:
+    Value: !GetAtt ResponseInterceptorLambda.Arn
