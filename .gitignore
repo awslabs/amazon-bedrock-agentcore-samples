@@ -265,3 +265,5 @@ Dockerfile
 CLAUDE.md
 # AgentCore evaluations config
 01-tutorials/07-AgentCore-evaluations/00-prereqs/agents_config.json
+# Results directories
+results/
