@@ -1,7 +1,8 @@
 {
-  "deploymentType": "API_GATEWAY",
-  "domainName": "",
+  "domainName": "example.com",
   "hostedZoneName": "",
   "hostedZoneId": "",
-  "certificateArn": ""
+  "certificateArn": "",
+  "mcpMetadataKey": "com.example/target"
+
 }

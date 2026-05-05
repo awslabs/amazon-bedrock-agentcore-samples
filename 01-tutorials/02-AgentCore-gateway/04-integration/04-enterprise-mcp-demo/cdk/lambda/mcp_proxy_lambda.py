@@ -11,15 +11,28 @@ import base64
 import urllib.request
 import urllib.parse
 import urllib.error
+import logging
 from botocore.auth import SigV4Auth
 from botocore.awsrequest import AWSRequest
 import boto3
+
+# Configure logging
+logger = logging.getLogger()
+logger.setLevel(logging.DEBUG)
 
 # Configuration from environment variables
 GATEWAY_URL = os.environ.get("GATEWAY_URL", "")
 COGNITO_DOMAIN = os.environ.get("COGNITO_DOMAIN", "")
 CLIENT_ID = os.environ.get("CLIENT_ID", "")
 CLIENT_SECRET = os.environ.get("CLIENT_SECRET", "")
+CALLBACK_LAMBDA_URL = os.environ.get("CALLBACK_LAMBDA_URL", "")
+RESOURCE_SERVER_ID = os.environ.get("RESOURCE_SERVER_ID", "")
+MCP_METADATA_KEY = os.environ.get("MCP_METADATA_KEY", "com.example/target")
+
+# Allowed redirect URIs for the OAuth callback, passed from CDK as a
+# JSON-encoded list.  Must match the Cognito client's registered callbackUrls
+# to prevent open-redirect attacks.
+ALLOWED_REDIRECT_URIS = json.loads(os.environ.get("ALLOWED_REDIRECT_URIS", "[]"))
 
 
 def sign_request(request):
@@ -43,7 +56,7 @@ def sign_request(request):
 
 def lambda_handler(event, context):
     """Main Lambda handler - routes requests based on path."""
-    print(f"Event: {json.dumps(event)}")
+    logger.debug(f"Event: {json.dumps(event)}")
 
     # Support both ALB and API Gateway v2 (HTTP API) events
     # ALB uses: path, httpMethod
@@ -53,7 +66,7 @@ def lambda_handler(event, context):
         "http", {}
     ).get("method", "GET")
 
-    print(f"Method: {method}, Path: {path}")
+    logger.debug(f"Method: {method}, Path: {path}")
 
     if method == "OPTIONS":
         return {
@@ -79,7 +92,7 @@ def lambda_handler(event, context):
         return handle_token(event)
     elif path == "/register" and method == "POST":
         return handle_dcr(event)
-    elif path == "/mcp":
+    elif path == "/mcp" or path.endswith("/mcp"):
         return proxy_to_gateway(event)
     else:
         return {"statusCode": 404, "body": json.dumps({"error": "Not found"})}
@@ -103,7 +116,13 @@ def handle_oauth_metadata(event):
         "authorization_endpoint": f"{api_url}/authorize",
         "token_endpoint": f"{api_url}/token",
         "registration_endpoint": f"{api_url}/register",
-        "scopes_supported": ["openid", "profile", "email"],
+        "scopes_supported": [
+            "openid",
+            "profile",
+            "email",
+            f"{RESOURCE_SERVER_ID}/mcp.read",
+            f"{RESOURCE_SERVER_ID}/mcp.write",
+        ],
         "response_types_supported": ["code"],
         "grant_types_supported": ["authorization_code", "refresh_token"],
         "token_endpoint_auth_methods_supported": ["none", "client_secret_post"],
@@ -125,6 +144,13 @@ def handle_protected_resource_metadata(event):
             "resource": f"{api_url}/mcp",
             "authorization_servers": [api_url],
             "bearer_methods_supported": ["header"],
+            "scopes_supported": [
+                "openid",
+                "profile",
+                "email",
+                f"{RESOURCE_SERVER_ID}/mcp.read",
+                f"{RESOURCE_SERVER_ID}/mcp.write",
+            ],
         },
     )
 
@@ -135,40 +161,40 @@ def handle_authorize(event):
     Since Lambda is stateless, we encode the original redirect_uri in the state parameter
     so it survives across Lambda invocations.
     """
-    print("=== HANDLE_AUTHORIZE DEBUG ===")
+    logger.debug("=== HANDLE_AUTHORIZE DEBUG ===")
     params = event.get("queryStringParameters", {}) or {}
-    print(f"Original params: {json.dumps(params)}")
+    logger.debug(f"Original params: {json.dumps(params)}")
 
     # Remove unsupported parameters (Cognito doesn't support 'resource' parameter)
     if "resource" in params:
-        print(f"Removing 'resource' parameter: {params['resource']}")
+        logger.debug(f"Removing 'resource' parameter: {params['resource']}")
         params.pop("resource", None)
 
-    # Fix scope parameter: convert + to spaces (Cognito expects space-separated scopes)
+    # Fix scope parameter: URL-decode and normalize spaces
     if "scope" in params:
-        # In URL encoding, + represents a space, so replace + with actual spaces
-        params["scope"] = params["scope"].replace("+", " ")
-        print(f"Fixed scope parameter: {params['scope']}")
+        # URL-decode first (handles %2F etc.), then normalize + to spaces
+        params["scope"] = urllib.parse.unquote(params["scope"]).replace("+", " ")
+        logger.debug(f"Fixed scope parameter: {params['scope']}")
 
     # Override client_id
-    print(f"Original client_id: {params.get('client_id', 'N/A')}")
+    logger.debug(f"Original client_id: {params.get('client_id', 'N/A')}")
     params["client_id"] = CLIENT_ID
-    print(f"Overridden client_id: {CLIENT_ID}")
+    logger.debug(f"Overridden client_id: {CLIENT_ID}")
 
     # Encode original redirect_uri and state together in a new state parameter
     original_redirect_uri = params.get("redirect_uri", "")
     original_state = params.get("state", "")
 
-    print(f"Original redirect_uri (URL encoded): {original_redirect_uri}")
-    print(f"Original state (URL encoded): {original_state}")
+    logger.debug(f"Original redirect_uri (URL encoded): {original_redirect_uri}")
+    logger.debug(f"Original state (URL encoded): {original_state}")
 
     if original_redirect_uri:
         # URL-decode both state and redirect_uri before storing
         decoded_state = urllib.parse.unquote(original_state)
         decoded_redirect_uri = urllib.parse.unquote(original_redirect_uri)
 
-        print(f"Decoded state: {decoded_state}")
-        print(f"Decoded redirect_uri: {decoded_redirect_uri}")
+        logger.debug(f"Decoded state: {decoded_state}")
+        logger.debug(f"Decoded redirect_uri: {decoded_redirect_uri}")
 
         # Create compound state: base64(json({original_state, original_redirect_uri}))
         compound_state = {
@@ -180,18 +206,18 @@ def handle_authorize(event):
         ).decode()
         params["state"] = encoded_state
 
-        print(f"Compound state created: {json.dumps(compound_state)}")
-        print(f"Encoded state: {encoded_state}")
+        logger.debug(f"Compound state created: {json.dumps(compound_state)}")
+        logger.debug(f"Encoded state: {encoded_state}")
 
         # Replace redirect_uri with our callback
         api_url = get_api_url(event)
         params["redirect_uri"] = f"{api_url}/callback"
-        print(f"New redirect_uri: {params['redirect_uri']}")
+        logger.debug(f"New redirect_uri: {params['redirect_uri']}")
 
-    print(f"Final params being sent to Cognito: {json.dumps(params)}")
+    logger.debug(f"Final params being sent to Cognito: {json.dumps(params)}")
     redirect_url = f"{COGNITO_DOMAIN.rstrip('/')}/oauth2/authorize?{urllib.parse.urlencode(params)}"
-    print(f"Redirect URL: {redirect_url}")
-    print("=== END HANDLE_AUTHORIZE DEBUG ===")
+    logger.debug(f"Redirect URL: {redirect_url}")
+    logger.debug("=== END HANDLE_AUTHORIZE DEBUG ===")
 
     return {"statusCode": 302, "headers": {"Location": redirect_url}, "body": ""}
 
@@ -206,10 +232,10 @@ def handle_callback(event):
     encoded_state = params.get("state", "")
     error = params.get("error", "")
 
-    print("=== HANDLE_CALLBACK DEBUG ===")
-    print(f"Code: {code}")
-    print(f"State (URL encoded): {encoded_state}")
-    print(f"Error: {error}")
+    logger.debug("=== HANDLE_CALLBACK DEBUG ===")
+    logger.debug(f"Code: {code}")
+    logger.debug(f"State (URL encoded): {encoded_state}")
+    logger.debug(f"Error: {error}")
 
     if error:
         return json_response(400, {"error": error})
@@ -218,32 +244,54 @@ def handle_callback(event):
     try:
         # First, URL-decode the state parameter (Cognito sends it URL-encoded)
         encoded_state_clean = urllib.parse.unquote(encoded_state)
-        print(f"State (URL decoded): {encoded_state_clean}")
+        logger.debug(f"State (URL decoded): {encoded_state_clean}")
 
         # Handle any remaining URL encoding issues (spaces become + or %20)
         encoded_state_clean = encoded_state_clean.replace(" ", "+")
 
         # The state should now be proper base64, no padding needed
-        print(f"State (ready for base64 decode): {encoded_state_clean}")
-        print(f"State length: {len(encoded_state_clean)}")
+        logger.debug(f"State (ready for base64 decode): {encoded_state_clean}")
+        logger.debug(f"State length: {len(encoded_state_clean)}")
 
         decoded = base64.urlsafe_b64decode(encoded_state_clean).decode()
-        print(f"Decoded JSON: {decoded}")
+        logger.debug(f"Decoded JSON: {decoded}")
 
         compound_state = json.loads(decoded)
         original_state = compound_state.get("state", "")
         original_redirect_uri = compound_state.get("redirect_uri", "")
 
-        print(f"Original state: {original_state}")
-        print(f"Original redirect_uri: {original_redirect_uri}")
-        print("=== END HANDLE_CALLBACK DEBUG ===")
+        logger.debug(f"Original state: {original_state}")
+        logger.debug(f"Original redirect_uri: {original_redirect_uri}")
+        logger.debug("=== END HANDLE_CALLBACK DEBUG ===")
     except Exception as e:
-        print(f"Error decoding state: {e}, state={encoded_state}")
-        print("=== END HANDLE_CALLBACK DEBUG (ERROR) ===")
+        logger.error(f"Error decoding state: {e}, state={encoded_state}")
+        logger.error("=== END HANDLE_CALLBACK DEBUG (ERROR) ===")
         return json_response(400, {"error": "Invalid state parameter"})
 
     if not original_redirect_uri:
         return json_response(400, {"error": "Missing redirect_uri in state"})
+
+    # Validate redirect_uri against the allowlist to prevent open-redirect attacks.
+    # A crafted state blob could otherwise redirect the authorization code to an
+    # attacker-controlled URL.
+    #
+    # Localhost URIs with any port are allowed because IDE clients (VS Code, Kiro)
+    # spin up an ephemeral local server on a random port for the OAuth callback.
+    normalized = original_redirect_uri.rstrip("/")
+    parsed = urllib.parse.urlparse(normalized)
+    is_localhost = parsed.scheme == "http" and parsed.hostname in (
+        "localhost",
+        "127.0.0.1",
+    )
+    allowed_normalized = [u.rstrip("/") for u in ALLOWED_REDIRECT_URIS]
+    if not is_localhost and normalized not in allowed_normalized:
+        logger.warning(
+            f"Rejected redirect_uri not in allowlist: {original_redirect_uri}"
+        )
+        logger.debug(f"Normalized redirect_uri: {normalized}")
+        logger.debug(f"Allowed URIs (raw): {ALLOWED_REDIRECT_URIS}")
+        logger.debug(f"Allowed URIs (normalized): {allowed_normalized}")
+        return json_response(400, {"error": "invalid_redirect_uri"})
 
     # Forward to VS Code's callback with original state
     forward_params = urllib.parse.urlencode({"code": code, "state": original_state})
@@ -302,18 +350,80 @@ def handle_dcr(event):
 
 
 def proxy_to_gateway(event):
-    """Forward MCP requests to AgentCore Gateway."""
-    print("proxy_to_gateway")
+    """Forward MCP requests to AgentCore Gateway with optional target filtering."""
+    logger.info("proxy_to_gateway")
     path = event.get("path", "/")
     method = event.get("httpMethod") or event.get("requestContext", {}).get(
         "http", {}
     ).get("method", "GET")
     headers = event.get("headers", {})
     body = event.get("body", "")
-    print(f"Proxying to gateway - Method: {method}, Path: {path}")
-    print(f"Headers: {json.dumps(headers)}")
+    logger.info(f"Proxying to gateway - Method: {method}, Path: {path}")
+    logger.debug(f"Headers: {json.dumps(headers)}")
     if event.get("isBase64Encoded") and body:
         body = base64.b64decode(body)
+
+    # === EXTRACT TARGET FROM PATH ===
+    # /mcp → no filter (return all tools)
+    # /gitlab/mcp → filter = "gitlab"
+    # /weather/mcp → filter = "weather"
+    target_filter = None
+
+    if path and path != "/mcp":
+        # Remove leading/trailing slashes and split
+        parts = path.strip("/").split("/")
+
+        # Check if path has format: <target>/mcp
+        if len(parts) == 2 and parts[-1] == "mcp":
+            target_filter = parts[0]
+            logger.info(f"Target filter extracted from path: '{target_filter}'")
+        elif len(parts) > 2 and parts[-1] == "mcp":
+            # Handle nested paths like /api/v1/gitlab/mcp
+            target_filter = parts[-2]
+            logger.info(f"Target filter extracted from nested path: '{target_filter}'")
+        else:
+            logger.debug(f"Path '{path}' does not match target pattern, no filtering")
+    else:
+        logger.debug("Default path '/mcp' - returning all tools (no filtering)")
+
+    # === INJECT INTO MCP _meta ONLY IF TARGET FILTER EXISTS ===
+    if method == "POST" and body:
+        try:
+            # Parse MCP JSON-RPC request
+            mcp_request = json.loads(body if isinstance(body, str) else body.decode())
+
+            # Only inject _meta if we have a target filter AND it's a tool-related method
+            if target_filter and mcp_request.get("method") in [
+                "tools/list",
+                "tools/call",
+            ]:
+                # Ensure _meta exists
+                if "_meta" not in mcp_request:
+                    mcp_request["_meta"] = {}
+
+                # Inject target filter using reverse DNS notation
+                mcp_request["_meta"][MCP_METADATA_KEY] = target_filter
+
+                logger.info(f"Injected _meta: {MCP_METADATA_KEY} = '{target_filter}'")
+                logger.debug(
+                    f"Modified MCP request: {json.dumps(mcp_request, indent=2)}"
+                )
+            else:
+                if not target_filter:
+                    logger.debug(
+                        "No target filter - NOT injecting _meta (will return all tools)"
+                    )
+                else:
+                    logger.debug(
+                        f"Method '{mcp_request.get('method')}' - not injecting _meta"
+                    )
+
+            # Re-serialize (possibly modified) request
+            body = json.dumps(mcp_request).encode()
+
+        except json.JSONDecodeError as e:
+            logger.error(f"Failed to parse MCP request: {e}")
+            # Continue with original body if parsing fails
 
     # target_url = f"{GATEWAY_URL.rstrip('/mcp')}{path}" if path != "/" else GATEWAY_URL
     target_url = GATEWAY_URL
@@ -328,7 +438,7 @@ def proxy_to_gateway(event):
         if headers.get(h):
             req_headers[h.title()] = headers[h]
 
-    print(json.dumps(req_headers))
+    logger.debug(json.dumps(req_headers))
     try:
         if method == "POST" and body:
             data = body.encode() if isinstance(body, str) else body
@@ -354,7 +464,7 @@ def proxy_to_gateway(event):
             if auth:
                 req.add_header("Authorization", auth)
 
-        print(
+        logger.debug(
             "{}\n{}\r\n{}\r\n\r\n{}".format(
                 "-----------START-----------",
                 (req.method or "GET") + " " + req.full_url,
@@ -365,8 +475,8 @@ def proxy_to_gateway(event):
 
         with urllib.request.urlopen(req, timeout=60) as resp:
             resp_body = resp.read().decode()
-            print(resp_body)
-            print(resp.headers)
+            logger.debug(resp_body)
+            logger.debug(resp.headers)
             resp_headers = {
                 "Content-Type": resp.headers.get("Content-Type", "application/json")
             }
@@ -387,7 +497,9 @@ def proxy_to_gateway(event):
                 )
                 www_auth_rewritten = www_auth.replace(gateway_base, api_url)
                 resp_headers["WWW-Authenticate"] = www_auth_rewritten
-                print(f"Rewrote WWW-Authenticate: {www_auth} -> {www_auth_rewritten}")
+                logger.debug(
+                    f"Rewrote WWW-Authenticate: {www_auth} -> {www_auth_rewritten}"
+                )
 
             return {
                 "statusCode": resp.status,
@@ -396,7 +508,7 @@ def proxy_to_gateway(event):
             }
     except urllib.error.HTTPError as e:
         error = e.read().decode()
-        print(f"Gateway error response: {error}")
+        logger.error(f"Gateway error response: {error}")
 
         # Rewrite any Gateway URLs in error response body
         api_url = get_api_url(event)
@@ -404,7 +516,7 @@ def proxy_to_gateway(event):
         gateway_base = GATEWAY_URL[:-4] if GATEWAY_URL.endswith("/mcp") else GATEWAY_URL
         error_rewritten = error.replace(gateway_base, api_url)
         if error != error_rewritten:
-            print("Rewrote Gateway URL in error body")
+            logger.debug("Rewrote Gateway URL in error body")
 
         resp_headers = {"Content-Type": "application/json"}
 
@@ -413,7 +525,7 @@ def proxy_to_gateway(event):
         if www_auth:
             www_auth_rewritten = www_auth.replace(gateway_base, api_url)
             resp_headers["WWW-Authenticate"] = www_auth_rewritten
-            print(
+            logger.debug(
                 f"Rewrote WWW-Authenticate in error: {www_auth} -> {www_auth_rewritten}"
             )
 

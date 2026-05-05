@@ -12,8 +12,8 @@ This CDK infrastructure deploys a complete MCP gateway solution that enables VS 
 - **Policy-Based Access Control** with custom Cedar policies
 - **Request/Response Interception** for logging and transformation
 - **PII Protection** using Bedrock Guardrails
-- **Flexible Deployment Options** (ALB or API Gateway)
 - **Custom Domain Support** with SSL/TLS
+- **ALB Access Logging** to S3 with encryption and lifecycle management
 
 ## Architecture
 
@@ -25,10 +25,8 @@ This CDK infrastructure deploys a complete MCP gateway solution that enables VS 
 - **OAuth Clients**:
   - VS Code Client (Authorization Code Grant with PKCE)
 
-#### 2. **API Gateway Layer**
-Choose between two deployment options:
-- **Application Load Balancer (ALB)**: Production-grade with custom domains and SSL/TLS
-- **API Gateway HTTP API**: Serverless, cost-effective for development/testing
+#### 2. **Application Load Balancer**
+Production-grade internet-facing ALB with custom domain, SSL/TLS, WAF, and access logging.
 
 #### 3. **MCP Proxy Lambda**
 Central component that handles:
@@ -90,12 +88,12 @@ Example Lambda functions that implement MCP tools:
 | Amazon Cognito | OAuth 2.0 authentication and user management |
 | AWS Lambda | Serverless compute for proxy, MCP servers, and policy engine |
 | Amazon Bedrock AgentCore | MCP gateway and protocol handling |
-| Application Load Balancer | Production routing with custom domains (optional) |
-| API Gateway HTTP API | Serverless API endpoint (optional) |
-| Amazon VPC | Network isolation for ALB deployment |
+| Application Load Balancer | Internet-facing ALB with TLS, WAF, and access logging |
+| Amazon VPC | Network isolation with private subnets and VPC endpoints |
 | AWS IAM | Identity and access management |
 | Amazon Route53 | DNS management for custom domains |
 | AWS Certificate Manager | SSL/TLS certificates |
+| Amazon S3 | ALB access log storage (encrypted, 90-day lifecycle) |
 | Bedrock Guardrails | Content filtering and PII protection |
 
 ## Prerequisites
@@ -116,7 +114,7 @@ Example Lambda functions that implement MCP tools:
 ### 1. Install Dependencies
 
 ```bash
-cd enterprise-mcp-infra/cdk
+cd cdk
 npm install
 ```
 
@@ -130,36 +128,9 @@ cdk bootstrap aws://ACCOUNT-ID/REGION
 
 Edit `cdk/cdk.context.json` to configure your deployment:
 
-#### Option A: ALB Deployment with Custom Domain
-
 ```json
 {
-  "deploymentType": "ALB",
   "domainName": "enterprise-mcp",
-  "hostedZoneName": "example.com",
-  "hostedZoneId": "Z1234567890ABC",
-  "certificateArn": "arn:aws:acm:region:account:certificate/xxx"
-}
-```
-
-#### Option B: API Gateway Deployment (Default URL)
-
-```json
-{
-  "deploymentType": "API_GATEWAY",
-  "domainName": "",
-  "hostedZoneName": "",
-  "hostedZoneId": "",
-  "certificateArn": ""
-}
-```
-
-#### Option C: API Gateway with Custom Domain
-
-```json
-{
-  "deploymentType": "API_GATEWAY",
-  "domainName": "enterprise-mcp.example.com",
   "hostedZoneName": "example.com",
   "hostedZoneId": "Z1234567890ABC",
   "certificateArn": "arn:aws:acm:region:account:certificate/xxx"
@@ -170,11 +141,10 @@ Edit `cdk/cdk.context.json` to configure your deployment:
 
 | Parameter | Description | Required | Default |
 |-----------|-------------|----------|---------|
-| `deploymentType` | Deployment type: `ALB` or `API_GATEWAY` | Yes | `ALB` |
-| `domainName` | Custom domain name (e.g., `enterprise-mcp` for ALB, or full domain for API Gateway) | No (API Gateway only) | `""` |
-| `hostedZoneName` | Route53 hosted zone name (e.g., `example.com`) | Only with custom domain | `""` |
-| `hostedZoneId` | Route53 hosted zone ID (e.g., `Z1234567890ABC`) | Only with custom domain | `""` |
-| `certificateArn` | ACM certificate ARN for HTTPS | Only with custom domain | `""` |
+| `domainName` | Custom domain name (e.g., `enterprise-mcp`) | Yes | `""` |
+| `hostedZoneName` | Route53 hosted zone name (e.g., `example.com`) | Yes | `""` |
+| `hostedZoneId` | Route53 hosted zone ID (e.g., `Z1234567890ABC`) | Yes | `""` |
+| `certificateArn` | ACM certificate ARN for HTTPS | Yes | `""` |
 
 ### 4. Deploy the Stack
 
@@ -182,11 +152,7 @@ Edit `cdk/cdk.context.json` to configure your deployment:
 cdk deploy
 ```
 
-You can also override context values via command line:
-
-```bash
-cdk deploy -c deploymentType=API_GATEWAY
-```
+> **Note:** The stack is pinned to `us-east-1` in `cdk/bin/enterprise-mcp-infra.ts`. Update the `region` value there if you need a different region.
 
 ### 5. Save CDK Outputs
 
@@ -208,25 +174,26 @@ EnterpriseMcpInfraStack.Gateway = agentcore-mcp-gateway-xxxxx
 
 #### Using the Automated Script (Recommended)
 
-1. **Edit** `enterprise-mcp-infra/scripts/script.py`:
+1. **Edit** `scripts/script.py`:
    - Replace the `output` variable content with your actual CDK outputs (from step 4)
    - Customize the users list with your desired email addresses and passwords
 
 2. **Run the script** to create users:
 ```bash
-cd enterprise-mcp-infra/scripts
+cd scripts
 python script.py
 ```
 
 The script will:
 - Parse the CDK outputs to extract the User Pool ID
-- Create two default users: `vscode-admin@example.com` and `vscode-user@example.com`
+- Create three default users (admin, regular, and read-only)
 - Set permanent passwords (no need for password reset on first login)
 - Skip users that already exist
 
 **Default Users Created:**
 - `vscode-admin@example.com` / `TempPassword123!`
 - `vscode-user@example.com` / `TempPassword1234!`
+- `vscode-readonly@example.com` / `TempPassword1235!`
 
 #### Manual User Creation (Alternative)
 
@@ -374,15 +341,26 @@ cdk deploy
 
 ### Lambda Logs
 
+The CDK stack outputs the function names for the two most commonly debugged Lambdas (`ProxyLambdaName`, `PreTokenGenerationLambdaName`). For the others, look up the auto-generated name in the AWS Console (Lambda → Functions, filter by stack name) or use the AWS CLI:
+
 ```bash
-# MCP Proxy Lambda
-aws logs tail /aws/lambda/<ProxyLambdaName> --follow
+# MCP Proxy Lambda – name from CDK output: EnterpriseMcpInfraStack.ProxyLambdaName
+aws logs tail /aws/lambda/$(aws cloudformation describe-stacks \
+  --stack-name EnterpriseMcpInfraStack \
+  --query "Stacks[0].Outputs[?OutputKey=='ProxyLambdaName'].OutputValue" \
+  --output text) --follow
 
-# Policy Engine Lambda
-aws logs tail /aws/lambda/<PolicyEngineLambdaName> --follow
+# Pre-Token Generation Lambda – name from CDK output: EnterpriseMcpInfraStack.PreTokenGenerationLambdaName
+aws logs tail /aws/lambda/$(aws cloudformation describe-stacks \
+  --stack-name EnterpriseMcpInfraStack \
+  --query "Stacks[0].Outputs[?OutputKey=='PreTokenGenerationLambdaName'].OutputValue" \
+  --output text) --follow
 
-# Interceptor Lambda
-aws logs tail /aws/lambda/<InterceptorLambdaName> --follow
+# Interceptor Lambda – look up name in AWS Console (filter by stack: EnterpriseMcpInfraStack)
+# aws logs tail /aws/lambda/<McpInterceptorLambda-name> --follow
+
+# Policy Engine Lambda – look up name in AWS Console (filter by stack: EnterpriseMcpInfraStack)
+# aws logs tail /aws/lambda/<AgentCorePolicyEngine-PolicyFunction-name> --follow
 ```
 
 ### CloudWatch Insights Queries
@@ -401,24 +379,66 @@ fields @timestamp, method, path, statusCode
 | sort @timestamp desc
 ```
 
-## Security Considerations
+## Security Posture
 
-### Authentication
+### Implemented
+
+| Feature | Details |
+|---|---|
+| Cognito User Pool | Admin-only sign-up, strong password policy, Pre-Token Generation Lambda for audience/role claims |
+| OAuth 2.0 | Authorization Code Grant with custom scopes (`mcp.read`, `mcp.write`) |
+| JWT audience validation | Proxy Lambda validates `aud` claim before forwarding to AgentCore |
+| AgentCore Cognito authorizer | Token verified a second time by AWS at the gateway level |
+| Cedar policy engine | Fine-grained per-user tool access in ENFORCE mode |
+| Bedrock Guardrails | PII masking (address, name, email) and blocking (credit card numbers) via interceptor |
+| Lambda-in-VPC proxy | Private subnet, NAT egress only |
+| VPC Interface Endpoint | AgentCore traffic stays on AWS private network, never crosses public internet |
+| ALB TLS termination | TLS 1.2+ on custom domain via ACM certificate |
+| ALB `dropInvalidHeaderFields` | Rejects malformed headers (request-smuggling mitigation) |
+| ALB Host-header gating | Every forwarding rule requires Host header match; raw `*.elb` DNS returns 404 |
+| HTTP → HTTPS redirect | Permanent redirect on port 80 |
+| WAF WebACL | IP rate limit (1,000 req/5 min), AWS IP Reputation list, Core Rule Set (OWASP Top 10), Known Bad Inputs |
+| WAF Bot Control | COMMON level in COUNT mode (switch to BLOCK after traffic validation) |
+| Reserved Lambda concurrency | Caps on all functions to limit DoS blast radius |
+| Gateway resource policy | Restricts `InvokeGateway` to the VPC |
+| Shield Standard | Automatic L3/L4 DDoS protection on public ALBs |
+| ALB access logging | S3 bucket with SSE, public access blocked, SSL enforced, 90-day lifecycle expiration |
+| Redirect URI allowlist | `handle_callback` validates `redirect_uri` against registered Cognito callback URLs before issuing 302 redirects (prevents open-redirect / auth code theft) |
+| Per-Lambda IAM roles | Four dedicated least-privilege roles: `preTokenLambdaRole` (Cognito trigger), `proxyLambdaRole` (VPC + AgentCore invoke), `interceptorLambdaRole` (Bedrock Guardrails only), `toolLambdaRole` (CloudWatch Logs only) |
+
+### Not Implemented – Consider Before Production
+
+| Feature | Details |
+|---|---|
+| Shield Advanced | L7 DDoS protection, SRT access, cost protection (subscription required) |
+| Bot Control TARGETED | Higher inspection level for WAF Bot Control (additional cost) |
+| CloudTrail / Security Hub | Centralized audit and security findings |
+| ALB access-log Athena workgroup | Query access logs via Athena for forensic analysis |
+| GuardDuty findings | Threat detection integration |
+| MFA enforcement | Cognito User Pool is MFA-ready but not enforced (`mfa: cognito.Mfa.REQUIRED`) |
+| Scoped IAM resources | Several policies use `Resource: "*"` — scope to specific ARNs |
+| PKCE enforcement | Verify PKCE is enforced on the Cognito public client (no client secret) |
+| Log encryption | Lambda CloudWatch logs use default settings (no KMS CMK encryption) |
+| Log retention policy | Lambda CloudWatch log retention is indefinite by default |
+
+### Additional Security Details
+
+#### Authentication
 - OAuth 2.0 with PKCE (Proof Key for Code Exchange)
 - JWT tokens with custom claims
 - Secure token storage in VS Code
 
-### Authorization
+#### Authorization
 - Policy-based access control using Cedar
 - User attribute injection via Lambda triggers
 - Gateway-level authorization enforcement
 
-### Data Protection
+#### Data Protection
 - SSL/TLS encryption in transit
 - PII anonymization via Bedrock Guardrails
-- VPC isolation for ALB deployments
+- VPC isolation with private subnets and VPC endpoints
 
-### Secrets Management
+#### Secrets Management
 - Client secrets stored in environment variables
 - OAuth tokens never exposed to logs
 - IAM role-based access for Lambda functions
@@ -452,10 +472,12 @@ cdk destroy
 
 ## Architecture Decisions
 
-### Why Two Deployment Options?
+### Why ALB?
 
-- **ALB**: Production environments requiring custom domains, SSL/TLS, and fine-grained routing
-- **API Gateway**: Development/testing, serverless preference, cost optimization
+- Production-grade with custom domains, SSL/TLS, and fine-grained routing
+- WAF WebACL integration for OWASP Top 10, rate limiting, and bot control
+- Access logging to S3 for forensic analysis
+- VPC integration for network isolation
 
 ### Why Lambda for MCP Servers?
 
