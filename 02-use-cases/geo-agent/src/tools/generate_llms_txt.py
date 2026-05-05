@@ -6,7 +6,7 @@ specification by Jeremy Howard (Answer.AI, September 2024).
 """
 
 from strands import tool
-from tools.fetch import fetch_page_text
+from tools.fetch import fetch_page_text, _validate_url
 
 import requests
 
@@ -63,10 +63,12 @@ def _discover_sitemap_urls(base_url: str) -> str:
     from urllib.parse import urlparse
     parsed = urlparse(base_url)
     origin = f"{parsed.scheme}://{parsed.netloc}"
+    sitemap_url = f"{origin}/sitemap.xml"
     urls_info = []
     try:
+        _validate_url(sitemap_url)
         resp = requests.get(
-            f"{origin}/sitemap.xml",
+            sitemap_url,
             headers={"User-Agent": "Mozilla/5.0 (compatible; GEOAgent/1.0)"},
             timeout=15,
         )
