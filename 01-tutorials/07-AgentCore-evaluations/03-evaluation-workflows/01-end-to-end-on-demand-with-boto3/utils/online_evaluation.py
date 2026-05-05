@@ -21,8 +21,8 @@ def invoke_agent(
     agentcore_client: Any,
     agent_arn: str,
     prompt: str,
-    session_id: str = '',
-    qualifier: str = "DEFAULT"
+    session_id: str = "",
+    qualifier: str = "DEFAULT",
 ) -> Tuple[str, List[str]]:
     """Invoke agent runtime and return session ID with response content.
 
@@ -39,19 +39,21 @@ def invoke_agent(
         Tuple of (session_id, content_list)
     """
     api_params = {
-        'agentRuntimeArn': agent_arn,
-        'qualifier': qualifier,
-        'payload': json.dumps({"prompt": prompt})
+        "agentRuntimeArn": agent_arn,
+        "qualifier": qualifier,
+        "payload": json.dumps({"prompt": prompt}),
     }
 
     if session_id:
-        api_params['runtimeSessionId'] = session_id
+        api_params["runtimeSessionId"] = session_id
 
     boto3_response = agentcore_client.invoke_agent_runtime(**api_params)
 
     returned_session_id = (
-        boto3_response['ResponseMetadata']['HTTPHeaders'].get('x-amzn-bedrock-agentcore-runtime-session-id')
-        or boto3_response.get('runtimeSessionId')
+        boto3_response["ResponseMetadata"]["HTTPHeaders"].get(
+            "x-amzn-bedrock-agentcore-runtime-session-id"
+        )
+        or boto3_response.get("runtimeSessionId")
         or session_id
     )
 
@@ -81,7 +83,7 @@ def evaluate_session(
     agent_id: str,
     region: str,
     experiment_name: str,
-    metadata: Optional[Dict[str, Any]] = None
+    metadata: Optional[Dict[str, Any]] = None,
 ) -> Any:
     """Evaluate a session with specified evaluators.
 
@@ -111,7 +113,7 @@ def evaluate_session(
         auto_save_input=True,
         auto_save_output=True,
         auto_create_dashboard=True,
-        metadata=eval_metadata
+        metadata=eval_metadata,
     )
 
     return results
@@ -126,7 +128,7 @@ def evaluate_session_comprehensive(
     flexible_evaluators: List[str],
     session_only_evaluators: List[str],
     span_only_evaluators: List[str],
-    metadata: Optional[Dict[str, Any]] = None
+    metadata: Optional[Dict[str, Any]] = None,
 ) -> List[Any]:
     """Run all evaluators across appropriate scopes.
 
@@ -149,7 +151,7 @@ def evaluate_session_comprehensive(
     evaluation_configs = [
         {"evaluators": flexible_evaluators, "scope": "session"},
         {"evaluators": session_only_evaluators, "scope": "session"},
-        {"evaluators": span_only_evaluators, "scope": "span"}
+        {"evaluators": span_only_evaluators, "scope": "span"},
     ]
 
     for config in evaluation_configs:
@@ -163,7 +165,7 @@ def evaluate_session_comprehensive(
                     agent_id=agent_id,
                     region=region,
                     experiment_name=experiment_name,
-                    metadata=metadata
+                    metadata=metadata,
                 )
                 all_results.extend(results.results)
             except Exception as e:
@@ -180,14 +182,14 @@ def invoke_and_evaluate(
     region: str,
     prompt: str,
     experiment_name: str,
-    session_id: str = '',
+    session_id: str = "",
     metadata: Optional[Dict[str, Any]] = None,
     evaluators: Optional[List[str]] = None,
     scope: str = "session",
     delay: int = 90,
     flexible_evaluators: Optional[List[str]] = None,
     session_only_evaluators: Optional[List[str]] = None,
-    span_only_evaluators: Optional[List[str]] = None
+    span_only_evaluators: Optional[List[str]] = None,
 ) -> Tuple[str, List[Any]]:
     """Complete workflow: invoke agent, wait for log propagation, then evaluate.
 
@@ -215,14 +217,18 @@ def invoke_and_evaluate(
         agentcore_client=agentcore_client,
         agent_arn=agent_arn,
         prompt=prompt,
-        session_id=session_id
+        session_id=session_id,
     )
 
     time.sleep(delay)
 
     if evaluators is None:
-        if not all([flexible_evaluators, session_only_evaluators, span_only_evaluators]):
-            raise ValueError("Must provide evaluator lists for comprehensive evaluation")
+        if not all(
+            [flexible_evaluators, session_only_evaluators, span_only_evaluators]
+        ):
+            raise ValueError(
+                "Must provide evaluator lists for comprehensive evaluation"
+            )
 
         results = evaluate_session_comprehensive(
             eval_client=eval_client,
@@ -233,7 +239,7 @@ def invoke_and_evaluate(
             flexible_evaluators=flexible_evaluators,
             session_only_evaluators=session_only_evaluators,
             span_only_evaluators=span_only_evaluators,
-            metadata=metadata
+            metadata=metadata,
         )
     else:
         eval_results = evaluate_session(
@@ -244,7 +250,7 @@ def invoke_and_evaluate(
             agent_id=agent_id,
             region=region,
             experiment_name=experiment_name,
-            metadata=metadata
+            metadata=metadata,
         )
         results = eval_results.results
 

@@ -26,7 +26,9 @@ SOURCE_LOG_GROUP = "your-source-log-group"
 EVAL_RESULTS_LOG_GROUP = "your-evaluation-log-group"
 
 # Full path to evaluation results log group (auto-constructed from above)
-EVAL_RESULTS_LOG_GROUP_FULL = f"/aws/bedrock-agentcore/evaluations/results/{EVAL_RESULTS_LOG_GROUP}"
+EVAL_RESULTS_LOG_GROUP_FULL = (
+    f"/aws/bedrock-agentcore/evaluations/results/{EVAL_RESULTS_LOG_GROUP}"
+)
 
 
 # =============================================================================
@@ -91,6 +93,7 @@ RESULTS_JSON_PATH = "multi_session_results.json"
 # =============================================================================
 # Helper Function
 # =============================================================================
+
 
 def setup_cloudwatch_environment() -> None:
     """Configure environment variables for CloudWatch logging."""

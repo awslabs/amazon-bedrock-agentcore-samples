@@ -112,7 +112,7 @@ In these tutorials we will cover the following functionality:
 - [Pre-requisites](00-prereqs): Creating a sample agent to use during the evaluation tutorials
 - [Create a custom evaluator](01-creating-custom-evaluators): Learn about built-in and custom metrics, and create a custom metric for evaluating your agents
 - [Using on-demand and online evaluations](02-running-evaluations): Learn how to use on-demand and online evaluations to build, optimize, and monitor your agent at scale
-- [Advanced](03-advanced): Explore advanced capabilities including using the boto3 SDK to query Amazon CloudWatch logs for on-demand evaluation, and creating local dashboards to visualize experiments with different agent configuration
+- [Advanced](03-evaluation-workflows): Explore advanced capabilities including using the boto3 SDK to query Amazon CloudWatch logs for on-demand evaluation, and creating local dashboards to visualize experiments with different agent configuration
 
 ## Cleanup
 

@@ -5,6 +5,7 @@ from strands.models import BedrockModel
 
 app = BedrockAgentCoreApp()
 
+
 @tool
 def weather():
     """Get current weather conditions."""

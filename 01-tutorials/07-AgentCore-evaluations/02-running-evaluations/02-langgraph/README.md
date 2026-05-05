@@ -238,5 +238,5 @@ aws iam delete-role \
 After completing these LangGraph-specific tutorials:
 
 - Explore the [Strands examples](../01-strands/) to see how evaluations work with different frameworks
-- Proceed to [Tutorial 03: Advanced](../../03-advanced) for advanced evaluation techniques
+- Proceed to [Tutorial 03: Advanced](../../03-evaluation-workflows) for advanced evaluation techniques
 - Review your evaluation results in the CloudWatch GenAI Observability Dashboard

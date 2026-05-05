@@ -311,7 +311,7 @@ actor's profile and goal, and the actor drives a multi-turn conversation with yo
 agent until the goal is met or the turn limit is reached. To learn more and test
 this, see the companion notebook:
 
-**[`Strands-AgentCore-ShoppingConcierge.ipynb`](../03-advanced/02-simulating-agent-interactions/Strands-AgentCore-ShoppingConcierge.ipynb)**
+**[`Strands-AgentCore-ShoppingConcierge.ipynb`](../03-evaluation-workflows/02-simulating-agent-interactions/Strands-AgentCore-ShoppingConcierge.ipynb)**
 
 That notebook deploys a Shopping Concierge agent, runs five simulated customer
 scenarios (headphones purchase, order tracking, returns, multi-item cart, budget

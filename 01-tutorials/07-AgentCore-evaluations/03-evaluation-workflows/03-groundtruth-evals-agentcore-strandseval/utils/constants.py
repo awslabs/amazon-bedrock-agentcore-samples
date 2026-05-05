@@ -47,4 +47,5 @@ FLEXIBLE_SCOPED_EVALUATORS = {
 
 class AttributePrefixes:
     """OpenTelemetry attribute prefixes."""
+
     GEN_AI = "gen_ai"

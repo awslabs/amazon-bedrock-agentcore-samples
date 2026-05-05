@@ -29,7 +29,7 @@ Before we can evaluate agents, we need an agent to evaluate. This tutorial sets 
 
 ## The Agents
 
-The agents created are essentially the same just using two different frameworks to showcase the "any framework" proposition of AgentCore.
+The agents created are essentially the same just using two different frameworks (Strands and LangGraph). If your agent uses a different framework, the Open Telemetry spans need to be instrumented with [ADOT](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/observability-configure.html) in the format required by AgentCore Evaluations.
 
 The agents have two key capabilities:
 
@@ -145,4 +145,4 @@ Now that you have all the required pre-requisites, let's go through the individu
 
 - **[Tutorial 01](../01-creating-custom-evaluators)**: Create custom evaluators
 - **[Tutorial 02](../02-running-evaluations)**: Run on-demand and online evaluations
-- **[Tutorial 03](../03-advanced)**: Advanced techniques and dashboards
+- **[Tutorial 03](../03-evaluation-workflows)**: Advanced techniques and dashboards

@@ -118,7 +118,7 @@ Both implementations demonstrate the same evaluation concepts and produce equiva
 ## What's Next
 
 After completing this tutorial:
-- Proceed to [Tutorial 03: Advanced](../03-advanced) to explore advanced capabilities including:
+- Proceed to [Tutorial 03: Advanced](../03-evaluation-workflows) to explore advanced capabilities including:
   - Using boto3 SDK to query CloudWatch logs for on-demand evaluation
   - Creating local dashboards to visualize experiments with different agent configurations
   - Advanced filtering and sampling strategies for online evaluations
