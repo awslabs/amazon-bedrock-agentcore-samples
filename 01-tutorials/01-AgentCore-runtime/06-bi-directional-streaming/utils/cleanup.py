@@ -724,6 +724,7 @@ Examples:
             "03-langchain-transcribe-polly-ws",
             "04-pipecat-sonic-ws",
             "echo",
+            "05-bedrock-sonic-kvs-wr",
         ],
         help="Websocket folder to clean up",
     )

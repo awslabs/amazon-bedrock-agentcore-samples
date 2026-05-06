@@ -9,6 +9,7 @@ Build real-time voice agents using [Amazon Nova Sonic](https://docs.aws.amazon.c
 Voice agents need persistent, low-latency connections — a browser streams audio in, the agent processes it through a model, and streams spoken responses back. [AgentCore Runtime](https://docs.aws.amazon.com/bedrock-agentcore/) provides the managed infrastructure to make this work in production:
 
 - **WebSocket proxy with SigV4 authentication** — clients connect through AgentCore's authenticated endpoint, so your agent doesn't need to handle auth
+- **WebRTC support via KVS TURN** — deploy WebRTC agents in VPC with NAT traversal through Amazon Kinesis Video Streams TURN servers, enabling low-latency peer-to-peer audio without exposing your agent to the public internet
 - **Container deployment via CodeBuild** — package your agent as a Docker container and deploy without managing infrastructure (no local Docker required)
 - **IAM role management** — AgentCore provisions execution roles with Bedrock model access
 - **MCP Gateway integration** — connect agents to external tools (databases, APIs, knowledge bases) through the [Model Context Protocol](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/mcp-gateway.html)
@@ -30,6 +31,7 @@ These samples demonstrate two architecture patterns for voice agents:
 | 02 | [Strands](02-strands-ws/) | Native S2S (multi-model) | Strands BidiAgent | MCP Gateways, multi-model (Nova Sonic / Gemini / OpenAI) |
 | 03 | [LangChain + Transcribe + Polly](03-langchain-transcribe-polly-ws/) | Sandwich (STT→LLM→TTS) | LangChain + Transcribe + Polly | Text LLM with voice I/O pipeline, custom VAD |
 | 04 | [Pipecat Sonic](04-pipecat-sonic-ws/) | Native S2S | Pipecat pipeline | Open-source framework, RTVI/Protobuf, Silero VAD |
+| 05 | [Bedrock Sonic KVS WebRTC](05-bedrock-sonic-kvs-wr/) | Native S2S | Raw Bedrock SDK + aiortc | WebRTC audio via KVS TURN, NAT traversal, VPC deployment |
 
 ### [01 — Bedrock Sonic](01-bedrock-sonic-ws/README.md)
 
@@ -47,6 +49,10 @@ Demonstrates the STT → Agent → TTS "sandwich" pattern using Amazon Transcrib
 
 Uses the [Pipecat](https://github.com/pipecat-ai/pipecat) open-source framework with `AWSNovaSonicLLMService` for native speech-to-speech. Includes Silero VAD, RTVI protocol with Protobuf serialization, and a Vite-based browser client.
 
+### [05 — Bedrock Sonic KVS WebRTC](05-bedrock-sonic-kvs-wr/README.md)
+
+WebRTC-based voice agent using Nova Sonic with KVS TURN servers for audio transport. Unlike the WebSocket samples (01–04), this uses `aiortc` peer connections for browser-to-agent audio streaming with built-in NAT traversal. Designed for VPC deployments where direct peer-to-peer connections aren't possible.
+
 ## Getting Started
 
 Each sample includes its own README with setup, deployment, and local testing instructions. Pick a sample and follow its guide:
@@ -55,6 +61,7 @@ Each sample includes its own README with setup, deployment, and local testing in
 - [02-strands-ws/README.md](02-strands-ws/README.md) — start here for the full-featured agent with tools
 - [03-langchain-transcribe-polly-ws/README.md](03-langchain-transcribe-polly-ws/README.md) — start here for the sandwich architecture
 - [04-pipecat-sonic-ws/README.md](04-pipecat-sonic-ws/README.md) — start here for the Pipecat framework
+- [05-bedrock-sonic-kvs-wr/README.md](05-bedrock-sonic-kvs-wr/README.md) — start here for WebRTC with KVS TURN
 
 ## Project Structure
 
@@ -73,6 +80,9 @@ Each sample includes its own README with setup, deployment, and local testing in
 ├── 04-pipecat-sonic-ws/               # Pipecat framework (Nova Sonic)
 │   ├── websocket/                     #   Server + Dockerfile
 │   └── client/                        #   Vite app + signing server
+├── 05-bedrock-sonic-kvs-wr/           # WebRTC via KVS TURN (Nova Sonic)
+│   ├── websocket/                     #   Server + Dockerfile (aiortc)
+│   └── client/                        #   Browser WebRTC client
 └── assets/                            # Architecture diagrams
 ```
 

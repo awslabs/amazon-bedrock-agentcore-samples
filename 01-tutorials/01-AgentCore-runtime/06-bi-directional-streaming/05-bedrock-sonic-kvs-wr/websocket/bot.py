@@ -105,7 +105,7 @@ def _handle_ice_config():
 async def _handle_offer(data, background_tasks):
     """Accept a WebRTC offer, create a peer connection, return an answer."""
     ice_servers = kvs.get_rtc_ice_servers(
-        AWS_REGION, client_id="server", turn_only=data.get("turnOnly", False)
+        AWS_REGION, client_id="server", turn_only=True
     )
 
     # Create peer connection with output audio track

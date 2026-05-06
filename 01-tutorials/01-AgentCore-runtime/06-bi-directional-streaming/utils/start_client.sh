@@ -45,7 +45,7 @@ if [ ! -d "$BASE_DIR/$WEBSOCKET_FOLDER" ]; then
     echo -e "${RED}❌ Error: Folder not found: $BASE_DIR/$WEBSOCKET_FOLDER${NC}"
     echo ""
     echo "Available folders:"
-    for dir in 01-bedrock-sonic-ws 02-strands-ws 03-langchain-transcribe-polly-ws 04-pipecat-sonic-ws webrtc-kvs; do
+    for dir in 01-bedrock-sonic-ws 02-strands-ws 03-langchain-transcribe-polly-ws 04-pipecat-sonic-ws 05-bedrock-sonic-kvs-wr; do
         if [ -d "$BASE_DIR/$dir" ]; then
             echo "  - $dir"
         fi
@@ -109,11 +109,10 @@ if [ "$WEBSOCKET_FOLDER" != "04-pipecat-sonic-ws" ]; then
         echo "Creating virtual environment..."
         python3 -m venv "$BASE_DIR/venv"
         source "$BASE_DIR/venv/bin/activate"
-        pip install -q -r "$BASE_DIR/$WEBSOCKET_FOLDER/client/requirements.txt"
-        echo -e "${GREEN}✅ Virtual environment created${NC}"
     else
         source "$BASE_DIR/venv/bin/activate"
     fi
+    pip install -q -r "$BASE_DIR/$WEBSOCKET_FOLDER/client/requirements.txt"
 fi
 
 # Start the client
@@ -162,7 +161,7 @@ case "$WEBSOCKET_FOLDER" in
         echo ""
         python "$BASE_DIR/$WEBSOCKET_FOLDER/client/client.py" --runtime-arn "$AGENT_ARN"
         ;;
-    "webrtc-kvs")
+    "05-bedrock-sonic-kvs-wr")
         echo -e "${YELLOW}Starting WebRTC KVS client...${NC}"
         echo -e "${YELLOW}The browser will open automatically${NC}"
         echo ""

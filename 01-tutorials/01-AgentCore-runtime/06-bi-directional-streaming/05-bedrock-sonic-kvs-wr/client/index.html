@@ -46,7 +46,10 @@
     <script>
         // Toggle AWS credentials section (outside module so it works even if SDK import fails)
         document.getElementById("agent-arn").addEventListener('input', function() {
-            document.getElementById("aws-creds-section").style.display = this.value.trim() ? 'block' : 'none'
+            const hasArn = this.value.trim()
+            document.getElementById("aws-creds-section").style.display = hasArn ? 'block' : 'none'
+            // Auto-enable TURN only when using AgentCore Runtime (VPC requires relay mode)
+            if (hasArn) document.getElementById("turn-only").checked = true
         })
     </script>
 

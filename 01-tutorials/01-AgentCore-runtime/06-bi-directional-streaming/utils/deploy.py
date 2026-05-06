@@ -374,6 +374,17 @@ class AgentCoreDeployer:
             },
         }
 
+        # Use VPC mode when subnet and security group are provided
+        subnet_ids = getattr(self.args, "subnet_ids", None)
+        security_group_id = getattr(self.args, "security_group_id", None)
+        if subnet_ids and security_group_id:
+            config["bedrock_agentcore"]["network_mode"] = "VPC"
+            config["bedrock_agentcore"]["network_mode_config"] = {
+                "subnets": [s.strip() for s in subnet_ids.split(",")],
+                "security_groups": [security_group_id],
+            }
+            self._info(f"Using VPC network mode with subnets: {subnet_ids}")
+
         config_path = self.websocket_path / ".bedrock_agentcore.yaml"
 
         # Write configuration
@@ -521,6 +532,26 @@ class AgentCoreDeployer:
 
             # Prepare environment variables
             env_vars = {}
+
+            # Add VPC configuration if subnet and security group are provided
+            subnet_ids = getattr(self.args, "subnet_ids", None)
+            security_group_id = getattr(self.args, "security_group_id", None)
+            if subnet_ids and security_group_id:
+                subnets = [s.strip() for s in subnet_ids.split(",")]
+                agent_aws = config["agents"][self.agent_name]["aws"]
+                agent_aws["network_configuration"] = {
+                    "network_mode": "VPC",
+                    "network_mode_config": {
+                        "subnets": subnets,
+                        "security_groups": [security_group_id],
+                    },
+                }
+                self._info(f"Using VPC network mode with subnets: {subnet_ids}")
+
+            # Add KVS environment variables for webrtc folder
+            if self.websocket_folder == "05-bedrock-sonic-kvs-wr":
+                env_vars["KVS_CHANNEL_NAME"] = "voice-agent-minimal"
+                env_vars["AWS_REGION"] = self.aws_region
 
             # Add MCP Gateway environment variables if available (for strands and langchain)
             if (
@@ -769,7 +800,7 @@ Environment Variables:
             "03-langchain-transcribe-polly-ws",
             "04-pipecat-sonic-ws",
             "echo",
-            "webrtc-kvs",
+            "05-bedrock-sonic-kvs-wr",
         ],
         help="Websocket folder to deploy",
     )
@@ -794,6 +825,16 @@ Environment Variables:
         "--local-build",
         action="store_true",
         help="Build locally, deploy to cloud (requires Docker)",
+    )
+
+    parser.add_argument(
+        "--subnet-ids",
+        help="Comma-separated subnet IDs for VPC mode (required for 05-bedrock-sonic-kvs-wr)",
+    )
+
+    parser.add_argument(
+        "--security-group-id",
+        help="Security group ID for VPC mode (required for 05-bedrock-sonic-kvs-wr)",
     )
 
     args = parser.parse_args()
