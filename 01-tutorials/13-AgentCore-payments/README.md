@@ -22,7 +22,11 @@ Step-by-step notebooks covering setup through advanced multi-agent orchestration
 
 ## Use Cases
 
-Real-world use case samples — coming soon. See [02-use-cases/](02-use-cases/).
+Real-world use cases that demonstrate AgentCore payments end-to-end. See [02-use-cases/](02-use-cases/) for the full list.
+
+| Use case | What it demonstrates |
+|---|---|
+| [Pay for Content (Browser Use)](02-use-cases/pay-for-content-browser-use/) | A Strands agent uses AgentCore Browser Tool to navigate a paywalled website, reads the embedded x402 requirement from the page DOM, calls `ProcessPayment` to generate a USDC proof, and returns the unlocked content — all without human involvement in the payment step. Includes a deployable CDK content-provider stack. |
 
 ## Prerequisites
 
