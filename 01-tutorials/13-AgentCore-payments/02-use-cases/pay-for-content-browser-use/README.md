@@ -103,7 +103,6 @@ OPERATOR CLEANUP  (automatic on session expiry)
 
   Session expires automatically after expiryTimeInMinutes elapses.
   Agent can no longer spend once the session is past its expiry.
-  For immediate revocation, manage the session via AWS Console.
 ```
 
 **Key design points:**
@@ -281,8 +280,7 @@ new sessions, or access wallet credentials.
 ## Cleanup
 
 The payment session created in Step 4 expires automatically after `SESSION_EXPIRY_MINUTES`
-(60 minutes by default) and stops accepting payments — no API call required. For immediate
-revocation before expiry, manage the session directly via the AWS Console.
+(60 minutes by default) and stops accepting payments — no API call required.
 
 To tear down the IAM roles created by `setup_roles.sh`, delete the four
 `AgentCorePayments*` roles from the IAM console or via the AWS CLI.
