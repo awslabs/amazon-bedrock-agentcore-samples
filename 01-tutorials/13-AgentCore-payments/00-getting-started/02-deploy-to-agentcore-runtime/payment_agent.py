@@ -24,18 +24,18 @@ Deployment:
 import json
 import os
 
-from dotenv import load_dotenv
-# Load .env for local testing — in Runtime, values come from the payload
-load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'), override=True)
-
-from bedrock_agentcore.runtime import BedrockAgentCoreApp
 from bedrock_agentcore.payments.integrations.strands import (
     AgentCorePaymentsPlugin,
     AgentCorePaymentsPluginConfig,
 )
+from bedrock_agentcore.runtime import BedrockAgentCoreApp
+from dotenv import load_dotenv
 from strands import Agent
 from strands.models import BedrockModel
 from strands_tools import http_request
+
+# Load .env for local testing — in Runtime, values come from the payload
+load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'), override=True)
 
 app = BedrockAgentCoreApp()
 
