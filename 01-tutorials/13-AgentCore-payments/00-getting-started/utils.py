@@ -34,6 +34,7 @@ RESOURCE_RETRIEVAL_ROLE = "AgentCorePaymentsResourceRetrievalRole"
 # Environment
 # ═════════════════════════════════════════════════════════════════
 
+
 def load_payment_env(env_file=".env"):
     """Load .env file and return config dict."""
     load_dotenv(env_file, override=True)
@@ -69,6 +70,7 @@ def require_env(key):
 # IAM Role Assumption
 # ═════════════════════════════════════════════════════════════════
 
+
 def assume_role(session, role_arn, session_name="tutorial-session"):
     """Assume an IAM role and return a new boto3 Session.
 
@@ -83,9 +85,9 @@ def assume_role(session, role_arn, session_name="tutorial-session"):
         boto3.Session with temporary credentials.
     """
     sts = session.client("sts")
-    creds = sts.assume_role(
-        RoleArn=role_arn, RoleSessionName=session_name
-    )["Credentials"]
+    creds = sts.assume_role(RoleArn=role_arn, RoleSessionName=session_name)[
+        "Credentials"
+    ]
 
     new_session = boto3.Session(
         aws_access_key_id=creds["AccessKeyId"],
@@ -217,11 +219,13 @@ def setup_payment_roles(region=None):
 
     account_trust = {
         "Version": "2012-10-17",
-        "Statement": [{
-            "Effect": "Allow",
-            "Principal": {"AWS": principals},
-            "Action": "sts:AssumeRole",
-        }],
+        "Statement": [
+            {
+                "Effect": "Allow",
+                "Principal": {"AWS": principals},
+                "Action": "sts:AssumeRole",
+            }
+        ],
     }
     service_trust = {
         "Version": "2012-10-17",
@@ -230,11 +234,7 @@ def setup_payment_roles(region=None):
                 "Effect": "Allow",
                 "Principal": {"Service": "bedrock-agentcore.amazonaws.com"},
                 "Action": "sts:AssumeRole",
-                "Condition": {
-                    "StringEquals": {
-                        "aws:SourceAccount": account_id
-                    }
-                },
+                "Condition": {"StringEquals": {"aws:SourceAccount": account_id}},
             },
         ],
     }
@@ -276,28 +276,34 @@ def setup_payment_roles(region=None):
         # Attach allow policy
         allow_policy = {
             "Version": "2012-10-17",
-            "Statement": [{
-                "Sid": "Allow",
-                "Effect": "Allow",
-                "Action": config["allow"],
-                "Resource": "*",
-            }],
+            "Statement": [
+                {
+                    "Sid": "Allow",
+                    "Effect": "Allow",
+                    "Action": config["allow"],
+                    "Resource": "*",
+                }
+            ],
         }
 
         # Add SecretsManager access for ResourceRetrievalRole
         if config.get("secrets_manager"):
-            allow_policy["Statement"].append({
-                "Sid": "SecretsManagerAccess",
-                "Effect": "Allow",
-                "Action": ["secretsmanager:GetSecretValue"],
-                "Resource": f"arn:aws:secretsmanager:*:{account_id}:secret:*",
-            })
-            allow_policy["Statement"].append({
-                "Sid": "StsSetContext",
-                "Effect": "Allow",
-                "Action": "sts:SetContext",
-                "Resource": f"arn:aws:sts::{account_id}:self",
-            })
+            allow_policy["Statement"].append(
+                {
+                    "Sid": "SecretsManagerAccess",
+                    "Effect": "Allow",
+                    "Action": ["secretsmanager:GetSecretValue"],
+                    "Resource": f"arn:aws:secretsmanager:*:{account_id}:secret:*",
+                }
+            )
+            allow_policy["Statement"].append(
+                {
+                    "Sid": "StsSetContext",
+                    "Effect": "Allow",
+                    "Action": "sts:SetContext",
+                    "Resource": f"arn:aws:sts::{account_id}:self",
+                }
+            )
 
         iam.put_role_policy(
             RoleName=role_name,
@@ -309,12 +315,14 @@ def setup_payment_roles(region=None):
         if config.get("deny"):
             deny_policy = {
                 "Version": "2012-10-17",
-                "Statement": [{
-                    "Sid": "Deny",
-                    "Effect": "Deny",
-                    "Action": config["deny"],
-                    "Resource": "*",
-                }],
+                "Statement": [
+                    {
+                        "Sid": "Deny",
+                        "Effect": "Deny",
+                        "Action": config["deny"],
+                        "Resource": "*",
+                    }
+                ],
             }
             iam.put_role_policy(
                 RoleName=role_name,
@@ -329,19 +337,23 @@ def setup_payment_roles(region=None):
             iam.put_role_policy(
                 RoleName=role_name,
                 PolicyName="PassRolePolicy",
-                PolicyDocument=json.dumps({
-                    "Version": "2012-10-17",
-                    "Statement": [{
-                        "Effect": "Allow",
-                        "Action": "iam:PassRole",
-                        "Resource": rr_arn,
-                        "Condition": {
-                            "StringEquals": {
-                                "iam:PassedToService": "bedrock-agentcore.amazonaws.com"
+                PolicyDocument=json.dumps(
+                    {
+                        "Version": "2012-10-17",
+                        "Statement": [
+                            {
+                                "Effect": "Allow",
+                                "Action": "iam:PassRole",
+                                "Resource": rr_arn,
+                                "Condition": {
+                                    "StringEquals": {
+                                        "iam:PassedToService": "bedrock-agentcore.amazonaws.com"
+                                    }
+                                },
                             }
-                        },
-                    }],
-                }),
+                        ],
+                    }
+                ),
             )
 
     # Wait for IAM propagation if new roles were created
@@ -360,6 +372,7 @@ def setup_payment_roles(region=None):
 # Async Resource Polling
 # ═════════════════════════════════════════════════════════════════
 
+
 def wait_for_status(client_fn, expected_status, poll_interval=5, timeout=120, **kwargs):
     """Poll a Get* API until the resource reaches expected_status.
 
@@ -370,10 +383,7 @@ def wait_for_status(client_fn, expected_status, poll_interval=5, timeout=120, **
     deadline = time.time() + timeout
     while True:
         resp = client_fn(**kwargs)
-        status = (
-            resp.get("status")
-            or resp.get("paymentInstrument", {}).get("status")
-        )
+        status = resp.get("status") or resp.get("paymentInstrument", {}).get("status")
         print(f"   Status: {status}")
         if isinstance(status, str) and status.endswith("_FAILED"):
             raise RuntimeError(f"Resource reached failure state: '{status}'")
@@ -387,6 +397,7 @@ def wait_for_status(client_fn, expected_status, poll_interval=5, timeout=120, **
 # ═════════════════════════════════════════════════════════════════
 # Idempotent Resource Creation
 # ═════════════════════════════════════════════════════════════════
+
 
 def idempotent_create(create_fn, conflict_msg="Resource already exists", **kwargs):
     """Call create_fn; handle ConflictException gracefully.
@@ -405,6 +416,7 @@ def idempotent_create(create_fn, conflict_msg="Resource already exists", **kwarg
 # ═════════════════════════════════════════════════════════════════
 # Cognito (Gateway integration only)
 # ═════════════════════════════════════════════════════════════════
+
 
 def setup_cognito_user_pool(pool_name="AgentCorePaymentsPool"):
     """Create a Cognito user pool with M2M client for Gateway integration.
@@ -456,9 +468,14 @@ def setup_cognito_user_pool(pool_name="AgentCorePaymentsPool"):
 def get_oauth_token(token_url, client_id, client_secret):
     """Exchange client credentials for an OAuth2 access token."""
     import requests
+
     resp = requests.post(
         token_url,
-        data={"grant_type": "client_credentials", "client_id": client_id, "client_secret": client_secret},
+        data={
+            "grant_type": "client_credentials",
+            "client_id": client_id,
+            "client_secret": client_secret,
+        },
         headers={"Content-Type": "application/x-www-form-urlencoded"},
         timeout=30,
     )
@@ -578,6 +595,7 @@ def load_tutorial_env(env_path=None):
 # Display Helpers
 # ═════════════════════════════════════════════════════════════════
 
+
 def pp(label, response):
     """Pretty-print an API response, stripping ResponseMetadata."""
     data = {k: v for k, v in response.items() if k != "ResponseMetadata"}
@@ -607,8 +625,10 @@ def client_token():
 # Observability (Vended Logs + Traces)
 # ═════════════════════════════════════════════════════════════════
 
-def enable_observability(resource_arn, resource_id, account_id, region="us-west-2",
-                         enable_xray_spans=False):
+
+def enable_observability(
+    resource_arn, resource_id, account_id, region="us-west-2", enable_xray_spans=False
+):
     """Enable CloudWatch vended logs and X-Ray traces for an AgentCore payments resource.
 
     Creates delivery sources, destinations, and deliveries for both APPLICATION_LOGS
@@ -647,7 +667,9 @@ def enable_observability(resource_arn, resource_id, account_id, region="us-west-
     # Must be called before creating delivery sources/destinations.
     agentcore_client = boto3.client("bedrock-agentcore-control", region_name=region)
     try:
-        agentcore_client.allow_vended_log_delivery_for_resource(resourceArn=resource_arn)
+        agentcore_client.allow_vended_log_delivery_for_resource(
+            resourceArn=resource_arn
+        )
         print(f"  Allowed vended log delivery for {resource_arn}")
     except agentcore_client.exceptions.ConflictException:
         print(f"  Vended log delivery already allowed for {resource_arn}")
@@ -675,11 +697,13 @@ def enable_observability(resource_arn, resource_id, account_id, region="us-west-
     # Step 3: Create delivery sources
     print("  Creating delivery sources (APPLICATION_LOGS + TRACES)...")
     logs_src = logs_client.put_delivery_source(
-        name=f"{resource_id}-logs-source", logType="APPLICATION_LOGS",
-        resourceArn=resource_arn)
+        name=f"{resource_id}-logs-source",
+        logType="APPLICATION_LOGS",
+        resourceArn=resource_arn,
+    )
     traces_src = logs_client.put_delivery_source(
-        name=f"{resource_id}-traces-source", logType="TRACES",
-        resourceArn=resource_arn)
+        name=f"{resource_id}-traces-source", logType="TRACES", resourceArn=resource_arn
+    )
 
     # Step 4: Create delivery destinations
     print("  Creating delivery destinations (CWL + XRAY)...")
@@ -718,16 +742,24 @@ def _setup_xray_spans(logs_client, region):
 
     logs_client.put_resource_policy(
         policyName="XRaySpansPolicy",
-        policyDocument=_json.dumps({
-            "Version": "2012-10-17",
-            "Statement": [{
-                "Sid": "XRayAccess",
-                "Effect": "Allow",
-                "Principal": {"Service": "xray.amazonaws.com"},
-                "Action": ["logs:PutLogEvents", "logs:CreateLogGroup", "logs:CreateLogStream"],
-                "Resource": "*",
-            }],
-        }),
+        policyDocument=_json.dumps(
+            {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Sid": "XRayAccess",
+                        "Effect": "Allow",
+                        "Principal": {"Service": "xray.amazonaws.com"},
+                        "Action": [
+                            "logs:PutLogEvents",
+                            "logs:CreateLogGroup",
+                            "logs:CreateLogStream",
+                        ],
+                        "Resource": "*",
+                    }
+                ],
+            }
+        ),
     )
 
     xray_client = boto3.client("xray", region_name=region)
@@ -742,7 +774,11 @@ def _setup_xray_spans(logs_client, region):
     for attempt in range(1, 25):
         resp = xray_client.get_trace_segment_destination()
         destination = resp.get("Destination", {})
-        status = destination.get("Status", resp.get("Status", "UNKNOWN")) if isinstance(destination, dict) else str(destination)
+        status = (
+            destination.get("Status", resp.get("Status", "UNKNOWN"))
+            if isinstance(destination, dict)
+            else str(destination)
+        )
         if status == "ACTIVE":
             print("  ✅ X-Ray trace segment destination ACTIVE")
             return
@@ -783,7 +819,7 @@ def update_env_file(env_path_or_updates, updates=None):
     """
     if updates is None:
         updates = env_path_or_updates
-        env_path = os.path.join(os.path.dirname(__file__), '.env')
+        env_path = os.path.join(os.path.dirname(__file__), ".env")
     else:
         env_path = env_path_or_updates
     env_path = os.path.abspath(env_path)
@@ -833,8 +869,7 @@ def update_env_file(env_path_or_updates, updates=None):
     return {"updated": updated_keys, "added": added_keys}
 
 
-def render_frontend_env_local(app_id, app_secret, signer_id,
-                              network_mode="testnet"):
+def render_frontend_env_local(app_id, app_secret, signer_id, network_mode="testnet"):
     """Build the contents of the Privy reference frontend's ``.env.local`` file.
 
     Pure string builder — no filesystem access, no shell instructions. The
@@ -858,8 +893,7 @@ def render_frontend_env_local(app_id, app_secret, signer_id,
     )
 
 
-def save_privy_authorization_key(env_path, authorization_id,
-                                 authorization_private_key):
+def save_privy_authorization_key(env_path, authorization_id, authorization_private_key):
     """Save Privy authorization key credentials to .env, stripping the wallet-auth: prefix.
 
     Privy's dashboard displays the authorization private key with a ``wallet-auth:``
@@ -881,17 +915,19 @@ def save_privy_authorization_key(env_path, authorization_id,
     prefix = "wallet-auth:"
     key = authorization_private_key.strip()
     if key.startswith(prefix):
-        key = key[len(prefix):].strip()
+        key = key[len(prefix) :].strip()
         print("  ℹ️  Stripped 'wallet-auth:' prefix from the private key.")
 
-    return update_env_file(env_path, {
-        "PRIVY_AUTHORIZATION_ID": authorization_id,
-        "PRIVY_AUTHORIZATION_PRIVATE_KEY": key,
-    })
+    return update_env_file(
+        env_path,
+        {
+            "PRIVY_AUTHORIZATION_ID": authorization_id,
+            "PRIVY_AUTHORIZATION_PRIVATE_KEY": key,
+        },
+    )
 
 
-def verify_privy_signer_on_wallet(app_id, app_secret, wallet_address_or_id,
-                                  quorum_id):
+def verify_privy_signer_on_wallet(app_id, app_secret, wallet_address_or_id, quorum_id):
     """Check whether a key quorum is registered as a signer on a Privy wallet.
 
     After the end user grants signer access in the Privy reference frontend (Step 7b of the
@@ -934,12 +970,16 @@ def verify_privy_signer_on_wallet(app_id, app_secret, wallet_address_or_id,
     if is_wallet_id:
         resp = requests.get(
             f"{PRIVY_API_BASE}/wallets/{wallet_address_or_id}",
-            auth=auth, headers=headers, timeout=30,
+            auth=auth,
+            headers=headers,
+            timeout=30,
         )
     else:
         resp = requests.post(
             f"{PRIVY_API_BASE}/wallets/address",
-            auth=auth, headers=headers, timeout=30,
+            auth=auth,
+            headers=headers,
+            timeout=30,
             json={"address": wallet_address_or_id},
         )
 
@@ -955,15 +995,12 @@ def verify_privy_signer_on_wallet(app_id, app_secret, wallet_address_or_id,
         )
 
     wallet = resp.json()
-    signers = (
-        wallet.get("additional_signers")
-        or wallet.get("additionalSigners")
-        or []
-    )
+    signers = wallet.get("additional_signers") or wallet.get("additionalSigners") or []
     # Entries can be dicts ({"signer_id": "..."}) or bare strings; handle both.
     signer_ids = {
         (s.get("signer_id") or s.get("id") or s.get("key_quorum_id"))
-        if isinstance(s, dict) else s
+        if isinstance(s, dict)
+        else s
         for s in signers
     }
     return quorum_id in signer_ids

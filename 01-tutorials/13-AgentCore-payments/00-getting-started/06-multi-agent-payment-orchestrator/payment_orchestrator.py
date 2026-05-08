@@ -57,8 +57,14 @@ def handle_request(payload, context=None):
     discovery_session_id = payload.get("discovery_session_id")
     discovery_instrument_id = payload.get("discovery_instrument_id")
 
-    if not all([research_session_id, research_instrument_id,
-                discovery_session_id, discovery_instrument_id]):
+    if not all(
+        [
+            research_session_id,
+            research_instrument_id,
+            discovery_session_id,
+            discovery_instrument_id,
+        ]
+    ):
         return {"error": "Missing session or instrument IDs in payload"}
 
     # --- Specialist plugins (each with own session + instrument) ---
@@ -172,9 +178,7 @@ def handle_request(payload, context=None):
     )
 
     result = orchestrator(prompt)
-    return {
-        "response": result.message.get("content", [{}])[0].get("text", str(result))
-    }
+    return {"response": result.message.get("content", [{}])[0].get("text", str(result))}
 
 
 if __name__ == "__main__":

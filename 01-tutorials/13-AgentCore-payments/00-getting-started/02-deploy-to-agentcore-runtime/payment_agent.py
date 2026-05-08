@@ -35,7 +35,7 @@ from strands.models import BedrockModel
 from strands_tools import http_request
 
 # Load .env for local testing — in Runtime, values come from the payload
-load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'), override=True)
+load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"), override=True)
 
 app = BedrockAgentCoreApp()
 
