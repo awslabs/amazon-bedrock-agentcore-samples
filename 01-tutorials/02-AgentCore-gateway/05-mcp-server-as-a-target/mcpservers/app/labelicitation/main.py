@@ -253,4 +253,6 @@ async def protected_resource(ctx: Context) -> dict:
 if __name__ == "__main__":
     # stateless_http=False keeps the SSE push-back channel (required for
     # elicitation + sampling).
-    mcp.run(transport="streamable-http", host="0.0.0.0", stateless_http=False)
+    mcp.run(
+        transport="streamable-http", host="0.0.0.0", stateless_http=False
+    )  # nosec B104 - AgentCore Runtime container requires bind to all interfaces

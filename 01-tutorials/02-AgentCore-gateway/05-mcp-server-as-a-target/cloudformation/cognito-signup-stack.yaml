@@ -16,6 +16,27 @@ Resources:
   # User Pool — self-service signup enabled, no admin gating
   UserPool:
     Type: AWS::Cognito::UserPool
+    # This UserPool is provisioned for tutorial / lab walkthroughs only — it is
+    # not intended for production. The MFA-off and "no advanced security"
+    # findings are intentional so the notebooks stay self-serve runnable for
+    # readers without an SES sender or a Cognito Plus tier; the password
+    # policy is intentionally relaxed (no symbols required) so the demo
+    # passwords in the tutorial code remain accept-able by the pool.
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: F78
+            reason: 'Tutorial/demo Cognito pool — MFA is intentionally OFF so the lab can be run by readers without setting up an MFA channel. Not for production.'
+      cdk_nag:
+        rules_to_suppress:
+          - id: AwsSolutions-COG1
+            reason: 'Tutorial password policy is intentionally minimal (no symbols required) so the demo credentials in the notebook keep working. Not for production.'
+          - id: AwsSolutions-COG2
+            reason: 'Tutorial/demo Cognito pool — MFA is intentionally OFF so the notebooks are self-serve runnable. Not for production.'
+          - id: AwsSolutions-COG3
+            reason: 'Advanced security mode left at default for this tutorial pool — readers may not have access to the Cognito Plus tier required to enable it.'
+          - id: AwsSolutions-COG8
+            reason: 'Advanced security mode left at default for this tutorial pool — readers may not have access to the Cognito Plus tier required to enable ENFORCED mode.'
     Properties:
       UserPoolName: !Sub '${AWS::StackName}-pool'
 
@@ -87,7 +108,7 @@ Resources:
       UserPoolId: !Ref UserPool
 
       # Public client (PKCE) — no client secret
-      GenerateSecret: false
+      GenerateSecret: false  # pragma: allowlist secret  -- CFN property, not a credential
 
       AllowedOAuthFlows:
         - code
@@ -131,7 +152,7 @@ Resources:
       ClientName: !Sub '${AWS::StackName}-mcp'
       UserPoolId: !Ref UserPool
 
-      GenerateSecret: true
+      GenerateSecret: true  # pragma: allowlist secret  -- CFN property, not a credential
 
       AllowedOAuthFlows:
         - client_credentials
@@ -163,7 +184,7 @@ Resources:
       ClientName: !Sub '${AWS::StackName}-gateway'
       UserPoolId: !Ref UserPool
 
-      GenerateSecret: true
+      GenerateSecret: true  # pragma: allowlist secret  -- CFN property, not a credential
 
       AllowedOAuthFlows:
         - client_credentials

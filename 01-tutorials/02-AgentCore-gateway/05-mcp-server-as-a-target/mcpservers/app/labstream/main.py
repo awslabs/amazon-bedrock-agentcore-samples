@@ -88,4 +88,6 @@ def getOrder() -> int:
 
 
 if __name__ == "__main__":
-    mcp.run(transport="streamable-http", host="0.0.0.0", stateless_http=True)
+    mcp.run(
+        transport="streamable-http", host="0.0.0.0", stateless_http=True
+    )  # nosec B104 - AgentCore Runtime container requires bind to all interfaces

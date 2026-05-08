@@ -2,7 +2,9 @@ from mcp.server.fastmcp import FastMCP
 from mcp.types import ToolAnnotations
 import json
 
-mcp = FastMCP(host="0.0.0.0", stateless_http=True)
+mcp = FastMCP(
+    host="0.0.0.0", stateless_http=True
+)  # nosec B104 - AgentCore Runtime container requires bind to all interfaces
 
 
 # --- Tools ---------------------------------------------------------------

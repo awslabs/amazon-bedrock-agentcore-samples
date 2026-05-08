@@ -5,7 +5,6 @@ from boto3.session import Session
 import botocore
 from botocore.exceptions import ClientError
 import requests
-import time
 
 
 def setup_cognito_user_pool():
@@ -35,7 +34,7 @@ def setup_cognito_user_pool():
         cognito_client.admin_create_user(
             UserPoolId=pool_id,
             Username="testuser",
-            TemporaryPassword="Temp123!",
+            TemporaryPassword="Temp123!",  # pragma: allowlist secret  -- tutorial-only test credential
             MessageAction="SUPPRESS",
         )
 
@@ -43,7 +42,7 @@ def setup_cognito_user_pool():
         cognito_client.admin_set_user_password(
             UserPoolId=pool_id,
             Username="testuser",
-            Password="MyPassword123!",
+            Password="MyPassword123!",  # pragma: allowlist secret  -- tutorial-only test credential
             Permanent=True,
         )
 
@@ -179,7 +178,7 @@ def get_token(
             "scope": scope_string,
         }
         print(client_id)
-        response = requests.post(url, headers=headers, data=data)
+        response = requests.post(url, headers=headers, data=data, timeout=3600)
         response.raise_for_status()
         return response.json()
 
@@ -896,7 +895,7 @@ def create_dynamodb_table(
         # Wait for table to be active
         waiter = dynamodb_client.get_waiter("table_exists")
         waiter.wait(TableName=table_name)
-        print(f"  Table is active")
+        print("  Table is active")
 
         return table_name
 
@@ -981,7 +980,7 @@ def create_lambda_role_with_policies(
                 PolicyName="CustomPolicy",
                 PolicyDocument=json.dumps(custom_policy),
             )
-            print(f"  ✓ Custom policy attached")
+            print("  ✓ Custom policy attached")
         except Exception as e:
             print(f"  ⚠ Policy error: {e}")
 
@@ -1078,12 +1077,12 @@ def grant_gateway_invoke_permission(function_name, region="us-east-1"):
             Principal="bedrock-agentcore.amazonaws.com",
             SourceArn=f"arn:aws:bedrock-agentcore:{region}:{account_id}:gateway/*",
         )
-        print(f"✓ Gateway invoke permission added to Lambda")
-        print(f"  Principal: bedrock-agentcore.amazonaws.com")
+        print("✓ Gateway invoke permission added to Lambda")
+        print("  Principal: bedrock-agentcore.amazonaws.com")
 
     except ClientError as e:
         if e.response["Error"]["Code"] == "ResourceConflictException":
-            print(f"⚠ Permission already exists (this is fine)")
+            print("⚠ Permission already exists (this is fine)")
         else:
             print(f"⚠ Error adding permission: {e}")
             raise

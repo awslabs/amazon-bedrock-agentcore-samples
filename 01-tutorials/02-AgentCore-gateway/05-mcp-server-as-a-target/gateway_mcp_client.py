@@ -95,7 +95,7 @@ class GatewayMCPClient:
         if params is not None:
             payload["params"] = params
         return requests.post(
-            self.gateway_url, headers=self._headers(), json=payload
+            self.gateway_url, headers=self._headers(), json=payload, timeout=3600
         ).json()
 
     def rpc_raw(
@@ -116,7 +116,7 @@ class GatewayMCPClient:
         if params is not None:
             payload["params"] = params
         return requests.post(
-            self.gateway_url, headers=self._headers(), json=payload, timeout=15
+            self.gateway_url, headers=self._headers(), json=payload, timeout=3600
         )
 
     def _paginate(self, method: str, items_key: str) -> List[Dict[str, Any]]:
@@ -155,7 +155,9 @@ class GatewayMCPClient:
                 or {"name": "GatewayMCPClient", "version": "0.1"},
             },
         }
-        r = requests.post(self.gateway_url, headers=self._headers(), json=body)
+        r = requests.post(
+            self.gateway_url, headers=self._headers(), json=body, timeout=3600
+        )
         sid = r.headers.get("mcp-session-id")
         if sid:
             self._session_id = sid
@@ -165,6 +167,7 @@ class GatewayMCPClient:
             self.gateway_url,
             headers=self._headers(),
             json={"jsonrpc": "2.0", "method": "notifications/initialized"},
+            timeout=3600,
         )
 
         try:
@@ -222,6 +225,7 @@ class GatewayMCPClient:
             self.gateway_url,
             headers=self._headers(accept="application/json"),
             json=body,
+            timeout=3600,
         )
         return {
             "http_status": r.status_code,
@@ -267,6 +271,7 @@ class GatewayMCPClient:
             headers=self._headers(accept="text/event-stream"),
             json=body,
             stream=True,
+            timeout=3600,
         ) as resp:
             ct = resp.headers.get("content-type", "")
             if ct.startswith("application/json"):
@@ -293,7 +298,7 @@ class GatewayMCPClient:
             self.gateway_url,
             headers=self._headers(),
             json={"jsonrpc": "2.0", "id": request_id, "result": result},
-            timeout=15,
+            timeout=3600,
         )
         return r.status_code
 
