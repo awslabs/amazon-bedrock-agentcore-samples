@@ -460,6 +460,7 @@ def get_oauth_token(token_url, client_id, client_secret):
         token_url,
         data={"grant_type": "client_credentials", "client_id": client_id, "client_secret": client_secret},
         headers={"Content-Type": "application/x-www-form-urlencoded"},
+        timeout=30,
     )
     resp.raise_for_status()
     return resp.json()["access_token"]
