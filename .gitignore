@@ -263,3 +263,4 @@ Dockerfile
 ### Claude Code Assistant ###
 .claude/
 CLAUDE.md
+plan/
