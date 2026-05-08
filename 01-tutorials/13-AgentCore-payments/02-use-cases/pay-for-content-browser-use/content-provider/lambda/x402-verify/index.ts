@@ -96,7 +96,7 @@ function buildPaywallHtml(requirement: object): string {
 <body>
   <!-- x402 payment requirement — read by the browser agent from the DOM.
        NOTE: The <script id="x402-requirement"> tag is a convention of this sample
-       content provider. Production x402 sites may embed the requirement differently
+       content provider. Real x402 sites may embed the requirement differently
        (e.g. HTTP headers, a <meta> tag, or a separate API endpoint). -->
   <script id="x402-requirement" type="application/json">
 ${requirementJson}
@@ -113,7 +113,7 @@ ${requirementJson}
 
   <!-- Paywall UI widget — browser agent discovers and interacts with these elements.
        NOTE: The element IDs below (pay-btn, proof-input, verify-btn, content) are
-       specific to this sample content provider. Production x402 sites will use
+       specific to this sample content provider. Real x402 sites will use
        different selectors — the agent is instructed to discover elements dynamically
        using semantic cues (button text, input types, aria-labels). -->
   <div class="paywall-widget" id="paywall-widget">
@@ -213,8 +213,9 @@ ${requirementJson}
       }
 
       // Proof passes client-side validation — unlock content.
-      // For production: POST proof to a backend endpoint that calls the x402
-      // facilitator to confirm on-chain settlement before serving content.
+      // This demo verifies client-side only. A real merchant would POST the proof
+      // to a backend endpoint that calls the x402 facilitator to confirm on-chain
+      // settlement before serving content.
       document.getElementById('paywall-widget').style.display = 'none';
       document.getElementById('content-section').style.display = 'block';
       document.querySelector('.blur-preview').style.display = 'none';
