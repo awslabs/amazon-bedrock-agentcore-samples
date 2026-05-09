@@ -23,7 +23,6 @@ A finance research agent built with **Strands Agents** that calls paid [Heurist]
 - HTTP 402 payment processing via `AgentCorePaymentsPlugin` — no manual payment code in tools
 - Embedded wallet (Coinbase CDP) with USDC as the settlement asset
 - AgentCore Code Interpreter for pandas/matplotlib analysis and artifact export
-- Public PyPI dependencies only (`bedrock-agentcore==1.9.0`) — no bundled or file-based SDK components
 - Targets x402 on Base mainnet (Heurist endpoints settle on Base)
 
 ---

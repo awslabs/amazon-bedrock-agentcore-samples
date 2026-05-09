@@ -20,8 +20,8 @@ if __package__ in (None, ""):
 ARTIFACTS_DIR = Path(__file__).resolve().parents[1] / "artifacts"
 
 DEFAULT_PROMPT = (
-    "Use SEC filing data to analyze AMZN stock performance and financial health. "
-    "Create a visualization and a brief markdown summary."
+    "Use FredMacroAgent to fetch the latest US GDP growth rate and unemployment rate. "
+    "Summarize the current macroeconomic environment in a brief markdown report."
 )
 
 

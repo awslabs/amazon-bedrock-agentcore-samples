@@ -120,11 +120,11 @@ If you prefer the command line:
 # Sync the Heurist tool catalog (one-time, cached on disk)
 python -m heurist_finance_agent.scripts.sync_registry
 
-# Run the agent
+# Run the agent (default prompt: US macro summary via FredMacroAgent)
 python -m heurist_finance_agent.scripts.run
 
 # Or with a custom prompt
-python -m heurist_finance_agent.scripts.run "Compare BTC and ETH price momentum over the last 30 days"
+python -m heurist_finance_agent.scripts.run "What are the current US inflation and interest rate trends?"
 ```
 
 Outputs land in `heurist_finance_agent/artifacts/`.
