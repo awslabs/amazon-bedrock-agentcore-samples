@@ -27,6 +27,7 @@ Real-world use cases that demonstrate AgentCore payments end-to-end. See [02-use
 | Use case | What it demonstrates |
 |---|---|
 | [Pay for Content (Browser Use)](02-use-cases/pay-for-content-browser-use/) | A Strands agent uses AgentCore Browser Tool to navigate a paywalled website, reads the embedded x402 requirement from the page DOM, calls `ProcessPayment` to generate a USDC proof, and returns the unlocked content — all without human involvement in the payment step. Includes a deployable CDK content-provider stack. |
+| [Pay for Data (Heurist)](02-use-cases/pay-for-data/) | A Strands finance-research agent calls paid [Heurist](https://heurist.xyz) x402 endpoints for live prices, SEC filings, and macro indicators. The `AgentCorePaymentsPlugin` handles HTTP 402 payment processing end-to-end, and AgentCore Code Interpreter analyzes the data and exports charts and reports. Uses public PyPI `bedrock-agentcore==1.9.0` and the Coinbase CDP embedded wallet; targets x402 on Base mainnet. |
 
 ## Prerequisites
 

@@ -15,6 +15,17 @@ An AI agent built with **Strands Agents** and **AgentCoreBrowser** autonomously 
 - Deployable CDK content-provider stack included for end-to-end testing
 - Tested end-to-end on Base Sepolia testnet
 
+### [Pay for Data (Heurist)](pay-for-data/)
+
+A finance research agent built with **Strands Agents** that calls paid [Heurist](https://heurist.xyz) x402 endpoints for real-time prices, SEC filings, and macro indicators. The `AgentCorePaymentsPlugin` intercepts HTTP 402 responses, asks the AgentCore payment manager to generate a payment proof against the configured payment instrument and payment session, and retries — tool code stays an ordinary `http_request` call. Data is analyzed in AgentCore Code Interpreter and exported as charts and reports.
+
+**Highlights**
+- HTTP 402 payment processing via `AgentCorePaymentsPlugin` — no manual payment code in tools
+- Embedded wallet (Coinbase CDP) with USDC as the settlement asset
+- AgentCore Code Interpreter for pandas/matplotlib analysis and artifact export
+- Public PyPI dependencies only (`bedrock-agentcore==1.9.0`) — no bundled or file-based SDK components
+- Targets x402 on Base mainnet (Heurist endpoints settle on Base)
+
 ---
 
 More use cases coming soon.

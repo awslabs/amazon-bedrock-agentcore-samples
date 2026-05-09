@@ -1,0 +1,12 @@
+.venv/
+dist/
+*.egg-info/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.env
+.ipynb_checkpoints/
+heurist_finance_agent/artifacts/*
+!heurist_finance_agent/artifacts/.gitkeep
+heurist_finance_agent/catalog_live_cache.json

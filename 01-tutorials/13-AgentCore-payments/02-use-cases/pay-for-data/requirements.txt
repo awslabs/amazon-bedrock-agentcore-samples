@@ -1,0 +1,6 @@
+bedrock-agentcore==1.9.0
+strands-agents>=1.0.0
+strands-agents-tools[http_request,agent_core_code_interpreter]>=0.2.0
+boto3>=1.35.0
+requests>=2.32.0
+python-dotenv>=1.0.0
