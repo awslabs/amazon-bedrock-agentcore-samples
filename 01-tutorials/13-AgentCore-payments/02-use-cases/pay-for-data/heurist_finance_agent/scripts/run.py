@@ -31,7 +31,9 @@ def _utc_stamp() -> str:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run the Heurist finance agent.")
-    parser.add_argument("prompt", nargs="*", help="Custom prompt (defaults to built-in finance prompt).")
+    parser.add_argument(
+        "prompt", nargs="*", help="Custom prompt (defaults to built-in finance prompt)."
+    )
     args = parser.parse_args()
 
     prompt = " ".join(args.prompt).strip() or DEFAULT_PROMPT
@@ -51,12 +53,17 @@ def main() -> None:
     transcript_path = ARTIFACTS_DIR / f"run_{stamp}.txt"
     transcript_path.write_text(str(result))
 
-    print(json.dumps({
-        "artifact_dir": str(ARTIFACTS_DIR),
-        "new_files": new_files,
-        "transcript_path": str(transcript_path),
-        "result_preview": str(result)[:4000],
-    }, indent=2))
+    print(
+        json.dumps(
+            {
+                "artifact_dir": str(ARTIFACTS_DIR),
+                "new_files": new_files,
+                "transcript_path": str(transcript_path),
+                "result_preview": str(result)[:4000],
+            },
+            indent=2,
+        )
+    )
 
 
 if __name__ == "__main__":

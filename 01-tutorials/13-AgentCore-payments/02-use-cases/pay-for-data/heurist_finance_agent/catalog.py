@@ -72,7 +72,9 @@ def _coerce_price(raw: Any) -> float:
     except (TypeError, ValueError) as exc:
         raise ValueError(f"Invalid price value {raw!r}") from exc
     if not math.isfinite(price) or price < 0:
-        raise ValueError(f"Invalid price value {raw!r}: must be a finite, non-negative number")
+        raise ValueError(
+            f"Invalid price value {raw!r}: must be a finite, non-negative number"
+        )
     return price
 
 
@@ -141,7 +143,9 @@ def load_live_catalog(path: Path | None = None) -> dict[str, Any]:
     return json.loads(input_path.read_text(encoding="utf-8"))
 
 
-def get_live_catalog(refresh: bool = False, session: requests.Session | None = None) -> dict[str, Any]:
+def get_live_catalog(
+    refresh: bool = False, session: requests.Session | None = None
+) -> dict[str, Any]:
     if refresh or not LIVE_CATALOG_CACHE_PATH.exists():
         return fetch_live_catalog(session=session)
     return load_live_catalog()
@@ -168,15 +172,17 @@ def get_tools_for_agents(
                 # Skip tools with an invalid or missing price rather than
                 # letting NaN/Infinity/negative values leak into the prompt.
                 continue
-            tools.append({
-                "agent_id": agent_id,
-                "tool_name": tool.get("name", ""),
-                "resource_url": tool.get("resourceUrl", ""),
-                "price_usd": price_usd,
-                "method": tool.get("method", "POST"),
-                "description": tool.get("description", ""),
-                "parameters": tool.get("parameters", {}) or {},
-            })
+            tools.append(
+                {
+                    "agent_id": agent_id,
+                    "tool_name": tool.get("name", ""),
+                    "resource_url": tool.get("resourceUrl", ""),
+                    "price_usd": price_usd,
+                    "method": tool.get("method", "POST"),
+                    "description": tool.get("description", ""),
+                    "parameters": tool.get("parameters", {}) or {},
+                }
+            )
 
     return tools
 
@@ -200,7 +206,11 @@ def format_catalog_for_prompt(tools: list[dict[str, Any]]) -> str:
         method = _sanitize_prompt_text(t.get("method"), max_len=10) or "POST"
         desc = _sanitize_prompt_text(t.get("description"), max_len=80)
         price = t.get("price_usd")
-        price_str = f"${price:.3f}" if isinstance(price, (int, float)) and math.isfinite(price) else "n/a"
+        price_str = (
+            f"${price:.3f}"
+            if isinstance(price, (int, float)) and math.isfinite(price)
+            else "n/a"
+        )
         lines.append(
             f"| {agent_id} | {tool_name} | {url} | {method} | {price_str} | {desc} |"
         )
@@ -223,7 +233,9 @@ def format_catalog_for_prompt(tools: list[dict[str, Any]]) -> str:
             if not isinstance(schema, dict):
                 schema = {}
             safe_name = _sanitize_prompt_text(name, max_len=80)
-            required = safe_name in {_sanitize_prompt_text(r, max_len=80) for r in required_fields}
+            required = safe_name in {
+                _sanitize_prompt_text(r, max_len=80) for r in required_fields
+            }
             req_marker = " (required)" if required else ""
             type_name = _sanitize_prompt_text(schema.get("type", "any"), max_len=40)
             desc = _sanitize_prompt_text(schema.get("description", ""), max_len=120)

@@ -42,7 +42,9 @@ def safe_artifact_path(raw_name: str) -> Path:
     try:
         candidate.relative_to(artifacts_root)
     except ValueError as exc:
-        raise ValueError(f"Artifact path escapes artifacts directory: {raw_name!r}") from exc
+        raise ValueError(
+            f"Artifact path escapes artifacts directory: {raw_name!r}"
+        ) from exc
     return candidate
 
 
@@ -87,7 +89,9 @@ def _extract_json_payload(text: str) -> dict[str, Any]:
     except Exception:
         pass
 
-    for line in reversed([line.strip() for line in stripped.splitlines() if line.strip()]):
+    for line in reversed(
+        [line.strip() for line in stripped.splitlines() if line.strip()]
+    ):
         try:
             as_dict = _as_dict(json.loads(line))
             if as_dict is not None:
@@ -177,6 +181,7 @@ print(json.dumps(payload))
         "status": "success",
         "remote_path": payload.get("path"),
         "local_path": str(local_path),
-        "mime_type": payload.get("mime_type") or mimetypes.guess_type(local_path.name)[0],
+        "mime_type": payload.get("mime_type")
+        or mimetypes.guess_type(local_path.name)[0],
         "size_bytes": local_path.stat().st_size,
     }

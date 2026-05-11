@@ -34,7 +34,10 @@ from heurist_finance_agent.artifact_export import (
     export_code_interpreter_file,
     safe_artifact_path,
 )
-from heurist_finance_agent.catalog import format_catalog_for_prompt, get_tools_for_agents
+from heurist_finance_agent.catalog import (
+    format_catalog_for_prompt,
+    get_tools_for_agents,
+)
 from heurist_finance_agent.config import get_config, load_environment
 
 load_environment()
@@ -51,6 +54,7 @@ CATALOG_REFERENCE = format_catalog_for_prompt(HEURIST_TOOLS)
 
 
 # --- Artifact helper tools ---
+
 
 @tool
 def export_code_interpreter_artifact(
@@ -72,7 +76,13 @@ def list_exported_artifacts(limit: int = 50) -> dict[str, Any]:
     items = []
     for path in sorted(ARTIFACTS_DIR.glob("*")):
         if path.is_file():
-            items.append({"name": path.name, "path": str(path), "size_bytes": path.stat().st_size})
+            items.append(
+                {
+                    "name": path.name,
+                    "path": str(path),
+                    "size_bytes": path.stat().st_size,
+                }
+            )
     return {"total": len(items), "items": items[:limit]}
 
 
@@ -81,7 +91,11 @@ def save_text_artifact(filename: str, content: str) -> dict[str, Any]:
     """Save text content directly into the local artifacts directory."""
     output_path = safe_artifact_path(filename)
     output_path.write_text(content)
-    return {"status": "success", "path": str(output_path), "size_bytes": output_path.stat().st_size}
+    return {
+        "status": "success",
+        "path": str(output_path),
+        "size_bytes": output_path.stat().st_size,
+    }
 
 
 # --- System prompt ---
@@ -135,7 +149,9 @@ Code interpreter action examples:
 
 def create_agent() -> Agent:
     """Build and return the Strands agent with the payments plugin."""
-    bedrock_session = boto3.Session(profile_name=CFG.bedrock_profile, region_name=CFG.aws_region)
+    bedrock_session = boto3.Session(
+        profile_name=CFG.bedrock_profile, region_name=CFG.aws_region
+    )
     model = BedrockModel(
         boto_session=bedrock_session,
         model_id=CFG.bedrock_model_id,

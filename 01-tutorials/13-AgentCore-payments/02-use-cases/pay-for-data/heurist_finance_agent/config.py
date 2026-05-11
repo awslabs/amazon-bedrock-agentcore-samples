@@ -64,7 +64,9 @@ class AppConfig:
     agent_max_tokens: int
 
 
-def _parse_csv_tuple(raw_value: str | None, default: tuple[str, ...]) -> tuple[str, ...]:
+def _parse_csv_tuple(
+    raw_value: str | None, default: tuple[str, ...]
+) -> tuple[str, ...]:
     if not raw_value:
         return default
     values = tuple(item.strip() for item in raw_value.split(",") if item.strip())
@@ -97,15 +99,24 @@ def get_config() -> AppConfig:
     return AppConfig(
         aws_region=os.environ.get("AWS_REGION", "us-west-2"),
         aws_profile=os.environ.get("AWS_PROFILE"),
-        bedrock_profile=os.environ.get("BEDROCK_PROFILE") or os.environ.get("AWS_PROFILE"),
-        bedrock_model_id=os.environ.get("BEDROCK_MODEL_ID", "us.anthropic.claude-sonnet-4-20250514-v1:0"),
+        bedrock_profile=os.environ.get("BEDROCK_PROFILE")
+        or os.environ.get("AWS_PROFILE"),
+        bedrock_model_id=os.environ.get(
+            "BEDROCK_MODEL_ID", "us.anthropic.claude-sonnet-4-20250514-v1:0"
+        ),
         payment_manager_arn=_require_env("PAYMENT_MANAGER_ARN"),
         payment_session_id=_require_env("PAYMENT_SESSION_ID"),
         payment_instrument_id=_require_env("PAYMENT_INSTRUMENT_ID"),
         user_id=os.environ.get("USER_ID", "demo-user"),
-        heurist_catalog_url=os.environ.get("HEURIST_CATALOG_URL", "https://mesh.heurist.xyz/x402/agents?details=true"),
-        heurist_tool_agent_ids=_parse_csv_tuple(os.environ.get("HEURIST_AGENT_IDS"), DEFAULT_HEURIST_AGENT_IDS),
-        code_interpreter_session_name=os.environ.get("CODE_INTERPRETER_SESSION_NAME", "heurist-finance"),
+        heurist_catalog_url=os.environ.get(
+            "HEURIST_CATALOG_URL", "https://mesh.heurist.xyz/x402/agents?details=true"
+        ),
+        heurist_tool_agent_ids=_parse_csv_tuple(
+            os.environ.get("HEURIST_AGENT_IDS"), DEFAULT_HEURIST_AGENT_IDS
+        ),
+        code_interpreter_session_name=os.environ.get(
+            "CODE_INTERPRETER_SESSION_NAME", "heurist-finance"
+        ),
         agent_timeout_seconds=int(os.environ.get("AGENT_TIMEOUT_SECONDS", "300")),
         agent_max_tokens=int(os.environ.get("AGENT_MAX_TOKENS", "64000")),
     )
