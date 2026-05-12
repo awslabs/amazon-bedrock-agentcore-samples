@@ -69,57 +69,24 @@ def _as_dict(value: Any) -> dict[str, Any] | None:
 def _extract_json_payload(text: str) -> dict[str, Any]:
     """Parse ``text`` into a JSON object.
 
-    Callers expect a ``dict`` with specific keys. We explicitly reject
-    non-dict top-level values (lists, ints, strings) so the error surfaces
-    here with a clear message rather than as a ``TypeError`` downstream.
+    The Code Interpreter runs our own script that does ``print(json.dumps(payload))``,
+    so the output is always well-formed JSON. We parse it directly and reject
+    non-dict top-level values so errors surface here with a clear message.
     """
     stripped = text.strip()
     if not stripped:
         raise ValueError("Empty payload text")
     try:
-        as_dict = _as_dict(json.loads(stripped))
-        if as_dict is not None:
-            return as_dict
-    except json.JSONDecodeError:
-        pass
-    try:
-        as_dict = _as_dict(ast.literal_eval(stripped))
-        if as_dict is not None:
-            return as_dict
-    except Exception:
-        pass
-
-    for line in reversed(
-        [line.strip() for line in stripped.splitlines() if line.strip()]
-    ):
-        try:
-            as_dict = _as_dict(json.loads(line))
-            if as_dict is not None:
-                return as_dict
-        except json.JSONDecodeError:
-            try:
-                as_dict = _as_dict(ast.literal_eval(line))
-                if as_dict is not None:
-                    return as_dict
-            except Exception:
-                continue
-
-    start = stripped.find("{")
-    end = stripped.rfind("}")
-    if start != -1 and end != -1 and end > start:
-        candidate = stripped[start : end + 1]
-        try:
-            as_dict = _as_dict(json.loads(candidate))
-            if as_dict is not None:
-                return as_dict
-        except json.JSONDecodeError:
-            try:
-                as_dict = _as_dict(ast.literal_eval(candidate))
-                if as_dict is not None:
-                    return as_dict
-            except Exception:
-                pass
-    raise ValueError(f"Could not parse JSON object payload from text: {text[:500]}")
+        result = json.loads(stripped)
+    except json.JSONDecodeError as exc:
+        raise ValueError(
+            f"Could not parse JSON payload from Code Interpreter output: {text[:500]}"
+        ) from exc
+    if not isinstance(result, dict):
+        raise ValueError(
+            f"Expected a JSON object from Code Interpreter, got {type(result).__name__}: {text[:200]}"
+        )
+    return result
 
 
 def export_code_interpreter_file(

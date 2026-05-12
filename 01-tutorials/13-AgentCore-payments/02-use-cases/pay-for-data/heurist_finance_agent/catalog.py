@@ -157,14 +157,20 @@ def get_tools_for_agents(
     session: requests.Session | None = None,
 ) -> list[dict[str, Any]]:
     """Return normalized tool definitions for the selected Heurist agents."""
+    import logging
+
+    logger = logging.getLogger(__name__)
+
     selected = set(agent_ids)
     live_catalog = get_live_catalog(refresh=refresh, session=session)
     tools: list[dict[str, Any]] = []
+    found_ids: set[str] = set()
 
     for agent in live_catalog.get("agents", []):
         agent_id = agent.get("agentId")
         if not agent_id or agent_id not in selected:
             continue
+        found_ids.add(agent_id)
         for tool in agent.get("tools", []):
             try:
                 price_usd = _coerce_price(tool["priceUsd"])
@@ -183,6 +189,15 @@ def get_tools_for_agents(
                     "parameters": tool.get("parameters", {}) or {},
                 }
             )
+
+    missing = selected - found_ids
+    if missing:
+        logger.warning(
+            "The following agent IDs were not found in the Heurist catalog and will be "
+            "skipped. They may have been renamed or removed: %s. "
+            "Run sync_registry to refresh the catalog, or update HEURIST_AGENT_IDS in .env.",
+            ", ".join(sorted(missing)),
+        )
 
     return tools
 

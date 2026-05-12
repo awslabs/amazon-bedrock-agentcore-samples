@@ -4,8 +4,6 @@
 The agent uses the built-in http_request tool from strands-agents-tools to call
 paid Heurist endpoints. The AgentCorePaymentsPlugin intercepts HTTP 402 responses,
 generates payment proofs via AgentCore payments, and retries automatically.
-
-No manual payment logic is needed.
 """
 
 from __future__ import annotations
