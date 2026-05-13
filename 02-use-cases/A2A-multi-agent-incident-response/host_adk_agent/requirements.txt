@@ -30,7 +30,7 @@ attrs==25.4.0
     #   aiohttp
     #   jsonschema
     #   referencing
-authlib==1.6.5
+authlib==1.6.12
     # via google-adk
 bedrock-agentcore==1.0.0
     # via host-adk (pyproject.toml)
