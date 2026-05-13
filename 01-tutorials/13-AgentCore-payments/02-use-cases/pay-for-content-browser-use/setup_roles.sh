@@ -7,10 +7,15 @@
 # opening the notebook.
 #
 # Roles created:
-#   AgentCorePaymentsControlPlaneRole    — provisioning (manager, connector, credential provider)
-#   AgentCorePaymentsManagementRole      — session lifecycle (create/get/update sessions, instruments)
-#   AgentCorePaymentsProcessPaymentRole  — agent runtime (ProcessPayment, GetPaymentInstrument, GetPaymentInstrumentBalance)
-#   AgentCorePaymentsResourceRetrievalRole — service-side token retrieval (assumed by AgentCore service)
+#   AgentCorePaymentsControlPlaneRole       — provisioning (manager, connector, credential provider)
+#   AgentCorePaymentsManagementRole         — session lifecycle (create/get/update sessions, instruments)
+#   AgentCorePaymentsProcessPaymentRole     — agent runtime; doubles as the AgentCore Runtime
+#                                             execution role (ProcessPayment, browser tool, ECR pull,
+#                                             CloudWatch logs/metrics, X-Ray, model invocation).
+#                                             Explicit Deny on session/instrument management so the
+#                                             role-segregation boundary is enforced even though the
+#                                             agent runs in a managed container.
+#   AgentCorePaymentsResourceRetrievalRole  — service-side token retrieval (assumed by AgentCore service)
 #
 # After running, copy the printed ARNs into your .env file.
 # =============================================================
@@ -213,6 +218,20 @@ PROCESS_PAYMENT_TRUST=$(cat <<EOF
       "Effect": "Allow",
       "Principal": { "AWS": ${CLIENT_PRINCIPAL} },
       "Action": "sts:AssumeRole"
+    },
+    {
+      "Sid": "AllowAgentCoreRuntimeAssume",
+      "Effect": "Allow",
+      "Principal": { "Service": "bedrock-agentcore.amazonaws.com" },
+      "Action": "sts:AssumeRole",
+      "Condition": {
+        "StringEquals": {
+          "aws:SourceAccount": "${ACCOUNT_ID}"
+        },
+        "ArnLike": {
+          "aws:SourceArn": "arn:aws:bedrock-agentcore:${REGION}:${ACCOUNT_ID}:runtime/*"
+        }
+      }
     }
   ]
 }
@@ -230,6 +249,91 @@ PROCESS_PAYMENT_POLICY=$(cat <<EOF
         "bedrock-agentcore:ProcessPayment",
         "bedrock-agentcore:GetPaymentInstrument",
         "bedrock-agentcore:GetPaymentInstrumentBalance"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "DenySessionManagement",
+      "Effect": "Deny",
+      "Action": [
+        "bedrock-agentcore:CreatePaymentSession",
+        "bedrock-agentcore:CreatePaymentInstrument",
+        "bedrock-agentcore:CreatePaymentManager",
+        "bedrock-agentcore:CreatePaymentConnector",
+        "bedrock-agentcore:DeletePaymentInstrument",
+        "bedrock-agentcore:DeletePaymentSession"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "RuntimeECRAccess",
+      "Effect": "Allow",
+      "Action": [
+        "ecr:BatchGetImage",
+        "ecr:GetDownloadUrlForLayer",
+        "ecr:GetAuthorizationToken"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "RuntimeCloudWatchLogs",
+      "Effect": "Allow",
+      "Action": [
+        "logs:CreateLogGroup",
+        "logs:CreateLogStream",
+        "logs:DescribeLogGroups",
+        "logs:DescribeLogStreams",
+        "logs:PutLogEvents"
+      ],
+      "Resource": [
+        "arn:aws:logs:${REGION}:${ACCOUNT_ID}:log-group:/aws/bedrock-agentcore/runtimes/*",
+        "arn:aws:logs:${REGION}:${ACCOUNT_ID}:log-group:*"
+      ]
+    },
+    {
+      "Sid": "RuntimeXRay",
+      "Effect": "Allow",
+      "Action": [
+        "xray:PutTraceSegments",
+        "xray:PutTelemetryRecords",
+        "xray:GetSamplingRules",
+        "xray:GetSamplingTargets"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "RuntimeCloudWatchMetrics",
+      "Effect": "Allow",
+      "Action": "cloudwatch:PutMetricData",
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "cloudwatch:namespace": "bedrock-agentcore"
+        }
+      }
+    },
+    {
+      "Sid": "BedrockModelInvocation",
+      "Effect": "Allow",
+      "Action": [
+        "bedrock:InvokeModel",
+        "bedrock:InvokeModelWithResponseStream"
+      ],
+      "Resource": [
+        "arn:aws:bedrock:*::foundation-model/*",
+        "arn:aws:bedrock:${REGION}:${ACCOUNT_ID}:*"
+      ]
+    },
+    {
+      "Sid": "BrowserToolAccess",
+      "Effect": "Allow",
+      "Action": [
+        "bedrock-agentcore:StartBrowserSession",
+        "bedrock-agentcore:StopBrowserSession",
+        "bedrock-agentcore:GetBrowserSession",
+        "bedrock-agentcore:ListBrowserSessions",
+        "bedrock-agentcore:UpdateBrowserStream",
+        "bedrock-agentcore:ConnectBrowserAutomationStream"
       ],
       "Resource": "*"
     }
