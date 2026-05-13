@@ -28,4 +28,10 @@ USER bedrock_agentcore
 
 EXPOSE 8080
 
+# AgentCore Runtime monitors container health at the platform level via the
+# service contract on :8080; this HEALTHCHECK exists for portability and to
+# satisfy security scanners. BedrockAgentCoreApp serves /ping by default.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+  CMD curl -fsS http://localhost:8080/ping || exit 1
+
 CMD ["opentelemetry-instrument", "python", "-m", "main"]
