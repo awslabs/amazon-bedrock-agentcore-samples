@@ -67,6 +67,8 @@ DEPLOY AGENT TO RUNTIME  (notebook Step 5, AgentCore CLI)
 ─────────────────────────────────────────────────────────────────────────────
 
   agent/payment_agent.py            agentcore CLI                 AWS
+  agent/requirements.txt          + agentcore deploy            (CodeBuild builds
+  agent/Dockerfile                                               from Dockerfile)
   (BedrockAgentCoreApp +    ──►    create / deploy     ──►   AgentRuntime
    AgentCoreBrowser +                                          (execution role:
    process_x402_payment)                                       ProcessPaymentRole)
@@ -155,10 +157,14 @@ CLEANUP
 - AWS CLI v2 configured with credentials (`aws configure`)
 - AWS CDK v2 installed (used by the AgentCore CLI under the hood)
 - AgentCore CLI installed: `npm install -g @aws/agentcore`
+  > **No local Docker required.** Step 5 builds the agent's container image in
+  > AWS CodeBuild via the CLI's CDK app. You only need Docker if you want to use
+  > `agentcore dev` for local hot-reload development.
 - IAM roles created — run `bash setup_roles.sh` and record the ARNs in `.env`. This
   script configures `ProcessPaymentRole` to also serve as the AgentCore Runtime
   execution role (ECR pull, CloudWatch logs, X-Ray, Bedrock model invocation,
-  browser tool), with explicit Deny on session/instrument management.
+  browser tool), with explicit Deny on session/instrument management. It also adds
+  `InvokeAgentRuntime` to `ManagementRole` so the notebook can call the deployed agent.
 - Content provider deployed to AWS — run `cd content-provider && PAY_TO=0x<your-wallet> bash deploy.sh` and set `CONTENT_DISTRIBUTION_URL` in `.env` (see [content-provider/README.md](content-provider/README.md))
 - A Coinbase Developer Platform (CDP) account with an API key
   - API key name, private key, and wallet secret are required (see `.env.sample`)
@@ -228,9 +234,11 @@ Run all cells in order. The notebook will:
 3e. Verify wallet USDC balance via `GetPaymentInstrumentBalance` (briefly assumes
     `ProcessPaymentRole` locally, only for the balance check)
 4. Create a payment session with budget and expiry (`ManagementRole`)
-5. Deploy `agent/payment_agent.py` to AgentCore Runtime via the AgentCore CLI
-   (`agentcore create` + `agentcore deploy`) with `ProcessPaymentRole` as the
-   execution role and a 10-minute idle / 30-minute max lifecycle
+5. Deploy `agent/payment_agent.py` to AgentCore Runtime via the AgentCore CLI:
+   `agentcore create` + `agentcore add agent --build Container`, copy in
+   [`agent/Dockerfile`](agent/Dockerfile), then `agentcore deploy` (CodeBuild builds
+   the image, pushes to ECR, creates the AgentRuntime). Pinned to Python 3.13,
+   `ProcessPaymentRole` execution role, 10-min idle / 30-min max lifecycle.
 6. Invoke the deployed agent via `InvokeAgentRuntime` with the session/instrument
    context in the payload, then verify spend via `GetPaymentSession`
 7. View the session trace in CloudWatch GenAI Observability

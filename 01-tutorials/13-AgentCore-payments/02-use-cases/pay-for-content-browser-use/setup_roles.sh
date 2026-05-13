@@ -75,9 +75,11 @@ create_or_update_role() {
 }
 
 # ── 1. ControlPlaneRole ───────────────────────────────────────────────────────
-# Used by notebook Steps 3a–3c: CreatePaymentCredentialProvider,
-# CreatePaymentManager, CreatePaymentConnector.
-# Uses bedrock-agentcore:* for breadth; explicitly denies ProcessPayment.
+# Administrator role per the AgentCore payments IAM doc:
+# https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/payments-iam-roles.html
+# Manages payment managers, connectors, and credential providers — never
+# executes payments. Each statement is scoped to the specific resource
+# pattern called out in the doc.
 
 CONTROL_PLANE_TRUST=$(cat <<EOF
 {
@@ -99,10 +101,46 @@ CONTROL_PLANE_POLICY=$(cat <<EOF
   "Version": "2012-10-17",
   "Statement": [
     {
-      "Sid": "ControlPlaneOperations",
+      "Sid": "AllowPaymentManagerOperations",
       "Effect": "Allow",
-      "Action": "bedrock-agentcore:*",
-      "Resource": "*"
+      "Action": [
+        "bedrock-agentcore:CreatePaymentManager",
+        "bedrock-agentcore:GetPaymentManager",
+        "bedrock-agentcore:ListPaymentManagers",
+        "bedrock-agentcore:DeletePaymentManager",
+        "bedrock-agentcore:UpdatePaymentManager"
+      ],
+      "Resource": "arn:aws:bedrock-agentcore:*:${ACCOUNT_ID}:payment-manager/*"
+    },
+    {
+      "Sid": "AllowPaymentConnectorOperations",
+      "Effect": "Allow",
+      "Action": [
+        "bedrock-agentcore:CreatePaymentConnector",
+        "bedrock-agentcore:GetPaymentConnector",
+        "bedrock-agentcore:ListPaymentConnectors",
+        "bedrock-agentcore:DeletePaymentConnector",
+        "bedrock-agentcore:UpdatePaymentConnector"
+      ],
+      "Resource": "arn:aws:bedrock-agentcore:*:${ACCOUNT_ID}:payment-manager/*/connector/*"
+    },
+    {
+      "Sid": "AllowCredentialProviderOperations",
+      "Effect": "Allow",
+      "Action": [
+        "bedrock-agentcore:CreatePaymentCredentialProvider",
+        "bedrock-agentcore:GetPaymentCredentialProvider",
+        "bedrock-agentcore:ListPaymentCredentialProviders",
+        "bedrock-agentcore:DeletePaymentCredentialProvider",
+        "bedrock-agentcore:UpdatePaymentCredentialProvider"
+      ],
+      "Resource": "arn:aws:bedrock-agentcore:*:${ACCOUNT_ID}:token-vault/*/paymentcredentialprovider/*"
+    },
+    {
+      "Sid": "AllowVendedLogDelivery",
+      "Effect": "Allow",
+      "Action": "bedrock-agentcore:AllowVendedLogDeliveryForResource",
+      "Resource": "arn:aws:bedrock-agentcore:*:${ACCOUNT_ID}:payment-manager/*"
     },
     {
       "Sid": "DenyDataPlanePaymentExecution",
@@ -121,13 +159,21 @@ CONTROL_PLANE_POLICY=$(cat <<EOF
       "Resource": "arn:aws:secretsmanager:*:${ACCOUNT_ID}:secret:bedrock-agentcore-identity*"
     },
     {
-      "Sid": "PassRoles",
+      "Sid": "PassResourceRetrievalRole",
       "Effect": "Allow",
       "Action": "iam:PassRole",
-      "Resource": [
-        "arn:aws:iam::${ACCOUNT_ID}:role/AgentCorePaymentsResourceRetrievalRole",
-        "arn:aws:iam::${ACCOUNT_ID}:role/AgentCorePaymentsManagementRole"
-      ]
+      "Resource": "arn:aws:iam::${ACCOUNT_ID}:role/AgentCorePaymentsResourceRetrievalRole",
+      "Condition": {
+        "StringEquals": {
+          "iam:PassedToService": "bedrock-agentcore.amazonaws.com"
+        }
+      }
+    },
+    {
+      "Sid": "PassManagementRole",
+      "Effect": "Allow",
+      "Action": "iam:PassRole",
+      "Resource": "arn:aws:iam::${ACCOUNT_ID}:role/AgentCorePaymentsManagementRole"
     }
   ]
 }
@@ -172,7 +218,7 @@ MANAGEMENT_POLICY=$(cat <<EOF
   "Version": "2012-10-17",
   "Statement": [
     {
-      "Sid": "InstrumentAndSessionManagement",
+      "Sid": "AllowPaymentManagement",
       "Effect": "Allow",
       "Action": [
         "bedrock-agentcore:CreatePaymentInstrument",
@@ -181,9 +227,21 @@ MANAGEMENT_POLICY=$(cat <<EOF
         "bedrock-agentcore:DeletePaymentInstrument",
         "bedrock-agentcore:CreatePaymentSession",
         "bedrock-agentcore:GetPaymentSession",
-        "bedrock-agentcore:ListPaymentSessions"
+        "bedrock-agentcore:ListPaymentSessions",
+        "bedrock-agentcore:UpdatePaymentSession",
+        "bedrock-agentcore:DeletePaymentSession"
       ],
-      "Resource": "*"
+      "Resource": [
+        "arn:aws:bedrock-agentcore:*:${ACCOUNT_ID}:payment-manager/*",
+        "arn:aws:bedrock-agentcore:*:${ACCOUNT_ID}:payment-manager/*/instrument/*",
+        "arn:aws:bedrock-agentcore:*:${ACCOUNT_ID}:payment-manager/*/session/*"
+      ]
+    },
+    {
+      "Sid": "InvokeDeployedAgent",
+      "Effect": "Allow",
+      "Action": "bedrock-agentcore:InvokeAgentRuntime",
+      "Resource": "arn:aws:bedrock-agentcore:*:${ACCOUNT_ID}:runtime/*"
     },
     {
       "Sid": "DenyProcessPayment",
@@ -245,12 +303,25 @@ PROCESS_PAYMENT_POLICY=$(cat <<EOF
     {
       "Sid": "AllowProcessPayment",
       "Effect": "Allow",
+      "Action": "bedrock-agentcore:ProcessPayment",
+      "Resource": [
+        "arn:aws:bedrock-agentcore:*:${ACCOUNT_ID}:payment-manager/*",
+        "arn:aws:bedrock-agentcore:*:${ACCOUNT_ID}:payment-manager/*/session/*"
+      ]
+    },
+    {
+      "Sid": "AllowPaymentReadOperations",
+      "Effect": "Allow",
       "Action": [
-        "bedrock-agentcore:ProcessPayment",
         "bedrock-agentcore:GetPaymentInstrument",
-        "bedrock-agentcore:GetPaymentInstrumentBalance"
+        "bedrock-agentcore:GetPaymentInstrumentBalance",
+        "bedrock-agentcore:GetPaymentSession"
       ],
-      "Resource": "*"
+      "Resource": [
+        "arn:aws:bedrock-agentcore:*:${ACCOUNT_ID}:payment-manager/*",
+        "arn:aws:bedrock-agentcore:*:${ACCOUNT_ID}:payment-manager/*/instrument/*",
+        "arn:aws:bedrock-agentcore:*:${ACCOUNT_ID}:payment-manager/*/session/*"
+      ]
     },
     {
       "Sid": "DenySessionManagement",
@@ -260,6 +331,7 @@ PROCESS_PAYMENT_POLICY=$(cat <<EOF
         "bedrock-agentcore:CreatePaymentInstrument",
         "bedrock-agentcore:CreatePaymentManager",
         "bedrock-agentcore:CreatePaymentConnector",
+        "bedrock-agentcore:UpdatePaymentSession",
         "bedrock-agentcore:DeletePaymentInstrument",
         "bedrock-agentcore:DeletePaymentSession"
       ],
