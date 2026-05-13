@@ -6,6 +6,23 @@ Generative Engine Optimization (GEO) agent deployed via [Amazon Bedrock AgentCor
 
 ![GEO Agent Architecture](docs/geo-architecture.png)
 
+```
+AI Bot (GPTBot, ClaudeBot, etc.)
+     │
+     ▼
+Amazon CloudFront ──► CloudFront Function (detect bot User-Agent)
+     │                        │
+  Normal User              AI Bot
+     │                        ▼
+  Origin site         AWS Lambda Function URL (OAC SigV4)
+                              │
+                        ┌─────▼──────┐
+                        │ Amazon     │     Amazon Bedrock AgentCore
+                        │ DynamoDB   │◄──── (GEO Agent + Guardrail)
+                        │ geo-content│
+                        └────────────┘
+```
+
 1. Amazon CloudFront Function detects AI bot User-Agents and routes them to an AWS Lambda Function URL (OAC + SigV4)
 2. The Lambda handler checks Amazon DynamoDB for cached GEO content
 3. On cache miss, it triggers async generation via Amazon Bedrock AgentCore — the agent fetches the original page, rewrites it for GEO, and stores the result
@@ -20,36 +37,22 @@ The agent has four tools:
 | `generate_llms_txt` | Generates AI-friendly `llms.txt` for websites |
 | `store_geo_content` | Fetch → Rewrite → Score → Store to Amazon DynamoDB |
 
-Multi-tenancy is built in: multiple Amazon CloudFront distributions share a single Lambda + Amazon DynamoDB set, isolated via `{host}#{path}` composite keys. The agent writes to Amazon DynamoDB through a dedicated storage Lambda (decoupled — agent only needs `lambda:InvokeFunction`).
+Multi-tenancy is built in: multiple Amazon CloudFront distributions share a single Lambda + Amazon DynamoDB set, isolated via `{host}#{path}` composite keys.
 
 ## Prerequisites
 
 | Tool | Version | Installation |
 |------|---------|-------------|
-| Python | >= 3.10 | macOS: `brew install python@3.10` / Windows: [python.org](https://www.python.org/downloads/) |
+| Python | >= 3.10 | macOS: `brew install python@3.12` / Windows: [python.org](https://www.python.org/downloads/) |
 | Node.js | >= 20 | macOS: `brew install node@20` / Windows: [nodejs.org](https://nodejs.org/) / Any: `nvm install 20` |
 | AWS CLI | v2 | macOS: `brew install awscli` / Windows: [AWS CLI MSI installer](https://awscli.amazonaws.com/AWSCLIV2.msi) |
-| AWS SAM CLI | latest | macOS: `brew install aws-sam-cli` / Windows: [SAM CLI MSI installer](https://github.com/aws/aws-sam-cli/releases/latest) |
+| AWS CDK | >= 2.150 | `npm install -g aws-cdk` |
 
-You also need an AWS account with credentials configured (`aws configure`) and appropriate IAM permissions (see [Deployment Reference](docs/deployment.md)).
+You also need an AWS account with credentials configured (`aws configure`).
 
 ## Deployment Steps
 
-### Option A: Interactive Setup (recommended)
-
-**macOS / Linux / Windows (WSL or Git Bash):**
-
-```bash
-source ./setup.sh
-```
-
-The script handles everything: dependency installation, Amazon Bedrock AgentCore deployment, SAM configuration, and infrastructure deployment. It will prompt for AWS Region, origin domain, account ID, and Amazon CloudFront distribution settings.
-
-> **Windows without WSL:** Follow Option B below.
-
-### Option B: Manual Step-by-Step
-
-#### 1. Set up the Python environment
+### 1. Set up the Python environment
 
 **macOS / Linux:**
 
@@ -67,49 +70,50 @@ python -m venv .venv
 pip install -e .
 ```
 
-If you see a `RequestsDependencyWarning` about `chardet`, run `pip uninstall chardet -y`.
-
-#### 2. Deploy the Amazon Bedrock AgentCore agent
+### 2. Deploy the Amazon Bedrock AgentCore agent
 
 ```bash
 agentcore configure   # Entrypoint: src/main.py, Region: us-east-1
 agentcore deploy
 ```
 
-#### 3. Deploy edge serving infrastructure
-
-**macOS / Linux:**
+### 3. Deploy edge serving infrastructure (CDK)
 
 ```bash
-cp samconfig.toml.example samconfig.toml
+cd infra/cdk
+pip install -r requirements.txt
 ```
 
-**Windows:**
+Edit `cdk.json` context values with your configuration:
 
-```powershell
-Copy-Item samconfig.toml.example samconfig.toml
+```json
+{
+  "context": {
+    "default_origin_host": "www.example.com",
+    "agent_runtime_arn": "<YOUR_AGENT_ARN>",
+    "origin_verify_secret": "<YOUR_SECRET>",
+    "table_name": "geo-content",
+    "create_distribution": true
+  }
+}
 ```
 
-Edit `samconfig.toml` with your values, then:
+Then deploy:
 
 ```bash
-sam build -t infra/template.yaml
-sam deploy -t infra/template.yaml
+cdk bootstrap   # First time only
+cdk deploy
 ```
 
-Or pass overrides directly:
+Or pass context values directly:
 
 ```bash
-sam deploy -t infra/template.yaml \
-  --stack-name geo-backend --region us-east-1 --resolve-s3 \
-  --capabilities CAPABILITY_IAM \
-  --parameter-overrides \
-    AgentRuntimeArn=<AGENT_ARN> \
-    DefaultOriginHost=www.example.com \
-    CreateDistribution=true
+cdk deploy \
+  -c default_origin_host=www.example.com \
+  -c agent_runtime_arn=<AGENT_ARN> \
+  -c origin_verify_secret=<SECRET> \
+  -c create_distribution=true
 ```
-
-See [Deployment Reference](docs/deployment.md) for SAM parameters, multi-site deployment, and Amazon CloudFront Function updates.
 
 ## Sample Queries / Usage Examples
 
@@ -142,15 +146,6 @@ curl "https://<CF_DOMAIN>/llms.txt?ua=genaibot"                 # llms.txt
 
 Scores dashboard: `https://<CF_DOMAIN>/?ua=genaibot&action=scores`
 
-### Querying score data
-
-```bash
-python scripts/query_scores.py --stats
-python scripts/query_scores.py --top 10
-python scripts/query_scores.py --url /article/123
-python scripts/query_scores.py --export scores.json
-```
-
 ### Environment variables
 
 | Variable | Default | Description |
@@ -166,22 +161,14 @@ python scripts/query_scores.py --export scores.json
 ### Remove infrastructure
 
 ```bash
-sam delete --stack-name geo-backend --region us-east-1
+cd infra/cdk
+cdk destroy
 ```
-
-This deletes all SAM-managed resources (AWS Lambda functions, Amazon DynamoDB table, OAC, Amazon CloudFront distribution if created by the stack).
 
 ### Remove the agent
 
 ```bash
 agentcore destroy
-```
-
-### Remove the Amazon CloudFront Function (if deployed separately)
-
-```bash
-ETAG=$(aws cloudfront describe-function --name geo-bot-router-oac --query 'ETag' --output text)
-aws cloudfront delete-function --name geo-bot-router-oac --if-match "$ETAG"
 ```
 
 ### Clean up local environment
@@ -191,7 +178,6 @@ aws cloudfront delete-function --name geo-bot-router-oac --if-match "$ETAG"
 ```bash
 deactivate
 rm -rf .venv
-rm samconfig.toml
 ```
 
 **Windows (PowerShell):**
@@ -199,5 +185,4 @@ rm samconfig.toml
 ```powershell
 deactivate
 Remove-Item -Recurse -Force .venv
-Remove-Item samconfig.toml
 ```

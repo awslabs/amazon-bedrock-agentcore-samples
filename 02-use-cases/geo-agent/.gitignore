@@ -1,4 +1,5 @@
-# SAM build artifacts
+# CDK
+cdk.out/
 .aws-sam/
 
 # Python
@@ -26,7 +27,6 @@ Thumbs.db
 # Test artifacts
 test/
 test/e2e_results/
-/tmp/
 
 # Lock file (generated)
 uv.lock
