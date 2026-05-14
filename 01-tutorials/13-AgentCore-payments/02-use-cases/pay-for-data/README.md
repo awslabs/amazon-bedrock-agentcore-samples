@@ -1,24 +1,36 @@
 # Pay for Data — Heurist Finance Agent
 
-> **Caution:** This sample is provided for experimental and educational purposes only. It is not intended for direct use in production environments.
-
 ## Overview
 
-A finance research agent that pays for real-time market data using **Amazon Bedrock AgentCore payments**. The agent fetches live prices, SEC filings, and macro indicators from [Heurist](https://heurist.xyz), analyzes the data with AgentCore Code Interpreter, and exports charts and reports.
+A finance research agent that pays for real-time market data using **Amazon Bedrock AgentCore payments**. The agent calls paid [Heurist](https://heurist.xyz) endpoints for live prices, SEC filings, and macro indicators, analyzes the data with AgentCore Code Interpreter, and returns charts and reports as S3 presigned URLs — all without any manual payment code in the tools.
 
-Heurist endpoints use the [x402 protocol](https://x402.org) — they return HTTP 402 until a valid payment proof is attached. The `AgentCorePaymentsPlugin` drives payment processing end-to-end: it intercepts 402 responses, asks the AgentCore payment manager to generate a payment proof against your payment instrument, attaches it, and retries the request. Tool code stays an ordinary `http_request` call.
+The agent is deployed to **AgentCore Runtime**: a managed container endpoint with HTTPS invocation, SigV4 auth, and automatic observability via CloudWatch.
+
+Heurist endpoints use the [x402 protocol](https://x402.org) — they return HTTP 402 until a valid payment proof is attached. The `AgentCorePaymentsPlugin` handles payment end-to-end: it intercepts 402 responses, generates a USDC proof via the AgentCore payment manager, attaches it, and retries. Your tool code stays a plain `http_request` call.
+
+## Architecture
 
 ```
-User prompt → Strands Agent (Claude on Bedrock)
-  → http_request to Heurist endpoint
-    → 402 → AgentCorePaymentsPlugin → payment proof → retry → 200
-  → Code Interpreter (pandas + matplotlib)
-  → Artifact export
+App Backend (ManagementRole)              AgentCore Runtime
+  |                                        +------------------------------+
+  | create_session(budget=$X)              |  runtime_agent.py            |
+  |                                        |  BedrockAgentCoreApp         |
+  |-- invoke(manager_arn, session_id, -->  |  + AgentCorePaymentsPlugin   |
+  |         instrument_id, prompt)         |                              |
+  |                                        |  http_request -> 402         |
+  |<-- {response, artifacts: [{url}]} ---  |  -> ProcessPayment -> retry  |
+  |                                        |  -> Code Interpreter         |
+  | get_session(check spend)               |  -> export to S3             |
+                                           +------------------------------+
+                                                      |
+                                                      v
+                                          CloudWatch GenAI Observability
+                                          (automatic via OpenTelemetry)
 ```
 
 ## How It Works
 
-See [`agent.py`](heurist_finance_agent/agent.py) for the full implementation. The relevant setup:
+`AgentCorePaymentsPlugin` handles the entire x402 payment lifecycle:
 
 ```python
 from bedrock_agentcore.payments.integrations.strands import (
@@ -38,16 +50,18 @@ payment_plugin = AgentCorePaymentsPlugin(
 
 agent = Agent(
     model=BedrockModel(model_id=MODEL_ID),
-    tools=[http_request, code_interpreter, ...],
+    tools=[http_request, code_interpreter, export_artifact_to_s3, ...],
     plugins=[payment_plugin],
 )
 ```
+
+See [`runtime_agent.py`](heurist_finance_agent/runtime_agent.py) for the full implementation.
 
 ## Sample Details
 
 | | |
 |---|---|
-| AgentCore components | AgentCore payments, AgentCore Code Interpreter |
+| AgentCore components | AgentCore payments, AgentCore Code Interpreter, AgentCore Runtime |
 | Agent framework | [Strands Agents](https://strandsagents.com/) |
 | Model | Claude Sonnet 4 on Amazon Bedrock (configurable) |
 | Payment protocol | [x402](https://x402.org) |
@@ -74,6 +88,9 @@ Override with the `HEURIST_AGENT_IDS` environment variable.
   - Payment session created (with your desired payment limits)
 - Python 3.11+
 - AWS credentials with Bedrock and AgentCore access in `us-west-2`
+- Node.js 20+ (for the `@aws/agentcore` CLI)
+- Docker (running, for `agentcore deploy` container build)
+- [AWS CDK](https://docs.aws.amazon.com/cdk/v2/guide/getting_started.html) installed globally
 
 ## Layout
 
@@ -82,52 +99,30 @@ pay-for-data/
 ├── README.md
 ├── requirements.txt
 ├── .env.example
-├── pay-for-data.ipynb                # notebook entry point
+├── pay-for-data.ipynb                    # notebook: deploy and invoke via AgentCore Runtime
 └── heurist_finance_agent/
-    ├── agent.py                      # agent definition + plugin config
-    ├── catalog.py                    # fetches Heurist registry, formats for system prompt
-    ├── config.py                     # loads .env
-    ├── artifact_export.py            # pulls files from Code Interpreter to local disk
-    ├── artifacts/                    # output directory
+    ├── runtime_agent.py                  # AgentCore Runtime entry point (BedrockAgentCoreApp)
+    ├── catalog.py                        # fetches Heurist registry, formats for system prompt
+    ├── catalog_live_cache.json           # synced catalog (bundled in Runtime image)
+    ├── config.py                         # loads .env
     └── scripts/
-        ├── run.py                    # CLI: python -m heurist_finance_agent.scripts.run
-        └── sync_registry.py          # CLI: refreshes cached Heurist catalog
-```
-
-## Installation
-
-```bash
-cd 01-tutorials/13-AgentCore-payments/02-use-cases/pay-for-data
-
-# Create a virtual environment
-python -m venv .venv && source .venv/bin/activate
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Configure credentials
-cp .env.example .env
-# Edit .env — see Environment Variables below
+        └── sync_registry.py              # CLI: refreshes cached Heurist catalog
 ```
 
 ## Quick Start
 
-Open [`pay-for-data.ipynb`](pay-for-data.ipynb) and run the cells in order — that's the main walkthrough.
+Open [`pay-for-data.ipynb`](pay-for-data.ipynb) and run the cells in order:
 
-If you prefer the command line:
-
-```bash
-# Sync the Heurist tool catalog (one-time, cached on disk)
-python -m heurist_finance_agent.scripts.sync_registry
-
-# Run the agent (default prompt: US macro summary via FredMacroAgent)
-python -m heurist_finance_agent.scripts.run
-
-# Or with a custom prompt
-python -m heurist_finance_agent.scripts.run "What are the current US inflation and interest rate trends?"
-```
-
-Outputs land in `heurist_finance_agent/artifacts/`.
+| Step | What happens |
+|------|-------------|
+| 1 | Configure credentials and confirm AWS identity |
+| 2 | Sync the Heurist tool catalog (bundled in the container image) |
+| 3 | Create the S3 artifacts bucket |
+| 4 | Install the AgentCore CLI, scaffold and deploy |
+| 5 | Add IAM permissions to the execution role |
+| 6 | Invoke the deployed agent and inspect results |
+| 7 | View observability traces in CloudWatch |
+| 8 | Cleanup |
 
 ## Payment Flow
 
@@ -136,12 +131,46 @@ When the agent calls a paid Heurist endpoint:
 1. `http_request` sends a POST to the endpoint URL.
 2. Heurist returns HTTP 402 with x402 payment terms (network, asset, amount, recipient).
 3. `AgentCorePaymentsPlugin` intercepts the response.
-4. The plugin asks the AgentCore payment manager to generate a payment proof for those terms.
-5. The payment manager uses the configured payment connection and payment instrument to sign a USDC transfer, and returns a payment proof.
-6. The plugin attaches the proof as an `X-PAYMENT` header and retries the request.
-7. Heurist validates the proof, settles on-chain, and returns the data.
+4. The plugin asks the AgentCore payment manager to generate a payment proof.
+5. The payment manager uses the payment instrument to sign a USDC transfer and returns a proof.
+6. The plugin attaches the proof as `X-PAYMENT` and retries — Heurist validates and returns the data.
 
-The plugin retries up to 3 times per tool call. If payment processing fails (e.g., insufficient balance, payment limits exceeded), it raises an interrupt the agent can surface to the user.
+The plugin retries up to 3 times per tool call. Payment limits are enforced at the session scope — the agent cannot exceed `maxSpendAmount`.
+
+## How the Runtime Agent Works
+
+`runtime_agent.py` implements the AgentCore Runtime service contract with full feature parity:
+
+**Stateless, payload-driven**
+All payment config (manager ARN, session ID, instrument ID) comes from the invocation payload. The container holds no credentials. The app backend (ManagementRole) creates payment sessions with spending limits before each invocation. The Runtime execution role (ProcessPaymentRole) can only spend within those limits.
+
+**AgentCore Code Interpreter**
+Code Interpreter is a remote AWS API — it works identically from a Runtime container as from any other environment. The agent uses it for pandas/matplotlib analysis and chart generation.
+
+**S3 artifact storage**
+Artifacts produced by Code Interpreter are uploaded to S3 and returned as presigned download URLs. The response shape is:
+
+```json
+{
+  "response": "<markdown research summary>",
+  "artifacts": [
+    {"name": "chart.png", "url": "https://...", "expires_in": 3600}
+  ]
+}
+```
+
+If `CI_ARTIFACTS_BUCKET` is not configured, the agent degrades gracefully: charts become markdown tables, text returns inline.
+
+**Observability**
+The `agentcore deploy` CLI configures the container to run under `opentelemetry-instrument`. Traces and logs go to CloudWatch GenAI Observability automatically — no additional setup.
+
+**Execution role permissions** (attached by the notebook, Step 5):
+
+| Permission set | Actions | Resource scope |
+|---|---|---|
+| Payment data-plane | `ProcessPayment`, `GetPaymentInstrument`, `GetPaymentSession` | `payment-manager/*` |
+| Code Interpreter | `StartCodeInterpreterSession`, `InvokeCodeInterpreter`, `StopCodeInterpreterSession` | `code-interpreter/*` |
+| S3 artifacts | `PutObject`, `GetObject` | `<bucket>/heurist-finance-artifacts/*` |
 
 ## Environment Variables
 
@@ -156,9 +185,11 @@ See [`.env.example`](.env.example). Required:
 | `BEDROCK_MODEL_ID` | Bedrock model (default: Claude Sonnet 4) |
 | `HEURIST_AGENT_IDS` | Comma-separated Heurist agents to load |
 
+These values are passed in the invocation payload at runtime. The `.env` bundled in the container image contains only non-sensitive service config: `CI_ARTIFACTS_BUCKET`, `AWS_REGION`, `BEDROCK_MODEL_ID`.
+
 ## Notes
 
-- Payment sessions expire. Create a fresh payment session before long runs.
+- Payment sessions expire. Create a fresh session before each invocation in automated workflows.
 - Each paid call settles USDC on Base. Ensure your payment instrument is funded.
-- Payment limits are enforced at the payment session scope (`maxSpendAmount`). See the tutorials for configuring them.
-- The agent's system prompt includes the full endpoint catalog (URLs, parameters, prices) so it knows what to call via `http_request`.
+- Sync the catalog cache before building the container image (`sync_registry.py`). The cache is bundled in the image — the container does not call the Heurist registry at startup.
+- Presigned artifact URLs expire after `CI_ARTIFACTS_TTL` seconds (default: 1 hour). Download or forward the URL to the end user promptly.
