@@ -39,9 +39,9 @@ Use this path if you want to learn AgentCore payments with one wallet provider. 
 
 The `.env` file is the shared config. The provider notebook writes credentials, Tutorial 00 writes resource IDs, and downstream tutorials read both. Do not run both provider notebooks — the second one overwrites `CREDENTIAL_PROVIDER_TYPE` and Tutorial 00 uses whichever was set last.
 
-### Path B: Multi-provider (Tutorial 06)
+### Path B: Multi-provider (Tutorial 07)
 
-Tutorial 06 (multi-agent orchestrator) uses two wallets — one Coinbase, one Privy — with separate budgets per agent. This requires a different setup:
+Tutorial 07 (multi-agent orchestrator) uses two wallets — one Coinbase, one Privy — with separate budgets per agent. This requires a different setup:
 
 ```
 1. Run BOTH provider setup guides:
@@ -53,7 +53,7 @@ Tutorial 06 (multi-agent orchestrator) uses two wallets — one Coinbase, one Pr
       Creates two Instruments (one per provider)
       Writes prefixed resource IDs to .env (COINBASE_INSTRUMENT_ID, PRIVY_INSTRUMENT_ID, etc.)
 
-3. Run Tutorial 06
+3. Run Tutorial 07
       Reads the prefixed keys and assigns each agent its own wallet + budget
 ```
 
@@ -129,17 +129,19 @@ Each tutorial maps to one or more AgentCore payments features. Start with Tutori
 | 03 | [Wallet Operations](03-user-onboarding-wallet-funding/) | Wallet integration | Full wallet lifecycle: onboard additional users, funding options (testnet faucet and onramps), delegation per provider, balance checks, multi-network wallets, and session budget patterns |
 | 04 | [Gateway + Bazaar](04-agent-with-coinbase-bazaar-via-gateway/) | Endpoint discoverability, Payment processing | Discover paid MCP tools on Coinbase x402 Bazaar through AgentCore Gateway (Base Sepolia) and call them with automatic payment |
 | 05 | [Browser + Payments](05-agent-with-browser-tool-pay-for-content/) | Payment processing | (Pattern reference) Intercept HTTP 402 responses in a Playwright browser session and pay for paywalled web content |
-| 06 | [Multi-Agent Orchestrator](06-multi-agent-payment-orchestrator/) | Wallet integration, Payment limits, Observability | Orchestrate multiple agents with separate wallets (Coinbase + Privy), per-agent payment limits, Runtime deploy, and online evaluation |
+| 06 | [Research Agent with Payment Memory](06-research-agent-with-payment-memory/) | Payment processing, Payment limits, Memory | Combine AgentCore payments with AgentCore Memory so the agent recalls past data and user preferences across sessions and skips redundant paid calls |
+| 07 | [Multi-Agent Orchestrator](07-multi-agent-payment-orchestrator/) | Wallet integration, Payment limits, Observability | Orchestrate multiple agents with separate wallets (Coinbase + Privy), per-agent payment limits, Runtime deploy, and online evaluation |
 
 ### AgentCore payments features → tutorial mapping
 
 | Feature | Description | Tutorials |
 |---------|-------------|-----------|
-| Payment processing | x402 protocol orchestration, transaction signing, proof generation | 01, 02, 04, 05, 06 |
-| Payment limits | Session budgets (`maxSpendAmount`), expiry, overspend rejection | 00, 01, 03, 06 |
-| Wallet integration | Coinbase CDP and Stripe (Privy) embedded wallets, delegation, funding | 00, 03, 06 |
+| Payment processing | x402 protocol orchestration, transaction signing, proof generation | 01, 02, 04, 05, 06, 07 |
+| Payment limits | Session budgets (`maxSpendAmount`), expiry, overspend rejection | 00, 01, 03, 06, 07 |
+| Wallet integration | Coinbase CDP and Stripe (Privy) embedded wallets, delegation, funding | 00, 03, 07 |
 | Endpoint discoverability | Coinbase x402 Bazaar via AgentCore Gateway, MCP tool search | 04 |
-| Observability | AgentCore Observability (vended logs, traces via CloudWatch) | 00, 02, 06 |
+| Memory | AgentCore Memory for cross-session recall and spend optimization | 06 |
+| Observability | AgentCore Observability (vended logs, traces via CloudWatch) | 00, 02, 07 |
 
 ### Coinbase x402 Bazaar — access patterns
 
@@ -165,7 +167,8 @@ The Bazaar exposes three interfaces:
 ├── 03-user-onboarding-wallet-funding/
 ├── 04-agent-with-coinbase-bazaar-via-gateway/
 ├── 05-agent-with-browser-tool-pay-for-content/
-└── 06-multi-agent-payment-orchestrator/
+├── 06-research-agent-with-payment-memory/
+└── 07-multi-agent-payment-orchestrator/
 ```
 
 ## Shared Files

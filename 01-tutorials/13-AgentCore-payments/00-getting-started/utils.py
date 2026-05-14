@@ -532,7 +532,7 @@ def load_tutorial_env(env_path=None):
     Returns:
         Dict with: payment_manager_arn, user_id, instrument_id, session_id,
         connector_id, region, provider_type, wallet_address.
-        For multi-provider setups (Tutorial 06), also includes
+        For multi-provider setups (Tutorial 07), also includes
         multi_provider=True and instruments/connectors dicts.
         Missing keys are None (not raised).
 
@@ -567,7 +567,7 @@ def load_tutorial_env(env_path=None):
         "provider_type": os.environ.get("CREDENTIAL_PROVIDER_TYPE"),
     }
 
-    # Multi-provider support (Tutorial 06)
+    # Multi-provider support (Tutorial 07)
     coinbase_instr = os.environ.get("COINBASE_INSTRUMENT_ID")
     privy_instr = os.environ.get("PRIVY_INSTRUMENT_ID")
 
