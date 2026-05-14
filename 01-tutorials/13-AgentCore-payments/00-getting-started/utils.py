@@ -132,9 +132,11 @@ PAYMENT_ROLE_DEFINITIONS = {
             "bedrock-agentcore:ListPaymentCredentialProviders",
             "bedrock-agentcore:DeletePaymentCredentialProvider",
             "bedrock-agentcore:UpdatePaymentCredentialProvider",
+            "bedrock-agentcore:CreateTokenVault",
             "bedrock-agentcore:AllowVendedLogDeliveryForResource",
         ],
         "pass_role": True,
+        "secrets_manager_write": True,
     },
     MANAGEMENT_ROLE: {
         "description": "AgentCore payments: data plane management (instruments, sessions)",
@@ -153,7 +155,7 @@ PAYMENT_ROLE_DEFINITIONS = {
         "deny": ["bedrock-agentcore:ProcessPayment"],
     },
     PROCESS_PAYMENT_ROLE: {
-        "description": "AgentCore payments: agent execution (ProcessPayment + read queries)",
+        "description": "AgentCore payments: agent runtime (ProcessPayment + read queries)",
         "trust": "account",
         "allow": [
             "bedrock-agentcore:ProcessPayment",
@@ -180,6 +182,9 @@ def setup_payment_roles(region=None):
 
     Checks if each role exists first. Creates only what's missing.
     Idempotent — safe to run multiple times.
+
+    Note: Creates IAM roles that persist until explicitly deleted. Run the
+    cleanup cell in Tutorial 00 to remove them when no longer needed.
 
     Args:
         region: AWS region. Defaults to AWS_REGION env var or us-west-2.
@@ -281,10 +286,28 @@ def setup_payment_roles(region=None):
                     "Sid": "Allow",
                     "Effect": "Allow",
                     "Action": config["allow"],
-                    "Resource": "*",
+                    "Resource": f"arn:aws:bedrock-agentcore:{region}:{account_id}:*",
                 }
             ],
         }
+
+        # Add SecretsManager write access for ControlPlaneRole
+        # Resource must be "*" because CreateSecret targets secrets that don't exist yet
+        if config.get("secrets_manager_write"):
+            allow_policy["Statement"].append(
+                {
+                    "Sid": "SecretsManagerWrite",
+                    "Effect": "Allow",
+                    "Action": [
+                        "secretsmanager:CreateSecret",
+                        "secretsmanager:PutSecretValue",
+                        "secretsmanager:UpdateSecret",
+                        "secretsmanager:DeleteSecret",
+                        "secretsmanager:TagResource",
+                    ],
+                    "Resource": "*",
+                }
+            )
 
         # Add SecretsManager access for ResourceRetrievalRole
         if config.get("secrets_manager"):
@@ -320,7 +343,7 @@ def setup_payment_roles(region=None):
                         "Sid": "Deny",
                         "Effect": "Deny",
                         "Action": config["deny"],
-                        "Resource": "*",
+                        "Resource": f"arn:aws:bedrock-agentcore:{region}:{account_id}:*",
                     }
                 ],
             }
@@ -634,6 +657,10 @@ def enable_observability(
     Creates delivery sources, destinations, and deliveries for both APPLICATION_LOGS
     and TRACES. Optionally configures X-Ray span delivery to CloudWatch Logs.
 
+    **Cost notice:** This function creates CloudWatch log groups, delivery sources,
+    delivery destinations, and X-Ray resources that may incur AWS charges. Delete
+    the log group ``/aws/vendedlogs/bedrock-agentcore/<manager-id>`` when finished.
+
     After enabling, any data plane API call (CreateInstrument, ProcessPayment, etc.)
     produces logs and trace data in the configured CloudWatch Log Group.
 
@@ -663,7 +690,7 @@ def enable_observability(
         - bedrock-agentcore:AllowVendedLogDeliveryForResource
     """
     # Step 1: Allow vended log delivery for the resource
-    # This authorizes the AgentCore service to publish vended logs to your account.
+    # This authorizes the Bedrock AgentCore service to publish vended logs to your account.
     # Must be called before creating delivery sources/destinations.
     agentcore_client = boto3.client("bedrock-agentcore-control", region_name=region)
     try:
@@ -755,7 +782,7 @@ def _setup_xray_spans(logs_client, region):
                             "logs:CreateLogGroup",
                             "logs:CreateLogStream",
                         ],
-                        "Resource": "*",
+                        "Resource": "arn:aws:logs:*:*:log-group:/aws/vendedlogs/bedrock-agentcore/*",
                     }
                 ],
             }
@@ -898,8 +925,8 @@ def save_privy_authorization_key(env_path, authorization_id, authorization_priva
 
     Privy's dashboard displays the authorization private key with a ``wallet-auth:``
     prefix. That prefix is not part of the key itself and must be removed before the
-    key is passed to AgentCore's ``authorizationPrivateKey`` field — AgentCore's
-    validation rejects the prefixed form.
+    key is passed to the Bedrock AgentCore ``authorizationPrivateKey`` field —
+    Bedrock AgentCore validation rejects the prefixed form.
 
     Args:
         env_path: Path to the .env file.
@@ -947,8 +974,8 @@ def verify_privy_signer_on_wallet(app_id, app_secret, wallet_address_or_id, quor
         app_id: Privy app ID (``PRIVY_APP_ID``).
         app_secret: Privy app secret (``PRIVY_APP_SECRET``).
         wallet_address_or_id: Privy wallet ID or on-chain address.
-        quorum_id: Key quorum ID to look for. AgentCore's
-            ``PRIVY_AUTHORIZATION_ID``.
+        quorum_id: Key quorum ID to look for. The Bedrock AgentCore
+            ``PRIVY_AUTHORIZATION_ID`` field.
 
     Returns:
         True if the quorum is present in ``additional_signers``, else False.

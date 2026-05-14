@@ -117,6 +117,10 @@ Path B (multi-provider):
                                                          └──► T01–T06 also work
 ```
 
+## Security Notice
+
+These tutorials use `.env` files for credential storage for simplicity. For deployed workloads, store all credentials in [AWS Secrets Manager](https://docs.aws.amazon.com/secretsmanager/latest/userguide/intro.html) or Systems Manager Parameter Store. Never commit `.env` files to version control. See the [Security](#security) section for additional guidance.
+
 ## Tutorials
 
 Each tutorial maps to one or more AgentCore payments features. Start with Tutorial 00, then pick any path.
@@ -178,9 +182,13 @@ The Bazaar exposes three interfaces:
 
 ## Wallet-Agnostic Design
 
-All tutorials work with any wallet provider you configured in Tutorial 00 - Coinbase CDP or Stripe (Privy). The agent code is identical regardless of your choice — only the `.env` values differ.
+The tutorials are designed to work with either supported wallet provider you configured in Tutorial 00 - Coinbase CDP or Stripe (Privy). The agent code is the same regardless of your choice — only the `.env` values differ.
 
 ## Cleanup
+
+> **Cost notice:** AgentCore Runtime deployments, Gateway, payment sessions, and CloudWatch observability incur AWS charges. Run cleanup after completing experimentation to avoid ongoing costs.
+
+> **Warning:** Cleanup is irreversible and permanently deletes all payment resources, transaction history, and audit logs. Verify you have exported any data you need before proceeding.
 
 When you are done with the tutorials, clean up resources to avoid unnecessary charges:
 
@@ -205,3 +213,7 @@ These tutorials use testnet resources with no real-world value. When building fo
 - **Monitoring** — Enable CloudWatch Logs for payment traces. Set up alarms for unusual spending patterns or failed payment attempts.
 
 Follow the [AWS Shared Responsibility Model](https://aws.amazon.com/compliance/shared-responsibility-model/) — you are responsible for securing your credentials, IAM policies, wallet access, and session budgets.
+
+## Conclusion
+
+These tutorials cover the full lifecycle of payment-enabled AI agents with Amazon Bedrock AgentCore payments: wallet setup, local agent development, Runtime deployment, wallet operations, Gateway integration, browser-based payments, and multi-agent orchestration. Start with Tutorial 00 and the provider setup guide for your chosen wallet, then follow whichever path fits your use case. For production guidance, see the [AgentCore payments documentation](https://docs.aws.amazon.com/bedrock-agentcore/) and review the Security section above.

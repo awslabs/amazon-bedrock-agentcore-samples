@@ -1,0 +1,101 @@
+{
+  "version": "1.0.0",
+  "lastScanned": 1778779528110,
+  "projectRoot": "/Users/anilnadi/Downloads/amazon-bedrock-agentcore-samples",
+  "techStack": {
+    "languages": [
+      {
+        "name": "Python",
+        "version": null,
+        "confidence": "high",
+        "markers": [
+          "requirements.txt"
+        ]
+      }
+    ],
+    "frameworks": [],
+    "packageManager": "pip",
+    "runtime": null
+  },
+  "build": {
+    "buildCommand": null,
+    "testCommand": null,
+    "lintCommand": null,
+    "devCommand": null,
+    "scripts": {}
+  },
+  "conventions": {
+    "namingStyle": null,
+    "importStyle": null,
+    "testPattern": null,
+    "fileOrganization": null
+  },
+  "structure": {
+    "isMonorepo": false,
+    "workspaces": [],
+    "mainDirectories": [],
+    "gitBranches": {
+      "defaultBranch": "main",
+      "branchingStrategy": null
+    }
+  },
+  "customNotes": [],
+  "directoryMap": {
+    "00-getting-started": {
+      "path": "00-getting-started",
+      "purpose": null,
+      "fileCount": 2,
+      "lastAccessed": 1778779528062,
+      "keyFiles": [
+        "README.md",
+        "main.py"
+      ]
+    },
+    "01-tutorials": {
+      "path": "01-tutorials",
+      "purpose": null,
+      "fileCount": 2,
+      "lastAccessed": 1778779528063,
+      "keyFiles": [
+        "README.md",
+        "utils.py"
+      ]
+    },
+    "02-use-cases": {
+      "path": "02-use-cases",
+      "purpose": null,
+      "fileCount": 1,
+      "lastAccessed": 1778779528063,
+      "keyFiles": [
+        "README.md"
+      ]
+    },
+    "03-integrations": {
+      "path": "03-integrations",
+      "purpose": null,
+      "fileCount": 1,
+      "lastAccessed": 1778779528064,
+      "keyFiles": [
+        "README.md"
+      ]
+    },
+    "04-infrastructure-as-code": {
+      "path": "04-infrastructure-as-code",
+      "purpose": null,
+      "fileCount": 1,
+      "lastAccessed": 1778779528065,
+      "keyFiles": [
+        "README.md"
+      ]
+    },
+    "05-blueprints": {
+      "path": "05-blueprints",
+      "purpose": null,
+      "fileCount": 1,
+      "lastAccessed": 1778779528066,
+      "keyFiles": []
+    }
+  },
+  "hotPaths": [],
+  "userDirectives": []
+}

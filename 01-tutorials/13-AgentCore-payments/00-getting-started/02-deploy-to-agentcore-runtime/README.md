@@ -38,7 +38,7 @@ The agent code is stateless and wallet-agnostic. All payment context (manager AR
 * [AWS CDK](https://docs.aws.amazon.com/cdk/v2/guide/getting_started.html) installed
 * AWS CLI configured (`aws configure`)
 
-This tutorial works with either wallet provider - Coinbase CDP or Stripe (Privy). The agent code is identical; only the `.env` values from Tutorial 00 differ.
+This tutorial works with either wallet provider - Coinbase CDP or Stripe (Privy). The agent code is the same; only the `.env` values from Tutorial 00 differ.
 
 > **Testnet only.** All code uses Base Sepolia with free USDC from [faucet.circle.com](https://faucet.circle.com/). Testnet USDC has no real-world value.
 
@@ -113,6 +113,8 @@ agentcore remove all -y
 
 ## Cleanup
 
+> **Cost notice:** AgentCore Runtime deployments, payment sessions, and CloudWatch observability incur AWS charges.
+
 AgentCore Runtime deployments incur charges for compute and storage. Remove when done:
 
 ```bash
@@ -120,6 +122,8 @@ cd PaymentAgent && agentcore remove all -y
 ```
 
 This removes the Runtime deployment, CloudWatch log groups, and associated resources.
+
+**Payment sessions** — The sessions created in this tutorial expire automatically after their configured `expiryTimeInMinutes` (60 minutes). No manual cleanup needed.
 
 ## Conclusion
 

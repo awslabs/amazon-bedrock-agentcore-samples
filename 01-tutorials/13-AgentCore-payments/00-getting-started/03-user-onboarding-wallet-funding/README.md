@@ -32,7 +32,7 @@ This tutorial works with either wallet provider you configured in Tutorial 00 (C
 
 ## Cleanup
 
-Payment instruments persist until explicitly deleted. Sessions expire automatically. To delete all payment resources, run the cleanup cell in Tutorial 00.
+Payment instruments persist until explicitly deleted. The three payment sessions created in this tutorial (quick lookup, research task, deep analysis) expire automatically after their configured `expiryTimeInMinutes`. To delete all payment resources (Manager, Connectors, Instruments), run the cleanup cell in Tutorial 00.
 
 ## Conclusion
 

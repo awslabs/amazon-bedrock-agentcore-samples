@@ -64,7 +64,7 @@ The Coinbase x402 Bazaar is an MCP marketplace exposing 10,000+ pay-per-use x402
 * AgentCore CLI: `npm install -g @aws/agentcore` (requires Node.js 20+)
 * AWS CLI configured (`aws configure`)
 
-This tutorial works with either wallet provider you configured in Tutorial 00 (Coinbase CDP or Stripe/Privy). The agent code is identical regardless of your choice.
+This tutorial works with either wallet provider you configured in Tutorial 00 (Coinbase CDP or Stripe/Privy). The agent code is the same regardless of your choice.
 
 > **Testnet only.** All code uses Base Sepolia (Ethereum) with free USDC from [faucet.circle.com](https://faucet.circle.com/). Testnet USDC has no real-world value.
 
@@ -96,7 +96,9 @@ Add the `GATEWAY_URL` from the output to your `.env` file.
 
 ## Cleanup
 
-AgentCore Gateway incurs charges for requests and data transfer. Remove when done:
+> **Cost notice:** AgentCore Gateway incurs AWS charges for requests and data transfer. Run cleanup when finished to avoid ongoing costs.
+
+Remove the Gateway when done:
 
 ```bash
 agentcore remove gateway --name BazaarGateway -y

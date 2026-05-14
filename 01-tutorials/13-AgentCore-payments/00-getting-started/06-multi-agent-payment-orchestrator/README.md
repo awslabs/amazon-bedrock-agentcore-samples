@@ -85,13 +85,17 @@ Your AWS credentials need the IAM permissions created by Tutorial 00 (`setup_pay
 
 ## Cleanup
 
+> **Cost notice:** AgentCore Runtime deployments, online evaluations, and CloudWatch observability incur AWS charges. Run cleanup when finished to avoid ongoing costs.
+
 AgentCore Runtime and online evaluations incur charges. Remove when done:
 
 ```bash
 cd PaymentAgent && agentcore remove all -y
 ```
 
-This removes the Runtime deployment, evaluation configuration, CloudWatch log groups, and associated resources. Payment sessions expire automatically.
+This removes the Runtime deployment, evaluation configuration, CloudWatch log groups, and associated resources.
+
+**Payment sessions** — Expire automatically after their configured `expiryTimeInMinutes` (60 minutes in this tutorial). No manual deletion needed.
 
 ## Conclusion
 
