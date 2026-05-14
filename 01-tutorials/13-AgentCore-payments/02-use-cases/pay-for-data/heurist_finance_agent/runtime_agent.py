@@ -106,19 +106,19 @@ for _candidate in [_THIS_DIR, _AGENT_PKG_PARENT]:
     if str(_candidate) not in sys.path:
         sys.path.insert(0, str(_candidate))
 
-import boto3
-from bedrock_agentcore.payments.integrations.strands import (
+import boto3  # noqa: E402
+from bedrock_agentcore.payments.integrations.strands import (  # noqa: E402
     AgentCorePaymentsPlugin,
     AgentCorePaymentsPluginConfig,
 )
-from bedrock_agentcore.runtime import BedrockAgentCoreApp
-from strands import Agent, tool
-from strands.models import BedrockModel
-from strands_tools import http_request
-from strands_tools.code_interpreter import AgentCoreCodeInterpreter
+from bedrock_agentcore.runtime import BedrockAgentCoreApp  # noqa: E402
+from strands import Agent, tool  # noqa: E402
+from strands.models import BedrockModel  # noqa: E402
+from strands_tools import http_request  # noqa: E402
+from strands_tools.code_interpreter import AgentCoreCodeInterpreter  # noqa: E402
 
-from heurist_finance_agent.catalog import format_catalog_for_prompt, get_tools_for_agents
-from heurist_finance_agent.config import DEFAULT_HEURIST_AGENT_IDS
+from heurist_finance_agent.catalog import format_catalog_for_prompt, get_tools_for_agents  # noqa: E402
+from heurist_finance_agent.config import DEFAULT_HEURIST_AGENT_IDS  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
