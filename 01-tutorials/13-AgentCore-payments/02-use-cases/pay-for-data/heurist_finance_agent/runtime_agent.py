@@ -117,7 +117,10 @@ from strands.models import BedrockModel  # noqa: E402
 from strands_tools import http_request  # noqa: E402
 from strands_tools.code_interpreter import AgentCoreCodeInterpreter  # noqa: E402
 
-from heurist_finance_agent.catalog import format_catalog_for_prompt, get_tools_for_agents  # noqa: E402
+from heurist_finance_agent.catalog import (  # noqa: E402
+    format_catalog_for_prompt,
+    get_tools_for_agents,
+)
 from heurist_finance_agent.config import DEFAULT_HEURIST_AGENT_IDS  # noqa: E402
 
 logger = logging.getLogger(__name__)
@@ -131,10 +134,14 @@ app = BedrockAgentCoreApp()
 # Configuration — read from environment at module startup
 # ---------------------------------------------------------------------------
 REGION = os.environ.get("AWS_REGION", "us-west-2")
-MODEL_ID = os.environ.get("BEDROCK_MODEL_ID", "us.anthropic.claude-sonnet-4-20250514-v1:0")
+MODEL_ID = os.environ.get(
+    "BEDROCK_MODEL_ID", "us.anthropic.claude-sonnet-4-20250514-v1:0"
+)
 
 CI_ARTIFACTS_BUCKET = os.environ.get("CI_ARTIFACTS_BUCKET", "")
-CI_ARTIFACTS_PREFIX = os.environ.get("CI_ARTIFACTS_PREFIX", "heurist-finance-artifacts").rstrip("/")
+CI_ARTIFACTS_PREFIX = os.environ.get(
+    "CI_ARTIFACTS_PREFIX", "heurist-finance-artifacts"
+).rstrip("/")
 CI_ARTIFACTS_TTL = int(os.environ.get("CI_ARTIFACTS_TTL", "3600"))
 
 _raw_agent_ids = os.environ.get("HEURIST_AGENT_IDS", "")
@@ -162,7 +169,9 @@ try:
     logger.info("Loaded %d Heurist tools from catalog cache.", len(_heurist_tools))
 except Exception as _e:
     logger.warning("Could not load Heurist catalog at startup: %s", _e)
-    _catalog_ref = "(catalog unavailable — sync_registry was not run before image build)"
+    _catalog_ref = (
+        "(catalog unavailable — sync_registry was not run before image build)"
+    )
 
 # ---------------------------------------------------------------------------
 # Per-invocation state (thread-local for concurrent request isolation)
@@ -195,6 +204,7 @@ def _reset_invocation_state() -> None:
 # (mirrors the logic in artifact_export.py without the local-disk dependency)
 # ---------------------------------------------------------------------------
 
+
 def _extract_ci_text(tool_result: dict) -> str:
     """Extract the printed text output from a Code Interpreter tool result.
 
@@ -221,6 +231,7 @@ def _extract_ci_text(tool_result: dict) -> str:
 # Artifact tools
 # ---------------------------------------------------------------------------
 
+
 def _safe_s3_key_name(raw: str) -> str:
     """Return a safe S3 key filename component."""
     name = Path(raw).name
@@ -229,7 +240,9 @@ def _safe_s3_key_name(raw: str) -> str:
 
 
 @tool
-def export_artifact_to_s3(remote_path: str, artifact_name: str | None = None) -> dict[str, Any]:
+def export_artifact_to_s3(
+    remote_path: str, artifact_name: str | None = None
+) -> dict[str, Any]:
     """Export a file from the AgentCore Code Interpreter sandbox to S3.
 
     Use this after creating a chart (PNG), CSV, or any file in the Code
@@ -265,14 +278,16 @@ print(json.dumps({{
     "size": p.stat().st_size,
 }}))
 """
-    ci_result = _CI_CLIENT.code_interpreter({
-        "action": {
-            "type": "executeCode",
-            "session_name": sn,
-            "language": "python",
-            "code": export_code,
+    ci_result = _CI_CLIENT.code_interpreter(
+        {
+            "action": {
+                "type": "executeCode",
+                "session_name": sn,
+                "language": "python",
+                "code": export_code,
+            }
         }
-    })
+    )
 
     try:
         payload = json.loads(_extract_ci_text(ci_result))
@@ -309,8 +324,15 @@ print(json.dumps({{
     }
     _artifacts().append(artifact)
 
-    logger.info("Exported artifact %s → s3://%s/%s", safe_name, CI_ARTIFACTS_BUCKET, s3_key)
-    return {"status": "success", "name": safe_name, "url": url, "expires_in": CI_ARTIFACTS_TTL}
+    logger.info(
+        "Exported artifact %s → s3://%s/%s", safe_name, CI_ARTIFACTS_BUCKET, s3_key
+    )
+    return {
+        "status": "success",
+        "name": safe_name,
+        "url": url,
+        "expires_in": CI_ARTIFACTS_TTL,
+    }
 
 
 @tool
@@ -374,7 +396,12 @@ def save_report_to_s3(content: str, filename: str) -> dict[str, Any]:
     _artifacts().append(artifact)
 
     logger.info("Saved report %s → s3://%s/%s", safe_name, CI_ARTIFACTS_BUCKET, s3_key)
-    return {"status": "success", "name": safe_name, "url": url, "expires_in": CI_ARTIFACTS_TTL}
+    return {
+        "status": "success",
+        "name": safe_name,
+        "url": url,
+        "expires_in": CI_ARTIFACTS_TTL,
+    }
 
 
 @tool
@@ -386,7 +413,10 @@ def list_invocation_artifacts() -> dict[str, Any]:
     arts = _artifacts()
     return {
         "count": len(arts),
-        "artifacts": [{"name": a["name"], "url": a["url"], "expires_in": a["expires_in"]} for a in arts],
+        "artifacts": [
+            {"name": a["name"], "url": a["url"], "expires_in": a["expires_in"]}
+            for a in arts
+        ],
     }
 
 
@@ -394,17 +424,22 @@ def list_invocation_artifacts() -> dict[str, Any]:
 # System prompt builder (invocation-specific: includes CI session name)
 # ---------------------------------------------------------------------------
 
+
 def _build_system_prompt(ci_session: str) -> str:
     s3_instructions = (
-        f"- Charts/images: save to `/tmp/<name>` inside the CI session, then call "
-        f"`export_artifact_to_s3` with that path to upload to S3 and get a download URL.\n"
-        f"- Text reports/CSVs: call `save_report_to_s3` directly — no need to write to CI first.\n"
-        f"- Presigned URLs are valid for {CI_ARTIFACTS_TTL} seconds.\n"
-        f"- After exporting, include the URL in your response so the caller can access the file."
-    ) if CI_ARTIFACTS_BUCKET else (
-        "- S3 artifact storage is not configured in this deployment.\n"
-        "- Represent all chart data as markdown tables using the underlying numbers.\n"
-        "- Use `save_report_to_s3` for text content — it will return the content inline."
+        (
+            f"- Charts/images: save to `/tmp/<name>` inside the CI session, then call "
+            f"`export_artifact_to_s3` with that path to upload to S3 and get a download URL.\n"
+            f"- Text reports/CSVs: call `save_report_to_s3` directly — no need to write to CI first.\n"
+            f"- Presigned URLs are valid for {CI_ARTIFACTS_TTL} seconds.\n"
+            f"- After exporting, include the URL in your response so the caller can access the file."
+        )
+        if CI_ARTIFACTS_BUCKET
+        else (
+            "- S3 artifact storage is not configured in this deployment.\n"
+            "- Represent all chart data as markdown tables using the underlying numbers.\n"
+            "- Use `save_report_to_s3` for text content — it will return the content inline."
+        )
     )
 
     return f"""You are a finance research and data visualization agent.
@@ -452,6 +487,7 @@ settles USDC on-chain and retries the request. You do not need to handle payment
 # ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
+
 
 @app.entrypoint
 def handle_request(payload: dict, context=None) -> dict:
