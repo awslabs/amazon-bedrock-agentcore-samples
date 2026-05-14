@@ -134,7 +134,7 @@ ${requirementJson}
       <p>
         Agentic commerce represents a fundamental shift in how digital transactions occur.
         Rather than requiring human approval for each micropayment, AI agents can now
-        autonomously negotiate, authorise, and execute payments on behalf of users —
+        autonomously negotiate, authorize, and process payments on behalf of users —
         within strict, human-defined budget limits.
       </p>
       <p>

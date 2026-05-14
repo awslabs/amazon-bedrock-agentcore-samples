@@ -150,7 +150,7 @@ ${requirementJson}
       <p>
         Agentic commerce represents a fundamental shift in how digital transactions occur.
         Rather than requiring human approval for each micropayment, AI agents can now
-        autonomously negotiate, authorise, and execute payments on behalf of users —
+        autonomously negotiate, authorize, and process payments on behalf of users —
         within strict, human-defined budget limits.
       </p>
       <p>
@@ -283,7 +283,7 @@ export const handler = async (event: CFEvent): Promise<LambdaResponse | CFReques
         title: "The Future of Agentic Commerce",
         content:
           "Agentic commerce represents a fundamental shift in how digital transactions occur. " +
-          "AI agents can now autonomously negotiate, authorise, and execute payments within strict, " +
+          "AI agents can now autonomously negotiate, authorize, and process payments within strict, " +
           "human-defined budget limits. Amazon Bedrock AgentCore Payments implements this through a " +
           "layered architecture: PaymentManager → PaymentConnector → PaymentInstrument → PaymentSession.",
       }),

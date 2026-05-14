@@ -1,5 +1,7 @@
 # Set Up AgentCore payments
 
+> **Cost notice:** This tutorial creates IAM roles, CloudWatch log groups, and AgentCore payment resources. These may incur AWS charges. Run the cleanup cell and delete IAM roles and log groups when finished.
+
 ## Overview
 
 This tutorial walks you through the complete setup of Amazon Bedrock AgentCore payments using the AWS SDK (boto3). You'll create IAM roles, configure wallet credentials, and provision the payment stack — everything needed before building payment-enabled agents.
@@ -58,12 +60,29 @@ Most of this tutorial is automated (run cells top to bottom). Three steps requir
 | When | What | Where | Time |
 |------|------|-------|------|
 | **Before running** | Get wallet provider credentials | Run `providers/coinbase_cdp_account_setup.ipynb` or `providers/stripe_privy_account_setup.ipynb` | ~15 min |
-| **Step 7b** | Fund wallet with testnet USDC | [faucet.circle.com](https://faucet.circle.com/) → paste wallet address → request 10 USDC | ~2 min |
-| **Step 7b** | Delegate signing permission | **Coinbase:** CDP Portal → Wallets → Embedded Wallet → Policies → enable Delegated Signing. **Privy:** Privy reference frontend at localhost:3000 → log in → choose Connect agent | ~5 min |
+| **Step 7b** | Fund wallet — step 1: open faucet | Go to [faucet.circle.com](https://faucet.circle.com/) | ~2 min |
+| **Step 7b** | Fund wallet — step 2: paste address | Paste your wallet address into the faucet form | |
+| **Step 7b** | Fund wallet — step 3: request USDC | Request 10 USDC and wait for confirmation | |
+| **Step 7b** | Delegate signing — Coinbase step 1 | Open the CDP Portal | ~5 min |
+| **Step 7b** | Delegate signing — Coinbase step 2 | Navigate to Wallets → Embedded Wallet → Policies | |
+| **Step 7b** | Delegate signing — Coinbase step 3 | Enable Delegated Signing | |
+| **Step 7b** | Delegate signing — Privy step 1 | Open the Privy reference frontend at localhost:3000 | |
+| **Step 7b** | Delegate signing — Privy step 2 | Log in with the end-user email | |
+| **Step 7b** | Delegate signing — Privy step 3 | Choose **Connect agent**, then **Give access** | |
 
 Without the funding and delegation steps, `ProcessPayment` will fail in Tutorial 01. The notebook prints a clear ✋ ACTION callout when you reach Step 7b.
 
+## Verification
+
+After completing the notebook, verify the setup succeeded:
+
+1. Confirm `.env` contains `PAYMENT_MANAGER_ARN`, `INSTRUMENT_ID`, and `SESSION_ID`.
+2. Run `aws sts get-caller-identity` to verify AWS credentials are active.
+3. Confirm the wallet has testnet USDC by checking the instrument balance output in Step 7.
+
 ## Cleanup
+
+> **Warning:** Cleanup is irreversible and permanently deletes all payment resources (Manager, Connectors, Instruments) and associated transaction history. Confirm you have completed all downstream tutorials before running cleanup.
 
 When done with all tutorials, clean up resources to avoid charges:
 

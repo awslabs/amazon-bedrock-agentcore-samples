@@ -9,7 +9,7 @@ This tutorial builds a payment-enabled agent that accesses paid x402 endpoints o
 | `strands_payment_agent.ipynb` | Strands Agents | `AgentCorePaymentsPlugin` (automatic, zero payment code) |
 | `langgraph_payment_agent.ipynb` | LangGraph | `wrap_with_auto_402()` using `PaymentManager.generate_payment_header()` |
 
-The payment infrastructure (PaymentManager, sessions, instruments, payment limits) is identical in both. Only the agent framework integration differs.
+The payment infrastructure (PaymentManager, sessions, instruments, payment limits) is the same in both. Only the agent framework integration differs.
 
 ### What you'll learn
 
@@ -41,9 +41,16 @@ The payment infrastructure (PaymentManager, sessions, instruments, payment limit
 
 Sessions are created fresh in each notebook — no stale session from `.env` needed.
 
-This tutorial works with either wallet provider (Coinbase CDP or Stripe/Privy). The agent code is identical; only the `.env` values from Tutorial 00 differ.
+This tutorial works with either wallet provider (Coinbase CDP or Stripe/Privy). The agent code is the same; only the `.env` values from Tutorial 00 differ.
 
 > **Testnet only.** All code uses Base Sepolia (Ethereum) with free USDC from [faucet.circle.com](https://faucet.circle.com/). Testnet USDC has no real-world value.
+
+## Verification
+
+After running the notebook, verify payment limits are enforced by:
+
+1. Checking the session spend output shows amounts deducted after each x402 call.
+2. Confirming the overspend rejection message appears when the session budget is exhausted.
 
 ## Cleanup
 

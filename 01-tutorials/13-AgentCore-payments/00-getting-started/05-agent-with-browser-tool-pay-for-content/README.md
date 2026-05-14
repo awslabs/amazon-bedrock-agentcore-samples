@@ -1,4 +1,4 @@
-# Agent with Browser Tool — Pay for Paywalled Content
+# Agent with Browser Tool — Pay for Gated Content
 
 > **Pattern reference.** This notebook demonstrates the browser + payment architecture. To run it end-to-end, you need an x402-enabled content endpoint.
 
@@ -69,13 +69,15 @@ Use the plugin pattern for API calls. Use the browser pattern when you need to m
 * `python -m playwright install chromium`
 * An x402-enabled endpoint to browse
 
-This tutorial works with either wallet provider you configured in Tutorial 00 (Coinbase CDP or Stripe/Privy). The agent code is identical regardless of your choice.
+This tutorial works with either wallet provider you configured in Tutorial 00 (Coinbase CDP or Stripe/Privy). The agent code is the same regardless of your choice.
 
 > **Testnet only.** All code uses Base Sepolia (Ethereum) with free USDC from [faucet.circle.com](https://faucet.circle.com/). Testnet USDC has no real-world value.
 
 ## Cleanup
 
-Browser sessions expire automatically after the configured timeout. Payment sessions expire after `expiryTimeInMinutes`. No manual cleanup is needed for this tutorial.
+> **Cost notice:** AgentCore Browser sessions incur charges per minute of browser runtime. Payment sessions are free but the underlying Payment Manager and Instruments incur standard AWS charges until deleted via Tutorial 00.
+
+AgentCore Browser sessions (BrowserClient) expire automatically after the configured timeout. Payment sessions expire after their configured `expiryTimeInMinutes`. No manual cleanup is needed for sessions created in this tutorial.
 
 ## Conclusion
 

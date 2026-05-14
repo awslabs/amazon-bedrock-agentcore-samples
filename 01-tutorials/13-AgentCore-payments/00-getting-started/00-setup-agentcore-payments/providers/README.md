@@ -44,8 +44,14 @@ The vendor is called `StripePrivy` but configuration is 100% Privy credentials. 
 
 Set `CREDENTIAL_PROVIDER_TYPE=StripePrivy` in your `.env`.
 
-> **Important:** `PRIVY_AUTHORIZATION_ID` is the ID of your P-256 authorization key, not an API key. The `authorizationPrivateKey` must have the `wallet-auth:` prefix stripped — AgentCore's validation rejects the prefixed form.
+> **Important:** `PRIVY_AUTHORIZATION_ID` is the ID of your P-256 authorization key, not an API key. The `authorizationPrivateKey` must have the `wallet-auth:` prefix stripped — Bedrock AgentCore validation rejects the prefixed form.
+
+## Cleanup
+
+Credentials stored in `.env` are only used during the tutorial. For deployed workloads, store credentials in [AWS Secrets Manager](https://docs.aws.amazon.com/secretsmanager/latest/userguide/intro.html) instead of `.env` files.
+
+> **Note:** AWS resources created using these credentials (IAM roles, Payment Manager, Connectors, Instruments) persist until explicitly deleted. Run the cleanup cell in Tutorial 00 to remove them when no longer needed.
 
 ## Conclusion
 
-After completing the relevant provider setup guide, the required credentials are stored in the `.env` file. Return to Tutorial 00 to provision the AgentCore payments stack using these credentials.
+After completing the relevant provider setup guide, the required credentials are stored in the `.env` file. Return to [Tutorial 00](../setup_agentcore_payments.ipynb) to provision the AgentCore payments stack using these credentials.

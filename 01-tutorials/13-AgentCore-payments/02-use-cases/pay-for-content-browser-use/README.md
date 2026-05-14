@@ -139,7 +139,7 @@ OPERATOR CLEANUP  (automatic on session expiry)
 
 > **Note:** This use case provisions an **embedded crypto wallet** via AgentCore.
 > You do not need a pre-existing Coinbase wallet. The credential provider (CDP API key)
-> authorises AgentCore to create and manage the wallet on your behalf. After provisioning,
+> authorizes AgentCore to create and manage the wallet on your behalf. After provisioning,
 > Step 3 prints a **WalletHub URL** — open it to fund the wallet and grant signing permission.
 
 > **Important:** `AgentCoreBrowser` is a cloud-managed browser — it cannot reach
