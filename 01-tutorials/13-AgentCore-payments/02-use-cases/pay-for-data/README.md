@@ -162,7 +162,12 @@ Artifacts produced by Code Interpreter are uploaded to S3 and returned as presig
 If `CI_ARTIFACTS_BUCKET` is not configured, the agent degrades gracefully: charts become markdown tables, text returns inline.
 
 **Observability**
-The `agentcore deploy` CLI configures the container to run under `opentelemetry-instrument`. Traces and logs go to CloudWatch GenAI Observability automatically — no additional setup.
+The `agentcore deploy` CLI configures the container to run under `opentelemetry-instrument`. Combined with `aws-opentelemetry-distro` (included in `pyproject.toml`), this provides:
+- Strands agent spans (LLM calls, tool calls, agent turns) → CloudWatch GenAI Observability
+- Code Interpreter calls stitched as child spans via W3C `traceparent` botocore instrumentation
+- Payment calls (`ProcessPayment`, `GetPaymentInstrument`) as boto3 child spans
+
+No instrumentation code required in `runtime_agent.py`.
 
 **Execution role permissions** (attached by the notebook, Step 5):
 
