@@ -82,10 +82,8 @@ Override with the `HEURIST_AGENT_IDS` environment variable.
 
 ## Prerequisites
 
-- Completed the setup tutorial under [`00-getting-started/`](../../00-getting-started/):
-  - AgentCore payment manager created
-  - Payment instrument created and funded (embedded crypto wallet, USDC on Base)
-  - Payment session created (with your desired payment limits)
+- An **AgentCore payment manager** created in your AWS account
+- A **payment instrument** created and funded (embedded crypto wallet, USDC on Base mainnet)
 - Python 3.11+
 - AWS credentials with Bedrock and AgentCore access in `us-west-2`
 - Node.js 20+ (for the `@aws/agentcore` CLI)
@@ -106,8 +104,7 @@ pay-for-data/
     ├── catalog_live_cache.json           # synced catalog (bundled in Runtime image)
     ├── config.py                         # loads .env
     └── scripts/
-        └── sync_registry.py              # CLI: refreshes cached Heurist catalog
-```
+        └── sync_registry.py              # CLI: refreshes cached Heurist catalog```
 
 ## Quick Start
 
