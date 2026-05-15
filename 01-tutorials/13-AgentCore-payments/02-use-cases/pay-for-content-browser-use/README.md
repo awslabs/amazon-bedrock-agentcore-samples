@@ -242,6 +242,11 @@ Run all cells in order. The notebook will:
 3e. Verify wallet USDC balance via `GetPaymentInstrumentBalance` (briefly assumes
     `ProcessPaymentRole` locally, only for the balance check)
 4. Create a payment session with budget and expiry (`ManagementRole`)
+4b. **Enable Payment Manager observability** — runs the 4-step vended log
+    delivery setup (`PutDeliverySource` × 2 → `PutDeliveryDestination` × 2 →
+    `CreateDelivery` × 2) so the Payment Manager shows up in the AgentCore
+    Observability → Payments dashboard with sessions, transactions, and
+    `Agents using Payments` attribution
 5. Deploy `agent/payment_agent.py` to AgentCore Runtime via the AgentCore CLI:
    `agentcore create` + `agentcore add agent --build Container`, copy in
    [`agent/Dockerfile`](agent/Dockerfile), then `agentcore deploy` (CodeBuild builds
@@ -249,8 +254,32 @@ Run all cells in order. The notebook will:
    `ProcessPaymentRole` execution role, 10-min idle / 30-min max lifecycle.
 6. Invoke the deployed agent via `InvokeAgentRuntime` with the session/instrument
    context in the payload, then verify spend via `GetPaymentSession`
-7. View the session trace in CloudWatch GenAI Observability
+7. View the session trace in CloudWatch GenAI Observability — Runtime, Agent,
+   Browser-tool, and Payment Manager telemetry all stitched in one dashboard
 8. Cleanup — `agentcore remove all` to tear down the Runtime deployment
+
+### Observability coverage
+
+| Layer | How it's enabled | Where you see it |
+|---|---|---|
+| Runtime | Auto via `agentcore deploy` (`opentelemetry-instrument` CMD) | All-traces dashboard |
+| Agent (Strands) | OTEL spans through the Runtime distro | Inside each trace's waterfall |
+| Browser tool | Strands `AgentCoreBrowser` emits client-side spans | Inside each trace's waterfall |
+| Payment Manager | Vended log delivery (Step 4b) | **Payments tab** of the AgentCore Observability dashboard |
+
+The dashboard's *Agents using Payments* counter increments only when the SDK
+sends the `X-Amzn-Bedrock-AgentCore-Payments-Agent-Name` header, which it does
+automatically when `PaymentManager` and `AgentCorePaymentsPluginConfig` are
+constructed with `agent_name=`. `agent/payment_agent.py` reads `AGENT_NAME` from
+the container environment and passes it to both.
+
+> **Browser observability caveat:** the AgentCore Browser service does not
+> currently support per-resource vended log delivery. `PutDeliverySource` rejects
+> browser ARNs with: *valid resource types are runtime / gateway / memory /
+> payment-manager / code-interpreter / workload-identity*. Browser-tool actions
+> still appear as spans inside the agent trace via the OTEL distro
+> (`browser session start`, `navigate`, `cleanup`), so the *useful* visibility
+> is captured — but no separate Browser-service dashboard exists today.
 
 ---
 

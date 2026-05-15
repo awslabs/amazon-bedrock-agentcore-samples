@@ -41,6 +41,12 @@ app = BedrockAgentCoreApp()
 
 REGION = os.environ.get("AWS_REGION", "us-west-2")
 MODEL_ID = os.environ.get("MODEL_ID", "us.anthropic.claude-sonnet-4-6")
+# Identifier reported in the AgentCore Payments observability dashboard's
+# "Agents using Payments" counter and on each payment span's
+# `payment_agent_name` attribute. Set via the
+# X-Amzn-Bedrock-AgentCore-Payments-Agent-Name HTTP header on every
+# data-plane call when PaymentManager is constructed with agent_name=.
+AGENT_NAME = os.environ.get("AGENT_NAME", "PayForContentBrowserAgent")
 
 SYSTEM_PROMPT = """\
 You are a content retrieval agent with access to Amazon Bedrock AgentCore payments.
@@ -114,9 +120,13 @@ def handle_request(payload, context=None):
 
     # PaymentManager uses the container's ambient credentials (ProcessPaymentRole
     # when deployed; whatever role is active when running locally for dev).
+    # agent_name populates the X-Amzn-Bedrock-AgentCore-Payments-Agent-Name
+    # header on every data-plane call so AgentCore Payments observability
+    # can attribute spans/metrics back to this agent.
     payment_manager = PaymentManager(
         payment_manager_arn=payment_manager_arn,
         region_name=REGION,
+        agent_name=AGENT_NAME,
     )
 
     @tool
@@ -173,6 +183,7 @@ def handle_request(payload, context=None):
             payment_instrument_id=instrument_id,
             payment_session_id=session_id,
             region=REGION,
+            agent_name=AGENT_NAME,
         )
     )
 
