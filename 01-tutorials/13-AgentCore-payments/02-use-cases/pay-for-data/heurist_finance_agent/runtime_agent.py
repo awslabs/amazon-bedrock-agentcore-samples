@@ -563,6 +563,7 @@ def handle_request(payload: dict, context=None) -> dict:
             payment_instrument_id=instrument_id,
             payment_session_id=session_id,
             region=REGION,
+            agent_name=os.environ.get("AGENT_NAME", "HeuristFinanceAgent"),
         )
     )
 

@@ -165,6 +165,7 @@ def create_agent() -> Agent:
             payment_instrument_id=CFG.payment_instrument_id,
             payment_session_id=CFG.payment_session_id,
             region=CFG.aws_region,
+            agent_name="HeuristFinanceAgent",
         )
     )
 
