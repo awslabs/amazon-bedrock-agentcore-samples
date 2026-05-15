@@ -3,7 +3,7 @@
 Heurist Finance Agent — AgentCore Runtime entry point.
 
 This is the **recommended production deployment** of the pay-for-data agent.
-For local development and testing, see agent.py.
+For local development and testing, see local_agent.py.
 
 Production-grade, full-featured version:
   - AgentCore Code Interpreter for sandboxed pandas/matplotlib analysis
@@ -14,7 +14,7 @@ Production-grade, full-featured version:
   - Stateless: ALL payment config comes from the invocation payload — the
     container holds no credentials
 
-Compared to the local agent.py:
+Compared to the local local_agent.py:
   - artifact_export.py is NOT used (writes to ephemeral container disk)
   - Instead, export_artifact_to_s3 / save_report_to_s3 upload to S3 and
     return presigned URLs that the caller can download or display
