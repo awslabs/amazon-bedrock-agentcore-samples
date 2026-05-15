@@ -128,7 +128,7 @@ def handle_request(payload, context=None):
                               the <script id="x402-requirement"> DOM element.
 
         Returns:
-            dict with proof_b64, amount_usdc, and status.
+            dict with proof_b64, amount, and status.
         """
         requirement = json.loads(requirement_json)
 
@@ -136,8 +136,15 @@ def handle_request(payload, context=None):
         amount_units = int(
             first_accept.get("maxAmountRequired") or first_accept.get("amount", 0)
         )
-        amount_usdc = amount_units / 1_000_000
+        # Token's smallest unit (e.g. 1_000_000 for USDC's 6 decimals) — the
+        # value is reported back to the caller for display, not used for
+        # routing or settlement.
+        amount = amount_units / 1_000_000
 
+        # generate_payment_header expects an HTTP-402-shaped envelope.
+        # In the browser pattern the requirement comes from a DOM script tag
+        # rather than an HTTP 402 response, so we wrap it to match the SDK's
+        # input contract.
         payment_required_request = {
             "statusCode": 402,
             "headers": {},
@@ -155,7 +162,7 @@ def handle_request(payload, context=None):
 
         return {
             "proof_b64": proof_b64,
-            "amount_usdc": amount_usdc,
+            "amount": amount,
             "status": "PROOF_GENERATED",
         }
 

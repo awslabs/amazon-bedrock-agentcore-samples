@@ -8,15 +8,15 @@ each transaction."
 
 Without AgentCore payments, an agent that needs to pay for content must either hold
 a private key (exposing credentials to the model) or interrupt the user to complete
-the payment manually. This use case shows a third path: the agent delegates signing to
-AgentCore payments, stays within human-set payment limits, and completes the entire
-browse-pay-extract flow autonomously — all from a managed Runtime container.
+the payment manually. This use case shows a third path: the agent **leverages AgentCore
+Payments for payment processing**, stays within human-set payment limits, and completes
+the entire browse-pay-extract flow autonomously from a managed Runtime container.
 
 The agent is **deployed to AgentCore Runtime** under `ProcessPaymentRole`, uses the
 **AgentCore Browser Tool** to navigate a paywalled website, reads the embedded x402
-payment requirement from the page DOM, calls `ProcessPayment` to generate a cryptographic
-USDC proof, interacts with the paywall UI, and returns the unlocked content — all
-without any private key exposure, human intervention, or local agent process.
+payment requirement from the page DOM, calls `ProcessPayment` to generate a payment
+proof, interacts with the paywall UI, and returns the unlocked content — without any
+private key exposure or human intervention.
 
 ### Use Case Details
 
@@ -39,8 +39,16 @@ without any private key exposure, human intervention, or local agent process.
 
 There are four distinct phases: **resource provisioning** (runs once), **session setup**
 (runs before each agent invocation), **deploy** (runs on agent code change), and
-**invoke** (the live payment flow). The content provider is operator-deployed
-infrastructure — it is not created by the notebook.
+**invoke** (the live payment flow). The content provider is a separate piece of
+infrastructure that you deploy from this repo's `content-provider/` CDK stack — it
+is not created by the notebook.
+
+> **Note on SDK choice:** the notebook uses boto3 clients (`bedrock-agentcore-control`
+> and `bedrock-agentcore`) for Payments resource management because the AgentCore
+> Python SDK does not yet expose `CreatePaymentManager` / `CreatePaymentSession`
+> / `CreatePaymentInstrument`. The agent itself (running on Runtime) uses the
+> `bedrock-agentcore[strands-agents]` SDK and `AgentCorePaymentsPlugin` for
+> payment processing — that side is fully SDK-driven.
 
 ```
 RESOURCE PROVISIONING  (notebook Step 3, ControlPlaneRole)
@@ -297,12 +305,6 @@ Real x402 sites will have different selectors — the agent discovers payment fo
 elements dynamically using semantic cues (button text, input types, aria-labels)
 rather than hardcoded IDs.
 
-### Alternative: x402 via AgentCore Gateway
-
-You can also access x402-protected endpoints directly via **Amazon Bedrock AgentCore
-Gateway**, which handles the payment header exchange at the API level without a browser.
-See the **Pay for Data** use case for that pattern.
-
 ---
 
 ## IAM Role Design
@@ -313,10 +315,6 @@ See the **Pay for Data** use case for that pattern.
 | `ManagementRole` | `CreatePaymentSession`, `GetPaymentSession`, `InvokeAgentRuntime` | `ProcessPayment` | Notebook (Step 4, Step 6) |
 | `ProcessPaymentRole` | `ProcessPayment`, `GetPaymentInstrument`, `GetPaymentInstrumentBalance`, browser tool, ECR pull, CloudWatch logs/metrics, X-Ray, Bedrock model invocation | All setup and session management ops (`CreatePaymentSession`, `CreatePaymentInstrument`, etc.) | **AgentCore Runtime** as execution role |
 | `ResourceRetrievalRole` | Service-side payment-token retrieval | n/a (assumed by AWS service) | AgentCore service |
-
-**The agent code never calls `sts:AssumeRole`.** Role separation is enforced at the
-infrastructure level: the Runtime container assumes `ProcessPaymentRole` directly on
-launch, and that role's IAM policy blocks every session-management action.
 
 ---
 
