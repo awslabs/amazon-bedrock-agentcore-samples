@@ -6,7 +6,11 @@ A finance research agent that pays for real-time market data using **Amazon Bedr
 
 The agent is deployed to **AgentCore Runtime**: a managed container endpoint with HTTPS invocation, SigV4 auth, and automatic observability via CloudWatch.
 
+> **Mainnet sample.** This walkthrough targets Base mainnet and calls the live [Heurist mesh x402 registry](https://mesh.heurist.xyz/x402/agents?details=true). Every invocation settles real USDC on-chain. Typical per-call prices are $0.002–$0.005, so $1 USDC covers ~200 calls. A Base Sepolia variant of the catalog exists at `/x402/base-sepolia/agents?details=true`, but at the time of writing the EIP-712 signing path on AgentCore's Coinbase connector follows the connector's network selection, so end-to-end paid runs in this sample target Base mainnet.
+
 Heurist endpoints use the [x402 protocol](https://x402.org) — they return HTTP 402 until a valid payment proof is attached. The `AgentCorePaymentsPlugin` handles payment end-to-end: it intercepts 402 responses, generates a USDC proof via the AgentCore payment manager, attaches it, and retries. Your tool code stays a plain `http_request` call.
+
+![CloudWatch GenAI Observability — Heurist Finance Agent](images/obs-dashboard.png)
 
 ## Architecture
 
@@ -83,7 +87,8 @@ Override with the `HEURIST_AGENT_IDS` environment variable.
 ## Prerequisites
 
 - An **AgentCore payment manager** created in your AWS account
-- A **payment instrument** created and funded (embedded crypto wallet, USDC on Base mainnet)
+- A **payment instrument** created and funded — embedded crypto wallet with USDC on **Base mainnet** (default; the notebook walks through this in Step 4)
+- Coinbase CDP project with **Delegated signing** enabled, and a per-wallet delegation grant approved via the WalletHub URL returned at instrument creation
 - Python 3.11+
 - AWS credentials with Bedrock and AgentCore access in `us-west-2`
 - Node.js 20+ (for the `@aws/agentcore` CLI)
