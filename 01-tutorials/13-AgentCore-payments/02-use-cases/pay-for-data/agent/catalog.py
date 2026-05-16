@@ -13,7 +13,7 @@ from typing import Any
 
 import requests
 
-from heurist_finance_agent.config import LIVE_CATALOG_CACHE_PATH, get_config
+from config import LIVE_CATALOG_CACHE_PATH, get_config
 
 # --- Safety limits ---------------------------------------------------------
 # These caps are intentionally generous for a sample but prevent accidental
@@ -22,12 +22,7 @@ MAX_CATALOG_BYTES = 5 * 1024 * 1024  # 5 MiB on-disk cache
 MAX_CATALOG_RESPONSE_BYTES = 10 * 1024 * 1024  # 10 MiB network payload
 MAX_PROMPT_FIELD_LEN = 500  # per-field cap when rendered into the system prompt
 
-# Sentinel used when an external field is dropped because it cannot be safely
-# rendered inside a markdown table.
 _UNSAFE_FIELD_PLACEHOLDER = "(unavailable)"
-
-# Characters we refuse to echo back into the system prompt because they can
-# be used to break the markdown table or inject links / code fences.
 _UNSAFE_PROMPT_CHARS = re.compile(r"[\x00-\x1f\x7f`|\[\]]")
 
 
@@ -41,10 +36,7 @@ def _sanitize_prompt_text(value: Any, max_len: int = MAX_PROMPT_FIELD_LEN) -> st
     if value is None:
         return ""
     text = str(value)
-    # Strip control characters and markdown metacharacters that would break
-    # the rendered table or allow link/code-fence injection.
     text = _UNSAFE_PROMPT_CHARS.sub(" ", text)
-    # Collapse whitespace so the line stays on a single row.
     text = re.sub(r"\s+", " ", text).strip()
     if len(text) > max_len:
         text = text[:max_len].rstrip() + "…"
@@ -62,11 +54,7 @@ def _sanitize_url(value: Any) -> str:
 
 
 def _coerce_price(raw: Any) -> float:
-    """Convert a raw price value into a finite, non-negative float.
-
-    Rejects ``NaN``, infinities and negative values since they break
-    comparisons and downstream arithmetic.
-    """
+    """Convert a raw price value into a finite, non-negative float."""
     try:
         price = float(raw)
     except (TypeError, ValueError) as exc:
@@ -79,12 +67,7 @@ def _coerce_price(raw: Any) -> float:
 
 
 def _atomic_write_text(path: Path, content: str) -> None:
-    """Write ``content`` to ``path`` atomically via a same-directory temp file.
-
-    Using ``tempfile.mkstemp`` + ``os.replace`` prevents concurrent readers and
-    writers from seeing a half-written file (the TOCTOU bug flagged by the
-    validator).
-    """
+    """Write ``content`` to ``path`` atomically via a same-directory temp file."""
     path.parent.mkdir(parents=True, exist_ok=True)
     fd, tmp_name = tempfile.mkstemp(
         prefix=f".{path.name}.", suffix=".tmp", dir=str(path.parent)
@@ -96,7 +79,6 @@ def _atomic_write_text(path: Path, content: str) -> None:
             os.fsync(fh.fileno())
         os.replace(tmp_name, path)
     except Exception:
-        # Best-effort cleanup of the temp file on failure.
         try:
             os.unlink(tmp_name)
         except OSError:
@@ -111,7 +93,6 @@ def fetch_live_catalog(session: requests.Session | None = None) -> dict[str, Any
     response = http.get(cfg.heurist_catalog_url, timeout=30, stream=True)
     response.raise_for_status()
 
-    # Enforce a size cap on the streamed response before JSON-decoding it.
     chunks: list[bytes] = []
     total = 0
     for chunk in response.iter_content(chunk_size=64 * 1024):
@@ -171,22 +152,20 @@ def get_tools_for_agents(
         if not agent_id or agent_id not in selected:
             continue
         found_ids.add(agent_id)
-        for tool in agent.get("tools", []):
+        for tool_def in agent.get("tools", []):
             try:
-                price_usd = _coerce_price(tool["priceUsd"])
+                price_usd = _coerce_price(tool_def["priceUsd"])
             except (KeyError, ValueError):
-                # Skip tools with an invalid or missing price rather than
-                # letting NaN/Infinity/negative values leak into the prompt.
                 continue
             tools.append(
                 {
                     "agent_id": agent_id,
-                    "tool_name": tool.get("name", ""),
-                    "resource_url": tool.get("resourceUrl", ""),
+                    "tool_name": tool_def.get("name", ""),
+                    "resource_url": tool_def.get("resourceUrl", ""),
                     "price_usd": price_usd,
-                    "method": tool.get("method", "POST"),
-                    "description": tool.get("description", ""),
-                    "parameters": tool.get("parameters", {}) or {},
+                    "method": tool_def.get("method", "POST"),
+                    "description": tool_def.get("description", ""),
+                    "parameters": tool_def.get("parameters", {}) or {},
                 }
             )
 
@@ -203,13 +182,7 @@ def get_tools_for_agents(
 
 
 def format_catalog_for_prompt(tools: list[dict[str, Any]]) -> str:
-    """Format the tool catalog as a reference table for the agent system prompt.
-
-    The agent uses this to know which URLs to call via http_request. All
-    externally-sourced fields are sanitized so that untrusted registry data
-    cannot inject markdown links, code fences, or extra table columns into
-    the agent's system prompt.
-    """
+    """Format the tool catalog as a reference table for the agent system prompt."""
     lines = ["## Available Paid Endpoints (Heurist x402)", ""]
     lines.append("| Agent | Tool | URL | Method | Price | Description |")
     lines.append("|-------|------|-----|--------|-------|-------------|")

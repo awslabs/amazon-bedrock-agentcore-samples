@@ -13,7 +13,7 @@ Heurist endpoints use the [x402 protocol](https://x402.org) — they return HTTP
 ```
 App Backend (ManagementRole)              AgentCore Runtime
   |                                        +------------------------------+
-  | create_session(budget=$X)              |  runtime_agent.py            |
+  | create_session(budget=$X)              |  agent/main.py               |
   |                                        |  BedrockAgentCoreApp         |
   |-- invoke(manager_arn, session_id, -->  |  + AgentCorePaymentsPlugin   |
   |         instrument_id, prompt)         |                              |
@@ -55,7 +55,7 @@ agent = Agent(
 )
 ```
 
-See [`runtime_agent.py`](heurist_finance_agent/runtime_agent.py) for the full implementation.
+See [`agent/main.py`](agent/main.py) for the full implementation.
 
 ## Sample Details
 
@@ -95,16 +95,17 @@ Override with the `HEURIST_AGENT_IDS` environment variable.
 ```
 pay-for-data/
 ├── README.md
-├── requirements.txt
 ├── .env.example
 ├── pay-for-data.ipynb                    # notebook: deploy and invoke via AgentCore Runtime
-└── heurist_finance_agent/
-    ├── runtime_agent.py                  # AgentCore Runtime entry point (BedrockAgentCoreApp)
+└── agent/                                # everything below ships in the Runtime container
+    ├── main.py                           # AgentCore Runtime entry point (BedrockAgentCoreApp)
     ├── catalog.py                        # fetches Heurist registry, formats for system prompt
     ├── catalog_live_cache.json           # synced catalog (bundled in Runtime image)
-    ├── config.py                         # loads .env
-    └── scripts/
-        └── sync_registry.py              # CLI: refreshes cached Heurist catalog```
+    ├── config.py                         # loads .env / payment context
+    ├── sync_registry.py                  # CLI: refreshes the catalog cache (run before deploy)
+    ├── requirements.txt                  # container Python deps
+    └── Dockerfile                        # opentelemetry-instrument python -m main
+```
 
 ## Quick Start
 
@@ -115,11 +116,14 @@ Open [`pay-for-data.ipynb`](pay-for-data.ipynb) and run the cells in order:
 | 1 | Configure credentials and confirm AWS identity |
 | 2 | Sync the Heurist tool catalog (bundled in the container image) |
 | 3 | Create the S3 artifacts bucket |
-| 4 | Install the AgentCore CLI, scaffold and deploy |
-| 5 | Add IAM permissions to the execution role |
-| 6 | Invoke the deployed agent and inspect results |
-| 7 | View observability traces in CloudWatch |
-| 8 | Cleanup |
+| 4 | Provision embedded wallet resources (credential provider, manager, connector, instrument) |
+| 5 | Fund the wallet and grant signing delegation via WalletHub |
+| 6 | Enable Payment Manager observability (CW Logs + X-Ray vended-log delivery) |
+| 7 | Scaffold and deploy to AgentCore Runtime via the `agentcore` CLI |
+| 8 | Grant execution-role permissions (payment, Code Interpreter, S3, Bedrock + inference profile) |
+| 9 | Invoke the deployed agent and inspect results |
+| 10 | View observability traces in CloudWatch |
+| 11 | Cleanup |
 
 ## Payment Flow
 
@@ -136,7 +140,7 @@ The plugin retries up to 3 times per tool call. Payment limits are enforced at t
 
 ## How the Runtime Agent Works
 
-`runtime_agent.py` implements the AgentCore Runtime service contract with full feature parity:
+`agent/main.py` implements the AgentCore Runtime service contract with full feature parity:
 
 **Stateless, payload-driven**
 All payment config (manager ARN, session ID, instrument ID) comes from the invocation payload. The container holds no credentials. The app backend (ManagementRole) creates payment sessions with spending limits before each invocation. The Runtime execution role (ProcessPaymentRole) can only spend within those limits.
@@ -159,24 +163,25 @@ Artifacts produced by Code Interpreter are uploaded to S3 and returned as presig
 If `CI_ARTIFACTS_BUCKET` is not configured, the agent degrades gracefully: charts become markdown tables, text returns inline.
 
 **Observability**
-The `agentcore deploy` CLI configures the container to run under `opentelemetry-instrument`. Combined with `aws-opentelemetry-distro` (included in `pyproject.toml`), this provides:
+The `agentcore deploy` CLI configures the container to run under `opentelemetry-instrument`. Combined with `aws-opentelemetry-distro` (included in `agent/requirements.txt`), this provides:
 - Strands agent spans (LLM calls, tool calls, agent turns) → CloudWatch GenAI Observability
 - Code Interpreter calls stitched as child spans via W3C `traceparent` botocore instrumentation
 - Payment calls (`ProcessPayment`, `GetPaymentInstrument`) as boto3 child spans
 
-No instrumentation code required in `runtime_agent.py`.
+No instrumentation code required in `agent/main.py`.
 
-**Execution role permissions** (attached by the notebook, Step 5):
+**Execution role permissions** (attached by the notebook, Step 8):
 
 | Permission set | Actions | Resource scope |
 |---|---|---|
-| Payment data-plane | `ProcessPayment`, `GetPaymentInstrument`, `GetPaymentSession` | `payment-manager/*` |
+| Payment data-plane | `ProcessPayment`, `GetPaymentInstrument`, `GetPaymentInstrumentBalance`, `GetPaymentSession`, `GetResourcePaymentToken` | `payment-manager/*`, `payment-manager/*/instrument/*`, `payment-manager/*/session/*` |
 | Code Interpreter | `StartCodeInterpreterSession`, `InvokeCodeInterpreter`, `StopCodeInterpreterSession` | `code-interpreter/*` |
 | S3 artifacts | `PutObject`, `GetObject` | `<bucket>/heurist-finance-artifacts/*` |
+| Bedrock model | `InvokeModel`, `InvokeModelWithResponseStream` | `foundation-model/*`, `inference-profile/*`, `application-inference-profile/*` (the latter two are required for CRIS-fronted models like Claude Sonnet 4 in us-west-2) |
 
 ## Environment Variables
 
-See [`.env.example`](.env.example). Required:
+See [`.env.example`](.env.example). Required on the host (notebook):
 
 | Variable | Description |
 |----------|-------------|
@@ -186,12 +191,24 @@ See [`.env.example`](.env.example). Required:
 | `USER_ID` | User identifier for payment tracking |
 | `BEDROCK_MODEL_ID` | Bedrock model (default: Claude Sonnet 4) |
 | `HEURIST_AGENT_IDS` | Comma-separated Heurist agents to load |
+| `HEURIST_CATALOG_URL` | Catalog endpoint — `https://mesh.heurist.xyz/x402/agents?details=true` (mainnet) or the `/x402/base-sepolia/...` variant for testnet |
 
-These values are passed in the invocation payload at runtime. The `.env` bundled in the container image contains only non-sensitive service config: `CI_ARTIFACTS_BUCKET`, `AWS_REGION`, `BEDROCK_MODEL_ID`.
+Bundled in the container `.env` (set by Step 7):
+
+| Variable | Description |
+|----------|-------------|
+| `CI_ARTIFACTS_BUCKET` | S3 bucket used for artifact upload |
+| `CI_ARTIFACTS_PREFIX` | S3 key prefix (default: `heurist-finance-artifacts`) |
+| `CI_ARTIFACTS_TTL` | Presigned URL TTL in seconds (default: 3600) |
+| `AWS_REGION` | Region for boto3 clients |
+| `AGENT_NAME` | Reported in payment observability |
+| `BYPASS_TOOL_CONSENT` | Set to `true` so `strands_tools.http_request` skips its TTY confirm prompt — required because the Runtime container has no TTY |
+
+Payment context (`PAYMENT_MANAGER_ARN`, `PAYMENT_SESSION_ID`, `PAYMENT_INSTRUMENT_ID`, `USER_ID`) is passed in the **invocation payload** at runtime, not via env vars in the container.
 
 ## Notes
 
 - Payment sessions expire. Create a fresh session before each invocation in automated workflows.
 - Each paid call settles USDC on Base. Ensure your payment instrument is funded.
-- Sync the catalog cache before building the container image (`sync_registry.py`). The cache is bundled in the image — the container does not call the Heurist registry at startup.
+- Sync the catalog cache before building the container image (`python agent/sync_registry.py`). The cache is bundled in the image — the container does not call the Heurist registry at startup.
 - Presigned artifact URLs expire after `CI_ARTIFACTS_TTL` seconds (default: 1 hour). Download or forward the URL to the end user promptly.

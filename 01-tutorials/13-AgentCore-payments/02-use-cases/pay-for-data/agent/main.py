@@ -2,54 +2,39 @@
 """
 Heurist Finance Agent — AgentCore Runtime entry point.
 
-This is the **recommended production deployment** of the pay-for-data agent.
-For local development and testing, see local_agent.py.
+Pay-for-data agent that:
+  - Calls paid Heurist endpoints via x402 (HTTP 402 → ProcessPayment → retry)
+  - Uses AgentCore Code Interpreter for sandboxed pandas/matplotlib analysis
+  - Uploads chart/CSV/report artifacts to S3 and returns presigned URLs
+  - Stateless — payment config (manager ARN, session, instrument) comes from
+    the invocation payload; the container holds no credentials
 
-Production-grade, full-featured version:
-  - AgentCore Code Interpreter for sandboxed pandas/matplotlib analysis
-    (Code Interpreter is a remote AWS API — it works identically from a Runtime
-    container as from a local machine)
-  - S3 artifact storage: charts, CSVs, and reports are uploaded to S3 and
-    returned as presigned URLs in the invocation response
-  - Stateless: ALL payment config comes from the invocation payload — the
-    container holds no credentials
+If `CI_ARTIFACTS_BUCKET` is not set, the agent degrades gracefully: charts
+become markdown tables, text is returned inline.
 
-Compared to the local local_agent.py:
-  - artifact_export.py is NOT used (writes to ephemeral container disk)
-  - Instead, export_artifact_to_s3 / save_report_to_s3 upload to S3 and
-    return presigned URLs that the caller can download or display
-  - If CI_ARTIFACTS_BUCKET is not set, the agent degrades gracefully:
-    charts are described as markdown tables, text reports are returned inline
-
-Required IAM permissions for the execution role (added by pay-for-data.ipynb Step 5f):
-  Payments:
-    bedrock-agentcore:ProcessPayment
-    bedrock-agentcore:GetPaymentInstrument, GetPaymentInstrumentBalance
-    bedrock-agentcore:GetPaymentSession, GetResourcePaymentToken
-    Resource: arn:aws:bedrock-agentcore:<region>:<account>:payment-manager/*
-
-  Code Interpreter:
-    bedrock-agentcore:StartCodeInterpreterSession
-    bedrock-agentcore:StopCodeInterpreterSession
-    bedrock-agentcore:InvokeCodeInterpreter
-    Resource: arn:aws:bedrock-agentcore:<region>:<account>:code-interpreter/*
-
-  S3 (required only if CI_ARTIFACTS_BUCKET is set):
-    s3:PutObject  on arn:aws:s3:::<bucket>/heurist-finance-artifacts/*
-    s3:GetObject  on arn:aws:s3:::<bucket>/heurist-finance-artifacts/*
-
-  Bedrock + CloudWatch — added automatically by `agentcore deploy`
+Required IAM permissions for the execution role (see notebook Step 8):
+  Payments       — ProcessPayment, GetPaymentInstrument, GetPaymentSession,
+                   GetPaymentInstrumentBalance, GetResourcePaymentToken
+                   on payment-manager/* and its instrument/* and session/*
+  Code Interpreter — Start/Stop/Invoke CodeInterpreterSession on code-interpreter/*
+  S3             — PutObject + GetObject on <bucket>/<prefix>/*
+  Bedrock        — InvokeModel + InvokeModelWithResponseStream on the model
+                   ARN AND on inference-profile/* (for CRIS-fronted models like
+                   Claude Sonnet 4)
+  CloudWatch     — added automatically by `agentcore deploy`
 
 Environment variables (set via .env bundled in the container image):
-  CI_ARTIFACTS_BUCKET   S3 bucket for artifact storage (optional but recommended)
-  CI_ARTIFACTS_PREFIX   S3 key prefix (default: "heurist-finance-artifacts/")
-  CI_ARTIFACTS_TTL      Presigned URL TTL seconds (default: 3600)
-  HEURIST_AGENT_IDS     Comma-separated Heurist agent IDs to load
-  BEDROCK_MODEL_ID      Override the default Bedrock model ID
-  AWS_REGION            Set automatically by AgentCore Runtime
+  CI_ARTIFACTS_BUCKET    S3 bucket for artifact storage (optional but recommended)
+  CI_ARTIFACTS_PREFIX    S3 key prefix (default: "heurist-finance-artifacts")
+  CI_ARTIFACTS_TTL       Presigned URL TTL seconds (default: 3600)
+  HEURIST_AGENT_IDS      Comma-separated Heurist agent IDs to load
+  BEDROCK_MODEL_ID       Override the default Bedrock model ID
+  AGENT_NAME             Name reported in payment observability
+  BYPASS_TOOL_CONSENT    Set to "true" so http_request skips its TTY confirm prompt
+                         (Runtime containers have no TTY)
 
 Invocation payload:
-  prompt                (str, required)  — the research request
+  prompt                (str, required)  — research request
   payment_manager_arn   (str, required)
   user_id               (str, required)
   payment_session_id    (str, required)  — created by app backend with budget
@@ -64,15 +49,6 @@ Response:
       {"name": "report.md", "url": "https://...", "expires_in": 3600}
     ]
   }
-
-Deployment (see pay-for-data.ipynb Step 5 for the full walkthrough):
-  1. python -m heurist_finance_agent.scripts.sync_registry  # refresh catalog cache
-  2. agentcore create --name HeuristFinanceAgent ...
-  3. cp heurist_finance_agent/runtime_agent.py HeuristFinanceAgent/.../main.py
-  4. cp -r heurist_finance_agent HeuristFinanceAgent/.../
-  5. echo "CI_ARTIFACTS_BUCKET=<bucket>" >> HeuristFinanceAgent/.../.env
-  6. agentcore deploy -y
-  7. Attach payment + CI + S3 IAM policies to the auto-created execution role
 """
 
 from __future__ import annotations
@@ -83,56 +59,35 @@ import json
 import logging
 import os
 import re
-import sys
 import threading
 import uuid
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-# Load .env if present — supports local testing and container config injection.
-# python-dotenv is included in requirements.txt; safe to import unconditionally.
-from dotenv import load_dotenv
-
-load_dotenv()
-
-# ---------------------------------------------------------------------------
-# sys.path — ensure heurist_finance_agent is importable whether this file
-# lives in the use-case root or inside a scaffolded AgentCore project.
-# ---------------------------------------------------------------------------
-_THIS_DIR = Path(__file__).resolve().parent
-_AGENT_PKG_PARENT = _THIS_DIR.parent
-for _candidate in [_THIS_DIR, _AGENT_PKG_PARENT]:
-    if str(_candidate) not in sys.path:
-        sys.path.insert(0, str(_candidate))
-
-import boto3  # noqa: E402
-from bedrock_agentcore.payments.integrations.strands import (  # noqa: E402
+import boto3
+from bedrock_agentcore.payments.integrations.strands import (
     AgentCorePaymentsPlugin,
     AgentCorePaymentsPluginConfig,
 )
-from bedrock_agentcore.runtime import BedrockAgentCoreApp  # noqa: E402
-from strands import Agent, tool  # noqa: E402
-from strands.models import BedrockModel  # noqa: E402
-from strands_tools import http_request  # noqa: E402
-from strands_tools.code_interpreter import AgentCoreCodeInterpreter  # noqa: E402
+from bedrock_agentcore.runtime import BedrockAgentCoreApp
+from dotenv import load_dotenv
+from strands import Agent, tool
+from strands.models import BedrockModel
+from strands_tools import http_request
+from strands_tools.code_interpreter import AgentCoreCodeInterpreter
 
-from heurist_finance_agent.catalog import (  # noqa: E402
-    format_catalog_for_prompt,
-    get_tools_for_agents,
-)
-from heurist_finance_agent.config import DEFAULT_HEURIST_AGENT_IDS  # noqa: E402
+from catalog import format_catalog_for_prompt, get_tools_for_agents
+from config import DEFAULT_HEURIST_AGENT_IDS
 
+load_dotenv()
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# App
+# App + module-level config
 # ---------------------------------------------------------------------------
 app = BedrockAgentCoreApp()
 
-# ---------------------------------------------------------------------------
-# Configuration — read from environment at module startup
-# ---------------------------------------------------------------------------
 REGION = os.environ.get("AWS_REGION", "us-west-2")
 MODEL_ID = os.environ.get(
     "BEDROCK_MODEL_ID", "us.anthropic.claude-sonnet-4-20250514-v1:0"
@@ -180,28 +135,24 @@ _invocation = threading.local()
 
 
 def _artifacts() -> list[dict]:
-    """Return the artifact list for the current invocation thread."""
     if not hasattr(_invocation, "artifacts"):
         _invocation.artifacts = []
     return _invocation.artifacts
 
 
 def _session_name() -> str:
-    """Return (or lazily create) the Code Interpreter session name for this invocation."""
     if not hasattr(_invocation, "session_name"):
         _invocation.session_name = f"heurist-{uuid.uuid4().hex[:12]}"
     return _invocation.session_name
 
 
 def _reset_invocation_state() -> None:
-    """Reset thread-local state at the start of each invocation."""
     _invocation.artifacts = []
     _invocation.session_name = f"heurist-{uuid.uuid4().hex[:12]}"
 
 
 # ---------------------------------------------------------------------------
 # CI result extraction helpers
-# (mirrors the logic in artifact_export.py without the local-disk dependency)
 # ---------------------------------------------------------------------------
 
 
@@ -350,7 +301,6 @@ def save_report_to_s3(content: str, filename: str) -> dict[str, Any]:
         filename: Desired filename (e.g. "macro_summary.md", "prices.csv")
     """
     if not CI_ARTIFACTS_BUCKET:
-        # Graceful degradation: return inline
         return {
             "status": "inline",
             "note": "S3 not configured — content returned inline.",
@@ -506,22 +456,12 @@ def handle_request(payload: dict, context=None) -> dict:
 
     Optional payload fields:
         bedrock_model_id      (str) — per-invocation model override
-
-    Returns:
-        {
-          "response":  "<str>",
-          "artifacts": [{"name": "...", "url": "...", "expires_in": <int>}, ...]
-        }
-        or {"error": "<str>"} on bad payload.
     """
-    # Reset thread-local state for this invocation
     _reset_invocation_state()
     ci_session = _session_name()
 
-    # -----------------------------------------------------------------------
     # Unwrap the agentcore invoke double-wrapping:
     # `agentcore invoke '{"key": "val"}'` → payload = {"prompt": '{"key":"val"}'}
-    # -----------------------------------------------------------------------
     raw_prompt = payload.get("prompt", "")
     if isinstance(raw_prompt, str) and raw_prompt.strip().startswith("{"):
         try:
@@ -553,9 +493,6 @@ def handle_request(payload: dict, context=None) -> dict:
 
     model_id = payload.get("bedrock_model_id", MODEL_ID)
 
-    # -----------------------------------------------------------------------
-    # Build agent for this invocation
-    # -----------------------------------------------------------------------
     payment_plugin = AgentCorePaymentsPlugin(
         config=AgentCorePaymentsPluginConfig(
             payment_manager_arn=payment_manager_arn,
@@ -589,7 +526,6 @@ def handle_request(payload: dict, context=None) -> dict:
 
     result = agent(prompt)
 
-    # Extract response text
     content = result.message.get("content", [])
     text = next(
         (

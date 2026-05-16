@@ -9,16 +9,14 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-PROJECT_DIR = Path(__file__).resolve().parent
-LIVE_CATALOG_CACHE_PATH = PROJECT_DIR / "catalog_live_cache.json"
+AGENT_DIR = Path(__file__).resolve().parent
+LIVE_CATALOG_CACHE_PATH = AGENT_DIR / "catalog_live_cache.json"
 
-# The README instructs users to place `.env` in the use-case root
-# (`pay-for-data/.env`). We also accept a file placed directly inside the
-# package directory for developers who prefer that layout.
-USE_CASE_DIR = PROJECT_DIR.parent
+# Accept .env in either the agent dir (Runtime container layout) or the
+# parent use-case dir (host machine layout for sync_registry).
 ENV_CANDIDATE_PATHS: tuple[Path, ...] = (
-    USE_CASE_DIR / ".env",
-    PROJECT_DIR / ".env",
+    AGENT_DIR / ".env",
+    AGENT_DIR.parent / ".env",
 )
 
 DEFAULT_HEURIST_AGENT_IDS = (
@@ -28,7 +26,9 @@ DEFAULT_HEURIST_AGENT_IDS = (
     "SecEdgarAgent",
 )
 
-# Required environment variables for the agent to run.
+# Required environment variables for the agent to run host-side scripts.
+# The Runtime container does NOT need these — payment context comes from
+# the invocation payload at runtime.
 _REQUIRED_ENV_VARS: tuple[str, ...] = (
     "PAYMENT_MANAGER_ARN",
     "PAYMENT_SESSION_ID",
@@ -37,11 +37,7 @@ _REQUIRED_ENV_VARS: tuple[str, ...] = (
 
 
 def load_environment() -> None:
-    """Load the local .env file from any of the supported locations.
-
-    Missing .env files are tolerated so that values supplied via the real
-    environment (shell, CI secrets, etc.) still work.
-    """
+    """Load the local .env file from any of the supported locations."""
     for candidate in ENV_CANDIDATE_PATHS:
         if candidate.is_file():
             load_dotenv(candidate, override=False)
@@ -109,7 +105,8 @@ def get_config() -> AppConfig:
         payment_instrument_id=_require_env("PAYMENT_INSTRUMENT_ID"),
         user_id=os.environ.get("USER_ID", "demo-user"),
         heurist_catalog_url=os.environ.get(
-            "HEURIST_CATALOG_URL", "https://mesh.heurist.xyz/x402/agents?details=true"
+            "HEURIST_CATALOG_URL",
+            "https://mesh.heurist.xyz/x402/base-sepolia/agents?details=true",
         ),
         heurist_tool_agent_ids=_parse_csv_tuple(
             os.environ.get("HEURIST_AGENT_IDS"), DEFAULT_HEURIST_AGENT_IDS
