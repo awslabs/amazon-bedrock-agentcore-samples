@@ -44,9 +44,8 @@ class EvaluationClient:
         if boto_client:
             self.client = boto_client
         else:
-            self.client = boto3.client(
-                "agentcore-evaluation-dataplane", region_name=self.region
-            )
+            self.client = boto3.client("bedrock-agentcore", region_name=self.region)
+
 
     def _validate_scope_compatibility(self, evaluator_id: str, scope: str) -> None:
         """Validate that the evaluator is compatible with the requested scope.
