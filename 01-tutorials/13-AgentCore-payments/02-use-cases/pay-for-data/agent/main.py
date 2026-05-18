@@ -71,6 +71,7 @@ from bedrock_agentcore.payments.integrations.strands import (
     AgentCorePaymentsPluginConfig,
 )
 from bedrock_agentcore.runtime import BedrockAgentCoreApp
+from botocore.config import Config as BotoConfig
 from dotenv import load_dotenv
 from strands import Agent, tool
 from strands.models import BedrockModel
@@ -504,11 +505,23 @@ def handle_request(payload: dict, context=None) -> dict:
         )
     )
 
+    # Claude Sonnet 4 supports up to 64k output tokens. Multi-step workflows
+    # (5+ paid tool calls + Code Interpreter + chart export + markdown
+    # report) routinely need more than the SDK's default 4k cap, which
+    # otherwise raises Strands' MaxTokensReachedException mid-run.
+    # The custom client config keeps long single-turn streamed responses
+    # from tripping the default 60s bedrock-runtime read timeout.
     model = BedrockModel(
         boto_session=boto3.Session(region_name=REGION),
+        boto_client_config=BotoConfig(
+            read_timeout=900,
+            connect_timeout=15,
+            retries={"max_attempts": 1},
+        ),
         model_id=model_id,
         streaming=True,
         temperature=0,
+        max_tokens=int(os.environ.get("AGENT_MAX_TOKENS", "60000")),
     )
 
     agent = Agent(
