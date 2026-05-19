@@ -190,6 +190,12 @@ class MarketTrendsAgentDeployer:
                         "bedrock-agentcore:DeleteMemory",
                         "bedrock-agentcore:GetMemory",
                         "bedrock-agentcore:RetrieveMemoryRecords",
+                        "bedrock-agentcore:CreateMemoryRecord",
+                        "bedrock-agentcore:DeleteMemoryRecord",
+                        "bedrock-agentcore:UpdateMemoryRecord",
+                        "bedrock-agentcore:GetCheckpoint",
+                        "bedrock-agentcore:PutCheckpoint",
+                        "bedrock-agentcore:ListCheckpoints",
                     ],
                     "Resource": [
                         f"arn:aws:bedrock-agentcore:{self.region}:{account_id}:memory/*"

@@ -1,7 +1,10 @@
 langgraph
+langgraph-checkpoint-aws
 langchain-aws
 langchain-core
 boto3
 playwright
 bedrock-agentcore
 jsonschema>=4.24.0,<4.25.0
+fastapi
+uvicorn[standard]

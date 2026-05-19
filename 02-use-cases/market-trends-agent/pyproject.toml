@@ -9,6 +9,7 @@ dependencies = [
     "langgraph",
     "langchain-aws",
     "langchain-core",
+    "langgraph-checkpoint-aws",
     # boto3 1.42+ is required for the AgentCore Evaluations control-plane APIs
     # (list_evaluators, create_evaluator, create_online_evaluation_config).
     "boto3>=1.42.0",
@@ -31,6 +32,8 @@ dependencies = [
     "wrapt<1.16.0",
     # Pin jsonschema to satisfy openapi-spec-validator 0.8.4's constraint.
     "jsonschema>=4.24.0,<4.25.0",
+    "fastapi",
+    "uvicorn[standard]",
 ]
 
 [project.optional-dependencies]

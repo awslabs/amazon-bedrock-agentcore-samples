@@ -90,7 +90,7 @@ def get_memory_from_ssm():
             "Memory ARN not found in SSM Parameter Store. Please run deployment first."
         )
         raise Exception(
-            "Memory not deployed. Run 'AWS_PROFILE=burner python deploy.py' first."
+            "Memory not deployed. Run 'python deploy.py --region us-east-1' first."
         )
     except Exception as e:
         logger.error(f"Error retrieving memory from SSM: {e}")
@@ -99,8 +99,8 @@ def get_memory_from_ssm():
 
 def extract_actor_id(user_message: str) -> str:
     """Extract actor_id from broker card format or user message"""
-    # Look for broker card format: "Name: [Name]"
-    name_match = re.search(r"Name:\s*([^\n]+)", user_message, re.IGNORECASE)
+    # Look for broker card format: "Name: [Name]" — stop at newline or common delimiters
+    name_match = re.search(r"Name:\s*([A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+){0,2})(?:\s*[\n,.]|\s+and\b|\s+from\b|\s+at\b|$)", user_message, re.IGNORECASE)
     if name_match:
         name = name_match.group(1).strip()
         if name and name.lower() != "unknown":
@@ -110,9 +110,12 @@ def extract_actor_id(user_message: str) -> str:
 
     # Look for "I'm [Name]" or "My name is [Name]" patterns
     intro_patterns = [
-        r"I'?m\s+([A-Z][a-zA-Z\s]+?)(?:\s+from|\s+at|\s*[,.]|$)",
-        r"My name is\s+([A-Z][a-zA-Z\s]+?)(?:\s+from|\s+at|\s*[,.]|$)",
-        r"This is\s+([A-Z][a-zA-Z\s]+?)(?:\s+from|\s+at|\s*[,.]|$)",
+        r"I'?m\s+([A-Z][a-zA-Z\s]+?)(?:\s+from|\s+at|\s+and\b|\s*[,.]|$)",
+        r"I\s+am\s+([A-Z][a-zA-Z\s]+?)(?:\s+from|\s+at|\s+and\b|\s*[,.]|$)",
+        r"My name is\s+([A-Z][a-zA-Z\s]+?)(?:\s+from|\s+at|\s+and\b|\s*[,.]|$)",
+        r"Name is\s+([A-Z][a-zA-Z\s]+?)(?:\s+from|\s+at|\s+and\b|\s*[,.]|$)",
+        r"This is\s+([A-Z][a-zA-Z\s]+?)(?:\s+from|\s+at|\s+and\b|\s*[,.]|$)",
+        r"(?:Hi|Hello|Hey),?\s+(?:I'?m|I am|this is)\s+([A-Z][a-zA-Z\s]+?)(?:\s+from|\s+at|\s+and\b|\s*[,.]|$)",
     ]
 
     for pattern in intro_patterns:
@@ -147,35 +150,41 @@ def create_memory_tools(
     def list_conversation_history(actor_id_override: str = None):
         """Retrieve recent conversation history and user preferences from memory"""
         try:
-            # Use provided actor_id or default
-            current_actor_id = actor_id_override or default_actor_id
+            # Try session-based actor_id first (used by automatic conversation saving)
+            session_actor_id = f"session_{session_id}"
+            actors_to_try = [session_actor_id]
+            if actor_id_override:
+                actors_to_try.insert(0, actor_id_override)
+            elif default_actor_id != "unknown-user":
+                actors_to_try.append(default_actor_id)
 
-            events = memory_client.list_events(
-                memory_id=memory_id,
-                actor_id=current_actor_id,
-                session_id=session_id,
-                max_results=10,
-            )
+            all_history_parts = []
+            for current_actor_id in actors_to_try:
+                try:
+                    events = memory_client.list_events(
+                        memory_id=memory_id,
+                        actor_id=current_actor_id,
+                        session_id=session_id,
+                        max_results=10,
+                    )
 
-            if events:
-                # Convert events to readable format
-                history_parts = []
-                for i, event in enumerate(events[-5:], 1):  # Show last 5 events
-                    if "messages" in event:
-                        for message in event["messages"]:
-                            content = message.get("content", "").strip()
-                            role = message.get("role", "unknown")
-                            if content:
-                                history_parts.append(
-                                    f"{role.upper()}: {content[:100]}..."
-                                )
+                    if events:
+                        for event in events[-5:]:
+                            if "messages" in event:
+                                for message in event["messages"]:
+                                    content = message.get("content", "").strip()
+                                    role = message.get("role", "unknown")
+                                    if content:
+                                        all_history_parts.append(
+                                            f"{role.upper()}: {content[:200]}..."
+                                        )
+                except Exception:
+                    continue
 
-                if history_parts:
-                    return "Recent conversation history:\n" + "\n".join(history_parts)
-                else:
-                    return "No meaningful conversation history found"
+            if all_history_parts:
+                return "Recent conversation history:\n" + "\n".join(all_history_parts)
             else:
-                return "No conversation history available"
+                return "No conversation history available for this session"
 
         except Exception as e:
             logger.error(f"Error retrieving conversation history: {e}")

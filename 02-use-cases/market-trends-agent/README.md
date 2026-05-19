@@ -599,6 +599,80 @@ uv run python optimization/optimize_agent.py --cleanup --state-file optimization
 
 ---
 
+## Demo UI
+
+The agent includes a React-based chat interface for interactive conversations, backed by a FastAPI proxy that forwards requests to your deployed AgentCore agent.
+
+### Install Frontend Dependencies
+
+```bash
+cd frontend
+npm install
+cd ..
+```
+
+### Launch the Demo UI
+
+```bash
+uv run python run_demo_ui.py
+```
+
+This starts both:
+- **Backend** (FastAPI): http://localhost:8001 — proxies requests to your deployed AgentCore agent
+- **Frontend** (React/Vite): http://localhost:3000 — the chat interface
+
+Open http://localhost:3000 in your browser.
+
+### Try It Out
+
+1. Click a **Quick Demo Profile** in the sidebar (e.g., "Growth Investor") to load a sample broker card
+2. Press Enter to submit the profile — the agent will store it in memory
+3. Ask follow-up questions like:
+   - "What's the current Apple stock price?"
+   - "Search Bloomberg for latest AI sector news"
+   - "What do you remember about my investment preferences?"
+   - "Give me a personalized market briefing for today"
+
+The agent remembers your profile across messages in the same session.
+
+> **Note:** Press `Ctrl+C` to stop both servers when done. The AgentCore agent itself remains deployed (serverless, no idle cost).
+
+### Stop the Demo UI
+
+Press `Ctrl+C` in the terminal where you ran `uv run python run_demo_ui.py`. This stops both the FastAPI backend and the Vite frontend dev server.
+
+### Clean Up Frontend (Optional)
+
+```bash
+# Remove installed node modules
+rm -rf frontend/node_modules
+
+# On Windows PowerShell
+Remove-Item -Recurse -Force frontend/node_modules
+```
+
+### Project Structure (UI Components)
+
+```
+market-trends-agent/
+├── api_server.py               # FastAPI backend for the demo UI
+├── run_demo_ui.py              # Launches both backend and frontend
+├── frontend/
+│   ├── src/
+│   │   ├── App.jsx             # React chat interface
+│   │   ├── App.css             # Dark theme styling
+│   │   └── main.jsx            # Entry point
+│   ├── package.json            # Frontend dependencies
+│   └── vite.config.js          # Vite dev server config (proxies to backend)
+```
+
+### Troubleshooting (UI)
+
+1. **Port 8000 Conflict** — If port 8000 is in use (e.g., by AWSWorkDocsDriveClient on Windows), the backend runs on port 8001 instead. The frontend proxy is already configured for this.
+2. **Frontend Not Loading** — Make sure you ran `npm install` in the `frontend/` directory. Check that port 3000 is not in use.
+
+---
+
 ## Architecture
 
 ### Component Overview
