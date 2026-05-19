@@ -32,12 +32,13 @@ from utils import EvaluationClient
 # Initialize client
 client = EvaluationClient(region="us-east-1")
 
-# Evaluate a session
+# Evaluate a session (session scope)
 results = client.evaluate_session(
     session_id="your-session-id",
     evaluator_ids=["Builtin.Helpfulness"],
     agent_id="your-agent-id",
-    region="us-east-1"
+    region="us-east-1",
+    scope="session"
 )
 
 # Print results
@@ -46,16 +47,55 @@ for result in results.results:
     print(f"Explanation: {result.explanation}")
 ```
 
+## Evaluation Scopes
+
+The `scope` parameter is required and determines what level of data is evaluated:
+
+- **`session`**: Evaluates the entire session. Works with most evaluators including `Builtin.GoalSuccessRate` and all response quality evaluators.
+- **`trace`**: Evaluates a specific trace. Requires `trace_id` parameter.
+- **`span`**: Evaluates individual tool execution spans. Required for `Builtin.ToolSelectionAccuracy` and `Builtin.ToolParameterAccuracy`.
+
 ## Multi-Evaluator Support
 
-Evaluate with multiple evaluators in a single call:
+Evaluate with multiple evaluators across different scopes (matching the notebook pattern):
 
 ```python
+# Response quality evaluators (session scope)
 results = client.evaluate_session(
     session_id="session-id",
-    evaluator_ids=["Builtin.Helpfulness", "Builtin.Accuracy", "Builtin.Harmfulness"],
+    evaluator_ids=[
+        "Builtin.Correctness",
+        "Builtin.Faithfulness",
+        "Builtin.Helpfulness",
+        "Builtin.ResponseRelevance",
+        "Builtin.Conciseness",
+        "Builtin.Coherence",
+        "Builtin.InstructionFollowing",
+        "Builtin.Refusal",
+        "Builtin.Harmfulness",
+        "Builtin.Stereotyping",
+    ],
     agent_id="agent-id",
-    region="us-east-1"
+    region="us-east-1",
+    scope="session"
+)
+
+# Goal success (session scope)
+results = client.evaluate_session(
+    session_id="session-id",
+    evaluator_ids=["Builtin.GoalSuccessRate"],
+    agent_id="agent-id",
+    region="us-east-1",
+    scope="session"
+)
+
+# Tool evaluators (span scope)
+results = client.evaluate_session(
+    session_id="session-id",
+    evaluator_ids=["Builtin.ToolSelectionAccuracy", "Builtin.ToolParameterAccuracy"],
+    agent_id="agent-id",
+    region="us-east-1",
+    scope="span"
 )
 ```
 
@@ -69,10 +109,11 @@ results = client.evaluate_session(
     evaluator_ids=["Builtin.Helpfulness"],
     agent_id="agent-id",
     region="us-east-1",
+    scope="session",
     auto_save_input=True,   # Saves to evaluation_input/
     auto_save_output=True,  # Saves to evaluation_output/
     auto_create_dashboard=True,  # generates data for HTML dashboard available locally
-    metadata={. # pass literally anything
+    metadata={
         "experiment": "baseline",
         "description": "Initial evaluation run"
     }

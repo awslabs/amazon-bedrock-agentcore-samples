@@ -1,9 +1,10 @@
-"""Deploy the HR Assistant agent to AgentCore Runtime using the bedrock-agentcore SDK.
+"""Deploy the Shopping Concierge agent to AgentCore Runtime using the bedrock-agentcore SDK.
 
-Run from the notebook via: %run -i deploy_hr_assistant_agent.py
+Run from the notebook via: %run -i deploy_shopping_concierge_agent.py
 
 Expects REGION to be set in the caller's namespace (Step 2 config cell).
-Sets in the caller's namespace: AGENT_ID, AGENT_ARN, CW_LOG_GROUP, agentcore_client
+Sets in the caller's namespace: AGENT_ID, AGENT_ARN, RUNTIME_ARN,
+    SERVICE_NAME, LOG_GROUP, SPANS_LOG_GROUP
 
 Deployment steps:
   1. Create an IAM execution role for the runtime
@@ -28,7 +29,7 @@ from pathlib import Path
 import boto3
 
 _REGION = REGION  # noqa: F821
-_AGENT_NAME = f"hr_assistant_{uuid.uuid4().hex[:8]}"
+_AGENT_NAME = f"shopping_concierge_{uuid.uuid4().hex[:8]}"
 _SCRIPT_DIR = Path(__file__).parent
 
 _sts = boto3.client("sts", region_name=_REGION)
@@ -126,7 +127,6 @@ subprocess.run(
         "pip",
         "install",
         "strands-agents[otel]",
-        "strands-agents-tools",
         "bedrock-agentcore",
         "aws-opentelemetry-distro",
         "-t",
@@ -140,7 +140,9 @@ subprocess.run(
     ],
     check=True,
 )
-shutil.copy(_SCRIPT_DIR / "hr_assistant_agent.py", _PKG / "hr_assistant_agent.py")
+shutil.copy(
+    _SCRIPT_DIR / "shopping_concierge_agent.py", _PKG / "shopping_concierge_agent.py"
+)
 
 _ZIP = _BUILD_DIR / "deployment_package.zip"
 with zipfile.ZipFile(_ZIP, "w", zipfile.ZIP_DEFLATED) as zf:
@@ -182,7 +184,7 @@ _resp = _ctrl.create_agent_runtime(
         "codeConfiguration": {
             "code": {"s3": {"bucket": _S3_BUCKET, "prefix": _S3_KEY}},
             "runtime": "PYTHON_3_13",
-            "entryPoint": ["opentelemetry-instrument", "hr_assistant_agent.py"],
+            "entryPoint": ["opentelemetry-instrument", "shopping_concierge_agent.py"],
         }
     },
     networkConfiguration={"networkMode": "PUBLIC"},
@@ -208,10 +210,14 @@ else:
     raise TimeoutError("Agent did not reach READY in 600s")
 
 AGENT_ARN = _ctrl.get_agent_runtime(agentRuntimeId=AGENT_ID)["agentRuntimeArn"]
-CW_LOG_GROUP = f"/aws/bedrock-agentcore/runtimes/{AGENT_ID}-DEFAULT"
-agentcore_client = boto3.client("bedrock-agentcore", region_name=_REGION)
+RUNTIME_ARN = AGENT_ARN
+SERVICE_NAME = f"{_AGENT_NAME}.DEFAULT"
+LOG_GROUP = f"/aws/bedrock-agentcore/runtimes/{AGENT_ID}-DEFAULT"
+SPANS_LOG_GROUP = "aws/spans"
 
 print(f"\nAGENT_ID     : {AGENT_ID}")
 print(f"AGENT_ARN    : {AGENT_ARN}")
-print(f"CW_LOG_GROUP : {CW_LOG_GROUP}")
+print(f"RUNTIME_ARN  : {RUNTIME_ARN}")
+print(f"SERVICE_NAME : {SERVICE_NAME}")
+print(f"LOG_GROUP    : {LOG_GROUP}")
 print("Deploy complete.")

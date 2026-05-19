@@ -1,15 +1,8 @@
 """Data models for trace data and evaluation."""
 
-from __future__ import annotations
-
 import json
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
-
-if TYPE_CHECKING:
-    from strands_evals.mappers.session_mapper import SessionMapper
-    from strands_evals.types.trace import Session
+from typing import Any, Dict, List, Optional
 
 
 @dataclass
@@ -111,7 +104,9 @@ class TraceData:
         """Get all unique trace IDs from spans."""
         return list(set(span.trace_id for span in self.spans if span.trace_id))
 
-    def get_tool_execution_spans(self, tool_name_filter: Optional[str] = None) -> List[str]:
+    def get_tool_execution_spans(
+        self, tool_name_filter: Optional[str] = None
+    ) -> List[str]:
         """Get span IDs for tool execution spans.
 
         Args:
@@ -143,17 +138,6 @@ class TraceData:
 
         return tool_span_ids
 
-    def to_session(self, mapper: SessionMapper) -> Session:
-        """Convert to Strands Eval Session using the provided mapper.
-
-        Args:
-            mapper: A SessionMapper implementation (e.g., CloudWatchSessionMapper)
-
-        Returns:
-            Session object ready for evaluation
-        """
-        return mapper.map_to_session(self.spans, self.session_id or "")
-
 
 class EvaluationRequest:
     """Request payload for evaluation API."""
@@ -162,7 +146,7 @@ class EvaluationRequest:
         self,
         evaluator_id: str,
         session_spans: List[Dict[str, Any]],
-        evaluation_target: Optional[Dict[str, Any]] = None
+        evaluation_target: Optional[Dict[str, Any]] = None,
     ):
         self.evaluator_id = evaluator_id
         self.session_spans = session_spans
@@ -205,9 +189,9 @@ class EvaluationResult:
             evaluator_arn=api_result.get("evaluatorArn", ""),
             explanation=api_result.get("explanation", ""),
             context=api_result.get("context", {}),
-            value=api_result.get("value"),  # None if not present
-            label=api_result.get("label"),  # None if not present
-            token_usage=api_result.get("tokenUsage"),  # None if not present
+            value=api_result.get("value", ""),
+            label=api_result.get("label", ""),
+            token_usage=api_result.get("tokenUsage", {}),
             error=None,
         )
 
@@ -249,123 +233,3 @@ class EvaluationResults:
         if self.input_data:
             output["input_data"] = self.input_data
         return output
-
-
-@dataclass
-class SessionInfo:
-    """Information about a discovered session.
-
-    Attributes:
-        session_id: Unique identifier for the session
-        span_count: Number of spans (time_based) or evaluations (score_based)
-            - For time_based discovery: actual span count from traces
-            - For score_based discovery: evaluation count (also in metadata.eval_count)
-        first_seen: Timestamp of first activity
-        last_seen: Timestamp of last activity
-        trace_count: Number of unique traces (only for time_based discovery)
-        discovery_method: How session was discovered ("time_based" or "score_based")
-        metadata: Additional data (for score_based: avg_score, min_score, max_score, eval_count)
-    """
-
-    session_id: str
-    span_count: int
-    first_seen: datetime
-    last_seen: datetime
-    trace_count: Optional[int] = None
-    discovery_method: Optional[str] = None  # "time_based" or "score_based"
-    metadata: Optional[Dict[str, Any]] = None
-
-    def to_dict(self) -> Dict[str, Any]:
-        """Convert to dictionary for JSON serialization."""
-        return {
-            "session_id": self.session_id,
-            "span_count": self.span_count,
-            "first_seen": self.first_seen.isoformat(),
-            "last_seen": self.last_seen.isoformat(),
-            "trace_count": self.trace_count,
-            "discovery_method": self.discovery_method,
-            "metadata": self.metadata,
-        }
-
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "SessionInfo":
-        """Create SessionInfo from dictionary."""
-        first_seen = data["first_seen"]
-        last_seen = data["last_seen"]
-
-        # Parse datetime strings if needed and ensure timezone-aware
-        if isinstance(first_seen, str):
-            first_seen = datetime.fromisoformat(first_seen.replace("Z", "+00:00"))
-        if first_seen.tzinfo is None:
-            first_seen = first_seen.replace(tzinfo=timezone.utc)
-
-        if isinstance(last_seen, str):
-            last_seen = datetime.fromisoformat(last_seen.replace("Z", "+00:00"))
-        if last_seen.tzinfo is None:
-            last_seen = last_seen.replace(tzinfo=timezone.utc)
-
-        return cls(
-            session_id=data["session_id"],
-            span_count=data["span_count"],
-            first_seen=first_seen,
-            last_seen=last_seen,
-            trace_count=data.get("trace_count"),
-            discovery_method=data.get("discovery_method"),
-            metadata=data.get("metadata"),
-        )
-
-
-@dataclass
-class SessionDiscoveryResult:
-    """Result of session discovery operation."""
-
-    sessions: List[SessionInfo]
-    discovery_time: datetime
-    log_group: str
-    time_range_start: datetime
-    time_range_end: datetime
-    discovery_method: str
-    filter_criteria: Optional[Dict[str, Any]] = None
-
-    def to_dict(self) -> Dict[str, Any]:
-        """Convert to dictionary for JSON serialization."""
-        return {
-            "sessions": [s.to_dict() for s in self.sessions],
-            "discovery_time": self.discovery_time.isoformat(),
-            "log_group": self.log_group,
-            "time_range_start": self.time_range_start.isoformat(),
-            "time_range_end": self.time_range_end.isoformat(),
-            "discovery_method": self.discovery_method,
-            "filter_criteria": self.filter_criteria,
-        }
-
-    def save_to_json(self, filepath: str) -> None:
-        """Save discovery result to JSON file."""
-        with open(filepath, "w") as f:
-            json.dump(self.to_dict(), f, indent=2)
-
-    @classmethod
-    def load_from_json(cls, filepath: str) -> "SessionDiscoveryResult":
-        """Load discovery result from JSON file."""
-        with open(filepath, "r") as f:
-            data = json.load(f)
-
-        return cls(
-            sessions=[SessionInfo.from_dict(s) for s in data["sessions"]],
-            discovery_time=datetime.fromisoformat(
-                data["discovery_time"].replace("Z", "+00:00")
-            ),
-            log_group=data["log_group"],
-            time_range_start=datetime.fromisoformat(
-                data["time_range_start"].replace("Z", "+00:00")
-            ),
-            time_range_end=datetime.fromisoformat(
-                data["time_range_end"].replace("Z", "+00:00")
-            ),
-            discovery_method=data["discovery_method"],
-            filter_criteria=data.get("filter_criteria"),
-        )
-
-    def get_session_ids(self) -> List[str]:
-        """Get list of session IDs."""
-        return [s.session_id for s in self.sessions]

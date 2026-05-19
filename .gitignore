@@ -262,6 +262,10 @@ Test-Downloads/
 ### Claude Code Assistant ###
 .claude/
 CLAUDE.md
+# AgentCore evaluations config
+01-tutorials/07-AgentCore-evaluations/00-prereqs/agents_config.json
+# Results directories
+results/
 plan/
 
 ### draw.io source files (keep rendered PNG only) ###

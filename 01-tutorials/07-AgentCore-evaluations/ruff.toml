@@ -1,0 +1,11 @@
+# Ruff configuration for the AgentCore Evaluations tutorials.
+#
+# The following rules are suppressed for notebooks because ruff does not model
+# Jupyter's cross-cell execution semantics:
+#   F821 - undefined name: variables set by %run -i or earlier cells
+#   F405 - may be undefined from star imports
+#   F403 - star import used; can't detect undefined names (config pattern)
+#   E402 - module import not at top of file (common after setup cells)
+
+[lint.per-file-ignores]
+"*.ipynb" = ["F821", "F405", "F403", "E402"]

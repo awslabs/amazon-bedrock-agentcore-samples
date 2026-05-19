@@ -1,18 +1,40 @@
 # Creating Evaluators
 
-## Overview
-In this tutorial you will learn about AgentCore Evaluations built-in and custom metrics.
-You'll learn when to use each type and how to create custom evaluators tailored to your specific needs.
+## Architecture
 
-## What You'll Learn
+```
+┌─────────────────────────────────────────────────────────┐
+│  Evaluator Management                                    │
+│                                                          │
+│  bedrock-agentcore-control (boto3)                       │
+│       │                                                  │
+│       ├── list_evaluators()    ──► built-in list         │
+│       ├── get_evaluator()      ──► evaluator details     │
+│       ├── create_evaluator()   ──► custom evaluator      │
+│       └── delete_evaluator()   ──► cleanup               │
+│                                                          │
+│  Custom Evaluator                                        │
+│  ┌──────────────────────────────────────────────────┐   │
+│  │  Instructions (natural language)                 │   │
+│  │  Rating Scale (numerical or categorical)         │   │
+│  │  Model Config (Bedrock model + inference params) │   │
+│  │  Level: TRACE | SESSION                          │   │
+│  └──────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────┘
+```
+
+## What's This Feature
+
+In this tutorial you will learn about AgentCore Evaluations built-in and custom metrics. You'll learn when to use each type and how to create custom evaluators tailored to your specific needs.
+
+### What You'll Learn
 - Understanding built-in evaluators and their use cases
 - Creating custom evaluators for specialized requirements
 - Selecting the right evaluation approach for your agents
 
-## Evaluator Types
-
 ### Built-in Evaluators
-Built-in evaluators are pre-configured evaluators that use Large Language Models (LLMs) as judges to assess agent performance. 
+
+Built-in evaluators are pre-configured evaluators that use Large Language Models (LLMs) as judges to assess agent performance.
 
 **Key Characteristics:**
 - **Pre-configured**: Come with carefully crafted prompt templates, selected evaluator models, and standardized scoring criteria
@@ -26,8 +48,7 @@ Built-in evaluators are pre-configured evaluators that use Large Language Models
 - Your evaluation needs align with common quality dimensions
 - You prioritize consistency and reliability over customization
 
-
-The following built-in evaluators are available for your use cases:
+The following built-in evaluators are available:
 * Response quality metrics:
   * **Builtin.Correctness**: Evaluates whether the information in the agent's response is factually accurate
   * **Builtin.Faithfulness**: Evaluates whether information in the response is supported by provided context/sources
@@ -46,9 +67,10 @@ The following built-in evaluators are available for your use cases:
   * **Builtin.Harmfulness**: Evaluates whether the response contains harmful content
   * **Builtin.Stereotyping**: Detects content that makes generalizations about individuals or groups
 
-**Note:** Built-in evaluator configurations cannot be modified to maintain evaluation consistency and reliability across all users, but you can create your own evaluator using as base a built-in one.
+**Note:** Built-in evaluator configurations cannot be modified to maintain evaluation consistency and reliability across all users, but you can create your own evaluator using a built-in one as a base.
 
 ### Custom Evaluators
+
 Custom evaluators provide maximum flexibility by allowing you to define every aspect of your evaluation process while leveraging LLMs as underlying judges.
 
 **Customization Options:**
@@ -68,5 +90,93 @@ Custom evaluators provide maximum flexibility by allowing you to define every as
 - Customer service agents evaluated against brand-specific quality standards
 - Technical support agents assessed on troubleshooting methodology
 
+## CLI Commands
+
+Install the AgentCore CLI:
+
+```bash
+npm install -g @aws/agentcore@0.11.0
+```
+
+List built-in evaluators:
+
+```bash
+aws bedrock-agentcore-control list-evaluators --region us-east-1
+```
+
+Or via Python (run from the terminal):
+
+```bash
+python3 -c "
+import boto3
+cp = boto3.client('bedrock-agentcore-control', region_name='us-east-1')
+response = cp.list_evaluators()
+for ev in response['evaluators']:
+    print(ev['evaluatorId'], ev['evaluatorType'], ev['status'])
+"
+```
+
+Get details of a specific built-in evaluator:
+
+```bash
+aws bedrock-agentcore-control get-evaluator --evaluator-id Builtin.Correctness --region us-east-1
+```
+
+Create a custom evaluator via CLI (from inside your project directory):
+
+```bash
+# Add a custom evaluator to your project config:
+agentcore add evaluator \
+  --name response_quality_for_scope \
+  --level TRACE \
+  --config metric.json
+
+# Then deploy to create the evaluator in AWS:
+agentcore deploy
+```
+
+Create a custom evaluator directly via Python (run from the `01-creating-custom-evaluators` directory where `metric.json` is located):
+
+```bash
+python3 -c "
+import boto3, json, uuid
+
+cp = boto3.client('bedrock-agentcore-control', region_name='us-east-1')
+
+with open('metric.json') as f:
+    eval_config = json.load(f)
+
+evaluator_name = f'response_quality_for_scope_{uuid.uuid4().hex[:8]}'
+result = cp.create_evaluator(
+    evaluatorName=evaluator_name,
+    level='TRACE',
+    evaluatorConfig=eval_config,
+)
+print(f'Created evaluator: {result[\"evaluatorId\"]}')
+"
+```
+
+## Cleanup
+
+Delete a custom evaluator:
+
+```bash
+aws bedrock-agentcore-control delete-evaluator \
+  --evaluator-id <evaluator-id> \
+  --region us-east-1
+```
+
+Or via Python (run from the terminal):
+
+```bash
+python3 -c "
+import boto3
+cp = boto3.client('bedrock-agentcore-control', region_name='us-east-1')
+cp.delete_evaluator(evaluatorId='<evaluator-id>')
+print('Evaluator deleted.')
+"
+```
+
 ## Next Steps
-After completing this tutorial, proceed to [Using On-demand Evaluation](../01-setting-evaluations) to learn how to apply these evaluators to your agent traces.
+
+After completing this tutorial, proceed to [Using On-demand Evaluation](../02-running-evaluations) to learn how to apply these evaluators to your agent traces.
