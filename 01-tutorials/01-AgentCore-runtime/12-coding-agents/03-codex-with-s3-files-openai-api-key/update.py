@@ -79,7 +79,7 @@ def update_runtime(runtime_id: str, role_arn: str) -> dict:
             },
         },
         protocolConfiguration={"serverProtocol": PROTOCOL},
-        description="Claude Code agent on AgentCore Runtime with S3 Files",
+        description="Codex CLI agent on AgentCore Runtime with S3 Files, backed by OpenAI gpt-4o",
     )
 
     if S3FILES_AP_ARN:

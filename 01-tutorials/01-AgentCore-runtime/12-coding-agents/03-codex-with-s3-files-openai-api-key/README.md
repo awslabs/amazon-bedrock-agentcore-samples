@@ -11,28 +11,29 @@ Deploys Codex CLI  as an HTTP agent on AWS Bedrock AgentCore Runtime, with an S3
   │  (Codex CLI)            │         │  (Codex CLI)            │
   │                         │         │                         │
   │  /mnt/s3files ──────────┼────┐    │  /mnt/s3files ──────────┼────┐
-  └─────────────────────────┘    │    └─────────────────────────┘    │
-                                 │                                   │
-                                 ▼                                   ▼
-                    ┌──────────────────────────────────────────────────┐
-                    │  S3 Files File System                            │
-                    │                                                  │
-                    │  ┌────────────────────────┐                      │
-                    │  │  S3 Files Access Point │                      │
-                    │  │  (uid/gid 1000)        │                      │
-                    │  └───────────┬────────────┘                      │
-                    └──────────────┼───────────────────────────────────┘
-                                   │
-                                   ▼
-                    ┌──────────────────────────────┐
-                    │  S3 Bucket                   │
-                    │  (agentcore-<account-id>)    │
-                    │                              │
-                    │  agents/                     │
-                    │  ├── skills/                 │
-                    │  ├── results/                │
-                    │  └── ...                     │
-                    └──────────────────────────────┘
+  └──────────┬──────────────┘    │    └──────────┬──────────────┘    │
+             │                   │               │                   │
+             │ Fetch API key     │               │ Fetch API key     │
+             ▼                   ▼               ▼                   ▼
+  ┌──────────────────────┐  ┌────────────────────────────────────────┐
+  │  AWS Secrets Manager │  │  S3 Files File System                  │
+  │  openai/codex        │  │                                        │
+  │  {"api_key":"sk-…"}  │  │  ┌────────────────────────┐            │
+  └──────────────────────┘  │  │  S3 Files Access Point │            │
+                            │  │  (uid/gid 1000)        │            │
+                            │  └───────────┬────────────┘            │
+                            └──────────────┼─────────────────────────┘
+                                           │
+                                           ▼
+                            ┌──────────────────────────────┐
+                            │  S3 Bucket                   │
+                            │  (agentcore-<account-id>)    │
+                            │                              │
+                            │  agents/                     │
+                            │  ├── skills/                 │
+                            │  ├── results/                │
+                            │  └── ...                     │
+                            └──────────────────────────────┘
 ```
 
 Multiple runtime sessions mount the same S3 Files file system, enabling agents to share skills, results, and data across independent invocations.
@@ -79,6 +80,41 @@ docker buildx create --use
 ### S3 Files IAM policies
 
 The CloudFormation stack creates an IAM role (`S3FilesRole`) with the permissions required by S3 Files (S3, KMS, and EventBridge). For the full list of required policies, see the [S3 Files prerequisite policies](https://docs.aws.amazon.com/AmazonS3/latest/userguide/s3-files-prereq-policies.html) documentation.
+
+### OpenAI API Key Setup
+
+**IMPORTANT**: Before deploying, you must create an AWS Secrets Manager secret containing your OpenAI API key. The container will fetch this secret at startup.
+
+1. Obtain an OpenAI API key from [platform.openai.com/api-keys](https://platform.openai.com/api-keys)
+
+2. Create the secret in AWS Secrets Manager:
+
+```bash
+aws secretsmanager create-secret \
+    --name "openai/codex" \
+    --description "OpenAI API key for Codex CLI" \
+    --secret-string '{"api_key":"sk-YOUR-OPENAI-KEY-HERE"}' \
+    --region us-west-2
+```
+
+Replace `sk-YOUR-OPENAI-KEY-HERE` with your actual OpenAI API key, and adjust the region to match your deployment region.
+
+To update an existing secret:
+
+```bash
+aws secretsmanager update-secret \
+    --secret-id "openai/codex" \
+    --secret-string '{"api_key":"sk-YOUR-NEW-KEY-HERE"}' \
+    --region us-west-2
+```
+
+To verify the secret was created:
+
+```bash
+aws secretsmanager describe-secret \
+    --secret-id "openai/codex" \
+    --region us-west-2
+```
 
 ## Step-by-step guide
 

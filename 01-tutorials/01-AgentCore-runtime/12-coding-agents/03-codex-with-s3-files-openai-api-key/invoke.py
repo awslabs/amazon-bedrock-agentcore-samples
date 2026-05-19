@@ -1,5 +1,5 @@
 """
-Invoke the Claude Code agent deployed on AgentCore Runtime.
+Invoke the Codex CLI agent deployed on AgentCore Runtime.
 
 Usage:
     python invoke.py

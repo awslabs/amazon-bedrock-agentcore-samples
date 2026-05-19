@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: VPC infrastructure for AgentCore Claude Code with S3 Files
+Description: VPC infrastructure for AgentCore Codex CLI with S3 Files
 
 Parameters:
   VpcCidr:

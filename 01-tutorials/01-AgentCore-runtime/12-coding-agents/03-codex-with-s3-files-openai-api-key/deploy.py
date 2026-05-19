@@ -329,7 +329,7 @@ def create_runtime(role_arn: str) -> dict:
 def main():
     print("=" * 60)
     print(f"Deploying {AGENT_NAME} to AgentCore Runtime")
-    print("  (VPC mode + Codex + Bedrock Claude Sonnet 4.6 + S3 Files)")
+    print("  (VPC mode + Codex CLI + OpenAI gpt-4o + S3 Files)")
     print("=" * 60)
 
     role_arn = create_execution_role()
