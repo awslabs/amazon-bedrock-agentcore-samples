@@ -263,3 +263,6 @@ Test-Downloads/
 .claude/
 CLAUDE.md
 plan/
+
+### draw.io source files (keep rendered PNG only) ###
+*.drawio

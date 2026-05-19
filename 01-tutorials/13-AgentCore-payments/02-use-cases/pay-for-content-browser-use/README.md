@@ -1,4 +1,4 @@
-# Pay for Content — Browser Use Case
+# Pay for Content — Browser Use Case (AgentCore Runtime)
 
 ## Overview
 
@@ -8,14 +8,15 @@ each transaction."
 
 Without AgentCore payments, an agent that needs to pay for content must either hold
 a private key (exposing credentials to the model) or interrupt the user to complete
-the payment manually. This use case shows a third path: the agent delegates signing to
-AgentCore payments, stays within human-set payment limits, and completes the entire
-browse-pay-extract flow autonomously.
+the payment manually. This use case shows a third path: the agent **leverages AgentCore
+Payments for payment processing**, stays within human-set payment limits, and completes
+the entire browse-pay-extract flow autonomously from a managed Runtime container.
 
-The agent uses the **AgentCore Browser Tool** to navigate a paywalled website, reads
-the embedded x402 payment requirement from the page DOM, calls `ProcessPayment` to
-generate a cryptographic USDC proof, interacts with the paywall UI, and returns the
-unlocked content — all without any private key exposure or human intervention.
+The agent is **deployed to AgentCore Runtime** under `ProcessPaymentRole`, uses the
+**AgentCore Browser Tool** to navigate a paywalled website, reads the embedded x402
+payment requirement from the page DOM, calls `ProcessPayment` to generate a payment
+proof, interacts with the paywall UI, and returns the unlocked content — without any
+private key exposure or human intervention.
 
 ### Use Case Details
 
@@ -23,11 +24,12 @@ unlocked content — all without any private key exposure or human intervention.
 |:--------------------|:--------------------------------------------------------------|
 | Use case type       | Agentic browser automation with autonomous micropayment       |
 | Agent type          | Single                                                        |
+| Hosting             | AgentCore Runtime (managed microVM, role-segregated)          |
 | Payment protocol    | x402 (HTTP 402 Payment Required)                              |
 | Agentic Framework   | Strands Agents                                                |
 | LLM model           | Anthropic Claude Sonnet 4.6                                   |
 | Complexity          | Intermediate                                                  |
-| SDK used            | boto3 + AgentCore SDK + AgentCorePaymentsPlugin (Strands)     |
+| SDK used            | boto3 + AgentCore SDK + AgentCorePaymentsPlugin (Strands) + AgentCore CLI |
 | Wallet type         | Embedded crypto wallet (AgentCore-provisioned, Coinbase CDP)  |
 | Network             | Base Sepolia testnet (`eip155:84532`); Solana Devnet available |
 
@@ -35,91 +37,123 @@ unlocked content — all without any private key exposure or human intervention.
 
 ## Architecture
 
-There are three distinct phases: **resource provisioning** (runs once), **session setup**
-(runs before each agent invocation), and **agent runtime** (the live payment flow).
-The content provider is operator-deployed infrastructure — it is not created by the notebook.
+There are four distinct phases: **resource provisioning** (runs once), **session setup**
+(runs before each agent invocation), **deploy** (runs on agent code change), and
+**invoke** (the live payment flow). The content provider is a separate piece of
+infrastructure that you deploy from this repo's `content-provider/` CDK stack — it
+is not created by the notebook.
+
+> **Note on SDK choice:** the notebook uses boto3 clients (`bedrock-agentcore-control`
+> and `bedrock-agentcore`) for Payments resource management because the AgentCore
+> Python SDK does not yet expose `CreatePaymentManager` / `CreatePaymentSession`
+> / `CreatePaymentInstrument`. The agent itself (running on Runtime) uses the
+> `bedrock-agentcore[strands-agents]` SDK and `AgentCorePaymentsPlugin` for
+> payment processing — that side is fully SDK-driven.
 
 ```
 RESOURCE PROVISIONING  (notebook Step 3, ControlPlaneRole)
 ─────────────────────────────────────────────────────────────────────────────
 
-  ┌─────────────────────────────────────────────────────────────────────┐
-  │  Two-client setup                                                   │
-  │                                                                     │
-  │  cp_client ──► CP endpoint  ──► CreatePaymentCredentialProvider     │
-  │  (bedrock-agentcore-control)    CreatePaymentManager                │
-  │                                 CreatePaymentConnector              │
-  │                                                                     │
-  │  mgmt_client ──► DP endpoint ──► CreatePaymentInstrument            │
-  │  (bedrock-agentcore)              (EmbeddedCryptoWallet)            │
-  └─────────────────────────────────────────────────────────────────────┘
+  cp_client   ──► bedrock-agentcore-control ──► CreatePaymentCredentialProvider,
+                                                CreatePaymentManager,
+                                                CreatePaymentConnector
+  mgmt_client ──► bedrock-agentcore         ──► CreatePaymentInstrument
 
-  AgentCore provisions the on-chain wallet — no pre-existing CDP wallet required.
   Result: CREDENTIAL_PROVIDER_ARN, MANAGER_ARN, PAYMENT_CONNECTOR_ID, PAYMENT_INSTRUMENT_ID
 
 
 SESSION SETUP  (notebook Step 4, ManagementRole)
 ─────────────────────────────────────────────────────────────────────────────
 
-  Notebook / App                        AgentCore payments
-  ──────────────────                    ──────────────────────────────
-  CreatePaymentSession ────────────────► payment limits=$1.00 USD, expiry=60 min
-  (ManagementRole via STS)              paymentSessionId ──────────────► passed to agent
+  Notebook (ManagementRole)              AgentCore payments
+  ─────────────────────────              ──────────────────────────────
+  CreatePaymentSession ─────────────────► budget=$1.00 USD, expiry=60 min
+                                          paymentSessionId
 
 
-AGENT RUNTIME  (notebook Step 6, ProcessPaymentRole)
+DEPLOY AGENT TO RUNTIME  (notebook Step 5, AgentCore CLI)
 ─────────────────────────────────────────────────────────────────────────────
 
-  User
-   │ "Retrieve the article and pay for it"
+  agent/payment_agent.py            agentcore CLI                 AWS
+  agent/requirements.txt          + agentcore deploy            (CodeBuild builds
+  agent/Dockerfile                                               from Dockerfile)
+  (BedrockAgentCoreApp +    ──►    create / deploy     ──►   AgentRuntime
+   AgentCoreBrowser +                                          (execution role:
+   process_x402_payment)                                       ProcessPaymentRole)
+                                                               + ECR image
+                                                               + CodeBuild project
+                                                               + CloudWatch logs
+
+
+INVOKE  (notebook Step 6, ManagementRole → AgentCore Runtime)
+─────────────────────────────────────────────────────────────────────────────
+
+  Notebook (ManagementRole)
+   │
+   │ InvokeAgentRuntime(arn,
+   │     paywall_url, session_id,
+   │     instrument_id, manager_arn)
    ▼
-  ┌──────────────────────────────────────────────────────┐
-  │  Strands Agent  (Claude Sonnet 4.6)                  │
-  │                                                      │
-  │  Tool 1: AgentCoreBrowser      Tool 2: process_x402_payment   │
-  │  (managed cloud Chromium)      (calls ProcessPayment API)     │
-  └───────────┬────────────────────────────┬─────────────┘
-              │ HTTPS                      │ AWS API (ProcessPaymentRole)
-              ▼                            ▼
-  ┌───────────────────────┐    ┌───────────────────────────────┐
-  │  Content Provider     │    │  AgentCore payments           │
-  │  (team-hosted demo or │    │  ProcessPayment API           │
-  │   your own deploy)    │    │                               │
-  │                       │    │  ┌────────────────────────┐   │
-  │  HTTP 200             │    │  │  Embedded Wallet        │   │
-  │  x402 requirement     │    │  │  (Coinbase CDP)         │   │
-  │  in DOM script tag    │    │  │  Base Sepolia testnet   │   │
-  │                       │    │  └────────────────────────┘   │
-  │  proof submitted via  │◄───┤  status: PROOF_GENERATED      │
-  │  paywall UI → unlock  │    └───────────────────────────────┘
+  ┌──────────────────────────────────────────────────────────────┐
+  │  AgentCore Runtime microVM  (ProcessPaymentRole)             │
+  │                                                              │
+  │  Strands Agent  (Claude Sonnet 4.6)                          │
+  │   Tool 1: AgentCoreBrowser ──► managed cloud Chromium        │
+  │   Tool 2: process_x402_payment ──► PaymentManager            │
+  │   Plugin: AgentCorePaymentsPlugin (payment query tools)      │
+  └───────────┬──────────────────────────────┬───────────────────┘
+              │ HTTPS                        │ AWS API (ambient creds)
+              ▼                              ▼
+  ┌───────────────────────┐      ┌───────────────────────────────┐
+  │  Content Provider     │      │  AgentCore payments           │
+  │  (team-hosted demo or │      │  ProcessPayment API           │
+  │   your own deploy)    │      │                               │
+  │                       │      │  ┌────────────────────────┐   │
+  │  HTTP 200             │      │  │  Embedded Wallet        │   │
+  │  x402 requirement     │      │  │  (Coinbase CDP)         │   │
+  │  in DOM script tag    │      │  │  Base Sepolia testnet   │   │
+  │                       │      │  └────────────────────────┘   │
+  │  proof submitted via  │ ◄────┤  status: PROOF_GENERATED      │
+  │  paywall UI → unlock  │      └───────────────────────────────┘
   └───────────────────────┘
    │ article text
    ▼
-  Agent returns content + amount paid to user
+  Agent returns content + amount paid to caller
 
 
-OPERATOR CLEANUP  (automatic on session expiry)
+OBSERVABILITY  (Step 7, automatic)
 ─────────────────────────────────────────────────────────────────────────────
 
-  Session expires automatically after expiryTimeInMinutes elapses.
-  Agent can no longer spend once the session is past its expiry.
+  Each invocation emits a CloudWatch GenAI Observability trace covering
+  the agent loop, tool calls, payment SDK calls, and ProcessPayment API
+  latency. Metrics in the bedrock-agentcore namespace.
+
+
+CLEANUP
+─────────────────────────────────────────────────────────────────────────────
+
+  agentcore remove all -y       — tears down Runtime, ECR, log groups
+  Session expiry                — agent can no longer spend after expiry
 ```
 
 **Key design points:**
 
-- **Embedded wallet:** AgentCore provisions the on-chain wallet — no pre-existing CDP
+- **Hosted on AgentCore Runtime.** The agent runs inside a managed microVM under
+  `ProcessPaymentRole`. Role separation is enforced by infrastructure: the container
+  assumes `ProcessPaymentRole` directly, and that role has an explicit Deny on session
+  and instrument management. The agent code never calls `sts:AssumeRole`.
+- **Notebook = app backend.** The notebook (under `ManagementRole`) creates the session
+  with a budget, then calls `InvokeAgentRuntime` with the session/instrument/manager
+  context in the payload. The agent is stateless and wallet-agnostic — the same
+  deployment serves any user the backend authorises.
+- **Embedded wallet.** AgentCore provisions the on-chain wallet — no pre-existing CDP
   wallet or funded account is required. The `linkedAccounts` email field ties the wallet
   to a user identity. Coinbase embedded wallets are provisioned synchronously (no OTP step).
-- **Two clients, two endpoints:** `cp_client` → CP (`bedrock-agentcore-control.{region}.amazonaws.com`)
-  for all control-plane operations including `CreatePaymentCredentialProvider`; `mgmt_client` /
-  `agent_dp_client` → DP (`bedrock-agentcore.{region}.amazonaws.com`) for instrument, session, and payment.
-- The notebook (not the agent) creates the session via `ManagementRole`. The agent only
-  ever uses `ProcessPaymentRole`, which has an explicit IAM Deny on session management.
-- The content provider must be deployed to a public HTTPS URL before running the agent —
-  `AgentCoreBrowser` is a cloud-managed browser and cannot reach `localhost`.
-- The agent never holds a private key. Signing is delegated to the AgentCore-managed
-  embedded wallet. This example uses Coinbase CDP; it can be adapted for Stripe/Privy by
-  swapping the credential provider configuration in Step 3.
+- **Browser tool.** `AgentCoreBrowser` is a managed cloud Chromium session reached over
+  WebSocket from inside the Runtime container. The content provider must be deployed to
+  a public HTTPS URL — the browser cannot reach `localhost`.
+- **No private keys.** Signing is delegated to the AgentCore-managed embedded wallet.
+  Coinbase CDP today; swap the credential provider configuration in Step 3 for StripePrivy.
 
 ---
 
@@ -127,9 +161,19 @@ OPERATOR CLEANUP  (automatic on session expiry)
 
 - AWS account with Amazon Bedrock AgentCore access
 - Python 3.10+ and Jupyter Notebook (or JupyterLab)
+- Node.js 20+ (for the AgentCore CLI and content-provider CDK)
 - AWS CLI v2 configured with credentials (`aws configure`)
-- IAM roles created — run `bash setup_roles.sh` and record the ARNs in `.env`
-- Content provider deployed to AWS — run `cd content-provider && PAY_TO=0x<your-wallet> bash deploy.sh` and set `CONTENT_DISTRIBUTION_URL` in `.env` (Node.js 18+ and AWS CDK v2 required; see [content-provider/README.md](content-provider/README.md))
+- AWS CDK v2 installed (used by the AgentCore CLI under the hood)
+- AgentCore CLI installed: `npm install -g @aws/agentcore`
+  > **No local Docker required.** Step 5 builds the agent's container image in
+  > AWS CodeBuild via the CLI's CDK app. You only need Docker if you want to use
+  > `agentcore dev` for local hot-reload development.
+- IAM roles created — run `bash setup_roles.sh` and record the ARNs in `.env`. This
+  script configures `ProcessPaymentRole` to also serve as the AgentCore Runtime
+  execution role (ECR pull, CloudWatch logs, X-Ray, Bedrock model invocation,
+  browser tool), with explicit Deny on session/instrument management. It also adds
+  `InvokeAgentRuntime` to `ManagementRole` so the notebook can call the deployed agent.
+- Content provider deployed to AWS — run `cd content-provider && PAY_TO=0x<your-wallet> bash deploy.sh` and set `CONTENT_DISTRIBUTION_URL` in `.env` (see [content-provider/README.md](content-provider/README.md))
 - A Coinbase Developer Platform (CDP) account with an API key
   - API key name, private key, and wallet secret are required (see `.env.sample`)
   - **Enable Delegated Signing** in your CDP project before running the agent:
@@ -191,16 +235,51 @@ jupyter notebook pay_for_content_browser.ipynb
 
 Run all cells in order. The notebook will:
 1. Load configuration and verify environment variables
-2. Initialise all three boto3 clients
+2. Initialise the two app-backend boto3 clients (`ControlPlaneRole`, `ManagementRole`)
 3. Provision the embedded wallet resource stack (once per user):
-   CredentialProvider → PaymentManager → PaymentConnection → EmbeddedCryptoWallet Instrument
+   CredentialProvider → PaymentManager → PaymentConnector → EmbeddedCryptoWallet Instrument
    — then pause for you to fund the wallet via WalletHub and the Circle faucet
-3e. Verify wallet USDC balance via `GetPaymentInstrumentBalance` (ProcessPaymentRole)
-4. Create a payment session with payment limits (operator-controlled)
-5. Build a Strands agent with `AgentCoreBrowser` and `process_x402_payment`
-6. Invoke the agent to retrieve a premium article
-7. Verify the spend was recorded via `GetPaymentSession`
-8. Cleanup — curtail session with minimum expiry
+3e. Verify wallet USDC balance via `GetPaymentInstrumentBalance` (briefly assumes
+    `ProcessPaymentRole` locally, only for the balance check)
+4. Create a payment session with budget and expiry (`ManagementRole`)
+4b. **Enable Payment Manager observability** — runs the 4-step vended log
+    delivery setup (`PutDeliverySource` × 2 → `PutDeliveryDestination` × 2 →
+    `CreateDelivery` × 2) so the Payment Manager shows up in the AgentCore
+    Observability → Payments dashboard with sessions, transactions, and
+    `Agents using Payments` attribution
+5. Deploy `agent/payment_agent.py` to AgentCore Runtime via the AgentCore CLI:
+   `agentcore create` + `agentcore add agent --build Container`, copy in
+   [`agent/Dockerfile`](agent/Dockerfile), then `agentcore deploy` (CodeBuild builds
+   the image, pushes to ECR, creates the AgentRuntime). Pinned to Python 3.13,
+   `ProcessPaymentRole` execution role, 10-min idle / 30-min max lifecycle.
+6. Invoke the deployed agent via `InvokeAgentRuntime` with the session/instrument
+   context in the payload, then verify spend via `GetPaymentSession`
+7. View the session trace in CloudWatch GenAI Observability — Runtime, Agent,
+   Browser-tool, and Payment Manager telemetry all stitched in one dashboard
+8. Cleanup — `agentcore remove all` to tear down the Runtime deployment
+
+### Observability coverage
+
+| Layer | How it's enabled | Where you see it |
+|---|---|---|
+| Runtime | Auto via `agentcore deploy` (`opentelemetry-instrument` CMD) | All-traces dashboard |
+| Agent (Strands) | OTEL spans through the Runtime distro | Inside each trace's waterfall |
+| Browser tool | Strands `AgentCoreBrowser` emits client-side spans | Inside each trace's waterfall |
+| Payment Manager | Vended log delivery (Step 4b) | **Payments tab** of the AgentCore Observability dashboard |
+
+The dashboard's *Agents using Payments* counter increments only when the SDK
+sends the `X-Amzn-Bedrock-AgentCore-Payments-Agent-Name` header, which it does
+automatically when `PaymentManager` and `AgentCorePaymentsPluginConfig` are
+constructed with `agent_name=`. `agent/payment_agent.py` reads `AGENT_NAME` from
+the container environment and passes it to both.
+
+> **Browser observability caveat:** the AgentCore Browser service does not
+> currently support per-resource vended log delivery. `PutDeliverySource` rejects
+> browser ARNs with: *valid resource types are runtime / gateway / memory /
+> payment-manager / code-interpreter / workload-identity*. Browser-tool actions
+> still appear as spans inside the agent trace via the OTEL distro
+> (`browser session start`, `navigate`, `cleanup`), so the *useful* visibility
+> is captured — but no separate Browser-service dashboard exists today.
 
 ---
 
@@ -255,32 +334,44 @@ Real x402 sites will have different selectors — the agent discovers payment fo
 elements dynamically using semantic cues (button text, input types, aria-labels)
 rather than hardcoded IDs.
 
-### Alternative: x402 via AgentCore Gateway
-
-You can also access x402-protected endpoints directly via **Amazon Bedrock AgentCore
-Gateway**, which handles the payment header exchange at the API level without a browser.
-See the **Pay for Data** use case for that pattern.
-
 ---
 
 ## IAM Role Design
 
-| Role | Operations | Denied |
-|:-----|:-----------|:-------|
-| `ControlPlaneRole` | `CreatePaymentCredentialProvider`, `CreatePaymentManager`, `CreatePaymentConnector`, `CreatePaymentInstrument` | `ProcessPayment`, session management |
-| `ManagementRole` | `CreatePaymentSession`, `GetPaymentSession` | `ProcessPayment` |
-| `ProcessPaymentRole` | `ProcessPayment`, `GetPaymentInstrumentBalance` | All setup and session management ops |
-
-The notebook assumes all three roles via STS at startup. The agent only ever uses
-`ProcessPaymentRole` credentials — it cannot modify its own session payment limits, create
-new sessions, or access wallet credentials.
+| Role | Operations allowed | Denied | Used by |
+|:-----|:-------------------|:-------|:--------|
+| `ControlPlaneRole` | `CreatePaymentCredentialProvider`, `CreatePaymentManager`, `CreatePaymentConnector`, `CreatePaymentInstrument` | `ProcessPayment`, session management | Notebook (Step 3) |
+| `ManagementRole` | `CreatePaymentSession`, `GetPaymentSession`, `InvokeAgentRuntime` | `ProcessPayment` | Notebook (Step 4, Step 6) |
+| `ProcessPaymentRole` | `ProcessPayment`, `GetPaymentInstrument`, `GetPaymentInstrumentBalance`, browser tool, ECR pull, CloudWatch logs/metrics, X-Ray, Bedrock model invocation | All setup and session management ops (`CreatePaymentSession`, `CreatePaymentInstrument`, etc.) | **AgentCore Runtime** as execution role |
+| `ResourceRetrievalRole` | Service-side payment-token retrieval | n/a (assumed by AWS service) | AgentCore service |
 
 ---
 
 ## Cleanup
 
-The payment session created in Step 4 expires automatically after `SESSION_EXPIRY_MINUTES`
-(60 minutes by default) and stops accepting payments — no API call required.
+Tear down in this order when you're done:
 
-To tear down the IAM roles created by `setup_roles.sh`, delete the four
-`AgentCorePayments*` roles from the IAM console or via the AWS CLI.
+1. **Runtime deployment** — `cd PayForContentRuntime && agentcore remove all -y`
+   (removes the AgentRuntime, the ECR repo, the CodeBuild project, and CloudWatch logs).
+2. **Payment session** — expires automatically after `SESSION_EXPIRY_MINUTES`
+   (60 minutes by default). No API call required to close it.
+3. **Payment manager / connector / instrument / credential provider** — delete via the
+   AWS CLI or boto3 if you want a fully clean account.
+4. **Content provider** — `cd content-provider && cdk destroy` (removes the CloudFront
+   distribution and Lambda@Edge function).
+5. **IAM roles** — delete the four `AgentCorePayments*` roles from the IAM console
+   or via the AWS CLI when no longer needed.
+
+---
+
+## Shared responsibility
+
+| Concern                       | AWS / AgentCore                                          | You (the customer)                                  |
+|:------------------------------|:---------------------------------------------------------|:----------------------------------------------------|
+| Runtime container isolation   | microVM per session, automatic teardown                  | Set `idleTimeout`, `maxLifetime` to your workload   |
+| Payment signing keys          | Held in AgentCore identity / Coinbase CDP delegated      | Enable Delegated Signing in CDP project             |
+| Spend limits                  | Service enforces `maxSpendAmount` per session            | Set per-session budget appropriate for the task     |
+| IAM role segregation          | Runtime assumes the execution role you specified         | Author least-privilege role policies (see `setup_roles.sh`) |
+| Observability ingestion       | Traces + metrics emitted automatically                   | Build alarms on the metrics you care about          |
+| Wallet funding                | Embedded wallet provisioned by AgentCore                 | Fund via faucet (testnet) or onramp (production)    |
+| Browser session security      | Containerized Chromium, ephemeral, optional recording    | Avoid logging in to production accounts via the agent |
