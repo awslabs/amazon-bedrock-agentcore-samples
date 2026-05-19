@@ -114,3 +114,5 @@
 - Chandra Dhandapani
 - Anant Murarka (anantmu)
 - Cristiano Scandura (scandura)
+- palbiren
+- Gui Ruggiero (guiruggiero)

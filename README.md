@@ -24,7 +24,7 @@
     <a href="https://docs.aws.amazon.com/bedrock-agentcore/">Documentation</a>
     ◆ <a href="https://github.com/aws/bedrock-agentcore-sdk-python">Python SDK</a>
     ◆ <a href="https://github.com/aws/agentcore-cli">AgentCore CLI</a>
-    ◆ <a href="https://discord.gg/bedrockagentcore-preview">Discord</a>
+    ◆ <a href="https://discord.gg/strands">Discord</a>
   </p>
 </div>
 
