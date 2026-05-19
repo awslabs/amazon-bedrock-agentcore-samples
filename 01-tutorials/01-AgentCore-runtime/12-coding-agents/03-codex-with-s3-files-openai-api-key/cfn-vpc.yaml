@@ -231,7 +231,7 @@ Resources:
   S3FilesRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: !Sub "s3files-${BucketName}-role"
+      RoleName: !Sub "s3files-${AWS::StackName}-role"
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
