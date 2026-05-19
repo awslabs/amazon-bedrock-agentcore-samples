@@ -235,7 +235,7 @@ httpx-sse==0.4.3
     #   mcp
 huggingface-hub==0.35.3
     # via tokenizers
-idna==3.11
+idna==3.15
     # via
     #   anyio
     #   httpx

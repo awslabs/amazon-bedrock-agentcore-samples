@@ -46,7 +46,7 @@ httpx==0.28.1
     # via a2a-sdk
 httpx-sse==0.4.3
     # via a2a-sdk
-idna==3.11
+idna==3.15
     # via
     #   anyio
     #   httpx
