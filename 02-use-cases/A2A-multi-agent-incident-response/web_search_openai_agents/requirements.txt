@@ -83,7 +83,7 @@ httpx-sse==0.4.3
     # via
     #   a2a-sdk
     #   mcp
-idna==3.11
+idna==3.15
     # via
     #   anyio
     #   httpx
