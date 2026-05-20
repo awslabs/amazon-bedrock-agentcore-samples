@@ -1,6 +1,6 @@
 # Third-Party Observability Integration
 
-This section demonstrates how to integrate Amazon Bedrock AgentCore Runtime hosted agents with  third-party observability platforms. Learn to leverage specialized monitoring tools while maintaining the benefits of AgentCore Runtime.
+This section demonstrates how to integrate Amazon Bedrock AgentCore Runtime hosted agents with third-party observability platforms. Learn to leverage specialized monitoring tools while maintaining the benefits of AgentCore Runtime.
 
 ## Available Integrations
 
@@ -74,6 +74,17 @@ Each platform requires specific configuration:
 ### OpenLIT
 - OpenLIT deployment (self-hosted or cloud)
 - OTLP endpoint configuration
+
+## Sample Prompts
+
+Once your agent is running, try these prompts in the notebook or via the `/invocations` endpoint:
+
+- `"What is the weather now?"`
+- `"What time is it in Tokyo?"`
+- `"Summarize the top news headlines today."`
+- `"Plan a 3-day itinerary for Paris."`
+
+Each invocation generates spans and metrics visible in your chosen observability platform.
 
 ## Cleanup
 

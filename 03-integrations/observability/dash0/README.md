@@ -1,6 +1,6 @@
 # Amazon Bedrock Agent Integration with Dash0
 
-This example contains a demo of a Personal Assistant Agent built on top of [Bedrock AgentCore Agents](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/what-is-bedrock-agentcore.html) with [Dash0](https://www.dash0.com/) observability.
+This example contains a demo of a Personal Assistant Agent built on top of [Bedrock AgentCore Agents](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/what-is-bedrock-agentcore.html) with [Dash0](https://www.dash0.com/) observability. The agent is instrumented with OpenTelemetry and exports traces and metrics to Dash0 via OTLP/HTTP.
 
 
 ## Prerequisites
@@ -75,10 +75,27 @@ This starts an HTTP server on port `8080` implementing the `/invocations` endpoi
 curl -X POST http://127.0.0.1:8080/invocations --data '{"prompt": "What is the weather now?"}'
 ```
 
-### 5. View traces in Dash0
+### 5. Sample prompts
+
+Try these prompts to exercise the agent and generate trace data in Dash0:
+
+```bash
+curl -X POST http://127.0.0.1:8080/invocations --data '{"prompt": "What is the weather now?"}'
+curl -X POST http://127.0.0.1:8080/invocations --data '{"prompt": "What time is it in Tokyo?"}'
+curl -X POST http://127.0.0.1:8080/invocations --data '{"prompt": "Summarize the top news headlines today."}'
+```
+
+### 6. View traces in Dash0
 
 After invoking the agent, go to [app.dash0.com](https://app.dash0.com/) → **Tracing** and filter by `service.name = agentcore-dash0-demo`. Traces and metrics will appear under the `agentcore` dataset.
 
-### 6. Deploy to AgentCore Runtime
+### 7. Deploy to AgentCore Runtime
 
 The agent is ready to be packaged as a container and deployed to AgentCore Runtime. Follow the step-by-step guide [here](https://github.com/awslabs/amazon-bedrock-agentcore-samples/blob/main/01-tutorials/01-AgentCore-runtime/01-hosting-agent/01-strands-with-bedrock-model/runtime_with_strands_and_bedrock_models.ipynb).
+
+
+## Clean Up
+
+1. Stop the local server: press `Ctrl+C` in the terminal running `uv run main.py`.
+2. If deployed to AgentCore Runtime, delete the runtime endpoint and ECR image via the AWS Console or CLI.
+3. Revoke the `DASH0_AUTH_TOKEN` in Dash0 under **Settings → Auth Tokens** if it is no longer needed.
