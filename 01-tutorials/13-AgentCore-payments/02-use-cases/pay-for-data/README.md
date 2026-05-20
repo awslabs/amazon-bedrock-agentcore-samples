@@ -67,7 +67,7 @@ See [`agent/main.py`](agent/main.py) for the full implementation.
 |---|---|
 | AgentCore components | AgentCore payments, AgentCore Code Interpreter, AgentCore Runtime |
 | Agent framework | [Strands Agents](https://strandsagents.com/) |
-| Model | Claude Sonnet 4 on Amazon Bedrock (configurable) |
+| Model | Claude Sonnet 4.6 on Amazon Bedrock (configurable) |
 | Payment protocol | [x402](https://x402.org) |
 | Payment network | Base (USDC) |
 
@@ -182,7 +182,7 @@ No instrumentation code required in `agent/main.py`.
 | Payment data-plane | `ProcessPayment`, `GetPaymentInstrument`, `GetPaymentInstrumentBalance`, `GetPaymentSession`, `GetResourcePaymentToken` | `payment-manager/*`, `payment-manager/*/instrument/*`, `payment-manager/*/session/*` |
 | Code Interpreter | `StartCodeInterpreterSession`, `InvokeCodeInterpreter`, `StopCodeInterpreterSession` | `code-interpreter/*` |
 | S3 artifacts | `PutObject`, `GetObject` | `<bucket>/heurist-finance-artifacts/*` |
-| Bedrock model | `InvokeModel`, `InvokeModelWithResponseStream` | `foundation-model/*`, `inference-profile/*`, `application-inference-profile/*` (the latter two are required for CRIS-fronted models like Claude Sonnet 4 in us-west-2) |
+| Bedrock model | `InvokeModel`, `InvokeModelWithResponseStream` | `foundation-model/*`, `inference-profile/*`, `application-inference-profile/*` (the latter two are required for CRIS-fronted models like Claude Sonnet 4.6 in us-west-2) |
 
 ## Environment Variables
 
@@ -194,7 +194,7 @@ See [`.env.example`](.env.example). Required on the host (notebook):
 | `PAYMENT_SESSION_ID` | ID of an active payment session |
 | `PAYMENT_INSTRUMENT_ID` | ID of a funded payment instrument (embedded crypto wallet) |
 | `USER_ID` | User identifier for payment tracking |
-| `BEDROCK_MODEL_ID` | Bedrock model (default: Claude Sonnet 4) |
+| `BEDROCK_MODEL_ID` | Bedrock model (default: Claude Sonnet 4.6) |
 | `HEURIST_AGENT_IDS` | Comma-separated Heurist agents to load |
 | `HEURIST_CATALOG_URL` | Catalog endpoint — `https://mesh.heurist.xyz/x402/agents?details=true` (mainnet) or the `/x402/base-sepolia/...` variant for testnet |
 
@@ -208,7 +208,7 @@ Bundled in the container `.env` (set by Step 7):
 | `AWS_REGION` | Region for boto3 clients |
 | `AGENT_NAME` | Reported in payment observability |
 | `BYPASS_TOOL_CONSENT` | Set to `true` so `strands_tools.http_request` skips its TTY confirm prompt — required because the Runtime container has no TTY |
-| `AGENT_MAX_TOKENS` | Max Bedrock output tokens per agent turn (default: `60000`). Lower this if you only need short Q&A — Bedrock charges per output token, so a 60k cap is a worst-case ~$0.90 per turn for Claude Sonnet 4. Most turns use far less. The SDK default (4k) is too low for workflows that fetch data, run Code Interpreter, and write a markdown report in one turn — it raises `MaxTokensReachedException` mid-run. |
+| `AGENT_MAX_TOKENS` | Max Bedrock output tokens per agent turn (default: `32000`). Lower this if you only need short Q&A — Bedrock charges per output token, so a 32k cap is a worst-case ~$0.48 per turn for Claude Sonnet 4.6. Most turns use far less. The SDK default (4k) is too low for workflows that fetch data, run Code Interpreter, and write a markdown report in one turn — it raises `MaxTokensReachedException` mid-run. |
 
 Payment context (`PAYMENT_MANAGER_ARN`, `PAYMENT_SESSION_ID`, `PAYMENT_INSTRUMENT_ID`, `USER_ID`) is passed in the **invocation payload** at runtime, not via env vars in the container.
 
@@ -219,7 +219,7 @@ A single agent invocation incurs charges across four categories. Approximate wor
 | Category | Driver | Approx. cost per turn | Notes |
 |---|---|---|---|
 | **Heurist x402 (USDC on Base mainnet)** | Each paid tool call | $0.002–$0.005 per call | Settles real USDC on-chain. A typical research run uses 3–10 paid calls. The wallet must be funded. |
-| **Bedrock model output** | `AGENT_MAX_TOKENS` × Claude Sonnet 4 output rate | up to ~$0.90 per turn at the 60k cap | Bedrock charges $0.015 per 1k output tokens for Claude Sonnet 4 in us-west-2 (input is cheaper at $0.003 per 1k). Most turns use far less than the cap; lower `AGENT_MAX_TOKENS` for short Q&A. |
+| **Bedrock model output** | `AGENT_MAX_TOKENS` × Claude Sonnet 4.6 output rate | up to ~$0.90 per turn at the 32k cap | Bedrock charges $0.015 per 1k output tokens for Claude Sonnet 4.6 in us-west-2 (input is cheaper at $0.003 per 1k). Most turns use far less than the cap; lower `AGENT_MAX_TOKENS` for short Q&A. |
 | **Bedrock AgentCore Runtime** | Container vCPU × seconds + memory × seconds while invoked | a few cents per minute of active invocation | Idle minutes between invocations are not billed (`idleRuntimeSessionTimeout=600s`). |
 | **Bedrock AgentCore Code Interpreter** | Sessions started + minutes active | a few cents per turn | Only billed when the agent actually invokes the Code Interpreter tool. |
 | **S3 + CloudWatch** | Artifact storage + log/trace ingestion | rounding error | A small chart + report is well under 1 MB. Vended-log delivery to CW Logs and X-Ray is metered the same as your other CW usage. |

@@ -98,7 +98,7 @@ def get_config() -> AppConfig:
         bedrock_profile=os.environ.get("BEDROCK_PROFILE")
         or os.environ.get("AWS_PROFILE"),
         bedrock_model_id=os.environ.get(
-            "BEDROCK_MODEL_ID", "us.anthropic.claude-sonnet-4-20250514-v1:0"
+            "BEDROCK_MODEL_ID", "us.anthropic.claude-sonnet-4-6"
         ),
         payment_manager_arn=_require_env("PAYMENT_MANAGER_ARN"),
         payment_session_id=_require_env("PAYMENT_SESSION_ID"),

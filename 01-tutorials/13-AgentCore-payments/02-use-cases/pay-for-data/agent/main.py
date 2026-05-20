@@ -20,7 +20,7 @@ Required IAM permissions for the execution role (see notebook Step 8):
   S3             — PutObject + GetObject on <bucket>/<prefix>/*
   Bedrock        — InvokeModel + InvokeModelWithResponseStream on the model
                    ARN AND on inference-profile/* (for CRIS-fronted models like
-                   Claude Sonnet 4)
+                   Claude Sonnet 4.6)
   CloudWatch     — added automatically by `agentcore deploy`
 
 Environment variables (set via .env bundled in the container image):
@@ -53,45 +53,45 @@ Response:
 
 from __future__ import annotations
 
-import ast
-import base64
+# ---------------------------------------------------------------------------
+# MINIMAL MODULE-LEVEL IMPORTS
+#
+# Only import what's needed for BedrockAgentCoreApp to start and respond to
+# the /ping health check within the Runtime's 120s initialization timeout.
+# All heavy imports (strands, bedrock_agentcore.payments, boto3 clients,
+# catalog loading) are deferred to first request via _ensure_initialized().
+#
+# This is critical because `opentelemetry-instrument` (the CMD prefix in the
+# Dockerfile) instruments every import at load time. With the full dependency
+# tree (strands + bedrock_agentcore + boto3 + botocore), instrumentation
+# alone can exceed 120s on cold start. Deferring keeps startup fast while
+# preserving full OTel trace propagation for all request-time operations.
+# ---------------------------------------------------------------------------
 import json
 import logging
 import os
-import re
 import threading
 import uuid
 from datetime import datetime
-from pathlib import Path
 from typing import Any
 
-import boto3
-from bedrock_agentcore.payments.integrations.strands import (
-    AgentCorePaymentsPlugin,
-    AgentCorePaymentsPluginConfig,
-)
 from bedrock_agentcore.runtime import BedrockAgentCoreApp
-from botocore.config import Config as BotoConfig
-from dotenv import load_dotenv
-from strands import Agent, tool
-from strands.models import BedrockModel
-from strands_tools import http_request
-from strands_tools.code_interpreter import AgentCoreCodeInterpreter
 
-from catalog import format_catalog_for_prompt, get_tools_for_agents
-from config import DEFAULT_HEURIST_AGENT_IDS
-
-load_dotenv()
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# App + module-level config
+# App instance — must be at module level for the @app.entrypoint decorator.
+# BedrockAgentCoreApp is lightweight; it just starts a uvicorn server with
+# /ping and /invoke endpoints.
 # ---------------------------------------------------------------------------
 app = BedrockAgentCoreApp()
 
+# ---------------------------------------------------------------------------
+# Environment config (lightweight — just reads env vars)
+# ---------------------------------------------------------------------------
 REGION = os.environ.get("AWS_REGION", "us-west-2")
 MODEL_ID = os.environ.get(
-    "BEDROCK_MODEL_ID", "us.anthropic.claude-sonnet-4-20250514-v1:0"
+    "BEDROCK_MODEL_ID", "us.anthropic.claude-sonnet-4-6"
 )
 
 CI_ARTIFACTS_BUCKET = os.environ.get("CI_ARTIFACTS_BUCKET", "")
@@ -101,6 +101,12 @@ CI_ARTIFACTS_PREFIX = os.environ.get(
 CI_ARTIFACTS_TTL = int(os.environ.get("CI_ARTIFACTS_TTL", "3600"))
 
 _raw_agent_ids = os.environ.get("HEURIST_AGENT_IDS", "")
+DEFAULT_HEURIST_AGENT_IDS = (
+    "ExaSearchDigestAgent",
+    "YahooFinanceAgent",
+    "FredMacroAgent",
+    "SecEdgarAgent",
+)
 HEURIST_AGENT_IDS: tuple[str, ...] = (
     tuple(a.strip() for a in _raw_agent_ids.split(",") if a.strip())
     if _raw_agent_ids
@@ -108,26 +114,60 @@ HEURIST_AGENT_IDS: tuple[str, ...] = (
 )
 
 # ---------------------------------------------------------------------------
-# Module-level service clients
-# (boto3 clients are thread-safe and reuse the container's IAM execution role)
+# Lazy-initialized heavy dependencies.
+#
+# Deferred from module load to first request so the container can respond to
+# the Runtime /ping health check within the 120s init timeout. The
+# opentelemetry-instrument wrapper adds significant overhead to module
+# imports; deferring keeps cold-start under the limit while preserving full
+# OTel trace propagation at request time (all boto3 calls, LLM calls, and
+# tool calls are still instrumented).
 # ---------------------------------------------------------------------------
-_CI_CLIENT = AgentCoreCodeInterpreter(region=REGION, session_name="runtime-init")
-_S3_CLIENT = boto3.client("s3", region_name=REGION)
+_init_lock = threading.Lock()
+_initialized = False
+_CI_CLIENT = None
+_S3_CLIENT = None
+_catalog_ref = ""
+_http_request_tool = None
 
-# ---------------------------------------------------------------------------
-# Heurist catalog — loaded from the pre-bundled cache at startup.
-# refresh=False avoids calling get_config() which requires payment env vars
-# that are intentionally absent from the container.
-# ---------------------------------------------------------------------------
-try:
-    _heurist_tools = get_tools_for_agents(HEURIST_AGENT_IDS, refresh=False)
-    _catalog_ref = format_catalog_for_prompt(_heurist_tools)
-    logger.info("Loaded %d Heurist tools from catalog cache.", len(_heurist_tools))
-except Exception as _e:
-    logger.warning("Could not load Heurist catalog at startup: %s", _e)
-    _catalog_ref = (
-        "(catalog unavailable — sync_registry was not run before image build)"
-    )
+
+def _ensure_initialized() -> None:
+    """Lazily import heavy deps and initialize service clients on first request."""
+    global _initialized, _CI_CLIENT, _S3_CLIENT, _catalog_ref, _http_request_tool
+
+    if _initialized:
+        return
+
+    with _init_lock:
+        if _initialized:
+            return
+
+        import boto3
+        from strands_tools import http_request
+        from strands_tools.code_interpreter import AgentCoreCodeInterpreter
+        from catalog import format_catalog_for_prompt, get_tools_for_agents
+
+        _http_request_tool = http_request
+        _CI_CLIENT = AgentCoreCodeInterpreter(
+            region=REGION, session_name="runtime-init"
+        )
+        _S3_CLIENT = boto3.client("s3", region_name=REGION)
+
+        try:
+            _heurist_tools = get_tools_for_agents(HEURIST_AGENT_IDS, refresh=False)
+            _catalog_ref = format_catalog_for_prompt(_heurist_tools)
+            logger.info(
+                "Loaded %d Heurist tools from catalog cache.", len(_heurist_tools)
+            )
+        except Exception as e:
+            logger.warning("Could not load Heurist catalog: %s", e)
+            _catalog_ref = (
+                "(catalog unavailable — sync_registry was not run before image build)"
+            )
+
+        _initialized = True
+        logger.info("Agent dependencies initialized successfully.")
+
 
 # ---------------------------------------------------------------------------
 # Per-invocation state (thread-local for concurrent request isolation)
@@ -158,13 +198,9 @@ def _reset_invocation_state() -> None:
 
 
 def _extract_ci_text(tool_result: dict) -> str:
-    """Extract the printed text output from a Code Interpreter tool result.
+    """Extract the printed text output from a Code Interpreter tool result."""
+    import ast
 
-    AgentCore Code Interpreter wraps output in:
-      {"content": [{"text": "<ast-literal-repr-of-list>", ...}]}
-    where the inner text is a Python list-of-dicts literal, and the first
-    element's "text" key holds the actual printed output from the code.
-    """
     content = tool_result.get("content", [])
     if not content:
         raise ValueError("Code Interpreter returned empty content")
@@ -175,13 +211,17 @@ def _extract_ci_text(tool_result: dict) -> str:
         parsed = ast.literal_eval(text_blob)
         return parsed[0]["text"]
     except Exception:
-        # Some CI versions return plain text directly
         return text_blob
 
 
 # ---------------------------------------------------------------------------
-# Artifact tools
+# Artifact tools — defined as module-level functions with @tool decorator.
+# They use the lazily-initialized _S3_CLIENT and _CI_CLIENT globals which
+# are guaranteed to be set before any tool is called (handle_request calls
+# _ensure_initialized() before constructing the Agent).
 # ---------------------------------------------------------------------------
+import re
+from pathlib import Path
 
 
 def _safe_s3_key_name(raw: str) -> str:
@@ -189,6 +229,17 @@ def _safe_s3_key_name(raw: str) -> str:
     name = Path(raw).name
     name = re.sub(r"[^A-Za-z0-9._-]", "_", name).strip("._")
     return name or "artifact"
+
+
+# We need the @tool decorator from strands, but importing strands at module
+# level is what causes the slow startup. Solution: define the tool functions
+# as plain functions and wrap them with @tool inside _ensure_initialized().
+# However, the Agent() constructor needs the tool references at request time.
+#
+# Simpler approach: import just the decorator (it's lightweight) and define
+# tools normally. The heavy part is strands.Agent and strands.models, not
+# the @tool decorator itself.
+from strands import tool
 
 
 @tool
@@ -207,6 +258,8 @@ def export_artifact_to_s3(
         remote_path:   Path to the file inside the CI sandbox (e.g. "/tmp/chart.png")
         artifact_name: Optional override for the output filename
     """
+    import base64
+
     if not CI_ARTIFACTS_BUCKET:
         return {
             "error": "S3 artifact storage is not configured (CI_ARTIFACTS_BUCKET not set).",
@@ -458,8 +511,20 @@ def handle_request(payload: dict, context=None) -> dict:
     Optional payload fields:
         bedrock_model_id      (str) — per-invocation model override
     """
+    # Lazy-init heavy deps on first request (keeps cold-start under 120s)
+    _ensure_initialized()
     _reset_invocation_state()
     ci_session = _session_name()
+
+    # Import heavy deps (already cached after _ensure_initialized)
+    import boto3
+    from bedrock_agentcore.payments.integrations.strands import (
+        AgentCorePaymentsPlugin,
+        AgentCorePaymentsPluginConfig,
+    )
+    from botocore.config import Config as BotoConfig
+    from strands import Agent
+    from strands.models import BedrockModel
 
     # Unwrap the agentcore invoke double-wrapping:
     # `agentcore invoke '{"key": "val"}'` → payload = {"prompt": '{"key":"val"}'}
@@ -505,7 +570,7 @@ def handle_request(payload: dict, context=None) -> dict:
         )
     )
 
-    # Claude Sonnet 4 supports up to 64k output tokens. Multi-step workflows
+    # Claude Sonnet 4.6 supports up to 64k output tokens. Multi-step workflows
     # (5+ paid tool calls + Code Interpreter + chart export + markdown
     # report) routinely need more than the SDK's default 4k cap, which
     # otherwise raises Strands' MaxTokensReachedException mid-run.
@@ -514,21 +579,21 @@ def handle_request(payload: dict, context=None) -> dict:
     model = BedrockModel(
         boto_session=boto3.Session(region_name=REGION),
         boto_client_config=BotoConfig(
-            read_timeout=900,
+            read_timeout=int(os.environ.get("AGENT_BEDROCK_READ_TIMEOUT", "1500")),
             connect_timeout=15,
             retries={"max_attempts": 1},
         ),
         model_id=model_id,
         streaming=True,
         temperature=0,
-        max_tokens=int(os.environ.get("AGENT_MAX_TOKENS", "60000")),
+        max_tokens=int(os.environ.get("AGENT_MAX_TOKENS", "32000")),
     )
 
     agent = Agent(
         system_prompt=_build_system_prompt(ci_session),
         model=model,
         tools=[
-            http_request,
+            _http_request_tool,
             _CI_CLIENT.code_interpreter,
             export_artifact_to_s3,
             save_report_to_s3,
