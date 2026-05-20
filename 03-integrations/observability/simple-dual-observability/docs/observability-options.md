@@ -107,7 +107,7 @@ When you view CloudWatch logs for a CloudWatch-only deployment, you see both run
       "service.name": "weather_time_observability_agent.DEFAULT",
       "cloud.region": "us-east-1",
       "cloud.platform": "aws_bedrock_agentcore",
-      "cloud.resource_id": "arn:aws:bedrock-agentcore:us-east-1:015469603702:runtime/weather_time_observability_agent-dWTPGP46D4/..."
+      "cloud.resource_id": "arn:aws:bedrock-agentcore:us-east-1:123456789012:runtime/weather_time_observability_agent-dWTPGP46D4/..."
     }
   },
   "scope": {"name": "__main__"},
@@ -439,7 +439,7 @@ Plain text application logs from your agent code:
       "aws.service.type": "gen_ai_agent",
       "telemetry.sdk.language": "python",
       "cloud.provider": "aws",
-      "cloud.resource_id": "arn:aws:bedrock-agentcore:us-east-1:015469603702:runtime/weather_time_observability_agent-wFRAfL58PN/runtime-endpoint/DEFAULT:DEFAULT",
+      "cloud.resource_id": "arn:aws:bedrock-agentcore:us-east-1:123456789012:runtime/weather_time_observability_agent-wFRAfL58PN/runtime-endpoint/DEFAULT:DEFAULT",
       "aws.log.group.names": "/aws/bedrock-agentcore/runtimes/weather_time_observability_agent-wFRAfL58PN-DEFAULT",
       "telemetry.sdk.version": "1.33.1",
       "cloud.platform": "aws_bedrock_agentcore",
