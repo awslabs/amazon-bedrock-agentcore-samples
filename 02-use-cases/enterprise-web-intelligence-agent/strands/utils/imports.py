@@ -17,7 +17,7 @@ def setup_interactive_tools_import():
     repo_root = use_cases_dir.parent
     
     # Define paths
-    tutorials_path = repo_root / "01-tutorials"
+    tutorials_path = repo_root / "06-workshops"
     browser_tool_path = tutorials_path / "05-AgentCore-tools" / "02-Agent-Core-browser-tool"
     shared_path = agent_root / "shared"
     
