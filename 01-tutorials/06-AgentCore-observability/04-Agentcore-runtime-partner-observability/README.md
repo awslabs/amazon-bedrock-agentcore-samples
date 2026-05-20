@@ -12,6 +12,7 @@ The publish folder contains:
 
 - **Arize**: AI and Agent engineering platform
 - **Braintrust**: AI evaluation and monitoring platform
+- **Dash0**: OpenTelemetry-native observability platform for distributed systems and AI agents
 - **Datadog**: Unified observability platform for monitoring, APM, logs, and traces
 - **Honeycomb**: Observability platform built for high-cardinality exploration
 - **Instana**: Real-Time APM and Observability Platform
@@ -52,6 +53,11 @@ Each platform requires specific configuration:
 - API key from Braintrust dashboard
 - Project configuration
 
+### Dash0
+- Auth token from Dash0 dashboard (Settings → Auth Tokens)
+- OTLP ingress endpoint for your region (Settings → Endpoints)
+- Optional: dataset name for organizing traces
+
 ### Datadog
 - API key from Datadog dashboard (Organization Settings → API Keys)
 - Datadog site/region (US1, US3, US5, EU1, AP1) — determines the OTLP endpoint
@@ -81,6 +87,8 @@ After completing examples:
 
 - [Arize Documentation](https://arize.com/docs/ax)
 - [Braintrust Documentation](https://www.braintrust.dev/docs)
+- [Dash0 Documentation](https://www.dash0.com/docs)
+- [Dash0 OpenTelemetry Ingestion](https://www.dash0.com/docs/opentelemetry)
 - [Datadog Documentation](https://docs.datadoghq.com/)
 - [Datadog LLM Observability](https://docs.datadoghq.com/llm_observability/)
 - [Datadog OpenTelemetry](https://docs.datadoghq.com/opentelemetry/)

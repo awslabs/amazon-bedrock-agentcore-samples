@@ -32,6 +32,7 @@ This folder contains framework and protocol integrations that demonstrate how to
 
 ## 📊 Observability
 
+* **[Dash0](./observability/dash0/)**: OpenTelemetry-native observability platform with traces and metrics via OTLP HTTP
 * **[Dynatrace](./observability/dynatrace/)**: Application performance monitoring integration with travel agent example
 * **[Simple Dual Observability](./observability/simple-dual-observability/)**: Amazon CloudWatch and Braintrust integration with automatic OpenTelemetry instrumentation for AgentCore Runtime
 
