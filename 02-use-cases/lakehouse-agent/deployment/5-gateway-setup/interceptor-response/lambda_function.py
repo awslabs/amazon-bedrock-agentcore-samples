@@ -105,7 +105,7 @@ def get_cognito_public_keys() -> Dict[str, Any]:
         jwks_url = f"{config['issuer']}/.well-known/jwks.json"
         logger.info(f"Fetching JWKS from: {jwks_url}")
         
-        with urllib.request.urlopen(jwks_url) as response:
+        with urllib.request.urlopen(jwks_url) as response:  # nosec B310
             _jwks = json.loads(response.read())
             logger.info("Successfully fetched Cognito public keys")
             return _jwks

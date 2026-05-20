@@ -186,7 +186,7 @@ for event in resp["stream"]:
             b64_data += delta["stdout"]
 
 if b64_data.strip():
-    local_path = "/tmp/amsterdam_budget.xlsx"
+    local_path = "/tmp/amsterdam_budget.xlsx"  # nosec B108
     with open(local_path, "wb") as f:
         f.write(base64.b64decode(b64_data.strip().replace("\n", "")))
     print(f"✅ Saved to {local_path} ({os.path.getsize(local_path):,} bytes)")
@@ -270,7 +270,7 @@ for event in resp["stream"]:
             b64_data += delta["stdout"]
 
 if b64_data.strip():
-    local_path = "/tmp/q1_sales_report.xlsx"
+    local_path = "/tmp/q1_sales_report.xlsx"  # nosec B108
     with open(local_path, "wb") as f:
         f.write(base64.b64decode(b64_data.strip().replace("\n", "")))
     print(f"✅ Saved to {local_path} ({os.path.getsize(local_path):,} bytes)")

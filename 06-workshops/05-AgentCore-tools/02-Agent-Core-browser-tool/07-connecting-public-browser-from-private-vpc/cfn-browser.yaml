@@ -55,6 +55,12 @@ Resources:
     Type: AWS::ECR::Repository
     DeletionPolicy: Delete
     UpdateReplacePolicy: Delete
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W79
+            reason: >-
+              Sample ECR repository uses default encryption
     Properties:
       RepositoryName: !Sub "${AWS::StackName}-${ECRRepositoryName}" 
       ImageTagMutability: IMMUTABLE

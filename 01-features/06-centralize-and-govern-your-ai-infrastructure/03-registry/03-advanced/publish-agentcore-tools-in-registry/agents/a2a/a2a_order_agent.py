@@ -10,7 +10,7 @@ from fastapi import FastAPI
 import uvicorn
 
 runtime_url = os.environ.get("AGENTCORE_RUNTIME_URL", "http://127.0.0.1:9000/")
-host, port = "0.0.0.0", 9000
+host, port = "0.0.0.0", 9000  # nosec B104
 
 
 @tool

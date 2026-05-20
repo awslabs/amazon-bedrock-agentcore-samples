@@ -393,4 +393,4 @@ if __name__ == "__main__":
     logger.info(f"   Model: {MODEL_ID}")
     logger.info(f"   Region: {AWS_REGION}")
     logger.info("   Listening on 0.0.0.0:8080")
-    uvicorn.run(app, host="0.0.0.0", port=8080)
+    uvicorn.run(app, host="0.0.0.0", port=8080)  # nosec B104

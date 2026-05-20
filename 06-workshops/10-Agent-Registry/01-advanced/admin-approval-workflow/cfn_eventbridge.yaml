@@ -64,6 +64,18 @@ Resources:
 
   CICDFunction:
     Type: AWS::Lambda::Function
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W92
+            reason: >-
+              Sample code - reserved concurrency not required for tutorials
+          - id: W89
+            reason: >-
+              Sample Lambda uses public internet for Bedrock API; VPC not required for tutorial
+          - id: W58
+            reason: >-
+              Lambda role includes CloudWatch logging permissions
     Properties:
       FunctionName: !Sub ${Prefix}-lambda-cicd
       Runtime: python3.14

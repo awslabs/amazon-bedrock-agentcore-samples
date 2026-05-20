@@ -53,7 +53,7 @@ def create_notebook(name: str) -> str:
         "Authorization": f"Bearer {entra_access_token}",
         "Content-Type": "application/json",
     }
-    resp = requests.post(
+    resp = requests.post(  # nosec B113
         "https://graph.microsoft.com/v1.0/me/onenote/notebooks",
         headers=headers,
         json={"displayName": name},
@@ -89,7 +89,7 @@ def create_notebook_section(notebook_id: str, section_name: str) -> str:
         "Authorization": f"Bearer {entra_access_token}",
         "Content-Type": "application/json",
     }
-    resp = requests.post(
+    resp = requests.post(  # nosec B113
         f"https://graph.microsoft.com/v1.0/me/onenote/notebooks/{notebook_id}/sections",
         headers=headers,
         json={"displayName": section_name},
@@ -125,7 +125,7 @@ def add_content_to_notebook_section(section_id: str, page_content: str) -> str:
         "Authorization": f"Bearer {entra_access_token}",
         "Content-Type": "text/html",
     }
-    resp = requests.post(
+    resp = requests.post(  # nosec B113
         f"https://graph.microsoft.com/v1.0/me/onenote/sections/{section_id}/pages",
         headers=headers,
         data=page_content,

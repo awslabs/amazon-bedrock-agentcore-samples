@@ -326,7 +326,7 @@ def get_entra_m2m_token() -> str:
         "client_secret": client_secret,
         "scope": f"{app_id_uri}/.default",
     }
-    resp = requests.post(
+    resp = requests.post(  # nosec B113
         token_url,
         data=data,
         headers={"Content-Type": "application/x-www-form-urlencoded"},

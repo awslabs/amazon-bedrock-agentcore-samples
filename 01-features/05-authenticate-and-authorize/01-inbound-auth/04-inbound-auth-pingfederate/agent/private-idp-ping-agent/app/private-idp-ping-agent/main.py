@@ -76,7 +76,7 @@ def call_gateway(access_token: str) -> dict:
     req.add_header("Authorization", f"Bearer {access_token}")
 
     try:
-        with urllib.request.urlopen(req, timeout=30) as resp:
+        with urllib.request.urlopen(req, timeout=30) as resp:  # nosec B310
             return json.loads(resp.read())
     except Exception as e:
         return {"error": str(e)}

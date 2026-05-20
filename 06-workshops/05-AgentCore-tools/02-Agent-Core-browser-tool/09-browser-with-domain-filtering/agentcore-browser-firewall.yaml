@@ -267,6 +267,12 @@ Resources:
 
   FirewallAlertLogGroup:
     Type: AWS::Logs::LogGroup
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W84
+            reason: >-
+              Sample log group uses default encryption; use KMS CMK in production
     Properties:
       LogGroupName: !Sub '/aws/network-firewall/${AWS::StackName}/alerts'
       RetentionInDays: 30

@@ -127,7 +127,8 @@ Resources:
     Type: AWS::ECR::Repository
     DeletionPolicy: Delete
     Properties:
-      ImageScanningConfiguration:
+            ImageTagMutability: IMMUTABLE
+ImageScanningConfiguration:
         ScanOnPush: true
       LifecyclePolicy:
         LifecyclePolicyText: |
@@ -732,7 +733,8 @@ Resources:
   AgentRuntimeLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupClass: STANDARD
+            RetentionInDays: 30
+LogGroupClass: STANDARD
       LogGroupName: !Sub "/aws/vendedlogs/bedrock-agentcore/${AgentRuntime.AgentRuntimeId}"
 
   AgentRuntimeDeliverSourceApplicationLogs:

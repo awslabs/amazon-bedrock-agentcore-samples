@@ -13,7 +13,7 @@ using stateless streamable HTTP transport.
 from mcp.server.fastmcp import FastMCP
 
 # stateless_http=True and json_response=True required for AgentCore Runtime compatibility
-mcp = FastMCP("basic-tools", host="0.0.0.0", stateless_http=True, json_response=True)
+mcp = FastMCP("basic-tools", host="0.0.0.0", stateless_http=True, json_response=True)  # nosec B104
 
 
 @mcp.tool()

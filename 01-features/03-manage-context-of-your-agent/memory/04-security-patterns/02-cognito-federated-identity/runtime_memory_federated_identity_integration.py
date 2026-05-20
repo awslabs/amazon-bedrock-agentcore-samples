@@ -353,7 +353,7 @@ def invoke_agent(payload, session_id, bearer_token=None):
     headers = dict(aws_req.headers)
     if bearer_token:
         headers["Authorization"] = f"Bearer {bearer_token}"
-    return requests.post(aws_req.url, data=aws_req.body, headers=headers).json()
+    return requests.post(aws_req.url, data=aws_req.body, headers=headers).json(, timeout=30)
 
 
 # ## 5. Testing Your Agent

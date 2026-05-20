@@ -1,6 +1,6 @@
 from mcp.server.fastmcp import FastMCP
 
-mcp = FastMCP(host="0.0.0.0", stateless_http=True)
+mcp = FastMCP(host="0.0.0.0", stateless_http=True)  # nosec B104
 
 @mcp.tool()
 def add_numbers(a: int, b: int) -> int:

@@ -461,5 +461,5 @@ if __name__ == "__main__":
     # stateless_http=False keeps the SSE push-back channel (required for
     # elicitation + progress streaming).
     mcp.run(
-        transport="streamable-http", host="0.0.0.0", stateless_http=False
+        transport="streamable-http", host="0.0.0.0", stateless_http=False  # nosec B104
     )  # nosec B104 - AgentCore Runtime container requires bind to all interfaces

@@ -139,7 +139,7 @@ class TokenCallbackServer:
             token_url = (
                 f"https://login.microsoftonline.com/{self.tenant_id}/oauth2/v2.0/token"
             )
-            r = requests.post(
+            r = requests.post(  # nosec B113
                 token_url,
                 data={
                     "grant_type": "authorization_code",
@@ -180,7 +180,7 @@ def main():
     args = parser.parse_args()
 
     server = TokenCallbackServer(args.tenant_id, args.client_id, args.client_secret)
-    host = "0.0.0.0" if _is_workshop_studio() else "127.0.0.1"
+    host = "0.0.0.0" if _is_workshop_studio() else "127.0.0.1"  # nosec B104
     callback_url = get_callback_url()
 
     authorize_url = (

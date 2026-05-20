@@ -434,7 +434,7 @@ aws_request = AWSRequest(
 SigV4Auth(boto3.Session().get_credentials(), "bedrock-agentcore", REGION).add_auth(
     aws_request
 )
-invoke_response = requests.post(
+invoke_response = requests.post(  # nosec B113
     aws_request.url, data=aws_request.body, headers=dict(aws_request.headers)
 )
 print(invoke_response.json())
@@ -466,7 +466,7 @@ follow_up_request = AWSRequest(
 SigV4Auth(boto3.Session().get_credentials(), "bedrock-agentcore", REGION).add_auth(
     follow_up_request
 )
-follow_up_response = requests.post(
+follow_up_response = requests.post(  # nosec B113
     follow_up_request.url,
     data=follow_up_request.body,
     headers=dict(follow_up_request.headers),

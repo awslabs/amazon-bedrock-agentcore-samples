@@ -200,7 +200,7 @@ def query_healthlake(resource_type, search_params=None, resource_id=None):
     )
     SigV4Auth(credentials, "healthlake", HEALTHLAKE_REGION).add_auth(request)
 
-    response = requests.get(url, headers=dict(request.headers))
+    response = requests.get(url, headers=dict(request.headers), timeout=30)
 
     if response.status_code == 200:
         return response.json()

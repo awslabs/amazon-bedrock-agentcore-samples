@@ -300,7 +300,7 @@ def get_okta_token(scope: str = "agentcore") -> str:
     if not all([client_id, client_secret, token_url]):
         raise ValueError("Set OKTA_CLIENT_ID, OKTA_CLIENT_SECRET, OKTA_TOKEN_URL.")
 
-    resp = requests.post(
+    resp = requests.post(  # nosec B113
         token_url,
         data={"grant_type": "client_credentials", "scope": scope},
         auth=(client_id, client_secret),

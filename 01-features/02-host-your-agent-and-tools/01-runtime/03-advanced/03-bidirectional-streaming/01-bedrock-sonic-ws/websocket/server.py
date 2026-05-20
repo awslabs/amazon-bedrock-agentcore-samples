@@ -625,7 +625,7 @@ if __name__ == "__main__":
         DEBUG = True
         logging.getLogger().setLevel(logging.DEBUG)
 
-    host = os.getenv("HOST", "0.0.0.0")
+    host = os.getenv("HOST", "0.0.0.0")  # nosec B104
     port = int(os.getenv("PORT", "8080"))
 
     logger.info(f"Starting Nova Sonic S2S WebSocket Server on {host}:{port}")

@@ -457,7 +457,7 @@ def _token_request(base_url, ssl_ctx):
     data = f"grant_type=client_credentials&client_id={CLIENT_ID}&client_secret={CLIENT_SECRET}&scope=openid"
     req = urllib.request.Request(url, data=data.encode(), method="POST")
     req.add_header("Content-Type", "application/x-www-form-urlencoded")
-    with urllib.request.urlopen(req, context=ssl_ctx, timeout=30) as resp:
+    with urllib.request.urlopen(req, context=ssl_ctx, timeout=30) as resp:  # nosec B310
         return json.loads(resp.read())
 
 
@@ -468,7 +468,7 @@ def _api_call(method, url, auth, ssl_ctx, body=None):
     req.add_header("Authorization", auth)
     req.add_header("X-XSRF-Header", "PingFederate")
     req.add_header("Content-Type", "application/json")
-    with urllib.request.urlopen(req, context=ssl_ctx, timeout=30) as resp:
+    with urllib.request.urlopen(req, context=ssl_ctx, timeout=30) as resp:  # nosec B310
         resp_body = resp.read()
         if resp_body:
             result = json.loads(resp_body)
@@ -519,4 +519,4 @@ def send_response(
     req = urllib.request.Request(response_url, data=body, method="PUT")
     req.add_header("Content-Type", "")
     req.add_header("Content-Length", str(len(body)))
-    urllib.request.urlopen(req, timeout=30)
+    urllib.request.urlopen(req, timeout=30)  # nosec B310

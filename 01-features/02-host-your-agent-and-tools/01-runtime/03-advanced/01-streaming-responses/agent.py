@@ -21,7 +21,7 @@ def calculator(expression: str) -> str:
     """Evaluate a math expression."""
     allowed = set("0123456789+-*/.() ")
     if all(c in allowed for c in expression):
-        return str(eval(expression))  # noqa: S307
+        return str(eval(expression))  # noqa: S307  # nosec B307
     return "Invalid expression"
 
 

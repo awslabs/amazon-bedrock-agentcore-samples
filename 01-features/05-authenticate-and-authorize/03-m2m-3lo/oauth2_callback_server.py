@@ -446,7 +446,7 @@ def main():
     # Determine host binding based on environment
     # In SageMaker, bind to 0.0.0.0 so the proxy can reach the server
     # In local development, bind to 127.0.0.1 for security
-    host = "0.0.0.0" if _is_workshop_studio() else "127.0.0.1"
+    host = "0.0.0.0" if _is_workshop_studio() else "127.0.0.1"  # nosec B104
     base_url = get_oauth2_callback_base_url()
 
     logger.info(

@@ -29,6 +29,12 @@ Resources:
 
   ReplicationDLQ:
     Type: AWS::SQS::Queue
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W48
+            reason: >-
+              Sample SQS queue uses default encryption
     Properties:
       QueueName: agentcore-replication-dlq
       MessageRetentionPeriod: 1209600

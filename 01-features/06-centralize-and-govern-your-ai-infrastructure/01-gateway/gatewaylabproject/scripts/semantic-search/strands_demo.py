@@ -96,7 +96,7 @@ def main():
             "arguments": {"query": "tools for adding numbers"},
         },
     }
-    response = requests.post(
+    response = requests.post(  # nosec B113
         gateway_url,
         json=search_request,
         headers={

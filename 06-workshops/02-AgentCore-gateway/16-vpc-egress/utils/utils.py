@@ -18,7 +18,7 @@ def get_token(
             "client_secret": client_secret,
             "scope": scope_string,
         }
-        response = requests.post(token_endpoint_url, headers=headers, data=data)
+        response = requests.post(token_endpoint_url, headers=headers, data=data, timeout=30)
         response.raise_for_status()
         return response.json()
 

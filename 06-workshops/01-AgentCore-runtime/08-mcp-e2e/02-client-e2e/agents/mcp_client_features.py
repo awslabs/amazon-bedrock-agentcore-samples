@@ -110,7 +110,7 @@ async def analyze_spending(user_alias: str, ctx: Context) -> str:
 if __name__ == '__main__':
     mcp.run(
         transport="streamable-http",
-        host="0.0.0.0",
+        host="0.0.0.0",  # nosec B104
         port=8000,
         stateless_http=False
     )

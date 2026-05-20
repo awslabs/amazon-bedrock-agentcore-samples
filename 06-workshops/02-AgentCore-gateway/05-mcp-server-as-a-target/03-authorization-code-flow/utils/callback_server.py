@@ -81,7 +81,7 @@ def main():
     print(f"Callback URL: http://localhost:{args.port}/callback")
     print("Waiting for OAuth redirect...")
 
-    uvicorn.run(app, host="0.0.0.0", port=args.port, log_level="warning")
+    uvicorn.run(app, host="0.0.0.0", port=args.port, log_level="warning")  # nosec B104
 
 
 if __name__ == "__main__":

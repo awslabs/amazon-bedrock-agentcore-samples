@@ -59,4 +59,4 @@ def get_market_summary() -> dict:
 
 
 if __name__ == "__main__":
-    mcp.run(transport="streamable-http", host="0.0.0.0", port=8001, path="/stock-mcp/")
+    mcp.run(transport="streamable-http", host="0.0.0.0", port=8001, path="/stock-mcp/")  # nosec B104

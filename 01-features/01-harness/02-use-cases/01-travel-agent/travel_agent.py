@@ -179,9 +179,9 @@ try:
 
     # ── Part 3: Save HTML to local file ──────────────────────────────────────
     print("\n=== Part 3: Save HTML output ===")
-    html_content = fetch_file(harness_arn, session_id, "/tmp/travel.html")
+    html_content = fetch_file(harness_arn, session_id, "/tmp/travel.html")  # nosec B108
     if html_content:
-        output_path = "/tmp/travel_guide.html"
+        output_path = "/tmp/travel_guide.html"  # nosec B108
         with open(output_path, "w") as f:
             f.write(html_content)
         print(f"✅ Saved HTML to {output_path} ({len(html_content):,} chars)")
@@ -278,9 +278,9 @@ try:
         tools=[{"type": "agentcore_browser", "name": "browser"}],
     )
 
-    weather_html = fetch_file(harness_arn, browser_session, "/tmp/weather.html")
+    weather_html = fetch_file(harness_arn, browser_session, "/tmp/weather.html")  # nosec B108
     if weather_html:
-        output_path = "/tmp/amsterdam_weather.html"
+        output_path = "/tmp/amsterdam_weather.html"  # nosec B108
         with open(output_path, "w") as f:
             f.write(weather_html)
         print(f"✅ Weather HTML saved to {output_path}")
@@ -322,7 +322,7 @@ try:
     report = fetch_file(
         harness_arn,
         research_session,
-        "/tmp/tourism_report.md 2>/dev/null || echo 'No report'",
+        "/tmp/tourism_report.md 2>/dev/null || echo 'No report'",  # nosec B108
     )
     print("\nTourism report:")
     print(report)
@@ -345,7 +345,7 @@ try:
     chart_str = b64_data.decode().strip()
     if chart_str and chart_str != "NO_CHART":
         chart_bytes = base64.b64decode(chart_str.replace("\n", ""))
-        chart_path = "/tmp/amsterdam_tourism.png"
+        chart_path = "/tmp/amsterdam_tourism.png"  # nosec B108
         with open(chart_path, "wb") as f:
             f.write(chart_bytes)
         print(f"✅ Chart saved to {chart_path} ({len(chart_bytes):,} bytes)")

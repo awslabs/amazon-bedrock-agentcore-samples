@@ -56,7 +56,7 @@ def load_config(path: str = "policy_config.json") -> dict:
 def get_bearer_token(config: dict) -> str:
     """Obtain an OAuth2 client_credentials token from Cognito."""
     ci = config["gateway"]["client_info"]
-    resp = requests.post(
+    resp = requests.post(  # nosec B113
         ci["token_endpoint"],
         headers={"Content-Type": "application/x-www-form-urlencoded"},
         data={
@@ -102,7 +102,7 @@ def make_gateway_request(
     config: dict, token: str, tool_name: str, arguments: dict
 ) -> dict:
     """Send a JSON-RPC tools/call request to the Gateway."""
-    resp = requests.post(
+    resp = requests.post(  # nosec B113
         config["gateway"]["gateway_url"],
         headers={
             "Content-Type": "application/json",

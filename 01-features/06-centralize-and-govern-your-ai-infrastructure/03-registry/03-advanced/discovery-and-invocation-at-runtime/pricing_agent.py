@@ -46,4 +46,4 @@ def ping():
 app.mount("/", a2a.to_fastapi_app())
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=9000)
+    uvicorn.run(app, host="0.0.0.0", port=9000)  # nosec B104

@@ -279,7 +279,7 @@ Then list the screenshots: ls -la /tmp/screenshot_*.png"""
 
         try:
             img_bytes = base64.b64decode(b64_clean)
-            local_path = f"/tmp/screenshot_{i}.png"
+            local_path = f"/tmp/screenshot_{i}.png"  # nosec B108
             with open(local_path, "wb") as f:
                 f.write(img_bytes)
             screenshots_saved.append(local_path)

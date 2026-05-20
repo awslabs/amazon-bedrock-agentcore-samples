@@ -97,21 +97,15 @@ def main():
     print(f"Callback URL: http://localhost:{args.port}/callback")
 
     if args.auth_url:
-        import platform
-        import subprocess
+        import webbrowser
 
         auth_url = args.auth_url.replace("\\", "")
         print("Opening authorization URL in browser...")
-        if platform.system() == "Darwin":
-            subprocess.Popen(["open", auth_url])
-        elif platform.system() == "Windows":
-            subprocess.Popen(["start", auth_url], shell=True)
-        else:
-            subprocess.Popen(["xdg-open", auth_url])
+        webbrowser.open(auth_url)
 
     print("Waiting for OAuth redirect...")
 
-    uvicorn.run(app, host="0.0.0.0", port=args.port, log_level="warning")
+    uvicorn.run(app, host="0.0.0.0", port=args.port, log_level="warning")  # nosec B104
 
 
 if __name__ == "__main__":

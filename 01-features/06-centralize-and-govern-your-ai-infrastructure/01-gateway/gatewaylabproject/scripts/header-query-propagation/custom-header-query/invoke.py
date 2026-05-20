@@ -82,7 +82,7 @@ def main():
     print("=" * 60)
 
     test_url = f"{gateway_url}?version=v2&environment=staging"
-    resp = requests.post(
+    resp = requests.post(  # nosec B113
         test_url,
         headers={
             "Authorization": f"Bearer {access_token}",
@@ -165,7 +165,7 @@ def main():
     print("Test 5: MCP server target — same propagation")
     print("=" * 60)
 
-    resp = requests.post(
+    resp = requests.post(  # nosec B113
         test_url,
         headers={
             "Authorization": f"Bearer {access_token}",

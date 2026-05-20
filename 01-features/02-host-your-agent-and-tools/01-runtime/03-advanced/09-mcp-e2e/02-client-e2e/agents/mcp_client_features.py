@@ -2,7 +2,7 @@ import os
 from mcp.server.fastmcp import FastMCP, Context
 from dynamo_utils import FinanceDB
 
-mcp = FastMCP(name="ElicitationMCP", host="0.0.0.0", stateless_http=True)
+mcp = FastMCP(name="ElicitationMCP", host="0.0.0.0", stateless_http=True)  # nosec B104
 
 _region = (
     os.environ.get("AWS_REGION") or os.environ.get("AWS_DEFAULT_REGION") or "us-east-1"

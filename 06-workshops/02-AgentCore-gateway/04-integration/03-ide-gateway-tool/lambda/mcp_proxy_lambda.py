@@ -185,7 +185,7 @@ def handle_token(event):
     req.add_header("Content-Type", "application/x-www-form-urlencoded")
 
     try:
-        with urllib.request.urlopen(req, timeout=30) as resp:
+        with urllib.request.urlopen(req, timeout=30) as resp:  # nosec B310
             token_data = json.loads(resp.read().decode())
             if "created_at" not in token_data:
                 token_data["created_at"] = int(time.time() * 1000)
@@ -246,7 +246,7 @@ def proxy_to_gateway(event):
         for k, v in req_headers.items():
             req.add_header(k, v)
 
-        with urllib.request.urlopen(req, timeout=60) as resp:
+        with urllib.request.urlopen(req, timeout=60) as resp:  # nosec B310
             resp_body = resp.read().decode()
             resp_headers = {
                 "Content-Type": resp.headers.get("Content-Type", "application/json")
@@ -303,7 +303,7 @@ def store_token_for_3lo(auth_header):
         data = json.dumps({"user_token": token}).encode()
         req = urllib.request.Request(url, data=data, method="POST")
         req.add_header("Content-Type", "application/json")
-        urllib.request.urlopen(req, timeout=5)
+        urllib.request.urlopen(req, timeout=5)  # nosec B310
     except Exception as e:
         print(f"Error storing token for 3LO: {e}")
 

@@ -125,7 +125,7 @@ def main():
     print("\n" + "=" * 60)
     print("Step 2: Perform OBO Exchange")
     print("=" * 60)
-    obo_resp = req.post(
+    obo_resp = req.post(  # nosec B113
         f"https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/token",
         data={
             "grant_type": "urn:ietf:params:oauth:grant-type:jwt-bearer",

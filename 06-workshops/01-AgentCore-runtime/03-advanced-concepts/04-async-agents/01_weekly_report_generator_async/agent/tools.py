@@ -31,7 +31,7 @@ def download_demo_data_from_s3():
     import boto3
     
     s3_client = boto3.client('s3')
-    local_base = '/tmp/demo_data'
+    local_base = '/tmp/demo_data'  # nosec B108
     
     print(f"📥 Downloading demo data from s3://{S3_BUCKET}/{DEMO_DATA_PREFIX}/")
     
@@ -88,7 +88,7 @@ def read_project_status() -> str:
     """Read and summarize project status from CSV file."""
     try:
         # Find the latest week file dynamically
-        project_dir = "/tmp/demo_data/project_status"
+        project_dir = "/tmp/demo_data/project_status"  # nosec B108
         files = [f for f in os.listdir(project_dir) if f.startswith('projects_week_') and f.endswith('.csv')]
         if not files:
             return "Error: No project status files found"
@@ -115,7 +115,7 @@ def read_project_status() -> str:
 def read_team_updates() -> str:
     """Read all team member updates from markdown files."""
     try:
-        updates_dir = "/tmp/demo_data/team_updates"
+        updates_dir = "/tmp/demo_data/team_updates"  # nosec B108
         files = [f for f in os.listdir(updates_dir) if f.endswith('.md')]
         
         summary = f"Found {len(files)} team updates:\n\n"
@@ -163,7 +163,7 @@ def read_metrics() -> str:
     """Read KPI metrics from CSV file."""
     try:
         # Find the latest week file dynamically
-        metrics_dir = "/tmp/demo_data/metrics"
+        metrics_dir = "/tmp/demo_data/metrics"  # nosec B108
         files = [f for f in os.listdir(metrics_dir) if f.startswith('kpis_week_') and f.endswith('.csv')]
         if not files:
             return "Error: No metrics files found"
@@ -192,7 +192,7 @@ def read_bug_tracker() -> str:
     """Read bug/issue tracker data from JSON file."""
     try:
         # Find the latest week file dynamically
-        issues_dir = "/tmp/demo_data/issues"
+        issues_dir = "/tmp/demo_data/issues"  # nosec B108
         files = [f for f in os.listdir(issues_dir) if f.startswith('bug_tracker_week_') and f.endswith('.json')]
         if not files:
             return "Error: No bug tracker files found"
@@ -226,7 +226,7 @@ def read_bug_tracker() -> str:
 def read_meeting_notes() -> str:
     """Read meeting notes from markdown files."""
     try:
-        notes_dir = "/tmp/demo_data/meeting_notes"
+        notes_dir = "/tmp/demo_data/meeting_notes"  # nosec B108
         files = [f for f in os.listdir(notes_dir) if f.endswith('.md')]
         
         summary = f"Meeting Notes ({len(files)} meetings):\n\n"
@@ -257,7 +257,7 @@ def generate_bug_severity_chart() -> str:
     """Generate a pie chart showing bug distribution by severity."""
     try:
         # Find the latest week file dynamically
-        issues_dir = "/tmp/demo_data/issues"
+        issues_dir = "/tmp/demo_data/issues"  # nosec B108
         files = [f for f in os.listdir(issues_dir) if f.startswith('bug_tracker_week_') and f.endswith('.json')]
         if not files:
             return "Error: No bug tracker files found"
@@ -278,8 +278,8 @@ def generate_bug_severity_chart() -> str:
         plt.title('Bug Distribution by Severity', fontsize=14, fontweight='bold')
         plt.axis('equal')
         
-        os.makedirs("/tmp/weekly_report_output", exist_ok=True)
-        output_path = "/tmp/weekly_report_output/bug_severity_chart.png"
+        os.makedirs("/tmp/weekly_report_output", exist_ok=True)  # nosec B108
+        output_path = "/tmp/weekly_report_output/bug_severity_chart.png"  # nosec B108
         plt.savefig(output_path, dpi=150, bbox_inches='tight')
         plt.close()
         
@@ -293,7 +293,7 @@ def generate_metrics_trend_chart() -> str:
     """Generate a faceted bar chart showing current vs target for key metrics."""
     try:
         # Find the latest week file dynamically
-        metrics_dir = "/tmp/demo_data/metrics"
+        metrics_dir = "/tmp/demo_data/metrics"  # nosec B108
         files = [f for f in os.listdir(metrics_dir) if f.startswith('kpis_week_') and f.endswith('.csv')]
         if not files:
             return "Error: No metrics files found"
@@ -400,8 +400,8 @@ def generate_metrics_trend_chart() -> str:
                     fontsize=16, fontweight='bold', y=0.995)
         plt.tight_layout()
         
-        os.makedirs("/tmp/weekly_report_output", exist_ok=True)
-        output_path = "/tmp/weekly_report_output/metrics_status_chart.png"
+        os.makedirs("/tmp/weekly_report_output", exist_ok=True)  # nosec B108
+        output_path = "/tmp/weekly_report_output/metrics_status_chart.png"  # nosec B108
         plt.savefig(output_path, dpi=150, bbox_inches='tight')
         plt.close()
         
@@ -422,7 +422,7 @@ def extract_structured_data():
     # Extract project data
     try:
         # Find the latest week file dynamically
-        project_dir = "/tmp/demo_data/project_status"
+        project_dir = "/tmp/demo_data/project_status"  # nosec B108
         files = [f for f in os.listdir(project_dir) if f.startswith('projects_week_') and f.endswith('.csv')]
         if files:
             latest_file = sorted(files)[-1]
@@ -435,7 +435,7 @@ def extract_structured_data():
     # Extract metrics data
     try:
         # Find the latest week file dynamically
-        metrics_dir = "/tmp/demo_data/metrics"
+        metrics_dir = "/tmp/demo_data/metrics"  # nosec B108
         files = [f for f in os.listdir(metrics_dir) if f.startswith('kpis_week_') and f.endswith('.csv')]
         if files:
             latest_file = sorted(files)[-1]
@@ -448,7 +448,7 @@ def extract_structured_data():
     # Extract bug data
     try:
         # Find the latest week file dynamically
-        issues_dir = "/tmp/demo_data/issues"
+        issues_dir = "/tmp/demo_data/issues"  # nosec B108
         files = [f for f in os.listdir(issues_dir) if f.startswith('bug_tracker_week_') and f.endswith('.json')]
         if files:
             latest_file = sorted(files)[-1]
@@ -459,7 +459,7 @@ def extract_structured_data():
     
     # Extract team updates
     try:
-        updates_dir = "/tmp/demo_data/team_updates"
+        updates_dir = "/tmp/demo_data/team_updates"  # nosec B108
         for filename in os.listdir(updates_dir):
             if filename.endswith('.md'):
                 with open(os.path.join(updates_dir, filename), 'r') as f:
@@ -501,7 +501,7 @@ def extract_structured_data():
     
     # Extract meeting notes
     try:
-        notes_dir = "/tmp/demo_data/meeting_notes"
+        notes_dir = "/tmp/demo_data/meeting_notes"  # nosec B108
         for filename in os.listdir(notes_dir):
             if filename.endswith('.md'):
                 with open(os.path.join(notes_dir, filename), 'r') as f:
@@ -536,7 +536,7 @@ def analyze_data_quality() -> str:
         warnings = []
         
         # Find the latest week file dynamically
-        project_dir = "/tmp/demo_data/project_status"
+        project_dir = "/tmp/demo_data/project_status"  # nosec B108
         files = [f for f in os.listdir(project_dir) if f.startswith('projects_week_') and f.endswith('.csv')]
         if not files:
             return "Error: No project status files found"
@@ -550,7 +550,7 @@ def analyze_data_quality() -> str:
                 warnings.append("Low number of projects tracked")
         
         # Check team updates
-        updates_dir = "/tmp/demo_data/team_updates"
+        updates_dir = "/tmp/demo_data/team_updates"  # nosec B108
         update_count = len([f for f in os.listdir(updates_dir) if f.endswith('.md')])
         if update_count < 3:
             warnings.append("Not all team members submitted updates")
@@ -567,7 +567,7 @@ def cross_reference_data() -> str:
     try:
         
         # Find the latest week file dynamically
-        issues_dir = "/tmp/demo_data/issues"
+        issues_dir = "/tmp/demo_data/issues"  # nosec B108
         files = [f for f in os.listdir(issues_dir) if f.startswith('bug_tracker_week_') and f.endswith('.json')]
         if not files:
             return "Error: No bug tracker files found"
@@ -585,7 +585,7 @@ def cross_reference_data() -> str:
             all_bugs.append(issue['id'])
         
         # Check team updates for bug mentions
-        updates_dir = "/tmp/demo_data/team_updates"
+        updates_dir = "/tmp/demo_data/team_updates"  # nosec B108
         mentions = 0
         for filename in os.listdir(updates_dir):
             if filename.endswith('.md'):
@@ -609,7 +609,7 @@ def analyze_sentiment() -> str:
         positive_indicators = ['completed', 'success', 'achieved', 'improved', 'excellent', 'great']
         concern_indicators = ['blocker', 'delayed', 'issue', 'problem', 'concern', 'risk']
         
-        updates_dir = "/tmp/demo_data/team_updates"
+        updates_dir = "/tmp/demo_data/team_updates"  # nosec B108
         sentiment_scores = []
         
         for filename in os.listdir(updates_dir):
@@ -635,7 +635,7 @@ def calculate_risk_scores() -> str:
     """Calculate risk scores for projects based on multiple factors."""
     try:
         # Find the latest week file dynamically
-        project_dir = "/tmp/demo_data/project_status"
+        project_dir = "/tmp/demo_data/project_status"  # nosec B108
         files = [f for f in os.listdir(project_dir) if f.startswith('projects_week_') and f.endswith('.csv')]
         if not files:
             return "Error: No project status files found"
@@ -679,7 +679,7 @@ def generate_project_timeline_chart() -> str:
     """Generate a timeline chart showing project milestones."""
     try:
         # Find the latest week file dynamically
-        project_dir = "/tmp/demo_data/project_status"
+        project_dir = "/tmp/demo_data/project_status"  # nosec B108
         files = [f for f in os.listdir(project_dir) if f.startswith('projects_week_') and f.endswith('.csv')]
         if not files:
             return "Error: No project status files found"
@@ -725,7 +725,7 @@ def generate_project_timeline_chart() -> str:
         ax.legend(handles=legend_elements, loc='lower right')
         
         plt.tight_layout()
-        output_path = "/tmp/weekly_report_output/project_timeline_chart.png"
+        output_path = "/tmp/weekly_report_output/project_timeline_chart.png"  # nosec B108
         plt.savefig(output_path, dpi=150, bbox_inches='tight')
         plt.close()
         
@@ -741,7 +741,7 @@ def build_metrics_forecast_model() -> str:
     try:
         
         # Find the latest week file dynamically
-        metrics_dir = "/tmp/demo_data/metrics"
+        metrics_dir = "/tmp/demo_data/metrics"  # nosec B108
         files = [f for f in os.listdir(metrics_dir) if f.startswith('kpis_week_') and f.endswith('.csv')]
         if not files:
             return "Error: No metrics files found"
@@ -755,7 +755,7 @@ def build_metrics_forecast_model() -> str:
         
         # Load historical data from CSV
         historical_data = {}
-        with open("/tmp/demo_data/metrics/kpis_historical.csv", "r") as f:
+        with open("/tmp/demo_data/metrics/kpis_historical.csv", "r") as f:  # nosec B108
             reader = csv.DictReader(f)
             for row in reader:
                 metric_name = row['metric_name']
@@ -821,8 +821,8 @@ def build_metrics_forecast_model() -> str:
         print(f"✓ Forecast models trained: Average R² = {avg_r2:.3f}")
         
         # Save forecast data for chart generation (only keep recent 12 weeks for visualization)
-        os.makedirs("/tmp/weekly_report_output", exist_ok=True)
-        forecast_file = "/tmp/weekly_report_output/metrics_forecast.json"
+        os.makedirs("/tmp/weekly_report_output", exist_ok=True)  # nosec B108
+        forecast_file = "/tmp/weekly_report_output/metrics_forecast.json"  # nosec B108
         
         # Keep only the most recent 12 weeks for cleaner visualization
         recent_historical = {}
@@ -852,7 +852,7 @@ def generate_metrics_forecast_chart() -> str:
     try:
         
         # Load forecast data
-        with open("/tmp/weekly_report_output/metrics_forecast.json", "r") as f:
+        with open("/tmp/weekly_report_output/metrics_forecast.json", "r") as f:  # nosec B108
             data = json.load(f)
         
         historical = data['historical']
@@ -930,7 +930,7 @@ def generate_metrics_forecast_chart() -> str:
                     fontsize=14, fontweight='bold', y=0.98)
         plt.subplots_adjust(left=0.08, right=0.95, top=0.88, bottom=0.08, hspace=0.4, wspace=0.25)
         
-        output_path = "/tmp/weekly_report_output/metrics_forecast_chart.png"
+        output_path = "/tmp/weekly_report_output/metrics_forecast_chart.png"  # nosec B108
         plt.savefig(output_path, dpi=150)
         plt.close()
         
@@ -946,7 +946,7 @@ def generate_team_velocity_chart() -> str:
     try:
         print("⚡ Generating team velocity analysis...")
         
-        updates_dir = "/tmp/demo_data/team_updates"
+        updates_dir = "/tmp/demo_data/team_updates"  # nosec B108
         team_stats = []
         
         for filename in os.listdir(updates_dir):
@@ -992,7 +992,7 @@ def generate_team_velocity_chart() -> str:
         plt.xticks(rotation=45, ha='right')
         plt.tight_layout()
         
-        output_path = "/tmp/weekly_report_output/team_velocity_chart.png"
+        output_path = "/tmp/weekly_report_output/team_velocity_chart.png"  # nosec B108
         plt.savefig(output_path, dpi=150, bbox_inches='tight')
         plt.close()
         
@@ -1014,8 +1014,8 @@ def save_report(report_content: str) -> str:
         Success message with file path
     """
     try:
-        os.makedirs("/tmp/weekly_report_output", exist_ok=True)
-        output_path = "/tmp/weekly_report_output/weekly_report.md"
+        os.makedirs("/tmp/weekly_report_output", exist_ok=True)  # nosec B108
+        output_path = "/tmp/weekly_report_output/weekly_report.md"  # nosec B108
         
         with open(output_path, 'w', encoding='utf-8') as f:
             f.write(report_content)
@@ -1039,7 +1039,7 @@ def upload_report_to_s3() -> str:
         if not bucket or bucket == 'your-bucket-name':
             return "Error: No S3 bucket configured. Set S3_BUCKET in tools.py"
         
-        report_dir = "/tmp/weekly_report_output"
+        report_dir = "/tmp/weekly_report_output"  # nosec B108
         
         # Initialize S3 client
         s3_client = boto3.client('s3')

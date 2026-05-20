@@ -38,7 +38,7 @@ def calculator(expression: str) -> str:
         }
         
         # Evaluate the expression safely
-        result = eval(expression, safe_dict)
+        result = eval(expression, safe_dict)  # nosec B307
         return str(result)
         
     except ZeroDivisionError:

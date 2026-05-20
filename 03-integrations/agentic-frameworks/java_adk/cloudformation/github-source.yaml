@@ -106,7 +106,8 @@ Resources:
     Type: AWS::ECR::Repository
     DeletionPolicy: Delete
     Properties:
-      ImageScanningConfiguration:
+            ImageTagMutability: IMMUTABLE
+ImageScanningConfiguration:
         ScanOnPush: true
       LifecyclePolicy:
         LifecyclePolicyText: |

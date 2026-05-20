@@ -954,7 +954,7 @@ button.active {
         """Start the viewer server."""
 
         def run_server():
-            uvicorn.run(self.app, host="0.0.0.0", port=self.port, log_level="error")
+            uvicorn.run(self.app, host="0.0.0.0", port=self.port, log_level="error")  # nosec B104
 
         self.server_thread = threading.Thread(target=run_server, daemon=True)
         self.server_thread.start()

@@ -7,7 +7,7 @@ from mcp.server.fastmcp import FastMCP
 mcp = FastMCP(
     name="order-management-tools",
     instructions="A collection of order management tools for creating, updating, and managing orders.",
-    host="0.0.0.0",
+    host="0.0.0.0",  # nosec B104
     stateless_http=True,
 )
 

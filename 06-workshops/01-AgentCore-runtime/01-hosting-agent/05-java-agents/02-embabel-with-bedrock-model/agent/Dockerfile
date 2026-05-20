@@ -6,7 +6,7 @@ COPY src ./src
 RUN yum install -y maven && mvn clean package -DskipTests
 
 # Runtime stage — Ubuntu for Playwright/Chromium support
-FROM ubuntu:22.04
+FROM ubuntu:24.04
 WORKDIR /app
 
 ENV DEBIAN_FRONTEND=noninteractive

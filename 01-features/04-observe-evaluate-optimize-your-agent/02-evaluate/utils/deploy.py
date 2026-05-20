@@ -63,7 +63,7 @@ _AGENT_NAME = f"hr_assistant_{uuid.uuid4().hex[:8]}"
 _ROLE_NAME = f"{_AGENT_NAME}_role"
 _S3_BUCKET = f"bedrock-agentcore-code-{_ACCOUNT_ID}-{REGION}"
 _S3_KEY = f"{_AGENT_NAME}/deployment_package.zip"
-_BUILD_DIR = Path(f"/tmp/{_AGENT_NAME}_build")
+_BUILD_DIR = Path(f"/tmp/{_AGENT_NAME}_build")  # nosec B108
 
 # ---------------------------------------------------------------------------
 # 1. IAM execution role

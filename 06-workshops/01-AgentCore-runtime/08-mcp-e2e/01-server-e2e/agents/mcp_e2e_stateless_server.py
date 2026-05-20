@@ -6,7 +6,7 @@ from dynamo_utils import FinanceDB
 
 
 mcp = FastMCP(name="Stateless-MCP-Server",
-              host="0.0.0.0", 
+              host="0.0.0.0",   # nosec B104
               stateless_http=True) # Stateless mode - no session persistence
 
 db = FinanceDB() # Dynamo DB helper

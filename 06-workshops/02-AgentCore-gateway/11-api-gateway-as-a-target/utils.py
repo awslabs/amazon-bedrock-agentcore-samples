@@ -91,7 +91,7 @@ def get_token(user_pool_id: str, client_id: str, client_secret: str, scope_strin
 
         }
         print(client_id)
-        response = requests.post(url, headers=headers, data=data)
+        response = requests.post(url, headers=headers, data=data, timeout=30)
         response.raise_for_status()
         return response.json()
 
@@ -364,7 +364,7 @@ def test_api_gateway_endpoints(invoke_url, api_key, region):
         request = AWSRequest(method='GET', url=url)
         SigV4Auth(credentials, 'execute-api', region).add_auth(request)
         
-        response = requests.get(url, headers=dict(request.headers))
+        response = requests.get(url, headers=dict(request.headers), timeout=30)
         
         if response.status_code == 200:
             print(f"   ✓ SUCCESS (Status: {response.status_code})")
@@ -385,7 +385,7 @@ def test_api_gateway_endpoints(invoke_url, api_key, region):
         request = AWSRequest(method='GET', url=url)
         SigV4Auth(credentials, 'execute-api', region).add_auth(request)
         
-        response = requests.get(url, headers=dict(request.headers))
+        response = requests.get(url, headers=dict(request.headers), timeout=30)
         
         if response.status_code == 200:
             print(f"   ✓ SUCCESS (Status: {response.status_code})")
@@ -406,7 +406,7 @@ def test_api_gateway_endpoints(invoke_url, api_key, region):
         request = AWSRequest(method='POST', url=url, data='{}')
         SigV4Auth(credentials, 'execute-api', region).add_auth(request)
         
-        response = requests.post(url, headers=dict(request.headers), json={})
+        response = requests.post(url, headers=dict(request.headers), json={}, timeout=30)
         
         if response.status_code == 200:
             print(f"   ✓ SUCCESS (Status: {response.status_code})")
@@ -426,7 +426,7 @@ def test_api_gateway_endpoints(invoke_url, api_key, region):
         url = f"{invoke_url}/orders/1"
         headers = {'x-api-key': api_key}
         
-        response = requests.get(url, headers=headers)
+        response = requests.get(url, headers=headers, timeout=30)
         
         if response.status_code == 200:
             print(f"   ✓ SUCCESS (Status: {response.status_code})")
@@ -444,7 +444,7 @@ def test_api_gateway_endpoints(invoke_url, api_key, region):
     print("\n5. Testing GET /orders/1 WITHOUT API Key (should fail with 403)...")
     try:
         url = f"{invoke_url}/orders/1"
-        response = requests.get(url)
+        response = requests.get(url, timeout=30)
         
         if response.status_code == 403:
             print(f"   ✓ EXPECTED FAILURE (Status: {response.status_code})")
@@ -462,7 +462,7 @@ def test_api_gateway_endpoints(invoke_url, api_key, region):
     print("\n6. Testing GET /pets WITHOUT IAM Auth (should fail with 403)...")
     try:
         url = f"{invoke_url}/pets"
-        response = requests.get(url)
+        response = requests.get(url, timeout=30)
         
         if response.status_code == 403:
             print(f"   ✓ EXPECTED FAILURE (Status: {response.status_code})")

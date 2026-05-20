@@ -325,7 +325,7 @@ def handle_token(event):
     req.add_header("Content-Type", "application/x-www-form-urlencoded")
 
     try:
-        with urllib.request.urlopen(req, timeout=30) as resp:
+        with urllib.request.urlopen(req, timeout=30) as resp:  # nosec B310
             token_data = json.loads(resp.read().decode())
             if "created_at" not in token_data:
                 token_data["created_at"] = int(time.time() * 1000)
@@ -473,7 +473,7 @@ def proxy_to_gateway(event):
             )
         )
 
-        with urllib.request.urlopen(req, timeout=60) as resp:
+        with urllib.request.urlopen(req, timeout=60) as resp:  # nosec B310
             resp_body = resp.read().decode()
             logger.debug(resp_body)
             logger.debug(resp.headers)

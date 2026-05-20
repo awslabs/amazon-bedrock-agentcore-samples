@@ -72,7 +72,7 @@ def get_weather(location: str) -> str:
 def calculate(expression: str) -> str:
     """Evaluate a simple arithmetic expression."""
     try:
-        result = eval(expression, {"__builtins__": {}})  # noqa: S307
+        result = eval(expression, {"__builtins__": {}})  # noqa: S307  # nosec B307
         return f"{expression} = {result}"
     except Exception as exc:
         return f"Error evaluating expression: {exc}"

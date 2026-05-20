@@ -69,7 +69,7 @@ ctrl = boto3.client("bedrock-agentcore-control", region_name=REGION)
 ROLE_NAME = f"{RUNTIME_NAME}Role"
 S3_BUCKET = f"bedrock-agentcore-code-{ACCOUNT_ID}-{REGION}"
 S3_KEY = f"{RUNTIME_NAME}/deployment_package.zip"
-BUILD_DIR = Path(f"/tmp/{RUNTIME_NAME}_build")
+BUILD_DIR = Path(f"/tmp/{RUNTIME_NAME}_build")  # nosec B108
 STATE_FILE = Path(f"agent_state_{RUNTIME_NAME}.json")
 
 SCRIPT_DIR = Path(__file__).parent

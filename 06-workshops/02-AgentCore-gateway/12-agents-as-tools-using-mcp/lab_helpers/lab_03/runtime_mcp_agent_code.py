@@ -71,7 +71,7 @@ if AWS_SECRET_ACCESS_KEY.lower() == 'none':
 # Initialize FastMCP server for AgentCore Runtime
 # host="0.0.0.0" - Listens on all interfaces as required by AgentCore
 # stateless_http=True - Enables session isolation for enterprise security
-mcp = FastMCP("SRE Remediation Agent", host="0.0.0.0", stateless_http=True)
+mcp = FastMCP("SRE Remediation Agent", host="0.0.0.0", stateless_http=True)  # nosec B104
 
 # Global variables for Code Interpreter
 agentcore_code_interpreter = None
