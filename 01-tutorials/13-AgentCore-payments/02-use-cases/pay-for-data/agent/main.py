@@ -460,7 +460,7 @@ settles USDC on-chain and retries the request. You do not need to handle payment
 ## Working Rules
 
 - Use http_request for all Heurist endpoint calls. Always method="POST", params as JSON body.
-- Parallelize data fetches when possible — multiple http_request calls in the same round.
+- Parallelize independent data fetches — issue multiple http_request calls in the same tool-use round when they don't depend on each other's results. Payment is handled per-call.
 - Use AgentCore Code Interpreter for pandas/matplotlib analysis.
 - Never fabricate data. Only use values returned by tools.
 - If a tool call fails, report the error and stop.
