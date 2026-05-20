@@ -116,3 +116,4 @@
 - Cristiano Scandura (scandura)
 - palbiren
 - Gui Ruggiero (guiruggiero)
+- Chris Lamont-Smith (clamonts)
