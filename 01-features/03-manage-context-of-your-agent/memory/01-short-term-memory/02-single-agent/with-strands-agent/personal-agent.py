@@ -54,15 +54,15 @@ logger = logging.getLogger("personal-agent")
 
 
 # Imports
-import os
-from strands import Agent, tool
-from strands.hooks import (
+import os  # noqa: E402
+from strands import Agent, tool  # noqa: E402
+from strands.hooks import (  # noqa: E402
     AgentInitializedEvent,
     HookProvider,
     HookRegistry,
     MessageAddedEvent,
 )
-from bedrock_agentcore.memory import MemoryClient
+from bedrock_agentcore.memory import MemoryClient  # noqa: E402
 
 # Configuration
 REGION = os.getenv("AWS_REGION", "us-west-2")  # AWS region for the agent
@@ -75,8 +75,8 @@ SESSION_ID = "personal_session_001"  # Unique session identifier
 # First, let's create a simple web search tool for the agent.
 
 
-from ddgs.exceptions import DDGSException, RatelimitException
-from ddgs import DDGS
+from ddgs.exceptions import DDGSException, RatelimitException  # noqa: E402
+from ddgs import DDGS  # noqa: E402
 
 
 @tool
@@ -110,7 +110,7 @@ logger.info("✅ Web search tool ready")
 #
 
 
-from botocore.exceptions import ClientError
+from botocore.exceptions import ClientError  # noqa: E402
 
 # Initialize Memory Client
 client = MemoryClient(region_name=REGION)

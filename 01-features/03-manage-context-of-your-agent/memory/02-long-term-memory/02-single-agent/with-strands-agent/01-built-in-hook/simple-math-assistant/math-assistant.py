@@ -103,7 +103,7 @@ ASSISTANT = MessageRole.ASSISTANT
 #
 
 
-from botocore.exceptions import ClientError
+from botocore.exceptions import ClientError  # noqa: E402
 
 # Initialize Memory Client
 memory_client = MemoryClient(region_name=REGION)

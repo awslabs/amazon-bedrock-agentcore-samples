@@ -17,7 +17,6 @@ from typing import Dict, List
 from botocore.exceptions import ClientError
 
 from lab_helpers.config import AWS_REGION
-from lab_helpers.constants import PARAMETER_PATHS
 from .iam_setup import delete_supervisor_runtime_iam_role
 
 logger = logging.getLogger(__name__)

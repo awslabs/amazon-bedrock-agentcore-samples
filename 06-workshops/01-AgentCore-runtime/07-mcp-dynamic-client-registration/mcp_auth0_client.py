@@ -37,11 +37,11 @@ def _patched_httpx_request_init(self, method, url, *args, **kwargs):
 httpx.Request.__init__ = _patched_httpx_request_init
 
 # Now import MCP modules - they will use patched httpx
-from mcp.client.auth import OAuthClientProvider, TokenStorage
-from mcp.client.session import ClientSession
-from mcp.client.sse import sse_client
-from mcp.client.streamable_http import streamablehttp_client
-from mcp.shared.auth import OAuthClientInformationFull, OAuthClientMetadata, OAuthToken
+from mcp.client.auth import OAuthClientProvider, TokenStorage  # noqa: E402
+from mcp.client.session import ClientSession  # noqa: E402
+from mcp.client.sse import sse_client  # noqa: E402
+from mcp.client.streamable_http import streamablehttp_client  # noqa: E402
+from mcp.shared.auth import OAuthClientInformationFull, OAuthClientMetadata, OAuthToken  # noqa: E402
 
 
 class InMemoryTokenStorage(TokenStorage):

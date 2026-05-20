@@ -32,7 +32,7 @@ def mask_pii_with_guardrails(text: str) -> str:
     
     if not GUARDRAIL_ID:
         print("[DEBUG] WARNING: GUARDRAIL_ID not configured, skipping PII masking")
-        print(f"[DEBUG] mask_pii_with_guardrails - RETURNING original text (no guardrail)")
+        print("[DEBUG] mask_pii_with_guardrails - RETURNING original text (no guardrail)")
         return text
     
     try:
@@ -64,7 +64,7 @@ def mask_pii_with_guardrails(text: str) -> str:
             assessments = response.get('assessments', [])
             
             if usage.get('contentPolicyUnits', 0) > 0:
-                print(f"[DEBUG] PII detected and anonymized by Guardrails")
+                print("[DEBUG] PII detected and anonymized by Guardrails")
                 
                 # Log what types of PII were detected
                 if assessments:
@@ -75,10 +75,10 @@ def mask_pii_with_guardrails(text: str) -> str:
                             detected_types = [entity.get('type') for entity in pii_entities]
                             print(f"[DEBUG]   Detected PII types: {', '.join(detected_types)}")
             
-            print(f"[DEBUG] mask_pii_with_guardrails - RETURNING masked_text")
+            print("[DEBUG] mask_pii_with_guardrails - RETURNING masked_text")
             return masked_text
         
-        print(f"[DEBUG] No outputs from Guardrails, RETURNING original text")
+        print("[DEBUG] No outputs from Guardrails, RETURNING original text")
         return text
         
     except Exception as e:
@@ -94,7 +94,7 @@ def mask_pii_with_guardrails(text: str) -> str:
             print("[DEBUG]   ⚠ Verify the Lambda environment variables are set correctly")
         
         # On error, return original text (fail open to avoid blocking)
-        print(f"[DEBUG] mask_pii_with_guardrails - RETURNING original text (error occurred)")
+        print("[DEBUG] mask_pii_with_guardrails - RETURNING original text (error occurred)")
         return text
 
 def mask_tool_response(response_body: Dict[str, Any]) -> Dict[str, Any]:
@@ -112,20 +112,20 @@ def mask_tool_response(response_body: Dict[str, Any]) -> Dict[str, Any]:
     
     # Create a deep copy to avoid modifying the original
     masked_response = json.loads(json.dumps(response_body))
-    print(f"[DEBUG] Created deep copy of response_body")
+    print("[DEBUG] Created deep copy of response_body")
     
     # Navigate to body->result->content
     if 'result' not in masked_response:
-        print(f"[DEBUG] No 'result' field in response_body")
+        print("[DEBUG] No 'result' field in response_body")
         return masked_response
     
     if 'content' not in masked_response['result']:
-        print(f"[DEBUG] No 'content' field in result")
+        print("[DEBUG] No 'content' field in result")
         return masked_response
     
     content_list = masked_response['result']['content']
     if not isinstance(content_list, list) or len(content_list) == 0:
-        print(f"[DEBUG] 'content' is not a list or is empty")
+        print("[DEBUG] 'content' is not a list or is empty")
         return masked_response
     
     print(f"[DEBUG] Processing {len(content_list)} content items")
@@ -146,7 +146,7 @@ def mask_tool_response(response_body: Dict[str, Any]) -> Dict[str, Any]:
         try:
             # Try to parse the text as JSON
             parsed_json = json.loads(text_value)
-            print(f"[DEBUG] Successfully parsed text as JSON")
+            print("[DEBUG] Successfully parsed text as JSON")
             print(f"[DEBUG] Parsed JSON structure: {json.dumps(parsed_json, default=str)[:300]}")
             
             # Convert the parsed JSON to a pretty string for Guardrails processing
@@ -154,14 +154,14 @@ def mask_tool_response(response_body: Dict[str, Any]) -> Dict[str, Any]:
             print(f"[DEBUG] Converted to JSON string for Guardrails (first 300 chars): {json_string[:300]}")
             
             # Apply Bedrock Guardrails to anonymize the JSON content
-            print(f"[DEBUG] Applying Bedrock Guardrails to anonymize JSON content...")
+            print("[DEBUG] Applying Bedrock Guardrails to anonymize JSON content...")
             anonymized_json_string = mask_pii_with_guardrails(json_string)
             print(f"[DEBUG] Anonymized JSON string (first 300 chars): {anonymized_json_string[:300]}")
             
             # Parse the anonymized string back to JSON object
             try:
                 anonymized_json = json.loads(anonymized_json_string)
-                print(f"[DEBUG] Successfully parsed anonymized string back to JSON")
+                print("[DEBUG] Successfully parsed anonymized string back to JSON")
                 print(f"[DEBUG] Anonymized JSON object: {json.dumps(anonymized_json, default=str)[:300]}")
                 
                 # Replace with the JSON object directly (not as a string)
@@ -170,15 +170,15 @@ def mask_tool_response(response_body: Dict[str, Any]) -> Dict[str, Any]:
                 
             except json.JSONDecodeError as e:
                 print(f"[DEBUG] Failed to parse anonymized string back to JSON: {e}")
-                print(f"[DEBUG] Using anonymized string as-is")
+                print("[DEBUG] Using anonymized string as-is")
                 masked_response['result']['content'][i]['text'] = anonymized_json_string
                 
         except json.JSONDecodeError:
             # Not JSON, treat as plain text
-            print(f"[DEBUG] Text is not JSON, treating as plain text")
+            print("[DEBUG] Text is not JSON, treating as plain text")
             
             # Apply Bedrock Guardrails to anonymize the text
-            print(f"[DEBUG] Applying Bedrock Guardrails to anonymize plain text...")
+            print("[DEBUG] Applying Bedrock Guardrails to anonymize plain text...")
             anonymized_text = mask_pii_with_guardrails(text_value)
             print(f"[DEBUG] Anonymized text (first 200 chars): {anonymized_text[:200]}")
             
@@ -186,7 +186,7 @@ def mask_tool_response(response_body: Dict[str, Any]) -> Dict[str, Any]:
             masked_response['result']['content'][i]['text'] = anonymized_text
             print(f"[DEBUG] Replaced text in content item {i}")
     
-    print(f"[DEBUG] mask_tool_response - RETURNING masked_response")
+    print("[DEBUG] mask_tool_response - RETURNING masked_response")
     return masked_response
 
 def lambda_handler(event, context):
@@ -222,7 +222,7 @@ def lambda_handler(event, context):
     
     Returns transformed response with masked PII for any tool.
     """
-    print(f"[DEBUG] ========== LAMBDA HANDLER START ==========")
+    print("[DEBUG] ========== LAMBDA HANDLER START ==========")
     print(f"[DEBUG] PII Masking Interceptor - Received event: {json.dumps(event, default=str)}")
     
     try:
@@ -259,7 +259,7 @@ def lambda_handler(event, context):
             tool_name = params.get('name', '')
             
             print(f"[DEBUG] Tool called: {tool_name}")
-            print(f"[DEBUG] Applying PII masking to tool response...")
+            print("[DEBUG] Applying PII masking to tool response...")
             
             # Mask PII in the response for any tool
             masked_body = mask_tool_response(response_body)
@@ -279,11 +279,11 @@ def lambda_handler(event, context):
             }
             
             print(f"[DEBUG] lambda_handler - RETURNING (tools/call): {json.dumps(return_obj, default=str)}")
-            print(f"[DEBUG] ========== LAMBDA HANDLER END (tools/call) ==========")
+            print("[DEBUG] ========== LAMBDA HANDLER END (tools/call) ==========")
             return return_obj
         
         # Pass through unchanged for non-customer-data responses
-        print(f"[DEBUG] Method is not 'tools/call', passing through unchanged")
+        print("[DEBUG] Method is not 'tools/call', passing through unchanged")
         
         passthrough_obj = {
             "interceptorOutputVersion": "1.0",
@@ -297,7 +297,7 @@ def lambda_handler(event, context):
         }
         
         print(f"[DEBUG] lambda_handler - RETURNING (passthrough): {json.dumps(passthrough_obj, default=str)}")
-        print(f"[DEBUG] ========== LAMBDA HANDLER END (passthrough) ==========")
+        print("[DEBUG] ========== LAMBDA HANDLER END (passthrough) ==========")
         return passthrough_obj
     
     except Exception as e:
@@ -319,5 +319,5 @@ def lambda_handler(event, context):
         }
         
         print(f"[DEBUG] lambda_handler - RETURNING (error): {json.dumps(error_obj, default=str)}")
-        print(f"[DEBUG] ========== LAMBDA HANDLER END (error) ==========")
+        print("[DEBUG] ========== LAMBDA HANDLER END (error) ==========")
         return error_obj

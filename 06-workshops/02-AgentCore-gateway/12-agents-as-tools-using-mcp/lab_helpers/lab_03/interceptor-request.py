@@ -89,7 +89,7 @@ def lambda_handler(event, context):
         
         # tools/list is typically allowed without AgentID
         if method == "tools/list":
-            print(f"Allowing tools/list")
+            print("Allowing tools/list")
             return {
                 "interceptorOutputVersion": "1.0",
                 "mcp": {
@@ -119,9 +119,9 @@ def lambda_handler(event, context):
                         print(f"SRE user not authorized for action_type: {action_type}")
                         return _deny_request(
                             rpc_id,
-                            message=f"SRE users can only use action_type='only_plan'"
+                            message="SRE users can only use action_type='only_plan'"
                         )
-                    print(f"SRE user authorized with action_type=only_plan")
+                    print("SRE user authorized with action_type=only_plan")
                 elif "approvers" in user_groups:
                     # Approvers can call all tools
                     print(f"Approver authorized for tool: {tool_name}")

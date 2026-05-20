@@ -5,8 +5,6 @@ Removes all resources created by main.py including gateways, runtimes, Cognito r
 """
 import os
 import boto3
-from boto3.session import Session
-from botocore.exceptions import ClientError
 import json
 import argparse
 from pathlib import Path
@@ -42,7 +40,7 @@ def main():
 
     # Confirmation prompt
     if not args.confirm:
-        print(f"This will delete the following resources:")
+        print("This will delete the following resources:")
         print(f"  Gateway: {args.gateway_name}")
         print(f"  Runtimes: {', '.join(runtime_names)}")
         print(f"  Region: {args.region}")

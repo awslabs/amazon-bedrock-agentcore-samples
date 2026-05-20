@@ -4,25 +4,17 @@ Tools for the Weekly Update Generator Agent.
 Contains all tool functions for data reading, analysis, visualization, and reporting.
 """
 
-import time
 import csv
 import json
 import os
 from datetime import datetime, timedelta
 from strands import tool
-from strands_tools import file_write
 import matplotlib.pyplot as plt
 import matplotlib
 matplotlib.use('Agg')  # Non-interactive backend
 import numpy as np
-from scipy import stats
 from sklearn.linear_model import LinearRegression
-from sklearn.preprocessing import StandardScaler
 import boto3
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
-from email.mime.application import MIMEApplication
-from email.mime.image import MIMEImage
 
 # S3 configuration for report uploads
 S3_BUCKET = 'a-sample-dataset-6'  # Will be updated by update_demo_dates.py
@@ -328,7 +320,7 @@ def generate_metrics_trend_chart() -> str:
             clean = value_str.replace('$', '').replace(',', '').replace('%', '').replace('ms', '').replace(' days', '').split()[0]
             try:
                 return float(clean)
-            except:
+            except:  # noqa: E722
                 return 0
         
         # Create 2x2 subplot grid
@@ -737,7 +729,7 @@ def generate_project_timeline_chart() -> str:
         plt.savefig(output_path, dpi=150, bbox_inches='tight')
         plt.close()
         
-        print(f"✓ Project timeline chart generated")
+        print("✓ Project timeline chart generated")
         return f"Generated project timeline chart: {output_path}"
     except Exception as e:
         return f"Error generating timeline chart: {e}"
@@ -942,7 +934,7 @@ def generate_metrics_forecast_chart() -> str:
         plt.savefig(output_path, dpi=150)
         plt.close()
         
-        print(f"✓ Forecast visualization generated")
+        print("✓ Forecast visualization generated")
         return f"Generated metrics forecast chart: {output_path}"
     except Exception as e:
         return f"Error generating forecast chart: {e}"
@@ -1004,7 +996,7 @@ def generate_team_velocity_chart() -> str:
         plt.savefig(output_path, dpi=150, bbox_inches='tight')
         plt.close()
         
-        print(f"✓ Team velocity chart generated")
+        print("✓ Team velocity chart generated")
         return f"Generated team velocity chart: {output_path}"
     except Exception as e:
         return f"Error generating velocity chart: {e}"
@@ -1080,7 +1072,7 @@ def upload_report_to_s3() -> str:
         if os.path.exists(report_dir):
             print(f"✓ Directory exists, contents: {os.listdir(report_dir)}")
         else:
-            print(f"❌ Directory does not exist!")
+            print("❌ Directory does not exist!")
             # Try to create it
             os.makedirs(report_dir, exist_ok=True)
             print(f"✓ Created directory: {report_dir}")
@@ -1112,7 +1104,7 @@ def upload_report_to_s3() -> str:
         report_url = f"s3://{bucket}/{s3_prefix}/{week_folder}/weekly_report.md"
         https_url = f"https://{bucket}.s3.amazonaws.com/{s3_prefix}/{week_folder}/weekly_report.md"
         
-        print(f"\n✅ Upload complete!")
+        print("\n✅ Upload complete!")
         print(f"   Uploaded {len(uploaded_files)} files")
         print(f"   S3 URI: {report_url}")
         print(f"   HTTPS URL: {https_url}")

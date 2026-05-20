@@ -223,8 +223,8 @@ def update_jwt_claims(config: dict, new_claims: dict) -> None:
     NOTE: After updating, wait ~5s for Lambda changes and then fetch a fresh token.
     """
     region = config["region"]
-    account_id = config["account_id"]
-    user_pool_id = config["gateway"]["client_info"]["user_pool_id"]
+    account_id = config["account_id"]  # noqa: F841
+    user_pool_id = config["gateway"]["client_info"]["user_pool_id"]  # noqa: F841
     claims_lambda_arn = config["claims_lambda_arn"]
 
     claims_json = json.dumps(new_claims, indent=12)

@@ -75,8 +75,8 @@ region = os.getenv("AWS_REGION", "us-west-2")
 # In this section, we'll create a memory resource configured with long-term memory capabilities. Unlike our previous short-term memory example, this implementation includes specific memory strategies that enable consolidated information retention.
 
 
-from bedrock_agentcore.memory import MemoryClient
-from bedrock_agentcore.memory.constants import StrategyType
+from bedrock_agentcore.memory import MemoryClient  # noqa: E402
+from bedrock_agentcore.memory.constants import StrategyType  # noqa: E402
 
 client = MemoryClient(region_name=region)
 
@@ -265,8 +265,8 @@ except Exception as e:
 # To create a memory-enabled agent, we'll use the Strands framework and connect it to our AgentCore Memory resource
 
 
-from strands import Agent
-from strands_tools.agent_core_memory import AgentCoreMemoryToolProvider
+from strands import Agent  # noqa: E402
+from strands_tools.agent_core_memory import AgentCoreMemoryToolProvider  # noqa: E402
 
 
 system_prompt = """You are the Culinary Assistant, a sophisticated restaurant recommendation assistant.

@@ -105,7 +105,7 @@ print("Cognito setup completed ✓")
 # For this example, we'll create a simple short-term memory resource without any additional long-term strategies. The memory will store all conversation messages, helping our agent remember previous interactions when continuing a session after it has been terminated in AgentCore Runtime.
 
 
-from botocore.exceptions import ClientError
+from botocore.exceptions import ClientError  # noqa: E402
 
 # Create unique identifier for this resource
 unique_id = str(uuid.uuid4())[:8]
@@ -224,12 +224,12 @@ except Exception as e:
 # Let's set up our deployment configuration:
 
 
-import json
-import subprocess
-import shutil
-import requests
-from botocore.auth import SigV4Auth
-from botocore.awsrequest import AWSRequest
+import json  # noqa: E402
+import subprocess  # noqa: E402
+import shutil  # noqa: E402
+import requests  # noqa: E402
+from botocore.auth import SigV4Auth  # noqa: E402
+from botocore.awsrequest import AWSRequest  # noqa: E402
 
 # ── Deploy to AgentCore Runtime (native boto3 S3 code deployment) ─────────────
 

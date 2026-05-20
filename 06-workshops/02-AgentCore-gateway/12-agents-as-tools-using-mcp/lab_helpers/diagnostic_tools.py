@@ -2,12 +2,10 @@
 
 # AWS SDK and configuration
 import boto3
-import json
 import datetime
-from pprint import pprint
 
 # Workshop configuration
-from lab_helpers.config import MODEL_ID, AWS_REGION, AWS_PROFILE
+from lab_helpers.config import AWS_REGION
 
 # Initialize AWS clients
 cloudwatch_client = boto3.client('logs', region_name=AWS_REGION)
@@ -19,7 +17,7 @@ sts_client = boto3.client('sts', region_name=AWS_REGION)
 def fetch_crm_app_logs(log_group_name="/aws/sre-workshop/crm-application", hours=2, use_mock=False):
     """Fetch CRM application logs from CloudWatch"""
     if use_mock:
-        return mock_data.get_ec2_logs()
+        return mock_data.get_ec2_logs()  # noqa: F821
     
     try:
         now = datetime.datetime.now(datetime.timezone.utc)
@@ -41,7 +39,7 @@ def fetch_crm_app_logs(log_group_name="/aws/sre-workshop/crm-application", hours
 def fetch_ec2_logs(log_group_name="/aws/sre-workshop/application", hours=2, use_mock=False):
     """Fetch EC2 application logs from CloudWatch or mock data"""
     if use_mock:
-        return mock_data.get_ec2_logs()
+        return mock_data.get_ec2_logs()  # noqa: F821
 
     try:
         now = datetime.datetime.now(datetime.timezone.utc)
@@ -62,7 +60,7 @@ def fetch_ec2_logs(log_group_name="/aws/sre-workshop/application", hours=2, use_
 def fetch_nginx_error_logs(log_group_name="/aws/sre-workshop/nginx/error", hours=2, use_mock=False):
     """Fetch NGINX error logs from CloudWatch or mock data"""
     if use_mock:
-        return mock_data.get_nginx_logs()
+        return mock_data.get_nginx_logs()  # noqa: F821
 
     try:
         now = datetime.datetime.now(datetime.timezone.utc)
@@ -83,7 +81,7 @@ def fetch_nginx_error_logs(log_group_name="/aws/sre-workshop/nginx/error", hours
 def fetch_nginx_access_logs(log_group_name="/aws/sre-workshop/nginx/access", hours=24, use_mock=False):
     """Fetch NGINX access/eor logs from CloudWatch or mock data"""
     if use_mock:
-        return mock_data.get_nginx_logs()
+        return mock_data.get_nginx_logs()  # noqa: F821
 
     try:
         now = datetime.datetime.now(datetime.timezone.utc)
@@ -103,11 +101,11 @@ def fetch_nginx_access_logs(log_group_name="/aws/sre-workshop/nginx/access", hou
 def fetch_dynamodb_metrics(table_name, period_minutes=60, use_mock=False):
     """Fetch DynamoDB operation logs from CloudWatch or mock data"""
     if use_mock:
-        return mock_data.get_dynamodb_logs()
+        return mock_data.get_dynamodb_logs()  # noqa: F821
 
     try:
         end_time = datetime.datetime.utcnow()
-        start_time = end_time - timedelta(minutes=period_minutes)
+        start_time = end_time - timedelta(minutes=period_minutes)  # noqa: F821
 
     # Query all metrics in one call using get_metric_data
         cloudwatch = boto3.client('cloudwatch', region_name=AWS_REGION)

@@ -115,10 +115,10 @@ async def _filtered_aput_messages(self, messages: List[ChatMessage]) -> None:
 
 
 AgentCoreMemory.aput_messages = _filtered_aput_messages
-from llama_index.core.agent.workflow import FunctionAgent
-from llama_index.core.tools import FunctionTool
-from datetime import datetime
-import os
+from llama_index.core.agent.workflow import FunctionAgent  # noqa: E402
+from llama_index.core.tools import FunctionTool  # noqa: E402
+from datetime import datetime  # noqa: E402
+import os  # noqa: E402
 
 
 # ## Step 2: AgentCore Memory Configuration
@@ -254,7 +254,7 @@ print("✅ Investment Portfolio Advisor with short-term memory is ready!")
 
 # Initialize advisory session with client details
 
-import asyncio
+import asyncio  # noqa: E402
 
 
 async def main():
@@ -540,7 +540,7 @@ async def main():
 
             return pass_rate
 
-    validator = TestValidator()
+    validator = TestValidator()  # noqa: F841
     print("✅ Validation functions loaded!")
 
     # Run all validation tests

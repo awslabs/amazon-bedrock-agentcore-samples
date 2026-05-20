@@ -141,10 +141,10 @@ async def _filtered_aput_messages(self, messages: List[ChatMessage]) -> None:
 
 
 AgentCoreMemory.aput_messages = _filtered_aput_messages
-from llama_index.core.agent.workflow import FunctionAgent
-from llama_index.core.tools import FunctionTool
-import os
-import boto3
+from llama_index.core.agent.workflow import FunctionAgent  # noqa: E402
+from llama_index.core.tools import FunctionTool  # noqa: E402
+import os  # noqa: E402
+import boto3  # noqa: E402
 
 print("✅ All dependencies imported successfully!")
 
@@ -403,7 +403,7 @@ agent_week1, memory_week1 = create_research_session("week1")
 
 # Establish research foundation
 
-import asyncio
+import asyncio  # noqa: E402
 
 
 async def main():
@@ -717,7 +717,7 @@ async def main():
 
             return pass_rate
 
-    validator = TestValidator()
+    validator = TestValidator()  # noqa: F841
     print("✅ Validation functions loaded!")
 
     # Run all validation tests

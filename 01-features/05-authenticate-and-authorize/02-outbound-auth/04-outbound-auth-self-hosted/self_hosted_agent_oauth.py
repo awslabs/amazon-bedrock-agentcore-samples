@@ -221,7 +221,7 @@ def run_agent():
     """
     agent_user_id = os.environ.get("AGENT_USER_ID", "quickstart-user")
 
-    env = {
+    env = {  # noqa: F841
         **os.environ,
         "CREDENTIAL_PROVIDER_NAME": CREDENTIAL_PROVIDER_NAME,
         "AWS_REGION": REGION,

@@ -26,7 +26,6 @@ import os
 import boto3
 from typing import Dict, Any, Optional
 import urllib.request
-import base64
 from jose import jwt, JWTError
 
 # Import token exchange module
@@ -227,7 +226,7 @@ def extract_bearer_token_from_mcp(event: Dict[str, Any]) -> Optional[str]:
             else:
                 token = auth_header
             
-            logger.info(f"✅ Bearer token extracted from MCP gateway request")
+            logger.info("✅ Bearer token extracted from MCP gateway request")
             return token
         
         logger.warning("⚠️  Bearer token not found in MCP gateway request headers")
@@ -428,9 +427,9 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             if tenant_credentials:
                 logger.info(f"🔑 Obtained temporary credentials for role: {tenant_credentials['RoleName']}")
             else:
-                logger.warning(f"⚠️  Failed to exchange JWT to IAM credentials")
+                logger.warning("⚠️  Failed to exchange JWT to IAM credentials")
         else:
-            logger.warning(f"⚠️  No suitable claim found for token exchange")
+            logger.warning("⚠️  No suitable claim found for token exchange")
 
         # Add user identity to headers for downstream MCP server
         # The MCP server will use X-User-Identity for Lake Formation RLS
@@ -478,7 +477,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         }
 
         logger.info(f"✅ Request authorized for user: {user_principal}")
-        logger.info(f"📤 Returning transformed request")
+        logger.info("📤 Returning transformed request")
         
         return response
 

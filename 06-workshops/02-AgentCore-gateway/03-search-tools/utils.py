@@ -256,7 +256,7 @@ def get_bearer_token(
         )
 
         bearer_token = auth_response["AuthenticationResult"]["AccessToken"]
-        print(f"Bearer token obtained successfully")
+        print("Bearer token obtained successfully")
         return bearer_token
 
     except ClientError as error:

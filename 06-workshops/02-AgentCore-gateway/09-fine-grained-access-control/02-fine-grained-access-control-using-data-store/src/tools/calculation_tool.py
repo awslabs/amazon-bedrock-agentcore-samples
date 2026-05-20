@@ -6,7 +6,6 @@ This tool performs various mathematical calculations.
 
 import json
 import math
-from typing import Union
 
 
 def lambda_handler(event, context):

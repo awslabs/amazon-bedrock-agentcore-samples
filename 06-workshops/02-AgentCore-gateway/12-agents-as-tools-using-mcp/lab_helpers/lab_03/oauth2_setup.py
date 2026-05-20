@@ -63,9 +63,9 @@ class OAuth2CredentialProviderSetup:
             print("   Ensure Lab-01 Cognito setup has been completed first")
             raise
 
-        print(f"✅ Retrieved M2M credentials from Cognito")
+        print("✅ Retrieved M2M credentials from Cognito")
         print(f"   - M2M Client ID: {m2m_client_id}")
-        print(f"   - M2M Client Secret: ****")
+        print("   - M2M Client Secret: ****")
         print(f"   - User Pool ID: {user_pool_id}")
 
         # Build discovery URL for OAuth2 discovery endpoint
@@ -100,7 +100,7 @@ class OAuth2CredentialProviderSetup:
             provider_arn = response['oAuth2CredentialProviderArn']
             secret_arn = response.get('secretArn', '')
 
-            print(f"✅ OAuth2 credential provider created")
+            print("✅ OAuth2 credential provider created")
             print(f"   - Provider ARN: {provider_arn}")
             print(f"   - Secret ARN: {secret_arn}")
 
@@ -129,7 +129,7 @@ class OAuth2CredentialProviderSetup:
                 json.dumps(oauth2_config)
             )
 
-            print(f"\n✅ OAuth2 configuration saved to SSM Parameter Store")
+            print("\n✅ OAuth2 configuration saved to SSM Parameter Store")
 
             return oauth2_config
 
@@ -191,7 +191,7 @@ class OAuth2CredentialProviderSetup:
 
         target_name = f"{self.prefix}-runtime-m2m-target"
 
-        print(f"Creating Gateway target with OAuth2 M2M authentication:")
+        print("Creating Gateway target with OAuth2 M2M authentication:")
         print(f"  - Gateway ID: {gateway_id}")
         print(f"  - Runtime ARN: {runtime_arn}")
         print(f"  - Target Name: {target_name}")
@@ -224,7 +224,7 @@ class OAuth2CredentialProviderSetup:
 
             target_id = response['targetId']
 
-            print(f"✅ Runtime added as Gateway target with OAuth2 M2M auth")
+            print("✅ Runtime added as Gateway target with OAuth2 M2M auth")
             print(f"   - Target ID: {target_id}")
             print(f"   - Target Name: {target_name}")
 
@@ -244,7 +244,7 @@ class OAuth2CredentialProviderSetup:
                 json.dumps(target_config)
             )
 
-            print(f"\n✅ Gateway M2M target configuration saved to SSM Parameter Store")
+            print("\n✅ Gateway M2M target configuration saved to SSM Parameter Store")
 
             return target_config
 
@@ -283,7 +283,7 @@ class OAuth2CredentialProviderSetup:
                 gateway_role_arn = response['Parameter']['Value']
                 print(f"✅ Retrieved Gateway role ARN from SSM: {gateway_role_arn}")
             except ClientError:
-                print(f"❌ Gateway role ARN not found in SSM")
+                print("❌ Gateway role ARN not found in SSM")
                 raise
 
         # Extract role name from ARN
@@ -326,7 +326,7 @@ class OAuth2CredentialProviderSetup:
                 PolicyDocument=json.dumps(oauth2_permissions)
             )
 
-            print(f"✅ OAuth2 permissions attached to Gateway role")
+            print("✅ OAuth2 permissions attached to Gateway role")
             print(f"   - GetResourceOauth2Token: {provider_arn}")
             print(f"   - GetSecretValue: {secret_arn}")
 
@@ -360,7 +360,7 @@ class OAuth2CredentialProviderSetup:
         print("SETTING UP M2M AUTHENTICATION (GATEWAY ↔ RUNTIME)")
         print("="*70 + "\n")
 
-        print(f"Configuration:")
+        print("Configuration:")
         print(f"  Gateway ID: {gateway_id}")
         print(f"  Runtime ARN: {runtime_arn}")
         print(f"  Gateway Role: {gateway_role_arn}\n")
@@ -404,7 +404,7 @@ class OAuth2CredentialProviderSetup:
         print("  4. Gateway calls Runtime with M2M Bearer token")
         print("  5. Runtime validates M2M token and authorizes operation")
         print(f"\nM2M Scopes: {', '.join(target_config['scopes'])}")
-        print(f"\nAll configuration saved to SSM Parameter Store")
+        print("\nAll configuration saved to SSM Parameter Store")
 
         return complete_config
 
@@ -421,7 +421,7 @@ class OAuth2CredentialProviderSetup:
             self.agentcore.delete_oauth2_credential_provider(
                 oAuth2CredentialProviderId=provider_id
             )
-            print(f"✅ Deleted OAuth2 credential provider")
+            print("✅ Deleted OAuth2 credential provider")
 
         except Exception as e:
             print(f"⚠️  Could not delete OAuth2 provider: {e}")
@@ -438,7 +438,7 @@ class OAuth2CredentialProviderSetup:
         for param in ssm_params:
             try:
                 self.ssm.delete_parameter(Name=param)
-            except:
+            except:  # noqa: E722
                 pass
 
-        print(f"✅ OAuth2 cleanup complete")
+        print("✅ OAuth2 cleanup complete")

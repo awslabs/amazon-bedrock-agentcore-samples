@@ -98,9 +98,9 @@ def set_session_baggage(session_id: str, tenant_id: str, environment: str = "DEV
 
 # ── Travel Agent ──────────────────────────────────────────────────────────────
 
-from strands import Agent, tool
-from strands.models import BedrockModel
-from ddgs import DDGS
+from strands import Agent, tool  # noqa: E402
+from strands.models import BedrockModel  # noqa: E402
+from ddgs import DDGS  # noqa: E402
 
 
 @tool

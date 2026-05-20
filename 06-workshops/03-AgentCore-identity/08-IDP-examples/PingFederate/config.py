@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT-0
 """CDK deployment configuration."""
 
-from pydantic import BaseModel, Field
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 

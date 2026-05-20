@@ -16,15 +16,12 @@ Environment Variables:
     AWS_PROFILE         - AWS profile to use for credentials (optional)
 """
 
-import os
 import sys
 import time
 import json
-import uuid
 import tempfile
 import threading
 import webbrowser
-import socket
 import signal
 import shutil
 import gzip
@@ -32,7 +29,7 @@ import io
 import argparse
 from pathlib import Path
 from datetime import datetime
-from http.server import HTTPServer, BaseHTTPRequestHandler
+from http.server import HTTPServer
 
 import boto3
 from rich.console import Console
@@ -42,7 +39,7 @@ from rich.panel import Panel
 console = Console()
 
 # Direct import from session_replay_viewer in the same folder
-from session_replay_viewer import SessionReplayViewer, SessionReplayHandler
+from session_replay_viewer import SessionReplayViewer, SessionReplayHandler  # noqa: E402
 
 # Define CustomS3DataSource directly in this script to avoid import issues
 class CustomS3DataSource:
@@ -187,8 +184,8 @@ class CustomS3DataSource:
                                     if 'type' in event and 'timestamp' in event:
                                         all_events.append(event)
                                     else:
-                                        print(f"⚠️ Skipping invalid event (missing required fields)")
-                                except json.JSONDecodeError as je:
+                                        print("⚠️ Skipping invalid event (missing required fields)")
+                                except json.JSONDecodeError:
                                     print(f"⚠️ Invalid JSON in line: {line[:50]}...")
                                     
                         print(f"  Added {len(all_events)} events")

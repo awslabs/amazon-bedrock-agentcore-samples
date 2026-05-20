@@ -156,25 +156,25 @@ logging.basicConfig(
 logger = logging.getLogger("customer-support")
 
 # Import required modules for Strands Agent
-from strands import Agent, tool
-from strands.hooks import (
+from strands import Agent, tool  # noqa: E402
+from strands.hooks import (  # noqa: E402
     AfterInvocationEvent,
     HookProvider,
     HookRegistry,
     MessageAddedEvent,
 )
-from ddgs import DDGS
+from ddgs import DDGS  # noqa: E402
 
 # Import memory management modules
-from bedrock_agentcore.memory import MemoryClient
-from bedrock_agentcore.memory.constants import (
+from bedrock_agentcore.memory import MemoryClient  # noqa: E402
+from bedrock_agentcore.memory.constants import (  # noqa: E402
     ConversationalMessage,
     MessageRole,
     RetrievalConfig,
     StrategyType,
 )
-from bedrock_agentcore.memory.models import StringValue, MemoryRecord
-from bedrock_agentcore.memory.session import MemorySession, MemorySessionManager
+from bedrock_agentcore.memory.models import StringValue, MemoryRecord  # noqa: E402
+from bedrock_agentcore.memory.session import MemorySession, MemorySessionManager  # noqa: E402
 
 # Define message role constants
 USER = MessageRole.USER
@@ -189,8 +189,8 @@ CUSTOMER_ID = "customer_001"
 SESSION_ID = f"support_{datetime.now().strftime('%Y%m%d%H%M%S')}"
 
 # Import boto3 for IAM role creation
-import boto3
-import json as json_module
+import boto3  # noqa: E402
+import json as json_module  # noqa: E402
 
 logger.info("✅ Configuration loaded")
 logger.info(f"   Region: {REGION}")
@@ -256,7 +256,7 @@ def create_memory_execution_role():
     try:
         # Check if role already exists
         try:
-            existing_role = iam_client.get_role(RoleName=role_name)
+            existing_role = iam_client.get_role(RoleName=role_name)  # noqa: F841
             logger.info(f"✅ IAM role already exists: {role_arn}")
             return role_arn
         except ClientError as e:
@@ -327,7 +327,7 @@ except Exception as e:
 
 # Initialize Memory Client
 memory_client = MemoryClient(region_name=REGION)
-import time as _time
+import time as _time  # noqa: E402
 
 memory_name = f"CustomerSupportLTM_{int(_time.time()) % 100000}"
 
@@ -434,7 +434,7 @@ print(f"Number of strategies: {len(strategies)}")
 # ## Step 3: Create Agent Tools
 
 
-from ddgs.exceptions import DDGSException, RatelimitException
+from ddgs.exceptions import DDGSException, RatelimitException  # noqa: E402
 
 
 @tool

@@ -35,11 +35,11 @@ else:
 
 # ── Agent ──────────────────────────────────────────────────────────────────────
 
-from bedrock_agentcore.runtime import BedrockAgentCoreApp
-from ddgs import DDGS
-from strands import Agent, tool
-from strands.models import BedrockModel
-from strands.telemetry import StrandsTelemetry
+from bedrock_agentcore.runtime import BedrockAgentCoreApp  # noqa: E402
+from ddgs import DDGS  # noqa: E402
+from strands import Agent, tool  # noqa: E402
+from strands.models import BedrockModel  # noqa: E402
+from strands.telemetry import StrandsTelemetry  # noqa: E402
 
 app = BedrockAgentCoreApp()
 

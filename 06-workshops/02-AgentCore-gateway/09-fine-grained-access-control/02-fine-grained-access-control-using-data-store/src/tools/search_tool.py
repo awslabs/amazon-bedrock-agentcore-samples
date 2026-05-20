@@ -5,7 +5,6 @@ This tool simulates a search engine with mock results.
 """
 
 import json
-import random
 from datetime import datetime
 
 

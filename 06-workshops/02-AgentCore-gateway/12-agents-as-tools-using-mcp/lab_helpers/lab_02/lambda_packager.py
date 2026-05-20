@@ -17,8 +17,6 @@ import sys
 import zipfile
 import subprocess
 import shutil
-import json
-from pathlib import Path
 from typing import Dict, Optional, Tuple
 import boto3
 
@@ -83,7 +81,7 @@ def install_dependencies(
     Returns:
         (success: bool, stats: dict with installation info)
     """
-    print(f"\n📦 Installing dependencies...")
+    print("\n📦 Installing dependencies...")
 
     # Write requirements.txt
     req_file = os.path.join(build_dir, "requirements.txt")
@@ -96,10 +94,10 @@ def install_dependencies(
     os.makedirs(lib_dir, exist_ok=True)
 
     # Install dependencies
-    print(f"✓ Installing to lib/...")
-    print(f"  Target: Python 3.11 Linux x86_64 (Lambda runtime)")
+    print("✓ Installing to lib/...")
+    print("  Target: Python 3.11 Linux x86_64 (Lambda runtime)")
     try:
-        result = subprocess.run(
+        result = subprocess.run(  # noqa: F841
             [
                 sys.executable, "-m", "pip",
                 "install",
@@ -135,7 +133,7 @@ def install_dependencies(
         }
 
     except subprocess.TimeoutExpired:
-        print(f"❌ Installation timeout after 5 minutes")
+        print("❌ Installation timeout after 5 minutes")
         return False, {}
     except subprocess.CalledProcessError as e:
         print(f"❌ Installation failed: {e.stderr}")
@@ -171,7 +169,7 @@ def create_lambda_zip(
     Returns:
         (success: bool, stats: dict)
     """
-    print(f"\n📦 Creating Lambda ZIP package...")
+    print("\n📦 Creating Lambda ZIP package...")
 
     # Write app.py
     app_py = os.path.join(build_dir, "app.py")
@@ -213,7 +211,7 @@ def create_lambda_zip(
             if os.path.exists(req_file):
                 zf.write(req_file, "requirements.txt")
             total_files += 2
-            print(f"✓ Added app.py and requirements.txt at root")
+            print("✓ Added app.py and requirements.txt at root")
 
         zip_size = get_zip_size(output_zip)
 
@@ -254,7 +252,7 @@ def create_deployment_package(
 
     # Cleanup old build if exists
     if os.path.exists(build_dir):
-        print(f"\n🧹 Cleaning up existing build directory...")
+        print("\n🧹 Cleaning up existing build directory...")
         shutil.rmtree(build_dir)
 
     os.makedirs(build_dir, exist_ok=True)
@@ -264,11 +262,11 @@ def create_deployment_package(
     lab_helpers_src = "lab_helpers"
     if os.path.exists(lab_helpers_src):
         lab_helpers_dest = os.path.join(build_dir, "lab_helpers")
-        print(f"\n📂 Copying lab_helpers to build directory...")
+        print("\n📂 Copying lab_helpers to build directory...")
         shutil.copytree(lab_helpers_src, lab_helpers_dest, ignore=shutil.ignore_patterns('__pycache__', '*.pyc', '.pytest_cache'))
         print(f"✓ Copied lab_helpers/ to {build_dir}/lab_helpers/")
     else:
-        print(f"⚠️  lab_helpers directory not found in repository root")
+        print("⚠️  lab_helpers directory not found in repository root")
 
     # Step 1: Install dependencies
     success, install_stats = install_dependencies(build_dir, requirements_content)
@@ -282,7 +280,7 @@ def create_deployment_package(
         return {"status": "error", "error": "Failed to create ZIP"}
 
     # Step 3: Validate size
-    print(f"\n✅ Validating package size...")
+    print("\n✅ Validating package size...")
     zip_size = zip_stats["zip_size"]
     uncompressed_size = get_dir_size(build_dir)
 
@@ -345,7 +343,7 @@ def setup_s3_bucket(bucket_name: str, region_name: Optional[str] = None) -> Dict
     if region_name is None:
         region_name = AWS_REGION
 
-    print(f"\n📦 Setting up S3 bucket for deployment packages...")
+    print("\n📦 Setting up S3 bucket for deployment packages...")
 
     s3 = boto3.client('s3', region_name=region_name)
 
@@ -428,7 +426,7 @@ def upload_package_to_s3(
 
     zip_size = get_zip_size(zip_path)
 
-    print(f"\n📤 Uploading package to S3...")
+    print("\n📤 Uploading package to S3...")
     print(f"   Local file: {zip_path} ({format_size(zip_size)})")
     print(f"   Destination: s3://{s3_bucket}/{s3_key}")
 
@@ -451,7 +449,7 @@ def upload_package_to_s3(
         s3_uri = f"s3://{s3_bucket}/{s3_key}"
         s3_url = f"https://{s3_bucket}.s3.{region_name}.amazonaws.com/{s3_key}"
 
-        print(f"✓ Upload complete")
+        print("✓ Upload complete")
         print(f"  S3 URI: {s3_uri}")
         print(f"  HTTPS URL: {s3_url}")
 
@@ -496,7 +494,7 @@ def create_lambda_function_from_zip(
     if region_name is None:
         region_name = AWS_REGION
 
-    print(f"\n⚡ Deploying Lambda function...")
+    print("\n⚡ Deploying Lambda function...")
     print(f"   Function: {function_name}")
     print(f"   Role: {role_arn}")
 
@@ -512,23 +510,23 @@ def create_lambda_function_from_zip(
         key = parts[1] if len(parts) > 1 else ""
         code_arg = {"S3Bucket": bucket, "S3Key": key}
         upload_method = "S3"
-        print(f"   Upload method: S3")
+        print("   Upload method: S3")
     elif zip_path and os.path.exists(zip_path):
         # Direct ZIP upload (for smaller packages)
         with open(zip_path, 'rb') as f:
             code_arg = {"ZipFile": f.read()}
         upload_method = "Direct"
-        print(f"   Upload method: Direct ZIP")
+        print("   Upload method: Direct ZIP")
     else:
         return {"status": "error", "error": "No valid zip_path or s3_uri provided"}
 
     try:
         # Check if function exists
         try:
-            func = lambda_client.get_function(FunctionName=function_name)
+            func = lambda_client.get_function(FunctionName=function_name)  # noqa: F841
 
             # Function exists, update it
-            print(f"✓ Function exists, updating...")
+            print("✓ Function exists, updating...")
 
             response = lambda_client.update_function_code(
                 FunctionName=function_name,
@@ -536,12 +534,12 @@ def create_lambda_function_from_zip(
             )
 
             # Wait for update to complete
-            print(f"  Waiting for update to complete...")
+            print("  Waiting for update to complete...")
             waiter = lambda_client.get_waiter('function_updated')
             waiter.wait(FunctionName=function_name)
 
             # Update configuration
-            config_response = lambda_client.update_function_configuration(
+            config_response = lambda_client.update_function_configuration(  # noqa: F841
                 FunctionName=function_name,
                 Runtime='python3.11',
                 Handler='app.lambda_handler',
@@ -550,13 +548,13 @@ def create_lambda_function_from_zip(
                 Environment={'Variables': {'MODEL_ID': MODEL_ID, 'REGION': region_name}}
             )
 
-            print(f"✓ Configuration updated")
+            print("✓ Configuration updated")
 
             function_arn = response['FunctionArn']
 
         except lambda_client.exceptions.ResourceNotFoundException:
             # Function doesn't exist, create it
-            print(f"✓ Creating new function...")
+            print("✓ Creating new function...")
 
             response = lambda_client.create_function(
                 FunctionName=function_name,
@@ -571,21 +569,21 @@ def create_lambda_function_from_zip(
             )
 
             # Wait for creation to complete
-            print(f"  Waiting for function to become active...")
+            print("  Waiting for function to become active...")
             waiter = lambda_client.get_waiter('function_active')
             waiter.wait(FunctionName=function_name)
 
-            print(f"✓ Function created and active")
+            print("✓ Function created and active")
 
-            function_arn = response['FunctionArn']
+            function_arn = response['FunctionArn']  # noqa: F841
 
         # Get final function details
         final_func = lambda_client.get_function(FunctionName=function_name)
         config = final_func['Configuration']
 
-        print(f"\n" + "=" * 70)
-        print(f"✅ LAMBDA DEPLOYMENT SUCCESSFUL")
-        print(f"=" * 70)
+        print("\n" + "=" * 70)
+        print("✅ LAMBDA DEPLOYMENT SUCCESSFUL")
+        print("=" * 70)
         print(f"Function: {config['FunctionName']}")
         print(f"ARN: {config['FunctionArn']}")
         print(f"Runtime: {config['Runtime']}")
@@ -670,7 +668,7 @@ def setup_lambda_zip_deployment(
             region_name=region_name
         )
     except Exception as e:
-        print(f"❌ Could not retrieve Lambda role ARN from Parameter Store")
+        print("❌ Could not retrieve Lambda role ARN from Parameter Store")
         return {"status": "error", "error": f"Lambda role not found: {e}"}
 
     # Step 5: Deploy Lambda
@@ -686,7 +684,7 @@ def setup_lambda_zip_deployment(
         return lambda_result
 
     # Step 6: Save Lambda ARN to Parameter Store
-    print(f"\n📝 Saving Lambda ARN to Parameter Store...")
+    print("\n📝 Saving Lambda ARN to Parameter Store...")
     put_parameter(
         PARAMETER_PATHS["lab_02"]["lambda_function_arn"],
         lambda_result["function_arn"],

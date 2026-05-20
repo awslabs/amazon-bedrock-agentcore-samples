@@ -52,7 +52,7 @@ def _update_single_table(dynamodb, table_name: str) -> tuple:
         print(f"  Original billing mode: {original_billing_mode}")
         
         # Convert to provisioned capacity with dangerously low limits
-        print(f"  Converting to PROVISIONED mode with minimal capacity...")
+        print("  Converting to PROVISIONED mode with minimal capacity...")
         dynamodb.update_table(
             TableName=table_name,
             BillingMode='PROVISIONED',
@@ -111,7 +111,7 @@ def inject_dynamodb_throttling(resources: Dict[str, str], region_name: str, prof
             dynamodb = boto3.client('dynamodb', region_name=region_name)
         
         print(f"\nFound {len(table_keys)} DynamoDB table(s) to modify")
-        print(f"Processing tables in parallel for faster execution...")
+        print("Processing tables in parallel for faster execution...")
         print(f"\n{'='*60}")
         
         success_count = 0

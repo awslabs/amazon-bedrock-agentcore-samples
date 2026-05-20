@@ -302,9 +302,9 @@ print("  Ready for evaluation.")
 # in the same call. Provide ReferenceInputs ground truth to unlock evaluators
 # that require expected responses or trajectories.
 
-from bedrock_agentcore.evaluation import EvaluationClient
-from bedrock_agentcore.evaluation.client import ReferenceInputs
-from datetime import timedelta
+from bedrock_agentcore.evaluation import EvaluationClient  # noqa: E402
+from bedrock_agentcore.evaluation.client import ReferenceInputs  # noqa: E402
+from datetime import timedelta  # noqa: E402
 
 print("\n[3/4] Running on-demand evaluation (EvaluationClient) ...")
 

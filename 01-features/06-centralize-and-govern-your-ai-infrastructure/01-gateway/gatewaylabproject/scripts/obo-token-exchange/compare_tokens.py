@@ -37,7 +37,7 @@ old_tutorial_dir = os.path.abspath(
 )
 sys.path.insert(0, old_tutorial_dir)
 
-from token_callback_server import (
+from token_callback_server import (  # noqa: E402
     get_callback_url,
     is_server_running,
     wait_for_server_ready,

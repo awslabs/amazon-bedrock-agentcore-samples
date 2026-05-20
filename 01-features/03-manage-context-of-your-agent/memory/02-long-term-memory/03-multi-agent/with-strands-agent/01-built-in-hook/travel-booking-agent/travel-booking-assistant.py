@@ -78,8 +78,8 @@ MODEL_ID = "global.anthropic.claude-haiku-4-5-20251001-v1:0"
 # In this section, we'll create common long-term memory store with dedicated namespaces for each agent.
 
 
-from bedrock_agentcore.memory import MemoryClient
-from bedrock_agentcore.memory.constants import StrategyType
+from bedrock_agentcore.memory import MemoryClient  # noqa: E402
+from bedrock_agentcore.memory.constants import StrategyType  # noqa: E402
 
 client = MemoryClient(region_name=region)
 memory_name = "TravelBookingMemory"
@@ -134,8 +134,8 @@ hotel_namespace = f"travel/{user_actor_id}/preferences/"
 
 
 # Import the necessary components
-from strands import Agent, tool
-from strands_tools.agent_core_memory import AgentCoreMemoryToolProvider
+from strands import Agent, tool  # noqa: E402
+from strands_tools.agent_core_memory import AgentCoreMemoryToolProvider  # noqa: E402
 
 
 # ### Step 3: Create Memory Hook Provider

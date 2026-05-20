@@ -18,7 +18,6 @@ data to demonstrate the security pattern without requiring infrastructure setup.
 
 import json
 import random
-from datetime import datetime
 
 
 def lambda_handler(event, context):

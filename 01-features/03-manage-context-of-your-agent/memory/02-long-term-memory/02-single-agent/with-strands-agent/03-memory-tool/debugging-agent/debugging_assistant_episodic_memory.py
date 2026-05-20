@@ -69,15 +69,15 @@ logging.basicConfig(
 logger = logging.getLogger("debugging-assistant")
 
 # Import boto3 for control plane and data plane operations
-import boto3
+import boto3  # noqa: E402
 
 # Import Strands Agent framework
-from strands import Agent, tool
+from strands import Agent, tool  # noqa: E402
 
 logger.info("✅ All dependencies imported successfully")
 
 
-import os
+import os  # noqa: E402
 
 # Configuration
 REGION = os.getenv("AWS_REGION", "us-west-2")
@@ -169,8 +169,8 @@ except Exception as e:
 # Let's load past debugging sessions into episodic memory. Each session represents a complete debugging workflow.
 
 
-import os
-import glob
+import os  # noqa: E402
+import glob  # noqa: E402
 
 # Load all session data files
 data_dir = "./data"
@@ -220,8 +220,8 @@ logger.info(f"✅ Successfully hydrated {len(session_files)} debugging sessions"
 
 
 ### list memory records to see if its been extracted to LTM
-import time
-import pprint
+import time  # noqa: E402
+import pprint  # noqa: E402, F811
 
 reflection_namespace = f"debugging/{ACTOR_ID}/"
 # time.sleep(60)
@@ -241,7 +241,7 @@ if memories:
 
 
 # check if reflections and episodes have been generated or not.
-import pprint
+import pprint  # noqa: E402
 
 # Use boto3 client directly to retrieve memory records
 response = client.retrieve_memory_records(
@@ -612,7 +612,7 @@ for idx, episode in enumerate(episodes, 1):
     print("-" * 80)
 
 
-import pprint
+import pprint  # noqa: E402
 
 response = client.retrieve_memory_records(
     memoryId=memory_id,

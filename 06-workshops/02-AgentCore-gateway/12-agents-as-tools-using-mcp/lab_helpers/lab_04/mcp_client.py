@@ -137,7 +137,7 @@ class MCPClient:
             self.server_info = response['result'].get('serverInfo', {})
             self.initialized = True
 
-            print(f"  ✅ Session initialized")
+            print("  ✅ Session initialized")
             print(f"     Server: {self.server_info.get('name', 'Unknown')}")
             print(f"     Version: {self.server_info.get('version', 'Unknown')}")
 
@@ -215,7 +215,7 @@ class MCPClient:
 
         if 'result' in response:
             result = response['result']
-            print(f"  ✅ Tool execution successful")
+            print("  ✅ Tool execution successful")
 
             # Try to extract and display content
             if 'content' in result:
@@ -225,7 +225,7 @@ class MCPClient:
                             # Try to parse as JSON for better display
                             text_content = content_item['text']
                             parsed = json.loads(text_content)
-                            print(f"\n  📋 Result:")
+                            print("\n  📋 Result:")
                             print(f"     {json.dumps(parsed, indent=6)}")
                         except (json.JSONDecodeError, KeyError):
                             print(f"\n  📋 Result: {content_item['text'][:500]}...")

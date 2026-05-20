@@ -5,9 +5,7 @@ This tool simulates file system operations (list, read, write, delete).
 """
 
 import json
-import base64
 from datetime import datetime
-import hashlib
 
 
 # Mock file system

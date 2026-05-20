@@ -55,7 +55,7 @@ def create_supervisor_runtime_iam_role(
         account_id = sts.get_caller_identity()['Account']
 
     logger.info(f"Creating supervisor runtime IAM role: {role_name}")
-    logger.info(f"Authentication: JWT token propagation (User JWT → Supervisor → Gateways)")
+    logger.info("Authentication: JWT token propagation (User JWT → Supervisor → Gateways)")
 
     # Trust policy: Allow bedrock-agentcore service to assume role
     trust_policy = {

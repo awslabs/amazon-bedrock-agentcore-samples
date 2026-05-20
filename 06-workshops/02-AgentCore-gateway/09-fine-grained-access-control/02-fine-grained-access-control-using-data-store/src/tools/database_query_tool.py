@@ -5,8 +5,7 @@ This tool simulates database query operations.
 """
 
 import json
-import random
-from datetime import datetime, timedelta
+from datetime import datetime
 
 
 # Mock database of users

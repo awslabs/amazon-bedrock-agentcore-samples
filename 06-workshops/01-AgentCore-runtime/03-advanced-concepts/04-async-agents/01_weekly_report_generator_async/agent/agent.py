@@ -1,8 +1,6 @@
-from strands import Agent, tool
+from strands import Agent
 from strands.models import BedrockModel
 from bedrock_agentcore.runtime import BedrockAgentCoreApp, PingStatus
-import argparse
-import json
 import threading
 from tools import (
     read_project_status,
@@ -157,9 +155,9 @@ def agent(payload):
             elif isinstance(response, dict):
                 result = response.get('message', {}).get('content', [{}])[0].get('text', str(response))
             else:
-                result = str(response)
+                result = str(response)  # noqa: F841
             
-            print(f"✅ Report generation completed")
+            print("✅ Report generation completed")
         except Exception as e:
             import traceback
             print(f"❌ Report generation failed: {e}")

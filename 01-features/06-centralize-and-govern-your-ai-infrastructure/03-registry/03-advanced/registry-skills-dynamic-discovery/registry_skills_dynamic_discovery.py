@@ -194,11 +194,11 @@ print(f"\n{C.BOLD}=== 4. Dynamic Skill Discovery and Execution ==={C.RESET}")
 print(f"  {C.YELLOW}⏳ Waiting 100s for search index...{C.RESET}")
 time.sleep(100)
 
-from strands import Agent, tool
-from strands.models import BedrockModel
-from strands_tools import file_read
-from utils.python_exec_tool import python_exec, run_shell
-from utils.skill_loader import load_skill_from_registry
+from strands import Agent, tool  # noqa: E402
+from strands.models import BedrockModel  # noqa: E402
+from strands_tools import file_read  # noqa: E402
+from utils.python_exec_tool import python_exec, run_shell  # noqa: E402
+from utils.skill_loader import load_skill_from_registry  # noqa: E402
 
 
 @tool

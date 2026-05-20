@@ -60,8 +60,8 @@ def set_session_context(session_id: str):
 
 # ── Agent Tools with Custom Spans ─────────────────────────────────────────────
 
-from strands import Agent, tool
-from strands.models import BedrockModel
+from strands import Agent, tool  # noqa: E402
+from strands.models import BedrockModel  # noqa: E402
 
 
 @tool

@@ -3,7 +3,7 @@
 Script to add red highlights and arrows to radio buttons in Okta setup images
 """
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw
 import os
 
 def add_radio_button_highlights(image_path, output_path, radio_positions):
@@ -65,7 +65,7 @@ def main():
     )
     
     # Image 5.png - Radio buttons for controlled access and enable immediate access
-    image5_positions = [
+    image5_positions = [  # noqa: F841
         (362, 62),   # Allow everyone in your organization to access radio button
         (362, 194)   # Enable immediate access checkbox (treated as radio button)
     ]

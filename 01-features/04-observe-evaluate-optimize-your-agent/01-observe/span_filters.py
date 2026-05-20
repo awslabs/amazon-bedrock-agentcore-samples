@@ -169,9 +169,9 @@ if os.getenv("OTEL_PYTHON_EXCLUDED_URLS"):
 
 # ── Travel Agent with Span Filtering ─────────────────────────────────────────
 
-from strands import Agent, tool
-from strands.models import BedrockModel
-from ddgs import DDGS
+from strands import Agent, tool  # noqa: E402
+from strands.models import BedrockModel  # noqa: E402
+from ddgs import DDGS  # noqa: E402
 
 
 @tool

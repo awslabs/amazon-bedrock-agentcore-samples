@@ -1,7 +1,6 @@
 import sys
 import os
 import json
-import langfuse
 
 from langfuse.experiment import create_evaluator_from_autoevals
 from autoevals.llm import Factuality

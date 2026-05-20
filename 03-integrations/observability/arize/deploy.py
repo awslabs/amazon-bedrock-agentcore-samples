@@ -253,10 +253,10 @@ def main():
     print("\n" + "=" * 60)
     print("Deployment complete!")
     print(f"  Runtime ARN: {runtime['runtime_arn']}")
-    print(f"  Config:      runtime_config.json")
-    print(f"\n  Next steps:")
-    print(f"    python invoke.py")
-    print(f"    Open Arize dashboard → your project → Traces")
+    print("  Config:      runtime_config.json")
+    print("\n  Next steps:")
+    print("    python invoke.py")
+    print("    Open Arize dashboard → your project → Traces")
     print("=" * 60)
 
 

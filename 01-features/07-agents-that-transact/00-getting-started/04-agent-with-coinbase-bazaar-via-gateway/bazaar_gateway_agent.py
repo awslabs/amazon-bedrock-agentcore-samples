@@ -106,7 +106,7 @@ if not GATEWAY_URL:
         "then add GATEWAY_URL=<your-gateway-url> to .env and re-run."
     )
 
-from bedrock_agentcore.payments import PaymentManager
+from bedrock_agentcore.payments import PaymentManager  # noqa: E402
 
 manager = PaymentManager(payment_manager_arn=PAYMENT_MANAGER_ARN, region_name=REGION)
 instr = manager.get_payment_instrument(
@@ -139,12 +139,12 @@ print(f"Session: {SESSION_ID} (budget: $1.00)")
 
 # ── Step 4: Connect to Gateway and Create Agent ───────────────────────────────
 print("\n── Step 4: Connect to Gateway and Create Agent ──")
-from mcp.client.streamable_http import streamablehttp_client
-from strands import Agent
-from strands.models import BedrockModel
-from strands.tools.mcp.mcp_client import MCPClient
+from mcp.client.streamable_http import streamablehttp_client  # noqa: E402
+from strands import Agent  # noqa: E402
+from strands.models import BedrockModel  # noqa: E402
+from strands.tools.mcp.mcp_client import MCPClient  # noqa: E402
 
-from bedrock_agentcore.payments.integrations.strands import (
+from bedrock_agentcore.payments.integrations.strands import (  # noqa: E402
     AgentCorePaymentsPlugin,
     AgentCorePaymentsPluginConfig,
 )

@@ -225,7 +225,7 @@ def get_customer_profile(
             tenure_days = (datetime.now() - reg_date).days
             tenure_years = tenure_days // 365
             tenure_months = (tenure_days % 365) // 30
-        except:
+        except:  # noqa: E722
             tenure_years = 0
             tenure_months = 0
 

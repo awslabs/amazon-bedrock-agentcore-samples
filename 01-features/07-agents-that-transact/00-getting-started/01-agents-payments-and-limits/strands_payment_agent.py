@@ -83,8 +83,8 @@ print_summary(
 )
 
 # ── Step 2: Create Payment Session and Plugin ─────────────────────────────────
-from bedrock_agentcore.payments import PaymentManager
-from bedrock_agentcore.payments.integrations.strands import (
+from bedrock_agentcore.payments import PaymentManager  # noqa: E402
+from bedrock_agentcore.payments.integrations.strands import (  # noqa: E402
     AgentCorePaymentsPlugin,
     AgentCorePaymentsPluginConfig,
 )
@@ -114,9 +114,9 @@ payment_plugin = AgentCorePaymentsPlugin(
 print("Payment plugin configured")
 
 # ── Step 3: Create the Strands Agent ─────────────────────────────────────────
-from strands import Agent
-from strands.models import BedrockModel
-from strands_tools import http_request
+from strands import Agent  # noqa: E402
+from strands.models import BedrockModel  # noqa: E402
+from strands_tools import http_request  # noqa: E402
 
 MODEL_ID = "us.anthropic.claude-sonnet-4-6"
 

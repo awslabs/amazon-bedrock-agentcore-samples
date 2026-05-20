@@ -12,7 +12,7 @@ Based on AWS documentation:
 
 import boto3
 import time
-from typing import Dict, Optional
+from typing import Dict
 
 
 def configure_runtime_logging(
@@ -76,7 +76,7 @@ def configure_runtime_logging(
     delivery_source_name = f"aiml301-lab04-src-{short_id}"
     delivery_destination_name = f"aiml301-lab04-dst-{short_id}"
 
-    print(f"\n📋 Configuration:")
+    print("\n📋 Configuration:")
     print(f"  Runtime ARN: {runtime_arn}")
     print(f"  Runtime ID: {runtime_id}")
     print(f"  Log Group: {log_group_name}")
@@ -116,7 +116,7 @@ def configure_runtime_logging(
         )
 
         result['delivery_source_arn'] = response['deliverySource']['arn']
-        print(f"  ✅ Created delivery source")
+        print("  ✅ Created delivery source")
         print(f"     ARN: {result['delivery_source_arn']}")
         print(f"     Name: {delivery_source_name}")
 
@@ -145,7 +145,7 @@ def configure_runtime_logging(
         )
 
         result['delivery_destination_arn'] = response['deliveryDestination']['arn']
-        print(f"  ✅ Created delivery destination")
+        print("  ✅ Created delivery destination")
         print(f"     ARN: {result['delivery_destination_arn']}")
         print(f"     Target: {log_group_name}")
 
@@ -172,12 +172,12 @@ def configure_runtime_logging(
         )
 
         result['delivery_id'] = response['delivery']['id']
-        print(f"  ✅ Created delivery")
+        print("  ✅ Created delivery")
         print(f"     ID: {result['delivery_id']}")
         print(f"     ARN: {response['delivery']['arn']}")
 
     except logs_client.exceptions.ResourceAlreadyExistsException:
-        print(f"  ℹ️  Delivery already exists for this source")
+        print("  ℹ️  Delivery already exists for this source")
         # Find existing delivery
         response = logs_client.describe_deliveries()
         for delivery in response.get('deliveries', []):
@@ -214,7 +214,7 @@ def configure_runtime_logging(
     print("✅ CloudWatch Logs Delivery Configuration Complete")
     print("=" * 80)
     print(f"\n📊 View logs at: {log_group_name}")
-    print(f"\n💻 Command to tail logs:")
+    print("\n💻 Command to tail logs:")
     print(f"   aws logs tail {log_group_name} --follow --region {region}")
     print()
 

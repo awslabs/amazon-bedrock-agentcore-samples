@@ -23,7 +23,7 @@ project_root = os.path.join(os.path.dirname(__file__), "..", "..")
 sys.path.insert(0, project_root)
 sys.path.insert(0, os.path.dirname(__file__))
 
-from token_callback_server import (
+from token_callback_server import (  # noqa: E402
     get_callback_url,
     is_server_running,
     wait_for_server_ready,

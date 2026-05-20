@@ -25,7 +25,6 @@ import boto3
 import urllib.request
 from typing import Dict, Any, List, Optional, Tuple
 from jose import jwt, JWTError
-from jose.utils import base64url_decode
 
 # Configure logging
 logger = logging.getLogger()

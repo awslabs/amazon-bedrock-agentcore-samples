@@ -20,7 +20,6 @@ Event structure (from Gateway via MCP):
 """
 
 import asyncio
-import json
 import os
 
 

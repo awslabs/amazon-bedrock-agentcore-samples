@@ -71,7 +71,7 @@ print_summary(
 )
 
 # ── Step 3: Verify Instruments and Create Per-Agent Sessions ──────────────────
-from bedrock_agentcore.payments import PaymentManager
+from bedrock_agentcore.payments import PaymentManager  # noqa: E402
 
 manager = PaymentManager(payment_manager_arn=PAYMENT_MANAGER_ARN, region_name=REGION)
 
@@ -112,12 +112,12 @@ print_summary(
 )
 
 # ── Step 4: Create Plugins and Agents ─────────────────────────────────────────
-from strands import Agent
-from strands.models import BedrockModel
-from strands.tools import tool
-from strands_tools import http_request
+from strands import Agent  # noqa: E402
+from strands.models import BedrockModel  # noqa: E402
+from strands.tools import tool  # noqa: E402
+from strands_tools import http_request  # noqa: E402
 
-from bedrock_agentcore.payments.integrations.strands import (
+from bedrock_agentcore.payments.integrations.strands import (  # noqa: E402
     AgentCorePaymentsPlugin,
     AgentCorePaymentsPluginConfig,
 )
@@ -380,7 +380,7 @@ print("Demo 3 — Structural Safety (Orchestrator Cannot Spend)")
 print("=" * 60)
 print("Orchestrator gets http_request but NO plugin → 402 is a dead end")
 
-from strands_tools import http_request as http_tool
+from strands_tools import http_request as http_tool  # noqa: E402
 
 unsafe_orchestrator = Agent(
     model=model,

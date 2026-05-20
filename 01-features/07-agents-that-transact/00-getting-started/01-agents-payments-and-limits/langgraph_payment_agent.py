@@ -76,7 +76,7 @@ print(f"Instrument: {INSTRUMENT_ID}")
 print(f"Network: {NETWORK}")
 
 # ── Step 2: Create PaymentManager and Session ─────────────────────────────────
-from bedrock_agentcore.payments import PaymentManager
+from bedrock_agentcore.payments import PaymentManager  # noqa: E402
 
 payment_manager = PaymentManager(
     payment_manager_arn=PAYMENT_MANAGER_ARN,

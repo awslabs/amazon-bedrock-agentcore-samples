@@ -49,7 +49,7 @@ def main():
     admin = GatewayBoto3Client(region=region)
     control = admin.client
     cfn = boto3.client("cloudformation", region_name=region)
-    cognito = boto3.client("cognito-idp", region_name=region)
+    cognito = boto3.client("cognito-idp", region_name=region)  # noqa: F841
 
     outputs = {
         o["OutputKey"]: o["OutputValue"]

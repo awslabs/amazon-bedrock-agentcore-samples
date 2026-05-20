@@ -301,7 +301,7 @@ print("  Sessions ready.")
 
 print("\n[3/6] EvaluationClient — evaluating existing sessions ...")
 
-from bedrock_agentcore.evaluation import EvaluationClient, ReferenceInputs
+from bedrock_agentcore.evaluation import EvaluationClient, ReferenceInputs  # noqa: E402
 
 eval_client = EvaluationClient(region_name=REGION)
 all_ec_results = {}
@@ -448,7 +448,7 @@ print(f"\n  EvaluationClient results saved to: {_ec_path}")
 
 print("\n[4/6] OnDemandEvaluationDatasetRunner — automated dataset evaluation ...")
 
-from bedrock_agentcore.evaluation import (
+from bedrock_agentcore.evaluation import (  # noqa: E402
     AgentInvokerInput,
     AgentInvokerOutput,
     CloudWatchAgentSpanCollector,
@@ -719,12 +719,12 @@ print(f"\n  DatasetRunner results saved to: {_dr_path}")
 
 print("\n[5/6] BatchEvaluationRunner — service-side batch evaluation ...")
 
-from bedrock_agentcore.evaluation.runner.batch.batch_evaluation_models import (
+from bedrock_agentcore.evaluation.runner.batch.batch_evaluation_models import (  # noqa: E402
     BatchEvaluationRunConfig,
     BatchEvaluatorConfig,
     CloudWatchDataSourceConfig,
 )
-from bedrock_agentcore.evaluation.runner.batch.batch_evaluation_runner import (
+from bedrock_agentcore.evaluation.runner.batch.batch_evaluation_runner import (  # noqa: E402
     BatchEvaluationRunner,
 )
 

@@ -28,7 +28,7 @@ def create_gateway_service_role(region_name="us-west-2", account_id=None):
     """
     iam_client = boto3.client('iam', region_name=region_name)
     sts_client = boto3.client('sts', region_name=region_name)
-    ssm_client = boto3.client('ssm', region_name=region_name)
+    ssm_client = boto3.client('ssm', region_name=region_name)  # noqa: F841
 
     # Get account ID if not provided
     if not account_id:
@@ -119,7 +119,7 @@ def create_gateway_service_role(region_name="us-west-2", account_id=None):
                 PolicyName="gateway-invoke-lambda",
                 PolicyDocument=json.dumps(permissions_policy)
             )
-            print(f"✓ Permissions policy attached")
+            print("✓ Permissions policy attached")
 
         # Save to Parameter Store for later use (using constants for consistency)
         gateway_role_arn_param = PARAMETER_PATHS["lab_02"]["gateway_role_arn"]

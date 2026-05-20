@@ -415,7 +415,7 @@ def send_response(response_url, status, stack_id, request_id, logical_id, physic
     """Send a response to the CloudFormation custom resource."""
     body = json.dumps({
         "Status": status,
-        "Reason": reason or f"See CloudWatch Log Stream",
+        "Reason": reason or "See CloudWatch Log Stream",
         "PhysicalResourceId": physical_id,
         "StackId": stack_id,
         "RequestId": request_id,

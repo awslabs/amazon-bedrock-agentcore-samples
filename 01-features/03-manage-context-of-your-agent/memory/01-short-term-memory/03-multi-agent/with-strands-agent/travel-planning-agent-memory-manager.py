@@ -243,7 +243,7 @@ class ShortTermMemoryHook(HookProvider):
 
 
 # Import the necessary components
-from strands import Agent, tool
+from strands import Agent, tool  # noqa: E402
 
 
 # Create unique actor IDs for each specialized agent but share the session ID

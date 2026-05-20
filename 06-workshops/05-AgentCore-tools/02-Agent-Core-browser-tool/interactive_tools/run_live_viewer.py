@@ -6,7 +6,6 @@ This shows how to use the interactive_tools modules.
 
 
 import time
-from pathlib import Path
 
 
 from rich.console import Console

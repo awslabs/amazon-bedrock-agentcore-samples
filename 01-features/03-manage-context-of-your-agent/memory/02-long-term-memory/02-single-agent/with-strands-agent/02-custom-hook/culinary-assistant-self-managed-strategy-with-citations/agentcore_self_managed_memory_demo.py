@@ -127,8 +127,8 @@ print(f"SQS trigger added to Lambda: {event_source_uuid}")
 # Create an AgentCore memory with a self-managed strategy configuration that uses the infrastructure we've set up.
 
 
-import importlib
-import aws_utils
+import importlib  # noqa: E402
+import aws_utils  # noqa: E402
 
 importlib.reload(aws_utils)
 
@@ -343,8 +343,8 @@ retrieve_memory_records(
 #
 
 
-import logging
-from typing import Dict
+import logging  # noqa: E402
+from typing import Dict  # noqa: E402
 
 # Setup logging
 logging.basicConfig(
@@ -353,14 +353,14 @@ logging.basicConfig(
 logger = logging.getLogger("customer-support")
 
 # Import required modules
-from strands import Agent
-from strands.hooks import (
+from strands import Agent  # noqa: E402
+from strands.hooks import (  # noqa: E402
     AfterInvocationEvent,
     HookProvider,
     HookRegistry,
     MessageAddedEvent,
 )
-from bedrock_agentcore.memory import MemoryClient
+from bedrock_agentcore.memory import MemoryClient  # noqa: E402
 
 # Initialize MemoryClient
 client = MemoryClient(region_name=region_name)
@@ -459,7 +459,7 @@ class CulinaryAssistantMemoryHooks(HookProvider):
 
                 if user_query and agent_response:
                     # Save the interaction using direct API
-                    interaction_content = (
+                    interaction_content = (  # noqa: F841
                         f"Query: {user_query}\nRecommendation: {agent_response}"
                     )
 
@@ -521,8 +521,8 @@ print(f"Support Agent: {response1}")
 
 
 # Clean up all resources
-import importlib
-import aws_utils
+import importlib  # noqa: E402
+import aws_utils  # noqa: E402
 
 importlib.reload(aws_utils)
 

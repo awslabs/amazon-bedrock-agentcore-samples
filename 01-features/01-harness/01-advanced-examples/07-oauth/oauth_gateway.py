@@ -216,7 +216,7 @@ print(f"Got bearer token (first 20 chars): {BEARER_TOKEN[:20]}...")
 
 # ── Step 4: Invoke Harness with Bearer Token ─────────────────────────────────
 print("\n=== Step 4: Invoke Harness with Bearer Token ===")
-import uuid
+import uuid  # noqa: E402
 
 escaped_arn = urllib.parse.quote(HARNESS_ARN, safe="")
 url = f"https://bedrock-agentcore.{REGION}.amazonaws.com/harnesses/invoke?harnessArn={escaped_arn}"

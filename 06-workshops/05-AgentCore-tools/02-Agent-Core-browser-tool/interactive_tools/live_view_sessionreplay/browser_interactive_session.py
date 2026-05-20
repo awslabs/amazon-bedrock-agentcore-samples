@@ -32,31 +32,26 @@ import secrets
 import tempfile
 import threading
 import webbrowser
-import socket
 import signal
 import shutil
 import gzip
 import io
 from pathlib import Path
 from datetime import datetime
-from typing import Dict, Optional, Tuple
-from http.server import HTTPServer, BaseHTTPRequestHandler
-from urllib.parse import urlparse
-import mimetypes
+from typing import Dict
+from http.server import HTTPServer
 
 import boto3
 from botocore.auth import SigV4Auth
 from botocore.awsrequest import AWSRequest
-from botocore.exceptions import ClientError, NoCredentialsError
 from rich.console import Console
 from rich.panel import Panel
-from rich.progress import Progress, SpinnerColumn, TextColumn
 
 # Import tools
 from bedrock_agentcore.tools.browser_client import BrowserClient
 from bedrock_agentcore._utils.endpoints import get_control_plane_endpoint
 from .browser_viewer_replay import BrowserViewerServer
-from .session_replay_viewer import S3DataSource, SessionReplayViewer, SessionReplayHandler
+from .session_replay_viewer import SessionReplayViewer, SessionReplayHandler
 
 # Initialize console
 console = Console()
@@ -99,7 +94,7 @@ def create_browser_with_recording():
     client_token = str(uuid.uuid4())
     
     # Create browser with recording configuration
-    console.print(f"\n🔍 Creating browser with recording enabled")
+    console.print("\n🔍 Creating browser with recording enabled")
     console.print(f"  - Name: {browser_name}")
     console.print(f"  - Role ARN: {ROLE_ARN}")
     console.print(f"  - S3 Location: s3://{BUCKET_NAME}/{S3_PREFIX}/")
@@ -163,7 +158,7 @@ def create_browser_with_recording():
         automation_stream = streams.get("automationStream")
         
         if automation_stream:
-            console.print(f"✅ Found automation stream information")
+            console.print("✅ Found automation stream information")
         else:
             console.print("⚠️ No automation stream found in response")
         
@@ -456,8 +451,8 @@ def view_recordings(s3_location):
                                             if 'type' in event and 'timestamp' in event:
                                                 all_events.append(event)
                                             else:
-                                                print(f"⚠️ Skipping invalid event (missing required fields)")
-                                        except json.JSONDecodeError as je:
+                                                print("⚠️ Skipping invalid event (missing required fields)")
+                                        except json.JSONDecodeError:
                                             print(f"⚠️ Invalid JSON in line: {line[:50]}...")
                                             
                                 print(f"  Added {len(all_events)} events")
@@ -707,7 +702,7 @@ def main():
             try:
                 browser_client.stop()
                 console.print("\n✅ Browser session stopped")
-            except:
+            except:  # noqa: E722
                 pass
 
 if __name__ == "__main__":

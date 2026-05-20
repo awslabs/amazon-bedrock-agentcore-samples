@@ -169,7 +169,7 @@ def main():
     print("\n" + "=" * 60)
     print("Deployment complete!")
     print(f"  Runtime ARN: {runtime['runtime_arn']}")
-    print(f"  Next: python invoke.py  |  Open Braintrust → Logs")
+    print("  Next: python invoke.py  |  Open Braintrust → Logs")
     print("=" * 60)
 
 

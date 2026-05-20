@@ -87,7 +87,7 @@ def get_or_create_user_pool(cognito, USER_POOL_NAME):
             domain = user_pool.get("Domain")
 
             if domain:
-                region = user_pool_id.split("_")[0] if "_" in user_pool_id else REGION
+                region = user_pool_id.split("_")[0] if "_" in user_pool_id else REGION  # noqa: F821
                 domain_url = f"https://{domain}.auth.{region}.amazoncognito.com"
                 print(
                     f"Found domain for user pool {user_pool_id}: {domain} ({domain_url})"
@@ -110,7 +110,7 @@ def get_or_create_resource_server(
     cognito, user_pool_id, RESOURCE_SERVER_ID, RESOURCE_SERVER_NAME, SCOPES
 ):
     try:
-        existing = cognito.describe_resource_server(
+        existing = cognito.describe_resource_server(  # noqa: F841
             UserPoolId=user_pool_id, Identifier=RESOURCE_SERVER_ID
         )
         return RESOURCE_SERVER_ID
@@ -883,7 +883,7 @@ def create_dynamodb_table(
     dynamodb_client = boto3.client("dynamodb", region_name=region)
 
     try:
-        response = dynamodb_client.create_table(
+        response = dynamodb_client.create_table(  # noqa: F841
             TableName=table_name,
             KeySchema=key_schema,
             AttributeDefinitions=attribute_definitions,

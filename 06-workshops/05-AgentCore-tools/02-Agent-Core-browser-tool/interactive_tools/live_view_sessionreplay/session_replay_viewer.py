@@ -19,12 +19,10 @@ import shutil
 import gzip
 from pathlib import Path
 from http.server import HTTPServer, BaseHTTPRequestHandler
-from urllib.parse import urlparse
 import mimetypes
 from datetime import datetime
 
 import boto3
-from botocore.exceptions import ClientError, NoCredentialsError
 from rich.console import Console
 from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, TextColumn
@@ -91,8 +89,7 @@ class SessionReplayHandler(BaseHTTPRequestHandler):
     
     def _create_index_html(self, path):
         """Create the viewer HTML interface"""
-        import os
-        print(f"\n======= DEBUGGING =======")
+        print("\n======= DEBUGGING =======")
         print(f"Creating index.html at: {path}")
         print(f"Path exists: {os.path.exists(path)}")
         print(f"Parent directory exists: {os.path.exists(path.parent)}")
@@ -644,7 +641,7 @@ class S3DataSource(DataSource):
         self.prefix = prefix.rstrip('/')
         self.temp_dir = Path(tempfile.mkdtemp(prefix="bedrock_agentcore_replay_"))
         
-        console.print(f"[cyan]Using S3 location:[/cyan]")
+        console.print("[cyan]Using S3 location:[/cyan]")
         console.print(f"  Bucket: {bucket}")
         console.print(f"  Prefix: {prefix}")
     
@@ -826,8 +823,8 @@ class S3DataSource(DataSource):
                                             if 'type' in event_data and 'timestamp' in event_data:
                                                 all_events.append(event_data)
                                             else:
-                                                console.print(f"[yellow]Skipping invalid event: missing required fields[/yellow]")
-                                        except json.JSONDecodeError as e:
+                                                console.print("[yellow]Skipping invalid event: missing required fields[/yellow]")
+                                        except json.JSONDecodeError:
                                             console.print(f"[yellow]Warning: Invalid JSON in line: {line[:50]}...[/yellow]")
                         except Exception as e:
                             console.print(f"[yellow]Warning: Error processing batch file {filename}: {e}[/yellow]")

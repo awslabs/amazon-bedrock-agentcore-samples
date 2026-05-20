@@ -60,7 +60,7 @@ def extract_client_id_from_jwt(token: str) -> Optional[str]:
         client_id = payload_data.get('client_id')
         
         if client_id:
-            print(f"Successfully extracted client_id from JWT")
+            print("Successfully extracted client_id from JWT")
         else:
             print("WARNING: No client_id found in JWT payload")
         
@@ -277,7 +277,7 @@ def lambda_handler(event, context):
             filtered_body['result']['tools'] = filtered_tools
 
             # Log permission enforcement
-            print(f"Permission enforcement summary:")
+            print("Permission enforcement summary:")
             print(f"  - Client ID: {client_id}")
             print(f"  - Original tools count: {len(original_tools)}")
             print(f"  - Filtered tools count: {len(filtered_tools)}")

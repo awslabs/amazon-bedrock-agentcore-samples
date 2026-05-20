@@ -5,12 +5,10 @@ With simplified architecture and robust error handling
 
 import asyncio
 import json
-import os
 from typing import Dict, List, TypedDict, Optional, Any, Annotated
-from datetime import datetime
 
 from langgraph.graph import StateGraph, END
-from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
+from langchain_core.messages import HumanMessage, AIMessage
 from langchain_aws import ChatBedrockConverse
 from bedrock_agentcore.tools.code_interpreter_client import CodeInterpreter
 from rich.console import Console
@@ -194,7 +192,7 @@ Return ONLY the Python code, no explanations."""
         if has_error:
             console.print(f"[red]Execution error:[/red]\n{output}")
         else:
-            console.print(f"[green]✅ Code executed successfully[/green]")
+            console.print("[green]✅ Code executed successfully[/green]")
         
         # Get updated file list
         files = self._refresh_file_list()

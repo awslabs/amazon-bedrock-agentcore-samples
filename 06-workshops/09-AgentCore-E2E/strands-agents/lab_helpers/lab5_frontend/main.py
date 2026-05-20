@@ -14,7 +14,7 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.abspath(os.path.join(current_dir, ".."))
 sys.path.append(project_root)
 
-from utils import get_customer_support_secret
+from utils import get_customer_support_secret  # noqa: E402
 
 secret = get_customer_support_secret()
 secret = json.loads(secret)

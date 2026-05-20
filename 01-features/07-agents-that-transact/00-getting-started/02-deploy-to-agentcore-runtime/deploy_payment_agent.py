@@ -218,7 +218,7 @@ else:
 
 # ── Step 8: Invoke the Deployed Agent ────────────────────────────────────────
 print("\n── Step 8: Invoke Deployed Agent ──")
-from bedrock_agentcore.payments import PaymentManager
+from bedrock_agentcore.payments import PaymentManager  # noqa: E402
 
 manager = PaymentManager(payment_manager_arn=PAYMENT_MANAGER_ARN, region_name=REGION)
 

@@ -16,7 +16,6 @@ from typing import Optional, List, Dict, Any
 
 from strands.hooks import AgentInitializedEvent, HookProvider, HookRegistry, MessageAddedEvent
 from bedrock_agentcore.memory import MemoryClient
-from bedrock_agentcore.memory.constants import MessageRole
 
 # Configure logger
 logger = logging.getLogger(__name__)

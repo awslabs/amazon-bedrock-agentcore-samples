@@ -8,9 +8,8 @@ Uses JWT token propagation: Client JWT → Supervisor Runtime → MCP Gateways
 """
 
 import os
-import json
 import logging
-from typing import Dict, Any
+from typing import Dict
 
 # AWS SDK
 import boto3
@@ -393,5 +392,5 @@ if __name__ == "__main__":
     logger.info("🚀 Starting Supervisor Agent Runtime...")
     logger.info(f"   Model: {MODEL_ID}")
     logger.info(f"   Region: {AWS_REGION}")
-    logger.info(f"   Listening on 0.0.0.0:8080")
+    logger.info("   Listening on 0.0.0.0:8080")
     uvicorn.run(app, host="0.0.0.0", port=8080)

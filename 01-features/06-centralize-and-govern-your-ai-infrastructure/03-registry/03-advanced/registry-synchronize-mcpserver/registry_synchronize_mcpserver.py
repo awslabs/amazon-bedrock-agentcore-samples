@@ -278,7 +278,7 @@ print(f"✓ OAuth Provider ARN: {OAUTH_PROVIDER_ARN}")
 
 # 4.5 Deploy MCP server to AgentCore Runtime with OAuth
 print("\n4.5 Deploy MCP server to AgentCore Runtime with OAuth...")
-from bedrock_agentcore_starter_toolkit import Runtime
+from bedrock_agentcore_starter_toolkit import Runtime  # noqa: E402
 
 if os.path.exists("Dockerfile"):
     os.remove("Dockerfile")

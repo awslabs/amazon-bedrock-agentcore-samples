@@ -93,7 +93,7 @@ class AgentCoreRuntimeDeployer:
         try:
             # Check toolkit installation
             try:
-                from bedrock_agentcore_starter_toolkit import Runtime
+                from bedrock_agentcore_starter_toolkit import Runtime  # noqa: F401
                 self._log("bedrock-agentcore-starter-toolkit is installed", "success")
             except ImportError:
                 self._log(
@@ -105,7 +105,7 @@ class AgentCoreRuntimeDeployer:
 
             # Check FastMCP installation
             try:
-                import fastmcp
+                import fastmcp  # noqa: F401
                 self._log("fastmcp is installed", "success")
             except ImportError:
                 self._log(
@@ -117,7 +117,7 @@ class AgentCoreRuntimeDeployer:
 
             # Check Strands Tools installation
             try:
-                import strands_tools
+                import strands_tools  # noqa: F401
                 self._log("strands_tools is installed", "success")
             except ImportError:
                 self._log(
@@ -331,7 +331,7 @@ class AgentCoreRuntimeDeployer:
                 Overwrite=True,
                 Description="IAM role ARN for Lab-04 AgentCore Runtime"
             )
-            self._log(f"Stored role ARN in Parameter Store", "success")
+            self._log("Stored role ARN in Parameter Store", "success")
 
             return {
                 "role_arn": role_arn,
@@ -429,7 +429,7 @@ class AgentCoreRuntimeDeployer:
                     Name=PARAMETER_PATHS["lab_04"]["runtime_role_arn"]
                 )
                 role_arn = response['Parameter']['Value']
-                self._log(f"Retrieved role ARN from Parameter Store", "info")
+                self._log("Retrieved role ARN from Parameter Store", "info")
             except ClientError:
                 self._log("Role ARN not found in Parameter Store. Creating role...", "warning")
                 role_info = self.create_runtime_iam_role()
@@ -445,13 +445,13 @@ class AgentCoreRuntimeDeployer:
                 role_arn=role_arn,
                 region_name=self.region,
                 timeout_seconds=timeout_seconds,
-                description=description or f"Strands prevention agent with Browser - Lab 04"
+                description=description or "Strands prevention agent with Browser - Lab 04"
             )
 
             # Deploy to AgentCore
             runtime_config = runtime.deploy()
 
-            self._log(f"Runtime deployed successfully", "success")
+            self._log("Runtime deployed successfully", "success")
 
             deployment_info = {
                 "runtime_name": self.runtime_name,
@@ -634,7 +634,7 @@ def store_runtime_configuration(runtime_arn: str, runtime_id: str = None, region
 
     # Store runtime ARN using centralized constants
     runtime_arn_path = PARAMETER_PATHS["lab_04"]["runtime_arn"]
-    print(f"📝 Storing runtime ARN to Parameter Store:")
+    print("📝 Storing runtime ARN to Parameter Store:")
     print(f"  Path: {runtime_arn_path}")
     print(f"  Value: {runtime_arn}")
     try:
@@ -655,7 +655,7 @@ def store_runtime_configuration(runtime_arn: str, runtime_id: str = None, region
     # Store runtime ID if provided
     if runtime_id:
         runtime_id_path = PARAMETER_PATHS["lab_04"]["runtime_id"]
-        print(f"\n📝 Storing runtime ID to Parameter Store:")
+        print("\n📝 Storing runtime ID to Parameter Store:")
         print(f"  Path: {runtime_id_path}")
         print(f"  Value: {runtime_id}")
         try:
@@ -673,7 +673,7 @@ def store_runtime_configuration(runtime_arn: str, runtime_id: str = None, region
             traceback.print_exc()
             raise
     else:
-        print(f"\n⏭️  Runtime ID not provided, skipping...")
+        print("\n⏭️  Runtime ID not provided, skipping...")
 
     print("\n" + "="*70)
     print("✅ store_runtime_configuration() complete")

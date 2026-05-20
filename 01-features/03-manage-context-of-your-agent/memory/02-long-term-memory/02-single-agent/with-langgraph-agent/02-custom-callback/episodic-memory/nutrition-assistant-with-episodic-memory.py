@@ -103,18 +103,18 @@ logging.getLogger("nutrition-agent").setLevel(logging.DEBUG)
 
 
 # Import the AgentCoreMemoryStore that we will use as a store
-from langgraph_checkpoint_aws import AgentCoreMemoryStore
+from langgraph_checkpoint_aws import AgentCoreMemoryStore  # noqa: E402
 
 # For this example, we will just use an InMemorySaver to save context.
 # In production, we highly recommend the AgentCoreMemorySaver as a checkpointer which works seamlessly alongside the memory store
 # from langgraph_checkpoint_aws import AgentCoreMemorySaver
-from langgraph.checkpoint.memory import InMemorySaver
-from bedrock_agentcore.memory import MemoryClient
+from langgraph.checkpoint.memory import InMemorySaver  # noqa: E402
+from bedrock_agentcore.memory import MemoryClient  # noqa: E402
 
 
-import boto3
-import json
-import time
+import boto3  # noqa: E402
+import json  # noqa: E402
+import time  # noqa: E402
 
 # Create IAM role for memory execution
 iam_client = boto3.client("iam")
@@ -383,7 +383,7 @@ print(f"Conversation messages result: {result}")
 
 
 # The correct way to search episodic long-term memories in LangGraph
-from bedrock_agentcore.memory import MemoryClient
+from bedrock_agentcore.memory import MemoryClient  # noqa: E402
 
 # Use the memory client directly (not the store)
 memory_client = MemoryClient(region_name=region)

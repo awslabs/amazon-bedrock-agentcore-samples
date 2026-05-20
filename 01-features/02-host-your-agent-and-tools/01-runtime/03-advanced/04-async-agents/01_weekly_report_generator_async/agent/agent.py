@@ -159,7 +159,7 @@ def agent(payload):
                     .get("text", str(response))
                 )
             else:
-                result = str(response)
+                result = str(response)  # noqa: F841
 
             print("✅ Report generation completed")
         except Exception as e:

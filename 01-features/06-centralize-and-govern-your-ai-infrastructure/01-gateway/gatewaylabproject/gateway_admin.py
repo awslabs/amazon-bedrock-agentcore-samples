@@ -70,7 +70,7 @@ class GatewayBoto3Client:
         gateway_arn = (
             f"arn:aws:bedrock-agentcore:{self.region}:{self.account_id}:gateway/*"
         )
-        identity_arn = f"arn:aws:bedrock-agentcore:{self.region}:{self.account_id}:workload-identity-directory/default"
+        identity_arn = f"arn:aws:bedrock-agentcore:{self.region}:{self.account_id}:workload-identity-directory/default"  # noqa: F841
 
         assume_role_policy = {
             "Version": "2012-10-17",

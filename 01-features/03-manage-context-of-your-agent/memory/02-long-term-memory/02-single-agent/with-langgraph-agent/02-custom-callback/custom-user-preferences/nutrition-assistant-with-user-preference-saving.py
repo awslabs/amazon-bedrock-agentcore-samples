@@ -67,16 +67,16 @@ logging.getLogger("math-agent").setLevel(logging.DEBUG)
 
 
 # Import the AgentCoreMemoryStore that we will use as a store
-from langgraph_checkpoint_aws import AgentCoreMemoryStore
+from langgraph_checkpoint_aws import AgentCoreMemoryStore  # noqa: E402
 
 # For this example, we will just use an InMemorySaver to save context.
 # In production, we highly recommend the AgentCoreMemorySaver as a checkpointer which works seamlessly alongside the memory store
 # from langgraph_checkpoint_aws import AgentCoreMemorySaver
-from langgraph.checkpoint.memory import InMemorySaver
-from bedrock_agentcore.memory import MemoryClient
-from bedrock_agentcore.memory.constants import StrategyType
+from langgraph.checkpoint.memory import InMemorySaver  # noqa: E402
+from bedrock_agentcore.memory import MemoryClient  # noqa: E402
+from bedrock_agentcore.memory.constants import StrategyType  # noqa: E402
 
-from custom_memory_prompts import consolidation_prompt, extraction_prompt
+from custom_memory_prompts import consolidation_prompt, extraction_prompt  # noqa: E402
 
 
 memory_name = "NutritionAssistant"

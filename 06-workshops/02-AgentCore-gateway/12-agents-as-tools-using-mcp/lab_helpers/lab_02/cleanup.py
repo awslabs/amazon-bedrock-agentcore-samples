@@ -262,7 +262,7 @@ def cleanup_lab_02(region_name="us-west-2", cleanup_s3=True):
             print(f"  ✓ Docker build directory removed: {docker_dir}")
             artifacts_deleted += 1
         else:
-            print(f"  ✓ Docker build directory not found (ok)")
+            print("  ✓ Docker build directory not found (ok)")
 
         # ZIP build directory (specific)
         zip_build_dir = "lambda_diagnostic_agent_zip"
@@ -271,7 +271,7 @@ def cleanup_lab_02(region_name="us-west-2", cleanup_s3=True):
             print(f"  ✓ ZIP build directory removed: {zip_build_dir}")
             artifacts_deleted += 1
         else:
-            print(f"  ✓ ZIP build directory not found (ok)")
+            print("  ✓ ZIP build directory not found (ok)")
 
         # ZIP file (specific)
         zip_file = "lambda_diagnostic_agent_zip.zip"
@@ -280,7 +280,7 @@ def cleanup_lab_02(region_name="us-west-2", cleanup_s3=True):
             print(f"  ✓ ZIP file removed: {zip_file}")
             artifacts_deleted += 1
         else:
-            print(f"  ✓ ZIP file not found (ok)")
+            print("  ✓ ZIP file not found (ok)")
 
         # Clean up any other *_zip directories (catch-all for alternative patterns)
         zip_dirs = glob.glob("*_zip")
@@ -311,7 +311,7 @@ def cleanup_lab_02(region_name="us-west-2", cleanup_s3=True):
                 shutil.rmtree(cache_dir)
                 print(f"  ✓ Python cache removed: {cache_dir}")
                 artifacts_deleted += 1
-            except Exception as e:
+            except Exception:
                 pass  # Silent fail for cache cleanup
 
         # Clean up *.pyc files
@@ -320,7 +320,7 @@ def cleanup_lab_02(region_name="us-west-2", cleanup_s3=True):
             try:
                 os.remove(pyc)
                 artifacts_deleted += 1
-            except Exception as e:
+            except Exception:
                 pass  # Silent fail for pyc cleanup
 
         if artifacts_deleted > 0:

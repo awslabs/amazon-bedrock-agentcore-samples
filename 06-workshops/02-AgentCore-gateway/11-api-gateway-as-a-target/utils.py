@@ -2,10 +2,8 @@ import boto3
 import json
 import time
 from boto3.session import Session
-import botocore
 from botocore.exceptions import ClientError
 import requests
-import time
 
 
 def get_or_create_user_pool(cognito, USER_POOL_NAME):
@@ -22,7 +20,7 @@ def get_or_create_user_pool(cognito, USER_POOL_NAME):
             domain = user_pool.get('Domain')
         
             if domain:
-                region = user_pool_id.split('_')[0] if '_' in user_pool_id else REGION
+                region = user_pool_id.split('_')[0] if '_' in user_pool_id else REGION  # noqa: F821
                 domain_url = f"https://{domain}.auth.{region}.amazoncognito.com"
                 print(f"Found domain for user pool {user_pool_id}: {domain} ({domain_url})")
             else:
@@ -41,7 +39,7 @@ def get_or_create_user_pool(cognito, USER_POOL_NAME):
 
 def get_or_create_resource_server(cognito, user_pool_id, RESOURCE_SERVER_ID, RESOURCE_SERVER_NAME, SCOPES):
     try:
-        existing = cognito.describe_resource_server(
+        existing = cognito.describe_resource_server(  # noqa: F841
             UserPoolId=user_pool_id,
             Identifier=RESOURCE_SERVER_ID
         )
@@ -244,7 +242,7 @@ def create_and_deploy_api_from_openapi_with_extensions(filename='AgentCore_Sampl
         api_id = response['id']
         api_name = response['name']
         
-        print(f"✓ API Gateway REST API created successfully")
+        print("✓ API Gateway REST API created successfully")
         print(f"  API ID: {api_id}")
         print(f"  API Name: {api_name}")
         
@@ -307,14 +305,14 @@ def create_and_deploy_api_from_openapi_with_extensions(filename='AgentCore_Sampl
         invoke_url = f"https://{api_id}.execute-api.{region}.amazonaws.com/{stage_name}"
         
         print(f"\n{'='*70}")
-        print(f"API Gateway Deployment Complete")
+        print("API Gateway Deployment Complete")
         print(f"{'='*70}")
         print(f"Invoke URL: {invoke_url}")
-        print(f"\nEndpoint Authorization:")
-        print(f"  • GET /pets              → AWS IAM (SigV4)")
-        print(f"  • POST /pets             → AWS IAM (SigV4)")
-        print(f"  • GET /pets/{{petId}}      → AWS IAM (SigV4)")
-        print(f"  • GET /orders/{{orderId}}  → API Key (x-api-key header)")
+        print("\nEndpoint Authorization:")
+        print("  • GET /pets              → AWS IAM (SigV4)")
+        print("  • POST /pets             → AWS IAM (SigV4)")
+        print("  • GET /pets/{petId}      → AWS IAM (SigV4)")
+        print("  • GET /orders/{orderId}  → API Key (x-api-key header)")
         print(f"{'='*70}")
         
         return {
@@ -352,7 +350,7 @@ def test_api_gateway_endpoints(invoke_url, api_key, region):
     from botocore.awsrequest import AWSRequest
     
     print(f"\n{'='*70}")
-    print(f"Testing API Gateway Endpoints")
+    print("Testing API Gateway Endpoints")
     print(f"{'='*70}\n")
     
     results = {}
@@ -479,7 +477,7 @@ def test_api_gateway_endpoints(invoke_url, api_key, region):
         results['get_pets_no_auth'] = {'status': 'error', 'error': str(e)}
     
     print(f"\n{'='*70}")
-    print(f"Test Summary")
+    print("Test Summary")
     print(f"{'='*70}")
     success_count = sum(1 for r in results.values() if r['status'] in ['success', 'expected_failure'])
     total_count = len(results)
@@ -499,7 +497,6 @@ def delete_api_gateway_and_resources(api_id, api_key_id=None, usage_plan_id=None
     :return: Dictionary with deletion results
     """
     import boto3
-    from botocore.exceptions import ClientError
     
     client = boto3.client('apigateway')
     results = {
@@ -510,18 +507,18 @@ def delete_api_gateway_and_resources(api_id, api_key_id=None, usage_plan_id=None
     }
     
     print(f"\n{'='*70}")
-    print(f"Deleting API Gateway Resources")
+    print("Deleting API Gateway Resources")
     print(f"{'='*70}\n")
     
     # Delete Usage Plan Key association first (if usage plan and api key exist)
     if usage_plan_id and api_key_id:
         try:
-            print(f"1. Removing API Key from Usage Plan...")
+            print("1. Removing API Key from Usage Plan...")
             client.delete_usage_plan_key(
                 usagePlanId=usage_plan_id,
                 keyId=api_key_id
             )
-            print(f"   ✓ API Key removed from Usage Plan")
+            print("   ✓ API Key removed from Usage Plan")
         except ClientError as e:
             error_msg = f"Failed to remove API Key from Usage Plan: {e}"
             print(f"   ✗ {error_msg}")
@@ -553,12 +550,12 @@ def delete_api_gateway_and_resources(api_id, api_key_id=None, usage_plan_id=None
                                 patchOperations=[
                                     {
                                         'op': 'remove',
-                                        'path': f'/apiStages',
+                                        'path': '/apiStages',
                                         'value': f'{api_id_stage}:{stage_name}'
                                     }
                                 ]
                             )
-                            print(f"   ✓ API stage removed")
+                            print("   ✓ API stage removed")
                         except Exception as e:
                             print(f"   ⚠ Could not remove API stage: {e}")
             except Exception as e:
@@ -566,11 +563,11 @@ def delete_api_gateway_and_resources(api_id, api_key_id=None, usage_plan_id=None
             
             # Now delete the usage plan
             client.delete_usage_plan(usagePlanId=usage_plan_id)
-            print(f"   ✓ Usage Plan deleted")
+            print("   ✓ Usage Plan deleted")
             results['usage_plan_deleted'] = True
         except ClientError as e:
             if e.response['Error']['Code'] == 'NotFoundException':
-                print(f"   ⚠ Usage Plan not found (may already be deleted)")
+                print("   ⚠ Usage Plan not found (may already be deleted)")
                 results['usage_plan_deleted'] = True
             else:
                 error_msg = f"Failed to delete Usage Plan: {e}"
@@ -586,11 +583,11 @@ def delete_api_gateway_and_resources(api_id, api_key_id=None, usage_plan_id=None
         try:
             print(f"\n3. Deleting API Key: {api_key_id}...")
             client.delete_api_key(apiKey=api_key_id)
-            print(f"   ✓ API Key deleted")
+            print("   ✓ API Key deleted")
             results['api_key_deleted'] = True
         except ClientError as e:
             if e.response['Error']['Code'] == 'NotFoundException':
-                print(f"   ⚠ API Key not found (may already be deleted)")
+                print("   ⚠ API Key not found (may already be deleted)")
                 results['api_key_deleted'] = True
             else:
                 error_msg = f"Failed to delete API Key: {e}"
@@ -605,11 +602,11 @@ def delete_api_gateway_and_resources(api_id, api_key_id=None, usage_plan_id=None
     try:
         print(f"\n4. Deleting REST API: {api_id}...")
         client.delete_rest_api(restApiId=api_id)
-        print(f"   ✓ REST API deleted")
+        print("   ✓ REST API deleted")
         results['api_deleted'] = True
     except ClientError as e:
         if e.response['Error']['Code'] == 'NotFoundException':
-            print(f"   ⚠ REST API not found (may already be deleted)")
+            print("   ⚠ REST API not found (may already be deleted)")
             results['api_deleted'] = True
         else:
             error_msg = f"Failed to delete REST API: {e}"
@@ -621,7 +618,7 @@ def delete_api_gateway_and_resources(api_id, api_key_id=None, usage_plan_id=None
         results['errors'].append(error_msg)
     
     print(f"\n{'='*70}")
-    print(f"Cleanup Summary")
+    print("Cleanup Summary")
     print(f"{'='*70}")
     print(f"REST API Deleted: {'✓' if results['api_deleted'] else '✗'}")
     if api_key_id:
@@ -634,7 +631,7 @@ def delete_api_gateway_and_resources(api_id, api_key_id=None, usage_plan_id=None
         for error in results['errors']:
             print(f"  - {error}")
     else:
-        print(f"\n✓ All resources deleted successfully")
+        print("\n✓ All resources deleted successfully")
     
     print(f"{'='*70}\n")
     
@@ -650,7 +647,6 @@ def delete_agentcore_gateway_and_targets(gateway_id, region='us-west-2'):
     :return: Dictionary with deletion results
     """
     import boto3
-    from botocore.exceptions import ClientError
     
     gateway_client = boto3.client('bedrock-agentcore-control', region_name=region)
     
@@ -661,7 +657,7 @@ def delete_agentcore_gateway_and_targets(gateway_id, region='us-west-2'):
     }
     
     print(f"\n{'='*70}")
-    print(f"Deleting AgentCore Gateway and Targets")
+    print("Deleting AgentCore Gateway and Targets")
     print(f"{'='*70}\n")
     
     # List and delete all targets first
@@ -691,7 +687,7 @@ def delete_agentcore_gateway_and_targets(gateway_id, region='us-west-2'):
                     results['targets_deleted'].append(target_id)
                     
                     # Wait for target to be fully deleted
-                    print(f"   Waiting for target to be fully deleted...")
+                    print("   Waiting for target to be fully deleted...")
                     max_wait = 30  # Maximum wait time in seconds
                     wait_interval = 2
                     elapsed = 0
@@ -713,11 +709,11 @@ def delete_agentcore_gateway_and_targets(gateway_id, region='us-west-2'):
                                 raise
                     
                     if elapsed >= max_wait:
-                        print(f"   ⚠ Target deletion timeout, continuing anyway...")
+                        print("   ⚠ Target deletion timeout, continuing anyway...")
                     
                 except ClientError as e:
                     if e.response['Error']['Code'] == 'ResourceNotFoundException':
-                        print(f"   ⚠ Target not found (may already be deleted)")
+                        print("   ⚠ Target not found (may already be deleted)")
                         results['targets_deleted'].append(target_id)
                     else:
                         error_msg = f"Failed to delete target {target_id}: {e}"
@@ -728,11 +724,11 @@ def delete_agentcore_gateway_and_targets(gateway_id, region='us-west-2'):
                     print(f"   ✗ {error_msg}")
                     results['errors'].append(error_msg)
         else:
-            print(f"   No targets found")
+            print("   No targets found")
             
     except ClientError as e:
         if e.response['Error']['Code'] == 'ResourceNotFoundException':
-            print(f"   ⚠ Gateway not found (may already be deleted)")
+            print("   ⚠ Gateway not found (may already be deleted)")
             results['gateway_deleted'] = True
             return results
         else:
@@ -748,12 +744,12 @@ def delete_agentcore_gateway_and_targets(gateway_id, region='us-west-2'):
     try:
         print(f"\n2. Deleting gateway: {gateway_id}...")
         gateway_client.delete_gateway(gatewayIdentifier=gateway_id)
-        print(f"   ✓ Gateway deleted")
+        print("   ✓ Gateway deleted")
         results['gateway_deleted'] = True
         
     except ClientError as e:
         if e.response['Error']['Code'] == 'ResourceNotFoundException':
-            print(f"   ⚠ Gateway not found (may already be deleted)")
+            print("   ⚠ Gateway not found (may already be deleted)")
             results['gateway_deleted'] = True
         else:
             error_msg = f"Failed to delete gateway: {e}"
@@ -765,7 +761,7 @@ def delete_agentcore_gateway_and_targets(gateway_id, region='us-west-2'):
         results['errors'].append(error_msg)
     
     print(f"\n{'='*70}")
-    print(f"AgentCore Gateway Cleanup Summary")
+    print("AgentCore Gateway Cleanup Summary")
     print(f"{'='*70}")
     print(f"Targets Deleted: {len(results['targets_deleted'])}")
     print(f"Gateway Deleted: {'✓' if results['gateway_deleted'] else '✗'}")
@@ -775,7 +771,7 @@ def delete_agentcore_gateway_and_targets(gateway_id, region='us-west-2'):
         for error in results['errors']:
             print(f"  - {error}")
     else:
-        print(f"\n✓ All AgentCore resources deleted successfully")
+        print("\n✓ All AgentCore resources deleted successfully")
     
     print(f"{'='*70}\n")
     
@@ -792,7 +788,6 @@ def delete_agentcore_credential_provider(credential_provider_arn, region='us-wes
     :return: Dictionary with deletion results
     """
     import boto3
-    from botocore.exceptions import ClientError
     
     bedrock_agent_client = boto3.client('bedrock-agentcore-control', region_name=region)
     
@@ -802,7 +797,7 @@ def delete_agentcore_credential_provider(credential_provider_arn, region='us-wes
     }
     
     print(f"\n{'='*70}")
-    print(f"Deleting AgentCore Identity Credential Provider")
+    print("Deleting AgentCore Identity Credential Provider")
     print(f"{'='*70}\n")
     
     # Extract the credential provider name from ARN
@@ -823,13 +818,13 @@ def delete_agentcore_credential_provider(credential_provider_arn, region='us-wes
         bedrock_agent_client.delete_api_key_credential_provider(
             name=provider_name
         )
-        print(f"✓ Credential Provider deleted")
-        print(f"  Note: Associated secret in Secrets Manager will also be deleted")
+        print("✓ Credential Provider deleted")
+        print("  Note: Associated secret in Secrets Manager will also be deleted")
         results['credential_provider_deleted'] = True
         
     except ClientError as e:
         if e.response['Error']['Code'] == 'ResourceNotFoundException':
-            print(f"⚠ Credential Provider not found (may already be deleted)")
+            print("⚠ Credential Provider not found (may already be deleted)")
             results['credential_provider_deleted'] = True
         else:
             error_msg = f"Failed to delete credential provider: {e}"
@@ -841,7 +836,7 @@ def delete_agentcore_credential_provider(credential_provider_arn, region='us-wes
         results['errors'].append(error_msg)
     
     print(f"\n{'='*70}")
-    print(f"Credential Provider Cleanup Summary")
+    print("Credential Provider Cleanup Summary")
     print(f"{'='*70}")
     print(f"Credential Provider Deleted: {'✓' if results['credential_provider_deleted'] else '✗'}")
     
@@ -850,7 +845,7 @@ def delete_agentcore_credential_provider(credential_provider_arn, region='us-wes
         for error in results['errors']:
             print(f"  - {error}")
     else:
-        print(f"\n✓ Credential provider deleted successfully")
+        print("\n✓ Credential provider deleted successfully")
     
     print(f"{'='*70}\n")
     
@@ -866,7 +861,6 @@ def delete_cognito_user_pool(user_pool_name, region='us-west-2'):
     :return: Dictionary with deletion results
     """
     import boto3
-    from botocore.exceptions import ClientError
     
     cognito = boto3.client('cognito-idp', region_name=region)
     
@@ -906,21 +900,21 @@ def delete_cognito_user_pool(user_pool_name, region='us-west-2'):
     
     # Delete domain if exists
     try:
-        print(f"\n2. Checking for User Pool Domain...")
+        print("\n2. Checking for User Pool Domain...")
         describe_response = cognito.describe_user_pool(UserPoolId=user_pool_id)
         domain = describe_response.get('UserPool', {}).get('Domain')
         
         if domain:
             print(f"   Found domain: {domain}")
-            print(f"   Deleting domain...")
+            print("   Deleting domain...")
             cognito.delete_user_pool_domain(
                 Domain=domain,
                 UserPoolId=user_pool_id
             )
-            print(f"   ✓ Domain deleted")
+            print("   ✓ Domain deleted")
             results['domain_deleted'] = True
         else:
-            print(f"   No domain found")
+            print("   No domain found")
             
     except ClientError as e:
         if e.response['Error']['Code'] != 'ResourceNotFoundException':
@@ -934,7 +928,7 @@ def delete_cognito_user_pool(user_pool_name, region='us-west-2'):
     
     # Delete all clients
     try:
-        print(f"\n3. Deleting User Pool Clients...")
+        print("\n3. Deleting User Pool Clients...")
         clients_response = cognito.list_user_pool_clients(
             UserPoolId=user_pool_id,
             MaxResults=60
@@ -951,14 +945,14 @@ def delete_cognito_user_pool(user_pool_name, region='us-west-2'):
                         UserPoolId=user_pool_id,
                         ClientId=client_id
                     )
-                    print(f"   ✓ Client deleted")
+                    print("   ✓ Client deleted")
                     results['clients_deleted'].append(client_id)
                 except Exception as e:
                     error_msg = f"Error deleting client {client_id}: {e}"
                     print(f"   ✗ {error_msg}")
                     results['errors'].append(error_msg)
         else:
-            print(f"   No clients found")
+            print("   No clients found")
             
     except Exception as e:
         error_msg = f"Error listing/deleting clients: {e}"
@@ -969,12 +963,12 @@ def delete_cognito_user_pool(user_pool_name, region='us-west-2'):
     try:
         print(f"\n4. Deleting User Pool: {user_pool_id}...")
         cognito.delete_user_pool(UserPoolId=user_pool_id)
-        print(f"   ✓ User Pool deleted")
+        print("   ✓ User Pool deleted")
         results['user_pool_deleted'] = True
         
     except ClientError as e:
         if e.response['Error']['Code'] == 'ResourceNotFoundException':
-            print(f"   ⚠ User Pool not found (may already be deleted)")
+            print("   ⚠ User Pool not found (may already be deleted)")
             results['user_pool_deleted'] = True
         else:
             error_msg = f"Failed to delete user pool: {e}"
@@ -986,7 +980,7 @@ def delete_cognito_user_pool(user_pool_name, region='us-west-2'):
         results['errors'].append(error_msg)
     
     print(f"\n{'='*70}")
-    print(f"Cognito User Pool Cleanup Summary")
+    print("Cognito User Pool Cleanup Summary")
     print(f"{'='*70}")
     print(f"User Pool Deleted: {'✓' if results['user_pool_deleted'] else '✗'}")
     print(f"Domain Deleted: {'✓' if results['domain_deleted'] else 'N/A'}")
@@ -997,7 +991,7 @@ def delete_cognito_user_pool(user_pool_name, region='us-west-2'):
         for error in results['errors']:
             print(f"  - {error}")
     else:
-        print(f"\n✓ Cognito resources deleted successfully")
+        print("\n✓ Cognito resources deleted successfully")
     
     print(f"{'='*70}\n")
     
@@ -1012,7 +1006,6 @@ def delete_iam_role(role_name):
     :return: Dictionary with deletion results
     """
     import boto3
-    from botocore.exceptions import ClientError
     
     iam_client = boto3.client('iam')
     
@@ -1045,18 +1038,18 @@ def delete_iam_role(role_name):
                         RoleName=role_name,
                         PolicyName=policy_name
                     )
-                    print(f"   ✓ Policy deleted")
+                    print("   ✓ Policy deleted")
                     results['policies_deleted'].append(policy_name)
                 except Exception as e:
                     error_msg = f"Error deleting policy {policy_name}: {e}"
                     print(f"   ✗ {error_msg}")
                     results['errors'].append(error_msg)
         else:
-            print(f"   No inline policies found")
+            print("   No inline policies found")
             
     except ClientError as e:
         if e.response['Error']['Code'] == 'NoSuchEntity':
-            print(f"   ⚠ Role not found (may already be deleted)")
+            print("   ⚠ Role not found (may already be deleted)")
             results['role_deleted'] = True
             return results
         else:
@@ -1072,12 +1065,12 @@ def delete_iam_role(role_name):
     try:
         print(f"\n2. Deleting IAM Role: {role_name}...")
         iam_client.delete_role(RoleName=role_name)
-        print(f"   ✓ IAM Role deleted")
+        print("   ✓ IAM Role deleted")
         results['role_deleted'] = True
         
     except ClientError as e:
         if e.response['Error']['Code'] == 'NoSuchEntity':
-            print(f"   ⚠ Role not found (may already be deleted)")
+            print("   ⚠ Role not found (may already be deleted)")
             results['role_deleted'] = True
         else:
             error_msg = f"Failed to delete role: {e}"
@@ -1089,7 +1082,7 @@ def delete_iam_role(role_name):
         results['errors'].append(error_msg)
     
     print(f"\n{'='*70}")
-    print(f"IAM Role Cleanup Summary")
+    print("IAM Role Cleanup Summary")
     print(f"{'='*70}")
     print(f"IAM Role Deleted: {'✓' if results['role_deleted'] else '✗'}")
     print(f"Inline Policies Deleted: {len(results['policies_deleted'])}")
@@ -1099,7 +1092,7 @@ def delete_iam_role(role_name):
         for error in results['errors']:
             print(f"  - {error}")
     else:
-        print(f"\n✓ IAM role deleted successfully")
+        print("\n✓ IAM role deleted successfully")
     
     print(f"{'='*70}\n")
     

@@ -1,7 +1,7 @@
 """JWT token decoding and display utilities for Lab 03"""
 import json
 import base64
-from typing import Dict, List
+from typing import Dict
 
 
 def decode_jwt(token: str) -> Dict:

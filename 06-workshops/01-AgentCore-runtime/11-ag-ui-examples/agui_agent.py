@@ -161,7 +161,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 await websocket.send_json(event.model_dump())
     except WebSocketDisconnect:
         pass
-    except Exception as e:
+    except Exception:
         import traceback
         traceback.print_exc()
         await websocket.close()

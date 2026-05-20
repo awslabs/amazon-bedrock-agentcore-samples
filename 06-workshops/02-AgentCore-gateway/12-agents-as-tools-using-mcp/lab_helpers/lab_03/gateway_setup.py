@@ -18,7 +18,6 @@ import boto3
 import time
 import logging
 from typing import Dict, Optional, List
-from pathlib import Path
 from botocore.exceptions import ClientError
 
 # Import centralized configuration
@@ -188,7 +187,7 @@ class AgentCoreGatewaySetup:
                     RoleName=GATEWAY_ROLE_NAME,
                     PolicyDocument=json.dumps(trust_policy)
                 )
-                self._log(f"Trust policy updated")
+                self._log("Trust policy updated")
                 
             except self.iam.exceptions.NoSuchEntityException:
                 # Create new role
@@ -409,7 +408,7 @@ class AgentCoreGatewaySetup:
 
             target_id = response['targetId']
 
-            self._log(f"Runtime registered as Gateway target")
+            self._log("Runtime registered as Gateway target")
             self._log(f"  Target ID: {target_id}")
             self._log(f"  Target Name: {target_name}")
             self._log(f"  Runtime ARN: {runtime_arn}")

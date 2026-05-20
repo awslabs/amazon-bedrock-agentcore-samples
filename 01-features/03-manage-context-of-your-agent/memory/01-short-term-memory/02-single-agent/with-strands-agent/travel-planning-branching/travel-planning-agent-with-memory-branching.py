@@ -88,7 +88,7 @@ logger = logging.getLogger("agentcore-memory")
 # In this section, we'll create a memory resource that will be shared among our specialized agents.
 
 
-from bedrock_agentcore.memory import MemoryClient
+from bedrock_agentcore.memory import MemoryClient  # noqa: E402
 
 
 client = MemoryClient(region_name=region)
@@ -96,7 +96,7 @@ memory_name = "TravelAgent_STM_%s" % datetime.now().strftime("%Y%m%d%H%M%S")
 memory_id = None
 
 
-from botocore.exceptions import ClientError
+from botocore.exceptions import ClientError  # noqa: E402
 
 try:
     print("Creating Memory...")
@@ -171,8 +171,8 @@ except Exception as e:
 #
 
 
-from bedrock_agentcore.memory.constants import ConversationalMessage, MessageRole
-from bedrock_agentcore.memory import MemorySessionManager
+from bedrock_agentcore.memory.constants import ConversationalMessage, MessageRole  # noqa: E402
+from bedrock_agentcore.memory import MemorySessionManager  # noqa: E402
 
 
 class ShortTermMemoryHook(HookProvider):
@@ -452,7 +452,7 @@ class ShortTermMemoryHook(HookProvider):
 
 
 # Import the necessary components
-from strands import Agent, tool
+from strands import Agent, tool  # noqa: E402
 
 
 # Create unique actor IDs for each specialized agent but share the session ID

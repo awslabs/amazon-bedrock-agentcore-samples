@@ -437,7 +437,7 @@ def main():
     print("=== AgentCore Runtime: Entra ID 3LO Auth Code Flow (OneNote) ===\n")
 
     print("=== Step 1: Creating MicrosoftOauth2 Credential Provider ===")
-    provider_info = create_credential_provider()
+    provider_info = create_credential_provider()  # noqa: F841
 
     print("\n=== Step 2: Creating IAM Execution Role ===")
     role_name = f"agentcore-entra-3lo-{ACCOUNT_ID}-role"

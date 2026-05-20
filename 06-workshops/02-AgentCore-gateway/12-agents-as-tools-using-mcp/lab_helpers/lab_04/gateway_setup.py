@@ -18,7 +18,6 @@ import boto3
 import time
 import logging
 from typing import Dict, Optional, List
-from pathlib import Path
 from botocore.exceptions import ClientError
 
 # Import centralized configuration
@@ -395,7 +394,7 @@ class AgentCoreGatewaySetup:
 
             target_id = response['targetId']
 
-            self._log(f"Runtime registered as Gateway target")
+            self._log("Runtime registered as Gateway target")
             self._log(f"  Target ID: {target_id}")
             self._log(f"  Target Name: {target_name}")
             self._log(f"  Runtime ARN: {runtime_arn}")

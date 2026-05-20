@@ -111,9 +111,9 @@ def set_user_context(session_id: str, tenant_id: str, user_email: str):
 
 # ── Travel Agent ──────────────────────────────────────────────────────────────
 
-from strands import Agent, tool
-from strands.models import BedrockModel
-from ddgs import DDGS
+from strands import Agent, tool  # noqa: E402
+from strands.models import BedrockModel  # noqa: E402
+from ddgs import DDGS  # noqa: E402
 
 
 @tool

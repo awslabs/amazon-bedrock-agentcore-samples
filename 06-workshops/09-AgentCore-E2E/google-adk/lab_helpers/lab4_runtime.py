@@ -3,7 +3,6 @@ import os
 import uuid
 import asyncio
 import concurrent.futures
-import concurrent.futures
 from bedrock_agentcore.runtime import (
     BedrockAgentCoreApp,
 )  #### AGENTCORE RUNTIME - LINE 1 ####
@@ -353,7 +352,7 @@ async def invoke(payload, context=None):
 
             adk_session_id = str(uuid.uuid4())
             session_service = InMemorySessionService()
-            adk_session = await session_service.create_session(
+            adk_session = await session_service.create_session(  # noqa: F841
                 app_name="customer_support_app", user_id="user_001", session_id=adk_session_id
             )
             runner = Runner(agent=agent, app_name="customer_support_app", session_service=session_service)

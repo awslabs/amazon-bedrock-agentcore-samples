@@ -189,13 +189,13 @@ print("Cognito setup completed ✓")
 # Let's set up our deployment configuration:
 
 
-import time
-import json
-import subprocess
-import shutil
-import requests
-from botocore.auth import SigV4Auth
-from botocore.awsrequest import AWSRequest
+import time  # noqa: E402
+import json  # noqa: E402
+import subprocess  # noqa: E402
+import shutil  # noqa: E402
+import requests  # noqa: E402
+from botocore.auth import SigV4Auth  # noqa: E402
+from botocore.awsrequest import AWSRequest  # noqa: E402
 
 iam_role = create_agentcore_role(
     agent_name=f"runtime_memory_agent_{unique_id}", region=REGION
@@ -371,7 +371,7 @@ def invoke_agent(payload, session_id, bearer_token=None):
 # - **Memory Persistence**: Even if a session expires in AgentCore Runtime, our agent can retrieve previous conversations from AgentCore Memory when a new session starts with the same user.
 
 
-import time
+import time  # noqa: E402
 
 
 def test_user_memory_isolation_with_federated_identity():

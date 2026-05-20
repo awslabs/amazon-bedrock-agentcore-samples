@@ -80,8 +80,8 @@ def setup_cognito_user_pool():
         print(
             f"Discovery URL: https://cognito-idp.{region}.amazonaws.com/{pool_id}/.well-known/openid-configuration"
         )
-        print(f"Client ID: <redacted>")
-        print(f"Bearer Token: <redacted>")
+        print("Client ID: <redacted>")
+        print("Bearer Token: <redacted>")
 
         # Return values if needed for further processing
         return {
@@ -108,7 +108,7 @@ def get_or_create_user_pool(cognito, USER_POOL_NAME):
             domain = user_pool.get("Domain")
 
             if domain:
-                region = user_pool_id.split("_")[0] if "_" in user_pool_id else REGION
+                region = user_pool_id.split("_")[0] if "_" in user_pool_id else REGION  # noqa: F821
                 domain_url = f"https://{domain}.auth.{region}.amazoncognito.com"
                 print(
                     f"Found domain for user pool {user_pool_id}: {domain} ({domain_url})"
@@ -246,7 +246,7 @@ def get_or_create_resource_server(
     cognito, user_pool_id, RESOURCE_SERVER_ID, RESOURCE_SERVER_NAME, SCOPES
 ):
     try:
-        existing = cognito.describe_resource_server(
+        existing = cognito.describe_resource_server(  # noqa: F841
             UserPoolId=user_pool_id, Identifier=RESOURCE_SERVER_ID
         )
         return RESOURCE_SERVER_ID

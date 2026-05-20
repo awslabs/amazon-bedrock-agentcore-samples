@@ -61,9 +61,9 @@ logger = logging.getLogger("personal-agent")
 
 
 # Import required modules for Strands Agent
-import os
-from strands import Agent, tool
-from strands.hooks import (
+import os  # noqa: E402
+from strands import Agent, tool  # noqa: E402
+from strands.hooks import (  # noqa: E402
     AgentInitializedEvent,
     HookProvider,
     HookRegistry,
@@ -71,9 +71,9 @@ from strands.hooks import (
 )
 
 # Import memory management modules
-from bedrock_agentcore.memory import MemoryClient
-from bedrock_agentcore.memory.constants import ConversationalMessage, MessageRole
-from bedrock_agentcore.memory.session import MemorySession, MemorySessionManager
+from bedrock_agentcore.memory import MemoryClient  # noqa: E402
+from bedrock_agentcore.memory.constants import ConversationalMessage, MessageRole  # noqa: E402
+from bedrock_agentcore.memory.session import MemorySession, MemorySessionManager  # noqa: E402
 
 # Define message role constants
 USER = MessageRole.USER
@@ -92,8 +92,8 @@ SESSION_ID = "personal_session_001"  # Unique session identifier
 # First, let's create a simple web search tool for the agent. This remains unchanged from the original implementation.
 
 
-from ddgs.exceptions import DDGSException, RatelimitException
-from ddgs import DDGS
+from ddgs.exceptions import DDGSException, RatelimitException  # noqa: E402
+from ddgs import DDGS  # noqa: E402
 
 
 @tool

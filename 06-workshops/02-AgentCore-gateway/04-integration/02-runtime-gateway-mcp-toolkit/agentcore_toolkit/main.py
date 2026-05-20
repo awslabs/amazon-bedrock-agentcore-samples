@@ -5,15 +5,12 @@ Configurable setup script for creating AgentCore runtime and gateway using YAML 
 """
 
 import os
-import sys
 import boto3
-import yaml
 import logging
 import json
 import stat
 from pathlib import Path
 from bedrock_agentcore_starter_toolkit import Runtime
-from boto3.session import Session
 
 from . import utils
 

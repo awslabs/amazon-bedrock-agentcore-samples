@@ -663,7 +663,7 @@ if (typeof window !== 'undefined') {{
                 return
 
             # Step 3: Write dashboard data file
-            dashboard_data_path = self._write_dashboard_data(evaluation_data)
+            dashboard_data_path = self._write_dashboard_data(evaluation_data)  # noqa: F841
 
             total_evaluations = sum(len(session.get("results", [])) for session in evaluation_data)
             print(

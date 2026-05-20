@@ -481,7 +481,7 @@ def cleanup(state: dict):
     control = boto3.client("bedrock-agentcore-control", region_name=REGION)
     cognito = boto3.client("cognito-idp", region_name=REGION)
     iam = boto3.client("iam", region_name=REGION)
-    s3 = boto3.client("s3", region_name=REGION)
+    s3 = boto3.client("s3", region_name=REGION)  # noqa: F841
 
     if state.get("runtime_id"):
         try:

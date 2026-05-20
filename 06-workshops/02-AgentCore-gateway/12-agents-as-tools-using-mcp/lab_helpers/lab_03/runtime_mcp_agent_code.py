@@ -14,13 +14,11 @@ Deployed to AgentCore Runtime for serverless execution
 """
 
 import os
-import json
 import boto3
 import logging
 import uuid
 from datetime import datetime, timezone
-from typing import Dict, List, Optional, Literal
-import time
+from typing import Dict, Literal
 
 # Official MCP package for AgentCore Runtime compatibility
 from mcp.server.fastmcp import FastMCP
@@ -273,13 +271,13 @@ except Exception as e:
         try:
             logger.info("⚡ Executing remediation code...")
             execution_result = execute_remediation_code(session_id, wrapped_code)
-            logger.info(f"✅ Code execution completed")
+            logger.info("✅ Code execution completed")
             
             if 'error' in execution_result:
                 logger.error(f"❌ Execution error: {execution_result['error']}")
                 return f"❌ failed: {execution_result['error']}"
             
-            response = f"# ✅ APPROVED EXECUTION - Results\n\n"
+            response = "# ✅ APPROVED EXECUTION - Results\n\n"
             response += "## Execution Output\n\n```\n"
             response += execution_result['output']
             response += "\n```\n"
@@ -724,7 +722,7 @@ def infrastructure_agent(action_type: Literal["only_plan", "only_execute"], reme
             logger.error("❌ Failed to initialize code interpreter client")
             return "Error: Failed to initialize code interpreter client"
         
-        logger.info(f"✅ Code interpreter client initialized")
+        logger.info("✅ Code interpreter client initialized")
         boto_session = get_boto3_session()
         model = BedrockModel(model_id=MODEL_ID, streaming=True, boto_session=boto_session)
         logger.info(f"✅ Bedrock model initialized: {MODEL_ID}")
@@ -793,10 +791,10 @@ After all the remediation and troubleshooting steps are completed, provide the b
             logger.error(f"❌ Invalid action_type: {action_type}")
             return f"Error: Invalid action_type '{action_type}'. Must be one of: only_plan, only_execute"
         
-        logger.info(f"🤖 Agent configured, invoking with query...")
+        logger.info("🤖 Agent configured, invoking with query...")
         return_text=""
         response = agent(remediation_query)
-        logger.info(f"✅ Agent response received")
+        logger.info("✅ Agent response received")
         
         response_content = response.message.get('content', [])
         if response_content:

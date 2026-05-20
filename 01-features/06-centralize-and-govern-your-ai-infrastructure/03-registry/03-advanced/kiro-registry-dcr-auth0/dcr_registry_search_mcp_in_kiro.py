@@ -25,7 +25,7 @@ from dotenv import load_dotenv
 
 load_dotenv(Path(__file__).parent / ".env")
 
-from seed_records import create_registry, seed, delete_registry, _cp_client
+from seed_records import create_registry, seed, delete_registry, _cp_client  # noqa: E402
 
 
 # ── ANSI colors ────────────────────────────────────────────────────────────────

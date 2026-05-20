@@ -88,7 +88,7 @@ def setup_cognito_user_pool():
 def create_agentcore_role(agent_name, region="us-east-1"):
     iam_client = boto3.client('iam', region)
     agentcore_role_name = f'agentcore-{agent_name}-role'
-    boto_session = Session(region_name=region)
+    boto_session = Session(region_name=region)  # noqa: F841
     account_id = boto3.client("sts", region).get_caller_identity()["Account"]
     role_policy = {
         "Version": "2012-10-17",

@@ -347,14 +347,14 @@ def create_lambda_function(lambda_role_arn: str, runtime_arn: str) -> str:
         print(f"  ADOT Layer: {adot_layer_arn}")
     else:
         print(f"  Warning: No ADOT Layer found for region {REGION}. Trace propagation may be limited.")
-        print(f"  Check https://aws-otel.github.io/docs/getting-started/lambda/lambda-python")
+        print("  Check https://aws-otel.github.io/docs/getting-started/lambda/lambda-python")
 
     try:
         resp = lambda_client.create_function(**config)
         function_arn = resp["FunctionArn"]
         print(f"  Created Lambda function: {LAMBDA_FUNCTION_NAME}")
     except lambda_client.exceptions.ResourceConflictException:
-        print(f"  Updating existing Lambda function...")
+        print("  Updating existing Lambda function...")
         lambda_client.update_function_code(FunctionName=LAMBDA_FUNCTION_NAME, ZipFile=zip_bytes)
         time.sleep(2)
         update = {
@@ -420,10 +420,10 @@ def main():
     print("Deployment complete!")
     print(f"  Runtime ARN:       {runtime['runtime_arn']}")
     print(f"  Lambda ARN:        {function_arn}")
-    print(f"  Config:            runtime_config.json")
-    print(f"\n  Next steps:")
-    print(f"    python invoke.py")
-    print(f"    View traces: CloudWatch → Gen AI Observability")
+    print("  Config:            runtime_config.json")
+    print("\n  Next steps:")
+    print("    python invoke.py")
+    print("    View traces: CloudWatch → Gen AI Observability")
     print("=" * 60)
 
 

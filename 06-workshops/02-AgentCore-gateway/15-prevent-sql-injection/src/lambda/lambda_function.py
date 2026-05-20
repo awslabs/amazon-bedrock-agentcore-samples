@@ -33,7 +33,6 @@ techniques. For production systems, avoid accepting raw SQL from agents and pref
 - Parameterized queries / prepared statements in the database layer
 """
 
-import json
 import re
 import hashlib
 from typing import Any, Dict, Tuple, List

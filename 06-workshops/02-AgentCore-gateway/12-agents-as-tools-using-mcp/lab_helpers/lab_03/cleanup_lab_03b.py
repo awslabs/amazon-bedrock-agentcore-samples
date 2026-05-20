@@ -18,8 +18,6 @@ AWS RESOURCES PRESERVED:
 
 import boto3
 import time
-from typing import Optional
-from lab_helpers.constants import PARAMETER_PATHS
 
 def cleanup_lab_03b(region_name: str = "us-east-1", verbose: bool = True) -> None:
     """
@@ -37,7 +35,7 @@ def cleanup_lab_03b(region_name: str = "us-east-1", verbose: bool = True) -> Non
     agentcore_client = boto3.client('bedrock-agentcore-control', region_name=region_name)
     lambda_client = boto3.client('lambda', region_name=region_name)
     iam_client = boto3.client('iam')
-    ssm_client = boto3.client('ssm', region_name=region_name)
+    ssm_client = boto3.client('ssm', region_name=region_name)  # noqa: F841
     
     # 1. Delete Gateway with JWT auth
     print("[1/3] Deleting Lab 3B Gateway...")
@@ -86,7 +84,7 @@ def cleanup_lab_03b(region_name: str = "us-east-1", verbose: bool = True) -> Non
             lambda_client.delete_function(FunctionName=function_name)
             print(f"  ✓ Lambda deleted: {function_name}")
         except lambda_client.exceptions.ResourceNotFoundException:
-            print(f"  ✓ Lambda not found (ok)")
+            print("  ✓ Lambda not found (ok)")
     except Exception as e:
         print(f"  ⚠ Lambda cleanup error: {e}")
     
@@ -109,7 +107,7 @@ def cleanup_lab_03b(region_name: str = "us-east-1", verbose: bool = True) -> Non
             iam_client.delete_role(RoleName=role_name)
             print(f"  ✓ IAM role deleted: {role_name}")
         except iam_client.exceptions.NoSuchEntityException:
-            print(f"  ✓ IAM role not found (ok)")
+            print("  ✓ IAM role not found (ok)")
     except Exception as e:
         print(f"  ⚠ IAM role cleanup error: {e}")
     

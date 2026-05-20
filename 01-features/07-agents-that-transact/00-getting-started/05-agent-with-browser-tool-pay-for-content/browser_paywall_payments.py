@@ -79,7 +79,7 @@ print_summary(
 )
 
 # ── Step 2: Create Payment Session ────────────────────────────────────────────
-from bedrock_agentcore.payments import PaymentManager
+from bedrock_agentcore.payments import PaymentManager  # noqa: E402
 
 manager = PaymentManager(payment_manager_arn=PAYMENT_MANAGER_ARN, region_name=REGION)
 
@@ -102,10 +102,10 @@ print(f"Instrument {INSTRUMENT_ID} is {instr_status}")
 print(f"Session: {SESSION_ID} (budget: $1.00, expiry: 60 min)")
 
 # ── Step 3-4: Build the browse_with_payment Tool ──────────────────────────────
-from playwright.async_api import async_playwright
-from strands import tool
+from playwright.async_api import async_playwright  # noqa: E402
+from strands import tool  # noqa: E402
 
-from bedrock_agentcore.tools.browser_client import BrowserClient
+from bedrock_agentcore.tools.browser_client import BrowserClient  # noqa: E402
 
 
 def extract_x402_requirements(headers, body):
@@ -228,8 +228,8 @@ print("browse_with_payment tool created")
 print("Uses: BrowserClient + Playwright + PaymentManager.generate_payment_header()")
 
 # ── Step 5: Create the Agent ──────────────────────────────────────────────────
-from strands import Agent
-from strands.models import BedrockModel
+from strands import Agent  # noqa: E402
+from strands.models import BedrockModel  # noqa: E402
 
 SYSTEM_PROMPT = """You are a content retrieval agent with browser access and payment capabilities.
 

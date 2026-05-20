@@ -362,7 +362,7 @@ print(
 time.sleep(30)
 session_manager = MemorySessionManager(memory_id=MEMORY_ID, region_name=REGION)
 
-from strands.types.tools import ToolContext
+from strands.types.tools import ToolContext  # noqa: E402
 
 
 @tool(context=True)

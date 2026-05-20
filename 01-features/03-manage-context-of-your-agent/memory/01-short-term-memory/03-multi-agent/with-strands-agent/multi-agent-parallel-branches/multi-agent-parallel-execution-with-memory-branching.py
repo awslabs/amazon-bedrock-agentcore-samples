@@ -98,7 +98,7 @@ logger = logging.getLogger("agentcore-memory")
 # Think of it like a Git repository: one repository (memory resource) with multiple branches (agent contexts).
 
 
-from bedrock_agentcore.memory import MemoryClient
+from bedrock_agentcore.memory import MemoryClient  # noqa: E402
 
 
 client = MemoryClient(region_name=region)
@@ -106,7 +106,7 @@ memory_name = "TravelAgent_STM_%s" % datetime.now().strftime("%Y%m%d%H%M%S")
 memory_id = None
 
 
-from botocore.exceptions import ClientError
+from botocore.exceptions import ClientError  # noqa: E402
 
 try:
     print("Creating Memory...")
@@ -200,8 +200,8 @@ except Exception as e:
 # This hook provider is what makes parallel agent execution safe and efficient with AgentCore Memory.
 
 
-from bedrock_agentcore.memory.constants import ConversationalMessage, MessageRole
-from bedrock_agentcore.memory import MemorySessionManager
+from bedrock_agentcore.memory.constants import ConversationalMessage, MessageRole  # noqa: E402
+from bedrock_agentcore.memory import MemorySessionManager  # noqa: E402
 
 
 class ShortTermMemoryHook(HookProvider):
@@ -495,7 +495,7 @@ class ShortTermMemoryHook(HookProvider):
 
 
 # Import the necessary components
-from strands import Agent
+from strands import Agent  # noqa: E402
 
 
 # Create unique actor IDs for each specialized agent but share the session ID
@@ -638,9 +638,9 @@ def travel_booking_agent() -> Agent:
 # - The coordinator can safely delegate to multiple agents at once
 
 
-import logging
-from strands import Agent
-from strands.multiagent import GraphBuilder
+import logging  # noqa: E402
+from strands import Agent  # noqa: E402
+from strands.multiagent import GraphBuilder  # noqa: E402
 
 # Enable debug logs and print them to stderr
 logging.getLogger("strands.multiagent").setLevel(logging.DEBUG)

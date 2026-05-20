@@ -8,10 +8,9 @@ import time
 import threading
 import webbrowser
 from pathlib import Path
-from typing import Optional
 
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import HTMLResponse, FileResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 import uvicorn
 from rich.console import Console
@@ -393,7 +392,7 @@ button.active {
 
         if not dcv_js_path.exists():
             console.print("\n[bold yellow]⚠️  DCV SDK Not Found[/bold yellow]")
-            console.print(f"The Amazon DCV Web Client SDK is required but not found.")
+            console.print("The Amazon DCV Web Client SDK is required but not found.")
             console.print(f"[dim]Expected location: {dcv_dir}[/dim]\n")
             console.print("[bold]To obtain the DCV SDK:[/bold]")
             console.print(
@@ -442,7 +441,7 @@ button.active {
                 presigned_url = self.browser_client.generate_live_view_url(expires=300)
 
                 # Debug logging
-                console.print(f"\n[cyan]Generated presigned URL:[/cyan]")
+                console.print("\n[cyan]Generated presigned URL:[/cyan]")
                 console.print(f"[dim]{presigned_url}[/dim]\n")
 
                 html = self._generate_html(presigned_url)
@@ -569,7 +568,7 @@ button.active {
         """Generate the viewer HTML with enhanced debugging."""
 
         # Basic HTML structure
-        html_head = f"""<!DOCTYPE html>
+        html_head = """<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">

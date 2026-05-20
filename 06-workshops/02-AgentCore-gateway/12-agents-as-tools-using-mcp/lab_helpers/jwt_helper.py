@@ -6,9 +6,7 @@ Used by Labs 2-5 to trace agent calls back to specific users/actors.
 """
 
 import jwt
-import json
-import urllib.request
-from typing import Dict, Optional
+from typing import Dict
 import logging
 
 logger = logging.getLogger(__name__)

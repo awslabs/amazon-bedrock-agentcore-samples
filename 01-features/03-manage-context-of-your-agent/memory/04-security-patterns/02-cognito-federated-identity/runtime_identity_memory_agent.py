@@ -240,7 +240,7 @@ def runtime_memory_agent(payload, context):
     # Extract and validate required values
     user_input = payload.get("prompt")
     id_token = payload.get("id_token")  # Get the ID token from payload
-    auth_header = context.request_headers.get("Authorization")
+    auth_header = context.request_headers.get("Authorization")  # noqa: F841
     session_id = context.session_id
 
     # Validate required fields

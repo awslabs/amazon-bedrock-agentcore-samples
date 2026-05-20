@@ -817,7 +817,7 @@ def generate_eval_data(duration_minutes=30, agentcore_runtime=None):
         # Small delay between invocations to avoid throttling
         time.sleep(random.uniform(2, 5))
 
-    print(f"\n📊 Data generation complete:")
+    print("\n📊 Data generation complete:")
     print(f"   Total invocations: {invocation_count}")
     print(f"   Errors: {error_count}")
     print(f"   Success rate: {((invocation_count - error_count) / max(invocation_count, 1)) * 100:.1f}%")
@@ -881,7 +881,7 @@ def cleanup_eval_resources():
         iam.detach_role_policy(RoleName=role_name, PolicyArn=policy_arn)
         iam.delete_policy(PolicyArn=policy_arn)
         iam.delete_role(RoleName=role_name)
-        print(f"✅ Deleted eval IAM role and policy")
+        print("✅ Deleted eval IAM role and policy")
         eval_ssm = f"{EVAL_SSM_PREFIX}/runtime_execution_role_arn"
         delete_ssm(eval_ssm)
     except Exception as e:

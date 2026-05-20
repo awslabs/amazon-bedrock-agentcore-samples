@@ -380,7 +380,7 @@ def generate_metrics_trend_chart() -> str:
             )
             try:
                 return float(clean)
-            except:
+            except:  # noqa: E722
                 return 0
 
         # Create 2x2 subplot grid

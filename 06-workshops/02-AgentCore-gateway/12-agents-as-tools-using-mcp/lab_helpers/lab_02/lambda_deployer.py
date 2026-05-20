@@ -17,9 +17,8 @@ from lab_helpers.constants import (
     LAMBDA_CONFIG,
     ECR_CONFIG,
     IAM_POLICIES,
-    BEDROCK_CONFIG,
 )
-from lab_helpers.parameter_store import put_parameter, get_parameters_by_path, store_workshop_metadata
+from lab_helpers.parameter_store import put_parameter, store_workshop_metadata
 from lab_helpers.config import MODEL_ID, AWS_REGION
 
 
@@ -38,7 +37,7 @@ def create_ecr_repository(repository_name, region_name=None):
         region_name = AWS_REGION
 
     ecr = boto3.client('ecr', region_name=region_name)
-    account_id = boto3.client('sts', region_name=region_name).get_caller_identity()['Account']
+    account_id = boto3.client('sts', region_name=region_name).get_caller_identity()['Account']  # noqa: F841
 
     try:
         # Check if repository exists
@@ -103,7 +102,7 @@ def create_lambda_execution_role(role_name, region_name=None):
             RoleName=role_name,
             PolicyArn=IAM_POLICIES["cloudwatch_logs_policy"]
         )
-        print(f"✓ Attached CloudWatch Logs policy")
+        print("✓ Attached CloudWatch Logs policy")
     except Exception as e:
         print(f"⚠ CloudWatch policy (may already be attached): {e}")
 
@@ -132,7 +131,7 @@ def create_lambda_execution_role(role_name, region_name=None):
             PolicyName="BedrockInvokePolicy",
             PolicyDocument=json.dumps(bedrock_policy)
         )
-        print(f"✓ Attached Bedrock InvokeModel policy")
+        print("✓ Attached Bedrock InvokeModel policy")
     except Exception as e:
         print(f"⚠ Bedrock policy update: {e}")
 
@@ -233,9 +232,9 @@ def setup_lab_02_infrastructure(handler_code, region_name=None):
     print("Preparing Lambda build context...")
     build_context = prepare_lambda_build_context(handler_code)
     print(f"✓ Created build directory: {build_context['build_dir']}")
-    print(f"✓ Created Dockerfile")
-    print(f"✓ Created requirements.txt")
-    print(f"✓ Created app.py (Lambda handler)")
+    print("✓ Created Dockerfile")
+    print("✓ Created requirements.txt")
+    print("✓ Created app.py (Lambda handler)")
     print()
 
     # Get account ID

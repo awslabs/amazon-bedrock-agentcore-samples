@@ -56,7 +56,7 @@ subprocess.check_call(
     ]
 )
 
-import boto3 as _b3
+import boto3 as _b3  # noqa: E402
 
 assert tuple(int(x) for x in _b3.__version__.split(".")) >= (1, 42, 87), (
     f"boto3 >= 1.42.87 required, got {_b3.__version__}"
@@ -64,8 +64,8 @@ assert tuple(int(x) for x in _b3.__version__.split(".")) >= (1, 42, 87), (
 print(f"boto3 {_b3.__version__} — native AgentCore Registry support ✓")
 
 # ── Imports ───────────────────────────────────────────────────────────────────
-from bedrock_agentcore_starter_toolkit import Runtime
-from utils import (
+from bedrock_agentcore_starter_toolkit import Runtime  # noqa: E402
+from utils import (  # noqa: E402
     ORDER_MANAGEMENT_LAMBDA_CODE,
     ORDER_TOOL_SCHEMAS,
     make_lambda_zip,
@@ -732,7 +732,7 @@ print(
     "Each demo triggers the orchestrator to: search Registry → instantiate tools → execute\n"
 )
 
-from utils import invoke_orchestrator
+from utils import invoke_orchestrator  # noqa: E402
 
 # Demo 1: Order Status (MCP Tool)
 print("─── Demo 1: Order Status — MCP Tool Invocation ───")

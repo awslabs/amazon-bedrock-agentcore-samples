@@ -6,7 +6,6 @@ Self-sufficient version with all dependencies inlined.
 
 import streamlit as st
 import json
-from typing import Generator
 
 from strands import Agent
 from strands.models import BedrockModel
@@ -254,7 +253,7 @@ def initialize_agent():
                     decoded = base64.b64decode(payload)
                     token_data = json.loads(decoded)
                     st.session_state.user_email = token_data.get('email', token_data.get('username', 'Unknown'))
-                except Exception as jwt_error:
+                except Exception:
                     st.session_state.user_email = config['client_info']['username']
                 
                 # Create MCP client

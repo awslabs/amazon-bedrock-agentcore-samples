@@ -83,8 +83,8 @@ logger = logging.getLogger("agentcore-memory")
 # In this section, we'll create a memory store using the AgentCore Memory SDK. This memory store will allow our agent to retain information from the conversation.
 
 
-from bedrock_agentcore.memory import MemoryClient
-from botocore.exceptions import ClientError
+from bedrock_agentcore.memory import MemoryClient  # noqa: E402
+from botocore.exceptions import ClientError  # noqa: E402
 
 
 client = MemoryClient(region_name=region)
@@ -136,11 +136,11 @@ except Exception as e:
 # Let's import all the libraries we need to create the agent with LangGraph.
 
 
-from langgraph.graph import StateGraph, MessagesState
-from langgraph.prebuilt import ToolNode, tools_condition
-from langchain_core.tools import tool
-from langchain_core.messages import HumanMessage, SystemMessage
-from langchain_aws import ChatBedrock
+from langgraph.graph import StateGraph, MessagesState  # noqa: E402
+from langgraph.prebuilt import ToolNode, tools_condition  # noqa: E402
+from langchain_core.tools import tool  # noqa: E402
+from langchain_core.messages import HumanMessage, SystemMessage  # noqa: E402
+from langchain_aws import ChatBedrock  # noqa: E402
 
 
 # ### LangGraph Agent Implementation

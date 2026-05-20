@@ -76,7 +76,7 @@ memory_client = MemoryClient(region_name=REGION)
 # For this example, we'll create a simple short-term memory resource without any additional long-term strategies. The memory will store all conversation messages, helping our agent remember previous interactions when continuing a session after it has been terminated in AgentCore Runtime.
 
 
-from botocore.exceptions import ClientError
+from botocore.exceptions import ClientError  # noqa: E402
 
 # Create unique identifier for this resource
 unique_id = str(uuid.uuid4())[:8]
@@ -180,10 +180,10 @@ except Exception as e:
 # Let's set up our deployment configuration:
 
 
-import time
-import json
-import subprocess
-import shutil
+import time  # noqa: E402
+import json  # noqa: E402
+import subprocess  # noqa: E402
+import shutil  # noqa: E402
 
 # ── Deploy to AgentCore Runtime (native boto3 S3 code deployment) ─────────────
 
@@ -402,7 +402,7 @@ logger.info(f"✅ Endpoint ready: {endpoint_url}")
 test_session_id = "agent-runtime-memory-session-123456789"  # Min length is 33
 
 # Send our first message
-import urllib.request
+import urllib.request  # noqa: E402
 
 data = json.dumps(
     {"prompt": "Hello! My name is John. What can you do?", "actor_id": "test_user_123"}
@@ -416,9 +416,9 @@ invoke_request = urllib.request.Request(
 
 session_creds = boto3.Session().get_credentials().get_frozen_credentials()
 # Use sigv4 signing via requests + botocore
-from botocore.auth import SigV4Auth
-from botocore.awsrequest import AWSRequest
-import requests
+from botocore.auth import SigV4Auth  # noqa: E402
+from botocore.awsrequest import AWSRequest  # noqa: E402
+import requests  # noqa: E402
 
 aws_request = AWSRequest(
     method="POST",
@@ -445,7 +445,7 @@ print(invoke_response.json())
 # Let's display the response in a more readable format:
 
 
-import json
+import json  # noqa: E402
 
 response_text = invoke_response["response"][0]
 # display(Markdown(response_text))  # notebook display removed

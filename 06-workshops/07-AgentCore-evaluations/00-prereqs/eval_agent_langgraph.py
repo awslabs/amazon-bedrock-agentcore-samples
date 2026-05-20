@@ -3,8 +3,6 @@ from langgraph.prebuilt import ToolNode, tools_condition
 from langchain_core.tools import tool
 from langchain_core.messages import HumanMessage, SystemMessage
 from bedrock_agentcore.runtime import BedrockAgentCoreApp
-import argparse
-import json
 import operator
 import math
 

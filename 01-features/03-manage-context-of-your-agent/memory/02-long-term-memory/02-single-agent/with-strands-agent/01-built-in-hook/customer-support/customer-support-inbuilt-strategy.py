@@ -155,25 +155,25 @@ logging.basicConfig(
 logger = logging.getLogger("customer-support")
 
 # Import required modules for Strands Agent
-from strands import Agent, tool
-from strands.hooks import (
+from strands import Agent, tool  # noqa: E402
+from strands.hooks import (  # noqa: E402
     AfterInvocationEvent,
     HookProvider,
     HookRegistry,
     MessageAddedEvent,
 )
-from ddgs import DDGS
+from ddgs import DDGS  # noqa: E402
 
 # Import memory management modules
-from bedrock_agentcore.memory import MemoryClient
-from bedrock_agentcore.memory.constants import (
+from bedrock_agentcore.memory import MemoryClient  # noqa: E402
+from bedrock_agentcore.memory.constants import (  # noqa: E402
     ConversationalMessage,
     MessageRole,
     RetrievalConfig,
     StrategyType,
 )
-from bedrock_agentcore.memory.models import StringValue, MemoryRecord
-from bedrock_agentcore.memory.session import MemorySession, MemorySessionManager
+from bedrock_agentcore.memory.models import StringValue, MemoryRecord  # noqa: E402
+from bedrock_agentcore.memory.session import MemorySession, MemorySessionManager  # noqa: E402
 
 # Define message role constants
 USER = MessageRole.USER
@@ -287,7 +287,7 @@ print(f"Number of strategies: {len(strategies)}")
 # ## Step 3: Create Agent Tools
 
 
-from ddgs.exceptions import DDGSException, RatelimitException
+from ddgs.exceptions import DDGSException, RatelimitException  # noqa: E402
 
 
 @tool

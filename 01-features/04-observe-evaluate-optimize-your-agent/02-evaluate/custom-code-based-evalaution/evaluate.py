@@ -431,8 +431,8 @@ for prompt in ON_DEMAND_TURNS:
 print("\n  Waiting 90s for CloudWatch log ingestion ...")
 time.sleep(90)
 
-from bedrock_agentcore.evaluation import EvaluationClient
-from datetime import timedelta
+from bedrock_agentcore.evaluation import EvaluationClient  # noqa: E402
+from datetime import timedelta  # noqa: E402
 
 ec = EvaluationClient(region_name=REGION)
 ec._evaluator_level_cache.update(
@@ -492,7 +492,7 @@ for r in od_results:
 
 print("\n  Running OnDemandEvaluationDatasetRunner (mixed evaluators) ...")
 
-from bedrock_agentcore.evaluation import (
+from bedrock_agentcore.evaluation import (  # noqa: E402
     AgentInvokerInput,
     AgentInvokerOutput,
     CloudWatchAgentSpanCollector,

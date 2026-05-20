@@ -145,10 +145,10 @@ async def _filtered_aput_messages(self, messages: List[ChatMessage]) -> None:
 
 
 AgentCoreMemory.aput_messages = _filtered_aput_messages
-from llama_index.core.agent.workflow import FunctionAgent
-from llama_index.core.tools import FunctionTool
-import os
-import boto3
+from llama_index.core.agent.workflow import FunctionAgent  # noqa: E402
+from llama_index.core.tools import FunctionTool  # noqa: E402
+import os  # noqa: E402
+import boto3  # noqa: E402
 
 print("✅ All dependencies imported successfully!")
 
@@ -435,7 +435,7 @@ agent_q1, memory_q1 = create_advisory_session("q1")
 
 # Record initial client meeting
 
-import asyncio
+import asyncio  # noqa: E402
 
 
 async def main():
@@ -475,7 +475,7 @@ async def main():
     # Verify events were stored
     print("\n🔍 Verifying Q1 events were stored...")
     try:
-        client = MemoryClient(region_name=region)
+        client = MemoryClient(region_name=region)  # noqa: F823
         events = client.list_events(
             memory_id=memory_id,
             actor_id=ADVISOR_ID,
@@ -772,7 +772,7 @@ async def main():
 
             return pass_rate
 
-    validator = TestValidator()
+    validator = TestValidator()  # noqa: F841
     print("✅ Validation functions loaded!")
 
     # Run all validation tests

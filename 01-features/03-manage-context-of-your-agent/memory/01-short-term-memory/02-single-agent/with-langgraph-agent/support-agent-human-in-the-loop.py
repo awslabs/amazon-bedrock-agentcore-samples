@@ -175,7 +175,7 @@ graph
 #
 
 
-import uuid as _uuid
+import uuid as _uuid  # noqa: E402
 
 user_input = "I would like to work with a customer service human agent."
 config = {

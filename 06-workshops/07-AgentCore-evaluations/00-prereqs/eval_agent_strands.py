@@ -1,7 +1,5 @@
 from strands import Agent, tool
 from strands_tools import calculator # Import the calculator tool
-import argparse
-import json
 from bedrock_agentcore.runtime import BedrockAgentCoreApp
 from strands.models import BedrockModel
 

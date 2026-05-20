@@ -11,8 +11,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger("meeting-notes-assistant")
 
-from strands import Agent, tool
-from strands.hooks import (
+from strands import Agent, tool  # noqa: E402
+from strands.hooks import (  # noqa: E402
     AfterInvocationEvent,
     HookProvider,
     HookRegistry,
@@ -24,8 +24,8 @@ REGION = "us-west-2"
 PARTICIPANT_ID = "participant_001"
 SESSION_ID = f"meeting_{datetime.now().strftime('%Y%m%d%H%M%S')}"
 
-from bedrock_agentcore.memory import MemoryClient
-from bedrock_agentcore.memory.constants import StrategyType
+from bedrock_agentcore.memory import MemoryClient  # noqa: E402
+from bedrock_agentcore.memory.constants import StrategyType  # noqa: E402
 
 client = MemoryClient(region_name=REGION)
 memory_name = "MeetingNotesEpisodicMemory"

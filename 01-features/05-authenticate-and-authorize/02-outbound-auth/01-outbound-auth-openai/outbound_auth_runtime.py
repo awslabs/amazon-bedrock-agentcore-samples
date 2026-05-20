@@ -154,7 +154,7 @@ def demo_local_usage():
     """
     from bedrock_agentcore.services.identity import IdentityClient
 
-    identity_client = IdentityClient(region=REGION)
+    identity_client = IdentityClient(region=REGION)  # noqa: F841
     # In the agent, @requires_api_key calls GetResourceApiKey
     print("  API Key credential provider is ready.")
     print("  The @requires_api_key decorator retrieves the key at agent runtime.")

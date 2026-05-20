@@ -7,7 +7,6 @@ WARNING: This tool handles sensitive PII data and should have restricted access.
 
 import json
 import random
-from datetime import datetime
 
 
 def lambda_handler(event, context):
@@ -113,7 +112,7 @@ def lambda_handler(event, context):
         }
     }
 
-    print(f"Employee data tool response generated")
+    print("Employee data tool response generated")
     return response
 
 

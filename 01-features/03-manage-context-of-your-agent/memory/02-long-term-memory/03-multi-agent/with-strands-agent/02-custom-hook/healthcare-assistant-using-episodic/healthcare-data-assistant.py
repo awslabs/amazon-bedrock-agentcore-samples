@@ -125,11 +125,11 @@ print(f"  Model ID: {MODEL_ID}")
 # Set up HealthLake FHIR datastore with patient data for the healthcare agents to query.
 
 
-import boto3
-import requests
-import time
-from botocore.auth import SigV4Auth
-from botocore.awsrequest import AWSRequest
+import boto3  # noqa: E402
+import requests  # noqa: E402
+import time  # noqa: E402
+from botocore.auth import SigV4Auth  # noqa: E402
+from botocore.awsrequest import AWSRequest  # noqa: E402
 
 # HealthLake configuration
 HEALTHLAKE_REGION = "us-east-1"
@@ -309,9 +309,9 @@ except Exception as e:
 # ## Step 4: Create Memory Hook Provider with Branch Support
 
 
-from bedrock_agentcore.memory.constants import ConversationalMessage, MessageRole
-from strands.hooks import AgentInitializedEvent, MessageAddedEvent
-from bedrock_agentcore.memory import MemorySessionManager
+from bedrock_agentcore.memory.constants import ConversationalMessage, MessageRole  # noqa: E402
+from strands.hooks import AgentInitializedEvent, MessageAddedEvent  # noqa: E402
+from bedrock_agentcore.memory import MemorySessionManager  # noqa: E402
 
 
 class HealthcareMemoryHooks(HookProvider):
