@@ -116,3 +116,4 @@
 - Cristiano Scandura (scandura)
 - palbiren
 - Gui Ruggiero (guiruggiero)
+- Julia Furst Morgado (juliafmorgado)
