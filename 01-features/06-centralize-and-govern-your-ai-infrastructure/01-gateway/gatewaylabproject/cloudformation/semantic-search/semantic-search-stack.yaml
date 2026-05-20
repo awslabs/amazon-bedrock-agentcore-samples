@@ -1,0 +1,79 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  Semantic Search tutorial — deploys calculator and restaurant Lambda functions
+  for AgentCore Gateway Lambda targets.
+
+Resources:
+  CalcRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: agentcore-semantic-search-calc-role
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+
+  RestaurantRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: agentcore-semantic-search-restaurant-role
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+
+  CalcFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: calc_lambda_gateway
+      Runtime: python3.12
+      Handler: calc_lambda.lambda_handler
+      Role: !GetAtt CalcRole.Arn
+      Timeout: 30
+      MemorySize: 256
+      Description: Calculator Lambda for AgentCore Gateway semantic search tutorial
+      Code: ../../app/semantic-search/
+
+  CalcPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref CalcFunction
+      Action: lambda:InvokeFunction
+      Principal: bedrock-agentcore.amazonaws.com
+
+  RestaurantFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: restaurant_lambda_gateway
+      Runtime: python3.12
+      Handler: restaurant_lambda.lambda_handler
+      Role: !GetAtt RestaurantRole.Arn
+      Timeout: 30
+      MemorySize: 256
+      Description: Restaurant Lambda for AgentCore Gateway semantic search tutorial
+      Code: ../../app/semantic-search/
+
+  RestaurantPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref RestaurantFunction
+      Action: lambda:InvokeFunction
+      Principal: bedrock-agentcore.amazonaws.com
+
+Outputs:
+  CalcFunctionArn:
+    Description: ARN of the calculator Lambda function
+    Value: !GetAtt CalcFunction.Arn
+  RestaurantFunctionArn:
+    Description: ARN of the restaurant Lambda function
+    Value: !GetAtt RestaurantFunction.Arn

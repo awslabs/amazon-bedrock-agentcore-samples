@@ -1,0 +1,7 @@
+
+# Runtime/eval state files with sensitive AWS resource IDs — never commit these
+agent_state_*.json
+optimize_state_*.json
+dp_demo_state.json
+results/*.json
+utils/agent_config.json

@@ -1,0 +1,16 @@
+{
+  "gateway_url": "https://testgwforpolicyengine-cpmobyoayn.gateway.bedrock-agentcore.us-east-1.amazonaws.com/mcp",
+  "gateway_id": "testgwforpolicyengine-cpmobyoayn",
+  "gateway_arn": "arn:aws:bedrock-agentcore:us-east-1:849138760372:gateway/testgwforpolicyengine-cpmobyoayn",
+  "region": "us-east-1",
+  "client_info": {
+    "client_id": "6ekf8v4q32pl0g6epubqv7un59",
+    "client_secret": "1a98sju0belq1t4djfdhsqrlqgg1g3ptd10rcuk5hgnea1ddddoi",
+    "user_pool_id": "us-east-1_4GiGGiLsv",
+    "token_endpoint": "https://agentcore-0c4d421f.auth.us-east-1.amazoncognito.com/oauth2/token",
+    "scope": "TestGateway/invoke",
+    "domain_prefix": "agentcore-0c4d421f"
+  },
+  "lambda_arn": "arn:aws:lambda:us-east-1:849138760372:function:RefundLambda",
+  "policy_engine_id": "FGACTutorialEngine-9ir0f1ki1o"
+}
