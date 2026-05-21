@@ -23,7 +23,7 @@ AgentCore services work together or independently with any open-source framework
 | **browser** | Managed cloud browser for agents to interact with web applications, navigate sites, fill forms, and extract information. |
 | **harness** | Serverless agent orchestration layer — model, tools, system prompt, and context management in a single API call, without managing a runtime. |
 
-![AgentCore map](01-getting-started/images/agentcore-map.png)
+![AgentCore map](../00-getting-started/images/agentcore-map.png)
 
 ### What Can You Build?
 
