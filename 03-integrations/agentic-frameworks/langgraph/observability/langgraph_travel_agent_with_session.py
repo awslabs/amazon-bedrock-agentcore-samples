@@ -33,14 +33,22 @@ logger = logging.getLogger(__name__)
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="LangGraph Travel Agent with Session Tracking")
-    parser.add_argument("--session-id", required=True, help="Session ID for trace correlation")
-    parser.add_argument("--user-type", help="User type for analysis (e.g., premium, free)")
+    parser = argparse.ArgumentParser(
+        description="LangGraph Travel Agent with Session Tracking"
+    )
+    parser.add_argument(
+        "--session-id", required=True, help="Session ID for trace correlation"
+    )
+    parser.add_argument(
+        "--user-type", help="User type for analysis (e.g., premium, free)"
+    )
     parser.add_argument("--experiment-id", help="Experiment ID for A/B testing")
     return parser.parse_args()
 
 
-def set_session_context(session_id: str, user_type: str = None, experiment_id: str = None):
+def set_session_context(
+    session_id: str, user_type: str = None, experiment_id: str = None
+):
     """Attach session ID (and optional attributes) to OTel baggage."""
     ctx = baggage.set_baggage("session.id", session_id)
     if user_type:
@@ -71,8 +79,12 @@ def web_search(query: str) -> str:
 
 
 def build_graph():
-    model_id = os.getenv("BEDROCK_MODEL_ID", "global.anthropic.claude-haiku-4-5-20251001-v1:0")
-    llm = init_chat_model(model_id, model_provider="bedrock_converse", temperature=0.0, max_tokens=512)
+    model_id = os.getenv(
+        "BEDROCK_MODEL_ID", "global.anthropic.claude-haiku-4-5-20251001-v1:0"
+    )
+    llm = init_chat_model(
+        model_id, model_provider="bedrock_converse", temperature=0.0, max_tokens=512
+    )
     tools = [web_search]
     llm_with_tools = llm.bind_tools(tools)
 
@@ -84,6 +96,7 @@ def build_graph():
             return {"messages": [llm_with_tools.invoke(state["messages"])]}
         except Exception as e:
             from langchain_core.messages import AIMessage
+
             return {"messages": [AIMessage(content=f"Error: {str(e)}")]}
 
     builder = StateGraph(State)
@@ -109,7 +122,9 @@ def main():
         )
 
         config = {"configurable": {"session_id": args.session_id}}
-        output = graph.invoke({"messages": [{"role": "user", "content": query}]}, config=config)
+        output = graph.invoke(
+            {"messages": [{"role": "user", "content": query}]}, config=config
+        )
         result = output["messages"][-1].content
         print("\nAgent Response:")
         print("-" * 60)

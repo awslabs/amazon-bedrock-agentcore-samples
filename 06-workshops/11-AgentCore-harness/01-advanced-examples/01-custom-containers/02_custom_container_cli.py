@@ -86,22 +86,55 @@ parser = argparse.ArgumentParser(
     formatter_class=argparse.RawDescriptionHelpFormatter,
     epilog=f"Available language presets: {', '.join(LANGUAGE_PRESETS.keys())}",
 )
-parser.add_argument("--language", "-l", choices=LANGUAGE_PRESETS.keys(), default="node",
-                    help="Language preset — sets container + demo message (default: node)")
-parser.add_argument("--container", default=None, metavar="URI",
-                    help="Container image URI (overrides --language preset)")
-parser.add_argument("--message", "-m", default=None,
-                    help="Prompt to send to the agent (overrides --language preset)")
-parser.add_argument("--model", default=DEFAULT_MODEL, metavar="MODEL_ID",
-                    help=f"Bedrock model ID (default: {DEFAULT_MODEL})")
-parser.add_argument("--role-arn", default=None, metavar="ARN",
-                    help="Use an existing IAM execution role ARN instead of creating one")
-parser.add_argument("--system-prompt", default=None, metavar="TEXT",
-                    help="System prompt (default: auto-generated based on container)")
-parser.add_argument("--commands", nargs="*", metavar="CMD",
-                    help="Extra commands to run on the VM after invocation (e.g. 'node --version' 'ls /tmp')")
-parser.add_argument("--skip-cleanup", action="store_true", help="Keep resources after the demo")
-parser.add_argument("--raw-events", action="store_true", help="Print raw streaming events")
+parser.add_argument(
+    "--language",
+    "-l",
+    choices=LANGUAGE_PRESETS.keys(),
+    default="node",
+    help="Language preset — sets container + demo message (default: node)",
+)
+parser.add_argument(
+    "--container",
+    default=None,
+    metavar="URI",
+    help="Container image URI (overrides --language preset)",
+)
+parser.add_argument(
+    "--message",
+    "-m",
+    default=None,
+    help="Prompt to send to the agent (overrides --language preset)",
+)
+parser.add_argument(
+    "--model",
+    default=DEFAULT_MODEL,
+    metavar="MODEL_ID",
+    help=f"Bedrock model ID (default: {DEFAULT_MODEL})",
+)
+parser.add_argument(
+    "--role-arn",
+    default=None,
+    metavar="ARN",
+    help="Use an existing IAM execution role ARN instead of creating one",
+)
+parser.add_argument(
+    "--system-prompt",
+    default=None,
+    metavar="TEXT",
+    help="System prompt (default: auto-generated based on container)",
+)
+parser.add_argument(
+    "--commands",
+    nargs="*",
+    metavar="CMD",
+    help="Extra commands to run on the VM after invocation (e.g. 'node --version' 'ls /tmp')",
+)
+parser.add_argument(
+    "--skip-cleanup", action="store_true", help="Keep resources after the demo"
+)
+parser.add_argument(
+    "--raw-events", action="store_true", help="Print raw streaming events"
+)
 args = parser.parse_args()
 
 
@@ -217,7 +250,9 @@ def main():
         print("Step 1: Create Harness")
         print("=" * 60)
         name = f"ContainerCLI_{uuid.uuid4().hex[:8]}"
-        resp = aws_cp("create-harness", "--harness-name", name, "--execution-role-arn", role_arn)
+        resp = aws_cp(
+            "create-harness", "--harness-name", name, "--execution-role-arn", role_arn
+        )
         harness_id = resp["harness"]["harnessId"]
         harness_arn = resp["harness"]["arn"]
         print(f"  Harness ID:  {harness_id}")
@@ -230,9 +265,18 @@ def main():
         print("=" * 60)
         aws_cp(
             "update-harness",
-            "--harness-id", harness_id,
-            "--environment-artifact", json.dumps({"optionalValue": {"containerConfiguration": {"containerUri": container_uri}}}),
-            "--system-prompt", json.dumps([{"text": system_prompt}]),
+            "--harness-id",
+            harness_id,
+            "--environment-artifact",
+            json.dumps(
+                {
+                    "optionalValue": {
+                        "containerConfiguration": {"containerUri": container_uri}
+                    }
+                }
+            ),
+            "--system-prompt",
+            json.dumps([{"text": system_prompt}]),
         )
         wait_ready(harness_id)
 
@@ -240,7 +284,7 @@ def main():
         print("\n" + "=" * 60)
         print("Step 3: Invoke agent")
         print("=" * 60)
-        
+
         client = get_agentcore_client()
         session_id = str(uuid.uuid4()).upper()
         print(f"  Session ID: {session_id}")

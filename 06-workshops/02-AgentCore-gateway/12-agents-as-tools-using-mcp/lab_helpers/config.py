@@ -26,7 +26,7 @@ AWS_PROFILE = None
 # Model ID: global.anthropic.claude-sonnet-4-20250514-v1:0
 # - 200K context window
 # - Released: May 22, 2025
-#MODEL_ID = "global.anthropic.claude-sonnet-4-20250514-v1:0"
+# MODEL_ID = "global.anthropic.claude-sonnet-4-20250514-v1:0"
 MODEL_ID = "us.anthropic.claude-sonnet-4-20250514-v1:0"
 # ============================================================================
 # Workshop Configuration

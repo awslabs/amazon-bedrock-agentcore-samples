@@ -67,7 +67,9 @@ def put_ssm(name, value):
 
 
 def get_ssm(name):
-    return ssm_client.get_parameter(Name=name, WithDecryption=True)["Parameter"]["Value"]
+    return ssm_client.get_parameter(Name=name, WithDecryption=True)["Parameter"][
+        "Value"
+    ]
 
 
 def delete_ssm(name):
@@ -98,11 +100,22 @@ Always use the appropriate tool to get accurate, up-to-date information."""
 def _get_return_policy(product_category: str) -> str:
     """Return policy lookup (mock data)."""
     policies = {
-        "smartphones": {"window": "30 days", "warranty": "1-year manufacturer warranty"},
-        "laptops": {"window": "30 days", "warranty": "1-year manufacturer warranty, extended options"},
-        "accessories": {"window": "30 days", "warranty": "90-day manufacturer warranty"},
+        "smartphones": {
+            "window": "30 days",
+            "warranty": "1-year manufacturer warranty",
+        },
+        "laptops": {
+            "window": "30 days",
+            "warranty": "1-year manufacturer warranty, extended options",
+        },
+        "accessories": {
+            "window": "30 days",
+            "warranty": "90-day manufacturer warranty",
+        },
     }
-    p = policies.get(product_category.lower(), {"window": "30 days", "warranty": "Standard warranty"})
+    p = policies.get(
+        product_category.lower(), {"window": "30 days", "warranty": "Standard warranty"}
+    )
     return f"Return Policy - {product_category}: Window: {p['window']}, Warranty: {p['warranty']}"
 
 
@@ -124,18 +137,25 @@ def _get_technical_support(issue_description: str) -> str:
         kb_id = ssm_client.get_parameter(
             Name=f"/{ACCOUNT_ID}-{REGION}/kb/knowledge-base-id"
         )["Parameter"]["Value"]
-        bedrock_agent_runtime = boto3.client("bedrock-agent-runtime", region_name=REGION)
+        bedrock_agent_runtime = boto3.client(
+            "bedrock-agent-runtime", region_name=REGION
+        )
         response = bedrock_agent_runtime.retrieve(
             knowledgeBaseId=kb_id,
             retrievalQuery={"text": issue_description},
-            retrievalConfiguration={"vectorSearchConfiguration": {"numberOfResults": 3}},
+            retrievalConfiguration={
+                "vectorSearchConfiguration": {"numberOfResults": 3}
+            },
         )
         results = response.get("retrievalResults", [])
-        texts = [r.get("content", {}).get("text", "") for r in results if r.get("score", 0) >= 0.4]
+        texts = [
+            r.get("content", {}).get("text", "")
+            for r in results
+            if r.get("score", 0) >= 0.4
+        ]
         return "\n\n".join(texts) if texts else "No relevant documentation found."
     except Exception as e:
         return f"KB lookup error: {e}"
-
 
 
 # ---------------------------------------------------------------------------
@@ -195,6 +215,7 @@ def create_eval_gateway():
     # Reuse the existing Cognito pool (read-only, same account)
     try:
         from lab_helpers.utils import get_or_create_cognito_pool
+
         cognito_config = get_or_create_cognito_pool(refresh_token=True)
     except ImportError:
         # Fallback: read from SSM if lab_helpers not on path
@@ -256,7 +277,13 @@ def create_eval_gateway():
     # Add Lambda target (reuse the same Lambda from workshop prereqs)
     lambda_arn = get_ssm("/app/customersupport/agentcore/lambda_arn")
     api_spec_path = os.path.join(
-        os.path.dirname(__file__), "..", "..", "..", "prerequisite", "lambda", "api_spec.json"
+        os.path.dirname(__file__),
+        "..",
+        "..",
+        "..",
+        "prerequisite",
+        "lambda",
+        "api_spec.json",
     )
     with open(api_spec_path) as f:
         api_spec = json.load(f)
@@ -302,7 +329,6 @@ def create_eval_gateway():
     }, cognito_config
 
 
-
 # ---------------------------------------------------------------------------
 # Step 4 — Create IAM Role + Deploy to AgentCore Runtime (Lab 4 equivalent)
 # ---------------------------------------------------------------------------
@@ -345,7 +371,9 @@ def create_eval_execution_role():
             {
                 "Effect": "Allow",
                 "Action": ["logs:DescribeLogStreams", "logs:CreateLogGroup"],
-                "Resource": [f"arn:aws:logs:{REGION}:{ACCOUNT_ID}:log-group:/aws/bedrock-agentcore/runtimes/*"],
+                "Resource": [
+                    f"arn:aws:logs:{REGION}:{ACCOUNT_ID}:log-group:/aws/bedrock-agentcore/runtimes/*"
+                ],
             },
             {
                 "Effect": "Allow",
@@ -355,13 +383,17 @@ def create_eval_execution_role():
             {
                 "Effect": "Allow",
                 "Action": ["logs:CreateLogStream", "logs:PutLogEvents"],
-                "Resource": [f"arn:aws:logs:{REGION}:{ACCOUNT_ID}:log-group:/aws/bedrock-agentcore/runtimes/*:log-stream:*"],
+                "Resource": [
+                    f"arn:aws:logs:{REGION}:{ACCOUNT_ID}:log-group:/aws/bedrock-agentcore/runtimes/*:log-stream:*"
+                ],
             },
             {
                 "Effect": "Allow",
                 "Action": [
-                    "xray:PutTraceSegments", "xray:PutTelemetryRecords",
-                    "xray:GetSamplingRules", "xray:GetSamplingTargets",
+                    "xray:PutTraceSegments",
+                    "xray:PutTelemetryRecords",
+                    "xray:GetSamplingRules",
+                    "xray:GetSamplingTargets",
                 ],
                 "Resource": ["*"],
             },
@@ -369,7 +401,9 @@ def create_eval_execution_role():
                 "Effect": "Allow",
                 "Action": "cloudwatch:PutMetricData",
                 "Resource": "*",
-                "Condition": {"StringEquals": {"cloudwatch:namespace": "bedrock-agentcore"}},
+                "Condition": {
+                    "StringEquals": {"cloudwatch:namespace": "bedrock-agentcore"}
+                },
             },
             {
                 "Effect": "Allow",
@@ -386,8 +420,10 @@ def create_eval_execution_role():
             {
                 "Effect": "Allow",
                 "Action": [
-                    "bedrock:InvokeModel", "bedrock:InvokeModelWithResponseStream",
-                    "bedrock:ApplyGuardrail", "bedrock:Retrieve",
+                    "bedrock:InvokeModel",
+                    "bedrock:InvokeModelWithResponseStream",
+                    "bedrock:ApplyGuardrail",
+                    "bedrock:Retrieve",
                 ],
                 "Resource": [
                     "arn:aws:bedrock:*::foundation-model/*",
@@ -397,9 +433,12 @@ def create_eval_execution_role():
             {
                 "Effect": "Allow",
                 "Action": [
-                    "bedrock-agentcore:CreateEvent", "bedrock-agentcore:ListEvents",
-                    "bedrock-agentcore:GetMemoryRecord", "bedrock-agentcore:GetMemory",
-                    "bedrock-agentcore:RetrieveMemoryRecords", "bedrock-agentcore:ListMemoryRecords",
+                    "bedrock-agentcore:CreateEvent",
+                    "bedrock-agentcore:ListEvents",
+                    "bedrock-agentcore:GetMemoryRecord",
+                    "bedrock-agentcore:GetMemory",
+                    "bedrock-agentcore:RetrieveMemoryRecords",
+                    "bedrock-agentcore:ListMemoryRecords",
                 ],
                 "Resource": [f"arn:aws:bedrock-agentcore:{REGION}:{ACCOUNT_ID}:*"],
             },
@@ -410,8 +449,13 @@ def create_eval_execution_role():
             },
             {
                 "Effect": "Allow",
-                "Action": ["bedrock-agentcore:GetGateway", "bedrock-agentcore:InvokeGateway"],
-                "Resource": [f"arn:aws:bedrock-agentcore:{REGION}:{ACCOUNT_ID}:gateway/*"],
+                "Action": [
+                    "bedrock-agentcore:GetGateway",
+                    "bedrock-agentcore:InvokeGateway",
+                ],
+                "Resource": [
+                    f"arn:aws:bedrock-agentcore:{REGION}:{ACCOUNT_ID}:gateway/*"
+                ],
             },
         ],
     }
@@ -447,7 +491,6 @@ def create_eval_execution_role():
 
     put_ssm(f"{EVAL_SSM_PREFIX}/runtime_execution_role_arn", role_arn)
     return role_arn
-
 
 
 def write_eval_runtime_entrypoint(memory_id, gateway_id):
@@ -598,7 +641,6 @@ if __name__ == "__main__":
     return entrypoint_path
 
 
-
 def deploy_eval_runtime(memory_id, gateway_id):
     """Deploy the eval agent to AgentCore Runtime."""
     from bedrock_agentcore_starter_toolkit import Runtime
@@ -664,12 +706,15 @@ def test_single_invocation(agentcore_runtime=None):
     """Test the eval agent with a single invocation."""
     if agentcore_runtime is None:
         from bedrock_agentcore_starter_toolkit import Runtime
+
         agentcore_runtime = Runtime()
         # Re-configure to point at existing eval agent
         execution_role_arn = get_ssm(f"{EVAL_SSM_PREFIX}/runtime_execution_role_arn")
         client_id = get_ssm("/app/customersupport/agentcore/client_id")
         discovery_url = get_ssm("/app/customersupport/agentcore/discovery_url")
-        entrypoint_path = os.path.join(os.path.dirname(__file__), "eval_runtime_entrypoint.py")
+        entrypoint_path = os.path.join(
+            os.path.dirname(__file__), "eval_runtime_entrypoint.py"
+        )
         req_path = os.path.join(os.path.dirname(__file__), "requirements.txt")
         agentcore_runtime.configure(
             entrypoint=entrypoint_path,
@@ -689,6 +734,7 @@ def test_single_invocation(agentcore_runtime=None):
     # Get bearer token
     try:
         from lab_helpers.utils import get_or_create_cognito_pool
+
         cognito = get_or_create_cognito_pool(refresh_token=True)
         bearer_token = cognito["bearer_token"]
     except ImportError:
@@ -706,7 +752,6 @@ def test_single_invocation(agentcore_runtime=None):
     result = response.get("response", response)
     print(f"✅ Response: {result}")
     return True
-
 
 
 # ---------------------------------------------------------------------------
@@ -750,11 +795,14 @@ def generate_eval_data(duration_minutes=30, agentcore_runtime=None):
     """Invoke the eval agent repeatedly for the specified duration."""
     if agentcore_runtime is None:
         from bedrock_agentcore_starter_toolkit import Runtime
+
         agentcore_runtime = Runtime()
         execution_role_arn = get_ssm(f"{EVAL_SSM_PREFIX}/runtime_execution_role_arn")
         client_id = get_ssm("/app/customersupport/agentcore/client_id")
         discovery_url = get_ssm("/app/customersupport/agentcore/discovery_url")
-        entrypoint_path = os.path.join(os.path.dirname(__file__), "eval_runtime_entrypoint.py")
+        entrypoint_path = os.path.join(
+            os.path.dirname(__file__), "eval_runtime_entrypoint.py"
+        )
         req_path = os.path.join(os.path.dirname(__file__), "requirements.txt")
         agentcore_runtime.configure(
             entrypoint=entrypoint_path,
@@ -773,6 +821,7 @@ def generate_eval_data(duration_minutes=30, agentcore_runtime=None):
 
     try:
         from lab_helpers.utils import get_or_create_cognito_pool
+
         cognito = get_or_create_cognito_pool(refresh_token=True)
         bearer_token = cognito["bearer_token"]
     except ImportError:
@@ -808,6 +857,7 @@ def generate_eval_data(duration_minutes=30, agentcore_runtime=None):
             if "401" in str(e) or "unauthorized" in str(e).lower():
                 try:
                     from lab_helpers.utils import get_or_create_cognito_pool
+
                     cognito = get_or_create_cognito_pool(refresh_token=True)
                     bearer_token = cognito["bearer_token"]
                     print("   🔄 Refreshed bearer token")
@@ -820,8 +870,9 @@ def generate_eval_data(duration_minutes=30, agentcore_runtime=None):
     print("\n📊 Data generation complete:")
     print(f"   Total invocations: {invocation_count}")
     print(f"   Errors: {error_count}")
-    print(f"   Success rate: {((invocation_count - error_count) / max(invocation_count, 1)) * 100:.1f}%")
-
+    print(
+        f"   Success rate: {((invocation_count - error_count) / max(invocation_count, 1)) * 100:.1f}%"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -866,6 +917,7 @@ def cleanup_eval_resources():
     try:
         memory_id = get_ssm(f"{EVAL_SSM_PREFIX}/memory_id")
         from bedrock_agentcore.memory import MemoryClient
+
         mc = MemoryClient(region_name=REGION)
         mc.delete_memory(memory_id=memory_id)
         print(f"✅ Deleted eval memory: {memory_id}")
@@ -888,7 +940,9 @@ def cleanup_eval_resources():
         print(f"⚠️  IAM cleanup: {e}")
 
     # 5. Clean up generated entrypoint file
-    entrypoint_path = os.path.join(os.path.dirname(__file__), "eval_runtime_entrypoint.py")
+    entrypoint_path = os.path.join(
+        os.path.dirname(__file__), "eval_runtime_entrypoint.py"
+    )
     if os.path.exists(entrypoint_path):
         os.remove(entrypoint_path)
         print("✅ Removed eval_runtime_entrypoint.py")
@@ -940,7 +994,9 @@ def main():
         help="setup: create all resources | test: single invocation | generate: 30min data gen | cleanup: tear down",
     )
     parser.add_argument(
-        "--duration", type=int, default=30,
+        "--duration",
+        type=int,
+        default=30,
         help="Duration in minutes for data generation (default: 30)",
     )
     args = parser.parse_args()

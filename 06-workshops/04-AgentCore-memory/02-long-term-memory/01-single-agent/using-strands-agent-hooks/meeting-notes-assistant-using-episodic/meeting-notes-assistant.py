@@ -75,7 +75,9 @@ strategies = [
             "name": "MeetingEpisodes",
             "description": "Captures meeting discussions and generates reflections on meeting patterns",
             "namespaceTemplates": ["/meetings/actor/{actorId}/episodes/"],
-            "reflectionConfiguration": {"namespaceTemplates": ["/meetings/actor/{actorId}/"]},
+            "reflectionConfiguration": {
+                "namespaceTemplates": ["/meetings/actor/{actorId}/"]
+            },
         }
     }
 ]
@@ -307,9 +309,9 @@ class EpisodicMemoryHooks(HookProvider):
             if all_context:
                 context_text = "\n".join(all_context)
                 original_text = messages[-1]["content"][0]["text"]
-                messages[-1]["content"][0][
-                    "text"
-                ] = f"Past Experience:\n{context_text}\n\nCurrent Query: {original_text}"
+                messages[-1]["content"][0]["text"] = (
+                    f"Past Experience:\n{context_text}\n\nCurrent Query: {original_text}"
+                )
                 logger.info(f"Retrieved {len(all_context)} episodes/reflections")
 
         except Exception as e:

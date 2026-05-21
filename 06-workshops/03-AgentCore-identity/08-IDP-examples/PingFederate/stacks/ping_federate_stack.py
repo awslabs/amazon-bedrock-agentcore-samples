@@ -27,7 +27,9 @@ PING_FEDERATE_ADMIN_PORT = 9999
 class PingFederateStack(Stack):
     """Deploy a self-hosted PingFederate IdP on ECS Fargate behind an internal ALB."""
 
-    def __init__(self, scope: Construct, id: str, vpc: ec2.IVpc, config: CdkConfig, **kwargs):
+    def __init__(
+        self, scope: Construct, id: str, vpc: ec2.IVpc, config: CdkConfig, **kwargs
+    ):
         """Initialize PingFederate stack."""
         super().__init__(scope, id, **kwargs)
 
@@ -108,7 +110,9 @@ class PingFederateStack(Stack):
                 iam.ServicePrincipal("ecs-tasks.amazonaws.com"),
             ),
             managed_policies=[
-                iam.ManagedPolicy.from_aws_managed_policy_name("AmazonEC2ContainerRegistryReadOnly"),
+                iam.ManagedPolicy.from_aws_managed_policy_name(
+                    "AmazonEC2ContainerRegistryReadOnly"
+                ),
             ],
         )
 
@@ -137,9 +141,15 @@ class PingFederateStack(Stack):
         }
 
         secrets = {
-            "PING_IDENTITY_DEVOPS_USER": ecs.Secret.from_secrets_manager(ping_secret, "username"),
-            "PING_IDENTITY_DEVOPS_KEY": ecs.Secret.from_secrets_manager(ping_secret, "key"),
-            "PING_IDENTITY_PASSWORD": ecs.Secret.from_secrets_manager(ping_secret, "adminPassword"),
+            "PING_IDENTITY_DEVOPS_USER": ecs.Secret.from_secrets_manager(
+                ping_secret, "username"
+            ),
+            "PING_IDENTITY_DEVOPS_KEY": ecs.Secret.from_secrets_manager(
+                ping_secret, "key"
+            ),
+            "PING_IDENTITY_PASSWORD": ecs.Secret.from_secrets_manager(
+                ping_secret, "adminPassword"
+            ),
         }
 
         container = task_def.add_container(
@@ -147,7 +157,9 @@ class PingFederateStack(Stack):
             image=ecs.ContainerImage.from_registry(f"{ecr_repo.repository_uri}:latest"),
             environment=environment,
             secrets=secrets,
-            logging=ecs.LogDrivers.aws_logs(stream_prefix="pingfederate", log_group=log_group),
+            logging=ecs.LogDrivers.aws_logs(
+                stream_prefix="pingfederate", log_group=log_group
+            ),
         )
         container.add_port_mappings(
             ecs.PortMapping(container_port=PING_FEDERATE_ENGINE_PORT),
@@ -199,7 +211,9 @@ class PingFederateStack(Stack):
             description="Internal ALB security group",
             allow_all_outbound=True,
         )
-        alb_sg.add_ingress_rule(ec2.Peer.ipv4(self.vpc.vpc_cidr_block), ec2.Port.tcp(443), "HTTPS from VPC")
+        alb_sg.add_ingress_rule(
+            ec2.Peer.ipv4(self.vpc.vpc_cidr_block), ec2.Port.tcp(443), "HTTPS from VPC"
+        )
         alb_sg.add_ingress_rule(
             ec2.Peer.ipv4(self.vpc.vpc_cidr_block),
             ec2.Port.tcp(PING_FEDERATE_ADMIN_PORT),
@@ -279,7 +293,9 @@ class PingFederateStack(Stack):
             self,
             "AlbAliasRecord",
             zone=private_zone,
-            target=route53.RecordTarget.from_alias(targets.LoadBalancerTarget(self.alb)),
+            target=route53.RecordTarget.from_alias(
+                targets.LoadBalancerTarget(self.alb)
+            ),
         )
 
         # --- Lambda Custom Resource: Configure PingFederate ---
@@ -290,20 +306,28 @@ class PingFederateStack(Stack):
             handler="index.handler",
             code=lambda_.Code.from_asset("lambda/configure_pingfed"),
             vpc=self.vpc,
-            vpc_subnets=ec2.SubnetSelection(subnet_type=ec2.SubnetType.PRIVATE_WITH_EGRESS),
+            vpc_subnets=ec2.SubnetSelection(
+                subnet_type=ec2.SubnetType.PRIVATE_WITH_EGRESS
+            ),
             timeout=Duration.minutes(10),
             memory_size=256,
             log_retention=logs.RetentionDays.ONE_MONTH,
         )
 
         # Allow the Lambda to reach the internal ALB (HTTPS on engine + admin ports)
-        configure_fn.connections.allow_to(alb_sg, ec2.Port.tcp(443), "HTTPS to ALB engine")
-        configure_fn.connections.allow_to(alb_sg, ec2.Port.tcp(PING_FEDERATE_ADMIN_PORT), "HTTPS to ALB admin")
+        configure_fn.connections.allow_to(
+            alb_sg, ec2.Port.tcp(443), "HTTPS to ALB engine"
+        )
+        configure_fn.connections.allow_to(
+            alb_sg, ec2.Port.tcp(PING_FEDERATE_ADMIN_PORT), "HTTPS to ALB admin"
+        )
 
         # Allow the Lambda to read the admin password from Secrets Manager
         ping_secret.grant_read(configure_fn)
 
-        admin_url = f"https://{self.alb.load_balancer_dns_name}:{PING_FEDERATE_ADMIN_PORT}"
+        admin_url = (
+            f"https://{self.alb.load_balancer_dns_name}:{PING_FEDERATE_ADMIN_PORT}"
+        )
         engine_url = f"https://{self.ping_domain}"
 
         configure_resource = CustomResource(

@@ -48,12 +48,12 @@ class TokenForwarder:
             "scopes": user_context.scopes,
             "kyc_status": user_context.kyc_status,
             "token_expiry": user_context.token_expiry.isoformat(),
-            "raw_claims": user_context.raw_claims
+            "raw_claims": user_context.raw_claims,
         }
 
         # Serialize to JSON and encode
         json_str = json.dumps(context_dict)
-        encoded = base64.b64encode(json_str.encode('utf-8')).decode('utf-8')
+        encoded = base64.b64encode(json_str.encode("utf-8")).decode("utf-8")
 
         return encoded
 
@@ -72,7 +72,9 @@ class TokenForwarder:
         """
         try:
             # Decode from base64
-            json_str = base64.b64decode(serialized_context.encode('utf-8')).decode('utf-8')
+            json_str = base64.b64decode(serialized_context.encode("utf-8")).decode(
+                "utf-8"
+            )
             context_dict = json.loads(json_str)
 
             # Parse token expiry
@@ -88,7 +90,7 @@ class TokenForwarder:
                 scopes=context_dict["scopes"],
                 kyc_status=context_dict["kyc_status"],
                 token_expiry=token_expiry,
-                raw_claims=context_dict["raw_claims"]
+                raw_claims=context_dict["raw_claims"],
             )
 
             # Validate if required
@@ -116,7 +118,7 @@ class TokenForwarder:
             "X-User-Context": serialized,
             "X-User-Id": user_context.user_id,
             "X-Customer-Id": user_context.customer_id,
-            "X-User-Scopes": " ".join(user_context.scopes)
+            "X-User-Scopes": " ".join(user_context.scopes),
         }
 
     def extract_from_headers(self, headers: dict[str, str]) -> Optional[UserContext]:
@@ -142,7 +144,7 @@ class TokenForwarder:
         self,
         user_context: UserContext,
         required_scopes: Optional[list[str]] = None,
-        required_account_types: Optional[list[str]] = None
+        required_account_types: Optional[list[str]] = None,
     ) -> tuple[bool, Optional[str]]:
         """
         Validate a forwarded user context meets requirements.
@@ -161,15 +163,24 @@ class TokenForwarder:
 
         # Check required scopes
         if required_scopes:
-            missing_scopes = [s for s in required_scopes if not user_context.has_scope(s)]
+            missing_scopes = [
+                s for s in required_scopes if not user_context.has_scope(s)
+            ]
             if missing_scopes:
                 return False, f"Missing required scopes: {', '.join(missing_scopes)}"
 
         # Check required account types
         if required_account_types:
-            missing_types = [t for t in required_account_types if not user_context.has_account_type(t)]
+            missing_types = [
+                t
+                for t in required_account_types
+                if not user_context.has_account_type(t)
+            ]
             if missing_types:
-                return False, f"Missing required account types: {', '.join(missing_types)}"
+                return (
+                    False,
+                    f"Missing required account types: {', '.join(missing_types)}",
+                )
 
         return True, None
 
@@ -178,7 +189,7 @@ class TokenForwarder:
         user_context: UserContext,
         source_agent: str,
         target_agent: str,
-        operation: str
+        operation: str,
     ) -> dict[str, Any]:
         """
         Create a complete context for agent-to-agent requests.
@@ -203,13 +214,13 @@ class TokenForwarder:
                 "account_types": user_context.account_types,
                 "scopes": user_context.scopes,
                 "kyc_status": user_context.kyc_status,
-                "token_expiry": user_context.token_expiry.isoformat()
+                "token_expiry": user_context.token_expiry.isoformat(),
             },
             "routing": {
                 "source_agent": source_agent,
                 "target_agent": target_agent,
                 "operation": operation,
-                "timestamp": datetime.utcnow().isoformat()
+                "timestamp": datetime.utcnow().isoformat(),
             },
             "audit": {
                 "user_id": user_context.user_id,
@@ -217,15 +228,15 @@ class TokenForwarder:
                 "source_agent": source_agent,
                 "target_agent": target_agent,
                 "operation": operation,
-                "timestamp": datetime.utcnow().isoformat()
-            }
+                "timestamp": datetime.utcnow().isoformat(),
+            },
         }
 
     def verify_agent_chain_integrity(
         self,
         user_context: UserContext,
         expected_user_id: str,
-        expected_customer_id: str
+        expected_customer_id: str,
     ) -> bool:
         """
         Verify that the forwarded context matches expected identity.
@@ -242,6 +253,6 @@ class TokenForwarder:
             True if context matches expectations
         """
         return (
-            user_context.user_id == expected_user_id and
-            user_context.customer_id == expected_customer_id
+            user_context.user_id == expected_user_id
+            and user_context.customer_id == expected_customer_id
         )

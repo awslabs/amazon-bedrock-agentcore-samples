@@ -12,9 +12,7 @@ TRUST_POLICY = {
     "Statement": [
         {
             "Effect": "Allow",
-            "Principal": {"Service": [
-                "bedrock-agentcore.amazonaws.com"
-            ]},
+            "Principal": {"Service": ["bedrock-agentcore.amazonaws.com"]},
             "Action": "sts:AssumeRole",
         }
     ],
@@ -40,8 +38,18 @@ PERMISSIONS_POLICY = {
             ],
             "Resource": "*",
         },
-        {"Sid": "EcrPublicPull", "Effect": "Allow", "Action": ["ecr-public:GetAuthorizationToken"], "Resource": "*"},
-        {"Sid": "StsForEcrPublicPull", "Effect": "Allow", "Action": ["sts:GetServiceBearerToken"], "Resource": "*"},
+        {
+            "Sid": "EcrPublicPull",
+            "Effect": "Allow",
+            "Action": ["ecr-public:GetAuthorizationToken"],
+            "Resource": "*",
+        },
+        {
+            "Sid": "StsForEcrPublicPull",
+            "Effect": "Allow",
+            "Action": ["sts:GetServiceBearerToken"],
+            "Resource": "*",
+        },
         {
             "Sid": "XRay",
             "Effect": "Allow",
@@ -51,7 +59,11 @@ PERMISSIONS_POLICY = {
         {
             "Sid": "CloudWatchLogs",
             "Effect": "Allow",
-            "Action": ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"],
+            "Action": [
+                "logs:CreateLogGroup",
+                "logs:CreateLogStream",
+                "logs:PutLogEvents",
+            ],
             "Resource": "*",
         },
         {
@@ -69,7 +81,12 @@ PERMISSIONS_POLICY = {
             ],
             "Resource": "*",
         },
-        {"Sid": "GetAgentCoreApiKeys", "Effect": "Allow", "Action": ["bedrock-agentcore:GetResourceApiKey"], "Resource": "*"},
+        {
+            "Sid": "GetAgentCoreApiKeys",
+            "Effect": "Allow",
+            "Action": ["bedrock-agentcore:GetResourceApiKey"],
+            "Resource": "*",
+        },
     ],
 }
 

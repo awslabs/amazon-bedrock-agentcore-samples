@@ -7,7 +7,6 @@ Tests extraction and transformation of JWT claims into application context.
 """
 
 
-
 class TestClaimsExtractor:
     """Test extraction of claims from JWT payload."""
 
@@ -25,13 +24,17 @@ class TestClaimsExtractor:
 
     def test_extract_custom_customer_id(self, sample_jwt_payload):
         """Test extraction of custom customer_id claim."""
-        customer_id = sample_jwt_payload.get("https://agentcore.example.com/customer_id")
+        customer_id = sample_jwt_payload.get(
+            "https://agentcore.example.com/customer_id"
+        )
         assert customer_id == "CUST-12345"
         assert customer_id.startswith("CUST-")
 
     def test_extract_account_ids_array(self, sample_jwt_payload):
         """Test extraction of account IDs array."""
-        account_ids = sample_jwt_payload.get("https://agentcore.example.com/account_ids")
+        account_ids = sample_jwt_payload.get(
+            "https://agentcore.example.com/account_ids"
+        )
         assert isinstance(account_ids, list)
         assert len(account_ids) == 2
         assert "ACC-001" in account_ids
@@ -99,11 +102,17 @@ class TestClaimsTransformation:
             "user_id": sample_jwt_payload.get("sub"),
             "email": sample_jwt_payload.get("email"),
             "name": sample_jwt_payload.get("name"),
-            "customer_id": sample_jwt_payload.get("https://agentcore.example.com/customer_id"),
-            "account_ids": sample_jwt_payload.get("https://agentcore.example.com/account_ids"),
+            "customer_id": sample_jwt_payload.get(
+                "https://agentcore.example.com/customer_id"
+            ),
+            "account_ids": sample_jwt_payload.get(
+                "https://agentcore.example.com/account_ids"
+            ),
             "roles": sample_jwt_payload.get("https://agentcore.example.com/roles"),
-            "kyc_status": sample_jwt_payload.get("https://agentcore.example.com/kyc_status"),
-            "scopes": sample_jwt_payload.get("scope", "").split()
+            "kyc_status": sample_jwt_payload.get(
+                "https://agentcore.example.com/kyc_status"
+            ),
+            "scopes": sample_jwt_payload.get("scope", "").split(),
         }
 
         assert user_context["user_id"] == sample_user_context["user_id"]
@@ -116,7 +125,7 @@ class TestClaimsTransformation:
         minimal_payload = {
             "sub": "auth0|123456789",
             "iss": "https://your-tenant.auth0.com/",
-            "aud": "https://agentcore-financial-api"
+            "aud": "https://agentcore-financial-api",
         }
 
         # Should handle missing claims gracefully
@@ -133,7 +142,7 @@ class TestClaimsTransformation:
         payload = {
             "sub": "auth0|123456789",
             "https://agentcore.example.com/account_ids": [],
-            "https://agentcore.example.com/roles": []
+            "https://agentcore.example.com/roles": [],
         }
 
         account_ids = payload.get("https://agentcore.example.com/account_ids")
@@ -185,7 +194,7 @@ class TestCustomClaimsNamespace:
         payload = {
             "sub": "auth0|123456789",
             "https://agentcore.example.com/customer_id": "CUST-12345",
-            "agentcore.example.com/customer_id": "CUST-67890"  # Different format
+            "agentcore.example.com/customer_id": "CUST-67890",  # Different format
         }
 
         # Should handle both formats
@@ -198,7 +207,7 @@ class TestCustomClaimsNamespace:
             "sub": "auth0|123456789",
             "email": "john.doe@example.com",
             "name": "John Doe",
-            "email_verified": True
+            "email_verified": True,
         }
 
         standard_claims = {
@@ -255,10 +264,7 @@ class TestScopeExtraction:
 
     def test_empty_scopes(self):
         """Test handling of missing or empty scopes."""
-        payload = {
-            "sub": "auth0|123456789",
-            "scope": ""
-        }
+        payload = {"sub": "auth0|123456789", "scope": ""}
 
         scope_string = payload.get("scope", "")
         scopes = scope_string.split() if scope_string else []
@@ -282,7 +288,9 @@ class TestClaimsValidation:
 
     def test_validate_customer_id_format(self, sample_jwt_payload):
         """Test validation of customer ID format."""
-        customer_id = sample_jwt_payload.get("https://agentcore.example.com/customer_id")
+        customer_id = sample_jwt_payload.get(
+            "https://agentcore.example.com/customer_id"
+        )
 
         assert customer_id is not None
         assert customer_id.startswith("CUST-")
@@ -290,7 +298,9 @@ class TestClaimsValidation:
 
     def test_validate_account_ids_format(self, sample_jwt_payload):
         """Test validation of account IDs format."""
-        account_ids = sample_jwt_payload.get("https://agentcore.example.com/account_ids")
+        account_ids = sample_jwt_payload.get(
+            "https://agentcore.example.com/account_ids"
+        )
 
         assert isinstance(account_ids, list)
         for account_id in account_ids:

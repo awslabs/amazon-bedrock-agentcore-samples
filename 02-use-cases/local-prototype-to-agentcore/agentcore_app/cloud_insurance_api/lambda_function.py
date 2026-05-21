@@ -1,6 +1,7 @@
 """
 AWS Lambda handler for the Insurance API
 """
+
 import os
 import sys
 

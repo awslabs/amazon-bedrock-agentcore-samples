@@ -60,5 +60,7 @@ if __name__ == "__main__":
     # stateless_http=False keeps fastmcp's internal session id available; the
     # gateway's `sessionConfiguration` provides the *client*-facing session id.
     mcp.run(
-        transport="streamable-http", host="0.0.0.0", stateless_http=False  # nosec B104
+        transport="streamable-http",
+        host="0.0.0.0",
+        stateless_http=False,  # nosec B104
     )  # nosec B104 - AgentCore Runtime container requires bind to all interfaces

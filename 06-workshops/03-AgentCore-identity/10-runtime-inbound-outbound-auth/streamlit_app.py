@@ -43,7 +43,9 @@ def _find_project_dir() -> str:
     """Find the agentcore project directory (subdirectory containing agentcore/)."""
     for entry in os.listdir(SAMPLE_DIR):
         candidate = os.path.join(SAMPLE_DIR, entry)
-        if os.path.isdir(candidate) and os.path.isdir(os.path.join(candidate, "agentcore")):
+        if os.path.isdir(candidate) and os.path.isdir(
+            os.path.join(candidate, "agentcore")
+        ):
             return candidate
     raise FileNotFoundError(
         "No agentcore project directory found. Run 'agentcore create' first."
@@ -132,7 +134,9 @@ def _parse_event_stream(response: dict) -> str:
     return "\n".join(parts) if parts else "(no response)"
 
 
-def _invoke_agent(agent_arn: str, region: str, prompt: str, bearer_token: str | None = None) -> dict:
+def _invoke_agent(
+    agent_arn: str, region: str, prompt: str, bearer_token: str | None = None
+) -> dict:
     """
     Invoke the agent runtime, optionally with a bearer token.
 
@@ -142,6 +146,7 @@ def _invoke_agent(agent_arn: str, region: str, prompt: str, bearer_token: str | 
     handler = None
 
     if bearer_token:
+
         def _inject_bearer(request, **kwargs):
             request.headers["Authorization"] = f"Bearer {bearer_token}"
 
@@ -174,7 +179,9 @@ def _invoke_agent(agent_arn: str, region: str, prompt: str, bearer_token: str | 
             "text": None,
             "elapsed": elapsed,
             "error": f"{type(exc).__name__}: {exc}",
-            "status_code": getattr(exc, "response", {}).get("ResponseMetadata", {}).get("HTTPStatusCode"),
+            "status_code": getattr(exc, "response", {})
+            .get("ResponseMetadata", {})
+            .get("HTTPStatusCode"),
         }
     finally:
         if handler:
@@ -426,7 +433,9 @@ Outbound:  Agent ──▶ AgentCore Identity ──▶ API Key ──▶ Weathe
                                              retrieved
 ```
 """)
-st.caption("Clear the Bearer Token in the sidebar to see a 403 rejection. The agent retrieves the API key from AgentCore Identity — never hardcoded.")
+st.caption(
+    "Clear the Bearer Token in the sidebar to see a 403 rejection. The agent retrieves the API key from AgentCore Identity — never hardcoded."
+)
 
 # Chat history
 for msg in st.session_state.chat_history:
@@ -457,10 +466,12 @@ if prompt_to_send:
     if not st.session_state.agent_arn:
         st.error("Agent ARN not resolved. Deploy the agent first.")
     else:
-        st.session_state.chat_history.append({
-            "role": "user",
-            "content": prompt_to_send,
-        })
+        st.session_state.chat_history.append(
+            {
+                "role": "user",
+                "content": prompt_to_send,
+            }
+        )
         with st.chat_message("user"):
             st.markdown(prompt_to_send)
 
@@ -470,7 +481,8 @@ if prompt_to_send:
                     st.session_state.agent_arn,
                     st.session_state.region,
                     prompt_to_send,
-                    bearer_token=st.session_state.get("bearer_input", "").strip() or None,
+                    bearer_token=st.session_state.get("bearer_input", "").strip()
+                    or None,
                 )
 
             truncated = st.session_state.jwt_token[:20] + "..."
@@ -479,16 +491,20 @@ if prompt_to_send:
             if result["success"]:
                 display_text = _format_response(result["text"])
                 st.markdown(display_text)
-                st.session_state.chat_history.append({
-                    "role": "assistant",
-                    "content": result["text"],
-                })
+                st.session_state.chat_history.append(
+                    {
+                        "role": "assistant",
+                        "content": result["text"],
+                    }
+                )
             else:
                 st.error(result["error"])
-                st.session_state.chat_history.append({
-                    "role": "assistant",
-                    "content": f"Error: {result['error']}",
-                })
+                st.session_state.chat_history.append(
+                    {
+                        "role": "assistant",
+                        "content": f"Error: {result['error']}",
+                    }
+                )
 
 # Last request details (collapsed)
 if st.session_state.last_request:

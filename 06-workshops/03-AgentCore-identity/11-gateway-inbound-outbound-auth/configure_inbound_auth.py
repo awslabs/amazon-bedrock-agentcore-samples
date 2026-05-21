@@ -23,9 +23,13 @@ def find_project_dir() -> str:
     base = os.path.dirname(os.path.abspath(__file__))
     for entry in os.listdir(base):
         candidate = os.path.join(base, entry)
-        if os.path.isdir(candidate) and os.path.isdir(os.path.join(candidate, "agentcore")):
+        if os.path.isdir(candidate) and os.path.isdir(
+            os.path.join(candidate, "agentcore")
+        ):
             return candidate
-    raise FileNotFoundError("No agentcore project directory found. Run 'agentcore create' first.")
+    raise FileNotFoundError(
+        "No agentcore project directory found. Run 'agentcore create' first."
+    )
 
 
 def _find_in_json(obj, key):
@@ -53,7 +57,9 @@ def get_runtime_id() -> str:
     project_dir = find_project_dir()
     state_file = os.path.join(project_dir, "agentcore", ".cli", "deployed-state.json")
     if not os.path.exists(state_file):
-        raise FileNotFoundError("No deployed-state.json found. Run 'agentcore deploy -y' first.")
+        raise FileNotFoundError(
+            "No deployed-state.json found. Run 'agentcore deploy -y' first."
+        )
     with open(state_file) as f:
         state = json.load(f)
     rid = _find_in_json(state, "runtimeId")
@@ -69,7 +75,9 @@ def get_gateway_url(region: str) -> str:
         if "GatewayAuthDemo" in gw.get("name", ""):
             detail = ctrl.get_gateway(gatewayIdentifier=gw["gatewayId"])
             return detail.get("gatewayUrl", "")
-    raise ValueError("GatewayAuthDemo gateway not found. Run 'agentcore deploy -y' first.")
+    raise ValueError(
+        "GatewayAuthDemo gateway not found. Run 'agentcore deploy -y' first."
+    )
 
 
 def main():
@@ -77,7 +85,9 @@ def main():
         with open("cognito_config.json") as f:
             config = json.load(f)
     except FileNotFoundError:
-        print("ERROR: cognito_config.json not found. Run 'python setup_cognito.py' first.")
+        print(
+            "ERROR: cognito_config.json not found. Run 'python setup_cognito.py' first."
+        )
         sys.exit(1)
 
     region = config["region"]
@@ -132,24 +142,26 @@ def main():
     iam.put_role_policy(
         RoleName=role_name,
         PolicyName="AgentCoreIdentityOutbound",
-        PolicyDocument=json.dumps({
-            "Version": "2012-10-17",
-            "Statement": [
-                {
-                    "Effect": "Allow",
-                    "Action": [
-                        "bedrock-agentcore:GetResourceApiKey",
-                        "bedrock-agentcore:GetResourceOauth2Token",
-                    ],
-                    "Resource": "*",
-                },
-                {
-                    "Effect": "Allow",
-                    "Action": ["secretsmanager:GetSecretValue"],
-                    "Resource": f"arn:aws:secretsmanager:{region}:{account}:secret:bedrock-agentcore*",
-                },
-            ],
-        }),
+        PolicyDocument=json.dumps(
+            {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Action": [
+                            "bedrock-agentcore:GetResourceApiKey",
+                            "bedrock-agentcore:GetResourceOauth2Token",
+                        ],
+                        "Resource": "*",
+                    },
+                    {
+                        "Effect": "Allow",
+                        "Action": ["secretsmanager:GetSecretValue"],
+                        "Resource": f"arn:aws:secretsmanager:{region}:{account}:secret:bedrock-agentcore*",
+                    },
+                ],
+            }
+        ),
     )
     print("IAM policy attached.")
 

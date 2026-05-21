@@ -41,7 +41,9 @@ def _find_project_dir() -> str:
     base = os.path.dirname(os.path.abspath(__file__))
     for entry in os.listdir(base):
         candidate = os.path.join(base, entry)
-        if os.path.isdir(candidate) and os.path.isdir(os.path.join(candidate, "agentcore")):
+        if os.path.isdir(candidate) and os.path.isdir(
+            os.path.join(candidate, "agentcore")
+        ):
             return candidate
     raise FileNotFoundError(
         "No agentcore project directory found. Run 'agentcore create' first."
@@ -91,7 +93,11 @@ def parse_event_stream(response: dict) -> str:
     """Extract text from the boto3 EventStream response."""
     parts = []
     for event in response.get("response", []):
-        raw = event if isinstance(event, bytes) else event.get("chunk", {}).get("bytes", b"")
+        raw = (
+            event
+            if isinstance(event, bytes)
+            else event.get("chunk", {}).get("bytes", b"")
+        )
         if raw:
             try:
                 decoded = json.loads(raw.decode("utf-8"))

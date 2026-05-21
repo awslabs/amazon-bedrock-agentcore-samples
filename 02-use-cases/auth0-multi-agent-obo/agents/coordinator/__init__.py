@@ -9,7 +9,11 @@ services multi-agent system.
 """
 
 from .agent import CoordinatorAgent, create_agent
-from .auth_context import AuthContextManager, extract_user_context, validate_user_authorization
+from .auth_context import (
+    AuthContextManager,
+    extract_user_context,
+    validate_user_authorization,
+)
 from .subagent_router import SubAgentRouter
 
 __all__ = [

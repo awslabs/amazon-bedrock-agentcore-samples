@@ -30,13 +30,15 @@ class OAuth2CredentialProviderSetup:
     def __init__(self, region: str = AWS_REGION, profile: str = AWS_PROFILE):
         """Initialize OAuth2 setup helper"""
         self.session = boto3.Session(profile_name=profile, region_name=region)
-        self.agentcore = self.session.client('bedrock-agentcore-control', region_name=region)
-        self.iam = self.session.client('iam', region_name=region)
-        self.ssm = self.session.client('ssm', region_name=region)
-        self.sts = self.session.client('sts', region_name=region)
+        self.agentcore = self.session.client(
+            "bedrock-agentcore-control", region_name=region
+        )
+        self.iam = self.session.client("iam", region_name=region)
+        self.ssm = self.session.client("ssm", region_name=region)
+        self.sts = self.session.client("sts", region_name=region)
 
         self.region = region
-        self.account_id = self.sts.get_caller_identity()['Account']
+        self.account_id = self.sts.get_caller_identity()["Account"]
         self.prefix = "aiml301"
 
     def create_oauth2_credential_provider(self) -> Dict:
@@ -49,15 +51,17 @@ class OAuth2CredentialProviderSetup:
         Returns:
             Dict with provider_arn, secret_arn, and configuration
         """
-        print("\n" + "="*70)
+        print("\n" + "=" * 70)
         print("CREATING OAUTH2 CREDENTIAL PROVIDER")
-        print("="*70 + "\n")
+        print("=" * 70 + "\n")
 
         # Get M2M credentials from Cognito config (set up in Lab-01)
         try:
-            m2m_client_id = get_parameter(PARAMETER_PATHS['cognito']['m2m_client_id'])
-            m2m_client_secret = get_parameter(PARAMETER_PATHS['cognito']['m2m_client_secret'])
-            user_pool_id = get_parameter(PARAMETER_PATHS['cognito']['user_pool_id'])
+            m2m_client_id = get_parameter(PARAMETER_PATHS["cognito"]["m2m_client_id"])
+            m2m_client_secret = get_parameter(
+                PARAMETER_PATHS["cognito"]["m2m_client_secret"]
+            )
+            user_pool_id = get_parameter(PARAMETER_PATHS["cognito"]["user_pool_id"])
         except Exception as e:
             print(f"❌ Failed to retrieve Cognito M2M credentials from SSM: {e}")
             print("   Ensure Lab-01 Cognito setup has been completed first")
@@ -88,21 +92,23 @@ class OAuth2CredentialProviderSetup:
                 credentialProviderVendor="CustomOauth2",
                 oauth2ProviderConfigInput={
                     "customOauth2ProviderConfig": {
-                        "oauthDiscovery": {
-                            "discoveryUrl": discovery_url
-                        },
+                        "oauthDiscovery": {"discoveryUrl": discovery_url},
                         "clientId": m2m_client_id,
-                        "clientSecret": m2m_client_secret
+                        "clientSecret": m2m_client_secret,
                     }
-                }
+                },
             )
 
-            provider_arn = response['oAuth2CredentialProviderArn']
-            secret_arn = response.get('secretArn', '')
+            provider_arn = response["oAuth2CredentialProviderArn"]
+            secret_arn = response.get("secretArn", "")
 
             print("✅ OAuth2 credential provider created")
-            print(f"   - Provider ARN: {provider_arn}")  # codeql[py/clear-text-logging-sensitive-data]
-            print(f"   - Secret ARN: {secret_arn}")  # codeql[py/clear-text-logging-sensitive-data]
+            print(
+                f"   - Provider ARN: {provider_arn}"
+            )  # codeql[py/clear-text-logging-sensitive-data]
+            print(
+                f"   - Secret ARN: {secret_arn}"
+            )  # codeql[py/clear-text-logging-sensitive-data]
 
             # Store configuration
             oauth2_config = {
@@ -112,21 +118,14 @@ class OAuth2CredentialProviderSetup:
                 "discovery_url": discovery_url,
                 "m2m_client_id": m2m_client_id,
                 "region": self.region,
-                "account_id": self.account_id
+                "account_id": self.account_id,
             }
 
             # Save to SSM
+            put_parameter(f"/{self.prefix}/lab-03/oauth2-provider-arn", provider_arn)
+            put_parameter(f"/{self.prefix}/lab-03/oauth2-secret-arn", secret_arn)
             put_parameter(
-                f"/{self.prefix}/lab-03/oauth2-provider-arn",
-                provider_arn
-            )
-            put_parameter(
-                f"/{self.prefix}/lab-03/oauth2-secret-arn",
-                secret_arn
-            )
-            put_parameter(
-                f"/{self.prefix}/lab-03/oauth2-config",
-                json.dumps(oauth2_config)
+                f"/{self.prefix}/lab-03/oauth2-config", json.dumps(oauth2_config)
             )
 
             print("\n✅ OAuth2 configuration saved to SSM Parameter Store")
@@ -141,7 +140,7 @@ class OAuth2CredentialProviderSetup:
         self,
         gateway_id: str,
         runtime_arn: str,
-        oauth2_provider_arn: Optional[str] = None
+        oauth2_provider_arn: Optional[str] = None,
     ) -> Dict:
         """
         Add Runtime as Gateway target with OAuth2 M2M authentication
@@ -159,15 +158,19 @@ class OAuth2CredentialProviderSetup:
         Returns:
             Dict with target configuration
         """
-        print("\n" + "="*70)
+        print("\n" + "=" * 70)
         print("ADDING RUNTIME AS GATEWAY TARGET WITH OAUTH2")
-        print("="*70 + "\n")
+        print("=" * 70 + "\n")
 
         # Get OAuth2 provider ARN if not provided
         if not oauth2_provider_arn:
             try:
-                oauth2_provider_arn = get_parameter(f"/{self.prefix}/lab-03/oauth2-provider-arn")
-                print(f"✅ Retrieved OAuth2 provider ARN from SSM: {oauth2_provider_arn}")  # codeql[py/clear-text-logging-sensitive-data]
+                oauth2_provider_arn = get_parameter(
+                    f"/{self.prefix}/lab-03/oauth2-provider-arn"
+                )
+                print(
+                    f"✅ Retrieved OAuth2 provider ARN from SSM: {oauth2_provider_arn}"
+                )  # codeql[py/clear-text-logging-sensitive-data]
             except Exception as e:
                 print(f"❌ OAuth2 provider ARN not found in SSM: {e}")
                 print("   Ensure OAuth2 credential provider has been created first")
@@ -176,7 +179,7 @@ class OAuth2CredentialProviderSetup:
         # Get resource server identifier for scopes
         try:
             resource_server_id = get_parameter(
-                PARAMETER_PATHS['cognito']['resource_server_identifier']
+                PARAMETER_PATHS["cognito"]["resource_server_identifier"]
             )
         except Exception as e:
             print(f"❌ Failed to retrieve resource server identifier: {e}")
@@ -186,7 +189,7 @@ class OAuth2CredentialProviderSetup:
         # These scopes will be included in M2M tokens and validated by Runtime
         scopes = [
             f"{resource_server_id}/mcp.invoke",
-            f"{resource_server_id}/runtime.access"
+            f"{resource_server_id}/runtime.access",
         ]
 
         target_name = f"{self.prefix}-runtime-m2m-target"
@@ -202,27 +205,21 @@ class OAuth2CredentialProviderSetup:
             response = self.agentcore.create_gateway_target(
                 gatewayIdentifier=gateway_id,
                 name=target_name,
-                targetConfiguration={
-                    "mcp": {
-                        "mcpServer": {
-                            "runtimeArn": runtime_arn
-                        }
-                    }
-                },
+                targetConfiguration={"mcp": {"mcpServer": {"runtimeArn": runtime_arn}}},
                 credentialProviderConfigurations=[
                     {
                         "credentialProviderType": "OAUTH",
                         "credentialProvider": {
                             "oauthCredentialProvider": {
                                 "providerArn": oauth2_provider_arn,
-                                "scopes": scopes
+                                "scopes": scopes,
                             }
-                        }
+                        },
                     }
-                ]
+                ],
             )
 
-            target_id = response['targetId']
+            target_id = response["targetId"]
 
             print("✅ Runtime added as Gateway target with OAuth2 M2M auth")
             print(f"   - Target ID: {target_id}")
@@ -235,13 +232,12 @@ class OAuth2CredentialProviderSetup:
                 "runtime_arn": runtime_arn,
                 "oauth2_provider_arn": oauth2_provider_arn,
                 "scopes": scopes,
-                "credential_type": "OAUTH"
+                "credential_type": "OAUTH",
             }
 
             # Save to SSM
             put_parameter(
-                f"/{self.prefix}/lab-03/gateway-m2m-target",
-                json.dumps(target_config)
+                f"/{self.prefix}/lab-03/gateway-m2m-target", json.dumps(target_config)
             )
 
             print("\n✅ Gateway M2M target configuration saved to SSM Parameter Store")
@@ -252,7 +248,9 @@ class OAuth2CredentialProviderSetup:
             print(f"❌ Failed to add Runtime as Gateway target: {e}")
             raise
 
-    def update_gateway_oauth2_permissions(self, gateway_role_arn: Optional[str] = None) -> None:
+    def update_gateway_oauth2_permissions(
+        self, gateway_role_arn: Optional[str] = None
+    ) -> None:
         """
         Update Gateway IAM role with permissions to access OAuth2 credentials
 
@@ -263,9 +261,9 @@ class OAuth2CredentialProviderSetup:
         Args:
             gateway_role_arn: Gateway role ARN (fetches from SSM if not provided)
         """
-        print("\n" + "="*70)
+        print("\n" + "=" * 70)
         print("UPDATING GATEWAY IAM ROLE WITH OAUTH2 PERMISSIONS")
-        print("="*70 + "\n")
+        print("=" * 70 + "\n")
 
         # Get OAuth2 secret ARN
         try:
@@ -279,8 +277,10 @@ class OAuth2CredentialProviderSetup:
         if not gateway_role_arn:
             try:
                 # Try to get from existing parameter first
-                response = self.ssm.get_parameter(Name=f"/{self.prefix}/lab-03/gateway-role-arn")
-                gateway_role_arn = response['Parameter']['Value']
+                response = self.ssm.get_parameter(
+                    Name=f"/{self.prefix}/lab-03/gateway-role-arn"
+                )
+                gateway_role_arn = response["Parameter"]["Value"]
                 print(f"✅ Retrieved Gateway role ARN from SSM: {gateway_role_arn}")
             except ClientError:
                 print("❌ Gateway role ARN not found in SSM")
@@ -288,7 +288,7 @@ class OAuth2CredentialProviderSetup:
 
         # Extract role name from ARN
         # ARN format: arn:aws:iam::ACCOUNT:role/ROLE_NAME
-        role_name = gateway_role_arn.split('/')[-1]
+        role_name = gateway_role_arn.split("/")[-1]
 
         print(f"Updating IAM role: {role_name}\n")
 
@@ -299,46 +299,37 @@ class OAuth2CredentialProviderSetup:
                 {
                     "Sid": "GetResourceOauth2Token",
                     "Effect": "Allow",
-                    "Action": [
-                        "bedrock-agentcore:GetResourceOauth2Token"
-                    ],
-                    "Resource": [
-                        provider_arn
-                    ]
+                    "Action": ["bedrock-agentcore:GetResourceOauth2Token"],
+                    "Resource": [provider_arn],
                 },
                 {
                     "Sid": "AccessSecretsManager",
                     "Effect": "Allow",
-                    "Action": [
-                        "secretsmanager:GetSecretValue"
-                    ],
-                    "Resource": [
-                        secret_arn
-                    ]
-                }
-            ]
+                    "Action": ["secretsmanager:GetSecretValue"],
+                    "Resource": [secret_arn],
+                },
+            ],
         }
 
         try:
             self.iam.put_role_policy(
                 RoleName=role_name,
                 PolicyName=f"{self.prefix}-oauth2-credentials-policy",
-                PolicyDocument=json.dumps(oauth2_permissions)
+                PolicyDocument=json.dumps(oauth2_permissions),
             )
 
             print("✅ OAuth2 permissions attached to Gateway role")
             print(f"   - GetResourceOauth2Token: {provider_arn}")
-            print(f"   - GetSecretValue: {secret_arn}")  # codeql[py/clear-text-logging-sensitive-data]
+            print(
+                f"   - GetSecretValue: {secret_arn}"
+            )  # codeql[py/clear-text-logging-sensitive-data]
 
         except Exception as e:
             print(f"❌ Failed to update Gateway role permissions: {e}")
             raise
 
     def setup_m2m_authentication_complete(
-        self,
-        gateway_id: str,
-        runtime_arn: str,
-        gateway_role_arn: str
+        self, gateway_id: str, runtime_arn: str, gateway_role_arn: str
     ) -> Dict:
         """
         Complete setup workflow for M2M authentication
@@ -356,9 +347,9 @@ class OAuth2CredentialProviderSetup:
         Returns:
             Complete M2M authentication configuration
         """
-        print("\n" + "="*70)
+        print("\n" + "=" * 70)
         print("SETTING UP M2M AUTHENTICATION (GATEWAY ↔ RUNTIME)")
-        print("="*70 + "\n")
+        print("=" * 70 + "\n")
 
         print("Configuration:")
         print(f"  Gateway ID: {gateway_id}")
@@ -373,7 +364,7 @@ class OAuth2CredentialProviderSetup:
         target_config = self.add_runtime_as_oauth2_target(
             gateway_id=gateway_id,
             runtime_arn=runtime_arn,
-            oauth2_provider_arn=oauth2_config['provider_arn']
+            oauth2_provider_arn=oauth2_config["provider_arn"],
         )
 
         # Step 3: Update Gateway IAM role with OAuth2 permissions
@@ -384,18 +375,18 @@ class OAuth2CredentialProviderSetup:
             "gateway_target": target_config,
             "gateway_id": gateway_id,
             "runtime_arn": runtime_arn,
-            "gateway_role_arn": gateway_role_arn
+            "gateway_role_arn": gateway_role_arn,
         }
 
         # Save complete configuration
         put_parameter(
             f"/{self.prefix}/lab-03/m2m-auth-complete-config",
-            json.dumps(complete_config, indent=2)
+            json.dumps(complete_config, indent=2),
         )
 
-        print("\n" + "="*70)
+        print("\n" + "=" * 70)
         print("✅ M2M AUTHENTICATION SETUP COMPLETE")
-        print("="*70 + "\n")
+        print("=" * 70 + "\n")
 
         print("Gateway-to-Runtime M2M Flow:")
         print("  1. Client sends request to Gateway with User JWT")
@@ -403,7 +394,9 @@ class OAuth2CredentialProviderSetup:
         print("  3. Gateway uses OAuth2 provider to get M2M token from Cognito")
         print("  4. Gateway calls Runtime with M2M Bearer token")
         print("  5. Runtime validates M2M token and authorizes operation")
-        print(f"\nM2M Scopes: {', '.join(target_config['scopes'])}")  # codeql[py/clear-text-logging-sensitive-data]
+        print(
+            f"\nM2M Scopes: {', '.join(target_config['scopes'])}"
+        )  # codeql[py/clear-text-logging-sensitive-data]
         print("\nAll configuration saved to SSM Parameter Store")
 
         return complete_config
@@ -417,7 +410,7 @@ class OAuth2CredentialProviderSetup:
             provider_arn = get_parameter(f"/{self.prefix}/lab-03/oauth2-provider-arn")
 
             # Delete OAuth2 credential provider
-            provider_id = provider_arn.split('/')[-1]
+            provider_id = provider_arn.split("/")[-1]
             self.agentcore.delete_oauth2_credential_provider(
                 oAuth2CredentialProviderId=provider_id
             )
@@ -432,7 +425,7 @@ class OAuth2CredentialProviderSetup:
             f"/{self.prefix}/lab-03/oauth2-secret-arn",
             f"/{self.prefix}/lab-03/oauth2-config",
             f"/{self.prefix}/lab-03/gateway-m2m-target",
-            f"/{self.prefix}/lab-03/m2m-auth-complete-config"
+            f"/{self.prefix}/lab-03/m2m-auth-complete-config",
         ]
 
         for param in ssm_params:

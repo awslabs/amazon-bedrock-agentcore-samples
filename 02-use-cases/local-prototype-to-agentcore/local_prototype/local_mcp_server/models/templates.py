@@ -20,7 +20,7 @@ if __name__ == "__main__":
     main()
 ''',
             "requirements.txt": "# Add your dependencies here\n",
-            "README.md": '''# {project_name}
+            "README.md": """# {project_name}
 
 A Python project created with LocalMCP MCP Server.
 
@@ -35,8 +35,8 @@ pip install -r requirements.txt
 ```bash
 python main.py
 ```
-''',
-            ".gitignore": '''# Byte-compiled / optimized / DLL files
+""",
+            ".gitignore": """# Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
@@ -136,20 +136,20 @@ venv.bak/
 .mypy_cache/
 .dmypy.json
 dmypy.json
-'''
-        }
+""",
+        },
     },
     "node": {
         "name": "Node.js Project",
         "description": "A basic Node.js project with package.json and main entry point",
         "files": {
-            "index.js": '''/**
+            "index.js": """/**
  * {project_name}
  */
 
 console.log("Hello from {project_name}!");
-''',
-            "package.json": '''{
+""",
+            "package.json": """{
   "name": "{project_name_lower}",
   "version": "1.0.0",
   "description": "A Node.js project created with LocalMCP MCP Server",
@@ -162,8 +162,8 @@ console.log("Hello from {project_name}!");
   "author": "",
   "license": "MIT"
 }
-''',
-            "README.md": '''# {project_name}
+""",
+            "README.md": """# {project_name}
 
 A Node.js project created with LocalMCP MCP Server.
 
@@ -178,8 +178,8 @@ npm install
 ```bash
 npm start
 ```
-''',
-            ".gitignore": '''# Logs
+""",
+            ".gitignore": """# Logs
 logs
 *.log
 npm-debug.log*
@@ -240,14 +240,14 @@ typings/
 
 # next.js build output
 .next
-'''
-        }
+""",
+        },
     },
     "web": {
         "name": "Web Project",
         "description": "A basic web project with HTML, CSS, and JavaScript",
         "files": {
-            "index.html": '''<!DOCTYPE html>
+            "index.html": """<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -265,8 +265,8 @@ typings/
     <script src="script.js"></script>
 </body>
 </html>
-''',
-            "style.css": '''/* {project_name} Styles */
+""",
+            "style.css": """/* {project_name} Styles */
 
 * {
     margin: 0;
@@ -322,8 +322,8 @@ button:hover {
     font-weight: bold;
     color: #27ae60;
 }
-''',
-            "script.js": '''/**
+""",
+            "script.js": """/**
  * {project_name} JavaScript
  */
 
@@ -335,8 +335,8 @@ document.addEventListener('DOMContentLoaded', function() {
         message.textContent = 'Hello from {project_name}! Button clicked!';
     });
 });
-''',
-            "README.md": '''# {project_name}
+""",
+            "README.md": """# {project_name}
 
 A web project created with LocalMCP MCP Server.
 
@@ -364,7 +364,7 @@ npx http-server
 # Using PHP
 php -S localhost:8000
 ```
-'''
-        }
-    }
+""",
+        },
+    },
 }

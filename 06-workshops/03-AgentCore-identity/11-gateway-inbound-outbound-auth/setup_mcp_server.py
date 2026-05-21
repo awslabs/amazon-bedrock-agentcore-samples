@@ -26,7 +26,7 @@ ROLE_NAME = "AgentCoreMCPLambdaRole"
 API_NAME = "AgentCoreMCPTestAPI"
 
 # Zero-dependency Lambda handler implementing the MCP Streamable HTTP protocol
-_LAMBDA_CODE = '''
+_LAMBDA_CODE = """
 import json
 from datetime import datetime, timezone
 
@@ -108,7 +108,7 @@ def lambda_handler(event, context):
         }
     except Exception as e:
         return {"statusCode": 500, "body": json.dumps({"error": str(e)})}
-'''
+"""
 
 
 def _make_zip() -> bytes:
@@ -129,14 +129,18 @@ def _get_or_create_role(iam) -> str:
     print(f"  Creating IAM role '{ROLE_NAME}'...")
     role = iam.create_role(
         RoleName=ROLE_NAME,
-        AssumeRolePolicyDocument=json.dumps({
-            "Version": "2012-10-17",
-            "Statement": [{
-                "Effect": "Allow",
-                "Principal": {"Service": "lambda.amazonaws.com"},
-                "Action": "sts:AssumeRole",
-            }],
-        }),
+        AssumeRolePolicyDocument=json.dumps(
+            {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Principal": {"Service": "lambda.amazonaws.com"},
+                        "Action": "sts:AssumeRole",
+                    }
+                ],
+            }
+        ),
     )
     iam.attach_role_policy(
         RoleName=ROLE_NAME,
@@ -180,7 +184,9 @@ def main():
         )
         lam.get_waiter("function_active").wait(FunctionName=FUNCTION_NAME)
 
-    fn_arn = lam.get_function(FunctionName=FUNCTION_NAME)["Configuration"]["FunctionArn"]
+    fn_arn = lam.get_function(FunctionName=FUNCTION_NAME)["Configuration"][
+        "FunctionArn"
+    ]
     print(f"  Function ARN: {fn_arn}")
 
     print("\nStep 3: HTTP API Gateway...")

@@ -16,6 +16,7 @@ def assume_role(role_arn, session_name="my-session"):
 
     return creds
 
+
 def assume_role_only(AWS_REGION, role_arn, session_name="test-session"):
     """Assume an IAM role"""
     sts_client = boto3.client("sts", region_name=AWS_REGION)
@@ -25,13 +26,16 @@ def assume_role_only(AWS_REGION, role_arn, session_name="test-session"):
     )
     return response
 
+
 def pp(response):
     """Pretty-print API response, stripping ResponseMetadata."""
     data = {k: v for k, v in response.items() if k != "ResponseMetadata"}
     print(json.dumps(data, indent=2, default=str))
 
 
-def wait_for_record_ready(publisher_cp_client, registry_id, record_id, interval=5, timeout=120):
+def wait_for_record_ready(
+    publisher_cp_client, registry_id, record_id, interval=5, timeout=120
+):
     """Poll GetRegistryRecord until the record exits CREATING/UPDATING status."""
     deadline = time.time() + timeout
     while True:
@@ -51,9 +55,11 @@ def wait_for_record_ready(publisher_cp_client, registry_id, record_id, interval=
 
 print("Helper functions defined: pp, wait_for_record_ready")
 
+
 def filter_pending_records(records):
     """Return only records with status PENDING_APPROVAL."""
     return [r for r in records if r.get("status") == "PENDING_APPROVAL"]
+
 
 def list_records_with_ids(client, registry_id, **kwargs):
     """Wrapper around list_registry_records that extracts recordId from raw HTTP response.
@@ -62,13 +68,14 @@ def list_records_with_ids(client, registry_id, **kwargs):
     This function parses the raw JSON to get the actual record IDs.
     """
     import json as _json
+
     original_make_request = client._endpoint.make_request
     raw_body = {}
 
     def capture_request(operation_model, request_dict):
         result = original_make_request(operation_model, request_dict)
         http_response = result[0]
-        raw_body['data'] = _json.loads(http_response.content.decode('utf-8'))
+        raw_body["data"] = _json.loads(http_response.content.decode("utf-8"))
         return result
 
     client._endpoint.make_request = capture_request
@@ -77,7 +84,7 @@ def list_records_with_ids(client, registry_id, **kwargs):
     finally:
         client._endpoint.make_request = original_make_request
 
-    return raw_body.get('data', {}).get('registryRecords', [])
+    return raw_body.get("data", {}).get("registryRecords", [])
 
 
 def get_or_select_registry(cp_client, registry_id=None, AWS_REGION="us-west-2"):
@@ -109,7 +116,9 @@ def get_or_select_registry(cp_client, registry_id=None, AWS_REGION="us-west-2"):
             if not match:
                 raise ValueError(f"Registry {registry_id} not found.")
             if match[0]["status"] != "READY":
-                raise ValueError(f"Registry {registry_id} is {match[0]['status']}, not READY.")
+                raise ValueError(
+                    f"Registry {registry_id} is {match[0]['status']}, not READY."
+                )
             rid, rarn = match[0]["registryId"], match[0]["registryArn"]
             print(f"\n✅ Using specified registry: {rid}")
         elif ready:
@@ -129,7 +138,9 @@ def get_or_select_registry(cp_client, registry_id=None, AWS_REGION="us-west-2"):
         code = e.response["Error"]["Code"]
         print(f"❌ Error listing registries: {code} — {e}")
         if code == "AccessDeniedException":
-            print("   Verify admin_persona has bedrock-agentcore:ListRegistries permission.")
+            print(
+                "   Verify admin_persona has bedrock-agentcore:ListRegistries permission."
+            )
         raise
 
 
@@ -166,7 +177,9 @@ def build_permissions_policy(actions):
     }
 
 
-def create_or_update_persona_role(iam_client, role_name, policy_name, actions, trust_policy, ACCOUNT_ID):
+def create_or_update_persona_role(
+    iam_client, role_name, policy_name, actions, trust_policy, ACCOUNT_ID
+):
     """Create an IAM role or update it if it already exists."""
     try:
         resp = iam_client.create_role(
@@ -196,7 +209,7 @@ def create_or_update_persona_role(iam_client, role_name, policy_name, actions, t
 
 def extract_role_arn(caller_arn):
     """Get the actual IAM role ARN from the caller identity.
-    
+
     The assumed-role ARN format loses the role path (e.g., /service-role/).
     We extract the role name and look it up via IAM to get the full ARN.
     """

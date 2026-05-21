@@ -28,6 +28,7 @@ from boto3.session import Session
 
 try:
     from dotenv import load_dotenv
+
     load_dotenv(override=True)
 except ImportError:
     pass
@@ -47,7 +48,9 @@ def create_m2m_provider(identity_client: IdentityClient) -> dict:
         with open("cognito_config.json") as f:
             cognito_config = json.load(f)
     except FileNotFoundError:
-        print("  Skipping M2M: cognito_config.json not found. Run setup_cognito.py first.")
+        print(
+            "  Skipping M2M: cognito_config.json not found. Run setup_cognito.py first."
+        )
         return {"name": "M2MProvider", "skipped": True}
 
     client_id = cognito_config.get("m2m_client_id", "")
@@ -62,19 +65,21 @@ def create_m2m_provider(identity_client: IdentityClient) -> dict:
         return {"name": "M2MProvider", "skipped": True}
 
     print("Creating M2M (client credentials) credential provider...")
-    provider = identity_client.create_oauth2_credential_provider({
-        "name": "M2MProvider",
-        "credentialProviderVendor": "CustomOauth2",
-        "oauth2ProviderConfigInput": {
-            "customOauth2ProviderConfig": {
-                "clientId": client_id,
-                "clientSecret": client_secret,
-                "oauthDiscovery": {
-                    "discoveryUrl": f"https://cognito-idp.{region}.amazonaws.com/{pool_id}/.well-known/openid-configuration",
-                },
-            }
-        },
-    })
+    provider = identity_client.create_oauth2_credential_provider(
+        {
+            "name": "M2MProvider",
+            "credentialProviderVendor": "CustomOauth2",
+            "oauth2ProviderConfigInput": {
+                "customOauth2ProviderConfig": {
+                    "clientId": client_id,
+                    "clientSecret": client_secret,
+                    "oauthDiscovery": {
+                        "discoveryUrl": f"https://cognito-idp.{region}.amazonaws.com/{pool_id}/.well-known/openid-configuration",
+                    },
+                }
+            },
+        }
+    )
     print(f"  Created: {provider.get('name')}")
     return {"name": "M2MProvider", "provider": provider}
 
@@ -90,28 +95,34 @@ def create_github_3lo_provider(identity_client: IdentityClient) -> dict:
 
     print("Creating GitHub OAuth2 (authorization code / 3LO) credential provider...")
     try:
-        provider = identity_client.create_oauth2_credential_provider({
-            "name": "GitHub3LOProvider",
-            "credentialProviderVendor": "GithubOauth2",
-            "oauth2ProviderConfigInput": {
-                "githubOauth2ProviderConfig": {
-                    "clientId": client_id,
-                    "clientSecret": client_secret,
-                }
-            },
-        })
+        provider = identity_client.create_oauth2_credential_provider(
+            {
+                "name": "GitHub3LOProvider",
+                "credentialProviderVendor": "GithubOauth2",
+                "oauth2ProviderConfigInput": {
+                    "githubOauth2ProviderConfig": {
+                        "clientId": client_id,
+                        "clientSecret": client_secret,
+                    }
+                },
+            }
+        )
         callback_url = provider.get("callbackUrl", "")
         print(f"  Created: {provider.get('name')}")
     except Exception as e:
         if "already exists" in str(e).lower():
             print("  GitHub3LOProvider already exists.")
-            existing = identity_client.cp_client.get_oauth2_credential_provider(name="GitHub3LOProvider")
+            existing = identity_client.cp_client.get_oauth2_credential_provider(
+                name="GitHub3LOProvider"
+            )
             callback_url = existing.get("callbackUrl", "")
         else:
             raise
     print("\n  IMPORTANT: Add this callback URL to your GitHub OAuth App:")
     print(f"  {callback_url}")
-    print("  (GitHub -> Settings -> Developer settings -> OAuth Apps -> your app -> Authorization callback URL)")
+    print(
+        "  (GitHub -> Settings -> Developer settings -> OAuth Apps -> your app -> Authorization callback URL)"
+    )
     return {"name": "GitHub3LOProvider", "callback_url": callback_url}
 
 
@@ -126,28 +137,34 @@ def create_google_3lo_provider(identity_client: IdentityClient) -> dict:
 
     print("Creating Google OAuth2 (authorization code / 3LO) credential provider...")
     try:
-        provider = identity_client.create_oauth2_credential_provider({
-            "name": "Google3LOProvider",
-            "credentialProviderVendor": "GoogleOauth2",
-            "oauth2ProviderConfigInput": {
-                "googleOauth2ProviderConfig": {
-                    "clientId": client_id,
-                    "clientSecret": client_secret,
-                }
-            },
-        })
+        provider = identity_client.create_oauth2_credential_provider(
+            {
+                "name": "Google3LOProvider",
+                "credentialProviderVendor": "GoogleOauth2",
+                "oauth2ProviderConfigInput": {
+                    "googleOauth2ProviderConfig": {
+                        "clientId": client_id,
+                        "clientSecret": client_secret,
+                    }
+                },
+            }
+        )
         callback_url = provider.get("callbackUrl", "")
         print(f"  Created: {provider.get('name')}")
     except Exception as e:
         if "already exists" in str(e).lower():
             print("  Google3LOProvider already exists.")
-            existing = identity_client.cp_client.get_oauth2_credential_provider(name="Google3LOProvider")
+            existing = identity_client.cp_client.get_oauth2_credential_provider(
+                name="Google3LOProvider"
+            )
             callback_url = existing.get("callbackUrl", "")
         else:
             raise
     print("\n  IMPORTANT: Add this callback URL to your Google OAuth App:")
     print(f"  {callback_url}")
-    print("  (Google Cloud Console -> APIs & Services -> Credentials -> OAuth 2.0 Client IDs -> Authorised redirect URIs)")
+    print(
+        "  (Google Cloud Console -> APIs & Services -> Credentials -> OAuth 2.0 Client IDs -> Authorised redirect URIs)"
+    )
     return {"name": "Google3LOProvider", "callback_url": callback_url}
 
 

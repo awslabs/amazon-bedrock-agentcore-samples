@@ -14,7 +14,12 @@ Features:
 import logging
 from typing import Optional, List, Dict, Any
 
-from strands.hooks import AgentInitializedEvent, HookProvider, HookRegistry, MessageAddedEvent
+from strands.hooks import (
+    AgentInitializedEvent,
+    HookProvider,
+    HookRegistry,
+    MessageAddedEvent,
+)
 from bedrock_agentcore.memory import MemoryClient
 
 # Configure logger
@@ -57,7 +62,7 @@ class ShortTermMemoryHook(HookProvider):
         memory_id: str,
         context_keywords: Optional[List[str]] = None,
         max_context_turns: int = 5,
-        branch_name: str = "main"
+        branch_name: str = "main",
     ):
         """Initialize the ShortTermMemoryHook."""
         self.memory_client = memory_client
@@ -67,16 +72,16 @@ class ShortTermMemoryHook(HookProvider):
 
         # Default keywords for identifying application context
         self.context_keywords = context_keywords or [
-            'Stack Name:',
-            'EC2 Instance:',
-            'Database:',
-            'Application:',
-            'Service:',
-            'Configuration:',
-            'Error:',
-            'Status:',
-            'Memory:',
-            'CPU:'
+            "Stack Name:",
+            "EC2 Instance:",
+            "Database:",
+            "Application:",
+            "Service:",
+            "Configuration:",
+            "Error:",
+            "Status:",
+            "Memory:",
+            "CPU:",
         ]
 
         logger.debug(
@@ -117,7 +122,7 @@ class ShortTermMemoryHook(HookProvider):
                 actor_id=actor_id,
                 session_id=session_id,
                 k=self.max_context_turns,
-                branch_name=self.branch_name
+                branch_name=self.branch_name,
             )
 
             if recent_turns:
@@ -135,7 +140,7 @@ class ShortTermMemoryHook(HookProvider):
         except Exception as e:
             logger.error(
                 f"Failed to load conversation history: {type(e).__name__}: {str(e)}",
-                exc_info=True
+                exc_info=True,
             )
 
     def on_message_added(self, event: MessageAddedEvent) -> None:
@@ -178,7 +183,9 @@ class ShortTermMemoryHook(HookProvider):
 
             # Skip empty messages (don't persist to memory if text is empty)
             if not message_text or not message_text.strip():
-                logger.debug(f"Skipping empty message (role={message_role}) - no content to persist")
+                logger.debug(
+                    f"Skipping empty message (role={message_role}) - no content to persist"
+                )
                 return
 
             # Save to memory
@@ -186,7 +193,7 @@ class ShortTermMemoryHook(HookProvider):
                 memory_id=self.memory_id,
                 actor_id=actor_id,
                 session_id=session_id,
-                messages=[(message_text, message_role)]
+                messages=[(message_text, message_role)],
             )
 
             logger.debug(
@@ -197,7 +204,7 @@ class ShortTermMemoryHook(HookProvider):
         except Exception as e:
             logger.error(
                 f"Failed to persist message to memory: {type(e).__name__}: {str(e)}",
-                exc_info=True
+                exc_info=True,
             )
 
     def register_hooks(self, registry: HookRegistry) -> None:
@@ -233,12 +240,12 @@ class ShortTermMemoryHook(HookProvider):
         # Process each turn and extract information
         for turn in turns:
             for message in turn:
-                role = message.get('role', '').lower()
-                content = message.get('content', {})
+                role = message.get("role", "").lower()
+                content = message.get("content", {})
 
                 # Handle different content formats
                 if isinstance(content, dict):
-                    text = content.get('text', '')
+                    text = content.get("text", "")
                 elif isinstance(content, str):
                     text = content
                 else:
@@ -249,7 +256,7 @@ class ShortTermMemoryHook(HookProvider):
                     keyword in text for keyword in self.context_keywords
                 )
 
-                if is_application_info and role == 'assistant':
+                if is_application_info and role == "assistant":
                     application_info.append(text)
                 else:
                     context_messages.append(f"{role.title()}: {text}")

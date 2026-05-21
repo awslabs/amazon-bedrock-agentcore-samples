@@ -325,7 +325,9 @@ def _read_gateway_config() -> tuple[str, str]:
 
         # Handle case where 'gateway' key might be None
         gateway_config = config.get("gateway") or {}
-        gateway_uri = gateway_config.get("uri") if isinstance(gateway_config, dict) else None
+        gateway_uri = (
+            gateway_config.get("uri") if isinstance(gateway_config, dict) else None
+        )
         if not gateway_uri:
             raise ValueError(
                 "Gateway URI not found in agent_config.yaml under 'gateway.uri'"
@@ -1180,7 +1182,9 @@ async def main():
             # Fallback to AWS_REGION environment variable
             aws_region = os.environ.get("AWS_REGION")
             if aws_region:
-                logger.info(f"Using AWS region from AWS_REGION environment variable: {aws_region}")
+                logger.info(
+                    f"Using AWS region from AWS_REGION environment variable: {aws_region}"
+                )
             else:
                 # Final fallback to us-east-1
                 aws_region = "us-east-1"

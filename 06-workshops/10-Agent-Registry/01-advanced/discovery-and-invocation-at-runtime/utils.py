@@ -16,7 +16,7 @@ import requests
 # ═══════════════════════════════════════════════════════════════════════════════
 
 # Lambda code for order management — handles get_order_status and update_order tools
-ORDER_MANAGEMENT_LAMBDA_CODE = '''
+ORDER_MANAGEMENT_LAMBDA_CODE = """
 import json
 
 ORDERS = {
@@ -78,26 +78,31 @@ def lambda_handler(event, context):
             return {"order_id": order_id, "status": order["status"], "message": f"Shipping address updated to: {event.get('newAddress', '')}"}
         return {"order_id": order_id, "message": f"Order {order_id} updated with action: {action}"}
     return {"error": f"Unknown tool: {tool}"}
-'''
+"""
 
 
 def make_lambda_zip(code_str):
     """Package a Python code string into a Lambda-compatible zip archive."""
     buf = io.BytesIO()
-    with zipfile.ZipFile(buf, 'w') as z:
-        z.writestr('lambda_function.py', code_str)
+    with zipfile.ZipFile(buf, "w") as z:
+        z.writestr("lambda_function.py", code_str)
     buf.seek(0)
     return buf.read()
 
 
-def fetch_oauth_token(cognito_domain, client_id, client_secret, scopes, region, max_retries=6):
+def fetch_oauth_token(
+    cognito_domain, client_id, client_secret, scopes, region, max_retries=6
+):
     """Fetch OAuth2 access token from Cognito with retry for DNS propagation."""
     creds = base64.b64encode(f"{client_id}:{client_secret}".encode()).decode()
     for attempt in range(max_retries):
         try:
             resp = requests.post(
                 f"https://{cognito_domain}/oauth2/token",
-                headers={"Authorization": f"Basic {creds}", "Content-Type": "application/x-www-form-urlencoded"},
+                headers={
+                    "Authorization": f"Basic {creds}",
+                    "Content-Type": "application/x-www-form-urlencoded",
+                },
                 data={"grant_type": "client_credentials", "scope": scopes},
                 timeout=10,
             )
@@ -106,7 +111,9 @@ def fetch_oauth_token(cognito_domain, client_id, client_secret, scopes, region, 
             return token
         except Exception:
             if attempt < max_retries - 1:
-                print(f"  Waiting for Cognito DNS (attempt {attempt + 1}/{max_retries})...")
+                print(
+                    f"  Waiting for Cognito DNS (attempt {attempt + 1}/{max_retries})..."
+                )
                 time.sleep(10)
             else:
                 raise
@@ -120,7 +127,9 @@ ORDER_TOOL_SCHEMAS = [
         "description": "Get the status and details of an order by order ID, including items, total, shipping, and tracking info",
         "inputSchema": {
             "type": "object",
-            "properties": {"orderId": {"type": "string", "description": "The order ID to look up"}},
+            "properties": {
+                "orderId": {"type": "string", "description": "The order ID to look up"}
+            },
             "required": ["orderId"],
         },
     },
@@ -131,8 +140,14 @@ ORDER_TOOL_SCHEMAS = [
             "type": "object",
             "properties": {
                 "orderId": {"type": "string", "description": "The order ID to update"},
-                "action": {"type": "string", "description": "Action to perform: cancel, change_address"},
-                "newAddress": {"type": "string", "description": "New shipping address (for change_address action)"},
+                "action": {
+                    "type": "string",
+                    "description": "Action to perform: cancel, change_address",
+                },
+                "newAddress": {
+                    "type": "string",
+                    "description": "New shipping address (for change_address action)",
+                },
             },
             "required": ["orderId", "action"],
         },
@@ -250,7 +265,9 @@ def write_agent_files():
         f.write(CUSTOMER_SUPPORT_AGENT_CODE)
     with open("a2a_requirements.txt", "w") as f:
         f.write(A2A_REQUIREMENTS)
-    print("  Agent files written: pricing_agent.py, customer_support_agent.py, a2a_requirements.txt")
+    print(
+        "  Agent files written: pricing_agent.py, customer_support_agent.py, a2a_requirements.txt"
+    )
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -300,7 +317,9 @@ def parse_server_metadata(record):
     elif protocol == "A2A":
         try:
             card = json.loads(
-                descriptors.get("a2a", {}).get("agentCard", {}).get("inlineContent", "{}")
+                descriptors.get("a2a", {})
+                .get("agentCard", {})
+                .get("inlineContent", "{}")
             )
             meta["url"] = card.get("url")
         except Exception:
@@ -341,22 +360,26 @@ def create_a2a_tool_from_metadata(meta, session, region):
     description = meta.get("description", "An A2A agent")
 
     def _invoke(task: str) -> str:
-        payload = json.dumps({
-            "jsonrpc": "2.0",
-            "id": str(uuid.uuid4()),
-            "method": "message/send",
-            "params": {
-                "message": {
-                    "messageId": str(uuid.uuid4()),
-                    "role": "user",
-                    "parts": [{"kind": "text", "text": task}],
-                }
-            },
-        })
+        payload = json.dumps(
+            {
+                "jsonrpc": "2.0",
+                "id": str(uuid.uuid4()),
+                "method": "message/send",
+                "params": {
+                    "message": {
+                        "messageId": str(uuid.uuid4()),
+                        "role": "user",
+                        "parts": [{"kind": "text", "text": task}],
+                    }
+                },
+            }
+        )
         try:
             data_client = session.client("bedrock-agentcore")
             response = data_client.invoke_agent_runtime(
-                agentRuntimeArn=arn, payload=payload, contentType="application/json",
+                agentRuntimeArn=arn,
+                payload=payload,
+                contentType="application/json",
             )
             result = json.loads(response["response"].read().decode())
             if "result" in result:
@@ -378,6 +401,7 @@ def create_a2a_tool_from_metadata(meta, session, region):
 # Step 4 helpers — Orchestrator invocation
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 def invoke_orchestrator(user_request, data_client, orchestrator_arn, max_retries=3):
     """Invoke the orchestrator agent on Runtime via A2A JSON-RPC protocol.
 
@@ -387,16 +411,20 @@ def invoke_orchestrator(user_request, data_client, orchestrator_arn, max_retries
         orchestrator_arn: ARN of the deployed orchestrator agent.
         max_retries: Number of retries for cold-start 502 errors.
     """
-    payload = json.dumps({
-        "jsonrpc": "2.0",
-        "id": str(uuid.uuid4()),
-        "method": "message/send",
-        "params": {"message": {
-            "messageId": str(uuid.uuid4()),
-            "role": "user",
-            "parts": [{"kind": "text", "text": user_request}],
-        }},
-    })
+    payload = json.dumps(
+        {
+            "jsonrpc": "2.0",
+            "id": str(uuid.uuid4()),
+            "method": "message/send",
+            "params": {
+                "message": {
+                    "messageId": str(uuid.uuid4()),
+                    "role": "user",
+                    "parts": [{"kind": "text", "text": user_request}],
+                }
+            },
+        }
+    )
     for attempt in range(max_retries):
         try:
             response = data_client.invoke_agent_runtime(
@@ -409,7 +437,9 @@ def invoke_orchestrator(user_request, data_client, orchestrator_arn, max_retries
             return "\n".join(p["text"] for p in parts if p.get("kind") == "text")
         except Exception as e:
             if "502" in str(e) and attempt < max_retries - 1:
-                print(f"  Cold-start 502, retrying in 15s (attempt {attempt+1}/{max_retries})...")
+                print(
+                    f"  Cold-start 502, retrying in 15s (attempt {attempt + 1}/{max_retries})..."
+                )
                 time.sleep(10)
             else:
                 raise

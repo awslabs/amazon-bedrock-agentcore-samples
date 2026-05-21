@@ -52,10 +52,19 @@ class JWTClaims:
         if not tenant_id:
             ctx = resolve_client_context(client_id)
             tenant_id, role, department, username = (
-                ctx["tenantId"], ctx["role"], ctx["department"], ctx["username"]
+                ctx["tenantId"],
+                ctx["role"],
+                ctx["department"],
+                ctx["username"],
             )
-        return cls(sub=client_id, username=username, tenant_id=tenant_id,
-                   role=role, department=department, scopes=scopes)
+        return cls(
+            sub=client_id,
+            username=username,
+            tenant_id=tenant_id,
+            role=role,
+            department=department,
+            scopes=scopes,
+        )
 
 
 def _normalize_scopes(scopes: List[str]) -> List[str]:
@@ -96,7 +105,9 @@ class HRResponseInterceptor:
 
             return {
                 "interceptorOutputVersion": "1.0",
-                "mcp": {"transformedGatewayResponse": {"statusCode": 200, "body": processed}},
+                "mcp": {
+                    "transformedGatewayResponse": {"statusCode": 200, "body": processed}
+                },
             }
         except Exception as e:
             self.logger.error(f"Response interceptor error: {e}", exc_info=True)
@@ -155,11 +166,18 @@ class HRResponseInterceptor:
                     hidden += 1
 
         if hidden:
-            self.logger.info(json.dumps({
-                "event": "tool_discovery_filtering", "correlation_id": cid,
-                "tenant_id": claims.tenant_id, "hidden_tools": hidden,
-                "scopes": claims.scopes, "timestamp": datetime.utcnow().isoformat(),
-            }))
+            self.logger.info(
+                json.dumps(
+                    {
+                        "event": "tool_discovery_filtering",
+                        "correlation_id": cid,
+                        "tenant_id": claims.tenant_id,
+                        "hidden_tools": hidden,
+                        "scopes": claims.scopes,
+                        "timestamp": datetime.utcnow().isoformat(),
+                    }
+                )
+            )
 
         return {**resp_body, "result": {**result, "tools": filtered}}
 
@@ -188,11 +206,17 @@ class HRResponseInterceptor:
             content[0]["text"] = json.dumps(lambda_resp)
 
             if log:
-                self.logger.info(json.dumps({
-                    "event": "dlp_redaction", "correlation_id": cid,
-                    "tenant_id": claims.tenant_id, "redacted_fields": log,
-                    "timestamp": datetime.utcnow().isoformat(),
-                }))
+                self.logger.info(
+                    json.dumps(
+                        {
+                            "event": "dlp_redaction",
+                            "correlation_id": cid,
+                            "tenant_id": claims.tenant_id,
+                            "redacted_fields": log,
+                            "timestamp": datetime.utcnow().isoformat(),
+                        }
+                    )
+                )
 
             return {**resp_body, "result": result}
         except (json.JSONDecodeError, KeyError, TypeError) as e:
@@ -224,24 +248,38 @@ class HRResponseInterceptor:
                     out[f] = REDACTED
                     log.append(f"Redacted {f} (missing hr-dlp-gateway/pii)")
 
-        if not any(s in ns for s in ["hr:address", "address", "hr-dlp-gateway/address"]):
+        if not any(
+            s in ns for s in ["hr:address", "address", "hr-dlp-gateway/address"]
+        ):
             for f in ["address", "home_address", "street", "city", "state", "zip_code"]:
                 if f in out:
                     out[f] = REDACTED
                     log.append(f"Redacted {f} (missing hr-dlp-gateway/address)")
 
         if not any(s in ns for s in ["hr:comp", "comp", "hr-dlp-gateway/comp"]):
-            for f in ["salary", "bonus", "stock_options", "pay_grade", "benefits_value", "total_compensation"]:
+            for f in [
+                "salary",
+                "bonus",
+                "stock_options",
+                "pay_grade",
+                "benefits_value",
+                "total_compensation",
+            ]:
                 if f in out:
                     out[f] = REDACTED
                     log.append(f"Redacted {f} (missing hr-dlp-gateway/comp)")
-            if "compensation_history" in out and isinstance(out["compensation_history"], list):
+            if "compensation_history" in out and isinstance(
+                out["compensation_history"], list
+            ):
                 out["compensation_history"] = [
                     {**e, "salary": REDACTED, "bonus": REDACTED}
-                    if isinstance(e, dict) else e
+                    if isinstance(e, dict)
+                    else e
                     for e in out["compensation_history"]
                 ]
-                log.append("Redacted compensation_history (missing hr-dlp-gateway/comp)")
+                log.append(
+                    "Redacted compensation_history (missing hr-dlp-gateway/comp)"
+                )
 
         return out, log
 
@@ -251,8 +289,15 @@ class HRResponseInterceptor:
             "mcp": {
                 "transformedGatewayResponse": {
                     "statusCode": 500,
-                    "body": {"jsonrpc": "2.0", "id": 1,
-                             "error": {"code": -32603, "message": "Internal Error", "data": message}},
+                    "body": {
+                        "jsonrpc": "2.0",
+                        "id": 1,
+                        "error": {
+                            "code": -32603,
+                            "message": "Internal Error",
+                            "data": message,
+                        },
+                    },
                 }
             },
         }

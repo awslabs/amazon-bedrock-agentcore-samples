@@ -40,9 +40,9 @@ def print_header(text: str, thread_safe: bool = False):
 
     if thread_safe:
         with print_lock:
-            print(output, end='')
+            print(output, end="")
     else:
-        print(output, end='')
+        print(output, end="")
 
 
 def print_info(text: str, thread_safe: bool = False):
@@ -105,7 +105,9 @@ def get_input(prompt: str, default: Optional[str] = None, required: bool = True)
             print_error("This field is required. Please provide a value.")
 
 
-def run_command(cmd: list, capture_output: bool = True, timeout: int = 30) -> Tuple[bool, str]:
+def run_command(
+    cmd: list, capture_output: bool = True, timeout: int = 30
+) -> Tuple[bool, str]:
     """Run a shell command and return (success, output)"""
     try:
         result = subprocess.run(
@@ -128,9 +130,13 @@ def load_config(config_path: Path) -> Optional[Dict[str, Any]]:
     return None
 
 
-def wait_for_stack_deletion(stack_name: str, region: str, thread_safe: bool = False) -> bool:
+def wait_for_stack_deletion(
+    stack_name: str, region: str, thread_safe: bool = False
+) -> bool:
     """Wait for CloudFormation stack to be deleted"""
-    print_info(f"Waiting for stack '{stack_name}' to be deleted...", thread_safe=thread_safe)
+    print_info(
+        f"Waiting for stack '{stack_name}' to be deleted...", thread_safe=thread_safe
+    )
 
     max_wait_time = 1800  # 30 minutes
     wait_interval = 15  # 15 seconds
@@ -163,13 +169,19 @@ def wait_for_stack_deletion(stack_name: str, region: str, thread_safe: bool = Fa
                 or "stack with id" in output_lower
                 or not output.strip()
             ):  # Empty output also means stack is gone
-                print_success(f"Stack '{stack_name}' deleted successfully!", thread_safe=thread_safe)
+                print_success(
+                    f"Stack '{stack_name}' deleted successfully!",
+                    thread_safe=thread_safe,
+                )
                 return True
             else:
                 # Some other unexpected error occurred, but continue checking
                 # Don't show warnings for empty output
                 if output.strip():
-                    print_warning(f"Error checking stack status: {output}", thread_safe=thread_safe)
+                    print_warning(
+                        f"Error checking stack status: {output}",
+                        thread_safe=thread_safe,
+                    )
                 # Continue to next iteration - stack might be gone
 
         # Stack still exists, check its status
@@ -178,26 +190,39 @@ def wait_for_stack_deletion(stack_name: str, region: str, thread_safe: bool = Fa
 
             # DELETE_COMPLETE means stack is fully deleted and will disappear soon
             if status == "DELETE_COMPLETE":
-                print_success(f"Stack '{stack_name}' deleted successfully!", thread_safe=thread_safe)
+                print_success(
+                    f"Stack '{stack_name}' deleted successfully!",
+                    thread_safe=thread_safe,
+                )
                 return True
             elif status == "DELETE_FAILED":
-                print_error(f"Stack '{stack_name}' deletion failed!", thread_safe=thread_safe)
-                print_error("Check the CloudFormation console for details", thread_safe=thread_safe)
+                print_error(
+                    f"Stack '{stack_name}' deletion failed!", thread_safe=thread_safe
+                )
+                print_error(
+                    "Check the CloudFormation console for details",
+                    thread_safe=thread_safe,
+                )
                 return False
             else:
-                print_info(f"[{stack_name}] Status: {status} (waiting...)", thread_safe=thread_safe)
+                print_info(
+                    f"[{stack_name}] Status: {status} (waiting...)",
+                    thread_safe=thread_safe,
+                )
 
         time.sleep(wait_interval)
         elapsed_time += wait_interval
 
     print_error(
         f"Timeout waiting for stack '{stack_name}' deletion (waited {max_wait_time}s)",
-        thread_safe=thread_safe
+        thread_safe=thread_safe,
     )
     return False
 
 
-def delete_stack(stack_name: str, region: str, step_name: str, thread_safe: bool = False) -> bool:
+def delete_stack(
+    stack_name: str, region: str, step_name: str, thread_safe: bool = False
+) -> bool:
     """Delete a CloudFormation stack"""
     if not thread_safe:
         print_header(f"Deleting {step_name}")
@@ -226,7 +251,10 @@ def delete_stack(stack_name: str, region: str, step_name: str, thread_safe: bool
             or "validationerror" in output_lower
             or not output.strip()
         ):
-            print_info(f"Stack '{stack_name}' does not exist, skipping", thread_safe=thread_safe)
+            print_info(
+                f"Stack '{stack_name}' does not exist, skipping",
+                thread_safe=thread_safe,
+            )
             return True
         # Some other error
         print_error(f"Error checking stack: {output}", thread_safe=thread_safe)
@@ -247,7 +275,9 @@ def delete_stack(stack_name: str, region: str, step_name: str, thread_safe: bool
     )
 
     if success:
-        print_success(f"Stack deletion initiated: {stack_name}", thread_safe=thread_safe)
+        print_success(
+            f"Stack deletion initiated: {stack_name}", thread_safe=thread_safe
+        )
         return wait_for_stack_deletion(stack_name, region, thread_safe=thread_safe)
     else:
         print_error(f"Failed to delete stack: {output}", thread_safe=thread_safe)
@@ -313,9 +343,7 @@ def cleanup_s3_bucket(bucket_name: str, region: str) -> bool:
 
 
 def delete_stack_parallel(
-    stack_name: str,
-    region: str,
-    step_name: str
+    stack_name: str, region: str, step_name: str
 ) -> Tuple[str, bool]:
     """Delete a stack in parallel (thread-safe)"""
     try:
@@ -344,8 +372,7 @@ def delete_agent_stacks_parallel(config: Dict[str, Any], region: str) -> bool:
     with ThreadPoolExecutor(max_workers=3) as executor:
         # Submit all deletion tasks
         future_to_stack = {
-            executor.submit(delete_stack_parallel, *task): task[2]
-            for task in tasks
+            executor.submit(delete_stack_parallel, *task): task[2] for task in tasks
         }
 
         # Collect results as they complete
@@ -359,7 +386,9 @@ def delete_agent_stacks_parallel(config: Dict[str, Any], region: str) -> bool:
                 else:
                     print_error(f"✗ {name} deletion failed", thread_safe=True)
             except Exception as e:
-                print_error(f"Exception deleting {stack_label}: {str(e)}", thread_safe=True)
+                print_error(
+                    f"Exception deleting {stack_label}: {str(e)}", thread_safe=True
+                )
                 results[stack_label] = False
 
     # Check if all deletions succeeded

@@ -42,7 +42,6 @@ async def strands_agent_bedrock(payload):
     tool_name = None
     try:
         async for event in agent_stream:
-
             if (
                 "current_tool_use" in event
                 and event["current_tool_use"].get("name") != tool_name

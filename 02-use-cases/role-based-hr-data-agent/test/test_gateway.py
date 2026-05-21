@@ -26,7 +26,9 @@ def get_token(persona: str) -> str:
     token_url = get_ssm_parameter("/app/hrdlp/cognito-token-url")
 
     if not all([client_id, client_secret, token_url]):
-        print(f"ERROR: Credentials not found for persona '{persona}'. Run prereq.sh first.")
+        print(
+            f"ERROR: Credentials not found for persona '{persona}'. Run prereq.sh first."
+        )
         sys.exit(1)
 
     resp = requests.post(
@@ -41,7 +43,9 @@ def get_token(persona: str) -> str:
     return token
 
 
-def call_gateway(gateway_url: str, token: str, method: str, params: dict = None) -> dict:
+def call_gateway(
+    gateway_url: str, token: str, method: str, params: dict = None
+) -> dict:
     payload = {
         "jsonrpc": "2.0",
         "id": uuid.uuid4().hex,
@@ -75,7 +79,9 @@ def list_tools(gateway_url: str, token: str) -> None:
 
 def call_tool(gateway_url: str, token: str, tool_name: str, arguments: dict) -> None:
     print(f"\n[gateway] Calling tool: {tool_name}")
-    result = call_gateway(gateway_url, token, "tools/call", {"name": tool_name, "arguments": arguments})
+    result = call_gateway(
+        gateway_url, token, "tools/call", {"name": tool_name, "arguments": arguments}
+    )
     content = result.get("result", {}).get("content", [])
     for item in content:
         if item.get("type") == "text":
@@ -89,11 +95,16 @@ def call_tool(gateway_url: str, token: str, tool_name: str, arguments: dict) -> 
 
 def main():
     parser = argparse.ArgumentParser(description="AgentCore Gateway smoke test")
-    parser.add_argument("--persona", default="hr-manager",
-                        choices=["hr-manager", "hr-specialist", "employee", "admin"],
-                        help="Test persona to use")
+    parser.add_argument(
+        "--persona",
+        default="hr-manager",
+        choices=["hr-manager", "hr-specialist", "employee", "admin"],
+        help="Test persona to use",
+    )
     parser.add_argument("--query", default="John Smith", help="Search query")
-    parser.add_argument("--list-tools", action="store_true", help="Only list tools, no invocation")
+    parser.add_argument(
+        "--list-tools", action="store_true", help="Only list tools, no invocation"
+    )
     args = parser.parse_args()
 
     gateway_url = get_ssm_parameter("/app/hrdlp/gateway-url")
@@ -106,7 +117,8 @@ def main():
 
     if not args.list_tools:
         call_tool(
-            gateway_url, token,
+            gateway_url,
+            token,
             "hr-lambda-target___search_employee",
             {"query": args.query},
         )

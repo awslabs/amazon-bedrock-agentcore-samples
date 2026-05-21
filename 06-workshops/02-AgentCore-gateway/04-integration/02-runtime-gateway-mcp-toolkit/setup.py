@@ -5,8 +5,8 @@ setup(
     version="0.1.0",
     packages=find_packages(),
     entry_points={
-        'console_scripts': [
-            'agentcore-mcp-toolkit=agentcore_toolkit.main:main',
+        "console_scripts": [
+            "agentcore-mcp-toolkit=agentcore_toolkit.main:main",
         ],
     },
 )

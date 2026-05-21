@@ -191,7 +191,9 @@ def update_workload_identity(agent_runtime_id: str):
     existing_urls = workload_identity.get("allowedResourceOauth2ReturnUrls") or []
     callback_url = get_oauth2_callback_url()
 
-    print(f"  Updating workload {agent_runtime_id} with callback URL: {callback_url}")  # codeql[py/clear-text-logging-sensitive-data]
+    print(
+        f"  Updating workload {agent_runtime_id} with callback URL: {callback_url}"
+    )  # codeql[py/clear-text-logging-sensitive-data]
     control.update_workload_identity(
         name=agent_runtime_id,
         allowedResourceOauth2ReturnUrls=[*existing_urls, callback_url],

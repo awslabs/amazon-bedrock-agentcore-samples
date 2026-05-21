@@ -38,9 +38,13 @@ def _find_project_dir() -> str:
     base = os.path.dirname(os.path.abspath(__file__))
     for entry in os.listdir(base):
         candidate = os.path.join(base, entry)
-        if os.path.isdir(candidate) and os.path.isdir(os.path.join(candidate, "agentcore")):
+        if os.path.isdir(candidate) and os.path.isdir(
+            os.path.join(candidate, "agentcore")
+        ):
             return candidate
-    raise FileNotFoundError("No agentcore project directory found. Run 'agentcore create' first.")
+    raise FileNotFoundError(
+        "No agentcore project directory found. Run 'agentcore create' first."
+    )
 
 
 def _find_in_json(obj, key):
@@ -82,7 +86,11 @@ def get_agent_arn() -> str:
 def parse_event_stream(response: dict) -> str:
     parts = []
     for event in response.get("response", []):
-        raw = event if isinstance(event, bytes) else event.get("chunk", {}).get("bytes", b"")
+        raw = (
+            event
+            if isinstance(event, bytes)
+            else event.get("chunk", {}).get("bytes", b"")
+        )
         if raw:
             try:
                 decoded = json.loads(raw.decode("utf-8"))
@@ -113,7 +121,9 @@ def main():
         with open("cognito_config.json") as f:
             config = json.load(f)
     except FileNotFoundError:
-        print("ERROR: cognito_config.json not found. Run 'python setup_cognito.py' first.")
+        print(
+            "ERROR: cognito_config.json not found. Run 'python setup_cognito.py' first."
+        )
         sys.exit(1)
 
     region = config["region"]
@@ -145,6 +155,7 @@ def main():
     print(f"  Prompt: '{prompt}'")
 
     try:
+
         def _inject_bearer(request, **kwargs):
             request.headers["Authorization"] = f"Bearer {bearer_token}"
 

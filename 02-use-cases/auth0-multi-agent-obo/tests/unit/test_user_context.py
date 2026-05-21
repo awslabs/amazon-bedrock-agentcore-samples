@@ -7,7 +7,6 @@ Tests the UserContext data model that represents authenticated user information.
 """
 
 
-
 class TestUserContextModel:
     """Test UserContext data model."""
 
@@ -20,10 +19,7 @@ class TestUserContextModel:
     def test_user_context_required_fields(self):
         """Test that required fields are present."""
         required_fields = ["user_id", "customer_id"]
-        minimal_context = {
-            "user_id": "auth0|123456789",
-            "customer_id": "CUST-12345"
-        }
+        minimal_context = {"user_id": "auth0|123456789", "customer_id": "CUST-12345"}
 
         for field in required_fields:
             assert field in minimal_context
@@ -31,7 +27,14 @@ class TestUserContextModel:
 
     def test_user_context_optional_fields(self, sample_user_context):
         """Test optional fields in user context."""
-        optional_fields = ["email", "name", "account_ids", "roles", "kyc_status", "scopes"]
+        optional_fields = [
+            "email",
+            "name",
+            "account_ids",
+            "roles",
+            "kyc_status",
+            "scopes",
+        ]
 
         for field in optional_fields:
             # Field may or may not be present
@@ -105,10 +108,7 @@ class TestUserContextValidation:
 
     def test_invalid_user_context_missing_user_id(self):
         """Test handling of invalid context missing user_id."""
-        invalid_context = {
-            "customer_id": "CUST-12345",
-            "email": "john.doe@example.com"
-        }
+        invalid_context = {"customer_id": "CUST-12345", "email": "john.doe@example.com"}
 
         # Should fail validation
         assert "user_id" not in invalid_context
@@ -117,7 +117,7 @@ class TestUserContextValidation:
         """Test handling of invalid context missing customer_id."""
         invalid_context = {
             "user_id": "auth0|123456789",
-            "email": "john.doe@example.com"
+            "email": "john.doe@example.com",
         }
 
         # Should fail validation
@@ -150,7 +150,7 @@ class TestUserContextOperations:
             "userId": sample_user_context["user_id"],
             "customerId": sample_user_context["customer_id"],
             "accountIds": sample_user_context["account_ids"],
-            "kycStatus": sample_user_context.get("kyc_status")
+            "kycStatus": sample_user_context.get("kyc_status"),
         }
 
         assert metadata["userId"] == "auth0|123456789"
@@ -182,13 +182,10 @@ class TestUserContextComparison:
         context1 = {
             "user_id": "auth0|123456789",
             "customer_id": "CUST-12345",
-            "email": "john.doe@example.com"
+            "email": "john.doe@example.com",
         }
 
-        context2 = {
-            "user_id": "auth0|123456789",
-            "customer_id": "CUST-12345"
-        }
+        context2 = {"user_id": "auth0|123456789", "customer_id": "CUST-12345"}
 
         # Same user even with different fields
         assert context1["user_id"] == context2["user_id"]
@@ -204,7 +201,7 @@ class TestUserContextEdgeCases:
             "user_id": "auth0|123456789",
             "customer_id": "CUST-12345",
             "name": "",
-            "email": "john.doe@example.com"
+            "email": "john.doe@example.com",
         }
 
         assert context["name"] == ""
@@ -217,7 +214,7 @@ class TestUserContextEdgeCases:
         context = {
             "user_id": "auth0|123456789",
             "customer_id": "CUST-12345",
-            "account_ids": []
+            "account_ids": [],
         }
 
         assert len(context["account_ids"]) == 0
@@ -227,7 +224,7 @@ class TestUserContextEdgeCases:
         context = {
             "user_id": "auth0|123456789",
             "customer_id": "CUST-12345",
-            "roles": []
+            "roles": [],
         }
 
         assert len(context["roles"]) == 0
@@ -237,7 +234,7 @@ class TestUserContextEdgeCases:
         context = {
             "user_id": "auth0|123456789",
             "customer_id": "CUST-12345",
-            "scopes": []
+            "scopes": [],
         }
 
         assert len(context["scopes"]) == 0
@@ -248,7 +245,7 @@ class TestUserContextEdgeCases:
             "user_id": "auth0|123456789",
             "customer_id": "CUST-12345",
             "name": "John O'Doe-Smith",
-            "email": "john.doe+test@example.com"
+            "email": "john.doe+test@example.com",
         }
 
         assert "'" in context["name"]
@@ -261,11 +258,12 @@ class TestUserContextEdgeCases:
             "user_id": "auth0|123456789",
             "customer_id": "CUST-12345",
             "name": "José García",
-            "email": "jose.garcia@example.com"
+            "email": "jose.garcia@example.com",
         }
 
         assert context["name"] == "José García"
         # Should handle unicode properly
         import json
+
         json_str = json.dumps(context, ensure_ascii=False)
         assert "José" in json_str

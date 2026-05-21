@@ -79,9 +79,9 @@ def main():
         help="Agent Runtime ARN (reads from .sre_agent_uri if not provided)",
     )
     parser.add_argument(
-        "--region", 
-        default=os.environ.get("AWS_REGION", "us-east-1"), 
-        help="AWS region (default: AWS_REGION env var or us-east-1)"
+        "--region",
+        default=os.environ.get("AWS_REGION", "us-east-1"),
+        help="AWS region (default: AWS_REGION env var or us-east-1)",
     )
     parser.add_argument(
         "--session-id", help="Runtime session ID (generates one if not provided)"

@@ -11,7 +11,7 @@ from auth_validator import (
     validate_forwarded_claims,
     authorize_profile_access,
     ClaimsValidationError,
-    AuthorizationError
+    AuthorizationError,
 )
 from profile_service import profile_service
 
@@ -19,10 +19,7 @@ logger = logging.getLogger(__name__)
 
 
 @tool
-def get_profile_tool(
-    customer_id: str,
-    claims: Dict[str, Any]
-) -> Dict[str, Any]:
+def get_profile_tool(customer_id: str, claims: Dict[str, Any]) -> Dict[str, Any]:
     """
     Retrieve customer profile information.
 
@@ -57,33 +54,21 @@ def get_profile_tool(
             logger.error(f"Profile not found for customer_id={customer_id}")
             return {
                 "success": False,
-                "error": f"Profile not found for customer {customer_id}"
+                "error": f"Profile not found for customer {customer_id}",
             }
 
         logger.info(f"Profile retrieved successfully for customer_id={customer_id}")
 
-        return {
-            "success": True,
-            "profile": profile
-        }
+        return {"success": True, "profile": profile}
 
     except ClaimsValidationError as e:
         logger.error(f"Claims validation failed: {e}")
-        return {
-            "success": False,
-            "error": f"Authentication error: {str(e)}"
-        }
+        return {"success": False, "error": f"Authentication error: {str(e)}"}
 
     except AuthorizationError as e:
         logger.warning(f"Authorization failed: {e}")
-        return {
-            "success": False,
-            "error": f"Authorization error: {str(e)}"
-        }
+        return {"success": False, "error": f"Authorization error: {str(e)}"}
 
     except Exception as e:
         logger.error(f"Unexpected error retrieving profile: {e}", exc_info=True)
-        return {
-            "success": False,
-            "error": f"Failed to retrieve profile: {str(e)}"
-        }
+        return {"success": False, "error": f"Failed to retrieve profile: {str(e)}"}

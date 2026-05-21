@@ -17,55 +17,55 @@ from typing import List, Dict, Any, Optional
 from botocore.exceptions import ClientError
 
 # Environment variables (set during deployment)
-TABLE_NAME = os.environ.get('PERMISSIONS_TABLE_NAME', 'ClientToolPermissions')
-REGION = os.environ.get('DYNAMODB_REGION', os.environ.get('AWS_REGION', 'us-east-1'))
+TABLE_NAME = os.environ.get("PERMISSIONS_TABLE_NAME", "ClientToolPermissions")
+REGION = os.environ.get("DYNAMODB_REGION", os.environ.get("AWS_REGION", "us-east-1"))
 
 # Initialize DynamoDB resource
-dynamodb = boto3.resource('dynamodb', region_name=REGION)
+dynamodb = boto3.resource("dynamodb", region_name=REGION)
 permissions_table = dynamodb.Table(TABLE_NAME)
 
 
 def extract_client_id_from_jwt(token: str) -> Optional[str]:
     """
     Extract client_id from JWT token payload.
-    
+
     Args:
         token: JWT token string (with or without 'Bearer ' prefix)
-    
+
     Returns:
         client_id from token payload, or None if extraction fails
     """
     try:
         # Remove 'Bearer ' prefix if present
-        if token.startswith('Bearer '):
+        if token.startswith("Bearer "):
             token = token[7:]
-        
+
         # Split token into parts
-        parts = token.split('.')
+        parts = token.split(".")
         if len(parts) != 3:
             print(f"Invalid JWT format: expected 3 parts, got {len(parts)}")
             return None
-        
+
         # Decode payload (second part)
         payload = parts[1]
-        
+
         # Add padding if needed
-        payload += '=' * (4 - len(payload) % 4)
-        
+        payload += "=" * (4 - len(payload) % 4)
+
         # Decode base64
         decoded = base64.urlsafe_b64decode(payload)
         payload_data = json.loads(decoded)
-        
+
         # Extract client_id (don't log full payload - may contain sensitive data)
-        client_id = payload_data.get('client_id')
-        
+        client_id = payload_data.get("client_id")
+
         if client_id:
             print("Successfully extracted client_id from JWT")
         else:
             print("WARNING: No client_id found in JWT payload")
-        
+
         return client_id
-        
+
     except Exception as e:
         print(f"Error extracting client_id from JWT: {e}")
         return None
@@ -85,20 +85,20 @@ def get_client_permissions(client_id: str) -> List[str]:
         print(f"Querying permissions for client: {client_id}")
 
         response = permissions_table.query(
-            KeyConditionExpression='ClientID = :client_id',
-            ExpressionAttributeValues={
-                ':client_id': client_id
-            }
+            KeyConditionExpression="ClientID = :client_id",
+            ExpressionAttributeValues={":client_id": client_id},
         )
 
         # Filter for only allowed tools
         allowed_tools = [
-            item['ToolName']
-            for item in response.get('Items', [])
-            if item.get('Allowed', False)
+            item["ToolName"]
+            for item in response.get("Items", [])
+            if item.get("Allowed", False)
         ]
 
-        print(f"Found {len(allowed_tools)} allowed tools for client {client_id}: {allowed_tools}")
+        print(
+            f"Found {len(allowed_tools)} allowed tools for client {client_id}: {allowed_tools}"
+        )
         return allowed_tools
 
     except ClientError as e:
@@ -123,12 +123,14 @@ def extract_tool_name(gateway_tool_name: str) -> str:
     Returns:
         Extracted tool name
     """
-    if '___' in gateway_tool_name:
-        return gateway_tool_name.split('___')[1]
+    if "___" in gateway_tool_name:
+        return gateway_tool_name.split("___")[1]
     return gateway_tool_name
 
 
-def filter_tools(tools: List[Dict[str, Any]], allowed_tools: List[str]) -> List[Dict[str, Any]]:
+def filter_tools(
+    tools: List[Dict[str, Any]], allowed_tools: List[str]
+) -> List[Dict[str, Any]]:
     """
     Filter tools list to only include tools the client is allowed to access.
     Handles Gateway's 'target-name___tool_name' naming format.
@@ -148,7 +150,7 @@ def filter_tools(tools: List[Dict[str, Any]], allowed_tools: List[str]) -> List[
 
     filtered = []
     for tool in tools:
-        gateway_name = tool.get('name', '')
+        gateway_name = tool.get("name", "")
         extracted_name = extract_tool_name(gateway_name)
 
         if extracted_name in allowed_set:
@@ -159,7 +161,7 @@ def filter_tools(tools: List[Dict[str, Any]], allowed_tools: List[str]) -> List[
     # Log which tools were filtered out
     filtered_out = []
     for tool in tools:
-        gateway_name = tool.get('name', '')
+        gateway_name = tool.get("name", "")
         extracted_name = extract_tool_name(gateway_name)
         if extracted_name not in allowed_set:
             filtered_out.append(gateway_name)
@@ -205,21 +207,21 @@ def lambda_handler(event, context):
 
     try:
         # Extract both request (for Authorization header) and response (for tools)
-        mcp_data = event.get('mcp', {})
-        gateway_response = mcp_data.get('gatewayResponse', {})
-        gateway_request = mcp_data.get('gatewayRequest', {})
+        mcp_data = event.get("mcp", {})
+        gateway_response = mcp_data.get("gatewayResponse", {})
+        gateway_request = mcp_data.get("gatewayRequest", {})
 
         # Get request headers for Authorization
-        request_headers = gateway_request.get('headers', {})
+        request_headers = gateway_request.get("headers", {})
 
         # Get response data
-        response_headers = gateway_response.get('headers', {})
-        response_body = gateway_response.get('body', {})
+        response_headers = gateway_response.get("headers", {})
+        response_body = gateway_response.get("body", {})
 
         # Extract Authorization header (case-insensitive lookup)
         auth_header = None
         for key, value in request_headers.items():
-            if key.lower() == 'authorization':
+            if key.lower() == "authorization":
                 auth_header = value
                 break
 
@@ -240,23 +242,23 @@ def lambda_handler(event, context):
                 "jsonrpc": "2.0",
                 "result": {
                     "tools": []  # Deny all tools when client_id is missing
-                }
+                },
             }
             # Preserve the id field if it exists in the original response
-            if isinstance(response_body, dict) and 'id' in response_body:
-                denied_body['id'] = response_body['id']
-            
+            if isinstance(response_body, dict) and "id" in response_body:
+                denied_body["id"] = response_body["id"]
+
             return {
                 "interceptorOutputVersion": "1.0",
                 "mcp": {
                     "transformedGatewayResponse": {
                         "headers": {
                             "Content-Type": "application/json",
-                            "X-Auth-Error": "MissingClientId"
+                            "X-Auth-Error": "MissingClientId",
                         },
-                        "body": denied_body
+                        "body": denied_body,
                     }
-                }
+                },
             }
 
         # Get allowed tools for this client from DynamoDB
@@ -264,17 +266,17 @@ def lambda_handler(event, context):
 
         # Check if this is a tools/list response (MCP JSON-RPC format)
         # Response body format: {"jsonrpc": "2.0", "result": {"tools": [...]}, "id": 1}
-        if 'result' in response_body and 'tools' in response_body.get('result', {}):
-            result = response_body['result']
-            original_tools = result.get('tools', [])
+        if "result" in response_body and "tools" in response_body.get("result", {}):
+            result = response_body["result"]
+            original_tools = result.get("tools", [])
 
             # Filter tools based on permissions
             filtered_tools = filter_tools(original_tools, allowed_tools)
 
             # Update response with filtered tools
             filtered_body = response_body.copy()
-            filtered_body['result'] = result.copy()
-            filtered_body['result']['tools'] = filtered_tools
+            filtered_body["result"] = result.copy()
+            filtered_body["result"]["tools"] = filtered_tools
 
             # Log permission enforcement
             print("Permission enforcement summary:")
@@ -289,9 +291,9 @@ def lambda_handler(event, context):
                 "mcp": {
                     "transformedGatewayResponse": {
                         "headers": response_headers,
-                        "body": filtered_body
+                        "body": filtered_body,
                     }
-                }
+                },
             }
         else:
             # Not a tools/list response, pass through unchanged
@@ -301,9 +303,9 @@ def lambda_handler(event, context):
                 "mcp": {
                     "transformedGatewayResponse": {
                         "headers": response_headers,
-                        "body": response_body
+                        "body": response_body,
                     }
-                }
+                },
             }
 
     except Exception as e:
@@ -311,6 +313,7 @@ def lambda_handler(event, context):
         print(f"Exception type: {type(e).__name__}")
 
         import traceback
+
         print(f"Traceback: {traceback.format_exc()}")
 
         # On error, return minimal safe response (no tools)
@@ -320,17 +323,17 @@ def lambda_handler(event, context):
                 "transformedGatewayResponse": {
                     "headers": {
                         "Content-Type": "application/json",
-                        "X-Error": "InterceptorError"
+                        "X-Error": "InterceptorError",
                     },
                     "body": {
                         "jsonrpc": "2.0",
                         "result": {
                             "tools": []  # Safe default: no tools on error
                         },
-                        "id": 1
-                    }
+                        "id": 1,
+                    },
                 }
-            }
+            },
         }
 
         return error_response

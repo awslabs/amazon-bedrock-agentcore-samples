@@ -18,6 +18,7 @@ from botocore.exceptions import ClientError
 
 # ── Load config ──────────────────────────────────────────────────────────────
 
+
 def load_dotconfig():
     config_path = os.path.join(os.path.dirname(__file__), "envvars.config")
     cfg = {}
@@ -30,10 +31,13 @@ def load_dotconfig():
                     cfg[key] = value.strip('"').strip("'")
     return cfg
 
+
 file_cfg = load_dotconfig()
+
 
 def cfg(key, default=None):
     return file_cfg.get(key) or os.environ.get(key) or default
+
 
 # ── Configuration ────────────────────────────────────────────────────────────
 
@@ -98,7 +102,7 @@ def main():
     if "--session" in args:
         idx = args.index("--session")
         session_id = args[idx + 1]
-        args = args[:idx] + args[idx + 2:]
+        args = args[:idx] + args[idx + 2 :]
 
     if args:
         prompts = [" ".join(args)]
@@ -123,7 +127,7 @@ def main():
 
     if session_id:
         print("To continue this conversation:")
-        print(f"  python invoke.py --session {session_id} \"your next prompt\"")
+        print(f'  python invoke.py --session {session_id} "your next prompt"')
 
 
 if __name__ == "__main__":

@@ -90,9 +90,7 @@ class DatabaseConfig:
     @property
     def connection_string(self) -> str:
         """Get the database connection string."""
-        return (
-            f"postgresql://{self.username}:{self.password}@{self.host}:{self.port}/{self.database}"
-        )
+        return f"postgresql://{self.username}:{self.password}@{self.host}:{self.port}/{self.database}"
 
     @classmethod
     def from_env(cls, prefix: str = "DB") -> "DatabaseConfig":

@@ -40,8 +40,14 @@ FLOW_LABELS = {
     "google": "Google 3LO",
 }
 FLOW_HEADERS = {
-    "m2m": ("Machine-to-Machine Flow", "Agent authenticates to internal APIs using client credentials"),
-    "github": ("GitHub Authorization Code Flow", "Agent accesses your GitHub data after you consent"),
+    "m2m": (
+        "Machine-to-Machine Flow",
+        "Agent authenticates to internal APIs using client credentials",
+    ),
+    "github": (
+        "GitHub Authorization Code Flow",
+        "Agent accesses your GitHub data after you consent",
+    ),
     "google": ("Google Calendar Flow", "Agent reads your calendar after you consent"),
 }
 PRESET_BUTTONS = {
@@ -190,9 +196,13 @@ def get_bearer_token(config: dict, username: str, password: str) -> str:
 def _find_project_dir() -> str:
     for entry in os.listdir(SAMPLE_DIR):
         candidate = os.path.join(SAMPLE_DIR, entry)
-        if os.path.isdir(candidate) and os.path.isdir(os.path.join(candidate, "agentcore")):
+        if os.path.isdir(candidate) and os.path.isdir(
+            os.path.join(candidate, "agentcore")
+        ):
             return candidate
-    raise FileNotFoundError("No agentcore project directory found. Run 'agentcore create' first.")
+    raise FileNotFoundError(
+        "No agentcore project directory found. Run 'agentcore create' first."
+    )
 
 
 def _find_in_json(obj, key):
@@ -242,7 +252,11 @@ def _format_response(text: str) -> str:
 def parse_event_stream(response: dict) -> str:
     parts: list[str] = []
     for event in response.get("response", []):
-        raw = event if isinstance(event, bytes) else event.get("chunk", {}).get("bytes", b"")
+        raw = (
+            event
+            if isinstance(event, bytes)
+            else event.get("chunk", {}).get("bytes", b"")
+        )
         if raw:
             try:
                 decoded = json.loads(raw.decode("utf-8"))
@@ -269,7 +283,9 @@ def parse_event_stream(response: dict) -> str:
 # ---------------------------------------------------------------------------
 # Helper: invoke agent
 # ---------------------------------------------------------------------------
-def invoke_agent(agent_arn: str, prompt: str, bearer_token: str, user_id: str, region: str) -> str:
+def invoke_agent(
+    agent_arn: str, prompt: str, bearer_token: str, user_id: str, region: str
+) -> str:
     client = boto3.client("bedrock-agentcore", region_name=region)
 
     def _inject_bearer(request, **kwargs):
@@ -370,7 +386,11 @@ def extract_consent_url(text: str) -> str | None:
             if url.startswith(prefix):
                 return url.rstrip(".,;")
     for url in urls:
-        if "oauth" in url.lower() or "authorize" in url.lower() or "consent" in url.lower():
+        if (
+            "oauth" in url.lower()
+            or "authorize" in url.lower()
+            or "consent" in url.lower()
+        ):
             return url.rstrip(".,;")
     return None
 
@@ -417,7 +437,10 @@ if not st.session_state.logged_in:
     _, center, _ = st.columns([1, 2, 1])
     with center:
         st.markdown('<div class="login-card">', unsafe_allow_html=True)
-        st.markdown('<p class="login-title">AgentCore M2M + 3LO Auth Demo</p>', unsafe_allow_html=True)
+        st.markdown(
+            '<p class="login-title">AgentCore M2M + 3LO Auth Demo</p>',
+            unsafe_allow_html=True,
+        )
         st.markdown(
             '<p class="login-subtitle">Sample 12: Client Credentials + Authorization Code Flows</p>',
             unsafe_allow_html=True,
@@ -431,13 +454,17 @@ if not st.session_state.logged_in:
         )
 
         with st.form("login_form", clear_on_submit=False):
-            username = st.text_input("Username", value=config.get("username", "testuser"))
+            username = st.text_input(
+                "Username", value=config.get("username", "testuser")
+            )
             password = st.text_input(
                 "Password",
                 value=config.get("password", "AgentCoreTest1!"),
                 type="password",
             )
-            login_btn = st.form_submit_button("Sign In", use_container_width=True, type="primary")
+            login_btn = st.form_submit_button(
+                "Sign In", use_container_width=True, type="primary"
+            )
 
         if login_btn:
             with st.spinner("Authenticating..."):
@@ -516,7 +543,9 @@ with st.sidebar:
         "Select flow",
         FLOW_KEYS,
         format_func=lambda k: FLOW_LABELS[k],
-        index=FLOW_KEYS.index(st.session_state.selected_flow) if st.session_state.selected_flow in FLOW_KEYS else 0,
+        index=FLOW_KEYS.index(st.session_state.selected_flow)
+        if st.session_state.selected_flow in FLOW_KEYS
+        else 0,
         label_visibility="collapsed",
     )
 
@@ -568,7 +597,9 @@ with st.sidebar:
             )
 
             # Re-invoke button
-            if st.button("Re-invoke after consent", use_container_width=True, type="primary"):
+            if st.button(
+                "Re-invoke after consent", use_container_width=True, type="primary"
+            ):
                 st.session_state.consent_state = "completed"
                 if (
                     st.session_state.last_3lo_prompt
@@ -612,7 +643,9 @@ with st.sidebar:
 
 # Gate: require agent ARN
 if not st.session_state.agent_arn:
-    st.warning("No deployed agent found. Resolve the Agent ARN from the sidebar, or run `agentcore deploy -y`.")
+    st.warning(
+        "No deployed agent found. Resolve the Agent ARN from the sidebar, or run `agentcore deploy -y`."
+    )
     st.stop()
 
 # -- Flow header --
@@ -673,9 +706,15 @@ if prompt_to_send:
                         st.session_state.consent_url = None
 
                 st.markdown(_format_response(result))
-                st.session_state.chat_history.append({"role": "assistant", "content": result})
+                st.session_state.chat_history.append(
+                    {"role": "assistant", "content": result}
+                )
 
-                if is_3lo and st.session_state.consent_state == "pending" and st.session_state.consent_url:
+                if (
+                    is_3lo
+                    and st.session_state.consent_state == "pending"
+                    and st.session_state.consent_url
+                ):
                     provider_label = "GitHub" if flow_key == "github" else "Google"
                     st.info(
                         f"Consent required: click **Authorize on {provider_label}** in the sidebar, "
@@ -685,6 +724,8 @@ if prompt_to_send:
             except Exception as exc:
                 error_msg = f"Error: {exc}"
                 st.error(error_msg)
-                st.session_state.chat_history.append({"role": "assistant", "content": error_msg})
+                st.session_state.chat_history.append(
+                    {"role": "assistant", "content": error_msg}
+                )
 
     st.rerun()

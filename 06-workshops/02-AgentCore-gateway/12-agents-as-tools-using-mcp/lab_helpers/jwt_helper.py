@@ -13,10 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 def get_jwt_claims(
-    access_token: str,
-    region: str,
-    user_pool_id: str,
-    skip_verification: bool = True
+    access_token: str, region: str, user_pool_id: str, skip_verification: bool = True
 ) -> Dict[str, str]:
     """
     Extract claims from Cognito JWT token.
@@ -40,15 +37,15 @@ def get_jwt_claims(
 
         # Extract actor_id from username claim
         # Cognito stores username in 'cognito:username'
-        actor_id = claims.get('cognito:username', claims.get('sub', 'unknown-user'))
+        actor_id = claims.get("cognito:username", claims.get("sub", "unknown-user"))
 
         return {
             "actor_id": actor_id,
-            "sub": claims.get('sub'),
-            "email": claims.get('email'),
-            "token_use": claims.get('token_use'),
-            "aud": claims.get('aud'),
-            "username": claims.get('cognito:username')
+            "sub": claims.get("sub"),
+            "email": claims.get("email"),
+            "token_use": claims.get("token_use"),
+            "aud": claims.get("aud"),
+            "username": claims.get("cognito:username"),
         }
 
     except jwt.InvalidTokenError as e:
@@ -71,7 +68,7 @@ def extract_actor_id_from_jwt(access_token: str) -> str:
     """
     try:
         claims = jwt.decode(access_token, options={"verify_signature": False})
-        return claims.get('cognito:username', claims.get('sub', 'unknown-user'))
+        return claims.get("cognito:username", claims.get("sub", "unknown-user"))
     except Exception as e:
         logger.error(f"Error extracting actor_id from JWT: {e}")
         raise

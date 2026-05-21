@@ -9,7 +9,9 @@ def _get_boto3_client(service_name: str):
     """Get boto3 client with region from environment or default session."""
     region = os.getenv("AWS_REGION") or boto3.session.Session().region_name
     if not region:
-        raise ValueError("AWS_REGION must be set either as environment variable or in AWS config")
+        raise ValueError(
+            "AWS_REGION must be set either as environment variable or in AWS config"
+        )
     return boto3.client(service_name, region_name=region)
 
 
@@ -58,7 +60,9 @@ def load_api_spec(file_path: str) -> list:
 def get_aws_region() -> str:
     region = os.getenv("AWS_REGION") or boto3.session.Session().region_name
     if not region:
-        raise ValueError("AWS_REGION must be set either as environment variable or in AWS config")
+        raise ValueError(
+            "AWS_REGION must be set either as environment variable or in AWS config"
+        )
     return region
 
 

@@ -146,8 +146,7 @@ async def book_room(ctx: Context) -> str:
     if result.action == "accept":
         d = result.data  # BookingDetails instance
         return (
-            f"Booked {d.room_type} for {d.nights} night(s); "
-            f"breakfast: {d.breakfast}."
+            f"Booked {d.room_type} for {d.nights} night(s); breakfast: {d.breakfast}."
         )
     return f"Booking {result.action}ed."
 
@@ -205,9 +204,7 @@ async def log_expense(ctx: Context, amount: float) -> str:
         _Submit,
     )
     if conf.action == "accept" and conf.data.submit:
-        return (
-            f"Logged: ${amount:.2f} {cat.data.category} " f"— {desc.data.description}"
-        )
+        return f"Logged: ${amount:.2f} {cat.data.category} — {desc.data.description}"
     return f"Not submitted (action={conf.action})."
 
 
@@ -461,5 +458,7 @@ if __name__ == "__main__":
     # stateless_http=False keeps the SSE push-back channel (required for
     # elicitation + progress streaming).
     mcp.run(
-        transport="streamable-http", host="0.0.0.0", stateless_http=False  # nosec B104
+        transport="streamable-http",
+        host="0.0.0.0",
+        stateless_http=False,  # nosec B104
     )  # nosec B104 - AgentCore Runtime container requires bind to all interfaces

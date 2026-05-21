@@ -24,7 +24,6 @@ def extract_standard_claims(claims: dict[str, Any]) -> dict[str, Any]:
     standard_claims = {
         # Subject (user identifier)
         "sub": claims.get("sub", ""),
-
         # User profile information
         "name": claims.get("name", ""),
         "given_name": claims.get("given_name", ""),
@@ -32,25 +31,21 @@ def extract_standard_claims(claims: dict[str, Any]) -> dict[str, Any]:
         "middle_name": claims.get("middle_name", ""),
         "nickname": claims.get("nickname", ""),
         "preferred_username": claims.get("preferred_username", ""),
-
         # Contact information
         "email": claims.get("email", ""),
         "email_verified": claims.get("email_verified", False),
         "phone_number": claims.get("phone_number", ""),
         "phone_number_verified": claims.get("phone_number_verified", False),
-
         # Additional profile
         "picture": claims.get("picture", ""),
         "locale": claims.get("locale", ""),
         "updated_at": claims.get("updated_at", ""),
-
         # Token metadata
         "iss": claims.get("iss", ""),
         "aud": claims.get("aud", ""),
         "exp": claims.get("exp", 0),
         "iat": claims.get("iat", 0),
         "nbf": claims.get("nbf", 0),
-
         # Authorization
         "scope": claims.get("scope", ""),
         "azp": claims.get("azp", ""),
@@ -60,8 +55,7 @@ def extract_standard_claims(claims: dict[str, Any]) -> dict[str, Any]:
 
 
 def extract_custom_claims(
-    claims: dict[str, Any],
-    namespace: str = DEFAULT_CLAIMS_NAMESPACE
+    claims: dict[str, Any], namespace: str = DEFAULT_CLAIMS_NAMESPACE
 ) -> dict[str, Any]:
     """
     Extract custom namespaced claims from a JWT claims dictionary.
@@ -91,7 +85,7 @@ def extract_custom_claims(
     for key, value in claims.items():
         if key.startswith(namespace):
             # Remove namespace prefix to get the claim name
-            claim_name = key[len(namespace):]
+            claim_name = key[len(namespace) :]
             custom_claims[claim_name] = value
 
     return custom_claims
@@ -101,7 +95,7 @@ def get_claim_value(
     claims: dict[str, Any],
     claim_name: str,
     default: Any = None,
-    namespace: Optional[str] = DEFAULT_CLAIMS_NAMESPACE
+    namespace: Optional[str] = DEFAULT_CLAIMS_NAMESPACE,
 ) -> Any:
     """
     Get a claim value, checking both standard and namespaced versions.
@@ -151,8 +145,7 @@ def extract_scopes(claims: dict[str, Any]) -> list[str]:
 
 
 def extract_permissions(
-    claims: dict[str, Any],
-    namespace: str = DEFAULT_CLAIMS_NAMESPACE
+    claims: dict[str, Any], namespace: str = DEFAULT_CLAIMS_NAMESPACE
 ) -> list[str]:
     """
     Extract permissions from claims.
@@ -178,8 +171,7 @@ def extract_permissions(
 
 
 def build_user_context(
-    claims: dict[str, Any],
-    namespace: str = DEFAULT_CLAIMS_NAMESPACE
+    claims: dict[str, Any], namespace: str = DEFAULT_CLAIMS_NAMESPACE
 ) -> UserContext:
     """
     Build a UserContext instance from JWT claims.
@@ -200,7 +192,7 @@ def build_user_context(
 def validate_required_claims(
     claims: dict[str, Any],
     required_claims: list[str],
-    namespace: Optional[str] = DEFAULT_CLAIMS_NAMESPACE
+    namespace: Optional[str] = DEFAULT_CLAIMS_NAMESPACE,
 ) -> tuple[bool, list[str]]:
     """
     Validate that all required claims are present.
@@ -224,8 +216,7 @@ def validate_required_claims(
 
 
 def extract_user_metadata(
-    claims: dict[str, Any],
-    namespace: str = DEFAULT_CLAIMS_NAMESPACE
+    claims: dict[str, Any], namespace: str = DEFAULT_CLAIMS_NAMESPACE
 ) -> dict[str, Any]:
     """
     Extract user metadata from claims.
@@ -271,7 +262,7 @@ def format_claim_for_logging(claims: dict[str, Any]) -> dict[str, Any]:
         "phone",
         "address",
         "birthdate",
-        "date_of_birth"
+        "date_of_birth",
     ]
 
     sanitized = {}

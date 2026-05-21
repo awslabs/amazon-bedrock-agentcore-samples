@@ -274,7 +274,9 @@ oauth_resp = rg_client.create_oauth2_credential_provider(
     },
 )
 OAUTH_PROVIDER_ARN = oauth_resp["credentialProviderArn"]
-print(f"✓ OAuth Provider ARN: {OAUTH_PROVIDER_ARN}")  # codeql[py/clear-text-logging-sensitive-data]
+print(
+    f"✓ OAuth Provider ARN: {OAUTH_PROVIDER_ARN}"
+)  # codeql[py/clear-text-logging-sensitive-data]
 
 # 4.5 Deploy MCP server to AgentCore Runtime with OAuth
 print("\n4.5 Deploy MCP server to AgentCore Runtime with OAuth...")
@@ -340,7 +342,9 @@ record_response = rg_client.create_registry_record(
 )
 
 OAUTH_RECORD_ID = record_response["recordArn"].split("/")[-1]
-print(f"✓ Record: {OAUTH_RECORD_ID} - Status: {record_response['status']}")  # codeql[py/clear-text-logging-sensitive-data]
+print(
+    f"✓ Record: {OAUTH_RECORD_ID} - Status: {record_response['status']}"
+)  # codeql[py/clear-text-logging-sensitive-data]
 pp(record_response)
 
 wait_for_record(REGISTRY_ID, OAUTH_RECORD_ID)

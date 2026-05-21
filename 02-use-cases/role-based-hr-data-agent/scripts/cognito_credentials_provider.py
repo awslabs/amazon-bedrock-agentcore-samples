@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import os, sys
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 """
 CLI for creating and managing Cognito OAuth2 credential providers.
@@ -108,7 +109,9 @@ def create(config: str, region: str):
         client_secret = client_data["ClientSecret"]
 
         put_ssm_parameter(f"/app/hrdlp/personas/{persona}/client-id", client_id)
-        put_ssm_parameter(f"/app/hrdlp/personas/{persona}/client-secret", client_secret, secure=True)
+        put_ssm_parameter(
+            f"/app/hrdlp/personas/{persona}/client-secret", client_secret, secure=True
+        )
 
         # Build entry for interceptor tenant mapping
         tenant_mapping[client_id] = {
@@ -118,7 +121,9 @@ def create(config: str, region: str):
             "username": meta["username"],
         }
 
-        clients.append({"persona": persona, "client_id": client_id, "scopes": meta["scopes"]})
+        clients.append(
+            {"persona": persona, "client_id": client_id, "scopes": meta["scopes"]}
+        )
         click.echo(f"  Created client for {persona}: {client_id}")
 
     # Write mapping to SSM — interceptors (tenant_mapping.py) read this at cold-start

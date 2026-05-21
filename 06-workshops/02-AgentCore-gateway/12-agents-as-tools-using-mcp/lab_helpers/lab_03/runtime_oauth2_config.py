@@ -32,18 +32,18 @@ class RuntimeOAuth2Configuration:
     def __init__(self, region: str = AWS_REGION, profile: str = AWS_PROFILE):
         """Initialize Runtime OAuth2 configuration"""
         self.session = boto3.Session(profile_name=profile, region_name=region)
-        self.agentcore = self.session.client('bedrock-agentcore-control', region_name=region)
-        self.ssm = self.session.client('ssm', region_name=region)
-        self.sts = self.session.client('sts', region_name=region)
+        self.agentcore = self.session.client(
+            "bedrock-agentcore-control", region_name=region
+        )
+        self.ssm = self.session.client("ssm", region_name=region)
+        self.sts = self.session.client("sts", region_name=region)
 
         self.region = region
-        self.account_id = self.sts.get_caller_identity()['Account']
+        self.account_id = self.sts.get_caller_identity()["Account"]
         self.prefix = "aiml301"
 
     def configure_runtime_token_validation(
-        self,
-        runtime_id: str,
-        cognito_config: Optional[Dict] = None
+        self, runtime_id: str, cognito_config: Optional[Dict] = None
     ) -> Dict:
         """
         Configure Runtime to validate M2M tokens from Gateway
@@ -55,24 +55,30 @@ class RuntimeOAuth2Configuration:
         Returns:
             Runtime OAuth2 validation configuration
         """
-        print("\n" + "="*70)
+        print("\n" + "=" * 70)
         print("CONFIGURING RUNTIME TO VALIDATE M2M TOKENS")
-        print("="*70 + "\n")
+        print("=" * 70 + "\n")
 
         # Get Cognito configuration if not provided
         if not cognito_config:
             try:
-                user_pool_id = get_parameter(PARAMETER_PATHS['cognito']['user_pool_id'])
-                token_endpoint = get_parameter(PARAMETER_PATHS['cognito']['token_endpoint'])
-                resource_server_id = get_parameter(PARAMETER_PATHS['cognito']['resource_server_identifier'])
-                m2m_client_id = get_parameter(PARAMETER_PATHS['cognito']['m2m_client_id'])
+                user_pool_id = get_parameter(PARAMETER_PATHS["cognito"]["user_pool_id"])
+                token_endpoint = get_parameter(
+                    PARAMETER_PATHS["cognito"]["token_endpoint"]
+                )
+                resource_server_id = get_parameter(
+                    PARAMETER_PATHS["cognito"]["resource_server_identifier"]
+                )
+                m2m_client_id = get_parameter(
+                    PARAMETER_PATHS["cognito"]["m2m_client_id"]
+                )
 
                 cognito_config = {
                     "user_pool_id": user_pool_id,
                     "token_endpoint": token_endpoint,
                     "resource_server_id": resource_server_id,
                     "m2m_client_id": m2m_client_id,
-                    "region": self.region
+                    "region": self.region,
                 }
 
                 print("✅ Retrieved Cognito configuration from SSM")
@@ -93,37 +99,49 @@ class RuntimeOAuth2Configuration:
             "oauth2_config": {
                 "issuer": f"https://cognito-idp.{self.region}.amazonaws.com/{cognito_config['user_pool_id']}",
                 "jwks_uri": f"https://cognito-idp.{self.region}.amazonaws.com/{cognito_config['user_pool_id']}/.well-known/jwks.json",
-                "audience": [cognito_config['m2m_client_id']],
-                "token_use": "access"
+                "audience": [cognito_config["m2m_client_id"]],
+                "token_use": "access",
             },
             "scope_config": {
                 "required_scopes": [
                     f"{cognito_config['resource_server_id']}/mcp.invoke",
-                    f"{cognito_config['resource_server_id']}/runtime.access"
+                    f"{cognito_config['resource_server_id']}/runtime.access",
                 ],
-                "scope_strategy": "REQUIRE_ANY"  # Require at least one scope
+                "scope_strategy": "REQUIRE_ANY",  # Require at least one scope
             },
             "token_validation": {
                 "validate_signature": True,
                 "validate_expiration": True,
                 "validate_issuer": True,
                 "validate_audience": True,
-                "clock_skew_seconds": 60  # Allow 60 second clock skew
-            }
+                "clock_skew_seconds": 60,  # Allow 60 second clock skew
+            },
         }
 
         print("Runtime OAuth2 Validation Configuration:")
-        print(f"  Inbound Auth Type: {runtime_oauth2_config['inbound_auth_type']}")  # codeql[py/clear-text-logging-sensitive-data]
-        print(f"  Issuer: {runtime_oauth2_config['oauth2_config']['issuer']}")  # codeql[py/clear-text-logging-sensitive-data]
-        print(f"  JWKS URI: {runtime_oauth2_config['oauth2_config']['jwks_uri']}")  # codeql[py/clear-text-logging-sensitive-data]
-        print(f"  Required Scopes: {', '.join(runtime_oauth2_config['scope_config']['required_scopes'])}")
-        print(f"  Validate Signature: {runtime_oauth2_config['token_validation']['validate_signature']}")  # codeql[py/clear-text-logging-sensitive-data]
-        print(f"  Validate Expiration: {runtime_oauth2_config['token_validation']['validate_expiration']}\n")  # codeql[py/clear-text-logging-sensitive-data]
+        print(
+            f"  Inbound Auth Type: {runtime_oauth2_config['inbound_auth_type']}"
+        )  # codeql[py/clear-text-logging-sensitive-data]
+        print(
+            f"  Issuer: {runtime_oauth2_config['oauth2_config']['issuer']}"
+        )  # codeql[py/clear-text-logging-sensitive-data]
+        print(
+            f"  JWKS URI: {runtime_oauth2_config['oauth2_config']['jwks_uri']}"
+        )  # codeql[py/clear-text-logging-sensitive-data]
+        print(
+            f"  Required Scopes: {', '.join(runtime_oauth2_config['scope_config']['required_scopes'])}"
+        )
+        print(
+            f"  Validate Signature: {runtime_oauth2_config['token_validation']['validate_signature']}"
+        )  # codeql[py/clear-text-logging-sensitive-data]
+        print(
+            f"  Validate Expiration: {runtime_oauth2_config['token_validation']['validate_expiration']}\n"
+        )  # codeql[py/clear-text-logging-sensitive-data]
 
         # Save configuration to SSM
         put_parameter(
             f"/{self.prefix}/lab-03/runtime-oauth2-config",
-            json.dumps(runtime_oauth2_config, indent=2)
+            json.dumps(runtime_oauth2_config, indent=2),
         )
 
         print("✅ Runtime OAuth2 configuration saved to SSM Parameter Store")
@@ -131,8 +149,7 @@ class RuntimeOAuth2Configuration:
         return runtime_oauth2_config
 
     def create_runtime_iam_policy_for_token_validation(
-        self,
-        runtime_role_arn: str
+        self, runtime_role_arn: str
     ) -> None:
         """
         Create IAM policy for Runtime to validate tokens
@@ -144,12 +161,12 @@ class RuntimeOAuth2Configuration:
         Args:
             runtime_role_arn: Runtime IAM role ARN
         """
-        print("\n" + "="*70)
+        print("\n" + "=" * 70)
         print("UPDATING RUNTIME IAM ROLE FOR TOKEN VALIDATION")
-        print("="*70 + "\n")
+        print("=" * 70 + "\n")
 
         # Extract role name from ARN
-        role_name = runtime_role_arn.split('/')[-1]
+        role_name = runtime_role_arn.split("/")[-1]
 
         print(f"Updating IAM role: {role_name}\n")
 
@@ -162,17 +179,15 @@ class RuntimeOAuth2Configuration:
                     "Effect": "Allow",
                     "Action": [
                         "cognito-idp:GetSigningCertificate",
-                        "cognito-idp:GetUserPoolMxconfigAttribute"
+                        "cognito-idp:GetUserPoolMxconfigAttribute",
                     ],
-                    "Resource": f"arn:aws:cognito-idp:{self.region}:{self.account_id}:userpool/*"
+                    "Resource": f"arn:aws:cognito-idp:{self.region}:{self.account_id}:userpool/*",
                 },
                 {
                     "Sid": "CognitoUserPoolAccess",
                     "Effect": "Allow",
-                    "Action": [
-                        "cognito-idp:DescribeUserPool"
-                    ],
-                    "Resource": f"arn:aws:cognito-idp:{self.region}:{self.account_id}:userpool/*"
+                    "Action": ["cognito-idp:DescribeUserPool"],
+                    "Resource": f"arn:aws:cognito-idp:{self.region}:{self.account_id}:userpool/*",
                 },
                 {
                     "Sid": "CloudWatchLogsForTokenValidation",
@@ -180,19 +195,19 @@ class RuntimeOAuth2Configuration:
                     "Action": [
                         "logs:CreateLogGroup",
                         "logs:CreateLogStream",
-                        "logs:PutLogEvents"
+                        "logs:PutLogEvents",
                     ],
-                    "Resource": f"arn:aws:logs:{self.region}:{self.account_id}:log-group:/aws/bedrock-agentcore/runtime/token-validation*"
-                }
-            ]
+                    "Resource": f"arn:aws:logs:{self.region}:{self.account_id}:log-group:/aws/bedrock-agentcore/runtime/token-validation*",
+                },
+            ],
         }
 
         try:
-            iam = boto3.client('iam')
+            iam = boto3.client("iam")
             iam.put_role_policy(
                 RoleName=role_name,
                 PolicyName=f"{self.prefix}-runtime-token-validation-policy",
-                PolicyDocument=json.dumps(token_validation_policy)
+                PolicyDocument=json.dumps(token_validation_policy),
             )
 
             print("✅ Runtime IAM role updated with token validation permissions")
@@ -380,9 +395,9 @@ async def handle_mcp_request(request: Request):
 
     def print_runtime_token_validation_guide(self) -> None:
         """Print guide for implementing token validation in Runtime"""
-        print("\n" + "="*70)
+        print("\n" + "=" * 70)
         print("RUNTIME TOKEN VALIDATION IMPLEMENTATION GUIDE")
-        print("="*70 + "\n")
+        print("=" * 70 + "\n")
 
         print("To implement token validation in your Runtime MCP server:\n")
 
@@ -427,12 +442,11 @@ async def handle_mcp_request(request: Request):
         print("   - operation requested")
         print("   - timestamp\n")
 
-        print("="*70 + "\n")
+        print("=" * 70 + "\n")
 
 
 def setup_runtime_oauth2_validation_complete(
-    runtime_id: str,
-    runtime_role_arn: str
+    runtime_id: str, runtime_role_arn: str
 ) -> Dict:
     """
     Complete setup workflow for Runtime OAuth2 token validation
@@ -444,9 +458,9 @@ def setup_runtime_oauth2_validation_complete(
     Returns:
         Complete OAuth2 validation configuration
     """
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("SETTING UP RUNTIME OAUTH2 TOKEN VALIDATION")
-    print("="*70 + "\n")
+    print("=" * 70 + "\n")
 
     config = RuntimeOAuth2Configuration()
 
@@ -465,10 +479,7 @@ def setup_runtime_oauth2_validation_complete(
 
     # Step 4: Save token validation code
     validation_code = config.generate_runtime_token_validation_code()
-    put_parameter(
-        "/aiml301/lab-03/runtime-token-validation-code",
-        validation_code
-    )
+    put_parameter("/aiml301/lab-03/runtime-token-validation-code", validation_code)
 
     print("✅ Token validation code saved to SSM Parameter Store")
     print("   Path: /aiml301/lab-03/runtime-token-validation-code\n")

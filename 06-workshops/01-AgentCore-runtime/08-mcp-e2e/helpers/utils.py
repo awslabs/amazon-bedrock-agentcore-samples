@@ -209,8 +209,7 @@ def create_agentcore_runtime_execution_role(role_name: str) -> Optional[str]:
                     "StringEquals": {"aws:SourceAccount": account_id},
                     "ArnLike": {
                         "aws:SourceArn": (
-                            f"arn:aws:bedrock-agentcore:{region}:"
-                            f"{account_id}:*"
+                            f"arn:aws:bedrock-agentcore:{region}:{account_id}:*"
                         )
                     },
                 },
@@ -226,9 +225,7 @@ def create_agentcore_runtime_execution_role(role_name: str) -> Optional[str]:
                 "Sid": "ECRImageAccess",
                 "Effect": "Allow",
                 "Action": ["ecr:BatchGetImage", "ecr:GetDownloadUrlForLayer"],
-                "Resource": [
-                    f"arn:aws:ecr:{region}:{account_id}:repository/*"
-                ],
+                "Resource": [f"arn:aws:ecr:{region}:{account_id}:repository/*"],
             },
             {
                 "Effect": "Allow",
@@ -241,9 +238,7 @@ def create_agentcore_runtime_execution_role(role_name: str) -> Optional[str]:
             {
                 "Effect": "Allow",
                 "Action": ["logs:DescribeLogGroups"],
-                "Resource": [
-                    f"arn:aws:logs:{region}:{account_id}:log-group:*"
-                ],
+                "Resource": [f"arn:aws:logs:{region}:{account_id}:log-group:*"],
             },
             {
                 "Effect": "Allow",
@@ -274,9 +269,7 @@ def create_agentcore_runtime_execution_role(role_name: str) -> Optional[str]:
                 "Resource": "*",
                 "Action": "cloudwatch:PutMetricData",
                 "Condition": {
-                    "StringEquals": {
-                        "cloudwatch:namespace": "bedrock-agentcore"
-                    }
+                    "StringEquals": {"cloudwatch:namespace": "bedrock-agentcore"}
                 },
             },
             {
@@ -318,9 +311,7 @@ def create_agentcore_runtime_execution_role(role_name: str) -> Optional[str]:
                     "bedrock-agentcore:RetrieveMemoryRecords",
                     "bedrock-agentcore:ListMemoryRecords",
                 ],
-                "Resource": [
-                    f"arn:aws:bedrock-agentcore:{region}:{account_id}:*"
-                ],
+                "Resource": [f"arn:aws:bedrock-agentcore:{region}:{account_id}:*"],
             },
             {
                 "Sid": "DynamoDBAccess",
@@ -331,22 +322,21 @@ def create_agentcore_runtime_execution_role(role_name: str) -> Optional[str]:
                     "dynamodb:Query",
                     "dynamodb:Scan",
                     "dynamodb:UpdateItem",
-                    "dynamodb:DeleteItem"
+                    "dynamodb:DeleteItem",
                 ],
                 "Resource": [
                     f"arn:aws:dynamodb:{region}:{account_id}:table/finance_tracker",
-                    f"arn:aws:dynamodb:{region}:{account_id}:table/finance_tracker/index/*"
-                ]
+                    f"arn:aws:dynamodb:{region}:{account_id}:table/finance_tracker/index/*",
+                ],
             },
             {
                 "Sid": "GetSecrets",
                 "Effect": "Allow",
                 "Action": ["secretsmanager:GetSecretValue"],
                 "Resource": [
-                    f"arn:aws:secretsmanager:{region}:{account_id}:"
-                    f"secret:{sm_name}*"
+                    f"arn:aws:secretsmanager:{region}:{account_id}:secret:{sm_name}*"
                 ],
-            }
+            },
         ],
     }
 
@@ -365,8 +355,7 @@ def create_agentcore_runtime_execution_role(role_name: str) -> Optional[str]:
             RoleName=role_name,
             AssumeRolePolicyDocument=json.dumps(trust_policy),
             Description=(
-                "IAM role for Amazon Bedrock AgentCore "
-                "with required permissions"
+                "IAM role for Amazon Bedrock AgentCore with required permissions"
             ),
         )
 
@@ -481,8 +470,7 @@ def cleanup_cognito_resources(pool_id: str) -> bool:
 
             except cognito_client.exceptions.ResourceNotFoundException:
                 print(
-                    f"User pool {pool_id} not found. "
-                    "It may have already been deleted."
+                    f"User pool {pool_id} not found. It may have already been deleted."
                 )
                 return True
 
@@ -504,9 +492,7 @@ def delete_cognito_secret() -> bool:
     region = boto_session.region_name
     secrets_client = boto3.client("secretsmanager", region_name=region)
     try:
-        secrets_client.delete_secret(
-            SecretId=sm_name, ForceDeleteWithoutRecovery=True
-        )
+        secrets_client.delete_secret(SecretId=sm_name, ForceDeleteWithoutRecovery=True)
         print("✅ Secret Deleted")
         return True
     except secrets_client.exceptions.ClientError as e:
@@ -524,7 +510,7 @@ def local_file_cleanup() -> None:
         "agents/strands_aws_docs.py",
         "agents/orchestrator.py",
         "agents/requirements.txt",
-        "agents/strands_aws_blogs_news.py"
+        "agents/strands_aws_blogs_news.py",
     ]
 
     deleted_files = []

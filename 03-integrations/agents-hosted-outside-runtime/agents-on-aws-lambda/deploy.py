@@ -45,7 +45,7 @@ AGENT_FILES = ["utils/mcp_agent.py"]
 LAMBDA_FUNCTION_NAME = f"agentcore-mcp-invoker-{AGENT_NAME}"
 LAMBDA_HANDLER = "lambda_handler.lambda_handler"
 LAMBDA_TIMEOUT = 300  # seconds
-LAMBDA_MEMORY = 512   # MB
+LAMBDA_MEMORY = 512  # MB
 
 # ADOT Lambda Layer ARNs (Python) by region
 # Latest ARNs: https://aws-otel.github.io/docs/getting-started/lambda/lambda-python
@@ -79,18 +79,21 @@ print(f"Agent:   {AGENT_NAME}")
 
 # ── Phase 1: AgentCore Runtime ─────────────────────────────────────────────────
 
+
 def create_runtime_role() -> str:
     iam = boto3.client("iam", region_name=REGION)
     role_name = f"agentcore-{AGENT_NAME}-role"
 
     trust_policy = {
         "Version": "2012-10-17",
-        "Statement": [{
-            "Effect": "Allow",
-            "Principal": {"Service": "bedrock-agentcore.amazonaws.com"},
-            "Action": "sts:AssumeRole",
-            "Condition": {"StringEquals": {"aws:SourceAccount": ACCOUNT_ID}},
-        }],
+        "Statement": [
+            {
+                "Effect": "Allow",
+                "Principal": {"Service": "bedrock-agentcore.amazonaws.com"},
+                "Action": "sts:AssumeRole",
+                "Condition": {"StringEquals": {"aws:SourceAccount": ACCOUNT_ID}},
+            }
+        ],
     }
 
     inline_policy = {
@@ -99,7 +102,9 @@ def create_runtime_role() -> str:
             {
                 "Effect": "Allow",
                 "Action": ["logs:DescribeLogStreams", "logs:CreateLogGroup"],
-                "Resource": [f"arn:aws:logs:{REGION}:{ACCOUNT_ID}:log-group:/aws/bedrock-agentcore/runtimes/*"],
+                "Resource": [
+                    f"arn:aws:logs:{REGION}:{ACCOUNT_ID}:log-group:/aws/bedrock-agentcore/runtimes/*"
+                ],
             },
             {
                 "Effect": "Allow",
@@ -109,12 +114,17 @@ def create_runtime_role() -> str:
             {
                 "Effect": "Allow",
                 "Action": ["logs:CreateLogStream", "logs:PutLogEvents"],
-                "Resource": [f"arn:aws:logs:{REGION}:{ACCOUNT_ID}:log-group:/aws/bedrock-agentcore/runtimes/*:log-stream:*"],
+                "Resource": [
+                    f"arn:aws:logs:{REGION}:{ACCOUNT_ID}:log-group:/aws/bedrock-agentcore/runtimes/*:log-stream:*"
+                ],
             },
             {
                 "Sid": "BedrockModelInvocation",
                 "Effect": "Allow",
-                "Action": ["bedrock:InvokeModel", "bedrock:InvokeModelWithResponseStream"],
+                "Action": [
+                    "bedrock:InvokeModel",
+                    "bedrock:InvokeModelWithResponseStream",
+                ],
                 "Resource": [
                     "arn:aws:bedrock:*::foundation-model/*",
                     f"arn:aws:bedrock:{REGION}:{ACCOUNT_ID}:*",
@@ -170,20 +180,34 @@ def build_and_upload_package():
     print("  Installing arm64 dependencies with uv...")
     subprocess.run(
         [
-            "uv", "pip", "install",
-            "--python-platform", "aarch64-manylinux2014",
-            "--python-version", "3.13",
-            "--target", pkg_dir,
-            "--only-binary", ":all:",
-            "-r", "requirements.txt",
+            "uv",
+            "pip",
+            "install",
+            "--python-platform",
+            "aarch64-manylinux2014",
+            "--python-version",
+            "3.13",
+            "--target",
+            pkg_dir,
+            "--only-binary",
+            ":all:",
+            "-r",
+            "requirements.txt",
         ],
         check=True,
     )
 
     print("  Creating deployment zip...")
-    subprocess.run(["zip", "-r", f"../{zip_file}", "."], cwd=pkg_dir, check=True, capture_output=True)
+    subprocess.run(
+        ["zip", "-r", f"../{zip_file}", "."],
+        cwd=pkg_dir,
+        check=True,
+        capture_output=True,
+    )
     for src_file in AGENT_FILES:
-        subprocess.run(["zip", zip_file, "-j", src_file], check=True, capture_output=True)
+        subprocess.run(
+            ["zip", zip_file, "-j", src_file], check=True, capture_output=True
+        )
 
     zip_size = os.path.getsize(zip_file) / (1024 * 1024)
     print(f"  Package: {zip_file} ({zip_size:.1f} MB)")
@@ -255,17 +279,20 @@ def create_runtime_endpoint(runtime_id: str) -> dict:
 
 # ── Phase 2: Lambda Function ───────────────────────────────────────────────────
 
+
 def create_lambda_role(runtime_arn: str) -> str:
     iam = boto3.client("iam", region_name=REGION)
     role_name = f"lambda-agentcore-invoker-{AGENT_NAME}"
 
     trust_policy = {
         "Version": "2012-10-17",
-        "Statement": [{
-            "Effect": "Allow",
-            "Principal": {"Service": "lambda.amazonaws.com"},
-            "Action": "sts:AssumeRole",
-        }],
+        "Statement": [
+            {
+                "Effect": "Allow",
+                "Principal": {"Service": "lambda.amazonaws.com"},
+                "Action": "sts:AssumeRole",
+            }
+        ],
     }
 
     try:
@@ -297,11 +324,13 @@ def create_lambda_role(runtime_arn: str) -> str:
     # Inline policy: invoke this specific runtime
     inline = {
         "Version": "2012-10-17",
-        "Statement": [{
-            "Effect": "Allow",
-            "Action": ["bedrock-agentcore:InvokeAgentRuntime"],
-            "Resource": runtime_arn,
-        }],
+        "Statement": [
+            {
+                "Effect": "Allow",
+                "Action": ["bedrock-agentcore:InvokeAgentRuntime"],
+                "Resource": runtime_arn,
+            }
+        ],
     }
     iam.put_role_policy(
         RoleName=role_name,
@@ -346,8 +375,12 @@ def create_lambda_function(lambda_role_arn: str, runtime_arn: str) -> str:
         config["Layers"] = [adot_layer_arn]
         print(f"  ADOT Layer: {adot_layer_arn}")
     else:
-        print(f"  Warning: No ADOT Layer found for region {REGION}. Trace propagation may be limited.")
-        print("  Check https://aws-otel.github.io/docs/getting-started/lambda/lambda-python")
+        print(
+            f"  Warning: No ADOT Layer found for region {REGION}. Trace propagation may be limited."
+        )
+        print(
+            "  Check https://aws-otel.github.io/docs/getting-started/lambda/lambda-python"
+        )
 
     try:
         resp = lambda_client.create_function(**config)
@@ -355,7 +388,9 @@ def create_lambda_function(lambda_role_arn: str, runtime_arn: str) -> str:
         print(f"  Created Lambda function: {LAMBDA_FUNCTION_NAME}")
     except lambda_client.exceptions.ResourceConflictException:
         print("  Updating existing Lambda function...")
-        lambda_client.update_function_code(FunctionName=LAMBDA_FUNCTION_NAME, ZipFile=zip_bytes)
+        lambda_client.update_function_code(
+            FunctionName=LAMBDA_FUNCTION_NAME, ZipFile=zip_bytes
+        )
         time.sleep(2)
         update = {
             "FunctionName": LAMBDA_FUNCTION_NAME,
@@ -381,6 +416,7 @@ def create_lambda_function(lambda_role_arn: str, runtime_arn: str) -> str:
 
 
 # ── Main ───────────────────────────────────────────────────────────────────────
+
 
 def main():
     print("=" * 60)

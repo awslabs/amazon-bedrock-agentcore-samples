@@ -156,7 +156,9 @@ except Exception as exc:
     print(f"  (Could not render .env.local template: {exc})")
     print("  Manually create aws-agentcore-sdk/.env.local with:")
     print(f"    NEXT_PUBLIC_PRIVY_APP_ID={app_id}")
-    print(f"    PRIVY_APP_SECRET={app_secret}")  # codeql[py/clear-text-logging-sensitive-data]
+    print(
+        f"    PRIVY_APP_SECRET={app_secret}"
+    )  # codeql[py/clear-text-logging-sensitive-data]
     print(f"    PRIVY_AUTHORIZATION_ID={auth_id}")
 
 print("""

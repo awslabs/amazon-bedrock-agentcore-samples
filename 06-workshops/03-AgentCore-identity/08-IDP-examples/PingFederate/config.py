@@ -10,7 +10,10 @@ class PingFederateConfig(BaseSettings):
     """PingFederate DevOps credentials. Loaded from environment variables or .env file."""
 
     model_config = SettingsConfigDict(
-        env_prefix="PING_IDENTITY_", env_file=".env", env_file_encoding="utf-8", extra="ignore"
+        env_prefix="PING_IDENTITY_",
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
     )
 
     devops_user: str = Field(description="PingFederate DevOps user email")
@@ -20,10 +23,20 @@ class PingFederateConfig(BaseSettings):
 class CdkConfig(BaseSettings):
     """CDK deployment configuration."""
 
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=".env", env_file_encoding="utf-8", extra="ignore"
+    )
 
-    aws_region: str = Field(default="us-east-1", validation_alias="AWS_REGION", description="AWS region for deployment")
-    aws_account: str | None = Field(default=None, validation_alias="CDK_DEFAULT_ACCOUNT", description="AWS account ID")
+    aws_region: str = Field(
+        default="us-east-1",
+        validation_alias="AWS_REGION",
+        description="AWS region for deployment",
+    )
+    aws_account: str | None = Field(
+        default=None,
+        validation_alias="CDK_DEFAULT_ACCOUNT",
+        description="AWS account ID",
+    )
     suffix: str = Field(default="sample", description="Suffix for resource naming")
     deploy_lattice: bool = Field(
         default=False,
@@ -43,4 +56,3 @@ class CdkConfig(BaseSettings):
         default_factory=PingFederateConfig,
         description="PingFederate DevOps credentials",
     )
-

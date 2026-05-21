@@ -61,9 +61,18 @@ def get_agent():
     @tool
     def generate_outline(topic: str, num_sections: int) -> str:
         """Generate a document outline with section headings."""
-        base = ["Introduction", "Background", "Key Concepts", "Analysis",
-                "Implementation", "Best Practices", "Challenges",
-                "Case Studies", "Future Directions", "Conclusion"]
+        base = [
+            "Introduction",
+            "Background",
+            "Key Concepts",
+            "Analysis",
+            "Implementation",
+            "Best Practices",
+            "Challenges",
+            "Case Studies",
+            "Future Directions",
+            "Conclusion",
+        ]
         return json.dumps([base[i % len(base)] for i in range(num_sections)])
 
     @tool
@@ -163,6 +172,7 @@ async def websocket_endpoint(websocket: WebSocket):
         pass
     except Exception:
         import traceback
+
         traceback.print_exc()
         await websocket.close()
 

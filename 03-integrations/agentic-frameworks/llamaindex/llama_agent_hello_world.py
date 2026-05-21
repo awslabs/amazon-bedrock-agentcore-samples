@@ -5,6 +5,7 @@ from llama_index.tools.yahoo_finance import YahooFinanceToolSpec
 
 # Define custom function tools
 
+
 def multiply(a: float, b: float) -> float:
     """Multiply two numbers and returns the product"""
     return a * b
@@ -13,6 +14,7 @@ def multiply(a: float, b: float) -> float:
 def add(a: float, b: float) -> float:
     """Add two numbers and returns the sum"""
     return a + b
+
 
 # Add other predefined tools
 finance_tools = YahooFinanceToolSpec().to_tool_list()
@@ -27,12 +29,16 @@ agent = FunctionAgent(
 )
 
 from bedrock_agentcore.runtime import BedrockAgentCoreApp
+
 app = BedrockAgentCoreApp()
+
 
 @app.entrypoint
 async def main(payload):
     # Run the agent
-    response = await agent.run(payload.get("prompt","What is the current stock price of AMZN?"))
+    response = await agent.run(
+        payload.get("prompt", "What is the current stock price of AMZN?")
+    )
     print(response)
     return response.response.content
 

@@ -1,4 +1,3 @@
-
 import os
 import uuid
 import asyncio
@@ -21,7 +20,7 @@ from bedrock_agentcore.memory import MemoryClient
 from lab_helpers.utils import get_ssm_parameter
 
 # Initialize boto3 client
-sts_client = boto3.client('sts')
+sts_client = boto3.client("sts")
 
 # Get AWS account details
 REGION = boto3.session.Session().region_name
@@ -57,6 +56,7 @@ Always use the appropriate tool to get accurate, up-to-date information rather t
 # ============================================================
 # Local tools (same as Lab 3)
 # ============================================================
+
 
 def get_return_policy(product_category: str) -> str:
     """Get return policy information for a specific product category.
@@ -178,12 +178,18 @@ def get_technical_support(issue_description: str) -> str:
         ssm = boto3.client("ssm")
         acct = boto3.client("sts").get_caller_identity()["Account"]
         region = boto3.Session().region_name
-        kb_id = ssm.get_parameter(Name=f"/{acct}-{region}/kb/knowledge-base-id")["Parameter"]["Value"]
-        bedrock_agent_runtime = boto3.client("bedrock-agent-runtime", region_name=region)
+        kb_id = ssm.get_parameter(Name=f"/{acct}-{region}/kb/knowledge-base-id")[
+            "Parameter"
+        ]["Value"]
+        bedrock_agent_runtime = boto3.client(
+            "bedrock-agent-runtime", region_name=region
+        )
         response = bedrock_agent_runtime.retrieve(
             knowledgeBaseId=kb_id,
             retrievalQuery={"text": issue_description},
-            retrievalConfiguration={"vectorSearchConfiguration": {"numberOfResults": 3}},
+            retrievalConfiguration={
+                "vectorSearchConfiguration": {"numberOfResults": 3}
+            },
         )
         results = response.get("retrievalResults", [])
         if not results:
@@ -193,7 +199,9 @@ def get_technical_support(issue_description: str) -> str:
             text = result.get("content", {}).get("text", "")
             score = result.get("score", 0)
             if score >= 0.4:
-                formatted_results.append(f"--- Result {i} (relevance: {score:.2f}) ---\n{text}")
+                formatted_results.append(
+                    f"--- Result {i} (relevance: {score:.2f}) ---\n{text}"
+                )
         if not formatted_results:
             return "No sufficiently relevant technical support documentation found."
         return "\n\n".join(formatted_results)
@@ -205,7 +213,10 @@ def get_technical_support(issue_description: str) -> str:
 # MCP Gateway tool wrappers (same pattern as Lab 3)
 # ============================================================
 
-async def _call_mcp_tool(tool_name: str, arguments: dict, gateway_url: str, auth_header: str) -> str:
+
+async def _call_mcp_tool(
+    tool_name: str, arguments: dict, gateway_url: str, auth_header: str
+) -> str:
     """Helper to call an MCP tool on the AgentCore Gateway."""
     async with streamablehttp_client(
         gateway_url,
@@ -247,7 +258,9 @@ def check_warranty_status(serial_number: str, customer_email: str) -> str:
     if customer_email:
         args["customer_email"] = customer_email
     return _run_async_in_thread(
-        _call_mcp_tool("LambdaUsingSDK___check_warranty_status", args, _gateway_url, _auth_header)
+        _call_mcp_tool(
+            "LambdaUsingSDK___check_warranty_status", args, _gateway_url, _auth_header
+        )
     )
 
 
@@ -271,6 +284,7 @@ def web_search(keywords: str, region: str, max_results: int) -> str:
 # Initialize the AgentCore Runtime App
 app = BedrockAgentCoreApp()  #### AGENTCORE RUNTIME - LINE 2 ####
 
+
 @app.entrypoint  #### AGENTCORE RUNTIME - LINE 3 ####
 async def invoke(payload, context=None):
     """AgentCore Runtime entrypoint function"""
@@ -283,7 +297,7 @@ async def invoke(payload, context=None):
     request_headers = context.request_headers or {}
 
     # Get Client JWT token
-    auth_header = request_headers.get('Authorization', '')
+    auth_header = request_headers.get("Authorization", "")
     print(f"Authorization header: {auth_header}")
 
     # Get Gateway ID
@@ -296,7 +310,7 @@ async def invoke(payload, context=None):
     )
     # Get existing gateway details
     gateway_response = gateway_client.get_gateway(gatewayIdentifier=existing_gateway_id)
-    gateway_url = gateway_response['gatewayUrl']
+    gateway_url = gateway_response["gatewayUrl"]
 
     if gateway_url and auth_header:
         try:
@@ -345,7 +359,9 @@ async def invoke(payload, context=None):
             # --- 3. Create and run the ADK agent ---
             agent = LlmAgent(
                 name="customer_support_agent",
-                model=LiteLlm(model="bedrock/global.anthropic.claude-haiku-4-5-20251001-v1:0"),
+                model=LiteLlm(
+                    model="bedrock/global.anthropic.claude-haiku-4-5-20251001-v1:0"
+                ),
                 instruction=SYSTEM_PROMPT,
                 tools=all_tools,
             )
@@ -353,10 +369,18 @@ async def invoke(payload, context=None):
             adk_session_id = str(uuid.uuid4())
             session_service = InMemorySessionService()
             adk_session = await session_service.create_session(  # noqa: F841
-                app_name="customer_support_app", user_id="user_001", session_id=adk_session_id
+                app_name="customer_support_app",
+                user_id="user_001",
+                session_id=adk_session_id,
             )
-            runner = Runner(agent=agent, app_name="customer_support_app", session_service=session_service)
-            content = types.Content(role="user", parts=[types.Part(text=enriched_query)])
+            runner = Runner(
+                agent=agent,
+                app_name="customer_support_app",
+                session_service=session_service,
+            )
+            content = types.Content(
+                role="user", parts=[types.Part(text=enriched_query)]
+            )
 
             final_response = ""
             async for event in runner.run_async(
@@ -386,6 +410,7 @@ async def invoke(payload, context=None):
             return f"Error: {str(e)}"
     else:
         return "Error: Missing gateway URL or authorization header"
+
 
 if __name__ == "__main__":
     app.run()  #### AGENTCORE RUNTIME - LINE 4 ####

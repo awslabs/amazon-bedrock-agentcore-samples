@@ -19,6 +19,7 @@ class CustomerProfile:
     This is a simplified model focused on demonstrating authentication
     and authorization patterns with AWS AgentCore and Auth0.
     """
+
     customer_id: str
     name: str
     email: str
@@ -42,7 +43,7 @@ class CustomerProfile:
             "name": self.name,
             "email": self.email,
             "phone": self.phone,
-            "last_updated": self.last_updated.isoformat()
+            "last_updated": self.last_updated.isoformat(),
         }
 
     @classmethod
@@ -60,6 +61,8 @@ class CustomerProfile:
 
         # Convert datetime string to datetime object
         if isinstance(profile_data.get("last_updated"), str):
-            profile_data["last_updated"] = datetime.fromisoformat(profile_data["last_updated"])
+            profile_data["last_updated"] = datetime.fromisoformat(
+                profile_data["last_updated"]
+            )
 
         return cls(**profile_data)

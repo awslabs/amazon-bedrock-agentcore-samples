@@ -3,6 +3,7 @@
 AgentCore Cleanup Script
 Removes all resources created by main.py including gateways, runtimes, Cognito resources, and IAM roles.
 """
+
 import os
 import boto3
 import json

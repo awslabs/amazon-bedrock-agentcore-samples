@@ -226,7 +226,9 @@ def main():
 
     print("\n=== Summary ===")
     print(f"  Credential provider: {PROVIDER_NAME}")
-    print(f"  Provider ARN: {provider_arn}")  # codeql[py/clear-text-logging-sensitive-data]
+    print(
+        f"  Provider ARN: {provider_arn}"
+    )  # codeql[py/clear-text-logging-sensitive-data]
     print(f"  Region: {REGION}")
     print("\n  The credential provider is now ready for use in AgentCore agents.")
     print(

@@ -15,7 +15,9 @@ logger = logging.getLogger(__name__)
 
 
 def _get_auth_header(context: Any) -> Optional[str]:
-    if hasattr(context, "request_headers") and isinstance(context.request_headers, dict):
+    if hasattr(context, "request_headers") and isinstance(
+        context.request_headers, dict
+    ):
         headers = context.request_headers
         return headers.get("Authorization") or headers.get("authorization")
     return None

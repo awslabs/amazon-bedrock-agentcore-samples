@@ -82,7 +82,9 @@ def get_oauth2_callback_base_url() -> str:
     """
     if not _is_workshop_studio():
         base_url = f"http://localhost:{OAUTH2_CALLBACK_SERVER_PORT}"
-        logger.info(f"External OAuth callback base URL (local): {base_url}")  # codeql[py/clear-text-logging-sensitive-data]
+        logger.info(
+            f"External OAuth callback base URL (local): {base_url}"
+        )  # codeql[py/clear-text-logging-sensitive-data]
         return base_url
 
     try:
@@ -98,7 +100,9 @@ def get_oauth2_callback_base_url() -> str:
             DomainId=domain_id, SpaceName=space_name
         )
         base_url = response["Url"] + f"/proxy/{OAUTH2_CALLBACK_SERVER_PORT}"
-        logger.info(f"External OAuth callback base URL (SageMaker): {base_url}")  # codeql[py/clear-text-logging-sensitive-data]
+        logger.info(
+            f"External OAuth callback base URL (SageMaker): {base_url}"
+        )  # codeql[py/clear-text-logging-sensitive-data]
         return base_url
     except Exception as e:
         logger.warning(
@@ -452,7 +456,9 @@ def main():
     logger.info(
         f"Starting OAuth2 callback server on {host}:{OAUTH2_CALLBACK_SERVER_PORT}"  # codeql[py/clear-text-logging-sensitive-data]
     )
-    logger.info(f"External callback URL: {base_url}{OAUTH2_CALLBACK_ENDPOINT}")  # codeql[py/clear-text-logging-sensitive-data]
+    logger.info(
+        f"External callback URL: {base_url}{OAUTH2_CALLBACK_ENDPOINT}"
+    )  # codeql[py/clear-text-logging-sensitive-data]
 
     # Start the FastAPI server using uvicorn
     uvicorn.run(

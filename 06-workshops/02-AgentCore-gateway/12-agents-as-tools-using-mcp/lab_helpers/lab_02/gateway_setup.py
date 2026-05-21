@@ -10,6 +10,7 @@ import boto3
 from lab_helpers.constants import PARAMETER_PATHS
 from lab_helpers.parameter_store import put_parameter
 
+
 def create_gateway_service_role(region_name="us-west-2", account_id=None):
     """
     Create IAM service role for AgentCore Gateway.
@@ -26,13 +27,13 @@ def create_gateway_service_role(region_name="us-west-2", account_id=None):
     Returns:
         Dictionary with role ARN and other details
     """
-    iam_client = boto3.client('iam', region_name=region_name)
-    sts_client = boto3.client('sts', region_name=region_name)
-    ssm_client = boto3.client('ssm', region_name=region_name)  # noqa: F841
+    iam_client = boto3.client("iam", region_name=region_name)
+    sts_client = boto3.client("sts", region_name=region_name)
+    ssm_client = boto3.client("ssm", region_name=region_name)  # noqa: F841
 
     # Get account ID if not provided
     if not account_id:
-        account_id = sts_client.get_caller_identity()['Account']
+        account_id = sts_client.get_caller_identity()["Account"]
 
     role_name = "aiml301-gateway-service-role"
 
@@ -43,20 +44,16 @@ def create_gateway_service_role(region_name="us-west-2", account_id=None):
         "Statement": [
             {
                 "Effect": "Allow",
-                "Principal": {
-                    "Service": "bedrock-agentcore.amazonaws.com"
-                },
+                "Principal": {"Service": "bedrock-agentcore.amazonaws.com"},
                 "Action": "sts:AssumeRole",
                 "Condition": {
-                    "StringEquals": {
-                        "aws:SourceAccount": account_id
-                    },
+                    "StringEquals": {"aws:SourceAccount": account_id},
                     "ArnLike": {
                         "aws:SourceArn": f"arn:aws:bedrock-agentcore:{region_name}:{account_id}:gateway/*"
-                    }
-                }
+                    },
+                },
             }
-        ]
+        ],
     }
 
     # Permissions: Gateway needs to invoke Lambda, access CloudWatch, and manage AgentCore resources
@@ -66,18 +63,14 @@ def create_gateway_service_role(region_name="us-west-2", account_id=None):
             {
                 "Sid": "InvokeLambdaFunctions",
                 "Effect": "Allow",
-                "Action": [
-                    "lambda:InvokeFunction"
-                ],
-                "Resource": "*"
+                "Action": ["lambda:InvokeFunction"],
+                "Resource": "*",
             },
             {
                 "Sid": "BedrockAgentCorePermissions",
                 "Effect": "Allow",
-                "Action": [
-                    "bedrock-agentcore:*"
-                ],
-                "Resource": "*"
+                "Action": ["bedrock-agentcore:*"],
+                "Resource": "*",
             },
             {
                 "Sid": "CloudWatchLogsPermissions",
@@ -87,11 +80,11 @@ def create_gateway_service_role(region_name="us-west-2", account_id=None):
                     "logs:CreateLogStream",
                     "logs:PutLogEvents",
                     "logs:DescribeLogGroups",
-                    "logs:DescribeLogStreams"
+                    "logs:DescribeLogStreams",
                 ],
-                "Resource": "*"
-            }
-        ]
+                "Resource": "*",
+            },
+        ],
     }
 
     try:
@@ -99,7 +92,7 @@ def create_gateway_service_role(region_name="us-west-2", account_id=None):
         try:
             role = iam_client.get_role(RoleName=role_name)
             print(f"✓ Gateway service role already exists: {role['Role']['Arn']}")
-            role_arn = role['Role']['Arn']
+            role_arn = role["Role"]["Arn"]
         except iam_client.exceptions.NoSuchEntityException:
             print(f"Creating gateway service role: {role_name}")
 
@@ -107,17 +100,17 @@ def create_gateway_service_role(region_name="us-west-2", account_id=None):
             response = iam_client.create_role(
                 RoleName=role_name,
                 AssumeRolePolicyDocument=json.dumps(trust_policy),
-                Description="Service role for AgentCore Gateway to invoke Lambda targets"
+                Description="Service role for AgentCore Gateway to invoke Lambda targets",
             )
 
-            role_arn = response['Role']['Arn']
+            role_arn = response["Role"]["Arn"]
             print(f"✓ Gateway service role created: {role_arn}")
 
             # Attach inline policy for Lambda invocation
             iam_client.put_role_policy(
                 RoleName=role_name,
                 PolicyName="gateway-invoke-lambda",
-                PolicyDocument=json.dumps(permissions_policy)
+                PolicyDocument=json.dumps(permissions_policy),
             )
             print("✓ Permissions policy attached")
 
@@ -127,15 +120,15 @@ def create_gateway_service_role(region_name="us-west-2", account_id=None):
             gateway_role_arn_param,
             role_arn,
             description="Gateway service role ARN for Lab 02",
-            region_name=region_name
+            region_name=region_name,
         )
         print(f"✓ Role ARN saved to Parameter Store: {gateway_role_arn_param}")
 
         return {
-            'role_arn': role_arn,
-            'role_name': role_name,
-            'account_id': account_id,
-            'region': region_name
+            "role_arn": role_arn,
+            "role_name": role_name,
+            "account_id": account_id,
+            "region": region_name,
         }
 
     except Exception as e:

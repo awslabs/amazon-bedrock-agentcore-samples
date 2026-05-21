@@ -10,6 +10,7 @@ This module provides helper functions for managing AWS resources including:
 - CloudWatch logs
 - ECR repositories
 """
+
 import base64
 import hashlib
 import hmac
@@ -27,9 +28,7 @@ REGION = boto3.session.Session().region_name
 
 USERNAME = "testuser"
 SECRET_NAME = "aws_docs_assistant"
-SSM_DOCS_AGENT_ROLE_ARN = (
-    "/app/aws_docs_assistant/agentcore/runtime_execution_role_arn"
-)
+SSM_DOCS_AGENT_ROLE_ARN = "/app/aws_docs_assistant/agentcore/runtime_execution_role_arn"
 POLICY_NAME = f"AWSDocsAssistantBedrockAgentCorePolicy-{REGION}"
 LOG_GROUP_BASE_NAME = "/aws/bedrock-agentcore/runtimes/"
 
@@ -56,10 +55,7 @@ def get_ssm_parameter(name: str, with_decryption: bool = True) -> str:
 
 
 def put_ssm_parameter(
-    name: str,
-    value: str,
-    parameter_type: str = "String",
-    with_encryption: bool = False
+    name: str, value: str, parameter_type: str = "String", with_encryption: bool = False
 ) -> None:
     """Put a parameter value into AWS Systems Manager Parameter Store."""
     ssm = boto3.client("ssm")
@@ -95,15 +91,12 @@ def save_secret(secret_value: str) -> bool:
             Name=SECRET_NAME,
             SecretString=secret_value,
             Description=(
-                "Secret containing the Cognito Configuration "
-                "for the AWS Docs Agent"
+                "Secret containing the Cognito Configuration for the AWS Docs Agent"
             ),
         )
         print("✅ Created secret")
     except secrets_client.exceptions.ResourceExistsException:
-        secrets_client.update_secret(
-            SecretId=SECRET_NAME, SecretString=secret_value
-        )
+        secrets_client.update_secret(SecretId=SECRET_NAME, SecretString=secret_value)
         print("✅ Updated existing secret")
     except secrets_client.exceptions.ClientError as e:
         print(f"❌ Error saving secret: {str(e)}")
@@ -177,8 +170,7 @@ def setup_cognito_user_pool() -> Optional[Dict[str, str]]:
     try:
         # Create User Pool
         user_pool_response = cognito_client.create_user_pool(
-            PoolName="MCPServerPool",
-            Policies={"PasswordPolicy": {"MinimumLength": 8}}
+            PoolName="MCPServerPool", Policies={"PasswordPolicy": {"MinimumLength": 8}}
         )
         pool_id = user_pool_response["UserPool"]["Id"]
 
@@ -301,8 +293,7 @@ def cleanup_cognito_resources(pool_id: str) -> bool:
 
             except cognito_client.exceptions.ResourceNotFoundException:
                 print(
-                    f"User pool {pool_id} not found. "
-                    "It may have already been deleted."
+                    f"User pool {pool_id} not found. It may have already been deleted."
                 )
                 return True
 
@@ -339,8 +330,7 @@ def create_agentcore_runtime_execution_role(role_name: str) -> Optional[str]:
                     "StringEquals": {"aws:SourceAccount": account_id},
                     "ArnLike": {
                         "aws:SourceArn": (
-                            f"arn:aws:bedrock-agentcore:{region}:"
-                            f"{account_id}:*"
+                            f"arn:aws:bedrock-agentcore:{region}:{account_id}:*"
                         )
                     },
                 },
@@ -356,9 +346,7 @@ def create_agentcore_runtime_execution_role(role_name: str) -> Optional[str]:
                 "Sid": "ECRImageAccess",
                 "Effect": "Allow",
                 "Action": ["ecr:BatchGetImage", "ecr:GetDownloadUrlForLayer"],
-                "Resource": [
-                    f"arn:aws:ecr:{region}:{account_id}:repository/*"
-                ],
+                "Resource": [f"arn:aws:ecr:{region}:{account_id}:repository/*"],
             },
             {
                 "Effect": "Allow",
@@ -371,9 +359,7 @@ def create_agentcore_runtime_execution_role(role_name: str) -> Optional[str]:
             {
                 "Effect": "Allow",
                 "Action": ["logs:DescribeLogGroups"],
-                "Resource": [
-                    f"arn:aws:logs:{region}:{account_id}:log-group:*"
-                ],
+                "Resource": [f"arn:aws:logs:{region}:{account_id}:log-group:*"],
             },
             {
                 "Effect": "Allow",
@@ -404,9 +390,7 @@ def create_agentcore_runtime_execution_role(role_name: str) -> Optional[str]:
                 "Resource": "*",
                 "Action": "cloudwatch:PutMetricData",
                 "Condition": {
-                    "StringEquals": {
-                        "cloudwatch:namespace": "bedrock-agentcore"
-                    }
+                    "StringEquals": {"cloudwatch:namespace": "bedrock-agentcore"}
                 },
             },
             {
@@ -448,17 +432,13 @@ def create_agentcore_runtime_execution_role(role_name: str) -> Optional[str]:
                     "bedrock-agentcore:RetrieveMemoryRecords",
                     "bedrock-agentcore:ListMemoryRecords",
                 ],
-                "Resource": [
-                    f"arn:aws:bedrock-agentcore:{region}:{account_id}:*"
-                ],
+                "Resource": [f"arn:aws:bedrock-agentcore:{region}:{account_id}:*"],
             },
             {
                 "Sid": "GetMemoryId",
                 "Effect": "Allow",
                 "Action": ["ssm:GetParameter"],
-                "Resource": [
-                    f"arn:aws:ssm:{region}:{account_id}:parameter/*"
-                ],
+                "Resource": [f"arn:aws:ssm:{region}:{account_id}:parameter/*"],
             },
             {
                 "Sid": "GetSecrets",
@@ -468,7 +448,7 @@ def create_agentcore_runtime_execution_role(role_name: str) -> Optional[str]:
                     f"arn:aws:secretsmanager:{region}:{account_id}:"
                     f"secret:{SECRET_NAME}*"
                 ],
-            }
+            },
         ],
     }
 
@@ -487,8 +467,7 @@ def create_agentcore_runtime_execution_role(role_name: str) -> Optional[str]:
             RoleName=role_name,
             AssumeRolePolicyDocument=json.dumps(trust_policy),
             Description=(
-                "IAM role for Amazon Bedrock AgentCore "
-                "with required permissions"
+                "IAM role for Amazon Bedrock AgentCore with required permissions"
             ),
         )
 
@@ -581,10 +560,7 @@ def runtime_resource_cleanup(agent_runtime_id: str) -> None:
         response = agentcore_control_client.delete_agent_runtime(
             agentRuntimeId=agent_runtime_id
         )
-        print(
-            f"  ✅ Agent runtime {agent_runtime_id} deleted: "
-            f"{response['status']}"
-        )
+        print(f"  ✅ Agent runtime {agent_runtime_id} deleted: {response['status']}")
     except Exception as e:
         print(f"  ⚠️  Error during runtime cleanup: {e}")
 
@@ -598,18 +574,15 @@ def ecr_repo_cleanup() -> None:
         repositories = ecr_client.describe_repositories()
 
         repo_patterns = [
-            'bedrock-agentcore-aws_docs_assistant',
-            'bedrock-agentcore-aws_blog_assistant',
-            'bedrock-agentcore-aws_orchestrator_assistant'
+            "bedrock-agentcore-aws_docs_assistant",
+            "bedrock-agentcore-aws_blog_assistant",
+            "bedrock-agentcore-aws_orchestrator_assistant",
         ]
 
-        for repo in repositories['repositories']:
-            repo_name = repo['repositoryName']
+        for repo in repositories["repositories"]:
+            repo_name = repo["repositoryName"]
             if any(pattern in repo_name for pattern in repo_patterns):
-                ecr_client.delete_repository(
-                    repositoryName=repo_name,
-                    force=True
-                )
+                ecr_client.delete_repository(repositoryName=repo_name, force=True)
                 print(f"  ✅ ECR repository deleted: {repo_name}")
     except Exception as e:
         print(f"  ⚠️  Error during ECR cleanup: {e}")
@@ -622,9 +595,9 @@ def get_memory_name(agent_name: str) -> Optional[str]:
             "bedrock-agentcore-control", region_name=REGION
         )
         resp = agentcore_control_client.list_memories()
-        for mem in resp['memories']:
-            if agent_name in mem['id']:
-                return mem['id']
+        for mem in resp["memories"]:
+            if agent_name in mem["id"]:
+                return mem["id"]
         return None
     except Exception as e:
         print(f"  ⚠️  Error getting memories: {e}")
@@ -653,7 +626,7 @@ def delete_observability_resources(agent_name: str) -> None:
 
     logs_client = boto3.client("logs", region_name=REGION)
 
-    complete_log_group = LOG_GROUP_BASE_NAME + agent_name + '-DEFAULT'
+    complete_log_group = LOG_GROUP_BASE_NAME + agent_name + "-DEFAULT"
 
     # Delete log stream first (must be done before deleting log group)
     try:
@@ -693,7 +666,7 @@ def local_file_cleanup() -> None:
         "agents/strands_aws_docs.py",
         "agents/orchestrator.py",
         "agents/requirements.txt",
-        "agents/strands_aws_blogs_news.py"
+        "agents/strands_aws_blogs_news.py",
     ]
 
     deleted_files = []

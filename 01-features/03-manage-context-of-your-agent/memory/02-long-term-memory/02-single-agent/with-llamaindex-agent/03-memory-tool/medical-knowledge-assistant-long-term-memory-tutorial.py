@@ -232,7 +232,9 @@ def log_treatment_outcome(
     patient_id: str, treatment: str, outcome: str, follow_up_needed: str
 ) -> str:
     """Log treatment outcome with follow-up requirements"""
-    print(f"🏥 Treatment outcome: {patient_id} - {treatment}: {outcome}")  # codeql[py/clear-text-logging-sensitive-data]
+    print(
+        f"🏥 Treatment outcome: {patient_id} - {treatment}: {outcome}"
+    )  # codeql[py/clear-text-logging-sensitive-data]
     return f"Logged outcome for {patient_id}"
 
 
@@ -246,7 +248,9 @@ def track_clinical_metrics(
     metric_type: str, value: str, patient_id: str, quarter: str
 ) -> str:
     """Track specific clinical metrics with patient and timeline"""
-    print(f"📊 {quarter}: {metric_type} = {value} (for {patient_id})")  # codeql[py/clear-text-logging-sensitive-data]
+    print(
+        f"📊 {quarter}: {metric_type} = {value} (for {patient_id})"
+    )  # codeql[py/clear-text-logging-sensitive-data]
     return f"Tracked {metric_type}: {value} for {patient_id} in {quarter}"
 
 

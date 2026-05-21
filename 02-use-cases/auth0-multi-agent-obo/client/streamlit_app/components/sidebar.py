@@ -10,10 +10,7 @@ from auth0_handler import Auth0Handler
 from session_manager import SessionManager
 
 
-def render_sidebar(
-    auth_handler: Auth0Handler,
-    session_manager: SessionManager
-):
+def render_sidebar(auth_handler: Auth0Handler, session_manager: SessionManager):
     """
     Render sidebar with user info and logout.
 
@@ -35,7 +32,7 @@ def render_sidebar(
             st.markdown("### User Profile")
 
             # User avatar (if available)
-            picture = user_info.get('picture')
+            picture = user_info.get("picture")
             if picture:
                 st.image(picture, width=80)
 
@@ -77,10 +74,11 @@ def render_sidebar(
 
                         # Filter custom claims
                         from shared.config.settings import settings
+
                         namespace = settings.auth0.claims_namespace
 
                         custom_claims = {
-                            k.replace(namespace, ''): v
+                            k.replace(namespace, ""): v
                             for k, v in claims.items()
                             if k.startswith(namespace)
                         }
@@ -157,10 +155,7 @@ def render_sidebar(
         st.markdown("*Version 0.1.0*")
 
 
-def handle_logout(
-    auth_handler: Auth0Handler,
-    session_manager: SessionManager
-):
+def handle_logout(auth_handler: Auth0Handler, session_manager: SessionManager):
     """
     Handle user logout.
 
@@ -233,6 +228,7 @@ def refresh_token_handler(session_manager: SessionManager):
 
     try:
         from auth0_handler import Auth0Handler
+
         auth_handler = Auth0Handler()
 
         # Refresh tokens

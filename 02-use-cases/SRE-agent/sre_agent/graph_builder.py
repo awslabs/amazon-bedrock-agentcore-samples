@@ -188,21 +188,26 @@ def build_multi_agent_graph(
         try:
             # Create docs directory if it doesn't exist
             from pathlib import Path
+
             output_path = Path(graph_output_path)
             output_path.parent.mkdir(parents=True, exist_ok=True)
-            
+
             # Get the Mermaid representation of the graph
             mermaid_diagram = compiled_graph.get_graph().draw_mermaid()
-            
+
             # Save to file
             with open(graph_output_path, "w") as f:
                 f.write("# SRE Agent Architecture\n\n")
                 f.write("```mermaid\n")
                 f.write(mermaid_diagram)
                 f.write("\n```\n")
-            
-            logger.info(f"Graph architecture (Mermaid) exported to: {graph_output_path}")
-            print(f"✅ Graph architecture (Mermaid diagram) exported to: {graph_output_path}")
+
+            logger.info(
+                f"Graph architecture (Mermaid) exported to: {graph_output_path}"
+            )
+            print(
+                f"✅ Graph architecture (Mermaid diagram) exported to: {graph_output_path}"
+            )
         except Exception as e:
             logger.error(f"Failed to export graph: {e}")
             print(f"❌ Failed to export graph: {e}")

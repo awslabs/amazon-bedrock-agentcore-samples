@@ -29,11 +29,12 @@ os.environ["BYPASS_TOOL_CONSENT"] = "true"
 
 # Configure logging with explicit StreamHandler for CloudWatch capture
 import sys
+
 logging.basicConfig(
     level=logging.DEBUG,
-    format='%(asctime)s - %(name)s - %(levelname)s - [%(funcName)s:%(lineno)d] - %(message)s',
+    format="%(asctime)s - %(name)s - %(levelname)s - [%(funcName)s:%(lineno)d] - %(message)s",
     stream=sys.stdout,
-    force=True
+    force=True,
 )
 
 # Use bedrock_agentcore.app namespace for proper AgentCore logging capture
@@ -43,15 +44,15 @@ logger = logging.getLogger("bedrock_agentcore.app")
 if not logger.handlers:
     handler = logging.StreamHandler(sys.stdout)
     formatter = logging.Formatter(
-        '%(asctime)s - %(name)s - %(levelname)s - [%(funcName)s:%(lineno)d] - %(message)s'
+        "%(asctime)s - %(name)s - %(levelname)s - [%(funcName)s:%(lineno)d] - %(message)s"
     )
     handler.setFormatter(formatter)
     logger.addHandler(handler)
     logger.setLevel(logging.DEBUG)
 
 # Environment variables (set by AgentCore Runtime)
-AWS_REGION = os.environ.get('AWS_REGION', 'us-west-2')
-MODEL_ID = os.environ.get('MODEL_ID', 'us.anthropic.claude-sonnet-4-20250514-v1:0')
+AWS_REGION = os.environ.get("AWS_REGION", "us-west-2")
+MODEL_ID = os.environ.get("MODEL_ID", "us.anthropic.claude-sonnet-4-20250514-v1:0")
 
 # Log environment diagnostics
 logger.info("=" * 80)
@@ -80,7 +81,9 @@ def initialize_browser(region=AWS_REGION):
     global agentcore_browser, BROWSER_AVAILABLE
 
     try:
-        logger.debug(f"[DIAGNOSTIC] Attempting to initialize AgentCoreBrowser in region: {region}")
+        logger.debug(
+            f"[DIAGNOSTIC] Attempting to initialize AgentCoreBrowser in region: {region}"
+        )
         agentcore_browser = AgentCoreBrowser(region=region)
         BROWSER_AVAILABLE = True
         logger.info("✅ AgentCore Browser initialized")
@@ -92,6 +95,7 @@ def initialize_browser(region=AWS_REGION):
         logger.warning(f"⚠️ AgentCore Browser not available: {e}")
         return False
 
+
 # Define FastMCP Tools
 logger.debug("[DIAGNOSTIC] Registering FastMCP tools...")
 
@@ -99,12 +103,12 @@ logger.debug("[DIAGNOSTIC] Registering FastMCP tools...")
 @mcp.tool()
 def research_agent(research_topic_query: str):
     """Research AWS best practices and prevention strategies using AgentCore Browser
-    
+
     Analyzes infrastructure for proactive improvements by accessing real-time AWS documentation. Provides prevention recommendations, implementation roadmaps, and monitoring best practices.
-    
+
     Args:
         research_topic_query: Topic to research (e.g., "DynamoDB performance optimization", "EC2 cost reduction strategies", "S3 security hardening")
-    
+
     Returns:
         Analysis with prevention opportunities, AWS best practices, and implementation guidance
     """
@@ -163,24 +167,21 @@ def research_agent(research_topic_query: str):
     - Success metrics for measuring prevention effectiveness
     
     """
-        prevention_agent = Agent(system_prompt=system_prompt,
-            model=model,
-            tools=[agentcore_browser.browser]
+        prevention_agent = Agent(
+            system_prompt=system_prompt, model=model, tools=[agentcore_browser.browser]
         )
 
         logger.info("✅ Prevention agent with browser tool initialized")
         logger.debug(f"[DIAGNOSTIC] Agent type: {type(prevention_agent)}")
-        #logger.debug(f"System prompt length: {len(system_prompt)}")
-        #logger.debug(f"Tools: {[tool.__name__ if hasattr(tool, '__name__') else str(tool) for tool in prevention_agent.tools]}")
-
+        # logger.debug(f"System prompt length: {len(system_prompt)}")
+        # logger.debug(f"Tools: {[tool.__name__ if hasattr(tool, '__name__') else str(tool) for tool in prevention_agent.tools]}")
 
     except Exception as e:
         logger.error("❌ Failed to setup prevention agent", exc_info=True)
         logger.error(f"Exception: {e}")
         return f"Error: Failed to initialize agent - {str(e)}"
 
-    
-    return_text=""
+    return_text = ""
     response = prevention_agent(research_topic_query)
     # 3. LOG RAW RESPONSE OBJECT
     logger.info("=" * 80)
@@ -190,11 +191,11 @@ def research_agent(research_topic_query: str):
     logger.debug(f"Full response object: {response}")
     logger.debug(f"Response.message: {response.message}")
     logger.info("=" * 80)
-    response_content = response.message.get('content', [])
+    response_content = response.message.get("content", [])
     if response_content:
         for content in response_content:
-            if isinstance(content, dict) and 'text' in content:
-                return_text = content['text']
+            if isinstance(content, dict) and "text" in content:
+                return_text = content["text"]
 
     return return_text
 
@@ -220,7 +221,9 @@ if __name__ == "__main__":
     logger.info("=" * 80)
     logger.info("Starting FastMCP server with streamable-http transport on port 8000")
     logger.debug(f"[DIAGNOSTIC] FastMCP instance: {mcp}")
-    logger.debug(f"[DIAGNOSTIC] FastMCP tools: {mcp.list_tools() if hasattr(mcp, 'list_tools') else 'method not available'}")
+    logger.debug(
+        f"[DIAGNOSTIC] FastMCP tools: {mcp.list_tools() if hasattr(mcp, 'list_tools') else 'method not available'}"
+    )
     logger.info("=" * 80)
 
     try:

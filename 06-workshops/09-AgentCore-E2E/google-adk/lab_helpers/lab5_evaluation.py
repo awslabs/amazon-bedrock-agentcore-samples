@@ -48,9 +48,7 @@ def get_execution_role_arn_from_runtime():
     except Exception as e:
         print(f"⚠️  Could not retrieve role from runtime: {e}")
 
-    raise RuntimeError(
-        "Could not retrieve execution_role_arn. Please run Lab 4 first."
-    )
+    raise RuntimeError("Could not retrieve execution_role_arn. Please run Lab 4 first.")
 
 
 def attach_evaluation_policy(execution_role_arn: str, policy_json_path: str = None):
@@ -129,9 +127,7 @@ def ensure_evaluation_role(execution_role_arn: str = None):
     if not execution_role_arn.startswith("arn:aws:iam::"):
         # Looser check - just ensure it looks like an ARN
         if "arn:" not in execution_role_arn or ":role/" not in execution_role_arn:
-            raise ValueError(
-                f"Invalid execution_role_arn format: {execution_role_arn}"
-            )
+            raise ValueError(f"Invalid execution_role_arn format: {execution_role_arn}")
 
     print(f"Using execution_role_arn: {execution_role_arn}")
     attach_evaluation_policy(execution_role_arn)

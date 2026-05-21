@@ -47,7 +47,7 @@ class AgentCoreRuntimeDeployer:
         region: str = REGION,
         prefix: str = PREFIX,
         runtime_name: str = RUNTIME_NAME,
-        verbose: bool = True
+        verbose: bool = True,
     ):
         """
         Initialize deployer with AWS clients and configuration.
@@ -64,14 +64,14 @@ class AgentCoreRuntimeDeployer:
         self.verbose = verbose
 
         # AWS clients
-        self.iam = boto3.client('iam', region_name=region)
-        self.agentcore = boto3.client('bedrock-agentcore-control', region_name=region)
-        self.ssm = boto3.client('ssm', region_name=region)
-        self.sts = boto3.client('sts', region_name=region)
-        self.logs = boto3.client('logs', region_name=region)
+        self.iam = boto3.client("iam", region_name=region)
+        self.agentcore = boto3.client("bedrock-agentcore-control", region_name=region)
+        self.ssm = boto3.client("ssm", region_name=region)
+        self.sts = boto3.client("sts", region_name=region)
+        self.logs = boto3.client("logs", region_name=region)
 
         # Get account ID
-        self.account_id = self.sts.get_caller_identity()['Account']
+        self.account_id = self.sts.get_caller_identity()["Account"]
 
         # Initialize logger
         if verbose:
@@ -94,12 +94,13 @@ class AgentCoreRuntimeDeployer:
             # Check toolkit installation
             try:
                 from bedrock_agentcore_starter_toolkit import Runtime  # noqa: F401
+
                 self._log("bedrock-agentcore-starter-toolkit is installed", "success")
             except ImportError:
                 self._log(
                     "bedrock-agentcore-starter-toolkit not found. "
                     "Install with: pip install bedrock-agentcore-starter-toolkit",
-                    "error"
+                    "error",
                 )
                 return False
 
@@ -159,10 +160,10 @@ class AgentCoreRuntimeDeployer:
                         "StringEquals": {"aws:SourceAccount": self.account_id},
                         "ArnLike": {
                             "aws:SourceArn": f"arn:aws:bedrock-agentcore:{self.region}:{self.account_id}:runtime/*"
-                        }
-                    }
+                        },
+                    },
                 }
-            ]
+            ],
         }
 
         # Permissions policy for Runtime
@@ -175,9 +176,9 @@ class AgentCoreRuntimeDeployer:
                     "Action": [
                         "logs:CreateLogGroup",
                         "logs:CreateLogStream",
-                        "logs:PutLogEvents"
+                        "logs:PutLogEvents",
                     ],
-                    "Resource": f"arn:aws:logs:{self.region}:{self.account_id}:log-group:/aws/bedrock-agentcore/runtime/*"
+                    "Resource": f"arn:aws:logs:{self.region}:{self.account_id}:log-group:/aws/bedrock-agentcore/runtime/*",
                 },
                 {
                     "Sid": "ECRAccess",
@@ -185,18 +186,18 @@ class AgentCoreRuntimeDeployer:
                     "Action": [
                         "ecr:GetAuthorizationToken",
                         "ecr:BatchGetImage",
-                        "ecr:GetDownloadUrlForLayer"
+                        "ecr:GetDownloadUrlForLayer",
                     ],
-                    "Resource": "*"
+                    "Resource": "*",
                 },
                 {
                     "Sid": "BedrockModels",
                     "Effect": "Allow",
                     "Action": [
                         "bedrock:InvokeModel",
-                        "bedrock:InvokeModelWithResponseStream"
+                        "bedrock:InvokeModelWithResponseStream",
                     ],
-                    "Resource": f"arn:aws:bedrock:{self.region}::foundation-model/*"
+                    "Resource": f"arn:aws:bedrock:{self.region}::foundation-model/*",
                 },
                 {
                     "Sid": "CodeInterpreter",
@@ -204,9 +205,9 @@ class AgentCoreRuntimeDeployer:
                     "Action": [
                         "bedrock-agentcore:StartCodeInterpreterSession",
                         "bedrock-agentcore:InvokeCodeInterpreter",
-                        "bedrock-agentcore:StopCodeInterpreterSession"
+                        "bedrock-agentcore:StopCodeInterpreterSession",
                     ],
-                    "Resource": "*"
+                    "Resource": "*",
                 },
                 {
                     "Sid": "ParameterStore",
@@ -214,11 +215,11 @@ class AgentCoreRuntimeDeployer:
                     "Action": [
                         "ssm:GetParameter",
                         "ssm:GetParameters",
-                        "ssm:GetParametersByPath"
+                        "ssm:GetParametersByPath",
                     ],
-                    "Resource": f"arn:aws:ssm:{self.region}:{self.account_id}:parameter/{self.prefix}/*"
-                }
-            ]
+                    "Resource": f"arn:aws:ssm:{self.region}:{self.account_id}:parameter/{self.prefix}/*",
+                },
+            ],
         }
 
         try:
@@ -226,24 +227,23 @@ class AgentCoreRuntimeDeployer:
             try:
                 role = self.iam.get_role(RoleName=RUNTIME_ROLE_NAME)
                 self._log(f"IAM role already exists: {RUNTIME_ROLE_NAME}", "warning")
-                role_arn = role['Role']['Arn']
-                
+                role_arn = role["Role"]["Arn"]
+
                 # Update trust policy to ensure it's correct for current region
                 self.iam.update_assume_role_policy(
-                    RoleName=RUNTIME_ROLE_NAME,
-                    PolicyDocument=json.dumps(trust_policy)
+                    RoleName=RUNTIME_ROLE_NAME, PolicyDocument=json.dumps(trust_policy)
                 )
                 self._log(f"Updated trust policy for region {self.region}", "success")
-                
+
             except self.iam.exceptions.NoSuchEntityException:
                 # Create new role
                 role = self.iam.create_role(
                     RoleName=RUNTIME_ROLE_NAME,
                     AssumeRolePolicyDocument=json.dumps(trust_policy),
                     Description="Execution role for AgentCore Runtime - Lab 03 Remediation Agent",
-                    MaxSessionDuration=3600
+                    MaxSessionDuration=3600,
                 )
-                role_arn = role['Role']['Arn']
+                role_arn = role["Role"]["Arn"]
                 self._log(f"Created IAM role: {RUNTIME_ROLE_NAME}", "success")
 
                 # Wait for role to propagate in IAM
@@ -253,7 +253,7 @@ class AgentCoreRuntimeDeployer:
             self.iam.put_role_policy(
                 RoleName=RUNTIME_ROLE_NAME,
                 PolicyName=RUNTIME_POLICY_NAME,
-                PolicyDocument=json.dumps(permissions_policy)
+                PolicyDocument=json.dumps(permissions_policy),
             )
             self._log(f"Attached permissions policy: {RUNTIME_POLICY_NAME}", "success")
 
@@ -264,7 +264,7 @@ class AgentCoreRuntimeDeployer:
                 Value=role_arn,
                 Type="String",
                 Overwrite=True,
-                Description="IAM role ARN for Lab-03 AgentCore Runtime"
+                Description="IAM role ARN for Lab-03 AgentCore Runtime",
             )
             self._log("Stored role ARN in Parameter Store", "success")
 
@@ -272,7 +272,7 @@ class AgentCoreRuntimeDeployer:
                 "role_arn": role_arn,
                 "role_name": RUNTIME_ROLE_NAME,
                 "policy_name": RUNTIME_POLICY_NAME,
-                "account_id": self.account_id
+                "account_id": self.account_id,
             }
 
         except Exception as e:
@@ -283,7 +283,7 @@ class AgentCoreRuntimeDeployer:
         self,
         agent_script_path: Path,
         requirements_path: Optional[Path] = None,
-        include_files: Optional[List[Path]] = None
+        include_files: Optional[List[Path]] = None,
     ) -> Dict:
         """
         Package Strands remediation agent code for deployment.
@@ -304,7 +304,7 @@ class AgentCoreRuntimeDeployer:
             raise FileNotFoundError(f"Agent script not found: {agent_script_path}")
 
         # Read agent code
-        with open(agent_script_path, 'r') as f:
+        with open(agent_script_path, "r") as f:
             agent_code = f.read()
 
         package_info = {
@@ -312,14 +312,12 @@ class AgentCoreRuntimeDeployer:
             "code_size_bytes": len(agent_code.encode()),
             "code_size_mb": round(len(agent_code.encode()) / (1024 * 1024), 2),
             "timestamp": datetime.utcnow().isoformat(),
-            "files": {
-                "agent_script": str(agent_script_path)
-            }
+            "files": {"agent_script": str(agent_script_path)},
         }
 
         # Add requirements if provided
         if requirements_path and Path(requirements_path).exists():
-            with open(requirements_path, 'r') as f:
+            with open(requirements_path, "r") as f:
                 requirements = f.read()
             package_info["files"]["requirements"] = str(requirements_path)
             package_info["requirements_lines"] = len(requirements.splitlines())
@@ -340,7 +338,7 @@ class AgentCoreRuntimeDeployer:
         agent_name: str = "remediation-agent",
         role_arn: Optional[str] = None,
         description: Optional[str] = None,
-        timeout_seconds: int = 300
+        timeout_seconds: int = 300,
     ) -> Dict:
         """
         Deploy Strands agent to AgentCore Runtime.
@@ -363,12 +361,14 @@ class AgentCoreRuntimeDeployer:
                 response = self.ssm.get_parameter(
                     Name=PARAMETER_PATHS["lab_03"]["runtime_role_arn"]
                 )
-                role_arn = response['Parameter']['Value']
+                role_arn = response["Parameter"]["Value"]
                 self._log("Retrieved role ARN from Parameter Store", "info")
             except ClientError:
-                self._log("Role ARN not found in Parameter Store. Creating role...", "warning")
+                self._log(
+                    "Role ARN not found in Parameter Store. Creating role...", "warning"
+                )
                 role_info = self.create_runtime_iam_role()
-                role_arn = role_info['role_arn']
+                role_arn = role_info["role_arn"]
 
         try:
             # Create runtime using bedrock-agentcore-starter-toolkit
@@ -380,7 +380,8 @@ class AgentCoreRuntimeDeployer:
                 role_arn=role_arn,
                 region_name=self.region,
                 timeout_seconds=timeout_seconds,
-                description=description or "Strands remediation agent with Code Interpreter - Lab 03"
+                description=description
+                or "Strands remediation agent with Code Interpreter - Lab 03",
             )
 
             # Deploy to AgentCore
@@ -390,8 +391,8 @@ class AgentCoreRuntimeDeployer:
 
             deployment_info = {
                 "runtime_name": self.runtime_name,
-                "runtime_id": runtime_config.get('agent_runtime_id'),
-                "runtime_arn": runtime_config.get('agent_runtime_arn'),
+                "runtime_id": runtime_config.get("agent_runtime_id"),
+                "runtime_arn": runtime_config.get("agent_runtime_arn"),
                 "role_arn": role_arn,
                 "region": self.region,
                 "deployment_time": datetime.utcnow().isoformat(),
@@ -400,8 +401,8 @@ class AgentCoreRuntimeDeployer:
                 "tools": [
                     "validate_remediation_environment",
                     "generate_remediation_plan",
-                    "execute_remediation_step"
-                ]
+                    "execute_remediation_step",
+                ],
             }
 
             # Store deployment info in Parameter Store
@@ -410,7 +411,7 @@ class AgentCoreRuntimeDeployer:
                 Value=json.dumps(deployment_info, indent=2),
                 Type="String",
                 Overwrite=True,
-                Description="Lab-03 AgentCore Runtime deployment configuration"
+                Description="Lab-03 AgentCore Runtime deployment configuration",
             )
 
             return deployment_info
@@ -435,8 +436,8 @@ class AgentCoreRuntimeDeployer:
                 response = self.ssm.get_parameter(
                     Name=f"/{self.prefix}/lab-03/runtime-config"
                 )
-                config = json.loads(response['Parameter']['Value'])
-                runtime_id = config.get('runtime_id')
+                config = json.loads(response["Parameter"]["Value"])
+                runtime_id = config.get("runtime_id")
 
             if not runtime_id:
                 self._log("Runtime ID not found", "error")
@@ -448,23 +449,25 @@ class AgentCoreRuntimeDeployer:
             )
 
             status_info = {
-                "runtime_id": response['agentRuntime']['agentRuntimeId'],
-                "runtime_arn": response['agentRuntime']['agentRuntimeArn'],
-                "status": response['agentRuntime']['status'],
-                "created_at": response['agentRuntime'].get('createdAt'),
-                "last_modified": response['agentRuntime'].get('lastModifiedAt')
+                "runtime_id": response["agentRuntime"]["agentRuntimeId"],
+                "runtime_arn": response["agentRuntime"]["agentRuntimeArn"],
+                "status": response["agentRuntime"]["status"],
+                "created_at": response["agentRuntime"].get("createdAt"),
+                "last_modified": response["agentRuntime"].get("lastModifiedAt"),
             }
 
             self._log(f"Runtime status: {status_info['status']}", "info")
             return status_info
 
         except ClientError as e:
-            if e.response['Error']['Code'] == 'ResourceNotFoundException':
+            if e.response["Error"]["Code"] == "ResourceNotFoundException":
                 self._log(f"Runtime not found: {runtime_id}", "warning")
                 return {"status": "NOT_FOUND"}
             raise
 
-    def save_deployment_config(self, config: Dict, output_path: Optional[Path] = None) -> Path:
+    def save_deployment_config(
+        self, config: Dict, output_path: Optional[Path] = None
+    ) -> Path:
         """
         Save deployment configuration to file.
 
@@ -476,9 +479,11 @@ class AgentCoreRuntimeDeployer:
             Path to saved configuration file
         """
         if not output_path:
-            output_path = Path(__file__).parent.parent.parent / "lab_03_deployment_config.json"
+            output_path = (
+                Path(__file__).parent.parent.parent / "lab_03_deployment_config.json"
+            )
 
-        with open(output_path, 'w') as f:
+        with open(output_path, "w") as f:
             json.dump(config, f, indent=2)
 
         self._log(f"Configuration saved to {output_path}", "success")
@@ -501,7 +506,7 @@ class AgentCoreRuntimeDeployer:
                 f"Delete Lab-03 runtime '{self.runtime_name}' and related resources? "
                 "This cannot be undone. (yes/no): "
             )
-            if confirm.lower() != 'yes':
+            if confirm.lower() != "yes":
                 self._log("Cleanup cancelled", "warning")
                 return False
 
@@ -511,8 +516,8 @@ class AgentCoreRuntimeDeployer:
                 response = self.ssm.get_parameter(
                     Name=f"/{self.prefix}/lab-03/runtime-config"
                 )
-                config = json.loads(response['Parameter']['Value'])
-                runtime_id = config.get('runtime_id')
+                config = json.loads(response["Parameter"]["Value"])
+                runtime_id = config.get("runtime_id")
 
                 if runtime_id:
                     # Delete runtime
@@ -521,36 +526,39 @@ class AgentCoreRuntimeDeployer:
                     )
                     self._log(f"Deleted runtime: {runtime_id}", "success")
             except ClientError as e:
-                if e.response['Error']['Code'] != 'ParameterNotFound':
+                if e.response["Error"]["Code"] != "ParameterNotFound":
                     self._log(f"Error deleting runtime: {e}", "warning")
 
             # Delete IAM role and policies
             try:
                 self.iam.delete_role_policy(
-                    RoleName=RUNTIME_ROLE_NAME,
-                    PolicyName=RUNTIME_POLICY_NAME
+                    RoleName=RUNTIME_ROLE_NAME, PolicyName=RUNTIME_POLICY_NAME
                 )
                 self._log(f"Deleted role policy: {RUNTIME_POLICY_NAME}", "success")
             except ClientError as e:
-                if e.response['Error']['Code'] != 'NoSuchEntity':
+                if e.response["Error"]["Code"] != "NoSuchEntity":
                     self._log(f"Error deleting policy: {e}", "warning")
 
             try:
                 self.iam.delete_role(RoleName=RUNTIME_ROLE_NAME)
                 self._log(f"Deleted IAM role: {RUNTIME_ROLE_NAME}", "success")
             except ClientError as e:
-                if e.response['Error']['Code'] != 'NoSuchEntity':
+                if e.response["Error"]["Code"] != "NoSuchEntity":
                     self._log(f"Error deleting role: {e}", "warning")
 
             # Delete Parameter Store entries
             try:
-                self.ssm.delete_parameter(Name=PARAMETER_PATHS["lab_03"]["runtime_role_arn"])
+                self.ssm.delete_parameter(
+                    Name=PARAMETER_PATHS["lab_03"]["runtime_role_arn"]
+                )
                 self._log("Deleted Parameter Store entry: runtime-role-arn", "success")
             except ClientError:
                 pass
 
             try:
-                self.ssm.delete_parameter(Name=PARAMETER_PATHS["lab_03"]["runtime_config"])
+                self.ssm.delete_parameter(
+                    Name=PARAMETER_PATHS["lab_03"]["runtime_config"]
+                )
                 self._log("Deleted Parameter Store entry: runtime-config", "success")
             except ClientError:
                 pass
@@ -560,9 +568,11 @@ class AgentCoreRuntimeDeployer:
                 log_groups = self.logs.describe_log_groups(
                     logGroupNamePrefix=f"/aws/bedrock-agentcore/runtime/{self.runtime_name}"
                 )
-                for log_group in log_groups.get('logGroups', []):
-                    self.logs.delete_log_group(logGroupName=log_group['logGroupName'])
-                    self._log(f"Deleted log group: {log_group['logGroupName']}", "success")
+                for log_group in log_groups.get("logGroups", []):
+                    self.logs.delete_log_group(logGroupName=log_group["logGroupName"])
+                    self._log(
+                        f"Deleted log group: {log_group['logGroupName']}", "success"
+                    )
             except ClientError:
                 pass
 
@@ -574,13 +584,18 @@ class AgentCoreRuntimeDeployer:
             raise
 
 
-def store_runtime_configuration(runtime_arn: str, runtime_id: str = None, region: str = "us-west-2", prefix: str = "aiml301_sre_agentcore") -> None:
+def store_runtime_configuration(
+    runtime_arn: str,
+    runtime_id: str = None,
+    region: str = "us-west-2",
+    prefix: str = "aiml301_sre_agentcore",
+) -> None:
     """Store runtime configuration in Parameter Store for persistence across sessions"""
     from lab_helpers.parameter_store import put_parameter
 
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("🔍 DEBUG: store_runtime_configuration() called")
-    print("="*70)
+    print("=" * 70)
     print(f"  Runtime ARN: {runtime_arn}")
     print(f"  Runtime ID: {runtime_id}")
     print(f"  Region: {region}")
@@ -598,12 +613,13 @@ def store_runtime_configuration(runtime_arn: str, runtime_id: str = None, region
             value=runtime_arn,
             description="AgentCore Runtime ARN for Lab-03",
             region_name=region,
-            overwrite=True
+            overwrite=True,
         )
         print(f"✅ Successfully stored runtime ARN (version: {result})")
     except Exception as e:
         print(f"❌ Failed to store runtime ARN: {e}")
         import traceback
+
         traceback.print_exc()
         raise
 
@@ -619,17 +635,18 @@ def store_runtime_configuration(runtime_arn: str, runtime_id: str = None, region
                 value=runtime_id,
                 description="AgentCore Runtime ID for Lab-03",
                 region_name=region,
-                overwrite=True
+                overwrite=True,
             )
             print(f"✅ Successfully stored runtime ID (version: {result})")
         except Exception as e:
             print(f"❌ Failed to store runtime ID: {e}")
             import traceback
+
             traceback.print_exc()
             raise
     else:
         print("\n⏭️  Runtime ID not provided, skipping...")
 
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("✅ store_runtime_configuration() complete")
-    print("="*70 + "\n")
+    print("=" * 70 + "\n")

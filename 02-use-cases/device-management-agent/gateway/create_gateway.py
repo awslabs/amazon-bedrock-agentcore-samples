@@ -48,28 +48,27 @@ gateway_client = GatewayClient(region_name="us-west-2")
 load_dotenv()
 
 # Get environment variables
-AWS_REGION = os.getenv('AWS_REGION')
-ENDPOINT_URL = os.getenv('ENDPOINT_URL')
-COGNITO_USERPOOL_ID = os.getenv('COGNITO_USERPOOL_ID')
-COGNITO_CLIENT_ID = os.getenv('COGNITO_CLIENT_ID')
-GATEWAY_NAME = os.getenv('GATEWAY_NAME', 'Device-Management-Gateway')
-ROLE_ARN = os.getenv('ROLE_ARN')
-GATEWAY_DESCRIPTION = os.getenv('GATEWAY_DESCRIPTION', 'Device Management Gateway')
+AWS_REGION = os.getenv("AWS_REGION")
+ENDPOINT_URL = os.getenv("ENDPOINT_URL")
+COGNITO_USERPOOL_ID = os.getenv("COGNITO_USERPOOL_ID")
+COGNITO_CLIENT_ID = os.getenv("COGNITO_CLIENT_ID")
+GATEWAY_NAME = os.getenv("GATEWAY_NAME", "Device-Management-Gateway")
+ROLE_ARN = os.getenv("ROLE_ARN")
+GATEWAY_DESCRIPTION = os.getenv("GATEWAY_DESCRIPTION", "Device Management Gateway")
 
 print("Endpoint URL: {}".format(ENDPOINT_URL))
 print("AWS Region: {}".format(AWS_REGION))
 
 # Initialize the Bedrock Agent Core Control client
 bedrock_agent_core_client = boto3.client(
-    'bedrock-agentcore-control', 
-    region_name=AWS_REGION
+    "bedrock-agentcore-control", region_name=AWS_REGION
 )
 
 # Configure the authentication
 auth_config = {
-    "customJWTAuthorizer": { 
+    "customJWTAuthorizer": {
         "allowedClients": [COGNITO_CLIENT_ID],
-        "discoveryUrl": f"https://cognito-idp.{AWS_REGION}.amazonaws.com/{COGNITO_USERPOOL_ID}/.well-known/openid-configuration"
+        "discoveryUrl": f"https://cognito-idp.{AWS_REGION}.amazonaws.com/{COGNITO_USERPOOL_ID}/.well-known/openid-configuration",
     }
 }
 
@@ -77,37 +76,37 @@ auth_config = {
 try:
     create_response = bedrock_agent_core_client.create_gateway(
         name=GATEWAY_NAME,
-        roleArn=ROLE_ARN,  # The IAM Role must have permissions to create/list/get/delete Gateway 
-        protocolType='MCP',
-        authorizerType='CUSTOM_JWT',
-        authorizerConfiguration=auth_config, 
-        description=GATEWAY_DESCRIPTION
+        roleArn=ROLE_ARN,  # The IAM Role must have permissions to create/list/get/delete Gateway
+        protocolType="MCP",
+        authorizerType="CUSTOM_JWT",
+        authorizerConfiguration=auth_config,
+        description=GATEWAY_DESCRIPTION,
     )
 
     # Print the gateway ID and other information
-    gateway_id = create_response.get('gatewayId')
-    gateway_arn = create_response.get('gatewayArn')
+    gateway_id = create_response.get("gatewayId")
+    gateway_arn = create_response.get("gatewayArn")
     print("Gateway created successfully!")
     print(f"Gateway ID: {gateway_id}")
     print(f"Gateway ARN: {gateway_arn}")
     print(f"Creation Time: {create_response.get('creationTime')}")
 
     # Update the .env file with the gateway information
-    env_file_path = '.env'
+    env_file_path = ".env"
     try:
         if gateway_id:
-            set_key(env_file_path, 'GATEWAY_ID', gateway_id)
+            set_key(env_file_path, "GATEWAY_ID", gateway_id)
             print(f"Updated .env file with GATEWAY_ID: {gateway_id}")
-        
+
         if gateway_arn:
-            set_key(env_file_path, 'GATEWAY_ARN', gateway_arn)
+            set_key(env_file_path, "GATEWAY_ARN", gateway_arn)
             print(f"Updated .env file with GATEWAY_ARN: {gateway_arn}")
-            
+
         # Also keep the legacy GATEWAY_IDENTIFIER for backward compatibility
         if gateway_id:
-            set_key(env_file_path, 'GATEWAY_IDENTIFIER', gateway_id)
+            set_key(env_file_path, "GATEWAY_IDENTIFIER", gateway_id)
             print(f"Updated .env file with GATEWAY_IDENTIFIER: {gateway_id}")
-            
+
     except Exception as e:
         print(f"Warning: Failed to update .env file: {e}")
 

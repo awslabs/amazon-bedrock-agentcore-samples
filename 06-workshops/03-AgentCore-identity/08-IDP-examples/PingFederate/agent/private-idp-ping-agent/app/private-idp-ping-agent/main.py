@@ -21,7 +21,9 @@ from bedrock_agentcore.runtime import BedrockAgentCoreApp
 app = BedrockAgentCoreApp()
 log = app.logger
 
-CREDENTIAL_PROVIDER_NAME = os.environ.get("CREDENTIAL_PROVIDER_NAME", "ping-private-idp")
+CREDENTIAL_PROVIDER_NAME = os.environ.get(
+    "CREDENTIAL_PROVIDER_NAME", "ping-private-idp"
+)
 GATEWAY_URL = os.environ.get("GATEWAY_URL", "")
 
 
@@ -60,12 +62,14 @@ def fetch_token_from_private_idp(*, access_token: str) -> dict:
 
 def call_gateway(access_token: str) -> dict:
     """Call AgentCore Gateway's tools/list with the PingFederate token as a Bearer token."""
-    body = json.dumps({
-        "jsonrpc": "2.0",
-        "id": 1,
-        "method": "tools/list",
-        "params": {},
-    }).encode()
+    body = json.dumps(
+        {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "tools/list",
+            "params": {},
+        }
+    ).encode()
 
     req = urllib.request.Request(GATEWAY_URL, data=body, method="POST")
     req.add_header("Content-Type", "application/json")
@@ -89,7 +93,9 @@ async def invoke(payload, context):
 
     try:
         token_info = fetch_token_from_private_idp()
-        log.info("Token acquired successfully: client_id=%s", token_info.get("client_id"))
+        log.info(
+            "Token acquired successfully: client_id=%s", token_info.get("client_id")
+        )
         return json.dumps(token_info, indent=2)
     except Exception as e:
         log.error("Failed to acquire token: %s", e)

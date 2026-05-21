@@ -462,7 +462,9 @@ class AgentCoreToolkit:
                 print(f"Warning: Token request failed: {token_response['error']}")
                 return None
 
-            return token_response.get("access_token")  # codeql[py/clear-text-logging-sensitive-data]
+            return token_response.get(
+                "access_token"
+            )  # codeql[py/clear-text-logging-sensitive-data]
 
         except KeyError as e:
             print(f"Warning: Missing required field in token response: {e}")

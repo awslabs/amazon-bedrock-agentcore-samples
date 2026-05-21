@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import os, sys
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 """
 CLI for creating and deleting the Amazon Bedrock AgentCore Gateway for role-based-hr-data-agent.
@@ -25,8 +26,12 @@ def cli():
 
 
 @cli.command()
-@click.option("--config", default="prerequisite/prereqs_config.yaml", show_default=True,
-              help="Path to prereqs_config.yaml")
+@click.option(
+    "--config",
+    default="prerequisite/prereqs_config.yaml",
+    show_default=True,
+    help="Path to prereqs_config.yaml",
+)
 @click.option("--region", default=None, help="AWS region (overrides config)")
 def create(config: str, region: str):
     """Create the AgentCore MCP Gateway with Lambda target and interceptors."""
@@ -43,18 +48,25 @@ def create(config: str, region: str):
 
     # Collect all persona client IDs for the JWT authorizer allowedAudience
     persona_client_ids = [
-        cid for cid in [
+        cid
+        for cid in [
             get_ssm_parameter(f"/app/hrdlp/personas/{p}/client-id")
             for p in ["hr-manager", "hr-specialist", "employee", "admin"]
-        ] if cid
+        ]
+        if cid
     ]
 
     if not all([lambda_arn, gateway_role_arn, user_pool_id]):
-        click.echo("ERROR: Required SSM parameters missing. Run prereq.sh first.", err=True)
+        click.echo(
+            "ERROR: Required SSM parameters missing. Run prereq.sh first.", err=True
+        )
         sys.exit(1)
 
     if not persona_client_ids:
-        click.echo("ERROR: No persona client IDs found in SSM. Run cognito_credentials_provider.py create first.", err=True)
+        click.echo(
+            "ERROR: No persona client IDs found in SSM. Run cognito_credentials_provider.py create first.",
+            err=True,
+        )
         sys.exit(1)
 
     client = boto3.client("bedrock-agentcore-control", region_name=region)
@@ -84,24 +96,32 @@ def create(config: str, region: str):
             "allowedClients": persona_client_ids,
         }
     }
-    click.echo(f"  Authorizer: {len(persona_client_ids)} persona clients in allowedClients")
+    click.echo(
+        f"  Authorizer: {len(persona_client_ids)} persona clients in allowedClients"
+    )
 
     # Build interceptor configurations — passRequestHeaders ensures Authorization header
     # flows through to interceptors so they can decode the JWT for tenant resolution
     interceptor_configs = []
     if request_interceptor_arn:
-        interceptor_configs.append({
-            "interceptor": {"lambda": {"arn": request_interceptor_arn}},
-            "interceptionPoints": ["REQUEST"],
-            "inputConfiguration": {"passRequestHeaders": True},
-        })
+        interceptor_configs.append(
+            {
+                "interceptor": {"lambda": {"arn": request_interceptor_arn}},
+                "interceptionPoints": ["REQUEST"],
+                "inputConfiguration": {"passRequestHeaders": True},
+            }
+        )
     if response_interceptor_arn:
-        interceptor_configs.append({
-            "interceptor": {"lambda": {"arn": response_interceptor_arn}},
-            "interceptionPoints": ["RESPONSE"],
-            "inputConfiguration": {"passRequestHeaders": True},
-        })
-    click.echo(f"  Interceptors: {len(interceptor_configs)} configured (REQUEST + RESPONSE)")
+        interceptor_configs.append(
+            {
+                "interceptor": {"lambda": {"arn": response_interceptor_arn}},
+                "interceptionPoints": ["RESPONSE"],
+                "inputConfiguration": {"passRequestHeaders": True},
+            }
+        )
+    click.echo(
+        f"  Interceptors: {len(interceptor_configs)} configured (REQUEST + RESPONSE)"
+    )
 
     click.echo(f"Creating Gateway: {gateway_name} in {region}")
 
@@ -144,7 +164,9 @@ def create(config: str, region: str):
 
         # Construct full Gateway ARN (needed by Cedar policies)
         account_id = boto3.client("sts").get_caller_identity()["Account"]
-        gateway_arn = f"arn:aws:bedrock-agentcore:{region}:{account_id}:gateway/{gateway_id}"
+        gateway_arn = (
+            f"arn:aws:bedrock-agentcore:{region}:{account_id}:gateway/{gateway_id}"
+        )
 
         # Persist to SSM
         put_ssm_parameter(cfg["ssm_parameters"]["gateway_id"], gateway_id)
@@ -153,9 +175,13 @@ def create(config: str, region: str):
 
         click.echo(f"\nGateway URL: {gateway_url}")
         click.echo(f"Gateway ARN: {gateway_arn}")
-        click.echo("SSM parameters updated (/app/hrdlp/gateway-id, gateway-url, gateway-arn).")
+        click.echo(
+            "SSM parameters updated (/app/hrdlp/gateway-id, gateway-url, gateway-arn)."
+        )
         click.echo("\nNext: update Cedar policy with Gateway ARN:")
-        click.echo(f"  sed -i 's|<YOUR_GATEWAY_ARN>|{gateway_arn}|g' prerequisite/cedar/hr_dlp_policies.cedar")
+        click.echo(
+            f"  sed -i 's|<YOUR_GATEWAY_ARN>|{gateway_arn}|g' prerequisite/cedar/hr_dlp_policies.cedar"
+        )
 
     except Exception as e:
         click.echo(f"ERROR: {e}", err=True)
@@ -171,7 +197,9 @@ def delete(gateway_id: str, region: str):
     click.echo(f"Deleting gateway: {gateway_id}")
     try:
         # List and delete targets first
-        targets = client.list_gateway_targets(gatewayIdentifier=gateway_id).get("items", [])
+        targets = client.list_gateway_targets(gatewayIdentifier=gateway_id).get(
+            "items", []
+        )
         for target in targets:
             client.delete_gateway_target(
                 gatewayIdentifier=gateway_id, targetId=target["targetId"]

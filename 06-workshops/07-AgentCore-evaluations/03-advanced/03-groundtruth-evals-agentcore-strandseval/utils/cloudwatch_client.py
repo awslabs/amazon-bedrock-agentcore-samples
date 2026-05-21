@@ -174,7 +174,9 @@ class ObservabilityClient:
         self.logger = logging.getLogger("cloudwatch_client")
         if not self.logger.handlers:
             handler = logging.StreamHandler()
-            formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+            formatter = logging.Formatter(
+                "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+            )
             handler.setFormatter(formatter)
             self.logger.addHandler(handler)
             self.logger.setLevel(logging.INFO)
@@ -195,7 +197,11 @@ class ObservabilityClient:
         Returns:
             List of Span objects
         """
-        self.logger.info("Querying spans for session: %s from log group: %s", session_id, self.log_group)
+        self.logger.info(
+            "Querying spans for session: %s from log group: %s",
+            session_id,
+            self.log_group,
+        )
 
         query_string = self.query_builder.build_spans_by_session_query(session_id)
 
@@ -243,7 +249,9 @@ class ObservabilityClient:
             )
 
             logs = [RuntimeLog.from_cloudwatch_result(result) for result in results]
-            self.logger.info("Found %d runtime logs across %d traces", len(logs), len(trace_ids))
+            self.logger.info(
+                "Found %d runtime logs across %d traces", len(logs), len(trace_ids)
+            )
             return logs
 
         except Exception as e:
@@ -280,7 +288,9 @@ class ObservabilityClient:
         if include_runtime_logs:
             trace_ids = session_data.get_trace_ids()
             if trace_ids:
-                runtime_logs = self.query_runtime_logs_by_traces(trace_ids, start_time_ms, end_time_ms)
+                runtime_logs = self.query_runtime_logs_by_traces(
+                    trace_ids, start_time_ms, end_time_ms
+                )
                 session_data.runtime_logs = runtime_logs
 
         self.logger.info(
@@ -426,12 +436,16 @@ class ObservabilityClient:
         last_seen = None
         if first_seen_str:
             try:
-                first_seen = datetime.fromisoformat(first_seen_str.replace("Z", "+00:00"))
+                first_seen = datetime.fromisoformat(
+                    first_seen_str.replace("Z", "+00:00")
+                )
                 # Ensure timezone-aware
                 if first_seen.tzinfo is None:
                     first_seen = first_seen.replace(tzinfo=timezone.utc)
             except (ValueError, TypeError) as e:
-                self.logger.warning(f"Failed to parse first_seen '{first_seen_str}': {e}")
+                self.logger.warning(
+                    f"Failed to parse first_seen '{first_seen_str}': {e}"
+                )
         if last_seen_str:
             try:
                 last_seen = datetime.fromisoformat(last_seen_str.replace("Z", "+00:00"))
@@ -506,12 +520,16 @@ class ObservabilityClient:
         last_seen = None
         if first_eval_str:
             try:
-                first_seen = datetime.fromisoformat(first_eval_str.replace("Z", "+00:00"))
+                first_seen = datetime.fromisoformat(
+                    first_eval_str.replace("Z", "+00:00")
+                )
                 # Ensure timezone-aware
                 if first_seen.tzinfo is None:
                     first_seen = first_seen.replace(tzinfo=timezone.utc)
             except (ValueError, TypeError) as e:
-                self.logger.warning(f"Failed to parse first_eval '{first_eval_str}': {e}")
+                self.logger.warning(
+                    f"Failed to parse first_eval '{first_eval_str}': {e}"
+                )
         if last_eval_str:
             try:
                 last_seen = datetime.fromisoformat(last_eval_str.replace("Z", "+00:00"))
@@ -581,7 +599,9 @@ class ObservabilityClient:
         while True:
             elapsed = time.time() - start_poll_time
             if elapsed > self.QUERY_TIMEOUT_SECONDS:
-                raise TimeoutError(f"Query {query_id} timed out after {self.QUERY_TIMEOUT_SECONDS} seconds")
+                raise TimeoutError(
+                    f"Query {query_id} timed out after {self.QUERY_TIMEOUT_SECONDS} seconds"
+                )
 
             result = self.logs_client.get_query_results(queryId=query_id)
             status = result["status"]

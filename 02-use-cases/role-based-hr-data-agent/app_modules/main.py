@@ -74,11 +74,15 @@ def main():
     # ------------------------------------------------------------------
     if not auth.is_authenticated():
         st.title("🔐 HR Data Agent")
-        st.markdown("Secure HR data access with role-based DLP enforcement via Amazon Bedrock AgentCore.")
+        st.markdown(
+            "Secure HR data access with role-based DLP enforcement via Amazon Bedrock AgentCore."
+        )
         st.markdown("---")
         if st.button("Login with Cognito", use_container_width=True):
-            st.markdown(f'<meta http-equiv="refresh" content="0; url={auth.get_auth_url()}">',
-                        unsafe_allow_html=True)
+            st.markdown(
+                f'<meta http-equiv="refresh" content="0; url={auth.get_auth_url()}">',
+                unsafe_allow_html=True,
+            )
         return
 
     # ------------------------------------------------------------------
@@ -143,7 +147,9 @@ def main():
 
         with st.chat_message("assistant"):
             placeholder = st.empty()
-            placeholder.markdown('<span class="thinking">Thinking...</span>', unsafe_allow_html=True)
+            placeholder.markdown(
+                '<span class="thinking">Thinking...</span>', unsafe_allow_html=True
+            )
             response = chat.send_message(
                 message=prompt,
                 session_id=st.session_state.session_id,
@@ -151,4 +157,6 @@ def main():
                 message_placeholder=placeholder,
             )
             if response:
-                st.session_state.messages.append({"role": "assistant", "content": response})
+                st.session_state.messages.append(
+                    {"role": "assistant", "content": response}
+                )

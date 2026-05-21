@@ -55,6 +55,7 @@ SAMPLE_JWT_SECRET = "test-secret-key-for-jwt-signing-in-tests-only"
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def exchange_service() -> TokenExchangeService:
     """Create a TokenExchangeService instance with default policies."""
@@ -119,9 +120,13 @@ def profile_scope_policy() -> ScopePolicy:
     return ScopePolicy(
         target_agent="customer_profile_agent",
         allowed_scopes={
-            "openid", "profile", "email",
-            "profile:personal:read", "profile:personal:write",
-            "profile:preferences:read", "profile:preferences:write",
+            "openid",
+            "profile",
+            "email",
+            "profile:personal:read",
+            "profile:personal:write",
+            "profile:preferences:read",
+            "profile:preferences:write",
         },
         description="Profile agent: OIDC identity + profile read/write",
     )
@@ -134,9 +139,11 @@ def accounts_scope_policy() -> ScopePolicy:
         target_agent="accounts_agent",
         allowed_scopes={
             "openid",
-            "accounts:savings:read", "accounts:savings:write",
+            "accounts:savings:read",
+            "accounts:savings:write",
             "accounts:transaction:read",
-            "accounts:credit:read", "accounts:credit:write",
+            "accounts:credit:read",
+            "accounts:credit:write",
             "accounts:investment:read",
         },
         description="Accounts agent: openid + account-type scopes",
@@ -146,6 +153,7 @@ def accounts_scope_policy() -> ScopePolicy:
 # ---------------------------------------------------------------------------
 # TestTokenExchangeRequest
 # ---------------------------------------------------------------------------
+
 
 class TestTokenExchangeRequest:
     """Test TokenExchangeRequest validation per RFC 8693 Section 2.1."""
@@ -206,22 +214,32 @@ class TestTokenExchangeRequest:
 # TestScopePolicy
 # ---------------------------------------------------------------------------
 
+
 class TestScopePolicy:
     """Test ScopePolicy scope attenuation logic."""
 
     def test_attenuation_computes_intersection(self, profile_scope_policy: ScopePolicy):
         """Attenuation should return only scopes in both the original set and the policy."""
         original = [
-            "openid", "profile", "email",
-            "profile:personal:read", "profile:personal:write",
-            "profile:preferences:read", "profile:preferences:write",
-            "accounts:savings:read", "accounts:credit:read",  # should be stripped
+            "openid",
+            "profile",
+            "email",
+            "profile:personal:read",
+            "profile:personal:write",
+            "profile:preferences:read",
+            "profile:preferences:write",
+            "accounts:savings:read",
+            "accounts:credit:read",  # should be stripped
         ]
         result = profile_scope_policy.attenuate(original)
         assert set(result) == {
-            "openid", "profile", "email",
-            "profile:personal:read", "profile:personal:write",
-            "profile:preferences:read", "profile:preferences:write",
+            "openid",
+            "profile",
+            "email",
+            "profile:personal:read",
+            "profile:personal:write",
+            "profile:preferences:read",
+            "profile:preferences:write",
         }
         assert "accounts:savings:read" not in result
         assert "accounts:credit:read" not in result
@@ -249,6 +267,7 @@ class TestScopePolicy:
 # ---------------------------------------------------------------------------
 # TestTokenExchangeService
 # ---------------------------------------------------------------------------
+
 
 class TestTokenExchangeService:
     """Test the core token exchange flow."""
@@ -475,7 +494,9 @@ class TestTokenExchangeService:
             subject_token="not.a.valid.jwt",
             audience="customer_profile_agent",
         )
-        with pytest.raises(InvalidTokenError, match="(Cannot decode|Invalid JWT format)"):
+        with pytest.raises(
+            InvalidTokenError, match="(Cannot decode|Invalid JWT format)"
+        ):
             exchange_service.exchange_token(request)
 
     def test_scope_never_elevated(
@@ -571,6 +592,7 @@ class TestTokenExchangeService:
 # TestTokenExchangeValidation
 # ---------------------------------------------------------------------------
 
+
 class TestTokenExchangeValidation:
     """Test validation of exchanged tokens by sub-agents."""
 
@@ -658,6 +680,7 @@ class TestTokenExchangeValidation:
 # ---------------------------------------------------------------------------
 # TestTokenExchangeServiceInit
 # ---------------------------------------------------------------------------
+
 
 class TestTokenExchangeServiceInit:
     """Test TokenExchangeService initialization and configuration."""

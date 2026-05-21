@@ -35,7 +35,7 @@ def _load_store() -> dict:
     _ensure_store_dir()
     if STORE_FILE.exists():
         try:
-            with open(STORE_FILE, 'r') as f:
+            with open(STORE_FILE, "r") as f:
                 return json.load(f)
         except (json.JSONDecodeError, IOError):
             return {}
@@ -45,7 +45,7 @@ def _load_store() -> dict:
 def _save_store(store: dict):
     """Save store to file with secure permissions (0o600)."""
     _ensure_store_dir()
-    with open(STORE_FILE, 'w') as f:
+    with open(STORE_FILE, "w") as f:
         json.dump(store, f)
     # Set restrictive file permissions (owner read/write only) on non-Windows
     if sys.platform != "win32":
@@ -55,8 +55,7 @@ def _save_store(store: dict):
 def _cleanup_expired(store: dict) -> dict:
     """Remove expired entries."""
     now = time.time()
-    return {k: v for k, v in store.items()
-            if v.get('expires_at', 0) > now}
+    return {k: v for k, v in store.items() if v.get("expires_at", 0) > now}
 
 
 def store_pkce_state(state: str, code_verifier: str):
@@ -70,8 +69,8 @@ def store_pkce_state(state: str, code_verifier: str):
     store = _load_store()
     store = _cleanup_expired(store)
     store[state] = {
-        'code_verifier': code_verifier,
-        'expires_at': time.time() + EXPIRY_SECONDS
+        "code_verifier": code_verifier,
+        "expires_at": time.time() + EXPIRY_SECONDS,
     }
     _save_store(store)
 
@@ -88,8 +87,8 @@ def get_pkce_state(state: str) -> Optional[str]:
     """
     store = _load_store()
     entry = store.get(state)
-    if entry and entry.get('expires_at', 0) > time.time():
-        return entry.get('code_verifier')
+    if entry and entry.get("expires_at", 0) > time.time():
+        return entry.get("code_verifier")
     return None
 
 

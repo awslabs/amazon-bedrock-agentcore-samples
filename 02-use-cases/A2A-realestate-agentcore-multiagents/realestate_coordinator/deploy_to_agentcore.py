@@ -35,7 +35,7 @@ config_params = {
     "requirements_file": requirements_file,
     "region": region,
     "agent_name": agent_name,
-    "protocol": "A2A"
+    "protocol": "A2A",
 }
 
 response = agentcore_runtime.configure(**config_params)
@@ -48,14 +48,14 @@ property_search_arn = None
 property_booking_arn = None
 
 try:
-    with open("../propertysearchagent_strands/.agent_arn", "r", encoding='utf-8') as f:
+    with open("../propertysearchagent_strands/.agent_arn", "r", encoding="utf-8") as f:
         property_search_arn = f.read().strip()
     print(f"✓ Property Search Agent ARN: {property_search_arn}")
 except FileNotFoundError:
     print("⚠ Property Search Agent ARN not found - deploy it first")
 
 try:
-    with open("../propertybookingagent_strands/.agent_arn", "r", encoding='utf-8') as f:
+    with open("../propertybookingagent_strands/.agent_arn", "r", encoding="utf-8") as f:
         property_booking_arn = f.read().strip()
     print(f"✓ Property Booking Agent ARN: {property_booking_arn}")
 except FileNotFoundError:
@@ -67,14 +67,20 @@ print()
 env_vars = {}
 if property_search_arn:
     from urllib.parse import quote
-    escaped_arn = quote(property_search_arn, safe='')
-    env_vars["PROPERTY_SEARCH_AGENT_URL"] = f"https://bedrock-agentcore.{region}.amazonaws.com/runtimes/{escaped_arn}/invocations/"
+
+    escaped_arn = quote(property_search_arn, safe="")
+    env_vars["PROPERTY_SEARCH_AGENT_URL"] = (
+        f"https://bedrock-agentcore.{region}.amazonaws.com/runtimes/{escaped_arn}/invocations/"
+    )
     print(f"✓ Property Search Agent URL configured")
 
 if property_booking_arn:
     from urllib.parse import quote
-    escaped_arn = quote(property_booking_arn, safe='')
-    env_vars["PROPERTY_BOOKING_AGENT_URL"] = f"https://bedrock-agentcore.{region}.amazonaws.com/runtimes/{escaped_arn}/invocations/"
+
+    escaped_arn = quote(property_booking_arn, safe="")
+    env_vars["PROPERTY_BOOKING_AGENT_URL"] = (
+        f"https://bedrock-agentcore.{region}.amazonaws.com/runtimes/{escaped_arn}/invocations/"
+    )
     print(f"✓ Property Booking Agent URL configured")
 
 print()
@@ -92,24 +98,24 @@ try:
     print(f"Agent ARN: {launch_result.agent_arn}")
     print(f"Agent ID: {launch_result.agent_id}")
     print()
-    
-    with open(".agent_arn", "w", encoding='utf-8') as f:
+
+    with open(".agent_arn", "w", encoding="utf-8") as f:
         f.write(launch_result.agent_arn)
     print("✓ Agent ARN saved to .agent_arn")
     print()
-    
+
     status_response = agentcore_runtime.status()
     status = status_response.endpoint["status"]
     print(f"Status: {status}")
     print()
-    
+
     if status in ["AVAILABLE", "READY"]:
         print("✓ Real Estate Coordinator is ready!")
         print()
         print("Test the coordinator:")
         print("  python test_coordinator.py")
         print()
-    
+
 except Exception as e:
     print()
     print("=" * 70)

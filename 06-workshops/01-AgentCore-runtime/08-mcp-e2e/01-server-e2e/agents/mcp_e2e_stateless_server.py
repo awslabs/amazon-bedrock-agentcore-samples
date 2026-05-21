@@ -5,14 +5,19 @@ from mcp.types import PromptMessage, TextContent
 from dynamo_utils import FinanceDB
 
 
-mcp = FastMCP(name="Stateless-MCP-Server",
-              host="0.0.0.0",   # nosec B104
-              stateless_http=True) # Stateless mode - no session persistence
+mcp = FastMCP(
+    name="Stateless-MCP-Server",
+    host="0.0.0.0",  # nosec B104
+    stateless_http=True,
+)  # Stateless mode - no session persistence
 
-db = FinanceDB() # Dynamo DB helper
+db = FinanceDB()  # Dynamo DB helper
+
 
 @mcp.tool()
-def add_expense(user_alias: str, amount: float, description: str, category: str = "other") -> str:
+def add_expense(
+    user_alias: str, amount: float, description: str, category: str = "other"
+) -> str:
     """Add a new expense transaction
 
     Args:
@@ -21,10 +26,15 @@ def add_expense(user_alias: str, amount: float, description: str, category: str 
         description: Description of the expense
         category: Expense category (food, transport, entertainment, bills, other)
     """
-    return db.add_transaction(user_alias, "expense", -abs(amount), description, category)
+    return db.add_transaction(
+        user_alias, "expense", -abs(amount), description, category
+    )
+
 
 @mcp.tool()
-def add_income(user_alias: str, amount: float, description: str, source: str = "salary") -> str:
+def add_income(
+    user_alias: str, amount: float, description: str, source: str = "salary"
+) -> str:
     """Add a new income transaction
 
     Args:
@@ -34,6 +44,7 @@ def add_income(user_alias: str, amount: float, description: str, source: str = "
         source: Income source (salary, freelance, investment, other)
     """
     return db.add_transaction(user_alias, "income", abs(amount), description, source)
+
 
 @mcp.tool()
 def set_budget(user_alias: str, category: str, monthly_limit: float) -> str:
@@ -46,6 +57,7 @@ def set_budget(user_alias: str, category: str, monthly_limit: float) -> str:
     """
     return db.set_budget(user_alias, category, monthly_limit)
 
+
 @mcp.tool()
 def get_balance(user_alias: str) -> str:
     """Get current account balance
@@ -56,8 +68,11 @@ def get_balance(user_alias: str) -> str:
     balance_data = db.get_balance(user_alias)
     return f"Balance: ${balance_data['balance']:.2f}\nTotal Income: ${balance_data['income']:.2f}\nTotal Expenses: ${balance_data['expenses']:.2f}"
 
+
 @mcp.prompt()
-def budget_analysis(user_alias: str, time_period: str = "current_month") -> PromptMessage:
+def budget_analysis(
+    user_alias: str, time_period: str = "current_month"
+) -> PromptMessage:
     """Analyze spending patterns and budget performance
 
     Args:
@@ -72,10 +87,19 @@ def budget_analysis(user_alias: str, time_period: str = "current_month") -> Prom
     for transaction in transactions:
         if transaction["type"] == "expense":
             category = transaction["category"]
-            current_spending[category] = current_spending.get(category, 0) + abs(float(transaction["amount"]))
+            current_spending[category] = current_spending.get(category, 0) + abs(
+                float(transaction["amount"])
+            )
 
-    spending_summary = "\n".join([f"- {cat}: ${amount:.2f}" for cat, amount in current_spending.items()])
-    budget_summary = "\n".join([f"- {budget['category']}: ${float(budget['monthly_limit']):.2f}/month" for budget in budgets])
+    spending_summary = "\n".join(
+        [f"- {cat}: ${amount:.2f}" for cat, amount in current_spending.items()]
+    )
+    budget_summary = "\n".join(
+        [
+            f"- {budget['category']}: ${float(budget['monthly_limit']):.2f}/month"
+            for budget in budgets
+        ]
+    )
 
     return PromptMessage(
         role="user",
@@ -94,12 +118,15 @@ Please provide:
 2. Categories where I'm overspending
 3. Recommendations for better budget management
 4. Trends and patterns you notice
-"""
-        )
+""",
+        ),
     )
 
+
 @mcp.prompt()
-def savings_plan(user_alias: str, target_amount: float, target_months: int = 12) -> PromptMessage:
+def savings_plan(
+    user_alias: str, target_amount: float, target_months: int = 12
+) -> PromptMessage:
     """Generate a personalized savings plan
 
     Args:
@@ -109,9 +136,9 @@ def savings_plan(user_alias: str, target_amount: float, target_months: int = 12)
     """
     # Calculate current financial situation from DynamoDB
     balance_data = db.get_balance(user_alias)
-    total_income = balance_data['income']
-    total_expenses = balance_data['expenses']
-    current_balance = balance_data['balance']
+    total_income = balance_data["income"]
+    total_expenses = balance_data["expenses"]
+    current_balance = balance_data["balance"]
 
     monthly_target = target_amount / target_months
 
@@ -137,9 +164,10 @@ Please provide:
 3. Ways to increase income if needed
 4. Monthly action plan to reach the target
 5. Emergency fund recommendations
-"""
-        )
+""",
+        ),
     )
+
 
 @mcp.resource("finance://monthly/{user_alias}")
 def get_monthly_summary(user_alias: str) -> str:
@@ -150,19 +178,26 @@ def get_monthly_summary(user_alias: str) -> str:
     # Get transactions from DynamoDB
     all_transactions = db.get_transactions(user_alias)
     monthly_transactions = [
-        t for t in all_transactions 
+        t
+        for t in all_transactions
         if datetime.fromisoformat(t["date"]) >= current_month_start
     ]
 
-    monthly_income = sum(float(t["amount"]) for t in monthly_transactions if t["type"] == "income")
-    monthly_expenses = sum(abs(float(t["amount"])) for t in monthly_transactions if t["type"] == "expense")
+    monthly_income = sum(
+        float(t["amount"]) for t in monthly_transactions if t["type"] == "income"
+    )
+    monthly_expenses = sum(
+        abs(float(t["amount"])) for t in monthly_transactions if t["type"] == "expense"
+    )
 
     # Group expenses by category
     expenses_by_category = {}
     for t in monthly_transactions:
         if t["type"] == "expense":
             category = t["category"]
-            expenses_by_category[category] = expenses_by_category.get(category, 0) + abs(float(t["amount"]))
+            expenses_by_category[category] = expenses_by_category.get(
+                category, 0
+            ) + abs(float(t["amount"]))
 
     summary = {
         "user": user_alias,
@@ -172,7 +207,7 @@ def get_monthly_summary(user_alias: str) -> str:
         "net": monthly_income - monthly_expenses,
         "expenses_by_category": expenses_by_category,
         "transaction_count": len(monthly_transactions),
-        "generated_at": datetime.now().isoformat()
+        "generated_at": datetime.now().isoformat(),
     }
 
     return json.dumps(summary, indent=2)
@@ -193,10 +228,14 @@ def get_budget_status(user_alias: str) -> str:
 
     monthly_spending = {}
     for transaction in all_transactions:
-        if (transaction["type"] == "expense" and 
-            datetime.fromisoformat(transaction["date"]) >= current_month_start):
+        if (
+            transaction["type"] == "expense"
+            and datetime.fromisoformat(transaction["date"]) >= current_month_start
+        ):
             category = transaction["category"]
-            monthly_spending[category] = monthly_spending.get(category, 0) + abs(float(transaction["amount"]))
+            monthly_spending[category] = monthly_spending.get(category, 0) + abs(
+                float(transaction["amount"])
+            )
 
     # Compare with budgets
     for budget in all_budgets:
@@ -212,7 +251,7 @@ def get_budget_status(user_alias: str) -> str:
             "remaining": remaining,
             "usage_percent": usage_percent,
             "status": "over_budget" if spent > budget_limit else "within_budget",
-            "set_date": budget["set_date"]
+            "set_date": budget["set_date"],
         }
 
     # Add categories with spending but no budget
@@ -224,15 +263,18 @@ def get_budget_status(user_alias: str) -> str:
                 "remaining": None,
                 "usage_percent": None,
                 "status": "no_budget_set",
-                "set_date": None
+                "set_date": None,
             }
 
-    return json.dumps({
-        "user": user_alias,
-        "month": now.strftime("%Y-%m"),
-        "budget_status": budget_status,
-        "generated_at": datetime.now().isoformat()
-    }, indent=2)
+    return json.dumps(
+        {
+            "user": user_alias,
+            "month": now.strftime("%Y-%m"),
+            "budget_status": budget_status,
+            "generated_at": datetime.now().isoformat(),
+        },
+        indent=2,
+    )
 
 
 if __name__ == "__main__":

@@ -12,7 +12,7 @@ from .claims_extractor import (
     validate_required_claims,
     extract_user_metadata,
     format_claim_for_logging,
-    DEFAULT_CLAIMS_NAMESPACE
+    DEFAULT_CLAIMS_NAMESPACE,
 )
 from .token_forwarder import TokenForwarder
 from .token_exchange import (
@@ -42,10 +42,8 @@ __all__ = [
     "extract_user_metadata",
     "format_claim_for_logging",
     "DEFAULT_CLAIMS_NAMESPACE",
-
     # Token forwarding
     "TokenForwarder",
-
     # RFC 8693 Token Exchange
     "TokenExchangeService",
     "TokenExchangeRequest",

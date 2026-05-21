@@ -6,6 +6,7 @@ from bedrock_agentcore.runtime import BedrockAgentCoreApp
 
 app = BedrockAgentCoreApp()
 
+
 # Create a custom tool
 @tool
 def weather():
@@ -22,6 +23,7 @@ agent = Agent(
     tools=[calculator, weather],
     system_prompt="You're a helpful assistant. You can do simple math calculation, and tell the weather.",
 )
+
 
 @app.entrypoint
 def strands_agent_bedrock(payload):

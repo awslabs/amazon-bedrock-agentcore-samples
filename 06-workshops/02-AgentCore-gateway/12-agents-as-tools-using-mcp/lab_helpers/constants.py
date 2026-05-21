@@ -16,7 +16,6 @@ PARAMETER_PATHS = {
         "account_id": "/aiml301/workshop/account-id",
         "region": "/aiml301/workshop/region",
     },
-
     # Lab 1: Prerequisites - Cognito Setup (for Labs 3-5 authentication)
     "cognito": {
         "user_pool_id": "/aiml301/cognito/user-pool-id",
@@ -36,14 +35,12 @@ PARAMETER_PATHS = {
         "approver_user_email": "/aiml301/cognito/approver-user-email",
         "approver_user_password": "/aiml301/cognito/approver-user-password",
     },
-
     # Lab 1.5: Memory Setup (created after Cognito, used by Labs 2-5)
     "memory": {
         "memory_id": "/aiml301/memory/id",
         "memory_name_prefix": "SREAgent_STM",
         "default_session_id": "/aiml301/memory/default-session-id",
     },
-
     # Lab 2: Diagnostics Agent
     "lab_02": {
         "ecr_repository_uri": "/aiml301/lab-02/ecr-repository-uri",
@@ -55,67 +52,56 @@ PARAMETER_PATHS = {
         "gateway_url": "/aiml301/lab-02/gateway-url",
         "gateway_role_arn": "/aiml301/lab-02/gateway-role-arn",
     },
-
     # Lab 3: Remediation Agent (AgentCore Runtime + Gateway with M2M Auth)
     "lab_03": {
         # Code Interpreter Configuration
         "code_interpreter_id": "/aiml301_sre_agentcore/lab-03/code-interpreter-id",
         "code_interpreter_arn": "/aiml301_sre_agentcore/lab-03/code-interpreter-arn",
         "code_interpreter_role_arn": "/aiml301_sre_agentcore/lab-03/code-interpreter-role-arn",
-        
         # Runtime Configuration
         "runtime_role_arn": "/aiml301_sre_agentcore/lab-03/runtime-role-arn",
         "runtime_id": "/aiml301_sre_agentcore/lab-03/runtime-id",
         "runtime_arn": "/aiml301_sre_agentcore/lab-03/runtime-arn",
         "runtime_config": "/aiml301_sre_agentcore/lab-03/runtime-config",
-
         # Gateway Configuration
         "gateway_role_arn": "/aiml301_sre_agentcore/lab-03/gateway-role-arn",
         "gateway_id": "/aiml301_sre_agentcore/lab-03/gateway-id",
         "gateway_config": "/aiml301_sre_agentcore/lab-03/gateway-config",
-
         # OAuth2 M2M Authentication
         "oauth2_provider_arn": "/aiml301/lab-03/oauth2-provider-arn",
         "oauth2_secret_arn": "/aiml301/lab-03/oauth2-secret-arn",
         "oauth2_config": "/aiml301/lab-03/oauth2-config",
-
         # Gateway Target (Runtime)
         "gateway_runtime_target": "/aiml301_sre_agentcore/lab-03/gateway-runtime-target",
         "gateway_m2m_target": "/aiml301/lab-03/gateway-m2m-target",
         "m2m_auth_config": "/aiml301/lab-03/m2m-auth-complete-config",
     },
-
     # Lab 3B: Remediation Agent with Fine-Grained Access Control
     "lab_03b": {
         "interceptor_function_arn": "/aiml301/lab-03b/interceptor-function-arn",
         "gateway_id": "/aiml301/lab-03b/gateway-id",
         "gateway_url": "/aiml301/lab-03b/gateway-url",
     },
-
     # Lab 4: Prevention Agent (AgentCore Runtime + Gateway with M2M Auth)
     "lab_04": {
         # Runtime Configuration
-        "runtime_role_arn":        "/aiml301_sre_agentcore/lab-04/runtime-role-arn",
-        "runtime_id":              "/aiml301_sre_agentcore/lab-04/runtime-id",
-        "runtime_arn":             "/aiml301_sre_agentcore/lab-04/runtime-arn",
-        "runtime_config":          "/aiml301_sre_agentcore/lab-04/runtime-config",
-
+        "runtime_role_arn": "/aiml301_sre_agentcore/lab-04/runtime-role-arn",
+        "runtime_id": "/aiml301_sre_agentcore/lab-04/runtime-id",
+        "runtime_arn": "/aiml301_sre_agentcore/lab-04/runtime-arn",
+        "runtime_config": "/aiml301_sre_agentcore/lab-04/runtime-config",
         # Gateway Configuration
-        "gateway_role_arn":        "/aiml301_sre_agentcore/lab-04/gateway-role-arn",
-        "gateway_id":              "/aiml301_sre_agentcore/lab-04/gateway-id",
-        "gateway_config":          "/aiml301_sre_agentcore/lab-04/gateway-config",
-
+        "gateway_role_arn": "/aiml301_sre_agentcore/lab-04/gateway-role-arn",
+        "gateway_id": "/aiml301_sre_agentcore/lab-04/gateway-id",
+        "gateway_config": "/aiml301_sre_agentcore/lab-04/gateway-config",
         # OAuth2 M2M Authentication
-        "oauth2_provider_arn":     "/aiml301/lab-04/oauth2-provider-arn",
-        "oauth2_secret_arn":       "/aiml301/lab-04/oauth2-secret-arn",
-        "oauth2_config":           "/aiml301/lab-04/oauth2-config",
-
+        "oauth2_provider_arn": "/aiml301/lab-04/oauth2-provider-arn",
+        "oauth2_secret_arn": "/aiml301/lab-04/oauth2-secret-arn",
+        "oauth2_config": "/aiml301/lab-04/oauth2-config",
         # Gateway Target (Runtime)
-        "gateway_runtime_target":  "/aiml301_sre_agentcore/lab-04/gateway-runtime-target",
-        "gateway_m2m_target":      "/aiml301/lab-04/gateway-m2m-target",
-        "m2m_auth_config":         "/aiml301/lab-04/m2m-auth-complete-config",
+        "gateway_runtime_target": "/aiml301_sre_agentcore/lab-04/gateway-runtime-target",
+        "gateway_m2m_target": "/aiml301/lab-04/gateway-m2m-target",
+        "m2m_auth_config": "/aiml301/lab-04/m2m-auth-complete-config",
     },
-
     # Lab 5: Multi-Agent Orchestration (Supervisor Agent)
     "lab_05": {
         # Runtime Configuration
@@ -123,22 +109,18 @@ PARAMETER_PATHS = {
         "runtime_id": "/aiml301_sre_agentcore/lab-05/runtime-id",
         "runtime_arn": "/aiml301_sre_agentcore/lab-05/runtime-arn",
         "runtime_config": "/aiml301_sre_agentcore/lab-05/runtime-config",
-
         # Gateway Configuration
         "gateway_role_arn": "/aiml301_sre_agentcore/lab-05/gateway-role-arn",
         "gateway_id": "/aiml301_sre_agentcore/lab-05/gateway-id",
         "gateway_url": "/aiml301_sre_agentcore/lab-05/gateway-url",
         "gateway_config": "/aiml301_sre_agentcore/lab-05/gateway-config",
-
         # Gateway Target (Supervisor Runtime)
         "gateway_runtime_target": "/aiml301_sre_agentcore/lab-05/gateway-runtime-target",
     },
-
     # Lab 6: Custom Interceptor (Optional)
     "lab_06": {
         "interceptor_role_arn": "/aiml301/lab-06/interceptor-role-arn",
     },
-
     # Lab 7: Memory Integration (Optional)
     "lab_07": {
         "memory_store_arn": "/aiml301/lab-07/memory-store-arn",
@@ -148,7 +130,7 @@ PARAMETER_PATHS = {
 # Lambda function configuration (constant specs)
 LAMBDA_CONFIG = {
     "memory_size": 2048,  # MB (2GB for Strands agent + model inference)
-    "timeout": 300,       # seconds (5 minutes for Strands agent reasoning)
+    "timeout": 300,  # seconds (5 minutes for Strands agent reasoning)
     "ephemeral_storage": 512,  # MB (/tmp)
 }
 

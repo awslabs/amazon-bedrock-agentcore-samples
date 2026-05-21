@@ -176,7 +176,9 @@ def save_vital_signs(
     temperature: str, blood_pressure: str, heart_rate: str, notes: str
 ) -> str:
     """Save patient vital signs with notes"""
-    print(f"📊 Vital signs: Temp {temperature}, BP {blood_pressure}, HR {heart_rate}")  # codeql[py/clear-text-logging-sensitive-data]
+    print(
+        f"📊 Vital signs: Temp {temperature}, BP {blood_pressure}, HR {heart_rate}"
+    )  # codeql[py/clear-text-logging-sensitive-data]
     return "Saved vital signs for patient"
 
 

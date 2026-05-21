@@ -237,9 +237,9 @@ def main():
         "--role-arn", required=True, help="IAM role ARN for the agent runtime"
     )
     parser.add_argument(
-        "--region", 
-        default=os.environ.get("AWS_REGION", "us-east-1"), 
-        help="AWS region (default: AWS_REGION env var or us-east-1)"
+        "--region",
+        default=os.environ.get("AWS_REGION", "us-east-1"),
+        help="AWS region (default: AWS_REGION env var or us-east-1)",
     )
     parser.add_argument(
         "--force-recreate",

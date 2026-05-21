@@ -14,18 +14,23 @@ import os
 from unittest.mock import patch, MagicMock
 
 # Add agents directory to path for imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'agents', 'customer_profile'))
+sys.path.insert(
+    0,
+    os.path.join(
+        os.path.dirname(__file__), "..", "..", "..", "agents", "customer_profile"
+    ),
+)
 
 # Check if bedrock_agentcore SDK is available
 try:
     import bedrock_agentcore.runtime
+
     HAS_AGENTCORE_SDK = True
 except ImportError:
     HAS_AGENTCORE_SDK = False
 
 pytestmark = pytest.mark.skipif(
-    not HAS_AGENTCORE_SDK,
-    reason="bedrock_agentcore SDK not available (container-only)"
+    not HAS_AGENTCORE_SDK, reason="bedrock_agentcore SDK not available (container-only)"
 )
 
 
@@ -33,8 +38,8 @@ class TestInvokeEntrypoint:
     """Tests for the invoke entrypoint function."""
 
     @pytest.mark.asyncio
-    @patch('main.create_agent')
-    @patch('main.validate_forwarded_claims')
+    @patch("main.create_agent")
+    @patch("main.validate_forwarded_claims")
     async def test_successful_invocation(self, mock_validate, mock_create_agent):
         """Test successful invocation with valid claims."""
         # Import after patching
@@ -43,13 +48,13 @@ class TestInvokeEntrypoint:
         mock_validate.return_value = {
             "valid": True,
             "user_id": "user-123",
-            "customer_id": "CUST001"
+            "customer_id": "CUST001",
         }
 
         mock_agent = MagicMock()
         mock_agent.process_query.return_value = {
             "status": "success",
-            "response": "Profile data"
+            "response": "Profile data",
         }
         mock_create_agent.return_value = mock_agent
 
@@ -60,8 +65,8 @@ class TestInvokeEntrypoint:
                 "aud": "https://api",
                 "exp": 9999999999,
                 "iss": "https://issuer",
-                "https://agentcore.example.com/customer_id": "CUST001"
-            }
+                "https://agentcore.example.com/customer_id": "CUST001",
+            },
         }
 
         result = await invoke(payload, None)
@@ -71,20 +76,17 @@ class TestInvokeEntrypoint:
         assert "trace_id" in result
 
     @pytest.mark.asyncio
-    @patch('main.validate_forwarded_claims')
+    @patch("main.validate_forwarded_claims")
     async def test_authorization_failed(self, mock_validate):
         """Test invocation fails with invalid claims."""
         from main import invoke
 
         mock_validate.return_value = {
             "valid": False,
-            "error": "Missing required claims"
+            "error": "Missing required claims",
         }
 
-        payload = {
-            "prompt": "show my profile",
-            "claims": {}
-        }
+        payload = {"prompt": "show my profile", "claims": {}}
 
         result = await invoke(payload, None)
 
@@ -110,8 +112,8 @@ class TestInvokeEntrypoint:
         assert result["status"] == "error"
 
     @pytest.mark.asyncio
-    @patch('main.create_agent')
-    @patch('main.validate_forwarded_claims')
+    @patch("main.create_agent")
+    @patch("main.validate_forwarded_claims")
     async def test_agent_exception_handling(self, mock_validate, mock_create_agent):
         """Test that agent exceptions are caught and returned as errors."""
         from main import invoke
@@ -119,7 +121,7 @@ class TestInvokeEntrypoint:
         mock_validate.return_value = {
             "valid": True,
             "user_id": "user-123",
-            "customer_id": "CUST001"
+            "customer_id": "CUST001",
         }
 
         mock_agent = MagicMock()
@@ -133,8 +135,8 @@ class TestInvokeEntrypoint:
                 "aud": "https://api",
                 "exp": 9999999999,
                 "iss": "https://issuer",
-                "https://agentcore.example.com/customer_id": "CUST001"
-            }
+                "https://agentcore.example.com/customer_id": "CUST001",
+            },
         }
 
         result = await invoke(payload, None)
@@ -143,8 +145,8 @@ class TestInvokeEntrypoint:
         assert result["error"] == "INTERNAL_ERROR"
 
     @pytest.mark.asyncio
-    @patch('main.create_agent')
-    @patch('main.validate_forwarded_claims')
+    @patch("main.create_agent")
+    @patch("main.validate_forwarded_claims")
     async def test_extracts_query_from_prompt(self, mock_validate, mock_create_agent):
         """Test that query is extracted from 'prompt' field."""
         from main import invoke
@@ -152,11 +154,14 @@ class TestInvokeEntrypoint:
         mock_validate.return_value = {
             "valid": True,
             "user_id": "user-123",
-            "customer_id": "CUST001"
+            "customer_id": "CUST001",
         }
 
         mock_agent = MagicMock()
-        mock_agent.process_query.return_value = {"status": "success", "response": "data"}
+        mock_agent.process_query.return_value = {
+            "status": "success",
+            "response": "data",
+        }
         mock_create_agent.return_value = mock_agent
 
         payload = {
@@ -166,8 +171,8 @@ class TestInvokeEntrypoint:
                 "aud": "https://api",
                 "exp": 9999999999,
                 "iss": "https://issuer",
-                "https://agentcore.example.com/customer_id": "CUST001"
-            }
+                "https://agentcore.example.com/customer_id": "CUST001",
+            },
         }
 
         await invoke(payload, None)
@@ -178,20 +183,25 @@ class TestInvokeEntrypoint:
         assert "test query from prompt field" in call_args[0]
 
     @pytest.mark.asyncio
-    @patch('main.create_agent')
-    @patch('main.validate_forwarded_claims')
-    async def test_extracts_query_from_query_field(self, mock_validate, mock_create_agent):
+    @patch("main.create_agent")
+    @patch("main.validate_forwarded_claims")
+    async def test_extracts_query_from_query_field(
+        self, mock_validate, mock_create_agent
+    ):
         """Test that query is extracted from 'query' field as fallback."""
         from main import invoke
 
         mock_validate.return_value = {
             "valid": True,
             "user_id": "user-123",
-            "customer_id": "CUST001"
+            "customer_id": "CUST001",
         }
 
         mock_agent = MagicMock()
-        mock_agent.process_query.return_value = {"status": "success", "response": "data"}
+        mock_agent.process_query.return_value = {
+            "status": "success",
+            "response": "data",
+        }
         mock_create_agent.return_value = mock_agent
 
         payload = {
@@ -201,8 +211,8 @@ class TestInvokeEntrypoint:
                 "aud": "https://api",
                 "exp": 9999999999,
                 "iss": "https://issuer",
-                "https://agentcore.example.com/customer_id": "CUST001"
-            }
+                "https://agentcore.example.com/customer_id": "CUST001",
+            },
         }
 
         await invoke(payload, None)
@@ -210,8 +220,8 @@ class TestInvokeEntrypoint:
         mock_agent.process_query.assert_called_once()
 
     @pytest.mark.asyncio
-    @patch('main.create_agent')
-    @patch('main.validate_forwarded_claims')
+    @patch("main.create_agent")
+    @patch("main.validate_forwarded_claims")
     async def test_response_includes_session_id(self, mock_validate, mock_create_agent):
         """Test that response includes session_id."""
         from main import invoke
@@ -219,11 +229,14 @@ class TestInvokeEntrypoint:
         mock_validate.return_value = {
             "valid": True,
             "user_id": "user-123",
-            "customer_id": "CUST001"
+            "customer_id": "CUST001",
         }
 
         mock_agent = MagicMock()
-        mock_agent.process_query.return_value = {"status": "success", "response": "data"}
+        mock_agent.process_query.return_value = {
+            "status": "success",
+            "response": "data",
+        }
         mock_create_agent.return_value = mock_agent
 
         payload = {
@@ -233,8 +246,8 @@ class TestInvokeEntrypoint:
                 "aud": "https://api",
                 "exp": 9999999999,
                 "iss": "https://issuer",
-                "https://agentcore.example.com/customer_id": "CUST001"
-            }
+                "https://agentcore.example.com/customer_id": "CUST001",
+            },
         }
 
         result = await invoke(payload, None)

@@ -29,6 +29,7 @@ from lab_helpers.config import MODEL_ID, AWS_REGION
 # UTILITIES
 # ============================================================================
 
+
 def get_dir_size(path: str) -> int:
     """Calculate total size of directory in bytes"""
     total = 0
@@ -47,7 +48,7 @@ def get_zip_size(zip_path: str) -> int:
 
 def format_size(size_bytes: int) -> str:
     """Format bytes to human-readable size"""
-    for unit in ['B', 'KB', 'MB', 'GB']:
+    for unit in ["B", "KB", "MB", "GB"]:
         if size_bytes < 1024.0:
             return f"{size_bytes:.1f} {unit}"
         size_bytes /= 1024.0
@@ -67,9 +68,9 @@ def validate_requirements(build_dir: str) -> bool:
 # PACKAGE CREATION
 # ============================================================================
 
+
 def install_dependencies(
-    build_dir: str,
-    requirements_content: str
+    build_dir: str, requirements_content: str
 ) -> Tuple[bool, Dict]:
     """
     Install dependencies using pip into lib/ directory
@@ -99,27 +100,36 @@ def install_dependencies(
     try:
         result = subprocess.run(  # noqa: F841
             [
-                sys.executable, "-m", "pip",
+                sys.executable,
+                "-m",
+                "pip",
                 "install",
-                "-r", req_file,
-                "-t", lib_dir,
+                "-r",
+                req_file,
+                "-t",
+                lib_dir,
                 "--upgrade",
                 "--quiet",
                 "--disable-pip-version-check",
-                "--platform", "manylinux2014_x86_64",
-                "--implementation", "cp",
-                "--python-version", "3.11",
-                "--only-binary", ":all:"
+                "--platform",
+                "manylinux2014_x86_64",
+                "--implementation",
+                "cp",
+                "--python-version",
+                "3.11",
+                "--only-binary",
+                ":all:",
             ],
             check=True,
             capture_output=True,
             text=True,
-            timeout=300  # 5 minute timeout
+            timeout=300,  # 5 minute timeout
         )
 
         # Count packages
-        installed_packages = [d for d in os.listdir(lib_dir)
-                            if os.path.isdir(os.path.join(lib_dir, d))]
+        installed_packages = [
+            d for d in os.listdir(lib_dir) if os.path.isdir(os.path.join(lib_dir, d))
+        ]
 
         lib_size = get_dir_size(lib_dir)
 
@@ -129,7 +139,7 @@ def install_dependencies(
         return True, {
             "packages_count": len(installed_packages),
             "lib_size": lib_size,
-            "packages": installed_packages
+            "packages": installed_packages,
         }
 
     except subprocess.TimeoutExpired:
@@ -144,9 +154,7 @@ def install_dependencies(
 
 
 def create_lambda_zip(
-    build_dir: str,
-    handler_code: str,
-    output_zip: str
+    build_dir: str, handler_code: str, output_zip: str
 ) -> Tuple[bool, Dict]:
     """
     Create Lambda deployment ZIP with proper structure
@@ -179,7 +187,7 @@ def create_lambda_zip(
 
     # Create ZIP
     try:
-        with zipfile.ZipFile(output_zip, 'w', zipfile.ZIP_DEFLATED) as zf:
+        with zipfile.ZipFile(output_zip, "w", zipfile.ZIP_DEFLATED) as zf:
             total_files = 0
 
             # Add lib/ (dependencies)
@@ -222,7 +230,7 @@ def create_lambda_zip(
         return True, {
             "zip_path": output_zip,
             "zip_size": zip_size,
-            "total_files": total_files
+            "total_files": total_files,
         }
 
     except Exception as e:
@@ -233,7 +241,7 @@ def create_lambda_zip(
 def create_deployment_package(
     handler_code: str,
     requirements_content: str,
-    build_dir: str = "lambda_diagnostic_agent_zip"
+    build_dir: str = "lambda_diagnostic_agent_zip",
 ) -> Dict:
     """
     Complete workflow: Create deployment package with dependencies
@@ -263,7 +271,11 @@ def create_deployment_package(
     if os.path.exists(lab_helpers_src):
         lab_helpers_dest = os.path.join(build_dir, "lab_helpers")
         print("\n📂 Copying lab_helpers to build directory...")
-        shutil.copytree(lab_helpers_src, lab_helpers_dest, ignore=shutil.ignore_patterns('__pycache__', '*.pyc', '.pytest_cache'))
+        shutil.copytree(
+            lab_helpers_src,
+            lab_helpers_dest,
+            ignore=shutil.ignore_patterns("__pycache__", "*.pyc", ".pytest_cache"),
+        )
         print(f"✓ Copied lab_helpers/ to {build_dir}/lab_helpers/")
     else:
         print("⚠️  lab_helpers directory not found in repository root")
@@ -286,8 +298,8 @@ def create_deployment_package(
 
     # Check against Lambda limits
     DIRECT_UPLOAD_LIMIT = 50 * 1024 * 1024  # 50 MB
-    S3_UPLOAD_LIMIT = 250 * 1024 * 1024      # 250 MB
-    UNCOMPRESSED_LIMIT = 250 * 1024 * 1024   # 250 MB
+    S3_UPLOAD_LIMIT = 250 * 1024 * 1024  # 250 MB
+    UNCOMPRESSED_LIMIT = 250 * 1024 * 1024  # 250 MB
 
     size_status = "✅"
     upload_method = "direct"
@@ -301,10 +313,12 @@ def create_deployment_package(
             "status": "error",
             "error": f"Package too large: {format_size(zip_size)} (limit: 250MB)",
             "size_compressed": zip_size,
-            "size_uncompressed": uncompressed_size
+            "size_uncompressed": uncompressed_size,
         }
 
-    print(f"{size_status} Compressed: {format_size(zip_size)} (50 MB direct / 250 MB S3 limit)")
+    print(
+        f"{size_status} Compressed: {format_size(zip_size)} (50 MB direct / 250 MB S3 limit)"
+    )
     print(f"✓ Uncompressed: {format_size(uncompressed_size)} (250 MB limit)")
     print(f"✓ Deployment method: {upload_method}")
 
@@ -321,13 +335,14 @@ def create_deployment_package(
         "size_formatted": format_size(zip_size),
         "upload_method": upload_method,
         "install_stats": install_stats,
-        "zip_stats": zip_stats
+        "zip_stats": zip_stats,
     }
 
 
 # ============================================================================
 # S3 OPERATIONS
 # ============================================================================
+
 
 def setup_s3_bucket(bucket_name: str, region_name: Optional[str] = None) -> Dict:
     """
@@ -345,7 +360,7 @@ def setup_s3_bucket(bucket_name: str, region_name: Optional[str] = None) -> Dict
 
     print("\n📦 Setting up S3 bucket for deployment packages...")
 
-    s3 = boto3.client('s3', region_name=region_name)
+    s3 = boto3.client("s3", region_name=region_name)
 
     try:
         # Check if bucket exists
@@ -358,11 +373,13 @@ def setup_s3_bucket(bucket_name: str, region_name: Optional[str] = None) -> Dict
         # Check if bucket doesn't exist (404/NotFound error)
         is_not_found = False
 
-        if hasattr(e, 'response'):
+        if hasattr(e, "response"):
             # Extract error code from ClientError response
-            error_code = e.response.get('Error', {}).get('Code', '')
-            http_status = e.response.get('ResponseMetadata', {}).get('HTTPStatusCode', 0)
-            is_not_found = (error_code == '404' or http_status == 404)
+            error_code = e.response.get("Error", {}).get("Code", "")
+            http_status = e.response.get("ResponseMetadata", {}).get(
+                "HTTPStatusCode", 0
+            )
+            is_not_found = error_code == "404" or http_status == 404
 
         if is_not_found:
             # Create bucket
@@ -374,7 +391,7 @@ def setup_s3_bucket(bucket_name: str, region_name: Optional[str] = None) -> Dict
                 else:
                     s3.create_bucket(
                         Bucket=bucket_name,
-                        CreateBucketConfiguration={'LocationConstraint': region_name}
+                        CreateBucketConfiguration={"LocationConstraint": region_name},
                     )
 
                 bucket_arn = f"arn:aws:s3:::{bucket_name}"
@@ -382,7 +399,10 @@ def setup_s3_bucket(bucket_name: str, region_name: Optional[str] = None) -> Dict
             except Exception as create_error:
                 # If bucket creation fails (e.g., already exists from concurrent request), continue
                 create_error_str = str(create_error)
-                if any(err in create_error_str for err in ["BucketAlreadyExists", "BucketAlreadyOwnedByYou"]):
+                if any(
+                    err in create_error_str
+                    for err in ["BucketAlreadyExists", "BucketAlreadyOwnedByYou"]
+                ):
                     print(f"✓ S3 bucket exists (concurrent creation): {bucket_name}")
                     bucket_arn = f"arn:aws:s3:::{bucket_name}"
                 else:
@@ -393,18 +413,14 @@ def setup_s3_bucket(bucket_name: str, region_name: Optional[str] = None) -> Dict
             print(f"❌ Error checking/setting up bucket: {e}")
             raise
 
-    return {
-        "bucket_name": bucket_name,
-        "bucket_arn": bucket_arn,
-        "region": region_name
-    }
+    return {"bucket_name": bucket_name, "bucket_arn": bucket_arn, "region": region_name}
 
 
 def upload_package_to_s3(
     zip_path: str,
     s3_bucket: str,
     s3_key: str = "lambda-packages/diagnostic-agent.zip",
-    region_name: Optional[str] = None
+    region_name: Optional[str] = None,
 ) -> Dict:
     """
     Upload ZIP package to S3
@@ -430,7 +446,7 @@ def upload_package_to_s3(
     print(f"   Local file: {zip_path} ({format_size(zip_size)})")
     print(f"   Destination: s3://{s3_bucket}/{s3_key}")
 
-    s3 = boto3.client('s3', region_name=region_name)
+    s3 = boto3.client("s3", region_name=region_name)
 
     try:
         # Upload with metadata
@@ -439,11 +455,8 @@ def upload_package_to_s3(
             s3_bucket,
             s3_key,
             ExtraArgs={
-                'Metadata': {
-                    'creator': 'aiml301-lambda-packager',
-                    'model-id': MODEL_ID
-                }
-            }
+                "Metadata": {"creator": "aiml301-lambda-packager", "model-id": MODEL_ID}
+            },
         )
 
         s3_uri = f"s3://{s3_bucket}/{s3_key}"
@@ -459,7 +472,7 @@ def upload_package_to_s3(
             "s3_bucket": s3_bucket,
             "s3_key": s3_key,
             "s3_url": s3_url,
-            "size": zip_size
+            "size": zip_size,
         }
 
     except Exception as e:
@@ -471,12 +484,13 @@ def upload_package_to_s3(
 # LAMBDA DEPLOYMENT
 # ============================================================================
 
+
 def create_lambda_function_from_zip(
     function_name: str,
     zip_path: str,
     s3_uri: Optional[str],
     role_arn: str,
-    region_name: Optional[str] = None
+    region_name: Optional[str] = None,
 ) -> Dict:
     """
     Create or update Lambda function from ZIP package
@@ -498,7 +512,7 @@ def create_lambda_function_from_zip(
     print(f"   Function: {function_name}")
     print(f"   Role: {role_arn}")
 
-    lambda_client = boto3.client('lambda', region_name=region_name)
+    lambda_client = boto3.client("lambda", region_name=region_name)
 
     # Prepare code argument
     code_arg = {}
@@ -513,7 +527,7 @@ def create_lambda_function_from_zip(
         print("   Upload method: S3")
     elif zip_path and os.path.exists(zip_path):
         # Direct ZIP upload (for smaller packages)
-        with open(zip_path, 'rb') as f:
+        with open(zip_path, "rb") as f:
             code_arg = {"ZipFile": f.read()}
         upload_method = "Direct"
         print("   Upload method: Direct ZIP")
@@ -529,28 +543,29 @@ def create_lambda_function_from_zip(
             print("✓ Function exists, updating...")
 
             response = lambda_client.update_function_code(
-                FunctionName=function_name,
-                **code_arg
+                FunctionName=function_name, **code_arg
             )
 
             # Wait for update to complete
             print("  Waiting for update to complete...")
-            waiter = lambda_client.get_waiter('function_updated')
+            waiter = lambda_client.get_waiter("function_updated")
             waiter.wait(FunctionName=function_name)
 
             # Update configuration
             config_response = lambda_client.update_function_configuration(  # noqa: F841
                 FunctionName=function_name,
-                Runtime='python3.11',
-                Handler='app.lambda_handler',
-                Timeout=LAMBDA_CONFIG['timeout'],
-                MemorySize=LAMBDA_CONFIG['memory_size'],
-                Environment={'Variables': {'MODEL_ID': MODEL_ID, 'REGION': region_name}}
+                Runtime="python3.11",
+                Handler="app.lambda_handler",
+                Timeout=LAMBDA_CONFIG["timeout"],
+                MemorySize=LAMBDA_CONFIG["memory_size"],
+                Environment={
+                    "Variables": {"MODEL_ID": MODEL_ID, "REGION": region_name}
+                },
             )
 
             print("✓ Configuration updated")
 
-            function_arn = response['FunctionArn']
+            function_arn = response["FunctionArn"]
 
         except lambda_client.exceptions.ResourceNotFoundException:
             # Function doesn't exist, create it
@@ -558,28 +573,30 @@ def create_lambda_function_from_zip(
 
             response = lambda_client.create_function(
                 FunctionName=function_name,
-                Runtime='python3.11',
+                Runtime="python3.11",
                 Role=role_arn,
-                Handler='app.lambda_handler',
+                Handler="app.lambda_handler",
                 Code=code_arg,
-                Timeout=LAMBDA_CONFIG['timeout'],
-                MemorySize=LAMBDA_CONFIG['memory_size'],
-                Environment={'Variables': {'MODEL_ID': MODEL_ID, 'REGION': region_name}},
-                Description='AIML301 Workshop - Diagnostics Agent (ZIP-based)'
+                Timeout=LAMBDA_CONFIG["timeout"],
+                MemorySize=LAMBDA_CONFIG["memory_size"],
+                Environment={
+                    "Variables": {"MODEL_ID": MODEL_ID, "REGION": region_name}
+                },
+                Description="AIML301 Workshop - Diagnostics Agent (ZIP-based)",
             )
 
             # Wait for creation to complete
             print("  Waiting for function to become active...")
-            waiter = lambda_client.get_waiter('function_active')
+            waiter = lambda_client.get_waiter("function_active")
             waiter.wait(FunctionName=function_name)
 
             print("✓ Function created and active")
 
-            function_arn = response['FunctionArn']  # noqa: F841
+            function_arn = response["FunctionArn"]  # noqa: F841
 
         # Get final function details
         final_func = lambda_client.get_function(FunctionName=function_name)
-        config = final_func['Configuration']
+        config = final_func["Configuration"]
 
         print("\n" + "=" * 70)
         print("✅ LAMBDA DEPLOYMENT SUCCESSFUL")
@@ -594,18 +611,19 @@ def create_lambda_function_from_zip(
 
         return {
             "status": "success",
-            "function_name": config['FunctionName'],
-            "function_arn": config['FunctionArn'],
-            "runtime": config['Runtime'],
-            "memory": config['MemorySize'],
-            "timeout": config['Timeout'],
-            "state": config['State'],
-            "upload_method": upload_method
+            "function_name": config["FunctionName"],
+            "function_arn": config["FunctionArn"],
+            "runtime": config["Runtime"],
+            "memory": config["MemorySize"],
+            "timeout": config["Timeout"],
+            "state": config["State"],
+            "upload_method": upload_method,
         }
 
     except Exception as e:
         print(f"❌ Lambda deployment failed: {e}")
         import traceback
+
         traceback.print_exc()
         return {"status": "error", "error": str(e)}
 
@@ -614,10 +632,9 @@ def create_lambda_function_from_zip(
 # COMPLETE WORKFLOW
 # ============================================================================
 
+
 def setup_lambda_zip_deployment(
-    handler_code: str,
-    requirements_content: str,
-    region_name: Optional[str] = None
+    handler_code: str, requirements_content: str, region_name: Optional[str] = None
 ) -> Dict:
     """
     Complete workflow: Package creation → (optional) S3 upload → Lambda deployment
@@ -634,10 +651,7 @@ def setup_lambda_zip_deployment(
         region_name = AWS_REGION
 
     # Step 1: Create package
-    package_result = create_deployment_package(
-        handler_code,
-        requirements_content
-    )
+    package_result = create_deployment_package(handler_code, requirements_content)
 
     if package_result.get("status") == "error":
         return package_result
@@ -645,7 +659,10 @@ def setup_lambda_zip_deployment(
     # Step 2: Skip S3 for direct uploads (packages < 50MB)
     zip_path = package_result["zip_path"]
     upload_method = package_result.get("upload_method", "direct")
-    s3_result = {"status": "success", "upload_method": "direct"}  # Default for direct uploads
+    s3_result = {
+        "status": "success",
+        "upload_method": "direct",
+    }  # Default for direct uploads
 
     if upload_method == "S3":
         # Only setup S3 bucket if needed for large packages
@@ -653,9 +670,7 @@ def setup_lambda_zip_deployment(
 
         # Step 3: Upload to S3
         s3_result = upload_package_to_s3(
-            zip_path,
-            bucket_result["bucket_name"],
-            region_name=region_name
+            zip_path, bucket_result["bucket_name"], region_name=region_name
         )
 
         if s3_result.get("status") == "error":
@@ -664,8 +679,7 @@ def setup_lambda_zip_deployment(
     # Step 4: Get Lambda role from Parameter Store
     try:
         role_arn = get_parameter(
-            PARAMETER_PATHS["lab_02"]["lambda_role_arn"],
-            region_name=region_name
+            PARAMETER_PATHS["lab_02"]["lambda_role_arn"], region_name=region_name
         )
     except Exception as e:
         print("❌ Could not retrieve Lambda role ARN from Parameter Store")
@@ -675,9 +689,11 @@ def setup_lambda_zip_deployment(
     lambda_result = create_lambda_function_from_zip(
         function_name="aiml301-diagnostic-agent",
         zip_path=zip_path if package_result["upload_method"] == "direct" else None,
-        s3_uri=s3_result.get("s3_uri") if package_result["upload_method"] == "S3" else None,
+        s3_uri=s3_result.get("s3_uri")
+        if package_result["upload_method"] == "S3"
+        else None,
         role_arn=role_arn,
-        region_name=region_name
+        region_name=region_name,
     )
 
     if lambda_result.get("status") == "error":
@@ -689,7 +705,7 @@ def setup_lambda_zip_deployment(
         PARAMETER_PATHS["lab_02"]["lambda_function_arn"],
         lambda_result["function_arn"],
         description="Lambda function ARN for Lab 02 diagnostic agent",
-        region_name=region_name
+        region_name=region_name,
     )
 
     return {
@@ -697,13 +713,14 @@ def setup_lambda_zip_deployment(
         "package": package_result,
         "s3": s3_result,
         "lambda": lambda_result,
-        "region": region_name
+        "region": region_name,
     }
 
 
 # ============================================================================
 # UTILITY FUNCTIONS
 # ============================================================================
+
 
 def get_package_info(zip_path: str) -> Dict:
     """
@@ -723,7 +740,7 @@ def get_package_info(zip_path: str) -> Dict:
     # List contents
     files = []
     try:
-        with zipfile.ZipFile(zip_path, 'r') as zf:
+        with zipfile.ZipFile(zip_path, "r") as zf:
             files = zf.namelist()
     except Exception as e:
         return {"status": "error", "error": f"Invalid ZIP: {e}"}
@@ -748,8 +765,8 @@ def get_package_info(zip_path: str) -> Dict:
             "total": len(files),
             "lib": len(lib_files),
             "helpers": len(helper_files),
-            "root": len([f for f in files if "/" not in f])
-        }
+            "root": len([f for f in files if "/" not in f]),
+        },
     }
 
 

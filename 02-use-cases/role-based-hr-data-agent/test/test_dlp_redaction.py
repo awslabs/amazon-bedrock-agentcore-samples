@@ -65,8 +65,16 @@ def get_token(persona: str, token_url: str) -> str:
 def jsonrpc(gateway_url: str, token: str, method: str, params: dict = None) -> dict:
     resp = requests.post(
         gateway_url,
-        json={"jsonrpc": "2.0", "id": uuid.uuid4().hex, "method": method, "params": params or {}},
-        headers={"Content-Type": "application/json", "Authorization": f"Bearer {token}"},
+        json={
+            "jsonrpc": "2.0",
+            "id": uuid.uuid4().hex,
+            "method": method,
+            "params": params or {},
+        },
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {token}",
+        },
         timeout=30,
     )
     resp.raise_for_status()
@@ -76,9 +84,9 @@ def jsonrpc(gateway_url: str, token: str, method: str, params: dict = None) -> d
 def test_persona(persona: str, gateway_url: str, token_url: str) -> bool:
     expected = PERSONA_EXPECTATIONS[persona]
     token = get_token(persona, token_url)
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"Testing persona: {persona}")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
 
     passed = True
 
@@ -91,14 +99,21 @@ def test_persona(persona: str, gateway_url: str, token_url: str) -> bool:
     if comp_visible == expected["comp_tool_visible"]:
         print(f"  ✓ Compensation tool visibility: {comp_visible}")
     else:
-        print(f"  ✗ Compensation tool visibility: expected={expected['comp_tool_visible']}, got={comp_visible}")
+        print(
+            f"  ✗ Compensation tool visibility: expected={expected['comp_tool_visible']}, got={comp_visible}"
+        )
         passed = False
 
     # 2. Search employee
-    search_result = jsonrpc(gateway_url, token, "tools/call", {
-        "name": "hr-lambda-target___search_employee",
-        "arguments": {"query": "John"},
-    })
+    search_result = jsonrpc(
+        gateway_url,
+        token,
+        "tools/call",
+        {
+            "name": "hr-lambda-target___search_employee",
+            "arguments": {"query": "John"},
+        },
+    )
     content = search_result.get("result", {}).get("content", [])
     body = {}
     if content:
@@ -119,7 +134,9 @@ def test_persona(persona: str, gateway_url: str, token_url: str) -> bool:
     email = emp.get("email", "")
     pii_redacted = email == REDACTED_MARKER
     pii_ok = (not pii_redacted) == expected["pii_visible"]
-    print(f"  {'✓' if pii_ok else '✗'} PII (email): {'visible' if not pii_redacted else 'redacted'}")
+    print(
+        f"  {'✓' if pii_ok else '✗'} PII (email): {'visible' if not pii_redacted else 'redacted'}"
+    )
     if not pii_ok:
         passed = False
 
@@ -127,7 +144,9 @@ def test_persona(persona: str, gateway_url: str, token_url: str) -> bool:
     city = emp.get("city", "")
     addr_redacted = city == REDACTED_MARKER
     addr_ok = (not addr_redacted) == expected["address_visible"]
-    print(f"  {'✓' if addr_ok else '✗'} Address (city): {'visible' if not addr_redacted else 'redacted'}")
+    print(
+        f"  {'✓' if addr_ok else '✗'} Address (city): {'visible' if not addr_redacted else 'redacted'}"
+    )
     if not addr_ok:
         passed = False
 
@@ -135,7 +154,9 @@ def test_persona(persona: str, gateway_url: str, token_url: str) -> bool:
     salary = emp.get("salary", "")
     comp_redacted = salary == REDACTED_MARKER
     comp_ok = (not comp_redacted) == expected["comp_visible"]
-    print(f"  {'✓' if comp_ok else '✗'} Compensation (salary): {'visible' if not comp_redacted else 'redacted'}")
+    print(
+        f"  {'✓' if comp_ok else '✗'} Compensation (salary): {'visible' if not comp_redacted else 'redacted'}"
+    )
     if not comp_ok:
         passed = False
 
@@ -145,9 +166,12 @@ def test_persona(persona: str, gateway_url: str, token_url: str) -> bool:
 
 def main():
     parser = argparse.ArgumentParser(description="DLP redaction verification")
-    parser.add_argument("--persona", default=None,
-                        choices=["hr-manager", "hr-specialist", "employee", "admin"],
-                        help="Test a single persona (default: all)")
+    parser.add_argument(
+        "--persona",
+        default=None,
+        choices=["hr-manager", "hr-specialist", "employee", "admin"],
+        help="Test a single persona (default: all)",
+    )
     args = parser.parse_args()
 
     gateway_url = get_ssm_parameter("/app/hrdlp/gateway-url")
@@ -162,9 +186,9 @@ def main():
     for p in personas:
         results[p] = test_persona(p, gateway_url, token_url)
 
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print("SUMMARY")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
     all_passed = True
     for p, ok in results.items():
         print(f"  {p:20s}  {'PASS' if ok else 'FAIL'}")

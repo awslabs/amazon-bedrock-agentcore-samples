@@ -35,7 +35,9 @@ ENTRA_AUTHORITY = os.environ.get(
     "ENTRA_AUTHORITY",
     f"https://login.microsoftonline.com/{ENTRA_TENANT_ID}",
 )
-ENTRA_AUTHORITY_HOST = os.environ.get("ENTRA_AUTHORITY_HOST", "login.microsoftonline.com")
+ENTRA_AUTHORITY_HOST = os.environ.get(
+    "ENTRA_AUTHORITY_HOST", "login.microsoftonline.com"
+)
 ENTRA_AUTHORIZE_URL = f"{ENTRA_AUTHORITY}/oauth2/v2.0/authorize"
 ENTRA_TOKEN_URL = f"{ENTRA_AUTHORITY}/oauth2/v2.0/token"
 
@@ -61,15 +63,18 @@ def sign_request(request):
 def lambda_handler(event, context):
     """Main Lambda handler — routes requests based on path."""
     path = event.get("path", "/")
-    method = (
-        event.get("httpMethod")
-        or event.get("requestContext", {}).get("http", {}).get("method", "GET")
-    )
+    method = event.get("httpMethod") or event.get("requestContext", {}).get(
+        "http", {}
+    ).get("method", "GET")
     # Log request metadata only (exclude headers which may contain tokens)
     print(f"Method: {method}, Path: {path}")
 
     if method == "OPTIONS":
-        return {"statusCode": 200, "headers": {"Allow": "OPTIONS, GET, POST"}, "body": ""}
+        return {
+            "statusCode": 200,
+            "headers": {"Allow": "OPTIONS, GET, POST"},
+            "body": "",
+        }
 
     if path == "/ping":
         return handle_ping()
@@ -79,7 +84,10 @@ def lambda_handler(event, context):
         return handle_auth_callback_page(event)
     elif path.startswith("/.well-known/oauth-authorization-server"):
         return handle_oauth_metadata(event)
-    elif path in ("/.well-known/oauth-protected-resource", "/.well-known/oauth-protected-resource/mcp"):
+    elif path in (
+        "/.well-known/oauth-protected-resource",
+        "/.well-known/oauth-protected-resource/mcp",
+    ):
         return handle_protected_resource_metadata(event)
     elif path == "/authorize":
         return handle_authorize(event)
@@ -558,34 +566,41 @@ completeAuth();
     }
 
 
-
-
-
-
 def handle_oauth_metadata(event):
     """Serve OAuth Authorization Server Metadata (RFC 8414) — pointing to EntraID."""
     api_url = get_api_url(event)
-    return json_response(200, {
-        "issuer": api_url,
-        "authorization_endpoint": f"{api_url}/authorize",
-        "token_endpoint": f"{api_url}/token",
-        "registration_endpoint": f"{api_url}/register",
-        "scopes_supported": [f"api://{ENTRA_APP_A_CLIENT_ID}/gateway.access", "openid", "profile", "email"],
-        "response_types_supported": ["code"],
-        "grant_types_supported": ["authorization_code", "refresh_token"],
-        "token_endpoint_auth_methods_supported": ["none", "client_secret_post"],
-        "code_challenge_methods_supported": ["S256"],
-    })
+    return json_response(
+        200,
+        {
+            "issuer": api_url,
+            "authorization_endpoint": f"{api_url}/authorize",
+            "token_endpoint": f"{api_url}/token",
+            "registration_endpoint": f"{api_url}/register",
+            "scopes_supported": [
+                f"api://{ENTRA_APP_A_CLIENT_ID}/gateway.access",
+                "openid",
+                "profile",
+                "email",
+            ],
+            "response_types_supported": ["code"],
+            "grant_types_supported": ["authorization_code", "refresh_token"],
+            "token_endpoint_auth_methods_supported": ["none", "client_secret_post"],
+            "code_challenge_methods_supported": ["S256"],
+        },
+    )
 
 
 def handle_protected_resource_metadata(event):
     """Serve OAuth Protected Resource Metadata (RFC 9728)."""
     api_url = get_api_url(event)
-    return json_response(200, {
-        "resource": f"{api_url}/mcp",
-        "authorization_servers": [api_url],
-        "bearer_methods_supported": ["header"],
-    })
+    return json_response(
+        200,
+        {
+            "resource": f"{api_url}/mcp",
+            "authorization_servers": [api_url],
+            "bearer_methods_supported": ["header"],
+        },
+    )
 
 
 def handle_authorize(event):
@@ -654,7 +669,10 @@ def handle_callback(event):
 
     print("=== HANDLE_CALLBACK (EntraID) ===")
     if error:
-        return json_response(400, {"error": error, "error_description": params.get("error_description", "")})
+        return json_response(
+            400,
+            {"error": error, "error_description": params.get("error_description", "")},
+        )
 
     try:
         encoded_state_clean = urllib.parse.unquote(encoded_state).replace(" ", "+")
@@ -712,7 +730,9 @@ def handle_token(event):
                 token_data["created_at"] = int(time.time() * 1000)
             # Log token metadata for debugging (NOT the token itself)
             print(f"Token response keys: {list(token_data.keys())}")
-            print(f"Token type: {token_data.get('token_type')}, expires_in: {token_data.get('expires_in')}, scope: {token_data.get('scope')}")
+            print(
+                f"Token type: {token_data.get('token_type')}, expires_in: {token_data.get('expires_in')}, scope: {token_data.get('scope')}"
+            )
             return json_response(200, token_data)
     except urllib.error.HTTPError as e:
         error_body = e.read().decode()
@@ -722,23 +742,25 @@ def handle_token(event):
 
 def handle_dcr(event):
     """Handle Dynamic Client Registration — return pre-registered EntraID App A client_id."""
-    return json_response(200, {
-        "client_id": ENTRA_APP_A_CLIENT_ID,
-        "client_name": "VS Code MCP Client (EntraID)",
-        "grant_types": ["authorization_code", "refresh_token"],
-        "redirect_uris": [f"{get_api_url(event)}/callback"],
-        "response_types": ["code"],
-        "token_endpoint_auth_method": "none",
-    })
+    return json_response(
+        200,
+        {
+            "client_id": ENTRA_APP_A_CLIENT_ID,
+            "client_name": "VS Code MCP Client (EntraID)",
+            "grant_types": ["authorization_code", "refresh_token"],
+            "redirect_uris": [f"{get_api_url(event)}/callback"],
+            "response_types": ["code"],
+            "token_endpoint_auth_method": "none",
+        },
+    )
 
 
 def proxy_to_gateway(event):
     """Forward MCP requests to AgentCore Gateway."""
     print("proxy_to_gateway")
-    method = (
-        event.get("httpMethod")
-        or event.get("requestContext", {}).get("http", {}).get("method", "GET")
-    )
+    method = event.get("httpMethod") or event.get("requestContext", {}).get(
+        "http", {}
+    ).get("method", "GET")
     headers = event.get("headers", {})
     body = event.get("body", "")
 
@@ -808,7 +830,9 @@ def proxy_to_gateway(event):
             www_auth = resp.headers.get("WWW-Authenticate")
             if www_auth:
                 api_url = get_api_url(event)
-                gateway_base = GATEWAY_URL[:-4] if GATEWAY_URL.endswith("/mcp") else GATEWAY_URL
+                gateway_base = (
+                    GATEWAY_URL[:-4] if GATEWAY_URL.endswith("/mcp") else GATEWAY_URL
+                )
                 www_auth_rewritten = www_auth.replace(gateway_base, api_url)
                 resp_headers["WWW-Authenticate"] = www_auth_rewritten
 

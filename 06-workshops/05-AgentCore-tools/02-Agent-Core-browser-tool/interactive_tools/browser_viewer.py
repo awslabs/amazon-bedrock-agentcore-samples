@@ -19,9 +19,10 @@ from bedrock_agentcore.tools.browser_client import BrowserClient
 
 console = Console()
 
+
 class BrowserViewerServer:
     """Server for viewing Bedrock-AgentCore Browser sessions with configurable display size."""
-    
+
     def __init__(self, browser_client: BrowserClient, port: int = 8000):
         """Initialize the viewer server."""
         self.browser_client = browser_client
@@ -30,35 +31,37 @@ class BrowserViewerServer:
         self.server_thread = None
         self.is_running = False
         self.has_control = False  # Add control state tracking
-        
+
         # Setup directory structure
         self.package_dir = Path(__file__).parent
         self.static_dir = self.package_dir / "static"
         self.js_dir = self.static_dir / "js"
         self.css_dir = self.static_dir / "css"
         self.dcv_dir = self.static_dir / "dcvjs"
-        
+
         # Create all directories
         for directory in [self.static_dir, self.js_dir, self.css_dir, self.dcv_dir]:
             directory.mkdir(parents=True, exist_ok=True)
-        
+
         # Create the JS and CSS files
         self._create_static_files()
-        
+
         # Check for DCV SDK
         self._check_dcv_sdk()
-        
+
         # Mount static files
-        self.app.mount("/static", StaticFiles(directory=str(self.static_dir)), name="static")
-        
+        self.app.mount(
+            "/static", StaticFiles(directory=str(self.static_dir)), name="static"
+        )
+
         # Setup routes
         self._setup_routes()
-    
+
     def _create_static_files(self):
         """Create the JavaScript and CSS files included with the SDK."""
-        
+
         # Create bedrock-agentcore-browser-viewer.js with enhanced debugging
-        js_content = '''// Bedrock-AgentCore Browser Viewer Module with Enhanced Debugging
+        js_content = """// Bedrock-AgentCore Browser Viewer Module with Enhanced Debugging
 import dcv from "../dcvjs/dcv.js";
 export class BedrockAgentCoreLiveViewer {
     constructor(presignedUrl, containerId = 'dcv-display') {
@@ -208,14 +211,14 @@ export class BedrockAgentCoreLiveViewer {
             this.connection = null;
         }
     }
-}'''
-        
+}"""
+
         js_file = self.js_dir / "bedrock-agentcore-browser-viewer.js"
-        with open(js_file, 'w') as f:
+        with open(js_file, "w") as f:
             f.write(js_content)
-        
+
         # Create viewer.css with added control button styles
-        css_content = '''/* Bedrock-AgentCore Browser Viewer Styles */
+        css_content = """/* Bedrock-AgentCore Browser Viewer Styles */
 body { 
     margin: 0; 
     padding: 0; 
@@ -374,26 +377,30 @@ button.active {
     max-width: 400px;
     max-height: 200px;
     overflow: auto;
-}'''
-        
+}"""
+
         css_file = self.css_dir / "viewer.css"
-        with open(css_file, 'w') as f:
+        with open(css_file, "w") as f:
             f.write(css_content)
-    
+
     def _check_dcv_sdk(self):
         """Check if DCV SDK is present."""
         dcv_dir = self.static_dir / "dcvjs"
         dcv_dir.mkdir(parents=True, exist_ok=True)
-        
+
         dcv_js_path = dcv_dir / "dcv.js"
-        
+
         if not dcv_js_path.exists():
             console.print("\n[bold yellow]⚠️  DCV SDK Not Found[/bold yellow]")
             console.print("The Amazon DCV Web Client SDK is required but not found.")
             console.print(f"[dim]Expected location: {dcv_dir}[/dim]\n")
             console.print("[bold]To obtain the DCV SDK:[/bold]")
-            console.print("1. Download from: https://d1uj6qtbmh3dt5.cloudfront.net/webclientsdk/nice-dcv-web-client-sdk-1.9.100-952.zip")
-            console.print("2. Extract and copy dcvjs-umd/* files to the directory above")
+            console.print(
+                "1. Download from: https://d1uj6qtbmh3dt5.cloudfront.net/webclientsdk/nice-dcv-web-client-sdk-1.9.100-952.zip"
+            )
+            console.print(
+                "2. Extract and copy dcvjs-umd/* files to the directory above"
+            )
             console.print("3. Ensure the following structure:")
             console.print("   dcvjs/")
             console.print("   ├── dcv.js")
@@ -406,39 +413,43 @@ button.active {
             console.print("       ├── broadway/")
             console.print("       ├── jsmpeg/")
             console.print("       └── lz4/")
-            console.print("\n[red]The viewer will not work until DCV SDK is installed![/red]\n")
+            console.print(
+                "\n[red]The viewer will not work until DCV SDK is installed![/red]\n"
+            )
         else:
             # Check if it's a real DCV file or placeholder
             file_size = dcv_js_path.stat().st_size
             if file_size < 10000:  # Real DCV SDK is much larger
-                console.print("\n[bold yellow]⚠️  DCV SDK file appears to be a placeholder[/bold yellow]")
+                console.print(
+                    "\n[bold yellow]⚠️  DCV SDK file appears to be a placeholder[/bold yellow]"
+                )
                 console.print(f"File size: {file_size} bytes (expected > 100KB)")
                 console.print("Please replace with the real DCV SDK files\n")
             else:
                 console.print(f"[green]✅ DCV SDK found ({file_size:,} bytes)[/green]")
-    
+
     def _setup_routes(self):
         """Setup FastAPI routes."""
-        
+
         @self.app.get("/", response_class=HTMLResponse)
         async def root():
             """Serve the main viewer page."""
             if not self.browser_client.session_id:
                 raise HTTPException(status_code=400, detail="No active browser session")
-            
+
             try:
                 presigned_url = self.browser_client.generate_live_view_url(expires=300)
-                
+
                 # Debug logging
                 console.print("\n[cyan]Generated presigned URL:[/cyan]")
                 console.print(f"[dim]{presigned_url}[/dim]\n")
-                
+
                 html = self._generate_html(presigned_url)
                 return HTMLResponse(content=html)
             except Exception as e:
                 console.print(f"[red]Error generating viewer: {str(e)}[/red]")
                 raise HTTPException(status_code=500, detail=str(e))
-        
+
         # ADD TAKE CONTROL ROUTE
         @self.app.post("/api/take-control")
         async def take_control():
@@ -447,14 +458,24 @@ button.active {
                 self.browser_client.take_control()
                 self.has_control = True
                 console.print("[green]✅ Took control of browser session[/green]")
-                return JSONResponse({"status": "success", "message": "Control taken", "has_control": True})
+                return JSONResponse(
+                    {
+                        "status": "success",
+                        "message": "Control taken",
+                        "has_control": True,
+                    }
+                )
             except Exception as e:
                 console.print(f"[red]❌ Failed to take control: {e}[/red]")
                 return JSONResponse(
-                    {"status": "error", "message": "An error occurred while taking control. See server logs for details.", "has_control": self.has_control},
-                    status_code=500
+                    {
+                        "status": "error",
+                        "message": "An error occurred while taking control. See server logs for details.",
+                        "has_control": self.has_control,
+                    },
+                    status_code=500,
                 )
-        
+
         # ADD RELEASE CONTROL ROUTE
         @self.app.post("/api/release-control")
         async def release_control():
@@ -463,14 +484,24 @@ button.active {
                 self.browser_client.release_control()
                 self.has_control = False
                 console.print("[yellow]✅ Released control of browser session[/yellow]")
-                return JSONResponse({"status": "success", "message": "Control released", "has_control": False})
+                return JSONResponse(
+                    {
+                        "status": "success",
+                        "message": "Control released",
+                        "has_control": False,
+                    }
+                )
             except Exception as e:
                 console.print(f"[red]❌ Failed to release control: {e}[/red]")
                 return JSONResponse(
-                    {"status": "error", "message": "An error occurred while releasing control. See server logs for details.", "has_control": self.has_control},
-                    status_code=500
+                    {
+                        "status": "error",
+                        "message": "An error occurred while releasing control. See server logs for details.",
+                        "has_control": self.has_control,
+                    },
+                    status_code=500,
                 )
-        
+
         @self.app.get("/api/session-info")
         async def session_info():
             """Get session information."""
@@ -483,10 +514,10 @@ button.active {
                     {"width": 1280, "height": 720, "label": "HD"},
                     {"width": 1600, "height": 900, "label": "HD+"},
                     {"width": 1920, "height": 1080, "label": "Full HD"},
-                    {"width": 2560, "height": 1440, "label": "2K"}
-                ]
+                    {"width": 2560, "height": 1440, "label": "2K"},
+                ],
             }
-        
+
         @self.app.get("/api/debug-info")
         async def debug_info():
             """Get debug information."""
@@ -496,42 +527,42 @@ button.active {
                     "id": self.browser_client.session_id,
                     "identifier": self.browser_client.identifier,
                     "region": self.browser_client.region,
-                    "stage": os.environ.get("BEDROCK_AGENTCORE_STAGE", "gamma")
+                    "stage": os.environ.get("BEDROCK_AGENTCORE_STAGE", "gamma"),
                 },
                 "server": {
                     "static_dir": str(self.static_dir),
-                    "dcv_dir": str(self.dcv_dir)
-                }
+                    "dcv_dir": str(self.dcv_dir),
+                },
             }
-    
+
     def _check_dcv_files(self):
         """Check which DCV files are present."""
         dcv_files = {}
         dcv_dir = self.static_dir / "dcvjs"
-        
+
         required_files = [
             "dcv.js",
             "dcv/broadwayh264decoder-worker.js",
             "dcv/jsmpegdecoder-worker.js",
             "dcv/lz4decoder-worker.js",
-            "dcv/microphoneprocessor.js"
+            "dcv/microphoneprocessor.js",
         ]
-        
+
         for file_path in required_files:
             full_path = dcv_dir / file_path
             if full_path.exists():
                 dcv_files[file_path] = {
                     "exists": True,
-                    "size": full_path.stat().st_size
+                    "size": full_path.stat().st_size,
                 }
             else:
                 dcv_files[file_path] = {"exists": False}
-        
+
         return dcv_files
-    
+
     def _generate_html(self, presigned_url: str) -> str:
         """Generate the viewer HTML with enhanced debugging."""
-        return f'''<!DOCTYPE html>
+        return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -728,25 +759,28 @@ button.active {
         }});
     </script>
 </body>
-</html>'''
-    
+</html>"""
+
     def start(self, open_browser: bool = True) -> str:
         """Start the viewer server."""
+
         def run_server():
             uvicorn.run(self.app, host="0.0.0.0", port=self.port, log_level="error")  # nosec B104
-        
+
         self.server_thread = threading.Thread(target=run_server, daemon=True)
         self.server_thread.start()
         self.is_running = True
-        
+
         time.sleep(1)
-        
+
         viewer_url = f"http://localhost:{self.port}"
         console.print(f"\n[green]✅ Viewer server running at: {viewer_url}[/green]")
-        console.print("[dim]Check browser console (F12) for detailed debug information[/dim]\n")
-        
+        console.print(
+            "[dim]Check browser console (F12) for detailed debug information[/dim]\n"
+        )
+
         if open_browser:
             console.print("[cyan]Opening browser...[/cyan]")
             webbrowser.open(viewer_url)
-        
+
         return viewer_url

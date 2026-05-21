@@ -175,7 +175,9 @@ def setup_cognito_user_pool(pool_name: str = None) -> dict:
         Password=password,
         Permanent=True,
     )
-    print(f"  Test user created: {username} / {password}")  # codeql[py/clear-text-logging-sensitive-data]
+    print(
+        f"  Test user created: {username} / {password}"
+    )  # codeql[py/clear-text-logging-sensitive-data]
 
     discovery_url = (
         f"https://cognito-idp.{REGION}.amazonaws.com/{user_pool_id}"

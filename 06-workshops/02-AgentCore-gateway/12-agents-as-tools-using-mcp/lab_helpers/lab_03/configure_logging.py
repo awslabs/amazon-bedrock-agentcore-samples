@@ -19,7 +19,7 @@ def configure_runtime_logging(
     runtime_arn: str,
     runtime_id: str,
     region: str = "us-west-2",
-    log_type: str = "APPLICATION_LOGS"
+    log_type: str = "APPLICATION_LOGS",
 ) -> Dict[str, str]:
     """
     Configure CloudWatch Logs Delivery for an AgentCore Runtime.
@@ -62,17 +62,17 @@ def configure_runtime_logging(
     print("=" * 80)
 
     # Initialize AWS clients
-    logs_client = boto3.client('logs', region_name=region)
+    logs_client = boto3.client("logs", region_name=region)
 
     # Get AWS account ID from runtime ARN
-    account_id = runtime_arn.split(':')[4]
+    account_id = runtime_arn.split(":")[4]
 
     # Derived configuration
     log_group_name = f"/aws/bedrock-agentcore/runtimes/{runtime_id}-DEFAULT"
 
     # Extract last 12 chars of runtime_id to keep names under 60 char limit
     # AWS API requires delivery source/destination names <= 60 characters
-    short_id = runtime_id.split('-')[-1]  # Gets the unique suffix (e.g., "V5wJhp4zqq")
+    short_id = runtime_id.split("-")[-1]  # Gets the unique suffix (e.g., "V5wJhp4zqq")
     delivery_source_name = f"aiml301-lab03-src-{short_id}"
     delivery_destination_name = f"aiml301-lab03-dst-{short_id}"
 
@@ -84,11 +84,11 @@ def configure_runtime_logging(
     print(f"  Log Type: {log_type}")
 
     result = {
-        'log_group_name': log_group_name,
-        'delivery_source_arn': None,
-        'delivery_destination_arn': None,
-        'delivery_id': None,
-        'delivery_status': None
+        "log_group_name": log_group_name,
+        "delivery_source_arn": None,
+        "delivery_destination_arn": None,
+        "delivery_id": None,
+        "delivery_status": None,
     }
 
     # Step 1: Create Log Group
@@ -108,14 +108,10 @@ def configure_runtime_logging(
             name=delivery_source_name,
             resourceArn=runtime_arn,
             logType=log_type,
-            tags={
-                'Project': 'AIML301',
-                'Lab': 'Lab-03',
-                'ManagedBy': 'Workshop'
-            }
+            tags={"Project": "AIML301", "Lab": "Lab-03", "ManagedBy": "Workshop"},
         )
 
-        result['delivery_source_arn'] = response['deliverySource']['arn']
+        result["delivery_source_arn"] = response["deliverySource"]["arn"]
         print("  ✅ Created delivery source")
         print(f"     ARN: {result['delivery_source_arn']}")
         print(f"     Name: {delivery_source_name}")
@@ -123,7 +119,7 @@ def configure_runtime_logging(
     except logs_client.exceptions.ResourceAlreadyExistsException:
         print(f"  ℹ️  Delivery source already exists: {delivery_source_name}")
         response = logs_client.get_delivery_source(name=delivery_source_name)
-        result['delivery_source_arn'] = response['deliverySource']['arn']
+        result["delivery_source_arn"] = response["deliverySource"]["arn"]
         print(f"     ARN: {result['delivery_source_arn']}")
     except Exception as e:
         print(f"  ❌ Failed to create delivery source: {e}")
@@ -135,16 +131,12 @@ def configure_runtime_logging(
         response = logs_client.put_delivery_destination(
             name=delivery_destination_name,
             deliveryDestinationConfiguration={
-                'destinationResourceArn': f"arn:aws:logs:{region}:{account_id}:log-group:{log_group_name}"
+                "destinationResourceArn": f"arn:aws:logs:{region}:{account_id}:log-group:{log_group_name}"
             },
-            tags={
-                'Project': 'AIML301',
-                'Lab': 'Lab-03',
-                'ManagedBy': 'Workshop'
-            }
+            tags={"Project": "AIML301", "Lab": "Lab-03", "ManagedBy": "Workshop"},
         )
 
-        result['delivery_destination_arn'] = response['deliveryDestination']['arn']
+        result["delivery_destination_arn"] = response["deliveryDestination"]["arn"]
         print("  ✅ Created delivery destination")
         print(f"     ARN: {result['delivery_destination_arn']}")
         print(f"     Target: {log_group_name}")
@@ -152,7 +144,7 @@ def configure_runtime_logging(
     except logs_client.exceptions.ResourceAlreadyExistsException:
         print(f"  ℹ️  Delivery destination already exists: {delivery_destination_name}")
         response = logs_client.get_delivery_destination(name=delivery_destination_name)
-        result['delivery_destination_arn'] = response['deliveryDestination']['arn']
+        result["delivery_destination_arn"] = response["deliveryDestination"]["arn"]
         print(f"     ARN: {result['delivery_destination_arn']}")
     except Exception as e:
         print(f"  ❌ Failed to create delivery destination: {e}")
@@ -163,15 +155,11 @@ def configure_runtime_logging(
     try:
         response = logs_client.create_delivery(
             deliverySourceName=delivery_source_name,
-            deliveryDestinationArn=result['delivery_destination_arn'],
-            tags={
-                'Project': 'AIML301',
-                'Lab': 'Lab-03',
-                'ManagedBy': 'Workshop'
-            }
+            deliveryDestinationArn=result["delivery_destination_arn"],
+            tags={"Project": "AIML301", "Lab": "Lab-03", "ManagedBy": "Workshop"},
         )
 
-        result['delivery_id'] = response['delivery']['id']
+        result["delivery_id"] = response["delivery"]["id"]
         print("  ✅ Created delivery")
         print(f"     ID: {result['delivery_id']}")
         print(f"     ARN: {response['delivery']['arn']}")
@@ -180,9 +168,9 @@ def configure_runtime_logging(
         print("  ℹ️  Delivery already exists for this source")
         # Find existing delivery
         response = logs_client.describe_deliveries()
-        for delivery in response.get('deliveries', []):
-            if delivery.get('deliverySourceName') == delivery_source_name:
-                result['delivery_id'] = delivery['id']
+        for delivery in response.get("deliveries", []):
+            if delivery.get("deliverySourceName") == delivery_source_name:
+                result["delivery_id"] = delivery["id"]
                 print(f"     ID: {result['delivery_id']}")
                 break
     except Exception as e:
@@ -196,15 +184,17 @@ def configure_runtime_logging(
     try:
         response = logs_client.describe_deliveries()
 
-        for delivery in response.get('deliveries', []):
-            if delivery.get('deliverySourceName') == delivery_source_name:
-                result['delivery_status'] = delivery.get('deliveryStatus', 'UNKNOWN')
+        for delivery in response.get("deliveries", []):
+            if delivery.get("deliverySourceName") == delivery_source_name:
+                result["delivery_status"] = delivery.get("deliveryStatus", "UNKNOWN")
                 print(f"  ✅ Delivery Status: {result['delivery_status']}")
                 print(f"     Source: {delivery.get('deliverySourceName')}")
                 print(f"     Destination: {delivery.get('deliveryDestinationArn')}")
 
-                if result['delivery_status'] == 'ENABLED':
-                    print("\n  🎉 Delivery is ENABLED - logs should flow to CloudWatch!")
+                if result["delivery_status"] == "ENABLED":
+                    print(
+                        "\n  🎉 Delivery is ENABLED - logs should flow to CloudWatch!"
+                    )
                 break
 
     except Exception as e:
@@ -221,10 +211,7 @@ def configure_runtime_logging(
     return result
 
 
-def cleanup_runtime_logging(
-    runtime_id: str,
-    region: str = "us-west-2"
-) -> bool:
+def cleanup_runtime_logging(runtime_id: str, region: str = "us-west-2") -> bool:
     """
     Clean up CloudWatch Logs Delivery configuration for a Runtime.
 
@@ -246,10 +233,10 @@ def cleanup_runtime_logging(
     print("🧹 Cleaning up CloudWatch Logs Delivery Configuration")
     print("=" * 80)
 
-    logs_client = boto3.client('logs', region_name=region)
+    logs_client = boto3.client("logs", region_name=region)
 
     # Use same naming convention as configure_runtime_logging
-    short_id = runtime_id.split('-')[-1]
+    short_id = runtime_id.split("-")[-1]
     delivery_source_name = f"aiml301-lab03-src-{short_id}"
     delivery_destination_name = f"aiml301-lab03-dst-{short_id}"
     log_group_name = f"/aws/bedrock-agentcore/runtimes/{runtime_id}-DEFAULT"
@@ -262,9 +249,9 @@ def cleanup_runtime_logging(
         response = logs_client.describe_deliveries()
         delivery_id = None
 
-        for delivery in response.get('deliveries', []):
-            if delivery.get('deliverySourceName') == delivery_source_name:
-                delivery_id = delivery['id']
+        for delivery in response.get("deliveries", []):
+            if delivery.get("deliverySourceName") == delivery_source_name:
+                delivery_id = delivery["id"]
                 break
 
         if delivery_id:
@@ -303,13 +290,13 @@ def cleanup_runtime_logging(
     # Uncomment if you want to delete log groups during cleanup
     print(f"\n📋 Step 4: Deleting log group: {log_group_name}...")
     try:
-         logs_client.delete_log_group(logGroupName=log_group_name)
-         print(f"  ✅ Deleted log group: {log_group_name}")
+        logs_client.delete_log_group(logGroupName=log_group_name)
+        print(f"  ✅ Deleted log group: {log_group_name}")
     except logs_client.exceptions.ResourceNotFoundException:
-         print(f"  ℹ️  Log group not found: {log_group_name}")
+        print(f"  ℹ️  Log group not found: {log_group_name}")
     except Exception as e:
-         print(f"  ⚠️  Error deleting log group: {e}")
-         success = False
+        print(f"  ⚠️  Error deleting log group: {e}")
+        success = False
 
     print("\n" + "=" * 80)
     if success:

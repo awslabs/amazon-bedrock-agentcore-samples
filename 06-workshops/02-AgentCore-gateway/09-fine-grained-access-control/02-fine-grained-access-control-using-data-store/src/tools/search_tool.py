@@ -16,56 +16,56 @@ MOCK_SEARCH_INDEX = {
             "title": "Introduction to Amazon Bedrock",
             "content": "Amazon Bedrock is a fully managed service that offers foundation models...",
             "url": "https://aws.amazon.com/bedrock",
-            "keywords": ["bedrock", "aws", "ai", "foundation models"]
+            "keywords": ["bedrock", "aws", "ai", "foundation models"],
         },
         {
             "id": "doc2",
             "title": "AgentCore Runtime Guide",
             "content": "AgentCore Runtime provides serverless execution for AI agents...",
             "url": "https://docs.aws.amazon.com/agentcore",
-            "keywords": ["agentcore", "runtime", "agents", "serverless"]
+            "keywords": ["agentcore", "runtime", "agents", "serverless"],
         },
         {
             "id": "doc3",
             "title": "MCP Gateway Documentation",
             "content": "The Model Context Protocol Gateway enables tool integration...",
             "url": "https://docs.aws.amazon.com/gateway",
-            "keywords": ["mcp", "gateway", "tools", "protocol"]
+            "keywords": ["mcp", "gateway", "tools", "protocol"],
         },
         {
             "id": "doc4",
             "title": "Lambda Interceptors Best Practices",
             "content": "Lambda interceptors allow you to transform requests and responses...",
             "url": "https://docs.aws.amazon.com/lambda",
-            "keywords": ["lambda", "interceptor", "aws", "serverless"]
+            "keywords": ["lambda", "interceptor", "aws", "serverless"],
         },
         {
             "id": "doc5",
             "title": "DynamoDB Query Patterns",
             "content": "DynamoDB provides fast and flexible NoSQL database services...",
             "url": "https://aws.amazon.com/dynamodb",
-            "keywords": ["dynamodb", "database", "nosql", "aws"]
+            "keywords": ["dynamodb", "database", "nosql", "aws"],
         },
         {
             "id": "doc6",
             "title": "Strands Agent Framework",
             "content": "Strands is a powerful framework for building AI agents with tools...",
             "url": "https://strands.dev",
-            "keywords": ["strands", "agents", "framework", "ai"]
+            "keywords": ["strands", "agents", "framework", "ai"],
         },
         {
             "id": "doc7",
             "title": "IAM Permissions for AgentCore",
             "content": "Configure IAM roles and policies for AgentCore resources...",
             "url": "https://docs.aws.amazon.com/iam",
-            "keywords": ["iam", "permissions", "security", "aws"]
+            "keywords": ["iam", "permissions", "security", "aws"],
         },
         {
             "id": "doc8",
             "title": "Tool Invocation in Agents",
             "content": "Agents can invoke tools through the MCP protocol...",
             "url": "https://docs.tools.dev",
-            "keywords": ["tools", "invocation", "mcp", "agents"]
+            "keywords": ["tools", "invocation", "mcp", "agents"],
         },
     ]
 }
@@ -113,10 +113,7 @@ def search_documents(query, max_results=10):
                 score += 2
 
         if score > 0:
-            results.append({
-                "document": doc,
-                "relevance_score": score
-            })
+            results.append({"document": doc, "relevance_score": score})
 
     # Sort by relevance score
     results.sort(key=lambda x: x["relevance_score"], reverse=True)
@@ -141,19 +138,21 @@ def lambda_handler(event, context):
 
     # Parse input
     body = event if isinstance(event, dict) else json.loads(event)
-    query = body.get('query', '')
-    max_results = body.get('max_results', 10)
-    filter_keywords = body.get('filter_keywords', [])
+    query = body.get("query", "")
+    max_results = body.get("max_results", 10)
+    filter_keywords = body.get("filter_keywords", [])
 
     # Validate query
     if not query:
         return {
             "statusCode": 400,
-            "body": json.dumps({
-                "tool": "search_tool",
-                "error": "Query parameter is required",
-                "success": False
-            })
+            "body": json.dumps(
+                {
+                    "tool": "search_tool",
+                    "error": "Query parameter is required",
+                    "success": False,
+                }
+            ),
         }
 
     # Perform search
@@ -162,7 +161,8 @@ def lambda_handler(event, context):
     # Apply keyword filter if provided
     if filter_keywords:
         results = [
-            r for r in results
+            r
+            for r in results
             if any(kw in r["document"]["keywords"] for kw in filter_keywords)
         ]
 
@@ -170,14 +170,16 @@ def lambda_handler(event, context):
     formatted_results = []
     for item in results:
         doc = item["document"]
-        formatted_results.append({
-            "id": doc["id"],
-            "title": doc["title"],
-            "snippet": doc["content"][:200] + "...",
-            "url": doc["url"],
-            "keywords": doc["keywords"],
-            "relevance_score": item["relevance_score"]
-        })
+        formatted_results.append(
+            {
+                "id": doc["id"],
+                "title": doc["title"],
+                "snippet": doc["content"][:200] + "...",
+                "url": doc["url"],
+                "keywords": doc["keywords"],
+                "relevance_score": item["relevance_score"],
+            }
+        )
 
     search_result = {
         "query": query,
@@ -185,16 +187,14 @@ def lambda_handler(event, context):
         "max_results": max_results,
         "filter_keywords": filter_keywords,
         "results": formatted_results,
-        "search_timestamp": datetime.utcnow().isoformat()
+        "search_timestamp": datetime.utcnow().isoformat(),
     }
 
     response = {
         "statusCode": 200,
-        "body": json.dumps({
-            "tool": "search_tool",
-            "result": search_result,
-            "success": True
-        })
+        "body": json.dumps(
+            {"tool": "search_tool", "result": search_result, "success": True}
+        ),
     }
 
     print(f"Search tool response: {len(formatted_results)} results for query '{query}'")
@@ -210,22 +210,20 @@ TOOL_DEFINITION = {
         "properties": {
             "query": {
                 "type": "string",
-                "description": "Search query string (keywords or phrases)"
+                "description": "Search query string (keywords or phrases)",
             },
             "max_results": {
                 "type": "integer",
-                "description": "Maximum number of results to return, between 1 and 100 (default: 10)"
+                "description": "Maximum number of results to return, between 1 and 100 (default: 10)",
             },
             "filter_keywords": {
                 "type": "array",
-                "items": {
-                    "type": "string"
-                },
-                "description": "Optional list of keywords to filter results"
-            }
+                "items": {"type": "string"},
+                "description": "Optional list of keywords to filter results",
+            },
         },
-        "required": ["query"]
-    }
+        "required": ["query"],
+    },
 }
 
 
@@ -239,8 +237,8 @@ if __name__ == "__main__":
     ]
 
     for i, test_event in enumerate(test_cases, 1):
-        print(f"\n{'='*80}")
+        print(f"\n{'=' * 80}")
         print(f"Test Case {i}: {test_event}")
-        print(f"{'='*80}")
+        print(f"{'=' * 80}")
         result = lambda_handler(test_event, None)
         print(f"{json.dumps(result, indent=2)}")

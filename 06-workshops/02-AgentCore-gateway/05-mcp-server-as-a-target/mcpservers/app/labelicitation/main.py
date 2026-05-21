@@ -57,8 +57,7 @@ async def book_room(ctx: Context) -> str:
     if result.action == "accept":
         d = result.data
         return (
-            f"Booked {d.room_type} for {d.nights} night(s); "
-            f"breakfast: {d.breakfast}."
+            f"Booked {d.room_type} for {d.nights} night(s); breakfast: {d.breakfast}."
         )
     return f"Booking {result.action}ed."
 
@@ -254,5 +253,7 @@ if __name__ == "__main__":
     # stateless_http=False keeps the SSE push-back channel (required for
     # elicitation + sampling).
     mcp.run(
-        transport="streamable-http", host="0.0.0.0", stateless_http=False  # nosec B104
+        transport="streamable-http",
+        host="0.0.0.0",
+        stateless_http=False,  # nosec B104
     )  # nosec B104 - AgentCore Runtime container requires bind to all interfaces

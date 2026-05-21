@@ -203,7 +203,9 @@ def get_or_create_agentcore_gateway_target(region, target_creation_params):
     gw_target_info = {}
     try:
         gateway_client = boto3.client("bedrock-agentcore-control", region_name=region)
-        print(f"Target Creation Params: {target_creation_params}")  # codeql[py/clear-text-logging-sensitive-data]
+        print(
+            f"Target Creation Params: {target_creation_params}"
+        )  # codeql[py/clear-text-logging-sensitive-data]
         gw_target_info = gateway_client.create_gateway_target(
             name=target_creation_params["name"],
             gatewayIdentifier=target_creation_params["gateway_id"],
@@ -224,7 +226,9 @@ def get_or_create_agentcore_gateway_target(region, target_creation_params):
                 }
             ],
         )
-        print(f"Gateway target {target_creation_params['name']} created successfully ✓")  # codeql[py/clear-text-logging-sensitive-data]
+        print(
+            f"Gateway target {target_creation_params['name']} created successfully ✓"
+        )  # codeql[py/clear-text-logging-sensitive-data]
     except Exception as e:
         if "already exists" in str(e):
             print(
@@ -898,7 +902,7 @@ def create_gateway_invoke_tool_role(role_name, gateway_id, current_arn):
             break
         except ClientError as e:
             if "AccessDenied" in str(e):
-                print(f"Attempt {i+1}/{max_retries}: AccessDenied, retrying in 1s...")
+                print(f"Attempt {i + 1}/{max_retries}: AccessDenied, retrying in 1s...")
                 time.sleep(1)
             else:
                 raise

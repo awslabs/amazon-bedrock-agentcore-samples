@@ -36,7 +36,9 @@ GATEWAY_POLICY_NAME = f"{PREFIX}-gateway-runtime-policy"
 class AgentCoreGatewaySetup:
     """Setup helper for AgentCore Gateway with Runtime targets"""
 
-    def __init__(self, region: str = REGION, prefix: str = PREFIX, verbose: bool = True):
+    def __init__(
+        self, region: str = REGION, prefix: str = PREFIX, verbose: bool = True
+    ):
         """
         Initialize gateway setup helper.
 
@@ -50,13 +52,13 @@ class AgentCoreGatewaySetup:
         self.verbose = verbose
 
         # AWS clients
-        self.iam = boto3.client('iam', region_name=region)
-        self.agentcore = boto3.client('bedrock-agentcore-control', region_name=region)
-        self.ssm = boto3.client('ssm', region_name=region)
-        self.sts = boto3.client('sts', region_name=region)
+        self.iam = boto3.client("iam", region_name=region)
+        self.agentcore = boto3.client("bedrock-agentcore-control", region_name=region)
+        self.ssm = boto3.client("ssm", region_name=region)
+        self.sts = boto3.client("sts", region_name=region)
 
         # Get account ID
-        self.account_id = self.sts.get_caller_identity()['Account']
+        self.account_id = self.sts.get_caller_identity()["Account"]
 
         if verbose:
             logging.basicConfig(level=logging.INFO)
@@ -100,10 +102,10 @@ class AgentCoreGatewaySetup:
                         "StringEquals": {"aws:SourceAccount": self.account_id},
                         "ArnLike": {
                             "aws:SourceArn": f"arn:aws:bedrock-agentcore:{self.region}:{self.account_id}:gateway/*"
-                        }
-                    }
+                        },
+                    },
                 }
-            ]
+            ],
         }
 
         # Permissions policy: Gateway operations, Runtime invocation, CloudWatch logs
@@ -116,51 +118,47 @@ class AgentCoreGatewaySetup:
                     "Effect": "Allow",
                     "Action": [
                         "bedrock-agentcore:InvokeRuntime",
-                        "bedrock-agentcore:InvokeGateway"
+                        "bedrock-agentcore:InvokeGateway",
                     ],
-                    "Resource": "*"
+                    "Resource": "*",
                 },
                 {
                     "Sid": "InvokeLambda",
                     "Effect": "Allow",
                     "Action": "lambda:InvokeFunction",
-                    "Resource": f"arn:aws:lambda:{self.region}:{self.account_id}:function:*"
+                    "Resource": f"arn:aws:lambda:{self.region}:{self.account_id}:function:*",
                 },
                 {
                     "Sid": "WorkloadIdentity",
                     "Effect": "Allow",
                     "Action": [
                         "bedrock-agentcore:GetWorkloadAccessToken",
-                        "bedrock-agentcore:CreateWorkloadIdentity"
+                        "bedrock-agentcore:CreateWorkloadIdentity",
                     ],
                     "Resource": [
                         f"arn:aws:bedrock-agentcore:{self.region}:{self.account_id}:workload-identity-directory/default",
-                        f"arn:aws:bedrock-agentcore:{self.region}:{self.account_id}:workload-identity-directory/default/workload-identity/*"
-                    ]
+                        f"arn:aws:bedrock-agentcore:{self.region}:{self.account_id}:workload-identity-directory/default/workload-identity/*",
+                    ],
                 },
                 {
                     "Sid": "OAuth2Credentials",
                     "Effect": "Allow",
-                    "Action": [
-                        "bedrock-agentcore:GetResourceOauth2Token"
-                    ],
+                    "Action": ["bedrock-agentcore:GetResourceOauth2Token"],
                     "Resource": [
                         f"arn:aws:bedrock-agentcore:{self.region}:{self.account_id}:token-vault/default",
                         f"arn:aws:bedrock-agentcore:{self.region}:{self.account_id}:token-vault/*/oauth2credentialprovider/*",
                         f"arn:aws:bedrock-agentcore:{self.region}:{self.account_id}:workload-identity-directory/default",
-                        f"arn:aws:bedrock-agentcore:{self.region}:{self.account_id}:workload-identity-directory/default/workload-identity/*"
-                    ]
+                        f"arn:aws:bedrock-agentcore:{self.region}:{self.account_id}:workload-identity-directory/default/workload-identity/*",
+                    ],
                 },
                 {
                     "Sid": "SecretsManager",
                     "Effect": "Allow",
-                    "Action": [
-                        "secretsmanager:GetSecretValue"
-                    ],
+                    "Action": ["secretsmanager:GetSecretValue"],
                     "Resource": [
                         f"arn:aws:secretsmanager:{self.region}:{self.account_id}:secret:bedrock-agentcore-identity!*",
-                        f"arn:aws:secretsmanager:{self.region}:{self.account_id}:secret:bedrock-agentcore-*"
-                    ]
+                        f"arn:aws:secretsmanager:{self.region}:{self.account_id}:secret:bedrock-agentcore-*",
+                    ],
                 },
                 {
                     "Sid": "CloudWatchLogs",
@@ -168,11 +166,11 @@ class AgentCoreGatewaySetup:
                     "Action": [
                         "logs:CreateLogGroup",
                         "logs:CreateLogStream",
-                        "logs:PutLogEvents"
+                        "logs:PutLogEvents",
                     ],
-                    "Resource": f"arn:aws:logs:{self.region}:{self.account_id}:log-group:/aws/bedrock-agentcore/gateways/*"
-                }
-            ]
+                    "Resource": f"arn:aws:logs:{self.region}:{self.account_id}:log-group:/aws/bedrock-agentcore/gateways/*",
+                },
+            ],
         }
 
         try:
@@ -180,23 +178,22 @@ class AgentCoreGatewaySetup:
             try:
                 role = self.iam.get_role(RoleName=GATEWAY_ROLE_NAME)
                 self._log(f"Gateway service role already exists: {GATEWAY_ROLE_NAME}")
-                role_arn = role['Role']['Arn']
-                
+                role_arn = role["Role"]["Arn"]
+
                 # Update trust policy to ensure it has gamma service principals
                 self.iam.update_assume_role_policy(
-                    RoleName=GATEWAY_ROLE_NAME,
-                    PolicyDocument=json.dumps(trust_policy)
+                    RoleName=GATEWAY_ROLE_NAME, PolicyDocument=json.dumps(trust_policy)
                 )
                 self._log("Trust policy updated")
-                
+
             except self.iam.exceptions.NoSuchEntityException:
                 # Create new role
                 response = self.iam.create_role(
                     RoleName=GATEWAY_ROLE_NAME,
                     AssumeRolePolicyDocument=json.dumps(trust_policy),
-                    Description="Service role for AgentCore Gateway to invoke Runtime targets - Lab 03"
+                    Description="Service role for AgentCore Gateway to invoke Runtime targets - Lab 03",
                 )
-                role_arn = response['Role']['Arn']
+                role_arn = response["Role"]["Arn"]
                 self._log(f"Gateway service role created: {GATEWAY_ROLE_NAME}")
 
                 # Wait for role to propagate
@@ -206,7 +203,7 @@ class AgentCoreGatewaySetup:
             self.iam.put_role_policy(
                 RoleName=GATEWAY_ROLE_NAME,
                 PolicyName=GATEWAY_POLICY_NAME,
-                PolicyDocument=json.dumps(permissions_policy)
+                PolicyDocument=json.dumps(permissions_policy),
             )
             self._log(f"Permissions policy attached: {GATEWAY_POLICY_NAME}")
 
@@ -216,7 +213,7 @@ class AgentCoreGatewaySetup:
                 Value=role_arn,
                 Type="String",
                 Overwrite=True,
-                Description="Gateway service role ARN for Lab-03"
+                Description="Gateway service role ARN for Lab-03",
             )
             self._log("Gateway role ARN stored in Parameter Store")
 
@@ -225,7 +222,7 @@ class AgentCoreGatewaySetup:
                 "role_name": GATEWAY_ROLE_NAME,
                 "policy_name": GATEWAY_POLICY_NAME,
                 "account_id": self.account_id,
-                "region": self.region
+                "region": self.region,
             }
 
         except Exception as e:
@@ -238,7 +235,7 @@ class AgentCoreGatewaySetup:
         role_arn: Optional[str] = None,
         protocol_type: str = "MCP",
         authorizer_type: str = "AWS_IAM",
-        authorizer_configuration: Optional[Dict] = None
+        authorizer_configuration: Optional[Dict] = None,
     ) -> Dict:
         """
         Create AgentCore Gateway.
@@ -262,12 +259,12 @@ class AgentCoreGatewaySetup:
                 response = self.ssm.get_parameter(
                     Name=f"/{self.prefix}/lab-03/gateway-role-arn"
                 )
-                role_arn = response['Parameter']['Value']
+                role_arn = response["Parameter"]["Value"]
                 self._log("Retrieved Gateway role ARN from Parameter Store")
             except ClientError:
                 self._log("Gateway role not found. Creating...")
                 role_info = self.create_gateway_service_role()
-                role_arn = role_info['role_arn']
+                role_arn = role_info["role_arn"]
 
         try:
             # Build create_gateway API call parameters
@@ -275,7 +272,7 @@ class AgentCoreGatewaySetup:
                 "name": gateway_name,
                 "roleArn": role_arn,
                 "protocolType": protocol_type,
-                "authorizerType": authorizer_type
+                "authorizerType": authorizer_type,
             }
 
             # Add authorizer configuration if provided (required for CUSTOM_JWT)
@@ -285,8 +282,8 @@ class AgentCoreGatewaySetup:
             # Create gateway
             response = self.agentcore.create_gateway(**create_params)
 
-            gateway_id = response['gatewayId']
-            gateway_url = response['gatewayUrl']
+            gateway_id = response["gatewayId"]
+            gateway_url = response["gatewayUrl"]
 
             self._log(f"Gateway created: {gateway_name}")
 
@@ -297,7 +294,7 @@ class AgentCoreGatewaySetup:
                 "role_arn": role_arn,
                 "protocol_type": protocol_type,
                 "authorizer_type": authorizer_type,
-                "region": self.region
+                "region": self.region,
             }
 
             # Store in Parameter Store
@@ -306,7 +303,7 @@ class AgentCoreGatewaySetup:
                 Value=json.dumps(gateway_info, indent=2),
                 Type="String",
                 Overwrite=True,
-                Description="Lab-03 Gateway configuration"
+                Description="Lab-03 Gateway configuration",
             )
             self._log("Gateway configuration stored in Parameter Store")
 
@@ -325,13 +322,13 @@ class AgentCoreGatewaySetup:
         """Retrieve existing gateway by name"""
         try:
             response = self.agentcore.list_gateways()
-            for gw in response.get('gateways', []):
-                if gw['name'] == gateway_name:
+            for gw in response.get("gateways", []):
+                if gw["name"] == gateway_name:
                     return {
-                        "gateway_id": gw['gatewayId'],
-                        "gateway_url": gw['gatewayUrl'],
-                        "gateway_name": gw['name'],
-                        "region": self.region
+                        "gateway_id": gw["gatewayId"],
+                        "gateway_url": gw["gatewayUrl"],
+                        "gateway_name": gw["name"],
+                        "region": self.region,
                     }
         except Exception as e:
             self._error(f"Failed to retrieve gateway: {e}")
@@ -343,7 +340,7 @@ class AgentCoreGatewaySetup:
         runtime_arn: str,
         target_name: str = "remediation-runtime-target",
         tool_schema: Optional[List[Dict]] = None,
-        credentials_type: str = "GATEWAY_IAM_ROLE"
+        credentials_type: str = "GATEWAY_IAM_ROLE",
     ) -> Dict:
         """
         Register Runtime as a target on the Gateway.
@@ -371,18 +368,18 @@ class AgentCoreGatewaySetup:
                         "properties": {
                             "query": {
                                 "type": "string",
-                                "description": "Natural language query for remediation analysis"
+                                "description": "Natural language query for remediation analysis",
                             }
                         },
-                        "required": ["query"]
-                    }
+                        "required": ["query"],
+                    },
                 }
             ]
 
         try:
             # Construct MCP endpoint URL from Runtime ARN
             # Format: https://bedrock-agentcore.{region}.amazonaws.com/runtimes/{encoded_arn}/invocations?qualifier=DEFAULT
-            encoded_arn = runtime_arn.replace(':', '%3A').replace('/', '%2F')
+            encoded_arn = runtime_arn.replace(":", "%3A").replace("/", "%2F")
             mcp_endpoint_url = f"https://bedrock-agentcore.{self.region}.amazonaws.com/runtimes/{encoded_arn}/invocations?qualifier=DEFAULT"
 
             self._log(f"MCP Endpoint URL: {mcp_endpoint_url}")
@@ -393,20 +390,14 @@ class AgentCoreGatewaySetup:
                 gatewayIdentifier=gateway_id,
                 name=target_name,
                 targetConfiguration={
-                    "mcp": {
-                        "mcpServer": {
-                            "endpoint": mcp_endpoint_url
-                        }
-                    }
+                    "mcp": {"mcpServer": {"endpoint": mcp_endpoint_url}}
                 },
                 credentialProviderConfigurations=[
-                    {
-                        "credentialProviderType": credentials_type
-                    }
-                ]
+                    {"credentialProviderType": credentials_type}
+                ],
             )
 
-            target_id = response['targetId']
+            target_id = response["targetId"]
 
             self._log("Runtime registered as Gateway target")
             self._log(f"  Target ID: {target_id}")
@@ -419,7 +410,7 @@ class AgentCoreGatewaySetup:
                 "runtime_arn": runtime_arn,
                 "gateway_id": gateway_id,
                 "credentials_type": credentials_type,
-                "tool_schema": tool_schema
+                "tool_schema": tool_schema,
             }
 
             # Store in Parameter Store
@@ -428,7 +419,7 @@ class AgentCoreGatewaySetup:
                 Value=json.dumps(target_info, indent=2),
                 Type="String",
                 Overwrite=True,
-                Description="Lab-03 Gateway Runtime target configuration"
+                Description="Lab-03 Gateway Runtime target configuration",
             )
             self._log("Target configuration stored in Parameter Store")
 
@@ -441,10 +432,8 @@ class AgentCoreGatewaySetup:
     def list_gateway_targets(self, gateway_id: str) -> List[Dict]:
         """List all targets registered on the Gateway"""
         try:
-            response = self.agentcore.list_gateway_targets(
-                gatewayIdentifier=gateway_id
-            )
-            targets = response.get('targets', [])
+            response = self.agentcore.list_gateway_targets(gatewayIdentifier=gateway_id)
+            targets = response.get("targets", [])
             self._log(f"Found {len(targets)} Gateway target(s)")
             return targets
         except Exception as e:
@@ -454,18 +443,16 @@ class AgentCoreGatewaySetup:
     def get_gateway_status(self, gateway_id: str) -> Dict:
         """Get Gateway status"""
         try:
-            response = self.agentcore.get_gateway(
-                gatewayIdentifier=gateway_id
-            )
-            gateway = response['gateway']
+            response = self.agentcore.get_gateway(gatewayIdentifier=gateway_id)
+            gateway = response["gateway"]
             status = {
-                "gateway_id": gateway['gatewayId'],
-                "gateway_name": gateway['name'],
-                "status": gateway.get('status'),
-                "url": gateway.get('gatewayUrl'),
-                "protocol": gateway.get('protocolType'),
-                "created_at": gateway.get('createdAt'),
-                "last_modified": gateway.get('lastModifiedAt')
+                "gateway_id": gateway["gatewayId"],
+                "gateway_name": gateway["name"],
+                "status": gateway.get("status"),
+                "url": gateway.get("gatewayUrl"),
+                "protocol": gateway.get("protocolType"),
+                "created_at": gateway.get("createdAt"),
+                "last_modified": gateway.get("lastModifiedAt"),
             }
             self._log(f"Gateway status: {status['status']}")
             return status
@@ -483,7 +470,7 @@ class AgentCoreGatewaySetup:
                 response = self.ssm.get_parameter(
                     Name=f"/{self.prefix}/lab-03/gateway-config"
                 )
-                config['gateway'] = json.loads(response['Parameter']['Value'])
+                config["gateway"] = json.loads(response["Parameter"]["Value"])
                 self._log("Retrieved Gateway configuration from Parameter Store")
             except ClientError:
                 self._log("Gateway configuration not found in Parameter Store")
@@ -493,7 +480,7 @@ class AgentCoreGatewaySetup:
                 response = self.ssm.get_parameter(
                     Name=f"/{self.prefix}/lab-03/gateway-runtime-target"
                 )
-                config['runtime_target'] = json.loads(response['Parameter']['Value'])
+                config["runtime_target"] = json.loads(response["Parameter"]["Value"])
                 self._log("Retrieved Runtime target configuration from Parameter Store")
             except ClientError:
                 self._log("Runtime target configuration not found in Parameter Store")
@@ -521,7 +508,7 @@ class AgentCoreGatewaySetup:
                 "Delete Lab-03 Gateway and related resources? "
                 "This cannot be undone. (yes/no): "
             )
-            if confirm.lower() != 'yes':
+            if confirm.lower() != "yes":
                 self._log("Cleanup cancelled")
                 return False
 
@@ -531,13 +518,11 @@ class AgentCoreGatewaySetup:
                 response = self.ssm.get_parameter(
                     Name=f"/{self.prefix}/lab-03/gateway-config"
                 )
-                config = json.loads(response['Parameter']['Value'])
-                gateway_id = config.get('gateway_id')
+                config = json.loads(response["Parameter"]["Value"])
+                gateway_id = config.get("gateway_id")
 
                 if gateway_id:
-                    self.agentcore.delete_gateway(
-                        gatewayIdentifier=gateway_id
-                    )
+                    self.agentcore.delete_gateway(gatewayIdentifier=gateway_id)
                     self._log(f"Deleted Gateway: {gateway_id}")
             except ClientError:
                 pass
@@ -545,8 +530,7 @@ class AgentCoreGatewaySetup:
             # Delete IAM role and policies
             try:
                 self.iam.delete_role_policy(
-                    RoleName=GATEWAY_ROLE_NAME,
-                    PolicyName=GATEWAY_POLICY_NAME
+                    RoleName=GATEWAY_ROLE_NAME, PolicyName=GATEWAY_POLICY_NAME
                 )
                 self._log(f"Deleted role policy: {GATEWAY_POLICY_NAME}")
             except ClientError:
@@ -560,7 +544,9 @@ class AgentCoreGatewaySetup:
 
             # Delete Parameter Store entries
             try:
-                self.ssm.delete_parameter(Name=f"/{self.prefix}/lab-03/gateway-role-arn")
+                self.ssm.delete_parameter(
+                    Name=f"/{self.prefix}/lab-03/gateway-role-arn"
+                )
                 self._log("Deleted Parameter Store entry: gateway-role-arn")
             except ClientError:
                 pass
@@ -572,7 +558,9 @@ class AgentCoreGatewaySetup:
                 pass
 
             try:
-                self.ssm.delete_parameter(Name=f"/{self.prefix}/lab-03/gateway-runtime-target")
+                self.ssm.delete_parameter(
+                    Name=f"/{self.prefix}/lab-03/gateway-runtime-target"
+                )
                 self._log("Deleted Parameter Store entry: gateway-runtime-target")
             except ClientError:
                 pass

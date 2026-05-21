@@ -24,9 +24,7 @@ if not REGION:
     raise ValueError("AWS_REGION environment variable is required")
 
 # Create MCP server
-mcp = FastMCP(
-    "Cart Tools", host="0.0.0.0", stateless_http=True
-)  # nosec B104:standard pattern for containerized MCP servers
+mcp = FastMCP("Cart Tools", host="0.0.0.0", stateless_http=True)  # nosec B104:standard pattern for containerized MCP servers
 
 # Initialize DynamoDB manager
 dynamodb_manager = None
@@ -130,7 +128,9 @@ def add_to_cart(user_id: str, items: List[Dict[str, Any]]) -> None:
                 else:
                     # Fallback: create a Google search URL for the product
                     product_title = item.get("title", "").replace(" ", "+")
-                    item["url"] = f"https://www.google.com/search?q={product_title}&tbm=shop"
+                    item["url"] = (
+                        f"https://www.google.com/search?q={product_title}&tbm=shop"
+                    )
 
             item_with_type = {**item, "item_type": "product"}
             manager.add_wishlist_item(user_id, item_with_type)

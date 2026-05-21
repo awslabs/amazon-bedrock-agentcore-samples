@@ -1,5 +1,5 @@
 from strands.models import BedrockModel
-from mcp.client.streamable_http import streamablehttp_client 
+from mcp.client.streamable_http import streamablehttp_client
 from strands.tools.mcp.mcp_client import MCPClient
 from strands import Agent
 import logging
@@ -7,17 +7,18 @@ import argparse
 import os
 import utils
 
-#setting parameters
+# setting parameters
 parser = argparse.ArgumentParser(
-                    prog='strands_agent',
-                    description='Test Strands Agent with MCP Gateway',
-                    epilog='Input Parameters')
+    prog="strands_agent",
+    description="Test Strands Agent with MCP Gateway",
+    epilog="Input Parameters",
+)
 
-parser.add_argument('--gateway_id', help = "Gateway Id")
+parser.add_argument("--gateway_id", help="Gateway Id")
 
 os.environ["STRANDS_TOOL_CONSOLE_MODE"] = "enabled"
 
-#create boto3 session and client
+# create boto3 session and client
 (boto_session, agentcore_client) = utils.create_agentcore_client()
 
 systemPrompt = """
@@ -36,21 +37,27 @@ systemPrompt = """
 if __name__ == "__main__":
     args = parser.parse_args()
 
-    #Validations
+    # Validations
     if args.gateway_id is None:
         raise Exception("Gateway Id is required")
 
-    gatewayEndpoint=utils.get_gateway_endpoint(agentcore_client=agentcore_client, gateway_id=args.gateway_id)
+    gatewayEndpoint = utils.get_gateway_endpoint(
+        agentcore_client=agentcore_client, gateway_id=args.gateway_id
+    )
     print(f"Gateway Endpoint: {gatewayEndpoint}")
 
     jwtToken = utils.get_oath_token(boto_session)
-    client = MCPClient(lambda: streamablehttp_client(gatewayEndpoint,headers={"Authorization": f"Bearer {jwtToken}"}))
+    client = MCPClient(
+        lambda: streamablehttp_client(
+            gatewayEndpoint, headers={"Authorization": f"Bearer {jwtToken}"}
+        )
+    )
 
     bedrockmodel = BedrockModel(
         model_id="global.anthropic.claude-haiku-4-5-20251001-v1:0",
         temperature=0.7,
         streaming=True,
-        boto_session=boto_session
+        boto_session=boto_session,
     )
 
     # Configure the root strands logger
@@ -58,20 +65,20 @@ if __name__ == "__main__":
 
     # Add a handler to see the logs
     logging.basicConfig(
-        format="%(levelname)s | %(name)s | %(message)s", 
-        handlers=[logging.StreamHandler()]
+        format="%(levelname)s | %(name)s | %(message)s",
+        handlers=[logging.StreamHandler()],
     )
 
     with client:
         tools = client.list_tools_sync()
-        agent = Agent(model=bedrockmodel,tools=tools,system_prompt=systemPrompt)
+        agent = Agent(model=bedrockmodel, tools=tools, system_prompt=systemPrompt)
 
         print("=" * 60)
         print("🗓️  WELCOME TO YOUR HEALTHCARE ASSISTANT  🗓️")
         print("=" * 60)
         print("✨ I can help you with:")
         print("   📅 Check child's immunization history and pending immunization")
-        print("   📋 Book appointment for immunization") 
+        print("   📋 Book appointment for immunization")
         print()
         print("🚪 Type 'exit' to quit anytime")
         print("=" * 60)

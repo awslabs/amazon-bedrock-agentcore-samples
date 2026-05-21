@@ -17,6 +17,7 @@ import time
 @dataclass
 class APICallRecord:
     """Record of a single API call."""
+
     id: str
     timestamp: float
     method: str
@@ -32,7 +33,7 @@ class APICallRecord:
 
     @property
     def formatted_timestamp(self) -> str:
-        return datetime.fromtimestamp(self.timestamp).strftime('%H:%M:%S.%f')[:-3]
+        return datetime.fromtimestamp(self.timestamp).strftime("%H:%M:%S.%f")[:-3]
 
     @property
     def is_success(self) -> bool:
@@ -45,6 +46,7 @@ class APICallRecord:
 @dataclass
 class APICallLog:
     """Collection of API call records with management methods."""
+
     calls: List[APICallRecord] = field(default_factory=list)
     max_calls: int = 50
 
@@ -52,7 +54,7 @@ class APICallLog:
         """Add a call to the log, maintaining max size."""
         self.calls.append(call)
         if len(self.calls) > self.max_calls:
-            self.calls = self.calls[-self.max_calls:]
+            self.calls = self.calls[-self.max_calls :]
 
     def get_recent(self, count: int = 10) -> List[APICallRecord]:
         """Get most recent calls."""
@@ -69,9 +71,9 @@ class APICallLog:
 
 def get_api_call_log() -> APICallLog:
     """Get or create the API call log from session state."""
-    if 'api_call_log' not in st.session_state:
-        st.session_state['api_call_log'] = APICallLog()
-    return st.session_state['api_call_log']
+    if "api_call_log" not in st.session_state:
+        st.session_state["api_call_log"] = APICallLog()
+    return st.session_state["api_call_log"]
 
 
 def record_api_call(
@@ -84,7 +86,7 @@ def record_api_call(
     response_body: Optional[Any] = None,
     duration_ms: Optional[float] = None,
     error: Optional[str] = None,
-    call_type: str = "api"
+    call_type: str = "api",
 ) -> APICallRecord:
     """
     Record an API call to the session log.
@@ -116,7 +118,7 @@ def record_api_call(
         response_body=response_body,
         duration_ms=duration_ms,
         error=error,
-        call_type=call_type
+        call_type=call_type,
     )
 
     log = get_api_call_log()
@@ -143,7 +145,7 @@ def render_api_call_log():
         filter_type = st.selectbox(
             "Filter by type:",
             ["All", "Agent Calls", "Auth Calls", "Token Operations"],
-            key="api_log_filter"
+            key="api_log_filter",
         )
 
     with col2:
@@ -162,12 +164,18 @@ def render_api_call_log():
     elif filter_type == "Auth Calls":
         calls = [c for c in log.get_recent(count) if c.call_type in ("auth", "oauth")]
     elif filter_type == "Token Operations":
-        calls = [c for c in log.get_recent(count) if c.call_type in ("token_refresh", "token_exchange")]
+        calls = [
+            c
+            for c in log.get_recent(count)
+            if c.call_type in ("token_refresh", "token_exchange")
+        ]
     else:
         calls = log.get_recent(count)
 
     if not calls:
-        st.info("No API calls recorded yet. Interact with the application to see calls appear here.")
+        st.info(
+            "No API calls recorded yet. Interact with the application to see calls appear here."
+        )
 
         # Show example of what a call looks like
         with st.expander("Example: What an API call looks like"):
@@ -208,17 +216,20 @@ def render_api_call_card(call: APICallRecord):
     # Create expandable section
     with st.expander(
         f"{status_icon} {call.formatted_timestamp} | {call.method} {_truncate_url(call.url)} | {call.duration_ms or 0:.0f}ms",
-        expanded=bool(call.error)
+        expanded=bool(call.error),
     ):
         # Header row
         col1, col2, col3 = st.columns([1, 2, 1])
 
         with col1:
-            st.markdown(f"""
+            st.markdown(
+                f"""
             <span style="background: {badge_color}; color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px;">
                 {badge_text}
             </span>
-            """, unsafe_allow_html=True)
+            """,
+                unsafe_allow_html=True,
+            )
 
         with col2:
             st.markdown(f"**{call.method}** `{call.url}`")
@@ -252,13 +263,15 @@ def render_request_details(call: APICallRecord):
     st.markdown("**Key Headers:**")
     if call.request_headers:
         for key, value in call.request_headers.items():
-            if key.lower() == 'authorization':
+            if key.lower() == "authorization":
                 # Show token type but mask the actual token
-                if value.startswith('Bearer '):
-                    st.markdown(f"- `{key}`: Bearer [JWT TOKEN - {len(value)-7} chars]")
+                if value.startswith("Bearer "):
+                    st.markdown(
+                        f"- `{key}`: Bearer [JWT TOKEN - {len(value) - 7} chars]"
+                    )
                 else:
                     st.markdown(f"- `{key}`: [MASKED]")
-            elif key.lower() in ('x-api-key', 'cookie'):
+            elif key.lower() in ("x-api-key", "cookie"):
                 st.markdown(f"- `{key}`: [MASKED]")
             else:
                 st.markdown(f"- `{key}`: {value}")
@@ -307,7 +320,7 @@ def render_headers_details(call: APICallRecord):
         if call.request_headers:
             for key, value in call.request_headers.items():
                 # Mask sensitive headers
-                if key.lower() in ('authorization', 'x-api-key', 'cookie'):
+                if key.lower() in ("authorization", "x-api-key", "cookie"):
                     st.markdown(f"**{key}:** `[MASKED]`")
                 else:
                     st.markdown(f"**{key}:** `{value}`")
@@ -453,16 +466,24 @@ def render_call_statistics():
 
 # Helper functions
 
+
 def _truncate_url(url: str, max_length: int = 60) -> str:
     """Truncate URL for display."""
     if len(url) <= max_length:
         return url
-    return url[:max_length-3] + "..."
+    return url[: max_length - 3] + "..."
 
 
 def _mask_sensitive_fields(data: Dict[str, Any]) -> Dict[str, Any]:
     """Mask sensitive fields in a dictionary."""
-    sensitive_keys = {'access_token', 'refresh_token', 'id_token', 'password', 'secret', 'client_secret'}
+    sensitive_keys = {
+        "access_token",
+        "refresh_token",
+        "id_token",
+        "password",
+        "secret",
+        "client_secret",
+    }
 
     masked = {}
     for key, value in data.items():

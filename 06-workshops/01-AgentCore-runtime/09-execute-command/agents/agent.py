@@ -8,6 +8,7 @@ app = BedrockAgentCoreApp()
 # Create the AI agent instance
 agent = Agent()
 
+
 @app.entrypoint
 def invoke(payload, context):
     """
@@ -28,6 +29,7 @@ def invoke(payload, context):
 
     # Return the response in the expected format
     return {"result": result.message}
+
 
 if __name__ == "__main__":
     # Run the agent application

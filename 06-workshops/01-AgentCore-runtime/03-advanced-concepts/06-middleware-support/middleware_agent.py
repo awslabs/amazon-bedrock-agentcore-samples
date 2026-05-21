@@ -11,6 +11,7 @@ from strands import Agent
 from strands.models import BedrockModel
 from opentelemetry import baggage, context as otel_context
 
+
 # Middleware 1: Observability (Logging + Metrics)
 class ObservabilityMiddleware(BaseHTTPMiddleware):
     """Combines logging and metrics collection for comprehensive observability."""
@@ -30,7 +31,9 @@ class ObservabilityMiddleware(BaseHTTPMiddleware):
         duration = time.time() - start_time
 
         # Logging: Record response details
-        print(f"[{timestamp}] RESPONSE: Status {response.status_code} | Duration {duration:.4f}s")
+        print(
+            f"[{timestamp}] RESPONSE: Status {response.status_code} | Duration {duration:.4f}s"
+        )
 
         # Add metadata to baggage (this WILL be returned in response)
         ctx = baggage.set_baggage("middleware.process_time", f"{duration:.4f}s")
@@ -41,6 +44,7 @@ class ObservabilityMiddleware(BaseHTTPMiddleware):
         response.headers["x-process-time"] = f"{duration:.4f}s"
 
         return response
+
 
 # Middleware 2: Error Handling
 class ErrorHandlingMiddleware(BaseHTTPMiddleware):
@@ -68,7 +72,7 @@ class ErrorHandlingMiddleware(BaseHTTPMiddleware):
                 "error_type": type(e).__name__,
                 "error_message": str(e),
                 "path": request.url.path,
-                "method": request.method
+                "method": request.method,
             }
             print(f"\n❌ ERROR: {error_details}")
             print(f"Traceback: {traceback.format_exc()}")
@@ -84,10 +88,11 @@ class ErrorHandlingMiddleware(BaseHTTPMiddleware):
                 content={
                     "error": "An error occurred processing your request",
                     "correlation_id": correlation_id,
-                    "message": "Please contact support with this correlation ID"
+                    "message": "Please contact support with this correlation ID",
                 },
-                headers={"x-correlation-id": correlation_id}
+                headers={"x-correlation-id": correlation_id},
             )
+
 
 # Create app with middleware chain
 # Order matters: ErrorHandling wraps everything, then Observability
@@ -100,10 +105,8 @@ app = BedrockAgentCoreApp(
 
 # Initialize Strands agent
 model = BedrockModel(model_id="global.anthropic.claude-haiku-4-5-20251001-v1:0")
-agent = Agent(
-    model=model,
-    system_prompt="You are a helpful AI assistant."
-)
+agent = Agent(model=model, system_prompt="You are a helpful AI assistant.")
+
 
 @app.entrypoint
 def agent_handler(payload, context):
@@ -112,6 +115,7 @@ def agent_handler(payload, context):
     result = agent(user_message)
 
     return {"response": result.message}
+
 
 if __name__ == "__main__":
     app.run()

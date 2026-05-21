@@ -9,21 +9,22 @@ import utils
 
 load_dotenv()
 
-#setting parameters
+# setting parameters
 parser = argparse.ArgumentParser(
-                    prog='strands_agent',
-                    description='Test Strands Agent with MCP Gateway',
-                    epilog='Input Parameters')
+    prog="strands_agent",
+    description="Test Strands Agent with MCP Gateway",
+    epilog="Input Parameters",
+)
 
-parser.add_argument('--gateway_id', help = "Gateway Id")
+parser.add_argument("--gateway_id", help="Gateway Id")
 
-#create boto3 session and client
+# create boto3 session and client
 (boto_session, agentcore_client) = utils.create_agentcore_client()
 
 bedrock_client = boto_session.client(
-    "bedrock-runtime",
-    region_name=os.getenv("aws_default_region")
+    "bedrock-runtime", region_name=os.getenv("aws_default_region")
 )
+
 
 async def main(gateway_endpoint, jwt_token):
     client = MultiServerMCPClient(
@@ -31,7 +32,7 @@ async def main(gateway_endpoint, jwt_token):
             "healthcare": {
                 "url": gateway_endpoint,
                 "transport": "streamable_http",
-                "headers":{"Authorization": f"Bearer {jwt_token}"}
+                "headers": {"Authorization": f"Bearer {jwt_token}"},
             }
         }
     )
@@ -42,9 +43,9 @@ async def main(gateway_endpoint, jwt_token):
         client=bedrock_client,
         model="global.anthropic.claude-haiku-4-5-20251001-v1:0",
         model_provider="bedrock_converse",
-        temperature=0.7
+        temperature=0.7,
     )
-    #print(LLM)
+    # print(LLM)
 
     systemPrompt = """
     You are a healthcare agent to book appointments for kids immunization.
@@ -59,11 +60,7 @@ async def main(gateway_endpoint, jwt_token):
     When asked about the immunization schedule, please first get the child name and date of birth by invoking the right tool with patient id as pediatric-patient-001 and ask the user to confirm the details.
     """
 
-    agent = create_react_agent(
-        LLM, 
-        tools, 
-        prompt=systemPrompt
-    )
+    agent = create_react_agent(LLM, tools, prompt=systemPrompt)
     history = ""
 
     print("=" * 60)
@@ -71,7 +68,7 @@ async def main(gateway_endpoint, jwt_token):
     print("=" * 60)
     print("✨ I can help you with:")
     print("   📅 Check child's immunization history and pending immunization")
-    print("   📋 Book appointment for immunization") 
+    print("   📋 Book appointment for immunization")
     print()
     print("🚪 Type 'exit' to quit anytime")
     print("=" * 60)
@@ -98,13 +95,16 @@ async def main(gateway_endpoint, jwt_token):
 
             history = history + "User: " + user_input
 
-            async for message_chunk, metadata in agent.astream({"messages": [("human", user_input), ("developer", history)]}, stream_mode="messages"):
+            async for message_chunk, metadata in agent.astream(
+                {"messages": [("human", user_input), ("developer", history)]},
+                stream_mode="messages",
+            ):
                 if message_chunk.content:
                     for content in message_chunk.content:
-                        if 'text' in content:
-                            print(content['text'], end="", flush=True)
+                        if "text" in content:
+                            print(content["text"], end="", flush=True)
 
-                            history = history + "AI Message Chunk: " + content['text']
+                            history = history + "AI Message Chunk: " + content["text"]
 
             print()
 
@@ -120,14 +120,17 @@ async def main(gateway_endpoint, jwt_token):
             print("💡 Please try again or type 'exit' to quit")
             print()
 
+
 if __name__ == "__main__":
     args = parser.parse_args()
 
-    #Validations
+    # Validations
     if args.gateway_id is None:
         raise Exception("Gateway Id is required")
 
-    gatewayEndpoint=utils.get_gateway_endpoint(agentcore_client=agentcore_client, gateway_id=args.gateway_id)
+    gatewayEndpoint = utils.get_gateway_endpoint(
+        agentcore_client=agentcore_client, gateway_id=args.gateway_id
+    )
     print(f"Gateway Endpoint: {gatewayEndpoint}")
 
     jwtToken = utils.get_oath_token(boto_session)

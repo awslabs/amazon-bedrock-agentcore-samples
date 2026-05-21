@@ -839,7 +839,7 @@ def create_gateway_invoke_tool_role(role_name, gateway_id, current_arn):
             break
         except ClientError as e:
             if "AccessDenied" in str(e):
-                print(f"Attempt {i+1}/{max_retries}: AccessDenied, retrying in 3s...")
+                print(f"Attempt {i + 1}/{max_retries}: AccessDenied, retrying in 3s...")
                 time.sleep(3)
             else:
                 raise

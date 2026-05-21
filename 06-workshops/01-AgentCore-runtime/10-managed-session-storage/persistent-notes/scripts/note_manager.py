@@ -22,21 +22,23 @@ def save_note(content: str) -> None:
             notes = []
 
     # Add new note
-    note = {
-        "content": content,
-        "timestamp": datetime.now().isoformat()
-    }
+    note = {"content": content, "timestamp": datetime.now().isoformat()}
     notes.append(note)
 
     # Save back to file
     with open(NOTES_FILE, "w") as f:
         json.dump(notes, f, indent=2)
 
-    print(json.dumps({
-        "status": "success",
-        "message": f"Note saved to {NOTES_FILE}",
-        "note": note
-    }, indent=2))
+    print(
+        json.dumps(
+            {
+                "status": "success",
+                "message": f"Note saved to {NOTES_FILE}",
+                "note": note,
+            },
+            indent=2,
+        )
+    )
 
 
 if __name__ == "__main__":

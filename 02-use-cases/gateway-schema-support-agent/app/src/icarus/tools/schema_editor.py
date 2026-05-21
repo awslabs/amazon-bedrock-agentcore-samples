@@ -121,12 +121,19 @@ def _format_lines(
 
 def _show_diff(old: list[str], new: list[str], context_lines: int = 2) -> str:
     diff = difflib.unified_diff(
-        a=old, b=new, fromfile="Original", tofile="Modified", lineterm="", n=context_lines
+        a=old,
+        b=new,
+        fromfile="Original",
+        tofile="Modified",
+        lineterm="",
+        n=context_lines,
     )
     return "\n".join(diff)
 
 
-def preview(schema_path: Path, start_line: int | None = None, end_line: int | None = None) -> str:
+def preview(
+    schema_path: Path, start_line: int | None = None, end_line: int | None = None
+) -> str:
     text_lines = schema_path.read_text().splitlines()
 
     if start_line is not None:
@@ -138,7 +145,9 @@ def preview(schema_path: Path, start_line: int | None = None, end_line: int | No
     num_lines_shown = min(50, num_lines)
     num_lines_skipped = num_lines - num_lines_shown
 
-    suffix = f"\n... {num_lines_skipped} more lines ..." if num_lines_skipped > 0 else ""
+    suffix = (
+        f"\n... {num_lines_skipped} more lines ..." if num_lines_skipped > 0 else ""
+    )
 
     return _format_lines(text_lines, 1, 50, context_lines=0) + suffix
 
@@ -203,7 +212,9 @@ def replace(
 
     schema_path.write_text(text_modified)
 
-    return _show_diff(old=text_lines, new=text_modified.splitlines(), context_lines=context_lines)
+    return _show_diff(
+        old=text_lines, new=text_modified.splitlines(), context_lines=context_lines
+    )
 
 
 def insert(
@@ -222,12 +233,16 @@ def insert(
 
     original_text_lines = schema_path.read_text().splitlines()
     modified_text_lines = (
-        original_text_lines[:insert_line] + new_str_lines + original_text_lines[insert_line:]
+        original_text_lines[:insert_line]
+        + new_str_lines
+        + original_text_lines[insert_line:]
     )
 
     schema_path.write_text("\n".join(modified_text_lines))
 
-    return _show_diff(old=original_text_lines, new=modified_text_lines, context_lines=context_lines)
+    return _show_diff(
+        old=original_text_lines, new=modified_text_lines, context_lines=context_lines
+    )
 
 
 class SchemaEditorTool:

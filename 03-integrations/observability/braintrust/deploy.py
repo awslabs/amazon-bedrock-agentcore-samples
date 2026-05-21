@@ -44,30 +44,68 @@ print(f"Region:  {REGION}\nAccount: {ACCOUNT_ID}\nAgent:   {AGENT_NAME}")
 def create_execution_role() -> str:
     iam = boto3.client("iam", region_name=REGION)
     role_name = f"agentcore-{AGENT_NAME}-role"
-    trust_policy = {"Version": "2012-10-17", "Statement": [{"Effect": "Allow",
-        "Principal": {"Service": "bedrock-agentcore.amazonaws.com"}, "Action": "sts:AssumeRole",
-        "Condition": {"StringEquals": {"aws:SourceAccount": ACCOUNT_ID}}}]}
-    inline_policy = {"Version": "2012-10-17", "Statement": [
-        {"Effect": "Allow", "Action": ["logs:DescribeLogStreams", "logs:CreateLogGroup"],
-         "Resource": [f"arn:aws:logs:{REGION}:{ACCOUNT_ID}:log-group:/aws/bedrock-agentcore/runtimes/*"]},
-        {"Effect": "Allow", "Action": ["logs:DescribeLogGroups"],
-         "Resource": [f"arn:aws:logs:{REGION}:{ACCOUNT_ID}:log-group:*"]},
-        {"Effect": "Allow", "Action": ["logs:CreateLogStream", "logs:PutLogEvents"],
-         "Resource": [f"arn:aws:logs:{REGION}:{ACCOUNT_ID}:log-group:/aws/bedrock-agentcore/runtimes/*:log-stream:*"]},
-        {"Effect": "Allow", "Action": ["bedrock:InvokeModel", "bedrock:InvokeModelWithResponseStream"],
-         "Resource": ["arn:aws:bedrock:*::foundation-model/*", f"arn:aws:bedrock:{REGION}:{ACCOUNT_ID}:*"]},
-    ]}
+    trust_policy = {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Effect": "Allow",
+                "Principal": {"Service": "bedrock-agentcore.amazonaws.com"},
+                "Action": "sts:AssumeRole",
+                "Condition": {"StringEquals": {"aws:SourceAccount": ACCOUNT_ID}},
+            }
+        ],
+    }
+    inline_policy = {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Effect": "Allow",
+                "Action": ["logs:DescribeLogStreams", "logs:CreateLogGroup"],
+                "Resource": [
+                    f"arn:aws:logs:{REGION}:{ACCOUNT_ID}:log-group:/aws/bedrock-agentcore/runtimes/*"
+                ],
+            },
+            {
+                "Effect": "Allow",
+                "Action": ["logs:DescribeLogGroups"],
+                "Resource": [f"arn:aws:logs:{REGION}:{ACCOUNT_ID}:log-group:*"],
+            },
+            {
+                "Effect": "Allow",
+                "Action": ["logs:CreateLogStream", "logs:PutLogEvents"],
+                "Resource": [
+                    f"arn:aws:logs:{REGION}:{ACCOUNT_ID}:log-group:/aws/bedrock-agentcore/runtimes/*:log-stream:*"
+                ],
+            },
+            {
+                "Effect": "Allow",
+                "Action": [
+                    "bedrock:InvokeModel",
+                    "bedrock:InvokeModelWithResponseStream",
+                ],
+                "Resource": [
+                    "arn:aws:bedrock:*::foundation-model/*",
+                    f"arn:aws:bedrock:{REGION}:{ACCOUNT_ID}:*",
+                ],
+            },
+        ],
+    }
     try:
-        resp = iam.create_role(RoleName=role_name,
-                               AssumeRolePolicyDocument=json.dumps(trust_policy),
-                               Description=f"Execution role for {AGENT_NAME}")
+        resp = iam.create_role(
+            RoleName=role_name,
+            AssumeRolePolicyDocument=json.dumps(trust_policy),
+            Description=f"Execution role for {AGENT_NAME}",
+        )
         role_arn = resp["Role"]["Arn"]
         print(f"\nCreated IAM role: {role_arn}")
     except iam.exceptions.EntityAlreadyExistsException:
         role_arn = f"arn:aws:iam::{ACCOUNT_ID}:role/{role_name}"
         print(f"\nIAM role exists: {role_arn}")
-    iam.put_role_policy(RoleName=role_name, PolicyName=f"{AGENT_NAME}-policy",
-                        PolicyDocument=json.dumps(inline_policy))
+    iam.put_role_policy(
+        RoleName=role_name,
+        PolicyName=f"{AGENT_NAME}-policy",
+        PolicyDocument=json.dumps(inline_policy),
+    )
     print("  Waiting 10s for IAM propagation...")
     time.sleep(10)
     return role_arn
@@ -80,7 +118,10 @@ def build_and_upload_package():
         if REGION == "us-east-1":
             s3.create_bucket(Bucket=S3_BUCKET)
         else:
-            s3.create_bucket(Bucket=S3_BUCKET, CreateBucketConfiguration={"LocationConstraint": REGION})
+            s3.create_bucket(
+                Bucket=S3_BUCKET,
+                CreateBucketConfiguration={"LocationConstraint": REGION},
+            )
         print(f"\nCreated S3 bucket: {S3_BUCKET}")
     except (s3.exceptions.BucketAlreadyOwnedByYou, s3.exceptions.BucketAlreadyExists):
         print(f"\nS3 bucket exists: {S3_BUCKET}")
@@ -89,14 +130,36 @@ def build_and_upload_package():
     if os.path.exists(zip_file):
         os.remove(zip_file)
     print("\n  Installing arm64 dependencies with uv...")
-    subprocess.run(["uv", "pip", "install", "--python-platform", "aarch64-manylinux2014",
-                    "--python-version", "3.13", "--target", pkg_dir, "--only-binary", ":all:",
-                    "-r", "requirements.txt"], check=True)
+    subprocess.run(
+        [
+            "uv",
+            "pip",
+            "install",
+            "--python-platform",
+            "aarch64-manylinux2014",
+            "--python-version",
+            "3.13",
+            "--target",
+            pkg_dir,
+            "--only-binary",
+            ":all:",
+            "-r",
+            "requirements.txt",
+        ],
+        check=True,
+    )
     print("  Creating deployment zip...")
-    subprocess.run(["zip", "-r", f"../{zip_file}", "."], cwd=pkg_dir, check=True, capture_output=True)
+    subprocess.run(
+        ["zip", "-r", f"../{zip_file}", "."],
+        cwd=pkg_dir,
+        check=True,
+        capture_output=True,
+    )
     for src_file in AGENT_FILES:
-        subprocess.run(["zip", zip_file, "-j", src_file], check=True, capture_output=True)
-    print(f"  Package: {zip_file} ({os.path.getsize(zip_file)/1024/1024:.1f} MB)")
+        subprocess.run(
+            ["zip", zip_file, "-j", src_file], check=True, capture_output=True
+        )
+    print(f"  Package: {zip_file} ({os.path.getsize(zip_file) / 1024 / 1024:.1f} MB)")
     print(f"  Uploading to s3://{S3_BUCKET}/{S3_PREFIX}...")
     s3.upload_file(zip_file, S3_BUCKET, S3_PREFIX)
     shutil.rmtree(pkg_dir)
@@ -108,9 +171,13 @@ def create_runtime(role_arn: str) -> dict:
     print(f"\n  Creating AgentCore Runtime '{AGENT_NAME}'...")
     response = control.create_agent_runtime(
         agentRuntimeName=AGENT_NAME,
-        agentRuntimeArtifact={"codeConfiguration": {
-            "code": {"s3": {"bucket": S3_BUCKET, "prefix": S3_PREFIX}},
-            "runtime": PYTHON_RUNTIME, "entryPoint": [ENTRY_POINT]}},
+        agentRuntimeArtifact={
+            "codeConfiguration": {
+                "code": {"s3": {"bucket": S3_BUCKET, "prefix": S3_PREFIX}},
+                "runtime": PYTHON_RUNTIME,
+                "entryPoint": [ENTRY_POINT],
+            }
+        },
         roleArn=role_arn,
         networkConfiguration={"networkMode": "PUBLIC"},
         protocolConfiguration={"serverProtocol": PROTOCOL},
@@ -139,7 +206,9 @@ def create_endpoint(runtime_id: str):
     control.create_agent_runtime_endpoint(agentRuntimeId=runtime_id, name="default")
     print("  Waiting for endpoint to be ready...")
     while True:
-        for ep in control.list_agent_runtime_endpoints(agentRuntimeId=runtime_id).get("runtimeEndpoints", []):
+        for ep in control.list_agent_runtime_endpoints(agentRuntimeId=runtime_id).get(
+            "runtimeEndpoints", []
+        ):
             if ep["name"] == "default":
                 print(f"    Status: {ep['status']}")
                 if ep["status"] == "READY":
@@ -151,7 +220,9 @@ def create_endpoint(runtime_id: str):
 
 def main():
     if not PLATFORM_ENV_VARS.get("BRAINTRUST_API_KEY"):
-        print("ERROR: BRAINTRUST_API_KEY not set. Copy .env.example → .env and fill in your credentials.")
+        print(
+            "ERROR: BRAINTRUST_API_KEY not set. Copy .env.example → .env and fill in your credentials."
+        )
         sys.exit(1)
     print("=" * 60)
     print("Deploying Travel Agent with Braintrust Observability")
@@ -160,10 +231,15 @@ def main():
     build_and_upload_package()
     runtime = create_runtime(role_arn)
     create_endpoint(runtime["runtime_id"])
-    config = {"agent_name": AGENT_NAME, "runtime_id": runtime["runtime_id"],
-              "runtime_arn": runtime["runtime_arn"], "region": REGION,
-              "role_name": f"agentcore-{AGENT_NAME}-role",
-              "s3_bucket": S3_BUCKET, "s3_prefix": S3_PREFIX}
+    config = {
+        "agent_name": AGENT_NAME,
+        "runtime_id": runtime["runtime_id"],
+        "runtime_arn": runtime["runtime_arn"],
+        "region": REGION,
+        "role_name": f"agentcore-{AGENT_NAME}-role",
+        "s3_bucket": S3_BUCKET,
+        "s3_prefix": S3_PREFIX,
+    }
     with open("runtime_config.json", "w") as f:
         json.dump(config, f, indent=2)
     print("\n" + "=" * 60)

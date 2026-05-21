@@ -66,7 +66,8 @@ def _create_agentcore_client(region: str, endpoint_url: str) -> Any:
     """
     # Validate that the region matches the endpoint URL
     import re
-    endpoint_region_match = re.search(r'\.([a-z0-9-]+)\.amazonaws\.com', endpoint_url)
+
+    endpoint_region_match = re.search(r"\.([a-z0-9-]+)\.amazonaws\.com", endpoint_url)
     if endpoint_region_match:
         endpoint_region = endpoint_region_match.group(1)
         if endpoint_region != region:
@@ -77,7 +78,7 @@ def _create_agentcore_client(region: str, endpoint_url: str) -> Any:
             )
             logging.error(error_msg)
             raise ValueError(error_msg)
-    
+
     # Custom retry configuration with increased attempts and timeout
     retry_config = Config(
         retries={"max_attempts": 20, "mode": "adaptive"},

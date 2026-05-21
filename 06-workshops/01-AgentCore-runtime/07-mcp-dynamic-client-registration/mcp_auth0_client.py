@@ -13,25 +13,27 @@ from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 # This ensures ALL HTTP requests have the User-Agent header, including OAuth discovery calls
 _original_httpx_request = httpx.Request.__init__
 
+
 def _patched_httpx_request_init(self, method, url, *args, **kwargs):
     """Patched Request.__init__ that injects User-Agent header into all HTTP requests."""
     # Get or create headers
-    headers = kwargs.get('headers')
+    headers = kwargs.get("headers")
     if headers is None:
         headers = {}
-        kwargs['headers'] = headers
-    
+        kwargs["headers"] = headers
+
     # Convert to mutable dict if needed
     if not isinstance(headers, dict):
         headers = dict(headers)
-        kwargs['headers'] = headers
-    
+        kwargs["headers"] = headers
+
     # Inject User-Agent if not present (case-insensitive check)
-    if 'User-Agent' not in headers and 'user-agent' not in headers:
-        headers['User-Agent'] = 'python-mcp-sdk/1.0 (BedrockAgentCore-Runtime)'
-    
+    if "User-Agent" not in headers and "user-agent" not in headers:
+        headers["User-Agent"] = "python-mcp-sdk/1.0 (BedrockAgentCore-Runtime)"
+
     # Call original __init__
     _original_httpx_request(self, method, url, *args, **kwargs)
+
 
 # Apply the patch globally before importing MCP modules
 httpx.Request.__init__ = _patched_httpx_request_init
@@ -76,7 +78,7 @@ class CallbackHandler(BaseHTTPRequestHandler):
         """Handle GET request from OAuth redirect."""
         parsed = urlparse(self.path)
         query_params = parse_qs(parsed.query)
-        #print(f'Query Params parsed: {query_params}')
+        # print(f'Query Params parsed: {query_params}')
 
         if "code" in query_params:
             self.callback_data["authorization_code"] = query_params["code"][0]
@@ -172,44 +174,46 @@ class CallbackServer:
 def add_auth0_audience_parameter(authorization_url: str, audience: str) -> str:
     """
     Add Auth0 'audience' parameter to authorization URL.
-    
+
     Auth0 requires the 'audience' parameter to identify which API's token settings
     to use. Without it, Auth0 returns opaque tokens or JWE instead of JWT.
-    
+
     This function properly adds the audience parameter while preserving all existing
     query parameters (including the OAuth 'resource' parameter).
-    
+
     Args:
         authorization_url: The authorization URL from the OAuth flow
         audience: The Auth0 API identifier (e.g., "runtime-api")
-    
+
     Returns:
         Modified URL with audience parameter added
-    
+
     Reference:
         https://auth0.com/docs/secure/tokens/access-tokens/get-access-tokens
     """
     # Only apply to Auth0 URLs that don't already have audience
-    if 'auth0.com' not in authorization_url or 'audience=' in authorization_url:
+    if "auth0.com" not in authorization_url or "audience=" in authorization_url:
         return authorization_url
-    
+
     # Parse URL and query parameters
     parsed = urlparse(authorization_url)
     query_params = parse_qs(parsed.query, keep_blank_values=True)
-    
+
     # Add audience parameter
-    query_params['audience'] = [audience]
-    
+    query_params["audience"] = [audience]
+
     # Rebuild URL with new parameter
     new_query = urlencode(query_params, doseq=True)
-    return urlunparse((
-        parsed.scheme,
-        parsed.netloc,
-        parsed.path,
-        parsed.params,
-        new_query,
-        parsed.fragment
-    ))
+    return urlunparse(
+        (
+            parsed.scheme,
+            parsed.netloc,
+            parsed.path,
+            parsed.params,
+            new_query,
+            parsed.fragment,
+        )
+    )
 
 
 class SimpleAuthClient:
@@ -255,10 +259,9 @@ class SimpleAuthClient:
                 # Add Auth0 audience parameter if configured
                 if self.auth0_audience:
                     authorization_url = add_auth0_audience_parameter(
-                        authorization_url,
-                        self.auth0_audience
+                        authorization_url, self.auth0_audience
                     )
-                
+
                 webbrowser.open(authorization_url)
 
             print("\n🔧 Creating OAuth client provider...")
@@ -266,7 +269,9 @@ class SimpleAuthClient:
             # Note: httpx.AsyncClient is globally patched to inject User-Agent header
             oauth_auth = OAuthClientProvider(
                 server_url=self.server_url,
-                client_metadata=OAuthClientMetadata.model_validate(client_metadata_dict),
+                client_metadata=OAuthClientMetadata.model_validate(
+                    client_metadata_dict
+                ),
                 storage=InMemoryTokenStorage(),
                 redirect_handler=redirect_handler,
                 callback_handler=callback_handler,
@@ -294,6 +299,7 @@ class SimpleAuthClient:
         except Exception as e:
             print(f"❌ Failed to connect: {e}")
             import traceback
+
             traceback.print_exc()
 
     async def _run_session(self, read_stream, write_stream, get_session_id):
@@ -312,7 +318,7 @@ class SimpleAuthClient:
                     print(f"Session ID: {session_id}")
 
             # Run interactive loop
-            #await self.interactive_loop()
+            # await self.interactive_loop()
             await self.invoke_mcp_server()
 
     async def list_tools(self):
@@ -359,38 +365,39 @@ class SimpleAuthClient:
         """Invoke MCP server and tools"""
         print("Showing available tools: ")
         await self.list_tools()
-        
+
         tool_name = "add_numbers"
-        arguments= {'a':2, 'b':2}
+        arguments = {"a": 2, "b": 2}
         print(f"Invoking {tool_name} tool, with parameters {arguments}.")
         await self.call_tool(tool_name, arguments)
 
-
         tool_name = "multiply_numbers"
-        arguments= {'a':2, 'b':4}
+        arguments = {"a": 2, "b": 4}
         print(f"Invoking {tool_name} tool, with parameters {arguments}.")
         await self.call_tool(tool_name, arguments)
 
         tool_name = "greet_user"
-        arguments= {'name': 'Somebody'}
+        arguments = {"name": "Somebody"}
         print(f"Invoking {tool_name} tool, with parameters {arguments}.")
         await self.call_tool(tool_name, arguments)
 
 
 async def main(agent_arn, base_endpoint, auth0_audience):
     """Main entry point."""
-    
+
     if not agent_arn:
         print("❌ Please set AGENT_ARN environment variable")
-        print("Example: export AGENT_ARN='arn:aws:bedrock:us-west-2:123456789012:agent/ABCD1234'")
+        print(
+            "Example: export AGENT_ARN='arn:aws:bedrock:us-west-2:123456789012:agent/ABCD1234'"
+        )
         return
 
     # Encode the ARN for use in URL
-    encoded_arn = agent_arn.replace(':', '%3A').replace('/', '%2F')
-    
+    encoded_arn = agent_arn.replace(":", "%3A").replace("/", "%2F")
+
     # Construct MCP URL from encoded ARN (no qualifier - SDK discovers it from PRM API)
     server_url = f"{base_endpoint}/runtimes/{encoded_arn}/invocations"
-    
+
     # Get optional transport type
     transport_type = os.getenv("MCP_TRANSPORT_TYPE", "streamable-http")
 

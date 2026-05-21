@@ -18,10 +18,12 @@ from auth0_handler import Auth0Handler
 
 try:
     from shared.config.settings import settings
+
     STREAMLIT_PORT = settings.app.streamlit_port
 except ImportError:
     import os
-    STREAMLIT_PORT = int(os.getenv('STREAMLIT_PORT', '8501'))
+
+    STREAMLIT_PORT = int(os.getenv("STREAMLIT_PORT", "8501"))
 
 
 class OAuth2CallbackServer:
@@ -61,10 +63,10 @@ class OAuth2CallbackServer:
     async def _handle_callback(self, request: Request):
         """Handle OAuth2 callback from Auth0."""
         # Extract query parameters
-        self.code = request.query_params.get('code')
-        self.state = request.query_params.get('state')
-        self.error = request.query_params.get('error')
-        self.error_description = request.query_params.get('error_description')
+        self.code = request.query_params.get("code")
+        self.state = request.query_params.get("state")
+        self.error = request.query_params.get("error")
+        self.error_description = request.query_params.get("error_description")
 
         self.callback_received = True
 
@@ -123,7 +125,8 @@ class OAuth2CallbackServer:
         else:
             # Build redirect URL with auth code
             from urllib.parse import urlencode
-            redirect_params = urlencode({'code': self.code, 'state': self.state})
+
+            redirect_params = urlencode({"code": self.code, "state": self.state})
             redirect_url = f"http://localhost:{STREAMLIT_PORT}?{redirect_params}"
 
             html_content = f"""
@@ -231,10 +234,7 @@ class OAuth2CallbackServer:
     def start(self):
         """Start the callback server in a background thread."""
         config = uvicorn.Config(
-            self.app,
-            host=self.host,
-            port=self.port,
-            log_level="error"
+            self.app, host=self.host, port=self.port, log_level="error"
         )
         self.server = uvicorn.Server(config)
 
@@ -287,8 +287,8 @@ class OAuth2CallbackServer:
             Dictionary containing callback parameters
         """
         return {
-            'code': self.code,
-            'state': self.state,
-            'error': self.error,
-            'error_description': self.error_description,
+            "code": self.code,
+            "state": self.state,
+            "error": self.error,
+            "error_description": self.error_description,
         }

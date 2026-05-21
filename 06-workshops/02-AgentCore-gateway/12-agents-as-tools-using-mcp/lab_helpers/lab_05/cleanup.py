@@ -23,9 +23,7 @@ logger = logging.getLogger(__name__)
 
 
 def delete_supervisor_runtime(
-    runtime_name: str,
-    region: str = AWS_REGION,
-    verbose: bool = True
+    runtime_name: str, region: str = AWS_REGION, verbose: bool = True
 ) -> bool:
     """
     Delete supervisor agent runtime.
@@ -39,7 +37,7 @@ def delete_supervisor_runtime(
         True if successful, False otherwise
     """
     try:
-        agentcore = boto3.client('bedrock-agentcore-control', region_name=region)
+        agentcore = boto3.client("bedrock-agentcore-control", region_name=region)
 
         if verbose:
             logger.info(f"🗑️  Deleting supervisor runtime: {runtime_name}")
@@ -48,9 +46,9 @@ def delete_supervisor_runtime(
         response = agentcore.list_agent_runtimes()
         runtime_id = None
 
-        for runtime in response.get('agentRuntimes', []):
-            if runtime['agentRuntimeName'] == runtime_name:
-                runtime_id = runtime['agentRuntimeId']
+        for runtime in response.get("agentRuntimes", []):
+            if runtime["agentRuntimeName"] == runtime_name:
+                runtime_id = runtime["agentRuntimeId"]
                 break
 
         if not runtime_id:
@@ -67,7 +65,7 @@ def delete_supervisor_runtime(
         return True
 
     except ClientError as e:
-        if e.response['Error']['Code'] == 'ResourceNotFoundException':
+        if e.response["Error"]["Code"] == "ResourceNotFoundException":
             if verbose:
                 logger.warning(f"⚠️  Runtime not found: {runtime_name}")
             return True
@@ -79,9 +77,7 @@ def delete_supervisor_runtime(
 
 
 def delete_supervisor_gateway(
-    gateway_name: str,
-    region: str = AWS_REGION,
-    verbose: bool = True
+    gateway_name: str, region: str = AWS_REGION, verbose: bool = True
 ) -> bool:
     """
     Delete supervisor gateway.
@@ -95,7 +91,7 @@ def delete_supervisor_gateway(
         True if successful, False otherwise
     """
     try:
-        agentcore = boto3.client('bedrock-agentcore-control', region_name=region)
+        agentcore = boto3.client("bedrock-agentcore-control", region_name=region)
 
         if verbose:
             logger.info(f"🗑️  Deleting supervisor gateway: {gateway_name}")
@@ -104,9 +100,9 @@ def delete_supervisor_gateway(
         response = agentcore.list_gateways()
         gateway_id = None
 
-        for gateway in response.get('gatewaySummaries', []):
-            if gateway_name in gateway['gatewayArn']:
-                gateway_id = gateway['gatewayId']
+        for gateway in response.get("gatewaySummaries", []):
+            if gateway_name in gateway["gatewayArn"]:
+                gateway_id = gateway["gatewayId"]
                 break
 
         if not gateway_id:
@@ -123,7 +119,7 @@ def delete_supervisor_gateway(
         return True
 
     except ClientError as e:
-        if e.response['Error']['Code'] == 'ResourceNotFoundException':
+        if e.response["Error"]["Code"] == "ResourceNotFoundException":
             if verbose:
                 logger.warning(f"⚠️  Gateway not found: {gateway_name}")
             return True
@@ -138,7 +134,7 @@ def delete_ecr_repository(
     repository_name: str,
     region: str = AWS_REGION,
     verbose: bool = True,
-    force: bool = True
+    force: bool = True,
 ) -> bool:
     """
     Delete ECR repository for supervisor runtime.
@@ -153,15 +149,12 @@ def delete_ecr_repository(
         True if successful, False otherwise
     """
     try:
-        ecr = boto3.client('ecr', region_name=region)
+        ecr = boto3.client("ecr", region_name=region)
 
         if verbose:
             logger.info(f"🗑️  Deleting ECR repository: {repository_name}")
 
-        ecr.delete_repository(
-            repositoryName=repository_name,
-            force=force
-        )
+        ecr.delete_repository(repositoryName=repository_name, force=force)
 
         if verbose:
             logger.info(f"✅ ECR repository deleted: {repository_name}")
@@ -169,7 +162,7 @@ def delete_ecr_repository(
         return True
 
     except ClientError as e:
-        if e.response['Error']['Code'] == 'RepositoryNotFoundException':
+        if e.response["Error"]["Code"] == "RepositoryNotFoundException":
             if verbose:
                 logger.warning(f"⚠️  Repository not found: {repository_name}")
             return True
@@ -181,8 +174,7 @@ def delete_ecr_repository(
 
 
 def delete_supervisor_files(
-    file_names: List[str] = None,
-    verbose: bool = True
+    file_names: List[str] = None, verbose: bool = True
 ) -> Dict[str, bool]:
     """
     Delete supervisor-related files from project root.
@@ -195,10 +187,12 @@ def delete_supervisor_files(
         Dict with deletion status for each file
     """
     if file_names is None:
-        file_names = ['agent-supervisor.py', 'Dockerfile', '.bedrock_agentcore.yaml']
+        file_names = ["agent-supervisor.py", "Dockerfile", ".bedrock_agentcore.yaml"]
 
     # Get the project root directory (3 levels up from lab_helpers/lab_05/cleanup.py)
-    project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    project_root = os.path.dirname(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    )
 
     deletion_status = {}
 
@@ -227,9 +221,7 @@ def delete_supervisor_files(
 
 
 def cleanup_lab_05(
-    region_name: str = AWS_REGION,
-    verbose: bool = True,
-    delete_ecr: bool = True
+    region_name: str = AWS_REGION, verbose: bool = True, delete_ecr: bool = True
 ) -> Dict[str, bool]:
     """
     Clean up all Lab 05 resources.
@@ -251,28 +243,28 @@ def cleanup_lab_05(
     # 1. Delete supervisor runtime
     if verbose:
         logger.info("\n1️⃣  Deleting Supervisor Runtime...")
-    cleanup_status['runtime'] = delete_supervisor_runtime(
-        runtime_name='aiml301_sre_agentcore_supervisor_runtime',
+    cleanup_status["runtime"] = delete_supervisor_runtime(
+        runtime_name="aiml301_sre_agentcore_supervisor_runtime",
         region=region_name,
-        verbose=verbose
+        verbose=verbose,
     )
 
     # 2. Delete IAM role
     if verbose:
         logger.info("\n2️⃣  Deleting IAM Role...")
-    cleanup_status['iam_role'] = delete_supervisor_runtime_iam_role(
-        role_name='aiml301_sre_agentcore-lab05-supervisor-runtime-role',
-        region=region_name
+    cleanup_status["iam_role"] = delete_supervisor_runtime_iam_role(
+        role_name="aiml301_sre_agentcore-lab05-supervisor-runtime-role",
+        region=region_name,
     )
 
     # 3. Delete ECR repository
     if verbose:
         logger.info("\n3️⃣  Deleting ECR Repository...")
-    cleanup_status['ecr'] = delete_ecr_repository(
-        repository_name='bedrock-agentcore-aiml301_sre_agentcore_supervisor_runtime',
+    cleanup_status["ecr"] = delete_ecr_repository(
+        repository_name="bedrock-agentcore-aiml301_sre_agentcore_supervisor_runtime",
         region=region_name,
         verbose=verbose,
-        force=True
+        force=True,
     )
 
     # 4. Delete supervisor-related files
@@ -287,7 +279,9 @@ def cleanup_lab_05(
         logger.info("✅ Lab-05 Cleanup Summary:")
         for resource, status in cleanup_status.items():
             status_icon = "✓" if status else "✗"
-            logger.info(f"   {status_icon} {resource.upper()}: {'SUCCESS' if status else 'FAILED'}")
+            logger.info(
+                f"   {status_icon} {resource.upper()}: {'SUCCESS' if status else 'FAILED'}"
+            )
 
         logger.info("\n💡 All Lab-05 supervisor resources have been cleaned up!")
         logger.info("=" * 70)

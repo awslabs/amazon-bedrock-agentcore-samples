@@ -44,12 +44,20 @@ def setup(region: str):
             raise
 
     logger.info("\nSetup complete. Update .env.example → .env with:")
-    logger.info("  OTEL_EXPORTER_OTLP_LOGS_HEADERS=x-aws-log-group=%s,x-aws-log-stream=%s,...", LOG_GROUP, LOG_STREAM)
+    logger.info(
+        "  OTEL_EXPORTER_OTLP_LOGS_HEADERS=x-aws-log-group=%s,x-aws-log-stream=%s,...",
+        LOG_GROUP,
+        LOG_STREAM,
+    )
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Create CloudWatch log group/stream for LlamaIndex observability")
-    parser.add_argument("--region", default="us-east-1", help="AWS region (default: us-east-1)")
+    parser = argparse.ArgumentParser(
+        description="Create CloudWatch log group/stream for LlamaIndex observability"
+    )
+    parser.add_argument(
+        "--region", default="us-east-1", help="AWS region (default: us-east-1)"
+    )
     args = parser.parse_args()
     setup(args.region)
 

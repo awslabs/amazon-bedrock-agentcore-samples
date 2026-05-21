@@ -61,12 +61,14 @@ def create_execution_role() -> str:
 
     trust_policy = {
         "Version": "2012-10-17",
-        "Statement": [{
-            "Effect": "Allow",
-            "Principal": {"Service": "bedrock-agentcore.amazonaws.com"},
-            "Action": "sts:AssumeRole",
-            "Condition": {"StringEquals": {"aws:SourceAccount": ACCOUNT_ID}},
-        }],
+        "Statement": [
+            {
+                "Effect": "Allow",
+                "Principal": {"Service": "bedrock-agentcore.amazonaws.com"},
+                "Action": "sts:AssumeRole",
+                "Condition": {"StringEquals": {"aws:SourceAccount": ACCOUNT_ID}},
+            }
+        ],
     }
 
     inline_policy = {
@@ -75,7 +77,9 @@ def create_execution_role() -> str:
             {
                 "Effect": "Allow",
                 "Action": ["logs:DescribeLogStreams", "logs:CreateLogGroup"],
-                "Resource": [f"arn:aws:logs:{REGION}:{ACCOUNT_ID}:log-group:/aws/bedrock-agentcore/runtimes/*"],
+                "Resource": [
+                    f"arn:aws:logs:{REGION}:{ACCOUNT_ID}:log-group:/aws/bedrock-agentcore/runtimes/*"
+                ],
             },
             {
                 "Effect": "Allow",
@@ -85,14 +89,21 @@ def create_execution_role() -> str:
             {
                 "Effect": "Allow",
                 "Action": ["logs:CreateLogStream", "logs:PutLogEvents"],
-                "Resource": [f"arn:aws:logs:{REGION}:{ACCOUNT_ID}:log-group:/aws/bedrock-agentcore/runtimes/*:log-stream:*"],
+                "Resource": [
+                    f"arn:aws:logs:{REGION}:{ACCOUNT_ID}:log-group:/aws/bedrock-agentcore/runtimes/*:log-stream:*"
+                ],
             },
             {
                 "Sid": "BedrockModelInvocation",
                 "Effect": "Allow",
-                "Action": ["bedrock:InvokeModel", "bedrock:InvokeModelWithResponseStream"],
-                "Resource": ["arn:aws:bedrock:*::foundation-model/*",
-                             f"arn:aws:bedrock:{REGION}:{ACCOUNT_ID}:*"],
+                "Action": [
+                    "bedrock:InvokeModel",
+                    "bedrock:InvokeModelWithResponseStream",
+                ],
+                "Resource": [
+                    "arn:aws:bedrock:*::foundation-model/*",
+                    f"arn:aws:bedrock:{REGION}:{ACCOUNT_ID}:*",
+                ],
             },
         ],
     }
@@ -128,8 +139,10 @@ def build_and_upload_package():
         if REGION == "us-east-1":
             s3.create_bucket(Bucket=S3_BUCKET)
         else:
-            s3.create_bucket(Bucket=S3_BUCKET,
-                             CreateBucketConfiguration={"LocationConstraint": REGION})
+            s3.create_bucket(
+                Bucket=S3_BUCKET,
+                CreateBucketConfiguration={"LocationConstraint": REGION},
+            )
         print(f"\nCreated S3 bucket: {S3_BUCKET}")
     except (s3.exceptions.BucketAlreadyOwnedByYou, s3.exceptions.BucketAlreadyExists):
         print(f"\nS3 bucket exists: {S3_BUCKET}")
@@ -141,19 +154,35 @@ def build_and_upload_package():
 
     print("\n  Installing arm64 dependencies with uv...")
     subprocess.run(
-        ["uv", "pip", "install",
-         "--python-platform", "aarch64-manylinux2014",
-         "--python-version", "3.13",
-         "--target", pkg_dir,
-         "--only-binary", ":all:",
-         "-r", "requirements.txt"],
+        [
+            "uv",
+            "pip",
+            "install",
+            "--python-platform",
+            "aarch64-manylinux2014",
+            "--python-version",
+            "3.13",
+            "--target",
+            pkg_dir,
+            "--only-binary",
+            ":all:",
+            "-r",
+            "requirements.txt",
+        ],
         check=True,
     )
 
     print("  Creating deployment zip...")
-    subprocess.run(["zip", "-r", f"../{zip_file}", "."], cwd=pkg_dir, check=True, capture_output=True)
+    subprocess.run(
+        ["zip", "-r", f"../{zip_file}", "."],
+        cwd=pkg_dir,
+        check=True,
+        capture_output=True,
+    )
     for src_file in AGENT_FILES:
-        subprocess.run(["zip", zip_file, "-j", src_file], check=True, capture_output=True)
+        subprocess.run(
+            ["zip", zip_file, "-j", src_file], check=True, capture_output=True
+        )
 
     zip_size = os.path.getsize(zip_file) / (1024 * 1024)
     print(f"  Package: {zip_file} ({zip_size:.1f} MB)")
@@ -226,7 +255,9 @@ def create_endpoint(runtime_id: str) -> dict:
 
 def main():
     if not PLATFORM_ENV_VARS.get("ARIZE_API_KEY"):
-        print("ERROR: ARIZE_API_KEY not set. Copy .env.example → .env and fill in your credentials.")
+        print(
+            "ERROR: ARIZE_API_KEY not set. Copy .env.example → .env and fill in your credentials."
+        )
         sys.exit(1)
 
     print("=" * 60)

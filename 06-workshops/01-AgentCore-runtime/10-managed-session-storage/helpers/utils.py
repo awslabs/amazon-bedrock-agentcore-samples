@@ -8,6 +8,7 @@ from typing import Optional
 SAMPLE_ROLE_NAME = "SessionDemoBedrockAgentCoreRole"
 POLICY_NAME = "AWSMCPtBedrockAgentCorePolicy"
 
+
 def get_aws_account_id() -> str:
     sts = boto3.client("sts")
     return sts.get_caller_identity()["Account"]
@@ -27,18 +28,19 @@ def create_agentcore_runtime_execution_role(role_name: str) -> Optional[str]:
             {
                 "Sid": "AssumeRolePolicy",
                 "Effect": "Allow",
-                "Principal": {"Service": [
-                                "bedrock-agentcore.amazonaws.com",
-                                "developer.genesis-service.aws.internal",
-                                "preprod.genesis-service.aws.internal"]
+                "Principal": {
+                    "Service": [
+                        "bedrock-agentcore.amazonaws.com",
+                        "developer.genesis-service.aws.internal",
+                        "preprod.genesis-service.aws.internal",
+                    ]
                 },
                 "Action": "sts:AssumeRole",
                 "Condition": {
                     "StringEquals": {"aws:SourceAccount": account_id},
                     "ArnLike": {
                         "aws:SourceArn": (
-                            f"arn:aws:bedrock-agentcore:{region}:"
-                            f"{account_id}:*"
+                            f"arn:aws:bedrock-agentcore:{region}:{account_id}:*"
                         )
                     },
                 },
@@ -54,9 +56,7 @@ def create_agentcore_runtime_execution_role(role_name: str) -> Optional[str]:
                 "Sid": "ECRImageAccess",
                 "Effect": "Allow",
                 "Action": ["ecr:BatchGetImage", "ecr:GetDownloadUrlForLayer"],
-                "Resource": [
-                    f"arn:aws:ecr:{region}:{account_id}:repository/*"
-                ],
+                "Resource": [f"arn:aws:ecr:{region}:{account_id}:repository/*"],
             },
             {
                 "Effect": "Allow",
@@ -69,9 +69,7 @@ def create_agentcore_runtime_execution_role(role_name: str) -> Optional[str]:
             {
                 "Effect": "Allow",
                 "Action": ["logs:DescribeLogGroups"],
-                "Resource": [
-                    f"arn:aws:logs:{region}:{account_id}:log-group:*"
-                ],
+                "Resource": [f"arn:aws:logs:{region}:{account_id}:log-group:*"],
             },
             {
                 "Effect": "Allow",
@@ -102,9 +100,7 @@ def create_agentcore_runtime_execution_role(role_name: str) -> Optional[str]:
                 "Resource": "*",
                 "Action": "cloudwatch:PutMetricData",
                 "Condition": {
-                    "StringEquals": {
-                        "cloudwatch:namespace": "bedrock-agentcore"
-                    }
+                    "StringEquals": {"cloudwatch:namespace": "bedrock-agentcore"}
                 },
             },
             {
@@ -135,7 +131,7 @@ def create_agentcore_runtime_execution_role(role_name: str) -> Optional[str]:
                     "arn:aws:bedrock:*::foundation-model/*",
                     f"arn:aws:bedrock:{region}:{account_id}:*",
                 ],
-            }
+            },
         ],
     }
 
@@ -154,8 +150,7 @@ def create_agentcore_runtime_execution_role(role_name: str) -> Optional[str]:
             RoleName=role_name,
             AssumeRolePolicyDocument=json.dumps(trust_policy),
             Description=(
-                "IAM role for Amazon Bedrock AgentCore "
-                "with required permissions"
+                "IAM role for Amazon Bedrock AgentCore with required permissions"
             ),
         )
 
@@ -232,11 +227,7 @@ def delete_agentcore_runtime_execution_role(role_name: str) -> None:
 def local_file_cleanup() -> None:
     """Clean up local files created during the tutorial."""
     # List of files to clean up
-    files_to_delete = [
-        "Dockerfile",
-        ".dockerignore",
-        ".bedrock_agentcore.yaml"
-    ]
+    files_to_delete = ["Dockerfile", ".dockerignore", ".bedrock_agentcore.yaml"]
 
     deleted_files = []
     missing_files = []

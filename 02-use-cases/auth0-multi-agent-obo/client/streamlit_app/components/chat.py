@@ -4,7 +4,6 @@
 Chat interface component for AgentCore interaction.
 """
 
-
 import streamlit as st
 import streamlit.components.v1 as components
 
@@ -44,8 +43,7 @@ def _auto_scroll_script():
 
 
 def render_chat_interface(
-    agentcore_client: AgentCoreClient,
-    session_manager: SessionManager
+    agentcore_client: AgentCoreClient, session_manager: SessionManager
 ):
     """
     Render the main chat interface.
@@ -54,7 +52,8 @@ def render_chat_interface(
         agentcore_client: AgentCoreClient instance
         session_manager: SessionManager instance
     """
-    st.markdown("""
+    st.markdown(
+        """
         <style>
         .chat-container {
             padding: 20px 0;
@@ -83,7 +82,9 @@ def render_chat_interface(
             margin-top: 5px;
         }
         </style>
-    """, unsafe_allow_html=True)
+    """,
+        unsafe_allow_html=True,
+    )
 
     # Chat header
     st.markdown("### Chat with Financial Assistant")
@@ -92,7 +93,9 @@ def render_chat_interface(
     messages = session_manager.get_messages()
 
     if not messages:
-        st.info("Welcome! I'm your AI financial assistant. Ask me anything about your profile or accounts.")
+        st.info(
+            "Welcome! I'm your AI financial assistant. Ask me anything about your profile or accounts."
+        )
     else:
         # Display message history
         for message in messages:
@@ -111,7 +114,7 @@ def render_chat_interface(
             user_input = st.text_input(
                 "Your message",
                 placeholder="Type your message here...",
-                label_visibility="collapsed"
+                label_visibility="collapsed",
             )
 
         with col2:
@@ -132,12 +135,7 @@ def render_chat_interface(
 
     # Handle message submission
     if submit_button and user_input:
-        send_message(
-            user_input,
-            agentcore_client,
-            session_manager,
-            enable_trace=True
-        )
+        send_message(user_input, agentcore_client, session_manager, enable_trace=True)
 
 
 def render_message(message: Message):
@@ -148,29 +146,34 @@ def render_message(message: Message):
         message: Message object to render
     """
     if message.role == "user":
-        st.markdown(f"""
+        st.markdown(
+            f"""
             <div class="user-message">
                 <strong>You</strong><br>
                 {message.content}
                 <div class="message-timestamp">{message.formatted_timestamp}</div>
             </div>
-        """, unsafe_allow_html=True)
+        """,
+            unsafe_allow_html=True,
+        )
     else:
-        st.markdown(f"""
+        st.markdown(
+            f"""
             <div class="assistant-message">
                 <strong>Assistant</strong><br>
                 {message.content}
                 <div class="message-timestamp">{message.formatted_timestamp}</div>
             </div>
-        """, unsafe_allow_html=True)
-
+        """,
+            unsafe_allow_html=True,
+        )
 
 
 def send_message(
     message: str,
     agentcore_client: AgentCoreClient,
     session_manager: SessionManager,
-    enable_trace: bool = False
+    enable_trace: bool = False,
 ):
     """
     Send message to AgentCore and display response.
@@ -195,10 +198,10 @@ def send_message(
 
     # Get user info for trace generation
     user_info = session_manager.get_user_info() or {}
-    user_id = user_info.get('sub', 'unknown')
-    user_email = user_info.get('email', 'unknown@example.com')
+    user_id = user_info.get("sub", "unknown")
+    user_email = user_info.get("email", "unknown@example.com")
     # For demo, use CUST-001 as the customer ID
-    customer_id = user_info.get('https://agentcore.example.com/customer_id', 'CUST-001')
+    customer_id = user_info.get("https://agentcore.example.com/customer_id", "CUST-001")
 
     # Display user message
     render_message(session_manager.get_last_message())
@@ -215,17 +218,20 @@ def send_message(
                 message=message,
                 session_id=session_id,
                 access_token=access_token,
-                enable_trace=enable_trace
+                enable_trace=enable_trace,
             ):
                 response_text += chunk
                 # Update response in real-time with auto-scroll
-                response_placeholder.markdown(f"""
+                response_placeholder.markdown(
+                    f"""
                     <div class="assistant-message">
                         <strong>Assistant</strong><br>
                         {response_text}
                     </div>
                     {_auto_scroll_script()}
-                """, unsafe_allow_html=True)
+                """,
+                    unsafe_allow_html=True,
+                )
 
             # Generate mock trace for demonstration
             trace = generate_mock_trace(
@@ -233,7 +239,7 @@ def send_message(
                 session_id=session_id,
                 user_id=user_id,
                 customer_id=customer_id,
-                user_email=user_email
+                user_email=user_email,
             )
 
             # Add complete response to history
@@ -266,13 +272,13 @@ def send_message(
 
         # Store the trace in session state
         if trace:
-            if 'agent_traces' not in st.session_state:
-                st.session_state['agent_traces'] = []
-            st.session_state['agent_traces'].append(trace)
+            if "agent_traces" not in st.session_state:
+                st.session_state["agent_traces"] = []
+            st.session_state["agent_traces"].append(trace)
             # Keep only last 10 traces
-            st.session_state['agent_traces'] = st.session_state['agent_traces'][-10:]
+            st.session_state["agent_traces"] = st.session_state["agent_traces"][-10:]
             # Store the latest trace for quick access
-            st.session_state['latest_trace'] = trace
+            st.session_state["latest_trace"] = trace
 
     # Rerun to update the display
     st.rerun()
@@ -291,14 +297,14 @@ def render_session_info(session_manager: SessionManager):
         col1, col2 = st.columns(2)
 
         with col1:
-            st.metric("Session ID", session_info['session_id'][:8] + "...")
-            st.metric("Messages", session_info['message_count'])
-            st.metric("Authenticated", "Yes" if session_info['authenticated'] else "No")
+            st.metric("Session ID", session_info["session_id"][:8] + "...")
+            st.metric("Messages", session_info["message_count"])
+            st.metric("Authenticated", "Yes" if session_info["authenticated"] else "No")
 
         with col2:
-            if session_info['time_until_expiry']:
-                minutes = int(session_info['time_until_expiry'] / 60)
+            if session_info["time_until_expiry"]:
+                minutes = int(session_info["time_until_expiry"] / 60)
                 st.metric("Token expires in", f"{minutes} min")
-            st.metric("User", session_info['user_name'])
-            if session_info['user_email']:
+            st.metric("User", session_info["user_name"])
+            if session_info["user_email"]:
                 st.text(f"Email: {session_info['user_email']}")

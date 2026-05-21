@@ -174,7 +174,9 @@ if not DATASTORE_ID:
             print(f"   Status: {status}...")
             time.sleep(30)
 
-        print(f"\n✅ Synthea data loaded. Using default patient ID: {PATIENT_ID}")  # codeql[py/clear-text-logging-sensitive-data]
+        print(
+            f"\n✅ Synthea data loaded. Using default patient ID: {PATIENT_ID}"
+        )  # codeql[py/clear-text-logging-sensitive-data]
 
 
 # Get HealthLake endpoint
@@ -808,7 +810,9 @@ actor_id = PATIENT_ID
 session_id = SESSION_ID
 # Define namespace for healthcare episodes
 episode_namespace = f"healthcare/{actor_id}/{session_id}"
-print(f"\n📋 Episode namespace: {episode_namespace}")  # codeql[py/clear-text-logging-sensitive-data]
+print(
+    f"\n📋 Episode namespace: {episode_namespace}"
+)  # codeql[py/clear-text-logging-sensitive-data]
 
 try:
     print("\n📖 HEALTHCARE EPISODES (Session-specific patient interactions)")

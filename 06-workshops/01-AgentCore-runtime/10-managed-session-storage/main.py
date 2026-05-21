@@ -5,13 +5,14 @@ from claude_agent_sdk import (
     AssistantMessage,
     ResultMessage,
     TextBlock,
-    ClaudeAgentOptions
+    ClaudeAgentOptions,
 )
 
-os.environ["CLAUDE_CODE_USE_BEDROCK"]="1"
-os.environ["ANTHROPIC_MODEL"]="global.anthropic.claude-sonnet-4-6"
+os.environ["CLAUDE_CODE_USE_BEDROCK"] = "1"
+os.environ["ANTHROPIC_MODEL"] = "global.anthropic.claude-sonnet-4-6"
 
 app = BedrockAgentCoreApp()
+
 
 @app.entrypoint
 async def invoke(payload):
@@ -39,6 +40,7 @@ async def invoke(payload):
         elif isinstance(message, ResultMessage) and message.total_cost_usd > 0:
             print(f"\nCost: ${message.total_cost_usd:.4f}")
         yield message
+
 
 if __name__ == "__main__":
     app.run()

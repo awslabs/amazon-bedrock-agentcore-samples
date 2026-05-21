@@ -28,7 +28,9 @@ os.environ.setdefault("OTEL_SEMCONV_STABILITY_OPT_IN", "gen_ai_latest_experiment
 
 honeycomb_api_key = os.environ.get("HONEYCOMB_API_KEY", "")
 honeycomb_dataset = os.environ.get("HONEYCOMB_DATASET", "llmobs")
-honeycomb_endpoint = os.environ.get("HONEYCOMB_OTLP_ENDPOINT", "https://api.honeycomb.io/v1/traces")
+honeycomb_endpoint = os.environ.get(
+    "HONEYCOMB_OTLP_ENDPOINT", "https://api.honeycomb.io/v1/traces"
+)
 service_name = os.environ.get("OTEL_SERVICE_NAME", "agentcore-travel-agent")
 
 if honeycomb_api_key:
@@ -42,13 +44,20 @@ if honeycomb_api_key:
     resource = Resource.create({"service.name": service_name})
     exporter = OTLPSpanExporter(
         endpoint=honeycomb_endpoint,
-        headers={"x-honeycomb-team": honeycomb_api_key, "x-honeycomb-dataset": honeycomb_dataset},
+        headers={
+            "x-honeycomb-team": honeycomb_api_key,
+            "x-honeycomb-dataset": honeycomb_dataset,
+        },
     )
     provider = TracerProvider(resource=resource)
     provider.add_span_processor(SimpleSpanProcessor(exporter))
     trace.set_tracer_provider(provider)
     BedrockInstrumentor().instrument(capture_content=True)
-    logger.info("Honeycomb OTel configured (service: %s, dataset: %s)", service_name, honeycomb_dataset)
+    logger.info(
+        "Honeycomb OTel configured (service: %s, dataset: %s)",
+        service_name,
+        honeycomb_dataset,
+    )
 else:
     logger.warning("HONEYCOMB_API_KEY not set — traces will not be sent to Honeycomb")
 
@@ -81,9 +90,13 @@ def web_search(query: str) -> str:
 
 
 def create_agent():
-    model_id = os.getenv("BEDROCK_MODEL_ID", "global.anthropic.claude-haiku-4-5-20251001-v1:0")
+    model_id = os.getenv(
+        "BEDROCK_MODEL_ID", "global.anthropic.claude-haiku-4-5-20251001-v1:0"
+    )
     region = os.getenv("AWS_DEFAULT_REGION", "us-east-1")
-    model = BedrockModel(model_id=model_id, region_name=region, temperature=0.0, max_tokens=1024)
+    model = BedrockModel(
+        model_id=model_id, region_name=region, temperature=0.0, max_tokens=1024
+    )
     return Agent(
         model=model,
         system_prompt=(

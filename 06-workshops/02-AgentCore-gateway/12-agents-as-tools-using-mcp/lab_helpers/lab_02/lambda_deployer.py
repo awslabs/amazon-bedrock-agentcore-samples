@@ -36,19 +36,21 @@ def create_ecr_repository(repository_name, region_name=None):
     if region_name is None:
         region_name = AWS_REGION
 
-    ecr = boto3.client('ecr', region_name=region_name)
-    account_id = boto3.client('sts', region_name=region_name).get_caller_identity()['Account']  # noqa: F841
+    ecr = boto3.client("ecr", region_name=region_name)
+    account_id = boto3.client("sts", region_name=region_name).get_caller_identity()[
+        "Account"
+    ]  # noqa: F841
 
     try:
         # Check if repository exists
         response = ecr.describe_repositories(repositoryNames=[repository_name])
-        repo_uri = response['repositories'][0]['repositoryUri']
+        repo_uri = response["repositories"][0]["repositoryUri"]
         print(f"✓ ECR Repository already exists: {repo_uri}")
         return repo_uri
     except ecr.exceptions.RepositoryNotFoundException:
         # Create new repository
         response = ecr.create_repository(repositoryName=repository_name)
-        repo_uri = response['repository']['repositoryUri']
+        repo_uri = response["repository"]["repositoryUri"]
         print(f"✓ Created ECR Repository: {repo_uri}")
         return repo_uri
 
@@ -67,7 +69,7 @@ def create_lambda_execution_role(role_name, region_name=None):
     if region_name is None:
         region_name = AWS_REGION
 
-    iam = boto3.client('iam', region_name=region_name)
+    iam = boto3.client("iam", region_name=region_name)
 
     # Trust policy: Allow Lambda service to assume this role
     trust_policy = {
@@ -76,31 +78,30 @@ def create_lambda_execution_role(role_name, region_name=None):
             {
                 "Effect": "Allow",
                 "Principal": {"Service": "lambda.amazonaws.com"},
-                "Action": "sts:AssumeRole"
+                "Action": "sts:AssumeRole",
             }
-        ]
+        ],
     }
 
     try:
         # Check if role exists
         role = iam.get_role(RoleName=role_name)
-        role_arn = role['Role']['Arn']
+        role_arn = role["Role"]["Arn"]
         print(f"✓ IAM Role already exists: {role_arn}")
     except iam.exceptions.NoSuchEntityException:
         # Create new role
         role = iam.create_role(
             RoleName=role_name,
             AssumeRolePolicyDocument=json.dumps(trust_policy),
-            Description="Lambda execution role for AIML301 workshop agent"
+            Description="Lambda execution role for AIML301 workshop agent",
         )
-        role_arn = role['Role']['Arn']
+        role_arn = role["Role"]["Arn"]
         print(f"✓ Created IAM Role: {role_arn}")
 
     # Attach CloudWatch Logs policy (Lambda basic execution)
     try:
         iam.attach_role_policy(
-            RoleName=role_name,
-            PolicyArn=IAM_POLICIES["cloudwatch_logs_policy"]
+            RoleName=role_name, PolicyArn=IAM_POLICIES["cloudwatch_logs_policy"]
         )
         print("✓ Attached CloudWatch Logs policy")
     except Exception as e:
@@ -118,18 +119,18 @@ def create_lambda_execution_role(role_name, region_name=None):
                     "bedrock:Converse",
                     "bedrock:ConverseStream",
                     "aws-marketplace:Subscribe",
-                    "aws-marketplace:ViewSubscriptions"
+                    "aws-marketplace:ViewSubscriptions",
                 ],
-                "Resource": "*"
+                "Resource": "*",
             }
-        ]
+        ],
     }
 
     try:
         iam.put_role_policy(
             RoleName=role_name,
             PolicyName="BedrockInvokePolicy",
-            PolicyDocument=json.dumps(bedrock_policy)
+            PolicyDocument=json.dumps(bedrock_policy),
         )
         print("✓ Attached Bedrock InvokeModel policy")
     except Exception as e:
@@ -152,7 +153,7 @@ def prepare_lambda_build_context(handler_code, build_dir="lambda_diagnostic_agen
     os.makedirs(build_dir, exist_ok=True)
 
     # Generate Dockerfile from constants
-    dockerfile_content = f"""FROM --platform=linux/amd64 {ECR_CONFIG['base_image']}
+    dockerfile_content = f"""FROM --platform=linux/amd64 {ECR_CONFIG["base_image"]}
 
 # Copy requirements (to task root)
 COPY requirements.txt ${{LAMBDA_TASK_ROOT}}/
@@ -193,7 +194,7 @@ requests>=2.30
         "build_dir": build_dir,
         "dockerfile": f"{build_dir}/Dockerfile",
         "requirements": f"{build_dir}/requirements.txt",
-        "handler": f"{build_dir}/app.py"
+        "handler": f"{build_dir}/app.py",
     }
 
 
@@ -238,8 +239,8 @@ def setup_lab_02_infrastructure(handler_code, region_name=None):
     print()
 
     # Get account ID
-    sts = boto3.client('sts', region_name=region_name)
-    account_id = sts.get_caller_identity()['Account']
+    sts = boto3.client("sts", region_name=region_name)
+    account_id = sts.get_caller_identity()["Account"]
     print(f"AWS Account: {account_id}")
     print(f"AWS Region: {region_name}")
     print()
@@ -267,19 +268,19 @@ def setup_lab_02_infrastructure(handler_code, region_name=None):
         PARAMETER_PATHS["lab_02"]["ecr_repository_uri"],
         ecr_repository_uri,
         description="ECR repository URI for Lab 02 diagnostic agent",
-        region_name=region_name
+        region_name=region_name,
     )
     put_parameter(
         PARAMETER_PATHS["lab_02"]["ecr_repository_name"],
         repository_name,
         description="ECR repository name for Lab 02",
-        region_name=region_name
+        region_name=region_name,
     )
     put_parameter(
         PARAMETER_PATHS["lab_02"]["lambda_role_arn"],
         lambda_role_arn,
         description="Lambda execution role ARN for Lab 02",
-        region_name=region_name
+        region_name=region_name,
     )
     print()
 
@@ -334,7 +335,7 @@ def get_lab_02_deployment_instructions(config):
    docker build --provenance=false -t aiml301-diagnostic-agent:latest ./lambda_diagnostic_agent/
 
 2. Authenticate Docker to ECR:
-   aws ecr get-login-password --region {region} | docker login --username AWS --password-stdin {ecr_uri.rsplit('/', 1)[0]}
+   aws ecr get-login-password --region {region} | docker login --username AWS --password-stdin {ecr_uri.rsplit("/", 1)[0]}
 
 3. Tag image:
    docker tag aiml301-diagnostic-agent:latest {ecr_uri}
@@ -350,8 +351,8 @@ def get_lab_02_deployment_instructions(config):
      --role {role_arn} \\
      --code ImageUri={ecr_uri} \\
      --package-type Image \\
-     --timeout {LAMBDA_CONFIG['timeout']} \\
-     --memory-size {LAMBDA_CONFIG['memory_size']} \\
+     --timeout {LAMBDA_CONFIG["timeout"]} \\
+     --memory-size {LAMBDA_CONFIG["memory_size"]} \\
      --region {region}
 
 6. Update Lambda environment variables (optional):
@@ -363,8 +364,8 @@ def get_lab_02_deployment_instructions(config):
 📝 NOTES:
    - Image URI: {ecr_uri}
    - Role ARN: {role_arn}
-   - Memory: {LAMBDA_CONFIG['memory_size']}MB (2GB for Strands agent)
-   - Timeout: {LAMBDA_CONFIG['timeout']}s
+   - Memory: {LAMBDA_CONFIG["memory_size"]}MB (2GB for Strands agent)
+   - Timeout: {LAMBDA_CONFIG["timeout"]}s
    - All values are stored in Parameter Store at: /aiml301/lab-02/*
 """
 
@@ -388,6 +389,7 @@ def show_lambda_config():
 # ============================================================================
 # ZIP DEPLOYMENT SUPPORT (VPC-friendly alternative to Docker)
 # ============================================================================
+
 
 def get_zip_deployment_instructions(config):
     """
@@ -446,8 +448,8 @@ Our package:   ~30-35 MB (uses direct upload by default)
 
    - Role ARN: {role_arn}
    - Region: {region}
-   - Memory: {LAMBDA_CONFIG['memory_size']}MB
-   - Timeout: {LAMBDA_CONFIG['timeout']}s
+   - Memory: {LAMBDA_CONFIG["memory_size"]}MB
+   - Timeout: {LAMBDA_CONFIG["timeout"]}s
    - All values stored in Parameter Store at: /aiml301/lab-02/*
 """
 
@@ -466,5 +468,7 @@ def show_deployment_methods():
         print(f"\n{method_name.upper()}:")
         print(f"  Description: {method_info['description']}")
         print(f"  Requires: {', '.join(method_info['requires'])}")
-        print(f"  VPC-Compatible: {'✅ Yes' if method_info['vpc_compatible'] else '❌ No'}")
+        print(
+            f"  VPC-Compatible: {'✅ Yes' if method_info['vpc_compatible'] else '❌ No'}"
+        )
         print(f"  Size Limit: {method_info['size_limit']}")

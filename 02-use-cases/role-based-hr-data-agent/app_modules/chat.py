@@ -72,7 +72,9 @@ class ChatManager:
         except requests.Timeout:
             st.error("Request timed out. The agent may still be processing.")
         except requests.HTTPError as e:
-            st.error(f"Runtime error: {e.response.status_code} — {e.response.text[:200]}")
+            st.error(
+                f"Runtime error: {e.response.status_code} — {e.response.text[:200]}"
+            )
         except Exception as e:
             st.error(f"Unexpected error: {e}")
         return None

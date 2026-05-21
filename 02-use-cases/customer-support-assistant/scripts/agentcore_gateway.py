@@ -87,10 +87,14 @@ def create_gateway(gateway_name: str, api_spec: List) -> dict:
                 raise Exception(f"Gateway creation failed with status: {status}")
 
             if attempt < max_retries - 1:
-                click.echo(f"   Gateway status: {status}, waiting {retry_delay}s... (attempt {attempt + 1}/{max_retries})")
+                click.echo(
+                    f"   Gateway status: {status}, waiting {retry_delay}s... (attempt {attempt + 1}/{max_retries})"
+                )
                 time.sleep(retry_delay)
             else:
-                raise Exception(f"Gateway did not become ACTIVE after {max_retries * retry_delay} seconds")
+                raise Exception(
+                    f"Gateway did not become ACTIVE after {max_retries * retry_delay} seconds"
+                )
 
         # Create gateway target
         credential_config = [{"credentialProviderType": "GATEWAY_IAM_ROLE"}]

@@ -19,12 +19,13 @@ import random
 def lambda_handler(event, context):
     """Handle GET /weather?location=..."""
     # Log request metadata only (exclude headers which may contain tokens)
-    print(f"Method: {event.get('httpMethod', 'unknown')}, Path: {event.get('path', '/')}")
-
-    method = (
-        event.get("httpMethod")
-        or event.get("requestContext", {}).get("http", {}).get("method", "GET")
+    print(
+        f"Method: {event.get('httpMethod', 'unknown')}, Path: {event.get('path', '/')}"
     )
+
+    method = event.get("httpMethod") or event.get("requestContext", {}).get(
+        "http", {}
+    ).get("method", "GET")
 
     if method != "GET":
         return json_response(405, {"error": "Method not allowed"})
@@ -39,9 +40,17 @@ def lambda_handler(event, context):
     weather = {
         "location": location,
         "temperature": round(random.uniform(20, 95), 1),
-        "conditions": random.choice([
-            "Sunny", "Partly Cloudy", "Cloudy", "Rainy", "Thunderstorms", "Snowy", "Windy"
-        ]),
+        "conditions": random.choice(
+            [
+                "Sunny",
+                "Partly Cloudy",
+                "Cloudy",
+                "Rainy",
+                "Thunderstorms",
+                "Snowy",
+                "Windy",
+            ]
+        ),
         "humidity": random.randint(20, 95),
     }
 

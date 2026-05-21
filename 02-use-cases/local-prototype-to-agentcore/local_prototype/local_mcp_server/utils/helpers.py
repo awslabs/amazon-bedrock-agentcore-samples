@@ -26,13 +26,13 @@ async def app_lifespan(server) -> AsyncIterator[AppContext]:
     """Manage application lifecycle with server context"""
     # Ensure projects directory exists
     PROJECTS_DIR.mkdir(exist_ok=True)
-    
+
     # Initialize context
     context = AppContext()
-    
+
     # Log startup
     logging.info(f"Server startup complete - context initialized ${context}")
-    
+
     try:
         yield context
     finally:

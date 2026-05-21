@@ -36,8 +36,10 @@ class _NonBlockingPoller(TokenPoller):
     the consent URL to the agent. On the second invocation (after the user
     completes consent), GetResourceOauth2Token returns the token directly.
     """
+
     async def poll_for_token(self) -> str:
         return ""
+
 
 app = BedrockAgentCoreApp()
 _model = BedrockModel(model_id="us.anthropic.claude-haiku-4-5-20251001-v1:0")
@@ -102,15 +104,18 @@ async def get_weather_m2m(location: str) -> str:
             resp.raise_for_status()
             data = resp.json()
 
-        return json.dumps({
-            "m2m_auth": "success (client_credentials token obtained)",
-            "location": f"{data.get('name', location)}, {data.get('sys', {}).get('country', '')}",
-            "temperature_f": round(data["main"]["temp"]),
-            "feels_like_f": round(data["main"]["feels_like"]),
-            "condition": data["weather"][0]["description"],
-            "humidity": f"{data['main']['humidity']}%",
-            "wind_mph": round(data["wind"]["speed"]),
-        }, indent=2)
+        return json.dumps(
+            {
+                "m2m_auth": "success (client_credentials token obtained)",
+                "location": f"{data.get('name', location)}, {data.get('sys', {}).get('country', '')}",
+                "temperature_f": round(data["main"]["temp"]),
+                "feels_like_f": round(data["main"]["feels_like"]),
+                "condition": data["weather"][0]["description"],
+                "humidity": f"{data['main']['humidity']}%",
+                "wind_mph": round(data["wind"]["speed"]),
+            },
+            indent=2,
+        )
     except httpx.HTTPStatusError as exc:
         if exc.response.status_code == 401:
             return "Invalid OpenWeatherMap API key."
@@ -138,7 +143,9 @@ def get_github_repos() -> str:
     On first call, returns an authorization URL if consent is needed.
     After the user grants access, call this tool again to retrieve repos.
     """
-    callback_url = os.environ.get("CALLBACK_URL", "http://localhost:9090/oauth2/callback")
+    callback_url = os.environ.get(
+        "CALLBACK_URL", "http://localhost:9090/oauth2/callback"
+    )
 
     @requires_access_token(
         provider_name="GitHub3LOProvider",
@@ -209,7 +216,9 @@ def get_calendar_events() -> str:
     On first call, returns an authorization URL if consent is needed.
     After the user grants access, call this tool again to retrieve events.
     """
-    callback_url = os.environ.get("CALLBACK_URL", "http://localhost:9090/oauth2/callback")
+    callback_url = os.environ.get(
+        "CALLBACK_URL", "http://localhost:9090/oauth2/callback"
+    )
     today = datetime.now(timezone.utc).date().isoformat()
 
     @requires_access_token(
@@ -250,7 +259,9 @@ def get_calendar_events() -> str:
 
         lines = [f"Google Calendar events for {today}:"]
         for event in events:
-            start = event.get("start", {}).get("dateTime", event.get("start", {}).get("date", ""))
+            start = event.get("start", {}).get(
+                "dateTime", event.get("start", {}).get("date", "")
+            )
             lines.append(f"  - {start}: {event.get('summary', '(no title)')}")
         return "\n".join(lines)
 

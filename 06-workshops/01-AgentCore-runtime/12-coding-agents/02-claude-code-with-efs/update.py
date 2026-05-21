@@ -16,6 +16,7 @@ import boto3
 
 # ── Load config ──────────────────────────────────────────────────────────────
 
+
 def load_dotconfig():
     config_path = os.path.join(os.path.dirname(__file__), "envvars.config")
     cfg = {}
@@ -28,10 +29,13 @@ def load_dotconfig():
                     cfg[key] = value.strip('"').strip("'")
     return cfg
 
+
 file_cfg = load_dotconfig()
+
 
 def cfg(key, default=None):
     return file_cfg.get(key) or os.environ.get(key) or default
+
 
 # ── Configuration ────────────────────────────────────────────────────────────
 
@@ -129,11 +133,13 @@ def main():
 
     runtime = update_runtime(runtime_id, role_arn)
 
-    existing.update({
-        "runtime_id": runtime["runtime_id"],
-        "runtime_arn": runtime["runtime_arn"],
-        "ecr_uri": ECR_URI,
-    })
+    existing.update(
+        {
+            "runtime_id": runtime["runtime_id"],
+            "runtime_arn": runtime["runtime_arn"],
+            "ecr_uri": ECR_URI,
+        }
+    )
     if EFS_AP_ARN:
         existing["efs_access_point_arn"] = EFS_AP_ARN
         existing["efs_mount_path"] = EFS_MOUNT_PATH

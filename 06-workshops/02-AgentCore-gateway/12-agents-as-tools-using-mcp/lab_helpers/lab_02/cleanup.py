@@ -75,36 +75,39 @@ def cleanup_lab_02(region_name="us-west-2", cleanup_s3=True):
     print("=" * 70)
 
     # Initialize clients
-    agentcore_client = boto3.client('bedrock-agentcore-control', region_name=region_name)
-    lambda_client = boto3.client('lambda', region_name=region_name)
-    ecr_client = boto3.client('ecr', region_name=region_name)
-    s3_client = boto3.client('s3', region_name=region_name)
-    iam_client = boto3.client('iam')
-    ssm_client = boto3.client('ssm', region_name=region_name)
-    logs_client = boto3.client('logs', region_name=region_name)
+    agentcore_client = boto3.client(
+        "bedrock-agentcore-control", region_name=region_name
+    )
+    lambda_client = boto3.client("lambda", region_name=region_name)
+    ecr_client = boto3.client("ecr", region_name=region_name)
+    s3_client = boto3.client("s3", region_name=region_name)
+    iam_client = boto3.client("iam")
+    ssm_client = boto3.client("ssm", region_name=region_name)
+    logs_client = boto3.client("logs", region_name=region_name)
 
     # 1. Delete Gateway (targets first, then gateway)
     print("[1/7] Deleting Gateway and targets...")
     try:
         # Find gateway by name
         gateways = agentcore_client.list_gateways()
-        for gw in gateways.get('items', []):
-            if gw['name'] == 'aiml301-diagnostics-gateway':
-                gateway_id = gw['gatewayId']
+        for gw in gateways.get("items", []):
+            if gw["name"] == "aiml301-diagnostics-gateway":
+                gateway_id = gw["gatewayId"]
                 targets_deleted = True  # Assume success unless proven otherwise
 
                 # Step 1: Delete targets
                 try:
-                    targets = agentcore_client.list_gateway_targets(gatewayIdentifier=gateway_id)
-                    target_count = len(targets.get('items', []))
+                    targets = agentcore_client.list_gateway_targets(
+                        gatewayIdentifier=gateway_id
+                    )
+                    target_count = len(targets.get("items", []))
 
                     if target_count > 0:
                         print(f"  Deleting {target_count} target(s)...")
-                        for target in targets.get('items', []):
-                            target_id = target['targetId']
+                        for target in targets.get("items", []):
+                            target_id = target["targetId"]
                             agentcore_client.delete_gateway_target(
-                                gatewayIdentifier=gateway_id,
-                                targetId=target_id
+                                gatewayIdentifier=gateway_id, targetId=target_id
                             )
                             print(f"    • Deleted target: {target_id}")
 
@@ -116,8 +119,10 @@ def cleanup_lab_02(region_name="us-west-2", cleanup_s3=True):
 
                         while retry_count < max_retries and not targets_deleted:
                             time.sleep(3)  # Wait for AWS propagation
-                            remaining_targets = agentcore_client.list_gateway_targets(gatewayIdentifier=gateway_id)
-                            remaining_count = len(remaining_targets.get('items', []))
+                            remaining_targets = agentcore_client.list_gateway_targets(
+                                gatewayIdentifier=gateway_id
+                            )
+                            remaining_count = len(remaining_targets.get("items", []))
 
                             if remaining_count == 0:
                                 print("  ✓ All targets confirmed deleted")
@@ -125,9 +130,13 @@ def cleanup_lab_02(region_name="us-west-2", cleanup_s3=True):
                             else:
                                 retry_count += 1
                                 if retry_count < max_retries:
-                                    print(f"  ⏳ Retry {retry_count}/{max_retries-1}: {remaining_count} target(s) still present...")
+                                    print(
+                                        f"  ⏳ Retry {retry_count}/{max_retries - 1}: {remaining_count} target(s) still present..."
+                                    )
                                 else:
-                                    print(f"  ⚠ {remaining_count} target(s) still associated after {max_retries} retries")
+                                    print(
+                                        f"  ⚠ {remaining_count} target(s) still associated after {max_retries} retries"
+                                    )
                     else:
                         print("  ✓ No targets found")
                         targets_deleted = True
@@ -166,7 +175,9 @@ def cleanup_lab_02(region_name="us-west-2", cleanup_s3=True):
     # 3. Delete ECR repository
     print("[3/7] Deleting ECR repository...")
     try:
-        ecr_client.delete_repository(repositoryName="aiml301-diagnostic-agent", force=True)
+        ecr_client.delete_repository(
+            repositoryName="aiml301-diagnostic-agent", force=True
+        )
         print("  ✓ ECR repository deleted")
     except ecr_client.exceptions.RepositoryNotFoundException:
         print("  ✓ ECR repository not found (ok)")
@@ -181,9 +192,9 @@ def cleanup_lab_02(region_name="us-west-2", cleanup_s3=True):
             # List all objects in bucket
             try:
                 response = s3_client.list_objects_v2(Bucket=bucket_name)
-                if 'Contents' in response:
-                    for obj in response['Contents']:
-                        s3_client.delete_object(Bucket=bucket_name, Key=obj['Key'])
+                if "Contents" in response:
+                    for obj in response["Contents"]:
+                        s3_client.delete_object(Bucket=bucket_name, Key=obj["Key"])
                         print(f"    • Deleted: {obj['Key']}")
 
                 # Delete bucket itself
@@ -232,7 +243,9 @@ def cleanup_lab_02(region_name="us-west-2", cleanup_s3=True):
         params_to_delete = [p for p in params_to_delete if p]
         if params_to_delete:
             ssm_client.delete_parameters(Names=params_to_delete)
-            print(f"  ✓ Parameter Store entries deleted ({len(params_to_delete)} parameters)")
+            print(
+                f"  ✓ Parameter Store entries deleted ({len(params_to_delete)} parameters)"
+            )
         else:
             print("  ✓ No parameters to delete")
     except Exception as e:
@@ -241,7 +254,9 @@ def cleanup_lab_02(region_name="us-west-2", cleanup_s3=True):
     # 6. Delete CloudWatch logs
     print("[6/7] Deleting CloudWatch log groups...")
     try:
-        logs_client.delete_log_group(logGroupName="/aws/lambda/aiml301-diagnostic-agent")
+        logs_client.delete_log_group(
+            logGroupName="/aws/lambda/aiml301-diagnostic-agent"
+        )
         print("  ✓ Lambda log group deleted")
     except logs_client.exceptions.ResourceNotFoundException:
         print("  ✓ Lambda log group not found (ok)")
@@ -338,12 +353,12 @@ def _delete_role(iam_client, role_name):
     """Helper: Detach all policies and delete role"""
     # Detach managed policies
     policies = iam_client.list_attached_role_policies(RoleName=role_name)
-    for policy in policies.get('AttachedPolicies', []):
-        iam_client.detach_role_policy(RoleName=role_name, PolicyArn=policy['PolicyArn'])
+    for policy in policies.get("AttachedPolicies", []):
+        iam_client.detach_role_policy(RoleName=role_name, PolicyArn=policy["PolicyArn"])
 
     # Delete inline policies
     inline_policies = iam_client.list_role_policies(RoleName=role_name)
-    for policy_name in inline_policies.get('PolicyNames', []):
+    for policy_name in inline_policies.get("PolicyNames", []):
         iam_client.delete_role_policy(RoleName=role_name, PolicyName=policy_name)
 
     # Delete role
@@ -352,4 +367,5 @@ def _delete_role(iam_client, role_name):
 
 if __name__ == "__main__":
     from lab_helpers.config import AWS_REGION
+
     cleanup_lab_02(region_name=AWS_REGION)

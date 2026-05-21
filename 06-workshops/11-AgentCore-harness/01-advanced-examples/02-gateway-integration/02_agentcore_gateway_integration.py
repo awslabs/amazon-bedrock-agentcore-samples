@@ -53,6 +53,7 @@ from helper.client import get_agentcore_client, get_agentcore_control_client
 
 REGION = os.getenv("AWS_DEFAULT_REGION")
 
+
 # ---------------------------------------------------------------------------
 # Client factories
 # ---------------------------------------------------------------------------
@@ -75,6 +76,7 @@ def get_harness_control_client():
 def get_data_plane_client():
     """Data-plane client for invoke_harness (beta endpoint)."""
     return get_agentcore_client()
+
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -101,31 +103,43 @@ parser = argparse.ArgumentParser(
     formatter_class=argparse.RawDescriptionHelpFormatter,
 )
 parser.add_argument(
-    "--mcp-endpoint", default=DEFAULT_MCP_ENDPOINT, metavar="URL",
+    "--mcp-endpoint",
+    default=DEFAULT_MCP_ENDPOINT,
+    metavar="URL",
     help=f"MCP server endpoint URL (default: {DEFAULT_MCP_ENDPOINT})",
 )
 parser.add_argument(
-    "--target-name", default=DEFAULT_TARGET_NAME, metavar="NAME",
+    "--target-name",
+    default=DEFAULT_TARGET_NAME,
+    metavar="NAME",
     help=f"Name for the Gateway target (default: {DEFAULT_TARGET_NAME})",
 )
 parser.add_argument(
-    "--model", default=DEFAULT_MODEL, metavar="MODEL_ID",
+    "--model",
+    default=DEFAULT_MODEL,
+    metavar="MODEL_ID",
     help=f"Bedrock model ID (default: {DEFAULT_MODEL})",
 )
 parser.add_argument(
-    "--message", "-m", default=DEFAULT_PROMPT,
+    "--message",
+    "-m",
+    default=DEFAULT_PROMPT,
     help="Prompt to send to the agent",
 )
 parser.add_argument(
-    "--role-arn", default=None, metavar="ARN",
+    "--role-arn",
+    default=None,
+    metavar="ARN",
     help="Use an existing IAM execution role ARN instead of creating one",
 )
 parser.add_argument(
-    "--skip-cleanup", action="store_true",
+    "--skip-cleanup",
+    action="store_true",
     help="Keep all resources after the demo",
 )
 parser.add_argument(
-    "--raw-events", action="store_true",
+    "--raw-events",
+    action="store_true",
     help="Print raw JSON streaming events from invoke",
 )
 
@@ -133,7 +147,9 @@ parser.add_argument(
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-def poll_gateway_status(control, gateway_id, target_status="READY", timeout=GATEWAY_POLL_TIMEOUT):
+def poll_gateway_status(
+    control, gateway_id, target_status="READY", timeout=GATEWAY_POLL_TIMEOUT
+):
     """Poll until the Gateway reaches the target status or times out."""
     deadline = time.monotonic() + timeout
     while True:
@@ -146,15 +162,21 @@ def poll_gateway_status(control, gateway_id, target_status="READY", timeout=GATE
             reasons = resp.get("statusReasons", [])
             raise RuntimeError(f"Gateway entered FAILED state: {reasons}")
         if time.monotonic() > deadline:
-            raise TimeoutError(f"Gateway not {target_status} after {timeout}s (current: {status})")
+            raise TimeoutError(
+                f"Gateway not {target_status} after {timeout}s (current: {status})"
+            )
         time.sleep(GATEWAY_POLL_INTERVAL)
 
 
-def poll_target_status(control, gateway_id, target_id, target_status="READY", timeout=GATEWAY_POLL_TIMEOUT):
+def poll_target_status(
+    control, gateway_id, target_id, target_status="READY", timeout=GATEWAY_POLL_TIMEOUT
+):
     """Poll until a Gateway target reaches the target status or times out."""
     deadline = time.monotonic() + timeout
     while True:
-        resp = control.get_gateway_target(gatewayIdentifier=gateway_id, targetId=target_id)
+        resp = control.get_gateway_target(
+            gatewayIdentifier=gateway_id, targetId=target_id
+        )
         status = resp["status"]
         print(f"  Target status: {status}")
         if status == target_status:
@@ -163,11 +185,15 @@ def poll_target_status(control, gateway_id, target_id, target_status="READY", ti
             reasons = resp.get("statusReasons", [])
             raise RuntimeError(f"Target entered {status}: {reasons}")
         if time.monotonic() > deadline:
-            raise TimeoutError(f"Target not {target_status} after {timeout}s (current: {status})")
+            raise TimeoutError(
+                f"Target not {target_status} after {timeout}s (current: {status})"
+            )
         time.sleep(GATEWAY_POLL_INTERVAL)
 
 
-def poll_harness_status(control, harness_id, target_status="READY", timeout=HARNESS_POLL_TIMEOUT):
+def poll_harness_status(
+    control, harness_id, target_status="READY", timeout=HARNESS_POLL_TIMEOUT
+):
     """Poll until a Harness reaches the target status or times out."""
     deadline = time.monotonic() + timeout
     while True:
@@ -179,22 +205,28 @@ def poll_harness_status(control, harness_id, target_status="READY", timeout=HARN
         if status in ("FAILED", "DELETE_FAILED"):
             raise RuntimeError(f"Harness entered {status}")
         if time.monotonic() > deadline:
-            raise TimeoutError(f"Harness not {target_status} after {timeout}s (current: {status})")
+            raise TimeoutError(
+                f"Harness not {target_status} after {timeout}s (current: {status})"
+            )
         time.sleep(HARNESS_POLL_INTERVAL)
 
 
-def stream_response(client, harness_arn, session_id, message, model_id, gateway_arn, raw=False):
+def stream_response(
+    client, harness_arn, session_id, message, model_id, gateway_arn, raw=False
+):
     """Invoke a Harness with a Gateway tool and stream the response."""
     response = client.invoke_harness(
         harnessArn=harness_arn,
         runtimeSessionId=session_id,
         messages=[{"role": "user", "content": [{"text": message}]}],
         model={"bedrockModelConfig": {"modelId": model_id}},
-        tools=[{
-            "type": "agentcore_gateway",
-            "name": "gateway",
-            "config": {"agentCoreGateway": {"gatewayArn": gateway_arn}},
-        }],
+        tools=[
+            {
+                "type": "agentcore_gateway",
+                "name": "gateway",
+                "config": {"agentCoreGateway": {"gatewayArn": gateway_arn}},
+            }
+        ],
     )
 
     full_text = ""
@@ -207,7 +239,9 @@ def stream_response(client, harness_arn, session_id, message, model_id, gateway_
             if "contentBlockStart" in event:
                 start = event["contentBlockStart"].get("start", {})
                 if "toolUse" in start:
-                    print(f"\n  [Tool: {start['toolUse'].get('name', '?')}]", flush=True)
+                    print(
+                        f"\n  [Tool: {start['toolUse'].get('name', '?')}]", flush=True
+                    )
             elif "contentBlockDelta" in event:
                 delta = event["contentBlockDelta"].get("delta", {})
                 if "text" in delta:
@@ -317,11 +351,17 @@ def main(args=None):
         print(f"  Session ID: {session_id}")
         print(f"  Model:      {args.model}")
         print(f"  Gateway:    {gateway_arn}")
-        print(f"  Message:    {args.message[:80]}{'...' if len(args.message) > 80 else ''}\n")
+        print(
+            f"  Message:    {args.message[:80]}{'...' if len(args.message) > 80 else ''}\n"
+        )
 
         stream_response(
-            client, harness_arn, session_id,
-            args.message, args.model, gateway_arn,
+            client,
+            harness_arn,
+            session_id,
+            args.message,
+            args.model,
+            gateway_arn,
             raw=args.raw_events,
         )
 
@@ -350,7 +390,9 @@ def _cleanup(gw_control, harness_control, gateway_id, target_id, harness_id):
     # Delete Gateway target first — must be removed before the gateway
     if gateway_id and target_id:
         try:
-            gw_control.delete_gateway_target(gatewayIdentifier=gateway_id, targetId=target_id)
+            gw_control.delete_gateway_target(
+                gatewayIdentifier=gateway_id, targetId=target_id
+            )
             print(f"  Deleted target: {target_id}")
             # Wait for async target deletion to propagate
             time.sleep(10)

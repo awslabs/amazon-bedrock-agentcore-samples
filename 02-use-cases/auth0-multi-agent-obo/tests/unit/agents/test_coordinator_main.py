@@ -15,18 +15,21 @@ from unittest.mock import patch, MagicMock, AsyncMock
 from datetime import datetime, timedelta
 
 # Add agents directory to path for imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'agents', 'coordinator'))
+sys.path.insert(
+    0,
+    os.path.join(os.path.dirname(__file__), "..", "..", "..", "agents", "coordinator"),
+)
 
 # Check if bedrock_agentcore SDK is available
 try:
     import bedrock_agentcore.runtime
+
     HAS_AGENTCORE_SDK = True
 except ImportError:
     HAS_AGENTCORE_SDK = False
 
 pytestmark = pytest.mark.skipif(
-    not HAS_AGENTCORE_SDK,
-    reason="bedrock_agentcore SDK not available (container-only)"
+    not HAS_AGENTCORE_SDK, reason="bedrock_agentcore SDK not available (container-only)"
 )
 
 
@@ -41,7 +44,7 @@ class TestExtractUserContext:
             "claims": {
                 "sub": "auth0|123456",
                 "email": "test@example.com",
-                "https://agentcore.example.com/customer_id": "CUST-001"
+                "https://agentcore.example.com/customer_id": "CUST-001",
             }
         }
 
@@ -62,13 +65,11 @@ class TestExtractUserContext:
             "email": "token@example.com",
             "https://agentcore.example.com/customer_id": "CUST-TOKEN",
             "exp": int((datetime.utcnow() + timedelta(hours=1)).timestamp()),
-            "iss": "https://issuer"
+            "iss": "https://issuer",
         }
         token = jwt.encode(payload_data, "secret", algorithm="HS256")
 
-        payload = {
-            "access_token": token
-        }
+        payload = {"access_token": token}
 
         result = extract_user_context_from_payload(payload, None)
 
@@ -123,9 +124,13 @@ class TestExtractUserContextPermissionsVsScope:
             ),
             # permissions has only profile scopes (RBAC-restricted)
             "permissions": [
-                "openid", "profile", "email",
-                "profile:personal:read", "profile:personal:write",
-                "profile:preferences:read", "profile:preferences:write",
+                "openid",
+                "profile",
+                "email",
+                "profile:personal:read",
+                "profile:personal:write",
+                "profile:preferences:read",
+                "profile:preferences:write",
             ],
         }
         token = jwt.encode(payload_data, "secret", algorithm="HS256")
@@ -188,7 +193,9 @@ class TestExtractUserContextPermissionsVsScope:
         import jwt
 
         expected_permissions = [
-            "openid", "profile", "email",
+            "openid",
+            "profile",
+            "email",
             "profile:personal:read",
             "accounts:savings:read",
         ]
@@ -223,7 +230,7 @@ class TestValidateUserAuthorization:
             "email": "test@example.com",
             "email_verified": True,
             "customer_id": "CUST-001",
-            "permissions": ["profile:personal:read"]
+            "permissions": ["profile:personal:read"],
         }
 
         result = validate_user_authorization(user_context)
@@ -237,7 +244,7 @@ class TestValidateUserAuthorization:
         user_context = {
             "user_id": "unknown",
             "email": "unknown",
-            "customer_id": "unknown"
+            "customer_id": "unknown",
         }
 
         result = validate_user_authorization(user_context)
@@ -257,7 +264,7 @@ class TestValidateUserAuthorization:
             "user_id": "auth0|123456",
             "email": "test@example.com",
             "customer_id": "CUST-001",
-            "permissions": []  # No permissions, but user is authenticated
+            "permissions": [],  # No permissions, but user is authenticated
         }
 
         result = validate_user_authorization(user_context)
@@ -270,10 +277,12 @@ class TestInvokeEntrypoint:
     """Tests for the invoke entrypoint function."""
 
     @pytest.mark.asyncio
-    @patch('main.create_agent')
-    @patch('main.validate_user_authorization')
-    @patch('main.extract_user_context_from_payload')
-    async def test_successful_invocation(self, mock_extract, mock_validate, mock_create):
+    @patch("main.create_agent")
+    @patch("main.validate_user_authorization")
+    @patch("main.extract_user_context_from_payload")
+    async def test_successful_invocation(
+        self, mock_extract, mock_validate, mock_create
+    ):
         """Test successful invocation."""
         from main import invoke
 
@@ -282,7 +291,7 @@ class TestInvokeEntrypoint:
             "customer_id": "CUST001",
             "email": "test@example.com",
             "permissions": ["profile:personal:read"],
-            "access_token": ""
+            "access_token": "",
         }
 
         mock_validate.return_value = True
@@ -298,8 +307,8 @@ class TestInvokeEntrypoint:
         assert result["status"] == "success"
 
     @pytest.mark.asyncio
-    @patch('main.validate_user_authorization')
-    @patch('main.extract_user_context_from_payload')
+    @patch("main.validate_user_authorization")
+    @patch("main.extract_user_context_from_payload")
     async def test_unauthorized_user(self, mock_extract, mock_validate):
         """Test that unauthorized user gets error response."""
         from main import invoke
@@ -308,7 +317,7 @@ class TestInvokeEntrypoint:
             "user_id": "unknown",
             "customer_id": "unknown",
             "permissions": [],
-            "access_token": ""
+            "access_token": "",
         }
 
         mock_validate.return_value = False
@@ -321,10 +330,12 @@ class TestInvokeEntrypoint:
         assert "AUTHORIZATION" in result["error"]
 
     @pytest.mark.asyncio
-    @patch('main.create_agent')
-    @patch('main.validate_user_authorization')
-    @patch('main.extract_user_context_from_payload')
-    async def test_agent_exception_handling(self, mock_extract, mock_validate, mock_create):
+    @patch("main.create_agent")
+    @patch("main.validate_user_authorization")
+    @patch("main.extract_user_context_from_payload")
+    async def test_agent_exception_handling(
+        self, mock_extract, mock_validate, mock_create
+    ):
         """Test that agent exceptions are caught."""
         from main import invoke
 
@@ -332,7 +343,7 @@ class TestInvokeEntrypoint:
             "user_id": "user-123",
             "customer_id": "CUST001",
             "permissions": ["profile:personal:read"],
-            "access_token": ""
+            "access_token": "",
         }
 
         mock_validate.return_value = True
@@ -358,10 +369,12 @@ class TestInvokeEntrypoint:
         assert "status" in result
 
     @pytest.mark.asyncio
-    @patch('main.create_agent')
-    @patch('main.validate_user_authorization')
-    @patch('main.extract_user_context_from_payload')
-    async def test_response_includes_metadata(self, mock_extract, mock_validate, mock_create):
+    @patch("main.create_agent")
+    @patch("main.validate_user_authorization")
+    @patch("main.extract_user_context_from_payload")
+    async def test_response_includes_metadata(
+        self, mock_extract, mock_validate, mock_create
+    ):
         """Test that response includes required metadata."""
         from main import invoke
 
@@ -369,7 +382,7 @@ class TestInvokeEntrypoint:
             "user_id": "user-123",
             "customer_id": "CUST001",
             "permissions": ["profile:personal:read"],
-            "access_token": ""
+            "access_token": "",
         }
 
         mock_validate.return_value = True
@@ -397,7 +410,7 @@ class TestDecodeJwtClaims:
 
         payload = {
             "sub": "auth0|123456",
-            "exp": int((datetime.utcnow() + timedelta(hours=1)).timestamp())
+            "exp": int((datetime.utcnow() + timedelta(hours=1)).timestamp()),
         }
         token = jwt.encode(payload, "secret", algorithm="HS256")
 

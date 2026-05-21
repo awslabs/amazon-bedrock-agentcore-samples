@@ -32,72 +32,72 @@ console = Console()
 
 class SessionReplayHandler(BaseHTTPRequestHandler):
     """HTTP request handler for session replay viewer"""
-    
+
     def __init__(self, data_source, viewer_path, *args, **kwargs):
         self.data_source = data_source
         self.viewer_path = viewer_path
         super().__init__(*args, **kwargs)
-    
+
     def log_message(self, format, *args):
         """Override to reduce server logging noise"""
         pass
-    
+
     def do_GET(self):
         """Handle GET requests"""
         try:
-            path = self.path.split('?')[0]
-            
-            if path == '/':
-                self.serve_file('index.html')
-            elif path == '/api/recordings':
+            path = self.path.split("?")[0]
+
+            if path == "/":
+                self.serve_file("index.html")
+            elif path == "/api/recordings":
                 self.serve_recordings_list()
-            elif path.startswith('/api/download/'):
-                recording_id = path.split('/')[-1]
+            elif path.startswith("/api/download/"):
+                recording_id = path.split("/")[-1]
                 self.download_and_serve_recording(recording_id)
             else:
-                self.serve_file(path.lstrip('/'))
-                
+                self.serve_file(path.lstrip("/"))
+
         except Exception as e:
             console.print(f"[red]Error handling request: {e}[/red]")
             self.send_error(500, str(e))
-    
+
     def serve_file(self, file_path):
         """Serve static files"""
         full_path = self.viewer_path / file_path
-        
+
         if not full_path.exists():
             # Create index.html on the fly
-            if file_path == 'index.html':
+            if file_path == "index.html":
                 self._create_index_html(full_path)
             else:
                 self.send_error(404, f"File not found: {file_path}")
                 return
-        
+
         content_type, _ = mimetypes.guess_type(str(full_path))
         if content_type is None:
-            content_type = 'application/octet-stream'
-        
-        with open(full_path, 'rb') as f:
+            content_type = "application/octet-stream"
+
+        with open(full_path, "rb") as f:
             content = f.read()
-        
+
         self.send_response(200)
-        self.send_header('Content-Type', content_type)
-        self.send_header('Content-Length', str(len(content)))
-        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header("Content-Type", content_type)
+        self.send_header("Content-Length", str(len(content)))
+        self.send_header("Access-Control-Allow-Origin", "*")
         self.end_headers()
         self.wfile.write(content)
-    
+
     def _create_index_html(self, path):
         """Create the viewer HTML interface"""
         print("\n======= DEBUGGING =======")
         print(f"Creating index.html at: {path}")
         print(f"Path exists: {os.path.exists(path)}")
         print(f"Parent directory exists: {os.path.exists(path.parent)}")
-        
+
         # Ensure the directory exists
         path.parent.mkdir(parents=True, exist_ok=True)
-        
-        html_content = r'''<!DOCTYPE html>
+
+        html_content = r"""<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -434,314 +434,326 @@ class SessionReplayHandler(BaseHTTPRequestHandler):
         setInterval(loadRecordings, 30000);
     </script>
 </body>
-</html>'''
-        
+</html>"""
+
         print(f"Original content length: {len(html_content)}")
         print(f"Contains 'DOLLAR': {'DOLLAR' in html_content}")
-        
+
         # Try to replace DOLLAR with $ just in case
-        if 'DOLLAR' in html_content:
-            html_content = html_content.replace('DOLLAR', '$')
+        if "DOLLAR" in html_content:
+            html_content = html_content.replace("DOLLAR", "$")
             print(f"After replacement, contains 'DOLLAR': {'DOLLAR' in html_content}")
-        
+
         print(f"Writing to file: {path}")
-        
+
         try:
-            with open(path, 'w') as f:
+            with open(path, "w") as f:
                 f.write(html_content)
-            
+
             # Verify the file was written correctly
             file_size = os.path.getsize(path)
             print(f"File written successfully, size: {file_size} bytes")
-            
+
             # Verify content in file
-            with open(path, 'r') as f:
+            with open(path, "r") as f:
                 first_100 = f.read(100)
             print(f"First 100 chars of file: {first_100}")
-            
+
         except Exception as e:
             print(f"ERROR writing file: {e}")
-        
+
         print("======= END DEBUGGING =======\n")
-    
+
     def serve_recordings_list(self):
         """Return list of recordings with proper headers"""
         try:
             recordings = self.data_source.list_recordings()
             response = json.dumps(recordings)
-            
+
             self.send_response(200)
-            self.send_header('Content-Type', 'application/json')
-            self.send_header('Content-Length', str(len(response)))
-            self.send_header('Access-Control-Allow-Origin', '*')
-            self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
-            self.send_header('Access-Control-Allow-Headers', '*')
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(response)))
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+            self.send_header("Access-Control-Allow-Headers", "*")
             self.end_headers()
-            
-            self.wfile.write(response.encode('utf-8'))
-            
+
+            self.wfile.write(response.encode("utf-8"))
+
         except Exception as e:
             console.print(f"[red]Error in serve_recordings_list: {e}[/red]")
-            
+
             error_response = json.dumps({"error": str(e), "recordings": []})
             self.send_response(200)  # Use 200 to ensure client gets the error
-            self.send_header('Content-Type', 'application/json')
-            self.send_header('Content-Length', str(len(error_response)))
-            self.send_header('Access-Control-Allow-Origin', '*')
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(error_response)))
+            self.send_header("Access-Control-Allow-Origin", "*")
             self.end_headers()
-            self.wfile.write(error_response.encode('utf-8'))
+            self.wfile.write(error_response.encode("utf-8"))
 
     def download_and_serve_recording(self, recording_id):
         """Download recording and serve it with proper headers"""
         try:
             recording_data = self.data_source.download_recording(recording_id)
-            
+
             if recording_data:
-                response = json.dumps({
-                    'success': True,
-                    'data': recording_data
-                })
-                
+                response = json.dumps({"success": True, "data": recording_data})
+
                 self.send_response(200)
-                self.send_header('Content-Type', 'application/json')
-                self.send_header('Content-Length', str(len(response)))
-                self.send_header('Access-Control-Allow-Origin', '*')
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(response)))
+                self.send_header("Access-Control-Allow-Origin", "*")
                 self.end_headers()
-                self.wfile.write(response.encode('utf-8'))
+                self.wfile.write(response.encode("utf-8"))
             else:
-                error_response = json.dumps({
-                    'success': False,
-                    'error': 'Recording not found'
-                })
+                error_response = json.dumps(
+                    {"success": False, "error": "Recording not found"}
+                )
                 self.send_response(404)
-                self.send_header('Content-Type', 'application/json')
-                self.send_header('Content-Length', str(len(error_response)))
-                self.send_header('Access-Control-Allow-Origin', '*')
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(error_response)))
+                self.send_header("Access-Control-Allow-Origin", "*")
                 self.end_headers()
-                self.wfile.write(error_response.encode('utf-8'))
-                
+                self.wfile.write(error_response.encode("utf-8"))
+
         except Exception as e:
             console.print(f"[red]Error in download_and_serve_recording: {e}[/red]")
             import traceback
+
             traceback.print_exc()
-            
-            error_response = json.dumps({
-                'success': False,
-                'error': str(e)
-            })
+
+            error_response = json.dumps({"success": False, "error": str(e)})
             self.send_response(500)
-            self.send_header('Content-Type', 'application/json')
-            self.send_header('Content-Length', str(len(error_response)))
-            self.send_header('Access-Control-Allow-Origin', '*')
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(error_response)))
+            self.send_header("Access-Control-Allow-Origin", "*")
             self.end_headers()
-            self.wfile.write(error_response.encode('utf-8'))
+            self.wfile.write(error_response.encode("utf-8"))
 
     def do_OPTIONS(self):
         """Handle OPTIONS requests for CORS preflight"""
         self.send_response(200)
-        self.send_header('Access-Control-Allow-Origin', '*')
-        self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
-        self.send_header('Access-Control-Allow-Headers', '*')
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "*")
         self.end_headers()
 
 
 class DataSource:
     """Base class for data sources"""
-    
+
     def list_recordings(self):
         raise NotImplementedError
-    
+
     def download_recording(self, recording_id):
         raise NotImplementedError
 
 
 class LocalDataSource(DataSource):
     """Local file system data source"""
-    
+
     def __init__(self, recordings_dir):
         self.recordings_dir = Path(recordings_dir)
-        console.print(f"[cyan]Using local recordings from:[/cyan] {self.recordings_dir}")
-    
+        console.print(
+            f"[cyan]Using local recordings from:[/cyan] {self.recordings_dir}"
+        )
+
     def list_recordings(self):
         """List local recordings"""
         recordings = []
-        
+
         if not self.recordings_dir.exists():
             return recordings
-        
+
         # Look for rrweb-* directories
         for item in self.recordings_dir.iterdir():
-            if item.is_dir() and item.name.startswith('rrweb-'):
+            if item.is_dir() and item.name.startswith("rrweb-"):
                 recording_id = item.name
-                
+
                 # Parse recording ID
-                parts = recording_id.split('-')
+                parts = recording_id.split("-")
                 if len(parts) >= 3:
                     timestamp = parts[1]
-                    session_id = '-'.join(parts[2:])
-                    
+                    session_id = "-".join(parts[2:])
+
                     # Try to get metadata
                     metadata = {}
-                    metadata_file = item / 'metadata.json'
+                    metadata_file = item / "metadata.json"
                     if metadata_file.exists():
-                        with open(metadata_file, 'r') as f:
+                        with open(metadata_file, "r") as f:
                             metadata = json.load(f)
-                    
-                    recordings.append({
-                        'id': recording_id,
-                        'sessionId': session_id,
-                        'timestamp': timestamp,
-                        'date': datetime.fromtimestamp(
-                            int(timestamp) / 1000
-                        ).strftime('%Y-%m-%d %H:%M:%S'),
-                        'events': metadata.get('totalEvents', 0),
-                        'duration': metadata.get('duration', 0)
-                    })
-        
-        recordings.sort(key=lambda x: x['timestamp'], reverse=True)
+
+                    recordings.append(
+                        {
+                            "id": recording_id,
+                            "sessionId": session_id,
+                            "timestamp": timestamp,
+                            "date": datetime.fromtimestamp(
+                                int(timestamp) / 1000
+                            ).strftime("%Y-%m-%d %H:%M:%S"),
+                            "events": metadata.get("totalEvents", 0),
+                            "duration": metadata.get("duration", 0),
+                        }
+                    )
+
+        recordings.sort(key=lambda x: x["timestamp"], reverse=True)
         return recordings
-    
+
     def download_recording(self, recording_id):
         """Load recording from local files"""
         recording_dir = self.recordings_dir / recording_id
-        
+
         if not recording_dir.exists():
             return None
-        
+
         all_events = []
         metadata = {}
-        
+
         # Load metadata if exists
-        metadata_file = recording_dir / 'metadata.json'
+        metadata_file = recording_dir / "metadata.json"
         if metadata_file.exists():
-            with open(metadata_file, 'r') as f:
+            with open(metadata_file, "r") as f:
                 metadata = json.load(f)
-        
+
         # Load batch files
-        batch_files = sorted(recording_dir.glob('batch-*.ndjson.gz'))
-        
+        batch_files = sorted(recording_dir.glob("batch-*.ndjson.gz"))
+
         for batch_file in batch_files:
-            with gzip.open(batch_file, 'rt') as f:
+            with gzip.open(batch_file, "rt") as f:
                 for line in f:
                     if line.strip():
                         all_events.append(json.loads(line))
-        
-        return {
-            'metadata': metadata,
-            'events': all_events
-        }
+
+        return {"metadata": metadata, "events": all_events}
 
 
 class S3DataSource(DataSource):
     """S3 data source"""
-    
-    def __init__(self, bucket, prefix=''):
-        self.s3_client = boto3.client('s3')
+
+    def __init__(self, bucket, prefix=""):
+        self.s3_client = boto3.client("s3")
         self.bucket = bucket
-        self.prefix = prefix.rstrip('/')
+        self.prefix = prefix.rstrip("/")
         self.temp_dir = Path(tempfile.mkdtemp(prefix="bedrock_agentcore_replay_"))
-        
+
         console.print("[cyan]Using S3 location:[/cyan]")
         console.print(f"  Bucket: {bucket}")
         console.print(f"  Prefix: {prefix}")
-    
+
     def cleanup(self):
         """Clean up temp files"""
         if self.temp_dir.exists():
             shutil.rmtree(self.temp_dir)
-    
+
     def list_recordings(self):
         """List recordings from S3"""
         recordings = []
-        
+
         try:
-            paginator = self.s3_client.get_paginator('list_objects_v2')
-            
+            paginator = self.s3_client.get_paginator("list_objects_v2")
+
             # Look for any directories (not just rrweb-*)
             for page in paginator.paginate(
-                Bucket=self.bucket, 
-                Prefix=self.prefix,
-                Delimiter='/'
+                Bucket=self.bucket, Prefix=self.prefix, Delimiter="/"
             ):
-                if 'CommonPrefixes' in page:
-                    console.print(f"Found {len(page['CommonPrefixes'])} directories in prefix {self.prefix}")
-                    
-                    for prefix_info in page['CommonPrefixes']:
-                        prefix = prefix_info['Prefix']
-                        recording_id = prefix.rstrip('/').split('/')[-1]
-                        
+                if "CommonPrefixes" in page:
+                    console.print(
+                        f"Found {len(page['CommonPrefixes'])} directories in prefix {self.prefix}"
+                    )
+
+                    for prefix_info in page["CommonPrefixes"]:
+                        prefix = prefix_info["Prefix"]
+                        recording_id = prefix.rstrip("/").split("/")[-1]
+
                         # Check if it's a recording directory by looking for metadata.json
                         metadata = self._get_metadata(recording_id)
                         if metadata:
                             # This is a valid recording directory
-                            session_id = recording_id  # Use the folder name as the session ID
-                            timestamp = int(metadata.get('startTime', time.time() * 1000))
-                            
-                            recordings.append({
-                                'id': recording_id,
-                                'sessionId': session_id,
-                                'timestamp': timestamp,
-                                'date': datetime.fromtimestamp(
-                                    timestamp / 1000
-                                ).strftime('%Y-%m-%d %H:%M:%S'),
-                                'events': metadata.get('eventCount', 0),
-                                'duration': metadata.get('duration', 0)
-                            })
+                            session_id = (
+                                recording_id  # Use the folder name as the session ID
+                            )
+                            timestamp = int(
+                                metadata.get("startTime", time.time() * 1000)
+                            )
+
+                            recordings.append(
+                                {
+                                    "id": recording_id,
+                                    "sessionId": session_id,
+                                    "timestamp": timestamp,
+                                    "date": datetime.fromtimestamp(
+                                        timestamp / 1000
+                                    ).strftime("%Y-%m-%d %H:%M:%S"),
+                                    "events": metadata.get("eventCount", 0),
+                                    "duration": metadata.get("duration", 0),
+                                }
+                            )
                             console.print(f"✅ Found recording: {recording_id}")
                         else:
-                            console.print(f"⚠️ Directory without metadata: {recording_id}")
-                
-                recordings.sort(key=lambda x: x.get('timestamp', 0), reverse=True)
+                            console.print(
+                                f"⚠️ Directory without metadata: {recording_id}"
+                            )
+
+                recordings.sort(key=lambda x: x.get("timestamp", 0), reverse=True)
                 console.print(f"[green]Found {len(recordings)} recordings[/green]")
-                
+
             # If no recordings found with CommonPrefixes, try a direct list
             if not recordings:
                 console.print("Trying alternative method to find recordings...")
-                
+
                 # Get a flat list of all objects
                 all_objects = []
                 for page in paginator.paginate(Bucket=self.bucket, Prefix=self.prefix):
-                    if 'Contents' in page:
-                        all_objects.extend(page['Contents'])
-                
+                    if "Contents" in page:
+                        all_objects.extend(page["Contents"])
+
                 # Extract unique directory names
                 dirs = set()
                 for obj in all_objects:
-                    key = obj['Key']
-                    if '/' in key[len(self.prefix):]:
-                        dir_name = key.split('/', 1)[0] if not self.prefix else key[len(self.prefix):].split('/', 1)[0]
+                    key = obj["Key"]
+                    if "/" in key[len(self.prefix) :]:
+                        dir_name = (
+                            key.split("/", 1)[0]
+                            if not self.prefix
+                            else key[len(self.prefix) :].split("/", 1)[0]
+                        )
                         dirs.add(dir_name)
-                
+
                 console.print(f"Found directories: {dirs}")
-                
+
                 # Check each directory for metadata
                 for dir_name in dirs:
                     metadata = self._get_metadata(dir_name)
                     if metadata:
                         session_id = dir_name
-                        timestamp = int(metadata.get('startTime', time.time() * 1000))
-                        
-                        recordings.append({
-                            'id': dir_name,
-                            'sessionId': session_id,
-                            'timestamp': timestamp,
-                            'date': datetime.fromtimestamp(
-                                timestamp / 1000
-                            ).strftime('%Y-%m-%d %H:%M:%S'),
-                            'events': metadata.get('eventCount', 0),
-                            'duration': metadata.get('duration', 0)
-                        })
-                
-                recordings.sort(key=lambda x: x.get('timestamp', 0), reverse=True)
-                console.print(f"[green]Found {len(recordings)} recordings with alternative method[/green]")
-                
+                        timestamp = int(metadata.get("startTime", time.time() * 1000))
+
+                        recordings.append(
+                            {
+                                "id": dir_name,
+                                "sessionId": session_id,
+                                "timestamp": timestamp,
+                                "date": datetime.fromtimestamp(
+                                    timestamp / 1000
+                                ).strftime("%Y-%m-%d %H:%M:%S"),
+                                "events": metadata.get("eventCount", 0),
+                                "duration": metadata.get("duration", 0),
+                            }
+                        )
+
+                recordings.sort(key=lambda x: x.get("timestamp", 0), reverse=True)
+                console.print(
+                    f"[green]Found {len(recordings)} recordings with alternative method[/green]"
+                )
+
         except Exception as e:
             console.print(f"[red]Error listing recordings: {e}[/red]")
             import traceback
+
             traceback.print_exc()
-        
+
         return recordings
-    
+
     def _get_metadata(self, recording_id):
         """Get metadata for a recording"""
         try:
@@ -749,102 +761,128 @@ class S3DataSource(DataSource):
             keys_to_try = [
                 f"{self.prefix}/{recording_id}/metadata.json",
                 f"{recording_id}/metadata.json",
-                f"{self.prefix}{recording_id}/metadata.json"
+                f"{self.prefix}{recording_id}/metadata.json",
             ]
-            
+
             for key in keys_to_try:
                 try:
                     console.print(f"[dim]Trying metadata path: {key}[/dim]")
                     response = self.s3_client.get_object(Bucket=self.bucket, Key=key)
-                    data = json.loads(response['Body'].read().decode('utf-8'))
+                    data = json.loads(response["Body"].read().decode("utf-8"))
                     console.print(f"[dim]Found metadata at: {key}[/dim]")
                     return data
                 except Exception as e:
                     console.print(f"[dim]No metadata at: {key} ({str(e)})[/dim]")
                     continue
-            
+
             return {}
         except Exception as e:
             console.print(f"[dim]Error getting metadata: {e}[/dim]")
             return {}
-    
+
     def download_recording(self, recording_id):
         """Download recording from S3"""
         console.print(f"[cyan]Downloading recording: {recording_id}[/cyan]")
-        
+
         recording_dir = self.temp_dir / recording_id
         recording_dir.mkdir(exist_ok=True)
-        
+
         try:
             with Progress(
                 SpinnerColumn(),
                 TextColumn("[progress.description]{task.description}"),
-                console=console
+                console=console,
             ) as progress:
-                
                 # List files for this recording
-                prefix = f"{self.prefix}/{recording_id}/" if self.prefix else f"{recording_id}/"
+                prefix = (
+                    f"{self.prefix}/{recording_id}/"
+                    if self.prefix
+                    else f"{recording_id}/"
+                )
                 console.print(f"Looking for files with prefix: {prefix}")
-                
-                paginator = self.s3_client.get_paginator('list_objects_v2')
-                
+
+                paginator = self.s3_client.get_paginator("list_objects_v2")
+
                 files_to_download = []
                 for page in paginator.paginate(Bucket=self.bucket, Prefix=prefix):
-                    if 'Contents' in page:
-                        for obj in page['Contents']:
-                            files_to_download.append(obj['Key'])
-                
+                    if "Contents" in page:
+                        for obj in page["Contents"]:
+                            files_to_download.append(obj["Key"])
+
                 # Download files
                 console.print(f"Downloading {len(files_to_download)} files")
-                task = progress.add_task(f"Downloading {len(files_to_download)} files...", total=len(files_to_download))
-                
+                task = progress.add_task(
+                    f"Downloading {len(files_to_download)} files...",
+                    total=len(files_to_download),
+                )
+
                 all_events = []
                 metadata = {}
-                
+
                 for key in files_to_download:
-                    filename = key.split('/')[-1]
+                    filename = key.split("/")[-1]
                     local_path = recording_dir / filename
-                    
+
                     self.s3_client.download_file(self.bucket, key, str(local_path))
                     progress.advance(task)
-                    
+
                     # Process file
-                    if filename == 'metadata.json':
-                        with open(local_path, 'r') as f:
+                    if filename == "metadata.json":
+                        with open(local_path, "r") as f:
                             metadata = json.load(f)
-                    elif filename.startswith('batch-') and (filename.endswith('.ndjson.gz') or filename.endswith('.jsonl.gz')):
+                    elif filename.startswith("batch-") and (
+                        filename.endswith(".ndjson.gz")
+                        or filename.endswith(".jsonl.gz")
+                    ):
                         try:
-                            with gzip.open(local_path, 'rt') as f:
+                            with gzip.open(local_path, "rt") as f:
                                 for line in f:
                                     if line.strip():
                                         try:
                                             event_data = json.loads(line)
                                             # Validate event structure for rrweb
-                                            if 'type' in event_data and 'timestamp' in event_data:
+                                            if (
+                                                "type" in event_data
+                                                and "timestamp" in event_data
+                                            ):
                                                 all_events.append(event_data)
                                             else:
-                                                console.print("[yellow]Skipping invalid event: missing required fields[/yellow]")
+                                                console.print(
+                                                    "[yellow]Skipping invalid event: missing required fields[/yellow]"
+                                                )
                                         except json.JSONDecodeError:
-                                            console.print(f"[yellow]Warning: Invalid JSON in line: {line[:50]}...[/yellow]")
+                                            console.print(
+                                                f"[yellow]Warning: Invalid JSON in line: {line[:50]}...[/yellow]"
+                                            )
                         except Exception as e:
-                            console.print(f"[yellow]Warning: Error processing batch file {filename}: {e}[/yellow]")
-            
+                            console.print(
+                                f"[yellow]Warning: Error processing batch file {filename}: {e}[/yellow]"
+                            )
+
             console.print(f"[green]✓ Downloaded {len(all_events)} events[/green]")
-            
+
             # If no events were parsed, check the files
             if len(all_events) == 0:
-                console.print("[yellow]Warning: No events were parsed from the batch files[/yellow]")
-                
+                console.print(
+                    "[yellow]Warning: No events were parsed from the batch files[/yellow]"
+                )
+
                 # Create sample events to prevent viewer from breaking
-                console.print("[yellow]Creating sample events to allow viewer to function[/yellow]")
+                console.print(
+                    "[yellow]Creating sample events to allow viewer to function[/yellow]"
+                )
                 timestamp = int(time.time() * 1000)
-                
+
                 # Create a minimal set of events for rrweb
                 all_events = [
                     {
                         "type": 2,  # Meta event
                         "timestamp": timestamp,
-                        "data": {"href": "https://example.com", "width": 1280, "height": 720}
+                        "data": {
+                            "href": "https://example.com",
+                            "width": 1280,
+                            "height": 720,
+                        },
                     },
                     {
                         "type": 4,  # DOM snapshot
@@ -865,98 +903,100 @@ class S3DataSource(DataSource):
                                                 "childNodes": [
                                                     {
                                                         "type": 3,
-                                                        "textContent": "No recording data found - placeholder content"
+                                                        "textContent": "No recording data found - placeholder content",
                                                     }
-                                                ]
+                                                ],
                                             }
-                                        ]
+                                        ],
                                     }
-                                ]
+                                ],
                             }
-                        }
-                    }
+                        },
+                    },
                 ]
-                
+
                 # List downloaded files for debugging
                 console.print("Downloaded files:")
                 for path in recording_dir.iterdir():
                     console.print(f"  - {path.name} ({path.stat().st_size} bytes)")
-            
-            return {
-                'metadata': metadata,
-                'events': all_events
-            }
-            
+
+            return {"metadata": metadata, "events": all_events}
+
         except Exception as e:
             console.print(f"[red]Error downloading recording: {e}[/red]")
             import traceback
+
             traceback.print_exc()
             return None
 
 
 class SessionReplayViewer:
     """Main session replay viewer"""
-    
+
     def __init__(self, data_source, port=8080):
         self.data_source = data_source
         self.port = port
         self.viewer_path = Path(__file__).parent.parent / "static" / "replay-viewer"
         self.server = None
-    
+
     def find_available_port(self):
         """Find an available port"""
         for port in range(self.port, self.port + 100):
             try:
                 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                    s.bind(('127.0.0.1', port))
+                    s.bind(("127.0.0.1", port))
                     return port
             except OSError:
                 continue
         raise RuntimeError("No available ports found")
-    
+
     def start(self):
         """Start the replay viewer server"""
         # Ensure viewer directory exists
         self.viewer_path.mkdir(parents=True, exist_ok=True)
-        
+
         # Find available port
         port = self.find_available_port()
-        
+
         # Create request handler
         def handler_factory(*args, **kwargs):
-            return SessionReplayHandler(self.data_source, self.viewer_path, *args, **kwargs)
-        
+            return SessionReplayHandler(
+                self.data_source, self.viewer_path, *args, **kwargs
+            )
+
         # Start server
-        self.server = HTTPServer(('', port), handler_factory)
-        
+        self.server = HTTPServer(("", port), handler_factory)
+
         # Start in thread
         server_thread = threading.Thread(target=self.server.serve_forever)
         server_thread.daemon = True
         server_thread.start()
-        
+
         url = f"http://localhost:{port}"
-        
-        console.print(Panel(
-            f"[bold cyan]Session Replay Viewer Running[/bold cyan]\n\n"
-            f"URL: [link]{url}[/link]\n\n"
-            f"[yellow]Press Ctrl+C to stop[/yellow]",
-            title="Ready",
-            border_style="green"
-        ))
-        
+
+        console.print(
+            Panel(
+                f"[bold cyan]Session Replay Viewer Running[/bold cyan]\n\n"
+                f"URL: [link]{url}[/link]\n\n"
+                f"[yellow]Press Ctrl+C to stop[/yellow]",
+                title="Ready",
+                border_style="green",
+            )
+        )
+
         # Open browser
         webbrowser.open(url)
-        
+
         # Handle shutdown
         def signal_handler(sig, frame):
             console.print("\n[yellow]Shutting down...[/yellow]")
             self.server.shutdown()
-            if hasattr(self.data_source, 'cleanup'):
+            if hasattr(self.data_source, "cleanup"):
                 self.data_source.cleanup()
             sys.exit(0)
-        
+
         signal.signal(signal.SIGINT, signal_handler)
-        
+
         # Keep running
         try:
             while True:
@@ -964,56 +1004,47 @@ class SessionReplayViewer:
         except KeyboardInterrupt:
             console.print("\n[yellow]Shutting down...[/yellow]")
             self.server.shutdown()
-            if hasattr(self.data_source, 'cleanup'):
+            if hasattr(self.data_source, "cleanup"):
                 self.data_source.cleanup()
 
 
 def main():
     """Main entry point"""
     import argparse
-    
+
     parser = argparse.ArgumentParser(
         description="Session Replay Viewer - View browser session recordings"
     )
-    
+
     group = parser.add_mutually_exclusive_group(required=True)
-    group.add_argument(
-        '--local',
-        help='Path to local recordings directory'
-    )
-    group.add_argument(
-        '--s3',
-        help='S3 path to recordings (e.g., s3://bucket/prefix/)'
-    )
-    
+    group.add_argument("--local", help="Path to local recordings directory")
+    group.add_argument("--s3", help="S3 path to recordings (e.g., s3://bucket/prefix/)")
+
     parser.add_argument(
-        '--port',
-        type=int,
-        default=8080,
-        help='Port to run server on (default: 8080)'
+        "--port", type=int, default=8080, help="Port to run server on (default: 8080)"
     )
-    
+
     args = parser.parse_args()
-    
+
     # Create data source
     if args.local:
         data_source = LocalDataSource(args.local)
     else:
         # Parse S3 path
-        if not args.s3.startswith('s3://'):
+        if not args.s3.startswith("s3://"):
             console.print("[red]S3 path must start with s3://[/red]")
             sys.exit(1)
-        
-        path_parts = args.s3[5:].split('/', 1)
+
+        path_parts = args.s3[5:].split("/", 1)
         bucket = path_parts[0]
-        prefix = path_parts[1] if len(path_parts) > 1 else ''
-        
+        prefix = path_parts[1] if len(path_parts) > 1 else ""
+
         data_source = S3DataSource(bucket, prefix)
-    
+
     # Start viewer
     viewer = SessionReplayViewer(data_source, port=args.port)
     viewer.start()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

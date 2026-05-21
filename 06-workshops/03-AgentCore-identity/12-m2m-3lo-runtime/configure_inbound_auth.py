@@ -20,9 +20,13 @@ def find_project_dir() -> str:
     base = os.path.dirname(os.path.abspath(__file__))
     for entry in os.listdir(base):
         candidate = os.path.join(base, entry)
-        if os.path.isdir(candidate) and os.path.isdir(os.path.join(candidate, "agentcore")):
+        if os.path.isdir(candidate) and os.path.isdir(
+            os.path.join(candidate, "agentcore")
+        ):
             return candidate
-    raise FileNotFoundError("No agentcore project directory found. Run 'agentcore create' first.")
+    raise FileNotFoundError(
+        "No agentcore project directory found. Run 'agentcore create' first."
+    )
 
 
 def _find_in_json(obj, key):
@@ -50,7 +54,9 @@ def get_runtime_id() -> str:
     project_dir = find_project_dir()
     state_file = os.path.join(project_dir, "agentcore", ".cli", "deployed-state.json")
     if not os.path.exists(state_file):
-        raise FileNotFoundError("No deployed-state.json found. Run 'agentcore deploy -y' first.")
+        raise FileNotFoundError(
+            "No deployed-state.json found. Run 'agentcore deploy -y' first."
+        )
     with open(state_file) as f:
         state = json.load(f)
     rid = _find_in_json(state, "runtimeId")
@@ -64,7 +70,9 @@ def main():
         with open("cognito_config.json") as f:
             config = json.load(f)
     except FileNotFoundError:
-        print("ERROR: cognito_config.json not found. Run 'python setup_cognito.py' first.")
+        print(
+            "ERROR: cognito_config.json not found. Run 'python setup_cognito.py' first."
+        )
         sys.exit(1)
 
     runtime_id = get_runtime_id()
@@ -84,49 +92,63 @@ def main():
     iam.put_role_policy(
         RoleName=role_name,
         PolicyName="AgentCoreIdentityOutbound",
-        PolicyDocument=json.dumps({
-            "Version": "2012-10-17",
-            "Statement": [
-                {
-                    "Effect": "Allow",
-                    "Action": [
-                        "bedrock-agentcore:GetResourceApiKey",
-                        "bedrock-agentcore:GetResourceOauth2Token",
-                    ],
-                    "Resource": "*",
-                },
-                {
-                    "Effect": "Allow",
-                    "Action": ["secretsmanager:GetSecretValue"],
-                    "Resource": f"arn:aws:secretsmanager:{region}:{account}:secret:bedrock-agentcore*",
-                },
-            ],
-        }),
+        PolicyDocument=json.dumps(
+            {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Action": [
+                            "bedrock-agentcore:GetResourceApiKey",
+                            "bedrock-agentcore:GetResourceOauth2Token",
+                        ],
+                        "Resource": "*",
+                    },
+                    {
+                        "Effect": "Allow",
+                        "Action": ["secretsmanager:GetSecretValue"],
+                        "Resource": f"arn:aws:secretsmanager:{region}:{account}:secret:bedrock-agentcore*",
+                    },
+                ],
+            }
+        ),
     )
     print("IAM policy attached.")
 
     # Attach KMS policy so the runtime can use the token vault CMK for USER_FEDERATION flows
-    tv = boto3.client("bedrock-agentcore-control", region_name=region).get_token_vault(tokenVaultId="default")
+    tv = boto3.client("bedrock-agentcore-control", region_name=region).get_token_vault(
+        tokenVaultId="default"
+    )
     kms_key_arn = tv.get("kmsConfiguration", {}).get("kmsKeyArn", "")
     if kms_key_arn:
         print(f"Attaching KMS policy for token vault key: {kms_key_arn}")
         iam.put_role_policy(
             RoleName=role_name,
             PolicyName="AgentCoreKMSAccess",
-            PolicyDocument=json.dumps({
-                "Version": "2012-10-17",
-                "Statement": [{
-                    "Effect": "Allow",
-                    "Action": ["kms:Decrypt", "kms:GenerateDataKey", "kms:DescribeKey"],
-                    "Resource": kms_key_arn,
-                }],
-            }),
+            PolicyDocument=json.dumps(
+                {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Action": [
+                                "kms:Decrypt",
+                                "kms:GenerateDataKey",
+                                "kms:DescribeKey",
+                            ],
+                            "Resource": kms_key_arn,
+                        }
+                    ],
+                }
+            ),
         )
         print("KMS policy attached.")
 
     # Register allowed callback URLs in the workload identity
     # Required for USER_FEDERATION (3LO) flows
-    callback_url = os.environ.get("CALLBACK_URL", "http://localhost:9090/oauth2/callback")
+    callback_url = os.environ.get(
+        "CALLBACK_URL", "http://localhost:9090/oauth2/callback"
+    )
     print(f"\nRegistering callback URL in workload identity: {callback_url}")
     ctrl.update_workload_identity(
         name=runtime_id,

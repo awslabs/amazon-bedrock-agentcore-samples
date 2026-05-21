@@ -54,7 +54,7 @@ config_params = {
     "requirements_file": requirements_file,
     "region": region,
     "agent_name": agent_name,
-    "protocol": "A2A"
+    "protocol": "A2A",
 }
 
 # Add authorizer configuration if Cognito is configured

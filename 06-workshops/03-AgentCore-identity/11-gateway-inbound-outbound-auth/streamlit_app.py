@@ -32,6 +32,7 @@ SAMPLE_DIR = os.path.dirname(os.path.abspath(__file__))
 # Helper functions (reused from invoke.py patterns)
 # ---------------------------------------------------------------------------
 
+
 def _find_in_json(obj, key):
     """Recursively search for a key in nested JSON."""
     if isinstance(obj, dict):
@@ -53,9 +54,13 @@ def _find_project_dir() -> str:
     """Find the agentcore project subdirectory."""
     for entry in os.listdir(SAMPLE_DIR):
         candidate = os.path.join(SAMPLE_DIR, entry)
-        if os.path.isdir(candidate) and os.path.isdir(os.path.join(candidate, "agentcore")):
+        if os.path.isdir(candidate) and os.path.isdir(
+            os.path.join(candidate, "agentcore")
+        ):
             return candidate
-    raise FileNotFoundError("No agentcore project directory found. Run 'agentcore create' first.")
+    raise FileNotFoundError(
+        "No agentcore project directory found. Run 'agentcore create' first."
+    )
 
 
 @st.cache_data(ttl=300)
@@ -94,7 +99,9 @@ def resolve_gateway_url() -> str:
     """
     try:
         project_dir = _find_project_dir()
-        state_file = os.path.join(project_dir, "agentcore", ".cli", "deployed-state.json")
+        state_file = os.path.join(
+            project_dir, "agentcore", ".cli", "deployed-state.json"
+        )
         if not os.path.exists(state_file):
             return "N/A"
         with open(state_file) as f:
@@ -130,7 +137,11 @@ def parse_event_stream(response: dict) -> str:
     """Parse the streaming event response into plain text."""
     parts: list[str] = []
     for event in response.get("response", []):
-        raw = event if isinstance(event, bytes) else event.get("chunk", {}).get("bytes", b"")
+        raw = (
+            event
+            if isinstance(event, bytes)
+            else event.get("chunk", {}).get("bytes", b"")
+        )
         if raw:
             try:
                 decoded = json.loads(raw.decode("utf-8"))
@@ -154,7 +165,9 @@ def parse_event_stream(response: dict) -> str:
     return "\n".join(parts) if parts else "(no response)"
 
 
-def invoke_agent(agent_arn: str, region: str, prompt: str, bearer_token: str | None = None) -> dict:
+def invoke_agent(
+    agent_arn: str, region: str, prompt: str, bearer_token: str | None = None
+) -> dict:
     """
     Invoke the AgentCore Runtime agent.
 
@@ -197,7 +210,9 @@ def invoke_agent(agent_arn: str, region: str, prompt: str, bearer_token: str | N
         elapsed = time.time() - start
         return {
             "text": None,
-            "status_code": getattr(exc, "response", {}).get("ResponseMetadata", {}).get("HTTPStatusCode", None),
+            "status_code": getattr(exc, "response", {})
+            .get("ResponseMetadata", {})
+            .get("HTTPStatusCode", None),
             "elapsed": elapsed,
             "auth_header": auth_header,
             "error": f"{type(exc).__name__}: {exc}",
@@ -213,7 +228,7 @@ def _truncate_arn(arn: str, max_len: int = 50) -> str:
     """Shorten an ARN for display, keeping the meaningful tail."""
     if len(arn) <= max_len:
         return arn
-    return arn[:20] + "..." + arn[-(max_len - 23):]
+    return arn[:20] + "..." + arn[-(max_len - 23) :]
 
 
 # ---------------------------------------------------------------------------
@@ -291,7 +306,9 @@ if not st.session_state.logged_in:
                 value=config.get("password", "AgentCoreTest1!"),
                 type="password",
             )
-            sign_in = st.form_submit_button("Sign In", use_container_width=True, type="primary")
+            sign_in = st.form_submit_button(
+                "Sign In", use_container_width=True, type="primary"
+            )
 
         if sign_in:
             login_config = {**config, "username": username, "password": password}
@@ -333,9 +350,7 @@ gateway_url = st.session_state.gateway_url
 # Sidebar (compact status)
 # ---------------------------------------------------------------------------
 with st.sidebar:
-    st.markdown(
-        f":green-background[Signed in as **{st.session_state.username}**]"
-    )
+    st.markdown(f":green-background[Signed in as **{st.session_state.username}**]")
 
     st.markdown("")  # small gap
 
@@ -352,9 +367,20 @@ with st.sidebar:
     st.caption(f"**Region**\n`{config.get('region', 'N/A')}`")
 
     if st.button("Sign Out", use_container_width=True):
-        for key in ["logged_in", "jwt_token", "username", "agent_arn",
-                     "gateway_url", "chat_history", "last_request_info"]:
-            st.session_state[key] = type(st.session_state[key])() if st.session_state[key] is not None else None
+        for key in [
+            "logged_in",
+            "jwt_token",
+            "username",
+            "agent_arn",
+            "gateway_url",
+            "chat_history",
+            "last_request_info",
+        ]:
+            st.session_state[key] = (
+                type(st.session_state[key])()
+                if st.session_state[key] is not None
+                else None
+            )
         st.session_state.logged_in = False
         st.rerun()
 
@@ -386,7 +412,9 @@ Outbound:  Agent ──▶ AgentCore Identity ──▶ OAuth2 Token ──▶ A
                      managed credential      auto-obtained    routes to tools       get_time, echo
 ```
 """)
-st.caption("Clear the Bearer Token in the sidebar to see a 403 rejection. The agent has zero knowledge of upstream credentials — the Gateway handles everything.")
+st.caption(
+    "Clear the Bearer Token in the sidebar to see a 403 rejection. The agent has zero knowledge of upstream credentials — the Gateway handles everything."
+)
 
 # Chat history
 for msg in st.session_state.chat_history:
@@ -423,15 +451,19 @@ def _send_prompt(prompt: str):
     st.session_state.last_request_info = result
 
     if result["error"]:
-        st.session_state.chat_history.append({
-            "role": "assistant",
-            "content": f"**Error:**\n```\n{result['error']}\n```",
-        })
+        st.session_state.chat_history.append(
+            {
+                "role": "assistant",
+                "content": f"**Error:**\n```\n{result['error']}\n```",
+            }
+        )
     else:
-        st.session_state.chat_history.append({
-            "role": "assistant",
-            "content": result["text"],
-        })
+        st.session_state.chat_history.append(
+            {
+                "role": "assistant",
+                "content": result["text"],
+            }
+        )
 
 
 # Handle preset click

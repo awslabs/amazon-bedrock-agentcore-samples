@@ -25,32 +25,46 @@ def lambda_handler(event, context):
 
     # Parse input
     body = event if isinstance(event, dict) else json.loads(event)
-    operation = body.get('operation', '').lower()
-    operand1 = body.get('operand1')
-    operand2 = body.get('operand2')
+    operation = body.get("operation", "").lower()
+    operand1 = body.get("operand1")
+    operand2 = body.get("operand2")
 
     # Validate operation
-    valid_operations = ['add', 'subtract', 'multiply', 'divide', 'power', 'sqrt', 'log', 'abs', 'round']
+    valid_operations = [
+        "add",
+        "subtract",
+        "multiply",
+        "divide",
+        "power",
+        "sqrt",
+        "log",
+        "abs",
+        "round",
+    ]
 
     if operation not in valid_operations:
         return {
             "statusCode": 400,
-            "body": json.dumps({
-                "tool": "calculation_tool",
-                "error": f"Invalid operation: {operation}. Valid operations: {valid_operations}",
-                "success": False
-            })
+            "body": json.dumps(
+                {
+                    "tool": "calculation_tool",
+                    "error": f"Invalid operation: {operation}. Valid operations: {valid_operations}",
+                    "success": False,
+                }
+            ),
         }
 
     # Validate operands
     if operand1 is None:
         return {
             "statusCode": 400,
-            "body": json.dumps({
-                "tool": "calculation_tool",
-                "error": "operand1 is required",
-                "success": False
-            })
+            "body": json.dumps(
+                {
+                    "tool": "calculation_tool",
+                    "error": "operand1 is required",
+                    "success": False,
+                }
+            ),
         }
 
     try:
@@ -58,25 +72,25 @@ def lambda_handler(event, context):
         result = None
         expression = ""
 
-        if operation == 'add':
+        if operation == "add":
             if operand2 is None:
                 raise ValueError("operand2 is required for addition")
             result = operand1 + operand2
             expression = f"{operand1} + {operand2}"
 
-        elif operation == 'subtract':
+        elif operation == "subtract":
             if operand2 is None:
                 raise ValueError("operand2 is required for subtraction")
             result = operand1 - operand2
             expression = f"{operand1} - {operand2}"
 
-        elif operation == 'multiply':
+        elif operation == "multiply":
             if operand2 is None:
                 raise ValueError("operand2 is required for multiplication")
             result = operand1 * operand2
             expression = f"{operand1} × {operand2}"
 
-        elif operation == 'divide':
+        elif operation == "divide":
             if operand2 is None:
                 raise ValueError("operand2 is required for division")
             if operand2 == 0:
@@ -84,30 +98,30 @@ def lambda_handler(event, context):
             result = operand1 / operand2
             expression = f"{operand1} ÷ {operand2}"
 
-        elif operation == 'power':
+        elif operation == "power":
             if operand2 is None:
                 raise ValueError("operand2 is required for exponentiation")
-            result = operand1 ** operand2
+            result = operand1**operand2
             expression = f"{operand1} ^ {operand2}"
 
-        elif operation == 'sqrt':
+        elif operation == "sqrt":
             if operand1 < 0:
                 raise ValueError("Cannot take square root of negative number")
             result = math.sqrt(operand1)
             expression = f"√{operand1}"
 
-        elif operation == 'log':
+        elif operation == "log":
             if operand1 <= 0:
                 raise ValueError("Logarithm requires positive number")
             base = operand2 if operand2 is not None else math.e
             result = math.log(operand1, base)
             expression = f"log_{base}({operand1})" if operand2 else f"ln({operand1})"
 
-        elif operation == 'abs':
+        elif operation == "abs":
             result = abs(operand1)
             expression = f"|{operand1}|"
 
-        elif operation == 'round':
+        elif operation == "round":
             decimals = int(operand2) if operand2 is not None else 0
             result = round(operand1, decimals)
             expression = f"round({operand1}, {decimals})"
@@ -118,16 +132,18 @@ def lambda_handler(event, context):
             "operand2": operand2,
             "result": result,
             "expression": expression,
-            "result_type": type(result).__name__
+            "result_type": type(result).__name__,
         }
 
         response = {
             "statusCode": 200,
-            "body": json.dumps({
-                "tool": "calculation_tool",
-                "result": calculation_result,
-                "success": True
-            })
+            "body": json.dumps(
+                {
+                    "tool": "calculation_tool",
+                    "result": calculation_result,
+                    "success": True,
+                }
+            ),
         }
 
         print(f"Calculation result: {expression} = {result}")
@@ -136,20 +152,20 @@ def lambda_handler(event, context):
     except ValueError as e:
         return {
             "statusCode": 400,
-            "body": json.dumps({
-                "tool": "calculation_tool",
-                "error": str(e),
-                "success": False
-            })
+            "body": json.dumps(
+                {"tool": "calculation_tool", "error": str(e), "success": False}
+            ),
         }
     except Exception as e:
         return {
             "statusCode": 500,
-            "body": json.dumps({
-                "tool": "calculation_tool",
-                "error": f"Calculation error: {str(e)}",
-                "success": False
-            })
+            "body": json.dumps(
+                {
+                    "tool": "calculation_tool",
+                    "error": f"Calculation error: {str(e)}",
+                    "success": False,
+                }
+            ),
         }
 
 
@@ -162,19 +178,19 @@ TOOL_DEFINITION = {
         "properties": {
             "operation": {
                 "type": "string",
-                "description": "The mathematical operation to perform: 'add', 'subtract', 'multiply', 'divide', 'power', 'sqrt', 'log', 'abs', or 'round'"
+                "description": "The mathematical operation to perform: 'add', 'subtract', 'multiply', 'divide', 'power', 'sqrt', 'log', 'abs', or 'round'",
             },
             "operand1": {
                 "type": "number",
-                "description": "First operand (or only operand for unary operations)"
+                "description": "First operand (or only operand for unary operations)",
             },
             "operand2": {
                 "type": "number",
-                "description": "Second operand (required for binary operations, optional for log to specify base)"
-            }
+                "description": "Second operand (required for binary operations, optional for log to specify base)",
+            },
         },
-        "required": ["operation", "operand1"]
-    }
+        "required": ["operation", "operand1"],
+    },
 }
 
 
@@ -190,8 +206,8 @@ if __name__ == "__main__":
     ]
 
     for i, test_event in enumerate(test_cases, 1):
-        print(f"\n{'='*80}")
+        print(f"\n{'=' * 80}")
         print(f"Test Case {i}: {test_event}")
-        print(f"{'='*80}")
+        print(f"{'=' * 80}")
         result = lambda_handler(test_event, None)
         print(f"{json.dumps(result, indent=2)}")

@@ -26,7 +26,9 @@ def get_token(persona: str) -> str:
     token_url = get_ssm_parameter("/app/hrdlp/cognito-token-url")
 
     if not all([client_id, client_secret, token_url]):
-        print(f"ERROR: Credentials for persona '{persona}' not in SSM. Run prereq.sh first.")
+        print(
+            f"ERROR: Credentials for persona '{persona}' not in SSM. Run prereq.sh first."
+        )
         sys.exit(1)
 
     resp = requests.post(
@@ -44,7 +46,10 @@ def invoke_agent(runtime_url: str, token: str, prompt: str, session_id: str) -> 
     resp = requests.post(
         runtime_url,
         json=payload,
-        headers={"Content-Type": "application/json", "Authorization": f"Bearer {token}"},
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {token}",
+        },
         timeout=120,
         stream=True,
     )
@@ -60,14 +65,19 @@ def invoke_agent(runtime_url: str, token: str, prompt: str, session_id: str) -> 
 
 def main():
     parser = argparse.ArgumentParser(description="AgentCore Runtime smoke test")
-    parser.add_argument("--persona", default="hr-manager",
-                        choices=["hr-manager", "hr-specialist", "employee", "admin"])
+    parser.add_argument(
+        "--persona",
+        default="hr-manager",
+        choices=["hr-manager", "hr-specialist", "employee", "admin"],
+    )
     parser.add_argument("--prompt", default="Find all engineers in the company")
     args = parser.parse_args()
 
     runtime_url = get_ssm_parameter("/app/hrdlp/runtime-url")
     if not runtime_url:
-        print("ERROR: Runtime URL not found in SSM (/app/hrdlp/runtime-url). Run agentcore_agent_runtime.py create first.")
+        print(
+            "ERROR: Runtime URL not found in SSM (/app/hrdlp/runtime-url). Run agentcore_agent_runtime.py create first."
+        )
         sys.exit(1)
 
     print(f"\n[test_agent] Persona: {args.persona}")

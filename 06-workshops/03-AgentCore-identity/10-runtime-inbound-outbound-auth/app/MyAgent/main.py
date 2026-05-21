@@ -51,19 +51,24 @@ def get_weather(location: str) -> str:
         resp.raise_for_status()
         data = resp.json()
 
-        return json.dumps({
-            "location": f"{data.get('name', location)}, {data.get('sys', {}).get('country', '')}",
-            "temperature_f": round(data["main"]["temp"]),
-            "feels_like_f": round(data["main"]["feels_like"]),
-            "condition": data["weather"][0]["description"],
-            "humidity": f"{data['main']['humidity']}%",
-            "wind_mph": round(data["wind"]["speed"]),
-            "api_key_source": "AgentCore Identity (retrieved at runtime via @requires_api_key)",
-        }, indent=2)
+        return json.dumps(
+            {
+                "location": f"{data.get('name', location)}, {data.get('sys', {}).get('country', '')}",
+                "temperature_f": round(data["main"]["temp"]),
+                "feels_like_f": round(data["main"]["feels_like"]),
+                "condition": data["weather"][0]["description"],
+                "humidity": f"{data['main']['humidity']}%",
+                "wind_mph": round(data["wind"]["speed"]),
+                "api_key_source": "AgentCore Identity (retrieved at runtime via @requires_api_key)",
+            },
+            indent=2,
+        )
     except httpx.HTTPStatusError as exc:
         if exc.response.status_code == 401:
             return "Invalid API key. Check the OutboundApiKey credential in AgentCore Identity."
-        return f"Weather API error: {exc.response.status_code} {exc.response.text[:200]}"
+        return (
+            f"Weather API error: {exc.response.status_code} {exc.response.text[:200]}"
+        )
     except Exception as exc:
         return f"Weather API error: {exc}"
 

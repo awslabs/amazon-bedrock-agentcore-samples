@@ -13,15 +13,13 @@ from datetime import datetime
 class TestProfileServiceGet:
     """Test profile retrieval operations."""
 
-    def test_get_profile_by_customer_id(self, sample_customer_profile, mock_dynamodb_table):
+    def test_get_profile_by_customer_id(
+        self, sample_customer_profile, mock_dynamodb_table
+    ):
         """Test retrieving profile by customer ID."""
-        mock_dynamodb_table.get_item.return_value = {
-            "Item": sample_customer_profile
-        }
+        mock_dynamodb_table.get_item.return_value = {"Item": sample_customer_profile}
 
-        response = mock_dynamodb_table.get_item(
-            Key={"customer_id": "CUST-12345"}
-        )
+        response = mock_dynamodb_table.get_item(Key={"customer_id": "CUST-12345"})
 
         assert "Item" in response
         assert response["Item"]["customer_id"] == "CUST-12345"
@@ -31,13 +29,13 @@ class TestProfileServiceGet:
         """Test retrieving non-existent profile."""
         mock_dynamodb_table.get_item.return_value = {}
 
-        response = mock_dynamodb_table.get_item(
-            Key={"customer_id": "CUST-99999"}
-        )
+        response = mock_dynamodb_table.get_item(Key={"customer_id": "CUST-99999"})
 
         assert "Item" not in response
 
-    def test_get_profile_with_authorization(self, sample_customer_profile, sample_user_context):
+    def test_get_profile_with_authorization(
+        self, sample_customer_profile, sample_user_context
+    ):
         """Test retrieving profile with authorization check."""
         requested_customer_id = "CUST-12345"
         user_customer_id = sample_user_context["customer_id"]
@@ -55,7 +53,7 @@ class TestProfileServiceCreate:
 
         response = mock_dynamodb_table.put_item(
             Item=sample_customer_profile,
-            ConditionExpression="attribute_not_exists(customer_id)"
+            ConditionExpression="attribute_not_exists(customer_id)",
         )
 
         mock_dynamodb_table.put_item.assert_called_once()
@@ -79,7 +77,7 @@ class TestProfileServiceUpdate:
             "Attributes": {
                 "customer_id": "CUST-12345",
                 "email": "newemail@example.com",
-                "last_updated": datetime.utcnow().isoformat() + "Z"
+                "last_updated": datetime.utcnow().isoformat() + "Z",
             }
         }
 
@@ -88,9 +86,9 @@ class TestProfileServiceUpdate:
             UpdateExpression="SET email = :email, last_updated = :updated",
             ExpressionAttributeValues={
                 ":email": "newemail@example.com",
-                ":updated": datetime.utcnow().isoformat() + "Z"
+                ":updated": datetime.utcnow().isoformat() + "Z",
             },
-            ReturnValues="ALL_NEW"
+            ReturnValues="ALL_NEW",
         )
 
         assert response["Attributes"]["email"] == "newemail@example.com"
@@ -102,8 +100,8 @@ class TestProfileServiceUpdate:
         scopes = sample_user_context["scopes"]
 
         is_authorized = (
-            requested_customer_id == user_customer_id and
-            "profile:personal:write" in scopes
+            requested_customer_id == user_customer_id
+            and "profile:personal:write" in scopes
         )
 
         assert is_authorized
@@ -117,7 +115,7 @@ class TestProfileServiceValidation:
         import re
 
         def validate_email(email: str) -> bool:
-            pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+            pattern = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
             return re.match(pattern, email) is not None
 
         assert validate_email("john.doe@example.com")
@@ -134,21 +132,21 @@ class TestProfileServiceErrors:
         from botocore.exceptions import ClientError
 
         mock_dynamodb_table.get_item.side_effect = ClientError(
-            {"Error": {"Code": "ProvisionedThroughputExceededException"}},
-            "GetItem"
+            {"Error": {"Code": "ProvisionedThroughputExceededException"}}, "GetItem"
         )
 
         with pytest.raises(ClientError) as exc:
             mock_dynamodb_table.get_item(Key={"customer_id": "CUST-12345"})
 
-        assert exc.value.response["Error"]["Code"] == "ProvisionedThroughputExceededException"
+        assert (
+            exc.value.response["Error"]["Code"]
+            == "ProvisionedThroughputExceededException"
+        )
 
     def test_handle_not_found_error(self, mock_dynamodb_table):
         """Test handling not found errors."""
         mock_dynamodb_table.get_item.return_value = {}
 
-        response = mock_dynamodb_table.get_item(
-            Key={"customer_id": "CUST-99999"}
-        )
+        response = mock_dynamodb_table.get_item(Key={"customer_id": "CUST-99999"})
 
         assert "Item" not in response

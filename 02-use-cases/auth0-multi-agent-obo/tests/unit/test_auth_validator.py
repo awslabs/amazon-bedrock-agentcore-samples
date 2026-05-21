@@ -78,7 +78,9 @@ class TestScopeValidation:
 
         # In some systems, write implies read
         def can_read() -> bool:
-            return "profile:personal:read" in scopes or "profile:personal:write" in scopes
+            return (
+                "profile:personal:read" in scopes or "profile:personal:write" in scopes
+            )
 
         assert can_read()
 
@@ -162,7 +164,7 @@ class TestRoleBasedAccess:
         admin_context = {
             "user_id": "auth0|admin123",
             "roles": ["admin"],
-            "customer_id": "CUST-ADMIN"
+            "customer_id": "CUST-ADMIN",
         }
 
         is_admin = "admin" in admin_context["roles"]
@@ -176,6 +178,7 @@ class TestRoleBasedAccess:
 
     def test_role_hierarchy(self):
         """Test role hierarchy (admin > premium > customer)."""
+
         def get_role_level(roles: List[str]) -> int:
             if "admin" in roles:
                 return 3
@@ -210,7 +213,7 @@ class TestKYCAuthorization:
         unverified_context = {
             "user_id": "auth0|123456789",
             "customer_id": "CUST-12345",
-            "kyc_status": "pending"
+            "kyc_status": "pending",
         }
 
         def can_perform_transaction() -> bool:
@@ -221,10 +224,10 @@ class TestKYCAuthorization:
     def test_kyc_status_levels(self):
         """Test different KYC status levels."""
         kyc_statuses = {
-            "verified": 3,    # Full access
-            "pending": 2,     # Limited access
-            "failed": 1,      # Restricted
-            "expired": 1      # Restricted
+            "verified": 3,  # Full access
+            "pending": 2,  # Limited access
+            "failed": 1,  # Restricted
+            "expired": 1,  # Restricted
         }
 
         def get_access_level(kyc_status: str) -> int:
@@ -289,7 +292,7 @@ class TestAuthorizationErrors:
         context = {
             "user_id": "auth0|123456789",
             "customer_id": "CUST-12345",
-            "scopes": ["openid", "profile"]
+            "scopes": ["openid", "profile"],
         }
 
         def check_scope(required: str) -> Dict[str, Any]:
@@ -297,7 +300,7 @@ class TestAuthorizationErrors:
                 return {
                     "authorized": False,
                     "error": "insufficient_scope",
-                    "error_description": f"Required scope '{required}' not present"
+                    "error_description": f"Required scope '{required}' not present",
                 }
             return {"authorized": True}
 
@@ -314,7 +317,7 @@ class TestAuthorizationErrors:
                 return {
                     "authorized": False,
                     "error": "access_denied",
-                    "error_description": f"Access to account '{account_id}' denied"
+                    "error_description": f"Access to account '{account_id}' denied",
                 }
             return {"authorized": True}
 
@@ -327,7 +330,7 @@ class TestAuthorizationErrors:
         context = {
             "user_id": "auth0|123456789",
             "customer_id": "CUST-12345",
-            "kyc_status": "pending"
+            "kyc_status": "pending",
         }
 
         def check_kyc() -> Dict[str, Any]:
@@ -335,7 +338,7 @@ class TestAuthorizationErrors:
                 return {
                     "authorized": False,
                     "error": "kyc_verification_required",
-                    "error_description": "KYC verification is required for this operation"
+                    "error_description": "KYC verification is required for this operation",
                 }
             return {"authorized": True}
 
@@ -349,14 +352,19 @@ class TestAuthorizationHelpers:
 
     def test_require_scope_decorator(self):
         """Test decorator for requiring scopes."""
+
         def require_scope(required_scope: str):
             def decorator(func):
                 def wrapper(user_context: Dict[str, Any], *args, **kwargs):
                     scopes = user_context.get("scopes", [])
                     if required_scope not in scopes:
-                        raise PermissionError(f"Required scope '{required_scope}' not present")
+                        raise PermissionError(
+                            f"Required scope '{required_scope}' not present"
+                        )
                     return func(user_context, *args, **kwargs)
+
                 return wrapper
+
             return decorator
 
         @require_scope("profile:personal:read")
@@ -375,7 +383,10 @@ class TestAuthorizationHelpers:
 
     def test_require_resource_access(self, sample_user_context):
         """Test checking resource access."""
-        def require_account_access(account_id: str, user_context: Dict[str, Any]) -> bool:
+
+        def require_account_access(
+            account_id: str, user_context: Dict[str, Any]
+        ) -> bool:
             account_ids = user_context.get("account_ids", [])
             if account_id not in account_ids:
                 raise PermissionError(f"Access to account '{account_id}' denied")
@@ -390,9 +401,9 @@ class TestAuthorizationHelpers:
 
     def test_combine_authorization_checks(self, sample_user_context):
         """Test combining multiple authorization checks."""
+
         def authorize_transaction(
-            account_id: str,
-            user_context: Dict[str, Any]
+            account_id: str, user_context: Dict[str, Any]
         ) -> Dict[str, Any]:
             # Check scope (fine-grained)
             scopes = set(user_context.get("scopes", []))

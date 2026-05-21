@@ -16,6 +16,7 @@ import boto3
 
 # ── Load config ──────────────────────────────────────────────────────────────
 
+
 def load_dotconfig():
     config_path = os.path.join(os.path.dirname(__file__), "envvars.config")
     cfg = {}
@@ -28,10 +29,13 @@ def load_dotconfig():
                     cfg[key] = value
     return cfg
 
+
 file_cfg = load_dotconfig()
+
 
 def cfg(key, default=None):
     return file_cfg.get(key) or os.environ.get(key) or default
+
 
 # ── Configuration ────────────────────────────────────────────────────────────
 
@@ -72,6 +76,7 @@ if S3FILES_AP_ARN:
 
 # ── Step 1: Create IAM Execution Role ────────────────────────────────────────
 
+
 def create_execution_role() -> str:
     iam = session.client("iam")
     role_name = f"agentcore-{AGENT_NAME}-role"
@@ -92,7 +97,9 @@ def create_execution_role() -> str:
                 "Action": "sts:AssumeRole",
                 "Condition": {
                     "StringEquals": {"aws:SourceAccount": ACCOUNT_ID},
-                    "ArnLike": {"aws:SourceArn": f"arn:aws:s3files:{REGION}:{ACCOUNT_ID}:file-system/*"},
+                    "ArnLike": {
+                        "aws:SourceArn": f"arn:aws:s3files:{REGION}:{ACCOUNT_ID}:file-system/*"
+                    },
                 },
             },
         ],
@@ -104,7 +111,9 @@ def create_execution_role() -> str:
             {
                 "Effect": "Allow",
                 "Action": ["logs:DescribeLogStreams", "logs:CreateLogGroup"],
-                "Resource": [f"arn:aws:logs:{REGION}:{ACCOUNT_ID}:log-group:/aws/bedrock-agentcore/runtimes/*"],
+                "Resource": [
+                    f"arn:aws:logs:{REGION}:{ACCOUNT_ID}:log-group:/aws/bedrock-agentcore/runtimes/*"
+                ],
             },
             {
                 "Effect": "Allow",
@@ -114,24 +123,39 @@ def create_execution_role() -> str:
             {
                 "Effect": "Allow",
                 "Action": ["logs:CreateLogStream", "logs:PutLogEvents"],
-                "Resource": [f"arn:aws:logs:{REGION}:{ACCOUNT_ID}:log-group:/aws/bedrock-agentcore/runtimes/*:log-stream:*"],
+                "Resource": [
+                    f"arn:aws:logs:{REGION}:{ACCOUNT_ID}:log-group:/aws/bedrock-agentcore/runtimes/*:log-stream:*"
+                ],
             },
             {
                 "Effect": "Allow",
-                "Action": ["xray:PutTraceSegments", "xray:PutTelemetryRecords", "xray:GetSamplingRules", "xray:GetSamplingTargets"],
+                "Action": [
+                    "xray:PutTraceSegments",
+                    "xray:PutTelemetryRecords",
+                    "xray:GetSamplingRules",
+                    "xray:GetSamplingTargets",
+                ],
                 "Resource": ["*"],
             },
             {
                 "Effect": "Allow",
                 "Action": "cloudwatch:PutMetricData",
                 "Resource": "*",
-                "Condition": {"StringEquals": {"cloudwatch:namespace": "bedrock-agentcore"}},
+                "Condition": {
+                    "StringEquals": {"cloudwatch:namespace": "bedrock-agentcore"}
+                },
             },
             {
                 "Sid": "BedrockModelInvocation",
                 "Effect": "Allow",
-                "Action": ["bedrock:InvokeModel", "bedrock:InvokeModelWithResponseStream"],
-                "Resource": ["arn:aws:bedrock:*::foundation-model/*", f"arn:aws:bedrock:{REGION}:{ACCOUNT_ID}:*"],
+                "Action": [
+                    "bedrock:InvokeModel",
+                    "bedrock:InvokeModelWithResponseStream",
+                ],
+                "Resource": [
+                    "arn:aws:bedrock:*::foundation-model/*",
+                    f"arn:aws:bedrock:{REGION}:{ACCOUNT_ID}:*",
+                ],
             },
             {
                 "Sid": "ECRPull",
@@ -143,7 +167,9 @@ def create_execution_role() -> str:
                 "Sid": "ECRImage",
                 "Effect": "Allow",
                 "Action": ["ecr:BatchGetImage", "ecr:GetDownloadUrlForLayer"],
-                "Resource": [f"arn:aws:ecr:{REGION}:{ACCOUNT_ID}:repository/agentcore-claude-code"],
+                "Resource": [
+                    f"arn:aws:ecr:{REGION}:{ACCOUNT_ID}:repository/agentcore-claude-code"
+                ],
             },
             {
                 "Sid": "S3Files",
@@ -224,7 +250,11 @@ def create_execution_role() -> str:
                     "events:RemoveTargets",
                 ],
                 "Resource": ["arn:aws:events:*:*:rule/DO-NOT-DELETE-S3-Files*"],
-                "Condition": {"StringEquals": {"events:ManagedBy": "elasticfilesystem.amazonaws.com"}},
+                "Condition": {
+                    "StringEquals": {
+                        "events:ManagedBy": "elasticfilesystem.amazonaws.com"
+                    }
+                },
             },
             {
                 "Sid": "EventBridgeRead",
@@ -264,6 +294,7 @@ def create_execution_role() -> str:
 
 
 # ── Step 2: Create AgentCore Runtime (VPC + container + S3 Files) ────────────
+
 
 def create_runtime(role_arn: str) -> dict:
     control = session.client("bedrock-agentcore-control", region_name=REGION)
@@ -320,6 +351,7 @@ def create_runtime(role_arn: str) -> dict:
 
 
 # ── Main ─────────────────────────────────────────────────────────────────────
+
 
 def main():
     print("=" * 60)

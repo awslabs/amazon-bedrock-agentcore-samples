@@ -20,9 +20,7 @@ logger = logging.getLogger(__name__)
 
 
 def create_supervisor_runtime_iam_role(
-    role_name: str,
-    region: str = AWS_REGION,
-    account_id: str = None
+    role_name: str, region: str = AWS_REGION, account_id: str = None
 ) -> Dict:
     """
     Create IAM role for Supervisor Runtime with multi-gateway orchestration permissions.
@@ -47,15 +45,17 @@ def create_supervisor_runtime_iam_role(
     Returns:
         Dict with role_name, role_arn, and policy details
     """
-    iam = boto3.client('iam', region_name=region)
-    sts = boto3.client('sts', region_name=region)
+    iam = boto3.client("iam", region_name=region)
+    sts = boto3.client("sts", region_name=region)
 
     # Get account ID
     if not account_id:
-        account_id = sts.get_caller_identity()['Account']
+        account_id = sts.get_caller_identity()["Account"]
 
     logger.info(f"Creating supervisor runtime IAM role: {role_name}")
-    logger.info("Authentication: JWT token propagation (User JWT → Supervisor → Gateways)")
+    logger.info(
+        "Authentication: JWT token propagation (User JWT → Supervisor → Gateways)"
+    )
 
     # Trust policy: Allow bedrock-agentcore service to assume role
     trust_policy = {
@@ -69,10 +69,10 @@ def create_supervisor_runtime_iam_role(
                     "StringEquals": {"aws:SourceAccount": account_id},
                     "ArnLike": {
                         "aws:SourceArn": f"arn:aws:bedrock-agentcore:{region}:{account_id}:*"
-                    }
-                }
+                    },
+                },
             }
-        ]
+        ],
     }
 
     # Create role
@@ -84,16 +84,16 @@ def create_supervisor_runtime_iam_role(
             Tags=[
                 {"Key": "Workshop", "Value": "AIML301"},
                 {"Key": "Lab", "Value": "Lab-05"},
-                {"Key": "Component", "Value": "SupervisorRuntime"}
-            ]
+                {"Key": "Component", "Value": "SupervisorRuntime"},
+            ],
         )
-        role_arn = response['Role']['Arn']
+        role_arn = response["Role"]["Arn"]
         logger.info(f"✅ Role created: {role_arn}")
     except ClientError as e:
-        if e.response['Error']['Code'] == 'EntityAlreadyExists':
+        if e.response["Error"]["Code"] == "EntityAlreadyExists":
             logger.warning(f"⚠️ Role {role_name} already exists, using existing role")
             response = iam.get_role(RoleName=role_name)
-            role_arn = response['Role']['Arn']
+            role_arn = response["Role"]["Arn"]
         else:
             logger.error(f"❌ Failed to create role: {e}")
             raise
@@ -111,15 +111,15 @@ def create_supervisor_runtime_iam_role(
                     "bedrock:InvokeModel",
                     "bedrock:InvokeModelWithResponseStream",
                     "bedrock:Converse",
-                    "bedrock:ConverseStream"
+                    "bedrock:ConverseStream",
                 ],
                 "Resource": [
                     "arn:aws:bedrock:*::foundation-model/*",  # Cross-region model IDs (e.g., us.anthropic.claude-*)
                     f"arn:aws:bedrock:{region}:{account_id}:inference-profile/*",
                     f"arn:aws:bedrock:us-east-1:{account_id}:inference-profile/*",
                     f"arn:aws:bedrock:us-east-2:{account_id}:inference-profile/*",
-                    f"arn:aws:bedrock:us-west-2:{account_id}:inference-profile/*"
-                ]
+                    f"arn:aws:bedrock:us-west-2:{account_id}:inference-profile/*",
+                ],
             },
             # 2. CloudWatch Logs (Runtime logging)
             {
@@ -129,21 +129,18 @@ def create_supervisor_runtime_iam_role(
                     "logs:CreateLogGroup",
                     "logs:CreateLogStream",
                     "logs:PutLogEvents",
-                    "logs:DescribeLogStreams"
+                    "logs:DescribeLogStreams",
                 ],
                 "Resource": [
                     f"arn:aws:logs:{region}:{account_id}:log-group:/aws/bedrock-agentcore/*"
-                ]
+                ],
             },
             # 2b. X-Ray Tracing (Runtime observability and tracing)
             {
                 "Sid": "XRayTracing",
                 "Effect": "Allow",
-                "Action": [
-                    "xray:PutTraceSegments",
-                    "xray:PutTelemetryRecords"
-                ],
-                "Resource": "*"
+                "Action": ["xray:PutTraceSegments", "xray:PutTelemetryRecords"],
+                "Resource": "*",
             },
             # 3. Gateway Access (call sub-agent gateways)
             {
@@ -152,11 +149,11 @@ def create_supervisor_runtime_iam_role(
                 "Action": [
                     "bedrock-agentcore:InvokeGateway",
                     "bedrock-agentcore:GetGateway",
-                    "bedrock-agentcore:ListGateways"
+                    "bedrock-agentcore:ListGateways",
                 ],
                 "Resource": [
                     f"arn:aws:bedrock-agentcore:{region}:{account_id}:gateway/*"
-                ]
+                ],
             },
             # 6. Parameter Store (Configuration and gateway URL retrieval)
             {
@@ -165,29 +162,24 @@ def create_supervisor_runtime_iam_role(
                 "Action": [
                     "ssm:GetParameter",
                     "ssm:GetParameters",
-                    "ssm:GetParametersByPath"
+                    "ssm:GetParametersByPath",
                 ],
-                "Resource": [
-                    f"arn:aws:ssm:{region}:{account_id}:parameter/*"
-                ]
+                "Resource": [f"arn:aws:ssm:{region}:{account_id}:parameter/*"],
             },
             # 7. KMS (Decrypt secrets and parameters)
             {
                 "Sid": "KMSDecrypt",
                 "Effect": "Allow",
-                "Action": [
-                    "kms:Decrypt",
-                    "kms:DescribeKey"
-                ],
+                "Action": ["kms:Decrypt", "kms:DescribeKey"],
                 "Resource": "*",
                 "Condition": {
                     "StringEquals": {
                         "kms:ViaService": [
                             f"secretsmanager.{region}.amazonaws.com",
-                            f"ssm.{region}.amazonaws.com"
+                            f"ssm.{region}.amazonaws.com",
                         ]
                     }
-                }
+                },
             },
             # 8. ECR Access (Pull container images)
             {
@@ -197,11 +189,11 @@ def create_supervisor_runtime_iam_role(
                     "ecr:GetAuthorizationToken",
                     "ecr:BatchCheckLayerAvailability",
                     "ecr:GetDownloadUrlForLayer",
-                    "ecr:BatchGetImage"
+                    "ecr:BatchGetImage",
                 ],
-                "Resource": "*"
+                "Resource": "*",
             },
-        ]
+        ],
     }
 
     # Attach inline policy
@@ -209,7 +201,7 @@ def create_supervisor_runtime_iam_role(
         iam.put_role_policy(
             RoleName=role_name,
             PolicyName=policy_name,
-            PolicyDocument=json.dumps(supervisor_policy)
+            PolicyDocument=json.dumps(supervisor_policy),
         )
         logger.info(f"✅ Inline policy attached: {policy_name}")
     except ClientError as e:
@@ -229,12 +221,14 @@ def create_supervisor_runtime_iam_role(
             "cloudwatch_logs": "Runtime logging",
             "parameter_store": "Gateway URL retrieval (/aiml301/lab-0X/gateway-id)",
             "kms": "Decrypt parameters",
-            "ecr": "Pull container images"
-        }
+            "ecr": "Pull container images",
+        },
     }
 
 
-def delete_supervisor_runtime_iam_role(role_name: str, region: str = AWS_REGION) -> bool:
+def delete_supervisor_runtime_iam_role(
+    role_name: str, region: str = AWS_REGION
+) -> bool:
     """
     Delete supervisor runtime IAM role and associated policies.
 
@@ -245,21 +239,21 @@ def delete_supervisor_runtime_iam_role(role_name: str, region: str = AWS_REGION)
     Returns:
         True if deletion successful, False otherwise
     """
-    iam = boto3.client('iam', region_name=region)
+    iam = boto3.client("iam", region_name=region)
 
     logger.info(f"Deleting supervisor runtime IAM role: {role_name}")
 
     try:
         # List and delete inline policies
         response = iam.list_role_policies(RoleName=role_name)
-        for policy_name in response.get('PolicyNames', []):
+        for policy_name in response.get("PolicyNames", []):
             iam.delete_role_policy(RoleName=role_name, PolicyName=policy_name)
             logger.info(f"✅ Deleted inline policy: {policy_name}")
 
         # List and detach managed policies
         response = iam.list_attached_role_policies(RoleName=role_name)
-        for policy in response.get('AttachedPolicies', []):
-            iam.detach_role_policy(RoleName=role_name, PolicyArn=policy['PolicyArn'])
+        for policy in response.get("AttachedPolicies", []):
+            iam.detach_role_policy(RoleName=role_name, PolicyArn=policy["PolicyArn"])
             logger.info(f"✅ Detached managed policy: {policy['PolicyName']}")
 
         # Delete role
@@ -269,7 +263,7 @@ def delete_supervisor_runtime_iam_role(role_name: str, region: str = AWS_REGION)
         return True
 
     except ClientError as e:
-        if e.response['Error']['Code'] == 'NoSuchEntity':
+        if e.response["Error"]["Code"] == "NoSuchEntity":
             logger.warning(f"⚠️ Role {role_name} does not exist")
             return True
         else:

@@ -14,6 +14,7 @@ from botocore.config import Config
 
 # ── Load config ──────────────────────────────────────────────────────────────
 
+
 def load_dotconfig():
     config_path = os.path.join(os.path.dirname(__file__), "envvars.config")
     cfg = {}
@@ -26,10 +27,13 @@ def load_dotconfig():
                     cfg[key] = value.strip('"').strip("'")
     return cfg
 
+
 file_cfg = load_dotconfig()
+
 
 def cfg(key, default=None):
     return file_cfg.get(key) or os.environ.get(key) or default
+
 
 # ── Configuration ────────────────────────────────────────────────────────────
 
@@ -86,13 +90,15 @@ def main():
     if "--session" in args:
         idx = args.index("--session")
         session_id = args[idx + 1]
-        args = args[:idx] + args[idx + 2:]
+        args = args[:idx] + args[idx + 2 :]
 
     if not session_id:
         session_id = os.environ.get("SESSION_ID")
 
     if not session_id:
-        print("Error: session ID required. Use --session <id> or set SESSION_ID env var.")
+        print(
+            "Error: session ID required. Use --session <id> or set SESSION_ID env var."
+        )
         sys.exit(1)
 
     if not args:

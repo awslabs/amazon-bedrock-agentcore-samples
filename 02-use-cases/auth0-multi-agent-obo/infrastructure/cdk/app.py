@@ -27,7 +27,7 @@ import os
 import sys
 
 # Add project root to path for imports
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
 from aws_cdk import App, Environment
 
@@ -81,7 +81,7 @@ def main():
 
     # Get environment configuration - USE VERIFIED VALUES
     account = EXPECTED_ACCOUNT_ID  # Always use verified account
-    region = EXPECTED_REGION       # Always use expected region
+    region = EXPECTED_REGION  # Always use expected region
     environment = app.node.try_get_context("environment") or "dev"
 
     # Define AWS environment with verified values

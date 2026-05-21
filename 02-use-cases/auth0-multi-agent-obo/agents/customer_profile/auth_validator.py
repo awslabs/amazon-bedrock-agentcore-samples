@@ -73,30 +73,42 @@ def validate_scope_for_profile(claims: Dict[str, Any]) -> Dict[str, Any]:
             f"Insufficient scopes for profile agent. "
             f"Requires at least one of {sorted(all_accepted)}, got: {scopes}"
         )
-        logger.warning(json.dumps({
-            "event": "scope_validation_failed",
-            "agent": "customer_profile",
-            "required_any": sorted(all_accepted),
-            "actual": scopes,
-        }))
+        logger.warning(
+            json.dumps(
+                {
+                    "event": "scope_validation_failed",
+                    "agent": "customer_profile",
+                    "required_any": sorted(all_accepted),
+                    "actual": scopes,
+                }
+            )
+        )
         return {"valid": False, "error": error_msg, "scopes": scopes}
 
-    logger.info(json.dumps({
-        "event": "scope_validation_passed",
-        "agent": "customer_profile",
-        "profile_scopes": present_profile_scopes,
-        "all_scopes": scopes,
-    }))
+    logger.info(
+        json.dumps(
+            {
+                "event": "scope_validation_passed",
+                "agent": "customer_profile",
+                "profile_scopes": present_profile_scopes,
+                "all_scopes": scopes,
+            }
+        )
+    )
 
     # Warn about unexpected account scopes that don't belong to the profile agent
     unexpected_scopes = [s for s in scopes if s.startswith("accounts:")]
     if unexpected_scopes:
-        logger.warning(json.dumps({
-            "event": "unexpected_scopes_detected",
-            "agent": "customer_profile",
-            "unexpected_scopes": unexpected_scopes,
-            "all_scopes": scopes,
-        }))
+        logger.warning(
+            json.dumps(
+                {
+                    "event": "unexpected_scopes_detected",
+                    "agent": "customer_profile",
+                    "unexpected_scopes": unexpected_scopes,
+                    "all_scopes": scopes,
+                }
+            )
+        )
 
     return {"valid": True, "scopes": scopes}
 
@@ -124,7 +136,10 @@ def validate_forwarded_claims(claims: Dict[str, Any]) -> Dict[str, Any]:
 
     if not claims:
         logger.error("No claims provided in request")
-        return {"valid": False, "error": "Missing authentication claims. Request must come through coordinator."}
+        return {
+            "valid": False,
+            "error": "Missing authentication claims. Request must come through coordinator.",
+        }
 
     # Check required standard claims
     required_claims = ["sub", "aud", "exp", "iss"]
@@ -144,15 +159,19 @@ def validate_forwarded_claims(claims: Dict[str, Any]) -> Dict[str, Any]:
 
     # Detect and handle exchanged tokens from the Token Exchange Service
     if is_exchanged_token(claims):
-        logger.info(json.dumps({
-            "event": "exchanged_token_detected",
-            "agent": "customer_profile",
-            "issuer": issuer,
-            "exchange_id": claims.get("exchange_id"),
-            "delegation_chain": claims.get("act"),
-            "original_issuer": claims.get("original_issuer"),
-            "original_audience": claims.get("original_audience"),
-        }))
+        logger.info(
+            json.dumps(
+                {
+                    "event": "exchanged_token_detected",
+                    "agent": "customer_profile",
+                    "issuer": issuer,
+                    "exchange_id": claims.get("exchange_id"),
+                    "delegation_chain": claims.get("act"),
+                    "original_issuer": claims.get("original_issuer"),
+                    "original_audience": claims.get("original_audience"),
+                }
+            )
+        )
 
         # Validate scopes are appropriate for the profile agent
         scope_result = validate_scope_for_profile(claims)
@@ -191,25 +210,23 @@ def validate_forwarded_claims(claims: Dict[str, Any]) -> Dict[str, Any]:
             )
         else:
             logger.warning("No customer_id in custom claims")
-            return {
-                "valid": False,
-                "error": "Missing customer identity information"
-            }
+            return {"valid": False, "error": "Missing customer identity information"}
 
     logger.info(
-        f"Validated customer_id={customer_id}, "
-        f"customer_number={customer_number}"
+        f"Validated customer_id={customer_id}, customer_number={customer_number}"
     )
 
     return {
         "valid": True,
         "user_id": claims.get("sub"),
         "customer_id": customer_id,
-        "customer_number": customer_number
+        "customer_number": customer_number,
     }
 
 
-def authorize_profile_access(claims: Dict[str, Any], requested_customer_id: str) -> bool:
+def authorize_profile_access(
+    claims: Dict[str, Any], requested_customer_id: str
+) -> bool:
     """
     Check if the authenticated user can access the requested profile.
 
@@ -224,7 +241,9 @@ def authorize_profile_access(claims: Dict[str, Any], requested_customer_id: str)
     """
     # Get customer_id from claims (check both locations)
     claims_namespace = "https://agentcore.example.com/"
-    customer_id = claims.get(f"{claims_namespace}customer_id") or claims.get("customer_id")
+    customer_id = claims.get(f"{claims_namespace}customer_id") or claims.get(
+        "customer_id"
+    )
 
     if not customer_id:
         logger.error("No customer_id in claims")
@@ -254,7 +273,8 @@ def get_audit_context(claims: Dict[str, Any]) -> Dict[str, Any]:
     """
     claims_namespace = "https://agentcore.example.com/"
     return {
-        "customer_id": claims.get(f"{claims_namespace}customer_id") or claims.get("customer_id"),
+        "customer_id": claims.get(f"{claims_namespace}customer_id")
+        or claims.get("customer_id"),
         "sub": claims.get("sub"),
         "email": claims.get("email"),
         "timestamp": datetime.utcnow().isoformat(),

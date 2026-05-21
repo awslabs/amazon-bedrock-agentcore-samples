@@ -19,7 +19,7 @@ from tools import (
     build_metrics_forecast_model,
     generate_metrics_forecast_chart,
     upload_report_to_s3,
-    save_report
+    save_report,
 )
 
 app = BedrockAgentCoreApp()
@@ -48,7 +48,7 @@ weekly_update_agent = Agent(
         build_metrics_forecast_model,
         generate_metrics_forecast_chart,
         save_report,
-        upload_report_to_s3
+        upload_report_to_s3,
     ],
     system_prompt="""You are a Weekly Update Generator agent. Your role is to:
 
@@ -97,15 +97,17 @@ IMPORTANT: After creating the report content, you MUST:
 1. Use file_write to save it to 'weekly_report_output/weekly_report.md'
 2. Then call upload_report_to_s3 to upload everything to S3
 
-Work systematically through data collection, analysis, visualization, synthesis, saving, and uploading."""
+Work systematically through data collection, analysis, visualization, synthesis, saving, and uploading.""",
 )
 
 # Track active tasks count for ping handler
 _active_task_count = 0
 
+
 def system_busy():
     """Check if system has active tasks."""
     return _active_task_count > 0
+
 
 @app.ping
 def ping():
@@ -114,6 +116,7 @@ def ping():
         return PingStatus.HEALTHY_BUSY
     return PingStatus.HEALTHY
 
+
 @app.entrypoint
 def agent(payload):
     """
@@ -121,61 +124,66 @@ def agent(payload):
     Supports method routing for ping checks and report generation.
     """
     global _active_task_count
-    
+
     # Check if this is a ping request
     method = payload.get("method")
     if method == "ping":
         status = "Healthy" if _active_task_count == 0 else "HealthyBusy"
-        return {
-            "status": status,
-            "active_tasks": _active_task_count
-        }
-    
+        return {"status": status, "active_tasks": _active_task_count}
+
     # Normal report generation request
     user_input = payload.get("prompt")
     print(f"📥 Received request: {user_input}")
-    
+
     # Start tracking the async task
     task_id = app.add_async_task("weekly_report_generation", {"prompt": user_input})
     _active_task_count += 1
     print(f"🔄 Started async task: {task_id} (active: {_active_task_count})")
-    
+
     # Run the agent in a background thread
     def generate_report():
         global _active_task_count
         try:
             print("🤖 Agent is processing...")
             response = weekly_update_agent(user_input)
-            
+
             # Handle different response types
             if isinstance(response, str):
                 result = response
-            elif hasattr(response, 'message'):
-                result = response.message['content'][0]['text']
+            elif hasattr(response, "message"):
+                result = response.message["content"][0]["text"]
             elif isinstance(response, dict):
-                result = response.get('message', {}).get('content', [{}])[0].get('text', str(response))
+                result = (
+                    response.get("message", {})
+                    .get("content", [{}])[0]
+                    .get("text", str(response))
+                )
             else:
                 result = str(response)  # noqa: F841
-            
+
             print("✅ Report generation completed")
         except Exception as e:
             import traceback
+
             print(f"❌ Report generation failed: {e}")
             traceback.print_exc()
         finally:
             # Mark task as complete
             app.complete_async_task(task_id)
             _active_task_count -= 1
-            print(f"✅ Task {task_id} marked as complete (active: {_active_task_count})")
-    
+            print(
+                f"✅ Task {task_id} marked as complete (active: {_active_task_count})"
+            )
+
     # Start background thread
     threading.Thread(target=generate_report, daemon=True).start()
-    
+
     return {
         "message": f"Weekly report generation started (Task ID: {task_id}). Agent status is now BUSY.",
         "task_id": task_id,
-        "status": "BUSY"
+        "status": "BUSY",
     }
+
 
 if __name__ == "__main__":
     app.run()

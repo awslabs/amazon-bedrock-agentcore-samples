@@ -38,11 +38,12 @@ def _record_api_call(
     response_body: any = None,
     duration_ms: float = None,
     error: str = None,
-    call_type: str = "api"
+    call_type: str = "api",
 ):
     """Record an API call to the session log for educational purposes."""
     try:
         from components.api_call_log import record_api_call
+
         record_api_call(
             method=method,
             url=url,
@@ -53,7 +54,7 @@ def _record_api_call(
             response_body=response_body,
             duration_ms=duration_ms,
             error=error,
-            call_type=call_type
+            call_type=call_type,
         )
     except ImportError:
         pass  # API call log not available
@@ -62,18 +63,19 @@ def _record_api_call(
 def decode_jwt_payload(token: str) -> dict:
     """Decode JWT payload without verification (for debugging)."""
     try:
-        parts = token.split('.')
+        parts = token.split(".")
         if len(parts) != 3:
             return {}
         # Add padding if needed
         payload = parts[1]
         padding = 4 - len(payload) % 4
         if padding != 4:
-            payload += '=' * padding
+            payload += "=" * padding
         decoded = base64.urlsafe_b64decode(payload)
         return json.loads(decoded)
     except Exception as e:
-        return {'error': str(e)}
+        return {"error": str(e)}
+
 
 # Handle imports for both standalone and package usage
 try:
@@ -112,14 +114,14 @@ class AgentCoreClient:
             self.region = settings.agentcore.region
             self.coordinator_agent_id = settings.agentcore.coordinator_agent_id
         else:
-            self.region = os.getenv('AWS_REGION', 'us-east-1')
-            self.coordinator_agent_id = os.getenv('COORDINATOR_AGENT_ID', '')
+            self.region = os.getenv("AWS_REGION", "us-east-1")
+            self.coordinator_agent_id = os.getenv("COORDINATOR_AGENT_ID", "")
 
         # AWS Account ID for ARN construction
-        self.account_id = os.getenv('EXPECTED_AWS_ACCOUNT', '')
+        self.account_id = os.getenv("EXPECTED_AWS_ACCOUNT", "")
 
         # Request timeout (seconds)
-        self.timeout = int(os.getenv('AGENTCORE_TIMEOUT', '60'))
+        self.timeout = int(os.getenv("AGENTCORE_TIMEOUT", "60"))
 
         # Build the base endpoint URL
         self.base_url = f"https://bedrock-agentcore.{self.region}.amazonaws.com"
@@ -199,8 +201,10 @@ class AgentCoreClient:
             # Format: POST /runtimes/{agentRuntimeArn}/invocations?qualifier=DEFAULT
             # The ARN must be URL-encoded since it contains special characters
             # The qualifier=DEFAULT is required for OAuth authorization
-            encoded_arn = quote(agent_arn, safe='')
-            url = f"{self.base_url}/runtimes/{encoded_arn}/invocations?qualifier=DEFAULT"
+            encoded_arn = quote(agent_arn, safe="")
+            url = (
+                f"{self.base_url}/runtimes/{encoded_arn}/invocations?qualifier=DEFAULT"
+            )
 
             # Prepare the request payload
             # With --request-header-allowlist "Authorization" configured on agents,
@@ -226,6 +230,7 @@ class AgentCoreClient:
 
             # Track request timing
             import time as _time
+
             start_time = _time.time()
 
             # Make the HTTP POST request
@@ -247,20 +252,30 @@ class AgentCoreClient:
             _record_api_call(
                 method="POST",
                 url=url,
-                request_headers={k: v if k.lower() != 'authorization' else 'Bearer [TOKEN]' for k, v in headers.items()},
-                request_body={k: v if k != 'access_token' else '[MASKED]' for k, v in payload.items()},
+                request_headers={
+                    k: v if k.lower() != "authorization" else "Bearer [TOKEN]"
+                    for k, v in headers.items()
+                },
+                request_body={
+                    k: v if k != "access_token" else "[MASKED]"
+                    for k, v in payload.items()
+                },
                 response_status=response.status_code,
                 response_headers=dict(response.headers),
-                response_body=response.json() if response.status_code < 400 else response.text[:500],
+                response_body=response.json()
+                if response.status_code < 400
+                else response.text[:500],
                 duration_ms=duration_ms,
-                call_type="api"
+                call_type="api",
             )
 
             # Handle HTTP errors
             if response.status_code == 401:
                 error_body = response.text
                 logger.error(f"JWT validation failed - 401 Unauthorized: {error_body}")
-                logger.error(f"WWW-Authenticate header: {response.headers.get('WWW-Authenticate', 'N/A')}")
+                logger.error(
+                    f"WWW-Authenticate header: {response.headers.get('WWW-Authenticate', 'N/A')}"
+                )
                 raise AuthenticationError(
                     "Authentication failed. Your session may have expired. "
                     "Please log in again."
@@ -272,7 +287,9 @@ class AgentCoreClient:
 
                 # Check if it's an auth method mismatch
                 if "authorization method mismatch" in error_body.lower():
-                    logger.error("Agent may still be configured for SigV4 instead of OAuth")
+                    logger.error(
+                        "Agent may still be configured for SigV4 instead of OAuth"
+                    )
                     raise RuntimeError(
                         "Authorization method mismatch. The agent may need to be "
                         "reconfigured for OAuth authentication."
@@ -326,11 +343,7 @@ class AgentCoreClient:
 
             raise RuntimeError(f"Failed to invoke agent: {e}")
 
-    def _parse_response(
-        self,
-        response: Any,
-        session_id: str
-    ) -> Dict[str, Any]:
+    def _parse_response(self, response: Any, session_id: str) -> Dict[str, Any]:
         """
         Parse AC Runtime response into standard format.
 
@@ -343,52 +356,52 @@ class AgentCoreClient:
         """
         try:
             # Read the streaming body
-            if 'body' in response:
-                body = response['body'].read()
+            if "body" in response:
+                body = response["body"].read()
                 if isinstance(body, bytes):
-                    body = body.decode('utf-8')
+                    body = body.decode("utf-8")
 
                 # Try to parse as JSON
                 try:
                     data = json.loads(body)
                     return {
-                        'response': data.get('output', data.get('response', str(data))),
-                        'sessionId': session_id,
-                        'metadata': data.get('metadata', {}),
+                        "response": data.get("output", data.get("response", str(data))),
+                        "sessionId": session_id,
+                        "metadata": data.get("metadata", {}),
                     }
                 except json.JSONDecodeError:
                     return {
-                        'response': body,
-                        'sessionId': session_id,
-                        'metadata': {},
+                        "response": body,
+                        "sessionId": session_id,
+                        "metadata": {},
                     }
 
             # Handle dict response
             if isinstance(response, dict):
                 return {
-                    'response': response.get('output', response.get('response', str(response))),
-                    'sessionId': session_id,
-                    'metadata': response.get('metadata', {}),
+                    "response": response.get(
+                        "output", response.get("response", str(response))
+                    ),
+                    "sessionId": session_id,
+                    "metadata": response.get("metadata", {}),
                 }
 
             return {
-                'response': str(response),
-                'sessionId': session_id,
-                'metadata': {},
+                "response": str(response),
+                "sessionId": session_id,
+                "metadata": {},
             }
 
         except Exception as e:
             logger.error(f"Error parsing response: {e}")
             return {
-                'response': str(response),
-                'sessionId': session_id,
-                'metadata': {'parse_error': str(e)},
+                "response": str(response),
+                "sessionId": session_id,
+                "metadata": {"parse_error": str(e)},
             }
 
     def _parse_http_response(
-        self,
-        response: requests.Response,
-        session_id: str
+        self, response: requests.Response, session_id: str
     ) -> Dict[str, Any]:
         """
         Parse HTTP response from AgentCore into standard format.
@@ -410,39 +423,39 @@ class AgentCoreClient:
                 if isinstance(data, dict):
                     # Check for common response fields
                     text_response = (
-                        data.get('output') or
-                        data.get('response') or
-                        data.get('completion') or
-                        data.get('text') or
-                        data.get('message') or
-                        str(data)
+                        data.get("output")
+                        or data.get("response")
+                        or data.get("completion")
+                        or data.get("text")
+                        or data.get("message")
+                        or str(data)
                     )
                     return {
-                        'response': text_response,
-                        'sessionId': session_id,
-                        'metadata': data.get('metadata', {}),
+                        "response": text_response,
+                        "sessionId": session_id,
+                        "metadata": data.get("metadata", {}),
                     }
                 else:
                     return {
-                        'response': str(data),
-                        'sessionId': session_id,
-                        'metadata': {},
+                        "response": str(data),
+                        "sessionId": session_id,
+                        "metadata": {},
                     }
 
             except json.JSONDecodeError:
                 # Return raw text if not JSON
                 return {
-                    'response': response.text,
-                    'sessionId': session_id,
-                    'metadata': {},
+                    "response": response.text,
+                    "sessionId": session_id,
+                    "metadata": {},
                 }
 
         except Exception as e:
             logger.error(f"Error parsing HTTP response: {e}")
             return {
-                'response': response.text if response.text else "No response received",
-                'sessionId': session_id,
-                'metadata': {'parse_error': str(e)},
+                "response": response.text if response.text else "No response received",
+                "sessionId": session_id,
+                "metadata": {"parse_error": str(e)},
             }
 
     def send_message_streaming(
@@ -466,7 +479,7 @@ class AgentCoreClient:
         # Streaming support can be added when the API supports it
         try:
             result = self.send_message(message, session_id, access_token)
-            yield result.get('response', '')
+            yield result.get("response", "")
         except Exception as e:
             raise RuntimeError(f"Streaming failed: {e}")
 
@@ -500,11 +513,11 @@ class AgentCoreClient:
             Health status dictionary
         """
         return {
-            'status': 'ok',
-            'region': self.region,
-            'agent_configured': bool(self.coordinator_agent_id),
-            'endpoint': self.base_url,
-            'auth_method': 'OAuth/JWT',
+            "status": "ok",
+            "region": self.region,
+            "agent_configured": bool(self.coordinator_agent_id),
+            "endpoint": self.base_url,
+            "auth_method": "OAuth/JWT",
         }
 
     # =========================================================================
@@ -512,33 +525,21 @@ class AgentCoreClient:
     # =========================================================================
 
     def invoke_coordinator_agent(
-        self,
-        message: str,
-        session_id: str,
-        access_token: str,
-        **kwargs
+        self, message: str, session_id: str, access_token: str, **kwargs
     ) -> Iterator[Dict]:
         """Backward-compatible alias for send_message()."""
         result = self.send_message(message, session_id, access_token)
-        yield {'chunk': {'bytes': result.get('response', '').encode()}}
+        yield {"chunk": {"bytes": result.get("response", "").encode()}}
 
     def get_full_response(
-        self,
-        message: str,
-        session_id: str,
-        access_token: str,
-        **kwargs
+        self, message: str, session_id: str, access_token: str, **kwargs
     ) -> str:
         """Backward-compatible alias that returns full response text."""
         result = self.send_message(message, session_id, access_token)
-        return result.get('response', '')
+        return result.get("response", "")
 
     def invoke_with_streaming(
-        self,
-        message: str,
-        session_id: str,
-        access_token: str,
-        **kwargs
+        self, message: str, session_id: str, access_token: str, **kwargs
     ) -> Iterator[str]:
         """Backward-compatible streaming alias."""
         yield from self.send_message_streaming(message, session_id, access_token)
@@ -548,16 +549,20 @@ class AgentCoreClient:
 # Custom Exceptions
 # =============================================================================
 
+
 class AuthenticationError(Exception):
     """Raised when JWT authentication fails."""
+
     pass
 
 
 class AuthorizationError(Exception):
     """Raised when user lacks required permissions."""
+
     pass
 
 
 class RateLimitError(Exception):
     """Raised when rate limit is exceeded."""
+
     pass

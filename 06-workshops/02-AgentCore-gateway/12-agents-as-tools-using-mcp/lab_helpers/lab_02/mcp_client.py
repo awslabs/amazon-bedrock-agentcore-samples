@@ -57,7 +57,9 @@ class MCPClient:
         self.request_id += 1
         return self.request_id
 
-    def _mcp_request(self, method: str, params: Optional[Dict] = None) -> Dict[str, Any]:
+    def _mcp_request(
+        self, method: str, params: Optional[Dict] = None
+    ) -> Dict[str, Any]:
         """
         Make MCP JSON-RPC request to Gateway.
 
@@ -75,7 +77,7 @@ class MCPClient:
         request_payload = {
             "jsonrpc": "2.0",
             "id": self._next_request_id(),
-            "method": method
+            "method": method,
         }
 
         if params is not None:
@@ -84,25 +86,28 @@ class MCPClient:
         response = requests.post(
             self.gateway_url,
             headers={
-                'Content-Type': 'application/json',
-                'Authorization': f'Bearer {self.access_token}'
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {self.access_token}",
             },
             json=request_payload,
-            timeout=self.timeout
+            timeout=self.timeout,
         )
 
         response.raise_for_status()
         result = response.json()
 
         # Check for JSON-RPC errors
-        if 'error' in result:
-            error = result['error']
+        if "error" in result:
+            error = result["error"]
             raise ValueError(f"MCP Error [{error.get('code')}]: {error.get('message')}")
 
         return result
 
-    def initialize(self, client_name: str = "aiml301-diagnostics-mcp-client",
-                   client_version: str = "1.0.0") -> Dict[str, Any]:
+    def initialize(
+        self,
+        client_name: str = "aiml301-diagnostics-mcp-client",
+        client_version: str = "1.0.0",
+    ) -> Dict[str, Any]:
         """
         Initialize MCP session with Gateway.
 
@@ -126,15 +131,12 @@ class MCPClient:
             params={
                 "protocolVersion": "2024-11-05",
                 "capabilities": {},
-                "clientInfo": {
-                    "name": client_name,
-                    "version": client_version
-                }
-            }
+                "clientInfo": {"name": client_name, "version": client_version},
+            },
         )
 
-        if 'result' in response:
-            self.server_info = response['result'].get('serverInfo', {})
+        if "result" in response:
+            self.server_info = response["result"].get("serverInfo", {})
             self.initialized = True
 
             print("  ✅ Session initialized")
@@ -165,15 +167,15 @@ class MCPClient:
 
         response = self._mcp_request(method="tools/list", params={})
 
-        if 'result' in response:
-            tools = response['result'].get('tools', [])
+        if "result" in response:
+            tools = response["result"].get("tools", [])
             print(f"  ✅ Found {len(tools)} tool(s)")
 
             for i, tool in enumerate(tools, 1):
-                tool_name = tool.get('name', 'unnamed')
+                tool_name = tool.get("name", "unnamed")
                 # Get first line of description
-                description = tool.get('description', 'No description')
-                first_line = description.split('\n')[0]
+                description = tool.get("description", "No description")
+                first_line = description.split("\n")[0]
                 print(f"     {i}. {tool_name}")
                 print(f"        {first_line[:80]}...")
 
@@ -206,24 +208,20 @@ class MCPClient:
         print(f"   Arguments: {json.dumps(arguments, indent=2)}")
 
         response = self._mcp_request(
-            method="tools/call",
-            params={
-                "name": tool_name,
-                "arguments": arguments
-            }
+            method="tools/call", params={"name": tool_name, "arguments": arguments}
         )
 
-        if 'result' in response:
-            result = response['result']
+        if "result" in response:
+            result = response["result"]
             print("  ✅ Tool execution successful")
 
             # Try to extract and display content
-            if 'content' in result:
-                for content_item in result['content']:
-                    if content_item.get('type') == 'text':
+            if "content" in result:
+                for content_item in result["content"]:
+                    if content_item.get("type") == "text":
                         try:
                             # Try to parse as JSON for better display
-                            text_content = content_item['text']
+                            text_content = content_item["text"]
                             parsed = json.loads(text_content)
                             print("\n  📋 Result:")
                             print(f"     {json.dumps(parsed, indent=6)}")

@@ -50,7 +50,9 @@ class SchemaGraphActions:
         schema_cache_path = self.graph_cache_dir / f"{schema_hash}.json"
         if schema_cache_path.exists():
             schema_graph_data = json.loads(schema_cache_path.read_text())
-            G = json_graph.node_link_graph(schema_graph_data, directed=True, edges="edges")
+            G = json_graph.node_link_graph(
+                schema_graph_data, directed=True, edges="edges"
+            )
             assert isinstance(G, nx.DiGraph)
             return G
 
@@ -64,7 +66,11 @@ class SchemaGraphActions:
                 for name, definition in components.items():
                     node_id = f"#/components/{component_type}/{name}"
                     if node_id not in exclude_nodes:
-                        G.add_node(node_id, node_type="component", component_type=component_type)
+                        G.add_node(
+                            node_id,
+                            node_type="component",
+                            component_type=component_type,
+                        )
                         for ref in _extract_refs(definition):
                             if ref not in exclude_nodes:
                                 G.add_edge(node_id, ref, edge_type="references")
@@ -143,7 +149,10 @@ class SchemaGraphActions:
         for node, distance in distances.items():
             if node == component_ref:
                 continue
-            if G.nodes[node]["node_type"] == "path" and distance <= max_distance_to_component:
+            if (
+                G.nodes[node]["node_type"] == "path"
+                and distance <= max_distance_to_component
+            ):
                 related_paths.append(node)
 
         return {"status": "success", "content": [{"json": related_paths}]}

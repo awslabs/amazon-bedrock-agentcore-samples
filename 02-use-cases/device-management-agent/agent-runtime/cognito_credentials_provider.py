@@ -38,13 +38,13 @@ Environment Variables Managed:
 Example Usage:
     Create a new provider:
     >>> python cognito_credentials_provider.py create --name my-provider
-    
+
     List all providers:
     >>> python cognito_credentials_provider.py list
-    
+
     Delete a provider:
     >>> python cognito_credentials_provider.py delete --name my-provider
-    
+
     Delete with auto-confirmation:
     >>> python cognito_credentials_provider.py delete --name my-provider --confirm
 
@@ -53,6 +53,7 @@ Notes:
     - Deletion requires confirmation unless --confirm flag is used
     - All operations require valid AWS credentials
 """
+
 import boto3
 import click
 import sys
@@ -89,19 +90,21 @@ def store_provider_name_in_env(provider_name: str):
         # Read existing .env file content
         env_lines = []
         if os.path.exists(env_file_path):
-            with open(env_file_path, 'r', encoding='utf-8') as f:
+            with open(env_file_path, "r", encoding="utf-8") as f:
                 env_lines = f.readlines()
-        
+
         # Remove existing COGNITO_PROVIDER_NAME if it exists
-        env_lines = [line for line in env_lines if not line.startswith('COGNITO_PROVIDER_NAME=')]
-        
+        env_lines = [
+            line for line in env_lines if not line.startswith("COGNITO_PROVIDER_NAME=")
+        ]
+
         # Add the new provider name
         env_lines.append(f"COGNITO_PROVIDER_NAME={provider_name}\n")
-        
+
         # Write back to .env file
-        with open(env_file_path, 'w', encoding='utf-8') as f:
+        with open(env_file_path, "w", encoding="utf-8") as f:
             f.writelines(env_lines)
-        
+
         click.echo(f"📦 Stored provider name in .env file: {provider_name}")
     except Exception as e:
         click.echo(f"⚠️ Failed to store provider name in .env file: {e}")
@@ -118,18 +121,20 @@ def delete_provider_name_from_env():
     try:
         if not os.path.exists(env_file_path):
             return
-        
+
         # Read existing .env file content
-        with open(env_file_path, 'r', encoding='utf-8') as f:
+        with open(env_file_path, "r", encoding="utf-8") as f:
             env_lines = f.readlines()
-        
+
         # Remove COGNITO_PROVIDER_NAME line
-        env_lines = [line for line in env_lines if not line.startswith('COGNITO_PROVIDER_NAME=')]
-        
+        env_lines = [
+            line for line in env_lines if not line.startswith("COGNITO_PROVIDER_NAME=")
+        ]
+
         # Write back to .env file
-        with open(env_file_path, 'w', encoding='utf-8') as f:
+        with open(env_file_path, "w", encoding="utf-8") as f:
             f.writelines(env_lines)
-        
+
         click.echo("🧹 Removed provider name from .env file")
     except Exception as e:
         click.echo(f"⚠️ Failed to remove provider name from .env file: {e}")
@@ -139,11 +144,13 @@ def create_cognito_provider(provider_name: str) -> dict:
     """Create a Cognito OAuth2 credential provider."""
     try:
         click.echo("📥 Loading Cognito configuration from environment variables...")
-        
+
         client_id = get_env_variable("COGNITO_CLIENT_ID", "Cognito app client ID")
         click.echo(f"✅ Retrieved client ID: {client_id}")
 
-        client_secret = get_env_variable("COGNITO_CLIENT_SECRET", "Cognito app client secret")
+        client_secret = get_env_variable(
+            "COGNITO_CLIENT_SECRET", "Cognito app client secret"
+        )
         click.echo(f"✅ Retrieved client secret: {client_secret[:4]}***")
 
         issuer = get_env_variable("COGNITO_DISCOVERY_URL", "OIDC discovery URL/issuer")
@@ -307,7 +314,9 @@ def delete(name, confirm):
 
         # Remove provider name from .env file
         delete_provider_name_from_env()
-        click.echo("🎉 Credential provider deleted and removed from .env file successfully")
+        click.echo(
+            "🎉 Credential provider deleted and removed from .env file successfully"
+        )
     else:
         click.echo("❌ Failed to delete credential provider", err=True)
         sys.exit(1)

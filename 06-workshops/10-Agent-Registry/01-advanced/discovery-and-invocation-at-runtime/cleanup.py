@@ -26,6 +26,7 @@ except NameError:
     cognito_client = session.client("cognito-idp")
     sm_client = session.client("secretsmanager")
 
+
 # Safely resolve notebook variables — if the kernel was restarted, some may be missing.
 # NOTE: We use direct variable references with try/except instead of locals().get()
 # because %run -i injects notebook variables into the execution namespace but
@@ -41,6 +42,7 @@ def _safe_get(name):
         pass
     # Fallback to frame locals/globals
     import inspect
+
     frame = inspect.currentframe().f_back
     try:
         if name in frame.f_locals:
@@ -50,6 +52,7 @@ def _safe_get(name):
     finally:
         del frame
     return None
+
 
 _orchestrator_agent_id = _safe_get("orchestrator_agent_id")
 _pricing_agent_id = _safe_get("pricing_agent_id")
@@ -153,9 +156,11 @@ for role_name in [_lambda_role_name, _gateway_role_name]:
     if not role_name:
         continue
     try:
-        for p in iam_client.list_attached_role_policies(RoleName=role_name)['AttachedPolicies']:
-            iam_client.detach_role_policy(RoleName=role_name, PolicyArn=p['PolicyArn'])
-        for p in iam_client.list_role_policies(RoleName=role_name)['PolicyNames']:
+        for p in iam_client.list_attached_role_policies(RoleName=role_name)[
+            "AttachedPolicies"
+        ]:
+            iam_client.detach_role_policy(RoleName=role_name, PolicyArn=p["PolicyArn"])
+        for p in iam_client.list_role_policies(RoleName=role_name)["PolicyNames"]:
             iam_client.delete_role_policy(RoleName=role_name, PolicyName=p)
         iam_client.delete_role(RoleName=role_name)
         print(f"  Deleted role: {role_name}")
@@ -177,7 +182,9 @@ else:
 print("\n9. Deleting Cognito...")
 if _domain_name and _user_pool_id:
     try:
-        cognito_client.delete_user_pool_domain(Domain=_domain_name, UserPoolId=_user_pool_id)
+        cognito_client.delete_user_pool_domain(
+            Domain=_domain_name, UserPoolId=_user_pool_id
+        )
         cognito_client.delete_user_pool(UserPoolId=_user_pool_id)
         print(f"  Deleted pool: {_user_pool_id}")
     except Exception as e:
@@ -187,9 +194,16 @@ else:
 
 # 10. Clean up local files
 print("\n10. Cleaning up local files...")
-for f in ["pricing_agent.py", "customer_support_agent.py", "orchestrator_agent.py",
-          "a2a_requirements.txt", "orchestrator_requirements.txt",
-          ".bedrock_agentcore.yaml", "Dockerfile", ".dockerignore"]:
+for f in [
+    "pricing_agent.py",
+    "customer_support_agent.py",
+    "orchestrator_agent.py",
+    "a2a_requirements.txt",
+    "orchestrator_requirements.txt",
+    ".bedrock_agentcore.yaml",
+    "Dockerfile",
+    ".dockerignore",
+]:
     if os.path.exists(f):
         os.remove(f)
         print(f"  Removed: {f}")

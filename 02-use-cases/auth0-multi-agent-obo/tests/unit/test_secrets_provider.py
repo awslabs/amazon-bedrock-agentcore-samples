@@ -181,7 +181,12 @@ class TestEnvironmentSecretsProvider:
     def test_get_auth0_secrets_defaults(self, monkeypatch):
         """Test Auth0 secrets with default values."""
         # Clear any existing env vars
-        for key in ["AUTH0_DOMAIN", "AUTH0_CLIENT_ID", "AUTH0_CLIENT_SECRET", "AUTH0_AUDIENCE"]:
+        for key in [
+            "AUTH0_DOMAIN",
+            "AUTH0_CLIENT_ID",
+            "AUTH0_CLIENT_SECRET",
+            "AUTH0_AUDIENCE",
+        ]:
             monkeypatch.delenv(key, raising=False)
 
         provider = EnvironmentSecretsProvider()
@@ -254,7 +259,9 @@ class TestAWSSecretsManagerProvider:
         client.exceptions.ResourceNotFoundException = type(
             "ResourceNotFoundException", (Exception,), {}
         )
-        client.exceptions.AccessDeniedException = type("AccessDeniedException", (Exception,), {})
+        client.exceptions.AccessDeniedException = type(
+            "AccessDeniedException", (Exception,), {}
+        )
 
         return client
 
@@ -302,7 +309,9 @@ class TestAWSSecretsManagerProvider:
             "SecretString": json.dumps({"key": "value"}),
         }
 
-        provider = AWSSecretsManagerProvider(client=mock_boto3_client, cache_ttl_seconds=3600)
+        provider = AWSSecretsManagerProvider(
+            client=mock_boto3_client, cache_ttl_seconds=3600
+        )
 
         # First call - should hit AWS
         secrets1 = provider.get_secret("my-secret")
@@ -321,7 +330,9 @@ class TestAWSSecretsManagerProvider:
         }
 
         # Very short TTL for testing
-        provider = AWSSecretsManagerProvider(client=mock_boto3_client, cache_ttl_seconds=0)
+        provider = AWSSecretsManagerProvider(
+            client=mock_boto3_client, cache_ttl_seconds=0
+        )
 
         # First call
         provider.get_secret("my-secret")
@@ -338,7 +349,9 @@ class TestAWSSecretsManagerProvider:
             "SecretString": json.dumps({"key": "value"}),
         }
 
-        provider = AWSSecretsManagerProvider(client=mock_boto3_client, cache_ttl_seconds=3600)
+        provider = AWSSecretsManagerProvider(
+            client=mock_boto3_client, cache_ttl_seconds=3600
+        )
 
         # Populate cache
         provider.get_secret("my-secret")
@@ -354,7 +367,9 @@ class TestAWSSecretsManagerProvider:
             "SecretString": json.dumps({"key": "value"}),
         }
 
-        provider = AWSSecretsManagerProvider(client=mock_boto3_client, cache_ttl_seconds=3600)
+        provider = AWSSecretsManagerProvider(
+            client=mock_boto3_client, cache_ttl_seconds=3600
+        )
 
         # Populate cache
         provider.get_secret("secret1")
@@ -375,7 +390,9 @@ class TestAWSSecretsManagerProvider:
             mock_boto3_client.exceptions.ResourceNotFoundException("Not found")
         )
 
-        provider = AWSSecretsManagerProvider(client=mock_boto3_client, fallback_to_env=False)
+        provider = AWSSecretsManagerProvider(
+            client=mock_boto3_client, fallback_to_env=False
+        )
 
         with pytest.raises(SecretNotFoundError):
             provider.get_secret("nonexistent-secret")
@@ -386,7 +403,9 @@ class TestAWSSecretsManagerProvider:
             mock_boto3_client.exceptions.AccessDeniedException("Denied")
         )
 
-        provider = AWSSecretsManagerProvider(client=mock_boto3_client, fallback_to_env=False)
+        provider = AWSSecretsManagerProvider(
+            client=mock_boto3_client, fallback_to_env=False
+        )
 
         with pytest.raises(SecretAccessDeniedError):
             provider.get_secret("protected-secret")
@@ -401,7 +420,9 @@ class TestAWSSecretsManagerProvider:
         monkeypatch.setenv("AUTH0_CLIENT_ID", "fallback-client")
         monkeypatch.setenv("AUTH0_CLIENT_SECRET", "fallback-secret")
 
-        provider = AWSSecretsManagerProvider(client=mock_boto3_client, fallback_to_env=True)
+        provider = AWSSecretsManagerProvider(
+            client=mock_boto3_client, fallback_to_env=True
+        )
         secrets = provider.get_secret("agentcore/auth0")
 
         assert secrets["domain"] == "fallback.auth0.com"
@@ -414,7 +435,9 @@ class TestAWSSecretsManagerProvider:
 
         monkeypatch.setenv("AUTH0_DOMAIN", "fallback.auth0.com")
 
-        provider = AWSSecretsManagerProvider(client=mock_boto3_client, fallback_to_env=False)
+        provider = AWSSecretsManagerProvider(
+            client=mock_boto3_client, fallback_to_env=False
+        )
 
         with pytest.raises(SecretNotFoundError):
             provider.get_secret("agentcore/auth0")
@@ -455,7 +478,9 @@ class TestAWSSecretsManagerProvider:
 
         mock_boto3_client.get_secret_value.side_effect = mock_get_secret_value
 
-        provider = AWSSecretsManagerProvider(client=mock_boto3_client, cache_ttl_seconds=3600)
+        provider = AWSSecretsManagerProvider(
+            client=mock_boto3_client, cache_ttl_seconds=3600
+        )
 
         # Launch multiple threads simultaneously
         threads = []
@@ -490,7 +515,9 @@ class TestAWSSecretsManagerProvider:
             "SecretString": json.dumps({"key": "value"}),
         }
 
-        provider = AWSSecretsManagerProvider(client=mock_boto3_client, cache_ttl_seconds=3600)
+        provider = AWSSecretsManagerProvider(
+            client=mock_boto3_client, cache_ttl_seconds=3600
+        )
 
         # Initially empty
         info = provider.get_cache_info()
@@ -529,7 +556,11 @@ class TestFactoryFunctions:
 
     def test_is_aws_environment_local(self, monkeypatch):
         """Test local environment (no AWS markers)."""
-        for key in ["AWS_LAMBDA_FUNCTION_NAME", "ECS_CONTAINER_METADATA_URI", "AWS_EXECUTION_ENV"]:
+        for key in [
+            "AWS_LAMBDA_FUNCTION_NAME",
+            "ECS_CONTAINER_METADATA_URI",
+            "AWS_EXECUTION_ENV",
+        ]:
             monkeypatch.delenv(key, raising=False)
         assert is_aws_environment() is False
 

@@ -514,7 +514,9 @@ def build_agent_project(
     main_content = main_content.replace(
         "SYSTEM_PROMPT_VALUE", system_prompt.replace("'", "\\'")
     )
-    main_content = main_content.replace("AGENT_CONFIG_TABLE_NAME_VALUE", AGENT_CONFIG_TABLE_NAME)
+    main_content = main_content.replace(
+        "AGENT_CONFIG_TABLE_NAME_VALUE", AGENT_CONFIG_TABLE_NAME
+    )
 
     main_path = os.path.join(project_dir, "main.py")
     with open(main_path, "w") as f:
@@ -529,7 +531,9 @@ def build_agent_project(
     # Initialize UV project
     print("Initializing UV project...")
     subprocess.run(
-        ["uv", "init", project_dir, "--python", "3.13"], check=True, cwd="/tmp"  # nosec B108
+        ["uv", "init", project_dir, "--python", "3.13"],
+        check=True,
+        cwd="/tmp",  # nosec B108
     )
 
     # Add dependencies (base + additional from tools)
