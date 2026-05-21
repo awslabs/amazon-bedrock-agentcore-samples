@@ -698,6 +698,12 @@ Resources:
  
   ClientVPC:
     Type: AWS::EC2::VPC
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W60
+            reason: >-
+              Demo/tutorial VPC does not require flow logs; enable VPC Flow Logs in production
     Properties:
       CidrBlock: "10.1.0.0/16"
       EnableDnsHostnames: true
@@ -908,11 +914,17 @@ Resources:
   # Public Subnet - Hosts development EC2 instance with internet access
   ClientPublicSubnet1:
     Type: AWS::EC2::Subnet
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W33
+            reason: >-
+              Public subnet requires MapPublicIpOnLaunch for tutorial accessibility; disable in production
     Properties:
       VpcId: !Ref ClientVPC
       CidrBlock: "10.1.100.0/28" # Small subnet (16 IPs) for testing instances
       AvailabilityZone: !Select [0, !GetAZs ""] # Use first AZ
-      MapPublicIpOnLaunch: true 
+      MapPublicIpOnLaunch: true
       Tags:
         - Key: Name
           Value: !Sub "${AWS::StackName}-public-subnet-1"
@@ -1011,6 +1023,18 @@ Resources:
   # Security Group for Development EC2 Instance
   EC2InstanceSecurityGroup:
     Type: AWS::EC2::SecurityGroup
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W2
+            reason: >-
+              Demo EC2 instance allows SSH from 0.0.0.0/0 for tutorial access; restrict to specific IPs in production
+          - id: W5
+            reason: >-
+              Demo EC2 instance allows SSH ingress from internet for tutorial access; restrict in production
+          - id: W9
+            reason: >-
+              SSH CIDR not restricted to /32 for tutorial accessibility; restrict to specific IP in production
     Properties:
       GroupDescription: "Security group for development EC2 instance - allows SSH and outbound HTTPS"
       VpcId: !Ref ClientVPC

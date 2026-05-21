@@ -73,6 +73,12 @@ Resources:
 
   VPC:
     Type: AWS::EC2::VPC
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W60
+            reason: >-
+              Demo/tutorial VPC does not require flow logs; enable VPC Flow Logs in production
     Properties:
       CidrBlock: !Ref VpcCidr
       EnableDnsHostnames: true
@@ -160,6 +166,15 @@ Resources:
 
   BrowserSecurityGroup:
     Type: AWS::EC2::SecurityGroup
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W40
+            reason: >-
+              All outbound traffic required for browser; actual filtering is enforced by AWS Network Firewall
+          - id: W5
+            reason: >-
+              Open egress is intentional; domain-level filtering is handled by Network Firewall rules
     Properties:
       GroupName: !Sub '${AWS::StackName}-browser-sg'
       GroupDescription: Security group for AgentCore Browser instances

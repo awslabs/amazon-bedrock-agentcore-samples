@@ -57,6 +57,12 @@ Resources:
 
   VPC:
     Type: AWS::EC2::VPC
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W60
+            reason: >-
+              Demo/tutorial VPC does not require flow logs; enable VPC Flow Logs in production
     Properties:
       CidrBlock: !Ref VpcCidr
       EnableDnsSupport: true
@@ -82,6 +88,12 @@ Resources:
 
   PublicSubnet1:
     Type: AWS::EC2::Subnet
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W33
+            reason: >-
+              Public subnet requires MapPublicIpOnLaunch for tutorial accessibility; disable in production
     Properties:
       VpcId: !Ref VPC
       CidrBlock: "10.0.1.0/24"
@@ -93,6 +105,12 @@ Resources:
 
   PublicSubnet2:
     Type: AWS::EC2::Subnet
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W33
+            reason: >-
+              Public subnet requires MapPublicIpOnLaunch for tutorial accessibility; disable in production
     Properties:
       VpcId: !Ref VPC
       CidrBlock: "10.0.2.0/24"
@@ -203,6 +221,15 @@ Resources:
 
   AgentCoreSecurityGroup:
     Type: AWS::EC2::SecurityGroup
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W40
+            reason: >-
+              All outbound traffic required for AgentCore runtime to reach AWS services; restrict in production
+          - id: W5
+            reason: >-
+              Sample security group uses broad egress rules for tutorial simplicity; restrict in production
     Properties:
       GroupDescription: Security group for AgentCore runtimes
       VpcId: !Ref VPC

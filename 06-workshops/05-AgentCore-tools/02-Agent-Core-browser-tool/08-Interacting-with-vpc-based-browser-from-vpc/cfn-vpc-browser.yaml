@@ -697,6 +697,12 @@ Resources:
 
   ClientVPC:
     Type: AWS::EC2::VPC
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W60
+            reason: >-
+              Demo/tutorial VPC does not require flow logs; enable VPC Flow Logs in production
     Properties:
       CidrBlock: "10.1.0.0/16"
       EnableDnsHostnames: true
@@ -932,6 +938,18 @@ Resources:
   # Web Server Security Group
   WebServerSecurityGroup:
     Type: AWS::EC2::SecurityGroup
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W2
+            reason: >-
+              Demo web server allows all TCP from VPC CIDR for tutorial simplicity; restrict to specific ports in production
+          - id: W5
+            reason: >-
+              Demo web server allows broad ingress from VPC for tutorial access; restrict in production
+          - id: W40
+            reason: >-
+              Web server requires all outbound for updates and responses; restrict in production
     Properties:
       GroupDescription: Security group for web server in private subnet
       VpcId: !Ref ClientVPC
@@ -1016,6 +1034,12 @@ Resources:
   # Public Subnet for EC2
   ClientPublicSubnet1:
     Type: AWS::EC2::Subnet
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W33
+            reason: >-
+              Public subnet requires MapPublicIpOnLaunch for tutorial accessibility; disable in production
     Properties:
       VpcId: !Ref ClientVPC
       CidrBlock: "10.1.100.0/28" # Small subnet (16 IPs) for testing instances
@@ -1119,6 +1143,18 @@ Resources:
   # Security Group for Development EC2 Instance
   EC2InstanceSecurityGroup:
     Type: AWS::EC2::SecurityGroup
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W2
+            reason: >-
+              Demo EC2 instance allows SSH from 0.0.0.0/0 for tutorial access; restrict to specific IPs in production
+          - id: W5
+            reason: >-
+              Demo EC2 instance allows SSH ingress from internet for tutorial access; restrict in production
+          - id: W9
+            reason: >-
+              SSH CIDR not restricted to /32 for tutorial accessibility; restrict to specific IP in production
     Properties:
       GroupDescription: "Security group for development EC2 instance - allows SSH and outbound HTTPS"
       VpcId: !Ref ClientVPC

@@ -60,6 +60,12 @@ Resources:
 
   VPC:
     Type: AWS::EC2::VPC
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W60
+            reason: >-
+              Demo/tutorial VPC does not require flow logs; enable VPC Flow Logs in production
     Properties:
       CidrBlock: !Ref VpcCidr
       EnableDnsHostnames: true
@@ -100,6 +106,12 @@ Resources:
   # Squid proxy lives here — has internet via IGW
   PublicSubnet:
     Type: AWS::EC2::Subnet
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W33
+            reason: >-
+              Public subnet requires MapPublicIpOnLaunch for Squid proxy internet access; disable in production
     Properties:
       VpcId: !Ref VPC
       CidrBlock: !Select [0, !Cidr [!Ref VpcCidr, 4, 12]]
@@ -164,6 +176,12 @@ Resources:
 
   SquidSecurityGroup:
     Type: AWS::EC2::SecurityGroup
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W5
+            reason: >-
+              Squid proxy requires HTTPS/HTTP outbound to internet to forward browser traffic; restrict egress in production
     Properties:
       GroupDescription: "Squid proxy accepts from browser allows outbound internet"
       VpcId: !Ref VPC

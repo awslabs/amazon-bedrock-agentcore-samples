@@ -278,6 +278,12 @@ Resources:
   # GET Method - No Authorization (AgentCore handles auth)
   AsanaGetMethod:
     Type: AWS::ApiGateway::Method
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W59
+            reason: >-
+              AuthorizationType NONE because AgentCore Gateway handles authentication upstream; add method-level auth in production
     Properties:
       RestApiId: !Ref AsanaIntegrationApiGateway
       ResourceId: !Ref AsanaResource
@@ -292,6 +298,12 @@ Resources:
   # POST Method - No Authorization (AgentCore handles auth)
   AsanaPostMethod:
     Type: AWS::ApiGateway::Method
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W59
+            reason: >-
+              AuthorizationType NONE because AgentCore Gateway handles authentication upstream; add method-level auth in production
     Properties:
       RestApiId: !Ref AsanaIntegrationApiGateway
       ResourceId: !Ref AsanaResource
