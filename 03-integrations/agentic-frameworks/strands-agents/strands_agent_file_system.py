@@ -25,4 +25,5 @@ def agent_invocation(payload, context):
     return {"result": result.message}
 
 
-app.run()
+if __name__ == "__main__":
+    app.run()

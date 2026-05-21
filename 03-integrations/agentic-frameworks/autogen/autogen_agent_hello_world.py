@@ -86,4 +86,5 @@ async def main(payload):
         # await model_client.close() ## Do not close client with sticky sessions on runtime, otherwise you will get `RuntimeError: Cannot send a request, as the client has been closed.`
 
 
-app.run()
+if __name__ == "__main__":
+    app.run()

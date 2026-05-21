@@ -342,7 +342,7 @@ def test_agent(endpoint_url: str):
     # Test 2: Decode and inspect token
     print("\n  TEST 2: Decoding Okta JWT token...")
     try:
-        decoded = jwt.decode(access_token, options={"verify_signature": False})
+        decoded = jwt.decode(access_token, options={"verify_signature": False})  # nosec: test-only claim inspection
         print(f"    Audience: {decoded.get('aud')}")
         print(f"    Issuer: {decoded.get('iss')}")
         print(f"    Scopes: {decoded.get('scp')}")
@@ -352,7 +352,7 @@ def test_agent(endpoint_url: str):
 
     # Test 3: Scope validation — negative (wrong scope)
     print("\n  TEST 3: Scope validation - negative (checking for 'admin' scope)...")
-    decoded = jwt.decode(access_token, options={"verify_signature": False})
+    decoded = jwt.decode(access_token, options={"verify_signature": False})  # nosec: test-only claim inspection
     token_scopes = decoded.get("scp", [])
     if "admin" in token_scopes:
         print("  Token has 'admin' scope (unexpected)")

@@ -88,4 +88,5 @@ def agent_invocation(payload, context):
     return {"result": tmp_output["messages"][-1].content}
 
 
-app.run()
+if __name__ == "__main__":
+    app.run()
