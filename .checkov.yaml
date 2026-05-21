@@ -95,3 +95,66 @@ skip-check:
   # API Gateway - open method access
   # Bearer-token-injection workshop intentionally uses open API methods for demo purposes.
   - CKV_AWS_59
+
+  # Lambda - X-Ray tracing
+  # Sample Lambda functions do not enable X-Ray for tutorial simplicity.
+  - CKV_AWS_50
+
+  # Lambda - Code signing (v2 check)
+  # Workshop sample Lambdas do not use code signing.
+  - CKV_AWS_272
+
+  # Lambda - Resource-based policy with broad invoke permissions
+  # AgentCore gateway role intentionally allows invoking target Lambdas.
+  - CKV_AWS_290
+  - CKV_AWS_355
+
+  # API Gateway - WAF association
+  # Workshop sample API Gateway stages do not require WAF for tutorial demos.
+  - CKV_AWS_237
+  - CKV2_AWS_4
+
+  # API Gateway - access logging and client certificates
+  # Omitted for workshop sample simplicity.
+  - CKV2_AWS_29
+  - CKV2_AWS_51
+
+  # Docker - HEALTHCHECK instruction
+  # Sample Dockerfiles omit HEALTHCHECK for tutorial simplicity.
+  - CKV_DOCKER_2
+
+  # Docker - USER instruction (non-root)
+  # Sample Dockerfiles run as root for simplicity; production should use a non-root user.
+  - CKV_DOCKER_3
+
+  # Kubernetes - various security checks
+  # Sample K8s manifests are simplified for demonstration purposes.
+  - CKV_K8S_21
+  - CKV_K8S_37
+  - CKV_K8S_31
+  - CKV_K8S_8
+  - CKV_K8S_20
+  - CKV_K8S_15
+  - CKV_K8S_13
+  - CKV_K8S_40
+  - CKV_K8S_22
+  - CKV_K8S_9
+  - CKV_K8S_28
+  - CKV_K8S_14
+  - CKV_K8S_38
+  - CKV_K8S_23
+  - CKV_K8S_43
+  - CKV_K8S_11
+  - CKV2_K8S_6
+
+  # OpenAPI - security definitions
+  # Sample OpenAPI specs use simplified security for tutorial clarity.
+  - CKV_OPENAPI_4
+  - CKV_OPENAPI_5
+  - CKV_OPENAPI_21
+
+  # Secret scanning - false positives in API spec examples and placeholder values
+  # These files contain example tokens in OpenAPI/Smithy documentation and
+  # explicit placeholder values, not real credentials.
+  - CKV_SECRET_6
+  - CKV_SECRET_2
