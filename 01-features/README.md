@@ -77,12 +77,13 @@ data = boto3.client('bedrock-agentcore', region_name='us-west-2')
 | # | Folder | What's inside |
 |:--|:-------|:--------------|
 | 01 | [harness](01-harness/) | Serverless agent orchestration environment — model, tools, sandbox, and session management in a single API call |
-| 02 | [host your agent and tools](02-host-your-agent-and-tools/) | Deploy agents and MCP tools on AgentCore runtime; built-in code interpreter and browser tool |
-| 03 | [manage context of your agent](03-manage-context-of-your-agent/) | Short-term session memory and long-term persistent memory for context-aware agents |
-| 04 | [observe, evaluate, and optimize](04-observe-evaluate-optimize-your-agent/) | Trace and debug with OpenTelemetry, evaluate with LLM-as-a-judge and ground-truth evaluators, optimize prompts and tool descriptions |
+| 02 | [host your agent](02-host-your-agent/) | Deploy agents and MCP tool servers on AgentCore runtime; multi-protocol (HTTP, MCP, A2A, AG-UI), streaming, sessions, async, VPC, and coding agents |
+| 03 | [connect your agent to anything](03-connect-your-agent-to-anything/) | Built-in managed tools: sandboxed Python code execution (Code Interpreter) and headless browser automation (Browser Tool) |
+| 04 | [manage context of your agent](04-manage-context-of-your-agent/) | Short-term session memory and long-term persistent memory for context-aware agents |
 | 05 | [authenticate and authorize](05-authenticate-and-authorize/) | Inbound auth (Cognito, Entra ID, Okta, PingFederate) and outbound auth (OAuth2, API keys, 3LO, M2M, OBO) |
-| 06 | [centralize and govern](06-centralize-and-govern-your-ai-infrastructure/) | AgentCore gateway (MCP proxy for APIs and Lambda), Cedar policy engine, agent/tool registry |
-| 07 | [agents that transact](07-agents-that-transact/) | Microtransaction payments for agents via x402 protocol — wallet setup, spending limits, multi-agent orchestration |
+| 06 | [observe, evaluate, and optimize](06-observe-evaluate-optimize-your-agent/) | Trace and debug with OpenTelemetry, evaluate with LLM-as-a-judge and ground-truth evaluators, optimize prompts and tool descriptions |
+| 07 | [centralize and govern](07-centralize-and-govern-your-ai-infrastructure/) | AgentCore gateway (MCP proxy for APIs and Lambda), Cedar policy engine, agent/tool registry |
+| 08 | [agents that transact](08-agents-that-transact/) | Microtransaction payments for agents via x402 protocol — wallet setup, spending limits, multi-agent orchestration |
 
 ## AgentCore CLI
 
