@@ -26,7 +26,7 @@ All the OTel configuration is encapsulated in [dash0.py](./dash0.py). Configure 
 |---|---|---|
 | `DASH0_AUTH_TOKEN` | Auth token from **Settings → Auth Tokens** | _(required)_ |
 | `DASH0_OTLP_ENDPOINT` | OTLP ingress base URL for your region | `https://ingress.us-west-2.aws.dash0.com` |
-| `DASH0_DATASET` | Dataset to route telemetry to | `agentcore` |
+| `DASH0_DATASET` | Dataset to route telemetry to | `default` |
 | `OTEL_SERVICE_NAME` | Service name shown in traces | `agentcore-dash0-demo` |
 
 
@@ -58,7 +58,7 @@ export DASH0_AUTH_TOKEN=your_dash0_auth_token
 # EU West 1: https://ingress.eu-west-1.aws.dash0.com
 export DASH0_OTLP_ENDPOINT=https://ingress.us-west-2.aws.dash0.com
 
-export DASH0_DATASET=agentcore
+export DASH0_DATASET=default
 ```
 
 ### 3. Run the app
@@ -87,7 +87,7 @@ curl -X POST http://127.0.0.1:8080/invocations --data '{"prompt": "Summarize the
 
 ### 6. View traces in Dash0
 
-After invoking the agent, go to [app.dash0.com](https://app.dash0.com/) → **Tracing** and filter by `service.name = agentcore-dash0-demo`. Traces and metrics will appear under the `agentcore` dataset.
+After invoking the agent, go to [app.dash0.com](https://app.dash0.com/) → **Tracing** and filter by `service.name = agentcore-dash0-demo`. Traces and metrics will appear under the `default` dataset.
 
 ### 7. Deploy to AgentCore Runtime
 

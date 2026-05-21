@@ -10,7 +10,7 @@ def init():
         "DASH0_OTLP_ENDPOINT",
         "https://ingress.us-west-2.aws.dash0.com",
     ).rstrip("/")
-    dataset = os.environ.get("DASH0_DATASET", "agentcore")
+    dataset = os.environ.get("DASH0_DATASET", "default")
     service_name = os.environ.get("OTEL_SERVICE_NAME", "agentcore-dash0-demo")
 
     headers = {"Authorization": f"Bearer {auth_token}"}
