@@ -47,7 +47,7 @@ def authenticate_user(username: str, account_number: str) -> str:
             "member_since": "2020-01-15",
             "account_type": "Premium Checking",
         },
-        "session_token": "tok_demo_abc123xyz789"  # pragma: allowlist secret,
+        "session_token": "tok_demo_abc123xyz789",  # pragma: allowlist secret
         "message": f"Welcome back, {username}! Authentication successful.",
     }
 

@@ -35,7 +35,7 @@ def setup_cognito_user_pool():
         cognito_client.admin_create_user(
             UserPoolId=pool_id,
             Username="testuser",
-            TemporaryPassword="Temp123!"  # pragma: allowlist secret,
+            TemporaryPassword="Temp123!",  # pragma: allowlist secret
             MessageAction="SUPPRESS",
         )
 
@@ -43,7 +43,7 @@ def setup_cognito_user_pool():
         cognito_client.admin_set_user_password(
             UserPoolId=pool_id,
             Username="testuser",
-            Password="MyPassword123!"  # pragma: allowlist secret,
+            Password="MyPassword123!",  # pragma: allowlist secret
             Permanent=True,
         )
 
@@ -51,7 +51,7 @@ def setup_cognito_user_pool():
         auth_response = cognito_client.initiate_auth(
             ClientId=client_id,
             AuthFlow="USER_PASSWORD_AUTH",
-            AuthParameters={"USERNAME": "testuser", "PASSWORD": "MyPassword123!"  # pragma: allowlist secret},
+            AuthParameters={"USERNAME": "testuser", "PASSWORD": "MyPassword123!"},  # pragma: allowlist secret
         )
         bearer_token = auth_response["AuthenticationResult"]["AccessToken"]
 

@@ -50,7 +50,7 @@ def setup_cognito_user_pool():
         auth_response = cognito_client.initiate_auth(
             ClientId=client_id,
             AuthFlow="USER_PASSWORD_AUTH",
-            AuthParameters={"USERNAME": "testuser", "PASSWORD": "MyPassword123!"  # pragma: allowlist secret},
+            AuthParameters={"USERNAME": "testuser", "PASSWORD": "MyPassword123!"},  # pragma: allowlist secret
         )
         bearer_token = auth_response["AuthenticationResult"]["AccessToken"]
 
