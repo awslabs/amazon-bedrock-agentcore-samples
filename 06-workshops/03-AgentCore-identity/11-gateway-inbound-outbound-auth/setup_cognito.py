@@ -35,9 +35,7 @@ def setup_cognito():
     domain_prefix = f"gateway-demo-{pool_id.split('_')[1].lower()}"
     print(f"Creating Cognito domain '{domain_prefix}'...")
     cognito.create_user_pool_domain(UserPoolId=pool_id, Domain=domain_prefix)
-    token_endpoint = (
-        f"https://{domain_prefix}.auth.{region}.amazoncognito.com/oauth2/token"
-    )
+    token_endpoint = f"https://{domain_prefix}.auth.{region}.amazoncognito.com/oauth2/token"
     print(f"  Token endpoint: {token_endpoint}")
 
     # Resource server (required for client_credentials scopes)
@@ -96,10 +94,7 @@ def setup_cognito():
     )
     _ = auth["AuthenticationResult"]["AccessToken"]
 
-    discovery_url = (
-        f"https://cognito-idp.{region}.amazonaws.com/{pool_id}"
-        "/.well-known/openid-configuration"
-    )
+    discovery_url = f"https://cognito-idp.{region}.amazonaws.com/{pool_id}/.well-known/openid-configuration"
 
     config = {
         "pool_id": pool_id,

@@ -175,14 +175,9 @@ def setup_cognito_user_pool(pool_name: str = None) -> dict:
         Password=password,
         Permanent=True,
     )
-    print(
-        f"  Test user created: {username} / {password}"
-    )  # codeql[py/clear-text-logging-sensitive-data]
+    print(f"  Test user created: {username} / {password}")  # codeql[py/clear-text-logging-sensitive-data]
 
-    discovery_url = (
-        f"https://cognito-idp.{REGION}.amazonaws.com/{user_pool_id}"
-        "/.well-known/openid-configuration"
-    )
+    discovery_url = f"https://cognito-idp.{REGION}.amazonaws.com/{user_pool_id}/.well-known/openid-configuration"
 
     return {
         "user_pool_id": user_pool_id,
@@ -234,9 +229,7 @@ def create_execution_role() -> str:
             {
                 "Effect": "Allow",
                 "Action": ["logs:DescribeLogStreams", "logs:CreateLogGroup"],
-                "Resource": [
-                    f"arn:aws:logs:{REGION}:{ACCOUNT_ID}:log-group:/aws/bedrock-agentcore/runtimes/*"
-                ],
+                "Resource": [f"arn:aws:logs:{REGION}:{ACCOUNT_ID}:log-group:/aws/bedrock-agentcore/runtimes/*"],
             },
             {
                 "Effect": "Allow",
@@ -259,9 +252,7 @@ def create_execution_role() -> str:
                 "Effect": "Allow",
                 "Action": ["cloudwatch:PutMetricData"],
                 "Resource": "*",
-                "Condition": {
-                    "StringEquals": {"cloudwatch:namespace": "bedrock-agentcore"}
-                },
+                "Condition": {"StringEquals": {"cloudwatch:namespace": "bedrock-agentcore"}},
             },
             {
                 "Effect": "Allow",
@@ -364,11 +355,7 @@ def build_and_upload_zip() -> str:
         try:
             s3.create_bucket(
                 Bucket=S3_BUCKET,
-                **(
-                    {"CreateBucketConfiguration": {"LocationConstraint": REGION}}
-                    if REGION != "us-east-1"
-                    else {}
-                ),
+                **({"CreateBucketConfiguration": {"LocationConstraint": REGION}} if REGION != "us-east-1" else {}),
             )
         except (
             s3.exceptions.BucketAlreadyOwnedByYou,
@@ -389,9 +376,7 @@ def build_and_upload_zip() -> str:
 # ── Step 4: Create AgentCore Runtime with inbound auth ─────────────────────────
 
 
-def create_runtime_with_inbound_auth(
-    role_arn: str, s3_uri: str, cognito_config: dict
-) -> dict:
+def create_runtime_with_inbound_auth(role_arn: str, s3_uri: str, cognito_config: dict) -> dict:
     """Create AgentCore Runtime configured for Cognito JWT inbound auth."""
     control = boto3.client("bedrock-agentcore-control", region_name=REGION)
 
@@ -497,9 +482,7 @@ def cleanup(state: dict):
             pool_info = cognito.describe_user_pool(UserPoolId=state["user_pool_id"])
             domain = pool_info["UserPool"].get("Domain", "")
             if domain:
-                cognito.delete_user_pool_domain(
-                    UserPoolId=state["user_pool_id"], Domain=domain
-                )
+                cognito.delete_user_pool_domain(UserPoolId=state["user_pool_id"], Domain=domain)
             cognito.delete_user_pool(UserPoolId=state["user_pool_id"])
             print(f"  Deleted Cognito pool: {state['user_pool_id']}")
         except Exception as e:
@@ -565,9 +548,7 @@ def main():
 
         # ── 4. Create runtime with inbound auth ──────────────────────────────
         print("\n=== Step 4: Creating AgentCore Runtime with Inbound Auth ===")
-        runtime_info = create_runtime_with_inbound_auth(
-            role_arn, s3_uri, cognito_config
-        )
+        runtime_info = create_runtime_with_inbound_auth(role_arn, s3_uri, cognito_config)
         runtime_arn = runtime_info["runtime_arn"]
 
         state = {

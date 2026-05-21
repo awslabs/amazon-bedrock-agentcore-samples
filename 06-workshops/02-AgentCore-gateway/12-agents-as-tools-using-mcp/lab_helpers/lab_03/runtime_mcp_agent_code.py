@@ -114,12 +114,8 @@ def get_code_interpreter_from_ssm():
     WORKSHOP_NAME = "aiml301_sre_agentcore"
 
     try:
-        interpreter_id = ssm.get_parameter(
-            Name=f"/{WORKSHOP_NAME}/lab-03/code-interpreter-id"
-        )["Parameter"]["Value"]
-        interpreter_arn = ssm.get_parameter(
-            Name=f"/{WORKSHOP_NAME}/lab-03/code-interpreter-arn"
-        )["Parameter"]["Value"]
+        interpreter_id = ssm.get_parameter(Name=f"/{WORKSHOP_NAME}/lab-03/code-interpreter-id")["Parameter"]["Value"]
+        interpreter_arn = ssm.get_parameter(Name=f"/{WORKSHOP_NAME}/lab-03/code-interpreter-arn")["Parameter"]["Value"]
         logger.info(f"✅ Retrieved code interpreter from SSM: {interpreter_id}")
         return interpreter_id, interpreter_arn
     except Exception as e:
@@ -245,9 +241,7 @@ def execute_remediation_code(session_id: str, code: str) -> Dict:
 def execute_remediation_step(remediation_code: str) -> str:
     """Execute remediation steps"""
     try:
-        logger.info(
-            f"🔧 execute_remediation_step called with code length: {len(remediation_code)}"
-        )
+        logger.info(f"🔧 execute_remediation_step called with code length: {len(remediation_code)}")
 
         if not initialize_code_interpreter_client():
             logger.error("❌ Code interpreter client not available")
@@ -299,15 +293,11 @@ except Exception as e:
             response += execution_result["output"]
             response += "\n```\n"
 
-            logger.info(
-                f"✅ Execution successful, output length: {len(execution_result['output'])}"
-            )
+            logger.info(f"✅ Execution successful, output length: {len(execution_result['output'])}")
             return response
 
         except Exception as e:
-            logger.error(
-                f"❌ Execution exception: {type(e).__name__}: {str(e)}", exc_info=True
-            )
+            logger.error(f"❌ Execution exception: {type(e).__name__}: {str(e)}", exc_info=True)
             return f"❌ remediation plan execution failed: {str(e)}"
         finally:
             logger.info(f"🛑 Stopping session: {session_id}")
@@ -376,9 +366,7 @@ def validate_remediation_environment() -> str:
         for check, status in validation_results.items():
             status_icon = "✅" if status else "❌"
             check_name = check.replace("_", " ").title()
-            response += (
-                f"- **{check_name}**: {status_icon} {'PASS' if status else 'FAIL'}\n"
-            )
+            response += f"- **{check_name}**: {status_icon} {'PASS' if status else 'FAIL'}\n"
 
         if validation_results["environment_ready"]:
             response += "\n🎉 **Environment is READY for remediation**\n"
@@ -419,9 +407,7 @@ def persist_remediation_scripts_to_s3(file_key: str, content: str) -> dict:
         s3_client = get_boto3_client("s3")
 
         # Write to S3
-        s3_client.put_object(
-            Bucket=bucket_name, Key=file_key, Body=content.encode("utf-8")
-        )
+        s3_client.put_object(Bucket=bucket_name, Key=file_key, Body=content.encode("utf-8"))
 
         # Generate S3 URL
         s3_url = f"s3://{bucket_name}/{file_key}"
@@ -459,9 +445,7 @@ def read_remediation_scripts_from_s3(prefix: str = "") -> dict:
     max_files = 100
 
     try:
-        logger.info(
-            f"🔧 read_remediation_scripts_from_s3 called with prefix='{prefix}'"
-        )
+        logger.info(f"🔧 read_remediation_scripts_from_s3 called with prefix='{prefix}'")
         logger.info(f"📦 Reading from bucket: {bucket_name}, region: {region}")
 
         s3_client = get_boto3_client("s3")
@@ -524,9 +508,7 @@ def read_remediation_scripts_from_s3(prefix: str = "") -> dict:
                 logger.info(f"✅ Read file: {file_key} ({obj['Size']} bytes)")
             except Exception as file_error:
                 # If a file can't be read, include error info but continue
-                logger.error(
-                    f"❌ Failed to read {file_key}: {type(file_error).__name__}: {str(file_error)}"
-                )
+                logger.error(f"❌ Failed to read {file_key}: {type(file_error).__name__}: {str(file_error)}")
                 files_data.append(
                     {
                         "key": file_key,
@@ -537,9 +519,7 @@ def read_remediation_scripts_from_s3(prefix: str = "") -> dict:
                     }
                 )
 
-        logger.info(
-            f"✅ Successfully read {len(files_data)} files, total size: {total_size} bytes"
-        )
+        logger.info(f"✅ Successfully read {len(files_data)} files, total size: {total_size} bytes")
         result = {
             "success": True,
             "message": f"Successfully read {len(files_data)} files from S3",
@@ -553,9 +533,7 @@ def read_remediation_scripts_from_s3(prefix: str = "") -> dict:
         return {
             "status": "success",
             "content": [
-                {
-                    "text": f"✓ Read {len(files_data)} files from s3://{bucket_name}/{prefix}"
-                },
+                {"text": f"✓ Read {len(files_data)} files from s3://{bucket_name}/{prefix}"},
                 {"json": result},
             ],
         }
@@ -729,9 +707,7 @@ logger.info(f"🔍 MCP server type: {type(mcp)}")
 
 
 @mcp.tool()
-def infrastructure_agent(
-    action_type: Literal["only_plan", "only_execute"], remediation_query: str
-):
+def infrastructure_agent(action_type: Literal["only_plan", "only_execute"], remediation_query: str):
     """Execute infrastructure remediation and AWS service operations using AgentCore Code Interpreter
 
     Primary tool for ALL AWS infrastructure queries, checks, and actions. Creates remediation plans or executes fixes for AWS infrastructure issues. Plans are saved to S3 for approval. Execution uses secure sandboxed environment with automatic rollback on failure.
@@ -754,9 +730,7 @@ def infrastructure_agent(
         Plan summary with S3 location (only_plan) or execution results with validation (only_execute)
     """
     try:
-        logger.info(
-            f"🔧 remediation_agent called with action_type={action_type}, query={remediation_query}"
-        )
+        logger.info(f"🔧 remediation_agent called with action_type={action_type}, query={remediation_query}")
 
         if not initialize_code_interpreter_client():
             logger.error("❌ Failed to initialize code interpreter client")
@@ -764,9 +738,7 @@ def infrastructure_agent(
 
         logger.info("✅ Code interpreter client initialized")
         boto_session = get_boto3_session()
-        model = BedrockModel(
-            model_id=MODEL_ID, streaming=True, boto_session=boto_session
-        )
+        model = BedrockModel(model_id=MODEL_ID, streaming=True, boto_session=boto_session)
         logger.info(f"✅ Bedrock model initialized: {MODEL_ID}")
 
         if action_type == "only_plan":
@@ -858,9 +830,7 @@ After all the remediation and troubleshooting steps are completed, provide the b
         return return_text
 
     except Exception as e:
-        logger.error(
-            f"❌ remediation_agent failed: {type(e).__name__}: {str(e)}", exc_info=True
-        )
+        logger.error(f"❌ remediation_agent failed: {type(e).__name__}: {str(e)}", exc_info=True)
         return f"Error: {type(e).__name__}: {str(e)}"
 
 

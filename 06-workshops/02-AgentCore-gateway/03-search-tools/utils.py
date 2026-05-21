@@ -5,9 +5,7 @@ from typing import Dict, List, Optional, Union
 import boto3
 from botocore.exceptions import ClientError
 
-LAMBDA_EXECUTION_ROLE_POLICY = (
-    "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
-)
+LAMBDA_EXECUTION_ROLE_POLICY = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 LAMBDA_RUNTIME = "python3.12"
 LAMBDA_HANDLER = "lambda_function_code.lambda_handler"
 LAMBDA_PACKAGE_TYPE = "Zip"
@@ -48,9 +46,7 @@ COGNITO_DEFAULT_PASSWORD = "MyPassword123!"  # pragma: allowlist secret
 
 COGNITO_AUTH_FLOWS = ["ALLOW_USER_PASSWORD_AUTH", "ALLOW_REFRESH_TOKEN_AUTH"]
 
-COGNITO_PASSWORD_POLICY = {
-    "PasswordPolicy": {"MinimumLength": COGNITO_PASSWORD_MIN_LENGTH}
-}
+COGNITO_PASSWORD_POLICY = {"PasswordPolicy": {"MinimumLength": COGNITO_PASSWORD_MIN_LENGTH}}
 
 
 def _format_error_message(error: ClientError) -> str:
@@ -88,9 +84,7 @@ def _create_or_get_iam_role(iam_client, role_name: str) -> str:
             raise error
 
 
-def _create_or_get_lambda_function(
-    lambda_client, function_name: str, role_arn: str, code: bytes
-) -> str:
+def _create_or_get_lambda_function(lambda_client, function_name: str, role_arn: str, code: bytes) -> str:
     """Create Lambda function or return existing function ARN."""
     try:
         print("Creating lambda function")
@@ -109,17 +103,13 @@ def _create_or_get_lambda_function(
         if error.response["Error"]["Code"] == "ResourceConflictException":
             response = lambda_client.get_function(FunctionName=function_name)
             lambda_arn = response["Configuration"]["FunctionArn"]
-            print(
-                f"AWS Lambda function {function_name} already exists. Using the same ARN {lambda_arn}"
-            )
+            print(f"AWS Lambda function {function_name} already exists. Using the same ARN {lambda_arn}")
             return lambda_arn
         else:
             raise error
 
 
-def create_gateway_lambda(
-    lambda_function_code_path: str, lambda_function_name: str
-) -> Dict[str, Union[str, int]]:
+def create_gateway_lambda(lambda_function_code_path: str, lambda_function_name: str) -> Dict[str, Union[str, int]]:
     """Create AWS Lambda function with IAM role for AgentCore Gateway.
 
     Args:
@@ -167,9 +157,7 @@ def create_gateway_lambda(
 def _create_cognito_user_pool(cognito_client, pool_name: str) -> str:
     """Create Cognito User Pool and return pool ID."""
     print(f"Creating Cognito User Pool: {pool_name}")
-    response = cognito_client.create_user_pool(
-        PoolName=pool_name, Policies=COGNITO_PASSWORD_POLICY
-    )
+    response = cognito_client.create_user_pool(PoolName=pool_name, Policies=COGNITO_PASSWORD_POLICY)
     pool_id = response["UserPool"]["Id"]
     print(f"User Pool created with ID: {pool_id}")
     return pool_id
@@ -214,9 +202,7 @@ def _create_cognito_user(
     )
 
 
-def _authenticate_user(
-    cognito_client, client_id: str, username: str, password: str
-) -> str:
+def _authenticate_user(cognito_client, client_id: str, username: str, password: str) -> str:
     """Authenticate user and return access token."""
     print(f"Authenticating user: {username}")
     auth_response = cognito_client.initiate_auth(
@@ -227,9 +213,7 @@ def _authenticate_user(
     return auth_response["AuthenticationResult"]["AccessToken"]
 
 
-def get_bearer_token(
-    client_id: str, username: str, password: str, region: Optional[str] = None
-) -> Optional[str]:
+def get_bearer_token(client_id: str, username: str, password: str, region: Optional[str] = None) -> Optional[str]:
     """Get bearer token from existing Cognito User Pool.
 
     Args:
@@ -357,9 +341,7 @@ def create_gateway_iam_role(
                 print(f"Updated policy for existing role: {role_arn}")
 
             except ClientError as policy_error:
-                print(
-                    f"Warning: Could not update policy: {_format_error_message(policy_error)}"
-                )
+                print(f"Warning: Could not update policy: {_format_error_message(policy_error)}")
 
             return role_arn
         else:
@@ -432,9 +414,7 @@ def delete_gateway_lambda(lambda_function_arn: str) -> bool:
             if role_error.response["Error"]["Code"] == "NoSuchEntity":
                 print(f"IAM role {role_name} not found, skipping")
             else:
-                print(
-                    f"Warning: Could not delete IAM role: {_format_error_message(role_error)}"
-                )
+                print(f"Warning: Could not delete IAM role: {_format_error_message(role_error)}")
 
         return True
 
@@ -543,9 +523,7 @@ def delete_cognito_user_pool(
             if user_error.response["Error"]["Code"] == "UserNotFoundException":
                 print(f"User {username} not found, skipping")
             else:
-                print(
-                    f"Warning: Could not delete user: {_format_error_message(user_error)}"
-                )
+                print(f"Warning: Could not delete user: {_format_error_message(user_error)}")
 
         # Delete User Pool (this will also delete app clients)
         print(f"Deleting User Pool: {pool_name}")
@@ -591,9 +569,7 @@ def setup_cognito_user_pool(
         pool_id = _create_cognito_user_pool(cognito_client, pool_name)
         client_id = _create_cognito_app_client(cognito_client, pool_id, client_name)
 
-        _create_cognito_user(
-            cognito_client, pool_id, username, temp_password, permanent_password
-        )
+        _create_cognito_user(cognito_client, pool_id, username, temp_password, permanent_password)
 
         discovery_url = f"https://cognito-idp.{region}.amazonaws.com/{pool_id}/.well-known/openid-configuration"
 

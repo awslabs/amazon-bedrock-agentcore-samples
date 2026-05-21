@@ -38,9 +38,7 @@ def setup_cognito():
     domain_prefix = "m2m-demo-" + re.sub(r"[^a-z0-9]", "-", pool_id.lower())[:18]
     print(f"Creating Cognito domain '{domain_prefix}'...")
     cognito.create_user_pool_domain(Domain=domain_prefix, UserPoolId=pool_id)
-    token_endpoint = (
-        f"https://{domain_prefix}.auth.{region}.amazoncognito.com/oauth2/token"
-    )
+    token_endpoint = f"https://{domain_prefix}.auth.{region}.amazoncognito.com/oauth2/token"
     print(f"  Token endpoint: {token_endpoint}")
 
     # Resource server defines the scopes the machine client can request
@@ -97,10 +95,7 @@ def setup_cognito():
         AuthParameters={"USERNAME": USERNAME, "PASSWORD": PASSWORD},
     )
 
-    discovery_url = (
-        f"https://cognito-idp.{region}.amazonaws.com/{pool_id}"
-        "/.well-known/openid-configuration"
-    )
+    discovery_url = f"https://cognito-idp.{region}.amazonaws.com/{pool_id}/.well-known/openid-configuration"
 
     config = {
         "pool_id": pool_id,

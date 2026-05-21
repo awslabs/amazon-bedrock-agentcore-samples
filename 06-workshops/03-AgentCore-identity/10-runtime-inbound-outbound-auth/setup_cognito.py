@@ -63,10 +63,7 @@ def setup_cognito():
     )
     _ = auth["AuthenticationResult"]["AccessToken"]
 
-    discovery_url = (
-        f"https://cognito-idp.{region}.amazonaws.com/{pool_id}"
-        "/.well-known/openid-configuration"
-    )
+    discovery_url = f"https://cognito-idp.{region}.amazonaws.com/{pool_id}/.well-known/openid-configuration"
 
     config = {
         "pool_id": pool_id,

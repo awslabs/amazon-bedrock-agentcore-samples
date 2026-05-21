@@ -44,11 +44,7 @@ def handler(event, context):
     # VPC ENIs can take a few seconds to initialize on cold start, causing
     # "[Errno 16] Device or resource busy" errors on the first network call.
     sm = boto3.client("secretsmanager")
-    secret_value = json.loads(
-        _retry_on_eni_busy(lambda: sm.get_secret_value(SecretId=secret_id))[
-            "SecretString"
-        ]
-    )
+    secret_value = json.loads(_retry_on_eni_busy(lambda: sm.get_secret_value(SecretId=secret_id))["SecretString"])
     admin_password = secret_value["adminPassword"]
 
     try:
@@ -69,9 +65,7 @@ def handler(event, context):
             )
         else:
             # Delete — nothing to tear down
-            send_response(
-                response_url, "SUCCESS", stack_id, request_id, logical_id, physical_id
-            )
+            send_response(response_url, "SUCCESS", stack_id, request_id, logical_id, physical_id)
     except Exception as e:
         logger.exception("Configuration failed")
         send_response(
@@ -98,9 +92,7 @@ def _retry_on_eni_busy(fn, max_attempts=6, delay=5):
         except OSError as e:
             if attempt == max_attempts - 1:
                 raise
-            logger.warning(
-                f"VPC ENI not ready (attempt {attempt + 1}/{max_attempts}): {e}"
-            )
+            logger.warning(f"VPC ENI not ready (attempt {attempt + 1}/{max_attempts}): {e}")
             time.sleep(delay)
 
 
@@ -122,9 +114,7 @@ def configure_pingfederate(admin_url, admin_user, admin_password, base_url):
             break
         except Exception:
             if i == max_attempts - 1:
-                raise TimeoutError(
-                    f"PingFederate not ready after {max_attempts} attempts"
-                )
+                raise TimeoutError(f"PingFederate not ready after {max_attempts} attempts")
             time.sleep(5)
 
     # 1. Generate signing key pair

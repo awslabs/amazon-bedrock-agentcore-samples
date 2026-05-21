@@ -30,13 +30,9 @@ from boto3.session import Session
 boto_session = Session()
 AWS_REGION = boto_session.region_name
 
-registry_client = boto_session.client(
-    "bedrock-agentcore-control", region_name=AWS_REGION
-)
+registry_client = boto_session.client("bedrock-agentcore-control", region_name=AWS_REGION)
 
-REGISTRY_SEARCH_ENDPOINT = (
-    f"https://bedrock-agentcore.{AWS_REGION}.amazonaws.com/registry-records/search"
-)
+REGISTRY_SEARCH_ENDPOINT = f"https://bedrock-agentcore.{AWS_REGION}.amazonaws.com/registry-records/search"
 
 print(f"Session ready | Region: {AWS_REGION}")
 
@@ -57,9 +53,7 @@ class C:
 
 def wait_for_record_draft(registry_id, record_id, interval=3):
     while True:
-        resp = registry_client.get_registry_record(
-            registryId=registry_id, recordId=record_id
-        )
+        resp = registry_client.get_registry_record(registryId=registry_id, recordId=record_id)
         status = resp["status"]
         if status == "DRAFT":
             return resp
@@ -111,10 +105,7 @@ else:
     )
     print(f"  {C.GREEN}✅ User pool created{C.RESET}")
 
-discovery_url = (
-    f"https://cognito-idp.{AWS_REGION}.amazonaws.com/{user_pool_id}"
-    "/.well-known/openid-configuration"
-)
+discovery_url = f"https://cognito-idp.{AWS_REGION}.amazonaws.com/{user_pool_id}/.well-known/openid-configuration"
 print(f"  {C.BOLD}Pool ID:{C.RESET}       {C.CYAN}{user_pool_id}{C.RESET}")
 print(f"  {C.BOLD}Discovery URL:{C.RESET}  {C.CYAN}{discovery_url}{C.RESET}")
 
@@ -223,9 +214,7 @@ mcp_tool_schema = json.dumps(
                 "description": "Get current weather for a city",
                 "inputSchema": {
                     "type": "object",
-                    "properties": {
-                        "city": {"type": "string", "description": "City name"}
-                    },
+                    "properties": {"city": {"type": "string", "description": "City name"}},
                     "required": ["city"],
                 },
             },
@@ -279,21 +268,13 @@ print(f"\n{C.BOLD}=== Registry Records ==={C.RESET}")
 print(f"Found {len(records_response['registryRecords'])} record(s):\n")
 for rec in records_response["registryRecords"]:
     status = rec["status"]
-    sc = (
-        C.GREEN
-        if status == "APPROVED"
-        else C.YELLOW
-        if status in ("DRAFT", "PENDING_APPROVAL")
-        else C.RED
-    )
+    sc = C.GREEN if status == "APPROVED" else C.YELLOW if status in ("DRAFT", "PENDING_APPROVAL") else C.RED
     print(
         f"  {sc}[{status}]{C.RESET} {rec['name']} | {C.CYAN}{rec['descriptorType']}{C.RESET} | {C.DIM}{rec['recordId']}{C.RESET}"
     )
 
 # Approve record
-registry_client.submit_registry_record_for_approval(
-    registryId=REGISTRY_ID, recordId=MCP_RECORD_ID
-)
+registry_client.submit_registry_record_for_approval(registryId=REGISTRY_ID, recordId=MCP_RECORD_ID)
 print(f"  {C.YELLOW}⏳ MCP record → PENDING_APPROVAL{C.RESET}")
 
 registry_client.update_registry_record_status(
@@ -305,26 +286,14 @@ registry_client.update_registry_record_status(
 print(f"  {C.GREEN}✅ MCP record → APPROVED{C.RESET}")
 
 # Verify record status
-record_response = registry_client.get_registry_record(
-    registryId=REGISTRY_ID, recordId=MCP_RECORD_ID
-)
+record_response = registry_client.get_registry_record(registryId=REGISTRY_ID, recordId=MCP_RECORD_ID)
 status = record_response["status"]
-sc = (
-    C.GREEN
-    if status == "APPROVED"
-    else C.YELLOW
-    if status in ("DRAFT", "PENDING_APPROVAL")
-    else C.RED
-)
+sc = C.GREEN if status == "APPROVED" else C.YELLOW if status in ("DRAFT", "PENDING_APPROVAL") else C.RED
 print(f"\n{C.BOLD}=== Record Details ==={C.RESET}")
 print(f"  {C.BOLD}Name:{C.RESET}      {C.CYAN}{record_response['name']}{C.RESET}")
-print(
-    f"  {C.BOLD}Protocol:{C.RESET}   {C.CYAN}{record_response['descriptorType']}{C.RESET}"
-)
+print(f"  {C.BOLD}Protocol:{C.RESET}   {C.CYAN}{record_response['descriptorType']}{C.RESET}")
 print(f"  {C.BOLD}Status:{C.RESET}     {sc}{status}{C.RESET}")
-print(
-    f"  {C.BOLD}Version:{C.RESET}    {C.CYAN}{record_response['recordVersion']}{C.RESET}"
-)
+print(f"  {C.BOLD}Version:{C.RESET}    {C.CYAN}{record_response['recordVersion']}{C.RESET}")
 
 # ── 4. Authenticate and obtain access token ───────────────────────────────────
 print(f"\n{C.BOLD}=== 4. Authenticate and Obtain Access Token ==={C.RESET}")
@@ -349,9 +318,7 @@ except Exception as e:
 print(f"\n{C.BOLD}=== 5. Perform Authenticated Search ==={C.RESET}")
 
 
-def search_registry_records(
-    access_token, search_query, registry_identifiers, max_results=10
-):
+def search_registry_records(access_token, search_query, registry_identifiers, max_results=10):
     headers = {
         "Content-Type": "application/json",
         "Authorization": f"Bearer {access_token}",
@@ -361,9 +328,7 @@ def search_registry_records(
         "registryIds": registry_identifiers,
         "maxResults": max_results,
     }
-    response = requests.post(
-        REGISTRY_SEARCH_ENDPOINT, headers=headers, json=payload, timeout=30
-    )
+    response = requests.post(REGISTRY_SEARCH_ENDPOINT, headers=headers, json=payload, timeout=30)
     return response.json()
 
 
@@ -420,9 +385,7 @@ print(f"\n{C.BOLD}=== 6. Cleanup ==={C.RESET}")
 # Delete registry records
 records = registry_client.list_registry_records(registryId=REGISTRY_ID)
 for rec in records.get("registryRecords", []):
-    registry_client.delete_registry_record(
-        registryId=REGISTRY_ID, recordId=rec["recordId"]
-    )
+    registry_client.delete_registry_record(registryId=REGISTRY_ID, recordId=rec["recordId"])
     print(f"  {C.GREEN}✅ Deleted record: {C.DIM}{rec['recordId']}{C.RESET}")
 
 registry_client.delete_registry(registryId=REGISTRY_ID)
