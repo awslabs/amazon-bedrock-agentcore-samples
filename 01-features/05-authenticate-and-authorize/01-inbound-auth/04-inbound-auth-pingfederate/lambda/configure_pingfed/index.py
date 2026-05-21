@@ -19,7 +19,7 @@ logger.setLevel(logging.INFO)
 
 # PingFederate configuration constants
 CLIENT_ID = "agentcore-client"
-CLIENT_SECRET = "agentcore-test-secret-12345"
+CLIENT_SECRET = os.environ.get("PINGFED_CLIENT_SECRET", "agentcore-test-secret-12345")  # pragma: allowlist secret
 ATM_ID = "agentcoreJwtAtm"
 OIDC_POLICY_ID = "agentcoreOidcPolicy"
 SIGNING_KEY_ID = "agentcore-signing-key"

@@ -14,8 +14,8 @@ from boto3.session import Session
 
 POOL_NAME = "GatewayAuthDemoPool"
 USERNAME = "testuser"
-PASSWORD = "AgentCoreTest1!"
-TEMP_PASSWORD = "TempPass123!"
+PASSWORD = "AgentCoreTest1!"  # pragma: allowlist secret
+TEMP_PASSWORD = "TempPass123!"  # pragma: allowlist secret
 
 
 def setup_cognito():

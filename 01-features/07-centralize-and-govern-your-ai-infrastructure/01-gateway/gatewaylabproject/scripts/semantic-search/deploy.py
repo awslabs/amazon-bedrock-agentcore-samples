@@ -53,8 +53,8 @@ RESTAURANT_LAMBDA_NAME = "restaurant_lambda_gateway"
 COGNITO_POOL_NAME = "MCPServerPool"
 COGNITO_CLIENT_NAME = "MCPServerPoolClient"
 COGNITO_USERNAME = "testuser"
-COGNITO_TEMP_PASSWORD = "Temp123!"
-COGNITO_PASSWORD = "MyPassword123!"
+COGNITO_TEMP_PASSWORD = "Temp123!"  # pragma: allowlist secret
+COGNITO_PASSWORD = "MyPassword123!"  # pragma: allowlist secret
 
 LAMBDA_RUNTIME = "python3.12"
 LAMBDA_HANDLER = "lambda_function_code.lambda_handler"

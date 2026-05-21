@@ -16,8 +16,8 @@ from boto3.session import Session
 
 POOL_NAME = "M2MAuthCodeDemoPool"
 USERNAME = "testuser"
-PASSWORD = "AgentCoreTest1!"
-TEMP_PASSWORD = "TempPass123!"
+PASSWORD = "AgentCoreTest1!"  # pragma: allowlist secret
+TEMP_PASSWORD = "TempPass123!"  # pragma: allowlist secret
 RESOURCE_SERVER_ID = "https://api.m2m-demo.internal"
 
 

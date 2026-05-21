@@ -140,7 +140,7 @@ print(f"  {C.BOLD}Client ID:{C.RESET}  {C.CYAN}{client_id}{C.RESET}")
 
 # 1.3 Create test user
 TEST_USERNAME = "testuser"
-TEST_PASSWORD = "TempPass123!"
+TEST_PASSWORD = "TempPass123!"  # pragma: allowlist secret
 
 try:
     cognito.admin_create_user(

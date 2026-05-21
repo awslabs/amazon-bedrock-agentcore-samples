@@ -243,7 +243,7 @@ def get_or_create_cognito_pool(refresh_token=False):
         cognito_client.admin_create_user(
             UserPoolId=pool_id,
             Username=username,
-            TemporaryPassword="Temp123!",
+            TemporaryPassword="Temp123!"  # pragma: allowlist secret,
             MessageAction="SUPPRESS",
         )
 
@@ -251,7 +251,7 @@ def get_or_create_cognito_pool(refresh_token=False):
         cognito_client.admin_set_user_password(
             UserPoolId=pool_id,
             Username=username,
-            Password="MyPassword123!",
+            Password="MyPassword123!"  # pragma: allowlist secret,
             Permanent=True,
         )
 
@@ -267,7 +267,7 @@ def get_or_create_cognito_pool(refresh_token=False):
             AuthFlow="USER_PASSWORD_AUTH",
             AuthParameters={
                 "USERNAME": username,
-                "PASSWORD": "MyPassword123!",
+                "PASSWORD": "MyPassword123!"  # pragma: allowlist secret,
                 "SECRET_HASH": secret_hash,
             },
         )
@@ -379,7 +379,7 @@ def reauthenticate_user(client_id, client_secret):
         AuthFlow="USER_PASSWORD_AUTH",
         AuthParameters={
             "USERNAME": username,
-            "PASSWORD": "MyPassword123!",
+            "PASSWORD": "MyPassword123!"  # pragma: allowlist secret,
             "SECRET_HASH": secret_hash,
         },
     )

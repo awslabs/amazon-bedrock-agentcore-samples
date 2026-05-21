@@ -4,8 +4,8 @@ import time
 from boto3.session import Session
 
 USER_NAME = "testuser"
-PASSWORD = "MyPassword123!"
-TEMP_ADMIN_PASSWORD = "Temp123!"
+PASSWORD = "MyPassword123!"  # pragma: allowlist secret
+TEMP_ADMIN_PASSWORD = "Temp123!"  # pragma: allowlist secret
 
 
 def setup_cognito_user_pool(pool_name="MCPServerPool"):

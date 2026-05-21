@@ -153,7 +153,7 @@ def reauthenticate_user(client_id: str, client_secret: str) -> str:
         AuthFlow="USER_PASSWORD_AUTH",
         AuthParameters={
             "USERNAME": USERNAME,
-            "PASSWORD": "MyPassword123!",
+            "PASSWORD": "MyPassword123!"  # pragma: allowlist secret,
             "SECRET_HASH": secret_hash,
         },
     )
@@ -194,14 +194,14 @@ def setup_cognito_user_pool() -> Optional[Dict[str, str]]:
         cognito_client.admin_create_user(
             UserPoolId=pool_id,
             Username=USERNAME,
-            TemporaryPassword="Temp123!",
+            TemporaryPassword="Temp123!"  # pragma: allowlist secret,
             MessageAction="SUPPRESS",
         )
 
         cognito_client.admin_set_user_password(
             UserPoolId=pool_id,
             Username=USERNAME,
-            Password="MyPassword123!",
+            Password="MyPassword123!"  # pragma: allowlist secret,
             Permanent=True,
         )
 
@@ -217,7 +217,7 @@ def setup_cognito_user_pool() -> Optional[Dict[str, str]]:
             AuthFlow="USER_PASSWORD_AUTH",
             AuthParameters={
                 "USERNAME": USERNAME,
-                "PASSWORD": "MyPassword123!",
+                "PASSWORD": "MyPassword123!"  # pragma: allowlist secret,
                 "SECRET_HASH": secret_hash,
             },
         )

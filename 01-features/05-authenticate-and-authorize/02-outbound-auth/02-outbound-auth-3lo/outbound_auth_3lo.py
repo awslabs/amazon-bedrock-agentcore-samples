@@ -86,14 +86,14 @@ def setup_cognito():
     cognito.admin_create_user(
         UserPoolId=user_pool_id,
         Username="testuser",
-        TemporaryPassword="MyPassword123!",
+        TemporaryPassword="MyPassword123!"  # pragma: allowlist secret,
         UserAttributes=[{"Name": "email", "Value": "testuser@example.com"}],
         MessageAction="SUPPRESS",
     )
     cognito.admin_set_user_password(
         UserPoolId=user_pool_id,
         Username="testuser",
-        Password="MyPassword123!",
+        Password="MyPassword123!"  # pragma: allowlist secret,
         Permanent=True,
     )
 
@@ -118,7 +118,7 @@ def reauthenticate_user(client_id: str) -> str:
     cognito = boto3.client("cognito-idp", region_name=REGION)
     auth_resp = cognito.initiate_auth(
         AuthFlow="USER_PASSWORD_AUTH",
-        AuthParameters={"USERNAME": "testuser", "PASSWORD": "MyPassword123!"},
+        AuthParameters={"USERNAME": "testuser", "PASSWORD": "MyPassword123!"  # pragma: allowlist secret},
         ClientId=client_id,
     )
     return auth_resp["AuthenticationResult"]["AccessToken"]

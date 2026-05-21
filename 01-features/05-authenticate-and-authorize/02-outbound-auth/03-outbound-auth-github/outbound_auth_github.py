@@ -77,14 +77,14 @@ def setup_cognito() -> dict:
     cognito.admin_create_user(
         UserPoolId=user_pool_id,
         Username="testuser",
-        TemporaryPassword="MyPassword123!",
+        TemporaryPassword="MyPassword123!"  # pragma: allowlist secret,
         UserAttributes=[{"Name": "email", "Value": "testuser@example.com"}],
         MessageAction="SUPPRESS",
     )
     cognito.admin_set_user_password(
         UserPoolId=user_pool_id,
         Username="testuser",
-        Password="MyPassword123!",
+        Password="MyPassword123!"  # pragma: allowlist secret,
         Permanent=True,
     )
 

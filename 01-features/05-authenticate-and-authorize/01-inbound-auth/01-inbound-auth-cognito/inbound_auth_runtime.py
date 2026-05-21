@@ -159,7 +159,7 @@ def setup_cognito_user_pool(pool_name: str = None) -> dict:
 
     # Create test user
     username = "testuser"
-    password = "MyPassword123!"
+    password = "MyPassword123!"  # pragma: allowlist secret
     email = "testuser@example.com"
 
     cognito.admin_create_user(
