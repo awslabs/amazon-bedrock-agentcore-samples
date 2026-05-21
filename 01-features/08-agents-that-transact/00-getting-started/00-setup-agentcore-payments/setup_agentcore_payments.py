@@ -126,6 +126,38 @@ update_env_file(
 
 # ── Step 1 — Configure Environment ───────────────────────────────────────────
 print("\n── Step 1: Configure Environment ──")
+
+# Capture LINKED_EMAIL interactively if not already set in .env.
+# This email is used to:
+#   - Create the embedded wallet (linkedAccounts)
+#   - Log in to the wallet hub for funding and signing delegation
+# Use a real address you can receive mail at — the wallet provider may verify it.
+def _is_valid_email(s: str) -> bool:
+    s = s.strip()
+    return "@" in s and "." in s.split("@")[-1] and not s.startswith("<")
+
+current_email = os.environ.get("LINKED_EMAIL", "").strip()
+if (
+    not current_email
+    or current_email.startswith("<")
+    or current_email == "user@example.com"
+):
+    print()
+    print("  We need your email address to set up your embedded wallet.")
+    print("  This email is used to:")
+    print("    - create your wallet account")
+    print("    - log in to the wallet hub for funding and signing approval")
+    print("  Use a real address you can receive mail at — the wallet provider")
+    print("  may send a verification link.")
+    print()
+    while True:
+        entered = input("  Enter your email: ").strip()
+        if _is_valid_email(entered):
+            break
+        print(f"  '{entered}' does not look like a valid email address. Try again.")
+    update_env_file(ENV_FILE, {"LINKED_EMAIL": entered})
+    print(f"  ✓ Email saved to {os.path.basename(ENV_FILE)}")
+
 load_dotenv(ENV_FILE, override=True)
 
 CREDENTIAL_PROVIDER_TYPE = os.environ.get("CREDENTIAL_PROVIDER_TYPE", "CoinbaseCDP")
@@ -141,16 +173,6 @@ USER_ID = os.environ.get("USER_ID", "test-user-001")
 NETWORK = os.environ.get("NETWORK", "ETHEREUM")
 
 LINKED_EMAIL = os.environ.get("LINKED_EMAIL", "").strip()
-if (
-    not LINKED_EMAIL
-    or LINKED_EMAIL.startswith("<")
-    or LINKED_EMAIL == "user@example.com"
-):
-    raise ValueError(
-        "LINKED_EMAIL is not set in .env. "
-        "Set it to a real email address you can receive mail at, then re-run.\n"
-        "Example: LINKED_EMAIL=you@example.com"
-    )
 
 print(f"  Provider: {CREDENTIAL_PROVIDER_TYPE}")
 print(f"  Region:   {AWS_REGION}")
@@ -404,6 +426,8 @@ else:
     2. Log in with your LINKED_EMAIL.
     3. Choose Connect agent → Give access.
 """)
+
+input("  Press Enter when funding and delegation are complete... ")
 
 # ── Step 7c — Verify Wallet Balance (Optional) ───────────────────────────────
 chain = "BASE_SEPOLIA" if NETWORK == "ETHEREUM" else "SOLANA_DEVNET"
