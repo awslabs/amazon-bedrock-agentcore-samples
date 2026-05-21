@@ -31,7 +31,7 @@ Resources:
     Type: AWS::Cognito::UserPool
     Properties:
       UserPoolName: !Ref UserPoolName
-      MfaConfiguration: "OFF" # Disable MFA for demo purposes
+      MfaConfiguration: "OPTIONAL" # OPTIONAL allows MFA for users who configure it
       UsernameConfiguration:
         CaseSensitive: false
       UsernameAttributes:

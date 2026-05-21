@@ -113,6 +113,18 @@ Resources:
   
   GatewayAgentCoreRole:
     Type: AWS::IAM::Role
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: F3
+            reason: >-
+              Sample IAM policy allows broad actions for tutorial demonstration; restrict in production
+          - id: F38
+            reason: >-
+              Sample IAM role allows PassRole with * resource for tutorial clarity; scope to specific role ARNs in production
+          - id: W11
+            reason: >-
+              Sample IAM roles use broad permissions for tutorial clarity; scope down for production
     Properties:
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
