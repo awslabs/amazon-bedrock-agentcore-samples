@@ -72,15 +72,11 @@ def setup_cognito_user_pool(region, memory_id):
         id_token2 = auth_response2["AuthenticationResult"]["IdToken"]
 
         # Create Identity Pool federated with User Pool
-        identity_pool_info = create_cognito_identity_pool(
-            pool_id, client_id, region, memory_id
-        )
+        identity_pool_info = create_cognito_identity_pool(pool_id, client_id, region, memory_id)
 
         # Output the required values
         print(f"Pool id: {pool_id}")
-        print(
-            f"Discovery URL: https://cognito-idp.{region}.amazonaws.com/{pool_id}/.well-known/openid-configuration"
-        )
+        print(f"Discovery URL: https://cognito-idp.{region}.amazonaws.com/{pool_id}/.well-known/openid-configuration")
         print(f"Client ID: {client_id}")
         print(f"Identity Pool ID: {identity_pool_info['identity_pool_id']}")
         print(f"User 1 Bearer Token: {bearer_token1}")
@@ -133,12 +129,8 @@ def reauthenticate_users(client_id, region, users=None):
                 AuthFlow="USER_PASSWORD_AUTH",
                 AuthParameters={"USERNAME": username, "PASSWORD": password},
             )
-            result["access_tokens"][username] = auth_response["AuthenticationResult"][
-                "AccessToken"
-            ]
-            result["id_tokens"][username] = auth_response["AuthenticationResult"][
-                "IdToken"
-            ]
+            result["access_tokens"][username] = auth_response["AuthenticationResult"]["AccessToken"]
+            result["id_tokens"][username] = auth_response["AuthenticationResult"]["IdToken"]
             print(f"Successfully authenticated {username}")
         except Exception as e:
             print(f"Error authenticating {username}: {str(e)}")
@@ -213,9 +205,7 @@ def create_agentcore_role(agent_name, region):
             {
                 "Effect": "Allow",
                 "Action": ["logs:DescribeLogStreams", "logs:CreateLogGroup"],
-                "Resource": [
-                    f"arn:aws:logs:{region}:{account_id}:log-group:/aws/bedrock-agentcore/runtimes/*"
-                ],
+                "Resource": [f"arn:aws:logs:{region}:{account_id}:log-group:/aws/bedrock-agentcore/runtimes/*"],
             },
             {
                 "Effect": "Allow",
@@ -249,9 +239,7 @@ def create_agentcore_role(agent_name, region):
                 "Effect": "Allow",
                 "Resource": "*",
                 "Action": "cloudwatch:PutMetricData",
-                "Condition": {
-                    "StringEquals": {"cloudwatch:namespace": "bedrock-agentcore"}
-                },
+                "Condition": {"StringEquals": {"cloudwatch:namespace": "bedrock-agentcore"}},
             },
             {
                 "Sid": "GetAgentAccessToken",
@@ -293,9 +281,7 @@ def create_agentcore_role(agent_name, region):
                 "Action": "sts:AssumeRole",
                 "Condition": {
                     "StringEquals": {"aws:SourceAccount": f"{account_id}"},
-                    "ArnLike": {
-                        "aws:SourceArn": f"arn:aws:bedrock-agentcore:{region}:{account_id}:*"
-                    },
+                    "ArnLike": {"aws:SourceArn": f"arn:aws:bedrock-agentcore:{region}:{account_id}:*"},
                 },
             }
         ],
@@ -314,14 +300,10 @@ def create_agentcore_role(agent_name, region):
         time.sleep(10)
     except iam_client.exceptions.EntityAlreadyExistsException:
         print("Role already exists -- deleting and creating it again")
-        policies = iam_client.list_role_policies(
-            RoleName=agentcore_role_name, MaxItems=100
-        )
+        policies = iam_client.list_role_policies(RoleName=agentcore_role_name, MaxItems=100)
         print("policies:", policies)
         for policy_name in policies["PolicyNames"]:
-            iam_client.delete_role_policy(
-                RoleName=agentcore_role_name, PolicyName=policy_name
-            )
+            iam_client.delete_role_policy(RoleName=agentcore_role_name, PolicyName=policy_name)
         print(f"deleting {agentcore_role_name}")
         iam_client.delete_role(RoleName=agentcore_role_name)
         print(f"recreating {agentcore_role_name}")
@@ -376,9 +358,7 @@ def create_cognito_identity_pool(user_pool_id, client_id, region, memory_id="*")
 
     # Create a shorter, unique role name using just the last part of the identity pool ID
     # This ensures we stay under the 64 character limit
-    short_id = identity_pool_id.split(":")[-1][-12:].replace(
-        "-", ""
-    )  # Last 12 chars without dashes
+    short_id = identity_pool_id.split(":")[-1][-12:].replace("-", "")  # Last 12 chars without dashes
     authenticated_role_name = f"cognito_auth_{short_id}"
 
     # Create roles for authenticated users
@@ -402,14 +382,8 @@ def create_cognito_identity_pool(user_pool_id, client_id, region, memory_id="*")
                     "bedrock-agentcore:DeleteMemoryRecord",
                     "bedrock-agentcore:RetrieveMemoryRecords",
                 ],
-                "Resource": [
-                    f"arn:aws:bedrock-agentcore:{region}:{account_id}:memory/{memory_id}"
-                ],
-                "Condition": {
-                    "StringEquals": {
-                        "bedrock-agentcore:actorId": "${cognito-identity.amazonaws.com:sub}"
-                    }
-                },
+                "Resource": [f"arn:aws:bedrock-agentcore:{region}:{account_id}:memory/{memory_id}"],
+                "Condition": {"StringEquals": {"bedrock-agentcore:actorId": "${cognito-identity.amazonaws.com:sub}"}},
             },
             {
                 "Effect": "Allow",
@@ -427,12 +401,8 @@ def create_cognito_identity_pool(user_pool_id, client_id, region, memory_id="*")
                 "Principal": {"Federated": "cognito-identity.amazonaws.com"},
                 "Action": "sts:AssumeRoleWithWebIdentity",
                 "Condition": {
-                    "StringEquals": {
-                        "cognito-identity.amazonaws.com:aud": identity_pool_id
-                    },
-                    "ForAnyValue:StringLike": {
-                        "cognito-identity.amazonaws.com:amr": "authenticated"
-                    },
+                    "StringEquals": {"cognito-identity.amazonaws.com:aud": identity_pool_id},
+                    "ForAnyValue:StringLike": {"cognito-identity.amazonaws.com:amr": "authenticated"},
                 },
             }
         ],
@@ -453,9 +423,7 @@ def create_cognito_identity_pool(user_pool_id, client_id, region, memory_id="*")
             PolicyDocument=json.dumps(authenticated_policy_document),
         )
 
-        iam_client.attach_role_policy(
-            RoleName=authenticated_role_name, PolicyArn=auth_policy["Policy"]["Arn"]
-        )
+        iam_client.attach_role_policy(RoleName=authenticated_role_name, PolicyArn=auth_policy["Policy"]["Arn"])
     except iam_client.exceptions.EntityAlreadyExistsException:
         # Role already exists, get its ARN
         response = iam_client.get_role(RoleName=authenticated_role_name)

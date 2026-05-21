@@ -73,9 +73,7 @@ def setup_cognito_user_pool(region):
 
         # Output the required values
         print(f"Pool id: {pool_id}")
-        print(
-            f"Discovery URL: https://cognito-idp.{region}.amazonaws.com/{pool_id}/.well-known/openid-configuration"
-        )
+        print(f"Discovery URL: https://cognito-idp.{region}.amazonaws.com/{pool_id}/.well-known/openid-configuration")
         print(f"Client ID: {client_id}")
         print(f"User 1 Bearer Token: {bearer_token1}")
         print(f"User 2 Bearer Token: {bearer_token2}")
@@ -191,9 +189,7 @@ def create_agentcore_role(agent_name, region):
             {
                 "Effect": "Allow",
                 "Action": ["logs:DescribeLogStreams", "logs:CreateLogGroup"],
-                "Resource": [
-                    f"arn:aws:logs:{region}:{account_id}:log-group:/aws/bedrock-agentcore/runtimes/*"
-                ],
+                "Resource": [f"arn:aws:logs:{region}:{account_id}:log-group:/aws/bedrock-agentcore/runtimes/*"],
             },
             {
                 "Effect": "Allow",
@@ -227,9 +223,7 @@ def create_agentcore_role(agent_name, region):
                 "Effect": "Allow",
                 "Resource": "*",
                 "Action": "cloudwatch:PutMetricData",
-                "Condition": {
-                    "StringEquals": {"cloudwatch:namespace": "bedrock-agentcore"}
-                },
+                "Condition": {"StringEquals": {"cloudwatch:namespace": "bedrock-agentcore"}},
             },
             {
                 "Sid": "GetAgentAccessToken",
@@ -256,9 +250,7 @@ def create_agentcore_role(agent_name, region):
                 "Action": "sts:AssumeRole",
                 "Condition": {
                     "StringEquals": {"aws:SourceAccount": f"{account_id}"},
-                    "ArnLike": {
-                        "aws:SourceArn": f"arn:aws:bedrock-agentcore:{region}:{account_id}:*"
-                    },
+                    "ArnLike": {"aws:SourceArn": f"arn:aws:bedrock-agentcore:{region}:{account_id}:*"},
                 },
             }
         ],
@@ -277,14 +269,10 @@ def create_agentcore_role(agent_name, region):
         time.sleep(10)
     except iam_client.exceptions.EntityAlreadyExistsException:
         print("Role already exists -- deleting and creating it again")
-        policies = iam_client.list_role_policies(
-            RoleName=agentcore_role_name, MaxItems=100
-        )
+        policies = iam_client.list_role_policies(RoleName=agentcore_role_name, MaxItems=100)
         print("policies:", policies)
         for policy_name in policies["PolicyNames"]:
-            iam_client.delete_role_policy(
-                RoleName=agentcore_role_name, PolicyName=policy_name
-            )
+            iam_client.delete_role_policy(RoleName=agentcore_role_name, PolicyName=policy_name)
         print(f"deleting {agentcore_role_name}")
         iam_client.delete_role(RoleName=agentcore_role_name)
         print(f"recreating {agentcore_role_name}")

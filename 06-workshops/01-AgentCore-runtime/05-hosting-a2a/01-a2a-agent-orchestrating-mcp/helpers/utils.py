@@ -54,9 +54,7 @@ def get_ssm_parameter(name: str, with_decryption: bool = True) -> str:
     return response["Parameter"]["Value"]
 
 
-def put_ssm_parameter(
-    name: str, value: str, parameter_type: str = "String", with_encryption: bool = False
-) -> None:
+def put_ssm_parameter(name: str, value: str, parameter_type: str = "String", with_encryption: bool = False) -> None:
     """Put a parameter value into AWS Systems Manager Parameter Store."""
     ssm = boto3.client("ssm")
     put_params = {
@@ -90,9 +88,7 @@ def save_secret(secret_value: str) -> bool:
         secrets_client.create_secret(
             Name=SECRET_NAME,
             SecretString=secret_value,
-            Description=(
-                "Secret containing the Cognito Configuration for the AWS Docs Agent"
-            ),
+            Description=("Secret containing the Cognito Configuration for the AWS Docs Agent"),
         )
         print("✅ Created secret")
     except secrets_client.exceptions.ResourceExistsException:
@@ -123,9 +119,7 @@ def delete_cognito_secret() -> bool:
     region = boto_session.region_name
     secrets_client = boto3.client("secretsmanager", region_name=region)
     try:
-        secrets_client.delete_secret(
-            SecretId=SECRET_NAME, ForceDeleteWithoutRecovery=True
-        )
+        secrets_client.delete_secret(SecretId=SECRET_NAME, ForceDeleteWithoutRecovery=True)
         print("✅ Secret Deleted")
         return True
     except secrets_client.exceptions.ClientError as e:
@@ -144,9 +138,7 @@ def reauthenticate_user(client_id: str, client_secret: str) -> str:
 
     message = bytes(USERNAME + client_id, "utf-8")
     key = bytes(client_secret, "utf-8")
-    secret_hash = base64.b64encode(
-        hmac.new(key, message, digestmod=hashlib.sha256).digest()
-    ).decode()
+    secret_hash = base64.b64encode(hmac.new(key, message, digestmod=hashlib.sha256).digest()).decode()
 
     auth_response = cognito_client.initiate_auth(
         ClientId=client_id,
@@ -208,9 +200,7 @@ def setup_cognito_user_pool() -> Optional[Dict[str, str]]:
         # Generate secret hash and authenticate
         message = bytes(USERNAME + client_id, "utf-8")
         key_bytes = bytes(client_secret, "utf-8")
-        secret_hash = base64.b64encode(
-            hmac.new(key_bytes, message, digestmod=hashlib.sha256).digest()
-        ).decode()
+        secret_hash = base64.b64encode(hmac.new(key_bytes, message, digestmod=hashlib.sha256).digest()).decode()
 
         auth_response = cognito_client.initiate_auth(
             ClientId=client_id,
@@ -224,10 +214,7 @@ def setup_cognito_user_pool() -> Optional[Dict[str, str]]:
         bearer_token = auth_response["AuthenticationResult"]["AccessToken"]
 
         # Create configuration object
-        discovery_url = (
-            f"https://cognito-idp.{region}.amazonaws.com/"
-            f"{pool_id}/.well-known/openid-configuration"
-        )
+        discovery_url = f"https://cognito-idp.{region}.amazonaws.com/{pool_id}/.well-known/openid-configuration"
 
         cognito_config = {
             "pool_id": pool_id,
@@ -263,26 +250,18 @@ def cleanup_cognito_resources(pool_id: str) -> bool:
         if pool_id:
             try:
                 # List and delete all app clients
-                clients_response = cognito_client.list_user_pool_clients(
-                    UserPoolId=pool_id, MaxResults=60
-                )
+                clients_response = cognito_client.list_user_pool_clients(UserPoolId=pool_id, MaxResults=60)
 
                 for client in clients_response["UserPoolClients"]:
                     print(f"Deleting app client: {client['ClientName']}")
-                    cognito_client.delete_user_pool_client(
-                        UserPoolId=pool_id, ClientId=client["ClientId"]
-                    )
+                    cognito_client.delete_user_pool_client(UserPoolId=pool_id, ClientId=client["ClientId"])
 
                 # List and delete all users
-                users_response = cognito_client.list_users(
-                    UserPoolId=pool_id, AttributesToGet=["email"]
-                )
+                users_response = cognito_client.list_users(UserPoolId=pool_id, AttributesToGet=["email"])
 
                 for user in users_response.get("Users", []):
                     print(f"Deleting user: {user['Username']}")
-                    cognito_client.admin_delete_user(
-                        UserPoolId=pool_id, Username=user["Username"]
-                    )
+                    cognito_client.admin_delete_user(UserPoolId=pool_id, Username=user["Username"])
 
                 # Delete the user pool
                 print(f"Deleting user pool: {pool_id}")
@@ -292,9 +271,7 @@ def cleanup_cognito_resources(pool_id: str) -> bool:
                 return True
 
             except cognito_client.exceptions.ResourceNotFoundException:
-                print(
-                    f"User pool {pool_id} not found. It may have already been deleted."
-                )
+                print(f"User pool {pool_id} not found. It may have already been deleted.")
                 return True
 
             except cognito_client.exceptions.ClientError as e:
@@ -328,11 +305,7 @@ def create_agentcore_runtime_execution_role(role_name: str) -> Optional[str]:
                 "Action": "sts:AssumeRole",
                 "Condition": {
                     "StringEquals": {"aws:SourceAccount": account_id},
-                    "ArnLike": {
-                        "aws:SourceArn": (
-                            f"arn:aws:bedrock-agentcore:{region}:{account_id}:*"
-                        )
-                    },
+                    "ArnLike": {"aws:SourceArn": (f"arn:aws:bedrock-agentcore:{region}:{account_id}:*")},
                 },
             }
         ],
@@ -351,10 +324,7 @@ def create_agentcore_runtime_execution_role(role_name: str) -> Optional[str]:
             {
                 "Effect": "Allow",
                 "Action": ["logs:DescribeLogStreams", "logs:CreateLogGroup"],
-                "Resource": [
-                    f"arn:aws:logs:{region}:{account_id}:log-group:"
-                    f"/aws/bedrock-agentcore/runtimes/*"
-                ],
+                "Resource": [f"arn:aws:logs:{region}:{account_id}:log-group:/aws/bedrock-agentcore/runtimes/*"],
             },
             {
                 "Effect": "Allow",
@@ -365,8 +335,7 @@ def create_agentcore_runtime_execution_role(role_name: str) -> Optional[str]:
                 "Effect": "Allow",
                 "Action": ["logs:CreateLogStream", "logs:PutLogEvents"],
                 "Resource": [
-                    f"arn:aws:logs:{region}:{account_id}:log-group:"
-                    f"/aws/bedrock-agentcore/runtimes/*:log-stream:*"
+                    f"arn:aws:logs:{region}:{account_id}:log-group:/aws/bedrock-agentcore/runtimes/*:log-stream:*"
                 ],
             },
             {
@@ -389,9 +358,7 @@ def create_agentcore_runtime_execution_role(role_name: str) -> Optional[str]:
                 "Effect": "Allow",
                 "Resource": "*",
                 "Action": "cloudwatch:PutMetricData",
-                "Condition": {
-                    "StringEquals": {"cloudwatch:namespace": "bedrock-agentcore"}
-                },
+                "Condition": {"StringEquals": {"cloudwatch:namespace": "bedrock-agentcore"}},
             },
             {
                 "Sid": "GetAgentAccessToken",
@@ -402,8 +369,7 @@ def create_agentcore_runtime_execution_role(role_name: str) -> Optional[str]:
                     "bedrock-agentcore:GetWorkloadAccessTokenForUserId",
                 ],
                 "Resource": [
-                    f"arn:aws:bedrock-agentcore:{region}:{account_id}:"
-                    f"workload-identity-directory/default",
+                    f"arn:aws:bedrock-agentcore:{region}:{account_id}:workload-identity-directory/default",
                     f"arn:aws:bedrock-agentcore:{region}:{account_id}:"
                     f"workload-identity-directory/default/workload-identity/*",
                 ],
@@ -444,10 +410,7 @@ def create_agentcore_runtime_execution_role(role_name: str) -> Optional[str]:
                 "Sid": "GetSecrets",
                 "Effect": "Allow",
                 "Action": ["secretsmanager:GetSecretValue"],
-                "Resource": [
-                    f"arn:aws:secretsmanager:{region}:{account_id}:"
-                    f"secret:{SECRET_NAME}*"
-                ],
+                "Resource": [f"arn:aws:secretsmanager:{region}:{account_id}:secret:{SECRET_NAME}*"],
             },
         ],
     }
@@ -466,9 +429,7 @@ def create_agentcore_runtime_execution_role(role_name: str) -> Optional[str]:
         role_response = iam.create_role(
             RoleName=role_name,
             AssumeRolePolicyDocument=json.dumps(trust_policy),
-            Description=(
-                "IAM role for Amazon Bedrock AgentCore with required permissions"
-            ),
+            Description=("IAM role for Amazon Bedrock AgentCore with required permissions"),
         )
 
         print(f"✅ Created IAM role: {role_name}")
@@ -552,14 +513,10 @@ def runtime_resource_cleanup(agent_runtime_id: str) -> None:
     """Clean up AgentCore runtime resources."""
     try:
         # Initialize AWS clients
-        agentcore_control_client = boto3.client(
-            "bedrock-agentcore-control", region_name=REGION
-        )
+        agentcore_control_client = boto3.client("bedrock-agentcore-control", region_name=REGION)
 
         # Delete the AgentCore Runtime
-        response = agentcore_control_client.delete_agent_runtime(
-            agentRuntimeId=agent_runtime_id
-        )
+        response = agentcore_control_client.delete_agent_runtime(agentRuntimeId=agent_runtime_id)
         print(f"  ✅ Agent runtime {agent_runtime_id} deleted: {response['status']}")
     except Exception as e:
         print(f"  ⚠️  Error during runtime cleanup: {e}")
@@ -591,9 +548,7 @@ def ecr_repo_cleanup() -> None:
 def get_memory_name(agent_name: str) -> Optional[str]:
     """Get memory name for a given agent."""
     try:
-        agentcore_control_client = boto3.client(
-            "bedrock-agentcore-control", region_name=REGION
-        )
+        agentcore_control_client = boto3.client("bedrock-agentcore-control", region_name=REGION)
         resp = agentcore_control_client.list_memories()
         for mem in resp["memories"]:
             if agent_name in mem["id"]:
@@ -607,9 +562,7 @@ def get_memory_name(agent_name: str) -> Optional[str]:
 def short_memory_cleanup(agent_name: str) -> None:
     """Clean up short-term memory for an agent."""
     try:
-        agentcore_control_client = boto3.client(
-            "bedrock-agentcore-control", region_name=REGION
-        )
+        agentcore_control_client = boto3.client("bedrock-agentcore-control", region_name=REGION)
         memory_id = get_memory_name(agent_name)
         if memory_id:
             agentcore_control_client.delete_memory(memoryId=memory_id)
@@ -631,9 +584,7 @@ def delete_observability_resources(agent_name: str) -> None:
     # Delete log stream first (must be done before deleting log group)
     try:
         print(f"  🗑️  Deleting log stream '{log_stream_name}'...")
-        logs_client.delete_log_stream(
-            logGroupName=complete_log_group, logStreamName=log_stream_name
-        )
+        logs_client.delete_log_stream(logGroupName=complete_log_group, logStreamName=log_stream_name)
         print(f"  ✅ Log stream '{log_stream_name}' deleted successfully")
     except logs_client.exceptions.ClientError as e:
         if e.response["Error"]["Code"] == "ResourceNotFoundException":
@@ -686,7 +637,4 @@ def local_file_cleanup() -> None:
     if deleted_files:
         print(f"\n📁 Successfully deleted {len(deleted_files)} files")
     if missing_files:
-        print(
-            f"ℹ️  {len(missing_files)} files were already missing: "
-            f"{', '.join(missing_files)}"
-        )
+        print(f"ℹ️  {len(missing_files)} files were already missing: {', '.join(missing_files)}")

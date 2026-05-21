@@ -97,10 +97,7 @@ def setup_cognito():
         Permanent=True,
     )
 
-    discovery_url = (
-        f"https://cognito-idp.{REGION}.amazonaws.com/{user_pool_id}"
-        "/.well-known/openid-configuration"
-    )
+    discovery_url = f"https://cognito-idp.{REGION}.amazonaws.com/{user_pool_id}/.well-known/openid-configuration"
 
     config = {
         "user_pool_id": user_pool_id,
@@ -221,18 +218,14 @@ def invoke_agent_with_google_calendar(runtime, bearer_token: str):
         wait_for_oauth2_server_to_be_ready,
     )
 
-    oauth2_callback_server_process = subprocess.Popen(
-        [sys.executable, "oauth2_callback_server.py", "--region", REGION]
-    )
+    oauth2_callback_server_process = subprocess.Popen([sys.executable, "oauth2_callback_server.py", "--region", REGION])
 
     try:
         if wait_for_oauth2_server_to_be_ready():
             store_token_in_oauth2_callback_server(bearer_token)
             print("  Invoking agent (this will trigger the Google OAuth2 flow)...")
             invoke_response = runtime.invoke(
-                {
-                    "prompt": "What is in my agenda for today? Highlight the main events!"
-                },
+                {"prompt": "What is in my agenda for today? Highlight the main events!"},
                 bearer_token=bearer_token,
             )
             print(f"  Response: {invoke_response}")
@@ -260,9 +253,7 @@ def main():
     print("\n=== Step 3: Agent Code (strands_claude_google_3lo.py) ===")
     print("  The agent code is in strands_claude_google_3lo.py.")
     print("  Key pattern: @requires_access_token(provider_name='google-cal-provider',")
-    print(
-        "                                       scopes=['https://www.googleapis.com/auth/calendar.readonly'],"
-    )
+    print("                                       scopes=['https://www.googleapis.com/auth/calendar.readonly'],")
     print("                                       auth_flow='USER_FEDERATION',")
     print("                                       callback_url=CALLBACK_URL)")
     print("  This triggers the 3LO OAuth flow when the tool is first called.")
@@ -283,9 +274,7 @@ def main():
     # ── 5. Streamlit app ───────────────────────────────────────────────────────
     print("\n=== Step 5: Running the Streamlit Chat App ===")
     print("  For an interactive experience, run:")
-    print(
-        f"  python oauth2_callback_server.py --region {REGION} & streamlit run chatbot_app_cognito.py"
-    )
+    print(f"  python oauth2_callback_server.py --region {REGION} & streamlit run chatbot_app_cognito.py")
     print("  Login: testuser / MyPassword123!")
     print("  Try: 'What is in my agenda for today?'")
 
@@ -294,9 +283,7 @@ def main():
     print(f"  Provider ARN: {provider_info['provider_arn']}")
     print(f"  Callback URL: {provider_info['callback_url']}")
     print(f"  Cognito User Pool: {cognito_config['user_pool_id']}")
-    print(
-        "\n  Register the callback URL in Google Developer Console to enable the OAuth flow."
-    )
+    print("\n  Register the callback URL in Google Developer Console to enable the OAuth flow.")
 
 
 if __name__ == "__main__":

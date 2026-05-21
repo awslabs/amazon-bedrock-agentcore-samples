@@ -12,25 +12,26 @@ Why the Graph token travels via a header, not a tool argument:
 - The header is TLS-protected in transit and visible only to the agent and the MCP server, both
   within the same trust boundary as the user's inbound JWT.
 """
+
 import httpx
 from mcp.server.fastmcp import FastMCP
 from typing import Dict, Any
 
-mcp = FastMCP(host='0.0.0.0', stateless_http=True)
+mcp = FastMCP(host="0.0.0.0", stateless_http=True)
 
-GRAPH_BASE = 'https://graph.microsoft.com/v1.0'
+GRAPH_BASE = "https://graph.microsoft.com/v1.0"
 # AgentCore only forwards request headers that are explicitly allowlisted on the runtime and
 # either named 'Authorization' or prefixed with 'X-Amzn-Bedrock-AgentCore-Runtime-Custom-'.
 # The allowlist is set on the MCP runtime in Step 4. See:
 # https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime-header-allowlist.html
-GRAPH_TOKEN_HEADER = 'x-amzn-bedrock-agentcore-runtime-custom-graph-token'
+GRAPH_TOKEN_HEADER = "x-amzn-bedrock-agentcore-runtime-custom-graph-token"
 
 
 def _get_graph_token() -> str:
     """Read the Graph OBO token the agent attached to this request."""
     ctx = mcp.get_context()
     headers = dict(ctx.request_context.request.headers)
-    token = headers.get(GRAPH_TOKEN_HEADER, '').strip()
+    token = headers.get(GRAPH_TOKEN_HEADER, "").strip()
     if not token:
         raise RuntimeError(
             f"Missing Graph OBO token. Expected request header '{GRAPH_TOKEN_HEADER}' "
@@ -45,18 +46,17 @@ async def get_my_profile() -> Dict[str, Any]:
     """Return the signed-in user's Microsoft Graph profile."""
     access_token = _get_graph_token()
     async with httpx.AsyncClient() as client:
-        r = await client.get(f'{GRAPH_BASE}/me',
-                             headers={'Authorization': f'Bearer {access_token}'})
+        r = await client.get(f"{GRAPH_BASE}/me", headers={"Authorization": f"Bearer {access_token}"})
     if r.status_code != 200:
-        return {'error': f'Graph returned {r.status_code}', 'body': r.text}
+        return {"error": f"Graph returned {r.status_code}", "body": r.text}
     p = r.json()
     return {
-        'displayName': p.get('displayName'),
-        'email': p.get('mail') or p.get('userPrincipalName'),
-        'jobTitle': p.get('jobTitle'),
-        'id': p.get('id'),
+        "displayName": p.get("displayName"),
+        "email": p.get("mail") or p.get("userPrincipalName"),
+        "jobTitle": p.get("jobTitle"),
+        "id": p.get("id"),
     }
 
 
-if __name__ == '__main__':
-    mcp.run(transport='streamable-http')
+if __name__ == "__main__":
+    mcp.run(transport="streamable-http")
