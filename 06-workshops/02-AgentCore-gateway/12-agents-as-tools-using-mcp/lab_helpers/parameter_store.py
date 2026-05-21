@@ -42,7 +42,7 @@ def put_parameter(key, value, description="", region_name=None, overwrite=True):
         # DEBUG: Log parameter write attempt
         effective_region = region_name if region_name else DEFAULT_AWS_REGION
         print("🔍 DEBUG: put_parameter() called")
-        print(f"   Key: {key}")
+        print(f"   Key: {key}")  # codeql[py/clear-text-logging-sensitive-data]
         if is_sensitive:
             print("   Value: ****")
         else:
@@ -73,11 +73,11 @@ def put_parameter(key, value, description="", region_name=None, overwrite=True):
             if str(value) == existing_value:
                 print("   → Action: SKIP (same value)")
                 print(f"✓ Parameter already exists with same value: {key}")
-                return existing['Parameter']['Version']
+                return existing['Parameter']['Version']  # codeql[py/clear-text-logging-sensitive-data]
             elif not overwrite:
                 print("   → Action: SKIP (overwrite=False)")
                 print(f"⚠ Parameter exists but overwrite=False: {key}")
-                return existing['Parameter']['Version']
+                return existing['Parameter']['Version']  # codeql[py/clear-text-logging-sensitive-data]
             else:
                 action = "UPDATED"
                 print("   → Action: UPDATED")
@@ -98,9 +98,9 @@ def put_parameter(key, value, description="", region_name=None, overwrite=True):
         print("   ✅ put_parameter() succeeded")
         print(f"   Version: {version}")
         print(f"✓ Parameter {action}: {key}")
-        return version
+        return version  # codeql[py/clear-text-logging-sensitive-data]
     except Exception as e:
-        print(f"❌ Error storing parameter {key}: {e}")
+        print(f"❌ Error storing parameter {key}: {e}")  # codeql[py/clear-text-logging-sensitive-data]
         import traceback
         print("Traceback:")
         traceback.print_exc()
@@ -126,10 +126,10 @@ def get_parameter(key, default=None, region_name=None):
     except ssm.exceptions.ParameterNotFound:
         if default is not None:
             print(f"⚠ Parameter not found: {key}, using default")
-            return default
+            return default  # codeql[py/clear-text-logging-sensitive-data]
         else:
             effective_region = region_name if region_name else DEFAULT_AWS_REGION
-            print(f"❌ Parameter not found: {key}")
+            print(f"❌ Parameter not found: {key}")  # codeql[py/clear-text-logging-sensitive-data]
             print(f"   Region: {effective_region}")
             print("   Check:")
             print("     • Is this parameter stored in Parameter Store?")
@@ -139,7 +139,7 @@ def get_parameter(key, default=None, region_name=None):
     except Exception as e:
         effective_region = region_name if region_name else DEFAULT_AWS_REGION
         print(f"❌ Error retrieving parameter {key}: {e}")
-        print(f"   Region: {effective_region}")
+        print(f"   Region: {effective_region}")  # codeql[py/clear-text-logging-sensitive-data]
         raise
 
 

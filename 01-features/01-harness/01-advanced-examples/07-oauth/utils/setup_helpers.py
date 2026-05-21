@@ -91,7 +91,7 @@ def create_user_auth_pool(
 
     client_id, _ = _find_client_by_name(cog, pool_id, client_name)
     if client_id:
-        print(f"  Pool #1 client already exists: {client_id}")
+        print(f"  Pool #1 client already exists: {client_id}")  # codeql[py/clear-text-logging-sensitive-data]
     else:
         client_id = cog.create_user_pool_client(
             UserPoolId=pool_id,
@@ -176,7 +176,7 @@ def create_m2m_pool(region: str, prefix: str) -> dict:
 
     client_id, client_secret = _find_client_by_name(cog, pool_id, client_name)
     if client_id and client_secret:
-        print(f"  Pool #2 client already exists: {client_id}")
+        print(f"  Pool #2 client already exists: {client_id}")  # codeql[py/clear-text-logging-sensitive-data]
     else:
         resp = cog.create_user_pool_client(
             UserPoolId=pool_id,

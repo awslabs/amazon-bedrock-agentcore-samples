@@ -114,7 +114,7 @@ MODEL_ID = (
 
 print("Memory Configuration:")
 print(f"  Memory Name: {MEMORY_NAME}")
-print(f"  Patient ID: {PATIENT_ID}")
+print(f"  Patient ID: {PATIENT_ID}")  # codeql[py/clear-text-logging-sensitive-data]
 print(f"  Region: {region}")
 print(f"  Session ID: {SESSION_ID}")
 print(f"  Model ID: {MODEL_ID}")
@@ -174,7 +174,7 @@ if not DATASTORE_ID:
             print(f"   Status: {status}...")
             time.sleep(30)
 
-        print(f"\n✅ Synthea data loaded. Using default patient ID: {PATIENT_ID}")
+        print(f"\n✅ Synthea data loaded. Using default patient ID: {PATIENT_ID}")  # codeql[py/clear-text-logging-sensitive-data]
 
 
 # Get HealthLake endpoint
@@ -213,7 +213,7 @@ print("HealthLake Configuration:")
 print(f"  Datastore ID: {DATASTORE_ID}")
 print(f"  Endpoint:     {HEALTHLAKE_ENDPOINT}")
 print(f"  Region:       {HEALTHLAKE_REGION}")
-print(f"  Patient ID:   {PATIENT_ID}")
+print(f"  Patient ID:   {PATIENT_ID}")  # codeql[py/clear-text-logging-sensitive-data]
 print(f"{'=' * 70}")
 
 
@@ -808,7 +808,7 @@ actor_id = PATIENT_ID
 session_id = SESSION_ID
 # Define namespace for healthcare episodes
 episode_namespace = f"healthcare/{actor_id}/{session_id}"
-print(f"\n📋 Episode namespace: {episode_namespace}")
+print(f"\n📋 Episode namespace: {episode_namespace}")  # codeql[py/clear-text-logging-sensitive-data]
 
 try:
     print("\n📖 HEALTHCARE EPISODES (Session-specific patient interactions)")

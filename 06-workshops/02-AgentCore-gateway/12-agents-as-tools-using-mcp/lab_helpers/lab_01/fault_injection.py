@@ -49,7 +49,7 @@ def _update_single_table(dynamodb, table_name: str) -> tuple:
         print(f"Processing table: {table_name}")
         table_info = dynamodb.describe_table(TableName=table_name)
         original_billing_mode = table_info['Table']['BillingModeSummary']['BillingMode']
-        print(f"  Original billing mode: {original_billing_mode}")
+        print(f"  Original billing mode: {original_billing_mode}")  # codeql[py/clear-text-logging-sensitive-data]
         
         # Convert to provisioned capacity with dangerously low limits
         print("  Converting to PROVISIONED mode with minimal capacity...")

@@ -381,7 +381,7 @@ async def invoke(request: Request):
 
         return JSONResponse(
             {
-                "response": f"Error processing request: {str(e)}",
+                "response": "Error processing request. Check server logs for details.",
                 "status": "error"
             },
             status_code=500

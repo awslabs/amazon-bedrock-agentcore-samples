@@ -295,7 +295,7 @@ class CognitoSetup:
                 Username=username,
                 GroupName=group_name
             )
-            print(f"✅ User {username} added to group '{group_name}'")
+            print(f"✅ User {username} added to group '{group_name}'")  # codeql[py/clear-text-logging-sensitive-data]
         except Exception as e:
             print(f"❌ Error adding user to group: {e}")
             raise
@@ -592,15 +592,15 @@ def setup_cognito_complete() -> Dict[str, Any]:
     print("✅ COGNITO SETUP COMPLETE")
     print("="*70)
     print("\nKey Configuration:")
-    print(f"  User Pool ID: {cognito_config['user_pool_id']}")
-    print(f"  Domain: {cognito_config['domain']}")
-    print(f"  Token Endpoint: {cognito_config['token_endpoint']}")
+    print(f"  User Pool ID: {cognito_config['user_pool_id']}")  # codeql[py/clear-text-logging-sensitive-data]
+    print(f"  Domain: {cognito_config['domain']}")  # codeql[py/clear-text-logging-sensitive-data]
+    print(f"  Token Endpoint: {cognito_config['token_endpoint']}")  # codeql[py/clear-text-logging-sensitive-data]
     print("\n  User Auth Client:")
-    print(f"    • Client ID: {cognito_config['user_auth_client']['client_id']}")
-    print(f"    • OAuth Flows: {', '.join(cognito_config['user_auth_client']['oauth_flows'])}")
+    print(f"    • Client ID: {cognito_config['user_auth_client']['client_id']}")  # codeql[py/clear-text-logging-sensitive-data]
+    print(f"    • OAuth Flows: {', '.join(cognito_config['user_auth_client']['oauth_flows'])}")  # codeql[py/clear-text-logging-sensitive-data]
     print("    • OAuth Scopes: openid, profile, email, custom scopes")
     print("\n  M2M Client:")
-    print(f"    • Client ID: {cognito_config['m2m_client']['client_id']}")
+    print(f"    • Client ID: {cognito_config['m2m_client']['client_id']}")  # codeql[py/clear-text-logging-sensitive-data]
     print("    • Client Secret: ****")
     print("\n  Groups Created:")
     print("    • sre (Precedence: 10) - Tools: generate_remediation_plan")

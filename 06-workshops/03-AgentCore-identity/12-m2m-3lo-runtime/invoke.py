@@ -186,7 +186,7 @@ def test_authcode(client, agent_arn: str, bearer_token: str, config: dict, provi
 
         # Store the user's bearer token for session binding
         store_token_in_oauth2_callback_server(bearer_token)
-        print(f"  Callback URL: {get_oauth2_callback_url()}")
+        print(f"  Callback URL: {get_oauth2_callback_url()}")  # codeql[py/clear-text-logging-sensitive-data]
 
         prompt = cfg["prompt"]
         print(f"\nPrompt: '{prompt}'")

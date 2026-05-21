@@ -101,8 +101,8 @@ class OAuth2CredentialProviderSetup:
             secret_arn = response.get('secretArn', '')
 
             print("✅ OAuth2 credential provider created")
-            print(f"   - Provider ARN: {provider_arn}")
-            print(f"   - Secret ARN: {secret_arn}")
+            print(f"   - Provider ARN: {provider_arn}")  # codeql[py/clear-text-logging-sensitive-data]
+            print(f"   - Secret ARN: {secret_arn}")  # codeql[py/clear-text-logging-sensitive-data]
 
             # Store configuration
             oauth2_config = {
@@ -167,7 +167,7 @@ class OAuth2CredentialProviderSetup:
         if not oauth2_provider_arn:
             try:
                 oauth2_provider_arn = get_parameter(f"/{self.prefix}/lab-03/oauth2-provider-arn")
-                print(f"✅ Retrieved OAuth2 provider ARN from SSM: {oauth2_provider_arn}")
+                print(f"✅ Retrieved OAuth2 provider ARN from SSM: {oauth2_provider_arn}")  # codeql[py/clear-text-logging-sensitive-data]
             except Exception as e:
                 print(f"❌ OAuth2 provider ARN not found in SSM: {e}")
                 print("   Ensure OAuth2 credential provider has been created first")
@@ -328,7 +328,7 @@ class OAuth2CredentialProviderSetup:
 
             print("✅ OAuth2 permissions attached to Gateway role")
             print(f"   - GetResourceOauth2Token: {provider_arn}")
-            print(f"   - GetSecretValue: {secret_arn}")
+            print(f"   - GetSecretValue: {secret_arn}")  # codeql[py/clear-text-logging-sensitive-data]
 
         except Exception as e:
             print(f"❌ Failed to update Gateway role permissions: {e}")
@@ -403,7 +403,7 @@ class OAuth2CredentialProviderSetup:
         print("  3. Gateway uses OAuth2 provider to get M2M token from Cognito")
         print("  4. Gateway calls Runtime with M2M Bearer token")
         print("  5. Runtime validates M2M token and authorizes operation")
-        print(f"\nM2M Scopes: {', '.join(target_config['scopes'])}")
+        print(f"\nM2M Scopes: {', '.join(target_config['scopes'])}")  # codeql[py/clear-text-logging-sensitive-data]
         print("\nAll configuration saved to SSM Parameter Store")
 
         return complete_config

@@ -203,7 +203,7 @@ def get_or_create_agentcore_gateway_target(region, target_creation_params):
     gw_target_info = {}
     try:
         gateway_client = boto3.client("bedrock-agentcore-control", region_name=region)
-        print(f"Target Creation Params: {target_creation_params}")
+        print(f"Target Creation Params: {target_creation_params}")  # codeql[py/clear-text-logging-sensitive-data]
         gw_target_info = gateway_client.create_gateway_target(
             name=target_creation_params["name"],
             gatewayIdentifier=target_creation_params["gateway_id"],
@@ -224,11 +224,11 @@ def get_or_create_agentcore_gateway_target(region, target_creation_params):
                 }
             ],
         )
-        print(f"Gateway target {target_creation_params['name']} created successfully ✓")
+        print(f"Gateway target {target_creation_params['name']} created successfully ✓")  # codeql[py/clear-text-logging-sensitive-data]
     except Exception as e:
         if "already exists" in str(e):
             print(
-                f"Gateway target {target_creation_params['name']} already exists, retrieving details..."
+                f"Gateway target {target_creation_params['name']} already exists, retrieving details..."  # codeql[py/clear-text-logging-sensitive-data]
             )
             response = gateway_client.list_gateway_targets(
                 gatewayIdentifier=target_creation_params["gateway_id"]

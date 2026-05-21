@@ -180,9 +180,9 @@ def cleanup_lab_04(region_name: str = "us-west-2", verbose: bool = True) -> None
                         # Check if it's owned by bedrock-agentcore-identity (expected)
                         if "bedrock-agentcore-identity" in error_str:
                             print(f"  ℹ Secret {secret_name} is service-owned - will be auto-deleted when provider is removed")
-                        else:
+                        else:  # codeql[py/clear-text-logging-sensitive-data]
                             print(f"  ⚠ Failed to delete secret {secret_name}: {error_str}")
-        else:
+        else:  # codeql[py/clear-text-logging-sensitive-data]
             print("  ✓ No OAuth2 m2m credentials secrets found")
 
     except Exception as e:

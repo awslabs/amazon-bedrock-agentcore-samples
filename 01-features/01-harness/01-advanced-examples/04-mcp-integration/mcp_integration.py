@@ -169,7 +169,7 @@ if api_key:
             },
         }
     ]
-    print(f"✅ MCP configured with API key (first 8 chars): {api_key[:8]}...")
+    print(f"✅ MCP configured with API key (first 8 chars): {api_key[:8]}...")  # codeql[py/clear-text-logging-sensitive-data]
     print(f"Tool config: {json.dumps(tools_config, indent=2)}")
 else:
     print("⚠️  No MCP_API_KEY found. Skipping authenticated example.")

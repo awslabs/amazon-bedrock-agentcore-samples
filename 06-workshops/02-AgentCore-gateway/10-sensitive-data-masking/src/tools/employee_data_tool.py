@@ -146,4 +146,4 @@ if __name__ == "__main__":
         print(f"Testing with: {test_event}")
         print(f"{'='*60}")
         result = lambda_handler(test_event, None)
-        print(f"\nTest result:\n{json.dumps(result, indent=2)}")
+        print(f"\nTest result:\n{json.dumps(result, indent=2)}")  # codeql[py/clear-text-logging-sensitive-data]

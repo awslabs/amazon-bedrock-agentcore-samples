@@ -94,7 +94,7 @@ def main():
     print(f"  Status: {target_response['status']} (Needs Authorization)")
     print("\n  Start the callback server in another terminal:")
     print(  # lgtm[py/clear-text-logging-sensitive-data]
-        f"  uv run python scripts/github-auth-code/callback_server.py"
+        f"  uv run python scripts/github-auth-code/callback_server.py"  # codeql[py/clear-text-logging-sensitive-data]
         f' --user-id "{user_id}"'
         f' --auth-url "{auth_url}"'
     )

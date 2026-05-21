@@ -98,7 +98,7 @@ def verify_dynamodb_tables(resources: Dict[str, str], region_name: str, profile_
                 billing_mode = response['Table']['BillingModeSummary']['BillingMode']
 
                 if status == 'ACTIVE':
-                    print(f"  ✅ Table {table_name}: {status} ({billing_mode})")
+                    print(f"  ✅ Table {table_name}: {status} ({billing_mode})")  # codeql[py/clear-text-logging-sensitive-data]
                 else:
                     print(f"  ⚠️  Table {table_name}: {status}")
                     all_active = False

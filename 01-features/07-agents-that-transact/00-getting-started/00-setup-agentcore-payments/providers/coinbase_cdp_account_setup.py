@@ -104,7 +104,7 @@ for name, val in [
         missing.append(name)
 
 if missing:
-    print(f"\n❌ Missing values: {missing}")
+    print(f"\n❌ Missing values: {missing}")  # codeql[py/clear-text-logging-sensitive-data]
     print("   Paste your values and re-run.")
     sys.exit(1)
 

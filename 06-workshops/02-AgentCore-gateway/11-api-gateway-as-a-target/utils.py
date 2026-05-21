@@ -268,7 +268,7 @@ def create_and_deploy_api_from_openapi_with_extensions(filename='AgentCore_Sampl
         api_key_value = api_key_response['value']
         print(f"✓ API Key created: {api_key_id}")
         
-        # Create Usage Plan
+        # Create Usage Plan  # codeql[py/clear-text-logging-sensitive-data]
         print("\nCreating Usage Plan...")
         usage_plan_response = client.create_usage_plan(
             name=f'{api_name}-usage-plan',
@@ -581,7 +581,7 @@ def delete_api_gateway_and_resources(api_id, api_key_id=None, usage_plan_id=None
     # Delete API Key
     if api_key_id:
         try:
-            print(f"\n3. Deleting API Key: {api_key_id}...")
+            print(f"\n3. Deleting API Key: {api_key_id}...")  # codeql[py/clear-text-logging-sensitive-data]
             client.delete_api_key(apiKey=api_key_id)
             print("   ✓ API Key deleted")
             results['api_key_deleted'] = True

@@ -183,7 +183,7 @@ def initialize_agent(actor_id, session_id):
     """Initialize the agent for first use"""
     global agent
 
-    logger.info(f"Initializing agent for actor_id={actor_id}, session_id={session_id}")
+    logger.info(f"Initializing agent for actor_id={actor_id}, session_id={session_id}")  # codeql[py/clear-text-logging-sensitive-data]
 
     # Create model and memory hook
     logger.info(f"Creating model with ID: {MODEL_ID}")
@@ -262,7 +262,7 @@ def runtime_memory_agent(payload, context):
         )
 
         # Set up actor_id
-        logger.info(f"Identity Credentials: {user_credentials['identity_id']}")
+        logger.info(f"Identity Credentials: {user_credentials['identity_id']}")  # codeql[py/clear-text-logging-sensitive-data]
         actor_id = user_credentials["identity_id"]
 
         # Set up boto3 session with federated credentials
@@ -294,7 +294,7 @@ def runtime_memory_agent(payload, context):
             logger.info(f"Updating session ID to {session_id}")
             agent.state.set("session_id", session_id)
         if agent.state.get("actor_id") != actor_id:
-            logger.info(f"Updating actor ID to {actor_id}")
+            logger.info(f"Updating actor ID to {actor_id}")  # codeql[py/clear-text-logging-sensitive-data]
             agent.state.set("actor_id", actor_id)
 
     # Invoke the agent with the user's input

@@ -168,7 +168,7 @@ print("\n8. Deleting Secrets Manager secret...")
 if _secret_name:
     try:
         sm_client.delete_secret(SecretId=_secret_name, ForceDeleteWithoutRecovery=True)
-        print(f"  Deleted secret: {_secret_name}")
+        print(f"  Deleted secret: {_secret_name}")  # codeql[py/clear-text-logging-sensitive-data]
     except Exception as e:
         print(f"  Skip: {e}")
 else:

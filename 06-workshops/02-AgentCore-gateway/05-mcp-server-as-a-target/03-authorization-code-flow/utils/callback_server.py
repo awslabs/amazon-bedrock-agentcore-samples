@@ -33,7 +33,7 @@ async def callback(request: Request):
         )
     except Exception as e:
         return HTMLResponse(
-            content=f"<h1>Session Binding Failed</h1><p>{e}</p>",
+            content="<h1>Session Binding Failed</h1><p>An error occurred during session binding. Check the console for details.</p>",
             status_code=500,
         )
 

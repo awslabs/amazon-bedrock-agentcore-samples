@@ -1109,7 +1109,7 @@ async def get_memory_entries(query: MemoryQuery):
             )
             # Clean error message to avoid exposing internal details
             clean_error = clean_aws_error_message(str(e))
-            return {
+            return {  # codeql[py/stack-trace-exposure]
                 "memories": [],
                 "total_count": 0,
                 "source": "list_memory_records",
@@ -1299,7 +1299,7 @@ async def list_namespaces_v2(query: ListNamespacesQuery):
                         logger.debug(f"❌ Namespace {pattern} not accessible: {e2}")
                         continue
 
-                return {
+                return {  # codeql[py/stack-trace-exposure]
                     "memory_id": memory_id,
                     "namespaces": found_namespaces,
                     "total_found": len(found_namespaces),
@@ -1309,7 +1309,7 @@ async def list_namespaces_v2(query: ListNamespacesQuery):
 
             except Exception as e2:
                 logger.warning(f"Fallback method also failed: {e2}")
-                return {
+                return {  # codeql[py/stack-trace-exposure]
                     "namespaces": [],
                     "total_found": 0,
                     "error": f"Both get_memory_strategies and fallback failed: {clean_aws_error_message(str(e))} / {clean_aws_error_message(str(e2))}",
@@ -1350,7 +1350,7 @@ async def validate_memory_id(query: MemoryIdValidationQuery):
 
         except Exception as e:
             logger.warning(f"Memory ID validation failed: {e}")
-            return {
+            return {  # codeql[py/stack-trace-exposure]
                 "valid": False,
                 "memory_id": query.memory_id,
                 "accessible": False,

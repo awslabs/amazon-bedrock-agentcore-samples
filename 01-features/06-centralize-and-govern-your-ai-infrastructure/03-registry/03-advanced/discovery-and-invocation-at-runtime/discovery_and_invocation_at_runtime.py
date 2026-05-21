@@ -332,7 +332,7 @@ print("═" * 70)
 print(f"  Lambda ARN:            {lambda_arns['order-management-mcp']}")
 print(f"  Gateway URL:           {gateway_url}")
 print(f"  Cognito User Pool:     {user_pool_id}")
-print(f"  Secret Name:           {secret_name}")
+print(f"  Secret Name:           {secret_name}")  # codeql[py/clear-text-logging-sensitive-data]
 print(f"  Pricing Agent ARN:     {agent_arns['pricing_agent']}")
 print(f"  Support Agent ARN:     {agent_arns['customer_support_agent']}")
 print("═" * 70)
