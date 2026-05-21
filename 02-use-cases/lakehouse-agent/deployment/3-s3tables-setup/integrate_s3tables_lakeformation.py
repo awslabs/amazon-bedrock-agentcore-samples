@@ -40,7 +40,7 @@ class S3TablesLakeFormationIntegration:
 
     def ensure_lakeformation_admin(self):
         """Ensure the current caller is a Lake Formation data lake administrator."""
-        print(f"\n🔐 Ensuring current role is a Lake Formation administrator...")
+        print("\n🔐 Ensuring current role is a Lake Formation administrator...")
 
         sts = boto3.client("sts", region_name=self.region)
         caller_arn = sts.get_caller_identity()["Arn"]
@@ -60,12 +60,10 @@ class S3TablesLakeFormationIntegration:
         # Get existing settings
         settings = self.lakeformation.get_data_lake_settings()["DataLakeSettings"]
         existing_admins = settings.get("DataLakeAdmins", [])
-        existing_principals = [
-            a["DataLakePrincipalIdentifier"] for a in existing_admins
-        ]
+        existing_principals = [a["DataLakePrincipalIdentifier"] for a in existing_admins]
 
         if role_arn in existing_principals:
-            print(f"   ✅ Already a Lake Formation administrator")
+            print("   ✅ Already a Lake Formation administrator")
             return
 
         # Add current role as admin, preserving existing admins
@@ -76,7 +74,7 @@ class S3TablesLakeFormationIntegration:
         settings.pop("ReadOnlyAdmins", None)
 
         self.lakeformation.put_data_lake_settings(DataLakeSettings=settings)
-        print(f"   ✅ Added as Lake Formation administrator")
+        print("   ✅ Added as Lake Formation administrator")
 
     def _get_ssm_param(self, name: str) -> str:
         """Get parameter from SSM."""
@@ -84,20 +82,18 @@ class S3TablesLakeFormationIntegration:
             response = self.ssm.get_parameter(Name=f"/app/lakehouse-agent/{name}")
             return response["Parameter"]["Value"]
         except Exception as e:
-            raise Exception(
-                f"Failed to get SSM parameter /app/lakehouse-agent/{name}: {e}"
-            )
+            raise Exception(f"Failed to get SSM parameter /app/lakehouse-agent/{name}: {e}")
 
     def grant_lakeformation_service_access(self, role_arn: str):
         """Grant Lake Formation service access to the role."""
-        print(f"\n🔐 Granting Lake Formation service access to role...")
+        print("\n🔐 Granting Lake Formation service access to role...")
 
         try:
             # Get current Lake Formation settings
             current_settings = self.lakeformation.get_data_lake_settings()
 
             # Check if the role is already in the service-linked roles
-            data_lake_settings = current_settings.get("DataLakeSettings", {})
+            current_settings.get("DataLakeSettings", {})
 
             # Update settings to include the role for S3 Tables access
             # Note: This doesn't change data lake admins, just adds service role
@@ -109,7 +105,7 @@ class S3TablesLakeFormationIntegration:
 
     def create_lakeformation_role(self):
         """Create IAM role for Lake Formation to access S3 Tables."""
-        print(f"\n🔐 Creating Lake Formation data access role...")
+        print("\n🔐 Creating Lake Formation data access role...")
 
         # Trust policy for Lake Formation with proper conditions
         trust_policy = {
@@ -123,9 +119,7 @@ class S3TablesLakeFormationIntegration:
                         "sts:SetContext",
                         "sts:SetSourceIdentity",
                     ],
-                    "Condition": {
-                        "StringEquals": {"aws:SourceAccount": self.account_id}
-                    },
+                    "Condition": {"StringEquals": {"aws:SourceAccount": self.account_id}},
                 }
             ],
         }
@@ -161,9 +155,7 @@ class S3TablesLakeFormationIntegration:
                         "s3tables:GetTableData",
                         "s3tables:PutTableData",
                     ],
-                    "Resource": [
-                        f"arn:aws:s3tables:{self.region}:{self.account_id}:bucket/*"
-                    ],
+                    "Resource": [f"arn:aws:s3tables:{self.region}:{self.account_id}:bucket/*"],
                 },
             ],
         }
@@ -176,11 +168,9 @@ class S3TablesLakeFormationIntegration:
                 print(f"✅ Role already exists: {role_arn}")
 
                 # Update trust policy to ensure it has the correct permissions
-                print(f"   Updating trust policy...")
-                self.iam.update_assume_role_policy(
-                    RoleName=self.lf_role_name, PolicyDocument=json.dumps(trust_policy)
-                )
-                print(f"   ✅ Trust policy updated")
+                print("   Updating trust policy...")
+                self.iam.update_assume_role_policy(RoleName=self.lf_role_name, PolicyDocument=json.dumps(trust_policy))
+                print("   ✅ Trust policy updated")
             except self.iam.exceptions.NoSuchEntityException:
                 # Create role
                 response = self.iam.create_role(
@@ -204,7 +194,7 @@ class S3TablesLakeFormationIntegration:
                 PolicyName="S3TablesDataAccess",
                 PolicyDocument=json.dumps(permissions_policy),
             )
-            print(f"✅ Attached permissions policy")
+            print("✅ Attached permissions policy")
 
             return role_arn
 
@@ -214,7 +204,7 @@ class S3TablesLakeFormationIntegration:
 
     def register_s3tables_with_lakeformation(self, role_arn: str):
         """Register S3 Tables bucket with Lake Formation."""
-        print(f"\n📋 Registering S3 Tables with Lake Formation...")
+        print("\n📋 Registering S3 Tables with Lake Formation...")
 
         # Use wildcard to register all S3 Tables buckets
         resource_arn = f"arn:aws:s3tables:{self.region}:{self.account_id}:bucket/*"
@@ -222,30 +212,26 @@ class S3TablesLakeFormationIntegration:
         # First deregister if exists (to re-register with privileged access)
         try:
             self.lakeformation.deregister_resource(ResourceArn=resource_arn)
-            print(
-                f"   Deregistered existing resource to re-register with privileged access"
-            )
+            print("   Deregistered existing resource to re-register with privileged access")
             time.sleep(2)
         except Exception:
             pass  # Not registered yet, that's fine
 
         try:
             # Register with WithFederation AND privileged access
-            self.lakeformation.register_resource(
-                ResourceArn=resource_arn, RoleArn=role_arn, WithFederation=True
-            )
+            self.lakeformation.register_resource(ResourceArn=resource_arn, RoleArn=role_arn, WithFederation=True)
             print(f"✅ Registered S3 Tables: {resource_arn}")
-            print(f"   With federation enabled")
+            print("   With federation enabled")
             print(f"   Using role: {role_arn}")
 
         except self.lakeformation.exceptions.AlreadyExistsException:
-            print(f"✅ S3 Tables already registered")
+            print("✅ S3 Tables already registered")
         except Exception as e:
             print(f"⚠️  Registration note: {e}")
 
     def create_federated_catalog(self):
         """Create federated catalog for S3 Tables."""
-        print(f"\n📚 Creating federated catalog for S3 Tables...")
+        print("\n📚 Creating federated catalog for S3 Tables...")
 
         catalog_name = "s3tablescatalog"
 
@@ -263,7 +249,7 @@ class S3TablesLakeFormationIntegration:
         }
 
         try:
-            response = self.glue.create_catalog(**catalog_input)
+            self.glue.create_catalog(**catalog_input)
             print(f"✅ Created federated catalog: {catalog_name}")
             return catalog_name
 
@@ -282,7 +268,7 @@ class S3TablesLakeFormationIntegration:
 
     def store_configuration(self, role_arn: str, catalog_name: str):
         """Store configuration in SSM."""
-        print(f"\n💾 Storing configuration in SSM...")
+        print("\n💾 Storing configuration in SSM...")
 
         params = {
             "/app/lakehouse-agent/lakeformation-role-arn": role_arn,
@@ -294,7 +280,7 @@ class S3TablesLakeFormationIntegration:
                 self.ssm.put_parameter(
                     Name=name,
                     Value=value,
-                    Description=f"S3 Tables Lake Formation integration parameter",
+                    Description="S3 Tables Lake Formation integration parameter",
                     Type="String",
                     Overwrite=True,
                 )
@@ -304,7 +290,7 @@ class S3TablesLakeFormationIntegration:
 
     def run(self):
         """Run the complete integration process."""
-        print(f"\n🚀 S3 Tables Lake Formation Integration")
+        print("\n🚀 S3 Tables Lake Formation Integration")
         print(f"   Region: {self.region}")
         print(f"   Account: {self.account_id}")
 
@@ -323,18 +309,16 @@ class S3TablesLakeFormationIntegration:
         # Step 4: Store configuration
         self.store_configuration(role_arn, catalog_name)
 
-        print(f"\n✨ Integration complete!")
-        print(f"\n📋 Summary:")
+        print("\n✨ Integration complete!")
+        print("\n📋 Summary:")
         print(f"   Lake Formation Role: {role_arn}")
         print(f"   Federated Catalog: {catalog_name}")
-        print(
-            f"   S3 Tables Resource: arn:aws:s3tables:{self.region}:{self.account_id}:bucket/*"
-        )
+        print(f"   S3 Tables Resource: arn:aws:s3tables:{self.region}:{self.account_id}:bucket/*")
 
-        print(f"\n📋 Next Steps:")
-        print(f"   1. Run: python setup_s3tables.py")
-        print(f"   2. Run: python setup_lakeformation_permissions.py")
-        print(f"   3. Run: python load_sample_data.py")
+        print("\n📋 Next Steps:")
+        print("   1. Run: python setup_s3tables.py")
+        print("   2. Run: python setup_lakeformation_permissions.py")
+        print("   3. Run: python load_sample_data.py")
 
 
 def main():

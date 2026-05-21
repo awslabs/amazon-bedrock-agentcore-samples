@@ -3,10 +3,9 @@ Data loader for insurance API - loads data from the data folder
 """
 
 import json
-import os
 from pathlib import Path
 from datetime import datetime
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional
 
 
 class InsuranceDataLoader:
@@ -32,9 +31,7 @@ class InsuranceDataLoader:
         try:
             with open(file_path, "r") as f:
                 data = json.load(f)
-                print(
-                    f"Successfully loaded {filename} with {len(str(data))} characters"
-                )
+                print(f"Successfully loaded {filename} with {len(str(data))} characters")
                 return data
         except FileNotFoundError:
             print(f"Warning: {filename} not found at {file_path}")
@@ -52,7 +49,7 @@ class InsuranceDataLoader:
                         data = json.load(f)
                         print(f"Found {filename} at alternative path: {alt_path}")
                         return data
-                except:
+                except Exception:
                     continue
             print(f"Could not find {filename} in any location")
             return {}
@@ -131,12 +128,8 @@ class InsuranceDataLoader:
                 # Create vehicle info with year-specific data
                 vehicle_info = vehicle.copy()
                 vehicle_info["year"] = year
-                vehicle_info["value"] = vehicle.get("base_value", {}).get(
-                    str(year), 25000
-                )
-                vehicle_info["current_value"] = int(
-                    vehicle_info["value"] * 0.85
-                )  # Depreciation
+                vehicle_info["value"] = vehicle.get("base_value", {}).get(str(year), 25000)
+                vehicle_info["current_value"] = int(vehicle_info["value"] * 0.85)  # Depreciation
                 vehicle_info["age"] = 2025 - year_int
                 vehicle_info["is_new"] = year_int >= 2024
                 vehicle_info["display_name"] = f"{year} {make} {model}"
@@ -150,10 +143,8 @@ class InsuranceDataLoader:
             birth_date = datetime.strptime(dob, "%Y-%m-%d")
             today = datetime.now()
             age = today.year - birth_date.year
-            if today.month < birth_date.month or (
-                today.month == birth_date.month and today.day < birth_date.day
-            ):
+            if today.month < birth_date.month or (today.month == birth_date.month and today.day < birth_date.day):
                 age -= 1
             return age
-        except:
+        except Exception:
             return 30  # Default age if parsing fails

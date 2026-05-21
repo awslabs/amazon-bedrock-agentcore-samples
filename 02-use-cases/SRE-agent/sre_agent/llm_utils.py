@@ -214,7 +214,7 @@ def validate_provider_access(provider: str = "bedrock", **kwargs) -> bool:
         True if provider is accessible, False otherwise
     """
     try:
-        llm = create_llm_with_error_handling(provider, **kwargs)
+        create_llm_with_error_handling(provider, **kwargs)
         # Try a simple test call to validate access
         # Note: This is a minimal validation - actual usage may still fail
         logger.info(f"Provider {provider} validation successful")

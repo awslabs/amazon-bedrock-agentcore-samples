@@ -79,9 +79,7 @@ def cleanup_lab_03(region_name: str = "us-west-2", verbose: bool = True) -> None
         logging.basicConfig(level=logging.INFO)
 
     # Initialize clients
-    agentcore_client = boto3.client(
-        "bedrock-agentcore-control", region_name=region_name
-    )
+    agentcore_client = boto3.client("bedrock-agentcore-control", region_name=region_name)
     iam_client = boto3.client("iam")
     ssm_client = boto3.client("ssm", region_name=region_name)
     logs_client = boto3.client("logs", region_name=region_name)
@@ -116,9 +114,7 @@ def cleanup_lab_03(region_name: str = "us-west-2", verbose: bool = True) -> None
     try:
         # Get provider ARN from Parameter Store
         try:
-            response = ssm_client.get_parameter(
-                Name=PARAMETER_PATHS["lab_03"]["oauth2_provider_arn"]
-            )
+            response = ssm_client.get_parameter(Name=PARAMETER_PATHS["lab_03"]["oauth2_provider_arn"])
             provider_arn = response["Parameter"]["Value"]
 
             if provider_arn:
@@ -132,24 +128,17 @@ def cleanup_lab_03(region_name: str = "us-west-2", verbose: bool = True) -> None
 
                 try:
                     # Delete the provider using the correct 'name' parameter
-                    agentcore_client.delete_oauth2_credential_provider(
-                        name=provider_name
-                    )
+                    agentcore_client.delete_oauth2_credential_provider(name=provider_name)
                     print(f"  ✓ OAuth2 credential provider deleted: {provider_name}")
                     provider_deleted = True
                 except Exception as e:
                     error_str = str(e)
                     # Check if it's already deleted or doesn't exist
-                    if (
-                        "ResourceNotFoundException" in error_str
-                        or "does not exist" in error_str.lower()
-                    ):
+                    if "ResourceNotFoundException" in error_str or "does not exist" in error_str.lower():
                         print("  ✓ Provider already deleted or not found (ok)")
                         provider_deleted = True
                     else:
-                        print(
-                            f"  ⚠ Failed to delete provider {provider_name}: {error_str}"
-                        )
+                        print(f"  ⚠ Failed to delete provider {provider_name}: {error_str}")
 
         except ssm_client.exceptions.ParameterNotFound:
             if verbose:
@@ -173,14 +162,8 @@ def cleanup_lab_03(region_name: str = "us-west-2", verbose: bool = True) -> None
                 secret_name = secret["Name"]
                 # Match OAuth2 credential provider secrets
                 if (
-                    (
-                        "bedrock-agentcore-identity" in secret_name
-                        and "m2m-credentials" in secret_name
-                    )
-                    or (
-                        "bedrock-agentcore-identity" in secret_name
-                        and "aiml301" in secret_name
-                    )
+                    ("bedrock-agentcore-identity" in secret_name and "m2m-credentials" in secret_name)
+                    or ("bedrock-agentcore-identity" in secret_name and "aiml301" in secret_name)
                     or "m2m-credentials" in secret_name
                 ):
                     oauth2_secrets.append(secret)
@@ -189,9 +172,7 @@ def cleanup_lab_03(region_name: str = "us-west-2", verbose: bool = True) -> None
             for secret in oauth2_secrets:
                 secret_name = secret["Name"]
                 try:
-                    secrets_client.delete_secret(
-                        SecretId=secret_name, ForceDeleteWithoutRecovery=True
-                    )
+                    secrets_client.delete_secret(SecretId=secret_name, ForceDeleteWithoutRecovery=True)
                     print(f"  ✓ Secret deleted: {secret_name}")
                 except Exception as e:
                     error_str = str(e)  # codeql[py/clear-text-logging-sensitive-data]
@@ -206,9 +187,7 @@ def cleanup_lab_03(region_name: str = "us-west-2", verbose: bool = True) -> None
                                 f"  ⚠ Failed to delete secret {secret_name}: {error_str}"
                             )  # codeql[py/clear-text-logging-sensitive-data]
         else:
-            print(
-                "  ✓ No OAuth2 m2m credentials secrets found"
-            )  # codeql[py/clear-text-logging-sensitive-data]
+            print("  ✓ No OAuth2 m2m credentials secrets found")  # codeql[py/clear-text-logging-sensitive-data]
 
     except Exception as e:
         print(f"  ⚠ Secrets Manager cleanup error: {e}")
@@ -224,18 +203,14 @@ def cleanup_lab_03(region_name: str = "us-west-2", verbose: bool = True) -> None
 
                 # Step 1: Delete targets
                 try:
-                    targets = agentcore_client.list_gateway_targets(
-                        gatewayIdentifier=gateway_id
-                    )
+                    targets = agentcore_client.list_gateway_targets(gatewayIdentifier=gateway_id)
                     target_count = len(targets.get("items", []))
 
                     if target_count > 0:
                         print(f"  Deleting {target_count} target(s)...")
                         for target in targets.get("items", []):
                             target_id = target["targetId"]
-                            agentcore_client.delete_gateway_target(
-                                gatewayIdentifier=gateway_id, targetId=target_id
-                            )
+                            agentcore_client.delete_gateway_target(gatewayIdentifier=gateway_id, targetId=target_id)
                             print(f"    • Deleted target: {target_id}")
 
                         # Step 2: Verify targets are deleted with retry logic
@@ -246,9 +221,7 @@ def cleanup_lab_03(region_name: str = "us-west-2", verbose: bool = True) -> None
 
                         while retry_count < max_retries and not targets_deleted:
                             time.sleep(3)  # Wait for AWS propagation
-                            remaining_targets = agentcore_client.list_gateway_targets(
-                                gatewayIdentifier=gateway_id
-                            )
+                            remaining_targets = agentcore_client.list_gateway_targets(gatewayIdentifier=gateway_id)
                             remaining_count = len(remaining_targets.get("items", []))
 
                             if remaining_count == 0:
@@ -263,8 +236,7 @@ def cleanup_lab_03(region_name: str = "us-west-2", verbose: bool = True) -> None
                                     )
                                 else:
                                     print(
-                                        f"  ⚠ {remaining_count} target(s) still associated "
-                                        f"after {max_retries} retries"
+                                        f"  ⚠ {remaining_count} target(s) still associated after {max_retries} retries"
                                     )
                     else:
                         print("  ✓ No targets found")
@@ -303,11 +275,6 @@ def cleanup_lab_03(region_name: str = "us-west-2", verbose: bool = True) -> None
             "aiml301",
             "lab-03",
         ]
-        runtime_name_patterns = [
-            "aiml301_sre_agentcore_remediation_runtime",
-            "remediation_runtime",
-            "remediation-runtime",
-        ]  # noqa: F841
 
         # First, try to get runtime info from Parameter Store
         for prefix in prefixes:
@@ -347,43 +314,27 @@ def cleanup_lab_03(region_name: str = "us-west-2", verbose: bool = True) -> None
 
                             # Clean up CloudWatch Logs Delivery BEFORE deleting runtime
                             try:
-                                print(
-                                    "  Cleaning up CloudWatch Logs Delivery for runtime..."
-                                )
+                                print("  Cleaning up CloudWatch Logs Delivery for runtime...")
                                 cleanup_runtime_logging(runtime_id, region=region_name)
                             except Exception as e:
-                                print(
-                                    f"  ⚠ CloudWatch Logs Delivery cleanup warning: {e}"
-                                )
+                                print(f"  ⚠ CloudWatch Logs Delivery cleanup warning: {e}")
 
                             try:
-                                agentcore_client.delete_agent_runtime(
-                                    agentRuntimeId=runtime_id
-                                )
+                                agentcore_client.delete_agent_runtime(agentRuntimeId=runtime_id)
                                 print("  ✓ Runtime deletion initiated: ****")
 
                                 # Wait for Runtime to be fully deleted
-                                print(
-                                    "  ⏳ Waiting for Runtime deletion to complete..."
-                                )
+                                print("  ⏳ Waiting for Runtime deletion to complete...")
                                 max_retries = 60
                                 retry_count = 0
 
                                 while retry_count < max_retries:
                                     time.sleep(5)
                                     try:
-                                        status_check = (
-                                            agentcore_client.get_agent_runtime(
-                                                agentRuntimeId=runtime_id
-                                            )
-                                        )
-                                        current_status = status_check.get(
-                                            "status", "UNKNOWN"
-                                        )
+                                        status_check = agentcore_client.get_agent_runtime(agentRuntimeId=runtime_id)
+                                        current_status = status_check.get("status", "UNKNOWN")
                                         retry_count += 1
-                                        print(
-                                            f"     Status: {current_status} (check {retry_count}/{max_retries})"
-                                        )
+                                        print(f"     Status: {current_status} (check {retry_count}/{max_retries})")
 
                                         if current_status == "DELETING":
                                             continue
@@ -401,9 +352,7 @@ def cleanup_lab_03(region_name: str = "us-west-2", verbose: bool = True) -> None
                                             break
 
                                 if not runtime_deleted:
-                                    print(
-                                        f"  ⚠ Runtime may still be deleting after {max_retries} retries"
-                                    )
+                                    print(f"  ⚠ Runtime may still be deleting after {max_retries} retries")
 
                                 break
 
@@ -444,17 +393,13 @@ def cleanup_lab_03(region_name: str = "us-west-2", verbose: bool = True) -> None
 
                         # Clean up CloudWatch Logs Delivery BEFORE deleting runtime
                         try:
-                            print(
-                                "  Cleaning up CloudWatch Logs Delivery for runtime..."
-                            )
+                            print("  Cleaning up CloudWatch Logs Delivery for runtime...")
                             cleanup_runtime_logging(runtime_id, region=region_name)
                         except Exception as e:
                             print(f"  ⚠ CloudWatch Logs Delivery cleanup warning: {e}")
 
                         try:
-                            agentcore_client.delete_agent_runtime(
-                                agentRuntimeId=runtime_id
-                            )
+                            agentcore_client.delete_agent_runtime(agentRuntimeId=runtime_id)
                             print("  ✓ Runtime deletion initiated: ****")
 
                             # Wait for Runtime to be fully deleted
@@ -465,16 +410,10 @@ def cleanup_lab_03(region_name: str = "us-west-2", verbose: bool = True) -> None
                             while retry_count < max_retries:
                                 time.sleep(5)
                                 try:
-                                    status_check = agentcore_client.get_agent_runtime(
-                                        agentRuntimeId=runtime_id
-                                    )
-                                    current_status = status_check.get(
-                                        "status", "UNKNOWN"
-                                    )
+                                    status_check = agentcore_client.get_agent_runtime(agentRuntimeId=runtime_id)
+                                    current_status = status_check.get("status", "UNKNOWN")
                                     retry_count += 1
-                                    print(
-                                        f"     Status: {current_status} (check {retry_count}/{max_retries})"
-                                    )
+                                    print(f"     Status: {current_status} (check {retry_count}/{max_retries})")
 
                                     if current_status == "DELETING":
                                         continue
@@ -492,9 +431,7 @@ def cleanup_lab_03(region_name: str = "us-west-2", verbose: bool = True) -> None
                                         break
 
                             if not runtime_deleted:
-                                print(
-                                    f"  ⚠ Runtime may still be deleting after {max_retries} retries"
-                                )
+                                print(f"  ⚠ Runtime may still be deleting after {max_retries} retries")
 
                             break
                         except Exception as e:
@@ -516,9 +453,7 @@ def cleanup_lab_03(region_name: str = "us-west-2", verbose: bool = True) -> None
         # Try to get from SSM first
         interpreter_id = None
         try:
-            response = ssm_client.get_parameter(
-                Name=PARAMETER_PATHS["lab_03"]["code_interpreter_id"]
-            )
+            response = ssm_client.get_parameter(Name=PARAMETER_PATHS["lab_03"]["code_interpreter_id"])
             interpreter_id = response["Parameter"]["Value"]
             print(f"  Found interpreter ID from SSM: {interpreter_id}")
         except ssm_client.exceptions.ParameterNotFound:
@@ -529,25 +464,17 @@ def cleanup_lab_03(region_name: str = "us-west-2", verbose: bool = True) -> None
         if not interpreter_id:
             list_response = agentcore_client.list_code_interpreters()
             for item in list_response.get("codeInterpreterSummaries", []):
-                if (
-                    "aiml301" in item.get("name", "").lower()
-                    and "custom" in item.get("name", "").lower()
-                ):
+                if "aiml301" in item.get("name", "").lower() and "custom" in item.get("name", "").lower():
                     interpreter_id = item["codeInterpreterId"]
                     print(f"  Found interpreter via API: {interpreter_id}")
                     break
 
         if interpreter_id:
             try:
-                agentcore_client.delete_code_interpreter(
-                    codeInterpreterId=interpreter_id
-                )
+                agentcore_client.delete_code_interpreter(codeInterpreterId=interpreter_id)
                 print(f"  ✓ Code interpreter deleted: {interpreter_id}")
             except Exception as e:
-                if (
-                    "ResourceNotFoundException" in str(e)
-                    or "not found" in str(e).lower()
-                ):
+                if "ResourceNotFoundException" in str(e) or "not found" in str(e).lower():
                     print("  ✓ Code interpreter already deleted (ok)")
                 else:
                     print(f"  ⚠ Failed to delete code interpreter: {e}")

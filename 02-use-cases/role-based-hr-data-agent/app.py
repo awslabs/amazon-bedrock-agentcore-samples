@@ -56,9 +56,7 @@ def load_config() -> dict:
     personas = {}
     for persona in ["hr-manager", "hr-specialist", "employee", "admin"]:
         client_id = _get_param(f"/app/hrdlp/personas/{persona}/client-id")
-        client_secret = _get_param(
-            f"/app/hrdlp/personas/{persona}/client-secret", secure=True
-        )
+        client_secret = _get_param(f"/app/hrdlp/personas/{persona}/client-secret", secure=True)
         if client_id and client_secret:
             personas[persona] = {"client_id": client_id, "client_secret": client_secret}
 
@@ -143,12 +141,8 @@ def get_token(config: dict, persona_key: str) -> Optional[str]:
             "Cognito",
         )
         return None
-    add_log(
-        f"POST {config['token_url']} (grant_type=client_credentials)", "info", "Cognito"
-    )
-    encoded = base64.b64encode(
-        f"{creds['client_id']}:{creds['client_secret']}".encode()
-    ).decode()
+    add_log(f"POST {config['token_url']} (grant_type=client_credentials)", "info", "Cognito")
+    encoded = base64.b64encode(f"{creds['client_id']}:{creds['client_secret']}".encode()).decode()
     try:
         resp = requests.post(
             config["token_url"],
@@ -180,9 +174,7 @@ def get_token(config: dict, persona_key: str) -> Optional[str]:
 # ---------------------------------------------------------------------------
 
 
-def call_runtime(
-    config: dict, token: str, prompt: str, session_id: str = ""
-) -> tuple[list, Optional[str]]:
+def call_runtime(config: dict, token: str, prompt: str, session_id: str = "") -> tuple[list, Optional[str]]:
     """POST to AgentCore Runtime and return (raw_chunks, final_text)."""
     add_log(
         f"POST {config['runtime_url'].split('/runtimes/')[0]}/runtimes/…/invocations",
@@ -206,7 +198,7 @@ def call_runtime(
             st.error(f"Runtime returned HTTP {resp.status_code}: {resp.text[:200]}")
             return [], None
 
-        add_log(f"HTTP 200 — streaming response…", "success", "Runtime")
+        add_log("HTTP 200 — streaming response…", "success", "Runtime")
 
         for line in resp.iter_lines():
             if not line:
@@ -235,11 +227,7 @@ def call_runtime(
                     )
                     if isinstance(result, dict) and "content" in result:
                         content = result["content"]
-                        llm_response = (
-                            content[0].get("text", str(result))
-                            if content
-                            else str(result)
-                        )
+                        llm_response = content[0].get("text", str(result)) if content else str(result)
                     else:
                         llm_response = str(result)
                     add_log(
@@ -266,9 +254,7 @@ def call_runtime(
                         add_log(f"  - {t}", "info", "Gateway")
 
                 elif data.get("type") == "tool_result":
-                    add_log(
-                        data.get("message", "Tool call completed"), "success", "Lambda"
-                    )
+                    add_log(data.get("message", "Tool call completed"), "success", "Lambda")
 
                 elif data.get("type") == "error":
                     add_log(data.get("message", "Unknown error"), "error", "Runtime")
@@ -364,9 +350,7 @@ def _init_state():
 
 def add_log(message: str, level: str = "info", component: str = ""):
     ts = datetime.now().strftime("%H:%M:%S.%f")[:-3]
-    st.session_state.logs.append(
-        {"ts": ts, "msg": message, "level": level, "comp": component}
-    )
+    st.session_state.logs.append({"ts": ts, "msg": message, "level": level, "comp": component})
 
 
 def _switch_persona(name: str):
@@ -403,9 +387,7 @@ if config["missing"]:
     st.stop()
 
 st.title("🔒 HR DLP Gateway — Interactive Demo")
-st.caption(
-    "Role-based data access with automatic field-level redaction via Amazon Bedrock AgentCore"
-)
+st.caption("Role-based data access with automatic field-level redaction via Amazon Bedrock AgentCore")
 
 # ---------------------------------------------------------------------------
 # Sidebar
@@ -500,17 +482,11 @@ with col_chat:
             st.session_state.logs = []
             add_log(f"Query: {q}", "info", "Client")
             with st.spinner("Processing…"):
-                _, llm_response = call_runtime(
-                    config, st.session_state.token, q, st.session_state.session_id
-                )
+                _, llm_response = call_runtime(config, st.session_state.token, q, st.session_state.session_id)
             if llm_response:
                 st.session_state.llm_response = llm_response
-                st.session_state.conversation_history.append(
-                    {"role": "user", "content": q}
-                )
-                st.session_state.conversation_history.append(
-                    {"role": "assistant", "content": llm_response}
-                )
+                st.session_state.conversation_history.append({"role": "user", "content": q})
+                st.session_state.conversation_history.append({"role": "assistant", "content": llm_response})
             st.rerun()
 
     st.divider()
@@ -529,21 +505,13 @@ with col_chat:
     ):
         st.session_state.is_processing = True
         st.session_state.logs = []
-        add_log(
-            f"Sending query as {st.session_state.selected_persona}", "info", "Client"
-        )
+        add_log(f"Sending query as {st.session_state.selected_persona}", "info", "Client")
         with st.spinner("Processing…"):
-            _, llm_response = call_runtime(
-                config, st.session_state.token, query, st.session_state.session_id
-            )
+            _, llm_response = call_runtime(config, st.session_state.token, query, st.session_state.session_id)
         if llm_response:
             st.session_state.llm_response = llm_response
-            st.session_state.conversation_history.append(
-                {"role": "user", "content": query}
-            )
-            st.session_state.conversation_history.append(
-                {"role": "assistant", "content": llm_response}
-            )
+            st.session_state.conversation_history.append({"role": "user", "content": query})
+            st.session_state.conversation_history.append({"role": "assistant", "content": llm_response})
         st.session_state.is_processing = False
         st.rerun()
 
@@ -571,18 +539,14 @@ with col_tools:
     st.header("🔧 Direct Tool Calling")
 
     if not st.session_state.tools:
-        st.info(
-            "Click **Discover Tools** in the sidebar to see what this persona can access."
-        )
+        st.info("Click **Discover Tools** in the sidebar to see what this persona can access.")
     else:
         tool_labels = {
             "hr-lambda-target___search_employee": "Search Employee",
             "hr-lambda-target___get_employee_profile": "Get Employee Profile",
             "hr-lambda-target___get_employee_compensation": "Get Employee Compensation",
         }
-        available = {
-            k: v for k, v in tool_labels.items() if k in st.session_state.tools
-        }
+        available = {k: v for k, v in tool_labels.items() if k in st.session_state.tools}
 
         if not available:
             st.warning("No recognized tools visible for this persona.")
@@ -597,9 +561,7 @@ with col_tools:
                 if selected_tool == "hr-lambda-target___search_employee":
                     search_q = st.text_input("Search query:", value="John")
                     tenant = st.text_input("Tenant ID:", value="tenant-alpha")
-                    submitted = st.form_submit_button(
-                        "🚀 Call Tool", use_container_width=True
-                    )
+                    submitted = st.form_submit_button("🚀 Call Tool", use_container_width=True)
                     if submitted:
                         result = call_tool(
                             config,
@@ -615,9 +577,7 @@ with col_tools:
                     tenant = st.text_input("Tenant ID:", value="tenant-alpha")
                     inc_pii = st.checkbox("Include PII")
                     inc_addr = st.checkbox("Include Address")
-                    submitted = st.form_submit_button(
-                        "🚀 Call Tool", use_container_width=True
-                    )
+                    submitted = st.form_submit_button("🚀 Call Tool", use_container_width=True)
                     if submitted:
                         result = call_tool(
                             config,
@@ -636,9 +596,7 @@ with col_tools:
                 elif selected_tool == "hr-lambda-target___get_employee_compensation":
                     emp_id = st.text_input("Employee ID:", value="EMP001")
                     tenant = st.text_input("Tenant ID:", value="tenant-alpha")
-                    submitted = st.form_submit_button(
-                        "🚀 Call Tool", use_container_width=True
-                    )
+                    submitted = st.form_submit_button("🚀 Call Tool", use_container_width=True)
                     if submitted:
                         result = call_tool(
                             config,

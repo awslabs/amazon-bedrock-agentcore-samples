@@ -6,7 +6,6 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse
 import logging
 from services import data_service
-from services.utils import create_success_response
 
 # Set up logger
 logger = logging.getLogger("insurance_api")

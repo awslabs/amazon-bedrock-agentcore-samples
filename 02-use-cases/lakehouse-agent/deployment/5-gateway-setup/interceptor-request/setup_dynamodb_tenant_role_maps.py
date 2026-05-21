@@ -46,7 +46,7 @@ class TenantRoleMappingSetup:
 
         self.table_name = table_name
 
-        print(f"✅ Using AWS configuration")
+        print("✅ Using AWS configuration")
         print(f"   Region: {self.region}")
         print(f"   Account: {self.account_id}")
         print(f"   Table Name: {self.table_name}")
@@ -69,7 +69,7 @@ class TenantRoleMappingSetup:
                 # Wait for table to be active
                 table = self.dynamodb.Table(self.table_name)
                 table.wait_until_exists()
-                print(f"✅ Table is active")
+                print("✅ Table is active")
                 return True
 
             # Create table with composite key
@@ -102,7 +102,7 @@ class TenantRoleMappingSetup:
                 ],
             )
 
-            print(f"⏳ Waiting for table to be created...")
+            print("⏳ Waiting for table to be created...")
             table.wait_until_exists()
 
             print(f"✅ Table {self.table_name} created successfully")
@@ -133,9 +133,7 @@ class TenantRoleMappingSetup:
 
         for group, role_name in role_mappings.items():
             try:
-                response = self.ssm_client.get_parameter(
-                    Name=f"/app/lakehouse-agent/roles/{role_name}"
-                )
+                response = self.ssm_client.get_parameter(Name=f"/app/lakehouse-agent/roles/{role_name}")
                 role_arns[group] = response["Parameter"]["Value"]
                 print(f"   ✅ Retrieved {role_name} ARN from SSM")
             except Exception as e:
@@ -211,7 +209,7 @@ class TenantRoleMappingSetup:
         Returns:
             True if data was populated successfully
         """
-        print(f"\n📝 Populating seed data (overwriting existing entries)...")
+        print("\n📝 Populating seed data (overwriting existing entries)...")
 
         try:
             # Get role ARNs from SSM
@@ -224,11 +222,7 @@ class TenantRoleMappingSetup:
                 # Always overwrite - use put_item to replace existing entries
                 table.put_item(Item=item)
 
-                allowed_tools_str = (
-                    ", ".join(item.get("allowed_tools", []))
-                    if "allowed_tools" in item
-                    else "None"
-                )
+                allowed_tools_str = ", ".join(item.get("allowed_tools", [])) if "allowed_tools" in item else "None"
                 print(
                     f"   ✅ Updated mapping: ({item['claim_name']}, {item['claim_value']}) → {item['role_type']}={item['role_value'].split('/')[-1]}"
                 )
@@ -246,7 +240,7 @@ class TenantRoleMappingSetup:
 
     def verify_data(self):
         """Verify the data in the table."""
-        print(f"\n🔍 Verifying table data...")
+        print("\n🔍 Verifying table data...")
 
         try:
             table = self.dynamodb.Table(self.table_name)
@@ -269,7 +263,7 @@ class TenantRoleMappingSetup:
 
     def store_table_info_in_ssm(self):
         """Store table information in SSM Parameter Store."""
-        print(f"\n💾 Storing table information in SSM Parameter Store...")
+        print("\n💾 Storing table information in SSM Parameter Store...")
 
         try:
             table_arn = f"arn:aws:dynamodb:{self.region}:{self.account_id}:table/{self.table_name}"
@@ -302,7 +296,7 @@ class TenantRoleMappingSetup:
 
     def update_lambda_role_permissions(self):
         """Add DynamoDB read permissions to Lambda role."""
-        print(f"\n🔑 Updating Lambda role permissions for DynamoDB access...")
+        print("\n🔑 Updating Lambda role permissions for DynamoDB access...")
 
         try:
             iam = boto3.client("iam", region_name=self.region)
@@ -332,11 +326,11 @@ class TenantRoleMappingSetup:
                 PolicyDocument=json.dumps(dynamodb_policy),
             )
 
-            print(f"✅ Added DynamoDB read permissions to Lambda role")
+            print("✅ Added DynamoDB read permissions to Lambda role")
 
         except Exception as e:
             print(f"⚠️  Could not update Lambda role: {e}")
-            print(f"   You may need to add DynamoDB permissions manually")
+            print("   You may need to add DynamoDB permissions manually")
 
     def setup(self):
         """Run the complete setup."""
@@ -365,42 +359,38 @@ class TenantRoleMappingSetup:
         print("\n" + "=" * 70)
         print("✨ Setup completed successfully!")
         print("=" * 70)
-        print(f"\n📋 Summary:")
+        print("\n📋 Summary:")
         print(f"   Table Name: {self.table_name}")
         print(f"   Region: {self.region}")
-        print(f"   Billing Mode: PAY_PER_REQUEST (on-demand)")
-        print(f"   Seed Data: 3 group mappings populated")
-        print(f"\n🔑 Key Schema:")
-        print(f"   - Partition Key: claim_name (String)")
-        print(f"   - Sort Key: claim_value (String)")
-        print(f"\n📊 Attributes:")
-        print(f"   - role_type (String)")
-        print(f"   - role_value (String)")
-        print(f"   - allowed_tools (List of Strings)")
-        print(f"\n🔐 Tool Authorization:")
+        print("   Billing Mode: PAY_PER_REQUEST (on-demand)")
+        print("   Seed Data: 3 group mappings populated")
+        print("\n🔑 Key Schema:")
+        print("   - Partition Key: claim_name (String)")
+        print("   - Sort Key: claim_value (String)")
+        print("\n📊 Attributes:")
+        print("   - role_type (String)")
+        print("   - role_value (String)")
+        print("   - allowed_tools (List of Strings)")
+        print("\n🔐 Tool Authorization:")
         print(
-            f"   - administrators: query_login_audit, text_to_sql, get_claims_summary, get_claim_details, query_claims"
+            "   - administrators: query_login_audit, text_to_sql, get_claims_summary, get_claim_details, query_claims"
         )
-        print(f"   - adjusters: get_claims_summary, get_claim_details, query_claims")
-        print(
-            f"   - policyholders: get_claims_summary, get_claim_details, query_claims"
-        )
-        print(f"\n💾 SSM Parameters:")
-        print(f"   - /app/lakehouse-agent/tenant-role-mapping-table")
-        print(f"   - /app/lakehouse-agent/tenant-role-mapping-table-arn")
-        print(f"\n🔐 Lambda Role:")
-        print(f"   - Added DynamoDB read permissions")
-        print(f"\n📋 Next Steps:")
-        print(f"   1. Update lambda_function.py to use check_tool_authorization()")
-        print(f"   2. Query using composite key: (claim_name, claim_value)")
-        print(f"   3. Redeploy Lambda function: ./deploy.sh")
-        print(f"   4. Test with adjusters, policyholders, and administrators groups")
+        print("   - adjusters: get_claims_summary, get_claim_details, query_claims")
+        print("   - policyholders: get_claims_summary, get_claim_details, query_claims")
+        print("\n💾 SSM Parameters:")
+        print("   - /app/lakehouse-agent/tenant-role-mapping-table")
+        print("   - /app/lakehouse-agent/tenant-role-mapping-table-arn")
+        print("\n🔐 Lambda Role:")
+        print("   - Added DynamoDB read permissions")
+        print("\n📋 Next Steps:")
+        print("   1. Update lambda_function.py to use check_tool_authorization()")
+        print("   2. Query using composite key: (claim_name, claim_value)")
+        print("   3. Redeploy Lambda function: ./deploy.sh")
+        print("   4. Test with adjusters, policyholders, and administrators groups")
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Setup DynamoDB table for tenant-role mapping"
-    )
+    parser = argparse.ArgumentParser(description="Setup DynamoDB table for tenant-role mapping")
     parser.add_argument(
         "--table-name",
         required=False,

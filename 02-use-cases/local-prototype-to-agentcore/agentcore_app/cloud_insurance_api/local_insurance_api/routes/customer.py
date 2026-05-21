@@ -14,8 +14,6 @@ def get_services():
     return data_service
 
 
-from local_insurance_api.services.utils import create_success_response
-
 # Set up logger
 logger = logging.getLogger("insurance_api")
 

@@ -47,15 +47,11 @@ def get_user_tokens(username, password):
 
     # Get Cognito configuration
     print("\n📋 Loading Cognito configuration...")
-    client_id = ssm.get_parameter(Name="/app/lakehouse-agent/cognito-app-client-id")[
+    client_id = ssm.get_parameter(Name="/app/lakehouse-agent/cognito-app-client-id")["Parameter"]["Value"]
+    client_secret = ssm.get_parameter(Name="/app/lakehouse-agent/cognito-app-client-secret", WithDecryption=True)[
         "Parameter"
     ]["Value"]
-    client_secret = ssm.get_parameter(
-        Name="/app/lakehouse-agent/cognito-app-client-secret", WithDecryption=True
-    )["Parameter"]["Value"]
-    user_pool_id = ssm.get_parameter(Name="/app/lakehouse-agent/cognito-user-pool-id")[
-        "Parameter"
-    ]["Value"]
+    user_pool_id = ssm.get_parameter(Name="/app/lakehouse-agent/cognito-user-pool-id")["Parameter"]["Value"]
 
     print(f"   Client ID: {client_id}")
     print(f"   User Pool: {user_pool_id}")
@@ -67,9 +63,7 @@ def get_user_tokens(username, password):
     import hashlib
 
     message = username + client_id
-    secret_hash = base64.b64encode(
-        hmac.new(client_secret.encode(), message.encode(), hashlib.sha256).digest()
-    ).decode()
+    secret_hash = base64.b64encode(hmac.new(client_secret.encode(), message.encode(), hashlib.sha256).digest()).decode()
 
     try:
         response = cognito.admin_initiate_auth(
@@ -86,7 +80,7 @@ def get_user_tokens(username, password):
         access_token = response["AuthenticationResult"]["AccessToken"]
         id_token = response["AuthenticationResult"]["IdToken"]
 
-        print(f"✅ User authenticated successfully!")
+        print("✅ User authenticated successfully!")
 
         return access_token, id_token, region, client_id, user_pool_id
 
@@ -105,9 +99,7 @@ def check_gateway_config(region):
     agentcore = boto3.client("bedrock-agentcore-control", region_name=region)
 
     try:
-        gateway_id = ssm.get_parameter(Name="/app/lakehouse-agent/gateway-id")[
-            "Parameter"
-        ]["Value"]
+        gateway_id = ssm.get_parameter(Name="/app/lakehouse-agent/gateway-id")["Parameter"]["Value"]
         print(f"\n📦 Gateway ID: {gateway_id}")
 
         gateway_details = agentcore.get_gateway(gatewayIdentifier=gateway_id)
@@ -115,13 +107,13 @@ def check_gateway_config(region):
 
         if "customJWTAuthorizer" in auth_config:
             jwt_config = auth_config["customJWTAuthorizer"]
-            print(f"\n🔐 JWT Authorizer Configuration:")
+            print("\n🔐 JWT Authorizer Configuration:")
             print(f"   Discovery URL: {jwt_config.get('discoveryUrl', 'N/A')}")
             print(f"   Allowed Audience: {jwt_config.get('allowedAudience', [])}")
             print(f"   Allowed Clients: {jwt_config.get('allowedClients', [])}")
             return jwt_config
         else:
-            print(f"\n⚠️  No JWT authorizer configured")
+            print("\n⚠️  No JWT authorizer configured")
             return None
 
     except Exception as e:
@@ -130,17 +122,13 @@ def check_gateway_config(region):
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Decode user JWT token and check Gateway config"
-    )
+    parser = argparse.ArgumentParser(description="Decode user JWT token and check Gateway config")
     parser.add_argument("--username", required=True, help="Cognito username")
     parser.add_argument("--password", required=True, help="User password")
     args = parser.parse_args()
 
     # Get user tokens
-    access_token, id_token, region, client_id, user_pool_id = get_user_tokens(
-        args.username, args.password
-    )
+    access_token, id_token, region, client_id, user_pool_id = get_user_tokens(args.username, args.password)
 
     if not access_token:
         sys.exit(1)
@@ -175,48 +163,48 @@ def main():
         expected_issuer = f"https://cognito-idp.{region}.amazonaws.com/{user_pool_id}"
         token_issuer = access_payload.get("iss", "")
 
-        print(f"\n1. Issuer (iss):")
+        print("\n1. Issuer (iss):")
         print(f"   Expected: {expected_issuer}")
         print(f"   Token:    {token_issuer}")
         if token_issuer == expected_issuer:
-            print(f"   ✅ Match")
+            print("   ✅ Match")
         else:
-            print(f"   ❌ Mismatch")
+            print("   ❌ Mismatch")
 
         # Check client_id
         allowed_clients = gateway_config.get("allowedClients", [])
         token_client_id = access_payload.get("client_id", "")
 
-        print(f"\n2. Client ID:")
+        print("\n2. Client ID:")
         print(f"   Allowed: {allowed_clients}")
         print(f"   Token:   {token_client_id}")
         if token_client_id in allowed_clients:
-            print(f"   ✅ Match")
+            print("   ✅ Match")
         else:
-            print(f"   ❌ Not in allowed clients")
+            print("   ❌ Not in allowed clients")
 
         # Check audience (if configured)
         allowed_audience = gateway_config.get("allowedAudience", [])
         token_aud = access_payload.get("aud", "")
 
-        print(f"\n3. Audience (aud):")
+        print("\n3. Audience (aud):")
         print(f"   Allowed: {allowed_audience}")
         print(f"   Token:   {token_aud}")
         if not allowed_audience:
-            print(f"   ℹ️  No audience restriction configured")
+            print("   ℹ️  No audience restriction configured")
         elif token_aud in allowed_audience:
-            print(f"   ✅ Match")
+            print("   ✅ Match")
         else:
-            print(f"   ❌ Not in allowed audience")
+            print("   ❌ Not in allowed audience")
 
         # Check token_use
         token_use = access_payload.get("token_use", "")
-        print(f"\n4. Token Use:")
+        print("\n4. Token Use:")
         print(f"   Token: {token_use}")
         if token_use == "access":
-            print(f"   ✅ Correct (should be 'access' for API calls)")
+            print("   ✅ Correct (should be 'access' for API calls)")
         else:
-            print(f"   ⚠️  Unexpected token_use value")
+            print("   ⚠️  Unexpected token_use value")
 
         # Summary
         print("\n" + "=" * 70)

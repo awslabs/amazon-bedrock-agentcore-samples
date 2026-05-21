@@ -45,18 +45,10 @@ class SSMConfig:
 
         # Load configuration from SSM
         print("\n🔍 Loading configuration from SSM Parameter Store...")
-        self.mcp_server_runtime_arn = self._get_parameter(
-            "/app/lakehouse-agent/mcp-server-runtime-arn"
-        )
-        self.interceptor_lambda_arn = self._get_parameter(
-            "/app/lakehouse-agent/interceptor-lambda-arn"
-        )
-        self.cognito_user_pool_arn = self._get_parameter(
-            "/app/lakehouse-agent/cognito-user-pool-arn"
-        )
-        self.cognito_app_client_id = self._get_parameter(
-            "/app/lakehouse-agent/cognito-app-client-id"
-        )
+        self.mcp_server_runtime_arn = self._get_parameter("/app/lakehouse-agent/mcp-server-runtime-arn")
+        self.interceptor_lambda_arn = self._get_parameter("/app/lakehouse-agent/interceptor-lambda-arn")
+        self.cognito_user_pool_arn = self._get_parameter("/app/lakehouse-agent/cognito-user-pool-arn")
+        self.cognito_app_client_id = self._get_parameter("/app/lakehouse-agent/cognito-app-client-id")
         self.cognito_app_client_secret = self._get_parameter(
             "/app/lakehouse-agent/cognito-app-client-secret", secure=True
         )
@@ -64,9 +56,7 @@ class SSMConfig:
 
         # Load M2M client credentials for Gateway-to-Runtime authentication
         try:
-            self.cognito_m2m_client_id = self._get_parameter(
-                "/app/lakehouse-agent/cognito-m2m-client-id"
-            )
+            self.cognito_m2m_client_id = self._get_parameter("/app/lakehouse-agent/cognito-m2m-client-id")
             self.cognito_m2m_client_secret = self._get_parameter(
                 "/app/lakehouse-agent/cognito-m2m-client-secret", secure=True
             )
@@ -74,9 +64,7 @@ class SSMConfig:
             print("   ✅ M2M Client Secret: ****** (loaded)")
             self.has_m2m_client = True
         except Exception:
-            print(
-                "   ⚠️  M2M client not found, will use hybrid client for Gateway-to-Runtime auth"
-            )
+            print("   ⚠️  M2M client not found, will use hybrid client for Gateway-to-Runtime auth")
             self.cognito_m2m_client_id = self.cognito_app_client_id
             self.cognito_m2m_client_secret = self.cognito_app_client_secret
             self.has_m2m_client = False
@@ -91,9 +79,7 @@ class SSMConfig:
     def _get_parameter(self, parameter_name: str, secure: bool = False) -> str:
         """Get parameter value from SSM Parameter Store."""
         try:
-            response = self.ssm.get_parameter(
-                Name=parameter_name, WithDecryption=secure
-            )
+            response = self.ssm.get_parameter(Name=parameter_name, WithDecryption=secure)
             return response["Parameter"]["Value"]
         except self.ssm.exceptions.ParameterNotFound:
             print(f"❌ SSM parameter {parameter_name} not found")
@@ -103,9 +89,7 @@ class SSMConfig:
             print(f"❌ Error retrieving parameter {parameter_name}: {e}")
             sys.exit(1)
 
-    def store_gateway_parameters(
-        self, gateway_id: str, gateway_arn: str, gateway_url: str, gateway_name: str
-    ):
+    def store_gateway_parameters(self, gateway_id: str, gateway_arn: str, gateway_url: str, gateway_name: str):
         """Store Gateway information in SSM Parameter Store."""
         print("\n💾 Storing gateway configuration in SSM Parameter Store...")
 
@@ -156,9 +140,7 @@ class GatewaySetup:
             config: SSM configuration object
         """
         self.config = config
-        self.client = boto3.client(
-            "bedrock-agentcore-control", region_name=config.region
-        )
+        self.client = boto3.client("bedrock-agentcore-control", region_name=config.region)
 
     def create_gateway_role(self, gateway_name: str) -> str:
         """
@@ -274,26 +256,18 @@ class GatewaySetup:
 
             # Detach managed policies
             try:
-                attached_policies = iam.list_attached_role_policies(RoleName=role_name)[
-                    "AttachedPolicies"
-                ]
+                attached_policies = iam.list_attached_role_policies(RoleName=role_name)["AttachedPolicies"]
                 for policy in attached_policies:
                     print(f"   Detaching managed policy: {policy['PolicyArn']}")
-                    iam.detach_role_policy(
-                        RoleName=role_name, PolicyArn=policy["PolicyArn"]
-                    )
+                    iam.detach_role_policy(RoleName=role_name, PolicyArn=policy["PolicyArn"])
             except Exception as e:
                 print(f"   ⚠️  Error detaching managed policies: {e}")
 
             # Remove from instance profiles
             try:
-                instance_profiles = iam.list_instance_profiles_for_role(
-                    RoleName=role_name
-                )["InstanceProfiles"]
+                instance_profiles = iam.list_instance_profiles_for_role(RoleName=role_name)["InstanceProfiles"]
                 for profile in instance_profiles:
-                    print(
-                        f"   Removing from instance profile: {profile['InstanceProfileName']}"
-                    )
+                    print(f"   Removing from instance profile: {profile['InstanceProfileName']}")
                     iam.remove_role_from_instance_profile(
                         InstanceProfileName=profile["InstanceProfileName"],
                         RoleName=role_name,
@@ -355,9 +329,7 @@ class GatewaySetup:
 
             # Extract user pool ID from ARN
             user_pool_id = self.config.cognito_user_pool_arn.split("/")[-1]
-            issuer = (
-                f"https://cognito-idp.{self.config.region}.amazonaws.com/{user_pool_id}"
-            )
+            issuer = f"https://cognito-idp.{self.config.region}.amazonaws.com/{user_pool_id}"
 
             # JWT authorizer configuration
             # Cognito OIDC discovery URL
@@ -375,9 +347,7 @@ class GatewaySetup:
             # Interceptor configuration for request processing
             interceptor_config = [
                 {
-                    "interceptor": {
-                        "lambda": {"arn": self.config.interceptor_lambda_arn}
-                    },
+                    "interceptor": {"lambda": {"arn": self.config.interceptor_lambda_arn}},
                     "interceptionPoints": ["REQUEST"],
                     "inputConfiguration": {"passRequestHeaders": True},
                 }
@@ -402,7 +372,9 @@ class GatewaySetup:
 
             gateway_id = response["gatewayId"]
             gateway_url = response["gatewayUrl"]
-            gateway_arn = f"arn:aws:bedrock-agentcore:{self.config.region}:{self.config.account_id}:gateway/{gateway_id}"
+            gateway_arn = (
+                f"arn:aws:bedrock-agentcore:{self.config.region}:{self.config.account_id}:gateway/{gateway_id}"
+            )
 
             print("✅ Gateway created successfully!")
             print(f"   Gateway ID: {gateway_id}")
@@ -418,9 +390,7 @@ class GatewaySetup:
 
         except Exception as e:
             if "already exists" in str(e):
-                print(
-                    f"ℹ️  Gateway {gateway_name} already exists, retrieving details..."
-                )
+                print(f"ℹ️  Gateway {gateway_name} already exists, retrieving details...")
                 response = self.client.list_gateways()
                 for gateway in response.get("items", []):
                     if gateway["name"] == gateway_name:
@@ -509,18 +479,14 @@ class GatewaySetup:
                 provider_arn = response["credentialProviderArn"]
             else:
                 print(f"   Debug - Full response: {response}")
-                raise KeyError(
-                    f"Could not find ARN in response. Available keys: {list(response.keys())}"
-                )
+                raise KeyError(f"Could not find ARN in response. Available keys: {list(response.keys())}")
 
             print(f"✅ OAuth2 provider created: {provider_arn}")
             return provider_arn
 
         except Exception as e:
             if "already exists" in str(e).lower() or "AlreadyExistsException" in str(e):
-                print(
-                    f"ℹ️  OAuth2 provider {provider_name} already exists, retrieving ARN..."
-                )
+                print(f"ℹ️  OAuth2 provider {provider_name} already exists, retrieving ARN...")
                 try:
                     # List providers and find the one with matching name
                     response = self.client.list_oauth2_credential_providers()
@@ -579,9 +545,7 @@ class GatewaySetup:
             response = self.client.create_gateway_target(
                 name=target_name,
                 gatewayIdentifier=gateway_id,
-                targetConfiguration={
-                    "mcp": {"mcpServer": {"endpoint": mcp_server_url}}
-                },
+                targetConfiguration={"mcp": {"mcpServer": {"endpoint": mcp_server_url}}},
                 credentialProviderConfigurations=[
                     {
                         "credentialProviderType": "OAUTH",
@@ -605,9 +569,7 @@ class GatewaySetup:
             print(f"❌ Error creating gateway target: {str(e)}")
             raise
 
-    def wait_for_gateway_active(
-        self, gateway_id: str, max_wait_seconds: int = 300
-    ) -> bool:
+    def wait_for_gateway_active(self, gateway_id: str, max_wait_seconds: int = 300) -> bool:
         """
         Wait for gateway to be in ACTIVE or READY status.
 
@@ -667,7 +629,9 @@ def get_runtime_mcp_url(runtime_arn: str, region: str) -> str:
         encoded_arn = runtime_arn.replace(":", "%3A").replace("/", "%2F")
 
         # Construct the MCP endpoint URL
-        mcp_url = f"https://bedrock-agentcore.{region}.amazonaws.com/runtimes/{encoded_arn}/invocations?qualifier=DEFAULT"
+        mcp_url = (
+            f"https://bedrock-agentcore.{region}.amazonaws.com/runtimes/{encoded_arn}/invocations?qualifier=DEFAULT"
+        )
 
         print(f"✅ MCP Endpoint URL: {mcp_url}")
         return mcp_url
@@ -710,9 +674,7 @@ def main():
 
             # Build Cognito endpoints
             user_pool_id = config.cognito_user_pool_arn.split("/")[-1]
-            cognito_issuer = (
-                f"https://cognito-idp.{config.region}.amazonaws.com/{user_pool_id}"
-            )
+            cognito_issuer = f"https://cognito-idp.{config.region}.amazonaws.com/{user_pool_id}"
             cognito_token_endpoint = f"{config.cognito_domain}/oauth2/token"
 
             # Determine which client to use for Gateway-to-Runtime authentication
@@ -755,19 +717,19 @@ def main():
             gateway_response["gatewayName"],
         )
 
-        print(f"\n" + "=" * 70)
+        print("\n" + "=" * 70)
         print("Gateway Setup Complete!")
         print("=" * 70)
 
-        print(f"\n✅ Gateway configuration stored in SSM Parameter Store:")
-        print(f"   /app/lakehouse-agent/gateway-id")
-        print(f"   /app/lakehouse-agent/gateway-arn")
-        print(f"   /app/lakehouse-agent/gateway-url")
-        print(f"   /app/lakehouse-agent/gateway-name")
+        print("\n✅ Gateway configuration stored in SSM Parameter Store:")
+        print("   /app/lakehouse-agent/gateway-id")
+        print("   /app/lakehouse-agent/gateway-arn")
+        print("   /app/lakehouse-agent/gateway-url")
+        print("   /app/lakehouse-agent/gateway-name")
 
-        print(f"\n📋 Next Steps:")
-        print(f"   1. Deploy the Lakehouse Agent (Step 8)")
-        print(f"   2. Test the system end-to-end")
+        print("\n📋 Next Steps:")
+        print("   1. Deploy the Lakehouse Agent (Step 8)")
+        print("   2. Test the system end-to-end")
 
         print("\n" + "=" * 70)
 

@@ -11,16 +11,14 @@ from agent import create_property_booking_agent
 from strands.multiagent.a2a import A2AServer
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 # Get runtime URL from environment variable
 # AgentCore sets this automatically when deployed
 runtime_url = os.environ.get("AGENTCORE_RUNTIME_URL", "http://0.0.0.0:9000/")
 
-logger.info(f"Starting Property Booking Agent A2A Server")
+logger.info("Starting Property Booking Agent A2A Server")
 logger.info(f"Runtime URL: {runtime_url}")
 
 # Create the Strands agent
@@ -53,7 +51,7 @@ def ping():
 app.mount("/", a2a_server.to_fastapi_app())
 
 logger.info(f"A2A server configured on {host}:{port}")
-logger.info(f"Agent card available at: /.well-known/agent-card.json")
+logger.info("Agent card available at: /.well-known/agent-card.json")
 
 if __name__ == "__main__":
     # Run the server

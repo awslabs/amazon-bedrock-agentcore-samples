@@ -49,16 +49,14 @@ def execute_query(athena, query, catalog, database, output_location, retries=2):
                 print(f"      Status: {current['QueryExecution']['Status']}")
             except Exception:
                 pass
-            raise Exception(f"Query timeout after 120 seconds")
+            raise Exception("Query timeout after 120 seconds")
 
         status = result["QueryExecution"]["Status"]["State"]
 
         if status == "SUCCEEDED":
             return query_id
 
-        error_msg = result["QueryExecution"]["Status"].get(
-            "StateChangeReason", "Unknown error"
-        )
+        error_msg = result["QueryExecution"]["Status"].get("StateChangeReason", "Unknown error")
         athena_error = result["QueryExecution"]["Status"].get("AthenaError", {})
         if athena_error:
             error_category = athena_error.get("ErrorCategory", "")
@@ -68,7 +66,7 @@ def execute_query(athena, query, catalog, database, output_location, retries=2):
 
         if attempt < retries:
             print(f"      ⚠️  Attempt {attempt + 1} failed: {error_msg}")
-            print(f"      🔄 Retrying in 5 seconds...")
+            print("      🔄 Retrying in 5 seconds...")
             time.sleep(5)
         else:
             print(f"      ❌ Query execution failed after {retries + 1} attempts:")
@@ -84,16 +82,14 @@ def main():
     ssm = boto3.client("ssm", region_name=region)
 
     # Assume the administrators role for Lake Formation permissions
-    admin_role_arn = ssm.get_parameter(
-        Name="/app/lakehouse-agent/roles/lakehouse-administrators-role"
-    )["Parameter"]["Value"]
+    admin_role_arn = ssm.get_parameter(Name="/app/lakehouse-agent/roles/lakehouse-administrators-role")["Parameter"][
+        "Value"
+    ]
 
     print(f"   Assuming admin role: {admin_role_arn}")
 
     sts = boto3.client("sts", region_name=region)
-    assumed = sts.assume_role(
-        RoleArn=admin_role_arn, RoleSessionName="load-sample-data"
-    )
+    assumed = sts.assume_role(RoleArn=admin_role_arn, RoleSessionName="load-sample-data")
     creds = assumed["Credentials"]
 
     # Create Athena client with assumed admin role credentials
@@ -105,23 +101,15 @@ def main():
         aws_session_token=creds["SessionToken"],
     )
 
-    print(f"   ✅ Assumed admin role successfully")
+    print("   ✅ Assumed admin role successfully")
 
     # Get configuration from SSM
-    table_bucket_name = ssm.get_parameter(
-        Name="/app/lakehouse-agent/table-bucket-name"
-    )["Parameter"]["Value"]
-    namespace = ssm.get_parameter(Name="/app/lakehouse-agent/namespace")["Parameter"][
-        "Value"
-    ]
-    catalog_name = ssm.get_parameter(Name="/app/lakehouse-agent/catalog-name")[
-        "Parameter"
-    ]["Value"]
+    ssm.get_parameter(Name="/app/lakehouse-agent/table-bucket-name")["Parameter"]["Value"]
+    namespace = ssm.get_parameter(Name="/app/lakehouse-agent/namespace")["Parameter"]["Value"]
+    catalog_name = ssm.get_parameter(Name="/app/lakehouse-agent/catalog-name")["Parameter"]["Value"]
 
     # Get S3 output location
-    output_bucket = ssm.get_parameter(Name="/app/lakehouse-agent/s3-bucket-name")[
-        "Parameter"
-    ]["Value"]
+    output_bucket = ssm.get_parameter(Name="/app/lakehouse-agent/s3-bucket-name")["Parameter"]["Value"]
 
     output_location = f"s3://{output_bucket}/athena-results/"
 
@@ -238,9 +226,7 @@ def main():
 
     for i, insert_query in enumerate(claims_inserts, 1):
         try:
-            execute_query(
-                athena, insert_query, catalog_name, namespace, output_location
-            )
+            execute_query(athena, insert_query, catalog_name, namespace, output_location)
             print(f"   ✅ Inserted claim {i}/{len(claims_inserts)}")
         except Exception as e:
             print(f"   ❌ Failed to insert claim {i}: {e}")
@@ -284,16 +270,14 @@ def main():
 
     for i, insert_query in enumerate(users_inserts, 1):
         try:
-            execute_query(
-                athena, insert_query, catalog_name, namespace, output_location
-            )
+            execute_query(athena, insert_query, catalog_name, namespace, output_location)
             print(f"   ✅ Inserted user {i}/{len(users_inserts)}")
         except Exception as e:
             print(f"   ❌ Failed to insert user {i}: {e}")
         time.sleep(1)  # Small delay between Iceberg writes
 
     print("\n✨ Data loading complete!")
-    print(f"\n📊 Verify data with:")
+    print("\n📊 Verify data with:")
     print(f"   SELECT COUNT(*) FROM {catalog_name}.{namespace}.claims")
     print(f"   SELECT COUNT(*) FROM {catalog_name}.{namespace}.users")
 

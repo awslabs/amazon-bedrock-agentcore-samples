@@ -4,7 +4,7 @@ Utility helpers for agent_config.
 
 import json
 import logging
-from typing import Any, Optional
+from typing import Optional
 
 import boto3
 import yaml

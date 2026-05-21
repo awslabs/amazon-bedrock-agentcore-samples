@@ -48,7 +48,7 @@ def create_lambda_role():
             RoleName=role_name,
             PolicyArn="arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
         )
-        print(f"✅ Attached AWSLambdaBasicExecutionRole policy")
+        print("✅ Attached AWSLambdaBasicExecutionRole policy")
 
         # Add inline policy for STS AssumeRole on tenant roles
         sts_policy = {
@@ -73,7 +73,7 @@ def create_lambda_role():
             PolicyName="AssumeRoleTenantPolicy",
             PolicyDocument=json.dumps(sts_policy),
         )
-        print(f"✅ Attached inline policy for STS AssumeRole on tenant roles")
+        print("✅ Attached inline policy for STS AssumeRole on tenant roles")
 
         # Add inline policy for KMS decrypt (for Lambda environment variables)
         kms_policy = {
@@ -93,10 +93,10 @@ def create_lambda_role():
             PolicyName="KMSDecryptPolicy",
             PolicyDocument=json.dumps(kms_policy),
         )
-        print(f"✅ Attached inline policy for KMS decrypt")
+        print("✅ Attached inline policy for KMS decrypt")
 
         # Store role ARN in SSM Parameter Store
-        print(f"💾 Storing role ARN in SSM Parameter Store...")
+        print("💾 Storing role ARN in SSM Parameter Store...")
         ssm.put_parameter(
             Name="/app/lakehouse-agent/interceptor-lambda-role-arn",
             Value=role_arn,
@@ -104,7 +104,7 @@ def create_lambda_role():
             Type="String",
             Overwrite=True,
         )
-        print(f"✅ Stored parameter: /app/lakehouse-agent/interceptor-lambda-role-arn")
+        print("✅ Stored parameter: /app/lakehouse-agent/interceptor-lambda-role-arn")
 
         return role_arn
 
@@ -137,7 +137,7 @@ def create_lambda_role():
             PolicyName="AssumeRoleTenantPolicy",
             PolicyDocument=json.dumps(sts_policy),
         )
-        print(f"✅ Updated inline policy for STS AssumeRole on tenant roles")
+        print("✅ Updated inline policy for STS AssumeRole on tenant roles")
 
         # Add/update inline policy for KMS decrypt (for Lambda environment variables)
         kms_policy = {
@@ -157,10 +157,10 @@ def create_lambda_role():
             PolicyName="KMSDecryptPolicy",
             PolicyDocument=json.dumps(kms_policy),
         )
-        print(f"✅ Updated inline policy for KMS decrypt")
+        print("✅ Updated inline policy for KMS decrypt")
 
         # Store role ARN in SSM Parameter Store
-        print(f"💾 Storing role ARN in SSM Parameter Store...")
+        print("💾 Storing role ARN in SSM Parameter Store...")
         ssm.put_parameter(
             Name="/app/lakehouse-agent/interceptor-lambda-role-arn",
             Value=role_arn,
@@ -168,7 +168,7 @@ def create_lambda_role():
             Type="String",
             Overwrite=True,
         )
-        print(f"✅ Stored parameter: /app/lakehouse-agent/interceptor-lambda-role-arn")
+        print("✅ Stored parameter: /app/lakehouse-agent/interceptor-lambda-role-arn")
 
         return role_arn
     except Exception as e:
@@ -178,5 +178,5 @@ def create_lambda_role():
 
 if __name__ == "__main__":
     role_arn = create_lambda_role()
-    print(f"\n✅ Lambda Role ARN stored in SSM Parameter Store")
+    print("\n✅ Lambda Role ARN stored in SSM Parameter Store")
     print(f"   /app/lakehouse-agent/interceptor-lambda-role-arn = {role_arn}")

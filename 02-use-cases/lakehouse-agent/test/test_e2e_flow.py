@@ -49,10 +49,9 @@ def get_cognito_token():
 
 def invoke_agent_runtime(bearer_token: str, prompt: str = "Show me all my claims"):
     """Invoke the lakehouse agent runtime with bearer token via JWT authentication"""
-    print(f"\n🤖 Invoking agent runtime...")
+    print("\n🤖 Invoking agent runtime...")
     print(f"   Prompt: {prompt}")
 
-    runtime_id = config.RUNTIME_ID
     region = config.AWS_REGION
 
     try:
@@ -96,7 +95,7 @@ def invoke_agent_runtime(bearer_token: str, prompt: str = "Show me all my claims
         response.raise_for_status()
         response_data = response.json()
 
-        print(f"\n✅ Agent response:")
+        print("\n✅ Agent response:")
         print(json.dumps(response_data, indent=2))
         return response_data
 

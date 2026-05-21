@@ -44,9 +44,7 @@ def analyze_query_complexity(query):
 
     # Check for joins
     join_count = sum(
-        1
-        for join_type in ["join", "inner join", "left join", "right join", "full join"]
-        if join_type in query_lower
+        1 for join_type in ["join", "inner join", "left join", "right join", "full join"] if join_type in query_lower
     )
     complexity_score += join_count * 2
     if join_count > 3:
@@ -56,9 +54,7 @@ def analyze_query_complexity(query):
     subquery_count = query_lower.count("(select")
     complexity_score += subquery_count * 3
     if subquery_count > 2:
-        warnings.append(
-            f"Query contains {subquery_count} subqueries - consider restructuring"
-        )
+        warnings.append(f"Query contains {subquery_count} subqueries - consider restructuring")
 
     # Check for aggregations
     agg_functions = ["count(", "sum(", "avg(", "max(", "min("]
@@ -78,9 +74,7 @@ def analyze_query_complexity(query):
         or_count = where_clause.count(" or ")
         complexity_score += and_count + or_count
         if (and_count + or_count) > 5:
-            warnings.append(
-                f"Complex WHERE clause with {and_count + or_count} conditions"
-            )
+            warnings.append(f"Complex WHERE clause with {and_count + or_count} conditions")
 
     return {
         "complexity_score": complexity_score,
@@ -119,9 +113,7 @@ def validate_and_execute_queries(
 
         # Check number of statements
         if len(statements) > max_statements:
-            raise QueryLimitError(
-                f"Too many statements ({len(statements)}). Maximum allowed is {max_statements}"
-            )
+            raise QueryLimitError(f"Too many statements ({len(statements)}). Maximum allowed is {max_statements}")
 
         # Connect to database
         conn = connect_to_db(secret_name)
@@ -143,8 +135,7 @@ def validate_and_execute_queries(
 
                 # Add complexity warnings to response
                 response["warnings"].extend(
-                    f"Statement {stmt_index}: {warning}"
-                    for warning in complexity_metrics["warnings"]
+                    f"Statement {stmt_index}: {warning}" for warning in complexity_metrics["warnings"]
                 )
 
                 stmt_response = {
@@ -171,13 +162,10 @@ def validate_and_execute_queries(
                     # explain_plan = cur.fetchone()[0]
 
                     # Analyze plan for potential issues
-                    optimization_suggestions = analyze_query_performance(
-                        secret_name, stmt
-                    )
+                    optimization_suggestions = analyze_query_performance(secret_name, stmt)
                     if optimization_suggestions:
                         response["optimization_suggestions"].extend(
-                            f"Statement {stmt_index}: {suggestion}"
-                            for suggestion in optimization_suggestions
+                            f"Statement {stmt_index}: {suggestion}" for suggestion in optimization_suggestions
                         )
 
                 # Execute actual query
@@ -196,9 +184,7 @@ def validate_and_execute_queries(
                     stmt_response["truncated"] = True
                     excess_rows = total_rows - max_total_rows
                     rows = rows[:-excess_rows]
-                    stmt_response["message"] = (
-                        f"Results truncated. Maximum total rows ({max_total_rows}) reached"
-                    )
+                    stmt_response["message"] = f"Results truncated. Maximum total rows ({max_total_rows}) reached"
                     total_rows = max_total_rows
 
                 # Check individual statement limit
@@ -208,9 +194,7 @@ def validate_and_execute_queries(
                     stmt_response["message"] = f"Results truncated to {max_rows} rows"
 
                 stmt_response["row_count"] = len(rows)
-                stmt_response["rows"] = [
-                    dict(zip(stmt_response["columns"], row)) for row in rows
-                ]
+                stmt_response["rows"] = [dict(zip(stmt_response["columns"], row)) for row in rows]
 
                 response["results"].append(stmt_response)
 
@@ -222,16 +206,12 @@ def validate_and_execute_queries(
                 "total_rows": total_rows,
                 "timestamp": datetime.utcnow().isoformat(),
                 "needs_analysis": total_time > 5,
-                "performance_message": (
-                    f"Executed {len(statements)} statements in {total_time:.2f} seconds"
-                ),
+                "performance_message": (f"Executed {len(statements)} statements in {total_time:.2f} seconds"),
             }
 
             # Add performance recommendations if needed
             if total_time > 5:
-                response["warnings"].append(
-                    "Query execution time exceeded 5 seconds. Consider optimization."
-                )
+                response["warnings"].append("Query execution time exceeded 5 seconds. Consider optimization.")
 
             return response
 
@@ -289,9 +269,7 @@ def get_env_secret(environment):
             response = ssm_client.get_parameter(Name=f"/AuroraOps/{environment}")
             return response["Parameter"]["Value"]
         except Exception as e:
-            raise Exception(
-                f"Failed to get dev secret name from Parameter Store: {str(e)}"
-            )
+            raise Exception(f"Failed to get dev secret name from Parameter Store: {str(e)}")
     else:
         print("environement does not exist")
         raise ValueError(f"Unknown environment: {environment}")
@@ -473,9 +451,7 @@ queries = {
 }
 
 
-def extract_database_object_ddl(
-    secret_name, object_type, object_name=None, object_schema=None
-):
+def extract_database_object_ddl(secret_name, object_type, object_name=None, object_schema=None):
     """
     Extract DDL and description for database objects
 
@@ -498,9 +474,7 @@ def extract_database_object_ddl(
         object_type_lower = object_type.lower()
         if object_type_lower not in queries:
             valid_types = ", ".join(queries.keys())
-            raise ValueError(
-                f"Invalid object_type: {object_type}. Valid types are: {valid_types}"
-            )
+            raise ValueError(f"Invalid object_type: {object_type}. Valid types are: {valid_types}")
 
         # Connect to database
         conn = connect_to_db(secret_name)
@@ -549,32 +523,22 @@ def extract_database_object_ddl(
                     # Add explanation based on object type
                     if result.get("definition"):
                         if object_type_lower == "table":
-                            result["explanation"] = analyze_table_definition(
-                                result["definition"]
-                            )
+                            result["explanation"] = analyze_table_definition(result["definition"])
                         elif object_type_lower == "view":
-                            result["explanation"] = analyze_view_definition(
-                                result["definition"]
-                            )
+                            result["explanation"] = analyze_view_definition(result["definition"])
                         elif object_type_lower in ("function", "procedure"):
-                            result["explanation"] = analyze_routine_definition(
-                                result["definition"]
-                            )
+                            result["explanation"] = analyze_routine_definition(result["definition"])
                         elif object_type_lower == "trigger":
-                            result["explanation"] = analyze_trigger_definition(
-                                result["definition"]
-                            )
+                            result["explanation"] = analyze_trigger_definition(result["definition"])
                         else:
                             result["explanation"] = f"DDL for {object_type_lower}"
 
                     results.append(result)
-                    print(
-                        f"\nProcessed {object_type_lower}: {result.get('object_name', 'unknown')}"
-                    )
+                    print(f"\nProcessed {object_type_lower}: {result.get('object_name', 'unknown')}")
 
             except Exception as e:
                 error_msg = f"Error executing query: {str(e)}"
-                print(f"\nError details:")
+                print("\nError details:")
                 print(f"Query: {query}")
                 print(f"Parameters: {params}")
                 print(f"Error message: {error_msg}")
@@ -670,9 +634,7 @@ def analyze_view_definition(definition):
 
     # Extract main components
     if "SELECT" in clean_def:
-        explanation.append(
-            "This view performs a SELECT operation with the following characteristics:"
-        )
+        explanation.append("This view performs a SELECT operation with the following characteristics:")
 
         # Analyze SELECT clause
         if "JOIN" in clean_def:
@@ -785,9 +747,7 @@ def clean_query_for_explain(query):
     return cleaned_query.strip()
 
 
-def analyze_query_performance(
-    secret_name, query_or_object_name, parameters=None, object_type=None
-):
+def analyze_query_performance(secret_name, query_or_object_name, parameters=None, object_type=None):
     """
     Analyze query performance and provide optimization recommendations
 
@@ -802,7 +762,7 @@ def analyze_query_performance(
         with conn.cursor() as cur:
             # If object_type is provided, fetch the query definition
             if object_type:
-                query_to_analyze = get_object_definition(
+                query_to_analyze = get_object_definition(  # noqa: F821
                     cur, query_or_object_name, object_type
                 )
             else:
@@ -824,9 +784,7 @@ def analyze_query_performance(
                         modified_query = modified_query.replace(f"${i}", "NULL")
 
                 # Use GENERIC_PLAN for parameterized queries
-                cur.execute(
-                    f"EXPLAIN (GENERIC_PLAN, BUFFERS, FORMAT JSON) {modified_query}"
-                )
+                cur.execute(f"EXPLAIN (GENERIC_PLAN, BUFFERS, FORMAT JSON) {modified_query}")
                 plan = cur.fetchone()[0]
 
                 cur.execute(f"EXPLAIN (FORMAT JSON) {modified_query}")
@@ -836,9 +794,7 @@ def analyze_query_performance(
                 analysis = analyze_execution_plan(plan[0], estimated_plan[0], True)
             else:
                 # For non-parameterized queries, use ANALYZE
-                cur.execute(
-                    f"EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) {query_to_analyze}"
-                )
+                cur.execute(f"EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) {query_to_analyze}")
                 plan = cur.fetchone()[0]
 
                 cur.execute(f"EXPLAIN (FORMAT JSON) {query_to_analyze}")
@@ -885,9 +841,7 @@ def analyze_execution_plan(actual_plan, estimated_plan, is_generic_plan):
     if not is_generic_plan:
         actual_time = actual_plan["Plan"].get("Actual Total Time")
         actual_rows = actual_plan["Plan"].get("Actual Rows")
-        performance_stats.update(
-            {"execution_time_ms": actual_time, "actual_rows": actual_rows}
-        )
+        performance_stats.update({"execution_time_ms": actual_time, "actual_rows": actual_rows})
 
     analysis["performance_stats"] = performance_stats
 
@@ -895,9 +849,7 @@ def analyze_execution_plan(actual_plan, estimated_plan, is_generic_plan):
     analyze_plan_node(actual_plan["Plan"], analysis, is_generic_plan)
 
     # Check for common issues
-    identify_performance_issues(
-        actual_plan["Plan"], estimated_plan["Plan"], analysis, is_generic_plan
-    )
+    identify_performance_issues(actual_plan["Plan"], estimated_plan["Plan"], analysis, is_generic_plan)
 
     # Generate recommendations
     generate_recommendations(analysis)
@@ -996,9 +948,7 @@ def identify_performance_issues(actual_node, estimated_node, analysis, is_generi
     if not is_generic_plan:
         # Row estimation analysis only for actual execution plans
         if estimated_node.get("Plan Rows", 0) > 0:
-            estimation_ratio = (
-                actual_node.get("Actual Rows", 0) / estimated_node["Plan Rows"]
-            )
+            estimation_ratio = actual_node.get("Actual Rows", 0) / estimated_node["Plan Rows"]
             if estimation_ratio > 10 or estimation_ratio < 0.1:
                 analysis["issues"].append(
                     {
@@ -1009,10 +959,7 @@ def identify_performance_issues(actual_node, estimated_node, analysis, is_generi
                 )
 
     # Parallel execution analysis (applies to both plan types)
-    if (
-        actual_node.get("Workers Planned", 0) > 0
-        and actual_node.get("Workers Launched", 0) == 0
-    ):
+    if actual_node.get("Workers Planned", 0) > 0 and actual_node.get("Workers Launched", 0) == 0:
         analysis["issues"].append(
             {
                 "type": "parallel_execution_failed",
@@ -1089,28 +1036,16 @@ def format_analysis_output(analysis):
 
     if is_generic_plan:
         # For generic plans, show estimated metrics
-        output.append(f"- Plan Type: Generic Plan (Parameterized Query)")
-        output.append(
-            f"- Estimated Total Cost: {analysis['performance_stats'].get('total_cost', 'N/A')}"
-        )
-        output.append(
-            f"- Estimated Rows: {analysis['performance_stats'].get('estimated_rows', 'N/A')}"
-        )
-        output.append(
-            f"- Plan Rows: {analysis['performance_stats'].get('plan_rows', 'N/A')}"
-        )
+        output.append("- Plan Type: Generic Plan (Parameterized Query)")
+        output.append(f"- Estimated Total Cost: {analysis['performance_stats'].get('total_cost', 'N/A')}")
+        output.append(f"- Estimated Rows: {analysis['performance_stats'].get('estimated_rows', 'N/A')}")
+        output.append(f"- Plan Rows: {analysis['performance_stats'].get('plan_rows', 'N/A')}")
     else:
         # For actual execution plans, show actual metrics
-        output.append(f"- Plan Type: Analyzed Plan")
-        output.append(
-            f"- Execution Time: {analysis['performance_stats'].get('execution_time_ms', 'N/A'):.2f} ms"
-        )
-        output.append(
-            f"- Actual Rows: {analysis['performance_stats'].get('actual_rows', 'N/A')}"
-        )
-        output.append(
-            f"- Estimated Rows: {analysis['performance_stats'].get('estimated_rows', 'N/A')}"
-        )
+        output.append("- Plan Type: Analyzed Plan")
+        output.append(f"- Execution Time: {analysis['performance_stats'].get('execution_time_ms', 'N/A'):.2f} ms")
+        output.append(f"- Actual Rows: {analysis['performance_stats'].get('actual_rows', 'N/A')}")
+        output.append(f"- Estimated Rows: {analysis['performance_stats'].get('estimated_rows', 'N/A')}")
 
     output.append("")
 
@@ -1178,9 +1113,7 @@ def monitor_query_performance(query, start_time, rows_returned):
         )
         logger.warning(f"Slow query detected: {query}")
     else:
-        metrics["performance_message"] = (
-            f"Query executed successfully in {execution_time:.2f} seconds"
-        )
+        metrics["performance_message"] = f"Query executed successfully in {execution_time:.2f} seconds"
 
     return metrics
 
@@ -1241,12 +1174,7 @@ def validate_query(query):
                 line_comment = False
                 current_stmt.append(char)
             # Handle semicolons
-            elif (
-                char == ";"
-                and not comment_block
-                and not line_comment
-                and not is_within_quotes(query_text, i)
-            ):
+            elif char == ";" and not comment_block and not line_comment and not is_within_quotes(query_text, i):
                 current_stmt.append(char)
                 stmt = "".join(current_stmt).strip()
                 if stmt:
@@ -1316,9 +1244,7 @@ def validate_query(query):
             # Check for dangerous operations
             for operation in dangerous_operations:
                 if re.search(operation, query_for_check.lower()):
-                    raise ValueError(
-                        f"Statement contains prohibited operation: {operation}"
-                    )
+                    raise ValueError(f"Statement contains prohibited operation: {operation}")
 
         validated_statements.append(stmt)
 
@@ -1408,9 +1334,7 @@ def execute_read_query(secret_name, query, max_rows=20):
                     stmt_response["row_count"] = total_rows
 
                 # Convert rows to list of dictionaries
-                stmt_response["rows"] = [
-                    dict(zip(stmt_response["columns"], row)) for row in rows
-                ]
+                stmt_response["rows"] = [dict(zip(stmt_response["columns"], row)) for row in rows]
 
                 # Add performance monitoring only for SELECT queries
                 if is_select_query:
@@ -1420,8 +1344,7 @@ def execute_read_query(secret_name, query, max_rows=20):
                     # Add complexity warnings if any
                     if complexity_metrics["warnings"]:
                         response["warnings"].extend(
-                            f"Statement {stmt_index}: {warning}"
-                            for warning in complexity_metrics["warnings"]
+                            f"Statement {stmt_index}: {warning}" for warning in complexity_metrics["warnings"]
                         )
 
                 # Store the original query in the response
@@ -1435,9 +1358,7 @@ def execute_read_query(secret_name, query, max_rows=20):
                 "statements_executed": len(statements),
                 "timestamp": datetime.utcnow().isoformat(),
                 "needs_analysis": total_time > 5,
-                "performance_message": (
-                    f"Executed {len(statements)} statements in {total_time:.2f} seconds"
-                ),
+                "performance_message": (f"Executed {len(statements)} statements in {total_time:.2f} seconds"),
             }
 
             return response
@@ -1471,9 +1392,7 @@ def format_enhanced_results(results):
     # Add performance summary
     metrics = results["performance_metrics"]
     formatted_output.append("Query Execution Summary:")
-    formatted_output.append(
-        f"- Total execution time: {metrics['execution_time']:.2f} seconds"
-    )
+    formatted_output.append(f"- Total execution time: {metrics['execution_time']:.2f} seconds")
     formatted_output.append(f"- Statements executed: {metrics['statements_executed']}")
     formatted_output.append(f"- Total rows returned: {metrics['total_rows']}")
     formatted_output.append("")
@@ -1511,26 +1430,17 @@ def format_enhanced_results(results):
         if result["columns"]:
             # Calculate column widths
             widths = {
-                col: max(
-                    len(str(col)), max(len(str(row[col])) for row in result["rows"])
-                )
-                for col in result["columns"]
+                col: max(len(str(col)), max(len(str(row[col])) for row in result["rows"])) for col in result["columns"]
             }
 
             # Add header
-            header = " | ".join(
-                str(col).ljust(widths[col]) for col in result["columns"]
-            )
+            header = " | ".join(str(col).ljust(widths[col]) for col in result["columns"])
             formatted_output.append(header)
             formatted_output.append("-" * len(header))
 
             # Add rows
             for row in result["rows"]:
-                formatted_output.append(
-                    " | ".join(
-                        str(row[col]).ljust(widths[col]) for col in result["columns"]
-                    )
-                )
+                formatted_output.append(" | ".join(str(row[col]).ljust(widths[col]) for col in result["columns"]))
 
         formatted_output.append(f"Rows returned: {result['row_count']}")
         formatted_output.append("")
@@ -1551,13 +1461,8 @@ def format_query_results(results):
     formatted_output = []
 
     # Add performance message first
-    if (
-        results["performance_metrics"]
-        and results["performance_metrics"]["performance_message"]
-    ):
-        formatted_output.append(
-            results["performance_metrics"]["performance_message"] + "\n"
-        )
+    if results["performance_metrics"] and results["performance_metrics"]["performance_message"]:
+        formatted_output.append(results["performance_metrics"]["performance_message"] + "\n")
 
     # Add truncation message if applicable
     if results["message"]:
@@ -1582,9 +1487,7 @@ def format_query_results(results):
 
         # Add rows
         for row in results["rows"]:
-            formatted_row = " | ".join(
-                str(row[col]).ljust(widths[col]) for col in results["columns"]
-            )
+            formatted_row = " | ".join(str(row[col]).ljust(widths[col]) for col in results["columns"])
             formatted_output.append(formatted_row)
 
     # Add summary
@@ -1599,10 +1502,8 @@ def format_multi_query_results(results):
 
     # Add performance summary
     metrics = results["performance_metrics"]
-    formatted_output.append(f"Query Execution Summary:")
-    formatted_output.append(
-        f"- Total execution time: {metrics['execution_time']:.2f} seconds"
-    )
+    formatted_output.append("Query Execution Summary:")
+    formatted_output.append(f"- Total execution time: {metrics['execution_time']:.2f} seconds")
     formatted_output.append(f"- Statements executed: {metrics['statements_executed']}")
     formatted_output.append("")
 
@@ -1615,26 +1516,17 @@ def format_multi_query_results(results):
         if result["columns"]:
             # Calculate column widths
             widths = {
-                col: max(
-                    len(str(col)), max(len(str(row[col])) for row in result["rows"])
-                )
-                for col in result["columns"]
+                col: max(len(str(col)), max(len(str(row[col])) for row in result["rows"])) for col in result["columns"]
             }
 
             # Add header
-            header = " | ".join(
-                str(col).ljust(widths[col]) for col in result["columns"]
-            )
+            header = " | ".join(str(col).ljust(widths[col]) for col in result["columns"])
             formatted_output.append(header)
             formatted_output.append("-" * len(header))
 
             # Add rows
             for row in result["rows"]:
-                formatted_output.append(
-                    " | ".join(
-                        str(row[col]).ljust(widths[col]) for col in result["columns"]
-                    )
-                )
+                formatted_output.append(" | ".join(str(row[col]).ljust(widths[col]) for col in result["columns"]))
 
         formatted_output.append(f"Rows returned: {result['row_count']}")
         formatted_output.append("")
@@ -1697,18 +1589,10 @@ def execute_enhanced_query_diagnostics(secret_name, query):
                     # Extract buffer usage if available
                     if "Shared Hit Blocks" in plan["Plan"]:
                         results["buffer_usage"] = {
-                            "shared_hit_blocks": plan["Plan"].get(
-                                "Shared Hit Blocks", 0
-                            ),
-                            "shared_read_blocks": plan["Plan"].get(
-                                "Shared Read Blocks", 0
-                            ),
-                            "shared_dirtied_blocks": plan["Plan"].get(
-                                "Shared Dirtied Blocks", 0
-                            ),
-                            "shared_written_blocks": plan["Plan"].get(
-                                "Shared Written Blocks", 0
-                            ),
+                            "shared_hit_blocks": plan["Plan"].get("Shared Hit Blocks", 0),
+                            "shared_read_blocks": plan["Plan"].get("Shared Read Blocks", 0),
+                            "shared_dirtied_blocks": plan["Plan"].get("Shared Dirtied Blocks", 0),
+                            "shared_written_blocks": plan["Plan"].get("Shared Written Blocks", 0),
                         }
             except Exception as e:
                 results["execution_plan_error"] = str(e)
@@ -1893,20 +1777,15 @@ def lambda_handler(event, context):
         if not environment or not action_type:
             return {
                 "functionResponse": {
-                    "content": f"Error: Missing required parameters. Need 'environment' and 'action_type'."
+                    "content": "Error: Missing required parameters. Need 'environment' and 'action_type'."
                 }
             }
 
         secret_name = get_env_secret(environment)
-        min_exec_time = 1000
 
         # Get explain plan for a query
         if action_type == "explain_query":
-            query = (
-                event.get("query")
-                if "arguments" not in event
-                else event["arguments"].get("query")
-            )
+            query = event.get("query") if "arguments" not in event else event["arguments"].get("query")
             print("Executing explain query scripts")
             results = analyze_query_performance(secret_name, query)
             formatted_results = format_analysis_output(results)
@@ -1930,11 +1809,7 @@ def lambda_handler(event, context):
             # Convert results to string if it's not already
             formatted_results = str(results) if results else "No results found"
         elif action_type == "execute_query":
-            query = (
-                event.get("query")
-                if "arguments" not in event
-                else event["arguments"].get("query")
-            )
+            query = event.get("query") if "arguments" not in event else event["arguments"].get("query")
             print("Executing read-only queries")
             results = validate_and_execute_queries(
                 secret_name,
@@ -1946,11 +1821,7 @@ def lambda_handler(event, context):
             )
             formatted_results = format_enhanced_results(results)
         elif action_type == "enhanced_query_diagnostics":
-            query = (
-                event.get("query")
-                if "arguments" not in event
-                else event["arguments"].get("query")
-            )
+            query = event.get("query") if "arguments" not in event else event["arguments"].get("query")
             print("Executing enhanced query diagnostics")
             results = execute_enhanced_query_diagnostics(secret_name, query)
             formatted_results = format_enhanced_diagnostics_output(results)
@@ -1975,8 +1846,4 @@ def lambda_handler(event, context):
 
     except Exception as e:
         print(f"Error in lambda_handler: {str(e)}")  # Add debugging
-        return {
-            "functionResponse": {
-                "content": f"Error inside the exception block: {str(e)}"
-            }
-        }
+        return {"functionResponse": {"content": f"Error inside the exception block: {str(e)}"}}

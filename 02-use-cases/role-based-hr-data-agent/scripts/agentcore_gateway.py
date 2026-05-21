@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-import os, sys
+import os
+import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 """
@@ -10,7 +11,6 @@ Usage:
   python scripts/agentcore_gateway.py delete --gateway-id <id>
 """
 
-import json
 import sys
 import time
 
@@ -57,9 +57,7 @@ def create(config: str, region: str):
     ]
 
     if not all([lambda_arn, gateway_role_arn, user_pool_id]):
-        click.echo(
-            "ERROR: Required SSM parameters missing. Run prereq.sh first.", err=True
-        )
+        click.echo("ERROR: Required SSM parameters missing. Run prereq.sh first.", err=True)
         sys.exit(1)
 
     if not persona_client_ids:
@@ -86,19 +84,14 @@ def create(config: str, region: str):
     ]
 
     # Build authorizer config — allowedClients = all persona client IDs
-    discovery_url = (
-        f"https://cognito-idp.{region}.amazonaws.com/{user_pool_id}"
-        "/.well-known/openid-configuration"
-    )
+    discovery_url = f"https://cognito-idp.{region}.amazonaws.com/{user_pool_id}/.well-known/openid-configuration"
     authorizer_config = {
         "customJWTAuthorizer": {
             "discoveryUrl": discovery_url,
             "allowedClients": persona_client_ids,
         }
     }
-    click.echo(
-        f"  Authorizer: {len(persona_client_ids)} persona clients in allowedClients"
-    )
+    click.echo(f"  Authorizer: {len(persona_client_ids)} persona clients in allowedClients")
 
     # Build interceptor configurations — passRequestHeaders ensures Authorization header
     # flows through to interceptors so they can decode the JWT for tenant resolution
@@ -119,9 +112,7 @@ def create(config: str, region: str):
                 "inputConfiguration": {"passRequestHeaders": True},
             }
         )
-    click.echo(
-        f"  Interceptors: {len(interceptor_configs)} configured (REQUEST + RESPONSE)"
-    )
+    click.echo(f"  Interceptors: {len(interceptor_configs)} configured (REQUEST + RESPONSE)")
 
     click.echo(f"Creating Gateway: {gateway_name} in {region}")
 
@@ -156,17 +147,13 @@ def create(config: str, region: str):
                     }
                 }
             },
-            credentialProviderConfigurations=[
-                {"credentialProviderType": "GATEWAY_IAM_ROLE"}
-            ],
+            credentialProviderConfigurations=[{"credentialProviderType": "GATEWAY_IAM_ROLE"}],
         )
         click.echo(f"Lambda target attached: {target_name}")
 
         # Construct full Gateway ARN (needed by Cedar policies)
         account_id = boto3.client("sts").get_caller_identity()["Account"]
-        gateway_arn = (
-            f"arn:aws:bedrock-agentcore:{region}:{account_id}:gateway/{gateway_id}"
-        )
+        gateway_arn = f"arn:aws:bedrock-agentcore:{region}:{account_id}:gateway/{gateway_id}"
 
         # Persist to SSM
         put_ssm_parameter(cfg["ssm_parameters"]["gateway_id"], gateway_id)
@@ -175,13 +162,9 @@ def create(config: str, region: str):
 
         click.echo(f"\nGateway URL: {gateway_url}")
         click.echo(f"Gateway ARN: {gateway_arn}")
-        click.echo(
-            "SSM parameters updated (/app/hrdlp/gateway-id, gateway-url, gateway-arn)."
-        )
+        click.echo("SSM parameters updated (/app/hrdlp/gateway-id, gateway-url, gateway-arn).")
         click.echo("\nNext: update Cedar policy with Gateway ARN:")
-        click.echo(
-            f"  sed -i 's|<YOUR_GATEWAY_ARN>|{gateway_arn}|g' prerequisite/cedar/hr_dlp_policies.cedar"
-        )
+        click.echo(f"  sed -i 's|<YOUR_GATEWAY_ARN>|{gateway_arn}|g' prerequisite/cedar/hr_dlp_policies.cedar")
 
     except Exception as e:
         click.echo(f"ERROR: {e}", err=True)
@@ -197,13 +180,9 @@ def delete(gateway_id: str, region: str):
     click.echo(f"Deleting gateway: {gateway_id}")
     try:
         # List and delete targets first
-        targets = client.list_gateway_targets(gatewayIdentifier=gateway_id).get(
-            "items", []
-        )
+        targets = client.list_gateway_targets(gatewayIdentifier=gateway_id).get("items", [])
         for target in targets:
-            client.delete_gateway_target(
-                gatewayIdentifier=gateway_id, targetId=target["targetId"]
-            )
+            client.delete_gateway_target(gatewayIdentifier=gateway_id, targetId=target["targetId"])
             click.echo(f"Deleted target: {target['targetId']}")
         client.delete_gateway(gatewayIdentifier=gateway_id)
         click.echo("Gateway deleted.")

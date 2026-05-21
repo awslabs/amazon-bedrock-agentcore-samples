@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 import boto3
-import json
 import os
 import sys
 import argparse
@@ -34,21 +33,15 @@ def get_vpc_config(cluster_name, region):
         # Get VPC ID and security groups from DB subnet group
         subnet_group_name = cluster.get("DBSubnetGroup")
         if subnet_group_name:
-            subnet_response = rds.describe_db_subnet_groups(
-                DBSubnetGroupName=subnet_group_name
-            )
+            subnet_response = rds.describe_db_subnet_groups(DBSubnetGroupName=subnet_group_name)
             if subnet_response["DBSubnetGroups"]:
                 subnet_group = subnet_response["DBSubnetGroups"][0]
                 vpc_id = subnet_group["VpcId"]
-                subnet_ids = [
-                    subnet["SubnetIdentifier"] for subnet in subnet_group["Subnets"]
-                ]
+                subnet_ids = [subnet["SubnetIdentifier"] for subnet in subnet_group["Subnets"]]
 
         # Get security groups
         db_security_group_ids = cluster.get("VpcSecurityGroups", [])
-        db_security_group_ids = [
-            sg["VpcSecurityGroupId"] for sg in db_security_group_ids
-        ]
+        db_security_group_ids = [sg["VpcSecurityGroupId"] for sg in db_security_group_ids]
 
         if not vpc_id or not subnet_ids:
             print("Error: Could not determine VPC ID or subnet IDs")
@@ -94,10 +87,7 @@ def get_vpc_config(cluster_name, region):
                 # Check if the rule already exists
                 rule_exists = False
                 for rule in sg_rules.get("SecurityGroupRules", []):
-                    if (
-                        rule.get("IpProtocol") == "-1"
-                        and rule.get("CidrIpv4") == "0.0.0.0/0"
-                    ):
+                    if rule.get("IpProtocol") == "-1" and rule.get("CidrIpv4") == "0.0.0.0/0":
                         rule_exists = True
                         break
 
@@ -114,17 +104,11 @@ def get_vpc_config(cluster_name, region):
                             }
                         ],
                     )
-                    print(
-                        f"Added outbound rule to Lambda security group {lambda_sg_id}"
-                    )
+                    print(f"Added outbound rule to Lambda security group {lambda_sg_id}")
                 else:
-                    print(
-                        f"Outbound rule already exists in Lambda security group {lambda_sg_id}"
-                    )
+                    print(f"Outbound rule already exists in Lambda security group {lambda_sg_id}")
             except Exception as e:
-                print(
-                    f"Warning: Could not add outbound rule to Lambda security group: {str(e)}"
-                )
+                print(f"Warning: Could not add outbound rule to Lambda security group: {str(e)}")
                 # Continue anyway as default outbound rules are usually permissive
 
             print(f"Created Lambda security group: {lambda_sg_id}")
@@ -138,9 +122,7 @@ def get_vpc_config(cluster_name, region):
                 # Check if the Lambda security group is already referenced in any rule
                 rule_exists = False
                 if sg_response["SecurityGroups"]:
-                    for rule in sg_response["SecurityGroups"][0].get(
-                        "IpPermissions", []
-                    ):
+                    for rule in sg_response["SecurityGroups"][0].get("IpPermissions", []):
                         for group_pair in rule.get("UserIdGroupPairs", []):
                             if (
                                 group_pair.get("GroupId") == lambda_sg_id
@@ -170,14 +152,10 @@ def get_vpc_config(cluster_name, region):
                         f"Inbound rule already exists in DB security group {db_sg_id} for Lambda security group {lambda_sg_id}"
                     )
             except Exception as e:
-                print(
-                    f"Warning: Could not update DB security group {db_sg_id}: {str(e)}"
-                )
+                print(f"Warning: Could not update DB security group {db_sg_id}: {str(e)}")
 
         # Save VPC configuration to file
-        config_dir = os.path.join(
-            os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "config"
-        )
+        config_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "config")
         os.makedirs(config_dir, exist_ok=True)
 
         with open(os.path.join(config_dir, "vpc_config.env"), "w") as f:
@@ -194,9 +172,7 @@ def get_vpc_config(cluster_name, region):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        description="Get VPC configuration for a database cluster"
-    )
+    parser = argparse.ArgumentParser(description="Get VPC configuration for a database cluster")
     parser.add_argument("--cluster-name", required=True, help="RDS/Aurora cluster name")
     parser.add_argument("--region", default="us-west-2", help="AWS region")
 

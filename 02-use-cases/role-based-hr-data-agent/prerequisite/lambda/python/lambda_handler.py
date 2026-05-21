@@ -10,7 +10,7 @@ import json
 import logging
 import uuid
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 from audit_logger import log_error, log_lambda_execution
 from hr_handlers import (
@@ -131,9 +131,7 @@ def _extract_tool_name(event: Dict[str, Any], context: Any) -> str:
 def _extract_arguments(event: Dict[str, Any], tool_name: str) -> Dict[str, Any]:
     if "params" in event and "arguments" in event.get("params", {}):
         return event["params"]["arguments"]
-    if tool_name and not any(
-        k in event for k in ["params", "tool_name", "tool", "arguments"]
-    ):
+    if tool_name and not any(k in event for k in ["params", "tool_name", "tool", "arguments"]):
         return event  # event IS the arguments (AgentCore Gateway format)
     return event.get("arguments", {})
 

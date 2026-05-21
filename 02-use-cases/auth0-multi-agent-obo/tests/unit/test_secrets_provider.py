@@ -256,12 +256,8 @@ class TestAWSSecretsManagerProvider:
 
         # Set up exceptions
         client.exceptions = Mock()
-        client.exceptions.ResourceNotFoundException = type(
-            "ResourceNotFoundException", (Exception,), {}
-        )
-        client.exceptions.AccessDeniedException = type(
-            "AccessDeniedException", (Exception,), {}
-        )
+        client.exceptions.ResourceNotFoundException = type("ResourceNotFoundException", (Exception,), {})
+        client.exceptions.AccessDeniedException = type("AccessDeniedException", (Exception,), {})
 
         return client
 
@@ -296,7 +292,7 @@ class TestAWSSecretsManagerProvider:
         }
 
         provider = AWSSecretsManagerProvider(client=mock_boto3_client)
-        secrets = provider.get_secret("my-secret", version_stage="AWSPENDING")
+        provider.get_secret("my-secret", version_stage="AWSPENDING")
 
         mock_boto3_client.get_secret_value.assert_called_once_with(
             SecretId="my-secret",
@@ -309,9 +305,7 @@ class TestAWSSecretsManagerProvider:
             "SecretString": json.dumps({"key": "value"}),
         }
 
-        provider = AWSSecretsManagerProvider(
-            client=mock_boto3_client, cache_ttl_seconds=3600
-        )
+        provider = AWSSecretsManagerProvider(client=mock_boto3_client, cache_ttl_seconds=3600)
 
         # First call - should hit AWS
         secrets1 = provider.get_secret("my-secret")
@@ -330,9 +324,7 @@ class TestAWSSecretsManagerProvider:
         }
 
         # Very short TTL for testing
-        provider = AWSSecretsManagerProvider(
-            client=mock_boto3_client, cache_ttl_seconds=0
-        )
+        provider = AWSSecretsManagerProvider(client=mock_boto3_client, cache_ttl_seconds=0)
 
         # First call
         provider.get_secret("my-secret")
@@ -349,9 +341,7 @@ class TestAWSSecretsManagerProvider:
             "SecretString": json.dumps({"key": "value"}),
         }
 
-        provider = AWSSecretsManagerProvider(
-            client=mock_boto3_client, cache_ttl_seconds=3600
-        )
+        provider = AWSSecretsManagerProvider(client=mock_boto3_client, cache_ttl_seconds=3600)
 
         # Populate cache
         provider.get_secret("my-secret")
@@ -367,9 +357,7 @@ class TestAWSSecretsManagerProvider:
             "SecretString": json.dumps({"key": "value"}),
         }
 
-        provider = AWSSecretsManagerProvider(
-            client=mock_boto3_client, cache_ttl_seconds=3600
-        )
+        provider = AWSSecretsManagerProvider(client=mock_boto3_client, cache_ttl_seconds=3600)
 
         # Populate cache
         provider.get_secret("secret1")
@@ -386,58 +374,48 @@ class TestAWSSecretsManagerProvider:
 
     def test_secret_not_found(self, mock_boto3_client):
         """Test SecretNotFoundError when secret doesn't exist."""
-        mock_boto3_client.get_secret_value.side_effect = (
-            mock_boto3_client.exceptions.ResourceNotFoundException("Not found")
+        mock_boto3_client.get_secret_value.side_effect = mock_boto3_client.exceptions.ResourceNotFoundException(
+            "Not found"
         )
 
-        provider = AWSSecretsManagerProvider(
-            client=mock_boto3_client, fallback_to_env=False
-        )
+        provider = AWSSecretsManagerProvider(client=mock_boto3_client, fallback_to_env=False)
 
         with pytest.raises(SecretNotFoundError):
             provider.get_secret("nonexistent-secret")
 
     def test_access_denied(self, mock_boto3_client):
         """Test SecretAccessDeniedError when access is denied."""
-        mock_boto3_client.get_secret_value.side_effect = (
-            mock_boto3_client.exceptions.AccessDeniedException("Denied")
-        )
+        mock_boto3_client.get_secret_value.side_effect = mock_boto3_client.exceptions.AccessDeniedException("Denied")
 
-        provider = AWSSecretsManagerProvider(
-            client=mock_boto3_client, fallback_to_env=False
-        )
+        provider = AWSSecretsManagerProvider(client=mock_boto3_client, fallback_to_env=False)
 
         with pytest.raises(SecretAccessDeniedError):
             provider.get_secret("protected-secret")
 
     def test_fallback_to_env(self, mock_boto3_client, monkeypatch):
         """Test fallback to environment variables on SM failure."""
-        mock_boto3_client.get_secret_value.side_effect = (
-            mock_boto3_client.exceptions.ResourceNotFoundException("Not found")
+        mock_boto3_client.get_secret_value.side_effect = mock_boto3_client.exceptions.ResourceNotFoundException(
+            "Not found"
         )
 
         monkeypatch.setenv("AUTH0_DOMAIN", "fallback.auth0.com")
         monkeypatch.setenv("AUTH0_CLIENT_ID", "fallback-client")
         monkeypatch.setenv("AUTH0_CLIENT_SECRET", "fallback-secret")
 
-        provider = AWSSecretsManagerProvider(
-            client=mock_boto3_client, fallback_to_env=True
-        )
+        provider = AWSSecretsManagerProvider(client=mock_boto3_client, fallback_to_env=True)
         secrets = provider.get_secret("agentcore/auth0")
 
         assert secrets["domain"] == "fallback.auth0.com"
 
     def test_fallback_disabled(self, mock_boto3_client, monkeypatch):
         """Test that fallback can be disabled."""
-        mock_boto3_client.get_secret_value.side_effect = (
-            mock_boto3_client.exceptions.ResourceNotFoundException("Not found")
+        mock_boto3_client.get_secret_value.side_effect = mock_boto3_client.exceptions.ResourceNotFoundException(
+            "Not found"
         )
 
         monkeypatch.setenv("AUTH0_DOMAIN", "fallback.auth0.com")
 
-        provider = AWSSecretsManagerProvider(
-            client=mock_boto3_client, fallback_to_env=False
-        )
+        provider = AWSSecretsManagerProvider(client=mock_boto3_client, fallback_to_env=False)
 
         with pytest.raises(SecretNotFoundError):
             provider.get_secret("agentcore/auth0")
@@ -478,9 +456,7 @@ class TestAWSSecretsManagerProvider:
 
         mock_boto3_client.get_secret_value.side_effect = mock_get_secret_value
 
-        provider = AWSSecretsManagerProvider(
-            client=mock_boto3_client, cache_ttl_seconds=3600
-        )
+        provider = AWSSecretsManagerProvider(client=mock_boto3_client, cache_ttl_seconds=3600)
 
         # Launch multiple threads simultaneously
         threads = []
@@ -515,9 +491,7 @@ class TestAWSSecretsManagerProvider:
             "SecretString": json.dumps({"key": "value"}),
         }
 
-        provider = AWSSecretsManagerProvider(
-            client=mock_boto3_client, cache_ttl_seconds=3600
-        )
+        provider = AWSSecretsManagerProvider(client=mock_boto3_client, cache_ttl_seconds=3600)
 
         # Initially empty
         info = provider.get_cache_info()

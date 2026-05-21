@@ -18,17 +18,13 @@ sys.path.append(str(project_root))
 from shared.config_manager import AgentCoreConfigManager
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 
 def parse_arguments():
     """Parse command line arguments"""
-    parser = argparse.ArgumentParser(
-        description="Delete Bedrock AgentCore Gateway Target"
-    )
+    parser = argparse.ArgumentParser(description="Delete Bedrock AgentCore Gateway Target")
     parser.add_argument("--gateway-id", required=True, help="Gateway ID")
     parser.add_argument("--target-id", required=True, help="Target ID to delete")
     parser.add_argument("--force", action="store_true", help="Skip confirmation prompt")
@@ -59,7 +55,7 @@ def print_response(title, response_data):
 
 def confirm_deletion(target_info, gateway_info):
     """Confirm target deletion with user"""
-    print(f"\nTarget Deletion Confirmation")
+    print("\nTarget Deletion Confirmation")
     print("=" * 40)
     print(f"Gateway ID: {gateway_info.get('gatewayId', 'Unknown')}")
     print(f"Gateway Name: {gateway_info.get('name', 'Unknown')}")
@@ -95,9 +91,7 @@ def confirm_deletion(target_info, gateway_info):
     return True
 
 
-def delete_gateway_target(
-    config_manager, environment, gateway_id, target_id, force=False
-):
+def delete_gateway_target(config_manager, environment, gateway_id, target_id, force=False):
     """Delete Gateway Target using configuration"""
 
     # Get configuration from config manager
@@ -110,7 +104,7 @@ def delete_gateway_target(
         "profile": None,  # Use default credentials
     }
 
-    print(f"Using Configuration:")
+    print("Using Configuration:")
     print(f"   Environment: {environment}")
     print(f"   AWS Region: {aws_config['region']}")
     print(f"   AWS Account: {aws_config['account_id']}")
@@ -119,17 +113,13 @@ def delete_gateway_target(
     session = boto3.Session(region_name=aws_config["region"])
 
     # Use bedrock-agentcore-control client
-    bedrock_agentcore_client = session.client(
-        "bedrock-agentcore-control", region_name=aws_config["region"]
-    )
+    bedrock_agentcore_client = session.client("bedrock-agentcore-control", region_name=aws_config["region"])
 
     print("\nRetrieving target and gateway information...")
 
     # Get target info
     try:
-        target_response = bedrock_agentcore_client.get_gateway_target(
-            gatewayIdentifier=gateway_id, targetId=target_id
-        )
+        target_response = bedrock_agentcore_client.get_gateway_target(gatewayIdentifier=gateway_id, targetId=target_id)
         target_info = target_response
     except Exception as e:
         print(f"Target {target_id} not found: {str(e)}")
@@ -137,9 +127,7 @@ def delete_gateway_target(
 
     # Get gateway info
     try:
-        gateway_response = bedrock_agentcore_client.get_gateway(
-            gatewayIdentifier=gateway_id
-        )
+        gateway_response = bedrock_agentcore_client.get_gateway(gatewayIdentifier=gateway_id)
         gateway_info = gateway_response
     except Exception as e:
         print(f"Gateway {gateway_id} not found: {str(e)}")
@@ -161,9 +149,9 @@ def delete_gateway_target(
 
         print_response("DELETE TARGET RESPONSE", response)
 
-        target_status = response.get("status", "Unknown")
+        response.get("status", "Unknown")
 
-        print(f"\nTarget Deleted Successfully!")
+        print("\nTarget Deleted Successfully!")
         print(f"   Target ID: {target_id}")
         print(f"   Gateway ID: {gateway_id}")
         print(f"   Environment: {environment}")
@@ -195,17 +183,13 @@ def main():
 
     try:
         # Delete target
-        success = delete_gateway_target(
-            config_manager, environment, args.gateway_id, args.target_id, args.force
-        )
+        success = delete_gateway_target(config_manager, environment, args.gateway_id, args.target_id, args.force)
 
         if success:
-            print(f"\nTarget deletion completed successfully!")
-            print(
-                f"   Use 'python list-targets.py --gateway-id {args.gateway_id}' to see remaining targets"
-            )
+            print("\nTarget deletion completed successfully!")
+            print(f"   Use 'python list-targets.py --gateway-id {args.gateway_id}' to see remaining targets")
         else:
-            print(f"\n❌ Target deletion failed!")
+            print("\n❌ Target deletion failed!")
             sys.exit(1)
 
     except Exception as e:

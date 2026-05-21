@@ -63,15 +63,15 @@ def main():
             print(f"   ❌ {param_name}: NOT FOUND")
 
     if missing_params:
-        print(f"\n❌ Missing SSM parameters!")
-        print(f"\n💡 Solution:")
-        print(f"   Run the setup scripts in order:")
-        print(f"   1. python gateway-setup/setup_cognito.py")
-        print(f"   2. python lakehouse-agent/deploy_lakehouse_agent.py")
+        print("\n❌ Missing SSM parameters!")
+        print("\n💡 Solution:")
+        print("   Run the setup scripts in order:")
+        print("   1. python gateway-setup/setup_cognito.py")
+        print("   2. python lakehouse-agent/deploy_lakehouse_agent.py")
         return
 
     # Get agent runtime configuration
-    print(f"\n🔍 Checking Agent Runtime Configuration...")
+    print("\n🔍 Checking Agent Runtime Configuration...")
     try:
         client = boto3.client("bedrock-agentcore-control", region_name=region)
         runtime_arn = params["/app/lakehouse-agent/agent-runtime-arn"]
@@ -80,69 +80,65 @@ def main():
         runtime_config = response["agentRuntime"]
 
         if "authorizerConfiguration" not in runtime_config:
-            print(f"   ❌ No authorizer configuration found!")
-            print(f"   ℹ️  Agent is using IAM SigV4 authentication")
-            print(f"\n💡 Solution:")
-            print(f"   Run: python lakehouse-agent/update_agent_authorizer.py")
+            print("   ❌ No authorizer configuration found!")
+            print("   ℹ️  Agent is using IAM SigV4 authentication")
+            print("\n💡 Solution:")
+            print("   Run: python lakehouse-agent/update_agent_authorizer.py")
             return
 
         auth_config = runtime_config["authorizerConfiguration"]
 
         if "customJWTAuthorizer" not in auth_config:
-            print(f"   ❌ No JWT authorizer configured!")
-            print(f"\n💡 Solution:")
-            print(f"   Run: python lakehouse-agent/update_agent_authorizer.py")
+            print("   ❌ No JWT authorizer configured!")
+            print("\n💡 Solution:")
+            print("   Run: python lakehouse-agent/update_agent_authorizer.py")
             return
 
         jwt_config = auth_config["customJWTAuthorizer"]
         discovery_url = jwt_config.get("discoveryUrl", "")
         allowed_clients = jwt_config.get("allowedClients", [])
 
-        print(f"   ✅ JWT Authorizer configured")
+        print("   ✅ JWT Authorizer configured")
         print(f"   Discovery URL: {discovery_url}")
         print(f"   Allowed Clients: {allowed_clients}")
 
         # Extract issuer from discovery URL
-        configured_issuer = discovery_url.replace(
-            "/.well-known/openid-configuration", ""
-        )
+        configured_issuer = discovery_url.replace("/.well-known/openid-configuration", "")
 
         # Build expected issuer from Cognito config
         cognito_region = params["/app/lakehouse-agent/cognito-region"]
         cognito_pool_id = params["/app/lakehouse-agent/cognito-user-pool-id"]
         cognito_client_id = params["/app/lakehouse-agent/cognito-app-client-id"]
 
-        expected_issuer = (
-            f"https://cognito-idp.{cognito_region}.amazonaws.com/{cognito_pool_id}"
-        )
+        expected_issuer = f"https://cognito-idp.{cognito_region}.amazonaws.com/{cognito_pool_id}"
 
-        print(f"\n🔍 Comparing Issuers...")
+        print("\n🔍 Comparing Issuers...")
         print(f"   Configured issuer: {configured_issuer}")
         print(f"   Expected issuer:   {expected_issuer}")
 
         if configured_issuer != expected_issuer:
-            print(f"   ❌ MISMATCH!")
-            print(f"\n💡 Solution:")
-            print(f"   Run: python lakehouse-agent/update_agent_authorizer.py")
+            print("   ❌ MISMATCH!")
+            print("\n💡 Solution:")
+            print("   Run: python lakehouse-agent/update_agent_authorizer.py")
             return
 
-        print(f"   ✅ Issuers match!")
+        print("   ✅ Issuers match!")
 
         # Check client ID
-        print(f"\n🔍 Comparing Client IDs...")
+        print("\n🔍 Comparing Client IDs...")
         print(f"   Configured clients: {allowed_clients}")
         print(f"   Expected client:    {cognito_client_id}")
 
         if cognito_client_id not in allowed_clients:
-            print(f"   ❌ Client ID not in allowed list!")
-            print(f"\n💡 Solution:")
-            print(f"   Run: python lakehouse-agent/update_agent_authorizer.py")
+            print("   ❌ Client ID not in allowed list!")
+            print("\n💡 Solution:")
+            print("   Run: python lakehouse-agent/update_agent_authorizer.py")
             return
 
-        print(f"   ✅ Client ID matches!")
+        print("   ✅ Client ID matches!")
 
         # Test authentication
-        print(f"\n🔍 Testing Authentication...")
+        print("\n🔍 Testing Authentication...")
         try:
             cognito = boto3.client("cognito-idp", region_name=cognito_region)
 
@@ -161,9 +157,7 @@ def main():
 
             message = bytes(username + cognito_client_id, "utf-8")
             secret = bytes(client_secret, "utf-8")
-            secret_hash = base64.b64encode(
-                hmac.new(secret, message, digestmod=hashlib.sha256).digest()
-            ).decode()
+            secret_hash = base64.b64encode(hmac.new(secret, message, digestmod=hashlib.sha256).digest()).decode()
 
             response = cognito.admin_initiate_auth(
                 UserPoolId=cognito_pool_id,
@@ -186,30 +180,27 @@ def main():
                     token_issuer = claims.get("iss")
                     token_client_id = claims.get("client_id")
 
-                    print(f"\n📄 Token Claims:")
+                    print("\n📄 Token Claims:")
                     print(f"   Issuer (iss): {token_issuer}")
                     print(f"   Client ID: {token_client_id}")
                     print(f"   Username: {claims.get('username')}")
                     print(f"   Expires: {claims.get('exp')}")
 
-                    if (
-                        token_issuer == configured_issuer
-                        and token_client_id in allowed_clients
-                    ):
-                        print(f"\n✅ ALL CHECKS PASSED!")
-                        print(f"\n   Your configuration is correct.")
-                        print(f"   If you're still getting errors, check:")
-                        print(f"   1. Token hasn't expired")
-                        print(f"   2. Network connectivity to AWS")
-                        print(f"   3. Agent runtime is in ACTIVE state")
+                    if token_issuer == configured_issuer and token_client_id in allowed_clients:
+                        print("\n✅ ALL CHECKS PASSED!")
+                        print("\n   Your configuration is correct.")
+                        print("   If you're still getting errors, check:")
+                        print("   1. Token hasn't expired")
+                        print("   2. Network connectivity to AWS")
+                        print("   3. Agent runtime is in ACTIVE state")
                     else:
-                        print(f"\n❌ Token claims don't match configuration!")
+                        print("\n❌ Token claims don't match configuration!")
                         if token_issuer != configured_issuer:
-                            print(f"   Issuer mismatch!")
+                            print("   Issuer mismatch!")
                         if token_client_id not in allowed_clients:
-                            print(f"   Client ID not allowed!")
+                            print("   Client ID not allowed!")
             else:
-                print(f"   ❌ Authentication failed")
+                print("   ❌ Authentication failed")
 
         except Exception as e:
             print(f"   ❌ Error testing authentication: {e}")

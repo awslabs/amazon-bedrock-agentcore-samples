@@ -1,6 +1,6 @@
 import json
 import os
-from typing import Dict, Any, Optional, List
+from typing import Optional, List
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -65,9 +65,7 @@ def get_aws_credentials():
     except ProfileNotFound:
         print(f"⚠️  AWS profile '{aws_profile}' not found, trying access keys...")
     except NoCredentialsError:
-        print(
-            f"⚠️  No credentials found for profile '{aws_profile}', trying access keys..."
-        )
+        print(f"⚠️  No credentials found for profile '{aws_profile}', trying access keys...")
     except Exception as e:
         print(f"⚠️  Profile authentication failed: {e}, trying access keys...")
 
@@ -85,13 +83,11 @@ def get_aws_credentials():
             # Test the credentials
             sts = session.client("sts")
             identity = sts.get_caller_identity()
-            print(f"✅ Using AWS access keys")
+            print("✅ Using AWS access keys")
             print(f"   Account: {identity.get('Account', 'Unknown')}")
             print(f"   Access Key: {aws_access_key[:8]}...")
             print(f"   Region: {aws_region}")
-            print(
-                "⚠️  Note: Using access keys - ensure AgentCore permissions are attached to this user"
-            )
+            print("⚠️  Note: Using access keys - ensure AgentCore permissions are attached to this user")
             return session, aws_region
 
         except Exception as e:
@@ -221,16 +217,12 @@ def clean_output_for_display(output: str) -> str:
             if len(lines) > 1:
                 # Skip the binary line, keep any text after it
                 remaining_text = lines[1].strip()
-                if remaining_text and not remaining_text.startswith(
-                    ("iVBOR", "/9j/", "data:")
-                ):
+                if remaining_text and not remaining_text.startswith(("iVBOR", "/9j/", "data:")):
                     cleaned_parts.append(remaining_text)
 
         if cleaned_parts:
             result = "\n\n".join(cleaned_parts)
-            print(
-                f"🧹 Cleaned output: removed image binary, kept {len(result)} chars of text"
-            )
+            print(f"🧹 Cleaned output: removed image binary, kept {len(result)} chars of text")
             return result
         else:
             return "Code executed successfully - chart generated"
@@ -252,9 +244,7 @@ def extract_image_data(execution_result: str):
         if "IMAGE_DATA:" in execution_result:
             # Find all IMAGE_DATA: patterns in the text
             # AgentCore puts the full base64 string in stdout, so we need a greedy pattern
-            pattern = (
-                r"IMAGE_DATA:([A-Za-z0-9+/=\n\r\s]+?)(?=\n[A-Za-z]|\nBase64|\n$|$)"
-            )
+            pattern = r"IMAGE_DATA:([A-Za-z0-9+/=\n\r\s]+?)(?=\n[A-Za-z]|\nBase64|\n$|$)"
             matches = re.findall(pattern, execution_result, re.MULTILINE | re.DOTALL)
 
             print(f"🔍 Regex matches found: {len(matches)}")
@@ -264,18 +254,14 @@ def extract_image_data(execution_result: str):
                     # Clean up the base64 string - remove all whitespace and newlines
                     clean_match = re.sub(r"[\s\n\r]", "", match)
 
-                    print(
-                        f"🔍 Match {i + 1} - Original length: {len(match)}, Clean length: {len(clean_match)}"
-                    )
+                    print(f"🔍 Match {i + 1} - Original length: {len(match)}, Clean length: {len(clean_match)}")
                     print(f"🔍 Match {i + 1} - Starts with: {clean_match[:50]}...")
 
                     # Must be reasonable length for an image (at least 1KB when decoded)
                     if len(clean_match) > 1000:
                         # Validate it's valid base64 and can be decoded
                         decoded = base64.b64decode(clean_match)
-                        print(
-                            f"🔍 Match {i + 1} - Decoded length: {len(decoded)} bytes"
-                        )
+                        print(f"🔍 Match {i + 1} - Decoded length: {len(decoded)} bytes")
 
                         # Check if it looks like a PNG (starts with PNG signature)
                         if decoded.startswith(b"\x89PNG\r\n\x1a\n"):
@@ -325,11 +311,7 @@ def upload_files_to_agentcore_sandbox(files_data: list, aws_region: str) -> bool
                 result = event.get("result", {})
                 if result.get("isError", False):
                     error_content = result.get("content", [{}])
-                    error_text = (
-                        error_content[0].get("text", "Unknown error")
-                        if error_content
-                        else "Unknown error"
-                    )
+                    error_text = error_content[0].get("text", "Unknown error") if error_content else "Unknown error"
                     print(f"❌ File upload error: {error_text}")
                     return False
                 else:
@@ -346,12 +328,10 @@ def upload_files_to_agentcore_sandbox(files_data: list, aws_region: str) -> bool
         return False
 
 
-def execute_chart_code_direct(
-    code: str, session_files: list = None
-) -> tuple[str, list]:
+def execute_chart_code_direct(code: str, session_files: list = None) -> tuple[str, list]:
     """Execute chart code directly with AgentCore to preserve full base64 output"""
     try:
-        print(f"\n🎨 Direct AgentCore chart execution")
+        print("\n🎨 Direct AgentCore chart execution")
         print(f"📝 Code length: {len(code)} characters")
 
         # Clean the code to remove any markdown formatting
@@ -364,23 +344,15 @@ def execute_chart_code_direct(
                 print(f"📁 Uploading {len(session_files)} files to sandbox...")
                 files_data = []
                 for file_info in session_files:
-                    files_data.append(
-                        {"path": file_info["filename"], "text": file_info["content"]}
-                    )
+                    files_data.append({"path": file_info["filename"], "text": file_info["content"]})
 
                 # Upload files using writeFiles tool
-                upload_response = code_client.invoke(
-                    "writeFiles", {"content": files_data}
-                )
+                upload_response = code_client.invoke("writeFiles", {"content": files_data})
                 for event in upload_response["stream"]:
                     result = event.get("result", {})
                     if result.get("isError", False):
                         error_content = result.get("content", [{}])
-                        error_text = (
-                            error_content[0].get("text", "Unknown error")
-                            if error_content
-                            else "Unknown error"
-                        )
+                        error_text = error_content[0].get("text", "Unknown error") if error_content else "Unknown error"
                         print(f"❌ File upload error: {error_text}")
                         return f"File upload failed: {error_text}", []
                     else:
@@ -404,11 +376,7 @@ def execute_chart_code_direct(
 
             if result.get("isError", False):
                 error_content = result.get("content", [{}])
-                error_text = (
-                    error_content[0].get("text", "Unknown error")
-                    if error_content
-                    else "Unknown error"
-                )
+                error_text = error_content[0].get("text", "Unknown error") if error_content else "Unknown error"
                 print(f"❌ Direct execution error: {error_text}")
                 return f"Error: {error_text}", []
 
@@ -426,9 +394,7 @@ def execute_chart_code_direct(
                 print(f"⚠️  Direct stderr: {stderr}")
 
         # Combine output
-        final_output = (
-            "\n".join(output_parts) if output_parts else "Code executed successfully"
-        )
+        final_output = "\n".join(output_parts) if output_parts else "Code executed successfully"
 
         # Extract images directly from full stdout
         images = extract_image_data(full_stdout)
@@ -436,7 +402,7 @@ def execute_chart_code_direct(
         # Clean the output for display (remove image binary but keep analysis text)
         display_output = clean_output_for_display(final_output)
 
-        print(f"✅ Direct execution completed:")
+        print("✅ Direct execution completed:")
         print(f"   Output length: {len(final_output)}")
         print(f"   Display output length: {len(display_output)}")
         print(f"   Images extracted: {len(images)}")
@@ -517,24 +483,22 @@ def extract_text_from_agent_result(agent_result) -> str:
                             text_parts.append(item["text"])
                     if text_parts:
                         full_text = "\n".join(text_parts)
-                        print(f"✅ Extracted text from message.content array")
+                        print("✅ Extracted text from message.content array")
 
                         # Extract actual execution output from AI commentary
-                        actual_output = extract_execution_output_from_ai_response(
-                            full_text
-                        )
+                        actual_output = extract_execution_output_from_ai_response(full_text)
                         return actual_output
 
                 # If message has direct text content
                 if "text" in message:
                     full_text = str(message["text"])
-                    print(f"✅ Extracted text from message.text")
+                    print("✅ Extracted text from message.text")
                     actual_output = extract_execution_output_from_ai_response(full_text)
                     return actual_output
 
             # If message is a string
             if isinstance(message, str):
-                print(f"✅ Using message as string")
+                print("✅ Using message as string")
                 actual_output = extract_execution_output_from_ai_response(message)
                 return actual_output
 
@@ -542,20 +506,20 @@ def extract_text_from_agent_result(agent_result) -> str:
         if hasattr(agent_result, "content"):
             content = agent_result.content
             if isinstance(content, str):
-                print(f"✅ Using content attribute")
+                print("✅ Using content attribute")
                 actual_output = extract_execution_output_from_ai_response(content)
                 return actual_output
 
         if hasattr(agent_result, "text"):
             text = agent_result.text
             if isinstance(text, str):
-                print(f"✅ Using text attribute")
+                print("✅ Using text attribute")
                 actual_output = extract_execution_output_from_ai_response(text)
                 return actual_output
 
         # Fallback to string conversion
         result = str(agent_result)
-        print(f"⚠️  Using str() fallback")
+        print("⚠️  Using str() fallback")
         actual_output = extract_execution_output_from_ai_response(result)
         return actual_output
 
@@ -569,10 +533,7 @@ def extract_execution_output_from_ai_response(ai_response: str) -> str:
     import re
 
     # For CSV analysis, prioritize AI analysis text over raw execution output
-    if any(
-        keyword in ai_response.lower()
-        for keyword in ["dataset", "dataframe", "csv", "analysis", "statistics"]
-    ):
+    if any(keyword in ai_response.lower() for keyword in ["dataset", "dataframe", "csv", "analysis", "statistics"]):
         # Check if response contains IMAGE_DATA (indicating chart generation)
         if "IMAGE_DATA:" in ai_response:
             # For chart generation, extract everything EXCEPT the image binary
@@ -584,9 +545,7 @@ def extract_execution_output_from_ai_response(ai_response: str) -> str:
                 after_parts = parts[1].split("\n", 1)
                 if len(after_parts) > 1:
                     after_image = after_parts[1].strip()
-                    if after_image and not after_image.startswith(
-                        ("iVBOR", "/9j/", "data:")
-                    ):
+                    if after_image and not after_image.startswith(("iVBOR", "/9j/", "data:")):
                         combined_analysis = f"{before_image}\n\n{after_image}".strip()
                         if combined_analysis:
                             print(
@@ -596,9 +555,7 @@ def extract_execution_output_from_ai_response(ai_response: str) -> str:
 
                 # If no analysis after image, return the part before
                 if before_image:
-                    print(
-                        f"🎯 Extracted analysis text before image: {len(before_image)} chars"
-                    )
+                    print(f"🎯 Extracted analysis text before image: {len(before_image)} chars")
                     return before_image
 
         # If it's data analysis without charts, prefer AI commentary over raw output
@@ -612,9 +569,7 @@ def extract_execution_output_from_ai_response(ai_response: str) -> str:
                 "insights:",
             ]
         ):
-            print(
-                f"🎯 Using AI analysis commentary for data analysis: {len(ai_response)} chars"
-            )
+            print(f"🎯 Using AI analysis commentary for data analysis: {len(ai_response)} chars")
             return ai_response
 
     # Pattern 1: Look for code blocks with output (for non-analysis cases)
@@ -674,7 +629,7 @@ def extract_python_code_from_prompt(input_text: str) -> str:
             if matches:
                 # Return the first match (the actual Python code)
                 clean_code = matches[0].strip()
-                print(f"🔧 Extracted Python code from markdown block")
+                print("🔧 Extracted Python code from markdown block")
                 return clean_code
 
     # If no markdown blocks found, check if it's a prompt with code
@@ -725,11 +680,11 @@ def extract_python_code_from_prompt(input_text: str) -> str:
 
         if code_lines:
             clean_code = "\n".join(code_lines).strip()
-            print(f"🔧 Extracted Python code from prompt text")
+            print("🔧 Extracted Python code from prompt text")
             return clean_code
 
     # If no special formatting detected, return as-is (assume it's already clean code)
-    print(f"🔧 Using input as-is (no markdown formatting detected)")
+    print("🔧 Using input as-is (no markdown formatting detected)")
     return input_text.strip()
 
 
@@ -763,18 +718,12 @@ def execute_python_code(code: str, description: str = "", files: list = None) ->
                     )
 
                 # Upload files using writeFiles tool
-                upload_response = code_client.invoke(
-                    "writeFiles", {"content": files_data}
-                )
+                upload_response = code_client.invoke("writeFiles", {"content": files_data})
                 for event in upload_response["stream"]:
                     result = event.get("result", {})
                     if result.get("isError", False):
                         error_content = result.get("content", [{}])
-                        error_text = (
-                            error_content[0].get("text", "Unknown error")
-                            if error_content
-                            else "Unknown error"
-                        )
+                        error_text = error_content[0].get("text", "Unknown error") if error_content else "Unknown error"
                         print(f"❌ File upload error: {error_text}")
                         return f"File upload failed: {error_text}"
                     else:
@@ -797,11 +746,7 @@ def execute_python_code(code: str, description: str = "", files: list = None) ->
 
             if result.get("isError", False):
                 error_content = result.get("content", [{}])
-                error_text = (
-                    error_content[0].get("text", "Unknown error")
-                    if error_content
-                    else "Unknown error"
-                )
+                error_text = error_content[0].get("text", "Unknown error") if error_content else "Unknown error"
                 print(f"❌ AgentCore execution error: {error_text}")
                 return f"Error: {error_text}"
 
@@ -818,11 +763,7 @@ def execute_python_code(code: str, description: str = "", files: list = None) ->
                 print(f"⚠️  Stderr captured: {len(stderr)} characters")
 
         # Combine all output
-        final_output = (
-            "\n".join(output_parts)
-            if output_parts
-            else "Code executed successfully (no output)"
-        )
+        final_output = "\n".join(output_parts) if output_parts else "Code executed successfully (no output)"
 
         print(f"✅ AgentCore execution completed - Output length: {len(final_output)}")
         return final_output
@@ -878,9 +819,7 @@ def create_bedrock_model_with_fallback(aws_region: str):
             aws_region=aws_region,
             botocore_config=get_extended_botocore_config(),
         )
-        print(
-            f"✅ Primary inference profile {primary_model_id} initialized successfully"
-        )
+        print(f"✅ Primary inference profile {primary_model_id} initialized successfully")
         result = (primary_model, primary_model_id)
         _model_cache[cache_key] = result
         return result
@@ -895,9 +834,7 @@ def create_bedrock_model_with_fallback(aws_region: str):
                 aws_region=aws_region,
                 botocore_config=get_extended_botocore_config(),
             )
-            print(
-                f"✅ Fallback inference profile {fallback_model_id} initialized successfully"
-            )
+            print(f"✅ Fallback inference profile {fallback_model_id} initialized successfully")
             result = (fallback_model, fallback_model_id)
             _model_cache[cache_key] = result
             return result
@@ -917,9 +854,7 @@ def create_bedrock_model_with_fallback(aws_region: str):
                 _model_cache[cache_key] = result
                 return result
             except Exception as final_error:
-                raise Exception(
-                    f"All model initialization attempts failed: {final_error}"
-                )
+                raise Exception(f"All model initialization attempts failed: {final_error}")
 
 
 def setup_aws_credentials():
@@ -939,10 +874,7 @@ def initialize_agents():
     global code_generator_agent, code_executor_agent, executor_type, current_model_id
 
     # Check cache first
-    if (
-        "code_generator_agent" in _agents_cache
-        and "code_executor_agent" in _agents_cache
-    ):
+    if "code_generator_agent" in _agents_cache and "code_executor_agent" in _agents_cache:
         print("✅ Using cached agents")
         code_generator_agent = _agents_cache["code_generator_agent"]
         code_executor_agent = _agents_cache["code_executor_agent"]
@@ -977,7 +909,7 @@ def initialize_agents():
 
         # Test AgentCore availability
         with code_session(aws_region) as test_client:
-            test_response = test_client.invoke(
+            test_client.invoke(
                 "executeCode",
                 {
                     "code": "print('AgentCore initialization test successful')",
@@ -1019,9 +951,7 @@ RESPONSE FORMAT: The execute_python_code tool returns execution results includin
 
         print("✅ Agents initialized successfully:")
         print(f"   - Code Generator: Strands-Agents Agent with {model_id}")
-        print(
-            f"   - Code Executor: Strands-Agents Agent with {model_id} + AgentCore CodeInterpreter"
-        )
+        print(f"   - Code Executor: Strands-Agents Agent with {model_id} + AgentCore CodeInterpreter")
 
         # Cache the agents
         current_model_id = model_id
@@ -1051,7 +981,7 @@ def get_or_create_session(session_id: Optional[str] = None) -> CodeInterpreterSe
 
 
 # Utility functions for code analysis
-def detect_chart_code(code: str) -> bool:
+def detect_chart_code(code: str) -> bool:  # noqa: F811
     """Detect if code contains chart/visualization generation"""
     chart_indicators = [
         "plt.",
@@ -1084,7 +1014,7 @@ def detect_interactive_code(code: str) -> bool:
     return any(pattern.lower() in code_lower for pattern in interactive_patterns)
 
 
-def prepare_interactive_code(code: str, inputs: list) -> str:
+def prepare_interactive_code(code: str, inputs: list) -> str:  # noqa: F811
     """Prepare interactive code with pre-provided inputs - OPTIMIZED for faster execution"""
     if not inputs:
         return code
@@ -1125,9 +1055,7 @@ async def generate_code(request: CodeGenerationRequest):
             "import",
             "upload",
         ]
-        mentions_file = any(
-            keyword in request.prompt.lower() for keyword in file_keywords
-        )
+        mentions_file = any(keyword in request.prompt.lower() for keyword in file_keywords)
 
         if mentions_file and not session.uploaded_csv:
             return {
@@ -1156,9 +1084,7 @@ async def generate_code(request: CodeGenerationRequest):
             "seaborn",
             "plotly",
         ]
-        needs_visualization = any(
-            keyword in request.prompt.lower() for keyword in chart_keywords
-        )
+        needs_visualization = any(keyword in request.prompt.lower() for keyword in chart_keywords)
 
         if session.uploaded_csv:
             csv_info = f"""
@@ -1227,9 +1153,7 @@ This ensures your charts are properly displayed in the web interface.
                 "enhanced_prompt": enhanced_prompt if session.uploaded_csv else None,
                 "generated_code": generated_code,
                 "agent": "strands_code_generator",
-                "csv_used": session.uploaded_csv["filename"]
-                if session.uploaded_csv
-                else None,
+                "csv_used": session.uploaded_csv["filename"] if session.uploaded_csv else None,
                 "timestamp": time.time(),
             }
         )
@@ -1239,9 +1163,7 @@ This ensures your charts are properly displayed in the web interface.
             "code": generated_code,
             "session_id": session.session_id,
             "agent_used": "strands_code_generator",
-            "csv_file_used": session.uploaded_csv["filename"]
-            if session.uploaded_csv
-            else None,
+            "csv_file_used": session.uploaded_csv["filename"] if session.uploaded_csv else None,
         }
 
     except Exception as e:
@@ -1311,9 +1233,7 @@ async def execute_code(request: CodeExecutionRequest):
                     break
                 elif entry.get("type") == "generation" and entry.get("generated_code"):
                     # Check if this generated code matches the current code being executed
-                    if entry.get(
-                        "generated_code"
-                    ) and request.code.strip() in entry.get("generated_code", ""):
+                    if entry.get("generated_code") and request.code.strip() in entry.get("generated_code", ""):
                         user_prompt = entry.get("prompt")
                         break
 
@@ -1325,10 +1245,7 @@ async def execute_code(request: CodeExecutionRequest):
                 user_prompt = f"Execute: {code_lines[0]}"
             elif "input(" in request.code:
                 user_prompt = "Interactive code execution"
-            elif any(
-                keyword in request.code.lower()
-                for keyword in ["import matplotlib", "plt.", "plot", "chart"]
-            ):
+            elif any(keyword in request.code.lower() for keyword in ["import matplotlib", "plt.", "plot", "chart"]):
                 user_prompt = "Generate visualization/chart"
             elif "import pandas" in request.code or "pd." in request.code:
                 user_prompt = "Data analysis with pandas"
@@ -1357,26 +1274,20 @@ async def execute_code(request: CodeExecutionRequest):
 
         # REVERTED: Use original logic - only force direct AgentCore for charts and files, NOT for interactive
         if is_chart_code or session_files:
-            print(f"🎨 Chart code detected - using direct AgentCore execution")
+            print("🎨 Chart code detected - using direct AgentCore execution")
 
             # Use direct AgentCore execution to preserve full base64 output
-            execution_result_str, images = execute_chart_code_direct(
-                prepared_code, session_files
-            )
+            execution_result_str, images = execute_chart_code_direct(prepared_code, session_files)
             agent_used = "direct_agentcore_charts"
 
         else:
-            print(f"📝 Regular code - using Strands-Agents execution")
+            print("📝 Regular code - using Strands-Agents execution")
 
             # For regular code, if files are needed, use direct AgentCore as well
             # since Strands-Agents tools can't easily access session files
             if session_files:
-                print(
-                    f"📁 Files detected - switching to direct AgentCore for file access"
-                )
-                execution_result_str, images = execute_chart_code_direct(
-                    prepared_code, session_files
-                )
+                print("📁 Files detected - switching to direct AgentCore for file access")
+                execution_result_str, images = execute_chart_code_direct(prepared_code, session_files)
                 agent_used = "direct_agentcore_with_files"
             else:
                 # Use strands-agents with AgentCore tool for regular code without files
@@ -1458,9 +1369,7 @@ async def clear_csv_from_session(session_id: str):
             session.uploaded_csv = None
 
             # Add to conversation history
-            session.conversation_history.append(
-                {"type": "csv_removal", "filename": filename, "timestamp": time.time()}
-            )
+            session.conversation_history.append({"type": "csv_removal", "filename": filename, "timestamp": time.time()})
 
             print(f"🗑️ CSV file '{filename}' cleared from session {session_id}")
 
@@ -1513,9 +1422,7 @@ async def upload_csv_file(request: FileUploadRequest):
             "message": f"CSV file {request.filename} uploaded successfully",
             "session_id": session.session_id,
             "filename": request.filename,
-            "preview": request.content[:500] + "..."
-            if len(request.content) > 500
-            else request.content,
+            "preview": request.content[:500] + "..." if len(request.content) > 500 else request.content,
         }
 
     except Exception as e:
@@ -1566,9 +1473,7 @@ async def get_session_history(session_id: str):
         }
 
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to get session history: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to get session history: {str(e)}")
 
 
 @app.get("/api/agents/status")
@@ -1592,12 +1497,8 @@ async def get_agents_status():
                 "purpose": "Execute Python code safely"
                 if executor_type == "agentcore"
                 else "Simulate Python code execution",
-                "status": "active"
-                if "code_executor_agent" in globals()
-                else "inactive",
-                "type": "AgentCore CodeInterpreter"
-                if executor_type == "agentcore"
-                else "Strands Simulation",
+                "status": "active" if "code_executor_agent" in globals() else "inactive",
+                "type": "AgentCore CodeInterpreter" if executor_type == "agentcore" else "Strands Simulation",
             },
         ]
 
@@ -1614,15 +1515,11 @@ async def get_agents_status():
             "executor_type": executor_type,
             "current_model": current_model,
             "aws_region": aws_region,
-            "authentication": "AWS Profile"
-            if os.getenv("AWS_PROFILE")
-            else "Access Keys",
+            "authentication": "AWS Profile" if os.getenv("AWS_PROFILE") else "Access Keys",
         }
 
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to get agents status: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to get agents status: {str(e)}")
 
 
 # WebSocket endpoint for real-time communication
@@ -1642,9 +1539,7 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                     agent_result = code_generator_agent(message["prompt"])
 
                     # Extract string content from AgentResult
-                    generated_code = (
-                        str(agent_result) if agent_result is not None else ""
-                    )
+                    generated_code = str(agent_result) if agent_result is not None else ""
 
                     await websocket.send_text(
                         json.dumps(
@@ -1657,21 +1552,15 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                         )
                     )
                 except Exception as e:
-                    await websocket.send_text(
-                        json.dumps({"type": "error", "success": False, "error": str(e)})
-                    )
+                    await websocket.send_text(json.dumps({"type": "error", "success": False, "error": str(e)}))
 
             elif message["type"] == "execute_code":
                 # Handle code execution via WebSocket
                 try:
                     if executor_type == "agentcore":
-                        execution_result = code_executor_agent(
-                            f"Execute this code: {message['code']}"
-                        )
+                        execution_result = code_executor_agent(f"Execute this code: {message['code']}")
                     else:
-                        execution_result = code_executor_agent(
-                            f"Simulate execution of: {message['code']}"
-                        )
+                        execution_result = code_executor_agent(f"Simulate execution of: {message['code']}")
 
                     await websocket.send_text(
                         json.dumps(
@@ -1684,9 +1573,7 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                         )
                     )
                 except Exception as e:
-                    await websocket.send_text(
-                        json.dumps({"type": "error", "success": False, "error": str(e)})
-                    )
+                    await websocket.send_text(json.dumps({"type": "error", "success": False, "error": str(e)}))
 
     except WebSocketDisconnect:
         print(f"WebSocket disconnected for session {session_id}")

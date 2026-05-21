@@ -32,9 +32,7 @@ def generate_fresh_token(deployment_info_path="deployment_info.json"):
 
     try:
         # Get client secret
-        client_response = cognito_client.describe_user_pool_client(
-            UserPoolId=user_pool_id, ClientId=client_id
-        )
+        client_response = cognito_client.describe_user_pool_client(UserPoolId=user_pool_id, ClientId=client_id)
         client_secret = client_response["UserPoolClient"]["ClientSecret"]
 
         # Get domain
@@ -46,9 +44,7 @@ def generate_fresh_token(deployment_info_path="deployment_info.json"):
             return None, None
 
         region = user_pool_id.split("_")[0]
-        token_endpoint = (
-            f"https://{domain}.auth.{region}.amazoncognito.com/oauth2/token"
-        )
+        token_endpoint = f"https://{domain}.auth.{region}.amazoncognito.com/oauth2/token"
 
         # Create Basic Auth header
         auth_string = f"{client_id}:{client_secret}"
@@ -110,7 +106,7 @@ def main():
     access_token, expires_at = generate_fresh_token()
 
     if access_token:
-        print(f"✅ Token generated successfully!")
+        print("✅ Token generated successfully!")
         print(f"Expires at: {expires_at}")
         print(f"Token (first 50 chars): {access_token[:50]}...")
         sys.exit(0)

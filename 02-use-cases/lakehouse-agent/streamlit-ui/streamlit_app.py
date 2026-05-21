@@ -3,7 +3,6 @@ Streamlit UI for Lakehouse Agent with Cognito User Authentication
 """
 
 import streamlit as st
-import requests
 import json
 import uuid
 import boto3
@@ -37,10 +36,7 @@ def load_config_from_ssm():
         session = boto3.Session()
         # Get region with proper fallback
         region = (
-            session.region_name
-            or os.environ.get("AWS_REGION")
-            or os.environ.get("AWS_DEFAULT_REGION")
-            or "us-east-1"
+            session.region_name or os.environ.get("AWS_REGION") or os.environ.get("AWS_DEFAULT_REGION") or "us-east-1"
         )
         ssm = boto3.client("ssm", region_name=region)
 
@@ -76,9 +72,7 @@ def load_config_from_ssm():
         }
 
 
-def authenticate_user(
-    username: str, password: str, user_pool_id: str, client_id: str, region: str
-) -> Optional[dict]:
+def authenticate_user(username: str, password: str, user_pool_id: str, client_id: str, region: str) -> Optional[dict]:
     """Authenticate user with Cognito using USER_PASSWORD_AUTH flow"""
     try:
         client = boto3.client("cognito-idp", region_name=region)
@@ -101,9 +95,7 @@ def authenticate_user(
 
         message = bytes(username + client_id, "utf-8")
         secret = bytes(client_secret, "utf-8")
-        secret_hash = base64.b64encode(
-            hmac.new(secret, message, digestmod=hashlib.sha256).digest()
-        ).decode()
+        secret_hash = base64.b64encode(hmac.new(secret, message, digestmod=hashlib.sha256).digest()).decode()
 
         response = client.admin_initiate_auth(
             UserPoolId=user_pool_id,
@@ -170,9 +162,7 @@ def set_new_password(
 
         message = bytes(username + client_id, "utf-8")
         secret = bytes(client_secret, "utf-8")
-        secret_hash = base64.b64encode(
-            hmac.new(secret, message, digestmod=hashlib.sha256).digest()
-        ).decode()
+        secret_hash = base64.b64encode(hmac.new(secret, message, digestmod=hashlib.sha256).digest()).decode()
 
         response = client.admin_respond_to_auth_challenge(
             UserPoolId=user_pool_id,
@@ -200,9 +190,7 @@ def set_new_password(
         return None
 
 
-def invoke_agent(
-    runtime_arn: str, prompt: str, access_token: str, id_token: str, region: str
-) -> str:
+def invoke_agent(runtime_arn: str, prompt: str, access_token: str, id_token: str, region: str) -> str:
     """Invoke AgentCore Runtime with OAuth bearer token via HTTPS"""
     try:
         import requests
@@ -294,9 +282,7 @@ if not st.session_state.cognito_config:
     with st.spinner("Loading configuration from SSM..."):
         st.session_state.cognito_config = load_config_from_ssm()
         if st.session_state.cognito_config.get("runtime_arn"):
-            st.session_state.runtime_arn = st.session_state.cognito_config[
-                "runtime_arn"
-            ]
+            st.session_state.runtime_arn = st.session_state.cognito_config["runtime_arn"]
 
 # Sidebar configuration
 with st.sidebar:
@@ -318,20 +304,14 @@ with st.sidebar:
                 "admin@example.com",
             ]
             username = st.selectbox("Email", options=test_users, index=0)
-            password = st.text_input(
-                "Password", type="password", placeholder="TempPass123!"
-            )
+            password = st.text_input("Password", type="password", placeholder="TempPass123!")
 
             config = st.session_state.cognito_config
 
             if st.button("🔑 Login", use_container_width=True):
                 if username and password:
-                    if not config.get("cognito_user_pool_id") or not config.get(
-                        "cognito_app_client_id"
-                    ):
-                        st.error(
-                            "❌ Cognito not configured. Please run setup_cognito.py first."
-                        )
+                    if not config.get("cognito_user_pool_id") or not config.get("cognito_app_client_id"):
+                        st.error("❌ Cognito not configured. Please run setup_cognito.py first.")
                     else:
                         with st.spinner("Authenticating..."):
                             result = authenticate_user(
@@ -351,9 +331,7 @@ with st.sidebar:
                                     st.warning("⚠️ You must set a new password")
                                     st.rerun()
                                 else:
-                                    st.session_state.access_token = result[
-                                        "access_token"
-                                    ]
+                                    st.session_state.access_token = result["access_token"]
                                     st.session_state.id_token = result["id_token"]
                                     st.session_state.user_email = username
                                     st.success(f"✅ Logged in as {username}")
@@ -365,12 +343,8 @@ with st.sidebar:
         if "password_challenge" in st.session_state:
             with st.expander("🔒 Set New Password", expanded=True):
                 st.info("First time login - please set a new password")
-                new_password = st.text_input(
-                    "New Password", type="password", key="new_pwd"
-                )
-                confirm_password = st.text_input(
-                    "Confirm Password", type="password", key="confirm_pwd"
-                )
+                new_password = st.text_input("New Password", type="password", key="new_pwd")
+                confirm_password = st.text_input("Confirm Password", type="password", key="confirm_pwd")
 
                 if st.button("Set Password", use_container_width=True):
                     if new_password and new_password == confirm_password:
@@ -392,9 +366,7 @@ with st.sidebar:
                                 st.session_state.id_token = result["id_token"]
                                 st.session_state.user_email = challenge["username"]
                                 del st.session_state.password_challenge
-                                st.success(
-                                    f"✅ Password set! Logged in as {challenge['username']}"
-                                )
+                                st.success(f"✅ Password set! Logged in as {challenge['username']}")
                                 st.rerun()
                     else:
                         st.error("❌ Passwords don't match or are empty")
@@ -420,9 +392,7 @@ with st.sidebar:
         if st.button("🔄 Reload from SSM", use_container_width=True):
             st.session_state.cognito_config = load_config_from_ssm()
             if st.session_state.cognito_config.get("runtime_arn"):
-                st.session_state.runtime_arn = st.session_state.cognito_config[
-                    "runtime_arn"
-                ]
+                st.session_state.runtime_arn = st.session_state.cognito_config["runtime_arn"]
             st.success("✅ Configuration reloaded")
             st.rerun()
 
@@ -462,18 +432,14 @@ with st.sidebar:
 
 # Main interface
 st.title("🏥 Lakehouse Agent")
-st.markdown(
-    f"Ask me about your lakehouse data! *Logged in as: {st.session_state.user_email or 'Not logged in'}*"
-)
+st.markdown(f"Ask me about your lakehouse data! *Logged in as: {st.session_state.user_email or 'Not logged in'}*")
 
 if not st.session_state.access_token:
     st.warning("⚠️ Please login in the sidebar first!")
     st.stop()
 
 if not st.session_state.runtime_arn:
-    st.warning(
-        "⚠️ Runtime ARN not configured. Please check SSM Parameter Store or enter manually in the sidebar."
-    )
+    st.warning("⚠️ Runtime ARN not configured. Please check SSM Parameter Store or enter manually in the sidebar.")
     st.stop()
 
 # Display chat history

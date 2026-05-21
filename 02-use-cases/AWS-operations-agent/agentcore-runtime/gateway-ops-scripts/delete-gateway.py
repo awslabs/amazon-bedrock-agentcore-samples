@@ -19,9 +19,7 @@ sys.path.append(str(project_root))
 from shared.config_manager import AgentCoreConfigManager
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 
@@ -30,9 +28,7 @@ def parse_arguments():
     parser = argparse.ArgumentParser(description="Delete Bedrock AgentCore Gateway")
     parser.add_argument("--gateway-id", required=True, help="Gateway ID to delete")
     parser.add_argument("--force", action="store_true", help="Skip confirmation prompt")
-    parser.add_argument(
-        "--delete-targets", action="store_true", help="Delete all targets first"
-    )
+    parser.add_argument("--delete-targets", action="store_true", help="Delete all targets first")
     parser.add_argument(
         "--environment",
         type=str,
@@ -102,9 +98,7 @@ def clear_dynamic_config_with_yq():
 def get_gateway_targets(bedrock_agentcore_client, gateway_id):
     """Get all targets for a gateway"""
     try:
-        response = bedrock_agentcore_client.list_gateway_targets(
-            gatewayIdentifier=gateway_id
-        )
+        response = bedrock_agentcore_client.list_gateway_targets(gatewayIdentifier=gateway_id)
         return response.get("items", [])
     except Exception as e:
         logger.error(f"Failed to get gateway targets: {str(e)}")
@@ -118,9 +112,7 @@ def delete_all_targets(bedrock_agentcore_client, gateway_id, targets):
         target_id = target["targetId"]
         try:
             print(f"   Deleting target: {target_id}")
-            bedrock_agentcore_client.delete_gateway_target(
-                gatewayIdentifier=gateway_id, targetId=target_id
-            )
+            bedrock_agentcore_client.delete_gateway_target(gatewayIdentifier=gateway_id, targetId=target_id)
         except Exception as e:
             print(f"   ⚠️  Failed to delete target {target_id}: {str(e)}")
             success = False
@@ -129,7 +121,7 @@ def delete_all_targets(bedrock_agentcore_client, gateway_id, targets):
 
 def confirm_deletion(gateway_info, targets):
     """Confirm gateway deletion with user"""
-    print(f"\nGateway Deletion Confirmation")
+    print("\nGateway Deletion Confirmation")
     print("=" * 40)
     print(f"Gateway ID: {gateway_info.get('gatewayId', 'Unknown')}")
     print(f"Gateway Name: {gateway_info.get('name', 'Unknown')}")
@@ -152,9 +144,7 @@ def confirm_deletion(gateway_info, targets):
     return True
 
 
-def delete_bedrock_agentcore_gateway(
-    config_manager, environment, gateway_id, force=False, delete_targets=False
-):
+def delete_bedrock_agentcore_gateway(config_manager, environment, gateway_id, force=False, delete_targets=False):
     """Delete Bedrock AgentCore Gateway using configuration"""
 
     # Get configuration from config manager
@@ -167,7 +157,7 @@ def delete_bedrock_agentcore_gateway(
         "profile": None,  # Use default credentials
     }
 
-    print(f"Using Configuration:")
+    print("Using Configuration:")
     print(f"   Environment: {environment}")
     print(f"   AWS Region: {aws_config['region']}")
     print(f"   AWS Account: {aws_config['account_id']}")
@@ -176,17 +166,13 @@ def delete_bedrock_agentcore_gateway(
     session = boto3.Session(region_name=aws_config["region"])
 
     # Use bedrock-agentcore-control client
-    bedrock_agentcore_client = session.client(
-        "bedrock-agentcore-control", region_name=aws_config["region"]
-    )
+    bedrock_agentcore_client = session.client("bedrock-agentcore-control", region_name=aws_config["region"])
 
     print("\nRetrieving gateway information from AWS...")
 
     # Get gateway info
     try:
-        gateway_response = bedrock_agentcore_client.get_gateway(
-            gatewayIdentifier=gateway_id
-        )
+        gateway_response = bedrock_agentcore_client.get_gateway(gatewayIdentifier=gateway_id)
         gateway_info = gateway_response
     except Exception as e:
         print(f"Gateway {gateway_id} not found: {str(e)}")
@@ -203,9 +189,7 @@ def delete_bedrock_agentcore_gateway(
     # Delete targets first if requested or if they exist
     if targets and (delete_targets or not force):
         if not delete_all_targets(bedrock_agentcore_client, gateway_id, targets):
-            print(
-                "Cannot proceed with gateway deletion due to target deletion failures"
-            )
+            print("Cannot proceed with gateway deletion due to target deletion failures")
             return False
 
     # Prepare request
@@ -219,12 +203,12 @@ def delete_bedrock_agentcore_gateway(
 
         print_response("DELETE GATEWAY RESPONSE", response)
 
-        gateway_status = response.get("status", "Unknown")
+        response.get("status", "Unknown")
 
         # Clear the dynamic config
         clear_dynamic_config_with_yq()
 
-        print(f"\nGateway Deleted Successfully!")
+        print("\nGateway Deleted Successfully!")
         print(f"   Gateway ID: {gateway_id}")
         print(f"   Environment: {environment}")
         print(f"   Targets Deleted: {len(targets) if delete_targets else 0}")
@@ -264,10 +248,10 @@ def main():
         )
 
         if success:
-            print(f"\nGateway deletion completed successfully!")
-            print(f"   Use 'python list-gateways.py' to see remaining gateways")
+            print("\nGateway deletion completed successfully!")
+            print("   Use 'python list-gateways.py' to see remaining gateways")
         else:
-            print(f"\n❌ Gateway deletion failed!")
+            print("\n❌ Gateway deletion failed!")
             sys.exit(1)
 
     except Exception as e:

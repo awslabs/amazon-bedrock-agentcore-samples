@@ -43,31 +43,25 @@ class SSMConfig:
         # Get account ID
         self.account_id = self.sts.get_caller_identity()["Account"]
 
-        print(f"✅ Using AWS configuration")
+        print("✅ Using AWS configuration")
         print(f"   Region: {self.region}")
         print(f"   Account: {self.account_id}")
 
         # Load configuration from SSM
-        print(f"\n🔍 Loading configuration from SSM Parameter Store...")
-        self.gateway_arn = self._get_parameter(
-            "/app/lakehouse-agent/gateway-arn", required=False
-        )
-        self.cognito_user_pool_id = self._get_parameter(
-            "/app/lakehouse-agent/cognito-user-pool-id", required=False
-        )
-        self.cognito_app_client_id = self._get_parameter(
-            "/app/lakehouse-agent/cognito-app-client-id", required=False
-        )
+        print("\n🔍 Loading configuration from SSM Parameter Store...")
+        self.gateway_arn = self._get_parameter("/app/lakehouse-agent/gateway-arn", required=False)
+        self.cognito_user_pool_id = self._get_parameter("/app/lakehouse-agent/cognito-user-pool-id", required=False)
+        self.cognito_app_client_id = self._get_parameter("/app/lakehouse-agent/cognito-app-client-id", required=False)
 
         if self.gateway_arn:
             print(f"   ✅ Gateway ARN: {self.gateway_arn}")
         else:
-            print(f"   ⚠️  Gateway ARN not configured")
+            print("   ⚠️  Gateway ARN not configured")
 
         if self.cognito_user_pool_id and self.cognito_app_client_id:
-            print(f"   ✅ Cognito configured")
+            print("   ✅ Cognito configured")
         else:
-            print(f"   ⚠️  Cognito not configured - will use IAM authentication")
+            print("   ⚠️  Cognito not configured - will use IAM authentication")
 
     def _get_parameter(self, parameter_name: str, required: bool = True) -> str:
         """Get parameter value from SSM Parameter Store."""
@@ -77,7 +71,7 @@ class SSMConfig:
         except self.ssm.exceptions.ParameterNotFound:
             if required:
                 print(f"❌ SSM parameter {parameter_name} not found")
-                print(f"   Please run the setup scripts first")
+                print("   Please run the setup scripts first")
                 sys.exit(1)
             return None
         except Exception as e:
@@ -215,13 +209,13 @@ def create_agent_role(config: SSMConfig):
         role_arn = response["Role"]["Arn"]
 
         # Update the role policy to ensure it has all required permissions
-        print(f"   Updating role policy with latest permissions...")
+        print("   Updating role policy with latest permissions...")
         iam.put_role_policy(
             RoleName=role_name,
             PolicyName="AgentCoreRuntimePermissions",
             PolicyDocument=json.dumps(permissions_policy),
         )
-        print(f"   ✅ Role policy updated")
+        print("   ✅ Role policy updated")
 
         return role_arn
 
@@ -231,10 +225,10 @@ def deploy_to_runtime(config: SSMConfig, role_arn: str):
     runtime_name = "lakehouse_agent"  # Must use underscores, not hyphens
 
     try:
-        print(f"\n🚀 Deploying Lakehouse Agent to AgentCore Runtime...")
+        print("\n🚀 Deploying Lakehouse Agent to AgentCore Runtime...")
         print(f"   Name: {runtime_name}")
         print(f"   Region: {config.region}")
-        print(f"   This will build a Docker container and deploy it...")
+        print("   This will build a Docker container and deploy it...")
 
         # Build environment variables
         env_vars = {"AWS_REGION": config.region}
@@ -242,7 +236,7 @@ def deploy_to_runtime(config: SSMConfig, role_arn: str):
         if config.gateway_arn:
             env_vars["GATEWAY_ARN"] = config.gateway_arn
 
-        print(f"\n📋 Environment variables:")
+        print("\n📋 Environment variables:")
         for key, value in env_vars.items():
             print(f"   {key}: {value}")
 
@@ -250,7 +244,7 @@ def deploy_to_runtime(config: SSMConfig, role_arn: str):
         agentcore_runtime = Runtime()
 
         # Configure the runtime
-        print(f"\n🔧 Configuring AgentCore Runtime...")
+        print("\n🔧 Configuring AgentCore Runtime...")
 
         # Extract role name from ARN (format: arn:aws:iam::account:role/RoleName)
         role_name = role_arn.split("/")[-1]
@@ -268,7 +262,7 @@ def deploy_to_runtime(config: SSMConfig, role_arn: str):
 
         # Add JWT authentication configuration if Cognito is configured
         if config.cognito_user_pool_id and config.cognito_app_client_id:
-            print(f"   Configuring JWT authentication...")
+            print("   Configuring JWT authentication...")
             issuer = f"https://cognito-idp.{config.region}.amazonaws.com/{config.cognito_user_pool_id}"
             discovery_url = f"{issuer}/.well-known/openid-configuration"
 
@@ -283,26 +277,24 @@ def deploy_to_runtime(config: SSMConfig, role_arn: str):
             }
 
             # Add Authorization header to allowlist for OAuth token propagation
-            config_params["request_header_configuration"] = {
-                "requestHeaderAllowlist": ["Authorization"]
-            }
+            config_params["request_header_configuration"] = {"requestHeaderAllowlist": ["Authorization"]}
 
-            print(f"✅ JWT authentication will be configured")
+            print("✅ JWT authentication will be configured")
         else:
-            print(f"⚠️  Cognito not configured - runtime will use IAM authentication")
+            print("⚠️  Cognito not configured - runtime will use IAM authentication")
 
         agentcore_runtime.configure(**config_params)
-        print(f"✅ Configuration complete")
+        print("✅ Configuration complete")
 
         # Launch the runtime (builds Docker image and deploys)
-        print(f"\n🚀 Launching to AgentCore Runtime...")
-        print(f"   This may take several minutes...")
+        print("\n🚀 Launching to AgentCore Runtime...")
+        print("   This may take several minutes...")
         launch_result = agentcore_runtime.launch(env_vars=env_vars)
 
         runtime_arn = launch_result.agent_arn
         runtime_id = launch_result.agent_id
 
-        print(f"\n✅ Lakehouse Agent deployed successfully!")
+        print("\n✅ Lakehouse Agent deployed successfully!")
         print(f"   Runtime ARN: {runtime_arn}")
         print(f"   Runtime ID: {runtime_id}")
 
@@ -343,7 +335,7 @@ def main():
     print("✅ Configuration validated")
 
     # Print configuration summary
-    print(f"\n📋 Configuration:")
+    print("\n📋 Configuration:")
     print(f"   Region: {config.region}")
     print(f"   Gateway ARN: {config.gateway_arn or 'Not configured'}")
 
@@ -372,9 +364,9 @@ def main():
         print("=" * 70)
 
         print("\n✅ Agent configuration stored in SSM Parameter Store:")
-        print(f"   /app/lakehouse-agent/agent-runtime-arn")
-        print(f"   /app/lakehouse-agent/agent-runtime-id")
-        print(f"   /app/lakehouse-agent/agent-name")
+        print("   /app/lakehouse-agent/agent-runtime-arn")
+        print("   /app/lakehouse-agent/agent-runtime-id")
+        print("   /app/lakehouse-agent/agent-name")
 
         # Print JWT configuration status
         if config.cognito_user_pool_id and config.cognito_app_client_id:
@@ -383,20 +375,16 @@ def main():
                 f"   Discovery URL: https://cognito-idp.{config.region}.amazonaws.com/{config.cognito_user_pool_id}/.well-known/openid-configuration"
             )
             print(f"   Allowed Clients: {config.cognito_app_client_id}")
-            print(f"   Authorization header: Enabled for OAuth token propagation")
+            print("   Authorization header: Enabled for OAuth token propagation")
         else:
             print("\n⚠️  JWT Authentication Not Configured:")
             print("   Runtime deployed with IAM authentication")
-            print(
-                "   To enable JWT auth, set COGNITO_USER_POOL_ID and COGNITO_APP_CLIENT_ID in SSM and redeploy"
-            )
+            print("   To enable JWT auth, set COGNITO_USER_POOL_ID and COGNITO_APP_CLIENT_ID in SSM and redeploy")
 
         print("\n📋 Next Steps:")
         print("   1. Test the agent: python ../test_agent_simple.py")
         print("   2. Test E2E flow: python ../test_e2e_flow.py")
-        print(
-            "   3. Deploy the Streamlit UI: cd ../streamlit-ui && streamlit run streamlit_app.py"
-        )
+        print("   3. Deploy the Streamlit UI: cd ../streamlit-ui && streamlit run streamlit_app.py")
 
         print("\n" + "=" * 70)
 

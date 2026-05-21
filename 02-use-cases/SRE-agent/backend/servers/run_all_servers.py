@@ -80,12 +80,12 @@ def _run_servers():
     logging.info("=" * 80 + "\n")
     logging.info("Test URLs:")
     for name, _, port in servers:
-        service_name = name.split()[0].lower()
+        name.split()[0].lower()
         logging.info(f"  {name:<15}: https://localhost:{port}/")
 
     logging.info("\nAPI Documentation (add /docs to any URL):")
     for name, _, port in servers:
-        service_name = name.split()[0].lower()
+        name.split()[0].lower()
         logging.info(f"  {name} Docs: https://localhost:{port}/docs")
 
     try:

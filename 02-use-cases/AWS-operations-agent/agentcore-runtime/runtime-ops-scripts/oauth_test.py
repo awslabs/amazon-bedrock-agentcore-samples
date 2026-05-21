@@ -4,16 +4,11 @@ OAuth Test Script - Test OAuth token generation using AgentCore Identity service
 """
 
 import boto3
-import json
 import sys
 import os
-import yaml
-from datetime import datetime
 
 # Add project root to path for shared config manager
-project_root = os.path.dirname(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-)
+project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.append(project_root)
 
 from shared.config_manager import AgentCoreConfigManager
@@ -26,31 +21,19 @@ class OAuthTester:
         base_config = config_manager.get_base_settings()
 
         self.region = region or base_config["aws"]["region"]
-        self.agentcore_client = boto3.client(
-            "bedrock-agentcore", region_name=self.region
-        )
-        self.control_client = boto3.client(
-            "bedrock-agentcore-control", region_name=self.region
-        )
+        self.agentcore_client = boto3.client("bedrock-agentcore", region_name=self.region)
+        self.control_client = boto3.client("bedrock-agentcore-control", region_name=self.region)
 
     def get_workload_token(self, workload_name):
         """Get workload access token for a given workload"""
         try:
             print(f"🔐 Getting workload access token for: {workload_name}")
 
-            response = self.agentcore_client.get_workload_access_token(
-                workloadName=workload_name
-            )
+            response = self.agentcore_client.get_workload_access_token(workloadName=workload_name)
 
             token = response.get("workloadAccessToken")
-            print(
-                f"   ✅ Workload token obtained (length: {len(token) if token else 0})"
-            )
-            print(
-                f"   🔑 Token preview: {token[:30]}..."
-                if token
-                else "   ❌ No token returned"
-            )
+            print(f"   ✅ Workload token obtained (length: {len(token) if token else 0})")
+            print(f"   🔑 Token preview: {token[:30]}..." if token else "   ❌ No token returned")
 
             return token
 
@@ -58,12 +41,10 @@ class OAuthTester:
             print(f"❌ Error getting workload token: {e}")
             return None
 
-    def get_oauth_token(
-        self, workload_token, provider_name, scopes=None, auth_flow="M2M"
-    ):
+    def get_oauth_token(self, workload_token, provider_name, scopes=None, auth_flow="M2M"):
         """Get OAuth2 token using workload token"""
         try:
-            print(f"🎫 Getting OAuth2 token from provider")
+            print("🎫 Getting OAuth2 token from provider")
 
             if scopes is None:
                 scopes = ["api"]
@@ -83,7 +64,7 @@ class OAuthTester:
             auth_url = response.get("authorizationUrl")
 
             if access_token:
-                print(f"   ✅ OAuth2 token obtained successfully!")
+                print("   ✅ OAuth2 token obtained successfully!")
                 print(f"   🔑 Token preview: {access_token[:30]}...")
                 print(f"   📏 Token length: {len(access_token)}")
                 return access_token
@@ -91,7 +72,7 @@ class OAuthTester:
                 print(f"   🔗 Authorization required: {auth_url}")
                 return None
             else:
-                print(f"   ❌ No token or authorization URL returned")
+                print("   ❌ No token or authorization URL returned")
                 return None
 
         except Exception as e:
@@ -122,7 +103,7 @@ class OAuthTester:
             print("=" * 50)
             print(f"✅ Workload: {workload_name}")
             print(f"✅ Scopes: {scopes or ['api']}")
-            print(f"✅ Token obtained and ready for use")
+            print("✅ Token obtained and ready for use")
 
             return True
 
@@ -145,9 +126,7 @@ class OAuthTester:
 
             if oauth_provider_config:
                 if not provider_name:
-                    provider_name = oauth_provider_config.get(
-                        "provider_name", "bac-identity-provider-okta"
-                    )
+                    provider_name = oauth_provider_config.get("provider_name", "bac-identity-provider-okta")
 
                 scopes = ["api"]  # Default scopes
 
@@ -159,11 +138,7 @@ class OAuthTester:
 
             # Get workload name from base config
             if not workload_name:
-                workload_name = (
-                    base_config.get("runtime", {})
-                    .get("diy_agent", {})
-                    .get("name", "bac-diy")
-                )
+                workload_name = base_config.get("runtime", {}).get("diy_agent", {}).get("name", "bac-diy")
                 print(f"   📋 Using workload from config: {workload_name}")
 
             return self.test_full_flow(workload_name, provider_name, scopes)
@@ -200,9 +175,7 @@ class OAuthTester:
                     for provider in provider_list:
                         print(f"   • {provider.get('name')}")
                         print(f"     ARN: {provider.get('credentialProviderArn')}")
-                        print(
-                            f"     Vendor: {provider.get('credentialProviderVendor')}"
-                        )
+                        print(f"     Vendor: {provider.get('credentialProviderVendor')}")
                 else:
                     print("   📭 No OAuth2 providers found")
             except Exception as e:
@@ -218,28 +191,16 @@ class OAuthTester:
 def main():
     if len(sys.argv) < 2:
         print("Usage:")
-        print(
-            "  python3 oauth_test.py list                           # List available resources"
-        )
-        print(
-            "  python3 oauth_test.py test-config                    # Test using config files"
-        )
-        print(
-            "  python3 oauth_test.py test <workload> <provider>     # Test specific workload/provider"
-        )
-        print(
-            "  python3 oauth_test.py workload-token <workload>      # Get workload token only"
-        )
-        print(
-            "  python3 oauth_test.py oauth-token <workload> <provider> [scopes]  # Get OAuth token"
-        )
+        print("  python3 oauth_test.py list                           # List available resources")
+        print("  python3 oauth_test.py test-config                    # Test using config files")
+        print("  python3 oauth_test.py test <workload> <provider>     # Test specific workload/provider")
+        print("  python3 oauth_test.py workload-token <workload>      # Get workload token only")
+        print("  python3 oauth_test.py oauth-token <workload> <provider> [scopes]  # Get OAuth token")
         print("")
         print("Examples:")
         print("  python3 oauth_test.py test-config")
         print("  python3 oauth_test.py test bac-diy bac-identity-provider-okta")
-        print(
-            "  python3 oauth_test.py oauth-token bac-diy bac-identity-provider-okta api,read"
-        )
+        print("  python3 oauth_test.py oauth-token bac-diy bac-identity-provider-okta api,read")
         sys.exit(1)
 
     tester = OAuthTester()

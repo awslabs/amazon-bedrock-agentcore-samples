@@ -20,7 +20,6 @@ import json
 import uuid
 import sys
 import os
-import yaml
 import base64
 from datetime import datetime, timezone
 from typing import Optional, Dict, Any, List
@@ -38,9 +37,7 @@ class AgentCoreClient:
     # INITIALIZATION & CONFIGURATION
     # ========================================================================
 
-    def __init__(
-        self, config_path: str = None, debug: bool = False, local_mode: bool = False
-    ):
+    def __init__(self, config_path: str = None, debug: bool = False, local_mode: bool = False):
         """Initialize client with configuration"""
         self.local_mode = local_mode
         self.session_token = None
@@ -53,18 +50,14 @@ class AgentCoreClient:
         if not local_mode:
             # Standard AgentCore mode - load full configuration
             # Add project root to path for shared config manager
-            project_root = os.path.join(
-                os.path.dirname(os.path.abspath(__file__)), "..", ".."
-            )
+            project_root = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..")
             sys.path.insert(0, project_root)
 
             from shared.config_manager import AgentCoreConfigManager
 
             self.config_manager = AgentCoreConfigManager()
             self.agentcore_config = self.config_manager.get_merged_config()
-            self.token_file = os.path.join(
-                os.path.dirname(os.path.abspath(__file__)), ".okta_token"
-            )
+            self.token_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".okta_token")
         else:
             # Local testing mode - minimal configuration
             self.config_manager = None
@@ -158,13 +151,13 @@ class AgentCoreClient:
             print("\n📦 Local Testing Mode:")
             print("=" * 40)
             print("1. DIY Agent")
-            print(f"   Name: Local DIY Agent")
-            print(f"   URL: http://localhost:8080")
-            print(f"   Status: ✅ Available (if Docker container is running)")
+            print("   Name: Local DIY Agent")
+            print("   URL: http://localhost:8080")
+            print("   Status: ✅ Available (if Docker container is running)")
             print("2. SDK Agent")
-            print(f"   Name: Local SDK Agent")
-            print(f"   URL: http://localhost:8080")
-            print(f"   Status: ✅ Available (if Docker container is running)")
+            print("   Name: Local SDK Agent")
+            print("   URL: http://localhost:8080")
+            print("   Status: ✅ Available (if Docker container is running)")
             return ["diy", "sdk"]
 
         # Standard AgentCore mode
@@ -179,28 +172,28 @@ class AgentCoreClient:
             diy = runtime_config["diy_agent"]
             if diy.get("arn"):
                 runtime_names.append("diy")
-                print(f"1. DIY Agent")
+                print("1. DIY Agent")
                 print(f"   Name: {diy.get('name', 'N/A')}")
                 if self.debug:
                     print(f"   ARN: {diy.get('arn', 'N/A')}")
-                print(f"   Status: ✅ Available")
+                print("   Status: ✅ Available")
             else:
-                print(f"1. DIY Agent")
-                print(f"   Status: ❌ Not deployed")
+                print("1. DIY Agent")
+                print("   Status: ❌ Not deployed")
 
         # Check for SDK agent
         if "sdk_agent" in runtime_config:
             sdk = runtime_config["sdk_agent"]
             if sdk.get("arn"):
                 runtime_names.append("sdk")
-                print(f"2. SDK Agent")
+                print("2. SDK Agent")
                 print(f"   Name: {sdk.get('name', 'N/A')}")
                 if self.debug:
                     print(f"   ARN: {sdk.get('arn', 'N/A')}")
-                print(f"   Status: ✅ Available")
+                print("   Status: ✅ Available")
             else:
-                print(f"2. SDK Agent")
-                print(f"   Status: ❌ Not deployed")
+                print("2. SDK Agent")
+                print("   Status: ❌ Not deployed")
 
         if not runtime_names:
             print("❌ No deployed runtimes found")
@@ -215,7 +208,7 @@ class AgentCoreClient:
         if not available_runtimes:
             return False
 
-        print(f"\n🎯 Select Runtime:")
+        print("\n🎯 Select Runtime:")
         while True:
             try:
                 if "diy" in available_runtimes and "sdk" in available_runtimes:
@@ -240,9 +233,7 @@ class AgentCoreClient:
                 print("\n\n👋 Goodbye!")
                 return False
 
-        runtime_info = self.agentcore_config["runtime"][
-            f"{self.selected_runtime}_agent"
-        ]
+        runtime_info = self.agentcore_config["runtime"][f"{self.selected_runtime}_agent"]
         print(f"✅ Connected to: {runtime_info.get('name', 'Unknown')}")
         print(f"🔗 Session ID: {self.session_id}")
 
@@ -323,13 +314,13 @@ class AgentCoreClient:
             try:
                 if os.path.exists(self.token_file):
                     os.remove(self.token_file)
-            except:
+            except Exception:
                 pass
             return None
 
     def get_okta_token(self) -> bool:
         """Get Okta token - try saved token first, then prompt if needed."""
-        print(f"\n🔐 Authentication")
+        print("\n🔐 Authentication")
 
         # Try to load saved token first
         saved_token = self._load_saved_token()
@@ -337,9 +328,7 @@ class AgentCoreClient:
             payload = self._decode_jwt_payload(saved_token)
             if payload:
                 exp_time = datetime.fromtimestamp(payload.get("exp", 0), timezone.utc)
-                print(
-                    f"✅ Using saved token (expires: {exp_time.strftime('%Y-%m-%d %H:%M:%S UTC')})"
-                )
+                print(f"✅ Using saved token (expires: {exp_time.strftime('%Y-%m-%d %H:%M:%S UTC')})")
                 self.session_token = saved_token
                 return True
 
@@ -356,12 +345,8 @@ class AgentCoreClient:
             if not self._is_token_valid(token):
                 payload = self._decode_jwt_payload(token)
                 if payload:
-                    exp_time = datetime.fromtimestamp(
-                        payload.get("exp", 0), timezone.utc
-                    )
-                    print(
-                        f"❌ Token is expired or invalid (expired: {exp_time.strftime('%Y-%m-%d %H:%M:%S UTC')})"
-                    )
+                    exp_time = datetime.fromtimestamp(payload.get("exp", 0), timezone.utc)
+                    print(f"❌ Token is expired or invalid (expired: {exp_time.strftime('%Y-%m-%d %H:%M:%S UTC')})")
                 else:
                     print("❌ Invalid token format")
                 return False
@@ -372,9 +357,7 @@ class AgentCoreClient:
 
             payload = self._decode_jwt_payload(token)
             exp_time = datetime.fromtimestamp(payload.get("exp", 0), timezone.utc)
-            print(
-                f"✅ Token saved and stored for session (expires: {exp_time.strftime('%Y-%m-%d %H:%M:%S UTC')})"
-            )
+            print(f"✅ Token saved and stored for session (expires: {exp_time.strftime('%Y-%m-%d %H:%M:%S UTC')})")
             return True
 
         except KeyboardInterrupt:
@@ -405,10 +388,7 @@ class AgentCoreClient:
 
         # Use selected runtime or default agent if not specified
         if agent_type is None:
-            agent_type = (
-                self.selected_runtime
-                or self.agentcore_config["client"]["default_agent"]
-            )
+            agent_type = self.selected_runtime or self.agentcore_config["client"]["default_agent"]
 
         # In local mode, skip token requirement
         if not self.local_mode:
@@ -440,14 +420,14 @@ class AgentCoreClient:
             print("\n" + "=" * 80)
             print("[DEBUG] OUTGOING REQUEST:")
             print(f"[DEBUG] URL: {url}")
-            print(f"[DEBUG] Method: POST")
-            print(f"[DEBUG] Headers:")
+            print("[DEBUG] Method: POST")
+            print("[DEBUG] Headers:")
             for key, value in headers.items():
                 if key == "Authorization":
                     print(f"[DEBUG]   {key}: Bearer {value[7:15]}...{value[-10:]}")
                 else:
                     print(f"[DEBUG]   {key}: {value}")
-            print(f"[DEBUG] Payload:")
+            print("[DEBUG] Payload:")
             print(f"[DEBUG]   {json.dumps(payload, indent=2)}")
             print("=" * 80)
 
@@ -456,9 +436,7 @@ class AgentCoreClient:
             request_sent_time = time.time()
 
             # Add timeout for better error handling
-            response = requests.post(
-                url, headers=headers, json=payload, stream=True, timeout=900
-            )
+            response = requests.post(url, headers=headers, json=payload, stream=True, timeout=900)
 
             # Record first response time (headers received)
             first_response_time = time.time()
@@ -468,12 +446,10 @@ class AgentCoreClient:
                 print("\n" + "=" * 80)
                 print("[DEBUG] INCOMING RESPONSE:")
                 print(f"[DEBUG] Status Code: {response.status_code}")
-                print(f"[DEBUG] Response Headers:")
+                print("[DEBUG] Response Headers:")
                 for key, value in response.headers.items():
                     print(f"[DEBUG]   {key}: {value}")
-                print(
-                    f"[DEBUG] Time to first response: {first_response_time - request_sent_time:.3f}s"
-                )
+                print(f"[DEBUG] Time to first response: {first_response_time - request_sent_time:.3f}s")
                 print("=" * 80)
 
             if response.status_code != 200:
@@ -484,7 +460,7 @@ class AgentCoreClient:
                     error_text = f"<Could not read response text: {read_error}>"
 
                 if self.debug:
-                    print(f"\n[DEBUG] ERROR RESPONSE BODY:")
+                    print("\n[DEBUG] ERROR RESPONSE BODY:")
                     print(f"[DEBUG] {error_text}")
                     print("=" * 80)
 
@@ -495,14 +471,10 @@ class AgentCoreClient:
 
             if "text/event-stream" in content_type:
                 # Server-Sent Events streaming (test commands)
-                response_text = self._handle_streaming_response(
-                    response, agent_type, start_time, first_response_time
-                )
+                response_text = self._handle_streaming_response(response, agent_type, start_time, first_response_time)
             elif "text/plain" in content_type:
                 # Plain text streaming (regular agent responses)
-                response_text = self._handle_plain_text_streaming(
-                    response, agent_type, start_time, first_response_time
-                )
+                response_text = self._handle_plain_text_streaming(response, agent_type, start_time, first_response_time)
             else:
                 print(response)
                 # Non-streaming response (fallback)
@@ -511,7 +483,7 @@ class AgentCoreClient:
                 total_time = end_time - start_time
 
                 if self.debug:
-                    print(f"\n[DEBUG] NON-STREAMING RESPONSE:")
+                    print("\n[DEBUG] NON-STREAMING RESPONSE:")
                     print(f"[DEBUG] Content-Type: {content_type}")
                     print(f"[DEBUG] Response: {response_text}")
                     print(f"[DEBUG] Total time: {total_time:.3f}s")
@@ -533,13 +505,13 @@ class AgentCoreClient:
             total_time = end_time - start_time
 
             if self.debug:
-                print(f"\n[DEBUG] EXCEPTION OCCURRED:")
+                print("\n[DEBUG] EXCEPTION OCCURRED:")
                 print(f"[DEBUG] Exception Type: {type(e).__name__}")
                 print(f"[DEBUG] Exception Message: {str(e)}")
                 print(f"[DEBUG] Time before exception: {total_time:.3f}s")
                 import traceback
 
-                print(f"[DEBUG] Full Traceback:")
+                print("[DEBUG] Full Traceback:")
                 print(traceback.format_exc())
                 print("=" * 80)
             # Preserve the original exception details for better error reporting
@@ -577,19 +549,19 @@ class AgentCoreClient:
 
     def display_memory_stats(self):
         """Display memory usage and session information"""
-        print(f"\n🧠 Memory & Session Information")
+        print("\n🧠 Memory & Session Information")
         print("=" * 40)
         print(f"Session ID: {self.session_id or 'Not started'}")
         print(f"Selected Runtime: {self.selected_runtime or 'None'}")
         print(f"Local History Count: {len(self.conversation_history)}")
-        print(f"Memory Support: Available in agent runtimes (bedrock-agentcore)")
+        print("Memory Support: Available in agent runtimes (bedrock-agentcore)")
 
         if self.session_id:
-            print(f"\nℹ️  Agent memory is managed server-side using session ID")
-            print(f"   Previous conversations in this session are automatically")
-            print(f"   included as context in agent responses.")
+            print("\nℹ️  Agent memory is managed server-side using session ID")
+            print("   Previous conversations in this session are automatically")
+            print("   included as context in agent responses.")
         else:
-            print(f"\n⚠️  No active session - memory tracking not available")
+            print("\n⚠️  No active session - memory tracking not available")
 
     # ========================================================================
     # USER INTERFACE & INTERACTION
@@ -597,7 +569,7 @@ class AgentCoreClient:
 
     def chat_loop(self):
         """Main chat conversation loop."""
-        print(f"\n💬 Chat Session Started")
+        print("\n💬 Chat Session Started")
         print(f"🔗 Session ID: {self.session_id}")
         print(f"🐛 Debug Mode: {'ON' if self.debug else 'OFF'}")
         print("Type 'quit', 'exit', or press Ctrl+C to end the session")
@@ -611,7 +583,7 @@ class AgentCoreClient:
 
         while True:
             try:
-                user_input = input(f"\n👤 You: ").strip()
+                user_input = input("\n👤 You: ").strip()
 
                 if user_input.lower() in ["quit", "exit"]:
                     break
@@ -651,7 +623,7 @@ class AgentCoreClient:
                         if self._should_show_detailed_errors(str(test_error)):
                             import traceback
 
-                            print(f"\n🔍 Full error traceback:")
+                            print("\n🔍 Full error traceback:")
                             print(traceback.format_exc())
                             print("=" * 60)
                     continue
@@ -665,15 +637,13 @@ class AgentCoreClient:
                         # Note: response is already printed during streaming in _handle_streaming_response
                         self.add_to_history(user_input, response)
                     else:
-                        print(
-                            "❌ Failed to get response from runtime - no response received"
-                        )
+                        print("❌ Failed to get response from runtime - no response received")
                 except Exception as chat_error:
                     print(f"❌ Chat error: {chat_error}")
                     if self._should_show_detailed_errors(str(chat_error)):
                         import traceback
 
-                        print(f"\n🔍 Full error traceback:")
+                        print("\n🔍 Full error traceback:")
                         print(traceback.format_exc())
                         print("=" * 60)
 
@@ -684,19 +654,15 @@ class AgentCoreClient:
                 if self._should_show_detailed_errors(str(e)):
                     import traceback
 
-                    print(f"\n🔍 Full error traceback:")
+                    print("\n🔍 Full error traceback:")
                     print(traceback.format_exc())
                     print("=" * 60)
 
-        print(
-            f"\n👋 Chat session ended. Total exchanges: {len(self.conversation_history)}"
-        )
+        print(f"\n👋 Chat session ended. Total exchanges: {len(self.conversation_history)}")
 
     def run_interactive_mode(self):
         """Run the chatbot client in interactive mode."""
-        mode_text = (
-            "Local Testing Mode" if self.local_mode else "AgentCore Chatbot Client"
-        )
+        mode_text = "Local Testing Mode" if self.local_mode else "AgentCore Chatbot Client"
         print(f"🤖 {mode_text}")
         print("=" * 30)
 
@@ -728,22 +694,16 @@ class AgentCoreClient:
         first_chunk_time = None
         last_chunk_time = None
 
-        print(
-            f"🤖 {agent_type.upper()}: ", end="" if not self.debug else "\n", flush=True
-        )
+        print(f"🤖 {agent_type.upper()}: ", end="" if not self.debug else "\n", flush=True)
 
         if self.debug:
             print("\n" + "=" * 80)
             print("[DEBUG] PLAIN TEXT STREAMING RESPONSE:")
             print(f"[DEBUG] Agent Type: {agent_type}")
             print(f"[DEBUG] Status Code: {response.status_code}")
-            print(
-                f"[DEBUG] Content-Type: {response.headers.get('content-type', 'N/A')}"
-            )
+            print(f"[DEBUG] Content-Type: {response.headers.get('content-type', 'N/A')}")
             print(f"[DEBUG] All Headers: {dict(response.headers)}")
-            print(
-                f"[DEBUG] Time to first response: {first_response_time - start_time:.3f}s"
-            )
+            print(f"[DEBUG] Time to first response: {first_response_time - start_time:.3f}s")
             print("=" * 80)
 
         try:
@@ -752,11 +712,9 @@ class AgentCoreClient:
 
             # Show raw response info
             if self.debug:
-                print(f"[DEBUG] Starting to read response stream...")
+                print("[DEBUG] Starting to read response stream...")
                 print(f"[DEBUG] Response encoding: {response.encoding}")
-                print(
-                    f"[DEBUG] Response apparent encoding: {response.apparent_encoding}"
-                )
+                print(f"[DEBUG] Response apparent encoding: {response.apparent_encoding}")
 
             for chunk in response.iter_content(chunk_size=1, decode_unicode=True):
                 if chunk:
@@ -781,19 +739,13 @@ class AgentCoreClient:
             # Calculate timing metrics
             end_time = time.time()
             total_time = end_time - start_time
-            time_to_first_chunk = (
-                first_chunk_time - start_time if first_chunk_time else 0
-            )
-            streaming_duration = (
-                last_chunk_time - first_chunk_time
-                if first_chunk_time and last_chunk_time
-                else 0
-            )
+            time_to_first_chunk = first_chunk_time - start_time if first_chunk_time else 0
+            streaming_duration = last_chunk_time - first_chunk_time if first_chunk_time and last_chunk_time else 0
 
             # If no chunks received, check raw response
             if chunk_count == 0:
                 if self.debug:
-                    print(f"[DEBUG] No chunks received! Checking raw response...")
+                    print("[DEBUG] No chunks received! Checking raw response...")
                     try:
                         raw_content = response.content
                         print(f"[DEBUG] Raw response content: {raw_content}")
@@ -802,16 +754,14 @@ class AgentCoreClient:
                         print(f"[DEBUG] Error reading raw response: {raw_error}")
 
             if self.debug:
-                print(f"\n[DEBUG] PLAIN TEXT STREAMING COMPLETE:")
+                print("\n[DEBUG] PLAIN TEXT STREAMING COMPLETE:")
                 print(f"[DEBUG] Total chunks processed: {chunk_count}")
                 print(f"[DEBUG] Total bytes received: {total_bytes}")
                 print(f"[DEBUG] Final content length: {len(''.join(content))}")
                 print(f"[DEBUG] Final content: {repr(''.join(content))}")
-                print(f"[DEBUG] TIMING BREAKDOWN:")
+                print("[DEBUG] TIMING BREAKDOWN:")
                 print(f"[DEBUG]   Total time: {total_time:.3f}s")
-                print(
-                    f"[DEBUG]   Time to first response: {first_response_time - start_time:.3f}s"
-                )
+                print(f"[DEBUG]   Time to first response: {first_response_time - start_time:.3f}s")
                 print(f"[DEBUG]   Time to first chunk: {time_to_first_chunk:.3f}s")
                 print(f"[DEBUG]   Streaming duration: {streaming_duration:.3f}s")
                 print("=" * 80)
@@ -862,20 +812,14 @@ class AgentCoreClient:
         first_chunk_time = None
         last_chunk_time = None
 
-        print(
-            f"🤖 {agent_type.upper()}: ", end="" if not self.debug else "\n", flush=True
-        )
+        print(f"🤖 {agent_type.upper()}: ", end="" if not self.debug else "\n", flush=True)
 
         if self.debug:
             print("\n" + "=" * 80)
             print("[DEBUG] SSE STREAMING RESPONSE PROCESSING:")
             print(f"[DEBUG] Agent Type: {agent_type}")
-            print(
-                f"[DEBUG] Content-Type: {response.headers.get('content-type', 'N/A')}"
-            )
-            print(
-                f"[DEBUG] Time to first response: {first_response_time - start_time:.3f}s"
-            )
+            print(f"[DEBUG] Content-Type: {response.headers.get('content-type', 'N/A')}")
+            print(f"[DEBUG] Time to first response: {first_response_time - start_time:.3f}s")
             print("=" * 80)
 
         line_count = 0
@@ -890,9 +834,7 @@ class AgentCoreClient:
                 line_count += 1
 
                 if self.debug:
-                    print(
-                        f"\n[DEBUG] Raw Line #{line_count}: {repr(line)} (time: {current_time - start_time:.3f}s)"
-                    )
+                    print(f"\n[DEBUG] Raw Line #{line_count}: {repr(line)} (time: {current_time - start_time:.3f}s)")
 
                 if line and line.startswith("data: "):
                     data = line[6:]  # Remove "data: " prefix
@@ -905,14 +847,12 @@ class AgentCoreClient:
                     # Stream the content in real-time
                     if text_content:
                         if self.debug:
-                            print(
-                                f"[DEBUG] Streaming text content: {repr(text_content)}"
-                            )
+                            print(f"[DEBUG] Streaming text content: {repr(text_content)}")
                         if not self.debug:
                             print(text_content, end="", flush=True)
                         content.append(text_content)
                     elif self.debug:
-                        print(f"[DEBUG] No text content extracted from this chunk")
+                        print("[DEBUG] No text content extracted from this chunk")
                 elif self.debug and line:
                     print(f"[DEBUG] Non-data line: {repr(line)}")
 
@@ -933,22 +873,16 @@ class AgentCoreClient:
         end_time = time.time()
         total_time = end_time - start_time
         time_to_first_chunk = first_chunk_time - start_time if first_chunk_time else 0
-        streaming_duration = (
-            last_chunk_time - first_chunk_time
-            if first_chunk_time and last_chunk_time
-            else 0
-        )
+        streaming_duration = last_chunk_time - first_chunk_time if first_chunk_time and last_chunk_time else 0
 
         if self.debug:
-            print(f"\n[DEBUG] SSE STREAMING COMPLETE:")
+            print("\n[DEBUG] SSE STREAMING COMPLETE:")
             print(f"[DEBUG] Total lines processed: {line_count}")
             print(f"[DEBUG] Content chunks collected: {len(content)}")
             print(f"[DEBUG] Final content: {repr(''.join(content))}")
-            print(f"[DEBUG] TIMING BREAKDOWN:")
+            print("[DEBUG] TIMING BREAKDOWN:")
             print(f"[DEBUG]   Total time: {total_time:.3f}s")
-            print(
-                f"[DEBUG]   Time to first response: {first_response_time - start_time:.3f}s"
-            )
+            print(f"[DEBUG]   Time to first response: {first_response_time - start_time:.3f}s")
             print(f"[DEBUG]   Time to first chunk: {time_to_first_chunk:.3f}s")
             print(f"[DEBUG]   Streaming duration: {streaming_duration:.3f}s")
             print("=" * 80)
@@ -974,9 +908,7 @@ class AgentCoreClient:
             event_data = json.loads(data)
 
             if self.debug:
-                print(
-                    f"[DEBUG] Parsed SSE Event Data: {json.dumps(event_data, indent=2)}"
-                )
+                print(f"[DEBUG] Parsed SSE Event Data: {json.dumps(event_data, indent=2)}")
 
             if agent_type == "diy":
                 # DIY agent SSE format - handle refactored agent response
@@ -984,9 +916,7 @@ class AgentCoreClient:
                     # Extract text from content field (main text chunks)
                     text_content = event_data["content"]
                     if self.debug:
-                        print(
-                            f"[DEBUG] Extracted text from content field: {repr(text_content)}"
-                        )
+                        print(f"[DEBUG] Extracted text from content field: {repr(text_content)}")
                 elif "message" in event_data:
                     text_content = event_data["message"]
                 elif "error" in event_data:
@@ -1007,9 +937,7 @@ class AgentCoreClient:
                         if delta_match:
                             text_content = delta_match.group(1)
                             if self.debug:
-                                print(
-                                    f"[DEBUG] Extracted text from contentBlockDelta: {repr(text_content)}"
-                                )
+                                print(f"[DEBUG] Extracted text from contentBlockDelta: {repr(text_content)}")
 
                     # Also try to parse if it's a dict-like string representation
                     elif "contentBlockDelta" in event_str:
@@ -1018,25 +946,16 @@ class AgentCoreClient:
                             import ast
 
                             parsed_event = ast.literal_eval(event_str)
-                            if (
-                                isinstance(parsed_event, dict)
-                                and "event" in parsed_event
-                            ):
-                                content_block = parsed_event["event"].get(
-                                    "contentBlockDelta", {}
-                                )
+                            if isinstance(parsed_event, dict) and "event" in parsed_event:
+                                content_block = parsed_event["event"].get("contentBlockDelta", {})
                                 delta = content_block.get("delta", {})
                                 if "text" in delta:
                                     text_content = delta["text"]
                                     if self.debug:
-                                        print(
-                                            f"[DEBUG] Extracted text from parsed dict: {repr(text_content)}"
-                                        )
+                                        print(f"[DEBUG] Extracted text from parsed dict: {repr(text_content)}")
                         except (ValueError, SyntaxError) as parse_error:
                             if self.debug:
-                                print(
-                                    f"[DEBUG] Could not parse event string as dict: {parse_error}"
-                                )
+                                print(f"[DEBUG] Could not parse event string as dict: {parse_error}")
             else:
                 # SDK agent SSE format
                 if isinstance(event_data, dict):
@@ -1072,9 +991,7 @@ def main():
         help="Agent type to use (if not provided, will prompt)",
     )
     parser.add_argument("--token", help="Okta JWT token (if not provided, will prompt)")
-    parser.add_argument(
-        "--message", help="Message to send (if not provided, enters interactive mode)"
-    )
+    parser.add_argument("--message", help="Message to send (if not provided, enters interactive mode)")
     parser.add_argument(
         "--interactive",
         action="store_true",
@@ -1096,11 +1013,7 @@ def main():
     client = AgentCoreClient(debug=args.debug, local_mode=args.local)
 
     # Local mode or interactive mode
-    if (
-        args.local
-        or args.interactive
-        or (not args.local and (not args.agent or not args.token))
-    ):
+    if args.local or args.interactive or (not args.local and (not args.agent or not args.token)):
         client.run_interactive_mode()
         return
 
@@ -1138,9 +1051,7 @@ def main():
             except Exception as e:
                 print(f"❌ Error: {e}")
 
-        print(
-            f"\n👋 Chat session ended. Total exchanges: {len(client.conversation_history)}"
-        )
+        print(f"\n👋 Chat session ended. Total exchanges: {len(client.conversation_history)}")
 
 
 if __name__ == "__main__":

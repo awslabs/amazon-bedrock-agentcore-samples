@@ -14,11 +14,11 @@ def test_agentcore_imports():
     print("=" * 40)
 
     try:
-        from bedrock_agentcore.tools.code_interpreter_client import code_session
+        from bedrock_agentcore.tools.code_interpreter_client import code_session  # noqa: F401
 
         print("✓ bedrock_agentcore.tools.code_interpreter_client imported successfully")
 
-        from bedrock_agentcore.runtime.app import BedrockAgentCoreApp
+        from bedrock_agentcore.runtime.app import BedrockAgentCoreApp  # noqa: F401
 
         print("✓ bedrock_agentcore.runtime.app imported successfully")
 
@@ -117,7 +117,7 @@ def test_strands_integration():
             aws_region=os.getenv("AWS_REGION", "us-east-1"),
         )
 
-        agent = Agent(
+        Agent(
             model=bedrock_model,
             tools=[execute_code],
             system_prompt="You are a code execution assistant.",

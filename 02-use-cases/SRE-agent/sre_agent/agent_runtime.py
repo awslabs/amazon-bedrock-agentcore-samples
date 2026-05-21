@@ -178,7 +178,7 @@ async def invoke_agent(request: InvocationRequest):
                     "metrics_agent",
                     "runbooks_agent",
                 ]:
-                    agent_results = node_output.get("agent_results", {})
+                    node_output.get("agent_results", {})
                     logger.info(f"{node_name} completed with results")
 
                 # Capture final response from aggregate node

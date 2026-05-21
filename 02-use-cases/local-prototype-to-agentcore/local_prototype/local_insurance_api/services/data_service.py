@@ -2,9 +2,8 @@
 Data access service for the Insurance API
 """
 
-from typing import Dict, List, Optional, Any
+from typing import Dict, Optional, Any
 import logging
-from data_loader import InsuranceDataLoader
 from app import data_loader
 
 logger = logging.getLogger("insurance_api")
@@ -20,9 +19,7 @@ def get_credit_report_by_customer_id(customer_id: str) -> Optional[Dict[str, Any
     return data_loader.get_credit_report_by_customer_id(customer_id)
 
 
-def get_vehicle_info(
-    make: str, model: str, year: str or int
-) -> Optional[Dict[str, Any]]:
+def get_vehicle_info(make: str, model: str, year: str or int) -> Optional[Dict[str, Any]]:
     """Get vehicle information by make, model, and year"""
     return data_loader.get_vehicle_info(make, model, str(year))
 

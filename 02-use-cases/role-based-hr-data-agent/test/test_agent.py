@@ -9,11 +9,9 @@ Usage:
 """
 
 import argparse
-import json
 import sys
 import uuid
 
-import boto3
 import requests
 
 sys.path.insert(0, ".")
@@ -26,9 +24,7 @@ def get_token(persona: str) -> str:
     token_url = get_ssm_parameter("/app/hrdlp/cognito-token-url")
 
     if not all([client_id, client_secret, token_url]):
-        print(
-            f"ERROR: Credentials for persona '{persona}' not in SSM. Run prereq.sh first."
-        )
+        print(f"ERROR: Credentials for persona '{persona}' not in SSM. Run prereq.sh first.")
         sys.exit(1)
 
     resp = requests.post(

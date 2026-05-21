@@ -26,26 +26,18 @@ def main():
     # Get configuration
     print("Loading configuration from SSM...")
 
-    runtime_arn = ssm.get_parameter(Name="/app/lakehouse-agent/agent-runtime-id")[
+    runtime_arn = ssm.get_parameter(Name="/app/lakehouse-agent/agent-runtime-id")["Parameter"]["Value"]
+    cognito_domain = ssm.get_parameter(Name="/app/lakehouse-agent/cognito-domain")["Parameter"]["Value"]
+    client_id = ssm.get_parameter(Name="/app/lakehouse-agent/cognito-app-client-id")["Parameter"]["Value"]
+    client_secret = ssm.get_parameter(Name="/app/lakehouse-agent/cognito-app-client-secret", WithDecryption=True)[
         "Parameter"
     ]["Value"]
-    cognito_domain = ssm.get_parameter(Name="/app/lakehouse-agent/cognito-domain")[
-        "Parameter"
-    ]["Value"]
-    client_id = ssm.get_parameter(Name="/app/lakehouse-agent/cognito-app-client-id")[
-        "Parameter"
-    ]["Value"]
-    client_secret = ssm.get_parameter(
-        Name="/app/lakehouse-agent/cognito-app-client-secret", WithDecryption=True
-    )["Parameter"]["Value"]
 
     # Get test user credentials
-    test_user = ssm.get_parameter(Name="/app/lakehouse-agent/test-user-3")["Parameter"][
+    test_user = ssm.get_parameter(Name="/app/lakehouse-agent/test-user-3")["Parameter"]["Value"]
+    test_password = ssm.get_parameter(Name="/app/lakehouse-agent/test-password", WithDecryption=True)["Parameter"][
         "Value"
     ]
-    test_password = ssm.get_parameter(
-        Name="/app/lakehouse-agent/test-password", WithDecryption=True
-    )["Parameter"]["Value"]
 
     print(f"✅ Runtime: {runtime_arn}")
     print(f"✅ Test User: {test_user}")
@@ -74,9 +66,9 @@ def main():
             access_token = token_data["access_token"]
             id_token = token_data.get("id_token")
 
-            print(f"✅ Access token obtained")
+            print("✅ Access token obtained")
             if id_token:
-                print(f"✅ ID token obtained")
+                print("✅ ID token obtained")
 
             # Decode token to show user identity
             import base64
@@ -92,14 +84,14 @@ def main():
                 return {}
 
             access_claims = decode_jwt(access_token)
-            print(f"\n🔍 Access Token Claims:")
+            print("\n🔍 Access Token Claims:")
             print(f"   Username: {access_claims.get('username', 'N/A')}")
             print(f"   Email: {access_claims.get('email', 'N/A')}")
             print(f"   Scope: {access_claims.get('scope', 'N/A')}")
 
             if id_token:
                 id_claims = decode_jwt(id_token)
-                print(f"\n🔍 ID Token Claims:")
+                print("\n🔍 ID Token Claims:")
                 print(f"   Email: {id_claims.get('email', 'N/A')}")
                 print(f"   Email Verified: {id_claims.get('email_verified', 'N/A')}")
 
@@ -111,7 +103,7 @@ def main():
             print(f"   Response: {response.text}")
 
             # Try client_credentials as fallback
-            print(f"\n⚠️  Falling back to client_credentials flow...")
+            print("\n⚠️  Falling back to client_credentials flow...")
             response = requests.post(
                 token_url,
                 data={
@@ -124,7 +116,7 @@ def main():
 
             if response.status_code == 200:
                 bearer_token = response.json()["access_token"]
-                print(f"✅ Got client_credentials token (no user identity for RLS)")
+                print("✅ Got client_credentials token (no user identity for RLS)")
             else:
                 print(f"❌ Failed: {response.text}")
                 return False
@@ -137,7 +129,7 @@ def main():
         return False
 
     # Invoke agent
-    print(f"\n🤖 Invoking agent with user token...")
+    print("\n🤖 Invoking agent with user token...")
 
     import urllib.parse
 
@@ -164,18 +156,18 @@ def main():
         if response.status_code == 200:
             result = response.json()
 
-            print(f"✅ Agent response received")
-            print(f"\nResponse:")
+            print("✅ Agent response received")
+            print("\nResponse:")
             print(f"  Content: {result.get('content', 'N/A')[:200]}...")
             print(f"  Tool Calls: {result.get('tool_calls', 0)}")
 
             if result.get("tool_calls", 0) > 0:
-                print(f"\n✅✅✅ SUCCESS: Tools were invoked!")
+                print("\n✅✅✅ SUCCESS: Tools were invoked!")
                 print(f"\nWith user identity: {test_user}")
-                print(f"RLS should be applied based on this user")
+                print("RLS should be applied based on this user")
             else:
-                print(f"\n❌ FAIL: No tools invoked")
-                print(f"   Check MCP server logs for errors")
+                print("\n❌ FAIL: No tools invoked")
+                print("   Check MCP server logs for errors")
 
             return result.get("tool_calls", 0) > 0
 

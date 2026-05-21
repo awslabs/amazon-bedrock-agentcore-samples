@@ -7,8 +7,7 @@ It uses FastAPI with A2AServer for A2A protocol support.
 
 import os
 import sys
-import logging
-from fastapi import FastAPI, Request
+from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
 import uvicorn
 from strands.multiagent.a2a import A2AServer
@@ -26,9 +25,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../"))
 from common.utils.logging_config import setup_logging
 
 # Configure structured logging
-logger = setup_logging(
-    "realestate_coordinator", level=os.getenv("LOG_LEVEL", "INFO"), use_json=True
-)
+logger = setup_logging("realestate_coordinator", level=os.getenv("LOG_LEVEL", "INFO"), use_json=True)
 
 
 # Middleware to extract bearer token from requests
@@ -37,18 +34,14 @@ class BearerTokenMiddleware(BaseHTTPMiddleware):
         logger.info(f"=== MIDDLEWARE START === Path: {request.url.path}")
 
         # Extract Authorization header
-        auth_header = request.headers.get("authorization") or request.headers.get(
-            "Authorization"
-        )
+        auth_header = request.headers.get("authorization") or request.headers.get("Authorization")
         if auth_header and auth_header.startswith("Bearer "):
             token = auth_header[7:]  # Remove 'Bearer ' prefix
             set_request_bearer_token(token)
-            logger.info(
-                f"✓ Extracted bearer token from incoming request: {token[:20]}..."
-            )
-            logger.info(f"✓ Token set in context var and backup store")
+            logger.info(f"✓ Extracted bearer token from incoming request: {token[:20]}...")
+            logger.info("✓ Token set in context var and backup store")
         else:
-            logger.warning(f"✗ No bearer token found in request!")
+            logger.warning("✗ No bearer token found in request!")
             logger.warning(f"  Available headers: {list(request.headers.keys())}")
 
         response = await call_next(request)

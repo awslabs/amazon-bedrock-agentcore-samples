@@ -11,11 +11,9 @@ Handles conversation context storage and retrieval for maintaining conversation 
 # ============================================================================
 
 import os
-import sys
 import yaml
 import uuid
-from typing import List, Tuple, Optional, Dict, Any
-from datetime import datetime
+from typing import List, Optional, Dict, Any
 from agent_shared import mylogger
 
 logger = mylogger.get_logger()
@@ -23,9 +21,7 @@ logger = mylogger.get_logger()
 try:
     from bedrock_agentcore.memory import MemoryClient
 except ImportError:
-    logger.warning(
-        "bedrock-agentcore not installed. Memory functionality will be disabled."
-    )
+    logger.warning("bedrock-agentcore not installed. Memory functionality will be disabled.")
     MemoryClient = None
 
 # ============================================================================
@@ -39,11 +35,7 @@ class MemoryManager:
     def __init__(self, config_path: str = None):
         """Initialize memory manager with configuration"""
         self.config_path = config_path or os.path.join(
-            os.path.dirname(
-                os.path.dirname(
-                    os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-                )
-            ),
+            os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))),
             "config",
         )
         self.config = self._load_config()
@@ -59,14 +51,10 @@ class MemoryManager:
             with open(config_file, "r") as f:
                 return yaml.safe_load(f)
         except FileNotFoundError:
-            logger.warning(
-                f"Config file not found at {config_file}. Memory functionality may be limited."
-            )
+            logger.warning(f"Config file not found at {config_file}. Memory functionality may be limited.")
             return {}
         except yaml.YAMLError as e:
-            logger.warning(
-                f"Error parsing config file: {e}. Memory functionality may be limited."
-            )
+            logger.warning(f"Error parsing config file: {e}. Memory functionality may be limited.")
             return {}
 
     def _initialize_memory(self):
@@ -160,9 +148,7 @@ class MemoryManager:
             logger.error(f"Failed to store conversation turn: {e}")
             return False
 
-    def get_conversation_context(
-        self, actor_id: str = "user", max_results: int = 10
-    ) -> List[Dict[str, Any]]:
+    def get_conversation_context(self, actor_id: str = "user", max_results: int = 10) -> List[Dict[str, Any]]:
         """Retrieve conversation context from short-term memory"""
         if not self.memory_client or not self.memory_id or not self.session_id:
             return []
@@ -181,9 +167,7 @@ class MemoryManager:
             logger.error(f"Failed to retrieve conversation context: {e}")
             return []
 
-    def format_context_for_agent(
-        self, actor_id: str = "user", max_results: int = 5
-    ) -> str:
+    def format_context_for_agent(self, actor_id: str = "user", max_results: int = 5) -> str:
         """Format conversation context as a string for agent input"""
         conversations = self.get_conversation_context(actor_id, max_results)
 

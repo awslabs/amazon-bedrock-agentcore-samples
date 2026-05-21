@@ -78,9 +78,7 @@ class TestScopeValidation:
 
         # In some systems, write implies read
         def can_read() -> bool:
-            return (
-                "profile:personal:read" in scopes or "profile:personal:write" in scopes
-            )
+            return "profile:personal:read" in scopes or "profile:personal:write" in scopes
 
         assert can_read()
 
@@ -102,7 +100,6 @@ class TestResourceAccessControl:
     def test_customer_can_access_own_accounts(self, sample_user_context):
         """Test customer accessing their own accounts."""
         account_ids = sample_user_context["account_ids"]
-        requested_account_id = "ACC-001"
 
         def can_access_account(requested_id: str) -> bool:
             return requested_id in account_ids
@@ -145,7 +142,6 @@ class TestRoleBasedAccess:
         assert has_role("customer")
 
         # Customer role allows basic operations
-        customer_permissions = ["view_profile", "view_accounts", "view_transactions"]
         # All should be allowed for customer role
 
     def test_premium_customer_permissions(self, sample_user_context):
@@ -157,7 +153,7 @@ class TestRoleBasedAccess:
 
         # Premium customers get additional features
         if is_premium:
-            premium_permissions = ["priority_support", "advanced_analytics"]
+            pass
 
     def test_admin_role_full_access(self):
         """Test admin role has full access."""
@@ -358,9 +354,7 @@ class TestAuthorizationHelpers:
                 def wrapper(user_context: Dict[str, Any], *args, **kwargs):
                     scopes = user_context.get("scopes", [])
                     if required_scope not in scopes:
-                        raise PermissionError(
-                            f"Required scope '{required_scope}' not present"
-                        )
+                        raise PermissionError(f"Required scope '{required_scope}' not present")
                     return func(user_context, *args, **kwargs)
 
                 return wrapper
@@ -384,9 +378,7 @@ class TestAuthorizationHelpers:
     def test_require_resource_access(self, sample_user_context):
         """Test checking resource access."""
 
-        def require_account_access(
-            account_id: str, user_context: Dict[str, Any]
-        ) -> bool:
+        def require_account_access(account_id: str, user_context: Dict[str, Any]) -> bool:
             account_ids = user_context.get("account_ids", [])
             if account_id not in account_ids:
                 raise PermissionError(f"Access to account '{account_id}' denied")
@@ -402,9 +394,7 @@ class TestAuthorizationHelpers:
     def test_combine_authorization_checks(self, sample_user_context):
         """Test combining multiple authorization checks."""
 
-        def authorize_transaction(
-            account_id: str, user_context: Dict[str, Any]
-        ) -> Dict[str, Any]:
+        def authorize_transaction(account_id: str, user_context: Dict[str, Any]) -> Dict[str, Any]:
             # Check scope (fine-grained)
             scopes = set(user_context.get("scopes", []))
             if not scopes & {"accounts:savings:write", "accounts:credit:write"}:

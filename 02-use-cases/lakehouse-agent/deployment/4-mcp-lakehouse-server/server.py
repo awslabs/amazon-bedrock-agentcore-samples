@@ -38,9 +38,7 @@ logger = logging.getLogger(__name__)
 # Also add a stderr handler to ensure logs appear
 stderr_handler = logging.StreamHandler(sys.stderr)
 stderr_handler.setLevel(logging.INFO)
-stderr_handler.setFormatter(
-    logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-)
+stderr_handler.setFormatter(logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s"))
 logger.addHandler(stderr_handler)
 
 # Ensure stdout is unbuffered
@@ -78,10 +76,7 @@ def get_config() -> Dict[str, Optional[str]]:
     try:
         session = boto3.Session()
         config["region"] = (
-            os.environ.get("AWS_REGION")
-            or session.region_name
-            or os.environ.get("AWS_DEFAULT_REGION")
-            or "us-east-1"
+            os.environ.get("AWS_REGION") or session.region_name or os.environ.get("AWS_DEFAULT_REGION") or "us-east-1"
         )
         if not session.region_name:
             print("⚠️  No region in AWS config, using fallback")
@@ -127,16 +122,12 @@ def get_config() -> Dict[str, Optional[str]]:
     config["log_level"] = os.environ.get("LOG_LEVEL", "INFO")
 
     if config["s3_bucket_name"]:
-        config["s3_output_location"] = (
-            f"s3://{config['s3_bucket_name']}/athena-results/"
-        )
+        config["s3_output_location"] = f"s3://{config['s3_bucket_name']}/athena-results/"
     else:
         config["s3_output_location"] = None
 
     config["test_user"] = os.environ.get("TEST_USER_1", "policyholder001@example.com")
-    config["local_development"] = (
-        os.environ.get("LOCAL_DEVELOPMENT", "false").lower() == "true"
-    )
+    config["local_development"] = os.environ.get("LOCAL_DEVELOPMENT", "false").lower() == "true"
 
     _config_cache = config
     return config
@@ -210,7 +201,7 @@ def get_user_id_with_fallback(
         # Extract tenant credentials if present
         tenant_creds = context_arg.get("tenant_credentials")
         if tenant_creds:
-            print(f"   Got tenant_credentials from context")
+            print("   Got tenant_credentials from context")
             print(f"   Role: {tenant_creds.get('role_name', 'N/A')}")
             print(f"   Expiration: {tenant_creds.get('expiration', 'N/A')}")
             tenant_credentials = tenant_creds
@@ -245,14 +236,14 @@ def query_claims(
     print(msg, file=sys.stderr, flush=True)
     print(msg, flush=True)
 
-    logger.info(f"📥 INPUT PARAMETERS:")
+    logger.info("📥 INPUT PARAMETERS:")
     logger.info(f"   claim_status: {claim_status}")
     logger.info(f"   claim_type: {claim_type}")
     logger.info(f"   start_date: {start_date}")
     logger.info(f"   end_date: {end_date}")
     logger.info(f"   context keys: {list(context.keys()) if context else None}")
 
-    print(f"📥 INPUT PARAMETERS:", file=sys.stderr, flush=True)
+    print("📥 INPUT PARAMETERS:", file=sys.stderr, flush=True)
     print(f"   claim_status: {claim_status}", file=sys.stderr, flush=True)
     print(f"   claim_type: {claim_type}", file=sys.stderr, flush=True)
 
@@ -271,11 +262,9 @@ def query_claims(
 
                 f.write(f"{datetime.datetime.now()} - query_claims invoked\n")
                 f.write(f"  Parameters: status={claim_status}, type={claim_type}\n")
-                f.write(
-                    f"  Context keys: {list(context.keys()) if context else None}\n"
-                )
+                f.write(f"  Context keys: {list(context.keys()) if context else None}\n")
                 f.flush()
-        except Exception as log_err:
+        except Exception:
             pass  # Don't fail if we can't write to file
 
         user_id, tenant_credentials = get_user_id_with_fallback(context)
@@ -283,9 +272,7 @@ def query_claims(
         print(f"👤 USER ID: {user_id}", file=sys.stderr, flush=True)
         print(f"👤 USER ID: {user_id}")
         if tenant_credentials:
-            logger.info(
-                f"🔑 TENANT CREDENTIALS: Role {tenant_credentials.get('role_name')}"
-            )
+            logger.info(f"🔑 TENANT CREDENTIALS: Role {tenant_credentials.get('role_name')}")
             print(
                 f"🔑 TENANT CREDENTIALS: Role {tenant_credentials.get('role_name')}",
                 file=sys.stderr,
@@ -314,9 +301,7 @@ def query_claims(
         print(f"🔍 FILTERS: {filters}")
 
         tools = get_athena_tools()
-        result = tools.query_claims(
-            user_id, filters if filters else None, tenant_credentials
-        )
+        result = tools.query_claims(user_id, filters if filters else None, tenant_credentials)
 
         logger.info("📤 OUTPUT:")
         logger.info(f"   success: {result.get('success', 'N/A')}")
@@ -443,9 +428,7 @@ def get_claims_summary(context: Dict[str, Any] = None) -> Dict[str, Any]:
         return {"success": False, "error": str(e)}
 
 
-@mcp.tool(
-    name="query_login_audit", description="Query user login audit logs from DynamoDB."
-)
+@mcp.tool(name="query_login_audit", description="Query user login audit logs from DynamoDB.")
 def query_login_audit(
     user_id: str = None,
     limit: int = 10,
@@ -501,7 +484,7 @@ def query_login_audit(
 
         # Use tenant credentials if available, otherwise use default credentials
         if tenant_credentials:
-            print(f"🔑 Using tenant credentials for DynamoDB access")
+            print("🔑 Using tenant credentials for DynamoDB access")
             dynamodb = boto3.resource(
                 "dynamodb",
                 region_name=config["region"],
@@ -510,7 +493,7 @@ def query_login_audit(
                 aws_session_token=tenant_credentials["session_token"],
             )
         else:
-            print(f"⚠️  No tenant credentials found, using default credentials")
+            print("⚠️  No tenant credentials found, using default credentials")
             dynamodb = boto3.resource("dynamodb", region_name=config["region"])
         table_name = "lakehouse_user_login_audit"
 
@@ -528,9 +511,7 @@ def query_login_audit(
 
                 # Add date filter if provided
                 if start_date:
-                    key_condition = key_condition & Key("login_timestamp").gte(
-                        start_date
-                    )
+                    key_condition = key_condition & Key("login_timestamp").gte(start_date)
 
                 response = table.query(
                     KeyConditionExpression=key_condition,
@@ -542,9 +523,7 @@ def query_login_audit(
 
             else:
                 # Scan for recent logins across all users (use with caution)
-                print(
-                    f"🔍 Scanning for recent logins across all users (limit: {limit})"
-                )
+                print(f"🔍 Scanning for recent logins across all users (limit: {limit})")
 
                 scan_params = {"Limit": limit}
 
@@ -553,17 +532,13 @@ def query_login_audit(
                 if start_date:
                     from boto3.dynamodb.conditions import Attr
 
-                    scan_params["FilterExpression"] = Attr("login_timestamp").gte(
-                        start_date
-                    )
+                    scan_params["FilterExpression"] = Attr("login_timestamp").gte(start_date)
 
                 response = table.scan(**scan_params)
                 records = response.get("Items", [])
 
                 # Sort by timestamp (most recent first)
-                records = sorted(
-                    records, key=lambda x: x.get("login_timestamp", ""), reverse=True
-                )
+                records = sorted(records, key=lambda x: x.get("login_timestamp", ""), reverse=True)
 
             # Format records for output
             formatted_records = []
@@ -590,7 +565,7 @@ def query_login_audit(
             }
 
             print("📤 OUTPUT:")
-            print(f"   success: True")
+            print("   success: True")
             print(f"   records_count: {len(formatted_records)}")
             print(f"   queried_user: {user_id if user_id else 'all_users'}")
 
@@ -618,9 +593,7 @@ def query_login_audit(
     Convert natural language query to SQL and execute it against the lakehouse database. 
     Automatically reads schema from data catalog and generates appropriate SQL query.""",
 )
-def text_to_sql(
-    natural_language_query: str, context: Dict[str, Any] = None
-) -> Dict[str, Any]:
+def text_to_sql(natural_language_query: str, context: Dict[str, Any] = None) -> Dict[str, Any]:
     """
     Convert natural language to SQL and execute.
 

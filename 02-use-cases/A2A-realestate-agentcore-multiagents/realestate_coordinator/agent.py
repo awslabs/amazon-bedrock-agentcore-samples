@@ -11,8 +11,6 @@ deployed on Amazon Bedrock AgentCore Runtime with OAuth 2.0 authentication.
 
 import os
 import sys
-import logging
-import asyncio
 import json
 from typing import Optional
 from uuid import uuid4
@@ -29,9 +27,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../"))
 from common.utils.logging_config import setup_logging
 
 # Configure structured logging
-logger = setup_logging(
-    "realestate_coordinator", level=os.getenv("LOG_LEVEL", "INFO"), use_json=True
-)
+logger = setup_logging("realestate_coordinator", level=os.getenv("LOG_LEVEL", "INFO"), use_json=True)
 
 # Configuration
 DEFAULT_TIMEOUT = 300  # 5 minutes for A2A calls
@@ -50,7 +46,6 @@ _bearer_token_store = {"current": None}
 
 def get_bearer_token_from_cognito():
     """Get OAuth bearer token from Cognito using client credentials flow."""
-    import json
 
     # Try to get from environment variables first
     token_url = os.getenv("COGNITO_TOKEN_ENDPOINT")
@@ -91,12 +86,8 @@ def get_bearer_token_from_cognito():
         logger.info("Successfully obtained bearer token from Cognito")
         return token_data["access_token"]
     else:
-        logger.error(
-            f"Failed to get token from Cognito: {response.status_code} - {response.text}"
-        )
-        raise ValueError(
-            f"Failed to obtain bearer token from Cognito: {response.status_code}"
-        )
+        logger.error(f"Failed to get token from Cognito: {response.status_code} - {response.text}")
+        raise ValueError(f"Failed to obtain bearer token from Cognito: {response.status_code}")
 
 
 def set_request_bearer_token(token: str):
@@ -110,17 +101,14 @@ def get_bearer_token():
     """Get OAuth bearer token from request context - MUST be passed from incoming request."""
     # ONLY use the bearer token from request context (passed from incoming request)
     # Do NOT generate new tokens - just pass through what we received
-    if hasattr(_request_context, "bearer_token") and _request_context.bearer_token:
+    token = _bearer_token_var.get()
+    if token:
         logger.info("Using bearer token from request context (passed through)")
-        return _request_context.bearer_token
+        return token
 
     # If no token in context, this is an error - we should always have one
-    logger.error(
-        "No bearer token in request context! Token must be passed from client."
-    )
-    raise ValueError(
-        "Bearer token not found in request context. Ensure Authorization header is provided."
-    )
+    logger.error("No bearer token in request context! Token must be passed from client.")
+    raise ValueError("Bearer token not found in request context. Ensure Authorization header is provided.")
 
 
 def get_httpx_client():
@@ -136,27 +124,19 @@ def get_httpx_client():
         from bedrock_agentcore.runtime import BedrockAgentCoreContext
 
         request_headers = BedrockAgentCoreContext.get_request_headers()
-        logger.info(
-            f"  Request headers from context: {list(request_headers.keys()) if request_headers else 'None'}"
-        )
+        logger.info(f"  Request headers from context: {list(request_headers.keys()) if request_headers else 'None'}")
 
         bearer_token = None
         if request_headers and "authorization" in request_headers:
             auth_header = request_headers["authorization"]
             if auth_header.startswith("Bearer "):
                 bearer_token = auth_header[7:]
-                logger.info(
-                    f"  ✓ Found bearer token in request context: {bearer_token[:20]}..."
-                )
+                logger.info(f"  ✓ Found bearer token in request context: {bearer_token[:20]}...")
 
         if not bearer_token:
-            logger.warning(
-                "  No Authorization header in request context, generating from Cognito..."
-            )
+            logger.warning("  No Authorization header in request context, generating from Cognito...")
             bearer_token = get_bearer_token_from_cognito()
-            logger.info(
-                f"  ✓ Generated bearer token from Cognito: {bearer_token[:20]}..."
-            )
+            logger.info(f"  ✓ Generated bearer token from Cognito: {bearer_token[:20]}...")
 
     except Exception as e:
         logger.warning(f"  Could not access BedrockAgentCoreContext: {e}")
@@ -168,7 +148,7 @@ def get_httpx_client():
 
     # Create a new client each time
     client = httpx.AsyncClient(timeout=DEFAULT_TIMEOUT, headers=headers)
-    logger.info(f"  ✓ Created httpx client with Authorization header")
+    logger.info("  ✓ Created httpx client with Authorization header")
 
     return client
 
@@ -183,9 +163,7 @@ def create_a2a_message(text: str) -> Message:
     )
 
 
-async def send_agent_message(
-    message: str, agent_url: str, agent_name: str, cache_key: str
-) -> Optional[str]:
+async def send_agent_message(message: str, agent_url: str, agent_name: str, cache_key: str) -> Optional[str]:
     """
     Send message to a sub-agent using A2A protocol with OAuth authentication.
 
@@ -202,7 +180,7 @@ async def send_agent_message(
         Agent's response text or error message
     """
     try:
-        logger.info(f"=== send_agent_message START ===")
+        logger.info("=== send_agent_message START ===")
         logger.info(f"  Target: {agent_name}")
         logger.info(f"  Message: {message[:100]}...")
 
@@ -212,11 +190,9 @@ async def send_agent_message(
         # Verify the Authorization header is set
         auth_header = httpx_client.headers.get("Authorization", "")
         if auth_header:
-            logger.info(
-                f"  ✓ httpx client has Authorization header: Bearer {auth_header[7:27]}..."
-            )
+            logger.info(f"  ✓ httpx client has Authorization header: Bearer {auth_header[7:27]}...")
         else:
-            logger.error(f"  ✗ httpx client missing Authorization header!")
+            logger.error("  ✗ httpx client missing Authorization header!")
 
         # Generate session ID for tracking
         session_id = str(uuid4())
@@ -230,11 +206,11 @@ async def send_agent_message(
         logger.info(f"  ✓ Retrieved agent card: {agent_card.name}")
 
         # Create A2A client with the httpx client that has the bearer token
-        logger.info(f"  Creating A2A client...")
+        logger.info("  Creating A2A client...")
         config = ClientConfig(httpx_client=httpx_client, streaming=False)
         factory = ClientFactory(config)
         client = factory.create(agent_card)
-        logger.info(f"  ✓ A2A client created")
+        logger.info("  ✓ A2A client created")
 
         # Create A2A message
         msg = create_a2a_message(message)
@@ -252,9 +228,7 @@ async def send_agent_message(
                 for part in event.parts:
                     if hasattr(part, "text"):
                         response_text = part.text
-                        logger.info(
-                            f"Extracted text from Message: {response_text[:100]}..."
-                        )
+                        logger.info(f"Extracted text from Message: {response_text[:100]}...")
                         break
 
                 if response_text:
@@ -276,15 +250,11 @@ async def send_agent_message(
                                 # Part is a Pydantic model with a root attribute
                                 if hasattr(part, "root") and hasattr(part.root, "text"):
                                     response_text = part.root.text
-                                    logger.info(
-                                        f"Extracted from task.artifacts[].parts[].root.text"
-                                    )
+                                    logger.info("Extracted from task.artifacts[].parts[].root.text")
                                     break
                                 elif hasattr(part, "text"):
                                     response_text = part.text
-                                    logger.info(
-                                        f"Extracted from task.artifacts[].parts[].text"
-                                    )
+                                    logger.info("Extracted from task.artifacts[].parts[].text")
                                     break
                         if response_text:
                             break
@@ -295,12 +265,12 @@ async def send_agent_message(
                     logger.debug(f"Task has result: {type(result)}")
                     if hasattr(result, "text"):
                         response_text = result.text
-                        logger.info(f"Extracted from task.result.text")
+                        logger.info("Extracted from task.result.text")
                     elif hasattr(result, "parts"):
                         for part in result.parts:
                             if hasattr(part, "text"):
                                 response_text = part.text
-                                logger.info(f"Extracted from task.result.parts")
+                                logger.info("Extracted from task.result.parts")
                                 break
 
                 # 3. Check if task has parts directly
@@ -308,44 +278,38 @@ async def send_agent_message(
                     for part in task.parts:
                         if hasattr(part, "text"):
                             response_text = part.text
-                            logger.info(f"Extracted from task.parts")
+                            logger.info("Extracted from task.parts")
                             break
 
                 # 4. Check if task has text directly
                 if not response_text and hasattr(task, "text"):
                     response_text = task.text
-                    logger.info(f"Extracted from task.text")
+                    logger.info("Extracted from task.text")
 
                 # 5. Try to get from update_event
                 if not response_text and update_event:
                     logger.debug(f"Checking update_event: {type(update_event)}")
                     if hasattr(update_event, "text"):
                         response_text = update_event.text
-                        logger.info(f"Extracted from update_event.text")
+                        logger.info("Extracted from update_event.text")
 
                 if response_text:
-                    logger.info(
-                        f"Successfully extracted response: {response_text[:100]}..."
-                    )
+                    logger.info(f"Successfully extracted response: {response_text[:100]}...")
                     return response_text
                 else:
-                    logger.warning(
-                        f"Could not extract text from task. Task attributes: {dir(task)}"
-                    )
+                    logger.warning(f"Could not extract text from task. Task attributes: {dir(task)}")
 
         # If no response extracted, return error
         if not response_text:
-            logger.error(
-                f"  ✗ No response text extracted from {agent_name} after processing all events"
-            )
+            logger.error(f"  ✗ No response text extracted from {agent_name} after processing all events")
             return f"Error: No response received from {agent_name}. The agent may have encountered an issue."
 
         logger.info(f"  ✓ Response received: {response_text[:100]}...")
-        logger.info(f"=== send_agent_message END ===")
+        logger.info("=== send_agent_message END ===")
         return response_text
 
     except Exception as e:
-        logger.error(f"=== send_agent_message ERROR ===")
+        logger.error("=== send_agent_message ERROR ===")
         logger.error(f"  Agent: {agent_name}")
         logger.error(f"  Error: {e}", exc_info=True)
         return f"Error communicating with {agent_name}: {str(e)[:200]}"
@@ -362,15 +326,13 @@ async def search_properties(query: str) -> str:
     Returns:
         List of matching properties
     """
-    logger.info(f"=== TOOL: search_properties called ===")
+    logger.info("=== TOOL: search_properties called ===")
     logger.info(f"  Query: {query}")
 
     # Check if bearer token is available
     token = _bearer_token_var.get()
     backup_token = _bearer_token_store.get("current")
-    logger.info(
-        f"  Token in context var: {'YES' if token else 'NO'} ({token[:20] + '...' if token else 'None'})"
-    )
+    logger.info(f"  Token in context var: {'YES' if token else 'NO'} ({token[:20] + '...' if token else 'None'})")
     logger.info(
         f"  Token in backup store: {'YES' if backup_token else 'NO'} ({backup_token[:20] + '...' if backup_token else 'None'})"
     )
@@ -383,11 +345,9 @@ async def search_properties(query: str) -> str:
 
     logger.info(f"  Calling search agent at: {search_agent_url[:80]}...")
 
-    result = await send_agent_message(
-        query, search_agent_url, "Property Search Agent", "search_client"
-    )
+    result = await send_agent_message(query, search_agent_url, "Property Search Agent", "search_client")
 
-    logger.info(f"=== TOOL: search_properties completed ===")
+    logger.info("=== TOOL: search_properties completed ===")
     return result
 
 
@@ -407,9 +367,7 @@ async def book_property(booking_request: str) -> str:
     if not booking_agent_url:
         return "Error: Property Booking Agent URL not configured. Set PROPERTY_BOOKING_AGENT_URL environment variable."
 
-    return await send_agent_message(
-        booking_request, booking_agent_url, "Property Booking Agent", "booking_client"
-    )
+    return await send_agent_message(booking_request, booking_agent_url, "Property Booking Agent", "booking_client")
 
 
 @tool
@@ -428,9 +386,7 @@ async def check_booking_status(query: str) -> str:
     if not booking_agent_url:
         return "Error: Property Booking Agent URL not configured. Set PROPERTY_BOOKING_AGENT_URL environment variable."
 
-    return await send_agent_message(
-        query, booking_agent_url, "Property Booking Agent", "booking_client"
-    )
+    return await send_agent_message(query, booking_agent_url, "Property Booking Agent", "booking_client")
 
 
 def create_realestate_coordinator():

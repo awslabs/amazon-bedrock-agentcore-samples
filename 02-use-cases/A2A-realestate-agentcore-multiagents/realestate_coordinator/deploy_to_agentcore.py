@@ -2,7 +2,6 @@
 Deploy Real Estate Coordinator Agent to Bedrock AgentCore Runtime
 """
 
-import os
 import sys
 from bedrock_agentcore_starter_toolkit import Runtime
 from boto3.session import Session
@@ -19,10 +18,10 @@ agent_name = "realestate_coordinator"
 entrypoint = "agent_agentcore.py"
 requirements_file = "requirements.txt"
 
-print(f"Configuration:")
+print("Configuration:")
 print(f"  Agent Name: {agent_name}")
 print(f"  Region: {region}")
-print(f"  Protocol: A2A")
+print("  Protocol: A2A")
 print()
 
 agentcore_runtime = Runtime()
@@ -72,7 +71,7 @@ if property_search_arn:
     env_vars["PROPERTY_SEARCH_AGENT_URL"] = (
         f"https://bedrock-agentcore.{region}.amazonaws.com/runtimes/{escaped_arn}/invocations/"
     )
-    print(f"✓ Property Search Agent URL configured")
+    print("✓ Property Search Agent URL configured")
 
 if property_booking_arn:
     from urllib.parse import quote
@@ -81,7 +80,7 @@ if property_booking_arn:
     env_vars["PROPERTY_BOOKING_AGENT_URL"] = (
         f"https://bedrock-agentcore.{region}.amazonaws.com/runtimes/{escaped_arn}/invocations/"
     )
-    print(f"✓ Property Booking Agent URL configured")
+    print("✓ Property Booking Agent URL configured")
 
 print()
 print("Step 3: Launching to AgentCore Runtime...")

@@ -4,7 +4,7 @@ import logging
 import json
 import uuid
 from datetime import datetime
-from typing import Any, Optional
+from typing import Optional
 
 
 class JSONFormatter(logging.Formatter):
@@ -39,9 +39,7 @@ class JSONFormatter(logging.Formatter):
         return json.dumps(log_data)
 
 
-def setup_logging(
-    agent_name: str, level: str = "INFO", use_json: bool = True
-) -> logging.Logger:
+def setup_logging(agent_name: str, level: str = "INFO", use_json: bool = True) -> logging.Logger:
     """
     Set up structured logging for an agent.
 
@@ -66,9 +64,7 @@ def setup_logging(
         handler.setFormatter(JSONFormatter())
     else:
         # Use standard formatter for local development
-        formatter = logging.Formatter(
-            "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-        )
+        formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
         handler.setFormatter(formatter)
 
     logger.addHandler(handler)
@@ -157,9 +153,7 @@ def log_tool_execution(
 
     if error:
         extra["error"] = error
-        extra["error_type"] = (
-            type(error).__name__ if isinstance(error, Exception) else "unknown"
-        )
+        extra["error_type"] = type(error).__name__ if isinstance(error, Exception) else "unknown"
 
     if success:
         logger.info(f"Tool execution completed: {tool_name}", extra=extra)
@@ -243,9 +237,7 @@ def log_a2a_communication(
 
     if error:
         extra["error"] = error
-        extra["error_type"] = (
-            type(error).__name__ if isinstance(error, Exception) else "unknown"
-        )
+        extra["error_type"] = type(error).__name__ if isinstance(error, Exception) else "unknown"
 
     # Add any additional context
     extra.update(kwargs)
@@ -253,6 +245,4 @@ def log_a2a_communication(
     if success:
         logger.info(f"A2A communication {event_type}: {remote_agent_url}", extra=extra)
     else:
-        logger.error(
-            f"A2A communication {event_type} failed: {remote_agent_url}", extra=extra
-        )
+        logger.error(f"A2A communication {event_type} failed: {remote_agent_url}", extra=extra)

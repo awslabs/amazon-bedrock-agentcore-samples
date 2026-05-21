@@ -9,7 +9,7 @@ for setting up Bedrock AgentCore IAM roles.
 import os
 import sys
 import subprocess
-from typing import Dict, Optional, List, Any
+from typing import Dict, Optional
 
 # Import configuration module
 from config import load_config, save_config, get_regions, get_account_id, get_role_name
@@ -91,9 +91,7 @@ def collect_account_info(
     else:
         if current_id:
             print(f"Current AWS Account ID: {current_id}")
-            change_id = (
-                input("Do you want to change it? (y/N): ").strip().lower() == "y"
-            )
+            change_id = input("Do you want to change it? (y/N): ").strip().lower() == "y"
             if change_id:
                 account_id = input("Enter AWS Account ID: ").strip()
             else:
@@ -109,9 +107,7 @@ def collect_account_info(
     # Get regions
     current_regions = ",".join(get_regions(config_data))
     print(f"\nCurrent AWS Regions: {current_regions}")
-    change_regions = (
-        input("Do you want to change the regions? (y/N): ").strip().lower() == "y"
-    )
+    change_regions = input("Do you want to change the regions? (y/N): ").strip().lower() == "y"
 
     if change_regions:
         print("\nEnter comma-separated list of AWS regions.")
@@ -156,9 +152,7 @@ def collect_role_info(
         role_name = current_name
 
     # Get role description
-    current_desc = config_data.get("role", {}).get(
-        "description", "Execution role for Bedrock AgentCore applications"
-    )
+    current_desc = config_data.get("role", {}).get("description", "Execution role for Bedrock AgentCore applications")
     print(f"\nCurrent Role Description: {current_desc}")
     change_desc = input("Do you want to change it? (y/N): ").strip().lower() == "y"
 
@@ -212,7 +206,7 @@ def collect_policy_info(
         enabled = "enabled" if current else "disabled"
 
         print(f"{policy_name} - Currently {enabled}")
-        toggle = input(f"Toggle this permission? (y/N): ").strip().lower() == "y"
+        toggle = input("Toggle this permission? (y/N): ").strip().lower() == "y"
 
         if toggle:
             policies[policy_key] = str(not current).lower()
@@ -241,9 +235,7 @@ def collect_ecr_info(
     print("=== ECR Repository Information ===\n")
 
     # Get repository name
-    current_repo = config_data.get("ecr", {}).get(
-        "repository_name", "bedrock-agentcore"
-    )
+    current_repo = config_data.get("ecr", {}).get("repository_name", "bedrock-agentcore")
     print(f"Current Repository Name: {current_repo}")
     change_repo = input("Do you want to change it? (y/N): ").strip().lower() == "y"
 

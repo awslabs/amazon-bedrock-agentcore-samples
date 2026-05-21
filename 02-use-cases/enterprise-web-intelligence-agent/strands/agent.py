@@ -1,7 +1,6 @@
 """Main Strands agent for competitive intelligence gathering."""
 
 import asyncio
-import json
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 from datetime import datetime
@@ -52,7 +51,7 @@ class CompetitiveIntelligenceAgent:
         try:
             value = self.agent.state.get(key)
             return value if value is not None else default
-        except:
+        except Exception:
             return default
 
     async def initialize(self, resume_session_id: Optional[str] = None):
@@ -92,9 +91,7 @@ class CompetitiveIntelligenceAgent:
             )
 
         # Initialize Bedrock model
-        bedrock_model = BedrockModel(
-            model_id=self.config.llm_model_id, region_name=self.config.region
-        )
+        bedrock_model = BedrockModel(model_id=self.config.llm_model_id, region_name=self.config.region)
 
         # Initialize browser session with CDP - IMPORTANT: Do this before creating agent
         await self.browser_tools.initialize_browser_session(bedrock_model)
@@ -134,9 +131,7 @@ class CompetitiveIntelligenceAgent:
             console.print("[dim]You can take/release control in the viewer[/dim]")
 
         console.print("\n[green]✅ Agent initialized successfully![/green]")
-        console.print(
-            f"[cyan]📹 Recording to: {self.browser_tools.recording_path}[/cyan]"
-        )
+        console.print(f"[cyan]📹 Recording to: {self.browser_tools.recording_path}[/cyan]")
 
     def _get_system_prompt(self) -> str:
         """Get the system prompt for the agent."""
@@ -167,9 +162,7 @@ class CompetitiveIntelligenceAgent:
             if agent_instance.loop and agent_instance.loop.is_running():
                 # We're already in an async context, create a task
                 future = asyncio.ensure_future(
-                    agent_instance._analyze_website_impl(
-                        competitor_name, competitor_url
-                    ),
+                    agent_instance._analyze_website_impl(competitor_name, competitor_url),
                     loop=agent_instance.loop,
                 )
 
@@ -177,20 +170,14 @@ class CompetitiveIntelligenceAgent:
                 return agent_instance.loop.run_until_complete(future)
             else:
                 # No running loop, use asyncio.run
-                return asyncio.run(
-                    agent_instance._analyze_website_impl(
-                        competitor_name, competitor_url
-                    )
-                )
+                return asyncio.run(agent_instance._analyze_website_impl(competitor_name, competitor_url))
 
         @tool
         def perform_analysis() -> str:
             """
             Analyze all collected competitor data to identify patterns and insights.
             """
-            console.print(
-                "\n[bold yellow]📊 Analyzing all competitor data...[/bold yellow]"
-            )
+            console.print("\n[bold yellow]📊 Analyzing all competitor data...[/bold yellow]")
 
             competitor_data = agent_instance._safe_state_get("competitor_data", {})
 
@@ -200,22 +187,16 @@ class CompetitiveIntelligenceAgent:
             # Analyze each competitor
             for competitor_name, data in competitor_data.items():
                 console.print(f"[cyan]Analyzing {competitor_name}...[/cyan]")
-                analysis_result = agent_instance.analysis_tools.analyze_competitor_data(
-                    competitor_name, data
-                )
+                analysis_result = agent_instance.analysis_tools.analyze_competitor_data(competitor_name, data)
 
                 # Store analysis results
-                analysis_results = agent_instance._safe_state_get(
-                    "analysis_results", {}
-                )
+                analysis_results = agent_instance._safe_state_get("analysis_results", {})
                 analysis_results[competitor_name] = analysis_result
                 agent_instance.agent.state.set("analysis_results", analysis_results)
 
             # Create visualizations
             console.print("[cyan]Creating comparison visualizations...[/cyan]")
-            viz_result = agent_instance.analysis_tools.create_comparison_visualization(
-                competitor_data
-            )
+            viz_result = agent_instance.analysis_tools.create_comparison_visualization(competitor_data)
 
             analysis_results = agent_instance._safe_state_get("analysis_results", {})
             analysis_results["visualizations"] = viz_result
@@ -237,16 +218,10 @@ class CompetitiveIntelligenceAgent:
                 return "No data to generate report from"
 
             # Generate report
-            report_result = agent_instance.analysis_tools.generate_final_report(
-                competitor_data, analysis_results
-            )
+            report_result = agent_instance.analysis_tools.generate_final_report(competitor_data, analysis_results)
 
-            agent_instance.agent.state.set(
-                "report", report_result.get("report_content", "")
-            )
-            agent_instance.agent.state.set(
-                "recording_path", agent_instance.browser_tools.recording_path
-            )
+            agent_instance.agent.state.set("report", report_result.get("report_content", ""))
+            agent_instance.agent.state.set("recording_path", agent_instance.browser_tools.recording_path)
 
             return "Report generated successfully"
 
@@ -255,9 +230,7 @@ class CompetitiveIntelligenceAgent:
 
         return tools
 
-    async def _analyze_website_impl(
-        self, competitor_name: str, competitor_url: str
-    ) -> str:
+    async def _analyze_website_impl(self, competitor_name: str, competitor_url: str) -> str:
         """Implementation of website analysis."""
         console.print(f"\n[bold blue]🔍 Analyzing: {competitor_name}[/bold blue]")
         console.print(f"[cyan]URL: {competitor_url}[/cyan]")
@@ -279,46 +252,28 @@ class CompetitiveIntelligenceAgent:
                 competitor_data["navigation"] = nav_result
 
                 if nav_result.get("status") != "success":
-                    console.print(
-                        f"[yellow]⚠️ Navigation failed: {nav_result.get('error')}[/yellow]"
-                    )
+                    console.print(f"[yellow]⚠️ Navigation failed: {nav_result.get('error')}[/yellow]")
                     # Continue anyway to try to get some data
 
                 # Take screenshot
-                progress.update(
-                    task, description="Taking homepage screenshot...", advance=1
-                )
-                await self.browser_tools.take_annotated_screenshot(
-                    f"{competitor_name} - Homepage"
-                )
+                progress.update(task, description="Taking homepage screenshot...", advance=1)
+                await self.browser_tools.take_annotated_screenshot(f"{competitor_name} - Homepage")
 
                 # Discover sections
-                progress.update(
-                    task, description="Discovering page sections...", advance=1
-                )
-                discovered_sections = (
-                    await self.browser_tools.intelligent_scroll_and_discover()
-                )
+                progress.update(task, description="Discovering page sections...", advance=1)
+                discovered_sections = await self.browser_tools.intelligent_scroll_and_discover()
                 competitor_data["discovered_sections"] = discovered_sections
-                console.print(
-                    f"[green]Found {len(discovered_sections)} key sections[/green]"
-                )
+                console.print(f"[green]Found {len(discovered_sections)} key sections[/green]")
 
                 # Try to find pricing page
-                progress.update(
-                    task, description="Looking for pricing page...", advance=1
-                )
+                progress.update(task, description="Looking for pricing page...", advance=1)
                 found_pricing = await self.browser_tools.smart_navigation("pricing")
                 if found_pricing:
                     await asyncio.sleep(3)
-                    await self.browser_tools.take_annotated_screenshot(
-                        f"{competitor_name} - Pricing"
-                    )
+                    await self.browser_tools.take_annotated_screenshot(f"{competitor_name} - Pricing")
 
                 # Analyze forms
-                progress.update(
-                    task, description="Checking interactive elements...", advance=1
-                )
+                progress.update(task, description="Checking interactive elements...", advance=1)
                 form_data = await self.browser_tools.analyze_forms_and_inputs()
                 competitor_data["interactive_elements"] = form_data
 
@@ -333,9 +288,7 @@ class CompetitiveIntelligenceAgent:
                 competitor_data["features"] = features_result
 
                 # Explore additional pages
-                progress.update(
-                    task, description="Exploring additional pages...", advance=1
-                )
+                progress.update(task, description="Exploring additional pages...", advance=1)
                 additional_pages = await self.browser_tools.explore_multi_page_workflow(
                     ["features", "docs", "api", "about"]
                 )
@@ -422,58 +375,43 @@ class CompetitiveIntelligenceAgent:
                         competitor_name=competitor["name"],
                         competitor_url=competitor["url"],
                     )
+                    console.print(f"[green]✓ {competitor['name']} analysis complete[/green]")
                     console.print(
-                        f"[green]✓ {competitor['name']} analysis complete[/green]"
-                    )
-                    console.print(
-                        f"[dim]Result: {result[:200]}...[/dim]"
-                        if len(result) > 200
-                        else f"[dim]Result: {result}[/dim]"
+                        f"[dim]Result: {result[:200]}...[/dim]" if len(result) > 200 else f"[dim]Result: {result}[/dim]"
                     )
 
                     # Add a small delay between competitors to avoid overwhelming
                     if i < len(competitors):
-                        console.print(
-                            f"[dim]Waiting 2 seconds before next competitor...[/dim]"
-                        )
+                        console.print("[dim]Waiting 2 seconds before next competitor...[/dim]")
                         await asyncio.sleep(2)
 
                 except Exception as comp_error:
-                    console.print(
-                        f"[red]❌ Error analyzing {competitor['name']}: {comp_error}[/red]"
-                    )
+                    console.print(f"[red]❌ Error analyzing {competitor['name']}: {comp_error}[/red]")
                     # Continue with next competitor even if one fails
                     continue
 
-            console.print(
-                "\n[bold cyan]All competitors analyzed, generating insights...[/bold cyan]"
-            )
+            console.print("\n[bold cyan]All competitors analyzed, generating insights...[/bold cyan]")
 
             # Perform analysis
             console.print("\n[yellow]Running data analysis...[/yellow]")
             try:
-                analysis_result = self.agent.tool.perform_analysis()
-                console.print(f"[green]✓ Analysis complete[/green]")
+                self.agent.tool.perform_analysis()
+                console.print("[green]✓ Analysis complete[/green]")
             except Exception as e:
                 console.print(f"[red]Analysis error: {e}[/red]")
-                analysis_result = "Analysis failed"
 
             # Generate report
             console.print("\n[yellow]Generating report...[/yellow]")
             try:
-                report_result = self.agent.tool.generate_report()
-                console.print(f"[green]✓ Report generated[/green]")
+                self.agent.tool.generate_report()
+                console.print("[green]✓ Report generated[/green]")
             except Exception as e:
                 console.print(f"[red]Report generation error: {e}[/red]")
-                report_result = "Report generation failed"
 
             # Get final state
             report = self._safe_state_get("report")
-            recording_path = (
-                self._safe_state_get("recording_path")
-                or self.browser_tools.recording_path
-            )
-            analysis_results = self._safe_state_get("analysis_results", {})
+            recording_path = self._safe_state_get("recording_path") or self.browser_tools.recording_path
+            self._safe_state_get("analysis_results", {})
             apis_discovered = self._safe_state_get("discovered_apis", [])
             total_screenshots = self._safe_state_get("total_screenshots", 0)
             competitor_data = self._safe_state_get("competitor_data", {})
@@ -492,10 +430,7 @@ class CompetitiveIntelligenceAgent:
                     f"📹 Recording: {recording_path}\n\n"
                     f"[bold]Analyzed:[/bold]\n"
                     + "\n".join(
-                        [
-                            f"  • {name}: {data.get('status', 'unknown')}"
-                            for name, data in competitor_data.items()
-                        ]
+                        [f"  • {name}: {data.get('status', 'unknown')}" for name, data in competitor_data.items()]
                     ),
                     title="Summary",
                     border_style="green",
@@ -506,12 +441,8 @@ class CompetitiveIntelligenceAgent:
             return {
                 "success": True,
                 "report": self._safe_state_get("report"),
-                "recording_path": self.browser_tools.recording_path
-                if self.browser_tools
-                else None,
-                "recording_config": self.browser_tools.recording_config
-                if self.browser_tools
-                else None,  # NEW
+                "recording_path": self.browser_tools.recording_path if self.browser_tools else None,
+                "recording_config": self.browser_tools.recording_config if self.browser_tools else None,  # NEW
                 "analysis_results": self._safe_state_get("analysis_results", {}),
                 "apis_discovered": self._safe_state_get("discovered_apis", []),
                 "session_id": datetime.now().strftime("%Y%m%d_%H%M%S"),
@@ -536,7 +467,7 @@ class CompetitiveIntelligenceAgent:
         for session in self.parallel_browser_sessions:
             try:
                 await session.cleanup()
-            except:
+            except Exception:
                 pass
 
         # Cleanup code interpreter

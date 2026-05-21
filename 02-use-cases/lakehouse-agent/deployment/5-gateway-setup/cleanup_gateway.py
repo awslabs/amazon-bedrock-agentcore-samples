@@ -28,9 +28,7 @@ from utils.aws_session_utils import get_aws_session
 class GatewayCleanup:
     def __init__(self, keep_ssm=False):
         session, self.region, self.account_id = get_aws_session()
-        self.bedrock = boto3.client(
-            "bedrock-agentcore-control", region_name=self.region
-        )
+        self.bedrock = boto3.client("bedrock-agentcore-control", region_name=self.region)
         self.lambda_client = boto3.client("lambda", region_name=self.region)
         self.iam = boto3.client("iam")
         self.dynamodb = boto3.client("dynamodb", region_name=self.region)
@@ -39,9 +37,7 @@ class GatewayCleanup:
 
     def _get_ssm_param(self, name, default=None):
         try:
-            return self.ssm.get_parameter(Name=f"/app/lakehouse-agent/{name}")[
-                "Parameter"
-            ]["Value"]
+            return self.ssm.get_parameter(Name=f"/app/lakehouse-agent/{name}")["Parameter"]["Value"]
         except Exception:
             return default
 
@@ -55,22 +51,16 @@ class GatewayCleanup:
         try:
             # Delete targets first
             try:
-                targets = self.bedrock.list_gateway_targets(
-                    gatewayIdentifier=gateway_id
-                ).get("items", [])
+                targets = self.bedrock.list_gateway_targets(gatewayIdentifier=gateway_id).get("items", [])
                 for target in targets:
                     tid = target["targetId"]
-                    self.bedrock.delete_gateway_target(
-                        gatewayIdentifier=gateway_id, targetId=tid
-                    )
+                    self.bedrock.delete_gateway_target(gatewayIdentifier=gateway_id, targetId=tid)
                     print(f"   ✅ Deleted target: {target.get('name', tid)}")
 
                 if targets:
                     print("   ⏳ Waiting for targets to delete...")
                     for _ in range(12):
-                        remaining = self.bedrock.list_gateway_targets(
-                            gatewayIdentifier=gateway_id
-                        ).get("items", [])
+                        remaining = self.bedrock.list_gateway_targets(gatewayIdentifier=gateway_id).get("items", [])
                         if not remaining:
                             break
                         time.sleep(5)
@@ -135,12 +125,8 @@ class GatewayCleanup:
         try:
             for p in self.iam.list_role_policies(RoleName=role_name)["PolicyNames"]:
                 self.iam.delete_role_policy(RoleName=role_name, PolicyName=p)
-            for p in self.iam.list_attached_role_policies(RoleName=role_name)[
-                "AttachedPolicies"
-            ]:
-                self.iam.detach_role_policy(
-                    RoleName=role_name, PolicyArn=p["PolicyArn"]
-                )
+            for p in self.iam.list_attached_role_policies(RoleName=role_name)["AttachedPolicies"]:
+                self.iam.detach_role_policy(RoleName=role_name, PolicyArn=p["PolicyArn"])
             self.iam.delete_role(RoleName=role_name)
             print(f"   ✅ Deleted role: {role_name}")
         except Exception as e:
@@ -157,12 +143,8 @@ class GatewayCleanup:
         try:
             for p in self.iam.list_role_policies(RoleName=role_name)["PolicyNames"]:
                 self.iam.delete_role_policy(RoleName=role_name, PolicyName=p)
-            for p in self.iam.list_attached_role_policies(RoleName=role_name)[
-                "AttachedPolicies"
-            ]:
-                self.iam.detach_role_policy(
-                    RoleName=role_name, PolicyArn=p["PolicyArn"]
-                )
+            for p in self.iam.list_attached_role_policies(RoleName=role_name)["AttachedPolicies"]:
+                self.iam.detach_role_policy(RoleName=role_name, PolicyArn=p["PolicyArn"])
             self.iam.delete_role(RoleName=role_name)
             print(f"   ✅ Deleted role: {role_name}")
         except Exception as e:
@@ -203,7 +185,7 @@ class GatewayCleanup:
                 print(f"   ❌ Error: {e}")
 
     def run(self):
-        print(f"\n🧹 Gateway Cleanup")
+        print("\n🧹 Gateway Cleanup")
         print(f"   Region: {self.region}")
         print(f"   Account: {self.account_id}")
         self.delete_gateway()

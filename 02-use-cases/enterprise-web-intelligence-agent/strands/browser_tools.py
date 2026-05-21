@@ -2,19 +2,13 @@
 
 import asyncio
 import uuid
-import json
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional
 from datetime import datetime
 
 import boto3
 from playwright.async_api import (
     async_playwright,
-    Browser,
-    Page,
-    BrowserContext,
-    CDPSession,
 )
-from langchain_core.messages import HumanMessage
 from rich.console import Console
 
 # Import from BedrockAgentCore SDK
@@ -44,9 +38,7 @@ class BrowserTools:
 
     def create_browser_with_recording(self) -> str:
         """Create a browser with recording configuration using Control Plane API."""
-        console.print(
-            "[cyan]🔧 Creating browser with recording configuration...[/cyan]"
-        )
+        console.print("[cyan]🔧 Creating browser with recording configuration...[/cyan]")
 
         # Create control plane client
         control_plane_url = get_control_plane_endpoint(self.config.region)
@@ -60,9 +52,7 @@ class BrowserTools:
         browser_name = f"competitive_intel_{uuid.uuid4().hex[:8]}"
 
         console.print(f"  Browser name: {browser_name}")
-        console.print(
-            f"  S3 location: s3://{self.config.s3_bucket}/{self.config.s3_prefix}"
-        )
+        console.print(f"  S3 location: s3://{self.config.s3_bucket}/{self.config.s3_prefix}")
         console.print(f"  Role ARN: {self.config.recording_role_arn}")
 
         response = control_client.create_browser(
@@ -85,9 +75,7 @@ class BrowserTools:
 
         # Build recording path for display (but keep structured config)
         s3_location = self.recording_config.get("s3Location", {})
-        self.recording_path = (
-            f"s3://{s3_location.get('bucket')}/{s3_location.get('prefix')}"
-        )
+        self.recording_path = f"s3://{s3_location.get('bucket')}/{s3_location.get('prefix')}"
 
         console.print(f"✅ Browser created: {self.browser_id}")
         console.print(f"📹 Recording to: {self.recording_path}")
@@ -124,9 +112,7 @@ class BrowserTools:
         self.playwright = await async_playwright().start()
 
         # Connect to the browser via CDP
-        self.browser = await self.playwright.chromium.connect_over_cdp(
-            ws_url, headers=headers
-        )
+        self.browser = await self.playwright.chromium.connect_over_cdp(ws_url, headers=headers)
 
         # Get context and page
         self.context = self.browser.contexts[0]
@@ -147,9 +133,7 @@ class BrowserTools:
         console.print("✅ Playwright connected with enhancements")
 
         # Set recording path
-        self.recording_path = (
-            f"s3://{self.config.s3_bucket}/{self.config.s3_prefix}{session_id}/"
-        )
+        self.recording_path = f"s3://{self.config.s3_bucket}/{self.config.s3_prefix}{session_id}/"
         console.print(f"📹 Recording to: {self.recording_path}")
 
         return self.page
@@ -191,10 +175,7 @@ class BrowserTools:
                     return
 
                 # Track relevant APIs
-                if any(
-                    keyword in url.lower()
-                    for keyword in ["api", "price", "pricing", "tier", "plan"]
-                ):
+                if any(keyword in url.lower() for keyword in ["api", "price", "pricing", "tier", "plan"]):
                     self._discovered_apis.append(
                         {
                             "url": url[:100],  # Truncate long URLs
@@ -204,7 +185,7 @@ class BrowserTools:
                     )
                     if len(self._discovered_apis) <= 5:  # Limit console output
                         console.print(f"[dim]🔍 Found API: {url[:60]}...[/dim]")
-            except:
+            except Exception:
                 pass
 
         # Set up response handler
@@ -225,10 +206,8 @@ class BrowserTools:
             if self.cdp_session:
                 try:
                     metrics = await self.cdp_session.send("Performance.getMetrics")
-                    self._performance_metrics = {
-                        m["name"]: m["value"] for m in metrics.get("metrics", [])
-                    }
-                except:
+                    self._performance_metrics = {m["name"]: m["value"] for m in metrics.get("metrics", [])}
+                except Exception:
                     pass
 
             title = await self.page.title()
@@ -292,9 +271,7 @@ class BrowserTools:
             console.print(f"[yellow]⚠️ Form analysis error: {e}[/yellow]")
             return {"status": "error", "error": str(e)}
 
-    async def handle_authentication(
-        self, username: str, password: str, form_selector: Optional[str] = None
-    ) -> Dict:
+    async def handle_authentication(self, username: str, password: str, form_selector: Optional[str] = None) -> Dict:
         """NEW: Handle authentication on login pages."""
         console.print("[cyan]🔐 Handling authentication...[/cyan]")
 
@@ -320,9 +297,7 @@ class BrowserTools:
                 return {"status": "error", "error": "No login form found"}
 
             # Fill in credentials
-            await self.page.fill(
-                'input[type="email"], input[type="text"], input[name*="user"]', username
-            )
+            await self.page.fill('input[type="email"], input[type="text"], input[name*="user"]', username)
             await self.page.fill('input[type="password"]', password)
 
             # Submit form
@@ -344,9 +319,7 @@ class BrowserTools:
             console.print(f"[red]❌ Authentication error: {e}[/red]")
             return {"status": "error", "error": str(e)}
 
-    async def upload_file_to_form(
-        self, file_path: str, selector: str = 'input[type="file"]'
-    ) -> Dict:
+    async def upload_file_to_form(self, file_path: str, selector: str = 'input[type="file"]') -> Dict:
         """NEW: Upload a file to a form."""
         console.print(f"[cyan]📤 Uploading file: {file_path}[/cyan]")
 
@@ -370,9 +343,7 @@ class BrowserTools:
 
     async def explore_multi_page_workflow(self, target_pages: List[str]) -> List[Dict]:
         """NEW: Explore multiple pages in a workflow."""
-        console.print(
-            f"[cyan]🔄 Exploring {len(target_pages)} additional pages...[/cyan]"
-        )
+        console.print(f"[cyan]🔄 Exploring {len(target_pages)} additional pages...[/cyan]")
 
         explored_pages = []
         base_url = self.page.url
@@ -412,17 +383,13 @@ class BrowserTools:
                             await self.take_annotated_screenshot(f"Explored - {target}")
 
                             explored_pages.append(page_info)
-                            console.print(
-                                f"[green]✅ Found and explored: {target}[/green]"
-                            )
+                            console.print(f"[green]✅ Found and explored: {target}[/green]")
                             link_found = True
 
                             # Go back to base URL for next exploration
-                            await self.page.goto(
-                                base_url, wait_until="domcontentloaded"
-                            )
+                            await self.page.goto(base_url, wait_until="domcontentloaded")
                             break
-                    except:
+                    except Exception:
                         continue
 
                 if not link_found:
@@ -437,15 +404,11 @@ class BrowserTools:
 
             except Exception as e:
                 console.print(f"[yellow]⚠️ Error exploring {target}: {e}[/yellow]")
-                explored_pages.append(
-                    {"target": target, "found": False, "error": str(e)}
-                )
+                explored_pages.append({"target": target, "found": False, "error": str(e)})
 
         return explored_pages
 
-    async def execute_javascript_analysis(
-        self, custom_script: Optional[str] = None
-    ) -> Dict:
+    async def execute_javascript_analysis(self, custom_script: Optional[str] = None) -> Dict:
         """NEW: Execute custom JavaScript for advanced analysis."""
         console.print("[cyan]⚡ Executing JavaScript analysis...[/cyan]")
 
@@ -487,7 +450,7 @@ class BrowserTools:
                     }
                 """)
 
-            console.print(f"[green]JavaScript analysis complete[/green]")
+            console.print("[green]JavaScript analysis complete[/green]")
             return {"status": "success", "analysis": result}
 
         except Exception as e:
@@ -502,7 +465,7 @@ class BrowserTools:
         try:
             # Get page height
             page_height = await self.page.evaluate("document.body.scrollHeight")
-            viewport_height = await self.page.evaluate("window.innerHeight")
+            await self.page.evaluate("window.innerHeight")
 
             # Calculate scroll positions (0%, 25%, 50%, 75%, 100%)
             scroll_positions = [0, 0.25, 0.5, 0.75, 1.0]
@@ -511,9 +474,7 @@ class BrowserTools:
                 current_position = int(page_height * position)
 
                 # Smooth scroll
-                await self.page.evaluate(
-                    f"window.scrollTo({{top: {current_position}, behavior: 'smooth'}})"
-                )
+                await self.page.evaluate(f"window.scrollTo({{top: {current_position}, behavior: 'smooth'}})")
                 await asyncio.sleep(1)  # Pause to load content
 
                 # Look for important sections at this position
@@ -540,10 +501,8 @@ class BrowserTools:
                                     "position": position,
                                 }
                             )
-                            console.print(
-                                f"[dim]Found: {label} ({len(elements)} elements)[/dim]"
-                            )
-                    except:
+                            console.print(f"[dim]Found: {label} ({len(elements)} elements)[/dim]")
+                    except Exception:
                         pass
 
             # Scroll back to top
@@ -583,13 +542,11 @@ class BrowserTools:
                         if element:
                             await element.click()
                             await self.page.wait_for_load_state("domcontentloaded")
-                            console.print(
-                                f"[green]✅ Found and clicked {target} link[/green]"
-                            )
+                            console.print(f"[green]✅ Found and clicked {target} link[/green]")
                             return True
-                    except:
+                    except Exception:
                         continue
-            except:
+            except Exception:
                 continue
 
         console.print(f"[yellow]⚠️ Could not find {target} link[/yellow]")
@@ -619,7 +576,7 @@ class BrowserTools:
                         text = await element.text_content()
                         if text and len(text.strip()) > 0:
                             found_elements.append(text.strip())
-                except:
+                except Exception:
                     pass
 
             # Get text content - LIMIT TO PREVENT TOKEN OVERFLOW
@@ -629,9 +586,7 @@ class BrowserTools:
             max_chars = 10000
             if len(text_content) > max_chars:
                 text_content = text_content[:max_chars]
-                console.print(
-                    f"[yellow]⚠️ Truncated content to {max_chars} chars[/yellow]"
-                )
+                console.print(f"[yellow]⚠️ Truncated content to {max_chars} chars[/yellow]")
 
             # Option 1: Use boto3 directly for LLM calls
             import boto3
@@ -639,9 +594,7 @@ class BrowserTools:
 
             bedrock_client = boto3.client(
                 "bedrock-runtime",
-                region_name=self.llm._client.meta.region_name
-                if hasattr(self.llm, "_client")
-                else "us-west-2",
+                region_name=self.llm._client.meta.region_name if hasattr(self.llm, "_client") else "us-west-2",
             )
 
             extraction_prompt = f"""
@@ -688,9 +641,7 @@ class BrowserTools:
                 }
 
             except Exception as llm_error:
-                console.print(
-                    f"[yellow]⚠️ LLM error, using fallback extraction: {llm_error}[/yellow]"
-                )
+                console.print(f"[yellow]⚠️ LLM error, using fallback extraction: {llm_error}[/yellow]")
 
                 # Fallback: Return structured data without LLM
                 return {
@@ -726,9 +677,7 @@ class BrowserTools:
 
             bedrock_client = boto3.client(
                 "bedrock-runtime",
-                region_name=self.llm._client.meta.region_name
-                if hasattr(self.llm, "_client")
-                else "us-west-2",
+                region_name=self.llm._client.meta.region_name if hasattr(self.llm, "_client") else "us-west-2",
             )
 
             extraction_prompt = f"""
@@ -769,9 +718,7 @@ class BrowserTools:
                 }
 
             except Exception as llm_error:
-                console.print(
-                    f"[yellow]⚠️ LLM error, using fallback: {llm_error}[/yellow]"
-                )
+                console.print(f"[yellow]⚠️ LLM error, using fallback: {llm_error}[/yellow]")
 
                 # Fallback without LLM
                 return {
@@ -849,7 +796,7 @@ class BrowserTools:
         try:
             metrics = await self.cdp_session.send("Performance.getMetrics")
             return {m["name"]: m["value"] for m in metrics.get("metrics", [])}
-        except:
+        except Exception:
             return {}
 
     def take_control(self):
@@ -871,7 +818,7 @@ class BrowserTools:
         if self.cdp_session:
             try:
                 await self.cdp_session.detach()
-            except:
+            except Exception:
                 pass
 
         if self.browser:

@@ -557,7 +557,9 @@ def format_results_for_index_analysis(results):
             output += f"• Times Used: {index['times_used']}\n"
             output += f"• Index Size: {index['index_size']}\n"
             output += f"• Scans per Byte: {index['scans_per_byte']}\n"
-        output += "\nRecommendation: Indexes with very low scans per byte might be candidates for removal or restructuring.\n"
+        output += (
+            "\nRecommendation: Indexes with very low scans per byte might be candidates for removal or restructuring.\n"
+        )
     else:
         output += "No index usage statistics found.\n"
 
@@ -791,9 +793,7 @@ def format_results_for_autovacuum_analysis(results):
 
             # Add warning if approaching wraparound
             if status["percent_towards_wraparound"] > 75:
-                output += (
-                    "⚠️ WARNING: Database is approaching transaction wraparound limit!\n"
-                )
+                output += "⚠️ WARNING: Database is approaching transaction wraparound limit!\n"
     else:
         output += "No wraparound status information available.\n"
 
@@ -908,12 +908,8 @@ def format_results_for_io_analysis(results):
         output += f"• Checkpoint Write Time: {checkpoint['checkpoint_write_time']} ms\n"
         output += f"• Checkpoint Sync Time: {checkpoint['checkpoint_sync_time']} ms\n"
         output += f"• Buffers Written During Checkpoints: {checkpoint['buffers_checkpoint']}\n"
-        output += (
-            f"• Buffers Written by Background Writer: {checkpoint['buffers_clean']}\n"
-        )
-        output += (
-            f"• Buffers Written by Backend Processes: {checkpoint['buffers_backend']}\n"
-        )
+        output += f"• Buffers Written by Background Writer: {checkpoint['buffers_clean']}\n"
+        output += f"• Buffers Written by Backend Processes: {checkpoint['buffers_backend']}\n"
         output += f"• Backend fsync Calls: {checkpoint['buffers_backend_fsync']}\n"
         output += f"• Buffers Allocated: {checkpoint['buffers_alloc']}\n"
         output += f"• Statistics Reset Time: {checkpoint['stats_reset']}\n"
@@ -1311,9 +1307,7 @@ def get_env_secret(environment):
             response = ssm_client.get_parameter(Name=f"/AuroraOps/{environment}")
             return response["Parameter"]["Value"]
         except Exception as e:
-            raise Exception(
-                f"Failed to get dev secret name from Parameter Store: {str(e)}"
-            )
+            raise Exception(f"Failed to get dev secret name from Parameter Store: {str(e)}")
     else:
         print("environement does not exist")
         raise ValueError(f"Unknown environment: {environment}")
@@ -1561,24 +1555,22 @@ def format_results_for_xid_analysis(results):
     # Percent towards wraparound
     if results.get("percent_towards_wraparound"):
         wraparound_data = results["percent_towards_wraparound"][0]
-        output += f"\nXID Wraparound Status:\n"
+        output += "\nXID Wraparound Status:\n"
         output += f"• Current oldest XID: {wraparound_data['oldest_current_xid']}\n"
         output += f"• Percent towards wraparound: {wraparound_data['percent_towards_wraparound']}%\n"
         output += f"• Percent towards emergency autovacuum: {wraparound_data['percent_towards_emergency_autovac']}%\n"
 
     # XID age by database
     if results.get("oldest_xid_by_database"):
-        output += f"\nXID Age by Database:\n"
+        output += "\nXID Age by Database:\n"
         for db in results["oldest_xid_by_database"]:
             output += f"• {db['datname']}: {db['xid_age']}\n"
 
     # Tables with oldest relfrozenxid
     if results.get("tables_with_oldest_relfrozenxid"):
-        output += f"\nTables with Oldest relfrozenxid:\n"
+        output += "\nTables with Oldest relfrozenxid:\n"
         for table in results["tables_with_oldest_relfrozenxid"]:
-            output += (
-                f"• {table['schema_name']}.{table['table_name']}: {table['xid_age']}\n"
-            )
+            output += f"• {table['schema_name']}.{table['table_name']}: {table['xid_age']}\n"
 
     return output
 
@@ -1640,7 +1632,7 @@ def lambda_handler(event, context):
         if not environment or not action_type:
             return {
                 "functionResponse": {
-                    "content": f"Error: Missing required parameters. Need 'environment' and 'action_type'."
+                    "content": "Error: Missing required parameters. Need 'environment' and 'action_type'."
                 }
             }
 
@@ -1711,6 +1703,4 @@ def lambda_handler(event, context):
 
     except Exception as e:
         print(f"Error in lambda_handler: {str(e)}")
-        return {
-            "functionResponse": {"content": f"Error analyzing slow queries: {str(e)}"}
-        }
+        return {"functionResponse": {"content": f"Error analyzing slow queries: {str(e)}"}}

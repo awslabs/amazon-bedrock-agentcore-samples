@@ -59,9 +59,7 @@ def main():
         if next_token == "start":
             response = cfn_client.describe_stacks(StackName=args.cfn_name)
         else:
-            response = cfn_client.describe_stacks(
-                StackName=args.cfn_name, NextToken=next_token
-            )
+            response = cfn_client.describe_stacks(StackName=args.cfn_name, NextToken=next_token)
 
         next_token = "end" if "NextToken" not in response else response["NextToken"]
 
@@ -107,7 +105,7 @@ def main():
     if "issuer" in response_json:
         env_vars["cognito_issuer"] = response_json["issuer"]
 
-    print(f"Creating .env file")
+    print("Creating .env file")
     # Open the .env file in write mode
     with open(".env", "w") as f:
         # Write each key-value pair to a new line
@@ -115,9 +113,7 @@ def main():
             f.write(f"{key}={value}\n")
 
     print(".env file created/updated successfully.")
-    print(
-        f"Please note down the APIEndpoint: {apigateway_endpoint} and update the OpenAPI spec accordingly"
-    )
+    print(f"Please note down the APIEndpoint: {apigateway_endpoint} and update the OpenAPI spec accordingly")
     print(
         f"Please note down the APIGWCognitoLambdaName: {apigateway_cognito_lambda} as it would be needed in subsequent steps"
     )

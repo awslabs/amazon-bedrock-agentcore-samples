@@ -2,9 +2,6 @@
 # IMPORTS
 # ============================================================================
 
-import os
-import yaml
-import logging
 
 from . import mylogger
 
@@ -24,8 +21,6 @@ def load_configs():
     """
     try:
         # Import the unified config manager
-        import sys
-        import os
 
         # In Docker container, config_manager is in /app/shared/
         # No need to manipulate path since it's in the same shared directory structure

@@ -46,7 +46,7 @@ def main():
         random_suffix = generate_random_suffix()
         table_bucket_name = f"lakehouse-{account_id}-{random_suffix}"
 
-    print(f"\n🚀 S3 Tables Setup")
+    print("\n🚀 S3 Tables Setup")
     print(f"   Region: {region}")
     print(f"   Account ID: {account_id}")
     print(f"   Table Bucket: {table_bucket_name}")
@@ -56,7 +56,7 @@ def main():
     ssm = boto3.client("ssm", region_name=region)
 
     # Step 1: Create table bucket
-    print(f"\n📦 Creating S3 table bucket...")
+    print("\n📦 Creating S3 table bucket...")
 
     table_bucket_arn = None
 
@@ -67,13 +67,11 @@ def main():
             print(f"✅ Created table bucket: {table_bucket_arn}")
         else:
             print(f"⚠️  Bucket created but no ARN returned. Response: {response}")
-            table_bucket_arn = (
-                f"arn:aws:s3tables:{region}:{account_id}:bucket/{table_bucket_name}"
-            )
+            table_bucket_arn = f"arn:aws:s3tables:{region}:{account_id}:bucket/{table_bucket_name}"
             print(f"   Using constructed ARN: {table_bucket_arn}")
     except s3tables.exceptions.ConflictException:
         # Get existing bucket ARN
-        print(f"   Bucket already exists, retrieving ARN...")
+        print("   Bucket already exists, retrieving ARN...")
         try:
             response = s3tables.get_table_bucket(name=table_bucket_name)
             table_bucket_arn = response.get("arn")
@@ -81,16 +79,12 @@ def main():
                 print(f"✅ Table bucket exists: {table_bucket_arn}")
             else:
                 print(f"⚠️  Could not get ARN from response: {response}")
-                table_bucket_arn = (
-                    f"arn:aws:s3tables:{region}:{account_id}:bucket/{table_bucket_name}"
-                )
+                table_bucket_arn = f"arn:aws:s3tables:{region}:{account_id}:bucket/{table_bucket_name}"
                 print(f"   Using constructed ARN: {table_bucket_arn}")
         except Exception as e:
             print(f"⚠️  Error getting bucket: {e}")
             # Fallback: construct ARN manually
-            table_bucket_arn = (
-                f"arn:aws:s3tables:{region}:{account_id}:bucket/{table_bucket_name}"
-            )
+            table_bucket_arn = f"arn:aws:s3tables:{region}:{account_id}:bucket/{table_bucket_name}"
             print(f"   Using constructed ARN: {table_bucket_arn}")
     except Exception as e:
         print(f"❌ Error creating table bucket: {e}")
@@ -105,15 +99,13 @@ def main():
     print(f"\n📁 Creating namespace: {namespace}")
 
     try:
-        s3tables.create_namespace(
-            tableBucketARN=table_bucket_arn, namespace=[namespace]
-        )
-        print(f"✅ Created namespace")
+        s3tables.create_namespace(tableBucketARN=table_bucket_arn, namespace=[namespace])
+        print("✅ Created namespace")
     except s3tables.exceptions.ConflictException:
-        print(f"✅ Namespace exists")
+        print("✅ Namespace exists")
 
     # Step 3: Create claims table
-    print(f"\n📊 Creating claims table...")
+    print("\n📊 Creating claims table...")
 
     claims_metadata = {
         "iceberg": {
@@ -165,12 +157,12 @@ def main():
             format="ICEBERG",
             metadata=claims_metadata,
         )
-        print(f"✅ Created claims table")
+        print("✅ Created claims table")
     except s3tables.exceptions.ConflictException:
-        print(f"✅ Claims table exists")
+        print("✅ Claims table exists")
 
     # Step 4: Create users table
-    print(f"\n👥 Creating users table...")
+    print("\n👥 Creating users table...")
 
     users_metadata = {
         "iceberg": {
@@ -194,12 +186,12 @@ def main():
             format="ICEBERG",
             metadata=users_metadata,
         )
-        print(f"✅ Created users table")
+        print("✅ Created users table")
     except s3tables.exceptions.ConflictException:
-        print(f"✅ Users table exists")
+        print("✅ Users table exists")
 
     # Step 5: Create or get S3 bucket for Athena query results
-    print(f"\n📦 Setting up S3 bucket for query results...")
+    print("\n📦 Setting up S3 bucket for query results...")
     s3 = boto3.client("s3", region_name=region)
 
     # Use a consistent bucket name format
@@ -217,7 +209,7 @@ def main():
         print(f"⚠️  S3 bucket creation note: {e}")
 
     # Step 6: Store configuration in SSM
-    print(f"\n💾 Storing configuration in SSM...")
+    print("\n💾 Storing configuration in SSM...")
 
     # Extract table bucket name from ARN
     table_bucket_name = table_bucket_arn.split("/")[-1]
@@ -242,25 +234,25 @@ def main():
         ssm.put_parameter(Name=name, Value=value, Type="String", Overwrite=True)
         print(f"✅ {name}")
 
-    print(f"\n✨ S3 Tables setup complete!")
-    print(f"\n📋 Configuration:")
+    print("\n✨ S3 Tables setup complete!")
+    print("\n📋 Configuration:")
     print(f"   Table Bucket: {table_bucket_name}")
     print(f"   Namespace/Database: {namespace}")
     print(f"   Catalog: {catalog_name}")
     print(f"   S3 Bucket: {s3_bucket_name}")
-    print(f"\n💾 SSM Parameters:")
-    print(f"   /app/lakehouse-agent/table-bucket-name")
-    print(f"   /app/lakehouse-agent/table-bucket-arn")
-    print(f"   /app/lakehouse-agent/namespace")
-    print(f"   /app/lakehouse-agent/database-name")
-    print(f"   /app/lakehouse-agent/catalog-name")
-    print(f"   /app/lakehouse-agent/s3-bucket-name")
-    print(f"\n📋 Query via Athena:")
+    print("\n💾 SSM Parameters:")
+    print("   /app/lakehouse-agent/table-bucket-name")
+    print("   /app/lakehouse-agent/table-bucket-arn")
+    print("   /app/lakehouse-agent/namespace")
+    print("   /app/lakehouse-agent/database-name")
+    print("   /app/lakehouse-agent/catalog-name")
+    print("   /app/lakehouse-agent/s3-bucket-name")
+    print("\n📋 Query via Athena:")
     print(f"   SELECT * FROM {catalog_name}.{namespace}.claims;")
-    print(f"\n📋 Next Steps:")
-    print(f"   1. Run: python setup_lakeformation_permissions.py")
-    print(f"   2. Run: python load_sample_data.py")
-    print(f"   3. Test queries with Athena")
+    print("\n📋 Next Steps:")
+    print("   1. Run: python setup_lakeformation_permissions.py")
+    print("   2. Run: python load_sample_data.py")
+    print("   3. Test queries with Athena")
 
 
 if __name__ == "__main__":

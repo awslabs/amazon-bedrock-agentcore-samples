@@ -105,7 +105,7 @@ If you find hallucinations, respond with:
 # ❌ HALLUCINATIONS DETECTED
 
 ## Fabricated Claims:
-- **[Entity Type]**: [Specific claim] 
+- **[Entity Type]**: [Specific claim]
   - **Report Claims**: [What the report states]
   - **Ground Truth**: [What the data actually shows or "NOT FOUND"]
   - **Verification**: FABRICATED/INACCURATE

@@ -9,7 +9,7 @@ import json
 import logging
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 
 class AuditEventType(Enum):
@@ -117,8 +117,7 @@ class AuditLogger:
                 "tenant_id": tenant_id,
                 "employee_id": employee_id,
                 "access_granted": access_granted,
-                "reason": reason
-                or ("Access granted" if access_granted else "Tenant mismatch"),
+                "reason": reason or ("Access granted" if access_granted else "Tenant mismatch"),
                 "security_check": "tenant_isolation",
                 "timestamp": datetime.utcnow().isoformat(),
             }
@@ -167,20 +166,12 @@ class AuditLogger:
 audit_logger = AuditLogger()
 
 
-def log_lambda_execution(
-    correlation_id, tool_name, tenant_id, function_name, arguments=None
-):
-    audit_logger.log_lambda_execution(
-        correlation_id, tool_name, tenant_id, function_name, arguments
-    )
+def log_lambda_execution(correlation_id, tool_name, tenant_id, function_name, arguments=None):
+    audit_logger.log_lambda_execution(correlation_id, tool_name, tenant_id, function_name, arguments)
 
 
-def log_tool_invocation(
-    correlation_id, tool_name, tenant_id, result_count=None, success=True
-):
-    audit_logger.log_tool_invocation(
-        correlation_id, tool_name, tenant_id, result_count, success
-    )
+def log_tool_invocation(correlation_id, tool_name, tenant_id, result_count=None, success=True):
+    audit_logger.log_tool_invocation(correlation_id, tool_name, tenant_id, result_count, success)
 
 
 def log_data_access(
@@ -191,17 +182,11 @@ def log_data_access(
     access_granted=True,
     reason=None,
 ):
-    audit_logger.log_data_access(
-        correlation_id, tenant_id, employee_id, data_type, access_granted, reason
-    )
+    audit_logger.log_data_access(correlation_id, tenant_id, employee_id, data_type, access_granted, reason)
 
 
-def log_tenant_access_check(
-    correlation_id, tenant_id, employee_id, access_granted, reason=None
-):
-    audit_logger.log_tenant_access_check(
-        correlation_id, tenant_id, employee_id, access_granted, reason
-    )
+def log_tenant_access_check(correlation_id, tenant_id, employee_id, access_granted, reason=None):
+    audit_logger.log_tenant_access_check(correlation_id, tenant_id, employee_id, access_granted, reason)
 
 
 def log_error(

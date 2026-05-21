@@ -10,7 +10,6 @@ Usage:
 
 import boto3
 import json
-import os
 import re
 from pathlib import Path
 from typing import Dict, Optional
@@ -44,9 +43,7 @@ class CognitoSetup:
             print(f"⚠️  Error searching for user pool: {e}")
         return None
 
-    def get_user_pool_client(
-        self, user_pool_id: str, client_name: str
-    ) -> Optional[Dict]:
+    def get_user_pool_client(self, user_pool_id: str, client_name: str) -> Optional[Dict]:
         """Get existing app client by name."""
         try:
             paginator = self.cognito.get_paginator("list_user_pool_clients")
@@ -137,9 +134,7 @@ class CognitoSetup:
                     Type="SecureString",
                     Overwrite=True,
                 )
-                print(
-                    f"✅ Stored parameter (SecureString): /app/lakehouse-agent/cognito-app-client-secret"
-                )
+                print("✅ Stored parameter (SecureString): /app/lakehouse-agent/cognito-app-client-secret")
             except Exception as e:
                 print(f"❌ Error storing client secret: {e}")
                 raise
@@ -154,9 +149,7 @@ class CognitoSetup:
                     Type="SecureString",
                     Overwrite=True,
                 )
-                print(
-                    f"✅ Stored parameter (SecureString): /app/lakehouse-agent/cognito-m2m-client-secret"
-                )
+                print("✅ Stored parameter (SecureString): /app/lakehouse-agent/cognito-m2m-client-secret")
             except Exception as e:
                 print(f"❌ Error storing M2M client secret: {e}")
                 raise
@@ -184,10 +177,8 @@ class CognitoSetup:
         Configuration should be managed through SSM Parameter Store.
         This is kept temporarily for backward compatibility during migration.
         """
-        print(
-            f"⚠️  Warning: .env file updates are deprecated. Please migrate to SSM Parameter Store."
-        )
-        print(f"   Run: python ../ssm_migrate.py --migrate")
+        print("⚠️  Warning: .env file updates are deprecated. Please migrate to SSM Parameter Store.")
+        print("   Run: python ../ssm_migrate.py --migrate")
 
         try:
             # Read existing .env file
@@ -217,9 +208,7 @@ class CognitoSetup:
                 for key, value in sorted(env_content.items()):
                     f.write(f"{key}={value}\n")
 
-            print(
-                f"\n✅ Configuration written to {self.env_file} (for backward compatibility)"
-            )
+            print(f"\n✅ Configuration written to {self.env_file} (for backward compatibility)")
 
         except Exception as e:
             print(f"❌ Error writing to .env file: {e}")
@@ -252,16 +241,12 @@ class CognitoSetup:
             )
             user_pool_id = pool_response["UserPool"]["Id"]
             print(f"✅ User Pool created: {user_pool_id}")
-            print(f"   Note: Email will be used as username (not as alias)")
+            print("   Note: Email will be used as username (not as alias)")
         else:
             print(f"✅ Using existing User Pool: {user_pool_id}")
-            print(
-                f"   ⚠️  Warning: If this pool was created with UsernameAttributes=['email'],"
-            )
-            print(
-                f"      users will have UUID usernames. Delete the pool and recreate, or"
-            )
-            print(f"      run cleanup_test_users.py to delete old users.")
+            print("   ⚠️  Warning: If this pool was created with UsernameAttributes=['email'],")
+            print("      users will have UUID usernames. Delete the pool and recreate, or")
+            print("      run cleanup_test_users.py to delete old users.")
 
         # Create Resource Server with scopes (if not exists)
         # Note: Scope names cannot contain '/' - using '.' instead
@@ -296,9 +281,7 @@ class CognitoSetup:
             client_id = existing_client["ClientId"]
             client_secret = existing_client.get("ClientSecret")
             print(f"ℹ️  App Client exists: {client_id}")
-            print(
-                f"   Updating to support both client_credentials and user authentication..."
-            )
+            print("   Updating to support both client_credentials and user authentication...")
 
             # Update existing client to support both flows
             self.cognito.update_user_pool_client(
@@ -310,9 +293,7 @@ class CognitoSetup:
                     "ALLOW_ADMIN_USER_PASSWORD_AUTH",  # Admin user password auth (for testing)
                     "ALLOW_REFRESH_TOKEN_AUTH",  # Refresh token auth
                 ],
-                AllowedOAuthFlows=[
-                    "client_credentials"
-                ],  # Machine-to-machine authentication
+                AllowedOAuthFlows=["client_credentials"],  # Machine-to-machine authentication
                 AllowedOAuthScopes=[
                     "lakehouse-api/claims.query",
                     "lakehouse-api/claims.submit",
@@ -322,9 +303,7 @@ class CognitoSetup:
                 AllowedOAuthFlowsUserPoolClient=True,
                 PreventUserExistenceErrors="ENABLED",  # Security best practice
             )
-            print(
-                f"✅ App Client updated to support user authentication and client_credentials"
-            )
+            print("✅ App Client updated to support user authentication and client_credentials")
         else:
             # Create App Client supporting both user auth and client credentials
             client_response = self.cognito.create_user_pool_client(
@@ -336,9 +315,7 @@ class CognitoSetup:
                     "ALLOW_ADMIN_USER_PASSWORD_AUTH",  # Admin user password auth (for testing)
                     "ALLOW_REFRESH_TOKEN_AUTH",  # Refresh token auth
                 ],
-                AllowedOAuthFlows=[
-                    "client_credentials"
-                ],  # Machine-to-machine authentication
+                AllowedOAuthFlows=["client_credentials"],  # Machine-to-machine authentication
                 AllowedOAuthScopes=[
                     "lakehouse-api/claims.query",
                     "lakehouse-api/claims.submit",
@@ -363,18 +340,12 @@ class CognitoSetup:
             domain_name = f"lakehouse-{pool_id_clean}"
 
             try:
-                self.cognito.create_user_pool_domain(
-                    Domain=domain_name, UserPoolId=user_pool_id
-                )
-                domain_url = (
-                    f"https://{domain_name}.auth.{self.region}.amazoncognito.com"
-                )
+                self.cognito.create_user_pool_domain(Domain=domain_name, UserPoolId=user_pool_id)
+                domain_url = f"https://{domain_name}.auth.{self.region}.amazoncognito.com"
                 print(f"✅ Domain created: {domain_url}")
             except Exception as e:
                 if "already exists" in str(e).lower() or "domain" in str(e).lower():
-                    domain_url = (
-                        f"https://{domain_name}.auth.{self.region}.amazoncognito.com"
-                    )
+                    domain_url = f"https://{domain_name}.auth.{self.region}.amazoncognito.com"
                     print(f"ℹ️  Domain already exists: {domain_url}")
                 else:
                     raise
@@ -463,10 +434,7 @@ class CognitoSetup:
                     )
                     print(f"   ✅ Added to group: {user['group']}")
                 except Exception as e:
-                    if (
-                        "already a member" in str(e).lower()
-                        or "member of group" in str(e).lower()
-                    ):
+                    if "already a member" in str(e).lower() or "member of group" in str(e).lower():
                         print(f"   ℹ️  Already in group: {user['group']}")
                     else:
                         print(f"   ⚠️  Error adding to group: {e}")
@@ -511,12 +479,10 @@ class CognitoSetup:
         Returns:
             Dictionary with client_id and client_secret
         """
-        print(f"\n🤖 Creating M2M-only app client...")
+        print("\n🤖 Creating M2M-only app client...")
 
         # Check for existing M2M client
-        existing_m2m_client = self.get_user_pool_client(
-            user_pool_id, "lakehouse-m2m-client"
-        )
+        existing_m2m_client = self.get_user_pool_client(user_pool_id, "lakehouse-m2m-client")
 
         # M2M client configuration (client_credentials flow only)
         client_config = {
@@ -540,35 +506,29 @@ class CognitoSetup:
         if existing_m2m_client:
             client_id = existing_m2m_client["ClientId"]
             print(f"ℹ️  M2M App Client exists: {client_id}")
-            print(f"   Updating configuration...")
+            print("   Updating configuration...")
 
             # Update with M2M configuration
             # Remove GenerateSecret as it's not valid for update_user_pool_client
-            update_config = {
-                k: v for k, v in client_config.items() if k != "GenerateSecret"
-            }
+            update_config = {k: v for k, v in client_config.items() if k != "GenerateSecret"}
             update_config["ClientId"] = client_id
             self.cognito.update_user_pool_client(**update_config)
 
             # Get updated client to retrieve secret
-            updated_client = self.cognito.describe_user_pool_client(
-                UserPoolId=user_pool_id, ClientId=client_id
-            )
+            updated_client = self.cognito.describe_user_pool_client(UserPoolId=user_pool_id, ClientId=client_id)
             client_secret = updated_client["UserPoolClient"].get("ClientSecret")
-            print(f"✅ M2M App Client updated with client_credentials flow")
+            print("✅ M2M App Client updated with client_credentials flow")
         else:
             # Create with M2M configuration
             client_response = self.cognito.create_user_pool_client(**client_config)
             client_id = client_response["UserPoolClient"]["ClientId"]
             client_secret = client_response["UserPoolClient"].get("ClientSecret")
             print(f"✅ M2M App Client created: {client_id}")
-            print(f"   Configuration: client_credentials flow only")
+            print("   Configuration: client_credentials flow only")
 
         return {"client_id": client_id, "client_secret": client_secret}
 
-    def add_post_auth_trigger(
-        self, user_pool_id: str = None, lambda_name: str = "lakehouse-cognito-post-auth"
-    ):
+    def add_post_auth_trigger(self, user_pool_id: str = None, lambda_name: str = "lakehouse-cognito-post-auth"):
         """
         Add Post-Authentication Lambda trigger to Cognito User Pool.
 
@@ -579,19 +539,17 @@ class CognitoSetup:
         Returns:
             True if successful, False otherwise
         """
-        print(f"\n🔗 Configuring Post-Authentication Lambda trigger...")
+        print("\n🔗 Configuring Post-Authentication Lambda trigger...")
 
         # Get User Pool ID from SSM if not provided
         if not user_pool_id:
             try:
-                response = self.ssm.get_parameter(
-                    Name="/app/lakehouse-agent/cognito-user-pool-id"
-                )
+                response = self.ssm.get_parameter(Name="/app/lakehouse-agent/cognito-user-pool-id")
                 user_pool_id = response["Parameter"]["Value"]
                 print(f"ℹ️  Retrieved User Pool ID from SSM: {user_pool_id}")
             except Exception as e:
                 print(f"❌ Error retrieving User Pool ID from SSM: {e}")
-                print(f"   Please provide user_pool_id or run setup_cognito.py first")
+                print("   Please provide user_pool_id or run setup_cognito.py first")
                 return False
 
         # Check if Lambda function exists
@@ -600,14 +558,14 @@ class CognitoSetup:
             print(f"✅ Lambda function exists: {lambda_name}")
         except self.lambda_client.exceptions.ResourceNotFoundException:
             print(f"⚠️  Lambda function '{lambda_name}' not found")
-            print(f"   Skipping post-auth trigger configuration")
-            print(f"   To enable login audit logging, run:")
-            print(f"   1. bash deploy_post_auth_lambda.sh")
-            print(f"   2. python setup_cognito.py --add-post-auth-trigger")
+            print("   Skipping post-auth trigger configuration")
+            print("   To enable login audit logging, run:")
+            print("   1. bash deploy_post_auth_lambda.sh")
+            print("   2. python setup_cognito.py --add-post-auth-trigger")
             return False
         except Exception as e:
             print(f"⚠️  Error checking Lambda function: {e}")
-            print(f"   Skipping post-auth trigger configuration")
+            print("   Skipping post-auth trigger configuration")
             return False
 
         # Get Lambda ARN
@@ -616,32 +574,26 @@ class CognitoSetup:
 
         try:
             # Update User Pool with Lambda trigger
-            self.cognito.update_user_pool(
-                UserPoolId=user_pool_id, LambdaConfig={"PostAuthentication": lambda_arn}
-            )
-            print(f"✅ Post-Authentication trigger configured")
+            self.cognito.update_user_pool(UserPoolId=user_pool_id, LambdaConfig={"PostAuthentication": lambda_arn})
+            print("✅ Post-Authentication trigger configured")
             print(f"   Lambda: {lambda_name}")
             print(f"   ARN: {lambda_arn}")
-            print(
-                f"   Login events will be logged to DynamoDB table: lakehouse_user_login_audit"
-            )
+            print("   Login events will be logged to DynamoDB table: lakehouse_user_login_audit")
             return True
 
         except Exception as e:
             print(f"❌ Error configuring trigger: {e}")
-            print(f"\n💡 Make sure:")
+            print("\n💡 Make sure:")
             print(f"   1. Lambda function '{lambda_name}' exists")
-            print(f"   2. Lambda has permission for Cognito to invoke it")
-            print(f"   3. Run: bash deploy_post_auth_lambda.sh")
+            print("   2. Lambda has permission for Cognito to invoke it")
+            print("   3. Run: bash deploy_post_auth_lambda.sh")
             return False
 
 
 if __name__ == "__main__":
     import argparse
 
-    parser = argparse.ArgumentParser(
-        description="Setup Cognito User Pool for Lakehouse Agent"
-    )
+    parser = argparse.ArgumentParser(description="Setup Cognito User Pool for Lakehouse Agent")
     parser.add_argument(
         "--add-post-auth-trigger",
         action="store_true",
@@ -655,62 +607,58 @@ if __name__ == "__main__":
         # Only configure the post-auth trigger
         success = setup.add_post_auth_trigger()
         if success:
-            print(f"\n✅ Post-Authentication trigger configured successfully!")
-            print(
-                f"\n📊 Login events will now be logged to DynamoDB table: lakehouse_user_login_audit"
-            )
+            print("\n✅ Post-Authentication trigger configured successfully!")
+            print("\n📊 Login events will now be logged to DynamoDB table: lakehouse_user_login_audit")
         else:
-            print(f"\n❌ Failed to configure Post-Authentication trigger")
-            print(f"   Run: bash deploy_post_auth_lambda.sh first")
+            print("\n❌ Failed to configure Post-Authentication trigger")
+            print("   Run: bash deploy_post_auth_lambda.sh first")
         exit(0 if success else 1)
 
     # Normal setup flow (includes automatic post-auth trigger configuration)
     result = setup.setup()
 
-    print(
-        f"\n📝 Configuration:\n{json.dumps({k: v for k, v in result.items() if 'secret' not in k}, indent=2)}"
-    )
+    print(f"\n📝 Configuration:\n{json.dumps({k: v for k, v in result.items() if 'secret' not in k}, indent=2)}")
     if "client_secret" in result:
         print(f"\n🔐 User App Client Secret: {result['client_secret']}")
-        print(f"   (Also stored securely in SSM Parameter Store)")
+        print("   (Also stored securely in SSM Parameter Store)")
     if "m2m_client_secret" in result:
         print(f"\n🤖 M2M App Client Secret: {result['m2m_client_secret']}")
-        print(f"   (Also stored securely in SSM Parameter Store)")
+        print("   (Also stored securely in SSM Parameter Store)")
 
-    print(f"\n💾 SSM Parameters Stored:")
-    print(f"   • /app/lakehouse-agent/cognito-user-pool-id")
-    print(f"   • /app/lakehouse-agent/cognito-user-pool-arn")
-    print(f"   • /app/lakehouse-agent/cognito-app-client-id (user auth + M2M)")
-    print(f"   • /app/lakehouse-agent/cognito-app-client-secret (SecureString)")
-    print(f"   • /app/lakehouse-agent/cognito-m2m-client-id (M2M only)")
-    print(f"   • /app/lakehouse-agent/cognito-m2m-client-secret (SecureString)")
-    print(f"   • /app/lakehouse-agent/cognito-domain")
-    print(f"   • /app/lakehouse-agent/cognito-resource-server-id")
-    print(f"   • /app/lakehouse-agent/cognito-region")
+    print("\n💾 SSM Parameters Stored:")
+    print("   • /app/lakehouse-agent/cognito-user-pool-id")
+    print("   • /app/lakehouse-agent/cognito-user-pool-arn")
+    print("   • /app/lakehouse-agent/cognito-app-client-id (user auth + M2M)")
+    print("   • /app/lakehouse-agent/cognito-app-client-secret (SecureString)")
+    print("   • /app/lakehouse-agent/cognito-m2m-client-id (M2M only)")
+    print("   • /app/lakehouse-agent/cognito-m2m-client-secret (SecureString)")
+    print("   • /app/lakehouse-agent/cognito-domain")
+    print("   • /app/lakehouse-agent/cognito-resource-server-id")
+    print("   • /app/lakehouse-agent/cognito-region")
 
-    print(f"\n👥 Test Users Created:")
-    print(f"   • policyholder001@example.com → policyholders group")
-    print(f"   • policyholder002@example.com → policyholders group")
-    print(f"   • adjuster001@example.com → adjusters group")
-    print(f"   • adjuster002@example.com → adjusters group")
-    print(f"   • admin@example.com → administrators group")
-    print(f"   Default password: TempPass123!")
-    print(f"   Note: Users will be prompted to change password on first login")
+    print("\n👥 Test Users Created:")
+    print("   • policyholder001@example.com → policyholders group")
+    print("   • policyholder002@example.com → policyholders group")
+    print("   • adjuster001@example.com → adjusters group")
+    print("   • adjuster002@example.com → adjusters group")
+    print("   • admin@example.com → administrators group")
+    print("   Default password: TempPass123!")
+    print("   Note: Users will be prompted to change password on first login")
 
-    print(f"\n👥 Cognito Groups:")
-    print(f"   • policyholders - Policy holders group")
-    print(f"   • adjusters - Claims adjusters group")
-    print(f"   • administrators - Administrators group")
+    print("\n👥 Cognito Groups:")
+    print("   • policyholders - Policy holders group")
+    print("   • adjusters - Claims adjusters group")
+    print("   • administrators - Administrators group")
 
-    print(f"\n🔑 App Clients:")
+    print("\n🔑 App Clients:")
     print(f"   1. lakehouse-client (ID: {result['client_id']})")
-    print(f"      - Supports: User authentication (SRP, Admin Password) + M2M")
-    print(f"      - Use for: Streamlit UI, user-facing applications")
+    print("      - Supports: User authentication (SRP, Admin Password) + M2M")
+    print("      - Use for: Streamlit UI, user-facing applications")
     print(f"   2. lakehouse-m2m-client (ID: {result['m2m_client_id']})")
-    print(f"      - Supports: M2M only (client_credentials)")
-    print(f"      - Use for: Gateway-to-Runtime, service-to-service, test scripts")
+    print("      - Supports: M2M only (client_credentials)")
+    print("      - Use for: Gateway-to-Runtime, service-to-service, test scripts")
 
-    print(f"\n⚠️  If you see UUID usernames instead of emails:")
-    print(f"   1. Run: python cleanup_test_users.py")
-    print(f"   2. Delete the User Pool from AWS Console")
-    print(f"   3. Run this script again to recreate with correct settings")
+    print("\n⚠️  If you see UUID usernames instead of emails:")
+    print("   1. Run: python cleanup_test_users.py")
+    print("   2. Delete the User Pool from AWS Console")
+    print("   3. Run this script again to recreate with correct settings")

@@ -26,12 +26,8 @@ def main():
     # Get correct Cognito configuration from SSM
     print("\n📋 Loading correct Cognito configuration from SSM...")
     try:
-        user_pool_id = ssm.get_parameter(
-            Name="/app/lakehouse-agent/cognito-user-pool-id"
-        )["Parameter"]["Value"]
-        app_client_id = ssm.get_parameter(
-            Name="/app/lakehouse-agent/cognito-app-client-id"
-        )["Parameter"]["Value"]
+        user_pool_id = ssm.get_parameter(Name="/app/lakehouse-agent/cognito-user-pool-id")["Parameter"]["Value"]
+        app_client_id = ssm.get_parameter(Name="/app/lakehouse-agent/cognito-app-client-id")["Parameter"]["Value"]
 
         print(f"   User Pool ID: {user_pool_id}")
         print(f"   App Client ID: {app_client_id}")
@@ -43,9 +39,7 @@ def main():
     # Get interceptor Lambda ARN
     print("\n🔍 Finding interceptor Lambda function...")
     try:
-        interceptor_arn = ssm.get_parameter(
-            Name="/app/lakehouse-agent/interceptor-lambda-arn"
-        )["Parameter"]["Value"]
+        interceptor_arn = ssm.get_parameter(Name="/app/lakehouse-agent/interceptor-lambda-arn")["Parameter"]["Value"]
         # Extract function name from ARN
         function_name = interceptor_arn.split(":")[-1]
         print(f"   Lambda ARN: {interceptor_arn}")
@@ -62,12 +56,12 @@ def main():
         sys.exit(1)
 
     # Get current Lambda configuration
-    print(f"\n🔍 Getting current Lambda configuration...")
+    print("\n🔍 Getting current Lambda configuration...")
     try:
         response = lambda_client.get_function_configuration(FunctionName=function_name)
         current_env = response.get("Environment", {}).get("Variables", {})
 
-        print(f"   Current environment variables:")
+        print("   Current environment variables:")
         for key, value in current_env.items():
             print(f"      {key}: {value}")
     except Exception as e:
@@ -75,18 +69,16 @@ def main():
         sys.exit(1)
 
     # Update environment variables
-    print(f"\n🔧 Updating Lambda environment variables...")
+    print("\n🔧 Updating Lambda environment variables...")
     new_env = current_env.copy()
     new_env["COGNITO_REGION"] = region
     new_env["COGNITO_USER_POOL_ID"] = user_pool_id
     new_env["COGNITO_APP_CLIENT_ID"] = app_client_id
 
     try:
-        lambda_client.update_function_configuration(
-            FunctionName=function_name, Environment={"Variables": new_env}
-        )
+        lambda_client.update_function_configuration(FunctionName=function_name, Environment={"Variables": new_env})
 
-        print(f"✅ Lambda environment variables updated!")
+        print("✅ Lambda environment variables updated!")
         print("   New configuration:")
         print(f"      COGNITO_REGION: {region}")
         print(f"      COGNITO_USER_POOL_ID: {user_pool_id}")

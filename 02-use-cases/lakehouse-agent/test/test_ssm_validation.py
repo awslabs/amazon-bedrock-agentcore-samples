@@ -15,18 +15,16 @@ Requirements: 8.1, 8.2, 8.3, 8.4, 8.5
 """
 
 import sys
-import os
 import tempfile
 from pathlib import Path
-from typing import Dict, List, Tuple
-import boto3
-from botocore.exceptions import ClientError, NoCredentialsError
+from typing import List, Tuple
+from botocore.exceptions import ClientError
 
 # Add current directory to path
 sys.path.insert(0, str(Path(__file__).parent))
 
 from ssm_config import SSMConfigLoader
-from ssm_migrate import SSMMigrationUtility, MigrationResult
+from ssm_migrate import SSMMigrationUtility
 from config import Config
 
 
@@ -94,9 +92,7 @@ class ValidationTest:
 
             # Test region detection
             region = loader.get_region()
-            self.log_result(
-                "AWS region auto-detection", bool(region), f"Detected region: {region}"
-            )
+            self.log_result("AWS region auto-detection", bool(region), f"Detected region: {region}")
 
             # Test account ID detection
             account_id = loader.get_account_id()
@@ -120,9 +116,7 @@ class ValidationTest:
 
         try:
             # Create a temporary .env file for testing
-            with tempfile.NamedTemporaryFile(
-                mode="w", suffix=".env", delete=False
-            ) as f:
+            with tempfile.NamedTemporaryFile(mode="w", suffix=".env", delete=False) as f:
                 env_file = Path(f.name)
                 f.write("# Test configuration\n")
                 f.write("TEST_PARAM_1=value1\n")
@@ -135,9 +129,7 @@ class ValidationTest:
                 utility = SSMMigrationUtility(prefix=self.test_prefix)
 
                 # Run dry-run migration
-                result = utility.migrate_env_to_ssm(
-                    env_file=env_file, overwrite=False, dry_run=True
-                )
+                result = utility.migrate_env_to_ssm(env_file=env_file, overwrite=False, dry_run=True)
 
                 # Verify dry-run results
                 self.log_result(
@@ -221,9 +213,7 @@ class ValidationTest:
                 self.log_result(
                     f"Retrieved parameter: {key}",
                     matches,
-                    f"Expected: {expected_value}, Got: {retrieved_value}"
-                    if not matches
-                    else "",
+                    f"Expected: {expected_value}, Got: {retrieved_value}" if not matches else "",
                 )
 
             return True
@@ -271,9 +261,7 @@ class ValidationTest:
                 self.log_result(
                     f"Sensitive detection: {key}",
                     matches,
-                    f"Expected: {should_be_sensitive}, Got: {is_sensitive}"
-                    if not matches
-                    else "",
+                    f"Expected: {should_be_sensitive}, Got: {is_sensitive}" if not matches else "",
                 )
 
             return True
@@ -363,9 +351,7 @@ class ValidationTest:
             has_region = bool(config.AWS_REGION)
             has_account = bool(config.AWS_ACCOUNT_ID)
 
-            self.log_result(
-                "AWS_REGION auto-detected", has_region, f"Region: {config.AWS_REGION}"
-            )
+            self.log_result("AWS_REGION auto-detected", has_region, f"Region: {config.AWS_REGION}")
 
             self.log_result(
                 "AWS_ACCOUNT_ID auto-detected",
@@ -441,16 +427,12 @@ class ValidationTest:
             utility = SSMMigrationUtility(prefix=self.test_prefix)
 
             # Export to temporary file
-            with tempfile.NamedTemporaryFile(
-                mode="w", suffix=".env", delete=False
-            ) as f:
+            with tempfile.NamedTemporaryFile(mode="w", suffix=".env", delete=False) as f:
                 output_file = Path(f.name)
 
             try:
                 # Export without secrets
-                count = utility.export_ssm_to_env(
-                    output_file=output_file, include_secrets=False
-                )
+                count = utility.export_ssm_to_env(output_file=output_file, include_secrets=False)
 
                 self.log_result(
                     "Export executed successfully",
@@ -513,9 +495,7 @@ class ValidationTest:
 
             # Note: Validation may fail if required parameters don't exist
             # This is expected for test prefix
-            self.log_result(
-                "Validation returns results dictionary", True, "Validation completed"
-            )
+            self.log_result("Validation returns results dictionary", True, "Validation completed")
 
             return True
 

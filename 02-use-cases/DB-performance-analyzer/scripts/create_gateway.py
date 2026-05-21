@@ -1,8 +1,5 @@
 #!/usr/bin/env python3
 import os
-import json
-import boto3
-import shutil
 from bedrock_agentcore_starter_toolkit.operations.gateway import GatewayClient
 
 
@@ -31,9 +28,7 @@ def main():
                 with open(config_path, "r") as f:
                     for line in f:
                         if line.startswith("export GATEWAY_ROLE_ARN="):
-                            role_arn = line.replace(
-                                "export GATEWAY_ROLE_ARN=", ""
-                            ).strip()
+                            role_arn = line.replace("export GATEWAY_ROLE_ARN=", "").strip()
                             break
                 break
 
@@ -61,13 +56,9 @@ def main():
             break
 
     if not cognito_config:
-        print(
-            "Warning: No existing Cognito configuration found. A new one will be created."
-        )
+        print("Warning: No existing Cognito configuration found. A new one will be created.")
         # Create gateway using the GatewayClient (will create a new Cognito authorizer)
-        gateway = client.create_mcp_gateway(
-            name="DB-Performance-Analyzer-Gateway", role_arn=role_arn
-        )
+        gateway = client.create_mcp_gateway(name="DB-Performance-Analyzer-Gateway", role_arn=role_arn)
     else:
         print("Using existing Cognito configuration")
         # Create gateway with existing Cognito configuration
@@ -99,9 +90,7 @@ export REGION={region}
     os.makedirs(os.path.join(current_dir, "config"), exist_ok=True)
     with open(os.path.join(current_dir, "config/gateway_config.env"), "w") as f:
         f.write(config_content)
-    print(
-        f"Saved gateway configuration to {os.path.join(current_dir, 'config/gateway_config.env')}"
-    )
+    print(f"Saved gateway configuration to {os.path.join(current_dir, 'config/gateway_config.env')}")
 
     # If running from scripts directory, ensure parent config directory exists
     script_dir = os.path.dirname(os.path.abspath(__file__))

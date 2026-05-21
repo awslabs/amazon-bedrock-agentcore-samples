@@ -2,10 +2,9 @@
 """Run the Competitive Intelligence Agent with AWS-focused examples."""
 
 import asyncio
-import os
 import sys
 from pathlib import Path
-from typing import Dict, List, TypedDict, Annotated, Optional, Any
+from typing import Dict, List, Any
 
 # Add parent directory to path to enable shared imports
 parent_dir = str(Path(__file__).parent.parent)
@@ -80,9 +79,7 @@ def get_custom_competitors() -> List[Dict]:
         console.print("4. Company/About information")
         console.print("5. All of the above")
 
-        analysis_choice = Prompt.ask(
-            "Select options (comma-separated, e.g., 1,2,3)", default="1,2"
-        )
+        analysis_choice = Prompt.ask("Select options (comma-separated, e.g., 1,2,3)", default="1,2")
 
         analyze = []
         if "1" in analysis_choice:
@@ -107,9 +104,7 @@ def get_custom_competitors() -> List[Dict]:
 
         # Ask for specific URLs (optional)
         additional_urls = {}
-        if Confirm.ask(
-            "Do you have specific URLs for pricing/docs pages?", default=False
-        ):
+        if Confirm.ask("Do you have specific URLs for pricing/docs pages?", default=False):
             if "pricing" in analyze:
                 pricing_url = Prompt.ask("Pricing page URL (optional)", default="")
                 if pricing_url:
@@ -129,9 +124,7 @@ def get_custom_competitors() -> List[Dict]:
             }
         )
 
-        console.print(
-            f"[green]✓ Added {name} - will analyze: {', '.join(analyze)}[/green]\n"
-        )
+        console.print(f"[green]✓ Added {name} - will analyze: {', '.join(analyze)}[/green]\n")
 
     return competitors
 
@@ -190,9 +183,7 @@ async def view_replay(recording_config: Any, config: AgentConfig):
             prefix = "/".join(parts[1:-1]) if len(parts) > 2 else ""
             session_id = parts[-1] if len(parts) > 1 else "unknown"
         else:
-            raise ValueError(
-                f"Invalid recording configuration format: {type(recording_config)}"
-            )
+            raise ValueError(f"Invalid recording configuration format: {type(recording_config)}")
 
         console.print(f"[dim]Bucket: {bucket}[/dim]")
         console.print(f"[dim]Prefix: {prefix}[/dim]")
@@ -203,15 +194,11 @@ async def view_replay(recording_config: Any, config: AgentConfig):
         await asyncio.sleep(30)
 
         # Use the unified S3 data source
-        data_source = UnifiedS3DataSource(
-            bucket=bucket, prefix=prefix, session_id=session_id
-        )
+        data_source = UnifiedS3DataSource(bucket=bucket, prefix=prefix, session_id=session_id)
 
         # Start replay viewer
         console.print(f"🎬 Starting session replay viewer for: {session_id}")
-        viewer = SessionReplayViewer(
-            data_source=data_source, port=config.replay_viewer_port
-        )
+        viewer = SessionReplayViewer(data_source=data_source, port=config.replay_viewer_port)
         viewer.start()
 
     except Exception as e:
@@ -232,9 +219,7 @@ async def choose_session_to_replay(results: Dict):
 
     sessions = results.get("parallel_sessions", [])
     for i, session in enumerate(sessions):
-        console.print(
-            f"{i + 1}. {session.get('name', 'Unknown')} - {session.get('session_id', 'Unknown')}"
-        )
+        console.print(f"{i + 1}. {session.get('name', 'Unknown')} - {session.get('session_id', 'Unknown')}")
 
     choice = Prompt.ask(
         "Select session to replay",
@@ -331,12 +316,8 @@ async def main():
         )
 
         if parallel_mode:
-            console.print(
-                "[yellow]Note: Parallel processing will limit live view visibility[/yellow]"
-            )
-            console.print(
-                "[yellow]⚠️ Session replay will not be available in parallel mode[/yellow]"
-            )
+            console.print("[yellow]Note: Parallel processing will limit live view visibility[/yellow]")
+            console.print("[yellow]⚠️ Session replay will not be available in parallel mode[/yellow]")
 
     if not Confirm.ask("\nProceed with analysis?", default=True):
         console.print("[yellow]Analysis cancelled.[/yellow]")
@@ -362,7 +343,7 @@ async def main():
             "• Track API endpoints\n"
             "• Generate a comprehensive report\n\n"
             f"[bold]Mode:[/bold] {'⚡ Parallel' if parallel_mode else '🔄 Sequential'}"
-            + (f" (forced)" if force_parallel else "")
+            + (" (forced)" if force_parallel else "")
             + "\n\n"
             "[dim]You can take manual control at any time using the viewer controls[/dim]",
             border_style="yellow",
@@ -370,15 +351,11 @@ async def main():
         console.print(watch_panel)
 
         console.print("\n[cyan]Starting automated analysis in 5 seconds...[/cyan]")
-        console.print(
-            "[dim]Open the browser viewer link above to watch the automation![/dim]"
-        )
+        console.print("[dim]Open the browser viewer link above to watch the automation![/dim]")
         await asyncio.sleep(5)
 
         # Run analysis
-        results = await agent.run(
-            competitors, parallel=parallel_mode, force_parallel=False
-        )
+        results = await agent.run(competitors, parallel=parallel_mode, force_parallel=False)
 
         if results["success"]:
             # Show results summary
@@ -401,9 +378,7 @@ async def main():
                 console.print("\n[bold]Report Preview:[/bold]")
                 console.print("-" * 60)
                 preview = results["report"][:1500]
-                console.print(
-                    preview + "..." if len(results["report"]) > 1500 else preview
-                )
+                console.print(preview + "..." if len(results["report"]) > 1500 else preview)
                 console.print("-" * 60)
 
             # Show discovered APIs if any
@@ -412,18 +387,12 @@ async def main():
                 for api in results["apis_discovered"][:5]:  # Show first 5
                     console.print(f"  • {api['url'][:80]}...")
                 if len(results["apis_discovered"]) > 5:
-                    console.print(
-                        f"  ... and {len(results['apis_discovered']) - 5} more"
-                    )
+                    console.print(f"  ... and {len(results['apis_discovered']) - 5} more")
 
             # Save session info
             if results.get("session_id"):
-                console.print(
-                    f"\n[cyan]💾 Session saved with ID: {results['session_id']}[/cyan]"
-                )
-                console.print(
-                    "[dim]You can resume this session later using this ID[/dim]"
-                )
+                console.print(f"\n[cyan]💾 Session saved with ID: {results['session_id']}[/cyan]")
+                console.print("[dim]You can resume this session later using this ID[/dim]")
 
             # Ask about replay
             if results.get("recording_config") or results.get("recording_path"):
@@ -441,14 +410,10 @@ async def main():
 
                 if Confirm.ask("\nView session replay?", default=True):
                     # Use recording_config if available, fallback to recording_path
-                    recording_data = results.get("recording_config") or results.get(
-                        "recording_path"
-                    )
+                    recording_data = results.get("recording_config") or results.get("recording_path")
                     await view_replay(recording_data, config)
         else:
-            console.print(
-                f"\n[red]Analysis failed: {results.get('error', 'Unknown error')}[/red]"
-            )
+            console.print(f"\n[red]Analysis failed: {results.get('error', 'Unknown error')}[/red]")
 
     except KeyboardInterrupt:
         console.print("\n[yellow]Analysis interrupted by user[/yellow]")

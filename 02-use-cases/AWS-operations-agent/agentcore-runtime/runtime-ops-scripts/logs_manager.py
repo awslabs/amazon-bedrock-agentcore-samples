@@ -4,9 +4,7 @@ Logs Manager - Get CloudWatch logs for AgentCore Runtimes
 """
 
 import boto3
-import json
 import sys
-import os
 from datetime import datetime, timedelta
 
 
@@ -22,7 +20,7 @@ class LogsManager:
             log_group_name = f"/aws/bedrock-agentcore/runtimes/{runtime_id}-DEFAULT"
 
             print(f"🔍 Getting logs for runtime: {runtime_id}")
-            print(f"📋 Fetching recent logs from CloudWatch...")
+            print("📋 Fetching recent logs from CloudWatch...")
 
             # Get log streams
             streams_response = self.logs_client.describe_log_streams(
@@ -62,9 +60,7 @@ class LogsManager:
 
             # Display logs
             for event in events[-tail_lines:]:  # Show last N lines
-                timestamp = datetime.fromtimestamp(event["timestamp"] / 1000).strftime(
-                    "%Y-%m-%dT%H:%M:%S.%fZ"
-                )
+                timestamp = datetime.fromtimestamp(event["timestamp"] / 1000).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
                 message = event["message"].strip()
                 print(f"{timestamp}: {message}")
 
@@ -89,7 +85,7 @@ class LogsManager:
                     )
                     print(f"✅ Found log group: {pattern}")
                     break
-                except:
+                except Exception:
                     continue
             else:
                 print("❌ Could not find any matching log groups")

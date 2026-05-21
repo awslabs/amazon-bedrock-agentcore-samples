@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-import os, sys
+import os
+import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 """
@@ -13,7 +14,6 @@ The create command reads infrastructure config from SSM (populated by prereq.sh
 and agentcore_gateway.py) so no manual ARN/URL entry is needed.
 """
 
-import json
 import sys
 import time
 
@@ -39,9 +39,7 @@ def cli():
     default=None,
     help="S3 bucket holding runtime.zip (reads /app/hrdlp/deploy-bucket from SSM if omitted)",
 )
-@click.option(
-    "--name", default=RUNTIME_NAME, show_default=True, help="AgentCore Runtime name"
-)
+@click.option("--name", default=RUNTIME_NAME, show_default=True, help="AgentCore Runtime name")
 @click.option("--region", default="us-east-1", show_default=True)
 def create(s3_bucket: str, name: str, region: str):
     """Create the AgentCore Runtime and store its ID + URL in SSM.
@@ -104,10 +102,7 @@ def create(s3_bucket: str, name: str, region: str):
         sys.exit(1)
 
     # Build JWT authorizer from Cognito User Pool
-    discovery_url = (
-        f"https://cognito-idp.{region}.amazonaws.com/{user_pool_id}"
-        "/.well-known/openid-configuration"
-    )
+    discovery_url = f"https://cognito-idp.{region}.amazonaws.com/{user_pool_id}/.well-known/openid-configuration"
 
     client = boto3.client("bedrock-agentcore-control", region_name=region)
     click.echo(f"Creating AgentCore Runtime: {name}")
@@ -152,9 +147,7 @@ def create(s3_bucket: str, name: str, region: str):
         import urllib.parse
 
         account_id = boto3.client("sts").get_caller_identity()["Account"]
-        runtime_arn = (
-            f"arn:aws:bedrock-agentcore:{region}:{account_id}:runtime/{runtime_id}"
-        )
+        runtime_arn = f"arn:aws:bedrock-agentcore:{region}:{account_id}:runtime/{runtime_id}"
         encoded_arn = urllib.parse.quote(runtime_arn, safe="")
         endpoint_url = f"https://bedrock-agentcore.{region}.amazonaws.com/runtimes/{encoded_arn}/invocations"
 

@@ -14,8 +14,6 @@ def get_services():
     return data_service
 
 
-from local_insurance_api.services.utils import create_success_response
-
 # Set up logger
 logger = logging.getLogger("insurance_api")
 
@@ -33,9 +31,7 @@ async def get_vehicle_info(request: Request):
         year = data.get("year")
 
         if not all([make, model, year]):
-            raise HTTPException(
-                status_code=400, detail="Missing required parameters: make, model, year"
-            )
+            raise HTTPException(status_code=400, detail="Missing required parameters: make, model, year")
 
         # Get vehicle info from real data
         data_service = get_services()
@@ -67,9 +63,7 @@ async def get_vehicle_safety(request: Request):
         model = data.get("model")
 
         if not all([make, model]):
-            raise HTTPException(
-                status_code=400, detail="Missing required parameters: make, model"
-            )
+            raise HTTPException(status_code=400, detail="Missing required parameters: make, model")
 
         # Mock safety information
         safety_info = {

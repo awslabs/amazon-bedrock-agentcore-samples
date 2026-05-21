@@ -53,9 +53,7 @@ class LakeFormationSetup:
         self.tenant_roles = {
             "policyholders": self._get_ssm_param("roles/lakehouse-policyholders-role"),
             "adjusters": self._get_ssm_param("roles/lakehouse-adjusters-role"),
-            "administrators": self._get_ssm_param(
-                "roles/lakehouse-administrators-role"
-            ),
+            "administrators": self._get_ssm_param("roles/lakehouse-administrators-role"),
         }
 
     def _get_ssm_param(self, name: str) -> str:
@@ -64,27 +62,23 @@ class LakeFormationSetup:
             response = self.ssm.get_parameter(Name=f"/app/lakehouse-agent/{name}")
             return response["Parameter"]["Value"]
         except Exception as e:
-            raise Exception(
-                f"Failed to get SSM parameter /app/lakehouse-agent/{name}: {e}"
-            )
+            raise Exception(f"Failed to get SSM parameter /app/lakehouse-agent/{name}: {e}")
 
     def register_s3tables_resource(self):
         """Register S3 Tables bucket as a Lake Formation resource."""
-        print(f"\n📋 Registering S3 Tables bucket with Lake Formation...")
+        print("\n📋 Registering S3 Tables bucket with Lake Formation...")
 
         try:
-            self.lakeformation.register_resource(
-                ResourceArn=self.table_bucket_arn, UseServiceLinkedRole=True
-            )
+            self.lakeformation.register_resource(ResourceArn=self.table_bucket_arn, UseServiceLinkedRole=True)
             print(f"✅ Registered S3 Tables bucket: {self.table_bucket_arn}")
         except self.lakeformation.exceptions.AlreadyExistsException:
-            print(f"✅ S3 Tables bucket already registered")
+            print("✅ S3 Tables bucket already registered")
         except Exception as e:
             print(f"ℹ️  Registration note: {e}")
 
     def create_glue_database(self):
         """Create Glue database for S3 Tables namespace."""
-        print(f"\n📚 Creating Glue database for namespace...")
+        print("\n📚 Creating Glue database for namespace...")
 
         try:
             self.glue.create_database(
@@ -114,9 +108,7 @@ class LakeFormationSetup:
                         "Location": f"{self.table_bucket_arn}/{self.namespace}/{table_name}",
                         "InputFormat": "org.apache.hadoop.mapred.TextInputFormat",
                         "OutputFormat": "org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat",
-                        "SerdeInfo": {
-                            "SerializationLibrary": "org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe"
-                        },
+                        "SerdeInfo": {"SerializationLibrary": "org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe"},
                     },
                     "TableType": "EXTERNAL_TABLE",
                     "Parameters": {"EXTERNAL": "TRUE", "table_type": "ICEBERG"},
@@ -147,13 +139,11 @@ class LakeFormationSetup:
             )
             print(f"   ✅ Granted DESCRIBE on database {self.namespace}")
         except self.lakeformation.exceptions.AlreadyExistsException:
-            print(f"   ✅ Database permissions already exist")
+            print("   ✅ Database permissions already exist")
         except Exception as e:
             print(f"   ⚠️  Error granting database permissions: {e}")
 
-    def grant_table_permissions(
-        self, role_arn: str, role_name: str, table_name: str, permissions: List[str]
-    ):
+    def grant_table_permissions(self, role_arn: str, role_name: str, table_name: str, permissions: List[str]):
         """Grant table-level permissions to a role."""
         print(f"   Granting {', '.join(permissions)} on table {table_name}...")
 
@@ -232,9 +222,7 @@ class LakeFormationSetup:
         omits the excluded columns from the result set instead of raising
         COLUMN_NOT_FOUND.
         """
-        print(
-            f"   Granting wildcard column permissions on {table_name} (excluding {excluded_columns})..."
-        )
+        print(f"   Granting wildcard column permissions on {table_name} (excluding {excluded_columns})...")
 
         resource = {
             "TableWithColumns": {
@@ -265,9 +253,7 @@ class LakeFormationSetup:
         except Exception as e:
             print(f"   ⚠️  Error granting wildcard column permissions: {e}")
 
-    def _apply_row_filter(
-        self, role_arn: str, table_name: str, row_filter: Dict[str, Any]
-    ):
+    def _apply_row_filter(self, role_arn: str, table_name: str, row_filter: Dict[str, Any]):
         """Apply row-level filter to a table."""
         try:
             self.lakeformation.create_data_cells_filter(
@@ -286,7 +272,7 @@ class LakeFormationSetup:
 
     def setup_permissions(self):
         """Setup Lake Formation permissions for all tenant roles."""
-        print(f"\n🚀 Setting up Lake Formation permissions for S3 Tables")
+        print("\n🚀 Setting up Lake Formation permissions for S3 Tables")
         print(f"   Region: {self.region}")
         print(f"   Database: {self.namespace}")
         print(f"   Table Bucket: {self.table_bucket_arn}")
@@ -295,29 +281,6 @@ class LakeFormationSetup:
         self.register_s3tables_resource()
 
         # Define column sets for claims table
-        claims_columns_all = [
-            "claim_id",
-            "user_id",
-            "policyholder_name",
-            "policyholder_dob",
-            "claim_date",
-            "claim_amount",
-            "claim_type",
-            "claim_status",
-            "provider_name",
-            "provider_npi",
-            "diagnosis_code",
-            "procedure_code",
-            "submitted_date",
-            "processed_date",
-            "approved_amount",
-            "denial_reason",
-            "notes",
-            "created_by",
-            "last_modified_by",
-            "last_modified_date",
-            "adjuster_user_id",
-        ]
 
         # Restricted columns for policyholders (excludes sensitive internal columns)
         # Excluded: adjuster_user_id, created_by, last_modified_by, last_modified_date, notes, denial_reason
@@ -358,7 +321,7 @@ class LakeFormationSetup:
             # Grant table permissions
             if role_type == "administrators":
                 # Admins get full access on all tables (including INSERT for data loading)
-                print(f"   📊 Granting admin permissions...")
+                print("   📊 Granting admin permissions...")
                 self.grant_table_permissions(
                     role_arn,
                     role_type,
@@ -373,57 +336,37 @@ class LakeFormationSetup:
                 )
             elif role_type == "policyholders":
                 # Policyholders get restricted column access (no sensitive internal columns)
-                print(f"   📊 Granting column-level permissions (restricted)...")
-                print(
-                    f"      Columns: {len(claims_columns_policyholder)}/21 (excluding internal operational data)"
-                )
-                self.grant_column_permissions_with_filter(
-                    role_arn, role_type, "claims", claims_columns_policyholder
-                )
-                self.grant_column_permissions_with_filter(
-                    role_arn, role_type, "users", users_columns
-                )
+                print("   📊 Granting column-level permissions (restricted)...")
+                print(f"      Columns: {len(claims_columns_policyholder)}/21 (excluding internal operational data)")
+                self.grant_column_permissions_with_filter(role_arn, role_type, "claims", claims_columns_policyholder)
+                self.grant_column_permissions_with_filter(role_arn, role_type, "users", users_columns)
             elif role_type == "adjusters":
                 # Adjusters get all columns except policyholder_dob (PII protection)
                 # Using ColumnWildcard so SELECT * works transparently
-                print(
-                    f"   📊 Granting column-level permissions (excluding policyholder_dob)..."
-                )
+                print("   📊 Granting column-level permissions (excluding policyholder_dob)...")
                 self.grant_column_wildcard_permissions(
                     role_arn, role_type, "claims", excluded_columns=["policyholder_dob"]
                 )
-                self.grant_column_permissions_with_filter(
-                    role_arn, role_type, "users", users_columns
-                )
+                self.grant_column_permissions_with_filter(role_arn, role_type, "users", users_columns)
 
-        print(f"\n✨ Lake Formation permissions setup complete!")
-        print(f"\n📋 Permissions granted:")
+        print("\n✨ Lake Formation permissions setup complete!")
+        print("\n📋 Permissions granted:")
+        print("   Policyholders: SELECT on claims (15 columns - excludes internal data), SELECT on users")
         print(
-            f"   Policyholders: SELECT on claims (15 columns - excludes internal data), SELECT on users"
+            "      Excluded columns: adjuster_user_id, created_by, last_modified_by, last_modified_date, notes, denial_reason"
         )
-        print(
-            f"      Excluded columns: adjuster_user_id, created_by, last_modified_by, last_modified_date, notes, denial_reason"
-        )
-        print(
-            f"   Adjusters: SELECT on claims (20 columns - excludes policyholder_dob), SELECT on users"
-        )
-        print(
-            f"   Administrators: Full access on all tables (SELECT, INSERT, ALTER, DELETE)"
-        )
+        print("   Adjusters: SELECT on claims (20 columns - excludes policyholder_dob), SELECT on users")
+        print("   Administrators: Full access on all tables (SELECT, INSERT, ALTER, DELETE)")
 
-        print(f"\n⚠️  Note: Row-level security filters need to be configured manually")
-        print(f"   in Lake Formation console for policyholders and adjusters roles.")
-        print(
-            f"   Filter expression example: user_id = '{{{{SESSION_CONTEXT:user_id}}}}'"
-        )
+        print("\n⚠️  Note: Row-level security filters need to be configured manually")
+        print("   in Lake Formation console for policyholders and adjusters roles.")
+        print("   Filter expression example: user_id = '{{SESSION_CONTEXT:user_id}}'")
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Setup Lake Formation permissions for S3 Tables tenant access"
-    )
+    parser = argparse.ArgumentParser(description="Setup Lake Formation permissions for S3 Tables tenant access")
 
-    args = parser.parse_args()
+    parser.parse_args()
 
     # Run setup
     setup = LakeFormationSetup()

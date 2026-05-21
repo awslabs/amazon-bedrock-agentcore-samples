@@ -6,7 +6,6 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse
 import logging
 from services import data_service
-from services.utils import create_success_response
 
 # Set up logger
 logger = logging.getLogger("insurance_api")
@@ -25,9 +24,7 @@ async def get_vehicle_info(request: Request):
         year = data.get("year")
 
         if not all([make, model, year]):
-            raise HTTPException(
-                status_code=400, detail="Missing required parameters: make, model, year"
-            )
+            raise HTTPException(status_code=400, detail="Missing required parameters: make, model, year")
 
         # Get vehicle info from real data
         vehicle_info = data_service.get_vehicle_info(make, model, str(year))
@@ -57,9 +54,7 @@ async def get_vehicle_safety(request: Request):
         model = data.get("model")
 
         if not all([make, model]):
-            raise HTTPException(
-                status_code=400, detail="Missing required parameters: make, model"
-            )
+            raise HTTPException(status_code=400, detail="Missing required parameters: make, model")
 
         # Mock safety information
         safety_info = {

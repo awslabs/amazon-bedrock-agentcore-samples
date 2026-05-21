@@ -47,15 +47,11 @@ def get_user_token(username: str, password: str):
     # Get Cognito configuration
     print("\n📋 Loading Cognito configuration...")
     try:
-        client_id = ssm.get_parameter(
-            Name="/app/lakehouse-agent/cognito-app-client-id"
-        )["Parameter"]["Value"]
-        client_secret = ssm.get_parameter(
-            Name="/app/lakehouse-agent/cognito-app-client-secret", WithDecryption=True
-        )["Parameter"]["Value"]
-        user_pool_id = ssm.get_parameter(
-            Name="/app/lakehouse-agent/cognito-user-pool-id"
-        )["Parameter"]["Value"]
+        client_id = ssm.get_parameter(Name="/app/lakehouse-agent/cognito-app-client-id")["Parameter"]["Value"]
+        client_secret = ssm.get_parameter(Name="/app/lakehouse-agent/cognito-app-client-secret", WithDecryption=True)[
+            "Parameter"
+        ]["Value"]
+        user_pool_id = ssm.get_parameter(Name="/app/lakehouse-agent/cognito-user-pool-id")["Parameter"]["Value"]
 
         print(f"   Client ID: {client_id}")
         print(f"   User Pool: {user_pool_id}")
@@ -90,14 +86,14 @@ def get_user_token(username: str, password: str):
         access_token = response["AuthenticationResult"]["AccessToken"]
         id_token = response["AuthenticationResult"]["IdToken"]
 
-        print(f"✅ User authenticated successfully!")
-        print(f"   Token type: Bearer")
+        print("✅ User authenticated successfully!")
+        print("   Token type: Bearer")
         print(f"   Expires in: {response['AuthenticationResult']['ExpiresIn']} seconds")
         print("Access Token", access_token)
         print("ID Token", id_token)
 
         # Decode and print token claims
-        print(f"\n📄 User Token Claims:")
+        print("\n📄 User Token Claims:")
         parts = id_token.split(".")
         if len(parts) == 3:
             payload = json.loads(base64.urlsafe_b64decode(parts[1] + "=="))
@@ -108,7 +104,7 @@ def get_user_token(username: str, password: str):
             print(f"   Issuer (iss): {payload.get('iss', 'N/A')}")
 
         # Also decode access token to see its claims
-        print(f"\n📄 Access Token Claims:")
+        print("\n📄 Access Token Claims:")
         parts = access_token.split(".")
         if len(parts) == 3:
             payload = json.loads(base64.urlsafe_b64decode(parts[1] + "=="))
@@ -118,13 +114,13 @@ def get_user_token(username: str, password: str):
             print(f"   Username: {payload.get('username', 'N/A')}")
             print(f"   Issuer (iss): {payload.get('iss', 'N/A')}")
 
-        print(f"\n🔑 Access Token (first 100 chars):")
+        print("\n🔑 Access Token (first 100 chars):")
         print(f"   {access_token[:100]}...")
 
         return access_token, id_token, region
 
     except cognito.exceptions.NotAuthorizedException:
-        print(f"❌ Authentication failed: Invalid username or password")
+        print("❌ Authentication failed: Invalid username or password")
         return None, None, region
     except cognito.exceptions.UserNotFoundException:
         print(f"❌ User not found: {username}")
@@ -151,17 +147,13 @@ def test_gateway(access_token: str, region: str):
     # Get Gateway URL
     print("\n📦 Loading Gateway configuration...")
     try:
-        gateway_url = ssm.get_parameter(Name="/app/lakehouse-agent/gateway-url")[
-            "Parameter"
-        ]["Value"]
-        gateway_id = ssm.get_parameter(Name="/app/lakehouse-agent/gateway-id")[
-            "Parameter"
-        ]["Value"]
+        gateway_url = ssm.get_parameter(Name="/app/lakehouse-agent/gateway-url")["Parameter"]["Value"]
+        gateway_id = ssm.get_parameter(Name="/app/lakehouse-agent/gateway-id")["Parameter"]["Value"]
         print(f"   Gateway URL: {gateway_url}")
         print(f"   Gateway ID: {gateway_id}")
 
         # Get Gateway configuration to check JWT authorizer settings
-        print(f"\n🔍 Checking Gateway JWT authorizer configuration...")
+        print("\n🔍 Checking Gateway JWT authorizer configuration...")
         agentcore = boto3.client("bedrock-agentcore-control", region_name=region)
         try:
             gateway_details = agentcore.get_gateway(gatewayIdentifier=gateway_id)
@@ -175,9 +167,9 @@ def test_gateway(access_token: str, region: str):
             print(f"   ⚠️  Could not get Gateway details: {e}")
 
     except ssm.exceptions.ParameterNotFound:
-        print(f"   ❌ Gateway URL not found in SSM")
-        print(f"   Please deploy the Gateway first:")
-        print(f"   cd gateway-setup && python create_gateway.py")
+        print("   ❌ Gateway URL not found in SSM")
+        print("   Please deploy the Gateway first:")
+        print("   cd gateway-setup && python create_gateway.py")
         return
     except Exception as e:
         print(f"   ❌ Error loading Gateway URL: {e}")
@@ -204,9 +196,7 @@ def test_gateway(access_token: str, region: str):
     }
 
     try:
-        response = requests.post(
-            gateway_url, headers=headers, json=init_request, timeout=30
-        )
+        response = requests.post(gateway_url, headers=headers, json=init_request, timeout=30)
         print(f"   Status: {response.status_code}")
         print(f"   Response length: {len(response.text)} bytes")
         print(f"   Content-Type: {response.headers.get('Content-Type', 'N/A')}")
@@ -215,60 +205,52 @@ def test_gateway(access_token: str, region: str):
             if response.text:
                 # Parse SSE format
                 if response.headers.get("Content-Type") == "text/event-stream":
-                    print(f"   ✅ Received SSE response")
+                    print("   ✅ Received SSE response")
                     lines = response.text.split("\n")
                     for line in lines:
                         if line.startswith("data: "):
                             json_str = line[6:]
                             try:
                                 data = json.loads(json_str)
-                                print(f"   ✅ Initialize successful!")
+                                print("   ✅ Initialize successful!")
                                 if "result" in data:
                                     server_info = data["result"].get("serverInfo", {})
-                                    print(
-                                        f"   Server Name: {server_info.get('name', 'N/A')}"
-                                    )
-                                    print(
-                                        f"   Server Version: {server_info.get('version', 'N/A')}"
-                                    )
-                                    print(
-                                        f"   Protocol Version: {data['result'].get('protocolVersion', 'N/A')}"
-                                    )
+                                    print(f"   Server Name: {server_info.get('name', 'N/A')}")
+                                    print(f"   Server Version: {server_info.get('version', 'N/A')}")
+                                    print(f"   Protocol Version: {data['result'].get('protocolVersion', 'N/A')}")
                                 break
                             except json.JSONDecodeError:
                                 continue
                 else:
                     try:
                         data = response.json()
-                        print(f"   ✅ Initialize successful!")
+                        print("   ✅ Initialize successful!")
                         if "result" in data:
                             server_info = data["result"].get("serverInfo", {})
                             print(f"   Server Name: {server_info.get('name', 'N/A')}")
-                            print(
-                                f"   Server Version: {server_info.get('version', 'N/A')}"
-                            )
+                            print(f"   Server Version: {server_info.get('version', 'N/A')}")
                     except json.JSONDecodeError:
-                        print(f"   ⚠️  Response is not valid JSON")
+                        print("   ⚠️  Response is not valid JSON")
                         print(f"   Raw response: {response.text[:200]}")
             else:
-                print(f"   ⚠️  Response body is empty")
+                print("   ⚠️  Response body is empty")
                 return
         elif response.status_code == 401:
-            print(f"   ❌ Unauthorized - User token validation failed")
+            print("   ❌ Unauthorized - User token validation failed")
             print(f"   Response: {response.text[:500]}")
             return
         elif response.status_code == 403:
-            print(f"   ❌ Forbidden - User not authorized")
+            print("   ❌ Forbidden - User not authorized")
             print(f"   Response: {response.text[:500]}")
             return
         else:
-            print(f"   ❌ Initialize failed")
+            print("   ❌ Initialize failed")
             print(f"   Response: {response.text[:500]}")
             return
 
     except requests.exceptions.Timeout:
-        print(f"   ❌ Request timed out")
-        print(f"   This may indicate Gateway-to-Runtime authentication issues")
+        print("   ❌ Request timed out")
+        print("   This may indicate Gateway-to-Runtime authentication issues")
         return
     except Exception as e:
         print(f"   ❌ Error: {e}")
@@ -279,9 +261,7 @@ def test_gateway(access_token: str, region: str):
     tools_request = {"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}}
 
     try:
-        response = requests.post(
-            gateway_url, headers=headers, json=tools_request, timeout=30
-        )
+        response = requests.post(gateway_url, headers=headers, json=tools_request, timeout=30)
         print(f"   Status: {response.status_code}")
         print(f"   Response length: {len(response.text)} bytes")
 
@@ -289,14 +269,14 @@ def test_gateway(access_token: str, region: str):
             if response.text:
                 # Parse SSE format
                 if response.headers.get("Content-Type") == "text/event-stream":
-                    print(f"   ✅ Received SSE response")
+                    print("   ✅ Received SSE response")
                     lines = response.text.split("\n")
                     for line in lines:
                         if line.startswith("data: "):
                             json_str = line[6:]
                             try:
                                 data = json.loads(json_str)
-                                print(f"   ✅ Tool list retrieved!")
+                                print("   ✅ Tool list retrieved!")
 
                                 if "result" in data and "tools" in data["result"]:
                                     tools = data["result"]["tools"]
@@ -304,40 +284,33 @@ def test_gateway(access_token: str, region: str):
                                     print("   " + "=" * 66)
                                     for i, tool in enumerate(tools, 1):
                                         print(f"\n   {i}. {tool.get('name', 'N/A')}")
-                                        print(
-                                            f"      Description: {tool.get('description', 'N/A')}"
-                                        )
-                                        if (
-                                            "inputSchema" in tool
-                                            and "properties" in tool["inputSchema"]
-                                        ):
+                                        print(f"      Description: {tool.get('description', 'N/A')}")
+                                        if "inputSchema" in tool and "properties" in tool["inputSchema"]:
                                             props = tool["inputSchema"]["properties"]
                                             if props:
-                                                print(
-                                                    f"      Parameters: {', '.join(props.keys())}"
-                                                )
+                                                print(f"      Parameters: {', '.join(props.keys())}")
                                 break
                             except json.JSONDecodeError:
                                 continue
                 else:
                     try:
                         data = response.json()
-                        print(f"   ✅ Tool list retrieved!")
+                        print("   ✅ Tool list retrieved!")
                         if "result" in data and "tools" in data["result"]:
                             tools = data["result"]["tools"]
                             print(f"\n   📋 Available Tools ({len(tools)}):")
                             for i, tool in enumerate(tools, 1):
                                 print(f"   {i}. {tool.get('name', 'N/A')}")
                     except json.JSONDecodeError:
-                        print(f"   ⚠️  Response is not valid JSON")
+                        print("   ⚠️  Response is not valid JSON")
             else:
-                print(f"   ⚠️  Response body is empty")
+                print("   ⚠️  Response body is empty")
         else:
-            print(f"   ❌ Tool list failed")
+            print("   ❌ Tool list failed")
             print(f"   Response: {response.text[:500]}")
 
     except requests.exceptions.Timeout:
-        print(f"   ❌ Request timed out")
+        print("   ❌ Request timed out")
     except Exception as e:
         print(f"   ❌ Error: {e}")
 
@@ -351,9 +324,7 @@ def test_gateway(access_token: str, region: str):
     }
 
     try:
-        response = requests.post(
-            gateway_url, headers=headers, json=query_request, timeout=30
-        )
+        response = requests.post(gateway_url, headers=headers, json=query_request, timeout=30)
         print(f"   Status: {response.status_code}")
 
         if response.status_code == 200:
@@ -367,22 +338,16 @@ def test_gateway(access_token: str, region: str):
                             try:
                                 data = json.loads(json_str)
                                 if "result" in data:
-                                    print(f"   ✅ Query successful!")
+                                    print("   ✅ Query successful!")
                                     # Try to parse the content
                                     if "content" in data["result"]:
                                         for content in data["result"]["content"]:
                                             if content.get("type") == "text":
                                                 try:
-                                                    result_data = json.loads(
-                                                        content["text"]
-                                                    )
+                                                    result_data = json.loads(content["text"])
                                                     if result_data.get("success"):
-                                                        summary = result_data.get(
-                                                            "summary", {}
-                                                        )
-                                                        print(
-                                                            f"   Total Claims: {summary.get('total_claims', 0)}"
-                                                        )
+                                                        summary = result_data.get("summary", {})
+                                                        print(f"   Total Claims: {summary.get('total_claims', 0)}")
                                                         print(
                                                             f"   Total Amount: ${summary.get('total_amount', 0):,.2f}"
                                                         )
@@ -391,23 +356,19 @@ def test_gateway(access_token: str, region: str):
                                                     ValueError,
                                                     KeyError,
                                                 ):
-                                                    print(
-                                                        f"   Response: {content['text'][:200]}"
-                                                    )
+                                                    print(f"   Response: {content['text'][:200]}")
                                 break
                             except json.JSONDecodeError:
                                 continue
         else:
-            print(f"   ⚠️  Query failed or tool not available")
+            print("   ⚠️  Query failed or tool not available")
 
     except Exception as e:
         print(f"   ⚠️  Query test skipped: {e}")
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Test AgentCore Gateway with user authentication"
-    )
+    parser = argparse.ArgumentParser(description="Test AgentCore Gateway with user authentication")
     parser.add_argument("--username", required=True, help="Cognito username")
     parser.add_argument("--password", required=True, help="User password")
     args = parser.parse_args()

@@ -18,20 +18,14 @@ sys.path.append(str(project_root))
 from shared.config_manager import AgentCoreConfigManager
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 
 def parse_arguments():
     """Parse command line arguments"""
-    parser = argparse.ArgumentParser(
-        description="List Bedrock AgentCore Gateway Targets"
-    )
-    parser.add_argument(
-        "--gateway-id", help="Gateway ID (uses config default if not specified)"
-    )
+    parser = argparse.ArgumentParser(description="List Bedrock AgentCore Gateway Targets")
+    parser.add_argument("--gateway-id", help="Gateway ID (uses config default if not specified)")
     parser.add_argument(
         "--environment",
         type=str,
@@ -86,9 +80,7 @@ def list_targets(config_manager, environment, gateway_id=None):
     session = boto3.Session(region_name=aws_config["region"])
 
     # Use bedrock-agentcore-control client
-    bedrock_agentcore_client = session.client(
-        "bedrock-agentcore-control", region_name=aws_config["region"]
-    )
+    bedrock_agentcore_client = session.client("bedrock-agentcore-control", region_name=aws_config["region"])
 
     # Get gateway info
     gateway_info = get_gateway_info(bedrock_agentcore_client, gateway_id)
@@ -96,9 +88,7 @@ def list_targets(config_manager, environment, gateway_id=None):
 
     try:
         # List targets
-        response = bedrock_agentcore_client.list_gateway_targets(
-            gatewayIdentifier=gateway_id
-        )
+        response = bedrock_agentcore_client.list_gateway_targets(gatewayIdentifier=gateway_id)
 
         print_response(f"LIST TARGETS RESPONSE (Gateway: {gateway_id})", response)
 
@@ -130,7 +120,7 @@ def list_targets(config_manager, environment, gateway_id=None):
                 print(f"     Created: {created_at}")
                 print(f"     Updated: {updated_at}")
 
-            print(f"\nListed targets from live AWS data")
+            print("\nListed targets from live AWS data")
         else:
             print(f"\nNo targets found for gateway {gateway_name}")
 
@@ -155,16 +145,16 @@ def main():
     print("List Bedrock AgentCore Gateway Targets (Live Data)")
     print("=" * 50)
     print(f"Environment: {environment}")
-    print(f"Endpoint: default")
+    print("Endpoint: default")
     print(f"Timestamp: {datetime.now().isoformat()}")
-    print(f"Data Source: AWS Bedrock AgentCore API (Live)")
+    print("Data Source: AWS Bedrock AgentCore API (Live)")
 
     try:
         # List targets
         targets = list_targets(config_manager, environment, args.gateway_id)
 
         if not targets:
-            print(f"\n⚠️  No targets found")
+            print("\n⚠️  No targets found")
             sys.exit(0)
 
     except Exception as e:

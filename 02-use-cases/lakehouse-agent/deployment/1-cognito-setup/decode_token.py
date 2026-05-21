@@ -38,20 +38,14 @@ def main():
 
     # Get M2M client credentials
     try:
-        client_id = ssm.get_parameter(
-            Name="/app/lakehouse-agent/cognito-m2m-client-id"
-        )["Parameter"]["Value"]
-        client_secret = ssm.get_parameter(
-            Name="/app/lakehouse-agent/cognito-m2m-client-secret", WithDecryption=True
-        )["Parameter"]["Value"]
-        domain = ssm.get_parameter(Name="/app/lakehouse-agent/cognito-domain")[
+        client_id = ssm.get_parameter(Name="/app/lakehouse-agent/cognito-m2m-client-id")["Parameter"]["Value"]
+        client_secret = ssm.get_parameter(Name="/app/lakehouse-agent/cognito-m2m-client-secret", WithDecryption=True)[
             "Parameter"
         ]["Value"]
-        user_pool_id = ssm.get_parameter(
-            Name="/app/lakehouse-agent/cognito-user-pool-id"
-        )["Parameter"]["Value"]
+        domain = ssm.get_parameter(Name="/app/lakehouse-agent/cognito-domain")["Parameter"]["Value"]
+        user_pool_id = ssm.get_parameter(Name="/app/lakehouse-agent/cognito-user-pool-id")["Parameter"]["Value"]
 
-        print(f"\n✅ Configuration loaded:")
+        print("\n✅ Configuration loaded:")
         print(f"   Client ID: {client_id}")
         print(f"   Domain: {domain}")
         print(f"   User Pool ID: {user_pool_id}")
@@ -60,16 +54,14 @@ def main():
         return
 
     # Get token
-    print(f"\n🔐 Requesting token...")
+    print("\n🔐 Requesting token...")
     token_endpoint = f"{domain}/oauth2/token"
     credentials = f"{client_id}:{client_secret}"
     encoded_credentials = base64.b64encode(credentials.encode()).decode()
 
     # Get the configured scopes
     cognito = boto3.client("cognito-idp", region_name=region)
-    client_details = cognito.describe_user_pool_client(
-        UserPoolId=user_pool_id, ClientId=client_id
-    )
+    client_details = cognito.describe_user_pool_client(UserPoolId=user_pool_id, ClientId=client_id)
     allowed_scopes = client_details["UserPoolClient"].get("AllowedOAuthScopes", [])
     scope_string = " ".join(allowed_scopes)
 
@@ -90,20 +82,20 @@ def main():
     token_data = response.json()
     access_token = token_data["access_token"]
 
-    print(f"✅ Token received")
+    print("✅ Token received")
 
     # Decode token
-    print(f"\n📋 Decoding JWT Token...")
+    print("\n📋 Decoding JWT Token...")
     header, payload = decode_jwt(access_token)
 
-    print(f"\n🔑 JWT Header:")
+    print("\n🔑 JWT Header:")
     print(json.dumps(header, indent=2))
 
-    print(f"\n📦 JWT Payload:")
+    print("\n📦 JWT Payload:")
     print(json.dumps(payload, indent=2))
 
     # Check important claims
-    print(f"\n🔍 Important Claims:")
+    print("\n🔍 Important Claims:")
     print(f"   Issuer (iss): {payload.get('iss', 'N/A')}")
     print(f"   Client ID (client_id): {payload.get('client_id', 'N/A')}")
     print(f"   Audience (aud): {payload.get('aud', 'N/A')}")
@@ -114,17 +106,17 @@ def main():
     # Check if issuer matches expected format
     expected_issuer = f"https://cognito-idp.{region}.amazonaws.com/{user_pool_id}"
     if payload.get("iss") == expected_issuer:
-        print(f"\n   ✅ Issuer matches expected format")
+        print("\n   ✅ Issuer matches expected format")
     else:
-        print(f"\n   ⚠️  Issuer mismatch!")
+        print("\n   ⚠️  Issuer mismatch!")
         print(f"      Expected: {expected_issuer}")
         print(f"      Got: {payload.get('iss')}")
 
     # Check client_id
     if payload.get("client_id") == client_id:
-        print(f"   ✅ Client ID matches")
+        print("   ✅ Client ID matches")
     else:
-        print(f"   ⚠️  Client ID mismatch!")
+        print("   ⚠️  Client ID mismatch!")
         print(f"      Expected: {client_id}")
         print(f"      Got: {payload.get('client_id')}")
 

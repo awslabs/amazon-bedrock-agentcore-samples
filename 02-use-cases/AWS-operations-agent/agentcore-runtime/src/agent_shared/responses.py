@@ -3,7 +3,6 @@
 # ============================================================================
 
 import json
-import logging
 
 from . import mylogger
 
@@ -39,9 +38,7 @@ def format_diy_response(event):
                     "has_formatting": "\n" in content_data["content"],
                 },
             }
-            logger.debug(
-                f"📤 Formatted text content: {len(content_data['content'])} chars"
-            )
+            logger.debug(f"📤 Formatted text content: {len(content_data['content'])} chars")
         else:
             # Non-text event - use legacy format for compatibility
             sse_payload = {
@@ -122,9 +119,7 @@ def process_text_formatting(text: str) -> str:
         # Clean up any excessive whitespace while preserving intentional formatting
         # Don't strip all whitespace as it might be intentional formatting
 
-        logger.debug(
-            f"📝 Text processing: {len(text)} chars → {len(processed_text)} chars"
-        )
+        logger.debug(f"📝 Text processing: {len(text)} chars → {len(processed_text)} chars")
         if "\\n" in text:
             logger.debug(f"🔄 Converted literal newlines in text: {text[:50]}...")
 
@@ -153,9 +148,7 @@ def extract_content_from_event(event) -> dict:
             "content": "",
             "event_type": type(event).__name__,
             "has_text": False,
-            "raw_event": str(event)[:200] + "..."
-            if len(str(event)) > 200
-            else str(event),
+            "raw_event": str(event)[:200] + "..." if len(str(event)) > 200 else str(event),
         }
 
         extracted_text = None
@@ -182,25 +175,15 @@ def extract_content_from_event(event) -> dict:
 
                     # Clean up tool name by removing namespace prefix
                     # e.g., "bac-tool___ec2_read_operations" -> "ec2_read_operations"
-                    clean_tool_name = (
-                        tool_name.split("___")[-1] if "___" in tool_name else tool_name
-                    )
+                    clean_tool_name = tool_name.split("___")[-1] if "___" in tool_name else tool_name
 
                     # Create user-friendly message about tool selection
-                    extracted_text = (
-                        f"\n🔍 Using {clean_tool_name} tool...(ID: {tool_id})\n"
-                    )
+                    extracted_text = f"\n🔍 Using {clean_tool_name} tool...(ID: {tool_id})\n"
                     extraction_method = "tool_start"
-                    logger.debug(
-                        f"📤 Tool selected: {clean_tool_name} (ID: {tool_id[:8]}...)"
-                    )
+                    logger.debug(f"📤 Tool selected: {clean_tool_name} (ID: {tool_id[:8]}...)")
 
         # Priority 2: Extract from delta attribute (SDK format)
-        if (
-            not extracted_text
-            and hasattr(event, "delta")
-            and hasattr(event.delta, "text")
-        ):
+        if not extracted_text and hasattr(event, "delta") and hasattr(event.delta, "text"):
             if event.delta.text:
                 # logger.info('# Priority 2: Ecan you creatextract from delta attribute (SDK format)')
                 extracted_text = event.delta.text
@@ -209,7 +192,7 @@ def extract_content_from_event(event) -> dict:
         # Priority 3: Extract from string representation (fallback)
         if not extracted_text:
             # logger.info('# Priority 3: Extract from string representation (fallback)')
-            event_str = str(event)
+            str(event)
             # <uncomment later>
             # if 'contentBlockDelta' in event_str and "'text':" in event_str:
             #     import re
@@ -231,9 +214,7 @@ def extract_content_from_event(event) -> dict:
         if extracted_text:
             content_data["content"] = process_text_formatting(extracted_text)
             content_data["has_text"] = True
-            logger.debug(
-                f"📤 Extracted text via {extraction_method}: {extracted_text[:30]}..."
-            )
+            logger.debug(f"📤 Extracted text via {extraction_method}: {extracted_text[:30]}...")
         else:
             logger.debug(f"📭 No text content in event: {content_data['event_type']}")
 

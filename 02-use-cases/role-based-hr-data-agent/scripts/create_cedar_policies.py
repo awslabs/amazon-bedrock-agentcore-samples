@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-import os, sys
+import os
+import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 """
@@ -15,7 +16,6 @@ Usage:
   python scripts/create_cedar_policies.py --mode ENFORCE   # switch to enforcement
 """
 
-import json
 import time
 
 import boto3
@@ -95,21 +95,15 @@ def _create_policy_with_retry(client, engine_id, gateway_arn, policy_def):
             policy_id = resp["policyId"]
         except client.exceptions.ConflictException:
             # Policy with this name already exists — find and reuse it
-            policies = client.list_policies(policyEngineId=engine_id).get(
-                "policies", []
-            )
-            existing = next(
-                (p for p in policies if p["name"] == policy_def["name"]), None
-            )
+            policies = client.list_policies(policyEngineId=engine_id).get("policies", [])
+            existing = next((p for p in policies if p["name"] == policy_def["name"]), None)
             if not existing:
                 click.echo(
                     f"ERROR: ConflictException but could not find existing policy '{policy_def['name']}'.",
                     err=True,
                 )
                 raise SystemExit(1)
-            click.echo(
-                f"  Policy '{policy_def['name']}' already exists, reusing: {existing['policyId']}"
-            )
+            click.echo(f"  Policy '{policy_def['name']}' already exists, reusing: {existing['policyId']}")
             return existing["policyId"]
 
         click.echo(
@@ -129,9 +123,7 @@ def _create_policy_with_retry(client, engine_id, gateway_arn, policy_def):
             # transient internal error (retriable). Validation failures contain
             # descriptive reasons (e.g. "Overly Permissive"); internal errors
             # say "An internal error occurred during creation".
-            is_internal = (
-                any("internal error" in r.lower() for r in reasons) or not reasons
-            )
+            is_internal = any("internal error" in r.lower() for r in reasons) or not reasons
 
             try:
                 client.delete_policy(policyEngineId=engine_id, policyId=policy_id)
@@ -149,8 +141,7 @@ def _create_policy_with_retry(client, engine_id, gateway_arn, policy_def):
 
             if attempt < _MAX_POLICY_ATTEMPTS:
                 click.echo(
-                    f"  CREATE_FAILED (internal error) for {policy_def['name']} — "
-                    f"retrying in {_POLICY_RETRY_WAIT}s..."
+                    f"  CREATE_FAILED (internal error) for {policy_def['name']} — retrying in {_POLICY_RETRY_WAIT}s..."
                 )
                 time.sleep(_POLICY_RETRY_WAIT)
                 continue
@@ -237,9 +228,7 @@ def create(region: str, env: str, mode: str):
                 click.echo("ERROR: Policy engine reached FAILED status.", err=True)
                 raise SystemExit(1)
         else:
-            click.echo(
-                "ERROR: Timed out waiting for policy engine to become ACTIVE.", err=True
-            )
+            click.echo("ERROR: Timed out waiting for policy engine to become ACTIVE.", err=True)
             raise SystemExit(1)
 
     except client.exceptions.ConflictException:
@@ -269,14 +258,10 @@ def create(region: str, env: str, mode: str):
     # Phase B: After Cedar is confirmed ready and policies are created, restore
     # the interceptors in a second update_gateway call.
     # -------------------------------------------------------------------------
-    click.echo(
-        f"\nAttaching policy engine to gateway (phase A — no interceptors): {gateway_id}"
-    )
+    click.echo(f"\nAttaching policy engine to gateway (phase A — no interceptors): {gateway_id}")
 
     account_id = boto3.client("sts").get_caller_identity()["Account"]
-    engine_arn = (
-        f"arn:aws:bedrock-agentcore:{region}:{account_id}:policy-engine/{engine_id}"
-    )
+    engine_arn = f"arn:aws:bedrock-agentcore:{region}:{account_id}:policy-engine/{engine_id}"
 
     # Phase A — policy engine only, no interceptors.
     # Strip interceptorConfigurations so Cedar's internal tools/list call (used
@@ -323,9 +308,7 @@ def create(region: str, env: str, mode: str):
 
     created_policy_ids = []
     for policy_def in POLICIES:
-        policy_id = _create_policy_with_retry(
-            client, engine_id, gateway_arn, policy_def
-        )
+        policy_id = _create_policy_with_retry(client, engine_id, gateway_arn, policy_def)
         created_policy_ids.append(policy_id)
 
     # -------------------------------------------------------------------------
@@ -360,9 +343,7 @@ def create(region: str, env: str, mode: str):
                 )
                 raise SystemExit(1)
         else:
-            click.echo(
-                "ERROR: Timed out waiting for gateway to become READY.", err=True
-            )
+            click.echo("ERROR: Timed out waiting for gateway to become READY.", err=True)
             raise SystemExit(1)
         click.echo("  Interceptors restored.")
 
@@ -371,10 +352,10 @@ def create(region: str, env: str, mode: str):
     # -------------------------------------------------------------------------
     put_ssm_parameter("/app/hrdlp/cedar-policy-engine-arn", engine_arn)
 
-    click.echo(f"\nCedar setup complete.")
+    click.echo("\nCedar setup complete.")
     click.echo(f"  Policy engine : {engine_id} ({mode})")
     click.echo(f"  Policies      : {len(created_policy_ids)} ACTIVE")
-    click.echo(f"  SSM           : /app/hrdlp/cedar-policy-engine-arn")
+    click.echo("  SSM           : /app/hrdlp/cedar-policy-engine-arn")
     if mode == "LOG_ONLY":
         click.echo("\n  Mode is LOG_ONLY — policies log but do not block requests.")
         click.echo("  To enforce, re-run with: --mode ENFORCE")

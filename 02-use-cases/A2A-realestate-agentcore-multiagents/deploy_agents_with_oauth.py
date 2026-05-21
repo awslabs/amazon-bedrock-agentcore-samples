@@ -106,9 +106,7 @@ class AgentDeployer:
             print("Running agentcore configure...")
 
             # Don't log the full command for security
-            print(
-                f"Command: agentcore configure -e {agent['entrypoint']} --protocol A2A"
-            )
+            print(f"Command: agentcore configure -e {agent['entrypoint']} --protocol A2A")
 
             # Note: This is interactive, so we'll create the config manually
             print("⚠️  Creating configuration manually...")
@@ -146,9 +144,7 @@ class AgentDeployer:
         # Ensure discovery URL has the full path
         discovery_url = self.config["discovery_url"]
         if not discovery_url.endswith("/.well-known/openid-configuration"):
-            discovery_url = (
-                discovery_url.rstrip("/") + "/.well-known/openid-configuration"
-            )
+            discovery_url = discovery_url.rstrip("/") + "/.well-known/openid-configuration"
 
         config = {
             "default_agent": agent["name"],
@@ -176,9 +172,7 @@ class AgentDeployer:
                             "discoveryUrl": discovery_url,
                         }
                     },
-                    "requestHeaderConfiguration": {
-                        "requestHeaderAllowlist": ["Authorization"]
-                    },
+                    "requestHeaderConfiguration": {"requestHeaderAllowlist": ["Authorization"]},
                     "memory": {"mode": "STM_ONLY"},
                 }
             },
@@ -209,9 +203,7 @@ class AgentDeployer:
         # Ensure discovery URL has the full path
         discovery_url = self.config["discovery_url"]
         if not discovery_url.endswith("/.well-known/openid-configuration"):
-            discovery_url = (
-                discovery_url.rstrip("/") + "/.well-known/openid-configuration"
-            )
+            discovery_url = discovery_url.rstrip("/") + "/.well-known/openid-configuration"
 
         # Update authorizer configuration
         for agent_name, agent_config in config.get("agents", {}).items():
@@ -223,9 +215,7 @@ class AgentDeployer:
             }
 
             # Add request header configuration to allow Authorization header
-            agent_config["requestHeaderConfiguration"] = {
-                "requestHeaderAllowlist": ["Authorization"]
-            }
+            agent_config["requestHeaderConfiguration"] = {"requestHeaderAllowlist": ["Authorization"]}
 
             # Ensure protocol is A2A
             if "aws" not in agent_config:
@@ -421,9 +411,7 @@ class AgentDeployer:
 
         # Separate coordinator from sub-agents
         sub_agents = [a for a in self.agents if a["name"] != "realestate_coordinator"]
-        coordinator = next(
-            (a for a in self.agents if a["name"] == "realestate_coordinator"), None
-        )
+        coordinator = next((a for a in self.agents if a["name"] == "realestate_coordinator"), None)
 
         # Deploy sub-agents first
         print("\n" + "=" * 70)
@@ -456,19 +444,10 @@ class AgentDeployer:
             print("=" * 70)
 
             # Get sub-agent URLs
-            search_agent = next(
-                (a for a in deployed_agents if "search" in a["name"]), None
-            )
-            booking_agent = next(
-                (a for a in deployed_agents if "booking" in a["name"]), None
-            )
+            search_agent = next((a for a in deployed_agents if "search" in a["name"]), None)
+            booking_agent = next((a for a in deployed_agents if "booking" in a["name"]), None)
 
-            if (
-                search_agent
-                and booking_agent
-                and "arn" in search_agent
-                and "arn" in booking_agent
-            ):
+            if search_agent and booking_agent and "arn" in search_agent and "arn" in booking_agent:
                 search_url = self.arn_to_runtime_url(search_agent["arn"])
                 booking_url = self.arn_to_runtime_url(booking_agent["arn"])
 
@@ -476,7 +455,7 @@ class AgentDeployer:
                 search_agent["runtime_url"] = search_url
                 booking_agent["runtime_url"] = booking_url
 
-                print(f"\n✓ Sub-agent URLs:")
+                print("\n✓ Sub-agent URLs:")
                 print(f"  Search: {search_url}")
                 print(f"  Booking: {booking_url}")
 
@@ -484,9 +463,7 @@ class AgentDeployer:
                 if self.configure_agent(coordinator):
                     # Deploy coordinator with environment variables including Cognito credentials
                     # Coordinator will use these to generate bearer tokens for sub-agent authentication
-                    print(
-                        f"\n✓ Configuring coordinator with Cognito credentials for token generation..."
-                    )
+                    print("\n✓ Configuring coordinator with Cognito credentials for token generation...")
                     coordinator_env = {
                         "PROPERTY_SEARCH_AGENT_URL": search_url,
                         "PROPERTY_BOOKING_AGENT_URL": booking_url,
@@ -498,16 +475,16 @@ class AgentDeployer:
                     if self.deploy_agent(coordinator, env_vars=coordinator_env):
                         deployed_agents.append(coordinator)
                     else:
-                        print(f"✗ Failed to deploy coordinator")
+                        print("✗ Failed to deploy coordinator")
                         failed_agents.append(coordinator["name"])
                 else:
-                    print(f"✗ Failed to configure coordinator")
+                    print("✗ Failed to configure coordinator")
                     failed_agents.append(coordinator["name"])
             else:
-                print(f"✗ Cannot deploy coordinator: sub-agents not fully deployed")
+                print("✗ Cannot deploy coordinator: sub-agents not fully deployed")
                 failed_agents.append(coordinator["name"])
         elif coordinator:
-            print(f"\n✗ Skipping coordinator deployment: sub-agents failed")
+            print("\n✗ Skipping coordinator deployment: sub-agents failed")
             failed_agents.append(coordinator["name"])
 
         # Print summary
@@ -546,17 +523,13 @@ def main():
     """Main entry point."""
     import argparse
 
-    parser = argparse.ArgumentParser(
-        description="Deploy agents with OAuth authentication"
-    )
-    parser.add_argument(
-        "--config", default="cognito_config.json", help="Cognito config file"
-    )
+    parser = argparse.ArgumentParser(description="Deploy agents with OAuth authentication")
+    parser.add_argument("--config", default="cognito_config.json", help="Cognito config file")
     args = parser.parse_args()
 
     # Check if PyYAML is installed
     try:
-        import yaml
+        import yaml  # noqa: F401
     except ImportError:
         print("✗ Error: PyYAML not installed")
         print("Install with: pip install pyyaml")

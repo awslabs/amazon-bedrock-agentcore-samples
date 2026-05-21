@@ -14,8 +14,6 @@ def get_services():
     return data_service, product_service
 
 
-from local_insurance_api.services.utils import create_success_response
-
 # Set up logger
 logger = logging.getLogger("insurance_api")
 
@@ -29,7 +27,7 @@ async def get_risk_factors(request: Request):
     try:
         data = await request.json()
         customer_id = data.get("customer_id")
-        vehicle_info = data.get("vehicle_info", {})
+        data.get("vehicle_info", {})
 
         if not customer_id:
             raise HTTPException(status_code=400, detail="Missing customer_id parameter")
@@ -73,7 +71,7 @@ async def get_insurance_products(request: Request):
         data = {}
         try:
             data = await request.json()
-        except:
+        except Exception:
             # Empty request body is fine
             pass
 
@@ -86,28 +84,16 @@ async def get_insurance_products(request: Request):
         discounts = products_data.get("discounts", [])
 
         # Apply filters
-        products = product_service.filter_products_by_id(
-            products, data.get("product_id")
-        )
-        products = product_service.filter_products_by_price_range(
-            products, data.get("price_range")
-        )
-        products = product_service.filter_products_by_coverage(
-            products, data.get("coverage_includes")
-        )
-        products = product_service.filter_products_by_discounts(
-            products, data.get("discount_includes")
-        )
+        products = product_service.filter_products_by_id(products, data.get("product_id"))
+        products = product_service.filter_products_by_price_range(products, data.get("price_range"))
+        products = product_service.filter_products_by_coverage(products, data.get("coverage_includes"))
+        products = product_service.filter_products_by_discounts(products, data.get("discount_includes"))
 
         # Apply sorting
-        products = product_service.sort_products(
-            products, data.get("sort_by"), data.get("sort_order", "asc")
-        )
+        products = product_service.sort_products(products, data.get("sort_by"), data.get("sort_order", "asc"))
 
         # Create formatted response
-        response_data = product_service.create_product_response(
-            products, discounts, data
-        )
+        response_data = product_service.create_product_response(products, discounts, data)
 
         return JSONResponse(content=response_data)
 

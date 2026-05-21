@@ -74,15 +74,15 @@ VITE_API_MODE=direct
     with open(env_file, "w", encoding="utf-8") as f:
         f.write(env_content)
 
-    print(f"\n✅ Configuration generated successfully!")
+    print("\n✅ Configuration generated successfully!")
     print(f"\nCreated: {env_file}")
-    print(f"\nConfiguration:")
+    print("\nConfiguration:")
     print(f"  • Bearer Token: {bearer_token[:30]}...")
     print(f"  • Coordinator Agent: {coordinator_agent_arn}")
-    print(f"  • API Mode: Direct (connects to coordinator)")
+    print("  • API Mode: Direct (connects to coordinator)")
 
-    print(f"\n⚠️  Note: Bearer token expires in 60 minutes")
-    print(f"   Run this script again to refresh the token")
+    print("\n⚠️  Note: Bearer token expires in 60 minutes")
+    print("   Run this script again to refresh the token")
 
     print("\n" + "=" * 70)
     print("Ready to start UI!")

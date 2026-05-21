@@ -24,9 +24,7 @@ def ingest_data(patientDataFile, immunizationDataFile):
 
     for entry in patientJson["entry"]:
         print(f"FHIR Endpoint: {fhirEndpoint}, Patient Id: {entry['resource']['id']}")
-        r = requests.put(
-            fhirEndpoint + entry["resource"]["id"], json=entry["resource"], auth=auth
-        )
+        requests.put(fhirEndpoint + entry["resource"]["id"], json=entry["resource"], auth=auth)
 
     resourcePath = "Immunization"
     fhirEndpoint = dataStoreEndpoint + resourcePath + "/"
@@ -37,7 +35,7 @@ def ingest_data(patientDataFile, immunizationDataFile):
     print("FHIR Endpoint: ", fhirEndpoint)
     for entry in immunizationJson["entry"]:
         print(f"Ingesting Immunization id: {entry['resource']['id']}")
-        r = requests.post(fhirEndpoint, json=entry["resource"], auth=auth)
+        requests.post(fhirEndpoint, json=entry["resource"], auth=auth)
 
 
 if __name__ == "__main__":

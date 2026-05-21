@@ -42,17 +42,11 @@ class IAMRolesCleanup:
                 self.iam.delete_role_policy(RoleName=role_name, PolicyName=p)
 
             # Detach managed policies
-            for p in self.iam.list_attached_role_policies(RoleName=role_name)[
-                "AttachedPolicies"
-            ]:
-                self.iam.detach_role_policy(
-                    RoleName=role_name, PolicyArn=p["PolicyArn"]
-                )
+            for p in self.iam.list_attached_role_policies(RoleName=role_name)["AttachedPolicies"]:
+                self.iam.detach_role_policy(RoleName=role_name, PolicyArn=p["PolicyArn"])
 
             # Remove from instance profiles
-            for ip in self.iam.list_instance_profiles_for_role(RoleName=role_name)[
-                "InstanceProfiles"
-            ]:
+            for ip in self.iam.list_instance_profiles_for_role(RoleName=role_name)["InstanceProfiles"]:
                 self.iam.remove_role_from_instance_profile(
                     InstanceProfileName=ip["InstanceProfileName"], RoleName=role_name
                 )
@@ -97,7 +91,7 @@ class IAMRolesCleanup:
                 print(f"   ❌ Error: {e}")
 
     def run(self):
-        print(f"\n🧹 IAM Roles Cleanup")
+        print("\n🧹 IAM Roles Cleanup")
         print(f"   Region: {self.region}")
         print(f"   Account: {self.account_id}")
         self.delete_tenant_roles()

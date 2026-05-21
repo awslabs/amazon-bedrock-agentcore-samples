@@ -1,4 +1,3 @@
-import asyncio
 import os
 
 os.environ["BYPASS_TOOL_CONSENT"] = "true"

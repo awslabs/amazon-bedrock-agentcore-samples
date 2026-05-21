@@ -83,7 +83,7 @@ def main(prompt: str):
 
                     # Print input schema if available
                     if "inputSchema" in tool_spec:
-                        print(f"   Input Schema:")
+                        print("   Input Schema:")
                         import json
 
                         print(f"   {json.dumps(tool_spec['inputSchema'], indent=6)}")
@@ -96,7 +96,7 @@ def main(prompt: str):
                                 value = getattr(tool, attr)
                                 if not callable(value):
                                     print(f"   {attr}: {value}")
-                            except:
+                            except Exception:
                                 pass
             print("-" * 60)
             print()

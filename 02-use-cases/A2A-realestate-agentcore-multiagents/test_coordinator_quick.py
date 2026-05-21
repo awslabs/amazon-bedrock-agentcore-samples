@@ -43,7 +43,7 @@ async def quick_test():
             escaped_arn = quote(arn, safe="")
             url = f"https://bedrock-agentcore.{region}.amazonaws.com/runtimes/{escaped_arn}/invocations/"
             os.environ["PROPERTY_SEARCH_AGENT_URL"] = url
-            print(f"   ✓ Property Search Agent URL set")
+            print("   ✓ Property Search Agent URL set")
 
         elif agent["name"] == "property_booking_agent":
             from urllib.parse import quote
@@ -53,13 +53,13 @@ async def quick_test():
             escaped_arn = quote(arn, safe="")
             url = f"https://bedrock-agentcore.{region}.amazonaws.com/runtimes/{escaped_arn}/invocations/"
             os.environ["PROPERTY_BOOKING_AGENT_URL"] = url
-            print(f"   ✓ Property Booking Agent URL set")
+            print("   ✓ Property Booking Agent URL set")
 
     # Load bearer token
     token_file = os.path.join(script_dir, ".bearer_token")
     with open(token_file, "r", encoding="utf-8") as f:
         os.environ["BEARER_TOKEN"] = f.read().strip()
-    print(f"   ✓ Bearer token loaded")
+    print("   ✓ Bearer token loaded")
 
     # Create coordinator
     print("\n2. Creating coordinator agent...")
@@ -71,9 +71,7 @@ async def quick_test():
     print("   Prompt: 'Find apartments in New York under $4000'")
 
     try:
-        result = await coordinator.invoke_async(
-            "Find apartments in New York under $4000"
-        )
+        result = await coordinator.invoke_async("Find apartments in New York under $4000")
 
         # Extract response text from result
         if hasattr(result, "text"):
@@ -83,7 +81,7 @@ async def quick_test():
         else:
             response = str(result)
 
-        print(f"\n   Response:")
+        print("\n   Response:")
         print(f"   {'-' * 66}")
         print(f"   {response[:500] if len(response) > 500 else response}")
         if len(response) > 500:
@@ -112,7 +110,7 @@ async def quick_test():
         else:
             response = str(result)
 
-        print(f"\n   Response:")
+        print("\n   Response:")
         print(f"   {'-' * 66}")
         print(f"   {response[:500] if len(response) > 500 else response}")
         if len(response) > 500:

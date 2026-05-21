@@ -47,7 +47,7 @@ class S3TablesCleanup:
 
     def delete_tables(self):
         """Delete S3 Tables."""
-        print(f"\n🗑️  Deleting S3 Tables...")
+        print("\n🗑️  Deleting S3 Tables...")
 
         table_bucket_name = self._get_ssm_param("table-bucket-name")
         namespace = self._get_ssm_param("namespace")
@@ -76,7 +76,7 @@ class S3TablesCleanup:
 
     def delete_namespace(self):
         """Delete S3 Tables namespace."""
-        print(f"\n🗑️  Deleting namespace...")
+        print("\n🗑️  Deleting namespace...")
 
         table_bucket_name = self._get_ssm_param("table-bucket-name")
         namespace = self._get_ssm_param("namespace")
@@ -101,7 +101,7 @@ class S3TablesCleanup:
 
     def delete_table_bucket(self):
         """Delete S3 Tables bucket."""
-        print(f"\n🗑️  Deleting S3 Tables bucket...")
+        print("\n🗑️  Deleting S3 Tables bucket...")
 
         table_bucket_name = self._get_ssm_param("table-bucket-name")
 
@@ -121,7 +121,7 @@ class S3TablesCleanup:
 
     def delete_federated_catalog(self):
         """Delete federated catalog from Glue."""
-        print(f"\n🗑️  Deleting federated catalog...")
+        print("\n🗑️  Deleting federated catalog...")
 
         catalog_name = "s3tablescatalog"
 
@@ -135,7 +135,7 @@ class S3TablesCleanup:
 
     def unregister_from_lakeformation(self):
         """Unregister S3 Tables from Lake Formation."""
-        print(f"\n🗑️  Unregistering from Lake Formation...")
+        print("\n🗑️  Unregistering from Lake Formation...")
 
         resource_arn = f"arn:aws:s3tables:{self.region}:{self.account_id}:bucket/*"
 
@@ -150,10 +150,10 @@ class S3TablesCleanup:
     def delete_ssm_parameters(self):
         """Delete SSM parameters."""
         if self.keep_ssm:
-            print(f"\n⏭️  Keeping SSM parameters (--keep-ssm flag)")
+            print("\n⏭️  Keeping SSM parameters (--keep-ssm flag)")
             return
 
-        print(f"\n🗑️  Deleting SSM parameters...")
+        print("\n🗑️  Deleting SSM parameters...")
 
         params_to_delete = [
             "table-bucket-name",
@@ -175,7 +175,7 @@ class S3TablesCleanup:
 
     def run(self):
         """Run the complete cleanup process."""
-        print(f"\n🧹 S3 Tables Cleanup")
+        print("\n🧹 S3 Tables Cleanup")
         print(f"   Region: {self.region}")
         print(f"   Account: {self.account_id}")
 
@@ -197,13 +197,13 @@ class S3TablesCleanup:
         # Step 6: Delete SSM parameters (optional)
         self.delete_ssm_parameters()
 
-        print(f"\n✨ Cleanup complete!")
-        print(f"\n📋 Next Steps:")
-        print(f"   1. Verify Lake Formation admin permissions are still set")
-        print(f"   2. Run: python integrate_s3tables_lakeformation.py")
-        print(f"   3. Run: python setup_s3tables.py")
-        print(f"   4. Run: python load_sample_data.py")
-        print(f"   5. Run: python setup_lakeformation_permissions.py")
+        print("\n✨ Cleanup complete!")
+        print("\n📋 Next Steps:")
+        print("   1. Verify Lake Formation admin permissions are still set")
+        print("   2. Run: python integrate_s3tables_lakeformation.py")
+        print("   3. Run: python setup_s3tables.py")
+        print("   4. Run: python load_sample_data.py")
+        print("   5. Run: python setup_lakeformation_permissions.py")
 
 
 def main():

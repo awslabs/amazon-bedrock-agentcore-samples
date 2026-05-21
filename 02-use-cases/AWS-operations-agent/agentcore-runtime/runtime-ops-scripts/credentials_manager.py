@@ -4,11 +4,9 @@ Credentials Manager - CRUD operations for OAuth2 Credential Providers
 """
 
 import boto3
-import json
 import sys
 import os
 import yaml
-from datetime import datetime
 
 # Add config directory to path
 config_path = os.path.join(
@@ -21,9 +19,7 @@ sys.path.append(config_path)
 class CredentialsManager:
     def __init__(self, region="us-east-1"):
         self.region = region
-        self.control_client = boto3.client(
-            "bedrock-agentcore-control", region_name=region
-        )
+        self.control_client = boto3.client("bedrock-agentcore-control", region_name=region)
 
     def list_providers(self):
         """List all OAuth2 credential providers"""
@@ -52,7 +48,7 @@ class CredentialsManager:
             print(f"   🔍 Debug: Exception type: {type(e)}")
             import traceback
 
-            print(f"   🔍 Debug: Traceback:")
+            print("   🔍 Debug: Traceback:")
             traceback.print_exc()
             return []
 
@@ -60,12 +56,10 @@ class CredentialsManager:
         """Get details of a specific OAuth2 credential provider"""
         try:
             print(f"🔍 Getting provider details: {provider_name}")
-            response = self.control_client.get_oauth2_credential_provider(
-                oauth2CredentialProviderName=provider_name
-            )
+            response = self.control_client.get_oauth2_credential_provider(oauth2CredentialProviderName=provider_name)
 
             provider = response
-            print(f"   📋 Provider Details:")
+            print("   📋 Provider Details:")
             print(f"      • Name: {provider.get('name')}")
             # print(f"      • ARN: {provider.get('oauth2CredentialProviderArn')}")
             print(f"      • Status: {provider.get('status')}")
@@ -77,16 +71,10 @@ class CredentialsManager:
             # Show configuration if available
             config = provider.get("oauth2CredentialProviderConfiguration", {})
             if config:
-                print(f"      • Configuration:")
-                print(
-                    f"        - Client ID: {'Hidden' if config.get('clientId') else 'Not set'}"
-                )
-                print(
-                    f"        - Authorization Server: {'Hidden' if config.get('authorizationServer') else 'Not set'}"
-                )
-                print(
-                    f"        - Token Endpoint: {'Hidden' if config.get('tokenEndpoint') else 'Not set'}"
-                )
+                print("      • Configuration:")
+                print(f"        - Client ID: {'Hidden' if config.get('clientId') else 'Not set'}")
+                print(f"        - Authorization Server: {'Hidden' if config.get('authorizationServer') else 'Not set'}")
+                print(f"        - Token Endpoint: {'Hidden' if config.get('tokenEndpoint') else 'Not set'}")
                 print(
                     f"        - Authorization Endpoint: {'Hidden' if config.get('authorizationEndpoint') else 'Not set'}"
                 )
@@ -129,7 +117,7 @@ class CredentialsManager:
                 oauth2CredentialProviderConfiguration=config,
             )
 
-            print(f"   ✅ Provider created successfully!")
+            print("   ✅ Provider created successfully!")
             print(f"      • Domain: {domain}")
             print(f"      • Scopes: {scopes}")
 
@@ -158,9 +146,7 @@ class CredentialsManager:
             # Try to get client secret from environment or config
             client_secret = os.getenv("OKTA_CLIENT_SECRET")
             if not client_secret:
-                client_secret = client_creds.get("client_secret", "").replace(
-                    "${OKTA_CLIENT_SECRET}", ""
-                )
+                client_secret = client_creds.get("client_secret", "").replace("${OKTA_CLIENT_SECRET}", "")
 
             if not all([domain, client_id, client_secret]):
                 print("❌ Missing required Okta configuration")
@@ -171,9 +157,7 @@ class CredentialsManager:
 
             scopes = [client_creds.get("scope", "api")]
 
-            return self.create_okta_provider(
-                name, domain, client_id, client_secret, scopes
-            )
+            return self.create_okta_provider(name, domain, client_id, client_secret, scopes)
 
         except Exception as e:
             print(f"❌ Error creating provider from config: {e}")
@@ -184,9 +168,7 @@ class CredentialsManager:
         try:
             print(f"🗑️  Deleting OAuth2 provider: {provider_name}")
 
-            self.control_client.delete_oauth2_credential_provider(
-                oauth2CredentialProviderName=provider_name
-            )
+            self.control_client.delete_oauth2_credential_provider(oauth2CredentialProviderName=provider_name)
             print(f"   ✅ Provider deletion initiated: {provider_name}")
 
             return True
@@ -205,7 +187,7 @@ class CredentialsManager:
                 oauth2CredentialProviderConfiguration=config_updates,
             )
 
-            print(f"   ✅ Provider updated successfully!")
+            print("   ✅ Provider updated successfully!")
 
             return response
 
@@ -219,21 +201,13 @@ def main():
         print("Usage:")
         print("  python3 credentials_manager.py list")
         print("  python3 credentials_manager.py get <provider_name>")
-        print(
-            "  python3 credentials_manager.py create-okta <name> <domain> <client_id> <client_secret> [scopes]"
-        )
-        print(
-            "  python3 credentials_manager.py create-from-config <name> [config_file]"
-        )
+        print("  python3 credentials_manager.py create-okta <name> <domain> <client_id> <client_secret> [scopes]")
+        print("  python3 credentials_manager.py create-from-config <name> [config_file]")
         print("  python3 credentials_manager.py delete <provider_name>")
         print("")
         print("Examples:")
-        print(
-            "  python3 credentials_manager.py create-okta my-okta trial-123.okta.com abc123 secret456 api"
-        )
-        print(
-            "  python3 credentials_manager.py create-from-config bac-identity-provider-okta"
-        )
+        print("  python3 credentials_manager.py create-okta my-okta trial-123.okta.com abc123 secret456 api")
+        print("  python3 credentials_manager.py create-from-config bac-identity-provider-okta")
         sys.exit(1)
 
     manager = CredentialsManager()

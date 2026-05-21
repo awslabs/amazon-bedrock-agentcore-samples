@@ -15,11 +15,8 @@ def verify_secret(secret_name, region="us-west-2", test_connection=True):
         # Try with ARN first if the name contains special characters
         try:
             # List secrets to find the ARN if the name has special characters
-            if any(
-                c in secret_name
-                for c in ["!", "@", "#", "$", "%", "^", "&", "*", "(", ")", "+"]
-            ):
-                print(f"Secret name contains special characters, searching for ARN...")
+            if any(c in secret_name for c in ["!", "@", "#", "$", "%", "^", "&", "*", "(", ")", "+"]):
+                print("Secret name contains special characters, searching for ARN...")
                 list_response = secretsmanager.list_secrets(
                     Filters=[
                         {"Key": "name", "Values": [secret_name]},
@@ -28,7 +25,7 @@ def verify_secret(secret_name, region="us-west-2", test_connection=True):
 
                 if list_response["SecretList"]:
                     secret_arn = list_response["SecretList"][0]["ARN"]
-                    print(f"Found secret")
+                    print("Found secret")
                     response = secretsmanager.get_secret_value(SecretId=secret_arn)
                 else:
                     # Try with the name directly as a fallback
@@ -37,16 +34,14 @@ def verify_secret(secret_name, region="us-west-2", test_connection=True):
                 # No special characters, use the name directly
                 response = secretsmanager.get_secret_value(SecretId=secret_name)
         except Exception as e:
-            print(
-                f"Error accessing secret by name, trying to find by partial match: {str(e)}"
-            )
+            print(f"Error accessing secret by name, trying to find by partial match: {str(e)}")
             # Try to find the secret by listing all secrets and matching partially
             list_response = secretsmanager.list_secrets()
             found = False
 
             for s in list_response["SecretList"]:
                 if secret_name in s["Name"]:
-                    print(f"Found matching secret")
+                    print("Found matching secret")
                     response = secretsmanager.get_secret_value(SecretId=s["ARN"])
                     found = True
                     break
@@ -57,9 +52,7 @@ def verify_secret(secret_name, region="us-west-2", test_connection=True):
 
         # Check for required fields
         required_fields = ["host", "dbname", "username", "password", "port"]
-        missing_fields = [
-            field for field in required_fields if field not in secret_data
-        ]
+        missing_fields = [field for field in required_fields if field not in secret_data]
 
         if missing_fields:
             print(f"Warning: Secret is missing fields: {', '.join(missing_fields)}")
@@ -67,10 +60,10 @@ def verify_secret(secret_name, region="us-west-2", test_connection=True):
 
         # Verify password is not empty
         if not secret_data["password"]:
-            print(f"Warning: Secret has an empty password")
+            print("Warning: Secret has an empty password")
             return False
 
-        print(f"Secret verified successfully")
+        print("Secret verified successfully")
 
         # Test database connection if requested
         if test_connection:
@@ -78,7 +71,7 @@ def verify_secret(secret_name, region="us-west-2", test_connection=True):
                 # Import psycopg2 only if needed
                 import psycopg2
 
-                print(f"Testing connection to database")
+                print("Testing connection to database")
                 conn = psycopg2.connect(
                     host=secret_data["host"],
                     database=secret_data["dbname"],
@@ -106,14 +99,12 @@ def verify_secret(secret_name, region="us-west-2", test_connection=True):
             except Exception as e:
                 print(f"Error connecting to database: {str(e)}")
                 print("The secret appears valid but the database connection failed.")
-                print(
-                    "Please verify your database credentials and network connectivity."
-                )
+                print("Please verify your database credentials and network connectivity.")
                 return False
 
         return True
-    except Exception as e:
-        print(f"Error verifying secret")
+    except Exception:
+        print("Error verifying secret")
         return False
 
 
@@ -131,9 +122,7 @@ def setup_database_access(
     2. Creating a secret with the required format
     3. Storing the secret name in SSM Parameter Store
     """
-    print(
-        f"Setting up database access for cluster: {cluster_name} in {environment} environment"
-    )
+    print(f"Setting up database access for cluster: {cluster_name} in {environment} environment")
 
     # Initialize AWS clients
     rds = boto3.client("rds", region_name=region)
@@ -161,20 +150,15 @@ def setup_database_access(
         if existing_secret:
             # Use existing secret
             secret_name = existing_secret
-            print(f"Using existing secret")
+            print("Using existing secret")
 
             try:
                 # Get the existing secret to verify it exists
                 # Try with ARN first if the name contains special characters
                 try:
                     # List secrets to find the ARN if the name has special characters
-                    if any(
-                        c in secret_name
-                        for c in ["!", "@", "#", "$", "%", "^", "&", "*", "(", ")", "+"]
-                    ):
-                        print(
-                            f"Secret name contains special characters, searching for ARN..."
-                        )
+                    if any(c in secret_name for c in ["!", "@", "#", "$", "%", "^", "&", "*", "(", ")", "+"]):
+                        print("Secret name contains special characters, searching for ARN...")
                         list_response = secretsmanager.list_secrets(
                             Filters=[
                                 {"Key": "name", "Values": [secret_name]},
@@ -183,33 +167,23 @@ def setup_database_access(
 
                         if list_response["SecretList"]:
                             secret_arn = list_response["SecretList"][0]["ARN"]
-                            print(f"Found secret")
-                            secret_response = secretsmanager.get_secret_value(
-                                SecretId=secret_arn
-                            )
+                            print("Found secret")
+                            secret_response = secretsmanager.get_secret_value(SecretId=secret_arn)
                         else:
                             # Try with the name directly as a fallback
-                            secret_response = secretsmanager.get_secret_value(
-                                SecretId=secret_name
-                            )
+                            secret_response = secretsmanager.get_secret_value(SecretId=secret_name)
                     else:
                         # No special characters, use the name directly
-                        secret_response = secretsmanager.get_secret_value(
-                            SecretId=secret_name
-                        )
+                        secret_response = secretsmanager.get_secret_value(SecretId=secret_name)
                 except Exception as e:
-                    print(
-                        f"Error accessing secret by name, trying to find by partial match: {str(e)}"
-                    )
+                    print(f"Error accessing secret by name, trying to find by partial match: {str(e)}")
                     # Try to find the secret by listing all secrets and matching partially
                     list_response = secretsmanager.list_secrets()
                     found = False
 
                     for s in list_response["SecretList"]:
                         if secret_name in s["Name"]:
-                            secret_response = secretsmanager.get_secret_value(
-                                SecretId=s["ARN"]
-                            )
+                            secret_response = secretsmanager.get_secret_value(SecretId=s["ARN"])
                             found = True
                             break
 
@@ -222,19 +196,13 @@ def setup_database_access(
                 if "username" in secret_data and "password" in secret_data:
                     username = secret_data["username"]
                     password = secret_data["password"]
-                    print(
-                        f"Successfully retrieved credentials from existing secret for user"
-                    )
+                    print("Successfully retrieved credentials from existing secret for user")
                 else:
-                    print(
-                        f"Error: Existing secret does not contain username and password"
-                    )
+                    print("Error: Existing secret does not contain username and password")
                     return False
 
                 # Create a new secret with the required format
-                new_secret_name = (
-                    f"db-performance-analyzer-{environment}-{uuid.uuid4().hex[:8]}"
-                )
+                new_secret_name = f"db-performance-analyzer-{environment}-{uuid.uuid4().hex[:8]}"
                 secret_value = {
                     "host": endpoint,
                     "dbname": db_name,
@@ -244,22 +212,20 @@ def setup_database_access(
                 }
 
                 # Print confirmation but mask the password
-                print(
-                    f"Creating new secret with endpoint: {endpoint}, port: {port}, database: {db_name}"
-                )
-                print(f"This will not affect the original secret")
+                print(f"Creating new secret with endpoint: {endpoint}, port: {port}, database: {db_name}")
+                print("This will not affect the original secret")
 
                 # Determine whether to create a new secret or use the existing one directly
                 # Check if we're running in non-interactive mode
                 if "--non-interactive" in sys.argv:
                     if "--use-existing-directly" in sys.argv:
-                        print(f"Non-interactive mode: Using existing secret directly")
+                        print("Non-interactive mode: Using existing secret directly")
                         new_secret_name = secret_name
                     elif "--create-new-secret" in sys.argv:
-                        print(f"Non-interactive mode: Creating new secret")
+                        print("Non-interactive mode: Creating new secret")
                     else:
                         # Default behavior in non-interactive mode is to create a new secret
-                        print(f"Non-interactive mode: Creating new secret (default)")
+                        print("Non-interactive mode: Creating new secret (default)")
                 else:
                     # Interactive mode - ask the user
                     choice = input(
@@ -267,26 +233,24 @@ def setup_database_access(
                     )
 
                     if choice == "2":
-                        print(f"Using existing secret directly")
+                        print("Using existing secret directly")
                         # No need to create a new secret, just use the existing one
                         new_secret_name = secret_name
                     elif choice == "1":
-                        print(f"Creating new secret")
+                        print("Creating new secret")
                     else:
                         print("Invalid choice. Operation cancelled.")
                         return False
 
                 # Create the new secret if needed
-                if (
-                    new_secret_name != secret_name
-                ):  # Only create if we're not using the existing secret directly
+                if new_secret_name != secret_name:  # Only create if we're not using the existing secret directly
                     try:
                         secret_response = secretsmanager.create_secret(
                             Name=new_secret_name,
                             Description=f"Database credentials for {cluster_name} in {environment} environment",
                             SecretString=json.dumps(secret_value),
                         )
-                        print(f"Successfully created new secret")
+                        print("Successfully created new secret")
                     except Exception as e:
                         print(f"Error creating new secret: {str(e)}")
                         return False
@@ -295,19 +259,15 @@ def setup_database_access(
                 secret_name = new_secret_name
 
             except secretsmanager.exceptions.ResourceNotFoundException:
-                print(f"Error: Secret not found")
+                print("Error: Secret not found")
                 return False
         else:
             # Create new secret with provided credentials
             if not username or not password:
-                print(
-                    "Error: Username and password are required when not using an existing secret"
-                )
+                print("Error: Username and password are required when not using an existing secret")
                 return False
 
-            secret_name = (
-                f"db-performance-analyzer-{environment}-{uuid.uuid4().hex[:8]}"
-            )
+            secret_name = f"db-performance-analyzer-{environment}-{uuid.uuid4().hex[:8]}"
             secret_value = {
                 "host": endpoint,
                 "dbname": db_name,
@@ -316,9 +276,7 @@ def setup_database_access(
                 "port": port,
             }
 
-            print(
-                f"Creating secret with endpoint: {endpoint}, port: {port}, database: {db_name}"
-            )
+            print(f"Creating secret with endpoint: {endpoint}, port: {port}, database: {db_name}")
 
             # Create the secret
             secret_response = secretsmanager.create_secret(
@@ -329,31 +287,25 @@ def setup_database_access(
 
         # Verify the secret was created correctly
         if not verify_secret(secret_name, region):
-            print(f"Error: Secret verification failed")
+            print("Error: Secret verification failed")
             return False
 
         # Store secret name in SSM Parameter Store
         ssm_parameter_name = f"/AuroraOps/{environment}"
-        ssm.put_parameter(
-            Name=ssm_parameter_name, Value=secret_name, Type="String", Overwrite=True
-        )
+        ssm.put_parameter(Name=ssm_parameter_name, Value=secret_name, Type="String", Overwrite=True)
 
-        print(f"Successfully set up database access:")
-        print(f"- Secret created")
+        print("Successfully set up database access:")
+        print("- Secret created")
         print(f"- SSM Parameter created: {ssm_parameter_name}")
 
         # Save to config file
         import os
 
-        config_dir = os.path.join(
-            os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "config"
-        )
+        config_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "config")
         os.makedirs(config_dir, exist_ok=True)
         with open(os.path.join(config_dir, f"db_{environment}_config.env"), "w") as f:
             f.write(f"export DB_CLUSTER_NAME={cluster_name}\n")
-            f.write(
-                f"# DB_SECRET_NAME stored securely in SSM Parameter Store: {ssm_parameter_name}\n"
-            )
+            f.write(f"# DB_SECRET_NAME stored securely in SSM Parameter Store: {ssm_parameter_name}\n")
             f.write(f"export DB_SSM_PARAMETER={ssm_parameter_name}\n")
             f.write(f"export DB_ENDPOINT={endpoint}\n")
             f.write(f"export DB_PORT={port}\n")
@@ -367,9 +319,7 @@ def setup_database_access(
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        description="Set up database access for DB Performance Analyzer"
-    )
+    parser = argparse.ArgumentParser(description="Set up database access for DB Performance Analyzer")
     parser.add_argument("--cluster-name", required=True, help="RDS/Aurora cluster name")
     parser.add_argument(
         "--environment",
@@ -379,9 +329,7 @@ if __name__ == "__main__":
     )
     parser.add_argument("--username", help="Database username")
     parser.add_argument("--password", help="Database password")
-    parser.add_argument(
-        "--existing-secret", help="Name of existing secret in AWS Secrets Manager"
-    )
+    parser.add_argument("--existing-secret", help="Name of existing secret in AWS Secrets Manager")
     parser.add_argument("--region", default="us-west-2", help="AWS region")
     parser.add_argument(
         "--test-connection",
@@ -418,9 +366,7 @@ if __name__ == "__main__":
 
     # Validate arguments
     if not args.existing_secret and (not args.username or not args.password):
-        parser.error(
-            "Either --existing-secret or both --username and --password must be provided"
-        )
+        parser.error("Either --existing-secret or both --username and --password must be provided")
 
     success = setup_database_access(
         args.cluster_name,

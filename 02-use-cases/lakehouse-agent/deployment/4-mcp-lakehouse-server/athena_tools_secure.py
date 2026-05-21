@@ -17,7 +17,6 @@ import boto3
 import time
 import json
 from typing import List, Dict, Any, Optional
-from botocore.exceptions import ClientError
 
 
 class SecureAthenaClaimsTools:
@@ -63,9 +62,7 @@ class SecureAthenaClaimsTools:
         # Cache for schema information
         self._schema_cache = None
 
-    def _get_athena_client(
-        self, user_id: str, tenant_credentials: Optional[Dict[str, str]] = None
-    ):
+    def _get_athena_client(self, user_id: str, tenant_credentials: Optional[Dict[str, str]] = None):
         """
         Get Athena client with tenant-specific credentials from interceptor.
 
@@ -156,25 +153,19 @@ class SecureAthenaClaimsTools:
             start_time = time.time()
 
             while time.time() - start_time < max_wait_time:
-                status_response = athena_client.get_query_execution(
-                    QueryExecutionId=query_execution_id
-                )
+                status_response = athena_client.get_query_execution(QueryExecutionId=query_execution_id)
                 status = status_response["QueryExecution"]["Status"]["State"]
 
                 if status == "SUCCEEDED":
                     break
                 elif status in ["FAILED", "CANCELLED"]:
-                    error = status_response["QueryExecution"]["Status"].get(
-                        "StateChangeReason", "Unknown error"
-                    )
+                    error = status_response["QueryExecution"]["Status"].get("StateChangeReason", "Unknown error")
                     raise Exception(f"Query failed: {error}")
 
                 time.sleep(0.5)
 
             # Get results
-            results_response = athena_client.get_query_results(
-                QueryExecutionId=query_execution_id, MaxResults=100
-            )
+            results_response = athena_client.get_query_results(QueryExecutionId=query_execution_id, MaxResults=100)
 
             # Parse results
             rows = results_response["ResultSet"]["Rows"]
@@ -195,9 +186,7 @@ class SecureAthenaClaimsTools:
         except Exception as e:
             raise Exception(f"Error executing secure Athena query: {str(e)}")
 
-    def _is_policyholder_role(
-        self, tenant_credentials: Optional[Dict[str, str]] = None
-    ) -> bool:
+    def _is_policyholder_role(self, tenant_credentials: Optional[Dict[str, str]] = None) -> bool:
         """Check if the tenant role is a policyholder (restricted column access)."""
         if not tenant_credentials:
             return False
@@ -250,9 +239,7 @@ class SecureAthenaClaimsTools:
             query += " ORDER BY submitted_date DESC LIMIT 50"
 
             # Execute with tenant-scoped credentials
-            results = self._execute_query(
-                user_id, query, tenant_credentials=tenant_credentials
-            )
+            results = self._execute_query(user_id, query, tenant_credentials=tenant_credentials)
 
             return {
                 "success": True,
@@ -305,9 +292,7 @@ class SecureAthenaClaimsTools:
                         AND (user_id='{user_id}' OR adjuster_user_id='{user_id}')
                 """
 
-            results = self._execute_query(
-                user_id, query, tenant_credentials=tenant_credentials
-            )
+            results = self._execute_query(user_id, query, tenant_credentials=tenant_credentials)
 
             if results and len(results) > 0:
                 return {
@@ -330,9 +315,7 @@ class SecureAthenaClaimsTools:
                 "message": f"Error retrieving claim: {str(e)}",
             }
 
-    def get_claims_summary(
-        self, user_id: str, tenant_credentials: Optional[Dict[str, str]] = None
-    ) -> Dict[str, Any]:
+    def get_claims_summary(self, user_id: str, tenant_credentials: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
         """
         Get claims summary - automatically scoped to user by Lake Formation.
 
@@ -363,9 +346,7 @@ class SecureAthenaClaimsTools:
                 WHERE {where_clause}
             """
 
-            results = self._execute_query(
-                user_id, query, tenant_credentials=tenant_credentials
-            )
+            results = self._execute_query(user_id, query, tenant_credentials=tenant_credentials)
 
             if results and len(results) > 0:
                 summary = results[0]
@@ -374,12 +355,8 @@ class SecureAthenaClaimsTools:
                     "user_id": user_id,
                     "summary": {
                         "total_claims": int(summary.get("total_claims", 0)),
-                        "total_amount_claimed": float(
-                            summary.get("total_amount", 0) or 0
-                        ),
-                        "total_amount_approved": float(
-                            summary.get("total_approved", 0) or 0
-                        ),
+                        "total_amount_claimed": float(summary.get("total_amount", 0) or 0),
+                        "total_amount_approved": float(summary.get("total_approved", 0) or 0),
                         "pending_claims": int(summary.get("pending_claims", 0)),
                         "approved_claims": int(summary.get("approved_claims", 0)),
                         "denied_claims": int(summary.get("denied_claims", 0)),
@@ -410,9 +387,7 @@ class SecureAthenaClaimsTools:
                 "message": f"Error retrieving summary: {str(e)}",
             }
 
-    def get_database_schema(
-        self, tenant_credentials: Optional[Dict[str, str]] = None
-    ) -> Dict[str, Any]:
+    def get_database_schema(self, tenant_credentials: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
         """
         Get database schema from Glue Data Catalog.
 
@@ -442,28 +417,20 @@ class SecureAthenaClaimsTools:
                 # Get table bucket name from SSM
                 try:
                     ssm_client = boto3.client("ssm", region_name=self.region)
-                    response = ssm_client.get_parameter(
-                        Name="/app/lakehouse-agent/table-bucket-name"
-                    )
+                    response = ssm_client.get_parameter(Name="/app/lakehouse-agent/table-bucket-name")
                     table_bucket_name = response["Parameter"]["Value"]
-                    catalog_id = (
-                        f"{self.account_id}:s3tablescatalog/{table_bucket_name}"
-                    )
+                    catalog_id = f"{self.account_id}:s3tablescatalog/{table_bucket_name}"
                     print(f"📚 Querying schema from S3 Tables catalog: {catalog_id}")
                 except Exception as e:
                     print(f"⚠️  Could not get table bucket name from SSM: {e}")
                     # Fallback: try to construct from account_id
                     table_bucket_name = f"lakehouse-{self.account_id}"
-                    catalog_id = (
-                        f"{self.account_id}:s3tablescatalog/{table_bucket_name}"
-                    )
+                    catalog_id = f"{self.account_id}:s3tablescatalog/{table_bucket_name}"
                     print(f"📚 Using fallback catalog ID: {catalog_id}")
             else:
                 # For default Glue catalog, use account ID
                 catalog_id = self.account_id
-                print(
-                    f"📚 Querying schema from default catalog (account: {catalog_id})"
-                )
+                print(f"📚 Querying schema from default catalog (account: {catalog_id})")
 
             # Get all tables in the database
             get_tables_params = {
@@ -580,9 +547,7 @@ class SecureAthenaClaimsTools:
                     schema_description += f"  Description: {table['description']}\n"
                 schema_description += "  Columns:\n"
                 for col in table["columns"]:
-                    partition_marker = (
-                        " (partition key)" if col.get("is_partition") else ""
-                    )
+                    partition_marker = " (partition key)" if col.get("is_partition") else ""
                     comment = f" - {col['comment']}" if col.get("comment") else ""
                     schema_description += f"    - {col['name']} ({col['type']}){partition_marker}{comment}\n"
 
@@ -622,18 +587,14 @@ SQL Query:"""
 
             # Clean up the SQL (remove markdown code blocks if present)
             if generated_sql.startswith("```sql"):
-                generated_sql = (
-                    generated_sql.replace("```sql", "").replace("```", "").strip()
-                )
+                generated_sql = generated_sql.replace("```sql", "").replace("```", "").strip()
             elif generated_sql.startswith("```"):
                 generated_sql = generated_sql.replace("```", "").strip()
 
             print(f"🤖 Generated SQL:\n{generated_sql}")
 
             # Step 3: Execute the generated SQL
-            results = self._execute_query(
-                user_id, generated_sql, tenant_credentials=tenant_credentials
-            )
+            results = self._execute_query(user_id, generated_sql, tenant_credentials=tenant_credentials)
 
             return {
                 "success": True,

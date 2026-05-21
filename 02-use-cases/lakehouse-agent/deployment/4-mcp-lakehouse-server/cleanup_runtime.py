@@ -28,9 +28,7 @@ from utils.aws_session_utils import get_aws_session
 class MCPRuntimeCleanup:
     def __init__(self, keep_ssm=False):
         session, self.region, self.account_id = get_aws_session()
-        self.bedrock = boto3.client(
-            "bedrock-agentcore-control", region_name=self.region
-        )
+        self.bedrock = boto3.client("bedrock-agentcore-control", region_name=self.region)
         self.iam = boto3.client("iam")
         self.ecr = boto3.client("ecr", region_name=self.region)
         self.codebuild = boto3.client("codebuild", region_name=self.region)
@@ -39,9 +37,7 @@ class MCPRuntimeCleanup:
 
     def _get_ssm_param(self, name, default=None):
         try:
-            return self.ssm.get_parameter(Name=f"/app/lakehouse-agent/{name}")[
-                "Parameter"
-            ]["Value"]
+            return self.ssm.get_parameter(Name=f"/app/lakehouse-agent/{name}")["Parameter"]["Value"]
         except Exception:
             return default
 
@@ -72,12 +68,8 @@ class MCPRuntimeCleanup:
         try:
             for p in self.iam.list_role_policies(RoleName=role_name)["PolicyNames"]:
                 self.iam.delete_role_policy(RoleName=role_name, PolicyName=p)
-            for p in self.iam.list_attached_role_policies(RoleName=role_name)[
-                "AttachedPolicies"
-            ]:
-                self.iam.detach_role_policy(
-                    RoleName=role_name, PolicyArn=p["PolicyArn"]
-                )
+            for p in self.iam.list_attached_role_policies(RoleName=role_name)["AttachedPolicies"]:
+                self.iam.detach_role_policy(RoleName=role_name, PolicyArn=p["PolicyArn"])
             self.iam.delete_role(RoleName=role_name)
             print(f"   ✅ Deleted role: {role_name}")
         except Exception as e:
@@ -140,7 +132,7 @@ class MCPRuntimeCleanup:
                 print(f"   ❌ Error: {e}")
 
     def run(self):
-        print(f"\n🧹 MCP Server Runtime Cleanup")
+        print("\n🧹 MCP Server Runtime Cleanup")
         print(f"   Region: {self.region}")
         print(f"   Account: {self.account_id}")
         self.delete_runtime()

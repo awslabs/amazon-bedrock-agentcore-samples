@@ -51,9 +51,7 @@ def create_gateway(gateway_name, gateway_desc):
         }
     }
 
-    search_config = {
-        "mcp": {"searchType": "SEMANTIC", "supportedVersions": ["2025-03-26"]}
-    }
+    search_config = {"mcp": {"searchType": "SEMANTIC", "supportedVersions": ["2025-03-26"]}}
 
     response = agentcore_client.create_gateway(
         name=gateway_name,
@@ -101,17 +99,13 @@ def delete_gatewaytarget(gateway_id):
     print(f"Found {len(response['items'])} targets for the gateway")
 
     for target in response["items"]:
-        print(
-            f"Deleting target with Name: {target['name']} and Id: {target['targetId']}"
-        )
+        print(f"Deleting target with Name: {target['name']} and Id: {target['targetId']}")
 
-        response = agentcore_client.delete_gateway_target(
-            gatewayIdentifier=gateway_id, targetId=target["targetId"]
-        )
+        response = agentcore_client.delete_gateway_target(gatewayIdentifier=gateway_id, targetId=target["targetId"])
 
 
 def delete_gateway(gateway_id):
-    response = agentcore_client.delete_gateway(gatewayIdentifier=gateway_id)
+    agentcore_client.delete_gateway(gatewayIdentifier=gateway_id)
 
 
 def create_egress_oauth_provider(gateway_name):
@@ -119,9 +113,7 @@ def create_egress_oauth_provider(gateway_name):
 
     try:
         agentcore_client.delete_oauth2_credential_provider(name=cred_provider_name)
-        print(
-            f"Deleted existing egress credential provider with name {cred_provider_name}"
-        )
+        print(f"Deleted existing egress credential provider with name {cred_provider_name}")
         time.sleep(15)
     except botocore.exceptions.ClientError as err:
         raise Exception(
@@ -182,21 +174,17 @@ if __name__ == "__main__":
 
     if args.op_type.lower() == "create":
         print(f"Create gateway with name: {args.gateway_name}")
-        gatewayId = create_gateway(
-            gateway_name=args.gateway_name, gateway_desc=args.gateway_name
-        )
+        gatewayId = create_gateway(gateway_name=args.gateway_name, gateway_desc=args.gateway_name)
         print(f"Gateway created with id: {gatewayId}. Creating credential provider.")
 
         credProviderARN = create_egress_oauth_provider(gateway_name=args.gateway_name)
         print("Egress credential provider created. Creating gateway target.")
 
-        targetId = create_gatewaytarget(
-            gateway_id=gatewayId, cred_provider_arn=credProviderARN
-        )
+        targetId = create_gatewaytarget(gateway_id=gatewayId, cred_provider_arn=credProviderARN)
         print(f"Target created with id: {targetId}")
     elif args.op_type.lower() == "delete":
         print(f"Find and delete targets for gateway id: {args.gateway_id}")
         delete_gatewaytarget(gateway_id=args.gateway_id)
         print(f"Delete gateway with id: {args.gateway_id}")
         delete_gateway(gateway_id=args.gateway_id)
-        print(f"Gateway deleted")
+        print("Gateway deleted")

@@ -19,9 +19,7 @@ sys.path.append(str(project_root))
 from shared.config_manager import AgentCoreConfigManager
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 
@@ -90,15 +88,13 @@ def update_dynamic_config_with_yq(gateway_id, gateway_arn, gateway_url):
         return False
 
 
-def create_bedrock_agentcore_gateway(
-    config_manager, environment, gateway_name=None, description=None
-):
+def create_bedrock_agentcore_gateway(config_manager, environment, gateway_name=None, description=None):
     """Create Bedrock AgentCore Gateway using configuration"""
 
     # Get configuration from config manager
     base_settings = config_manager.get_base_settings()
     oauth_settings = config_manager.get_oauth_settings()
-    dynamic_config = config_manager.get_dynamic_config()
+    config_manager.get_dynamic_config()
 
     # Extract AWS configuration
     aws_config = {
@@ -123,13 +119,11 @@ def create_bedrock_agentcore_gateway(
         }
     }
 
-    print(f"Using Configuration:")
+    print("Using Configuration:")
     print(f"   Environment: {environment}")
     print(f"   AWS Region: {aws_config['region']}")
     print(f"   AWS Account: {aws_config['account_id']}")
-    print(
-        f"   Gateway Execution Role (bac-execution-role): {gateway_execution_role_arn}"
-    )
+    print(f"   Gateway Execution Role (bac-execution-role): {gateway_execution_role_arn}")
 
     # Use default gateway name if not provided
     if not gateway_name:
@@ -143,9 +137,7 @@ def create_bedrock_agentcore_gateway(
     session = boto3.Session(region_name=aws_config["region"])
 
     # Use bedrock-agentcore-control client
-    bedrock_agentcore_client = session.client(
-        "bedrock-agentcore-control", region_name=aws_config["region"]
-    )
+    bedrock_agentcore_client = session.client("bedrock-agentcore-control", region_name=aws_config["region"])
 
     # Prepare request
     request_data = {
@@ -173,7 +165,7 @@ def create_bedrock_agentcore_gateway(
         # Update the dynamic config with the gateway information
         update_dynamic_config_with_yq(gateway_id, gateway_arn, gateway_url)
 
-        print(f"\nGateway Created Successfully!")
+        print("\nGateway Created Successfully!")
         print(f"   Gateway ID: {gateway_id}")
         print(f"   Gateway URL: {gateway_url}")
         print(f"   Status: {gateway_status}")
@@ -208,9 +200,9 @@ def main():
             config_manager, environment, args.name, args.description
         )
 
-        print(f"\n✅ Gateway creation completed successfully!")
+        print("\n✅ Gateway creation completed successfully!")
         print(f"   Gateway ID: {gateway_id}")
-        print(f"   Use 'python list-gateways.py' to see all gateways")
+        print("   Use 'python list-gateways.py' to see all gateways")
         print(f"   Use 'python get-gateway.py --gateway-id {gateway_id}' for details")
 
     except Exception as e:

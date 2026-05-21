@@ -5,7 +5,6 @@ Based on: https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/gateway-
 """
 
 import functools
-import logging
 import sys
 import os
 from typing import AsyncGenerator, Optional
@@ -15,9 +14,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 # Add project root to path
-project_root = os.path.dirname(
-    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-)
+project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 sys.path.append(project_root)
 
 # AWS documented imports
@@ -42,7 +39,6 @@ from agent_shared.responses import (
     format_error_response,
 )
 
-import asyncio
 import time
 from agent_shared import mylogger
 
@@ -252,11 +248,7 @@ Remember: Progress updates with emojis are MANDATORY, not optional! Follow the e
         headers = {"Authorization": f"Bearer {access_token}"}
 
         # EXACT AWS pattern: Create MCP client with functools.partial
-        mcp_client = MCPClient(
-            functools.partial(
-                _create_streamable_http_transport, url=gateway_url, headers=headers
-            )
-        )
+        mcp_client = MCPClient(functools.partial(_create_streamable_http_transport, url=gateway_url, headers=headers))
 
         # EXACT AWS pattern: Use context manager
         with mcp_client:
@@ -272,9 +264,7 @@ Remember: Progress updates with emojis are MANDATORY, not optional! Follow the e
             logger.info(f"All tools count: {len(all_tools)}")
             logger.info("$$$$$$$$$$$$$$$$$$$$")
 
-            agent = Agent(
-                model=bedrock_model, tools=all_tools, system_prompt=system_prompt
-            )
+            agent = Agent(model=bedrock_model, tools=all_tools, system_prompt=system_prompt)
             async for event in agent.stream_async(prompt):
                 # logger.info("=" * 50)
                 # logger.info(f"Raw event: {event}")
@@ -358,13 +348,13 @@ async def stream_response(
         model = BedrockModel(**model_settings, streaming=True, timeout=900)
 
         # Use AWS documented streaming pattern
-        last_event_time = time.time()
+        time.time()
 
         async for event in execute_agent_streaming(model, final_message):
             # Format and yield response
             formatted = format_diy_response(event)
             yield formatted
-            last_event_time = time.time()
+            time.time()
 
             # Collect text for memory
             text = extract_text_from_event(event)
@@ -446,9 +436,7 @@ async def invoke_agent(request: InvocationRequest):
 
     except Exception as e:
         logger.error(f"💥 Request failed: {e}")
-        raise HTTPException(
-            status_code=500, detail=f"Agent processing failed: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Agent processing failed: {str(e)}")
 
 
 @app.get("/ping")

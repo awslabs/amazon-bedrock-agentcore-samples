@@ -18,9 +18,7 @@ sys.path.append(str(project_root))
 from shared.config_manager import AgentCoreConfigManager
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 
@@ -57,19 +55,17 @@ def list_gateways(config_manager, environment):
         "profile": None,  # Use default credentials
     }
 
-    print(f"Using Configuration:")
+    print("Using Configuration:")
     print(f"   Environment: {environment}")
     print(f"   AWS Region: {aws_config['region']}")
     print(f"   AWS Account: {aws_config['account_id']}")
-    print(f"   Endpoint Type: default")
+    print("   Endpoint Type: default")
 
     # Create AWS session
     session = boto3.Session(region_name=aws_config["region"])
 
     # Use bedrock-agentcore-control client
-    bedrock_agentcore_client = session.client(
-        "bedrock-agentcore-control", region_name=aws_config["region"]
-    )
+    bedrock_agentcore_client = session.client("bedrock-agentcore-control", region_name=aws_config["region"])
 
     print("\nFetching live gateways from AWS Bedrock AgentCore API...")
 
@@ -81,11 +77,11 @@ def list_gateways(config_manager, environment):
 
         gateways = response.get("items", [])
 
-        print(f"\nLive Data Summary:")
+        print("\nLive Data Summary:")
         print(f"   Total Gateways: {len(gateways)}")
 
         if gateways:
-            print(f"\nLive Gateways from AWS:")
+            print("\nLive Gateways from AWS:")
             print("=" * 60)
 
             for i, gateway in enumerate(gateways, 1):
@@ -110,7 +106,7 @@ def list_gateways(config_manager, environment):
                 print(f"   Status: {status}")
                 print(f"   Protocol: {protocol}")
                 print(f"   Authorizer: {authorizer}")
-                print(f"   Role ARN: Unknown")  # Not returned in list response
+                print("   Role ARN: Unknown")  # Not returned in list response
                 print(f"   MCP Endpoint: {mcp_endpoint}")
                 print(f"   Description: {description}")
                 print(f"   Created: {created_at}")
@@ -141,16 +137,16 @@ def main():
     print("List Bedrock AgentCore Gateways (Live Data)")
     print("=" * 45)
     print(f"Environment: {environment}")
-    print(f"Endpoint: default")
+    print("Endpoint: default")
     print(f"Timestamp: {datetime.now().isoformat()}")
-    print(f"Data Source: AWS Bedrock AgentCore API (Live)")
+    print("Data Source: AWS Bedrock AgentCore API (Live)")
 
     try:
         # List gateways
         gateways = list_gateways(config_manager, environment)
 
         if not gateways:
-            print(f"\n⚠️  No gateways found")
+            print("\n⚠️  No gateways found")
             sys.exit(0)
 
     except Exception as e:

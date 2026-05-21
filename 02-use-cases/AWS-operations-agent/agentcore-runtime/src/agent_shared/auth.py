@@ -2,7 +2,6 @@
 # IMPORTS
 # ============================================================================
 
-import logging
 from .config import get_oauth_settings
 from . import mylogger
 
@@ -59,9 +58,7 @@ def setup_oauth():
             continue
 
     if requires_access_token is None:
-        logger.warning(
-            "⚠️ bedrock_agentcore.identity not available in any import path - OAuth disabled"
-        )
+        logger.warning("⚠️ bedrock_agentcore.identity not available in any import path - OAuth disabled")
         return False
 
     try:
@@ -118,7 +115,7 @@ def get_m2m_token():
         logger.info("🔑 Requesting M2M token from OAuth provider...")
         token = _token_getter()
         if token:
-            logger.info(f"✅ M2M token obtained successfully")
+            logger.info("✅ M2M token obtained successfully")
             logger.info(f"🔑 Token length: {len(token)} characters")
             logger.info(f"🔑 Token starts with: {token[:20]}...")
             return token

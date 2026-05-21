@@ -76,7 +76,7 @@ def test_agent_simple():
         # Generate session ID
         session_id = f"test-session-{uuid.uuid4().hex}"
 
-        print(f"\n📤 Sending request...")
+        print("\n📤 Sending request...")
         print(f"   URL: {runtime_url}")
         print(f"   Prompt: {payload['prompt']}")
         print(f"   Session ID: {session_id}")
@@ -101,7 +101,7 @@ def test_agent_simple():
         response.raise_for_status()
         response_data = response.json()
 
-        print(f"\n✅ Agent response:")
+        print("\n✅ Agent response:")
         print(json.dumps(response_data, indent=2))
         return True
 

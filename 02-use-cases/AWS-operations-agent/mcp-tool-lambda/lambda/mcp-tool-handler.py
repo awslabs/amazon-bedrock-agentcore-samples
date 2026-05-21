@@ -6,21 +6,15 @@ Updated: 2025-08-02 - Added optimized system prompt with python_repl and shell t
 
 import json
 import logging
-import os
 from datetime import datetime
 from typing import Dict, Any, Optional
 
 # Import Strands components at module level
-from strands import Agent, tool
+from strands import Agent
 from strands.models import BedrockModel
 from strands_tools import (
     use_aws,
-    shell,
-    calculator,
-    think,
     current_time,
-    stop,
-    handoff_to_user,
 )
 
 STRANDS_AVAILABLE = True

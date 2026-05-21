@@ -89,9 +89,7 @@ class CognitoSetup:
                 self.cognito.describe_resource_server(
                     UserPoolId=user_pool_id, Identifier=self.resource_server_identifier
                 )
-                print(
-                    f"✓ Resource server already exists: {self.resource_server_identifier}"
-                )
+                print(f"✓ Resource server already exists: {self.resource_server_identifier}")
                 return
             except ClientError as e:
                 if "ResourceNotFoundException" not in str(e):
@@ -111,13 +109,11 @@ class CognitoSetup:
                 ],
             )
             print(f"✓ Created resource server: {self.resource_server_identifier}")
-            print(
-                f"  Scopes: {self.resource_server_identifier}/invoke, {self.resource_server_identifier}/read"
-            )
+            print(f"  Scopes: {self.resource_server_identifier}/invoke, {self.resource_server_identifier}/read")
 
         except ClientError as e:
             if "ResourceExistsException" in str(e):
-                print(f"✓ Resource server already exists")
+                print("✓ Resource server already exists")
             else:
                 print(f"✗ Error creating resource server: {e}")
                 sys.exit(1)
@@ -130,17 +126,13 @@ class CognitoSetup:
 
         try:
             # Check for existing clients
-            clients = self.cognito.list_user_pool_clients(
-                UserPoolId=user_pool_id, MaxResults=60
-            )
+            clients = self.cognito.list_user_pool_clients(UserPoolId=user_pool_id, MaxResults=60)
 
             for client in clients.get("UserPoolClients", []):
                 if client["ClientName"] == self.app_client_name:
                     client_id = client["ClientId"]
                     # Get client details including secret
-                    client_details = self.cognito.describe_user_pool_client(
-                        UserPoolId=user_pool_id, ClientId=client_id
-                    )
+                    client_details = self.cognito.describe_user_pool_client(UserPoolId=user_pool_id, ClientId=client_id)
                     client_secret = client_details["UserPoolClient"].get("ClientSecret")
                     print(f"✓ Found existing app client: {client_id}")
                     return client_id, client_secret
@@ -167,10 +159,8 @@ class CognitoSetup:
             client_id = response["UserPoolClient"]["ClientId"]
             client_secret = response["UserPoolClient"]["ClientSecret"]
             print(f"✓ Created app client: {client_id}")
-            print(f"  OAuth Flows: client_credentials")
-            print(
-                f"  OAuth Scopes: {self.resource_server_identifier}/invoke, {self.resource_server_identifier}/read"
-            )
+            print("  OAuth Flows: client_credentials")
+            print(f"  OAuth Scopes: {self.resource_server_identifier}/invoke, {self.resource_server_identifier}/read")
 
             return client_id, client_secret
 
@@ -199,21 +189,15 @@ class CognitoSetup:
                 pass
 
             # Create domain
-            self.cognito.create_user_pool_domain(
-                Domain=domain_name, UserPoolId=user_pool_id
-            )
+            self.cognito.create_user_pool_domain(Domain=domain_name, UserPoolId=user_pool_id)
             print(f"✓ Created domain: {domain_name}")
-            print(
-                f"  Token endpoint: https://{domain_name}.auth.{self.region}.amazoncognito.com/oauth2/token"
-            )
+            print(f"  Token endpoint: https://{domain_name}.auth.{self.region}.amazoncognito.com/oauth2/token")
 
             return domain_name
 
         except ClientError as e:
-            if "InvalidParameterException" in str(e) or "DomainExistsException" in str(
-                e
-            ):
-                print(f"⚠️  Domain already exists or invalid, continuing...")
+            if "InvalidParameterException" in str(e) or "DomainExistsException" in str(e):
+                print("⚠️  Domain already exists or invalid, continuing...")
                 return None
             else:
                 print(f"⚠️  Warning creating domain: {e}")
@@ -221,7 +205,9 @@ class CognitoSetup:
 
     def get_discovery_url(self, user_pool_id):
         """Get OpenID Connect discovery URL."""
-        discovery_url = f"https://cognito-idp.{self.region}.amazonaws.com/{user_pool_id}/.well-known/openid-configuration"
+        discovery_url = (
+            f"https://cognito-idp.{self.region}.amazonaws.com/{user_pool_id}/.well-known/openid-configuration"
+        )
         return discovery_url
 
     def get_token_endpoint(self, user_pool_id):
@@ -282,9 +268,7 @@ class CognitoSetup:
 
         if domain:
             config["domain"] = domain
-            config["oauth_token_url"] = (
-                f"https://{domain}.auth.{self.region}.amazoncognito.com/oauth2/token"
-            )
+            config["oauth_token_url"] = f"https://{domain}.auth.{self.region}.amazoncognito.com/oauth2/token"
 
         # Save configuration
         config_file = self.save_configuration(config)
@@ -315,9 +299,7 @@ def main():
     import argparse
 
     parser = argparse.ArgumentParser(description="Setup Cognito for A2A Authentication")
-    parser.add_argument(
-        "--region", default="us-east-1", help="AWS region (default: us-east-1)"
-    )
+    parser.add_argument("--region", default="us-east-1", help="AWS region (default: us-east-1)")
     args = parser.parse_args()
 
     setup = CognitoSetup(region=args.region)

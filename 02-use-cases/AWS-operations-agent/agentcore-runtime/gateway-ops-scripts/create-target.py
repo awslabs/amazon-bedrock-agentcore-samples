@@ -18,23 +18,15 @@ sys.path.append(str(project_root))
 from shared.config_manager import AgentCoreConfigManager
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 
 def parse_arguments():
     """Parse command line arguments"""
-    parser = argparse.ArgumentParser(
-        description="Create Bedrock AgentCore Gateway Target"
-    )
-    parser.add_argument(
-        "--gateway-id", help="Gateway ID (uses live gateway discovery if not specified)"
-    )
-    parser.add_argument(
-        "--lambda-arn", help="Lambda ARN (uses config default if not specified)"
-    )
+    parser = argparse.ArgumentParser(description="Create Bedrock AgentCore Gateway Target")
+    parser.add_argument("--gateway-id", help="Gateway ID (uses live gateway discovery if not specified)")
+    parser.add_argument("--lambda-arn", help="Lambda ARN (uses config default if not specified)")
     parser.add_argument("--name", help="Target name (optional)")
     parser.add_argument("--description", help="Target description (optional)")
     parser.add_argument(
@@ -78,9 +70,7 @@ def select_gateway(bedrock_agentcore_client, config_manager, gateway_id=None):
     if gateway_id:
         # Verify specified gateway exists
         try:
-            response = bedrock_agentcore_client.get_gateway(
-                gatewayIdentifier=gateway_id
-            )
+            response = bedrock_agentcore_client.get_gateway(gatewayIdentifier=gateway_id)
             gateway_info = {
                 "gatewayId": gateway_id,
                 "name": response.get("name", "Unknown"),
@@ -102,9 +92,7 @@ def select_gateway(bedrock_agentcore_client, config_manager, gateway_id=None):
 
             # Verify the gateway exists in AWS
             try:
-                response = bedrock_agentcore_client.get_gateway(
-                    gatewayIdentifier=config_gateway_id
-                )
+                response = bedrock_agentcore_client.get_gateway(gatewayIdentifier=config_gateway_id)
                 gateway_info = {
                     "gatewayId": config_gateway_id,
                     "name": response.get("name", "Unknown"),
@@ -170,7 +158,7 @@ def create_gateway_target(
     # Create credential provider configuration
     credential_config = [{"credentialProviderType": "GATEWAY_IAM_ROLE"}]
 
-    print(f"Using Configuration:")
+    print("Using Configuration:")
     print(f"   Environment: {environment}")
     print(f"   AWS Region: {aws_config['region']}")
     print(f"   AWS Account: {aws_config['account_id']}")
@@ -188,14 +176,10 @@ def create_gateway_target(
     session = boto3.Session(region_name=aws_config["region"])
 
     # Use bedrock-agentcore-control client
-    bedrock_agentcore_client = session.client(
-        "bedrock-agentcore-control", region_name=aws_config["region"]
-    )
+    bedrock_agentcore_client = session.client("bedrock-agentcore-control", region_name=aws_config["region"])
 
     # Select gateway (now uses config first)
-    gateway_id, gateway_info = select_gateway(
-        bedrock_agentcore_client, config_manager, gateway_id
-    )
+    gateway_id, gateway_info = select_gateway(bedrock_agentcore_client, config_manager, gateway_id)
     if not gateway_id:
         sys.exit(1)
 
@@ -204,7 +188,7 @@ def create_gateway_target(
         dynamic_config = config_manager.get_dynamic_config()
         lambda_arn = dynamic_config["mcp_lambda"]["function_arn"]
 
-    print(f"\nTarget Configuration:")
+    print("\nTarget Configuration:")
     print(f"  Gateway ID: {gateway_id}")
     print(f"  Gateway Name: {gateway_info.get('name', 'Unknown')}")
     print(f"  Lambda ARN: {lambda_arn}")
@@ -229,7 +213,7 @@ def create_gateway_target(
         target_id = response["targetId"]
         target_status = response.get("status", "Unknown")
 
-        print(f"\nTarget Created Successfully!")
+        print("\nTarget Created Successfully!")
         print(f"   Target ID: {target_id}")
         print(f"   Status: {target_status}")
         print(f"   Gateway ID: {gateway_id}")
@@ -258,7 +242,7 @@ def main():
     print("🚀 Create Bedrock AgentCore Gateway Target")
     print("=" * 45)
     print(f"Environment: {environment}")
-    print(f"Endpoint: default")
+    print("Endpoint: default")
     print(f"Timestamp: {datetime.now().isoformat()}")
 
     try:
@@ -272,10 +256,8 @@ def main():
             args.description,
         )
 
-        print(f"\n✅ Target creation completed successfully!")
-        print(
-            f"   Use 'python list-targets.py --gateway-id {args.gateway_id or 'GATEWAY_ID'}' to see targets"
-        )
+        print("\n✅ Target creation completed successfully!")
+        print(f"   Use 'python list-targets.py --gateway-id {args.gateway_id or 'GATEWAY_ID'}' to see targets")
         print(
             f"   Use 'python get-target.py --gateway-id {args.gateway_id or 'GATEWAY_ID'} --target-id {target_id}' for details"
         )

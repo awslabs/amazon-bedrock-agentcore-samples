@@ -4,9 +4,7 @@ import boto3
 from boto3.dynamodb.conditions import Attr
 import traceback
 
-bedrock_runtime = boto3.client(
-    "bedrock-agentcore", region_name=os.environ["AWS_REGION"]
-)
+bedrock_runtime = boto3.client("bedrock-agentcore", region_name=os.environ["AWS_REGION"])
 
 # Lazy initialization for DynamoDB (only needed if AGGREGATION_TABLE_NAME is set)
 _dynamodb = None
@@ -79,9 +77,7 @@ def check_token_limit(tenant_id: str) -> tuple:
 
         if fail_closed:
             # Fail closed: deny request on error
-            print(
-                f"FAIL_CLOSED mode: Denying request due to error checking token limit"
-            )
+            print("FAIL_CLOSED mode: Denying request due to error checking token limit")
             return False, {
                 "error": "Unable to verify token limit",
                 "tenant_id": tenant_id,
@@ -89,9 +85,7 @@ def check_token_limit(tenant_id: str) -> tuple:
             }
         else:
             # Fail open: allow request on error (default behavior)
-            print(
-                f"FAIL_OPEN mode: Allowing request despite error checking token limit"
-            )
+            print("FAIL_OPEN mode: Allowing request despite error checking token limit")
             return True, {}
 
 
@@ -109,9 +103,7 @@ def get_tenant_id_from_agent(agent_runtime_arn: str) -> str:
     # Get agent details table name from environment
     agent_details_table_name = os.environ.get("AGENT_DETAILS_TABLE_NAME")
     if not agent_details_table_name:
-        print(
-            "WARNING: AGENT_DETAILS_TABLE_NAME not configured, cannot look up tenant ID"
-        )
+        print("WARNING: AGENT_DETAILS_TABLE_NAME not configured, cannot look up tenant ID")
         return None
 
     try:
@@ -135,13 +127,11 @@ def get_tenant_id_from_agent(agent_runtime_arn: str) -> str:
             return None
 
     except Exception as e:
-        print(
-            f"ERROR: Failed to look up tenant ID for agent {agent_runtime_arn}: {str(e)}"
-        )
+        print(f"ERROR: Failed to look up tenant ID for agent {agent_runtime_arn}: {str(e)}")
         return None
 
 
-def get_tenant_id_from_agent(agent_runtime_arn: str) -> str:
+def get_tenant_id_from_agent(agent_runtime_arn: str) -> str:  # noqa: F811
     """
     Look up the tenant ID associated with an agent from the agent details table.
     This prevents clients from bypassing token limits by omitting or spoofing tenant IDs.
@@ -156,9 +146,7 @@ def get_tenant_id_from_agent(agent_runtime_arn: str) -> str:
         # Get agent details table name from environment
         agent_details_table_name = os.environ.get("AGENT_DETAILS_TABLE_NAME")
         if not agent_details_table_name:
-            print(
-                "WARNING: AGENT_DETAILS_TABLE_NAME not configured, cannot look up tenant ID"
-            )
+            print("WARNING: AGENT_DETAILS_TABLE_NAME not configured, cannot look up tenant ID")
             return None
 
         dynamodb = boto3.resource("dynamodb")
@@ -166,11 +154,7 @@ def get_tenant_id_from_agent(agent_runtime_arn: str) -> str:
 
         # Extract agent runtime ID from ARN
         # ARN format: arn:aws:bedrock-agentcore:region:account:agent/agent-runtime-id
-        agent_runtime_id = (
-            agent_runtime_arn.split("/")[-1]
-            if "/" in agent_runtime_arn
-            else agent_runtime_arn
-        )
+        agent_runtime_id = agent_runtime_arn.split("/")[-1] if "/" in agent_runtime_arn else agent_runtime_arn
 
         # Scan for the agent (we need to find by agentRuntimeId which is the sort key)
         # In production, consider adding a GSI on agentRuntimeId for better performance
@@ -295,18 +279,14 @@ def lambda_handler(event, context):
                 # Check if this is a fail-closed error (service unavailable) or actual limit exceeded
                 if "error" in usage_info:
                     # Fail-closed: service error, return 503
-                    print(
-                        f"Service error checking token limit for tenant {tenant_id}: {usage_info}"
-                    )
+                    print(f"Service error checking token limit for tenant {tenant_id}: {usage_info}")
                     return {
                         "statusCode": 503,
                         "headers": CORS_HEADERS,
                         "body": json.dumps(
                             {
                                 "error": usage_info.get("error", "Service unavailable"),
-                                "message": usage_info.get(
-                                    "message", "Unable to process request at this time."
-                                ),
+                                "message": usage_info.get("message", "Unable to process request at this time."),
                                 "tenant_id": tenant_id,
                             }
                         ),

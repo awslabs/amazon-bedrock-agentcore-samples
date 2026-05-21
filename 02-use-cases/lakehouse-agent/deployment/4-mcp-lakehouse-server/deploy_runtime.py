@@ -47,17 +47,13 @@ class SSMConfig:
         # Load configuration from SSM
         self.s3_bucket_name = self._get_parameter("/app/lakehouse-agent/s3-bucket-name")
         self.database_name = self._get_parameter("/app/lakehouse-agent/database-name")
-        self.catalog_name = self._get_parameter(
-            "/app/lakehouse-agent/catalog-name", required=False
-        )
-        self.cognito_user_pool_arn = self._get_parameter(
-            "/app/lakehouse-agent/cognito-user-pool-arn"
-        )
+        self.catalog_name = self._get_parameter("/app/lakehouse-agent/catalog-name", required=False)
+        self.cognito_user_pool_arn = self._get_parameter("/app/lakehouse-agent/cognito-user-pool-arn")
 
         # Constants
         self.log_level = "DEBUG"
 
-        print(f"✅ Configuration loaded from SSM Parameter Store")
+        print("✅ Configuration loaded from SSM Parameter Store")
         print(f"   Region: {self.region}")
         print(f"   Account: {self.account_id}")
 
@@ -69,7 +65,7 @@ class SSMConfig:
         except self.ssm.exceptions.ParameterNotFound:
             if required:
                 print(f"❌ SSM parameter {parameter_name} not found")
-                print(f"   Please run the setup scripts first")
+                print("   Please run the setup scripts first")
                 sys.exit(1)
             return None
         except Exception as e:
@@ -80,13 +76,11 @@ class SSMConfig:
 
     def is_valid(self) -> bool:
         """Check if all required configuration is present."""
-        return all(
-            [self.s3_bucket_name, self.database_name, self.region, self.account_id]
-        )
+        return all([self.s3_bucket_name, self.database_name, self.region, self.account_id])
 
     def print_status(self):
         """Print configuration status."""
-        print(f"\n📋 Configuration Status:")
+        print("\n📋 Configuration Status:")
         print(f"   AWS Account: {self.account_id}")
         print(f"   Region: {self.region}")
         print(f"   S3 Bucket: {self.s3_bucket_name}")
@@ -256,26 +250,18 @@ def create_runtime_role(config: SSMConfig):
 
         # Detach managed policies
         try:
-            attached_policies = iam.list_attached_role_policies(RoleName=role_name)[
-                "AttachedPolicies"
-            ]
+            attached_policies = iam.list_attached_role_policies(RoleName=role_name)["AttachedPolicies"]
             for policy in attached_policies:
                 print(f"   Detaching managed policy: {policy['PolicyArn']}")
-                iam.detach_role_policy(
-                    RoleName=role_name, PolicyArn=policy["PolicyArn"]
-                )
+                iam.detach_role_policy(RoleName=role_name, PolicyArn=policy["PolicyArn"])
         except Exception as e:
             print(f"   ⚠️  Error detaching managed policies: {e}")
 
         # Remove from instance profiles
         try:
-            instance_profiles = iam.list_instance_profiles_for_role(RoleName=role_name)[
-                "InstanceProfiles"
-            ]
+            instance_profiles = iam.list_instance_profiles_for_role(RoleName=role_name)["InstanceProfiles"]
             for profile in instance_profiles:
-                print(
-                    f"   Removing from instance profile: {profile['InstanceProfileName']}"
-                )
+                print(f"   Removing from instance profile: {profile['InstanceProfileName']}")
                 iam.remove_role_from_instance_profile(
                     InstanceProfileName=profile["InstanceProfileName"],
                     RoleName=role_name,
@@ -286,7 +272,7 @@ def create_runtime_role(config: SSMConfig):
         # Delete the role
         try:
             iam.delete_role(RoleName=role_name)
-            print(f"   ✅ Deleted existing role")
+            print("   ✅ Deleted existing role")
         except Exception as e:
             print(f"   ❌ Error deleting role: {e}")
             raise
@@ -321,10 +307,10 @@ def deploy_to_runtime(config: SSMConfig, role_arn: str):
     runtime_name = "lakehouse_mcp_server"  # Must use underscores, not hyphens
 
     try:
-        print(f"\n🚀 Deploying MCP server to AgentCore Runtime...")
+        print("\n🚀 Deploying MCP server to AgentCore Runtime...")
         print(f"   Name: {runtime_name}")
         print(f"   Region: {config.region}")
-        print(f"   This will build a Docker container and deploy it...")
+        print("   This will build a Docker container and deploy it...")
 
         # Build environment variables
         env_vars = {
@@ -336,7 +322,7 @@ def deploy_to_runtime(config: SSMConfig, role_arn: str):
         if config.catalog_name:
             env_vars["CATALOG_NAME"] = config.catalog_name
 
-        print(f"\n📋 Environment variables:")
+        print("\n📋 Environment variables:")
         for key, value in env_vars.items():
             print(f"   {key}: {value}")
 
@@ -344,7 +330,7 @@ def deploy_to_runtime(config: SSMConfig, role_arn: str):
         agentcore_runtime = Runtime()
 
         # Configure the runtime
-        print(f"\n🔧 Configuring AgentCore Runtime...")
+        print("\n🔧 Configuring AgentCore Runtime...")
 
         # Extract role name from ARN (format: arn:aws:iam::account:role/RoleName)
         role_name = role_arn.split("/")[-1]
@@ -355,14 +341,12 @@ def deploy_to_runtime(config: SSMConfig, role_arn: str):
         discovery_url = f"{issuer}/.well-known/openid-configuration"
 
         # Get M2M client ID
-        response = config.ssm.get_parameter(
-            Name="/app/lakehouse-agent/cognito-m2m-client-id"
-        )
+        response = config.ssm.get_parameter(Name="/app/lakehouse-agent/cognito-m2m-client-id")
         cognito_m2m_client_id = response["Parameter"]["Value"]
         allowed_clients = [cognito_m2m_client_id]
-        print(f"\n🔐 JWT Authentication Configuration:")
+        print("\n🔐 JWT Authentication Configuration:")
         print(f"   Discovery URL: {discovery_url}")
-        print(f"   Allowed Clients:")
+        print("   Allowed Clients:")
         print(f"      - {cognito_m2m_client_id} (M2M only)")
         auth_config = {
             "customJWTAuthorizer": {
@@ -383,26 +367,26 @@ def deploy_to_runtime(config: SSMConfig, role_arn: str):
             agent_name=runtime_name,
             authorizer_configuration=auth_config,
         )
-        print(f"✅ Configuration complete with JWT authentication")
+        print("✅ Configuration complete with JWT authentication")
 
         # Launch the runtime (builds Docker image and deploys)
-        print(f"\n🚀 Launching to AgentCore Runtime...")
-        print(f"   This may take several minutes...")
+        print("\n🚀 Launching to AgentCore Runtime...")
+        print("   This may take several minutes...")
         launch_result = agentcore_runtime.launch(env_vars=env_vars)
 
         runtime_arn = launch_result.agent_arn
         runtime_id = launch_result.agent_id
 
-        print(f"\n✅ MCP Server deployed successfully!")
+        print("\n✅ MCP Server deployed successfully!")
         print(f"   Runtime ARN: {runtime_arn}")
         print(f"   Runtime ID: {runtime_id}")
 
         # Note about JWT authentication
-        print(f"\n⚠️  Important: Configure JWT Authentication")
-        print(f"   The runtime is deployed but needs JWT authentication configured.")
-        print(f"   Run the configuration script:")
-        print(f"   cd mcp-lakehouse-server")
-        print(f"   python configure_runtime_auth.py")
+        print("\n⚠️  Important: Configure JWT Authentication")
+        print("   The runtime is deployed but needs JWT authentication configured.")
+        print("   Run the configuration script:")
+        print("   cd mcp-lakehouse-server")
+        print("   python configure_runtime_auth.py")
 
         return {
             "runtime_arn": runtime_arn,
@@ -465,8 +449,8 @@ def main():
         print("=" * 70)
 
         print("\n✅ Runtime configuration stored in SSM Parameter Store:")
-        print(f"   /app/lakehouse-agent/mcp-server-runtime-arn")
-        print(f"   /app/lakehouse-agent/mcp-server-runtime-id")
+        print("   /app/lakehouse-agent/mcp-server-runtime-arn")
+        print("   /app/lakehouse-agent/mcp-server-runtime-id")
 
         print("\n📋 Next Steps:")
         print("   1. Deploy the Gateway and Interceptor (Step 7)")

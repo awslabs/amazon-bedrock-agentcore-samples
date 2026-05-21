@@ -8,9 +8,8 @@ It can be run locally or deployed to Bedrock AgentCore.
 import os
 import sys
 import time
-import json
 from datetime import datetime, timedelta
-from typing import Optional, Dict, List
+from typing import Optional
 from strands import Agent, tool
 from strands.multiagent.a2a import A2AServer
 import uuid
@@ -26,9 +25,7 @@ from common.utils.logging_config import (
 )
 
 # Configure structured logging
-logger = setup_logging(
-    "property_booking_agent", level=os.getenv("LOG_LEVEL", "INFO"), use_json=True
-)
+logger = setup_logging("property_booking_agent", level=os.getenv("LOG_LEVEL", "INFO"), use_json=True)
 
 # Mock booking database
 MOCK_BOOKINGS = {}
@@ -74,7 +71,7 @@ def create_booking(
 
     try:
         logger.info(
-            f"Creating property booking",
+            "Creating property booking",
             extra={
                 "event": "tool_execution_start",
                 "tool_name": "create_booking",
@@ -247,7 +244,7 @@ def check_booking_status(booking_id: str) -> str:
 
     try:
         logger.info(
-            f"Checking booking status",
+            "Checking booking status",
             extra={
                 "event": "tool_execution_start",
                 "tool_name": "check_booking_status",
@@ -339,7 +336,7 @@ def cancel_booking(booking_id: str, reason: Optional[str] = None) -> str:
 
     try:
         logger.info(
-            f"Cancelling booking",
+            "Cancelling booking",
             extra={
                 "event": "tool_execution_start",
                 "tool_name": "cancel_booking",
@@ -450,7 +447,7 @@ def list_customer_bookings(customer_email: str) -> str:
 
     try:
         logger.info(
-            f"Listing customer bookings",
+            "Listing customer bookings",
             extra={
                 "event": "tool_execution_start",
                 "tool_name": "list_customer_bookings",
@@ -576,9 +573,7 @@ if __name__ == "__main__":
     server = create_a2a_server()
 
     logger.info("Starting Property Booking Agent A2A server...")
-    logger.info(
-        f"Agent card available at: http://{server.host}:{server.port}/.well-known/agent-card.json"
-    )
+    logger.info(f"Agent card available at: http://{server.host}:{server.port}/.well-known/agent-card.json")
 
     # Start the server
     server.serve()

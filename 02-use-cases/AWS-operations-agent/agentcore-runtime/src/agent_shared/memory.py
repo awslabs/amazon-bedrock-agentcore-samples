@@ -2,7 +2,6 @@
 # IMPORTS
 # ============================================================================
 
-import logging
 from datetime import datetime
 from .config import load_configs
 
@@ -40,7 +39,7 @@ def setup_memory():
         agentcore_config, _ = load_configs()
 
         # Get memory configuration
-        memory_config = agentcore_config.get("memory", {})
+        agentcore_config.get("memory", {})
         region = agentcore_config.get("aws", {}).get("region", "us-east-1")
 
         # Create memory client
@@ -92,9 +91,7 @@ def get_conversation_context(session_id, actor_id, max_results=3):
         memory_id = memory_config.get("id")
 
         if not memory_id:
-            logger.info(
-                "📝 Memory ID not found in configuration - no context available"
-            )
+            logger.info("📝 Memory ID not found in configuration - no context available")
             return ""
 
         # Get last few conversation turns using AgentCore Memory API
@@ -112,9 +109,7 @@ def get_conversation_context(session_id, actor_id, max_results=3):
                         f"🔍 DEBUG: Turn {i} Message {j}: role={message.get('role')}, content_type={type(message.get('content'))}"
                     )
                     if isinstance(message.get("content"), dict):
-                        logger.info(
-                            f"🔍 DEBUG: Content dict keys: {list(message.get('content', {}).keys())}"
-                        )
+                        logger.info(f"🔍 DEBUG: Content dict keys: {list(message.get('content', {}).keys())}")
 
             # Format context from memory turns
             context_parts = []
@@ -178,9 +173,7 @@ def save_conversation(session_id, user_message, assistant_response, actor_id="us
         memory_id = memory_config.get("id")
 
         if not memory_id:
-            logger.warning(
-                "⚠️ Memory ID not found in configuration - conversation not saved"
-            )
+            logger.warning("⚠️ Memory ID not found in configuration - conversation not saved")
             return
 
         # Create event with conversation messages using AgentCore Memory API
@@ -195,9 +188,7 @@ def save_conversation(session_id, user_message, assistant_response, actor_id="us
         )
 
         event_id = result.get("eventId", "unknown")
-        logger.info(
-            f"💾 Conversation saved to memory (event: {event_id}, session: {session_id})"
-        )
+        logger.info(f"💾 Conversation saved to memory (event: {event_id}, session: {session_id})")
 
     except Exception as e:
         logger.error(f"❌ Failed to save conversation: {e}")

@@ -3,15 +3,14 @@
 import asyncio
 import sys
 from pathlib import Path
-from typing import Dict, List, TypedDict, Annotated, Optional, Any
+from typing import Dict, List, TypedDict, Annotated, Optional
 from datetime import datetime
 
-import langgraph
 import langgraph.graph as lg_graph
 
 StateGraph = lg_graph.StateGraph
 END = lg_graph.END
-from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.messages import HumanMessage
 from langchain_aws import ChatBedrockConverse
 from rich.console import Console
 from rich.panel import Panel
@@ -28,6 +27,8 @@ from interactive_tools.browser_viewer import BrowserViewerServer
 from config import AgentConfig
 from browser_tools import BrowserTools
 from analysis_tools import AnalysisTools
+import boto3
+from bedrock_agentcore._utils.endpoints import get_control_plane_endpoint
 
 
 console = Console()
@@ -93,9 +94,7 @@ class CompetitiveIntelligenceAgent:
         self.browser_tools.create_browser_with_recording()
 
         # Initialize LLM
-        self.llm = ChatBedrockConverse(
-            model_id=self.config.llm_model_id, region_name=self.config.region
-        )
+        self.llm = ChatBedrockConverse(model_id=self.config.llm_model_id, region_name=self.config.region)
         console.print(f"✅ LLM initialized: {self.config.llm_model_id}")
 
         # Initialize browser session with CDP
@@ -118,9 +117,7 @@ class CompetitiveIntelligenceAgent:
         self._build_graph()
 
         console.print("\n[green]✅ Agent initialized successfully![/green]")
-        console.print(
-            f"[cyan]📹 Recording to: {self.browser_tools.recording_path}[/cyan]"
-        )
+        console.print(f"[cyan]📹 Recording to: {self.browser_tools.recording_path}[/cyan]")
 
     async def resume_session(self, session_id: str) -> Optional[Dict]:
         """Resume a previous analysis session using Code Interpreter persistence."""
@@ -170,9 +167,7 @@ class CompetitiveIntelligenceAgent:
 
         self.graph = workflow.compile()
 
-    async def analyze_competitor(
-        self, state: CompetitiveIntelState
-    ) -> CompetitiveIntelState:
+    async def analyze_competitor(self, state: CompetitiveIntelState) -> CompetitiveIntelState:
         """Analyze a single competitor with enhanced features."""
         competitors = state["competitors"]
         current_index = state.get("current_competitor_index", 0)
@@ -203,50 +198,34 @@ class CompetitiveIntelligenceAgent:
                 competitor_data["navigation"] = nav_result
 
                 # Step 2: Take initial screenshot
-                progress.update(
-                    task, description="Taking homepage screenshot...", advance=1
-                )
+                progress.update(task, description="Taking homepage screenshot...", advance=1)
                 try:
-                    await self.browser_tools.take_annotated_screenshot(
-                        f"{competitor['name']} - Homepage"
-                    )
+                    await self.browser_tools.take_annotated_screenshot(f"{competitor['name']} - Homepage")
                 except Exception as e:
                     console.print(f"[yellow]⚠️ Screenshot error: {e}[/yellow]")
 
                 # Step 3: Intelligent discovery
-                progress.update(
-                    task, description="Discovering page sections...", advance=1
-                )
+                progress.update(task, description="Discovering page sections...", advance=1)
                 try:
-                    discovered_sections = (
-                        await self.browser_tools.intelligent_scroll_and_discover()
-                    )
+                    discovered_sections = await self.browser_tools.intelligent_scroll_and_discover()
                     competitor_data["discovered_sections"] = discovered_sections
-                    console.print(
-                        f"[green]Found {len(discovered_sections)} key sections[/green]"
-                    )
+                    console.print(f"[green]Found {len(discovered_sections)} key sections[/green]")
                 except Exception as e:
                     console.print(f"[yellow]⚠️ Discovery error: {e}[/yellow]")
                     competitor_data["discovered_sections"] = []
 
                 # Step 4: Try to navigate to pricing page
-                progress.update(
-                    task, description="Looking for pricing page...", advance=1
-                )
+                progress.update(task, description="Looking for pricing page...", advance=1)
                 try:
                     found_pricing = await self.browser_tools.smart_navigation("pricing")
                     if found_pricing:
                         await asyncio.sleep(3)  # Let page load
-                        await self.browser_tools.take_annotated_screenshot(
-                            f"{competitor['name']} - Pricing Page"
-                        )
+                        await self.browser_tools.take_annotated_screenshot(f"{competitor['name']} - Pricing Page")
                 except Exception as e:
                     console.print(f"[yellow]⚠️ Navigation error: {e}[/yellow]")
 
                 # Step 5: Advanced form interaction (NEW)
-                progress.update(
-                    task, description="Checking for interactive elements...", advance=1
-                )
+                progress.update(task, description="Checking for interactive elements...", advance=1)
                 try:
                     form_data = await self.browser_tools.analyze_forms_and_inputs()
                     competitor_data["interactive_elements"] = form_data
@@ -254,9 +233,7 @@ class CompetitiveIntelligenceAgent:
                     console.print(f"[yellow]⚠️ Form analysis error: {e}[/yellow]")
 
                 # Step 6: Extract pricing
-                progress.update(
-                    task, description="Extracting pricing information...", advance=1
-                )
+                progress.update(task, description="Extracting pricing information...", advance=1)
                 try:
                     pricing_result = await self.browser_tools.extract_pricing_info()
                     competitor_data["pricing"] = pricing_result
@@ -265,38 +242,26 @@ class CompetitiveIntelligenceAgent:
                     competitor_data["pricing"] = {"status": "error", "error": str(e)}
 
                 # Step 7: Extract features
-                progress.update(
-                    task, description="Extracting product features...", advance=1
-                )
+                progress.update(task, description="Extracting product features...", advance=1)
                 try:
-                    features_result = (
-                        await self.browser_tools.extract_product_features()
-                    )
+                    features_result = await self.browser_tools.extract_product_features()
                     competitor_data["features"] = features_result
                 except Exception as e:
                     console.print(f"[yellow]⚠️ Feature extraction error: {e}[/yellow]")
                     competitor_data["features"] = {"status": "error", "error": str(e)}
 
                 # Step 8: Multi-page workflow (NEW)
-                progress.update(
-                    task, description="Exploring additional pages...", advance=1
-                )
+                progress.update(task, description="Exploring additional pages...", advance=1)
                 try:
-                    additional_pages = (
-                        await self.browser_tools.explore_multi_page_workflow(
-                            ["features", "docs", "api", "about"]
-                        )
+                    additional_pages = await self.browser_tools.explore_multi_page_workflow(
+                        ["features", "docs", "api", "about"]
                     )
                     competitor_data["additional_pages"] = additional_pages
                 except Exception as e:
-                    console.print(
-                        f"[yellow]⚠️ Multi-page exploration error: {e}[/yellow]"
-                    )
+                    console.print(f"[yellow]⚠️ Multi-page exploration error: {e}[/yellow]")
 
                 # Step 9: Capture performance metrics
-                progress.update(
-                    task, description="Capturing performance metrics...", advance=1
-                )
+                progress.update(task, description="Capturing performance metrics...", advance=1)
                 try:
                     metrics = await self.browser_tools.capture_performance_metrics()
                     competitor_data["performance_metrics"] = metrics
@@ -306,16 +271,12 @@ class CompetitiveIntelligenceAgent:
                 # Step 10: Save session state (NEW)
                 progress.update(task, description="Saving session state...", advance=1)
                 try:
-                    self.analysis_tools.save_session_state(
-                        f"competitor_{current_index}", competitor_data
-                    )
+                    self.analysis_tools.save_session_state(f"competitor_{current_index}", competitor_data)
                 except Exception as e:
                     console.print(f"[yellow]⚠️ Session save error: {e}[/yellow]")
 
             except Exception as e:
-                console.print(
-                    f"[red]❌ Critical error analyzing {competitor['name']}: {e}[/red]"
-                )
+                console.print(f"[red]❌ Critical error analyzing {competitor['name']}: {e}[/red]")
                 competitor_data = {
                     "status": "error",
                     "error": str(e),
@@ -330,9 +291,7 @@ class CompetitiveIntelligenceAgent:
             **competitor_data,
             "apis_discovered": len(self.browser_tools._discovered_apis),
             "screenshots_taken": len(self.browser_tools._screenshots_taken),
-            "status": "success"
-            if competitor_data.get("navigation", {}).get("status") == "success"
-            else "error",
+            "status": "success" if competitor_data.get("navigation", {}).get("status") == "success" else "error",
         }
 
         # Analyze this competitor's data
@@ -346,72 +305,43 @@ class CompetitiveIntelligenceAgent:
             analysis_result = {"status": "error", "error": str(e)}
 
         console.print(f"[green]✅ Completed: {competitor['name']}[/green]")
-        console.print(
-            f"  • Discovered {len(competitor_data.get('discovered_sections', []))} sections"
-        )
-        console.print(
-            f"  • Found {len(self.browser_tools._discovered_apis)} API endpoints"
-        )
-        console.print(
-            f"  • Took {len(self.browser_tools._screenshots_taken)} screenshots"
-        )
-        console.print(
-            f"  • Explored {len(competitor_data.get('additional_pages', []))} additional pages"
-        )
+        console.print(f"  • Discovered {len(competitor_data.get('discovered_sections', []))} sections")
+        console.print(f"  • Found {len(self.browser_tools._discovered_apis)} API endpoints")
+        console.print(f"  • Took {len(self.browser_tools._screenshots_taken)} screenshots")
+        console.print(f"  • Explored {len(competitor_data.get('additional_pages', []))} additional pages")
 
         # Update state
         return {
             **state,
             "current_competitor_index": current_index + 1,
             "competitor_data": all_competitor_data,
-            "total_screenshots": state.get("total_screenshots", 0)
-            + len(self.browser_tools._screenshots_taken),
-            "discovered_apis": state.get("discovered_apis", [])
-            + self.browser_tools._discovered_apis,
-            "messages": state["messages"]
-            + [
-                HumanMessage(
-                    content=f"Analyzed {competitor['name']}: {analysis_result}"
-                )
-            ],
+            "total_screenshots": state.get("total_screenshots", 0) + len(self.browser_tools._screenshots_taken),
+            "discovered_apis": state.get("discovered_apis", []) + self.browser_tools._discovered_apis,
+            "messages": state["messages"] + [HumanMessage(content=f"Analyzed {competitor['name']}: {analysis_result}")],
         }
 
-    async def intelligent_multi_tool_analysis(
-        self, state: CompetitiveIntelState
-    ) -> CompetitiveIntelState:
+    async def intelligent_multi_tool_analysis(self, state: CompetitiveIntelState) -> CompetitiveIntelState:
         """NEW: Intelligent analysis that orchestrates browser and code interpreter together."""
-        console.print(
-            "\n[bold cyan]🤖 Running Intelligent Multi-Tool Analysis...[/bold cyan]"
-        )
+        console.print("\n[bold cyan]🤖 Running Intelligent Multi-Tool Analysis...[/bold cyan]")
 
         competitor_data = state.get("competitor_data", {})
 
         # Step 1: Use Code Interpreter to analyze patterns
-        console.print(
-            "[cyan]Step 1: Analyzing data patterns with Code Interpreter...[/cyan]"
-        )
+        console.print("[cyan]Step 1: Analyzing data patterns with Code Interpreter...[/cyan]")
         pattern_analysis = self.analysis_tools.analyze_pricing_patterns(competitor_data)
 
         # Step 2: Based on analysis, browser performs targeted actions
         if pattern_analysis.get("missing_data"):
-            console.print(
-                "[cyan]Step 2: Browser collecting missing data points...[/cyan]"
-            )
-            for competitor_name, missing_items in pattern_analysis[
-                "missing_data"
-            ].items():
+            console.print("[cyan]Step 2: Browser collecting missing data points...[/cyan]")
+            for competitor_name, missing_items in pattern_analysis["missing_data"].items():
                 if "pricing_tiers" in missing_items:
                     # Browser goes back to find more detailed pricing
-                    console.print(
-                        f"[yellow]Revisiting {competitor_name} for detailed pricing...[/yellow]"
-                    )
+                    console.print(f"[yellow]Revisiting {competitor_name} for detailed pricing...[/yellow]")
                     # This would navigate back if needed
 
         # Step 3: Code Interpreter processes combined data
         console.print("[cyan]Step 3: Processing combined insights...[/cyan]")
-        combined_insights = self.analysis_tools.generate_competitive_insights(
-            competitor_data, pattern_analysis
-        )
+        combined_insights = self.analysis_tools.generate_competitive_insights(competitor_data, pattern_analysis)
 
         # Step 4: Use AWS CLI in Code Interpreter to save results
         console.print("[cyan]Step 4: Using AWS CLI to archive results...[/cyan]")
@@ -456,9 +386,7 @@ class CompetitiveIntelligenceAgent:
 
         for i, result in enumerate(results):
             if isinstance(result, Exception):
-                console.print(
-                    f"[red]Error analyzing {competitors[i]['name']}: {result}[/red]"
-                )
+                console.print(f"[red]Error analyzing {competitors[i]['name']}: {result}[/red]")
                 all_competitor_data[competitors[i]["name"]] = {
                     "status": "error",
                     "error": str(result),
@@ -470,10 +398,7 @@ class CompetitiveIntelligenceAgent:
                 total_screenshots += result.get("screenshots", 0)
 
                 # Track session information for replaying
-                if (
-                    "browser_session_id" in result["data"]
-                    and result["data"]["browser_session_id"]
-                ):
+                if "browser_session_id" in result["data"] and result["data"]["browser_session_id"]:
                     parallel_sessions.append(
                         {
                             "name": competitor_name,
@@ -486,16 +411,14 @@ class CompetitiveIntelligenceAgent:
         end_time = datetime.now()
         duration = (end_time - start_time).total_seconds()
 
-        console.print(f"\n[green]✅ Parallel analysis complete![/green]")
+        console.print("\n[green]✅ Parallel analysis complete![/green]")
         console.print(
             f"  • Successfully analyzed: {sum(1 for d in all_competitor_data.values() if d.get('status') != 'error')}/{len(competitors)}"
         )
         console.print(f"  • Total APIs discovered: {len(total_apis)}")
         console.print(f"  • Total screenshots: {total_screenshots}")
         console.print(f"  • Execution time: {duration:.2f} seconds")
-        console.print(
-            f"  • Average time per competitor: {duration / len(competitors):.2f} seconds"
-        )
+        console.print(f"  • Average time per competitor: {duration / len(competitors):.2f} seconds")
 
         return {
             "competitor_data": all_competitor_data,
@@ -509,18 +432,14 @@ class CompetitiveIntelligenceAgent:
             },
         }
 
-    async def _analyze_single_competitor_async(
-        self, competitor: Dict, index: int
-    ) -> Dict:
+    async def _analyze_single_competitor_async(self, competitor: Dict, index: int) -> Dict:
         """Helper method for parallel competitor analysis."""
-        console.print(
-            f"[cyan]🔄 Starting parallel analysis for {competitor['name']}...[/cyan]"
-        )
+        console.print(f"[cyan]🔄 Starting parallel analysis for {competitor['name']}...[/cyan]")
 
         # Create a new browser session for this competitor
         browser_session = BrowserTools(self.config)
-        browser_id = browser_session.create_browser_with_recording()
-        session = await browser_session.initialize_browser_session(self.llm)
+        browser_session.create_browser_with_recording()
+        await browser_session.initialize_browser_session(self.llm)
 
         # Track the browser session for potential cleanup
         self.parallel_browser_sessions.append(browser_session)
@@ -535,9 +454,7 @@ class CompetitiveIntelligenceAgent:
             sections = await browser_session.intelligent_scroll_and_discover()
 
             # Take screenshots
-            screenshot_result = await browser_session.take_annotated_screenshot(
-                f"{competitor['name']} - Parallel Analysis"
-            )
+            await browser_session.take_annotated_screenshot(f"{competitor['name']} - Parallel Analysis")
 
             result = {
                 "data": {
@@ -556,15 +473,11 @@ class CompetitiveIntelligenceAgent:
                 "screenshots": len(browser_session._screenshots_taken),
             }
 
-            console.print(
-                f"[green]✅ Completed parallel analysis for {competitor['name']}[/green]"
-            )
+            console.print(f"[green]✅ Completed parallel analysis for {competitor['name']}[/green]")
             return result
 
         except Exception as e:
-            console.print(
-                f"[red]Error in parallel analysis for {competitor['name']}: {e}[/red]"
-            )
+            console.print(f"[red]Error in parallel analysis for {competitor['name']}: {e}[/red]")
             raise e
         finally:
             # Cleanup the browser session
@@ -584,17 +497,13 @@ class CompetitiveIntelligenceAgent:
 
     async def process_data(self, state: CompetitiveIntelState) -> CompetitiveIntelState:
         """Process all collected data and create visualizations."""
-        console.print(
-            "\n[bold yellow]📊 Processing all competitor data...[/bold yellow]"
-        )
+        console.print("\n[bold yellow]📊 Processing all competitor data...[/bold yellow]")
 
         competitor_data = state.get("competitor_data", {})
 
         # Create comparison visualization
         console.print("[cyan]Creating visualizations...[/cyan]")
-        viz_result = self.analysis_tools.create_comparison_visualization(
-            competitor_data
-        )
+        viz_result = self.analysis_tools.create_comparison_visualization(competitor_data)
 
         # Save final session state
         console.print("[cyan]Saving final session state...[/cyan]")
@@ -608,32 +517,24 @@ class CompetitiveIntelligenceAgent:
             "timestamp": datetime.now().isoformat(),
             "parallel_mode": state.get("parallel_mode", False),
             # Don't include full messages to avoid serialization issues
-            "message_count": len(state.get("messages", []))
-            if "messages" in state
-            else 0,
+            "message_count": len(state.get("messages", [])) if "messages" in state else 0,
         }
 
         # Save session state with serializable content
-        self.analysis_tools.save_session_state(
-            f"final_{session_id}", serializable_state
-        )
+        self.analysis_tools.save_session_state(f"final_{session_id}", serializable_state)
 
         return {
             **state,
             "analysis_results": {
                 "visualization": viz_result,
                 "total_competitors": len(competitor_data),
-                "successful_analyses": sum(
-                    1 for d in competitor_data.values() if d.get("status") == "success"
-                ),
+                "successful_analyses": sum(1 for d in competitor_data.values() if d.get("status") == "success"),
                 "total_apis_discovered": len(state.get("discovered_apis", [])),
                 "session_id": session_id,
             },
         }
 
-    async def generate_report(
-        self, state: CompetitiveIntelState
-    ) -> CompetitiveIntelState:
+    async def generate_report(self, state: CompetitiveIntelState) -> CompetitiveIntelState:
         """Generate the final report."""
         console.print("\n[bold green]📄 Generating final report...[/bold green]")
 
@@ -689,28 +590,17 @@ class CompetitiveIntelligenceAgent:
         """Run the competitive intelligence analysis."""
         try:
             # For live view, we need to warn but allow forcing parallel mode
-            if (
-                parallel
-                and self.browser_viewer
-                and len(competitors) > 1
-                and not force_parallel
-            ):
-                console.print(
-                    "[yellow]⚠️ Live viewing is active - parallel mode will disable live view[/yellow]"
-                )
+            if parallel and self.browser_viewer and len(competitors) > 1 and not force_parallel:
+                console.print("[yellow]⚠️ Live viewing is active - parallel mode will disable live view[/yellow]")
                 if not force_parallel:
-                    console.print(
-                        "[yellow]Switching to sequential mode to maintain visibility...[/yellow]"
-                    )
+                    console.print("[yellow]Switching to sequential mode to maintain visibility...[/yellow]")
                     parallel = False
 
             if parallel and len(competitors) > 1:
                 # Use parallel mode for multiple competitors
                 console.print("[bold cyan]Using parallel processing mode[/bold cyan]")
                 if self.browser_viewer:
-                    console.print(
-                        "[yellow]⚠️ Live view will be limited during parallel execution[/yellow]"
-                    )
+                    console.print("[yellow]⚠️ Live view will be limited during parallel execution[/yellow]")
 
                 parallel_results = await self.analyze_competitors_parallel(competitors)
 
@@ -775,9 +665,7 @@ class CompetitiveIntelligenceAgent:
                 "apis_discovered": final_state.get("discovered_apis", []),
                 "session_id": final_state["analysis_results"].get("session_id"),
                 "parallel_mode": final_state.get("parallel_mode", False),
-                "parallel_sessions": parallel_results.get("parallel_sessions", [])
-                if parallel
-                else [],
+                "parallel_sessions": parallel_results.get("parallel_sessions", []) if parallel else [],
                 "execution_stats": final_state.get("execution_stats", {}),
             }
 
@@ -799,7 +687,7 @@ class CompetitiveIntelligenceAgent:
         for session in self.parallel_browser_sessions:
             try:
                 await session.cleanup()
-            except:
+            except Exception:
                 pass
 
         # Cleanup code interpreter
@@ -824,9 +712,7 @@ class CompetitiveIntelligenceAgent:
                     )
 
                     try:
-                        control_client.delete_browser(
-                            browserId=browser_tools.browser_id
-                        )
+                        control_client.delete_browser(browserId=browser_tools.browser_id)
                         cleanup_report["browsers_closed"] += 1
                     except Exception as e:
                         cleanup_report["errors"].append(str(e))
@@ -837,14 +723,14 @@ class CompetitiveIntelligenceAgent:
                     try:
                         control_client.delete_browser(browserId=session.browser_id)
                         cleanup_report["browsers_closed"] += 1
-                    except:
+                    except Exception:
                         pass
 
             # 3. Stop Code Interpreter
             if "analysis_tools" in state:
                 try:
                     state["analysis_tools"].cleanup()
-                except:
+                except Exception:
                     pass
 
             # 4. Delete recordings if requested
@@ -864,9 +750,7 @@ class CompetitiveIntelligenceAgent:
                         for page in pages:
                             if "Contents" in page:
                                 for obj in page["Contents"]:
-                                    s3_client.delete_object(
-                                        Bucket=bucket, Key=obj["Key"]
-                                    )
+                                    s3_client.delete_object(Bucket=bucket, Key=obj["Key"])
                                     cleanup_report["s3_objects_deleted"] += 1
                     except Exception as e:
                         cleanup_report["errors"].append(f"S3: {str(e)}")

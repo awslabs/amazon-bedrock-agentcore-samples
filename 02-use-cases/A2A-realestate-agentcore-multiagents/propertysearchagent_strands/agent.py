@@ -8,8 +8,7 @@ It can be run locally or deployed to Bedrock AgentCore.
 import os
 import sys
 import time
-import json
-from typing import Optional, List, Dict
+from typing import Optional
 from strands import Agent, tool
 from strands.multiagent.a2a import A2AServer
 
@@ -24,9 +23,7 @@ from common.utils.logging_config import (
 )
 
 # Configure structured logging
-logger = setup_logging(
-    "property_search_agent", level=os.getenv("LOG_LEVEL", "INFO"), use_json=True
-)
+logger = setup_logging("property_search_agent", level=os.getenv("LOG_LEVEL", "INFO"), use_json=True)
 
 # Mock property database
 MOCK_PROPERTIES = [
@@ -165,7 +162,7 @@ def search_properties(
 
     try:
         logger.info(
-            f"Executing property search",
+            "Executing property search",
             extra={
                 "event": "tool_execution_start",
                 "tool_name": "search_properties",
@@ -223,9 +220,7 @@ def search_properties(
             return "No properties found matching your criteria. Please try adjusting your search parameters."
 
         # Format results
-        results = [
-            f"Found {len(filtered_properties)} properties matching your criteria:\n"
-        ]
+        results = [f"Found {len(filtered_properties)} properties matching your criteria:\n"]
 
         for i, prop in enumerate(filtered_properties, 1):
             amenities_str = ", ".join(prop["amenities"][:3])
@@ -285,7 +280,7 @@ def get_property_details(property_id: str) -> str:
 
     try:
         logger.info(
-            f"Fetching property details",
+            "Fetching property details",
             extra={
                 "event": "tool_execution_start",
                 "tool_name": "get_property_details",
@@ -318,9 +313,7 @@ def get_property_details(property_id: str) -> str:
 
         # Format detailed property information
         amenities_list = "\n   - ".join(property_data["amenities"])
-        availability_status = (
-            "✓ Available" if property_data["available"] else "✗ Not Available"
-        )
+        availability_status = "✓ Available" if property_data["available"] else "✗ Not Available"
 
         details = (
             f"Property Details - {property_data['title']}\n"
@@ -419,9 +412,7 @@ if __name__ == "__main__":
     server = create_a2a_server()
 
     logger.info("Starting Property Search Agent A2A server...")
-    logger.info(
-        f"Agent card available at: http://{server.host}:{server.port}/.well-known/agent-card.json"
-    )
+    logger.info(f"Agent card available at: http://{server.host}:{server.port}/.well-known/agent-card.json")
 
     # Start the server
     server.serve()

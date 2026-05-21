@@ -1,7 +1,7 @@
 """Analysis tools using BedrockAgentCore SDK's CodeInterpreter."""
 
 import json
-from typing import Dict, List, Any
+from typing import Dict
 from rich.console import Console
 from datetime import datetime
 
@@ -141,9 +141,7 @@ all_sessions = [f.replace('_metadata.json', '') for f in os.listdir('sessions') 
 print(f"Total saved sessions: {{len(all_sessions)}}")
 """
 
-            result = self.code_interpreter.invoke(
-                "executeCode", {"code": save_code, "language": "python"}
-            )
+            result = self.code_interpreter.invoke("executeCode", {"code": save_code, "language": "python"})
 
             output = self._extract_output(result)
 
@@ -215,15 +213,13 @@ else:
     print(json.dumps(result))
 """
 
-            result = self.code_interpreter.invoke(
-                "executeCode", {"code": load_code, "language": "python"}
-            )
+            result = self.code_interpreter.invoke("executeCode", {"code": load_code, "language": "python"})
 
             output = self._extract_output(result)
 
             try:
                 return json.loads(output)
-            except:
+            except Exception:
                 return {"status": "error", "output": output}
 
         except Exception as e:
@@ -233,7 +229,7 @@ else:
     def save_to_s3_with_aws_cli(self, data: Dict, bucket: str, prefix: str) -> Dict:
         """NEW: Use AWS CLI within Code Interpreter to save data to S3."""
         try:
-            console.print(f"[cyan]☁️ Saving to S3 using AWS CLI...[/cyan]")
+            console.print("[cyan]☁️ Saving to S3 using AWS CLI...[/cyan]")
 
             aws_cli_code = f"""
 import json
@@ -306,9 +302,7 @@ except Exception as e:
 print(json.dumps(output))
 """
 
-            result = self.code_interpreter.invoke(
-                "executeCode", {"code": aws_cli_code, "language": "python"}
-            )
+            result = self.code_interpreter.invoke("executeCode", {"code": aws_cli_code, "language": "python"})
 
             output = self._extract_output(result)
 
@@ -319,7 +313,7 @@ print(json.dumps(output))
                     if line.strip().startswith("{"):
                         return json.loads(line)
                 return {"status": "success", "output": output}
-            except:
+            except Exception:
                 return {"status": "success", "output": output}
 
         except Exception as e:
@@ -359,24 +353,20 @@ if len(analysis["competitors_with_pricing"]) > 0:
 print(json.dumps(analysis, indent=2))
 """
 
-            result = self.code_interpreter.invoke(
-                "executeCode", {"code": analysis_code, "language": "python"}
-            )
+            result = self.code_interpreter.invoke("executeCode", {"code": analysis_code, "language": "python"})
 
             output = self._extract_output(result)
 
             try:
                 return json.loads(output)
-            except:
+            except Exception:
                 return {"raw_output": output}
 
         except Exception as e:
             console.print(f"[red]❌ Pattern analysis error: {e}[/red]")
             return {"status": "error", "error": str(e)}
 
-    def generate_competitive_insights(
-        self, competitor_data: Dict, pattern_analysis: Dict
-    ) -> Dict:
+    def generate_competitive_insights(self, competitor_data: Dict, pattern_analysis: Dict) -> Dict:
         """NEW: Generate insights by combining browser and analysis data."""
         try:
             console.print("[cyan]💡 Generating competitive insights...[/cyan]")
@@ -413,15 +403,13 @@ if pattern_analysis.get("missing_data"):
 print(json.dumps(insights, indent=2))
 """
 
-            result = self.code_interpreter.invoke(
-                "executeCode", {"code": insights_code, "language": "python"}
-            )
+            result = self.code_interpreter.invoke("executeCode", {"code": insights_code, "language": "python"})
 
             output = self._extract_output(result)
 
             try:
                 return json.loads(output)
-            except:
+            except Exception:
                 return {"raw_output": output}
 
         except Exception as e:
@@ -500,9 +488,7 @@ for file in created_files:
 """
 
             # Execute using SDK
-            result = self.code_interpreter.invoke(
-                "executeCode", {"code": analysis_code, "language": "python"}
-            )
+            result = self.code_interpreter.invoke("executeCode", {"code": analysis_code, "language": "python"})
 
             output = self._extract_output(result)
 
@@ -515,7 +501,7 @@ for file in created_files:
                         break
                 else:
                     analysis_result = {"raw_output": output}
-            except:
+            except Exception:
                 analysis_result = {"raw_output": output}
 
             return {
@@ -650,9 +636,7 @@ for file in created_files:
 """
 
             # Execute using SDK
-            result = self.code_interpreter.invoke(
-                "executeCode", {"code": viz_code, "language": "python"}
-            )
+            result = self.code_interpreter.invoke("executeCode", {"code": viz_code, "language": "python"})
 
             output = self._extract_output(result)
 
@@ -686,35 +670,27 @@ for file in created_files:
             console.print("[cyan]📄 Generating final report...[/cyan]")
 
             # Create the report string directly here in case all else fails
-            direct_report = f"# Competitive Intelligence Report\n\n"
-            direct_report += (
-                f"**Generated:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
-            )
-            direct_report += (
-                f"**Session ID:** {analysis_results.get('session_id', 'N/A')}\n\n"
-            )
-            direct_report += f"## Executive Summary\n\n"
-            direct_report += (
-                f"This report analyzes {len(all_data)} competitor websites.\n\n"
-            )
+            direct_report = "# Competitive Intelligence Report\n\n"
+            direct_report += f"**Generated:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+            direct_report += f"**Session ID:** {analysis_results.get('session_id', 'N/A')}\n\n"
+            direct_report += "## Executive Summary\n\n"
+            direct_report += f"This report analyzes {len(all_data)} competitor websites.\n\n"
 
             # Add sections for each competitor to direct report
             for competitor, data in all_data.items():
                 direct_report += f"### {competitor}\n\n"
                 direct_report += f"**Website:** {data.get('url', 'N/A')}\n"
-                direct_report += (
-                    f"**Pages Explored:** {len(data.get('additional_pages', []))}\n\n"
-                )
+                direct_report += f"**Pages Explored:** {len(data.get('additional_pages', []))}\n\n"
 
                 # Add pricing section if available
                 if data.get("pricing", {}).get("data"):
-                    direct_report += f"#### Pricing Information\n\n"
+                    direct_report += "#### Pricing Information\n\n"
                     pricing_data = str(data["pricing"].get("data", ""))[:500]
                     direct_report += f"{pricing_data}...\n\n"
 
                 # Add features section if available
                 if data.get("features", {}).get("data"):
-                    direct_report += f"#### Product Features\n\n"
+                    direct_report += "#### Product Features\n\n"
                     features_data = str(data["features"].get("data", ""))[:500]
                     direct_report += f"{features_data}...\n\n"
 
@@ -742,9 +718,7 @@ else:
 
             # Execute the test first
             console.print("[yellow]Testing file creation capability...[/yellow]")
-            test_result = self.code_interpreter.invoke(
-                "executeCode", {"code": exec_code, "language": "python"}
-            )
+            test_result = self.code_interpreter.invoke("executeCode", {"code": exec_code, "language": "python"})
             test_output = self._extract_output(test_result)
             console.print(f"[dim]Test output: {test_output}[/dim]")
 
@@ -832,9 +806,7 @@ print("REPORT_CONTENT_END")
 
             # Execute the code to generate the report
             console.print("[cyan]Creating report file...[/cyan]")
-            result = self.code_interpreter.invoke(
-                "executeCode", {"code": report_code, "language": "python"}
-            )
+            result = self.code_interpreter.invoke("executeCode", {"code": report_code, "language": "python"})
 
             output = self._extract_output(result)
             console.print(f"[dim]Report generation output: {output[:200]}...[/dim]")
@@ -850,13 +822,9 @@ print("REPORT_CONTENT_END")
                     end_pos = output.find(end_marker)
                     if start_pos > 0 and end_pos > start_pos:
                         report_content = output[start_pos:end_pos].strip()
-                        console.print(
-                            f"[green]✅ Extracted report content ({len(report_content)} chars)[/green]"
-                        )
+                        console.print(f"[green]✅ Extracted report content ({len(report_content)} chars)[/green]")
                 except Exception as e:
-                    console.print(
-                        f"[yellow]Error extracting report from markers: {e}[/yellow]"
-                    )
+                    console.print(f"[yellow]Error extracting report from markers: {e}[/yellow]")
 
             # If we couldn't extract the report from output, use our direct report
             if not report_content or len(report_content) < 100:  # Sanity check
@@ -872,9 +840,7 @@ with open('reports/competitive_intelligence_report.md', 'w') as f:
     f.write("""{direct_report}""")
 print("Direct report saved successfully")
 '''
-                    self.code_interpreter.invoke(
-                        "executeCode", {"code": save_code, "language": "python"}
-                    )
+                    self.code_interpreter.invoke("executeCode", {"code": save_code, "language": "python"})
                 except Exception as e:
                     console.print(f"[yellow]Failed to save direct report: {e}[/yellow]")
 
@@ -917,13 +883,9 @@ for file in sorted(created_files):
             traceback.print_exc()
 
             # Create minimal report as fallback
-            fallback_report = f"# Competitive Intelligence Report\n\n"
-            fallback_report += (
-                f"**Generated:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
-            )
-            fallback_report += (
-                f"**Error encountered during report generation:** {str(e)}\n\n"
-            )
+            fallback_report = "# Competitive Intelligence Report\n\n"
+            fallback_report += f"**Generated:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+            fallback_report += f"**Error encountered during report generation:** {str(e)}\n\n"
             fallback_report += f"Analyzed {len(all_data)} competitors.\n\n"
 
             return {
@@ -942,6 +904,4 @@ for file in sorted(created_files):
                 self.session_active = False
                 console.print("✅ CodeInterpreter cleaned up")
             except Exception as e:
-                console.print(
-                    f"[yellow]Warning: Error cleaning up CodeInterpreter: {e}[/yellow]"
-                )
+                console.print(f"[yellow]Warning: Error cleaning up CodeInterpreter: {e}[/yellow]")

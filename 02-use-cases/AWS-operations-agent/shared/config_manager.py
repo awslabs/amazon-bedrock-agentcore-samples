@@ -3,10 +3,9 @@ AgentCore Configuration Manager
 Unified configuration management for all AgentCore consumers
 """
 
-import os
 import yaml
 import logging
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -69,18 +68,12 @@ class AgentCoreConfigManager:
             logger.error(f"Failed to save configuration to {file_path}: {e}")
             raise
 
-    def _deep_merge(
-        self, base: Dict[str, Any], override: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    def _deep_merge(self, base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]:
         """Deep merge two dictionaries, with override taking precedence"""
         result = base.copy()
 
         for key, value in override.items():
-            if (
-                key in result
-                and isinstance(result[key], dict)
-                and isinstance(value, dict)
-            ):
+            if key in result and isinstance(result[key], dict) and isinstance(value, dict):
                 result[key] = self._deep_merge(result[key], value)
             else:
                 result[key] = value
@@ -126,9 +119,7 @@ class AgentCoreConfigManager:
 
         return {
             "region_name": aws_config.get("region", "us-east-1"),
-            "model_id": agents_config.get(
-                "modelid", "global.anthropic.claude-haiku-4-5-20251001-v1:0"
-            ),
+            "model_id": agents_config.get("modelid", "global.anthropic.claude-haiku-4-5-20251001-v1:0"),
             "temperature": 0.7,  # Default from current usage
             "max_tokens": 4096,  # Default from current usage
         }
@@ -164,7 +155,7 @@ class AgentCoreConfigManager:
 
             static = self.get_static_config()
             dynamic = self.get_dynamic_config()
-            merged = self.get_merged_config()
+            self.get_merged_config()
 
             self._validator.validate_static(static)
             self._validator.validate_dynamic(dynamic)

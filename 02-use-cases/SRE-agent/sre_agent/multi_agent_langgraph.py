@@ -658,7 +658,6 @@ async def _run_interactive_session(
 ):
     """Run an interactive multi-turn conversation session."""
     # Buffer to store last query and response for /savereport command
-    last_query = None
     last_response = None
     # Track the original query for report naming (resets after each /savereport)
     original_query = None
@@ -719,7 +718,6 @@ async def _run_interactive_session(
 
             elif user_input.lower() == "/clear":
                 messages = []
-                last_query = None
                 last_response = None
                 original_query = None
                 print("✨ Conversation history and report buffer cleared.")
@@ -761,7 +759,6 @@ async def _run_interactive_session(
                     if filepath:
                         print(f"📄 Investigation report saved to: {filepath}")
                         # Clear the buffer after saving and reset for next investigation
-                        last_query = None
                         last_response = None
                         original_query = None
                         # Generate new session ID for next conversation

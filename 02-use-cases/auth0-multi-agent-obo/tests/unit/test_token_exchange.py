@@ -13,9 +13,7 @@ RFC 8693 Reference: https://datatracker.ietf.org/doc/html/rfc8693
 import importlib.util
 import sys
 import time
-from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Dict
 
 import jwt
 import pytest
@@ -23,12 +21,8 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 
 # Load token_exchange module directly to avoid the broken shared.auth.__init__
 # import chain (shared.auth -> claims_extractor -> shared.models -> stale imports).
-_TOKEN_EXCHANGE_PATH = (
-    Path(__file__).resolve().parents[2] / "shared" / "auth" / "token_exchange.py"
-)
-_spec = importlib.util.spec_from_file_location(
-    "shared.auth.token_exchange", _TOKEN_EXCHANGE_PATH
-)
+_TOKEN_EXCHANGE_PATH = Path(__file__).resolve().parents[2] / "shared" / "auth" / "token_exchange.py"
+_spec = importlib.util.spec_from_file_location("shared.auth.token_exchange", _TOKEN_EXCHANGE_PATH)
 _token_exchange = importlib.util.module_from_spec(_spec)
 sys.modules[_spec.name] = _token_exchange
 _spec.loader.exec_module(_token_exchange)
@@ -494,9 +488,7 @@ class TestTokenExchangeService:
             subject_token="not.a.valid.jwt",
             audience="customer_profile_agent",
         )
-        with pytest.raises(
-            InvalidTokenError, match="(Cannot decode|Invalid JWT format)"
-        ):
+        with pytest.raises(InvalidTokenError, match="(Cannot decode|Invalid JWT format)"):
             exchange_service.exchange_token(request)
 
     def test_scope_never_elevated(

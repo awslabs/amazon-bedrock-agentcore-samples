@@ -1,4 +1,3 @@
-import asyncio
 import os
 from bedrock_agentcore.identity.auth import requires_api_key
 from strands import Agent
@@ -42,7 +41,7 @@ async def strands_agent_open_ai(payload):
     """
     global agent
 
-    print(f"Entrypoint called")
+    print("Entrypoint called")
 
     # Get API key if not already set in environment
     if not os.environ.get("OPENAI_API_KEY"):

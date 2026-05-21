@@ -25,9 +25,7 @@ def test_model_availability():
         bedrock_client = session.client("bedrock", region_name=aws_region)
 
         response = bedrock_client.list_foundation_models()
-        available_models = [
-            model["modelId"] for model in response.get("modelSummaries", [])
-        ]
+        available_models = [model["modelId"] for model in response.get("modelSummaries", [])]
 
         # Test models in priority order
         test_models = [
@@ -67,7 +65,7 @@ def test_model_fallback_logic():
         model, model_id = create_bedrock_model_with_fallback(aws_region)
 
         print(f"✅ Selected model: {model_id}")
-        print(f"✅ Model object created successfully")
+        print("✅ Model object created successfully")
 
         return model, model_id
 

@@ -35,11 +35,14 @@ import yaml
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from bedrock_agentcore.memory import MemoryClient
+from bedrock_agentcore.memory import MemoryClient  # noqa: E402
 
-from sre_agent.memory.client import SREMemoryClient
-from sre_agent.memory.config import _load_memory_config
-from sre_agent.memory.strategies import UserPreference, _save_user_preference
+from sre_agent.memory.client import SREMemoryClient  # noqa: E402
+from sre_agent.memory.config import _load_memory_config  # noqa: E402
+from sre_agent.memory.strategies import (  # noqa: E402
+    UserPreference,
+    _save_user_preference,
+)
 
 # Configure logging
 logging.basicConfig(
@@ -173,7 +176,7 @@ def _delete_memory(memory_id: str) -> bool:
         logger.info(f"Deleting memory: {memory_id}")
         print(f"Deleting memory: {memory_id}...")
 
-        result = memory_client.delete_memory_and_wait(
+        memory_client.delete_memory_and_wait(
             memory_id=memory_id, max_wait=300, poll_interval=10
         )
 
@@ -202,7 +205,7 @@ def _delete_memory_record(memory_record_id: str) -> bool:
         print(f"Deleting memory record: {memory_record_id}...")
 
         # Use the underlying data plane client to delete the specific memory record
-        result = client.client.gmdp_client.delete_memory_record(
+        client.client.gmdp_client.delete_memory_record(
             memoryId=memory_id, memoryRecordId=memory_record_id
         )
 

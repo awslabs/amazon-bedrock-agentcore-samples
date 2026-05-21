@@ -3,8 +3,6 @@ Unified S3 DataSource combining all fixes from your working code.
 Save this as: competitive-intelligence-agent/utils/s3_datasource.py
 """
 
-import os
-import sys
 import json
 import time
 import tempfile
@@ -13,7 +11,7 @@ import gzip
 import io
 from pathlib import Path
 from datetime import datetime
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 
 import boto3
 from rich.console import Console
@@ -60,13 +58,11 @@ class UnifiedS3DataSource:
             # Try to discover session from prefix
             self.session_id = self._discover_session()
             if self.session_id:
-                self.full_prefix = (
-                    f"{prefix}/{self.session_id}" if prefix else self.session_id
-                )
+                self.full_prefix = f"{prefix}/{self.session_id}" if prefix else self.session_id
             else:
                 self.full_prefix = prefix
 
-        console.print(f"[cyan]S3 DataSource initialized[/cyan]")
+        console.print("[cyan]S3 DataSource initialized[/cyan]")
         console.print(f"  Bucket: {bucket}")
         console.print(f"  Prefix: {prefix}")
         console.print(f"  Session: {self.session_id}")
@@ -77,15 +73,13 @@ class UnifiedS3DataSource:
         if self.temp_dir.exists():
             try:
                 shutil.rmtree(self.temp_dir)
-            except:
+            except Exception:
                 pass
 
     def _discover_session(self) -> Optional[str]:
         """Discover the latest session ID from S3 prefix"""
         try:
-            response = self.s3_client.list_objects_v2(
-                Bucket=self.bucket, Prefix=self.prefix, Delimiter="/"
-            )
+            response = self.s3_client.list_objects_v2(Bucket=self.bucket, Prefix=self.prefix, Delimiter="/")
 
             if "CommonPrefixes" in response:
                 # Get all session directories
@@ -102,9 +96,7 @@ class UnifiedS3DataSource:
                     return latest
 
             # Alternative: Look for metadata.json files
-            response = self.s3_client.list_objects_v2(
-                Bucket=self.bucket, Prefix=self.prefix
-            )
+            response = self.s3_client.list_objects_v2(Bucket=self.bucket, Prefix=self.prefix)
 
             if "Contents" in response:
                 for obj in response["Contents"]:
@@ -113,9 +105,7 @@ class UnifiedS3DataSource:
                         parts = obj["Key"].split("/")
                         for i, part in enumerate(parts):
                             if i > 0 and parts[i - 1] == self.prefix.split("/")[-1]:
-                                console.print(
-                                    f"[green]Found session from metadata: {part}[/green]"
-                                )
+                                console.print(f"[green]Found session from metadata: {part}[/green]")
                                 return part
 
         except Exception as e:
@@ -142,9 +132,7 @@ class UnifiedS3DataSource:
             duration = metadata.get("duration", 0) or metadata.get("durationMs", 0) or 0
 
             # Get event count
-            event_count = (
-                metadata.get("eventCount", 0) or metadata.get("totalEvents", 0) or 0
-            )
+            event_count = metadata.get("eventCount", 0) or metadata.get("totalEvents", 0) or 0
 
             # Create recording entry
             recordings.append(
@@ -152,9 +140,7 @@ class UnifiedS3DataSource:
                     "id": self.session_id,
                     "sessionId": self.session_id,
                     "timestamp": timestamp,
-                    "date": datetime.fromtimestamp(timestamp / 1000).strftime(
-                        "%Y-%m-%d %H:%M:%S"
-                    ),
+                    "date": datetime.fromtimestamp(timestamp / 1000).strftime("%Y-%m-%d %H:%M:%S"),
                     "events": event_count,
                     "duration": duration,
                 }
@@ -179,19 +165,15 @@ class UnifiedS3DataSource:
             metadata = self._get_metadata()
 
             # List all objects in session directory
-            response = self.s3_client.list_objects_v2(
-                Bucket=self.bucket, Prefix=self.full_prefix
-            )
+            response = self.s3_client.list_objects_v2(Bucket=self.bucket, Prefix=self.full_prefix)
 
             if "Contents" not in response:
-                console.print(f"[yellow]No files found in session[/yellow]")
+                console.print("[yellow]No files found in session[/yellow]")
                 return self._create_fallback_recording_data()
 
             # Find batch files
             batch_files = [
-                obj["Key"]
-                for obj in response["Contents"]
-                if obj["Key"].endswith(".gz") or "batch-" in obj["Key"]
+                obj["Key"] for obj in response["Contents"] if obj["Key"].endswith(".gz") or "batch-" in obj["Key"]
             ]
 
             console.print(f"Found {len(batch_files)} batch files")
@@ -204,9 +186,7 @@ class UnifiedS3DataSource:
                     response = self.s3_client.get_object(Bucket=self.bucket, Key=key)
 
                     # Read and decompress
-                    with gzip.GzipFile(
-                        fileobj=io.BytesIO(response["Body"].read())
-                    ) as gz:
+                    with gzip.GzipFile(fileobj=io.BytesIO(response["Body"].read())) as gz:
                         content = gz.read().decode("utf-8")
 
                         # Parse JSON lines
@@ -242,7 +222,7 @@ class UnifiedS3DataSource:
             metadata_key = f"{self.full_prefix}/metadata.json"
             response = self.s3_client.get_object(Bucket=self.bucket, Key=metadata_key)
             metadata = json.loads(response["Body"].read().decode("utf-8"))
-            console.print(f"[dim]✅ Retrieved metadata[/dim]")
+            console.print("[dim]✅ Retrieved metadata[/dim]")
             return metadata
         except Exception as e:
             console.print(f"[yellow]No metadata found: {e}[/yellow]")

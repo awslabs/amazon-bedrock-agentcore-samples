@@ -7,15 +7,12 @@ the same synthetic employee records — enabling repeatable DLP demos.
 
 import hashlib
 import random
-from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 
 def get_dummy_employees(tenant_id: str) -> List[Dict[str, Any]]:
     """Generate consistent synthetic employees for the given tenant."""
-    seed = int(
-        hashlib.md5(tenant_id.encode(), usedforsecurity=False).hexdigest()[:8], 16
-    )
+    seed = int(hashlib.md5(tenant_id.encode(), usedforsecurity=False).hexdigest()[:8], 16)
     random.seed(seed)
 
     base = [
@@ -98,9 +95,7 @@ def get_employee_by_id(employee_id: str, tenant_id: str) -> Optional[Dict[str, A
     return next((e for e in employees if e["employee_id"] == employee_id), None)
 
 
-def search_employees_by_query(
-    query: str, tenant_id: str, max_results: int = 10
-) -> List[Dict[str, Any]]:
+def search_employees_by_query(query: str, tenant_id: str, max_results: int = 10) -> List[Dict[str, Any]]:
     employees = get_dummy_employees(tenant_id)
     if not query:
         return employees[:max_results]
@@ -108,16 +103,11 @@ def search_employees_by_query(
     return [
         e
         for e in employees
-        if q in e["name"].lower()
-        or q in e["department"].lower()
-        or q in e["role"].lower()
-        or q in e["email"].lower()
+        if q in e["name"].lower() or q in e["department"].lower() or q in e["role"].lower() or q in e["email"].lower()
     ][:max_results]
 
 
-def get_employee_compensation_data(
-    employee_id: str, tenant_id: str
-) -> Optional[Dict[str, Any]]:
+def get_employee_compensation_data(employee_id: str, tenant_id: str) -> Optional[Dict[str, Any]]:
     emp = get_employee_by_id(employee_id, tenant_id)
     if not emp:
         return None
@@ -136,9 +126,7 @@ def get_employee_compensation_data(
         "compensation_history": emp["compensation_history"],
         "last_review_date": f"2023-{random.randint(1, 12):02d}-{random.randint(1, 28):02d}",
         "next_review_date": f"2024-{random.randint(1, 12):02d}-{random.randint(1, 28):02d}",
-        "performance_rating": random.choice(
-            ["Exceeds Expectations", "Meets Expectations", "Outstanding"]
-        ),
+        "performance_rating": random.choice(["Exceeds Expectations", "Meets Expectations", "Outstanding"]),
         "_data_classification": "HIGHLY_SENSITIVE_COMPENSATION_DATA",
         "_requires_scope": "hr-dlp-gateway/comp",
     }

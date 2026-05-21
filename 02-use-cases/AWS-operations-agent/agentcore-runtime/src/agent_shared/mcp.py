@@ -2,7 +2,6 @@
 # IMPORTS
 # ============================================================================
 
-import logging
 from .auth import get_m2m_token
 
 from . import mylogger
@@ -60,7 +59,7 @@ def create_global_mcp_client(gateway_url, token=None):
         _global_gateway_url = gateway_url
         _global_token = token
 
-        logger.info(f"✅ Global MCP client created successfully")
+        logger.info("✅ Global MCP client created successfully")
         return mcp_client
 
     except ImportError as e:
@@ -101,7 +100,7 @@ def get_mcp_tools_simple(gateway_url, token=None):
                 logger.warning("⚠️ No OAuth token available for MCP client")
                 return []
 
-        logger.info(f"🔗 Creating simple MCP client for tool discovery")
+        logger.info("🔗 Creating simple MCP client for tool discovery")
         logger.info(f"🌐 Gateway: {gateway_url}")
         logger.info(f"🔑 Using token (length: {len(token)})")
 
@@ -182,9 +181,7 @@ def create_mcp_client(gateway_url, token=None):
                 return None
 
         logger.info(f"🔗 Creating MCP client for gateway: {gateway_url}")
-        logger.info(
-            f"🔑 Using token (length: {len(token)}, starts with: {token[:20]}...)"
-        )
+        logger.info(f"🔑 Using token (length: {len(token)}, starts with: {token[:20]}...)")
 
         # Create transport with authentication
         def create_transport():
@@ -194,7 +191,7 @@ def create_mcp_client(gateway_url, token=None):
 
         # Create MCP client
         mcp_client = MCPClient(create_transport)
-        logger.info(f"✅ MCP client created successfully")
+        logger.info("✅ MCP client created successfully")
 
         # Test the connection by trying to initialize
         try:
@@ -248,7 +245,7 @@ def get_mcp_tools_with_client(gateway_url, token=None):
                 logger.warning("⚠️ No OAuth token available for MCP client")
                 return []
 
-        logger.info(f"🔗 Creating MCP client for tool discovery")
+        logger.info("🔗 Creating MCP client for tool discovery")
         logger.info(f"🌐 Gateway: {gateway_url}")
         logger.info(f"🔑 Using token (length: {len(token)})")
 
@@ -271,11 +268,7 @@ def get_mcp_tools_with_client(gateway_url, token=None):
                 logger.info("📋 Available MCP tools:")
                 for i, tool in enumerate(tools[:5]):  # Show first 5 tools
                     # Try different attribute names for tool info
-                    tool_name = (
-                        getattr(tool, "name", None)
-                        or getattr(tool, "tool_name", None)
-                        or str(tool)
-                    )
+                    tool_name = getattr(tool, "name", None) or getattr(tool, "tool_name", None) or str(tool)
                     tool_desc = (
                         getattr(tool, "description", None)
                         or getattr(tool, "tool_description", None)
@@ -283,9 +276,7 @@ def get_mcp_tools_with_client(gateway_url, token=None):
                     )
 
                     # Debug: show tool attributes
-                    tool_attrs = [
-                        attr for attr in dir(tool) if not attr.startswith("_")
-                    ]
+                    tool_attrs = [attr for attr in dir(tool) if not attr.startswith("_")]
                     logger.debug(f"   Tool {i + 1} attributes: {tool_attrs}")
 
                     logger.info(f"   {i + 1}. {tool_name}: {tool_desc[:50]}...")
@@ -400,7 +391,7 @@ def create_persistent_mcp_client(gateway_url, token=None):
         _global_gateway_url = gateway_url
         _global_token = token
 
-        logger.info(f"✅ Persistent MCP client created successfully")
+        logger.info("✅ Persistent MCP client created successfully")
         return mcp_client
 
     except ImportError as e:
@@ -478,15 +469,9 @@ def get_mcp_tools_with_persistent_client(gateway_url, token=None):
             logger.info("📋 Available MCP tools:")
             for i, tool in enumerate(tools[:5]):  # Show first 5 tools
                 # Try different attribute names for tool info
-                tool_name = (
-                    getattr(tool, "name", None)
-                    or getattr(tool, "tool_name", None)
-                    or str(tool)
-                )
+                tool_name = getattr(tool, "name", None) or getattr(tool, "tool_name", None) or str(tool)
                 tool_desc = (
-                    getattr(tool, "description", None)
-                    or getattr(tool, "tool_description", None)
-                    or "No description"
+                    getattr(tool, "description", None) or getattr(tool, "tool_description", None) or "No description"
                 )
 
                 logger.info(f"   {i + 1}. {tool_name}: {tool_desc[:50]}...")
@@ -523,8 +508,8 @@ def is_mcp_available(gateway_url):
 
     try:
         # Check if MCP dependencies are available
-        from mcp.client.streamable_http import streamablehttp_client
-        from strands.tools.mcp.mcp_client import MCPClient
+        from mcp.client.streamable_http import streamablehttp_client  # noqa: F401
+        from strands.tools.mcp.mcp_client import MCPClient  # noqa: F401
 
         return True
     except ImportError:

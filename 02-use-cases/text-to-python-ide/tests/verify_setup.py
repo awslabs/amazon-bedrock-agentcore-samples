@@ -3,9 +3,7 @@
 Quick verification script to check if the application is properly set up
 """
 
-import os
 import sys
-import subprocess
 from pathlib import Path
 
 
@@ -48,9 +46,7 @@ def check_environment():
         return False
 
     # Check if we're in the virtual environment
-    if hasattr(sys, "real_prefix") or (
-        hasattr(sys, "base_prefix") and sys.base_prefix != sys.prefix
-    ):
+    if hasattr(sys, "real_prefix") or (hasattr(sys, "base_prefix") and sys.base_prefix != sys.prefix):
         print("✅ Virtual environment activated")
     else:
         print("⚠️  Virtual environment not activated")
@@ -94,9 +90,7 @@ def check_aws_config():
     # Check for AWS configuration
     env_content = env_file.read_text()
     has_profile = "AWS_PROFILE" in env_content
-    has_keys = (
-        "AWS_ACCESS_KEY_ID" in env_content and "AWS_SECRET_ACCESS_KEY" in env_content
-    )
+    has_keys = "AWS_ACCESS_KEY_ID" in env_content and "AWS_SECRET_ACCESS_KEY" in env_content
 
     if has_profile:
         print("✅ AWS Profile configuration found")

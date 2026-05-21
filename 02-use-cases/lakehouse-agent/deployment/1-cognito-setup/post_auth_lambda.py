@@ -7,7 +7,6 @@ import json
 import boto3
 import os
 from datetime import datetime
-from decimal import Decimal
 
 dynamodb = boto3.resource("dynamodb")
 table_name = os.environ.get("LOGIN_AUDIT_TABLE", "lakehouse_user_login_audit")
@@ -54,8 +53,7 @@ def lambda_handler(event, context):
             "source_ip": request_context.get("sourceIp", ""),
             "user_agent": request_context.get("userAgent", ""),
             "event_type": "post_authentication",
-            "ttl": int(datetime.utcnow().timestamp())
-            + (90 * 24 * 60 * 60),  # 90 days TTL
+            "ttl": int(datetime.utcnow().timestamp()) + (90 * 24 * 60 * 60),  # 90 days TTL
         }
 
         # Write to DynamoDB

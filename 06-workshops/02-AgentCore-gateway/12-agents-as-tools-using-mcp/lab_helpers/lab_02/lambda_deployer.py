@@ -37,9 +37,7 @@ def create_ecr_repository(repository_name, region_name=None):
         region_name = AWS_REGION
 
     ecr = boto3.client("ecr", region_name=region_name)
-    account_id = boto3.client("sts", region_name=region_name).get_caller_identity()[
-        "Account"
-    ]  # noqa: F841
+    boto3.client("sts", region_name=region_name).get_caller_identity()["Account"]  # noqa: F841
 
     try:
         # Check if repository exists
@@ -100,9 +98,7 @@ def create_lambda_execution_role(role_name, region_name=None):
 
     # Attach CloudWatch Logs policy (Lambda basic execution)
     try:
-        iam.attach_role_policy(
-            RoleName=role_name, PolicyArn=IAM_POLICIES["cloudwatch_logs_policy"]
-        )
+        iam.attach_role_policy(RoleName=role_name, PolicyArn=IAM_POLICIES["cloudwatch_logs_policy"])
         print("✓ Attached CloudWatch Logs policy")
     except Exception as e:
         print(f"⚠ CloudWatch policy (may already be attached): {e}")
@@ -468,7 +464,5 @@ def show_deployment_methods():
         print(f"\n{method_name.upper()}:")
         print(f"  Description: {method_info['description']}")
         print(f"  Requires: {', '.join(method_info['requires'])}")
-        print(
-            f"  VPC-Compatible: {'✅ Yes' if method_info['vpc_compatible'] else '❌ No'}"
-        )
+        print(f"  VPC-Compatible: {'✅ Yes' if method_info['vpc_compatible'] else '❌ No'}")
         print(f"  Size Limit: {method_info['size_limit']}")

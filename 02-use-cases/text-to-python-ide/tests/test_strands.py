@@ -14,8 +14,8 @@ def test_strands_import():
     print("=" * 40)
 
     try:
-        from strands import Agent, tool
-        from strands.models import BedrockModel
+        from strands import Agent, tool  # noqa: F401
+        from strands.models import BedrockModel  # noqa: F401
 
         print("✓ strands-agents framework imported successfully")
         return True
@@ -35,7 +35,7 @@ def test_bedrock_model():
     try:
         from strands.models import BedrockModel
 
-        model = BedrockModel(
+        BedrockModel(
             model_id="anthropic.claude-3-5-sonnet-20241022-v2:0",
             aws_region=os.getenv("AWS_REGION", "us-east-1"),
         )
@@ -66,9 +66,7 @@ def test_agent_creation():
             aws_region=os.getenv("AWS_REGION", "us-east-1"),
         )
 
-        agent = Agent(
-            model=model, tools=[test_tool], system_prompt="You are a test agent."
-        )
+        Agent(model=model, tools=[test_tool], system_prompt="You are a test agent.")
 
         print("✓ Agent created successfully with tools")
         return True

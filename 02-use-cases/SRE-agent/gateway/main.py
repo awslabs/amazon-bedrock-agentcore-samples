@@ -636,7 +636,7 @@ def main():
 
     gateway_id = create_response["gatewayId"]
     gateway_url = create_response.get("gatewayUrl", "")
-    gateway_arn = create_response.get("gatewayArn", "")
+    create_response.get("gatewayArn", "")
 
     # Check if observability was requested
     if args.enable_observability:

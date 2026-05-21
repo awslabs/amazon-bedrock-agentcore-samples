@@ -28,18 +28,12 @@ def get_m2m_token():
 
         # Get M2M client credentials from SSM
         print("\n📋 Loading M2M client credentials from SSM...")
-        client_id = ssm.get_parameter(
-            Name="/app/lakehouse-agent/cognito-m2m-client-id"
-        )["Parameter"]["Value"]
-        client_secret = ssm.get_parameter(
-            Name="/app/lakehouse-agent/cognito-m2m-client-secret", WithDecryption=True
-        )["Parameter"]["Value"]
-        domain = ssm.get_parameter(Name="/app/lakehouse-agent/cognito-domain")[
+        client_id = ssm.get_parameter(Name="/app/lakehouse-agent/cognito-m2m-client-id")["Parameter"]["Value"]
+        client_secret = ssm.get_parameter(Name="/app/lakehouse-agent/cognito-m2m-client-secret", WithDecryption=True)[
             "Parameter"
         ]["Value"]
-        user_pool_id = ssm.get_parameter(
-            Name="/app/lakehouse-agent/cognito-user-pool-id"
-        )["Parameter"]["Value"]
+        domain = ssm.get_parameter(Name="/app/lakehouse-agent/cognito-domain")["Parameter"]["Value"]
+        user_pool_id = ssm.get_parameter(Name="/app/lakehouse-agent/cognito-user-pool-id")["Parameter"]["Value"]
     except Exception as e:
         print(f"❌ Error loading configuration: {e}")
         print("   Please check your AWS credentials and SSM parameters")
@@ -51,9 +45,7 @@ def get_m2m_token():
 
     # Get configured OAuth scopes
     print("\n🔍 Getting OAuth scopes from client configuration...")
-    client_details = cognito.describe_user_pool_client(
-        UserPoolId=user_pool_id, ClientId=client_id
-    )
+    client_details = cognito.describe_user_pool_client(UserPoolId=user_pool_id, ClientId=client_id)
     allowed_scopes = client_details["UserPoolClient"].get("AllowedOAuthScopes", [])
     scope_string = " ".join(allowed_scopes)
     print(f"   Scopes: {scope_string}")
@@ -81,7 +73,7 @@ def get_m2m_token():
     token_data = response.json()
     access_token = token_data["access_token"]
 
-    print(f"✅ Token obtained successfully!")
+    print("✅ Token obtained successfully!")
     print(f"   Token type: {token_data.get('token_type', 'N/A')}")
     print(f"   Expires in: {token_data.get('expires_in', 'N/A')} seconds")
 
@@ -95,7 +87,7 @@ def get_m2m_token():
         print(f"   Scope: {payload.get('scope', 'N/A')}")
         print(f"   Token Use: {payload.get('token_use', 'N/A')}")
 
-    print(f"\n🔑 Access Token (first 100 chars):")
+    print("\n🔑 Access Token (first 100 chars):")
     print(f"   {access_token[:100]}...")
 
     return access_token, region
@@ -112,13 +104,11 @@ def test_mcp_server(access_token, region):
     # Get runtime ARN
     print("\n📦 Loading runtime configuration...")
     try:
-        runtime_arn = ssm.get_parameter(
-            Name="/app/lakehouse-agent/mcp-server-runtime-arn"
-        )["Parameter"]["Value"]
+        runtime_arn = ssm.get_parameter(Name="/app/lakehouse-agent/mcp-server-runtime-arn")["Parameter"]["Value"]
         print(f"   Runtime ARN: {runtime_arn}")
     except ssm.exceptions.ParameterNotFound:
         print(f"   ❌ Runtime ARN not found in region {region}")
-        print(f"   Please deploy the MCP server first or check your region")
+        print("   Please deploy the MCP server first or check your region")
         return
     except Exception as e:
         print(f"   ❌ Error loading runtime ARN: {e}")
@@ -159,7 +149,7 @@ def test_mcp_server(access_token, region):
             if response.text:
                 # Parse SSE format
                 if response.headers.get("Content-Type") == "text/event-stream":
-                    print(f"   ✅ Received SSE response")
+                    print("   ✅ Received SSE response")
                     # Extract JSON from SSE format
                     lines = response.text.split("\n")
                     for line in lines:
@@ -167,52 +157,40 @@ def test_mcp_server(access_token, region):
                             json_str = line[6:]  # Remove 'data: ' prefix
                             try:
                                 data = json.loads(json_str)
-                                print(f"   ✅ Initialize successful!")
+                                print("   ✅ Initialize successful!")
                                 if "result" in data:
                                     server_info = data["result"].get("serverInfo", {})
-                                    print(
-                                        f"   Server Name: {server_info.get('name', 'N/A')}"
-                                    )
-                                    print(
-                                        f"   Server Version: {server_info.get('version', 'N/A')}"
-                                    )
-                                    print(
-                                        f"   Protocol Version: {data['result'].get('protocolVersion', 'N/A')}"
-                                    )
+                                    print(f"   Server Name: {server_info.get('name', 'N/A')}")
+                                    print(f"   Server Version: {server_info.get('version', 'N/A')}")
+                                    print(f"   Protocol Version: {data['result'].get('protocolVersion', 'N/A')}")
                                 break
                             except json.JSONDecodeError:
                                 continue
                 else:
                     try:
                         data = response.json()
-                        print(f"   ✅ Initialize successful!")
+                        print("   ✅ Initialize successful!")
                         if "result" in data:
                             server_info = data["result"].get("serverInfo", {})
                             print(f"   Server Name: {server_info.get('name', 'N/A')}")
-                            print(
-                                f"   Server Version: {server_info.get('version', 'N/A')}"
-                            )
-                            print(
-                                f"   Protocol Version: {data['result'].get('protocolVersion', 'N/A')}"
-                            )
+                            print(f"   Server Version: {server_info.get('version', 'N/A')}")
+                            print(f"   Protocol Version: {data['result'].get('protocolVersion', 'N/A')}")
                     except json.JSONDecodeError as je:
                         print(f"   ⚠️  Response is not valid JSON: {je}")
-                        print(
-                            f"   Raw response (first 500 chars): {response.text[:500]}"
-                        )
+                        print(f"   Raw response (first 500 chars): {response.text[:500]}")
             else:
-                print(f"   ⚠️  Response body is empty")
+                print("   ⚠️  Response body is empty")
                 return
         else:
-            print(f"   ❌ Initialize failed")
+            print("   ❌ Initialize failed")
             if response.text:
                 print(f"   Response: {response.text[:500]}")
             else:
-                print(f"   Response body is empty")
+                print("   Response body is empty")
             return
 
     except requests.exceptions.Timeout:
-        print(f"   ❌ Request timed out")
+        print("   ❌ Request timed out")
         return
     except Exception as e:
         print(f"   ❌ Error: {e}")
@@ -231,7 +209,7 @@ def test_mcp_server(access_token, region):
             if response.text:
                 # Parse SSE format
                 if response.headers.get("Content-Type") == "text/event-stream":
-                    print(f"   ✅ Received SSE response")
+                    print("   ✅ Received SSE response")
                     # Extract JSON from SSE format
                     lines = response.text.split("\n")
                     for line in lines:
@@ -239,7 +217,7 @@ def test_mcp_server(access_token, region):
                             json_str = line[6:]  # Remove 'data: ' prefix
                             try:
                                 data = json.loads(json_str)
-                                print(f"   ✅ Tool list retrieved!")
+                                print("   ✅ Tool list retrieved!")
 
                                 if "result" in data and "tools" in data["result"]:
                                     tools = data["result"]["tools"]
@@ -247,18 +225,11 @@ def test_mcp_server(access_token, region):
                                     print("   " + "=" * 66)
                                     for i, tool in enumerate(tools, 1):
                                         print(f"\n   {i}. {tool.get('name', 'N/A')}")
-                                        print(
-                                            f"      Description: {tool.get('description', 'N/A')}"
-                                        )
-                                        if (
-                                            "inputSchema" in tool
-                                            and "properties" in tool["inputSchema"]
-                                        ):
+                                        print(f"      Description: {tool.get('description', 'N/A')}")
+                                        if "inputSchema" in tool and "properties" in tool["inputSchema"]:
                                             props = tool["inputSchema"]["properties"]
                                             if props:
-                                                print(
-                                                    f"      Parameters: {', '.join(props.keys())}"
-                                                )
+                                                print(f"      Parameters: {', '.join(props.keys())}")
                                 else:
                                     print(f"   Response: {json.dumps(data, indent=2)}")
                                 break
@@ -267,7 +238,7 @@ def test_mcp_server(access_token, region):
                 else:
                     try:
                         data = response.json()
-                        print(f"   ✅ Tool list retrieved!")
+                        print("   ✅ Tool list retrieved!")
 
                         if "result" in data and "tools" in data["result"]:
                             tools = data["result"]["tools"]
@@ -275,34 +246,27 @@ def test_mcp_server(access_token, region):
                             print("   " + "=" * 66)
                             for i, tool in enumerate(tools, 1):
                                 print(f"\n   {i}. {tool.get('name', 'N/A')}")
-                                print(
-                                    f"      Description: {tool.get('description', 'N/A')}"
-                                )
-                                if (
-                                    "inputSchema" in tool
-                                    and "properties" in tool["inputSchema"]
-                                ):
+                                print(f"      Description: {tool.get('description', 'N/A')}")
+                                if "inputSchema" in tool and "properties" in tool["inputSchema"]:
                                     props = tool["inputSchema"]["properties"]
                                     if props:
-                                        print(
-                                            f"      Parameters: {', '.join(props.keys())}"
-                                        )
+                                        print(f"      Parameters: {', '.join(props.keys())}")
                         else:
                             print(f"   Response: {json.dumps(data, indent=2)}")
                     except json.JSONDecodeError:
-                        print(f"   ⚠️  Response is not valid JSON")
+                        print("   ⚠️  Response is not valid JSON")
                         print(f"   Raw response: {response.text[:200]}")
             else:
-                print(f"   ⚠️  Response body is empty")
+                print("   ⚠️  Response body is empty")
         else:
-            print(f"   ❌ Tool list failed")
+            print("   ❌ Tool list failed")
             if response.text:
                 print(f"   Response: {response.text[:500]}")
             else:
-                print(f"   Response body is empty")
+                print("   Response body is empty")
 
     except requests.exceptions.Timeout:
-        print(f"   ❌ Request timed out")
+        print("   ❌ Request timed out")
     except Exception as e:
         print(f"   ❌ Error: {e}")
 

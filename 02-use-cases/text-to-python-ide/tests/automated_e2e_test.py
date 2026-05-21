@@ -9,8 +9,6 @@ import sys
 import subprocess
 import time
 import requests
-import json
-import signal
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -71,12 +69,10 @@ class AutomatedE2ETest:
                 response = requests.get("http://localhost:8000/health", timeout=2)
                 if response.status_code == 200:
                     return self.log_result("Backend Startup", True)
-            except:
+            except Exception:
                 time.sleep(1)
 
-        return self.log_result(
-            "Backend Startup", False, "Backend failed to start within 30 seconds"
-        )
+        return self.log_result("Backend Startup", False, "Backend failed to start within 30 seconds")
 
     def test_health_endpoint(self):
         """Test health endpoint"""
@@ -90,18 +86,14 @@ class AutomatedE2ETest:
                     f"Status: {data.get('status')}",
                 )
             else:
-                return self.log_result(
-                    "Health Endpoint", False, f"Status code: {response.status_code}"
-                )
+                return self.log_result("Health Endpoint", False, f"Status code: {response.status_code}")
         except Exception as e:
             return self.log_result("Health Endpoint", False, str(e))
 
     def test_agents_status(self):
         """Test agents status endpoint"""
         try:
-            response = requests.get(
-                "http://localhost:8000/api/agents/status", timeout=10
-            )
+            response = requests.get("http://localhost:8000/api/agents/status", timeout=10)
             if response.status_code == 200:
                 data = response.json()
                 return self.log_result(
@@ -110,9 +102,7 @@ class AutomatedE2ETest:
                     f"Model: {data.get('current_model', 'Unknown')}",
                 )
             else:
-                return self.log_result(
-                    "Agents Status", False, f"Status code: {response.status_code}"
-                )
+                return self.log_result("Agents Status", False, f"Status code: {response.status_code}")
         except Exception as e:
             return self.log_result("Agents Status", False, str(e))
 
@@ -132,14 +122,10 @@ class AutomatedE2ETest:
 
                 # Validate response
                 if not isinstance(code, str):
-                    return self.log_result(
-                        "Code Generation", False, f"Code is not string: {type(code)}"
-                    )
+                    return self.log_result("Code Generation", False, f"Code is not string: {type(code)}")
 
                 if len(code.strip()) == 0:
-                    return self.log_result(
-                        "Code Generation", False, "Generated code is empty"
-                    )
+                    return self.log_result("Code Generation", False, "Generated code is empty")
 
                 # Check if code contains expected elements
                 code_lower = code.lower()
@@ -147,9 +133,7 @@ class AutomatedE2ETest:
                 has_factorial = "factorial" in code_lower
 
                 if has_function and has_factorial:
-                    return self.log_result(
-                        "Code Generation", True, f"Generated {len(code)} chars"
-                    )
+                    return self.log_result("Code Generation", True, f"Generated {len(code)} chars")
                 else:
                     return self.log_result(
                         "Code Generation",
@@ -157,9 +141,7 @@ class AutomatedE2ETest:
                         "Code doesn't contain expected elements",
                     )
             else:
-                return self.log_result(
-                    "Code Generation", False, f"Status code: {response.status_code}"
-                )
+                return self.log_result("Code Generation", False, f"Status code: {response.status_code}")
 
         except Exception as e:
             return self.log_result("Code Generation", False, str(e))
@@ -190,28 +172,18 @@ print(f"Fibonacci(10) = {result}")
 
                 # Validate response
                 if not isinstance(result, str):
-                    return self.log_result(
-                        "Code Execution", False, f"Result is not string: {type(result)}"
-                    )
+                    return self.log_result("Code Execution", False, f"Result is not string: {type(result)}")
 
                 if len(result.strip()) == 0:
-                    return self.log_result(
-                        "Code Execution", False, "Execution result is empty"
-                    )
+                    return self.log_result("Code Execution", False, "Execution result is empty")
 
                 # Check if result contains expected output
                 if "55" in result or "Fibonacci" in result:
-                    return self.log_result(
-                        "Code Execution", True, f"Result: {result[:50]}..."
-                    )
+                    return self.log_result("Code Execution", True, f"Result: {result[:50]}...")
                 else:
-                    return self.log_result(
-                        "Code Execution", False, f"Unexpected result: {result[:100]}"
-                    )
+                    return self.log_result("Code Execution", False, f"Unexpected result: {result[:100]}")
             else:
-                return self.log_result(
-                    "Code Execution", False, f"Status code: {response.status_code}"
-                )
+                return self.log_result("Code Execution", False, f"Status code: {response.status_code}")
 
         except Exception as e:
             return self.log_result("Code Execution", False, str(e))
@@ -238,9 +210,7 @@ print(f"Fibonacci(10) = {result}")
             successful = sum(1 for success, _ in results if success)
             avg_time = sum(elapsed for _, elapsed in results) / len(results)
 
-            if (
-                successful >= 2 and avg_time < 20
-            ):  # At least 2/3 successful, under 20s average
+            if successful >= 2 and avg_time < 20:  # At least 2/3 successful, under 20s average
                 return self.log_result(
                     "Performance Test",
                     True,
@@ -272,17 +242,11 @@ print(f"Fibonacci(10) = {result}")
 
                 # Should contain error information
                 if "error" in result.lower() or "exception" in result.lower():
-                    return self.log_result(
-                        "Error Handling", True, "Properly handled execution error"
-                    )
+                    return self.log_result("Error Handling", True, "Properly handled execution error")
                 else:
-                    return self.log_result(
-                        "Error Handling", False, "Error not properly reported"
-                    )
+                    return self.log_result("Error Handling", False, "Error not properly reported")
             else:
-                return self.log_result(
-                    "Error Handling", False, f"Status code: {response.status_code}"
-                )
+                return self.log_result("Error Handling", False, f"Status code: {response.status_code}")
 
         except Exception as e:
             return self.log_result("Error Handling", False, str(e))
@@ -295,10 +259,10 @@ print(f"Fibonacci(10) = {result}")
             try:
                 self.backend_process.terminate()
                 self.backend_process.wait(timeout=5)
-            except:
+            except Exception:
                 try:
                     self.backend_process.kill()
-                except:
+                except Exception:
                     pass
 
         # Kill any remaining processes
@@ -336,9 +300,7 @@ print(f"Fibonacci(10) = {result}")
             total_time = time.time() - self.start_time
 
             print("\n" + "=" * 70)
-            print(
-                f"🎯 TEST RESULTS: {passed}/{total} tests passed in {total_time:.1f}s"
-            )
+            print(f"🎯 TEST RESULTS: {passed}/{total} tests passed in {total_time:.1f}s")
 
             if passed == total:
                 print("🎉 All tests passed! Application is working correctly.")

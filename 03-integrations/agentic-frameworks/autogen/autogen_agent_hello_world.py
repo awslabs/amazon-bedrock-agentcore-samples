@@ -1,22 +1,16 @@
 from autogen_agentchat.agents import AssistantAgent
 from autogen_agentchat.ui import Console
 from autogen_ext.models.openai import OpenAIChatCompletionClient
-import asyncio
 import logging
 
 # Set up logging
-logging.basicConfig(
-    level=logging.DEBUG, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.DEBUG, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger("autogen_agent")
 
 print(1)
 # Adapted from https://microsoft.github.io/autogen/stable/user-guide/agentchat-user-guide/quickstart.html
 # Define a model client. You can use other model client that implements
 # the `ChatCompletionClient` interface.
-from autogen_agentchat.agents import AssistantAgent
-from autogen_agentchat.ui import Console
-from autogen_ext.models.openai import OpenAIChatCompletionClient
 
 # Define a model client. You can use other model client that implements
 # the `ChatCompletionClient` interface.

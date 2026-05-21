@@ -38,7 +38,7 @@ def cleanup_users():
         "adjuster001@example.com",
     ]
 
-    print(f"\n🔍 Searching for test users in User Pool...")
+    print("\n🔍 Searching for test users in User Pool...")
 
     # List all users and find test users
     deleted_count = 0
@@ -60,9 +60,7 @@ def cleanup_users():
 
                     # Delete the user
                     try:
-                        cognito.admin_delete_user(
-                            UserPoolId=user_pool_id, Username=username
-                        )
+                        cognito.admin_delete_user(UserPoolId=user_pool_id, Username=username)
                         print(f"   ✅ Deleted user: {username}")
                         deleted_count += 1
                     except Exception as e:
@@ -72,11 +70,9 @@ def cleanup_users():
             print("   ℹ️  No test users found to delete")
         else:
             print(f"\n✅ Deleted {deleted_count} test user(s)")
-            print(
-                f"\n📝 Next step: Run setup_cognito.py to recreate users with proper usernames"
-            )
-            print(f"   cd gateway-setup")
-            print(f"   python setup_cognito.py")
+            print("\n📝 Next step: Run setup_cognito.py to recreate users with proper usernames")
+            print("   cd gateway-setup")
+            print("   python setup_cognito.py")
 
     except Exception as e:
         print(f"❌ Error listing users: {e}")

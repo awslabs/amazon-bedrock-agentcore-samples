@@ -1,9 +1,7 @@
 #!/usr/bin/env python3
 import boto3
-import json
 import os
 import sys
-import time
 
 
 def test_ssm_connectivity():
@@ -17,9 +15,7 @@ def test_ssm_connectivity():
             print("✅ Successfully connected to SSM and retrieved parameter")
             print(f"Parameter value: {response['Parameter']['Value']}")
         except ssm_client.exceptions.ParameterNotFound:
-            print(
-                "✅ Successfully connected to SSM (parameter not found, but connection works)"
-            )
+            print("✅ Successfully connected to SSM (parameter not found, but connection works)")
         return True
     except Exception as e:
         print(f"❌ Failed to connect to SSM: {str(e)}")
@@ -32,7 +28,7 @@ def test_secrets_manager_connectivity():
     try:
         sm_client = boto3.client("secretsmanager")
         # List secrets to test connectivity
-        response = sm_client.list_secrets(MaxResults=1)
+        sm_client.list_secrets(MaxResults=1)
         print("✅ Successfully connected to Secrets Manager")
         return True
     except Exception as e:
@@ -46,7 +42,7 @@ def test_cloudwatch_logs_connectivity():
     try:
         logs_client = boto3.client("logs")
         # List log groups to test connectivity
-        response = logs_client.describe_log_groups(limit=1)
+        logs_client.describe_log_groups(limit=1)
         print("✅ Successfully connected to CloudWatch Logs")
         return True
     except Exception as e:
@@ -78,9 +74,7 @@ def main():
         print("\n✅ All connectivity tests passed!")
         return 0
     else:
-        print(
-            "\n❌ Some connectivity tests failed. Please check VPC endpoint configuration."
-        )
+        print("\n❌ Some connectivity tests failed. Please check VPC endpoint configuration.")
         return 1
 
 

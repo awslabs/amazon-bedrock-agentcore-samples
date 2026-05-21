@@ -7,12 +7,9 @@ import boto3
 import json
 import sys
 import os
-from datetime import datetime
 
 # Add project root to path for shared config manager
-project_root = os.path.dirname(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-)
+project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.append(project_root)
 
 from shared.config_manager import AgentCoreConfigManager
@@ -25,9 +22,7 @@ class RuntimeManager:
         base_config = config_manager.get_base_settings()
 
         self.region = region or base_config["aws"]["region"]
-        self.control_client = boto3.client(
-            "bedrock-agentcore-control", region_name=self.region
-        )
+        self.control_client = boto3.client("bedrock-agentcore-control", region_name=self.region)
 
     def list_runtimes(self):
         """List all agent runtimes"""
@@ -61,14 +56,12 @@ class RuntimeManager:
             response = self.control_client.get_agent_runtime(agentRuntimeId=runtime_id)
 
             runtime = response
-            print(f"   📋 Runtime Details:")
+            print("   📋 Runtime Details:")
             print(f"      • Name: {runtime.get('agentRuntimeName')}")
             print(f"      • ARN: {runtime.get('agentRuntimeArn')}")
             print(f"      • Status: {runtime.get('status')}")
             print(f"      • Role ARN: {runtime.get('roleArn')}")
-            print(
-                f"      • Network Mode: {runtime.get('networkConfiguration', {}).get('networkMode')}"
-            )
+            print(f"      • Network Mode: {runtime.get('networkConfiguration', {}).get('networkMode')}")
             print(
                 f"      • Container URI: {runtime.get('agentRuntimeArtifact', {}).get('containerConfiguration', {}).get('containerUri')}"
             )
@@ -92,9 +85,7 @@ class RuntimeManager:
             # First delete endpoints
             print("   🔗 Checking for endpoints...")
             try:
-                endpoints_response = self.control_client.list_agent_runtime_endpoints(
-                    agentRuntimeId=runtime_id
-                )
+                endpoints_response = self.control_client.list_agent_runtime_endpoints(agentRuntimeId=runtime_id)
                 endpoints = endpoints_response.get("agentRuntimeEndpointSummaries", [])
 
                 for endpoint in endpoints:
@@ -151,9 +142,7 @@ class RuntimeManager:
                     if "/runtime/" in arn:
                         runtime_id = arn.split("/runtime/")[-1]
 
-                print(
-                    f"\n[{i}/{len(runtimes)}] Deleting: {runtime_name} ({runtime_id})"
-                )
+                print(f"\n[{i}/{len(runtimes)}] Deleting: {runtime_name} ({runtime_id})")
 
                 if self.delete_runtime(runtime_id):
                     deleted_count += 1
@@ -162,7 +151,7 @@ class RuntimeManager:
                     failed_count += 1
                     print(f"   ❌ Failed to delete: {runtime_name}")
 
-            print(f"\n📊 Deletion Summary:")
+            print("\n📊 Deletion Summary:")
             print(f"   ✅ Successfully deleted: {deleted_count}")
             print(f"   ❌ Failed to delete: {failed_count}")
             print(f"   📋 Total processed: {len(runtimes)}")
@@ -170,9 +159,7 @@ class RuntimeManager:
             if failed_count == 0:
                 print("🎉 All runtimes deleted successfully!")
             else:
-                print(
-                    f"⚠️  {failed_count} runtime(s) failed to delete - check logs above"
-                )
+                print(f"⚠️  {failed_count} runtime(s) failed to delete - check logs above")
 
             return failed_count == 0
 
@@ -184,9 +171,7 @@ class RuntimeManager:
         """List endpoints for a runtime"""
         try:
             print(f"🔍 Listing endpoints for runtime: {runtime_id}")
-            response = self.control_client.list_agent_runtime_endpoints(
-                agentRuntimeId=runtime_id
-            )
+            response = self.control_client.list_agent_runtime_endpoints(agentRuntimeId=runtime_id)
             endpoints = response.get("runtimeEndpoints", [])
 
             if not endpoints:

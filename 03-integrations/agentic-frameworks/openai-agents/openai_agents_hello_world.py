@@ -1,6 +1,5 @@
 from agents import Agent, Runner, WebSearchTool
 import logging
-import asyncio
 import sys
 
 # Set up logging

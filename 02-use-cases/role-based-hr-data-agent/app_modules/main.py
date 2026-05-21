@@ -5,7 +5,6 @@ Handles OAuth callback, authentication check, and chat interface rendering.
 """
 
 import uuid
-from urllib.parse import parse_qs, urlparse
 
 import streamlit as st
 
@@ -74,9 +73,7 @@ def main():
     # ------------------------------------------------------------------
     if not auth.is_authenticated():
         st.title("🔐 HR Data Agent")
-        st.markdown(
-            "Secure HR data access with role-based DLP enforcement via Amazon Bedrock AgentCore."
-        )
+        st.markdown("Secure HR data access with role-based DLP enforcement via Amazon Bedrock AgentCore.")
         st.markdown("---")
         if st.button("Login with Cognito", use_container_width=True):
             st.markdown(
@@ -88,7 +85,7 @@ def main():
     # ------------------------------------------------------------------
     # Authenticated — Chat interface
     # ------------------------------------------------------------------
-    token_claims = auth.decode_token(auth.get_access_token())
+    auth.decode_token(auth.get_access_token())
 
     # Session state
     if "session_id" not in st.session_state:
@@ -147,9 +144,7 @@ def main():
 
         with st.chat_message("assistant"):
             placeholder = st.empty()
-            placeholder.markdown(
-                '<span class="thinking">Thinking...</span>', unsafe_allow_html=True
-            )
+            placeholder.markdown('<span class="thinking">Thinking...</span>', unsafe_allow_html=True)
             response = chat.send_message(
                 message=prompt,
                 session_id=st.session_state.session_id,
@@ -157,6 +152,4 @@ def main():
                 message_placeholder=placeholder,
             )
             if response:
-                st.session_state.messages.append(
-                    {"role": "assistant", "content": response}
-                )
+                st.session_state.messages.append({"role": "assistant", "content": response})

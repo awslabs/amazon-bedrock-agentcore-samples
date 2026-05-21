@@ -19,7 +19,6 @@ Arguments:
 
 import boto3
 import json
-import sys
 import argparse
 from typing import Dict, Any
 
@@ -61,9 +60,7 @@ class IAMRolesSetup:
         # Get Lambda role ARN from SSM if available
         lambda_role_arn = None
         try:
-            response = self.ssm_client.get_parameter(
-                Name="/app/lakehouse-agent/interceptor-lambda-role-arn"
-            )
+            response = self.ssm_client.get_parameter(Name="/app/lakehouse-agent/interceptor-lambda-role-arn")
             lambda_role_arn = response["Parameter"]["Value"]
             print(f"   Found Lambda role ARN in SSM: {lambda_role_arn}")
 
@@ -71,9 +68,9 @@ class IAMRolesSetup:
             role_name = lambda_role_arn.split("/")[-1]
             try:
                 self.iam_client.get_role(RoleName=role_name)
-                print(f"   ✅ Verified role exists in IAM")
+                print("   ✅ Verified role exists in IAM")
             except self.iam_client.exceptions.NoSuchEntityException:
-                print(f"   ⚠️  Role not found in IAM (stale SSM parameter), skipping")
+                print("   ⚠️  Role not found in IAM (stale SSM parameter), skipping")
                 lambda_role_arn = None
         except Exception:
             print("   Lambda role ARN not found in SSM, using account root principal")
@@ -249,9 +246,7 @@ class IAMRolesSetup:
                 "Sid": "DynamoDBLoginAuditAccess",
                 "Effect": "Allow",
                 "Action": ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:Scan"],
-                "Resource": [
-                    f"arn:aws:dynamodb:{self.region}:{self.account_id}:table/lakehouse_user_login_audit"
-                ],
+                "Resource": [f"arn:aws:dynamodb:{self.region}:{self.account_id}:table/lakehouse_user_login_audit"],
             }
         )
 
@@ -297,9 +292,7 @@ class IAMRolesSetup:
             print(f"❌ Error creating role {role_name}: {e}")
             raise
 
-    def attach_inline_policy(
-        self, role_name: str, policy_name: str, policy_document: Dict[str, Any]
-    ):
+    def attach_inline_policy(self, role_name: str, policy_name: str, policy_document: Dict[str, Any]):
         """
         Attach inline policy to IAM role.
 
@@ -329,9 +322,7 @@ class IAMRolesSetup:
         """
         try:
             self.iam_client.attach_role_policy(RoleName=role_name, PolicyArn=policy_arn)
-            print(
-                f"✅ Attached managed policy {policy_arn.split('/')[-1]} to {role_name}"
-            )
+            print(f"✅ Attached managed policy {policy_arn.split('/')[-1]} to {role_name}")
         except Exception as e:
             print(f"❌ Error attaching managed policy to {role_name}: {e}")
             raise
@@ -344,17 +335,13 @@ class IAMRolesSetup:
             S3 bucket name
         """
         try:
-            response = self.ssm_client.get_parameter(
-                Name="/app/lakehouse-agent/s3-bucket-name"
-            )
+            response = self.ssm_client.get_parameter(Name="/app/lakehouse-agent/s3-bucket-name")
             bucket_name = response["Parameter"]["Value"]
             print(f"✅ Retrieved bucket name from SSM: {bucket_name}")
             return bucket_name
         except Exception as e:
             print(f"⚠️  Could not retrieve bucket name from SSM: {e}")
-            print(
-                "   Using default bucket pattern: {account_id}-{region}-lakehouse-agent"
-            )
+            print("   Using default bucket pattern: {account_id}-{region}-lakehouse-agent")
             return f"{self.account_id}-{self.region}-lakehouse-agent"
 
     def store_role_arns_in_ssm(self, role_arns: Dict[str, str]):
@@ -417,7 +404,7 @@ class IAMRolesSetup:
             if "administrators" in role_name:
                 policy_name = f"{role_name}-admin-access"
                 self.attach_inline_policy(role_name, policy_name, admin_policy)
-                print(f"   ✅ Attached admin policy with DynamoDB audit access")
+                print("   ✅ Attached admin policy with DynamoDB audit access")
             else:
                 policy_name = f"{role_name}-athena-s3-access"
                 self.attach_inline_policy(role_name, policy_name, athena_s3_policy)
@@ -426,34 +413,32 @@ class IAMRolesSetup:
         self.store_role_arns_in_ssm(role_arns)
 
         print("\n✨ IAM roles setup completed successfully!")
-        print(f"\n🔐 Created roles:")
+        print("\n🔐 Created roles:")
         for role_name, role_arn in role_arns.items():
             print(f"   - {role_name}")
             print(f"     ARN: {role_arn}")
 
-        print(f"\n💾 SSM Parameters created:")
+        print("\n💾 SSM Parameters created:")
         for role_name in self.tenant_roles:
             print(f"   - /app/lakehouse-agent/roles/{role_name}")
 
-        print(f"\n📋 Permissions granted:")
-        print(f"   All roles:")
-        print(f"     - AmazonAthenaFullAccess (managed policy)")
-        print(f"       • Athena query execution and catalog access")
-        print(f"       • Glue Data Catalog and federated catalog access")
-        print(f"   Policyholders & Adjusters (inline policy):")
-        print(f"     - S3 Tables read access (GetTable, GetTableMetadata, ListTables)")
-        print(f"     - Lake Formation data access (GetDataAccess)")
+        print("\n📋 Permissions granted:")
+        print("   All roles:")
+        print("     - AmazonAthenaFullAccess (managed policy)")
+        print("       • Athena query execution and catalog access")
+        print("       • Glue Data Catalog and federated catalog access")
+        print("   Policyholders & Adjusters (inline policy):")
+        print("     - S3 Tables read access (GetTable, GetTableMetadata, ListTables)")
+        print("     - Lake Formation data access (GetDataAccess)")
         print(f"     - S3 data access: s3://{bucket_name}")
         print(f"     - S3 query results: s3://{bucket_name}/athena-results/")
-        print(f"   Administrators (additional inline policy):")
-        print(f"     - DynamoDB login audit access (lakehouse_user_login_audit)")
-        print(f"     - Can query user login history via MCP tool")
+        print("   Administrators (additional inline policy):")
+        print("     - DynamoDB login audit access (lakehouse_user_login_audit)")
+        print("     - Can query user login history via MCP tool")
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Setup IAM roles for lakehouse agent tenant access control"
-    )
+    parser = argparse.ArgumentParser(description="Setup IAM roles for lakehouse agent tenant access control")
     parser.add_argument(
         "--account-id",
         required=False,

@@ -8,16 +8,13 @@ import boto3
 import time
 import sys
 import os
-import yaml
 
 # ============================================================================
 # CONFIGURATION
 # ============================================================================
 
 # Add project root to path for shared config manager
-project_root = os.path.dirname(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-)
+project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.append(project_root)
 
 from shared.config_manager import AgentCoreConfigManager
@@ -29,7 +26,7 @@ from shared.config_manager import AgentCoreConfigManager
 
 def update_config_with_arns(config_manager, runtime_arn, endpoint_arn):
     """Update dynamic configuration with new ARNs"""
-    print(f"\n📝 Updating dynamic configuration with new SDK runtime ARN...")
+    print("\n📝 Updating dynamic configuration with new SDK runtime ARN...")
     try:
         # Update dynamic configuration
         updates = {"runtime": {"sdk_agent": {"arn": runtime_arn}}}
@@ -49,9 +46,7 @@ config_manager = AgentCoreConfigManager()
 
 # Get configuration values
 base_config = config_manager.get_base_settings()
-merged_config = (
-    config_manager.get_merged_config()
-)  # For runtime values that may be dynamic
+merged_config = config_manager.get_merged_config()  # For runtime values that may be dynamic
 oauth_config = config_manager.get_oauth_settings()
 
 # Extract configuration values
@@ -88,35 +83,31 @@ try:
     runtime_arn = response["agentRuntimeArn"]
     runtime_id = runtime_arn.split("/")[-1]
 
-    print(f"✅ SDK AgentCore Runtime created!")
+    print("✅ SDK AgentCore Runtime created!")
     print(f"🏷️  ARN: {runtime_arn}")
     print(f"🆔 Runtime ID: {runtime_id}")
 
-    print(f"\n⏳ Waiting for runtime to be READY...")
+    print("\n⏳ Waiting for runtime to be READY...")
     max_wait = 600  # 10 minutes
     wait_time = 0
 
     while wait_time < max_wait:
         try:
-            status_response = control_client.get_agent_runtime(
-                agentRuntimeId=runtime_id
-            )
+            status_response = control_client.get_agent_runtime(agentRuntimeId=runtime_id)
             status = status_response.get("status")
             print(f"   📊 Status: {status} ({wait_time}s)")
 
             if status == "READY":
-                print(f"✅ SDK Runtime is READY!")
+                print("✅ SDK Runtime is READY!")
 
                 # Create DEFAULT endpoint
-                print(f"\n🔗 Creating DEFAULT endpoint...")
+                print("\n🔗 Creating DEFAULT endpoint...")
                 try:
                     endpoint_response = control_client.create_agent_runtime_endpoint(
                         agentRuntimeId=runtime_id, name="DEFAULT"
                     )
-                    print(f"✅ DEFAULT endpoint created!")
-                    print(
-                        f"🏷️  Endpoint ARN: {endpoint_response['agentRuntimeEndpointArn']}"
-                    )
+                    print("✅ DEFAULT endpoint created!")
+                    print(f"🏷️  Endpoint ARN: {endpoint_response['agentRuntimeEndpointArn']}")
 
                     # Update config with new ARNs
                     update_config_with_arns(
@@ -127,34 +118,20 @@ try:
 
                 except Exception as ep_error:
                     if "already exists" in str(ep_error):
-                        print(f"ℹ️  DEFAULT endpoint already exists")
+                        print("ℹ️  DEFAULT endpoint already exists")
                         # Fetch existing endpoint ARN
                         try:
-                            endpoints_response = (
-                                control_client.list_agent_runtime_endpoints(
-                                    agentRuntimeId=runtime_id
-                                )
-                            )
+                            endpoints_response = control_client.list_agent_runtime_endpoints(agentRuntimeId=runtime_id)
                             default_endpoint = next(
-                                (
-                                    ep
-                                    for ep in endpoints_response["runtimeEndpoints"]
-                                    if ep["name"] == "DEFAULT"
-                                ),
+                                (ep for ep in endpoints_response["runtimeEndpoints"] if ep["name"] == "DEFAULT"),
                                 None,
                             )
                             if default_endpoint:
-                                existing_endpoint_arn = default_endpoint[
-                                    "agentRuntimeEndpointArn"
-                                ]
-                                print(
-                                    f"🏷️  Found existing endpoint ARN: {existing_endpoint_arn}"
-                                )
-                                update_config_with_arns(
-                                    config_manager, runtime_arn, existing_endpoint_arn
-                                )
+                                existing_endpoint_arn = default_endpoint["agentRuntimeEndpointArn"]
+                                print(f"🏷️  Found existing endpoint ARN: {existing_endpoint_arn}")
+                                update_config_with_arns(config_manager, runtime_arn, existing_endpoint_arn)
                             else:
-                                print(f"⚠️  Could not find DEFAULT endpoint")
+                                print("⚠️  Could not find DEFAULT endpoint")
                                 update_config_with_arns(config_manager, runtime_arn, "")
                         except Exception as fetch_error:
                             print(f"⚠️  Error fetching existing endpoint: {fetch_error}")
@@ -175,9 +152,9 @@ try:
             break
 
     if wait_time >= max_wait:
-        print(f"⚠️  Runtime creation taking longer than expected")
+        print("⚠️  Runtime creation taking longer than expected")
 
-    print(f"\n🧪 Test with:")
+    print("\n🧪 Test with:")
     print(f"   ARN: {runtime_arn}")
     print(f"   ID: {runtime_id}")
 

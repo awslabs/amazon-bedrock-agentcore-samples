@@ -3,7 +3,6 @@
 import os
 import boto3
 from dataclasses import dataclass
-from typing import Optional
 
 
 @dataclass
@@ -29,9 +28,7 @@ class AgentConfig:
     # S3 Configuration for recordings - use property to get dynamic account ID
     @property
     def s3_bucket(self) -> str:
-        return os.environ.get(
-            "S3_RECORDING_BUCKET", f"bedrock-agentcore-recordings-{self.aws_account_id}"
-        )
+        return os.environ.get("S3_RECORDING_BUCKET", f"bedrock-agentcore-recordings-{self.aws_account_id}")
 
     s3_prefix: str = os.environ.get("S3_RECORDING_PREFIX", "competitive_intel/")
 
@@ -57,7 +54,7 @@ class AgentConfig:
     def validate(self) -> bool:
         """Validate required configuration."""
         if not self.recording_role_arn:
-            print(f"WARNING: RECORDING_ROLE_ARN not set")
+            print("WARNING: RECORDING_ROLE_ARN not set")
             print(f"AWS Account ID: {self.aws_account_id}")
             return False
 
@@ -67,7 +64,7 @@ class AgentConfig:
             try:
                 s3.head_bucket(Bucket=self.s3_bucket)
                 print(f"✅ S3 bucket exists: {self.s3_bucket}")
-            except:
+            except Exception:
                 # Try to create the bucket
                 if self.region == "us-east-1":
                     s3.create_bucket(Bucket=self.s3_bucket)

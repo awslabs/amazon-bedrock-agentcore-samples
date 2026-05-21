@@ -85,7 +85,7 @@ def main():
     environment = app.node.try_get_context("environment") or "dev"
 
     # Define AWS environment with verified values
-    env = Environment(account=account, region=region)
+    Environment(account=account, region=region)
 
     print("=" * 80)
     print("AgentCore CDK Application - STUB MODE")

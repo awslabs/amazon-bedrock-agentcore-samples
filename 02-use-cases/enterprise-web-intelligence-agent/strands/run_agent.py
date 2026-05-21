@@ -2,10 +2,9 @@
 """Run the Competitive Intelligence Agent with Strands Framework."""
 
 import asyncio
-import os
 import sys
 from pathlib import Path
-from typing import Dict, List, TypedDict, Annotated, Optional, Any
+from typing import Dict, List, Any
 
 # Add parent directory to path
 parent_dir = str(Path(__file__).parent.parent)
@@ -81,9 +80,7 @@ def get_custom_competitors() -> List[Dict]:
         console.print("4. Company/About information")
         console.print("5. All of the above")
 
-        analysis_choice = Prompt.ask(
-            "Select options (comma-separated, e.g., 1,2,3)", default="1,2"
-        )
+        analysis_choice = Prompt.ask("Select options (comma-separated, e.g., 1,2,3)", default="1,2")
 
         analyze = []
         if "1" in analysis_choice:
@@ -108,9 +105,7 @@ def get_custom_competitors() -> List[Dict]:
 
         # Ask for specific URLs (optional)
         additional_urls = {}
-        if Confirm.ask(
-            "Do you have specific URLs for pricing/docs pages?", default=False
-        ):
+        if Confirm.ask("Do you have specific URLs for pricing/docs pages?", default=False):
             if "pricing" in analyze:
                 pricing_url = Prompt.ask("Pricing page URL (optional)", default="")
                 if pricing_url:
@@ -130,9 +125,7 @@ def get_custom_competitors() -> List[Dict]:
             }
         )
 
-        console.print(
-            f"[green]✓ Added {name} - will analyze: {', '.join(analyze)}[/green]\n"
-        )
+        console.print(f"[green]✓ Added {name} - will analyze: {', '.join(analyze)}[/green]\n")
 
     return competitors
 
@@ -189,9 +182,7 @@ async def view_replay(recording_config: Any, config: AgentConfig):
             prefix = "/".join(parts[1:-1]) if len(parts) > 2 else ""
             session_id = parts[-1] if len(parts) > 1 else "unknown"
         else:
-            raise ValueError(
-                f"Invalid recording configuration format: {type(recording_config)}"
-            )
+            raise ValueError(f"Invalid recording configuration format: {type(recording_config)}")
 
         console.print(f"[dim]Bucket: {bucket}[/dim]")
         console.print(f"[dim]Prefix: {prefix}[/dim]")
@@ -202,15 +193,11 @@ async def view_replay(recording_config: Any, config: AgentConfig):
         await asyncio.sleep(30)
 
         # Use the unified S3 data source
-        data_source = UnifiedS3DataSource(
-            bucket=bucket, prefix=prefix, session_id=session_id
-        )
+        data_source = UnifiedS3DataSource(bucket=bucket, prefix=prefix, session_id=session_id)
 
         # Start replay viewer
         console.print(f"🎬 Starting session replay viewer for: {session_id}")
-        viewer = SessionReplayViewer(
-            data_source=data_source, port=config.replay_viewer_port
-        )
+        viewer = SessionReplayViewer(data_source=data_source, port=config.replay_viewer_port)
         viewer.start()
 
     except Exception as e:
@@ -348,9 +335,7 @@ async def main():
                 console.print("\n[bold]Report Preview:[/bold]")
                 console.print("-" * 60)
                 preview = results["report"][:1500]
-                console.print(
-                    preview + "..." if len(results["report"]) > 1500 else preview
-                )
+                console.print(preview + "..." if len(results["report"]) > 1500 else preview)
                 console.print("-" * 60)
 
             # Ask about replay
@@ -373,14 +358,10 @@ async def main():
 
                 if Confirm.ask("\nView session replay?", default=True):
                     # Use recording_config if available, fallback to recording_path
-                    recording_data = results.get("recording_config") or results.get(
-                        "recording_path"
-                    )
+                    recording_data = results.get("recording_config") or results.get("recording_path")
                     await view_replay(recording_data, config)
         else:
-            console.print(
-                f"\n[red]Analysis failed: {results.get('error', 'Unknown error')}[/red]"
-            )
+            console.print(f"\n[red]Analysis failed: {results.get('error', 'Unknown error')}[/red]")
 
     except KeyboardInterrupt:
         console.print("\n[yellow]Analysis interrupted by user[/yellow]")

@@ -13,9 +13,7 @@ from datetime import datetime
 class TestProfileServiceGet:
     """Test profile retrieval operations."""
 
-    def test_get_profile_by_customer_id(
-        self, sample_customer_profile, mock_dynamodb_table
-    ):
+    def test_get_profile_by_customer_id(self, sample_customer_profile, mock_dynamodb_table):
         """Test retrieving profile by customer ID."""
         mock_dynamodb_table.get_item.return_value = {"Item": sample_customer_profile}
 
@@ -33,9 +31,7 @@ class TestProfileServiceGet:
 
         assert "Item" not in response
 
-    def test_get_profile_with_authorization(
-        self, sample_customer_profile, sample_user_context
-    ):
+    def test_get_profile_with_authorization(self, sample_customer_profile, sample_user_context):
         """Test retrieving profile with authorization check."""
         requested_customer_id = "CUST-12345"
         user_customer_id = sample_user_context["customer_id"]
@@ -51,7 +47,7 @@ class TestProfileServiceCreate:
         """Test creating a new customer profile."""
         mock_dynamodb_table.put_item.return_value = {}
 
-        response = mock_dynamodb_table.put_item(
+        mock_dynamodb_table.put_item(
             Item=sample_customer_profile,
             ConditionExpression="attribute_not_exists(customer_id)",
         )
@@ -99,10 +95,7 @@ class TestProfileServiceUpdate:
         user_customer_id = sample_user_context["customer_id"]
         scopes = sample_user_context["scopes"]
 
-        is_authorized = (
-            requested_customer_id == user_customer_id
-            and "profile:personal:write" in scopes
-        )
+        is_authorized = requested_customer_id == user_customer_id and "profile:personal:write" in scopes
 
         assert is_authorized
 
@@ -138,10 +131,7 @@ class TestProfileServiceErrors:
         with pytest.raises(ClientError) as exc:
             mock_dynamodb_table.get_item(Key={"customer_id": "CUST-12345"})
 
-        assert (
-            exc.value.response["Error"]["Code"]
-            == "ProvisionedThroughputExceededException"
-        )
+        assert exc.value.response["Error"]["Code"] == "ProvisionedThroughputExceededException"
 
     def test_handle_not_found_error(self, mock_dynamodb_table):
         """Test handling not found errors."""

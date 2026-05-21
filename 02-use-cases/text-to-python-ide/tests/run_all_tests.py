@@ -8,7 +8,6 @@ import sys
 import subprocess
 import time
 import requests
-import json
 from pathlib import Path
 
 # Add project root to path
@@ -49,7 +48,7 @@ class TestRunner:
                 if response.status_code == 200:
                     print("✅ Backend started successfully")
                     return True
-            except:
+            except Exception:
                 time.sleep(1)
 
         print("❌ Backend failed to start")
@@ -61,7 +60,7 @@ class TestRunner:
             try:
                 os.kill(self.backend_pid, 9)
                 print("✅ Backend stopped")
-            except:
+            except Exception:
                 pass
         os.system("lsof -ti:8000 | xargs kill -9 2>/dev/null || true")
 
@@ -108,8 +107,8 @@ class TestRunner:
 
         # Check dependencies
         try:
-            import strands
-            import bedrock_agentcore
+            import strands  # noqa: F401
+            import bedrock_agentcore  # noqa: F401
 
             print("✅ Core dependencies available")
         except ImportError as e:
@@ -261,9 +260,7 @@ print(f"2 + 2 = {result}")
                 print(f"❌ System not healthy: {data.get('status')}")
                 return False
 
-            print(
-                f"✅ System healthy with model: {data.get('current_model', 'Unknown')}"
-            )
+            print(f"✅ System healthy with model: {data.get('current_model', 'Unknown')}")
             return True
 
         except Exception as e:
@@ -278,7 +275,7 @@ print(f"2 + 2 = {result}")
             from bedrock_agentcore.tools.code_interpreter_client import code_session
 
             with code_session("us-east-1") as code_client:
-                response = code_client.invoke(
+                code_client.invoke(
                     "executeCode",
                     {
                         "code": 'print("AgentCore test successful")',

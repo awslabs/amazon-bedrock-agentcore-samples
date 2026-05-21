@@ -5,7 +5,6 @@ Reads configuration from SSM, then delegates to agent_task for async workflow.
 """
 
 import os
-import asyncio
 import logging
 
 from bedrock_agentcore.runtime import BedrockAgentCoreApp
@@ -28,9 +27,7 @@ async def agent_invocation(payload: dict, context) -> dict:
 
     Reads gateway URL from SSM, validates session, then runs the agent task.
     """
-    session_id = payload.get("sessionId") or (
-        context.session_id if hasattr(context, "session_id") else None
-    )
+    session_id = payload.get("sessionId") or (context.session_id if hasattr(context, "session_id") else None)
     if not session_id:
         return {"error": "Missing sessionId in payload"}
 

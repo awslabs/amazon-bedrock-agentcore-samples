@@ -204,11 +204,7 @@ def discover_schema():
         # Add comprehensive sample data showing variety
         try:
             # Get diverse sample data instead of just first 2 rows
-            cursor.execute(
-                sql.SQL("SELECT * FROM {} ORDER BY RANDOM() LIMIT 5").format(
-                    sql.Identifier(table_name)
-                )
-            )
+            cursor.execute(sql.SQL("SELECT * FROM {} ORDER BY RANDOM() LIMIT 5").format(sql.Identifier(table_name)))
             sample_data = cursor.fetchall()
             if sample_data:
                 col_names = [desc[0] for desc in cursor.description]
@@ -236,13 +232,11 @@ def discover_schema():
                         )
                         variety_data = cursor.fetchall()
                         if variety_data:
-                            schema_description += (
-                                f"\nDATA VARIETY - {col.upper()} (top values):\n"
-                            )
+                            schema_description += f"\nDATA VARIETY - {col.upper()} (top values):\n"
                             for value, count in variety_data:
                                 schema_description += f"- {value}: {count} records\n"
 
-                schema_description += f"\nCRITICAL: Sample shows only 5 random rows. The actual table contains thousands more records with extensive variety in all categorical columns. ALWAYS query the database to discover all actual values and patterns.\n"
+                schema_description += "\nCRITICAL: Sample shows only 5 random rows. The actual table contains thousands more records with extensive variety in all categorical columns. ALWAYS query the database to discover all actual values and patterns.\n"
                 print(f"✅ Added comprehensive sample data for {table_name}")
         except Exception as e:
             print(f"⚠️ Could not get sample data for {table_name}: {e}")
@@ -347,9 +341,7 @@ def search_web(query: str) -> str:
         if response.status_code == 200:
             data = response.json()
             web_results = data.get("web", {}).get("results", [])
-            print(
-                f"[Web Search Debug] Brave search returned {len(web_results)} results"
-            )
+            print(f"[Web Search Debug] Brave search returned {len(web_results)} results")
 
             for i, result in enumerate(web_results):
                 search_result = {
@@ -359,20 +351,14 @@ def search_web(query: str) -> str:
                     "source": "Web Search",
                 }
                 all_results.append(search_result)
-                print(
-                    f"[Web Search Debug] Result {i + 1}: {search_result['title']} - {search_result['url']}"
-                )
+                print(f"[Web Search Debug] Result {i + 1}: {search_result['title']} - {search_result['url']}")
 
         elif response.status_code == 429:
             print("[Web Search Debug] ❌ Rate limit exceeded for Brave Search API")
             return json.dumps({"error": "Brave Search API rate limit exceeded"})
         else:
-            print(
-                f"[Web Search Debug] ❌ Brave API error: {response.status_code} - {response.text}"
-            )
-            return json.dumps(
-                {"error": f"Brave Search API error: {response.status_code}"}
-            )
+            print(f"[Web Search Debug] ❌ Brave API error: {response.status_code} - {response.text}")
+            return json.dumps({"error": f"Brave Search API error: {response.status_code}"})
 
     # amazonq-ignore-next-line
     except Exception as search_error:
@@ -391,7 +377,7 @@ def search_web(query: str) -> str:
     for i, result in enumerate(all_results):
         print(f"[Web Search Debug] Result {i + 1}: {result['title']} - {result['url']}")
 
-    print(f"[Web Search Debug] FULL RESPONSE TO AGENT:")
+    print("[Web Search Debug] FULL RESPONSE TO AGENT:")
     print(json.dumps(response, indent=2)[:500] + "...")
 
     result = json.dumps(response)
@@ -401,9 +387,7 @@ def search_web(query: str) -> str:
 
 @app.route("/health", methods=["GET"])
 def health():
-    return jsonify(
-        {"status": "healthy", "runtime": f"Strands {DEPLOYMENT_MODE.upper()}"}
-    )
+    return jsonify({"status": "healthy", "runtime": f"Strands {DEPLOYMENT_MODE.upper()}"})
 
 
 @app.route("/api/chat/message", methods=["POST"])
@@ -445,9 +429,7 @@ def invoke_agent(user_message, session_id, user_id):
             return jsonify({"error": "No message provided"}), 400
 
         print(f"[{DEPLOYMENT_MODE.upper()} Runtime] Processing: {user_message}")
-        print(
-            f"[{DEPLOYMENT_MODE.upper()} Runtime] Session: {session_id}, User: {user_id}"
-        )
+        print(f"[{DEPLOYMENT_MODE.upper()} Runtime] Session: {session_id}, User: {user_id}")
 
         # Set session ID in OTEL baggage for observability
         if session_id:
@@ -462,9 +444,7 @@ def invoke_agent(user_message, session_id, user_id):
             try:
                 print(f"🔄 Initializing AgentCore memory: {MEMORY_NAME}")
                 memories = memory_client.list_memories()
-                memory_id = next(
-                    (m["id"] for m in memories if m["id"].startswith(MEMORY_NAME)), None
-                )
+                memory_id = next((m["id"] for m in memories if m["id"].startswith(MEMORY_NAME)), None)
 
                 if memory_id:
                     print(f"✅ Found existing AgentCore memory: {memory_id}")
@@ -505,9 +485,7 @@ def invoke_agent(user_message, session_id, user_id):
         json_match = re.search(r"\{[\s\S]*\}", result)
         if json_match:
             json_str = json_match.group(0)
-            print(
-                f"[{DEPLOYMENT_MODE.upper()} Runtime] Original JSON length: {len(json_str)}"
-            )
+            print(f"[{DEPLOYMENT_MODE.upper()} Runtime] Original JSON length: {len(json_str)}")
 
             # Clean control characters and normalize whitespace
             cleaned_json = re.sub(r"[\x00-\x1f\x7f-\x9f]", " ", json_str)
@@ -520,24 +498,18 @@ def invoke_agent(user_message, session_id, user_id):
                 cleaned_json = json.dumps(parsed, ensure_ascii=False)
             except json.JSONDecodeError:
                 # Manual quote escaping as fallback
-                cleaned_json = re.sub(
-                    r'"([^"]*?)"([^"]*?)"([^"]*?)"', r'"\1\\"\2\\"\3"', cleaned_json
-                )
+                cleaned_json = re.sub(r'"([^"]*?)"([^"]*?)"([^"]*?)"', r'"\1\\"\2\\"\3"', cleaned_json)
 
             try:
                 json.loads(cleaned_json)
                 result = cleaned_json
                 print(f"[{DEPLOYMENT_MODE.upper()} Runtime] JSON validation successful")
             except json.JSONDecodeError as e:
-                print(
-                    f"[{DEPLOYMENT_MODE.upper()} Runtime] JSON validation failed: {e}"
-                )
+                print(f"[{DEPLOYMENT_MODE.upper()} Runtime] JSON validation failed: {e}")
                 print(f"[{DEPLOYMENT_MODE.upper()} Runtime] Keeping original response")
 
         # Parse the agent result and format for frontend compatibility
-        print(
-            f"[{DEPLOYMENT_MODE.upper()} Runtime] Final result for parsing: {result[:200]}..."
-        )
+        print(f"[{DEPLOYMENT_MODE.upper()} Runtime] Final result for parsing: {result[:200]}...")
         try:
             parsed_result = json.loads(result)
             print(f"[{DEPLOYMENT_MODE.upper()} Runtime] Successfully parsed JSON")
@@ -627,9 +599,7 @@ class MemoryHookProvider(HookProvider):
                 context = "\n".join(context_messages)
                 event.agent.system_prompt += f"\n\nPREVIOUS CONVERSATION CONTEXT:\n{context}\n\nCURRENT QUESTION:\n"
                 # amazonq-ignore-next-line
-                print(
-                    f"✅ Loaded {len(recent_turns)} conversation turns from AgentCore Memory"
-                )
+                print(f"✅ Loaded {len(recent_turns)} conversation turns from AgentCore Memory")
 
         except Exception as e:
             if "Memory not found" in str(e):
@@ -655,9 +625,7 @@ class MemoryHookProvider(HookProvider):
                     memory_id=self.memory_id,
                     actor_id=actor_id,
                     session_id=session_id,
-                    messages=[
-                        (messages[-1]["content"][0]["text"], messages[-1]["role"])
-                    ],
+                    messages=[(messages[-1]["content"][0]["text"], messages[-1]["role"])],
                 )
         except Exception as e:
             # amazonq-ignore-next-line
@@ -705,9 +673,7 @@ def agentcore_invoke(payload):
 
         if not user_message:
             messages = payload.get("messages", [])
-            user_message = (
-                messages[0]["content"] if messages else payload.get("inputText", "")
-            )
+            user_message = messages[0]["content"] if messages else payload.get("inputText", "")
 
         if not user_message:
             print("[AgentCore Runtime] No prompt found in payload")
@@ -731,9 +697,7 @@ def agentcore_invoke(payload):
             try:
                 print(f"🔄 Initializing AgentCore memory: {MEMORY_NAME}")
                 memories = memory_client.list_memories()
-                memory_id = next(
-                    (m["id"] for m in memories if m["id"].startswith(MEMORY_NAME)), None
-                )
+                memory_id = next((m["id"] for m in memories if m["id"].startswith(MEMORY_NAME)), None)
 
                 if memory_id:
                     print(f"✅ Found existing AgentCore memory: {memory_id}")
@@ -834,18 +798,14 @@ def agentcore_invoke(payload):
                 cleaned_json = json.dumps(parsed, ensure_ascii=False)
             except json.JSONDecodeError:
                 # Manual quote escaping as fallback
-                cleaned_json = re.sub(
-                    r'"([^"]*?)"([^"]*?)"([^"]*?)"', r'"\1\\"\2\\"\3"', cleaned_json
-                )
+                cleaned_json = re.sub(r'"([^"]*?)"([^"]*?)"([^"]*?)"', r'"\1\\"\2\\"\3"', cleaned_json)
             print(f"[AgentCore Runtime] Cleaned JSON length: {len(cleaned_json)}")
-            print(
-                f"[AgentCore Runtime] Cleaned first 200 chars: {repr(cleaned_json[:200])}"
-            )
+            print(f"[AgentCore Runtime] Cleaned first 200 chars: {repr(cleaned_json[:200])}")
 
             try:
                 json.loads(cleaned_json)
                 result = cleaned_json
-                print(f"[AgentCore Runtime] JSON validation successful")
+                print("[AgentCore Runtime] JSON validation successful")
             except json.JSONDecodeError as e:
                 print(f"[AgentCore Runtime] JSON validation failed: {e}")
                 print(
@@ -874,12 +834,8 @@ if __name__ == "__main__":
     sys.stdout.flush()
     sys.stderr.flush()
 
-    print(
-        f"[{DEPLOYMENT_MODE.upper()} Runtime] Starting Strands Agent with ADOT observability"
-    )
-    print(
-        f"[{DEPLOYMENT_MODE.upper()} Runtime] Available tools: execute_sql_query, search_web"
-    )
+    print(f"[{DEPLOYMENT_MODE.upper()} Runtime] Starting Strands Agent with ADOT observability")
+    print(f"[{DEPLOYMENT_MODE.upper()} Runtime] Available tools: execute_sql_query, search_web")
     print(f"[{DEPLOYMENT_MODE.upper()} Runtime] Deployment mode: {DEPLOYMENT_MODE}")
 
     # Security: Only enable debug mode in local development

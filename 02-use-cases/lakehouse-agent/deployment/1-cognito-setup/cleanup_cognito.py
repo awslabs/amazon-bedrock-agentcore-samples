@@ -36,9 +36,7 @@ class CognitoCleanup:
 
     def _get_ssm_param(self, name, default=None):
         try:
-            return self.ssm.get_parameter(Name=f"/app/lakehouse-agent/{name}")[
-                "Parameter"
-            ]["Value"]
+            return self.ssm.get_parameter(Name=f"/app/lakehouse-agent/{name}")["Parameter"]["Value"]
         except Exception:
             return default
 
@@ -91,12 +89,8 @@ class CognitoCleanup:
         try:
             for p in self.iam.list_role_policies(RoleName=role_name)["PolicyNames"]:
                 self.iam.delete_role_policy(RoleName=role_name, PolicyName=p)
-            for p in self.iam.list_attached_role_policies(RoleName=role_name)[
-                "AttachedPolicies"
-            ]:
-                self.iam.detach_role_policy(
-                    RoleName=role_name, PolicyArn=p["PolicyArn"]
-                )
+            for p in self.iam.list_attached_role_policies(RoleName=role_name)["AttachedPolicies"]:
+                self.iam.detach_role_policy(RoleName=role_name, PolicyArn=p["PolicyArn"])
             self.iam.delete_role(RoleName=role_name)
             print(f"   ✅ Deleted role: {role_name}")
         except Exception as e:
@@ -138,7 +132,7 @@ class CognitoCleanup:
                 print(f"   ❌ Error: {e}")
 
     def run(self):
-        print(f"\n🧹 Cognito Cleanup")
+        print("\n🧹 Cognito Cleanup")
         print(f"   Region: {self.region}")
         print(f"   Account: {self.account_id}")
         self.delete_user_pool()

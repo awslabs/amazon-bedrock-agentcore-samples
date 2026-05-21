@@ -7,9 +7,8 @@ and provides functions to load/save configuration.
 """
 
 import os
-import json
 import configparser
-from typing import Dict, Any, List, Optional
+from typing import Dict, List
 
 # Default config file path
 CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "iam_config.ini")
