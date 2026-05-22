@@ -79,16 +79,21 @@ def get_config() -> Dict[str, str]:
         try:
             ssm = boto3.client("ssm", region_name=region)
 
+            # WithDecryption=True is a no-op for plain String parameters but is set
+            # defensively so the code keeps working if the parameters are migrated
+            # to SecureString in the future.
             if not user_pool_id:
                 response = ssm.get_parameter(
-                    Name="/app/lakehouse-agent/cognito-user-pool-id"
+                    Name="/app/lakehouse-agent/cognito-user-pool-id",
+                    WithDecryption=True,
                 )
                 user_pool_id = response["Parameter"]["Value"]
                 logger.info(f"Loaded user_pool_id from SSM: {user_pool_id}")
 
             if not app_client_id:
                 response = ssm.get_parameter(
-                    Name="/app/lakehouse-agent/cognito-app-client-id"
+                    Name="/app/lakehouse-agent/cognito-app-client-id",
+                    WithDecryption=True,
                 )
                 app_client_id = response["Parameter"]["Value"]
                 logger.info(f"Loaded app_client_id from SSM: {app_client_id}")
