@@ -57,13 +57,15 @@ def run_with_boto3(cleanup: bool = False) -> None:
         name=f"Summary_{int(time.time())}",
         description="Summary strategy (boto3)",
         eventExpiryDuration=30,
-        memoryStrategies=[{
-            "summaryMemoryStrategy": {
-                "name": "SessionSummary",
-                "description": "Rolling conversation summary",
-                "namespaces": [NAMESPACE_TEMPLATE],
+        memoryStrategies=[
+            {
+                "summaryMemoryStrategy": {
+                    "name": "SessionSummary",
+                    "description": "Rolling conversation summary",
+                    "namespaces": [NAMESPACE_TEMPLATE],
+                }
             }
-        }],
+        ],
     )["memory"]["id"]
     print(f"[boto3] Created memory {memory_id}")
     deadline = time.time() + 300
@@ -74,7 +76,9 @@ def run_with_boto3(cleanup: bool = False) -> None:
 
     for role, text in TURNS:
         data.create_event(
-            memoryId=memory_id, actorId=ACTOR_ID, sessionId=SESSION_ID,
+            memoryId=memory_id,
+            actorId=ACTOR_ID,
+            sessionId=SESSION_ID,
             eventTimestamp=datetime.now(timezone.utc),
             payload=[{"conversational": {"role": role, "content": {"text": text}}}],
         )
@@ -83,7 +87,8 @@ def run_with_boto3(cleanup: bool = False) -> None:
 
     namespace = NAMESPACE_TEMPLATE.format(sessionId=SESSION_ID)
     hits = data.retrieve_memory_records(
-        memoryId=memory_id, namespace=namespace,
+        memoryId=memory_id,
+        namespace=namespace,
         searchCriteria={"searchQuery": "trip plan", "topK": 5},
     )["memoryRecordSummaries"]
     print(f"\n[boto3] Summary records in {namespace}:")
@@ -105,29 +110,31 @@ def run_with_sdk(cleanup: bool = False) -> None:
     memory = client.create_memory_and_wait(
         name=f"SummarySdk_{int(time.time())}",
         description="Summary strategy (SDK)",
-        strategies=[{
-            "summaryMemoryStrategy": {
-                "name": "SessionSummary",
-                "description": "Rolling conversation summary",
-                "namespaces": [NAMESPACE_TEMPLATE],
+        strategies=[
+            {
+                "summaryMemoryStrategy": {
+                    "name": "SessionSummary",
+                    "description": "Rolling conversation summary",
+                    "namespaces": [NAMESPACE_TEMPLATE],
+                }
             }
-        }],
+        ],
         event_expiry_days=30,
     )
     memory_id = memory["id"]
     print(f"[sdk] Created memory {memory_id}")
 
     client.create_event(
-        memory_id=memory_id, actor_id=ACTOR_ID, session_id=SESSION_ID,
+        memory_id=memory_id,
+        actor_id=ACTOR_ID,
+        session_id=SESSION_ID,
         messages=[(text, role) for role, text in TURNS],
     )
     print(f"[sdk] Waiting {EXTRACTION_WAIT_SECONDS}s for summary consolidation...")
     time.sleep(EXTRACTION_WAIT_SECONDS)
 
     namespace = NAMESPACE_TEMPLATE.format(sessionId=SESSION_ID)
-    hits = client.retrieve_memories(
-        memory_id=memory_id, namespace=namespace, query="trip plan", top_k=5
-    )
+    hits = client.retrieve_memories(memory_id=memory_id, namespace=namespace, query="trip plan", top_k=5)
     print(f"\n[sdk] Summary records in {namespace}:")
     for h in hits:
         print(f"  - {h['content']['text']}")

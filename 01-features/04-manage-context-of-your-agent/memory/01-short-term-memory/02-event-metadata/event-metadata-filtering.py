@@ -69,19 +69,28 @@ def run_with_boto3(cleanup: bool = False) -> None:
         data.create_event(**kwargs)
 
     health = data.list_events(
-        memoryId=memory_id, actorId=ACTOR_ID, sessionId=SESSION_ID, includePayloads=True,
-        filter={"eventMetadata": [{
-            "left": {"metadataKey": "topic"}, "operator": "EQUALS_TO",
-            "right": {"metadataValue": {"stringValue": "health"}},
-        }]},
+        memoryId=memory_id,
+        actorId=ACTOR_ID,
+        sessionId=SESSION_ID,
+        includePayloads=True,
+        filter={
+            "eventMetadata": [
+                {
+                    "left": {"metadataKey": "topic"},
+                    "operator": "EQUALS_TO",
+                    "right": {"metadataValue": {"stringValue": "health"}},
+                }
+            ]
+        },
     )["events"]
     print(f"[boto3] Health-tagged events: {len(health)}")
 
     priority = data.list_events(
-        memoryId=memory_id, actorId=ACTOR_ID, sessionId=SESSION_ID, includePayloads=True,
-        filter={"eventMetadata": [
-            {"left": {"metadataKey": "priority"}, "operator": "EXISTS"}
-        ]},
+        memoryId=memory_id,
+        actorId=ACTOR_ID,
+        sessionId=SESSION_ID,
+        includePayloads=True,
+        filter={"eventMetadata": [{"left": {"metadataKey": "priority"}, "operator": "EXISTS"}]},
     )["events"]
     print(f"[boto3] Events with priority set: {len(priority)}")
 
@@ -123,19 +132,24 @@ def run_with_sdk(cleanup: bool = False) -> None:
         )
 
     health = client.list_events(
-        memory_id=memory_id, actor_id=ACTOR_ID, session_id=SESSION_ID,
-        event_metadata=[{
-            "left": {"metadataKey": "topic"}, "operator": "EQUALS_TO",
-            "right": {"metadataValue": {"stringValue": "health"}},
-        }],
+        memory_id=memory_id,
+        actor_id=ACTOR_ID,
+        session_id=SESSION_ID,
+        event_metadata=[
+            {
+                "left": {"metadataKey": "topic"},
+                "operator": "EQUALS_TO",
+                "right": {"metadataValue": {"stringValue": "health"}},
+            }
+        ],
     )
     print(f"[sdk] Health-tagged events: {len(health)}")
 
     priority = client.list_events(
-        memory_id=memory_id, actor_id=ACTOR_ID, session_id=SESSION_ID,
-        event_metadata=[
-            {"left": {"metadataKey": "priority"}, "operator": "EXISTS"}
-        ],
+        memory_id=memory_id,
+        actor_id=ACTOR_ID,
+        session_id=SESSION_ID,
+        event_metadata=[{"left": {"metadataKey": "priority"}, "operator": "EXISTS"}],
     )
     print(f"[sdk] Events with priority set: {len(priority)}")
 

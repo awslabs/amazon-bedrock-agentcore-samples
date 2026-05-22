@@ -118,9 +118,7 @@ def run_with_sdk(cleanup: bool = False) -> None:
     )
 
     # get_last_k_turns is the SDK's idiomatic equivalent to ListEvents.
-    turns = client.get_last_k_turns(
-        memory_id=memory_id, actor_id=ACTOR_ID, session_id=SESSION_ID, k=5
-    )
+    turns = client.get_last_k_turns(memory_id=memory_id, actor_id=ACTOR_ID, session_id=SESSION_ID, k=5)
     print(f"[sdk] Session {SESSION_ID} has {len(turns)} turns")
     for turn in turns:
         for msg in turn:

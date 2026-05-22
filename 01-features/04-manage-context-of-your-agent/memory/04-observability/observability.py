@@ -55,8 +55,11 @@ def run_with_boto3() -> None:
                 {"Name": "Operation", "Value": "MemoryStreamEvent"},
                 {"Name": "Resource", "Value": memory_arn},
             ],
-            StartTime=start, EndTime=end,
-            Period=300, Statistics=["Sum"], Unit="Count",
+            StartTime=start,
+            EndTime=end,
+            Period=300,
+            Statistics=["Sum"],
+            Unit="Count",
         )
         return sum(p["Sum"] for p in resp.get("Datapoints", []))
 
@@ -70,9 +73,7 @@ def run_with_boto3() -> None:
     start_ms = end_ms - 30 * 60 * 1000
     print(f"\n[boto3] Recent ingestion logs from {log_group}:")
     try:
-        events = logs.filter_log_events(
-            logGroupName=log_group, startTime=start_ms, endTime=end_ms
-        )
+        events = logs.filter_log_events(logGroupName=log_group, startTime=start_ms, endTime=end_ms)
         for evt in events.get("events", []):
             print(f"  {evt['timestamp']} {evt['message'].strip()}")
     except logs.exceptions.ResourceNotFoundException:

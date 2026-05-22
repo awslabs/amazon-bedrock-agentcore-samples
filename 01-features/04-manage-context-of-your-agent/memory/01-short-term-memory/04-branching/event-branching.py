@@ -52,7 +52,9 @@ def run_with_boto3(cleanup: bool = False) -> None:
 
     def append(role, text, branch=None):
         kwargs = dict(
-            memoryId=memory_id, actorId=ACTOR_ID, sessionId=session_id,
+            memoryId=memory_id,
+            actorId=ACTOR_ID,
+            sessionId=session_id,
             eventTimestamp=datetime.now(timezone.utc),
             payload=[{"conversational": {"role": role, "content": {"text": text}}}],
         )
@@ -72,13 +74,19 @@ def run_with_boto3(cleanup: bool = False) -> None:
     append("ASSISTANT", "December is busier and pricier. Here's what's available.", branch=winter)
 
     autumn_only = data.list_events(
-        memoryId=memory_id, actorId=ACTOR_ID, sessionId=session_id, includePayloads=True,
+        memoryId=memory_id,
+        actorId=ACTOR_ID,
+        sessionId=session_id,
+        includePayloads=True,
         filter={"branch": {"name": "autumn", "includeParentBranches": False}},
     )["events"]
     print(f"[boto3] Autumn-only events: {len(autumn_only)}")
 
     winter_full = data.list_events(
-        memoryId=memory_id, actorId=ACTOR_ID, sessionId=session_id, includePayloads=True,
+        memoryId=memory_id,
+        actorId=ACTOR_ID,
+        sessionId=session_id,
+        includePayloads=True,
         filter={"branch": {"name": "winter", "includeParentBranches": True}},
     )["events"]
     print(f"[boto3] Winter with parents: {len(winter_full)}")
@@ -107,7 +115,9 @@ def run_with_sdk(cleanup: bool = False) -> None:
 
     # Seed a couple of turns on the root branch.
     root_event = client.create_event(
-        memory_id=memory_id, actor_id=ACTOR_ID, session_id=session_id,
+        memory_id=memory_id,
+        actor_id=ACTOR_ID,
+        session_id=session_id,
         messages=[
             ("I'm planning a trip to Lisbon.", "USER"),
             ("When are you thinking of going?", "ASSISTANT"),
@@ -116,7 +126,9 @@ def run_with_sdk(cleanup: bool = False) -> None:
 
     # fork_conversation creates a new branch rooted at the given event.
     client.fork_conversation(
-        memory_id=memory_id, actor_id=ACTOR_ID, session_id=session_id,
+        memory_id=memory_id,
+        actor_id=ACTOR_ID,
+        session_id=session_id,
         root_event_id=root_event["eventId"],
         branch_name="autumn",
         new_messages=[
@@ -125,7 +137,9 @@ def run_with_sdk(cleanup: bool = False) -> None:
         ],
     )
     client.fork_conversation(
-        memory_id=memory_id, actor_id=ACTOR_ID, session_id=session_id,
+        memory_id=memory_id,
+        actor_id=ACTOR_ID,
+        session_id=session_id,
         root_event_id=root_event["eventId"],
         branch_name="winter",
         new_messages=[
@@ -134,18 +148,22 @@ def run_with_sdk(cleanup: bool = False) -> None:
         ],
     )
 
-    branches = client.list_branches(
-        memory_id=memory_id, actor_id=ACTOR_ID, session_id=session_id
-    )
+    branches = client.list_branches(memory_id=memory_id, actor_id=ACTOR_ID, session_id=session_id)
     print(f"[sdk] Branches in session: {[b.get('name') for b in branches]}")
 
     autumn_only = client.list_branch_events(
-        memory_id=memory_id, actor_id=ACTOR_ID, session_id=session_id,
-        branch_name="autumn", include_parent_events=False,
+        memory_id=memory_id,
+        actor_id=ACTOR_ID,
+        session_id=session_id,
+        branch_name="autumn",
+        include_parent_events=False,
     )
     winter_full = client.list_branch_events(
-        memory_id=memory_id, actor_id=ACTOR_ID, session_id=session_id,
-        branch_name="winter", include_parent_events=True,
+        memory_id=memory_id,
+        actor_id=ACTOR_ID,
+        session_id=session_id,
+        branch_name="winter",
+        include_parent_events=True,
     )
     print(f"[sdk] Autumn-only events: {len(autumn_only)} | Winter with parents: {len(winter_full)}")
 

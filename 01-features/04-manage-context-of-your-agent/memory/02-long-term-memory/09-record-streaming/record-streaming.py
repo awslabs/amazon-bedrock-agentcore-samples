@@ -30,33 +30,41 @@ ACTOR_ID = "demo-user"
 
 
 def _trust_policy() -> str:
-    return json.dumps({
-        "Version": "2012-10-17",
-        "Statement": [{
-            "Effect": "Allow",
-            "Principal": {"Service": "bedrock-agentcore.amazonaws.com"},
-            "Action": "sts:AssumeRole",
-        }],
-    })
+    return json.dumps(
+        {
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Effect": "Allow",
+                    "Principal": {"Service": "bedrock-agentcore.amazonaws.com"},
+                    "Action": "sts:AssumeRole",
+                }
+            ],
+        }
+    )
 
 
 def _permissions_policy(stream_arn: str) -> str:
-    return json.dumps({
-        "Version": "2012-10-17",
-        "Statement": [{
-            "Effect": "Allow",
-            "Action": ["kinesis:PutRecords", "kinesis:DescribeStream"],
-            "Resource": stream_arn,
-        }],
-    })
+    return json.dumps(
+        {
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Effect": "Allow",
+                    "Action": ["kinesis:PutRecords", "kinesis:DescribeStream"],
+                    "Resource": stream_arn,
+                }
+            ],
+        }
+    )
 
 
 def _read_kinesis_events(kinesis, stream_name, max_wait_seconds=60, max_events=10):
     info = kinesis.describe_stream(StreamName=stream_name)
     shard_id = info["StreamDescription"]["Shards"][0]["ShardId"]
-    iterator = kinesis.get_shard_iterator(
-        StreamName=stream_name, ShardId=shard_id, ShardIteratorType="TRIM_HORIZON"
-    )["ShardIterator"]
+    iterator = kinesis.get_shard_iterator(StreamName=stream_name, ShardId=shard_id, ShardIteratorType="TRIM_HORIZON")[
+        "ShardIterator"
+    ]
 
     events = []
     deadline = time.time() + max_wait_seconds
@@ -93,11 +101,13 @@ def run_with_boto3(cleanup: bool = False) -> None:
     # 2. IAM role AgentCore can assume to publish to the stream
     role_name = f"AgentCoreMemoryStreamingRole-{unique}"
     role_arn = iam.create_role(
-        RoleName=role_name, AssumeRolePolicyDocument=_trust_policy(),
+        RoleName=role_name,
+        AssumeRolePolicyDocument=_trust_policy(),
         Description="Allows AgentCore Memory to publish events to Kinesis",
     )["Role"]["Arn"]
     iam.put_role_policy(
-        RoleName=role_name, PolicyName="KinesisPublishPolicy",
+        RoleName=role_name,
+        PolicyName="KinesisPublishPolicy",
         PolicyDocument=_permissions_policy(stream_arn),
     )
     print(f"[boto3] Role {role_arn}; sleeping 10s for IAM propagation")
@@ -109,16 +119,20 @@ def run_with_boto3(cleanup: bool = False) -> None:
         description="Memory with record streaming enabled",
         eventExpiryDuration=7,
         memoryExecutionRoleArn=role_arn,
-        streamDeliveryResources=[{
-            "kinesisStreamArn": stream_arn,
-            "contentLevel": "FULL_CONTENT",
-        }],
-        memoryStrategies=[{
-            "userPreferenceMemoryStrategy": {
-                "name": "UserPreferences",
-                "namespaces": [f"/{ACTOR_ID}/user_preferences/"],
+        streamDeliveryResources=[
+            {
+                "kinesisStreamArn": stream_arn,
+                "contentLevel": "FULL_CONTENT",
             }
-        }],
+        ],
+        memoryStrategies=[
+            {
+                "userPreferenceMemoryStrategy": {
+                    "name": "UserPreferences",
+                    "namespaces": [f"/{ACTOR_ID}/user_preferences/"],
+                }
+            }
+        ],
     )["memory"]["id"]
     print(f"[boto3] Memory {memory_id}")
     deadline = time.time() + 300
@@ -131,12 +145,18 @@ def run_with_boto3(cleanup: bool = False) -> None:
     data.batch_create_memory_records(
         memoryId=memory_id,
         records=[
-            {"requestIdentifier": "rec-1", "namespaces": [f"/{ACTOR_ID}/user_preferences/"],
-             "timestamp": str(int(time.time())),
-             "content": {"text": "User prefers window seats on flights."}},
-            {"requestIdentifier": "rec-2", "namespaces": [f"/{ACTOR_ID}/user_preferences/"],
-             "timestamp": str(int(time.time())),
-             "content": {"text": "User's favourite language is Python."}},
+            {
+                "requestIdentifier": "rec-1",
+                "namespaces": [f"/{ACTOR_ID}/user_preferences/"],
+                "timestamp": str(int(time.time())),
+                "content": {"text": "User prefers window seats on flights."},
+            },
+            {
+                "requestIdentifier": "rec-2",
+                "namespaces": [f"/{ACTOR_ID}/user_preferences/"],
+                "timestamp": str(int(time.time())),
+                "content": {"text": "User's favourite language is Python."},
+            },
         ],
     )
     print("[boto3] Wrote 2 records — polling Kinesis for events...")
@@ -179,11 +199,13 @@ def run_with_sdk(cleanup: bool = False) -> None:
 
     role_name = f"AgentCoreMemoryStreamingRoleSdk-{unique}"
     role_arn = iam.create_role(
-        RoleName=role_name, AssumeRolePolicyDocument=_trust_policy(),
+        RoleName=role_name,
+        AssumeRolePolicyDocument=_trust_policy(),
         Description="Allows AgentCore Memory to publish events to Kinesis",
     )["Role"]["Arn"]
     iam.put_role_policy(
-        RoleName=role_name, PolicyName="KinesisPublishPolicy",
+        RoleName=role_name,
+        PolicyName="KinesisPublishPolicy",
         PolicyDocument=_permissions_policy(stream_arn),
     )
     print(f"[sdk] Role {role_arn}; sleeping 10s for IAM propagation")
@@ -194,18 +216,22 @@ def run_with_sdk(cleanup: bool = False) -> None:
     memory = client.create_memory_and_wait(
         name=f"streaming_memory_sdk_{unique}",
         description="Memory with record streaming enabled (SDK)",
-        strategies=[{
-            "userPreferenceMemoryStrategy": {
-                "name": "UserPreferences",
-                "namespaces": [f"/{ACTOR_ID}/user_preferences/"],
+        strategies=[
+            {
+                "userPreferenceMemoryStrategy": {
+                    "name": "UserPreferences",
+                    "namespaces": [f"/{ACTOR_ID}/user_preferences/"],
+                }
             }
-        }],
+        ],
         event_expiry_days=7,
         memory_execution_role_arn=role_arn,
-        stream_delivery_resources=[{
-            "kinesisStreamArn": stream_arn,
-            "contentLevel": "FULL_CONTENT",
-        }],
+        stream_delivery_resources=[
+            {
+                "kinesisStreamArn": stream_arn,
+                "contentLevel": "FULL_CONTENT",
+            }
+        ],
     )
     memory_id = memory["id"]
     print(f"[sdk] Memory {memory_id}")
@@ -214,12 +240,18 @@ def run_with_sdk(cleanup: bool = False) -> None:
     client.batch_create_memory_records(
         memoryId=memory_id,
         records=[
-            {"requestIdentifier": "rec-1", "namespaces": [f"/{ACTOR_ID}/user_preferences/"],
-             "timestamp": str(int(time.time())),
-             "content": {"text": "User prefers window seats on flights."}},
-            {"requestIdentifier": "rec-2", "namespaces": [f"/{ACTOR_ID}/user_preferences/"],
-             "timestamp": str(int(time.time())),
-             "content": {"text": "User's favourite language is Python."}},
+            {
+                "requestIdentifier": "rec-1",
+                "namespaces": [f"/{ACTOR_ID}/user_preferences/"],
+                "timestamp": str(int(time.time())),
+                "content": {"text": "User prefers window seats on flights."},
+            },
+            {
+                "requestIdentifier": "rec-2",
+                "namespaces": [f"/{ACTOR_ID}/user_preferences/"],
+                "timestamp": str(int(time.time())),
+                "content": {"text": "User's favourite language is Python."},
+            },
         ],
     )
     print("[sdk] Wrote 2 records — polling Kinesis for events...")

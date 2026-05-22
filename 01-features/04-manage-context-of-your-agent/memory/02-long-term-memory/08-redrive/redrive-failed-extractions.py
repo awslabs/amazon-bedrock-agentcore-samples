@@ -53,15 +53,15 @@ def run_with_boto3() -> None:
     print(f"[boto3] Found {len(failed)} failed job(s) for {memory_id}")
     for j in failed:
         print(
-            f"  jobId={j['jobID']} actor={j.get('actorId')} "
-            f"session={j.get('sessionId')} strategy={j.get('strategyId')}"
+            f"  jobId={j['jobID']} actor={j.get('actorId')} session={j.get('sessionId')} strategy={j.get('strategyId')}"
         )
         print(f"    failureReason={j.get('failureReason')}")
 
     # Gate redrive on a deliberate fix — blind retries waste tokens.
     for j in failed:
         echoed = data.start_memory_extraction_job(
-            memoryId=memory_id, extractionJob={"jobId": j["jobID"]},
+            memoryId=memory_id,
+            extractionJob={"jobId": j["jobID"]},
         )["jobId"]
         print(f"[boto3] Redrove jobId={echoed}")
         time.sleep(1)
@@ -93,15 +93,15 @@ def run_with_sdk() -> None:
     print(f"[sdk] Found {len(failed)} failed job(s) for {memory_id}")
     for j in failed:
         print(
-            f"  jobId={j['jobID']} actor={j.get('actorId')} "
-            f"session={j.get('sessionId')} strategy={j.get('strategyId')}"
+            f"  jobId={j['jobID']} actor={j.get('actorId')} session={j.get('sessionId')} strategy={j.get('strategyId')}"
         )
         print(f"    failureReason={j.get('failureReason')}")
 
     # Gate redrive on a deliberate fix — blind retries waste tokens.
     for j in failed:
         echoed = client.start_memory_extraction_job(
-            memoryId=memory_id, extractionJob={"jobId": j["jobID"]},
+            memoryId=memory_id,
+            extractionJob={"jobId": j["jobID"]},
         )["jobId"]
         print(f"[sdk] Redrove jobId={echoed}")
         time.sleep(1)

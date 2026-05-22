@@ -44,12 +44,14 @@ def run_with_boto3(cleanup: bool = False) -> None:
         name=f"LtmStandard_{int(time.time())}",
         description="Long-term memory standard usage (boto3)",
         eventExpiryDuration=30,
-        memoryStrategies=[{
-            "semanticMemoryStrategy": {
-                "name": "UserFacts",
-                "namespaces": [NAMESPACE_TEMPLATE],
+        memoryStrategies=[
+            {
+                "semanticMemoryStrategy": {
+                    "name": "UserFacts",
+                    "namespaces": [NAMESPACE_TEMPLATE],
+                }
             }
-        }],
+        ],
     )["memory"]["id"]
     print(f"[boto3] Created memory {memory_id}")
     deadline = time.time() + 300
@@ -65,7 +67,9 @@ def run_with_boto3(cleanup: bool = False) -> None:
         ("ASSISTANT", "Noted."),
     ]:
         data.create_event(
-            memoryId=memory_id, actorId=ACTOR_ID, sessionId=SESSION_ID,
+            memoryId=memory_id,
+            actorId=ACTOR_ID,
+            sessionId=SESSION_ID,
             eventTimestamp=datetime.now(timezone.utc),
             payload=[{"conversational": {"role": role, "content": {"text": text}}}],
         )
@@ -75,7 +79,8 @@ def run_with_boto3(cleanup: bool = False) -> None:
 
     namespace = NAMESPACE_TEMPLATE.format(actorId=ACTOR_ID)
     hits = data.retrieve_memory_records(
-        memoryId=memory_id, namespace=namespace,
+        memoryId=memory_id,
+        namespace=namespace,
         searchCriteria={"searchQuery": "Alex's preferences and constraints?", "topK": 5},
     )["memoryRecordSummaries"]
     print(f"[boto3] Retrieved {len(hits)} records from {namespace}")
@@ -97,19 +102,23 @@ def run_with_sdk(cleanup: bool = False) -> None:
     memory = client.create_memory_and_wait(
         name=f"LtmStandardSdk_{int(time.time())}",
         description="Long-term memory standard usage (SDK)",
-        strategies=[{
-            "semanticMemoryStrategy": {
-                "name": "UserFacts",
-                "namespaces": [NAMESPACE_TEMPLATE],
+        strategies=[
+            {
+                "semanticMemoryStrategy": {
+                    "name": "UserFacts",
+                    "namespaces": [NAMESPACE_TEMPLATE],
+                }
             }
-        }],
+        ],
         event_expiry_days=30,
     )
     memory_id = memory["id"]
     print(f"[sdk] Created memory {memory_id}")
 
     client.create_event(
-        memory_id=memory_id, actor_id=ACTOR_ID, session_id=SESSION_ID,
+        memory_id=memory_id,
+        actor_id=ACTOR_ID,
+        session_id=SESSION_ID,
         messages=[
             ("I'm Alex. I prefer Python over Java and I'm based in Berlin.", "USER"),
             ("Got it, Alex.", "ASSISTANT"),
@@ -123,8 +132,10 @@ def run_with_sdk(cleanup: bool = False) -> None:
 
     namespace = NAMESPACE_TEMPLATE.format(actorId=ACTOR_ID)
     hits = client.retrieve_memories(
-        memory_id=memory_id, namespace=namespace,
-        query="Alex's preferences and constraints?", top_k=5,
+        memory_id=memory_id,
+        namespace=namespace,
+        query="Alex's preferences and constraints?",
+        top_k=5,
     )
     print(f"[sdk] Retrieved {len(hits)} records from {namespace}")
     for h in hits:

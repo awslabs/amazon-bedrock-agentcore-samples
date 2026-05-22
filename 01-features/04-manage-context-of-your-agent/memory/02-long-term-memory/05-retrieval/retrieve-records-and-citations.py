@@ -51,11 +51,14 @@ def run_with_boto3(cleanup: bool = False) -> None:
         name=f"Retrieval_{int(time.time())}",
         description="Retrieval tutorial (boto3)",
         eventExpiryDuration=30,
-        memoryStrategies=[{
-            "semanticMemoryStrategy": {
-                "name": "Facts", "namespaces": [NAMESPACE_TEMPLATE],
+        memoryStrategies=[
+            {
+                "semanticMemoryStrategy": {
+                    "name": "Facts",
+                    "namespaces": [NAMESPACE_TEMPLATE],
+                }
             }
-        }],
+        ],
     )["memory"]["id"]
     print(f"[boto3] Created memory {memory_id}")
     deadline = time.time() + 300
@@ -66,7 +69,9 @@ def run_with_boto3(cleanup: bool = False) -> None:
 
     for role, text in TURNS:
         data.create_event(
-            memoryId=memory_id, actorId=ACTOR_ID, sessionId=SESSION_ID,
+            memoryId=memory_id,
+            actorId=ACTOR_ID,
+            sessionId=SESSION_ID,
             eventTimestamp=datetime.now(timezone.utc),
             payload=[{"conversational": {"role": role, "content": {"text": text}}}],
         )
@@ -75,24 +80,21 @@ def run_with_boto3(cleanup: bool = False) -> None:
 
     namespace = NAMESPACE_TEMPLATE.format(actorId=ACTOR_ID)
     semantic = data.retrieve_memory_records(
-        memoryId=memory_id, namespace=namespace,
+        memoryId=memory_id,
+        namespace=namespace,
         searchCriteria={"searchQuery": "dietary restrictions", "topK": 5},
     )["memoryRecordSummaries"]
     print(f"\n[boto3] Semantic search 'dietary restrictions' ({len(semantic)}):")
     for h in semantic:
         print(f"  - score={h.get('score'):.3f} | {h['content']['text']}")
 
-    listed = data.list_memory_records(memoryId=memory_id, namespace=namespace)[
-        "memoryRecordSummaries"
-    ]
+    listed = data.list_memory_records(memoryId=memory_id, namespace=namespace)["memoryRecordSummaries"]
     print(f"\n[boto3] ListMemoryRecords ({len(listed)}):")
     for h in listed:
         print(f"  - {h['memoryRecordId']}: {h['content']['text']}")
 
     if listed:
-        full = data.get_memory_record(
-            memoryId=memory_id, memoryRecordId=listed[0]["memoryRecordId"]
-        )["memoryRecord"]
+        full = data.get_memory_record(memoryId=memory_id, memoryRecordId=listed[0]["memoryRecordId"])["memoryRecord"]
         print("\n[boto3] GetMemoryRecord (one):")
         print(f"  id={full['memoryRecordId']}")
         print(f"  text={full['content']['text']}")
@@ -113,18 +115,23 @@ def run_with_sdk(cleanup: bool = False) -> None:
     memory = client.create_memory_and_wait(
         name=f"RetrievalSdk_{int(time.time())}",
         description="Retrieval tutorial (SDK)",
-        strategies=[{
-            "semanticMemoryStrategy": {
-                "name": "Facts", "namespaces": [NAMESPACE_TEMPLATE],
+        strategies=[
+            {
+                "semanticMemoryStrategy": {
+                    "name": "Facts",
+                    "namespaces": [NAMESPACE_TEMPLATE],
+                }
             }
-        }],
+        ],
         event_expiry_days=30,
     )
     memory_id = memory["id"]
     print(f"[sdk] Created memory {memory_id}")
 
     client.create_event(
-        memory_id=memory_id, actor_id=ACTOR_ID, session_id=SESSION_ID,
+        memory_id=memory_id,
+        actor_id=ACTOR_ID,
+        session_id=SESSION_ID,
         messages=[(text, role) for role, text in TURNS],
     )
     print(f"[sdk] Waiting {EXTRACTION_WAIT_SECONDS}s for extraction...")
@@ -132,8 +139,10 @@ def run_with_sdk(cleanup: bool = False) -> None:
 
     namespace = NAMESPACE_TEMPLATE.format(actorId=ACTOR_ID)
     semantic = client.retrieve_memories(
-        memory_id=memory_id, namespace=namespace,
-        query="dietary restrictions", top_k=5,
+        memory_id=memory_id,
+        namespace=namespace,
+        query="dietary restrictions",
+        top_k=5,
     )
     print(f"\n[sdk] Semantic search ({len(semantic)}):")
     for h in semantic:
@@ -141,9 +150,7 @@ def run_with_sdk(cleanup: bool = False) -> None:
 
     # ListMemoryRecords / GetMemoryRecord are forwarded via __getattr__,
     # so call them directly on the MemoryClient with boto3-shaped kwargs.
-    listed = client.list_memory_records(
-        memoryId=memory_id, namespace=namespace
-    )["memoryRecordSummaries"]
+    listed = client.list_memory_records(memoryId=memory_id, namespace=namespace)["memoryRecordSummaries"]
     print(f"\n[sdk] ListMemoryRecords ({len(listed)}):")
     for h in listed:
         print(f"  - {h['memoryRecordId']}: {h['content']['text']}")

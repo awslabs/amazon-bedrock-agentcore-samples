@@ -104,7 +104,9 @@ def run_with_boto3(cleanup: bool = False) -> None:
 
     for role, text in TURNS:
         data.create_event(
-            memoryId=memory_id, actorId=ACTOR_ID, sessionId=SESSION_ID,
+            memoryId=memory_id,
+            actorId=ACTOR_ID,
+            sessionId=SESSION_ID,
             eventTimestamp=datetime.now(timezone.utc),
             payload=[{"conversational": {"role": role, "content": {"text": text}}}],
         )
@@ -113,7 +115,8 @@ def run_with_boto3(cleanup: bool = False) -> None:
 
     namespace = NAMESPACE_TEMPLATE.format(actorId=ACTOR_ID)
     hits = data.retrieve_memory_records(
-        memoryId=memory_id, namespace=namespace,
+        memoryId=memory_id,
+        namespace=namespace,
         searchCriteria={"searchQuery": "user's medical history", "topK": 10},
     )["memoryRecordSummaries"]
     print(f"\n[boto3] Medical facts ({len(hits)}):")
@@ -147,7 +150,9 @@ def run_with_sdk(cleanup: bool = False) -> None:
     print(f"[sdk] Created memory {memory_id}")
 
     client.create_event(
-        memory_id=memory_id, actor_id=ACTOR_ID, session_id=SESSION_ID,
+        memory_id=memory_id,
+        actor_id=ACTOR_ID,
+        session_id=SESSION_ID,
         messages=[(text, role) for role, text in TURNS],
     )
     print(f"[sdk] Waiting {EXTRACTION_WAIT_SECONDS}s for extraction...")
@@ -155,8 +160,10 @@ def run_with_sdk(cleanup: bool = False) -> None:
 
     namespace = NAMESPACE_TEMPLATE.format(actorId=ACTOR_ID)
     hits = client.retrieve_memories(
-        memory_id=memory_id, namespace=namespace,
-        query="user's medical history", top_k=10,
+        memory_id=memory_id,
+        namespace=namespace,
+        query="user's medical history",
+        top_k=10,
     )
     print(f"\n[sdk] Medical facts ({len(hits)}):")
     for h in hits:

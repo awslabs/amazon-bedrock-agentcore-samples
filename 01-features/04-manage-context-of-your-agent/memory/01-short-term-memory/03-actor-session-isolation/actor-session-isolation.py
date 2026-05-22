@@ -50,7 +50,9 @@ def run_with_boto3(cleanup: bool = False) -> None:
 
     def write(actor, session, role, text):
         data.create_event(
-            memoryId=memory_id, actorId=actor, sessionId=session,
+            memoryId=memory_id,
+            actorId=actor,
+            sessionId=session,
             eventTimestamp=datetime.now(timezone.utc),
             payload=[{"conversational": {"role": role, "content": {"text": text}}}],
         )
@@ -60,12 +62,12 @@ def run_with_boto3(cleanup: bool = False) -> None:
     write("bob", bob_session, "USER", "Remind me about my dentist appointment.")
     write("bob", bob_session, "ASSISTANT", "Friday at 3pm.")
 
-    alice_events = data.list_events(
-        memoryId=memory_id, actorId="alice", sessionId=alice_session, includePayloads=True
-    )["events"]
-    bob_events = data.list_events(
-        memoryId=memory_id, actorId="bob", sessionId=bob_session, includePayloads=True
-    )["events"]
+    alice_events = data.list_events(memoryId=memory_id, actorId="alice", sessionId=alice_session, includePayloads=True)[
+        "events"
+    ]
+    bob_events = data.list_events(memoryId=memory_id, actorId="bob", sessionId=bob_session, includePayloads=True)[
+        "events"
+    ]
     print(f"[boto3] Alice: {len(alice_events)} events | Bob: {len(bob_events)} events")
 
     alice_sessions = data.list_sessions(memoryId=memory_id, actorId="alice")["sessionSummaries"]
@@ -98,34 +100,30 @@ def run_with_sdk(cleanup: bool = False) -> None:
     bob_session = f"bob-{int(time.time())}"
 
     client.create_event(
-        memory_id=memory_id, actor_id="alice", session_id=alice_session,
+        memory_id=memory_id,
+        actor_id="alice",
+        session_id=alice_session,
         messages=[
             ("I'm flying to Tokyo next week.", "USER"),
             ("Got it.", "ASSISTANT"),
         ],
     )
     client.create_event(
-        memory_id=memory_id, actor_id="bob", session_id=bob_session,
+        memory_id=memory_id,
+        actor_id="bob",
+        session_id=bob_session,
         messages=[
             ("Remind me about my dentist appointment.", "USER"),
             ("Friday at 3pm.", "ASSISTANT"),
         ],
     )
 
-    alice_events = client.list_events(
-        memory_id=memory_id, actor_id="alice", session_id=alice_session
-    )
-    bob_events = client.list_events(
-        memory_id=memory_id, actor_id="bob", session_id=bob_session
-    )
+    alice_events = client.list_events(memory_id=memory_id, actor_id="alice", session_id=alice_session)
+    bob_events = client.list_events(memory_id=memory_id, actor_id="bob", session_id=bob_session)
     print(f"[sdk] Alice: {len(alice_events)} events | Bob: {len(bob_events)} events")
 
-    alice_sessions = client.list_sessions(memoryId=memory_id, actorId="alice")[
-        "sessionSummaries"
-    ]
-    bob_sessions = client.list_sessions(memoryId=memory_id, actorId="bob")[
-        "sessionSummaries"
-    ]
+    alice_sessions = client.list_sessions(memoryId=memory_id, actorId="alice")["sessionSummaries"]
+    bob_sessions = client.list_sessions(memoryId=memory_id, actorId="bob")["sessionSummaries"]
     print(f"[sdk] Alice sessions: {[s['sessionId'] for s in alice_sessions]}")
     print(f"[sdk] Bob sessions:   {[s['sessionId'] for s in bob_sessions]}")
 

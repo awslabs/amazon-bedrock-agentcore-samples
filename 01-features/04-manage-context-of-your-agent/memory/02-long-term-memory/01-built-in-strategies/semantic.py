@@ -59,13 +59,15 @@ def run_with_boto3(cleanup: bool = False) -> None:
         name=f"Semantic_{int(time.time())}",
         description="Semantic strategy tutorial (boto3)",
         eventExpiryDuration=30,
-        memoryStrategies=[{
-            "semanticMemoryStrategy": {
-                "name": "UserFacts",
-                "description": "Standalone facts about the user",
-                "namespaces": [NAMESPACE_TEMPLATE],
+        memoryStrategies=[
+            {
+                "semanticMemoryStrategy": {
+                    "name": "UserFacts",
+                    "description": "Standalone facts about the user",
+                    "namespaces": [NAMESPACE_TEMPLATE],
+                }
             }
-        }],
+        ],
     )["memory"]["id"]
     print(f"[boto3] Created memory {memory_id}")
     deadline = time.time() + 300
@@ -76,7 +78,9 @@ def run_with_boto3(cleanup: bool = False) -> None:
 
     for role, text in TURNS:
         data.create_event(
-            memoryId=memory_id, actorId=ACTOR_ID, sessionId=SESSION_ID,
+            memoryId=memory_id,
+            actorId=ACTOR_ID,
+            sessionId=SESSION_ID,
             eventTimestamp=datetime.now(timezone.utc),
             payload=[{"conversational": {"role": role, "content": {"text": text}}}],
         )
@@ -86,7 +90,8 @@ def run_with_boto3(cleanup: bool = False) -> None:
     namespace = NAMESPACE_TEMPLATE.format(actorId=ACTOR_ID)
     for query in QUERIES:
         hits = data.retrieve_memory_records(
-            memoryId=memory_id, namespace=namespace,
+            memoryId=memory_id,
+            namespace=namespace,
             searchCriteria={"searchQuery": query, "topK": 3},
         )["memoryRecordSummaries"]
         print(f"\n[boto3] Q: {query}")
@@ -109,13 +114,15 @@ def run_with_sdk(cleanup: bool = False) -> None:
     memory = client.create_memory_and_wait(
         name=f"SemanticSdk_{int(time.time())}",
         description="Semantic strategy (SDK)",
-        strategies=[{
-            "semanticMemoryStrategy": {
-                "name": "UserFacts",
-                "description": "Standalone facts about the user",
-                "namespaces": [NAMESPACE_TEMPLATE],
+        strategies=[
+            {
+                "semanticMemoryStrategy": {
+                    "name": "UserFacts",
+                    "description": "Standalone facts about the user",
+                    "namespaces": [NAMESPACE_TEMPLATE],
+                }
             }
-        }],
+        ],
         event_expiry_days=30,
     )
     memory_id = memory["id"]
@@ -123,7 +130,9 @@ def run_with_sdk(cleanup: bool = False) -> None:
 
     # SDK takes (text, role) tuples and groups multiple messages into one event.
     client.create_event(
-        memory_id=memory_id, actor_id=ACTOR_ID, session_id=SESSION_ID,
+        memory_id=memory_id,
+        actor_id=ACTOR_ID,
+        session_id=SESSION_ID,
         messages=[(text, role) for role, text in TURNS],
     )
     print(f"[sdk] Waiting {EXTRACTION_WAIT_SECONDS}s for extraction...")
@@ -131,9 +140,7 @@ def run_with_sdk(cleanup: bool = False) -> None:
 
     namespace = NAMESPACE_TEMPLATE.format(actorId=ACTOR_ID)
     for query in QUERIES:
-        hits = client.retrieve_memories(
-            memory_id=memory_id, namespace=namespace, query=query, top_k=3
-        )
+        hits = client.retrieve_memories(memory_id=memory_id, namespace=namespace, query=query, top_k=3)
         print(f"\n[sdk] Q: {query}")
         for h in hits:
             print(f"  - {h['content']['text']} (score={h.get('score')})")

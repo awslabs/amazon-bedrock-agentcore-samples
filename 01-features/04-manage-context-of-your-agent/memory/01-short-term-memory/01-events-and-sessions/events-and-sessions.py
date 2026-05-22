@@ -90,9 +90,7 @@ def run_with_boto3(cleanup: bool = False) -> None:
     )["event"]
     print(f"[boto3] First event id: {one['eventId']}")
 
-    sessions = data.list_sessions(memoryId=memory_id, actorId=ACTOR_ID)[
-        "sessionSummaries"
-    ]
+    sessions = data.list_sessions(memoryId=memory_id, actorId=ACTOR_ID)["sessionSummaries"]
     print(f"[boto3] Actor {ACTOR_ID} has {len(sessions)} session(s)")
 
     if cleanup:
@@ -147,14 +145,10 @@ def run_with_sdk(cleanup: bool = False) -> None:
     )
     print(f"[sdk] Session {session_a} has {len(events)} events")
 
-    turns = client.get_last_k_turns(
-        memory_id=memory_id, actor_id=ACTOR_ID, session_id=session_a, k=5
-    )
+    turns = client.get_last_k_turns(memory_id=memory_id, actor_id=ACTOR_ID, session_id=session_a, k=5)
     print(f"[sdk] Last {len(turns)} turn(s) in session_a")
 
-    sessions = client.list_sessions(memoryId=memory_id, actorId=ACTOR_ID)[
-        "sessionSummaries"
-    ]
+    sessions = client.list_sessions(memoryId=memory_id, actorId=ACTOR_ID)["sessionSummaries"]
     print(f"[sdk] Actor {ACTOR_ID} has {len(sessions)} session(s)")
 
     if cleanup:

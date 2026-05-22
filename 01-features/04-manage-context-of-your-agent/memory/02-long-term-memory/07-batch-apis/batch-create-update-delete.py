@@ -55,15 +55,24 @@ def run_with_boto3(cleanup: bool = False) -> None:
     create_resp = data.batch_create_memory_records(
         memoryId=memory_id,
         records=[
-            {"requestIdentifier": "note-lang", "namespaces": [NAMESPACE],
-             "timestamp": str(int(time.time())),
-             "content": {"text": "Alex prefers Python over Java."}},
-            {"requestIdentifier": "note-city", "namespaces": [NAMESPACE],
-             "timestamp": str(int(time.time())),
-             "content": {"text": "Alex is based in Berlin."}},
-            {"requestIdentifier": "note-allergy", "namespaces": [NAMESPACE],
-             "timestamp": str(int(time.time())),
-             "content": {"text": "Alex is allergic to peanuts."}},
+            {
+                "requestIdentifier": "note-lang",
+                "namespaces": [NAMESPACE],
+                "timestamp": str(int(time.time())),
+                "content": {"text": "Alex prefers Python over Java."},
+            },
+            {
+                "requestIdentifier": "note-city",
+                "namespaces": [NAMESPACE],
+                "timestamp": str(int(time.time())),
+                "content": {"text": "Alex is based in Berlin."},
+            },
+            {
+                "requestIdentifier": "note-allergy",
+                "namespaces": [NAMESPACE],
+                "timestamp": str(int(time.time())),
+                "content": {"text": "Alex is allergic to peanuts."},
+            },
         ],
     )
     successes = create_resp.get("successfulRecords", [])
@@ -72,10 +81,12 @@ def run_with_boto3(cleanup: bool = False) -> None:
 
     update_resp = data.batch_update_memory_records(
         memoryId=memory_id,
-        records=[{
-            "memoryRecordId": record_ids["note-lang"],
-            "content": {"text": "Alex prefers Python and writes Rust for hot paths."},
-        }],
+        records=[
+            {
+                "memoryRecordId": record_ids["note-lang"],
+                "content": {"text": "Alex prefers Python and writes Rust for hot paths."},
+            }
+        ],
     )
     print(f"[boto3] Updated {len(update_resp.get('successfulRecords', []))}")
 
@@ -85,9 +96,7 @@ def run_with_boto3(cleanup: bool = False) -> None:
     )
     print(f"[boto3] Deleted {len(delete_resp.get('successfulRecords', []))}")
 
-    remaining = data.list_memory_records(memoryId=memory_id, namespace=NAMESPACE)[
-        "memoryRecordSummaries"
-    ]
+    remaining = data.list_memory_records(memoryId=memory_id, namespace=NAMESPACE)["memoryRecordSummaries"]
     print(f"\n[boto3] Remaining ({len(remaining)}):")
     for r in remaining:
         print(f"  - {r['content']['text']}")
@@ -116,15 +125,24 @@ def run_with_sdk(cleanup: bool = False) -> None:
     create_resp = client.batch_create_memory_records(
         memoryId=memory_id,
         records=[
-            {"requestIdentifier": "note-lang", "namespaces": [NAMESPACE],
-             "timestamp": str(int(time.time())),
-             "content": {"text": "Alex prefers Python over Java."}},
-            {"requestIdentifier": "note-city", "namespaces": [NAMESPACE],
-             "timestamp": str(int(time.time())),
-             "content": {"text": "Alex is based in Berlin."}},
-            {"requestIdentifier": "note-allergy", "namespaces": [NAMESPACE],
-             "timestamp": str(int(time.time())),
-             "content": {"text": "Alex is allergic to peanuts."}},
+            {
+                "requestIdentifier": "note-lang",
+                "namespaces": [NAMESPACE],
+                "timestamp": str(int(time.time())),
+                "content": {"text": "Alex prefers Python over Java."},
+            },
+            {
+                "requestIdentifier": "note-city",
+                "namespaces": [NAMESPACE],
+                "timestamp": str(int(time.time())),
+                "content": {"text": "Alex is based in Berlin."},
+            },
+            {
+                "requestIdentifier": "note-allergy",
+                "namespaces": [NAMESPACE],
+                "timestamp": str(int(time.time())),
+                "content": {"text": "Alex is allergic to peanuts."},
+            },
         ],
     )
     successes = create_resp.get("successfulRecords", [])
@@ -133,10 +151,12 @@ def run_with_sdk(cleanup: bool = False) -> None:
 
     update_resp = client.batch_update_memory_records(
         memoryId=memory_id,
-        records=[{
-            "memoryRecordId": record_ids["note-lang"],
-            "content": {"text": "Alex prefers Python and writes Rust for hot paths."},
-        }],
+        records=[
+            {
+                "memoryRecordId": record_ids["note-lang"],
+                "content": {"text": "Alex prefers Python and writes Rust for hot paths."},
+            }
+        ],
     )
     print(f"[sdk] Updated {len(update_resp.get('successfulRecords', []))}")
 
@@ -146,9 +166,7 @@ def run_with_sdk(cleanup: bool = False) -> None:
     )
     print(f"[sdk] Deleted {len(delete_resp.get('successfulRecords', []))}")
 
-    remaining = client.list_memory_records(memoryId=memory_id, namespace=NAMESPACE)[
-        "memoryRecordSummaries"
-    ]
+    remaining = client.list_memory_records(memoryId=memory_id, namespace=NAMESPACE)["memoryRecordSummaries"]
     print(f"\n[sdk] Remaining ({len(remaining)}):")
     for r in remaining:
         print(f"  - {r['content']['text']}")
