@@ -1,53 +1,57 @@
-# AgentCore memory — Short-term memory
+# Short-term memory
 
-Short-term memory stores raw conversation turns (events) scoped to an actor and session, plus branching for exploratory or parallel flows. It provides immediate, low-latency context for a conversation without background processing.
+Short-term memory stores raw conversation turns (events) scoped to an `actorId` and a `sessionId`. It gives the agent immediate, low-latency access to the current conversation — no extraction, no embeddings, no background pipeline.
 
-## Folder layout
+## Standard usage
 
-| Folder | Purpose |
-|---|---|
-| [`02-single-agent/`](./02-single-agent/) | Framework integrations (Strands, LangGraph, LlamaIndex) with the three patterns: built-in hook, custom hook, memory-as-tool |
-| [`03-multi-agent/`](./03-multi-agent/) | Multi-agent STM with shared context, including parallel branching |
+[`standard-usage.py`](./standard-usage.py) is the canonical flow: create a memory resource, wait for `ACTIVE`, append a few events with `CreateEvent`, list them back with `ListEvents`, fetch one with `GetEvent`, delete the memory.
 
-## The three integration patterns (per framework)
+```bash
+pip install boto3 bedrock-agentcore
+python standard-usage.py boto3   # default — direct service calls
+python standard-usage.py sdk     # AgentCore MemoryClient helpers
+python standard-usage.py cli     # print equivalent AWS CLI commands
+```
+
+Every sub-feature script supports the same three surfaces.
+
+## Sub-features
+
+| # | Folder | What it teaches |
+|---|---|---|
+| 01 | [`01-events-and-sessions/`](./01-events-and-sessions/) | The CreateEvent / ListEvents / GetEvent / ListSessions loop |
+| 02 | [`02-event-metadata/`](./02-event-metadata/) | Tagging events with metadata and filtering with `EQUALS_TO`, `EXISTS`, `NOT_EXISTS` |
+| 03 | [`03-actor-session-isolation/`](./03-actor-session-isolation/) | One memory resource, many actors, no cross-actor leakage |
+| 04 | [`04-branching/`](./04-branching/) | Forking a session for what-if flows or parallel sub-agents |
+
+## Examples
+
+Framework integrations live under [`examples/`](./examples/). They wire short-term memory into Strands, LangGraph, and LlamaIndex agents using three common patterns:
 
 | Pattern | What it is | When to use |
 |---|---|---|
-| **Built-in hook** | Use the framework's out-of-the-box AgentCore memory hook | Fastest path; standard save/retrieve lifecycle |
-| **Custom hook** | Subclass/implement your own hook | Conditional logic, custom retrieval, orchestration |
-| **memory-as-tool** | Expose memory operations as tools the agent calls | Agent decides when to recall/save |
+| **Built-in hook** | Framework's out-of-the-box AgentCore memory adapter | Fastest path; standard save/retrieve lifecycle |
+| **Custom hook** | Your own hook implementation | Conditional logic, custom retrieval, orchestration |
+| **memory-as-tool** | Memory operations exposed as tools the LLM calls | Agent decides when to recall/save |
 
-## Framework × pattern notebooks
+| Subtree | Contents |
+|---|---|
+| [`examples/single-agent/with-strands-agent/`](./examples/single-agent/with-strands-agent/) | Built-in hook + custom hook; travel-planning branching example |
+| [`examples/single-agent/with-langgraph-agent/`](./examples/single-agent/with-langgraph-agent/) | Built-in (`math-agent-with-checkpointing`), custom (`personal-fitness-coach`), tool (`support-agent-human-in-the-loop`) |
+| [`examples/single-agent/with-llamaindex-agent/`](./examples/single-agent/with-llamaindex-agent/) | Four domain examples: academic research, investment, legal, medical |
+| [`examples/multi-agent/with-strands-agent/`](./examples/multi-agent/with-strands-agent/) | Multi-agent travel planner; `multi-agent-parallel-branches/` shows branch-per-subagent |
 
-### Single-agent
+## Best practices
 
-| Framework | Built-in hook | Custom hook | memory-as-tool |
-|---|---|---|---|
-| Strands | [`personal-agent.py`](./02-single-agent/with-strands-agent/personal-agent.py) | [`personal-agent-memory-manager.py`](./02-single-agent/with-strands-agent/personal-agent-memory-manager.py) | _gap_ |
-| LangGraph | [`math-agent-with-checkpointing.py`](./02-single-agent/with-langgraph-agent/math-agent-with-checkpointing.py) | [`personal-fitness-coach.py`](./02-single-agent/with-langgraph-agent/personal-fitness-coach.py) | [`support-agent-human-in-the-loop.py`](./02-single-agent/with-langgraph-agent/support-agent-human-in-the-loop.py) |
-| LlamaIndex | _gap_ | _gap_ | four domain examples in [`with-llamaindex-agent/`](./02-single-agent/with-llamaindex-agent/) |
+- **One conversation = one `sessionId`.** Don't reuse a session across days; start a new one and re-hydrate context with `ListEvents` if needed.
+- **Pick a stable `actorId`** that maps to the real user (Cognito `sub`, internal user id) — long-term memory namespaces typically template on it.
+- **Use `includePayloads=False`** on `ListEvents` when you only need ids/timestamps; switch to `True` only when you need the content.
+- **Cap storage cost with `eventExpiryDuration`** (3–365 days) at memory creation.
+- **Don't put sensitive data in event metadata** — metadata is not encrypted with your customer-managed KMS key.
+- **Plan branches before you need them.** Decide branch names up front so `ListEvents` filters stay clean.
 
-**Branching** (Strands): [`travel-planning-branching/`](./02-single-agent/with-strands-agent/travel-planning-branching/)
-
-### LangGraph integration architecture
-
-![LangGraph + AgentCore memory](./02-single-agent/with-langgraph-agent/images/architecture.png)
-
-The LangGraph agent stores conversation turns in AgentCore memory via an automatic event store and retrieves past events with a `list_events()` tool. The agent calls Amazon Bedrock LLMs (AWS Cloud) for reasoning while the AgentCore memory service handles raw event storage. See the scripts under [`02-single-agent/with-langgraph-agent/`](./02-single-agent/with-langgraph-agent/) for the implementation.
-
-### Multi-agent (Strands)
-
-- Built-in hook: [`travel-planning-agent.py`](./03-multi-agent/with-strands-agent/travel-planning-agent.py)
-- Custom hook: [`travel-planning-agent-memory-manager.py`](./03-multi-agent/with-strands-agent/travel-planning-agent-memory-manager.py)
-- Parallel branching: [`multi-agent-parallel-branches/`](./03-multi-agent/with-strands-agent/multi-agent-parallel-branches/)
-
-## Next steps
+## Where to go next
 
 - Cross-session persistence: [`../02-long-term-memory/`](../02-long-term-memory/)
-- Security and isolation: [`../04-security-patterns/`](../04-security-patterns/)
-
-## Running the Python Scripts
-
-Install dependencies and run scripts from the sub-folders:
-
-
+- Security and isolation: [`../05-security/`](../05-security/)
+- Wire memory into runtime/identity/Guardrails: [`../03-integrations/`](../03-integrations/)

@@ -29,10 +29,12 @@ All three quickstarts build the same resource, write the same event, add the sam
 
 Once you have the concepts and a working quickstart:
 
-- **Long-term memory primitives** → [`../02-long-term-memory/01-core-features/`](../02-long-term-memory/01-core-features/)
-- **Framework integrations (Strands, LangGraph, LlamaIndex)** → the `02-single-agent/` and `03-multi-agent/` folders under each memory type
-- **Advanced integrations (runtime, identity, Guardrails, Browser, streaming use cases)** → [`../03-advanced-patterns/`](../03-advanced-patterns/)
-- **Security patterns (IAM, Cognito, KMS)** → [`../04-security-patterns/`](../04-security-patterns/)
+- **Short-term memory primitives** → [`../01-short-term-memory/`](../01-short-term-memory/)
+- **Long-term memory primitives** → [`../02-long-term-memory/`](../02-long-term-memory/)
+- **Framework integrations (Strands, LangGraph, LlamaIndex)** → `examples/{single-agent,multi-agent}/` under each memory type
+- **Integrations (runtime, identity, Guardrails, Browser)** → [`../03-integrations/`](../03-integrations/)
+- **Observability (CloudWatch metrics + logs)** → [`../04-observability/`](../04-observability/)
+- **Security patterns (IAM, Cognito, KMS)** → [`../05-security/`](../05-security/)
 
 ## Running the Python Scripts
 

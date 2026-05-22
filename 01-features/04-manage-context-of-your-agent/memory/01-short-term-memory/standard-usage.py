@@ -1,0 +1,194 @@
+"""Standard usage of AgentCore short-term memory.
+
+The canonical short-term flow:
+    1. create a memory resource
+    2. wait until it is ACTIVE
+    3. append a few events to a session
+    4. list the events back to reload context
+    5. fetch one event in full
+    6. tear down
+
+The same flow is shown three ways. Pick the surface that matches how you'll
+deploy: boto3 for raw control, AgentCore SDK for ergonomic helpers, AWS CLI
+for shell-driven workflows and CI.
+
+Run a single surface:
+    python standard-usage.py boto3
+    python standard-usage.py sdk
+    python standard-usage.py cli      # prints the equivalent CLI commands
+
+Prerequisites:
+    pip install boto3 bedrock-agentcore
+    export AWS_REGION=us-east-1
+"""
+
+import os
+import sys
+import time
+import uuid
+from datetime import datetime, timezone
+
+REGION = os.getenv("AWS_REGION", "us-east-1")
+ACTOR_ID = "user-42"
+SESSION_ID = f"sess-{int(time.time())}"
+
+
+# === boto3 ============================================================
+def run_with_boto3() -> None:
+    import boto3
+
+    control = boto3.client("bedrock-agentcore-control", region_name=REGION)
+    data = boto3.client("bedrock-agentcore", region_name=REGION)
+
+    memory_id = control.create_memory(
+        name=f"StmStandard_{int(time.time())}",
+        description="Short-term memory standard usage (boto3)",
+        eventExpiryDuration=30,
+    )["memory"]["id"]
+    print(f"[boto3] Created memory {memory_id}")
+
+    deadline = time.time() + 300
+    while time.time() < deadline:
+        if control.get_memory(memoryId=memory_id)["memory"]["status"] == "ACTIVE":
+            break
+        time.sleep(5)
+
+    for role, text in [
+        ("USER", "Hi, I'm Alex. I prefer Python over Java."),
+        ("ASSISTANT", "Got it, Alex — I'll lean toward Python in examples."),
+        ("USER", "What did I tell you about my language preference?"),
+    ]:
+        data.create_event(
+            memoryId=memory_id,
+            actorId=ACTOR_ID,
+            sessionId=SESSION_ID,
+            eventTimestamp=datetime.now(timezone.utc),
+            payload=[{"conversational": {"role": role, "content": {"text": text}}}],
+        )
+
+    events = data.list_events(
+        memoryId=memory_id,
+        actorId=ACTOR_ID,
+        sessionId=SESSION_ID,
+        includePayloads=True,
+    )["events"]
+    print(f"[boto3] Session {SESSION_ID} has {len(events)} events")
+
+    first = data.get_event(
+        memoryId=memory_id,
+        actorId=ACTOR_ID,
+        sessionId=SESSION_ID,
+        eventId=events[0]["eventId"],
+    )["event"]
+    print(f"[boto3] First event payload: {first['payload']}")
+
+    control.delete_memory(memoryId=memory_id, clientToken=str(uuid.uuid4()))
+    print(f"[boto3] Deleted memory {memory_id}")
+
+
+# === AgentCore SDK ====================================================
+def run_with_sdk() -> None:
+    from bedrock_agentcore.memory import MemoryClient
+
+    client = MemoryClient(region_name=REGION)
+
+    memory = client.create_memory_and_wait(
+        name=f"StmStandardSdk_{int(time.time())}",
+        description="Short-term memory standard usage (SDK)",
+        strategies=[],
+        event_expiry_days=30,
+    )
+    memory_id = memory["id"]
+    print(f"[sdk] Created memory {memory_id}")
+
+    # SDK takes (text, role) tuples and groups multiple messages into one event.
+    client.create_event(
+        memory_id=memory_id,
+        actor_id=ACTOR_ID,
+        session_id=SESSION_ID,
+        messages=[
+            ("Hi, I'm Alex. I prefer Python over Java.", "USER"),
+            ("Got it, Alex — I'll lean toward Python in examples.", "ASSISTANT"),
+            ("What did I tell you about my language preference?", "USER"),
+        ],
+    )
+
+    # get_last_k_turns is the SDK's idiomatic equivalent to ListEvents.
+    turns = client.get_last_k_turns(
+        memory_id=memory_id, actor_id=ACTOR_ID, session_id=SESSION_ID, k=5
+    )
+    print(f"[sdk] Session {SESSION_ID} has {len(turns)} turns")
+    for turn in turns:
+        for msg in turn:
+            print(f"  {msg['role']}: {msg['content']['text']}")
+
+    client.delete_memory_and_wait(memory_id=memory_id)
+    print(f"[sdk] Deleted memory {memory_id}")
+
+
+# === AWS CLI ==========================================================
+CLI_WALKTHROUGH = """\
+# 1. Create a memory resource
+aws bedrock-agentcore-control create-memory \\
+  --region "$AWS_REGION" \\
+  --name "StmStandardCli-$(date +%s)" \\
+  --event-expiry-duration 30 \\
+  --client-token "$(uuidgen)"
+# Capture memory.id from the response → export MEMORY_ID=...
+
+# 2. Poll until ACTIVE
+aws bedrock-agentcore-control get-memory \\
+  --region "$AWS_REGION" \\
+  --memory-id "$MEMORY_ID" \\
+  --query 'memory.status'
+
+# 3. Append three events
+for i in 1 2 3; do
+  aws bedrock-agentcore create-event \\
+    --region "$AWS_REGION" \\
+    --memory-id "$MEMORY_ID" \\
+    --actor-id user-42 \\
+    --session-id sess-cli \\
+    --event-timestamp "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \\
+    --payload "[{\\"conversational\\":{\\"role\\":\\"USER\\",\\"content\\":{\\"text\\":\\"turn $i\\"}}}]"
+done
+
+# 4. List events for the session
+aws bedrock-agentcore list-events \\
+  --region "$AWS_REGION" \\
+  --memory-id "$MEMORY_ID" \\
+  --actor-id user-42 \\
+  --session-id sess-cli \\
+  --include-payloads
+
+# 5. Fetch a single event by id
+aws bedrock-agentcore get-event \\
+  --region "$AWS_REGION" \\
+  --memory-id "$MEMORY_ID" \\
+  --actor-id user-42 \\
+  --session-id sess-cli \\
+  --event-id <event-id-from-step-4>
+
+# 6. Teardown
+aws bedrock-agentcore-control delete-memory \\
+  --region "$AWS_REGION" \\
+  --memory-id "$MEMORY_ID" \\
+  --client-token "$(uuidgen)"
+"""
+
+
+def main() -> None:
+    surface = sys.argv[1] if len(sys.argv) > 1 else "boto3"
+    if surface == "boto3":
+        run_with_boto3()
+    elif surface == "sdk":
+        run_with_sdk()
+    elif surface == "cli":
+        print(CLI_WALKTHROUGH)
+    else:
+        print(f"Unknown surface {surface!r}. Use boto3 | sdk | cli.", file=sys.stderr)
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()
