@@ -16,7 +16,7 @@ Two surfaces:
 
 Prerequisites:
     pip install boto3 bedrock-agentcore
-    export AWS_REGION=us-east-1
+    export AWS_REGION=us-east-1   # use any AgentCore-supported region
     export MEMORY_ID=<memory-id-with-failed-jobs>
 """
 

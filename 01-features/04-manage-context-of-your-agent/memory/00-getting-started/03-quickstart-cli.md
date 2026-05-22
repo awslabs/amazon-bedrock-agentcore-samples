@@ -11,7 +11,7 @@ End-to-end walkthrough of AgentCore Memory using only `aws bedrock-agentcore-con
 Set shell variables used throughout:
 
 ```bash
-export AWS_REGION=us-east-1
+export AWS_REGION=us-east-1   # use any AgentCore-supported region
 export MEMORY_ROLE_ARN=arn:aws:iam::<account-id>:role/AgentCoreMemoryExecutionRole
 export ACTOR_ID=user-42
 export SESSION_ID=sess-$(date +%s)

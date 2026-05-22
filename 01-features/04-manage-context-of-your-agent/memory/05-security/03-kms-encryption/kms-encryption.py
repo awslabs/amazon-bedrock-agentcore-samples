@@ -23,7 +23,7 @@ on `create_memory_and_wait`.
 
 Prerequisites:
     pip install boto3 bedrock-agentcore
-    export AWS_REGION=us-east-1
+    export AWS_REGION=us-east-1   # use any AgentCore-supported region
     export KMS_KEY_ARN=arn:aws:kms:us-east-1:111122223333:key/abcd-...
     export MEMORY_EXECUTION_ROLE_ARN=arn:aws:iam::111122223333:role/AgentCoreMemoryRole
 

@@ -20,7 +20,7 @@ please use the boto3 API to set it.
 
 Prerequisites:
     pip install boto3 bedrock-agentcore
-    export AWS_REGION=us-east-1
+    export AWS_REGION=us-east-1   # use any AgentCore-supported region
 """
 
 import os

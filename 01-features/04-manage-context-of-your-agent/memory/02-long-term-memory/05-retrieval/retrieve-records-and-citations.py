@@ -15,7 +15,7 @@ memory is kept so you can inspect it; the script prints the memoryId.
 
 Prerequisites:
     pip install boto3 bedrock-agentcore
-    export AWS_REGION=us-east-1
+    export AWS_REGION=us-east-1   # use any AgentCore-supported region
 """
 
 import os

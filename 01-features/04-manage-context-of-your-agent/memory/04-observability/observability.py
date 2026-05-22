@@ -23,7 +23,7 @@ please use the boto3 `cloudwatch` and `logs` clients directly (shown below).
 
 Prerequisites:
     pip install boto3
-    export AWS_REGION=us-east-1
+    export AWS_REGION=us-east-1   # use any AgentCore-supported region
     export MEMORY_ARN=arn:aws:bedrock-agentcore:us-east-1:111122223333:memory/mem-abc
 """
 
