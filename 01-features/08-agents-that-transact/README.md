@@ -32,7 +32,7 @@ Tutorials in `00-getting-started/` build on each other — start with Tutorial 0
 - **Wallet lifecycle (fund, delegate, balance)** → `00-getting-started/03-user-onboarding-wallet-funding/`
 - **Discover paid tools via gateway** → `00-getting-started/04-agent-with-coinbase-bazaar-via-gateway/`
 - **Browser + payment pattern** → `00-getting-started/05-agent-with-browser-tool-pay-for-content/`
-- **Multi-agent with per-agent budgets** → `00-getting-started/06-multi-agent-payment-orchestrator/`
+- **Multi-agent with per-agent budgets** → `00-getting-started/07-multi-agent-payment-orchestrator/`
 - **End-to-end browser paywall use case** → `02-use-cases/pay-for-content-browser-use/`
 
 ## Resources

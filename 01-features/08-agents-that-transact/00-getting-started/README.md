@@ -16,7 +16,7 @@ AgentCore payments handles payment orchestration for the x402 protocol, configur
 | [`03-user-onboarding-wallet-funding/`](03-user-onboarding-wallet-funding/) | User onboarding, wallet funding, delegation, balance checks, multi-network instruments |
 | [`04-agent-with-coinbase-bazaar-via-gateway/`](04-agent-with-coinbase-bazaar-via-gateway/) | Discover 10,000+ paid MCP tools via AgentCore gateway and pay on call |
 | [`05-agent-with-browser-tool-pay-for-content/`](05-agent-with-browser-tool-pay-for-content/) | Intercept 402 paywalls in a browser session and pay for web content |
-| [`06-multi-agent-payment-orchestrator/`](06-multi-agent-payment-orchestrator/) | Multiple agents with separate wallets, per-agent budgets, and runtime deploy |
+| [`07-multi-agent-payment-orchestrator/`](07-multi-agent-payment-orchestrator/) | Multiple agents with separate wallets, per-agent budgets, and runtime deploy |
 
 ## Shared files
 
@@ -42,13 +42,13 @@ AgentCore payments handles payment orchestration for the x402 protocol, configur
       Each loads .env and uses the resources Tutorial 00 created
 ```
 
-### Path B: Multi-provider (Tutorial 06)
+### Path B: Multi-provider (Tutorial 07)
 
 ```
 1. Run BOTH provider setup scripts
 2. Run multi_provider_setup.py instead of Tutorial 00
       Creates one PaymentManager with two Connectors (Coinbase + Privy)
-3. Run Tutorial 06
+3. Run Tutorial 07
 ```
 
 ## AgentCore payments features → tutorial mapping
@@ -97,8 +97,8 @@ python 04-agent-with-coinbase-bazaar-via-gateway/bazaar_gateway_agent.py
 # Tutorial 05
 python 05-agent-with-browser-tool-pay-for-content/browser_paywall_payments.py
 
-# Tutorial 06
-python 06-multi-agent-payment-orchestrator/multi_agent_payments.py
+# Tutorial 07
+python 07-multi-agent-payment-orchestrator/multi_agent_payments.py
 ```
 
 ## Cleanup

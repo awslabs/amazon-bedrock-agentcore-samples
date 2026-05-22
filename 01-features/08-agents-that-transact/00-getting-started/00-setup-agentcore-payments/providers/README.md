@@ -9,7 +9,7 @@ Before running Tutorial 00, choose a wallet provider and run its setup script to
 | Coinbase CDP | `coinbase_cdp_account_setup.py` | `COINBASE_API_KEY_ID`, `COINBASE_API_KEY_SECRET`, `COINBASE_WALLET_SECRET` |
 | Stripe (Privy) | `stripe_privy_account_setup.py` | `PRIVY_APP_ID`, `PRIVY_APP_SECRET`, `PRIVY_AUTHORIZATION_ID`, `PRIVY_AUTHORIZATION_PRIVATE_KEY` |
 
-Run only one provider setup. If you want both providers (for Tutorial 06 multi-agent), run both.
+Run only one provider setup. If you want both providers (for Tutorial 07 multi-agent), run both.
 
 ## Running
 

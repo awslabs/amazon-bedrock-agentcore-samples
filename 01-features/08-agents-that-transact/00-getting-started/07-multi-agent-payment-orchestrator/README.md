@@ -1,4 +1,4 @@
-# Tutorial 06 — Multi-Agent Payment Orchestrator
+# Tutorial 07 — Multi-Agent Payment Orchestrator
 
 | Information         | Details                                                              |
 |:--------------------|:---------------------------------------------------------------------|

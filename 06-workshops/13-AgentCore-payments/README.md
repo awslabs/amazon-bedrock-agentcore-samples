@@ -18,7 +18,7 @@ Step-by-step notebooks covering setup through advanced multi-agent orchestration
 | 03 | [Wallet operations](00-getting-started/03-user-onboarding-wallet-funding/) | User onboarding, wallet funding, delegation, balance checks, multi-network instruments |
 | 04 | [Gateway + Coinbase Bazaar](00-getting-started/04-agent-with-coinbase-bazaar-via-gateway/) | Discover 10,000+ paid MCP tools via AgentCore Gateway and pay on call |
 | 05 | [Browser + payments](00-getting-started/05-agent-with-browser-tool-pay-for-content/) | Intercept 402 paywalls in a browser session and pay for web content |
-| 06 | [Multi-agent orchestrator](00-getting-started/06-multi-agent-payment-orchestrator/) | Multiple agents with separate wallets, per-agent budgets, and runtime deploy |
+| 06 | [Multi-agent orchestrator](00-getting-started/07-multi-agent-payment-orchestrator/) | Multiple agents with separate wallets, per-agent budgets, and runtime deploy |
 
 ## Use Cases
 

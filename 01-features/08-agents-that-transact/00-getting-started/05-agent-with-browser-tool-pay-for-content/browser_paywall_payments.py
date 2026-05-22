@@ -286,4 +286,4 @@ print(
     f"region={REGION}#gen-ai-observability/agent-core"
 )
 print("\nDone. Sessions expire automatically.")
-print("Next: python ../06-multi-agent-payment-orchestrator/multi_agent_payments.py")
+print("Next: python ../07-multi-agent-payment-orchestrator/multi_agent_payments.py")

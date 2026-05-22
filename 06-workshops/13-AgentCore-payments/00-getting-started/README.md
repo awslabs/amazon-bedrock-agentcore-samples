@@ -39,9 +39,9 @@ Use this path if you want to learn AgentCore payments with one wallet provider. 
 
 The `.env` file is the shared config. The provider notebook writes credentials, Tutorial 00 writes resource IDs, and downstream tutorials read both. Do not run both provider notebooks — the second one overwrites `CREDENTIAL_PROVIDER_TYPE` and Tutorial 00 uses whichever was set last.
 
-### Path B: Multi-provider (Tutorial 06)
+### Path B: Multi-provider (Tutorial 07)
 
-Tutorial 06 (multi-agent orchestrator) uses two wallets — one Coinbase, one Privy — with separate budgets per agent. This requires a different setup:
+Tutorial 07 (multi-agent orchestrator) uses two wallets — one Coinbase, one Privy — with separate budgets per agent. This requires a different setup:
 
 ```
 1. Run BOTH provider setup guides:
@@ -53,7 +53,7 @@ Tutorial 06 (multi-agent orchestrator) uses two wallets — one Coinbase, one Pr
       Creates two Instruments (one per provider)
       Writes prefixed resource IDs to .env (COINBASE_INSTRUMENT_ID, PRIVY_INSTRUMENT_ID, etc.)
 
-3. Run Tutorial 06
+3. Run Tutorial 07
       Reads the prefixed keys and assigns each agent its own wallet + budget
 ```
 
@@ -133,7 +133,7 @@ Each tutorial maps to one or more AgentCore payments features. Start with Tutori
 | 03 | [Wallet Operations](03-user-onboarding-wallet-funding/) | Wallet integration | Full wallet lifecycle: onboard additional users, funding options (testnet faucet and onramps), delegation per provider, balance checks, multi-network wallets, and session budget patterns |
 | 04 | [Gateway + Bazaar](04-agent-with-coinbase-bazaar-via-gateway/) | Endpoint discoverability, Payment processing | Discover paid MCP tools on Coinbase x402 Bazaar through AgentCore Gateway (Base Sepolia) and call them with automatic payment |
 | 05 | [Browser + Payments](05-agent-with-browser-tool-pay-for-content/) | Payment processing | (Pattern reference) Intercept HTTP 402 responses in a Playwright browser session and pay for paywalled web content |
-| 06 | [Multi-Agent Orchestrator](06-multi-agent-payment-orchestrator/) | Wallet integration, Payment limits, Observability | Orchestrate multiple agents with separate wallets (Coinbase + Privy), per-agent payment limits, Runtime deploy, and online evaluation |
+| 06 | [Multi-Agent Orchestrator](07-multi-agent-payment-orchestrator/) | Wallet integration, Payment limits, Observability | Orchestrate multiple agents with separate wallets (Coinbase + Privy), per-agent payment limits, Runtime deploy, and online evaluation |
 
 ### AgentCore payments features → tutorial mapping
 
@@ -169,7 +169,7 @@ The Bazaar exposes three interfaces:
 ├── 03-user-onboarding-wallet-funding/
 ├── 04-agent-with-coinbase-bazaar-via-gateway/
 ├── 05-agent-with-browser-tool-pay-for-content/
-└── 06-multi-agent-payment-orchestrator/
+└── 07-multi-agent-payment-orchestrator/
 ```
 
 ## Shared Files

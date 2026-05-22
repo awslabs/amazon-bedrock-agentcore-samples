@@ -255,4 +255,4 @@ print_summary(
 )
 print("Downstream tutorials pick a provider via env vars:")
 print("  COINBASE_INSTRUMENT_ID / PRIVY_INSTRUMENT_ID")
-print("\nNext: python ../06-multi-agent-payment-orchestrator/multi_agent_payments.py")
+print("\nNext: python ../07-multi-agent-payment-orchestrator/multi_agent_payments.py")

@@ -151,4 +151,4 @@ Sessions created in this tutorial expire automatically. To delete instruments an
 
 - **Tutorial 04** — `../04-agent-with-coinbase-bazaar-via-gateway/` — Discover and call paid MCP tools on Coinbase Bazaar through AgentCore gateway
 - **Tutorial 05** — `../05-agent-with-browser-tool-pay-for-content/` — Browser + paywall payment pattern
-- **Tutorial 06** — `../06-multi-agent-payment-orchestrator/` — Multi-agent orchestration with per-agent budgets
+- **Tutorial 07** — `../07-multi-agent-payment-orchestrator/` — Multi-agent orchestration with per-agent budgets
