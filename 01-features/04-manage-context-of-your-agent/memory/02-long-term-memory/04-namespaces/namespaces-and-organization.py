@@ -41,7 +41,12 @@ ACTORS = [
 def _strategies() -> list[dict]:
     return [
         {"semanticMemoryStrategy": {"name": "Facts", "namespaces": [FACTS_TEMPLATE]}},
-        {"summaryMemoryStrategy": {"name": "Summaries", "namespaces": [SUMMARY_TEMPLATE]}},
+        {
+            "summaryMemoryStrategy": {
+                "name": "Summaries",
+                "namespaces": [SUMMARY_TEMPLATE],
+            }
+        },
     ]
 
 
@@ -74,7 +79,9 @@ def run_with_boto3(cleanup: bool = False) -> None:
             ("ASSISTANT", "Sure."),
         ]:
             data.create_event(
-                memoryId=memory_id, actorId=actor_id, sessionId=sess,
+                memoryId=memory_id,
+                actorId=actor_id,
+                sessionId=sess,
                 eventTimestamp=datetime.now(timezone.utc),
                 payload=[{"conversational": {"role": role, "content": {"text": text}}}],
             )
@@ -82,7 +89,8 @@ def run_with_boto3(cleanup: bool = False) -> None:
     time.sleep(EXTRACTION_WAIT_SECONDS)
 
     alice_facts = data.retrieve_memory_records(
-        memoryId=memory_id, namespace="/users/alice/facts/",
+        memoryId=memory_id,
+        namespace="/users/alice/facts/",
         searchCriteria={"searchQuery": "alice's interests", "topK": 5},
     )["memoryRecordSummaries"]
     print(f"\n[boto3] Alice facts ({len(alice_facts)}):")
@@ -90,7 +98,8 @@ def run_with_boto3(cleanup: bool = False) -> None:
         print(f"  - {h['content']['text']}")
 
     everything = data.retrieve_memory_records(
-        memoryId=memory_id, namespacePath="/users/",
+        memoryId=memory_id,
+        namespacePath="/users/",
         searchCriteria={"searchQuery": "anything we know about users", "topK": 20},
     )["memoryRecordSummaries"]
     print(f"\n[boto3] All under /users/* ({len(everything)}):")
@@ -121,7 +130,9 @@ def run_with_sdk(cleanup: bool = False) -> None:
     for actor_id, intro in ACTORS:
         sess = f"{actor_id}-sdk-{int(time.time())}"
         client.create_event(
-            memory_id=memory_id, actor_id=actor_id, session_id=sess,
+            memory_id=memory_id,
+            actor_id=actor_id,
+            session_id=sess,
             messages=[
                 (intro, "USER"),
                 ("Nice to meet you.", "ASSISTANT"),
@@ -133,20 +144,23 @@ def run_with_sdk(cleanup: bool = False) -> None:
     time.sleep(EXTRACTION_WAIT_SECONDS)
 
     alice_facts = client.retrieve_memories(
-        memory_id=memory_id, namespace="/users/alice/facts/",
-        query="alice's interests", top_k=5,
+        memory_id=memory_id,
+        namespace="/users/alice/facts/",
+        query="alice's interests",
+        top_k=5,
     )
     print(f"\n[sdk] Alice facts ({len(alice_facts)}):")
     for h in alice_facts:
         print(f"  - {h['content']['text']}")
 
-    # MemoryClient.retrieve_memories takes `namespace` (exact) only — for
-    # hierarchical `namespacePath` queries, call the forwarded data-plane
-    # method directly with the boto3-shaped kwargs.
-    everything = client.retrieve_memory_records(
-        memoryId=memory_id, namespacePath="/users/",
-        searchCriteria={"searchQuery": "anything we know about users", "topK": 20},
-    )["memoryRecordSummaries"]
+    # retrieve_memories accepts either `namespace` (exact) or
+    # `namespace_path` (hierarchical prefix).
+    everything = client.retrieve_memories(
+        memory_id=memory_id,
+        namespace_path="/users/",
+        query="anything we know about users",
+        top_k=20,
+    )
     print(f"\n[sdk] All under /users/* ({len(everything)}):")
     for h in everything:
         print(f"  - [{','.join(h.get('namespaces', []))}] {h['content']['text']}")

@@ -23,8 +23,11 @@ culinary-assistant-self-managed-strategy/lambda_function.py`.
 
 Three surfaces:
     python self-managed-strategy.py boto3
-    python self-managed-strategy.py sdk    # documents the SDK gap
+    python self-managed-strategy.py sdk
     python self-managed-strategy.py cli
+
+Add `--cleanup` to delete the memory resource at the end. By default the
+memory is kept so you can inspect it; the script prints the memoryId.
 
 Prerequisites:
     pip install boto3 bedrock-agentcore
@@ -68,7 +71,7 @@ def _strategy(payload_bucket: str, topic_arn: str) -> dict:
 
 
 # === boto3 ============================================================
-def run_with_boto3() -> None:
+def run_with_boto3(cleanup: bool = False) -> None:
     import boto3
 
     role_arn = os.environ["MEMORY_EXECUTION_ROLE_ARN"]
@@ -95,26 +98,48 @@ def run_with_boto3() -> None:
         f"[boto3] Memory ready. Send events with CreateEvent; AgentCore delivers\n"
         f"        payloads to s3://{bucket}/ and notifies {topic_arn} when a\n"
         f"        trigger fires. Have your subscriber call BatchCreateMemoryRecords\n"
-        f"        to persist extracted records.\n"
-        f"        To clean up: control.delete_memory(memoryId={memory_id!r}, ...)"
+        f"        to persist extracted records."
     )
+
+    if cleanup:
+        control.delete_memory(memoryId=memory_id, clientToken=str(uuid.uuid4()))
+        print(f"[boto3] Deleted memory {memory_id}")
+    else:
+        print(f"[boto3] Keeping memory {memory_id} (pass --cleanup to delete)")
 
 
 # === AgentCore SDK ====================================================
-# MemoryClient.create_memory_and_wait does not expose memoryExecutionRoleArn
-# and its `strategies=` shape is not validated against selfManagedConfiguration.
-# Use the wrapped boto3 client (client.gmcp_client) for this — same call as
-# the boto3 path. There is no batch-record helper on MemoryClient either, so
-# the extraction subscriber must use boto3 BatchCreateMemoryRecords directly.
-def run_with_sdk() -> None:
-    print(
-        "[sdk] Self-managed strategies are not exposed by MemoryClient helpers.\n"
-        "      - CreateMemory: use the boto3 path (memoryExecutionRoleArn is required\n"
-        "        and not available on create_memory_and_wait).\n"
-        "      - Extraction subscriber: call boto3 batch_create_memory_records /\n"
-        "        batch_update_memory_records / batch_delete_memory_records directly\n"
-        "        from your Lambda. MemoryClient has no batch-record wrapper."
+def run_with_sdk(cleanup: bool = False) -> None:
+    from bedrock_agentcore.memory import MemoryClient
+
+    role_arn = os.environ["MEMORY_EXECUTION_ROLE_ARN"]
+    bucket = os.environ["PAYLOAD_BUCKET"]
+    topic_arn = os.environ["TOPIC_ARN"]
+
+    client = MemoryClient(region_name=REGION)
+    memory = client.create_memory_and_wait(
+        name=f"SelfManagedSdk_{int(time.time())}",
+        description="Self-managed extraction strategy (SDK)",
+        strategies=[_strategy(bucket, topic_arn)],
+        event_expiry_days=30,
+        memory_execution_role_arn=role_arn,
     )
+    memory_id = memory["id"]
+    print(f"[sdk] Created memory {memory_id}")
+
+    print(
+        f"[sdk] Memory ready. Send events with create_event; AgentCore delivers\n"
+        f"        payloads to s3://{bucket}/ and notifies {topic_arn} when a\n"
+        f"        trigger fires. Your subscriber calls\n"
+        f"        client.batch_create_memory_records (forwarded by MemoryClient)\n"
+        f"        to persist extracted records."
+    )
+
+    if cleanup:
+        client.delete_memory_and_wait(memory_id=memory_id)
+        print(f"[sdk] Deleted memory {memory_id}")
+    else:
+        print(f"[sdk] Keeping memory {memory_id} (pass --cleanup to delete)")
 
 
 # === AWS CLI ==========================================================
@@ -171,11 +196,13 @@ aws bedrock-agentcore-control delete-memory \\
 
 
 def main() -> None:
-    surface = sys.argv[1] if len(sys.argv) > 1 else "boto3"
+    args = [a for a in sys.argv[1:] if a != "--cleanup"]
+    cleanup = "--cleanup" in sys.argv[1:]
+    surface = args[0] if args else "boto3"
     if surface == "boto3":
-        run_with_boto3()
+        run_with_boto3(cleanup=cleanup)
     elif surface == "sdk":
-        run_with_sdk()
+        run_with_sdk(cleanup=cleanup)
     elif surface == "cli":
         print(CLI_WALKTHROUGH)
     else:

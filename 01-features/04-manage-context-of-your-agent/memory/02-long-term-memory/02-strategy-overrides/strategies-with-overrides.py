@@ -137,22 +137,15 @@ def run_with_sdk(cleanup: bool = False) -> None:
         raise RuntimeError("Set MEMORY_EXECUTION_ROLE_ARN before running this surface.")
 
     client = MemoryClient(region_name=REGION)
-    # MemoryClient.create_memory_and_wait does not expose memoryExecutionRoleArn,
-    # so drop down to the wrapped boto3 client (gmcp_client) for CreateMemory.
-    cp = client.gmcp_client
-    memory_id = cp.create_memory(
+    memory = client.create_memory_and_wait(
         name=f"OverrideSemanticSdk_{int(time.time())}",
-        description="Semantic overrides (SDK + gmcp_client)",
-        eventExpiryDuration=30,
-        memoryExecutionRoleArn=MEMORY_ROLE_ARN,
-        memoryStrategies=[_override_strategy()],
-    )["memory"]["id"]
+        description="Semantic overrides (SDK)",
+        strategies=[_override_strategy()],
+        event_expiry_days=30,
+        memory_execution_role_arn=MEMORY_ROLE_ARN,
+    )
+    memory_id = memory["id"]
     print(f"[sdk] Created memory {memory_id}")
-    deadline = time.time() + 300
-    while time.time() < deadline:
-        if cp.get_memory(memoryId=memory_id)["memory"]["status"] == "ACTIVE":
-            break
-        time.sleep(5)
 
     client.create_event(
         memory_id=memory_id, actor_id=ACTOR_ID, session_id=SESSION_ID,

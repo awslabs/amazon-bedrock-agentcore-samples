@@ -18,7 +18,9 @@ Add `--cleanup` to delete the memory resource at the end. By default the
 memory is kept so you can inspect it; the script prints the memoryId.
 
 SDK note: `encryptionKeyArn` on CreateMemory is not yet exposed by
-MemoryClient — please use the boto3 API to set it.
+MemoryClient — please use the boto3 API to set it. Other CreateMemory
+parameters (memoryExecutionRoleArn, streamDeliveryResources) are exposed
+on `create_memory_and_wait`.
 
 Prerequisites:
     pip install boto3 bedrock-agentcore
@@ -79,13 +81,11 @@ def run_with_boto3(cleanup: bool = False) -> None:
 # === AgentCore SDK ====================================================
 def run_with_sdk(cleanup: bool = False) -> None:
     print(
-        "[sdk] CMK encryption is not exposed by MemoryClient.\n"
-        "      - encryptionKeyArn: not on create_memory_and_wait\n"
-        "      - memoryExecutionRoleArn: not on create_memory_and_wait\n"
-        "      Use boto3 (see run_with_boto3) or the wrapped client:\n"
-        "        client.gmcp_client.create_memory(\n"
-        "            ..., encryptionKeyArn=...,\n"
-        "            memoryExecutionRoleArn=...)"
+        "[sdk] `encryptionKeyArn` on CreateMemory is not yet exposed by\n"
+        "      MemoryClient — please use the boto3 API to set it (see\n"
+        "      run_with_boto3 above) or call the wrapped control-plane\n"
+        "      client directly:\n"
+        "        client.gmcp_client.create_memory(..., encryptionKeyArn=...)"
     )
 
 

@@ -9,7 +9,7 @@ Do not put sensitive content in metadata — keep it in the payload.
 
 Three surfaces:
     python event-metadata-filtering.py boto3
-    python event-metadata-filtering.py sdk    # documents the SDK gap
+    python event-metadata-filtering.py sdk
     python event-metadata-filtering.py cli
 
 Add `--cleanup` to delete the memory resource at the end. By default the
@@ -94,16 +94,57 @@ def run_with_boto3(cleanup: bool = False) -> None:
 
 
 # === AgentCore SDK ====================================================
-# MemoryClient.create_event does not accept event metadata, and list_events
-# does not accept a filter. To use event metadata filtering, drop down to
-# boto3 (see run_with_boto3 above) or call client.gmcp_client directly.
-def run_with_sdk() -> None:
-    print(
-        "[sdk] Event metadata is not exposed by MemoryClient.\n"
-        "      Use the boto3 path for CreateEvent metadata + ListEvents filter.\n"
-        "      Tracking: bedrock_agentcore.memory.MemoryClient.create_event has\n"
-        "      no `metadata=` parameter; list_events has no `filter=` parameter."
+def run_with_sdk(cleanup: bool = False) -> None:
+    from bedrock_agentcore.memory import MemoryClient
+
+    client = MemoryClient(region_name=REGION)
+    memory = client.create_memory_and_wait(
+        name=f"EventMetadataSdk_{int(time.time())}",
+        description="Event metadata filtering (SDK)",
+        strategies=[],
+        event_expiry_days=30,
     )
+    memory_id = memory["id"]
+    print(f"[sdk] Created memory {memory_id}")
+
+    tagged_turns = [
+        ("USER", "I had a fever last night.", {"topic": "health", "priority": "high"}),
+        ("ASSISTANT", "Sorry to hear. How long has it lasted?", {"topic": "health"}),
+        ("USER", "Also can you book me a flight to Lisbon?", {"topic": "travel"}),
+        ("ASSISTANT", "Booking flight to Lisbon.", {"topic": "travel"}),
+        ("USER", "Just checking in, no specific topic today.", {}),
+    ]
+    for role, text, meta in tagged_turns:
+        client.create_event(
+            memory_id=memory_id,
+            actor_id=ACTOR_ID,
+            session_id=SESSION_ID,
+            messages=[(text, role)],
+            metadata={k: {"stringValue": v} for k, v in meta.items()} if meta else None,
+        )
+
+    health = client.list_events(
+        memory_id=memory_id, actor_id=ACTOR_ID, session_id=SESSION_ID,
+        event_metadata=[{
+            "left": {"metadataKey": "topic"}, "operator": "EQUALS_TO",
+            "right": {"metadataValue": {"stringValue": "health"}},
+        }],
+    )
+    print(f"[sdk] Health-tagged events: {len(health)}")
+
+    priority = client.list_events(
+        memory_id=memory_id, actor_id=ACTOR_ID, session_id=SESSION_ID,
+        event_metadata=[
+            {"left": {"metadataKey": "priority"}, "operator": "EXISTS"}
+        ],
+    )
+    print(f"[sdk] Events with priority set: {len(priority)}")
+
+    if cleanup:
+        client.delete_memory_and_wait(memory_id=memory_id)
+        print(f"[sdk] Deleted memory {memory_id}")
+    else:
+        print(f"[sdk] Keeping memory {memory_id} (pass --cleanup to delete)")
 
 
 # === AWS CLI ==========================================================
@@ -153,7 +194,7 @@ def main() -> None:
     if surface == "boto3":
         run_with_boto3(cleanup=cleanup)
     elif surface == "sdk":
-        run_with_sdk()
+        run_with_sdk(cleanup=cleanup)
     elif surface == "cli":
         print(CLI_WALKTHROUGH)
     else:
