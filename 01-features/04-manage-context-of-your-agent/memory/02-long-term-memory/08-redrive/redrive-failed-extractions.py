@@ -12,12 +12,8 @@ those, decide whether the underlying issue is fixed, and redrive.
 
 Three surfaces:
     python redrive-failed-extractions.py boto3
-    python redrive-failed-extractions.py sdk    # documents the SDK gap
+    python redrive-failed-extractions.py sdk
     python redrive-failed-extractions.py cli
-
-SDK note: MemoryClient does not wrap ListMemoryExtractionJobs or
-StartMemoryExtractionJob. Use the wrapped boto3 client (`client.gmcp_client`)
-or boto3 directly.
 
 Prerequisites:
     pip install boto3 bedrock-agentcore
@@ -74,14 +70,42 @@ def run_with_boto3() -> None:
 
 # === AgentCore SDK ====================================================
 def run_with_sdk() -> None:
-    print(
-        "[sdk] Extraction-job redrive is not exposed by MemoryClient.\n"
-        "      Use the boto3 path (see run_with_boto3) or call:\n"
-        "        client.gmcp_client.list_memory_extraction_jobs(\n"
-        "            memoryId=..., filter={\"status\": \"FAILED\"})\n"
-        "        client.gmcp_client.start_memory_extraction_job(\n"
-        "            memoryId=..., extractionJob={\"jobId\": ...})"
-    )
+    from bedrock_agentcore.memory import MemoryClient
+
+    memory_id = os.environ.get("MEMORY_ID")
+    if not memory_id:
+        print("[sdk] Set MEMORY_ID to a memory resource with failed extraction jobs.")
+        return
+
+    client = MemoryClient(region_name=REGION)
+
+    failed = []
+    next_token = None
+    while True:
+        kwargs = {"memoryId": memory_id, "filter": {"status": "FAILED"}}
+        if next_token:
+            kwargs["nextToken"] = next_token
+        resp = client.list_memory_extraction_jobs(**kwargs)
+        failed.extend(resp.get("jobs", []))
+        next_token = resp.get("nextToken")
+        if not next_token:
+            break
+
+    print(f"[sdk] Found {len(failed)} failed job(s) for {memory_id}")
+    for j in failed:
+        print(
+            f"  jobId={j['jobID']} actor={j.get('actorId')} "
+            f"session={j.get('sessionId')} strategy={j.get('strategyId')}"
+        )
+        print(f"    failureReason={j.get('failureReason')}")
+
+    # Gate redrive on a deliberate fix — blind retries waste tokens.
+    for j in failed:
+        echoed = client.start_memory_extraction_job(
+            memoryId=memory_id, extractionJob={"jobId": j["jobID"]},
+        )["jobId"]
+        print(f"[sdk] Redrove jobId={echoed}")
+        time.sleep(1)
 
 
 # === AWS CLI ==========================================================

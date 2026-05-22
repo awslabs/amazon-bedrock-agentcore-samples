@@ -13,11 +13,11 @@ Each call accepts up to 100 records and reports per-record success/failure.
 
 Three surfaces:
     python batch-create-update-delete.py boto3
-    python batch-create-update-delete.py sdk    # documents the SDK gap
+    python batch-create-update-delete.py sdk
     python batch-create-update-delete.py cli
 
-SDK note: MemoryClient does not wrap the batch CRUD APIs. Use the wrapped
-boto3 client (`client.gmcp_client`) or boto3 directly.
+Add `--cleanup` to delete the memory resource at the end. By default the
+memory is kept so you can inspect it; the script prints the memoryId.
 
 Prerequisites:
     pip install boto3 bedrock-agentcore
@@ -35,7 +35,7 @@ NAMESPACE = f"/users/{ACTOR_ID}/notes/"
 
 
 # === boto3 ============================================================
-def run_with_boto3() -> None:
+def run_with_boto3(cleanup: bool = False) -> None:
     import boto3
 
     control = boto3.client("bedrock-agentcore-control", region_name=REGION)
@@ -93,22 +93,72 @@ def run_with_boto3() -> None:
     for r in remaining:
         print(f"  - {r['content']['text']}")
 
-    control.delete_memory(memoryId=memory_id, clientToken=str(uuid.uuid4()))
-    print(f"\n[boto3] Deleted memory {memory_id}")
+    if cleanup:
+        control.delete_memory(memoryId=memory_id, clientToken=str(uuid.uuid4()))
+        print(f"\n[boto3] Deleted memory {memory_id}")
+    else:
+        print(f"\n[boto3] Keeping memory {memory_id} (pass --cleanup to delete)")
 
 
 # === AgentCore SDK ====================================================
-# MemoryClient does not wrap batch_create_memory_records,
-# batch_update_memory_records, or batch_delete_memory_records.
-def run_with_sdk() -> None:
-    print(
-        "[sdk] Batch CRUD is not exposed by MemoryClient.\n"
-        "      For BatchCreate / BatchUpdate / BatchDelete record APIs, use the\n"
-        "      boto3 path (see run_with_boto3) or call the wrapped client:\n"
-        "        client.gmcp_client.batch_create_memory_records(...)\n"
-        "        client.gmcp_client.batch_update_memory_records(...)\n"
-        "        client.gmcp_client.batch_delete_memory_records(...)"
+def run_with_sdk(cleanup: bool = False) -> None:
+    from bedrock_agentcore.memory import MemoryClient
+
+    client = MemoryClient(region_name=REGION)
+    memory = client.create_memory_and_wait(
+        name=f"BatchCRUDSdk_{int(time.time())}",
+        description="Batch APIs tutorial (SDK)",
+        strategies=[],
+        event_expiry_days=30,
     )
+    memory_id = memory["id"]
+    print(f"[sdk] Created memory {memory_id}")
+
+    create_resp = client.batch_create_memory_records(
+        memoryId=memory_id,
+        records=[
+            {"requestIdentifier": "note-lang", "namespaces": [NAMESPACE],
+             "timestamp": str(int(time.time())),
+             "content": {"text": "Alex prefers Python over Java."}},
+            {"requestIdentifier": "note-city", "namespaces": [NAMESPACE],
+             "timestamp": str(int(time.time())),
+             "content": {"text": "Alex is based in Berlin."}},
+            {"requestIdentifier": "note-allergy", "namespaces": [NAMESPACE],
+             "timestamp": str(int(time.time())),
+             "content": {"text": "Alex is allergic to peanuts."}},
+        ],
+    )
+    successes = create_resp.get("successfulRecords", [])
+    print(f"[sdk] Created {len(successes)} ({len(create_resp.get('failedRecords', []))} failed)")
+    record_ids = {r["requestIdentifier"]: r["memoryRecordId"] for r in successes}
+
+    update_resp = client.batch_update_memory_records(
+        memoryId=memory_id,
+        records=[{
+            "memoryRecordId": record_ids["note-lang"],
+            "content": {"text": "Alex prefers Python and writes Rust for hot paths."},
+        }],
+    )
+    print(f"[sdk] Updated {len(update_resp.get('successfulRecords', []))}")
+
+    delete_resp = client.batch_delete_memory_records(
+        memoryId=memory_id,
+        records=[{"memoryRecordId": record_ids["note-allergy"]}],
+    )
+    print(f"[sdk] Deleted {len(delete_resp.get('successfulRecords', []))}")
+
+    remaining = client.list_memory_records(memoryId=memory_id, namespace=NAMESPACE)[
+        "memoryRecordSummaries"
+    ]
+    print(f"\n[sdk] Remaining ({len(remaining)}):")
+    for r in remaining:
+        print(f"  - {r['content']['text']}")
+
+    if cleanup:
+        client.delete_memory_and_wait(memory_id=memory_id)
+        print(f"\n[sdk] Deleted memory {memory_id}")
+    else:
+        print(f"\n[sdk] Keeping memory {memory_id} (pass --cleanup to delete)")
 
 
 # === AWS CLI ==========================================================
@@ -149,11 +199,13 @@ aws bedrock-agentcore-control delete-memory \\
 
 
 def main() -> None:
-    surface = sys.argv[1] if len(sys.argv) > 1 else "boto3"
+    args = [a for a in sys.argv[1:] if a != "--cleanup"]
+    cleanup = "--cleanup" in sys.argv[1:]
+    surface = args[0] if args else "boto3"
     if surface == "boto3":
-        run_with_boto3()
+        run_with_boto3(cleanup=cleanup)
     elif surface == "sdk":
-        run_with_sdk()
+        run_with_sdk(cleanup=cleanup)
     elif surface == "cli":
         print(CLI_WALKTHROUGH)
     else:

@@ -15,9 +15,12 @@ Three surfaces:
     python episodic.py sdk
     python episodic.py cli
 
-SDK note: MemoryClient has no `add_episodic_strategy()` helper, but
-create_memory_and_wait accepts the raw `episodicMemoryStrategy` shape
-in its `strategies` list — shown below.
+Add `--cleanup` to delete the memory resource at the end. By default the
+memory is kept so you can inspect it; the script prints the memoryId.
+
+SDK note: MemoryClient has no dedicated `add_episodic_strategy()` helper,
+but `create_memory_and_wait` accepts the raw `episodicMemoryStrategy`
+shape in its `strategies` list — shown below.
 
 Prerequisites:
     pip install boto3 bedrock-agentcore
@@ -54,7 +57,7 @@ QUERIES = ["memory leak debugging", "notifications design decisions"]
 
 
 # === boto3 ============================================================
-def run_with_boto3() -> None:
+def run_with_boto3(cleanup: bool = False) -> None:
     import boto3
 
     control = boto3.client("bedrock-agentcore-control", region_name=REGION)
@@ -103,12 +106,15 @@ def run_with_boto3() -> None:
         for h in hits:
             print(f"  - {h['content']['text']}")
 
-    control.delete_memory(memoryId=memory_id, clientToken=str(uuid.uuid4()))
-    print(f"\n[boto3] Deleted memory {memory_id}")
+    if cleanup:
+        control.delete_memory(memoryId=memory_id, clientToken=str(uuid.uuid4()))
+        print(f"\n[boto3] Deleted memory {memory_id}")
+    else:
+        print(f"\n[boto3] Keeping memory {memory_id} (pass --cleanup to delete)")
 
 
 # === AgentCore SDK ====================================================
-def run_with_sdk() -> None:
+def run_with_sdk(cleanup: bool = False) -> None:
     from bedrock_agentcore.memory import MemoryClient
 
     client = MemoryClient(region_name=REGION)
@@ -149,8 +155,11 @@ def run_with_sdk() -> None:
         for h in hits:
             print(f"  - {h['content']['text']}")
 
-    client.delete_memory_and_wait(memory_id=memory_id)
-    print(f"\n[sdk] Deleted memory {memory_id}")
+    if cleanup:
+        client.delete_memory_and_wait(memory_id=memory_id)
+        print(f"\n[sdk] Deleted memory {memory_id}")
+    else:
+        print(f"\n[sdk] Keeping memory {memory_id} (pass --cleanup to delete)")
 
 
 # === AWS CLI ==========================================================
@@ -190,11 +199,13 @@ aws bedrock-agentcore-control delete-memory \\
 
 
 def main() -> None:
-    surface = sys.argv[1] if len(sys.argv) > 1 else "boto3"
+    args = [a for a in sys.argv[1:] if a != "--cleanup"]
+    cleanup = "--cleanup" in sys.argv[1:]
+    surface = args[0] if args else "boto3"
     if surface == "boto3":
-        run_with_boto3()
+        run_with_boto3(cleanup=cleanup)
     elif surface == "sdk":
-        run_with_sdk()
+        run_with_sdk(cleanup=cleanup)
     elif surface == "cli":
         print(CLI_WALKTHROUGH)
     else:

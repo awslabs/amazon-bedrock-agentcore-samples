@@ -13,6 +13,9 @@ Three surfaces:
     python namespaces-and-organization.py sdk
     python namespaces-and-organization.py cli
 
+Add `--cleanup` to delete the memory resource at the end. By default the
+memory is kept so you can inspect it; the script prints the memoryId.
+
 Prerequisites:
     pip install boto3 bedrock-agentcore
     export AWS_REGION=us-east-1
@@ -43,7 +46,7 @@ def _strategies() -> list[dict]:
 
 
 # === boto3 ============================================================
-def run_with_boto3() -> None:
+def run_with_boto3(cleanup: bool = False) -> None:
     import boto3
 
     control = boto3.client("bedrock-agentcore-control", region_name=REGION)
@@ -94,12 +97,15 @@ def run_with_boto3() -> None:
     for h in everything:
         print(f"  - [{','.join(h.get('namespaces', []))}] {h['content']['text']}")
 
-    control.delete_memory(memoryId=memory_id, clientToken=str(uuid.uuid4()))
-    print(f"\n[boto3] Deleted memory {memory_id}")
+    if cleanup:
+        control.delete_memory(memoryId=memory_id, clientToken=str(uuid.uuid4()))
+        print(f"\n[boto3] Deleted memory {memory_id}")
+    else:
+        print(f"\n[boto3] Keeping memory {memory_id} (pass --cleanup to delete)")
 
 
 # === AgentCore SDK ====================================================
-def run_with_sdk() -> None:
+def run_with_sdk(cleanup: bool = False) -> None:
     from bedrock_agentcore.memory import MemoryClient
 
     client = MemoryClient(region_name=REGION)
@@ -135,8 +141,9 @@ def run_with_sdk() -> None:
         print(f"  - {h['content']['text']}")
 
     # MemoryClient.retrieve_memories takes `namespace` (exact) only — for
-    # hierarchical `namespacePath` queries, drop down to gmcp_client.
-    everything = client.gmcp_client.retrieve_memory_records(
+    # hierarchical `namespacePath` queries, call the forwarded data-plane
+    # method directly with the boto3-shaped kwargs.
+    everything = client.retrieve_memory_records(
         memoryId=memory_id, namespacePath="/users/",
         searchCriteria={"searchQuery": "anything we know about users", "topK": 20},
     )["memoryRecordSummaries"]
@@ -144,8 +151,11 @@ def run_with_sdk() -> None:
     for h in everything:
         print(f"  - [{','.join(h.get('namespaces', []))}] {h['content']['text']}")
 
-    client.delete_memory_and_wait(memory_id=memory_id)
-    print(f"\n[sdk] Deleted memory {memory_id}")
+    if cleanup:
+        client.delete_memory_and_wait(memory_id=memory_id)
+        print(f"\n[sdk] Deleted memory {memory_id}")
+    else:
+        print(f"\n[sdk] Keeping memory {memory_id} (pass --cleanup to delete)")
 
 
 # === AWS CLI ==========================================================
@@ -195,11 +205,13 @@ aws bedrock-agentcore-control delete-memory \\
 
 
 def main() -> None:
-    surface = sys.argv[1] if len(sys.argv) > 1 else "boto3"
+    args = [a for a in sys.argv[1:] if a != "--cleanup"]
+    cleanup = "--cleanup" in sys.argv[1:]
+    surface = args[0] if args else "boto3"
     if surface == "boto3":
-        run_with_boto3()
+        run_with_boto3(cleanup=cleanup)
     elif surface == "sdk":
-        run_with_sdk()
+        run_with_sdk(cleanup=cleanup)
     elif surface == "cli":
         print(CLI_WALKTHROUGH)
     else:

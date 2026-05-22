@@ -12,6 +12,9 @@ Three surfaces:
     python event-metadata-filtering.py sdk    # documents the SDK gap
     python event-metadata-filtering.py cli
 
+Add `--cleanup` to delete the memory resource at the end. By default the
+memory is kept so you can inspect it; the script prints the memoryId.
+
 Prerequisites:
     pip install boto3 bedrock-agentcore
     export AWS_REGION=us-east-1
@@ -29,7 +32,7 @@ SESSION_ID = f"sess-{int(time.time())}"
 
 
 # === boto3 ============================================================
-def run_with_boto3() -> None:
+def run_with_boto3(cleanup: bool = False) -> None:
     import boto3
 
     control = boto3.client("bedrock-agentcore-control", region_name=REGION)
@@ -83,8 +86,11 @@ def run_with_boto3() -> None:
     )["events"]
     print(f"[boto3] Events with priority set: {len(priority)}")
 
-    control.delete_memory(memoryId=memory_id, clientToken=str(uuid.uuid4()))
-    print(f"[boto3] Deleted memory {memory_id}")
+    if cleanup:
+        control.delete_memory(memoryId=memory_id, clientToken=str(uuid.uuid4()))
+        print(f"[boto3] Deleted memory {memory_id}")
+    else:
+        print(f"[boto3] Keeping memory {memory_id} (pass --cleanup to delete)")
 
 
 # === AgentCore SDK ====================================================
@@ -141,9 +147,11 @@ aws bedrock-agentcore-control delete-memory \\
 
 
 def main() -> None:
-    surface = sys.argv[1] if len(sys.argv) > 1 else "boto3"
+    args = [a for a in sys.argv[1:] if a != "--cleanup"]
+    cleanup = "--cleanup" in sys.argv[1:]
+    surface = args[0] if args else "boto3"
     if surface == "boto3":
-        run_with_boto3()
+        run_with_boto3(cleanup=cleanup)
     elif surface == "sdk":
         run_with_sdk()
     elif surface == "cli":

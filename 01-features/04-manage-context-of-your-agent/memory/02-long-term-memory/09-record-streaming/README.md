@@ -15,7 +15,7 @@ Push-based delivery of memory record lifecycle events to an Amazon Kinesis Data 
 ```bash
 pip install boto3 bedrock-agentcore
 python record-streaming.py boto3   # default — direct service calls
-python record-streaming.py sdk     # documents the SDK gap (no streamDeliveryResources helper)
+python record-streaming.py sdk     # MemoryClient with stream_delivery_resources kwarg
 python record-streaming.py cli     # print equivalent AWS CLI commands
 ```
 

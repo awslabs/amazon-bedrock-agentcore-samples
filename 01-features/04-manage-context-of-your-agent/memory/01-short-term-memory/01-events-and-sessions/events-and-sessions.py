@@ -11,6 +11,9 @@ Three surfaces, same flow:
     python events-and-sessions.py sdk
     python events-and-sessions.py cli
 
+Add `--cleanup` to delete the memory resource at the end. By default the
+memory is kept so you can inspect it; the script prints the memoryId.
+
 Prerequisites:
     pip install boto3 bedrock-agentcore
     export AWS_REGION=us-east-1
@@ -27,7 +30,7 @@ ACTOR_ID = "user-42"
 
 
 # === boto3 ============================================================
-def run_with_boto3() -> None:
+def run_with_boto3(cleanup: bool = False) -> None:
     import boto3
 
     control = boto3.client("bedrock-agentcore-control", region_name=REGION)
@@ -94,15 +97,15 @@ def run_with_boto3() -> None:
     ]
     print(f"[boto3] Actor {ACTOR_ID} has {len(sessions)} session(s)")
 
-    control.delete_memory(memoryId=memory_id, clientToken=str(uuid.uuid4()))
-    print(f"[boto3] Deleted memory {memory_id}")
+    if cleanup:
+        control.delete_memory(memoryId=memory_id, clientToken=str(uuid.uuid4()))
+        print(f"[boto3] Deleted memory {memory_id}")
+    else:
+        print(f"[boto3] Keeping memory {memory_id} (pass --cleanup to delete)")
 
 
 # === AgentCore SDK ====================================================
-# Note: MemoryClient does not expose ListSessions. For session discovery,
-# fall back to the underlying boto3 client (`bedrock-agentcore-control` client) or to
-# raw boto3 as shown in the boto3 path above.
-def run_with_sdk() -> None:
+def run_with_sdk(cleanup: bool = False) -> None:
     from bedrock_agentcore.memory import MemoryClient
 
     client = MemoryClient(region_name=REGION)
@@ -151,11 +154,16 @@ def run_with_sdk() -> None:
     )
     print(f"[sdk] Last {len(turns)} turn(s) in session_a")
 
-    print(
-        "[sdk] (ListSessions has no SDK helper — use boto3 list_sessions for discovery)"
-    )
-    client.delete_memory_and_wait(memory_id=memory_id)
-    print(f"[sdk] Deleted memory {memory_id}")
+    sessions = client.list_sessions(memoryId=memory_id, actorId=ACTOR_ID)[
+        "sessionSummaries"
+    ]
+    print(f"[sdk] Actor {ACTOR_ID} has {len(sessions)} session(s)")
+
+    if cleanup:
+        client.delete_memory_and_wait(memory_id=memory_id)
+        print(f"[sdk] Deleted memory {memory_id}")
+    else:
+        print(f"[sdk] Keeping memory {memory_id} (pass --cleanup to delete)")
 
 
 # === AWS CLI ==========================================================
@@ -199,11 +207,13 @@ aws bedrock-agentcore-control delete-memory \\
 
 
 def main() -> None:
-    surface = sys.argv[1] if len(sys.argv) > 1 else "boto3"
+    args = [a for a in sys.argv[1:] if a != "--cleanup"]
+    cleanup = "--cleanup" in sys.argv[1:]
+    surface = args[0] if args else "boto3"
     if surface == "boto3":
-        run_with_boto3()
+        run_with_boto3(cleanup=cleanup)
     elif surface == "sdk":
-        run_with_sdk()
+        run_with_sdk(cleanup=cleanup)
     elif surface == "cli":
         print(CLI_WALKTHROUGH)
     else:

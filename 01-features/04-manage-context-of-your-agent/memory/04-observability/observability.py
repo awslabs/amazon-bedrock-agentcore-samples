@@ -19,8 +19,8 @@ Two surfaces:
     python observability.py boto3
     python observability.py cli
 
-SDK note: there is no MemoryClient surface for CloudWatch metrics or logs.
-This is a pure CloudWatch / Logs concern — the AgentCore SDK has no role.
+SDK note: CloudWatch metrics and Logs are not exposed by MemoryClient —
+please use the boto3 `cloudwatch` and `logs` clients directly (shown below).
 
 Prerequisites:
     pip install boto3

@@ -10,12 +10,14 @@ that should be enforced at the index, not in the LLM prompt.
 
 Three surfaces:
     python structured-metadata.py boto3
-    python structured-metadata.py sdk    # documents the SDK gap
+    python structured-metadata.py sdk
     python structured-metadata.py cli
 
-SDK note: MemoryClient does not expose `indexedKeys=` on CreateMemory or
-batch record APIs. Use the wrapped boto3 client (`client.gmcp_client`) or
-boto3 directly for record-metadata workflows.
+Add `--cleanup` to delete the memory resource at the end. By default the
+memory is kept so you can inspect it; the script prints the memoryId.
+
+SDK note: `indexedKeys` on CreateMemory is not yet exposed by MemoryClient —
+please use the boto3 API to set it.
 
 Prerequisites:
     pip install boto3 bedrock-agentcore
@@ -68,7 +70,7 @@ def _records() -> list[dict]:
 
 
 # === boto3 ============================================================
-def run_with_boto3() -> None:
+def run_with_boto3(cleanup: bool = False) -> None:
     import boto3
 
     control = boto3.client("bedrock-agentcore-control", region_name=REGION)
@@ -94,37 +96,85 @@ def run_with_boto3() -> None:
     print(f"[boto3] Created {len(resp.get('successfulRecords', []))} records")
 
     hits = data.retrieve_memory_records(
-        memoryId=memory_id, namespace=NAMESPACE,
+        memoryId=memory_id,
+        namespace=NAMESPACE,
         searchCriteria={
-            "searchQuery": "Acme", "topK": 10,
-            "metadataFilters": [{
-                "left": {"metadataKey": "region"},
-                "operator": "EQUALS_TO",
-                "right": {"metadataValue": {"stringValue": "EU"}},
-            }],
+            "searchQuery": "Acme",
+            "topK": 10,
+            "metadataFilters": [
+                {
+                    "left": {"metadataKey": "region"},
+                    "operator": "EQUALS_TO",
+                    "right": {"metadataValue": {"stringValue": "EU"}},
+                }
+            ],
         },
     )["memoryRecordSummaries"]
     print(f"\n[boto3] EU-only results ({len(hits)}):")
     for h in hits:
         print(f"  - {h['content']['text']} | meta={h.get('metadata')}")
 
-    control.delete_memory(memoryId=memory_id, clientToken=str(uuid.uuid4()))
-    print(f"\n[boto3] Deleted memory {memory_id}")
+    if cleanup:
+        control.delete_memory(memoryId=memory_id, clientToken=str(uuid.uuid4()))
+        print(f"\n[boto3] Deleted memory {memory_id}")
+    else:
+        print(f"\n[boto3] Keeping memory {memory_id} (pass --cleanup to delete)")
 
 
 # === AgentCore SDK ====================================================
-# MemoryClient.create_memory_and_wait does not expose indexedKeys, and
-# there is no batch_create_memory_records helper. Use gmcp_client for
-# CreateMemory + boto3-shaped batch calls, or use the boto3 path directly.
-def run_with_sdk() -> None:
-    print(
-        "[sdk] Record metadata is not exposed by MemoryClient helpers.\n"
-        "      - indexedKeys: not on create_memory_and_wait\n"
-        "      - batch_create_memory_records: no helper\n"
-        "      - metadataFilters on retrieve_memories: not exposed\n"
-        "      Use boto3 directly (see run_with_boto3) or call methods on\n"
-        "      client.gmcp_client.* with the boto3-shaped kwargs."
-    )
+# create_memory_and_wait does not expose indexedKeys, so reach the wrapped
+# control-plane client for CreateMemory. The data-plane calls
+# (batch_create_memory_records, retrieve_memory_records) are forwarded by
+# MemoryClient via __getattr__ and used directly.
+def run_with_sdk(cleanup: bool = False) -> None:
+    from bedrock_agentcore.memory import MemoryClient
+
+    client = MemoryClient(region_name=REGION)
+
+    cp = client.gmcp_client  # control plane (for indexedKeys)
+    memory_id = cp.create_memory(
+        name=f"RecordMetadataSdk_{int(time.time())}",
+        description="Structured metadata (SDK)",
+        eventExpiryDuration=30,
+        indexedKeys=[
+            {"key": "region", "type": "STRING"},
+            {"key": "tier", "type": "STRING"},
+        ],
+    )["memory"]["id"]
+    print(f"[sdk] Created memory {memory_id}")
+    deadline = time.time() + 300
+    while time.time() < deadline:
+        if cp.get_memory(memoryId=memory_id)["memory"]["status"] == "ACTIVE":
+            break
+        time.sleep(5)
+
+    resp = client.batch_create_memory_records(memoryId=memory_id, records=_records())
+    print(f"[sdk] Created {len(resp.get('successfulRecords', []))} records")
+
+    hits = client.retrieve_memory_records(
+        memoryId=memory_id,
+        namespace=NAMESPACE,
+        searchCriteria={
+            "searchQuery": "Acme",
+            "topK": 10,
+            "metadataFilters": [
+                {
+                    "left": {"metadataKey": "region"},
+                    "operator": "EQUALS_TO",
+                    "right": {"metadataValue": {"stringValue": "EU"}},
+                }
+            ],
+        },
+    )["memoryRecordSummaries"]
+    print(f"\n[sdk] EU-only results ({len(hits)}):")
+    for h in hits:
+        print(f"  - {h['content']['text']} | meta={h.get('metadata')}")
+
+    if cleanup:
+        client.delete_memory_and_wait(memory_id=memory_id)
+        print(f"\n[sdk] Deleted memory {memory_id}")
+    else:
+        print(f"\n[sdk] Keeping memory {memory_id} (pass --cleanup to delete)")
 
 
 # === AWS CLI ==========================================================
@@ -173,11 +223,13 @@ aws bedrock-agentcore-control delete-memory \\
 
 
 def main() -> None:
-    surface = sys.argv[1] if len(sys.argv) > 1 else "boto3"
+    args = [a for a in sys.argv[1:] if a != "--cleanup"]
+    cleanup = "--cleanup" in sys.argv[1:]
+    surface = args[0] if args else "boto3"
     if surface == "boto3":
-        run_with_boto3()
+        run_with_boto3(cleanup=cleanup)
     elif surface == "sdk":
-        run_with_sdk()
+        run_with_sdk(cleanup=cleanup)
     elif surface == "cli":
         print(CLI_WALKTHROUGH)
     else:

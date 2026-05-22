@@ -11,12 +11,14 @@ access reviews), pass a customer-managed KMS key ARN to CreateMemory.
 
 Three surfaces:
     python kms-encryption.py boto3
-    python kms-encryption.py sdk    # documents the SDK gap
+    python kms-encryption.py sdk
     python kms-encryption.py cli
 
-SDK note: MemoryClient.create_memory_and_wait does not expose
-encryptionKeyArn or memoryExecutionRoleArn. Use the wrapped boto3 client
-(`client.gmcp_client`) or boto3 directly.
+Add `--cleanup` to delete the memory resource at the end. By default the
+memory is kept so you can inspect it; the script prints the memoryId.
+
+SDK note: `encryptionKeyArn` on CreateMemory is not yet exposed by
+MemoryClient — please use the boto3 API to set it.
 
 Prerequisites:
     pip install boto3 bedrock-agentcore
@@ -38,7 +40,7 @@ REGION = os.getenv("AWS_REGION", "us-east-1")
 
 
 # === boto3 ============================================================
-def run_with_boto3() -> None:
+def run_with_boto3(cleanup: bool = False) -> None:
     import boto3
 
     kms_key_arn = os.environ.get("KMS_KEY_ARN")
@@ -67,12 +69,15 @@ def run_with_boto3() -> None:
     print(f"  status           = {detail['status']}")
     print(f"  encryptionKeyArn = {detail.get('encryptionKeyArn')}")
 
-    control.delete_memory(memoryId=memory_id, clientToken=str(uuid.uuid4()))
-    print(f"[boto3] Deleted memory {memory_id}")
+    if cleanup:
+        control.delete_memory(memoryId=memory_id, clientToken=str(uuid.uuid4()))
+        print(f"[boto3] Deleted memory {memory_id}")
+    else:
+        print(f"[boto3] Keeping memory {memory_id} (pass --cleanup to delete)")
 
 
 # === AgentCore SDK ====================================================
-def run_with_sdk() -> None:
+def run_with_sdk(cleanup: bool = False) -> None:
     print(
         "[sdk] CMK encryption is not exposed by MemoryClient.\n"
         "      - encryptionKeyArn: not on create_memory_and_wait\n"
@@ -115,11 +120,13 @@ aws bedrock-agentcore-control delete-memory \\
 
 
 def main() -> None:
-    surface = sys.argv[1] if len(sys.argv) > 1 else "boto3"
+    args = [a for a in sys.argv[1:] if a != "--cleanup"]
+    cleanup = "--cleanup" in sys.argv[1:]
+    surface = args[0] if args else "boto3"
     if surface == "boto3":
-        run_with_boto3()
+        run_with_boto3(cleanup=cleanup)
     elif surface == "sdk":
-        run_with_sdk()
+        run_with_sdk(cleanup=cleanup)
     elif surface == "cli":
         print(CLI_WALKTHROUGH)
     else:

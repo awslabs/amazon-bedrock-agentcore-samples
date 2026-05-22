@@ -8,12 +8,11 @@ What you learn:
 
 Three surfaces:
     python record-streaming.py boto3
-    python record-streaming.py sdk    # documents the SDK gap
+    python record-streaming.py sdk
     python record-streaming.py cli
 
-SDK note: MemoryClient.create_memory_and_wait does not expose
-streamDeliveryResources or memoryExecutionRoleArn. Use the wrapped boto3
-client (`client.gmcp_client`) or boto3 directly.
+Add `--cleanup` to delete the memory resource at the end. By default the
+memory is kept so you can inspect it; the script prints the memoryId.
 
 Prerequisites:
     pip install boto3 bedrock-agentcore
@@ -77,7 +76,7 @@ def _read_kinesis_events(kinesis, stream_name, max_wait_seconds=60, max_events=1
 
 
 # === boto3 ============================================================
-def run_with_boto3() -> None:
+def run_with_boto3(cleanup: bool = False) -> None:
     import boto3
 
     unique = str(uuid.uuid4())[:8]
@@ -152,24 +151,100 @@ def run_with_boto3() -> None:
         print(f"  - {evt.get('eventType')} @ {evt.get('eventTime')} | record={evt.get('memoryRecordId', 'N/A')}")
 
     # 5. Cleanup
-    control.delete_memory(memoryId=memory_id, clientToken=str(uuid.uuid4()))
-    kinesis.delete_stream(StreamName=stream_name, EnforceConsumerDeletion=True)
-    iam.delete_role_policy(RoleName=role_name, PolicyName="KinesisPublishPolicy")
-    iam.delete_role(RoleName=role_name)
-    print("[boto3] Cleaned up memory, stream, role")
+    if cleanup:
+        control.delete_memory(memoryId=memory_id, clientToken=str(uuid.uuid4()))
+        kinesis.delete_stream(StreamName=stream_name, EnforceConsumerDeletion=True)
+        iam.delete_role_policy(RoleName=role_name, PolicyName="KinesisPublishPolicy")
+        iam.delete_role(RoleName=role_name)
+        print("[boto3] Cleaned up memory, stream, role")
+    else:
+        print(
+            f"[boto3] Keeping resources (pass --cleanup to delete): "
+            f"memory={memory_id} stream={stream_name} role={role_name}"
+        )
 
 
 # === AgentCore SDK ====================================================
-def run_with_sdk() -> None:
-    print(
-        "[sdk] Stream delivery is not exposed by MemoryClient.\n"
-        "      - streamDeliveryResources: not on create_memory_and_wait\n"
-        "      - memoryExecutionRoleArn: not on create_memory_and_wait\n"
-        "      Use boto3 (see run_with_boto3) or:\n"
-        "        client.gmcp_client.create_memory(\n"
-        "            ..., streamDeliveryResources=[...],\n"
-        "            memoryExecutionRoleArn=...)"
+def run_with_sdk(cleanup: bool = False) -> None:
+    import boto3
+    from bedrock_agentcore.memory import MemoryClient
+
+    unique = str(uuid.uuid4())[:8]
+    kinesis = boto3.client("kinesis", region_name=REGION)
+    iam = boto3.client("iam")
+
+    # 1. Kinesis stream + IAM role (no SDK surface — use boto3 directly).
+    stream_name = f"memory-record-stream-sdk-{unique}"
+    kinesis.create_stream(StreamName=stream_name, ShardCount=1)
+    kinesis.get_waiter("stream_exists").wait(StreamName=stream_name)
+    stream_arn = kinesis.describe_stream(StreamName=stream_name)["StreamDescription"]["StreamARN"]
+    print(f"[sdk] Stream {stream_arn}")
+
+    role_name = f"AgentCoreMemoryStreamingRoleSdk-{unique}"
+    role_arn = iam.create_role(
+        RoleName=role_name, AssumeRolePolicyDocument=_trust_policy(),
+        Description="Allows AgentCore Memory to publish events to Kinesis",
+    )["Role"]["Arn"]
+    iam.put_role_policy(
+        RoleName=role_name, PolicyName="KinesisPublishPolicy",
+        PolicyDocument=_permissions_policy(stream_arn),
     )
+    print(f"[sdk] Role {role_arn}; sleeping 10s for IAM propagation")
+    time.sleep(10)
+
+    # 2. Memory with stream delivery wired in via SDK kwargs.
+    client = MemoryClient(region_name=REGION)
+    memory = client.create_memory_and_wait(
+        name=f"streaming_memory_sdk_{unique}",
+        description="Memory with record streaming enabled (SDK)",
+        strategies=[{
+            "userPreferenceMemoryStrategy": {
+                "name": "UserPreferences",
+                "namespaces": [f"/{ACTOR_ID}/user_preferences/"],
+            }
+        }],
+        event_expiry_days=7,
+        memory_execution_role_arn=role_arn,
+        stream_delivery_resources=[{
+            "kinesisStreamArn": stream_arn,
+            "contentLevel": "FULL_CONTENT",
+        }],
+    )
+    memory_id = memory["id"]
+    print(f"[sdk] Memory {memory_id}")
+
+    # 3. Trigger MemoryRecordCreated events directly.
+    client.batch_create_memory_records(
+        memoryId=memory_id,
+        records=[
+            {"requestIdentifier": "rec-1", "namespaces": [f"/{ACTOR_ID}/user_preferences/"],
+             "timestamp": str(int(time.time())),
+             "content": {"text": "User prefers window seats on flights."}},
+            {"requestIdentifier": "rec-2", "namespaces": [f"/{ACTOR_ID}/user_preferences/"],
+             "timestamp": str(int(time.time())),
+             "content": {"text": "User's favourite language is Python."}},
+        ],
+    )
+    print("[sdk] Wrote 2 records — polling Kinesis for events...")
+
+    events = _read_kinesis_events(kinesis, stream_name, max_wait_seconds=60, max_events=10)
+    print(f"[sdk] Received {len(events)} stream event(s):")
+    for e in events:
+        evt = e.get("memoryStreamEvent", {})
+        print(f"  - {evt.get('eventType')} @ {evt.get('eventTime')} | record={evt.get('memoryRecordId', 'N/A')}")
+
+    # 4. Cleanup
+    if cleanup:
+        client.delete_memory_and_wait(memory_id=memory_id)
+        kinesis.delete_stream(StreamName=stream_name, EnforceConsumerDeletion=True)
+        iam.delete_role_policy(RoleName=role_name, PolicyName="KinesisPublishPolicy")
+        iam.delete_role(RoleName=role_name)
+        print("[sdk] Cleaned up memory, stream, role")
+    else:
+        print(
+            f"[sdk] Keeping resources (pass --cleanup to delete): "
+            f"memory={memory_id} stream={stream_name} role={role_name}"
+        )
 
 
 # === AWS CLI ==========================================================
@@ -222,11 +297,13 @@ aws bedrock-agentcore-control delete-memory \\
 
 
 def main() -> None:
-    surface = sys.argv[1] if len(sys.argv) > 1 else "boto3"
+    args = [a for a in sys.argv[1:] if a != "--cleanup"]
+    cleanup = "--cleanup" in sys.argv[1:]
+    surface = args[0] if args else "boto3"
     if surface == "boto3":
-        run_with_boto3()
+        run_with_boto3(cleanup=cleanup)
     elif surface == "sdk":
-        run_with_sdk()
+        run_with_sdk(cleanup=cleanup)
     elif surface == "cli":
         print(CLI_WALKTHROUGH)
     else:
