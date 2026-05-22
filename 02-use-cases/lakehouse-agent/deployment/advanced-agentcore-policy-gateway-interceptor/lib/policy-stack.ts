@@ -111,7 +111,7 @@ export class PolicyStack extends cdk.Stack {
 						"bedrock-agentcore:GetPolicyEngine",
 						"bedrock-agentcore:CheckAuthorizePermissions",
 					],
-					resources: ["*"],
+					resources: [policyEngine.attrPolicyEngineArn],
 				}),
 			],
 		});
@@ -202,8 +202,11 @@ export class PolicyStack extends cdk.Stack {
 			},
 			policy: cr.AwsCustomResourcePolicy.fromStatements([
 				new iam.PolicyStatement({
-					actions: ["bedrock-agentcore:*"],
-					resources: ["*"],
+					actions: [
+						"bedrock-agentcore:UpdateGateway",
+						"bedrock-agentcore:GetGateway",
+					],
+					resources: [gatewayArn],
 				}),
 				new iam.PolicyStatement({
 					actions: ["iam:PassRole"],
