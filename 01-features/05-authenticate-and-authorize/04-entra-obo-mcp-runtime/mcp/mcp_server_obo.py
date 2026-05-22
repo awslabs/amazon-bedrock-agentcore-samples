@@ -17,7 +17,7 @@ import httpx
 from mcp.server.fastmcp import FastMCP
 from typing import Dict, Any
 
-mcp = FastMCP(host="0.0.0.0", stateless_http=True)
+mcp = FastMCP(host="0.0.0.0", stateless_http=True)  # nosec B104
 
 GRAPH_BASE = "https://graph.microsoft.com/v1.0"
 # AgentCore only forwards request headers that are explicitly allowlisted on the runtime and

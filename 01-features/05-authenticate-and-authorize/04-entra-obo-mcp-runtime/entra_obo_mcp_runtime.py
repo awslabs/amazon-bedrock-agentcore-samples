@@ -40,14 +40,14 @@ Prerequisites:
 """
 
 import argparse
+import base64
 import json
 import os
+import subprocess
 import time
 import urllib.parse
 import uuid
 import webbrowser
-import zipfile
-from io import BytesIO
 
 import boto3
 import msal
@@ -93,9 +93,7 @@ def create_execution_role(role_name: str, extra_policies: list = None) -> str:
     )
 
     try:
-        role = iam.create_role(
-            RoleName=role_name, AssumeRolePolicyDocument=trust_policy
-        )
+        role = iam.create_role(RoleName=role_name, AssumeRolePolicyDocument=trust_policy)
         role_arn = role["Role"]["Arn"]
         print(f"  Created IAM role: {role_name}")
     except iam.exceptions.EntityAlreadyExistsException:
@@ -106,7 +104,11 @@ def create_execution_role(role_name: str, extra_policies: list = None) -> str:
         {
             "Effect": "Allow",
             "Action": ["bedrock:InvokeModel", "bedrock:InvokeModelWithResponseStream"],
-            "Resource": f"arn:aws:bedrock:{REGION}::foundation-model/*",
+            "Resource": [
+                f"arn:aws:bedrock:{REGION}::foundation-model/*",
+                f"arn:aws:bedrock:{REGION}:{ACCOUNT_ID}:inference-profile/*",
+                "arn:aws:bedrock:*::foundation-model/*",
+            ],
         },
         {
             "Effect": "Allow",
@@ -116,6 +118,25 @@ def create_execution_role(role_name: str, extra_policies: list = None) -> str:
                 "logs:PutLogEvents",
             ],
             "Resource": "arn:aws:logs:*:*:*",
+        },
+        {
+            "Effect": "Allow",
+            "Action": ["xray:PutTraceSegments", "xray:PutTelemetryRecords"],
+            "Resource": "*",
+        },
+        {
+            "Effect": "Allow",
+            "Action": ["ecr:GetAuthorizationToken"],
+            "Resource": "*",
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "ecr:BatchGetImage",
+                "ecr:GetDownloadUrlForLayer",
+                "ecr:BatchCheckLayerAvailability",
+            ],
+            "Resource": f"arn:aws:ecr:{REGION}:{ACCOUNT_ID}:repository/agentcore-obo-*",
         },
     ]
     if extra_policies:
@@ -131,45 +152,112 @@ def create_execution_role(role_name: str, extra_policies: list = None) -> str:
     except Exception:
         pass
 
-    time.sleep(5)
+    # Wait for IAM role propagation across services.
+    time.sleep(15)
     return role_arn
 
 
-# ── Helper: Upload Code to S3 ──────────────────────────────────────────────────
+# ── Helper: Persist partial deployment state ─────────────────────────────────
 
 
-def upload_to_s3(agent_label: str, code_dir: str, entry_point: str) -> dict:
-    """Zip code directory and upload to S3."""
-    s3 = boto3.client("s3", region_name=REGION)
-    bucket_name = f"agentcore-obo-{ACCOUNT_ID}-{REGION}"
-
+def _save_partial_config(updates: dict) -> None:
+    """Merge `updates` into CONFIG_FILE."""
     try:
-        if REGION == "us-east-1":
-            s3.create_bucket(Bucket=bucket_name)
-        else:
-            s3.create_bucket(
-                Bucket=bucket_name,
-                CreateBucketConfiguration={"LocationConstraint": REGION},
-            )
-        print(f"  Created S3 bucket: {bucket_name}")
-    except s3.exceptions.BucketAlreadyOwnedByYou:
+        with open(CONFIG_FILE) as f:
+            existing = json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        existing = {}
+    existing.update(updates)
+    with open(CONFIG_FILE, "w") as f:
+        json.dump(existing, f, indent=2)
+
+
+def _append_runtime(name: str, runtime_id: str) -> list:
+    """Return the existing `runtimes` list with this entry appended (deduped)."""
+    try:
+        with open(CONFIG_FILE) as f:
+            existing = json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        existing = {}
+    runtimes = list(existing.get("runtimes", []))
+    entry = {"name": name, "id": runtime_id}
+    if entry not in runtimes:
+        runtimes.append(entry)
+    return runtimes
+
+
+# ── Helper: Build and Push Container Image to ECR ────────────────────────────
+
+
+def ensure_ecr_repository(repo_name: str) -> str:
+    """Create the ECR repository if it doesn't exist; return its URI base."""
+    ecr = boto3.client("ecr", region_name=REGION)
+    try:
+        ecr.create_repository(repositoryName=repo_name)
+        print(f"  Created ECR repo: {repo_name}")
+    except ecr.exceptions.RepositoryAlreadyExistsException:
         pass
 
-    # Zip the code directory
-    zip_buffer = BytesIO()
-    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
-        src_dir = os.path.join(os.path.dirname(__file__), code_dir)
-        for fname in os.listdir(src_dir):
-            fpath = os.path.join(src_dir, fname)
-            if os.path.isfile(fpath):
-                zf.write(fpath, fname)
+    try:
+        with open(CONFIG_FILE) as f:
+            existing = json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        existing = {}
+    repos = set(existing.get("ecr_repos", []))
+    repos.add(repo_name)
+    _save_partial_config({"ecr_repos": sorted(repos)})
 
-    zip_buffer.seek(0)
-    s3_key = f"agents/{agent_label}/agent.zip"
-    s3.put_object(Bucket=bucket_name, Key=s3_key, Body=zip_buffer.read())
-    print(f"  Uploaded {code_dir}/ → s3://{bucket_name}/{s3_key}")
+    return f"{ACCOUNT_ID}.dkr.ecr.{REGION}.amazonaws.com/{repo_name}"
 
-    return {"bucket": bucket_name, "key": s3_key}
+
+def build_and_push_image(code_dir: str, repo_name: str, image_tag: str) -> str:
+    """Build a linux/arm64 image from <code_dir>/Dockerfile and push to ECR.
+
+    Requires `docker` and `docker buildx` on PATH.
+    """
+    repo_uri_base = ensure_ecr_repository(repo_name)
+    image_uri = f"{repo_uri_base}:{image_tag}"
+
+    print(f"  Logging in to ECR ({REGION})...")
+    auth_data = boto3.client("ecr", region_name=REGION).get_authorization_token()["authorizationData"][0]
+    proxy_endpoint = auth_data["proxyEndpoint"]
+    decoded = base64.b64decode(auth_data["authorizationToken"]).decode("utf-8")
+    _user, password = decoded.split(":", 1)
+    login = subprocess.run(
+        ["docker", "login", "--username", "AWS", "--password-stdin", proxy_endpoint],
+        input=password.encode(),
+        capture_output=True,
+        check=False,
+    )
+    if login.returncode != 0:
+        raise RuntimeError(f"docker login failed: {login.stderr.decode().strip()}")
+
+    src_dir = os.path.join(os.path.dirname(__file__), code_dir)
+    print(f"  Building image (linux/arm64) from {code_dir}/Dockerfile...")
+    result = subprocess.run(
+        [
+            "docker",
+            "buildx",
+            "build",
+            "--platform",
+            "linux/arm64",
+            "-t",
+            image_uri,
+            "-f",
+            os.path.join(src_dir, "Dockerfile"),
+            "--push",
+            src_dir,
+        ],
+        capture_output=False,
+        check=False,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(
+            f"docker buildx build failed for {code_dir}/. "
+            "Ensure Docker daemon is running and 'docker buildx' is available."
+        )
+    print(f"  Pushed {code_dir}/ → {image_uri}")
+    return image_uri
 
 
 # ── Helper: Deploy Runtime ────────────────────────────────────────────────────
@@ -178,37 +266,22 @@ def upload_to_s3(agent_label: str, code_dir: str, entry_point: str) -> dict:
 def deploy_runtime(
     name: str,
     role_arn: str,
-    s3_info: dict,
-    entry_point: str,
+    image_uri: str,
     authorizer_config: dict,
     env_vars: dict = None,
     request_header_config: dict = None,
     protocol: str = "HTTP",
 ) -> dict:
-    """Create an AgentCore Runtime and wait for READY."""
+    """Create an AgentCore Runtime from a container image and wait for READY."""
     control = boto3.client("bedrock-agentcore-control", region_name=REGION)
 
     kwargs = {
         "agentRuntimeName": name,
-        "agentRuntimeArtifact": {
-            "containerConfiguration": {
-                "containerUri": (
-                    f"{ACCOUNT_ID}.dkr.ecr.{REGION}.amazonaws.com/"
-                    "bedrock-agentcore/managed/runtimes/python3.13:latest"
-                ),
-            }
-        },
+        "agentRuntimeArtifact": {"containerConfiguration": {"containerUri": image_uri}},
         "roleArn": role_arn,
         "networkConfiguration": {"networkMode": "PUBLIC"},
         "authorizerConfiguration": authorizer_config,
-        "codeConfiguration": {
-            "code": {
-                "s3": {
-                    "uri": f"s3://{s3_info['bucket']}/{s3_info['key']}",
-                    "entryPoint": entry_point,
-                }
-            }
-        },
+        "protocolConfiguration": {"serverProtocol": protocol},
     }
 
     if env_vars:
@@ -216,16 +289,31 @@ def deploy_runtime(
     if request_header_config:
         kwargs["requestHeaderConfiguration"] = request_header_config
 
-    response = control.create_agent_runtime(**kwargs)
+    # Retry on IAM role propagation lag.
+    response = None
+    last_err = None
+    for attempt in range(5):
+        try:
+            response = control.create_agent_runtime(**kwargs)
+            break
+        except control.exceptions.ValidationException as exc:
+            if "Role validation failed" not in str(exc):
+                raise
+            last_err = exc
+            wait = min(5 * (2**attempt), 30)
+            print(f"  Role not yet propagated; retrying in {wait}s (attempt {attempt + 1}/5)")
+            time.sleep(wait)
+    if response is None:
+        raise RuntimeError(f"Role validation kept failing: {last_err}")
     runtime_id = response["agentRuntimeId"]
     runtime_arn = response["agentRuntimeArn"]
     print(f"  Created runtime: {name} (ID: {runtime_id})")
 
+    _save_partial_config({"runtimes": _append_runtime(name, runtime_id)})
+
     print("  Waiting for READY...")
     while True:
-        s = control.get_agent_runtime(agentRuntimeId=runtime_id).get(
-            "status", "UNKNOWN"
-        )
+        s = control.get_agent_runtime(agentRuntimeId=runtime_id).get("status", "UNKNOWN")
         print(f"    Status: {s}")
         if s == "READY":
             break
@@ -254,15 +342,17 @@ def deploy_mcp_server() -> dict:
 
     role_name = f"agentcore-obo-mcp-{ACCOUNT_ID}-role"
     role_arn = create_execution_role(role_name)
+    _save_partial_config({"mcp_role_name": role_name})
 
-    s3_info = upload_to_s3(MCP_AGENT_NAME, "mcp", "mcp_server_obo.py")
+    image_uri = build_and_push_image(
+        code_dir="mcp",
+        repo_name="agentcore-obo-mcp",
+        image_tag=MCP_AGENT_NAME,
+    )
 
     mcp_authorizer = {
         "customJWTAuthorizer": {
-            "discoveryUrl": (
-                f"https://login.microsoftonline.com/{tenant_id}"
-                "/.well-known/openid-configuration"
-            ),
+            "discoveryUrl": (f"https://login.microsoftonline.com/{tenant_id}/.well-known/openid-configuration"),
             "allowedAudience": [f"api://{mcp_client_id}"],
             "customClaims": [
                 {
@@ -287,8 +377,7 @@ def deploy_mcp_server() -> dict:
     runtime_info = deploy_runtime(
         name=MCP_AGENT_NAME,
         role_arn=role_arn,
-        s3_info=s3_info,
-        entry_point="mcp_server_obo.py",
+        image_uri=image_uri,
         authorizer_config=mcp_authorizer,
         request_header_config=request_header_config,
         protocol="MCP",
@@ -303,7 +392,7 @@ def deploy_mcp_server() -> dict:
         "mcp_runtime_arn": runtime_info["arn"],
         "mcp_url": mcp_url,
         "mcp_role_name": role_name,
-        "s3_bucket": s3_info["bucket"],
+        "mcp_image_uri": image_uri,
     }
 
 
@@ -317,9 +406,7 @@ def create_credential_provider() -> str:
     tenant_id = os.environ.get("ENTRA_TENANT_ID")
 
     if not all([agent_client_id, agent_client_secret, tenant_id]):
-        raise ValueError(
-            "Set ENTRA_AGENT_CLIENT_ID, ENTRA_AGENT_CLIENT_SECRET, ENTRA_TENANT_ID."
-        )
+        raise ValueError("Set ENTRA_AGENT_CLIENT_ID, ENTRA_AGENT_CLIENT_SECRET, ENTRA_TENANT_ID.")
 
     control = boto3.client("bedrock-agentcore-control", region_name=REGION)
 
@@ -341,9 +428,16 @@ def create_credential_provider() -> str:
         resp = control.get_oauth2_credential_provider(name=CREDENTIAL_PROVIDER_NAME)
         provider_arn = resp["credentialProviderArn"]
         print(f"  Reusing credential provider: {CREDENTIAL_PROVIDER_NAME}")
+    except control.exceptions.ValidationException as exc:
+        if "already exists" not in str(exc):
+            raise
+        resp = control.get_oauth2_credential_provider(name=CREDENTIAL_PROVIDER_NAME)
+        provider_arn = resp["credentialProviderArn"]
+        print(f"  Reusing credential provider: {CREDENTIAL_PROVIDER_NAME}")
 
     print(f"  Provider ARN: {provider_arn}")
     print("  This provider handles both M2M (client_credentials) and OBO flows.")
+    _save_partial_config({"credential_provider_name": CREDENTIAL_PROVIDER_NAME})
     return provider_arn
 
 
@@ -357,9 +451,7 @@ def deploy_agent(mcp_url: str) -> dict:
     mcp_client_id = os.environ.get("ENTRA_MCP_CLIENT_ID")
 
     if not all([tenant_id, agent_client_id, mcp_client_id]):
-        raise ValueError(
-            "Set ENTRA_TENANT_ID, ENTRA_AGENT_CLIENT_ID, ENTRA_MCP_CLIENT_ID."
-        )
+        raise ValueError("Set ENTRA_TENANT_ID, ENTRA_AGENT_CLIENT_ID, ENTRA_MCP_CLIENT_ID.")
 
     role_name = f"agentcore-obo-agent-{ACCOUNT_ID}-role"
     role_arn = create_execution_role(
@@ -377,15 +469,17 @@ def deploy_agent(mcp_url: str) -> dict:
             },
         ],
     )
+    _save_partial_config({"agent_role_name": role_name})
 
-    s3_info = upload_to_s3(AGENT_NAME, "agent", "agent_obo.py")
+    image_uri = build_and_push_image(
+        code_dir="agent",
+        repo_name="agentcore-obo-agent",
+        image_tag=AGENT_NAME,
+    )
 
     agent_authorizer = {
         "customJWTAuthorizer": {
-            "discoveryUrl": (
-                f"https://login.microsoftonline.com/{tenant_id}"
-                "/.well-known/openid-configuration"
-            ),
+            "discoveryUrl": (f"https://login.microsoftonline.com/{tenant_id}/.well-known/openid-configuration"),
             "allowedAudience": [agent_client_id],
         }
     }
@@ -393,10 +487,10 @@ def deploy_agent(mcp_url: str) -> dict:
     runtime_info = deploy_runtime(
         name=AGENT_NAME,
         role_arn=role_arn,
-        s3_info=s3_info,
-        entry_point="agent_obo.py",
+        image_uri=image_uri,
         authorizer_config=agent_authorizer,
         env_vars={
+            "AWS_REGION": REGION,
             "MCP_URL": mcp_url,
             "ENTRA_MCP_CLIENT_ID": mcp_client_id,
             "CREDENTIAL_PROVIDER_NAME": CREDENTIAL_PROVIDER_NAME,
@@ -410,6 +504,7 @@ def deploy_agent(mcp_url: str) -> dict:
         "agent_runtime_arn": runtime_info["arn"],
         "agent_endpoint_url": runtime_info["endpoint_url"],
         "agent_role_name": role_name,
+        "agent_image_uri": image_uri,
     }
 
 
@@ -490,67 +585,83 @@ def invoke_agent(endpoint_url: str, bearer_token: str):
 
 
 def cleanup():
-    """Delete all created resources."""
+    """Delete resources tracked in CONFIG_FILE.
+
+    The deploy script writes to CONFIG_FILE as each resource is created,
+    so this function deletes only what was provisioned by this sample
+    on this machine.
+    """
     try:
         with open(CONFIG_FILE) as f:
             config = json.load(f)
     except FileNotFoundError:
-        print("  No config file found.")
+        print(f"No {CONFIG_FILE} found — nothing to clean up.")
         return
 
     control = boto3.client("bedrock-agentcore-control", region_name=REGION)
     iam = boto3.client("iam", region_name=REGION)
-    s3 = boto3.client("s3", region_name=REGION)
+    ecr = boto3.client("ecr", region_name=REGION)
 
-    for runtime_id, name in [
-        (config.get("agent_runtime_id"), config.get("agent_name")),
-        (config.get("mcp_runtime_id"), config.get("mcp_name")),
-    ]:
-        if runtime_id:
-            try:
-                control.delete_agent_runtime(agentRuntimeId=runtime_id)
-                print(f"  Deleted runtime: {name} ✓")
-            except Exception as e:
-                print(f"  Runtime delete error: {e}")
+    for rt in config.get("runtimes", []):
+        rt_id = rt.get("id")
+        rt_name = rt.get("name", rt_id)
+        if not rt_id:
+            continue
+        try:
+            control.delete_agent_runtime(agentRuntimeId=rt_id)
+            print(f"  Deleted runtime: {rt_name} ✓")
+        except control.exceptions.ResourceNotFoundException:
+            pass
+        except Exception as e:
+            print(f"  Runtime {rt_name}: {e}")
 
-    try:
-        control.delete_oauth2_credential_provider(name=CREDENTIAL_PROVIDER_NAME)
-        print(f"  Deleted credential provider: {CREDENTIAL_PROVIDER_NAME} ✓")
-    except Exception as e:
-        print(f"  Provider delete: {e}")
+    if config.get("credential_provider_name"):
+        try:
+            control.delete_oauth2_credential_provider(name=config["credential_provider_name"])
+            print(f"  Deleted credential provider: {config['credential_provider_name']} ✓")
+        except control.exceptions.ResourceNotFoundException:
+            pass
+        except Exception as e:
+            print(f"  Provider delete: {e}")
 
-    for role_name in [config.get("agent_role_name"), config.get("mcp_role_name")]:
+    for role_key in ("agent_role_name", "mcp_role_name"):
+        role_name = config.get(role_key)
         if not role_name:
             continue
         try:
             for p in iam.list_role_policies(RoleName=role_name)["PolicyNames"]:
                 iam.delete_role_policy(RoleName=role_name, PolicyName=p)
             iam.delete_role(RoleName=role_name)
-            print(f"  Deleted role: {role_name} ✓")
+            print(f"  Deleted IAM role: {role_name} ✓")
+        except iam.exceptions.NoSuchEntityException:
+            pass
         except Exception as e:
-            print(f"  Role delete: {e}")
+            print(f"  Role {role_name}: {e}")
 
-    bucket = config.get("s3_bucket")
-    if bucket:
+    for repo_name in config.get("ecr_repos", []):
         try:
-            for obj in s3.list_objects_v2(Bucket=bucket).get("Contents", []):
-                s3.delete_object(Bucket=bucket, Key=obj["Key"])
-            s3.delete_bucket(Bucket=bucket)
-            print(f"  Deleted S3 bucket: {bucket} ✓")
+            ecr.delete_repository(repositoryName=repo_name, force=True)
+            print(f"  Deleted ECR repo: {repo_name} ✓")
+        except ecr.exceptions.RepositoryNotFoundException:
+            pass
         except Exception as e:
-            print(f"  S3 cleanup: {e}")
+            print(f"  ECR {repo_name}: {e}")
+
+    try:
+        os.remove(CONFIG_FILE)
+        print(f"  Removed config file: {CONFIG_FILE} ✓")
+    except FileNotFoundError:
+        pass
+
+    print("Cleanup complete.")
 
 
 # ── Main ───────────────────────────────────────────────────────────────────────
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Entra ID OBO: AgentCore Runtime + MCP Server"
-    )
-    parser.add_argument(
-        "--cleanup", action="store_true", help="Delete created resources"
-    )
+    parser = argparse.ArgumentParser(description="Entra ID OBO: AgentCore Runtime + MCP Server")
+    parser.add_argument("--cleanup", action="store_true", help="Delete created resources")
     parser.add_argument(
         "--test-only",
         action="store_true",
@@ -587,15 +698,14 @@ def main():
     print("\n=== Step 5: Invoking Agent ===")
     invoke_agent(agent_info["agent_endpoint_url"], bearer_token)
 
-    config = {
-        **mcp_info,
-        **agent_info,
-        "provider_arn": provider_arn,
-        "provider_name": CREDENTIAL_PROVIDER_NAME,
-        "region": REGION,
-    }
-    with open(CONFIG_FILE, "w") as f:
-        json.dump(config, f, indent=2)
+    _save_partial_config(
+        {
+            **mcp_info,
+            **agent_info,
+            "provider_arn": provider_arn,
+            "region": REGION,
+        }
+    )
 
     print("\n=== Summary ===")
     print(f"  MCP Server: {mcp_info['mcp_name']}")

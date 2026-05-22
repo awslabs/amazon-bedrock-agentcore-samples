@@ -63,10 +63,12 @@ specifically. Bob running the same prompt gets Bob's profile back.*
 
 | File | Description |
 |:-----|:------------|
-| `entra_obo_mcp_runtime.py` | Main script: deploy MCP runtime, credential provider, agent runtime, invoke |
+| `entra_obo_mcp_runtime.py` | Main script: build images, deploy runtimes, credential provider, invoke |
 | `agent/agent_obo.py` | Agent code: performs OBO exchange, calls MCP server with two tokens |
-| `mcp/mcp_server_obo.py` | MCP server: exposes `get_my_profile` tool, reads Graph token from request header |
+| `agent/Dockerfile` | Agent container image (`linux/arm64`, installs `requirements.txt`) |
 | `agent/requirements.txt` | Agent runtime dependencies |
+| `mcp/mcp_server_obo.py` | MCP server: exposes `get_my_profile` tool, reads Graph token from request header |
+| `mcp/Dockerfile` | MCP server container image (`linux/arm64`, installs `requirements.txt`) |
 | `mcp/requirements.txt` | MCP server dependencies |
 | `ENTRA_SETUP.md` | Detailed portal walkthrough for Entra ID app registrations |
 | `images/architecture.png` | Architecture diagram |
@@ -105,13 +107,16 @@ This sample requires **two app registrations**. See `ENTRA_SETUP.md` for the det
 
 - Python 3.10+
 - AWS CLI configured with credentials
+- Docker daemon running locally with `buildx` enabled (the script builds
+  `linux/arm64` container images for AgentCore Runtime)
 - Microsoft Entra ID tenant with two app registrations (see Entra ID Setup above)
 - Required AWS permissions:
   - `bedrock-agentcore:CreateAgentRuntime`, `DeleteAgentRuntime`, `InvokeAgentRuntime`
   - `bedrock-agentcore:GetResourceOauth2Token`
   - `bedrock-agentcore:CreateOauth2CredentialProvider`
   - `iam:CreateRole`, `PutRolePolicy`, `DeleteRole`
-  - `s3:CreateBucket`, `PutObject`, `DeleteBucket`
+  - `ecr:CreateRepository`, `DeleteRepository`, `PutImage`, `BatchGetImage`,
+    `GetAuthorizationToken`, `GetDownloadUrlForLayer`, `BatchCheckLayerAvailability`
   - `secretsmanager:GetSecretValue` on `bedrock-agentcore*`
 
 ## Setup

@@ -1,5 +1,5 @@
 # Agent container dependencies. Installed into the image that runs
-# agent_obo.py (written by the notebook via %%writefile).
+# agent_obo.py
 bedrock-agentcore
 boto3>=1.35.0
 strands-agents>=0.1.0
