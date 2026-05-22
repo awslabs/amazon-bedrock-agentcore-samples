@@ -2,6 +2,7 @@
 	"name": "lakehouse-policy-cdk",
 	"version": "1.0.0",
 	"description": "AgentCore Policy Engine for Lakehouse Agent",
+	"license": "Apache-2.0",
 	"scripts": {
 		"build": "tsc",
 		"cdk": "cdk"
