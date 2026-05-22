@@ -35,7 +35,6 @@ export PAYLOAD_BUCKET=my-agentcore-payload-bucket
 export TOPIC_ARN=arn:aws:sns:<region>:<acct>:agentcore-self-managed
 python self-managed-strategy.py boto3   # default — direct service calls
 python self-managed-strategy.py sdk     # documents the SDK gap (no selfManagedConfiguration helper)
-python self-managed-strategy.py cli     # print equivalent AWS CLI commands
 ```
 
 The execution role must allow:
@@ -53,3 +52,58 @@ A working extraction subscriber (Lambda) is provided under [`../examples/single-
 - **Use `historicalContextWindowSize`** (0–50) to control how much prior conversation AgentCore includes in the delivered payload.
 - **Validate before writing.** Run a guardrail step on extracted text before persisting — it's the last point you control.
 - **Watch CloudWatch metrics** under `AWS/Bedrock-AgentCore` for trigger invocations and consolidation latency.
+
+## AWS CLI walkthrough
+
+The same flow expressed with the AWS CLI:
+
+```bash
+# 1. Create the memory with a self-managed strategy. The role must allow
+#    PutObject to the bucket and Publish to the topic.
+aws bedrock-agentcore-control create-memory \
+  --region "$AWS_REGION" --name "SelfManagedCli-$(date +%s)" \
+  --event-expiry-duration 30 --client-token "$(uuidgen)" \
+  --memory-execution-role-arn "$MEMORY_EXECUTION_ROLE_ARN" \
+  --memory-strategies "[{
+    \"customMemoryStrategy\": {
+      \"name\": \"MyOwnExtractor\",
+      \"description\": \"Custom extraction owned by my Lambda\",
+      \"namespaces\": [\"/users/{actorId}/custom/\"],
+      \"configuration\": {
+        \"selfManagedConfiguration\": {
+          \"invocationConfiguration\": {
+            \"payloadDeliveryBucketName\": \"$PAYLOAD_BUCKET\",
+            \"topicArn\": \"$TOPIC_ARN\"
+          },
+          \"historicalContextWindowSize\": 10,
+          \"triggerConditions\": [
+            {\"messageBasedTrigger\": {\"messageCount\": 6}},
+            {\"tokenBasedTrigger\": {\"tokenCount\": 4000}},
+            {\"timeBasedTrigger\": {\"idleSessionTimeout\": 300}}
+          ]
+        }
+      }
+    }
+  }]"
+export MEMORY_ID=<id>
+
+# 2. Send events; AgentCore drops payloads to S3 and publishes to SNS.
+aws bedrock-agentcore create-event \
+  --region "$AWS_REGION" --memory-id "$MEMORY_ID" \
+  --actor-id user-alex --session-id sess-cli \
+  --event-timestamp "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+  --payload '[{"conversational":{"role":"USER","content":{"text":"hello"}}}]'
+
+# 3. Your subscriber writes records back via batch APIs:
+aws bedrock-agentcore batch-create-memory-records \
+  --region "$AWS_REGION" --memory-id "$MEMORY_ID" \
+  --records '[{
+    "namespace":"/users/user-alex/custom/",
+    "content":{"text":"User likes Python"},
+    "memoryStrategyId":"<strategy-id-from-create-memory-response>"
+  }]'
+
+# 4. Teardown
+aws bedrock-agentcore-control delete-memory \
+  --region "$AWS_REGION" --memory-id "$MEMORY_ID" --client-token "$(uuidgen)"
+```

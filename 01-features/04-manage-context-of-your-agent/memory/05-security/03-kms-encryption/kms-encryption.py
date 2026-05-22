@@ -9,10 +9,9 @@ By default, AgentCore Memory data is encrypted with AWS-owned keys. To use
 your own key (for compliance, key rotation control, audit, or cross-account
 access reviews), pass a customer-managed KMS key ARN to CreateMemory.
 
-Three surfaces:
+Two surfaces:
     python kms-encryption.py boto3
     python kms-encryption.py sdk
-    python kms-encryption.py cli
 
 Add `--cleanup` to delete the memory resource at the end. By default the
 memory is kept so you can inspect it; the script prints the memoryId.
@@ -89,36 +88,6 @@ def run_with_sdk(cleanup: bool = False) -> None:
     )
 
 
-# === AWS CLI ==========================================================
-CLI_WALKTHROUGH = """\
-# Prereqs:
-#   - A KMS CMK in the same region as the memory.
-#   - A memory execution role whose trust policy allows
-#     bedrock-agentcore.amazonaws.com to assume it, and whose permissions
-#     include kms:GenerateDataKey and kms:Decrypt on the key.
-#   - The key policy must allow that role to use the key.
-export KMS_KEY_ARN=arn:aws:kms:$AWS_REGION:<acct>:key/<key-id>
-export MEMORY_EXECUTION_ROLE_ARN=arn:aws:iam::<acct>:role/AgentCoreMemoryRole
-
-# 1. Create memory with CMK encryption
-aws bedrock-agentcore-control create-memory \\
-  --region "$AWS_REGION" --name "KMSCli-$(date +%s)" \\
-  --event-expiry-duration 30 --client-token "$(uuidgen)" \\
-  --encryption-key-arn "$KMS_KEY_ARN" \\
-  --memory-execution-role-arn "$MEMORY_EXECUTION_ROLE_ARN"
-export MEMORY_ID=<id>
-
-# 2. Verify the key is recorded on the resource
-aws bedrock-agentcore-control get-memory \\
-  --region "$AWS_REGION" --memory-id "$MEMORY_ID" \\
-  --query 'memory.{status:status,key:encryptionKeyArn}'
-
-# 3. Teardown
-aws bedrock-agentcore-control delete-memory \\
-  --region "$AWS_REGION" --memory-id "$MEMORY_ID" --client-token "$(uuidgen)"
-"""
-
-
 def main() -> None:
     args = [a for a in sys.argv[1:] if a != "--cleanup"]
     cleanup = "--cleanup" in sys.argv[1:]
@@ -127,10 +96,8 @@ def main() -> None:
         run_with_boto3(cleanup=cleanup)
     elif surface == "sdk":
         run_with_sdk(cleanup=cleanup)
-    elif surface == "cli":
-        print(CLI_WALKTHROUGH)
     else:
-        print(f"Unknown surface {surface!r}. Use boto3 | sdk | cli.", file=sys.stderr)
+        print(f"Unknown surface {surface!r}. Use boto3 | sdk.", file=sys.stderr)
         sys.exit(1)
 
 

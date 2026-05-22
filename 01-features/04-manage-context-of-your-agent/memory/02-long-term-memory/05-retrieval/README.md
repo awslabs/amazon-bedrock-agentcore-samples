@@ -21,7 +21,6 @@ Three retrieval primitives, picked by the question you're asking:
 pip install boto3 bedrock-agentcore
 python retrieve-records-and-citations.py boto3   # default — direct service calls
 python retrieve-records-and-citations.py sdk     # AgentCore MemoryClient helpers (uses gmcp_client for list/get)
-python retrieve-records-and-citations.py cli     # print equivalent AWS CLI commands
 ```
 
 ## What's in a result
@@ -42,3 +41,32 @@ Each hit returns:
 - **Use `metadataFilters` for hard constraints** (`region=EU`, `tier=premium`) — they're enforced at the index, unlike the LLM-side filtering you'd otherwise do.
 - **Prefer `namespacePath=` for hierarchical reads** (e.g. all preferences for an actor across strategies) and `namespace=` for exact targeting.
 - **Pair with citations.** Surface the namespace + record id when an answer relies on memory — useful for debugging hallucinated extractions.
+
+## AWS CLI walkthrough
+
+The same flow expressed with the AWS CLI:
+
+```bash
+# 1. Create memory + extract a few facts (see standard-usage.py for setup).
+export MEMORY_ID=<id>
+
+# 2. Semantic retrieval — relevance-ranked
+aws bedrock-agentcore retrieve-memory-records \
+  --region "$AWS_REGION" --memory-id "$MEMORY_ID" \
+  --namespace "/users/user-alex/facts/" \
+  --search-criteria '{"searchQuery":"dietary restrictions","topK":5}'
+
+# 3. ListMemoryRecords — enumerate every record in a namespace
+aws bedrock-agentcore list-memory-records \
+  --region "$AWS_REGION" --memory-id "$MEMORY_ID" \
+  --namespace "/users/user-alex/facts/"
+
+# 4. GetMemoryRecord — fetch one record in full
+aws bedrock-agentcore get-memory-record \
+  --region "$AWS_REGION" --memory-id "$MEMORY_ID" \
+  --memory-record-id <id-from-list>
+
+# 5. Teardown
+aws bedrock-agentcore-control delete-memory \
+  --region "$AWS_REGION" --memory-id "$MEMORY_ID" --client-token "$(uuidgen)"
+```

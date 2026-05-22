@@ -22,7 +22,6 @@ Each call reports per-record success and failure independently — partial succe
 pip install boto3 bedrock-agentcore
 python batch-create-update-delete.py boto3   # default — direct service calls
 python batch-create-update-delete.py sdk     # documents the SDK gap (no batch CRUD helpers)
-python batch-create-update-delete.py cli     # print equivalent AWS CLI commands
 ```
 
 ## When to use
@@ -38,3 +37,42 @@ python batch-create-update-delete.py cli     # print equivalent AWS CLI commands
 - **Cap at 100 records per call** — split larger workloads into chunks and parallelize.
 - **Don't use these APIs to bypass extraction unintentionally.** If you want extraction, use `CreateEvent` with a strategy attached. Batch CRUD is for cases where you've already done the extraction yourself.
 - **Updates are full overwrites** of `content.text`. There is no patch semantics.
+
+## AWS CLI walkthrough
+
+The same flow expressed with the AWS CLI:
+
+```bash
+# 1. Create memory (no strategies needed for direct record CRUD).
+aws bedrock-agentcore-control create-memory \
+  --region "$AWS_REGION" --name "BatchCli-$(date +%s)" \
+  --event-expiry-duration 30 --client-token "$(uuidgen)"
+export MEMORY_ID=<id>
+
+# 2. BatchCreate — insert records you extracted yourself
+aws bedrock-agentcore batch-create-memory-records \
+  --region "$AWS_REGION" --memory-id "$MEMORY_ID" \
+  --records '[
+    {"requestIdentifier":"note-lang","namespaces":["/users/user-alex/notes/"],
+     "timestamp":"'"$(date +%s)"'",
+     "content":{"text":"Alex prefers Python over Java."}},
+    {"requestIdentifier":"note-city","namespaces":["/users/user-alex/notes/"],
+     "timestamp":"'"$(date +%s)"'",
+     "content":{"text":"Alex is based in Berlin."}}
+  ]'
+# Capture memoryRecordId values from the response.
+
+# 3. BatchUpdate
+aws bedrock-agentcore batch-update-memory-records \
+  --region "$AWS_REGION" --memory-id "$MEMORY_ID" \
+  --records '[{"memoryRecordId":"<id>","content":{"text":"updated text"}}]'
+
+# 4. BatchDelete
+aws bedrock-agentcore batch-delete-memory-records \
+  --region "$AWS_REGION" --memory-id "$MEMORY_ID" \
+  --records '[{"memoryRecordId":"<id>"}]'
+
+# 5. Teardown
+aws bedrock-agentcore-control delete-memory \
+  --region "$AWS_REGION" --memory-id "$MEMORY_ID" --client-token "$(uuidgen)"
+```

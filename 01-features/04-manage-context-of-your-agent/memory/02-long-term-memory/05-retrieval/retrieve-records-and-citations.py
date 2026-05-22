@@ -6,10 +6,9 @@ What you learn:
     - GetMemoryRecord to read a single record by id
     - Reading the score, namespaces, and metadata returned with each hit
 
-Three surfaces:
+Two surfaces:
     python retrieve-records-and-citations.py boto3
     python retrieve-records-and-citations.py sdk
-    python retrieve-records-and-citations.py cli
 
 Add `--cleanup` to delete the memory resource at the end. By default the
 memory is kept so you can inspect it; the script prints the memoryId.
@@ -156,33 +155,6 @@ def run_with_sdk(cleanup: bool = False) -> None:
         print(f"\n[sdk] Keeping memory {memory_id} (pass --cleanup to delete)")
 
 
-# === AWS CLI ==========================================================
-CLI_WALKTHROUGH = """\
-# 1. Create memory + extract a few facts (see standard-usage.py for setup).
-export MEMORY_ID=<id>
-
-# 2. Semantic retrieval — relevance-ranked
-aws bedrock-agentcore retrieve-memory-records \\
-  --region "$AWS_REGION" --memory-id "$MEMORY_ID" \\
-  --namespace "/users/user-alex/facts/" \\
-  --search-criteria '{"searchQuery":"dietary restrictions","topK":5}'
-
-# 3. ListMemoryRecords — enumerate every record in a namespace
-aws bedrock-agentcore list-memory-records \\
-  --region "$AWS_REGION" --memory-id "$MEMORY_ID" \\
-  --namespace "/users/user-alex/facts/"
-
-# 4. GetMemoryRecord — fetch one record in full
-aws bedrock-agentcore get-memory-record \\
-  --region "$AWS_REGION" --memory-id "$MEMORY_ID" \\
-  --memory-record-id <id-from-list>
-
-# 5. Teardown
-aws bedrock-agentcore-control delete-memory \\
-  --region "$AWS_REGION" --memory-id "$MEMORY_ID" --client-token "$(uuidgen)"
-"""
-
-
 def main() -> None:
     args = [a for a in sys.argv[1:] if a != "--cleanup"]
     cleanup = "--cleanup" in sys.argv[1:]
@@ -191,10 +163,8 @@ def main() -> None:
         run_with_boto3(cleanup=cleanup)
     elif surface == "sdk":
         run_with_sdk(cleanup=cleanup)
-    elif surface == "cli":
-        print(CLI_WALKTHROUGH)
     else:
-        print(f"Unknown surface {surface!r}. Use boto3 | sdk | cli.", file=sys.stderr)
+        print(f"Unknown surface {surface!r}. Use boto3 | sdk.", file=sys.stderr)
         sys.exit(1)
 
 

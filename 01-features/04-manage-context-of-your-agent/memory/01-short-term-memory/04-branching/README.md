@@ -19,7 +19,6 @@ Branches let you fork a session at a chosen event and continue down divergent pa
 ```bash
 python event-branching.py boto3   # default — direct service calls
 python event-branching.py sdk     # uses MemoryClient.fork_conversation
-python event-branching.py cli     # print equivalent AWS CLI commands
 ```
 
 ## Best practices
@@ -28,3 +27,61 @@ python event-branching.py cli     # print equivalent AWS CLI commands
 - **Use short, descriptive branch names** (`autumn`, `agent-a`, `experiment-1`). The name is opaque to AgentCore but is your filter key on `ListEvents`.
 - For multi-agent parallel work, share the parent context but isolate per-agent contributions on distinct branches; merge by reading each branch separately.
 - See `../examples/multi-agent/with-strands-agent/multi-agent-parallel-branches/` for an end-to-end Strands example.
+
+## AWS CLI walkthrough
+
+The same flow expressed with the AWS CLI:
+
+```bash
+# 1. Create memory
+aws bedrock-agentcore-control create-memory \
+  --region "$AWS_REGION" --name "BranchingCli-$(date +%s)" \
+  --event-expiry-duration 30 --client-token "$(uuidgen)"
+export MEMORY_ID=<id>
+
+# 2. Seed two events on the root branch. Capture the second event id as the fork point.
+aws bedrock-agentcore create-event \
+  --region "$AWS_REGION" --memory-id "$MEMORY_ID" \
+  --actor-id user-42 --session-id sess-cli \
+  --event-timestamp "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+  --payload '[{"conversational":{"role":"USER","content":{"text":"Trip to Lisbon."}}}]'
+
+aws bedrock-agentcore create-event \
+  --region "$AWS_REGION" --memory-id "$MEMORY_ID" \
+  --actor-id user-42 --session-id sess-cli \
+  --event-timestamp "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+  --payload '[{"conversational":{"role":"ASSISTANT","content":{"text":"When?"}}}]'
+export FORK_EVENT_ID=<id-from-second-create-event>
+
+# 3. Append two events on a new "autumn" branch rooted at FORK_EVENT_ID.
+aws bedrock-agentcore create-event \
+  --region "$AWS_REGION" --memory-id "$MEMORY_ID" \
+  --actor-id user-42 --session-id sess-cli \
+  --event-timestamp "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+  --branch "{\"name\":\"autumn\",\"rootEventId\":\"$FORK_EVENT_ID\"}" \
+  --payload '[{"conversational":{"role":"USER","content":{"text":"October."}}}]'
+
+# 4. Same fork point, different branch name = a parallel "winter" thread.
+aws bedrock-agentcore create-event \
+  --region "$AWS_REGION" --memory-id "$MEMORY_ID" \
+  --actor-id user-42 --session-id sess-cli \
+  --event-timestamp "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+  --branch "{\"name\":\"winter\",\"rootEventId\":\"$FORK_EVENT_ID\"}" \
+  --payload '[{"conversational":{"role":"USER","content":{"text":"December instead?"}}}]'
+
+# 5. Read one branch in isolation
+aws bedrock-agentcore list-events \
+  --region "$AWS_REGION" --memory-id "$MEMORY_ID" \
+  --actor-id user-42 --session-id sess-cli --include-payloads \
+  --filter '{"branch":{"name":"autumn","includeParentBranches":false}}'
+
+# 6. Read a branch with all its parent context
+aws bedrock-agentcore list-events \
+  --region "$AWS_REGION" --memory-id "$MEMORY_ID" \
+  --actor-id user-42 --session-id sess-cli --include-payloads \
+  --filter '{"branch":{"name":"winter","includeParentBranches":true}}'
+
+# 7. Teardown
+aws bedrock-agentcore-control delete-memory \
+  --region "$AWS_REGION" --memory-id "$MEMORY_ID" --client-token "$(uuidgen)"
+```

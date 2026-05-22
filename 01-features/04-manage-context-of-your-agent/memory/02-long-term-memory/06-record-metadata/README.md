@@ -14,7 +14,6 @@ Memory records can carry structured metadata (key → value) so retrieval can ap
 pip install boto3 bedrock-agentcore
 python structured-metadata.py boto3   # default — direct service calls
 python structured-metadata.py sdk     # documents the SDK gap (no indexedKeys / batch / metadataFilters helpers)
-python structured-metadata.py cli     # print equivalent AWS CLI commands
 ```
 
 ## Best practices
@@ -24,3 +23,50 @@ python structured-metadata.py cli     # print equivalent AWS CLI commands
 - **Don't store secrets in metadata.** Same reasoning as event metadata — it isn't encrypted with your CMK.
 - **Prefer metadata over namespace explosion.** If a record can be split *or* filtered by an attribute, prefer filtering — a smaller namespace tree is easier to scope with IAM and easier to evolve.
 - **Combine with namespace.** Namespace = ownership/scope; metadata = orthogonal attributes. They compose well.
+
+## AWS CLI walkthrough
+
+The same flow expressed with the AWS CLI:
+
+```bash
+# 1. Create memory and declare indexedKeys (cannot be removed later).
+aws bedrock-agentcore-control create-memory \
+  --region "$AWS_REGION" --name "RecordMetaCli-$(date +%s)" \
+  --event-expiry-duration 30 --client-token "$(uuidgen)" \
+  --indexed-keys '[
+    {"key":"region","type":"STRING"},
+    {"key":"tier","type":"STRING"}
+  ]'
+export MEMORY_ID=<id>
+
+# 2. Batch-create records with metadata
+aws bedrock-agentcore batch-create-memory-records \
+  --region "$AWS_REGION" --memory-id "$MEMORY_ID" \
+  --records '[
+    {
+      "requestIdentifier":"rec-eu-premium",
+      "content":{"text":"Acme prefers GDPR-compliant data residency."},
+      "namespaces":["/tenants/tenant-acme/notes/"],
+      "timestamp":"'"$(date +%s)"'",
+      "metadata":{"region":{"stringValue":"EU"},"tier":{"stringValue":"premium"}}
+    }
+  ]'
+
+# 3. Retrieve filtered to region=EU
+aws bedrock-agentcore retrieve-memory-records \
+  --region "$AWS_REGION" --memory-id "$MEMORY_ID" \
+  --namespace "/tenants/tenant-acme/notes/" \
+  --search-criteria '{
+    "searchQuery":"Acme",
+    "topK":10,
+    "metadataFilters":[{
+      "left":{"metadataKey":"region"},
+      "operator":"EQUALS_TO",
+      "right":{"metadataValue":{"stringValue":"EU"}}
+    }]
+  }'
+
+# 4. Teardown
+aws bedrock-agentcore-control delete-memory \
+  --region "$AWS_REGION" --memory-id "$MEMORY_ID" --client-token "$(uuidgen)"
+```

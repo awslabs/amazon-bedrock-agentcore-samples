@@ -16,7 +16,6 @@ Push-based delivery of memory record lifecycle events to an Amazon Kinesis Data 
 pip install boto3 bedrock-agentcore
 python record-streaming.py boto3   # default — direct service calls
 python record-streaming.py sdk     # MemoryClient with stream_delivery_resources kwarg
-python record-streaming.py cli     # print equivalent AWS CLI commands
 ```
 
 > **Cost note:** Kinesis Data Streams incur [hourly charges per shard](https://aws.amazon.com/kinesis/data-streams/pricing/). The script cleans up at the end — don't skip it.
@@ -49,3 +48,54 @@ Failures are surfaced as `StreamPublishingFailure` and `StreamUserError` metrics
 ## Where to next
 
 The `examples/` folder shows three complete patterns built on streaming: cross-region replication, personalised recommendations, and cross-customer analytics.
+
+## AWS CLI walkthrough
+
+The same flow expressed with the AWS CLI:
+
+```bash
+# Prereqs: a Kinesis stream and an IAM role whose trust policy allows
+# bedrock-agentcore.amazonaws.com to assume it, with kinesis:PutRecords +
+# kinesis:DescribeStream on the stream ARN.
+export STREAM_ARN=arn:aws:kinesis:$AWS_REGION:<acct>:stream/my-mem-stream
+export ROLE_ARN=arn:aws:iam::<acct>:role/AgentCoreMemoryStreamingRole
+
+# 1. Create memory with streaming enabled
+aws bedrock-agentcore-control create-memory \
+  --region "$AWS_REGION" --name "StreamingCli-$(date +%s)" \
+  --event-expiry-duration 7 --client-token "$(uuidgen)" \
+  --memory-execution-role-arn "$ROLE_ARN" \
+  --stream-delivery-resources "[{
+    \"kinesisStreamArn\": \"$STREAM_ARN\",
+    \"contentLevel\": \"FULL_CONTENT\"
+  }]" \
+  --memory-strategies '[{
+    "userPreferenceMemoryStrategy": {
+      "name":"UserPreferences",
+      "namespaces":["/{actorId}/user_preferences/"]
+    }
+  }]'
+export MEMORY_ID=<id>
+
+# 2. Trigger events directly (no extraction wait)
+aws bedrock-agentcore batch-create-memory-records \
+  --region "$AWS_REGION" --memory-id "$MEMORY_ID" \
+  --records '[{
+    "requestIdentifier":"rec-1",
+    "content":{"text":"User prefers window seats."},
+    "namespaces":["/demo-user/user_preferences/"],
+    "timestamp":"'"$(date +%s)"'"
+  }]'
+
+# 3. Read from Kinesis (production: use Lambda event source mapping or KCL).
+SHARD=$(aws kinesis describe-stream --stream-name <name> \
+  --query 'StreamDescription.Shards[0].ShardId' --output text)
+ITER=$(aws kinesis get-shard-iterator --stream-name <name> \
+  --shard-id "$SHARD" --shard-iterator-type TRIM_HORIZON \
+  --query 'ShardIterator' --output text)
+aws kinesis get-records --shard-iterator "$ITER"
+
+# 4. Teardown
+aws bedrock-agentcore-control delete-memory \
+  --region "$AWS_REGION" --memory-id "$MEMORY_ID" --client-token "$(uuidgen)"
+```

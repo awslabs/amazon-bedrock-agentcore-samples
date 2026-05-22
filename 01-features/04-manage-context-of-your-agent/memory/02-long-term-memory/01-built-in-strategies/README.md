@@ -19,10 +19,9 @@ A single memory resource can host any combination of these; records land in dist
 pip install boto3 bedrock-agentcore
 python semantic.py boto3        # default — direct service calls
 python semantic.py sdk          # AgentCore MemoryClient helpers
-python semantic.py cli          # print equivalent AWS CLI commands
 ```
 
-`summary.py`, `user-preference.py`, and `episodic.py` all support the same `boto3 | sdk | cli` surfaces. Each script creates a memory resource, drives a short conversation, waits ~60–90s for asynchronous extraction, retrieves the resulting records, and tears down.
+`summary.py`, `user-preference.py`, and `episodic.py` all support the same `boto3 | sdk` surfaces. Each script creates a memory resource, drives a short conversation, waits ~60–90s for asynchronous extraction, retrieves the resulting records, and tears down.
 
 ## Best practices
 
@@ -37,3 +36,149 @@ python semantic.py cli          # print equivalent AWS CLI commands
 - Tweak the prompt or model on a built-in strategy: [`../02-strategy-overrides/`](../02-strategy-overrides/)
 - Own the entire extraction pipeline: [`../03-self-managed-strategy/`](../03-self-managed-strategy/)
 - Organise records across actors/sessions/strategies: [`../04-namespaces/`](../04-namespaces/)
+
+## AWS CLI walkthrough
+
+The same flow expressed with the AWS CLI, one section per strategy.
+
+### Semantic
+
+```bash
+# 1. Create memory with a semantic strategy
+aws bedrock-agentcore-control create-memory \
+  --region "$AWS_REGION" --name "SemanticCli-$(date +%s)" \
+  --event-expiry-duration 30 --client-token "$(uuidgen)" \
+  --memory-strategies '[{
+    "semanticMemoryStrategy": {
+      "name": "UserFacts",
+      "description": "Standalone facts about the user",
+      "namespaces": ["/users/{actorId}/facts/"]
+    }
+  }]'
+export MEMORY_ID=<id>
+
+# 2. Drive a short conversation
+aws bedrock-agentcore create-event \
+  --region "$AWS_REGION" --memory-id "$MEMORY_ID" \
+  --actor-id user-alex --session-id sess-cli \
+  --event-timestamp "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+  --payload '[{"conversational":{"role":"USER","content":{"text":"I prefer Python and live in Berlin."}}}]'
+
+# 3. Wait for extraction (~60s) and retrieve
+sleep 60
+aws bedrock-agentcore retrieve-memory-records \
+  --region "$AWS_REGION" --memory-id "$MEMORY_ID" \
+  --namespace "/users/user-alex/facts/" \
+  --search-criteria '{"searchQuery":"language preference?","topK":3}'
+
+# 4. Teardown
+aws bedrock-agentcore-control delete-memory \
+  --region "$AWS_REGION" --memory-id "$MEMORY_ID" --client-token "$(uuidgen)"
+```
+
+### Summary
+
+```bash
+# 1. Create memory with a summary strategy. Summaries are typically per-session.
+aws bedrock-agentcore-control create-memory \
+  --region "$AWS_REGION" --name "SummaryCli-$(date +%s)" \
+  --event-expiry-duration 30 --client-token "$(uuidgen)" \
+  --memory-strategies '[{
+    "summaryMemoryStrategy": {
+      "name": "SessionSummary",
+      "description": "Rolling conversation summary",
+      "namespaces": ["/sessions/{sessionId}/summary/"]
+    }
+  }]'
+export MEMORY_ID=<id>
+
+# 2. Drive a multi-turn conversation (loop several create-event calls).
+aws bedrock-agentcore create-event \
+  --region "$AWS_REGION" --memory-id "$MEMORY_ID" \
+  --actor-id user-alex --session-id sess-cli \
+  --event-timestamp "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+  --payload '[{"conversational":{"role":"USER","content":{"text":"Plan a 10-day trip to Japan."}}}]'
+# ... repeat for additional turns ...
+
+# 3. Wait ~75s for consolidation, then retrieve the rolling summary.
+sleep 75
+aws bedrock-agentcore retrieve-memory-records \
+  --region "$AWS_REGION" --memory-id "$MEMORY_ID" \
+  --namespace "/sessions/sess-cli/summary/" \
+  --search-criteria '{"searchQuery":"trip plan","topK":5}'
+
+# 4. Teardown
+aws bedrock-agentcore-control delete-memory \
+  --region "$AWS_REGION" --memory-id "$MEMORY_ID" --client-token "$(uuidgen)"
+```
+
+### User preference
+
+```bash
+# 1. Create memory with a user-preference strategy
+aws bedrock-agentcore-control create-memory \
+  --region "$AWS_REGION" --name "UserPrefCli-$(date +%s)" \
+  --event-expiry-duration 30 --client-token "$(uuidgen)" \
+  --memory-strategies '[{
+    "userPreferenceMemoryStrategy": {
+      "name": "UserPreferences",
+      "description": "Stable preferences across sessions",
+      "namespaces": ["/users/{actorId}/preferences/"]
+    }
+  }]'
+export MEMORY_ID=<id>
+
+# 2. Mention a few preferences
+aws bedrock-agentcore create-event \
+  --region "$AWS_REGION" --memory-id "$MEMORY_ID" \
+  --actor-id user-alex --session-id sess-cli \
+  --event-timestamp "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+  --payload '[{"conversational":{"role":"USER","content":{"text":"I prefer window seats and email notifications."}}}]'
+
+# 3. Wait ~60s, then retrieve
+sleep 60
+aws bedrock-agentcore retrieve-memory-records \
+  --region "$AWS_REGION" --memory-id "$MEMORY_ID" \
+  --namespace "/users/user-alex/preferences/" \
+  --search-criteria '{"searchQuery":"preferences","topK":10}'
+
+# 4. Teardown
+aws bedrock-agentcore-control delete-memory \
+  --region "$AWS_REGION" --memory-id "$MEMORY_ID" --client-token "$(uuidgen)"
+```
+
+### Episodic
+
+```bash
+# 1. Create memory with an episodic strategy
+aws bedrock-agentcore-control create-memory \
+  --region "$AWS_REGION" --name "EpisodicCli-$(date +%s)" \
+  --event-expiry-duration 30 --client-token "$(uuidgen)" \
+  --memory-strategies '[{
+    "episodicMemoryStrategy": {
+      "name": "Episodes",
+      "description": "Meaningful interaction sequences",
+      "namespaces": ["/episodes/{actorId}/"]
+    }
+  }]'
+export MEMORY_ID=<id>
+
+# 2. Drive a multi-turn session that forms one episode (loop several events).
+aws bedrock-agentcore create-event \
+  --region "$AWS_REGION" --memory-id "$MEMORY_ID" \
+  --actor-id user-alex --session-id debug-sess \
+  --event-timestamp "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+  --payload '[{"conversational":{"role":"USER","content":{"text":"Memory leak after deploy."}}}]'
+# ... repeat to form a coherent episode ...
+
+# 3. Wait ~90s for extraction + reflection, then retrieve.
+sleep 90
+aws bedrock-agentcore retrieve-memory-records \
+  --region "$AWS_REGION" --memory-id "$MEMORY_ID" \
+  --namespace "/episodes/user-alex/" \
+  --search-criteria '{"searchQuery":"memory leak debugging","topK":3}'
+
+# 4. Teardown
+aws bedrock-agentcore-control delete-memory \
+  --region "$AWS_REGION" --memory-id "$MEMORY_ID" --client-token "$(uuidgen)"
+```

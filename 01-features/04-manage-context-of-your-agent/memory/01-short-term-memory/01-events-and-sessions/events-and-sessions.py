@@ -6,10 +6,9 @@ What you learn:
     - GetEvent fetches one event in full
     - ListSessions discovers prior sessions for an actor
 
-Three surfaces, same flow:
+Two surfaces, same flow:
     python events-and-sessions.py boto3
     python events-and-sessions.py sdk
-    python events-and-sessions.py cli
 
 Add `--cleanup` to delete the memory resource at the end. By default the
 memory is kept so you can inspect it; the script prints the memoryId.
@@ -165,46 +164,6 @@ def run_with_sdk(cleanup: bool = False) -> None:
         print(f"[sdk] Keeping memory {memory_id} (pass --cleanup to delete)")
 
 
-# === AWS CLI ==========================================================
-CLI_WALKTHROUGH = """\
-# 1. Create memory + capture id
-aws bedrock-agentcore-control create-memory \\
-  --region "$AWS_REGION" \\
-  --name "EventsAndSessionsCli-$(date +%s)" \\
-  --event-expiry-duration 30 \\
-  --client-token "$(uuidgen)"
-export MEMORY_ID=<id-from-response>
-
-# 2. Append events to two distinct sessions for the same actor
-for sid in session-a session-b; do
-  aws bedrock-agentcore create-event \\
-    --region "$AWS_REGION" --memory-id "$MEMORY_ID" \\
-    --actor-id user-42 --session-id "$sid" \\
-    --event-timestamp "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \\
-    --payload '[{"conversational":{"role":"USER","content":{"text":"hello"}}}]'
-done
-
-# 3. ListEvents within one session
-aws bedrock-agentcore list-events \\
-  --region "$AWS_REGION" --memory-id "$MEMORY_ID" \\
-  --actor-id user-42 --session-id session-a --include-payloads
-
-# 4. GetEvent for one event by id
-aws bedrock-agentcore get-event \\
-  --region "$AWS_REGION" --memory-id "$MEMORY_ID" \\
-  --actor-id user-42 --session-id session-a --event-id <event-id>
-
-# 5. ListSessions discovers prior sessions for the actor
-aws bedrock-agentcore list-sessions \\
-  --region "$AWS_REGION" --memory-id "$MEMORY_ID" --actor-id user-42
-
-# 6. Teardown
-aws bedrock-agentcore-control delete-memory \\
-  --region "$AWS_REGION" --memory-id "$MEMORY_ID" \\
-  --client-token "$(uuidgen)"
-"""
-
-
 def main() -> None:
     args = [a for a in sys.argv[1:] if a != "--cleanup"]
     cleanup = "--cleanup" in sys.argv[1:]
@@ -213,10 +172,8 @@ def main() -> None:
         run_with_boto3(cleanup=cleanup)
     elif surface == "sdk":
         run_with_sdk(cleanup=cleanup)
-    elif surface == "cli":
-        print(CLI_WALKTHROUGH)
     else:
-        print(f"Unknown surface {surface!r}. Use boto3 | sdk | cli.", file=sys.stderr)
+        print(f"Unknown surface {surface!r}. Use boto3 | sdk.", file=sys.stderr)
         sys.exit(1)
 
 

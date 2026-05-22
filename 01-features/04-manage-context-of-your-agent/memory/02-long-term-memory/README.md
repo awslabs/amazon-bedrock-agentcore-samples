@@ -8,7 +8,6 @@ Run the canonical end-to-end flow first:
 pip install boto3 bedrock-agentcore
 python standard-usage.py boto3   # default — direct service calls
 python standard-usage.py sdk     # AgentCore MemoryClient helpers
-python standard-usage.py cli     # print equivalent AWS CLI commands
 ```
 
 It creates a memory with a semantic strategy, sends a few `CreateEvent` calls, waits for extraction, and retrieves the resulting records. Every sub-feature script supports the same three surfaces.
@@ -59,3 +58,46 @@ End-to-end agent examples live under `examples/`:
 - Observability for memory operations: [`../04-observability/`](../04-observability/)
 - IAM, encryption, multi-tenant isolation: [`../05-security/`](../05-security/)
 - Streaming use cases (cross-region, recommendations, analytics): [`./09-record-streaming/examples/`](./09-record-streaming/examples/)
+
+## AWS CLI walkthrough
+
+The same flow expressed with the AWS CLI:
+
+```bash
+# 1. Create memory with a semantic strategy. Namespaces use {actorId}/{sessionId} templates.
+aws bedrock-agentcore-control create-memory \
+  --region "$AWS_REGION" --name "LtmStandardCli-$(date +%s)" \
+  --event-expiry-duration 30 --client-token "$(uuidgen)" \
+  --memory-strategies '[{
+    "semanticMemoryStrategy": {
+      "name": "UserFacts",
+      "namespaces": ["/users/{actorId}/facts/"]
+    }
+  }]'
+export MEMORY_ID=<id>
+
+# 2. Drive a few conversation turns; extraction happens asynchronously.
+for line in \
+  '{"role":"USER","text":"I prefer Python and I'\''m based in Berlin."}' \
+  '{"role":"ASSISTANT","text":"Got it."}' \
+  '{"role":"USER","text":"I'\''m allergic to peanuts."}'; do
+  role=$(echo "$line" | jq -r .role)
+  text=$(echo "$line" | jq -r .text)
+  aws bedrock-agentcore create-event \
+    --region "$AWS_REGION" --memory-id "$MEMORY_ID" \
+    --actor-id user-42 --session-id sess-cli \
+    --event-timestamp "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+    --payload "[{\"conversational\":{\"role\":\"$role\",\"content\":{\"text\":\"$text\"}}}]"
+done
+
+# 3. Wait ~60s, then retrieve records.
+sleep 60
+aws bedrock-agentcore retrieve-memory-records \
+  --region "$AWS_REGION" --memory-id "$MEMORY_ID" \
+  --namespace "/users/user-42/facts/" \
+  --search-criteria '{"searchQuery":"preferences and constraints?","topK":5}'
+
+# 4. Teardown
+aws bedrock-agentcore-control delete-memory \
+  --region "$AWS_REGION" --memory-id "$MEMORY_ID" --client-token "$(uuidgen)"
+```

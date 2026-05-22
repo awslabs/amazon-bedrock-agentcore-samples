@@ -20,7 +20,6 @@ pip install boto3 bedrock-agentcore
 export MEMORY_EXECUTION_ROLE_ARN=arn:aws:iam::<acct>:role/<role>
 python strategies-with-overrides.py boto3   # default — direct service calls
 python strategies-with-overrides.py sdk     # uses MemoryClient.gmcp_client (helper doesn't expose memoryExecutionRoleArn)
-python strategies-with-overrides.py cli     # print equivalent AWS CLI commands
 ```
 
 The role's trust policy must allow `bedrock-agentcore.amazonaws.com` to assume it, with `bedrock:InvokeModel` permission for the chosen model.
@@ -32,3 +31,54 @@ The role's trust policy must allow `bedrock-agentcore.amazonaws.com` to assume i
 - **Test with realistic conversations.** Override behaviour is best validated by feeding it the actual transcripts you'll see in production.
 - **Don't overfit.** If your schema needs are different, drop overrides and write a self-managed strategy — overrides cannot change the record shape.
 - **Cost note.** Override Bedrock invocations bill against your account separately from AgentCore charges.
+
+## AWS CLI walkthrough
+
+The same flow expressed with the AWS CLI:
+
+```bash
+# 1. Create memory with a customMemoryStrategy that wraps a semantic override.
+#    The execution role lets AgentCore invoke Bedrock on your behalf.
+aws bedrock-agentcore-control create-memory \
+  --region "$AWS_REGION" --name "OverrideCli-$(date +%s)" \
+  --event-expiry-duration 30 --client-token "$(uuidgen)" \
+  --memory-execution-role-arn "$MEMORY_EXECUTION_ROLE_ARN" \
+  --memory-strategies '[{
+    "customMemoryStrategy": {
+      "name": "MedicalFacts",
+      "description": "Health-only semantic extraction",
+      "namespaces": ["/users/{actorId}/medical-facts/"],
+      "configuration": {
+        "semanticOverride": {
+          "extraction": {
+            "appendToPrompt": "Focus only on health-related facts.",
+            "modelId": "anthropic.claude-3-5-sonnet-20241022-v2:0"
+          },
+          "consolidation": {
+            "appendToPrompt": "Prefer the more recent record on conflict.",
+            "modelId": "anthropic.claude-3-5-sonnet-20241022-v2:0"
+          }
+        }
+      }
+    }
+  }]'
+export MEMORY_ID=<id>
+
+# 2. Drive the conversation and wait
+aws bedrock-agentcore create-event \
+  --region "$AWS_REGION" --memory-id "$MEMORY_ID" \
+  --actor-id user-alex --session-id sess-cli \
+  --event-timestamp "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+  --payload '[{"conversational":{"role":"USER","content":{"text":"I take metformin daily."}}}]'
+sleep 75
+
+# 3. Retrieve
+aws bedrock-agentcore retrieve-memory-records \
+  --region "$AWS_REGION" --memory-id "$MEMORY_ID" \
+  --namespace "/users/user-alex/medical-facts/" \
+  --search-criteria '{"searchQuery":"medical history","topK":10}'
+
+# 4. Teardown
+aws bedrock-agentcore-control delete-memory \
+  --region "$AWS_REGION" --memory-id "$MEMORY_ID" --client-token "$(uuidgen)"
+```

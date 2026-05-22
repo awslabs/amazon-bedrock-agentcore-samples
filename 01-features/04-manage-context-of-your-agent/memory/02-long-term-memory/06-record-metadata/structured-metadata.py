@@ -8,10 +8,9 @@ What you learn:
 Use record metadata for hard constraints (region, tier, source, language)
 that should be enforced at the index, not in the LLM prompt.
 
-Three surfaces:
+Two surfaces:
     python structured-metadata.py boto3
     python structured-metadata.py sdk
-    python structured-metadata.py cli
 
 Add `--cleanup` to delete the memory resource at the end. By default the
 memory is kept so you can inspect it; the script prints the memoryId.
@@ -177,51 +176,6 @@ def run_with_sdk(cleanup: bool = False) -> None:
         print(f"\n[sdk] Keeping memory {memory_id} (pass --cleanup to delete)")
 
 
-# === AWS CLI ==========================================================
-CLI_WALKTHROUGH = """\
-# 1. Create memory and declare indexedKeys (cannot be removed later).
-aws bedrock-agentcore-control create-memory \\
-  --region "$AWS_REGION" --name "RecordMetaCli-$(date +%s)" \\
-  --event-expiry-duration 30 --client-token "$(uuidgen)" \\
-  --indexed-keys '[
-    {"key":"region","type":"STRING"},
-    {"key":"tier","type":"STRING"}
-  ]'
-export MEMORY_ID=<id>
-
-# 2. Batch-create records with metadata
-aws bedrock-agentcore batch-create-memory-records \\
-  --region "$AWS_REGION" --memory-id "$MEMORY_ID" \\
-  --records '[
-    {
-      "requestIdentifier":"rec-eu-premium",
-      "content":{"text":"Acme prefers GDPR-compliant data residency."},
-      "namespaces":["/tenants/tenant-acme/notes/"],
-      "timestamp":"'"$(date +%s)"'",
-      "metadata":{"region":{"stringValue":"EU"},"tier":{"stringValue":"premium"}}
-    }
-  ]'
-
-# 3. Retrieve filtered to region=EU
-aws bedrock-agentcore retrieve-memory-records \\
-  --region "$AWS_REGION" --memory-id "$MEMORY_ID" \\
-  --namespace "/tenants/tenant-acme/notes/" \\
-  --search-criteria '{
-    "searchQuery":"Acme",
-    "topK":10,
-    "metadataFilters":[{
-      "left":{"metadataKey":"region"},
-      "operator":"EQUALS_TO",
-      "right":{"metadataValue":{"stringValue":"EU"}}
-    }]
-  }'
-
-# 4. Teardown
-aws bedrock-agentcore-control delete-memory \\
-  --region "$AWS_REGION" --memory-id "$MEMORY_ID" --client-token "$(uuidgen)"
-"""
-
-
 def main() -> None:
     args = [a for a in sys.argv[1:] if a != "--cleanup"]
     cleanup = "--cleanup" in sys.argv[1:]
@@ -230,10 +184,8 @@ def main() -> None:
         run_with_boto3(cleanup=cleanup)
     elif surface == "sdk":
         run_with_sdk(cleanup=cleanup)
-    elif surface == "cli":
-        print(CLI_WALKTHROUGH)
     else:
-        print(f"Unknown surface {surface!r}. Use boto3 | sdk | cli.", file=sys.stderr)
+        print(f"Unknown surface {surface!r}. Use boto3 | sdk.", file=sys.stderr)
         sys.exit(1)
 
 

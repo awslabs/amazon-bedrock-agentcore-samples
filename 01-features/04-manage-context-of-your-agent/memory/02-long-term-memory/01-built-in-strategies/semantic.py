@@ -9,10 +9,9 @@ Semantic strategy extracts standalone facts about the user or the world
 ("user's name is Alex", "based in Berlin"). It is the default choice for
 "who is this user?" recall.
 
-Three surfaces:
+Two surfaces:
     python semantic.py boto3
     python semantic.py sdk
-    python semantic.py cli
 
 Add `--cleanup` to delete the memory resource at the end. By default the
 memory is kept so you can inspect it; the script prints the memoryId.
@@ -146,41 +145,6 @@ def run_with_sdk(cleanup: bool = False) -> None:
         print(f"\n[sdk] Keeping memory {memory_id} (pass --cleanup to delete)")
 
 
-# === AWS CLI ==========================================================
-CLI_WALKTHROUGH = """\
-# 1. Create memory with a semantic strategy
-aws bedrock-agentcore-control create-memory \\
-  --region "$AWS_REGION" --name "SemanticCli-$(date +%s)" \\
-  --event-expiry-duration 30 --client-token "$(uuidgen)" \\
-  --memory-strategies '[{
-    "semanticMemoryStrategy": {
-      "name": "UserFacts",
-      "description": "Standalone facts about the user",
-      "namespaces": ["/users/{actorId}/facts/"]
-    }
-  }]'
-export MEMORY_ID=<id>
-
-# 2. Drive a short conversation
-aws bedrock-agentcore create-event \\
-  --region "$AWS_REGION" --memory-id "$MEMORY_ID" \\
-  --actor-id user-alex --session-id sess-cli \\
-  --event-timestamp "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \\
-  --payload '[{"conversational":{"role":"USER","content":{"text":"I prefer Python and live in Berlin."}}}]'
-
-# 3. Wait for extraction (~60s) and retrieve
-sleep 60
-aws bedrock-agentcore retrieve-memory-records \\
-  --region "$AWS_REGION" --memory-id "$MEMORY_ID" \\
-  --namespace "/users/user-alex/facts/" \\
-  --search-criteria '{"searchQuery":"language preference?","topK":3}'
-
-# 4. Teardown
-aws bedrock-agentcore-control delete-memory \\
-  --region "$AWS_REGION" --memory-id "$MEMORY_ID" --client-token "$(uuidgen)"
-"""
-
-
 def main() -> None:
     args = [a for a in sys.argv[1:] if a != "--cleanup"]
     cleanup = "--cleanup" in sys.argv[1:]
@@ -189,10 +153,8 @@ def main() -> None:
         run_with_boto3(cleanup=cleanup)
     elif surface == "sdk":
         run_with_sdk(cleanup=cleanup)
-    elif surface == "cli":
-        print(CLI_WALKTHROUGH)
     else:
-        print(f"Unknown surface {surface!r}. Use boto3 | sdk | cli.", file=sys.stderr)
+        print(f"Unknown surface {surface!r}. Use boto3 | sdk.", file=sys.stderr)
         sys.exit(1)
 
 

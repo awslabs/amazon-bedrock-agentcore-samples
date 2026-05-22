@@ -21,10 +21,9 @@ subscriber lives outside AgentCore — see the example in
 `examples/single-agent/with-strands-agent/02-custom-hook/
 culinary-assistant-self-managed-strategy/lambda_function.py`.
 
-Three surfaces:
+Two surfaces:
     python self-managed-strategy.py boto3
     python self-managed-strategy.py sdk
-    python self-managed-strategy.py cli
 
 Add `--cleanup` to delete the memory resource at the end. By default the
 memory is kept so you can inspect it; the script prints the memoryId.
@@ -142,59 +141,6 @@ def run_with_sdk(cleanup: bool = False) -> None:
         print(f"[sdk] Keeping memory {memory_id} (pass --cleanup to delete)")
 
 
-# === AWS CLI ==========================================================
-CLI_WALKTHROUGH = """\
-# 1. Create the memory with a self-managed strategy. The role must allow
-#    PutObject to the bucket and Publish to the topic.
-aws bedrock-agentcore-control create-memory \\
-  --region "$AWS_REGION" --name "SelfManagedCli-$(date +%s)" \\
-  --event-expiry-duration 30 --client-token "$(uuidgen)" \\
-  --memory-execution-role-arn "$MEMORY_EXECUTION_ROLE_ARN" \\
-  --memory-strategies "[{
-    \\"customMemoryStrategy\\": {
-      \\"name\\": \\"MyOwnExtractor\\",
-      \\"description\\": \\"Custom extraction owned by my Lambda\\",
-      \\"namespaces\\": [\\"/users/{actorId}/custom/\\"],
-      \\"configuration\\": {
-        \\"selfManagedConfiguration\\": {
-          \\"invocationConfiguration\\": {
-            \\"payloadDeliveryBucketName\\": \\"$PAYLOAD_BUCKET\\",
-            \\"topicArn\\": \\"$TOPIC_ARN\\"
-          },
-          \\"historicalContextWindowSize\\": 10,
-          \\"triggerConditions\\": [
-            {\\"messageBasedTrigger\\": {\\"messageCount\\": 6}},
-            {\\"tokenBasedTrigger\\": {\\"tokenCount\\": 4000}},
-            {\\"timeBasedTrigger\\": {\\"idleSessionTimeout\\": 300}}
-          ]
-        }
-      }
-    }
-  }]"
-export MEMORY_ID=<id>
-
-# 2. Send events; AgentCore drops payloads to S3 and publishes to SNS.
-aws bedrock-agentcore create-event \\
-  --region "$AWS_REGION" --memory-id "$MEMORY_ID" \\
-  --actor-id user-alex --session-id sess-cli \\
-  --event-timestamp "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \\
-  --payload '[{"conversational":{"role":"USER","content":{"text":"hello"}}}]'
-
-# 3. Your subscriber writes records back via batch APIs:
-aws bedrock-agentcore batch-create-memory-records \\
-  --region "$AWS_REGION" --memory-id "$MEMORY_ID" \\
-  --records '[{
-    "namespace":"/users/user-alex/custom/",
-    "content":{"text":"User likes Python"},
-    "memoryStrategyId":"<strategy-id-from-create-memory-response>"
-  }]'
-
-# 4. Teardown
-aws bedrock-agentcore-control delete-memory \\
-  --region "$AWS_REGION" --memory-id "$MEMORY_ID" --client-token "$(uuidgen)"
-"""
-
-
 def main() -> None:
     args = [a for a in sys.argv[1:] if a != "--cleanup"]
     cleanup = "--cleanup" in sys.argv[1:]
@@ -203,10 +149,8 @@ def main() -> None:
         run_with_boto3(cleanup=cleanup)
     elif surface == "sdk":
         run_with_sdk(cleanup=cleanup)
-    elif surface == "cli":
-        print(CLI_WALKTHROUGH)
     else:
-        print(f"Unknown surface {surface!r}. Use boto3 | sdk | cli.", file=sys.stderr)
+        print(f"Unknown surface {surface!r}. Use boto3 | sdk.", file=sys.stderr)
         sys.exit(1)
 
 

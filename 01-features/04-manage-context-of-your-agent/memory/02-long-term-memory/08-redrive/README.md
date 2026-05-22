@@ -15,7 +15,6 @@ pip install boto3 bedrock-agentcore
 export MEMORY_ID=mem_abcdef123
 python redrive-failed-extractions.py boto3   # default — direct service calls
 python redrive-failed-extractions.py sdk     # documents the SDK gap (no list/start extraction job helpers)
-python redrive-failed-extractions.py cli     # print equivalent AWS CLI commands
 ```
 
 The script lists failed jobs, prints their failure reasons, and redrives each one. In a real deployment you'd gate the redrive on a deliberate fix.
@@ -36,3 +35,27 @@ The script lists failed jobs, prints their failure reasons, and redrives each on
 - **Throttle redrives.** If you have hundreds of failed jobs, space them out — the underlying cause may be capacity-related.
 - **Combine with the streaming primitive.** Subscribe to `MemoryRecordCreated` events to confirm the redrive actually produced records.
 - **Job ids are stable.** A redrive uses the same `jobId`; you can correlate before/after via `ListMemoryExtractionJobs`.
+
+## AWS CLI walkthrough
+
+The same flow expressed with the AWS CLI:
+
+```bash
+# 1. List failed extraction jobs for a memory.
+aws bedrock-agentcore list-memory-extraction-jobs \
+  --region "$AWS_REGION" --memory-id "$MEMORY_ID" \
+  --filter '{"status":"FAILED"}'
+
+# 2. Inspect the failureReason for each job before deciding to redrive.
+#    Common reasons: ThrottlingException (model), AccessDenied (role), validation.
+
+# 3. Redrive a single job. Only do this after fixing the underlying issue.
+aws bedrock-agentcore start-memory-extraction-job \
+  --region "$AWS_REGION" --memory-id "$MEMORY_ID" \
+  --extraction-job '{"jobId":"<jobId-from-list>"}'
+
+# 4. Confirm the job left the FAILED set.
+aws bedrock-agentcore list-memory-extraction-jobs \
+  --region "$AWS_REGION" --memory-id "$MEMORY_ID" \
+  --filter '{"status":"FAILED"}'
+```

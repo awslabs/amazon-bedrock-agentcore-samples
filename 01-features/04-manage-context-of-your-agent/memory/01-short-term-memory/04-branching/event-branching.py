@@ -8,10 +8,9 @@ What you learn:
 Use cases: exploratory "what if I had said X instead?" turns, parallel
 sub-agents that each contribute on a separate branch over a shared parent.
 
-Three surfaces:
+Two surfaces:
     python event-branching.py boto3
     python event-branching.py sdk
-    python event-branching.py cli
 
 Add `--cleanup` to delete the memory resource at the end. By default the
 memory is kept so you can inspect it; the script prints the memoryId.
@@ -157,62 +156,6 @@ def run_with_sdk(cleanup: bool = False) -> None:
         print(f"[sdk] Keeping memory {memory_id} (pass --cleanup to delete)")
 
 
-# === AWS CLI ==========================================================
-CLI_WALKTHROUGH = """\
-# 1. Create memory
-aws bedrock-agentcore-control create-memory \\
-  --region "$AWS_REGION" --name "BranchingCli-$(date +%s)" \\
-  --event-expiry-duration 30 --client-token "$(uuidgen)"
-export MEMORY_ID=<id>
-
-# 2. Seed two events on the root branch. Capture the second event id as the fork point.
-aws bedrock-agentcore create-event \\
-  --region "$AWS_REGION" --memory-id "$MEMORY_ID" \\
-  --actor-id user-42 --session-id sess-cli \\
-  --event-timestamp "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \\
-  --payload '[{"conversational":{"role":"USER","content":{"text":"Trip to Lisbon."}}}]'
-
-aws bedrock-agentcore create-event \\
-  --region "$AWS_REGION" --memory-id "$MEMORY_ID" \\
-  --actor-id user-42 --session-id sess-cli \\
-  --event-timestamp "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \\
-  --payload '[{"conversational":{"role":"ASSISTANT","content":{"text":"When?"}}}]'
-export FORK_EVENT_ID=<id-from-second-create-event>
-
-# 3. Append two events on a new "autumn" branch rooted at FORK_EVENT_ID.
-aws bedrock-agentcore create-event \\
-  --region "$AWS_REGION" --memory-id "$MEMORY_ID" \\
-  --actor-id user-42 --session-id sess-cli \\
-  --event-timestamp "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \\
-  --branch "{\\"name\\":\\"autumn\\",\\"rootEventId\\":\\"$FORK_EVENT_ID\\"}" \\
-  --payload '[{"conversational":{"role":"USER","content":{"text":"October."}}}]'
-
-# 4. Same fork point, different branch name = a parallel "winter" thread.
-aws bedrock-agentcore create-event \\
-  --region "$AWS_REGION" --memory-id "$MEMORY_ID" \\
-  --actor-id user-42 --session-id sess-cli \\
-  --event-timestamp "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \\
-  --branch "{\\"name\\":\\"winter\\",\\"rootEventId\\":\\"$FORK_EVENT_ID\\"}" \\
-  --payload '[{"conversational":{"role":"USER","content":{"text":"December instead?"}}}]'
-
-# 5. Read one branch in isolation
-aws bedrock-agentcore list-events \\
-  --region "$AWS_REGION" --memory-id "$MEMORY_ID" \\
-  --actor-id user-42 --session-id sess-cli --include-payloads \\
-  --filter '{"branch":{"name":"autumn","includeParentBranches":false}}'
-
-# 6. Read a branch with all its parent context
-aws bedrock-agentcore list-events \\
-  --region "$AWS_REGION" --memory-id "$MEMORY_ID" \\
-  --actor-id user-42 --session-id sess-cli --include-payloads \\
-  --filter '{"branch":{"name":"winter","includeParentBranches":true}}'
-
-# 7. Teardown
-aws bedrock-agentcore-control delete-memory \\
-  --region "$AWS_REGION" --memory-id "$MEMORY_ID" --client-token "$(uuidgen)"
-"""
-
-
 def main() -> None:
     args = [a for a in sys.argv[1:] if a != "--cleanup"]
     cleanup = "--cleanup" in sys.argv[1:]
@@ -221,10 +164,8 @@ def main() -> None:
         run_with_boto3(cleanup=cleanup)
     elif surface == "sdk":
         run_with_sdk(cleanup=cleanup)
-    elif surface == "cli":
-        print(CLI_WALKTHROUGH)
     else:
-        print(f"Unknown surface {surface!r}. Use boto3 | sdk | cli.", file=sys.stderr)
+        print(f"Unknown surface {surface!r}. Use boto3 | sdk.", file=sys.stderr)
         sys.exit(1)
 
 

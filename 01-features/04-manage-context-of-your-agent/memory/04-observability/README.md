@@ -46,3 +46,44 @@ When log delivery is enabled on the memory resource, ingestion errors land in `/
 - **Track `NumberOfMemoryRecords` per strategy.** A sudden drop is the canary for an extraction regression.
 - **Enable log delivery in production.** Without it, ingestion failures are invisible — metrics will tell you something broke, only logs tell you what.
 - **Pair alarms with a runbook.** Streaming failures usually want a redrive on the affected events; user errors want an IAM fix.
+
+## AWS CLI walkthrough
+
+The same flow expressed with the AWS CLI:
+
+```bash
+# CloudWatch metrics: namespace AWS/Bedrock-AgentCore.
+# Streaming health is dimensioned by Operation=MemoryStreamEvent + Resource=<memory ARN>.
+export MEMORY_ARN=arn:aws:bedrock-agentcore:$AWS_REGION:<acct>:memory/mem-abc
+
+# 1. Sum streaming successes over the last hour
+aws cloudwatch get-metric-statistics --region "$AWS_REGION" \
+  --namespace "AWS/Bedrock-AgentCore" --metric-name "StreamPublishingSuccess" \
+  --dimensions Name=Operation,Value=MemoryStreamEvent Name=Resource,Value="$MEMORY_ARN" \
+  --statistics Sum --period 300 \
+  --start-time "$(date -u -v-1H +%Y-%m-%dT%H:%M:%SZ)" \
+  --end-time   "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+# 2. Sum streaming failures (alarm on this in production)
+aws cloudwatch get-metric-statistics --region "$AWS_REGION" \
+  --namespace "AWS/Bedrock-AgentCore" --metric-name "StreamPublishingFailure" \
+  --dimensions Name=Operation,Value=MemoryStreamEvent Name=Resource,Value="$MEMORY_ARN" \
+  --statistics Sum --period 300 \
+  --start-time "$(date -u -v-1H +%Y-%m-%dT%H:%M:%SZ)" \
+  --end-time   "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+# 3. Alarm on any failure in a 5-minute window
+aws cloudwatch put-metric-alarm --region "$AWS_REGION" \
+  --alarm-name "AgentCoreMemory-StreamFailure" \
+  --namespace "AWS/Bedrock-AgentCore" --metric-name "StreamPublishingFailure" \
+  --dimensions Name=Operation,Value=MemoryStreamEvent Name=Resource,Value="$MEMORY_ARN" \
+  --statistic Sum --period 300 --evaluation-periods 1 \
+  --threshold 0 --comparison-operator GreaterThanThreshold \
+  --treat-missing-data notBreaching \
+  --alarm-actions "$SNS_TOPIC_ARN"
+
+# 4. Tail ingestion logs (log group format: /aws/bedrock-agentcore/memory/<memoryId>)
+MEMORY_ID="${MEMORY_ARN##*/}"
+aws logs tail "/aws/bedrock-agentcore/memory/$MEMORY_ID" \
+  --region "$AWS_REGION" --since 30m --follow
+```

@@ -11,10 +11,9 @@ The output schema for built-in strategies is fixed — only the prompt
 text appended to the system prompt and the Bedrock model id are
 override-able.
 
-Three surfaces:
+Two surfaces:
     python strategies-with-overrides.py boto3
     python strategies-with-overrides.py sdk
-    python strategies-with-overrides.py cli
 
 Add `--cleanup` to delete the memory resource at the end. By default the
 memory is kept so you can inspect it; the script prints the memoryId.
@@ -170,55 +169,6 @@ def run_with_sdk(cleanup: bool = False) -> None:
         print(f"\n[sdk] Keeping memory {memory_id} (pass --cleanup to delete)")
 
 
-# === AWS CLI ==========================================================
-CLI_WALKTHROUGH = """\
-# 1. Create memory with a customMemoryStrategy that wraps a semantic override.
-#    The execution role lets AgentCore invoke Bedrock on your behalf.
-aws bedrock-agentcore-control create-memory \\
-  --region "$AWS_REGION" --name "OverrideCli-$(date +%s)" \\
-  --event-expiry-duration 30 --client-token "$(uuidgen)" \\
-  --memory-execution-role-arn "$MEMORY_EXECUTION_ROLE_ARN" \\
-  --memory-strategies '[{
-    "customMemoryStrategy": {
-      "name": "MedicalFacts",
-      "description": "Health-only semantic extraction",
-      "namespaces": ["/users/{actorId}/medical-facts/"],
-      "configuration": {
-        "semanticOverride": {
-          "extraction": {
-            "appendToPrompt": "Focus only on health-related facts.",
-            "modelId": "anthropic.claude-3-5-sonnet-20241022-v2:0"
-          },
-          "consolidation": {
-            "appendToPrompt": "Prefer the more recent record on conflict.",
-            "modelId": "anthropic.claude-3-5-sonnet-20241022-v2:0"
-          }
-        }
-      }
-    }
-  }]'
-export MEMORY_ID=<id>
-
-# 2. Drive the conversation and wait
-aws bedrock-agentcore create-event \\
-  --region "$AWS_REGION" --memory-id "$MEMORY_ID" \\
-  --actor-id user-alex --session-id sess-cli \\
-  --event-timestamp "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \\
-  --payload '[{"conversational":{"role":"USER","content":{"text":"I take metformin daily."}}}]'
-sleep 75
-
-# 3. Retrieve
-aws bedrock-agentcore retrieve-memory-records \\
-  --region "$AWS_REGION" --memory-id "$MEMORY_ID" \\
-  --namespace "/users/user-alex/medical-facts/" \\
-  --search-criteria '{"searchQuery":"medical history","topK":10}'
-
-# 4. Teardown
-aws bedrock-agentcore-control delete-memory \\
-  --region "$AWS_REGION" --memory-id "$MEMORY_ID" --client-token "$(uuidgen)"
-"""
-
-
 def main() -> None:
     args = [a for a in sys.argv[1:] if a != "--cleanup"]
     cleanup = "--cleanup" in sys.argv[1:]
@@ -227,10 +177,8 @@ def main() -> None:
         run_with_boto3(cleanup=cleanup)
     elif surface == "sdk":
         run_with_sdk(cleanup=cleanup)
-    elif surface == "cli":
-        print(CLI_WALKTHROUGH)
     else:
-        print(f"Unknown surface {surface!r}. Use boto3 | sdk | cli.", file=sys.stderr)
+        print(f"Unknown surface {surface!r}. Use boto3 | sdk.", file=sys.stderr)
         sys.exit(1)
 
 

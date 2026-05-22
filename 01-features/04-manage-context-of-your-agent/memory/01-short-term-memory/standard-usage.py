@@ -8,14 +8,12 @@ The canonical short-term flow:
     5. fetch one event in full
     6. tear down
 
-The same flow is shown three ways. Pick the surface that matches how you'll
-deploy: boto3 for raw control, AgentCore SDK for ergonomic helpers, AWS CLI
-for shell-driven workflows and CI.
+The same flow is shown two ways. Pick the surface that matches how you'll
+deploy: boto3 for raw control or AgentCore SDK for ergonomic helpers.
 
 Run a single surface:
     python standard-usage.py boto3
     python standard-usage.py sdk
-    python standard-usage.py cli      # prints the equivalent CLI commands
 
 Add `--cleanup` to delete the memory resource at the end. By default the
 memory is kept so you can inspect it; the script prints the memoryId.
@@ -135,57 +133,6 @@ def run_with_sdk(cleanup: bool = False) -> None:
         print(f"[sdk] Keeping memory {memory_id} (pass --cleanup to delete)")
 
 
-# === AWS CLI ==========================================================
-CLI_WALKTHROUGH = """\
-# 1. Create a memory resource
-aws bedrock-agentcore-control create-memory \\
-  --region "$AWS_REGION" \\
-  --name "StmStandardCli-$(date +%s)" \\
-  --event-expiry-duration 30 \\
-  --client-token "$(uuidgen)"
-# Capture memory.id from the response → export MEMORY_ID=...
-
-# 2. Poll until ACTIVE
-aws bedrock-agentcore-control get-memory \\
-  --region "$AWS_REGION" \\
-  --memory-id "$MEMORY_ID" \\
-  --query 'memory.status'
-
-# 3. Append three events
-for i in 1 2 3; do
-  aws bedrock-agentcore create-event \\
-    --region "$AWS_REGION" \\
-    --memory-id "$MEMORY_ID" \\
-    --actor-id user-42 \\
-    --session-id sess-cli \\
-    --event-timestamp "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \\
-    --payload "[{\\"conversational\\":{\\"role\\":\\"USER\\",\\"content\\":{\\"text\\":\\"turn $i\\"}}}]"
-done
-
-# 4. List events for the session
-aws bedrock-agentcore list-events \\
-  --region "$AWS_REGION" \\
-  --memory-id "$MEMORY_ID" \\
-  --actor-id user-42 \\
-  --session-id sess-cli \\
-  --include-payloads
-
-# 5. Fetch a single event by id
-aws bedrock-agentcore get-event \\
-  --region "$AWS_REGION" \\
-  --memory-id "$MEMORY_ID" \\
-  --actor-id user-42 \\
-  --session-id sess-cli \\
-  --event-id <event-id-from-step-4>
-
-# 6. Teardown
-aws bedrock-agentcore-control delete-memory \\
-  --region "$AWS_REGION" \\
-  --memory-id "$MEMORY_ID" \\
-  --client-token "$(uuidgen)"
-"""
-
-
 def main() -> None:
     args = [a for a in sys.argv[1:] if a != "--cleanup"]
     cleanup = "--cleanup" in sys.argv[1:]
@@ -194,10 +141,8 @@ def main() -> None:
         run_with_boto3(cleanup=cleanup)
     elif surface == "sdk":
         run_with_sdk(cleanup=cleanup)
-    elif surface == "cli":
-        print(CLI_WALKTHROUGH)
     else:
-        print(f"Unknown surface {surface!r}. Use boto3 | sdk | cli.", file=sys.stderr)
+        print(f"Unknown surface {surface!r}. Use boto3 | sdk.", file=sys.stderr)
         sys.exit(1)
 
 

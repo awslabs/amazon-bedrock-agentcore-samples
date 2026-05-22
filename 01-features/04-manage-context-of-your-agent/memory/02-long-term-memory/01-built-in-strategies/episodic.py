@@ -10,10 +10,9 @@ that hang together as one event in the user's life ("debugged a memory
 leak in service X on Tuesday"). It also adds a *reflection* step that
 generates cross-episode insights.
 
-Three surfaces:
+Two surfaces:
     python episodic.py boto3
     python episodic.py sdk
-    python episodic.py cli
 
 Add `--cleanup` to delete the memory resource at the end. By default the
 memory is kept so you can inspect it; the script prints the memoryId.
@@ -162,42 +161,6 @@ def run_with_sdk(cleanup: bool = False) -> None:
         print(f"\n[sdk] Keeping memory {memory_id} (pass --cleanup to delete)")
 
 
-# === AWS CLI ==========================================================
-CLI_WALKTHROUGH = """\
-# 1. Create memory with an episodic strategy
-aws bedrock-agentcore-control create-memory \\
-  --region "$AWS_REGION" --name "EpisodicCli-$(date +%s)" \\
-  --event-expiry-duration 30 --client-token "$(uuidgen)" \\
-  --memory-strategies '[{
-    "episodicMemoryStrategy": {
-      "name": "Episodes",
-      "description": "Meaningful interaction sequences",
-      "namespaces": ["/episodes/{actorId}/"]
-    }
-  }]'
-export MEMORY_ID=<id>
-
-# 2. Drive a multi-turn session that forms one episode (loop several events).
-aws bedrock-agentcore create-event \\
-  --region "$AWS_REGION" --memory-id "$MEMORY_ID" \\
-  --actor-id user-alex --session-id debug-sess \\
-  --event-timestamp "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \\
-  --payload '[{"conversational":{"role":"USER","content":{"text":"Memory leak after deploy."}}}]'
-# ... repeat to form a coherent episode ...
-
-# 3. Wait ~90s for extraction + reflection, then retrieve.
-sleep 90
-aws bedrock-agentcore retrieve-memory-records \\
-  --region "$AWS_REGION" --memory-id "$MEMORY_ID" \\
-  --namespace "/episodes/user-alex/" \\
-  --search-criteria '{"searchQuery":"memory leak debugging","topK":3}'
-
-# 4. Teardown
-aws bedrock-agentcore-control delete-memory \\
-  --region "$AWS_REGION" --memory-id "$MEMORY_ID" --client-token "$(uuidgen)"
-"""
-
-
 def main() -> None:
     args = [a for a in sys.argv[1:] if a != "--cleanup"]
     cleanup = "--cleanup" in sys.argv[1:]
@@ -206,10 +169,8 @@ def main() -> None:
         run_with_boto3(cleanup=cleanup)
     elif surface == "sdk":
         run_with_sdk(cleanup=cleanup)
-    elif surface == "cli":
-        print(CLI_WALKTHROUGH)
     else:
-        print(f"Unknown surface {surface!r}. Use boto3 | sdk | cli.", file=sys.stderr)
+        print(f"Unknown surface {surface!r}. Use boto3 | sdk.", file=sys.stderr)
         sys.exit(1)
 
 

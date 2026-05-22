@@ -10,10 +10,9 @@ Use it when you need to feed a long conversation into an LLM with a
 bounded context window — give the model the rolling summary instead of
 the raw transcript.
 
-Three surfaces:
+Two surfaces:
     python summary.py boto3
     python summary.py sdk
-    python summary.py cli
 
 Add `--cleanup` to delete the memory resource at the end. By default the
 memory is kept so you can inspect it; the script prints the memoryId.
@@ -140,42 +139,6 @@ def run_with_sdk(cleanup: bool = False) -> None:
         print(f"\n[sdk] Keeping memory {memory_id} (pass --cleanup to delete)")
 
 
-# === AWS CLI ==========================================================
-CLI_WALKTHROUGH = """\
-# 1. Create memory with a summary strategy. Summaries are typically per-session.
-aws bedrock-agentcore-control create-memory \\
-  --region "$AWS_REGION" --name "SummaryCli-$(date +%s)" \\
-  --event-expiry-duration 30 --client-token "$(uuidgen)" \\
-  --memory-strategies '[{
-    "summaryMemoryStrategy": {
-      "name": "SessionSummary",
-      "description": "Rolling conversation summary",
-      "namespaces": ["/sessions/{sessionId}/summary/"]
-    }
-  }]'
-export MEMORY_ID=<id>
-
-# 2. Drive a multi-turn conversation (loop several create-event calls).
-aws bedrock-agentcore create-event \\
-  --region "$AWS_REGION" --memory-id "$MEMORY_ID" \\
-  --actor-id user-alex --session-id sess-cli \\
-  --event-timestamp "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \\
-  --payload '[{"conversational":{"role":"USER","content":{"text":"Plan a 10-day trip to Japan."}}}]'
-# ... repeat for additional turns ...
-
-# 3. Wait ~75s for consolidation, then retrieve the rolling summary.
-sleep 75
-aws bedrock-agentcore retrieve-memory-records \\
-  --region "$AWS_REGION" --memory-id "$MEMORY_ID" \\
-  --namespace "/sessions/sess-cli/summary/" \\
-  --search-criteria '{"searchQuery":"trip plan","topK":5}'
-
-# 4. Teardown
-aws bedrock-agentcore-control delete-memory \\
-  --region "$AWS_REGION" --memory-id "$MEMORY_ID" --client-token "$(uuidgen)"
-"""
-
-
 def main() -> None:
     args = [a for a in sys.argv[1:] if a != "--cleanup"]
     cleanup = "--cleanup" in sys.argv[1:]
@@ -184,10 +147,8 @@ def main() -> None:
         run_with_boto3(cleanup=cleanup)
     elif surface == "sdk":
         run_with_sdk(cleanup=cleanup)
-    elif surface == "cli":
-        print(CLI_WALKTHROUGH)
     else:
-        print(f"Unknown surface {surface!r}. Use boto3 | sdk | cli.", file=sys.stderr)
+        print(f"Unknown surface {surface!r}. Use boto3 | sdk.", file=sys.stderr)
         sys.exit(1)
 
 

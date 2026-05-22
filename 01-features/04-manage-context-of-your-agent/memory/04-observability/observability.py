@@ -15,9 +15,8 @@ Memory observability covers two layers:
        Latency, Errors, NumberOfMemoryRecords per strategy + record streaming
        publish health.
 
-Two surfaces:
-    python observability.py boto3
-    python observability.py cli
+Run:
+    python observability.py
 
 SDK note: CloudWatch metrics and Logs are not exposed by MemoryClient —
 please use the boto3 `cloudwatch` and `logs` clients directly (shown below).
@@ -29,7 +28,6 @@ Prerequisites:
 """
 
 import os
-import sys
 from datetime import datetime, timedelta, timezone
 
 REGION = os.getenv("AWS_REGION", "us-east-1")
@@ -97,55 +95,5 @@ def run_with_boto3() -> None:
     # )
 
 
-# === AWS CLI ==========================================================
-CLI_WALKTHROUGH = """\
-# CloudWatch metrics: namespace AWS/Bedrock-AgentCore.
-# Streaming health is dimensioned by Operation=MemoryStreamEvent + Resource=<memory ARN>.
-export MEMORY_ARN=arn:aws:bedrock-agentcore:$AWS_REGION:<acct>:memory/mem-abc
-
-# 1. Sum streaming successes over the last hour
-aws cloudwatch get-metric-statistics --region "$AWS_REGION" \\
-  --namespace "AWS/Bedrock-AgentCore" --metric-name "StreamPublishingSuccess" \\
-  --dimensions Name=Operation,Value=MemoryStreamEvent Name=Resource,Value="$MEMORY_ARN" \\
-  --statistics Sum --period 300 \\
-  --start-time "$(date -u -v-1H +%Y-%m-%dT%H:%M:%SZ)" \\
-  --end-time   "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-
-# 2. Sum streaming failures (alarm on this in production)
-aws cloudwatch get-metric-statistics --region "$AWS_REGION" \\
-  --namespace "AWS/Bedrock-AgentCore" --metric-name "StreamPublishingFailure" \\
-  --dimensions Name=Operation,Value=MemoryStreamEvent Name=Resource,Value="$MEMORY_ARN" \\
-  --statistics Sum --period 300 \\
-  --start-time "$(date -u -v-1H +%Y-%m-%dT%H:%M:%SZ)" \\
-  --end-time   "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-
-# 3. Alarm on any failure in a 5-minute window
-aws cloudwatch put-metric-alarm --region "$AWS_REGION" \\
-  --alarm-name "AgentCoreMemory-StreamFailure" \\
-  --namespace "AWS/Bedrock-AgentCore" --metric-name "StreamPublishingFailure" \\
-  --dimensions Name=Operation,Value=MemoryStreamEvent Name=Resource,Value="$MEMORY_ARN" \\
-  --statistic Sum --period 300 --evaluation-periods 1 \\
-  --threshold 0 --comparison-operator GreaterThanThreshold \\
-  --treat-missing-data notBreaching \\
-  --alarm-actions "$SNS_TOPIC_ARN"
-
-# 4. Tail ingestion logs (log group format: /aws/bedrock-agentcore/memory/<memoryId>)
-MEMORY_ID="${MEMORY_ARN##*/}"
-aws logs tail "/aws/bedrock-agentcore/memory/$MEMORY_ID" \\
-  --region "$AWS_REGION" --since 30m --follow
-"""
-
-
-def main() -> None:
-    surface = sys.argv[1] if len(sys.argv) > 1 else "boto3"
-    if surface == "boto3":
-        run_with_boto3()
-    elif surface == "cli":
-        print(CLI_WALKTHROUGH)
-    else:
-        print(f"Unknown surface {surface!r}. Use boto3 | cli.", file=sys.stderr)
-        sys.exit(1)
-
-
 if __name__ == "__main__":
-    main()
+    run_with_boto3()

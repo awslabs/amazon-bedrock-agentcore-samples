@@ -10,7 +10,6 @@ Short-term memory stores raw conversation turns (events) scoped to an `actorId` 
 pip install boto3 bedrock-agentcore
 python standard-usage.py boto3   # default — direct service calls
 python standard-usage.py sdk     # AgentCore MemoryClient helpers
-python standard-usage.py cli     # print equivalent AWS CLI commands
 ```
 
 Every sub-feature script supports the same three surfaces.
@@ -55,3 +54,56 @@ Framework integrations live under [`examples/`](./examples/). They wire short-te
 - Cross-session persistence: [`../02-long-term-memory/`](../02-long-term-memory/)
 - Security and isolation: [`../05-security/`](../05-security/)
 - Wire memory into runtime/identity/Guardrails: [`../03-integrations/`](../03-integrations/)
+
+## AWS CLI walkthrough
+
+The same flow expressed with the AWS CLI:
+
+```bash
+# 1. Create a memory resource
+aws bedrock-agentcore-control create-memory \
+  --region "$AWS_REGION" \
+  --name "StmStandardCli-$(date +%s)" \
+  --event-expiry-duration 30 \
+  --client-token "$(uuidgen)"
+# Capture memory.id from the response → export MEMORY_ID=...
+
+# 2. Poll until ACTIVE
+aws bedrock-agentcore-control get-memory \
+  --region "$AWS_REGION" \
+  --memory-id "$MEMORY_ID" \
+  --query 'memory.status'
+
+# 3. Append three events
+for i in 1 2 3; do
+  aws bedrock-agentcore create-event \
+    --region "$AWS_REGION" \
+    --memory-id "$MEMORY_ID" \
+    --actor-id user-42 \
+    --session-id sess-cli \
+    --event-timestamp "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+    --payload "[{\"conversational\":{\"role\":\"USER\",\"content\":{\"text\":\"turn $i\"}}}]"
+done
+
+# 4. List events for the session
+aws bedrock-agentcore list-events \
+  --region "$AWS_REGION" \
+  --memory-id "$MEMORY_ID" \
+  --actor-id user-42 \
+  --session-id sess-cli \
+  --include-payloads
+
+# 5. Fetch a single event by id
+aws bedrock-agentcore get-event \
+  --region "$AWS_REGION" \
+  --memory-id "$MEMORY_ID" \
+  --actor-id user-42 \
+  --session-id sess-cli \
+  --event-id <event-id-from-step-4>
+
+# 6. Teardown
+aws bedrock-agentcore-control delete-memory \
+  --region "$AWS_REGION" \
+  --memory-id "$MEMORY_ID" \
+  --client-token "$(uuidgen)"
+```

@@ -44,3 +44,35 @@ The KMS key policy must in turn allow that role principal. If the key is in a di
 - **Enable automatic key rotation** unless you have a reason not to. Rotation is transparent to memory operations.
 - **Alarm on `kms:Decrypt` failures** in CloudTrail — they often appear as `StreamUserError` or extraction failures with no other obvious symptom.
 - **Test revocation in a staging account.** Disabling the key should fail reads cleanly; if it doesn't, your CMK isn't actually in the read path.
+
+## AWS CLI walkthrough
+
+The same flow expressed with the AWS CLI:
+
+```bash
+# Prereqs:
+#   - A KMS CMK in the same region as the memory.
+#   - A memory execution role whose trust policy allows
+#     bedrock-agentcore.amazonaws.com to assume it, and whose permissions
+#     include kms:GenerateDataKey and kms:Decrypt on the key.
+#   - The key policy must allow that role to use the key.
+export KMS_KEY_ARN=arn:aws:kms:$AWS_REGION:<acct>:key/<key-id>
+export MEMORY_EXECUTION_ROLE_ARN=arn:aws:iam::<acct>:role/AgentCoreMemoryRole
+
+# 1. Create memory with CMK encryption
+aws bedrock-agentcore-control create-memory \
+  --region "$AWS_REGION" --name "KMSCli-$(date +%s)" \
+  --event-expiry-duration 30 --client-token "$(uuidgen)" \
+  --encryption-key-arn "$KMS_KEY_ARN" \
+  --memory-execution-role-arn "$MEMORY_EXECUTION_ROLE_ARN"
+export MEMORY_ID=<id>
+
+# 2. Verify the key is recorded on the resource
+aws bedrock-agentcore-control get-memory \
+  --region "$AWS_REGION" --memory-id "$MEMORY_ID" \
+  --query 'memory.{status:status,key:encryptionKeyArn}'
+
+# 3. Teardown
+aws bedrock-agentcore-control delete-memory \
+  --region "$AWS_REGION" --memory-id "$MEMORY_ID" --client-token "$(uuidgen)"
+```

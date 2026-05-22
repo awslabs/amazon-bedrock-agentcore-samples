@@ -7,10 +7,9 @@ What you learn:
 Caveat: event metadata is NOT encrypted with a customer-managed KMS key.
 Do not put sensitive content in metadata — keep it in the payload.
 
-Three surfaces:
+Two surfaces:
     python event-metadata-filtering.py boto3
     python event-metadata-filtering.py sdk
-    python event-metadata-filtering.py cli
 
 Add `--cleanup` to delete the memory resource at the end. By default the
 memory is kept so you can inspect it; the script prints the memoryId.
@@ -147,46 +146,6 @@ def run_with_sdk(cleanup: bool = False) -> None:
         print(f"[sdk] Keeping memory {memory_id} (pass --cleanup to delete)")
 
 
-# === AWS CLI ==========================================================
-CLI_WALKTHROUGH = """\
-# 1. Create memory
-aws bedrock-agentcore-control create-memory \\
-  --region "$AWS_REGION" --name "EventMetaCli-$(date +%s)" \\
-  --event-expiry-duration 30 --client-token "$(uuidgen)"
-export MEMORY_ID=<id>
-
-# 2. Append an event with metadata. Metadata values are typed (stringValue).
-aws bedrock-agentcore create-event \\
-  --region "$AWS_REGION" --memory-id "$MEMORY_ID" \\
-  --actor-id user-42 --session-id sess-cli \\
-  --event-timestamp "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \\
-  --payload '[{"conversational":{"role":"USER","content":{"text":"I had a fever."}}}]' \\
-  --metadata '{"topic":{"stringValue":"health"},"priority":{"stringValue":"high"}}'
-
-# 3. ListEvents filtered to topic=health
-aws bedrock-agentcore list-events \\
-  --region "$AWS_REGION" --memory-id "$MEMORY_ID" \\
-  --actor-id user-42 --session-id sess-cli --include-payloads \\
-  --filter '{
-    "eventMetadata": [{
-      "left":  {"metadataKey": "topic"},
-      "operator": "EQUALS_TO",
-      "right": {"metadataValue": {"stringValue": "health"}}
-    }]
-  }'
-
-# 4. ListEvents filtered to events that have a priority key set
-aws bedrock-agentcore list-events \\
-  --region "$AWS_REGION" --memory-id "$MEMORY_ID" \\
-  --actor-id user-42 --session-id sess-cli --include-payloads \\
-  --filter '{"eventMetadata":[{"left":{"metadataKey":"priority"},"operator":"EXISTS"}]}'
-
-# 5. Teardown
-aws bedrock-agentcore-control delete-memory \\
-  --region "$AWS_REGION" --memory-id "$MEMORY_ID" --client-token "$(uuidgen)"
-"""
-
-
 def main() -> None:
     args = [a for a in sys.argv[1:] if a != "--cleanup"]
     cleanup = "--cleanup" in sys.argv[1:]
@@ -195,10 +154,8 @@ def main() -> None:
         run_with_boto3(cleanup=cleanup)
     elif surface == "sdk":
         run_with_sdk(cleanup=cleanup)
-    elif surface == "cli":
-        print(CLI_WALKTHROUGH)
     else:
-        print(f"Unknown surface {surface!r}. Use boto3 | sdk | cli.", file=sys.stderr)
+        print(f"Unknown surface {surface!r}. Use boto3 | sdk.", file=sys.stderr)
         sys.exit(1)
 
 

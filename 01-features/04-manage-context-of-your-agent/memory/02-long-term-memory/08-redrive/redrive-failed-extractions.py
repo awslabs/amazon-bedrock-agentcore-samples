@@ -10,10 +10,9 @@ Long-term extraction runs asynchronously after CreateEvent. If a job fails
 as an extraction job with status=FAILED and a failureReason. You can list
 those, decide whether the underlying issue is fixed, and redrive.
 
-Three surfaces:
+Two surfaces:
     python redrive-failed-extractions.py boto3
     python redrive-failed-extractions.py sdk
-    python redrive-failed-extractions.py cli
 
 Prerequisites:
     pip install boto3 bedrock-agentcore
@@ -108,38 +107,14 @@ def run_with_sdk() -> None:
         time.sleep(1)
 
 
-# === AWS CLI ==========================================================
-CLI_WALKTHROUGH = """\
-# 1. List failed extraction jobs for a memory.
-aws bedrock-agentcore list-memory-extraction-jobs \\
-  --region "$AWS_REGION" --memory-id "$MEMORY_ID" \\
-  --filter '{"status":"FAILED"}'
-
-# 2. Inspect the failureReason for each job before deciding to redrive.
-#    Common reasons: ThrottlingException (model), AccessDenied (role), validation.
-
-# 3. Redrive a single job. Only do this after fixing the underlying issue.
-aws bedrock-agentcore start-memory-extraction-job \\
-  --region "$AWS_REGION" --memory-id "$MEMORY_ID" \\
-  --extraction-job '{"jobId":"<jobId-from-list>"}'
-
-# 4. Confirm the job left the FAILED set.
-aws bedrock-agentcore list-memory-extraction-jobs \\
-  --region "$AWS_REGION" --memory-id "$MEMORY_ID" \\
-  --filter '{"status":"FAILED"}'
-"""
-
-
 def main() -> None:
     surface = sys.argv[1] if len(sys.argv) > 1 else "boto3"
     if surface == "boto3":
         run_with_boto3()
     elif surface == "sdk":
         run_with_sdk()
-    elif surface == "cli":
-        print(CLI_WALKTHROUGH)
     else:
-        print(f"Unknown surface {surface!r}. Use boto3 | sdk | cli.", file=sys.stderr)
+        print(f"Unknown surface {surface!r}. Use boto3 | sdk.", file=sys.stderr)
         sys.exit(1)
 
 

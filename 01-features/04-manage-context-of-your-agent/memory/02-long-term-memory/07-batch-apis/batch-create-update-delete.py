@@ -11,10 +11,9 @@ back-fills, migrations, and admin tooling.
 
 Each call accepts up to 100 records and reports per-record success/failure.
 
-Three surfaces:
+Two surfaces:
     python batch-create-update-delete.py boto3
     python batch-create-update-delete.py sdk
-    python batch-create-update-delete.py cli
 
 Add `--cleanup` to delete the memory resource at the end. By default the
 memory is kept so you can inspect it; the script prints the memoryId.
@@ -161,43 +160,6 @@ def run_with_sdk(cleanup: bool = False) -> None:
         print(f"\n[sdk] Keeping memory {memory_id} (pass --cleanup to delete)")
 
 
-# === AWS CLI ==========================================================
-CLI_WALKTHROUGH = """\
-# 1. Create memory (no strategies needed for direct record CRUD).
-aws bedrock-agentcore-control create-memory \\
-  --region "$AWS_REGION" --name "BatchCli-$(date +%s)" \\
-  --event-expiry-duration 30 --client-token "$(uuidgen)"
-export MEMORY_ID=<id>
-
-# 2. BatchCreate — insert records you extracted yourself
-aws bedrock-agentcore batch-create-memory-records \\
-  --region "$AWS_REGION" --memory-id "$MEMORY_ID" \\
-  --records '[
-    {"requestIdentifier":"note-lang","namespaces":["/users/user-alex/notes/"],
-     "timestamp":"'"$(date +%s)"'",
-     "content":{"text":"Alex prefers Python over Java."}},
-    {"requestIdentifier":"note-city","namespaces":["/users/user-alex/notes/"],
-     "timestamp":"'"$(date +%s)"'",
-     "content":{"text":"Alex is based in Berlin."}}
-  ]'
-# Capture memoryRecordId values from the response.
-
-# 3. BatchUpdate
-aws bedrock-agentcore batch-update-memory-records \\
-  --region "$AWS_REGION" --memory-id "$MEMORY_ID" \\
-  --records '[{"memoryRecordId":"<id>","content":{"text":"updated text"}}]'
-
-# 4. BatchDelete
-aws bedrock-agentcore batch-delete-memory-records \\
-  --region "$AWS_REGION" --memory-id "$MEMORY_ID" \\
-  --records '[{"memoryRecordId":"<id>"}]'
-
-# 5. Teardown
-aws bedrock-agentcore-control delete-memory \\
-  --region "$AWS_REGION" --memory-id "$MEMORY_ID" --client-token "$(uuidgen)"
-"""
-
-
 def main() -> None:
     args = [a for a in sys.argv[1:] if a != "--cleanup"]
     cleanup = "--cleanup" in sys.argv[1:]
@@ -206,10 +168,8 @@ def main() -> None:
         run_with_boto3(cleanup=cleanup)
     elif surface == "sdk":
         run_with_sdk(cleanup=cleanup)
-    elif surface == "cli":
-        print(CLI_WALKTHROUGH)
     else:
-        print(f"Unknown surface {surface!r}. Use boto3 | sdk | cli.", file=sys.stderr)
+        print(f"Unknown surface {surface!r}. Use boto3 | sdk.", file=sys.stderr)
         sys.exit(1)
 
 

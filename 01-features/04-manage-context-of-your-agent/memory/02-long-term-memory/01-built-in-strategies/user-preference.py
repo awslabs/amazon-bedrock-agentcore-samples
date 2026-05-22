@@ -9,10 +9,9 @@ User-preference strategy extracts stable, persistent preferences
 ("prefers vegetarian food", "wants email notifications, not SMS").
 Use it for personalisation that should outlive any single session.
 
-Three surfaces:
+Two surfaces:
     python user-preference.py boto3
     python user-preference.py sdk
-    python user-preference.py cli
 
 Add `--cleanup` to delete the memory resource at the end. By default the
 memory is kept so you can inspect it; the script prints the memoryId.
@@ -138,41 +137,6 @@ def run_with_sdk(cleanup: bool = False) -> None:
         print(f"\n[sdk] Keeping memory {memory_id} (pass --cleanup to delete)")
 
 
-# === AWS CLI ==========================================================
-CLI_WALKTHROUGH = """\
-# 1. Create memory with a user-preference strategy
-aws bedrock-agentcore-control create-memory \\
-  --region "$AWS_REGION" --name "UserPrefCli-$(date +%s)" \\
-  --event-expiry-duration 30 --client-token "$(uuidgen)" \\
-  --memory-strategies '[{
-    "userPreferenceMemoryStrategy": {
-      "name": "UserPreferences",
-      "description": "Stable preferences across sessions",
-      "namespaces": ["/users/{actorId}/preferences/"]
-    }
-  }]'
-export MEMORY_ID=<id>
-
-# 2. Mention a few preferences
-aws bedrock-agentcore create-event \\
-  --region "$AWS_REGION" --memory-id "$MEMORY_ID" \\
-  --actor-id user-alex --session-id sess-cli \\
-  --event-timestamp "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \\
-  --payload '[{"conversational":{"role":"USER","content":{"text":"I prefer window seats and email notifications."}}}]'
-
-# 3. Wait ~60s, then retrieve
-sleep 60
-aws bedrock-agentcore retrieve-memory-records \\
-  --region "$AWS_REGION" --memory-id "$MEMORY_ID" \\
-  --namespace "/users/user-alex/preferences/" \\
-  --search-criteria '{"searchQuery":"preferences","topK":10}'
-
-# 4. Teardown
-aws bedrock-agentcore-control delete-memory \\
-  --region "$AWS_REGION" --memory-id "$MEMORY_ID" --client-token "$(uuidgen)"
-"""
-
-
 def main() -> None:
     args = [a for a in sys.argv[1:] if a != "--cleanup"]
     cleanup = "--cleanup" in sys.argv[1:]
@@ -181,10 +145,8 @@ def main() -> None:
         run_with_boto3(cleanup=cleanup)
     elif surface == "sdk":
         run_with_sdk(cleanup=cleanup)
-    elif surface == "cli":
-        print(CLI_WALKTHROUGH)
     else:
-        print(f"Unknown surface {surface!r}. Use boto3 | sdk | cli.", file=sys.stderr)
+        print(f"Unknown surface {surface!r}. Use boto3 | sdk.", file=sys.stderr)
         sys.exit(1)
 
 
