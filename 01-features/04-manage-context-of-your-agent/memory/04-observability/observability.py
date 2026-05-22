@@ -78,7 +78,7 @@ def run_with_boto3() -> None:
         for evt in events.get("events", []):
             print(f"  {evt['timestamp']} {evt['message'].strip()}")
     except logs.exceptions.ResourceNotFoundException:
-        print(f"  (log group not found — enable log delivery on the memory)")
+        print("  (log group not found — enable log delivery on the memory)")
 
     # Optional: alarm on StreamPublishingFailure (uncomment + set SNS_TOPIC_ARN)
     # sns_topic_arn = os.environ["SNS_TOPIC_ARN"]

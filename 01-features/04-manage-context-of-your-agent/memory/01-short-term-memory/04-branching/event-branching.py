@@ -116,7 +116,7 @@ def run_with_sdk(cleanup: bool = False) -> None:
     )
 
     # fork_conversation creates a new branch rooted at the given event.
-    autumn_branch = client.fork_conversation(
+    client.fork_conversation(
         memory_id=memory_id, actor_id=ACTOR_ID, session_id=session_id,
         root_event_id=root_event["eventId"],
         branch_name="autumn",
@@ -125,7 +125,7 @@ def run_with_sdk(cleanup: bool = False) -> None:
             ("October is great. Here are flights for the second week.", "ASSISTANT"),
         ],
     )
-    winter_branch = client.fork_conversation(
+    client.fork_conversation(
         memory_id=memory_id, actor_id=ACTOR_ID, session_id=session_id,
         root_event_id=root_event["eventId"],
         branch_name="winter",

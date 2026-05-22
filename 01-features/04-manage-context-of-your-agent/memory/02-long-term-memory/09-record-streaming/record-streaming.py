@@ -25,7 +25,6 @@ import os
 import sys
 import time
 import uuid
-from datetime import datetime, timezone
 
 REGION = os.getenv("AWS_REGION", "us-west-2")
 ACTOR_ID = "demo-user"
@@ -80,7 +79,6 @@ def run_with_boto3(cleanup: bool = False) -> None:
     import boto3
 
     unique = str(uuid.uuid4())[:8]
-    account = boto3.client("sts", region_name=REGION).get_caller_identity()["Account"]
     kinesis = boto3.client("kinesis", region_name=REGION)
     iam = boto3.client("iam")
     control = boto3.client("bedrock-agentcore-control", region_name=REGION)

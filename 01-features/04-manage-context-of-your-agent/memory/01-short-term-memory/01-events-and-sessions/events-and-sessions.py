@@ -23,7 +23,6 @@ import os
 import sys
 import time
 import uuid
-from datetime import datetime, timezone
 
 REGION = os.getenv("AWS_REGION", "us-east-1")
 ACTOR_ID = "user-42"
