@@ -1,0 +1,15 @@
+strands-agents
+strands-agents-tools
+google-api-python-client
+google-auth-httplib2
+google-auth-oauthlib
+boto3
+botocore
+bedrock-agentcore
+bedrock-agentcore-starter-toolkit
+streamlit
+requests
+supabase
+python-dotenv
+uvicorn
+fastapi
