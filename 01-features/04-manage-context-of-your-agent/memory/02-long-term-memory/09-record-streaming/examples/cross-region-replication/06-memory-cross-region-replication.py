@@ -8,9 +8,7 @@ import logging
 import boto3
 from datetime import datetime, timezone
 
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 
 # Configure regions — override with environment variables if needed
 PRIMARY_REGION = os.getenv("PRIMARY_REGION", "us-east-1")
@@ -29,9 +27,7 @@ print(f"Primary: {PRIMARY_REGION}  Secondary: {SECONDARY_REGION}")
 def get_memory_id(key):
     """Look up a memory ID from the DynamoDB config table."""
     ddb = boto3.client("dynamodb", region_name=PRIMARY_REGION)
-    item = ddb.get_item(
-        TableName="AgentCoreMemoryReplicationConfig", Key={"PK": {"S": key}}
-    ).get("Item", {})
+    item = ddb.get_item(TableName="AgentCoreMemoryReplicationConfig", Key={"PK": {"S": key}}).get("Item", {})
     return item.get("memory_id", {}).get("S")
 
 
@@ -52,16 +48,12 @@ for label, mid, region in [
     else:
         print(f"{label} Memory: NOT FOUND")
 
-assert primary_memory_id and secondary_memory_id, (
-    "Deployment incomplete — run scripts/deploy.sh first"
-)
+assert primary_memory_id and secondary_memory_id, "Deployment incomplete — run scripts/deploy.sh first"
 
 
 # Verify active region tracking
 ddb = boto3.client("dynamodb", region_name=PRIMARY_REGION)
-item = ddb.get_item(
-    TableName="AgentCoreMemoryReplicationConfig", Key={"PK": {"S": "ACTIVE_REGION"}}
-).get("Item", {})
+item = ddb.get_item(TableName="AgentCoreMemoryReplicationConfig", Key={"PK": {"S": "ACTIVE_REGION"}}).get("Item", {})
 
 print(f"Active region: {item.get('region', {}).get('S', 'NOT SET')}")
 
@@ -126,9 +118,7 @@ for r in replicated:
 if len(replicated) >= len(test_records):
     print(f"\n✅ All {len(test_records)} records replicated successfully!")
 else:
-    print(
-        f"\n⚠️  Only {len(replicated)}/{len(test_records)} replicated. Check Lambda logs for errors."
-    )
+    print(f"\n⚠️  Only {len(replicated)}/{len(test_records)} replicated. Check Lambda logs for errors.")
 
 # Read raw events from the primary's Kinesis stream
 # These are the same events the Lambda consumer processes
@@ -147,11 +137,7 @@ events = []
 for _ in range(5):  # poll up to 5 times
     resp = kinesis.get_records(ShardIterator=iterator, Limit=100)
     for rec in resp["Records"]:
-        data = (
-            base64.b64decode(rec["Data"])
-            if isinstance(rec["Data"], str)
-            else rec["Data"]
-        )
+        data = base64.b64decode(rec["Data"]) if isinstance(rec["Data"], str) else rec["Data"]
         events.append(json.loads(data))
     iterator = resp["NextShardIterator"]
     if not resp["Records"]:
@@ -160,9 +146,7 @@ for _ in range(5):  # poll up to 5 times
 print(f"Read {len(events)} event(s) from Kinesis:\n")
 for i, evt in enumerate(events[:10]):
     se = evt.get("memoryStreamEvent", {})
-    print(
-        f"  [{se.get('eventType', '?')}] {se.get('memoryRecordId', 'N/A')[:40]}  ns={se.get('namespaces', [])}"
-    )
+    print(f"  [{se.get('eventType', '?')}] {se.get('memoryRecordId', 'N/A')[:40]}  ns={se.get('namespaces', [])}")
 
 # Enable secondary FIRST — this starts the reverse replication path
 # before we cut off the forward path. No replication gap.
@@ -205,9 +189,9 @@ start = time.time()
 recs = []
 while time.time() - start < 120:
     try:
-        recs = primary_client.list_memory_records(
-            memoryId=primary_memory_id, namespacePath="replicated/"
-        ).get("memoryRecordSummaries", [])
+        recs = primary_client.list_memory_records(memoryId=primary_memory_id, namespacePath="replicated/").get(
+            "memoryRecordSummaries", []
+        )
         if recs:
             break
     except Exception:

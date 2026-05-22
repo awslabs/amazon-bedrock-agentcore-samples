@@ -137,8 +137,7 @@ async def _filtered_aput_messages(self, messages: List[ChatMessage]) -> None:
     text_messages = [
         m
         for m in messages
-        if m.role in (MessageRole.USER, MessageRole.ASSISTANT)
-        and m.content  # skip empty tool-call assistant messages
+        if m.role in (MessageRole.USER, MessageRole.ASSISTANT) and m.content  # skip empty tool-call assistant messages
     ]
     if text_messages:
         await _original_aput_messages(self, text_messages)
@@ -194,9 +193,7 @@ except Exception as e:
 # Define specialized tools for longitudinal wealth management:
 
 
-def record_client_meeting(
-    client_id: str, meeting_type: str, portfolio_value: str, key_decisions: str
-) -> str:
+def record_client_meeting(client_id: str, meeting_type: str, portfolio_value: str, key_decisions: str) -> str:
     """Record client meeting with portfolio updates and decisions"""
     return f"📅 Recorded {meeting_type} for {client_id} (${portfolio_value})"
 
@@ -219,25 +216,17 @@ def document_market_insight(
     client_implications: str,
 ) -> str:
     """Document market insight with client portfolio implications"""
-    print(
-        f"🌍 Market insight: {insight_type} - {market_event} (Impact: {impact_assessment})"
-    )
+    print(f"🌍 Market insight: {insight_type} - {market_event} (Impact: {impact_assessment})")
     return f"Documented market insight: {insight_type}"
 
 
-def update_investment_thesis(
-    client_id: str, asset_class: str, thesis: str, conviction_level: str
-) -> str:
+def update_investment_thesis(client_id: str, asset_class: str, thesis: str, conviction_level: str) -> str:
     """Update investment thesis for specific asset class"""
-    print(
-        f"💭 Investment thesis: {client_id} - {asset_class} ({conviction_level} conviction)"
-    )
+    print(f"💭 Investment thesis: {client_id} - {asset_class} ({conviction_level} conviction)")
     return f"Updated thesis for {client_id}"
 
 
-def log_rebalancing_action(
-    client_id: str, action_type: str, securities: str, rationale: str
-) -> str:
+def log_rebalancing_action(client_id: str, action_type: str, securities: str, rationale: str) -> str:
     """Log portfolio rebalancing actions with rationale"""
     print(f"⚖️ Rebalancing: {client_id} - {action_type}: {securities}")
     return f"Logged rebalancing for {client_id}"
@@ -249,9 +238,7 @@ def log_advisory_milestone(quarter: str, milestone: str, details: str) -> str:
     return f"Logged milestone for {quarter}: {milestone} - {details}"
 
 
-def track_investment_metrics(
-    metric_type: str, value: str, client_id: str, quarter: str
-) -> str:
+def track_investment_metrics(metric_type: str, value: str, client_id: str, quarter: str) -> str:
     """Track specific investment metrics with client and timeline"""
     print(f"📊 {quarter}: {metric_type} = {value} (for {client_id})")
     return f"Tracked {metric_type}: {value} for {client_id} in {quarter}"
@@ -306,9 +293,7 @@ def create_memory_retrieval_tool(memory_id: str, actor_id: str, region: str):
             from bedrock_agentcore.memory.session import MemorySessionManager
 
             # Create session manager (only needs memory_id and region)
-            session_manager = MemorySessionManager(
-                memory_id=memory_id, region_name=region
-            )
+            session_manager = MemorySessionManager(memory_id=memory_id, region_name=region)
 
             # Search long-term memories in the semantic strategy namespace
             results = session_manager.search_long_term_memories(
@@ -340,16 +325,12 @@ def create_memory_retrieval_tool(memory_id: str, actor_id: str, region: str):
 
 
 # Create the memory retrieval tool
-memory_search_tool = create_memory_retrieval_tool(
-    memory_id, "financial-advisor", region
-)
+memory_search_tool = create_memory_retrieval_tool(memory_id, "financial-advisor", region)
 
 # Add memory search to the tools list
 investment_tools_with_memory = investment_tools + [memory_search_tool]
 
-print(
-    f"✅ Memory retrieval tool created! Total tools: {len(investment_tools_with_memory)}"
-)
+print(f"✅ Memory retrieval tool created! Total tools: {len(investment_tools_with_memory)}")
 print("   Using namespace: /strategies/ (for semantic strategy compatibility)")
 
 
@@ -360,9 +341,7 @@ print("   Using namespace: /strategies/ (for semantic strategy compatibility)")
 
 # Check memory configuration
 memory_info = (
-    boto3.client("bedrock-agentcore-control", region_name=region)
-    .get_memory(memoryId=memory_id)
-    .get("memory", {})
+    boto3.client("bedrock-agentcore-control", region_name=region).get_memory(memoryId=memory_id).get("memory", {})
 )
 print(f"Strategies: {memory_info.get('strategies')}")
 print(f"Status: {memory_info.get('status')}")
@@ -490,9 +469,7 @@ async def main():
 
     print("\n⏳ Waiting for semantic memory extraction and indexing...")
     print("   (AgentCore processes conversational events in the background)")
-    await asyncio.sleep(
-        90
-    )  # Increased wait time for memory extraction (was 10 seconds)
+    await asyncio.sleep(90)  # Increased wait time for memory extraction (was 10 seconds)
     print("✅ Memory processing complete - memories should now be searchable")
 
     # ## Step 6: Q2 Advisory Session - Market Volatility Response
@@ -515,9 +492,7 @@ async def main():
 
     print("\n🧠 Q2 Client Recall:")
     print(response)
-    print(
-        "\n✅ Expected: CLIENT-001, $3.2M portfolio, moderate-aggressive, growth equity thesis"
-    )
+    print("\n✅ Expected: CLIENT-001, $3.2M portfolio, moderate-aggressive, growth equity thesis")
 
     # Document market volatility insight
     response = await agent_q2.run(
@@ -552,9 +527,7 @@ async def main():
     )
     print("📊 Q2 Performance Analysis:")
     print(response)
-    print(
-        "\n✅ Expected: Q1 +8.2%, Q2 -2.1%, cumulative ~+5.9%, defensive positioning helped"
-    )
+    print("\n✅ Expected: Q1 +8.2%, Q2 -2.1%, cumulative ~+5.9%, defensive positioning helped")
 
     # ## Step 7: Q3 Advisory Session - Recovery and Thesis Update
     #
@@ -590,9 +563,7 @@ async def main():
     )
     print("📋 Q3 Complete History:")
     print(response)
-    print(
-        "\n✅ Expected: Q1 onboarding → Q2 defensive moves → Q3 recovery positioning, all performance data"
-    )
+    print("\n✅ Expected: Q1 onboarding → Q2 defensive moves → Q3 recovery positioning, all performance data")
 
     # ## Step 8: Q4 Advisory Session - Year-End Review and Planning
     #
@@ -618,9 +589,7 @@ async def main():
     )
     print("🌍 Q4 Market Insight Analysis:")
     print(response)
-    print(
-        "\n✅ Expected: Geopolitical risk insight → defensive positioning → outperformance during volatility"
-    )
+    print("\n✅ Expected: Geopolitical risk insight → defensive positioning → outperformance during volatility")
 
     # Test semantic search for similar portfolio actions
     response = await agent_q4.run(
@@ -629,9 +598,7 @@ async def main():
     )
     print("⚖️ Q4 Rebalancing Analysis:")
     print(response)
-    print(
-        "\n✅ Expected: Q2 defensive moves (QQQ reduction, VTV/VGSH adds) helped during volatility"
-    )
+    print("\n✅ Expected: Q2 defensive moves (QQQ reduction, VTV/VGSH adds) helped during volatility")
 
     # ## Step 9: Year 2 Q1 Session - Multi-Year Perspective
     #
@@ -650,9 +617,7 @@ async def main():
     )
     print("📊 Year 2 Q1 Journey Analysis:")
     print(response)
-    print(
-        "\n✅ Expected: $3.2M → $3.45M growth, defensive positioning success, thesis evolution"
-    )
+    print("\n✅ Expected: $3.2M → $3.45M growth, defensive positioning success, thesis evolution")
 
     # Test investment thesis evolution tracking
     response = await agent_y2q1.run(
@@ -748,25 +713,19 @@ async def main():
             print("=" * 60)
 
             total_tests = len(test_results)
-            passed_tests = sum(
-                1 for result in test_results.values() if "PASS" in result
-            )
+            passed_tests = sum(1 for result in test_results.values() if "PASS" in result)
             pass_rate = (passed_tests / total_tests * 100) if total_tests > 0 else 0
 
             for test_name, result in test_results.items():
                 print(f"{test_name}: {result}")
 
             print("=" * 60)
-            print(
-                f"📊 Overall Pass Rate: {passed_tests}/{total_tests} ({pass_rate:.1f}%)"
-            )
+            print(f"📊 Overall Pass Rate: {passed_tests}/{total_tests} ({pass_rate:.1f}%)")
 
             if pass_rate >= 80:
                 print("✅ EXCELLENT: Memory integration working correctly!")
             elif pass_rate >= 60:
-                print(
-                    "⚠️  GOOD: Most memory features working, some issues to investigate"
-                )
+                print("⚠️  GOOD: Most memory features working, some issues to investigate")
             else:
                 print("❌ NEEDS ATTENTION: Memory integration has significant issues")
 
@@ -778,21 +737,15 @@ async def main():
     # Run all validation tests
 
     # Test 1: Memory recall - can the agent recall what was discussed?
-    response1 = await agent_y2q1.run(
-        "What have we discussed so far in this session?", memory=memory_y2q1
-    )
+    response1 = await agent_y2q1.run("What have we discussed so far in this session?", memory=memory_y2q1)
     print(f"Response 1 length: {len(str(response1))} chars")
 
     # Test 2: Session memory - does the agent maintain context?
-    response2 = await agent_y2q1.run(
-        "What did we talk about earlier?", memory=memory_y2q1
-    )
+    response2 = await agent_y2q1.run("What did we talk about earlier?", memory=memory_y2q1)
     print(f"Response 2 length: {len(str(response2))} chars")
 
     # Test 3: Cross-reference capability - can it connect to previous context?
-    response3 = await agent_y2q1.run(
-        "How does this relate to what we discussed before?", memory=memory_y2q1
-    )
+    response3 = await agent_y2q1.run("How does this relate to what we discussed before?", memory=memory_y2q1)
     print(f"Response 3 length: {len(str(response3))} chars")
 
     # ## Summary

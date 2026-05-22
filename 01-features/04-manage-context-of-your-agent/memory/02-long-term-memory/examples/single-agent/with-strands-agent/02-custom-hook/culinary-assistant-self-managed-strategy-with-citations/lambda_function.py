@@ -80,9 +80,7 @@ Conversation:
         }
 
         try:
-            response = self.bedrock_client.invoke_model(
-                modelId=self.model_id, body=json.dumps(request_body)
-            )
+            response = self.bedrock_client.invoke_model(modelId=self.model_id, body=json.dumps(request_body))
 
             response_body = json.loads(response["body"].read())
             extracted_text = response_body["content"][0]["text"]
@@ -95,9 +93,7 @@ Conversation:
                 json_str = extracted_text[start_idx:end_idx]
                 extracted_data = json.loads(json_str)
                 logger.info(f"Extracted {len(extracted_data)} memories")
-                return self._format_extracted_memories(
-                    extracted_data, payload, s3_location, job_id
-                )
+                return self._format_extracted_memories(extracted_data, payload, s3_location, job_id)
             else:
                 logger.error("Could not find JSON in model response")
                 return []
@@ -126,9 +122,7 @@ Conversation:
 
         return text
 
-    def _format_extracted_memories(
-        self, extracted_data, payload, s3_location=None, job_id=None
-    ):
+    def _format_extracted_memories(self, extracted_data, payload, s3_location=None, job_id=None):
         """Format extracted memories with metadata and citation information"""
         memories = []
         session_id = payload.get("sessionId", "unknown-session")
@@ -141,11 +135,7 @@ Conversation:
         starting_timestamp = payload.get("startingTimestamp", timestamp)
 
         for item in extracted_data:
-            if (
-                not isinstance(item, dict)
-                or "content" not in item
-                or "type" not in item
-            ):
+            if not isinstance(item, dict) or "content" not in item or "type" not in item:
                 logger.warning(f"Skipping invalid memory item: {item}")
                 continue
 
@@ -172,9 +162,7 @@ Conversation:
                 citation_info["extraction_job_id"] = job_id
 
             # Format citation as readable text to append to content
-            citation_text = (
-                f"\n\n[Citation: Extracted from session {session_id}, actor {actor_id}"
-            )
+            citation_text = f"\n\n[Citation: Extracted from session {session_id}, actor {actor_id}"
             if s3_location:
                 citation_text += f", source: {s3_location}"
             if job_id:
@@ -232,27 +220,19 @@ class MemoryIngestor:
                     ts_value = record["timestamp"]
 
                     # Check if timestamp is in milliseconds (13 digits)
-                    if (
-                        isinstance(ts_value, int) and ts_value > 10000000000
-                    ):  # More than 10 billion = milliseconds
+                    if isinstance(ts_value, int) and ts_value > 10000000000:  # More than 10 billion = milliseconds
                         # Convert milliseconds to seconds
                         ts_seconds = ts_value / 1000.0
                         batch_record["timestamp"] = datetime.fromtimestamp(ts_seconds)
-                        logger.info(
-                            f"Converted millisecond timestamp to datetime: {batch_record['timestamp']}"
-                        )
+                        logger.info(f"Converted millisecond timestamp to datetime: {batch_record['timestamp']}")
                     else:
                         # Handle as regular Unix timestamp
                         batch_record["timestamp"] = datetime.fromtimestamp(ts_value)
                 except Exception as e:
-                    logger.error(
-                        f"Error processing timestamp {record['timestamp']}: {str(e)}"
-                    )
+                    logger.error(f"Error processing timestamp {record['timestamp']}: {str(e)}")
                     # Use current time as fallback
                     batch_record["timestamp"] = datetime.now()
-                    logger.info(
-                        f"Using fallback timestamp: {batch_record['timestamp']}"
-                    )
+                    logger.info(f"Using fallback timestamp: {batch_record['timestamp']}")
 
             batch_records.append(batch_record)
 
@@ -283,9 +263,7 @@ def lambda_handler(event, context):
     try:
         # 1. Handle notification and download payload
         job_metadata, payload = notification_handler.process_sqs_event(event)
-        logger.info(
-            f"Processing job {job_metadata['job_id']} for memory {job_metadata['memory_id']}"
-        )
+        logger.info(f"Processing job {job_metadata['job_id']} for memory {job_metadata['memory_id']}")
 
         # 2. Extract memories using Bedrock model with citation information
         extracted_memories = extractor.extract_memories(
@@ -293,9 +271,7 @@ def lambda_handler(event, context):
             s3_location=job_metadata["s3_location"],
             job_id=job_metadata["job_id"],
         )
-        logger.info(
-            f"Extracted {len(extracted_memories)} memories with S3 citation: {job_metadata['s3_location']}"
-        )
+        logger.info(f"Extracted {len(extracted_memories)} memories with S3 citation: {job_metadata['s3_location']}")
 
         # 3. Ingest extracted memories into AgentCore
         if extracted_memories:

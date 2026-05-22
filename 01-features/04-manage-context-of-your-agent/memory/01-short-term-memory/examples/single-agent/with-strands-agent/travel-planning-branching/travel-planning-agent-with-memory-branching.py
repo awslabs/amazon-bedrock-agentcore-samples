@@ -116,14 +116,10 @@ try:
     memory_id = memory["id"]
     print(f"Memory created successfully with ID: {memory_id}")
 except ClientError as e:
-    if e.response["Error"]["Code"] == "ValidationException" and "already exists" in str(
-        e
-    ):
+    if e.response["Error"]["Code"] == "ValidationException" and "already exists" in str(e):
         # If memory already exists, retrieve its ID
         memories = client.list_memories()
-        memory_id = next(
-            (m["id"] for m in memories if m["id"].startswith(memory_name)), None
-        )
+        memory_id = next((m["id"] for m in memories if m["id"].startswith(memory_name)), None)
         logger.info(f"Memory already exists. Using existing memory ID: {memory_id}")
 except Exception as e:
     # Handle any errors during memory creation
@@ -176,9 +172,7 @@ from bedrock_agentcore.memory import MemorySessionManager  # noqa: E402
 
 
 class ShortTermMemoryHook(HookProvider):
-    def __init__(
-        self, memory_id: str, region_name: str = "us-west-2", branch_name: str = "main"
-    ):
+    def __init__(self, memory_id: str, region_name: str = "us-west-2", branch_name: str = "main"):
         """Initialize the hook with a MemorySessionManager.
 
         Args:
@@ -186,9 +180,7 @@ class ShortTermMemoryHook(HookProvider):
             region_name: AWS region for the memory service
             branch_name: Branch name for this agent's memory (default: "main")
         """
-        self.memory_manager = MemorySessionManager(
-            memory_id=memory_id, region_name=region_name
-        )
+        self.memory_manager = MemorySessionManager(memory_id=memory_id, region_name=region_name)
         self.memory_id = memory_id
         self.branch_name = branch_name
         self._sessions = {}  # Cache session objects per actor/session combo
@@ -206,9 +198,7 @@ class ShortTermMemoryHook(HookProvider):
         """
         key = f"{actor_id}:{session_id}"
         if key not in self._sessions:
-            self._sessions[key] = self.memory_manager.create_memory_session(
-                actor_id=actor_id, session_id=session_id
-            )
+            self._sessions[key] = self.memory_manager.create_memory_session(actor_id=actor_id, session_id=session_id)
         return self._sessions[key]
 
     def _initialize_branch(self, actor_id: str, session_id: str):
@@ -249,9 +239,7 @@ class ShortTermMemoryHook(HookProvider):
             self._branch_initialized = True
 
         except Exception as e:
-            logger.error(
-                f"Failed to initialize branch {self.branch_name}: {e}", exc_info=True
-            )
+            logger.error(f"Failed to initialize branch {self.branch_name}: {e}", exc_info=True)
 
     def on_agent_initialized(self, event: AgentInitializedEvent):
         """Load recent conversation history when agent starts"""
@@ -272,9 +260,7 @@ class ShortTermMemoryHook(HookProvider):
             memory_session = self._get_or_create_session(actor_id, session_id)
 
             # Get last 5 conversation turns from this branch
-            recent_turns = memory_session.get_last_k_turns(
-                k=5, branch_name=self.branch_name
-            )
+            recent_turns = memory_session.get_last_k_turns(k=5, branch_name=self.branch_name)
 
             if recent_turns:
                 # Format conversation history for context
@@ -288,9 +274,7 @@ class ShortTermMemoryHook(HookProvider):
 
                 if context_messages:
                     context = "\n".join(context_messages)
-                    logger.info(
-                        f"Loaded context from branch '{self.branch_name}' ({len(context_messages)} messages)"
-                    )
+                    logger.info(f"Loaded context from branch '{self.branch_name}' ({len(context_messages)} messages)")
 
                     # Add context to agent's system prompt
                     event.agent.system_prompt += (
@@ -302,9 +286,7 @@ class ShortTermMemoryHook(HookProvider):
                         f"✅ Loaded {len(recent_turns)} recent conversation turns from branch '{self.branch_name}'"
                     )
             else:
-                logger.info(
-                    f"No previous conversation history found in branch '{self.branch_name}'"
-                )
+                logger.info(f"No previous conversation history found in branch '{self.branch_name}'")
 
         except Exception as e:
             logger.error(f"Failed to load conversation history: {e}", exc_info=True)
@@ -347,9 +329,7 @@ class ShortTermMemoryHook(HookProvider):
             # Store the message on the appropriate branch
             if self.branch_name == "main":
                 # Main branch - just add turns normally
-                memory_session.add_turns(
-                    messages=[ConversationalMessage(content_text, message_role)]
-                )
+                memory_session.add_turns(messages=[ConversationalMessage(content_text, message_role)])
             else:
                 # Non-main branch - need to append to existing branch
                 # Initialize branch if it doesn't exist
@@ -366,14 +346,10 @@ class ShortTermMemoryHook(HookProvider):
                     )
                 else:
                     # This shouldn't happen if _initialize_branch worked, but handle it
-                    logger.warning(
-                        f"Branch {self.branch_name} not found after initialization"
-                    )
+                    logger.warning(f"Branch {self.branch_name} not found after initialization")
                     self._initialize_branch(actor_id, session_id)
 
-            logger.debug(
-                f"✅ Stored message in branch '{self.branch_name}': {role_str}"
-            )
+            logger.debug(f"✅ Stored message in branch '{self.branch_name}': {role_str}")
 
         except Exception as e:
             logger.error(f"Failed to store message: {e}", exc_info=True)
@@ -396,9 +372,7 @@ class ShortTermMemoryHook(HookProvider):
             messages: List of ConversationalMessage objects to add to the branch
         """
         memory_session = self._get_or_create_session(actor_id, session_id)
-        return memory_session.fork_conversation(
-            root_event_id=root_event_id, branch_name=branch_name, messages=messages
-        )
+        return memory_session.fork_conversation(root_event_id=root_event_id, branch_name=branch_name, messages=messages)
 
     def list_branches(self, actor_id: str, session_id: str):
         """List all branches for a session.
@@ -605,14 +579,10 @@ travel_agent = Agent(
 # Let's test our multi-agent system with a travel planning scenario:
 
 
-response = travel_agent(
-    "Hello, I would like to book a trip from LA to Madrid. From July 1 to August 2."
-)
+response = travel_agent("Hello, I would like to book a trip from LA to Madrid. From July 1 to August 2.")
 
 
-response = travel_agent(
-    "I would only like to focus on the flight at the moment. Direct flight with British Airways"
-)
+response = travel_agent("I would only like to focus on the flight at the moment. Direct flight with British Airways")
 
 
 print("\n=== Viewing Memory Branches ===")
@@ -628,9 +598,7 @@ if flight_memory_hooks or hotel_memory_hooks:
         print(f"\n📊 Session has {len(branches)} branches total:")
         for branch in branches:
             print(f"  - Branch: {branch.name}")
-            print(
-                f"    └─ Events: {len(memory_session.list_events(branch_name=branch.name))}"
-            )
+            print(f"    └─ Events: {len(memory_session.list_events(branch_name=branch.name))}")
             print(f"    └─ Created: {branch.created}")
 
         print("\n💡 Each branch represents a different agent's memory:")
@@ -661,9 +629,7 @@ if flight_memory_hooks or hotel_memory_hooks:
 
         # Get events from the flight agent branch
         try:
-            flight_branch_events = memory_session.list_events(
-                branch_name="flight_agent_memory"
-            )
+            flight_branch_events = memory_session.list_events(branch_name="flight_agent_memory")
             print(f"\n✈️  Flight Agent Branch ({len(flight_branch_events)} events):")
             if flight_branch_events:
                 print("All flight-related conversations are stored here:")
@@ -680,9 +646,7 @@ if flight_memory_hooks or hotel_memory_hooks:
 
         # Get events from the hotel agent branch
         try:
-            hotel_branch_events = memory_session.list_events(
-                branch_name="hotel_agent_memory"
-            )
+            hotel_branch_events = memory_session.list_events(branch_name="hotel_agent_memory")
             print(f"\n🏨 Hotel Agent Branch ({len(hotel_branch_events)} events):")
             if hotel_branch_events:
                 print("All hotel-related conversations are stored here:")

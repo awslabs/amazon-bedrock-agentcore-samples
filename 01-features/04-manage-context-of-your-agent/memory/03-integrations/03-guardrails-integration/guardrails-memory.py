@@ -66,9 +66,7 @@ from bedrock_agentcore.memory.integrations.strands.session_manager import (
 from bedrock_agentcore.memory.integrations.strands.config import AgentCoreMemoryConfig
 
 # Configuration
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 logger = logging.getLogger("secure-agent")
 REGION = os.getenv("AWS_REGION", "us-west-2")  # AWS region for the agent
 bedrock_client = boto3.client("bedrock", region_name=REGION)
@@ -188,14 +186,10 @@ try:
     logger.info(f"✅ Created memory: {memory_id}")
 except ClientError as e:
     logger.info(f"❌ ERROR: {e}")
-    if e.response["Error"]["Code"] == "ValidationException" and "already exists" in str(
-        e
-    ):
+    if e.response["Error"]["Code"] == "ValidationException" and "already exists" in str(e):
         # If memory already exists, retrieve its ID
         memories = memory_client.list_memories()
-        memory_id = next(
-            (m["id"] for m in memories if m["id"].startswith(memory_name)), None
-        )
+        memory_id = next((m["id"] for m in memories if m["id"].startswith(memory_name)), None)
         logger.info(f"Memory already exists. Using existing memory ID: {memory_id}")
 except Exception as e:
     # Show any errors during memory creation
@@ -291,9 +285,7 @@ class GuardrailsHookProvider(HookProvider):
 
         # Extract content
         if isinstance(message.get("content"), list):
-            content = "".join(
-                block.get("text", "") for block in message.get("content", [])
-            )
+            content = "".join(block.get("text", "") for block in message.get("content", []))
         else:
             content = str(message.get("content", ""))
 
@@ -325,9 +317,7 @@ class GuardrailsHookProvider(HookProvider):
             else:
                 message["content"] = replacement_content
 
-            logger.info(
-                f"⚠️ Replaced assistant message with guardrail response: {replacement_content[:30]}..."
-            )
+            logger.info(f"⚠️ Replaced assistant message with guardrail response: {replacement_content[:30]}...")
 
     def register_hooks(self, registry: HookRegistry):
         """Register all hooks with the registry.
@@ -347,9 +337,7 @@ ACTOR_ID = "user_1"
 SESSION_ID = "session_001"
 # bedrock_model = BedrockModel(model_id="global.anthropic.claude-haiku-4-5-20251001-v1:0")
 
-evaluator = GuardrailsEvaluator(
-    guardrail_id=guardrail_id, guardrail_version=guardrail_version
-)
+evaluator = GuardrailsEvaluator(guardrail_id=guardrail_id, guardrail_version=guardrail_version)
 
 session_manager = None
 
@@ -362,14 +350,10 @@ def create_personal_agent():
         session_manager.close()
 
     # Configure AgentCore Memory
-    config = AgentCoreMemoryConfig(
-        memory_id=memory_id, session_id=SESSION_ID, actor_id=ACTOR_ID
-    )
+    config = AgentCoreMemoryConfig(memory_id=memory_id, session_id=SESSION_ID, actor_id=ACTOR_ID)
 
     # Create session manager (explicit lifecycle — closed in cleanup cell)
-    session_manager = AgentCoreMemorySessionManager(
-        agentcore_memory_config=config, region_name=REGION
-    )
+    session_manager = AgentCoreMemorySessionManager(agentcore_memory_config=config, region_name=REGION)
 
     # Create agent with session manager and guardrails hook
     agent = Agent(

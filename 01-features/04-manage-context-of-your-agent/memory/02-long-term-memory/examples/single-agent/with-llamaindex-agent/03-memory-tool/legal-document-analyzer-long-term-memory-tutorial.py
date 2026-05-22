@@ -137,8 +137,7 @@ async def _filtered_aput_messages(self, messages: List[ChatMessage]) -> None:
     text_messages = [
         m
         for m in messages
-        if m.role in (MessageRole.USER, MessageRole.ASSISTANT)
-        and m.content  # skip empty tool-call assistant messages
+        if m.role in (MessageRole.USER, MessageRole.ASSISTANT) and m.content  # skip empty tool-call assistant messages
     ]
     if text_messages:
         await _original_aput_messages(self, text_messages)
@@ -194,16 +193,12 @@ except Exception as e:
 # Define specialized tools for longitudinal legal analysis:
 
 
-def analyze_contract_clause(
-    case_id: str, clause_type: str, risk_level: str, precedent_reference: str
-) -> str:
+def analyze_contract_clause(case_id: str, clause_type: str, risk_level: str, precedent_reference: str) -> str:
     """Analyze contract clause with risk assessment and precedent reference"""
     return f"📋 Analyzed {clause_type} clause for {case_id} (Risk: {risk_level})"
 
 
-def track_case_precedent(
-    case_id: str, precedent_case: str, legal_principle: str, applicability: str
-) -> str:
+def track_case_precedent(case_id: str, precedent_case: str, legal_principle: str, applicability: str) -> str:
     """Track case precedent with legal principle and applicability assessment"""
     return f"⚖️ {case_id} precedent: {precedent_case} - {legal_principle}"
 
@@ -215,25 +210,17 @@ def document_regulatory_change(
     client_implications: str,
 ) -> str:
     """Document regulatory change with client portfolio implications"""
-    print(
-        f"📜 Regulatory update: {regulation_type} - {change_description} (Impact: {impact_assessment})"
-    )
+    print(f"📜 Regulatory update: {regulation_type} - {change_description} (Impact: {impact_assessment})")
     return f"Documented regulatory change: {regulation_type}"
 
 
-def update_legal_strategy(
-    case_id: str, strategy_type: str, approach: str, confidence_level: str
-) -> str:
+def update_legal_strategy(case_id: str, strategy_type: str, approach: str, confidence_level: str) -> str:
     """Update legal strategy for specific case"""
-    print(
-        f"🎯 Legal strategy: {case_id} - {strategy_type} ({confidence_level} confidence)"
-    )
+    print(f"🎯 Legal strategy: {case_id} - {strategy_type} ({confidence_level} confidence)")
     return f"Updated strategy for {case_id}"
 
 
-def log_case_outcome(
-    case_id: str, outcome_type: str, result: str, lessons_learned: str
-) -> str:
+def log_case_outcome(case_id: str, outcome_type: str, result: str, lessons_learned: str) -> str:
     """Log case outcome with lessons learned"""
     print(f"🏛️ Case outcome: {case_id} - {outcome_type}: {result}")
     return f"Logged outcome for {case_id}"
@@ -245,9 +232,7 @@ def log_legal_milestone(quarter: str, milestone: str, details: str) -> str:
     return f"Logged milestone for {quarter}: {milestone} - {details}"
 
 
-def track_legal_metrics(
-    metric_type: str, value: str, case_id: str, quarter: str
-) -> str:
+def track_legal_metrics(metric_type: str, value: str, case_id: str, quarter: str) -> str:
     """Track specific legal metrics with case and timeline"""
     print(f"📊 {quarter}: {metric_type} = {value} (for {case_id})")
     return f"Tracked {metric_type}: {value} for {case_id} in {quarter}"
@@ -302,9 +287,7 @@ def create_memory_retrieval_tool(memory_id: str, actor_id: str, region: str):
             from bedrock_agentcore.memory.session import MemorySessionManager
 
             # Create session manager (only needs memory_id and region)
-            session_manager = MemorySessionManager(
-                memory_id=memory_id, region_name=region
-            )
+            session_manager = MemorySessionManager(memory_id=memory_id, region_name=region)
 
             # Search long-term memories in the semantic strategy namespace
             results = session_manager.search_long_term_memories(
@@ -352,9 +335,7 @@ print("   Using namespace: /strategies/ (for semantic strategy compatibility)")
 
 # Check memory configuration
 memory_info = (
-    boto3.client("bedrock-agentcore-control", region_name=region)
-    .get_memory(memoryId=memory_id)
-    .get("memory", {})
+    boto3.client("bedrock-agentcore-control", region_name=region).get_memory(memoryId=memory_id).get("memory", {})
 )
 print(f"Strategies: {memory_info.get('strategies')}")
 print(f"Status: {memory_info.get('status')}")
@@ -377,9 +358,7 @@ for strategy in strategies:
 
 # Check memory configuration
 memory_info = (
-    boto3.client("bedrock-agentcore-control", region_name=region)
-    .get_memory(memoryId=memory_id)
-    .get("memory", {})
+    boto3.client("bedrock-agentcore-control", region_name=region).get_memory(memoryId=memory_id).get("memory", {})
 )
 print(f"Strategies: {memory_info.get('strategies')}")
 print(f"Status: {memory_info.get('status')}")
@@ -526,9 +505,7 @@ async def main():
 
     print("\n🧠 Q2 Case Recall:")
     print(response)
-    print(
-        "\n✅ Expected: CASE-001, indemnification analysis, Smith v. Johnson precedent"
-    )
+    print("\n✅ Expected: CASE-001, indemnification analysis, Smith v. Johnson precedent")
 
     # Document regulatory change
     response = await agent_q2.run(
@@ -563,9 +540,7 @@ async def main():
     )
     print("📊 Q2 Strategy Analysis:")
     print(response)
-    print(
-        "\n✅ Expected: Q1 contract negotiation → Q2 regulatory leverage, strengthened position"
-    )
+    print("\n✅ Expected: Q1 contract negotiation → Q2 regulatory leverage, strengthened position")
 
     # ## Step 7: Q3 Legal Session - Case Resolution and New Matter
     #
@@ -595,15 +570,12 @@ async def main():
 
     # Test comprehensive legal history recall
     response = await agent_q3.run(
-        "What is the complete legal analysis history? Include all cases, strategies, "
-        "regulatory changes, and outcomes.",
+        "What is the complete legal analysis history? Include all cases, strategies, regulatory changes, and outcomes.",
         memory=memory_q3,
     )
     print("📋 Q3 Complete History:")
     print(response)
-    print(
-        "\n✅ Expected: CASE-001 journey → CASE-002 start, regulatory updates, strategy evolution"
-    )
+    print("\n✅ Expected: CASE-001 journey → CASE-002 start, regulatory updates, strategy evolution")
     # Explicitly track key legal findings
     await agent_q3.run(
         "Save legal finding: finding 'Contract contains 3 high-risk clauses', confidence 'high'.",
@@ -641,9 +613,7 @@ async def main():
     )
     print("🌍 Q4 Regulatory Impact Analysis:")
     print(response)
-    print(
-        "\n✅ Expected: Contract law update → strengthened CASE-001 negotiation position"
-    )
+    print("\n✅ Expected: Contract law update → strengthened CASE-001 negotiation position")
 
     # Test semantic search for similar legal strategies
     response = await agent_q4.run(
@@ -652,9 +622,7 @@ async def main():
     )
     print("⚖️ Q4 Strategy Effectiveness Analysis:")
     print(response)
-    print(
-        "\n✅ Expected: Contract negotiation + regulatory leverage = successful outcomes"
-    )
+    print("\n✅ Expected: Contract negotiation + regulatory leverage = successful outcomes")
 
     # ## Step 9: Year 2 Q1 Session - Multi-Year Legal Perspective
     #
@@ -673,9 +641,7 @@ async def main():
     )
     print("📊 Year 2 Q1 Practice Analysis:")
     print(response)
-    print(
-        "\n✅ Expected: CASE-001 → CASE-002 progression, regulatory adaptation, strategy refinement"
-    )
+    print("\n✅ Expected: CASE-001 → CASE-002 progression, regulatory adaptation, strategy refinement")
 
     # Test legal precedent evolution tracking
     response = await agent_y2q1.run(
@@ -684,9 +650,7 @@ async def main():
     )
     print("💭 Year 2 Q1 Precedent Evolution:")
     print(response)
-    print(
-        "\n✅ Expected: Started with indemnification precedents → expanded to non-compete law"
-    )
+    print("\n✅ Expected: Started with indemnification precedents → expanded to non-compete law")
 
     # ## Step 10: Final Legal Practice Assessment
     #
@@ -701,9 +665,7 @@ async def main():
     )
     print("💼 Complete Legal Practice Portfolio:")
     print(response)
-    print(
-        "\n✅ Expected: Full case portfolio with strategy evolution, regulatory adaptation, and outcome analysis"
-    )
+    print("\n✅ Expected: Full case portfolio with strategy evolution, regulatory adaptation, and outcome analysis")
 
     # ## 🧪 Automated Test Validation
     # Run these cells to validate that memory integration is working correctly:
@@ -771,25 +733,19 @@ async def main():
             print("=" * 60)
 
             total_tests = len(test_results)
-            passed_tests = sum(
-                1 for result in test_results.values() if "PASS" in result
-            )
+            passed_tests = sum(1 for result in test_results.values() if "PASS" in result)
             pass_rate = (passed_tests / total_tests * 100) if total_tests > 0 else 0
 
             for test_name, result in test_results.items():
                 print(f"{test_name}: {result}")
 
             print("=" * 60)
-            print(
-                f"📊 Overall Pass Rate: {passed_tests}/{total_tests} ({pass_rate:.1f}%)"
-            )
+            print(f"📊 Overall Pass Rate: {passed_tests}/{total_tests} ({pass_rate:.1f}%)")
 
             if pass_rate >= 80:
                 print("✅ EXCELLENT: Memory integration working correctly!")
             elif pass_rate >= 60:
-                print(
-                    "⚠️  GOOD: Most memory features working, some issues to investigate"
-                )
+                print("⚠️  GOOD: Most memory features working, some issues to investigate")
             else:
                 print("❌ NEEDS ATTENTION: Memory integration has significant issues")
 
@@ -801,21 +757,15 @@ async def main():
     # Run all validation tests
 
     # Test 1: Memory recall - can the agent recall what was discussed?
-    response1 = await agent_y2q1.run(
-        "What have we discussed so far in this session?", memory=memory_y2q1
-    )
+    response1 = await agent_y2q1.run("What have we discussed so far in this session?", memory=memory_y2q1)
     print(f"Response 1 length: {len(str(response1))} chars")
 
     # Test 2: Session memory - does the agent maintain context?
-    response2 = await agent_y2q1.run(
-        "What did we talk about earlier?", memory=memory_y2q1
-    )
+    response2 = await agent_y2q1.run("What did we talk about earlier?", memory=memory_y2q1)
     print(f"Response 2 length: {len(str(response2))} chars")
 
     # Test 3: Cross-reference capability - can it connect to previous context?
-    response3 = await agent_y2q1.run(
-        "How does this relate to what we discussed before?", memory=memory_y2q1
-    )
+    response3 = await agent_y2q1.run("How does this relate to what we discussed before?", memory=memory_y2q1)
     print(f"Response 3 length: {len(str(response3))} chars")
 
     # ## Summary

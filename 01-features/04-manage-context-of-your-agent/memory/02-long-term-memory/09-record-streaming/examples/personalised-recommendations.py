@@ -340,14 +340,10 @@ for idx, item in enumerate(all_data):
         }
     )
 
-response = agentcore_client.batch_create_memory_records(
-    memoryId=MEMORY_ID, records=records
-)
+response = agentcore_client.batch_create_memory_records(memoryId=MEMORY_ID, records=records)
 
 print(f"✅ Created {len(response['successfulRecords'])} records")
-print(
-    "   Namespace types: recommendations, transactions/summary, preferences, life_events"
-)
+print("   Namespace types: recommendations, transactions/summary, preferences, life_events")
 
 
 # ## 3. Define Agent Tools
@@ -393,9 +389,7 @@ def query_customer_memory(namespace_type: str, tool_context: ToolContext) -> str
         ns = namespace_type.rstrip("/")
         namespace_prefix = f"/bank/customers/{customer_id}/{ns}"
 
-    records = session_manager.list_long_term_memory_records(
-        namespace_prefix=namespace_prefix, max_results=100
-    )
+    records = session_manager.list_long_term_memory_records(namespace_prefix=namespace_prefix, max_results=100)
 
     results = [json.loads(r["content"]["text"]) for r in records]
     return json.dumps(

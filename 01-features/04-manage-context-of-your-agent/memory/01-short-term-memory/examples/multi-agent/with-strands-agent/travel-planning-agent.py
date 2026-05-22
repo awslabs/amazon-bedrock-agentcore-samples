@@ -112,14 +112,10 @@ try:
     memory_id = memory["id"]
     print(f"Memory created successfully with ID: {memory_id}")
 except ClientError as e:
-    if e.response["Error"]["Code"] == "ValidationException" and "already exists" in str(
-        e
-    ):
+    if e.response["Error"]["Code"] == "ValidationException" and "already exists" in str(e):
         # If memory already exists, retrieve its ID
         memories = client.list_memories()
-        memory_id = next(
-            (m["id"] for m in memories if m["id"].startswith(memory_name)), None
-        )
+        memory_id = next((m["id"] for m in memories if m["id"].startswith(memory_name)), None)
         logger.info(f"Memory already exists. Using existing memory ID: {memory_id}")
 except Exception as e:
     # Handle any errors during memory creation
@@ -354,9 +350,7 @@ travel_agent = Agent(
 # Let's test our multi-agent system with a travel planning scenario:
 
 
-response = travel_agent(
-    "Hello, I would like to book a trip from LA to Madrid. From July 1 to August 2."
-)
+response = travel_agent("Hello, I would like to book a trip from LA to Madrid. From July 1 to August 2.")
 
 
 response = travel_agent(

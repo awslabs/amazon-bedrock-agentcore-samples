@@ -219,11 +219,7 @@ config = {
     }
 }
 
-inputs = {
-    "messages": [
-        {"role": "user", "content": "What values did I ask you to multiply and add?"}
-    ]
-}
+inputs = {"messages": [{"role": "user", "content": "What values did I ask you to multiply and add?"}]}
 for chunk in graph.stream(inputs, stream_mode="updates", config=config):
     print(chunk)
 

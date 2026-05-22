@@ -107,8 +107,7 @@ async def _filtered_aput_messages(self, messages: List[ChatMessage]) -> None:
     text_messages = [
         m
         for m in messages
-        if m.role in (MessageRole.USER, MessageRole.ASSISTANT)
-        and m.content  # skip empty tool-call assistant messages
+        if m.role in (MessageRole.USER, MessageRole.ASSISTANT) and m.content  # skip empty tool-call assistant messages
     ]
     if text_messages:
         await _original_aput_messages(self, text_messages)
@@ -288,9 +287,7 @@ async def main():
 
     print("🤔 Contextual Reasoning Test:")
     print(response)
-    print(
-        "\n✅ Expected: CNNs for X-rays (Zhang paper), Transformers for clinical notes (Johnson paper)"
-    )
+    print("\n✅ Expected: CNNs for X-rays (Zhang paper), Transformers for clinical notes (Johnson paper)")
 
     # ### Test 6: Research Finding Synthesis
 
@@ -316,9 +313,7 @@ async def main():
 
     print("🔗 Cross-Reference Test:")
     print(response)
-    print(
-        "\n✅ Expected: Reference to Zhang 95.2% and Johnson 89.1% as supporting evidence"
-    )
+    print("\n✅ Expected: Reference to Zhang 95.2% and Johnson 89.1% as supporting evidence")
 
     # ### Test 8: Practical Application Scenario
 
@@ -331,9 +326,7 @@ async def main():
 
     print("📝 Grant Proposal Support:")
     print(response)
-    print(
-        "\n✅ Expected: Comprehensive summary with Zhang 95.2%, Johnson 89.1%, synthesis finding"
-    )
+    print("\n✅ Expected: Comprehensive summary with Zhang 95.2%, Johnson 89.1%, synthesis finding")
 
     # ## Step 6: Testing Session Boundaries
     #
@@ -347,9 +340,7 @@ async def main():
         namespace="/academic-research/",
     )
 
-    new_session_memory = AgentCoreMemory(
-        context=new_session_context, region_name=region
-    )
+    new_session_memory = AgentCoreMemory(context=new_session_context, region_name=region)
 
     # Test memory isolation
     response = await research_agent.run(
@@ -359,9 +350,7 @@ async def main():
 
     print("🚧 Session Boundary Test (Different Session):")
     print(response)
-    print(
-        "\n✅ Expected: Limited or no recall from previous session (short-term memory boundary)"
-    )
+    print("\n✅ Expected: Limited or no recall from previous session (short-term memory boundary)")
 
     # Return to original session to verify persistence
     response = await research_agent.run(
@@ -376,23 +365,17 @@ async def main():
     # Run all validation tests
 
     # Test 1: Memory recall - can the agent recall what was discussed?
-    response1 = await research_agent.run(
-        "What have we discussed so far in this session?", memory=agentcore_memory
-    )
+    response1 = await research_agent.run("What have we discussed so far in this session?", memory=agentcore_memory)
     print(f"🧠 Memory Recall Test response length: {len(str(response1))} chars")
     print(str(response1))
 
     # Test 2: Session memory - does the agent maintain context?
-    response2 = await research_agent.run(
-        "What did we talk about earlier?", memory=agentcore_memory
-    )
+    response2 = await research_agent.run("What did we talk about earlier?", memory=agentcore_memory)
     print(f"💾 Session Memory Test response length: {len(str(response2))} chars")
     print(str(response2))
 
     # Test 3: Cross-reference capability - can it connect to previous context?
-    response3 = await research_agent.run(
-        "How does this relate to what we discussed before?", memory=agentcore_memory
-    )
+    response3 = await research_agent.run("How does this relate to what we discussed before?", memory=agentcore_memory)
     print(f"🔗 Cross-Reference Test response length: {len(str(response3))} chars")
     print(str(response3))
 

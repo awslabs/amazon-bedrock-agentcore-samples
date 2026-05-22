@@ -9,9 +9,7 @@ from bedrock_agentcore.memory.integrations.strands.session_manager import (
 )
 
 # Configure detailed logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 logger = logging.getLogger("runtime-memory-agent")
 
 # Initialize the agent core app
@@ -38,9 +36,7 @@ def initialize_agent(actor_id, session_id):
 
     # Configure memory using AgentCoreMemoryConfig (recommended)
     logger.info(f"Creating memory config with region: {REGION}")
-    config = AgentCoreMemoryConfig(
-        memory_id=MEMORY_ID, session_id=session_id, actor_id=actor_id
-    )
+    config = AgentCoreMemoryConfig(memory_id=MEMORY_ID, session_id=session_id, actor_id=actor_id)
 
     # Create session manager - handles all memory operations automatically!
     session_manager = AgentCoreMemorySessionManager(config, region_name=REGION)
@@ -87,13 +83,9 @@ def runtime_memory_agent(payload, context):
         initialize_agent(actor_id, session_id)
     else:
         # Check if session or actor changed - need to reinitialize
-        current_session = (
-            getattr(session_manager, "_session_id", None) if session_manager else None
-        )
+        current_session = getattr(session_manager, "_session_id", None) if session_manager else None
         if current_session != session_id:
-            logger.info(
-                f"Session changed from {current_session} to {session_id} - reinitializing agent"
-            )
+            logger.info(f"Session changed from {current_session} to {session_id} - reinitializing agent")
             initialize_agent(actor_id, session_id)
 
     # Invoke the agent with the user's input

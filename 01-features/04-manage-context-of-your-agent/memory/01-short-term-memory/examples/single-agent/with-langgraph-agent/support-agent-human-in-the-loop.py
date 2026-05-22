@@ -178,9 +178,7 @@ graph
 import uuid as _uuid  # noqa: E402
 
 user_input = "I would like to work with a customer service human agent."
-config = {
-    "configurable": {"thread_id": str(_uuid.uuid4()), "actor_id": "demo-notebook"}
-}
+config = {"configurable": {"thread_id": str(_uuid.uuid4()), "actor_id": "demo-notebook"}}
 
 events = graph.stream(
     {"messages": [{"role": "user", "content": user_input}]},

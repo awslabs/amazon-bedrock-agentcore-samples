@@ -66,9 +66,7 @@ from bedrock_agentcore.memory import MemoryClient
 from utils import setup_cognito_user_pool, create_agentcore_role
 
 # Configuration
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 logger = logging.getLogger("runtime-memory-agent")
 REGION = os.getenv("AWS_REGION", "us-west-2")
 
@@ -100,9 +98,7 @@ try:
     )
     MEMORY_ID = memory["id"]
 except ClientError as e:
-    if e.response["Error"]["Code"] == "ValidationException" and "already exists" in str(
-        e
-    ):
+    if e.response["Error"]["Code"] == "ValidationException" and "already exists" in str(e):
         memories = memory_client.list_memories()
         MEMORY_ID = next((m["id"] for m in memories if m["name"] == memory_name), None)
     else:
@@ -197,9 +193,7 @@ import requests  # noqa: E402
 from botocore.auth import SigV4Auth  # noqa: E402
 from botocore.awsrequest import AWSRequest  # noqa: E402
 
-iam_role = create_agentcore_role(
-    agent_name=f"runtime_memory_agent_{unique_id}", region=REGION
-)
+iam_role = create_agentcore_role(agent_name=f"runtime_memory_agent_{unique_id}", region=REGION)
 
 # ── Deploy to AgentCore Runtime (native boto3 S3 code deployment) ─────────────
 
@@ -223,9 +217,7 @@ try:
     if REGION == "us-east-1":
         s3.create_bucket(Bucket=S3_BUCKET)
     else:
-        s3.create_bucket(
-            Bucket=S3_BUCKET, CreateBucketConfiguration={"LocationConstraint": REGION}
-        )
+        s3.create_bucket(Bucket=S3_BUCKET, CreateBucketConfiguration={"LocationConstraint": REGION})
     logger.info(f"✅ Created S3 bucket: {S3_BUCKET}")
 except Exception:
     logger.info(f"✅ S3 bucket exists: {S3_BUCKET}")
@@ -255,9 +247,7 @@ subprocess.run(
     check=True,
 )
 logger.info("  Creating deployment zip...")
-subprocess.run(
-    ["zip", "-r", f"../{zip_file}", "."], cwd=pkg_dir, check=True, capture_output=True
-)
+subprocess.run(["zip", "-r", f"../{zip_file}", "."], cwd=pkg_dir, check=True, capture_output=True)
 for src_file in AGENT_FILES:
     subprocess.run(["zip", zip_file, src_file], check=True, capture_output=True)
 logger.info(f"  Uploading to s3://{S3_BUCKET}/{S3_PREFIX}...")
@@ -317,9 +307,7 @@ else:
     print(f"❌ Deployment ended with status: {status}")
 
 # Create endpoint
-ep_resp = control.create_agent_runtime_endpoint(
-    agentRuntimeId=runtime_id, name="default"
-)
+ep_resp = control.create_agent_runtime_endpoint(agentRuntimeId=runtime_id, name="default")
 logger.info(f"  Endpoint created: {ep_resp['agentRuntimeEndpointArn']}")
 logger.info("  Waiting for endpoint to be ready...")
 endpoint_url = None
@@ -347,15 +335,11 @@ def invoke_agent(payload, session_id, bearer_token=None):
         data=json.dumps(payload),
         headers={"Content-Type": "application/json"},
     )
-    SigV4Auth(boto3.Session().get_credentials(), "bedrock-agentcore", REGION).add_auth(
-        aws_req
-    )
+    SigV4Auth(boto3.Session().get_credentials(), "bedrock-agentcore", REGION).add_auth(aws_req)
     headers = dict(aws_req.headers)
     if bearer_token:
         headers["Authorization"] = f"Bearer {bearer_token}"
-    return requests.post(
-        aws_req.url, data=aws_req.body, headers=headers, timeout=30
-    ).json()  # nosec B113
+    return requests.post(aws_req.url, data=aws_req.body, headers=headers, timeout=30).json()  # nosec B113
 
 
 # ## 5. Testing Your Agent
@@ -467,9 +451,7 @@ def test_user_memory_isolation_with_federated_identity():
     )
     print(f'User 2 prompt: "{user2_prompt2}"')
     print(f'User 2 response: "{response4["response"]}"')
-    print(
-        "\n✅ Each user should only see their own information, demonstrating memory isolation"
-    )
+    print("\n✅ Each user should only see their own information, demonstrating memory isolation")
 
 
 test_user_memory_isolation_with_federated_identity()
@@ -501,9 +483,7 @@ test_user_memory_isolation_with_federated_identity()
 # 1. Delete the AgentCore Runtime
 if "runtime_id" in locals():
     try:
-        agentcore_control_client = boto3.client(
-            "bedrock-agentcore-control", region_name=REGION
-        )
+        agentcore_control_client = boto3.client("bedrock-agentcore-control", region_name=REGION)
         agentcore_control_client.delete_agent_runtime(agentRuntimeId=runtime_id)
         print(f"✅ Deleted AgentCore Runtime: {runtime_id}")
     except Exception as e:
@@ -527,15 +507,11 @@ if "cognito_config" in locals() and cognito_config and "pool_id" in cognito_conf
         pool_id = cognito_config["pool_id"]
 
         # List and delete all user pool clients
-        clients_response = cognito_client.list_user_pool_clients(
-            UserPoolId=pool_id, MaxResults=60
-        )
+        clients_response = cognito_client.list_user_pool_clients(UserPoolId=pool_id, MaxResults=60)
 
         for client in clients_response.get("UserPoolClients", []):
             client_id = client["ClientId"]
-            cognito_client.delete_user_pool_client(
-                UserPoolId=pool_id, ClientId=client_id
-            )
+            cognito_client.delete_user_pool_client(UserPoolId=pool_id, ClientId=client_id)
             print(f"✅ Deleted User Pool Client: {client_id}")
 
         # Delete the user pool itself
@@ -572,9 +548,7 @@ def delete_iam_role(role_identifier, region=REGION):
         # 1. Detach all managed policies
         attached_policies = iam_client.list_attached_role_policies(RoleName=role_name)
         for policy in attached_policies.get("AttachedPolicies", []):
-            iam_client.detach_role_policy(
-                RoleName=role_name, PolicyArn=policy["PolicyArn"]
-            )
+            iam_client.detach_role_policy(RoleName=role_name, PolicyArn=policy["PolicyArn"])
             print(f"✅ Detached managed policy: {policy['PolicyArn']}")
 
         # 2. Delete all inline policies
@@ -584,16 +558,12 @@ def delete_iam_role(role_identifier, region=REGION):
             print(f"✅ Deleted inline policy: {policy_name}")
 
         # 3. Delete any instance profiles associated with the role
-        instance_profiles = iam_client.list_instance_profiles_for_role(
-            RoleName=role_name
-        )
+        instance_profiles = iam_client.list_instance_profiles_for_role(RoleName=role_name)
         for profile in instance_profiles.get("InstanceProfiles", []):
             iam_client.remove_role_from_instance_profile(
                 InstanceProfileName=profile["InstanceProfileName"], RoleName=role_name
             )
-            print(
-                f"✅ Removed role from instance profile: {profile['InstanceProfileName']}"
-            )
+            print(f"✅ Removed role from instance profile: {profile['InstanceProfileName']}")
 
         # 4. Finally delete the role
         iam_client.delete_role(RoleName=role_name)

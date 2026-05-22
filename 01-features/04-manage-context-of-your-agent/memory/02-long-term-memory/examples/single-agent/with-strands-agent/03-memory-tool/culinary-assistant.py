@@ -197,9 +197,7 @@ print("✓ Conversation saved in short term memory")
 # Let's make sure the event containing the conversation messages was stored correctly.
 
 
-events = client.list_events(
-    memory_id=memory_id, actor_id=actor_id, session_id=session_id, max_results=5
-)
+events = client.list_events(memory_id=memory_id, actor_id=actor_id, session_id=session_id, max_results=5)
 events
 
 

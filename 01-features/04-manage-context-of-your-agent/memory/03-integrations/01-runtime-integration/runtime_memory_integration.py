@@ -61,9 +61,7 @@ import logging
 from bedrock_agentcore.memory import MemoryClient, MemorySessionManager
 
 # Configuration
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 logger = logging.getLogger("runtime-memory-agent")
 REGION = os.getenv("AWS_REGION", "us-west-2")  # AWS region for the agent
 memory_client = MemoryClient(region_name=REGION)
@@ -94,14 +92,10 @@ try:
     logger.info(f"✅ Created memory: {memory_id}")
 except ClientError as e:
     logger.info(f"❌ ERROR: {e}")
-    if e.response["Error"]["Code"] == "ValidationException" and "already exists" in str(
-        e
-    ):
+    if e.response["Error"]["Code"] == "ValidationException" and "already exists" in str(e):
         # If memory already exists, retrieve its ID
         memories = memory_client.list_memories()
-        memory_id = next(
-            (m["id"] for m in memories if m["id"].startswith(memory_name)), None
-        )
+        memory_id = next((m["id"] for m in memories if m["id"].startswith(memory_name)), None)
         logger.info(f"Memory already exists. Using existing memory ID: {memory_id}")
 except Exception as e:
     # Show any errors during memory creation
@@ -216,9 +210,7 @@ inline_policy = {
         {
             "Effect": "Allow",
             "Action": ["logs:DescribeLogStreams", "logs:CreateLogGroup"],
-            "Resource": [
-                f"arn:aws:logs:{REGION}:{ACCOUNT_ID}:log-group:/aws/bedrock-agentcore/runtimes/*"
-            ],
+            "Resource": [f"arn:aws:logs:{REGION}:{ACCOUNT_ID}:log-group:/aws/bedrock-agentcore/runtimes/*"],
         },
         {"Effect": "Allow", "Action": ["logs:DescribeLogGroups"], "Resource": ["*"]},
         {
@@ -237,9 +229,7 @@ inline_policy = {
             "Effect": "Allow",
             "Action": "cloudwatch:PutMetricData",
             "Resource": "*",
-            "Condition": {
-                "StringEquals": {"cloudwatch:namespace": "bedrock-agentcore"}
-            },
+            "Condition": {"StringEquals": {"cloudwatch:namespace": "bedrock-agentcore"}},
         },
         {
             "Effect": "Allow",
@@ -280,9 +270,7 @@ try:
     if REGION == "us-east-1":
         s3.create_bucket(Bucket=S3_BUCKET)
     else:
-        s3.create_bucket(
-            Bucket=S3_BUCKET, CreateBucketConfiguration={"LocationConstraint": REGION}
-        )
+        s3.create_bucket(Bucket=S3_BUCKET, CreateBucketConfiguration={"LocationConstraint": REGION})
     logger.info(f"✅ Created S3 bucket: {S3_BUCKET}")
 except Exception:
     logger.info(f"✅ S3 bucket exists: {S3_BUCKET}")
@@ -312,9 +300,7 @@ subprocess.run(
     check=True,
 )
 logger.info("  Creating deployment zip...")
-subprocess.run(
-    ["zip", "-r", f"../{zip_file}", "."], cwd=pkg_dir, check=True, capture_output=True
-)
+subprocess.run(["zip", "-r", f"../{zip_file}", "."], cwd=pkg_dir, check=True, capture_output=True)
 for src_file in AGENT_FILES:
     subprocess.run(["zip", zip_file, src_file], check=True, capture_output=True)
 logger.info(f"  Uploading to s3://{S3_BUCKET}/{S3_PREFIX}...")
@@ -364,9 +350,7 @@ else:
     logger.error(f"❌ Deployment ended with status: {status}")
 
 # Create endpoint
-ep_resp = control.create_agent_runtime_endpoint(
-    agentRuntimeId=runtime_id, name="default"
-)
+ep_resp = control.create_agent_runtime_endpoint(agentRuntimeId=runtime_id, name="default")
 logger.info(f"  Endpoint created: {ep_resp['agentRuntimeEndpointArn']}")
 logger.info("  Waiting for endpoint to be ready...")
 endpoint_url = None
@@ -404,9 +388,7 @@ test_session_id = "agent-runtime-memory-session-123456789"  # Min length is 33
 # Send our first message
 import urllib.request  # noqa: E402
 
-data = json.dumps(
-    {"prompt": "Hello! My name is John. What can you do?", "actor_id": "test_user_123"}
-).encode()
+data = json.dumps({"prompt": "Hello! My name is John. What can you do?", "actor_id": "test_user_123"}).encode()
 invoke_request = urllib.request.Request(
     url=f"{endpoint_url}?sessionId={test_session_id}",
     data=data,
@@ -431,9 +413,7 @@ aws_request = AWSRequest(
     ),
     headers={"Content-Type": "application/json"},
 )
-SigV4Auth(boto3.Session().get_credentials(), "bedrock-agentcore", REGION).add_auth(
-    aws_request
-)
+SigV4Auth(boto3.Session().get_credentials(), "bedrock-agentcore", REGION).add_auth(aws_request)
 invoke_response = requests.post(  # nosec B113
     aws_request.url, data=aws_request.body, headers=dict(aws_request.headers)
 )
@@ -463,9 +443,7 @@ follow_up_request = AWSRequest(
     data=json.dumps({"prompt": "What is my name?", "actor_id": "test_user_123"}),
     headers={"Content-Type": "application/json"},
 )
-SigV4Auth(boto3.Session().get_credentials(), "bedrock-agentcore", REGION).add_auth(
-    follow_up_request
-)
+SigV4Auth(boto3.Session().get_credentials(), "bedrock-agentcore", REGION).add_auth(follow_up_request)
 follow_up_response = requests.post(  # nosec B113
     follow_up_request.url,
     data=follow_up_request.body,
@@ -482,16 +460,12 @@ print(follow_up_text)
 
 # Use MemorySessionManager for session operations
 manager = MemorySessionManager(memory_id=memory_id, region_name=REGION)
-session = manager.create_memory_session(
-    actor_id="test_user_123", session_id=test_session_id
-)
+session = manager.create_memory_session(actor_id="test_user_123", session_id=test_session_id)
 
 # Get conversation history using session-scoped method
 stored_turns = session.get_last_k_turns(k=10)
 
-print(
-    f"Found {len(stored_turns)} conversation turns in memory (shown in chronological order):"
-)
+print(f"Found {len(stored_turns)} conversation turns in memory (shown in chronological order):")
 for idx, turn in enumerate(stored_turns):
     print(f"\nTurn {idx + 1}:")
     for message in turn:

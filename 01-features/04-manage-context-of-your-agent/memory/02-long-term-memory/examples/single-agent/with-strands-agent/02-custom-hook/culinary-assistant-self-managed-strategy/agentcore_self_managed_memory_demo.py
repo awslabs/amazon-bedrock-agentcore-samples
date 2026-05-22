@@ -71,9 +71,7 @@ print(f"SNS topic created: {sns_topic_arn}")
 
 # Create SQS queue and subscribe to SNS topic
 queue_name = f"agentcore-memory-queue-{int(time.time())}"
-queue_url, queue_arn = aws_utils.create_sqs_queue_with_sns_subscription(
-    queue_name, sns_topic_arn
-)
+queue_url, queue_arn = aws_utils.create_sqs_queue_with_sns_subscription(queue_name, sns_topic_arn)
 print(f"SQS queue created: {queue_url}")
 
 
@@ -86,16 +84,12 @@ print(f"SQS queue created: {queue_url}")
 
 # Create IAM role for AgentCore
 agentcore_role_name = f"AgentCoreMemoryExecutionRole-{int(time.time())}"
-agentcore_role_arn = aws_utils.create_iam_role_for_agentcore(
-    agentcore_role_name, bucket_name, sns_topic_arn
-)
+agentcore_role_arn = aws_utils.create_iam_role_for_agentcore(agentcore_role_name, bucket_name, sns_topic_arn)
 print(f"AgentCore IAM role created: {agentcore_role_arn}")
 
 # Create IAM role for Lambda
 lambda_role_name = f"LambdaMemoryProcessingRole-{int(time.time())}"
-lambda_role_arn = aws_utils.create_iam_role_for_lambda(
-    lambda_role_name, bucket_name, queue_arn
-)
+lambda_role_arn = aws_utils.create_iam_role_for_lambda(lambda_role_name, bucket_name, queue_arn)
 print(f"Lambda IAM role created: {lambda_role_arn}")
 
 
@@ -109,9 +103,7 @@ print(f"Lambda IAM role created: {lambda_role_arn}")
 
 # Create Lambda function
 function_name = f"agentcore-memory-processor-{int(time.time())}"
-function_arn = aws_utils.create_lambda_function(
-    function_name, lambda_role_arn, lambda_code
-)
+function_arn = aws_utils.create_lambda_function(function_name, lambda_role_arn, lambda_code)
 print(f"Lambda function created: {function_arn}")
 
 # Add SQS trigger to Lambda
@@ -183,9 +175,7 @@ session_id = aws_utils.create_test_events(
 print(f"Created test events with session ID: {session_id}")
 
 
-aws_utils.agentcore_client.list_events(
-    memoryId=memory_id, actorId=actor_id, sessionId=session_id
-)
+aws_utils.agentcore_client.list_events(memoryId=memory_id, actorId=actor_id, sessionId=session_id)
 
 
 # ## Step 8: Wait for Memory Processing
@@ -218,9 +208,7 @@ namespace = f"/interests/actor/{actor_id}/session/{session_id}/"
 
 def list_memory_records(memory_id, namespace):
     try:
-        response = aws_utils.agentcore_client.list_memory_records(
-            memoryId=memory_id, namespace=namespace
-        )
+        response = aws_utils.agentcore_client.list_memory_records(memoryId=memory_id, namespace=namespace)
         print(f"Found {len(response.get('memoryRecordSummaries'))} memory records")
 
         # Display the search results
@@ -255,9 +243,7 @@ def retrieve_memory_records(memory_id, query, topK, namespace):
         print(f"Error searching memory: {e}")
 
 
-retrieve_memory_records(
-    memory_id=memory_id, query="food choices for dinner", topK=5, namespace=namespace
-)
+retrieve_memory_records(memory_id=memory_id, query="food choices for dinner", topK=5, namespace=namespace)
 
 
 # ## Step 10: Create Additional Test Events with Different Content
@@ -328,9 +314,7 @@ time.sleep(30)
 
 # Search memory records for outdoor activities
 namespace = f"/interests/actor/{actor_id}/session/{session_id}/"
-retrieve_memory_records(
-    memory_id=memory_id, query="dog pets golden retriever", topK=5, namespace=namespace
-)
+retrieve_memory_records(memory_id=memory_id, query="dog pets golden retriever", topK=5, namespace=namespace)
 
 
 # ## Step 12: Creating the agent
@@ -344,9 +328,7 @@ import logging  # noqa: E402
 from typing import Dict  # noqa: E402
 
 # Setup logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger("customer-support")
 
 # Import required modules
@@ -396,10 +378,7 @@ class CulinaryAssistantMemoryHooks(HookProvider):
     def retrieve_food_preferences(self, event: MessageAddedEvent):
         """Retrieve user food preferences before processing dining query"""
         messages = event.agent.messages
-        if (
-            messages[-1]["role"] == "user"
-            and "toolResult" not in messages[-1]["content"][0]
-        ):
+        if messages[-1]["role"] == "user" and "toolResult" not in messages[-1]["content"][0]:
             user_query = messages[-1]["content"][0]["text"]
 
             try:
@@ -427,9 +406,7 @@ class CulinaryAssistantMemoryHooks(HookProvider):
                         messages[-1]["content"][0]["text"] = (
                             f"User Food Preferences:\n{context_text}\n\n{original_text}"
                         )
-                        logger.info(
-                            f"Retrieved {len(preferences_context)} food preference records"
-                        )
+                        logger.info(f"Retrieved {len(preferences_context)} food preference records")
 
             except Exception as e:
                 logger.error(f"Failed to retrieve food preferences: {e}")
@@ -446,11 +423,7 @@ class CulinaryAssistantMemoryHooks(HookProvider):
                 for msg in reversed(messages):
                     if msg["role"] == "assistant" and not agent_response:
                         agent_response = msg["content"][0]["text"]
-                    elif (
-                        msg["role"] == "user"
-                        and not user_query
-                        and "toolResult" not in msg["content"][0]
-                    ):
+                    elif msg["role"] == "user" and not user_query and "toolResult" not in msg["content"][0]:
                         user_query = msg["content"][0]["text"]
                         break
 

@@ -107,8 +107,7 @@ async def _filtered_aput_messages(self, messages: List[ChatMessage]) -> None:
     text_messages = [
         m
         for m in messages
-        if m.role in (MessageRole.USER, MessageRole.ASSISTANT)
-        and m.content  # skip empty tool-call assistant messages
+        if m.role in (MessageRole.USER, MessageRole.ASSISTANT) and m.content  # skip empty tool-call assistant messages
     ]
     if text_messages:
         await _original_aput_messages(self, text_messages)
@@ -154,55 +153,37 @@ except Exception as e:
 # Define specialized tools for investment advisory tasks:
 
 
-def profile_client_risk(
-    client_name: str, risk_tolerance: str, time_horizon: str, investment_goals: str
-) -> str:
+def profile_client_risk(client_name: str, risk_tolerance: str, time_horizon: str, investment_goals: str) -> str:
     """Profile client risk tolerance and investment objectives"""
-    print(
-        f"👤 Client profile: {client_name} ({risk_tolerance} risk, {time_horizon} horizon)"
-    )
+    print(f"👤 Client profile: {client_name} ({risk_tolerance} risk, {time_horizon} horizon)")
     return f"Profiled client: {client_name}"
 
 
-def analyze_portfolio_holdings(
-    portfolio_value: str, asset_allocation: str, top_holdings: str
-) -> str:
+def analyze_portfolio_holdings(portfolio_value: str, asset_allocation: str, top_holdings: str) -> str:
     """Analyze current portfolio holdings and allocation"""
-    print(
-        f"📊 Portfolio analysis: ${portfolio_value} total value, allocation: {asset_allocation}"
-    )
+    print(f"📊 Portfolio analysis: ${portfolio_value} total value, allocation: {asset_allocation}")
     return f"Analyzed portfolio worth ${portfolio_value}"
 
 
-def calculate_risk_metrics(
-    var_95: str, sharpe_ratio: str, beta: str, volatility: str
-) -> str:
+def calculate_risk_metrics(var_95: str, sharpe_ratio: str, beta: str, volatility: str) -> str:
     """Calculate portfolio risk metrics and performance indicators"""
-    print(
-        f"📈 Risk metrics: VaR 95% {var_95}, Sharpe {sharpe_ratio}, Beta {beta}, Vol {volatility}"
-    )
+    print(f"📈 Risk metrics: VaR 95% {var_95}, Sharpe {sharpe_ratio}, Beta {beta}, Vol {volatility}")
     return "Calculated risk metrics for portfolio"
 
 
-def research_market_sector(
-    sector: str, outlook: str, key_drivers: str, recommendation: str
-) -> str:
+def research_market_sector(sector: str, outlook: str, key_drivers: str, recommendation: str) -> str:
     """Research market sector with outlook and investment recommendation"""
     print(f"🔍 Sector research: {sector} - {outlook} outlook ({recommendation})")
     return f"Researched {sector} sector"
 
 
-def generate_investment_recommendation(
-    security: str, action: str, rationale: str, target_allocation: str
-) -> str:
+def generate_investment_recommendation(security: str, action: str, rationale: str, target_allocation: str) -> str:
     """Generate investment recommendation with rationale"""
     print(f"💡 Investment rec: {action} {security} (target: {target_allocation})")
     return f"Generated recommendation: {action} {security}"
 
 
-def check_regulatory_compliance(
-    rule_type: str, compliance_status: str, notes: str
-) -> str:
+def check_regulatory_compliance(rule_type: str, compliance_status: str, notes: str) -> str:
     """Check regulatory compliance for investment recommendations"""
     print(f"⚖️ Compliance check: {rule_type} - {compliance_status}")
     return f"Checked compliance: {rule_type}"
@@ -302,9 +283,7 @@ async def main():
 
     print("🧠 Client Profile Recall:")
     print(response)
-    print(
-        "\n✅ Expected: Robert Johnson, moderate risk, 15yr horizon, $2.5M portfolio, retirement planning"
-    )
+    print("\n✅ Expected: Robert Johnson, moderate risk, 15yr horizon, $2.5M portfolio, retirement planning")
 
     # ### Test 5: Market Sector Research
 
@@ -359,9 +338,7 @@ async def main():
 
     print("📊 Risk Metrics Analysis:")
     print(response)
-    print(
-        "\n✅ Expected: VaR -$125K, Sharpe 1.15, Beta 0.85, Vol 12.3% - good for moderate risk"
-    )
+    print("\n✅ Expected: VaR -$125K, Sharpe 1.15, Beta 0.85, Vol 12.3% - good for moderate risk")
 
     # ### Test 8: Regulatory Compliance Check
 
@@ -395,9 +372,7 @@ async def main():
 
     print("🤔 Investment Rationale:")
     print(response)
-    print(
-        "\n✅ Expected: Tech sector positive outlook + moderate risk tolerance + 15yr horizon = QQQ increase"
-    )
+    print("\n✅ Expected: Tech sector positive outlook + moderate risk tolerance + 15yr horizon = QQQ increase")
 
     # Comprehensive advisory session summary
     response = await investment_agent.run(
@@ -424,9 +399,7 @@ async def main():
         namespace="/investment-advisory/",
     )
 
-    new_session_memory = AgentCoreMemory(
-        context=new_session_context, region_name=region
-    )
+    new_session_memory = AgentCoreMemory(context=new_session_context, region_name=region)
 
     # Test memory isolation
     response = await investment_agent.run(
@@ -436,9 +409,7 @@ async def main():
 
     print("🚧 Session Boundary Test (Different Session):")
     print(response)
-    print(
-        "\n✅ Expected: Limited or no recall from previous session (short-term memory boundary)"
-    )
+    print("\n✅ Expected: Limited or no recall from previous session (short-term memory boundary)")
 
     # Return to original session to verify persistence
     response = await investment_agent.run(
@@ -516,25 +487,19 @@ async def main():
             print("=" * 60)
 
             total_tests = len(test_results)
-            passed_tests = sum(
-                1 for result in test_results.values() if "PASS" in result
-            )
+            passed_tests = sum(1 for result in test_results.values() if "PASS" in result)
             pass_rate = (passed_tests / total_tests * 100) if total_tests > 0 else 0
 
             for test_name, result in test_results.items():
                 print(f"{test_name}: {result}")
 
             print("=" * 60)
-            print(
-                f"📊 Overall Pass Rate: {passed_tests}/{total_tests} ({pass_rate:.1f}%)"
-            )
+            print(f"📊 Overall Pass Rate: {passed_tests}/{total_tests} ({pass_rate:.1f}%)")
 
             if pass_rate >= 80:
                 print("✅ EXCELLENT: Memory integration working correctly!")
             elif pass_rate >= 60:
-                print(
-                    "⚠️  GOOD: Most memory features working, some issues to investigate"
-                )
+                print("⚠️  GOOD: Most memory features working, some issues to investigate")
             else:
                 print("❌ NEEDS ATTENTION: Memory integration has significant issues")
 
@@ -546,21 +511,15 @@ async def main():
     # Run all validation tests
 
     # Test 1: Memory recall - can the agent recall what was discussed?
-    response1 = await investment_agent.run(
-        "What have we discussed so far in this session?", memory=agentcore_memory
-    )
+    response1 = await investment_agent.run("What have we discussed so far in this session?", memory=agentcore_memory)
     print(f"Response 1 length: {len(str(response1))} chars")
 
     # Test 2: Session memory - does the agent maintain context?
-    response2 = await investment_agent.run(
-        "What did we talk about earlier?", memory=agentcore_memory
-    )
+    response2 = await investment_agent.run("What did we talk about earlier?", memory=agentcore_memory)
     print(f"Response 2 length: {len(str(response2))} chars")
 
     # Test 3: Cross-reference capability - can it connect to previous context?
-    response3 = await investment_agent.run(
-        "How does this relate to what we discussed before?", memory=agentcore_memory
-    )
+    response3 = await investment_agent.run("How does this relate to what we discussed before?", memory=agentcore_memory)
     print(f"Response 3 length: {len(str(response3))} chars")
 
     # ### Test 10: Comprehensive Advisory Summary

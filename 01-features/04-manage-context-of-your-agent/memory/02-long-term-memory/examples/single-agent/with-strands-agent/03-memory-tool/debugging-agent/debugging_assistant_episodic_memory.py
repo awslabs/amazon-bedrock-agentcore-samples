@@ -63,9 +63,7 @@ from typing import List, Dict
 from pprint import pprint
 
 # Setup logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger("debugging-assistant")
 
 # Import boto3 for control plane and data plane operations
@@ -116,12 +114,8 @@ episodic_strategy = {
         "namespaces": ["debugging/{actorId}/sessions/{sessionId}"],
     }
 }
-logger.info(
-    f"Strategy configured: {episodic_strategy['semanticMemoryStrategy']['name']}"
-)
-logger.info(
-    f"Episode namespace: {episodic_strategy['semanticMemoryStrategy']['namespaces'][0]}"
-)
+logger.info(f"Strategy configured: {episodic_strategy['semanticMemoryStrategy']['name']}")
+logger.info(f"Episode namespace: {episodic_strategy['semanticMemoryStrategy']['namespaces'][0]}")
 
 
 # Get or create memory
@@ -212,9 +206,7 @@ for session_file in session_files:
         payload=payload,
     )
 
-    logger.info(
-        f"   ✓ Stored {len(payload)} turns - Event ID: {result['event']['eventId']}"
-    )
+    logger.info(f"   ✓ Stored {len(payload)} turns - Event ID: {result['event']['eventId']}")
 
 logger.info(f"✅ Successfully hydrated {len(session_files)} debugging sessions")
 
@@ -226,9 +218,7 @@ import pprint  # noqa: E402, F811
 reflection_namespace = f"debugging/{ACTOR_ID}/"
 # time.sleep(60)
 # Use boto3 client directly to retrieve memory records
-response = client.list_memory_records(
-    memoryId=memory_id, namespace=reflection_namespace, maxResults=20
-)
+response = client.list_memory_records(memoryId=memory_id, namespace=reflection_namespace, maxResults=20)
 memories = response.get("memoryRecordSummaries", [])
 logger.info(f"   Found {len(memories)} memories")
 if memories:
@@ -286,9 +276,7 @@ def count_tokens(text: str) -> int:
     return len(text)
 
 
-def linearize_episodes(
-    episodes: List[Dict], include_steps: bool = True, include_reflections: bool = True
-) -> str:
+def linearize_episodes(episodes: List[Dict], include_steps: bool = True, include_reflections: bool = True) -> str:
     """Linearize episode data into human-readable format."""
     if not episodes:
         return "No relevant episodes found."
@@ -352,9 +340,7 @@ def linearize_reflections(reflections: List[Dict]) -> str:
         else:
             continue
 
-        output.append(
-            f"{'=' * 80}\nReflection {idx} (Relevance: {score:.2f})\n{'=' * 80}"
-        )
+        output.append(f"{'=' * 80}\nReflection {idx} (Relevance: {score:.2f})\n{'=' * 80}")
         output.append(f"**Title:** {reflection_data.get('title', 'Untitled')}")
         output.append(f"**Use Cases:** {reflection_data.get('use_cases', 'N/A')}")
         output.append(f"**Hints:** {reflection_data.get('hints', 'N/A')}\n")
@@ -389,9 +375,7 @@ def retrieve_process(task: str, include_steps: bool = True) -> str:
     Returns:
         Formatted debugging episodes with optional detailed steps
     """
-    logger.info(
-        f"🔍 Retrieving processes for task: {task} (include_steps={include_steps})"
-    )
+    logger.info(f"🔍 Retrieving processes for task: {task} (include_steps={include_steps})")
 
     try:
         # Search in episode namespace
@@ -409,9 +393,7 @@ def retrieve_process(task: str, include_steps: bool = True) -> str:
         logger.info(f"   Found {len(episodes)} relevant episodes")
 
         # Linearize with configurable detail level
-        return linearize_episodes(
-            episodes, include_steps=include_steps, include_reflections=True
-        )
+        return linearize_episodes(episodes, include_steps=include_steps, include_reflections=True)
 
     except Exception as e:
         logger.error(f"Error retrieving processes: {e}")
@@ -528,9 +510,7 @@ print(response1)
 
 
 # Test 2: Get specific debugging process
-query2 = (
-    "Show me the exact steps for debugging a timeout issue with external API calls."
-)
+query2 = "Show me the exact steps for debugging a timeout issue with external API calls."
 
 logger.info(f"\n{'=' * 80}")
 logger.info("Test 2: API Timeout Debugging Process")

@@ -6,9 +6,7 @@ from typing import Dict
 from datetime import datetime
 from botocore.exceptions import ClientError
 
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger("meeting-notes-assistant")
 
 from strands import Agent, tool  # noqa: E402
@@ -52,13 +50,9 @@ try:
     memory_id = memory["id"]
     logger.info(f"✅ Created memory: {memory_id}")
 except ClientError as e:
-    if e.response["Error"]["Code"] == "ValidationException" and "already exists" in str(
-        e
-    ):
+    if e.response["Error"]["Code"] == "ValidationException" and "already exists" in str(e):
         memories = client.list_memories()
-        memory_id = next(
-            (m["id"] for m in memories if m["id"].startswith(memory_name)), None
-        )
+        memory_id = next((m["id"] for m in memories if m["id"].startswith(memory_name)), None)
         logger.info(f"Memory already exists. Using: {memory_id}")
     else:
         raise
@@ -267,14 +261,8 @@ class EpisodicMemoryHooks(HookProvider):
                             tool_text = f"[TOOL: {tool_info.get('name', 'unknown')}]"
                             interaction_messages.append((tool_text, "TOOL"))
                         elif "toolResult" in item:
-                            result = (
-                                item["toolResult"]
-                                .get("content", [{}])[0]
-                                .get("text", "")
-                            )
-                            interaction_messages.append(
-                                (f"[RESULT: {result[:200]}]", "TOOL")
-                            )
+                            result = item["toolResult"].get("content", [{}])[0].get("text", "")
+                            interaction_messages.append((f"[RESULT: {result[:200]}]", "TOOL"))
 
             if interaction_messages:
                 actor_id = event.agent.state.get("actor_id")
@@ -407,22 +395,16 @@ try:
     )
     print("✅ Seeded past meeting episodes")
     print("⏳ Note: Episode extraction happens in background (~1 minute)")
-    print(
-        "⏳ Note: Reflection extraction takes 10-15 minutes after episodes are stored"
-    )
+    print("⏳ Note: Reflection extraction takes 10-15 minutes after episodes are stored")
 except Exception as e:
     print(f"⚠️ Error seeding history: {e}")
 
 # Test 1: Follow-up on previous decision - should reference past episode
-response1 = meeting_agent(
-    "Let's revisit the Q3 sprint priorities we discussed last week. What was decided?"
-)
+response1 = meeting_agent("Let's revisit the Q3 sprint priorities we discussed last week. What was decided?")
 print(f"Agent: {response1}")
 
 # Test 2: Action item check - should retrieve past action items
-response2 = meeting_agent(
-    "Did we assign someone to handle the user authentication feature?"
-)
+response2 = meeting_agent("Did we assign someone to handle the user authentication feature?")
 print(f"Agent: {response2}")
 
 # Test 3: Budget follow-up - should reference past budget discussion
@@ -440,9 +422,7 @@ Can you capture the decisions and action items?""")
 print(f"Agent: {response4}")
 
 # Test 5: Pattern recognition - agent should remember participant preferences
-response5 = meeting_agent(
-    "Sarah wants to discuss technical architecture for the new feature. What format works best?"
-)
+response5 = meeting_agent("Sarah wants to discuss technical architecture for the new feature. What format works best?")
 print(f"Agent: {response5}")
 
 # Test 6: Completely new topic - no past context

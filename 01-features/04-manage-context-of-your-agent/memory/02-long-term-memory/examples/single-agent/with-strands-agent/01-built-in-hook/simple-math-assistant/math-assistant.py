@@ -82,9 +82,7 @@ from strands.hooks import (
 )
 
 # Setup logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger("memory-tutorial")
 
 # Configuration - replace with your values
@@ -132,9 +130,7 @@ try:
     memory_id = memory["id"]
     logger.info(f"✅ Created memory: {memory_id}")
 except ClientError as e:
-    if e.response["Error"]["Code"] == "ValidationException" and "already exists" in str(
-        e
-    ):
+    if e.response["Error"]["Code"] == "ValidationException" and "already exists" in str(e):
         logger.info(f"Memory '{memory_name}' already exists, retrieving ID...")
         memories = memory_client.list_memories()
         memory_id = next((m["id"] for m in memories if m["name"] == memory_name), None)
@@ -161,9 +157,7 @@ if memory_id is None:
 session_manager = MemorySessionManager(memory_id=memory_id, region_name=REGION)
 
 # Create a memory session for the specific student
-student_session = session_manager.create_memory_session(
-    actor_id=ACTOR_ID, session_id=SESSION_ID
-)
+student_session = session_manager.create_memory_session(actor_id=ACTOR_ID, session_id=SESSION_ID)
 
 logger.info(f"✅ Session manager initialized for memory: {memory_id}")
 logger.info(f"✅ Student session created for actor: {ACTOR_ID}")
@@ -197,10 +191,7 @@ class MemoryHookProvider(HookProvider):
     def retrieve_memories(self, event: MessageAddedEvent):
         """Retrieve relevant memories before processing user message using MemorySession"""
         messages = event.agent.messages
-        if (
-            messages[-1]["role"] == "user"
-            and "toolResult" not in messages[-1]["content"][0]
-        ):
+        if messages[-1]["role"] == "user" and "toolResult" not in messages[-1]["content"][0]:
             user_message = messages[-1]["content"][0].get("text", "")
 
             try:
@@ -216,9 +207,7 @@ class MemoryHookProvider(HookProvider):
 
                 # Filter by relevance score
                 filtered_memories = [
-                    memory
-                    for memory in memories
-                    if memory.get("score", 0) >= self.retrieval_config.relevance_score
+                    memory for memory in memories if memory.get("score", 0) >= self.retrieval_config.relevance_score
                 ]
 
                 # Extract memory content
@@ -236,9 +225,7 @@ class MemoryHookProvider(HookProvider):
                 if memory_context:
                     context_text = "\n".join(memory_context)
                     original_text = messages[-1]["content"][0].get("text", "")
-                    messages[-1]["content"][0]["text"] = (
-                        f"{original_text}\n\nStudent Learning Context:\n{context_text}"
-                    )
+                    messages[-1]["content"][0]["text"] = f"{original_text}\n\nStudent Learning Context:\n{context_text}"
                     logger.info(
                         f"✅ Retrieved {len(memory_context)} relevant memories (filtered from {len(memories)} total)"
                     )
@@ -258,11 +245,7 @@ class MemoryHookProvider(HookProvider):
                 for msg in reversed(messages):
                     if msg["role"] == "assistant" and not assistant_msg:
                         assistant_msg = msg["content"][0]["text"]
-                    elif (
-                        msg["role"] == "user"
-                        and not user_msg
-                        and "toolResult" not in msg["content"][0]
-                    ):
+                    elif msg["role"] == "user" and not user_msg and "toolResult" not in msg["content"][0]:
                         user_msg = msg["content"][0]["text"]
                         break
 
@@ -274,9 +257,7 @@ class MemoryHookProvider(HookProvider):
                     ]
 
                     result = self.student_session.add_turns(interaction_messages)
-                    logger.info(
-                        f"✅ Saved conversation using MemorySession - Event ID: {result['eventId']}"
-                    )
+                    logger.info(f"✅ Saved conversation using MemorySession - Event ID: {result['eventId']}")
 
         except Exception as e:
             logger.error(f"Failed to save memories: {e}")
@@ -346,9 +327,7 @@ print(f"Agent: {response2}")
 
 
 # Third interaction - test memory recall
-response3 = agent(
-    "I got that right! What's the immediate next step that I should study after modular arithmetic?"
-)
+response3 = agent("I got that right! What's the immediate next step that I should study after modular arithmetic?")
 print(f"Agent: {response3}")
 
 

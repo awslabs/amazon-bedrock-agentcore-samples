@@ -19,12 +19,8 @@ class AWSUtils:
         self.sqs_client = boto3.client("sqs", region_name=region_name)
         self.lambda_client = boto3.client("lambda", region_name=region_name)
         self.iam_client = boto3.client("iam", region_name=region_name)
-        self.agentcore_client = boto3.client(
-            "bedrock-agentcore", region_name=region_name
-        )
-        self.agentcore_client_control = boto3.client(
-            "bedrock-agentcore-control", region_name=region_name
-        )
+        self.agentcore_client = boto3.client("bedrock-agentcore", region_name=region_name)
+        self.agentcore_client_control = boto3.client("bedrock-agentcore-control", region_name=region_name)
         self.bedrock_runtime = boto3.client("bedrock-runtime", region_name=region_name)
         self.account_id = boto3.client("sts").get_caller_identity().get("Account")
         self.created_resources = {
@@ -101,9 +97,7 @@ class AWSUtils:
             queue_url = queue_response["QueueUrl"]
 
             # Get queue ARN
-            queue_attrs = self.sqs_client.get_queue_attributes(
-                QueueUrl=queue_url, AttributeNames=["QueueArn"]
-            )
+            queue_attrs = self.sqs_client.get_queue_attributes(QueueUrl=queue_url, AttributeNames=["QueueArn"])
             queue_arn = queue_attrs["Attributes"]["QueueArn"]
 
             # Set queue policy to allow SNS
@@ -120,14 +114,10 @@ class AWSUtils:
                 ],
             }
 
-            self.sqs_client.set_queue_attributes(
-                QueueUrl=queue_url, Attributes={"Policy": json.dumps(policy)}
-            )
+            self.sqs_client.set_queue_attributes(QueueUrl=queue_url, Attributes={"Policy": json.dumps(policy)})
 
             # Subscribe queue to SNS topic
-            self.sns_client.subscribe(
-                TopicArn=sns_topic_arn, Protocol="sqs", Endpoint=queue_arn
-            )
+            self.sns_client.subscribe(TopicArn=sns_topic_arn, Protocol="sqs", Endpoint=queue_arn)
 
             print(f"Created SQS queue: {queue_url} and subscribed to SNS topic")
             self.created_resources["sqs_queues"].append(queue_url)
@@ -265,9 +255,7 @@ class AWSUtils:
             )
 
             # Wait for IAM role to propagate
-            print(
-                f"Created IAM role for Lambda: {role_arn}, waiting 10s for propagation..."
-            )
+            print(f"Created IAM role for Lambda: {role_arn}, waiting 10s for propagation...")
             time.sleep(10)
 
             self.created_resources["iam_roles"].append(role_name)
@@ -325,9 +313,7 @@ class AWSUtils:
             raise
 
     # Lambda Function Methods
-    def create_lambda_function(
-        self, function_name, role_arn, handler_code, timeout=60, use_latest_boto3=True
-    ):
+    def create_lambda_function(self, function_name, role_arn, handler_code, timeout=60, use_latest_boto3=True):
         """Create Lambda function for processing memory events"""
         try:
             # Create boto3 layer if requested
@@ -420,21 +406,9 @@ class AWSUtils:
                             "configuration": {
                                 "selfManagedConfiguration": {
                                     "triggerConditions": [
-                                        {
-                                            "messageBasedTrigger": {
-                                                "messageCount": message_trigger_count
-                                            }
-                                        },
-                                        {
-                                            "tokenBasedTrigger": {
-                                                "tokenCount": token_trigger_count
-                                            }
-                                        },
-                                        {
-                                            "timeBasedTrigger": {
-                                                "idleSessionTimeout": idle_timeout
-                                            }
-                                        },
+                                        {"messageBasedTrigger": {"messageCount": message_trigger_count}},
+                                        {"tokenBasedTrigger": {"tokenCount": token_trigger_count}},
+                                        {"timeBasedTrigger": {"idleSessionTimeout": idle_timeout}},
                                     ],
                                     "invocationConfiguration": {
                                         "topicArn": sns_topic_arn,
@@ -525,20 +499,14 @@ class AWSUtils:
         resources_to_delete = {k: list(v) for k, v in self.created_resources.items()}
 
         # If no tracked resources or discovery requested, try to find resources
-        if (
-            discover_resources
-            and sum(len(resources) for resources in self.created_resources.values())
-            == 0
-        ):
+        if discover_resources and sum(len(resources) for resources in self.created_resources.values()) == 0:
             print("No tracked resources found. Attempting to discover resources...")
 
             try:
                 # Discover memories with name prefix 'SelfManageMemory'
                 memory_prefix = "SelfManageMemory" if prefix is None else prefix
                 memories = self.agentcore_client_control.list_memories(
-                    filters=[
-                        {"key": "name", "value": memory_prefix, "operator": "CONTAINS"}
-                    ]
+                    filters=[{"key": "name", "value": memory_prefix, "operator": "CONTAINS"}]
                 ).get("memorySummaries", [])
 
                 for memory in memories:
@@ -550,34 +518,24 @@ class AWSUtils:
 
             try:
                 # Discover Lambda functions
-                lambda_prefix = (
-                    "agentcore-memory-processor" if prefix is None else prefix
-                )
+                lambda_prefix = "agentcore-memory-processor" if prefix is None else prefix
                 functions = self.lambda_client.list_functions().get("Functions", [])
                 for function in functions:
                     if (
                         lambda_prefix in function["FunctionName"]
-                        and function["FunctionName"]
-                        not in resources_to_delete["lambda_functions"]
+                        and function["FunctionName"] not in resources_to_delete["lambda_functions"]
                     ):
-                        resources_to_delete["lambda_functions"].append(
-                            function["FunctionName"]
-                        )
+                        resources_to_delete["lambda_functions"].append(function["FunctionName"])
                         print(f"Discovered Lambda function: {function['FunctionName']}")
             except Exception as e:
                 print(f"Error discovering Lambda functions: {e}")
 
             try:
                 # Discover SNS topics
-                sns_prefix = (
-                    "agentcore-memory-notifications" if prefix is None else prefix
-                )
+                sns_prefix = "agentcore-memory-notifications" if prefix is None else prefix
                 topics = self.sns_client.list_topics().get("Topics", [])
                 for topic in topics:
-                    if (
-                        sns_prefix in topic["TopicArn"]
-                        and topic["TopicArn"] not in resources_to_delete["sns_topics"]
-                    ):
+                    if sns_prefix in topic["TopicArn"] and topic["TopicArn"] not in resources_to_delete["sns_topics"]:
                         resources_to_delete["sns_topics"].append(topic["TopicArn"])
                         print(f"Discovered SNS topic: {topic['TopicArn']}")
             except Exception as e:
@@ -586,9 +544,7 @@ class AWSUtils:
             try:
                 # Discover SQS queues
                 sqs_prefix = "agentcore-memory-queue" if prefix is None else prefix
-                queues = self.sqs_client.list_queues(QueueNamePrefix=sqs_prefix).get(
-                    "QueueUrls", []
-                )
+                queues = self.sqs_client.list_queues(QueueNamePrefix=sqs_prefix).get("QueueUrls", [])
                 for queue in queues:
                     if queue not in resources_to_delete["sqs_queues"]:
                         resources_to_delete["sqs_queues"].append(queue)
@@ -623,19 +579,14 @@ class AWSUtils:
                 buckets = self.s3_client.list_buckets().get("Buckets", [])
                 for bucket in buckets:
                     bucket_name = bucket["Name"]
-                    if (
-                        s3_prefix in bucket_name
-                        and bucket_name not in resources_to_delete["s3_buckets"]
-                    ):
+                    if s3_prefix in bucket_name and bucket_name not in resources_to_delete["s3_buckets"]:
                         resources_to_delete["s3_buckets"].append(bucket_name)
                         print(f"Discovered S3 bucket: {bucket_name}")
             except Exception as e:
                 print(f"Error discovering S3 buckets: {e}")
 
         # Check if there are any resources to clean up
-        total_resources = sum(
-            len(resources) for resources in resources_to_delete.values()
-        )
+        total_resources = sum(len(resources) for resources in resources_to_delete.values())
         if total_resources == 0:
             print("No resources to clean up. Make sure you've created resources first.")
             return
@@ -693,23 +644,15 @@ class AWSUtils:
             try:
                 print(f"Deleting IAM role: {role_name}")
                 # Detach all managed policies
-                attached_policies = self.iam_client.list_attached_role_policies(
-                    RoleName=role_name
-                )
+                attached_policies = self.iam_client.list_attached_role_policies(RoleName=role_name)
                 for policy in attached_policies.get("AttachedPolicies", []):
-                    self.iam_client.detach_role_policy(
-                        RoleName=role_name, PolicyArn=policy["PolicyArn"]
-                    )
-                    print(
-                        f"Detached policy {policy['PolicyArn']} from role {role_name}"
-                    )
+                    self.iam_client.detach_role_policy(RoleName=role_name, PolicyArn=policy["PolicyArn"])
+                    print(f"Detached policy {policy['PolicyArn']} from role {role_name}")
 
                 # Delete inline policies
                 inline_policies = self.iam_client.list_role_policies(RoleName=role_name)
                 for policy_name in inline_policies.get("PolicyNames", []):
-                    self.iam_client.delete_role_policy(
-                        RoleName=role_name, PolicyName=policy_name
-                    )
+                    self.iam_client.delete_role_policy(RoleName=role_name, PolicyName=policy_name)
                     print(f"Deleted inline policy {policy_name} from role {role_name}")
 
                 # Delete role
@@ -741,6 +684,4 @@ class AWSUtils:
             except Exception as e:
                 print(f"Error deleting S3 bucket {bucket_name}: {e}")
 
-        print(
-            f"Cleanup complete. Deleted {deleted_resources} out of {total_resources} resources."
-        )
+        print(f"Cleanup complete. Deleted {deleted_resources} out of {total_resources} resources.")

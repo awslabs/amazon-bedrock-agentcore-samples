@@ -105,9 +105,7 @@ data.create_event(
     ],
 )
 
-events = data.list_events(memoryId=memory_id, actorId=ACTOR_ID, sessionId=SESSION_ID)[
-    "events"
-]
+events = data.list_events(memoryId=memory_id, actorId=ACTOR_ID, sessionId=SESSION_ID)["events"]
 for e in events:
     print(e["eventId"], e["eventTimestamp"])
 

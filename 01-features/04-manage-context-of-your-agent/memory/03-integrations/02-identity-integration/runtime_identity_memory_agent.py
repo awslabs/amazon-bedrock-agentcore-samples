@@ -14,9 +14,7 @@ from strands.hooks import (
 )
 
 # Configure detailed logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 logger = logging.getLogger("runtime-memory-agent")
 
 # Initialize the agent core app
@@ -46,9 +44,7 @@ class MemoryHookProvider(HookProvider):
         actor_id = event.agent.state.get("actor_id")
         session_id = event.agent.state.get("session_id")
 
-        logger.info(
-            f"State values - memory_id: {memory_id}, actor_id: {actor_id}, session_id: {session_id}"
-        )
+        logger.info(f"State values - memory_id: {memory_id}, actor_id: {actor_id}, session_id: {session_id}")
 
         missing_values = []
         if not memory_id:
@@ -74,9 +70,7 @@ class MemoryHookProvider(HookProvider):
                     max_results=1,
                 )
                 session_exists = len(events) > 0
-                logger.info(
-                    f"Session exists: {session_exists} (found {len(events)} events)"
-                )
+                logger.info(f"Session exists: {session_exists} (found {len(events)} events)")
             except Exception as e:
                 logger.warning(f"Error checking session existence: {e}")
                 # Assume no events exist and continue
@@ -88,17 +82,13 @@ class MemoryHookProvider(HookProvider):
                 return
 
             # Session exists, load the conversation history
-            logger.info(
-                f"Loading conversation history for existing session {session_id}"
-            )
+            logger.info(f"Loading conversation history for existing session {session_id}")
             recent_turns = self.memory_client.get_last_k_turns(
                 memory_id=memory_id, actor_id=actor_id, session_id=session_id, k=5
             )
 
             if recent_turns:
-                logger.info(
-                    f"✅ Loaded {len(recent_turns)} conversation turns from memory"
-                )
+                logger.info(f"✅ Loaded {len(recent_turns)} conversation turns from memory")
                 context_messages = []
                 for turn in recent_turns:
                     for message in turn:
@@ -123,9 +113,7 @@ class MemoryHookProvider(HookProvider):
         actor_id = event.agent.state.get("actor_id")
         session_id = event.agent.state.get("session_id")
 
-        logger.info(
-            f"State values - memory_id: {memory_id}, actor_id: {actor_id}, session_id: {session_id}"
-        )
+        logger.info(f"State values - memory_id: {memory_id}, actor_id: {actor_id}, session_id: {session_id}")
 
         missing_values = []
         if not memory_id:
@@ -136,9 +124,7 @@ class MemoryHookProvider(HookProvider):
             missing_values.append("session_id")
 
         if missing_values:
-            logger.warning(
-                f"❌ Cannot save message - missing values: {', '.join(missing_values)}"
-            )
+            logger.warning(f"❌ Cannot save message - missing values: {', '.join(missing_values)}")
             return
 
         messages = event.agent.messages
@@ -147,9 +133,7 @@ class MemoryHookProvider(HookProvider):
             message_content = str(last_message.get("content", ""))
             message_role = last_message["role"]
 
-            logger.info(
-                f"Saving {message_role} message to memory: {message_content[:30]}..."
-            )
+            logger.info(f"Saving {message_role} message to memory: {message_content[:30]}...")
 
             self.memory_client.create_event(
                 memory_id=memory_id,
@@ -234,16 +218,12 @@ def runtime_memory_agent(payload, context):
     logger.info(f"Received payload: {payload}")
     logger.info(f"Context: {context}")
     logger.info(f"Context Auth: {context.request_headers.get('Authorization')}")
-    logger.info(
-        f"User Sub: {get_user_sub(context.request_headers.get('Authorization'), REGION, COGNITO_USER_POOL)}"
-    )
+    logger.info(f"User Sub: {get_user_sub(context.request_headers.get('Authorization'), REGION, COGNITO_USER_POOL)}")
     logger.info(f"Context session_id: {context.session_id}")
 
     # Extract and validate required values
     user_input = payload.get("prompt")
-    actor_id = get_user_sub(
-        context.request_headers.get("Authorization"), REGION, COGNITO_USER_POOL
-    )
+    actor_id = get_user_sub(context.request_headers.get("Authorization"), REGION, COGNITO_USER_POOL)
     session_id = context.session_id  # Get session_id from context
 
     # Validate required fields

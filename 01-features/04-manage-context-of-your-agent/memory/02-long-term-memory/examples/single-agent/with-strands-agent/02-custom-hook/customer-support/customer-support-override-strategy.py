@@ -150,9 +150,7 @@ from datetime import datetime
 from botocore.exceptions import ClientError
 
 # Setup logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger("customer-support")
 
 # Import required modules for Strands Agent
@@ -226,9 +224,7 @@ def create_memory_execution_role():
                 "Action": "sts:AssumeRole",
                 "Condition": {
                     "StringEquals": {"aws:SourceAccount": account_id},
-                    "ArnLike": {
-                        "aws:SourceArn": f"arn:aws:bedrock-agentcore:{REGION}:{account_id}:*"
-                    },
+                    "ArnLike": {"aws:SourceArn": f"arn:aws:bedrock-agentcore:{REGION}:{account_id}:*"},
                 },
             }
         ],
@@ -282,18 +278,14 @@ def create_memory_execution_role():
 
         logger.info(f"✅ Successfully created IAM role: {role_arn}")
         logger.info("   - Trust policy: AgentCore Memory service can assume this role")
-        logger.info(
-            "   - Permissions: bedrock:InvokeModel and bedrock:InvokeModelWithResponseStream"
-        )
+        logger.info("   - Permissions: bedrock:InvokeModel and bedrock:InvokeModelWithResponseStream")
 
         return role_arn
 
     except ClientError as e:
         error_code = e.response["Error"]["Code"]
         if error_code == "AccessDenied":
-            logger.error(
-                "❌ Access denied creating IAM role. Please ensure you have IAM permissions:"
-            )
+            logger.error("❌ Access denied creating IAM role. Please ensure you have IAM permissions:")
             logger.error("   - iam:CreateRole")
             logger.error("   - iam:PutRolePolicy")
             logger.error("   - iam:GetRole")
@@ -396,9 +388,7 @@ try:
     logger.info(f"   Memory Status: {memory['status']}")
 
 except ClientError as e:
-    if e.response["Error"]["Code"] == "ValidationException" and "already exists" in str(
-        e
-    ):
+    if e.response["Error"]["Code"] == "ValidationException" and "already exists" in str(e):
         logger.info(f"Memory '{memory_name}' already exists, retrieving ID...")
         memories = memory_client.list_memories()
         memory_id = next((m["id"] for m in memories if m["name"] == memory_name), None)
@@ -414,9 +404,7 @@ except ClientError as e:
 # Test memory client basic functionality
 try:
     existing_memories = memory_client.list_memories()
-    logger.info(
-        f"✅ Memory client connection successful. Found {len(existing_memories)} existing memories"
-    )
+    logger.info(f"✅ Memory client connection successful. Found {len(existing_memories)} existing memories")
 except Exception as e:
     logger.error(f"❌ Memory client test failed: {e}")
     raise
@@ -488,9 +476,7 @@ def check_order_status(order_number: str) -> str:
         "789012": "Samsung Galaxy S23 - In transit, expected delivery on July 1, 2025",
     }
 
-    return mock_orders.get(
-        order_number, f"Order {order_number} not found. Please verify the order number."
-    )
+    return mock_orders.get(order_number, f"Order {order_number} not found. Please verify the order number.")
 
 
 logger.info("✅ Check Order Status tool ready")
@@ -502,14 +488,10 @@ logger.info("✅ Check Order Status tool ready")
 
 
 # Initialize the session memory manager
-session_manager: MemorySessionManager = MemorySessionManager(
-    memory_id=memory_id, region_name=REGION
-)
+session_manager: MemorySessionManager = MemorySessionManager(memory_id=memory_id, region_name=REGION)
 
 # Create a memory session for the specific customer
-customer_session: MemorySession = session_manager.create_memory_session(
-    actor_id=CUSTOMER_ID, session_id=SESSION_ID
-)
+customer_session: MemorySession = session_manager.create_memory_session(actor_id=CUSTOMER_ID, session_id=SESSION_ID)
 
 logger.info(f"✅ Session manager initialized for memory: {memory_id}")
 logger.info(f"✅ Customer session created for actor: {CUSTOMER_ID}")
@@ -533,21 +515,14 @@ class CustomerSupportMemoryHooks(HookProvider):
 
         # Define retrieval configuration for different memory types
         self.retrieval_config = {
-            "support/customer/{actorId}/preferences/": RetrievalConfig(
-                top_k=3, relevance_score=0.3
-            ),
-            "support/customer/{actorId}/semantic/": RetrievalConfig(
-                top_k=5, relevance_score=0.2
-            ),
+            "support/customer/{actorId}/preferences/": RetrievalConfig(top_k=3, relevance_score=0.3),
+            "support/customer/{actorId}/semantic/": RetrievalConfig(top_k=5, relevance_score=0.2),
         }
 
     def retrieve_customer_context(self, event: MessageAddedEvent):
         """Retrieve customer context before processing support query using MemorySession"""
         messages = event.agent.messages
-        if (
-            messages[-1]["role"] == "user"
-            and "toolResult" not in messages[-1]["content"][0]
-        ):
+        if messages[-1]["role"] == "user" and "toolResult" not in messages[-1]["content"][0]:
             user_query = messages[-1]["content"][0]["text"]
 
             try:
@@ -557,9 +532,7 @@ class CustomerSupportMemoryHooks(HookProvider):
                 # Search across different memory namespaces using MemorySession
                 for namespace_template, config in self.retrieval_config.items():
                     # Resolve namespace template with actual actor ID from session
-                    resolved_namespace = namespace_template.format(
-                        actorId=self.customer_session._actor_id
-                    )
+                    resolved_namespace = namespace_template.format(actorId=self.customer_session._actor_id)
 
                     # Use MemorySession API (no need to pass actor_id/session_id)
                     memories = self.customer_session.search_long_term_memories(
@@ -570,9 +543,7 @@ class CustomerSupportMemoryHooks(HookProvider):
 
                     # Filter by relevance score
                     filtered_memories = [
-                        memory
-                        for memory in memories
-                        if memory.get("score", 0) >= config.relevance_score
+                        memory for memory in memories if memory.get("score", 0) >= config.relevance_score
                     ]
 
                     relevant_memories.extend(filtered_memories)
@@ -584,13 +555,9 @@ class CustomerSupportMemoryHooks(HookProvider):
                 if relevant_memories:
                     context_text = self._format_context(relevant_memories)
                     original_prompt = event.agent.system_prompt
-                    enhanced_prompt = (
-                        f"{original_prompt}\n\nCustomer Context:\n{context_text}"
-                    )
+                    enhanced_prompt = f"{original_prompt}\n\nCustomer Context:\n{context_text}"
                     event.agent.system_prompt = enhanced_prompt
-                    logger.info(
-                        f"✅ Injected {len(relevant_memories)} memories into agent context"
-                    )
+                    logger.info(f"✅ Injected {len(relevant_memories)} memories into agent context")
 
             except Exception as e:
                 logger.error(f"Failed to retrieve customer context: {e}")
@@ -617,11 +584,7 @@ class CustomerSupportMemoryHooks(HookProvider):
                 for msg in reversed(messages):
                     if msg["role"] == "assistant" and not agent_response:
                         agent_response = msg["content"][0]["text"]
-                    elif (
-                        msg["role"] == "user"
-                        and not customer_query
-                        and "toolResult" not in msg["content"][0]
-                    ):
+                    elif msg["role"] == "user" and not customer_query and "toolResult" not in msg["content"][0]:
                         customer_query = msg["content"][0]["text"]
                         break
 
@@ -633,18 +596,14 @@ class CustomerSupportMemoryHooks(HookProvider):
                     ]
 
                     result = self.customer_session.add_turns(interaction_messages)
-                    logger.info(
-                        f"✅ Saved interaction using MemorySession - Event ID: {result['eventId']}"
-                    )
+                    logger.info(f"✅ Saved interaction using MemorySession - Event ID: {result['eventId']}")
 
         except Exception as e:
             logger.error(f"Failed to save support interaction: {e}")
 
     def register_hooks(self, registry: HookRegistry) -> None:
         """Register customer support memory hooks"""
-        registry.add_callback(
-            MessageAddedEvent, self.retrieve_customer_context
-        )  # Re-added!
+        registry.add_callback(MessageAddedEvent, self.retrieve_customer_context)  # Re-added!
         registry.add_callback(AfterInvocationEvent, self.save_support_interaction)
         logger.info("✅ Customer support memory hooks registered with MemorySession")
 
@@ -687,9 +646,7 @@ print("✅ Customer support agent created with MemorySession integration")
 
 # Seed with previous customer interactions using MemorySession
 previous_interactions = [
-    ConversationalMessage(
-        "I bought a new iPhone 15 Pro on June 1st, 2025. Order number is 123456.", USER
-    ),
+    ConversationalMessage("I bought a new iPhone 15 Pro on June 1st, 2025. Order number is 123456.", USER),
     ConversationalMessage(
         "Thank you for your purchase! I can see your iPhone 15 Pro order #123456 was delivered successfully. How can I help you today?",
         ASSISTANT,
@@ -702,9 +659,7 @@ previous_interactions = [
         "Perfect! I have your Sennheiser headphones order #654321 on file with the 1-year warranty. Both your iPhone and headphones should work great together.",
         ASSISTANT,
     ),
-    ConversationalMessage(
-        "I'm looking for a good laptop. I prefer ThinkPad models.", USER
-    ),
+    ConversationalMessage("I'm looking for a good laptop. I prefer ThinkPad models.", USER),
     ConversationalMessage(
         "Great choice! ThinkPads are excellent for their durability and performance. Let me help you find the right model for your needs.",
         ASSISTANT,
@@ -727,9 +682,7 @@ except Exception as e:
 
 # Test 1: Customer reports iPhone issue
 logger.info("🧪 Running Test 1: iPhone performance issue")
-test_query_1 = (
-    "My iPhone is running very slow and gets hot when charging. Can you help?"
-)
+test_query_1 = "My iPhone is running very slow and gets hot when charging. Can you help?"
 logger.info(f"Query: {test_query_1}")
 
 response1 = support_agent(test_query_1)
@@ -759,9 +712,7 @@ print(f"\n📦 Order Status Support Response:\n{response3}\n")
 
 # Test 4: Product recommendation based on preferences
 logger.info("🧪 Running Test 4: Product recommendation")
-test_query_4 = (
-    "I'm still interested in buying a laptop. What ThinkPad models do you recommend?"
-)
+test_query_4 = "I'm still interested in buying a laptop. What ThinkPad models do you recommend?"
 logger.info(f"Query: {test_query_4}")
 
 response4 = support_agent(test_query_4)
@@ -788,9 +739,7 @@ if events:
         root_event_id=last_event_id,
         branch_name="premium-support",
         messages=[
-            ConversationalMessage(
-                "I'd like to upgrade to premium support for faster resolution.", USER
-            ),
+            ConversationalMessage("I'd like to upgrade to premium support for faster resolution.", USER),
             ConversationalMessage(
                 "Excellent choice! With premium support, you'll get 24/7 priority assistance, dedicated account manager, and same-day resolution guarantee. Let me process your upgrade.",
                 ASSISTANT,
@@ -837,9 +786,7 @@ metadata_event = customer_session.add_turns(
     },
 )
 
-logger.info(
-    f"✅ Added support event with metadata - Event ID: {metadata_event['eventId']}"
-)
+logger.info(f"✅ Added support event with metadata - Event ID: {metadata_event['eventId']}")
 print("\n📊 Support interaction tagged with:")
 print("   - Interaction Type: product_recommendation")
 print("   - Outcome: purchase_intent")
@@ -864,9 +811,7 @@ try:
         ]
     )
 
-    print(
-        f"\n🛍️ Found {len(recommendation_events)} product recommendation interaction(s)"
-    )
+    print(f"\n🛍️ Found {len(recommendation_events)} product recommendation interaction(s)")
 
     # Query positive sentiment interactions
     positive_events = customer_session.list_events(

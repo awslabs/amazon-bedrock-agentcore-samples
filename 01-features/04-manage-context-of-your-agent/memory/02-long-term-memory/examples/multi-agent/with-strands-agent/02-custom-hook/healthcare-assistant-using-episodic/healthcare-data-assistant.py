@@ -108,9 +108,7 @@ MEMORY_NAME = "healthcare_episodic_memory"
 PATIENT_ID = "b2055b4d-ac17-4d94-8c5b-3395e4c334dd"
 region = "us-east-1"  # Replace with your AWS region
 SESSION_ID = f"session_{datetime.now().strftime('%Y%m%d%H%M%S')}"
-MODEL_ID = (
-    "global.anthropic.claude-sonnet-4-20250514-v1:0"  # Replace with your Model ID
-)
+MODEL_ID = "global.anthropic.claude-sonnet-4-20250514-v1:0"  # Replace with your Model ID
 
 print("Memory Configuration:")
 print(f"  Memory Name: {MEMORY_NAME}")
@@ -153,15 +151,11 @@ if not DATASTORE_ID:
 
         DATASTORE_ID = create_response["DatastoreId"]
         print(f"✅ Datastore created: {DATASTORE_ID}")
-        print(
-            "⏳ Waiting for datastore to become ACTIVE (this may take 10-15 minutes)..."
-        )
+        print("⏳ Waiting for datastore to become ACTIVE (this may take 10-15 minutes)...")
 
         # Wait for ACTIVE status
         while True:
-            status_response = healthlake_client.describe_fhir_datastore(
-                DatastoreId=DATASTORE_ID
-            )
+            status_response = healthlake_client.describe_fhir_datastore(DatastoreId=DATASTORE_ID)
             status = status_response["DatastoreProperties"]["DatastoreStatus"]
 
             if status == "ACTIVE":
@@ -197,9 +191,7 @@ def query_healthlake(resource_type, search_params=None, resource_id=None):
     session = boto3.Session()
     credentials = session.get_credentials()
 
-    request = AWSRequest(
-        method="GET", url=url, headers={"Accept": "application/fhir+json"}
-    )
+    request = AWSRequest(method="GET", url=url, headers={"Accept": "application/fhir+json"})
     SigV4Auth(credentials, "healthlake", HEALTHLAKE_REGION).add_auth(request)
 
     response = requests.get(url, headers=dict(request.headers), timeout=30)
@@ -250,14 +242,10 @@ try:
     memory_id = memory["id"]
     logger.info(f"Memory created successfully with ID: {memory_id}")
 except ClientError as e:
-    if e.response["Error"]["Code"] == "ValidationException" and "already exists" in str(
-        e
-    ):
+    if e.response["Error"]["Code"] == "ValidationException" and "already exists" in str(e):
         # If memory already exists, retrieve its ID
         memories = client.list_memories()
-        memory_id = next(
-            (m["id"] for m in memories if m["id"].startswith(MEMORY_NAME)), None
-        )
+        memory_id = next((m["id"] for m in memories if m["id"].startswith(MEMORY_NAME)), None)
         logger.info(f"Memory already exists. Using existing memory: {memory_id}")
 except Exception as e:
     # Handle any errors during memory creation
@@ -317,9 +305,7 @@ from bedrock_agentcore.memory import MemorySessionManager  # noqa: E402
 
 
 class HealthcareMemoryHooks(HookProvider):
-    def __init__(
-        self, memory_id: str, region_name: str = None, branch_name: str = "main"
-    ):
+    def __init__(self, memory_id: str, region_name: str = None, branch_name: str = "main"):
         """Initialize the hook with a MemorySessionManager.
 
         Args:
@@ -330,9 +316,7 @@ class HealthcareMemoryHooks(HookProvider):
         if region_name is None:
             region_name = region  # Use global region variable
 
-        self.memory_manager = MemorySessionManager(
-            memory_id=memory_id, region_name=region_name
-        )
+        self.memory_manager = MemorySessionManager(memory_id=memory_id, region_name=region_name)
         self.memory_id = memory_id
         self.branch_name = branch_name
         self._sessions = {}  # Cache session objects per actor/session combo
@@ -342,9 +326,7 @@ class HealthcareMemoryHooks(HookProvider):
         """Get or create a MemorySession for the given actor/session."""
         key = f"{actor_id}:{session_id}"
         if key not in self._sessions:
-            self._sessions[key] = self.memory_manager.create_memory_session(
-                actor_id=actor_id, session_id=session_id
-            )
+            self._sessions[key] = self.memory_manager.create_memory_session(actor_id=actor_id, session_id=session_id)
         return self._sessions[key]
 
     def _initialize_branch(self, actor_id: str, session_id: str):
@@ -365,11 +347,7 @@ class HealthcareMemoryHooks(HookProvider):
                 if not main_events:
                     # Create initial event in main branch
                     memory_session.add_turns(
-                        [
-                            ConversationalMessage(
-                                "Healthcare system initialized", MessageRole.ASSISTANT
-                            )
-                        ]
+                        [ConversationalMessage("Healthcare system initialized", MessageRole.ASSISTANT)]
                     )
                     main_events = memory_session.list_events(branch_name="main")
 
@@ -391,9 +369,7 @@ class HealthcareMemoryHooks(HookProvider):
             self._branch_initialized = True
 
         except Exception as e:
-            logger.error(
-                f"Failed to initialize healthcare branch {self.branch_name}: {e}"
-            )
+            logger.error(f"Failed to initialize healthcare branch {self.branch_name}: {e}")
 
     def on_agent_initialized(self, event: AgentInitializedEvent):
         """Load recent conversation history when healthcare agent starts"""
@@ -403,9 +379,7 @@ class HealthcareMemoryHooks(HookProvider):
             session_id = event.agent.state.get("session_id")
 
             if not actor_id or not session_id:
-                logger.warning(
-                    "Missing actor_id or session_id in healthcare agent state"
-                )
+                logger.warning("Missing actor_id or session_id in healthcare agent state")
                 return
 
             # Initialize branch if needed (for non-main branches)
@@ -436,9 +410,7 @@ class HealthcareMemoryHooks(HookProvider):
                         f"\n\nRecent healthcare conversation history:\n{context}\n\n"
                         "Continue the conversation naturally based on this context."
                     )
-                    logger.info(
-                        f"✅ Loaded healthcare context from branch '{self.branch_name}'"
-                    )
+                    logger.info(f"✅ Loaded healthcare context from branch '{self.branch_name}'")
 
         except Exception as e:
             logger.error(f"Failed to load healthcare conversation history: {e}")
@@ -451,9 +423,7 @@ class HealthcareMemoryHooks(HookProvider):
             session_id = event.agent.state.get("session_id")
 
             if not actor_id or not session_id:
-                logger.warning(
-                    "Missing actor_id or session_id in healthcare agent state"
-                )
+                logger.warning("Missing actor_id or session_id in healthcare agent state")
                 return
 
             # Get the memory session
@@ -483,9 +453,7 @@ class HealthcareMemoryHooks(HookProvider):
             # Store the message on the appropriate branch
             if self.branch_name == "main":
                 # Main branch - just add turns normally
-                memory_session.add_turns(
-                    messages=[ConversationalMessage(content_text, message_role)]
-                )
+                memory_session.add_turns(messages=[ConversationalMessage(content_text, message_role)])
             else:
                 # Non-main branch - need to append to existing branch
                 # Initialize branch if it doesn't exist
@@ -748,11 +716,7 @@ print("\n=== Viewing Healthcare Memory Branches ===")
 
 if claims_hooks or demographics_hooks or medication_hooks:
     # Get any memory session to list branches (they all point to the same session)
-    hook = (
-        claims_hooks
-        if claims_hooks
-        else (demographics_hooks if demographics_hooks else medication_hooks)
-    )
+    hook = claims_hooks if claims_hooks else (demographics_hooks if demographics_hooks else medication_hooks)
     if hook:
         memory_session = hook.get_session(actor_id=PATIENT_ID, session_id=SESSION_ID)
 
@@ -781,9 +745,7 @@ if claims_hooks or demographics_hooks or medication_hooks:
         print("  • 'demographics_agent' = Demographics assistant conversations")
         print("  • 'medication_agent' = Medication assistant conversations")
 else:
-    print(
-        "No memory hooks found. Make sure to run the cell that creates the hooks first."
-    )
+    print("No memory hooks found. Make sure to run the cell that creates the hooks first.")
 
 
 # ## Validating Long-Term Healthcare Memory: Episodes and Reflections
@@ -810,9 +772,7 @@ actor_id = PATIENT_ID
 session_id = SESSION_ID
 # Define namespace for healthcare episodes
 episode_namespace = f"healthcare/{actor_id}/{session_id}"
-print(
-    f"\n📋 Episode namespace: {episode_namespace}"
-)  # codeql[py/clear-text-logging-sensitive-data]
+print(f"\n📋 Episode namespace: {episode_namespace}")  # codeql[py/clear-text-logging-sensitive-data]
 
 try:
     print("\n📖 HEALTHCARE EPISODES (Session-specific patient interactions)")
@@ -839,9 +799,7 @@ try:
 except Exception as e:
     print(f"❌ Error retrieving healthcare episodes: {e}")
 
-print(
-    "\n💡 TIP: Use the memory browser for interactive healthcare memory visualization"
-)
+print("\n💡 TIP: Use the memory browser for interactive healthcare memory visualization")
 print("   Episodes show individual patient consultation summaries")
 print("\n⏱️  NOTE: Episode generation takes a few minutes after conversations")
 print("   Check back later if no episodes appear immediately")

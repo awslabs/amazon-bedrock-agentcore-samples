@@ -296,9 +296,7 @@ for idx, item in enumerate(all_data):
         }
     )
 
-response = agentcore_client.batch_create_memory_records(
-    memoryId=MEMORY_ID, records=records
-)
+response = agentcore_client.batch_create_memory_records(memoryId=MEMORY_ID, records=records)
 
 print(f"✅ Created {len(response['successfulRecords'])} records")
 print("   Namespaces: recommendations, transactions, preferences, life_events")
@@ -328,9 +326,7 @@ else:
 
 # Verify all customers
 for cid in KNOWN_CUSTOMERS:
-    r = session_manager.list_long_term_memory_records(
-        namespace_prefix=f"/bank/customers/{cid}", max_results=100
-    )
+    r = session_manager.list_long_term_memory_records(namespace_prefix=f"/bank/customers/{cid}", max_results=100)
     print(f"  {cid}: {len(r)} records")
 
 
@@ -363,9 +359,7 @@ def query_all_customers(namespace_type: str) -> str:
         else:
             prefix = f"/bank/customers/{customer_id}/{namespace_type}"
 
-        records = session_manager.list_long_term_memory_records(
-            namespace_prefix=prefix, max_results=100
-        )
+        records = session_manager.list_long_term_memory_records(namespace_prefix=prefix, max_results=100)
         all_results[customer_id] = [json.loads(r["content"]["text"]) for r in records]
 
     return json.dumps(

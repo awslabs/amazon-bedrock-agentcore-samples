@@ -30,9 +30,7 @@ client.create_event(
     ],
 )
 
-turns = client.get_last_k_turns(
-    memory_id=memory_id, actor_id=ACTOR_ID, session_id=SESSION_ID, k=5
-)
+turns = client.get_last_k_turns(memory_id=memory_id, actor_id=ACTOR_ID, session_id=SESSION_ID, k=5)
 for turn in turns:
     for msg in turn:
         print(msg["role"], "→", msg["content"]["text"])

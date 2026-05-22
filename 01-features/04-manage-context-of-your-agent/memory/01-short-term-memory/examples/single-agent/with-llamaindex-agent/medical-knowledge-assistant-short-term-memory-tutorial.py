@@ -107,8 +107,7 @@ async def _filtered_aput_messages(self, messages: List[ChatMessage]) -> None:
     text_messages = [
         m
         for m in messages
-        if m.role in (MessageRole.USER, MessageRole.ASSISTANT)
-        and m.content  # skip empty tool-call assistant messages
+        if m.role in (MessageRole.USER, MessageRole.ASSISTANT) and m.content  # skip empty tool-call assistant messages
     ]
     if text_messages:
         await _original_aput_messages(self, text_messages)
@@ -156,25 +155,17 @@ except Exception as e:
 
 def record_patient_symptoms(symptoms: str, severity: str, duration: str) -> str:
     """Record patient symptoms with severity and duration"""
-    print(
-        f"🩺 Recorded symptoms: {symptoms} ({severity} severity, {duration} duration)"
-    )
+    print(f"🩺 Recorded symptoms: {symptoms} ({severity} severity, {duration} duration)")
     return f"Recorded patient symptoms: {symptoms}"
 
 
-def check_drug_interaction(
-    medication1: str, medication2: str, interaction_level: str
-) -> str:
+def check_drug_interaction(medication1: str, medication2: str, interaction_level: str) -> str:
     """Check drug interaction between medications"""
-    print(
-        f"💊 Drug interaction check: {medication1} + {medication2} ({interaction_level} risk)"
-    )
+    print(f"💊 Drug interaction check: {medication1} + {medication2} ({interaction_level} risk)")
     return f"Drug interaction assessed: {medication1} and {medication2}"
 
 
-def save_vital_signs(
-    temperature: str, blood_pressure: str, heart_rate: str, notes: str
-) -> str:
+def save_vital_signs(temperature: str, blood_pressure: str, heart_rate: str, notes: str) -> str:
     """Save patient vital signs with notes"""
     print(
         f"📊 Vital signs: Temp {temperature}, BP {blood_pressure}, HR {heart_rate}"
@@ -182,19 +173,13 @@ def save_vital_signs(
     return "Saved vital signs for patient"
 
 
-def retrieve_clinical_guideline(
-    condition: str, guideline_type: str, evidence_level: str
-) -> str:
+def retrieve_clinical_guideline(condition: str, guideline_type: str, evidence_level: str) -> str:
     """Retrieve clinical guideline for medical condition"""
-    print(
-        f"📋 Retrieved {guideline_type} guideline for {condition} (Evidence: {evidence_level})"
-    )
+    print(f"📋 Retrieved {guideline_type} guideline for {condition} (Evidence: {evidence_level})")
     return f"Retrieved clinical guideline for {condition}"
 
 
-def document_differential_diagnosis(
-    primary_diagnosis: str, alternatives: str, confidence: str
-) -> str:
+def document_differential_diagnosis(primary_diagnosis: str, alternatives: str, confidence: str) -> str:
     """Document differential diagnosis with confidence level"""
     print(f"🔍 Differential diagnosis: {primary_diagnosis} ({confidence} confidence)")
     return f"Documented differential diagnosis: {primary_diagnosis}"
@@ -303,9 +288,7 @@ async def main():
 
     print("🧠 Patient Context Recall:")
     print(response)
-    print(
-        "\n✅ Expected: John Smith, 45M, chest pain/SOB/fatigue, elevated BP 165/95, Lisinopril/Metformin"
-    )
+    print("\n✅ Expected: John Smith, 45M, chest pain/SOB/fatigue, elevated BP 165/95, Lisinopril/Metformin")
 
     # ### Test 5: Clinical Guideline Retrieval
 
@@ -343,9 +326,7 @@ async def main():
 
     print("🤔 Clinical Reasoning Test:")
     print(response)
-    print(
-        "\n✅ Expected: Chest pain + SOB + elevated BP/HR + diabetes/HTN history = ACS risk factors"
-    )
+    print("\n✅ Expected: Chest pain + SOB + elevated BP/HR + diabetes/HTN history = ACS risk factors")
 
     # ### Test 8: Drug Interaction Recall
 
@@ -357,9 +338,7 @@ async def main():
 
     print("💊 Drug Interaction Recall:")
     print(response)
-    print(
-        "\n✅ Expected: Lisinopril+Metformin (low risk), Lisinopril+Nitroglycerin (moderate risk)"
-    )
+    print("\n✅ Expected: Lisinopril+Metformin (low risk), Lisinopril+Nitroglycerin (moderate risk)")
 
     # ### Test 9: Treatment Planning Integration
 
@@ -372,9 +351,7 @@ async def main():
 
     print("🏥 Treatment Planning:")
     print(response)
-    print(
-        "\n✅ Expected: ACS protocol, monitor Lisinopril+Nitroglycerin interaction, consider cardiac workup"
-    )
+    print("\n✅ Expected: ACS protocol, monitor Lisinopril+Nitroglycerin interaction, consider cardiac workup")
 
     # Comprehensive case summary
     response = await medical_agent.run(
@@ -399,9 +376,7 @@ async def main():
         namespace="/medical-consultation/",
     )
 
-    new_session_memory = AgentCoreMemory(
-        context=new_session_context, region_name=region
-    )
+    new_session_memory = AgentCoreMemory(context=new_session_context, region_name=region)
 
     # Test memory isolation
     response = await medical_agent.run(
@@ -411,9 +386,7 @@ async def main():
 
     print("🚧 Session Boundary Test (Different Session):")
     print(response)
-    print(
-        "\n✅ Expected: Limited or no recall from previous session (short-term memory boundary)"
-    )
+    print("\n✅ Expected: Limited or no recall from previous session (short-term memory boundary)")
 
     # Return to original session to verify persistence
     response = await medical_agent.run(
@@ -491,25 +464,19 @@ async def main():
             print("=" * 60)
 
             total_tests = len(test_results)
-            passed_tests = sum(
-                1 for result in test_results.values() if "PASS" in result
-            )
+            passed_tests = sum(1 for result in test_results.values() if "PASS" in result)
             pass_rate = (passed_tests / total_tests * 100) if total_tests > 0 else 0
 
             for test_name, result in test_results.items():
                 print(f"{test_name}: {result}")
 
             print("=" * 60)
-            print(
-                f"📊 Overall Pass Rate: {passed_tests}/{total_tests} ({pass_rate:.1f}%)"
-            )
+            print(f"📊 Overall Pass Rate: {passed_tests}/{total_tests} ({pass_rate:.1f}%)")
 
             if pass_rate >= 80:
                 print("✅ EXCELLENT: Memory integration working correctly!")
             elif pass_rate >= 60:
-                print(
-                    "⚠️  GOOD: Most memory features working, some issues to investigate"
-                )
+                print("⚠️  GOOD: Most memory features working, some issues to investigate")
             else:
                 print("❌ NEEDS ATTENTION: Memory integration has significant issues")
 
@@ -521,21 +488,15 @@ async def main():
     # Run all validation tests
 
     # Test 1: Memory recall - can the agent recall what was discussed?
-    response1 = await medical_agent.run(
-        "What have we discussed so far in this session?", memory=agentcore_memory
-    )
+    response1 = await medical_agent.run("What have we discussed so far in this session?", memory=agentcore_memory)
     print(f"Response 1 length: {len(str(response1))} chars")
 
     # Test 2: Session memory - does the agent maintain context?
-    response2 = await medical_agent.run(
-        "What did we talk about earlier?", memory=agentcore_memory
-    )
+    response2 = await medical_agent.run("What did we talk about earlier?", memory=agentcore_memory)
     print(f"Response 2 length: {len(str(response2))} chars")
 
     # Test 3: Cross-reference capability - can it connect to previous context?
-    response3 = await medical_agent.run(
-        "How does this relate to what we discussed before?", memory=agentcore_memory
-    )
+    response3 = await medical_agent.run("How does this relate to what we discussed before?", memory=agentcore_memory)
     print(f"Response 3 length: {len(str(response3))} chars")
 
     # ### Test 10: Comprehensive Case Summary

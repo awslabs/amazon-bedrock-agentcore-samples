@@ -112,9 +112,7 @@ try:
     logger.info(f"   Memory Name: {memory['name']}")
     logger.info(f"   Memory Status: {memory['status']}")
 except ClientError as e:
-    if e.response["Error"]["Code"] == "ValidationException" and "already exists" in str(
-        e
-    ):
+    if e.response["Error"]["Code"] == "ValidationException" and "already exists" in str(e):
         logger.info(f"Memory '{memory_name}' already exists, retrieving ID...")
         memories = memory_client.list_memories()
         memory_id = next((m["id"] for m in memories if m["name"] == memory_name), None)
@@ -204,27 +202,15 @@ class ShortTermMemoryHook(HookProvider):
         """Store messages in memory using MemorySession"""
         messages = event.agent.messages
         try:
-            if (
-                messages
-                and len(messages) > 0
-                and messages[-1]["content"][0].get("text")
-            ):
+            if messages and len(messages) > 0 and messages[-1]["content"][0].get("text"):
                 message_text = messages[-1]["content"][0]["text"]
-                message_role = (
-                    MessageRole.USER
-                    if messages[-1]["role"] == "user"
-                    else MessageRole.ASSISTANT
-                )
+                message_role = MessageRole.USER if messages[-1]["role"] == "user" else MessageRole.ASSISTANT
 
                 # Use memory session instance (no need to pass actor_id/session_id)
-                result = self.memory_session.add_turns(
-                    messages=[ConversationalMessage(message_text, message_role)]
-                )
+                result = self.memory_session.add_turns(messages=[ConversationalMessage(message_text, message_role)])
 
                 event_id = result["eventId"]
-                logger.info(
-                    f"✅ Stored message with Event ID: {event_id}, Role: {message_role.value}"
-                )
+                logger.info(f"✅ Stored message with Event ID: {event_id}, Role: {message_role.value}")
 
         except Exception as e:
             logger.error(f"Memory save error: {e}")
@@ -283,9 +269,7 @@ def flight_booking_assistant(query: str) -> str:
     """
     try:
         # Create a memory session for the booking assistant
-        memory_session = session_manager.create_memory_session(
-            actor_id=FLIGHT_ACTOR_ID, session_id=SESSION_ID
-        )
+        memory_session = session_manager.create_memory_session(actor_id=FLIGHT_ACTOR_ID, session_id=SESSION_ID)
         flight_memory_hooks = ShortTermMemoryHook(memory_session, memory_id)
 
         flight_agent = Agent(
@@ -314,9 +298,7 @@ def hotel_booking_assistant(query: str) -> str:
     """
     try:
         # Create a memory session for the booking assistant
-        memory_session = session_manager.create_memory_session(
-            actor_id=HOTEL_ACTOR_ID, session_id=SESSION_ID
-        )
+        memory_session = session_manager.create_memory_session(actor_id=HOTEL_ACTOR_ID, session_id=SESSION_ID)
 
         hotel_memory_hooks = ShortTermMemoryHook(memory_session, memory_id)
 
@@ -367,9 +349,7 @@ travel_agent = Agent(
 # Let's test our multi-agent system with a travel planning scenario:
 
 
-response = travel_agent(
-    "Hello, I would like to book a trip from LA to Madrid. From July 1 to August 2."
-)
+response = travel_agent("Hello, I would like to book a trip from LA to Madrid. From July 1 to August 2.")
 
 
 response = travel_agent(

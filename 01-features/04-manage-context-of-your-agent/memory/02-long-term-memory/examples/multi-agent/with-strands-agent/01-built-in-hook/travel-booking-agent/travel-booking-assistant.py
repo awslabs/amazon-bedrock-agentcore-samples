@@ -166,11 +166,7 @@ class MemoryHookProvider(HookProvider):
                 for msg in reversed(messages):
                     if msg["role"] == "assistant" and not assistant_msg:
                         assistant_msg = msg["content"][0]["text"]
-                    elif (
-                        msg["role"] == "user"
-                        and not user_msg
-                        and "toolResult" not in msg["content"][0]
-                    ):
+                    elif msg["role"] == "user" and not user_msg and "toolResult" not in msg["content"][0]:
                         user_msg = msg["content"][0]["text"]
                         break
 
@@ -359,9 +355,7 @@ initial = client.create_event(
 print("✓ Conversation saved in short term memory")"""
 
 
-travel_agent(
-    "Hello, I would like to book a trip from LA to Madrid. From July 1 to August 2."
-)
+travel_agent("Hello, I would like to book a trip from LA to Madrid. From July 1 to August 2.")
 
 
 travel_agent("I prefer direct flights with Iberia")

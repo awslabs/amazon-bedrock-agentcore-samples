@@ -54,9 +54,7 @@ from datetime import datetime
 from botocore.exceptions import ClientError
 
 # Setup logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger("personal-agent")
 
 
@@ -153,9 +151,7 @@ try:
     logger.info(f"   Memory Status: {memory['status']}")
 
 except ClientError as e:
-    if e.response["Error"]["Code"] == "ValidationException" and "already exists" in str(
-        e
-    ):
+    if e.response["Error"]["Code"] == "ValidationException" and "already exists" in str(e):
         logger.info(f"Memory '{memory_name}' already exists, retrieving ID...")
         memories = memory_client.list_memories()
         memory_id = next((m["id"] for m in memories if m["name"] == memory_name), None)
@@ -177,9 +173,7 @@ except ClientError as e:
 session_manager = MemorySessionManager(memory_id=memory_id, region_name=REGION)
 
 # Create a memory session for the specific actor/session combination
-user_session = session_manager.create_memory_session(
-    actor_id=ACTOR_ID, session_id=SESSION_ID
-)
+user_session = session_manager.create_memory_session(actor_id=ACTOR_ID, session_id=SESSION_ID)
 
 logger.info(f"✅ Session manager initialized for memory: {memory_id}")
 logger.info(f"✅ Memory session created for actor: {ACTOR_ID}, session: {SESSION_ID}")
@@ -227,9 +221,7 @@ class MemoryHookProvider(HookProvider):
                 context = "\n".join(context_messages)
                 # Add context to agent's system prompt
                 event.agent.system_prompt += f"\n\nRecent conversation:\n{context}"
-                logger.info(
-                    f"✅ Loaded {len(recent_turns)} conversation turns using MemorySession"
-                )
+                logger.info(f"✅ Loaded {len(recent_turns)} conversation turns using MemorySession")
 
         except Exception as e:
             logger.error(f"Memory load error: {e}")
@@ -238,27 +230,15 @@ class MemoryHookProvider(HookProvider):
         """Store messages in memory using MemorySession"""
         messages = event.agent.messages
         try:
-            if (
-                messages
-                and len(messages) > 0
-                and messages[-1]["content"][0].get("text")
-            ):
+            if messages and len(messages) > 0 and messages[-1]["content"][0].get("text"):
                 message_text = messages[-1]["content"][0]["text"]
-                message_role = (
-                    MessageRole.USER
-                    if messages[-1]["role"] == "user"
-                    else MessageRole.ASSISTANT
-                )
+                message_role = MessageRole.USER if messages[-1]["role"] == "user" else MessageRole.ASSISTANT
 
                 # Use memory session instance (no need to pass actor_id/session_id)
-                result = self.memory_session.add_turns(
-                    messages=[ConversationalMessage(message_text, message_role)]
-                )
+                result = self.memory_session.add_turns(messages=[ConversationalMessage(message_text, message_role)])
 
                 event_id = result["eventId"]
-                logger.info(
-                    f"✅ Stored message with Event ID: {event_id}, Role: {message_role.value}"
-                )
+                logger.info(f"✅ Stored message with Event ID: {event_id}, Role: {message_role.value}")
 
         except Exception as e:
             logger.error(f"Memory save error: {e}")

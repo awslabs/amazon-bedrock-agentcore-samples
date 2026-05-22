@@ -74,9 +74,7 @@ from bedrock_agentcore.memory import MemoryClient
 from utils import setup_cognito_user_pool
 
 # Configuration
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 logger = logging.getLogger("runtime-memory-agent")
 REGION = os.getenv("AWS_REGION", "us-west-2")
 memory_client = MemoryClient(region_name=REGION)
@@ -123,14 +121,10 @@ try:
     logger.info(f"✅ Created memory: {memory_id}")
 except ClientError as e:
     logger.info(f"❌ ERROR: {e}")
-    if e.response["Error"]["Code"] == "ValidationException" and "already exists" in str(
-        e
-    ):
+    if e.response["Error"]["Code"] == "ValidationException" and "already exists" in str(e):
         # If memory already exists, retrieve its ID
         memories = memory_client.list_memories()
-        memory_id = next(
-            (m["id"] for m in memories if m["id"].startswith(memory_name)), None
-        )
+        memory_id = next((m["id"] for m in memories if m["id"].startswith(memory_name)), None)
         logger.info(f"Memory already exists. Using existing memory ID: {memory_id}")
 except Exception as e:
     # Show any errors during memory creation
@@ -262,9 +256,7 @@ inline_policy = {
         {
             "Effect": "Allow",
             "Action": ["logs:DescribeLogStreams", "logs:CreateLogGroup"],
-            "Resource": [
-                f"arn:aws:logs:{REGION}:{ACCOUNT_ID}:log-group:/aws/bedrock-agentcore/runtimes/*"
-            ],
+            "Resource": [f"arn:aws:logs:{REGION}:{ACCOUNT_ID}:log-group:/aws/bedrock-agentcore/runtimes/*"],
         },
         {"Effect": "Allow", "Action": ["logs:DescribeLogGroups"], "Resource": ["*"]},
         {
@@ -283,9 +275,7 @@ inline_policy = {
             "Effect": "Allow",
             "Action": "cloudwatch:PutMetricData",
             "Resource": "*",
-            "Condition": {
-                "StringEquals": {"cloudwatch:namespace": "bedrock-agentcore"}
-            },
+            "Condition": {"StringEquals": {"cloudwatch:namespace": "bedrock-agentcore"}},
         },
         {
             "Effect": "Allow",
@@ -326,9 +316,7 @@ try:
     if REGION == "us-east-1":
         s3.create_bucket(Bucket=S3_BUCKET)
     else:
-        s3.create_bucket(
-            Bucket=S3_BUCKET, CreateBucketConfiguration={"LocationConstraint": REGION}
-        )
+        s3.create_bucket(Bucket=S3_BUCKET, CreateBucketConfiguration={"LocationConstraint": REGION})
     logger.info(f"✅ Created S3 bucket: {S3_BUCKET}")
 except Exception:
     logger.info(f"✅ S3 bucket exists: {S3_BUCKET}")
@@ -358,9 +346,7 @@ subprocess.run(
     check=True,
 )
 logger.info("  Creating deployment zip...")
-subprocess.run(
-    ["zip", "-r", f"../{zip_file}", "."], cwd=pkg_dir, check=True, capture_output=True
-)
+subprocess.run(["zip", "-r", f"../{zip_file}", "."], cwd=pkg_dir, check=True, capture_output=True)
 for src_file in AGENT_FILES:
     subprocess.run(["zip", zip_file, src_file], check=True, capture_output=True)
 logger.info(f"  Uploading to s3://{S3_BUCKET}/{S3_PREFIX}...")
@@ -419,9 +405,7 @@ else:
     print(f"❌ Deployment ended with status: {status}")
 
 # Create endpoint
-ep_resp = control.create_agent_runtime_endpoint(
-    agentRuntimeId=runtime_id, name="default"
-)
+ep_resp = control.create_agent_runtime_endpoint(agentRuntimeId=runtime_id, name="default")
 logger.info(f"  Endpoint created: {ep_resp['agentRuntimeEndpointArn']}")
 logger.info("  Waiting for endpoint to be ready...")
 endpoint_url = None
@@ -445,15 +429,11 @@ def invoke_agent(payload, session_id, bearer_token=None):
         data=json.dumps(payload),
         headers={"Content-Type": "application/json"},
     )
-    SigV4Auth(boto3.Session().get_credentials(), "bedrock-agentcore", REGION).add_auth(
-        aws_req
-    )
+    SigV4Auth(boto3.Session().get_credentials(), "bedrock-agentcore", REGION).add_auth(aws_req)
     headers = dict(aws_req.headers)
     if bearer_token:
         headers["Authorization"] = f"Bearer {bearer_token}"
-    return requests.post(
-        aws_req.url, data=aws_req.body, headers=headers, timeout=30
-    ).json()  # nosec B113
+    return requests.post(aws_req.url, data=aws_req.body, headers=headers, timeout=30).json()  # nosec B113
 
 
 # ## 5. Testing Your Agent
@@ -512,9 +492,7 @@ def test_user_memory_isolation():
     print("-" * 50)
     print('testuser2: "My favorite food is pizza."')
 
-    response2 = invoke_agent(
-        {"prompt": "My favorite food is pizza."}, testuser2_session_id, testuser2_token
-    )
+    response2 = invoke_agent({"prompt": "My favorite food is pizza."}, testuser2_session_id, testuser2_token)
     print(f'Agent: "{response2["response"]}"')
 
     # Step 3: testuser1 asks about her color
@@ -536,9 +514,7 @@ def test_user_memory_isolation():
     print("-" * 50)
     print('testuser2: "What\'s my favorite food?"')
 
-    response4 = invoke_agent(
-        {"prompt": "What's my favorite food?"}, testuser2_session_id, testuser2_token
-    )
+    response4 = invoke_agent({"prompt": "What's my favorite food?"}, testuser2_session_id, testuser2_token)
     print(f'Agent: "{response4["response"]}"')
 
     # Step 5: testuser1 asks about food (shouldn't know)
@@ -547,9 +523,7 @@ def test_user_memory_isolation():
     print("-" * 50)
     print('testuser1: "What\'s my favorite food?"')
 
-    response5 = invoke_agent(
-        {"prompt": "What's my favorite food?"}, testuser1_session_id, testuser1_token
-    )
+    response5 = invoke_agent({"prompt": "What's my favorite food?"}, testuser1_session_id, testuser1_token)
     print(f'Agent: "{response5["response"]}"')
 
     # Step 6: testuser2 asks about color (shouldn't know)
@@ -558,9 +532,7 @@ def test_user_memory_isolation():
     print("-" * 50)
     print('testuser2: "What\'s my favorite color?"')
 
-    response6 = invoke_agent(
-        {"prompt": "What's my favorite color?"}, testuser2_session_id, testuser2_token
-    )
+    response6 = invoke_agent({"prompt": "What's my favorite color?"}, testuser2_session_id, testuser2_token)
     print(f'Agent: "{response6["response"]}"')
 
 
@@ -606,9 +578,7 @@ else:
 # 1. Delete the AgentCore Runtime
 if "runtime_id" in locals():
     try:
-        agentcore_control_client = boto3.client(
-            "bedrock-agentcore-control", region_name=REGION
-        )
+        agentcore_control_client = boto3.client("bedrock-agentcore-control", region_name=REGION)
         agentcore_control_client.delete_agent_runtime(agentRuntimeId=runtime_id)
         print(f"✅ Deleted AgentCore Runtime: {runtime_id}")
     except Exception as e:
@@ -636,15 +606,11 @@ if "cognito_config" in locals() and cognito_config and "pool_id" in cognito_conf
         pool_id = cognito_config["pool_id"]
 
         # List and delete all user pool clients
-        clients_response = cognito_client.list_user_pool_clients(
-            UserPoolId=pool_id, MaxResults=60
-        )
+        clients_response = cognito_client.list_user_pool_clients(UserPoolId=pool_id, MaxResults=60)
 
         for client in clients_response.get("UserPoolClients", []):
             client_id = client["ClientId"]
-            cognito_client.delete_user_pool_client(
-                UserPoolId=pool_id, ClientId=client_id
-            )
+            cognito_client.delete_user_pool_client(UserPoolId=pool_id, ClientId=client_id)
             print(f"✅ Deleted User Pool Client: {client_id}")
 
         # Delete the user pool itself

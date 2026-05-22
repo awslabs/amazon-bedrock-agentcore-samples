@@ -137,8 +137,7 @@ async def _filtered_aput_messages(self, messages: List[ChatMessage]) -> None:
     text_messages = [
         m
         for m in messages
-        if m.role in (MessageRole.USER, MessageRole.ASSISTANT)
-        and m.content  # skip empty tool-call assistant messages
+        if m.role in (MessageRole.USER, MessageRole.ASSISTANT) and m.content  # skip empty tool-call assistant messages
     ]
     if text_messages:
         await _original_aput_messages(self, text_messages)
@@ -194,33 +193,23 @@ except Exception as e:
 # Define specialized tools for longitudinal medical analysis:
 
 
-def assess_patient_symptoms(
-    patient_id: str, symptoms: str, severity: str, duration: str
-) -> str:
+def assess_patient_symptoms(patient_id: str, symptoms: str, severity: str, duration: str) -> str:
     """Assess patient symptoms with severity and duration tracking"""
     return f"🩺 Assessed symptoms for {patient_id} (Severity: {severity}, Duration: {duration})"
 
 
-def check_drug_interactions(
-    patient_id: str, medications: str, interaction_level: str, recommendations: str
-) -> str:
+def check_drug_interactions(patient_id: str, medications: str, interaction_level: str, recommendations: str) -> str:
     """Check drug interactions with safety recommendations"""
     return f"💊 {patient_id} drug interaction check: {interaction_level} - {recommendations}"
 
 
-def document_treatment_protocol(
-    protocol_type: str, indication: str, effectiveness: str, side_effects: str
-) -> str:
+def document_treatment_protocol(protocol_type: str, indication: str, effectiveness: str, side_effects: str) -> str:
     """Document treatment protocol with effectiveness and side effects"""
-    print(
-        f"📋 Treatment protocol: {protocol_type} for {indication} (Effectiveness: {effectiveness})"
-    )
+    print(f"📋 Treatment protocol: {protocol_type} for {indication} (Effectiveness: {effectiveness})")
     return f"Documented treatment protocol: {protocol_type}"
 
 
-def update_clinical_guideline(
-    patient_id: str, guideline_type: str, recommendation: str, evidence_level: str
-) -> str:
+def update_clinical_guideline(patient_id: str, guideline_type: str, recommendation: str, evidence_level: str) -> str:
     """Update clinical guideline for specific patient"""
     print(
         f"📖 Clinical guideline: {patient_id} - {guideline_type} ({evidence_level} evidence)"  # codeql[py/clear-text-logging-sensitive-data]
@@ -228,9 +217,7 @@ def update_clinical_guideline(
     return f"Updated guideline for {patient_id}"
 
 
-def log_treatment_outcome(
-    patient_id: str, treatment: str, outcome: str, follow_up_needed: str
-) -> str:
+def log_treatment_outcome(patient_id: str, treatment: str, outcome: str, follow_up_needed: str) -> str:
     """Log treatment outcome with follow-up requirements"""
     print(
         f"🏥 Treatment outcome: {patient_id} - {treatment}: {outcome}"
@@ -244,13 +231,9 @@ def log_medical_milestone(quarter: str, milestone: str, details: str) -> str:
     return f"Logged milestone for {quarter}: {milestone} - {details}"
 
 
-def track_clinical_metrics(
-    metric_type: str, value: str, patient_id: str, quarter: str
-) -> str:
+def track_clinical_metrics(metric_type: str, value: str, patient_id: str, quarter: str) -> str:
     """Track specific clinical metrics with patient and timeline"""
-    print(
-        f"📊 {quarter}: {metric_type} = {value} (for {patient_id})"
-    )  # codeql[py/clear-text-logging-sensitive-data]
+    print(f"📊 {quarter}: {metric_type} = {value} (for {patient_id})")  # codeql[py/clear-text-logging-sensitive-data]
     return f"Tracked {metric_type}: {value} for {patient_id} in {quarter}"
 
 
@@ -303,9 +286,7 @@ def create_memory_retrieval_tool(memory_id: str, actor_id: str, region: str):
             from bedrock_agentcore.memory.session import MemorySessionManager
 
             # Create session manager (only needs memory_id and region)
-            session_manager = MemorySessionManager(
-                memory_id=memory_id, region_name=region
-            )
+            session_manager = MemorySessionManager(memory_id=memory_id, region_name=region)
 
             # Search long-term memories in the semantic strategy namespace
             results = session_manager.search_long_term_memories(
@@ -337,16 +318,12 @@ def create_memory_retrieval_tool(memory_id: str, actor_id: str, region: str):
 
 
 # Create the memory retrieval tool
-memory_search_tool = create_memory_retrieval_tool(
-    memory_id, "medical-assistant", region
-)
+memory_search_tool = create_memory_retrieval_tool(memory_id, "medical-assistant", region)
 
 # Add memory search to the tools list
 medical_tools_with_memory = medical_tools + [memory_search_tool]
 
-print(
-    f"✅ Memory retrieval tool created! Total tools: {len(medical_tools_with_memory)}"
-)
+print(f"✅ Memory retrieval tool created! Total tools: {len(medical_tools_with_memory)}")
 print("   Using namespace: /strategies/ (for semantic strategy compatibility)")
 
 
@@ -357,9 +334,7 @@ print("   Using namespace: /strategies/ (for semantic strategy compatibility)")
 
 # Check memory configuration
 memory_info = (
-    boto3.client("bedrock-agentcore-control", region_name=region)
-    .get_memory(memoryId=memory_id)
-    .get("memory", {})
+    boto3.client("bedrock-agentcore-control", region_name=region).get_memory(memoryId=memory_id).get("memory", {})
 )
 print(f"Strategies: {memory_info.get('strategies')}")
 print(f"Status: {memory_info.get('status')}")
@@ -382,9 +357,7 @@ for strategy in strategies:
 
 # Check memory configuration
 memory_info = (
-    boto3.client("bedrock-agentcore-control", region_name=region)
-    .get_memory(memoryId=memory_id)
-    .get("memory", {})
+    boto3.client("bedrock-agentcore-control", region_name=region).get_memory(memoryId=memory_id).get("memory", {})
 )
 print(f"Strategies: {memory_info.get('strategies')}")
 print(f"Status: {memory_info.get('status')}")
@@ -538,9 +511,7 @@ async def main():
 
     print("\n🧠 Q2 Patient Recall:")
     print(response)
-    print(
-        "\n✅ Expected: PATIENT-001, diabetes symptoms, metformin treatment, lifestyle guidelines"
-    )
+    print("\n✅ Expected: PATIENT-001, diabetes symptoms, metformin treatment, lifestyle guidelines")
 
     # Document treatment protocol
     response = await agent_q2.run(
@@ -575,9 +546,7 @@ async def main():
     )
     print("📊 Q2 Treatment Analysis:")
     print(response)
-    print(
-        "\n✅ Expected: Q1 metformin monotherapy → Q2 combination therapy, HbA1c improvement"
-    )
+    print("\n✅ Expected: Q1 metformin monotherapy → Q2 combination therapy, HbA1c improvement")
 
     # ## Step 7: Q3 Medical Session - Complication Management
     #
@@ -607,15 +576,12 @@ async def main():
 
     # Test comprehensive medical history recall
     response = await agent_q3.run(
-        "What is the complete medical care history? Include all patients, treatments, "
-        "protocols, and outcomes.",
+        "What is the complete medical care history? Include all patients, treatments, protocols, and outcomes.",
         memory=memory_q3,
     )
     print("📋 Q3 Complete History:")
     print(response)
-    print(
-        "\n✅ Expected: PATIENT-001 diabetes journey → PATIENT-002 cardiac assessment, protocol evolution"
-    )
+    print("\n✅ Expected: PATIENT-001 diabetes journey → PATIENT-002 cardiac assessment, protocol evolution")
 
     # ## Step 8: Q4 Medical Session - Year-End Review and Planning
     #
@@ -650,9 +616,7 @@ async def main():
     )
     print("⚖️ Q4 Guideline Effectiveness Analysis:")
     print(response)
-    print(
-        "\n✅ Expected: Diabetes management + lifestyle modification = successful outcomes"
-    )
+    print("\n✅ Expected: Diabetes management + lifestyle modification = successful outcomes")
 
     # ## Step 9: Year 2 Q1 Session - Multi-Year Medical Perspective
     #
@@ -671,9 +635,7 @@ async def main():
     )
     print("📊 Year 2 Q1 Practice Analysis:")
     print(response)
-    print(
-        "\n✅ Expected: PATIENT-001 → PATIENT-002 progression, protocol refinement, outcome improvement"
-    )
+    print("\n✅ Expected: PATIENT-001 → PATIENT-002 progression, protocol refinement, outcome improvement")
 
     # Test clinical protocol evolution tracking
     response = await agent_y2q1.run(
@@ -767,25 +729,19 @@ async def main():
             print("=" * 60)
 
             total_tests = len(test_results)
-            passed_tests = sum(
-                1 for result in test_results.values() if "PASS" in result
-            )
+            passed_tests = sum(1 for result in test_results.values() if "PASS" in result)
             pass_rate = (passed_tests / total_tests * 100) if total_tests > 0 else 0
 
             for test_name, result in test_results.items():
                 print(f"{test_name}: {result}")
 
             print("=" * 60)
-            print(
-                f"📊 Overall Pass Rate: {passed_tests}/{total_tests} ({pass_rate:.1f}%)"
-            )
+            print(f"📊 Overall Pass Rate: {passed_tests}/{total_tests} ({pass_rate:.1f}%)")
 
             if pass_rate >= 80:
                 print("✅ EXCELLENT: Memory integration working correctly!")
             elif pass_rate >= 60:
-                print(
-                    "⚠️  GOOD: Most memory features working, some issues to investigate"
-                )
+                print("⚠️  GOOD: Most memory features working, some issues to investigate")
             else:
                 print("❌ NEEDS ATTENTION: Memory integration has significant issues")
 
@@ -797,21 +753,15 @@ async def main():
     # Run all validation tests
 
     # Test 1: Memory recall - can the agent recall what was discussed?
-    response1 = await agent_y2q1.run(
-        "What have we discussed so far in this session?", memory=memory_y2q1
-    )
+    response1 = await agent_y2q1.run("What have we discussed so far in this session?", memory=memory_y2q1)
     print(f"Response 1 length: {len(str(response1))} chars")
 
     # Test 2: Session memory - does the agent maintain context?
-    response2 = await agent_y2q1.run(
-        "What did we talk about earlier?", memory=memory_y2q1
-    )
+    response2 = await agent_y2q1.run("What did we talk about earlier?", memory=memory_y2q1)
     print(f"Response 2 length: {len(str(response2))} chars")
 
     # Test 3: Cross-reference capability - can it connect to previous context?
-    response3 = await agent_y2q1.run(
-        "How does this relate to what we discussed before?", memory=memory_y2q1
-    )
+    response3 = await agent_y2q1.run("How does this relate to what we discussed before?", memory=memory_y2q1)
     print(f"Response 3 length: {len(str(response3))} chars")
 
     # ## Summary

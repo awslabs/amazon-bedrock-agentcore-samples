@@ -101,9 +101,7 @@ def create_memory_execution_role():
                 "Action": "sts:AssumeRole",
                 "Condition": {
                     "StringEquals": {"aws:SourceAccount": account_id},
-                    "ArnLike": {
-                        "aws:SourceArn": f"arn:aws:bedrock-agentcore:{region}:{account_id}:*"
-                    },
+                    "ArnLike": {"aws:SourceArn": f"arn:aws:bedrock-agentcore:{region}:{account_id}:*"},
                 },
             }
         ],
@@ -237,9 +235,7 @@ def pre_model_hook(state, config: RunnableConfig, *, store: BaseStore):
     # Construct another AI message to add context before the current message
     if preferences:
         context_items = [pref.value for pref in preferences]
-        context_message = AIMessage(
-            content=f"[User Context: {', '.join(str(item) for item in context_items)}]"
-        )
+        context_message = AIMessage(content=f"[User Context: {', '.join(str(item) for item in context_items)}]")
         # Insert the context message before the last human message
         return {"messages": messages[:-1] + [context_message, messages[-1]]}
 

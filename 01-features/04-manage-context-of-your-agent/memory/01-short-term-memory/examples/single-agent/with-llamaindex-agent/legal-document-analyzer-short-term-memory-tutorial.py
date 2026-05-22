@@ -107,8 +107,7 @@ async def _filtered_aput_messages(self, messages: List[ChatMessage]) -> None:
     text_messages = [
         m
         for m in messages
-        if m.role in (MessageRole.USER, MessageRole.ASSISTANT)
-        and m.content  # skip empty tool-call assistant messages
+        if m.role in (MessageRole.USER, MessageRole.ASSISTANT) and m.content  # skip empty tool-call assistant messages
     ]
     if text_messages:
         await _original_aput_messages(self, text_messages)
@@ -270,9 +269,7 @@ async def main():
 
     print("🧠 Contract Context Recall:")
     print(response)
-    print(
-        "\n✅ Expected: TechCorp/DataSoft, $5M contract, $50K liability cap (high risk)"
-    )
+    print("\n✅ Expected: TechCorp/DataSoft, $5M contract, $50K liability cap (high risk)")
 
     # ### Test 4: Detailed Clause Recall
 
@@ -308,9 +305,7 @@ async def main():
 
     print("🤔 Risk Assessment Reasoning:")
     print(response)
-    print(
-        "\n✅ Expected: $50K cap vs $5M contract = 1% ratio, high risk due to low percentage"
-    )
+    print("\n✅ Expected: $50K cap vs $5M contract = 1% ratio, high risk due to low percentage")
 
     # ### Test 7: Compliance Issue Flagging
 
@@ -335,9 +330,7 @@ async def main():
 
     print("⚖️ Precedent Application:")
     print(response)
-    print(
-        "\n✅ Expected: Both have ~1% liability caps, precedent suggests unconscionability"
-    )
+    print("\n✅ Expected: Both have ~1% liability caps, precedent suggests unconscionability")
 
     # ### Test 9: Comprehensive Risk Assessment
 
@@ -350,9 +343,7 @@ async def main():
 
     print("📊 Comprehensive Risk Assessment:")
     print(response)
-    print(
-        "\n✅ Expected: High risk liability cap, GDPR compliance issues, TechSoft precedent support"
-    )
+    print("\n✅ Expected: High risk liability cap, GDPR compliance issues, TechSoft precedent support")
 
     # ## Step 6: Testing Session Boundaries
     #
@@ -366,9 +357,7 @@ async def main():
         namespace="/legal-analysis/",
     )
 
-    new_session_memory = AgentCoreMemory(
-        context=new_session_context, region_name=region
-    )
+    new_session_memory = AgentCoreMemory(context=new_session_context, region_name=region)
 
     # Test memory isolation
     response = await legal_agent.run(
@@ -378,9 +367,7 @@ async def main():
 
     print("🚧 Session Boundary Test (Different Session):")
     print(response)
-    print(
-        "\n✅ Expected: Limited or no recall from previous session (short-term memory boundary)"
-    )
+    print("\n✅ Expected: Limited or no recall from previous session (short-term memory boundary)")
 
     # Return to original session to verify persistence
     response = await legal_agent.run(
@@ -458,25 +445,19 @@ async def main():
             print("=" * 60)
 
             total_tests = len(test_results)
-            passed_tests = sum(
-                1 for result in test_results.values() if "PASS" in result
-            )
+            passed_tests = sum(1 for result in test_results.values() if "PASS" in result)
             pass_rate = (passed_tests / total_tests * 100) if total_tests > 0 else 0
 
             for test_name, result in test_results.items():
                 print(f"{test_name}: {result}")
 
             print("=" * 60)
-            print(
-                f"📊 Overall Pass Rate: {passed_tests}/{total_tests} ({pass_rate:.1f}%)"
-            )
+            print(f"📊 Overall Pass Rate: {passed_tests}/{total_tests} ({pass_rate:.1f}%)")
 
             if pass_rate >= 80:
                 print("✅ EXCELLENT: Memory integration working correctly!")
             elif pass_rate >= 60:
-                print(
-                    "⚠️  GOOD: Most memory features working, some issues to investigate"
-                )
+                print("⚠️  GOOD: Most memory features working, some issues to investigate")
             else:
                 print("❌ NEEDS ATTENTION: Memory integration has significant issues")
 
@@ -488,21 +469,15 @@ async def main():
     # Run all validation tests
 
     # Test 1: Memory recall - can the agent recall what was discussed?
-    response1 = await legal_agent.run(
-        "What have we discussed so far in this session?", memory=agentcore_memory
-    )
+    response1 = await legal_agent.run("What have we discussed so far in this session?", memory=agentcore_memory)
     print(f"Response 1 length: {len(str(response1))} chars")
 
     # Test 2: Session memory - does the agent maintain context?
-    response2 = await legal_agent.run(
-        "What did we talk about earlier?", memory=agentcore_memory
-    )
+    response2 = await legal_agent.run("What did we talk about earlier?", memory=agentcore_memory)
     print(f"Response 2 length: {len(str(response2))} chars")
 
     # Test 3: Cross-reference capability - can it connect to previous context?
-    response3 = await legal_agent.run(
-        "How does this relate to what we discussed before?", memory=agentcore_memory
-    )
+    response3 = await legal_agent.run("How does this relate to what we discussed before?", memory=agentcore_memory)
     print(f"Response 3 length: {len(str(response3))} chars")
 
     # ## Summary

@@ -108,14 +108,10 @@ try:
     memory_id = memory["id"]
     logger.info(f"Memory created successfully with ID: {memory_id}")
 except ClientError as e:
-    if e.response["Error"]["Code"] == "ValidationException" and "already exists" in str(
-        e
-    ):
+    if e.response["Error"]["Code"] == "ValidationException" and "already exists" in str(e):
         # If memory already exists, retrieve its ID
         memories = client.list_memories()
-        memory_id = next(
-            (m["id"] for m in memories if m["id"].startswith(memory_name)), None
-        )
+        memory_id = next((m["id"] for m in memories if m["id"].startswith(memory_name)), None)
         logger.info(f"Memory already exists. Using existing memory ID: {memory_id}")
 except Exception as e:
     # Handle any errors during memory creation
@@ -187,19 +183,13 @@ def create_agent(client, memory_id, actor_id, session_id):
         raw_messages = state["messages"]
 
         # Remove any existing system messages to avoid duplicates or misplacement
-        non_system_messages = [
-            msg for msg in raw_messages if not isinstance(msg, SystemMessage)
-        ]
+        non_system_messages = [msg for msg in raw_messages if not isinstance(msg, SystemMessage)]
 
         # Always ensure SystemMessage is first
         messages = [SystemMessage(content=system_message)] + non_system_messages
 
         latest_user_message = next(
-            (
-                msg.content
-                for msg in reversed(messages)
-                if isinstance(msg, HumanMessage)
-            ),
+            (msg.content for msg in reversed(messages) if isinstance(msg, HumanMessage)),
             None,
         )
 
@@ -207,9 +197,7 @@ def create_agent(client, memory_id, actor_id, session_id):
         response = llm_with_tools.invoke(messages)
 
         # Save conversation if applicable
-        if (
-            latest_user_message and response.content.strip()
-        ):  # Check that response has content
+        if latest_user_message and response.content.strip():  # Check that response has content
             conversation = [
                 (latest_user_message, "USER"),
                 (response.content, "ASSISTANT"),
@@ -289,24 +277,18 @@ agent = create_agent(client, memory_id, actor_id, session_id)
 # Let's interact with our agent to test its memory capabilities:
 
 
-response = langgraph_bedrock(
-    {"prompt": "Hello! This is my first day, I need a workout routine."}, agent
-)
+response = langgraph_bedrock({"prompt": "Hello! This is my first day, I need a workout routine."}, agent)
 print(f"Agent: {response}\n")
 
 
 response = langgraph_bedrock(
-    {
-        "prompt": "I want to build muscle, looking for a biceps routine. I have some lower back problems."
-    },
+    {"prompt": "I want to build muscle, looking for a biceps routine. I have some lower back problems."},
     agent,
 )
 print(f"Agent: {response}\n")
 
 
-response = langgraph_bedrock(
-    {"prompt": "Can you give me three exercises with number of reps?"}, agent
-)
+response = langgraph_bedrock({"prompt": "Can you give me three exercises with number of reps?"}, agent)
 print(f"Agent: {response}\n")
 
 

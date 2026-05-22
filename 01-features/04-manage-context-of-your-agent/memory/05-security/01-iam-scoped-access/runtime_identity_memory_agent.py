@@ -16,9 +16,7 @@ from strands.hooks import (
 from bedrock_agentcore.memory.constants import ConversationalMessage, MessageRole
 
 # Configure detailed logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 logger = logging.getLogger("runtime-memory-agent")
 
 # Initialize the agent core app
@@ -70,17 +68,11 @@ class MemoryHookProvider(HookProvider):
                 return
 
             # Load conversation history
-            logger.info(
-                f"Loading conversation history for existing session {session_id}"
-            )
-            recent_turns = self.memory_session_manager.get_last_k_turns(
-                actor_id=actor_id, session_id=session_id, k=5
-            )
+            logger.info(f"Loading conversation history for existing session {session_id}")
+            recent_turns = self.memory_session_manager.get_last_k_turns(actor_id=actor_id, session_id=session_id, k=5)
 
             if recent_turns:
-                logger.info(
-                    f"✅ Loaded {len(recent_turns)} conversation turns from memory"
-                )
+                logger.info(f"✅ Loaded {len(recent_turns)} conversation turns from memory")
 
                 # Add messages to agent's conversation history
                 for turn in reversed(recent_turns):
@@ -90,16 +82,10 @@ class MemoryHookProvider(HookProvider):
                         content = parsed[0]["text"]
 
                         # Add to agent's message history
-                        event.agent.messages.append(
-                            {"role": role, "content": [{"text": content}]}
-                        )
-                        logger.info(
-                            f"Added {role} message to history: {content[:50]}..."
-                        )
+                        event.agent.messages.append({"role": role, "content": [{"text": content}]})
+                        logger.info(f"Added {role} message to history: {content[:50]}...")
 
-                logger.info(
-                    f"✅ Added {len(event.agent.messages)} messages to conversation history"
-                )
+                logger.info(f"✅ Added {len(event.agent.messages)} messages to conversation history")
             else:
                 logger.info("No recent turns found for this session")
 
@@ -208,15 +194,11 @@ def runtime_memory_agent(payload, context):
     # Log both payload and context info
     logger.info(f"Received payload: {payload}")
     logger.info(f"Context: {context}")
-    logger.info(
-        f"User Sub: {get_user_sub(context.request_headers.get('Authorization'), REGION, COGNITO_USER_POOL)}"
-    )
+    logger.info(f"User Sub: {get_user_sub(context.request_headers.get('Authorization'), REGION, COGNITO_USER_POOL)}")
 
     # Extract and validate required values
     user_input = payload.get("prompt")
-    actor_id = get_user_sub(
-        context.request_headers.get("Authorization"), REGION, COGNITO_USER_POOL
-    )
+    actor_id = get_user_sub(context.request_headers.get("Authorization"), REGION, COGNITO_USER_POOL)
     session_id = context.session_id  # Get session_id from context
 
     # Validate required fields

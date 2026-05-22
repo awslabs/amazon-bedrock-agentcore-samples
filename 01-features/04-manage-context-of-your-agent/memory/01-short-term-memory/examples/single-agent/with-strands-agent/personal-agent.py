@@ -128,14 +128,10 @@ try:
     logger.info(f"✅ Created memory: {memory_id}")
 except ClientError as e:
     logger.info(f"❌ ERROR: {e}")
-    if e.response["Error"]["Code"] == "ValidationException" and "already exists" in str(
-        e
-    ):
+    if e.response["Error"]["Code"] == "ValidationException" and "already exists" in str(e):
         # If memory already exists, retrieve its ID
         memories = client.list_memories()
-        memory_id = next(
-            (m["id"] for m in memories if m["id"].startswith(memory_name)), None
-        )
+        memory_id = next((m["id"] for m in memories if m["id"].startswith(memory_name)), None)
         logger.info(f"Memory already exists. Using existing memory ID: {memory_id}")
 except Exception as e:
     # Show any errors during memory creation
@@ -212,9 +208,7 @@ class MemoryHookProvider(HookProvider):
                     memory_id=self.memory_id,
                     actor_id=actor_id,
                     session_id=session_id,
-                    messages=[
-                        (messages[-1]["content"][0]["text"], messages[-1]["role"])
-                    ],
+                    messages=[(messages[-1]["content"][0]["text"], messages[-1]["role"])],
                 )
         except Exception as e:
             logger.error(f"Memory save error: {e}")
