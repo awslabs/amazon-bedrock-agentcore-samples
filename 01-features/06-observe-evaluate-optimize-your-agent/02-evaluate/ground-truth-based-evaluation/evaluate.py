@@ -1,7 +1,7 @@
 """
 Ground Truth Evaluation of the HR Assistant Agent.
 
-Demonstrates three evaluation interfaces from the bedrock-agentcore SDK:
+Demonstrates four evaluation interfaces from the bedrock-agentcore SDK:
 
   1. EvaluationClient
        Evaluate specific existing CloudWatch sessions against ground-truth references.
@@ -14,6 +14,11 @@ Demonstrates three evaluation interfaces from the bedrock-agentcore SDK:
   3. BatchEvaluationRunner
        Submit all sessions to the service in a single batch job and get aggregate scores
        per evaluator. Use this for baseline measurement and pre/post comparisons.
+
+  4. DatasetClient (dataset management)
+       Persist evaluation datasets to AgentCore's managed storage, publish immutable
+       versions for reproducible CI/CD runs, and load ground truth directly from a
+       versioned dataset into EvaluationClient or OnDemandEvaluationDatasetRunner.
 
 Usage:
     python evaluate.py [--region REGION] [--config PATH]
@@ -30,9 +35,10 @@ Prerequisites:
            pip install -r requirements.txt
 
 Outputs:
-    results/eval_client_results.json       - EvaluationClient scores
-    results/dataset_runner_results.json    - OnDemandEvaluationDatasetRunner scores
-    results/batch_runner_results.json      - BatchEvaluationRunner aggregate scores
+    results/eval_client_results.json         - EvaluationClient scores
+    results/dataset_runner_results.json      - OnDemandEvaluationDatasetRunner scores
+    results/batch_runner_results.json        - BatchEvaluationRunner aggregate scores
+    results/managed_dataset_eval_results.json - DatasetClient managed dataset scores
 """
 
 import argparse
@@ -707,6 +713,172 @@ _dr_path.write_text(json.dumps(eval_result.model_dump(), indent=2, default=str))
 print(f"\n  DatasetRunner results saved to: {_dr_path}")
 
 # ============================================================
+# 4b. DatasetClient — persist, version, and reload the evaluation dataset
+# ============================================================
+#
+# DatasetClient stores evaluation datasets in AgentCore's managed service.
+# Benefits over an in-memory Dataset object:
+#   - Version-pinned runs: publish version N and always evaluate against that exact
+#     set of examples, regardless of future DRAFT changes.
+#   - Shared ground truth: other teams and CI/CD pipelines load the same scenarios
+#     by dataset ID + version, with no copy-paste of scenario definitions.
+#   - Incremental curation: add, update, or remove examples over time; publish new
+#     versions when the dataset is ready for use.
+#   - Bulk download: GetDataset returns a presigned URL for dataset.jsonl (5 min TTL)
+#     for use in external tools or offline analysis.
+#
+# Here we persist the same 5-scenario evaluation dataset defined above, publish it
+# as version 1, then load version 1 back and run EvaluationClient with the ground
+# truth loaded directly from the managed dataset.
+
+print("\n[4b] DatasetClient — managed dataset with version-pinned evaluation ...")
+
+from bedrock_agentcore.evaluation import DatasetClient  # noqa: E402
+
+_dc = DatasetClient(region_name=REGION)
+_ds_name = f"hr_gt_eval_{uuid.uuid4().hex[:8]}"
+
+# Serialize the PredefinedScenario objects into PREDEFINED_V1 format so they can
+# be stored in the managed dataset service as the canonical source of ground truth.
+_inline_examples = []
+for sc in dataset.scenarios:
+    _example: dict = {
+        "scenario_id": sc.scenario_id,
+        "turns": [
+            {
+                "input": t.input,
+                **({"expected_response": t.expected_response} if t.expected_response else {}),
+            }
+            for t in sc.turns
+        ],
+    }
+    if sc.expected_trajectory:
+        _example["expected_trajectory"] = {"toolNames": sc.expected_trajectory}
+    if sc.assertions:
+        _example["assertions"] = [{"text": a} for a in sc.assertions]
+    _inline_examples.append(_example)
+
+print(f"  Creating managed dataset '{_ds_name}' ({len(_inline_examples)} scenarios) ...")
+_managed_ds = _dc.create_dataset_and_wait(
+    datasetName=_ds_name,
+    schemaType="AGENTCORE_EVALUATION_PREDEFINED_V1",
+    source={"inlineExamples": {"examples": _inline_examples}},
+)
+_managed_ds_id = _managed_ds["datasetId"]
+print(f"  datasetId    : {_managed_ds_id}")
+print(f"  status       : {_managed_ds['status']}")
+print(f"  exampleCount : {_managed_ds.get('exampleCount', '?')}")
+print(f"  draftStatus  : {_managed_ds.get('draftStatus', '?')}  (MODIFIED = DRAFT has unpublished changes)")
+if "downloadUrl" in _managed_ds:
+    print("  downloadUrl  : <presigned URL for draft/dataset.jsonl — valid 5 min>")
+
+# Publish version 1 — creates an immutable snapshot of the current DRAFT.
+# The DRAFT is preserved unchanged; future mutations will change draftStatus back to MODIFIED.
+# CI/CD pipelines pin to version 1 to guarantee reproducible evaluation results.
+print("\n  Publishing version 1 (immutable CI/CD snapshot) ...")
+_dc.create_dataset_version_and_wait(datasetId=_managed_ds_id)
+_versions_resp = _dc.list_dataset_versions(datasetId=_managed_ds_id)
+print(f"  Published versions : {len(_versions_resp.get('versions', []))}")
+for _v in _versions_resp.get("versions", []):
+    print(
+        f"    version={_v.get('datasetVersion', '?')}  "
+        f"examples={_v.get('exampleCount', '?')}  "
+        f"createdAt={_v.get('createdAt', '?')}"
+    )
+_managed_ds_after = _dc.get_dataset(datasetId=_managed_ds_id)
+print(f"  draftStatus after publish : {_managed_ds_after.get('draftStatus', '?')}  (UNMODIFIED = DRAFT matches v1)")
+
+# Load examples back from version 1.
+# Always load from a pinned version (not DRAFT) in CI/CD so evaluation is reproducible.
+print("\n  Loading examples from version 1 ...")
+_v1_resp = _dc.list_dataset_examples(datasetId=_managed_ds_id, datasetVersion="1")
+_v1_examples = _v1_resp.get("examples", [])
+print(f"  Loaded {len(_v1_examples)} examples  (datasetVersion={_v1_resp.get('datasetVersion', '?')})")
+
+# Rebuild a Dataset object from the managed dataset's version 1 examples.
+# This demonstrates the full round-trip: in-memory → managed service → in-memory.
+# In production, the eval script would skip the "serialize" step and load directly
+# from the dataset ID, enabling scenario definitions to be managed independently
+# of the evaluation code.
+_managed_scenarios = []
+for _ex in _v1_examples:
+    _turns = [
+        Turn(
+            input=_t["input"],
+            expected_response=_t.get("expected_response"),
+        )
+        for _t in _ex.get("turns", [])
+    ]
+    _traj = (_ex.get("expected_trajectory") or {}).get("toolNames", [])
+    _assertions = [_a["text"] for _a in _ex.get("assertions", []) if isinstance(_a, dict)]
+    _managed_scenarios.append(
+        PredefinedScenario(
+            scenario_id=_ex["scenario_id"],
+            turns=_turns,
+            expected_trajectory=_traj or None,
+            assertions=_assertions or None,
+        )
+    )
+_dataset_from_managed = Dataset(scenarios=_managed_scenarios)
+print(f"  Dataset rebuilt from managed v1 : {len(_dataset_from_managed.scenarios)} scenarios")
+
+# Run EvaluationClient on one session using the ground truth loaded from the
+# managed dataset. This confirms the round-trip is lossless — the same expected
+# response and assertions that were stored in the service are used for evaluation.
+print("\n  Running EvaluationClient with ground truth loaded from managed dataset v1 ...")
+_managed_pto_scenario = next(
+    (sc for sc in _dataset_from_managed.scenarios if sc.scenario_id == "pto-balance-check"),
+    _dataset_from_managed.scenarios[0] if _dataset_from_managed.scenarios else None,
+)
+_managed_eval_results = []
+if _managed_pto_scenario and session_pto_balance:
+    _managed_ref = ReferenceInputs(
+        expected_response=(
+            _managed_pto_scenario.turns[0].expected_response
+            if _managed_pto_scenario.turns
+            else None
+        ),
+        assertions=_managed_pto_scenario.assertions,
+    )
+    _managed_eval_results = eval_client.run(
+        evaluator_ids=[
+            "Builtin.Correctness",
+            "Builtin.GoalSuccessRate",
+            CUSTOM_RESPONSE_SIMILARITY_ID,
+        ],
+        session_id=session_pto_balance,
+        agent_id=AGENT_ID,
+        look_back_time=timedelta(hours=2),
+        reference_inputs=_managed_ref,
+    )
+    print_eval_results(
+        "PTO Balance — ground truth from managed dataset v1",
+        _managed_eval_results,
+    )
+
+# Save results
+_mds_path = _RESULTS_DIR / "managed_dataset_eval_results.json"
+_mds_path.write_text(
+    json.dumps(
+        {
+            "dataset_id": _managed_ds_id,
+            "dataset_name": _ds_name,
+            "dataset_version": "1",
+            "example_count": len(_v1_examples),
+            "eval_results": _managed_eval_results,
+        },
+        indent=2,
+        default=str,
+    )
+)
+print(f"\n  Managed dataset results saved to: {_mds_path}")
+
+# Clean up — in a real workflow, keep the dataset and reference it by ID.
+# Tip: add the dataset ID to your agent_config.json to share it across scripts.
+_dc.delete_dataset_and_wait(datasetId=_managed_ds_id)
+print(f"  Managed dataset {_managed_ds_id} cleaned up.")
+
+# ============================================================
 # 5. BatchEvaluationRunner — service-side batch evaluation
 # ============================================================
 #
@@ -828,10 +1000,12 @@ print("\n[6/6] All evaluations complete.")
 print("\n  Results written to:")
 print(f"    {_ec_path}")
 print(f"    {_dr_path}")
+print(f"    {_mds_path}")
 print(f"    {_br_path}")
 print(
-    "\n  Evaluator comparison:\n"
+    "\n  Interface comparison:\n"
     "    EvaluationClient         → per-session, ad-hoc, supports all evaluator types\n"
     "    OnDemandDatasetRunner    → per-scenario, client-side, good for CI/CD\n"
+    "    DatasetClient            → managed dataset storage + versioning; load ground truth by dataset ID\n"
     "    BatchEvaluationRunner    → aggregate scores, service-side, good for baselines\n"
 )

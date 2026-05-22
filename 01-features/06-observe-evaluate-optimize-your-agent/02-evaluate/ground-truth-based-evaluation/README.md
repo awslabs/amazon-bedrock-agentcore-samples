@@ -2,6 +2,8 @@
 
 ## Overview
 
+![Evaluation Architecture](../images/evaluation_architecture_simple.svg)
+
 Evaluate an agent using **Amazon Bedrock AgentCore evaluations** with ground-truth reference inputs. Ground truth evaluation lets you supply the correct answer, expected tool calls, and session-level assertions alongside each agent invocation — the service compares the agent's actual behavior against your references and produces a numeric score.
 
 ```
@@ -146,6 +148,8 @@ Best for: baseline snapshots, large-scale evaluation, comparing before/after a p
 
 ## Ground Truth: ReferenceInputs
 
+![ReferenceInputs Anatomy](../images/reference_inputs_anatomy.svg)
+
 `ReferenceInputs` carries the ground truth for each session. Each evaluator reads only the fields it needs:
 
 | Field | Used by | Description |
@@ -285,7 +289,7 @@ Deploy complete.
 ## Step 2: Install evaluation Dependencies
 
 ```bash
-cd ground-truth-based-evalaution
+cd ground-truth-based-evaluation
 pip install -r requirements.txt
 ```
 
@@ -370,11 +374,11 @@ evaluate/
 │   ├── hr_assistant_agent.py   ← Strands agent with 5 HR tools
 │   ├── deploy.py               ← deploys the agent, writes agent_config.json
 │   └── requirements.txt        ← agent runtime dependencies (ARM64)
-├── ground-truth-based-evalaution/   ← this folder
+├── ground-truth-based-evaluation/   ← this folder
 │   ├── evaluate.py
 │   ├── requirements.txt
 │   └── README.md
-├── custom-code-based-evalaution/    ← reuses the same utils agent
+├── custom-code-based-evaluation/    ← reuses the same utils agent
 └── llm-as-a-judge-evaluation/       ← reuses the same utils agent
 ```
 

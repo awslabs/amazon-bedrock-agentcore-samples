@@ -215,8 +215,8 @@ def _make_zip(source_dir: str) -> bytes:
             check=True,
         )
 
-        # bedrock-agentcore imports starlette/uvicorn/websockets at module load
-        print("    Bundling starlette, uvicorn, websockets, typing-extensions ...")
+        # bedrock-agentcore imports starlette/uvicorn/websockets/requests at module load
+        print("    Bundling starlette, uvicorn, websockets, typing-extensions, requests ...")
         subprocess.run(
             [
                 sys.executable,
@@ -227,6 +227,7 @@ def _make_zip(source_dir: str) -> bytes:
                 "uvicorn",
                 "websockets",
                 "typing-extensions",
+                "requests",
                 "--target",
                 str(pkg_dir),
                 "--quiet",

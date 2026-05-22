@@ -8,6 +8,8 @@ AgentCore evaluations integrates with popular agent frameworks including Strands
 
 While AgentCore observability provides operational insights into agent health, AgentCore evaluations focuses on **agent decision quality and performance outcomes**. It provides built-in and custom evaluators with both on-demand and online evaluation capabilities.
 
+![AgentCore Evaluation Architecture](images/evaluation_architecture_simple.svg)
+
 ![AgentCore evaluation Interfaces](images/agentcore_interfaces.png)
 
 ## Key Features
@@ -107,9 +109,9 @@ Three evaluation interfaces are available depending on your use case:
 
 | Sample | What it demonstrates |
 |:-------|:--------------------|
-| [`ground-truth-based-evalaution/`](ground-truth-based-evalaution/) | EvaluationClient + DatasetRunner + BatchRunner with expected responses, expected tool trajectories, and session assertions |
+| [`ground-truth-based-evaluation/`](ground-truth-based-evaluation/) | EvaluationClient + DatasetRunner + BatchRunner with expected responses, expected tool trajectories, and session assertions |
 | [`llm-as-a-judge-evaluation/`](llm-as-a-judge-evaluation/) | Custom LLM-as-a-judge evaluators (TRACE + SESSION) with ground-truth placeholders alongside built-in evaluators |
-| [`custom-code-based-evalaution/`](custom-code-based-evalaution/) | Lambda-backed deterministic evaluators (code-based) for exact data validation, mixed with built-in LLM evaluators; on-demand and online modes |
+| [`custom-code-based-evaluation/`](custom-code-based-evaluation/) | Lambda-backed deterministic evaluators (code-based) for exact data validation, mixed with built-in LLM evaluators; on-demand and online modes |
 
 All samples share the same HR Assistant agent deployed from `utils/`.
 
@@ -208,7 +210,7 @@ python deploy.py
 
 ```bash
 # Ground truth evaluation (EvaluationClient + DatasetRunner + BatchRunner)
-cd ground-truth-based-evalaution
+cd ground-truth-based-evaluation
 pip install -r requirements.txt
 python evaluate.py
 
@@ -218,7 +220,7 @@ pip install -r requirements.txt
 python evaluate.py
 
 # Code-based evaluation (Lambda evaluators)
-cd custom-code-based-evalaution
+cd custom-code-based-evaluation
 pip install -r requirements.txt
 python evaluate.py
 ```

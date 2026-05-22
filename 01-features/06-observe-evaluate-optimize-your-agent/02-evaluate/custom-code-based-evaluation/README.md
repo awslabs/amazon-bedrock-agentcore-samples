@@ -519,4 +519,4 @@ Code-based evaluators are supported for **both on-demand** (`EvaluationClient`, 
 - Combine code-based evaluators with `EvaluationClient` to validate specific production sessions
 - Add code-based evaluators to your CI/CD pipeline for zero-cost regression testing on every deployment
 - Use online evaluation with a lower sampling rate (e.g. 10%) to cost-effectively monitor high-traffic agents
-- Explore [`ground-truth-based-evalaution/`](../ground-truth-based-evalaution/) for `EvaluationClient` and ground-truth-based evaluations with built-in evaluators
+- Explore [`ground-truth-based-evaluation/`](../ground-truth-based-evaluation/) for `EvaluationClient` and ground-truth-based evaluations with built-in evaluators

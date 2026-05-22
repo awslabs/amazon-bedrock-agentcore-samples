@@ -243,5 +243,5 @@ aws bedrock-agentcore-control delete-online-evaluation-config \
 ## Next Steps
 
 - Add trajectory evaluators (`Builtin.TrajectoryExactOrderMatch`, `TrajectoryInOrderMatch`, `TrajectoryAnyOrderMatch`) using `expected_trajectory` in `ReferenceInputs`
-- Explore [`ground-truth-based-evalaution/`](../ground-truth-based-evalaution/) for `EvaluationClient`, `DatasetRunner`, and `BatchRunner` patterns
-- Explore [`custom-code-based-evalaution/`](../custom-code-based-evalaution/) for deterministic Lambda evaluators
+- Explore [`ground-truth-based-evaluation/`](../ground-truth-based-evaluation/) for `EvaluationClient`, `DatasetRunner`, and `BatchRunner` patterns
+- Explore [`custom-code-based-evaluation/`](../custom-code-based-evaluation/) for deterministic Lambda evaluators

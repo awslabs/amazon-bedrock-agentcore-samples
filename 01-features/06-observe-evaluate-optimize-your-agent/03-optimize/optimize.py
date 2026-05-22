@@ -817,9 +817,6 @@ if not xray_dest:
     logs.put_delivery_destination(
         name="xray-destination",
         deliveryDestinationType="XRAY",
-        deliveryDestinationConfiguration={
-            "destinationResourceArn": f"arn:aws:xray:{REGION}:{ACCOUNT_ID}:group/Default"
-        },
     )
     destinations = logs.describe_delivery_destinations().get("deliveryDestinations", [])
     xray_dest = next(

@@ -112,9 +112,9 @@ Three evaluation approaches across the full evaluation maturity curve:
 
 | Sub-folder | Approach | Description |
 |:-----------|:---------|:------------|
-| `ground-truth-based-evalaution/` | Ground Truth | Dataset simulation → batch evaluation with ground truth labels |
+| `ground-truth-based-evaluation/` | Ground Truth | Dataset simulation → batch evaluation with ground truth labels |
 | `llm-as-a-judge-evaluation/` | LLM as Judge | On-demand and online evaluation using built-in LLM evaluators |
-| `custom-code-based-evalaution/` | Custom Code | Lambda-based evaluators with domain-specific business logic |
+| `custom-code-based-evaluation/` | Custom Code | Lambda-based evaluators with domain-specific business logic |
 
 All evaluation samples use an **HR Assistant agent** as the demo agent.
 
