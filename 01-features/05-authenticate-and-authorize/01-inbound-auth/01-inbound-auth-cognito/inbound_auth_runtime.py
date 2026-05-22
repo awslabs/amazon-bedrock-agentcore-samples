@@ -32,6 +32,7 @@ import zipfile
 
 import boto3
 from boto3.session import Session
+from botocore.exceptions import ClientError
 
 # ── Configuration ─────────────────────────────────────────────────────────────
 
@@ -47,6 +48,7 @@ session = Session()
 REGION = session.region_name or "us-east-1"
 ACCOUNT_ID = session.client("sts").get_caller_identity()["Account"]
 S3_BUCKET = f"agentcore-code-{ACCOUNT_ID}-{REGION}"
+S3_PREFIX = f"{AGENT_NAME}/code.zip"
 
 print(f"Region:  {REGION}")
 print(f"Account: {ACCOUNT_ID}")
@@ -259,8 +261,13 @@ def create_execution_role() -> str:
                 "Action": [
                     "bedrock:InvokeModel",
                     "bedrock:InvokeModelWithResponseStream",
+                    "bedrock:Converse",
+                    "bedrock:ConverseStream",
                 ],
-                "Resource": "arn:aws:bedrock:*::foundation-model/*",
+                "Resource": [
+                    "arn:aws:bedrock:*::foundation-model/*",
+                    f"arn:aws:bedrock:*:{ACCOUNT_ID}:inference-profile/*",
+                ],
             },
         ],
     }
@@ -280,94 +287,88 @@ def create_execution_role() -> str:
         PolicyDocument=json.dumps(inline_policy),
     )
     print(f"  Execution role: {role_arn}")
-    time.sleep(10)  # IAM propagation
+    time.sleep(15)  # IAM cross-service propagation
     return role_arn
 
 
 # ── Step 3: Build and upload code zip ─────────────────────────────────────────
 
 
-def build_and_upload_zip() -> str:
-    """Build arm64 deps with uv, zip with agent code, and upload to S3."""
+def build_and_upload_zip() -> tuple[str, str]:
+    """Build arm64 deployment zip with uv, upload to S3 under (bucket, prefix).
+
+    AgentCore Runtime executes containers on ARM64 (Graviton). uv downloads
+    the matching wheels and we bundle them with the agent code; the runtime
+    extracts the zip into the managed image at start.
+
+    See: https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime-get-started-code-deploy-python.html
+    """
+    sample_dir = os.path.dirname(os.path.abspath(__file__))
+    requirements = os.path.join(sample_dir, "requirements.txt")
+
     build_dir = tempfile.mkdtemp(prefix="agentcore-build-")
+    pkg_dir = os.path.join(build_dir, "deployment_package")
     zip_path = os.path.join(build_dir, "code.zip")
+    os.makedirs(pkg_dir)
 
     try:
-        # Write agent code
-        agent_file = os.path.join(build_dir, ENTRY_POINT)
+        # Write the agent code into the package dir.
+        agent_file = os.path.join(pkg_dir, ENTRY_POINT)
         with open(agent_file, "w") as f:
             f.write(AGENT_CODE)
 
-        # Install deps for arm64 (AgentCore Runtime runs on arm64)
-        deps_dir = os.path.join(build_dir, "deps")
-        os.makedirs(deps_dir)
+        # Download arm64-compatible wheels.
+        # --python-platform aarch64-manylinux2014 : targets ARM64 Linux (Graviton)
+        # --python-version 3.13                   : matches PYTHON_RUNTIME
+        # --only-binary :all:                     : prebuilt wheels only, no source builds
+        # --target pkg_dir                        : install into package dir, not site-packages
+        print("  Installing arm64 dependencies with uv...")
         subprocess.run(
             [
                 "uv",
                 "pip",
                 "install",
-                "strands-agents",
-                "strands-agents-tools",
-                "bedrock-agentcore",
-                "--target",
-                deps_dir,
                 "--python-platform",
-                "manylinux2014_aarch64",
-                "--python",
+                "aarch64-manylinux2014",
+                "--python-version",
                 "3.13",
-                "--no-deps",
+                "--target",
+                pkg_dir,
+                "--only-binary",
+                ":all:",
+                "-r",
+                requirements,
             ],
             check=True,
-            capture_output=True,
-        )
-        # Additional deps uv misses with --no-deps
-        subprocess.run(
-            [
-                "uv",
-                "pip",
-                "install",
-                "starlette",
-                "uvicorn",
-                "websockets",
-                "anyio",
-                "--target",
-                deps_dir,
-                "--python-platform",
-                "manylinux2014_aarch64",
-                "--python",
-                "3.13",
-            ],
-            check=True,
-            capture_output=True,
         )
 
-        # Zip deps + agent code
+        # Zip everything (deps + agent code) at the root of the archive.
         with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
-            for root, _, files in os.walk(deps_dir):
+            for root, _, files in os.walk(pkg_dir):
                 for fname in files:
                     abs_path = os.path.join(root, fname)
-                    arc_name = os.path.relpath(abs_path, deps_dir)
+                    arc_name = os.path.relpath(abs_path, pkg_dir)
                     zf.write(abs_path, arc_name)
-            zf.write(agent_file, ENTRY_POINT)
 
-        # Upload to S3
+        # Upload to S3.
         s3 = boto3.client("s3", region_name=REGION)
         try:
-            s3.create_bucket(
-                Bucket=S3_BUCKET,
-                **({"CreateBucketConfiguration": {"LocationConstraint": REGION}} if REGION != "us-east-1" else {}),
-            )
+            if REGION == "us-east-1":
+                s3.create_bucket(Bucket=S3_BUCKET)
+            else:
+                s3.create_bucket(
+                    Bucket=S3_BUCKET,
+                    CreateBucketConfiguration={"LocationConstraint": REGION},
+                )
         except (
             s3.exceptions.BucketAlreadyOwnedByYou,
             s3.exceptions.BucketAlreadyExists,
         ):
             pass
 
-        s3_key = f"{AGENT_NAME}/code.zip"
-        s3.upload_file(zip_path, S3_BUCKET, s3_key)
-        s3_uri = f"s3://{S3_BUCKET}/{s3_key}"
-        print(f"  Uploaded code to {s3_uri}")
-        return s3_uri
+        s3.upload_file(zip_path, S3_BUCKET, S3_PREFIX)
+        print(f"  Uploaded code to s3://{S3_BUCKET}/{S3_PREFIX}")
+        return (S3_BUCKET, S3_PREFIX)
 
     finally:
         shutil.rmtree(build_dir, ignore_errors=True)
@@ -376,36 +377,52 @@ def build_and_upload_zip() -> str:
 # ── Step 4: Create AgentCore Runtime with inbound auth ─────────────────────────
 
 
-def create_runtime_with_inbound_auth(role_arn: str, s3_uri: str, cognito_config: dict) -> dict:
+def _create_runtime_with_retry(control, **kwargs):
+    """Retry create_agent_runtime to absorb IAM role propagation race.
+
+    The control plane briefly returns ValidationException ("role cannot be
+    assumed by ...") before the role is fully propagated across services.
+    Backoff: 4, 8, 16, 32, 64 seconds.
+    """
+    last_exc = None
+    for attempt in range(5):
+        try:
+            return control.create_agent_runtime(**kwargs)
+        except ClientError as e:
+            code = e.response.get("Error", {}).get("Code", "")
+            msg = str(e).lower()
+            if code in ("ValidationException", "AccessDeniedException") and "role" in msg:
+                last_exc = e
+                wait = 2**attempt * 4
+                print(f"    Role not yet assumable; retrying in {wait}s...")
+                time.sleep(wait)
+                continue
+            raise
+    raise last_exc
+
+
+def create_runtime_with_inbound_auth(role_arn: str, s3_bucket: str, s3_prefix: str, cognito_config: dict) -> dict:
     """Create AgentCore Runtime configured for Cognito JWT inbound auth."""
     control = boto3.client("bedrock-agentcore-control", region_name=REGION)
 
-    response = control.create_agent_runtime(
+    response = _create_runtime_with_retry(
+        control,
         agentRuntimeName=AGENT_NAME,
         agentRuntimeArtifact={
-            "containerConfiguration": {
-                "containerUri": s3_uri,
+            "codeConfiguration": {
+                "code": {"s3": {"bucket": s3_bucket, "prefix": s3_prefix}},
+                "runtime": PYTHON_RUNTIME,
+                "entryPoint": [ENTRY_POINT],
             }
         },
         roleArn=role_arn,
         networkConfiguration={"networkMode": "PUBLIC"},
         protocolConfiguration={"serverProtocol": "HTTP"},
-        environmentVariables={},
         authorizerConfiguration={
             "customJWTAuthorizer": {
                 "discoveryUrl": cognito_config["discovery_url"],
                 "allowedClients": [cognito_config["client_id"]],
             }
-        },
-        codeConfiguration={
-            "runtime": PYTHON_RUNTIME,
-            "entryPoint": ENTRY_POINT,
-            "sourceCode": {
-                "s3": {
-                    "uri": s3_uri,
-                    "etag": "",
-                }
-            },
         },
     )
 
@@ -434,19 +451,29 @@ def create_runtime_with_inbound_auth(role_arn: str, s3_uri: str, cognito_config:
 
 
 def invoke_runtime(runtime_arn: str, prompt: str, bearer_token: str = None) -> str:
-    """Invoke the AgentCore Runtime, optionally with a bearer token."""
+    """Invoke the AgentCore Runtime, optionally with a Cognito bearer token.
+
+    For runtimes configured with `customJWTAuthorizer`, AgentCore expects the
+    JWT in an `Authorization: Bearer <jwt>` header instead of SigV4. boto3's
+    `invoke_agent_runtime` doesn't accept the token as a parameter, so we hook
+    `before-send` to inject the header on the wire (and skip SigV4 signing).
+    Pattern matches `03-m2m-3lo/invoke.py`.
+    """
     data_plane = boto3.client("bedrock-agentcore", region_name=REGION)
 
-    kwargs = {
-        "agentRuntimeArn": runtime_arn,
-        "qualifier": "DEFAULT",
-        "payload": json.dumps({"prompt": prompt}),
-        "runtimeSessionId": str(uuid.uuid4()),
-    }
     if bearer_token:
-        kwargs["bearerTokenCredentials"] = {"bearerToken": bearer_token}
 
-    response = data_plane.invoke_agent_runtime(**kwargs)
+        def _inject_bearer(request, **_):
+            request.headers["Authorization"] = f"Bearer {bearer_token}"
+
+        data_plane.meta.events.register("before-send.bedrock-agentcore.InvokeAgentRuntime", _inject_bearer)
+
+    response = data_plane.invoke_agent_runtime(
+        agentRuntimeArn=runtime_arn,
+        qualifier="DEFAULT",
+        payload=json.dumps({"prompt": prompt}),
+        runtimeSessionId=str(uuid.uuid4()),
+    )
 
     chunks = []
     for event in response.get("response", []):
@@ -477,14 +504,16 @@ def cleanup(state: dict):
         except Exception as e:
             print(f"  Runtime delete error: {e}")
 
-    if state.get("user_pool_id"):
+    cognito_config = state.get("cognito_config", {})
+    user_pool_id = cognito_config.get("user_pool_id")
+    if user_pool_id:
         try:
-            pool_info = cognito.describe_user_pool(UserPoolId=state["user_pool_id"])
+            pool_info = cognito.describe_user_pool(UserPoolId=user_pool_id)
             domain = pool_info["UserPool"].get("Domain", "")
             if domain:
-                cognito.delete_user_pool_domain(UserPoolId=state["user_pool_id"], Domain=domain)
-            cognito.delete_user_pool(UserPoolId=state["user_pool_id"])
-            print(f"  Deleted Cognito pool: {state['user_pool_id']}")
+                cognito.delete_user_pool_domain(UserPoolId=user_pool_id, Domain=domain)
+            cognito.delete_user_pool(UserPoolId=user_pool_id)
+            print(f"  Deleted Cognito pool: {user_pool_id}")
         except Exception as e:
             print(f"  Cognito delete error: {e}")
 
@@ -544,11 +573,11 @@ def main():
 
         # ── 3. Build & upload ────────────────────────────────────────────────
         print("\n=== Step 3: Building and Uploading Code ===")
-        s3_uri = build_and_upload_zip()
+        s3_bucket, s3_prefix = build_and_upload_zip()
 
         # ── 4. Create runtime with inbound auth ──────────────────────────────
         print("\n=== Step 4: Creating AgentCore Runtime with Inbound Auth ===")
-        runtime_info = create_runtime_with_inbound_auth(role_arn, s3_uri, cognito_config)
+        runtime_info = create_runtime_with_inbound_auth(role_arn, s3_bucket, s3_prefix, cognito_config)
         runtime_arn = runtime_info["runtime_arn"]
 
         state = {
@@ -556,7 +585,8 @@ def main():
             "runtime_id": runtime_info["runtime_id"],
             "runtime_arn": runtime_arn,
             "role_arn": role_arn,
-            "s3_uri": s3_uri,
+            "s3_bucket": s3_bucket,
+            "s3_prefix": s3_prefix,
             "cognito_config": cognito_config,
         }
         with open(STATE_FILE, "w") as f:
