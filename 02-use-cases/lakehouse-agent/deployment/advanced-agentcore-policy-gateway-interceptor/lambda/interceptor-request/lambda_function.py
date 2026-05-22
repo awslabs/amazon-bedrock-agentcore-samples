@@ -1,5 +1,5 @@
 """
-AgentCore Gateway Interceptor for Health Lakehouse Data
+Amazon Bedrock AgentCore Gateway Interceptor for the Lakehouse Insurance Claims sample (Design 3 — geography injection variant).
 
 This Lambda function acts as a Gateway Interceptor following the AgentCore MCP protocol:
 1. Extracts JWT bearer tokens from MCP gateway request structure

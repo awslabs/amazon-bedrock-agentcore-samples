@@ -7,7 +7,7 @@ import * as fs from "fs";
 import * as path from "path";
 
 /**
- * AgentCore Policy Stack for Lakehouse Agent
+ * Amazon Bedrock AgentCore Policy Stack for Lakehouse Agent
  *
  * Prerequisites:
  *   Before deploying, remove Interceptors from the Gateway.

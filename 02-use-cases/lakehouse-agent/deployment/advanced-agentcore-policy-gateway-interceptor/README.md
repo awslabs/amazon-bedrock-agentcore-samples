@@ -1,4 +1,4 @@
-# Advanced AgentCore Policy + Lambda Interceptor (CDK)
+# Advanced Amazon Bedrock AgentCore Policy + Lambda Interceptor (CDK)
 
 This CDK project extends the lakehouse-agent sample with a layered security
 architecture that combines **Cedar-based AgentCore Policy** and a **Design 3
