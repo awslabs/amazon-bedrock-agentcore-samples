@@ -68,6 +68,12 @@ Required tooling:
 > the base lakehouse-agent deployment. Export `AWS_REGION` before running any
 > step if your shell default differs.
 
+> **MCP target ownership**: `lakehouse-mcp-target` referenced by the Cedar
+> policies is the first-party MCP server deployed by Phase 1 Step 4
+> (`deployment/4-mcp-lakehouse-server/`). It is part of this sample and is
+> licensed under the Apache License 2.0 (see [LICENSE](../../../../LICENSE)).
+> It is not a third-party dependency and requires no separate legal review.
+
 ## Directory layout
 
 ```
@@ -175,6 +181,62 @@ The `geography` attribute is injected by the Design 3 Request Interceptor at
 `context.input.geography`. The demo Lambda ships a hard-coded mapping in
 `USER_GEOGRAPHY` — replace with a DynamoDB lookup for production.
 
+## Security Considerations
+
+### Threat Model
+
+| ID  | Threat                                                                              | Mitigation                                                                                                    |
+| --- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| T1  | Cross-tenant data access (one policyholder reading another's claims)                | Design 2 token exchange (`sts:AssumeRole`) + Lake Formation row-level security (Phase 1 Step 2 + Step 3)      |
+| T2  | Privilege escalation via tool selection (policyholder invoking adjuster-only tools) | Design 1 Cedar `forbid` rule on `get_claims_summary` for the `policyholders` Cognito group                    |
+| T3  | Data residency violation (EU user accessing individual claim records)               | Design 3 geography injection by the Request Interceptor + Cedar `forbid` evaluating `context.input.geography` |
+
+### Service-specific Security Guidelines
+
+- **Amazon Bedrock AgentCore Gateway**: keep the `CUSTOM_JWT` authorizer with `discoveryUrl` validation (configured in `lib/policy-stack.ts`). Run the Policy Engine in `ENFORCE` mode for production; switch to `LOG_ONLY` only when validating new policies.
+- **Amazon Bedrock AgentCore Policy**: `permit_all.cedar` uses `IGNORE_ALL_FINDINGS` only as the baseline permit; all `forbid` policies use `FAIL_ON_ANY_FINDINGS` for stricter validation.
+- **Amazon DynamoDB** (tenant role mappings, used by Design 2): enable point-in-time recovery and KMS encryption at rest in production. Restrict the interceptor Lambda's IAM role to specific table ARNs.
+- **AWS Lake Formation**: row- and column-level grants are managed by Phase 1 `deployment/3-s3tables-setup/`. Audit grants periodically.
+- **Amazon S3 Tables**: keep table buckets in the same region as the Athena workgroup. Use Lake Formation permissions for table-level access rather than bucket policies.
+- **Amazon Athena**: use a dedicated workgroup with `ResultConfiguration` pointing to a KMS-encrypted result bucket; enforce result-set encryption.
+- **AWS Systems Manager Parameter Store**: store `cognito-app-client-secret` as `SecureString`. Read with `WithDecryption=True` (the interceptor and verification scripts already do this). Rotate per your secrets policy.
+
+### Shared Responsibility
+
+AWS manages the underlying Amazon Bedrock AgentCore Gateway, Policy Engine, AWS Lambda runtime, and Amazon Cognito control plane. **You** are responsible for: Cedar policy correctness, the `USER_GEOGRAPHY` mapping (today hard-coded; move to Amazon DynamoDB for production — see line above), tenant role mappings in Amazon DynamoDB, AWS Lake Formation grants, AWS IAM role trust policies, Amazon Cognito user-pool password and MFA policies, and Amazon CloudWatch log retention / forwarding configuration.
+
+### Data Classification and Handling
+
+| Data type                                | Classification | Handling                                                                                                                    |
+| ---------------------------------------- | -------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| JWT bearer tokens                        | Confidential   | Validated by the request interceptor; never logged in full. Only `username` / `sub` claims are emitted to logs.             |
+| IAM session credentials (token exchange) | Restricted     | Returned by `sts:AssumeRole`, scoped to the request, and expire on session end (1 h max).                                   |
+| Cognito user pool ID / app client ID     | Internal       | Stored in AWS Systems Manager Parameter Store; read with `WithDecryption=True` for forward-compatibility with SecureString. |
+| Cognito app client secret                | Confidential   | Stored as SSM SecureString; decrypted at read time only.                                                                    |
+| Synthetic insurance claims data          | Internal       | Generated procedurally by Phase 1 `deployment/3-s3tables-setup/`; contains no real-world records.                           |
+| Geography attribute                      | Internal       | Injected at request time by the Design 3 interceptor; not persisted.                                                        |
+
+### Key Management
+
+- **This sample**: relies on AWS-managed default keys (`aws/ssm`, `aws/lambda`, `aws/s3`) for at-rest encryption to keep the deployment minimal.
+- **Production**: replace with **customer-managed AWS KMS keys** for SSM SecureString parameters, AWS Lambda environment variables, the Amazon DynamoDB tenant role mapping table, the Amazon S3 Tables result bucket, and Amazon CloudWatch Logs.
+- **Rotation**: enable automatic annual rotation on all customer-managed keys.
+- **Access**: grant `kms:Decrypt` and `kms:GenerateDataKey` only to the Gateway role and the request interceptor Lambda role; do not grant cross-account access without an explicit need.
+- **Naming**: use a consistent alias scheme such as `alias/lakehouse-agent/<service>` for traceability.
+
+### Security Validation
+
+- **Static analysis**: this sample is scanned with internal AWS Holmes content-security tooling on every PR; the latest scan completed with 0 Critical findings.
+- **Cedar policy validation**: each `policies/*.cedar` file is validated by the AgentCore Policy Engine via `validationMode` — `IGNORE_ALL_FINDINGS` for the baseline `permit_all` and `FAIL_ON_ANY_FINDINGS` for every `forbid` policy (see `lib/policy-stack.ts:80-82`).
+- **End-to-end verification**: `verification/verify_policy.py` exercises 13 access-control assertions across the 3 designs (see Step 4 above) and is expected to report `Results: 13/13 passed` after a clean deploy.
+- **Manual review**: Cedar rules and IAM policies in `lib/policy-stack.ts` are reviewed for least privilege before merge.
+
+## Disclaimer
+
+The examples provided in this repository are for experimental and educational purposes only. They demonstrate concepts and techniques but are not intended for direct use in production environments. Make sure to have [Amazon Bedrock Guardrails](https://docs.aws.amazon.com/bedrock/latest/userguide/guardrails.html) in place to protect against [prompt injection](https://docs.aws.amazon.com/bedrock/latest/userguide/prompt-injection.html).
+
+**Note on data**: this sample uses **synthetic insurance claims data** generated procedurally by Phase 1 `deployment/3-s3tables-setup/` scripts. The dataset contains no real-world records, no PII, and no PHI; it is generated at deployment time, distributed under the same Apache-2.0 license as this sample, and does not fall under HIPAA, PCI DSS, GDPR, or other data protection regulations. Adapting this sample for production workloads with real data requires a separate compliance review beyond the scope of this CDK project.
+
 ## Cleanup
 
 Destroy **in reverse order**. Phase 2 first, then Phase 1.
@@ -240,3 +302,7 @@ See [../README.md](../README.md) for details.
 - Blog post: _Build Secure AI Agent Behavior with Policy and Lambda Interceptors in Amazon Bedrock AgentCore_
 - [Phase 1 deployment guide](../README.md)
 - [lakehouse-agent README](../../README.md)
+
+## License
+
+This project is licensed under the Apache License 2.0 — see the [LICENSE](../../../../LICENSE) file at the repository root for details.
