@@ -185,4 +185,5 @@ Payment resources (Manager, Connector, Instrument): run the cleanup section in T
 ## Next Steps
 
 - **Tutorial 05** — `../05-agent-with-browser-tool-pay-for-content/` — Browser + paywall payment pattern
+- **Tutorial 06** — `../06-research-agent-with-payment-memory/` — Recall past data and skip redundant paid calls with AgentCore Memory
 - **Tutorial 07** — `../07-multi-agent-payment-orchestrator/` — Multi-agent orchestration with per-agent budgets

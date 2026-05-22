@@ -133,17 +133,19 @@ Each tutorial maps to one or more AgentCore payments features. Start with Tutori
 | 03 | [Wallet Operations](03-user-onboarding-wallet-funding/) | Wallet integration | Full wallet lifecycle: onboard additional users, funding options (testnet faucet and onramps), delegation per provider, balance checks, multi-network wallets, and session budget patterns |
 | 04 | [Gateway + Bazaar](04-agent-with-coinbase-bazaar-via-gateway/) | Endpoint discoverability, Payment processing | Discover paid MCP tools on Coinbase x402 Bazaar through AgentCore Gateway (Base Sepolia) and call them with automatic payment |
 | 05 | [Browser + Payments](05-agent-with-browser-tool-pay-for-content/) | Payment processing | (Pattern reference) Intercept HTTP 402 responses in a Playwright browser session and pay for paywalled web content |
-| 06 | [Multi-Agent Orchestrator](07-multi-agent-payment-orchestrator/) | Wallet integration, Payment limits, Observability | Orchestrate multiple agents with separate wallets (Coinbase + Privy), per-agent payment limits, Runtime deploy, and online evaluation |
+| 06 | [Research Agent with Payment Memory](06-research-agent-with-payment-memory/) | Payment processing, Payment limits, Memory | Combine AgentCore payments with AgentCore Memory so the agent recalls past data and user preferences across sessions and skips redundant paid calls |
+| 07 | [Multi-Agent Orchestrator](07-multi-agent-payment-orchestrator/) | Wallet integration, Payment limits, Observability | Orchestrate multiple agents with separate wallets (Coinbase + Privy), per-agent payment limits, Runtime deploy, and online evaluation |
 
 ### AgentCore payments features → tutorial mapping
 
 | Feature | Description | Tutorials |
 |---------|-------------|-----------|
-| Payment processing | x402 protocol orchestration, transaction signing, proof generation | 01, 02, 04, 05, 06 |
-| Payment limits | Session budgets (`maxSpendAmount`), expiry, overspend rejection | 00, 01, 03, 06 |
-| Wallet integration | Coinbase CDP and Stripe (Privy) embedded wallets, delegation, funding | 00, 03, 06 |
+| Payment processing | x402 protocol orchestration, transaction signing, proof generation | 01, 02, 04, 05, 06, 07 |
+| Payment limits | Session budgets (`maxSpendAmount`), expiry, overspend rejection | 00, 01, 03, 06, 07 |
+| Wallet integration | Coinbase CDP and Stripe (Privy) embedded wallets, delegation, funding | 00, 03, 07 |
 | Endpoint discoverability | Coinbase x402 Bazaar via AgentCore Gateway, MCP tool search | 04 |
-| Observability | AgentCore Observability (vended logs, traces via CloudWatch) | 00, 02, 06 |
+| Memory | AgentCore Memory for cross-session recall and spend optimization | 06 |
+| Observability | AgentCore Observability (vended logs, traces via CloudWatch) | 00, 02, 07 |
 
 ### Coinbase x402 Bazaar — access patterns
 
@@ -169,6 +171,7 @@ The Bazaar exposes three interfaces:
 ├── 03-user-onboarding-wallet-funding/
 ├── 04-agent-with-coinbase-bazaar-via-gateway/
 ├── 05-agent-with-browser-tool-pay-for-content/
+├── 06-research-agent-with-payment-memory/
 └── 07-multi-agent-payment-orchestrator/
 ```
 
@@ -216,4 +219,4 @@ Follow the [AWS Shared Responsibility Model](https://aws.amazon.com/compliance/s
 
 ## Conclusion
 
-These tutorials cover the full lifecycle of payment-enabled AI agents with Amazon Bedrock AgentCore payments: wallet setup, local agent development, Runtime deployment, wallet operations, Gateway integration, browser-based payments, and multi-agent orchestration. Start with Tutorial 00 and the provider setup guide for your chosen wallet, then follow whichever path fits your use case. For production guidance, see the [AgentCore payments documentation](https://docs.aws.amazon.com/bedrock-agentcore/) and review the Security section above.
+These tutorials cover the full lifecycle of payment-enabled AI agents with Amazon Bedrock AgentCore payments: wallet setup, local agent development, Runtime deployment, wallet operations, Gateway integration, browser-based payments, memory-aware agents that skip redundant paid calls, and multi-agent orchestration. Start with Tutorial 00 and the provider setup guide for your chosen wallet, then follow whichever path fits your use case. For production guidance, see the [AgentCore payments documentation](https://docs.aws.amazon.com/bedrock-agentcore/) and review the Security section above.

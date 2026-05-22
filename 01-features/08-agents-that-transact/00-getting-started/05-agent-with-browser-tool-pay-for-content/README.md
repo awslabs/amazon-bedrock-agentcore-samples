@@ -133,5 +133,6 @@ For full payment resource cleanup, run the cleanup section in Tutorial 00.
 
 ## Next Steps
 
+- **Tutorial 06** — `../06-research-agent-with-payment-memory/` — Recall past data and skip redundant paid calls with AgentCore Memory
 - **Tutorial 07** — `../07-multi-agent-payment-orchestrator/` — Multi-agent orchestration with per-agent budgets and provider-separated wallets
 - **Use case: Browser paywall** — `../../02-use-cases/pay-for-content-browser-use/` — End-to-end use case with a deployable x402 paywall server on AgentCore runtime

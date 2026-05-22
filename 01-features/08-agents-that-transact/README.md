@@ -16,12 +16,12 @@ New? Begin with [`00-getting-started/00-setup-agentcore-payments/`](00-getting-s
 
 | Folder | What's inside |
 |--------|---------------|
-| [`00-getting-started/`](00-getting-started/) | Seven step-by-step tutorials covering setup → local agents → runtime deploy → wallet ops → gateway → browser payments → multi-agent orchestration |
+| [`00-getting-started/`](00-getting-started/) | Eight step-by-step tutorials covering setup → local agents → runtime deploy → wallet ops → gateway → browser payments → memory + payments → multi-agent orchestration |
 | [`02-use-cases/`](02-use-cases/) | Real-world end-to-end use cases deployed on AgentCore runtime |
 
 ## How this tree is organized
 
-Tutorials in `00-getting-started/` build on each other — start with Tutorial 00 which provisions the payment stack, then run any of 01–06 in the order that fits your use case. `02-use-cases/` contains production-style deployments that demonstrate complete end-to-end payment flows.
+Tutorials in `00-getting-started/` build on each other — start with Tutorial 00 which provisions the payment stack, then run any of 01–07 in the order that fits your use case. `02-use-cases/` contains production-style deployments that demonstrate complete end-to-end payment flows.
 
 ## Finding things
 
@@ -32,6 +32,7 @@ Tutorials in `00-getting-started/` build on each other — start with Tutorial 0
 - **Wallet lifecycle (fund, delegate, balance)** → `00-getting-started/03-user-onboarding-wallet-funding/`
 - **Discover paid tools via gateway** → `00-getting-started/04-agent-with-coinbase-bazaar-via-gateway/`
 - **Browser + payment pattern** → `00-getting-started/05-agent-with-browser-tool-pay-for-content/`
+- **Memory-aware agent (skip redundant paid calls)** → `00-getting-started/06-research-agent-with-payment-memory/`
 - **Multi-agent with per-agent budgets** → `00-getting-started/07-multi-agent-payment-orchestrator/`
 - **End-to-end browser paywall use case** → `02-use-cases/pay-for-content-browser-use/`
 

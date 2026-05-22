@@ -16,6 +16,7 @@ AgentCore payments handles payment orchestration for the x402 protocol, configur
 | [`03-user-onboarding-wallet-funding/`](03-user-onboarding-wallet-funding/) | User onboarding, wallet funding, delegation, balance checks, multi-network instruments |
 | [`04-agent-with-coinbase-bazaar-via-gateway/`](04-agent-with-coinbase-bazaar-via-gateway/) | Discover 10,000+ paid MCP tools via AgentCore gateway and pay on call |
 | [`05-agent-with-browser-tool-pay-for-content/`](05-agent-with-browser-tool-pay-for-content/) | Intercept 402 paywalls in a browser session and pay for web content |
+| [`06-research-agent-with-payment-memory/`](06-research-agent-with-payment-memory/) | Combine AgentCore payments with AgentCore Memory so an agent recalls past data and skips redundant paid calls across sessions |
 | [`07-multi-agent-payment-orchestrator/`](07-multi-agent-payment-orchestrator/) | Multiple agents with separate wallets, per-agent budgets, and runtime deploy |
 
 ## Shared files
@@ -55,11 +56,12 @@ AgentCore payments handles payment orchestration for the x402 protocol, configur
 
 | Feature | Description | Tutorials |
 |---------|-------------|-----------|
-| Payment processing | x402 protocol orchestration, transaction signing, proof generation | 01, 02, 04, 05, 06 |
-| Payment limits | Session budgets (`maxSpendAmount`), expiry, overspend rejection | 00, 01, 03, 06 |
-| Wallet integration | Coinbase CDP and Stripe (Privy) embedded wallets, delegation, funding | 00, 03, 06 |
+| Payment processing | x402 protocol orchestration, transaction signing, proof generation | 01, 02, 04, 05, 06, 07 |
+| Payment limits | Session budgets (`maxSpendAmount`), expiry, overspend rejection | 00, 01, 03, 06, 07 |
+| Wallet integration | Coinbase CDP and Stripe (Privy) embedded wallets, delegation, funding | 00, 03, 07 |
 | Endpoint discoverability | Coinbase x402 Bazaar via AgentCore gateway, MCP tool search | 04 |
-| observability | AgentCore observability (vended logs, traces via CloudWatch) | 00, 02, 06 |
+| Memory | AgentCore Memory for cross-session recall and spend optimization | 06 |
+| observability | AgentCore observability (vended logs, traces via CloudWatch) | 00, 02, 07 |
 
 ## Prerequisites
 
@@ -96,6 +98,9 @@ python 04-agent-with-coinbase-bazaar-via-gateway/bazaar_gateway_agent.py
 
 # Tutorial 05
 python 05-agent-with-browser-tool-pay-for-content/browser_paywall_payments.py
+
+# Tutorial 06
+python 06-research-agent-with-payment-memory/research_agent_with_memory.py
 
 # Tutorial 07
 python 07-multi-agent-payment-orchestrator/multi_agent_payments.py
