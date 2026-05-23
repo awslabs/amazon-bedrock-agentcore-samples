@@ -49,7 +49,6 @@ Prerequisites:
 
 import argparse
 import json
-import sys
 import time
 import uuid
 from datetime import timedelta
@@ -216,7 +215,7 @@ print(f"  schemaType           : {got['schemaType']}")
 print(f"  status               : {got['status']}")
 print(f"  exampleCount (DRAFT) : {got.get('exampleCount', '?')}")
 if "downloadUrl" in got:
-    print(f"  downloadUrl          : <presigned URL — use to download dataset.jsonl>")
+    print("  downloadUrl          : <presigned URL — use to download dataset.jsonl>")
     print(f"  downloadUrlExpiresAt : {got.get('downloadUrlExpiresAt', '?')}")
 
 # ── Step 3: List all datasets in the account ──────────────────────────────────
