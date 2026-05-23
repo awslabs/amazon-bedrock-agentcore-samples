@@ -33,16 +33,19 @@ Prerequisites:
 import argparse
 import json
 import os
+import shutil
 import subprocess
 import sys
+import tempfile
 import time
 import urllib.parse
 import uuid
 import zipfile
-from io import BytesIO
 
 import boto3
 from boto3.session import Session
+from botocore.config import Config
+from botocore.exceptions import ClientError
 
 # ── Configuration ─────────────────────────────────────────────────────────────
 
@@ -74,9 +77,7 @@ def create_credential_provider() -> dict:
     tenant_id = os.environ.get("ENTRA_TENANT_ID")
 
     if not all([client_id, client_secret, tenant_id]):
-        raise ValueError(
-            "Set ENTRA_CLIENT_ID, ENTRA_CLIENT_SECRET, ENTRA_TENANT_ID environment variables."
-        )
+        raise ValueError("Set ENTRA_CLIENT_ID, ENTRA_CLIENT_SECRET, ENTRA_TENANT_ID environment variables.")
 
     control = boto3.client("bedrock-agentcore-control", region_name=REGION)
 
@@ -95,7 +96,15 @@ def create_credential_provider() -> dict:
         provider_arn = resp["credentialProviderArn"]
         callback_url = resp["callbackUrl"]
         print(f"  Created credential provider: {PROVIDER_NAME}")
-    except control.exceptions.ConflictException:
+    except (control.exceptions.ConflictException, ClientError) as e:
+        # The control plane returns ValidationException("...already exists")
+        # instead of ConflictException for duplicate names; treat both as
+        # "exists, reuse it".
+        if isinstance(e, ClientError):
+            code = e.response.get("Error", {}).get("Code", "")
+            msg = str(e).lower()
+            if not (code == "ValidationException" and "already exists" in msg):
+                raise
         resp = control.get_oauth2_credential_provider(name=PROVIDER_NAME)
         provider_arn = resp["credentialProviderArn"]
         callback_url = resp["callbackUrl"]
@@ -152,8 +161,13 @@ def create_execution_role(role_name: str) -> str:
                     "Action": [
                         "bedrock:InvokeModel",
                         "bedrock:InvokeModelWithResponseStream",
+                        "bedrock:Converse",
+                        "bedrock:ConverseStream",
                     ],
-                    "Resource": f"arn:aws:bedrock:{REGION}::foundation-model/*",
+                    "Resource": [
+                        "arn:aws:bedrock:*::foundation-model/*",
+                        f"arn:aws:bedrock:*:{ACCOUNT_ID}:inference-profile/*",
+                    ],
                 },
                 {
                     "Effect": "Allow",
@@ -195,7 +209,14 @@ def create_execution_role(role_name: str) -> str:
 
 
 def upload_agent_to_s3() -> dict:
-    """Upload strands_entraid_onenote.py to S3."""
+    """Build agent deployment zip with uv, upload to S3.
+
+    AgentCore Runtime executes containers on ARM64 (Graviton) and enforces a
+    30s container init budget. We pre-install dependencies as ARM64 wheels with
+    uv and bundle them with the agent code so the runtime can boot without
+    running pip at start. See:
+    https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime-get-started-code-deploy-python.html
+    """
     s3 = boto3.client("s3", region_name=REGION)
     bucket_name = f"agentcore-entra-3lo-{ACCOUNT_ID}-{REGION}"
 
@@ -211,28 +232,62 @@ def upload_agent_to_s3() -> dict:
     except s3.exceptions.BucketAlreadyOwnedByYou:
         print(f"  Reusing S3 bucket: {bucket_name}")
 
-    # Read local agent file
-    agent_path = os.path.join(os.path.dirname(__file__), AGENT_FILE)
-    if not os.path.exists(agent_path):
-        raise FileNotFoundError(
-            f"Agent file not found: {agent_path}\n"
-            "Ensure strands_entraid_onenote.py exists in the same directory."
+    sample_dir = os.path.dirname(os.path.abspath(__file__))
+    agent_path = os.path.join(sample_dir, AGENT_FILE)
+    callback_path = os.path.join(sample_dir, "oauth2_callback_server.py")
+    requirements = os.path.join(sample_dir, "requirements.txt")
+
+    for p in (agent_path, callback_path, requirements):
+        if not os.path.exists(p):
+            raise FileNotFoundError(f"Required file not found: {p}")
+
+    build_dir = tempfile.mkdtemp(prefix="agentcore-build-")
+    pkg_dir = os.path.join(build_dir, "deployment_package")
+    zip_path = os.path.join(build_dir, "agent.zip")
+    os.makedirs(pkg_dir)
+
+    try:
+        # Bundle source files (agent + callback helper imported by agent).
+        shutil.copy(agent_path, os.path.join(pkg_dir, AGENT_FILE))
+        shutil.copy(callback_path, os.path.join(pkg_dir, "oauth2_callback_server.py"))
+
+        # Pre-install ARM64 wheels.
+        print("  Installing arm64 dependencies with uv...")
+        subprocess.run(
+            [
+                "uv",
+                "pip",
+                "install",
+                "--python-platform",
+                "aarch64-manylinux2014",
+                "--python-version",
+                "3.13",
+                "--target",
+                pkg_dir,
+                "--only-binary",
+                ":all:",
+                "-r",
+                requirements,
+            ],
+            check=True,
         )
 
-    with open(agent_path, "rb") as f:
-        agent_content = f.read()
+        # Zip the package directory at the archive root.
+        with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
+            for root, _, files in os.walk(pkg_dir):
+                for fname in files:
+                    abs_path = os.path.join(root, fname)
+                    arc_name = os.path.relpath(abs_path, pkg_dir)
+                    zf.write(abs_path, arc_name)
 
-    zip_buffer = BytesIO()
-    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
-        zf.writestr(AGENT_FILE, agent_content)
-        zf.writestr("requirements.txt", "strands-agents\nbedrock-agentcore\nrequests\n")
+        s3_key = f"agents/{AGENT_NAME}/agent.zip"
+        s3.upload_file(zip_path, bucket_name, s3_key)
+        print(f"  Uploaded to s3://{bucket_name}/{s3_key}")
 
-    zip_buffer.seek(0)
-    s3_key = f"agents/{AGENT_NAME}/agent.zip"
-    s3.put_object(Bucket=bucket_name, Key=s3_key, Body=zip_buffer.read())
-    print(f"  Uploaded to s3://{bucket_name}/{s3_key}")
+        return {"bucket": bucket_name, "key": s3_key}
 
-    return {"bucket": bucket_name, "key": s3_key}
+    finally:
+        shutil.rmtree(build_dir, ignore_errors=True)
 
 
 # ── Step 4: Create AgentCore Runtime ──────────────────────────────────────────
@@ -245,25 +300,16 @@ def create_runtime(role_arn: str, s3_info: dict) -> dict:
     response = control.create_agent_runtime(
         agentRuntimeName=AGENT_NAME,
         agentRuntimeArtifact={
-            "containerConfiguration": {
-                "containerUri": (
-                    f"{ACCOUNT_ID}.dkr.ecr.{REGION}.amazonaws.com/"
-                    "bedrock-agentcore/managed/runtimes/python3.13:latest"
-                ),
+            "codeConfiguration": {
+                "code": {"s3": {"bucket": s3_info["bucket"], "prefix": s3_info["key"]}},
+                "runtime": "PYTHON_3_13",
+                "entryPoint": [AGENT_FILE],
             }
         },
         roleArn=role_arn,
         networkConfiguration={"networkMode": "PUBLIC"},
         environmentVariables={
             "scopes": SCOPES,
-        },
-        codeConfiguration={
-            "code": {
-                "s3": {
-                    "uri": f"s3://{s3_info['bucket']}/{s3_info['key']}",
-                    "entryPoint": AGENT_FILE,
-                }
-            }
         },
     )
 
@@ -273,9 +319,7 @@ def create_runtime(role_arn: str, s3_info: dict) -> dict:
 
     print("  Waiting for READY...")
     while True:
-        s = control.get_agent_runtime(agentRuntimeId=runtime_id).get(
-            "status", "UNKNOWN"
-        )
+        s = control.get_agent_runtime(agentRuntimeId=runtime_id).get("status", "UNKNOWN")
         print(f"    Status: {s}")
         if s == "READY":
             break
@@ -307,11 +351,15 @@ def create_runtime(role_arn: str, s3_info: dict) -> dict:
 # ── Step 5: Invoke Agent with OAuth Callback Server ───────────────────────────
 
 
-def invoke_agent_with_oauth(endpoint_url: str):
+def invoke_agent_with_oauth(runtime_arn: str):
     """
     Start the OAuth callback server, invoke the agent.
     On first call the agent returns an authorization URL for user consent.
     After consent, re-invoke to get the OneNote access token and create the notebook.
+
+    The runtime is created without `authorizerConfiguration`, so the data plane
+    expects SigV4-signed requests. boto3's `invoke_agent_runtime` signs
+    automatically; matches the pattern in 03-m2m-3lo/invoke.py.
     """
     from oauth2_callback_server import wait_for_oauth2_server_to_be_ready
 
@@ -325,9 +373,7 @@ def invoke_agent_with_oauth(endpoint_url: str):
     )
 
     # Start oauth2 callback server
-    oauth_proc = subprocess.Popen(
-        [sys.executable, "oauth2_callback_server.py", "--region", REGION]
-    )
+    oauth_proc = subprocess.Popen([sys.executable, "oauth2_callback_server.py", "--region", REGION])
 
     try:
         ok = wait_for_oauth2_server_to_be_ready()
@@ -335,22 +381,49 @@ def invoke_agent_with_oauth(endpoint_url: str):
             print("  Failed to start OAuth2 callback server.")
             return
 
-        import requests as req
-
-        headers = {
-            "Content-Type": "application/json",
-            "X-Amzn-Bedrock-AgentCore-Runtime-Session-Id": session_id,
-        }
-
+        # The agent calls @requires_access_token under the hood, which polls
+        # AgentCore Identity for token completion after returning the auth
+        # URL. The polling extends the streaming response well beyond the
+        # 60s boto3 read default; bump it so the user has time to complete
+        # OAuth in a browser.
+        client = boto3.client(
+            "bedrock-agentcore",
+            region_name=REGION,
+            config=Config(read_timeout=300, connect_timeout=10),
+        )
         print("  Invoking agent (first call — will return authorization URL)...")
-        resp = req.post(
-            endpoint_url,
-            headers=headers,
-            json={"prompt": prompt, "user_id": user_id},
-            timeout=120,
+        resp = client.invoke_agent_runtime(
+            agentRuntimeArn=runtime_arn,
+            qualifier="DEFAULT",
+            runtimeSessionId=session_id,
+            runtimeUserId=user_id,
+            payload=json.dumps({"prompt": prompt, "user_id": user_id}),
         )
 
-        print(f"  Response: {resp.text[:500]}")
+        # Stream chunks to stdout as they arrive. The agent's first useful
+        # message is "Authorization URL: ...", emitted ~4s into the request.
+        # We iterate the raw stream (not the buffered .read()) and flush each
+        # decoded chunk immediately so the user can copy the URL into a
+        # browser while the agent's polling loop continues server-side.
+        print("  Streaming response (Ctrl+C to abort):", flush=True)
+        print("  ── stream begin ──", flush=True)
+        body = resp.get("response")
+        if hasattr(body, "iter_lines"):
+            iterator = body.iter_lines(chunk_size=1)
+        else:
+            iterator = body
+        for event in iterator:
+            if isinstance(event, (bytes, bytearray)):
+                text = event.decode("utf-8", errors="replace")
+            elif isinstance(event, str):
+                text = event
+            elif isinstance(event, dict) and "chunk" in event:
+                text = event["chunk"].get("bytes", b"").decode("utf-8", errors="replace")
+            else:
+                continue
+            if text.strip():
+                print(f"  {text}", flush=True)
+        print("  ── stream end ──", flush=True)
         print(
             "\n  If an authorization URL was returned, copy it into your browser, "
             "grant consent, then re-run with --test-only to continue."
@@ -410,12 +483,8 @@ def cleanup():
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="AgentCore Runtime: Entra ID 3LO with OneNote"
-    )
-    parser.add_argument(
-        "--cleanup", action="store_true", help="Delete created resources"
-    )
+    parser = argparse.ArgumentParser(description="AgentCore Runtime: Entra ID 3LO with OneNote")
+    parser.add_argument("--cleanup", action="store_true", help="Delete created resources")
     parser.add_argument(
         "--test-only",
         action="store_true",
@@ -431,7 +500,7 @@ def main():
     if args.test_only:
         with open(CONFIG_FILE) as f:
             config = json.load(f)
-        invoke_agent_with_oauth(config["endpoint_url"])
+        invoke_agent_with_oauth(config["runtime_arn"])
         return
 
     print("=== AgentCore Runtime: Entra ID 3LO Auth Code Flow (OneNote) ===\n")
@@ -450,7 +519,7 @@ def main():
     config = create_runtime(role_arn, s3_info)
 
     print("\n=== Step 5: Invoking Agent (with OAuth callback server) ===")
-    invoke_agent_with_oauth(config["endpoint_url"])
+    invoke_agent_with_oauth(config["runtime_arn"])
 
     print("\n=== Summary ===")
     print(f"  Credential provider: {PROVIDER_NAME}")

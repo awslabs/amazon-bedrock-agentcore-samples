@@ -125,9 +125,7 @@ def create_lambda(iam: object) -> str:
             AssumeRolePolicyDocument=trust,
         )
         lambda_role_arn = role_resp["Role"]["Arn"]
-        iam.put_role_policy(
-            RoleName=LAMBDA_ROLE_NAME, PolicyName="logs", PolicyDocument=policy
-        )
+        iam.put_role_policy(RoleName=LAMBDA_ROLE_NAME, PolicyName="logs", PolicyDocument=policy)
         time.sleep(10)
         print(f"  Created Lambda role: {LAMBDA_ROLE_NAME}")
     except iam.exceptions.EntityAlreadyExistsException:
@@ -151,9 +149,7 @@ def create_lambda(iam: object) -> str:
         lambda_arn = resp["FunctionArn"]
         print(f"  Created Lambda: {LAMBDA_NAME}")
     except lam.exceptions.ResourceConflictException:
-        lambda_arn = lam.get_function(FunctionName=LAMBDA_NAME)["Configuration"][
-            "FunctionArn"
-        ]
+        lambda_arn = lam.get_function(FunctionName=LAMBDA_NAME)["Configuration"]["FunctionArn"]
         print(f"  Reusing Lambda: {LAMBDA_NAME}")
 
     return lambda_arn, lambda_role_arn
@@ -190,9 +186,7 @@ def create_gateway_role(iam: object, lambda_arn: str) -> str:
     )
 
     try:
-        resp = iam.create_role(
-            RoleName=GATEWAY_ROLE_NAME, AssumeRolePolicyDocument=trust
-        )
+        resp = iam.create_role(RoleName=GATEWAY_ROLE_NAME, AssumeRolePolicyDocument=trust)
         gateway_role_arn = resp["Role"]["Arn"]
         iam.put_role_policy(
             RoleName=GATEWAY_ROLE_NAME,
@@ -217,9 +211,7 @@ def create_gateway(gateway_role_arn: str) -> dict:
     app_id_uri = os.environ.get("ENTRA_APP_ID_URI")
 
     if not tenant_id or not app_id_uri:
-        raise ValueError(
-            "Set ENTRA_TENANT_ID and ENTRA_APP_ID_URI environment variables."
-        )
+        raise ValueError("Set ENTRA_TENANT_ID and ENTRA_APP_ID_URI environment variables.")
 
     control = boto3.client("bedrock-agentcore-control", region_name=REGION)
 
@@ -232,10 +224,7 @@ def create_gateway(gateway_role_arn: str) -> dict:
             authorizerConfiguration={
                 "customJWTAuthorizer": {
                     "allowedAudience": [app_id_uri],
-                    "discoveryUrl": (
-                        f"https://login.microsoftonline.com/{tenant_id}"
-                        "/.well-known/openid-configuration"
-                    ),
+                    "discoveryUrl": (f"https://login.microsoftonline.com/{tenant_id}/.well-known/openid-configuration"),
                 }
             },
         )
@@ -251,6 +240,21 @@ def create_gateway(gateway_role_arn: str) -> dict:
                 gateway_url = gw["gatewayUrl"]
                 break
         print(f"  Reusing Gateway: {GATEWAY_NAME}")
+
+    # Wait for the gateway to reach READY before subsequent operations
+    # (e.g. create_gateway_target, which fails with
+    # "Cannot perform operation ... when gateway is in CREATING status").
+    print("  Waiting for Gateway to become READY...")
+    end_states = {"READY", "FAILED", "DELETE_FAILED"}
+    while True:
+        status_resp = control.get_gateway(gatewayIdentifier=gateway_id)
+        status = status_resp.get("status", "")
+        if status in end_states:
+            break
+        time.sleep(5)
+    if status != "READY":
+        raise RuntimeError(f"Gateway creation failed: {status}")
+    print(f"  Gateway READY: {gateway_id}")
 
     return {"gateway_id": gateway_id, "gateway_url": gateway_url}
 
@@ -295,9 +299,7 @@ def create_lambda_target(gateway_id: str, lambda_arn: str) -> str:
                 }
             }
         },
-        credentialProviderConfigurations=[
-            {"credentialProviderType": "GATEWAY_IAM_ROLE"}
-        ],
+        credentialProviderConfigurations=[{"credentialProviderType": "GATEWAY_IAM_ROLE"}],
     )
     target_id = resp["targetId"]
     print(f"  Created Lambda target: LambdaUsingSDK (ID: {target_id})")
@@ -315,9 +317,7 @@ def get_entra_m2m_token() -> str:
     app_id_uri = os.environ.get("ENTRA_APP_ID_URI")
 
     if not all([tenant_id, client_id, client_secret, app_id_uri]):
-        raise ValueError(
-            "Set ENTRA_TENANT_ID, ENTRA_CLIENT_ID, ENTRA_CLIENT_SECRET, ENTRA_APP_ID_URI."
-        )
+        raise ValueError("Set ENTRA_TENANT_ID, ENTRA_CLIENT_ID, ENTRA_CLIENT_SECRET, ENTRA_APP_ID_URI.")
 
     token_url = f"https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/token"
     data = {
@@ -331,7 +331,11 @@ def get_entra_m2m_token() -> str:
         data=data,
         headers={"Content-Type": "application/x-www-form-urlencoded"},
     )
-    resp.raise_for_status()
+    if not resp.ok:
+        raise RuntimeError(
+            f"Token endpoint returned {resp.status_code}:\n  {resp.text}\n"
+            "Verify ENTRA_TENANT_ID, ENTRA_CLIENT_ID, ENTRA_CLIENT_SECRET, ENTRA_APP_ID_URI."
+        )
     token = resp.json()["access_token"]
     print("  Access token acquired from Entra ID")
     return token
@@ -353,8 +357,7 @@ def invoke_with_agent(gateway_url: str, access_token: str):
         )
     )
 
-    mcp_client.start()
-    try:
+    with mcp_client:
         tools = mcp_client.list_tools_sync()
         print(f"  Available tools: {[t.tool_name for t in tools]}")
 
@@ -364,8 +367,6 @@ def invoke_with_agent(gateway_url: str, access_token: str):
 
         result2 = agent("Give me directions to Seattle.")
         print(f"\n  Agent response: {result2.message}")
-    finally:
-        mcp_client.stop()
 
 
 # ── Step 7: Cleanup ────────────────────────────────────────────────────────────
@@ -386,12 +387,22 @@ def cleanup():
 
     for target_id in config.get("target_ids", []):
         try:
-            control.delete_gateway_target(
-                gatewayIdentifier=config["gateway_id"], targetId=target_id
-            )
+            control.delete_gateway_target(gatewayIdentifier=config["gateway_id"], targetId=target_id)
             print(f"  Deleted target: {target_id} ✓")
         except Exception as e:
             print(f"  Target delete error: {e}")
+
+    # Wait for targets to disappear before deleting the gateway. Target
+    # deletion is async; the gateway DeleteGateway call rejects with
+    # ValidationException("...has targets associated with it") until the
+    # targets are fully gone.
+    if config.get("target_ids"):
+        print("  Waiting for targets to be removed...")
+        for _ in range(24):  # up to ~2 minutes
+            remaining = control.list_gateway_targets(gatewayIdentifier=config["gateway_id"]).get("items", [])
+            if not remaining:
+                break
+            time.sleep(5)
 
     try:
         control.delete_gateway(gatewayIdentifier=config["gateway_id"])
@@ -421,12 +432,8 @@ def cleanup():
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="AgentCore Gateway with Entra ID M2M auth"
-    )
-    parser.add_argument(
-        "--cleanup", action="store_true", help="Delete created resources"
-    )
+    parser = argparse.ArgumentParser(description="AgentCore Gateway with Entra ID M2M auth")
+    parser.add_argument("--cleanup", action="store_true", help="Delete created resources")
     parser.add_argument(
         "--test-only",
         action="store_true",
