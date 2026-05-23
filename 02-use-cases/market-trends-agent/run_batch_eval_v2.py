@@ -122,17 +122,17 @@ def main():
         logger.info("Reading scores from CloudWatch...")
         scores = fetch_scores_from_cw(eval_id)
 
-    print(f"\n{'='*55}")
+    print(f"\n{'=' * 55}")
     print(f"Batch Evaluation: {eval_name}")
     print(f"ID:               {eval_id}")
     print(f"Status:           {status}")
     print(f"Sessions:         {len(session_ids)}")
-    print(f"{'='*55}")
+    print(f"{'=' * 55}")
     print(f"{'Evaluator':<45} {'Score':>8}")
     print("-" * 55)
     for eid, score in sorted(scores.items()):
         print(f"{eid:<45} {score:>8.4f}")
-    print(f"{'='*55}\n")
+    print(f"{'=' * 55}\n")
 
     # Save state
     out = {"eval_name": eval_name, "eval_id": eval_id, "status": status, "scores": scores}

@@ -219,12 +219,8 @@ Always use tools to retrieve live data. Do not fabricate prices, news, or profil
 
 # Tool descriptions for TD recommendation
 CURRENT_TOOL_DESCRIPTIONS = {
-    "get_stock_data": (
-        "Get current stock price and key market data for a given ticker symbol."
-    ),
-    "search_news": (
-        "Search for recent news articles from financial news sources about a topic."
-    ),
+    "get_stock_data": ("Get current stock price and key market data for a given ticker symbol."),
+    "search_news": ("Search for recent news articles from financial news sources about a topic."),
     "parse_broker_profile_from_message": (
         "Parse a structured broker profile from a user message containing broker card "
         "information such as name, company, role, risk tolerance, and investment style."
@@ -232,25 +228,17 @@ CURRENT_TOOL_DESCRIPTIONS = {
     "generate_market_summary_for_broker": (
         "Generate a personalized market summary tailored to a broker's investment profile."
     ),
-    "get_broker_card_template": (
-        "Provide the broker card template format for structured profile collection."
-    ),
-    "collect_broker_preferences_interactively": (
-        "Guide the collection of specific broker preferences interactively."
-    ),
+    "get_broker_card_template": ("Provide the broker card template format for structured profile collection."),
+    "collect_broker_preferences_interactively": ("Guide the collection of specific broker preferences interactively."),
     "identify_broker": (
         "Identify a broker from their message using LLM analysis and retrieve or "
         "initialize their actor ID for memory operations."
     ),
-    "get_broker_financial_profile": (
-        "Retrieve the stored financial profile and investment preferences for a broker."
-    ),
+    "get_broker_financial_profile": ("Retrieve the stored financial profile and investment preferences for a broker."),
     "update_broker_financial_interests": (
         "Store or update a broker's financial interests, preferences, and investment profile."
     ),
-    "list_conversation_history": (
-        "Retrieve recent conversation history for the current session."
-    ),
+    "list_conversation_history": ("Retrieve recent conversation history for the current session."),
 }
 
 # Representative broker sessions used for baseline traffic and recommendations
@@ -372,11 +360,7 @@ def _fetch_eval_scores(batch_eval_id: str) -> dict:
                 attrs = rec.get("attributes") or rec
                 eid = attrs.get("gen_ai.evaluation.name")
                 score = attrs.get("gen_ai.evaluation.score.value")
-                if (
-                    eid
-                    and score is not None
-                    and rec.get("name") == "gen_ai.evaluation.result"
-                ):
+                if eid and score is not None and rec.get("name") == "gen_ai.evaluation.result":
                     by_eval[eid].append(float(score))
             except (json.JSONDecodeError, KeyError, TypeError):
                 continue
@@ -414,10 +398,7 @@ def _invoke_agent(prompt: str, session_id: str, baggage: str = "") -> str:
 def phase1_baseline_eval(session_ids: list[str]) -> dict:
     """Start a batch evaluation over the provided session IDs."""
     _sep("Phase 1: Baseline Batch Evaluation")
-    print(
-        "Measuring the agent's current performance across "
-        f"{len(session_ids)} sessions...\n"
-    )
+    print(f"Measuring the agent's current performance across {len(session_ids)} sessions...\n")
 
     eval_resp = dp.start_batch_evaluation(
         batchEvaluationName=f"mt_baseline_{uuid.uuid4().hex[:6]}",
@@ -495,10 +476,7 @@ def phase2_generate_traffic(baggage: str = "") -> list[str]:
         except Exception as exc:
             logger.warning("Session %s failed: %s", sid, exc)
 
-    print(
-        f"Sent {len(session_ids)} sessions. "
-        "Waiting 3 minutes for CloudWatch ingestion..."
-    )
+    print(f"Sent {len(session_ids)} sessions. Waiting 3 minutes for CloudWatch ingestion...")
     for remaining in range(180, 0, -30):
         print(f"  {remaining}s remaining...")
         time.sleep(30)
@@ -539,14 +517,7 @@ def phase3_sp_recommendation() -> str:
                     }
                 },
                 "evaluationConfig": {
-                    "evaluators": [
-                        {
-                            "evaluatorArn": (
-                                "arn:aws:bedrock-agentcore:::evaluator/"
-                                "Builtin.GoalSuccessRate"
-                            )
-                        }
-                    ]
+                    "evaluators": [{"evaluatorArn": ("arn:aws:bedrock-agentcore:::evaluator/Builtin.GoalSuccessRate")}]
                 },
             }
         },
@@ -615,8 +586,7 @@ def phase4_td_recommendation() -> dict:
     start_dt = now - timedelta(days=7)
 
     tools_list = [
-        {"toolName": name, "toolDescription": {"text": desc}}
-        for name, desc in CURRENT_TOOL_DESCRIPTIONS.items()
+        {"toolName": name, "toolDescription": {"text": desc}} for name, desc in CURRENT_TOOL_DESCRIPTIONS.items()
     ]
 
     rec_resp = dp.start_recommendation(
@@ -653,27 +623,20 @@ def phase4_td_recommendation() -> dict:
     recommended_tools = dict(CURRENT_TOOL_DESCRIPTIONS)
 
     if result.get("status") == "COMPLETED":
-        td_data = result.get("recommendationResult", {}).get(
-            "toolDescriptionRecommendationResult", {}
-        )
+        td_data = result.get("recommendationResult", {}).get("toolDescriptionRecommendationResult", {})
         returned_tools = td_data.get("tools", [])
         tool_keys = list(CURRENT_TOOL_DESCRIPTIONS.keys())
 
         _sep("RECOMMENDED TOOL DESCRIPTIONS")
         for i, item in enumerate(returned_tools):
             new_desc = item.get("recommendedToolDescription", "")
-            tool_name = item.get("toolName") or (
-                tool_keys[i] if i < len(tool_keys) else f"tool_{i}"
-            )
+            tool_name = item.get("toolName") or (tool_keys[i] if i < len(tool_keys) else f"tool_{i}")
             recommended_tools[tool_name] = new_desc
             print(f"\n[{tool_name}]")
             print(f"  Before: {CURRENT_TOOL_DESCRIPTIONS.get(tool_name, '(unknown)')}")
             print(f"  After : {new_desc}")
     else:
-        print(
-            f"Tool description recommendation status: {result.get('status')}. "
-            "Using current descriptions."
-        )
+        print(f"Tool description recommendation status: {result.get('status')}. Using current descriptions.")
 
     _state["recommended_tool_descriptions"] = recommended_tools
     return recommended_tools
@@ -777,12 +740,8 @@ def phase5_create_bundles(
 
     # --- 5d. Compare control vs treatment versions ---
     _sep("Control vs Treatment — Configuration Diff")
-    v_ctrl = ctrl.get_configuration_bundle_version(
-        bundleId=control_bundle_id, versionId=control_bundle_version
-    )
-    v_treat = ctrl.get_configuration_bundle_version(
-        bundleId=treatment_bundle_id, versionId=treatment_bundle_version
-    )
+    v_ctrl = ctrl.get_configuration_bundle_version(bundleId=control_bundle_id, versionId=control_bundle_version)
+    v_treat = ctrl.get_configuration_bundle_version(bundleId=treatment_bundle_id, versionId=treatment_bundle_version)
     cfg_c = v_ctrl["components"][AGENT_ARN]["configuration"]
     cfg_t = v_treat["components"][AGENT_ARN]["configuration"]
 
@@ -808,8 +767,7 @@ def phase5_create_bundles(
     # --- 5e. Spot-check: invoke both bundles ---
     print("\n--- Spot-checking both bundles ---")
     test_prompt = (
-        "I'm Yuval Bing from HSBC. I manage tech-focused portfolios. "
-        "Give me a quick take on NVDA and MSFT right now."
+        "I'm Yuval Bing from HSBC. I manage tech-focused portfolios. Give me a quick take on NVDA and MSFT right now."
     )
     ctrl_baggage = (
         f"aws.agentcore.configbundle_arn={control_bundle_arn},"
@@ -900,8 +858,7 @@ def phase5_promote_bundle(
     _state["control_bundle_version_previous"] = control_bundle_version
 
     new_baggage = (
-        f"aws.agentcore.configbundle_arn={control_bundle_arn},"
-        f"aws.agentcore.configbundle_version={new_version}"
+        f"aws.agentcore.configbundle_arn={control_bundle_arn},aws.agentcore.configbundle_version={new_version}"
     )
     print(f"\nUpdated baggage:\n  {new_baggage}")
     return new_version
@@ -996,9 +953,7 @@ def phase6_ab_bundle_test(
                 }
             }
         },
-        credentialProviderConfigurations=[
-            {"credentialProviderType": "GATEWAY_IAM_ROLE"}
-        ],
+        credentialProviderConfigurations=[{"credentialProviderType": "GATEWAY_IAM_ROLE"}],
         clientToken=str(uuid.uuid4()),
     )
     target_id = tgt_resp["targetId"]
@@ -1037,9 +992,7 @@ def phase6_ab_bundle_test(
         print(f"Delivery source (may already exist): {exc}")
 
     try:
-        destinations = logs.describe_delivery_destinations().get(
-            "deliveryDestinations", []
-        )
+        destinations = logs.describe_delivery_destinations().get("deliveryDestinations", [])
         xray_dest = next(
             (d for d in destinations if d.get("deliveryDestinationType") == "XRAY"),
             None,
@@ -1049,14 +1002,10 @@ def phase6_ab_bundle_test(
                 name="xray-destination",
                 deliveryDestinationType="XRAY",
                 deliveryDestinationConfiguration={
-                    "destinationResourceArn": (
-                        f"arn:aws:xray:{REGION}:{ACCOUNT_ID}:group/Default"
-                    )
+                    "destinationResourceArn": (f"arn:aws:xray:{REGION}:{ACCOUNT_ID}:group/Default")
                 },
             )
-            destinations = logs.describe_delivery_destinations().get(
-                "deliveryDestinations", []
-            )
+            destinations = logs.describe_delivery_destinations().get("deliveryDestinations", [])
             xray_dest = next(
                 (d for d in destinations if d.get("deliveryDestinationType") == "XRAY"),
                 None,
@@ -1097,17 +1046,13 @@ def phase6_ab_bundle_test(
     )
     online_eval_id = online_eval_resp["onlineEvaluationConfigId"]
     online_eval_arn = online_eval_resp["onlineEvaluationConfigArn"]
-    _state.update(
-        {"online_eval_id": online_eval_id, "online_eval_arn": online_eval_arn}
-    )
+    _state.update({"online_eval_id": online_eval_id, "online_eval_arn": online_eval_arn})
     print(f"Online eval config: {online_eval_id}")
 
     # --- 6e. Create the A/B test ---
     ab_resp = dp.create_ab_test(
         name=f"mt_bundle_ab_{uuid.uuid4().hex[:6]}",
-        description=(
-            "Market Trends Agent: compare original vs recommended system prompt (50/50)"
-        ),
+        description=("Market Trends Agent: compare original vs recommended system prompt (50/50)"),
         gatewayArn=gateway_arn,
         roleArn=role_arn,
         enableOnCreate=True,
@@ -1165,9 +1110,7 @@ def phase6_ab_bundle_test(
     return ab_test_id
 
 
-def _send_gateway_traffic(
-    gateway_url: str, target_name: str, n_sessions: int = 20
-) -> list[str]:
+def _send_gateway_traffic(gateway_url: str, target_name: str, n_sessions: int = 20) -> list[str]:
     """Send SigV4-signed requests through the gateway to generate A/B test traffic."""
     gw_invoke_url = f"{gateway_url}/{target_name}/invocations"
     session = boto3.Session()
@@ -1214,25 +1157,19 @@ def _send_gateway_traffic(
         )
         SigV4Auth(creds, "bedrock-agentcore", REGION).add_auth(req)
         try:
-            resp = http_requests.post(
-                gw_invoke_url, data=body, headers=dict(req.headers), timeout=120
-            )
+            resp = http_requests.post(gw_invoke_url, data=body, headers=dict(req.headers), timeout=120)
             if resp.status_code == 200:
                 print(f"  [{i + 1:2d}/{n_sessions}] OK  {sid[:8]}...  {resp.text[:80]}")
                 success += 1
             else:
-                print(
-                    f"  [{i + 1:2d}/{n_sessions}] ERR "
-                    f"status={resp.status_code}: {resp.text[:80]}"
-                )
+                print(f"  [{i + 1:2d}/{n_sessions}] ERR status={resp.status_code}: {resp.text[:80]}")
         except Exception as exc:
             print(f"  [{i + 1:2d}/{n_sessions}] ERR {exc}")
         time.sleep(1)
 
     _state.setdefault("gateway_session_ids", []).extend(session_ids)
     print(
-        f"\nSent {n_sessions} sessions through gateway (success={success}). "
-        "Waiting for online evaluation pipeline..."
+        f"\nSent {n_sessions} sessions through gateway (success={success}). Waiting for online evaluation pipeline..."
     )
     return session_ids
 
@@ -1253,19 +1190,14 @@ def _monitor_ab_test(ab_test_id: str, label: str = "A/B Test", polls: int = 20) 
             name = m.get("evaluatorArn", "").split("/")[-1]
             cs = m.get("controlStats", {})
             print(f"  {name}:")
-            print(
-                f"    C  (control,   50%): mean={cs.get('mean', '-')}  "
-                f"n={cs.get('sampleSize', '-')}"
-            )
+            print(f"    C  (control,   50%): mean={cs.get('mean', '-')}  n={cs.get('sampleSize', '-')}")
             for vr in m.get("variantResults", []):
                 # Prefer API-provided percentChange; fall back to manual calculation
                 pct_change = vr.get("percentChange")
                 if pct_change is None:
                     cs_mean, vr_mean = cs.get("mean"), vr.get("mean")
                     if cs_mean and vr_mean and float(cs_mean) != 0:
-                        pct_change = (
-                            (float(vr_mean) - float(cs_mean)) / float(cs_mean) * 100
-                        )
+                        pct_change = (float(vr_mean) - float(cs_mean)) / float(cs_mean) * 100
                 delta = f"  change={pct_change:+.1f}%" if pct_change is not None else ""
                 sig = vr.get("isSignificant", "-")
                 print(
@@ -1315,9 +1247,7 @@ def _print_ab_interpretation(results: dict, label: str) -> None:
             # p < 0.05 + positive change → treatment wins
             if sig and pct_change is not None and pct_change > 0:
                 print("    RESULT: T1 wins (statistically significant improvement)")
-                print(
-                    "    ACTION: Run Phase 5p to promote treatment bundle as new default"
-                )
+                print("    ACTION: Run Phase 5p to promote treatment bundle as new default")
             # p < 0.05 + negative change → treatment regressed
             elif sig and pct_change is not None and pct_change < 0:
                 print("    RESULT: T1 regressed (statistically significant decline)")
@@ -1393,9 +1323,7 @@ def phase7_ab_target_routing(
         try:
             ab = dp.get_ab_test(abTestId=bundle_ab_id)
             if ab.get("executionStatus") == "RUNNING":
-                print(
-                    "Pausing config-bundle A/B test to allow target routing to start..."
-                )
+                print("Pausing config-bundle A/B test to allow target routing to start...")
                 dp.update_ab_test(abTestId=bundle_ab_id, executionStatus="PAUSED")
                 time.sleep(5)
         except Exception as exc:
@@ -1443,17 +1371,13 @@ def phase7_ab_target_routing(
                 }
             }
         },
-        credentialProviderConfigurations=[
-            {"credentialProviderType": "GATEWAY_IAM_ROLE"}
-        ],
+        credentialProviderConfigurations=[{"credentialProviderType": "GATEWAY_IAM_ROLE"}],
         clientToken=str(uuid.uuid4()),
     )
     target_id_v2 = tgt_v2_resp["targetId"]
     _state["gateway_target_v2_id"] = target_id_v2
     for i in range(30):
-        tgt = ctrl.get_gateway_target(
-            gatewayIdentifier=gateway_id, targetId=target_id_v2
-        )
+        tgt = ctrl.get_gateway_target(gatewayIdentifier=gateway_id, targetId=target_id_v2)
         if tgt.get("status") == "READY":
             break
         print(f"  v2 target poll {i + 1}: {tgt.get('status')}")
@@ -1465,9 +1389,7 @@ def phase7_ab_target_routing(
     # enableOnCreate=True starts the test immediately — no separate update_ab_test needed.
     ab_resp = dp.create_ab_test(
         name=f"mt_target_ab_{uuid.uuid4().hex[:6]}",
-        description=(
-            "Market Trends Agent: phased rollout — v1 stable (90%) vs v2 canary (10%)"
-        ),
+        description=("Market Trends Agent: phased rollout — v1 stable (90%) vs v2 canary (10%)"),
         gatewayArn=gateway_arn,
         roleArn=role_arn,
         enableOnCreate=True,
@@ -1571,9 +1493,7 @@ def phase8_cleanup(state: dict) -> None:
             continue
         print(f"Deleting online eval config ({label}): {oe_id}")
         try:
-            ctrl.update_online_evaluation_config(
-                onlineEvaluationConfigId=oe_id, executionStatus="DISABLED"
-            )
+            ctrl.update_online_evaluation_config(onlineEvaluationConfigId=oe_id, executionStatus="DISABLED")
             time.sleep(2)
             ctrl.delete_online_evaluation_config(onlineEvaluationConfigId=oe_id)
             print(f"  Deleted: {oe_id}")
@@ -1650,8 +1570,7 @@ def _get_role_arn() -> str:
         return resp["Role"]["Arn"]
     except Exception as exc:
         raise RuntimeError(
-            f"Could not retrieve role ARN for {role_name}: {exc}\n"
-            "Set AGENT_ROLE_NAME or deploy the agent first."
+            f"Could not retrieve role ARN for {role_name}: {exc}\nSet AGENT_ROLE_NAME or deploy the agent first."
         ) from exc
 
 
@@ -1692,8 +1611,7 @@ def main() -> None:
         "--cleanup",
         action="store_true",
         help=(
-            "Clean up all resources recorded in --state-file and exit. "
-            "Useful for cleaning up after an interrupted run."
+            "Clean up all resources recorded in --state-file and exit. Useful for cleaning up after an interrupted run."
         ),
     )
     args = parser.parse_args()
@@ -1722,12 +1640,8 @@ def main() -> None:
 
     session_ids: list[str] = _state.get("traffic_session_ids", [])
     baseline_scores: dict = _state.get("baseline_scores", {})
-    recommended_prompt: str = _state.get(
-        "recommended_system_prompt", CURRENT_SYSTEM_PROMPT
-    )
-    recommended_tool_descs: dict = _state.get(
-        "recommended_tool_descriptions", CURRENT_TOOL_DESCRIPTIONS
-    )
+    recommended_prompt: str = _state.get("recommended_system_prompt", CURRENT_SYSTEM_PROMPT)
+    recommended_tool_descs: dict = _state.get("recommended_tool_descriptions", CURRENT_TOOL_DESCRIPTIONS)
 
     # Phase 2 must run before Phase 1 to have session IDs
     if "2" in phases:
@@ -1736,9 +1650,7 @@ def main() -> None:
 
     if "1" in phases:
         if not session_ids:
-            print(
-                "Phase 1 requires session IDs. Run Phase 2 first to generate traffic."
-            )
+            print("Phase 1 requires session IDs. Run Phase 2 first to generate traffic.")
         else:
             baseline_scores = phase1_baseline_eval(session_ids)
             _save_state(state_file)
@@ -1754,9 +1666,7 @@ def main() -> None:
     if "5" in phases:
         if not recommended_prompt:
             recommended_prompt = CURRENT_SYSTEM_PROMPT
-        ctrl_arn, ctrl_ver, treat_arn, treat_ver = phase5_create_bundles(
-            recommended_prompt, recommended_tool_descs
-        )
+        ctrl_arn, ctrl_ver, treat_arn, treat_ver = phase5_create_bundles(recommended_prompt, recommended_tool_descs)
         _save_state(state_file)
     else:
         ctrl_arn = _state.get("control_bundle_arn", "")
@@ -1800,10 +1710,7 @@ def main() -> None:
             gw_url = _state.get("gateway_url", "")
             oe_arn = _state.get("online_eval_arn", "")
             if not gw_id:
-                print(
-                    "Phase 7 requires a gateway from Phase 6. "
-                    "Run Phase 6 first or provide a state file."
-                )
+                print("Phase 7 requires a gateway from Phase 6. Run Phase 6 first or provide a state file.")
             else:
                 phase7_ab_target_routing(
                     role_arn=role_arn,

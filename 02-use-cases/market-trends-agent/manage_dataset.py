@@ -63,9 +63,7 @@ PREDEFINED_INITIAL_EXAMPLES = [
                 )
             }
         ],
-        "expected_trajectory": {
-            "toolNames": ["identify_broker", "update_broker_financial_interests"]
-        },
+        "expected_trajectory": {"toolNames": ["identify_broker", "update_broker_financial_interests"]},
         "assertions": [
             "Agent identifies the broker by name and firm.",
             "Agent stores the broker's sector preferences and risk tolerance.",
@@ -75,17 +73,8 @@ PREDEFINED_INITIAL_EXAMPLES = [
     },
     {
         "scenario_id": "stock_data_retrieval",
-        "turns": [
-            {
-                "input": (
-                    "I'm James Park from BlackRock. "
-                    "Can you pull the latest data on NVDA and MSFT for me?"
-                )
-            }
-        ],
-        "expected_trajectory": {
-            "toolNames": ["identify_broker", "get_stock_data", "get_stock_data"]
-        },
+        "turns": [{"input": ("I'm James Park from BlackRock. Can you pull the latest data on NVDA and MSFT for me?")}],
+        "expected_trajectory": {"toolNames": ["identify_broker", "get_stock_data", "get_stock_data"]},
         "assertions": [
             "Agent calls get_stock_data for both NVDA and MSFT.",
             "Agent presents current price, change, and volume for each ticker.",
@@ -96,12 +85,7 @@ PREDEFINED_INITIAL_EXAMPLES = [
     {
         "scenario_id": "multi_turn_profile_then_news",
         "turns": [
-            {
-                "input": (
-                    "I'm Priya Sharma at Vanguard. "
-                    "I cover ESG equities in Europe and Southeast Asia."
-                )
-            },
+            {"input": ("I'm Priya Sharma at Vanguard. I cover ESG equities in Europe and Southeast Asia.")},
             {"input": "What's the latest ESG regulatory news out of the EU?"},
             {"input": "Any specific impact on renewable energy stocks?"},
         ],
@@ -130,9 +114,7 @@ PREDEFINED_ADDITIONAL_EXAMPLES = [
             {"input": "Hey, it's Marcus Webb from Fidelity again."},
             {"input": "Remind me — what sectors was I interested in last time?"},
         ],
-        "expected_trajectory": {
-            "toolNames": ["identify_broker", "get_broker_financial_profile"]
-        },
+        "expected_trajectory": {"toolNames": ["identify_broker", "get_broker_financial_profile"]},
         "assertions": [
             "Agent recognises the returning broker and retrieves their profile.",
             "Agent accurately reports the stored sector preferences.",
@@ -169,9 +151,7 @@ PREDEFINED_ADDITIONAL_EXAMPLES = [
 SIMULATED_EXAMPLES = [
     {
         "scenario_id": "sim_tech_momentum_briefing",
-        "scenario_description": (
-            "Senior tech broker needs a pre-meeting briefing on AI hardware names."
-        ),
+        "scenario_description": ("Senior tech broker needs a pre-meeting briefing on AI hardware names."),
         "actor_profile": {
             "context": (
                 "You are a senior technology equity broker at Goldman Sachs. "
@@ -198,9 +178,7 @@ SIMULATED_EXAMPLES = [
     },
     {
         "scenario_id": "sim_esg_portfolio_review",
-        "scenario_description": (
-            "ESG-focused broker reviews European clean-energy holdings."
-        ),
+        "scenario_description": ("ESG-focused broker reviews European clean-energy holdings."),
         "actor_profile": {
             "context": (
                 "You are an ESG equity specialist at BlackRock. "
@@ -230,9 +208,7 @@ SIMULATED_EXAMPLES = [
     },
     {
         "scenario_id": "sim_dividend_income_screen",
-        "scenario_description": (
-            "Value/dividend investor screens for high-yield financial stocks."
-        ),
+        "scenario_description": ("Value/dividend investor screens for high-yield financial stocks."),
         "actor_profile": {
             "context": (
                 "You are a value and income-oriented equity analyst at Vanguard. "
@@ -373,7 +349,7 @@ def demo_simulated_dataset(client: DatasetClient) -> str:
     for ex in resp["examples"]:
         sid = ex.get("scenario_id", ex.get("exampleId"))
         goal = ex.get("actor_profile", {}).get("goal", "")[:60]
-        print(f"    - {sid}: goal=\"{goal}...\"")
+        print(f'    - {sid}: goal="{goal}..."')
 
     # Update description
     client.update_dataset(
@@ -412,12 +388,8 @@ def demo_incremental_update(client: DatasetClient, dataset_id: str) -> None:
                 "examples": [
                     {
                         "scenario_id": "market_overview_no_profile",
-                        "turns": [
-                            {"input": "What sectors are leading the market today?"}
-                        ],
-                        "expected_trajectory": {
-                            "toolNames": ["get_market_overview"]
-                        },
+                        "turns": [{"input": "What sectors are leading the market today?"}],
+                        "expected_trajectory": {"toolNames": ["get_market_overview"]},
                         "assertions": [
                             "Agent returns an overview without requiring broker identity.",
                             "Agent lists at least two leading sectors.",
@@ -444,9 +416,7 @@ def demo_incremental_update(client: DatasetClient, dataset_id: str) -> None:
                     {"input": "What sectors are leading the market today?"},
                     {"input": "Focus on tech and healthcare."},
                 ],
-                "expected_trajectory": {
-                    "toolNames": ["get_market_overview", "get_sector_data"]
-                },
+                "expected_trajectory": {"toolNames": ["get_market_overview", "get_sector_data"]},
                 "assertions": [
                     "Agent returns a sector overview without requiring broker identity.",
                     "Agent narrows down to tech and healthcare on the follow-up.",

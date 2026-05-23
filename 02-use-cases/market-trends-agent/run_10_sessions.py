@@ -134,7 +134,7 @@ def main():
         desc = session["desc"]
         runtime_session_id = str(uuid.uuid4())  # 36 chars, satisfies min=33
 
-        logger.info(f"\n{'='*60}")
+        logger.info(f"\n{'=' * 60}")
         logger.info(f"[{sid}] {desc}")
         logger.info(f"Session ID: {runtime_session_id}")
 

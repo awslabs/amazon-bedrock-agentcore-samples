@@ -333,14 +333,16 @@ def main():
 
         logger.info(f"  [{status}] {preview}{'...' if len(str(response)) > 200 else ''}")
 
-        results.append({
-            "session_id": sid,
-            "persona": persona,
-            "runtime_session_id": runtime_session_id,
-            "prompt": msg,
-            "response": str(response),
-            "status": status,
-        })
+        results.append(
+            {
+                "session_id": sid,
+                "persona": persona,
+                "runtime_session_id": runtime_session_id,
+                "prompt": msg,
+                "response": str(response),
+                "status": status,
+            }
+        )
 
         if is_error:
             errors.append(sid)
@@ -355,7 +357,7 @@ def main():
         json.dump(results, f, indent=2)
 
     ok = total - len(errors)
-    logger.info(f"\n{'='*60}")
+    logger.info(f"\n{'=' * 60}")
     logger.info(f"All {total} sessions complete. Results saved to {out_file}")
     logger.info(f"Successful: {ok}/{total}")
     if errors:

@@ -95,13 +95,7 @@ def main():
                     }
                 },
                 "evaluationConfig": {
-                    "evaluators": [
-                        {
-                            "evaluatorArn": (
-                                "arn:aws:bedrock-agentcore:::evaluator/Builtin.GoalSuccessRate"
-                            )
-                        }
-                    ]
+                    "evaluators": [{"evaluatorArn": ("arn:aws:bedrock-agentcore:::evaluator/Builtin.GoalSuccessRate")}]
                 },
             }
         },
@@ -129,16 +123,16 @@ def main():
             raw = raw.get("text", str(raw))
         explanation = sp_result.get("explanation", "")
 
-        print(f"\n{'='*70}")
+        print(f"\n{'=' * 70}")
         print(f"Recommendation: {rec_name}")
         print(f"ID:             {rec_id}")
         print(f"Status:         {status}")
-        print(f"{'='*70}")
+        print(f"{'=' * 70}")
         print("\n--- RECOMMENDED SYSTEM PROMPT ---\n")
         print(raw or "(empty)")
         if explanation:
             print(f"\n--- EXPLANATION ---\n{explanation}")
-        print(f"\n{'='*70}\n")
+        print(f"\n{'=' * 70}\n")
 
         out = {
             "rec_name": rec_name,
