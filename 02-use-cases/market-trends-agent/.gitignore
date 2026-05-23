@@ -7,22 +7,6 @@ optimization/state.json
 session_results_*.json
 *_result.json
 
-# Dev/internal session runner and eval scripts (not needed for tutorial)
-run_10_sessions.py
-run_60_sessions.py
-run_batch_eval_v2.py
-run_recommendation_v2.py
-
-# Root-level duplicates (canonical versions live in optimization/)
-manage_dataset.py
-user_simulated_dataset.py
-optimize_agent.py
-
-# Test scripts not referenced in README
-test_agent_with_memory.py
-test_broker_card.py
-test_memory_deployment.py
-
 # AgentCore CLI generated (users scaffold this themselves via `agentcore create`)
 agentcore/
 
