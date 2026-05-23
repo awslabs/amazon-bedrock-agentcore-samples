@@ -180,9 +180,7 @@ def submit_pto_request(
         "end_date": end_date,
         "reason": reason,
         "status": "APPROVED",
-        "message": (
-            f"PTO request {request_id} approved for {employee_id} from {start_date} to {end_date}."
-        ),
+        "message": (f"PTO request {request_id} approved for {employee_id} from {start_date} to {end_date}."),
     }
 
 

@@ -44,9 +44,7 @@ logger = logging.getLogger(__name__)
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Custom Span Creation Demo")
-    parser.add_argument(
-        "--session-id", required=True, help="Session ID for trace correlation"
-    )
+    parser.add_argument("--session-id", required=True, help="Session ID for trace correlation")
     return parser.parse_args()
 
 
@@ -94,17 +92,13 @@ def web_search(query: str) -> str:
                 )
                 # Capture top-3 result metadata as span attributes
                 if i <= 3:
-                    span.set_attribute(
-                        f"search.result_{i}.title", r.get("title", "")[:100]
-                    )
+                    span.set_attribute(f"search.result_{i}.title", r.get("title", "")[:100])
                     span.set_attribute(f"search.result_{i}.url", r.get("href", ""))
 
             result_text = "\n".join(formatted) if formatted else "No results found."
             span.set_attribute("search.results_preview", result_text[:500])
 
-            span.add_event(
-                "search_completed", {"results_count": len(results), "success": True}
-            )
+            span.add_event("search_completed", {"results_count": len(results), "success": True})
             span.set_status(trace.Status(trace.StatusCode.OK))
 
             logger.info("Web search OK: %d results for '%s'", len(results), query[:50])
@@ -145,9 +139,7 @@ def run_agent(session_id: str):
         session_span.set_attribute("agent.type", "travel_agent")
         session_span.set_attribute("agent.framework", "strands")
 
-        model_id = os.getenv(
-            "BEDROCK_MODEL_ID", "global.anthropic.claude-haiku-4-5-20251001-v1:0"
-        )
+        model_id = os.getenv("BEDROCK_MODEL_ID", "global.anthropic.claude-haiku-4-5-20251001-v1:0")
         region = os.getenv("AWS_DEFAULT_REGION", "us-east-1")
 
         model = BedrockModel(

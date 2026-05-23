@@ -62,18 +62,14 @@ _DEFAULT_CONFIG = _SCRIPT_DIR / ".." / ".." / "utils" / "agent_config.json"
 _RESULTS_DIR = _SCRIPT_DIR / "results"
 _RESULTS_DIR.mkdir(exist_ok=True)
 
-parser = argparse.ArgumentParser(
-    description="Simulate HR conversations and run batch evaluation"
-)
+parser = argparse.ArgumentParser(description="Simulate HR conversations and run batch evaluation")
 parser.add_argument("--region", default=None, help="AWS region")
 parser.add_argument(
     "--config",
     default=str(_DEFAULT_CONFIG),
     help="Path to agent_config.json (written by deploy.py)",
 )
-parser.add_argument(
-    "--dry-run", action="store_true", help="Print scenarios without invoking"
-)
+parser.add_argument("--dry-run", action="store_true", help="Print scenarios without invoking")
 args = parser.parse_args()
 
 _config_path = Path(args.config)
@@ -120,9 +116,7 @@ bedrock_runtime = boto3.client("bedrock-runtime", region_name=REGION)
 SCENARIOS = [
     {
         "scenario_id": "sim-pto-balance",
-        "scenario_description": (
-            "An employee wants to check their remaining PTO balance."
-        ),
+        "scenario_description": ("An employee wants to check their remaining PTO balance."),
         "actor_profile": {
             "traits": {"communication_style": "direct", "planning_ahead": True},
             "context": "Employee EMP-001 wants to know how many PTO days they have left before booking a vacation.",
@@ -283,9 +277,7 @@ def _actor_next_message(system_prompt: str, transcript: list) -> tuple:
 
     # Ensure last message is from the agent (assistant) before asking actor to respond
     if not messages or messages[-1]["role"] != "assistant":
-        messages.append(
-            {"role": "assistant", "content": [{"text": "(waiting for your response)"}]}
-        )
+        messages.append({"role": "assistant", "content": [{"text": "(waiting for your response)"}]})
 
     resp = bedrock_runtime.converse(
         modelId=ACTOR_MODEL_ID,
@@ -485,9 +477,7 @@ if summaries:
         total_failed = s.get("totalFailed", "N/A")
         print(f"  {eid:<35} {str(avg):<12} {str(total_eval):<12} {str(total_failed)}")
 else:
-    print(
-        "  No evaluator summaries returned yet. Try querying again after a few minutes."
-    )
+    print("  No evaluator summaries returned yet. Try querying again after a few minutes.")
 
 _batch_path = _RESULTS_DIR / "batch_eval_results.json"
 _batch_path.write_text(

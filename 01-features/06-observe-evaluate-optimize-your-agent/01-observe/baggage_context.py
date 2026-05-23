@@ -141,14 +141,10 @@ def get_weather(location: str) -> str:
 
 
 def run_agent(session_id: str):
-    model_id = os.getenv(
-        "BEDROCK_MODEL_ID", "global.anthropic.claude-haiku-4-5-20251001-v1:0"
-    )
+    model_id = os.getenv("BEDROCK_MODEL_ID", "global.anthropic.claude-haiku-4-5-20251001-v1:0")
     region = os.getenv("AWS_DEFAULT_REGION", "us-east-1")
 
-    model = BedrockModel(
-        model_id=model_id, region_name=region, temperature=0.0, max_tokens=1024
-    )
+    model = BedrockModel(model_id=model_id, region_name=region, temperature=0.0, max_tokens=1024)
     agent = Agent(
         model=model,
         system_prompt=(
@@ -172,9 +168,7 @@ def run_agent(session_id: str):
     print("\nBaggage context results:")
     print("  All spans carry: session.id, tenant.id, environment")
     print("  View in: CloudWatch > GenAI Observability > Traces")
-    print(
-        "  Filter by tenant.id to isolate per-tenant traces in multi-tenant deployments."
-    )
+    print("  Filter by tenant.id to isolate per-tenant traces in multi-tenant deployments.")
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────
@@ -182,9 +176,7 @@ def run_agent(session_id: str):
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Baggage Context Propagation Demo")
-    parser.add_argument(
-        "--session-id", required=True, help="Session ID for trace correlation"
-    )
+    parser.add_argument("--session-id", required=True, help="Session ID for trace correlation")
     parser.add_argument(
         "--tenant-id",
         default="demo_tenant",

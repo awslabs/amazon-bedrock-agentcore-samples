@@ -23,17 +23,13 @@ import boto3
 
 parser = argparse.ArgumentParser(description="Invoke deployed HR Assistant")
 parser.add_argument("--name", required=True, help="Runtime name used in deploy.py")
-parser.add_argument(
-    "--region", default=os.environ.get("AWS_DEFAULT_REGION", "us-east-1")
-)
+parser.add_argument("--region", default=os.environ.get("AWS_DEFAULT_REGION", "us-east-1"))
 parser.add_argument("--prompt", default=None, help="Custom prompt (optional)")
 args = parser.parse_args()
 
 STATE_FILE = Path(f"agent_state_{args.name}.json")
 if not STATE_FILE.exists():
-    raise FileNotFoundError(
-        f"{STATE_FILE} not found. Run 'python deploy.py --name {args.name}' first."
-    )
+    raise FileNotFoundError(f"{STATE_FILE} not found. Run 'python deploy.py --name {args.name}' first.")
 
 state = json.loads(STATE_FILE.read_text())
 AGENT_ARN = state["runtime_arn"]

@@ -66,9 +66,7 @@ _DEFAULT_CONFIG = _SCRIPT_DIR / ".." / "utils" / "agent_config.json"
 _RESULTS_DIR = _SCRIPT_DIR / "results"
 _RESULTS_DIR.mkdir(exist_ok=True)
 
-parser = argparse.ArgumentParser(
-    description="LLM-as-a-judge evaluation for the HR Assistant agent"
-)
+parser = argparse.ArgumentParser(description="LLM-as-a-judge evaluation for the HR Assistant agent")
 parser.add_argument("--region", default=None, help="AWS region")
 parser.add_argument(
     "--config",
@@ -358,11 +356,7 @@ for result in on_demand_results:
     name = (
         evaluator_id
         if evaluator_id.startswith("Builtin.")
-        else (
-            "HRResponseQuality"
-            if evaluator_id == CUSTOM_RESPONSE_QUALITY_ID
-            else "HRSessionCompleteness"
-        )
+        else ("HRResponseQuality" if evaluator_id == CUSTOM_RESPONSE_QUALITY_ID else "HRSessionCompleteness")
     )
     value = result.get("value", result.get("score", "N/A"))
     label = result.get("label", result.get("rating", "N/A"))
@@ -577,9 +571,7 @@ print("\n" + "=" * 60)
 print("Summary")
 print("=" * 60)
 print("  Custom evaluators created : HRResponseQuality, HRSessionCompleteness")
-print(
-    f"  On-demand evaluation      : {len(on_demand_results)} result(s) for session {SESSION_ID[:20]}..."
-)
+print(f"  On-demand evaluation      : {len(on_demand_results)} result(s) for session {SESSION_ID[:20]}...")
 print(f"  Online eval config        : {ONLINE_EVAL_CONFIG_NAME} (ENABLED)")
 print()
 print("  Next steps:")

@@ -48,9 +48,7 @@ from botocore.awsrequest import AWSRequest
 
 parser = argparse.ArgumentParser(description="AgentCore Optimization workflow")
 parser.add_argument("--name", required=True, help="Base runtime name (alphanumeric)")
-parser.add_argument(
-    "--region", default=os.environ.get("AWS_DEFAULT_REGION", "us-east-1")
-)
+parser.add_argument("--region", default=os.environ.get("AWS_DEFAULT_REGION", "us-east-1"))
 parser.add_argument(
     "--skip-deploy",
     action="store_true",
@@ -222,9 +220,7 @@ def run_cleanup(state: dict):
     print("=" * 60)
 
     _dp = boto3.client("bedrock-agentcore", region_name=state.get("region", REGION))
-    _ctrl = boto3.client(
-        "bedrock-agentcore-control", region_name=state.get("region", REGION)
-    )
+    _ctrl = boto3.client("bedrock-agentcore-control", region_name=state.get("region", REGION))
     _logs = boto3.client("logs", region_name=state.get("region", REGION))
 
     # 1. Stop and delete A/B tests
@@ -254,9 +250,7 @@ def run_cleanup(state: dict):
             continue
         print(f"2. Deleting online eval config ({label}): {oe_id}")
         try:
-            _ctrl.update_online_evaluation_config(
-                onlineEvaluationConfigId=oe_id, executionStatus="DISABLED"
-            )
+            _ctrl.update_online_evaluation_config(onlineEvaluationConfigId=oe_id, executionStatus="DISABLED")
             time.sleep(2)
             _ctrl.delete_online_evaluation_config(onlineEvaluationConfigId=oe_id)
             print(f"   Deleted: {oe_id}")
@@ -345,9 +339,7 @@ def run_cleanup(state: dict):
         print(f"7. Deleting IAM role ({label}): {role_name}")
         try:
             iam = boto3.client("iam")
-            for policy in iam.list_role_policies(RoleName=role_name).get(
-                "PolicyNames", []
-            ):
+            for policy in iam.list_role_policies(RoleName=role_name).get("PolicyNames", []):
                 iam.delete_role_policy(RoleName=role_name, PolicyName=policy)
             iam.delete_role(RoleName=role_name)
             print(f"   Deleted: {role_name}")
@@ -436,8 +428,7 @@ BASELINE_BUNDLE_VERSION = baseline_resp["versionId"]
 BASELINE_BUNDLE_ID = baseline_resp["bundleId"]
 
 baseline_baggage = (
-    f"aws.agentcore.configbundle_arn={BASELINE_BUNDLE_ARN},"
-    f"aws.agentcore.configbundle_version={BASELINE_BUNDLE_VERSION}"
+    f"aws.agentcore.configbundle_arn={BASELINE_BUNDLE_ARN},aws.agentcore.configbundle_version={BASELINE_BUNDLE_VERSION}"
 )
 print(f"Baseline bundle ID : {BASELINE_BUNDLE_ID}")
 
@@ -562,11 +553,7 @@ sp_rec_resp = dp.start_recommendation(
                 }
             },
             "evaluationConfig": {
-                "evaluators": [
-                    {
-                        "evaluatorArn": "arn:aws:bedrock-agentcore:::evaluator/Builtin.GoalSuccessRate"
-                    }
-                ]
+                "evaluators": [{"evaluatorArn": "arn:aws:bedrock-agentcore:::evaluator/Builtin.GoalSuccessRate"}]
             },
         }
     },
@@ -586,14 +573,10 @@ while True:
 
 rec = sp_result.get("recommendationResult", {})
 sp_rec_result = rec.get("systemPromptRecommendationResult", {})
-RECOMMENDED_SYSTEM_PROMPT = (
-    sp_rec_result.get("recommendedSystemPrompt") or CURRENT_SYSTEM_PROMPT
-)
+RECOMMENDED_SYSTEM_PROMPT = sp_rec_result.get("recommendedSystemPrompt") or CURRENT_SYSTEM_PROMPT
 
 if sp_rec_result.get("errorCode"):
-    print(
-        f"Recommendation error ({sp_rec_result['errorCode']}): {sp_rec_result.get('errorMessage', '')[:200]}"
-    )
+    print(f"Recommendation error ({sp_rec_result['errorCode']}): {sp_rec_result.get('errorMessage', '')[:200]}")
     print("Falling back to current system prompt.")
 
 print("\n" + "=" * 60)
@@ -607,10 +590,7 @@ print("\n" + "=" * 60)
 print("STEP 5b: Tool Description Recommendation")
 print("=" * 60)
 
-tools_list = [
-    {"toolName": name, "toolDescription": {"text": desc}}
-    for name, desc in CURRENT_TOOL_DESCRIPTIONS.items()
-]
+tools_list = [{"toolName": name, "toolDescription": {"text": desc}} for name, desc in CURRENT_TOOL_DESCRIPTIONS.items()]
 
 td_rec_resp = dp.start_recommendation(
     name=f"HRTdRec{SUFFIX}",
@@ -644,9 +624,7 @@ while True:
 RECOMMENDED_TOOL_DESCRIPTIONS = dict(CURRENT_TOOL_DESCRIPTIONS)
 
 if status == "COMPLETED":
-    td_rec_result = td_result.get("recommendationResult", {}).get(
-        "toolDescriptionRecommendationResult", {}
-    )
+    td_rec_result = td_result.get("recommendationResult", {}).get("toolDescriptionRecommendationResult", {})
     returned_tools = td_rec_result.get("tools", [])
     tool_keys = list(CURRENT_TOOL_DESCRIPTIONS.keys())
 
@@ -658,17 +636,13 @@ if status == "COMPLETED":
         print("=" * 60)
         for i, item in enumerate(returned_tools):
             new_desc = item.get("recommendedToolDescription", "")
-            tool_name = item.get("toolName") or (
-                tool_keys[i] if i < len(tool_keys) else f"tool_{i}"
-            )
+            tool_name = item.get("toolName") or (tool_keys[i] if i < len(tool_keys) else f"tool_{i}")
             RECOMMENDED_TOOL_DESCRIPTIONS[tool_name] = new_desc
             print(f"\n[{tool_name}]")
             print(f"  Before: {CURRENT_TOOL_DESCRIPTIONS.get(tool_name, '(unknown)')}")
             print(f"  After : {new_desc}")
     else:
-        print(
-            "No tool description recommendations returned. Using current descriptions."
-        )
+        print("No tool description recommendations returned. Using current descriptions.")
 
 # ── Step 6: Create control and treatment bundles ───────────────────────────
 
@@ -722,12 +696,8 @@ print(f"  System prompt (first 100 chars): {config['system_prompt'][:100]}...")
 print(f"  Tool descriptions: {len(config.get('tool_descriptions', {}))} tools")
 
 # Compare control vs treatment
-v_control = ctrl.get_configuration_bundle_version(
-    bundleId=CONTROL_BUNDLE_ID, versionId=CONTROL_BUNDLE_VERSION
-)
-v_treatment = ctrl.get_configuration_bundle_version(
-    bundleId=TREATMENT_BUNDLE_ID, versionId=TREATMENT_BUNDLE_VERSION
-)
+v_control = ctrl.get_configuration_bundle_version(bundleId=CONTROL_BUNDLE_ID, versionId=CONTROL_BUNDLE_VERSION)
+v_treatment = ctrl.get_configuration_bundle_version(bundleId=TREATMENT_BUNDLE_ID, versionId=TREATMENT_BUNDLE_VERSION)
 cfg_c = v_control["components"][AGENT_ARN]["configuration"]
 cfg_t = v_treatment["components"][AGENT_ARN]["configuration"]
 print("\nControl vs Treatment diff:")
@@ -761,14 +731,8 @@ for i in range(30):
     print(f"  Poll {i + 1}: {gw.get('status')}")
     time.sleep(5)
 
-GATEWAY_ARN = (
-    gw.get("gatewayArn")
-    or f"arn:aws:bedrock-agentcore:{REGION}:{ACCOUNT_ID}:gateway/{GATEWAY_ID}"
-)
-GATEWAY_URL = (
-    gw.get("gatewayUrl")
-    or f"https://{GATEWAY_ID}.gateway.bedrock-agentcore.{REGION}.amazonaws.com"
-)
+GATEWAY_ARN = gw.get("gatewayArn") or f"arn:aws:bedrock-agentcore:{REGION}:{ACCOUNT_ID}:gateway/{GATEWAY_ID}"
+GATEWAY_URL = gw.get("gatewayUrl") or f"https://{GATEWAY_ID}.gateway.bedrock-agentcore.{REGION}.amazonaws.com"
 print(f"GATEWAY_URL = {GATEWAY_URL}")
 
 # 7a: Create v1 gateway target
@@ -776,9 +740,7 @@ tgt_resp = ctrl.create_gateway_target(
     gatewayIdentifier=GATEWAY_ID,
     name=TARGET_NAME,
     description="HR Assistant v1 runtime target",
-    targetConfiguration={
-        "http": {"agentcoreRuntime": {"arn": AGENT_ARN, "qualifier": "DEFAULT"}}
-    },
+    targetConfiguration={"http": {"agentcoreRuntime": {"arn": AGENT_ARN, "qualifier": "DEFAULT"}}},
     credentialProviderConfigurations=[{"credentialProviderType": "GATEWAY_IAM_ROLE"}],
     clientToken=str(uuid.uuid4()),
 )
@@ -810,18 +772,14 @@ except Exception as e:
     print(f"Delivery source: {e}")
 
 destinations = logs.describe_delivery_destinations().get("deliveryDestinations", [])
-xray_dest = next(
-    (d for d in destinations if d.get("deliveryDestinationType") == "XRAY"), None
-)
+xray_dest = next((d for d in destinations if d.get("deliveryDestinationType") == "XRAY"), None)
 if not xray_dest:
     logs.put_delivery_destination(
         name="xray-destination",
         deliveryDestinationType="XRAY",
     )
     destinations = logs.describe_delivery_destinations().get("deliveryDestinations", [])
-    xray_dest = next(
-        (d for d in destinations if d.get("deliveryDestinationType") == "XRAY"), None
-    )
+    xray_dest = next((d for d in destinations if d.get("deliveryDestinationType") == "XRAY"), None)
 
 XRAY_DEST_ARN = xray_dest["arn"]
 try:
@@ -946,9 +904,7 @@ for i, prompt in enumerate(GW_PROMPTS):
     )
     SigV4Auth(credentials, "bedrock-agentcore", REGION).add_auth(req)
     try:
-        resp = http_requests.post(
-            GW_INVOKE_URL, data=body, headers=dict(req.headers), timeout=120
-        )
+        resp = http_requests.post(GW_INVOKE_URL, data=body, headers=dict(req.headers), timeout=120)
         if resp.status_code == 200:
             success += 1
             print(f"  [{i + 1:2d}] OK  {sid[:8]}...")
@@ -982,9 +938,7 @@ for poll in range(25):
                 if cm and vm and float(cm) != 0:
                     pct = (float(vm) - float(cm)) / float(cm) * 100
             delta = f" change={pct:+.1f}%" if pct is not None else ""
-            print(
-                f"  Treatment mean={vr.get('mean', '-')} p={vr.get('pValue', 'N/A')}{delta}"
-            )
+            print(f"  Treatment mean={vr.get('mean', '-')} p={vr.get('pValue', 'N/A')}{delta}")
     if results.get("analysisTimestamp") and metrics:
         bundle_ab_results = results
         print("Results available!")
@@ -1066,17 +1020,13 @@ tgt_v2_resp = ctrl.create_gateway_target(
     gatewayIdentifier=GATEWAY_ID,
     name=TARGET_NAME_V2,
     description="HR Assistant v2 runtime target (escalation tool + improved prompt)",
-    targetConfiguration={
-        "http": {"agentcoreRuntime": {"arn": AGENT_ARN_V2, "qualifier": "DEFAULT"}}
-    },
+    targetConfiguration={"http": {"agentcoreRuntime": {"arn": AGENT_ARN_V2, "qualifier": "DEFAULT"}}},
     credentialProviderConfigurations=[{"credentialProviderType": "GATEWAY_IAM_ROLE"}],
     clientToken=str(uuid.uuid4()),
 )
 TARGET_ID_V2 = tgt_v2_resp["targetId"]
 for i in range(30):
-    tgt_v2 = ctrl.get_gateway_target(
-        gatewayIdentifier=GATEWAY_ID, targetId=TARGET_ID_V2
-    )
+    tgt_v2 = ctrl.get_gateway_target(gatewayIdentifier=GATEWAY_ID, targetId=TARGET_ID_V2)
     if tgt_v2.get("status") == "READY":
         break
     print(f"  v2 target poll {i + 1}: {tgt_v2.get('status')}")
@@ -1196,9 +1146,7 @@ for i, prompt in enumerate(TARGET_PROMPTS):
     )
     SigV4Auth(credentials, "bedrock-agentcore", REGION).add_auth(req)
     try:
-        resp = http_requests.post(
-            invoke_url, data=body, headers=dict(req.headers), timeout=120
-        )
+        resp = http_requests.post(invoke_url, data=body, headers=dict(req.headers), timeout=120)
         if resp.status_code == 200:
             success += 1
             print(f"  [{i + 1:2d}] OK  {sid[:8]}...")
@@ -1241,9 +1189,7 @@ for poll in range(25):
                 sig = vr.get("isSignificant")
                 pct = vr.get("percentChange")
                 if pct is None and cs_mean and vr.get("mean") and float(cs_mean) != 0:
-                    pct = (
-                        (float(vr.get("mean")) - float(cs_mean)) / float(cs_mean) * 100
-                    )
+                    pct = (float(vr.get("mean")) - float(cs_mean)) / float(cs_mean) * 100
                 pct_str = f"{pct:+.1f}%" if pct is not None else "N/A"
                 print(f"  {name}: change={pct_str}  significant={sig}")
                 if sig and pct is not None and pct > 0:
@@ -1251,9 +1197,7 @@ for poll in range(25):
                 elif sig and pct is not None and pct < 0:
                     print("    ACTION: Halt rollout; keep v1, investigate v2")
                 else:
-                    print(
-                        "    ACTION: Continue sending traffic to accumulate sample size"
-                    )
+                    print("    ACTION: Continue sending traffic to accumulate sample size")
         break
     print()
     time.sleep(60)

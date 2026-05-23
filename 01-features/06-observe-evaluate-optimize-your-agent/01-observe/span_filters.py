@@ -210,14 +210,10 @@ def get_weather(location: str) -> str:
 
 
 def run_agent(session_id: str):
-    model_id = os.getenv(
-        "BEDROCK_MODEL_ID", "global.anthropic.claude-haiku-4-5-20251001-v1:0"
-    )
+    model_id = os.getenv("BEDROCK_MODEL_ID", "global.anthropic.claude-haiku-4-5-20251001-v1:0")
     region = os.getenv("AWS_DEFAULT_REGION", "us-east-1")
 
-    model = BedrockModel(
-        model_id=model_id, region_name=region, temperature=0.0, max_tokens=1024
-    )
+    model = BedrockModel(model_id=model_id, region_name=region, temperature=0.0, max_tokens=1024)
     agent = Agent(
         model=model,
         system_prompt=(
@@ -241,9 +237,7 @@ def run_agent(session_id: str):
     print("\nFiltered spans visible in:")
     print("  CloudWatch > GenAI Observability > Bedrock AgentCore > Traces")
     print("\nSpans < 50 ms were dropped by FilterSpanProcessor.")
-    print(
-        "Set OTEL_PYTHON_EXCLUDED_URLS='*/invocations' to also drop URL-matched spans."
-    )
+    print("Set OTEL_PYTHON_EXCLUDED_URLS='*/invocations' to also drop URL-matched spans.")
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────
@@ -251,9 +245,7 @@ def run_agent(session_id: str):
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Span Filtering Demo")
-    parser.add_argument(
-        "--session-id", required=True, help="Session ID for trace correlation"
-    )
+    parser.add_argument("--session-id", required=True, help="Session ID for trace correlation")
     return parser.parse_args()
 
 

@@ -150,9 +150,7 @@ def lambda_handler(  # pylint: disable=too-many-branches,too-many-locals,too-man
             check = f"PTO balance {emp_id} = {correct} remaining"
             checks_run.append(check)
             correct_val = bool(re.search(rf"\b{re.escape(correct)}\b", all_text))
-            if bool(remaining_pattern.search(all_text)) or (
-                correct_val and "remaining" in all_text_lower
-            ):
+            if bool(remaining_pattern.search(all_text)) or (correct_val and "remaining" in all_text_lower):
                 checks_passed.append(check)
             else:
                 checks_failed.append(f"{check}: value not found near 'remaining'")
@@ -171,9 +169,7 @@ def lambda_handler(  # pylint: disable=too-many-branches,too-many-locals,too-man
         ]:
             check = f"Pay stub {emp_id} {period} {field} = ${expected_val}"
             checks_run.append(check)
-            amount_re = re.compile(
-                r"\$?\s*" + re.escape(expected_val).replace(",", ",?"), re.IGNORECASE
-            )
+            amount_re = re.compile(r"\$?\s*" + re.escape(expected_val).replace(",", ",?"), re.IGNORECASE)
             if amount_re.search(all_text):
                 checks_passed.append(check)
             else:

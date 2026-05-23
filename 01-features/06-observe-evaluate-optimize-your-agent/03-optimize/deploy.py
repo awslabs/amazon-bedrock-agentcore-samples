@@ -42,9 +42,7 @@ import boto3
 
 parser = argparse.ArgumentParser(description="Deploy HR Assistant to AgentCore Runtime")
 parser.add_argument("--name", required=True, help="Runtime name (alphanumeric)")
-parser.add_argument(
-    "--region", default=os.environ.get("AWS_DEFAULT_REGION", "us-east-1")
-)
+parser.add_argument("--region", default=os.environ.get("AWS_DEFAULT_REGION", "us-east-1"))
 parser.add_argument(
     "--version",
     default="v1",
@@ -75,9 +73,7 @@ STATE_FILE = Path(f"agent_state_{RUNTIME_NAME}.json")
 SCRIPT_DIR = Path(__file__).parent
 V1_CODE_PATH = SCRIPT_DIR / "utils" / "hr_assistant_agent.py"
 
-print(
-    f"Deploying {RUNTIME_NAME} (version={VERSION}) to {REGION} (account={ACCOUNT_ID})"
-)
+print(f"Deploying {RUNTIME_NAME} (version={VERSION}) to {REGION} (account={ACCOUNT_ID})")
 
 # ── IAM role ──────────────────────────────────────────────────────────────
 

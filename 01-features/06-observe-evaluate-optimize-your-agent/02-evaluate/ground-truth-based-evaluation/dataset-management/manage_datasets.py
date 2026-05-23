@@ -229,9 +229,7 @@ datasets_page = list_resp.get("datasets", [])
 print(f"  Found {len(datasets_page)} dataset(s) on this page")
 for d in datasets_page:
     print(
-        f"    {d.get('datasetName', '?'):<40} "
-        f"status={d.get('status', '?'):<12} "
-        f"examples={d.get('exampleCount', '?')}"
+        f"    {d.get('datasetName', '?'):<40} status={d.get('status', '?'):<12} examples={d.get('exampleCount', '?')}"
     )
 if list_resp.get("nextToken"):
     print("  (more pages available via nextToken)")
@@ -446,9 +444,7 @@ client.add_examples_and_wait(
                         }
                     ],
                     "expected_trajectory": {"toolNames": ["get_benefits_summary"]},
-                    "assertions": [
-                        {"text": "Agent called get_benefits_summary with benefit_type=health"}
-                    ],
+                    "assertions": [{"text": "Agent called get_benefits_summary with benefit_type=health"}],
                 }
             ]
         }
@@ -706,11 +702,7 @@ if _run_eval:
     _eval_dataset = _build_dataset_from_managed(_managed_examples)
     print(f"  Dataset scenarios : {len(_eval_dataset.scenarios)}")
     for sc in _eval_dataset.scenarios:
-        print(
-            f"    scenario_id={sc.scenario_id:<35} "
-            f"turns={len(sc.turns)}  "
-            f"assertions={len(sc.assertions or [])}"
-        )
+        print(f"    scenario_id={sc.scenario_id:<35} turns={len(sc.turns)}  assertions={len(sc.assertions or [])}")
 
     # ── Step 19: Run EvaluationClient using ground truth from managed dataset ──
     #
@@ -734,7 +726,7 @@ if _run_eval:
         parts = []
         for line in raw.splitlines():
             if line.startswith("data: "):
-                chunk = line[len("data: "):]
+                chunk = line[len("data: ") :]
                 try:
                     chunk = json.loads(chunk)
                 except Exception:

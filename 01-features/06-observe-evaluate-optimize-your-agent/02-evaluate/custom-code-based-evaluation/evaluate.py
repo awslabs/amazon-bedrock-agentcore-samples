@@ -67,9 +67,7 @@ _DEFAULT_CONFIG = _SCRIPT_DIR / ".." / "utils" / "agent_config.json"
 _RESULTS_DIR = _SCRIPT_DIR / "results"
 _RESULTS_DIR.mkdir(exist_ok=True)
 
-parser = argparse.ArgumentParser(
-    description="Code-based evaluation for the HR Assistant agent"
-)
+parser = argparse.ArgumentParser(description="Code-based evaluation for the HR Assistant agent")
 parser.add_argument("--region", default=None, help="AWS region")
 parser.add_argument(
     "--config",
@@ -256,9 +254,7 @@ def _deploy_lambda(function_name: str, source_dir: str, timeout_s: int = 60) -> 
     try:
         resp = lambda_client.get_function(FunctionName=function_name)
         print("  Updating existing function ...")
-        lambda_client.update_function_code(
-            FunctionName=function_name, ZipFile=zip_bytes
-        )
+        lambda_client.update_function_code(FunctionName=function_name, ZipFile=zip_bytes)
         waiter = lambda_client.get_waiter("function_updated_v2")
         waiter.wait(FunctionName=function_name)
         arn = resp["Configuration"]["FunctionArn"]
@@ -285,9 +281,7 @@ def _add_invoke_permission(function_name: str) -> None:
     """Grant bedrock-agentcore.amazonaws.com permission to invoke the Lambda."""
     statement_id = "AllowAgentCoreEvaluateInvoke"
     try:
-        lambda_client.remove_permission(
-            FunctionName=function_name, StatementId=statement_id
-        )
+        lambda_client.remove_permission(FunctionName=function_name, StatementId=statement_id)
     except lambda_client.exceptions.ResourceNotFoundException:
         pass
     lambda_client.add_permission(
@@ -330,9 +324,7 @@ print("  Waiting 5s for IAM policy propagation ...")
 time.sleep(5)
 
 
-def _create_code_evaluator(
-    name: str, lambda_arn: str, level: str, timeout_s: int
-) -> str:
+def _create_code_evaluator(name: str, lambda_arn: str, level: str, timeout_s: int) -> str:
     unique_name = f"{name}_{RUN_SUFFIX}"
     print(f"  Creating '{unique_name}' (level={level}) ...")
     resp = _cp.create_evaluator(
@@ -352,12 +344,8 @@ def _create_code_evaluator(
     return evaluator_id
 
 
-EVAL_ID_RESPONSE_LENGTH = _create_code_evaluator(
-    "HRResponseLength", ARN_RESPONSE_LENGTH, level="TRACE", timeout_s=30
-)
-EVAL_ID_FACT_CHECKER = _create_code_evaluator(
-    "HRFactChecker", ARN_FACT_CHECKER, level="SESSION", timeout_s=60
-)
+EVAL_ID_RESPONSE_LENGTH = _create_code_evaluator("HRResponseLength", ARN_RESPONSE_LENGTH, level="TRACE", timeout_s=30)
+EVAL_ID_FACT_CHECKER = _create_code_evaluator("HRFactChecker", ARN_FACT_CHECKER, level="SESSION", timeout_s=60)
 
 CODE_EVAL_IDS = {
     "HRResponseLength": EVAL_ID_RESPONSE_LENGTH,
@@ -640,9 +628,7 @@ _dataset_result = _runner.run(
     span_collector=_span_collector,
 )
 
-_completed = sum(
-    1 for sr in _dataset_result.scenario_results if sr.status == "COMPLETED"
-)
+_completed = sum(1 for sr in _dataset_result.scenario_results if sr.status == "COMPLETED")
 _failed = sum(1 for sr in _dataset_result.scenario_results if sr.status == "FAILED")
 print(f"\n  Dataset runner complete: {_completed} completed, {_failed} failed.\n")
 
@@ -796,9 +782,7 @@ print("\n" + "=" * 60)
 print("Summary")
 print("=" * 60)
 print("  Lambda evaluators deployed : hr-response-length, hr-fact-checker")
-print(
-    "  Evaluators registered      : HRResponseLength (TRACE), HRFactChecker (SESSION)"
-)
+print("  Evaluators registered      : HRResponseLength (TRACE), HRFactChecker (SESSION)")
 print("  On-demand results          : results/on_demand_results.json")
 print("  Dataset runner results     : results/dataset_runner_results.json")
 print(f"  Online eval config active  : {ONLINE_CONFIG_NAME}")

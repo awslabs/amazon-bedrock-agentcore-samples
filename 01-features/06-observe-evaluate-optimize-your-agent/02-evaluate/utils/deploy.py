@@ -42,12 +42,8 @@ from boto3.session import Session
 _SCRIPT_DIR = Path(__file__).parent
 _CONFIG_FILE = _SCRIPT_DIR / "agent_config.json"
 
-parser = argparse.ArgumentParser(
-    description="Deploy the HR Assistant agent to AgentCore Runtime"
-)
-parser.add_argument(
-    "--region", default=None, help="AWS region (default: boto3 session region)"
-)
+parser = argparse.ArgumentParser(description="Deploy the HR Assistant agent to AgentCore Runtime")
+parser.add_argument("--region", default=None, help="AWS region (default: boto3 session region)")
 args = parser.parse_args()
 
 REGION = args.region or Session().region_name or "us-east-1"
@@ -79,9 +75,7 @@ _TRUST = json.dumps(
                 "Action": "sts:AssumeRole",
                 "Condition": {
                     "StringEquals": {"aws:SourceAccount": _ACCOUNT_ID},
-                    "ArnLike": {
-                        "aws:SourceArn": f"arn:aws:bedrock-agentcore:*:{_ACCOUNT_ID}:runtime/*"
-                    },
+                    "ArnLike": {"aws:SourceArn": f"arn:aws:bedrock-agentcore:*:{_ACCOUNT_ID}:runtime/*"},
                 },
             }
         ],
@@ -116,9 +110,7 @@ _POLICY = json.dumps(
 
 print(f"\n[1/5] Creating IAM role '{_ROLE_NAME}' ...")
 try:
-    _ROLE_ARN = _iam.create_role(RoleName=_ROLE_NAME, AssumeRolePolicyDocument=_TRUST)[
-        "Role"
-    ]["Arn"]
+    _ROLE_ARN = _iam.create_role(RoleName=_ROLE_NAME, AssumeRolePolicyDocument=_TRUST)["Role"]["Arn"]
     print(f"  Created: {_ROLE_ARN}")
 except _iam.exceptions.EntityAlreadyExistsException:
     _ROLE_ARN = _iam.get_role(RoleName=_ROLE_NAME)["Role"]["Arn"]

@@ -26,9 +26,7 @@ def get_weather(destination: str) -> str:
 
 def get_model():
     return BedrockModel(
-        model_id=os.getenv(
-            "BEDROCK_MODEL_ID", "global.anthropic.claude-haiku-4-5-20251001-v1:0"
-        ),
+        model_id=os.getenv("BEDROCK_MODEL_ID", "global.anthropic.claude-haiku-4-5-20251001-v1:0"),
         temperature=0.0,
         max_tokens=512,
         guardrail_id=os.getenv("BEDROCK_GUARDRAIL_ID"),

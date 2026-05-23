@@ -22,13 +22,9 @@ import boto3
 
 # ── Parse arguments ───────────────────────────────────────────────────────
 
-parser = argparse.ArgumentParser(
-    description="Clean up AgentCore optimization resources"
-)
+parser = argparse.ArgumentParser(description="Clean up AgentCore optimization resources")
 parser.add_argument("--name", required=True, help="Runtime name used in deploy.py")
-parser.add_argument(
-    "--region", default=os.environ.get("AWS_DEFAULT_REGION", "us-east-1")
-)
+parser.add_argument("--region", default=os.environ.get("AWS_DEFAULT_REGION", "us-east-1"))
 args = parser.parse_args()
 
 # ── Load state ────────────────────────────────────────────────────────────
@@ -91,9 +87,7 @@ for oe_id, label in [
         continue
     print(f"2. Deleting online eval config ({label}): {oe_id}")
     try:
-        ctrl.update_online_evaluation_config(
-            onlineEvaluationConfigId=oe_id, executionStatus="DISABLED"
-        )
+        ctrl.update_online_evaluation_config(onlineEvaluationConfigId=oe_id, executionStatus="DISABLED")
         time.sleep(2)
         ctrl.delete_online_evaluation_config(onlineEvaluationConfigId=oe_id)
         print(f"   Deleted: {oe_id}")

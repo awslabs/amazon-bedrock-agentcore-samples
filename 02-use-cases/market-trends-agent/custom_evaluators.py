@@ -449,9 +449,7 @@ def load_ids() -> dict:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(
-        description="Create custom LLM-as-a-judge evaluators for the Market Trends Agent."
-    )
+    parser = argparse.ArgumentParser(description="Create custom LLM-as-a-judge evaluators for the Market Trends Agent.")
     parser.add_argument(
         "--list",
         action="store_true",

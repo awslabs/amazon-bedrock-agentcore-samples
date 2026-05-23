@@ -67,9 +67,7 @@ S3_BUCKET = f"agentcore-code-{ACCOUNT_ID}-{REGION}"
 def parse_args():
     parser = argparse.ArgumentParser(description="AgentCore Data Protection Demo")
     parser.add_argument("--region", default=None, help="AWS region")
-    parser.add_argument(
-        "--cleanup", action="store_true", help="Delete all created resources"
-    )
+    parser.add_argument("--cleanup", action="store_true", help="Delete all created resources")
     return parser.parse_args()
 
 
@@ -224,14 +222,10 @@ def deploy_agent(guardrail_id: str, guardrail_version: str) -> dict:
     }
 
     try:
-        role_arn = iam.create_role(
-            RoleName=role_name, AssumeRolePolicyDocument=json.dumps(trust)
-        )["Role"]["Arn"]
+        role_arn = iam.create_role(RoleName=role_name, AssumeRolePolicyDocument=json.dumps(trust))["Role"]["Arn"]
     except iam.exceptions.EntityAlreadyExistsException:
         role_arn = f"arn:aws:iam::{ACCOUNT_ID}:role/{role_name}"
-    iam.put_role_policy(
-        RoleName=role_name, PolicyName="policy", PolicyDocument=json.dumps(policy)
-    )
+    iam.put_role_policy(RoleName=role_name, PolicyName="policy", PolicyDocument=json.dumps(policy))
     time.sleep(10)
 
     # Build and upload zip
@@ -256,9 +250,7 @@ def deploy_agent(guardrail_id: str, guardrail_version: str) -> dict:
         ],
         check=True,
     )
-    subprocess.run(
-        ["zip", "-r", "../dp_deploy.zip", "."], cwd=pkg, check=True, capture_output=True
-    )
+    subprocess.run(["zip", "-r", "../dp_deploy.zip", "."], cwd=pkg, check=True, capture_output=True)
     subprocess.run(
         ["zip", "dp_deploy.zip", "-j", "_dp_agent/travel_support_agent.py"],
         check=True,
@@ -267,9 +259,7 @@ def deploy_agent(guardrail_id: str, guardrail_version: str) -> dict:
     shutil.rmtree(pkg)
 
     try:
-        s3.create_bucket(
-            Bucket=S3_BUCKET
-        ) if REGION == "us-east-1" else s3.create_bucket(
+        s3.create_bucket(Bucket=S3_BUCKET) if REGION == "us-east-1" else s3.create_bucket(
             Bucket=S3_BUCKET, CreateBucketConfiguration={"LocationConstraint": REGION}
         )
     except Exception:
@@ -311,9 +301,7 @@ def deploy_agent(guardrail_id: str, guardrail_version: str) -> dict:
     control.create_agent_runtime_endpoint(agentRuntimeId=runtime_id, name="default")
     while True:
         eps = control.list_agent_runtime_endpoints(agentRuntimeId=runtime_id)
-        ep = next(
-            (e for e in eps.get("runtimeEndpoints", []) if e["name"] == "default"), None
-        )
+        ep = next((e for e in eps.get("runtimeEndpoints", []) if e["name"] == "default"), None)
         if ep and ep["status"] == "READY":
             break
         time.sleep(15)
@@ -471,9 +459,7 @@ def main():
         json.dump(state, f, indent=2)
 
     # 3. Test without CW data protection (guardrails only)
-    test_invocation(
-        agent_info["runtime_arn"], "Guardrails only (no CW Logs protection)"
-    )
+    test_invocation(agent_info["runtime_arn"], "Guardrails only (no CW Logs protection)")
 
     # 4. Apply CW Logs data protection
     apply_cw_data_protection(agent_info["runtime_id"])

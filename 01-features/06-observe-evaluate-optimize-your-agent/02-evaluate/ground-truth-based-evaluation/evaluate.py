@@ -62,9 +62,7 @@ _DEFAULT_CONFIG = _SCRIPT_DIR / ".." / "utils" / "agent_config.json"
 _RESULTS_DIR = _SCRIPT_DIR / "results"
 _RESULTS_DIR.mkdir(exist_ok=True)
 
-parser = argparse.ArgumentParser(
-    description="Evaluate the HR Assistant agent with ground truth"
-)
+parser = argparse.ArgumentParser(description="Evaluate the HR Assistant agent with ground truth")
 parser.add_argument("--region", default=None, help="AWS region")
 parser.add_argument(
     "--config",
@@ -258,9 +256,7 @@ session_pto_balance = run_session(
     "pto-balance-check",
 )
 session_submit_pto = run_session(
-    [
-        "Please submit a PTO request for employee EMP-001 from 2026-04-14 to 2026-04-16 for a family vacation."
-    ],
+    ["Please submit a PTO request for employee EMP-001 from 2026-04-14 to 2026-04-16 for a family vacation."],
     "submit-pto-request",
 )
 session_pay_stub = run_session(
@@ -375,9 +371,7 @@ submit_pto_results = eval_client.run(
         expected_response="PTO request submitted and approved for EMP-001 from 2026-04-14 to 2026-04-16.",
     ),
 )
-print_eval_results(
-    "PTO Submission — Built-in + Custom ResponseSimilarity", submit_pto_results
-)
+print_eval_results("PTO Submission — Built-in + Custom ResponseSimilarity", submit_pto_results)
 all_ec_results["submit_pto"] = submit_pto_results
 
 # 3c. Pay Stub: Correctness + GoalSuccessRate
@@ -656,9 +650,7 @@ config = EvaluationRunConfig(
 runner = OnDemandEvaluationDatasetRunner(region=REGION)
 runner._evaluator_level_cache.update(EVALUATOR_LEVELS)
 
-print(
-    f"  Evaluators: {len(config.evaluator_config.evaluator_ids)} (5 built-in + 2 custom)"
-)
+print(f"  Evaluators: {len(config.evaluator_config.evaluator_ids)} (5 built-in + 2 custom)")
 print("  Starting evaluation (invoking agent + waiting 180s for CloudWatch) ...")
 
 eval_result = runner.run(
@@ -670,9 +662,7 @@ eval_result = runner.run(
 
 completed = sum(1 for sr in eval_result.scenario_results if sr.status == "COMPLETED")
 failed = sum(1 for sr in eval_result.scenario_results if sr.status == "FAILED")
-print(
-    f"\n  Completed: {completed}/{len(eval_result.scenario_results)} scenarios  (failed: {failed})"
-)
+print(f"\n  Completed: {completed}/{len(eval_result.scenario_results)} scenarios  (failed: {failed})")
 
 # Print per-scenario results
 for sr in eval_result.scenario_results:
@@ -833,11 +823,7 @@ _managed_pto_scenario = next(
 _managed_eval_results = []
 if _managed_pto_scenario and session_pto_balance:
     _managed_ref = ReferenceInputs(
-        expected_response=(
-            _managed_pto_scenario.turns[0].expected_response
-            if _managed_pto_scenario.turns
-            else None
-        ),
+        expected_response=(_managed_pto_scenario.turns[0].expected_response if _managed_pto_scenario.turns else None),
         assertions=_managed_pto_scenario.assertions,
     )
     _managed_eval_results = eval_client.run(
@@ -940,9 +926,7 @@ print(f"  Status   : {batch_result.status}")
 
 if batch_result.evaluation_results:
     ev = batch_result.evaluation_results
-    print(
-        f"  Sessions : {ev.number_of_sessions_completed} completed, {ev.number_of_sessions_failed} failed"
-    )
+    print(f"  Sessions : {ev.number_of_sessions_completed} completed, {ev.number_of_sessions_failed} failed")
     if ev.evaluator_summaries:
         print("\n  Per-evaluator aggregate scores:")
         for es in ev.evaluator_summaries:
