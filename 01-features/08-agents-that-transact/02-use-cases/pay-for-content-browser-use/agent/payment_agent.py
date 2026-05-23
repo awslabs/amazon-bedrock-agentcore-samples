@@ -1,5 +1,5 @@
 """
-Pay for Content (Browser Use) — Strands agent for AgentCore Runtime.
+Pay for Content (Browser Use) — Strands agent for Amazon Bedrock AgentCore Runtime.
 
 The agent uses AgentCoreBrowser to navigate a paywalled page, reads the
 x402 requirement from the DOM, calls process_x402_payment to generate a
@@ -66,7 +66,7 @@ When asked to retrieve content from a URL, follow these steps in order:
 5. Wait for the content to become visible, then extract and return it.
 6. Report the content retrieved and the amount paid in USDC.
 
-Always be transparent about what you paid and what content you retrieved.
+Be transparent about what you paid and what content you retrieved.
 """
 
 
@@ -143,9 +143,7 @@ def handle_request(payload, context=None):
         requirement = json.loads(requirement_json)
 
         first_accept = requirement["accepts"][0]
-        amount_units = int(
-            first_accept.get("maxAmountRequired") or first_accept.get("amount", 0)
-        )
+        amount_units = int(first_accept.get("maxAmountRequired") or first_accept.get("amount", 0))
         # Token's smallest unit (e.g. 1_000_000 for USDC's 6 decimals) — the
         # value is reported back to the caller for display, not used for
         # routing or settlement.

@@ -1,8 +1,8 @@
 """
-Pay for Content — Browser Use Case (AgentCore Runtime).
+Pay for Content — Browser Use Case (Amazon Bedrock AgentCore Runtime).
 
 App-backend script that:
-1. Provisions the AgentCore payments resource stack (once per user):
+1. Provisions the Amazon Bedrock AgentCore payments resource stack (once per user):
    CredentialProvider → PaymentManager → PaymentConnector → EmbeddedCryptoWallet Instrument
 2. Verifies wallet USDC balance
 3. Creates a payment session with a spend limit
@@ -133,9 +133,7 @@ print(f"AWS account: {ACCOUNT_ID}")
 
 
 def assume_role(role_arn: str, session_name: str) -> Session:
-    creds = sts.assume_role(RoleArn=role_arn, RoleSessionName=session_name)[
-        "Credentials"
-    ]
+    creds = sts.assume_role(RoleArn=role_arn, RoleSessionName=session_name)["Credentials"]
     sess = Session(
         aws_access_key_id=creds["AccessKeyId"],
         aws_secret_access_key=creds["SecretAccessKey"],
@@ -148,25 +146,19 @@ def assume_role(role_arn: str, session_name: str) -> Session:
 
 
 print("Assuming ControlPlaneRole...")
-cp_session = assume_role(
-    CONTROL_PLANE_ROLE_ARN, f"cp-setup-{int(datetime.now().timestamp())}"
-)
+cp_session = assume_role(CONTROL_PLANE_ROLE_ARN, f"cp-setup-{int(datetime.now().timestamp())}")
 cp_client = cp_session.client("bedrock-agentcore-control", endpoint_url=CP_ENDPOINT)
 print("CP client ready")
 
 print("Assuming ManagementRole...")
-mgmt_session = assume_role(
-    MANAGEMENT_ROLE_ARN, f"payments-mgmt-{int(datetime.now().timestamp())}"
-)
+mgmt_session = assume_role(MANAGEMENT_ROLE_ARN, f"payments-mgmt-{int(datetime.now().timestamp())}")
 mgmt_client = mgmt_session.client("bedrock-agentcore", endpoint_url=DP_ENDPOINT)
 print("Management client ready")
 
 
 # ── Step 3 — Provision Embedded Wallet Resources ──────────────────────────────
 if MANAGER_ARN and PAYMENT_CONNECTOR_ID and PAYMENT_INSTRUMENT_ID:
-    print(
-        "\n== Step 3: Skipped (MANAGER_ARN, PAYMENT_CONNECTOR_ID, PAYMENT_INSTRUMENT_ID in .env) =="
-    )
+    print("\n== Step 3: Skipped (MANAGER_ARN, PAYMENT_CONNECTOR_ID, PAYMENT_INSTRUMENT_ID in .env) ==")
     CREDENTIAL_PROVIDER_ARN = None
     WALLET_HUB_URL = ""
 else:
@@ -211,9 +203,7 @@ else:
         name=f"CoinbaseConn{int(time.time())}",
         description="Coinbase CDP connector for embedded wallet",
         type="CoinbaseCDP",
-        credentialProviderConfigurations=[
-            {"coinbaseCDP": {"credentialProviderArn": CREDENTIAL_PROVIDER_ARN}}
-        ],
+        credentialProviderConfigurations=[{"coinbaseCDP": {"credentialProviderArn": CREDENTIAL_PROVIDER_ARN}}],
         clientToken=str(uuid.uuid4()),
     )
     PAYMENT_CONNECTOR_ID = conn_resp["paymentConnectorId"]
@@ -241,9 +231,7 @@ else:
     )
     instrument = inst_resp["paymentInstrument"]
     PAYMENT_INSTRUMENT_ID = instrument["paymentInstrumentId"]
-    wallet_details = instrument.get("paymentInstrumentDetails", {}).get(
-        "embeddedCryptoWallet", {}
-    )
+    wallet_details = instrument.get("paymentInstrumentDetails", {}).get("embeddedCryptoWallet", {})
     wallet_address = wallet_details.get("walletAddress", "<pending>")
     WALLET_HUB_URL = wallet_details.get("redirectUrl", "")
 
@@ -264,14 +252,10 @@ else:
     print("  1. Open the WalletHub URL printed above.")
     print("     Log in with your WALLET_EMAIL and click 'Grant signing permission'.")
     print("  2. Fund the wallet with testnet USDC:")
-    print(
-        "     - Base Sepolia: https://faucet.circle.com → select Base Sepolia → paste wallet address"
-    )
+    print("     - Base Sepolia: https://faucet.circle.com → select Base Sepolia → paste wallet address")
     print(f"     - Wallet address: {wallet_address}")
     print("  3. After funding and granting permission, re-run this script.")
-    print(
-        "     Set MANAGER_ARN, PAYMENT_CONNECTOR_ID, PAYMENT_INSTRUMENT_ID in .env to skip provisioning."
-    )
+    print("     Set MANAGER_ARN, PAYMENT_CONNECTOR_ID, PAYMENT_INSTRUMENT_ID in .env to skip provisioning.")
     raise SystemExit(0)
 
 
@@ -281,12 +265,8 @@ print("\n== Step 3e: Verify Wallet Balance ==")
 # Briefly assume ProcessPaymentRole to call GetPaymentInstrumentBalance.
 # The deployed agent on Runtime uses this same role automatically.
 print("Assuming ProcessPaymentRole for balance check...")
-balance_check_session = assume_role(
-    PROCESS_PAYMENT_ROLE_ARN, f"balance-check-{int(datetime.now().timestamp())}"
-)
-balance_check_client = balance_check_session.client(
-    "bedrock-agentcore", endpoint_url=DP_ENDPOINT
-)
+balance_check_session = assume_role(PROCESS_PAYMENT_ROLE_ARN, f"balance-check-{int(datetime.now().timestamp())}")
+balance_check_client = balance_check_session.client("bedrock-agentcore", endpoint_url=DP_ENDPOINT)
 
 try:
     balance_resp = balance_check_client.get_payment_instrument_balance(
@@ -306,15 +286,11 @@ try:
             f"Wallet balance: {readable:.6f} {token_balance.get('token', 'USDC')} on {token_balance.get('chain', 'unknown')}"
         )
     else:
-        print(
-            "Balance returned empty — faucet may still be pending. Continue if wallet is funded."
-        )
+        print("Balance returned empty — faucet may still be pending. Continue if wallet is funded.")
     print(f"Instrument ID: {PAYMENT_INSTRUMENT_ID}")
 except Exception as e:
     print(f"GetPaymentInstrumentBalance failed: {e}")
-    print(
-        "Ensure bedrock-agentcore:GetPaymentInstrumentBalance is in the ProcessPaymentRole policy."
-    )
+    print("Verify bedrock-agentcore:GetPaymentInstrumentBalance is in the ProcessPaymentRole policy.")
     print("Continue to Step 4 if the wallet is funded.")
 
 
@@ -570,7 +546,25 @@ status_proc = subprocess.run(
     text=True,
     check=True,
 )
-status = json.loads(status_proc.stdout)
+# The agentcore CLI may append a non-JSON upgrade notice after the JSON
+# document. Extract the first balanced JSON object from stdout.
+stdout = status_proc.stdout
+start = stdout.find("{")
+end = -1
+if start >= 0:
+    depth = 0
+    for idx in range(start, len(stdout)):
+        ch = stdout[idx]
+        if ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                end = idx + 1
+                break
+if start < 0 or end < 0:
+    raise RuntimeError(f"Could not find JSON in agentcore status output:\n{stdout}")
+status = json.loads(stdout[start:end])
 entries = status if isinstance(status, list) else status.get("resources", [])
 
 AGENT_RUNTIME_ARN = None
@@ -578,7 +572,7 @@ for entry in entries:
     name = entry.get("name") or entry.get("agentName")
     if name == AGENT_NAME:
         AGENT_RUNTIME_ARN = (
-            entry.get("agentRuntimeArn") or entry.get("runtimeArn") or entry.get("arn")
+            entry.get("identifier") or entry.get("agentRuntimeArn") or entry.get("runtimeArn") or entry.get("arn")
         )
         break
 
@@ -613,9 +607,7 @@ response = mgmt_client.invoke_agent_runtime(
 )
 
 result_bytes = (
-    response["response"].read()
-    if hasattr(response.get("response"), "read")
-    else response.get("response", b"")
+    response["response"].read() if hasattr(response.get("response"), "read") else response.get("response", b"")
 )
 result = json.loads(result_bytes.decode("utf-8")) if result_bytes else {}
 print(result.get("response", result))
@@ -634,7 +626,5 @@ if "availableLimits" in session_data:
     print(f"  Remaining:   {remaining['value']} {remaining['currency']}")
 
 print()
-print(
-    "Done. View the trace at: https://console.aws.amazon.com/cloudwatch/home#gen-ai-observability:agent-core"
-)
+print("Done. View the trace at: https://console.aws.amazon.com/cloudwatch/home#gen-ai-observability:agent-core")
 print(f"Cleanup: cd {RUNTIME_DIR} && agentcore remove all -y")
