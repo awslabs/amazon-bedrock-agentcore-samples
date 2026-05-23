@@ -648,14 +648,14 @@ for m in results.get("evaluatorMetrics", []):
 | Script | What it does |
 |--------|-------------|
 | `optimization/manage_dataset.py` | Create, curate, and version evaluation datasets (predefined + simulated) |
-| `optimization/custom_evaluators.py` | Create/manage 3 custom LLM-as-a-judge evaluators (market data accuracy, broker personalization, financial professionalism) |
+| `evaluators/custom_evaluators.py` | Create/manage 3 custom LLM-as-a-judge evaluators (market data accuracy, broker personalization, financial professionalism) |
 | `optimization/user_simulated_dataset.py` | Standalone batch evaluation with LLM actor-driven broker conversations |
 | `optimization/optimize_agent.py` | Full cycle: traffic → baseline eval → SP/TD recommendations → config bundles → A/B tests |
 
 ```
 optimization/
 ├── manage_dataset.py          # Dataset management: create, curate, version eval datasets
-├── custom_evaluators.py       # Create/reuse custom LLM-as-a-judge evaluators
+├── (see evaluators/custom_evaluators.py)  # Create/reuse custom LLM-as-a-judge evaluators
 ├── user_simulated_dataset.py  # LLM actor-driven batch evaluation (5 broker scenarios)
 └── optimize_agent.py          # Full optimization cycle (Phases 1–8)
 ```
@@ -664,7 +664,7 @@ optimization/
 
 ```bash
 # Optional: create custom domain-specific evaluators first
-uv run python optimization/custom_evaluators.py
+uv run python evaluators/custom_evaluators.py
 
 # Standalone simulated eval (independent, can run any time)
 uv run python optimization/user_simulated_dataset.py

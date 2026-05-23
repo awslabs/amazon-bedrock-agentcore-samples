@@ -25,13 +25,13 @@ so that user_simulated_dataset.py and optimize_agent.py can pick them up automat
 Usage
 -----
     export AWS_REGION=us-west-2
-    uv run python optimization/custom_evaluators.py
+    uv run python evaluators/custom_evaluators.py
 
     # List already-created evaluators (no create, just show)
-    uv run python optimization/custom_evaluators.py --list
+    uv run python evaluators/custom_evaluators.py --list
 
     # Delete evaluators saved in the ID file
-    uv run python optimization/custom_evaluators.py --delete
+    uv run python evaluators/custom_evaluators.py --delete
 
 Public documentation
 --------------------
@@ -56,7 +56,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 REGION = os.environ.get("AWS_REGION", "us-west-2")
-IDS_FILE = Path(__file__).parent / "custom_evaluator_ids.json"
+IDS_FILE = Path(__file__).parent.parent / "optimization" / "custom_evaluator_ids.json"
 
 # Evaluator model — Claude Sonnet is recommended for nuanced financial rubrics.
 # Must be a globally available inference profile.
@@ -488,7 +488,7 @@ def main() -> None:
         "  Run user_simulated_dataset.py — it will automatically include these custom\n"
         "  evaluators alongside the built-in evaluators.\n\n"
         "  To delete:\n"
-        "    uv run python optimization/custom_evaluators.py --delete"
+        "    uv run python evaluators/custom_evaluators.py --delete"
     )
 
 

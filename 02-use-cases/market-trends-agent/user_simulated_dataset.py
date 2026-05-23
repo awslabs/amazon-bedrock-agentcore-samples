@@ -91,7 +91,7 @@ SPANS_LOG_GROUP = "aws/spans"
 # Evaluator IDs
 # Built-in evaluators are always included. Custom LLM-as-a-judge evaluators
 # are loaded from custom_evaluator_ids.json if it exists (created by
-# running optimization/custom_evaluators.py first).
+# running evaluators/custom_evaluators.py first).
 # ---------------------------------------------------------------------------
 
 _BUILTIN_EVALUATOR_IDS = [
@@ -119,7 +119,7 @@ def _load_evaluator_ids() -> list[str]:
         print(
             "No custom_evaluator_ids.json found. Using built-in evaluators only.\n"
             "To add custom LLM-as-a-judge evaluators, run:\n"
-            "  uv run python optimization/custom_evaluators.py"
+            "  uv run python evaluators/custom_evaluators.py"
         )
     return ids
 
