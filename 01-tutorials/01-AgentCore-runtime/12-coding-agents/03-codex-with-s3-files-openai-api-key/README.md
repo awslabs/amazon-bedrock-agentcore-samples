@@ -30,13 +30,13 @@ Deploys Codex CLI  as an HTTP agent on AWS Bedrock AgentCore Runtime, with an S3
                             │  (agentcore-<account-id>)    │
                             │                              │
                             │  agents/                     │
-                            │  ├── skills/                 │
+                            │  ├── scripts/                │
                             │  ├── results/                │
                             │  └── ...                     │
                             └──────────────────────────────┘
 ```
 
-Multiple runtime sessions mount the same S3 Files file system, enabling agents to share skills, results, and data across independent invocations.
+Multiple runtime sessions mount the same S3 Files file system, enabling agents to share scripts, results, and data across independent invocations.
 
 ```
 CloudFormation stack (cfn-vpc.yaml):
@@ -146,24 +146,31 @@ python update.py
 
 ### Step 3 — Invoke the agent
 
-Send a prompt to the deployed agent. The first call creates a new session; subsequent calls can reuse the session ID for conversation continuity.
+Send a prompt to the deployed agent. The first call creates a new session; subsequent calls can reuse the session ID and Codex thread ID for conversation continuity.
 
-**Session A** — create a shared skill on the persistent filesystem:
+**Session A** — create a shared resource on the persistent filesystem:
 
 ```bash
-python invoke.py "can u create a new skill, to review python code? This skill should be created into /mnt/s3files/skills/"
+python invoke.py "Write a file at /mnt/s3files/scripts/python_review.md with a Python code review checklist. Use the shell to create the directory and write the file directly."
 ```
 
 Continue the conversation within the same session:
 
 ```bash
-python invoke.py --session <session-a-id> "now add unit tests for that skill"
+python invoke.py --session <session-id> --codex-session <codex-thread-id> "can you review python code, what standards are you going to use?"
 ```
 
-**Session B** — a completely new session accesses the same filesystem and uses the skill created by Session A:
+View the standards defined in the persistent file:
 
 ```bash
-python invoke.py "list the skills available in /mnt/s3files/skills/ and use the python review skill to review this code: def add(a,b): return a+b"
+python invoke.py --session <session-id> --codex-session <codex-thread-id> "what is inside /mnt/s3files/scripts/python_review.md, read it"
+```
+
+**Session B** — a completely new session accesses the same filesystem:
+
+```bash
+# New session automatically sees the same /mnt/s3files content
+python invoke.py "list the files in /mnt/s3files/scripts/ and show me the python_review.md checklist"
 ```
 
 Both sessions share `/mnt/s3files`, so anything written by one session is immediately available to others.

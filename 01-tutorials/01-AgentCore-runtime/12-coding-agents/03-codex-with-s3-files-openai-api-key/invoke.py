@@ -50,7 +50,7 @@ def load_config() -> dict:
         sys.exit(1)
 
 
-def invoke(runtime_arn: str, prompt: str, region: str, session_id: str = None) -> dict:
+def invoke(runtime_arn: str, prompt: str, region: str, session_id: str = None, codex_session_id: str = None) -> dict:
     client = boto3.client(
         "bedrock-agentcore",
         region_name=region,
@@ -61,6 +61,8 @@ def invoke(runtime_arn: str, prompt: str, region: str, session_id: str = None) -
         session_id = str(uuid.uuid4())
 
     payload_data = {"prompt": prompt}
+    if codex_session_id:
+        payload_data["sessionId"] = codex_session_id
 
     try:
         response = client.invoke_agent_runtime(
@@ -84,6 +86,7 @@ def invoke(runtime_arn: str, prompt: str, region: str, session_id: str = None) -
     print(f"  Status:          {response.get('statusCode', 'N/A')}")
 
     body["_runtimeSessionId"] = runtime_session
+    body["_codexSessionId"] = body.get("sessionId")
     return body
 
 
@@ -94,10 +97,16 @@ def main():
 
     args = sys.argv[1:]
     session_id = None
+    codex_session_id = None
 
     if "--session" in args:
         idx = args.index("--session")
         session_id = args[idx + 1]
+        args = args[:idx] + args[idx + 2:]
+
+    if "--codex-session" in args:
+        idx = args.index("--codex-session")
+        codex_session_id = args[idx + 1]
         args = args[:idx] + args[idx + 2:]
 
     if args:
@@ -111,19 +120,23 @@ def main():
     print(f"Invoking agent: {runtime_arn}")
     if session_id:
         print(f"Resuming session: {session_id}")
+    if codex_session_id:
+        print(f"Resuming Codex thread: {codex_session_id}")
     print()
 
     for prompt in prompts:
         print(f"--- Prompt: {prompt}")
-        result = invoke(runtime_arn, prompt, region, session_id)
+        result = invoke(runtime_arn, prompt, region, session_id, codex_session_id)
         print(f"--- Response:\n{result.get('response', result)}")
         session_id = result.get("_runtimeSessionId", session_id)
-        print(f"--- Session ID: {session_id}")
+        codex_session_id = result.get("_codexSessionId", codex_session_id)
+        print(f"--- Session ID:       {session_id}")
+        print(f"--- Codex thread ID:  {codex_session_id}")
         print()
 
-    if session_id:
+    if session_id and codex_session_id:
         print("To continue this conversation:")
-        print(f"  python invoke.py --session {session_id} \"your next prompt\"")
+        print(f"  python invoke.py --session {session_id} --codex-session {codex_session_id} \"your next prompt\"")
 
 
 if __name__ == "__main__":

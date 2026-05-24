@@ -7,7 +7,7 @@ function runCodex(prompt, sessionId) {
   return new Promise((resolve, reject) => {
     let args;
     if (sessionId) {
-      args = ["exec", "resume", sessionId, prompt, "--json", "--sandbox", "danger-full-access", "--skip-git-repo-check"];
+      args = ["exec", "resume", "--json", "-c", 'sandbox_mode="danger-full-access"', sessionId, prompt];
     } else {
       args = ["exec", prompt, "--json", "--sandbox", "danger-full-access", "--skip-git-repo-check"];
     }
@@ -29,22 +29,36 @@ function runCodex(prompt, sessionId) {
     proc.stderr.on("data", (d) => (stderr += d));
 
     proc.on("close", (code) => {
-      console.log(`[runCodex] exited code=${code} stderr="${stderr}" stdout="${stdout.slice(0, 200)}"`);
+      console.log(`[runCodex] exited code=${code}`);
+      console.log(`[runCodex] stderr: ${stderr}`);
+      console.log(`[runCodex] stdout: ${stdout}`);
       if (code !== 0) {
         reject(new Error(`codex exited ${code}: ${stderr}`));
         return;
       }
-      // --json emits one JSON object per line, last one has the result
+      // --json emits one JSON object per line
+      // thread_id is in the "thread.started" line; response text in "item.completed"
       const lines = stdout.trim().split("\n").filter(Boolean);
-      try {
-        const last = JSON.parse(lines[lines.length - 1]);
-        resolve({
-          response: last.result || last.message || stdout.trim(),
-          sessionId: last.session_id || null,
-        });
-      } catch {
-        resolve({ response: stdout.trim(), sessionId: null });
+      let threadId = null;
+      let responseText = null;
+      for (const line of lines) {
+        try {
+          const obj = JSON.parse(line);
+          if (obj.type === "thread.started" && obj.thread_id) {
+            threadId = obj.thread_id;
+          }
+          if (obj.type === "item.completed" && obj.item && obj.item.text) {
+            responseText = obj.item.text;
+          }
+        } catch {
+          // skip non-JSON lines
+        }
       }
+      console.log(`[runCodex] thread_id=${threadId || "(none)"}`);
+      resolve({
+        response: responseText || stdout.trim(),
+        sessionId: threadId,
+      });
     });
     proc.on("error", reject);
   });
