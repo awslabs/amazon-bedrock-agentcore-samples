@@ -135,6 +135,63 @@ export class PolicyStack extends cdk.Stack {
 		});
 		gatewayRole.attachInlinePolicy(policyEvalPolicy);
 
+		// --- Step 3.5: Ensure CloudWatch Logs retention for Interceptor Lambdas ---
+		// The Interceptor Lambdas are created by Phase 1 (deployment/5-gateway-setup/
+		// interceptor-{request,response}/deploy.sh). Their log groups are created
+		// implicitly on first invocation. This custom resource enforces a 30 day
+		// retention even when this stack is deployed before either Lambda has
+		// produced logs (ResourceNotFoundException is ignored to keep the stack
+		// idempotent in that case).
+		// NOTE: construct IDs are kept as-is (`Retention_<suffix>`) to match the
+		// already-deployed CloudFormation resources. Renaming them would force
+		// CloudFormation to delete and recreate the custom resources, briefly
+		// removing the retention guarantee.
+		const interceptorRetentionTargets: { id: string; logGroupName: string }[] =
+			[
+				{
+					id: "Retention_ambdalakehousegatewayinterceptor",
+					logGroupName: "/aws/lambda/lakehouse-gateway-interceptor",
+				},
+				{
+					id: "Retention_ehousegatewayresponseinterceptor",
+					logGroupName: "/aws/lambda/lakehouse-gateway-response-interceptor",
+				},
+			];
+		for (const { id, logGroupName } of interceptorRetentionTargets) {
+			const physicalId = cr.PhysicalResourceId.of(`retention-${logGroupName}`);
+			new cr.AwsCustomResource(this, id, {
+				installLatestAwsSdk: false,
+				onCreate: {
+					service: "CloudWatchLogs",
+					action: "putRetentionPolicy",
+					parameters: {
+						logGroupName,
+						retentionInDays: 30,
+					},
+					physicalResourceId: physicalId,
+					ignoreErrorCodesMatching: "ResourceNotFoundException",
+				},
+				onUpdate: {
+					service: "CloudWatchLogs",
+					action: "putRetentionPolicy",
+					parameters: {
+						logGroupName,
+						retentionInDays: 30,
+					},
+					physicalResourceId: physicalId,
+					ignoreErrorCodesMatching: "ResourceNotFoundException",
+				},
+				policy: cr.AwsCustomResourcePolicy.fromStatements([
+					new iam.PolicyStatement({
+						actions: ["logs:PutRetentionPolicy"],
+						resources: [
+							`arn:${cdk.Aws.PARTITION}:logs:${cdk.Stack.of(this).region}:${cdk.Stack.of(this).account}:log-group:${logGroupName}:*`,
+						],
+					}),
+				]),
+			});
+		}
+
 		// --- Step 4: UpdateGateway — attach Policy Engine + Interceptors ---
 		const updateGateway = new cr.AwsCustomResource(this, "UpdateGateway", {
 			installLatestAwsSdk: true,
