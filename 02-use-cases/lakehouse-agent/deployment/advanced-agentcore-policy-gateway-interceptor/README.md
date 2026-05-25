@@ -158,6 +158,7 @@ All four policies should report `ACTIVE`.
 ```bash
 cd ../../..                                  # back to lakehouse-agent/
 source .venv/bin/activate                    # same venv used for Phase 1
+export LAKEHOUSE_TEST_PASSWORD='TempPass123!'  # match the password set by Phase 1 setup_cognito.py
 python deployment/advanced-agentcore-policy-gateway-interceptor/verification/verify_policy.py
 ```
 
