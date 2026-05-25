@@ -105,14 +105,26 @@ if aws lambda get-function --function-name lakehouse-gateway-interceptor --regio
         --function-name lakehouse-gateway-interceptor \
         --zip-file fileb://interceptor-lambda.zip \
         --region $AWS_REGION
-    
+
+    # update-function-code returns while Lambda is still applying the change
+    # (LastUpdateStatus=InProgress). Wait for it to settle before issuing
+    # update-function-configuration, which otherwise races and fails with
+    # ResourceConflictException.
+    aws lambda wait function-updated \
+        --function-name lakehouse-gateway-interceptor \
+        --region $AWS_REGION
+
     echo "⚙️  Updating Lambda configuration..."
     aws lambda update-function-configuration \
         --function-name lakehouse-gateway-interceptor \
         --environment "Variables={COGNITO_REGION=$AWS_REGION,COGNITO_USER_POOL_ID=$COGNITO_USER_POOL_ID,COGNITO_APP_CLIENT_ID=$COGNITO_APP_CLIENT_ID,TENANT_ROLE_MAPPING_TABLE=lakehouse_tenant_role_map}" \
         --kms-key-arn "" \
         --region $AWS_REGION
-    
+
+    aws lambda wait function-updated \
+        --function-name lakehouse-gateway-interceptor \
+        --region $AWS_REGION
+
     echo "✅ Lambda function updated!"
 else
     echo "📝 Creating new Lambda function..."
@@ -132,6 +144,9 @@ else
             --memory-size 256 \
             --environment "Variables={COGNITO_REGION=$AWS_REGION,COGNITO_USER_POOL_ID=$COGNITO_USER_POOL_ID,COGNITO_APP_CLIENT_ID=$COGNITO_APP_CLIENT_ID,TENANT_ROLE_MAPPING_TABLE=lakehouse_tenant_role_map}" \
             --region $AWS_REGION 2>/dev/null; then
+            aws lambda wait function-active \
+                --function-name lakehouse-gateway-interceptor \
+                --region $AWS_REGION
             echo "✅ Lambda function created!"
             break
         else
