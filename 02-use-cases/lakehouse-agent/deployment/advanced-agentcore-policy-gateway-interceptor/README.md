@@ -225,6 +225,40 @@ AWS manages the underlying Amazon Bedrock AgentCore Gateway, Policy Engine, AWS 
 - **Access**: grant `kms:Decrypt` and `kms:GenerateDataKey` only to the Gateway role and the request interceptor Lambda role; do not grant cross-account access without an explicit need.
 - **Naming**: use a consistent alias scheme such as `alias/lakehouse-agent/<service>` for traceability.
 
+#### CloudWatch Logs encryption (production hardening)
+
+This stack already configures a 30-day retention policy for both interceptor Lambda log groups (`lib/policy-stack.ts` Step 3.5). For production, also associate the log groups with a customer-managed AWS KMS key. The commands below assume `AWS_REGION` and `AWS_ACCOUNT_ID` are exported.
+
+```bash
+# 1. Create a customer-managed key and an alias.
+KEY_ID=$(aws kms create-key \
+    --description "Lakehouse interceptor CloudWatch Logs encryption" \
+    --key-usage ENCRYPT_DECRYPT \
+    --query 'KeyMetadata.KeyId' --output text)
+aws kms create-alias \
+    --alias-name alias/lakehouse-agent/cloudwatch-logs \
+    --target-key-id "$KEY_ID"
+
+# 2. Allow CloudWatch Logs in the current region to use the key
+#    (see https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/encrypt-log-data-kms.html
+#    for the full key policy template — CloudWatchLogsServicePrincipal must be granted
+#    kms:Encrypt*, kms:Decrypt*, kms:ReEncrypt*, kms:GenerateDataKey*, and kms:Describe*).
+
+# 3. Associate the key with both interceptor log groups.
+KEY_ARN="arn:aws:kms:${AWS_REGION}:${AWS_ACCOUNT_ID}:key/${KEY_ID}"
+aws logs associate-kms-key \
+    --log-group-name /aws/lambda/lakehouse-gateway-interceptor \
+    --kms-key-id "$KEY_ARN"
+aws logs associate-kms-key \
+    --log-group-name /aws/lambda/lakehouse-gateway-response-interceptor \
+    --kms-key-id "$KEY_ARN"
+
+# 4. Enable annual key rotation.
+aws kms enable-key-rotation --key-id "$KEY_ID"
+```
+
+After association, every new log stream is encrypted with the customer-managed key. Existing log events remain encrypted with the previous key; rotate logs (or set a shorter retention) if you need uniform coverage.
+
 ### Security Validation
 
 - **Static analysis**: this sample is scanned with internal AWS Holmes content-security tooling on every PR; the latest scan completed with 0 Critical findings.
