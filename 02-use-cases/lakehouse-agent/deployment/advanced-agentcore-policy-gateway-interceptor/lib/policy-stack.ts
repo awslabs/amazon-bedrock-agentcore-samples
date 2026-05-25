@@ -10,14 +10,15 @@ import * as path from "path";
  * Amazon Bedrock AgentCore Policy Stack for Lakehouse Agent
  *
  * Prerequisites:
- *   Before deploying, remove Interceptors from the Gateway.
- *   (Interceptor + Policy Engine の共存時にポリシー作成が内部エラーになる問題の回避)
+ *   Before deploying, detach the Interceptors from the Gateway.
+ *   (Workaround: creating policies while Interceptors remain attached
+ *   currently fails with an internal error.)
  *
  * Deploy flow:
- *   1. CfnPolicyEngine — Policy Engine 作成
- *   2. CfnPolicy x N — Cedar ポリシー作成 (permit_all を最初に、forbid をその後に)
- *   3. IAM Policy — Gateway ロールに Policy 評価権限を追加
- *   4. UpdateGateway (AwsCustomResource) — Policy Engine + Interceptor を同時アタッチ
+ *   1. CfnPolicyEngine — create the Policy Engine
+ *   2. CfnPolicy x N — create Cedar policies (permit_all first, then forbid policies)
+ *   3. IAM Policy — grant Policy evaluation permissions to the Gateway role
+ *   4. UpdateGateway (AwsCustomResource) — attach the Policy Engine and Interceptors together
  */
 export class PolicyStack extends cdk.Stack {
 	constructor(scope: Construct, id: string, props?: cdk.StackProps) {
