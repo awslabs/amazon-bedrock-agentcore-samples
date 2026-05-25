@@ -103,11 +103,12 @@ export class PolicyStack extends cdk.Stack {
 			{ mutable: true },
 		);
 		// Restrict policy evaluation to the current region as a defense-in-depth
-		// control. The Resource list intentionally covers (a) the specific
-		// PolicyEngine ARN created by this stack, (b) any future PolicyEngine in
-		// the account/region (so policy evaluation continues to work after the
-		// engine is replaced), and (c) the Gateway ARN, which is the principal
-		// resource the role authorizes against.
+		// control. The Resource list covers (a) the specific PolicyEngine ARN,
+		// (b) the `/policy-engines/*` namespace — required because UpdateGateway's
+		// internal GenesisPolicyEngineCheck calls CheckAuthorizePermissions on a
+		// sub-resource ARN of the form `/policy-engines/<id>/target-resource/<encoded-gateway-arn>`
+		// that the specific engine ARN alone does not match — and (c) the
+		// Gateway ARN, which the role authorizes against.
 		const stackRegion = cdk.Stack.of(this).region;
 		const stackAccount = cdk.Stack.of(this).account;
 		const policyEvalPolicy = new iam.Policy(this, "PolicyEvalPermissions", {
