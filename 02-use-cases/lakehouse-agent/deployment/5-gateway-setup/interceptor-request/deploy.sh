@@ -177,6 +177,20 @@ aws ssm put-parameter \
 
 echo "✅ Stored parameter: /app/lakehouse-agent/interceptor-lambda-arn"
 
+# Configure CloudWatch Logs retention for the Lambda log group.
+# create-log-group is idempotent via `|| true`; put-retention-policy is then guaranteed to find it.
+echo ""
+echo "🪵 Configuring CloudWatch Logs retention for Lambda log group..."
+LOG_GROUP_NAME="/aws/lambda/lakehouse-gateway-interceptor"
+aws logs create-log-group \
+    --log-group-name "$LOG_GROUP_NAME" \
+    --region "$AWS_REGION" 2>/dev/null || true
+aws logs put-retention-policy \
+    --log-group-name "$LOG_GROUP_NAME" \
+    --retention-in-days 30 \
+    --region "$AWS_REGION"
+echo "✅ Log group $LOG_GROUP_NAME retention set to 30 days"
+
 # Setup DynamoDB tenant-role mapping table
 echo ""
 echo "📊 Setting up DynamoDB tenant-role mapping table..."
