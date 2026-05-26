@@ -35,10 +35,11 @@ Architecture
 ```
 
 Usage:
-    # Copy and fill in your .env first:
-    cp .env.coinbase.sample .env   # for Coinbase CDP
+    # Copy and fill in your .env first (note: .env lives in the parent
+    # 00-getting-started/ directory, shared across all tutorials):
+    cp .env.coinbase.sample ../.env   # for Coinbase CDP
     # OR
-    cp .env.privy.sample .env      # for Stripe (Privy)
+    cp .env.privy.sample ../.env      # for Stripe (Privy)
 
     python setup_agentcore_payments.py
 
@@ -83,7 +84,9 @@ from utils import (
     wait_for_status,
 )
 
-ENV_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
+ENV_FILE = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env"
+)
 
 # ── Load environment ──────────────────────────────────────────────────────────
 load_dotenv(ENV_FILE, override=True)
@@ -376,34 +379,45 @@ else:
 # ── Step 7b — Fund the Wallet + Delegate Signing (MANUAL STEP) ───────────────
 faucet_network = "Base Sepolia" if NETWORK == "ETHEREUM" else "Solana Devnet"
 print(f"""
-✋ ACTION REQUIRED — Fund wallet and delegate signing before continuing:
+✋ ACTION REQUIRED — Two manual steps before continuing:
 
   Wallet: {WALLET_ADDRESS}
   Network: {NETWORK}
-  Faucet: https://faucet.circle.com/ → select {faucet_network}
-""")
+
+  STEP 1 — Fund the wallet
+  ────────────────────────
+    1. Open https://faucet.circle.com/ and select {faucet_network}.
+    2. Paste the wallet address above and request testnet USDC.""")
 if NETWORK == "ETHEREUM":
-    print(f"  Verify: https://sepolia.basescan.org/address/{WALLET_ADDRESS}")
+    print(
+        f"    3. Verify the funds arrived: "
+        f"https://sepolia.basescan.org/address/{WALLET_ADDRESS}"
+    )
 else:
-    print(f"  Verify: https://explorer.solana.com/address/{WALLET_ADDRESS}?cluster=devnet")
+    print(
+        f"    3. Verify the funds arrived: "
+        f"https://explorer.solana.com/address/{WALLET_ADDRESS}?cluster=devnet"
+    )
 
 if CREDENTIAL_PROVIDER_TYPE == "CoinbaseCDP":
     print("""
-  Delegation (Coinbase):
+  STEP 2 — Delegate signing (Coinbase)
+  ────────────────────────────────────
     1. Open the WalletHub URL printed above.
-    2. Log in with your LINKED_EMAIL.
+    2. Log in with your email.
     3. Grant signing permission.
     OR: CDP Portal → Wallets → Embedded Wallet → Policies → enable Delegated Signing
 """)
 else:
     print("""
-  Delegation (StripePrivy):
+  STEP 2 — Delegate signing (Stripe/Privy)
+  ────────────────────────────────────────
     1. Open http://localhost:3000 in your browser.
-    2. Log in with your LINKED_EMAIL.
+    2. Log in with your email.
     3. Choose Connect agent → Give access.
 """)
 
-input("  Press Enter when funding and delegation are complete... ")
+input("  Press Enter when STEP 1 and STEP 2 are complete... ")
 
 # ── Step 7c — Verify Wallet Balance (Optional) ───────────────────────────────
 chain = "BASE_SEPOLIA" if NETWORK == "ETHEREUM" else "SOLANA_DEVNET"

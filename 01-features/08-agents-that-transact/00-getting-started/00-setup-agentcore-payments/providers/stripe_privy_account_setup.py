@@ -33,7 +33,8 @@ sys.path.append(
 from utils import update_env_file, save_privy_authorization_key
 
 ENV_FILE = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env"
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+    ".env",
 )
 load_dotenv(ENV_FILE, override=True)
 
