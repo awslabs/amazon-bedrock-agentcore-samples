@@ -105,17 +105,23 @@ The caller identity that runs this script needs AgentCore Memory permissions in 
 
 Without these, `create_memory` returns `AccessDeniedException` in Step 3.
 
-## Running the Python Script
+## Setup
+
+This tutorial declares its own dependencies in `requirements.txt`. Install once per tutorial — Tutorial 00's environment does not cover them.
 
 ```bash
 pip install -r requirements.txt
 ```
+
+## Running the Python Script
 
 ```bash
 python research_agent_with_memory.py
 ```
 
 The script runs end to end without prompts: creates memory, hydrates it with simulated prior research, runs four queries against the agent (memory hit, budget recall, partial hit, recap), prints session spend, demonstrates budget enforcement with a tiny session, and deletes the memory resource at the end.
+
+If a Python dependency is missing, the script prints the exact `pip install` command and exits — before any AWS resources are created.
 
 ## What the Script Does
 
