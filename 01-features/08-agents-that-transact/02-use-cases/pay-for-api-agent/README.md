@@ -27,12 +27,12 @@ and the on-chain settlement. Whether the `PaymentManager` is wired to
 agent code is identical. The service picks the right signer from the
 connector tied to the instrument.
 
-This notebook is **self-contained**. It provisions a full AgentCore
+This script is **self-contained**. It provisions a full AgentCore
 Payments stack inline (§5), creates two `EMBEDDED_CRYPTO_WALLET`
 instruments under the same connector (ETHEREUM + SOLANA), and deploys
 the seller from a CDK stack that lives alongside it (§3). If a
 `PaymentManager` and at least one `PaymentInstrument` already exist,
-the notebook detects them in §4 and skips the inline setup.
+the script detects them in §4 and skips the inline setup.
 
 
 ### Use Case Details
@@ -107,7 +107,7 @@ separation-of-duties model.
   documentation)
 * Full audit trail via `GetPaymentSession` — the operator sees exactly what the
   agent spent
-* Self-contained — the notebook runs from a clean AWS account
+* Self-contained — the script runs from a clean AWS account
 
 ---
 
@@ -129,9 +129,9 @@ picks the right signer from the connector tied to the instrument.
 
 - **AWS account** with Amazon Bedrock AgentCore Payments available in your chosen region
 - **Amazon Bedrock access** enabled for **Anthropic Claude Sonnet 4.5** in your chosen region (cross-region inference profile `us.anthropic.claude-sonnet-4-5-20250929-v1:0`)
-- **Python 3.10+** with a Jupyter kernel. If you hit "Running cells requires the ipykernel package", install it once: `python3 -m pip install ipykernel --user`. Any Jupyter frontend works — JupyterLab (4.0+), classic Jupyter Notebook (7.0+), VS Code, or Kiro.
+- **Python 3.10+**
 - **AWS Command Line Interface (AWS CLI) v2** configured with credentials (`aws configure`)
-- **AWS Cloud Development Kit (CDK) v2** installed globally (`npm install -g aws-cdk`); used by the notebook to deploy the seller
+- **AWS Cloud Development Kit (CDK) v2** installed globally (`npm install -g aws-cdk`); used to deploy the seller and the agent runtime
 - **Node.js 18+** — required by CDK
 - **A wallet provider account** — Coinbase Developer Platform (CDP) (API Key ID, API Key Secret, Wallet Secret) or Stripe via Privy (App ID, App Secret, Authorization Key ID, P-256 Authorization Private Key)
 - **Testnet USD Coin (USDC)** from the [Circle testnet faucet](https://faucet.circle.com/) on both **Base Sepolia** and **Solana Devnet**, because §5 creates one wallet per network
@@ -173,7 +173,7 @@ What AgentCore Payments handles for you:
 What you handle locally:
 
 - **Initial credential paste** — Coinbase / Privy secrets are pasted into
-  `.env` once, before §4 runs. The notebook reads them only to call
+  `.env` once, before §4 runs. The script reads them only to call
   `CreatePaymentCredentialProvider`. After that call returns, the secrets
   are inside the AgentCore Identity-managed vault (Secrets Manager) and
   the local `.env` copies are no longer needed by the agent. They remain
@@ -189,7 +189,7 @@ sample to production:
 
 - **Drop `.env` after first run.** Once §4 has called
   `CreatePaymentCredentialProvider`, blank the secret values from `.env`.
-  Subsequent notebook runs read the credential provider ARN from `.env`
+  Subsequent script runs read the credential provider ARN from `.env`
   (which is non-sensitive) and the actual secrets stay in Secrets Manager
 - **Use customer-managed KMS keys.** AgentCore Identity defaults to
   AWS-owned KMS keys; switch to customer-managed keys for additional
@@ -207,51 +207,247 @@ sample to production:
 
 ## Running the Use Case
 
-Before opening the notebook, create a Python virtual environment so
-dependency installs and notebook state stay isolated from the global
-Python.
+This use case ships as a single Python script, `pay_for_api.py`, plus
+the CDK apps for the seller (`seller/cdk/`) and agent runtime
+(`agent/cdk/`) and three idempotent shell scripts under
+`test/integration/` for IAM, environment, and seller deploy.
 
-**Option 1 — Terminal (cross-platform)**
+**Step 1.** Create a Python virtual environment and install dependencies.
+The script requires Python **3.10+**, so create the venv with an explicit
+3.10+ binary (the macOS system `python3` is 3.9):
 
 ```bash
-python3 -m venv .venv
+python3.12 -m venv .venv     # or python3.10 / python3.11; any 3.10+
 source .venv/bin/activate    # On Windows: .venv\Scripts\activate
-python3 -m pip install --upgrade pip ipykernel
-python3 -m ipykernel install --user --name pay-for-api-venv --display-name "Python (pay-for-api-venv)"
+python3 -m pip install -r requirements.txt
 ```
 
-**Option 2 — VS Code / Kiro**
-
-1. Open `pay-for-api.ipynb`.
-2. Choose the kernel selector in the top-right of the notebook (or the
-   Python version indicator in the bottom status bar).
-3. Choose **Python: Create Environment...**.
-4. Choose **Venv**.
-5. Pick a Python 3.10+ interpreter. The IDE creates `.venv/` and selects
-   it automatically.
-6. When prompted to install kernel dependencies (`ipykernel`), accept.
-
-After the venv is active, open `pay-for-api.ipynb` and run cells in
-order. The CLI equivalent of opening the notebook is:
+**Step 2.** Seed `.env` from the template, then open it in your editor
+and fill in:
 
 ```bash
-jupyter notebook pay-for-api.ipynb
+cp env-sample.txt .env
 ```
 
-The notebook handles dependency install, IAM role creation, credential
-prompts, seller deploy, payment provisioning, agent runs, and teardown:
+- `INSTRUMENT_EMAIL`
+- `SELLER_WALLET_ADDRESS`, `SELLER_SOLANA_WALLET_ADDRESS`
+- `COINBASE_API_KEY_ID`, `COINBASE_API_KEY_SECRET`, `COINBASE_WALLET_SECRET`
+- `PRIVY_APP_ID`, `PRIVY_APP_SECRET`, `PRIVY_AUTHORIZATION_ID`, `PRIVY_AUTHORIZATION_PRIVATE_KEY` (skip if you only configured Coinbase)
 
-- §1 installs the Python dependencies from `requirements.txt`
-- §2 creates the four IAM roles and interactively prompts for wallet provider credentials (Coinbase CDP or Stripe via Privy)
-- §3 deploys the Fun Facts seller stack via CDK and captures the URL
-- §4 decides whether to run inline setup or reuse existing AgentCore Payments infrastructure
-- §5 provisions a Credential Provider + Manager + Connector for the chosen provider, then creates two Payment Instruments (ETHEREUM + SOLANA) under the same connector
-- §6 creates two budget-limited payment sessions, one per network
-- §7 builds the Strands agent factory: one pattern that wraps the `AgentCorePaymentsPlugin` around whichever (instrument, session, network) is passed in
-- §8 runs the agent once on EVM and once on Solana against the same seller
-- §9 optionally deploys the agent to AgentCore Runtime via `agent/cdk/` and invokes it remotely
-- §10 inspects the data plane for both networks: GetPaymentSession, balance, ListPaymentInstruments, ListPaymentSessions
-- §11 tears everything down: sessions, seller stack, agent runtime (if §9 was run), and AgentCore Payments resources (optional)
+The seller and the script need these values before Step 5.
+
+**Step 3.** Create the four IAM roles (idempotent; writes ARNs into `.env`):
+
+```bash
+bash test/integration/setup-roles.sh
+```
+
+**Step 4.** Generate `USER_ID` (idempotent; no-op if already set):
+
+```bash
+bash test/integration/setup-env.sh
+```
+
+### Step 5: Run the script
+
+```bash
+python pay_for_api.py
+```
+
+§3 of the script runs `bash test/integration/deploy-seller.sh` for you
+on the first run — it writes `SELLER_API_URL` into `.env` and then
+sanity-checks the seller. Subsequent runs detect the existing
+`SELLER_API_URL` and skip the deploy. If you change
+`SELLER_WALLET_ADDRESS` or `SELLER_SOLANA_WALLET_ADDRESS` in `.env`,
+either blank `SELLER_API_URL` first or run
+`bash test/integration/destroy-seller.sh && bash test/integration/deploy-seller.sh`
+manually before re-running the script.
+
+The script runs §3 (sanity-check the seller) through §10 end-to-end.
+§6, §8, and §10 each pause for confirmation:
+
+- §6 — pauses twice for signing delegation (Coinbase, then Privy). The
+  script opens each hub in your browser, waits for you to grant
+  delegation, and continues when you press Enter.
+- §8 — prompts before deploying the agent to AgentCore Runtime. Press
+  Enter to deploy and invoke; press `q` and Enter to skip.
+- §10 — prompts before tearing down resources. Press Enter to clean
+  up; press `q` and Enter to keep the resources for further
+  exploration.
+
+#### §6a — Coinbase Wallet Hub delegation
+
+When the script reaches §6a, it prints the Coinbase Wallet Hub URL
+returned by `CreatePaymentInstrument` and opens it in your default
+browser. Without this delegation grant, `ProcessPayment` returns
+*Delegated signing grant is not active*.
+
+In the hub:
+
+1. **Sign in** with the email you set as `INSTRUMENT_EMAIL`. The hub
+   sends a one-time passcode (OTP) to that address.
+
+<div style="text-align:left">
+    <img src="images/cdp_hub_signin.png" alt="Coinbase Wallet Hub sign-in screen" width="75%"/>
+</div>
+
+2. **Enter the OTP** in the hub.
+
+<div style="text-align:left">
+    <img src="images/cdp_hub_otp.png" alt="Coinbase Wallet Hub OTP entry" width="75%"/>
+</div>
+
+3. **Grant signing delegation** to the agent.
+4. **Set the delegation duration** — how long the grant should remain
+   active.
+
+<div style="text-align:left">
+    <img src="images/cdp_hub_delegation.png" alt="Grant delegation with duration" width="75%"/>
+</div>
+
+5. **Copy the EVM wallet address** printed by the script.
+6. **Request testnet USDC** from the
+   [Circle Faucet](https://faucet.circle.com/) on **Base Sepolia**
+   using the copied address.
+7. **Toggle to Solana** in the hub, switch to **Solana Devnet**,
+   copy the Solana wallet address, and request testnet USDC from
+   the same faucet.
+
+Return to the terminal and press Enter to continue. Skip §6a entirely
+on re-runs by setting `CDP_DELEGATION_GRANTED=1` in `.env`.
+
+#### §6b — Privy Wallet Hub delegation
+
+Privy embedded wallets need a separate signing delegation. The
+delegation flow runs through a small Next.js frontend maintained
+jointly by Privy and AWS at
+[privy-io/aws-agentcore-sdk](https://github.com/privy-io/aws-agentcore-sdk).
+The script clones the frontend, runs `npm install`, writes
+`.env.local` from the Privy values already in your `.env`, starts
+`npm run dev`, and opens `http://localhost:3000` in your browser.
+Skip this step entirely (no Privy creds in `.env`) and the script
+moves on to §7 with only the Coinbase wallets active.
+
+In the hub:
+
+1. **Log in** with the email you set as `INSTRUMENT_EMAIL`. Privy
+   sends a one-time passcode (OTP) to that address.
+
+<div style="text-align:left">
+    <img src="images/privy_landing.png" alt="Privy Wallet Hub landing screen with email login" width="75%"/>
+</div>
+
+2. **View your wallets.** The hub queries Base Sepolia and Solana
+   Devnet directly and shows USDC balances for both.
+3. **Delegate access to the agent.** Choose **Delegate** for each
+   wallet you want the agent to spend from.
+
+<div style="text-align:left">
+    <img src="images/privy_give_access.png" alt="Granting agent signing access in the Privy Wallet Hub" width="75%"/>
+</div>
+
+4. **Choose Receive** in the hub to copy each wallet address.
+5. **Request testnet USDC** from the
+   [Circle Faucet](https://faucet.circle.com/) on **Base Sepolia** or
+   **Solana Devnet** using the copied address. Card funding through
+   Stripe is mainnet-only and is disabled when
+   `NEXT_PUBLIC_NETWORK_MODE=testnet`.
+
+Return to the terminal and press Enter to continue. The script stops
+the Privy frontend, sets `PRIVY_DELEGATION_WIRED_UP=1` in this process,
+and continues to §7. Skip §6b entirely on re-runs by setting
+`PRIVY_DELEGATION_WIRED_UP=1` in `.env`.
+
+After the first run completes, the runtime exists in the console.
+Enable Transaction Search and re-run the script (the script is
+idempotent and will replay only the §7 / §8 invocations against the
+existing runtime) to populate the observability dashboard.
+
+#### Enable Transaction Search (one-time, console step)
+
+Transaction Search powers the **Observability** tab on the runtime
+page. This is a one-time setup per runtime.
+
+1. Open the **Amazon Bedrock AgentCore** console → **Runtime**.
+2. Choose **`pay_for_api_agent_runtime`** in the list.
+
+<div style="text-align:left">
+    <img src="images/agentcore_runtime_selected.png" alt="Selecting the agent runtime in the list" width="75%"/>
+</div>
+
+3. Open the **Log deliveries and tracing** tab.
+4. Enable **Transaction Search**.
+5. Choose **Save**.
+
+<div style="text-align:left">
+    <img src="images/agentcore_tracing_enable_section.png" alt="Enable Transaction Search and tracing" width="75%"/>
+</div>
+
+After saving, the panel confirms Transaction Search is enabled:
+
+<div style="text-align:left">
+    <img src="images/agentcore_transaction_search_enabled.png" alt="Transaction Search enabled confirmation" width="75%"/>
+</div>
+
+> Transaction Search takes a few minutes to start indexing after you
+> save. If the Observability tab shows no data immediately, wait a
+> minute and refresh.
+
+Re-run the script to generate fresh invocations that Transaction
+Search will capture:
+
+```bash
+python pay_for_api.py
+```
+
+The script is idempotent, so it skips the deploy and replays only
+§7 / §8 invocations against the existing runtime.
+
+#### Inspect the runtime in the console
+
+After the second run returns, open the AgentCore console to see
+the underlying spans and logs.
+
+1. From the runtime detail page, choose **View dashboard** in the
+   **Observability** section.
+
+<div style="text-align:left">
+    <img src="images/agentcore_runtime_observability_section.png" alt="Observability section with View dashboard button" width="75%"/>
+</div>
+
+2. The CloudWatch GenAI Observability dashboard opens. Open the
+   **Sessions** tab and choose the most recent **Session ID**.
+
+<div style="text-align:left">
+    <img src="images/agentcore_cloudwatch_genai_observability_dashboard.png" alt="CloudWatch GenAI Observability dashboard, Sessions tab" width="75%"/>
+</div>
+
+3. Choose the most recent **Trace ID** to explore the
+   `POST /invocations` events: model invocations, tool calls,
+   payment requirement (`402`), `ProcessPayment` span, and the
+   final retry that returns `200 OK`.
+
+<div style="text-align:left">
+    <img src="images/agentcore_observability_results.png" alt="Trace exploration showing POST /invocations events" width="75%"/>
+</div>
+
+The script is **idempotent**. Resource IDs are written back into `.env`
+after each provisioning step, so subsequent runs detect them and skip
+the `Create*` calls. Re-run after editing `.env` to retry without
+rebuilding.
+
+`pay_for_api.py` runs through these sections:
+
+- **§1** — handled out of band by `pip install -r requirements.txt`
+- **§2** — `setup-roles.sh` + `setup-env.sh` create the IAM roles and seed `.env`. Wallet provider credentials are pasted into `.env` by the operator.
+- **§3** — runs `bash test/integration/deploy-seller.sh` on the first run to deploy the Fun Facts seller (Amazon API Gateway + AWS Lambda), then sanity-checks the seller and previews the 402 response
+- **§4** — assume IAM roles, create the two Credential Providers, Manager, two Connectors, and four Instruments
+- **§5** — create two budget-limited payment sessions
+- **§6** — grant signing delegation: §6a opens the Coinbase Wallet Hub in your browser; §6b clones, installs, and runs the Privy delegation Next.js frontend on `http://localhost:3000`. The script waits for you to press Enter after each grant before continuing.
+- **§7** — run the agent four times locally (CDP × Privy, EVM × Solana)
+- **§8** — prompts before running `bash test/integration/deploy-agent.sh` to build and deploy the agent to AgentCore Runtime via CodeBuild. After deploy, invokes the runtime once per (provider, network). Press Enter to deploy, q to skip
+- **§9** — inspect data plane: `GetPaymentSession` (running budget), `GetPaymentInstrumentBalance` (on-chain USDC), `ListPaymentInstruments`, `ListPaymentSessions`
+- **§10** — prompts before tearing down sessions, instruments, connectors, manager, and credential providers, plus running `destroy-seller.sh` / `destroy-agent.sh` and removing local build artifacts. Press Enter to clean up, q to keep resources
 
 ---
 
@@ -292,21 +488,24 @@ prompts, seller deploy, payment provisioning, agent runs, and teardown:
 > ⚠️ **Cost notice:** The resources deployed in this use case incur
 > AWS charges while running. AWS Lambda, Amazon API Gateway, AgentCore
 > Runtime, AgentCore Memory, and AgentCore Payments all bill on
-> per-request and per-resource models. Run §11 of the notebook to tear
-> them down when you are done.
+> per-request and per-resource models. Run cleanup when you are done.
 
-§11 of the notebook handles teardown end-to-end:
+After §9, `pay_for_api.py` prompts for cleanup. Press Enter to run §10
+end-to-end, or press `q` and Enter to keep the resources for further
+exploration.
+
+§10 cleans up everything in the right order:
 
 | Step | What it does | What it removes |
 |------|--------------|-----------------|
-| Revoke session | `DeletePaymentSession` on each session created in §6 | Active session budgets (no undelete) |
-| Tear down the seller stack | `cdk destroy` on the seller CDK app | Amazon API Gateway HTTP API, AWS Lambda function, IAM execution role |
-| Tear down the agent runtime | `cdk destroy` on the agent CDK app (only if §9 was run) | AgentCore Runtime, AgentCore Memory, Amazon ECR repository, AWS CodeBuild project, IAM execution role |
-| Tear down AgentCore Payments resources | Calls `DeletePaymentInstrument`, `DeletePaymentConnector`, `DeletePaymentManager`, `DeletePaymentCredentialProvider` in dependency order | All Manager / Connector / Instrument / Credential Provider resources created by §5 |
-| Remove local build artifacts | Deletes `.venv/`, `cdk.out/`, `__pycache__/`, `outputs.json`, `privy-delegation/`, `seller/lambda/node_modules/` | Local working-copy files only — no cloud resources |
+| Revoke sessions | `DeletePaymentSession` on each session created in §5 | Active session budgets (no undelete) |
+| Tear down AgentCore Payments resources | `DeletePaymentInstrument`, `DeletePaymentConnector`, `DeletePaymentManager`, `DeletePaymentCredentialProvider` in dependency order | All Manager, Connector, Instrument, and Credential Provider resources created by §4 |
+| Tear down the seller stack | Runs `bash test/integration/destroy-seller.sh` (`cdk destroy` on the seller CDK app) | Amazon API Gateway HTTP API, AWS Lambda function, IAM execution role |
+| Tear down the agent runtime | Runs `bash test/integration/destroy-agent.sh` (only if §8 ran) | AgentCore Runtime, AgentCore Memory, Amazon ECR repository, AWS CodeBuild project, IAM execution role |
+| Remove local build artifacts | Deletes `seller/cdk/.venv`, `seller/cdk/cdk.out`, `seller/lambda/node_modules`, `agent/cdk/.venv`, `agent/cdk/cdk.out`, `__pycache__/`, `outputs.json`, and `privy-delegation/` | Local working-copy files only — no cloud resources |
 
-The IAM roles created by `setup-roles.sh` in §2 have no standing cost
-and are retained for re-runs. To delete them by hand:
+The IAM roles created by `setup-roles.sh` have no standing cost and
+are retained for re-runs. To delete them by hand:
 
 ```bash
 aws iam delete-role --role-name AgentCorePaymentsControlPlaneRole
@@ -318,21 +517,6 @@ aws iam delete-role --role-name AgentCorePaymentsResourceRetrievalRole
 CloudWatch log groups under `/aws/bedrock-agentcore/` and `/bedrock-agentcore/payments/`
 are retained after teardown so you can review historical traces. Delete
 them from the CloudWatch console if you want to clear historical data.
-
-### Manual cleanup (without the notebook)
-
-If the notebook is unavailable, run the same teardown from a shell:
-
-```bash
-# 1. Destroy the seller stack
-bash test/integration/destroy-seller.sh
-
-# 2. Destroy the agent runtime stack (only if §9 was run)
-bash test/integration/destroy-agent.sh
-
-# 3. AgentCore Payments resources require boto3 calls — see §11 of
-#    the notebook for the exact API sequence.
-```
 
 ### Verify cleanup succeeded
 
@@ -372,7 +556,7 @@ Key takeaways:
   that the application code remains a normal HTTP request.
 
 Use the [Learn more](#learn-more) links to go deeper, and adapt the
-patterns in this notebook to your own paid-API integrations.
+patterns in this use case to your own paid-API integrations.
 
 ---
 
