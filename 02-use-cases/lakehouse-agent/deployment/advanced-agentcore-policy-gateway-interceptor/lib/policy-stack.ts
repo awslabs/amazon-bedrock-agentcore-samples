@@ -104,13 +104,14 @@ export class PolicyStack extends cdk.Stack {
 		);
 		// Restrict policy evaluation to the current region as a defense-in-depth
 		// control. The Resource list covers (a) the specific PolicyEngine ARN,
-		// (b) the `/policy-engines/*` namespace — required because UpdateGateway's
-		// internal GenesisPolicyEngineCheck calls CheckAuthorizePermissions on a
-		// sub-resource ARN of the form `/policy-engines/<id>/target-resource/<encoded-gateway-arn>`
-		// that the specific engine ARN alone does not match — and (c) the
-		// Gateway ARN, which the role authorizes against.
+		// (b) the `/policy-engines/<id>/target-resource/<url-encoded-gateway-arn>`
+		// sub-resource — required because UpdateGateway's internal
+		// GenesisPolicyEngineCheck calls CheckAuthorizePermissions on that ARN
+		// and the bare engine ARN does not match it — and (c) the Gateway ARN,
+		// which the role authorizes against.
 		const stackRegion = cdk.Stack.of(this).region;
 		const stackAccount = cdk.Stack.of(this).account;
+		const encodedGatewayArn = encodeURIComponent(gatewayArn);
 		const policyEvalPolicy = new iam.Policy(this, "PolicyEvalPermissions", {
 			policyName: "LakehousePolicyEval",
 			statements: [
@@ -123,7 +124,7 @@ export class PolicyStack extends cdk.Stack {
 					],
 					resources: [
 						policyEngine.attrPolicyEngineArn,
-						`arn:${cdk.Aws.PARTITION}:bedrock-agentcore:${stackRegion}:${stackAccount}:/policy-engines/*`,
+						`arn:${cdk.Aws.PARTITION}:bedrock-agentcore:${stackRegion}:${stackAccount}:/policy-engines/${policyEngine.attrPolicyEngineId}/target-resource/${encodedGatewayArn}`,
 						gatewayArn,
 					],
 					conditions: {
