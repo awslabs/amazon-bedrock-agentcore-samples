@@ -186,11 +186,11 @@ The `geography` attribute is injected by the Design 3 Request Interceptor at
 
 ### Threat Model
 
-| ID  | Threat                                                                              | Mitigation                                                                                                    |
-| --- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| T1  | Cross-tenant data access (one policyholder reading another's claims)                | Design 2 token exchange (`sts:AssumeRole`) + Lake Formation row-level security (Phase 1 Step 2 + Step 3)      |
-| T2  | Privilege escalation via tool selection (policyholder invoking adjuster-only tools) | Design 1 Cedar `forbid` rule on `get_claims_summary` for the `policyholders` Cognito group                    |
-| T3  | Data residency violation (EU user accessing individual claim records)               | Design 3 geography injection by the Request Interceptor + Cedar `forbid` evaluating `context.input.geography` |
+| ID  | Threat                                                                              | Priority | Mitigation                                                                                                    | Verification (in `verify_policy.py`)                              |
+| --- | ----------------------------------------------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| T1  | Cross-tenant data access (one policyholder reading another's claims)                | Critical | Design 2 token exchange (`sts:AssumeRole`) + Lake Formation row-level security (Phase 1 Step 2 + Step 3)      | `test_data_isolation` + `test_column_masking`                     |
+| T2  | Privilege escalation via tool selection (policyholder invoking adjuster-only tools) | High     | Design 1 Cedar `forbid` rule on `get_claims_summary` for the `policyholders` Cognito group                    | `test_tool_access(get_claims_summary, DENY)`                      |
+| T3  | Data residency violation (EU user accessing individual claim records)               | Medium   | Design 3 geography injection by the Request Interceptor + Cedar `forbid` evaluating `context.input.geography` | `test_tool_access(query_claims, DENY)` for `policyholder002` (EU) |
 
 ### Service-specific Security Guidelines
 
@@ -265,6 +265,11 @@ After association, every new log stream is encrypted with the customer-managed k
 - **Cedar policy validation**: each `policies/*.cedar` file is validated by the AgentCore Policy Engine via `validationMode` — `IGNORE_ALL_FINDINGS` for the baseline `permit_all` and `FAIL_ON_ANY_FINDINGS` for every `forbid` policy (see `lib/policy-stack.ts:80-82`).
 - **End-to-end verification**: `verification/verify_policy.py` exercises 13 access-control assertions across the 3 designs (see Step 4 above) and is expected to report `Results: 13/13 passed` after a clean deploy.
 - **Manual review**: Cedar rules and IAM policies in `lib/policy-stack.ts` are reviewed for least privilege before merge.
+- **Measurable outcomes** (post-deploy state checks):
+  - `python deployment/advanced-agentcore-policy-gateway-interceptor/verification/verify_policy.py` → `Results: 13/13 passed`
+  - `aws logs describe-log-groups --log-group-name-prefix /aws/lambda/lakehouse-gateway --query 'logGroups[].retentionInDays'` → `[30, 30]`
+  - `aws bedrock-agentcore-control list-policies --policy-engine-id <id> --query 'policies[].status'` → all `ACTIVE`
+- **Audit trail**: scanned by Holmes baseline `HolmesContentSecurityReviewBaselinePolicy v3` on 2026-05-05 (HIGH=13), 2026-05-13 (HIGH=6), 2026-05-25 (HIGH=3). Remediation rationale for each cycle is tracked in `plans/`. Findings are self-attested by the sample maintainers; reports are committed under `02-use-cases/lakehouse-agent/scan-report*.json`.
 
 ## Disclaimer
 
