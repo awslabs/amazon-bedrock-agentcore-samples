@@ -84,9 +84,7 @@ from utils import (
     wait_for_status,
 )
 
-ENV_FILE = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env"
-)
+ENV_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env")
 
 # ── Load environment ──────────────────────────────────────────────────────────
 load_dotenv(ENV_FILE, override=True)
@@ -389,15 +387,9 @@ print(f"""
     1. Open https://faucet.circle.com/ and select {faucet_network}.
     2. Paste the wallet address above and request testnet USDC.""")
 if NETWORK == "ETHEREUM":
-    print(
-        f"    3. Verify the funds arrived: "
-        f"https://sepolia.basescan.org/address/{WALLET_ADDRESS}"
-    )
+    print(f"    3. Verify the funds arrived: https://sepolia.basescan.org/address/{WALLET_ADDRESS}")
 else:
-    print(
-        f"    3. Verify the funds arrived: "
-        f"https://explorer.solana.com/address/{WALLET_ADDRESS}?cluster=devnet"
-    )
+    print(f"    3. Verify the funds arrived: https://explorer.solana.com/address/{WALLET_ADDRESS}?cluster=devnet")
 
 if CREDENTIAL_PROVIDER_TYPE == "CoinbaseCDP":
     print("""

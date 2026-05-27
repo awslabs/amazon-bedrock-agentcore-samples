@@ -27,9 +27,7 @@ import sys
 
 from dotenv import load_dotenv
 
-sys.path.append(
-    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-)
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 from utils import update_env_file, save_privy_authorization_key
 
 ENV_FILE = os.path.join(
@@ -157,9 +155,7 @@ except Exception as exc:
     print(f"  (Could not render .env.local template: {exc})")
     print("  Manually create aws-agentcore-sdk/.env.local with:")
     print(f"    NEXT_PUBLIC_PRIVY_APP_ID={app_id}")
-    print(
-        f"    PRIVY_APP_SECRET={app_secret}"
-    )  # codeql[py/clear-text-logging-sensitive-data]
+    print(f"    PRIVY_APP_SECRET={app_secret}")  # codeql[py/clear-text-logging-sensitive-data]
     print(f"    PRIVY_AUTHORIZATION_ID={auth_id}")
 
 print("""

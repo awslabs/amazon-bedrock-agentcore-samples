@@ -85,9 +85,7 @@ def assume_role(session, role_arn, session_name="tutorial-session"):
         boto3.Session with temporary credentials.
     """
     sts = session.client("sts")
-    creds = sts.assume_role(RoleArn=role_arn, RoleSessionName=session_name)[
-        "Credentials"
-    ]
+    creds = sts.assume_role(RoleArn=role_arn, RoleSessionName=session_name)["Credentials"]
 
     new_session = boto3.Session(
         aws_access_key_id=creds["AccessKeyId"],
@@ -369,9 +367,7 @@ def setup_payment_roles(region=None):
                                 "Action": "iam:PassRole",
                                 "Resource": rr_arn,
                                 "Condition": {
-                                    "StringEquals": {
-                                        "iam:PassedToService": "bedrock-agentcore.amazonaws.com"
-                                    }
+                                    "StringEquals": {"iam:PassedToService": "bedrock-agentcore.amazonaws.com"}
                                 },
                             }
                         ],
@@ -571,10 +567,7 @@ def load_tutorial_env(env_path=None):
     """
     path = env_path or TUTORIAL_ENV_FILE
     if not os.path.exists(path):
-        raise FileNotFoundError(
-            f"{os.path.basename(path)} not found. Run Tutorial 00 first.\n"
-            f"  Expected at: {path}"
-        )
+        raise FileNotFoundError(f"{os.path.basename(path)} not found. Run Tutorial 00 first.\n  Expected at: {path}")
     load_dotenv(path, override=True)
 
     result = {
@@ -649,9 +642,7 @@ def client_token():
 # ═════════════════════════════════════════════════════════════════
 
 
-def enable_observability(
-    resource_arn, resource_id, account_id, region="us-west-2", enable_xray_spans=False
-):
+def enable_observability(resource_arn, resource_id, account_id, region="us-west-2", enable_xray_spans=False):
     """Enable CloudWatch vended logs and X-Ray traces for an AgentCore payments resource.
 
     Creates delivery sources, destinations, and deliveries for both APPLICATION_LOGS
@@ -694,9 +685,7 @@ def enable_observability(
     # Must be called before creating delivery sources/destinations.
     agentcore_client = boto3.client("bedrock-agentcore-control", region_name=region)
     try:
-        agentcore_client.allow_vended_log_delivery_for_resource(
-            resourceArn=resource_arn
-        )
+        agentcore_client.allow_vended_log_delivery_for_resource(resourceArn=resource_arn)
         print(f"  Allowed vended log delivery for {resource_arn}")
     except agentcore_client.exceptions.ConflictException:
         print(f"  Vended log delivery already allowed for {resource_arn}")
@@ -1017,17 +1006,12 @@ def verify_privy_signer_on_wallet(app_id, app_secret, wallet_address_or_id, quor
             "and that the wallet has been provisioned (Step 7 in the main notebook)."
         )
     if not resp.ok:
-        raise RuntimeError(
-            f"Privy wallet fetch failed ({resp.status_code}): {resp.text}"
-        )
+        raise RuntimeError(f"Privy wallet fetch failed ({resp.status_code}): {resp.text}")
 
     wallet = resp.json()
     signers = wallet.get("additional_signers") or wallet.get("additionalSigners") or []
     # Entries can be dicts ({"signer_id": "..."}) or bare strings; handle both.
     signer_ids = {
-        (s.get("signer_id") or s.get("id") or s.get("key_quorum_id"))
-        if isinstance(s, dict)
-        else s
-        for s in signers
+        (s.get("signer_id") or s.get("id") or s.get("key_quorum_id")) if isinstance(s, dict) else s for s in signers
     }
     return quorum_id in signer_ids

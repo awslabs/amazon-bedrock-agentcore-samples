@@ -49,9 +49,7 @@ from dotenv import load_dotenv
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from utils import load_tutorial_env, print_summary
 
-ENV_FILE = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env"
-)
+ENV_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env")
 load_dotenv(ENV_FILE, override=True)
 
 # ── Step 1: Load Config ───────────────────────────────────────────────────────
@@ -84,13 +82,9 @@ from bedrock_agentcore.payments import PaymentManager  # noqa: E402
 manager = PaymentManager(payment_manager_arn=PAYMENT_MANAGER_ARN, region_name=REGION)
 
 # Verify instrument is ACTIVE
-instr = manager.get_payment_instrument(
-    user_id=USER_ID, payment_instrument_id=INSTRUMENT_ID
-)
+instr = manager.get_payment_instrument(user_id=USER_ID, payment_instrument_id=INSTRUMENT_ID)
 instr_status = instr.get("status", "UNKNOWN")
-assert instr_status == "ACTIVE", (
-    f"Instrument is {instr_status} — fund and delegate in Tutorial 00/03 first"
-)
+assert instr_status == "ACTIVE", f"Instrument is {instr_status} — fund and delegate in Tutorial 00/03 first"
 
 session_resp = manager.create_payment_session(
     user_id=USER_ID,
@@ -151,17 +145,11 @@ def browse_with_payment(url: str) -> str:
                     headers=ws_headers,
                     timeout=30000,
                 )
-                context = (
-                    browser.contexts[0]
-                    if browser.contexts
-                    else await browser.new_context()
-                )
+                context = browser.contexts[0] if browser.contexts else await browser.new_context()
                 page = context.pages[0] if context.pages else await context.new_page()
 
                 # First navigation
-                response = await page.goto(
-                    url, wait_until="domcontentloaded", timeout=30000
-                )
+                response = await page.goto(url, wait_until="domcontentloaded", timeout=30000)
                 status = response.status if response else 0
                 print(f"  HTTP {status}")
 
@@ -193,9 +181,7 @@ def browse_with_payment(url: str) -> str:
                             await route.continue_()
 
                     await page.route("**/*", add_payment_headers)
-                    response = await page.goto(
-                        url, wait_until="domcontentloaded", timeout=30000
-                    )
+                    response = await page.goto(url, wait_until="domcontentloaded", timeout=30000)
                     status = response.status if response else 0
                     print(f"  Retry: HTTP {status}")
 
@@ -247,20 +233,14 @@ print("Agent created with browse_with_payment tool")
 
 # ── Step 6: Agent Browses a Paid Endpoint ────────────────────────────────────
 print("\n── Step 6: Agent Browses Paid Endpoint ──")
-TARGET_URL = (
-    "https://api.cdp.coinbase.com/platform/v2/x402/discovery/search"
-    "?query=technology+trends&limit=3"
-)
+TARGET_URL = "https://api.cdp.coinbase.com/platform/v2/x402/discovery/search?query=technology+trends&limit=3"
 
 print(f"Target: {TARGET_URL}")
 print("Budget: $1.00 USD")
 print("Browser: AgentCore managed Chromium\n")
 
 start = time.time()
-result = agent(
-    f"Browse to this URL and retrieve the content: {TARGET_URL}\n"
-    f"Summarize what you find."
-)
+result = agent(f"Browse to this URL and retrieve the content: {TARGET_URL}\nSummarize what you find.")
 elapsed = time.time() - start
 
 print(f"\nCompleted in {elapsed:.1f}s")
@@ -275,9 +255,7 @@ session_info = manager.get_payment_session(
 print_summary(
     "Session Spend",
     session_id=SESSION_ID,
-    available=session_info.get("availableLimits", {}).get(
-        "availableSpendAmount", "N/A"
-    ),
+    available=session_info.get("availableLimits", {}).get("availableSpendAmount", "N/A"),
     budget_limit=session_info.get("limits", {}).get("maxSpendAmount", "N/A"),
 )
 

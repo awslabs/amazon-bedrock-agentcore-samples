@@ -81,9 +81,7 @@ if _MISSING:
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from utils import load_tutorial_env, print_summary  # noqa: E402
 
-ENV_FILE = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env"
-)
+ENV_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env")
 load_dotenv(ENV_FILE, override=True)
 
 
@@ -154,16 +152,10 @@ def main() -> None:
     )
 
     # ── Step 2: Verify Instrument and Create Session ─────────────────────
-    manager = PaymentManager(
-        payment_manager_arn=payment_manager_arn, region_name=region
-    )
-    instr = manager.get_payment_instrument(
-        user_id=user_id, payment_instrument_id=instrument_id
-    )
+    manager = PaymentManager(payment_manager_arn=payment_manager_arn, region_name=region)
+    instr = manager.get_payment_instrument(user_id=user_id, payment_instrument_id=instrument_id)
     instr_status = instr.get("status", "UNKNOWN")
-    assert instr_status == "ACTIVE", (
-        f"Instrument is {instr_status} — fund and delegate in Tutorial 00/03 first"
-    )
+    assert instr_status == "ACTIVE", f"Instrument is {instr_status} — fund and delegate in Tutorial 00/03 first"
 
     sess_resp = manager.create_payment_session(
         user_id=user_id,
@@ -184,9 +176,7 @@ def main() -> None:
     memory_name = f"research_memory_{uuid.uuid4().hex[:8]}"
     memory_resp = memory_ctl.create_memory(
         name=memory_name,
-        description=(
-            "Research agent memory - tracks topics, costs, and preferences"
-        ),
+        description=("Research agent memory - tracks topics, costs, and preferences"),
         eventExpiryDuration=30,
         memoryStrategies=[
             {
@@ -218,9 +208,7 @@ def main() -> None:
                 print(f"   ✅ Memory is ACTIVE (after {elapsed}s)", flush=True)
                 break
             if status == "FAILED":
-                reason = memory_ctl.get_memory(memoryId=memory_id)["memory"].get(
-                    "failureReason", "unknown"
-                )
+                reason = memory_ctl.get_memory(memoryId=memory_id)["memory"].get("failureReason", "unknown")
                 raise RuntimeError(f"Memory creation failed: {reason}")
             print(
                 f"   status={status}, elapsed={elapsed}s, polling again in 10s...",
@@ -241,9 +229,7 @@ def main() -> None:
         # Use yesterday's date so cached research always looks recent —
         # otherwise the agent decides the memory hit is too stale and
         # pays for fresh data anyway.
-        yesterday = (
-            datetime.now(timezone.utc) - timedelta(days=1)
-        ).strftime("%Y-%m-%d")
+        yesterday = (datetime.now(timezone.utc) - timedelta(days=1)).strftime("%Y-%m-%d")
 
         hydration_records = [
             {
@@ -256,10 +242,7 @@ def main() -> None:
                                 "renewable energy",
                                 "market research",
                             ],
-                            "budget_preference": (
-                                "moderate - prefers endpoints under "
-                                "$0.10 per call"
-                            ),
+                            "budget_preference": ("moderate - prefers endpoints under $0.10 per call"),
                             "style": "concise summaries with key data points",
                             "last_session_total_spent": "$0.10",
                         }
@@ -275,13 +258,8 @@ def main() -> None:
                             "date": yesterday,
                             "topic": "weather data for Seattle",
                             "cost": "$0.05",
-                            "endpoint_used": (
-                                "weather-api ($0.05, accurate 7-day forecast)"
-                            ),
-                            "result_summary": (
-                                "Seattle: 58F, partly cloudy, rain expected "
-                                "Thursday"
-                            ),
+                            "endpoint_used": ("weather-api ($0.05, accurate 7-day forecast)"),
+                            "result_summary": ("Seattle: 58F, partly cloudy, rain expected Thursday"),
                         }
                     )
                 },
@@ -295,10 +273,7 @@ def main() -> None:
                             "date": yesterday,
                             "topic": "renewable energy market outlook",
                             "cost": "$0.05",
-                            "endpoint_used": (
-                                "energy-insights-api ($0.05, concise sector "
-                                "summary)"
-                            ),
+                            "endpoint_used": ("energy-insights-api ($0.05, concise sector summary)"),
                             "result_summary": (
                                 "Global renewable capacity additions on track "
                                 "to exceed 560 GW in 2026; solar leading "
@@ -319,10 +294,7 @@ def main() -> None:
                                 "weather-api - $0.05, fast and accurate",
                                 "energy-insights-api - $0.05, good sector summaries",
                             ],
-                            "avoid": [
-                                "premium-analytics - $0.50 per call, too "
-                                "expensive for this user"
-                            ],
+                            "avoid": ["premium-analytics - $0.50 per call, too expensive for this user"],
                         }
                     )
                 },
@@ -345,14 +317,9 @@ def main() -> None:
             memoryId=memory_id,
             records=records_to_create,
         )
-        print(
-            f"✅ Hydrated {len(resp.get('successfulRecords', []))} memory records"
-        )
+        print(f"✅ Hydrated {len(resp.get('successfulRecords', []))} memory records")
         print(f"   Namespace: /actor/{user_id}/facts/")
-        print(
-            f"   Past research dated {yesterday}: Seattle weather ($0.05), "
-            "renewable energy outlook ($0.05)"
-        )
+        print(f"   Past research dated {yesterday}: Seattle weather ($0.05), renewable energy outlook ($0.05)")
         print("   Last session total: $0.10")
         print("\n   Waiting 25s for indexing...", flush=True)
         time.sleep(25)
@@ -368,9 +335,7 @@ def main() -> None:
         #                           the 402 flow)
         network = os.environ.get("NETWORK", "ETHEREUM")
         network_prefs = (
-            ["eip155:84532", "base-sepolia"]
-            if network == "ETHEREUM"
-            else ["solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"]
+            ["eip155:84532", "base-sepolia"] if network == "ETHEREUM" else ["solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"]
         )
 
         payment_plugin = AgentCorePaymentsPlugin(
@@ -428,9 +393,7 @@ def main() -> None:
             plugins=[payment_plugin],
             system_prompt=SYSTEM_PROMPT,
         )
-        print(
-            "✅ Agent created: recall_user_context + http_request + PaymentsPlugin"
-        )
+        print("✅ Agent created: recall_user_context + http_request + PaymentsPlugin")
 
         # ── Step 6: Run the Agent ─────────────────────────────────────
         # Query 1 — Returning user asks for a familiar topic. The agent
@@ -453,8 +416,7 @@ def main() -> None:
         print("Query 2 — Budget recall")
         print("=" * 70)
         result = agent(
-            "What topics have I researched before? What is my budget preference? "
-            "How much did I spend last time?"
+            "What topics have I researched before? What is my budget preference? How much did I spend last time?"
         )
         print(result.message)
 
@@ -472,7 +434,7 @@ def main() -> None:
             "if we have recent research on it, reuse it and don't pay again. "
             "For anything we don't already have, find a paid data source by browsing the catalog at "
             "https://api.cdp.coinbase.com/platform/v2/x402/discovery/search?query=<TOPIC>&network=base-sepolia&limit=3 "
-            "(replace <TOPIC> with the URL-encoded topic name, e.g. \"AI+market+trends\"). "
+            '(replace <TOPIC> with the URL-encoded topic name, e.g. "AI+market+trends"). '
             "The catalog itself is free — pick the cheapest relevant resource it returns, then actually fetch "
             "from that resource URL so the payment goes through. "
             "For each topic separately, tell me: source (memory or fresh paid call), the resource URL paid "
@@ -507,12 +469,8 @@ def main() -> None:
         print_summary(
             "Session Spend",
             session_id=session_id,
-            available=session_info.get("availableLimits", {}).get(
-                "availableSpendAmount", "N/A"
-            ),
-            budget_limit=session_info.get("limits", {}).get(
-                "maxSpendAmount", "N/A"
-            ),
+            available=session_info.get("availableLimits", {}).get("availableSpendAmount", "N/A"),
+            budget_limit=session_info.get("limits", {}).get("maxSpendAmount", "N/A"),
         )
 
         # ── Step 8: Budget Enforcement in Action ──────────────────────
@@ -564,23 +522,14 @@ def main() -> None:
             "Report exactly what happened — including any payment errors verbatim."
         )
         print(result.message)
-        print(
-            "\n✅ Budget enforcement: the $0.0001 session cannot cover any "
-            "Bazaar resource call."
-        )
-        print(
-            "   This is structural — enforced by AgentCore payments at the "
-            "API level, not by agent logic."
-        )
+        print("\n✅ Budget enforcement: the $0.0001 session cannot cover any Bazaar resource call.")
+        print("   This is structural — enforced by AgentCore payments at the API level, not by agent logic.")
 
         # ── Step 9: View Payment Traces ───────────────────────────────
         # Every payment produces a trace. Explore the service-generated
         # telemetry (payment success rates, session spend, transaction
         # latency) on the Amazon CloudWatch GenAI Observability Dashboard.
-        print(
-            "\n🔍 View your agent traces: Amazon CloudWatch → "
-            "GenAI Observability Dashboard"
-        )
+        print("\n🔍 View your agent traces: Amazon CloudWatch → GenAI Observability Dashboard")
         print(
             f"   https://{region}.console.aws.amazon.com/cloudwatch/home"
             f"?region={region}#gen-ai-observability/agent-core"
@@ -597,10 +546,7 @@ def main() -> None:
             print(f"\n✅ Deleted memory: {memory_id}")
         except Exception as e:  # noqa: BLE001
             print(f"\n⚠️  Could not delete memory {memory_id}: {e}")
-            print(
-                f"   Delete manually with: aws bedrock-agentcore-control "
-                f"delete-memory --memory-id {memory_id}"
-            )
+            print(f"   Delete manually with: aws bedrock-agentcore-control delete-memory --memory-id {memory_id}")
 
 
 if __name__ == "__main__":

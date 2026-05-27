@@ -113,9 +113,7 @@ def handle_request(payload, context=None):
             sess = info
             results[label] = {
                 "session_id": sid,
-                "available": sess.get("availableLimits", {}).get(
-                    "availableSpendAmount", "N/A"
-                ),
+                "available": sess.get("availableLimits", {}).get("availableSpendAmount", "N/A"),
                 "budget": sess.get("limits", {}).get("maxSpendAmount", "N/A"),
             }
         return json.dumps(results, indent=2)

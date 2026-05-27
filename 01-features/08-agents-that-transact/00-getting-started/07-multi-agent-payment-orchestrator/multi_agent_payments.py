@@ -34,9 +34,7 @@ from dotenv import load_dotenv
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from utils import load_tutorial_env, print_summary
 
-ENV_FILE = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env"
-)
+ENV_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env")
 load_dotenv(ENV_FILE, override=True)
 
 # ── Step 1: Verify AWS credentials ────────────────────────────────────────────
@@ -79,13 +77,9 @@ for label, instr_id in [
     ("Coinbase", COINBASE["instrument_id"]),
     ("Privy", PRIVY["instrument_id"]),
 ]:
-    instr = manager.get_payment_instrument(
-        user_id=USER_ID, payment_instrument_id=instr_id
-    )
+    instr = manager.get_payment_instrument(user_id=USER_ID, payment_instrument_id=instr_id)
     status = instr.get("status", "UNKNOWN")
-    assert status == "ACTIVE", (
-        f"{label} instrument {instr_id} is {status} — fund and delegate first"
-    )
+    assert status == "ACTIVE", f"{label} instrument {instr_id} is {status} — fund and delegate first"
     print(f"  {label} instrument {instr_id} is {status}")
 
 # Session A: Research Agent — larger budget, Coinbase wallet
@@ -160,9 +154,7 @@ def check_budgets() -> str:
         info = manager.get_payment_session(user_id=USER_ID, payment_session_id=sid)
         results[label] = {
             "session_id": sid,
-            "available": info.get("availableLimits", {}).get(
-                "availableSpendAmount", "N/A"
-            ),
+            "available": info.get("availableLimits", {}).get("availableSpendAmount", "N/A"),
             "budget": info.get("limits", {}).get("maxSpendAmount", "N/A"),
         }
     return json.dumps(results, indent=2)
@@ -321,9 +313,7 @@ def check_budgets_v2() -> str:
         info = manager.get_payment_session(user_id=USER_ID, payment_session_id=sid)
         results[label] = {
             "session_id": sid,
-            "available": info.get("availableLimits", {}).get(
-                "availableSpendAmount", "N/A"
-            ),
+            "available": info.get("availableLimits", {}).get("availableSpendAmount", "N/A"),
             "budget": info.get("limits", {}).get("maxSpendAmount", "N/A"),
         }
     return json.dumps(results, indent=2)

@@ -41,9 +41,7 @@ from utils import (
     wait_for_status,
 )
 
-ENV_FILE = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env"
-)
+ENV_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env")
 load_dotenv(ENV_FILE, override=True)
 
 AWS_REGION = os.environ.get("AWS_REGION", "us-west-2")
@@ -51,9 +49,7 @@ CP_ENDPOINT = os.environ.get(
     "PAYMENTS_CP_ENDPOINT",
     f"https://bedrock-agentcore-control.{AWS_REGION}.amazonaws.com",
 )
-DP_ENDPOINT = os.environ.get(
-    "PAYMENTS_DP_ENDPOINT", f"https://bedrock-agentcore.{AWS_REGION}.amazonaws.com"
-)
+DP_ENDPOINT = os.environ.get("PAYMENTS_DP_ENDPOINT", f"https://bedrock-agentcore.{AWS_REGION}.amazonaws.com")
 NETWORK = os.environ.get("NETWORK", "ETHEREUM")
 LINKED_EMAIL = os.environ.get("LINKED_EMAIL", "")
 USER_ID = os.environ.get("USER_ID", "test-user-001")
@@ -62,11 +58,9 @@ CP_ROLE_ARN = os.environ["CONTROL_PLANE_ROLE_ARN"]
 MGMT_ROLE_ARN = os.environ["MANAGEMENT_ROLE_ARN"]
 RR_ROLE_ARN = os.environ["RESOURCE_RETRIEVAL_ROLE_ARN"]
 
-assert (
-    LINKED_EMAIL
-    and not LINKED_EMAIL.startswith("<")
-    and LINKED_EMAIL != "user@example.com"
-), "Set LINKED_EMAIL in .env to your real email before running this script."
+assert LINKED_EMAIL and not LINKED_EMAIL.startswith("<") and LINKED_EMAIL != "user@example.com", (
+    "Set LINKED_EMAIL in .env to your real email before running this script."
+)
 
 session = boto3.Session(region_name=AWS_REGION)
 
@@ -112,9 +106,7 @@ cb_conn = cp_client.create_payment_connector(
     paymentManagerId=MANAGER_ID,
     name=f"CoinbaseConn{suffix}",
     type="CoinbaseCDP",
-    credentialProviderConfigurations=[
-        {"coinbaseCDP": {"credentialProviderArn": CB_CRED_ARN}}
-    ],
+    credentialProviderConfigurations=[{"coinbaseCDP": {"credentialProviderArn": CB_CRED_ARN}}],
     clientToken=client_token(),
 )
 CB_CONNECTOR_ID = cb_conn["paymentConnectorId"]
@@ -146,9 +138,7 @@ sp_conn = cp_client.create_payment_connector(
     paymentManagerId=MANAGER_ID,
     name=f"StripePrivyConn{suffix}",
     type="StripePrivy",
-    credentialProviderConfigurations=[
-        {"stripePrivy": {"credentialProviderArn": SP_CRED_ARN}}
-    ],
+    credentialProviderConfigurations=[{"stripePrivy": {"credentialProviderArn": SP_CRED_ARN}}],
     clientToken=client_token(),
 )
 SP_CONNECTOR_ID = sp_conn["paymentConnectorId"]
@@ -187,9 +177,7 @@ for label, conn_id in [
     )
     inst = resp["paymentInstrument"]
     inst_id = inst["paymentInstrumentId"]
-    wallet = inst["paymentInstrumentDetails"]["embeddedCryptoWallet"].get(
-        "walletAddress", "pending..."
-    )
+    wallet = inst["paymentInstrumentDetails"]["embeddedCryptoWallet"].get("walletAddress", "pending...")
     instruments[label] = {
         "instrument_id": inst_id,
         "wallet_address": wallet,
