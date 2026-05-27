@@ -1,4 +1,4 @@
-FROM public.ecr.aws/docker/library/python:3.13-slim-bookworm
+FROM public.ecr.aws/docker/library/python:3.13-slim-trixie
 
 WORKDIR /app
 
