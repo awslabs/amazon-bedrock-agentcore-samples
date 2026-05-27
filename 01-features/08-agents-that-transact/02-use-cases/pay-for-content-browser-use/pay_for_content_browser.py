@@ -90,7 +90,7 @@ NETWORK_MAP = {
     "solana-devnet": {
         "caip2": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
         "botocore_net": "SOLANA",
-        "usdc_address": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+        "usdc_address": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",  # pragma: allowlist secret
     },
     "base-mainnet": {
         "caip2": "eip155:8453",
@@ -547,24 +547,15 @@ status_proc = subprocess.run(
     check=True,
 )
 # The agentcore CLI may append a non-JSON upgrade notice after the JSON
-# document. Extract the first balanced JSON object from stdout.
+# document. Locate the first JSON value and let the decoder consume just that.
 stdout = status_proc.stdout
-start = stdout.find("{")
-end = -1
-if start >= 0:
-    depth = 0
-    for idx in range(start, len(stdout)):
-        ch = stdout[idx]
-        if ch == "{":
-            depth += 1
-        elif ch == "}":
-            depth -= 1
-            if depth == 0:
-                end = idx + 1
-                break
-if start < 0 or end < 0:
+start = next(
+    (i for i, ch in enumerate(stdout) if ch in "{["),
+    -1,
+)
+if start < 0:
     raise RuntimeError(f"Could not find JSON in agentcore status output:\n{stdout}")
-status = json.loads(stdout[start:end])
+status, _ = json.JSONDecoder().raw_decode(stdout[start:])
 entries = status if isinstance(status, list) else status.get("resources", [])
 
 AGENT_RUNTIME_ARN = None
