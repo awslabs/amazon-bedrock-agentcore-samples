@@ -103,8 +103,8 @@ for name, val in [
         missing.append(name)
 
 if missing:
-    print(f"\n❌ Missing values: {missing}")  # codeql[py/clear-text-logging-sensitive-data]
-    print("   Paste your values and re-run.")
+    print(f"\n❌ {len(missing)} of 3 required value(s) are missing or still set to a placeholder.")
+    print("   Re-run the script and paste real values when prompted.")
     sys.exit(1)
 
 result = update_env_file(
