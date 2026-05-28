@@ -148,7 +148,7 @@ If a Python dependency is missing, the script prints the exact `pip install` com
 
 **Two-step paid-call pattern** — The Coinbase x402 *discovery search* endpoint is a free catalog. Calling it does not cost anything. To actually obtain research data the agent must call one of the `resource` URLs the catalog returns; that's where the 402 → payment → retry flow runs. The system prompt encodes this pattern so the agent's spend reports stay honest.
 
-**Hard limit vs soft optimization** — The session's `maxSpendAmount` is enforced by AgentCore payments at the API level — the LLM cannot exceed it. Memory is an additive optimization that lets the agent stretch the same budget further by skipping redundant calls. Together they form a defense-in-depth model.
+**Hard limit vs soft optimization** — The session's `maxSpendAmount` is enforced by AgentCore payments at the API level — the LLM cannot exceed it. Memory is an additive optimization that lets the agent stretch the same budget further by skipping redundant calls.
 
 **`recall_user_context` tool** — A `@tool`-decorated function that wraps `RetrieveMemoryRecords`. The agent's system prompt mandates a recall before any paid call.
 
@@ -156,23 +156,11 @@ If a Python dependency is missing, the script prints the exact `pip install` com
 
 ### `create_memory` returns AccessDeniedException
 
-Your caller identity is missing AgentCore Memory permissions. Attach the policy from the IAM section above. On SageMaker, add it to the execution role; on EC2, add it to the instance role.
+Your caller identity is missing AgentCore Memory permissions. Attach the policy from the IAM section above. On SageMaker, add it to the execution role.
 
 ### Memory stays in CREATING for a long time
 
 Normal startup is 30–90 seconds. The script polls every 10 seconds. If it stays CREATING beyond 5 minutes, call `get_memory` once to inspect `failureReason`. Check CloudWatch logs in the bedrock-agentcore log group for index build errors.
-
-### `RetrieveMemoryRecords` returns empty results right after hydration
-
-The script waits 25 seconds after `BatchCreateMemoryRecords` for the semantic index to catch up. If you reduce that delay, the first `recall_user_context` call may return zero hits even though the records exist.
-
-### Agent pays for a topic it should have recalled from memory
-
-Read the agent's printed reasoning. Common causes: the recall query was too generic to match the hydrated record (try more specific topics), the freshness rule rejected the record (the script uses yesterday's date to prevent this), or the system prompt was modified to allow always-fetch behavior.
-
-### Tiny session demo doesn't reject the payment
-
-The $0.0001 budget must be smaller than the cheapest x402 resource the agent picks. If a 402 returns a price below $0.0001 (rare on Bazaar) the demo will not show rejection. Force the demo by lowering `maxSpendAmount` further or by directing the agent to a higher-priced resource.
 
 ## Role Separation for Deployed Agents
 
