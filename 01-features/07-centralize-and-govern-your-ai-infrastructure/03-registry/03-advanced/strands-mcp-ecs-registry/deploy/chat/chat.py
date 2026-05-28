@@ -37,9 +37,7 @@ log = logging.getLogger("chat")
 
 AGENT_URL = os.environ.get("AGENT_URL", "http://localhost:8081")
 _raw_jwks = os.environ.get("COGNITO_JWKS_URL", "")
-COGNITO_JWKS_URL = (
-    _raw_jwks if _raw_jwks.startswith("https://") else ""
-)  # skip JWT if not a real URL
+COGNITO_JWKS_URL = _raw_jwks if _raw_jwks.startswith("https://") else ""  # skip JWT if not a real URL
 
 app = FastAPI(title="Financial Analyst Chat")
 app.add_middleware(

@@ -82,9 +82,7 @@ def get_existing_skill_names(registry_client, registry_id: str) -> set[str]:
 
 def wait_for_record(registry_client, registry_id, record_id, target="DRAFT"):
     for _ in range(20):
-        r = registry_client.get_registry_record(
-            registryId=registry_id, recordId=record_id
-        )
+        r = registry_client.get_registry_record(registryId=registry_id, recordId=record_id)
         status = r["status"]
         if status == target:
             return
@@ -94,9 +92,7 @@ def wait_for_record(registry_client, registry_id, record_id, target="DRAFT"):
     raise TimeoutError(f"Record did not reach {target} within 100s")
 
 
-def register_skill(
-    registry_client, registry_id: str, skill_name: str, skills_root: str
-) -> str:
+def register_skill(registry_client, registry_id: str, skill_name: str, skills_root: str) -> str:
     skill_md_path = os.path.join(skills_root, skill_name, "SKILL.md")
     if not os.path.exists(skill_md_path):
         raise FileNotFoundError(f"SKILL.md not found: {skill_md_path}")
@@ -126,9 +122,7 @@ def register_skill(
 
 
 def approve_record(registry_client, registry_id: str, record_id: str):
-    registry_client.submit_registry_record_for_approval(
-        registryId=registry_id, recordId=record_id
-    )
+    registry_client.submit_registry_record_for_approval(registryId=registry_id, recordId=record_id)
     print("  Submitted → PENDING_APPROVAL")
     time.sleep(2)
     registry_client.update_registry_record_status(
@@ -141,12 +135,8 @@ def approve_record(registry_client, registry_id: str, record_id: str):
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Register new skills into an existing registry"
-    )
-    parser.add_argument(
-        "--registry-arn", required=True, help="ARN of the existing registry"
-    )
+    parser = argparse.ArgumentParser(description="Register new skills into an existing registry")
+    parser.add_argument("--registry-arn", required=True, help="ARN of the existing registry")
     parser.add_argument("--region", default=os.environ.get("AWS_REGION", "us-east-1"))
     parser.add_argument(
         "--skill-name",
@@ -163,9 +153,7 @@ def main():
     registry_arn = args.registry_arn
     registry_id = registry_arn.split("/")[-1]
 
-    skills_root = args.skills_root or os.path.join(
-        os.path.dirname(__file__), "..", "..", "my_skills"
-    )
+    skills_root = args.skills_root or os.path.join(os.path.dirname(__file__), "..", "..", "my_skills")
     skills_root = os.path.abspath(skills_root)
 
     session = Session(region_name=args.region)
@@ -189,9 +177,7 @@ def main():
             continue
 
         print(f"  Skills root: {skills_root}")
-        record_id = register_skill(
-            registry_client, registry_id, skill_name, skills_root
-        )
+        record_id = register_skill(registry_client, registry_id, skill_name, skills_root)
         approve_record(registry_client, registry_id, record_id)
         registered.append(skill_name)
         print(f"  ✅ {skill_name} registered and approved.")
@@ -201,9 +187,7 @@ def main():
     print(f"  Skipped (already exist): {skipped or '(none)'}")
     if registered:
         print("\n  Note: Search index takes ~60–100s to reflect new records.")
-        print(
-            "  Redeploy the agent ECS service if it was running before these skills were added."
-        )
+        print("  Redeploy the agent ECS service if it was running before these skills were added.")
 
 
 if __name__ == "__main__":

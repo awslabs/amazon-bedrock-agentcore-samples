@@ -62,9 +62,7 @@ MODEL_ID = os.environ.get("MODEL_ID", "us.anthropic.claude-sonnet-4-6")
 REGISTRY_ARN = os.environ.get("REGISTRY_ARN", "")
 SKILLS_BUCKET = os.environ.get("SKILLS_BUCKET", "")
 _raw_jwks = os.environ.get("COGNITO_JWKS_URL", "")
-COGNITO_JWKS_URL = (
-    _raw_jwks if _raw_jwks.startswith("https://") else ""
-)  # skip JWT if not a real URL
+COGNITO_JWKS_URL = _raw_jwks if _raw_jwks.startswith("https://") else ""  # skip JWT if not a real URL
 LOADED_SKILLS_DIR = "/tmp/loaded_skills"
 
 # ── AWS clients (use ECS task role automatically) ─────────────────────────────
@@ -102,9 +100,7 @@ def _extract_skill_name(skill_md: str, fallback: str) -> str:
     return fallback
 
 
-def load_skill_from_registry(
-    search_response: dict, record_index: int = 0
-) -> tuple[str, str]:
+def load_skill_from_registry(search_response: dict, record_index: int = 0) -> tuple[str, str]:
     """Stage skill from registry response to /tmp/loaded_skills/{name}/.
 
     SKILL.md content comes from registry inlineContent.
@@ -180,9 +176,7 @@ def _make_sigv4_mcp_client(url: str) -> MCPClient:
     except ImportError:
         from mcp.client.streamable_http import streamablehttp_client
 
-        log.warning(
-            "streamable_http_sigv4 not installed — using unsigned transport (dev mode)"
-        )
+        log.warning("streamable_http_sigv4 not installed — using unsigned transport (dev mode)")
         return MCPClient(lambda u=url: streamablehttp_client(u))
 
 
@@ -215,12 +209,7 @@ def _discover_mcp_url() -> str:
                 # The registry crawls the MCP server and populates server.inlineContent
                 # with the MCP server manifest (modelcontextprotocol.io schema).
                 # The URL is in: descriptors.mcp.server.inlineContent (JSON) → remotes[0].url
-                inline = (
-                    record.get("descriptors", {})
-                    .get("mcp", {})
-                    .get("server", {})
-                    .get("inlineContent", "")
-                )
+                inline = record.get("descriptors", {}).get("mcp", {}).get("server", {}).get("inlineContent", "")
                 url = ""
                 try:
                     if inline:
@@ -299,9 +288,7 @@ def _get_selective_mcp_tools(
 
     if not declared_tool_names:
         # Skill declared no specific tools — return all (fallback)
-        log.info(
-            "No mcp_tools declared in skill — loading all %d MCP tools", len(all_tools)
-        )
+        log.info("No mcp_tools declared in skill — loading all %d MCP tools", len(all_tools))
         return all_tools, client
 
     name_set = set(declared_tool_names)
@@ -360,9 +347,7 @@ def _build_static_tools() -> None:
         response.pop("ResponseMetadata", None)
 
         all_records = response.get("registryRecords", [])
-        skill_records = [
-            r for r in all_records if r.get("descriptorType") == "AGENT_SKILLS"
-        ]
+        skill_records = [r for r in all_records if r.get("descriptorType") == "AGENT_SKILLS"]
 
         if not skill_records:
             return (
@@ -382,8 +367,7 @@ def _build_static_tools() -> None:
         for i, rec in enumerate(skill_records):
             marker = " ← selected (top match)" if i == 0 else ""
             candidates.append(
-                f"  {i + 1}. {rec.get('name', 'unknown')}{marker}\n"
-                f"     {rec.get('description', '(no description)')}"
+                f"  {i + 1}. {rec.get('name', 'unknown')}{marker}\n     {rec.get('description', '(no description)')}"
             )
         candidate_block = "\n".join(candidates)
 
@@ -417,9 +401,7 @@ def _build_static_tools() -> None:
 
         tmp_path = None
         try:
-            with tempfile.NamedTemporaryFile(
-                mode="w", suffix=".py", delete=False, encoding="utf-8"
-            ) as tmp:
+            with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False, encoding="utf-8") as tmp:
                 tmp.write(code)
                 tmp_path = tmp.name
 
@@ -602,11 +584,7 @@ def invoke_stream(
 
                 # Tool use: nested under event.contentBlockStart.start.toolUse
                 event_data = kwargs.get("event", {})
-                tool_use = (
-                    event_data.get("contentBlockStart", {})
-                    .get("start", {})
-                    .get("toolUse")
-                )
+                tool_use = event_data.get("contentBlockStart", {}).get("start", {}).get("toolUse")
                 if tool_use:
                     name = tool_use.get("name", "")
                     inp = tool_use.get("input", {}) or {}
@@ -646,9 +624,7 @@ def invoke_stream(
                 )
                 search_resp.pop("ResponseMetadata", None)
                 all_records = search_resp.get("registryRecords", [])
-                skill_records = [
-                    r for r in all_records if r.get("descriptorType") == "AGENT_SKILLS"
-                ]
+                skill_records = [r for r in all_records if r.get("descriptorType") == "AGENT_SKILLS"]
 
                 # ── STEP 2: Parse skill frontmatter → get declared MCP tools ──
                 declared_tool_names: list[str] = []
@@ -661,9 +637,7 @@ def invoke_stream(
                         .get("skillMd", {})
                         .get("inlineContent", "")
                     )
-                    declared_tool_names = _parse_mcp_tools_from_frontmatter(
-                        top_skill_md
-                    )
+                    declared_tool_names = _parse_mcp_tools_from_frontmatter(top_skill_md)
                     skill_name_found = skill_records[0].get("name", "unknown")
                     log.info(
                         "Skill '%s' declares MCP tools: %s",
@@ -678,11 +652,7 @@ def invoke_stream(
                 # (if any) to actually execute. They may differ.
                 _step(
                     f"Registry returned {len(all_records)} record(s)"
-                    + (
-                        f" — top skill candidate: '{skill_name_found}'"
-                        if skill_records
-                        else " — no skill records"
-                    ),
+                    + (f" — top skill candidate: '{skill_name_found}'" if skill_records else " — no skill records"),
                     "📋",
                 )
                 q.put(
@@ -699,8 +669,7 @@ def invoke_stream(
                                     "top_match": (
                                         r.get("descriptorType") == "AGENT_SKILLS"
                                         and bool(skill_records)
-                                        and r.get("name")
-                                        == skill_records[0].get("name")
+                                        and r.get("name") == skill_records[0].get("name")
                                     ),
                                 }
                                 for r in all_records[:8]
@@ -716,9 +685,7 @@ def invoke_stream(
                 mcp_tools: list = []
                 if _discovered_mcp_url and declared_tool_names:
                     try:
-                        mcp_tools, per_request_mcp_client = _get_selective_mcp_tools(
-                            declared_tool_names
-                        )
+                        mcp_tools, per_request_mcp_client = _get_selective_mcp_tools(declared_tool_names)
                         _step(
                             "MCP connected — loaded "
                             + str(len(mcp_tools))
@@ -739,21 +706,16 @@ def invoke_stream(
                 # ── STEP 4: Build agent with selective tool set ───────────────
                 prior_messages = [
                     {
-                        "role": "assistant"
-                        if turn.get("role") == "ai"
-                        else turn.get("role", "user"),
+                        "role": "assistant" if turn.get("role") == "ai" else turn.get("role", "user"),
                         "content": [{"text": turn.get("content", "")}],
                     }
                     for turn in req.history
-                    if turn.get("role") in ("user", "assistant", "ai")
-                    and turn.get("content")
+                    if turn.get("role") in ("user", "assistant", "ai") and turn.get("content")
                 ]
                 if mcp_tools:
                     mcp_detail = f"{len(mcp_tools)} MCP + {len(_static_tools)} base"
                 elif not _discovered_mcp_url:
-                    mcp_detail = (
-                        f"{len(_static_tools)} base (MCP server not yet registered)"
-                    )
+                    mcp_detail = f"{len(_static_tools)} base (MCP server not yet registered)"
                 elif declared_tool_names:
                     mcp_detail = f"{len(_static_tools)} base (MCP unavailable)"
                 else:

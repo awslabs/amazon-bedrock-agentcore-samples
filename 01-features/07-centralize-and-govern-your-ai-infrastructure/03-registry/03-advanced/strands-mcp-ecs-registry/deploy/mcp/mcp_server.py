@@ -68,9 +68,7 @@ def get_financial_data(period: str) -> dict:
     """
     data = FINANCIAL_DATA.get(period)
     if data is None:
-        return {
-            "error": f"No data for '{period}'. Available: {list(FINANCIAL_DATA.keys())}"
-        }
+        return {"error": f"No data for '{period}'. Available: {list(FINANCIAL_DATA.keys())}"}
     return {"period": period, **data}
 
 
@@ -140,7 +138,5 @@ app = Starlette(
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", "8080"))
     host = os.environ.get("HOST", "0.0.0.0")
-    print(
-        f"Starting financial-tools-mcp on {host}:{port}/mcp  health on {host}:{port}/health"
-    )
+    print(f"Starting financial-tools-mcp on {host}:{port}/mcp  health on {host}:{port}/health")
     uvicorn.run(app, host=host, port=port)

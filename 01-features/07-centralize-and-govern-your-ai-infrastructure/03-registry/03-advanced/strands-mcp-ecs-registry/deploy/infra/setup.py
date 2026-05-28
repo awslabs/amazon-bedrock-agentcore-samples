@@ -33,9 +33,7 @@ import time
 from boto3.session import Session
 
 SKILL_NAME = "quarterly-kpi-calculator"
-SKILLS_ROOT = os.path.join(
-    os.path.dirname(__file__), "..", "..", "my_skills", SKILL_NAME
-)
+SKILLS_ROOT = os.path.join(os.path.dirname(__file__), "..", "..", "my_skills", SKILL_NAME)
 
 
 def separator(title):
@@ -45,9 +43,7 @@ def separator(title):
 def wait_for_record(registry_client, registry_id, record_id, target="DRAFT"):
     print(f"  Waiting for record to reach {target}...")
     while True:
-        r = registry_client.get_registry_record(
-            registryId=registry_id, recordId=record_id
-        )
+        r = registry_client.get_registry_record(registryId=registry_id, recordId=record_id)
         status = r["status"]
         print(f"    status: {status}")
         if status == target:
@@ -95,9 +91,7 @@ def create_registry(registry_client) -> tuple[str, str]:
     return arn, rid
 
 
-def publish_mcp_record(
-    registry_client, registry_id: str, apigw_url: str, region: str, account_id: str
-) -> str:
+def publish_mcp_record(registry_client, registry_id: str, apigw_url: str, region: str, account_id: str) -> str:
     """Publish MCP record using synchronizationType=URL with IAM credential provider.
 
     The registry crawls the API Gateway HTTPS endpoint using the agent ECS task role
@@ -180,9 +174,7 @@ def publish_skill_record(registry_client, registry_id: str, skills_root: str) ->
 
 
 def approve_record(registry_client, registry_id: str, record_id: str, label: str):
-    registry_client.submit_registry_record_for_approval(
-        registryId=registry_id, recordId=record_id
-    )
+    registry_client.submit_registry_record_for_approval(registryId=registry_id, recordId=record_id)
     print(f"  {label}: Submitted → PENDING_APPROVAL")
     registry_client.update_registry_record_status(
         registryId=registry_id,
@@ -204,9 +196,7 @@ def store_ssm(ssm_client, name: str, value: str):
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Setup Agent Registry and S3 artifacts"
-    )
+    parser = argparse.ArgumentParser(description="Setup Agent Registry and S3 artifacts")
     parser.add_argument("--region", default=os.environ.get("AWS_REGION", "us-east-1"))
     parser.add_argument("--bucket", required=True, help="S3 bucket for skill artifacts")
     parser.add_argument(
@@ -214,9 +204,7 @@ def main():
         required=True,
         help="API Gateway HTTPS URL for MCP server, e.g. https://xyz.execute-api.us-east-1.amazonaws.com/mcp",
     )
-    parser.add_argument(
-        "--skip-s3", action="store_true", help="Skip S3 artifact upload (already done)"
-    )
+    parser.add_argument("--skip-s3", action="store_true", help="Skip S3 artifact upload (already done)")
     parser.add_argument(
         "--registry-arn",
         default="",
@@ -252,9 +240,7 @@ def main():
     #    Registry crawls the API GW URL with IAM SigV4 to auto-populate tool schemas.
     #    Agents read the MCP URL from this record at startup via search_registry_records.
     account_id = session.client("sts").get_caller_identity()["Account"]
-    mcp_record_id = publish_mcp_record(
-        registry_client, registry_id, args.apigw_url, args.region, account_id
-    )
+    mcp_record_id = publish_mcp_record(registry_client, registry_id, args.apigw_url, args.region, account_id)
     approve_record(registry_client, registry_id, mcp_record_id, "MCP")
 
     # 4. Publish and approve AGENT_SKILLS record
