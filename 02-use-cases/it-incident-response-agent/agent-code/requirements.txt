@@ -1,0 +1,7 @@
+strands-agents
+strands-agents-tools
+boto3
+bedrock-agentcore
+bedrock-agentcore-starter-toolkit
+mcp[cli]>=1.6.0
+rich
