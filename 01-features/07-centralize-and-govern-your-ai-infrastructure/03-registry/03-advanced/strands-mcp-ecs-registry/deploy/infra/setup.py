@@ -3,10 +3,11 @@
 Run this ONCE after the CloudFormation stack is deployed to:
   1. Upload SKILL.md and supporting artifacts to S3
   2. Create the AWS Agent Registry
-  3. Publish the MCP record (synchronizationType="INLINE" — tool schemas stored inline,
-     websiteUrl points to the API Gateway HTTPS endpoint via VPC Link to the internal MCP ALB.
-     We use INLINE instead of URL because API GW routes require SigV4/AWS_IAM auth, and the
-     registry crawler does not sign requests. Agents read the websiteUrl from the record at startup.)
+  3. Publish the MCP record (synchronizationType="URL" — registry crawler assumes the agent
+     ECS task role and signs the request with IAM SigV4 / execute-api to fetch the live MCP
+     server manifest from the API Gateway URL. Tool schemas are auto-populated from the server.
+     The crawled URL is stored in descriptors.mcp.server.inlineContent → remotes[0].url.
+     Agents read it from the registry at startup via search_registry_records.)
   4. Publish the AGENT_SKILLS record (stores full SKILL.md as inlineContent)
   5. Approve both records
   6. Store REGISTRY_ARN and SKILLS_BUCKET in SSM Parameter Store
