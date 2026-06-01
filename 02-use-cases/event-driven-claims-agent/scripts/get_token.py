@@ -56,7 +56,7 @@ req = urllib.request.Request(
 try:
     if not token_url.startswith("https://"):
         raise ValueError(f"Only HTTPS URLs are permitted: {token_url}")
-    with urllib.request.urlopen(req) as resp:
+    with urllib.request.urlopen(req) as resp:  # nosec B310
         token_data = json.loads(resp.read())
         print(token_data["access_token"])
 except urllib.error.HTTPError as e:

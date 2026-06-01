@@ -63,7 +63,7 @@ def get_cognito_token(region: str) -> tuple[str, str]:
 
     if not token_endpoint.startswith("https://"):
         raise ValueError(f"Only HTTPS URLs are permitted: {token_endpoint}")
-    with urllib.request.urlopen(req) as resp:
+    with urllib.request.urlopen(req) as resp:  # nosec B310
         token_data = json.loads(resp.read())
 
     return token_data["access_token"], runtime_arn
@@ -89,7 +89,7 @@ def invoke_agent(token: str, runtime_arn: str, region: str, prompt: str) -> str:
     try:
         if not url.startswith("https://"):
             raise ValueError(f"Only HTTPS URLs are permitted: {url}")
-        with urllib.request.urlopen(req, timeout=120) as resp:
+        with urllib.request.urlopen(req, timeout=120) as resp:  # nosec B310
             for line in resp:
                 decoded = line.decode("utf-8").strip()
                 if decoded:

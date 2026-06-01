@@ -47,7 +47,7 @@ def get_cognito_token():
 
     if not token_endpoint.startswith("https://"):
         raise ValueError(f"Only HTTPS URLs are permitted: {token_endpoint}")
-    with urllib.request.urlopen(req) as resp:
+    with urllib.request.urlopen(req) as resp:  # nosec B310
         token_data = json.loads(resp.read())
 
     return token_data["access_token"]
@@ -73,7 +73,7 @@ def invoke_runtime_with_jwt(token, payload_dict):
     if not url.startswith("https://"):
         raise ValueError(f"Only HTTPS URLs are permitted: {url}")
     content_parts = []
-    with urllib.request.urlopen(req, timeout=120) as resp:
+    with urllib.request.urlopen(req, timeout=120) as resp:  # nosec B310
         for line in resp:
             decoded = line.decode("utf-8").strip()
             if not decoded:
