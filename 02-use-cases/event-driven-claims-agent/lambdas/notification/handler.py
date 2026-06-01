@@ -17,7 +17,7 @@ def build_html(subject, body):
 </div>
 <div style="padding:20px;border:1px solid #e2e8f0;">
 <h3>{subject}</h3>
-{body.replace(chr(10), '<br>')}
+{body.replace(chr(10), "<br>")}
 </div>
 <div style="padding:10px;background:#f7fafc;text-align:center;font-size:12px;color:#718096;">
 <p>SecureGuard Insurance | Claims Department<br>
@@ -58,10 +58,12 @@ def handler(event, context):
         print(f"[EMAIL DRAFT] To: {recipient_email} | Subject: {subject}\n{body}")
         status = "draft_logged"
 
-    return json.dumps({
-        "message_id": message_id,
-        "recipient": recipient_email,
-        "subject": subject,
-        "status": status,
-        "sent_at": timestamp,
-    })
+    return json.dumps(
+        {
+            "message_id": message_id,
+            "recipient": recipient_email,
+            "subject": subject,
+            "status": status,
+            "sent_at": timestamp,
+        }
+    )

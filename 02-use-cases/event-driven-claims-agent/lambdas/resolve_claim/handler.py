@@ -36,6 +36,7 @@ def handler(event, context):
 
         # Also update review record if exists
         from boto3.dynamodb.conditions import Attr
+
         reviews = reviews_table.scan(FilterExpression=Attr("claim_id").eq(claim_id))
         for review in reviews.get("Items", []):
             reviews_table.update_item(
@@ -45,12 +46,14 @@ def handler(event, context):
                 ExpressionAttributeValues={":status": "resolved", ":ts": timestamp},
             )
 
-        return json.dumps({
-            "claim_id": claim_id,
-            "action": action,
-            "new_status": new_status,
-            "reviewer_notes": reviewer_notes,
-            "resolved_at": timestamp,
-        })
+        return json.dumps(
+            {
+                "claim_id": claim_id,
+                "action": action,
+                "new_status": new_status,
+                "reviewer_notes": reviewer_notes,
+                "resolved_at": timestamp,
+            }
+        )
     except Exception as e:
         return json.dumps({"error": str(e)})

@@ -94,15 +94,17 @@ def _get_gateway_token():
     if not GATEWAY_TOKEN_ENDPOINT or not GATEWAY_CLIENT_ID or not GATEWAY_CLIENT_SECRET:
         log.warning("Gateway OAuth credentials not configured, trying without auth")
         return None
-    
+
     try:
         # Client credentials grant flow to gateway's Cognito M2M pool
         creds = base64.b64encode(f"{GATEWAY_CLIENT_ID}:{GATEWAY_CLIENT_SECRET}".encode()).decode()
-        data = urllib.parse.urlencode({
-            "grant_type": "client_credentials",
-            "scope": GATEWAY_OAUTH_SCOPES.replace(",", " "),
-        }).encode()
-        
+        data = urllib.parse.urlencode(
+            {
+                "grant_type": "client_credentials",
+                "scope": GATEWAY_OAUTH_SCOPES.replace(",", " "),
+            }
+        ).encode()
+
         req = urllib.request.Request(
             GATEWAY_TOKEN_ENDPOINT,
             data=data,
@@ -111,12 +113,12 @@ def _get_gateway_token():
                 "Authorization": f"Basic {creds}",
             },
         )
-        
+
         if not GATEWAY_TOKEN_ENDPOINT.startswith("https://"):
             raise ValueError(f"Only HTTPS URLs are permitted: {GATEWAY_TOKEN_ENDPOINT}")
         with urllib.request.urlopen(req) as resp:
             token_data = json.loads(resp.read())
-        
+
         log.info("Successfully obtained gateway access token")
         return token_data["access_token"]
     except Exception as e:
@@ -127,10 +129,12 @@ def _get_gateway_token():
 def get_mcp_client():
     global _mcp_client
     if _mcp_client is None:
+
         def _transport():
             token = _get_gateway_token()
             headers = {"Authorization": f"Bearer {token}"} if token else None
             return streamablehttp_client(GATEWAY_URL, headers=headers)
+
         _mcp_client = MCPClient(_transport)
     return _mcp_client
 
@@ -249,7 +253,7 @@ Please validate this decision and assign a confidence score."""
         executor = get_processor()
         exec_prompt = f"""The claim has been rejected.
 1. Call send_notification to inform the claimant of the rejection with the reasoning.
-Claimant email: {claimant_email or 'unknown'}
+Claimant email: {claimant_email or "unknown"}
 Rejection reasoning from processor:
 {processor_response}"""
 
@@ -260,7 +264,7 @@ Rejection reasoning from processor:
 1. Call create_claim with the details from this decision:
 {processor_response}
 2. Call send_notification to inform the claimant of approval.
-Claimant email: {claimant_email or 'unknown'}"""
+Claimant email: {claimant_email or "unknown"}"""
 
     else:
         yield f"**Routed to human review** (confidence: {confidence}/100)\n\n"
@@ -271,7 +275,7 @@ Claimant email: {claimant_email or 'unknown'}"""
 2. Call request_human_review explaining why review is needed based on these concerns:
 {validator_response}
 3. Call send_notification to inform the claimant their claim is under review.
-Claimant email: {claimant_email or 'unknown'}"""
+Claimant email: {claimant_email or "unknown"}"""
 
     stream = executor.stream_async(exec_prompt)
     async for event in stream:

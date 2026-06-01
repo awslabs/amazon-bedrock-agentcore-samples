@@ -5,6 +5,7 @@ Usage:
     python3 scripts/test_invoke.py --region us-west-2
     python3 scripts/test_invoke.py --region us-west-2 --prompt 'Your claim text here'
 """
+
 import argparse
 import base64
 import json
@@ -26,9 +27,7 @@ def get_cognito_token(region: str) -> tuple[str, str]:
     runtime_arn = output_map.get("RuntimeArn", "")
 
     cognito = boto3.client("cognito-idp", region_name=region)
-    client_info = cognito.describe_user_pool_client(
-        UserPoolId=user_pool_id, ClientId=client_id
-    )
+    client_info = cognito.describe_user_pool_client(UserPoolId=user_pool_id, ClientId=client_id)
     cs = client_info["UserPoolClient"]["ClientSecret"]
 
     pool_info = cognito.describe_user_pool(UserPoolId=user_pool_id)
@@ -36,10 +35,12 @@ def get_cognito_token(region: str) -> tuple[str, str]:
     token_endpoint = f"https://{domain}.auth.{region}.amazoncognito.com/oauth2/token"
 
     creds = base64.b64encode(f"{client_id}:{cs}".encode()).decode()
-    data = urllib.parse.urlencode({
-        "grant_type": "client_credentials",
-        "scope": "agentcore/invoke",
-    }).encode()
+    data = urllib.parse.urlencode(
+        {
+            "grant_type": "client_credentials",
+            "scope": "agentcore/invoke",
+        }
+    ).encode()
 
     req = urllib.request.Request(
         token_endpoint,

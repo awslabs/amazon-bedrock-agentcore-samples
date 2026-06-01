@@ -40,21 +40,24 @@ class ClaimsInfraStack(Stack):
 
         # --- DynamoDB Tables ---
         policies_table = dynamodb.Table(
-            self, "PoliciesTable",
+            self,
+            "PoliciesTable",
             table_name="ClaimsAgent-Policies",
             partition_key=dynamodb.Attribute(name="policy_number", type=dynamodb.AttributeType.STRING),
             removal_policy=RemovalPolicy.DESTROY,
             billing_mode=dynamodb.BillingMode.PAY_PER_REQUEST,
         )
         claims_table = dynamodb.Table(
-            self, "ClaimsTable",
+            self,
+            "ClaimsTable",
             table_name="ClaimsAgent-Claims",
             partition_key=dynamodb.Attribute(name="claim_id", type=dynamodb.AttributeType.STRING),
             removal_policy=RemovalPolicy.DESTROY,
             billing_mode=dynamodb.BillingMode.PAY_PER_REQUEST,
         )
         reviews_table = dynamodb.Table(
-            self, "ReviewsTable",
+            self,
+            "ReviewsTable",
             table_name="ClaimsAgent-Reviews",
             partition_key=dynamodb.Attribute(name="review_id", type=dynamodb.AttributeType.STRING),
             removal_policy=RemovalPolicy.DESTROY,
@@ -66,7 +69,8 @@ class ClaimsInfraStack(Stack):
 
         # --- S3 Bucket for claim inbox ---
         inbox_bucket = s3.Bucket(
-            self, "InboxBucket",
+            self,
+            "InboxBucket",
             bucket_name=f"claims-inbox-{self.account}-{self.region}",
             removal_policy=RemovalPolicy.DESTROY,
             auto_delete_objects=True,
@@ -75,7 +79,8 @@ class ClaimsInfraStack(Stack):
 
         # --- Cognito User Pool + App Client (M2M) for external callers ---
         user_pool = cognito.UserPool(
-            self, "ClaimsUserPool",
+            self,
+            "ClaimsUserPool",
             user_pool_name="ClaimsAgent-UserPool",
             removal_policy=RemovalPolicy.DESTROY,
         )
@@ -90,12 +95,20 @@ class ClaimsInfraStack(Stack):
             generate_secret=True,
             o_auth=cognito.OAuthSettings(
                 flows=cognito.OAuthFlows(client_credentials=True),
-                scopes=[cognito.OAuthScope.resource_server(resource_server, cognito.ResourceServerScope(scope_name="invoke", scope_description="Invoke agent"))],
+                scopes=[
+                    cognito.OAuthScope.resource_server(
+                        resource_server,
+                        cognito.ResourceServerScope(scope_name="invoke", scope_description="Invoke agent"),
+                    )
+                ],
             ),
         )
-        domain = user_pool.add_domain("CognitoDomain", cognito_domain=cognito.CognitoDomainOptions(
-            domain_prefix=f"claims-agent-{self.account}",
-        ))
+        domain = user_pool.add_domain(
+            "CognitoDomain",
+            cognito_domain=cognito.CognitoDomainOptions(
+                domain_prefix=f"claims-agent-{self.account}",
+            ),
+        )
 
         CfnOutput(self, "UserPoolId", value=user_pool.user_pool_id)
         CfnOutput(self, "UserPoolClientId", value=app_client.user_pool_client_id)
@@ -106,7 +119,8 @@ class ClaimsInfraStack(Stack):
 
         # --- Lambda: policy_lookup ---
         policy_lookup_fn = lambda_.Function(
-            self, "PolicyLookupFn",
+            self,
+            "PolicyLookupFn",
             function_name="ClaimsAgent-PolicyLookup",
             runtime=lambda_.Runtime.PYTHON_3_12,
             handler="handler.handler",
@@ -118,7 +132,8 @@ class ClaimsInfraStack(Stack):
 
         # --- Lambda: create_claim ---
         create_claim_fn = lambda_.Function(
-            self, "CreateClaimFn",
+            self,
+            "CreateClaimFn",
             function_name="ClaimsAgent-CreateClaim",
             runtime=lambda_.Runtime.PYTHON_3_12,
             handler="handler.handler",
@@ -130,7 +145,8 @@ class ClaimsInfraStack(Stack):
 
         # --- Lambda: human_review ---
         human_review_fn = lambda_.Function(
-            self, "HumanReviewFn",
+            self,
+            "HumanReviewFn",
             function_name="ClaimsAgent-HumanReview",
             runtime=lambda_.Runtime.PYTHON_3_12,
             handler="handler.handler",
@@ -146,7 +162,8 @@ class ClaimsInfraStack(Stack):
 
         # --- Lambda: notification ---
         notification_fn = lambda_.Function(
-            self, "NotificationFn",
+            self,
+            "NotificationFn",
             function_name="ClaimsAgent-Notification",
             runtime=lambda_.Runtime.PYTHON_3_12,
             handler="handler.handler",
@@ -154,14 +171,17 @@ class ClaimsInfraStack(Stack):
             environment={"SENDER_EMAIL": self.node.try_get_context("sender_email") or "noreply@example.com"},
             timeout=Duration.seconds(10),
         )
-        notification_fn.add_to_role_policy(iam.PolicyStatement(
-            actions=["ses:SendEmail", "ses:SendRawEmail"],
-            resources=["*"],
-        ))
+        notification_fn.add_to_role_policy(
+            iam.PolicyStatement(
+                actions=["ses:SendEmail", "ses:SendRawEmail"],
+                resources=["*"],
+            )
+        )
 
         # --- Lambda: list_pending_claims ---
         list_pending_fn = lambda_.Function(
-            self, "ListPendingFn",
+            self,
+            "ListPendingFn",
             function_name="ClaimsAgent-ListPending",
             runtime=lambda_.Runtime.PYTHON_3_12,
             handler="handler.handler",
@@ -173,7 +193,8 @@ class ClaimsInfraStack(Stack):
 
         # --- Lambda: resolve_claim ---
         resolve_claim_fn = lambda_.Function(
-            self, "ResolveClaimFn",
+            self,
+            "ResolveClaimFn",
             function_name="ClaimsAgent-ResolveClaim",
             runtime=lambda_.Runtime.PYTHON_3_12,
             handler="handler.handler",
@@ -193,7 +214,8 @@ class ClaimsInfraStack(Stack):
 
         # --- Policy Engine (created BEFORE gateway so it can be referenced) ---
         policy_engine = agentcore_alpha.PolicyEngine(
-            self, "ClaimsPolicyEngine",
+            self,
+            "ClaimsPolicyEngine",
             policy_engine_name="claims_pe_cdk_v3",
             description="Cedar policy engine for claims processing authorization",
         )
@@ -201,7 +223,8 @@ class ClaimsInfraStack(Stack):
         # Gateway with default Cognito M2M auth (auto-creates user pool for M2M)
         # This provides workload identity for the Runtime to call tools securely
         gateway = agentcore_alpha.Gateway(
-            self, "ClaimsGateway",
+            self,
+            "ClaimsGateway",
             gateway_name="claims-gateway",
             description="MCP Gateway for claims processing tools",
             policy_engine_configuration=agentcore_alpha.GatewayPolicyEngineConfig(
@@ -215,42 +238,48 @@ class ClaimsInfraStack(Stack):
         )
 
         # Add 6 Lambda targets with tool schemas
-        gateway.add_lambda_target("PolicyLookup",
+        gateway.add_lambda_target(
+            "PolicyLookup",
             gateway_target_name="policy-lookup",
             description="Look up insurance policy details by policy number",
             lambda_function=policy_lookup_fn,
             tool_schema=agentcore_alpha.ToolSchema.from_local_asset("../lambdas/schemas/policy_lookup.json"),
         )
 
-        gateway.add_lambda_target("CreateClaim",
+        gateway.add_lambda_target(
+            "CreateClaim",
             gateway_target_name="create-claim",
             description="Create a new insurance claim",
             lambda_function=create_claim_fn,
             tool_schema=agentcore_alpha.ToolSchema.from_local_asset("../lambdas/schemas/create_claim.json"),
         )
 
-        gateway.add_lambda_target("HumanReview",
+        gateway.add_lambda_target(
+            "HumanReview",
             gateway_target_name="human-review",
             description="Submit a claim for human review",
             lambda_function=human_review_fn,
             tool_schema=agentcore_alpha.ToolSchema.from_local_asset("../lambdas/schemas/human_review.json"),
         )
 
-        gateway.add_lambda_target("Notification",
+        gateway.add_lambda_target(
+            "Notification",
             gateway_target_name="notification",
             description="Send email notification to claimant",
             lambda_function=notification_fn,
             tool_schema=agentcore_alpha.ToolSchema.from_local_asset("../lambdas/schemas/notification.json"),
         )
 
-        gateway.add_lambda_target("ListPendingClaims",
+        gateway.add_lambda_target(
+            "ListPendingClaims",
             gateway_target_name="list-pending-claims",
             description="List all claims pending review",
             lambda_function=list_pending_fn,
             tool_schema=agentcore_alpha.ToolSchema.from_local_asset("../lambdas/schemas/list_pending_claims.json"),
         )
 
-        gateway.add_lambda_target("ResolveClaim",
+        gateway.add_lambda_target(
+            "ResolveClaim",
             gateway_target_name="resolve-claim",
             description="Resolve/approve/reject a pending claim",
             lambda_function=resolve_claim_fn,
@@ -265,14 +294,16 @@ class ClaimsInfraStack(Stack):
         # ======================================================================
 
         # Cedar Policy: Allow all tool actions on this gateway (with IGNORE_ALL_FINDINGS)
-        policy_engine.add_policy("AllowAllTools",
+        policy_engine.add_policy(
+            "AllowAllTools",
             definition=f'permit(principal, action, resource == AgentCore::Gateway::"{gateway.gateway_arn}");',
             description="Permit all tool calls on the claims gateway",
             validation_mode=agentcore_alpha.PolicyValidationMode.IGNORE_ALL_FINDINGS,
         )
 
         # Cedar Policy: Block high-value claims (>= $100k) — uses type-safe builder
-        policy_engine.add_policy("BlockExcessiveClaims",
+        policy_engine.add_policy(
+            "BlockExcessiveClaims",
             definition=f'forbid(principal, action == AgentCore::Action::"create-claim___create_claim", resource == AgentCore::Gateway::"{gateway.gateway_arn}") when {{ context.input.estimated_amount >= 100000 }};',
             description="Forbid creating claims with estimated amount >= $100,000",
             validation_mode=agentcore_alpha.PolicyValidationMode.IGNORE_ALL_FINDINGS,
@@ -286,7 +317,8 @@ class ClaimsInfraStack(Stack):
 
         # CloudWatch log group for runtime observability
         runtime_log_group = logs.LogGroup(
-            self, "RuntimeLogGroup",
+            self,
+            "RuntimeLogGroup",
             log_group_name="/aws/bedrock-agentcore/claims-agent",
             removal_policy=RemovalPolicy.DESTROY,
             retention=logs.RetentionDays.ONE_WEEK,
@@ -297,7 +329,8 @@ class ClaimsInfraStack(Stack):
 
         # Create runtime with Cognito auth + observability
         runtime = agentcore.Runtime(
-            self, "ClaimsRuntime",
+            self,
+            "ClaimsRuntime",
             runtime_name="claimsagent",
             description="Event-driven dual-agent claims processor with confidence-based routing",
             agent_runtime_artifact=agent_artifact,
@@ -325,14 +358,16 @@ class ClaimsInfraStack(Stack):
         )
 
         # Grant runtime permission to invoke Bedrock model
-        runtime.add_to_role_policy(iam.PolicyStatement(
-            actions=["bedrock:InvokeModel", "bedrock:InvokeModelWithResponseStream"],
-            resources=[
-                f"arn:aws:bedrock:{self.region}::foundation-model/anthropic.claude-sonnet-4-6",
-                "arn:aws:bedrock:*::foundation-model/anthropic.claude-sonnet-4-6",
-                "arn:aws:bedrock:*:*:inference-profile/*",
-            ],
-        ))
+        runtime.add_to_role_policy(
+            iam.PolicyStatement(
+                actions=["bedrock:InvokeModel", "bedrock:InvokeModelWithResponseStream"],
+                resources=[
+                    f"arn:aws:bedrock:{self.region}::foundation-model/anthropic.claude-sonnet-4-6",
+                    "arn:aws:bedrock:*::foundation-model/anthropic.claude-sonnet-4-6",
+                    "arn:aws:bedrock:*:*:inference-profile/*",
+                ],
+            )
+        )
 
         # Grant runtime permission to invoke the gateway (workload identity)
         gateway.grant_invoke(runtime.role)
@@ -347,7 +382,8 @@ class ClaimsInfraStack(Stack):
         # ======================================================================
 
         memory = agentcore.Memory(
-            self, "ClaimsMemory",
+            self,
+            "ClaimsMemory",
             memory_name="claims_memory_cdk_v3",
             description="Long-term memory for claims agent conversations",
             expiration_duration=Duration.days(90),
@@ -365,26 +401,38 @@ class ClaimsInfraStack(Stack):
 
         # Custom evaluator: Claims quality assessment
         _claims_evaluator = agentcore.Evaluator(
-            self, "ClaimsQualityEvaluator",
+            self,
+            "ClaimsQualityEvaluator",
             evaluator_name="claims_quality",
             level=agentcore.EvaluationLevel.SESSION,
             description="Evaluates claims processing quality including decision accuracy and routing correctness",
             evaluator_config=agentcore.EvaluatorConfig.llm_as_a_judge(
                 instructions="Given the following agent session context:\n\n{context}\n\nTool calls made:\n{actual_tool_trajectory}\n\nEvaluate the claims agent response for: 1) correct policy lookup, 2) accurate coverage assessment, 3) appropriate confidence scoring, 4) correct routing decision (auto-approve vs human review). Rate the overall claims processing quality.",
                 model_id="global.anthropic.claude-sonnet-4-6",
-                rating_scale=agentcore.EvaluatorRatingScale.numerical([
-                    agentcore.NumericalRatingOption(label="Poor", definition="Major errors in processing", value=1),
-                    agentcore.NumericalRatingOption(label="Below Average", definition="Some errors or missing steps", value=2),
-                    agentcore.NumericalRatingOption(label="Average", definition="Correct but could be more thorough", value=3),
-                    agentcore.NumericalRatingOption(label="Good", definition="Accurate processing with clear reasoning", value=4),
-                    agentcore.NumericalRatingOption(label="Excellent", definition="Perfect processing with comprehensive analysis", value=5),
-                ]),
+                rating_scale=agentcore.EvaluatorRatingScale.numerical(
+                    [
+                        agentcore.NumericalRatingOption(label="Poor", definition="Major errors in processing", value=1),
+                        agentcore.NumericalRatingOption(
+                            label="Below Average", definition="Some errors or missing steps", value=2
+                        ),
+                        agentcore.NumericalRatingOption(
+                            label="Average", definition="Correct but could be more thorough", value=3
+                        ),
+                        agentcore.NumericalRatingOption(
+                            label="Good", definition="Accurate processing with clear reasoning", value=4
+                        ),
+                        agentcore.NumericalRatingOption(
+                            label="Excellent", definition="Perfect processing with comprehensive analysis", value=5
+                        ),
+                    ]
+                ),
             ),
         )
 
         # Online evaluation config using the runtime as data source
         _evaluation = agentcore.OnlineEvaluationConfig(
-            self, "ClaimsEvaluation",
+            self,
+            "ClaimsEvaluation",
             online_evaluation_config_name="claims_evaluation",
             evaluators=[
                 agentcore.EvaluatorSelector.builtin(agentcore.BuiltinEvaluator.HELPFULNESS),
@@ -401,7 +449,8 @@ class ClaimsInfraStack(Stack):
         # ======================================================================
 
         trigger_fn = lambda_.Function(
-            self, "TriggerFn",
+            self,
+            "TriggerFn",
             function_name="ClaimsAgent-Trigger",
             runtime=lambda_.Runtime.PYTHON_3_12,
             handler="handler.handler",
@@ -422,7 +471,8 @@ class ClaimsInfraStack(Stack):
 
         # --- EventBridge Rule: S3 PutObject → Trigger Lambda ---
         events.Rule(
-            self, "ClaimInboxRule",
+            self,
+            "ClaimInboxRule",
             rule_name="ClaimsAgent-InboxTrigger",
             event_pattern=events.EventPattern(
                 source=["aws.s3"],

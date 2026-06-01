@@ -15,14 +15,16 @@ def handler(event, context):
             return json.dumps({"message": "No pending claims to review.", "claims": []})
         result = []
         for c in claims:
-            result.append({
-                "claim_id": c.get("claim_id"),
-                "policy_number": c.get("policy_number"),
-                "description": c.get("description"),
-                "estimated_amount": c.get("estimated_amount"),
-                "category": c.get("category"),
-                "created_at": c.get("created_at"),
-            })
+            result.append(
+                {
+                    "claim_id": c.get("claim_id"),
+                    "policy_number": c.get("policy_number"),
+                    "description": c.get("description"),
+                    "estimated_amount": c.get("estimated_amount"),
+                    "category": c.get("category"),
+                    "created_at": c.get("created_at"),
+                }
+            )
         return json.dumps({"message": f"Found {len(result)} pending claim(s).", "claims": result})
     except Exception as e:
         return json.dumps({"error": str(e)})

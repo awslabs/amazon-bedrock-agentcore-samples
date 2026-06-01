@@ -12,6 +12,7 @@ Usage:
     python3 scripts/test_e2e.py --region us-west-2
     python3 scripts/test_e2e.py --region us-west-2 --test 5  # run specific test only
 """
+
 import argparse
 import base64
 import json
@@ -34,9 +35,7 @@ def get_cognito_token(region: str) -> tuple[str, str]:
 
     # Get client secret
     cognito = boto3.client("cognito-idp", region_name=region)
-    client_info = cognito.describe_user_pool_client(
-        UserPoolId=user_pool_id, ClientId=client_id
-    )
+    client_info = cognito.describe_user_pool_client(UserPoolId=user_pool_id, ClientId=client_id)
     client_secret = client_info["UserPoolClient"]["ClientSecret"]
 
     # Get domain
@@ -46,10 +45,12 @@ def get_cognito_token(region: str) -> tuple[str, str]:
 
     # Request token
     creds = base64.b64encode(f"{client_id}:{client_secret}".encode()).decode()
-    data = urllib.parse.urlencode({
-        "grant_type": "client_credentials",
-        "scope": "agentcore/invoke",
-    }).encode()
+    data = urllib.parse.urlencode(
+        {
+            "grant_type": "client_credentials",
+            "scope": "agentcore/invoke",
+        }
+    ).encode()
 
     req = urllib.request.Request(
         token_endpoint,
@@ -115,16 +116,21 @@ def test_1_normal_claim(token, runtime_arn, region):
     print("  Expected: ACCEPT → Confidence ≥80 → AUTO_APPROVE → Claim created + notification")
     print("=" * 70)
 
-    response = invoke_agent(token, runtime_arn, region,
-        "I need to file a claim. My policy is POL-12345. I had a fender bender in a parking lot yesterday. Estimated damage is about $2,000."
+    response = invoke_agent(
+        token,
+        runtime_arn,
+        region,
+        "I need to file a claim. My policy is POL-12345. I had a fender bender in a parking lot yesterday. Estimated damage is about $2,000.",
     )
 
     # Validate
-    passed = all([
-        "ACCEPT" in response,
-        "AUTO_APPROVE" in response or "Auto-Approved" in response or "auto-approved" in response,
-        "CLM-" in response,  # Claim ID created
-    ])
+    passed = all(
+        [
+            "ACCEPT" in response,
+            "AUTO_APPROVE" in response or "Auto-Approved" in response or "auto-approved" in response,
+            "CLM-" in response,  # Claim ID created
+        ]
+    )
 
     print(f"\n{'✅ PASSED' if passed else '❌ FAILED'}")
     if not passed:
@@ -141,19 +147,24 @@ def test_2_cedar_block(token, runtime_arn, region):
     print("  Expected: BLOCKED by BlockExcessiveClaims Cedar policy")
     print("=" * 70)
 
-    response = invoke_agent(token, runtime_arn, region,
-        "I need to file a claim. My policy is POL-11111. My car was completely totaled in a highway accident. The repair shop estimates $150,000 in damage."
+    response = invoke_agent(
+        token,
+        runtime_arn,
+        region,
+        "I need to file a claim. My policy is POL-11111. My car was completely totaled in a highway accident. The repair shop estimates $150,000 in damage.",
     )
 
     # Cedar block might manifest as: tool call denied, error, or agent acknowledging it can't create
-    blocked = any([
-        "denied" in response.lower(),
-        "blocked" in response.lower(),
-        "not authorized" in response.lower(),
-        "cannot create" in response.lower(),
-        "policy engine" in response.lower(),
-        "exceed" in response.lower(),
-    ])
+    blocked = any(
+        [
+            "denied" in response.lower(),
+            "blocked" in response.lower(),
+            "not authorized" in response.lower(),
+            "cannot create" in response.lower(),
+            "policy engine" in response.lower(),
+            "exceed" in response.lower(),
+        ]
+    )
 
     # Even if not explicitly blocked, check if no claim was created
     claim_created = "CLM-" in response
@@ -176,16 +187,21 @@ def test_3_human_review(token, runtime_arn, region):
     print("  Expected: Confidence <80 → HUMAN_REVIEW routing")
     print("=" * 70)
 
-    response = invoke_agent(token, runtime_arn, region,
-        "I think something might have happened to my car. My policy is POL-12345. I'm not entirely sure what the damage is but it could be around $30,000. I don't have any photos or repair estimates yet."
+    response = invoke_agent(
+        token,
+        runtime_arn,
+        region,
+        "I think something might have happened to my car. My policy is POL-12345. I'm not entirely sure what the damage is but it could be around $30,000. I don't have any photos or repair estimates yet.",
     )
 
     # Check for human review indicators
-    human_review = any([
-        "HUMAN_REVIEW" in response,
-        "human review" in response.lower(),
-        "review" in response.lower() and "confidence" in response.lower(),
-    ])
+    human_review = any(
+        [
+            "HUMAN_REVIEW" in response,
+            "human review" in response.lower(),
+            "review" in response.lower() and "confidence" in response.lower(),
+        ]
+    )
 
     print(f"\n{'✅ PASSED' if human_review else '⚠️  CHECK MANUALLY'}")
     if not human_review:
@@ -202,17 +218,22 @@ def test_4_expired_policy(token, runtime_arn, region):
     print("  Expected: REJECT (policy expired)")
     print("=" * 70)
 
-    response = invoke_agent(token, runtime_arn, region,
-        "I need to file a claim. My policy number is POL-99999. I have a minor scratch on my bumper, about $500 in damage."
+    response = invoke_agent(
+        token,
+        runtime_arn,
+        region,
+        "I need to file a claim. My policy number is POL-99999. I have a minor scratch on my bumper, about $500 in damage.",
     )
 
     # Check for rejection
-    rejected = any([
-        "REJECT" in response,
-        "expired" in response.lower(),
-        "inactive" in response.lower(),
-        "not active" in response.lower(),
-    ])
+    rejected = any(
+        [
+            "REJECT" in response,
+            "expired" in response.lower(),
+            "inactive" in response.lower(),
+            "not active" in response.lower(),
+        ]
+    )
 
     print(f"\n{'✅ PASSED' if rejected else '❌ FAILED'}")
     if not rejected:
@@ -281,10 +302,10 @@ Jane Doe
         # Scan for claims created in the last 2 minutes (from the email test)
         response = claims_table.scan()
         claims = response.get("Items", [])
-        
+
         # Look for a claim from POL-67890 (Jane Doe's home policy from the test email)
         email_claims = [c for c in claims if c.get("policy_number") == "POL-67890"]
-        
+
         if email_claims:
             latest = email_claims[-1]
             print("  ✅ Claim found in DynamoDB!")

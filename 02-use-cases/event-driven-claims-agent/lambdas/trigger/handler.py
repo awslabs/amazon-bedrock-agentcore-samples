@@ -3,6 +3,7 @@
 Since the Runtime uses CUSTOM_JWT auth, we can't use boto3 SDK (SigV4).
 Instead, we get a Cognito M2M token and invoke via HTTPS with [REDACTED_TOKEN]
 """
+
 import base64
 import json
 import os
@@ -28,10 +29,12 @@ def get_cognito_token():
     token_endpoint = COGNITO_TOKEN_ENDPOINT
 
     creds = base64.b64encode(f"{COGNITO_CLIENT_ID}:{COGNITO_CLIENT_SECRET}".encode()).decode()
-    data = urllib.parse.urlencode({
-        "grant_type": "client_credentials",
-        "scope": "agentcore/invoke",
-    }).encode()
+    data = urllib.parse.urlencode(
+        {
+            "grant_type": "client_credentials",
+            "scope": "agentcore/invoke",
+        }
+    ).encode()
 
     req = urllib.request.Request(
         token_endpoint,

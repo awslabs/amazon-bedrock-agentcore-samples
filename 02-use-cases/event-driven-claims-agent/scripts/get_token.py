@@ -13,6 +13,7 @@ Environment variables:
     COGNITO_CLIENT_SECRET (required - from CDK output)
     AWS_REGION            (default: us-east-1)
 """
+
 import base64
 import json
 import os
@@ -36,15 +37,21 @@ if not CLIENT_SECRET or not CLIENT_ID or not USER_POOL_ID:
 token_url = f"https://{DOMAIN_PREFIX}.auth.{REGION}.amazoncognito.com/oauth2/token"
 creds = base64.b64encode(f"{CLIENT_ID}:{CLIENT_SECRET}".encode()).decode()
 
-data = urllib.parse.urlencode({
-    "grant_type": "client_credentials",
-    "scope": "agentcore/invoke",
-}).encode()
+data = urllib.parse.urlencode(
+    {
+        "grant_type": "client_credentials",
+        "scope": "agentcore/invoke",
+    }
+).encode()
 
-req = urllib.request.Request(token_url, data=data, headers={
-    "Content-Type": "application/x-www-form-urlencoded",
-    "Authorization": f"Basic {creds}",
-})
+req = urllib.request.Request(
+    token_url,
+    data=data,
+    headers={
+        "Content-Type": "application/x-www-form-urlencoded",
+        "Authorization": f"Basic {creds}",
+    },
+)
 
 try:
     if not token_url.startswith("https://"):
