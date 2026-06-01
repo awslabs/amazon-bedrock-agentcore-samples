@@ -1,16 +1,14 @@
 # Registry-Driven Agent with Strands, MCP, and ECS
 
-## Architecture & Overview
+## Overview
 
-### What is the Registry-Driven Agent?
+This sample demonstrates how to integrate **AWS Agent Registry** into an existing agentic architecture where the agent and MCP server are self-hosted on **Amazon ECS** — without requiring a full migration to AgentCore Runtime or AgentCore Gateway.
 
-This sample demonstrates how to integrate **AWS Agent Registry** (Amazon Bedrock AgentCore) into an existing agentic architecture where the agent and MCP server are self-hosted on **Amazon ECS** — without requiring a full migration to AgentCore Runtime or AgentCore Gateway.
+If you already host Strands agents and MCP servers on ECS or EKS and manage your own compute, networking, and container lifecycle, this sample shows how to adopt AWS Agent Registry as a **centralized discovery and governance layer** on top of that existing infrastructure — gaining semantic search, skill versioning, and approval workflows without changing how your agents and tools are deployed.
 
-Many customers today host their Strands agents and MCP servers on ECS or EKS, managing their own compute, networking, and container lifecycle. This sample is designed to reflect that reality. It shows how those customers can adopt AWS Agent Registry as a **centralized discovery and governance layer** on top of their existing infrastructure — gaining semantic search, skill versioning, and approval workflows without needing to change how their agents and tools are deployed.
-
-This makes the sample useful in two ways:
-- **For customers already on ECS/EKS**: a practical starting point for adding registry-driven skill discovery to an existing self-hosted agentic system.
-- **For customers evaluating AgentCore**: a reference for the registry integration pattern before adopting AgentCore Runtime or Gateway for compute.
+This sample is useful in two ways:
+- **If you are already on ECS/EKS**: a practical starting point for adding registry-driven skill discovery to a self-hosted agentic system.
+- **If you are evaluating AgentCore**: a reference for the registry integration pattern before adopting AgentCore Runtime or Gateway for compute.
 
 Financial analysis is used as the example domain — the registry-driven architecture pattern applies broadly.
 
@@ -23,22 +21,7 @@ Financial analysis is used as the example domain — the registry-driven archite
 | Example complexity | Advanced |
 | SDK used | Strands Agents SDK, Amazon Bedrock AgentCore SDK, boto3 |
 
-### Core Idea
-
-> **Separate what an agent knows how to do from the agent itself.**
-
-Skills, procedures, and tool dependencies are stored in the AWS Agent Registry as `SKILL.md` files. The agent is a generic executor. You can add or update skills without touching agent code or redeploying.
-
-```
-User prompt
-  → Registry search (find the right skill)
-    → Parse SKILL.md frontmatter (which MCP tools are needed)
-      → Load only those tools from the MCP server
-        → Bedrock reasoning loop (follow the skill procedure)
-          → Final answer
-```
-
-### System Architecture
+## Architecture
 
 ```
 Internet
@@ -57,35 +40,76 @@ Registry    API Gateway (HTTPS + SigV4)
  NAT GW          │
       │      MCP ALB (internal)
       │          │
-   Bedrock   MCP ECS (private subnet)
+   Amazon    MCP ECS (private subnet)
+   Bedrock
 ```
 
-#### Core Components
+### Components
 
 | Component | Technology | Role |
 |-----------|-----------|------|
-| AWS Agent Registry | Amazon Bedrock AgentCore | Stores skills and MCP server schemas; serves semantic search |
-| Strands Agent | Python / Strands SDK | Per-request: search registry → read skill → load tools → invoke Bedrock |
+| Agent Registry | AWS Agent Registry | Stores skills and MCP server schemas; serves semantic search |
+| Strands Agent | Python / Strands SDK | Per-request: search registry → read skill → load tools → invoke the model |
 | MCP Server | FastMCP / Python | Exposes `get_financial_data` and `get_kpi_benchmarks` tools |
 | Chat Interface | FastAPI + SSE | Browser-facing proxy; streams agent step events to the UI |
 | Infrastructure | ECS Fargate, API GW, VPC, CloudFormation | Private VPC; API Gateway bridges internal MCP server to the registry crawler |
 
-#### Two-Phase Request Flow
+### Two-Phase Request Flow
 
-**Phase 1 — Pre-flight (before Bedrock is called)**
+**Phase 1 — Pre-flight (before the model is invoked)**
 
 1. **Registry search** — the raw user message is used as the search query. The registry returns records ranked by vector similarity. The agent filters to `AGENT_SKILLS` records.
 2. **Parse frontmatter** — the top-ranked record's `SKILL.md` is parsed to read the `mcp_tools:` list.
 3. **Selective MCP tool loading** — connects to the MCP server and loads *only* the declared tools.
 4. **Build the Strands agent** — constructs the agent with base tools + the skill's MCP tools.
 
-**Phase 2 — Strands reasoning loop (Bedrock drives this)**
+**Phase 2 — Strands reasoning loop (the LLM drives this)**
 
-5. **Load full SKILL.md** — Bedrock calls `search_and_load_skill` to load the complete skill procedure.
-6. **Follow the procedure** — Bedrock calls the MCP tools as instructed by the skill steps.
+5. **Load full SKILL.md** — the LLM calls `search_and_load_skill` to load the complete skill procedure.
+6. **Follow the procedure** — the LLM calls the MCP tools as instructed by the skill steps.
 7. **Return answer** — results are streamed to the UI via SSE.
 
-### Key Features
+## What's in the Registry
+
+`setup.py` and `register_skills.py` populate the registry with two types of records:
+
+### MCP Record — `financial-tools-mcp`
+
+One MCP record pointing to the MCP server. The registry crawler fetches the live server at registration time and stores the tool schemas inline. This record contains:
+
+| Tool | Description |
+|------|-------------|
+| `get_financial_data` | Returns quarterly P&L data (revenue, COGS, operating expenses, EBITDA) for a given period |
+| `get_kpi_benchmarks` | Returns industry benchmark thresholds and KPI formulas (Gross Margin, EBITDA Margin, OpEx Ratio, Revenue Growth) |
+
+### AGENT_SKILLS Records — Five Skills
+
+Each skill is a `SKILL.md` file stored as inline content in the registry. Skills declare which MCP tools they need in their YAML frontmatter — the agent loads only those tools per request.
+
+| Skill | Description | MCP tools declared |
+|-------|-------------|-------------------|
+| `quarterly-kpi-calculator` | Calculates Gross Margin %, EBITDA Margin %, OpEx Ratio, and QoQ Revenue Growth from P&L data | `get_financial_data`, `get_kpi_benchmarks` |
+| `cost-efficiency-analyzer` | Analyzes cost structure and operating expense efficiency | `get_financial_data`, `get_kpi_benchmarks` |
+| `revenue-growth-analyst` | Deep-dives into top-line revenue growth across quarters | `get_financial_data` |
+| `multi-quarter-trend-analysis` | Produces a 4-quarter narrative trend analysis | `get_financial_data`, `get_kpi_benchmarks` |
+| `executive-financial-briefing` | One-page CFO/board-level financial briefing | `get_financial_data`, `get_kpi_benchmarks` |
+
+## Core Idea
+
+> **Separate what an agent knows how to do from the agent itself.**
+
+Skills, procedures, and tool dependencies are stored in the AWS Agent Registry as `SKILL.md` files. The agent is a generic executor. You can add or update skills without touching agent code or redeploying.
+
+```
+User prompt
+  → Registry search (find the right skill)
+    → Parse SKILL.md frontmatter (which MCP tools are needed)
+      → Load only those tools from the MCP server
+        → LLM reasoning loop (follow the skill procedure)
+          → Final answer
+```
+
+## Key Features
 
 - **Zero hardcoded skills** — the agent discovers all capabilities at runtime from the registry
 - **Selective tool loading** — only the MCP tools declared in a skill's frontmatter are loaded per request
@@ -248,16 +272,6 @@ Once deployed, interact with the agent using natural language:
 "Give me an executive briefing on how the business is doing"
 "Compare Q2 and Q3 2025 revenue growth"
 ```
-
-## Skills Reference
-
-| Skill | Trigger phrases | MCP tools used |
-|-------|----------------|----------------|
-| `quarterly-kpi-calculator` | "calculate KPIs", "gross margin", "EBITDA", "Q3 2025" | `get_financial_data`, `get_kpi_benchmarks` |
-| `cost-efficiency-analyzer` | "cost breakdown", "are we spending too much", "COGS ratio" | `get_financial_data`, `get_kpi_benchmarks` |
-| `revenue-growth-analyst` | "revenue growth", "top-line", "growth trajectory" | `get_financial_data` |
-| `multi-quarter-trend-analysis` | "show me the trend", "how are we trending", "4 quarters" | `get_financial_data`, `get_kpi_benchmarks` |
-| `executive-financial-briefing` | "briefing", "executive summary", "board update", "how is the business doing" | `get_financial_data`, `get_kpi_benchmarks` |
 
 ## Troubleshooting
 
