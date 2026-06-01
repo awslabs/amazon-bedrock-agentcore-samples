@@ -1,101 +1,68 @@
-# Amazon Bedrock Agent Integration with Dash0
+# AgentCore + Dash0 observability
 
-This example contains a demo of a Personal Assistant Agent built on top of [Bedrock AgentCore Agents](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/what-is-bedrock-agentcore.html) with [Dash0](https://www.dash0.com/) observability. The agent is instrumented with OpenTelemetry and exports traces and metrics to Dash0 via OTLP/HTTP.
+Deploy a Strands travel agent to AgentCore Runtime with traces, metrics, and logs sent to [Dash0](https://www.dash0.com/) via OTLP HTTP.
 
+## Architecture
+
+```
+AgentCore runtime → utils/travel_agent.py
+  └── OTel SDK
+        ├── OTLPSpanExporter   → {DASH0_OTLP_ENDPOINT}/v1/traces
+        ├── OTLPMetricExporter → {DASH0_OTLP_ENDPOINT}/v1/metrics
+        └── OTLPLogExporter    → {DASH0_OTLP_ENDPOINT}/v1/logs
+              headers: Authorization: Bearer <token>, Dash0-Dataset: <dataset>
+                └── Dash0 → Tracing, Metrics, Logs
+```
+
+`DISABLE_ADOT_OBSERVABILITY=true` bypasses the default CloudWatch ADOT pipeline so Dash0 receives all telemetry.
 
 ## Prerequisites
 
-- Python 3.11 or higher
-- Dash0 account
-- AWS Account with appropriate permissions
-- Access to the following AWS services:
-  - Amazon Bedrock
+- Python 3.10+, [uv](https://docs.astral.sh/uv/)
+- AWS credentials configured
+- [Dash0 account](https://www.dash0.com/)
 
+## Quick Start
 
-## Dash0 Instrumentation
+```bash
+pip install bedrock-agentcore boto3 python-dotenv
+cp .env.example .env
+# Edit .env: set DASH0_AUTH_TOKEN and DASH0_OTLP_ENDPOINT for your region
+python deploy.py
+python invoke.py
+# View telemetry: https://app.dash0.com → Tracing / Metrics / Logs
+python cleanup.py
+```
 
-> [!TIP]
-> For detailed setup instructions and configuration options, refer to the [Dash0 Documentation](https://dash0.com/docs) and the [Endpoints glossary](https://dash0.com/docs/dash0/miscellaneous/glossary/endpoints).
+## Dash0 Regions
 
-Bedrock AgentCore comes with [Observability](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/observability.html) support out-of-the-box.
-We register an [OpenTelemetry SDK](https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/overview.md#sdk) to send traces and metrics directly to Dash0 via OTLP HTTP.
+| Region | DASH0_OTLP_ENDPOINT |
+|:-------|:--------------------|
+| US West 2 (default) | `https://ingress.us-west-2.aws.dash0.com` |
+| EU West 1 | `https://ingress.eu-west-1.aws.dash0.com` |
 
-All the OTel configuration is encapsulated in [dash0.py](./dash0.py). Configure the following environment variables:
+> Find your endpoint at **app.dash0.com → Settings → Endpoints**.
+
+## Environment Variables
 
 | Variable | Description | Default |
-|---|---|---|
+|:---------|:------------|:--------|
 | `DASH0_AUTH_TOKEN` | Auth token from **Settings → Auth Tokens** | _(required)_ |
 | `DASH0_OTLP_ENDPOINT` | OTLP ingress base URL for your region | `https://ingress.us-west-2.aws.dash0.com` |
 | `DASH0_DATASET` | Dataset to route telemetry to | `default` |
-| `OTEL_SERVICE_NAME` | Service name shown in traces | `agentcore-dash0-demo` |
+| `OTEL_SERVICE_NAME` | Service name shown in Dash0 | `agentcore-travel-agent` |
 
+## Files
 
-## How to use
+| File | Description |
+|:-----|:------------|
+| `utils/travel_agent.py` | Agent with Dash0 OTel setup (traces, metrics, logs) |
+| `deploy.py` | Deploys to AgentCore Runtime with Dash0 env vars |
+| `invoke.py` | Invokes the deployed agent with sample travel prompts |
+| `cleanup.py` | Deletes all created AWS resources |
 
-### 1. Set your AWS credentials
+## Additional Resources
 
-Follow the [Amazon Bedrock AgentCore documentation](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime-permissions.html) to configure your AWS role with the correct policies. Then export your credentials:
-
-```bash
-export AWS_ACCESS_KEY_ID=your_access_key_id
-export AWS_SECRET_ACCESS_KEY=your_secret_key
-export AWS_REGION=us-east-1
-```
-
-Ensure your account has access to the model `us.anthropic.claude-sonnet-4-5-20250929-v1:0`. You can change the model via the `BEDROCK_MODEL_ID` environment variable.
-
-### 2. Set your Dash0 credentials
-
-1. Sign up for a [Dash0 account](https://www.dash0.com/) if you don't have one.
-2. Go to **Settings → Auth Tokens** and create a new token.
-3. Go to **Settings → Endpoints** to find your OTLP ingress URL.
-
-```bash
-export DASH0_AUTH_TOKEN=your_dash0_auth_token
-
-# Set the endpoint for your region:
-# US West 2: https://ingress.us-west-2.aws.dash0.com
-# EU West 1: https://ingress.eu-west-1.aws.dash0.com
-export DASH0_OTLP_ENDPOINT=https://ingress.us-west-2.aws.dash0.com
-
-export DASH0_DATASET=default
-```
-
-### 3. Run the app
-
-```bash
-uv run main.py
-```
-
-This starts an HTTP server on port `8080` implementing the `/invocations` endpoint required by AgentCore.
-
-### 4. Test locally
-
-```bash
-curl -X POST http://127.0.0.1:8080/invocations --data '{"prompt": "What is the weather now?"}'
-```
-
-### 5. Sample prompts
-
-Try these prompts to exercise the agent and generate trace data in Dash0:
-
-```bash
-curl -X POST http://127.0.0.1:8080/invocations --data '{"prompt": "What is the weather now?"}'
-curl -X POST http://127.0.0.1:8080/invocations --data '{"prompt": "What time is it in Tokyo?"}'
-curl -X POST http://127.0.0.1:8080/invocations --data '{"prompt": "Summarize the top news headlines today."}'
-```
-
-### 6. View traces in Dash0
-
-After invoking the agent, go to [app.dash0.com](https://app.dash0.com/) → **Tracing** and filter by `service.name = agentcore-dash0-demo`. Traces and metrics will appear under the `default` dataset.
-
-### 7. Deploy to AgentCore Runtime
-
-The agent is ready to be packaged as a container and deployed to AgentCore Runtime. Follow the step-by-step guide [here](https://github.com/awslabs/amazon-bedrock-agentcore-samples/blob/main/01-tutorials/01-AgentCore-runtime/01-hosting-agent/01-strands-with-bedrock-model/runtime_with_strands_and_bedrock_models.ipynb).
-
-
-## Clean Up
-
-1. Stop the local server: press `Ctrl+C` in the terminal running `uv run main.py`.
-2. If deployed to AgentCore Runtime, delete the runtime endpoint and ECR image via the AWS Console or CLI.
-3. Revoke the `DASH0_AUTH_TOKEN` in Dash0 under **Settings → Auth Tokens** if it is no longer needed.
+- [Dash0 Documentation](https://dash0.com/docs)
+- [Dash0 Endpoints glossary](https://dash0.com/docs/dash0/miscellaneous/glossary/endpoints)
+- [AgentCore observability](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/observability-configure.html)
