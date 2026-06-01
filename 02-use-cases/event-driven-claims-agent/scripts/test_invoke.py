@@ -50,6 +50,8 @@ def get_cognito_token(region: str) -> tuple[str, str]:
         },
     )
 
+    if not token_endpoint.startswith("https://"):
+        raise ValueError(f"Only HTTPS URLs are permitted: {token_endpoint}")
     with urllib.request.urlopen(req) as resp:
         token_data = json.loads(resp.read())
 
@@ -75,6 +77,8 @@ def invoke_and_stream(token: str, runtime_arn: str, region: str, prompt: str):
     print(f"\033[90m━━━ Agent Response ━━━\033[0m\n")
 
     try:
+        if not url.startswith("https://"):
+            raise ValueError(f"Only HTTPS URLs are permitted: {url}")
         with urllib.request.urlopen(req, timeout=180) as resp:
             for line in resp:
                 decoded = line.decode("utf-8").strip()

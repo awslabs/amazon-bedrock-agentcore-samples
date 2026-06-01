@@ -42,6 +42,8 @@ def get_cognito_token():
         },
     )
 
+    if not token_endpoint.startswith("https://"):
+        raise ValueError(f"Only HTTPS URLs are permitted: {token_endpoint}")
     with urllib.request.urlopen(req) as resp:
         token_data = json.loads(resp.read())
 
@@ -65,6 +67,8 @@ def invoke_runtime_with_jwt(token, payload_dict):
     )
 
     # Buffer streaming SSE response into clean text
+    if not url.startswith("https://"):
+        raise ValueError(f"Only HTTPS URLs are permitted: {url}")
     content_parts = []
     with urllib.request.urlopen(req, timeout=120) as resp:
         for line in resp:

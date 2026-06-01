@@ -15,4 +15,11 @@ COPY . .
 
 # AgentCore Runtime: OTel instrumentation wraps the agent
 EXPOSE 8080
+
+RUN useradd -r -s /bin/false appuser
+USER appuser
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')" || exit 1
+
 ENTRYPOINT ["opentelemetry-instrument", "python", "main.py"]

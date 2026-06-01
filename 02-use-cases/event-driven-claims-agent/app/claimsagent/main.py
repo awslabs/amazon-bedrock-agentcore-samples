@@ -112,6 +112,8 @@ def _get_gateway_token():
             },
         )
         
+        if not GATEWAY_TOKEN_ENDPOINT.startswith("https://"):
+            raise ValueError(f"Only HTTPS URLs are permitted: {GATEWAY_TOKEN_ENDPOINT}")
         with urllib.request.urlopen(req) as resp:
             token_data = json.loads(resp.read())
         
