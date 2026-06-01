@@ -15,6 +15,7 @@ from aws_cdk import (
     Duration,
     RemovalPolicy,
     Stack,
+    Tags,
     aws_bedrockagentcore as agentcore,
     aws_bedrock_agentcore_alpha as agentcore_alpha,
     aws_cognito as cognito,
@@ -33,6 +34,7 @@ from constructs import Construct
 class ClaimsInfraStack(Stack):
     def __init__(self, scope: Construct, id: str, **kwargs) -> None:
         super().__init__(scope, id, **kwargs)
+        Tags.of(self).add("auto-delete", "no")
 
         # ======================================================================
         # INFRASTRUCTURE (existing resources)
