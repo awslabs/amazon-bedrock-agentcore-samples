@@ -19,7 +19,9 @@ import pytest
 SAMPLE_JWT_SECRET = "test-secret-key-for-jwt-signing-in-tests-only"
 
 # Public key placeholder for tests that need it
-SAMPLE_PUBLIC_KEY = SAMPLE_JWT_SECRET  # Use same secret for HS256 symmetric verification
+SAMPLE_PUBLIC_KEY = (
+    SAMPLE_JWT_SECRET  # Use same secret for HS256 symmetric verification
+)
 
 
 @pytest.fixture
@@ -34,7 +36,10 @@ def sample_jwt_payload() -> Dict[str, Any]:
     return {
         "iss": "https://your-tenant.auth0.com/",
         "sub": "auth0|123456789",
-        "aud": ["https://agentcore-financial-api", "https://your-tenant.auth0.com/userinfo"],
+        "aud": [
+            "https://agentcore-financial-api",
+            "https://your-tenant.auth0.com/userinfo",
+        ],
         "azp": "abc123ClientId",
         "exp": int((now + timedelta(hours=24)).timestamp()),
         "iat": int(now.timestamp()),
@@ -50,12 +55,18 @@ def sample_jwt_payload() -> Dict[str, Any]:
         ),
         # permissions: RBAC-restricted (user-level, per Auth0 role assignment)
         "permissions": [
-            "openid", "profile", "email",
-            "profile:personal:read", "profile:personal:write",
-            "profile:preferences:read", "profile:preferences:write",
-            "accounts:savings:read", "accounts:savings:write",
+            "openid",
+            "profile",
+            "email",
+            "profile:personal:read",
+            "profile:personal:write",
+            "profile:preferences:read",
+            "profile:preferences:write",
+            "accounts:savings:read",
+            "accounts:savings:write",
             "accounts:transaction:read",
-            "accounts:credit:read", "accounts:credit:write",
+            "accounts:credit:read",
+            "accounts:credit:write",
             "accounts:investment:read",
         ],
         # Custom claims
@@ -86,7 +97,10 @@ def profile_only_jwt_claims() -> Dict[str, Any]:
     return {
         "iss": "https://your-tenant.auth0.com/",
         "sub": "auth0|profile-only-user",
-        "aud": ["https://agentcore-financial-api", "https://your-tenant.auth0.com/userinfo"],
+        "aud": [
+            "https://agentcore-financial-api",
+            "https://your-tenant.auth0.com/userinfo",
+        ],
         "azp": "abc123ClientId",
         "exp": int((now + timedelta(hours=24)).timestamp()),
         "iat": int(now.timestamp()),
@@ -102,9 +116,13 @@ def profile_only_jwt_claims() -> Dict[str, Any]:
         ),
         # permissions: RBAC-restricted — profile-only role, NO accounts scopes
         "permissions": [
-            "openid", "profile", "email",
-            "profile:personal:read", "profile:personal:write",
-            "profile:preferences:read", "profile:preferences:write",
+            "openid",
+            "profile",
+            "email",
+            "profile:personal:read",
+            "profile:personal:write",
+            "profile:preferences:read",
+            "profile:preferences:write",
         ],
         # Custom claims
         "https://agentcore.example.com/customer_id": "CUST-00099",
@@ -175,21 +193,33 @@ def sample_user_context() -> Dict[str, Any]:
         "roles": ["customer", "premium"],
         "kyc_status": "verified",
         "permissions": [
-            "openid", "profile", "email",
-            "profile:personal:read", "profile:personal:write",
-            "profile:preferences:read", "profile:preferences:write",
-            "accounts:savings:read", "accounts:savings:write",
+            "openid",
+            "profile",
+            "email",
+            "profile:personal:read",
+            "profile:personal:write",
+            "profile:preferences:read",
+            "profile:preferences:write",
+            "accounts:savings:read",
+            "accounts:savings:write",
             "accounts:transaction:read",
-            "accounts:credit:read", "accounts:credit:write",
+            "accounts:credit:read",
+            "accounts:credit:write",
             "accounts:investment:read",
         ],
         "scopes": [
-            "openid", "profile", "email",
-            "profile:personal:read", "profile:personal:write",
-            "profile:preferences:read", "profile:preferences:write",
-            "accounts:savings:read", "accounts:savings:write",
+            "openid",
+            "profile",
+            "email",
+            "profile:personal:read",
+            "profile:personal:write",
+            "profile:preferences:read",
+            "profile:preferences:write",
+            "accounts:savings:read",
+            "accounts:savings:write",
             "accounts:transaction:read",
-            "accounts:credit:read", "accounts:credit:write",
+            "accounts:credit:read",
+            "accounts:credit:write",
             "accounts:investment:read",
         ],
     }
@@ -211,14 +241,22 @@ def profile_only_user_context() -> Dict[str, Any]:
         "roles": ["customer"],
         "kyc_status": "verified",
         "permissions": [
-            "openid", "profile", "email",
-            "profile:personal:read", "profile:personal:write",
-            "profile:preferences:read", "profile:preferences:write",
+            "openid",
+            "profile",
+            "email",
+            "profile:personal:read",
+            "profile:personal:write",
+            "profile:preferences:read",
+            "profile:preferences:write",
         ],
         "scopes": [
-            "openid", "profile", "email",
-            "profile:personal:read", "profile:personal:write",
-            "profile:preferences:read", "profile:preferences:write",
+            "openid",
+            "profile",
+            "email",
+            "profile:personal:read",
+            "profile:personal:write",
+            "profile:preferences:read",
+            "profile:preferences:write",
         ],
     }
 
@@ -239,17 +277,25 @@ def accounts_only_user_context() -> Dict[str, Any]:
         "roles": ["customer"],
         "kyc_status": "verified",
         "permissions": [
-            "openid", "profile", "email",
-            "accounts:savings:read", "accounts:savings:write",
+            "openid",
+            "profile",
+            "email",
+            "accounts:savings:read",
+            "accounts:savings:write",
             "accounts:transaction:read",
-            "accounts:credit:read", "accounts:credit:write",
+            "accounts:credit:read",
+            "accounts:credit:write",
             "accounts:investment:read",
         ],
         "scopes": [
-            "openid", "profile", "email",
-            "accounts:savings:read", "accounts:savings:write",
+            "openid",
+            "profile",
+            "email",
+            "accounts:savings:read",
+            "accounts:savings:write",
             "accounts:transaction:read",
-            "accounts:credit:read", "accounts:credit:write",
+            "accounts:credit:read",
+            "accounts:credit:write",
             "accounts:investment:read",
         ],
     }
@@ -339,7 +385,10 @@ def mock_jwt_validator() -> Mock:
 @pytest.fixture
 def auth_headers(sample_jwt_token: str) -> Dict[str, str]:
     """Generate authentication headers with JWT token."""
-    return {"Authorization": f"Bearer {sample_jwt_token}", "Content-Type": "application/json"}
+    return {
+        "Authorization": f"Bearer {sample_jwt_token}",
+        "Content-Type": "application/json",
+    }
 
 
 @pytest.fixture
@@ -380,7 +429,9 @@ def mock_secrets_manager() -> Mock:
     client.exceptions.ResourceNotFoundException = type(
         "ResourceNotFoundException", (Exception,), {}
     )
-    client.exceptions.AccessDeniedException = type("AccessDeniedException", (Exception,), {})
+    client.exceptions.AccessDeniedException = type(
+        "AccessDeniedException", (Exception,), {}
+    )
 
     return client
 
@@ -395,7 +446,9 @@ def mock_secrets_manager_with_versions() -> Mock:
     client.exceptions.ResourceNotFoundException = type(
         "ResourceNotFoundException", (Exception,), {}
     )
-    client.exceptions.AccessDeniedException = type("AccessDeniedException", (Exception,), {})
+    client.exceptions.AccessDeniedException = type(
+        "AccessDeniedException", (Exception,), {}
+    )
 
     def get_secret_value(SecretId, VersionStage="AWSCURRENT"):
         if VersionStage == "AWSCURRENT":

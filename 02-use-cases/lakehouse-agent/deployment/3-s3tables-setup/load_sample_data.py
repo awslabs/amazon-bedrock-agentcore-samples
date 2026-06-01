@@ -11,65 +11,62 @@ import os
 import time
 
 # Add parent directory to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../..'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
 from utils.aws_session_utils import get_aws_session
+
 
 def wait_for_query(athena, query_id, max_wait=120):
     """Wait for Athena query to complete."""
     for _ in range(max_wait):
         response = athena.get_query_execution(QueryExecutionId=query_id)
-        status = response['QueryExecution']['Status']['State']
-        
-        if status in ['SUCCEEDED', 'FAILED', 'CANCELLED']:
+        status = response["QueryExecution"]["Status"]["State"]
+
+        if status in ["SUCCEEDED", "FAILED", "CANCELLED"]:
             return response
-        
+
         time.sleep(1)
-    
+
     return None
+
 
 def execute_query(athena, query, catalog, database, output_location, retries=2):
     """Execute an Athena query and wait for completion. Retries on transient failures."""
     for attempt in range(retries + 1):
         response = athena.start_query_execution(
             QueryString=query,
-            QueryExecutionContext={
-                'Catalog': catalog,
-                'Database': database
-            },
-            ResultConfiguration={
-                'OutputLocation': output_location
-            }
+            QueryExecutionContext={"Catalog": catalog, "Database": database},
+            ResultConfiguration={"OutputLocation": output_location},
         )
-        
-        query_id = response['QueryExecutionId']
+
+        query_id = response["QueryExecutionId"]
         print(f"      Query ID: {query_id}")
-        
+
         result = wait_for_query(athena, query_id)
-        
+
         if not result:
             try:
                 current = athena.get_query_execution(QueryExecutionId=query_id)
                 print(f"      Status: {current['QueryExecution']['Status']}")
             except Exception:
                 pass
-            raise Exception(f"Query timeout after 120 seconds")
-        
-        status = result['QueryExecution']['Status']['State']
-        
-        if status == 'SUCCEEDED':
+            raise Exception("Query timeout after 120 seconds")
+
+        status = result["QueryExecution"]["Status"]["State"]
+
+        if status == "SUCCEEDED":
             return query_id
-        
-        error_msg = result['QueryExecution']['Status'].get('StateChangeReason', 'Unknown error')
-        athena_error = result['QueryExecution']['Status'].get('AthenaError', {})
+
+        error_msg = result["QueryExecution"]["Status"].get("StateChangeReason", "Unknown error")
+        athena_error = result["QueryExecution"]["Status"].get("AthenaError", {})
         if athena_error:
-            error_category = athena_error.get('ErrorCategory', '')
-            error_message = athena_error.get('ErrorMessage', error_msg)
-            error_type = athena_error.get('ErrorType', '')
+            error_category = athena_error.get("ErrorCategory", "")
+            error_message = athena_error.get("ErrorMessage", error_msg)
+            error_type = athena_error.get("ErrorType", "")
             error_msg = f"{error_category} ({error_type}): {error_message}"
-        
+
         if attempt < retries:
             print(f"      ⚠️  Attempt {attempt + 1} failed: {error_msg}")
-            print(f"      🔄 Retrying in 5 seconds...")
+            print("      🔄 Retrying in 5 seconds...")
             time.sleep(5)
         else:
             print(f"      ❌ Query execution failed after {retries + 1} attempts:")
@@ -77,54 +74,52 @@ def execute_query(athena, query, catalog, database, output_location, retries=2):
             print(f"         Error: {error_msg}")
             raise Exception(f"Query failed: {error_msg}")
 
+
 def main():
     print("\n📤 Loading sample data into S3 Tables...")
-    
+
     session, region, account_id = get_aws_session()
-    ssm = boto3.client('ssm', region_name=region)
-    
+    ssm = boto3.client("ssm", region_name=region)
+
     # Assume the administrators role for Lake Formation permissions
-    admin_role_arn = ssm.get_parameter(
-        Name='/app/lakehouse-agent/roles/lakehouse-administrators-role'
-    )['Parameter']['Value']
-    
+    admin_role_arn = ssm.get_parameter(Name="/app/lakehouse-agent/roles/lakehouse-administrators-role")["Parameter"][
+        "Value"
+    ]
+
     print(f"   Assuming admin role: {admin_role_arn}")
-    
-    sts = boto3.client('sts', region_name=region)
-    assumed = sts.assume_role(
-        RoleArn=admin_role_arn,
-        RoleSessionName='load-sample-data'
-    )
-    creds = assumed['Credentials']
-    
+
+    sts = boto3.client("sts", region_name=region)
+    assumed = sts.assume_role(RoleArn=admin_role_arn, RoleSessionName="load-sample-data")
+    creds = assumed["Credentials"]
+
     # Create Athena client with assumed admin role credentials
     athena = boto3.client(
-        'athena',
+        "athena",
         region_name=region,
-        aws_access_key_id=creds['AccessKeyId'],
-        aws_secret_access_key=creds['SecretAccessKey'],
-        aws_session_token=creds['SessionToken']
+        aws_access_key_id=creds["AccessKeyId"],
+        aws_secret_access_key=creds["SecretAccessKey"],
+        aws_session_token=creds["SessionToken"],
     )
-    
-    print(f"   ✅ Assumed admin role successfully")
-    
+
+    print("   ✅ Assumed admin role successfully")
+
     # Get configuration from SSM
-    table_bucket_name = ssm.get_parameter(Name='/app/lakehouse-agent/table-bucket-name')['Parameter']['Value']
-    namespace = ssm.get_parameter(Name='/app/lakehouse-agent/namespace')['Parameter']['Value']
-    catalog_name = ssm.get_parameter(Name='/app/lakehouse-agent/catalog-name')['Parameter']['Value']
-    
+    ssm.get_parameter(Name="/app/lakehouse-agent/table-bucket-name")["Parameter"]["Value"]
+    namespace = ssm.get_parameter(Name="/app/lakehouse-agent/namespace")["Parameter"]["Value"]
+    catalog_name = ssm.get_parameter(Name="/app/lakehouse-agent/catalog-name")["Parameter"]["Value"]
+
     # Get S3 output location
-    output_bucket = ssm.get_parameter(Name='/app/lakehouse-agent/s3-bucket-name')['Parameter']['Value']
-    
+    output_bucket = ssm.get_parameter(Name="/app/lakehouse-agent/s3-bucket-name")["Parameter"]["Value"]
+
     output_location = f"s3://{output_bucket}/athena-results/"
-    
+
     print(f"   Catalog: {catalog_name}")
     print(f"   Database: {namespace}")
     print(f"   Output: {output_location}")
-    
+
     # Insert claims data
     print("\n📊 Loading claims data...")
-    
+
     claims_inserts = [
         # Claims for policyholder001@example.com (John Doe)
         """
@@ -226,9 +221,9 @@ def main():
             'policyholder002@example.com', 'adjuster002@example.com',
             TIMESTAMP '2024-03-26 09:45:00', 'adjuster002@example.com'
         )
-        """
+        """,
     ]
-    
+
     for i, insert_query in enumerate(claims_inserts, 1):
         try:
             execute_query(athena, insert_query, catalog_name, namespace, output_location)
@@ -236,10 +231,10 @@ def main():
         except Exception as e:
             print(f"   ❌ Failed to insert claim {i}: {e}")
         time.sleep(1)  # Small delay between Iceberg writes
-    
+
     # Insert users data
     print("\n👥 Loading users data...")
-    
+
     users_inserts = [
         """
         INSERT INTO users VALUES (
@@ -270,9 +265,9 @@ def main():
             'admin@example.com', 'Admin User', 'admin',
             'IT Department', TIMESTAMP '2022-01-01 00:00:00'
         )
-        """
+        """,
     ]
-    
+
     for i, insert_query in enumerate(users_inserts, 1):
         try:
             execute_query(athena, insert_query, catalog_name, namespace, output_location)
@@ -280,11 +275,12 @@ def main():
         except Exception as e:
             print(f"   ❌ Failed to insert user {i}: {e}")
         time.sleep(1)  # Small delay between Iceberg writes
-    
+
     print("\n✨ Data loading complete!")
-    print(f"\n📊 Verify data with:")
+    print("\n📊 Verify data with:")
     print(f"   SELECT COUNT(*) FROM {catalog_name}.{namespace}.claims")
     print(f"   SELECT COUNT(*) FROM {catalog_name}.{namespace}.users")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()

@@ -7,7 +7,7 @@ that loads credentials from .env and creates a validated AWS session.
 
 Usage in notebooks:
     from utils.notebook_init import init_aws
-    
+
     session, region, account_id = init_aws()
 """
 
@@ -17,10 +17,10 @@ import boto3
 
 
 def init_aws(
-    env_path: str = '.env',
+    env_path: str = ".env",
     profile_name: str = None,
     region_name: str = None,
-    verbose: bool = True
+    verbose: bool = True,
 ) -> Tuple[boto3.Session, str, str]:
     """
     Initialize AWS session for notebook use with automatic SSO fallback.
@@ -54,12 +54,10 @@ def init_aws(
     """
     # Try to load credentials from .env file
     load_env_credentials(env_path=env_path, verbose=verbose)
-    
+
     # Create and validate AWS session
     session, region, account_id = get_aws_session(
-        profile_name=profile_name,
-        region_name=region_name,
-        verbose=verbose
+        profile_name=profile_name, region_name=region_name, verbose=verbose
     )
-    
+
     return session, region, account_id

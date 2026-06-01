@@ -7,7 +7,7 @@ to avoid code duplication and maintain consistency.
 Modules:
 - config: Configuration loading and management
 - auth: OAuth token management
-- mcp: MCP client management  
+- mcp: MCP client management
 - memory: AgentCore Memory integration
 - responses: Response formatting utilities
 """

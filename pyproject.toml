@@ -1,0 +1,9 @@
+[tool.ruff]
+# This is a samples/tutorial repository. Some rules are relaxed to accommodate
+# tutorial-style code patterns (e.g., env setup before imports).
+line-length = 120
+
+[tool.ruff.lint]
+# E402: Module level import not at top of file — common in tutorial scripts
+#        that configure environment (os.environ, dotenv) before importing modules
+ignore = ["E402"]

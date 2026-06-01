@@ -48,7 +48,10 @@ app = Flask(__name__, template_folder="../templates", static_folder="../static")
 
 if not FLASK_SECRET_KEY:
     import secrets
-    logger.warning("⚠️  FLASK_SECRET_KEY not set - generating random key for this session")
+
+    logger.warning(
+        "⚠️  FLASK_SECRET_KEY not set - generating random key for this session"
+    )
     app.config["SECRET_KEY"] = secrets.token_hex(32)
 else:
     app.config["SECRET_KEY"] = FLASK_SECRET_KEY
@@ -391,7 +394,7 @@ def download_file(filename):
         # Prevent path traversal
         if ".." in filename or filename.startswith("/"):
             return jsonify({"error": "Invalid filename"}), 400
-        
+
         filepath = os.path.join(OUTPUT_DIR, filename)
         if not os.path.exists(filepath):
             flash(f"File {filename} not found", "error")
@@ -412,7 +415,7 @@ def preview_file(filename):
         # Prevent path traversal
         if ".." in filename or filename.startswith("/"):
             return jsonify({"error": "Invalid filename"}), 400
-        
+
         filepath = os.path.join(OUTPUT_DIR, filename)
         if not os.path.exists(filepath) or not filename.endswith(".html"):
             return jsonify({"error": f"HTML file {filename} not found"}), 404

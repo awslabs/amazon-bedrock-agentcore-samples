@@ -53,8 +53,10 @@ def _get_cognito_token(
             "grant_type": "client_credentials",
             "scope": "invoke:gateway",
         }
+
         # Send as JSON for Auth0
-        response_method = lambda: requests.post(url, headers=headers, json=data)
+        def response_method():
+            return requests.post(url, headers=headers, json=data)
     else:
         # Cognito format
         url = f"{cognito_domain_url.rstrip('/')}/oauth2/token"
@@ -64,8 +66,10 @@ def _get_cognito_token(
             "client_id": client_id,
             "client_secret": client_secret,
         }
+
         # Send as form data for Cognito
-        response_method = lambda: requests.post(url, headers=headers, data=data)
+        def response_method():
+            return requests.post(url, headers=headers, data=data)
 
     try:
         # Make the request

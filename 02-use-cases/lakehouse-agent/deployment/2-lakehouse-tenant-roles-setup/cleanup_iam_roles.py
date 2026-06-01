@@ -18,15 +18,15 @@ import sys
 import os
 import argparse
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../..'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
 from utils.aws_session_utils import get_aws_session
 
 
 class IAMRolesCleanup:
     def __init__(self, keep_ssm=False):
         session, self.region, self.account_id = get_aws_session()
-        self.iam = boto3.client('iam')
-        self.ssm = boto3.client('ssm', region_name=self.region)
+        self.iam = boto3.client("iam")
+        self.ssm = boto3.client("ssm", region_name=self.region)
         self.keep_ssm = keep_ssm
 
     def _delete_role(self, role_name):
@@ -38,17 +38,17 @@ class IAMRolesCleanup:
 
         try:
             # Delete inline policies
-            for p in self.iam.list_role_policies(RoleName=role_name)['PolicyNames']:
+            for p in self.iam.list_role_policies(RoleName=role_name)["PolicyNames"]:
                 self.iam.delete_role_policy(RoleName=role_name, PolicyName=p)
 
             # Detach managed policies
-            for p in self.iam.list_attached_role_policies(RoleName=role_name)['AttachedPolicies']:
-                self.iam.detach_role_policy(RoleName=role_name, PolicyArn=p['PolicyArn'])
+            for p in self.iam.list_attached_role_policies(RoleName=role_name)["AttachedPolicies"]:
+                self.iam.detach_role_policy(RoleName=role_name, PolicyArn=p["PolicyArn"])
 
             # Remove from instance profiles
-            for ip in self.iam.list_instance_profiles_for_role(RoleName=role_name)['InstanceProfiles']:
+            for ip in self.iam.list_instance_profiles_for_role(RoleName=role_name)["InstanceProfiles"]:
                 self.iam.remove_role_from_instance_profile(
-                    InstanceProfileName=ip['InstanceProfileName'], RoleName=role_name
+                    InstanceProfileName=ip["InstanceProfileName"], RoleName=role_name
                 )
 
             self.iam.delete_role(RoleName=role_name)
@@ -59,16 +59,16 @@ class IAMRolesCleanup:
     def delete_tenant_roles(self):
         print("\n🗑️  Deleting tenant IAM roles...")
         roles = [
-            'lakehouse-policyholders-role',
-            'lakehouse-adjusters-role',
-            'lakehouse-administrators-role',
+            "lakehouse-policyholders-role",
+            "lakehouse-adjusters-role",
+            "lakehouse-administrators-role",
         ]
         for role in roles:
             self._delete_role(role)
 
     def delete_lakeformation_role(self):
         print("\n🗑️  Deleting Lake Formation data access role...")
-        self._delete_role('LakeFormationS3TablesDataAccessRole')
+        self._delete_role("LakeFormationS3TablesDataAccessRole")
 
     def delete_ssm_parameters(self):
         if self.keep_ssm:
@@ -76,14 +76,14 @@ class IAMRolesCleanup:
             return
         print("\n🗑️  Deleting SSM parameters...")
         params = [
-            'roles/lakehouse-policyholders-role',
-            'roles/lakehouse-adjusters-role',
-            'roles/lakehouse-administrators-role',
-            'lakeformation-role-arn',
+            "roles/lakehouse-policyholders-role",
+            "roles/lakehouse-adjusters-role",
+            "roles/lakehouse-administrators-role",
+            "lakeformation-role-arn",
         ]
         for p in params:
             try:
-                self.ssm.delete_parameter(Name=f'/app/lakehouse-agent/{p}')
+                self.ssm.delete_parameter(Name=f"/app/lakehouse-agent/{p}")
                 print(f"   ✅ Deleted: /app/lakehouse-agent/{p}")
             except self.ssm.exceptions.ParameterNotFound:
                 pass
@@ -91,7 +91,7 @@ class IAMRolesCleanup:
                 print(f"   ❌ Error: {e}")
 
     def run(self):
-        print(f"\n🧹 IAM Roles Cleanup")
+        print("\n🧹 IAM Roles Cleanup")
         print(f"   Region: {self.region}")
         print(f"   Account: {self.account_id}")
         self.delete_tenant_roles()
@@ -101,11 +101,11 @@ class IAMRolesCleanup:
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Cleanup IAM tenant roles')
-    parser.add_argument('--keep-ssm', action='store_true', help='Keep SSM parameters')
+    parser = argparse.ArgumentParser(description="Cleanup IAM tenant roles")
+    parser.add_argument("--keep-ssm", action="store_true", help="Keep SSM parameters")
     args = parser.parse_args()
     IAMRolesCleanup(keep_ssm=args.keep_ssm).run()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

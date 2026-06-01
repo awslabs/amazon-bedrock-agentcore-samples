@@ -59,7 +59,8 @@ Resources:
   AgentECRRepository:
     Type: AWS::ECR::Repository
     Properties:
-      RepositoryName: !Sub 'csvpc-${Environment}-agent-repository'
+            ImageTagMutability: IMMUTABLE
+RepositoryName: !Sub 'csvpc-${Environment}-agent-repository'
       ImageScanningConfiguration:
         ScanOnPush: true
       LifecyclePolicy:
@@ -894,7 +895,8 @@ Resources:
   AgentRuntimeLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupClass: STANDARD
+            RetentionInDays: 30
+LogGroupClass: STANDARD
       LogGroupName: !Sub "/aws/vendedlogs/bedrock-agentcore/${AgentRuntime.AgentRuntimeId}"
 
   AgentRuntimeDeliverSourceApplicationLogs:

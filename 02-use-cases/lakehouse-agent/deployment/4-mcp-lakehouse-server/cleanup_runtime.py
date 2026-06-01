@@ -21,29 +21,29 @@ import argparse
 import time
 from pathlib import Path
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../..'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
 from utils.aws_session_utils import get_aws_session
 
 
 class MCPRuntimeCleanup:
     def __init__(self, keep_ssm=False):
         session, self.region, self.account_id = get_aws_session()
-        self.bedrock = boto3.client('bedrock-agentcore-control', region_name=self.region)
-        self.iam = boto3.client('iam')
-        self.ecr = boto3.client('ecr', region_name=self.region)
-        self.codebuild = boto3.client('codebuild', region_name=self.region)
-        self.ssm = boto3.client('ssm', region_name=self.region)
+        self.bedrock = boto3.client("bedrock-agentcore-control", region_name=self.region)
+        self.iam = boto3.client("iam")
+        self.ecr = boto3.client("ecr", region_name=self.region)
+        self.codebuild = boto3.client("codebuild", region_name=self.region)
+        self.ssm = boto3.client("ssm", region_name=self.region)
         self.keep_ssm = keep_ssm
 
     def _get_ssm_param(self, name, default=None):
         try:
-            return self.ssm.get_parameter(Name=f'/app/lakehouse-agent/{name}')['Parameter']['Value']
+            return self.ssm.get_parameter(Name=f"/app/lakehouse-agent/{name}")["Parameter"]["Value"]
         except Exception:
             return default
 
     def delete_runtime(self):
         print("\n🗑️  Deleting MCP Server Runtime...")
-        runtime_id = self._get_ssm_param('mcp-server-runtime-id')
+        runtime_id = self._get_ssm_param("mcp-server-runtime-id")
         if not runtime_id:
             print("   ⏭️  No runtime ID found in SSM")
             return
@@ -59,17 +59,17 @@ class MCPRuntimeCleanup:
 
     def delete_iam_role(self):
         print("\n🗑️  Deleting IAM execution role...")
-        role_name = 'AgentCoreRuntimeRole-lakehouse-mcp'
+        role_name = "AgentCoreRuntimeRole-lakehouse-mcp"
         try:
             self.iam.get_role(RoleName=role_name)
         except self.iam.exceptions.NoSuchEntityException:
             print(f"   ⏭️  Role not found: {role_name}")
             return
         try:
-            for p in self.iam.list_role_policies(RoleName=role_name)['PolicyNames']:
+            for p in self.iam.list_role_policies(RoleName=role_name)["PolicyNames"]:
                 self.iam.delete_role_policy(RoleName=role_name, PolicyName=p)
-            for p in self.iam.list_attached_role_policies(RoleName=role_name)['AttachedPolicies']:
-                self.iam.detach_role_policy(RoleName=role_name, PolicyArn=p['PolicyArn'])
+            for p in self.iam.list_attached_role_policies(RoleName=role_name)["AttachedPolicies"]:
+                self.iam.detach_role_policy(RoleName=role_name, PolicyArn=p["PolicyArn"])
             self.iam.delete_role(RoleName=role_name)
             print(f"   ✅ Deleted role: {role_name}")
         except Exception as e:
@@ -78,8 +78,8 @@ class MCPRuntimeCleanup:
     def delete_ecr_repository(self):
         print("\n🗑️  Deleting ECR repository...")
         repo_names = [
-            'bedrock-agentcore-lakehouse_mcp_server',
-            'bedrock-agentcore-mcp_lakehouse_server',
+            "bedrock-agentcore-lakehouse_mcp_server",
+            "bedrock-agentcore-mcp_lakehouse_server",
         ]
         for repo_name in repo_names:
             try:
@@ -93,8 +93,8 @@ class MCPRuntimeCleanup:
     def delete_codebuild_project(self):
         print("\n🗑️  Deleting CodeBuild project...")
         project_names = [
-            'bedrock-agentcore-lakehouse_mcp_server-builder',
-            'bedrock-agentcore-mcp_lakehouse_server-builder',
+            "bedrock-agentcore-lakehouse_mcp_server-builder",
+            "bedrock-agentcore-mcp_lakehouse_server-builder",
         ]
         for name in project_names:
             try:
@@ -106,7 +106,11 @@ class MCPRuntimeCleanup:
     def delete_local_config(self):
         print("\n🗑️  Deleting local config files...")
         config_dir = Path(__file__).parent
-        for f in ['.bedrock_agentcore.yaml', '.bedrock_agentcore.yaml.bk', '.dockerignore']:
+        for f in [
+            ".bedrock_agentcore.yaml",
+            ".bedrock_agentcore.yaml.bk",
+            ".dockerignore",
+        ]:
             path = config_dir / f
             if path.exists():
                 path.unlink()
@@ -117,10 +121,10 @@ class MCPRuntimeCleanup:
             print("\n⏭️  Keeping SSM parameters (--keep-ssm)")
             return
         print("\n🗑️  Deleting SSM parameters...")
-        params = ['mcp-server-runtime-arn', 'mcp-server-runtime-id']
+        params = ["mcp-server-runtime-arn", "mcp-server-runtime-id"]
         for p in params:
             try:
-                self.ssm.delete_parameter(Name=f'/app/lakehouse-agent/{p}')
+                self.ssm.delete_parameter(Name=f"/app/lakehouse-agent/{p}")
                 print(f"   ✅ Deleted: /app/lakehouse-agent/{p}")
             except self.ssm.exceptions.ParameterNotFound:
                 pass
@@ -128,7 +132,7 @@ class MCPRuntimeCleanup:
                 print(f"   ❌ Error: {e}")
 
     def run(self):
-        print(f"\n🧹 MCP Server Runtime Cleanup")
+        print("\n🧹 MCP Server Runtime Cleanup")
         print(f"   Region: {self.region}")
         print(f"   Account: {self.account_id}")
         self.delete_runtime()
@@ -141,11 +145,11 @@ class MCPRuntimeCleanup:
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Cleanup MCP Server Runtime')
-    parser.add_argument('--keep-ssm', action='store_true', help='Keep SSM parameters')
+    parser = argparse.ArgumentParser(description="Cleanup MCP Server Runtime")
+    parser.add_argument("--keep-ssm", action="store_true", help="Keep SSM parameters")
     args = parser.parse_args()
     MCPRuntimeCleanup(keep_ssm=args.keep_ssm).run()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

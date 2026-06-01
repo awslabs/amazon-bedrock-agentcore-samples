@@ -16,6 +16,7 @@ class AgentRequest:
     This encapsulates a user message along with their authenticated context
     and any additional metadata needed for processing.
     """
+
     session_id: str
     user_message: str
     user_context: UserContext
@@ -35,9 +36,9 @@ class AgentRequest:
                 "scopes": self.user_context.scopes,
                 "kyc_status": self.user_context.kyc_status,
                 "token_expiry": self.user_context.token_expiry.isoformat(),
-                "raw_claims": self.user_context.raw_claims
+                "raw_claims": self.user_context.raw_claims,
             },
-            "metadata": self.metadata
+            "metadata": self.metadata,
         }
 
 
@@ -49,6 +50,7 @@ class AgentResponse:
     Contains the agent's response text, any tool execution results,
     and metadata about the processing.
     """
+
     response_text: str
     tool_results: list[dict[str, Any]] = field(default_factory=list)
     metadata: dict[str, Any] = field(default_factory=dict)
@@ -58,13 +60,14 @@ class AgentResponse:
         return {
             "response_text": self.response_text,
             "tool_results": self.tool_results,
-            "metadata": self.metadata
+            "metadata": self.metadata,
         }
 
 
 @dataclass
 class ProfileGetRequest:
     """Request to retrieve a customer profile."""
+
     customer_id: str
     user_context: UserContext
     fields: Optional[list[str]] = None  # Specific fields to retrieve, None = all
@@ -74,13 +77,14 @@ class ProfileGetRequest:
         return {
             "customer_id": self.customer_id,
             "user_context": self.user_context.raw_claims,
-            "fields": self.fields
+            "fields": self.fields,
         }
 
 
 @dataclass
 class ProfileUpdateRequest:
     """Request to update a customer profile."""
+
     customer_id: str
     user_context: UserContext
     updates: dict[str, Any]  # Field name -> new value
@@ -92,13 +96,14 @@ class ProfileUpdateRequest:
             "customer_id": self.customer_id,
             "user_context": self.user_context.raw_claims,
             "updates": self.updates,
-            "partial": self.partial
+            "partial": self.partial,
         }
 
 
 @dataclass
 class ProfileResponse:
     """Response containing profile data."""
+
     success: bool
     profile: Optional[CustomerProfile] = None
     error_message: Optional[str] = None
@@ -110,13 +115,14 @@ class ProfileResponse:
             "success": self.success,
             "profile": self.profile.to_dict() if self.profile else None,
             "error_message": self.error_message,
-            "metadata": self.metadata
+            "metadata": self.metadata,
         }
 
 
 @dataclass
 class AccountListRequest:
     """Request to list accounts for a customer."""
+
     customer_id: str
     user_context: UserContext
     account_types: Optional[list[str]] = None  # Filter by account types
@@ -128,13 +134,14 @@ class AccountListRequest:
             "customer_id": self.customer_id,
             "user_context": self.user_context.raw_claims,
             "account_types": self.account_types,
-            "include_balances": self.include_balances
+            "include_balances": self.include_balances,
         }
 
 
 @dataclass
 class TransactionListRequest:
     """Request to list transactions for an account."""
+
     account_id: str
     customer_id: str
     user_context: UserContext
@@ -152,13 +159,14 @@ class TransactionListRequest:
             "start_date": self.start_date,
             "end_date": self.end_date,
             "limit": self.limit,
-            "offset": self.offset
+            "offset": self.offset,
         }
 
 
 @dataclass
 class CardListRequest:
     """Request to list cards for a customer."""
+
     customer_id: str
     user_context: UserContext
     include_inactive: bool = False
@@ -168,13 +176,14 @@ class CardListRequest:
         return {
             "customer_id": self.customer_id,
             "user_context": self.user_context.raw_claims,
-            "include_inactive": self.include_inactive
+            "include_inactive": self.include_inactive,
         }
 
 
 @dataclass
 class GenericDataResponse:
     """Generic response for data retrieval operations."""
+
     success: bool
     data: Any = None
     error_message: Optional[str] = None
@@ -186,5 +195,5 @@ class GenericDataResponse:
             "success": self.success,
             "data": self.data,
             "error_message": self.error_message,
-            "metadata": self.metadata
+            "metadata": self.metadata,
         }

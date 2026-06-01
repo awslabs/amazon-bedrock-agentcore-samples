@@ -12,7 +12,7 @@ class CustomerSupportContext:
     _gateway_token: Optional[str] = None
     _response_queue: Optional[asyncio.Queue] = None
     _agent: Optional[CustomerSupport] = None
-    
+
     # Context variables for application state
     _google_token_ctx: ContextVar[Optional[str]] = ContextVar(
         "google_token", default=None

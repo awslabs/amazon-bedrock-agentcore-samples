@@ -112,7 +112,9 @@ class AgentCoreRuntimeStack(Stack):
         # =====================================================================
         self._create_outputs_stub()
 
-        print("[STUB] AgentCoreRuntimeStack initialization complete (no resources created)")
+        print(
+            "[STUB] AgentCoreRuntimeStack initialization complete (no resources created)"
+        )
 
     def _create_dynamodb_tables_stub(self) -> None:
         """

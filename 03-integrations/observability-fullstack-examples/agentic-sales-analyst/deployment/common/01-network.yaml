@@ -9,6 +9,12 @@ Parameters:
 Resources:
   VPC:  # cdk-nag: disable=AwsSolutions-VPC7:Demo application does not require VPC Flow Logs
     Type: AWS::EC2::VPC
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W60
+            reason: >-
+              Demo/tutorial VPC does not require flow logs; enable VPC Flow Logs in production
     Properties:
       CidrBlock: 10.0.0.0/16
       EnableDnsHostnames: true
@@ -32,6 +38,12 @@ Resources:
 
   PublicSubnet1:
     Type: AWS::EC2::Subnet
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W33
+            reason: >-
+              Public subnet requires MapPublicIpOnLaunch for tutorial accessibility; disable in production
     Properties:
       VpcId: !Ref VPC
       CidrBlock: 10.0.1.0/24
@@ -44,6 +56,12 @@ Resources:
 
   PublicSubnet2:
     Type: AWS::EC2::Subnet
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W33
+            reason: >-
+              Public subnet requires MapPublicIpOnLaunch for tutorial accessibility; disable in production
     Properties:
       VpcId: !Ref VPC
       CidrBlock: 10.0.2.0/24

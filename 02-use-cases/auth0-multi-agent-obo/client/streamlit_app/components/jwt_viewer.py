@@ -26,7 +26,7 @@ def decode_jwt_parts(token: str) -> Tuple[Dict[str, Any], Dict[str, Any], str]:
         Tuple of (header, payload, signature_base64)
     """
     try:
-        parts = token.split('.')
+        parts = token.split(".")
         if len(parts) != 3:
             return {}, {}, ""
 
@@ -34,7 +34,7 @@ def decode_jwt_parts(token: str) -> Tuple[Dict[str, Any], Dict[str, Any], str]:
             # Add padding if needed
             padding = 4 - len(part) % 4
             if padding != 4:
-                part += '=' * padding
+                part += "=" * padding
             decoded = base64.urlsafe_b64decode(part)
             return json.loads(decoded)
 
@@ -44,10 +44,12 @@ def decode_jwt_parts(token: str) -> Tuple[Dict[str, Any], Dict[str, Any], str]:
 
         return header, payload, signature
     except Exception as e:
-        return {'error': str(e)}, {}, ""
+        return {"error": str(e)}, {}, ""
 
 
-def render_jwt_viewer(access_token: Optional[str], id_token: Optional[str], claims_namespace: str = ""):
+def render_jwt_viewer(
+    access_token: Optional[str], id_token: Optional[str], claims_namespace: str = ""
+):
     """
     Render comprehensive JWT token viewer for educational purposes.
 
@@ -68,7 +70,7 @@ def render_jwt_viewer(access_token: Optional[str], id_token: Optional[str], clai
         "Select token to analyze:",
         ["Access Token", "ID Token", "Compare Both"],
         horizontal=True,
-        key="jwt_viewer_token_type"
+        key="jwt_viewer_token_type",
     )
 
     st.markdown("---")
@@ -87,7 +89,7 @@ def render_single_token(token: str, token_name: str, claims_namespace: str = "")
     """Render detailed view of a single token."""
     header, payload, signature = decode_jwt_parts(token)
 
-    if 'error' in header:
+    if "error" in header:
         st.error(f"Failed to decode token: {header['error']}")
         return
 
@@ -98,33 +100,44 @@ def render_single_token(token: str, token_name: str, claims_namespace: str = "")
     col1, col2, col3 = st.columns(3)
 
     with col1:
-        st.markdown("""
+        st.markdown(
+            """
         <div style="background: #ff6b6b; color: white; padding: 15px; border-radius: 8px; text-align: center;">
             <strong>HEADER</strong><br>
             <small>Algorithm & Type</small>
         </div>
-        """, unsafe_allow_html=True)
+        """,
+            unsafe_allow_html=True,
+        )
 
     with col2:
-        st.markdown("""
+        st.markdown(
+            """
         <div style="background: #4ecdc4; color: white; padding: 15px; border-radius: 8px; text-align: center;">
             <strong>PAYLOAD</strong><br>
             <small>Claims & Data</small>
         </div>
-        """, unsafe_allow_html=True)
+        """,
+            unsafe_allow_html=True,
+        )
 
     with col3:
-        st.markdown("""
+        st.markdown(
+            """
         <div style="background: #45b7d1; color: white; padding: 15px; border-radius: 8px; text-align: center;">
             <strong>SIGNATURE</strong><br>
             <small>Verification</small>
         </div>
-        """, unsafe_allow_html=True)
+        """,
+            unsafe_allow_html=True,
+        )
 
     st.markdown("<br>", unsafe_allow_html=True)
 
     # Detailed breakdown
-    tab1, tab2, tab3, tab4 = st.tabs(["Header", "Payload", "Claims Analysis", "Raw Token"])
+    tab1, tab2, tab3, tab4 = st.tabs(
+        ["Header", "Payload", "Claims Analysis", "Raw Token"]
+    )
 
     with tab1:
         render_header_section(header)
@@ -151,25 +164,25 @@ def render_header_section(header: Dict[str, Any]):
 
     with col1:
         st.markdown("**Algorithm (alg)**")
-        alg = header.get('alg', 'Unknown')
+        alg = header.get("alg", "Unknown")
         alg_explanations = {
-            'RS256': 'RSA Signature with SHA-256 - Asymmetric algorithm using public/private key pair',
-            'HS256': 'HMAC with SHA-256 - Symmetric algorithm using shared secret',
-            'ES256': 'ECDSA with P-256 and SHA-256 - Elliptic curve digital signature',
+            "RS256": "RSA Signature with SHA-256 - Asymmetric algorithm using public/private key pair",
+            "HS256": "HMAC with SHA-256 - Symmetric algorithm using shared secret",
+            "ES256": "ECDSA with P-256 and SHA-256 - Elliptic curve digital signature",
         }
         st.code(alg)
-        st.info(alg_explanations.get(alg, 'Algorithm used for signing the token'))
+        st.info(alg_explanations.get(alg, "Algorithm used for signing the token"))
 
     with col2:
         st.markdown("**Type (typ)**")
-        typ = header.get('typ', 'JWT')
+        typ = header.get("typ", "JWT")
         st.code(typ)
         st.info("Token type - always 'JWT' for JSON Web Tokens")
 
     # Key ID if present
-    if 'kid' in header:
+    if "kid" in header:
         st.markdown("**Key ID (kid)**")
-        st.code(header['kid'])
+        st.code(header["kid"])
         st.info("""
         The Key ID identifies which key from the JWKS (JSON Web Key Set)
         was used to sign this token. This allows key rotation without
@@ -195,13 +208,13 @@ def render_payload_section(payload: Dict[str, Any], claims_namespace: str = ""):
     other_claims = {}
 
     registered_claim_names = {
-        'iss': ('Issuer', 'Who issued this token (Auth0 domain)'),
-        'sub': ('Subject', 'Unique identifier for the user'),
-        'aud': ('Audience', 'Intended recipient(s) of the token'),
-        'exp': ('Expiration Time', 'When this token expires (Unix timestamp)'),
-        'nbf': ('Not Before', 'Token not valid before this time'),
-        'iat': ('Issued At', 'When this token was issued'),
-        'jti': ('JWT ID', 'Unique identifier for this token'),
+        "iss": ("Issuer", "Who issued this token (Auth0 domain)"),
+        "sub": ("Subject", "Unique identifier for the user"),
+        "aud": ("Audience", "Intended recipient(s) of the token"),
+        "exp": ("Expiration Time", "When this token expires (Unix timestamp)"),
+        "nbf": ("Not Before", "Token not valid before this time"),
+        "iat": ("Issued At", "When this token was issued"),
+        "jti": ("JWT ID", "Unique identifier for this token"),
     }
 
     for key, value in payload.items():
@@ -216,17 +229,17 @@ def render_payload_section(payload: Dict[str, Any], claims_namespace: str = ""):
     st.markdown("#### Registered Claims (Standard)")
     if registered_claims:
         for key, value in registered_claims.items():
-            name, description = registered_claim_names.get(key, (key, ''))
+            name, description = registered_claim_names.get(key, (key, ""))
             col1, col2, col3 = st.columns([1, 2, 2])
             with col1:
                 st.markdown(f"**{key}**")
             with col2:
                 # Format timestamps nicely
-                if key in ('exp', 'iat', 'nbf') and isinstance(value, (int, float)):
+                if key in ("exp", "iat", "nbf") and isinstance(value, (int, float)):
                     dt = datetime.fromtimestamp(value)
                     st.code(f"{value}\n({dt.strftime('%Y-%m-%d %H:%M:%S')})")
                 else:
-                    st.code(str(value)[:50] + ('...' if len(str(value)) > 50 else ''))
+                    st.code(str(value)[:50] + ("..." if len(str(value)) > 50 else ""))
             with col3:
                 st.caption(f"{name}: {description}")
     else:
@@ -238,7 +251,7 @@ def render_payload_section(payload: Dict[str, Any], claims_namespace: str = ""):
 
     if custom_claims:
         for key, value in custom_claims.items():
-            short_key = key.replace(claims_namespace, '') if claims_namespace else key
+            short_key = key.replace(claims_namespace, "") if claims_namespace else key
             col1, col2 = st.columns([1, 3])
             with col1:
                 st.markdown(f"**{short_key}**")
@@ -269,8 +282,8 @@ def render_claims_analysis(payload: Dict[str, Any], claims_namespace: str = ""):
     # Token validity
     st.markdown("#### Token Validity")
 
-    exp = payload.get('exp')
-    iat = payload.get('iat')
+    exp = payload.get("exp")
+    iat = payload.get("iat")
     now = time.time()
 
     col1, col2, col3 = st.columns(3)
@@ -296,29 +309,31 @@ def render_claims_analysis(payload: Dict[str, Any], claims_namespace: str = ""):
     with col3:
         if exp and iat:
             lifetime = exp - iat
-            st.info(f"Total Lifetime: {int(lifetime / 3600)}h {int((lifetime % 3600) / 60)}m")
+            st.info(
+                f"Total Lifetime: {int(lifetime / 3600)}h {int((lifetime % 3600) / 60)}m"
+            )
 
     # Scopes
     st.markdown("#### Scopes (Permissions)")
-    scope = payload.get('scope', '')
+    scope = payload.get("scope", "")
     if scope:
-        scopes = scope.split(' ') if isinstance(scope, str) else scope
+        scopes = scope.split(" ") if isinstance(scope, str) else scope
         st.markdown("The following scopes are granted to this token:")
 
         scope_explanations = {
-            'openid': 'Required for OIDC - returns sub claim',
-            'profile': 'Access to user profile information',
-            'email': 'Access to user email address',
-            'offline_access': 'Allows refresh tokens for long-lived sessions',
-            'read:accounts': 'Permission to read account information',
-            'write:accounts': 'Permission to modify account information',
-            'read:transactions': 'Permission to read transaction history',
-            'read:profile': 'Permission to read customer profile',
-            'write:profile': 'Permission to modify customer profile',
+            "openid": "Required for OIDC - returns sub claim",
+            "profile": "Access to user profile information",
+            "email": "Access to user email address",
+            "offline_access": "Allows refresh tokens for long-lived sessions",
+            "read:accounts": "Permission to read account information",
+            "write:accounts": "Permission to modify account information",
+            "read:transactions": "Permission to read transaction history",
+            "read:profile": "Permission to read customer profile",
+            "write:profile": "Permission to modify customer profile",
         }
 
         for s in scopes:
-            explanation = scope_explanations.get(s, 'Application-specific permission')
+            explanation = scope_explanations.get(s, "Application-specific permission")
             st.markdown(f"- `{s}` - {explanation}")
     else:
         st.warning("No scopes found in token")
@@ -329,7 +344,7 @@ def render_claims_analysis(payload: Dict[str, Any], claims_namespace: str = ""):
 
     with col1:
         st.markdown("**Subject (sub)**")
-        sub = payload.get('sub', 'Not found')
+        sub = payload.get("sub", "Not found")
         st.code(sub)
         st.caption("Unique identifier for the user in Auth0")
 
@@ -337,7 +352,7 @@ def render_claims_analysis(payload: Dict[str, Any], claims_namespace: str = ""):
         # Check for custom customer ID
         customer_id = None
         for key, value in payload.items():
-            if 'customer_id' in key.lower():
+            if "customer_id" in key.lower():
                 customer_id = value
                 break
 
@@ -352,17 +367,17 @@ def render_claims_analysis(payload: Dict[str, Any], claims_namespace: str = ""):
     st.markdown("#### Authorization Context Summary")
 
     auth_context = {
-        'user_id': payload.get('sub', 'Unknown'),
-        'issuer': payload.get('iss', 'Unknown'),
-        'audience': payload.get('aud', 'Unknown'),
-        'scopes': scope.split(' ') if scope else [],
-        'is_valid': exp and exp > now if exp else False,
+        "user_id": payload.get("sub", "Unknown"),
+        "issuer": payload.get("iss", "Unknown"),
+        "audience": payload.get("aud", "Unknown"),
+        "scopes": scope.split(" ") if scope else [],
+        "is_valid": exp and exp > now if exp else False,
     }
 
     # Add custom claims
     for key, value in payload.items():
         if claims_namespace and key.startswith(claims_namespace):
-            short_key = key.replace(claims_namespace, '')
+            short_key = key.replace(claims_namespace, "")
             auth_context[short_key] = value
 
     st.json(auth_context)
@@ -377,18 +392,18 @@ def render_raw_token(token: str, header: Dict, payload: Dict, signature: str):
     """)
 
     # Token parts with syntax highlighting
-    parts = token.split('.')
+    parts = token.split(".")
 
     st.markdown("#### Encoded Token Parts")
 
     st.markdown("**Header (Base64URL):**")
-    st.code(parts[0] if len(parts) > 0 else '', language=None)
+    st.code(parts[0] if len(parts) > 0 else "", language=None)
 
     st.markdown("**Payload (Base64URL):**")
-    st.code(parts[1] if len(parts) > 1 else '', language=None)
+    st.code(parts[1] if len(parts) > 1 else "", language=None)
 
     st.markdown("**Signature (Base64URL):**")
-    st.code(parts[2] if len(parts) > 2 else '', language=None)
+    st.code(parts[2] if len(parts) > 2 else "", language=None)
 
     # Full token
     with st.expander("View Full Token String"):
@@ -407,7 +422,9 @@ def render_raw_token(token: str, header: Dict, payload: Dict, signature: str):
         st.json(payload)
 
 
-def render_token_comparison(access_token: Optional[str], id_token: Optional[str], claims_namespace: str = ""):
+def render_token_comparison(
+    access_token: Optional[str], id_token: Optional[str], claims_namespace: str = ""
+):
     """Render side-by-side comparison of access and ID tokens."""
     st.markdown("### Token Comparison: Access Token vs ID Token")
 
@@ -425,19 +442,19 @@ def render_token_comparison(access_token: Optional[str], id_token: Optional[str]
     col1, col2 = st.columns(2)
 
     # Decode both tokens
-    access_header, access_payload, _ = decode_jwt_parts(access_token or '')
-    id_header, id_payload, _ = decode_jwt_parts(id_token or '')
+    access_header, access_payload, _ = decode_jwt_parts(access_token or "")
+    id_header, id_payload, _ = decode_jwt_parts(id_token or "")
 
     with col1:
         st.markdown("#### Access Token")
-        if access_token and 'error' not in access_header:
+        if access_token and "error" not in access_header:
             render_compact_token_view(access_payload, "Access", claims_namespace)
         else:
             st.warning("Access token not available or invalid")
 
     with col2:
         st.markdown("#### ID Token")
-        if id_token and 'error' not in id_header:
+        if id_token and "error" not in id_header:
             render_compact_token_view(id_payload, "ID", claims_namespace)
         else:
             st.warning("ID token not available or invalid")
@@ -451,66 +468,78 @@ def render_token_comparison(access_token: Optional[str], id_token: Optional[str]
 
         comparison_data = []
         for key in sorted(all_keys):
-            access_val = access_payload.get(key, '-')
-            id_val = id_payload.get(key, '-')
+            access_val = access_payload.get(key, "-")
+            id_val = id_payload.get(key, "-")
 
             # Truncate long values
             if isinstance(access_val, str) and len(access_val) > 30:
-                access_val = access_val[:30] + '...'
+                access_val = access_val[:30] + "..."
             if isinstance(id_val, str) and len(id_val) > 30:
-                id_val = id_val[:30] + '...'
+                id_val = id_val[:30] + "..."
 
-            comparison_data.append({
-                'Claim': key,
-                'Access Token': str(access_val),
-                'ID Token': str(id_val),
-                'Same': str(access_payload.get(key)) == str(id_payload.get(key)) if key in access_payload and key in id_payload else False
-            })
+            comparison_data.append(
+                {
+                    "Claim": key,
+                    "Access Token": str(access_val),
+                    "ID Token": str(id_val),
+                    "Same": str(access_payload.get(key)) == str(id_payload.get(key))
+                    if key in access_payload and key in id_payload
+                    else False,
+                }
+            )
 
         # Display as table
         st.dataframe(
             comparison_data,
             column_config={
-                'Claim': st.column_config.TextColumn('Claim', width='medium'),
-                'Access Token': st.column_config.TextColumn('Access Token', width='large'),
-                'ID Token': st.column_config.TextColumn('ID Token', width='large'),
-                'Same': st.column_config.CheckboxColumn('Match', width='small'),
+                "Claim": st.column_config.TextColumn("Claim", width="medium"),
+                "Access Token": st.column_config.TextColumn(
+                    "Access Token", width="large"
+                ),
+                "ID Token": st.column_config.TextColumn("ID Token", width="large"),
+                "Same": st.column_config.CheckboxColumn("Match", width="small"),
             },
             hide_index=True,
-            use_container_width=True
+            use_container_width=True,
         )
 
 
-def render_compact_token_view(payload: Dict[str, Any], token_type: str, claims_namespace: str = ""):
+def render_compact_token_view(
+    payload: Dict[str, Any], token_type: str, claims_namespace: str = ""
+):
     """Render a compact view of token for comparison."""
     # Validity
-    exp = payload.get('exp')
+    exp = payload.get("exp")
     now = time.time()
 
     if exp:
         remaining = exp - now
         if remaining > 0:
-            st.success(f"Valid ({int(remaining/60)}m remaining)")
+            st.success(f"Valid ({int(remaining / 60)}m remaining)")
         else:
             st.error("EXPIRED")
 
     # Key claims
     st.markdown("**Key Claims:**")
 
-    important_claims = ['sub', 'iss', 'aud', 'scope', 'azp']
+    important_claims = ["sub", "iss", "aud", "scope", "azp"]
     for claim in important_claims:
         if claim in payload:
             value = payload[claim]
             if isinstance(value, str) and len(value) > 40:
-                value = value[:40] + '...'
+                value = value[:40] + "..."
             st.markdown(f"- `{claim}`: {value}")
 
     # Custom claims
-    custom = {k: v for k, v in payload.items() if claims_namespace and k.startswith(claims_namespace)}
+    custom = {
+        k: v
+        for k, v in payload.items()
+        if claims_namespace and k.startswith(claims_namespace)
+    }
     if custom:
         st.markdown("**Custom Claims:**")
         for k, v in custom.items():
-            short_k = k.replace(claims_namespace, '')
+            short_k = k.replace(claims_namespace, "")
             st.markdown(f"- `{short_k}`: {v}")
 
     # Full payload
@@ -608,9 +637,7 @@ def render_token_exchange_info(exchange_data: dict):
         # Visual chain
         st.markdown("**Delegation flow:**")
         st.markdown(
-            f"```\n"
-            f"User (subject) --> Coordinator ({actor_id}) --> Target Agent\n"
-            f"```"
+            f"```\nUser (subject) --> Coordinator ({actor_id}) --> Target Agent\n```"
         )
 
     # ------------------------------------------------------------------
@@ -644,7 +671,9 @@ def render_token_exchange_info(exchange_data: dict):
         st.json(exchange_data)
 
 
-def render_scope_diff(original_scopes: list, granted_scopes: list, removed_scopes: list):
+def render_scope_diff(
+    original_scopes: list, granted_scopes: list, removed_scopes: list
+):
     """
     Render a colored scope comparison table.
 
@@ -699,7 +728,9 @@ def render_scope_diff(original_scopes: list, granted_scopes: list, removed_scope
         )
 
 
-def _scope_table_row(scope: str, granted_set: set, removed_set: set, descriptions: dict) -> str:
+def _scope_table_row(
+    scope: str, granted_set: set, removed_set: set, descriptions: dict
+) -> str:
     """Build a single Markdown table row for the scope diff table."""
     desc = descriptions.get(scope, "Application-specific scope")
     if scope in granted_set:
@@ -714,8 +745,8 @@ def render_token_timeline(tokens_info: Dict[str, Any]):
     """Render visual timeline of token lifecycle."""
     st.markdown("### Token Lifecycle Timeline")
 
-    iat = tokens_info.get('issued_at')
-    exp = tokens_info.get('expires_at')
+    iat = tokens_info.get("issued_at")
+    exp = tokens_info.get("expires_at")
     now = time.time()
 
     if not (iat and exp):
@@ -732,17 +763,22 @@ def render_token_timeline(tokens_info: Dict[str, Any]):
     st.markdown(f"""
     **Token Lifetime Progress:**
 
-    Issued: {datetime.fromtimestamp(iat).strftime('%H:%M:%S')} |
-    Expires: {datetime.fromtimestamp(exp).strftime('%H:%M:%S')} |
-    Now: {datetime.fromtimestamp(now).strftime('%H:%M:%S')}
+    Issued: {datetime.fromtimestamp(iat).strftime("%H:%M:%S")} |
+    Expires: {datetime.fromtimestamp(exp).strftime("%H:%M:%S")} |
+    Now: {datetime.fromtimestamp(now).strftime("%H:%M:%S")}
     """)
 
     st.progress(progress)
 
     col1, col2, col3 = st.columns(3)
     with col1:
-        st.metric("Elapsed", f"{int(elapsed/60)}m {int(elapsed%60)}s")
+        st.metric("Elapsed", f"{int(elapsed / 60)}m {int(elapsed % 60)}s")
     with col2:
-        st.metric("Remaining", f"{int(remaining/60)}m {int(remaining%60)}s" if remaining > 0 else "EXPIRED")
+        st.metric(
+            "Remaining",
+            f"{int(remaining / 60)}m {int(remaining % 60)}s"
+            if remaining > 0
+            else "EXPIRED",
+        )
     with col3:
-        st.metric("Total Lifetime", f"{int(total_lifetime/60)}m")
+        st.metric("Total Lifetime", f"{int(total_lifetime / 60)}m")

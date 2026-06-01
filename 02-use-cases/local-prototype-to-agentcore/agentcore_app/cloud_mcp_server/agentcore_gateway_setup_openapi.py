@@ -35,7 +35,9 @@ load_dotenv()
 
 # Setup the client using environment variables
 region = os.getenv("AWS_REGION", "us-west-2")
-endpoint_url = os.getenv("ENDPOINT_URL", "https://bedrock-agentcore-control.us-west-2.amazonaws.com")
+endpoint_url = os.getenv(
+    "ENDPOINT_URL", "https://bedrock-agentcore-control.us-west-2.amazonaws.com"
+)
 
 print(f"Setting up Gateway client in region {region}")
 client = GatewayClient(endpoint_url=endpoint_url, region_name=region)
@@ -43,7 +45,9 @@ client.logger.setLevel(logging.DEBUG)
 
 # Get gateway name from environment variables
 gateway_name = os.getenv("GATEWAY_NAME", "InsuranceAPIGateway")
-gateway_description = os.getenv("GATEWAY_DESCRIPTION", "Insurance API Gateway with OpenAPI Specification")
+gateway_description = os.getenv(
+    "GATEWAY_DESCRIPTION", "Insurance API Gateway with OpenAPI Specification"
+)
 
 # Create cognito authorizer
 print(f"Creating OAuth authorizer for gateway '{gateway_name}'")
@@ -66,7 +70,9 @@ with open(openapi_file_path, "r") as f:
     openapi_spec = json.load(f)
 
 # Set the API Gateway URL from environment variables
-api_gateway_url = os.getenv("API_GATEWAY_URL", "https://i0zzy6t0x9.execute-api.us-west-2.amazonaws.com/dev")
+api_gateway_url = os.getenv(
+    "API_GATEWAY_URL", "https://i0zzy6t0x9.execute-api.us-west-2.amazonaws.com/dev"
+)
 
 # Add server URL if not present in OpenAPI spec
 if "servers" not in openapi_spec:
@@ -76,7 +82,9 @@ if "servers" not in openapi_spec:
 # Get API credentials from environment variables
 api_key = os.getenv("API_KEY", "BSAm0I6f_91QSB-CJQzsVpukUKTlXGJ")
 credential_location = os.getenv("CREDENTIAL_LOCATION", "HEADER")
-credential_parameter_name = os.getenv("CREDENTIAL_PARAMETER_NAME", "X-Subscription-Token")
+credential_parameter_name = os.getenv(
+    "CREDENTIAL_PARAMETER_NAME", "X-Subscription-Token"
+)
 
 # Create the OpenAPI target with OAuth2 configuration using Cognito
 print("Creating MCP gateway target with OpenAPI specification")
@@ -84,20 +92,20 @@ open_api_target = client.create_mcp_gateway_target(
     gateway=gateway,
     name="API",
     target_type="openApiSchema",
-    target_payload={
-        "inlinePayload": json.dumps(openapi_spec)
-    },
+    target_payload={"inlinePayload": json.dumps(openapi_spec)},
     credentials={
         "api_key": api_key,
         "credential_location": credential_location,
-        "credential_parameter_name": credential_parameter_name
-    }
+        "credential_parameter_name": credential_parameter_name,
+    },
 )
 
 # Print the gateway information
 print("\n✅ Gateway setup complete!")
 print(f"Gateway ID: {gateway['gatewayId']}")
-print(f"Gateway MCP URL: https://{gateway['gatewayId']}.gateway.bedrock-agentcore.{client.region}.amazonaws.com/mcp")
+print(
+    f"Gateway MCP URL: https://{gateway['gatewayId']}.gateway.bedrock-agentcore.{client.region}.amazonaws.com/mcp"
+)
 print(f"Target ID: {open_api_target['targetId']}")
 
 # Print authentication information
@@ -118,12 +126,14 @@ gateway_info = {
         "id": gateway["gatewayId"],
         "mcp_url": f"https://{gateway['gatewayId']}.gateway.bedrock-agentcore.{client.region}.amazonaws.com/mcp",
         "region": client.region,
-        "description": gateway.get("description", "Insurance API Gateway with OpenAPI Specification")
+        "description": gateway.get(
+            "description", "Insurance API Gateway with OpenAPI Specification"
+        ),
     },
     "api": {
         "gateway_url": api_gateway_url,
         "openapi_file_path": openapi_file_path,
-        "target_id": open_api_target["targetId"]
+        "target_id": open_api_target["targetId"],
     },
     "auth": {
         "access_token": access_token,
@@ -132,8 +142,10 @@ gateway_info = {
         "token_endpoint": cognito_response["client_info"]["token_endpoint"],
         "scope": cognito_response["client_info"]["scope"],
         "user_pool_id": cognito_response["client_info"]["user_pool_id"],
-        "discovery_url": cognito_response["authorizer_config"]["customJWTAuthorizer"]["discoveryUrl"]
-    }
+        "discovery_url": cognito_response["authorizer_config"]["customJWTAuthorizer"][
+            "discoveryUrl"
+        ],
+    },
 }
 
 # Get gateway info file path from environment or use default

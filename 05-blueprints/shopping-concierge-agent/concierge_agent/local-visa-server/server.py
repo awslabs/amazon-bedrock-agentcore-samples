@@ -247,7 +247,9 @@ def onboard_card_endpoint():
             x_request_id=x_request_id,
         )
         # codeql[py/clear-text-logging-sensitive-data] Debug logging for certificate verification - logs metadata only, not private key content
-        print(f"📦 Provision result keys: {provision_result.keys()}") # codeql[py/clear-text-logging-sensitive-data] Debug logging for certificate verification - logs metadata only, not private key content
+        print(
+            f"📦 Provision result keys: {provision_result.keys()}"
+        )  # codeql[py/clear-text-logging-sensitive-data] Debug logging for certificate verification - logs metadata only, not private key content
         # codeql[py/clear-text-logging-sensitive-data] Debug logging for certificate verification - logs metadata only, not private key content
         v_provisioned_token_id = provision_result["vProvisionedTokenID"]
 

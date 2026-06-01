@@ -91,13 +91,15 @@ class Auth0Handler:
             Tuple of (code_verifier, code_challenge)
         """
         # Generate random code verifier (43-128 characters)
-        code_verifier = base64.urlsafe_b64encode(secrets.token_bytes(32)).decode('utf-8')
-        code_verifier = code_verifier.rstrip('=')
+        code_verifier = base64.urlsafe_b64encode(secrets.token_bytes(32)).decode(
+            "utf-8"
+        )
+        code_verifier = code_verifier.rstrip("=")
 
         # Create code challenge using SHA256
-        code_challenge = hashlib.sha256(code_verifier.encode('utf-8')).digest()
-        code_challenge = base64.urlsafe_b64encode(code_challenge).decode('utf-8')
-        code_challenge = code_challenge.rstrip('=')
+        code_challenge = hashlib.sha256(code_verifier.encode("utf-8")).digest()
+        code_challenge = base64.urlsafe_b64encode(code_challenge).decode("utf-8")
+        code_challenge = code_challenge.rstrip("=")
 
         return code_verifier, code_challenge
 
@@ -116,28 +118,24 @@ class Auth0Handler:
 
         # Generate state if not provided
         if state is None:
-            state = base64.urlsafe_b64encode(secrets.token_bytes(32)).decode('utf-8')
+            state = base64.urlsafe_b64encode(secrets.token_bytes(32)).decode("utf-8")
 
         # Build authorization URL
         params = {
-            'response_type': 'code',
-            'client_id': self.client_id,
-            'redirect_uri': self.callback_url,
-            'scope': self.scopes,
-            'audience': self.audience,
-            'state': state,
-            'code_challenge': code_challenge,
-            'code_challenge_method': 'S256',
+            "response_type": "code",
+            "client_id": self.client_id,
+            "redirect_uri": self.callback_url,
+            "scope": self.scopes,
+            "audience": self.audience,
+            "state": state,
+            "code_challenge": code_challenge,
+            "code_challenge_method": "S256",
         }
 
         auth_url = f"{self.config.authorization_url}?{urlencode(params)}"
         return auth_url, state, code_verifier
 
-    def exchange_code_for_tokens(
-        self,
-        code: str,
-        code_verifier: str
-    ) -> Dict[str, any]:
+    def exchange_code_for_tokens(self, code: str, code_verifier: str) -> Dict[str, any]:
         """
         Exchange authorization code for access and ID tokens.
 
@@ -158,37 +156,37 @@ class Auth0Handler:
 
         # Regular Web Application (confidential client) - requires client_secret
         token_data = {
-            'grant_type': 'authorization_code',
-            'client_id': self.client_id,
-            'client_secret': self.client_secret,
-            'code': code,
-            'code_verifier': code_verifier,
-            'redirect_uri': self.callback_url,
+            "grant_type": "authorization_code",
+            "client_id": self.client_id,
+            "client_secret": self.client_secret,
+            "code": code,
+            "code_verifier": code_verifier,
+            "redirect_uri": self.callback_url,
         }
 
         # Auth0 token endpoint expects form-urlencoded data
         response = requests.post(
             self.config.token_url,
             data=token_data,
-            headers={'Content-Type': 'application/x-www-form-urlencoded'},
-            timeout=10
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+            timeout=10,
         )
 
         response.raise_for_status()
         token_response = response.json()
 
         # Calculate expiration timestamp
-        expires_in = token_response.get('expires_in', 3600)
+        expires_in = token_response.get("expires_in", 3600)
         expires_at = time.time() + expires_in
 
         return {
-            'access_token': token_response['access_token'],
-            'id_token': token_response.get('id_token'),
-            'refresh_token': token_response.get('refresh_token'),
-            'token_type': token_response.get('token_type', 'Bearer'),
-            'expires_in': expires_in,
-            'expires_at': expires_at,
-            'scope': token_response.get('scope', self.scopes),
+            "access_token": token_response["access_token"],
+            "id_token": token_response.get("id_token"),
+            "refresh_token": token_response.get("refresh_token"),
+            "token_type": token_response.get("token_type", "Bearer"),
+            "expires_in": expires_in,
+            "expires_at": expires_at,
+            "scope": token_response.get("scope", self.scopes),
         }
 
     def refresh_tokens(self, refresh_token: str) -> Dict[str, any]:
@@ -205,35 +203,35 @@ class Auth0Handler:
             requests.HTTPError: If token refresh fails
         """
         token_data = {
-            'grant_type': 'refresh_token',
-            'client_id': self.client_id,
-            'client_secret': self.client_secret,
-            'refresh_token': refresh_token,
+            "grant_type": "refresh_token",
+            "client_id": self.client_id,
+            "client_secret": self.client_secret,
+            "refresh_token": refresh_token,
         }
 
         # Auth0 token endpoint expects form-urlencoded data
         response = requests.post(
             self.config.token_url,
             data=token_data,
-            headers={'Content-Type': 'application/x-www-form-urlencoded'},
-            timeout=10
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+            timeout=10,
         )
 
         response.raise_for_status()
         token_response = response.json()
 
         # Calculate expiration timestamp
-        expires_in = token_response.get('expires_in', 3600)
+        expires_in = token_response.get("expires_in", 3600)
         expires_at = time.time() + expires_in
 
         return {
-            'access_token': token_response['access_token'],
-            'id_token': token_response.get('id_token'),
-            'refresh_token': token_response.get('refresh_token', refresh_token),
-            'token_type': token_response.get('token_type', 'Bearer'),
-            'expires_in': expires_in,
-            'expires_at': expires_at,
-            'scope': token_response.get('scope', self.scopes),
+            "access_token": token_response["access_token"],
+            "id_token": token_response.get("id_token"),
+            "refresh_token": token_response.get("refresh_token", refresh_token),
+            "token_type": token_response.get("token_type", "Bearer"),
+            "expires_in": expires_in,
+            "expires_at": expires_at,
+            "scope": token_response.get("scope", self.scopes),
         }
 
     def get_user_info(self, access_token: str) -> Dict[str, any]:
@@ -250,14 +248,10 @@ class Auth0Handler:
             requests.HTTPError: If userinfo request fails
         """
         headers = {
-            'Authorization': f'Bearer {access_token}',
+            "Authorization": f"Bearer {access_token}",
         }
 
-        response = requests.get(
-            self.config.userinfo_url,
-            headers=headers,
-            timeout=10
-        )
+        response = requests.get(self.config.userinfo_url, headers=headers, timeout=10)
 
         response.raise_for_status()
         return response.json()
@@ -266,7 +260,7 @@ class Auth0Handler:
         self,
         access_token: Optional[str] = None,
         refresh_token: Optional[str] = None,
-        return_to: Optional[str] = None
+        return_to: Optional[str] = None,
     ) -> str:
         """
         Revoke tokens and generate Auth0 logout URL.
@@ -288,13 +282,13 @@ class Auth0Handler:
                 response = requests.post(
                     f"https://{self.domain}/oauth/revoke",
                     data={
-                        'client_id': self.client_id,
-                        'client_secret': self.client_secret,
-                        'token': refresh_token,
-                        'token_type_hint': 'refresh_token'
+                        "client_id": self.client_id,
+                        "client_secret": self.client_secret,
+                        "token": refresh_token,
+                        "token_type_hint": "refresh_token",
                     },
-                    headers={'Content-Type': 'application/x-www-form-urlencoded'},
-                    timeout=5
+                    headers={"Content-Type": "application/x-www-form-urlencoded"},
+                    timeout=5,
                 )
                 if response.status_code == 200:
                     logger.info("Refresh token revoked successfully")
@@ -309,8 +303,8 @@ class Auth0Handler:
             return_to = f"http://{settings.app.oauth_callback_host}:{settings.app.streamlit_port}"
 
         params = {
-            'client_id': self.client_id,
-            'returnTo': return_to,
+            "client_id": self.client_id,
+            "returnTo": return_to,
         }
 
         logout_url = f"https://{self.domain}/v2/logout?{urlencode(params)}"
@@ -333,7 +327,7 @@ class Auth0Handler:
         """
         try:
             # Split JWT into parts
-            parts = id_token.split('.')
+            parts = id_token.split(".")
             if len(parts) != 3:
                 raise ValueError("Invalid JWT format")
 
@@ -341,11 +335,12 @@ class Auth0Handler:
             payload = parts[1]
             padding = 4 - len(payload) % 4
             if padding != 4:
-                payload += '=' * padding
+                payload += "=" * padding
 
             decoded = base64.urlsafe_b64decode(payload)
 
             import json
+
             return json.loads(decoded)
         except Exception as e:
             raise ValueError(f"Failed to decode ID token: {e}")

@@ -1,7 +1,9 @@
 """
 Utility functions for the Insurance API
 """
-from typing import Dict, List, Optional, Any
+
+from typing import Dict, Any
+
 
 def get_product_recommendation(product_id: str) -> str:
     """Return recommendation text based on product ID"""
@@ -14,9 +16,7 @@ def get_product_recommendation(product_id: str) -> str:
     else:
         return "Drivers seeking quality coverage"
 
+
 def create_success_response(data: Dict[str, Any], status_code: int = 200) -> Dict[str, Any]:
     """Create a standardized success response"""
-    return {
-        "status": "success",
-        **data
-    }
+    return {"status": "success", **data}

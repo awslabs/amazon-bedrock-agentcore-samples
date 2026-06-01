@@ -13,7 +13,9 @@ from typing import Any, Dict, List, Optional
 logger = logging.getLogger(__name__)
 
 
-def get_routing_tools(router: Any, user_context: Dict[str, Any]) -> List[Dict[str, Any]]:
+def get_routing_tools(
+    router: Any, user_context: Dict[str, Any]
+) -> List[Dict[str, Any]]:
     """
     Get MCP tool definitions for routing operations.
 
@@ -42,15 +44,15 @@ def get_routing_tools(router: Any, user_context: Dict[str, Any]) -> List[Dict[st
                 "properties": {
                     "query": {
                         "type": "string",
-                        "description": "The customer's account-related question or request"
+                        "description": "The customer's account-related question or request",
                     },
                     "account_id": {
                         "type": "string",
-                        "description": "Optional specific account ID if mentioned"
-                    }
+                        "description": "Optional specific account ID if mentioned",
+                    },
                 },
-                "required": ["query"]
-            }
+                "required": ["query"],
+            },
         },
         {
             "name": "route_to_profile_agent",
@@ -69,11 +71,11 @@ def get_routing_tools(router: Any, user_context: Dict[str, Any]) -> List[Dict[st
                 "properties": {
                     "query": {
                         "type": "string",
-                        "description": "The customer's profile-related question or request"
+                        "description": "The customer's profile-related question or request",
                     }
                 },
-                "required": ["query"]
-            }
+                "required": ["query"],
+            },
         },
         {
             "name": "get_available_agents",
@@ -81,12 +83,8 @@ def get_routing_tools(router: Any, user_context: Dict[str, Any]) -> List[Dict[st
                 "Get a list of available specialized agents and their capabilities. "
                 "Use this to inform the customer about what services are available."
             ),
-            "input_schema": {
-                "type": "object",
-                "properties": {},
-                "required": []
-            }
-        }
+            "input_schema": {"type": "object", "properties": {}, "required": []},
+        },
     ]
 
     logger.info(f"Generated {len(tools)} routing tools")
@@ -95,11 +93,12 @@ def get_routing_tools(router: Any, user_context: Dict[str, Any]) -> List[Dict[st
 
 # Tool execution handlers
 
+
 async def execute_route_to_accounts_agent(
     router: Any,
     user_context: Dict[str, Any],
     query: str,
-    account_id: Optional[str] = None
+    account_id: Optional[str] = None,
 ) -> str:
     """
     Execute route_to_accounts_agent tool.
@@ -113,21 +112,16 @@ async def execute_route_to_accounts_agent(
     Returns:
         JSON response from accounts agent
     """
-    tool_input = {
-        'query': query,
-        'user_context': user_context
-    }
+    tool_input = {"query": query, "user_context": user_context}
 
     if account_id:
-        tool_input['account_id'] = account_id
+        tool_input["account_id"] = account_id
 
-    return await router.route_to_accounts('accounts_query', tool_input)
+    return await router.route_to_accounts("accounts_query", tool_input)
 
 
 async def execute_route_to_profile_agent(
-    router: Any,
-    user_context: Dict[str, Any],
-    query: str
+    router: Any, user_context: Dict[str, Any], query: str
 ) -> str:
     """
     Execute route_to_profile_agent tool.
@@ -140,17 +134,13 @@ async def execute_route_to_profile_agent(
     Returns:
         JSON response from profile agent
     """
-    tool_input = {
-        'query': query,
-        'user_context': user_context
-    }
+    tool_input = {"query": query, "user_context": user_context}
 
-    return await router.route_to_profile('profile_query', tool_input)
+    return await router.route_to_profile("profile_query", tool_input)
 
 
 async def execute_get_available_agents(
-    router: Any,
-    user_context: Dict[str, Any]
+    router: Any, user_context: Dict[str, Any]
 ) -> str:
     """
     Execute get_available_agents tool.
@@ -168,46 +158,50 @@ async def execute_get_available_agents(
     config = router.validate_agent_configuration()
 
     agent_descriptions = {
-        'profile': {
-            'name': 'Customer Profile Agent',
-            'description': 'Handles customer profile information, contact details, and preferences',
-            'capabilities': [
-                'View profile information',
-                'Update address',
-                'Update phone number',
-                'Update email',
-                'Manage communication preferences'
-            ]
+        "profile": {
+            "name": "Customer Profile Agent",
+            "description": "Handles customer profile information, contact details, and preferences",
+            "capabilities": [
+                "View profile information",
+                "Update address",
+                "Update phone number",
+                "Update email",
+                "Manage communication preferences",
+            ],
         },
-        'accounts': {
-            'name': 'Accounts Agent',
-            'description': 'Manages bank accounts and account information',
-            'capabilities': [
-                'View account balances',
-                'View account details',
-                'List all accounts',
-                'View account statements',
-                'View account fees'
-            ]
-        }
+        "accounts": {
+            "name": "Accounts Agent",
+            "description": "Manages bank accounts and account information",
+            "capabilities": [
+                "View account balances",
+                "View account details",
+                "List all accounts",
+                "View account statements",
+                "View account fees",
+            ],
+        },
     }
 
     available_agents = {
         agent: {
             **agent_descriptions[agent],
-            'status': 'available' if config[agent] else 'not_configured'
+            "status": "available" if config[agent] else "not_configured",
         }
         for agent in agent_descriptions.keys()
     }
 
-    return json.dumps({
-        'available_agents': available_agents,
-        'configured_count': len(available),
-        'total_agents': len(agent_descriptions)
-    }, indent=2)
+    return json.dumps(
+        {
+            "available_agents": available_agents,
+            "configured_count": len(available),
+            "total_agents": len(agent_descriptions),
+        },
+        indent=2,
+    )
 
 
 # Intent classification helper
+
 
 def classify_intent(query: str) -> str:
     """
@@ -223,14 +217,29 @@ def classify_intent(query: str) -> str:
 
     # Profile keywords
     profile_keywords = [
-        'profile', 'address', 'phone', 'email', 'contact', 'preferences',
-        'settings', 'notification', 'update my', 'change my'
+        "profile",
+        "address",
+        "phone",
+        "email",
+        "contact",
+        "preferences",
+        "settings",
+        "notification",
+        "update my",
+        "change my",
     ]
 
     # Account keywords
     account_keywords = [
-        'balance', 'account', 'checking', 'savings', 'statement',
-        'interest', 'fee', 'open account', 'close account'
+        "balance",
+        "account",
+        "checking",
+        "savings",
+        "statement",
+        "interest",
+        "fee",
+        "open account",
+        "close account",
     ]
 
     # Count keyword matches
@@ -238,15 +247,12 @@ def classify_intent(query: str) -> str:
     account_score = sum(1 for kw in account_keywords if kw in query_lower)
 
     # Determine highest score
-    scores = {
-        'profile': profile_score,
-        'accounts': account_score
-    }
+    scores = {"profile": profile_score, "accounts": account_score}
 
     max_score = max(scores.values())
 
     if max_score == 0:
-        return 'unknown'
+        return "unknown"
 
     # Return intent with highest score
     return max(scores, key=scores.get)

@@ -14,8 +14,7 @@ from mcp.client.streamable_http import streamablehttp_client
 from utils import get_ssm_parameter
 
 logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -25,8 +24,8 @@ def create_mcp_client(provider_name, agent_arn):
 
     # Extract runtime_id, region, and account_id from ARN
     # ARN format: arn:aws:bedrock-agentcore:region:account-id:runtime/runtime-id
-    runtime_id = agent_arn.split('/')[-1]
-    arn_parts = agent_arn.split(':')
+    runtime_id = agent_arn.split("/")[-1]
+    arn_parts = agent_arn.split(":")
     region = arn_parts[3]
     account_id = arn_parts[4]
 
@@ -60,10 +59,10 @@ def create_mcp_client(provider_name, agent_arn):
         try:
             logger.info("Creating streamable HTTP client...")
             async with streamablehttp_client(
-                    mcp_url,
-                    headers,
-                    timeout=timedelta(seconds=120),
-                    terminate_on_close=False,
+                mcp_url,
+                headers,
+                timeout=timedelta(seconds=120),
+                terminate_on_close=False,
             ) as (read_stream, write_stream, _):
                 logger.info("HTTP client created successfully")
                 logger.info("Creating MCP client session...")

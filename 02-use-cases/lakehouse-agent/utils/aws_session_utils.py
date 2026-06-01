@@ -40,25 +40,25 @@ from botocore.exceptions import (
     ProfileNotFound,
     ClientError,
     TokenRetrievalError,
-    SSOTokenLoadError
+    SSOTokenLoadError,
 )
 
 
-def load_env_credentials(env_path: str = '.env', verbose: bool = True) -> bool:
+def load_env_credentials(env_path: str = ".env", verbose: bool = True) -> bool:
     """
     Load AWS credentials from .env file into environment variables.
-    
+
     This function loads environment variables from a .env file, making them
     available to boto3 and other AWS tools. It's designed to work seamlessly
     with the get_aws_session() function.
-    
+
     Args:
         env_path: Path to the .env file. Default is '.env' in current directory.
         verbose: If True, print status messages. Default True.
-        
+
     Returns:
         bool: True if credentials were loaded successfully, False otherwise.
-        
+
     Example:
         >>> from utils.aws_session_utils import load_env_credentials, get_aws_session
         >>> load_env_credentials()
@@ -69,14 +69,14 @@ def load_env_credentials(env_path: str = '.env', verbose: bool = True) -> bool:
         if verbose:
             print(f"⚠️  .env file not found at {env_path}")
         return False
-    
+
     loaded_vars = []
     try:
-        with open(env_file, 'r') as f:
+        with open(env_file, "r") as f:
             for line in f:
                 line = line.strip()
-                if line and not line.startswith('#') and '=' in line:
-                    key, value = line.split('=', 1)
+                if line and not line.startswith("#") and "=" in line:
+                    key, value = line.split("=", 1)
                     key = key.strip()
                     value = value.strip().strip('"').strip("'")
                     if value:  # Only set non-empty values
@@ -86,35 +86,37 @@ def load_env_credentials(env_path: str = '.env', verbose: bool = True) -> bool:
         if verbose:
             print(f"❌ Error reading .env file: {e}")
         return False
-    
+
     if loaded_vars:
         if verbose:
             print(f"✅ Loaded {len(loaded_vars)} variables from .env file:")
             for var in loaded_vars:
-                if any(keyword in var.upper() for keyword in ['SECRET', 'TOKEN', 'PASSWORD']):
+                if any(keyword in var.upper() for keyword in ["SECRET", "TOKEN", "PASSWORD"]):
                     print(f"   {var}: ****** (hidden)")
                 else:
                     print(f"   {var}: {os.environ[var]}")
-        
+
         # Validate AWS credentials were loaded
-        aws_vars = ['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'AWS_SESSION_TOKEN', 'AWS_DEFAULT_REGION']
-        has_credentials = bool(
-            os.environ.get('AWS_ACCESS_KEY_ID') and 
-            os.environ.get('AWS_SECRET_ACCESS_KEY')
-        )
-        
+        aws_vars = [
+            "AWS_ACCESS_KEY_ID",
+            "AWS_SECRET_ACCESS_KEY",
+            "AWS_SESSION_TOKEN",
+            "AWS_DEFAULT_REGION",
+        ]
+        has_credentials = bool(os.environ.get("AWS_ACCESS_KEY_ID") and os.environ.get("AWS_SECRET_ACCESS_KEY"))
+
         if verbose:
             print("\nCurrent AWS environment variables:")
             for key in aws_vars:
                 value = os.environ.get(key)
                 if value:
-                    if any(keyword in key for keyword in ['SECRET', 'TOKEN']):
+                    if any(keyword in key for keyword in ["SECRET", "TOKEN"]):
                         print(f"   {key}: {'*' * min(len(value), 20)} (hidden)")
                     else:
                         print(f"   {key}: {value}")
                 else:
                     print(f"   {key}: Not set")
-        
+
         if has_credentials:
             if verbose:
                 print("\n✅ AWS credentials loaded successfully!")
@@ -137,7 +139,7 @@ def load_env_credentials(env_path: str = '.env', verbose: bool = True) -> bool:
 def get_aws_session(
     profile_name: Optional[str] = None,
     region_name: Optional[str] = None,
-    verbose: bool = True
+    verbose: bool = True,
 ) -> Tuple[boto3.Session, str, str]:
     """
     Create and validate AWS session with SSO support and automatic fallback.
@@ -179,13 +181,15 @@ def get_aws_session(
 
     # Check if running in container/Lambda environment
     # In these environments, IAM roles provide credentials automatically
-    is_container = any([
-        os.environ.get('AWS_EXECUTION_ENV'),  # Lambda, ECS, etc.
-        os.environ.get('AWS_CONTAINER_CREDENTIALS_RELATIVE_URI'),  # ECS
-        os.environ.get('AWS_CONTAINER_CREDENTIALS_FULL_URI'),  # ECS
-        os.environ.get('ECS_CONTAINER_METADATA_URI'),  # ECS
-        os.environ.get('K8S_AWS_ROLE_ARN'),  # Kubernetes
-    ])
+    is_container = any(
+        [
+            os.environ.get("AWS_EXECUTION_ENV"),  # Lambda, ECS, etc.
+            os.environ.get("AWS_CONTAINER_CREDENTIALS_RELATIVE_URI"),  # ECS
+            os.environ.get("AWS_CONTAINER_CREDENTIALS_FULL_URI"),  # ECS
+            os.environ.get("ECS_CONTAINER_METADATA_URI"),  # ECS
+            os.environ.get("K8S_AWS_ROLE_ARN"),  # Kubernetes
+        ]
+    )
 
     if is_container and not profile_name:
         # In container environment, use simple session with IAM role credentials
@@ -196,11 +200,11 @@ def get_aws_session(
         session = boto3.Session(region_name=region)
 
         try:
-            sts_client = session.client('sts', region_name=region)
-            account_id = sts_client.get_caller_identity()['Account']
+            sts_client = session.client("sts", region_name=region)
+            account_id = sts_client.get_caller_identity()["Account"]
 
             if verbose:
-                print(f"✅ Container credentials validated")
+                print("✅ Container credentials validated")
                 print(f"   Region: {region}")
                 print(f"   Account ID: {account_id}")
 
@@ -212,10 +216,7 @@ def get_aws_session(
 
     # Check if we have environment variables (from .env or terminal)
     # This takes precedence over SSO profiles
-    has_env_credentials = bool(
-        os.environ.get('AWS_ACCESS_KEY_ID') and 
-        os.environ.get('AWS_SECRET_ACCESS_KEY')
-    )
+    has_env_credentials = bool(os.environ.get("AWS_ACCESS_KEY_ID") and os.environ.get("AWS_SECRET_ACCESS_KEY"))
 
     if has_env_credentials:
         # Use environment variables directly (bypasses SSO)
@@ -228,7 +229,7 @@ def get_aws_session(
             region = region_name
         else:
             # Try environment variables first
-            region = os.environ.get('AWS_DEFAULT_REGION') or os.environ.get('AWS_REGION')
+            region = os.environ.get("AWS_DEFAULT_REGION") or os.environ.get("AWS_REGION")
             if not region:
                 # Try to get from AWS config (without credentials first)
                 try:
@@ -238,28 +239,28 @@ def get_aws_session(
                     pass
             # Final fallback
             if not region:
-                region = 'us-east-1'
+                region = "us-east-1"
 
         # Create session with environment credentials
         session = boto3.Session(
-            aws_access_key_id=os.environ.get('AWS_ACCESS_KEY_ID'),
-            aws_secret_access_key=os.environ.get('AWS_SECRET_ACCESS_KEY'),
-            aws_session_token=os.environ.get('AWS_SESSION_TOKEN'),  # Optional for STS
-            region_name=region
+            aws_access_key_id=os.environ.get("AWS_ACCESS_KEY_ID"),
+            aws_secret_access_key=os.environ.get("AWS_SECRET_ACCESS_KEY"),
+            aws_session_token=os.environ.get("AWS_SESSION_TOKEN"),  # Optional for STS
+            region_name=region,
         )
-        
+
         # Validate credentials
         try:
-            sts_client = session.client('sts', region_name=region)
+            sts_client = session.client("sts", region_name=region)
             identity = sts_client.get_caller_identity()
-            account_id = identity['Account']
-            
+            account_id = identity["Account"]
+
             if verbose:
-                print(f"✅ AWS credentials validated")
+                print("✅ AWS credentials validated")
                 print(f"   Account ID: {account_id}")
                 print(f"   Region: {region}")
                 print(f"   User ARN: {identity['Arn']}")
-            
+
             return session, region, account_id
         except Exception as e:
             if verbose:
@@ -269,7 +270,11 @@ def get_aws_session(
 
             # Clear invalid environment credentials to allow fallback
             cleared_keys = []
-            for key in ['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'AWS_SESSION_TOKEN']:
+            for key in [
+                "AWS_ACCESS_KEY_ID",
+                "AWS_SECRET_ACCESS_KEY",
+                "AWS_SESSION_TOKEN",
+            ]:
                 if key in os.environ:
                     del os.environ[key]
                     cleared_keys.append(key)
@@ -310,8 +315,8 @@ def get_aws_session(
             raise SystemExit(1)
 
         # Test credentials by getting account ID
-        sts_client = session.client('sts', region_name=region)
-        account_id = sts_client.get_caller_identity()['Account']
+        sts_client = session.client("sts", region_name=region)
+        account_id = sts_client.get_caller_identity()["Account"]
 
     except (TokenRetrievalError, SSOTokenLoadError) as e:
         _print_sso_token_expired_error(detected_profile, region, str(e))
@@ -320,7 +325,7 @@ def get_aws_session(
         _print_no_credentials_error(detected_profile)
         raise SystemExit(1) from e
     except ClientError as e:
-        if 'ExpiredToken' in str(e) or 'InvalidToken' in str(e):
+        if "ExpiredToken" in str(e) or "InvalidToken" in str(e):
             _print_sso_token_expired_error(detected_profile, region, str(e))
             raise SystemExit(1) from e
         else:
@@ -346,11 +351,11 @@ def _detect_profile(profile_name: Optional[str], verbose: bool) -> Optional[str]
         return profile_name
 
     # Check environment variables in order of precedence
-    env_profile = os.environ.get('AWS_PROFILE') or os.environ.get('AWS_DEFAULT_PROFILE')
+    env_profile = os.environ.get("AWS_PROFILE") or os.environ.get("AWS_DEFAULT_PROFILE")
 
     if env_profile:
         if verbose:
-            env_var = 'AWS_PROFILE' if os.environ.get('AWS_PROFILE') else 'AWS_DEFAULT_PROFILE'
+            env_var = "AWS_PROFILE" if os.environ.get("AWS_PROFILE") else "AWS_DEFAULT_PROFILE"
             print(f"🔍 Using profile from {env_var}: {env_profile}")
         return env_profile
 
@@ -365,7 +370,7 @@ def _detect_region_simple(region_name: Optional[str]) -> str:
         return region_name
 
     # Try environment variables
-    region = os.environ.get('AWS_REGION') or os.environ.get('AWS_DEFAULT_REGION')
+    region = os.environ.get("AWS_REGION") or os.environ.get("AWS_DEFAULT_REGION")
     if region:
         return region
 
@@ -378,14 +383,10 @@ def _detect_region_simple(region_name: Optional[str]) -> str:
         pass
 
     # Default to us-east-1 as last resort
-    return 'us-east-1'
+    return "us-east-1"
 
 
-def _detect_region(
-    session: boto3.Session,
-    region_name: Optional[str],
-    verbose: bool
-) -> str:
+def _detect_region(session: boto3.Session, region_name: Optional[str], verbose: bool) -> str:
     """Detect AWS region from multiple sources."""
     if region_name:
         if verbose:
@@ -400,15 +401,15 @@ def _detect_region(
         return region
 
     # Try environment variables
-    region = os.environ.get('AWS_REGION') or os.environ.get('AWS_DEFAULT_REGION')
+    region = os.environ.get("AWS_REGION") or os.environ.get("AWS_DEFAULT_REGION")
     if region:
-        env_var = 'AWS_REGION' if os.environ.get('AWS_REGION') else 'AWS_DEFAULT_REGION'
+        env_var = "AWS_REGION" if os.environ.get("AWS_REGION") else "AWS_DEFAULT_REGION"
         if verbose:
             print(f"🌍 Using region from {env_var}: {region}")
         return region
 
     # No region found anywhere - use default
-    region = 'us-east-1'
+    region = "us-east-1"
     if verbose:
         print(f"⚠️  No AWS region configured, using default: {region}")
         print("   To set your region:")
@@ -417,12 +418,7 @@ def _detect_region(
     return region
 
 
-def _print_success_message(
-    profile: Optional[str],
-    region: str,
-    account_id: str,
-    credentials
-) -> None:
+def _print_success_message(profile: Optional[str], region: str, account_id: str, credentials) -> None:
     """Print success message with credential info."""
     print("\n✅ AWS Credentials Validated")
     print(f"   Region: {region}")
@@ -432,9 +428,9 @@ def _print_success_message(
     # Try to detect SSO
     is_sso = False
     try:
-        if hasattr(credentials, 'method'):
+        if hasattr(credentials, "method"):
             method_str = str(credentials.method).lower()
-            is_sso = 'sso' in method_str
+            is_sso = "sso" in method_str
     except Exception:
         pass
 
@@ -447,9 +443,9 @@ def _print_success_message(
 
 def _print_no_credentials_error(profile: Optional[str]) -> None:
     """Print helpful error message when no credentials are found."""
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("❌ AWS CREDENTIALS NOT CONFIGURED")
-    print("="*70)
+    print("=" * 70)
     print("\nNo AWS credentials were found.")
 
     if profile:
@@ -473,18 +469,14 @@ def _print_no_credentials_error(profile: Optional[str]) -> None:
     print("\n4. IAM Role (if running on EC2/ECS/Lambda):")
     print("   Credentials are automatically provided")
 
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
 
 
-def _print_sso_token_expired_error(
-    profile: Optional[str],
-    region: str,
-    error_detail: str
-) -> None:
+def _print_sso_token_expired_error(profile: Optional[str], region: str, error_detail: str) -> None:
     """Print helpful error message for SSO token expiration."""
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("❌ AWS SSO TOKEN EXPIRED")
-    print("="*70)
+    print("=" * 70)
     print("\nYour AWS SSO session has expired and needs to be refreshed.")
 
     if profile:
@@ -506,40 +498,40 @@ def _print_sso_token_expired_error(
     print(f"  AWS_DEFAULT_PROFILE: {os.environ.get('AWS_DEFAULT_PROFILE', 'not set')}")
     print(f"  AWS_REGION: {region}")
 
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print(f"Error details: {error_detail}")
-    print("="*70)
+    print("=" * 70)
 
 
 def _print_profile_not_found_error(profile: str) -> None:
     """Print helpful error message when profile is not found."""
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print(f"❌ AWS PROFILE NOT FOUND: {profile}")
-    print("="*70)
+    print("=" * 70)
 
     print(f"\nThe AWS profile '{profile}' was not found in your AWS configuration.")
 
     print("\nTo list available profiles:")
     print("  aws configure list-profiles")
 
-    print(f"\nTo create this profile:")
+    print("\nTo create this profile:")
     print(f"  aws configure --profile {profile}")
 
     print("\nOr for SSO:")
     print("  aws configure sso")
 
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     """Test the session utility."""
     print("Testing AWS Session Utility\n")
-    print("="*70)
+    print("=" * 70)
 
     try:
         session, region, account_id = get_aws_session()
         print("\n✅ Test successful!")
-        print(f"\nYou can now use this session to create AWS clients:")
+        print("\nYou can now use this session to create AWS clients:")
         print(f"  s3_client = session.client('s3', region_name='{region}')")
         print(f"  dynamodb = session.resource('dynamodb', region_name='{region}')")
 
