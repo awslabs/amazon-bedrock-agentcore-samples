@@ -39,7 +39,9 @@ class ValidateSchemaTool:
             }
         },
     )
-    def validate_openapi_schema(self, limit: int = 100, filter_keyword: str | None = None) -> str:
+    def validate_openapi_schema(
+        self, limit: int = 100, filter_keyword: str | None = None
+    ) -> str:
         assert limit > 0, "limit must be greater than 0"
 
         for p in [self.ruleset_path, self.schema_path]:
@@ -67,13 +69,17 @@ class ValidateSchemaTool:
 
         raw_output_lines = raw_output.strip().split("\n")
         raw_output_lines = [
-            line.strip() for line in raw_output_lines if "/tmp/" not in line and line != ""
+            line.strip()
+            for line in raw_output_lines
+            if "/tmp/" not in line and line != ""
         ]
 
         status_line = raw_output_lines.pop()
 
         if filter_keyword is not None:
-            raw_output_lines = [line for line in raw_output_lines if filter_keyword in line]
+            raw_output_lines = [
+                line for line in raw_output_lines if filter_keyword in line
+            ]
 
         raw_output_lines = [*raw_output_lines, status_line]
 

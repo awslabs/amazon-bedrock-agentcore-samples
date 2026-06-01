@@ -39,7 +39,9 @@ def get_serpapi_key() -> str:
     return get_ssm_parameter("/concierge-agent/shopping/serp-api-key", region)
 
 
-def search_google_shopping_products(query: str, max_results: int = 10) -> Dict[str, Any]:
+def search_google_shopping_products(
+    query: str, max_results: int = 10
+) -> Dict[str, Any]:
     """
     Search for products on Google Shopping using SerpAPI.
 
@@ -76,9 +78,13 @@ def search_google_shopping_products(query: str, max_results: int = 10) -> Dict[s
                 price_value = product["extracted_price"]
 
             product_info = {
-                "asin": product.get("product_id", ""),  # Store product_id in asin field for compatibility
+                "asin": product.get(
+                    "product_id", ""
+                ),  # Store product_id in asin field for compatibility
                 "title": product.get("title", ""),
-                "link": product.get("product_link", ""),  # Google Shopping product comparison page
+                "link": product.get(
+                    "product_link", ""
+                ),  # Google Shopping product comparison page
                 "price": price_value,
                 "rating": product.get("rating", 0),
                 "reviews": product.get("reviews", 0),
@@ -144,7 +150,7 @@ def search_products(user_id: str, question: str) -> Dict[str, Any]:
             if product.get("rating"):
                 answer += f"   Rating: {product['rating']}/5 ({product.get('reviews', 0)} reviews)\n"
             answer += f"   Product ID: {product['asin']}\n"
-            if product.get('source'):
+            if product.get("source"):
                 answer += f"   Source: {product['source']}\n"
             answer += f"   Link: {product['link']}\n\n"
 

@@ -41,12 +41,15 @@ def _load_mapping() -> Dict[str, Dict[str, str]]:
     # 2. Fall back to SSM (populated by cognito_credentials_provider.py create)
     try:
         import boto3
+
         resp = boto3.client("ssm").get_parameter(Name=_SSM_PARAM, WithDecryption=False)
         mapping = json.loads(resp["Parameter"]["Value"])
         print(f"[tenant-mapping] Loaded {len(mapping)} clients from SSM ({_SSM_PARAM})")
         return mapping
     except Exception as e:
-        print(f"[tenant-mapping] WARNING: SSM fallback failed: {e}, using empty mapping")
+        print(
+            f"[tenant-mapping] WARNING: SSM fallback failed: {e}, using empty mapping"
+        )
         return _FALLBACK
 
 
@@ -55,7 +58,12 @@ def resolve_client_context(client_id: str) -> Dict[str, str]:
     ctx = _load_mapping().get(client_id)
     if not ctx:
         print(f"[tenant-mapping] WARNING: Unknown client_id: {client_id}")
-        return {"tenantId": "unknown", "role": "unknown", "department": "unknown", "username": "unknown"}
+        return {
+            "tenantId": "unknown",
+            "role": "unknown",
+            "department": "unknown",
+            "username": "unknown",
+        }
     return ctx
 
 

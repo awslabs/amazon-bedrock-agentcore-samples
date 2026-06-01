@@ -1,27 +1,25 @@
-
 import json
 import boto3
 import psycopg2
 import os
 from botocore.exceptions import ClientError
 
+
 def get_secret(secret_name):
-    """Get secret from AWS Secrets Manager """
-    #secret_name = os.environ['SECRET_NAME']
-    region_name = os.environ['REGION']
-    
+    """Get secret from AWS Secrets Manager"""
+    # secret_name = os.environ['SECRET_NAME']
+    region_name = os.environ["REGION"]
+
     session = boto3.session.Session()
-    client = session.client(
-        service_name='secretsmanager',
-        region_name=region_name
-    )
-    
+    client = session.client(service_name="secretsmanager", region_name=region_name)
+
     try:
         secret_value = client.get_secret_value(SecretId=secret_name)
-        secret = json.loads(secret_value['SecretString'])
+        secret = json.loads(secret_value["SecretString"])
         return secret
     except ClientError as e:
         raise Exception(f"Failed to get secret: {str(e)}")
+
 
 def execute_slow_query(secret_name, min_exec_time):
     """Execute enhanced slow query analysis based on runbooks.py diagnostics"""
@@ -147,15 +145,15 @@ def execute_slow_query(secret_name, min_exec_time):
             JOIN pg_stat_activity blocking ON blocking.pid = ANY(pg_blocking_pids(blocked.pid))
             WHERE NOT blocked.pid = blocking.pid
             LIMIT 3;;
-        """
+        """,
     }
-    
+
     print("Connecting to the database...")
     conn = None
     try:
         conn = connect_to_db(secret_name)
         print("Connected to the database.")
-    
+
         # First, ensure pg_stat_statements is installed
         print(" I am here 1")
         with conn.cursor() as cur:
@@ -164,9 +162,9 @@ def execute_slow_query(secret_name, min_exec_time):
                 CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
             """)
             conn.commit()
-        print(" I am here 3") 
+        print(" I am here 3")
         # Execute the main query
-        
+
         results = {}
         # Execute each query and collect results
         for query_name, query in queries.items():
@@ -180,12 +178,13 @@ def execute_slow_query(secret_name, min_exec_time):
                 results[query_name] = [dict(zip(columns, row)) for row in rows]
             print(" I am here 7")
         return results
-            
+
     except Exception as e:
         raise Exception(f"Failed to retrieve slow queries: {str(e)}")
     finally:
         if conn:
             conn.close()
+
 
 def format_results_for_slow_query(results):
     """Format results in a human-readable string"""
@@ -206,7 +205,7 @@ def format_results_for_slow_query(results):
             output += f"• Query: {query['query']}\n"
     else:
         output += "No slow queries found.\n"
-    
+
     # Format high IO queries
     output += "\n=== TOP 10 HIGH I/O QUERIES ===\n"
     if results.get("high_io_queries"):
@@ -222,7 +221,7 @@ def format_results_for_slow_query(results):
             output += f"• Query: {query['query']}\n"
     else:
         output += "No high I/O queries found.\n"
-    
+
     # Format high temp usage queries
     output += "\n=== TOP 10 HIGH TEMP USAGE QUERIES ===\n"
     if results.get("high_temp_queries"):
@@ -235,7 +234,7 @@ def format_results_for_slow_query(results):
             output += f"• Query: {query['query']}\n"
     else:
         output += "No high temp usage queries found.\n"
-    
+
     # Format blocking queries
     output += "\n=== BLOCKING QUERIES ===\n"
     if results.get("blocking_queries"):
@@ -250,6 +249,7 @@ def format_results_for_slow_query(results):
     else:
         output += "No blocking queries found.\n"
     return output
+
 
 def execute_connect_issues(secret_name, min_exec_time):
     """Execute connection management related queries"""
@@ -321,52 +321,51 @@ def execute_connect_issues(secret_name, min_exec_time):
             LEFT JOIN pg_class rel ON rel.oid = locks.relation
             WHERE NOT granted
             ORDER BY pid, query_start;
-        """
+        """,
     }
-    
+
     conn = None
     try:
         conn = connect_to_db(secret_name)
         # First, ensure pg_stat_statements is installed
-        
+
         with conn.cursor() as cur:
             cur.execute("""
                 CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
             """)
             conn.commit()
-            
+
         # Execute the main query
-        
+
         results = {}
-        
+
         # Execute each query and collect results
         for query_name, query in queries.items():
-            
             try:
                 with conn.cursor() as cur:
-                    
                     cur.execute(query)
-                   
+
                     columns = [desc[0] for desc in cur.description]
                     rows = cur.fetchall()
                     results[query_name] = [dict(zip(columns, row)) for row in rows]
-                 
+
             except Exception as e:
                 print(f"Error executing {query_name}: {str(e)}")
                 results[query_name] = []
-                
+
         return results
-            
+
     except Exception as e:
         raise Exception(f"Failed to retrieve connection metrics: {str(e)}")
     finally:
         if conn:
             conn.close()
 
+
 def format_results_for_conn_issues(results):
     """Format connection management results in a human-readable string"""
     output = "Database Connection Management Analysis Report\n\n"
-    
+
     # Format current connections
     output += "=== CURRENT CONNECTIONS ===\n"
     if results.get("current_connections"):
@@ -382,7 +381,7 @@ def format_results_for_conn_issues(results):
             output += f"• Current Query: {conn['query']}\n"
     else:
         output += "No current connections found.\n"
-    
+
     # Format connection stats
     output += "\n=== DATABASE CONNECTION STATISTICS ===\n"
     if results.get("connection_stats"):
@@ -400,7 +399,7 @@ def format_results_for_conn_issues(results):
             output += f"• Tuples Deleted: {stat['tup_deleted']}\n"
     else:
         output += "No connection statistics available.\n"
-    
+
     # Format idle connections
     output += "\n=== IDLE CONNECTIONS ===\n"
     if results.get("idle_connections"):
@@ -415,7 +414,7 @@ def format_results_for_conn_issues(results):
             output += f"• Last Query: {idle['query']}\n"
     else:
         output += "No idle connections found.\n"
-    
+
     # Format locked queries
     output += "\n=== LOCKED QUERIES ===\n"
     if results.get("locked_queries"):
@@ -432,8 +431,9 @@ def format_results_for_conn_issues(results):
             output += f"• Query: {lock['query']}\n"
     else:
         output += "No locked queries found.\n"
-    
+
     return output
+
 
 def execute_index_analysis(secret_name):
     """Execute index-related analysis queries"""
@@ -474,23 +474,23 @@ def execute_index_analysis(secret_name):
             WHERE i.idx_scan > 0
             ORDER BY i.idx_scan::float / NULLIF(pg_relation_size(i.indexrelid), 0)::float ASC
             LIMIT 20;
-        """
+        """,
     }
-    
+
     conn = None
     try:
         conn = connect_to_db(secret_name)
         # First, ensure pg_stat_statements is installed
-        
+
         with conn.cursor() as cur:
             cur.execute("""
                 CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
             """)
             conn.commit()
-            
-        # Execute the main query    
+
+        # Execute the main query
         results = {}
-        
+
         # Execute each query and collect results
         for query_name, query in queries.items():
             try:
@@ -502,19 +502,20 @@ def execute_index_analysis(secret_name):
             except Exception as e:
                 print(f"Error executing {query_name}: {str(e)}")
                 results[query_name] = []
-                
+
         return results
-            
+
     except Exception as e:
         raise Exception(f"Failed to retrieve index metrics: {str(e)}")
     finally:
         if conn:
             conn.close()
-    
+
+
 def format_results_for_index_analysis(results):
     """Format index analysis results in a human-readable string"""
     output = "Database Index Analysis Report\n\n"
-    
+
     # Format unused indexes
     output += "=== UNUSED INDEXES ===\n"
     if results.get("unused_indexes"):
@@ -528,7 +529,7 @@ def format_results_for_index_analysis(results):
         output += "\nRecommendation: Consider removing these unused indexes to reduce maintenance overhead and storage space.\n"
     else:
         output += "No unused indexes found.\n"
-    
+
     # Format missing indexes
     output += "\n=== POTENTIAL MISSING INDEXES (High Sequential Scans) ===\n"
     if results.get("missing_indexes"):
@@ -545,7 +546,7 @@ def format_results_for_index_analysis(results):
         output += "\nRecommendation: Tables with high sequential scan ratios might benefit from additional indexes.\n"
     else:
         output += "No tables with significant sequential scans found.\n"
-    
+
     # Format index efficiency
     output += "\n=== INDEX USAGE EFFICIENCY ===\n"
     if results.get("index_efficiency"):
@@ -556,11 +557,14 @@ def format_results_for_index_analysis(results):
             output += f"• Times Used: {index['times_used']}\n"
             output += f"• Index Size: {index['index_size']}\n"
             output += f"• Scans per Byte: {index['scans_per_byte']}\n"
-        output += "\nRecommendation: Indexes with very low scans per byte might be candidates for removal or restructuring.\n"
+        output += (
+            "\nRecommendation: Indexes with very low scans per byte might be candidates for removal or restructuring.\n"
+        )
     else:
         output += "No index usage statistics found.\n"
-    
+
     return output
+
 
 def execute_autovacuum_analysis(secret_name):
     """Execute enhanced autovacuum-related analysis queries based on runbooks.py diagnostics"""
@@ -689,23 +693,23 @@ def execute_autovacuum_analysis(secret_name):
             FROM pg_prepared_xacts
             WHERE prepared < now() - interval '15 minutes'
             ORDER BY prepared;
-        """
+        """,
     }
-    
+
     conn = None
     try:
         conn = connect_to_db(secret_name)
         # First, ensure pg_stat_statements is installed
-        
+
         with conn.cursor() as cur:
             cur.execute("""
                 CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
             """)
             conn.commit()
-            
-        # Execute the main query    
+
+        # Execute the main query
         results = {}
-        
+
         # Execute each query and collect results
         for query_name, query in queries.items():
             try:
@@ -717,19 +721,20 @@ def execute_autovacuum_analysis(secret_name):
             except Exception as e:
                 print(f"Error executing {query_name}: {str(e)}")
                 results[query_name] = []
-                
+
         return results
-            
+
     except Exception as e:
         raise Exception(f"Failed to retrieve autovacuum metrics: {str(e)}")
     finally:
         if conn:
             conn.close()
 
+
 def format_results_for_autovacuum_analysis(results):
     """Format autovacuum analysis results in a human-readable string"""
     output = "Database Autovacuum Analysis Report\n\n"
-    
+
     # Format tables needing vacuum
     output += "=== TABLES NEEDING VACUUM ===\n"
     if results.get("tables_needing_vacuum"):
@@ -746,7 +751,7 @@ def format_results_for_autovacuum_analysis(results):
         output += "\nRecommendation: Consider running VACUUM on tables with high dead tuple percentages.\n"
     else:
         output += "No tables with dead tuples found.\n"
-    
+
     # Format current autovacuum activity
     output += "\n=== CURRENT AUTOVACUUM ACTIVITY ===\n"
     if results.get("autovacuum_activity"):
@@ -763,7 +768,7 @@ def format_results_for_autovacuum_analysis(results):
             output += f"• Query: {activity['query']}\n"
     else:
         output += "No active autovacuum processes found.\n"
-    
+
     # Format table bloat information
     output += "\n=== TABLE BLOAT INFORMATION ===\n"
     if results.get("table_bloat"):
@@ -776,7 +781,7 @@ def format_results_for_autovacuum_analysis(results):
             output += f"• Total Size: {bloat['total_size']}\n"
     else:
         output += "No table bloat information available.\n"
-    
+
     # Format transaction wraparound status
     output += "\n=== TRANSACTION WRAPAROUND STATUS ===\n"
     if results.get("wraparound_status"):
@@ -785,14 +790,15 @@ def format_results_for_autovacuum_analysis(results):
             output += f"• XID Age: {status['xid_age']}\n"
             output += f"• Max Age: {status['max_age']}\n"
             output += f"• Percent Towards Wraparound: {status['percent_towards_wraparound']}%\n"
-            
+
             # Add warning if approaching wraparound
-            if status['percent_towards_wraparound'] > 75:
+            if status["percent_towards_wraparound"] > 75:
                 output += "⚠️ WARNING: Database is approaching transaction wraparound limit!\n"
     else:
         output += "No wraparound status information available.\n"
-    
+
     return output
+
 
 def execute_io_analysis(secret_name):
     """Execute I/O-related analysis queries"""
@@ -837,21 +843,21 @@ def execute_io_analysis(secret_name):
             ORDER BY (io.heap_blks_read + io.idx_blks_read + 
                      io.toast_blks_read + io.tidx_blks_read) DESC
             LIMIT 20;
-        """
+        """,
     }
-    
+
     conn = connect_to_db(secret_name)
     try:
         # First, ensure pg_stat_statements is installed
-        
+
         with conn.cursor() as cur:
             cur.execute("""
                 CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
             """)
             conn.commit()
-        
+
         results = {}
-        
+
         # Execute each query and collect results
         for query_name, query in queries.items():
             try:
@@ -863,19 +869,20 @@ def execute_io_analysis(secret_name):
             except Exception as e:
                 print(f"Error executing {query_name}: {str(e)}")
                 results[query_name] = []
-                
+
         return results
-            
+
     except Exception as e:
         raise Exception(f"Failed to retrieve I/O metrics: {str(e)}")
     finally:
         if conn:
             conn.close()
 
+
 def format_results_for_io_analysis(results):
     """Format I/O analysis results in a human-readable string"""
     output = "Database I/O Analysis Report\n\n"
-    
+
     # Format buffer usage
     output += "=== BUFFER USAGE BY TABLE ===\n"
     if results.get("buffer_usage"):
@@ -885,13 +892,13 @@ def format_results_for_io_analysis(results):
             output += f"• Blocks Read from Disk: {table['heap_blks_read']}\n"
             output += f"• Blocks Hit in Buffer: {table['heap_blks_hit']}\n"
             output += f"• Buffer Hit Percentage: {table['hit_percentage']}%\n"
-            
+
             # Add recommendations based on hit percentage
-            if table['hit_percentage'] < 90:
+            if table["hit_percentage"] < 90:
                 output += "⚠️ Warning: Low buffer hit ratio. Consider increasing shared_buffers.\n"
     else:
         output += "No buffer usage statistics available.\n"
-    
+
     # Format checkpoint activity
     output += "\n=== CHECKPOINT ACTIVITY ===\n"
     if results.get("checkpoint_activity") and results["checkpoint_activity"]:
@@ -906,13 +913,13 @@ def format_results_for_io_analysis(results):
         output += f"• Backend fsync Calls: {checkpoint['buffers_backend_fsync']}\n"
         output += f"• Buffers Allocated: {checkpoint['buffers_alloc']}\n"
         output += f"• Statistics Reset Time: {checkpoint['stats_reset']}\n"
-        
+
         # Add recommendations based on checkpoint activity
-        if checkpoint['checkpoints_req'] > checkpoint['checkpoints_timed']:
+        if checkpoint["checkpoints_req"] > checkpoint["checkpoints_timed"]:
             output += "\n⚠️ Warning: High number of requested checkpoints. Consider increasing checkpoint_timeout or max_wal_size.\n"
     else:
         output += "No checkpoint activity information available.\n"
-    
+
     # Format I/O statistics
     output += "\n=== DETAILED I/O STATISTICS (TOP 20 TABLES) ===\n"
     if results.get("io_statistics"):
@@ -928,10 +935,10 @@ def format_results_for_io_analysis(results):
             output += f"• Toast Blocks Hit: {stat['toast_blks_hit']}\n"
             output += f"• Toast Index Blocks Read: {stat['tidx_blks_read']}\n"
             output += f"• Toast Index Blocks Hit: {stat['tidx_blks_hit']}\n"
-            
+
             # Calculate and show hit ratios
-            total_reads = stat['heap_blks_read'] + stat['idx_blks_read']
-            total_hits = stat['heap_blks_hit'] + stat['idx_blks_hit']
+            total_reads = stat["heap_blks_read"] + stat["idx_blks_read"]
+            total_hits = stat["heap_blks_hit"] + stat["idx_blks_hit"]
             if total_reads + total_hits > 0:
                 hit_ratio = (total_hits / (total_reads + total_hits)) * 100
                 output += f"• Overall Buffer Hit Ratio: {hit_ratio:.2f}%\n"
@@ -939,8 +946,9 @@ def format_results_for_io_analysis(results):
                     output += "⚠️ Warning: Low buffer hit ratio for this table.\n"
     else:
         output += "No I/O statistics available.\n"
-    
+
     return output
+
 
 def execute_replication_analysis(secret_name):
     """Execute replication-related analysis queries"""
@@ -978,20 +986,20 @@ def execute_replication_analysis(secret_name):
                    replay_lsn,
                    pg_wal_lsn_diff(sent_lsn, replay_lsn) as lag_bytes
             FROM pg_stat_replication;
-        """
+        """,
     }
-    
+
     conn = connect_to_db(secret_name)
     try:
         # First, ensure pg_stat_statements is installed
-        
+
         with conn.cursor() as cur:
             cur.execute("""
                 CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
             """)
             conn.commit()
         results = {}
-        
+
         # Execute each query and collect results
         for query_name, query in queries.items():
             try:
@@ -1003,19 +1011,20 @@ def execute_replication_analysis(secret_name):
             except Exception as e:
                 print(f"Error executing {query_name}: {str(e)}")
                 results[query_name] = []
-                
+
         return results
-            
+
     except Exception as e:
         raise Exception(f"Failed to retrieve replication metrics: {str(e)}")
     finally:
         if conn:
             conn.close()
 
+
 def format_results_for_replication_analysis(results):
     """Format replication analysis results in a human-readable string"""
     output = "Database Replication Analysis Report\n\n"
-    
+
     # Format Aurora replica status
     output += "=== AURORA REPLICA STATUS ===\n"
     if results.get("aurora_replica_status"):
@@ -1027,13 +1036,13 @@ def format_results_for_replication_analysis(results):
             output += f"• Highest Received LSN: {replica['highest_lsn_rcvd']}\n"
             output += f"• Current Read LSN: {replica['current_read_lsn']}\n"
             output += f"• Last Update: {replica['last_update_timestamp']}\n"
-            
+
             # Add warnings for high lag
-            if float(replica['lag_seconds']) > 30:
+            if float(replica["lag_seconds"]) > 30:
                 output += "⚠️ Warning: High replication lag detected!\n"
     else:
         output += "No Aurora replica status information available.\n"
-    
+
     # Format replication slots
     output += "\n=== REPLICATION SLOTS ===\n"
     if results.get("replication_slots"):
@@ -1044,13 +1053,13 @@ def format_results_for_replication_analysis(results):
             output += f"• Active: {slot['active']}\n"
             output += f"• Confirmed Flush LSN: {slot['confirmed_flush_lsn']}\n"
             output += f"• Lag Size: {slot['lag_size']}\n"
-            
+
             # Add warnings for inactive slots
-            if not slot['active']:
+            if not slot["active"]:
                 output += "⚠️ Warning: Inactive replication slot detected!\n"
     else:
         output += "No replication slots found.\n"
-    
+
     # Format replication connections
     output += "\n=== REPLICATION CONNECTIONS ===\n"
     if results.get("replication_connections"):
@@ -1069,14 +1078,15 @@ def format_results_for_replication_analysis(results):
             output += f"• Flush LSN: {conn['flush_lsn']}\n"
             output += f"• Replay LSN: {conn['replay_lsn']}\n"
             output += f"• Lag Size: {conn['lag_bytes']} bytes\n"
-            
+
             # Add warnings for large lag
-            if conn['lag_bytes'] > 100000000:  # 100MB
+            if conn["lag_bytes"] > 100000000:  # 100MB
                 output += "⚠️ Warning: Large replication lag detected!\n"
     else:
         output += "No replication connections found.\n"
-    
+
     return output
+
 
 def execute_system_health(secret_name):
     """Execute system health-related analysis queries"""
@@ -1128,21 +1138,21 @@ def execute_system_health(secret_name):
             WHERE state != 'idle' 
             AND xact_start < now() - interval '5 minutes'
             ORDER BY xact_start;
-        """
+        """,
     }
-    
+
     conn = connect_to_db(secret_name)
     try:
         # First, ensure pg_stat_statements is installed
-        
+
         with conn.cursor() as cur:
             cur.execute("""
                 CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
             """)
             conn.commit()
-        
+
         results = {}
-        
+
         # Execute each query and collect results
         for query_name, query in queries.items():
             try:
@@ -1154,19 +1164,20 @@ def execute_system_health(secret_name):
             except Exception as e:
                 print(f"Error executing {query_name}: {str(e)}")
                 results[query_name] = []
-                
+
         return results
-            
+
     except Exception as e:
         raise Exception(f"Failed to retrieve system health metrics: {str(e)}")
     finally:
         if conn:
             conn.close()
 
+
 def format_results_for_system_health(results):
     """Format system health analysis results in a human-readable string"""
     output = "Database System Health Report\n\n"
-    
+
     # Format database statistics
     output += "=== DATABASE STATISTICS ===\n"
     if results.get("database_statistics"):
@@ -1177,15 +1188,15 @@ def format_results_for_system_health(results):
             output += f"• Transactions Rolled Back: {stat['xact_rollback']}\n"
             output += f"• Blocks Read: {stat['blks_read']}\n"
             output += f"• Blocks Hit (Cache): {stat['blks_hit']}\n"
-            
+
             # Calculate cache hit ratio
-            total_blocks = stat['blks_read'] + stat['blks_hit']
+            total_blocks = stat["blks_read"] + stat["blks_hit"]
             if total_blocks > 0:
-                cache_hit_ratio = (stat['blks_hit'] / total_blocks) * 100
+                cache_hit_ratio = (stat["blks_hit"] / total_blocks) * 100
                 output += f"• Cache Hit Ratio: {cache_hit_ratio:.2f}%\n"
                 if cache_hit_ratio < 90:
                     output += "⚠️ Warning: Low cache hit ratio. Consider increasing shared_buffers.\n"
-            
+
             output += f"• Tuples Returned: {stat['tup_returned']}\n"
             output += f"• Tuples Fetched: {stat['tup_fetched']}\n"
             output += f"• Tuples Inserted: {stat['tup_inserted']}\n"
@@ -1198,27 +1209,27 @@ def format_results_for_system_health(results):
             output += f"• Block Read Time: {stat['blk_read_time']} ms\n"
             output += f"• Block Write Time: {stat['blk_write_time']} ms\n"
             output += f"• Statistics Reset: {stat['stats_reset']}\n"
-            
+
             # Add warnings for concerning metrics
-            if stat['deadlocks'] > 0:
+            if stat["deadlocks"] > 0:
                 output += "⚠️ Warning: Deadlocks detected!\n"
-            if stat['conflicts'] > 0:
+            if stat["conflicts"] > 0:
                 output += "⚠️ Warning: Conflicts detected!\n"
-            if stat['temp_files'] > 1000:
+            if stat["temp_files"] > 1000:
                 output += "⚠️ Warning: High number of temporary files created!\n"
     else:
         output += "No database statistics available.\n"
-    
+
     # Format lock contention
     output += "\n=== LOCK CONTENTION ===\n"
     if results.get("lock_contention"):
         lock_groups = {}
         for lock in results["lock_contention"]:
-            relation = lock['relation']
+            relation = lock["relation"]
             if relation not in lock_groups:
                 lock_groups[relation] = []
             lock_groups[relation].append(lock)
-        
+
         for relation, locks in lock_groups.items():
             output += f"\nRelation: {relation}\n"
             for idx, lock in enumerate(locks, 1):
@@ -1229,12 +1240,12 @@ def format_results_for_system_health(results):
                 output += f"• Virtual Transaction ID: {lock['vtid']}\n"
                 output += f"• PID: {lock['pid']}\n"
                 output += f"• Granted: {lock['granted']}\n"
-                
-                if not lock['granted']:
+
+                if not lock["granted"]:
                     output += "⚠️ Warning: Lock waiting to be granted!\n"
     else:
         output += "No lock contention found.\n"
-    
+
     # Format long-running transactions
     output += "\n=== LONG-RUNNING TRANSACTIONS (> 5 minutes) ===\n"
     if results.get("long_running_transactions"):
@@ -1246,14 +1257,15 @@ def format_results_for_system_health(results):
             output += f"• Age: {txn['xact_age']}\n"
             output += f"• State: {txn['state']}\n"
             output += f"• Query: {txn['query']}\n"
-            
+
             # Add warning for very long-running transactions
-            if 'hours' in str(txn['xact_age']) or 'days' in str(txn['xact_age']):
+            if "hours" in str(txn["xact_age"]) or "days" in str(txn["xact_age"]):
                 output += "⚠️ Warning: Transaction running for an extended period!\n"
     else:
         output += "No long-running transactions found.\n"
-    
+
     return output
+
 
 def connect_to_db(secret_name):
     """Establish database connection"""
@@ -1262,46 +1274,44 @@ def connect_to_db(secret_name):
     try:
         print("in connect_to_db")
         conn = psycopg2.connect(
-            host=secret['host'],
-            database=secret['dbname'],
-            user=secret['username'],
-            password=secret['password'],
-            port=secret['port']
+            host=secret["host"],
+            database=secret["dbname"],
+            user=secret["username"],
+            password=secret["password"],
+            port=secret["port"],
         )
         return conn
     except Exception as e:
         raise Exception(f"Failed to connect to the database: {str(e)}")
 
+
 def get_env_secret(environment):
-    ssm_client = boto3.client('ssm')
+    ssm_client = boto3.client("ssm")
     print("in get_env_secret")
     """Retrieve the secret name for the specified environment"""
-    if environment == 'prod':
+    if environment == "prod":
         print("in get_env_secret1")
         try:
             # Get the secret name from Parameter Store
             print("in get_env_secret-try")
-            response = ssm_client.get_parameter(
-                Name=f'/AuroraOps/{environment}'
-            )
-            print(response['Parameter']['Value'])
-            return response['Parameter']['Value']
+            response = ssm_client.get_parameter(Name=f"/AuroraOps/{environment}")
+            print(response["Parameter"]["Value"])
+            return response["Parameter"]["Value"]
         except ssm_client.exceptions.ParameterNotFound:
             error_message = f"Parameter not found: /AuroraOps/{environment}"
             print(error_message)
             raise Exception(error_message)
-    elif environment == 'dev':
+    elif environment == "dev":
         try:
             # Get the secret name from Parameter Store
-            response = ssm_client.get_parameter(
-                Name=f'/AuroraOps/{environment}'
-            )
-            return response['Parameter']['Value']
+            response = ssm_client.get_parameter(Name=f"/AuroraOps/{environment}")
+            return response["Parameter"]["Value"]
         except Exception as e:
             raise Exception(f"Failed to get dev secret name from Parameter Store: {str(e)}")
     else:
         print("environement does not exist")
         raise ValueError(f"Unknown environment: {environment}")
+
 
 def execute_vacuum_progress_analysis(secret_name):
     """Execute current vacuum progress analysis based on runbooks.py"""
@@ -1325,7 +1335,7 @@ def execute_vacuum_progress_analysis(secret_name):
         JOIN pg_stat_all_tables s on s.relid = p.relid
         ORDER BY now() - a.xact_start DESC;
     """
-    
+
     conn = None
     try:
         conn = connect_to_db(secret_name)
@@ -1339,6 +1349,7 @@ def execute_vacuum_progress_analysis(secret_name):
     finally:
         if conn:
             conn.close()
+
 
 def execute_xid_analysis(secret_name):
     """Execute XID wraparound analysis based on runbooks.py"""
@@ -1376,14 +1387,14 @@ def execute_xid_analysis(secret_name):
             WHERE c.relkind = 'r' AND c.relfrozenxid != 0 
             ORDER BY xid_age DESC 
             LIMIT 10;
-        """
+        """,
     }
-    
+
     conn = None
     try:
         conn = connect_to_db(secret_name)
         results = {}
-        
+
         for query_name, query in queries.items():
             try:
                 with conn.cursor() as cur:
@@ -1394,13 +1405,14 @@ def execute_xid_analysis(secret_name):
             except Exception as e:
                 print(f"Error executing {query_name}: {str(e)}")
                 results[query_name] = []
-                
+
         return results
     except Exception as e:
         raise Exception(f"Failed to retrieve XID analysis: {str(e)}")
     finally:
         if conn:
             conn.close()
+
 
 def execute_bloat_analysis(secret_name):
     """Execute table and index bloat analysis based on runbooks.py"""
@@ -1461,7 +1473,7 @@ def execute_bloat_analysis(secret_name):
         ORDER BY bloat_percentage DESC, bloat_pages DESC
         LIMIT 20;
     """
-    
+
     conn = None
     try:
         conn = connect_to_db(secret_name)
@@ -1475,6 +1487,7 @@ def execute_bloat_analysis(secret_name):
     finally:
         if conn:
             conn.close()
+
 
 def execute_long_running_transactions(secret_name):
     """Execute long-running transaction analysis based on runbooks.py"""
@@ -1491,7 +1504,7 @@ def execute_long_running_transactions(secret_name):
         AND EXTRACT(EPOCH FROM (now() - xact_start)) > 3600
         ORDER BY xact_start;
     """
-    
+
     conn = None
     try:
         conn = connect_to_db(secret_name)
@@ -1506,11 +1519,12 @@ def execute_long_running_transactions(secret_name):
         if conn:
             conn.close()
 
+
 def format_results_for_vacuum_progress(results):
     """Format vacuum progress results for display"""
     if not results:
         return "No active vacuum operations found."
-    
+
     output = "=== CURRENT VACUUM PROGRESS ===\n"
     for idx, vacuum in enumerate(results, 1):
         output += f"\nVacuum Operation #{idx}:\n"
@@ -1525,45 +1539,47 @@ def format_results_for_vacuum_progress(results):
         output += f"• Vacuumed: {vacuum['vacuumed']} ({vacuum['vacuumed_pct']}%)\n"
         output += f"• Dead Tuples: {vacuum['total_num_dead_tuples']}\n"
         output += f"• Wait Event: {vacuum['wait_event']}\n"
-    
+
     return output
+
 
 def format_results_for_xid_analysis(results):
     """Format XID analysis results for display"""
     output = "=== XID WRAPAROUND ANALYSIS ===\n"
-    
+
     # Oldest XID across all databases
     if results.get("oldest_xid_all_databases"):
         oldest_xid = results["oldest_xid_all_databases"][0]["oldest_xid"]
         output += f"\nOldest XID across all databases: {oldest_xid}\n"
-    
+
     # Percent towards wraparound
     if results.get("percent_towards_wraparound"):
         wraparound_data = results["percent_towards_wraparound"][0]
-        output += f"\nXID Wraparound Status:\n"
+        output += "\nXID Wraparound Status:\n"
         output += f"• Current oldest XID: {wraparound_data['oldest_current_xid']}\n"
         output += f"• Percent towards wraparound: {wraparound_data['percent_towards_wraparound']}%\n"
         output += f"• Percent towards emergency autovacuum: {wraparound_data['percent_towards_emergency_autovac']}%\n"
-    
+
     # XID age by database
     if results.get("oldest_xid_by_database"):
-        output += f"\nXID Age by Database:\n"
+        output += "\nXID Age by Database:\n"
         for db in results["oldest_xid_by_database"]:
             output += f"• {db['datname']}: {db['xid_age']}\n"
-    
+
     # Tables with oldest relfrozenxid
     if results.get("tables_with_oldest_relfrozenxid"):
-        output += f"\nTables with Oldest relfrozenxid:\n"
+        output += "\nTables with Oldest relfrozenxid:\n"
         for table in results["tables_with_oldest_relfrozenxid"]:
             output += f"• {table['schema_name']}.{table['table_name']}: {table['xid_age']}\n"
-    
+
     return output
+
 
 def format_results_for_bloat_analysis(results):
     """Format bloat analysis results for display"""
     if not results:
         return "No significant table bloat found."
-    
+
     output = "=== TABLE BLOAT ANALYSIS ===\n"
     for idx, table in enumerate(results, 1):
         output += f"\nBloated Table #{idx}:\n"
@@ -1573,14 +1589,15 @@ def format_results_for_bloat_analysis(results):
         output += f"• Bloat Size: {table['bloat_size']}\n"
         output += f"• Bloat Percentage: {table['bloat_percentage']}%\n"
         output += f"• Bloat Pages: {table['bloat_pages']}\n"
-    
+
     return output
+
 
 def format_results_for_long_running_transactions(results):
     """Format long-running transaction results for display"""
     if not results:
         return "No long-running transactions found."
-    
+
     output = "=== LONG-RUNNING TRANSACTIONS ===\n"
     for idx, txn in enumerate(results, 1):
         output += f"\nLong-Running Transaction #{idx}:\n"
@@ -1593,80 +1610,81 @@ def format_results_for_long_running_transactions(results):
         output += f"• State: {txn['state']}\n"
         output += f"• Wait Event: {txn['wait_event_type']}.{txn['wait_event']}\n"
         output += f"• Query: {txn['query'][:100]}...\n"
-    
+
     return output
+
 
 def lambda_handler(event, context):
     try:
         print(f"Received event: {json.dumps(event)}")
-        
+
         # Check if arguments are nested under 'arguments' key
-        if 'arguments' in event:
+        if "arguments" in event:
             # Extract arguments from the nested structure
-            args = event['arguments']
-            environment = args.get('environment')
-            action_type = args.get('action_type')
+            args = event["arguments"]
+            environment = args.get("environment")
+            action_type = args.get("action_type")
         else:
             # Use the flat structure
-            environment = event.get('environment')
-            action_type = event.get('action_type')
-        
+            environment = event.get("environment")
+            action_type = event.get("action_type")
+
         if not environment or not action_type:
             return {
                 "functionResponse": {
-                    "content": f"Error: Missing required parameters. Need 'environment' and 'action_type'."
+                    "content": "Error: Missing required parameters. Need 'environment' and 'action_type'."
                 }
             }
-            
+
         print(f"Environment: {environment}")
         secret_name = get_env_secret(environment)
         min_exec_time = 1000
         # Get slow queries
-        #if tool_name == 'slow_query':
-        if action_type == 'slow_query':
+        # if tool_name == 'slow_query':
+        if action_type == "slow_query":
             print("Executing slow query scripts")
             results = execute_slow_query(secret_name, min_exec_time)
             # Format results for Bedrock Agent
             formatted_output = format_results_for_slow_query(results)
             print(formatted_output)
-        elif action_type == 'connection_management_issues':
+        elif action_type == "connection_management_issues":
             print("Executing connection_management_issues")
             results = execute_connect_issues(secret_name, min_exec_time)
             # Format results for Bedrock Agent
             formatted_output = format_results_for_conn_issues(results)
-        elif action_type == 'index_analysis':
+        elif action_type == "index_analysis":
             print("Executing index_analysis")
             results = execute_index_analysis(secret_name)
             formatted_output = format_results_for_index_analysis(results)
-        elif action_type == 'autovacuum_analysis':
+        elif action_type == "autovacuum_analysis":
             print("Executing autovacuum_analysis")
             results = execute_autovacuum_analysis(secret_name)
             formatted_output = format_results_for_autovacuum_analysis(results)
-        elif action_type == 'io_analysis':
+        elif action_type == "io_analysis":
             print("Executing io_analysis")
             results = execute_io_analysis(secret_name)
             formatted_output = format_results_for_io_analysis(results)
-        elif action_type == 'replication_analysis':
+        elif action_type == "replication_analysis":
             print("Executing replication_analysis")
             results = execute_replication_analysis(secret_name)
             formatted_output = format_results_for_replication_analysis(results)
-        elif action_type == 'system_health':
+        elif action_type == "system_health":
             print("Executing system_health")
             results = execute_system_health(secret_name)
             formatted_output = format_results_for_system_health(results)
-        elif action_type == 'vacuum_progress':
+        elif action_type == "vacuum_progress":
             print("Executing vacuum_progress analysis")
             results = execute_vacuum_progress_analysis(secret_name)
             formatted_output = format_results_for_vacuum_progress(results)
-        elif action_type == 'xid_analysis':
+        elif action_type == "xid_analysis":
             print("Executing XID wraparound analysis")
             results = execute_xid_analysis(secret_name)
             formatted_output = format_results_for_xid_analysis(results)
-        elif action_type == 'bloat_analysis':
+        elif action_type == "bloat_analysis":
             print("Executing table bloat analysis")
             results = execute_bloat_analysis(secret_name)
             formatted_output = format_results_for_bloat_analysis(results)
-        elif action_type == 'long_running_transactions':
+        elif action_type == "long_running_transactions":
             print("Executing long-running transactions analysis")
             results = execute_long_running_transactions(secret_name)
             formatted_output = format_results_for_long_running_transactions(results)
@@ -1677,25 +1695,12 @@ def lambda_handler(event, context):
                 }
             }
 
-        response_body = {
-        'TEXT': {
-            'body': formatted_output
-            }
-        }
+        response_body = {"TEXT": {"body": formatted_output}}
 
-        function_response = {
-        'functionResponse': {
-            'responseBody': response_body
-            }
-        }
-       
-        
+        function_response = {"functionResponse": {"responseBody": response_body}}
+
         return function_response
 
     except Exception as e:
         print(f"Error in lambda_handler: {str(e)}")
-        return {
-            "functionResponse": {
-                "content": f"Error analyzing slow queries: {str(e)}"
-            }
-        }
+        return {"functionResponse": {"content": f"Error analyzing slow queries: {str(e)}"}}

@@ -21,7 +21,7 @@ from strands import Agent   # Import name
 ```
 
 ### **2. Official AgentCore Pattern**
-Following the **exact pattern** from `/samples/01-tutorials/05-AgentCore-tools/01-Agent-Core-code-interpreter/02-code-execution-with-agent-using-code-interpreter/`:
+Following the **exact pattern** from `/samples/06-workshops/05-AgentCore-tools/01-Agent-Core-code-interpreter/02-code-execution-with-agent-using-code-interpreter/`:
 
 ```python
 # ✅ CORRECT IMPLEMENTATION

@@ -91,7 +91,7 @@ SPANS_LOG_GROUP = "aws/spans"
 # Evaluator IDs
 # Built-in evaluators are always included. Custom LLM-as-a-judge evaluators
 # are loaded from custom_evaluator_ids.json if it exists (created by
-# running optimization/custom_evaluators.py first).
+# running evaluators/custom_evaluators.py first).
 # ---------------------------------------------------------------------------
 
 _BUILTIN_EVALUATOR_IDS = [
@@ -114,14 +114,12 @@ def _load_evaluator_ids() -> list[str]:
                 + "\n".join(f"  {name}: {eid}" for name, eid in custom.items())
             )
         else:
-            print(
-                "custom_evaluator_ids.json is empty — using built-in evaluators only."
-            )
+            print("custom_evaluator_ids.json is empty — using built-in evaluators only.")
     else:
         print(
             "No custom_evaluator_ids.json found. Using built-in evaluators only.\n"
             "To add custom LLM-as-a-judge evaluators, run:\n"
-            "  uv run python optimization/custom_evaluators.py"
+            "  uv run python evaluators/custom_evaluators.py"
         )
     return ids
 
@@ -130,9 +128,7 @@ EVALUATOR_IDS = _load_evaluator_ids()
 
 # Actor model: drives the simulated broker persona
 # Choose a model capable of following complex persona instructions.
-ACTOR_MODEL_ID = os.environ.get(
-    "ACTOR_MODEL_ID", "us.anthropic.claude-haiku-4-5-20251001-v1:0"
-)
+ACTOR_MODEL_ID = os.environ.get("ACTOR_MODEL_ID", "us.anthropic.claude-haiku-4-5-20251001-v1:0")
 
 # Seconds to wait for spans to land in CloudWatch before submitting the eval
 INGESTION_DELAY_SECONDS = int(os.environ.get("INGESTION_DELAY_SECONDS", "180"))
@@ -189,9 +185,7 @@ def agent_invoker(inp: AgentInvokerInput) -> AgentInvokerOutput:
     except Exception:
         agent_text = raw
 
-    logger.debug(
-        "Turn [session=%s] user=%r agent=%r", session_id, prompt[:80], agent_text[:80]
-    )
+    logger.debug("Turn [session=%s] user=%r agent=%r", session_id, prompt[:80], agent_text[:80])
     return AgentInvokerOutput(agent_output=agent_text)
 
 
@@ -461,12 +455,8 @@ def main() -> None:
 
     if result.evaluation_results:
         ev = result.evaluation_results
-        completed = getattr(ev, "sessions_completed", None) or getattr(
-            ev, "number_of_sessions_completed", "?"
-        )
-        failed = getattr(ev, "sessions_failed", None) or getattr(
-            ev, "number_of_sessions_failed", "?"
-        )
+        completed = getattr(ev, "sessions_completed", None) or getattr(ev, "number_of_sessions_completed", "?")
+        failed = getattr(ev, "sessions_failed", None) or getattr(ev, "number_of_sessions_failed", "?")
         print(f"\nSessions: completed={completed}, failed={failed}")
 
         summaries = getattr(ev, "evaluator_summaries", None) or []
@@ -474,21 +464,13 @@ def main() -> None:
             print(f"\n{'Evaluator':<42} {'Avg Score':>10}  {'Evaluated':>10}")
             print("-" * 66)
             for es in summaries:
-                name = getattr(es, "evaluator_name", None) or getattr(
-                    es, "evaluator_id", "unknown"
-                )
+                name = getattr(es, "evaluator_name", None) or getattr(es, "evaluator_id", "unknown")
                 stats = getattr(es, "statistics", None)
-                avg = (
-                    f"{stats.average_score:.3f}"
-                    if stats and stats.average_score is not None
-                    else "N/A"
-                )
+                avg = f"{stats.average_score:.3f}" if stats and stats.average_score is not None else "N/A"
                 evaluated = getattr(es, "total_evaluated", 0) or 0
                 print(f"{name:<42} {avg:>10}  {evaluated:>10}")
         else:
-            print(
-                "\nNo evaluator summaries returned (evaluation may still be in progress)."
-            )
+            print("\nNo evaluator summaries returned (evaluation may still be in progress).")
             print(
                 "Re-run with the batch eval ID to check:\n"
                 f"  aws bedrock-agentcore get-batch-evaluation "
@@ -520,9 +502,7 @@ def main() -> None:
                     label = attrs.get("gen_ai.evaluation.score.label", "?")
                     explanation = attrs.get("gen_ai.evaluation.explanation", "")
                     sid = attrs.get("session.id", "?")
-                    print(
-                        f"  [{name}] score={score} label={label} session={str(sid)[:36]}"
-                    )
+                    print(f"  [{name}] score={score} label={label} session={str(sid)[:36]}")
                     if explanation:
                         print(f"    {str(explanation)[:140]}")
         except LookupError as exc:

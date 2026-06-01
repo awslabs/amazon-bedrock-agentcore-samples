@@ -12,7 +12,7 @@ This use case implements an intelligent financial analysis agent using Amazon Be
 |-------------|---------|
 | Use case type | Conversational |
 | Agent type | Graph |
-| Use case components | Memory, Tools, Browser Automation, Custom Code-Based Evaluators, AgentCore Optimization |
+| Use case components | Memory, Tools, Browser Automation, Custom Code-Based Evaluators, Dataset Management, AgentCore Optimization |
 | Use case vertical | Financial Services |
 | Example complexity | Advanced |
 | SDK used | Amazon Bedrock AgentCore SDK, LangGraph, Playwright |
@@ -337,6 +337,88 @@ aws iam delete-role --role-name MarketTrendsEvalLambdaRole
 
 ---
 
+## Dataset Management
+
+Before running evaluations you need test cases. AgentCore Dataset Management gives you a central, versioned store for evaluation scenarios that any evaluation job can reference by ID — no re-uploading files, no ad-hoc inline payloads.
+
+### Why use datasets
+
+| Without datasets | With datasets |
+|---|---|
+| Each evaluation run re-specifies its own scenarios inline | Create once, reference by dataset ID in every eval job |
+| No record of which scenarios you evaluated against | Publish named versions — v1 = baseline, v2 = after adding edge cases |
+| Hard to share test suites across team members or CI pipelines | A dataset ID is stable and portable |
+| Simulated actors defined per-script | Store actor profiles centrally; reuse across different eval runs |
+
+### Two scenario types
+
+AgentCore supports two dataset schema types, both demonstrated in `optimization/manage_dataset.py`:
+
+**`AGENTCORE_EVALUATION_PREDEFINED_V1`** — scripted multi-turn conversations where you control every input and declare expected outcomes:
+- `turns`: list of user inputs (and optional expected responses per turn)
+- `expected_trajectory`: the tool call sequence the agent should follow, e.g. `{"toolNames": ["identify_broker", "get_stock_data"]}`
+- `assertions`: natural-language checks the evaluator verifies against the agent's response
+
+**`AGENTCORE_EVALUATION_SIMULATED_V1`** — actor-profile scenarios where an LLM plays the role of a user and drives the conversation autonomously:
+- `actor_profile`: who the actor is (`context`), what they want (`goal`), and optional personality `traits`
+- `input`: the opening message the actor sends
+- `max_turns`: conversation budget
+- `assertions`: goals the evaluator checks after the simulation ends
+
+For the Market Trends Agent, predefined scenarios are useful for regression testing (broker onboarding, stock data retrieval, PII safety), while simulated scenarios cover the full conversational surface — multiple broker personas exercising memory recall, news queries, and multi-stock analysis.
+
+### Dataset lifecycle
+
+```
+create_dataset_and_wait()          # ingest initial examples (DRAFT)
+       |
+add_examples_and_wait()            # curate — add more scenarios
+update_examples_and_wait()         # fix or extend existing ones
+delete_examples_and_wait()         # remove stale cases
+       |
+create_dataset_version_and_wait()  # publish a stable snapshot (v1, v2, ...)
+       |
+Reference version ID in eval job   # reproducible, comparable results
+```
+
+A dataset always has a mutable DRAFT that you edit freely. `create_dataset_version_and_wait()` copies the current DRAFT into an immutable numbered version. Evaluation jobs reference a specific version — so re-running the same job against v1 a month later gives you a fair comparison even if you have since added new examples to the DRAFT.
+
+### Running the demo
+
+```bash
+export AWS_REGION=us-east-1
+
+# Full demo: create → version → cleanup
+uv run python optimization/manage_dataset.py
+
+# Keep datasets alive so you can run evaluations against them afterwards
+uv run python optimization/manage_dataset.py --no-cleanup
+```
+
+The demo creates:
+1. A **predefined dataset** with five Market Trends Agent test cases (broker onboarding, stock data retrieval, multi-turn profile + news, memory recall, PII safety)
+2. A **simulated dataset** with three actor-profile scenarios (tech momentum briefing, ESG portfolio review, dividend income screen)
+
+It then shows how to add, update, and delete individual examples — the day-to-day curation workflow — before publishing a versioned snapshot of each dataset.
+
+### Using the AgentCore CLI for datasets
+
+```bash
+# List all datasets in your account
+agentcore datasets list
+
+# Inspect a specific dataset
+agentcore datasets get --dataset-id <dataset-id>
+
+# List all published versions of a dataset
+agentcore datasets versions --dataset-id <dataset-id>
+
+# Delete a dataset
+agentcore datasets delete --dataset-id <dataset-id>
+```
+
+---
+
 ## Systematic Agent Quality Improvement
 
 Once your agent is deployed and instrumented with evaluators, the real work begins: closing the loop between evaluation results and agent improvements. [AgentCore Optimization](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/optimization.html) provides a built-in improvement cycle that takes you from raw evaluation scores to statistically validated improvements — without manual prompt engineering or guesswork. See [How it works](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/optimization-how-it-works.html) for a full description of the cycle.
@@ -358,9 +440,12 @@ Evaluate  →  Recommend  →  Bundle  →  A/B Test  →  Promote
 ### Quick Start
 
 ```bash
+# Step 0: Create and version evaluation datasets (predefined + simulated scenarios)
+export AWS_REGION=us-west-2
+uv run python optimization/manage_dataset.py --no-cleanup
+
 # Step 1: Run a simulated dataset evaluation to establish baseline scores
 export AGENT_RUNTIME_ARN=$(cat .agent_arn)
-export AWS_REGION=us-west-2
 uv run python optimization/user_simulated_dataset.py
 
 # Step 2: Run the full optimization cycle (baseline eval → recommendations → A/B test)
@@ -562,13 +647,15 @@ for m in results.get("evaluatorMetrics", []):
 
 | Script | What it does |
 |--------|-------------|
-| `optimization/custom_evaluators.py` | Create/manage 3 custom LLM-as-a-judge evaluators (market data accuracy, broker personalization, financial professionalism) |
+| `optimization/manage_dataset.py` | Create, curate, and version evaluation datasets (predefined + simulated) |
+| `evaluators/custom_evaluators.py` | Create/manage 3 custom LLM-as-a-judge evaluators (market data accuracy, broker personalization, financial professionalism) |
 | `optimization/user_simulated_dataset.py` | Standalone batch evaluation with LLM actor-driven broker conversations |
 | `optimization/optimize_agent.py` | Full cycle: traffic → baseline eval → SP/TD recommendations → config bundles → A/B tests |
 
 ```
 optimization/
-├── custom_evaluators.py       # Create/reuse custom LLM-as-a-judge evaluators
+├── manage_dataset.py          # Dataset management: create, curate, version eval datasets
+├── (see evaluators/custom_evaluators.py)  # Create/reuse custom LLM-as-a-judge evaluators
 ├── user_simulated_dataset.py  # LLM actor-driven batch evaluation (5 broker scenarios)
 └── optimize_agent.py          # Full optimization cycle (Phases 1–8)
 ```
@@ -577,7 +664,7 @@ optimization/
 
 ```bash
 # Optional: create custom domain-specific evaluators first
-uv run python optimization/custom_evaluators.py
+uv run python evaluators/custom_evaluators.py
 
 # Standalone simulated eval (independent, can run any time)
 uv run python optimization/user_simulated_dataset.py

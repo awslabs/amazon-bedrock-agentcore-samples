@@ -1,5 +1,8 @@
 def preview_text(
-    text: str, num_lines_start: int, num_lines_end: int = 0, show_line_nums: bool = False
+    text: str,
+    num_lines_start: int,
+    num_lines_end: int = 0,
+    show_line_nums: bool = False,
 ) -> str:
     lines_original = text.split("\n")
     if show_line_nums:

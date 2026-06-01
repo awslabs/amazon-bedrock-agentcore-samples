@@ -2,6 +2,7 @@
 Setup script for SDK Agent CLI deployment
 Ensures proper packaging of shared dependencies
 """
+
 from setuptools import setup, find_packages
 import os
 
@@ -15,15 +16,8 @@ setup(
     description="BAC SDK Agent for AgentCore Runtime",
     packages=find_packages(),
     py_modules=["sdk_agent"],
-    install_requires=[
-        "strands-agents",
-        "bedrock-agentcore",
-        "pyyaml",
-        "requests"
-    ],
+    install_requires=["strands-agents", "bedrock-agentcore", "pyyaml", "requests"],
     python_requires=">=3.11",
-    package_data={
-        "": ["*.yaml", "*.json"]
-    },
+    package_data={"": ["*.yaml", "*.json"]},
     include_package_data=True,
 )

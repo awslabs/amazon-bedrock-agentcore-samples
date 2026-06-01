@@ -1,6 +1,7 @@
 """
 Entry point for the Insurance API
 """
+
 import uvicorn
 from app import app
 

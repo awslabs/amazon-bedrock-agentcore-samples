@@ -17,6 +17,7 @@ from enum import Enum
 
 class TraceEventType(Enum):
     """Types of trace events."""
+
     REQUEST_RECEIVED = "request_received"
     JWT_VALIDATION = "jwt_validation"
     USER_CONTEXT_EXTRACTED = "user_context_extracted"
@@ -32,6 +33,7 @@ class TraceEventType(Enum):
 @dataclass
 class TraceEvent:
     """Single trace event in the agent interaction flow."""
+
     event_type: TraceEventType
     timestamp: float
     agent: str
@@ -44,12 +46,14 @@ class TraceEvent:
         return {
             "event_type": self.event_type.value,
             "timestamp": self.timestamp,
-            "formatted_time": datetime.fromtimestamp(self.timestamp).strftime("%H:%M:%S.%f")[:-3],
+            "formatted_time": datetime.fromtimestamp(self.timestamp).strftime(
+                "%H:%M:%S.%f"
+            )[:-3],
             "agent": self.agent,
             "description": self.description,
             "details": self.details,
             "duration_ms": self.duration_ms,
-            "success": self.success
+            "success": self.success,
         }
 
 
@@ -66,6 +70,7 @@ class AgentTrace:
     - Tool invocations
     - Authorization decisions
     """
+
     trace_id: str
     session_id: str
     user_query: str
@@ -84,20 +89,24 @@ class AgentTrace:
         details: Optional[Dict[str, Any]] = None,
         duration_ms: Optional[float] = None,
         success: bool = True,
-        timestamp: Optional[float] = None
+        timestamp: Optional[float] = None,
     ):
         """Add an event to the trace."""
-        self.events.append(TraceEvent(
-            event_type=event_type,
-            timestamp=timestamp or time.time(),
-            agent=agent,
-            description=description,
-            details=details or {},
-            duration_ms=duration_ms,
-            success=success
-        ))
+        self.events.append(
+            TraceEvent(
+                event_type=event_type,
+                timestamp=timestamp or time.time(),
+                agent=agent,
+                description=description,
+                details=details or {},
+                duration_ms=duration_ms,
+                success=success,
+            )
+        )
 
-    def complete(self, response: str, success: bool = True, error: Optional[str] = None):
+    def complete(
+        self, response: str, success: bool = True, error: Optional[str] = None
+    ):
         """Mark the trace as complete."""
         self.end_time = time.time()
         self.final_response = response
@@ -117,21 +126,19 @@ class AgentTrace:
             "session_id": self.session_id,
             "user_query": self.user_query,
             "start_time": datetime.fromtimestamp(self.start_time).isoformat(),
-            "end_time": datetime.fromtimestamp(self.end_time).isoformat() if self.end_time else None,
+            "end_time": datetime.fromtimestamp(self.end_time).isoformat()
+            if self.end_time
+            else None,
             "duration_ms": self.duration_ms,
             "events": [e.to_dict() for e in self.events],
             "final_response": self.final_response,
             "success": self.success,
-            "error": self.error
+            "error": self.error,
         }
 
 
 def generate_mock_trace(
-    query: str,
-    session_id: str,
-    user_id: str,
-    customer_id: str,
-    user_email: str
+    query: str, session_id: str, user_id: str, customer_id: str, user_email: str
 ) -> AgentTrace:
     """
     Generate a mock trace for demonstration purposes.
@@ -142,14 +149,14 @@ def generate_mock_trace(
     import uuid
 
     trace = AgentTrace(
-        trace_id=str(uuid.uuid4())[:8],
-        session_id=session_id,
-        user_query=query
+        trace_id=str(uuid.uuid4())[:8], session_id=session_id, user_query=query
     )
 
     # Determine which agent would handle this query
     query_lower = query.lower()
-    if any(word in query_lower for word in ["account", "balance", "savings", "transaction"]):
+    if any(
+        word in query_lower for word in ["account", "balance", "savings", "transaction"]
+    ):
         target_agent = "accounts_agent"
         action = "get_accounts"
     elif any(word in query_lower for word in ["profile", "address", "email", "phone"]):
@@ -167,11 +174,8 @@ def generate_mock_trace(
         event_type=TraceEventType.REQUEST_RECEIVED,
         agent="coordinator_agent",
         description="Received user request",
-        details={
-            "query_length": len(query),
-            "session_id": session_id
-        },
-        timestamp=base_time
+        details={"query_length": len(query), "session_id": session_id},
+        timestamp=base_time,
     )
 
     # Event 2: JWT Validation
@@ -183,10 +187,10 @@ def generate_mock_trace(
             "issuer": f"https://{os.getenv('AUTH0_DOMAIN', 'your-tenant.auth0.com')}/",
             "audience": "https://agentcore-financial-api",
             "token_valid": True,
-            "claims_extracted": ["sub", "email", "name", "customer_id"]
+            "claims_extracted": ["sub", "email", "name", "customer_id"],
         },
         duration_ms=45.2,
-        timestamp=base_time + 0.01
+        timestamp=base_time + 0.01,
     )
 
     # Event 3: User context extracted
@@ -198,9 +202,15 @@ def generate_mock_trace(
             "user_id": user_id,
             "customer_id": customer_id,
             "email": user_email,
-            "scopes": ["openid", "profile", "email", "profile:personal:read", "profile:preferences:read"]
+            "scopes": [
+                "openid",
+                "profile",
+                "email",
+                "profile:personal:read",
+                "profile:preferences:read",
+            ],
         },
-        timestamp=base_time + 0.02
+        timestamp=base_time + 0.02,
     )
 
     # Event 4: Intent detection
@@ -208,12 +218,8 @@ def generate_mock_trace(
         event_type=TraceEventType.INTENT_DETECTED,
         agent="coordinator_agent",
         description=f"Detected intent: {action}",
-        details={
-            "intent": action,
-            "confidence": 0.95,
-            "target_agent": target_agent
-        },
-        timestamp=base_time + 0.03
+        details={"intent": action, "confidence": 0.95, "target_agent": target_agent},
+        timestamp=base_time + 0.03,
     )
 
     # Event 5: Agent routing
@@ -224,9 +230,9 @@ def generate_mock_trace(
         details={
             "source_agent": "coordinator_agent",
             "target_agent": target_agent,
-            "forwarded_claims": ["sub", "customer_id", "email", "permissions"]
+            "forwarded_claims": ["sub", "customer_id", "email", "permissions"],
         },
-        timestamp=base_time + 0.04
+        timestamp=base_time + 0.04,
     )
 
     # Event 6: Authorization check at target agent
@@ -240,9 +246,9 @@ def generate_mock_trace(
             "customer_id": customer_id,
             "authorized": True,
             "reason": "Customer requesting own data",
-            "access_level": "owner"
+            "access_level": "owner",
         },
-        timestamp=base_time + 0.05
+        timestamp=base_time + 0.05,
     )
 
     # Event 7: Tool invocation
@@ -255,11 +261,11 @@ def generate_mock_trace(
             "parameters": {
                 "customer_id": customer_id,
                 "user_id": user_id,
-                "include_auth_details": True
-            }
+                "include_auth_details": True,
+            },
         },
         duration_ms=120.5,
-        timestamp=base_time + 0.06
+        timestamp=base_time + 0.06,
     )
 
     # Event 8: Data retrieved
@@ -270,9 +276,9 @@ def generate_mock_trace(
         details={
             "records_returned": 3,
             "data_filtered_by": "customer_id",
-            "authorization_enforced": True
+            "authorization_enforced": True,
         },
-        timestamp=base_time + 0.07
+        timestamp=base_time + 0.07,
     )
 
     # Event 9: Response generated
@@ -283,26 +289,19 @@ def generate_mock_trace(
         details={
             "response_length": 500,
             "contains_sensitive_data": False,
-            "data_masked": False
+            "data_masked": False,
         },
-        timestamp=base_time + 0.08
+        timestamp=base_time + 0.08,
     )
 
     # Complete the trace
-    trace.complete(
-        response="[Response would be here]",
-        success=True
-    )
+    trace.complete(response="[Response would be here]", success=True)
 
     return trace
 
 
 def generate_unauthorized_trace(
-    query: str,
-    session_id: str,
-    user_id: str,
-    customer_id: str,
-    target_account: str
+    query: str, session_id: str, user_id: str, customer_id: str, target_account: str
 ) -> AgentTrace:
     """
     Generate a mock trace showing an unauthorized access attempt.
@@ -313,9 +312,7 @@ def generate_unauthorized_trace(
     import uuid
 
     trace = AgentTrace(
-        trace_id=str(uuid.uuid4())[:8],
-        session_id=session_id,
-        user_query=query
+        trace_id=str(uuid.uuid4())[:8], session_id=session_id, user_query=query
     )
 
     # Compute timestamps arithmetically to simulate event progression
@@ -327,7 +324,7 @@ def generate_unauthorized_trace(
         agent="coordinator_agent",
         description="Received user request",
         details={"query": query[:50]},
-        timestamp=base_time
+        timestamp=base_time,
     )
 
     # Event 2: JWT Validation
@@ -336,7 +333,7 @@ def generate_unauthorized_trace(
         agent="coordinator_agent",
         description="JWT token validated",
         details={"token_valid": True},
-        timestamp=base_time + 0.01
+        timestamp=base_time + 0.01,
     )
 
     # Event 3: User context extracted
@@ -344,11 +341,8 @@ def generate_unauthorized_trace(
         event_type=TraceEventType.USER_CONTEXT_EXTRACTED,
         agent="coordinator_agent",
         description="User context extracted",
-        details={
-            "user_id": user_id,
-            "customer_id": customer_id
-        },
-        timestamp=base_time + 0.02
+        details={"user_id": user_id, "customer_id": customer_id},
+        timestamp=base_time + 0.02,
     )
 
     # Event 4: Intent and routing
@@ -357,7 +351,7 @@ def generate_unauthorized_trace(
         agent="coordinator_agent",
         description="Routing to accounts_agent",
         details={"target_agent": "accounts_agent"},
-        timestamp=base_time + 0.03
+        timestamp=base_time + 0.03,
     )
 
     # Event 5: AUTHORIZATION DENIED
@@ -371,10 +365,10 @@ def generate_unauthorized_trace(
             "customer_id": customer_id,
             "authorized": False,
             "reason": "Account belongs to another customer",
-            "audit_event": "unauthorized_access_attempt"
+            "audit_event": "unauthorized_access_attempt",
         },
         success=False,
-        timestamp=base_time + 0.04
+        timestamp=base_time + 0.04,
     )
 
     # Event 6: Error response
@@ -384,17 +378,17 @@ def generate_unauthorized_trace(
         description="Access denied - returning error response",
         details={
             "error_code": "AUTHORIZATION_DENIED",
-            "message": f"You do not have access to account {target_account}"
+            "message": f"You do not have access to account {target_account}",
         },
         success=False,
-        timestamp=base_time + 0.05
+        timestamp=base_time + 0.05,
     )
 
     # Complete with error
     trace.complete(
         response=f"Access denied: You do not have permission to view account {target_account}",
         success=False,
-        error="AUTHORIZATION_DENIED"
+        error="AUTHORIZATION_DENIED",
     )
 
     return trace

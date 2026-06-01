@@ -20,7 +20,9 @@ class TimeMachine:
 
     def _new_snapshot(self) -> Path:
         def p():
-            return self.snapshots_dir / (time.strftime("%Y%m%d.%H%M%S") + "." + self.filename)
+            return self.snapshots_dir / (
+                time.strftime("%Y%m%d.%H%M%S") + "." + self.filename
+            )
 
         new_snapshot = p()
         while new_snapshot.exists():

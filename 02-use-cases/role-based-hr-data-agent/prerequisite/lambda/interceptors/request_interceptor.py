@@ -62,8 +62,14 @@ class JWTClaims:
             role = ctx["role"]
             department = ctx["department"]
             username = ctx["username"]
-        return cls(sub=client_id, username=username, tenant_id=tenant_id,
-                   role=role, department=department, scopes=scopes)
+        return cls(
+            sub=client_id,
+            username=username,
+            tenant_id=tenant_id,
+            role=role,
+            department=department,
+            scopes=scopes,
+        )
 
 
 class HRRequestInterceptor:
@@ -137,34 +143,52 @@ class HRRequestInterceptor:
             }
 
         # tools/list and all other methods — pass through unchanged
-        self.logger.info(json.dumps({
-            "event": "tool_discovery_request", "correlation_id": cid,
-            "tenant_id": claims.tenant_id, "scopes": claims.scopes,
-            "timestamp": datetime.utcnow().isoformat(),
-        }))
+        self.logger.info(
+            json.dumps(
+                {
+                    "event": "tool_discovery_request",
+                    "correlation_id": cid,
+                    "tenant_id": claims.tenant_id,
+                    "scopes": claims.scopes,
+                    "timestamp": datetime.utcnow().isoformat(),
+                }
+            )
+        )
         return {
             "interceptorOutputVersion": "1.0",
             "mcp": {"transformedGatewayRequest": {"body": body}},
         }
 
-    def _inject_tenant(self, args: Dict, claims: JWTClaims, tool_name: str, cid: str) -> None:
+    def _inject_tenant(
+        self, args: Dict, claims: JWTClaims, tool_name: str, cid: str
+    ) -> None:
         if "tenantId" not in args:
             args["tenantId"] = claims.tenant_id
-            self.logger.info(json.dumps({
-                "event": "tenant_injection", "correlation_id": cid,
-                "tenant_id": claims.tenant_id, "tool_name": tool_name,
-                "timestamp": datetime.utcnow().isoformat(),
-            }))
+            self.logger.info(
+                json.dumps(
+                    {
+                        "event": "tenant_injection",
+                        "correlation_id": cid,
+                        "tenant_id": claims.tenant_id,
+                        "tool_name": tool_name,
+                        "timestamp": datetime.utcnow().isoformat(),
+                    }
+                )
+            )
         elif args["tenantId"] != claims.tenant_id:
-            self.logger.warning(json.dumps({
-                "event": "tenant_override",
-                "security_alert": "POTENTIAL_CROSS_TENANT_ACCESS",
-                "correlation_id": cid,
-                "attempted_tenant": args["tenantId"],
-                "correct_tenant": claims.tenant_id,
-                "tool_name": tool_name,
-                "timestamp": datetime.utcnow().isoformat(),
-            }))
+            self.logger.warning(
+                json.dumps(
+                    {
+                        "event": "tenant_override",
+                        "security_alert": "POTENTIAL_CROSS_TENANT_ACCESS",
+                        "correlation_id": cid,
+                        "attempted_tenant": args["tenantId"],
+                        "correct_tenant": claims.tenant_id,
+                        "tool_name": tool_name,
+                        "timestamp": datetime.utcnow().isoformat(),
+                    }
+                )
+            )
             args["tenantId"] = claims.tenant_id
 
     def _error(self, message: str) -> Dict[str, Any]:
@@ -173,8 +197,15 @@ class HRRequestInterceptor:
             "mcp": {
                 "transformedGatewayResponse": {
                     "statusCode": 400,
-                    "body": {"jsonrpc": "2.0", "id": 1,
-                             "error": {"code": -32600, "message": "Invalid Request", "data": message}},
+                    "body": {
+                        "jsonrpc": "2.0",
+                        "id": 1,
+                        "error": {
+                            "code": -32600,
+                            "message": "Invalid Request",
+                            "data": message,
+                        },
+                    },
                 }
             },
         }

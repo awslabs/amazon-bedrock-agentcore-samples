@@ -27,20 +27,30 @@ class AuthManager:
 
     def __init__(self):
         self.region = os.getenv("AWS_REGION", "us-east-1")
-        self.client_id = get_ssm_parameter("/app/hrdlp/cognito-client-id") or os.getenv("COGNITO_CLIENT_ID", "")
-        self.token_url = get_ssm_parameter("/app/hrdlp/cognito-token-url") or os.getenv("COGNITO_TOKEN_URL", "")
+        self.client_id = get_ssm_parameter("/app/hrdlp/cognito-client-id") or os.getenv(
+            "COGNITO_CLIENT_ID", ""
+        )
+        self.token_url = get_ssm_parameter("/app/hrdlp/cognito-token-url") or os.getenv(
+            "COGNITO_TOKEN_URL", ""
+        )
         self.user_pool_id = get_ssm_parameter("/app/hrdlp/cognito-user-pool-id") or ""
         # Derive auth URL from token URL
-        self.auth_url = self.token_url.replace("/oauth2/token", "/oauth2/authorize") if self.token_url else ""
+        self.auth_url = (
+            self.token_url.replace("/oauth2/token", "/oauth2/authorize")
+            if self.token_url
+            else ""
+        )
         self.redirect_uri = os.getenv("STREAMLIT_REDIRECT_URI", "http://localhost:8501")
         self.scopes = "openid email profile hr-dlp-gateway/read hr-dlp-gateway/pii hr-dlp-gateway/address hr-dlp-gateway/comp"
 
     def get_auth_url(self) -> str:
         """Generate the Cognito authorization URL with PKCE code challenge."""
         verifier = secrets.token_urlsafe(64)
-        challenge = base64.urlsafe_b64encode(
-            hashlib.sha256(verifier.encode()).digest()
-        ).rstrip(b"=").decode()
+        challenge = (
+            base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest())
+            .rstrip(b"=")
+            .decode()
+        )
         st.session_state["pkce_verifier"] = verifier
 
         params = {

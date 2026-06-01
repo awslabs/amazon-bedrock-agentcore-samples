@@ -34,7 +34,11 @@ def _safe_tool_name(name: str) -> str:
 
 def _normalize_input_schema(tool_schema: Dict[str, Any]) -> Dict[str, Any]:
     schema = tool_schema.get("inputSchema") or tool_schema.get("input_schema") or {}
-    if isinstance(schema, dict) and "json" in schema and isinstance(schema["json"], dict):
+    if (
+        isinstance(schema, dict)
+        and "json" in schema
+        and isinstance(schema["json"], dict)
+    ):
         return schema
     if isinstance(schema, dict):
         return {"json": schema}

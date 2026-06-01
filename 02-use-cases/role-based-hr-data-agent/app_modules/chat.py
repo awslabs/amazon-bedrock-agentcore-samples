@@ -2,7 +2,6 @@
 Chat manager — sends messages to the Amazon Bedrock AgentCore Runtime and streams responses.
 """
 
-import json
 import logging
 import os
 from typing import Optional
@@ -40,7 +39,7 @@ class ChatManager:
             return None
 
         session = boto3.session.Session()
-        credentials = session.get_credentials().get_frozen_credentials()
+        session.get_credentials().get_frozen_credentials()
 
         payload = {"prompt": message, "sessionId": session_id}
         headers = {
@@ -65,9 +64,7 @@ class ChatManager:
                             make_urls_clickable(full_response) + " ▌",
                             unsafe_allow_html=True,
                         )
-                message_placeholder.markdown(
-                    make_urls_clickable(full_response), unsafe_allow_html=True
-                )
+                message_placeholder.markdown(make_urls_clickable(full_response), unsafe_allow_html=True)
                 return full_response
         except requests.Timeout:
             st.error("Request timed out. The agent may still be processing.")

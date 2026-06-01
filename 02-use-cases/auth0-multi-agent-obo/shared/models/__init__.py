@@ -13,16 +13,14 @@ from .requests import (
     AccountListRequest,
     TransactionListRequest,
     CardListRequest,
-    GenericDataResponse
+    GenericDataResponse,
 )
 
 __all__ = [
     # User context
     "UserContext",
-
     # Profile models
     "CustomerProfile",
-
     # Request/Response models
     "AgentRequest",
     "AgentResponse",

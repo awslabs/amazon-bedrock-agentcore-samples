@@ -8,12 +8,10 @@ Usage:
 """
 
 import argparse
-import base64
 import json
 import sys
 import uuid
 
-import boto3
 import requests
 
 sys.path.insert(0, ".")
@@ -89,9 +87,12 @@ def call_tool(gateway_url: str, token: str, tool_name: str, arguments: dict) -> 
 
 def main():
     parser = argparse.ArgumentParser(description="AgentCore Gateway smoke test")
-    parser.add_argument("--persona", default="hr-manager",
-                        choices=["hr-manager", "hr-specialist", "employee", "admin"],
-                        help="Test persona to use")
+    parser.add_argument(
+        "--persona",
+        default="hr-manager",
+        choices=["hr-manager", "hr-specialist", "employee", "admin"],
+        help="Test persona to use",
+    )
     parser.add_argument("--query", default="John Smith", help="Search query")
     parser.add_argument("--list-tools", action="store_true", help="Only list tools, no invocation")
     args = parser.parse_args()
@@ -106,7 +107,8 @@ def main():
 
     if not args.list_tools:
         call_tool(
-            gateway_url, token,
+            gateway_url,
+            token,
             "hr-lambda-target___search_employee",
             {"query": args.query},
         )

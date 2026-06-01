@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-import os, sys
+import os
+import sys
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 """
 CLI for creating and deleting the Amazon Bedrock AgentCore Gateway for role-based-hr-data-agent.
@@ -9,7 +11,6 @@ Usage:
   python scripts/agentcore_gateway.py delete --gateway-id <id>
 """
 
-import json
 import sys
 import time
 
@@ -25,8 +26,12 @@ def cli():
 
 
 @cli.command()
-@click.option("--config", default="prerequisite/prereqs_config.yaml", show_default=True,
-              help="Path to prereqs_config.yaml")
+@click.option(
+    "--config",
+    default="prerequisite/prereqs_config.yaml",
+    show_default=True,
+    help="Path to prereqs_config.yaml",
+)
 @click.option("--region", default=None, help="AWS region (overrides config)")
 def create(config: str, region: str):
     """Create the AgentCore MCP Gateway with Lambda target and interceptors."""
@@ -43,10 +48,12 @@ def create(config: str, region: str):
 
     # Collect all persona client IDs for the JWT authorizer allowedAudience
     persona_client_ids = [
-        cid for cid in [
+        cid
+        for cid in [
             get_ssm_parameter(f"/app/hrdlp/personas/{p}/client-id")
             for p in ["hr-manager", "hr-specialist", "employee", "admin"]
-        ] if cid
+        ]
+        if cid
     ]
 
     if not all([lambda_arn, gateway_role_arn, user_pool_id]):
@@ -54,7 +61,10 @@ def create(config: str, region: str):
         sys.exit(1)
 
     if not persona_client_ids:
-        click.echo("ERROR: No persona client IDs found in SSM. Run cognito_credentials_provider.py create first.", err=True)
+        click.echo(
+            "ERROR: No persona client IDs found in SSM. Run cognito_credentials_provider.py create first.",
+            err=True,
+        )
         sys.exit(1)
 
     client = boto3.client("bedrock-agentcore-control", region_name=region)
@@ -74,10 +84,7 @@ def create(config: str, region: str):
     ]
 
     # Build authorizer config — allowedClients = all persona client IDs
-    discovery_url = (
-        f"https://cognito-idp.{region}.amazonaws.com/{user_pool_id}"
-        "/.well-known/openid-configuration"
-    )
+    discovery_url = f"https://cognito-idp.{region}.amazonaws.com/{user_pool_id}/.well-known/openid-configuration"
     authorizer_config = {
         "customJWTAuthorizer": {
             "discoveryUrl": discovery_url,
@@ -90,17 +97,21 @@ def create(config: str, region: str):
     # flows through to interceptors so they can decode the JWT for tenant resolution
     interceptor_configs = []
     if request_interceptor_arn:
-        interceptor_configs.append({
-            "interceptor": {"lambda": {"arn": request_interceptor_arn}},
-            "interceptionPoints": ["REQUEST"],
-            "inputConfiguration": {"passRequestHeaders": True},
-        })
+        interceptor_configs.append(
+            {
+                "interceptor": {"lambda": {"arn": request_interceptor_arn}},
+                "interceptionPoints": ["REQUEST"],
+                "inputConfiguration": {"passRequestHeaders": True},
+            }
+        )
     if response_interceptor_arn:
-        interceptor_configs.append({
-            "interceptor": {"lambda": {"arn": response_interceptor_arn}},
-            "interceptionPoints": ["RESPONSE"],
-            "inputConfiguration": {"passRequestHeaders": True},
-        })
+        interceptor_configs.append(
+            {
+                "interceptor": {"lambda": {"arn": response_interceptor_arn}},
+                "interceptionPoints": ["RESPONSE"],
+                "inputConfiguration": {"passRequestHeaders": True},
+            }
+        )
     click.echo(f"  Interceptors: {len(interceptor_configs)} configured (REQUEST + RESPONSE)")
 
     click.echo(f"Creating Gateway: {gateway_name} in {region}")
@@ -136,9 +147,7 @@ def create(config: str, region: str):
                     }
                 }
             },
-            credentialProviderConfigurations=[
-                {"credentialProviderType": "GATEWAY_IAM_ROLE"}
-            ],
+            credentialProviderConfigurations=[{"credentialProviderType": "GATEWAY_IAM_ROLE"}],
         )
         click.echo(f"Lambda target attached: {target_name}")
 
@@ -173,9 +182,7 @@ def delete(gateway_id: str, region: str):
         # List and delete targets first
         targets = client.list_gateway_targets(gatewayIdentifier=gateway_id).get("items", [])
         for target in targets:
-            client.delete_gateway_target(
-                gatewayIdentifier=gateway_id, targetId=target["targetId"]
-            )
+            client.delete_gateway_target(gatewayIdentifier=gateway_id, targetId=target["targetId"])
             click.echo(f"Deleted target: {target['targetId']}")
         client.delete_gateway(gatewayIdentifier=gateway_id)
         click.echo("Gateway deleted.")

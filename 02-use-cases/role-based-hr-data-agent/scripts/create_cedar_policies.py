@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-import os, sys
+import os
+import sys
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 """
 Creates the Cedar Policy Engine, attaches it to the Amazon Bedrock AgentCore Gateway,
@@ -14,7 +16,6 @@ Usage:
   python scripts/create_cedar_policies.py --mode ENFORCE   # switch to enforcement
 """
 
-import json
 import time
 
 import boto3
@@ -29,7 +30,7 @@ POLICIES = [
         "name": "allow_search_employee",
         "description": "Allow search_employee for users with hr-dlp-gateway/read scope",
         "statement": (
-            'permit(principal is AgentCore::OAuthUser, '
+            "permit(principal is AgentCore::OAuthUser, "
             'action == AgentCore::Action::"hr-lambda-target___search_employee", '
             'resource == AgentCore::Gateway::"{gateway_arn}") '
             'when {{ principal.hasTag("scope") && principal.getTag("scope") like "*hr-dlp-gateway/read*" }};'
@@ -39,7 +40,7 @@ POLICIES = [
         "name": "allow_get_employee_profile",
         "description": "Allow get_employee_profile for users with hr-dlp-gateway/pii scope",
         "statement": (
-            'permit(principal is AgentCore::OAuthUser, '
+            "permit(principal is AgentCore::OAuthUser, "
             'action == AgentCore::Action::"hr-lambda-target___get_employee_profile", '
             'resource == AgentCore::Gateway::"{gateway_arn}") '
             'when {{ principal.hasTag("scope") && principal.getTag("scope") like "*hr-dlp-gateway/pii*" }};'
@@ -49,7 +50,7 @@ POLICIES = [
         "name": "allow_get_employee_compensation",
         "description": "Allow get_employee_compensation for users with hr-dlp-gateway/comp scope",
         "statement": (
-            'permit(principal is AgentCore::OAuthUser, '
+            "permit(principal is AgentCore::OAuthUser, "
             'action == AgentCore::Action::"hr-lambda-target___get_employee_compensation", '
             'resource == AgentCore::Gateway::"{gateway_arn}") '
             'when {{ principal.hasTag("scope") && principal.getTag("scope") like "*hr-dlp-gateway/comp*" }};'
@@ -58,9 +59,9 @@ POLICIES = [
 ]
 
 
-_CEDAR_INIT_WAIT = 15   # seconds to let Cedar schema finish indexing after gateway READY
+_CEDAR_INIT_WAIT = 15  # seconds to let Cedar schema finish indexing after gateway READY
 _MAX_POLICY_ATTEMPTS = 3  # retries per real policy on transient internal errors
-_POLICY_RETRY_WAIT = 30   # seconds between policy retries
+_POLICY_RETRY_WAIT = 30  # seconds between policy retries
 
 
 def _poll_policy_status(client, engine_id, policy_id, polls=12, interval=5):
@@ -122,9 +123,7 @@ def _create_policy_with_retry(client, engine_id, gateway_arn, policy_def):
             # transient internal error (retriable). Validation failures contain
             # descriptive reasons (e.g. "Overly Permissive"); internal errors
             # say "An internal error occurred during creation".
-            is_internal = any(
-                "internal error" in r.lower() for r in reasons
-            ) or not reasons
+            is_internal = any("internal error" in r.lower() for r in reasons) or not reasons
 
             try:
                 client.delete_policy(policyEngineId=engine_id, policyId=policy_id)
@@ -142,8 +141,7 @@ def _create_policy_with_retry(client, engine_id, gateway_arn, policy_def):
 
             if attempt < _MAX_POLICY_ATTEMPTS:
                 click.echo(
-                    f"  CREATE_FAILED (internal error) for {policy_def['name']} — "
-                    f"retrying in {_POLICY_RETRY_WAIT}s..."
+                    f"  CREATE_FAILED (internal error) for {policy_def['name']} — retrying in {_POLICY_RETRY_WAIT}s..."
                 )
                 time.sleep(_POLICY_RETRY_WAIT)
                 continue
@@ -160,9 +158,19 @@ def _create_policy_with_retry(client, engine_id, gateway_arn, policy_def):
 
 @click.command()
 @click.option("--region", default="us-east-1", show_default=True)
-@click.option("--env", default="dev", show_default=True, help="Environment suffix for policy engine name")
-@click.option("--mode", default="LOG_ONLY", type=click.Choice(["LOG_ONLY", "ENFORCE"]),
-              show_default=True, help="Cedar policy enforcement mode")
+@click.option(
+    "--env",
+    default="dev",
+    show_default=True,
+    help="Environment suffix for policy engine name",
+)
+@click.option(
+    "--mode",
+    default="LOG_ONLY",
+    type=click.Choice(["LOG_ONLY", "ENFORCE"]),
+    show_default=True,
+    help="Cedar policy enforcement mode",
+)
 def create(region: str, env: str, mode: str):
     """
     Create the Cedar Policy Engine, attach to Gateway, and create HR DLP policies.
@@ -178,7 +186,10 @@ def create(region: str, env: str, mode: str):
     gateway_arn = get_ssm_parameter("/app/hrdlp/gateway-arn")
 
     if not gateway_id or not gateway_arn:
-        click.echo("ERROR: Missing /app/hrdlp/gateway-id or /app/hrdlp/gateway-arn in SSM.\nRun prereq.sh and agentcore_gateway.py first.", err=True)
+        click.echo(
+            "ERROR: Missing /app/hrdlp/gateway-id or /app/hrdlp/gateway-arn in SSM.\nRun prereq.sh and agentcore_gateway.py first.",
+            err=True,
+        )
         raise SystemExit(1)
 
     client = boto3.client("bedrock-agentcore-control", region_name=region)
@@ -225,7 +236,10 @@ def create(region: str, env: str, mode: str):
         engines = client.list_policy_engines().get("policyEngines", [])
         existing = next((e for e in engines if e["name"] == engine_name), None)
         if not existing:
-            click.echo(f"ERROR: ConflictException but could not find existing engine '{engine_name}'.", err=True)
+            click.echo(
+                f"ERROR: ConflictException but could not find existing engine '{engine_name}'.",
+                err=True,
+            )
             raise SystemExit(1)
         engine_id = existing["policyEngineId"]
         click.echo(f"  Policy engine already exists, reusing: {engine_id}")
@@ -247,9 +261,7 @@ def create(region: str, env: str, mode: str):
     click.echo(f"\nAttaching policy engine to gateway (phase A — no interceptors): {gateway_id}")
 
     account_id = boto3.client("sts").get_caller_identity()["Account"]
-    engine_arn = (
-        f"arn:aws:bedrock-agentcore:{region}:{account_id}:policy-engine/{engine_id}"
-    )
+    engine_arn = f"arn:aws:bedrock-agentcore:{region}:{account_id}:policy-engine/{engine_id}"
 
     # Phase A — policy engine only, no interceptors.
     # Strip interceptorConfigurations so Cedar's internal tools/list call (used
@@ -325,7 +337,10 @@ def create(region: str, env: str, mode: str):
             if gw_status == "READY":
                 break
             if gw_status == "FAILED":
-                click.echo("ERROR: Gateway reached FAILED status restoring interceptors.", err=True)
+                click.echo(
+                    "ERROR: Gateway reached FAILED status restoring interceptors.",
+                    err=True,
+                )
                 raise SystemExit(1)
         else:
             click.echo("ERROR: Timed out waiting for gateway to become READY.", err=True)
@@ -337,10 +352,10 @@ def create(region: str, env: str, mode: str):
     # -------------------------------------------------------------------------
     put_ssm_parameter("/app/hrdlp/cedar-policy-engine-arn", engine_arn)
 
-    click.echo(f"\nCedar setup complete.")
+    click.echo("\nCedar setup complete.")
     click.echo(f"  Policy engine : {engine_id} ({mode})")
     click.echo(f"  Policies      : {len(created_policy_ids)} ACTIVE")
-    click.echo(f"  SSM           : /app/hrdlp/cedar-policy-engine-arn")
+    click.echo("  SSM           : /app/hrdlp/cedar-policy-engine-arn")
     if mode == "LOG_ONLY":
         click.echo("\n  Mode is LOG_ONLY — policies log but do not block requests.")
         click.echo("  To enforce, re-run with: --mode ENFORCE")

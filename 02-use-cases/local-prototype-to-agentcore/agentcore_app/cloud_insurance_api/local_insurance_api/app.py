@@ -1,6 +1,7 @@
 """
 FastAPI application initialization for the Insurance API
 """
+
 import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -21,12 +22,13 @@ logger.info(f"Credit reports loaded: {len(data_loader.credit_reports)}")
 if data_loader.customers:
     logger.info(f"First customer: {data_loader.customers[0].get('id', 'no-id')}")
 
+
 def create_app() -> FastAPI:
     """Create and configure the FastAPI application"""
-    
+
     # Initialize FastAPI app
     app = FastAPI(title="Auto Insurance API")
-    
+
     # Add CORS middleware
     app.add_middleware(
         CORSMiddleware,
@@ -35,7 +37,7 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
-    
+
     # Import routers using a function to avoid circular imports
     def get_routers():
         from local_insurance_api.routes.general import router as general_router
@@ -43,19 +45,29 @@ def create_app() -> FastAPI:
         from local_insurance_api.routes.vehicle import router as vehicle_router
         from local_insurance_api.routes.insurance import router as insurance_router
         from local_insurance_api.routes.policy import router as policy_router
-        return general_router, customer_router, vehicle_router, insurance_router, policy_router
-    
+
+        return (
+            general_router,
+            customer_router,
+            vehicle_router,
+            insurance_router,
+            policy_router,
+        )
+
     # Get all routers
-    general_router, customer_router, vehicle_router, insurance_router, policy_router = get_routers()
-    
+    general_router, customer_router, vehicle_router, insurance_router, policy_router = (
+        get_routers()
+    )
+
     # Include routers
     app.include_router(general_router)
     app.include_router(customer_router)
     app.include_router(vehicle_router)
     app.include_router(insurance_router)
     app.include_router(policy_router)
-    
+
     return app
+
 
 # Create the FastAPI app instance
 app = create_app()

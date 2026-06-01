@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-import os, sys
+import os
+import sys
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 """
 CLI for creating and managing Cognito OAuth2 credential providers.

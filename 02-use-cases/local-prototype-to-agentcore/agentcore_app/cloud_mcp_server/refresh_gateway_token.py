@@ -12,32 +12,32 @@ from bedrock_agentcore_starter_toolkit.operations.gateway import GatewayClient
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
+
 
 def update_api_key(gateway_info, api_key):
     """Update the API key in the gateway info if provided"""
     if api_key:
         if "api" not in gateway_info:
             gateway_info["api"] = {}
-            
+
         if "credentials" not in gateway_info["api"]:
             gateway_info["api"]["credentials"] = {}
-            
+
         # Use the standard API key format
         gateway_info["api"]["credentials"] = {
-            "apiKey": {
-                "headers": {
-                    "x-api-key": api_key
-                }
-            }
+            "apiKey": {"headers": {"x-api-key": api_key}}
         }
         print("✓ Updated API key in gateway_info.json")
-    
+
     return gateway_info
 
+
 def main():
-    parser = argparse.ArgumentParser(description="Refresh access token for Bedrock AgentCore Gateway")
+    parser = argparse.ArgumentParser(
+        description="Refresh access token for Bedrock AgentCore Gateway"
+    )
     parser.add_argument("--api-key", help="API key for the API Gateway (optional)")
     args = parser.parse_args()
 
@@ -47,21 +47,27 @@ def main():
         with open("gateway_info.json", "r") as f:
             gateway_info = json.load(f)
     except FileNotFoundError:
-        print("Error: gateway_info.json file not found. Please run 3_agentcore_gateway_setup.py first.")
+        print(
+            "Error: gateway_info.json file not found. Please run 3_agentcore_gateway_setup.py first."
+        )
         exit(1)
 
     # Initialize the gateway client with the correct region
     client = GatewayClient(region_name=gateway_info["gateway"]["region"])
 
-    print("Requesting new access token for gateway '{}'...".format(gateway_info['gateway']['name']))
+    print(
+        "Requesting new access token for gateway '{}'...".format(
+            gateway_info["gateway"]["name"]
+        )
+    )
     # Create client_info structure expected by get_test_token_for_cognito
     client_info = {
         "client_id": gateway_info["auth"]["client_id"],
         "client_secret": gateway_info["auth"]["client_secret"],
         "token_endpoint": gateway_info["auth"]["token_endpoint"],
-        "scope": gateway_info["auth"]["scope"]
+        "scope": gateway_info["auth"]["scope"],
     }
-    
+
     # Get a new access token using the stored client credentials
     new_token = client.get_access_token_for_cognito(client_info)
 
@@ -69,18 +75,20 @@ def main():
 
     # Update the gateway_info file with the new token
     gateway_info["auth"]["access_token"] = new_token
-    
+
     # Update API key if provided
     gateway_info = update_api_key(gateway_info, args.api_key)
-    
+
     # Save the updated gateway info
     with open("gateway_info.json", "w") as f:
         json.dump(gateway_info, f, indent=2)
 
     print("\nAccess token updated in gateway_info.json")
-    print("\nTo use this token in your application, update the token value in your client code.")
+    print(
+        "\nTo use this token in your application, update the token value in your client code."
+    )
     print("The new access token has been saved in gateway_info.json.")
-    
+
     # Output how to use in code (use placeholder, do not print sensitive value!)
     print("\nExample of using the token in Python code:")
     print("""
@@ -95,6 +103,7 @@ mcp_client = MCPClient(lambda: streamablehttp_client(
     headers={"Authorization": f"Bearer {access_token}"}
 ))
 """)
+
 
 if __name__ == "__main__":
     main()

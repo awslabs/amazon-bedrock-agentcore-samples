@@ -5,7 +5,6 @@ Handles OAuth callback, authentication check, and chat interface rendering.
 """
 
 import uuid
-from urllib.parse import parse_qs, urlparse
 
 import streamlit as st
 
@@ -77,14 +76,16 @@ def main():
         st.markdown("Secure HR data access with role-based DLP enforcement via Amazon Bedrock AgentCore.")
         st.markdown("---")
         if st.button("Login with Cognito", use_container_width=True):
-            st.markdown(f'<meta http-equiv="refresh" content="0; url={auth.get_auth_url()}">',
-                        unsafe_allow_html=True)
+            st.markdown(
+                f'<meta http-equiv="refresh" content="0; url={auth.get_auth_url()}">',
+                unsafe_allow_html=True,
+            )
         return
 
     # ------------------------------------------------------------------
     # Authenticated — Chat interface
     # ------------------------------------------------------------------
-    token_claims = auth.decode_token(auth.get_access_token())
+    auth.decode_token(auth.get_access_token())
 
     # Session state
     if "session_id" not in st.session_state:

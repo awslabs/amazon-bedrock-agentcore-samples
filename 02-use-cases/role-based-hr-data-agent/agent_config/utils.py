@@ -4,7 +4,7 @@ Utility helpers for agent_config.
 
 import json
 import logging
-from typing import Any, Optional
+from typing import Optional
 
 import boto3
 import yaml
@@ -20,7 +20,11 @@ def get_ssm_parameter(name: str, decrypt: bool = True) -> Optional[str]:
         response = client.get_parameter(Name=name, WithDecryption=decrypt)
         return response["Parameter"]["Value"]
     except ClientError as e:
-        logger.warning("AWS Systems Manager parameter not found: %s — %s", name, e.response["Error"]["Code"])
+        logger.warning(
+            "AWS Systems Manager parameter not found: %s — %s",
+            name,
+            e.response["Error"]["Code"],
+        )
         return None
 
 

@@ -10,7 +10,7 @@ import json
 import logging
 import uuid
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 from audit_logger import log_error, log_lambda_execution
 from hr_handlers import (
@@ -47,13 +47,23 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             return _error(correlation_id, "Missing tool_name")
 
         # Strip target prefix: "hr-lambda-target___search_employee" → "search_employee"
-        base_name = tool_name.split("___")[-1] if "___" in tool_name else tool_name.split("__")[-1] if "__" in tool_name else tool_name
+        base_name = (
+            tool_name.split("___")[-1]
+            if "___" in tool_name
+            else tool_name.split("__")[-1]
+            if "__" in tool_name
+            else tool_name
+        )
 
         arguments_with_cid = inject_correlation_id(arguments, correlation_id)
 
         validation = validate_tool_arguments(tool_name, arguments_with_cid)
         if not validation["valid"]:
-            return _error(correlation_id, validation["error"], validation.get("error_code", "VALIDATION_ERROR"))
+            return _error(
+                correlation_id,
+                validation["error"],
+                validation.get("error_code", "VALIDATION_ERROR"),
+            )
 
         if base_name == "search_employee":
             result = handle_search_employee(arguments_with_cid)
@@ -66,7 +76,12 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
 
         if "error" in result:
             status = 403 if result.get("error_code") == "EMPLOYEE_NOT_FOUND" else 400
-            return _error(correlation_id, result["error"], result.get("error_code", "HANDLER_ERROR"), status)
+            return _error(
+                correlation_id,
+                result["error"],
+                result.get("error_code", "HANDLER_ERROR"),
+                status,
+            )
 
         result["_metadata"] = {
             "data_type": "DUMMY_DEMONSTRATION_DATA",
@@ -78,18 +93,27 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
 
         return {
             "statusCode": 200,
-            "headers": {"Content-Type": "application/json", "X-Correlation-ID": correlation_id},
+            "headers": {
+                "Content-Type": "application/json",
+                "X-Correlation-ID": correlation_id,
+            },
             "body": json.dumps(result),
         }
 
     except Exception as e:
-        log_error(correlation_id, str(e), type(e).__name__, additional_context={"event_keys": list(event.keys())})
+        log_error(
+            correlation_id,
+            str(e),
+            type(e).__name__,
+            additional_context={"event_keys": list(event.keys())},
+        )
         return _error(correlation_id, f"Lambda execution error: {str(e)}")
 
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _extract_tool_name(event: Dict[str, Any], context: Any) -> str:
     # 1. AgentCore: context.client_context.custom
@@ -139,6 +163,9 @@ def _error(
     }
     return {
         "statusCode": status_code,
-        "headers": {"Content-Type": "application/json", "X-Correlation-ID": correlation_id},
+        "headers": {
+            "Content-Type": "application/json",
+            "X-Correlation-ID": correlation_id,
+        },
         "body": json.dumps(body),
     }

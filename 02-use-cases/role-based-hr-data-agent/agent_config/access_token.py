@@ -18,7 +18,9 @@ _cached_token: Optional[str] = None
 _token_expiry: float = 0.0
 
 
-def get_gateway_access_token(client_id: Optional[str] = None, client_secret: Optional[str] = None) -> Optional[str]:
+def get_gateway_access_token(
+    client_id: Optional[str] = None, client_secret: Optional[str] = None
+) -> Optional[str]:
     """
     Return a valid Cognito client_credentials access token.
 
@@ -33,7 +35,9 @@ def get_gateway_access_token(client_id: Optional[str] = None, client_secret: Opt
         return _cached_token
 
     client_id = client_id or get_ssm_parameter("/app/hrdlp/cognito-client-id")
-    client_secret = client_secret or get_ssm_parameter("/app/hrdlp/cognito-client-secret")
+    client_secret = client_secret or get_ssm_parameter(
+        "/app/hrdlp/cognito-client-secret"
+    )
     token_url = get_ssm_parameter("/app/hrdlp/cognito-token-url")
 
     if not all([client_id, client_secret, token_url]):

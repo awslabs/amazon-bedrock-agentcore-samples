@@ -88,7 +88,7 @@ class SavePreferenceTool(BaseTool):
     - Escalation contacts and notification channels
     - Workflow preferences and operational styles
     - User-specific configurations and settings
-    
+
     Required fields:
     - content: UserPreference object with:
       - user_id: str (unique identifier for the user)
@@ -96,8 +96,8 @@ class SavePreferenceTool(BaseTool):
       - preference_value: dict (the actual preference data)
     - context: str (REQUIRED - describes where/why this preference was captured)
     - actor_id: str (REQUIRED - use the user_id from content.user_id, NOT the agent actor_id)
-    
-    CRITICAL: For preferences, actor_id MUST be the user_id (e.g., "Alice") to ensure 
+
+    CRITICAL: For preferences, actor_id MUST be the user_id (e.g., "Alice") to ensure
     preferences are saved to the correct user namespace (/sre/users/{user_id}/preferences).
     """
     args_schema: Type[BaseModel] = SavePreferenceInput
@@ -157,7 +157,7 @@ class SaveInfrastructureTool(BaseTool):
     - Service dependencies and relationships
     - Infrastructure patterns and configurations
     - Performance baselines and thresholds
-    
+
     Required fields:
     - content: InfrastructureKnowledge object with:
       - service_name: str (name of the service or infrastructure component)
@@ -226,7 +226,7 @@ class SaveInvestigationTool(BaseTool):
     - Investigation timeline and actions taken
     - Key findings and resolution strategies
     - Incident patterns and lessons learned
-    
+
     Required fields:
     - content: InvestigationSummary object with:
       - incident_id: str (unique identifier for the incident)
@@ -318,7 +318,7 @@ class RetrieveMemoryTool(BaseTool):
     - User preferences for current context (escalation, notification, workflow preferences)
     - Infrastructure knowledge about services (dependencies, patterns, baselines)
     - Past investigation summaries (similar issues, resolution strategies)
-    
+
     Parameters:
     - memory_type: "preference", "infrastructure", or "investigation"
     - query: search terms for relevant memories

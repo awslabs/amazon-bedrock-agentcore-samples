@@ -9,6 +9,7 @@ import os
 import importlib.util
 from unittest.mock import patch
 
+
 # Load module from specific path to avoid conflicts with other agent modules
 def load_module_from_path(module_name, file_path):
     spec = importlib.util.spec_from_file_location(module_name, file_path)
@@ -17,16 +18,19 @@ def load_module_from_path(module_name, file_path):
     spec.loader.exec_module(module)
     return module
 
-_accounts_path = os.path.join(os.path.dirname(__file__), '..', '..', '..', 'agents', 'accounts')
+
+_accounts_path = os.path.join(
+    os.path.dirname(__file__), "..", "..", "..", "agents", "accounts"
+)
 sys.path.insert(0, _accounts_path)
 
 # Load account tools first so agent can import them
-_tools_path = os.path.join(_accounts_path, 'tools', 'account_tools.py')
-_account_tools = load_module_from_path('account_tools', _tools_path)
+_tools_path = os.path.join(_accounts_path, "tools", "account_tools.py")
+_account_tools = load_module_from_path("account_tools", _tools_path)
 
 # Load agent module
-_agent_path = os.path.join(_accounts_path, 'agent.py')
-_agent_module = load_module_from_path('accounts_agent_module', _agent_path)
+_agent_path = os.path.join(_accounts_path, "agent.py")
+_agent_module = load_module_from_path("accounts_agent_module", _agent_path)
 
 AccountsAgent = _agent_module.AccountsAgent
 get_accounts = _account_tools.get_accounts
@@ -61,7 +65,7 @@ class TestAccountsAgentInit:
 class TestAccountsAgentProcessQuery:
     """Tests for process_query method."""
 
-    @patch('accounts_agent_module.get_accounts')
+    @patch("accounts_agent_module.get_accounts")
     def test_list_accounts_query(self, mock_get_accounts):
         """Test listing all accounts."""
         mock_get_accounts.return_value = {
@@ -72,10 +76,10 @@ class TestAccountsAgentProcessQuery:
                     "balance": 1000.00,
                     "available_balance": 950.00,
                     "currency": "AUD",
-                    "account_type": "savings"
+                    "account_type": "savings",
                 }
             ],
-            "authorization": {"authorized": True}
+            "authorization": {"authorized": True},
         }
 
         agent = AccountsAgent(user_id="user-123", customer_id="CUST001")
@@ -84,14 +88,14 @@ class TestAccountsAgentProcessQuery:
         assert result["status"] == "success"
         mock_get_accounts.assert_called_once()
 
-    @patch('accounts_agent_module.get_account_balance')
+    @patch("accounts_agent_module.get_account_balance")
     def test_balance_query_with_account(self, mock_get_balance):
         """Test balance query for specific account."""
         mock_get_balance.return_value = {
             "account_number": "12345678",
             "balance": 1000.00,
             "available_balance": 950.00,
-            "currency": "AUD"
+            "currency": "AUD",
         }
 
         agent = AccountsAgent(user_id="user-123", customer_id="CUST001")
@@ -100,7 +104,7 @@ class TestAccountsAgentProcessQuery:
         assert result["status"] == "success"
         mock_get_balance.assert_called_once()
 
-    @patch('accounts_agent_module.get_accounts')
+    @patch("accounts_agent_module.get_accounts")
     def test_balance_query_without_account(self, mock_get_accounts):
         """Test balance query without specific account shows all."""
         mock_get_accounts.return_value = {
@@ -110,7 +114,7 @@ class TestAccountsAgentProcessQuery:
                     "account_name": "Savings",
                     "balance": 1000.00,
                     "available_balance": 950.00,
-                    "currency": "AUD"
+                    "currency": "AUD",
                 }
             ]
         }
@@ -120,7 +124,7 @@ class TestAccountsAgentProcessQuery:
 
         assert result["status"] == "success"
 
-    @patch('accounts_agent_module.get_account_details')
+    @patch("accounts_agent_module.get_account_details")
     def test_account_details_query(self, mock_get_details):
         """Test account details query."""
         mock_get_details.return_value = {
@@ -128,7 +132,7 @@ class TestAccountsAgentProcessQuery:
             "account_name": "Savings Account",
             "account_type": "savings",
             "balance": 1000.00,
-            "status": "active"
+            "status": "active",
         }
 
         agent = AccountsAgent(user_id="user-123", customer_id="CUST001")
@@ -136,7 +140,7 @@ class TestAccountsAgentProcessQuery:
 
         assert result["status"] == "success"
 
-    @patch('accounts_agent_module.get_accounts')
+    @patch("accounts_agent_module.get_accounts")
     def test_exception_handling(self, mock_get_accounts):
         """Test that exceptions are caught and returned as errors."""
         mock_get_accounts.side_effect = Exception("Database error")
@@ -147,7 +151,7 @@ class TestAccountsAgentProcessQuery:
         assert result["status"] == "error"
         assert "error" in result
 
-    @patch('accounts_agent_module.get_accounts')
+    @patch("accounts_agent_module.get_accounts")
     def test_passes_customer_id_to_tools(self, mock_get_accounts):
         """Test that customer_id is passed to account tools."""
         mock_get_accounts.return_value = {"accounts": []}

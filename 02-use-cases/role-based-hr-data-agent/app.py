@@ -27,6 +27,7 @@ import streamlit as st
 # SSM helpers
 # ---------------------------------------------------------------------------
 
+
 @st.cache_resource(show_spinner=False)
 def _ssm_client():
     region = os.getenv("AWS_REGION", os.getenv("AWS_DEFAULT_REGION", "us-east-1"))
@@ -45,24 +46,29 @@ def _get_param(name: str, secure: bool = False) -> Optional[str]:
 # Config — loaded once per session
 # ---------------------------------------------------------------------------
 
+
 @st.cache_resource(show_spinner="Loading configuration from SSM…")
 def load_config() -> dict:
-    runtime_url  = _get_param("/app/hrdlp/runtime-url")
-    gateway_url  = _get_param("/app/hrdlp/gateway-url")
-    token_url    = _get_param("/app/hrdlp/cognito-token-url")
+    runtime_url = _get_param("/app/hrdlp/runtime-url")
+    gateway_url = _get_param("/app/hrdlp/gateway-url")
+    token_url = _get_param("/app/hrdlp/cognito-token-url")
 
     personas = {}
     for persona in ["hr-manager", "hr-specialist", "employee", "admin"]:
-        client_id     = _get_param(f"/app/hrdlp/personas/{persona}/client-id")
+        client_id = _get_param(f"/app/hrdlp/personas/{persona}/client-id")
         client_secret = _get_param(f"/app/hrdlp/personas/{persona}/client-secret", secure=True)
         if client_id and client_secret:
             personas[persona] = {"client_id": client_id, "client_secret": client_secret}
 
     missing = []
-    if not runtime_url:  missing.append("/app/hrdlp/runtime-url")
-    if not gateway_url:  missing.append("/app/hrdlp/gateway-url")
-    if not token_url:    missing.append("/app/hrdlp/cognito-token-url")
-    if not personas:     missing.append("/app/hrdlp/personas/*/client-id and client-secret")
+    if not runtime_url:
+        missing.append("/app/hrdlp/runtime-url")
+    if not gateway_url:
+        missing.append("/app/hrdlp/gateway-url")
+    if not token_url:
+        missing.append("/app/hrdlp/cognito-token-url")
+    if not personas:
+        missing.append("/app/hrdlp/personas/*/client-id and client-secret")
 
     return {
         "runtime_url": runtime_url,
@@ -124,19 +130,26 @@ SUGGESTED_QUERIES = [
 # Auth helpers
 # ---------------------------------------------------------------------------
 
+
 def get_token(config: dict, persona_key: str) -> Optional[str]:
     """Obtain a client_credentials access token for the given persona."""
     creds = config["personas"].get(persona_key)
     if not creds:
-        add_log(f"No credentials found in SSM for persona: {persona_key}", "error", "Cognito")
+        add_log(
+            f"No credentials found in SSM for persona: {persona_key}",
+            "error",
+            "Cognito",
+        )
         return None
     add_log(f"POST {config['token_url']} (grant_type=client_credentials)", "info", "Cognito")
     encoded = base64.b64encode(f"{creds['client_id']}:{creds['client_secret']}".encode()).decode()
     try:
         resp = requests.post(
             config["token_url"],
-            headers={"Content-Type": "application/x-www-form-urlencoded",
-                     "Authorization": f"Basic {encoded}"},
+            headers={
+                "Content-Type": "application/x-www-form-urlencoded",
+                "Authorization": f"Basic {encoded}",
+            },
             data={"grant_type": "client_credentials"},
             timeout=10,
         )
@@ -144,7 +157,11 @@ def get_token(config: dict, persona_key: str) -> Optional[str]:
         token_data = resp.json()
         expires = token_data.get("expires_in", "?")
         scopes = token_data.get("scope", "")
-        add_log(f"Token issued (expires {expires}s) | scopes: {scopes}", "success", "Cognito")
+        add_log(
+            f"Token issued (expires {expires}s) | scopes: {scopes}",
+            "success",
+            "Cognito",
+        )
         return token_data.get("access_token")
     except Exception as e:
         add_log(f"Token request failed: {e}", "error", "Cognito")
@@ -156,9 +173,14 @@ def get_token(config: dict, persona_key: str) -> Optional[str]:
 # Runtime / Gateway calls
 # ---------------------------------------------------------------------------
 
+
 def call_runtime(config: dict, token: str, prompt: str, session_id: str = "") -> tuple[list, Optional[str]]:
     """POST to AgentCore Runtime and return (raw_chunks, final_text)."""
-    add_log(f"POST {config['runtime_url'].split('/runtimes/')[0]}/runtimes/…/invocations", "info", "Runtime")
+    add_log(
+        f"POST {config['runtime_url'].split('/runtimes/')[0]}/runtimes/…/invocations",
+        "info",
+        "Runtime",
+    )
     add_log(f"Session: {session_id[:16]}…", "info", "Runtime")
 
     headers = {"Content-Type": "application/json", "Authorization": f"Bearer {token}"}
@@ -176,7 +198,7 @@ def call_runtime(config: dict, token: str, prompt: str, session_id: str = "") ->
             st.error(f"Runtime returned HTTP {resp.status_code}: {resp.text[:200]}")
             return [], None
 
-        add_log(f"HTTP 200 — streaming response…", "success", "Runtime")
+        add_log("HTTP 200 — streaming response…", "success", "Runtime")
 
         for line in resp.iter_lines():
             if not line:
@@ -198,17 +220,29 @@ def call_runtime(config: dict, token: str, prompt: str, session_id: str = "") ->
                     result = data["result"]
                     model = data.get("model", "")
                     tool_count = data.get("tool_count", "?")
-                    add_log(f"Tools used: {tool_count} | Model: {model.split('/')[-1] if model else 'unknown'}", "info", "Runtime")
+                    add_log(
+                        f"Tools used: {tool_count} | Model: {model.split('/')[-1] if model else 'unknown'}",
+                        "info",
+                        "Runtime",
+                    )
                     if isinstance(result, dict) and "content" in result:
                         content = result["content"]
                         llm_response = content[0].get("text", str(result)) if content else str(result)
                     else:
                         llm_response = str(result)
-                    add_log(f"Response received ({len(llm_response)} chars)", "success", "Runtime")
+                    add_log(
+                        f"Response received ({len(llm_response)} chars)",
+                        "success",
+                        "Runtime",
+                    )
 
                 elif data.get("type") == "response":
                     llm_response = data.get("message", "")
-                    add_log(f"Response received ({len(llm_response)} chars)", "success", "Runtime")
+                    add_log(
+                        f"Response received ({len(llm_response)} chars)",
+                        "success",
+                        "Runtime",
+                    )
 
                 elif data.get("type") == "status":
                     add_log(data.get("message", ""), "info", "Runtime")
@@ -243,13 +277,20 @@ def discover_tools(config: dict, token: str) -> list[str]:
     try:
         resp = requests.post(
             config["gateway_url"],
-            headers={"Content-Type": "application/json", "Authorization": f"Bearer {token}"},
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {token}",
+            },
             json={"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {}},
             timeout=30,
         )
         resp.raise_for_status()
         tools = resp.json().get("result", {}).get("tools", [])
-        add_log(f"HTTP 200 — {len(tools)} tool(s) visible to this persona", "success", "Gateway")
+        add_log(
+            f"HTTP 200 — {len(tools)} tool(s) visible to this persona",
+            "success",
+            "Gateway",
+        )
         for t in tools:
             short = t["name"].replace("hr-lambda-target___", "")
             add_log(f"  ✓ {short}", "info", "Gateway")
@@ -265,9 +306,16 @@ def call_tool(config: dict, token: str, tool_name: str, arguments: dict):
     try:
         resp = requests.post(
             config["gateway_url"],
-            headers={"Content-Type": "application/json", "Authorization": f"Bearer {token}"},
-            json={"jsonrpc": "2.0", "id": 1, "method": "tools/call",
-                  "params": {"name": tool_name, "arguments": arguments}},
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {token}",
+            },
+            json={
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "tools/call",
+                "params": {"name": tool_name, "arguments": arguments},
+            },
             timeout=30,
         )
         resp.raise_for_status()
@@ -281,8 +329,10 @@ def call_tool(config: dict, token: str, tool_name: str, arguments: dict):
 # Session state helpers
 # ---------------------------------------------------------------------------
 
+
 def _init_state():
     import uuid
+
     defaults = {
         "selected_persona": "HR Manager",
         "token": None,  # nosec B105 - not a hardcoded password; None is the initial unauthenticated state
@@ -305,6 +355,7 @@ def add_log(message: str, level: str = "info", component: str = ""):
 
 def _switch_persona(name: str):
     import uuid
+
     st.session_state.selected_persona = name
     st.session_state.token = None
     st.session_state.tools = []
@@ -347,8 +398,12 @@ with st.sidebar:
     for display_name, meta in PERSONAS.items():
         is_active = st.session_state.selected_persona == display_name
         label = f"{meta['icon']} {display_name}"
-        if st.button(label, key=f"btn_{display_name}", use_container_width=True,
-                     type="primary" if is_active else "secondary"):
+        if st.button(
+            label,
+            key=f"btn_{display_name}",
+            use_container_width=True,
+            type="primary" if is_active else "secondary",
+        ):
             _switch_persona(display_name)
             st.rerun()
 
@@ -369,12 +424,19 @@ with st.sidebar:
             st.session_state.token = token
             st.session_state.llm_response = None
             st.session_state.conversation_history = []
-            add_log(f"Token obtained for {st.session_state.selected_persona}", "success", "Cognito")
+            add_log(
+                f"Token obtained for {st.session_state.selected_persona}",
+                "success",
+                "Cognito",
+            )
             st.success("Token obtained")
         st.rerun()
 
-    if st.button("🔧 Discover Tools", use_container_width=True,
-                 disabled=not st.session_state.token):
+    if st.button(
+        "🔧 Discover Tools",
+        use_container_width=True,
+        disabled=not st.session_state.token,
+    ):
         with st.spinner("Calling Gateway tools/list…"):
             tools = discover_tools(config, st.session_state.token)
         st.session_state.tools = tools
@@ -411,8 +473,12 @@ with col_chat:
     # Suggested queries
     st.markdown("**Quick examples:**")
     for q in SUGGESTED_QUERIES:
-        if st.button(q, key=f"quick_{q[:20]}", use_container_width=True,
-                     disabled=not st.session_state.token):
+        if st.button(
+            q,
+            key=f"quick_{q[:20]}",
+            use_container_width=True,
+            disabled=not st.session_state.token,
+        ):
             st.session_state.logs = []
             add_log(f"Query: {q}", "info", "Client")
             with st.spinner("Processing…"):
@@ -426,10 +492,17 @@ with col_chat:
     st.divider()
 
     # Custom query
-    query = st.text_area("Custom query:", value="Show me John Smith's full profile",
-                         height=80, disabled=not st.session_state.token)
-    if st.button("🚀 Send", use_container_width=True,
-                 disabled=(not st.session_state.token or st.session_state.is_processing)):
+    query = st.text_area(
+        "Custom query:",
+        value="Show me John Smith's full profile",
+        height=80,
+        disabled=not st.session_state.token,
+    )
+    if st.button(
+        "🚀 Send",
+        use_container_width=True,
+        disabled=(not st.session_state.token or st.session_state.is_processing),
+    ):
         st.session_state.is_processing = True
         st.session_state.logs = []
         add_log(f"Sending query as {st.session_state.selected_persona}", "info", "Client")
@@ -479,41 +552,58 @@ with col_tools:
             st.warning("No recognized tools visible for this persona.")
         else:
             selected_tool = st.selectbox(
-                "Tool:", options=list(available.keys()),
+                "Tool:",
+                options=list(available.keys()),
                 format_func=lambda x: available[x],
             )
 
             with st.form(key="tool_form"):
                 if selected_tool == "hr-lambda-target___search_employee":
                     search_q = st.text_input("Search query:", value="John")
-                    tenant   = st.text_input("Tenant ID:", value="tenant-alpha")
+                    tenant = st.text_input("Tenant ID:", value="tenant-alpha")
                     submitted = st.form_submit_button("🚀 Call Tool", use_container_width=True)
                     if submitted:
-                        result = call_tool(config, st.session_state.token, selected_tool,
-                                           {"query": search_q, "tenantId": tenant})
+                        result = call_tool(
+                            config,
+                            st.session_state.token,
+                            selected_tool,
+                            {"query": search_q, "tenantId": tenant},
+                        )
                         if result:
                             st.json(result)
 
                 elif selected_tool == "hr-lambda-target___get_employee_profile":
-                    emp_id  = st.text_input("Employee ID:", value="EMP001")
-                    tenant  = st.text_input("Tenant ID:", value="tenant-alpha")
+                    emp_id = st.text_input("Employee ID:", value="EMP001")
+                    tenant = st.text_input("Tenant ID:", value="tenant-alpha")
                     inc_pii = st.checkbox("Include PII")
                     inc_addr = st.checkbox("Include Address")
                     submitted = st.form_submit_button("🚀 Call Tool", use_container_width=True)
                     if submitted:
-                        result = call_tool(config, st.session_state.token, selected_tool,
-                                           {"employee_id": emp_id, "tenantId": tenant,
-                                            "include_pii": inc_pii, "include_address": inc_addr})
+                        result = call_tool(
+                            config,
+                            st.session_state.token,
+                            selected_tool,
+                            {
+                                "employee_id": emp_id,
+                                "tenantId": tenant,
+                                "include_pii": inc_pii,
+                                "include_address": inc_addr,
+                            },
+                        )
                         if result:
                             st.json(result)
 
                 elif selected_tool == "hr-lambda-target___get_employee_compensation":
-                    emp_id  = st.text_input("Employee ID:", value="EMP001")
-                    tenant  = st.text_input("Tenant ID:", value="tenant-alpha")
+                    emp_id = st.text_input("Employee ID:", value="EMP001")
+                    tenant = st.text_input("Tenant ID:", value="tenant-alpha")
                     submitted = st.form_submit_button("🚀 Call Tool", use_container_width=True)
                     if submitted:
-                        result = call_tool(config, st.session_state.token, selected_tool,
-                                           {"employee_id": emp_id, "tenantId": tenant})
+                        result = call_tool(
+                            config,
+                            st.session_state.token,
+                            selected_tool,
+                            {"employee_id": emp_id, "tenantId": tenant},
+                        )
                         if result:
                             st.json(result)
 

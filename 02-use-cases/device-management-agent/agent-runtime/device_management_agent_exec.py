@@ -33,10 +33,10 @@ Environment Variables:
 Example Usage:
     Start a new conversation:
     >>> python device_management_agent_exec.py --agent_arn arn:aws:bedrock-agentcore:...
-    
+
     Continue existing conversation:
     >>> python device_management_agent_exec.py --agent_arn arn:aws:... --session_id abc123
-    
+
     Interactive commands:
     >>> List all devices
     >>> Show settings for device DEV001
@@ -60,6 +60,7 @@ Notes:
     - Supports both streaming and non-streaming response formats
     - Includes retry logic for AWS throttling exceptions
 """
+
 import utils
 import json
 from dotenv import load_dotenv
@@ -71,13 +72,15 @@ load_dotenv()
 
 # Setting up command line arguments
 parser = argparse.ArgumentParser(
-    prog='device_management_agent_exec',
-    description='Execute Device Management Strands Agent',
-    epilog='Interactive chat with your deployed agent'
+    prog="device_management_agent_exec",
+    description="Execute Device Management Strands Agent",
+    epilog="Interactive chat with your deployed agent",
 )
 
-parser.add_argument('--agent_arn', help="Agent Runtime ARN", required=True)
-parser.add_argument('--session_id', help="Session ID for continuing conversation", default='start')
+parser.add_argument("--agent_arn", help="Agent Runtime ARN", required=True)
+parser.add_argument(
+    "--session_id", help="Session ID for continuing conversation", default="start"
+)
 
 args = parser.parse_args()
 
@@ -105,7 +108,7 @@ print("🏠  WELCOME TO DEVICE MANAGEMENT ASSISTANT  🏠")
 print("=" * 70)
 print("✨ I can help you with:")
 print("   📱 List all devices in your system")
-print("   ⚙️  Get device settings and configurations") 
+print("   ⚙️  Get device settings and configurations")
 print("   📡 Manage WiFi networks on devices")
 print("   👥 List users and check user activity")
 print("   🔧 Update device configurations")
@@ -141,23 +144,23 @@ while True:
 
         try:
             # Invoke the agent
-            if sessionId == 'start':
+            if sessionId == "start":
                 boto3_response = agentcore_client.invoke_agent_runtime(
                     agentRuntimeArn=args.agent_arn,
                     qualifier="DEFAULT",
-                    payload=json.dumps({"prompt": user_input})
+                    payload=json.dumps({"prompt": user_input}),
                 )
             else:
                 boto3_response = agentcore_client.invoke_agent_runtime(
                     agentRuntimeArn=args.agent_arn,
                     qualifier="DEFAULT",
                     payload=json.dumps({"prompt": user_input}),
-                    runtimeSessionId=sessionId
+                    runtimeSessionId=sessionId,
                 )
 
             # Update session ID
-            sessionId = boto3_response['runtimeSessionId']
-            
+            sessionId = boto3_response["runtimeSessionId"]
+
             # Handle streaming response
             if "text/event-stream" in boto3_response.get("contentType", ""):
                 content = []
@@ -177,14 +180,14 @@ while True:
                         events.append(event)
                 except Exception as e:
                     events = [f"Error reading EventStream: {e}"]
-                
+
                 for event in events:
                     try:
                         event_data = json.loads(event.decode("utf-8"))
                         if isinstance(event_data, dict):
                             # Pretty print structured responses
-                            if 'response' in event_data:
-                                print(event_data['response'])
+                            if "response" in event_data:
+                                print(event_data["response"])
                             else:
                                 print(json.dumps(event_data, indent=2))
                         else:

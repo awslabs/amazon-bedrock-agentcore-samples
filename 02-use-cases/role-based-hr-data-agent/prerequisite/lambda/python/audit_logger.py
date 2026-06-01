@@ -9,7 +9,7 @@ import json
 import logging
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 
 class AuditEventType(Enum):
@@ -174,8 +174,14 @@ def log_tool_invocation(correlation_id, tool_name, tenant_id, result_count=None,
     audit_logger.log_tool_invocation(correlation_id, tool_name, tenant_id, result_count, success)
 
 
-def log_data_access(correlation_id, tenant_id, employee_id=None, data_type="employee_data",
-                    access_granted=True, reason=None):
+def log_data_access(
+    correlation_id,
+    tenant_id,
+    employee_id=None,
+    data_type="employee_data",
+    access_granted=True,
+    reason=None,
+):
     audit_logger.log_data_access(correlation_id, tenant_id, employee_id, data_type, access_granted, reason)
 
 
@@ -183,6 +189,19 @@ def log_tenant_access_check(correlation_id, tenant_id, employee_id, access_grant
     audit_logger.log_tenant_access_check(correlation_id, tenant_id, employee_id, access_granted, reason)
 
 
-def log_error(correlation_id, error_message, error_type, tool_name=None, tenant_id=None,
-              additional_context=None):
-    audit_logger.log_error(correlation_id, error_message, error_type, tool_name, tenant_id, additional_context)
+def log_error(
+    correlation_id,
+    error_message,
+    error_type,
+    tool_name=None,
+    tenant_id=None,
+    additional_context=None,
+):
+    audit_logger.log_error(
+        correlation_id,
+        error_message,
+        error_type,
+        tool_name,
+        tenant_id,
+        additional_context,
+    )

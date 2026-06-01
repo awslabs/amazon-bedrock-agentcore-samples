@@ -78,7 +78,7 @@ class FrontendConstruct(Construct):
 
         # Deploy frontend files
         frontend_dist_path = os.path.join(project_root, "frontend/dist")
-        
+
         # Check if frontend build exists
         if not os.path.exists(frontend_dist_path):
             print("=" * 80)
@@ -91,7 +91,7 @@ class FrontendConstruct(Construct):
                 f"Frontend build directory not found at {frontend_dist_path}. "
                 "Please build the frontend before deploying."
             )
-        
+
         frontend_deployment = s3_deployment.BucketDeployment(
             self,
             "DeployFrontend",

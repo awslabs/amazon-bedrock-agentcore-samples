@@ -20,7 +20,9 @@ from audit_logger import (
 )
 
 
-def inject_correlation_id(arguments: Dict[str, Any], correlation_id: str) -> Dict[str, Any]:
+def inject_correlation_id(
+    arguments: Dict[str, Any], correlation_id: str
+) -> Dict[str, Any]:
     out = arguments.copy()
     out["_correlation_id"] = correlation_id
     return out
@@ -30,21 +32,39 @@ def inject_correlation_id(arguments: Dict[str, Any], correlation_id: str) -> Dic
 # search_employee
 # ---------------------------------------------------------------------------
 
+
 def handle_search_employee(arguments: Dict[str, Any]) -> Dict[str, Any]:
     query = arguments.get("query", "").strip()
     tenant_id = arguments.get("tenantId", "")
     correlation_id = arguments.get("_correlation_id", "unknown")
 
     if not tenant_id:
-        return {"error": "Missing required parameter: tenantId", "error_code": "MISSING_TENANT_ID"}
+        return {
+            "error": "Missing required parameter: tenantId",
+            "error_code": "MISSING_TENANT_ID",
+        }
     if not query:
-        return {"error": "Missing required parameter: query", "error_code": "MISSING_QUERY"}
+        return {
+            "error": "Missing required parameter: query",
+            "error_code": "MISSING_QUERY",
+        }
 
     try:
         employees = search_employees_by_query(query, tenant_id, max_results=10)
-        log_data_access(correlation_id, tenant_id, data_type="employee_search", access_granted=True,
-                        reason=f"Search query: {query}")
-        log_tool_invocation(correlation_id, "search_employee", tenant_id, result_count=len(employees), success=True)
+        log_data_access(
+            correlation_id,
+            tenant_id,
+            data_type="employee_search",
+            access_granted=True,
+            reason=f"Search query: {query}",
+        )
+        log_tool_invocation(
+            correlation_id,
+            "search_employee",
+            tenant_id,
+            result_count=len(employees),
+            success=True,
+        )
         return {
             "employees": employees,
             "total_count": len(employees),
@@ -53,12 +73,16 @@ def handle_search_employee(arguments: Dict[str, Any]) -> Dict[str, Any]:
         }
     except Exception as e:
         log_tool_invocation(correlation_id, "search_employee", tenant_id, success=False)
-        return {"error": f"Employee search failed: {str(e)}", "error_code": "SEARCH_FAILED"}
+        return {
+            "error": f"Employee search failed: {str(e)}",
+            "error_code": "SEARCH_FAILED",
+        }
 
 
 # ---------------------------------------------------------------------------
 # get_employee_profile
 # ---------------------------------------------------------------------------
+
 
 def handle_get_employee_profile(arguments: Dict[str, Any]) -> Dict[str, Any]:
     employee_id = arguments.get("employeeId", "").strip()
@@ -66,24 +90,46 @@ def handle_get_employee_profile(arguments: Dict[str, Any]) -> Dict[str, Any]:
     correlation_id = arguments.get("_correlation_id", "unknown")
 
     if not tenant_id:
-        return {"error": "Missing required parameter: tenantId", "error_code": "MISSING_TENANT_ID"}
+        return {
+            "error": "Missing required parameter: tenantId",
+            "error_code": "MISSING_TENANT_ID",
+        }
     if not employee_id:
-        return {"error": "Missing required parameter: employeeId", "error_code": "MISSING_EMPLOYEE_ID"}
+        return {
+            "error": "Missing required parameter: employeeId",
+            "error_code": "MISSING_EMPLOYEE_ID",
+        }
 
     access_ok = validate_tenant_access(employee_id, tenant_id)
     log_tenant_access_check(correlation_id, tenant_id, employee_id, access_ok)
     if not access_ok:
-        return {"error": "Employee not found or access denied", "error_code": "EMPLOYEE_NOT_FOUND",
-                "employee_id": employee_id, "tenant_id": tenant_id}
+        return {
+            "error": "Employee not found or access denied",
+            "error_code": "EMPLOYEE_NOT_FOUND",
+            "employee_id": employee_id,
+            "tenant_id": tenant_id,
+        }
 
     try:
         emp = get_employee_by_id(employee_id, tenant_id)
         if not emp:
-            return {"error": "Employee not found", "error_code": "EMPLOYEE_NOT_FOUND",
-                    "employee_id": employee_id, "tenant_id": tenant_id}
+            return {
+                "error": "Employee not found",
+                "error_code": "EMPLOYEE_NOT_FOUND",
+                "employee_id": employee_id,
+                "tenant_id": tenant_id,
+            }
 
-        log_data_access(correlation_id, tenant_id, employee_id, "employee_profile", True)
-        log_tool_invocation(correlation_id, "get_employee_profile", tenant_id, result_count=1, success=True)
+        log_data_access(
+            correlation_id, tenant_id, employee_id, "employee_profile", True
+        )
+        log_tool_invocation(
+            correlation_id,
+            "get_employee_profile",
+            tenant_id,
+            result_count=1,
+            success=True,
+        )
 
         return {
             "employee_id": emp["employee_id"],
@@ -107,13 +153,19 @@ def handle_get_employee_profile(arguments: Dict[str, Any]) -> Dict[str, Any]:
             "pay_grade": emp["pay_grade"],
         }
     except Exception as e:
-        log_tool_invocation(correlation_id, "get_employee_profile", tenant_id, success=False)
-        return {"error": f"Profile retrieval failed: {str(e)}", "error_code": "PROFILE_RETRIEVAL_FAILED"}
+        log_tool_invocation(
+            correlation_id, "get_employee_profile", tenant_id, success=False
+        )
+        return {
+            "error": f"Profile retrieval failed: {str(e)}",
+            "error_code": "PROFILE_RETRIEVAL_FAILED",
+        }
 
 
 # ---------------------------------------------------------------------------
 # get_employee_compensation
 # ---------------------------------------------------------------------------
+
 
 def handle_get_employee_compensation(arguments: Dict[str, Any]) -> Dict[str, Any]:
     employee_id = arguments.get("employeeId", "").strip()
@@ -121,32 +173,56 @@ def handle_get_employee_compensation(arguments: Dict[str, Any]) -> Dict[str, Any
     correlation_id = arguments.get("_correlation_id", "unknown")
 
     if not tenant_id:
-        return {"error": "Missing required parameter: tenantId", "error_code": "MISSING_TENANT_ID"}
+        return {
+            "error": "Missing required parameter: tenantId",
+            "error_code": "MISSING_TENANT_ID",
+        }
     if not employee_id:
-        return {"error": "Missing required parameter: employeeId", "error_code": "MISSING_EMPLOYEE_ID"}
+        return {
+            "error": "Missing required parameter: employeeId",
+            "error_code": "MISSING_EMPLOYEE_ID",
+        }
 
     access_ok = validate_tenant_access(employee_id, tenant_id)
     log_tenant_access_check(correlation_id, tenant_id, employee_id, access_ok)
     if not access_ok:
-        return {"error": "Employee not found or access denied", "error_code": "EMPLOYEE_NOT_FOUND",
-                "employee_id": employee_id, "tenant_id": tenant_id}
+        return {
+            "error": "Employee not found or access denied",
+            "error_code": "EMPLOYEE_NOT_FOUND",
+            "employee_id": employee_id,
+            "tenant_id": tenant_id,
+        }
 
     try:
         comp = get_employee_compensation_data(employee_id, tenant_id)
         if not comp:
             return {"error": "Employee not found", "error_code": "EMPLOYEE_NOT_FOUND"}
 
-        log_data_access(correlation_id, tenant_id, employee_id, "employee_compensation", True)
-        log_tool_invocation(correlation_id, "get_employee_compensation", tenant_id, result_count=1, success=True)
+        log_data_access(
+            correlation_id, tenant_id, employee_id, "employee_compensation", True
+        )
+        log_tool_invocation(
+            correlation_id,
+            "get_employee_compensation",
+            tenant_id,
+            result_count=1,
+            success=True,
+        )
         return comp
     except Exception as e:
-        log_tool_invocation(correlation_id, "get_employee_compensation", tenant_id, success=False)
-        return {"error": f"Compensation retrieval failed: {str(e)}", "error_code": "COMPENSATION_RETRIEVAL_FAILED"}
+        log_tool_invocation(
+            correlation_id, "get_employee_compensation", tenant_id, success=False
+        )
+        return {
+            "error": f"Compensation retrieval failed: {str(e)}",
+            "error_code": "COMPENSATION_RETRIEVAL_FAILED",
+        }
 
 
 # ---------------------------------------------------------------------------
 # Schema + validation helpers
 # ---------------------------------------------------------------------------
+
 
 def get_available_tools() -> List[Dict[str, Any]]:
     return [
@@ -189,7 +265,9 @@ def get_available_tools() -> List[Dict[str, Any]]:
     ]
 
 
-def validate_tool_arguments(tool_name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
+def validate_tool_arguments(
+    tool_name: str, arguments: Dict[str, Any]
+) -> Dict[str, Any]:
     tools = get_available_tools()
     tool_def = next((t for t in tools if t["name"] == tool_name), None)
     if not tool_def:

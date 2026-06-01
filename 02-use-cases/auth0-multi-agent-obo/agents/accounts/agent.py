@@ -9,11 +9,7 @@ Agent that returns customer-scoped account data with authorization logging.
 import logging
 from typing import Any, Dict, Optional
 
-from tools.account_tools import (
-    get_accounts,
-    get_account_balance,
-    get_account_details
-)
+from tools.account_tools import get_accounts, get_account_balance, get_account_details
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +42,9 @@ class AccountsAgent:
             f"customer_id={self.customer_id}"
         )
 
-    def process_query(self, query: str, include_auth_details: bool = True) -> Dict[str, Any]:
+    def process_query(
+        self, query: str, include_auth_details: bool = True
+    ) -> Dict[str, Any]:
         """
         Process an account-related query.
 
@@ -70,14 +68,14 @@ class AccountsAgent:
                         customer_id=self.customer_id,
                         account_number=account_number,
                         user_id=self.user_id,
-                        include_auth_details=include_auth_details
+                        include_auth_details=include_auth_details,
                     )
                 else:
                     # Return all balances
                     accounts_data = get_accounts(
                         customer_id=self.customer_id,
                         user_id=self.user_id,
-                        include_auth_details=include_auth_details
+                        include_auth_details=include_auth_details,
                     )
                     result = {
                         "accounts": [
@@ -86,11 +84,11 @@ class AccountsAgent:
                                 "account_name": acc["account_name"],
                                 "balance": acc["balance"],
                                 "available_balance": acc["available_balance"],
-                                "currency": acc["currency"]
+                                "currency": acc["currency"],
                             }
                             for acc in accounts_data.get("accounts", [])
                         ],
-                        "authorization": accounts_data.get("authorization")
+                        "authorization": accounts_data.get("authorization"),
                     }
 
             elif "detail" in query_lower or "information" in query_lower:
@@ -100,7 +98,7 @@ class AccountsAgent:
                         customer_id=self.customer_id,
                         account_number=account_number,
                         user_id=self.user_id,
-                        include_auth_details=include_auth_details
+                        include_auth_details=include_auth_details,
                     )
                 else:
                     result = {"error": "Please specify an account number"}
@@ -110,16 +108,17 @@ class AccountsAgent:
                 accounts_data = get_accounts(
                     customer_id=self.customer_id,
                     user_id=self.user_id,
-                    include_auth_details=include_auth_details
+                    include_auth_details=include_auth_details,
                 )
                 savings_accounts = [
-                    acc for acc in accounts_data.get("accounts", [])
+                    acc
+                    for acc in accounts_data.get("accounts", [])
                     if acc["account_type"] == "savings"
                 ]
                 result = {
                     "accounts": savings_accounts,
                     "total_accounts": len(savings_accounts),
-                    "authorization": accounts_data.get("authorization")
+                    "authorization": accounts_data.get("authorization"),
                 }
 
             elif "transaction" in query_lower or "checking" in query_lower:
@@ -127,16 +126,17 @@ class AccountsAgent:
                 accounts_data = get_accounts(
                     customer_id=self.customer_id,
                     user_id=self.user_id,
-                    include_auth_details=include_auth_details
+                    include_auth_details=include_auth_details,
                 )
                 transaction_accounts = [
-                    acc for acc in accounts_data.get("accounts", [])
+                    acc
+                    for acc in accounts_data.get("accounts", [])
                     if acc["account_type"] == "transaction"
                 ]
                 result = {
                     "accounts": transaction_accounts,
                     "total_accounts": len(transaction_accounts),
-                    "authorization": accounts_data.get("authorization")
+                    "authorization": accounts_data.get("authorization"),
                 }
 
             elif "investment" in query_lower:
@@ -144,16 +144,17 @@ class AccountsAgent:
                 accounts_data = get_accounts(
                     customer_id=self.customer_id,
                     user_id=self.user_id,
-                    include_auth_details=include_auth_details
+                    include_auth_details=include_auth_details,
                 )
                 investment_accounts = [
-                    acc for acc in accounts_data.get("accounts", [])
+                    acc
+                    for acc in accounts_data.get("accounts", [])
                     if acc["account_type"] == "investment"
                 ]
                 result = {
                     "accounts": investment_accounts,
                     "total_accounts": len(investment_accounts),
-                    "authorization": accounts_data.get("authorization")
+                    "authorization": accounts_data.get("authorization"),
                 }
 
             else:
@@ -161,14 +162,14 @@ class AccountsAgent:
                 result = get_accounts(
                     customer_id=self.customer_id,
                     user_id=self.user_id,
-                    include_auth_details=include_auth_details
+                    include_auth_details=include_auth_details,
                 )
 
             return {
                 "status": "success",
                 "data": result,
                 "agent": "accounts_agent",
-                "customer_id": self.customer_id
+                "customer_id": self.customer_id,
             }
 
         except Exception as e:
@@ -176,7 +177,7 @@ class AccountsAgent:
             return {
                 "status": "error",
                 "error": str(e),
-                "message": "Failed to process accounts query"
+                "message": "Failed to process accounts query",
             }
 
     def _extract_account_number(self, query: str) -> Optional[str]:
@@ -190,10 +191,11 @@ class AccountsAgent:
             Account number if found, None otherwise
         """
         import re
+
         patterns = [
-            r'\b(\d{8})\b',  # 8-digit account number
-            r'account\s+(?:number\s+)?(\d{8})',
-            r'#(\d{8})'
+            r"\b(\d{8})\b",  # 8-digit account number
+            r"account\s+(?:number\s+)?(\d{8})",
+            r"#(\d{8})",
         ]
 
         for pattern in patterns:

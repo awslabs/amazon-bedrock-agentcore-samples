@@ -33,6 +33,7 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 # OpenTelemetry tracing for token exchange observability
 try:
     from opentelemetry import trace
+
     OTEL_AVAILABLE = True
 except ImportError:
     OTEL_AVAILABLE = False
@@ -356,13 +357,17 @@ class TokenExchangeService:
         exchange_id = f"tex-{uuid.uuid4().hex[:12]}"
         self._exchange_count += 1
 
-        logger.info(json.dumps({
-            "event": "token_exchange_started",
-            "exchange_id": exchange_id,
-            "audience": request.audience,
-            "requested_scope": request.scope,
-            "exchange_number": self._exchange_count,
-        }))
+        logger.info(
+            json.dumps(
+                {
+                    "event": "token_exchange_started",
+                    "exchange_id": exchange_id,
+                    "audience": request.audience,
+                    "requested_scope": request.scope,
+                    "exchange_number": self._exchange_count,
+                }
+            )
+        )
 
         # Acquire OTEL tracer if available
         tracer = trace.get_tracer(__name__) if OTEL_AVAILABLE else None
@@ -435,7 +440,6 @@ class TokenExchangeService:
                 "sub": subject_claims.get("sub"),
                 "email": subject_claims.get("email"),
                 "name": subject_claims.get("name"),
-
                 # New token metadata
                 "iss": self.issuer,
                 "aud": request.audience,
@@ -443,20 +447,16 @@ class TokenExchangeService:
                 "iat": now,
                 "nbf": now,
                 "jti": exchange_id,
-
                 # Attenuated scope
                 "scope": " ".join(granted_scopes),
-
                 # RFC 8693 Section 4.4: act claim — delegation chain
                 "act": {
                     "sub": actor_id,
                 },
-
                 # Audit and traceability
                 "original_issuer": subject_claims.get("iss", ""),
                 "original_audience": subject_claims.get("aud", ""),
                 "exchange_id": exchange_id,
-
                 # Preserve custom claims (namespace-prefixed)
                 **self._extract_custom_claims(subject_claims),
             }
@@ -485,37 +485,53 @@ class TokenExchangeService:
 
             # Record span attributes for scope attenuation observability
             if span:
-                span.set_attribute("token_exchange.original_scope_count", len(original_scopes))
-                span.set_attribute("token_exchange.granted_scope_count", len(granted_scopes))
-                span.set_attribute("token_exchange.removed_scope_count", len(removed_scopes))
-                span.set_attribute("token_exchange.original_scopes", ", ".join(original_scopes))
-                span.set_attribute("token_exchange.granted_scopes", ", ".join(granted_scopes))
-                span.set_attribute("token_exchange.removed_scopes", ", ".join(removed_scopes))
+                span.set_attribute(
+                    "token_exchange.original_scope_count", len(original_scopes)
+                )
+                span.set_attribute(
+                    "token_exchange.granted_scope_count", len(granted_scopes)
+                )
+                span.set_attribute(
+                    "token_exchange.removed_scope_count", len(removed_scopes)
+                )
+                span.set_attribute(
+                    "token_exchange.original_scopes", ", ".join(original_scopes)
+                )
+                span.set_attribute(
+                    "token_exchange.granted_scopes", ", ".join(granted_scopes)
+                )
+                span.set_attribute(
+                    "token_exchange.removed_scopes", ", ".join(removed_scopes)
+                )
                 span.set_attribute("token_exchange.actor_id", actor_id)
                 span.set_attribute("token_exchange.token_lifetime", self.token_lifetime)
-                span.set_attribute("token_exchange.subject_token_issuer", subject_claims.get("iss", ""))
+                span.set_attribute(
+                    "token_exchange.subject_token_issuer", subject_claims.get("iss", "")
+                )
 
-            logger.info(json.dumps({
-                "event": "token_exchange_completed",
-                "exchange_id": exchange_id,
-                "audience": request.audience,
-                "original_scope_count": len(original_scopes),
-                "granted_scope_count": len(granted_scopes),
-                "removed_scope_count": len(removed_scopes),
-                "original_scopes": original_scopes,
-                "granted_scopes": granted_scopes,
-                "removed_scopes": removed_scopes,
-                "token_lifetime": self.token_lifetime,
-                "actor": actor_id,
-            }))
+            logger.info(
+                json.dumps(
+                    {
+                        "event": "token_exchange_completed",
+                        "exchange_id": exchange_id,
+                        "audience": request.audience,
+                        "original_scope_count": len(original_scopes),
+                        "granted_scope_count": len(granted_scopes),
+                        "removed_scope_count": len(removed_scopes),
+                        "original_scopes": original_scopes,
+                        "granted_scopes": granted_scopes,
+                        "removed_scopes": removed_scopes,
+                        "token_lifetime": self.token_lifetime,
+                        "actor": actor_id,
+                    }
+                )
+            )
 
             return response
 
         except Exception:
             if span:
-                span.record_exception(
-                    exception=__import__("sys").exc_info()[1]
-                )
+                span.record_exception(exception=__import__("sys").exc_info()[1])
                 span.set_status(trace.StatusCode.ERROR)
             raise
         finally:

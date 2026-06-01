@@ -195,7 +195,9 @@ class AgentCoreIdentityStack(Stack):
         # When implemented, would output important identifiers for other stacks
         self._create_outputs_stub()
 
-        print("[STUB] AgentCoreIdentityStack initialization complete (no resources created)")
+        print(
+            "[STUB] AgentCoreIdentityStack initialization complete (no resources created)"
+        )
 
     def _create_agent_roles_stub(self) -> None:
         """

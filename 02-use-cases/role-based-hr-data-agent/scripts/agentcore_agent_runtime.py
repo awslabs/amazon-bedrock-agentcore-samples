@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-import os, sys
+import os
+import sys
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 """
 CLI for managing the Amazon Bedrock AgentCore Runtime for role-based-hr-data-agent.
@@ -12,7 +14,6 @@ The create command reads infrastructure config from SSM (populated by prereq.sh
 and agentcore_gateway.py) so no manual ARN/URL entry is needed.
 """
 
-import json
 import sys
 import time
 
@@ -33,10 +34,12 @@ def cli():
 
 
 @cli.command()
-@click.option("--s3-bucket", default=None,
-              help="S3 bucket holding runtime.zip (reads /app/hrdlp/deploy-bucket from SSM if omitted)")
-@click.option("--name", default=RUNTIME_NAME, show_default=True,
-              help="AgentCore Runtime name")
+@click.option(
+    "--s3-bucket",
+    default=None,
+    help="S3 bucket holding runtime.zip (reads /app/hrdlp/deploy-bucket from SSM if omitted)",
+)
+@click.option("--name", default=RUNTIME_NAME, show_default=True, help="AgentCore Runtime name")
 @click.option("--region", default="us-east-1", show_default=True)
 def create(s3_bucket: str, name: str, region: str):
     """Create the AgentCore Runtime and store its ID + URL in SSM.
@@ -66,31 +69,40 @@ def create(s3_bucket: str, name: str, region: str):
     gateway_url = get_ssm_parameter("/app/hrdlp/gateway-url")
     user_pool_id = get_ssm_parameter("/app/hrdlp/cognito-user-pool-id")
 
-    missing = [k for k, v in {
-        "/app/hrdlp/runtime-role-arn": role_arn,
-        "/app/hrdlp/gateway-url": gateway_url,
-        "/app/hrdlp/cognito-user-pool-id": user_pool_id,
-    }.items() if not v]
+    missing = [
+        k
+        for k, v in {
+            "/app/hrdlp/runtime-role-arn": role_arn,
+            "/app/hrdlp/gateway-url": gateway_url,
+            "/app/hrdlp/cognito-user-pool-id": user_pool_id,
+        }.items()
+        if not v
+    ]
     if missing:
-        click.echo(f"ERROR: Missing SSM parameters: {missing}\nRun prereq.sh and agentcore_gateway.py first.", err=True)
+        click.echo(
+            f"ERROR: Missing SSM parameters: {missing}\nRun prereq.sh and agentcore_gateway.py first.",
+            err=True,
+        )
         sys.exit(1)
 
     # Collect persona client IDs for JWT authorizer allowedClients
     persona_client_ids = [
-        cid for cid in [
+        cid
+        for cid in [
             get_ssm_parameter(f"/app/hrdlp/personas/{p}/client-id")
             for p in ["hr-manager", "hr-specialist", "employee", "admin"]
-        ] if cid
+        ]
+        if cid
     ]
     if not persona_client_ids:
-        click.echo("ERROR: No persona client IDs found in SSM. Run cognito_credentials_provider.py create first.", err=True)
+        click.echo(
+            "ERROR: No persona client IDs found in SSM. Run cognito_credentials_provider.py create first.",
+            err=True,
+        )
         sys.exit(1)
 
     # Build JWT authorizer from Cognito User Pool
-    discovery_url = (
-        f"https://cognito-idp.{region}.amazonaws.com/{user_pool_id}"
-        "/.well-known/openid-configuration"
-    )
+    discovery_url = f"https://cognito-idp.{region}.amazonaws.com/{user_pool_id}/.well-known/openid-configuration"
 
     client = boto3.client("bedrock-agentcore-control", region_name=region)
     click.echo(f"Creating AgentCore Runtime: {name}")
@@ -111,16 +123,17 @@ def create(s3_bucket: str, name: str, region: str):
             },
             roleArn=role_arn,
             networkConfiguration={"networkMode": "PUBLIC"},
-            environmentVariables={"GATEWAY_URL": gateway_url, "AWS_DEFAULT_REGION": region},
+            environmentVariables={
+                "GATEWAY_URL": gateway_url,
+                "AWS_DEFAULT_REGION": region,
+            },
             authorizerConfiguration={
                 "customJWTAuthorizer": {
                     "discoveryUrl": discovery_url,
                     "allowedClients": persona_client_ids,
                 }
             },
-            requestHeaderConfiguration={
-                "requestHeaderAllowlist": ["Authorization"]
-            },
+            requestHeaderConfiguration={"requestHeaderAllowlist": ["Authorization"]},
         )
 
         runtime_id = resp["agentRuntimeId"]
@@ -132,6 +145,7 @@ def create(s3_bucket: str, name: str, region: str):
         # Build ARN-based invocation URL — required when runtime name contains underscores,
         # since DNS hostnames don't allow underscores.
         import urllib.parse
+
         account_id = boto3.client("sts").get_caller_identity()["Account"]
         runtime_arn = f"arn:aws:bedrock-agentcore:{region}:{account_id}:runtime/{runtime_id}"
         encoded_arn = urllib.parse.quote(runtime_arn, safe="")
@@ -151,8 +165,11 @@ def create(s3_bucket: str, name: str, region: str):
 
 
 @cli.command()
-@click.option("--runtime-id", default=None,
-              help="Runtime ID (reads from SSM /app/hrdlp/runtime-id if omitted)")
+@click.option(
+    "--runtime-id",
+    default=None,
+    help="Runtime ID (reads from SSM /app/hrdlp/runtime-id if omitted)",
+)
 @click.option("--region", default="us-east-1", show_default=True)
 def delete(runtime_id: str, region: str):
     """Delete the AgentCore Runtime."""

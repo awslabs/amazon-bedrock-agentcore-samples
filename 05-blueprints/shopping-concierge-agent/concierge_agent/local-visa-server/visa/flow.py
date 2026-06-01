@@ -64,7 +64,13 @@ vic_key_id = None
 
 def _ensure_vts_secrets():
     """Ensure VTS secrets are loaded"""
-    global server_cert, private_cert, api_key, shared_secret, encryption_api_key, encryption_shared_secret
+    global \
+        server_cert, \
+        private_cert, \
+        api_key, \
+        shared_secret, \
+        encryption_api_key, \
+        encryption_shared_secret
     if api_key is None:
         server_cert = get_visa_secret(server_cert_secret_name)
         private_cert = get_visa_secret(private_cert_secret_name)

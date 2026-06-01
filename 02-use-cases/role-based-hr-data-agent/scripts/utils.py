@@ -4,7 +4,7 @@ Shared AWS utilities for deployment scripts.
 
 import json
 import logging
-from typing import Any, Optional
+from typing import Optional
 
 import boto3
 import yaml
@@ -55,7 +55,5 @@ def read_config(path: str) -> dict:
 
 
 def get_cognito_client_secret(user_pool_id: str, client_id: str) -> str:
-    resp = boto3.client("cognito-idp").describe_user_pool_client(
-        UserPoolId=user_pool_id, ClientId=client_id
-    )
+    resp = boto3.client("cognito-idp").describe_user_pool_client(UserPoolId=user_pool_id, ClientId=client_id)
     return resp["UserPoolClient"]["ClientSecret"]
