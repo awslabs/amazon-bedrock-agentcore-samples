@@ -74,7 +74,7 @@ def invoke_and_stream(token: str, runtime_arn: str, region: str, prompt: str):
         },
     )
 
-    print(f"\033[90m━━━ Agent Response ━━━\033[0m\n")
+    print("\033[90m━━━ Agent Response ━━━\033[0m\n")
 
     try:
         if not url.startswith("https://"):
@@ -102,7 +102,7 @@ def invoke_and_stream(token: str, runtime_arn: str, region: str, prompt: str):
                     except json.JSONDecodeError:
                         print(f"\n\033[91m❌ {decoded}\033[0m")
 
-        print(f"\n\n\033[90m━━━━━━━━━━━━━━━━━━━━━\033[0m")
+        print("\n\n\033[90m━━━━━━━━━━━━━━━━━━━━━\033[0m")
 
     except urllib.error.HTTPError as e:
         body = e.read().decode("utf-8")
@@ -118,7 +118,7 @@ def main():
     )
     args = parser.parse_args()
 
-    print(f"\033[90m🔑 Authenticating...\033[0m")
+    print("\033[90m🔑 Authenticating...\033[0m")
     token, runtime_arn = get_cognito_token(args.region)
     print(f"\033[90m✅ Connected to {runtime_arn.split('/')[-1]}\033[0m")
     print(f"\033[90m📝 {args.prompt}\033[0m\n")

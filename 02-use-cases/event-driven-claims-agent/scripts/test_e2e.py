@@ -265,7 +265,7 @@ Jane Doe
             Body=email_content.encode("utf-8"),
             ContentType="text/plain",
         )
-        print(f"  ✅ Email uploaded")
+        print("  ✅ Email uploaded")
     except Exception as e:
         print(f"  ❌ Upload failed: {e}")
         return False
@@ -287,7 +287,7 @@ Jane Doe
         
         if email_claims:
             latest = email_claims[-1]
-            print(f"  ✅ Claim found in DynamoDB!")
+            print("  ✅ Claim found in DynamoDB!")
             print(f"     Claim ID: {latest.get('claim_id')}")
             print(f"     Policy: {latest.get('policy_number')}")
             print(f"     Status: {latest.get('status')}")
