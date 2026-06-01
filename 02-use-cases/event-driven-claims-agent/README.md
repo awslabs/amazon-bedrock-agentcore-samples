@@ -7,6 +7,15 @@ An event-driven insurance claims processing system built on **Amazon Bedrock Age
 
 This sample demonstrates **every AgentCore primitive** (Runtime, Gateway, Identity, Memory, Policy Engine, Observability, Evaluation) working together in a production-realistic architecture.
 
+## Demo
+
+https://github.com/awslabs/agentcore-samples/blob/feat/event-driven-claims-agent/02-use-cases/event-driven-claims-agent/demo.mp4
+
+The demo shows:
+1. **Direct invocation** — Agent processes a claim, verifies policy, auto-approves, and sends branded email notification
+2. **Cedar policy enforcement** — Gateway blocks a high-value claim exceeding the $100k threshold
+3. **Event-driven flow** — Claim uploaded to S3 triggers EventBridge → Lambda → Agent Runtime pipeline
+
 ## Architecture
 
 ```
