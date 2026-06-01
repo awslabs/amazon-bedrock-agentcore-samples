@@ -8,10 +8,10 @@ Usage:
 Requires: COGNITO_CLIENT_SECRET env var (get from AWS Console or Secrets Manager)
 
 Environment variables:
-    COGNITO_USER_POOL_ID  (default: us-west-2_D3Bx2q1du)
-    COGNITO_CLIENT_ID     (default: 7eb8emif7s1f57oddudd32ru71)
-    COGNITO_CLIENT_SECRET (required)
-    AWS_REGION            (default: us-west-2)
+    COGNITO_USER_POOL_ID  (required - from CDK output)
+    COGNITO_CLIENT_ID     (required - from CDK output)
+    COGNITO_CLIENT_SECRET (required - from CDK output)
+    AWS_REGION            (default: us-east-1)
 """
 import base64
 import json
@@ -20,7 +20,7 @@ import sys
 import urllib.parse
 import urllib.request
 
-REGION = os.environ.get("AWS_REGION", os.environ.get("AWS_DEFAULT_REGION", "us-west-2"))
+REGION = os.environ.get("AWS_REGION", os.environ.get("AWS_DEFAULT_REGION", "us-east-1"))
 USER_POOL_ID = os.environ.get("COGNITO_USER_POOL_ID", "")
 CLIENT_ID = os.environ.get("COGNITO_CLIENT_ID", "")
 CLIENT_SECRET = os.environ.get("COGNITO_CLIENT_SECRET", "")

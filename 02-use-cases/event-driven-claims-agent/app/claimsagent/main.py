@@ -21,7 +21,7 @@ from model.load import load_model
 app = BedrockAgentCoreApp()
 log = app.logger
 
-GATEWAY_URL = os.environ.get("AGENTCORE_GATEWAY_URL", os.environ.get("AGENTCORE_GATEWAY_CLAIMS_GATEWAY_URL", "https://claimsagent-claims-gateway-8ydqjm5fmj.gateway.bedrock-agentcore.us-west-2.amazonaws.com/mcp"))
+GATEWAY_URL = os.environ.get("AGENTCORE_GATEWAY_URL", os.environ.get("AGENTCORE_GATEWAY_CLAIMS_GATEWAY_URL", ""))
 
 # Gateway OAuth config (injected by CDK WorkloadIdentity)
 GATEWAY_TOKEN_ENDPOINT = os.environ.get("AGENTCORE_GATEWAY_TOKEN_ENDPOINT", "")
