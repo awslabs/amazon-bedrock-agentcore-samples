@@ -10,8 +10,6 @@ Deploys everything in a single `cdk deploy`:
 - Observability (X-Ray tracing + CloudWatch logs)
 """
 
-import os
-
 from aws_cdk import (
     CfnOutput,
     Duration,
@@ -28,7 +26,6 @@ from aws_cdk import (
     aws_logs as logs,
     aws_s3 as s3,
     aws_sns as sns,
-    aws_sns_subscriptions as subs,
 )
 from constructs import Construct
 
@@ -332,7 +329,7 @@ class ClaimsInfraStack(Stack):
             actions=["bedrock:InvokeModel", "bedrock:InvokeModelWithResponseStream"],
             resources=[
                 f"arn:aws:bedrock:{self.region}::foundation-model/anthropic.claude-sonnet-4-6",
-                f"arn:aws:bedrock:*::foundation-model/anthropic.claude-sonnet-4-6",
+                "arn:aws:bedrock:*::foundation-model/anthropic.claude-sonnet-4-6",
                 "arn:aws:bedrock:*:*:inference-profile/*",
             ],
         ))
@@ -367,7 +364,7 @@ class ClaimsInfraStack(Stack):
         # ======================================================================
 
         # Custom evaluator: Claims quality assessment
-        claims_evaluator = agentcore.Evaluator(
+        _claims_evaluator = agentcore.Evaluator(
             self, "ClaimsQualityEvaluator",
             evaluator_name="claims_quality",
             level=agentcore.EvaluationLevel.SESSION,
@@ -386,7 +383,7 @@ class ClaimsInfraStack(Stack):
         )
 
         # Online evaluation config using the runtime as data source
-        evaluation = agentcore.OnlineEvaluationConfig(
+        _evaluation = agentcore.OnlineEvaluationConfig(
             self, "ClaimsEvaluation",
             online_evaluation_config_name="claims_evaluation",
             evaluators=[

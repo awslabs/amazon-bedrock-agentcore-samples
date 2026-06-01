@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Seed DynamoDB tables with sample data."""
-import argparse, boto3
+import argparse
+import boto3
 
 def seed_policies(region):
     dynamodb = boto3.resource("dynamodb", region_name=region)

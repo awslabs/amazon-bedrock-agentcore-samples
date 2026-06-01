@@ -10,12 +10,12 @@ import re
 
 import base64
 import urllib.parse
-import urllib.request, json
+import urllib.request
+import json
 from strands import Agent
 from strands.tools.mcp import MCPClient
 from mcp.client.streamable_http import streamablehttp_client
 from bedrock_agentcore.runtime import BedrockAgentCoreApp
-from bedrock_agentcore.runtime.context import BedrockAgentCoreContext
 from model.load import load_model
 
 app = BedrockAgentCoreApp()
