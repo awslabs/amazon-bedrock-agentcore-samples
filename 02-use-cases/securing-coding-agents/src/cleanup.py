@@ -43,9 +43,9 @@ def cleanup() -> None:
             ac_client = boto3.client("bedrock-agentcore-control", region_name=region)
 
             # Delete all policies from the engine
-            policies = ac_client.list_policies(
-                policyEngineId=policy_engine_id, maxResults=50
-            ).get("policies", [])
+            policies = ac_client.list_policies(policyEngineId=policy_engine_id, maxResults=50).get(
+                "policies", []
+            )
             for p in policies:
                 ac_client.delete_policy(policyEngineId=policy_engine_id, policyId=p["policyId"])
 
@@ -112,9 +112,7 @@ def cleanup() -> None:
                 desc = cognito_client.describe_user_pool(UserPoolId=user_pool_id)
                 domain = desc["UserPool"].get("Domain", "")
                 if domain:
-                    cognito_client.delete_user_pool_domain(
-                        UserPoolId=user_pool_id, Domain=domain
-                    )
+                    cognito_client.delete_user_pool_domain(UserPoolId=user_pool_id, Domain=domain)
 
             cognito_client.delete_user_pool(UserPoolId=user_pool_id)
             print(f"  ✓ Cognito user pool deleted: {user_pool_id}")
