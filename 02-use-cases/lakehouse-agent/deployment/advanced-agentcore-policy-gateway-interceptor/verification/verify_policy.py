@@ -33,10 +33,7 @@ REGION = os.environ.get("AWS_REGION", "us-east-1")
 # users; export it before running this script.
 TEST_PASSWORD = os.environ.get("LAKEHOUSE_TEST_PASSWORD")
 if not TEST_PASSWORD:
-    sys.exit(
-        "Error: LAKEHOUSE_TEST_PASSWORD must be set "
-        "(see deployment/1-cognito-setup/setup_cognito.py output)."
-    )
+    sys.exit("Error: LAKEHOUSE_TEST_PASSWORD must be set (see deployment/1-cognito-setup/setup_cognito.py output).")
 TARGET_NAME = "lakehouse-mcp-target"
 
 
@@ -46,9 +43,7 @@ def get_config() -> dict[str, str]:
     ssm = session.client("ssm")
 
     def get_param(name: str, secure: bool = False) -> str:
-        return ssm.get_parameter(
-            Name=f"/app/lakehouse-agent/{name}", WithDecryption=secure
-        )["Parameter"]["Value"]
+        return ssm.get_parameter(Name=f"/app/lakehouse-agent/{name}", WithDecryption=secure)["Parameter"]["Value"]
 
     return {
         "gateway_url": get_param("gateway-url"),
@@ -61,9 +56,7 @@ def get_config() -> dict[str, str]:
 def compute_secret_hash(username: str, client_id: str, client_secret: str) -> str:
     """Compute Cognito SECRET_HASH."""
     message = username + client_id
-    return base64.b64encode(
-        hmac.new(client_secret.encode(), message.encode(), hashlib.sha256).digest()
-    ).decode()
+    return base64.b64encode(hmac.new(client_secret.encode(), message.encode(), hashlib.sha256).digest()).decode()
 
 
 def authenticate_user(username: str, config: dict[str, str]) -> str:
@@ -71,9 +64,7 @@ def authenticate_user(username: str, config: dict[str, str]) -> str:
     session = boto3.Session(region_name=REGION)
     cognito = session.client("cognito-idp")
 
-    secret_hash = compute_secret_hash(
-        username, config["client_id"], config["client_secret"]
-    )
+    secret_hash = compute_secret_hash(username, config["client_id"], config["client_secret"])
 
     resp = cognito.admin_initiate_auth(
         UserPoolId=config["user_pool_id"],
@@ -91,9 +82,7 @@ def authenticate_user(username: str, config: dict[str, str]) -> str:
 _request_id = 0
 
 
-def call_gateway(
-    access_token: str, gateway_url: str, method: str, params: dict[str, Any]
-) -> dict[str, Any]:
+def call_gateway(access_token: str, gateway_url: str, method: str, params: dict[str, Any]) -> dict[str, Any]:
     """Send an MCP JSON-RPC request to the Gateway."""
     global _request_id
     _request_id += 1
@@ -221,9 +210,7 @@ def test_data_isolation(user1: str, user2: str, config: dict[str, str]) -> bool:
     return no_overlap
 
 
-def test_column_masking(
-    username: str, forbidden_column: str, config: dict[str, str]
-) -> bool:
+def test_column_masking(username: str, forbidden_column: str, config: dict[str, str]) -> bool:
     """Design 2: Verify a column is not present in results."""
     token = authenticate_user(username, config)
     result = call_gateway(
@@ -238,9 +225,7 @@ def test_column_masking(
         return True
     has_column = forbidden_column in claims[0]
     status = "PASS" if not has_column else "FAIL"
-    print(
-        f"  {status}: Column '{forbidden_column}' present = {'YES' if has_column else 'NO'}"
-    )
+    print(f"  {status}: Column '{forbidden_column}' present = {'YES' if has_column else 'NO'}")
     return not has_column
 
 
@@ -272,9 +257,7 @@ def main() -> int:
         ("get_claims_summary", "DENY", "Cedar forbid for policyholders"),
     ]:
         total += 1
-        if test_tool_access(
-            "policyholder001@example.com", tool, expected, config, desc
-        ):
+        if test_tool_access("policyholder001@example.com", tool, expected, config, desc):
             passed += 1
 
     print("\n--- adjuster001@example.com (US) ---")
@@ -301,9 +284,7 @@ def main() -> int:
 
     print("\n--- Data isolation: policyholder001 vs adjuster001 ---")
     total += 1
-    if test_data_isolation(
-        "policyholder001@example.com", "adjuster001@example.com", config
-    ):
+    if test_data_isolation("policyholder001@example.com", "adjuster001@example.com", config):
         passed += 1
 
     print("\n--- Column masking: policyholder001 ---")
@@ -326,16 +307,12 @@ def main() -> int:
         ("get_claims_summary", "DENY", "Design 1 forbid for policyholders"),
     ]:
         total += 1
-        if test_tool_access(
-            "policyholder002@example.com", tool, expected, config, desc
-        ):
+        if test_tool_access("policyholder002@example.com", tool, expected, config, desc):
             passed += 1
 
     print("\n--- adjuster001@example.com (US) ---")
     total += 1
-    if test_tool_access(
-        "adjuster001@example.com", "query_claims", "ALLOW", config, "US allowed"
-    ):
+    if test_tool_access("adjuster001@example.com", "query_claims", "ALLOW", config, "US allowed"):
         passed += 1
 
     # ===== Results =====
