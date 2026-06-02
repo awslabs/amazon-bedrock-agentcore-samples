@@ -18,6 +18,8 @@ The demo shows:
 
 ## Architecture
 
+![Architecture Diagram](architecture.png)
+
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────┐
 │                          CDK Stack (76 resources)                                │
