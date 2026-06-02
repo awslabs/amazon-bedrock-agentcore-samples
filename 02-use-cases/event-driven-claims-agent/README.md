@@ -5,7 +5,7 @@
 
 An event-driven insurance claims processing system built on **Amazon Bedrock AgentCore**. Claims arrive via email, are processed by a dual-agent architecture (Claims Processor + Validation Agent), and are automatically routed based on confidence scoring — all deployed with a single command using CDK L2 constructs.
 
-This sample demonstrates **every AgentCore primitive** (Runtime, Gateway, Identity, Memory, Policy Engine, Observability, Evaluation) working together in a production-realistic architecture.
+This sample demonstrates **every AgentCore Service** (Runtime, Gateway, Identity, Memory, Policy Engine, Observability, Evaluation) working together in a production-realistic architecture.
 
 ## Demo
 
@@ -102,7 +102,7 @@ The demo shows:
 - [Event-Driven Claims Processing Agent](#event-driven-claims-processing-agent)
   - [Architecture](#architecture)
   - [Table of Contents](#table-of-contents)
-  - [AgentCore Primitives Demonstrated](#agentcore-primitives-demonstrated)
+  - [AgentCore Services Demonstrated](#agentcore-services-demonstrated)
   - [Key Features](#key-features)
   - [Prerequisites](#prerequisites)
     - [AWS Account Setup](#aws-account-setup)
@@ -130,9 +130,9 @@ The demo shows:
   - [🆘 Support](#-support)
   - [🔄 Updates](#-updates)
 
-## AgentCore Primitives Demonstrated
+## AgentCore Services Demonstrated
 
-| Primitive | Implementation | CDK Construct |
+| Service | Implementation | CDK Construct |
 |-----------|---------------|---------------|
 | **Runtime** | Dual Strands Agents, containerized, Cognito JWT auth, ARM64/Graviton | `AgentRuntime` (Stable L2) |
 | **Gateway** | MCP protocol, 6 Lambda tool targets, Cognito M2M, SEMANTIC search | `Gateway` (Stable L2) |
@@ -254,7 +254,7 @@ cd event-driven-claims-agent
 The deploy script performs three steps:
 
 1. **Clean up** — Removes orphaned CloudWatch log groups (prevents CDK "already exists" errors)
-2. **CDK deploy** — Synthesizes and deploys the full stack (infra + all AgentCore primitives)
+2. **CDK deploy** — Synthesizes and deploys the full stack (infra + all AgentCore Services)
 3. **Seed data** — Populates DynamoDB with sample insurance policies for testing
 
 <details>
@@ -573,7 +573,7 @@ cdk destroy --force
 deactivate
 ```
 
-This destroys the entire CloudFormation stack including all AgentCore primitives, DynamoDB tables, Lambda functions, and Cognito resources.
+This destroys the entire CloudFormation stack including all AgentCore Services, DynamoDB tables, Lambda functions, and Cognito resources.
 
 > [!CAUTION]
 > DynamoDB tables use `DESTROY` removal policy in this sample. All claim data will be permanently deleted. In production, use `RETAIN` or enable point-in-time recovery.
