@@ -40,6 +40,9 @@ Prerequisites:
 import argparse
 import json
 import os
+import shutil
+import subprocess
+import tempfile
 import time
 import urllib.parse
 import uuid
@@ -49,6 +52,7 @@ from io import BytesIO
 import boto3
 import requests
 from boto3.session import Session
+from botocore.exceptions import ClientError
 
 # ── Configuration ─────────────────────────────────────────────────────────────
 
@@ -214,9 +218,7 @@ def create_lambda() -> tuple:
     try:
         r = iam.create_role(RoleName=LAMBDA_ROLE_NAME, AssumeRolePolicyDocument=trust)
         lambda_role_arn = r["Role"]["Arn"]
-        iam.put_role_policy(
-            RoleName=LAMBDA_ROLE_NAME, PolicyName="logs", PolicyDocument=policy
-        )
+        iam.put_role_policy(RoleName=LAMBDA_ROLE_NAME, PolicyName="logs", PolicyDocument=policy)
         time.sleep(10)
         print(f"  Created Lambda role: {LAMBDA_ROLE_NAME}")
     except iam.exceptions.EntityAlreadyExistsException:
@@ -238,9 +240,7 @@ def create_lambda() -> tuple:
         lambda_arn = resp["FunctionArn"]
         print(f"  Created Lambda: {LAMBDA_NAME}")
     except lam.exceptions.ResourceConflictException:
-        lambda_arn = lam.get_function(FunctionName=LAMBDA_NAME)["Configuration"][
-            "FunctionArn"
-        ]
+        lambda_arn = lam.get_function(FunctionName=LAMBDA_NAME)["Configuration"]["FunctionArn"]
         print(f"  Reusing Lambda: {LAMBDA_NAME}")
 
     return lambda_arn, lambda_role_arn
@@ -275,7 +275,15 @@ def create_credential_provider() -> dict:
         provider_arn = resp["credentialProviderArn"]
         callback_url = resp["callbackUrl"]
         print(f"  Created credential provider: {PROVIDER_NAME}")
-    except control.exceptions.ConflictException:
+    except (control.exceptions.ConflictException, ClientError) as e:
+        # The control plane returns ValidationException("...already exists")
+        # instead of ConflictException for duplicate names; treat both as
+        # "exists, reuse it".
+        if isinstance(e, ClientError):
+            code = e.response.get("Error", {}).get("Code", "")
+            msg = str(e).lower()
+            if not (code == "ValidationException" and "already exists" in msg):
+                raise
         resp = control.get_oauth2_credential_provider(name=PROVIDER_NAME)
         provider_arn = resp["credentialProviderArn"]
         callback_url = resp["callbackUrl"]
@@ -360,6 +368,21 @@ def create_gateway(lambda_arn: str) -> dict:
                 gateway_id, gateway_url = gw["gatewayId"], gw["gatewayUrl"]
                 break
 
+    # Wait for the gateway to reach READY before subsequent operations
+    # (e.g. create_gateway_target, which fails with
+    # "Cannot perform operation ... when gateway is in CREATING status").
+    print("  Waiting for Gateway to become READY...")
+    end_states = {"READY", "FAILED", "DELETE_FAILED"}
+    while True:
+        status_resp = control.get_gateway(gatewayIdentifier=gateway_id)
+        status = status_resp.get("status", "")
+        if status in end_states:
+            break
+        time.sleep(5)
+    if status != "READY":
+        raise RuntimeError(f"Gateway creation failed: {status}")
+    print(f"  Gateway READY: {gateway_id}")
+
     # Create Lambda target with outbound Okta credential provider
     api_spec = [
         {
@@ -387,15 +410,14 @@ def create_gateway(lambda_arn: str) -> dict:
                 }
             }
         },
-        credentialProviderConfigurations=[
-            {
-                "credentialProviderType": "OAUTH",
-                "oauthCredentialProvider": {
-                    "providerArn": os.environ.get("OKTA_PROVIDER_ARN", ""),
-                    "scopes": ["okta.myAccount.read"],
-                },
-            }
-        ],
+        # Lambda targets only support GATEWAY_IAM_ROLE credential provider
+        # (verified by API: ValidationException("Lambda target only supports
+        # GATEWAY_IAM_ROLE credential provider type")). The Okta credential
+        # provider created in Step 2 is still useful for the agent's INBOUND
+        # auth (customJWTAuthorizer on the gateway itself); for OAuth-style
+        # OUTBOUND auth, you'd need an OpenAPI target rather than a Lambda
+        # target.
+        credentialProviderConfigurations=[{"credentialProviderType": "GATEWAY_IAM_ROLE"}],
     )
     print("  Created Gateway target: TravelPlansLambda")
     print(f"  Gateway URL: {gateway_url}")
@@ -409,6 +431,30 @@ def create_gateway(lambda_arn: str) -> dict:
 
 
 # ── Step 4: Deploy Agent to Runtime ───────────────────────────────────────────
+
+
+def _create_runtime_with_retry(control, **kwargs):
+    """Retry create_agent_runtime to absorb the IAM role propagation race.
+
+    The control plane briefly returns ValidationException("Role validation
+    failed... please verify that the role exists") before the role is fully
+    propagated across services. Backoff: 4, 8, 16, 32, 64 seconds.
+    """
+    last_exc = None
+    for attempt in range(5):
+        try:
+            return control.create_agent_runtime(**kwargs)
+        except ClientError as e:
+            code = e.response.get("Error", {}).get("Code", "")
+            msg = str(e).lower()
+            if code in ("ValidationException", "AccessDeniedException") and "role" in msg:
+                last_exc = e
+                wait = 2**attempt * 4
+                print(f"    Role not yet assumable; retrying in {wait}s...")
+                time.sleep(wait)
+                continue
+            raise
+    raise last_exc
 
 
 def deploy_agent(gateway_url: str) -> dict:
@@ -446,8 +492,13 @@ def deploy_agent(gateway_url: str) -> dict:
                             "Action": [
                                 "bedrock:InvokeModel",
                                 "bedrock:InvokeModelWithResponseStream",
+                                "bedrock:Converse",
+                                "bedrock:ConverseStream",
                             ],
-                            "Resource": f"arn:aws:bedrock:{REGION}::foundation-model/*",
+                            "Resource": [
+                                "arn:aws:bedrock:*::foundation-model/*",
+                                f"arn:aws:bedrock:*:{ACCOUNT_ID}:inference-profile/*",
+                            ],
                         },
                         {
                             "Effect": "Allow",
@@ -472,7 +523,7 @@ def deploy_agent(gateway_url: str) -> dict:
                 }
             ),
         )
-        time.sleep(5)
+        time.sleep(15)  # IAM cross-service propagation
         print(f"  Created agent role: {role_name}")
     except iam.exceptions.EntityAlreadyExistsException:
         role_arn = iam.get_role(RoleName=role_name)["Role"]["Arn"]
@@ -492,23 +543,66 @@ def deploy_agent(gateway_url: str) -> dict:
     except s3.exceptions.BucketAlreadyOwnedByYou:
         pass
 
-    buf = BytesIO()
-    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
-        zf.writestr(AGENT_FILE, agent_code)
-        zf.writestr("requirements.txt", "strands-agents\nbedrock-agentcore\nmcp\n")
-    buf.seek(0)
-    s3_key = f"agents/{AGENT_NAME}/agent.zip"
-    s3.put_object(Bucket=bucket_name, Key=s3_key, Body=buf.read())
+    # Build the deployment zip with uv-installed ARM64 wheels alongside the
+    # generated agent code. AgentCore Runtime mounts the zip at /var/task and
+    # does not pip-install at boot, so anything imported at module load
+    # (mcp, strands, bedrock_agentcore) must already be present.
+    sample_dir = os.path.dirname(os.path.abspath(__file__))
+    requirements = os.path.join(sample_dir, "requirements.txt")
+    if not os.path.exists(requirements):
+        raise FileNotFoundError(f"requirements.txt not found: {requirements}")
+
+    build_dir = tempfile.mkdtemp(prefix="agentcore-build-")
+    pkg_dir = os.path.join(build_dir, "deployment_package")
+    zip_path = os.path.join(build_dir, "agent.zip")
+    os.makedirs(pkg_dir)
+
+    try:
+        with open(os.path.join(pkg_dir, AGENT_FILE), "w") as f:
+            f.write(agent_code)
+
+        print("  Installing arm64 dependencies with uv...")
+        subprocess.run(
+            [
+                "uv",
+                "pip",
+                "install",
+                "--python-platform",
+                "aarch64-manylinux2014",
+                "--python-version",
+                "3.13",
+                "--target",
+                pkg_dir,
+                "--only-binary",
+                ":all:",
+                "-r",
+                requirements,
+            ],
+            check=True,
+        )
+
+        with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
+            for root, _, files in os.walk(pkg_dir):
+                for fname in files:
+                    abs_path = os.path.join(root, fname)
+                    arc_name = os.path.relpath(abs_path, pkg_dir)
+                    zf.write(abs_path, arc_name)
+
+        s3_key = f"agents/{AGENT_NAME}/agent.zip"
+        s3.upload_file(zip_path, bucket_name, s3_key)
+        print(f"  Uploaded to s3://{bucket_name}/{s3_key}")
+    finally:
+        shutil.rmtree(build_dir, ignore_errors=True)
 
     control = boto3.client("bedrock-agentcore-control", region_name=REGION)
-    resp = control.create_agent_runtime(
+    resp = _create_runtime_with_retry(
+        control,
         agentRuntimeName=AGENT_NAME,
         agentRuntimeArtifact={
-            "containerConfiguration": {
-                "containerUri": (
-                    f"{ACCOUNT_ID}.dkr.ecr.{REGION}.amazonaws.com/"
-                    "bedrock-agentcore/managed/runtimes/python3.13:latest"
-                ),
+            "codeConfiguration": {
+                "code": {"s3": {"bucket": bucket_name, "prefix": s3_key}},
+                "runtime": "PYTHON_3_13",
+                "entryPoint": [AGENT_FILE],
             }
         },
         roleArn=role_arn,
@@ -520,11 +614,6 @@ def deploy_agent(gateway_url: str) -> dict:
                 "allowedAudience": [audience],
             }
         },
-        codeConfiguration={
-            "code": {
-                "s3": {"uri": f"s3://{bucket_name}/{s3_key}", "entryPoint": AGENT_FILE}
-            }
-        },
     )
 
     runtime_id = resp["agentRuntimeId"]
@@ -533,9 +622,7 @@ def deploy_agent(gateway_url: str) -> dict:
 
     print("  Waiting for READY...")
     while True:
-        s = control.get_agent_runtime(agentRuntimeId=runtime_id).get(
-            "status", "UNKNOWN"
-        )
+        s = control.get_agent_runtime(agentRuntimeId=runtime_id).get("status", "UNKNOWN")
         print(f"    Status: {s}")
         if s == "READY":
             break
@@ -586,7 +673,7 @@ def get_okta_token_via_flask():
 
 def test_agent(endpoint_url: str, bearer_token: str):
     """Invoke the agent with a valid Okta bearer token."""
-    session_id = f"okta-gateway-session-{uuid.uuid4().hex[:8]}"
+    session_id = str(uuid.uuid4())  # AgentCore requires a session id of >= 33 chars
 
     resp = requests.post(
         endpoint_url,
@@ -595,10 +682,13 @@ def test_agent(endpoint_url: str, bearer_token: str):
             "Content-Type": "application/json",
             "X-Amzn-Bedrock-AgentCore-Runtime-Session-Id": session_id,
         },
-        json={
-            "prompt": "What flights does customer with user id user-123 have scheduled?"
-        },
-        timeout=120,
+        json={"prompt": "What flights does customer with user id user-123 have scheduled?"},
+        # 5 minutes — the agent calls @requires_access_token under the hood,
+        # which polls AgentCore Identity for token completion after returning
+        # the auth URL. Polling extends the streaming response well beyond a
+        # short HTTP timeout; the user needs time to complete OAuth consent
+        # in a browser before this invocation completes.
+        timeout=300,
     )
     resp.raise_for_status()
     print(f"  Agent response: {resp.text[:500]}")
@@ -623,12 +713,21 @@ def cleanup():
 
     for target_id in config.get("target_ids", []):
         try:
-            control.delete_gateway_target(
-                gatewayIdentifier=config["gateway_id"], targetId=target_id
-            )
+            control.delete_gateway_target(gatewayIdentifier=config["gateway_id"], targetId=target_id)
             print(f"  Deleted target: {target_id} ✓")
         except Exception as e:
             print(f"  Target delete: {e}")
+
+    # Wait for targets to disappear before deleting the gateway. Target
+    # deletion is async; DeleteGateway rejects with ValidationException
+    # ("...has targets associated with it") until the targets are fully gone.
+    if config.get("target_ids"):
+        print("  Waiting for targets to be removed...")
+        for _ in range(24):  # up to ~2 minutes
+            remaining = control.list_gateway_targets(gatewayIdentifier=config["gateway_id"]).get("items", [])
+            if not remaining:
+                break
+            time.sleep(5)
 
     try:
         control.delete_gateway(gatewayIdentifier=config["gateway_id"])
@@ -686,12 +785,8 @@ def cleanup():
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="AgentCore Runtime + Gateway with Okta auth"
-    )
-    parser.add_argument(
-        "--cleanup", action="store_true", help="Delete created resources"
-    )
+    parser = argparse.ArgumentParser(description="AgentCore Runtime + Gateway with Okta auth")
+    parser.add_argument("--cleanup", action="store_true", help="Delete created resources")
     parser.add_argument(
         "--test-only",
         action="store_true",
@@ -756,9 +851,7 @@ def main():
     print(f"  Agent Runtime: {AGENT_NAME}")
     print(f"  Credential Provider: {PROVIDER_NAME}")
     print(f"  Callback URL (register in Okta): {provider_info['callback_url']}")
-    print(
-        "\n  To test: OKTA_BEARER_TOKEN=<token> python okta_gateway_auth.py --test-only"
-    )
+    print("\n  To test: OKTA_BEARER_TOKEN=<token> python okta_gateway_auth.py --test-only")
     print("  To clean up: python okta_gateway_auth.py --cleanup")
 
 

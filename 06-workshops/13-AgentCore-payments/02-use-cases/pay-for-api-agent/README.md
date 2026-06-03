@@ -6,19 +6,20 @@
 payments for digital services. Agents never hold private keys or require
 human approval for each transaction.
 
-This use case builds two Strands agents that buy metered access to a paid
-HTTP API through AgentCore Payments. One agent signs on the Ethereum
-Virtual Machine (EVM) (Base Sepolia) and the other on Solana (Solana
-Devnet). The seller is a minimal "Fun Facts" service deployed via AWS
-CDK: an Amazon API Gateway HTTP API backed by an AWS Lambda function
-that charges **$0.01** per call and accepts either network in the x402
+This use case builds a Strands agent that autonomously pays for
+metered access to an HTTP API through AgentCore Payments. The agent
+signs on either the Ethereum Virtual Machine (EVM) (Base Sepolia) or
+Solana (Solana Devnet), driven by the configured `PaymentInstrument`.
+The seller is a minimal "Fun Facts" service deployed via AWS CDK: an
+Amazon API Gateway HTTP API backed by an AWS Lambda function that
+charges **$0.01** per call and accepts either network in the x402
 response.
 
-When an agent requests a fact, the seller returns HTTP 402 with a
+When the agent requests a fact, the seller returns HTTP 402 with a
 payment requirement. The agent forwards the requirement to AgentCore
 Payments' `ProcessPayment` operation and receives a signed proof. It
-then retries the request with the proof attached and returns the paid
-fact. The agent is designed so it never needs to touch a private key.
+then retries the request with the proof attached and returns the
+content. The agent is designed never to touch a private key.
 
 Internally, AgentCore Payments manages the wallet, the signing keys,
 and the on-chain settlement. Whether the `PaymentManager` is wired to

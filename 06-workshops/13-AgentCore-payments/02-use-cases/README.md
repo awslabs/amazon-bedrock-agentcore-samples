@@ -31,4 +31,14 @@ A finance research agent that calls paid **Heurist x402 endpoints** for live mar
 
 ---
 
-More use cases coming soon.
+### [Pay for API](pay-for-api-agent/)
+
+An AI agent built with **Strands Agents** autonomously pays for metered access to an HTTP API through AgentCore payments. The seller is a "Fun Facts" Amazon API Gateway and AWS Lambda service deployed via AWS CDK that charges $0.01 per call and accepts payment on either EVM or Solana. When the agent hits HTTP 402, the `AgentCorePaymentsPlugin` forwards the requirement to AgentCore payments, attaches the signed proof, and retries. The agent's tool code stays a plain `http_request` call.
+
+**Highlights**
+- HTTP 402 interception via `AgentCorePaymentsPlugin` (no browser, no manual handshake)
+- Multi-provider: the same agent code runs against Coinbase CDP and Stripe via Privy
+- Multi-network: EVM (Base Sepolia) and Solana (Solana Devnet) on testnets
+- Four IAM roles enforce separation of duties between control plane, management, payment signing, and credential retrieval
+- Self-contained: the notebook provisions the AgentCore payments stack inline and deploys the seller from an included CDK app
+- AgentCore Runtime deploy with CloudWatch Transaction Search and the GenAI Observability dashboard

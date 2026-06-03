@@ -51,16 +51,19 @@ Okta Setup (one-time):
 import argparse
 import json
 import os
+import shutil
+import subprocess
+import tempfile
 import time
 import urllib.parse
 import uuid
 import zipfile
-from io import BytesIO
 
 import boto3
 import jwt
 import requests
 from boto3.session import Session
+from botocore.exceptions import ClientError
 
 # ── Configuration ─────────────────────────────────────────────────────────────
 
@@ -121,9 +124,7 @@ def create_execution_role(role_name: str) -> str:
     )
 
     try:
-        role = iam.create_role(
-            RoleName=role_name, AssumeRolePolicyDocument=trust_policy
-        )
+        role = iam.create_role(RoleName=role_name, AssumeRolePolicyDocument=trust_policy)
         role_arn = role["Role"]["Arn"]
         print(f"  Created IAM role: {role_name}")
     except iam.exceptions.EntityAlreadyExistsException:
@@ -139,8 +140,13 @@ def create_execution_role(role_name: str) -> str:
                     "Action": [
                         "bedrock:InvokeModel",
                         "bedrock:InvokeModelWithResponseStream",
+                        "bedrock:Converse",
+                        "bedrock:ConverseStream",
                     ],
-                    "Resource": f"arn:aws:bedrock:{REGION}::foundation-model/*",
+                    "Resource": [
+                        "arn:aws:bedrock:*::foundation-model/*",
+                        f"arn:aws:bedrock:*:{ACCOUNT_ID}:inference-profile/*",
+                    ],
                 },
                 {
                     "Effect": "Allow",
@@ -164,7 +170,7 @@ def create_execution_role(role_name: str) -> str:
     except Exception:
         pass
 
-    time.sleep(5)
+    time.sleep(15)  # IAM cross-service propagation
     return role_arn
 
 
@@ -172,7 +178,13 @@ def create_execution_role(role_name: str) -> str:
 
 
 def upload_agent_to_s3() -> dict:
-    """Create agent zip and upload to S3."""
+    """Build agent deployment zip with uv, upload to S3.
+
+    AgentCore Runtime mounts the zip at /var/task and does not run pip at
+    boot. We pre-install ARM64 wheels with uv and bundle them with the agent
+    code so the runtime can boot without ModuleNotFoundError. See:
+    https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime-get-started-code-deploy-python.html
+    """
     s3 = boto3.client("s3", region_name=REGION)
     bucket_name = f"agentcore-okta-inbound-{ACCOUNT_ID}-{REGION}"
 
@@ -188,20 +200,85 @@ def upload_agent_to_s3() -> dict:
     except s3.exceptions.BucketAlreadyOwnedByYou:
         print(f"  Reusing S3 bucket: {bucket_name}")
 
-    zip_buffer = BytesIO()
-    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
-        zf.writestr(AGENT_FILE, AGENT_CODE)
-        zf.writestr("requirements.txt", "strands-agents\nbedrock-agentcore\n")
+    sample_dir = os.path.dirname(os.path.abspath(__file__))
+    requirements = os.path.join(sample_dir, "requirements.txt")
+    if not os.path.exists(requirements):
+        raise FileNotFoundError(f"requirements.txt not found: {requirements}")
 
-    zip_buffer.seek(0)
-    s3_key = f"agents/{AGENT_NAME}/agent.zip"
-    s3.put_object(Bucket=bucket_name, Key=s3_key, Body=zip_buffer.read())
-    print(f"  Uploaded to s3://{bucket_name}/{s3_key}")
+    build_dir = tempfile.mkdtemp(prefix="agentcore-build-")
+    pkg_dir = os.path.join(build_dir, "deployment_package")
+    zip_path = os.path.join(build_dir, "agent.zip")
+    os.makedirs(pkg_dir)
 
-    return {"bucket": bucket_name, "key": s3_key}
+    try:
+        # Write the agent entry point.
+        with open(os.path.join(pkg_dir, AGENT_FILE), "w") as f:
+            f.write(AGENT_CODE)
+
+        # Pre-install ARM64 wheels.
+        print("  Installing arm64 dependencies with uv...")
+        subprocess.run(
+            [
+                "uv",
+                "pip",
+                "install",
+                "--python-platform",
+                "aarch64-manylinux2014",
+                "--python-version",
+                "3.13",
+                "--target",
+                pkg_dir,
+                "--only-binary",
+                ":all:",
+                "-r",
+                requirements,
+            ],
+            check=True,
+        )
+
+        # Zip the package directory at the archive root.
+        with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
+            for root, _, files in os.walk(pkg_dir):
+                for fname in files:
+                    abs_path = os.path.join(root, fname)
+                    arc_name = os.path.relpath(abs_path, pkg_dir)
+                    zf.write(abs_path, arc_name)
+
+        s3_key = f"agents/{AGENT_NAME}/agent.zip"
+        s3.upload_file(zip_path, bucket_name, s3_key)
+        print(f"  Uploaded to s3://{bucket_name}/{s3_key}")
+
+        return {"bucket": bucket_name, "key": s3_key}
+
+    finally:
+        shutil.rmtree(build_dir, ignore_errors=True)
 
 
 # ── Step 3: Create AgentCore Runtime with Okta JWT Authorizer ─────────────────
+
+
+def _create_runtime_with_retry(control, **kwargs):
+    """Retry create_agent_runtime to absorb the IAM role propagation race.
+
+    The control plane briefly returns ValidationException("Role validation
+    failed... please verify that the role exists") before the role is fully
+    propagated across services. Backoff: 4, 8, 16, 32, 64 seconds.
+    """
+    last_exc = None
+    for attempt in range(5):
+        try:
+            return control.create_agent_runtime(**kwargs)
+        except ClientError as e:
+            code = e.response.get("Error", {}).get("Code", "")
+            msg = str(e).lower()
+            if code in ("ValidationException", "AccessDeniedException") and "role" in msg:
+                last_exc = e
+                wait = 2**attempt * 4
+                print(f"    Role not yet assumable; retrying in {wait}s...")
+                time.sleep(wait)
+                continue
+            raise
+    raise last_exc
 
 
 def create_runtime(role_arn: str, s3_info: dict) -> dict:
@@ -211,20 +288,18 @@ def create_runtime(role_arn: str, s3_info: dict) -> dict:
     audience = os.environ.get("OKTA_AUDIENCE")
 
     if not all([discovery_url, client_id, audience]):
-        raise ValueError(
-            "Set OKTA_DISCOVERY_URL, OKTA_CLIENT_ID, OKTA_AUDIENCE environment variables."
-        )
+        raise ValueError("Set OKTA_DISCOVERY_URL, OKTA_CLIENT_ID, OKTA_AUDIENCE environment variables.")
 
     control = boto3.client("bedrock-agentcore-control", region_name=REGION)
 
-    response = control.create_agent_runtime(
+    response = _create_runtime_with_retry(
+        control,
         agentRuntimeName=AGENT_NAME,
         agentRuntimeArtifact={
-            "containerConfiguration": {
-                "containerUri": (
-                    f"{ACCOUNT_ID}.dkr.ecr.{REGION}.amazonaws.com/"
-                    "bedrock-agentcore/managed/runtimes/python3.13:latest"
-                ),
+            "codeConfiguration": {
+                "code": {"s3": {"bucket": s3_info["bucket"], "prefix": s3_info["key"]}},
+                "runtime": "PYTHON_3_13",
+                "entryPoint": [AGENT_FILE],
             }
         },
         roleArn=role_arn,
@@ -234,14 +309,6 @@ def create_runtime(role_arn: str, s3_info: dict) -> dict:
                 "discoveryUrl": discovery_url,
                 "allowedClients": [client_id],
                 "allowedAudience": [audience],
-            }
-        },
-        codeConfiguration={
-            "code": {
-                "s3": {
-                    "uri": f"s3://{s3_info['bucket']}/{s3_info['key']}",
-                    "entryPoint": AGENT_FILE,
-                }
             }
         },
     )
@@ -255,9 +322,7 @@ def create_runtime(role_arn: str, s3_info: dict) -> dict:
 
     print("  Waiting for READY...")
     while True:
-        s = control.get_agent_runtime(agentRuntimeId=runtime_id).get(
-            "status", "UNKNOWN"
-        )
+        s = control.get_agent_runtime(agentRuntimeId=runtime_id).get("status", "UNKNOWN")
         print(f"    Status: {s}")
         if s == "READY":
             break
@@ -305,7 +370,11 @@ def get_okta_token(scope: str = "agentcore") -> str:
         data={"grant_type": "client_credentials", "scope": scope},
         auth=(client_id, client_secret),
     )
-    resp.raise_for_status()
+    if not resp.ok:
+        raise RuntimeError(
+            f"Token endpoint returned {resp.status_code}:\n  {resp.text}\n"
+            "Verify OKTA_CLIENT_ID, OKTA_CLIENT_SECRET, OKTA_TOKEN_URL."
+        )
     token = resp.json()["access_token"]
     print("  Okta token acquired")
     return token
@@ -316,7 +385,7 @@ def get_okta_token(scope: str = "agentcore") -> str:
 
 def test_agent(endpoint_url: str):
     """Run a series of tests against the agent."""
-    session_id = f"okta-session-{uuid.uuid4().hex[:8]}"
+    session_id = str(uuid.uuid4())  # AgentCore requires a session id of >= 33 chars
 
     # Test 1: No auth — should fail
     print("\n  TEST 1: Unauthenticated request (should fail)...")
@@ -445,12 +514,8 @@ def cleanup():
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="AgentCore Runtime with Okta inbound auth"
-    )
-    parser.add_argument(
-        "--cleanup", action="store_true", help="Delete created resources"
-    )
+    parser = argparse.ArgumentParser(description="AgentCore Runtime with Okta inbound auth")
+    parser.add_argument("--cleanup", action="store_true", help="Delete created resources")
     parser.add_argument(
         "--test-only",
         action="store_true",
