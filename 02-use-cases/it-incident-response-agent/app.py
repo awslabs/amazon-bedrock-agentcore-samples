@@ -44,6 +44,10 @@ def main() -> None:
         "auth0_client_id": required("AUTH0_CLIENT_ID"),
         "auth0_client_secret": required("AUTH0_CLIENT_SECRET"),
         "auth0_audience": required("AUTH0_AUDIENCE"),
+        "jira_oauth_client_id": required("JIRA_OAUTH_CLIENT_ID"),
+        "jira_oauth_client_secret": required("JIRA_OAUTH_CLIENT_SECRET"),
+        "jira_site_url": required("JIRA_SITE_URL"),
+        "jira_project_key": os.environ.get("JIRA_PROJECT_KEY", "INC"),
     }
 
     app = cdk.App()

@@ -1,71 +1,48 @@
-"""SNS-triggered handler: fan a ticket-created event into the AgentCore Runtime.
+"""SNS-triggered handler: dispatch a Jira issue key into the AgentCore Runtime.
 
 Wire-up:
-  Mock-Jira ticket published -> SNS topic -> this Lambda -> InvokeAgentRuntime.
+  Jira automation -> SNS topic -> this Lambda -> InvokeAgentRuntime.
 
-Each SNS message body is a JSON ticket dict (see seed-data/sample_ticket.json
-for the schema). The handler:
+Each SNS message body is a small JSON object:
+  {"issue_key": "INC-1042", "requester_id": "U-1001"}
 
-  1. Persists the ticket to DynamoDB (status=Open).
-  2. Calls InvokeAgentRuntime with the ticket payload.
+`requester_id` is optional — if missing, the runtime falls back to the
+issue key as the actor id for memory.
 
-Note on auth: the runtime fetches its own Auth0 access token via AgentCore
-Identity (`@requires_access_token`, `auth_flow="M2M"`). The trigger Lambda
-does NOT mint or pass tokens — that responsibility lives entirely with
-AgentCore Identity inside the runtime.
+Note on auth: the runtime fetches its own outbound tokens (Auth0 M2M for
+the Gateway, Atlassian 3LO for the Jira MCP server) via AgentCore Identity
+(`@requires_access_token`). The trigger Lambda does NOT mint or pass
+tokens — that responsibility lives entirely with AgentCore Identity inside
+the runtime.
 """
 
 import base64
 import json
 import logging
 import os
-from datetime import datetime, timezone
 
 import boto3
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
-TICKETS_TABLE = os.environ["TICKETS_TABLE"]
 AGENT_RUNTIME_ARN = os.environ["AGENT_RUNTIME_ARN"]
 
-_ddb = boto3.resource("dynamodb").Table(TICKETS_TABLE)
 _runtime = boto3.client("bedrock-agentcore")
-
-
-def _persist_ticket(ticket: dict) -> None:
-    now = datetime.now(timezone.utc).isoformat()
-    _ddb.put_item(
-        Item={
-            "ticket_id": ticket["ticket_id"],
-            "requester_id": ticket["requester_id"],
-            "title": ticket.get("title", ""),
-            "description": ticket.get("description", ""),
-            "priority": ticket.get("priority", "MEDIUM"),
-            "status": "Open",
-            "created_at": now,
-            "updated_at": now,
-        }
-    )
 
 
 def lambda_handler(event, context):
     logger.info("ticket_event_handler invoked, records=%d", len(event.get("Records", [])))
 
     for record in event.get("Records", []):
-        message = record["Sns"]["Message"]
-        ticket = json.loads(message)
-        logger.info("processing ticket %s", ticket.get("ticket_id"))
-
-        _persist_ticket(ticket)
+        message = json.loads(record["Sns"]["Message"])
+        issue_key = message["issue_key"]
+        logger.info("dispatching Jira issue %s", issue_key)
 
         payload = json.dumps(
             {
-                "ticket_id": ticket["ticket_id"],
-                "requester_id": ticket["requester_id"],
-                "title": ticket.get("title", ""),
-                "description": ticket.get("description", ""),
-                "priority": ticket.get("priority", "MEDIUM"),
+                "issue_key": issue_key,
+                "requester_id": message.get("requester_id", issue_key),
             }
         ).encode()
 
@@ -75,8 +52,8 @@ def lambda_handler(event, context):
             payload=base64.b64encode(payload),
         )
         logger.info(
-            "AgentCore invoked for ticket %s, status=%s",
-            ticket["ticket_id"],
+            "AgentCore invoked for issue %s, status=%s",
+            issue_key,
             resp.get("ResponseMetadata", {}).get("HTTPStatusCode"),
         )
 

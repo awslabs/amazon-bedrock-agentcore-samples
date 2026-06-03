@@ -1,7 +1,4 @@
 {
-  "ticket_id": "INC-1042",
-  "requester_id": "U-1001",
-  "title": "Cannot connect to corp VPN after laptop wake",
-  "description": "After putting my laptop to sleep, the corp-vpn client fails to connect. Restarting the client sometimes works but not always. macOS 14.4. Started this morning.",
-  "priority": "HIGH"
+  "issue_key": "INC-1042",
+  "requester_id": "U-1001"
 }

@@ -14,9 +14,8 @@ class AgentCoreRole(iam.Role):
       - bedrock:InvokeModel for the Strands agent
       - bedrock-agentcore:GetWorkloadAccessToken* for OBO
       - bedrock-agentcore:GetResourceOauth2Token for AgentCore Identity
-        (vends the Auth0 M2M token used to call the Gateway)
+        (vends the Auth0 M2M and Atlassian 3LO tokens)
       - bedrock-agentcore:CreateEvent etc. on the memory resource
-      - DynamoDB read/write on the tickets table (resolution write)
     """
 
     def __init__(
@@ -25,7 +24,6 @@ class AgentCoreRole(iam.Role):
         construct_id: str,
         *,
         memory_arn: str,
-        tickets_table_arn: str,
         **kwargs,
     ):
         region = Stack.of(scope).region
@@ -108,15 +106,6 @@ class AgentCoreRole(iam.Role):
                     "bedrock-agentcore:GetEvent",
                 ],
                 resources=[memory_arn],
-            ),
-            iam.PolicyStatement(
-                sid="TicketsTableWrite",
-                actions=[
-                    "dynamodb:UpdateItem",
-                    "dynamodb:GetItem",
-                    "dynamodb:PutItem",
-                ],
-                resources=[tickets_table_arn],
             ),
         ]
 

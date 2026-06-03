@@ -1,24 +1,26 @@
 """Single-stack deployment for the IT Incident Response Agent.
 
 Layers:
-  1. Storage           : DynamoDB tables (Users, Processes, Tickets, ChangeRequests),
-                         seed bucket, KB document bucket.
+  1. Storage           : DynamoDB tables (Users, Processes, ChangeRequests),
+                         seed bucket, KB document bucket. Jira is the system
+                         of record for tickets; we don't shadow it locally.
   2. Knowledge Base    : OpenSearch Serverless collection + Bedrock KB +
                          S3 data source seeded with the runbooks under kb-docs/.
-  3. Memory            : CfnMemory with EPISODIC strategy keyed per-user, per-ticket.
-  4. AgentCore Identity: Auth0 client_secret in Secrets Manager + an OAuth2
-                         credential provider (custom resource) registered
-                         with AgentCore Identity. The agent uses
-                         @requires_access_token to vend Auth0 M2M tokens
-                         on demand; it never sees the secret.
+  3. Memory            : CfnMemory with EPISODIC strategy keyed per-user.
+  4. AgentCore Identity: Auth0 + Atlassian client_secrets in Secrets
+                         Manager, plus two OAuth2 credential providers
+                         (custom resource) registered with AgentCore
+                         Identity. The agent uses @requires_access_token
+                         to vend tokens on demand; it never sees a secret.
   5. Tool Lambdas      : lookup_user, get_process_info, create_change_request,
                          query_kb (the KB wrapper, also a gateway tool).
   6. Gateway           : native CfnGateway with CUSTOM_JWT inbound auth
                          (Auth0) and one CfnGatewayTarget per Lambda tool.
   7. Runtime           : ECR repo + CodeBuild + agent CfnRuntime; runtime
-                         env points GATEWAY_URL at the gateway's URL.
+                         env points GATEWAY_URL at the gateway's URL and
+                         JIRA_MCP_URL at the Atlassian Remote MCP server.
   8. Trigger           : SNS topic + Lambda subscriber that invokes the
-                         AgentCore Runtime when a ticket arrives.
+                         AgentCore Runtime with a Jira issue key.
   9. Evaluation        : online evaluation config (LLM-as-a-judge) reading
                          from the runtime's CloudWatch log group.
 """
@@ -97,25 +99,6 @@ class ItIncidentStack(Stack):
             ),
             billing_mode=dynamodb.BillingMode.PAY_PER_REQUEST,
             removal_policy=RemovalPolicy.DESTROY,
-        )
-
-        self.tickets_table = dynamodb.Table(
-            self,
-            "TicketsTable",
-            partition_key=dynamodb.Attribute(
-                name="ticket_id", type=dynamodb.AttributeType.STRING
-            ),
-            billing_mode=dynamodb.BillingMode.PAY_PER_REQUEST,
-            removal_policy=RemovalPolicy.DESTROY,
-        )
-        self.tickets_table.add_global_secondary_index(
-            index_name="byRequester",
-            partition_key=dynamodb.Attribute(
-                name="requester_id", type=dynamodb.AttributeType.STRING
-            ),
-            sort_key=dynamodb.Attribute(
-                name="created_at", type=dynamodb.AttributeType.STRING
-            ),
         )
 
         self.changes_table = dynamodb.Table(
@@ -352,8 +335,8 @@ class ItIncidentStack(Stack):
         )
 
     # ------------------------------------------------------------------ #
-    # Auth0 secret (consumed only by the OAuth-provider custom resource;  #
-    # the runtime never reads it directly)                                #
+    # IdP secrets (consumed only by the OAuth-provider custom resource;   #
+    # the runtime never reads them directly)                              #
     # ------------------------------------------------------------------ #
     def _build_secret(self) -> None:
         self.auth0_secret = secrets.Secret(
@@ -364,27 +347,32 @@ class ItIncidentStack(Stack):
                 json.dumps({"client_secret": self.config["auth0_client_secret"]})
             ),
         )
-
-    # ------------------------------------------------------------------ #
-    # AgentCore OAuth2 credential provider (Auth0 M2M)                    #
-    # ------------------------------------------------------------------ #
-    def _build_oauth_provider(self) -> None:
-        """Provision an AgentCore Identity OAuth2 credential provider.
-
-        At runtime the agent uses
-            @requires_access_token(provider_name=..., auth_flow="M2M")
-        which delegates the client_credentials grant to AgentCore Identity.
-        The agent never sees the client_secret — AgentCore reads it from
-        this provider, calls Auth0, caches and vends the access token.
-
-        No L1 construct exists for this resource; we provision it via
-        a custom-resource Lambda (`infra_utils/oauth_provider_lambda.py`).
-        """
-        self.oauth_provider_name = f"{construct_safe_name(self._stack_slug)}_auth0_m2m"
-        discovery_url = (
-            f"https://{self.config['auth0_domain']}/.well-known/openid-configuration"
+        self.jira_secret = secrets.Secret(
+            self,
+            "JiraOauthSecret",
+            description="Atlassian 3LO client_secret (loaded into AgentCore Identity)",
+            secret_string_value=secret_string(
+                json.dumps({"client_secret": self.config["jira_oauth_client_secret"]})
+            ),
         )
 
+    # ------------------------------------------------------------------ #
+    # AgentCore OAuth2 credential providers (Auth0 M2M + Atlassian 3LO)   #
+    # ------------------------------------------------------------------ #
+    def _build_oauth_provider(self) -> None:
+        """Provision two AgentCore Identity OAuth2 credential providers.
+
+        - Auth0 (CustomOauth2): the agent calls the AgentCore Gateway
+          using a Bearer JWT vended by Auth0 via client_credentials.
+          `@requires_access_token(auth_flow="M2M")`.
+        - Atlassian (AtlassianOauth2): the agent calls the Atlassian
+          Remote MCP server using an OAuth 3LO access token.
+          `@requires_access_token(auth_flow="USER_FEDERATION")`.
+
+        Both vendors share one provisioner Lambda — it reads the
+        relevant secret from Secrets Manager and shapes the provider
+        config based on the `Vendor` property.
+        """
         provider_fn = lambda_.Function(
             self,
             "OauthProviderFn",
@@ -404,9 +392,9 @@ class ItIncidentStack(Stack):
                     "node_modules",
                 ],
             ),
-            environment={"AUTH0_SECRET_ARN": self.auth0_secret.secret_arn},
         )
         self.auth0_secret.grant_read(provider_fn)
+        self.jira_secret.grant_read(provider_fn)
         provider_fn.add_to_role_policy(
             iam.PolicyStatement(
                 actions=[
@@ -419,15 +407,38 @@ class ItIncidentStack(Stack):
             )
         )
 
+        # Auth0 M2M provider (gateway outbound)
+        self.oauth_provider_name = f"{construct_safe_name(self._stack_slug)}_auth0_m2m"
+        discovery_url = (
+            f"https://{self.config['auth0_domain']}/.well-known/openid-configuration"
+        )
         self.oauth_provider_cr = CustomResource(
             self,
             "OauthProviderCR",
             service_token=provider_fn.function_arn,
             properties={
                 "ProviderName": self.oauth_provider_name,
+                "Vendor": "CustomOauth2",
                 "ClientId": self.config["auth0_client_id"],
+                "SecretArn": self.auth0_secret.secret_arn,
                 "DiscoveryUrl": discovery_url,
-                # Bump this when client_id / discovery_url changes to force update
+                "Version": "2",
+            },
+        )
+
+        # Atlassian 3LO provider (Jira Remote MCP)
+        self.jira_provider_name = (
+            f"{construct_safe_name(self._stack_slug)}_jira_3lo"
+        )
+        self.jira_provider_cr = CustomResource(
+            self,
+            "JiraOauthProviderCR",
+            service_token=provider_fn.function_arn,
+            properties={
+                "ProviderName": self.jira_provider_name,
+                "Vendor": "AtlassianOauth2",
+                "ClientId": self.config["jira_oauth_client_id"],
+                "SecretArn": self.jira_secret.secret_arn,
                 "Version": "1",
             },
         )
@@ -441,7 +452,6 @@ class ItIncidentStack(Stack):
         common_env = {
             "USERS_TABLE": self.users_table.table_name,
             "PROCESSES_TABLE": self.processes_table.table_name,
-            "TICKETS_TABLE": self.tickets_table.table_name,
             "CHANGES_TABLE": self.changes_table.table_name,
         }
 
@@ -456,7 +466,6 @@ class ItIncidentStack(Stack):
             environment=common_env,
         )
         self.users_table.grant_read_data(self.lookup_user_fn)
-        self.tickets_table.grant_read_data(self.lookup_user_fn)
 
         self.get_process_info_fn = lambda_.Function(
             self,
@@ -646,7 +655,6 @@ class ItIncidentStack(Stack):
             self,
             "AgentCoreRole",
             memory_arn=memory_arn,
-            tickets_table_arn=self.tickets_table.table_arn,
         )
 
         # CloudWatch log group for ADOT/OTEL telemetry from the runtime.
@@ -683,10 +691,14 @@ class ItIncidentStack(Stack):
                 "AWS_DEFAULT_REGION": self.region,
                 "MEMORY_ID": self.memory.attr_memory_id,
                 "AGENT_MODEL_ID": self.config["agent_model_id"],
-                "TICKETS_TABLE": self.tickets_table.table_name,
                 "GATEWAY_URL": self.gateway.attr_gateway_url,
                 "OAUTH_PROVIDER_NAME": self.oauth_provider_name,
                 "GATEWAY_AUDIENCE": self.config["auth0_audience"],
+                # Jira Remote MCP (Atlassian 3LO).
+                "JIRA_OAUTH_PROVIDER_NAME": self.jira_provider_name,
+                "JIRA_MCP_URL": "https://mcp.atlassian.com/v1/sse",
+                "JIRA_SITE_URL": self.config["jira_site_url"],
+                "JIRA_PROJECT_KEY": self.config["jira_project_key"],
                 # AgentCore Observability via AWS Distro for OpenTelemetry.
                 # The Dockerfile already wraps the entrypoint with
                 # `opentelemetry-instrument`. These env vars route spans +
@@ -708,6 +720,7 @@ class ItIncidentStack(Stack):
         self.agent_runtime.node.add_dependency(self.memory)
         self.agent_runtime.node.add_dependency(self.gateway)
         self.agent_runtime.node.add_dependency(self.oauth_provider_cr)
+        self.agent_runtime.node.add_dependency(self.jira_provider_cr)
 
         # The seeder runs after KB exists and DDB tables exist.
         seeder_fn = lambda_.Function(
@@ -869,7 +882,7 @@ class ItIncidentStack(Stack):
         self.tickets_topic = sns.Topic(
             self,
             "TicketsTopic",
-            display_name="MockJiraTicketCreated",
+            display_name="JiraIssueCreated",
         )
 
         trigger_fn = lambda_.Function(
@@ -881,11 +894,9 @@ class ItIncidentStack(Stack):
             memory_size=256,
             code=lambda_.Code.from_asset(os.path.join(PROJECT_ROOT, "lambdas")),
             environment={
-                "TICKETS_TABLE": self.tickets_table.table_name,
                 "AGENT_RUNTIME_ARN": self.agent_runtime.attr_agent_runtime_arn,
             },
         )
-        self.tickets_table.grant_write_data(trigger_fn)
         trigger_fn.add_to_role_policy(
             iam.PolicyStatement(
                 actions=["bedrock-agentcore:InvokeAgentRuntime"],
@@ -1018,7 +1029,6 @@ class ItIncidentStack(Stack):
     # ------------------------------------------------------------------ #
     def _wire_outputs(self) -> None:
         CfnOutput(self, "TicketsTopicArn", value=self.tickets_topic.topic_arn)
-        CfnOutput(self, "TicketsTableName", value=self.tickets_table.table_name)
         CfnOutput(self, "AgentRuntimeArn", value=self.agent_runtime.attr_agent_runtime_arn)
         CfnOutput(self, "GatewayUrl", value=self.gateway.attr_gateway_url)
         CfnOutput(self, "GatewayId", value=self.gateway.attr_gateway_identifier)
@@ -1027,6 +1037,13 @@ class ItIncidentStack(Stack):
         CfnOutput(self, "RuntimeLogGroupName", value=self.runtime_log_group_name)
         CfnOutput(self, "OtelServiceName", value=self.otel_service_name)
         CfnOutput(self, "OnlineEvalConfigName", value=self.online_eval_config_name)
+        CfnOutput(self, "JiraOauthProviderName", value=self.jira_provider_name)
+        CfnOutput(
+            self,
+            "JiraOauthCallbackUrl",
+            value=self.jira_provider_cr.get_att_string("CallbackUrl"),
+            description="Add this URL to the Atlassian OAuth app's allowed callback URLs",
+        )
 
 
 def construct_safe_name(s: str) -> str:

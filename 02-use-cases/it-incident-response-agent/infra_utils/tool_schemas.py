@@ -8,9 +8,9 @@ handlers in lambdas/tools/.
 LOOKUP_USER = {
     "name": "lookup_user",
     "description": (
-        "Look up an internal user by user_id. Returns profile, quotas, "
-        "and recent (30-day) ticket history. Use this first to understand "
-        "the requester's context and detect recurring incidents."
+        "Look up an internal user by user_id. Returns profile and quotas. "
+        "Use this to understand the requester's context. Recurring-incident "
+        "history is surfaced separately from AgentCore Memory."
     ),
     "inputSchema": {
         "type": "object",
