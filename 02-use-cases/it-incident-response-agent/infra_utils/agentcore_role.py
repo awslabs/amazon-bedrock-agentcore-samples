@@ -104,6 +104,7 @@ class AgentCoreRole(iam.Role):
                     "bedrock-agentcore:CreateEvent",
                     "bedrock-agentcore:ListEvents",
                     "bedrock-agentcore:GetEvent",
+                    "bedrock-agentcore:RetrieveMemoryRecords",
                 ],
                 resources=[memory_arn],
             ),

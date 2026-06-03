@@ -7,19 +7,23 @@ Flow per invocation:
      - Atlassian 3LO    -> Bearer for the Atlassian Remote MCP server.
      AgentCore performs both OAuth grants internally; the agent never
      handles either client_secret.
-  3. Connect to the AgentCore Gateway over MCP (streamable HTTP) AND
+  3. Pull past-incident summaries for this requester from AgentCore
+     Memory (`retrieve_memories` against the actor's namespace) and
+     inject them into the system prompt.
+  4. Connect to the AgentCore Gateway over MCP (streamable HTTP) AND
      the Atlassian Remote MCP server over SSE. Aggregate tools from
      both into one Strands agent.
-  4. Resolve the ticket via that agent, then write the resolution back
+  5. Resolve the ticket via that agent, then write the resolution back
      as a Jira comment + status transition through the Atlassian MCP.
-  5. Record the run as an episode in AgentCore Memory.
+  6. Record the run in AgentCore Memory as a USER/ASSISTANT turn so
+     the configured `summary_memory_strategy` can roll it up into the
+     next episode for this actor.
 """
 
 import asyncio
 import json
 import logging
 import os
-from datetime import datetime, timezone
 
 from bedrock_agentcore.identity.auth import requires_access_token
 from bedrock_agentcore.memory import MemoryClient
@@ -84,7 +88,7 @@ async def _fetch_jira_token(*, access_token: str) -> None:
     _jira_token["value"] = access_token
 
 
-SYSTEM_PROMPT = f"""You are an IT Incident Response Agent.
+SYSTEM_PROMPT_TEMPLATE = """You are an IT Incident Response Agent.
 
 You receive a Jira issue key. Your job is to:
   1. Fetch the issue from Jira (use the Atlassian MCP `getJiraIssue` /
@@ -96,49 +100,96 @@ You receive a Jira issue key. Your job is to:
        - get_process_info (status of named services / apps / assets)
        - query_kb (relevant runbook guidance)
        - create_change_request (only when the runbook justifies an action)
-     Past episodes for the requester are surfaced from AgentCore Memory
-     in the conversation context — use them to detect recurring incidents
-     (>= 2 in 30 days is a strong escalation signal).
   3. Write a clear, concise resolution comment on the Jira issue (3-6
      sentences) using the Atlassian MCP `addComment` / equivalent tool.
   4. Transition the issue to a resolved/done state using the Atlassian
      MCP transition tool.
 
 Rules:
-  - The site to operate on is {JIRA_SITE_URL}, project {JIRA_PROJECT_KEY}.
-  - Recurring incidents (>= 2 in 30 days) are a strong escalation signal.
+  - The site to operate on is {jira_site_url}, project {jira_project_key}.
   - Don't open a change request unless a runbook supports the action.
   - Keep the resolution comment user-facing — no chain-of-thought,
     no tool-call narration.
+  - Treat the recurring-incident signal below as ground truth: if the
+    requester has 2 or more past episodes summarized below, escalate
+    (mention recurrence in the resolution comment and create a change
+    request when a runbook supports it).
 
+{past_incidents_block}
 Return the resolution comment as your final message.
 """
+
+
+def _memory_namespace(requester_id: str) -> str:
+    return f"incidents/{requester_id}"
+
+
+def _load_past_incidents(requester_id: str, query: str) -> list[str]:
+    """Pull summarized past-incident episodes for this requester.
+
+    The CfnMemory resource is configured with a `summary_memory_strategy`
+    namespaced as `incidents/{actorId}`. AgentCore extracts a summary per
+    session asynchronously after each event; `retrieve_memories` does a
+    semantic search across those summaries.
+    """
+    try:
+        hits = _memory.retrieve_memories(
+            memory_id=MEMORY_ID,
+            namespace=_memory_namespace(requester_id),
+            query=query,
+            top_k=5,
+        )
+    except Exception as exc:
+        logger.warning("memory retrieve failed for actor=%s: %s", requester_id, exc)
+        return []
+    summaries = []
+    for hit in hits or []:
+        text = (hit.get("content") or {}).get("text") or ""
+        if text:
+            summaries.append(text)
+    return summaries
+
+
+def _build_system_prompt(past_incidents: list[str]) -> str:
+    if past_incidents:
+        body = "\n".join(f"- {s}" for s in past_incidents)
+        block = (
+            f"Past incidents for this requester (most-relevant first, "
+            f"count={len(past_incidents)}):\n{body}\n\n"
+        )
+    else:
+        block = "Past incidents for this requester: none on file.\n\n"
+    return SYSTEM_PROMPT_TEMPLATE.format(
+        jira_site_url=JIRA_SITE_URL,
+        jira_project_key=JIRA_PROJECT_KEY,
+        past_incidents_block=block,
+    )
 
 
 def _record_episode(
     issue_key: str,
     requester_id: str,
-    summary: str,
-    description: str,
-    transcript: str,
+    user_prompt: str,
     resolution: str,
 ) -> None:
-    payload = json.dumps(
-        {
-            "issue_key": issue_key,
-            "summary": summary,
-            "description": description,
-            "transcript_excerpt": transcript[-4000:],
-            "resolution": resolution,
-        }
-    )
-    _memory.create_event(
-        memory_id=MEMORY_ID,
-        actor_id=requester_id,
-        session_id=issue_key,
-        event_timestamp=datetime.now(timezone.utc).isoformat() + "Z",
-        payload=[{"blob": payload}],
-    )
+    """Append this run as a USER/ASSISTANT turn for the configured
+    summary_memory_strategy to roll up into the next episode.
+
+    The SDK's create_event takes `messages=[(text, role)]`; the strategy
+    extracts from those — blob payloads would not be summarized.
+    """
+    try:
+        _memory.create_event(
+            memory_id=MEMORY_ID,
+            actor_id=requester_id,
+            session_id=issue_key,
+            messages=[
+                (user_prompt, "USER"),
+                (resolution, "ASSISTANT"),
+            ],
+        )
+    except Exception as exc:
+        logger.warning("memory create_event failed for issue=%s: %s", issue_key, exc)
 
 
 @app.entrypoint
@@ -146,12 +197,19 @@ def invoke(payload):
     body = payload if isinstance(payload, dict) else json.loads(payload)
     issue_key = body["issue_key"]
     requester_id = body.get("requester_id", issue_key)
-    logger.info("processing Jira issue %s", issue_key)
+    logger.info("processing Jira issue %s for actor %s", issue_key, requester_id)
 
     asyncio.run(_fetch_gateway_token(access_token=""))
     asyncio.run(_fetch_jira_token(access_token=""))
     gateway_token = _gateway_token["value"]
     jira_token = _jira_token["value"]
+
+    past_incidents = _load_past_incidents(
+        requester_id=requester_id,
+        query=f"prior incidents for {requester_id}",
+    )
+    logger.info("loaded %d past-incident summaries", len(past_incidents))
+    system_prompt = _build_system_prompt(past_incidents)
 
     def _gateway_transport():
         return streamablehttp_client(
@@ -165,6 +223,11 @@ def invoke(payload):
             headers={"Authorization": f"Bearer {jira_token}"},
         )
 
+    user_prompt = (
+        f"Resolve Jira issue {issue_key} in project {JIRA_PROJECT_KEY} "
+        f"on site {JIRA_SITE_URL}. Follow the system instructions."
+    )
+
     with MCPClient(_gateway_transport) as gateway, MCPClient(_jira_transport) as jira:
         gateway_tools = gateway.list_tools_sync()
         jira_tools = jira.list_tools_sync()
@@ -176,27 +239,18 @@ def invoke(payload):
 
         agent = Agent(
             model=MODEL_ID,
-            system_prompt=SYSTEM_PROMPT,
+            system_prompt=system_prompt,
             tools=[*gateway_tools, *jira_tools],
             name="ITIncidentResponder",
         )
-        prompt = (
-            f"Resolve Jira issue {issue_key} in project {JIRA_PROJECT_KEY} "
-            f"on site {JIRA_SITE_URL}. Follow the system instructions."
-        )
-        result = agent(prompt)
+        result = agent(user_prompt)
 
     resolution = result.message["content"][0]["text"]
-    transcript = json.dumps(result.message, default=str)
 
-    # The agent itself wrote the comment + transitioned the issue via the
-    # Atlassian MCP. Record the episode locally for memory rollups.
     _record_episode(
         issue_key=issue_key,
         requester_id=requester_id,
-        summary=body.get("summary", ""),
-        description=body.get("description", ""),
-        transcript=transcript,
+        user_prompt=user_prompt,
         resolution=resolution,
     )
 
@@ -204,6 +258,7 @@ def invoke(payload):
         "issue_key": issue_key,
         "status": "Resolved",
         "resolution": resolution,
+        "recurring_incident_count": len(past_incidents),
     }
 
 
