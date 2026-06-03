@@ -1,0 +1,25 @@
+aws_region   = "ap-southeast-1"
+project_name = "agentcore-ecommerce"
+
+# --- Okta ---
+okta_issuer   = "https://<tenant>.okta.com/oauth2/<authzServerId>"
+okta_audience = "agentcore-ecommerce"
+okta_jwks_uri = "https://<tenant>.okta.com/oauth2/<authzServerId>/v1/keys"
+
+# --- DNS / TLS ---
+# Route53 hosted zone ID that owns the FQDN below. Terraform issues a
+# DNS-validated ACM cert here and creates an alias record pointing at the ALB.
+route53_zone_id = "<hosted-zone-id>"
+# FQDN to expose the ALB on. Must sit under the hosted zone above.
+alb_fqdn        = "alb.<your-domain>"
+
+# --- ALB exposure ---
+# Defaults to true for the dev environment so you can test JWT validation
+# from outside the VPC. Flip to false for the production-shaped fully-private ALB.
+alb_internet_facing = true
+# REQUIRED when alb_internet_facing = true. Set to your own /32.
+# Find your IP with: curl -s https://checkip.amazonaws.com
+alb_ingress_cidrs   = ["YOUR.PUBLIC.IP.HERE/32"]
+
+# --- App image (set after first ECR push) ---
+# container_image = "<account>.dkr.ecr.<region>.amazonaws.com/agentcore-ecommerce-dev-app:latest"

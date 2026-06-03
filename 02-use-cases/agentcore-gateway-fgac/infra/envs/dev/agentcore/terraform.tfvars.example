@@ -1,0 +1,19 @@
+aws_region   = "ap-southeast-1"
+project_name = "agentcore-ecommerce"
+
+# --- Okta ---
+okta_issuer             = "https://<tenant>.okta.com/oauth2/<authzServerId>"
+okta_audience           = "agentcore-ecommerce"
+okta_allowed_client_ids = ["<okta-oidc-app-client-id>"]
+
+okta_client_id     = "<okta-oidc-app-client-id>"
+okta_client_secret = "<okta-oidc-app-client-secret>"
+
+# Optional: redirect URIs accepted by the AgentCore workload identity.
+okta_allowed_return_urls = []
+
+# Bump after rotating the Okta client secret.
+okta_client_credentials_version = 1
+
+# --- AgentCore Policy ---
+policy_engine_mode = "LOG_ONLY"
