@@ -23,26 +23,7 @@ Financial analysis is used as the example domain — the registry-driven archite
 
 ## Architecture
 
-```
-Internet
-    │
-Chat ALB (public)
-    │
-Chat ECS (private subnet)
-    │
-Agent ALB (internal)
-    │
-Agent ECS (private subnet)
- │          │
-Registry    API Gateway (HTTPS + SigV4)
-(AWS API)       │
-  via         VPC Link
- NAT GW          │
-      │      MCP ALB (internal)
-      │          │
-   Amazon    MCP ECS (private subnet)
-   Bedrock
-```
+![Registry-Driven Agent with Strands, MCP, and ECS Architecture](strands-mcp-ecs-registry-arch.png)
 
 ### Components
 
