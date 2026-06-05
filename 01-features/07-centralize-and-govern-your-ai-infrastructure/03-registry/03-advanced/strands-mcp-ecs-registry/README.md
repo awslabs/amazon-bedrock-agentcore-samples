@@ -194,7 +194,13 @@ User prompt
 - **AWS Region**: `us-east-1` (AgentCore public preview availability)
 - **Amazon Bedrock AgentCore** enabled in your account
 - **Model access**: `us.anthropic.claude-sonnet-4-6` (cross-region inference profile) enabled in Amazon Bedrock
-- **Three ECR repositories** pre-created for the agent, chat, and MCP server images
+- **Three ECR repositories** pre-created for the agent, chat, and MCP server images. Create them before building Docker images:
+
+```bash
+aws ecr create-repository --repository-name financial-agent-mcp --region us-east-1
+aws ecr create-repository --repository-name financial-agent-agent --region us-east-1
+aws ecr create-repository --repository-name financial-agent-chat --region us-east-1
+```
 
 ### Python Dependencies
 
@@ -345,7 +351,22 @@ aws ecs update-service --cluster financial-agent-cluster --service financial-age
 aws ecs update-service --cluster financial-agent-cluster --service financial-agent-chat --desired-count 1
 ```
 
-Once both services are healthy, open the `CloudFrontDomain` URL from the stack outputs in your browser. You will see a login page — create a user in the Cognito User Pool, sign in, and you are ready to start chatting.
+Once both services are healthy, open the `CloudFrontDomain` URL from the stack outputs in your browser. You will see a login page. Create a Cognito user with the following command, then sign in with those credentials:
+
+```bash
+aws cognito-idp admin-create-user \
+  --user-pool-id <CognitoUserPoolId from outputs> \
+  --username your@email.com \
+  --message-action SUPPRESS \
+  --temporary-password TempPass123!
+
+# Then set a permanent password (required on first login):
+aws cognito-idp admin-set-user-password \
+  --user-pool-id <CognitoUserPoolId from outputs> \
+  --username your@email.com \
+  --password YourPermanentPassword123! \
+  --permanent
+```
 
 ## Sample Queries
 
