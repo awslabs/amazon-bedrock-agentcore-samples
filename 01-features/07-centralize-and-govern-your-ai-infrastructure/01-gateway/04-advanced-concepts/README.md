@@ -14,6 +14,7 @@ Advanced gateway patterns including interceptors, security controls, observabili
 | [header-query-propagation/token-passthrough](header-query-propagation/token-passthrough/) | Pass client Authorization token through to targets via interceptor |
 | [semantic-search-tool](semantic-search-tool/) | Semantic search across 300+ tools for improved agent latency |
 | [gateway-observability](gateway-observability/) | CloudWatch metrics, logs, traces, and CloudTrail auditing |
+| [multi-gateway-tool-deduplication](multi-gateway-tool-deduplication/) | Deduplicate overlapping tools from multiple AgentCore gateways |
 
 ## Documentation
 
