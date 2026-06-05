@@ -2,8 +2,8 @@ AWSTemplateFormatVersion: "2010-09-09"
 Description: >
   Financial Analyst Agent — ECS Fargate deployment.
   Components: VPC, ECS Cluster, MCP Server service, Strands Agent service,
-  Chat Interface service, S3 skills bucket, Cognito User Pool, IAM roles,
-  internal ALBs, SSM parameters.
+  Chat Interface service, S3 skills bucket, S3 frontend bucket, CloudFront
+  distribution, Cognito User Pool, IAM roles, internal ALBs, SSM parameters.
 
 # ── Parameters ────────────────────────────────────────────────────────────────
 Parameters:
@@ -786,6 +786,126 @@ Resources:
       StageName: "$default"
       AutoDeploy: true
 
+# ── Frontend — S3 bucket + CloudFront distribution ───────────────────────────
+# index.html is served from S3 via CloudFront (default origin).
+# /chat and /chat/stream are proxied to the Chat ALB (no caching, SSE-safe).
+# After stack creation, upload deploy/chat/static/index.html to the bucket:
+#   aws s3 cp deploy/chat/static/index.html s3://<FrontendBucketName>/index.html
+
+  FrontendBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "${ProjectName}-frontend-${AWS::AccountId}"
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  FrontendBucketOAC:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: !Sub "${ProjectName}-frontend-oac"
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
+  FrontendBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref FrontendBucket
+      PolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: cloudfront.amazonaws.com
+            Action: s3:GetObject
+            Resource: !Sub "${FrontendBucket.Arn}/*"
+            Condition:
+              StringEquals:
+                AWS:SourceArn: !Sub "arn:aws:cloudfront::${AWS::AccountId}:distribution/${FrontendDistribution}"
+
+  FrontendDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Comment: !Sub "${ProjectName} frontend"
+        Enabled: true
+        HttpVersion: http2
+        DefaultRootObject: index.html
+        PriceClass: PriceClass_100
+        # Default origin — S3 bucket serves index.html for all /* requests
+        DefaultCacheBehavior:
+          TargetOriginId: S3Frontend
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods: [GET, HEAD]
+          CachedMethods: [GET, HEAD]
+          Compress: true
+          ForwardedValues:
+            QueryString: false
+            Cookies:
+              Forward: none
+          MinTTL: 0
+          DefaultTTL: 300
+          MaxTTL: 3600
+        # /chat and /chat/stream route to the Chat ALB — no caching, forward auth headers
+        CacheBehaviors:
+          - PathPattern: /chat
+            TargetOriginId: ChatALB
+            ViewerProtocolPolicy: https-only
+            AllowedMethods: [GET, HEAD, OPTIONS, PUT, POST, PATCH, DELETE]
+            CachedMethods: [GET, HEAD]
+            Compress: false
+            ForwardedValues:
+              QueryString: true
+              Cookies:
+                Forward: none
+              Headers:
+                - Authorization
+                - Content-Type
+            MinTTL: 0
+            DefaultTTL: 0
+            MaxTTL: 0
+          - PathPattern: /chat/stream
+            TargetOriginId: ChatALB
+            ViewerProtocolPolicy: https-only
+            AllowedMethods: [GET, HEAD, OPTIONS, PUT, POST, PATCH, DELETE]
+            CachedMethods: [GET, HEAD]
+            Compress: false
+            ForwardedValues:
+              QueryString: true
+              Cookies:
+                Forward: none
+              Headers:
+                - Authorization
+                - Content-Type
+            MinTTL: 0
+            DefaultTTL: 0
+            MaxTTL: 0
+        Origins:
+          # S3 origin — accessed via Origin Access Control (no public bucket access)
+          - Id: S3Frontend
+            DomainName: !GetAtt FrontendBucket.RegionalDomainName
+            S3OriginConfig:
+              OriginAccessIdentity: ""
+            OriginAccessControlId: !GetAtt FrontendBucketOAC.Id
+          # Chat ALB origin — HTTP only (ALB listens on port 80)
+          - Id: ChatALB
+            DomainName: !GetAtt ChatAlb.DNSName
+            CustomOriginConfig:
+              HTTPPort: 80
+              HTTPSPort: 443
+              OriginProtocolPolicy: http-only
+              OriginReadTimeout: 120
+              OriginKeepaliveTimeout: 5
+        # SPA routing — return index.html for 404s so React router works
+        CustomErrorResponses:
+          - ErrorCode: 404
+            ResponsePagePath: /index.html
+            ResponseCode: "200"
+            ErrorCachingMinTTL: 0
+
 # ── SSM placeholder for Cognito JWKS URL ─────────────────────────────────────
 # Run setup.py after stack creation to populate the other SSM params.
 
@@ -802,8 +922,16 @@ Resources:
 
 Outputs:
   ChatEndpoint:
-    Description: Public HTTP endpoint for the chat interface (switch to HTTPS once ACM cert is ready)
-    Value: !Sub "http://${ChatAlb.DNSName}/chat"
+    Description: Public HTTPS chat endpoint via CloudFront
+    Value: !Sub "https://${FrontendDistribution.DomainName}/chat"
+
+  CloudFrontDomain:
+    Description: CloudFront distribution domain — open this in a browser
+    Value: !GetAtt FrontendDistribution.DomainName
+
+  FrontendBucketName:
+    Description: "S3 bucket for index.html — run: aws s3 cp deploy/chat/static/index.html s3://<FrontendBucketName>/index.html"
+    Value: !Ref FrontendBucket
 
   AgentAlbDns:
     Description: Internal ALB DNS for the Strands agent (used by chat service)
