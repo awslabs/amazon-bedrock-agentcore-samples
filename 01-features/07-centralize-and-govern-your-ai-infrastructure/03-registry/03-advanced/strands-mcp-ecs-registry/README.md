@@ -50,6 +50,82 @@ Financial analysis is used as the example domain — the registry-driven archite
 6. **Follow the procedure** — the LLM calls the MCP tools as instructed by the skill steps.
 7. **Return answer** — results are streamed to the UI via SSE.
 
+## Request Flow
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant U as User
+    participant CF as CloudFront
+    participant CH as Chat ECS
+    participant AG as Agent ECS
+    participant REG as Agent Registry
+    participant GW as API Gateway
+    participant MCP as MCP ECS
+    participant BED as Bedrock
+
+    rect rgb(239, 246, 255)
+    Note over AG: STARTUP - once per ECS task
+    AG->>AG: Read SSM params
+    AG->>REG: search_registry_records MCP server
+    REG-->>AG: MCP record with API GW URL
+    Note over AG: Cache MCP URL - no connection yet
+    end
+
+    rect rgb(236, 253, 245)
+    Note over U,BED: Phase 1 - Pre-flight
+    U->>CF: POST /chat + Cognito JWT
+    CF->>CH: IGW - Chat ALB - Chat ECS
+    CH->>CH: 1 Validate Cognito JWT
+    CH->>AG: POST /invoke + JWT via Agent ALB
+    AG->>AG: 2 Validate Cognito JWT
+    AG->>REG: search_registry_records user message
+    REG-->>AG: Top AGENT_SKILLS match SKILL.md
+    AG->>AG: 3 Parse mcp_tools from frontmatter
+    AG->>GW: MCPClient.start SigV4 execute-api
+    GW->>MCP: VPC Link - MCP ALB - MCP ECS
+    MCP-->>GW: Tool list
+    GW-->>AG: list_tools_sync response
+    AG->>AG: 4 Filter tools and build Strands Agent
+    end
+
+    rect rgb(255, 251, 235)
+    Note over U,BED: Phase 2 - Reasoning Loop
+    AG->>BED: converse_stream with tool defs
+    BED-->>AG: 5 tool_use search_and_load_skill
+    AG->>REG: search_registry_records query
+    REG-->>AG: Full SKILL.md content
+    AG->>AG: Download artifacts from S3
+    AG->>BED: tool_result SKILL.md loaded
+
+    BED-->>AG: 6 tool_use get_kpi_benchmarks
+    AG->>GW: Streamable HTTP SigV4
+    GW->>MCP: VPC Link - MCP ALB - MCP ECS
+    MCP-->>GW: KPI benchmarks
+    GW-->>AG: Tool result
+    AG->>BED: tool_result benchmarks
+
+    BED-->>AG: 7 tool_use get_financial_data Q3 2025
+    AG->>GW: Streamable HTTP SigV4
+    GW->>MCP: VPC Link - MCP ALB - MCP ECS
+    MCP-->>GW: P and L data
+    GW-->>AG: Tool result
+    AG->>BED: tool_result financial data
+
+    BED-->>AG: 8 tool_use python_exec calculate KPIs
+    AG->>AG: Compute Gross Margin EBITDA Growth
+    AG->>BED: tool_result KPIs computed
+    end
+
+    rect rgb(243, 232, 255)
+    Note over U,BED: RESPONSE - SSE Streaming
+    BED-->>AG: Final text streamed tokens
+    AG-->>CH: SSE events
+    CH-->>CF: SSE passthrough
+    CF-->>U: Progressive rendering
+    end
+```
+
 ## What's in the Registry
 
 `setup.py` and `register_skills.py` populate the registry with two types of records:
