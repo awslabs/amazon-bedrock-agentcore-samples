@@ -157,7 +157,6 @@ def create_execution_role(kb_env: dict) -> str:
 
     kb_region = kb_env["KB_REGION"]
     kb_id = kb_env["KNOWLEDGE_BASE_ID"]
-    model_arn = kb_env["BEDROCK_MODEL_ARN"]
 
     policy = json.dumps(
         {
@@ -283,7 +282,7 @@ def build_and_push_image(repo_name: str, image_tag: str) -> str:
         )
 
     src_dir = os.path.dirname(os.path.abspath(__file__))
-    print(f"  Building image (linux/arm64)...")
+    print("  Building image (linux/arm64)...")
     result = subprocess.run(
         [
             "docker",
@@ -409,7 +408,6 @@ def acquire_okta_token(okta_env: dict) -> str:
     domain = okta_env["OKTA_DOMAIN"]
     auth_server_id = okta_env["OKTA_AUTH_SERVER_ID"]
     client_id = okta_env["OKTA_CLIENT_ID"]
-    audience = okta_env["OKTA_AUDIENCE"]
 
     auth_server = f"https://{domain}/oauth2/{auth_server_id}"
     redirect_uri = f"http://localhost:{CALLBACK_PORT}/callback"
@@ -453,14 +451,14 @@ def acquire_okta_token(okta_env: dict) -> str:
     srv = socketserver.TCPServer(("127.0.0.1", CALLBACK_PORT), CallbackHandler)
     threading.Thread(target=srv.serve_forever, daemon=True).start()
 
-    print(f"  Opening browser for Okta sign-in...")
+    print("  Opening browser for Okta sign-in...")
     webbrowser.open(auth_url)
 
     if not code_received.wait(timeout=300):
         srv.shutdown()
         raise SystemExit("Timed out waiting for Okta callback (5 min).")
     srv.shutdown()
-    print(f"  Authorization code received.")
+    print("  Authorization code received.")
 
     body = urllib.parse.urlencode(
         {
@@ -741,7 +739,7 @@ def main():
     invoke_mcp(runtime_info["endpoint_url"], okta_env)
 
     print("\n═══ Done ═══")
-    print(f"Run 'python okta_mcp_runtime.py --cleanup' to tear down resources.")
+    print("Run 'python okta_mcp_runtime.py --cleanup' to tear down resources.")
 
 
 if __name__ == "__main__":
