@@ -37,6 +37,7 @@ from urllib3.util.retry import Retry
 # OpenTelemetry trace context propagation for distributed tracing
 try:
     from opentelemetry.propagate import inject as otel_inject
+
     OTEL_AVAILABLE = True
 except ImportError:
     OTEL_AVAILABLE = False
@@ -47,7 +48,12 @@ logger = logging.getLogger(__name__)
 class AgentInvocationError(Exception):
     """Base exception for agent invocation errors."""
 
-    def __init__(self, message: str, status_code: Optional[int] = None, agent_id: Optional[str] = None):
+    def __init__(
+        self,
+        message: str,
+        status_code: Optional[int] = None,
+        agent_id: Optional[str] = None,
+    ):
         super().__init__(message)
         self.status_code = status_code
         self.agent_id = agent_id
@@ -55,27 +61,32 @@ class AgentInvocationError(Exception):
 
 class AuthenticationError(AgentInvocationError):
     """Raised when JWT authentication fails (401)."""
+
     pass
 
 
 class AuthorizationError(AgentInvocationError):
     """Raised when authorization is denied (403)."""
+
     pass
 
 
 class AgentNotFoundError(AgentInvocationError):
     """Raised when the target agent is not found (404)."""
+
     pass
 
 
 class AgentTimeoutError(AgentInvocationError):
     """Raised when agent invocation times out."""
+
     pass
 
 
 @dataclass
 class AgentEndpoint:
     """Configuration for an agent endpoint."""
+
     agent_id: str
     agent_name: str
     # Optional override URL - if not set, uses standard AC Runtime URL
@@ -159,7 +170,9 @@ class AgentHttpClient:
         """
         return f"arn:aws:bedrock-agentcore:{self.region}:{self.account_id}:runtime/{agent_id}"
 
-    def _build_invocation_url(self, agent_id: str, endpoint_url: Optional[str] = None) -> str:
+    def _build_invocation_url(
+        self, agent_id: str, endpoint_url: Optional[str] = None
+    ) -> str:
         """
         Build the invocation URL for an agent.
 
@@ -242,7 +255,9 @@ class AgentHttpClient:
         if OTEL_AVAILABLE:
             try:
                 otel_inject(headers)
-                logger.debug(f"Injected OTEL trace context: traceparent={headers.get('traceparent', 'N/A')}")
+                logger.debug(
+                    f"Injected OTEL trace context: traceparent={headers.get('traceparent', 'N/A')}"
+                )
             except Exception as e:
                 logger.debug(f"Could not inject OTEL trace context: {e}")
 
@@ -289,7 +304,9 @@ class AgentHttpClient:
 
             if response.status_code >= 400:
                 error_msg = self._extract_error_message(response)
-                logger.error(f"Agent invocation failed ({response.status_code}): {error_msg}")
+                logger.error(
+                    f"Agent invocation failed ({response.status_code}): {error_msg}"
+                )
                 raise AgentInvocationError(
                     f"Agent invocation failed: {error_msg}",
                     status_code=response.status_code,
@@ -311,7 +328,12 @@ class AgentHttpClient:
                 f"Failed to connect to agent: {e}",
                 agent_id=agent_id,
             )
-        except (AuthenticationError, AuthorizationError, AgentNotFoundError, AgentTimeoutError):
+        except (
+            AuthenticationError,
+            AuthorizationError,
+            AgentNotFoundError,
+            AgentTimeoutError,
+        ):
             raise
         except Exception as e:
             logger.exception(f"Unexpected error invoking agent {agent_id}")
@@ -350,12 +372,12 @@ class AgentHttpClient:
             if isinstance(data, dict):
                 # Handle various response formats
                 text_response = (
-                    data.get("output") or
-                    data.get("response") or
-                    data.get("completion") or
-                    data.get("text") or
-                    data.get("message") or
-                    json.dumps(data)
+                    data.get("output")
+                    or data.get("response")
+                    or data.get("completion")
+                    or data.get("text")
+                    or data.get("message")
+                    or json.dumps(data)
                 )
                 return {
                     "response": text_response,
@@ -414,7 +436,9 @@ class AgentHttpClient:
             endpoint_url=endpoint_url,
         )
 
-    def health_check(self, agent_id: str, endpoint_url: Optional[str] = None) -> Dict[str, Any]:
+    def health_check(
+        self, agent_id: str, endpoint_url: Optional[str] = None
+    ) -> Dict[str, Any]:
         """
         Check if an agent endpoint is reachable.
 

@@ -12,17 +12,17 @@ def lambda_handler(event, context):
     """
     Custom Resource Lambda to inject runtime config into frontend config.js
     This runs AFTER the stack is deployed and API is created
-    
+
     SECURITY WARNING: This implementation exposes the API Gateway API key in client-side
     JavaScript, making it publicly accessible to anyone who views the page source.
     This defeats the purpose of API key authentication.
-    
+
     For production use, consider one of these alternatives:
     1. Use Amazon Cognito for user authentication with JWT tokens
     2. Use IAM authentication with AWS Signature Version 4
     3. Remove API key requirement and use other controls (VPC, IP allowlisting)
     4. Implement a backend-for-frontend (BFF) pattern with server-side API calls
-    
+
     This current implementation is suitable ONLY for:
     - Internal demos where the dashboard URL is not publicly accessible
     - Development/testing environments

@@ -12,7 +12,7 @@ from auth_validator import (
     authorize_profile_update,
     get_audit_context,
     ClaimsValidationError,
-    AuthorizationError
+    AuthorizationError,
 )
 from profile_service import profile_service
 
@@ -24,7 +24,7 @@ def update_phone_tool(
     customer_id: str,
     phone_type: str,
     claims: Dict[str, Any],
-    phone_number: Optional[str] = None
+    phone_number: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Update customer phone number.
@@ -64,7 +64,7 @@ def update_phone_tool(
             customer_id=customer_id,
             phone_type=phone_type,
             phone_number=phone_number,
-            updated_by=audit_ctx["customer_id"]
+            updated_by=audit_ctx["customer_id"],
         )
 
         action = "removed" if phone_number is None else "updated"
@@ -76,33 +76,21 @@ def update_phone_tool(
         return {
             "success": True,
             "message": f"{phone_type.capitalize()} phone number {action} successfully",
-            "profile": updated_profile
+            "profile": updated_profile,
         }
 
     except ClaimsValidationError as e:
         logger.error(f"Claims validation failed: {e}")
-        return {
-            "success": False,
-            "error": f"Authentication error: {str(e)}"
-        }
+        return {"success": False, "error": f"Authentication error: {str(e)}"}
 
     except AuthorizationError as e:
         logger.warning(f"Authorization failed: {e}")
-        return {
-            "success": False,
-            "error": f"Authorization error: {str(e)}"
-        }
+        return {"success": False, "error": f"Authorization error: {str(e)}"}
 
     except ValueError as e:
         logger.error(f"Invalid phone update: {e}")
-        return {
-            "success": False,
-            "error": f"Invalid phone number: {str(e)}"
-        }
+        return {"success": False, "error": f"Invalid phone number: {str(e)}"}
 
     except Exception as e:
         logger.error(f"Unexpected error updating phone: {e}", exc_info=True)
-        return {
-            "success": False,
-            "error": f"Failed to update phone number: {str(e)}"
-        }
+        return {"success": False, "error": f"Failed to update phone number: {str(e)}"}

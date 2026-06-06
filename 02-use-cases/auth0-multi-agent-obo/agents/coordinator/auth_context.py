@@ -56,44 +56,43 @@ class AuthContextManager:
 
         try:
             # Extract from request attributes (populated by JWT authorizer)
-            attributes = getattr(request, 'request_attributes', {}) or {}
+            attributes = getattr(request, "request_attributes", {}) or {}
 
             # Standard OIDC claims
-            context['user_id'] = attributes.get('sub') or attributes.get('user_id', '')
-            context['email'] = attributes.get('email', '')
-            context['email_verified'] = attributes.get('email_verified', False)
+            context["user_id"] = attributes.get("sub") or attributes.get("user_id", "")
+            context["email"] = attributes.get("email", "")
+            context["email_verified"] = attributes.get("email_verified", False)
 
             # Extract scopes/permissions
-            scopes_str = attributes.get('scope', '')
+            scopes_str = attributes.get("scope", "")
             permissions = scopes_str.split() if scopes_str else []
-            context['permissions'] = permissions
+            context["permissions"] = permissions
 
             # Extract custom claims (with namespace)
             custom_claims = {}
             for key, value in attributes.items():
                 if key.startswith(self.claims_namespace):
-                    claim_name = key.replace(self.claims_namespace, '')
+                    claim_name = key.replace(self.claims_namespace, "")
                     custom_claims[claim_name] = value
 
             # Customer ID from custom claims
-            context['customer_id'] = (
-                custom_claims.get('customer_id') or
-                attributes.get('customer_id', '')
+            context["customer_id"] = custom_claims.get("customer_id") or attributes.get(
+                "customer_id", ""
             )
 
             # Department/organization from custom claims
-            context['department'] = custom_claims.get('department', '')
-            context['organization'] = custom_claims.get('organization', '')
+            context["department"] = custom_claims.get("department", "")
+            context["organization"] = custom_claims.get("organization", "")
 
             # Account tier (premium, standard, basic)
-            context['account_tier'] = custom_claims.get('account_tier', 'standard')
+            context["account_tier"] = custom_claims.get("account_tier", "standard")
 
             # Store all custom claims
-            context['custom_claims'] = custom_claims
+            context["custom_claims"] = custom_claims
 
             # Request metadata
-            context['session_id'] = getattr(request, 'session_id', '')
-            context['request_time'] = getattr(request, 'timestamp', None)
+            context["session_id"] = getattr(request, "session_id", "")
+            context["request_time"] = getattr(request, "timestamp", None)
 
             logger.info(
                 f"Extracted user context for user_id: {context['user_id']}, "
@@ -101,8 +100,8 @@ class AuthContextManager:
             )
 
             # Cache the context
-            if context.get('user_id'):
-                self.context_cache[context['user_id']] = context
+            if context.get("user_id"):
+                self.context_cache[context["user_id"]] = context
 
             return context
 
@@ -111,9 +110,7 @@ class AuthContextManager:
             raise ValueError(f"Failed to extract user context: {str(e)}")
 
     def validate_authorization(
-        self,
-        context: Dict[str, Any],
-        required_permissions: Optional[List[str]] = None
+        self, context: Dict[str, Any], required_permissions: Optional[List[str]] = None
     ) -> bool:
         """
         Validate that the user has the required authorization.
@@ -127,16 +124,16 @@ class AuthContextManager:
         """
         try:
             # Check basic requirements
-            if not context.get('user_id'):
+            if not context.get("user_id"):
                 logger.warning("Authorization failed: No user_id in context")
                 return False
 
-            if not context.get('customer_id'):
+            if not context.get("customer_id"):
                 logger.warning("Authorization failed: No customer_id in context")
                 return False
 
             # Verify email is verified (for sensitive operations)
-            if not context.get('email_verified', False):
+            if not context.get("email_verified", False):
                 logger.warning(
                     f"Authorization warning: Email not verified for user {context['user_id']}"
                 )
@@ -145,7 +142,7 @@ class AuthContextManager:
 
             # Check required permissions if specified
             if required_permissions:
-                user_permissions = set(context.get('permissions', []))
+                user_permissions = set(context.get("permissions", []))
                 required_set = set(required_permissions)
 
                 if not required_set.issubset(user_permissions):
@@ -190,9 +187,7 @@ class AuthContextManager:
             logger.info("Cleared all context cache")
 
     def enrich_context(
-        self,
-        context: Dict[str, Any],
-        additional_data: Dict[str, Any]
+        self, context: Dict[str, Any], additional_data: Dict[str, Any]
     ) -> Dict[str, Any]:
         """
         Enrich context with additional data.
@@ -229,8 +224,7 @@ def extract_user_context(request: Any) -> Dict[str, Any]:
 
 
 def validate_user_authorization(
-    context: Dict[str, Any],
-    required_permissions: Optional[List[str]] = None
+    context: Dict[str, Any], required_permissions: Optional[List[str]] = None
 ) -> bool:
     """
     Validate that the user has the required authorization.
@@ -246,8 +240,8 @@ def validate_user_authorization(
     """
     # For demo/testing: If user has valid JWT (user_id present), allow access
     # AgentCore's customJWTAuthorizer already validated the token
-    user_id = context.get('user_id', 'unknown')
-    if user_id and user_id != 'unknown':
+    user_id = context.get("user_id", "unknown")
+    if user_id and user_id != "unknown":
         # User has been authenticated via JWT
         logger.info(f"Authorization granted for authenticated user: {user_id}")
         # Still validate with permissions if specified, but log if missing
@@ -257,7 +251,7 @@ def validate_user_authorization(
         return True
 
     # No valid user_id - require full permission check
-    default_permissions = ['profile:personal:read']
+    default_permissions = ["profile:personal:read"]
     permissions = required_permissions or default_permissions
     return _auth_manager.validate_authorization(context, permissions)
 
@@ -275,7 +269,7 @@ def get_customer_id(context: Dict[str, Any]) -> str:
     Raises:
         ValueError: If customer_id is not present
     """
-    customer_id = context.get('customer_id')
+    customer_id = context.get("customer_id")
     if not customer_id:
         raise ValueError("Customer ID not found in context")
     return customer_id
@@ -291,7 +285,7 @@ def get_user_permissions(context: Dict[str, Any]) -> List[str]:
     Returns:
         List of permission strings
     """
-    return context.get('permissions', [])
+    return context.get("permissions", [])
 
 
 def has_permission(context: Dict[str, Any], permission: str) -> bool:
@@ -319,4 +313,4 @@ def is_premium_customer(context: Dict[str, Any]) -> bool:
     Returns:
         True if premium customer, False otherwise
     """
-    return context.get('account_tier', '').lower() == 'premium'
+    return context.get("account_tier", "").lower() == "premium"

@@ -1,0 +1,128 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "HR Data Provider API",
+    "version": "1.0.0",
+    "description": "HR data tools exposed via AgentCore Gateway with role-based DLP enforcement"
+  },
+  "components": {
+    "securitySchemes": {
+      "AgentCoreGateway": {
+        "type": "oauth2",
+        "description": "OAuth 2.0 scopes enforced by AgentCore Gateway via Cedar Policy Engine and Cognito client_credentials flow",
+        "flows": {
+          "clientCredentials": {
+            "tokenUrl": "https://{cognitoDomain}/oauth2/token",
+            "scopes": {
+              "hr-dlp-gateway/read": "Basic employee search access",
+              "hr-dlp-gateway/pii": "Access to PII fields (email, phone, emergency contact)",
+              "hr-dlp-gateway/address": "Access to address fields",
+              "hr-dlp-gateway/comp": "Access to compensation data (salary, bonus, stock options)"
+            }
+          }
+        }
+      }
+    }
+  },
+  "security": [
+    { "AgentCoreGateway": ["hr-dlp-gateway/read"] }
+  ],
+  "paths": {
+    "/search_employee": {
+      "post": {
+        "operationId": "search_employee",
+        "summary": "Search for employees by name, department, or role",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "query": {
+                    "type": "string",
+                    "description": "Search query — employee name, department, or role"
+                  },
+                  "tenantId": {
+                    "type": "string",
+                    "description": "Tenant identifier (auto-injected by Request Interceptor)"
+                  }
+                },
+                "required": ["query"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "List of matching employees (PII/address/comp fields redacted by scope)"
+          }
+        }
+      }
+    },
+    "/get_employee_profile": {
+      "post": {
+        "operationId": "get_employee_profile",
+        "summary": "Get detailed employee profile",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "employeeId": {
+                    "type": "string",
+                    "description": "Employee identifier from search results"
+                  },
+                  "tenantId": {
+                    "type": "string",
+                    "description": "Tenant identifier (auto-injected)"
+                  }
+                },
+                "required": ["employeeId"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Employee profile (PII requires hr-dlp-gateway/pii scope, address requires hr-dlp-gateway/address scope)"
+          }
+        }
+      }
+    },
+    "/get_employee_compensation": {
+      "post": {
+        "operationId": "get_employee_compensation",
+        "summary": "Get employee compensation data",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "employeeId": {
+                    "type": "string",
+                    "description": "Employee identifier from search results"
+                  },
+                  "tenantId": {
+                    "type": "string",
+                    "description": "Tenant identifier (auto-injected)"
+                  }
+                },
+                "required": ["employeeId"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Compensation data — requires hr-dlp-gateway/comp scope"
+          }
+        }
+      }
+    }
+  }
+}

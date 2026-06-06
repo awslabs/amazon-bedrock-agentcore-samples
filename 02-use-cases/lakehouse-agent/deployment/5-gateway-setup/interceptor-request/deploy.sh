@@ -105,14 +105,26 @@ if aws lambda get-function --function-name lakehouse-gateway-interceptor --regio
         --function-name lakehouse-gateway-interceptor \
         --zip-file fileb://interceptor-lambda.zip \
         --region $AWS_REGION
-    
+
+    # update-function-code returns while Lambda is still applying the change
+    # (LastUpdateStatus=InProgress). Wait for it to settle before issuing
+    # update-function-configuration, which otherwise races and fails with
+    # ResourceConflictException.
+    aws lambda wait function-updated \
+        --function-name lakehouse-gateway-interceptor \
+        --region $AWS_REGION
+
     echo "⚙️  Updating Lambda configuration..."
     aws lambda update-function-configuration \
         --function-name lakehouse-gateway-interceptor \
         --environment "Variables={COGNITO_REGION=$AWS_REGION,COGNITO_USER_POOL_ID=$COGNITO_USER_POOL_ID,COGNITO_APP_CLIENT_ID=$COGNITO_APP_CLIENT_ID,TENANT_ROLE_MAPPING_TABLE=lakehouse_tenant_role_map}" \
         --kms-key-arn "" \
         --region $AWS_REGION
-    
+
+    aws lambda wait function-updated \
+        --function-name lakehouse-gateway-interceptor \
+        --region $AWS_REGION
+
     echo "✅ Lambda function updated!"
 else
     echo "📝 Creating new Lambda function..."
@@ -132,6 +144,9 @@ else
             --memory-size 256 \
             --environment "Variables={COGNITO_REGION=$AWS_REGION,COGNITO_USER_POOL_ID=$COGNITO_USER_POOL_ID,COGNITO_APP_CLIENT_ID=$COGNITO_APP_CLIENT_ID,TENANT_ROLE_MAPPING_TABLE=lakehouse_tenant_role_map}" \
             --region $AWS_REGION 2>/dev/null; then
+            aws lambda wait function-active \
+                --function-name lakehouse-gateway-interceptor \
+                --region $AWS_REGION
             echo "✅ Lambda function created!"
             break
         else
@@ -161,6 +176,20 @@ aws ssm put-parameter \
     --region $AWS_REGION
 
 echo "✅ Stored parameter: /app/lakehouse-agent/interceptor-lambda-arn"
+
+# Configure CloudWatch Logs retention for the Lambda log group.
+# create-log-group is idempotent via `|| true`; put-retention-policy is then guaranteed to find it.
+echo ""
+echo "🪵 Configuring CloudWatch Logs retention for Lambda log group..."
+LOG_GROUP_NAME="/aws/lambda/lakehouse-gateway-interceptor"
+aws logs create-log-group \
+    --log-group-name "$LOG_GROUP_NAME" \
+    --region "$AWS_REGION" 2>/dev/null || true
+aws logs put-retention-policy \
+    --log-group-name "$LOG_GROUP_NAME" \
+    --retention-in-days 30 \
+    --region "$AWS_REGION"
+echo "✅ Log group $LOG_GROUP_NAME retention set to 30 days"
 
 # Setup DynamoDB tenant-role mapping table
 echo ""

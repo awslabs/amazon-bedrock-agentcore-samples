@@ -33,7 +33,7 @@ MOCK_PROFILES = {
             "suburb": "Melbourne",
             "state": "VIC",
             "postcode": "3000",
-            "country": "Australia"
+            "country": "Australia",
         },
         "mailing_address": None,  # None means same as residential
         "customer_since": "2020-01-15",
@@ -41,10 +41,10 @@ MOCK_PROFILES = {
         "marketing_preferences": {
             "email_opt_in": True,
             "sms_opt_in": False,
-            "mail_opt_in": False
+            "mail_opt_in": False,
         },
         "last_updated": "2024-12-01T10:30:00Z",
-        "updated_by": "system"
+        "updated_by": "system",
     },
     "CUST002": {
         "customer_id": "CUST002",
@@ -62,7 +62,7 @@ MOCK_PROFILES = {
             "suburb": "Sydney",
             "state": "NSW",
             "postcode": "2000",
-            "country": "Australia"
+            "country": "Australia",
         },
         "mailing_address": {
             "street_line_1": "PO Box 789",
@@ -70,17 +70,17 @@ MOCK_PROFILES = {
             "suburb": "Sydney",
             "state": "NSW",
             "postcode": "2001",
-            "country": "Australia"
+            "country": "Australia",
         },
         "customer_since": "2021-06-10",
         "preferred_contact_method": "sms",
         "marketing_preferences": {
             "email_opt_in": True,
             "sms_opt_in": True,
-            "mail_opt_in": True
+            "mail_opt_in": True,
         },
         "last_updated": "2025-01-02T14:15:00Z",
-        "updated_by": "CUST002"
+        "updated_by": "CUST002",
     },
     "CUST003": {
         "customer_id": "CUST003",
@@ -98,7 +98,7 @@ MOCK_PROFILES = {
             "suburb": "Brisbane",
             "state": "QLD",
             "postcode": "4000",
-            "country": "Australia"
+            "country": "Australia",
         },
         "mailing_address": None,
         "customer_since": "2019-03-20",
@@ -106,11 +106,11 @@ MOCK_PROFILES = {
         "marketing_preferences": {
             "email_opt_in": False,
             "sms_opt_in": False,
-            "mail_opt_in": False
+            "mail_opt_in": False,
         },
         "last_updated": "2024-11-15T09:45:00Z",
-        "updated_by": "CUST003"
-    }
+        "updated_by": "CUST003",
+    },
 }
 
 
@@ -120,7 +120,9 @@ class ProfileService:
     def __init__(self):
         """Initialize the profile service."""
         self.profiles = MOCK_PROFILES
-        logger.info(f"ProfileService initialized with {len(self.profiles)} mock profiles")
+        logger.info(
+            f"ProfileService initialized with {len(self.profiles)} mock profiles"
+        )
 
     def get_profile(self, customer_id: str) -> Optional[Dict[str, Any]]:
         """
@@ -143,10 +145,7 @@ class ProfileService:
             return None
 
     def update_profile(
-        self,
-        customer_id: str,
-        updates: Dict[str, Any],
-        updated_by: str
+        self, customer_id: str, updates: Dict[str, Any], updated_by: str
     ) -> Dict[str, Any]:
         """
         Update profile fields.
@@ -165,7 +164,9 @@ class ProfileService:
         profile = self.profiles.get(customer_id)
 
         if not profile:
-            logger.error(f"Cannot update: profile not found for customer_id={customer_id}")
+            logger.error(
+                f"Cannot update: profile not found for customer_id={customer_id}"
+            )
             raise ValueError(f"Profile not found for customer {customer_id}")
 
         # List of fields that cannot be updated directly
@@ -175,7 +176,9 @@ class ProfileService:
         invalid_updates = set(updates.keys()) & protected_fields
         if invalid_updates:
             logger.warning(f"Attempt to update protected fields: {invalid_updates}")
-            raise ValueError(f"Cannot update protected fields: {', '.join(invalid_updates)}")
+            raise ValueError(
+                f"Cannot update protected fields: {', '.join(invalid_updates)}"
+            )
 
         # Apply updates
         old_values = {}
@@ -194,7 +197,7 @@ class ProfileService:
             action="update_profile",
             updates=updates,
             old_values=old_values,
-            updated_by=updated_by
+            updated_by=updated_by,
         )
 
         logger.info(f"Profile updated for customer_id={customer_id}")
@@ -205,7 +208,7 @@ class ProfileService:
         customer_id: str,
         address: Dict[str, str],
         updated_by: str,
-        is_mailing: bool = False
+        is_mailing: bool = False,
     ) -> Dict[str, Any]:
         """
         Update customer address.
@@ -231,7 +234,9 @@ class ProfileService:
         required_fields = ["street_line_1", "suburb", "state", "postcode", "country"]
         missing_fields = [f for f in required_fields if f not in address]
         if missing_fields:
-            raise ValueError(f"Missing required address fields: {', '.join(missing_fields)}")
+            raise ValueError(
+                f"Missing required address fields: {', '.join(missing_fields)}"
+            )
 
         # Update the appropriate address
         address_type = "mailing_address" if is_mailing else "address"
@@ -248,10 +253,12 @@ class ProfileService:
             action=f"update_{address_type}",
             updates={"address": address},
             old_values={"address": old_address},
-            updated_by=updated_by
+            updated_by=updated_by,
         )
 
-        logger.info(f"Address updated for customer_id={customer_id}, type={address_type}")
+        logger.info(
+            f"Address updated for customer_id={customer_id}, type={address_type}"
+        )
         return deepcopy(profile)
 
     def update_phone(
@@ -259,7 +266,7 @@ class ProfileService:
         customer_id: str,
         phone_type: str,
         phone_number: Optional[str],
-        updated_by: str
+        updated_by: str,
     ) -> Dict[str, Any]:
         """
         Update customer phone number.
@@ -282,11 +289,15 @@ class ProfileService:
             raise ValueError(f"Profile not found for customer {customer_id}")
 
         if phone_type not in ["primary", "secondary"]:
-            raise ValueError(f"Invalid phone type: {phone_type}. Must be 'primary' or 'secondary'")
+            raise ValueError(
+                f"Invalid phone type: {phone_type}. Must be 'primary' or 'secondary'"
+            )
 
         # Validate phone number format if provided
         if phone_number and not phone_number.startswith("+"):
-            raise ValueError("Phone number must be in international format (e.g., +61412345678)")
+            raise ValueError(
+                "Phone number must be in international format (e.g., +61412345678)"
+            )
 
         field_name = f"{phone_type}_phone"
         old_phone = profile[field_name]
@@ -302,17 +313,14 @@ class ProfileService:
             action=f"update_{phone_type}_phone",
             updates={field_name: phone_number},
             old_values={field_name: old_phone},
-            updated_by=updated_by
+            updated_by=updated_by,
         )
 
         logger.info(f"Phone updated for customer_id={customer_id}, type={phone_type}")
         return deepcopy(profile)
 
     def update_preferences(
-        self,
-        customer_id: str,
-        preferences: Dict[str, Any],
-        updated_by: str
+        self, customer_id: str, preferences: Dict[str, Any], updated_by: str
     ) -> Dict[str, Any]:
         """
         Update customer contact and marketing preferences.
@@ -343,13 +351,17 @@ class ProfileService:
                 raise ValueError(
                     f"Invalid contact method: {method}. Must be one of {', '.join(valid_methods)}"
                 )
-            old_preferences["preferred_contact_method"] = profile["preferred_contact_method"]
+            old_preferences["preferred_contact_method"] = profile[
+                "preferred_contact_method"
+            ]
             profile["preferred_contact_method"] = method
 
         # Update marketing preferences if provided
         if "marketing_preferences" in preferences:
             marketing = preferences["marketing_preferences"]
-            old_preferences["marketing_preferences"] = deepcopy(profile["marketing_preferences"])
+            old_preferences["marketing_preferences"] = deepcopy(
+                profile["marketing_preferences"]
+            )
 
             # Update individual marketing preferences
             for key in ["email_opt_in", "sms_opt_in", "mail_opt_in"]:
@@ -368,7 +380,7 @@ class ProfileService:
             action="update_preferences",
             updates=preferences,
             old_values=old_preferences,
-            updated_by=updated_by
+            updated_by=updated_by,
         )
 
         logger.info(f"Preferences updated for customer_id={customer_id}")
@@ -380,7 +392,7 @@ class ProfileService:
         action: str,
         updates: Dict[str, Any],
         old_values: Dict[str, Any],
-        updated_by: str
+        updated_by: str,
     ) -> None:
         """
         Log audit trail for profile changes.
@@ -397,10 +409,7 @@ class ProfileService:
             "customer_id": customer_id,
             "action": action,
             "updated_by": updated_by,
-            "changes": {
-                "old": old_values,
-                "new": updates
-            }
+            "changes": {"old": old_values, "new": updates},
         }
 
         # In a real system, this would write to an audit log database

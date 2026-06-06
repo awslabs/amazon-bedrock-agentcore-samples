@@ -39,22 +39,23 @@ class MarketTrendsAgentCleaner:
         self.s3_client = boto3.client("s3", region_name=region)
 
         try:
-            from bedrock_agentcore_starter_toolkit import Runtime
             from bedrock_agentcore.memory import MemoryClient
 
-            self.runtime = Runtime()
             self.memory_client = MemoryClient(region_name=region)
+            self.agentcore_control = boto3.client(
+                "bedrock-agentcore-control", region_name=region
+            )
             self.agentcore_available = True
         except ImportError:
             logger.warning(
-                "⚠️  bedrock-agentcore-starter-toolkit not available - skipping AgentCore cleanup"
+                "bedrock-agentcore SDK not available - skipping AgentCore cleanup"
             )
             self.agentcore_available = False
 
     def cleanup_agentcore_runtime(self):
         """Remove AgentCore Runtime instances"""
         if not self.agentcore_available:
-            logger.info("🔄 Skipping AgentCore Runtime cleanup (toolkit not available)")
+            logger.info("Skipping AgentCore Runtime cleanup (SDK not available)")
             return
 
         logger.info("🗑️  Cleaning up AgentCore Runtime instances...")
@@ -74,8 +75,8 @@ class MarketTrendsAgentCleaner:
                     agent_id = agent_arn.split("/")[-1]
                     logger.info(f"   Deleting runtime: {agent_id}")
 
-                    # Use the runtime toolkit to delete
-                    self.runtime.delete()
+                    # Delete the runtime via bedrock-agentcore-control
+                    self.agentcore_control.delete_agent_runtime(agentRuntimeId=agent_id)
                     logger.info("   ✅ AgentCore Runtime deleted successfully")
 
                     # Remove the ARN file
@@ -83,7 +84,7 @@ class MarketTrendsAgentCleaner:
                     logger.info("   ✅ Removed .agent_arn file")
 
                 except Exception as e:
-                    logger.warning(f"   ⚠️  Could not delete runtime via toolkit: {e}")
+                    logger.warning(f"   ⚠️  Could not delete runtime: {e}")
                     logger.info("   💡 Runtime may need manual cleanup in AWS Console")
             else:
                 logger.info("   📋 No .agent_arn file found - no runtime to clean up")
@@ -94,7 +95,7 @@ class MarketTrendsAgentCleaner:
     def cleanup_agentcore_memory(self):
         """Remove AgentCore Memory instances"""
         if not self.agentcore_available:
-            logger.info("🔄 Skipping AgentCore Memory cleanup (toolkit not available)")
+            logger.info("Skipping AgentCore Memory cleanup (SDK not available)")
             return
 
         logger.info("🗑️  Cleaning up AgentCore Memory instances...")

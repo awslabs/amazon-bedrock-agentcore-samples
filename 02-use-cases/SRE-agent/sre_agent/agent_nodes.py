@@ -178,7 +178,11 @@ class BaseAgentNode:
             if user_id:
                 try:
                     # Get region from llm_kwargs if available
-                    region = self.llm_kwargs.get("region_name", "us-east-1") if self.llm_provider == "bedrock" else "us-east-1"
+                    region = (
+                        self.llm_kwargs.get("region_name", "us-east-1")
+                        if self.llm_provider == "bedrock"
+                        else "us-east-1"
+                    )
                     memory_client = SREMemoryClient(region=region)
                     conversation_manager = create_conversation_memory_manager(
                         memory_client
@@ -378,7 +382,11 @@ class BaseAgentNode:
 
                     # Use the SREMemoryClient that's already imported at the top
                     # Get region from llm_kwargs if available
-                    region = self.llm_kwargs.get("region_name", "us-east-1") if self.llm_provider == "bedrock" else "us-east-1"
+                    region = (
+                        self.llm_kwargs.get("region_name", "us-east-1")
+                        if self.llm_provider == "bedrock"
+                        else "us-east-1"
+                    )
                     memory_client = SREMemoryClient(region=region)
                     memory_hooks = MemoryHookProvider(memory_client)
 

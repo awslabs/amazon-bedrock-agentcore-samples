@@ -171,18 +171,22 @@ class SubAgentRouter:
         if not agent_id:
             error_msg = f"{agent_name} agent ID not configured"
             logger.error(error_msg)
-            return json.dumps({
-                "error": "AGENT_NOT_CONFIGURED",
-                "message": error_msg,
-            })
+            return json.dumps(
+                {
+                    "error": "AGENT_NOT_CONFIGURED",
+                    "message": error_msg,
+                }
+            )
 
         if not jwt_token:
             error_msg = "JWT token is required for agent invocation"
             logger.error(error_msg)
-            return json.dumps({
-                "error": "MISSING_TOKEN",
-                "message": error_msg,
-            })
+            return json.dumps(
+                {
+                    "error": "MISSING_TOKEN",
+                    "message": error_msg,
+                }
+            )
 
         try:
             # Build the input text for the sub-agent
@@ -227,34 +231,42 @@ class SubAgentRouter:
 
         except AuthenticationError as e:
             logger.error(f"Authentication failed for {agent_name} agent: {e}")
-            return json.dumps({
-                "error": "AUTHENTICATION_ERROR",
-                "message": f"JWT validation failed: {str(e)}",
-                "agent": agent_name,
-            })
+            return json.dumps(
+                {
+                    "error": "AUTHENTICATION_ERROR",
+                    "message": f"JWT validation failed: {str(e)}",
+                    "agent": agent_name,
+                }
+            )
 
         except AuthorizationError as e:
             logger.error(f"Authorization denied for {agent_name} agent: {e}")
-            return json.dumps({
-                "error": "AUTHORIZATION_ERROR",
-                "message": f"Access denied: {str(e)}",
-                "agent": agent_name,
-            })
+            return json.dumps(
+                {
+                    "error": "AUTHORIZATION_ERROR",
+                    "message": f"Access denied: {str(e)}",
+                    "agent": agent_name,
+                }
+            )
 
         except AgentInvocationError as e:
             logger.error(f"Error invoking {agent_name} agent: {e}")
-            return json.dumps({
-                "error": "INVOCATION_ERROR",
-                "message": f"Failed to invoke {agent_name} agent: {str(e)}",
-                "status_code": e.status_code,
-            })
+            return json.dumps(
+                {
+                    "error": "INVOCATION_ERROR",
+                    "message": f"Failed to invoke {agent_name} agent: {str(e)}",
+                    "status_code": e.status_code,
+                }
+            )
 
         except Exception as e:
             logger.exception(f"Unexpected error invoking {agent_name} agent: {str(e)}")
-            return json.dumps({
-                "error": "UNEXPECTED_ERROR",
-                "message": f"Failed to invoke {agent_name} agent: {str(e)}",
-            })
+            return json.dumps(
+                {
+                    "error": "UNEXPECTED_ERROR",
+                    "message": f"Failed to invoke {agent_name} agent: {str(e)}",
+                }
+            )
 
     def _build_input_text(self, tool_name: str, tool_input: Dict[str, Any]) -> str:
         """
@@ -335,7 +347,9 @@ class SubAgentRouter:
                 "accounts_query", tool_input, jwt_token, session_id
             )
         else:
-            return json.dumps({
-                "error": "INVALID_INTENT",
-                "message": f"Unknown or unconfigured intent: {intent}",
-            })
+            return json.dumps(
+                {
+                    "error": "INVALID_INTENT",
+                    "message": f"Unknown or unconfigured intent: {intent}",
+                }
+            )

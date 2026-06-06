@@ -5,7 +5,7 @@ def read_secret(secret: str):
     try:
         with open(f"/etc/secrets/{secret}", "r") as f:
             return f.read().rstrip()
-    except Exception as e:
+    except Exception:
         print("No token was provided as secret")
         return os.environ.get("DT_TOKEN", "")
 
@@ -36,15 +36,11 @@ def init():
     )
 
     provider = TracerProvider(resource=resource)
-    processor = SimpleSpanProcessor(
-        OTLPSpanExporter(endpoint=f"{OTEL_ENDPOINT}/v1/traces", headers=headers)
-    )
+    processor = SimpleSpanProcessor(OTLPSpanExporter(endpoint=f"{OTEL_ENDPOINT}/v1/traces", headers=headers))
     provider.add_span_processor(processor)
     trace.set_tracer_provider(provider)
 
-    reader = PeriodicExportingMetricReader(
-        OTLPMetricExporter(endpoint=f"{OTEL_ENDPOINT}/v1/metrics", headers=headers)
-    )
+    reader = PeriodicExportingMetricReader(OTLPMetricExporter(endpoint=f"{OTEL_ENDPOINT}/v1/metrics", headers=headers))
     provider = MeterProvider(
         metric_readers=[reader],
         resource=resource,

@@ -45,6 +45,6 @@ Choose a use case that matches your requirements and follow the individual READM
 
 ## 🔗 Related Resources
 
-- [Tutorials](../01-tutorials/) - Learn AgentCore fundamentals
+- [Workshops](../06-workshops/) - Learn AgentCore fundamentals in Jupyter Notebooks
 - [Integrations](../03-integrations/) - Framework and protocol integrations
 - [AgentCore Documentation](https://docs.aws.amazon.com/bedrock-agentcore/)

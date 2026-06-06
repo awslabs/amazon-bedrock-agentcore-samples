@@ -52,7 +52,8 @@ class TimeMachineCommitHook(HookProvider):
         registry.add_callback(BeforeToolInvocationEvent, self.before_tool_invocation)
 
     def before_tool_invocation(
-        self, event: BeforeToolInvocationEvent  # pylint:disable=unused-argument
+        self,
+        event: BeforeToolInvocationEvent,  # pylint:disable=unused-argument
     ):
         self.tm.commit()
 
@@ -90,11 +91,16 @@ def init_agent(session_dir: Path, model_id: str = DEFAULT_MODEL_ID) -> Agent:
         model=model,
         messages=messages,
         system_prompt=SYSTEM_PROMPT,
-        hooks=[TimeMachineCommitHook(tm=TimeMachine(schema_path)), SaveMessagesHook(session_dir)],
+        hooks=[
+            TimeMachineCommitHook(tm=TimeMachine(schema_path)),
+            SaveMessagesHook(session_dir),
+        ],
         state=dict(session_dir=str(session_dir)),
         tools=[
             ValidateSchemaTool(mount_dir=session_dir).validate_openapi_schema,
-            ConvertSchemaVersionTool(workdir=session_dir).convert_openapi_schema_version,
+            ConvertSchemaVersionTool(
+                workdir=session_dir
+            ).convert_openapi_schema_version,
             SchemaEditorTool(context_dir=session_dir).schema_editor,
             PythonInterpreterTool(context_dir=session_dir).make_tool(),
             schema_graph_actions.list_paths_related_to_component,

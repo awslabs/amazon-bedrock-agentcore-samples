@@ -9,7 +9,7 @@ import yaml
 import subprocess
 import time
 from pathlib import Path
-from typing import Dict, Any, Optional, Tuple, List
+from typing import Dict, Any, Optional, Tuple
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from threading import Lock
 
@@ -40,9 +40,9 @@ def print_header(text: str, thread_safe: bool = False):
 
     if thread_safe:
         with print_lock:
-            print(output, end='')
+            print(output, end="")
     else:
-        print(output, end='')
+        print(output, end="")
 
 
 def print_info(text: str, thread_safe: bool = False):
@@ -108,9 +108,7 @@ def get_input(prompt: str, default: Optional[str] = None, required: bool = True)
 def run_command(cmd: list, capture_output: bool = True, timeout: int = 30) -> Tuple[bool, str]:
     """Run a shell command and return (success, output)"""
     try:
-        result = subprocess.run(
-            cmd, capture_output=capture_output, text=True, timeout=timeout, check=False
-        )
+        result = subprocess.run(cmd, capture_output=capture_output, text=True, timeout=timeout, check=False)
         return (result.returncode == 0, result.stdout.strip() if capture_output else "")
     except subprocess.TimeoutExpired:
         return (False, f"Command timed out after {timeout} seconds")
@@ -163,13 +161,19 @@ def wait_for_stack_deletion(stack_name: str, region: str, thread_safe: bool = Fa
                 or "stack with id" in output_lower
                 or not output.strip()
             ):  # Empty output also means stack is gone
-                print_success(f"Stack '{stack_name}' deleted successfully!", thread_safe=thread_safe)
+                print_success(
+                    f"Stack '{stack_name}' deleted successfully!",
+                    thread_safe=thread_safe,
+                )
                 return True
             else:
                 # Some other unexpected error occurred, but continue checking
                 # Don't show warnings for empty output
                 if output.strip():
-                    print_warning(f"Error checking stack status: {output}", thread_safe=thread_safe)
+                    print_warning(
+                        f"Error checking stack status: {output}",
+                        thread_safe=thread_safe,
+                    )
                 # Continue to next iteration - stack might be gone
 
         # Stack still exists, check its status
@@ -178,21 +182,30 @@ def wait_for_stack_deletion(stack_name: str, region: str, thread_safe: bool = Fa
 
             # DELETE_COMPLETE means stack is fully deleted and will disappear soon
             if status == "DELETE_COMPLETE":
-                print_success(f"Stack '{stack_name}' deleted successfully!", thread_safe=thread_safe)
+                print_success(
+                    f"Stack '{stack_name}' deleted successfully!",
+                    thread_safe=thread_safe,
+                )
                 return True
             elif status == "DELETE_FAILED":
                 print_error(f"Stack '{stack_name}' deletion failed!", thread_safe=thread_safe)
-                print_error("Check the CloudFormation console for details", thread_safe=thread_safe)
+                print_error(
+                    "Check the CloudFormation console for details",
+                    thread_safe=thread_safe,
+                )
                 return False
             else:
-                print_info(f"[{stack_name}] Status: {status} (waiting...)", thread_safe=thread_safe)
+                print_info(
+                    f"[{stack_name}] Status: {status} (waiting...)",
+                    thread_safe=thread_safe,
+                )
 
         time.sleep(wait_interval)
         elapsed_time += wait_interval
 
     print_error(
         f"Timeout waiting for stack '{stack_name}' deletion (waited {max_wait_time}s)",
-        thread_safe=thread_safe
+        thread_safe=thread_safe,
     )
     return False
 
@@ -226,7 +239,10 @@ def delete_stack(stack_name: str, region: str, step_name: str, thread_safe: bool
             or "validationerror" in output_lower
             or not output.strip()
         ):
-            print_info(f"Stack '{stack_name}' does not exist, skipping", thread_safe=thread_safe)
+            print_info(
+                f"Stack '{stack_name}' does not exist, skipping",
+                thread_safe=thread_safe,
+            )
             return True
         # Some other error
         print_error(f"Error checking stack: {output}", thread_safe=thread_safe)
@@ -259,9 +275,7 @@ def empty_s3_bucket(bucket_name: str, region: str) -> bool:
     print_info(f"Checking if bucket '{bucket_name}' exists...")
 
     # Check if bucket exists
-    success, output = run_command(
-        ["aws", "s3api", "head-bucket", "--bucket", bucket_name, "--region", region]
-    )
+    success, output = run_command(["aws", "s3api", "head-bucket", "--bucket", bucket_name, "--region", region])
 
     if not success:
         if "404" in output or "Not Found" in output:
@@ -271,9 +285,7 @@ def empty_s3_bucket(bucket_name: str, region: str) -> bool:
         return False
 
     print_info(f"Emptying S3 bucket: {bucket_name}")
-    success, output = run_command(
-        ["aws", "s3", "rm", f"s3://{bucket_name}", "--recursive", "--region", region]
-    )
+    success, output = run_command(["aws", "s3", "rm", f"s3://{bucket_name}", "--recursive", "--region", region])
 
     if success or "remove" in output:
         print_success(f"S3 bucket '{bucket_name}' emptied successfully")
@@ -287,9 +299,7 @@ def delete_s3_bucket(bucket_name: str, region: str) -> bool:
     """Delete S3 bucket"""
     print_info(f"Deleting S3 bucket: {bucket_name}")
 
-    success, output = run_command(
-        ["aws", "s3", "rb", f"s3://{bucket_name}", "--region", region]
-    )
+    success, output = run_command(["aws", "s3", "rb", f"s3://{bucket_name}", "--region", region])
 
     if success:
         print_success(f"S3 bucket '{bucket_name}' deleted successfully")
@@ -312,11 +322,7 @@ def cleanup_s3_bucket(bucket_name: str, region: str) -> bool:
     return delete_s3_bucket(bucket_name, region)
 
 
-def delete_stack_parallel(
-    stack_name: str,
-    region: str,
-    step_name: str
-) -> Tuple[str, bool]:
+def delete_stack_parallel(stack_name: str, region: str, step_name: str) -> Tuple[str, bool]:
     """Delete a stack in parallel (thread-safe)"""
     try:
         success = delete_stack(stack_name, region, step_name, thread_safe=True)
@@ -343,10 +349,7 @@ def delete_agent_stacks_parallel(config: Dict[str, Any], region: str) -> bool:
     results = {}
     with ThreadPoolExecutor(max_workers=3) as executor:
         # Submit all deletion tasks
-        future_to_stack = {
-            executor.submit(delete_stack_parallel, *task): task[2]
-            for task in tasks
-        }
+        future_to_stack = {executor.submit(delete_stack_parallel, *task): task[2] for task in tasks}
 
         # Collect results as they complete
         for future in as_completed(future_to_stack):
@@ -418,18 +421,14 @@ def run_cleanup(config: Dict[str, Any], parallel: bool = True) -> bool:
         print()
 
         # Step 2: Delete Web Search Agent
-        if not delete_stack(
-            config["stacks"]["web_search_agent"], region, "Web Search Agent Stack"
-        ):
+        if not delete_stack(config["stacks"]["web_search_agent"], region, "Web Search Agent Stack"):
             print_error("Failed to delete Web Search Agent stack")
             all_success = False
 
         print()
 
         # Step 3: Delete Monitoring Agent
-        if not delete_stack(
-            config["stacks"]["monitoring_agent"], region, "Monitoring Agent Stack"
-        ):
+        if not delete_stack(config["stacks"]["monitoring_agent"], region, "Monitoring Agent Stack"):
             print_error("Failed to delete Monitoring Agent stack")
             all_success = False
 
@@ -468,9 +467,7 @@ def run_cleanup(config: Dict[str, Any], parallel: bool = True) -> bool:
     else:
         print_header("Cleanup Completed with Errors")
         print_warning("Some resources may not have been deleted successfully")
-        print_info(
-            "Check the errors above and manually delete remaining resources if needed"
-        )
+        print_info("Check the errors above and manually delete remaining resources if needed")
         if config_path.exists():
             print_info("Note: .a2a.config was not deleted due to cleanup errors")
 
@@ -505,12 +502,8 @@ def main():
 
         if not config:
             print_error("Configuration file '.a2a.config' not found!")
-            print_info(
-                "Make sure you're in the project directory where deployment was run."
-            )
-            print_info(
-                "If you deployed manually, you'll need to delete resources manually as well."
-            )
+            print_info("Make sure you're in the project directory where deployment was run.")
+            print_info("If you deployed manually, you'll need to delete resources manually as well.")
             sys.exit(1)
 
         print_success("Configuration loaded from .a2a.config")
@@ -519,9 +512,10 @@ def main():
         list_resources(config)
 
         # Ask if user wants to proceed
-        proceed = get_input(
-            "Do you want to proceed with cleanup? (yes/no)", default="no", required=True
-        ).lower() in ["yes", "y"]
+        proceed = get_input("Do you want to proceed with cleanup? (yes/no)", default="no", required=True).lower() in [
+            "yes",
+            "y",
+        ]
 
         if not proceed:
             print_warning("Cleanup cancelled by user.")

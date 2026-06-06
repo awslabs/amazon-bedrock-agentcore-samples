@@ -67,15 +67,15 @@ def create_guardrail():
 def delete_guardrail(guardrail_id=None):
     """
     Delete the Bitcoin advice guardrail by ID, or find and delete by name if no ID provided.
-    
+
     Args:
         guardrail_id: The ID of the guardrail to delete (optional)
-    
+
     Returns:
         bool: True if deletion was successful, False otherwise
     """
     guardrail_name = "guardrail-no-bitcoin-advice"
-    
+
     try:
         # If no ID provided, find it by name
         if not guardrail_id:
@@ -84,17 +84,17 @@ def delete_guardrail(guardrail_id=None):
                 if guardrail.get("name") == guardrail_name:
                     guardrail_id = guardrail.get("id")
                     break
-            
+
             if not guardrail_id:
                 print(f"Guardrail '{guardrail_name}' not found")
                 return False
-        
+
         # Delete the guardrail
         print(f"Deleting guardrail '{guardrail_name}' with ID: {guardrail_id}")
         bedrock_client.delete_guardrail(guardrailIdentifier=guardrail_id)
         print(f"Successfully deleted guardrail: {guardrail_name}")
         return True
-        
+
     except Exception as e:
         print(f"Error deleting guardrail: {e}")
         return False
@@ -103,12 +103,12 @@ def delete_guardrail(guardrail_id=None):
 def get_guardrail_id():
     """
     Get the guardrail ID for the Bitcoin advice guardrail.
-    
+
     Returns:
         str or None: The guardrail ID if found, None otherwise
     """
     guardrail_name = "guardrail-no-bitcoin-advice"
-    
+
     try:
         existing_guardrails = bedrock_client.list_guardrails()
         for guardrail in existing_guardrails.get("guardrails", []):
@@ -116,10 +116,10 @@ def get_guardrail_id():
                 guardrail_id = guardrail.get("id")
                 print(f"Found guardrail '{guardrail_name}' with ID: {guardrail_id}")
                 return guardrail_id
-        
+
         print(f"Guardrail '{guardrail_name}' not found")
         return None
-        
+
     except Exception as e:
         print(f"Error finding guardrail: {e}")
         return None

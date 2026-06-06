@@ -4,4 +4,4 @@ langchain-core
 boto3
 playwright
 bedrock-agentcore
-bedrock-agentcore-starter-toolkit
+jsonschema>=4.24.0,<4.25.0

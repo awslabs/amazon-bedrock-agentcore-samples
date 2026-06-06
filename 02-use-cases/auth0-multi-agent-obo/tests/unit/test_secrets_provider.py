@@ -181,7 +181,12 @@ class TestEnvironmentSecretsProvider:
     def test_get_auth0_secrets_defaults(self, monkeypatch):
         """Test Auth0 secrets with default values."""
         # Clear any existing env vars
-        for key in ["AUTH0_DOMAIN", "AUTH0_CLIENT_ID", "AUTH0_CLIENT_SECRET", "AUTH0_AUDIENCE"]:
+        for key in [
+            "AUTH0_DOMAIN",
+            "AUTH0_CLIENT_ID",
+            "AUTH0_CLIENT_SECRET",
+            "AUTH0_AUDIENCE",
+        ]:
             monkeypatch.delenv(key, raising=False)
 
         provider = EnvironmentSecretsProvider()
@@ -251,9 +256,7 @@ class TestAWSSecretsManagerProvider:
 
         # Set up exceptions
         client.exceptions = Mock()
-        client.exceptions.ResourceNotFoundException = type(
-            "ResourceNotFoundException", (Exception,), {}
-        )
+        client.exceptions.ResourceNotFoundException = type("ResourceNotFoundException", (Exception,), {})
         client.exceptions.AccessDeniedException = type("AccessDeniedException", (Exception,), {})
 
         return client
@@ -289,7 +292,7 @@ class TestAWSSecretsManagerProvider:
         }
 
         provider = AWSSecretsManagerProvider(client=mock_boto3_client)
-        secrets = provider.get_secret("my-secret", version_stage="AWSPENDING")
+        provider.get_secret("my-secret", version_stage="AWSPENDING")
 
         mock_boto3_client.get_secret_value.assert_called_once_with(
             SecretId="my-secret",
@@ -371,8 +374,8 @@ class TestAWSSecretsManagerProvider:
 
     def test_secret_not_found(self, mock_boto3_client):
         """Test SecretNotFoundError when secret doesn't exist."""
-        mock_boto3_client.get_secret_value.side_effect = (
-            mock_boto3_client.exceptions.ResourceNotFoundException("Not found")
+        mock_boto3_client.get_secret_value.side_effect = mock_boto3_client.exceptions.ResourceNotFoundException(
+            "Not found"
         )
 
         provider = AWSSecretsManagerProvider(client=mock_boto3_client, fallback_to_env=False)
@@ -382,9 +385,7 @@ class TestAWSSecretsManagerProvider:
 
     def test_access_denied(self, mock_boto3_client):
         """Test SecretAccessDeniedError when access is denied."""
-        mock_boto3_client.get_secret_value.side_effect = (
-            mock_boto3_client.exceptions.AccessDeniedException("Denied")
-        )
+        mock_boto3_client.get_secret_value.side_effect = mock_boto3_client.exceptions.AccessDeniedException("Denied")
 
         provider = AWSSecretsManagerProvider(client=mock_boto3_client, fallback_to_env=False)
 
@@ -393,8 +394,8 @@ class TestAWSSecretsManagerProvider:
 
     def test_fallback_to_env(self, mock_boto3_client, monkeypatch):
         """Test fallback to environment variables on SM failure."""
-        mock_boto3_client.get_secret_value.side_effect = (
-            mock_boto3_client.exceptions.ResourceNotFoundException("Not found")
+        mock_boto3_client.get_secret_value.side_effect = mock_boto3_client.exceptions.ResourceNotFoundException(
+            "Not found"
         )
 
         monkeypatch.setenv("AUTH0_DOMAIN", "fallback.auth0.com")
@@ -408,8 +409,8 @@ class TestAWSSecretsManagerProvider:
 
     def test_fallback_disabled(self, mock_boto3_client, monkeypatch):
         """Test that fallback can be disabled."""
-        mock_boto3_client.get_secret_value.side_effect = (
-            mock_boto3_client.exceptions.ResourceNotFoundException("Not found")
+        mock_boto3_client.get_secret_value.side_effect = mock_boto3_client.exceptions.ResourceNotFoundException(
+            "Not found"
         )
 
         monkeypatch.setenv("AUTH0_DOMAIN", "fallback.auth0.com")
@@ -529,7 +530,11 @@ class TestFactoryFunctions:
 
     def test_is_aws_environment_local(self, monkeypatch):
         """Test local environment (no AWS markers)."""
-        for key in ["AWS_LAMBDA_FUNCTION_NAME", "ECS_CONTAINER_METADATA_URI", "AWS_EXECUTION_ENV"]:
+        for key in [
+            "AWS_LAMBDA_FUNCTION_NAME",
+            "ECS_CONTAINER_METADATA_URI",
+            "AWS_EXECUTION_ENV",
+        ]:
             monkeypatch.delenv(key, raising=False)
         assert is_aws_environment() is False
 

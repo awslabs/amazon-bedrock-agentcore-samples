@@ -199,7 +199,9 @@ class EnvironmentSecretsProvider(SecretsProvider):
             except json.JSONDecodeError:
                 return {"value": value}
 
-        raise SecretNotFoundError(f"No environment variable found for secret: {secret_name}")
+        raise SecretNotFoundError(
+            f"No environment variable found for secret: {secret_name}"
+        )
 
     def refresh_secret(self, secret_name: str) -> Dict[str, Any]:
         """Refresh simply re-reads from environment."""
@@ -302,14 +304,18 @@ class AWSSecretsManagerProvider(SecretsProvider):
 
             # Fetch from Secrets Manager while holding the lock
             try:
-                return self._fetch_and_cache_locked(secret_name, version_stage, cache_key)
+                return self._fetch_and_cache_locked(
+                    secret_name, version_stage, cache_key
+                )
             except Exception as e:
                 logger.warning(f"Failed to fetch secret from Secrets Manager: {e}")
 
                 # Try fallback to environment variables
                 if self.fallback_to_env:
                     try:
-                        logger.info(f"Falling back to environment variables for: {secret_name}")
+                        logger.info(
+                            f"Falling back to environment variables for: {secret_name}"
+                        )
                         return self._env_provider.get_secret(secret_name)
                     except SecretsProviderError:
                         pass
@@ -332,7 +338,9 @@ class AWSSecretsManagerProvider(SecretsProvider):
         except self.client.exceptions.ResourceNotFoundException:
             raise SecretNotFoundError(f"Secret not found: {secret_name}")
         except self.client.exceptions.AccessDeniedException as e:
-            raise SecretAccessDeniedError(f"Access denied to secret: {secret_name}") from e
+            raise SecretAccessDeniedError(
+                f"Access denied to secret: {secret_name}"
+            ) from e
         except Exception as e:
             raise SecretsProviderError(f"Error retrieving secret: {secret_name}") from e
 
@@ -345,7 +353,9 @@ class AWSSecretsManagerProvider(SecretsProvider):
         elif "SecretBinary" in response:
             secret_value = {"binary": response["SecretBinary"]}
         else:
-            raise SecretsProviderError(f"Unexpected response format for secret: {secret_name}")
+            raise SecretsProviderError(
+                f"Unexpected response format for secret: {secret_name}"
+            )
 
         # Cache the result (lock already held by caller)
         self._cache[cache_key] = CachedSecret(
@@ -358,7 +368,9 @@ class AWSSecretsManagerProvider(SecretsProvider):
         logger.info(f"Successfully fetched and cached secret: {secret_name}")
         return secret_value
 
-    def refresh_secret(self, secret_name: str, version_stage: str = "AWSCURRENT") -> Dict[str, Any]:
+    def refresh_secret(
+        self, secret_name: str, version_stage: str = "AWSCURRENT"
+    ) -> Dict[str, Any]:
         """
         Force refresh a secret, bypassing the cache.
 

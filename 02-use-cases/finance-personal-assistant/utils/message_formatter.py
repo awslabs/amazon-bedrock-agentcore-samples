@@ -27,7 +27,7 @@ def pretty_print_messages(messages, max_content_length=500, show_indices=True):
         role_emoji = "👤" if role == "USER" else "🤖" if role == "ASSISTANT" else "⚙️"
 
         if show_indices:
-            print(f"\n{role_emoji} MESSAGE {i+1} ({role}):")
+            print(f"\n{role_emoji} MESSAGE {i + 1} ({role}):")
         else:
             print(f"\n{role_emoji} {role}:")
 
@@ -48,7 +48,7 @@ def pretty_print_messages(messages, max_content_length=500, show_indices=True):
                             )
 
                         if len(content) > 1:
-                            print(f"  Content Block {j+1}:")
+                            print(f"  Content Block {j + 1}:")
 
                         # Format text with proper indentation
                         formatted_text = "\n".join(

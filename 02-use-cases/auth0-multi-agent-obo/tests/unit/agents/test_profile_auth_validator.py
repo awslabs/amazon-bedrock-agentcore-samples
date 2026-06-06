@@ -7,6 +7,7 @@ Unit tests for Customer Profile Agent auth_validator module.
 import os
 import importlib.util
 
+
 # Load module from specific path to avoid conflicts
 def load_module_from_path(module_name, file_path):
     spec = importlib.util.spec_from_file_location(module_name, file_path)
@@ -14,8 +15,17 @@ def load_module_from_path(module_name, file_path):
     spec.loader.exec_module(module)
     return module
 
-_module_path = os.path.join(os.path.dirname(__file__), '..', '..', '..', 'agents', 'customer_profile', 'auth_validator.py')
-_auth_validator = load_module_from_path('profile_auth_validator', _module_path)
+
+_module_path = os.path.join(
+    os.path.dirname(__file__),
+    "..",
+    "..",
+    "..",
+    "agents",
+    "customer_profile",
+    "auth_validator.py",
+)
+_auth_validator = load_module_from_path("profile_auth_validator", _module_path)
 
 validate_forwarded_claims = _auth_validator.validate_forwarded_claims
 authorize_profile_access = _auth_validator.authorize_profile_access
@@ -33,7 +43,7 @@ class TestValidateForwardedClaims:
             "exp": 9999999999,
             "iss": "https://example.auth0.com/",
             "https://agentcore.example.com/customer_id": "CUST-001",
-            "https://agentcore.example.com/customer_number": "CN-12345"
+            "https://agentcore.example.com/customer_number": "CN-12345",
         }
 
         result = validate_forwarded_claims(claims)
@@ -50,7 +60,7 @@ class TestValidateForwardedClaims:
             "aud": "https://agentcore-financial-api",
             "exp": 9999999999,
             "iss": "https://example.auth0.com/",
-            "customer_id": "CUST-002"
+            "customer_id": "CUST-002",
         }
 
         result = validate_forwarded_claims(claims)
@@ -64,7 +74,7 @@ class TestValidateForwardedClaims:
             "sub": "abc123@clients",  # M2M token indicator
             "aud": "https://agentcore-financial-api",
             "exp": 9999999999,
-            "iss": "https://example.auth0.com/"
+            "iss": "https://example.auth0.com/",
         }
 
         result = validate_forwarded_claims(claims)
@@ -77,7 +87,9 @@ class TestValidateForwardedClaims:
         result = validate_forwarded_claims({})
 
         assert result["valid"] is False
-        assert "Missing" in result["error"]  # Could be "Missing required claims" or "Missing authentication claims"
+        assert (
+            "Missing" in result["error"]
+        )  # Could be "Missing required claims" or "Missing authentication claims"
 
     def test_none_claims_returns_error(self):
         """Test that None claims returns error."""
@@ -92,7 +104,7 @@ class TestValidateForwardedClaims:
             "aud": "https://agentcore-financial-api",
             "exp": 9999999999,
             "iss": "https://example.auth0.com/",
-            "https://agentcore.example.com/customer_id": "CUST-001"
+            "https://agentcore.example.com/customer_id": "CUST-001",
         }
 
         result = validate_forwarded_claims(claims)
@@ -106,7 +118,7 @@ class TestValidateForwardedClaims:
             "sub": "auth0|123456",
             "aud": "https://agentcore-financial-api",
             "iss": "https://example.auth0.com/",
-            "https://agentcore.example.com/customer_id": "CUST-001"
+            "https://agentcore.example.com/customer_id": "CUST-001",
         }
 
         result = validate_forwarded_claims(claims)
@@ -120,7 +132,7 @@ class TestValidateForwardedClaims:
             "sub": "auth0|123456",
             "aud": "https://agentcore-financial-api",
             "exp": 9999999999,
-            "https://agentcore.example.com/customer_id": "CUST-001"
+            "https://agentcore.example.com/customer_id": "CUST-001",
         }
 
         result = validate_forwarded_claims(claims)
@@ -134,7 +146,7 @@ class TestValidateForwardedClaims:
             "sub": "auth0|123456",
             "exp": 9999999999,
             "iss": "https://example.auth0.com/",
-            "https://agentcore.example.com/customer_id": "CUST-001"
+            "https://agentcore.example.com/customer_id": "CUST-001",
         }
 
         result = validate_forwarded_claims(claims)
@@ -149,7 +161,7 @@ class TestValidateForwardedClaims:
             "aud": "https://agentcore-financial-api",
             "exp": 9999999999,
             "iss": "",
-            "https://agentcore.example.com/customer_id": "CUST-001"
+            "https://agentcore.example.com/customer_id": "CUST-001",
         }
 
         result = validate_forwarded_claims(claims)
@@ -163,7 +175,7 @@ class TestValidateForwardedClaims:
             "sub": "auth0|123456",  # Not an M2M token
             "aud": "https://agentcore-financial-api",
             "exp": 9999999999,
-            "iss": "https://example.auth0.com/"
+            "iss": "https://example.auth0.com/",
         }
 
         result = validate_forwarded_claims(claims)
@@ -177,9 +189,7 @@ class TestAuthorizeProfileAccess:
 
     def test_authorized_same_customer_id(self):
         """Test authorization passes when customer_id matches."""
-        claims = {
-            "https://agentcore.example.com/customer_id": "CUST-001"
-        }
+        claims = {"https://agentcore.example.com/customer_id": "CUST-001"}
 
         result = authorize_profile_access(claims, "CUST-001")
 
@@ -187,9 +197,7 @@ class TestAuthorizeProfileAccess:
 
     def test_authorized_direct_customer_id(self):
         """Test authorization with direct customer_id claim."""
-        claims = {
-            "customer_id": "CUST-002"
-        }
+        claims = {"customer_id": "CUST-002"}
 
         result = authorize_profile_access(claims, "CUST-002")
 
@@ -197,9 +205,7 @@ class TestAuthorizeProfileAccess:
 
     def test_unauthorized_different_customer_id(self):
         """Test authorization fails when customer_id doesn't match."""
-        claims = {
-            "https://agentcore.example.com/customer_id": "CUST-001"
-        }
+        claims = {"https://agentcore.example.com/customer_id": "CUST-001"}
 
         result = authorize_profile_access(claims, "CUST-999")
 
@@ -207,9 +213,7 @@ class TestAuthorizeProfileAccess:
 
     def test_unauthorized_missing_customer_id(self):
         """Test authorization fails when customer_id is missing."""
-        claims = {
-            "sub": "auth0|123456"
-        }
+        claims = {"sub": "auth0|123456"}
 
         result = authorize_profile_access(claims, "CUST-001")
 
@@ -230,7 +234,7 @@ class TestGetAuditContext:
         claims = {
             "sub": "auth0|123456",
             "email": "test@example.com",
-            "https://agentcore.example.com/customer_id": "CUST-001"
+            "https://agentcore.example.com/customer_id": "CUST-001",
         }
 
         result = get_audit_context(claims)
@@ -242,9 +246,7 @@ class TestGetAuditContext:
 
     def test_handles_missing_fields(self):
         """Test that missing fields return None."""
-        claims = {
-            "sub": "auth0|123456"
-        }
+        claims = {"sub": "auth0|123456"}
 
         result = get_audit_context(claims)
 
@@ -255,10 +257,7 @@ class TestGetAuditContext:
 
     def test_uses_direct_customer_id_fallback(self):
         """Test fallback to direct customer_id claim."""
-        claims = {
-            "sub": "auth0|123456",
-            "customer_id": "CUST-DIRECT"
-        }
+        claims = {"sub": "auth0|123456", "customer_id": "CUST-DIRECT"}
 
         result = get_audit_context(claims)
 

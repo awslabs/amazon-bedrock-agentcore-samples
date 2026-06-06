@@ -1,5 +1,5 @@
-# Use uv's ARM64 Python base image
-FROM --platform=linux/arm64 ghcr.io/astral-sh/uv:python3.12-bookworm-slim
+FROM --platform=linux/arm64 public.ecr.aws/docker/library/python:3.12-slim-trixie
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 WORKDIR /app
 

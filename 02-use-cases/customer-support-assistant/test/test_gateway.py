@@ -27,7 +27,12 @@ async def _get_access_token_manually(*, access_token: str):
 
 
 @click.command()
-@click.option("--prompt", "-p", default=None, help="Prompt to send to the MCP agent. If not provided, only lists available tools.")
+@click.option(
+    "--prompt",
+    "-p",
+    default=None,
+    help="Prompt to send to the MCP agent. If not provided, only lists available tools.",
+)
 def main(prompt: str):
     """CLI tool to interact with an MCP Agent. Lists tools by default, or sends a prompt if provided."""
 
@@ -61,36 +66,37 @@ def main(prompt: str):
             for i, tool in enumerate(tools, 1):
                 # Try to get tool spec from the tool object
                 tool_spec = None
-                if hasattr(tool, 'tool_spec'):
+                if hasattr(tool, "tool_spec"):
                     tool_spec = tool.tool_spec
-                elif hasattr(tool, 'spec'):
+                elif hasattr(tool, "spec"):
                     tool_spec = tool.spec
-                elif hasattr(tool, 'tool'):
+                elif hasattr(tool, "tool"):
                     tool_spec = tool.tool
 
                 if tool_spec:
                     # Extract tool information from spec
-                    tool_name = tool_spec.get('name', f'Tool {i}')
-                    tool_desc = tool_spec.get('description', 'No description available')
+                    tool_name = tool_spec.get("name", f"Tool {i}")
+                    tool_desc = tool_spec.get("description", "No description available")
 
                     print(f"\n{i}. {tool_name}")
                     print(f"   Description: {tool_desc}")
 
                     # Print input schema if available
-                    if 'inputSchema' in tool_spec:
-                        print(f"   Input Schema:")
+                    if "inputSchema" in tool_spec:
+                        print("   Input Schema:")
                         import json
+
                         print(f"   {json.dumps(tool_spec['inputSchema'], indent=6)}")
                 else:
                     # Fallback: print available attributes
                     print(f"\n{i}. Tool object attributes:")
                     for attr in dir(tool):
-                        if not attr.startswith('_'):
+                        if not attr.startswith("_"):
                             try:
                                 value = getattr(tool, attr)
                                 if not callable(value):
                                     print(f"   {attr}: {value}")
-                            except:
+                            except Exception:
                                 pass
             print("-" * 60)
             print()

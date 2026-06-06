@@ -3,6 +3,7 @@
 - aarora79
 - akshseh
 - anajmi
+- andy-dufour
 - amit-lulla
 - architec
 - arunskum
@@ -106,3 +107,14 @@
 - Dumitru Pascu (dumip)
 - Eitan Sela
 - Swara Gandhi
+- Daniel Suarez Souto (dsuarezsoutoaws)
+- Shubham Gupta (guptashs)
+- Vibhu Pareek (vibhup)
+- Richa Gupta (richagpt)
+- Chandra Dhandapani
+- Anant Murarka (anantmu)
+- Renya Kujirada (ren8k)
+- Cristiano Scandura (scandura)
+- palbiren
+- Gui Ruggiero (guiruggiero)
+- Visakh Madathil (vmmadathil)

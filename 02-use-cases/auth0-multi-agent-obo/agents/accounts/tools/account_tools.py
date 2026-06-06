@@ -49,8 +49,8 @@ CUSTOMER_ACCOUNTS_DB: Dict[str, List[Dict[str, Any]]] = {
                 "interest_rate": 0.01,
                 "monthly_fee": 5.00,
                 "fee_waived": True,
-                "atm_withdrawals_included": 5
-            }
+                "atm_withdrawals_included": 5,
+            },
         },
         {
             "account_id": "ACC-001-SAV",
@@ -69,8 +69,8 @@ CUSTOMER_ACCOUNTS_DB: Dict[str, List[Dict[str, Any]]] = {
                 "interest_rate": 4.5,
                 "bonus_interest_rate": 0.5,
                 "bonus_conditions": "Deposit $1000+ monthly, no withdrawals",
-                "monthly_fee": 0.00
-            }
+                "monthly_fee": 0.00,
+            },
         },
         {
             "account_id": "ACC-001-INV",
@@ -87,8 +87,8 @@ CUSTOMER_ACCOUNTS_DB: Dict[str, List[Dict[str, Any]]] = {
             "features": {
                 "portfolio_type": "Balanced Growth",
                 "management_fee_percent": 0.85,
-                "risk_profile": "moderate"
-            }
+                "risk_profile": "moderate",
+            },
         },
         {
             "account_id": "ACC-001-CC",
@@ -110,9 +110,9 @@ CUSTOMER_ACCOUNTS_DB: Dict[str, List[Dict[str, Any]]] = {
                 "annual_fee": 149.00,
                 "rewards_program": "Platinum Rewards",
                 "points_balance": 42_850,
-                "contactless_enabled": True
-            }
-        }
+                "contactless_enabled": True,
+            },
+        },
     ],
     # Demo customer - Jane Smith
     "CUST-002": [
@@ -132,8 +132,8 @@ CUSTOMER_ACCOUNTS_DB: Dict[str, List[Dict[str, Any]]] = {
                 "overdraft_limit": 5_000.00,
                 "interest_rate": 0.02,
                 "monthly_fee": 0.00,
-                "premium_benefits": True
-            }
+                "premium_benefits": True,
+            },
         },
         {
             "account_id": "ACC-002-SAV",
@@ -149,10 +149,7 @@ CUSTOMER_ACCOUNTS_DB: Dict[str, List[Dict[str, Any]]] = {
             "status": "active",
             "opened_date": "2022-01-10",
             "savings_goal": 20_000.00,
-            "features": {
-                "interest_rate": 3.5,
-                "monthly_fee": 0.00
-            }
+            "features": {"interest_rate": 3.5, "monthly_fee": 0.00},
         },
         {
             "account_id": "ACC-002-CC",
@@ -173,9 +170,9 @@ CUSTOMER_ACCOUNTS_DB: Dict[str, List[Dict[str, Any]]] = {
                 "interest_rate": 21.49,
                 "annual_fee": 0.00,
                 "rewards_program": None,
-                "contactless_enabled": True
-            }
-        }
+                "contactless_enabled": True,
+            },
+        },
     ],
     # Demo customer - Bob Wilson (restricted account example)
     "CUST-003": [
@@ -194,10 +191,10 @@ CUSTOMER_ACCOUNTS_DB: Dict[str, List[Dict[str, Any]]] = {
             "features": {
                 "overdraft_limit": 0.00,
                 "interest_rate": 0.00,
-                "monthly_fee": 4.00
-            }
+                "monthly_fee": 4.00,
+            },
         }
-    ]
+    ],
 }
 
 # Map Auth0 user IDs to customer IDs (in production, this would be in a database)
@@ -244,13 +241,17 @@ def _filter_accounts_by_scopes(
 
     filtered = [acc for acc in accounts if acc["account_type"] in allowed_types]
 
-    logger.info(json.dumps({
-        "event": "scope_based_account_filtering",
-        "total_accounts": len(accounts),
-        "filtered_accounts": len(filtered),
-        "allowed_types": sorted(allowed_types),
-        "removed_count": len(accounts) - len(filtered),
-    }))
+    logger.info(
+        json.dumps(
+            {
+                "event": "scope_based_account_filtering",
+                "total_accounts": len(accounts),
+                "filtered_accounts": len(filtered),
+                "allowed_types": sorted(allowed_types),
+                "removed_count": len(accounts) - len(filtered),
+            }
+        )
+    )
 
     return filtered
 
@@ -271,7 +272,9 @@ def _map_customer_id_to_mock(customer_id: str) -> str:
     return "CUST-001"
 
 
-def _get_customer_id_for_user(user_id: str, provided_customer_id: Optional[str] = None) -> str:
+def _get_customer_id_for_user(
+    user_id: str, provided_customer_id: Optional[str] = None
+) -> str:
     """
     Resolve the customer_id for a given user.
 
@@ -304,7 +307,7 @@ def _verify_account_ownership(customer_id: str, account_number: str) -> Dict[str
                 "authorized": True,
                 "reason": "Customer is account owner",
                 "access_level": "owner",
-                "account_id": account["account_id"]
+                "account_id": account["account_id"],
             }
 
     # Check if account exists but belongs to another customer
@@ -319,14 +322,10 @@ def _verify_account_ownership(customer_id: str, account_number: str) -> Dict[str
                     "authorized": False,
                     "reason": "Account belongs to another customer",
                     "access_level": None,
-                    "audit_event": "unauthorized_access_attempt"
+                    "audit_event": "unauthorized_access_attempt",
                 }
 
-    return {
-        "authorized": False,
-        "reason": "Account not found",
-        "access_level": None
-    }
+    return {"authorized": False, "reason": "Account not found", "access_level": None}
 
 
 def get_accounts(
@@ -354,7 +353,9 @@ def get_accounts(
     # Map to known mock customer for demo
     customer_id = _map_customer_id_to_mock(customer_id)
 
-    logger.info(f"[AUTH] Getting accounts for customer_id={customer_id}, user_id={user_id}")
+    logger.info(
+        f"[AUTH] Getting accounts for customer_id={customer_id}, user_id={user_id}"
+    )
 
     # Authorization check
     auth_decision = {
@@ -363,7 +364,7 @@ def get_accounts(
         "user_id": user_id,
         "timestamp": datetime.utcnow().isoformat(),
         "authorized": True,
-        "reason": "Customer requesting own accounts"
+        "reason": "Customer requesting own accounts",
     }
 
     # Get accounts for this customer only
@@ -391,7 +392,7 @@ def get_accounts(
             "currency": acc["currency"],
             "balance": acc["balance"],
             "available_balance": acc["available_balance"],
-            "status": acc["status"]
+            "status": acc["status"],
         }
         for acc in customer_accounts
     ]
@@ -400,7 +401,7 @@ def get_accounts(
         "customer_id": customer_id,
         "accounts": account_summaries,
         "total_accounts": len(account_summaries),
-        "timestamp": datetime.utcnow().isoformat()
+        "timestamp": datetime.utcnow().isoformat(),
     }
 
     if include_auth_details:
@@ -413,7 +414,7 @@ def get_account_balance(
     customer_id: str,
     account_number: str,
     user_id: Optional[str] = None,
-    include_auth_details: bool = False
+    include_auth_details: bool = False,
 ) -> Dict[str, Any]:
     """
     Get balance information for a specific account.
@@ -446,7 +447,7 @@ def get_account_balance(
         "user_id": user_id,
         "account_number": account_number,
         "timestamp": datetime.utcnow().isoformat(),
-        **auth_result
+        **auth_result,
     }
 
     if not auth_result["authorized"]:
@@ -457,7 +458,7 @@ def get_account_balance(
         response = {
             "error": "AUTHORIZATION_DENIED",
             "message": f"You do not have access to account {account_number}",
-            "reason": auth_result["reason"]
+            "reason": auth_result["reason"],
         }
         if include_auth_details:
             response["authorization"] = auth_decision
@@ -472,7 +473,7 @@ def get_account_balance(
     customer_accounts = CUSTOMER_ACCOUNTS_DB.get(customer_id, [])
     account = next(
         (acc for acc in customer_accounts if acc["account_number"] == account_number),
-        None
+        None,
     )
 
     if not account:
@@ -487,7 +488,7 @@ def get_account_balance(
         "current_balance": account["balance"],
         "available_balance": account["available_balance"],
         "pending_transactions": account.get("pending_transactions", 0.00),
-        "as_of_date": datetime.utcnow().isoformat()
+        "as_of_date": datetime.utcnow().isoformat(),
     }
 
     # Add type-specific balance info
@@ -512,7 +513,7 @@ def get_account_details(
     customer_id: str,
     account_number: str,
     user_id: Optional[str] = None,
-    include_auth_details: bool = False
+    include_auth_details: bool = False,
 ) -> Dict[str, Any]:
     """
     Get detailed information for a specific account.
@@ -545,7 +546,7 @@ def get_account_details(
         "user_id": user_id,
         "account_number": account_number,
         "timestamp": datetime.utcnow().isoformat(),
-        **auth_result
+        **auth_result,
     }
 
     if not auth_result["authorized"]:
@@ -556,7 +557,7 @@ def get_account_details(
         response = {
             "error": "AUTHORIZATION_DENIED",
             "message": f"You do not have access to account {account_number}",
-            "reason": auth_result["reason"]
+            "reason": auth_result["reason"],
         }
         if include_auth_details:
             response["authorization"] = auth_decision
@@ -571,7 +572,7 @@ def get_account_details(
     customer_accounts = CUSTOMER_ACCOUNTS_DB.get(customer_id, [])
     account = next(
         (acc for acc in customer_accounts if acc["account_number"] == account_number),
-        None
+        None,
     )
 
     if not account:
@@ -584,9 +585,9 @@ def get_account_details(
         "ownership": {
             "type": "individual",
             "primary_owner": customer_id,
-            "access_level": auth_result["access_level"]
+            "access_level": auth_result["access_level"],
         },
-        "timestamp": datetime.utcnow().isoformat()
+        "timestamp": datetime.utcnow().isoformat(),
     }
 
     if include_auth_details:
@@ -596,9 +597,7 @@ def get_account_details(
 
 
 def check_account_access(
-    customer_id: str,
-    account_number: str,
-    user_id: Optional[str] = None
+    customer_id: str, account_number: str, user_id: Optional[str] = None
 ) -> Dict[str, Any]:
     """
     Check if a customer has access to a specific account.
@@ -625,5 +624,5 @@ def check_account_access(
         "account_number": account_number,
         "user_id": user_id,
         "timestamp": datetime.utcnow().isoformat(),
-        **auth_result
+        **auth_result,
     }
