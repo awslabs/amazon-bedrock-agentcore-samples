@@ -387,7 +387,7 @@ def main():
     print("Deployment complete!")
     print(f"  Runtime ARN: {runtime['runtime_arn']}")
     print(f"  S3 Files:    {S3FILES_MOUNT_PATH}")
-    print(f"  Config:      kiro/runtime_config.json")
+    print("  Config:      kiro/runtime_config.json")
     print("\n  Test: python kiro/invoke.py \"Read issue #1 and fix it from repo my-task-manager with user <your-git-user>\"")
     print("=" * 60)
 

@@ -98,9 +98,9 @@ def main():
         print(f"  Warning: {e}")
 
     if args.keep_identity:
-        print(f"  Keeping Identity resources (--keep-identity)")
+        print("  Keeping Identity resources (--keep-identity)")
     else:
-        print(f"  Destroying Identity resources...")
+        print("  Destroying Identity resources...")
         destroy_identity(region)
 
     for f in ["runtime_config.json", "agent.config"]:
@@ -108,7 +108,7 @@ def main():
         if os.path.exists(path):
             os.remove(path)
 
-    print(f"\nDone. Shared infra (VPC, S3 Files) was kept.")
+    print("\nDone. Shared infra (VPC, S3 Files) was kept.")
 
 
 if __name__ == "__main__":

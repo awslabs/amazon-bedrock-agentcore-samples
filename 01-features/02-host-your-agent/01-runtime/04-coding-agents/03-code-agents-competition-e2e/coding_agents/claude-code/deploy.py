@@ -351,7 +351,7 @@ def main():
     print("Deployment complete!")
     print(f"  Runtime ARN: {runtime['runtime_arn']}")
     print(f"  S3 Files:    {S3FILES_MOUNT_PATH}")
-    print(f"  Config:      claude-code/runtime_config.json")
+    print("  Config:      claude-code/runtime_config.json")
     print("\n  Connect: python claude-code/connect.py")
     print("=" * 60)
 

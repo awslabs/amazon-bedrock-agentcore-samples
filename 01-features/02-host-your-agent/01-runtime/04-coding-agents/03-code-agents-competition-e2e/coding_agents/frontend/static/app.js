@@ -13,7 +13,10 @@ ALL_PANES.forEach(id => {
 
 // Single session ID shared across all panes and modes (command + TUI)
 function generateSessionId() {
-  return `coding-agents-${Date.now()}-${Math.random().toString(36).slice(2, 14)}-${Math.random().toString(36).slice(2, 10)}`;
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  const hex = Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
+  return `coding-agents-${Date.now()}-${hex}`;
 }
 let SESSION_ID = generateSessionId();
 

@@ -116,7 +116,7 @@ async def run(args):
 
     client = AgentCoreRuntimeClient(region=REGION)
 
-    print(f"Connecting to AgentCore Runtime...")
+    print("Connecting to AgentCore Runtime...")
     print(f"  Runtime: {runtime_arn}")
     print(f"  Session: {session_id}")
     print()

@@ -109,9 +109,9 @@ def main():
 
     # Delete AgentCore Identity resources (Token Vault)
     if args.keep_identity:
-        print(f"  Keeping Identity resources (--keep-identity)")
+        print("  Keeping Identity resources (--keep-identity)")
     else:
-        print(f"  Destroying Identity resources...")
+        print("  Destroying Identity resources...")
         destroy_identity(region)
 
     # Remove local config
@@ -120,9 +120,9 @@ def main():
         if os.path.exists(path):
             os.remove(path)
 
-    print(f"\nDone. Shared infra (VPC, S3 Files) was kept.")
+    print("\nDone. Shared infra (VPC, S3 Files) was kept.")
     if not args.keep_identity:
-        print(f"Identity resources destroyed. Re-run ./setup.sh to recreate them.")
+        print("Identity resources destroyed. Re-run ./setup.sh to recreate them.")
 
 
 if __name__ == "__main__":

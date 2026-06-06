@@ -37,7 +37,6 @@ def main():
     region = config["region"]
 
     session = boto3.Session(region_name=region)
-    account_id = session.client("sts").get_caller_identity()["Account"]
     iam = session.client("iam")
 
     control = session.client("bedrock-agentcore-control", region_name=region)
@@ -73,7 +72,7 @@ def main():
         if os.path.exists(path):
             os.remove(path)
 
-    print(f"\nDone. Shared infra (VPC, S3 Files) was kept.")
+    print("\nDone. Shared infra (VPC, S3 Files) was kept.")
 
 
 if __name__ == "__main__":

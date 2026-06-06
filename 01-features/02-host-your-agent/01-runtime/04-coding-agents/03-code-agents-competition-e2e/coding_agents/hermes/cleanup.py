@@ -67,7 +67,7 @@ def main():
         if os.path.exists(path):
             os.remove(path)
 
-    print(f"\nDone. Shared infra (VPC, S3 Files) was kept.")
+    print("\nDone. Shared infra (VPC, S3 Files) was kept.")
 
 
 if __name__ == "__main__":
