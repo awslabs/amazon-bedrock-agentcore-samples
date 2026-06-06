@@ -2,7 +2,7 @@
 
 Deploy coding agents (Claude Code, Kiro, Codex, Cursor, Hermes, OpenCode) on AWS Bedrock AgentCore with a shared GitHub MCP Gateway, interactive TUI sessions, and a local comparison frontend.
 
-### Claude Code fixing a bug via WebSocket Shell
+### Claude Code on Runtime
 
 ![Claude Code on AgentCore](images/claude-code.gif)
 
