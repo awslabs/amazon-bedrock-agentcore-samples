@@ -27,6 +27,14 @@ Long-term memory can be wired into an agent in three ways. The same patterns app
 
 > **Why "post-response" for pattern 01?** Frameworks like Strands provide an `AgentCoreMemoryHook` that fires on the agent lifecycle (e.g. after invocation) to save the turn and before the next to retrieve. The Claude SDK has no such lifecycle, so we replicate the same behavior explicitly — store with `create_event` right after each assistant reply, and retrieve + inject at the start of the next session.
 
+## Strategy variation: Episodic memory
+
+The patterns above use the **Semantic** strategy (distill isolated *facts*). The Episodic strategy is different — it captures whole multi-turn *episodes* ("what happened last time, and how did it go?") and adds a **Reflection** step that derives cross-episode patterns. It uses the same `create_event` / `retrieve_memories` calls as pattern 01; only the strategy configuration changes.
+
+| Strategy variation | What it is | Status |
+|---|---|---|
+| **[04 — Episodic memory](./04-episodic-memory/)** | Use the built-in Episodic strategy to capture complete debugging sessions as episodes (situation, intent, actions, outcome) plus cross-episode Reflections. Requires a `reflectionConfiguration` namespace, and each episode must end with a clear conclusion so AgentCore detects episode completion. Extraction is slower than Semantic (episodes surface ~15–20 min after the events). | ✅ Available |
+
 ## Models
 
 All examples use **Claude Sonnet 4.6** on Amazon Bedrock — `global.anthropic.claude-sonnet-4-6`. The `global.` prefix selects Bedrock's global (cross-region) inference endpoint (the default for Sonnet 4.6, no regional pricing premium). Swap to `us.anthropic.claude-sonnet-4-6` to pin traffic to US regions.
