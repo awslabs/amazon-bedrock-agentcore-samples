@@ -8,12 +8,14 @@ The canonical short-term flow:
     5. fetch one event in full
     6. tear down
 
-The same flow is shown two ways. Pick the surface that matches how you'll
-deploy: boto3 for raw control or AgentCore SDK for ergonomic helpers.
+The same flow is shown three ways. Pick the surface that matches how you'll
+deploy: boto3 for raw control, the low-level MemoryClient, or the high-level
+MemorySessionManager for the most ergonomic helpers.
 
 Run a single surface:
-    python standard-usage.py boto3
-    python standard-usage.py sdk
+    python standard-usage.py boto3      # raw boto3 (bedrock-agentcore / -control)
+    python standard-usage.py sdk        # AgentCore SDK, low-level MemoryClient
+    python standard-usage.py session    # AgentCore SDK, high-level MemorySessionManager
 
 Add `--cleanup` to delete the memory resource at the end. By default the
 memory is kept so you can inspect it; the script prints the memoryId.
@@ -131,6 +133,50 @@ def run_with_sdk(cleanup: bool = False) -> None:
         print(f"[sdk] Keeping memory {memory_id} (pass --cleanup to delete)")
 
 
+# === AgentCore SDK — high-level session API ==========================
+def run_with_session(cleanup: bool = False) -> None:
+    # MemoryClient owns the control plane (create/delete); MemorySessionManager
+    # is data-plane only. No extraction strategies for short-term memory.
+    from bedrock_agentcore.memory import MemoryClient, MemorySessionManager
+    from bedrock_agentcore.memory.constants import ConversationalMessage, MessageRole
+
+    client = MemoryClient(region_name=REGION)
+    memory = client.create_memory_and_wait(
+        name=f"StmStandardSession_{int(time.time())}",
+        description="Short-term memory standard usage (SDK session API)",
+        strategies=[],
+        event_expiry_days=30,
+    )
+    memory_id = memory["id"]
+    print(f"[session] Created memory {memory_id}")
+
+    # Bind a session, then write all turns in one add_turns call. add_turns
+    # takes ConversationalMessage objects and maps to a single create_event.
+    manager = MemorySessionManager(memory_id=memory_id, region_name=REGION)
+    session = manager.create_memory_session(actor_id=ACTOR_ID, session_id=SESSION_ID)
+    session.add_turns(
+        messages=[
+            ConversationalMessage("Hi, I'm Alex. I prefer Python over Java.", MessageRole.USER),
+            ConversationalMessage("Got it, Alex — I'll lean toward Python in examples.", MessageRole.ASSISTANT),
+            ConversationalMessage("What did I tell you about my language preference?", MessageRole.USER),
+        ]
+    )
+
+    # get_last_k_turns is the session API's idiomatic way to reload context.
+    # Each turn is a list of EventMessage objects (dict-like): role + content.text.
+    turns = session.get_last_k_turns(k=5)
+    print(f"[session] Session {SESSION_ID} has {len(turns)} turns")
+    for turn in turns:
+        for msg in turn:
+            print(f"  {msg['role']}: {msg['content']['text']}")
+
+    if cleanup:
+        client.delete_memory_and_wait(memory_id=memory_id)
+        print(f"[session] Deleted memory {memory_id}")
+    else:
+        print(f"[session] Keeping memory {memory_id} (pass --cleanup to delete)")
+
+
 def main() -> None:
     args = [a for a in sys.argv[1:] if a != "--cleanup"]
     cleanup = "--cleanup" in sys.argv[1:]
@@ -139,8 +185,10 @@ def main() -> None:
         run_with_boto3(cleanup=cleanup)
     elif surface == "sdk":
         run_with_sdk(cleanup=cleanup)
+    elif surface == "session":
+        run_with_session(cleanup=cleanup)
     else:
-        print(f"Unknown surface {surface!r}. Use boto3 | sdk.", file=sys.stderr)
+        print(f"Unknown surface {surface!r}. Use boto3 | sdk | session.", file=sys.stderr)
         sys.exit(1)
 
 

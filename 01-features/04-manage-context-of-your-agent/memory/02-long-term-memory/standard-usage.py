@@ -8,9 +8,10 @@ The canonical long-term flow:
     5. retrieve relevant records with RetrieveMemoryRecords
     6. tear down
 
-Two surfaces:
-    python standard-usage.py boto3
-    python standard-usage.py sdk
+Three surfaces:
+    python standard-usage.py boto3      # raw boto3 (bedrock-agentcore / -control)
+    python standard-usage.py sdk        # AgentCore SDK, low-level MemoryClient
+    python standard-usage.py session    # AgentCore SDK, high-level MemorySessionManager
 
 Add `--cleanup` to delete the memory resource at the end. By default the
 memory is kept so you can inspect it; the script prints the memoryId.
@@ -30,6 +31,7 @@ REGION = os.getenv("AWS_REGION", "us-east-1")
 ACTOR_ID = "user-42"
 SESSION_ID = f"sess-{int(time.time())}"
 EXTRACTION_WAIT_SECONDS = 60
+SESSION_EXTRACTION_WAIT_SECONDS = 90  # semantic extraction surfaces ~60-90s; extra margin
 NAMESPACE_TEMPLATE = "/users/{actorId}/facts/"
 
 
@@ -148,6 +150,68 @@ def run_with_sdk(cleanup: bool = False) -> None:
         print(f"[sdk] Keeping memory {memory_id} (pass --cleanup to delete)")
 
 
+# === AgentCore SDK — high-level session API ==========================
+def run_with_session(cleanup: bool = False) -> None:
+    # MemoryClient owns the control plane (create/delete the resource);
+    # MemorySessionManager is data-plane only, so we create the memory with
+    # MemoryClient, then drive events + retrieval through a MemorySession.
+    from bedrock_agentcore.memory import MemoryClient, MemorySessionManager
+    from bedrock_agentcore.memory.constants import ConversationalMessage, MessageRole
+
+    client = MemoryClient(region_name=REGION)
+    memory = client.create_memory_and_wait(
+        name=f"LtmStandardSession_{int(time.time())}",
+        description="Long-term memory standard usage (SDK session API)",
+        strategies=[
+            {
+                "semanticMemoryStrategy": {
+                    "name": "UserFacts",
+                    # Current field is namespaceTemplates (namespaces is deprecated).
+                    "namespaceTemplates": [NAMESPACE_TEMPLATE],
+                }
+            }
+        ],
+        event_expiry_days=30,
+    )
+    memory_id = memory["id"]
+    print(f"[session] Created memory {memory_id}")
+
+    # Bind a session, then write all turns in one add_turns call. add_turns
+    # takes ConversationalMessage objects and maps to a single create_event.
+    manager = MemorySessionManager(memory_id=memory_id, region_name=REGION)
+    session = manager.create_memory_session(actor_id=ACTOR_ID, session_id=SESSION_ID)
+    session.add_turns(
+        messages=[
+            ConversationalMessage("I'm Alex. I prefer Python over Java and I'm based in Berlin.", MessageRole.USER),
+            ConversationalMessage("Got it, Alex.", MessageRole.ASSISTANT),
+            ConversationalMessage("I'm allergic to peanuts, by the way.", MessageRole.USER),
+            ConversationalMessage("Noted.", MessageRole.ASSISTANT),
+        ]
+    )
+
+    # Semantic extraction is asynchronous; give it margin before searching.
+    print(f"[session] Waiting {SESSION_EXTRACTION_WAIT_SECONDS}s for extraction...")
+    time.sleep(SESSION_EXTRACTION_WAIT_SECONDS)
+
+    namespace = NAMESPACE_TEMPLATE.format(actorId=ACTOR_ID)
+    # Use namespace= (exact match); namespace_prefix= is deprecated.
+    hits = session.search_long_term_memories(
+        query="Alex's preferences and constraints?",
+        namespace=namespace,
+        top_k=5,
+    )
+    print(f"[session] Retrieved {len(hits)} records from {namespace}")
+    for h in hits:
+        # Each hit is a MemoryRecord (dict-like): content.text + score.
+        print(f"  - {h['content']['text']}")
+
+    if cleanup:
+        client.delete_memory_and_wait(memory_id=memory_id)
+        print(f"[session] Deleted memory {memory_id}")
+    else:
+        print(f"[session] Keeping memory {memory_id} (pass --cleanup to delete)")
+
+
 def main() -> None:
     args = [a for a in sys.argv[1:] if a != "--cleanup"]
     cleanup = "--cleanup" in sys.argv[1:]
@@ -156,8 +220,10 @@ def main() -> None:
         run_with_boto3(cleanup=cleanup)
     elif surface == "sdk":
         run_with_sdk(cleanup=cleanup)
+    elif surface == "session":
+        run_with_session(cleanup=cleanup)
     else:
-        print(f"Unknown surface {surface!r}. Use boto3 | sdk.", file=sys.stderr)
+        print(f"Unknown surface {surface!r}. Use boto3 | sdk | session.", file=sys.stderr)
         sys.exit(1)
 
 

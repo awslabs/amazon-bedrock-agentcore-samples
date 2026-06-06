@@ -6,9 +6,10 @@ What you learn:
     - GetEvent fetches one event in full
     - ListSessions discovers prior sessions for an actor
 
-Two surfaces, same flow:
-    python events-and-sessions.py boto3
-    python events-and-sessions.py sdk
+Three surfaces, same flow:
+    python events-and-sessions.py boto3      # raw boto3 (bedrock-agentcore / -control)
+    python events-and-sessions.py sdk        # AgentCore SDK, low-level MemoryClient
+    python events-and-sessions.py session    # AgentCore SDK, high-level MemorySessionManager
 
 Add `--cleanup` to delete the memory resource at the end. By default the
 memory is kept so you can inspect it; the script prints the memoryId.
@@ -158,6 +159,66 @@ def run_with_sdk(cleanup: bool = False) -> None:
         print(f"[sdk] Keeping memory {memory_id} (pass --cleanup to delete)")
 
 
+# === AgentCore SDK — high-level session API ==========================
+def run_with_session(cleanup: bool = False) -> None:
+    # MemoryClient owns the control plane (create/delete the resource);
+    # MemorySessionManager is data-plane only. A short-term memory needs no
+    # extraction strategies, so we create it with strategies=[].
+    from bedrock_agentcore.memory import MemoryClient, MemorySessionManager
+    from bedrock_agentcore.memory.constants import ConversationalMessage, MessageRole
+
+    client = MemoryClient(region_name=REGION)
+    memory = client.create_memory_and_wait(
+        name=f"EventsAndSessionsSession_{int(time.time())}",
+        description="Events and sessions (SDK session API)",
+        strategies=[],
+        event_expiry_days=30,
+    )
+    memory_id = memory["id"]
+    print(f"[session] Created memory {memory_id}")
+
+    session_a_id = f"session-a-{int(time.time())}"
+    session_b_id = f"session-b-{int(time.time())}"
+
+    # Bind one MemorySession per (actor, session). add_turns takes
+    # ConversationalMessage objects and writes them as a single event.
+    manager = MemorySessionManager(memory_id=memory_id, region_name=REGION)
+    session_a = manager.create_memory_session(actor_id=ACTOR_ID, session_id=session_a_id)
+    session_b = manager.create_memory_session(actor_id=ACTOR_ID, session_id=session_b_id)
+
+    session_a.add_turns(
+        messages=[
+            ConversationalMessage("Book me a flight from Berlin to Lisbon.", MessageRole.USER),
+            ConversationalMessage("Sure — for which dates?", MessageRole.ASSISTANT),
+            ConversationalMessage("Next Monday, returning Friday.", MessageRole.USER),
+        ]
+    )
+    session_b.add_turns(
+        messages=[
+            ConversationalMessage("What did I book last week?", MessageRole.USER),
+            ConversationalMessage("You booked Berlin to Lisbon, Mon–Fri.", MessageRole.ASSISTANT),
+        ]
+    )
+
+    # list_events returns Event objects (dict-like) in chronological order.
+    events = session_a.list_events(include_payload=True)
+    print(f"[session] Session {session_a_id} has {len(events)} events")
+
+    # get_last_k_turns groups payload messages into logical user/assistant turns.
+    turns = session_a.get_last_k_turns(k=5)
+    print(f"[session] Last {len(turns)} turn(s) in session_a")
+
+    # list_actor_sessions lives on the manager and returns SessionSummary objects.
+    sessions = manager.list_actor_sessions(actor_id=ACTOR_ID)
+    print(f"[session] Actor {ACTOR_ID} has {len(sessions)} session(s)")
+
+    if cleanup:
+        client.delete_memory_and_wait(memory_id=memory_id)
+        print(f"[session] Deleted memory {memory_id}")
+    else:
+        print(f"[session] Keeping memory {memory_id} (pass --cleanup to delete)")
+
+
 def main() -> None:
     args = [a for a in sys.argv[1:] if a != "--cleanup"]
     cleanup = "--cleanup" in sys.argv[1:]
@@ -166,8 +227,10 @@ def main() -> None:
         run_with_boto3(cleanup=cleanup)
     elif surface == "sdk":
         run_with_sdk(cleanup=cleanup)
+    elif surface == "session":
+        run_with_session(cleanup=cleanup)
     else:
-        print(f"Unknown surface {surface!r}. Use boto3 | sdk.", file=sys.stderr)
+        print(f"Unknown surface {surface!r}. Use boto3 | sdk | session.", file=sys.stderr)
         sys.exit(1)
 
 

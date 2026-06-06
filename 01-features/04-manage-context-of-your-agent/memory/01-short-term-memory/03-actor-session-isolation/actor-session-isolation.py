@@ -5,9 +5,10 @@ What you learn:
     - Events are scoped by (actorId, sessionId) — no cross-actor leakage
     - ListEvents under one actor never returns another actor's events
 
-Two surfaces:
-    python actor-session-isolation.py boto3
-    python actor-session-isolation.py sdk
+Three surfaces:
+    python actor-session-isolation.py boto3      # raw boto3 (bedrock-agentcore / -control)
+    python actor-session-isolation.py sdk        # AgentCore SDK, low-level MemoryClient
+    python actor-session-isolation.py session    # AgentCore SDK, high-level MemorySessionManager
 
 Add `--cleanup` to delete the memory resource at the end. By default the
 memory is kept so you can inspect it; the script prints the memoryId.
@@ -134,6 +135,63 @@ def run_with_sdk(cleanup: bool = False) -> None:
         print(f"[sdk] Keeping memory {memory_id} (pass --cleanup to delete)")
 
 
+# === AgentCore SDK — high-level session API ==========================
+def run_with_session(cleanup: bool = False) -> None:
+    # MemoryClient owns the control plane (create/delete); MemorySessionManager
+    # is data-plane only. No extraction strategies for short-term memory.
+    from bedrock_agentcore.memory import MemoryClient, MemorySessionManager
+    from bedrock_agentcore.memory.constants import ConversationalMessage, MessageRole
+
+    client = MemoryClient(region_name=REGION)
+    memory = client.create_memory_and_wait(
+        name=f"ActorIsolationSession_{int(time.time())}",
+        description="Actor/session isolation (SDK session API)",
+        strategies=[],
+        event_expiry_days=30,
+    )
+    memory_id = memory["id"]
+    print(f"[session] Created memory {memory_id}")
+
+    alice_session_id = f"alice-{int(time.time())}"
+    bob_session_id = f"bob-{int(time.time())}"
+
+    # One memory resource, two actors. Each MemorySession is bound to its own
+    # (actor, session) pair, so events never cross between actors.
+    manager = MemorySessionManager(memory_id=memory_id, region_name=REGION)
+    alice = manager.create_memory_session(actor_id="alice", session_id=alice_session_id)
+    bob = manager.create_memory_session(actor_id="bob", session_id=bob_session_id)
+
+    alice.add_turns(
+        messages=[
+            ConversationalMessage("I'm flying to Tokyo next week.", MessageRole.USER),
+            ConversationalMessage("Got it.", MessageRole.ASSISTANT),
+        ]
+    )
+    bob.add_turns(
+        messages=[
+            ConversationalMessage("Remind me about my dentist appointment.", MessageRole.USER),
+            ConversationalMessage("Friday at 3pm.", MessageRole.ASSISTANT),
+        ]
+    )
+
+    # Each session only ever sees its own actor's events.
+    alice_events = alice.list_events()
+    bob_events = bob.list_events()
+    print(f"[session] Alice: {len(alice_events)} events | Bob: {len(bob_events)} events")
+
+    # list_actor_sessions is scoped to one actor: no cross-actor leakage.
+    alice_sessions = manager.list_actor_sessions(actor_id="alice")
+    bob_sessions = manager.list_actor_sessions(actor_id="bob")
+    print(f"[session] Alice sessions: {[s['sessionId'] for s in alice_sessions]}")
+    print(f"[session] Bob sessions:   {[s['sessionId'] for s in bob_sessions]}")
+
+    if cleanup:
+        client.delete_memory_and_wait(memory_id=memory_id)
+        print(f"[session] Deleted memory {memory_id}")
+    else:
+        print(f"[session] Keeping memory {memory_id} (pass --cleanup to delete)")
+
+
 def main() -> None:
     args = [a for a in sys.argv[1:] if a != "--cleanup"]
     cleanup = "--cleanup" in sys.argv[1:]
@@ -142,8 +200,10 @@ def main() -> None:
         run_with_boto3(cleanup=cleanup)
     elif surface == "sdk":
         run_with_sdk(cleanup=cleanup)
+    elif surface == "session":
+        run_with_session(cleanup=cleanup)
     else:
-        print(f"Unknown surface {surface!r}. Use boto3 | sdk.", file=sys.stderr)
+        print(f"Unknown surface {surface!r}. Use boto3 | sdk | session.", file=sys.stderr)
         sys.exit(1)
 
 

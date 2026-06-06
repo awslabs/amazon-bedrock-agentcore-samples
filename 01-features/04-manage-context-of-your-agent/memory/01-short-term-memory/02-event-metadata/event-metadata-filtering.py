@@ -7,9 +7,10 @@ What you learn:
 Caveat: event metadata is NOT encrypted with a customer-managed KMS key.
 Do not put sensitive content in metadata — keep it in the payload.
 
-Two surfaces:
-    python event-metadata-filtering.py boto3
-    python event-metadata-filtering.py sdk
+Three surfaces:
+    python event-metadata-filtering.py boto3      # raw boto3 (bedrock-agentcore / -control)
+    python event-metadata-filtering.py sdk        # AgentCore SDK, low-level MemoryClient
+    python event-metadata-filtering.py session    # AgentCore SDK, high-level MemorySessionManager
 
 Add `--cleanup` to delete the memory resource at the end. By default the
 memory is kept so you can inspect it; the script prints the memoryId.
@@ -160,6 +161,66 @@ def run_with_sdk(cleanup: bool = False) -> None:
         print(f"[sdk] Keeping memory {memory_id} (pass --cleanup to delete)")
 
 
+# === AgentCore SDK — high-level session API ==========================
+def run_with_session(cleanup: bool = False) -> None:
+    # MemoryClient owns the control plane (create/delete); MemorySessionManager
+    # is data-plane only. No extraction strategies for short-term memory.
+    from bedrock_agentcore.memory import MemoryClient, MemorySessionManager
+    from bedrock_agentcore.memory.constants import ConversationalMessage, MessageRole
+
+    client = MemoryClient(region_name=REGION)
+    memory = client.create_memory_and_wait(
+        name=f"EventMetadataSession_{int(time.time())}",
+        description="Event metadata filtering (SDK session API)",
+        strategies=[],
+        event_expiry_days=30,
+    )
+    memory_id = memory["id"]
+    print(f"[session] Created memory {memory_id}")
+
+    tagged_turns = [
+        ("USER", "I had a fever last night.", {"topic": "health", "priority": "high"}),
+        ("ASSISTANT", "Sorry to hear. How long has it lasted?", {"topic": "health"}),
+        ("USER", "Also can you book me a flight to Lisbon?", {"topic": "travel"}),
+        ("ASSISTANT", "Booking flight to Lisbon.", {"topic": "travel"}),
+        ("USER", "Just checking in, no specific topic today.", {}),
+    ]
+
+    manager = MemorySessionManager(memory_id=memory_id, region_name=REGION)
+    session = manager.create_memory_session(actor_id=ACTOR_ID, session_id=SESSION_ID)
+    # add_turns takes a metadata dict of {key: {"stringValue": value}}; each
+    # call maps to one event so per-event metadata is preserved.
+    for role, text, meta in tagged_turns:
+        session.add_turns(
+            messages=[ConversationalMessage(text, MessageRole[role])],
+            metadata={k: {"stringValue": v} for k, v in meta.items()} if meta else None,
+        )
+
+    # list_events takes the metadata filter as the camelCase `eventMetadata`
+    # kwarg, a list of {left, operator, right} expressions matching the boto3 shape.
+    health = session.list_events(
+        eventMetadata=[
+            {
+                "left": {"metadataKey": "topic"},
+                "operator": "EQUALS_TO",
+                "right": {"metadataValue": {"stringValue": "health"}},
+            }
+        ]
+    )
+    print(f"[session] Health-tagged events: {len(health)}")
+
+    priority = session.list_events(
+        eventMetadata=[{"left": {"metadataKey": "priority"}, "operator": "EXISTS"}]
+    )
+    print(f"[session] Events with priority set: {len(priority)}")
+
+    if cleanup:
+        client.delete_memory_and_wait(memory_id=memory_id)
+        print(f"[session] Deleted memory {memory_id}")
+    else:
+        print(f"[session] Keeping memory {memory_id} (pass --cleanup to delete)")
+
+
 def main() -> None:
     args = [a for a in sys.argv[1:] if a != "--cleanup"]
     cleanup = "--cleanup" in sys.argv[1:]
@@ -168,8 +229,10 @@ def main() -> None:
         run_with_boto3(cleanup=cleanup)
     elif surface == "sdk":
         run_with_sdk(cleanup=cleanup)
+    elif surface == "session":
+        run_with_session(cleanup=cleanup)
     else:
-        print(f"Unknown surface {surface!r}. Use boto3 | sdk.", file=sys.stderr)
+        print(f"Unknown surface {surface!r}. Use boto3 | sdk | session.", file=sys.stderr)
         sys.exit(1)
 
 

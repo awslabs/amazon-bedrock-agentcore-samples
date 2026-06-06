@@ -11,9 +11,10 @@ back-fills, migrations, and admin tooling.
 
 Each call accepts up to 100 records and reports per-record success/failure.
 
-Two surfaces:
-    python batch-create-update-delete.py boto3
-    python batch-create-update-delete.py sdk
+Three surfaces:
+    python batch-create-update-delete.py boto3      # raw boto3 (bedrock-agentcore / -control)
+    python batch-create-update-delete.py sdk        # AgentCore SDK, low-level MemoryClient
+    python batch-create-update-delete.py session    # AgentCore SDK, high-level MemorySessionManager
 
 Add `--cleanup` to delete the memory resource at the end. By default the
 memory is kept so you can inspect it; the script prints the memoryId.
@@ -27,10 +28,33 @@ import os
 import sys
 import time
 import uuid
+from datetime import datetime, timezone
 
 REGION = os.getenv("AWS_REGION", "us-east-1")
 ACTOR_ID = "user-alex"
 NAMESPACE = f"/users/{ACTOR_ID}/notes/"
+
+
+def _wait_until_records_indexed(list_fn, expected: int, max_wait: int = 60, poll: int = 5) -> None:
+    """Block until directly-written records are queryable, then return.
+
+    BatchCreateMemoryRecords is eventually consistent: a record can return
+    SUCCEEDED from create yet not be immediately listable/updatable — calling
+    BatchUpdate*/List* too soon raises ResourceNotFoundException or returns 0
+    rows. AgentCore exposes no per-record status field, so (matching the SDK's
+    own poll-don't-sleep pattern) we poll ListMemoryRecords until the expected
+    count appears or the deadline elapses.
+
+    `list_fn()` must return the list of current record summaries.
+    """
+    deadline = time.time() + max_wait
+    while time.time() < deadline:
+        try:
+            if len(list_fn()) >= expected:
+                return
+        except Exception:  # noqa: BLE001 — records not yet readable; keep polling
+            pass
+        time.sleep(poll)
 
 
 # === boto3 ============================================================
@@ -58,19 +82,20 @@ def run_with_boto3(cleanup: bool = False) -> None:
             {
                 "requestIdentifier": "note-lang",
                 "namespaces": [NAMESPACE],
-                "timestamp": str(int(time.time())),
+                # timestamp is a datetime-typed field — pass a real datetime, not a string.
+                "timestamp": datetime.now(timezone.utc),
                 "content": {"text": "Alex prefers Python over Java."},
             },
             {
                 "requestIdentifier": "note-city",
                 "namespaces": [NAMESPACE],
-                "timestamp": str(int(time.time())),
+                "timestamp": datetime.now(timezone.utc),
                 "content": {"text": "Alex is based in Berlin."},
             },
             {
                 "requestIdentifier": "note-allergy",
                 "namespaces": [NAMESPACE],
-                "timestamp": str(int(time.time())),
+                "timestamp": datetime.now(timezone.utc),
                 "content": {"text": "Alex is allergic to peanuts."},
             },
         ],
@@ -79,11 +104,20 @@ def run_with_boto3(cleanup: bool = False) -> None:
     print(f"[boto3] Created {len(successes)} ({len(create_resp.get('failedRecords', []))} failed)")
     record_ids = {r["requestIdentifier"]: r["memoryRecordId"] for r in successes}
 
+    # Directly-written records are eventually consistent — poll until they are
+    # queryable before updating/deleting (update too soon -> ResourceNotFound).
+    _wait_until_records_indexed(
+        lambda: data.list_memory_records(memoryId=memory_id, namespace=NAMESPACE)["memoryRecordSummaries"],
+        expected=len(successes),
+    )
+
     update_resp = data.batch_update_memory_records(
         memoryId=memory_id,
         records=[
             {
                 "memoryRecordId": record_ids["note-lang"],
+                # BatchUpdateMemoryRecords requires memoryRecordId AND timestamp (datetime).
+                "timestamp": datetime.now(timezone.utc),
                 "content": {"text": "Alex prefers Python and writes Rust for hot paths."},
             }
         ],
@@ -128,19 +162,20 @@ def run_with_sdk(cleanup: bool = False) -> None:
             {
                 "requestIdentifier": "note-lang",
                 "namespaces": [NAMESPACE],
-                "timestamp": str(int(time.time())),
+                # timestamp is a datetime-typed field — pass a real datetime, not a string.
+                "timestamp": datetime.now(timezone.utc),
                 "content": {"text": "Alex prefers Python over Java."},
             },
             {
                 "requestIdentifier": "note-city",
                 "namespaces": [NAMESPACE],
-                "timestamp": str(int(time.time())),
+                "timestamp": datetime.now(timezone.utc),
                 "content": {"text": "Alex is based in Berlin."},
             },
             {
                 "requestIdentifier": "note-allergy",
                 "namespaces": [NAMESPACE],
-                "timestamp": str(int(time.time())),
+                "timestamp": datetime.now(timezone.utc),
                 "content": {"text": "Alex is allergic to peanuts."},
             },
         ],
@@ -149,11 +184,20 @@ def run_with_sdk(cleanup: bool = False) -> None:
     print(f"[sdk] Created {len(successes)} ({len(create_resp.get('failedRecords', []))} failed)")
     record_ids = {r["requestIdentifier"]: r["memoryRecordId"] for r in successes}
 
+    # Directly-written records are eventually consistent — poll until they are
+    # queryable before updating/deleting (update too soon -> ResourceNotFound).
+    _wait_until_records_indexed(
+        lambda: client.list_memory_records(memoryId=memory_id, namespace=NAMESPACE)["memoryRecordSummaries"],
+        expected=len(successes),
+    )
+
     update_resp = client.batch_update_memory_records(
         memoryId=memory_id,
         records=[
             {
                 "memoryRecordId": record_ids["note-lang"],
+                # BatchUpdateMemoryRecords requires memoryRecordId AND timestamp (datetime).
+                "timestamp": datetime.now(timezone.utc),
                 "content": {"text": "Alex prefers Python and writes Rust for hot paths."},
             }
         ],
@@ -178,6 +222,98 @@ def run_with_sdk(cleanup: bool = False) -> None:
         print(f"\n[sdk] Keeping memory {memory_id} (pass --cleanup to delete)")
 
 
+# === AgentCore SDK — high-level session API ==========================
+# MemoryClient owns the control plane (create/delete the resource);
+# MemorySessionManager is data-plane only. The three batch_* calls are forwarded
+# by MemorySessionManager via __getattr__ (data-plane allowlist), so we can run
+# the whole create/update/delete cycle through the session manager. The nested
+# record dicts stay camelCase: snake_case conversion only rewrites top-level
+# kwargs (records=, memory_id=), never the dict values.
+def run_with_session(cleanup: bool = False) -> None:
+    from bedrock_agentcore.memory import MemoryClient, MemorySessionManager
+
+    client = MemoryClient(region_name=REGION)
+    memory = client.create_memory_and_wait(
+        name=f"BatchCRUDSession_{int(time.time())}",
+        description="Batch APIs tutorial (SDK session API)",
+        strategies=[],
+        event_expiry_days=30,
+    )
+    memory_id = memory["id"]
+    print(f"[session] Created memory {memory_id}")
+
+    manager = MemorySessionManager(memory_id=memory_id, region_name=REGION)
+
+    # batch_* are forwarded to boto3 by MemorySessionManager as thin passthroughs:
+    # memoryId is NOT injected from the manager's binding, so pass it explicitly.
+    # Each batch accepts up to 100 records; keep this demo well under the cap.
+    create_resp = manager.batch_create_memory_records(
+        memoryId=memory_id,
+        records=[
+            {
+                "requestIdentifier": "note-lang",
+                "namespaces": [NAMESPACE],
+                # timestamp is a datetime-typed field; pass a real datetime, not a string.
+                "timestamp": datetime.now(timezone.utc),
+                "content": {"text": "Alex prefers Python over Java."},
+            },
+            {
+                "requestIdentifier": "note-city",
+                "namespaces": [NAMESPACE],
+                "timestamp": datetime.now(timezone.utc),
+                "content": {"text": "Alex is based in Berlin."},
+            },
+            {
+                "requestIdentifier": "note-allergy",
+                "namespaces": [NAMESPACE],
+                "timestamp": datetime.now(timezone.utc),
+                "content": {"text": "Alex is allergic to peanuts."},
+            },
+        ],
+    )
+    successes = create_resp.get("successfulRecords", [])
+    print(f"[session] Created {len(successes)} ({len(create_resp.get('failedRecords', []))} failed)")
+    record_ids = {r["requestIdentifier"]: r["memoryRecordId"] for r in successes}
+
+    # Directly-written records are eventually consistent — poll until they are
+    # queryable before updating/deleting (update too soon -> ResourceNotFound).
+    _wait_until_records_indexed(
+        lambda: manager.list_long_term_memory_records(namespace=NAMESPACE),
+        expected=len(successes),
+    )
+
+    update_resp = manager.batch_update_memory_records(
+        memoryId=memory_id,
+        records=[
+            {
+                "memoryRecordId": record_ids["note-lang"],
+                # BatchUpdateMemoryRecords requires memoryRecordId AND timestamp (datetime).
+                "timestamp": datetime.now(timezone.utc),
+                "content": {"text": "Alex prefers Python and writes Rust for hot paths."},
+            }
+        ],
+    )
+    print(f"[session] Updated {len(update_resp.get('successfulRecords', []))}")
+
+    delete_resp = manager.batch_delete_memory_records(
+        memoryId=memory_id,
+        records=[{"memoryRecordId": record_ids["note-allergy"]}],
+    )
+    print(f"[session] Deleted {len(delete_resp.get('successfulRecords', []))}")
+
+    # list_long_term_memory_records is a first-class MemorySessionManager method.
+    remaining = manager.list_long_term_memory_records(namespace=NAMESPACE)
+    print(f"\n[session] Remaining ({len(remaining)}):")
+    for r in remaining:
+        print(f"  - {r['content']['text']}")
+
+    if cleanup:
+        client.delete_memory_and_wait(memory_id=memory_id)
+        print(f"\n[session] Deleted memory {memory_id}")
+    else:
+        print(f"\n[session] Keeping memory {memory_id} (pass --cleanup to delete)")
+
+
 def main() -> None:
     args = [a for a in sys.argv[1:] if a != "--cleanup"]
     cleanup = "--cleanup" in sys.argv[1:]
@@ -186,8 +322,10 @@ def main() -> None:
         run_with_boto3(cleanup=cleanup)
     elif surface == "sdk":
         run_with_sdk(cleanup=cleanup)
+    elif surface == "session":
+        run_with_session(cleanup=cleanup)
     else:
-        print(f"Unknown surface {surface!r}. Use boto3 | sdk.", file=sys.stderr)
+        print(f"Unknown surface {surface!r}. Use boto3 | sdk | session.", file=sys.stderr)
         sys.exit(1)
 
 

@@ -9,9 +9,10 @@ Semantic strategy extracts standalone facts about the user or the world
 ("user's name is Alex", "based in Berlin"). It is the default choice for
 "who is this user?" recall.
 
-Two surfaces:
-    python semantic.py boto3
-    python semantic.py sdk
+Three surfaces:
+    python semantic.py boto3      # raw boto3 (bedrock-agentcore / -control)
+    python semantic.py sdk        # AgentCore SDK, low-level MemoryClient
+    python semantic.py session    # AgentCore SDK, high-level MemorySessionManager
 
 Add `--cleanup` to delete the memory resource at the end. By default the
 memory is kept so you can inspect it; the script prints the memoryId.
@@ -30,7 +31,7 @@ from datetime import datetime, timezone
 REGION = os.getenv("AWS_REGION", "us-east-1")
 ACTOR_ID = "user-alex"
 SESSION_ID = f"sess-{int(time.time())}"
-EXTRACTION_WAIT_SECONDS = 60
+EXTRACTION_WAIT_SECONDS = 90
 NAMESPACE_TEMPLATE = "/users/{actorId}/facts/"
 
 TURNS = [
@@ -152,6 +153,59 @@ def run_with_sdk(cleanup: bool = False) -> None:
         print(f"\n[sdk] Keeping memory {memory_id} (pass --cleanup to delete)")
 
 
+# === AgentCore SDK — high-level session API ==========================
+def run_with_session(cleanup: bool = False) -> None:
+    # MemoryClient owns the control plane (create/delete the resource);
+    # MemorySessionManager is data-plane only, so we create the memory with
+    # MemoryClient, then drive events + retrieval through a MemorySession.
+    from bedrock_agentcore.memory import MemoryClient, MemorySessionManager
+    from bedrock_agentcore.memory.constants import ConversationalMessage, MessageRole
+
+    client = MemoryClient(region_name=REGION)
+    memory = client.create_memory_and_wait(
+        name=f"SemanticSession_{int(time.time())}",
+        description="Semantic strategy (SDK session API)",
+        strategies=[
+            {
+                "semanticMemoryStrategy": {
+                    "name": "UserFacts",
+                    "description": "Standalone facts about the user",
+                    # Current field is namespaceTemplates (namespaces is deprecated).
+                    "namespaceTemplates": [NAMESPACE_TEMPLATE],
+                }
+            }
+        ],
+        event_expiry_days=30,
+    )
+    memory_id = memory["id"]
+    print(f"[session] Created memory {memory_id}")
+
+    # Bind a session, then write all turns in one add_turns call. add_turns
+    # takes ConversationalMessage objects and maps to a single create_event.
+    manager = MemorySessionManager(memory_id=memory_id, region_name=REGION)
+    session = manager.create_memory_session(actor_id=ACTOR_ID, session_id=SESSION_ID)
+    session.add_turns(
+        messages=[ConversationalMessage(text, MessageRole[role]) for role, text in TURNS]
+    )
+    print(f"[session] Waiting {EXTRACTION_WAIT_SECONDS}s for extraction...")
+    time.sleep(EXTRACTION_WAIT_SECONDS)
+
+    namespace = NAMESPACE_TEMPLATE.format(actorId=ACTOR_ID)
+    for query in QUERIES:
+        # Use namespace= (exact match); namespace_prefix= is deprecated.
+        hits = session.search_long_term_memories(query=query, namespace=namespace, top_k=3)
+        print(f"\n[session] Q: {query}")
+        for h in hits:
+            # Each hit is a MemoryRecord (dict-like): content.text + score.
+            print(f"  - {h['content']['text']} (score={h.get('score')})")
+
+    if cleanup:
+        client.delete_memory_and_wait(memory_id=memory_id)
+        print(f"\n[session] Deleted memory {memory_id}")
+    else:
+        print(f"\n[session] Keeping memory {memory_id} (pass --cleanup to delete)")
+
+
 def main() -> None:
     args = [a for a in sys.argv[1:] if a != "--cleanup"]
     cleanup = "--cleanup" in sys.argv[1:]
@@ -160,8 +214,10 @@ def main() -> None:
         run_with_boto3(cleanup=cleanup)
     elif surface == "sdk":
         run_with_sdk(cleanup=cleanup)
+    elif surface == "session":
+        run_with_session(cleanup=cleanup)
     else:
-        print(f"Unknown surface {surface!r}. Use boto3 | sdk.", file=sys.stderr)
+        print(f"Unknown surface {surface!r}. Use boto3 | sdk | session.", file=sys.stderr)
         sys.exit(1)
 
 

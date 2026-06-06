@@ -8,15 +8,19 @@ What you learn:
 Use record metadata for hard constraints (region, tier, source, language)
 that should be enforced at the index, not in the LLM prompt.
 
-Two surfaces:
-    python structured-metadata.py boto3
-    python structured-metadata.py sdk
+Three surfaces:
+    python structured-metadata.py boto3      # raw boto3 (bedrock-agentcore / -control)
+    python structured-metadata.py sdk        # AgentCore SDK, low-level MemoryClient
+    python structured-metadata.py session    # AgentCore SDK, high-level MemorySessionManager
 
 Add `--cleanup` to delete the memory resource at the end. By default the
 memory is kept so you can inspect it; the script prints the memoryId.
 
-SDK note: `indexedKeys` on CreateMemory is not yet exposed by MemoryClient —
-please use the boto3 API to set it.
+SDK note: the low-level `sdk` surface reaches the wrapped control-plane client
+for `indexedKeys` (older MemoryClient.create_memory_and_wait did not expose it).
+The `session` surface uses the newer `create_memory_and_wait(indexed_keys=...)`
+parameter directly and builds metadata filters with the typed
+`MemoryMetadataFilter` builder instead of hand-written boto3 dicts.
 
 Prerequisites:
     pip install boto3 bedrock-agentcore
@@ -94,6 +98,10 @@ def run_with_boto3(cleanup: bool = False) -> None:
     resp = data.batch_create_memory_records(memoryId=memory_id, records=_records())
     print(f"[boto3] Created {len(resp.get('successfulRecords', []))} records")
 
+    # Directly-written records are eventually consistent — they take ~30s to become
+    # searchable. Wait before filtering, or the query returns nothing.
+    time.sleep(35)
+
     hits = data.retrieve_memory_records(
         memoryId=memory_id,
         namespace=NAMESPACE,
@@ -150,6 +158,10 @@ def run_with_sdk(cleanup: bool = False) -> None:
     resp = client.batch_create_memory_records(memoryId=memory_id, records=_records())
     print(f"[sdk] Created {len(resp.get('successfulRecords', []))} records")
 
+    # Directly-written records are eventually consistent — they take ~30s to become
+    # searchable. Wait before filtering, or the query returns nothing.
+    time.sleep(35)
+
     hits = client.retrieve_memory_records(
         memoryId=memory_id,
         namespace=NAMESPACE,
@@ -176,6 +188,82 @@ def run_with_sdk(cleanup: bool = False) -> None:
         print(f"\n[sdk] Keeping memory {memory_id} (pass --cleanup to delete)")
 
 
+# === AgentCore SDK — high-level session API ==========================
+# MemoryClient owns the control plane; MemorySessionManager is data-plane only.
+# Here we use two SDK ergonomics the low-level surface above does not:
+#   1) create_memory_and_wait(indexed_keys=[IndexedKey.build(...)]) declares the
+#      filterable keys without dropping to the raw control-plane client.
+#   2) MemoryMetadataFilter.build_expression(...) builds the metadata filter as a
+#      typed object instead of a hand-written boto3 dict, then we hand the list to
+#      session.search_long_term_memories(metadata_filters=[...]).
+def run_with_session(cleanup: bool = False) -> None:
+    from bedrock_agentcore.memory import MemoryClient, MemorySessionManager
+    from bedrock_agentcore.memory.models.filters import (
+        IndexedKey,
+        MemoryMetadataFilter,
+        MemoryRecordLeftExpression,
+        MemoryRecordOperatorType,
+        MemoryRecordRightExpression,
+        MetadataValueType,
+    )
+
+    client = MemoryClient(region_name=REGION)
+    # No extraction strategy: records are written directly, so indexed_keys is the
+    # only thing we need at create time to make region/tier filterable.
+    memory = client.create_memory_and_wait(
+        name=f"RecordMetadataSession_{int(time.time())}",
+        description="Structured metadata (SDK session API)",
+        strategies=[],
+        event_expiry_days=30,
+        indexed_keys=[
+            IndexedKey.build("region", MetadataValueType.STRING),
+            IndexedKey.build("tier", MetadataValueType.STRING),
+        ],
+    )
+    memory_id = memory["id"]
+    print(f"[session] Created memory {memory_id}")
+
+    # batch_create_memory_records is forwarded by MemorySessionManager (data-plane
+    # allowlist) — NOT by the per-session MemorySession — and the forward is a thin
+    # boto3 passthrough, so memoryId must be passed explicitly (it is not injected
+    # from session binding). Nested record dicts stay camelCase (snake_case
+    # conversion only touches top-level kwargs, not values).
+    manager = MemorySessionManager(memory_id=memory_id, region_name=REGION)
+    session = manager.create_memory_session(actor_id=ACTOR_ID)
+    resp = manager.batch_create_memory_records(memoryId=memory_id, records=_records())
+    print(
+        f"[session] Created {len(resp.get('successfulRecords', []))} records "
+        f"({len(resp.get('failedRecords', []))} failed)"
+    )
+
+    # Directly-written records are eventually consistent: they take ~30s to become
+    # searchable (with their indexed metadata). Wait before filtering, or it returns 0.
+    time.sleep(35)
+
+    # Same EU-only filter as boto3/sdk, but built via the typed expression helper.
+    region_eu = MemoryMetadataFilter.build_expression(
+        MemoryRecordLeftExpression.build("region"),
+        MemoryRecordOperatorType.EQUALS_TO,
+        MemoryRecordRightExpression.build_string("EU"),
+    )
+    hits = session.search_long_term_memories(
+        query="Acme",
+        namespace=NAMESPACE,
+        top_k=10,
+        metadata_filters=[region_eu],
+    )
+    print(f"\n[session] EU-only results ({len(hits)}):")
+    for h in hits:
+        # Each hit is a MemoryRecord (dict-like): content.text + metadata.
+        print(f"  - {h['content']['text']} | meta={h.get('metadata')}")
+
+    if cleanup:
+        client.delete_memory_and_wait(memory_id=memory_id)
+        print(f"\n[session] Deleted memory {memory_id}")
+    else:
+        print(f"\n[session] Keeping memory {memory_id} (pass --cleanup to delete)")
+
+
 def main() -> None:
     args = [a for a in sys.argv[1:] if a != "--cleanup"]
     cleanup = "--cleanup" in sys.argv[1:]
@@ -184,8 +272,10 @@ def main() -> None:
         run_with_boto3(cleanup=cleanup)
     elif surface == "sdk":
         run_with_sdk(cleanup=cleanup)
+    elif surface == "session":
+        run_with_session(cleanup=cleanup)
     else:
-        print(f"Unknown surface {surface!r}. Use boto3 | sdk.", file=sys.stderr)
+        print(f"Unknown surface {surface!r}. Use boto3 | sdk | session.", file=sys.stderr)
         sys.exit(1)
 
 
