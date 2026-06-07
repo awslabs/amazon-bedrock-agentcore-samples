@@ -15,8 +15,8 @@ Two surfaces:
 Add `--cleanup` to delete the memory resource at the end. By default the
 memory is kept so you can inspect it; the script prints the memoryId.
 
-SDK note: `indexedKeys` on CreateMemory is not yet exposed by MemoryClient —
-please use the boto3 API to set it.
+SDK note: `MemoryClient.create_memory_and_wait` exposes `indexed_keys=` directly
+(same {"key", "type"} dicts as the boto3 `indexedKeys` field).
 
 Prerequisites:
     pip install boto3 bedrock-agentcore
@@ -121,31 +121,26 @@ def run_with_boto3(cleanup: bool = False) -> None:
 
 
 # === AgentCore SDK ====================================================
-# create_memory_and_wait does not expose indexedKeys, so reach the wrapped
-# control-plane client for CreateMemory. The data-plane calls
-# (batch_create_memory_records, retrieve_memory_records) are forwarded by
-# MemoryClient via __getattr__ and used directly.
+# create_memory_and_wait exposes indexed_keys directly (it passes them through as the
+# CreateMemory `indexedKeys` field and blocks until the memory is ACTIVE). The
+# data-plane calls (batch_create_memory_records, retrieve_memory_records) are forwarded
+# by MemoryClient via __getattr__ and used directly.
 def run_with_sdk(cleanup: bool = False) -> None:
     from bedrock_agentcore.memory import MemoryClient
 
     client = MemoryClient(region_name=REGION)
 
-    cp = client.gmcp_client  # control plane (for indexedKeys)
-    memory_id = cp.create_memory(
+    memory_id = client.create_memory_and_wait(
         name=f"RecordMetadataSdk_{int(time.time())}",
         description="Structured metadata (SDK)",
-        eventExpiryDuration=30,
-        indexedKeys=[
+        strategies=[],  # no extraction strategy — records are written directly via batch APIs
+        event_expiry_days=30,
+        indexed_keys=[
             {"key": "region", "type": "STRING"},
             {"key": "tier", "type": "STRING"},
         ],
-    )["memory"]["id"]
+    )["id"]
     print(f"[sdk] Created memory {memory_id}")
-    deadline = time.time() + 300
-    while time.time() < deadline:
-        if cp.get_memory(memoryId=memory_id)["memory"]["status"] == "ACTIVE":
-            break
-        time.sleep(5)
 
     resp = client.batch_create_memory_records(memoryId=memory_id, records=_records())
     print(f"[sdk] Created {len(resp.get('successfulRecords', []))} records")
