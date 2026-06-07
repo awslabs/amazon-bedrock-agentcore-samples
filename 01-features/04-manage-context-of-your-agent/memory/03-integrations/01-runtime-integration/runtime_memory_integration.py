@@ -385,18 +385,7 @@ logger.info(f"✅ Endpoint ready: {endpoint_url}")
 # Generate a test session ID
 test_session_id = "agent-runtime-memory-session-123456789"  # Min length is 33
 
-# Send our first message
-import urllib.request  # noqa: E402
-
-data = json.dumps({"prompt": "Hello! My name is John. What can you do?", "actor_id": "test_user_123"}).encode()
-invoke_request = urllib.request.Request(
-    url=f"{endpoint_url}?sessionId={test_session_id}",
-    data=data,
-    headers={"Content-Type": "application/json"},
-    method="POST",
-)
-
-session_creds = boto3.Session().get_credentials().get_frozen_credentials()
+# Send our first message.
 # Use sigv4 signing via requests + botocore
 from botocore.auth import SigV4Auth  # noqa: E402
 from botocore.awsrequest import AWSRequest  # noqa: E402
@@ -427,7 +416,10 @@ print(invoke_response.json())
 
 import json  # noqa: E402
 
-response_text = invoke_response["response"][0]
+# The entrypoint returns a bare string, which the runtime serializes as JSON, so
+# `.json()` yields that string directly. (invoke_response is a requests.Response —
+# it is NOT subscriptable, so `invoke_response["response"]` would raise TypeError.)
+response_text = invoke_response.json()
 # display(Markdown(response_text))  # notebook display removed
 
 

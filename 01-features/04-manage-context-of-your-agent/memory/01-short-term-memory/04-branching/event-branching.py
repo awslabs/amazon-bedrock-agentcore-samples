@@ -156,14 +156,14 @@ def run_with_sdk(cleanup: bool = False) -> None:
         actor_id=ACTOR_ID,
         session_id=session_id,
         branch_name="autumn",
-        include_parent_events=False,
+        include_parent_branches=False,
     )
     winter_full = client.list_branch_events(
         memory_id=memory_id,
         actor_id=ACTOR_ID,
         session_id=session_id,
         branch_name="winter",
-        include_parent_events=True,
+        include_parent_branches=True,
     )
     print(f"[sdk] Autumn-only events: {len(autumn_only)} | Winter with parents: {len(winter_full)}")
 
