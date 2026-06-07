@@ -4,6 +4,8 @@ What you learn:
     - A single memory resource serves many actors
     - Events are scoped by (actorId, sessionId) — no cross-actor leakage
     - ListEvents under one actor never returns another actor's events
+    - The `session` surface ASSERTS isolation (negative checks: one actor's
+      events/sessions never contain the other's) rather than only narrating it
 
 Three surfaces:
     python actor-session-isolation.py boto3      # raw boto3 (bedrock-agentcore / -control)
@@ -184,6 +186,35 @@ def run_with_session(cleanup: bool = False) -> None:
     bob_sessions = manager.list_actor_sessions(actor_id="bob")
     print(f"[session] Alice sessions: {[s['sessionId'] for s in alice_sessions]}")
     print(f"[session] Bob sessions:   {[s['sessionId'] for s in bob_sessions]}")
+
+    # --- Prove isolation (negative assertions), don't just claim it -----------
+    # Narrating "no cross-actor leakage" isn't enough — assert it. Each Event is
+    # a DictWrapper over the raw event; conversational text lives at
+    # payload[].conversational.content.text (see add_turns, session.py:497).
+    def _texts(events) -> list:
+        out = []
+        for ev in events:
+            for item in ev.get("payload", []) or []:
+                conv = item.get("conversational") if isinstance(item, dict) else None
+                if conv:
+                    out.append(conv.get("content", {}).get("text", ""))
+        return out
+
+    alice_texts = _texts(alice_events)
+    bob_texts = _texts(bob_events)
+    alice_session_ids = {s["sessionId"] for s in alice_sessions}
+    bob_session_ids = {s["sessionId"] for s in bob_sessions}
+
+    # 1. Each actor sees only its own turns.
+    assert len(alice_events) > 0 and len(bob_events) > 0, "both actors should have events"
+    # 2. Bob's content never appears under Alice, and vice versa.
+    assert not any("dentist" in t for t in alice_texts), "LEAK: Bob's content surfaced under Alice"
+    assert not any("Tokyo" in t for t in bob_texts), "LEAK: Alice's content surfaced under Bob"
+    # 3. Session listings are disjoint — neither actor's session appears under the other.
+    assert bob_session_id not in alice_session_ids, "LEAK: Bob's session listed under Alice"
+    assert alice_session_id not in bob_session_ids, "LEAK: Alice's session listed under Bob"
+    assert alice_session_ids.isdisjoint(bob_session_ids), "LEAK: actors share a session id"
+    print("[session] ✅ Isolation verified: no cross-actor event or session leakage.")
 
     if cleanup:
         client.delete_memory_and_wait(memory_id=memory_id)
