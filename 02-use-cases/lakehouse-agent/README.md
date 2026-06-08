@@ -392,6 +392,28 @@ See [deployment/README.md](deployment/README.md) for full details including Lake
 
 ---
 
+## Optional: Advanced AgentCore Policy + Lambda Interceptors (Phase 2)
+
+The base deployment above (Option A notebooks or Option B CLI) stands alone.
+Once it is working, you can optionally layer Cedar-based AgentCore Policy and a
+Design 3 Request Interceptor on top. This is the companion sample for the blog
+post *"Build Secure AI Agent Behavior with Policy and Lambda Interceptors in
+Amazon Bedrock AgentCore"* and demonstrates three patterns:
+
+- **Design 1 — Policy Only**: a declarative Cedar `forbid` rule denies
+  `get_claims_summary` for policyholders.
+- **Design 2 — Interceptor Only**: the request Interceptor exchanges the JWT
+  for tenant-scoped IAM credentials via `sts:AssumeRole`, so Lake Formation
+  transparently enforces row- and column-level security per user.
+- **Design 3 — Policy + Interceptor**: the Interceptor injects user geography
+  and Cedar evaluates `context.input.geography` to block EU users from
+  individual-claim tools.
+
+Deployment, verification, and cleanup steps are in
+[deployment/advanced-agentcore-policy-gateway-interceptor/README.md](deployment/advanced-agentcore-policy-gateway-interceptor/README.md).
+
+---
+
 ## What Gets Deployed
 
 - **Cognito User Pool**: OAuth authentication with test users and groups

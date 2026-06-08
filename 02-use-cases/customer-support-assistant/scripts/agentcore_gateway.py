@@ -31,9 +31,7 @@ def create_gateway(gateway_name: str, api_spec: List) -> dict:
         lambda_target_config = {
             "mcp": {
                 "lambda": {
-                    "lambdaArn": get_ssm_parameter(
-                        "/app/customersupport/agentcore/lambda_arn"
-                    ),
+                    "lambdaArn": get_ssm_parameter("/app/customersupport/agentcore/lambda_arn"),
                     "toolSchema": {"inlinePayload": api_spec},
                 }
             }
@@ -41,20 +39,12 @@ def create_gateway(gateway_name: str, api_spec: List) -> dict:
 
         auth_config = {
             "customJWTAuthorizer": {
-                "allowedClients": [
-                    get_ssm_parameter(
-                        "/app/customersupport/agentcore/machine_client_id"
-                    )
-                ],
-                "discoveryUrl": get_ssm_parameter(
-                    "/app/customersupport/agentcore/cognito_discovery_url"
-                ),
+                "allowedClients": [get_ssm_parameter("/app/customersupport/agentcore/machine_client_id")],
+                "discoveryUrl": get_ssm_parameter("/app/customersupport/agentcore/cognito_discovery_url"),
             }
         }
 
-        execution_role_arn = get_ssm_parameter(
-            "/app/customersupport/agentcore/gateway_iam_role"
-        )
+        execution_role_arn = get_ssm_parameter("/app/customersupport/agentcore/gateway_iam_role")
 
         click.echo(f"Creating gateway in region {REGION} with name: {gateway_name}")
         click.echo(f"Execution role ARN: {execution_role_arn}")
@@ -72,7 +62,7 @@ def create_gateway(gateway_name: str, api_spec: List) -> dict:
 
         # Wait for gateway to become ACTIVE
         gateway_id = create_response["gatewayId"]
-        click.echo(f"⏳ Waiting for gateway to become ACTIVE...")
+        click.echo("⏳ Waiting for gateway to become ACTIVE...")
         max_retries = 30
         retry_delay = 10
 
@@ -87,7 +77,9 @@ def create_gateway(gateway_name: str, api_spec: List) -> dict:
                 raise Exception(f"Gateway creation failed with status: {status}")
 
             if attempt < max_retries - 1:
-                click.echo(f"   Gateway status: {status}, waiting {retry_delay}s... (attempt {attempt + 1}/{max_retries})")
+                click.echo(
+                    f"   Gateway status: {status}, waiting {retry_delay}s... (attempt {attempt + 1}/{max_retries})"
+                )
                 time.sleep(retry_delay)
             else:
                 raise Exception(f"Gateway did not become ACTIVE after {max_retries * retry_delay} seconds")
@@ -115,12 +107,8 @@ def create_gateway(gateway_name: str, api_spec: List) -> dict:
         # Save gateway details to SSM parameters
         put_ssm_parameter("/app/customersupport/agentcore/gateway_id", gateway_id)
         put_ssm_parameter("/app/customersupport/agentcore/gateway_name", gateway_name)
-        put_ssm_parameter(
-            "/app/customersupport/agentcore/gateway_arn", create_response["gatewayArn"]
-        )
-        put_ssm_parameter(
-            "/app/customersupport/agentcore/gateway_url", create_response["gatewayUrl"]
-        )
+        put_ssm_parameter("/app/customersupport/agentcore/gateway_arn", create_response["gatewayArn"])
+        put_ssm_parameter("/app/customersupport/agentcore/gateway_url", create_response["gatewayUrl"])
         put_ssm_parameter(
             "/app/customersupport/agentcore/cognito_secret",
             get_cognito_client_secret(),
@@ -142,16 +130,12 @@ def delete_gateway(gateway_id: str) -> bool:
         click.echo(f"🗑️  Deleting all targets for gateway: {gateway_id}")
 
         # List and delete all targets
-        list_response = gateway_client.list_gateway_targets(
-            gatewayIdentifier=gateway_id, maxResults=100
-        )
+        list_response = gateway_client.list_gateway_targets(gatewayIdentifier=gateway_id, maxResults=100)
 
         for item in list_response["items"]:
             target_id = item["targetId"]
             click.echo(f"   Deleting target: {target_id}")
-            gateway_client.delete_gateway_target(
-                gatewayIdentifier=gateway_id, targetId=target_id
-            )
+            gateway_client.delete_gateway_target(gatewayIdentifier=gateway_id, targetId=target_id)
             click.echo(f"   ✅ Target {target_id} deleted")
 
         # Delete the gateway
@@ -234,9 +218,7 @@ def delete(gateway_id, confirm):
 
     # Confirmation prompt
     if not confirm:
-        if not click.confirm(
-            f"⚠️  Are you sure you want to delete gateway {gateway_id}? This action cannot be undone."
-        ):
+        if not click.confirm(f"⚠️  Are you sure you want to delete gateway {gateway_id}? This action cannot be undone."):
             click.echo("❌ Operation cancelled")
             sys.exit(0)
 

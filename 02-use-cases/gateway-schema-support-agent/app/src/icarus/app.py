@@ -13,7 +13,9 @@ from icarus.agent import init_agent
 from icarus.utils.strands_streamlit import StrandsAgentStreamlitChat
 
 ALL_SESSIONS_DIR = Path("exp/sessions").resolve()
-assert ALL_SESSIONS_DIR.exists(), f"Sessions directory does not exist: {ALL_SESSIONS_DIR}"
+assert ALL_SESSIONS_DIR.exists(), (
+    f"Sessions directory does not exist: {ALL_SESSIONS_DIR}"
+)
 
 
 class SessionState:
@@ -99,9 +101,13 @@ def draw_sidebar():
             if session_state.agent is None:
                 st.success("Schema loaded successfully!", icon=":material/thumb_up:")
 
-                initialize_agent = st.button("🚀", width="stretch", disabled=agent_initialized)
+                initialize_agent = st.button(
+                    "🚀", width="stretch", disabled=agent_initialized
+                )
                 if initialize_agent:
-                    session_state.agent = init_agent(session_dir=session_state.session_dir)
+                    session_state.agent = init_agent(
+                        session_dir=session_state.session_dir
+                    )
                     session_state.auto_exec_agent = True
                     st.rerun()
 
@@ -137,7 +143,9 @@ def draw_chattab():
     chat_tab = st.container()
     chat_tab.header("💬 Chat with Icarus")
 
-    strands_chat = StrandsAgentStreamlitChat(agent=session_state.agent, chat_container=chat_tab)
+    strands_chat = StrandsAgentStreamlitChat(
+        agent=session_state.agent, chat_container=chat_tab
+    )
     strands_chat.add_display_only_message(
         "Hi! I'm Icarus, your AI assistant. How can I help you today?", position=-1
     )

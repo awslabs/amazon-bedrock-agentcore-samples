@@ -15,10 +15,7 @@ from shared.config.settings import settings
 from pkce_store import store_pkce_state
 
 
-def render_login_page(
-    auth_handler: Auth0Handler,
-    session_manager: SessionManager
-):
+def render_login_page(auth_handler: Auth0Handler, session_manager: SessionManager):
     """
     Render the login page with Auth0 authentication.
 
@@ -27,7 +24,8 @@ def render_login_page(
         session_manager: SessionManager instance
     """
     # Page styling
-    st.markdown("""
+    st.markdown(
+        """
         <style>
         .login-container {
             display: flex;
@@ -70,18 +68,23 @@ def render_login_page(
             font-size: 1.5rem;
         }
         </style>
-    """, unsafe_allow_html=True)
+    """,
+        unsafe_allow_html=True,
+    )
 
     # Main login container
     st.markdown('<div class="login-container">', unsafe_allow_html=True)
 
     # Header
-    st.markdown("""
+    st.markdown(
+        """
         <div class="login-header">
             <h1 class="login-title">AgentCore Financial Assistant</h1>
             <p class="login-subtitle">Your intelligent banking companion powered by AI</p>
         </div>
-    """, unsafe_allow_html=True)
+    """,
+        unsafe_allow_html=True,
+    )
 
     # Features
     col1, col2, col3 = st.columns(3)
@@ -126,7 +129,7 @@ def render_login_page(
                     if callback_server is None:
                         callback_server = OAuth2CallbackServer(
                             host=settings.app.oauth_callback_host,
-                            port=settings.app.oauth_callback_port
+                            port=settings.app.oauth_callback_port,
                         )
                         callback_server.start()
                         session_manager.store_callback_server(callback_server)
@@ -142,7 +145,9 @@ def render_login_page(
                     session_manager.store_pkce_state(code_verifier, state)
 
                     # Open browser for authentication
-                    st.info("Opening browser for authentication. Please sign in with Auth0.")
+                    st.info(
+                        "Opening browser for authentication. Please sign in with Auth0."
+                    )
                     webbrowser.open(auth_url)
 
                     # Wait for callback
@@ -153,9 +158,11 @@ def render_login_page(
                         # Get callback data
                         callback_data = callback_server.get_callback_data()
 
-                        if callback_data['error']:
+                        if callback_data["error"]:
                             st.error(f"Authentication failed: {callback_data['error']}")
-                            st.error(f"Description: {callback_data['error_description']}")
+                            st.error(
+                                f"Description: {callback_data['error_description']}"
+                            )
                         else:
                             # The browser will be redirected to Streamlit with the auth code
                             # Token exchange will happen via URL parameters in app.py
@@ -208,7 +215,7 @@ def render_login_page(
             - "What's my card limit?"
             """)
 
-    st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown("</div>", unsafe_allow_html=True)
 
 
 def render_token_expired_warning(session_manager: SessionManager):

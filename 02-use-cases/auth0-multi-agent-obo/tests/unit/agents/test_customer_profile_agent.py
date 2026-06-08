@@ -9,12 +9,18 @@ import os
 from unittest.mock import patch
 
 # Add agents directory to path and clear cached modules for clean import
-_profile_path = os.path.join(os.path.dirname(__file__), '..', '..', '..', 'agents', 'customer_profile')
+_profile_path = os.path.join(
+    os.path.dirname(__file__), "..", "..", "..", "agents", "customer_profile"
+)
 sys.path.insert(0, _profile_path)
 
 # Clear any cached agent/profile_service modules to ensure we load the right one
 for mod_name in list(sys.modules.keys()):
-    if mod_name in ('agent', 'profile_service') or mod_name.startswith('agent.') or mod_name.startswith('profile_service.'):
+    if (
+        mod_name in ("agent", "profile_service")
+        or mod_name.startswith("agent.")
+        or mod_name.startswith("profile_service.")
+    ):
         del sys.modules[mod_name]
 
 import agent as _agent_module
@@ -71,7 +77,7 @@ class TestCustomerProfileAgentMapCustomerId:
 class TestCustomerProfileAgentProcessQuery:
     """Tests for process_query method."""
 
-    @patch.object(_agent_module, 'profile_service')
+    @patch.object(_agent_module, "profile_service")
     def test_profile_query_keywords(self, mock_profile_service):
         """Test that profile keywords trigger profile retrieval."""
         mock_profile_service.get_profile.return_value = {
@@ -86,9 +92,9 @@ class TestCustomerProfileAgentProcessQuery:
                 "suburb": "Sydney",
                 "state": "NSW",
                 "postcode": "2000",
-                "country": "Australia"
+                "country": "Australia",
             },
-            "preferred_contact_method": "email"
+            "preferred_contact_method": "email",
         }
 
         agent = CustomerProfileAgent(user_id="user-123", customer_id="CUST001")
@@ -98,7 +104,7 @@ class TestCustomerProfileAgentProcessQuery:
             assert result["status"] == "success"
             assert "response" in result
 
-    @patch.object(_agent_module, 'profile_service')
+    @patch.object(_agent_module, "profile_service")
     def test_address_query(self, mock_profile_service):
         """Test that address keyword triggers address retrieval."""
         mock_profile_service.get_profile.return_value = {
@@ -107,7 +113,7 @@ class TestCustomerProfileAgentProcessQuery:
                 "suburb": "Sydney",
                 "state": "NSW",
                 "postcode": "2000",
-                "country": "Australia"
+                "country": "Australia",
             }
         }
 
@@ -117,12 +123,12 @@ class TestCustomerProfileAgentProcessQuery:
         assert result["status"] == "success"
         assert "Residential Address" in result["response"]
 
-    @patch.object(_agent_module, 'profile_service')
+    @patch.object(_agent_module, "profile_service")
     def test_phone_query(self, mock_profile_service):
         """Test that phone keyword triggers phone info retrieval."""
         mock_profile_service.get_profile.return_value = {
             "primary_phone": "+1234567890",
-            "secondary_phone": "+0987654321"
+            "secondary_phone": "+0987654321",
         }
 
         agent = CustomerProfileAgent(user_id="user-123", customer_id="CUST001")
@@ -131,7 +137,7 @@ class TestCustomerProfileAgentProcessQuery:
         assert result["status"] == "success"
         assert "Contact Numbers" in result["response"]
 
-    @patch.object(_agent_module, 'profile_service')
+    @patch.object(_agent_module, "profile_service")
     def test_preferences_query(self, mock_profile_service):
         """Test that preference keyword triggers preferences retrieval."""
         mock_profile_service.get_profile.return_value = {
@@ -139,8 +145,8 @@ class TestCustomerProfileAgentProcessQuery:
             "marketing_preferences": {
                 "email_opt_in": True,
                 "sms_opt_in": False,
-                "mail_opt_in": True
-            }
+                "mail_opt_in": True,
+            },
         }
 
         agent = CustomerProfileAgent(user_id="user-123", customer_id="CUST001")
@@ -148,9 +154,12 @@ class TestCustomerProfileAgentProcessQuery:
 
         assert result["status"] == "success"
         # Response includes preferred contact method
-        assert "email" in result["response"].lower() or "Preferred Contact" in result["response"]
+        assert (
+            "email" in result["response"].lower()
+            or "Preferred Contact" in result["response"]
+        )
 
-    @patch.object(_agent_module, 'profile_service')
+    @patch.object(_agent_module, "profile_service")
     def test_profile_not_found(self, mock_profile_service):
         """Test handling when profile is not found."""
         mock_profile_service.get_profile.return_value = None
@@ -161,7 +170,7 @@ class TestCustomerProfileAgentProcessQuery:
         assert result["status"] == "error"
         assert result["error"] == "PROFILE_NOT_FOUND"
 
-    @patch.object(_agent_module, 'profile_service')
+    @patch.object(_agent_module, "profile_service")
     def test_exception_handling(self, mock_profile_service):
         """Test that exceptions are caught and returned as errors."""
         mock_profile_service.get_profile.side_effect = Exception("Database error")
@@ -172,7 +181,7 @@ class TestCustomerProfileAgentProcessQuery:
         assert result["status"] == "error"
         assert "Database error" in result["error"]
 
-    @patch.object(_agent_module, 'profile_service')
+    @patch.object(_agent_module, "profile_service")
     def test_default_query_shows_profile(self, mock_profile_service):
         """Test that unrecognized queries default to showing profile."""
         mock_profile_service.get_profile.return_value = {
@@ -180,7 +189,7 @@ class TestCustomerProfileAgentProcessQuery:
             "first_name": "John",
             "last_name": "Doe",
             "email": "john@example.com",
-            "address": {}
+            "address": {},
         }
 
         agent = CustomerProfileAgent(user_id="user-123", customer_id="CUST001")

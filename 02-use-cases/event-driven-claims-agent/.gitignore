@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+*.egg-info/
+dist/
+build/
+
+# Node
+node_modules/
+cdk.out/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# AWS
+.env
+.env.local
+cdk.context.json
+
+# OS
+.DS_Store
+Thumbs.db

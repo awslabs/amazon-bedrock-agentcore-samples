@@ -5,9 +5,7 @@ This script deploys the Property Search Agent using the bedrock-agentcore-starte
 """
 
 import os
-import sys
 from bedrock_agentcore_starter_toolkit import Runtime
-import boto3
 from boto3.session import Session
 
 # Get boto session
@@ -33,13 +31,13 @@ if not cognito_client_id or not cognito_discovery_url:
     print("Set COGNITO_CLIENT_ID and COGNITO_DISCOVERY_URL to enable authentication")
     print()
 
-print(f"Configuration:")
+print("Configuration:")
 print(f"  Agent Name: {agent_name}")
 print(f"  Region: {region}")
 print(f"  Entrypoint: {entrypoint}")
 print(f"  Requirements: {requirements_file}")
-print(f"  Auto-create execution role: True")
-print(f"  Auto-create ECR: True")
+print("  Auto-create execution role: True")
+print("  Auto-create ECR: True")
 print()
 
 # Create Runtime instance
@@ -54,7 +52,7 @@ config_params = {
     "requirements_file": requirements_file,
     "region": region,
     "agent_name": agent_name,
-    "protocol": "A2A"
+    "protocol": "A2A",
 }
 
 # Add authorizer configuration if Cognito is configured

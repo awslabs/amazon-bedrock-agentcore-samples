@@ -1,0 +1,7 @@
+# AgentCore Runtime base environment already includes boto3/botocore.
+# Only include packages not in the base environment.
+bedrock-agentcore
+strands-agents
+httpx
+requests
+PyYAML

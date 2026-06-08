@@ -38,12 +38,18 @@ class Auth0Config:
 
     domain: str = field(default_factory=lambda: os.getenv("AUTH0_DOMAIN", ""))
     client_id: str = field(default_factory=lambda: os.getenv("AUTH0_CLIENT_ID", ""))
-    client_secret: str = field(default_factory=lambda: os.getenv("AUTH0_CLIENT_SECRET", ""))
+    client_secret: str = field(
+        default_factory=lambda: os.getenv("AUTH0_CLIENT_SECRET", "")
+    )
     audience: str = field(
-        default_factory=lambda: os.getenv("AUTH0_AUDIENCE", "https://agentcore-financial-api")
+        default_factory=lambda: os.getenv(
+            "AUTH0_AUDIENCE", "https://agentcore-financial-api"
+        )
     )
     callback_url: str = field(
-        default_factory=lambda: os.getenv("AUTH0_CALLBACK_URL", "http://localhost:9090/callback")
+        default_factory=lambda: os.getenv(
+            "AUTH0_CALLBACK_URL", "http://localhost:9090/callback"
+        )
     )
 
     # Custom claims namespace
@@ -68,7 +74,9 @@ class Auth0Config:
             client_id=os.getenv("AUTH0_CLIENT_ID", ""),
             client_secret=os.getenv("AUTH0_CLIENT_SECRET", ""),
             audience=os.getenv("AUTH0_AUDIENCE", "https://agentcore-financial-api"),
-            callback_url=os.getenv("AUTH0_CALLBACK_URL", "http://localhost:9090/callback"),
+            callback_url=os.getenv(
+                "AUTH0_CALLBACK_URL", "http://localhost:9090/callback"
+            ),
         )
 
     @classmethod
@@ -108,9 +116,12 @@ class Auth0Config:
                 client_id=secrets.get("client_id", ""),
                 client_secret=secrets.get("client_secret", ""),
                 audience=secrets.get(
-                    "audience", os.getenv("AUTH0_AUDIENCE", "https://agentcore-financial-api")
+                    "audience",
+                    os.getenv("AUTH0_AUDIENCE", "https://agentcore-financial-api"),
                 ),
-                callback_url=os.getenv("AUTH0_CALLBACK_URL", "http://localhost:9090/callback"),
+                callback_url=os.getenv(
+                    "AUTH0_CALLBACK_URL", "http://localhost:9090/callback"
+                ),
             )
         except SecretsProviderError as e:
             logger.warning(f"Failed to load Auth0 config from secrets provider: {e}")
@@ -145,9 +156,15 @@ class AgentCoreConfig:
     region: str = field(default_factory=lambda: os.getenv("AWS_REGION", "us-east-1"))
 
     # Runtime configuration
-    coordinator_agent_id: str = field(default_factory=lambda: os.getenv("COORDINATOR_AGENT_ID", ""))
-    profile_agent_id: str = field(default_factory=lambda: os.getenv("PROFILE_AGENT_ID", ""))
-    accounts_agent_id: str = field(default_factory=lambda: os.getenv("ACCOUNTS_AGENT_ID", ""))
+    coordinator_agent_id: str = field(
+        default_factory=lambda: os.getenv("COORDINATOR_AGENT_ID", "")
+    )
+    profile_agent_id: str = field(
+        default_factory=lambda: os.getenv("PROFILE_AGENT_ID", "")
+    )
+    accounts_agent_id: str = field(
+        default_factory=lambda: os.getenv("ACCOUNTS_AGENT_ID", "")
+    )
 
     # Identity configuration
     identity_pool_id: str = field(
@@ -161,18 +178,24 @@ class AgentCoreConfig:
     memory_id: str = field(default_factory=lambda: os.getenv("AGENTCORE_MEMORY_ID", ""))
 
     # Gateway configuration
-    gateway_url: str = field(default_factory=lambda: os.getenv("AGENTCORE_GATEWAY_URL", ""))
+    gateway_url: str = field(
+        default_factory=lambda: os.getenv("AGENTCORE_GATEWAY_URL", "")
+    )
 
 
 @dataclass
 class AppConfig:
     """Application-level configuration."""
 
-    debug: bool = field(default_factory=lambda: os.getenv("DEBUG", "false").lower() == "true")
+    debug: bool = field(
+        default_factory=lambda: os.getenv("DEBUG", "false").lower() == "true"
+    )
     log_level: str = field(default_factory=lambda: os.getenv("LOG_LEVEL", "INFO"))
 
     # Streamlit configuration
-    streamlit_port: int = field(default_factory=lambda: int(os.getenv("STREAMLIT_PORT", "8501")))
+    streamlit_port: int = field(
+        default_factory=lambda: int(os.getenv("STREAMLIT_PORT", "8501"))
+    )
 
     # OAuth callback server
     oauth_callback_port: int = field(

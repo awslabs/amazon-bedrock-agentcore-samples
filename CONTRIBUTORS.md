@@ -113,5 +113,9 @@
 - Richa Gupta (richagpt)
 - Chandra Dhandapani
 - Anant Murarka (anantmu)
+- Renya Kujirada (ren8k)
 - Cristiano Scandura (scandura)
+- palbiren
+- Gui Ruggiero (guiruggiero)
+- Visakh Madathil (vmmadathil)
 - Szymon Kochański (szymonkochanski)

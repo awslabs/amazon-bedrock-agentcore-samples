@@ -37,6 +37,18 @@ Resources:
 
   ALBSecurityGroup:
     Type: AWS::EC2::SecurityGroup
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W2
+            reason: >-
+              Demo ALB requires public HTTP access from internet; restrict to specific CIDRs in production
+          - id: W5
+            reason: >-
+              Demo ALB security group allows ingress from 0.0.0.0/0 for public accessibility; restrict in production
+          - id: W40
+            reason: >-
+              ALB requires broad outbound access for health checks and ECS task routing; restrict in production
     Properties:
       GroupName: !Sub ${ProjectName}-alb-sg
       GroupDescription: ALB security group
@@ -136,6 +148,12 @@ Resources:
   # See: https://docs.aws.amazon.com/elasticloadbalancing/latest/application/create-https-listener.html
   Listener:  # checkov:skip=CKV_AWS_103,CKV_AWS_2:Demo application uses HTTP for simplicity
     Type: AWS::ElasticLoadBalancingV2::Listener
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W56
+            reason: >-
+              Demo application uses HTTP for simplicity; use HTTPS with ACM certificate in production
     Properties:
       LoadBalancerArn: !Ref ALB
       Port: 80

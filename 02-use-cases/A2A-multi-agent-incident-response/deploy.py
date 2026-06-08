@@ -481,14 +481,17 @@ def collect_deployment_parameters(account_id: str = None) -> Dict[str, Any]:
 
     # Validate email format
     import re
-    email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+
+    email_pattern = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
     while not re.match(email_pattern, admin_email):
         print_error("Invalid email format. Please enter a valid email address.")
         admin_email = get_input("Admin User Email", required=True)
 
     config["cognito"]["admin_email"] = admin_email
 
-    print_info("Admin password (optional - leave empty for auto-generated temporary password)")
+    print_info(
+        "Admin password (optional - leave empty for auto-generated temporary password)"
+    )
     admin_password = get_secret(
         "Admin User Password (press Enter to skip)",
         required=False,
@@ -619,10 +622,12 @@ def display_configuration(config: Dict[str, Any]):
     print(f"\n{Colors.BOLD}Cognito Configuration:{Colors.END}")
     print(f"  User Pool Domain: {config['cognito']['domain_name']}")
     print(f"  Admin User Email: {config['cognito']['admin_email']}")
-    if config['cognito'].get('admin_password'):
+    if config["cognito"].get("admin_password"):
         print(f"  Admin User Password: {'*' * 20} (configured)")
     else:
-        print("  Admin User Password: (auto-generated temporary password will be sent via email)")
+        print(
+            "  Admin User Password: (auto-generated temporary password will be sent via email)"
+        )
 
     print(f"\n{Colors.BOLD}S3 Configuration:{Colors.END}")
     print(f"  Smithy Models Bucket: {config['s3']['smithy_models_bucket']}")
@@ -871,7 +876,7 @@ def deploy_cognito_stack(config: Dict[str, Any]) -> bool:
     ]
 
     # Only add AdminUserPassword if provided
-    if config['cognito'].get('admin_password'):
+    if config["cognito"].get("admin_password"):
         parameters.append(
             f"ParameterKey=AdminUserPassword,ParameterValue={config['cognito']['admin_password']}"
         )

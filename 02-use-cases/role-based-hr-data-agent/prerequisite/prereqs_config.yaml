@@ -1,0 +1,53 @@
+# Prerequisites configuration for role-based-hr-data-agent
+# Used by scripts/prereq.sh and scripts/agentcore_gateway.py
+
+aws:
+  region: us-east-1
+  account_id: ""  # Set via AWS CLI / environment
+
+lambda:
+  function_name: hr-data-provider-lambda
+  runtime: python3.13
+  timeout: 30
+  memory: 256
+  handler: lambda_handler.lambda_handler
+  s3_bucket: ""  # Set by prereq.sh
+  s3_key: hr-data-provider/deployment.zip
+
+interceptors:
+  request:
+    function_name: hr-request-interceptor-lambda
+    handler: request_interceptor.lambda_handler
+  response:
+    function_name: hr-response-interceptor-lambda
+    handler: response_interceptor.lambda_handler
+
+cognito:
+  user_pool_name: hr-dlp-user-pool
+  web_client_name: hr-dlp-web-client
+  machine_client_name: hr-dlp-machine-client
+  resource_server_identifier: hr-dlp-gateway
+  scopes:
+    - name: read
+      description: Basic employee search access
+    - name: pii
+      description: Access to PII fields (email, phone)
+    - name: address
+      description: Access to address fields
+    - name: comp
+      description: Access to compensation data
+
+gateway:
+  name: hr-data-agent-gateway
+  target_name: hr-lambda-target
+
+ssm_parameters:
+  gateway_url: /app/hrdlp/gateway-url
+  gateway_id: /app/hrdlp/gateway-id
+  runtime_id: /app/hrdlp/runtime-id
+  cognito_user_pool_id: /app/hrdlp/cognito-user-pool-id
+  cognito_client_id: /app/hrdlp/cognito-client-id
+  cognito_client_secret: /app/hrdlp/cognito-client-secret
+  cognito_token_url: /app/hrdlp/cognito-token-url
+  lambda_arn: /app/hrdlp/lambda-arn
+  cedar_policy_engine_arn: /app/hrdlp/cedar-policy-engine-arn

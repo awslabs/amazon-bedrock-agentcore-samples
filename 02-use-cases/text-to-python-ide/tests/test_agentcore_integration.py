@@ -7,35 +7,38 @@ import os
 import sys
 from dotenv import load_dotenv
 
+
 def test_agentcore_code_session():
     """Test AgentCore code_session functionality"""
     print("Testing AgentCore Code Session")
     print("=" * 40)
-    
+
     load_dotenv()
-    
+
     try:
         from bedrock_agentcore.tools.code_interpreter_client import code_session
+
         print("✓ code_session import successful")
-        
-        aws_region = os.getenv('AWS_REGION', 'us-east-1')
+
+        aws_region = os.getenv("AWS_REGION", "us-east-1")
         print(f"Using region: {aws_region}")
-        
+
         # Test code execution following the sample pattern
-        test_code = "print('Hello from AgentCore!')\nresult = 2 + 2\nprint(f'2 + 2 = {result}')"
-        
+        test_code = (
+            "print('Hello from AgentCore!')\nresult = 2 + 2\nprint(f'2 + 2 = {result}')"
+        )
+
         try:
             with code_session(aws_region) as code_client:
                 print("✓ Code session created successfully")
-                
-                response = code_client.invoke("executeCode", {
-                    "code": test_code,
-                    "language": "python",
-                    "clearContext": True
-                })
-                
+
+                response = code_client.invoke(
+                    "executeCode",
+                    {"code": test_code, "language": "python", "clearContext": True},
+                )
+
                 print("✓ Code execution request sent")
-                
+
                 # Process response stream following the sample pattern
                 for event in response["stream"]:
                     result = event.get("result", {})
@@ -47,67 +50,67 @@ def test_agentcore_code_session():
                         stdout = structured_content.get("stdout", "")
                         if stdout:
                             print(f"✓ Execution output: {stdout.strip()}")
-                        
+
                 print("✓ AgentCore code execution successful!")
                 return True
-                
+
         except Exception as e:
             print(f"⚠ AgentCore execution failed: {e}")
             print("  This is expected if you don't have bedrock-agentcore permissions")
             return False
-            
+
     except ImportError as e:
         print(f"✗ Import failed: {e}")
         return False
+
 
 def test_strands_with_agentcore_tool():
     """Test Strands-Agents agent with AgentCore tool following the sample pattern"""
     print("\nTesting Strands-Agents + AgentCore Integration")
     print("=" * 40)
-    
+
     try:
         from strands import Agent, tool
         from strands.models import BedrockModel
         from bedrock_agentcore.tools.code_interpreter_client import code_session
         import json
+
         print("✓ All imports successful")
-        
-        aws_region = os.getenv('AWS_REGION', 'us-east-1')
-        
+
+        aws_region = os.getenv("AWS_REGION", "us-east-1")
+
         # Create the execute_python tool following the exact sample pattern
         @tool
         def execute_python(code: str, description: str = "") -> str:
             """Execute Python code in the sandbox - following official sample pattern"""
-            
+
             if description:
                 code = f"# {description}\n{code}"
-            
+
             print(f"\n Generated Code: {code}")
-            
+
             try:
                 with code_session(aws_region) as code_client:
-                    response = code_client.invoke("executeCode", {
-                        "code": code,
-                        "language": "python",
-                        "clearContext": False
-                    })
-                
+                    response = code_client.invoke(
+                        "executeCode",
+                        {"code": code, "language": "python", "clearContext": False},
+                    )
+
                 # Process response following the sample pattern
                 for event in response["stream"]:
                     return json.dumps(event["result"])
-                        
+
             except Exception as e:
                 return f"Execution failed: {str(e)}"
-        
+
         print("✓ AgentCore tool created following sample pattern")
-        
+
         # Create Bedrock model
         bedrock_model = BedrockModel(
-            model_id="anthropic.claude-3-5-sonnet-20241022-v2:0",
-            aws_region=aws_region
+            model_id="anthropic.claude-3-5-sonnet-20241022-v2:0", aws_region=aws_region
         )
         print("✓ Bedrock model created")
-        
+
         # Create Strands agent with AgentCore tool following the sample system prompt
         SYSTEM_PROMPT = """You are a helpful AI assistant that validates all answers through code execution.
 
@@ -134,47 +137,45 @@ RESPONSE FORMAT: The execute_python tool returns a JSON response with:
 - isError: Boolean indicating if there was an error
 - content: Array of content objects with type and text/data
 - structuredContent: For code execution, includes stdout, stderr, exitCode, executionTime"""
-        
+
         agent = Agent(
-            tools=[execute_python],
-            system_prompt=SYSTEM_PROMPT,
-            model=bedrock_model
+            tools=[execute_python], system_prompt=SYSTEM_PROMPT, model=bedrock_model
         )
-        print("✓ Strands-Agents agent with AgentCore tool created following sample pattern")
-        
+        print(
+            "✓ Strands-Agents agent with AgentCore tool created following sample pattern"
+        )
+
         # Test the integration with a simple query
         test_query = "Calculate 5 factorial using Python code"
         print(f"\nTesting with query: {test_query}")
-        
+
         try:
             response = agent(test_query)
             print("✓ Agent response received")
             print(f"Response preview: {str(response)[:200]}...")
             return True
-            
+
         except Exception as e:
             print(f"⚠ Agent execution failed: {e}")
             return False
-            
+
     except Exception as e:
         print(f"✗ Integration test failed: {e}")
         return False
+
 
 def main():
     """Run all AgentCore integration tests following the official sample"""
     print("AgentCore Integration Tests (Following Official Sample)")
     print("=" * 60)
-    
+
     load_dotenv()
-    
-    tests = [
-        test_agentcore_code_session,
-        test_strands_with_agentcore_tool
-    ]
-    
+
+    tests = [test_agentcore_code_session, test_strands_with_agentcore_tool]
+
     passed = 0
     total = len(tests)
-    
+
     for test in tests:
         try:
             if test():
@@ -182,10 +183,10 @@ def main():
         except Exception as e:
             print(f"✗ Test failed with exception: {e}")
         print()
-    
+
     print("=" * 60)
     print(f"Tests passed: {passed}/{total}")
-    
+
     if passed == total:
         print("🎉 All AgentCore integration tests passed!")
         print("\nAgentCore Features Available:")
@@ -201,6 +202,7 @@ def main():
         print("❌ AgentCore integration not available")
         print("The application will use Strands simulation instead")
         return 1
+
 
 if __name__ == "__main__":
     sys.exit(main())

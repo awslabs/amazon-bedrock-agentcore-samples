@@ -1,0 +1,74 @@
+HR DATA GOVERNANCE POLICY
+=========================
+
+1. DATA CLASSIFICATION
+----------------------
+HR data is classified into four sensitivity tiers:
+
+  PUBLIC       — Employee name, department, job title
+  INTERNAL     — Work email, work phone, hire date, reporting manager
+  CONFIDENTIAL — Home address, personal phone, emergency contacts (PII)
+  RESTRICTED   — Salary, bonus, stock options, pay grade, compensation history
+
+2. ACCESS CONTROL
+-----------------
+Access to HR data is governed by OAuth 2.0 scopes issued via Amazon Cognito:
+
+  hr-dlp-gateway/read    — PUBLIC + INTERNAL data
+  hr-dlp-gateway/pii     — CONFIDENTIAL personal contact data
+  hr-dlp-gateway/address — CONFIDENTIAL address data
+  hr-dlp-gateway/comp    — RESTRICTED compensation data
+
+Role-to-scope mapping:
+
+  HR Manager    : read, pii, address, comp  (full access)
+  HR Specialist : read, pii                 (no compensation, no address)
+  Employee      : read                      (search only; all sensitive data redacted)
+  Admin         : read, pii, address, comp  (full access)
+
+3. DATA LOSS PREVENTION (DLP) ENFORCEMENT
+------------------------------------------
+Field-level redaction is applied at the AgentCore Gateway layer by the
+Response Interceptor Lambda. Redacted fields display:
+  "[REDACTED - Insufficient Permissions]"
+
+Redaction is applied AFTER Cedar policy authorization and BEFORE the
+response reaches the calling agent or end user.
+
+4. TENANT ISOLATION
+-------------------
+All HR data is scoped to a tenant identifier (tenantId). The Request
+Interceptor Lambda injects the correct tenantId from the OAuth token's
+client_id mapping, preventing any cross-tenant data access.
+
+5. AUDIT LOGGING
+----------------
+All data access events are logged to Amazon CloudWatch Logs with:
+  - Correlation ID (end-to-end request tracing)
+  - Tenant ID
+  - OAuth scopes of the requesting party
+  - Fields redacted and reason
+  - Timestamp (UTC)
+
+Log groups:
+  /aws/lambda/hr-data-provider-lambda
+  /aws/lambda/hr-request-interceptor-lambda
+  /aws/lambda/hr-response-interceptor-lambda
+
+6. INCIDENT RESPONSE
+--------------------
+Potential cross-tenant access attempts are logged as SECURITY_ALERT events
+in CloudWatch. The Request Interceptor overrides mismatched tenantId values
+and logs a POTENTIAL_CROSS_TENANT_ACCESS warning for investigation.
+
+7. DATA RETENTION
+-----------------
+  - CloudWatch audit logs: 90 days
+  - HR data (synthetic demo): no persistence — all data generated deterministically
+  - OAuth tokens: 60-minute access token, 30-day refresh token
+
+8. COMPLIANCE NOTE
+------------------
+This system uses synthetic (dummy) data for demonstration purposes only.
+No real employee PII is stored or processed. In a production deployment,
+ensure GDPR, CCPA, and applicable HR privacy regulations are met.

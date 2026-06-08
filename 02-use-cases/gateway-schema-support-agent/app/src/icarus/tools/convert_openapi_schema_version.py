@@ -9,7 +9,9 @@ class ConvertSchemaVersionTool:
         self.workdir = workdir.resolve()
         self.schema_path = self.workdir / "schema.yaml"
 
-    @tool(description="Convert the OpenAPI schema file (schema.yaml) to OpenAPI 3.0.1 format.")
+    @tool(
+        description="Convert the OpenAPI schema file (schema.yaml) to OpenAPI 3.0.1 format."
+    )
     def convert_openapi_schema_version(self) -> str:
         if not self.schema_path.exists():
             raise FileNotFoundError(self.schema_path.name)

@@ -79,7 +79,7 @@ This will create an HTTP server that listens on the port `8080` that implements 
 
 The Agent is now ready to be deployed. The best practice is to package code as container and push to ECR using CI/CD pipelines and IaC. 
 You can follow the guide 
-[here](https://github.com/awslabs/amazon-bedrock-agentcore-samples/blob/main/01-tutorials/01-AgentCore-runtime/01-hosting-agent/01-strands-with-bedrock-model/runtime_with_strands_and_bedrock_models.ipynb) 
+[here](https://github.com/awslabs/amazon-bedrock-agentcore-samples/blob/main/06-workshops/01-AgentCore-runtime/01-hosting-agent/01-strands-with-bedrock-model/runtime_with_strands_and_bedrock_models.ipynb) 
 to have a full step-by-step tutorial.
 
 You can interact with your agent with the following command:

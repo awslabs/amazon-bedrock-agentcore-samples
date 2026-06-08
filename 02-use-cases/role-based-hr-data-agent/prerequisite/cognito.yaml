@@ -1,0 +1,209 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  Role-Based HR Data Agent — Cognito User Pool
+  Creates Cognito User Pool with custom OAuth scopes for HR DLP demo personas.
+
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues: [dev, staging, prod]
+  CognitoDomainPrefix:
+    Type: String
+    Default: hr-dlp-agent
+    Description: Unique prefix for the Cognito hosted UI domain
+
+Resources:
+
+  # ---------------------------------------------------------------------------
+  # User Pool
+  # ---------------------------------------------------------------------------
+  HRUserPool:
+    Type: AWS::Cognito::UserPool
+    Metadata:
+      cdk_nag:
+        rules_to_suppress:
+          - id: AwsSolutions-COG2
+            reason: "Sample/demo environment — MFA kept optional to reduce setup friction for demonstration purposes"
+          - id: AwsSolutions-COG8
+            reason: "Cognito Advanced Security Features (plus tier) not required for sample/demo environment — adds cost without demo value"
+    Properties:
+      UserPoolName: !Sub hr-dlp-user-pool-${Environment}
+      AutoVerifiedAttributes: [email]
+      UsernameAttributes: [email]
+      MfaConfiguration: OPTIONAL
+      EnabledMfas:
+        - SOFTWARE_TOKEN_MFA
+      UserPoolAddOns:
+        AdvancedSecurityMode: ENFORCED
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireUppercase: true
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: true
+      Schema:
+        - Name: role
+          AttributeDataType: String
+          Mutable: true
+        - Name: tenantId
+          AttributeDataType: String
+          Mutable: true
+        - Name: department
+          AttributeDataType: String
+          Mutable: true
+
+  HRUserPoolDomain:
+    Type: AWS::Cognito::UserPoolDomain
+    Properties:
+      Domain: !Sub ${CognitoDomainPrefix}-${Environment}-${AWS::AccountId}
+      UserPoolId: !Ref HRUserPool
+
+  # ---------------------------------------------------------------------------
+  # Resource Server — defines OAuth scopes
+  # ---------------------------------------------------------------------------
+  HRResourceServer:
+    Type: AWS::Cognito::UserPoolResourceServer
+    Properties:
+      UserPoolId: !Ref HRUserPool
+      Identifier: hr-dlp-gateway
+      Name: HR DLP Gateway
+      Scopes:
+        - ScopeName: read
+          ScopeDescription: Basic employee search access
+        - ScopeName: pii
+          ScopeDescription: Access to PII fields (email, phone, emergency contact)
+        - ScopeName: address
+          ScopeDescription: Access to address fields
+        - ScopeName: comp
+          ScopeDescription: Access to compensation data (salary, bonus, stock options)
+
+  # ---------------------------------------------------------------------------
+  # User Groups
+  # ---------------------------------------------------------------------------
+  HRManagerGroup:
+    Type: AWS::Cognito::UserPoolGroup
+    Properties:
+      GroupName: hr-manager
+      UserPoolId: !Ref HRUserPool
+      Precedence: 1
+      Description: Full access to all HR data
+
+  HRSpecialistGroup:
+    Type: AWS::Cognito::UserPoolGroup
+    Properties:
+      GroupName: hr-specialist
+      UserPoolId: !Ref HRUserPool
+      Precedence: 2
+      Description: Employee profiles + PII, no compensation
+
+  EmployeeGroup:
+    Type: AWS::Cognito::UserPoolGroup
+    Properties:
+      GroupName: employee
+      UserPoolId: !Ref HRUserPool
+      Precedence: 3
+      Description: Basic search only
+
+  AdminGroup:
+    Type: AWS::Cognito::UserPoolGroup
+    Properties:
+      GroupName: admin
+      UserPoolId: !Ref HRUserPool
+      Precedence: 1
+      Description: Full administrative access
+
+  # ---------------------------------------------------------------------------
+  # App Client — Web (PKCE, for Streamlit UI)
+  # ---------------------------------------------------------------------------
+  HRWebClient:
+    Type: AWS::Cognito::UserPoolClient
+    DependsOn: HRResourceServer
+    Properties:
+      ClientName: hr-dlp-web-client
+      UserPoolId: !Ref HRUserPool
+      GenerateSecret: true  # pragma: allowlist secret
+      AllowedOAuthFlows: [code]
+      AllowedOAuthFlowsUserPoolClient: true
+      AllowedOAuthScopes:
+        - openid
+        - email
+        - profile
+        - hr-dlp-gateway/read
+        - hr-dlp-gateway/pii
+        - hr-dlp-gateway/address
+        - hr-dlp-gateway/comp
+      CallbackURLs: [http://localhost:8501]
+      LogoutURLs: [http://localhost:8501]
+      SupportedIdentityProviders: [COGNITO]
+      AccessTokenValidity: 60
+      IdTokenValidity: 60
+      RefreshTokenValidity: 30
+      TokenValidityUnits:
+        AccessToken: minutes
+        IdToken: minutes
+        RefreshToken: days
+
+  # ---------------------------------------------------------------------------
+  # App Client — Machine (client_credentials, for persona testing)
+  # ---------------------------------------------------------------------------
+  HRMachineClient:
+    Type: AWS::Cognito::UserPoolClient
+    DependsOn: HRResourceServer
+    Properties:
+      ClientName: hr-dlp-machine-client
+      UserPoolId: !Ref HRUserPool
+      GenerateSecret: true  # pragma: allowlist secret
+      AllowedOAuthFlows: [client_credentials]
+      AllowedOAuthFlowsUserPoolClient: true
+      AllowedOAuthScopes:
+        - hr-dlp-gateway/read
+        - hr-dlp-gateway/pii
+        - hr-dlp-gateway/address
+        - hr-dlp-gateway/comp
+      AccessTokenValidity: 60
+      TokenValidityUnits:
+        AccessToken: minutes
+
+  # ---------------------------------------------------------------------------
+  # SSM Parameters
+  # ---------------------------------------------------------------------------
+  SSMUserPoolId:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /app/hrdlp/cognito-user-pool-id
+      Type: String
+      Value: !Ref HRUserPool
+
+  SSMWebClientId:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /app/hrdlp/cognito-client-id
+      Type: String
+      Value: !Ref HRWebClient
+
+  SSMTokenUrl:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /app/hrdlp/cognito-token-url
+      Type: String
+      Value: !Sub https://${CognitoDomainPrefix}-${Environment}-${AWS::AccountId}.auth.${AWS::Region}.amazoncognito.com/oauth2/token
+
+  SSMDiscoveryUrl:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /app/hrdlp/cognito-discovery-url
+      Type: String
+      Value: !Sub https://cognito-idp.${AWS::Region}.amazonaws.com/${HRUserPool}/.well-known/openid-configuration
+
+Outputs:
+  UserPoolId:
+    Value: !Ref HRUserPool
+    Export: {Name: !Sub "${AWS::StackName}-UserPoolId"}
+  WebClientId:
+    Value: !Ref HRWebClient
+  MachineClientId:
+    Value: !Ref HRMachineClient
+  TokenUrl:
+    Value: !Sub https://${CognitoDomainPrefix}-${Environment}-${AWS::AccountId}.auth.${AWS::Region}.amazoncognito.com/oauth2/token

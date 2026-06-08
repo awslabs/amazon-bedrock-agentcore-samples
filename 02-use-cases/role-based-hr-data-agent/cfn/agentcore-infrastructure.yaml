@@ -1,0 +1,278 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  Amazon Bedrock AgentCore infrastructure for role-based HR data agent with field-level DLP.
+  Deploys Gateway, GatewayTarget (Lambda MCP server), Cedar Policy Engine, and Runtime.
+
+Metadata:
+  checkov:
+    skip:
+      - id: CKV_AWS_115
+        comment: "Lambda concurrency limits added via ReservedConcurrentExecutions on all functions"
+      - id: CKV_AWS_116
+        comment: "AgentCore Gateway invokes Lambda synchronously — DLQ not applicable"
+      - id: CKV_AWS_117
+        comment: "Sample code — VPC integration outside demo scope"
+  cdk_nag:
+    rules_to_suppress:
+      - id: AwsSolutions-IAM4
+        reason: "AWSLambdaBasicExecutionRole is standard practice for Lambda execution"
+      - id: AwsSolutions-IAM5
+        reason: "SSM path wildcards scoped to /app/hrdlp/*; bedrock-agentcore:* has no resource-level ARN support"
+  guard:
+    SuppressedRules:
+      - LAMBDA_INSIDE_VPC        # mirrors CKV_AWS_117 — sample code
+      - LAMBDA_DLQ_CHECK         # mirrors CKV_AWS_116 — sync invocations only
+      - IAM_NO_INLINE_POLICY_CHECK  # policies are role-scoped to this stack
+
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+    Description: Environment suffix for resource naming
+    AllowedValues:
+      - dev
+      - staging
+      - prod
+
+  LambdaArn:
+    Type: String
+    Description: ARN of the HR data provider Lambda function (from SSM /app/hrdlp/lambda-arn)
+
+  RequestInterceptorArn:
+    Type: String
+    Description: ARN of the request interceptor Lambda (from SSM /app/hrdlp/request-interceptor-arn)
+    Default: ""
+
+  ResponseInterceptorArn:
+    Type: String
+    Description: ARN of the response interceptor Lambda (from SSM /app/hrdlp/response-interceptor-arn)
+    Default: ""
+
+  GatewayRoleArn:
+    Type: String
+    Description: IAM role ARN for Gateway execution (from SSM /app/hrdlp/gateway-role-arn)
+
+  RuntimeRoleArn:
+    Type: String
+    Description: IAM role ARN for Runtime execution (from SSM /app/hrdlp/runtime-role-arn)
+
+  CognitoUserPoolId:
+    Type: String
+    Description: Cognito User Pool ID for JWT authorizer (from SSM /app/hrdlp/cognito-user-pool-id)
+
+  PersonaClientIds:
+    Type: CommaDelimitedList
+    Description: Comma-separated list of Cognito client IDs for all personas (hr-manager,hr-specialist,employee,admin)
+
+  RuntimeS3Bucket:
+    Type: String
+    Description: S3 bucket holding the runtime.zip artifact (from SSM /app/hrdlp/deploy-bucket)
+
+  RuntimeS3Key:
+    Type: String
+    Default: hr-data-agent/runtime.zip
+    Description: S3 key for the runtime artifact
+
+  CedarPolicyMode:
+    Type: String
+    Default: LOG_ONLY
+    Description: Cedar policy enforcement mode
+    AllowedValues:
+      - LOG_ONLY
+      - ENFORCE
+
+Conditions:
+  HasRequestInterceptor: !Not [!Equals [!Ref RequestInterceptorArn, ""]]
+  HasResponseInterceptor: !Not [!Equals [!Ref ResponseInterceptorArn, ""]]
+  HasInterceptors: !Or [!Condition HasRequestInterceptor, !Condition HasResponseInterceptor]
+
+Resources:
+  # ============================================================================
+  # Amazon Bedrock AgentCore Gateway (initial creation without PolicyEngine)
+  # ============================================================================
+  HRDataGateway:
+    Type: AWS::BedrockAgentCore::Gateway
+    Properties:
+      Name: !Sub hr-data-agent-gateway-${Environment}
+      Description: "Role-based HR data gateway with field-level DLP"
+      ProtocolType: "MCP"
+      ProtocolConfiguration:
+        Mcp:
+          SearchType: "SEMANTIC"
+      RoleArn: !Ref GatewayRoleArn
+      AuthorizerType: "CUSTOM_JWT"
+      AuthorizerConfiguration:
+        CustomJWTAuthorizer:
+          DiscoveryUrl: !Sub https://cognito-idp.${AWS::Region}.amazonaws.com/${CognitoUserPoolId}/.well-known/openid-configuration
+          AllowedClients: !Ref PersonaClientIds
+      InterceptorConfigurations:
+        - Interceptor:
+            Lambda:
+              Arn: !Ref RequestInterceptorArn
+          InterceptionPoints:
+            - REQUEST
+          InputConfiguration:
+            PassRequestHeaders: true
+        - Interceptor:
+            Lambda:
+              Arn: !Ref ResponseInterceptorArn
+          InterceptionPoints:
+            - RESPONSE
+          InputConfiguration:
+            PassRequestHeaders: true
+
+  # ============================================================================
+  # NOTE: Cedar Policy Engine and Policies are created via boto3 script
+  # CloudFormation PolicyEngine validation has issues with circular dependency
+  # (policies need Gateway ARN, Gateway needs PolicyEngine ARN)
+  # See: scripts/deploy_cfn.sh Step 5 for Cedar policy creation via boto3
+  # ============================================================================
+
+  # ============================================================================
+  # Amazon Bedrock AgentCore GatewayTarget (Lambda MCP server)
+  # ============================================================================
+  HRLambdaTarget:
+    Type: AWS::BedrockAgentCore::GatewayTarget
+    DependsOn: HRDataGateway
+    Properties:
+      GatewayIdentifier: !Ref HRDataGateway
+      Name: hr-lambda-target
+      TargetConfiguration:
+        Mcp:
+          Lambda:
+            LambdaArn: !Ref LambdaArn
+            ToolSchema:
+              InlinePayload:
+                - Name: "search_employee"
+                  Description: "Search for employees by name, department, or role"
+                  InputSchema:
+                    Type: "object"
+                    Properties:
+                      query:
+                        Type: "string"
+                        Description: "Search query — employee name, department, or role"
+                      tenantId:
+                        Type: "string"
+                        Description: "Tenant identifier (auto-injected by Request Interceptor)"
+                    Required:
+                      - "query"
+                  OutputSchema:
+                    Type: "object"
+                    Properties:
+                      statusCode:
+                        Type: "integer"
+                        Description: "HTTP status code"
+                      body:
+                        Type: "string"
+                        Description: "Search results"
+                - Name: "get_employee_profile"
+                  Description: "Get detailed employee profile"
+                  InputSchema:
+                    Type: "object"
+                    Properties:
+                      employeeId:
+                        Type: "string"
+                        Description: "Employee identifier from search results"
+                      tenantId:
+                        Type: "string"
+                        Description: "Tenant identifier (auto-injected)"
+                    Required:
+                      - "employeeId"
+                  OutputSchema:
+                    Type: "object"
+                    Properties:
+                      statusCode:
+                        Type: "integer"
+                        Description: "HTTP status code"
+                      body:
+                        Type: "string"
+                        Description: "Employee profile data"
+                - Name: "get_employee_compensation"
+                  Description: "Get employee compensation data"
+                  InputSchema:
+                    Type: "object"
+                    Properties:
+                      employeeId:
+                        Type: "string"
+                        Description: "Employee identifier from search results"
+                      tenantId:
+                        Type: "string"
+                        Description: "Tenant identifier (auto-injected)"
+                    Required:
+                      - "employeeId"
+                  OutputSchema:
+                    Type: "object"
+                    Properties:
+                      statusCode:
+                        Type: "integer"
+                        Description: "HTTP status code"
+                      body:
+                        Type: "string"
+                        Description: "Compensation data"
+      CredentialProviderConfigurations:
+        - CredentialProviderType: GATEWAY_IAM_ROLE
+
+  # ============================================================================
+  # Amazon Bedrock AgentCore Runtime (Strands agent)
+  # ============================================================================
+  HRDataAgentRuntime:
+    Type: AWS::BedrockAgentCore::Runtime
+    DependsOn:
+      - HRDataGateway
+      - HRLambdaTarget
+    Properties:
+      AgentRuntimeName: !Sub hr_data_agent_runtime_${Environment}
+      Description: Role-based HR data agent with field-level DLP via Amazon Bedrock AgentCore Gateway
+      AgentRuntimeArtifact:
+        CodeConfiguration:
+          Code:
+            S3:
+              Bucket: !Ref RuntimeS3Bucket
+              Prefix: !Ref RuntimeS3Key
+          Runtime: PYTHON_3_11
+          EntryPoint:
+            - main.py
+      RoleArn: !Ref RuntimeRoleArn
+      NetworkConfiguration:
+        NetworkMode: PUBLIC
+      EnvironmentVariables:
+        GATEWAY_URL: !GetAtt HRDataGateway.GatewayUrl
+        AWS_DEFAULT_REGION: !Ref AWS::Region
+      AuthorizerConfiguration:
+        CustomJWTAuthorizer:
+          DiscoveryUrl: !Sub https://cognito-idp.${AWS::Region}.amazonaws.com/${CognitoUserPoolId}/.well-known/openid-configuration
+          AllowedClients: !Ref PersonaClientIds
+      RequestHeaderConfiguration:
+        RequestHeaderAllowlist:
+          - Authorization
+
+Outputs:
+  GatewayId:
+    Description: Amazon Bedrock AgentCore Gateway ID
+    Value: !Ref HRDataGateway
+    Export:
+      Name: !Sub ${AWS::StackName}-GatewayId
+
+  GatewayUrl:
+    Description: Amazon Bedrock AgentCore Gateway MCP endpoint URL
+    Value: !GetAtt HRDataGateway.GatewayUrl
+    Export:
+      Name: !Sub ${AWS::StackName}-GatewayUrl
+
+  GatewayArn:
+    Description: Amazon Bedrock AgentCore Gateway ARN
+    Value: !GetAtt HRDataGateway.GatewayArn
+    Export:
+      Name: !Sub ${AWS::StackName}-GatewayArn
+
+  RuntimeId:
+    Description: Amazon Bedrock AgentCore Runtime ID
+    Value: !Ref HRDataAgentRuntime
+    Export:
+      Name: !Sub ${AWS::StackName}-RuntimeId
+
+  RuntimeUrl:
+    Description: Amazon Bedrock AgentCore Runtime invocation endpoint (ARN-based)
+    Value: !Sub https://bedrock-agentcore.${AWS::Region}.amazonaws.com/runtimes/arn%3Aaws%3Abedrock-agentcore%3A${AWS::Region}%3A${AWS::AccountId}%3Aruntime%2F${HRDataAgentRuntime}/invocations
+    Export:
+      Name: !Sub ${AWS::StackName}-RuntimeUrl

@@ -1,0 +1,68 @@
+DLP REDACTION RULES
+===================
+
+This document defines the field-level redaction rules applied by the AgentCore
+Gateway Response Interceptor to HR data tool responses.
+
+1. PII FIELDS  (requires scope: hr-dlp-gateway/pii)
+-----------------------------------------------------
+Fields redacted when hr-dlp-gateway/pii scope is absent:
+
+  email               Work email address
+  phone               Work phone number
+  personal_phone      Personal mobile phone
+  emergency_contact   Emergency contact name and number
+
+Redaction marker: "[REDACTED - Insufficient Permissions]"
+
+2. ADDRESS FIELDS  (requires scope: hr-dlp-gateway/address)
+------------------------------------------------------------
+Fields redacted when hr-dlp-gateway/address scope is absent:
+
+  address             Street address
+  city                City
+  state               State/Province
+  zip_code            Postal code
+
+Redaction marker: "[REDACTED - Insufficient Permissions]"
+
+3. COMPENSATION FIELDS  (requires scope: hr-dlp-gateway/comp)
+--------------------------------------------------------------
+Fields redacted when hr-dlp-gateway/comp scope is absent:
+
+  salary                  Annual base salary
+  bonus                   Annual bonus
+  stock_options           Stock option grant
+  pay_grade               Pay grade / level
+  benefits_value          Total benefits value
+  total_compensation      Total compensation (sum)
+  compensation_history[]  Historical salary and bonus records
+    .salary               — individual record salary
+    .bonus                — individual record bonus
+
+Redaction marker: "[REDACTED - Insufficient Permissions]"
+
+4. TOOL DISCOVERY FILTERING
+----------------------------
+The compensation tool is hidden entirely from tools/list responses for users
+without hr-dlp-gateway/comp scope. Users without hr-dlp-gateway/read scope
+see no tools at all.
+
+5. REDACTION IMPLEMENTATION
+-----------------------------
+Redaction is applied in the Response Interceptor Lambda
+(prerequisite/lambda/interceptors/response_interceptor.py).
+
+The Lambda receives the raw Lambda HR Provider response, applies scope-based
+redaction in-place, and returns the modified response to the Gateway.
+
+All redaction actions are logged to CloudWatch with correlation IDs.
+
+6. SCOPE NORMALIZATION
+-----------------------
+The following scope formats are treated as equivalent:
+
+  hr-dlp-gateway/pii  ==  hr:pii  ==  pii
+  hr-dlp-gateway/comp ==  hr:comp ==  comp
+  hr-dlp-gateway/read ==  hr:read ==  read
+  hr-dlp-gateway/address == hr:address == address

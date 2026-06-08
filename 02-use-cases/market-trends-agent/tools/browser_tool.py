@@ -1,3 +1,4 @@
+import os
 import time
 import logging
 from playwright.sync_api import sync_playwright, Playwright, BrowserType
@@ -7,10 +8,12 @@ from langchain_aws import ChatBedrock
 
 logger = logging.getLogger(__name__)
 
+AWS_REGION = os.getenv("AWS_REGION", "us-east-1")
+
 
 def get_stock_data_with_browser(playwright: Playwright, symbol: str) -> str:
     """Get stock data using browser"""
-    with browser_session("us-east-1") as client:
+    with browser_session(AWS_REGION) as client:
         ws_url, headers = client.generate_ws_headers()
         chromium: BrowserType = playwright.chromium
         browser = chromium.connect_over_cdp(ws_url, headers=headers)
@@ -26,7 +29,7 @@ def get_stock_data_with_browser(playwright: Playwright, symbol: str) -> str:
             # Use LLM to extract stock data
             llm = ChatBedrock(
                 model_id="global.anthropic.claude-haiku-4-5-20251001-v1:0",
-                region_name="us-east-1",
+                region_name=AWS_REGION,
             )
             prompt = "Extract stock price and key information for {} from this page content. Be concise:\n\n{}".format(
                 symbol, content[:3000]
@@ -44,7 +47,7 @@ def search_news_with_browser(
     playwright: Playwright, query: str, news_source: str = "bloomberg"
 ) -> str:
     """Generic news search using browser and LLM analysis"""
-    with browser_session("us-east-1") as client:
+    with browser_session(AWS_REGION) as client:
         ws_url, headers = client.generate_ws_headers()
         chromium: BrowserType = playwright.chromium
         browser = chromium.connect_over_cdp(ws_url, headers=headers)
@@ -161,7 +164,7 @@ def search_news_with_browser(
             # Use LLM to extract headlines and highlights
             llm = ChatBedrock(
                 model_id="global.anthropic.claude-haiku-4-5-20251001-v1:0",
-                region_name="us-east-1",
+                region_name=AWS_REGION,
             )
 
             # Enhanced prompt to handle both search results and general market pages

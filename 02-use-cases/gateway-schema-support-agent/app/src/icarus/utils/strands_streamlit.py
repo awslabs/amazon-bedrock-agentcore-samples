@@ -92,13 +92,17 @@ class StrandsAgentStreamlitChat:
             self.stream_messages(prompt)
 
     def draw_chat(
-        self, disable_chat_input: bool = False, chat_input_placeholder: str | None = None
+        self,
+        disable_chat_input: bool = False,
+        chat_input_placeholder: str | None = None,
     ):
         with self.chat_container:
             # Show display-only messages with negative positions first
             for display_only_position in sorted(self._display_only_messages.keys()):
                 if display_only_position < 0:
-                    for display_only_message in self._display_only_messages[display_only_position]:
+                    for display_only_message in self._display_only_messages[
+                        display_only_position
+                    ]:
                         self.show_message(display_only_message)
 
             if self.agent is not None:

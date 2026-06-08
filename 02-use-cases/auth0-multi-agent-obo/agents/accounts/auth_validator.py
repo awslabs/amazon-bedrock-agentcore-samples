@@ -74,34 +74,48 @@ def validate_scope_for_accounts(claims: Dict[str, Any]) -> Dict[str, Any]:
             f"Insufficient scopes for accounts agent. "
             f"Requires at least one of {sorted(all_accepted)}, got: {scopes}"
         )
-        logger.warning(json.dumps({
-            "event": "scope_validation_failed",
-            "agent": "accounts",
-            "required_any": sorted(all_accepted),
-            "actual": scopes,
-        }))
+        logger.warning(
+            json.dumps(
+                {
+                    "event": "scope_validation_failed",
+                    "agent": "accounts",
+                    "required_any": sorted(all_accepted),
+                    "actual": scopes,
+                }
+            )
+        )
         return {"valid": False, "error": error_msg, "scopes": scopes}
 
     # Extract the fine-grained account-type scopes for filtering
     account_type_scopes = [s for s in scopes if s in fine_grained_account_scopes]
 
-    logger.info(json.dumps({
-        "event": "scope_validation_passed",
-        "agent": "accounts",
-        "account_scopes": present_account_scopes,
-        "account_type_scopes": account_type_scopes,
-        "all_scopes": scopes,
-    }))
+    logger.info(
+        json.dumps(
+            {
+                "event": "scope_validation_passed",
+                "agent": "accounts",
+                "account_scopes": present_account_scopes,
+                "account_type_scopes": account_type_scopes,
+                "all_scopes": scopes,
+            }
+        )
+    )
 
     # Warn about unexpected profile scopes that don't belong to the accounts agent
-    unexpected_scopes = [s for s in scopes if s.startswith("profile:") or s in ("profile", "email")]
+    unexpected_scopes = [
+        s for s in scopes if s.startswith("profile:") or s in ("profile", "email")
+    ]
     if unexpected_scopes:
-        logger.warning(json.dumps({
-            "event": "unexpected_scopes_detected",
-            "agent": "accounts",
-            "unexpected_scopes": unexpected_scopes,
-            "all_scopes": scopes,
-        }))
+        logger.warning(
+            json.dumps(
+                {
+                    "event": "unexpected_scopes_detected",
+                    "agent": "accounts",
+                    "unexpected_scopes": unexpected_scopes,
+                    "all_scopes": scopes,
+                }
+            )
+        )
 
     return {"valid": True, "scopes": scopes, "account_type_scopes": account_type_scopes}
 
@@ -145,15 +159,19 @@ def validate_forwarded_claims(claims: Dict[str, Any]) -> Dict[str, Any]:
 
     # Detect and handle exchanged tokens from the Token Exchange Service
     if is_exchanged_token(claims):
-        logger.info(json.dumps({
-            "event": "exchanged_token_detected",
-            "agent": "accounts",
-            "issuer": issuer,
-            "exchange_id": claims.get("exchange_id"),
-            "delegation_chain": claims.get("act"),
-            "original_issuer": claims.get("original_issuer"),
-            "original_audience": claims.get("original_audience"),
-        }))
+        logger.info(
+            json.dumps(
+                {
+                    "event": "exchanged_token_detected",
+                    "agent": "accounts",
+                    "issuer": issuer,
+                    "exchange_id": claims.get("exchange_id"),
+                    "delegation_chain": claims.get("act"),
+                    "original_issuer": claims.get("original_issuer"),
+                    "original_audience": claims.get("original_audience"),
+                }
+            )
+        )
 
         # Validate scopes are appropriate for the accounts agent
         scope_result = validate_scope_for_accounts(claims)
@@ -170,28 +188,22 @@ def validate_forwarded_claims(claims: Dict[str, Any]) -> Dict[str, Any]:
 
     if not customer_id:
         logger.warning("No customer_id in custom claims")
-        return {
-            "valid": False,
-            "error": "Missing customer identity information"
-        }
+        return {"valid": False, "error": "Missing customer identity information"}
 
     logger.info(
-        f"Validated customer_id={customer_id}, "
-        f"customer_number={customer_number}"
+        f"Validated customer_id={customer_id}, customer_number={customer_number}"
     )
 
     return {
         "valid": True,
         "user_id": claims.get("sub"),
         "customer_id": customer_id,
-        "customer_number": customer_number
+        "customer_number": customer_number,
     }
 
 
 def check_account_access(
-    customer_id: str,
-    account_number: str,
-    claims: Dict[str, Any]
+    customer_id: str, account_number: str, claims: Dict[str, Any]
 ) -> Dict[str, Any]:
     """
     Check if the customer has access to the specified account.
@@ -223,11 +235,11 @@ def check_account_access(
         logger.warning(f"Access denied to account {account_number}")
         return {
             "authorized": False,
-            "reason": "Customer does not have access to this account"
+            "reason": "Customer does not have access to this account",
         }
 
     logger.info(f"Access granted to account {account_number}")
     return {
         "authorized": True,
-        "access_level": "owner"  # Could be: owner, joint, authorized_user
+        "access_level": "owner",  # Could be: owner, joint, authorized_user
     }

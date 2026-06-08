@@ -8,12 +8,11 @@ import sys
 import os
 
 # Add agents directory to path for imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'agents', 'accounts'))
-
-from auth_validator import (
-    validate_forwarded_claims,
-    check_account_access
+sys.path.insert(
+    0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "agents", "accounts")
 )
+
+from auth_validator import validate_forwarded_claims, check_account_access
 
 
 class TestValidateForwardedClaims:
@@ -27,7 +26,7 @@ class TestValidateForwardedClaims:
             "exp": 9999999999,
             "iss": "https://example.auth0.com/",
             "https://agentcore.example.com/customer_id": "CUST-001",
-            "https://agentcore.example.com/customer_number": "CN-12345"
+            "https://agentcore.example.com/customer_number": "CN-12345",
         }
 
         result = validate_forwarded_claims(claims)
@@ -43,7 +42,7 @@ class TestValidateForwardedClaims:
             "aud": "https://agentcore-financial-api",
             "exp": 9999999999,
             "iss": "https://example.auth0.com/",
-            "https://agentcore.example.com/customer_id": "CUST-001"
+            "https://agentcore.example.com/customer_id": "CUST-001",
         }
 
         result = validate_forwarded_claims(claims)
@@ -53,9 +52,7 @@ class TestValidateForwardedClaims:
 
     def test_missing_multiple_claims(self):
         """Test error message includes all missing claims."""
-        claims = {
-            "https://agentcore.example.com/customer_id": "CUST-001"
-        }
+        claims = {"https://agentcore.example.com/customer_id": "CUST-001"}
 
         result = validate_forwarded_claims(claims)
 
@@ -69,7 +66,7 @@ class TestValidateForwardedClaims:
             "aud": "https://agentcore-financial-api",
             "exp": 9999999999,
             "iss": "",
-            "https://agentcore.example.com/customer_id": "CUST-001"
+            "https://agentcore.example.com/customer_id": "CUST-001",
         }
 
         result = validate_forwarded_claims(claims)
@@ -83,7 +80,7 @@ class TestValidateForwardedClaims:
             "sub": "auth0|123456",
             "aud": "https://agentcore-financial-api",
             "exp": 9999999999,
-            "iss": "https://example.auth0.com/"
+            "iss": "https://example.auth0.com/",
         }
 
         result = validate_forwarded_claims(claims)
@@ -98,7 +95,7 @@ class TestValidateForwardedClaims:
             "aud": "https://agentcore-financial-api",
             "exp": 9999999999,
             "iss": "https://example.auth0.com/",
-            "https://agentcore.example.com/customer_id": "CUST-001"
+            "https://agentcore.example.com/customer_id": "CUST-001",
         }
 
         result = validate_forwarded_claims(claims)
@@ -136,7 +133,9 @@ class TestCheckAccountAccess:
 
         for account in valid_accounts:
             result = check_account_access("CUST-001", account, claims)
-            assert result["authorized"] is True, f"Account {account} should be authorized"
+            assert result["authorized"] is True, (
+                f"Account {account} should be authorized"
+            )
 
     def test_edge_case_account_99_in_middle(self):
         """Test account with 99 in middle is still authorized."""

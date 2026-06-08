@@ -45,14 +45,14 @@ if __name__ == "__main__":
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s - %(levelname)s - %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S"
+        datefmt="%Y-%m-%d %H:%M:%S",
     )
-    
+
     print(f"🚀 Starting {SERVER_NAME} v{SERVER_VERSION} MCP server...")
     print(f"📂 Projects directory: {PROJECTS_DIR}")
     print(f"🔌 Insurance API URL: {AUTO_INSURANCE_API_URL}")
     print("✅ Server is running. Press CTRL+C to stop.")
-    
+
     try:
         print("Starting with streamable-http transport...")
         mcp.run(transport="streamable-http")

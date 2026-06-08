@@ -325,7 +325,9 @@ def _read_gateway_config() -> tuple[str, str]:
 
         # Handle case where 'gateway' key might be None
         gateway_config = config.get("gateway") or {}
-        gateway_uri = gateway_config.get("uri") if isinstance(gateway_config, dict) else None
+        gateway_uri = (
+            gateway_config.get("uri") if isinstance(gateway_config, dict) else None
+        )
         if not gateway_uri:
             raise ValueError(
                 "Gateway URI not found in agent_config.yaml under 'gateway.uri'"
@@ -656,7 +658,6 @@ async def _run_interactive_session(
 ):
     """Run an interactive multi-turn conversation session."""
     # Buffer to store last query and response for /savereport command
-    last_query = None
     last_response = None
     # Track the original query for report naming (resets after each /savereport)
     original_query = None
@@ -717,7 +718,6 @@ async def _run_interactive_session(
 
             elif user_input.lower() == "/clear":
                 messages = []
-                last_query = None
                 last_response = None
                 original_query = None
                 print("✨ Conversation history and report buffer cleared.")
@@ -759,7 +759,6 @@ async def _run_interactive_session(
                     if filepath:
                         print(f"📄 Investigation report saved to: {filepath}")
                         # Clear the buffer after saving and reset for next investigation
-                        last_query = None
                         last_response = None
                         original_query = None
                         # Generate new session ID for next conversation
@@ -1180,7 +1179,9 @@ async def main():
             # Fallback to AWS_REGION environment variable
             aws_region = os.environ.get("AWS_REGION")
             if aws_region:
-                logger.info(f"Using AWS region from AWS_REGION environment variable: {aws_region}")
+                logger.info(
+                    f"Using AWS region from AWS_REGION environment variable: {aws_region}"
+                )
             else:
                 # Final fallback to us-east-1
                 aws_region = "us-east-1"

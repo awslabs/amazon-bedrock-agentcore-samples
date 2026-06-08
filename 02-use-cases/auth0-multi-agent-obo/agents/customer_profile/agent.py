@@ -21,7 +21,9 @@ class CustomerProfileAgent:
     Uses direct profile_service calls instead of strands Agent.
     """
 
-    def __init__(self, user_id: Optional[str] = None, customer_id: Optional[str] = None):
+    def __init__(
+        self, user_id: Optional[str] = None, customer_id: Optional[str] = None
+    ):
         """
         Initialize the Customer Profile Agent.
 
@@ -32,7 +34,9 @@ class CustomerProfileAgent:
         self.user_id = user_id
         self.customer_id = customer_id or user_id
 
-        logger.info(f"CustomerProfileAgent initialized for user={user_id}, customer={customer_id}")
+        logger.info(
+            f"CustomerProfileAgent initialized for user={user_id}, customer={customer_id}"
+        )
 
     def process_query(self, query: str) -> Dict[str, Any]:
         """
@@ -50,7 +54,11 @@ class CustomerProfileAgent:
             query_lower = query.lower()
 
             # Simple query routing based on keywords
-            if "profile" in query_lower or "show" in query_lower or "view" in query_lower:
+            if (
+                "profile" in query_lower
+                or "show" in query_lower
+                or "view" in query_lower
+            ):
                 return self._get_profile()
             elif "address" in query_lower:
                 return self._get_address_info()
@@ -67,7 +75,7 @@ class CustomerProfileAgent:
             return {
                 "status": "error",
                 "error": str(e),
-                "message": "Failed to process profile query"
+                "message": "Failed to process profile query",
             }
 
     def _get_profile(self) -> Dict[str, Any]:
@@ -85,13 +93,13 @@ class CustomerProfileAgent:
                 "response": formatted,
                 "data": profile,
                 "agent": "customer_profile_agent",
-                "customer_id": self.customer_id
+                "customer_id": self.customer_id,
             }
         else:
             return {
                 "status": "error",
                 "error": "PROFILE_NOT_FOUND",
-                "message": f"No profile found for customer {profile_customer_id}"
+                "message": f"No profile found for customer {profile_customer_id}",
             }
 
     def _get_address_info(self) -> Dict[str, Any]:
@@ -105,7 +113,7 @@ class CustomerProfileAgent:
 
             response_text = "**Residential Address:**\n"
             response_text += f"{address.get('street_line_1', '')}\n"
-            if address.get('street_line_2'):
+            if address.get("street_line_2"):
                 response_text += f"{address['street_line_2']}\n"
             response_text += f"{address.get('suburb', '')} {address.get('state', '')} {address.get('postcode', '')}\n"
             response_text += f"{address.get('country', '')}\n"
@@ -113,7 +121,7 @@ class CustomerProfileAgent:
             if mailing:
                 response_text += "\n**Mailing Address:**\n"
                 response_text += f"{mailing.get('street_line_1', '')}\n"
-                if mailing.get('street_line_2'):
+                if mailing.get("street_line_2"):
                     response_text += f"{mailing['street_line_2']}\n"
                 response_text += f"{mailing.get('suburb', '')} {mailing.get('state', '')} {mailing.get('postcode', '')}\n"
 
@@ -121,13 +129,13 @@ class CustomerProfileAgent:
                 "status": "success",
                 "response": response_text,
                 "agent": "customer_profile_agent",
-                "customer_id": self.customer_id
+                "customer_id": self.customer_id,
             }
         else:
             return {
                 "status": "error",
                 "error": "PROFILE_NOT_FOUND",
-                "message": "No profile found for customer"
+                "message": "No profile found for customer",
             }
 
     def _get_phone_info(self) -> Dict[str, Any]:
@@ -138,20 +146,20 @@ class CustomerProfileAgent:
         if profile:
             response_text = "**Contact Numbers:**\n"
             response_text += f"Primary: {profile.get('primary_phone', 'Not set')}\n"
-            secondary = profile.get('secondary_phone')
+            secondary = profile.get("secondary_phone")
             response_text += f"Secondary: {secondary if secondary else 'Not set'}\n"
 
             return {
                 "status": "success",
                 "response": response_text,
                 "agent": "customer_profile_agent",
-                "customer_id": self.customer_id
+                "customer_id": self.customer_id,
             }
         else:
             return {
                 "status": "error",
                 "error": "PROFILE_NOT_FOUND",
-                "message": "No profile found for customer"
+                "message": "No profile found for customer",
             }
 
     def _get_preferences(self) -> Dict[str, Any]:
@@ -160,25 +168,31 @@ class CustomerProfileAgent:
         profile = profile_service.get_profile(profile_customer_id)
 
         if profile:
-            prefs = profile.get('marketing_preferences', {})
+            prefs = profile.get("marketing_preferences", {})
             response_text = "**Contact Preferences:**\n"
             response_text += f"Preferred contact method: {profile.get('preferred_contact_method', 'Not set')}\n"
             response_text += "\n**Marketing Preferences:**\n"
-            response_text += f"Email opt-in: {'Yes' if prefs.get('email_opt_in') else 'No'}\n"
-            response_text += f"SMS opt-in: {'Yes' if prefs.get('sms_opt_in') else 'No'}\n"
-            response_text += f"Mail opt-in: {'Yes' if prefs.get('mail_opt_in') else 'No'}\n"
+            response_text += (
+                f"Email opt-in: {'Yes' if prefs.get('email_opt_in') else 'No'}\n"
+            )
+            response_text += (
+                f"SMS opt-in: {'Yes' if prefs.get('sms_opt_in') else 'No'}\n"
+            )
+            response_text += (
+                f"Mail opt-in: {'Yes' if prefs.get('mail_opt_in') else 'No'}\n"
+            )
 
             return {
                 "status": "success",
                 "response": response_text,
                 "agent": "customer_profile_agent",
-                "customer_id": self.customer_id
+                "customer_id": self.customer_id,
             }
         else:
             return {
                 "status": "error",
                 "error": "PROFILE_NOT_FOUND",
-                "message": "No profile found for customer"
+                "message": "No profile found for customer",
             }
 
     def _map_customer_id(self) -> str:
@@ -192,27 +206,29 @@ class CustomerProfileAgent:
     def _format_profile(self, profile: Dict[str, Any]) -> str:
         """Format profile data for display."""
         name = f"{profile.get('title', '')} {profile.get('first_name', '')} {profile.get('last_name', '')}".strip()
-        address = profile.get('address', {})
+        address = profile.get("address", {})
 
         formatted = f"""**Customer Profile**
 
 **Name:** {name}
-**Email:** {profile.get('email', 'Not set')}
-**Primary Phone:** {profile.get('primary_phone', 'Not set')}
-**Customer Since:** {profile.get('customer_since', 'Unknown')}
+**Email:** {profile.get("email", "Not set")}
+**Primary Phone:** {profile.get("primary_phone", "Not set")}
+**Customer Since:** {profile.get("customer_since", "Unknown")}
 
 **Address:**
-{address.get('street_line_1', '')}
-{address.get('street_line_2', '') if address.get('street_line_2') else ''}
-{address.get('suburb', '')} {address.get('state', '')} {address.get('postcode', '')}
-{address.get('country', '')}
+{address.get("street_line_1", "")}
+{address.get("street_line_2", "") if address.get("street_line_2") else ""}
+{address.get("suburb", "")} {address.get("state", "")} {address.get("postcode", "")}
+{address.get("country", "")}
 
-**Preferred Contact:** {profile.get('preferred_contact_method', 'Not set')}
+**Preferred Contact:** {profile.get("preferred_contact_method", "Not set")}
 """
         return formatted.strip()
 
 
-def create_agent(user_id: Optional[str] = None, customer_id: Optional[str] = None) -> CustomerProfileAgent:
+def create_agent(
+    user_id: Optional[str] = None, customer_id: Optional[str] = None
+) -> CustomerProfileAgent:
     """
     Create and configure the Customer Profile Agent.
 

@@ -2,6 +2,32 @@
 
 This guide provides the deployment sequence for the Lakehouse Agent system using command-line scripts. For a guided notebook-based approach, see the Jupyter notebooks in the parent directory.
 
+The deployment is organized in two phases:
+
+- **Phase 1 — Base lakehouse-agent (Steps 1–7, this guide).** Deploys Cognito,
+  IAM tenant roles, S3 Tables + Lake Formation, the MCP server, the Gateway
+  with request/response Interceptors, and the conversational agent.
+- **Phase 2 — Advanced AgentCore Policy + Interceptor (optional, CDK).** Layers
+  Cedar-based AgentCore Policy on top of Phase 1 and upgrades the request
+  Interceptor with geography-based access control. See
+  [advanced-agentcore-policy-gateway-interceptor/README.md](advanced-agentcore-policy-gateway-interceptor/README.md).
+
+## Architecture
+
+![Lakehouse Agent Architecture](./images/diagram-lakehouse-agent.png)
+
+The diagram above shows the end-to-end architecture deployed by this guide:
+users authenticate with Amazon Cognito from the Streamlit UI, the AgentCore
+Runtime (Lakehouse Agent) forwards the bearer token to the AgentCore Gateway,
+and the Gateway Interceptors validate tool access and exchange the JWT for
+tenant-scoped IAM credentials via the Tenant Role Mapping table. Those
+credentials let the MCP server query Athena / S3 Tables under Lake Formation
+row- and column-level security. AgentCore Identity, Observability, and the
+optional Post-Auth Lambda / Session Logs round out the operational surface.
+Phase 2 adds the **Policy Engine** between the Gateway and the MCP server so
+Cedar rules can deny tool calls declaratively (shown with a dashed outline in
+the diagram).
+
 ## Prerequisites
 
 1. AWS CLI configured with appropriate permissions
@@ -53,6 +79,7 @@ python setup_cognito.py
 ```
 
 SSM Parameters created:
+
 - `/app/lakehouse-agent/cognito-user-pool-id`
 - `/app/lakehouse-agent/cognito-user-pool-arn`
 - `/app/lakehouse-agent/cognito-app-client-id`
@@ -64,6 +91,7 @@ SSM Parameters created:
 - `/app/lakehouse-agent/cognito-region`
 
 Test users created:
+
 - `policyholder001@example.com` → policyholders group
 - `policyholder002@example.com` → policyholders group
 - `adjuster001@example.com` → adjusters group
@@ -71,6 +99,8 @@ Test users created:
 - `admin@example.com` → administrators group
 
 Default password: `TempPass123!`
+
+> **Important — first-time sign-in required.** `setup_cognito.py` creates users with the default password as a _temporary_ password, so every user starts in Cognito `FORCE_CHANGE_PASSWORD` state. `admin_initiate_auth` returns a `NEW_PASSWORD_REQUIRED` challenge (not an `AuthenticationResult`) until each user signs in once and completes the challenge. The Streamlit UI (Step 8) has a built-in challenge handler — launch it and sign in once per user, setting the new password to the same `TempPass123!` (the user pool does not configure `PasswordHistorySize`, so reusing the value is allowed). Only after this step will plain `admin_initiate_auth` calls (for example, from `verify_policy.py` in the Phase 2 sample) succeed.
 
 #### Optional: Enable Login Audit Logging
 
@@ -95,6 +125,7 @@ python setup_cognito.py --add-post-auth-trigger
 ```
 
 This creates:
+
 - DynamoDB table: `lakehouse_user_login_audit`
 - Lambda function: `lakehouse-cognito-post-auth`
 - IAM role: `lakehouse-cognito-post-auth-role`
@@ -114,6 +145,7 @@ python setup_iam_roles.py
 ```
 
 SSM Parameters created:
+
 - `/app/lakehouse-agent/roles/lakehouse-policyholders-role`
 - `/app/lakehouse-agent/roles/lakehouse-adjusters-role`
 - `/app/lakehouse-agent/roles/lakehouse-administrators-role`
@@ -130,6 +162,7 @@ Integrates S3 Tables with Lake Formation and configures permissions for tenant r
 Before running the integration script, your AWS role needs Lake Formation administrator permissions.
 
 **Option 1: AWS Console**
+
 1. Go to AWS Lake Formation console
 2. Navigate to "Administrative roles and tasks" → "Data lake administrators"
 3. Click "Choose administrators"
@@ -137,6 +170,7 @@ Before running the integration script, your AWS role needs Lake Formation admini
 5. Click "Save"
 
 **Option 2: AWS CLI**
+
 ```bash
 # Get current Lake Formation admins
 aws lakeformation get-data-lake-settings --region us-east-1
@@ -161,12 +195,14 @@ python integrate_s3tables_lakeformation.py
 ```
 
 This script:
+
 - Creates IAM role for Lake Formation data access
 - Registers S3 Tables bucket with Lake Formation (with federation enabled)
 - Creates federated catalog `s3tablescatalog` for S3 Tables
 - Grants the calling principal permissions on the catalog
 
 SSM Parameters created:
+
 - `/app/lakehouse-agent/lakeformation-role-arn`
 - `/app/lakehouse-agent/s3tables-catalog-name`
 
@@ -179,6 +215,7 @@ python setup_s3tables.py  # Uses default: lakehouse-{account_id}-{random}
 ```
 
 SSM Parameters created:
+
 - `/app/lakehouse-agent/table-bucket-name`
 - `/app/lakehouse-agent/table-bucket-arn`
 - `/app/lakehouse-agent/namespace`
@@ -192,6 +229,7 @@ python setup_lakeformation_permissions.py
 ```
 
 Lake Formation permissions configured:
+
 - Grants database and table permissions to tenant roles (from Step 2)
 - Configures column-level access for row-level security
 - Sets up data filters for policyholders (user_id column)
@@ -217,6 +255,7 @@ python deploy_runtime.py --yes
 ```
 
 SSM Parameters created:
+
 - `/app/lakehouse-agent/mcp-server-runtime-arn`
 
 ---
@@ -233,6 +272,7 @@ cd ../5-gateway-setup/interceptor-request
 ```
 
 This script:
+
 1. Packages Lambda function with dependencies (python-jose, cryptography)
 2. Creates Lambda execution role
 3. Deploys request interceptor Lambda function
@@ -240,6 +280,7 @@ This script:
 5. Seeds tenant-to-role mappings with allowed tools
 
 SSM Parameters created:
+
 - `/app/lakehouse-agent/interceptor-lambda-arn`
 - `/app/lakehouse-agent/interceptor-lambda-role-arn`
 - `/app/lakehouse-agent/tenant-role-mapping-table`
@@ -252,6 +293,7 @@ cd ../interceptor-response
 ```
 
 This script:
+
 1. Packages Lambda function with dependencies (python-jose, cryptography)
 2. Uses shared Lambda execution role from request interceptor
 3. Deploys response interceptor Lambda function
@@ -259,6 +301,7 @@ This script:
 5. Always removes system tools (e.g., x_amz_bedrock_agentcore_search)
 
 SSM Parameters created:
+
 - `/app/lakehouse-agent/response-interceptor-lambda-arn`
 
 ---
@@ -273,6 +316,7 @@ python create_gateway.py --yes
 ```
 
 SSM Parameters created:
+
 - `/app/lakehouse-agent/gateway-arn`
 
 ---
@@ -287,6 +331,7 @@ python deploy_lakehouse_agent.py --yes
 ```
 
 SSM Parameters created:
+
 - `/app/lakehouse-agent/agent-runtime-arn`
 
 ---
@@ -302,23 +347,44 @@ Access at: http://localhost:8501
 
 ---
 
+### Step 9 (Optional): Layer AgentCore Policy + Design 3 Interceptor (Phase 2)
+
+To add declarative Cedar-based access control and geography-aware request
+enrichment on top of the Phase 1 Gateway, follow
+[advanced-agentcore-policy-gateway-interceptor/README.md](advanced-agentcore-policy-gateway-interceptor/README.md).
+
+This Phase 2 deployment adds:
+
+- `CfnPolicyEngine` with four Cedar policies (`permit_all` + three `forbid` rules).
+- An IAM inline policy granting the existing Gateway role policy-evaluation permissions.
+- A single `UpdateGateway` call that re-attaches both Interceptors together with
+  the Policy Engine in `ENFORCE` mode.
+- An upgraded request Interceptor Lambda that injects user geography so Cedar
+  can enforce data-residency rules (Design 3).
+
+Prerequisite: Phase 1 Steps 1–7 must be deployed first — the CDK stack reads
+every ARN / ID it needs from SSM parameters populated by those steps.
+
+---
+
 ## Quick Reference
 
-| Step | Directory | Command |
-|------|-----------|---------|
-| 1 | `1-cognito-setup` | `python setup_cognito.py` |
-| 2 | `2-lakehouse-tenant-roles-setup` | `python setup_iam_roles.py` |
-| 3a | Lake Formation Console/CLI | Grant Lake Formation admin permissions (one-time) |
-| 3b | `3-s3tables-setup` | `python integrate_s3tables_lakeformation.py` |
-| 3c | `3-s3tables-setup` | `python setup_s3tables.py` |
-| 3d | `3-s3tables-setup` | `python setup_lakeformation_permissions.py` |
-| 3e | `3-s3tables-setup` | `python load_sample_data.py` |
-| 4 | `4-mcp-lakehouse-server` | `python deploy_runtime.py --yes` |
-| 5a | `5-gateway-setup/interceptor-request` | `./deploy.sh` |
-| 5b | `5-gateway-setup/interceptor-response` | `./deploy.sh` |
-| 6 | `5-gateway-setup` | `python create_gateway.py --yes` |
-| 7 | `6-lakehouse-agent` | `python deploy_lakehouse_agent.py --yes` |
-| 8 | `streamlit-ui` | `streamlit run streamlit_app.py` |
+| Step         | Directory                                       | Command                                           |
+| ------------ | ----------------------------------------------- | ------------------------------------------------- |
+| 1            | `1-cognito-setup`                               | `python setup_cognito.py`                         |
+| 2            | `2-lakehouse-tenant-roles-setup`                | `python setup_iam_roles.py`                       |
+| 3a           | Lake Formation Console/CLI                      | Grant Lake Formation admin permissions (one-time) |
+| 3b           | `3-s3tables-setup`                              | `python integrate_s3tables_lakeformation.py`      |
+| 3c           | `3-s3tables-setup`                              | `python setup_s3tables.py`                        |
+| 3d           | `3-s3tables-setup`                              | `python setup_lakeformation_permissions.py`       |
+| 3e           | `3-s3tables-setup`                              | `python load_sample_data.py`                      |
+| 4            | `4-mcp-lakehouse-server`                        | `python deploy_runtime.py --yes`                  |
+| 5a           | `5-gateway-setup/interceptor-request`           | `./deploy.sh`                                     |
+| 5b           | `5-gateway-setup/interceptor-response`          | `./deploy.sh`                                     |
+| 6            | `5-gateway-setup`                               | `python create_gateway.py --yes`                  |
+| 7            | `6-lakehouse-agent`                             | `python deploy_lakehouse_agent.py --yes`          |
+| 8            | `streamlit-ui`                                  | `streamlit run streamlit_app.py`                  |
+| 9 (optional) | `advanced-agentcore-policy-gateway-interceptor` | `bash scripts/pre-deploy.sh && npx cdk deploy`    |
 
 ---
 
@@ -355,9 +421,18 @@ deployment/
 │   │   └── README.md
 │   ├── create_gateway.py                 # Step 6
 │   └── cleanup_gateway.py
-└── 6-lakehouse-agent/                    # Step 7
-    ├── deploy_lakehouse_agent.py
-    └── cleanup_agent.py
+├── 6-lakehouse-agent/                    # Step 7
+│   ├── deploy_lakehouse_agent.py
+│   └── cleanup_agent.py
+└── advanced-agentcore-policy-gateway-interceptor/   # Step 9 (optional, Phase 2)
+    ├── README.md
+    ├── bin/app.ts
+    ├── lib/policy-stack.ts
+    ├── policies/              # Cedar policies (Design 1 + Design 3)
+    ├── lambda/interceptor-request/  # Design 3 Lambda source
+    ├── scripts/               # pre-deploy + cdk.json generation
+    └── verification/
+        └── verify_policy.py
 ```
 
 ---
@@ -378,7 +453,23 @@ aws ssm get-parameters-by-path \
 
 ## Cleanup
 
-Each deployment step has a dedicated cleanup script. Run them in reverse order:
+Each deployment step has a dedicated cleanup script. Run them in reverse order.
+
+**If you deployed Phase 2 (Step 9), destroy it first** — it depends on the
+Phase 1 Gateway and the Gateway role, so Phase 1 cleanup will fail while the
+Policy Engine is still attached.
+
+```bash
+# Step 9 (Phase 2): Destroy Policy Engine + Cedar policies + role inline policy.
+# Interceptors remain attached; the CDK stack only added the Policy Engine.
+cd advanced-agentcore-policy-gateway-interceptor
+npx cdk destroy --force
+cd ..
+```
+
+See [advanced-agentcore-policy-gateway-interceptor/README.md#cleanup](advanced-agentcore-policy-gateway-interceptor/README.md#cleanup) for notes on rolling back the Design 3 Lambda source before Phase 1 cleanup.
+
+Then run the Phase 1 cleanup scripts:
 
 ```bash
 # Step 7: Delete Lakehouse Agent

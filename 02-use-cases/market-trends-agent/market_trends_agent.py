@@ -13,6 +13,21 @@ from tools import get_memory_from_ssm, create_memory_tools
 from datetime import datetime
 import logging
 
+# Enable LangChain / LangGraph OpenTelemetry instrumentation so AgentCore
+# Observability captures tool-call spans, gen_ai.prompt.*, gen_ai.completion.*,
+# and trace structure. AgentCore Runtime boots agents under the ADOT
+# auto-instrumentor, but framework-level instrumentors still need to be
+# registered explicitly. See:
+# https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/observability-configure.html
+try:
+    from opentelemetry.instrumentation.langchain import LangchainInstrumentor
+
+    LangchainInstrumentor().instrument()
+except Exception:  # pragma: no cover — never block agent startup on instrumentation
+    logging.getLogger(__name__).exception(
+        "LangchainInstrumentor failed to load; continuing without framework-level tracing."
+    )
+
 app = BedrockAgentCoreApp()
 
 # Configure logging

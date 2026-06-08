@@ -18,8 +18,7 @@ from utils import (
 
 # Set up detailed logging
 logging.basicConfig(
-    level=logging.DEBUG,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    level=logging.DEBUG, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -31,15 +30,9 @@ def main():
         description="Interactive Agent Runtime CLI Tool - Start a conversation with the customer support agent"
     )
     parser.add_argument(
-        "--verbose", "-v",
-        action="store_true",
-        help="Enable verbose logging"
+        "--verbose", "-v", action="store_true", help="Enable verbose logging"
     )
-    parser.add_argument(
-        "--debug",
-        action="store_true",
-        help="Enable debug logging"
-    )
+    parser.add_argument("--debug", action="store_true", help="Enable debug logging")
 
     args = parser.parse_args()
 
@@ -60,8 +53,8 @@ def main():
 
     # Extract runtime_id, region, and account_id from ARN
     # ARN format: arn:aws:bedrock-agentcore:region:account-id:runtime/runtime-id
-    runtime_id = agent_arn.split('/')[-1]
-    arn_parts = agent_arn.split(':')
+    runtime_id = agent_arn.split("/")[-1]
+    arn_parts = agent_arn.split(":")
     region = arn_parts[3]
     account_id = arn_parts[4]
 
