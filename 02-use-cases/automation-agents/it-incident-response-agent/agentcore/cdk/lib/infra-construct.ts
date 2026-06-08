@@ -248,7 +248,6 @@ export class InfraConstruct extends Construct {
           s3VectorsConfiguration: {
             vectorBucketArn: vectorBucket.attrVectorBucketArn,
             indexArn: vectorIndex.attrIndexArn,
-            indexName: vectorIndex.indexName,
           },
         },
       });

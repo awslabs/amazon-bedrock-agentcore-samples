@@ -1,7 +1,7 @@
 [
   {
-    "name": "dev",
+    "name": "default",
     "account": "${CDK_DEFAULT_ACCOUNT}",
-    "region": "${AWS_REGION:-us-west-2}"
+    "region": "${AWS_REGION}"
   }
 ]

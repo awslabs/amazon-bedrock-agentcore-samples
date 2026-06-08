@@ -29,6 +29,9 @@ fi
 # Validate required env vars
 : "${CDK_DEFAULT_ACCOUNT:?ERROR: CDK_DEFAULT_ACCOUNT not set. Copy .env.example to .env and fill in your account ID.}"
 
+# Default region if not set in .env
+export AWS_REGION="${AWS_REGION:-us-west-2}"
+
 # Generate aws-targets.json from template (keeps account ID out of git)
 TARGETS_TEMPLATE="$PROJECT_DIR/agentcore/aws-targets.json.template"
 TARGETS_FILE="$PROJECT_DIR/agentcore/aws-targets.json"
