@@ -211,6 +211,41 @@ into the same CDK stack via `InfraConstruct` — deployed together with a single
 5. **Docker** (for building the agent container image)
 6. **CDK bootstrapped**: `cdk bootstrap aws://ACCOUNT/REGION`
 
+## Quickstart (from a fresh clone)
+
+If you just cloned the repo and want the exact path from zero to a validated,
+deployable project, run these steps in order. The sections below explain each
+in more detail.
+
+```bash
+# 1. Configure your account/region
+cp .env.example .env
+#    Edit .env → set CDK_DEFAULT_ACCOUNT to your 12-digit account ID
+
+# 2. Create the deployment target (gitignored — not shipped with the repo)
+cp agentcore/aws-targets.json.template agentcore/aws-targets.json
+#    Edit it to set your real account ID + region (see "Configure" below).
+#    The "name" must be "default" unless you also pass --target <name> to the CLI.
+
+# 3. Install CDK dependencies (the CDK project is the npm package)
+cd agentcore/cdk && npm install
+#    npm's allow-scripts gate skips esbuild's postinstall by default. esbuild is
+#    the CDK bundler, so approve it (already recorded in package.json, but run
+#    once to materialize the binary):
+npm approve-scripts esbuild
+cd ../..
+
+# 4. Validate the project config before deploying
+agentcore validate          # expect: "Valid"
+
+# 5. Deploy
+agentcore deploy -y
+```
+
+> **Note on `npm install`:** Running it inside `agentcore/cdk/` can leave an
+> empty `package-lock.json` at the project root (an npm quirk when a parent
+> directory has no `package.json`). It's harmless — delete it if it appears.
+
 ## Configure
 
 The project uses `agentcore/aws-targets.json` for deployment targets. This file
@@ -226,11 +261,19 @@ cp .env.example .env
 ./scripts/deploy.sh
 ```
 
-If you need to create `aws-targets.json` manually:
+If you need to create `aws-targets.json` manually, copy the template and fill in
+your values. Use the target name `default` unless you pass `--target <name>` to
+the CLI — the name must match the deployed target recorded in
+`agentcore/.cli/deployed-state.json`, or `agentcore validate` will fail with
+"Deployed state contains target names not present in aws-targets":
 
 ```json
-[{"name": "dev", "account": "YOUR_ACCOUNT_ID", "region": "us-west-2"}]
+[{"name": "default", "account": "YOUR_ACCOUNT_ID", "region": "us-west-2"}]
 ```
+
+> **Heads-up:** `aws-targets.json` is required by `agentcore validate`. The repo
+> ships only `aws-targets.json.template` (the real file is gitignored because it
+> contains your account ID), so a fresh clone must create it before validating.
 
 Optional environment variables (set in shell or `.env`):
 
@@ -739,6 +782,11 @@ agentcore deploy -y     # deploys empty state, tears down CloudFormation
 
 | Issue | Solution |
 |-------|----------|
+| `agentcore validate` says "Required file not found: aws-targets.json" | Fresh clone — create it from the template: `cp agentcore/aws-targets.json.template agentcore/aws-targets.json` and fill in your account ID + region. |
+| `agentcore validate` says "Deployed state contains target names not present in aws-targets" | The `name` in `aws-targets.json` must match the deployed target in `agentcore/.cli/deployed-state.json` (default: `default`). If you tore down the stack, reset `.cli/deployed-state.json` to `{"targets": {}}`. |
+| `cdk synth`/`deploy` fails with an esbuild error | esbuild's install script was skipped by npm's allow-scripts gate. Run `npm approve-scripts esbuild` in `agentcore/cdk/`. |
+| Empty `package-lock.json` appears at the project root after `npm install` | Harmless npm quirk (parent dir has no `package.json`). Safe to delete. |
+| `agentcore deploy` fails with "S3VectorsConfiguration: required key [IndexArn] not found" | The CDK code must explicitly create `AWS::S3Vectors::VectorBucket` and `AWS::S3Vectors::Index` resources and pass their ARNs/name into the KB's `s3VectorsConfiguration`. CloudFormation does NOT auto-create S3 Vectors resources (the console's "quick create" doesn't apply to CFN). Delete the ROLLBACK_COMPLETE stack (`aws cloudformation delete-stack --stack-name <stack>`) and redeploy. |
 | `agentcore deploy` fails on container build | Ensure Docker is running. Check CodeBuild logs in the AWS console. |
 | `agentcore dev` says "No agentcore project found" | Run from `ITIncidentAgent/` (not the parent dir). The CLI looks for `agentcore/agentcore.json` in CWD. Verify `runtimes` array is not empty in `agentcore.json`. |
 | Gateway returns 403 | Runtime IAM role needs `bedrock-agentcore:InvokeGateway` permission (already configured). Check that the role trust policy includes `bedrock-agentcore.amazonaws.com`. |
