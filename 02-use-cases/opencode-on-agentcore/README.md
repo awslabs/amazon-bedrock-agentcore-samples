@@ -1,12 +1,16 @@
 # OpenCode on AgentCore
 
-An async coding-agent sample that demonstrates Amazon Bedrock AgentCore Runtime, Gateway, Identity, Policy, and Observability.
+A Code Factory pattern on AWS: delegate coding tasks from any MCP client to isolated cloud sandboxes that open pull requests, built on Amazon Bedrock AgentCore Runtime, Gateway, Identity, Policy, and Observability.
 
 ## Overview
 
 This sample runs [OpenCode](https://opencode.ai), an open-source AI coding agent, as the workload inside an Amazon Bedrock AgentCore Runtime. A single FastMCP server exposes six MCP tools that clone a Git repository, run OpenCode against a task description, scan the result for leaked credentials, push a branch, and open a pull request. Each task runs in an isolated Firecracker microVM; sync and async execution modes are both supported, and the six tools are reachable through any MCP client (Kiro, Claude Desktop, Cursor) by way of an AgentCore Gateway.
 
 The purpose of the sample is to show how AgentCore's building blocks compose into an end-to-end workload. Runtime hosts the MCP server and manages async task lifecycle and session storage. Gateway fronts the Runtime, authenticates callers via Cognito, and authenticates itself to the Runtime over SigV4. Identity vaults the per-user Git OAuth tokens used by the pipeline. Policy evaluates Cedar rules to gate which tools a caller can invoke against which repositories. Observability flows OTEL metrics through the managed ADOT sidecar into the built-in GenAI dashboard. The section below maps each capability to the code that exercises it.
+
+## Why
+
+Engineering leaders want to scale AI-assisted development across the org, platform and IT teams need centralized governance and audit over those workloads, and individual developers want to fire off long-running tasks without blocking their IDE - but there is no standard pattern on AWS for running AI coding agents as a multi-tenant, policy-gated service. OpenCode on AgentCore implements a Code Factory pattern where coding tasks are delegated from any MCP-native client (Kiro, Claude Desktop, Cursor) to isolated cloud sandboxes that clone the target repository, run the OpenCode agent, push a branch, and open a pull request. It serves as a reference architecture for AgentCore Runtime, Gateway, Identity, Policy, and Observability, gives platform teams centralized identity, authorization, and tracing out of the box, and keeps the architecture open so OpenCode can be swapped for another agent and GitHub for another git host.
 
 ## AgentCore Capabilities Demonstrated
 
