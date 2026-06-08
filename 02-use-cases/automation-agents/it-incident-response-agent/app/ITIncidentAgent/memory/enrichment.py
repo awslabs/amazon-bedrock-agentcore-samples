@@ -1,0 +1,84 @@
+"""Memory enrichment: retrieve past-incident context for the system prompt.
+
+Uses AgentCore Memory's `retrieve_memories` to pull semantically-relevant
+summaries of past incidents for a given requester. The configured
+`summary_memory_strategy` (SUMMARIZATION type, namespace "incidents/{actorId}")
+rolls each session into a summary; this function searches those summaries.
+
+This transforms Memory from a passive session logger into an active
+enrichment source — the agent sees prior context before it reasons,
+enabling it to detect recurring incidents and escalate appropriately.
+"""
+
+import logging
+import os
+from typing import Optional
+
+from bedrock_agentcore.memory import MemoryClient
+
+logger = logging.getLogger(__name__)
+
+MEMORY_ID = os.getenv("MEMORY_ITINCIDENTAGENTMEMORY_ID") or os.getenv("MEMORY_ID", "")
+REGION = os.getenv("AWS_REGION", os.getenv("AWS_DEFAULT_REGION", "us-west-2"))
+
+_memory_client: Optional[MemoryClient] = None
+
+
+def _get_memory_client() -> Optional[MemoryClient]:
+    """Lazy-init the MemoryClient (avoids import-time failures in local dev)."""
+    global _memory_client
+    if _memory_client is None and MEMORY_ID:
+        _memory_client = MemoryClient(region_name=REGION)
+    return _memory_client
+
+
+def retrieve_past_incidents(requester_id: str, query: str, top_k: int = 5) -> list[str]:
+    """Pull summarized past-incident episodes for this requester.
+
+    The CfnMemory resource is configured with a `summary_memory_strategy`
+    namespaced as `incidents/{actorId}`. AgentCore extracts a summary per
+    session asynchronously after each event; `retrieve_memories` does a
+    semantic search across those summaries.
+
+    Returns a list of summary strings (most relevant first), or empty
+    list on failure (graceful degradation — the agent just won't have
+    prior context).
+    """
+    client = _get_memory_client()
+    if not client:
+        logger.info("Memory not configured (MEMORY_ID unset) — no past-incident context")
+        return []
+
+    namespace = f"incidents/{requester_id}"
+    try:
+        hits = client.retrieve_memories(
+            memory_id=MEMORY_ID,
+            namespace=namespace,
+            query=query,
+            top_k=top_k,
+        )
+    except Exception as exc:
+        logger.warning("Memory retrieve_memories failed for actor=%s: %s", requester_id, exc)
+        return []
+
+    summaries = []
+    for hit in hits or []:
+        text = (hit.get("content") or {}).get("text") or ""
+        if text:
+            summaries.append(text)
+
+    logger.info("Retrieved %d past-incident summaries for %s", len(summaries), requester_id)
+    return summaries
+
+
+def format_past_incidents_block(past_incidents: list[str]) -> str:
+    """Format past-incident summaries for injection into the system prompt."""
+    if past_incidents:
+        body = "\n".join(f"  - {s}" for s in past_incidents)
+        return (
+            f"Past incidents for this requester (most-relevant first, "
+            f"count={len(past_incidents)}):\n{body}\n\n"
+            "If the requester has 2+ prior incidents on the same service/topic, "
+            "this is a recurring issue — mention it in your resolution and escalate."
+        )
+    return "Past incidents for this requester: none on file."
