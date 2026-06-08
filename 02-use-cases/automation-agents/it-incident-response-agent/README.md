@@ -213,34 +213,39 @@ into the same CDK stack via `InfraConstruct` — deployed together with a single
 
 ## Quickstart (from a fresh clone)
 
-If you just cloned the repo and want the exact path from zero to a validated,
-deployable project, run these steps in order. The sections below explain each
-in more detail.
+If you just cloned the repo and want the exact path from zero to a deployed
+agent, run these steps in order:
 
 ```bash
 # 1. Configure your account/region
 cp .env.example .env
 #    Edit .env → set CDK_DEFAULT_ACCOUNT to your 12-digit account ID
 
-# 2. Create the deployment target (gitignored — not shipped with the repo)
-cp agentcore/aws-targets.json.template agentcore/aws-targets.json
-#    Edit it to set your real account ID + region (see "Configure" below).
-#    The "name" must be "default" unless you also pass --target <name> to the CLI.
-
-# 3. Install CDK dependencies (the CDK project is the npm package)
+# 2. Install CDK dependencies
 cd agentcore/cdk && npm install
-#    npm's allow-scripts gate skips esbuild's postinstall by default. esbuild is
-#    the CDK bundler, so approve it (already recorded in package.json, but run
-#    once to materialize the binary):
-npm approve-scripts esbuild
+npm approve-scripts esbuild   # approve the CDK bundler's postinstall
 cd ../..
 
-# 4. Validate the project config before deploying
-agentcore validate          # expect: "Valid"
-
-# 5. Deploy
-agentcore deploy -y
+# 3. Deploy (sources .env, generates aws-targets.json, runs agentcore deploy)
+./scripts/deploy.sh
 ```
+
+That's it. The deploy script handles:
+- Sourcing `.env` so CDK sees your env vars (`agentcore deploy` alone does NOT)
+- Generating `agentcore/aws-targets.json` from the template (via `envsubst`)
+- Validating `CDK_DEFAULT_ACCOUNT` is set
+- Calling `agentcore deploy -y`
+
+> **Alternative (manual path):** If you prefer to skip the wrapper script, you
+> must export env vars yourself and create `aws-targets.json` manually:
+>
+> ```bash
+> set -a && source .env && set +a
+> cp agentcore/aws-targets.json.template agentcore/aws-targets.json
+> # Edit aws-targets.json → set account + region, name must be "default"
+> agentcore validate
+> agentcore deploy -y
+> ```
 
 > **Note on `npm install`:** Running it inside `agentcore/cdk/` can leave an
 > empty `package-lock.json` at the project root (an npm quirk when a parent
