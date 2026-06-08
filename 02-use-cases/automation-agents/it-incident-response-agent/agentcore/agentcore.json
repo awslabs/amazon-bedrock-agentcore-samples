@@ -1,0 +1,62 @@
+{
+  "name": "ITIncidentAgent",
+  "version": 1,
+  "managedBy": "CDK",
+  "runtimes": [
+    {
+      "name": "ITIncidentAgent",
+      "build": "Container",
+      "entrypoint": "main.py",
+      "codeLocation": "app/ITIncidentAgent"
+    }
+  ],
+  "memories": [],
+  "credentials": [],
+  "evaluators": [],
+  "onlineEvalConfigs": [],
+  "agentCoreGateways": [
+    {
+      "name": "ITIncidentGateway",
+      "description": "MCP gateway for IT incident response tools (Lambda targets)",
+      "targets": [
+        {
+          "name": "lookup-user",
+          "targetType": "lambdaFunctionArn",
+          "lambdaFunctionArn": {
+            "lambdaArn": "PLACEHOLDER_LOOKUP_USER",
+            "toolSchemaFile": "tool-schemas/lookup-user.json"
+          }
+        },
+        {
+          "name": "get-process-info",
+          "targetType": "lambdaFunctionArn",
+          "lambdaFunctionArn": {
+            "lambdaArn": "PLACEHOLDER_GET_PROCESS_INFO",
+            "toolSchemaFile": "tool-schemas/get-process-info.json"
+          }
+        },
+        {
+          "name": "create-change-request",
+          "targetType": "lambdaFunctionArn",
+          "lambdaFunctionArn": {
+            "lambdaArn": "PLACEHOLDER_CREATE_CHANGE_REQUEST",
+            "toolSchemaFile": "tool-schemas/create-change-request.json"
+          }
+        },
+        {
+          "name": "query-kb",
+          "targetType": "lambdaFunctionArn",
+          "lambdaFunctionArn": {
+            "lambdaArn": "PLACEHOLDER_QUERY_KB",
+            "toolSchemaFile": "tool-schemas/query-kb.json"
+          }
+        }
+      ],
+      "authorizerType": "AWS_IAM",
+      "enableSemanticSearch": true,
+      "exceptionLevel": "DEBUG"
+    }
+  ],
+  "policyEngines": [],
+  "harnesses": []
+}
