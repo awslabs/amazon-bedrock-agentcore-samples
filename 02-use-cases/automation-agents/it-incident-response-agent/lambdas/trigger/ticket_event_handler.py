@@ -1,0 +1,136 @@
+"""Ticket event handler: SNS -> validate -> DDB/dispatch -> invoke Runtime.
+
+Supports two payload formats:
+  1. Full ticket (DDB mock): {ticket_id, requester_id, title, description, priority}
+     - Validates, persists to DDB, invokes Runtime with full payload.
+  2. Jira issue key: {issue_key, requester_id}
+     - Thin pass-through; Jira is the system of record.
+     - Does NOT persist to DDB (the agent reads from Jira via MCP).
+
+The handler detects the mode based on the presence of `issue_key` vs `ticket_id`.
+"""
+
+import json
+import logging
+import os
+import uuid
+from datetime import datetime, timezone
+
+import boto3
+
+logger = logging.getLogger()
+logger.setLevel(os.environ.get("LOG_LEVEL", "INFO"))
+
+TICKETS_TABLE = os.environ.get("TICKETS_TABLE", "")
+AGENT_RUNTIME_ARN = os.environ["AGENT_RUNTIME_ARN"]
+
+_ddb = boto3.resource("dynamodb")
+_agentcore = boto3.client("bedrock-agentcore")
+
+# Full-ticket mode requires these fields
+REQUIRED_TICKET_FIELDS = {"ticket_id", "title", "description", "requester_id"}
+# Issue-key mode requires only this
+REQUIRED_ISSUE_FIELDS = {"issue_key"}
+
+
+def _is_jira_mode(payload: dict) -> bool:
+    """Detect whether this is a Jira issue-key payload vs full ticket."""
+    return "issue_key" in payload and "ticket_id" not in payload
+
+
+def _validate_ticket(ticket: dict) -> str | None:
+    """Returns error message if invalid, None if valid."""
+    missing = REQUIRED_TICKET_FIELDS - set(ticket.keys())
+    if missing:
+        return f"Missing required fields: {sorted(missing)}"
+    return None
+
+
+def _validate_issue(payload: dict) -> str | None:
+    """Returns error message if invalid, None if valid."""
+    missing = REQUIRED_ISSUE_FIELDS - set(payload.keys())
+    if missing:
+        return f"Missing required fields: {sorted(missing)}"
+    return None
+
+
+def _persist_ticket(ticket: dict) -> None:
+    """Idempotent write to DynamoDB (full-ticket mode only)."""
+    if not TICKETS_TABLE:
+        logger.warning("TICKETS_TABLE not set — skipping DDB persist")
+        return
+
+    tickets_table = _ddb.Table(TICKETS_TABLE)
+    ticket_id = ticket["ticket_id"]
+    now = datetime.now(timezone.utc).isoformat()
+
+    ticket.setdefault("priority", "MEDIUM")
+    ticket.setdefault("status", "Open")
+    ticket.setdefault("created_at", now)
+
+    try:
+        tickets_table.put_item(
+            Item=ticket,
+            ConditionExpression="attribute_not_exists(ticket_id)",
+        )
+        logger.info("Persisted ticket %s", ticket_id)
+    except _ddb.meta.client.exceptions.ConditionalCheckFailedException:
+        logger.info("Ticket %s already exists, skipping DDB write", ticket_id)
+
+
+def _invoke_runtime(payload: dict, event_id: str) -> None:
+    """Invoke AgentCore Runtime with the payload."""
+    # runtimeSessionId must be at least 33 characters
+    session_id = f"event-{event_id}-{uuid.uuid4().hex[:12]}"
+    try:
+        _agentcore.invoke_agent_runtime(
+            agentRuntimeArn=AGENT_RUNTIME_ARN,
+            runtimeSessionId=session_id,
+            payload=json.dumps(payload).encode("utf-8"),
+        )
+        logger.info("Invoked runtime (session=%s)", session_id)
+    except Exception:
+        logger.exception("Failed to invoke runtime for %s", event_id)
+        raise
+
+
+def lambda_handler(event, context):
+    """Process SNS event containing a ticket or issue-key payload."""
+    # STEP: TRIGGER — Event arrives from external system via SNS
+    logger.info("Trigger received event")
+
+    for record in event.get("Records", []):
+        sns_msg = record.get("Sns", {}).get("Message", "{}")
+        try:
+            payload = json.loads(sns_msg)
+        except json.JSONDecodeError as e:
+            logger.error("Invalid JSON in SNS message: %s", e)
+            continue
+
+        if _is_jira_mode(payload):
+            # ─── Jira issue-key mode ─────────────────────────────
+            # Thin pass-through: no DDB persist, Jira is system of record.
+            error = _validate_issue(payload)
+            if error:
+                logger.error("Validation failed for issue event: %s", error)
+                raise ValueError(f"Invalid issue payload: {error}")
+
+            issue_key = payload["issue_key"]
+            # Ensure requester_id has a fallback for memory actor_id
+            payload.setdefault("requester_id", issue_key)
+            logger.info("Dispatching Jira issue %s (requester=%s)", issue_key, payload["requester_id"])
+            _invoke_runtime(payload, issue_key)
+
+        else:
+            # ─── Full-ticket mode (DDB mock) ─────────────────────
+            error = _validate_ticket(payload)
+            if error:
+                logger.error("Validation failed for ticket: %s", error)
+                raise ValueError(f"Invalid ticket payload: {error}")
+
+            ticket_id = payload["ticket_id"]
+            logger.info("Processing ticket %s (priority=%s)", ticket_id, payload.get("priority"))
+            _persist_ticket(payload)
+            _invoke_runtime(payload, ticket_id)
+
+    return {"statusCode": 200, "body": "OK"}

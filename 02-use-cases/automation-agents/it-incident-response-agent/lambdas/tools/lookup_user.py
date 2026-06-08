@@ -1,0 +1,76 @@
+"""Gateway tool: lookup_user.
+
+Returns user profile, quotas, and recent incident history for a given user_id.
+The agent uses this to understand requester context and detect recurring incidents.
+"""
+
+import logging
+import os
+from datetime import datetime, timedelta, timezone
+
+import boto3
+from boto3.dynamodb.conditions import Key
+
+logger = logging.getLogger()
+logger.setLevel(os.environ.get("LOG_LEVEL", "INFO"))
+
+USERS_TABLE = os.environ["USERS_TABLE"]
+TICKETS_TABLE = os.environ["TICKETS_TABLE"]
+
+_ddb = boto3.resource("dynamodb")
+_users = _ddb.Table(USERS_TABLE)
+_tickets = _ddb.Table(TICKETS_TABLE)
+
+
+# Gateway Lambda targets return the tool result DIRECTLY to the model — no
+# API-Gateway-style {statusCode, body} envelope. Errors are returned as a
+# plain {"error": ...} object so the model can read them.
+def _ok(body: dict) -> dict:
+    return body
+
+
+def _err(message: str) -> dict:
+    return {"error": message}
+
+
+def lambda_handler(event, context):
+    """Look up user profile and recent ticket history."""
+    # STEP: ENRICH — Gather requester context for the agent's reasoning
+    logger.info("lookup_user invoked")
+
+    user_id = event.get("user_id")
+    if not user_id:
+        return _err("user_id is required")
+
+    user = _users.get_item(Key={"user_id": user_id}).get("Item")
+    if not user:
+        return _err(f"user_id {user_id} not found")
+
+    # Query recent tickets (last 30 days)
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
+    recent = _tickets.query(
+        IndexName="byRequester",
+        KeyConditionExpression=(
+            Key("requester_id").eq(user_id) & Key("created_at").gte(cutoff)
+        ),
+        Limit=10,
+        ScanIndexForward=False,
+    ).get("Items", [])
+
+    return _ok(
+        {
+            "user_id": user_id,
+            "profile": user,
+            "quotas": user.get("quotas", {}),
+            "recent_tickets": [
+                {
+                    "ticket_id": t["ticket_id"],
+                    "title": t.get("title"),
+                    "status": t.get("status"),
+                    "created_at": t.get("created_at"),
+                }
+                for t in recent
+            ],
+            "recent_incident_count_30d": len(recent),
+        }
+    )
