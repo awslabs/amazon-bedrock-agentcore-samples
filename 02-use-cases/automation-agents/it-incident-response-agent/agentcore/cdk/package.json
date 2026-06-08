@@ -27,5 +27,8 @@
     "aws-cdk-lib": "^2.248.0",
     "cdk-nag": "^2.38.2",
     "constructs": "^10.0.0"
+  },
+  "allowScripts": {
+    "esbuild@0.28.0": true
   }
 }
