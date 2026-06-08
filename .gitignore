@@ -263,6 +263,7 @@ Test-Downloads/
 ### Claude Code Assistant ###
 .claude/
 CLAUDE.md
+!**/03-code-agents-competition-e2e/coding_agents/claude-code/CLAUDE.md
 plan/
 
 ### draw.io source files (keep rendered PNG only) ###
