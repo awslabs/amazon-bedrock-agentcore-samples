@@ -46,16 +46,16 @@ Build your first production-ready AI agent with Amazon Bedrock AgentCore. We’l
 
 ## 📁 Repository Structure
 
-### 🚀 [`getting-started/`](./getting-started/)
+### 🚀 [`getting-started/`](./00-getting-started/)
 
 **Your First Agent in Minutes**
 
 Get up and running with the [AgentCore CLI](https://github.com/aws/agentcore-cli) — the fastest way to create, develop, and deploy agents on Amazon Bedrock AgentCore.
 
-- **[`python/`](./getting-started/python/)** — Python agent samples (Code Interpreter, Gateway, Memory, Identity, and more)
-- **[`typescript/`](./getting-started/typescript/)** — TypeScript agent samples
+- **[`python/`](./00-getting-started/python/)** — Python agent samples (Code Interpreter, Gateway, Memory, Identity, and more)
+- **[`typescript/`](./00-getting-started/typescript/)** — TypeScript agent samples
 
-### 🧩 [`features/`](./features/)
+### 🧩 [`features/`](./01-features/)
 
 **AgentCore Capabilities Deep Dives**
 
@@ -70,36 +70,36 @@ Focused examples for individual AgentCore capabilities:
 - **[Evaluation](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/evaluations.html)** — Built-in and custom evaluators for on-demand and online evaluation
 - **[Policy](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/policy.html)** — Fine-grained access control with Cedar policies
 
-### 💡 [`end-to-end/`](./end-to-end/)
+### 💡 [`end-to-end/`](./06-workshops/09-AgentCore-E2E/)
 
-**Complete Applications**
+[**Complete Applications**](./02-use-cases/)
 
 Production-ready use cases that combine multiple AgentCore capabilities to solve real business problems. Each includes deployment instructions, architecture diagrams, and testing guides.
 
-### 🔌 [`integrations/`](./integrations/)
+### 🔌 [`integrations/`](./03-integrations/)
 
 **Connect AgentCore to Your Stack**
 
-- **[`identity-providers/`](./integrations/identity-providers/)** — Okta, Entra, Cognito, and other IdP integrations
-- **[`observability/`](./integrations/observability/)** — Grafana, Datadog, Dynatrace, and other monitoring platforms
-- **[`data-platforms/`](./integrations/data-platforms/)** — Data lake, warehouse, and analytics integrations
-- **[`ux-examples/`](./integrations/ux-examples/)** — Streamlit, AG-UI, and other frontend patterns
+- **[`agentic-frameworks/`](./03-integrations/agentic-frameworks/)** — ADK, Claude, Langchain, Strands, and other agentic frameworks
+- **[`observability/`](./03-integrations/observability/)** — Grafana, Datadog, Dynatrace, and other monitoring platforms
+- **[`data-platforms/`](./03-integrations/data-platforms/)** — Data lake, warehouse, and analytics integrations
+- **[`ux-examples/`](./03-integrations/ux-examples/)** — Streamlit frontend patterns
 
-### 🏗️ [`infrastructure-as-code/`](./infrastructure-as-code/)
+### 🏗️ [`infrastructure-as-code/`](./04-infrastructure-as-code/)
 
 **Deployment Automation**
 
 Production-ready templates for provisioning AgentCore resources with CloudFormation, AWS CDK, or Terraform.
 
-### 🚀 [`blueprints/`](./blueprints/)
+### 🚀 [`blueprints/`](./05-blueprints/)
 
 **Full-Stack Reference Applications**
 
 Complete, deployment-ready agentic applications with integrated services, authentication, and business logic you can customize for your use case.
 
-### 📦 [`legacy/`](./legacy/)
+### 📦 [`Legacy Migration`](./MIGRATION.md)
 
-**Starter Toolkit Samples (Pending Migration)**
+**Migration from Starter Toolkit**
 
 Samples that still depend on the [Bedrock AgentCore Starter Toolkit](https://github.com/aws/bedrock-agentcore-starter-toolkit) CLI. These will be migrated to the AgentCore CLI as SDK support rolls out. See [`MIGRATION.md`](./MIGRATION.md) for status.
 
