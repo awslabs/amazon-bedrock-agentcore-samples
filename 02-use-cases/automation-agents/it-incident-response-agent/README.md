@@ -6,6 +6,19 @@ the issue using a Knowledge Base and Lambda tools (all behind an AgentCore
 Gateway), records an episode in AgentCore Memory, and writes a resolution
 comment back to the ticket store.
 
+## Overview
+
+### Use case details
+
+| Information         | Details                                                                                                   |
+|---------------------|-----------------------------------------------------------------------------------------------------------|
+| Use case type       | event-driven                                                                                              |
+| Agent type          | Single agent                                                                                              |
+| Use case components | tools (MCP Gateway + Lambda), RAG (Knowledge Base), memory, observability, evaluation, guardrails, policy engine |
+| Use case vertical   | IT operations / ITSM                                                                                      |
+| Example complexity  | Advanced                                                                                                  |
+| SDK used            | Amazon Bedrock AgentCore SDK, AgentCore CLI, Strands Agents SDK, AWS CDK, boto3                            |
+
 ## Architecture
 
 ![High-Level Architecture](images/high-level-arch.png)
@@ -751,3 +764,10 @@ agentcore deploy -y     # deploys empty state, tears down CloudFormation
 - [AgentCore CLI Reference](https://github.com/aws/agentcore-cli)
 - [Strands Agents SDK](https://github.com/strands-agents/strands-agents-python)
 - [AgentCore CDK Constructs](https://github.com/aws/agentcore-l3-cdk-constructs)
+
+## Disclaimer
+
+The examples provided in this repository are for experimental and educational
+purposes only. They demonstrate concepts and techniques but are not intended for
+direct use in production environments. Make sure to have Amazon Bedrock Guardrails
+in place to protect against [prompt injection](https://docs.aws.amazon.com/bedrock/latest/userguide/prompt-injection.html).
