@@ -1,0 +1,11 @@
+aws-cdk-lib>=2.251.0,<3.0.0
+# Alpha/experimental module — used by stacks/gateway_stack.py for the
+# Gateway L2 construct, GatewayCredentialProvider.from_iam_role(), and
+# Gateway.add_mcp_server_target(). Alpha APIs may break across minor
+# version bumps, so the upper bound is tightened to the next minor.
+# See README.md → "Experimental CDK module" for the fallback path.
+aws-cdk.aws-bedrock-agentcore-alpha>=2.251.0a0,<2.252.0a0
+cdk-nag>=2.38.2,<3.0.0
+constructs>=10.6.0,<11.0.0
+hypothesis>=6.152.4,<7.0.0
+httpx>=0.28.1

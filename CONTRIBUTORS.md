@@ -118,3 +118,4 @@
 - palbiren
 - Gui Ruggiero (guiruggiero)
 - Visakh Madathil (vmmadathil)
+- Szymon Kochański (szymonkochanski)

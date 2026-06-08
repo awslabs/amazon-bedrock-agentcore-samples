@@ -1,0 +1,51 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+
+# CDK
+cdk.out*/
+cdk.context.json
+
+# Kiro
+.kiro/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Testing
+.pytest_cache/
+.hypothesis/
+htmlcov/
+.coverage
+coverage.xml
+
+# Node
+node_modules/
+package-lock.json
+
+# Temporary
+tmp/
+
+# Secrets / credentials
+*.pem
+*.key
+.env
+.env.local
