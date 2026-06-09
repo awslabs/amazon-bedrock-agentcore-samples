@@ -7,10 +7,13 @@ What you learn:
     - The `session` surface ASSERTS isolation (negative checks: one actor's
       events/sessions never contain the other's) rather than only narrating it
 
-Three surfaces:
-    python actor-session-isolation.py boto3      # raw boto3 (bedrock-agentcore / -control)
-    python actor-session-isolation.py sdk        # AgentCore SDK, low-level MemoryClient
-    python actor-session-isolation.py session    # AgentCore SDK, high-level MemorySessionManager
+Two ways to run it:
+    python actor-session-isolation.py boto3    # the raw AWS API, no SDK. Shows exactly what's on the wire.
+    python actor-session-isolation.py sdk      # the AgentCore SDK (MemorySessionManager). The recommended way.
+
+The `sdk` path needs bedrock-agentcore 1.14 or newer, because it searches with
+`search_long_term_memories(namespace=...)`. Older versions only accept the deprecated
+`namespace_prefix=`.
 
 Add `--cleanup` to delete the memory resource at the end. By default the
 memory is kept so you can inspect it; the script prints the memoryId.
@@ -85,60 +88,8 @@ def run_with_boto3(cleanup: bool = False) -> None:
         print(f"[boto3] Keeping memory {memory_id} (pass --cleanup to delete)")
 
 
-# === AgentCore SDK ====================================================
+# === AgentCore SDK — high-level MemorySessionManager =================
 def run_with_sdk(cleanup: bool = False) -> None:
-    from bedrock_agentcore.memory import MemoryClient
-
-    client = MemoryClient(region_name=REGION)
-    memory = client.create_memory_and_wait(
-        name=f"ActorIsolationSdk_{int(time.time())}",
-        description="Actor/session isolation (SDK)",
-        strategies=[],
-        event_expiry_days=30,
-    )
-    memory_id = memory["id"]
-    print(f"[sdk] Created memory {memory_id}")
-
-    alice_session = f"alice-{int(time.time())}"
-    bob_session = f"bob-{int(time.time())}"
-
-    client.create_event(
-        memory_id=memory_id,
-        actor_id="alice",
-        session_id=alice_session,
-        messages=[
-            ("I'm flying to Tokyo next week.", "USER"),
-            ("Got it.", "ASSISTANT"),
-        ],
-    )
-    client.create_event(
-        memory_id=memory_id,
-        actor_id="bob",
-        session_id=bob_session,
-        messages=[
-            ("Remind me about my dentist appointment.", "USER"),
-            ("Friday at 3pm.", "ASSISTANT"),
-        ],
-    )
-
-    alice_events = client.list_events(memory_id=memory_id, actor_id="alice", session_id=alice_session)
-    bob_events = client.list_events(memory_id=memory_id, actor_id="bob", session_id=bob_session)
-    print(f"[sdk] Alice: {len(alice_events)} events | Bob: {len(bob_events)} events")
-
-    alice_sessions = client.list_sessions(memoryId=memory_id, actorId="alice")["sessionSummaries"]
-    bob_sessions = client.list_sessions(memoryId=memory_id, actorId="bob")["sessionSummaries"]
-    print(f"[sdk] Alice sessions: {[s['sessionId'] for s in alice_sessions]}")
-    print(f"[sdk] Bob sessions:   {[s['sessionId'] for s in bob_sessions]}")
-
-    if cleanup:
-        client.delete_memory_and_wait(memory_id=memory_id)
-        print(f"[sdk] Deleted memory {memory_id}")
-    else:
-        print(f"[sdk] Keeping memory {memory_id} (pass --cleanup to delete)")
-
-
-# === AgentCore SDK — high-level session API ==========================
-def run_with_session(cleanup: bool = False) -> None:
     # MemoryClient owns the control plane (create/delete); MemorySessionManager
     # is data-plane only. No extraction strategies for short-term memory.
     from bedrock_agentcore.memory import MemoryClient, MemorySessionManager
@@ -152,7 +103,7 @@ def run_with_session(cleanup: bool = False) -> None:
         event_expiry_days=30,
     )
     memory_id = memory["id"]
-    print(f"[session] Created memory {memory_id}")
+    print(f"[sdk] Created memory {memory_id}")
 
     alice_session_id = f"alice-{int(time.time())}"
     bob_session_id = f"bob-{int(time.time())}"
@@ -179,13 +130,13 @@ def run_with_session(cleanup: bool = False) -> None:
     # Each session only ever sees its own actor's events.
     alice_events = alice.list_events()
     bob_events = bob.list_events()
-    print(f"[session] Alice: {len(alice_events)} events | Bob: {len(bob_events)} events")
+    print(f"[sdk] Alice: {len(alice_events)} events | Bob: {len(bob_events)} events")
 
     # list_actor_sessions is scoped to one actor: no cross-actor leakage.
     alice_sessions = manager.list_actor_sessions(actor_id="alice")
     bob_sessions = manager.list_actor_sessions(actor_id="bob")
-    print(f"[session] Alice sessions: {[s['sessionId'] for s in alice_sessions]}")
-    print(f"[session] Bob sessions:   {[s['sessionId'] for s in bob_sessions]}")
+    print(f"[sdk] Alice sessions: {[s['sessionId'] for s in alice_sessions]}")
+    print(f"[sdk] Bob sessions:   {[s['sessionId'] for s in bob_sessions]}")
 
     # --- Prove isolation (negative assertions), don't just claim it -----------
     # Narrating "no cross-actor leakage" isn't enough — assert it. Each Event is
@@ -214,13 +165,13 @@ def run_with_session(cleanup: bool = False) -> None:
     assert bob_session_id not in alice_session_ids, "LEAK: Bob's session listed under Alice"
     assert alice_session_id not in bob_session_ids, "LEAK: Alice's session listed under Bob"
     assert alice_session_ids.isdisjoint(bob_session_ids), "LEAK: actors share a session id"
-    print("[session] ✅ Isolation verified: no cross-actor event or session leakage.")
+    print("[sdk] ✅ Isolation verified: no cross-actor event or session leakage.")
 
     if cleanup:
         client.delete_memory_and_wait(memory_id=memory_id)
-        print(f"[session] Deleted memory {memory_id}")
+        print(f"[sdk] Deleted memory {memory_id}")
     else:
-        print(f"[session] Keeping memory {memory_id} (pass --cleanup to delete)")
+        print(f"[sdk] Keeping memory {memory_id} (pass --cleanup to delete)")
 
 
 def main() -> None:
@@ -231,10 +182,8 @@ def main() -> None:
         run_with_boto3(cleanup=cleanup)
     elif surface == "sdk":
         run_with_sdk(cleanup=cleanup)
-    elif surface == "session":
-        run_with_session(cleanup=cleanup)
     else:
-        print(f"Unknown surface {surface!r}. Use boto3 | sdk | session.", file=sys.stderr)
+        print(f"Unknown surface {surface!r}. Use boto3 | sdk.", file=sys.stderr)
         sys.exit(1)
 
 

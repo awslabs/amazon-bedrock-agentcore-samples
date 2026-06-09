@@ -8,10 +8,13 @@ What you learn:
 Use cases: exploratory "what if I had said X instead?" turns, parallel
 sub-agents that each contribute on a separate branch over a shared parent.
 
-Three surfaces:
-    python event-branching.py boto3      # raw boto3 (bedrock-agentcore / -control)
-    python event-branching.py sdk        # AgentCore SDK, low-level MemoryClient
-    python event-branching.py session    # AgentCore SDK, high-level MemorySessionManager
+Two ways to run it:
+    python event-branching.py boto3    # the raw AWS API, no SDK. Shows exactly what's on the wire.
+    python event-branching.py sdk      # the AgentCore SDK (MemorySessionManager). The recommended way.
+
+The `sdk` path needs bedrock-agentcore 1.14 or newer, because it searches with
+`search_long_term_memories(namespace=...)`. Older versions only accept the deprecated
+`namespace_prefix=`.
 
 Add `--cleanup` to delete the memory resource at the end. By default the
 memory is kept so you can inspect it; the script prints the memoryId.
@@ -99,84 +102,8 @@ def run_with_boto3(cleanup: bool = False) -> None:
         print(f"[boto3] Keeping memory {memory_id} (pass --cleanup to delete)")
 
 
-# === AgentCore SDK ====================================================
+# === AgentCore SDK — high-level MemorySessionManager =================
 def run_with_sdk(cleanup: bool = False) -> None:
-    from bedrock_agentcore.memory import MemoryClient
-
-    client = MemoryClient(region_name=REGION)
-    memory = client.create_memory_and_wait(
-        name=f"BranchingSdk_{int(time.time())}",
-        description="Event branching (SDK)",
-        strategies=[],
-        event_expiry_days=30,
-    )
-    memory_id = memory["id"]
-    session_id = f"sess-{int(time.time())}"
-    print(f"[sdk] Created memory {memory_id}")
-
-    # Seed a couple of turns on the root branch.
-    root_event = client.create_event(
-        memory_id=memory_id,
-        actor_id=ACTOR_ID,
-        session_id=session_id,
-        messages=[
-            ("I'm planning a trip to Lisbon.", "USER"),
-            ("When are you thinking of going?", "ASSISTANT"),
-        ],
-    )
-
-    # fork_conversation creates a new branch rooted at the given event.
-    client.fork_conversation(
-        memory_id=memory_id,
-        actor_id=ACTOR_ID,
-        session_id=session_id,
-        root_event_id=root_event["eventId"],
-        branch_name="autumn",
-        new_messages=[
-            ("October — the weather is mild then.", "USER"),
-            ("October is great. Here are flights for the second week.", "ASSISTANT"),
-        ],
-    )
-    client.fork_conversation(
-        memory_id=memory_id,
-        actor_id=ACTOR_ID,
-        session_id=session_id,
-        root_event_id=root_event["eventId"],
-        branch_name="winter",
-        new_messages=[
-            ("Actually, what about December for Christmas markets?", "USER"),
-            ("December is busier and pricier. Here's what's available.", "ASSISTANT"),
-        ],
-    )
-
-    branches = client.list_branches(memory_id=memory_id, actor_id=ACTOR_ID, session_id=session_id)
-    print(f"[sdk] Branches in session: {[b.get('name') for b in branches]}")
-
-    autumn_only = client.list_branch_events(
-        memory_id=memory_id,
-        actor_id=ACTOR_ID,
-        session_id=session_id,
-        branch_name="autumn",
-        include_parent_events=False,
-    )
-    winter_full = client.list_branch_events(
-        memory_id=memory_id,
-        actor_id=ACTOR_ID,
-        session_id=session_id,
-        branch_name="winter",
-        include_parent_events=True,
-    )
-    print(f"[sdk] Autumn-only events: {len(autumn_only)} | Winter with parents: {len(winter_full)}")
-
-    if cleanup:
-        client.delete_memory_and_wait(memory_id=memory_id)
-        print(f"[sdk] Deleted memory {memory_id}")
-    else:
-        print(f"[sdk] Keeping memory {memory_id} (pass --cleanup to delete)")
-
-
-# === AgentCore SDK — high-level session API ==========================
-def run_with_session(cleanup: bool = False) -> None:
     # MemoryClient owns the control plane (create/delete); MemorySessionManager
     # is data-plane only. No extraction strategies for short-term memory.
     from bedrock_agentcore.memory import MemoryClient, MemorySessionManager
@@ -191,7 +118,7 @@ def run_with_session(cleanup: bool = False) -> None:
     )
     memory_id = memory["id"]
     session_id = f"sess-{int(time.time())}"
-    print(f"[session] Created memory {memory_id}")
+    print(f"[sdk] Created memory {memory_id}")
 
     # Seed a couple of turns on the root branch. add_turns returns an Event
     # (dict-like); we fork from its eventId.
@@ -224,20 +151,20 @@ def run_with_session(cleanup: bool = False) -> None:
 
     # list_branches returns Branch objects (dict-like) including the implicit "main".
     branches = session.list_branches()
-    print(f"[session] Branches in session: {[b.get('name') for b in branches]}")
+    print(f"[sdk] Branches in session: {[b.get('name') for b in branches]}")
 
     # The session API exposes branch event filtering through list_events with a
     # branch_name + include_parent_branches flag (there is no list_branch_events
     # method on the session API).
     autumn_only = session.list_events(branch_name="autumn", include_parent_branches=False)
     winter_full = session.list_events(branch_name="winter", include_parent_branches=True)
-    print(f"[session] Autumn-only events: {len(autumn_only)} | Winter with parents: {len(winter_full)}")
+    print(f"[sdk] Autumn-only events: {len(autumn_only)} | Winter with parents: {len(winter_full)}")
 
     if cleanup:
         client.delete_memory_and_wait(memory_id=memory_id)
-        print(f"[session] Deleted memory {memory_id}")
+        print(f"[sdk] Deleted memory {memory_id}")
     else:
-        print(f"[session] Keeping memory {memory_id} (pass --cleanup to delete)")
+        print(f"[sdk] Keeping memory {memory_id} (pass --cleanup to delete)")
 
 
 def main() -> None:
@@ -248,10 +175,8 @@ def main() -> None:
         run_with_boto3(cleanup=cleanup)
     elif surface == "sdk":
         run_with_sdk(cleanup=cleanup)
-    elif surface == "session":
-        run_with_session(cleanup=cleanup)
     else:
-        print(f"Unknown surface {surface!r}. Use boto3 | sdk | session.", file=sys.stderr)
+        print(f"Unknown surface {surface!r}. Use boto3 | sdk.", file=sys.stderr)
         sys.exit(1)
 
 

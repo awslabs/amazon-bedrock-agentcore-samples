@@ -8,10 +8,13 @@ What you learn:
 Best practice: design namespaces hierarchically from day one — they are
 the unit of both retrieval and IAM scoping.
 
-Three surfaces:
-    python namespaces-and-organization.py boto3      # raw boto3 (bedrock-agentcore / -control)
-    python namespaces-and-organization.py sdk        # AgentCore SDK, low-level MemoryClient
-    python namespaces-and-organization.py session    # AgentCore SDK, high-level MemorySessionManager
+Two ways to run it:
+    python namespaces-and-organization.py boto3    # the raw AWS API, no SDK. Shows exactly what's on the wire.
+    python namespaces-and-organization.py sdk      # the AgentCore SDK (MemorySessionManager). The recommended way.
+
+The `sdk` path needs bedrock-agentcore 1.14 or newer, because it searches with
+`search_long_term_memories(namespace=...)`. Older versions only accept the deprecated
+`namespace_prefix=`.
 
 Add `--cleanup` to delete the memory resource at the end. By default the
 memory is kept so you can inspect it; the script prints the memoryId.
@@ -128,67 +131,8 @@ def run_with_boto3(cleanup: bool = False) -> None:
         print(f"\n[boto3] Keeping memory {memory_id} (pass --cleanup to delete)")
 
 
-# === AgentCore SDK ====================================================
+# === AgentCore SDK — high-level MemorySessionManager =================
 def run_with_sdk(cleanup: bool = False) -> None:
-    from bedrock_agentcore.memory import MemoryClient
-
-    client = MemoryClient(region_name=REGION)
-    memory = client.create_memory_and_wait(
-        name=f"NamespacesSdk_{int(time.time())}",
-        description="Namespaces tutorial (SDK)",
-        strategies=_strategies(),
-        event_expiry_days=30,
-    )
-    memory_id = memory["id"]
-    print(f"[sdk] Created memory {memory_id}")
-
-    for actor_id, intro in ACTORS:
-        sess = f"{actor_id}-sdk-{int(time.time())}"
-        client.create_event(
-            memory_id=memory_id,
-            actor_id=actor_id,
-            session_id=sess,
-            messages=[
-                (intro, "USER"),
-                ("Nice to meet you.", "ASSISTANT"),
-                ("Tell me about my history with you.", "USER"),
-                ("Sure.", "ASSISTANT"),
-            ],
-        )
-    print(f"[sdk] Waiting {EXTRACTION_WAIT_SECONDS}s for extraction...")
-    time.sleep(EXTRACTION_WAIT_SECONDS)
-
-    alice_facts = client.retrieve_memories(
-        memory_id=memory_id,
-        namespace="/users/alice/facts/",
-        query="alice's interests",
-        top_k=5,
-    )
-    print(f"\n[sdk] Alice facts ({len(alice_facts)}):")
-    for h in alice_facts:
-        print(f"  - {h['content']['text']}")
-
-    # retrieve_memories accepts either `namespace` (exact) or
-    # `namespace_path` (hierarchical prefix).
-    everything = client.retrieve_memories(
-        memory_id=memory_id,
-        namespace_path="/users/",
-        query="anything we know about users",
-        top_k=20,
-    )
-    print(f"\n[sdk] All under /users/* ({len(everything)}):")
-    for h in everything:
-        print(f"  - [{','.join(h.get('namespaces', []))}] {h['content']['text']}")
-
-    if cleanup:
-        client.delete_memory_and_wait(memory_id=memory_id)
-        print(f"\n[sdk] Deleted memory {memory_id}")
-    else:
-        print(f"\n[sdk] Keeping memory {memory_id} (pass --cleanup to delete)")
-
-
-# === AgentCore SDK — high-level session API ==========================
-def run_with_session(cleanup: bool = False) -> None:
     # MemoryClient owns the control plane (create/delete the resource);
     # MemorySessionManager is data-plane only, so we create the memory with
     # MemoryClient, then drive events + retrieval through MemorySessions.
@@ -203,7 +147,7 @@ def run_with_session(cleanup: bool = False) -> None:
         event_expiry_days=30,
     )
     memory_id = memory["id"]
-    print(f"[session] Created memory {memory_id}")
+    print(f"[sdk] Created memory {memory_id}")
 
     # One MemorySession per actor: the session is bound to (actorId, sessionId),
     # which is what determines where {actorId}/{sessionId} namespaces resolve to.
@@ -219,7 +163,7 @@ def run_with_session(cleanup: bool = False) -> None:
                 ConversationalMessage("Sure.", MessageRole.ASSISTANT),
             ]
         )
-    print(f"[session] Waiting {SESSION_EXTRACTION_WAIT_SECONDS}s for extraction...")
+    print(f"[sdk] Waiting {SESSION_EXTRACTION_WAIT_SECONDS}s for extraction...")
     time.sleep(SESSION_EXTRACTION_WAIT_SECONDS)
 
     # Retrieval is scoped by the namespace argument, not the session's bound
@@ -233,7 +177,7 @@ def run_with_session(cleanup: bool = False) -> None:
         namespace=FACTS_TEMPLATE.format(actorId="alice"),
         top_k=5,
     )
-    print(f"\n[session] Alice facts ({len(alice_facts)}):")
+    print(f"\n[sdk] Alice facts ({len(alice_facts)}):")
     for h in alice_facts:
         print(f"  - {h['content']['text']}")
 
@@ -243,16 +187,16 @@ def run_with_session(cleanup: bool = False) -> None:
         namespace_path="/users/",
         top_k=20,
     )
-    print(f"\n[session] All under /users/* ({len(everything)}):")
+    print(f"\n[sdk] All under /users/* ({len(everything)}):")
     for h in everything:
         # Each hit is a MemoryRecord (dict-like): namespaces + content.text.
         print(f"  - [{','.join(h.get('namespaces', []))}] {h['content']['text']}")
 
     if cleanup:
         client.delete_memory_and_wait(memory_id=memory_id)
-        print(f"\n[session] Deleted memory {memory_id}")
+        print(f"\n[sdk] Deleted memory {memory_id}")
     else:
-        print(f"\n[session] Keeping memory {memory_id} (pass --cleanup to delete)")
+        print(f"\n[sdk] Keeping memory {memory_id} (pass --cleanup to delete)")
 
 
 def main() -> None:
@@ -263,10 +207,8 @@ def main() -> None:
         run_with_boto3(cleanup=cleanup)
     elif surface == "sdk":
         run_with_sdk(cleanup=cleanup)
-    elif surface == "session":
-        run_with_session(cleanup=cleanup)
     else:
-        print(f"Unknown surface {surface!r}. Use boto3 | sdk | session.", file=sys.stderr)
+        print(f"Unknown surface {surface!r}. Use boto3 | sdk.", file=sys.stderr)
         sys.exit(1)
 
 

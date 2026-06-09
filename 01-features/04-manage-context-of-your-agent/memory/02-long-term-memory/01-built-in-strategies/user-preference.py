@@ -9,10 +9,13 @@ User-preference strategy extracts stable, persistent preferences
 ("prefers vegetarian food", "wants email notifications, not SMS").
 Use it for personalisation that should outlive any single session.
 
-Three surfaces:
-    python user-preference.py boto3      # raw boto3 (bedrock-agentcore / -control)
-    python user-preference.py sdk        # AgentCore SDK, low-level MemoryClient
-    python user-preference.py session    # AgentCore SDK, high-level MemorySessionManager
+Two ways to run it:
+    python user-preference.py boto3    # the raw AWS API, no SDK. Shows exactly what's on the wire.
+    python user-preference.py sdk      # the AgentCore SDK (MemorySessionManager). The recommended way.
+
+The `sdk` path needs bedrock-agentcore 1.14 or newer, because it searches with
+`search_long_term_memories(namespace=...)`. Older versions only accept the deprecated
+`namespace_prefix=`.
 
 Add `--cleanup` to delete the memory resource at the end. By default the
 memory is kept so you can inspect it; the script prints the memoryId.
@@ -103,57 +106,8 @@ def run_with_boto3(cleanup: bool = False) -> None:
         print(f"\n[boto3] Keeping memory {memory_id} (pass --cleanup to delete)")
 
 
-# === AgentCore SDK ====================================================
+# === AgentCore SDK — high-level MemorySessionManager =================
 def run_with_sdk(cleanup: bool = False) -> None:
-    from bedrock_agentcore.memory import MemoryClient
-
-    client = MemoryClient(region_name=REGION)
-    memory = client.create_memory_and_wait(
-        name=f"UserPrefSdk_{int(time.time())}",
-        description="User preference strategy (SDK)",
-        strategies=[
-            {
-                "userPreferenceMemoryStrategy": {
-                    "name": "UserPreferences",
-                    "description": "Stable preferences across sessions",
-                    "namespaces": [NAMESPACE_TEMPLATE],
-                }
-            }
-        ],
-        event_expiry_days=30,
-    )
-    memory_id = memory["id"]
-    print(f"[sdk] Created memory {memory_id}")
-
-    client.create_event(
-        memory_id=memory_id,
-        actor_id=ACTOR_ID,
-        session_id=SESSION_ID,
-        messages=[(text, role) for role, text in TURNS],
-    )
-    print(f"[sdk] Waiting {EXTRACTION_WAIT_SECONDS}s for extraction...")
-    time.sleep(EXTRACTION_WAIT_SECONDS)
-
-    namespace = NAMESPACE_TEMPLATE.format(actorId=ACTOR_ID)
-    hits = client.retrieve_memories(
-        memory_id=memory_id,
-        namespace=namespace,
-        query="user's preferences",
-        top_k=10,
-    )
-    print(f"\n[sdk] Preferences in {namespace}:")
-    for h in hits:
-        print(f"  - {h['content']['text']}")
-
-    if cleanup:
-        client.delete_memory_and_wait(memory_id=memory_id)
-        print(f"\n[sdk] Deleted memory {memory_id}")
-    else:
-        print(f"\n[sdk] Keeping memory {memory_id} (pass --cleanup to delete)")
-
-
-# === AgentCore SDK — high-level session API ==========================
-def run_with_session(cleanup: bool = False) -> None:
     # MemoryClient owns the control plane (create/delete the resource);
     # MemorySessionManager is data-plane only, so we create the memory with
     # MemoryClient, then drive events + retrieval through a MemorySession.
@@ -177,7 +131,7 @@ def run_with_session(cleanup: bool = False) -> None:
         event_expiry_days=30,
     )
     memory_id = memory["id"]
-    print(f"[session] Created memory {memory_id}")
+    print(f"[sdk] Created memory {memory_id}")
 
     # Bind a session, then write all turns in one add_turns call. add_turns
     # takes ConversationalMessage objects and maps to a single create_event.
@@ -186,7 +140,7 @@ def run_with_session(cleanup: bool = False) -> None:
     session.add_turns(
         messages=[ConversationalMessage(text, MessageRole[role]) for role, text in TURNS]
     )
-    print(f"[session] Waiting {SESSION_EXTRACTION_WAIT_SECONDS}s for extraction...")
+    print(f"[sdk] Waiting {SESSION_EXTRACTION_WAIT_SECONDS}s for extraction...")
     time.sleep(SESSION_EXTRACTION_WAIT_SECONDS)
 
     namespace = NAMESPACE_TEMPLATE.format(actorId=ACTOR_ID)
@@ -194,16 +148,16 @@ def run_with_session(cleanup: bool = False) -> None:
     hits = session.search_long_term_memories(
         query="user's preferences", namespace=namespace, top_k=10
     )
-    print(f"\n[session] Preferences in {namespace}:")
+    print(f"\n[sdk] Preferences in {namespace}:")
     for h in hits:
         # Each hit is a MemoryRecord (dict-like): content.text + score.
         print(f"  - {h['content']['text']}")
 
     if cleanup:
         client.delete_memory_and_wait(memory_id=memory_id)
-        print(f"\n[session] Deleted memory {memory_id}")
+        print(f"\n[sdk] Deleted memory {memory_id}")
     else:
-        print(f"\n[session] Keeping memory {memory_id} (pass --cleanup to delete)")
+        print(f"\n[sdk] Keeping memory {memory_id} (pass --cleanup to delete)")
 
 
 def main() -> None:
@@ -214,10 +168,8 @@ def main() -> None:
         run_with_boto3(cleanup=cleanup)
     elif surface == "sdk":
         run_with_sdk(cleanup=cleanup)
-    elif surface == "session":
-        run_with_session(cleanup=cleanup)
     else:
-        print(f"Unknown surface {surface!r}. Use boto3 | sdk | session.", file=sys.stderr)
+        print(f"Unknown surface {surface!r}. Use boto3 | sdk.", file=sys.stderr)
         sys.exit(1)
 
 

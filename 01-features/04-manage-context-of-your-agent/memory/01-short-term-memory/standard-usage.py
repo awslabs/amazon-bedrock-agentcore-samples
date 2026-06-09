@@ -8,14 +8,13 @@ The canonical short-term flow:
     5. fetch one event in full
     6. tear down
 
-The same flow is shown three ways. Pick the surface that matches how you'll
-deploy: boto3 for raw control, the low-level MemoryClient, or the high-level
-MemorySessionManager for the most ergonomic helpers.
+The same flow is shown two ways. Use boto3 to see the raw API with no SDK, or
+the AgentCore SDK (MemorySessionManager) for the ergonomic helpers you'd use in
+real code.
 
-Run a single surface:
-    python standard-usage.py boto3      # raw boto3 (bedrock-agentcore / -control)
-    python standard-usage.py sdk        # AgentCore SDK, low-level MemoryClient
-    python standard-usage.py session    # AgentCore SDK, high-level MemorySessionManager
+Two ways to run it:
+    python standard-usage.py boto3    # the raw AWS API, no SDK. Shows exactly what's on the wire.
+    python standard-usage.py sdk      # the AgentCore SDK (MemorySessionManager). The recommended way.
 
 Add `--cleanup` to delete the memory resource at the end. By default the
 memory is kept so you can inspect it; the script prints the memoryId.
@@ -92,49 +91,8 @@ def run_with_boto3(cleanup: bool = False) -> None:
         print(f"[boto3] Keeping memory {memory_id} (pass --cleanup to delete)")
 
 
-# === AgentCore SDK ====================================================
+# === AgentCore SDK — high-level MemorySessionManager =================
 def run_with_sdk(cleanup: bool = False) -> None:
-    from bedrock_agentcore.memory import MemoryClient
-
-    client = MemoryClient(region_name=REGION)
-
-    memory = client.create_memory_and_wait(
-        name=f"StmStandardSdk_{int(time.time())}",
-        description="Short-term memory standard usage (SDK)",
-        strategies=[],
-        event_expiry_days=30,
-    )
-    memory_id = memory["id"]
-    print(f"[sdk] Created memory {memory_id}")
-
-    # SDK takes (text, role) tuples and groups multiple messages into one event.
-    client.create_event(
-        memory_id=memory_id,
-        actor_id=ACTOR_ID,
-        session_id=SESSION_ID,
-        messages=[
-            ("Hi, I'm Alex. I prefer Python over Java.", "USER"),
-            ("Got it, Alex — I'll lean toward Python in examples.", "ASSISTANT"),
-            ("What did I tell you about my language preference?", "USER"),
-        ],
-    )
-
-    # get_last_k_turns is the SDK's idiomatic equivalent to ListEvents.
-    turns = client.get_last_k_turns(memory_id=memory_id, actor_id=ACTOR_ID, session_id=SESSION_ID, k=5)
-    print(f"[sdk] Session {SESSION_ID} has {len(turns)} turns")
-    for turn in turns:
-        for msg in turn:
-            print(f"  {msg['role']}: {msg['content']['text']}")
-
-    if cleanup:
-        client.delete_memory_and_wait(memory_id=memory_id)
-        print(f"[sdk] Deleted memory {memory_id}")
-    else:
-        print(f"[sdk] Keeping memory {memory_id} (pass --cleanup to delete)")
-
-
-# === AgentCore SDK — high-level session API ==========================
-def run_with_session(cleanup: bool = False) -> None:
     # MemoryClient owns the control plane (create/delete); MemorySessionManager
     # is data-plane only. No extraction strategies for short-term memory.
     from bedrock_agentcore.memory import MemoryClient, MemorySessionManager
@@ -148,7 +106,7 @@ def run_with_session(cleanup: bool = False) -> None:
         event_expiry_days=30,
     )
     memory_id = memory["id"]
-    print(f"[session] Created memory {memory_id}")
+    print(f"[sdk] Created memory {memory_id}")
 
     # Bind a session, then write all turns in one add_turns call. add_turns
     # takes ConversationalMessage objects and maps to a single create_event.
@@ -165,16 +123,16 @@ def run_with_session(cleanup: bool = False) -> None:
     # get_last_k_turns is the session API's idiomatic way to reload context.
     # Each turn is a list of EventMessage objects (dict-like): role + content.text.
     turns = session.get_last_k_turns(k=5)
-    print(f"[session] Session {SESSION_ID} has {len(turns)} turns")
+    print(f"[sdk] Session {SESSION_ID} has {len(turns)} turns")
     for turn in turns:
         for msg in turn:
             print(f"  {msg['role']}: {msg['content']['text']}")
 
     if cleanup:
         client.delete_memory_and_wait(memory_id=memory_id)
-        print(f"[session] Deleted memory {memory_id}")
+        print(f"[sdk] Deleted memory {memory_id}")
     else:
-        print(f"[session] Keeping memory {memory_id} (pass --cleanup to delete)")
+        print(f"[sdk] Keeping memory {memory_id} (pass --cleanup to delete)")
 
 
 def main() -> None:
@@ -185,10 +143,8 @@ def main() -> None:
         run_with_boto3(cleanup=cleanup)
     elif surface == "sdk":
         run_with_sdk(cleanup=cleanup)
-    elif surface == "session":
-        run_with_session(cleanup=cleanup)
     else:
-        print(f"Unknown surface {surface!r}. Use boto3 | sdk | session.", file=sys.stderr)
+        print(f"Unknown surface {surface!r}. Use boto3 | sdk.", file=sys.stderr)
         sys.exit(1)
 
 

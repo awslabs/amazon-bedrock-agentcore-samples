@@ -6,10 +6,9 @@ What you learn:
     - GetEvent fetches one event in full
     - ListSessions discovers prior sessions for an actor
 
-Three surfaces, same flow:
-    python events-and-sessions.py boto3      # raw boto3 (bedrock-agentcore / -control)
-    python events-and-sessions.py sdk        # AgentCore SDK, low-level MemoryClient
-    python events-and-sessions.py session    # AgentCore SDK, high-level MemorySessionManager
+Two ways to run it, same flow:
+    python events-and-sessions.py boto3    # the raw AWS API, no SDK. Shows exactly what's on the wire.
+    python events-and-sessions.py sdk      # the AgentCore SDK (MemorySessionManager). The recommended way.
 
 Add `--cleanup` to delete the memory resource at the end. By default the
 memory is kept so you can inspect it; the script prints the memoryId.
@@ -101,66 +100,8 @@ def run_with_boto3(cleanup: bool = False) -> None:
         print(f"[boto3] Keeping memory {memory_id} (pass --cleanup to delete)")
 
 
-# === AgentCore SDK ====================================================
+# === AgentCore SDK — high-level MemorySessionManager =================
 def run_with_sdk(cleanup: bool = False) -> None:
-    from bedrock_agentcore.memory import MemoryClient
-
-    client = MemoryClient(region_name=REGION)
-    memory = client.create_memory_and_wait(
-        name=f"EventsAndSessionsSdk_{int(time.time())}",
-        description="Events and sessions (SDK)",
-        strategies=[],
-        event_expiry_days=30,
-    )
-    memory_id = memory["id"]
-    print(f"[sdk] Created memory {memory_id}")
-
-    session_a = f"session-a-{int(time.time())}"
-    session_b = f"session-b-{int(time.time())}"
-
-    client.create_event(
-        memory_id=memory_id,
-        actor_id=ACTOR_ID,
-        session_id=session_a,
-        messages=[
-            ("Book me a flight from Berlin to Lisbon.", "USER"),
-            ("Sure — for which dates?", "ASSISTANT"),
-            ("Next Monday, returning Friday.", "USER"),
-        ],
-    )
-    client.create_event(
-        memory_id=memory_id,
-        actor_id=ACTOR_ID,
-        session_id=session_b,
-        messages=[
-            ("What did I book last week?", "USER"),
-            ("You booked Berlin to Lisbon, Mon–Fri.", "ASSISTANT"),
-        ],
-    )
-
-    events = client.list_events(
-        memory_id=memory_id,
-        actor_id=ACTOR_ID,
-        session_id=session_a,
-        include_payload=True,
-    )
-    print(f"[sdk] Session {session_a} has {len(events)} events")
-
-    turns = client.get_last_k_turns(memory_id=memory_id, actor_id=ACTOR_ID, session_id=session_a, k=5)
-    print(f"[sdk] Last {len(turns)} turn(s) in session_a")
-
-    sessions = client.list_sessions(memoryId=memory_id, actorId=ACTOR_ID)["sessionSummaries"]
-    print(f"[sdk] Actor {ACTOR_ID} has {len(sessions)} session(s)")
-
-    if cleanup:
-        client.delete_memory_and_wait(memory_id=memory_id)
-        print(f"[sdk] Deleted memory {memory_id}")
-    else:
-        print(f"[sdk] Keeping memory {memory_id} (pass --cleanup to delete)")
-
-
-# === AgentCore SDK — high-level session API ==========================
-def run_with_session(cleanup: bool = False) -> None:
     # MemoryClient owns the control plane (create/delete the resource);
     # MemorySessionManager is data-plane only. A short-term memory needs no
     # extraction strategies, so we create it with strategies=[].
@@ -175,7 +116,7 @@ def run_with_session(cleanup: bool = False) -> None:
         event_expiry_days=30,
     )
     memory_id = memory["id"]
-    print(f"[session] Created memory {memory_id}")
+    print(f"[sdk] Created memory {memory_id}")
 
     session_a_id = f"session-a-{int(time.time())}"
     session_b_id = f"session-b-{int(time.time())}"
@@ -202,21 +143,21 @@ def run_with_session(cleanup: bool = False) -> None:
 
     # list_events returns Event objects (dict-like) in chronological order.
     events = session_a.list_events(include_payload=True)
-    print(f"[session] Session {session_a_id} has {len(events)} events")
+    print(f"[sdk] Session {session_a_id} has {len(events)} events")
 
     # get_last_k_turns groups payload messages into logical user/assistant turns.
     turns = session_a.get_last_k_turns(k=5)
-    print(f"[session] Last {len(turns)} turn(s) in session_a")
+    print(f"[sdk] Last {len(turns)} turn(s) in session_a")
 
     # list_actor_sessions lives on the manager and returns SessionSummary objects.
     sessions = manager.list_actor_sessions(actor_id=ACTOR_ID)
-    print(f"[session] Actor {ACTOR_ID} has {len(sessions)} session(s)")
+    print(f"[sdk] Actor {ACTOR_ID} has {len(sessions)} session(s)")
 
     if cleanup:
         client.delete_memory_and_wait(memory_id=memory_id)
-        print(f"[session] Deleted memory {memory_id}")
+        print(f"[sdk] Deleted memory {memory_id}")
     else:
-        print(f"[session] Keeping memory {memory_id} (pass --cleanup to delete)")
+        print(f"[sdk] Keeping memory {memory_id} (pass --cleanup to delete)")
 
 
 def main() -> None:
@@ -227,10 +168,8 @@ def main() -> None:
         run_with_boto3(cleanup=cleanup)
     elif surface == "sdk":
         run_with_sdk(cleanup=cleanup)
-    elif surface == "session":
-        run_with_session(cleanup=cleanup)
     else:
-        print(f"Unknown surface {surface!r}. Use boto3 | sdk | session.", file=sys.stderr)
+        print(f"Unknown surface {surface!r}. Use boto3 | sdk.", file=sys.stderr)
         sys.exit(1)
 
 

@@ -7,10 +7,13 @@ What you learn:
 Caveat: event metadata is NOT encrypted with a customer-managed KMS key.
 Do not put sensitive content in metadata — keep it in the payload.
 
-Three surfaces:
-    python event-metadata-filtering.py boto3      # raw boto3 (bedrock-agentcore / -control)
-    python event-metadata-filtering.py sdk        # AgentCore SDK, low-level MemoryClient
-    python event-metadata-filtering.py session    # AgentCore SDK, high-level MemorySessionManager
+Two ways to run it:
+    python event-metadata-filtering.py boto3    # the raw AWS API, no SDK. Shows exactly what's on the wire.
+    python event-metadata-filtering.py sdk      # the AgentCore SDK (MemorySessionManager). The recommended way.
+
+The `sdk` path needs bedrock-agentcore 1.14 or newer, because it searches with
+`search_long_term_memories(namespace=...)`. Older versions only accept the deprecated
+`namespace_prefix=`.
 
 Add `--cleanup` to delete the memory resource at the end. By default the
 memory is kept so you can inspect it; the script prints the memoryId.
@@ -102,67 +105,8 @@ def run_with_boto3(cleanup: bool = False) -> None:
         print(f"[boto3] Keeping memory {memory_id} (pass --cleanup to delete)")
 
 
-# === AgentCore SDK ====================================================
+# === AgentCore SDK — high-level MemorySessionManager =================
 def run_with_sdk(cleanup: bool = False) -> None:
-    from bedrock_agentcore.memory import MemoryClient
-
-    client = MemoryClient(region_name=REGION)
-    memory = client.create_memory_and_wait(
-        name=f"EventMetadataSdk_{int(time.time())}",
-        description="Event metadata filtering (SDK)",
-        strategies=[],
-        event_expiry_days=30,
-    )
-    memory_id = memory["id"]
-    print(f"[sdk] Created memory {memory_id}")
-
-    tagged_turns = [
-        ("USER", "I had a fever last night.", {"topic": "health", "priority": "high"}),
-        ("ASSISTANT", "Sorry to hear. How long has it lasted?", {"topic": "health"}),
-        ("USER", "Also can you book me a flight to Lisbon?", {"topic": "travel"}),
-        ("ASSISTANT", "Booking flight to Lisbon.", {"topic": "travel"}),
-        ("USER", "Just checking in, no specific topic today.", {}),
-    ]
-    for role, text, meta in tagged_turns:
-        client.create_event(
-            memory_id=memory_id,
-            actor_id=ACTOR_ID,
-            session_id=SESSION_ID,
-            messages=[(text, role)],
-            metadata={k: {"stringValue": v} for k, v in meta.items()} if meta else None,
-        )
-
-    health = client.list_events(
-        memory_id=memory_id,
-        actor_id=ACTOR_ID,
-        session_id=SESSION_ID,
-        event_metadata=[
-            {
-                "left": {"metadataKey": "topic"},
-                "operator": "EQUALS_TO",
-                "right": {"metadataValue": {"stringValue": "health"}},
-            }
-        ],
-    )
-    print(f"[sdk] Health-tagged events: {len(health)}")
-
-    priority = client.list_events(
-        memory_id=memory_id,
-        actor_id=ACTOR_ID,
-        session_id=SESSION_ID,
-        event_metadata=[{"left": {"metadataKey": "priority"}, "operator": "EXISTS"}],
-    )
-    print(f"[sdk] Events with priority set: {len(priority)}")
-
-    if cleanup:
-        client.delete_memory_and_wait(memory_id=memory_id)
-        print(f"[sdk] Deleted memory {memory_id}")
-    else:
-        print(f"[sdk] Keeping memory {memory_id} (pass --cleanup to delete)")
-
-
-# === AgentCore SDK — high-level session API ==========================
-def run_with_session(cleanup: bool = False) -> None:
     # MemoryClient owns the control plane (create/delete); MemorySessionManager
     # is data-plane only. No extraction strategies for short-term memory.
     from bedrock_agentcore.memory import MemoryClient, MemorySessionManager
@@ -176,7 +120,7 @@ def run_with_session(cleanup: bool = False) -> None:
         event_expiry_days=30,
     )
     memory_id = memory["id"]
-    print(f"[session] Created memory {memory_id}")
+    print(f"[sdk] Created memory {memory_id}")
 
     tagged_turns = [
         ("USER", "I had a fever last night.", {"topic": "health", "priority": "high"}),
@@ -207,18 +151,18 @@ def run_with_session(cleanup: bool = False) -> None:
             }
         ]
     )
-    print(f"[session] Health-tagged events: {len(health)}")
+    print(f"[sdk] Health-tagged events: {len(health)}")
 
     priority = session.list_events(
         eventMetadata=[{"left": {"metadataKey": "priority"}, "operator": "EXISTS"}]
     )
-    print(f"[session] Events with priority set: {len(priority)}")
+    print(f"[sdk] Events with priority set: {len(priority)}")
 
     if cleanup:
         client.delete_memory_and_wait(memory_id=memory_id)
-        print(f"[session] Deleted memory {memory_id}")
+        print(f"[sdk] Deleted memory {memory_id}")
     else:
-        print(f"[session] Keeping memory {memory_id} (pass --cleanup to delete)")
+        print(f"[sdk] Keeping memory {memory_id} (pass --cleanup to delete)")
 
 
 def main() -> None:
@@ -229,10 +173,8 @@ def main() -> None:
         run_with_boto3(cleanup=cleanup)
     elif surface == "sdk":
         run_with_sdk(cleanup=cleanup)
-    elif surface == "session":
-        run_with_session(cleanup=cleanup)
     else:
-        print(f"Unknown surface {surface!r}. Use boto3 | sdk | session.", file=sys.stderr)
+        print(f"Unknown surface {surface!r}. Use boto3 | sdk.", file=sys.stderr)
         sys.exit(1)
 
 
