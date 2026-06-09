@@ -248,6 +248,8 @@ export class InfraConstruct extends Construct {
           s3VectorsConfiguration: {
             vectorBucketArn: vectorBucket.attrVectorBucketArn,
             indexArn: vectorIndex.attrIndexArn,
+            // NOTE: Do NOT include indexName here — it causes CloudFormation
+            // oneOf ambiguity error. Only vectorBucketArn + indexArn are valid.
           },
         },
       });
