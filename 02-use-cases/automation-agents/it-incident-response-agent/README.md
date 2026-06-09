@@ -23,6 +23,9 @@ comment back to the ticket store.
 
 ![High-Level Architecture](images/high-level-arch.png)
 
+<details>
+<summary>Mermaid diagram of architecture</summary>
+
 ```mermaid
 flowchart TB
     %% Styling
@@ -70,6 +73,7 @@ flowchart TB
 
     R5 -.->|SSE opt-in| JIRA([Atlassian MCP]):::external
 ```
+</details>
 
 <details>
 <summary>ASCII diagram (full detail)</summary>
@@ -292,8 +296,8 @@ Optional environment variables (set in shell or `.env`):
 | `GUARDRAIL_VERSION` | Guardrail version to apply | `DRAFT` |
 | `EVENT_BUS_NAME` | EventBridge bus for TicketResolved events | `default` |
 | `GATEWAY_AUTH_MODE` | Auth mode: `AWS_IAM` or `CUSTOM_JWT` | `AWS_IAM` |
-| `OAUTH_PROVIDER_NAME` | AgentCore credential name (CUSTOM_JWT only) | `auth0-m2m` |
-| `GATEWAY_AUDIENCE` | Auth0 API audience (CUSTOM_JWT only) | (empty) |
+| `GATEWAY_OAUTH_PROVIDER_NAME` | AgentCore credential name (CUSTOM_JWT only) | `auth0-m2m` |
+| `GATEWAY_OAUTH_AUDIENCE` | OAuth API audience (CUSTOM_JWT only) | (empty) |
 | `DESTROY_ON_DELETE` | Destroy DDB data on stack delete | `true` |
 | `SKIP_ONLINE_EVAL` | Skip online evaluation on deploy | `false` |
 
@@ -407,10 +411,31 @@ JSON
 agentcore dev
 
 # Test with a simple prompt (no gateway connection needed)
-agentcore invoke --dev "What can you help me with?"
+agentcore dev "What can you help me with?"
 
 # Test with a ticket payload (requires gateway deployed)
-agentcore invoke --dev "$(cat seed-data/sample_ticket.json)"
+agentcore dev "$(cat seed-data/sample_ticket.json)"
+```
+
+### Port Mapping
+
+`agentcore dev` starts two services:
+
+| Port | Service | Notes |
+|------|---------|-------|
+| **8081** | Web UI (Chat inspector) | Browser-friendly, does NOT forward custom headers |
+| **8082** | Runtime container | Your agent code; accepts `curl` with custom headers |
+
+> **Important**: The container's internal port 8080 is mapped to **host port 8082**.
+> Do NOT curl `localhost:8080` — nothing listens there on the host.
+
+To test the runtime directly (e.g., with CUSTOM_JWT auth that requires a User-Id header):
+
+```bash
+curl -N http://localhost:8082/invocations \
+  -H "Content-Type: application/json" \
+  -H "X-Amzn-Bedrock-AgentCore-Runtime-User-Id: test-user" \
+  -d '{"prompt": "What can you help me with?"}'
 ```
 
 ### Environment Variables for Local Dev
@@ -541,8 +566,8 @@ Replace AWS_IAM with external identity provider auth:
 3. Set env vars in `.env`:
    ```
    GATEWAY_AUTH_MODE=CUSTOM_JWT
-   OAUTH_PROVIDER_NAME=auth0-m2m
-   GATEWAY_AUDIENCE=https://your-api-identifier
+   GATEWAY_OAUTH_PROVIDER_NAME=auth0-m2m
+   GATEWAY_OAUTH_AUDIENCE=https://your-api-identifier
    ```
 4. Deploy: `SKIP_ONLINE_EVAL=true agentcore deploy -y`
 5. Test: `./scripts/publish_ticket.sh && agentcore logs --since 5m`
@@ -792,8 +817,10 @@ agentcore deploy -y     # deploys empty state, tears down CloudFormation
 | `cdk synth`/`deploy` fails with an esbuild error | esbuild's install script was skipped by npm's allow-scripts gate. Run `npm approve-scripts esbuild` in `agentcore/cdk/`. |
 | Empty `package-lock.json` appears at the project root after `npm install` | Harmless npm quirk (parent dir has no `package.json`). Safe to delete. |
 | `agentcore deploy` fails with "S3VectorsConfiguration: required key [IndexArn] not found" | The CDK code must explicitly create `AWS::S3Vectors::VectorBucket` and `AWS::S3Vectors::Index` resources and pass their ARNs/name into the KB's `s3VectorsConfiguration`. CloudFormation does NOT auto-create S3 Vectors resources (the console's "quick create" doesn't apply to CFN). Delete the ROLLBACK_COMPLETE stack (`aws cloudformation delete-stack --stack-name <stack>`) and redeploy. |
+| Agent returns "AccessDeniedException: GetResourceOauth2Token on auth0-m2m" | `.env` has `GATEWAY_AUTH_MODE=CUSTOM_JWT` but the `auth0-m2m` credential was removed. Change to `GATEWAY_AUTH_MODE=AWS_IAM` in `.env` and redeploy. The deploy script sources `.env` and bakes `GATEWAY_AUTH_MODE` into the Runtime's env vars. |
 | `agentcore deploy` fails on container build | Ensure Docker is running. Check CodeBuild logs in the AWS console. |
 | `agentcore dev` says "No agentcore project found" | Run from `ITIncidentAgent/` (not the parent dir). The CLI looks for `agentcore/agentcore.json` in CWD. Verify `runtimes` array is not empty in `agentcore.json`. |
+| `agentcore dev` Web UI shows "Workload access token has not been set" | The agent is using `GATEWAY_AUTH_MODE=CUSTOM_JWT` but the Web UI doesn't send the `X-Amzn-Bedrock-AgentCore-Runtime-User-Id` header required for `@requires_access_token`. Fix: set `GATEWAY_AUTH_MODE=AWS_IAM` in `agentcore/.env.local` and restart, or test via `curl` on port 8082 with the header (see Local Development → Port Mapping). |
 | Gateway returns 403 | Runtime IAM role needs `bedrock-agentcore:InvokeGateway` permission (already configured). Check that the role trust policy includes `bedrock-agentcore.amazonaws.com`. |
 | `publish_ticket.sh` says "Could not find TicketsTopicArn" | Stack not deployed yet, or region mismatch. The stack is in `us-west-2` — if `AWS_REGION` is different, set `DEPLOY_REGION=us-west-2`. Run `agentcore status` to verify. |
 | Trigger Lambda says "Invalid length for runtimeSessionId" | Session ID must be ≥33 chars. This is fixed in the current code. If you see this after a manual Lambda code update, ensure you deployed the latest `lambdas/` directory. |
@@ -805,7 +832,7 @@ agentcore deploy -y     # deploys empty state, tears down CloudFormation
 | Online eval shows no results | Enable **CloudWatch Transaction Search** in the region. Eval requires traces to exist first. |
 | Deploy hangs on custom resource | If a custom resource Lambda fails to import a module, CloudFormation waits 1 hour. This project uses CDK Provider framework to prevent this. If it happens, use `aws cloudformation cancel-update-stack` then fix the Lambda code. |
 | CDK synth "Cannot find asset" | Path resolution issue. The project uses `process.cwd()` instead of `__dirname` for reliable paths in compiled TypeScript. If you modify CDK code, maintain this pattern. |
-| CUSTOM_JWT auth fails with "credential not found" | Run `agentcore add credential --name <OAUTH_PROVIDER_NAME> ...` first. The name must exactly match `OAUTH_PROVIDER_NAME` in your `.env`. |
+| CUSTOM_JWT auth fails with "credential not found" | Run `agentcore add credential --name <GATEWAY_OAUTH_PROVIDER_NAME> ...` first. The name must exactly match `GATEWAY_OAUTH_PROVIDER_NAME` in your `.env`. |
 | Jira MCP returns 401 / "invalid_grant" | The 3LO callback URL on the Atlassian app must exactly match `JiraOauthCallbackUrl` from stack outputs. If consent was never granted, check runtime logs for the consent URL. |
 | Jira tools not appearing in agent | Ensure `JIRA_OAUTH_CLIENT_ID` is set in `.env` AND the deploy completed after setting it. Check `agentcore logs` for "Jira integration not configured" messages. |
 | "Atlassian consent required" in logs | One-time setup: open the logged URL, authenticate as the Jira user, approve scopes. AgentCore caches the refresh token for all future invocations. |

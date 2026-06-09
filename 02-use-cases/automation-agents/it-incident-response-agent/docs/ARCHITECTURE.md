@@ -271,7 +271,10 @@ Two formats supported:
 
 ![High-Level Architecture](../images/high-level-arch.png)
 
-```
+<details>
+<summary>High Level ASCII Architecture Diagram (More details)</summary>
+
+```text
 ┌──────────────────────────────────────────────────────────────────────────────┐
 │                         AgentCore (managed services)                         │
 │                                                                              │
@@ -363,6 +366,7 @@ Two formats supported:
 │  └────────────────────────────────────────────────────────────────────────┘  │
 └──────────────────────────────────────────────────────────────────────────────┘
 ```
+</details>
 
 ---
 
@@ -622,7 +626,10 @@ flowchart TD
     RES --> EB[EventBridge]
 ```
 
-```
+<details>
+<summary>Event-Driven Data Flow Details (ASCII)</summary>
+
+```text
 ┌────────────────────────────────────────────────────────────────────────────────┐
 │                                                                                │
 │  External System                                                               │
@@ -680,6 +687,7 @@ flowchart TD
 │  └──────────────┘  └──────────────────┘  └──────────────────────────────────┘  │
 └────────────────────────────────────────────────────────────────────────────────┘
 ```
+</details>
 
 ### Data Flow: Direct Invoke Path (UI → Resolution)
 
@@ -699,7 +707,10 @@ sequenceDiagram
     end
 ```
 
-```
+<details>
+<summary>Data Flow: Direct Invoke Path (UI → Resolution)[ASCII]</summary>
+
+```text
 ┌────────────────────────────────────────────────────────────────────────────────┐
 │                                                                                │
 │  ┌────────────────────┐                                                        │
@@ -741,6 +752,7 @@ sequenceDiagram
 │                                                                                │
 └────────────────────────────────────────────────────────────────────────────────┘
 ```
+<details>
 
 ### Memory Data Flow (Cross-Session Enrichment)
 
@@ -761,7 +773,10 @@ sequenceDiagram
     B->>B: Detect recurrence
 ```
 
-```
+<details>
+<summary>Data Flow: Direct Invoke Path (UI → Resolution) [ASCII]</summary>
+
+```text
 ┌────────────────────────────────────────────────────────────────────────────────┐
 │                       AgentCore Memory (SUMMARIZATION)                         │
 │                                                                                │
@@ -792,13 +807,16 @@ sequenceDiagram
 │                                                                                │
 └────────────────────────────────────────────────────────────────────────────────┘
 ```
+<details>
 
 ### Observability Data Flow
 
 ![Observability & Evaluation Flow](../images/observability-flow.png)
 
+<details>
+<summary>Observability & Evaluation Flow (ASCII - More Detailed)</summary>
 
-```
+```text
 ┌────────────────────────────────────────────────────────────────────────────────┐
 │                                                                                │
 │  AgentCore Runtime (OTEL auto-instrumentation)                                 │
@@ -834,6 +852,7 @@ sequenceDiagram
 │                                                                                │
 └────────────────────────────────────────────────────────────────────────────────┘
 ```
+</details>
 
 ---
 

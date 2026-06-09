@@ -58,7 +58,7 @@ Choose your provider and create an M2M application:
 1. Sign up at https://auth0.com (free tier works)
 2. Go to **Applications → APIs → Create API**
    - Name: `IT Incident Response`
-   - Identifier: `https://it-incident-response/api` (this becomes your `GATEWAY_AUDIENCE`)
+   - Identifier: `https://it-incident-response/api` (this becomes your `GATEWAY_OAUTH_AUDIENCE`)
 3. Go to **Applications → Create Application → Machine to Machine**
    - Authorize it for the API you just created
 4. Copy the **Client ID** and **Client Secret** from the application's Settings tab
@@ -69,7 +69,7 @@ Choose your provider and create an M2M application:
 2. Create an **OAuth 2.0 Client ID** (type: Web application)
 3. Copy the Client ID and Client Secret
 4. Discovery URL: `https://accounts.google.com/.well-known/openid-configuration`
-5. Your `GATEWAY_AUDIENCE` is the Client ID itself
+5. Your `GATEWAY_OAUTH_AUDIENCE` is the Client ID itself
 
 **Okta:**
 1. In the Okta admin console, go to **Applications → Create App Integration**
@@ -112,7 +112,7 @@ agentcore add credential \
 ```
 
 > **Important**: The `--name` value (e.g., `auth0-m2m`) must match the
-> `OAUTH_PROVIDER_NAME` environment variable exactly.
+> `GATEWAY_OAUTH_PROVIDER_NAME` environment variable exactly.
 
 ### Step 3: Set Environment Variables
 
@@ -120,8 +120,8 @@ In your `.env` file:
 
 ```bash
 GATEWAY_AUTH_MODE=CUSTOM_JWT
-OAUTH_PROVIDER_NAME=auth0-m2m                       # must match credential name from Step 2
-GATEWAY_AUDIENCE=https://it-incident-response/api   # your API identifier from Step 1
+GATEWAY_OAUTH_PROVIDER_NAME=auth0-m2m                       # must match credential name from Step 2
+GATEWAY_OAUTH_AUDIENCE=https://it-incident-response/api     # your API identifier from Step 1
 ```
 
 > **Note**: `CLIENT_SECRET` should NOT be in `.env` — it's stored securely in
@@ -135,7 +135,7 @@ SKIP_ONLINE_EVAL=true agentcore deploy -y
 ```
 
 The deploy will:
-- Update the Runtime env vars (`GATEWAY_AUTH_MODE`, `OAUTH_PROVIDER_NAME`, `GATEWAY_AUDIENCE`)
+- Update the Runtime env vars (`GATEWAY_AUTH_MODE`, `GATEWAY_OAUTH_PROVIDER_NAME`, `GATEWAY_OAUTH_AUDIENCE`)
 - The Gateway's CUSTOM_JWT authorizer validates incoming Bearer tokens via OIDC discovery
 - Rebuild the container (if source code changed)
 
@@ -150,8 +150,8 @@ Check that the dual-mode routing works by looking at logs during local dev:
 ```bash
 # Export the auth vars
 export GATEWAY_AUTH_MODE=CUSTOM_JWT
-export OAUTH_PROVIDER_NAME=auth0-m2m
-export GATEWAY_AUDIENCE=https://it-incident-response/api
+export GATEWAY_OAUTH_PROVIDER_NAME=auth0-m2m
+export GATEWAY_OAUTH_AUDIENCE=https://it-incident-response/api
 
 # Start local dev server
 agentcore dev
@@ -373,11 +373,11 @@ Agent Runtime
 
 | Issue | Cause | Solution |
 |-------|-------|----------|
-| `credential 'X' not found` | Step 2 not completed or name mismatch | Run `agentcore add credential --name X ...` — name must match `OAUTH_PROVIDER_NAME` exactly |
-| `401 Unauthorized` from Gateway | Token invalid, expired, or wrong audience | Check that `GATEWAY_AUDIENCE` matches what's configured in your IdP |
+| `credential 'X' not found` | Step 2 not completed or name mismatch | Run `agentcore add credential --name X ...` — name must match `GATEWAY_OAUTH_PROVIDER_NAME` exactly |
+| `401 Unauthorized` from Gateway | Token invalid, expired, or wrong audience | Check that `GATEWAY_OAUTH_AUDIENCE` matches what's configured in your IdP |
 | `403 Forbidden` from Gateway (token is valid) | Token failed a claim filter (`allowedAudience`, `allowedClients`, or `allowedScopes`) | Decode the token (jwt.io) and confirm its `aud`, `client_id`, and `scope` claims match the `customJwtAuthorizer` allow-lists in `agentcore.json` |
 | `invalid_client` during token exchange | Wrong client_id or client_secret | Re-run `agentcore add credential` with correct values from your IdP |
-| `CUSTOM_JWT mode requires OAUTH_PROVIDER_NAME` | Env var not set | Add `OAUTH_PROVIDER_NAME=<name>` to `.env` and redeploy |
+| `CUSTOM_JWT mode requires GATEWAY_OAUTH_PROVIDER_NAME` | Env var not set | Add `GATEWAY_OAUTH_PROVIDER_NAME=<name>` to `.env` and redeploy |
 | Token works but Gateway rejects it | Gateway authorizer not configured for CUSTOM_JWT | Ensure the deploy completed. Check `agentcore status` for gateway auth type. |
 | Works deployed but fails in `agentcore dev` | AgentCore Identity is a cloud service | Token fetch only works in a deployed Runtime. For local dev, use `GATEWAY_AUTH_MODE=AWS_IAM`. |
 
