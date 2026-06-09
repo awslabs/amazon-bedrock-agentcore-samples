@@ -256,8 +256,11 @@ export class AgentCoreStack extends Stack {
       const authMode = process.env.GATEWAY_AUTH_MODE || 'AWS_IAM';
       cfnRuntime.addPropertyOverride('EnvironmentVariables.GATEWAY_AUTH_MODE', authMode);
       if (authMode === 'CUSTOM_JWT') {
-        cfnRuntime.addPropertyOverride('EnvironmentVariables.OAUTH_PROVIDER_NAME', process.env.OAUTH_PROVIDER_NAME || 'auth0-m2m');
-        cfnRuntime.addPropertyOverride('EnvironmentVariables.GATEWAY_AUDIENCE', process.env.GATEWAY_AUDIENCE || '');
+        // New naming: GATEWAY_OAUTH_* (boundary-scoped). Falls back to legacy names.
+        const oauthProvider = process.env.GATEWAY_OAUTH_PROVIDER_NAME || process.env.OAUTH_PROVIDER_NAME || 'auth0-m2m';
+        const oauthAudience = process.env.GATEWAY_OAUTH_AUDIENCE || process.env.GATEWAY_AUDIENCE || '';
+        cfnRuntime.addPropertyOverride('EnvironmentVariables.GATEWAY_OAUTH_PROVIDER_NAME', oauthProvider);
+        cfnRuntime.addPropertyOverride('EnvironmentVariables.GATEWAY_OAUTH_AUDIENCE', oauthAudience);
       }
 
       // ─── Jira integration (opt-in) ─────────────────────────────

@@ -25,8 +25,9 @@ logger = logging.getLogger(__name__)
 # We also accept GATEWAY_URL for backward compat and explicit override.
 GATEWAY_URL = os.getenv("GATEWAY_URL") or os.getenv("AGENTCORE_GATEWAY_ITINCIDENTGATEWAY_URL", "")
 GATEWAY_AUTH_MODE = os.getenv("GATEWAY_AUTH_MODE", "AWS_IAM")
-OAUTH_PROVIDER_NAME = os.getenv("OAUTH_PROVIDER_NAME", "")
-GATEWAY_AUDIENCE = os.getenv("GATEWAY_AUDIENCE", "")
+# New naming: GATEWAY_OAUTH_* (boundary-scoped). Falls back to legacy names for compat.
+GATEWAY_OAUTH_PROVIDER_NAME = os.getenv("GATEWAY_OAUTH_PROVIDER_NAME") or os.getenv("OAUTH_PROVIDER_NAME", "")
+GATEWAY_OAUTH_AUDIENCE = os.getenv("GATEWAY_OAUTH_AUDIENCE") or os.getenv("GATEWAY_AUDIENCE", "")
 
 
 def _create_sigv4_auth():
@@ -101,10 +102,10 @@ def _create_custom_jwt_client() -> Optional[MCPClient]:
     from bedrock_agentcore.identity.auth import requires_access_token
 
     @requires_access_token(
-        provider_name=OAUTH_PROVIDER_NAME,
+        provider_name=GATEWAY_OAUTH_PROVIDER_NAME,
         auth_flow="M2M",
         scopes=[],
-        custom_parameters={"audience": GATEWAY_AUDIENCE} if GATEWAY_AUDIENCE else {},
+        custom_parameters={"audience": GATEWAY_OAUTH_AUDIENCE} if GATEWAY_OAUTH_AUDIENCE else {},
     )
     def _build_client(*, access_token: str) -> MCPClient:
         """Decorated function — token is injected by @requires_access_token."""
@@ -132,10 +133,10 @@ def get_streamable_http_mcp_client() -> Optional[MCPClient]:
         return None
 
     if GATEWAY_AUTH_MODE == "CUSTOM_JWT":
-        if not OAUTH_PROVIDER_NAME:
-            logger.error("CUSTOM_JWT mode requires OAUTH_PROVIDER_NAME env var")
+        if not GATEWAY_OAUTH_PROVIDER_NAME:
+            logger.error("CUSTOM_JWT mode requires GATEWAY_OAUTH_PROVIDER_NAME env var")
             return None
-        logger.info("Using CUSTOM_JWT auth (provider: %s)", OAUTH_PROVIDER_NAME)
+        logger.info("Using CUSTOM_JWT auth (provider: %s)", GATEWAY_OAUTH_PROVIDER_NAME)
         return _create_custom_jwt_client()
     else:
         # AWS_IAM mode — SigV4 signing via botocore (signs every request)
