@@ -32,7 +32,7 @@ The application uses an intelligent model fallback system with **inference profi
 
 1. **Primary**: Claude Haiku 4.5 (`global.anthropic.claude-haiku-4-5-20251001-v1:0`)
 2. **Fallback**: Nova Premier (`us.amazon.nova-premier-v1:0`) 
-3. **Last Resort**: Claude 3.5 Sonnet (`anthropic.claude-3-5-sonnet-20241022-v2:0`)
+3. **Last Resort**: Claude Sonnet 4.6 (`us.anthropic.claude-sonnet-4-6-20250514-v1:0`)
 
 The system automatically detects model availability and selects the best available option.
 
@@ -44,7 +44,7 @@ The system automatically detects model availability and selects the best availab
 
 2. **Code Executor Agent** (Hybrid Strands-Agents + AgentCore):
    - **Primary Mode**: Strands-Agents Agent with AgentCore CodeInterpreter tool
-   - **Model**: Same as Code Generator (Claude Haiku 4.5 → Nova Premier → Claude 3.5 Sonnet)
+   - **Model**: Same as Code Generator (Claude Haiku 4.5 → Nova Premier → Claude Sonnet 4.6)
    - Uses `code_session` from AgentCore for real code execution
    - Executes Python code in AWS-managed sandboxed environment
 

@@ -295,10 +295,14 @@ def create_memory_retrieval_tool(memory_id: str, actor_id: str, region: str):
             # Create session manager (only needs memory_id and region)
             session_manager = MemorySessionManager(memory_id=memory_id, region_name=region)
 
-            # Search long-term memories in the semantic strategy namespace
+            # The bug was the namespace VALUE: this read from "/strategies/" while the
+            # semantic strategy writes to "/investment/{actorId}/", so recall returned 0.
+            # Read from the SAME namespace the strategy writes to. We keep the
+            # `namespace_prefix=` arg (works across the bedrock-agentcore versions this
+            # tutorial supports; `namespace=`/`namespace_path=` only exist in newer SDKs).
             results = session_manager.search_long_term_memories(
                 query=query,
-                namespace_prefix="/strategies/",  # Search in semantic strategy namespace
+                namespace_prefix=f"/investment/{actor_id}/",
                 top_k=5,
                 max_results=10,
             )

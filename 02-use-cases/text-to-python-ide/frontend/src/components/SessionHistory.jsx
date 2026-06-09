@@ -14,7 +14,7 @@ import CodeEditor from './CodeEditor.jsx';
 import CodeDisplay from './CodeDisplay.jsx';
 import ImageDisplay from './ImageDisplay.jsx';
 
-const SessionHistory = ({ sessionId, history, onRefresh, onExecuteCode }) => {
+const SessionHistory = ({ sessionId, actorId, history, actorSessions, selectedPastSession, pastSessionTurns, loadingPastSession, onRefresh, onLoadPastSession, onExecuteCode, onResumeSession, onDeleteSession }) => {
   const [selectedItem, setSelectedItem] = React.useState(null);
   const [showCodeModal, setShowCodeModal] = React.useState(false);
   const [copySuccess, setCopySuccess] = React.useState(false);
@@ -221,15 +221,6 @@ const SessionHistory = ({ sessionId, history, onRefresh, onExecuteCode }) => {
     }
   ];
 
-  if (!history) {
-    return (
-      <Container header={<Header variant="h2">Session History</Header>}>
-        <Box textAlign="center" color="text-body-secondary">
-          Loading session history...
-        </Box>
-      </Container>
-    );
-  }
 
   return (
     <Container 
@@ -253,42 +244,90 @@ const SessionHistory = ({ sessionId, history, onRefresh, onExecuteCode }) => {
       }
     >
       <SpaceBetween direction="vertical" size="l">
-        <Container header={<Header variant="h3">Execution History</Header>}>
-          {history.execution_results && history.execution_results.length > 0 ? (
-            <Table
-              columnDefinitions={executionColumns}
-              items={history.execution_results.sort((a, b) => b.timestamp - a.timestamp)}
-              sortingDisabled={false}
-              defaultSortingColumn={{ sortingField: 'timestamp' }}
-              defaultSortingIsDescending={true}
-              empty={
-                <Box textAlign="center" color="text-body-secondary">
-                  No execution history
-                </Box>
-              }
-            />
-          ) : (
-            <Box textAlign="center" color="text-body-secondary">
-              No code has been executed yet
-            </Box>
-          )}
-        </Container>
+        {/* Past Sessions from AgentCore Memory */}
+        <Container header={
+          <Header
+            variant="h3"
+            description="Persistent sessions stored in AWS AgentCore Memory — survive browser refresh and server restarts"
+          >
+            Past Sessions (AgentCore Memory)
+          </Header>
+        }>
+          {actorSessions && actorSessions.length > 0 ? (
+            <SpaceBetween direction="vertical" size="s">
+              <Table
+                columnDefinitions={[
+                  {
+                    id: 'first_message',
+                    header: 'First Prompt',
+                    cell: item => (
+                      <Box fontSize="body-s">
+                        {item.first_message
+                          ? (item.first_message.length > 60 ? `${item.first_message.substring(0, 60)}...` : item.first_message)
+                          : <Box color="text-body-secondary">—</Box>
+                        }
+                      </Box>
+                    )
+                  },
+                  {
+                    id: 'created_at',
+                    header: 'Started',
+                    cell: item => <Box fontSize="body-s">{new Date(item.created_at).toLocaleString()}</Box>,
+                    width: 160
+                  },
+                  {
+                    id: 'session_id',
+                    header: 'Session',
+                    cell: item => (
+                      <Box fontSize="body-s" fontFamily="monospace">
+                        {item.session_id === sessionId
+                          ? <Badge color="blue">current</Badge>
+                          : item.session_id.substring(0, 8)
+                        }
+                      </Box>
+                    ),
+                    width: 100
+                  },
+                  {
+                    id: 'actions',
+                    header: 'Actions',
+                    cell: item => (
+                      <SpaceBetween direction="horizontal" size="xs">
+                        {onResumeSession && (
+                          <Button
+                            size="small"
+                            variant="primary"
+                            onClick={() => {
+                              onLoadPastSession(item.session_id);
+                            }}
+                            loading={selectedPastSession === item.session_id && loadingPastSession}
+                            iconName="edit"
+                          >
+                            Resume
+                          </Button>
+                        )}
+                        {onDeleteSession && item.session_id !== sessionId && (
+                          <Button
+                            size="small"
+                            variant="link"
+                            onClick={() => onDeleteSession(item.session_id)}
+                          >
+                            Delete
+                          </Button>
+                        )}
+                      </SpaceBetween>
+                    ),
+                    width: 200
+                  }
+                ]}
+                items={actorSessions}
+                empty={<Box textAlign="center" color="text-body-secondary">No past sessions</Box>}
+              />
 
-        <Container header={<Header variant="h3">Conversation History</Header>}>
-          {history.conversation_history && history.conversation_history.length > 0 ? (
-            <Table
-              columnDefinitions={conversationColumns}
-              items={history.conversation_history}
-              sortingDisabled={false}
-              empty={
-                <Box textAlign="center" color="text-body-secondary">
-                  No conversation history
-                </Box>
-              }
-            />
+            </SpaceBetween>
           ) : (
             <Box textAlign="center" color="text-body-secondary">
-              No conversation history yet
+              No past sessions found in AgentCore Memory. Sessions appear here after your first code generation.
             </Box>
           )}
         </Container>

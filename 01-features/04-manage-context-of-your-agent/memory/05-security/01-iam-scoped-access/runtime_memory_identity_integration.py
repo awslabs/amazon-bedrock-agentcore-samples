@@ -487,7 +487,7 @@ def test_user_memory_isolation_with_iam():
         user1_prompt1 = "My name is John and my favorite color is purple."
         response1 = invoke_agent({"prompt": user1_prompt1}, user1_session_id, testuser1_token)
         print(f'User 1 prompt: "{user1_prompt1}"')
-        print(f'User 1 response: "{response1["response"]}"')
+        print(f'User 1 response: "{response1}"')
 
         # Wait for session to terminate (75 seconds)
         print("\nWaiting 75 seconds for session to terminate...")
@@ -501,7 +501,7 @@ def test_user_memory_isolation_with_iam():
         user1_prompt2 = "What is my name and favorite color?"
         response2 = invoke_agent({"prompt": user1_prompt2}, user1_session_id, testuser1_token)
         print(f'User 1 prompt: "{user1_prompt2}"')
-        print(f'User 1 response: "{response2["response"]}"')
+        print(f'User 1 response: "{response2}"')
 
         # PHASE 2: Test user2 memory isolation with policy control
         print("\n" + "=" * 50)
@@ -524,7 +524,7 @@ def test_user_memory_isolation_with_iam():
         user2_prompt1 = "My name is Mary and my favorite food is pasta."
         response3 = invoke_agent({"prompt": user2_prompt1}, user2_session_id, testuser2_token)
         print(f'User 2 prompt: "{user2_prompt1}"')
-        print(f'User 2 response: "{response3["response"]}"')
+        print(f'User 2 response: "{response3}"')
 
         # Wait for session to terminate
         print("\nWaiting 75 seconds for session to terminate...")
@@ -546,7 +546,7 @@ def test_user_memory_isolation_with_iam():
         user2_prompt2 = "What is my name and favorite food?"
         response4 = invoke_agent({"prompt": user2_prompt2}, user2_session_id, testuser2_token)
         print(f'User 2 prompt: "{user2_prompt2}"')
-        print(f'User 2 response: "{response4["response"]}"')
+        print(f'User 2 response: "{response4}"')
         print("\n Agent should not have access to User 2 Memory as the policy is giving access only to User 1 events")
 
     finally:

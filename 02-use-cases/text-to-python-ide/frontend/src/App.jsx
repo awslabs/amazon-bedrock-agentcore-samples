@@ -14,16 +14,16 @@ import {
   Modal,
   FormField,
   FileUpload,
-  Badge,
-  TextContent
+  Badge
 } from '@cloudscape-design/components';
 import CodeEditor from './components/CodeEditor.jsx';
 import ExecutionResults from './components/ExecutionResults.jsx';
 import SessionHistory from './components/SessionHistory.jsx';
 import InteractiveExecutionModal from './components/InteractiveExecutionModal.jsx';
-import CsvUploadModal from './components/CsvUploadModal.jsx';
+// CSV upload disabled
+// import CsvUploadModal from './components/CsvUploadModal.jsx';
 import ExecutionTimer from './components/ExecutionTimer.jsx';
-import { generateCode, executeCode, uploadFile, uploadCsvFile, getSessionHistory, analyzeCode } from './services/api';
+import { generateCode, executeCode, uploadFile, getSessionHistory, analyzeCode, getActorSessions, getMemorySessionHistory, deleteMemorySession } from './services/api';
 import { v4 as uuidv4 } from 'uuid';
 
 function App() {
@@ -42,10 +42,25 @@ function App() {
   const [showInteractiveModal, setShowInteractiveModal] = useState(false);
   const [codeAnalysis, setCodeAnalysis] = useState(null);
   const [pendingExecutionCode, setPendingExecutionCode] = useState(null);
-  const [showCsvUploadModal, setShowCsvUploadModal] = useState(false);
-  const [uploadedCsv, setUploadedCsv] = useState(null);
-  const [csvUploadLoading, setCsvUploadLoading] = useState(false);
+  // CSV upload disabled — focused on Python code generation only
+  // const [showCsvUploadModal, setShowCsvUploadModal] = useState(false);
+  // const [uploadedCsv, setUploadedCsv] = useState(null);
+  // const [csvUploadLoading, setCsvUploadLoading] = useState(false);
   const [isExecuting, setIsExecuting] = useState(false);
+
+  // Stable actor ID persisted in localStorage — survives browser refresh and new sessions
+  const [actorId] = useState(() => {
+    const stored = localStorage.getItem('agentcore_actor_id');
+    if (stored) return stored;
+    const newId = `user-${uuidv4()}`;
+    localStorage.setItem('agentcore_actor_id', newId);
+    return newId;
+  });
+
+  const [actorSessions, setActorSessions] = useState([]);
+  const [selectedPastSession, setSelectedPastSession] = useState(null);
+  const [pastSessionTurns, setPastSessionTurns] = useState([]);
+  const [loadingPastSession, setLoadingPastSession] = useState(false);
 
   // Memoized session ID initialization
   const initialSessionId = useMemo(() => uuidv4(), []);
@@ -100,7 +115,7 @@ function App() {
         }
       };
     }
-  }, [sessionId, editedCode]);
+  }, [sessionId]);
 
   const handleGenerateCode = async () => {
     if (!prompt.trim()) {
@@ -113,25 +128,21 @@ function App() {
     setSuccessMessage(null);
 
     try {
-      const response = await generateCode(prompt, sessionId);
+      const response = await generateCode(prompt, sessionId, actorId);
       
-      // Check if file upload is required
-      if (!response.success && response.requires_file) {
-        setLoading(false);
-        setShowCsvUploadModal(true);
-        return;
-      }
+      // CSV upload disabled
+      // if (!response.success && response.requires_file) {
+      //   setLoading(false);
+      //   setShowCsvUploadModal(true);
+      //   return;
+      // }
       
       const code = typeof response.code === 'string' ? response.code : '';
       
       setGeneratedCode(code);
       setEditedCode(code);
       
-      // Show success message with CSV info if applicable
       let successMsg = 'Code generated successfully! The code is now available in the Code Editor tab.';
-      if (response.csv_file_used) {
-        successMsg += ` (Using CSV file: ${response.csv_file_used})`;
-      }
       setSuccessMessage(successMsg);
       
       // Automatically switch to Code Editor tab and make code available
@@ -169,6 +180,7 @@ function App() {
           return;
         }
       } catch (err) {
+        console.warn('Code analysis failed, proceeding with execution:', err.message);
       }
     }
 
@@ -177,7 +189,7 @@ function App() {
     setError(null);
 
     try {
-      const response = await executeCode(code, sessionId, interactive, inputs);
+      const response = await executeCode(code, sessionId, interactive, inputs, actorId);
       setExecutionResult({
         code: code,
         result: response.result,
@@ -268,26 +280,19 @@ function App() {
     }
   };
 
+  // CSV upload disabled — focused on Python code generation only
+  /*
   const handleCsvRemoval = async () => {
     try {
-      // Clear frontend state
       setUploadedCsv(null);
-      
-      // Clear backend session CSV data
       await fetch(`/api/sessions/${sessionId}/clear-csv`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
       });
-      
       setSuccessMessage('CSV file removed successfully');
       setTimeout(() => setSuccessMessage(null), 3000);
-      
     } catch (err) {
-      // eslint-disable-next-line no-console
       console.error('Failed to remove CSV file:', err);
-      // Still clear frontend state even if backend call fails
       setUploadedCsv(null);
     }
   };
@@ -295,42 +300,135 @@ function App() {
   const handleCsvUpload = async (file) => {
     setCsvUploadLoading(true);
     setError(null);
-    
     try {
       const response = await uploadCsvFile(file.name, file.content, sessionId);
-      
-      setUploadedCsv({
-        filename: response.filename,
-        preview: response.preview
-      });
-      
+      setUploadedCsv({ filename: response.filename, preview: response.preview });
       setShowCsvUploadModal(false);
       setSuccessMessage(`CSV file "${response.filename}" uploaded successfully!`);
-      
-      // Auto-dismiss success message after 3 seconds
       setTimeout(() => setSuccessMessage(null), 3000);
-      
-      // Only auto-generate code if we're in the Generate Code tab
       if (activeTab === 'generate') {
-        setTimeout(() => {
-          handleGenerateCode();
-        }, 500);
+        setTimeout(() => { handleGenerateCode(); }, 500);
       }
-      
     } catch (err) {
       setError(`CSV upload failed: ${err.message}`);
     } finally {
       setCsvUploadLoading(false);
     }
   };
+  */
 
   const loadSessionHistory = async () => {
     if (!sessionId) return;
-    
     try {
       const history = await getSessionHistory(sessionId);
       setSessionHistory(history);
+    } catch (err) {}
+    // Also load past sessions from AgentCore Memory
+    try {
+      const resp = await getActorSessions(actorId);
+      if (resp.enabled) setActorSessions(resp.sessions || []);
+    } catch (err) {}
+  };
+
+  const loadPastSession = async (pastSessionId) => {
+    setSelectedPastSession(pastSessionId);
+    setPastSessionTurns([]);
+    setLoadingPastSession(true);
+    try {
+      const resp = await getMemorySessionHistory(pastSessionId, actorId);
+      console.log('Memory history response:', resp);
+      const turns = resp.turns || [];
+      setPastSessionTurns(turns);
+      // Automatically resume the session after loading turns
+      if (turns.length > 0) {
+        handleResumeSession(pastSessionId, turns);
+      }
     } catch (err) {
+      console.error('Failed to load past session:', err);
+      setError(`Failed to resume session: ${err.message}`);
+    } finally {
+      setLoadingPastSession(false);
+    }
+  };
+
+  const handleResumeSession = (pastSessionId, turns) => {
+    console.log('Resume session:', pastSessionId, 'turns:', turns.length);
+
+    let lastCode = '';
+    let lastPrompt = '';
+
+    // Extract Python code from content (may be wrapped in markdown)
+    const extractCode = (content) => {
+      if (!content) return '';
+      // Match ```python ... ``` blocks
+      const pyMatch = content.match(/```python\s*\n([\s\S]*?)```/);
+      if (pyMatch) return pyMatch[1].trim();
+      // Match generic ``` ... ``` blocks
+      const genericMatch = content.match(/```\s*\n([\s\S]*?)```/);
+      if (genericMatch) return genericMatch[1].trim();
+      // Return the raw content (strip leading/trailing whitespace)
+      return content.trim();
+    };
+
+    // Walk turns from newest to oldest
+    for (let i = turns.length - 1; i >= 0; i--) {
+      const turn = turns[i];
+      const role = (turn.role || '').toLowerCase();
+      console.log(`  Turn ${i}: role=${role}, content length=${(turn.content||'').length}`);
+      if (role === 'assistant' && !lastCode) {
+        const content = turn.content || '';
+        // Skip error messages
+        if (content.startsWith('Error:') || content.includes('ModuleNotFoundError')) continue;
+        const code = extractCode(content);
+        console.log(`  -> extracted code length: ${code.length}`);
+        if (code && code.length > 10) lastCode = code;
+      }
+      if (role === 'user' && !lastPrompt) {
+        const content = turn.content || '';
+        if (!content.startsWith('Execute:')) {
+          lastPrompt = content;
+        }
+      }
+      if (lastCode && lastPrompt) break;
+    }
+
+    console.log('Resume result:', { lastCode: lastCode.substring(0, 100), lastPrompt });
+
+    // Restore state
+    setError(null);
+    setExecutionResult(null);
+    setSessionId(pastSessionId);
+
+    if (lastCode) {
+      setGeneratedCode(lastCode);
+      setEditedCode(lastCode);
+      setPrompt(lastPrompt || '');
+      setSuccessMessage(`Session resumed! Code loaded (${lastCode.split('\n').length} lines). Switch to Code Editor tab.`);
+      // Use setTimeout to ensure state is committed before tab switch
+      setTimeout(() => setActiveTab('editor'), 50);
+    } else if (lastPrompt) {
+      setPrompt(lastPrompt);
+      setSuccessMessage('Session resumed! Your last prompt has been restored. Switch to Generate Code tab.');
+      setTimeout(() => setActiveTab('generate'), 50);
+    } else {
+      setSuccessMessage('Session resumed, but no code was found to restore.');
+    }
+
+    setTimeout(() => setSuccessMessage(null), 8000);
+  };
+
+  const handleDeleteSession = async (pastSessionId) => {
+    try {
+      await deleteMemorySession(actorId, pastSessionId);
+      setActorSessions(prev => prev.filter(s => s.session_id !== pastSessionId));
+      if (selectedPastSession === pastSessionId) {
+        setSelectedPastSession(null);
+        setPastSessionTurns([]);
+      }
+      setSuccessMessage('Session deleted successfully.');
+      setTimeout(() => setSuccessMessage(null), 3000);
+    } catch (err) {
+      setError(`Failed to delete session: ${err.message}`);
     }
   };
 
@@ -366,31 +464,8 @@ function App() {
       content: (
         <Container header={<Header variant="h2">Generate Python Code</Header>}>
           <SpaceBetween direction="vertical" size="l">
-            {uploadedCsv && (
-              <Alert type="success" dismissible onDismiss={handleCsvRemoval}>
-                <strong>CSV File Ready:</strong> {uploadedCsv.filename} is available for code generation.
-                <br />
-                <small>Preview: {uploadedCsv.preview.substring(0, 100)}...</small>
-              </Alert>
-            )}
-            
-            <Container header={<Header variant="h3">CSV Data (Optional)</Header>}>
-              <SpaceBetween direction="vertical" size="s">
-                <TextContent>
-                  <p>Upload a CSV file to generate code that works with your data. If your prompt mentions files or data analysis, you'll be prompted to upload a CSV file.</p>
-                </TextContent>
-                <Box textAlign="center">
-                  <Button
-                    onClick={() => setShowCsvUploadModal(true)}
-                    iconName="upload"
-                    disabled={loading}
-                  >
-                    {uploadedCsv ? 'Replace CSV File' : 'Upload CSV File'}
-                  </Button>
-                </Box>
-              </SpaceBetween>
-            </Container>
-            
+            {/* CSV upload section disabled — focused on Python code generation only */}
+
             <FormField
               label="Describe what you want the Python code to do"
               description="Enter a detailed description of the functionality you need"
@@ -398,7 +473,7 @@ function App() {
               <Textarea
                 value={prompt}
                 onChange={({ detail }) => setPrompt(detail.value)}
-                placeholder="e.g., Create a function to analyze CSV data and generate a bar chart"
+                placeholder="e.g., Create a function that calculates the Fibonacci sequence"
                 rows={4}
               />
             </FormField>
@@ -476,15 +551,6 @@ function App() {
           </Header>
         }>
           <SpaceBetween direction="vertical" size="l">
-            {/* CSV Upload Alert */}
-            {uploadedCsv && (
-              <Alert type="success" dismissible onDismiss={handleCsvRemoval}>
-                <strong>CSV File Ready:</strong> {uploadedCsv.filename} is available for code execution.
-                <br />
-                <small>Preview: {uploadedCsv.preview.substring(0, 100)}...</small>
-              </Alert>
-            )}
-            
             <SpaceBetween direction="horizontal" size="s">
               <FormField label="Upload Python File">
                 <FileUpload
@@ -496,23 +562,7 @@ function App() {
                   constraintText="Supported formats: .py, .txt"
                 />
               </FormField>
-              
-              <FormField label="Upload CSV Data (Optional)">
-                <SpaceBetween direction="vertical" size="xs">
-                  <Button
-                    onClick={() => setShowCsvUploadModal(true)}
-                    iconName="upload"
-                    disabled={loading}
-                    variant="normal"
-                  >
-                    {uploadedCsv ? 'Replace CSV File' : 'Upload CSV File'}
-                  </Button>
-                  <Box fontSize="body-s" color="text-body-secondary">
-                    Upload CSV data for your Python code to process
-                  </Box>
-                </SpaceBetween>
-              </FormField>
-              
+
               <FormField label="Session">
                 <Button onClick={clearSession}>
                   New Session
@@ -558,25 +608,6 @@ function App() {
                   >
                     Execute Code
                   </Button>
-                  <Button
-                    onClick={async () => {
-                      if (!editedCode || typeof editedCode !== 'string' || !editedCode.trim()) {
-                        setError('No code to analyze');
-                        return;
-                      }
-                      try {
-                        const analysis = await analyzeCode(editedCode, sessionId);
-                      setCodeAnalysis(analysis.analysis);
-                      setPendingExecutionCode(editedCode);
-                      setShowInteractiveModal(true);
-                    } catch (err) {
-                      setError(`Code analysis failed: ${err.message}`);
-                    }
-                  }}
-                  disabled={!editedCode || typeof editedCode !== 'string' || !editedCode.trim() || loading}
-                >
-                  Interactive Execute
-                </Button>
                 <Button
                   onClick={handleSaveCode}
                   disabled={!editedCode || typeof editedCode !== 'string' || !editedCode.trim()}
@@ -619,9 +650,17 @@ function App() {
       content: (
         <SessionHistory
           sessionId={sessionId}
+          actorId={actorId}
           history={sessionHistory}
+          actorSessions={actorSessions}
+          selectedPastSession={selectedPastSession}
+          pastSessionTurns={pastSessionTurns}
+          loadingPastSession={loadingPastSession}
           onRefresh={loadSessionHistory}
+          onLoadPastSession={loadPastSession}
           onExecuteCode={handleExecuteCode}
+          onResumeSession={handleResumeSession}
+          onDeleteSession={handleDeleteSession}
         />
       )
     }
@@ -691,12 +730,7 @@ function App() {
             onExecute={handleInteractiveExecution}
           />
 
-          <CsvUploadModal
-            visible={showCsvUploadModal}
-            onDismiss={() => setShowCsvUploadModal(false)}
-            onUpload={handleCsvUpload}
-            loading={csvUploadLoading}
-          />
+          {/* CSV upload modal disabled */}
 
           <Modal
             visible={showEditModal}

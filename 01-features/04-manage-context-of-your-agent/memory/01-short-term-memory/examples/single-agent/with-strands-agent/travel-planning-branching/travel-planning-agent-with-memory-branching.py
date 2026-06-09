@@ -267,8 +267,13 @@ class ShortTermMemoryHook(HookProvider):
                 context_messages = []
                 for turn in recent_turns:
                     for message in turn:
-                        role = message.content.get("role", "unknown").lower()
-                        text = message.content.get("content", {}).get("text", "")
+                        # get_last_k_turns returns EventMessage dicts shaped as
+                        # {"role": ..., "content": {"text": ...}} — role/content are
+                        # top-level keys. (The old `message.content.get("role")` read
+                        # role out of the content dict, so it was always "unknown" and
+                        # the text always "", silently dropping all history.)
+                        role = message.get("role", "unknown").lower()
+                        text = message.get("content", {}).get("text", "")
                         if text:
                             context_messages.append(f"{role.title()}: {text}")
 

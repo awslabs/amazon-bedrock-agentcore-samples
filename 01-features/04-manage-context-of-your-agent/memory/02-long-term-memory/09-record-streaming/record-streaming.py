@@ -119,12 +119,21 @@ def run_with_boto3(cleanup: bool = False) -> None:
         description="Memory with record streaming enabled",
         eventExpiryDuration=7,
         memoryExecutionRoleArn=role_arn,
-        streamDeliveryResources=[
-            {
-                "kinesisStreamArn": stream_arn,
-                "contentLevel": "FULL_CONTENT",
-            }
-        ],
+        # streamDeliveryResources is a STRUCTURE, not a bare list:
+        # {"resources":[{"kinesis":{"dataStreamArn":..., "contentConfigurations":[{"type":..,"level":..}]}}]}
+        # (verified against the CreateMemory API model; matches the cross-region CFN).
+        streamDeliveryResources={
+            "resources": [
+                {
+                    "kinesis": {
+                        "dataStreamArn": stream_arn,
+                        "contentConfigurations": [
+                            {"type": "MEMORY_RECORDS", "level": "FULL_CONTENT"},
+                        ],
+                    }
+                }
+            ]
+        },
         memoryStrategies=[
             {
                 "userPreferenceMemoryStrategy": {
@@ -226,12 +235,19 @@ def run_with_sdk(cleanup: bool = False) -> None:
         ],
         event_expiry_days=7,
         memory_execution_role_arn=role_arn,
-        stream_delivery_resources=[
-            {
-                "kinesisStreamArn": stream_arn,
-                "contentLevel": "FULL_CONTENT",
-            }
-        ],
+        # Same structured shape as the boto3 surface (see note above).
+        stream_delivery_resources={
+            "resources": [
+                {
+                    "kinesis": {
+                        "dataStreamArn": stream_arn,
+                        "contentConfigurations": [
+                            {"type": "MEMORY_RECORDS", "level": "FULL_CONTENT"},
+                        ],
+                    }
+                }
+            ]
+        },
     )
     memory_id = memory["id"]
     print(f"[sdk] Memory {memory_id}")
