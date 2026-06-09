@@ -119,11 +119,9 @@ from typing import Optional
 # Messages API against Bedrock — no Anthropic API key required.
 from anthropic import AnthropicBedrock
 
-# AgentCore Memory client, the StrategyType enum (gives us the exact strategy keys),
-# and the AWS error type we handle during memory creation.
+# AgentCore Memory client and the StrategyType enum (gives us the exact strategy keys).
 from bedrock_agentcore.memory import MemoryClient
 from bedrock_agentcore.memory.constants import StrategyType
-from botocore.exceptions import ClientError
 
 # Setup logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -210,8 +208,9 @@ logger.info(f"✅ Clients initialized for region: {REGION}")
 # stays correct if the SDK ever changes the wire name.
 #
 # Built-in strategies require NO IAM execution role — AgentCore manages the extraction,
-# consolidation, AND reflection models. `create_memory_and_wait` blocks until the
-# resource is ACTIVE. If a memory with this name already exists, we reuse its ID.
+# consolidation, AND reflection models. `create_or_get_memory` blocks until the resource
+# is ACTIVE, and on a name clash it returns the existing memory instead of erroring — so
+# re-running the tutorial reuses the same memory by name.
 
 
 def get_or_create_memory(name: str) -> str:
@@ -241,32 +240,19 @@ def get_or_create_memory(name: str) -> str:
         }
     ]
 
-    try:
-        memory = memory_client.create_memory_and_wait(
-            name=name,
-            strategies=strategies,  # Episodic strategy => long-term episode extraction
-            description="Long-term episodic memory for the Claude SDK debugging-assistant tutorial",
-            event_expiry_days=7,  # Retain raw events for 7 days (configurable 3-365)
-            # NOTE: no memory_execution_role_arn — built-in strategies don't need one.
-        )
-        memory_id = memory["id"]
-        logger.info(f"✅ Created memory with EPISODIC strategy: {memory_id}")
-        return memory_id
-    except ClientError as e:
-        # If the memory already exists, retrieve and reuse its ID.
-        if e.response["Error"]["Code"] == "ValidationException" and "already exists" in str(e):
-            logger.info(f"Memory '{name}' already exists, retrieving its ID...")
-            existing = next(
-                (m["id"] for m in memory_client.list_memories() if m["name"] == name),
-                None,
-            )
-            if not existing:
-                raise RuntimeError(f"Memory '{name}' reported as existing but was not found")
-            logger.info(f"✅ Reusing existing memory: {existing}")
-            return existing
-        # Any other client error is unexpected — surface it.
-        logger.error(f"❌ Memory creation failed: {e}")
-        raise
+    # create_or_get_memory creates the resource and waits until it's ACTIVE, or — if a
+    # memory with this name already exists — returns that existing memory dict instead of
+    # raising. Either way we get back a dict carrying the resource "id".
+    memory = memory_client.create_or_get_memory(
+        name=name,
+        strategies=strategies,  # Episodic strategy => long-term episode extraction
+        description="Long-term episodic memory for the Claude SDK debugging-assistant tutorial",
+        event_expiry_days=7,  # Retain raw events for 7 days (configurable 3-365)
+        # NOTE: no memory_execution_role_arn — built-in strategies don't need one.
+    )
+    memory_id = memory["id"]
+    logger.info(f"✅ Memory with EPISODIC strategy ready: {memory_id}")
+    return memory_id
 
 
 # ## Step 3b: Verify the configured strategy is actually EPISODIC
@@ -298,7 +284,7 @@ def verify_episodic_strategy(memory_id: str) -> None:
         stype = s.get("type") or s.get("memoryStrategyType") or s.get("strategyType")
         if stype and "EPISODIC" in str(stype).upper():
             episode_ns = s.get("namespaces") or s.get("namespaceTemplates") or []
-            reflection_ns = (s.get("reflectionConfiguration") or {})
+            reflection_ns = s.get("reflectionConfiguration") or {}
             reflection_ns = reflection_ns.get("namespaces") or reflection_ns.get("namespaceTemplates") or []
             logger.info(f"   Episode namespaces (as stored):    {episode_ns}")
             logger.info(f"   Reflection namespaces (as stored): {reflection_ns}")
@@ -499,8 +485,7 @@ def build_episode_enriched_prompt(memory_id: str, query: str) -> str:
     for i, episode in enumerate(episodes, 1):
         context_lines.append(f"- [Past episode {i}] {episode}")
     context_lines.append(
-        "When a current problem resembles a past episode, reference how it was resolved "
-        "and apply the lesson learned."
+        "When a current problem resembles a past episode, reference how it was resolved and apply the lesson learned."
     )
 
     return SYSTEM_PROMPT + "\n".join(context_lines)
@@ -518,8 +503,7 @@ def build_episode_enriched_prompt(memory_id: str, query: str) -> str:
 def wait_for_episodes(memory_id: str) -> None:
     """Poll until episode records appear, or until the max wait elapses."""
     logger.info(
-        "⏳ Waiting up to %d min for asynchronous episodic extraction "
-        "(Extraction → Consolidation → Reflection)...",
+        "⏳ Waiting up to %d min for asynchronous episodic extraction (Extraction → Consolidation → Reflection)...",
         EXTRACTION_MAX_WAIT_SECONDS // 60,
     )
     start = time.time()

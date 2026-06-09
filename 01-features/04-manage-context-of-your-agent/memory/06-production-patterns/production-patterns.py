@@ -26,7 +26,7 @@ import logging
 import random
 import time
 import uuid
-from typing import Any, Callable, Iterable, Iterator, Optional
+from typing import Any, Callable, Iterator, Optional
 
 from botocore.config import Config
 from botocore.exceptions import ClientError
@@ -35,12 +35,12 @@ logger = logging.getLogger("agentcore.memory.production")
 
 # --- Fixed service constraints (from the API references) ------------------
 # Safe to rely on; these are modeled field limits, not adjustable quotas.
-MAX_RECORDS_PER_BATCH = 100        # BatchCreate/Update/DeleteMemoryRecords `records`
+MAX_RECORDS_PER_BATCH = 100  # BatchCreate/Update/DeleteMemoryRecords `records`
 MAX_PAYLOAD_ITEMS_PER_EVENT = 100  # CreateEvent `payload`
-MAX_EVENT_METADATA_ENTRIES = 15    # CreateEvent `metadata`
-MAX_METADATA_FILTERS = 5           # RetrieveMemoryRecords (SDK-enforced)
-MIN_EVENT_EXPIRY_DAYS = 3          # CreateMemory `eventExpiryDuration`
-MAX_EVENT_EXPIRY_DAYS = 365        # CreateMemory `eventExpiryDuration`
+MAX_EVENT_METADATA_ENTRIES = 15  # CreateEvent `metadata`
+MAX_METADATA_FILTERS = 5  # RetrieveMemoryRecords (SDK-enforced)
+MIN_EVENT_EXPIRY_DAYS = 3  # CreateMemory `eventExpiryDuration`
+MAX_EVENT_EXPIRY_DAYS = 365  # CreateMemory `eventExpiryDuration`
 
 # --- Retry classification -------------------------------------------------
 # ONLY these transient data-plane errors are worth retrying. Everything else
@@ -53,9 +53,9 @@ MAX_EVENT_EXPIRY_DAYS = 365        # CreateMemory `eventExpiryDuration`
 # retry-able (e.g. duplicate name) — so it is intentionally absent here.
 RETRYABLE_DATAPLANE = frozenset(
     {
-        "ThrottledException",          # 429 — rate exceeded; back off
+        "ThrottledException",  # 429 — rate exceeded; back off
         "RetryableConflictException",  # 409 — transient write conflict (CreateEvent)
-        "ServiceException",            # 500 — internal/transient
+        "ServiceException",  # 500 — internal/transient
     }
 )
 
@@ -97,10 +97,14 @@ def call_with_backoff(
             if not _is_retryable(e) or attempt == max_attempts - 1:
                 # Deterministic failure, or we're out of attempts. Surface it.
                 raise
-            delay = random.uniform(0, min(cap, base * (2 ** attempt)))
+            delay = random.uniform(0, min(cap, base * (2**attempt)))
             logger.warning(
                 "transient error %s on %s (attempt %d/%d); retrying in %.2fs",
-                code, getattr(fn, "__name__", "call"), attempt + 1, max_attempts, delay,
+                code,
+                getattr(fn, "__name__", "call"),
+                attempt + 1,
+                max_attempts,
+                delay,
             )
             time.sleep(delay)
 
@@ -177,8 +181,7 @@ def record_turn_durably(
             f"payload has {len(messages)} items; CreateEvent allows "
             f"{MAX_PAYLOAD_ITEMS_PER_EVENT}. Split into multiple events."
         )
-    payload = [{"conversational": {"role": role, "content": {"text": text}}}
-               for text, role in messages]
+    payload = [{"conversational": {"role": role, "content": {"text": text}}} for text, role in messages]
     try:
         call_with_backoff(
             data_client.create_event,
@@ -194,17 +197,21 @@ def record_turn_durably(
         logger.error("create_event failed permanently (%s); dead-lettering", code)
         _emit_metric("MemoryWriteDeadLettered", 1)
         if dead_letter is not None:
-            dead_letter({
-                "memoryId": memory_id, "actorId": actor_id,
-                "sessionId": session_id, "messages": messages,
-            })
+            dead_letter(
+                {
+                    "memoryId": memory_id,
+                    "actorId": actor_id,
+                    "sessionId": session_id,
+                    "messages": messages,
+                }
+            )
         return False
 
 
 # --- Pattern 4: batch writes with partial-failure handling ----------------
 def _chunked(items: list, size: int) -> Iterator[list]:
     for i in range(0, len(items), size):
-        yield items[i:i + size]
+        yield items[i : i + size]
 
 
 def batch_create_with_partial_handling(
@@ -234,7 +241,9 @@ def batch_create_with_partial_handling(
         for r in failed:
             logger.error(
                 "record %s failed: code=%s msg=%s",
-                r.get("requestIdentifier"), r.get("errorCode"), r.get("errorMessage"),
+                r.get("requestIdentifier"),
+                r.get("errorCode"),
+                r.get("errorMessage"),
             )
     if all_failed:
         _emit_metric("MemoryBatchRecordFailures", len(all_failed))
@@ -257,8 +266,7 @@ class MemoryResource:
     def __init__(self, control_client: Any, name: str, event_expiry_days: int = 30):
         if not (MIN_EVENT_EXPIRY_DAYS <= event_expiry_days <= MAX_EVENT_EXPIRY_DAYS):
             raise ValueError(
-                f"event_expiry_days must be {MIN_EVENT_EXPIRY_DAYS}-"
-                f"{MAX_EVENT_EXPIRY_DAYS}; got {event_expiry_days}"
+                f"event_expiry_days must be {MIN_EVENT_EXPIRY_DAYS}-{MAX_EVENT_EXPIRY_DAYS}; got {event_expiry_days}"
             )
         self._control = control_client
         self._name = name
@@ -281,15 +289,14 @@ class MemoryResource:
         if not self.memory_id:
             return False
         try:
-            self._control.delete_memory(
-                memoryId=self.memory_id, clientToken=str(uuid.uuid4())
-            )
+            self._control.delete_memory(memoryId=self.memory_id, clientToken=str(uuid.uuid4()))
             logger.info("deleted ephemeral memory %s", self.memory_id)
         except ClientError as e:
             # Log; do NOT raise — a cleanup failure must not replace the real error.
             logger.error(
                 "cleanup of %s failed (%s); may need manual deletion",
-                self.memory_id, e.response["Error"]["Code"],
+                self.memory_id,
+                e.response["Error"]["Code"],
             )
         return False
 

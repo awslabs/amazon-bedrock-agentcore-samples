@@ -106,7 +106,6 @@ import os
 import time
 import uuid
 from dataclasses import dataclass
-from datetime import datetime
 
 # LangGraph v1.0 agent factory + middleware. NOTE: this replaces the deprecated
 # `from langgraph.prebuilt import create_react_agent` and its pre/post model hooks.
@@ -121,10 +120,9 @@ from langchain_core.messages import AIMessage, HumanMessage
 from langgraph_checkpoint_aws import AgentCoreMemorySaver, AgentCoreMemoryStore
 
 # AgentCore Memory control-plane client (create the resource) + the StrategyType enum
-# (gives us the exact wire key for the Semantic strategy) + the error we handle on reuse.
+# (gives us the exact wire key for the Semantic strategy).
 from bedrock_agentcore.memory import MemoryClient
 from bedrock_agentcore.memory.constants import StrategyType
-from botocore.exceptions import ClientError
 
 # Setup logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -275,8 +273,8 @@ def persist_turn(state, runtime):
 #
 # We create one memory with a single built-in **Semantic** strategy whose namespace
 # template is `/users/{actorId}/facts/`. Built-in strategies require NO IAM execution
-# role — AgentCore manages the extraction/consolidation models. We reuse the resource by
-# name if it already exists.
+# role — AgentCore manages the extraction/consolidation models. The SDK's
+# `create_or_get_memory` reuses the resource by name if it already exists.
 
 
 def get_or_create_memory(name: str) -> str:
@@ -290,30 +288,18 @@ def get_or_create_memory(name: str) -> str:
             }
         }
     ]
-    try:
-        memory = memory_client.create_memory_and_wait(
-            name=name,
-            strategies=strategies,  # strategies => long-term extraction is enabled
-            description="LangGraph built-in-callback LTM tutorial (Nutrition Assistant)",
-            event_expiry_days=7,  # retain raw events for 7 days (configurable 3-365)
-            # NOTE: no memory_execution_role_arn — built-in strategies don't need one.
-        )
-        memory_id = memory["id"]
-        logger.info(f"✅ Created memory with built-in Semantic strategy: {memory_id}")
-        return memory_id
-    except ClientError as e:
-        if e.response["Error"]["Code"] == "ValidationException" and "already exists" in str(e):
-            logger.info(f"Memory '{name}' already exists, retrieving its ID...")
-            existing = next(
-                (m["id"] for m in memory_client.list_memories() if m["name"] == name),
-                None,
-            )
-            if not existing:
-                raise RuntimeError(f"Memory '{name}' reported as existing but was not found")
-            logger.info(f"✅ Reusing existing memory: {existing}")
-            return existing
-        logger.error(f"❌ Memory creation failed: {e}")
-        raise
+    # create_or_get_memory creates the resource, or returns the existing one (by name)
+    # if it already exists — so we don't have to catch "already exists" ourselves.
+    memory = memory_client.create_or_get_memory(
+        name=name,
+        strategies=strategies,  # strategies => long-term extraction is enabled
+        description="LangGraph built-in-callback LTM tutorial (Nutrition Assistant)",
+        event_expiry_days=7,  # retain raw events for 7 days (configurable 3-365)
+        # NOTE: no memory_execution_role_arn — built-in strategies don't need one.
+    )
+    memory_id = memory["id"]
+    logger.info(f"✅ Memory with built-in Semantic strategy ready: {memory_id}")
+    return memory_id
 
 
 def wait_for_extraction(memory_id: str) -> None:

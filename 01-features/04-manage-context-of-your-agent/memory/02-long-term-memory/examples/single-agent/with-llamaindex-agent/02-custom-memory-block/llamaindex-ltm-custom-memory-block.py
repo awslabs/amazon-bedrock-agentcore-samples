@@ -418,24 +418,17 @@ def get_or_create_memory(memory_client: MemoryClient) -> str:
             }
         }
     ]
-    try:
-        memory = memory_client.create_memory_and_wait(
-            name=MEMORY_NAME,
-            strategies=strategies,
-            description="LlamaIndex custom (self-managed) memory block tutorial",
-            event_expiry_days=30,
-        )
-        memory_id = memory["id"]
-        logger.info("✅ Created memory with built-in Semantic strategy: %s", memory_id)
-        return memory_id
-    except ClientError as exc:
-        if exc.response["Error"]["Code"] == "ValidationException" and "already exists" in str(exc):
-            logger.info("Memory '%s' already exists — reusing it.", MEMORY_NAME)
-            existing = next((m["id"] for m in memory_client.list_memories() if m.get("name") == MEMORY_NAME), None)
-            if not existing:
-                raise RuntimeError(f"Memory '{MEMORY_NAME}' reported as existing but not found")
-            return existing
-        raise
+    # create_or_get_memory creates the memory on first run and, on a name clash, returns the
+    # existing memory dict instead of erroring — so reruns reuse the same resource.
+    memory = memory_client.create_or_get_memory(
+        name=MEMORY_NAME,
+        strategies=strategies,
+        description="LlamaIndex custom (self-managed) memory block tutorial",
+        event_expiry_days=30,
+    )
+    memory_id = memory["id"]
+    logger.info("✅ Memory with built-in Semantic strategy ready: %s", memory_id)
+    return memory_id
 
 
 # ## Step 7: Drive the demo

@@ -128,11 +128,9 @@ from langchain.agents import create_agent
 from langchain.chat_models import init_chat_model
 from langchain_core.messages import HumanMessage
 
-# AgentCore Memory client (shared by all agents) + the StrategyType enum + the error we
-# handle when reusing an existing memory.
+# AgentCore Memory client (shared by all agents) + the StrategyType enum.
 from bedrock_agentcore.memory import MemoryClient
 from bedrock_agentcore.memory.constants import StrategyType
-from botocore.exceptions import ClientError
 
 # Setup logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -240,30 +238,18 @@ def get_or_create_memory(name: str) -> str:
             }
         }
     ]
-    try:
-        memory = memory_client.create_memory_and_wait(
-            name=name,
-            strategies=strategies,  # strategies => long-term extraction is enabled
-            description="Shared LTM for the LangGraph multi-agent research team tutorial",
-            event_expiry_days=7,  # retain raw events for 7 days (configurable 3-365)
-            # NOTE: no memory_execution_role_arn — built-in strategies don't need one.
-        )
-        memory_id = memory["id"]
-        logger.info(f"✅ Created shared memory with built-in Semantic strategy: {memory_id}")
-        return memory_id
-    except ClientError as e:
-        if e.response["Error"]["Code"] == "ValidationException" and "already exists" in str(e):
-            logger.info(f"Memory '{name}' already exists, retrieving its ID...")
-            existing = next(
-                (m["id"] for m in memory_client.list_memories() if m["name"] == name),
-                None,
-            )
-            if not existing:
-                raise RuntimeError(f"Memory '{name}' reported as existing but was not found")
-            logger.info(f"✅ Reusing existing memory: {existing}")
-            return existing
-        logger.error(f"❌ Memory creation failed: {e}")
-        raise
+    # create_or_get_memory creates the resource and waits for it; on a name clash (the
+    # memory already exists) it returns the existing memory instead of raising. No
+    # memory_execution_role_arn — built-in strategies don't need one.
+    memory = memory_client.create_or_get_memory(
+        name=name,
+        strategies=strategies,  # strategies => long-term extraction is enabled
+        description="Shared LTM for the LangGraph multi-agent research team tutorial",
+        event_expiry_days=7,  # retain raw events for 7 days (configurable 3-365)
+    )
+    memory_id = memory["id"]
+    logger.info(f"✅ Shared memory with built-in Semantic strategy ready: {memory_id}")
+    return memory_id
 
 
 # ## Step 4: Memory read/write helpers (the shared channel)

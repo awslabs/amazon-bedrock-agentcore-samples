@@ -102,7 +102,6 @@ import time
 from datetime import datetime
 from typing import Any, List, Optional
 
-import boto3
 from botocore.exceptions import ClientError
 
 # AgentCore Memory: control-plane client (create/delete) + data-plane session manager
@@ -402,26 +401,18 @@ def get_or_create_memory(memory_client: MemoryClient) -> str:
             }
         }
     ]
-    try:
-        memory = memory_client.create_memory_and_wait(
-            name=MEMORY_NAME,
-            strategies=strategies,
-            description="LlamaIndex built-in memory block tutorial — semantic LTM",
-            event_expiry_days=30,
-            # NOTE: built-in strategies need NO memory_execution_role_arn.
-        )
-        memory_id = memory["id"]
-        logger.info("✅ Created memory with built-in Semantic strategy: %s", memory_id)
-        return memory_id
-    except ClientError as exc:
-        if exc.response["Error"]["Code"] == "ValidationException" and "already exists" in str(exc):
-            logger.info("Memory '%s' already exists — reusing it.", MEMORY_NAME)
-            existing = next((m["id"] for m in memory_client.list_memories() if m.get("name") == MEMORY_NAME), None)
-            if not existing:
-                raise RuntimeError(f"Memory '{MEMORY_NAME}' reported as existing but not found")
-            logger.info("✅ Reusing existing memory: %s", existing)
-            return existing
-        raise
+    # create_or_get_memory creates the resource, or returns the existing one on a name
+    # clash — no manual already-exists scan needed. Built-in strategies need NO
+    # memory_execution_role_arn.
+    memory = memory_client.create_or_get_memory(
+        name=MEMORY_NAME,
+        strategies=strategies,
+        description="LlamaIndex built-in memory block tutorial — semantic LTM",
+        event_expiry_days=30,
+    )
+    memory_id = memory["id"]
+    logger.info("✅ Memory with built-in Semantic strategy ready: %s", memory_id)
+    return memory_id
 
 
 # ## Step 7: Drive the demo — build knowledge in one session, recall it in another

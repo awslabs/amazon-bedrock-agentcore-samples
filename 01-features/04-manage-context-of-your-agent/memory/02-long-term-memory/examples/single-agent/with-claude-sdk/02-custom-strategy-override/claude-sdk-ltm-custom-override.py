@@ -333,8 +333,9 @@ def create_memory_execution_role() -> str:
 # - `modelId` — the Bedrock model AgentCore invokes for that step (billed to your account).
 #
 # The override keeps the built-in semantic record SCHEMA — only the instructions and the
-# model change. `create_memory_and_wait` blocks until the resource is ACTIVE, and (unlike
-# tutorial 01) we MUST pass `memory_execution_role_arn`.
+# model change. `create_or_get_memory` blocks until the resource is ACTIVE, reuses an
+# existing memory of the same name, and (unlike tutorial 01) we MUST pass
+# `memory_execution_role_arn`.
 
 
 def get_or_create_memory(name: str, execution_role_arn: str) -> str:
@@ -366,32 +367,19 @@ def get_or_create_memory(name: str, execution_role_arn: str) -> str:
         }
     ]
 
-    try:
-        memory = memory_client.create_memory_and_wait(
-            name=name,
-            strategies=strategies,  # customMemoryStrategy => override pipeline is enabled
-            description="Long-term memory for the Claude SDK custom-strategy-override tutorial",
-            event_expiry_days=7,  # Retain raw events for 7 days (configurable 3-365)
-            memory_execution_role_arn=execution_role_arn,  # REQUIRED for overrides
-        )
-        memory_id = memory["id"]
-        logger.info(f"✅ Created memory with custom override strategy: {memory_id}")
-        return memory_id
-    except ClientError as e:
-        # If the memory already exists, retrieve and reuse its ID.
-        if e.response["Error"]["Code"] == "ValidationException" and "already exists" in str(e):
-            logger.info(f"Memory '{name}' already exists, retrieving its ID...")
-            existing = next(
-                (m["id"] for m in memory_client.list_memories() if m["name"] == name),
-                None,
-            )
-            if not existing:
-                raise RuntimeError(f"Memory '{name}' reported as existing but was not found")
-            logger.info(f"✅ Reusing existing memory: {existing}")
-            return existing
-        # Any other client error is unexpected — surface it.
-        logger.error(f"❌ Memory creation failed: {e}")
-        raise
+    # `create_or_get_memory` creates the memory (waiting until ACTIVE) or, on a name
+    # clash, returns the existing memory dict — so we don't hand-roll the reuse scan.
+    # It passes `memory_execution_role_arn` straight through, which overrides require.
+    memory = memory_client.create_or_get_memory(
+        name=name,
+        strategies=strategies,  # customMemoryStrategy => override pipeline is enabled
+        description="Long-term memory for the Claude SDK custom-strategy-override tutorial",
+        event_expiry_days=7,  # Retain raw events for 7 days (configurable 3-365)
+        memory_execution_role_arn=execution_role_arn,  # REQUIRED for overrides
+    )
+    memory_id = memory["id"]
+    logger.info(f"✅ Memory with custom override strategy ready: {memory_id}")
+    return memory_id
 
 
 # ## Step 5: The conversation turn
@@ -499,8 +487,7 @@ def build_memory_enriched_prompt(memory_id: str, query: str) -> str:
     for fact in facts:
         context_lines.append(f"- {fact}")
     context_lines.append(
-        "Use this context to avoid re-asking what you already know. Do not provide "
-        "diagnoses or medical advice."
+        "Use this context to avoid re-asking what you already know. Do not provide diagnoses or medical advice."
     )
     return SYSTEM_PROMPT + "\n".join(context_lines)
 

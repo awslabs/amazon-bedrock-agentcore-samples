@@ -122,11 +122,9 @@ import os
 import time
 from datetime import datetime
 
-# AgentCore Memory client (shared by all agents) + the StrategyType enum + the error we
-# handle when reusing an existing memory.
+# AgentCore Memory client (shared by all agents) + the StrategyType enum.
 from bedrock_agentcore.memory import MemoryClient
 from bedrock_agentcore.memory.constants import StrategyType
-from botocore.exceptions import ClientError
 
 # LlamaIndex agent + Bedrock LLM. FunctionAgent is the current agent class; the agents here
 # carry no tools, so they reason purely over the prompt + retrieved context.
@@ -285,30 +283,16 @@ def get_or_create_memory(name: str) -> str:
             }
         }
     ]
-    try:
-        memory = memory_client.create_memory_and_wait(
-            name=name,
-            strategies=strategies,  # strategies => long-term extraction is enabled
-            description="Shared LTM for the LlamaIndex multi-agent research team tutorial",
-            event_expiry_days=7,  # retain raw events for 7 days (configurable 3-365)
-            # NOTE: no memory_execution_role_arn — built-in strategies don't need one.
-        )
-        memory_id = memory["id"]
-        logger.info("✅ Created shared memory with built-in Semantic strategy: %s", memory_id)
-        return memory_id
-    except ClientError as e:
-        if e.response["Error"]["Code"] == "ValidationException" and "already exists" in str(e):
-            logger.info("Memory '%s' already exists, retrieving its ID...", name)
-            existing = next(
-                (m["id"] for m in memory_client.list_memories() if m.get("name") == name),
-                None,
-            )
-            if not existing:
-                raise RuntimeError(f"Memory '{name}' reported as existing but was not found")
-            logger.info("✅ Reusing existing memory: %s", existing)
-            return existing
-        logger.error("❌ Memory creation failed: %s", e)
-        raise
+    memory = memory_client.create_or_get_memory(
+        name=name,
+        strategies=strategies,  # strategies => long-term extraction is enabled
+        description="Shared LTM for the LlamaIndex multi-agent research team tutorial",
+        event_expiry_days=7,  # retain raw events for 7 days (configurable 3-365)
+        # NOTE: no memory_execution_role_arn — built-in strategies don't need one.
+    )
+    memory_id = memory["id"]
+    logger.info("✅ Shared memory with built-in Semantic strategy ready: %s", memory_id)
+    return memory_id
 
 
 # ## Step 5: Memory read/write helpers (the shared channel)

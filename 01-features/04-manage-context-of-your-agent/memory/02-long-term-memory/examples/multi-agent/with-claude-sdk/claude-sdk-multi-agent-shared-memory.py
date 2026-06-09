@@ -134,11 +134,9 @@ from datetime import datetime
 # Messages API against Bedrock — no Anthropic API key required.
 from anthropic import AnthropicBedrock
 
-# AgentCore Memory client, the StrategyType enum (gives us the exact strategy keys),
-# and the AWS error type we handle during memory creation.
+# AgentCore Memory client and the StrategyType enum (gives us the exact strategy keys).
 from bedrock_agentcore.memory import MemoryClient
 from bedrock_agentcore.memory.constants import StrategyType
-from botocore.exceptions import ClientError
 
 # Setup logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -240,8 +238,8 @@ logger.info(f"✅ Clients initialized for region: {REGION}")
 # (actor_id=<agent>) — no separate strategy per agent required.
 #
 # Built-in strategies require NO IAM execution role — AgentCore manages the extraction
-# and consolidation models. `create_memory_and_wait` blocks until the resource is
-# ACTIVE. If a memory with this name already exists, we reuse its ID instead of failing.
+# and consolidation models. `create_or_get_memory` blocks until the resource is ACTIVE.
+# If a memory with this name already exists, it returns that one instead of failing.
 
 
 def get_or_create_memory(name: str) -> str:
@@ -259,32 +257,19 @@ def get_or_create_memory(name: str) -> str:
         }
     ]
 
-    try:
-        memory = memory_client.create_memory_and_wait(
-            name=name,
-            strategies=strategies,  # Strategies => long-term extraction is enabled
-            description="Shared long-term memory for the Claude SDK multi-agent research team tutorial",
-            event_expiry_days=7,  # Retain raw events for 7 days (configurable 3-365)
-            # NOTE: no memory_execution_role_arn — built-in strategies don't need one.
-        )
-        memory_id = memory["id"]
-        logger.info(f"✅ Created shared memory with built-in Semantic strategy: {memory_id}")
-        return memory_id
-    except ClientError as e:
-        # If the memory already exists, retrieve and reuse its ID.
-        if e.response["Error"]["Code"] == "ValidationException" and "already exists" in str(e):
-            logger.info(f"Memory '{name}' already exists, retrieving its ID...")
-            existing = next(
-                (m["id"] for m in memory_client.list_memories() if m["name"] == name),
-                None,
-            )
-            if not existing:
-                raise RuntimeError(f"Memory '{name}' reported as existing but was not found")
-            logger.info(f"✅ Reusing existing memory: {existing}")
-            return existing
-        # Any other client error is unexpected — surface it.
-        logger.error(f"❌ Memory creation failed: {e}")
-        raise
+    # create_or_get_memory creates the resource and blocks until it is ACTIVE. If a
+    # memory with this name already exists, it returns the existing one instead of
+    # failing — so a re-run reuses the same resource without us hand-rolling the lookup.
+    memory = memory_client.create_or_get_memory(
+        name=name,
+        strategies=strategies,  # Strategies => long-term extraction is enabled
+        description="Shared long-term memory for the Claude SDK multi-agent research team tutorial",
+        event_expiry_days=7,  # Retain raw events for 7 days (configurable 3-365)
+        # NOTE: no memory_execution_role_arn — built-in strategies don't need one.
+    )
+    memory_id = memory["id"]
+    logger.info(f"✅ Shared memory ready with built-in Semantic strategy: {memory_id}")
+    return memory_id
 
 
 # ## Step 4: Memory read/write helpers (the shared channel)

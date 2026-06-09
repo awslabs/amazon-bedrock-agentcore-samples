@@ -121,11 +121,9 @@ from datetime import datetime
 # Messages API against Bedrock — no Anthropic API key required.
 from anthropic import AnthropicBedrock
 
-# AgentCore Memory client, the StrategyType enum (gives us the exact strategy keys),
-# and the AWS error type we handle during memory creation.
+# AgentCore Memory client and the StrategyType enum (gives us the exact strategy keys).
 from bedrock_agentcore.memory import MemoryClient
 from bedrock_agentcore.memory.constants import StrategyType
-from botocore.exceptions import ClientError
 
 # Setup logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -410,9 +408,10 @@ def run_agent(memory_id: str, session_id: str, messages: list, user_text: str) -
 # ## Step 5: Create the memory resource, and wait-for-extraction helper
 #
 # We create a memory with a single built-in **Semantic** strategy (no IAM role
-# required), reusing it by name if it already exists. The wait helper polls the
-# semantic namespace until the records `store_memory` queued have been extracted, so the
-# second session's `recall_memory` has something to find.
+# required) via `create_or_get_memory`, which returns the existing memory by name if it
+# already exists. The wait helper polls the semantic namespace until the records
+# `store_memory` queued have been extracted, so the second session's `recall_memory` has
+# something to find.
 
 
 def get_or_create_memory(name: str) -> str:
@@ -429,32 +428,19 @@ def get_or_create_memory(name: str) -> str:
         }
     ]
 
-    try:
-        memory = memory_client.create_memory_and_wait(
-            name=name,
-            strategies=strategies,  # Strategies => long-term extraction is enabled
-            description="Long-term memory for the Claude SDK memory-as-tool tutorial",
-            event_expiry_days=7,  # Retain raw events for 7 days (configurable 3-365)
-            # NOTE: no memory_execution_role_arn — built-in strategies don't need one.
-        )
-        memory_id = memory["id"]
-        logger.info(f"✅ Created memory with built-in Semantic strategy: {memory_id}")
-        return memory_id
-    except ClientError as e:
-        # If the memory already exists, retrieve and reuse its ID.
-        if e.response["Error"]["Code"] == "ValidationException" and "already exists" in str(e):
-            logger.info(f"Memory '{name}' already exists, retrieving its ID...")
-            existing = next(
-                (m["id"] for m in memory_client.list_memories() if m["name"] == name),
-                None,
-            )
-            if not existing:
-                raise RuntimeError(f"Memory '{name}' reported as existing but was not found")
-            logger.info(f"✅ Reusing existing memory: {existing}")
-            return existing
-        # Any other client error is unexpected — surface it.
-        logger.error(f"❌ Memory creation failed: {e}")
-        raise
+    # `create_or_get_memory` creates the resource, or returns the existing one if a
+    # memory with this name already exists — so we don't hand-roll the "already exists"
+    # path ourselves. Either way we get the memory dict back, keyed by "id".
+    memory = memory_client.create_or_get_memory(
+        name=name,
+        strategies=strategies,  # Strategies => long-term extraction is enabled
+        description="Long-term memory for the Claude SDK memory-as-tool tutorial",
+        event_expiry_days=7,  # Retain raw events for 7 days (configurable 3-365)
+        # NOTE: no memory_execution_role_arn — built-in strategies don't need one.
+    )
+    memory_id = memory["id"]
+    logger.info(f"✅ Memory with built-in Semantic strategy ready: {memory_id}")
+    return memory_id
 
 
 def wait_for_extraction(memory_id: str) -> None:
