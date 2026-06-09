@@ -47,9 +47,9 @@ NAMESPACE_TEMPLATE = "/episodes/{actorId}/"
 # the episode namespace here, which is always a valid (same-as) choice.
 REFLECTION_NAMESPACE_TEMPLATE = "/episodes/{actorId}/"
 # Episodic extraction + reflection is the SLOWEST built-in strategy: it needs an
-# episode boundary to consolidate, so the high-level session surface waits 16
-# minutes. The faster 90s above is fine for the boto3/sdk surfaces, which only
-# demonstrate the write path; the session surface actually retrieves episodes.
+# episode boundary to consolidate, so the high-level sdk run waits 16
+# minutes. The faster 90s above is fine for the boto3 path, which only
+# demonstrates the write path; the sdk run actually retrieves episodes.
 SESSION_EXTRACTION_WAIT_SECONDS = 960
 
 DEBUG_TURNS = [
@@ -217,13 +217,13 @@ def run_with_sdk(cleanup: bool = False) -> None:
 def main() -> None:
     args = [a for a in sys.argv[1:] if a != "--cleanup"]
     cleanup = "--cleanup" in sys.argv[1:]
-    surface = args[0] if args else "boto3"
-    if surface == "boto3":
+    mode = args[0] if args else "boto3"
+    if mode == "boto3":
         run_with_boto3(cleanup=cleanup)
-    elif surface == "sdk":
+    elif mode == "sdk":
         run_with_sdk(cleanup=cleanup)
     else:
-        print(f"Unknown surface {surface!r}. Use boto3 | sdk.", file=sys.stderr)
+        print(f"Unknown mode {mode!r}. Use boto3 | sdk.", file=sys.stderr)
         sys.exit(1)
 
 

@@ -17,7 +17,7 @@ The `sdk` path needs bedrock-agentcore 1.14 or newer, because it searches with
 Note on "citations": there is no dedicated citation object in the API. A
 citation is assembled from the fields returned on each memory record — the
 score, the namespaces it lives under, and its memoryRecordId — alongside the
-record text. All three surfaces below build that same citation-style output.
+record text. Both runs below build that same citation-style output.
 
 Add `--cleanup` to delete the memory resource at the end. By default the
 memory is kept so you can inspect it; the script prints the memoryId.
@@ -189,13 +189,13 @@ def run_with_sdk(cleanup: bool = False) -> None:
 def main() -> None:
     args = [a for a in sys.argv[1:] if a != "--cleanup"]
     cleanup = "--cleanup" in sys.argv[1:]
-    surface = args[0] if args else "boto3"
-    if surface == "boto3":
+    mode = args[0] if args else "boto3"
+    if mode == "boto3":
         run_with_boto3(cleanup=cleanup)
-    elif surface == "sdk":
+    elif mode == "sdk":
         run_with_sdk(cleanup=cleanup)
     else:
-        print(f"Unknown surface {surface!r}. Use boto3 | sdk.", file=sys.stderr)
+        print(f"Unknown mode {mode!r}. Use boto3 | sdk.", file=sys.stderr)
         sys.exit(1)
 
 

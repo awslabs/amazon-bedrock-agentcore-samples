@@ -4,7 +4,7 @@ What you learn:
     - A single memory resource serves many actors
     - Events are scoped by (actorId, sessionId) — no cross-actor leakage
     - ListEvents under one actor never returns another actor's events
-    - The `session` surface ASSERTS isolation (negative checks: one actor's
+    - The `sdk` run ASSERTS isolation (negative checks: one actor's
       events/sessions never contain the other's) rather than only narrating it
 
 Two ways to run it:
@@ -177,13 +177,13 @@ def run_with_sdk(cleanup: bool = False) -> None:
 def main() -> None:
     args = [a for a in sys.argv[1:] if a != "--cleanup"]
     cleanup = "--cleanup" in sys.argv[1:]
-    surface = args[0] if args else "boto3"
-    if surface == "boto3":
+    mode = args[0] if args else "boto3"
+    if mode == "boto3":
         run_with_boto3(cleanup=cleanup)
-    elif surface == "sdk":
+    elif mode == "sdk":
         run_with_sdk(cleanup=cleanup)
     else:
-        print(f"Unknown surface {surface!r}. Use boto3 | sdk.", file=sys.stderr)
+        print(f"Unknown mode {mode!r}. Use boto3 | sdk.", file=sys.stderr)
         sys.exit(1)
 
 

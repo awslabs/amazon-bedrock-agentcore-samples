@@ -36,7 +36,7 @@ ACTOR_ID = "user-alex"
 SESSION_ID = f"sess-{int(time.time())}"
 EXTRACTION_WAIT_SECONDS = 60
 # Preference extraction is semantic-class; it surfaced ~64s in testing, so the
-# high-level session surface waits 90s (with margin) rather than the 60s above.
+# high-level sdk run waits 90s (with margin) rather than the 60s above.
 SESSION_EXTRACTION_WAIT_SECONDS = 90
 NAMESPACE_TEMPLATE = "/users/{actorId}/preferences/"
 
@@ -163,13 +163,13 @@ def run_with_sdk(cleanup: bool = False) -> None:
 def main() -> None:
     args = [a for a in sys.argv[1:] if a != "--cleanup"]
     cleanup = "--cleanup" in sys.argv[1:]
-    surface = args[0] if args else "boto3"
-    if surface == "boto3":
+    mode = args[0] if args else "boto3"
+    if mode == "boto3":
         run_with_boto3(cleanup=cleanup)
-    elif surface == "sdk":
+    elif mode == "sdk":
         run_with_sdk(cleanup=cleanup)
     else:
-        print(f"Unknown surface {surface!r}. Use boto3 | sdk.", file=sys.stderr)
+        print(f"Unknown mode {mode!r}. Use boto3 | sdk.", file=sys.stderr)
         sys.exit(1)
 
 

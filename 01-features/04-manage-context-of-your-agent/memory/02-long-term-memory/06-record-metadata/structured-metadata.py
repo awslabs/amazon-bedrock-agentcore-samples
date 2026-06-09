@@ -15,7 +15,7 @@ Two ways to run it:
 Add `--cleanup` to delete the memory resource at the end. By default the
 memory is kept so you can inspect it; the script prints the memoryId.
 
-The `sdk` surface declares filterable keys with `create_memory_and_wait(indexed_keys=...)`
+The `sdk` run declares filterable keys with `create_memory_and_wait(indexed_keys=...)`
 and builds metadata filters with the typed `MemoryMetadataFilter` builder instead of
 hand-written boto3 dicts. It needs bedrock-agentcore 1.14 or newer, because it searches
 with `search_long_term_memories(namespace=...)`. Older versions only accept the
@@ -129,7 +129,7 @@ def run_with_boto3(cleanup: bool = False) -> None:
 
 # === AgentCore SDK — high-level MemorySessionManager =================
 # MemoryClient owns the control plane; MemorySessionManager is data-plane only.
-# This surface uses two SDK ergonomics:
+# This run uses two SDK ergonomics:
 #   1) create_memory_and_wait(indexed_keys=[IndexedKey.build(...)]) declares the
 #      filterable keys without dropping to the raw control-plane client.
 #   2) MemoryMetadataFilter.build_expression(...) builds the metadata filter as a
@@ -206,13 +206,13 @@ def run_with_sdk(cleanup: bool = False) -> None:
 def main() -> None:
     args = [a for a in sys.argv[1:] if a != "--cleanup"]
     cleanup = "--cleanup" in sys.argv[1:]
-    surface = args[0] if args else "boto3"
-    if surface == "boto3":
+    mode = args[0] if args else "boto3"
+    if mode == "boto3":
         run_with_boto3(cleanup=cleanup)
-    elif surface == "sdk":
+    elif mode == "sdk":
         run_with_sdk(cleanup=cleanup)
     else:
-        print(f"Unknown surface {surface!r}. Use boto3 | sdk.", file=sys.stderr)
+        print(f"Unknown mode {mode!r}. Use boto3 | sdk.", file=sys.stderr)
         sys.exit(1)
 
 
