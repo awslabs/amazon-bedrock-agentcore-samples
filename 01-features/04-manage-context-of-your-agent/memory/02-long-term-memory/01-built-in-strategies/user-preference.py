@@ -137,17 +137,13 @@ def run_with_sdk(cleanup: bool = False) -> None:
     # takes ConversationalMessage objects and maps to a single create_event.
     manager = MemorySessionManager(memory_id=memory_id, region_name=REGION)
     session = manager.create_memory_session(actor_id=ACTOR_ID, session_id=SESSION_ID)
-    session.add_turns(
-        messages=[ConversationalMessage(text, MessageRole[role]) for role, text in TURNS]
-    )
+    session.add_turns(messages=[ConversationalMessage(text, MessageRole[role]) for role, text in TURNS])
     print(f"[sdk] Waiting {SESSION_EXTRACTION_WAIT_SECONDS}s for extraction...")
     time.sleep(SESSION_EXTRACTION_WAIT_SECONDS)
 
     namespace = NAMESPACE_TEMPLATE.format(actorId=ACTOR_ID)
     # Use namespace= (exact match); namespace_prefix= is deprecated.
-    hits = session.search_long_term_memories(
-        query="user's preferences", namespace=namespace, top_k=10
-    )
+    hits = session.search_long_term_memories(query="user's preferences", namespace=namespace, top_k=10)
     print(f"\n[sdk] Preferences in {namespace}:")
     for h in hits:
         # Each hit is a MemoryRecord (dict-like): content.text + score.

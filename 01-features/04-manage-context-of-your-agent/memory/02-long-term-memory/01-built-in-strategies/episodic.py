@@ -175,9 +175,7 @@ def run_with_sdk(cleanup: bool = False) -> None:
         (f"design-session-{int(time.time())}", DESIGN_TURNS),
     ]:
         session = manager.create_memory_session(actor_id=ACTOR_ID, session_id=session_id)
-        session.add_turns(
-            messages=[ConversationalMessage(text, MessageRole[role]) for role, text in turns]
-        )
+        session.add_turns(messages=[ConversationalMessage(text, MessageRole[role]) for role, text in turns])
 
     namespace = NAMESPACE_TEMPLATE.format(actorId=ACTOR_ID)
     # Reuse one session handle for retrieval (search is actor/namespace-scoped,

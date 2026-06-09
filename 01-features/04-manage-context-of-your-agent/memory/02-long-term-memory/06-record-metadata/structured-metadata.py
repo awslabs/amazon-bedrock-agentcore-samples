@@ -171,8 +171,7 @@ def run_with_sdk(cleanup: bool = False) -> None:
     session = manager.create_memory_session(actor_id=ACTOR_ID)
     resp = manager.batch_create_memory_records(memoryId=memory_id, records=_records())
     print(
-        f"[sdk] Created {len(resp.get('successfulRecords', []))} records "
-        f"({len(resp.get('failedRecords', []))} failed)"
+        f"[sdk] Created {len(resp.get('successfulRecords', []))} records ({len(resp.get('failedRecords', []))} failed)"
     )
 
     # Directly-written records are eventually consistent: they take ~30s to become

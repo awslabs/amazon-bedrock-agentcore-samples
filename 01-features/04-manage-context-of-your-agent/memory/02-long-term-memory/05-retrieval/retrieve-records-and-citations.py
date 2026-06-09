@@ -145,9 +145,7 @@ def run_with_sdk(cleanup: bool = False) -> None:
 
     manager = MemorySessionManager(memory_id=memory_id, region_name=REGION)
     session = manager.create_memory_session(actor_id=ACTOR_ID, session_id=SESSION_ID)
-    session.add_turns(
-        messages=[ConversationalMessage(text, MessageRole[role]) for role, text in TURNS]
-    )
+    session.add_turns(messages=[ConversationalMessage(text, MessageRole[role]) for role, text in TURNS])
     print(f"[sdk] Waiting {SESSION_EXTRACTION_WAIT_SECONDS}s for extraction...")
     time.sleep(SESSION_EXTRACTION_WAIT_SECONDS)
 

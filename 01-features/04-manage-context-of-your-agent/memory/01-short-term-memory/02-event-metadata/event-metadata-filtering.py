@@ -153,9 +153,7 @@ def run_with_sdk(cleanup: bool = False) -> None:
     )
     print(f"[sdk] Health-tagged events: {len(health)}")
 
-    priority = session.list_events(
-        eventMetadata=[{"left": {"metadataKey": "priority"}, "operator": "EXISTS"}]
-    )
+    priority = session.list_events(eventMetadata=[{"left": {"metadataKey": "priority"}, "operator": "EXISTS"}])
     print(f"[sdk] Events with priority set: {len(priority)}")
 
     if cleanup:
