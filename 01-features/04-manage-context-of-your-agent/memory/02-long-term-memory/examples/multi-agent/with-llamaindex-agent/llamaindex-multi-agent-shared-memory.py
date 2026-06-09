@@ -163,10 +163,11 @@ NAMESPACE_TEMPLATE = "/research-team/{actorId}/knowledge/"
 # read from the SAME resolved namespace the previous agent wrote to — no namespace drift.
 SHARED_NAMESPACE = NAMESPACE_TEMPLATE.format(actorId=SHARED_ACTOR_ID)
 
-# Long-term extraction is asynchronous — records appear ~30-90s after create_event. Because
-# this is a SEQUENTIAL handoff (each agent consumes the previous agent's output), we wait
-# for extraction between stages. We poll but cap the wait.
-EXTRACTION_MAX_WAIT_SECONDS = 120
+# Long-term extraction is asynchronous — records usually appear ~30-90s after create_event,
+# but the tail runs longer (observed past 2 min). Because this is a SEQUENTIAL handoff (each
+# agent consumes the previous agent's output), we poll for extraction between stages and cap
+# the wait generously so a slow extraction doesn't leave the next agent with an empty board.
+EXTRACTION_MAX_WAIT_SECONDS = 300
 EXTRACTION_POLL_INTERVAL_SECONDS = 15
 
 # The research topic the whole team works on.
