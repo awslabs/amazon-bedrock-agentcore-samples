@@ -147,9 +147,6 @@ const InteractiveExecutionModal = ({
           </SpaceBetween>
         </Container>
 
-        <Container header={<Header variant="h3">Code to Execute</Header>}>
-          <CodeDisplay content={code} maxHeight="200px" showCopyButton={false} />
-        </Container>
       </SpaceBetween>
     </Modal>
   );

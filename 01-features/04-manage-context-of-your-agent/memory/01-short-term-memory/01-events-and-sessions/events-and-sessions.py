@@ -22,6 +22,7 @@ import os
 import sys
 import time
 import uuid
+from datetime import datetime, timezone
 
 REGION = os.getenv("AWS_REGION", "us-east-1")
 ACTOR_ID = "user-42"
@@ -71,6 +72,9 @@ def run_with_boto3(cleanup: bool = False) -> None:
                 memoryId=memory_id,
                 actorId=ACTOR_ID,
                 sessionId=session_id,
+                # eventTimestamp is REQUIRED by CreateEvent — omitting it raises
+                # ParamValidationError. (The SDK surface fills this in for you.)
+                eventTimestamp=datetime.now(timezone.utc),
                 payload=[{"conversational": {"role": role, "content": {"text": text}}}],
             )
 

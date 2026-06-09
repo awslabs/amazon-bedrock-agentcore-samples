@@ -11,13 +11,16 @@ back-fills, migrations, and admin tooling.
 
 Each call accepts up to 100 records and reports per-record success/failure.
 
+Eventual consistency: a record returned as SUCCEEDED by BatchCreate is NOT
+immediately readable/updatable — BatchUpdate/Delete/List against it can raise
+ResourceNotFoundException for a while (observed from a few seconds to >50s, and
+the window varies run to run). This is expected for directly-written records.
+The real-world pattern — shown below — is to RETRY the dependent operation until
+the record has propagated, rather than assume it is available right after create.
+
 Two ways to run it:
     python batch-create-update-delete.py boto3    # the raw AWS API, no SDK. Shows exactly what's on the wire.
     python batch-create-update-delete.py sdk      # the AgentCore SDK (MemorySessionManager). The recommended way.
-
-The `sdk` path needs bedrock-agentcore 1.14 or newer, because it searches with
-`search_long_term_memories(namespace=...)`. Older versions only accept the deprecated
-`namespace_prefix=`.
 
 Add `--cleanup` to delete the memory resource at the end. By default the
 memory is kept so you can inspect it; the script prints the memoryId.
@@ -33,31 +36,37 @@ import time
 import uuid
 from datetime import datetime, timezone
 
+from botocore.exceptions import ClientError
+
 REGION = os.getenv("AWS_REGION", "us-east-1")
 ACTOR_ID = "user-alex"
 NAMESPACE = f"/users/{ACTOR_ID}/notes/"
 
 
-def _wait_until_records_indexed(list_fn, expected: int, max_wait: int = 60, poll: int = 5) -> None:
-    """Block until directly-written records are queryable, then return.
+def _retry_until_propagated(op, *, max_wait: int = 150, poll: int = 10):
+    """Call `op()` and retry while the record is still propagating.
 
-    BatchCreateMemoryRecords is eventually consistent: a record can return
-    SUCCEEDED from create yet not be immediately listable/updatable — calling
-    BatchUpdate*/List* too soon raises ResourceNotFoundException or returns 0
-    rows. AgentCore exposes no per-record status field, so (matching the SDK's
-    own poll-don't-sleep pattern) we poll ListMemoryRecords until the expected
-    count appears or the deadline elapses.
+    Directly-written records are eventually consistent, so a dependent op
+    (BatchUpdate/Delete/List) on a just-created record may raise
+    ResourceNotFoundException until propagation completes. We retry ONLY that
+    transient error, with a deadline, and re-raise anything else immediately.
+    Returns op()'s result; raises the last ResourceNotFoundException on timeout.
 
-    `list_fn()` must return the list of current record summaries.
+    This retries the ACTUAL dependent op, not a List probe: "shows up in List"
+    and "is updatable" are not the same moment, so polling List first can still
+    leave the update racing ahead of propagation.
     """
     deadline = time.time() + max_wait
+    last = None
     while time.time() < deadline:
         try:
-            if len(list_fn()) >= expected:
-                return
-        except Exception:  # noqa: BLE001 — records not yet readable; keep polling
-            pass
-        time.sleep(poll)
+            return op()
+        except ClientError as e:
+            if e.response["Error"]["Code"] != "ResourceNotFoundException":
+                raise  # deterministic error — surface it
+            last = e
+            time.sleep(poll)
+    raise last
 
 
 # === boto3 ============================================================
@@ -107,29 +116,28 @@ def run_with_boto3(cleanup: bool = False) -> None:
     print(f"[boto3] Created {len(successes)} ({len(create_resp.get('failedRecords', []))} failed)")
     record_ids = {r["requestIdentifier"]: r["memoryRecordId"] for r in successes}
 
-    # Directly-written records are eventually consistent — poll until they are
-    # queryable before updating/deleting (update too soon -> ResourceNotFound).
-    _wait_until_records_indexed(
-        lambda: data.list_memory_records(memoryId=memory_id, namespace=NAMESPACE)["memoryRecordSummaries"],
-        expected=len(successes),
-    )
-
-    update_resp = data.batch_update_memory_records(
-        memoryId=memory_id,
-        records=[
-            {
-                "memoryRecordId": record_ids["note-lang"],
-                # BatchUpdateMemoryRecords requires memoryRecordId AND timestamp (datetime).
-                "timestamp": datetime.now(timezone.utc),
-                "content": {"text": "Alex prefers Python and writes Rust for hot paths."},
-            }
-        ],
+    # The just-created records are eventually consistent — retry the dependent
+    # update/delete until they propagate (BatchUpdateMemoryRecords requires
+    # memoryRecordId AND timestamp).
+    update_resp = _retry_until_propagated(
+        lambda: data.batch_update_memory_records(
+            memoryId=memory_id,
+            records=[
+                {
+                    "memoryRecordId": record_ids["note-lang"],
+                    "timestamp": datetime.now(timezone.utc),
+                    "content": {"text": "Alex prefers Python and writes Rust for hot paths."},
+                }
+            ],
+        )
     )
     print(f"[boto3] Updated {len(update_resp.get('successfulRecords', []))}")
 
-    delete_resp = data.batch_delete_memory_records(
-        memoryId=memory_id,
-        records=[{"memoryRecordId": record_ids["note-allergy"]}],
+    delete_resp = _retry_until_propagated(
+        lambda: data.batch_delete_memory_records(
+            memoryId=memory_id,
+            records=[{"memoryRecordId": record_ids["note-allergy"]}],
+        )
     )
     print(f"[boto3] Deleted {len(delete_resp.get('successfulRecords', []))}")
 
@@ -198,33 +206,33 @@ def run_with_sdk(cleanup: bool = False) -> None:
     print(f"[sdk] Created {len(successes)} ({len(create_resp.get('failedRecords', []))} failed)")
     record_ids = {r["requestIdentifier"]: r["memoryRecordId"] for r in successes}
 
-    # Directly-written records are eventually consistent — poll until they are
-    # queryable before updating/deleting (update too soon -> ResourceNotFound).
-    _wait_until_records_indexed(
-        lambda: manager.list_long_term_memory_records(namespace=NAMESPACE),
-        expected=len(successes),
-    )
-
-    update_resp = manager.batch_update_memory_records(
-        memoryId=memory_id,
-        records=[
-            {
-                "memoryRecordId": record_ids["note-lang"],
-                # BatchUpdateMemoryRecords requires memoryRecordId AND timestamp (datetime).
-                "timestamp": datetime.now(timezone.utc),
-                "content": {"text": "Alex prefers Python and writes Rust for hot paths."},
-            }
-        ],
+    # The just-created records are eventually consistent — retry the dependent
+    # update/delete until they propagate (BatchUpdateMemoryRecords requires
+    # memoryRecordId AND timestamp).
+    update_resp = _retry_until_propagated(
+        lambda: manager.batch_update_memory_records(
+            memoryId=memory_id,
+            records=[
+                {
+                    "memoryRecordId": record_ids["note-lang"],
+                    "timestamp": datetime.now(timezone.utc),
+                    "content": {"text": "Alex prefers Python and writes Rust for hot paths."},
+                }
+            ],
+        )
     )
     print(f"[sdk] Updated {len(update_resp.get('successfulRecords', []))}")
 
-    delete_resp = manager.batch_delete_memory_records(
-        memoryId=memory_id,
-        records=[{"memoryRecordId": record_ids["note-allergy"]}],
+    delete_resp = _retry_until_propagated(
+        lambda: manager.batch_delete_memory_records(
+            memoryId=memory_id,
+            records=[{"memoryRecordId": record_ids["note-allergy"]}],
+        )
     )
     print(f"[sdk] Deleted {len(delete_resp.get('successfulRecords', []))}")
 
-    # list_long_term_memory_records is a first-class MemorySessionManager method.
+    # list_long_term_memory_records is a first-class MemorySessionManager method
+    # (returns a list of MemoryRecord directly, not a {"memoryRecordSummaries": ...} dict).
     remaining = manager.list_long_term_memory_records(namespace=NAMESPACE)
     print(f"\n[sdk] Remaining ({len(remaining)}):")
     for r in remaining:

@@ -373,32 +373,19 @@ strategies = [
 # NOTE: Custom strategies with model overrides require an IAM execution role
 logger.info(f"Creating memory '{memory_name}' with {len(strategies)} strategies...")
 
-try:
-    memory = memory_client.create_memory_and_wait(
-        name=memory_name,
-        strategies=strategies,
-        description="Memory for customer support agent",
-        event_expiry_days=90,  # Memories expire after 90 days
-        memory_execution_role_arn=MEMORY_EXECUTION_ROLE_ARN,  # Required for custom strategies
-    )
-    memory_id = memory["id"]
-    logger.info("✅ Successfully created memory:")
-    logger.info(f"   Memory ID: {memory_id}")
-    logger.info(f"   Memory Name: {memory['name']}")
-    logger.info(f"   Memory Status: {memory['status']}")
-
-except ClientError as e:
-    if e.response["Error"]["Code"] == "ValidationException" and "already exists" in str(e):
-        logger.info(f"Memory '{memory_name}' already exists, retrieving ID...")
-        memories = memory_client.list_memories()
-        memory_id = next((m["id"] for m in memories if m["name"] == memory_name), None)
-        if not memory_id:
-            raise RuntimeError(f"Memory '{memory_name}' not found after conflict")
-        memory = {"id": memory_id, "name": memory_name}
-        logger.info(f"✅ Retrieved existing memory: {memory_id}")
-    else:
-        logger.error(f"❌ Memory creation failed: {e}")
-        raise
+# create_or_get_memory is idempotent: it creates the memory (waiting for ACTIVE) or
+# returns the existing one on a re-run, replacing the manual create/except/list-and-match.
+memory = memory_client.create_or_get_memory(
+    name=memory_name,
+    strategies=strategies,
+    description="Memory for customer support agent",
+    event_expiry_days=90,  # Memories expire after 90 days
+    memory_execution_role_arn=MEMORY_EXECUTION_ROLE_ARN,  # Required for custom strategies
+)
+memory_id = memory["id"]
+logger.info("✅ Memory ready:")
+logger.info(f"   Memory ID: {memory_id}")
+logger.info(f"   Memory Name: {memory['name']}")
 
 
 # Test memory client basic functionality
@@ -534,7 +521,7 @@ class CustomerSupportMemoryHooks(HookProvider):
                     # Resolve namespace template with actual actor ID from session
                     resolved_namespace = namespace_template.format(actorId=self.customer_session._actor_id)
 
-                    # Use MemorySession API (no need to pass actor_id/session_id)
+                    # Use MemorySession API (no need to pass actor_id/session_id).
                     memories = self.customer_session.search_long_term_memories(
                         query=user_query,
                         namespace_prefix=resolved_namespace,
