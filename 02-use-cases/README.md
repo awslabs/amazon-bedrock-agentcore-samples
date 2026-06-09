@@ -17,6 +17,7 @@ This folder contains end-to-end applications that demonstrate how to apply Amazo
 * **[Healthcare Appointment Agent](./healthcare-appointment-agent/)**: FHIR-compliant healthcare appointment scheduling with patient data integration
 * **[Local Prototype to AgentCore](./local-prototype-to-agentcore/)**: Migration guide from local development to production AgentCore deployment
 * **[Market Trends Agent](./market-trends-agent/)**: Financial market analysis with browser tools and memory integration
+* **[Multi-ISV Orchestration](./multi-isv-orchestration/)**: Connect Salesforce Lightning Platform and AWS for SAP MCP Server through one AgentCore Gateway for cross-system CRM + ERP queries
 * **[SRE Agent](./SRE-agent/)**: Site reliability engineering assistant with multi-agent LangGraph workflows
 * **[Text to Python IDE](./text-to-python-ide/)**: Code generation and execution environment with AgentCore Code Interpreter
 * **[Video Games Sales Assistant](./video-games-sales-assistant/)**: Data analysis assistant with Amplify frontend and CDK deployment
