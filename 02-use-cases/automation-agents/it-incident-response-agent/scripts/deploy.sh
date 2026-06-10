@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Deploy the full IT Incident Response Agent v3
+# Deploy the full IT Incident Response Agent
 # Usage: ./scripts/deploy.sh
 #
 # Single-command deployment — `agentcore deploy` handles everything:
@@ -12,7 +12,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 
-echo "=== IT Incident Response Agent v3 — Deployment ==="
+echo "=== IT Incident Response Agent — Deployment ==="
 echo ""
 echo "This uses the AgentCore CLI to deploy everything in a single stack."
 echo "The CDK stack integrates both AgentCore resources AND supplementary infra."
@@ -49,7 +49,7 @@ fi
 # Deploy via AgentCore CLI (runs CDK under the hood)
 echo ""
 echo "Deploying..."
-agentcore deploy -y
+agentcore deploy -y --target dev
 
 echo ""
 echo "Deployment complete!"

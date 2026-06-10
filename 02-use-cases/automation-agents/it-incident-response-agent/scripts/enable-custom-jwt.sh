@@ -94,7 +94,7 @@ echo "    OAUTH_PROVIDER_NAME=${CREDENTIAL_NAME}"
 echo "    GATEWAY_AUDIENCE=${AUTH0_AUDIENCE}"
 echo ""
 
-SKIP_ONLINE_EVAL=true agentcore deploy -y
+agentcore deploy -y --target dev
 
 echo ""
 echo "=== CUSTOM_JWT auth enabled! ==="
@@ -105,5 +105,5 @@ echo ""
 echo "To revert to AWS_IAM:"
 echo "  1. Edit agentcore.json: set authorizerType back to 'AWS_IAM'"
 echo "  2. Remove customJwtAuthorizer block"
-echo "  3. agentcore deploy -y"
+echo "  3. agentcore deploy -y --target dev"
 echo "  4. agentcore remove credential --name auth0-m2m -y"

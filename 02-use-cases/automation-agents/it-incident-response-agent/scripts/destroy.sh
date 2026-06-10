@@ -15,9 +15,9 @@ if [ -f "$PROJECT_DIR/.env" ]; then
 fi
 
 REGION="${AWS_REGION:-us-west-2}"
-STACK_NAME="${STACK_NAME:-AgentCore-ITIncidentAgent-default}"
+STACK_NAME="${STACK_NAME:-AgentCore-ITIncidentAgent-dev}"
 
-echo "=== IT Incident Response Agent v3 — Destroy ==="
+echo "=== IT Incident Response Agent — Destroy ==="
 echo ""
 echo "Stack: $STACK_NAME"
 echo "Region: $REGION"
@@ -80,4 +80,4 @@ done
 echo ""
 echo "=== Cleanup complete ==="
 echo ""
-echo "To redeploy fresh: agentcore deploy -y"
+echo "To redeploy fresh: agentcore deploy -y --target dev"

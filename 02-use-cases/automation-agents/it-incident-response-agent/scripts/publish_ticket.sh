@@ -12,7 +12,7 @@ REGION="${DEPLOY_REGION:-us-west-2}"
 
 # Get the SNS topic ARN from CloudFormation outputs
 # The stack name follows the AgentCore CLI convention: AgentCore-<ProjectName>-<target>
-STACK_NAME="${STACK_NAME:-AgentCore-ITIncidentAgent-default}"
+STACK_NAME="${STACK_NAME:-AgentCore-ITIncidentAgent-dev}"
 TOPIC_ARN=$(aws cloudformation describe-stacks \
   --stack-name "$STACK_NAME" \
   --query "Stacks[0].Outputs[?contains(OutputKey,'TicketsTopicArn')].OutputValue" \
@@ -21,7 +21,7 @@ TOPIC_ARN=$(aws cloudformation describe-stacks \
 
 if [ -z "$TOPIC_ARN" ] || [ "$TOPIC_ARN" = "None" ]; then
   echo "ERROR: Could not find TicketsTopicArn from stack $STACK_NAME"
-  echo "       Make sure the stack is deployed: agentcore deploy -y"
+  echo "       Make sure the stack is deployed: agentcore deploy -y --target dev"
   echo ""
   echo "       To use a different stack name: STACK_NAME=<name> ./scripts/publish_ticket.sh"
   exit 1
