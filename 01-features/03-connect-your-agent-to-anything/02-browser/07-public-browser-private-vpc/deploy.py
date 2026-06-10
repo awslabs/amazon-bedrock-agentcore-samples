@@ -29,7 +29,6 @@ IAM permissions required:
 """
 
 import argparse
-import time
 
 import boto3
 

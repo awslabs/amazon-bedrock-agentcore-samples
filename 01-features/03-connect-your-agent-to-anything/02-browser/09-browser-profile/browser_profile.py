@@ -228,7 +228,7 @@ async def session_b_verify_cart(ws_url: str, headers: dict, cfn_url: str) -> Non
 
 
 def run_demo(cfn_url: str, region: str, skip_cleanup: bool) -> None:
-    session = boto3.Session()
+
     account_id = boto3.client("sts").get_caller_identity()["Account"]
     cp_client = boto3.client("bedrock-agentcore-control", region_name=region)
     dp_client = boto3.client("bedrock-agentcore", region_name=region)

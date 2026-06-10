@@ -288,7 +288,7 @@ def run_part1_chrome_policies(region: str, bucket_name: str, execution_role_arn:
 
     wait_for_browser_ready(client.control_plane_client, browser_id)
 
-    session_id = client.start(identifier=browser_id, session_timeout_seconds=3600)
+    client.start(identifier=browser_id, session_timeout_seconds=3600)
     for _ in range(30):
         info = client.get_session()
         if info.get("status") == "READY":
