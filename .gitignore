@@ -268,3 +268,37 @@ plan/
 
 ### draw.io source files (keep rendered PNG only) ###
 *.drawio
+
+# Generated configuration and result files
+**/agents_config.json
+**/gateway_config.json
+**/config.json
+**/evals_results/
+**/results/
+**/*.zip
+
+# Docker files (generated)
+**/Dockerfile
+
+# Agent state and runtime files
+**/.agent_arn*
+**/agent_state_*.json
+**/optimize_state_*.json
+**/runtime_config.json
+
+# Evaluation and session results
+**/batch_eval_*_result.json
+**/recommendation_*_result.json
+**/session_results_*.json
+
+# Test and demo state files
+**/demo_state.json
+**/dp_demo_state.json
+**/test-results/
+**/TEST_REPORT_CARD.md
+
+# Policy test results
+01-features/07-centralize-and-govern-your-ai-infrastructure/02-policy/test-results/
+
+# Browser test report cards
+01-features/03-connect-your-agent-to-anything/02-browser/TEST_REPORT_CARD.md
