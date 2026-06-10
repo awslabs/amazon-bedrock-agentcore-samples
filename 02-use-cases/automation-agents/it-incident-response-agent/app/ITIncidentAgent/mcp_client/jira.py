@@ -72,7 +72,7 @@ def get_jira_mcp_client_sync() -> Optional[MCPClient]:
     )
     def _build_client(*, access_token: str) -> MCPClient:
         """Decorated — token injected by @requires_access_token."""
-        logger.info("Using Atlassian MCP at %s (provider: %s)", JIRA_MCP_URL, JIRA_OAUTH_PROVIDER_NAME)
+        logger.info("Using Atlassian MCP client with configured provider")
         return MCPClient(
             lambda: sse_client(
                 JIRA_MCP_URL,
