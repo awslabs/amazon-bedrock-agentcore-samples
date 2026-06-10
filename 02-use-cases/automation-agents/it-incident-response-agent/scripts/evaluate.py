@@ -1,21 +1,16 @@
 #!/usr/bin/env python3
-"""Retrieve online evaluation results from the AgentCore Online Evaluation config.
+"""Retrieve and report online evaluation results from AgentCore.
 
 Usage:
   python scripts/evaluate.py              # latest results (last 1 hour)
   python scripts/evaluate.py --hours 24   # last 24 hours of results
   python scripts/evaluate.py --raw        # print raw JSON (for piping)
+  python scripts/evaluate.py --summary    # aggregate scores only
 
 Prerequisites:
-  - CloudWatch Transaction Search enabled in the region
-  - Stack deployed with online evaluation enabled (onlineEvalConfigs[] in agentcore.json)
-  - At least one ticket processed (to generate evaluable traces)
-
-Online evaluation runs continuously against all agent invocations, scoring:
-  - Correctness — Did the agent provide accurate information?
-  - Helpfulness — Was the response useful to the user?
-  - ToolSelectionAccuracy — Did the agent choose the right tools?
-  - GoalSuccessRate — Did the agent accomplish the user's goal?
+  - CloudWatch Transaction Search enabled (aws observabilityadmin start-telemetry-evaluation)
+  - Stack deployed with SKIP_ONLINE_EVAL=false
+  - At least one ticket processed after Transaction Search was enabled
 """
 
 import argparse
@@ -23,41 +18,46 @@ import json
 import os
 import sys
 import time
+from collections import defaultdict
 
 import boto3
 
 REGION = os.environ.get("AWS_REGION", "us-west-2")
-STACK_NAME = "AgentCore-ITIncidentAgent-dev"
+STACK_NAME = os.environ.get("STACK_NAME", "AgentCore-ITIncidentAgent-dev")
+EVAL_LOG_PREFIX = "/aws/bedrock-agentcore/evaluations/results/ITIncidentAgent"
 
 
 def find_eval_log_group() -> str:
-    """Find the online evaluation results log group."""
+    """Find the most recent online evaluation results log group."""
     logs = boto3.client("logs", region_name=REGION)
-    resp = logs.describe_log_groups(
-        logGroupNamePrefix="/aws/bedrock-agentcore/evaluations/results/ITIncidentAgent"
-    )
-    groups = [lg["logGroupName"] for lg in resp.get("logGroups", [])]
+    resp = logs.describe_log_groups(logGroupNamePrefix=EVAL_LOG_PREFIX)
+    groups = resp.get("logGroups", [])
     if not groups:
         sys.exit(
-            "No evaluation results log group found.\n"
-            "Ensure onlineEvalConfigs[] is populated in agentcore.json and\n"
-            "CloudWatch Transaction Search is enabled.\n"
-            "See: docs/online-eval-workaround.md"
+            "❌ No evaluation results log group found.\n"
+            "   Ensure:\n"
+            "   1. CloudWatch Transaction Search is enabled\n"
+            "      (aws observabilityadmin start-telemetry-evaluation --region us-west-2)\n"
+            "   2. SKIP_ONLINE_EVAL=false in .env and stack redeployed\n"
+            "   3. At least one ticket processed after enabling\n"
+            "   4. Wait 2-5 minutes for eval results to appear"
         )
-    # Use the most recently created one
-    return groups[-1]
+    # Use the most recently created log group
+    groups.sort(key=lambda g: g.get("creationTime", 0), reverse=True)
+    return groups[0]["logGroupName"]
 
 
 def query_eval_results(log_group: str, hours: int = 1) -> list:
-    """Query evaluation results from CloudWatch Logs."""
+    """Query evaluation results from CloudWatch Logs Insights."""
     logs = boto3.client("logs", region_name=REGION)
     end = int(time.time() * 1000)
     start = end - hours * 60 * 60 * 1000
 
     query = (
         "fields @timestamp, @message "
+        "| filter name = 'gen_ai.evaluation.result' "
         "| sort @timestamp desc "
-        "| limit 50"
+        "| limit 200"
     )
 
     q = logs.start_query(
@@ -68,7 +68,7 @@ def query_eval_results(log_group: str, hours: int = 1) -> list:
     )["queryId"]
 
     # Poll for results
-    while True:
+    for _ in range(30):
         resp = logs.get_query_results(queryId=q)
         if resp["status"] in ("Complete", "Failed", "Cancelled"):
             break
@@ -80,87 +80,166 @@ def query_eval_results(log_group: str, hours: int = 1) -> list:
         msg = fields.get("@message", "")
         if msg:
             try:
-                results.append(json.loads(msg))
+                parsed = json.loads(msg)
+                # Extract the key fields from the nested structure
+                attrs = parsed.get("attributes", {})
+                results.append({
+                    "timestamp": fields.get("@timestamp", ""),
+                    "trace_id": parsed.get("traceId", ""),
+                    "session_id": attrs.get("session.id", ""),
+                    "evaluator": attrs.get("gen_ai.evaluation.name", ""),
+                    "score": attrs.get("gen_ai.evaluation.score.value"),
+                    "label": attrs.get("gen_ai.evaluation.score.label", ""),
+                    "explanation": attrs.get("gen_ai.evaluation.explanation", ""),
+                    "level": attrs.get("gen_ai.evaluation_level", ""),
+                    "span_id": parsed.get("spanId", ""),
+                })
             except json.JSONDecodeError:
-                results.append({"raw": msg, "timestamp": fields.get("@timestamp")})
+                pass
     return results
 
 
-def format_results(results: list) -> None:
-    """Print evaluation results in a human-readable format."""
+def print_summary(results: list) -> None:
+    """Print aggregate score summary."""
     if not results:
-        print("  No evaluation results found in the specified time window.")
-        print("  This can mean:")
-        print("    - No tickets have been processed recently")
-        print("    - Online evaluation is still processing (wait 2-3 min after invocation)")
-        print("    - CloudWatch Transaction Search is not enabled")
+        print("  No evaluation results found.")
         return
 
-    print(f"  Found {len(results)} evaluation result(s):\n")
+    # Group by evaluator
+    by_evaluator = defaultdict(list)
+    for r in results:
+        if r["evaluator"]:
+            by_evaluator[r["evaluator"]].append(r["score"])
 
-    for i, result in enumerate(results, 1):
-        if isinstance(result, dict) and "raw" in result:
-            print(f"  [{i}] {result.get('timestamp', 'unknown')}: {result['raw'][:200]}")
-            continue
+    # Count sessions
+    sessions = set(r["session_id"] for r in results if r["session_id"])
+    traces = set(r["trace_id"] for r in results if r["trace_id"])
 
-        trace_id = result.get("traceId", result.get("trace_id", "unknown"))
-        evaluator = result.get("evaluatorName", result.get("evaluator_name", "unknown"))
-        score = result.get("score", result.get("rating", "N/A"))
-        rationale = result.get("rationale", result.get("justification", ""))
+    print(f"  Sessions evaluated: {len(sessions)}")
+    print(f"  Traces evaluated:   {len(traces)}")
+    print(f"  Total scores:       {len(results)}")
+    print()
+    print(f"  {'Evaluator':<30} {'Avg Score':>10} {'Count':>6}  {'Labels'}")
+    print(f"  {'─' * 30} {'─' * 10} {'─' * 6}  {'─' * 30}")
 
-        print(f"  [{i}] Trace: {trace_id[:16]}...")
-        print(f"      Evaluator: {evaluator}")
-        print(f"      Score: {score}")
-        if rationale:
-            print(f"      Rationale: {rationale[:150]}...")
+    for evaluator, scores in sorted(by_evaluator.items()):
+        valid_scores = [s for s in scores if s is not None]
+        avg = sum(valid_scores) / len(valid_scores) if valid_scores else 0
+        # Get label distribution
+        labels = defaultdict(int)
+        for r in results:
+            if r["evaluator"] == evaluator and r["label"]:
+                labels[r["label"]] += 1
+        label_str = ", ".join(f"{k}({v})" for k, v in sorted(labels.items()))
+        print(f"  {evaluator:<30} {avg:>9.2f}  {len(valid_scores):>5}  {label_str}")
+
+
+def print_detailed(results: list) -> None:
+    """Print detailed results per trace."""
+    if not results:
+        print("  No evaluation results found in the specified time window.")
         print()
+        print("  Possible reasons:")
+        print("    - No tickets processed recently (send one with ./scripts/publish_ticket.sh)")
+        print("    - Evaluation takes 2-5 min after invocation to complete")
+        print("    - CloudWatch Transaction Search just enabled (wait 10-15 min)")
+        return
+
+    # Group by trace
+    by_trace = defaultdict(list)
+    for r in results:
+        key = r["trace_id"] or r["session_id"] or "unknown"
+        by_trace[key].append(r)
+
+    print(f"  {len(by_trace)} invocation(s) evaluated:\n")
+
+    for i, (trace_id, evals) in enumerate(list(by_trace.items())[:10], 1):
+        timestamp = evals[0]["timestamp"] if evals else ""
+        session = evals[0]["session_id"][:12] if evals[0]["session_id"] else ""
+
+        print(f"  ┌─ [{i}] Trace: {trace_id[:20]}... | Session: {session}...")
+        print(f"  │   Time: {timestamp}")
+
+        # Separate by level
+        trace_level = [e for e in evals if e["level"] == "Trace"]
+        session_level = [e for e in evals if e["level"] == "Session"]
+        span_level = [e for e in evals if e["level"] == "Span"]
+
+        for e in trace_level + session_level:
+            score_bar = _score_bar(e["score"])
+            print(f"  │   {score_bar} {e['evaluator']}: {e['score']:.2f} ({e['label']})")
+            if e["explanation"]:
+                # Show first 120 chars of explanation
+                expl = e["explanation"][:120].replace("\n", " ")
+                print(f"  │        └─ {expl}...")
+
+        if span_level:
+            print(f"  │   Tool evaluations ({len(span_level)} spans):")
+            for e in span_level[:5]:
+                print(f"  │     {_score_bar(e['score'])} {e['evaluator']}: {e['score']:.2f}")
+
+        print(f"  └{'─' * 60}")
+        print()
+
+
+def _score_bar(score) -> str:
+    """Create a visual score indicator."""
+    if score is None:
+        return "[ ? ]"
+    if score >= 0.9:
+        return "[████]"
+    elif score >= 0.7:
+        return "[███░]"
+    elif score >= 0.5:
+        return "[██░░]"
+    elif score >= 0.3:
+        return "[█░░░]"
+    else:
+        return "[░░░░]"
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Retrieve online evaluation results for the IT Incident Response Agent"
+        description="Retrieve online evaluation results for IT Incident Response Agent"
     )
-    parser.add_argument(
-        "--hours",
-        type=int,
-        default=1,
-        help="How many hours back to query (default: 1)",
-    )
-    parser.add_argument(
-        "--raw",
-        action="store_true",
-        help="Print raw JSON output (for piping to jq, etc.)",
-    )
+    parser.add_argument("--hours", type=int, default=1, help="Hours back to query (default: 1)")
+    parser.add_argument("--raw", action="store_true", help="Print raw JSON")
+    parser.add_argument("--summary", action="store_true", help="Show aggregate summary only")
     args = parser.parse_args()
 
+    print()
     print("═══════════════════════════════════════════════════════════════")
     print("  Online Evaluation Results — IT Incident Response Agent")
     print("═══════════════════════════════════════════════════════════════")
     print()
 
-    # Find the evaluation results log group
     log_group = find_eval_log_group()
-    print(f"  Log group: {log_group}")
+    print(f"  Log group: ...{log_group[-50:]}")
     print(f"  Time window: last {args.hours} hour(s)")
     print()
 
-    # Query results
     results = query_eval_results(log_group, args.hours)
 
     if args.raw:
         print(json.dumps(results, indent=2, default=str))
-    else:
-        format_results(results)
+        return
 
-    print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-    print("  Evaluators (configured in agentcore.json → onlineEvalConfigs[]):")
-    print("    • Builtin.Correctness")
-    print("    • Builtin.Helpfulness")
-    print("    • Builtin.ToolSelectionAccuracy")
-    print("    • Builtin.GoalSuccessRate")
-    print()
-    print("  Dashboard: CloudWatch → GenAI Observability → ITIncidentAgent")
+    if args.summary:
+        print_summary(results)
+    else:
+        print("─── Summary ────────────────────────────────────────────────")
+        print()
+        print_summary(results)
+        print()
+        print("─── Detail ─────────────────────────────────────────────────")
+        print()
+        print_detailed(results)
+
+    print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+    print("  Evaluators: Correctness | Helpfulness | ToolSelectionAccuracy | GoalSuccessRate")
+    print("  Dashboard:  CloudWatch → GenAI Observability → ITIncidentAgent")
     print("═══════════════════════════════════════════════════════════════")
+    print()
 
 
 if __name__ == "__main__":

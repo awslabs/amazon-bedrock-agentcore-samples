@@ -16,6 +16,7 @@ Flow per invocation:
 import json
 import logging
 import os
+import time
 from datetime import datetime, timezone
 
 import boto3
@@ -29,9 +30,30 @@ from memory.enrichment import (
     format_past_incidents_block,
 )
 from strands import Agent
+from strands.hooks import BeforeToolCallEvent, AfterToolCallEvent
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
 logger = logging.getLogger("it-incident-agent")
+
+# ─── Tool call timing hooks ──────────────────────────────────────────────────
+# These hooks log each tool invocation with start/end timing for bottleneck analysis.
+_tool_start_times: dict[str, float] = {}
+
+
+def _on_before_tool_call(event: BeforeToolCallEvent) -> None:
+    """Log when a tool call starts."""
+    tool_name = event.tool_use.get("name", "unknown")
+    _tool_start_times[event.tool_use.get("toolUseId", tool_name)] = time.time()
+    logger.info("Tool call started: %s", tool_name)
+
+
+def _on_after_tool_call(event: AfterToolCallEvent) -> None:
+    """Log when a tool call completes with duration."""
+    tool_name = event.tool_use.get("name", "unknown")
+    tool_id = event.tool_use.get("toolUseId", tool_name)
+    start = _tool_start_times.pop(tool_id, None)
+    duration_ms = (time.time() - start) * 1000 if start else 0
+    logger.info("Tool call completed: %s (%.0fms)", tool_name, duration_ms)
 
 # Configuration from environment (injected by CDK via agentcore deploy)
 # The L3 construct uses AGENTCORE_GATEWAY_{NAME}_URL naming convention.
@@ -247,6 +269,8 @@ async def invoke(payload, context):
                 system_prompt=SYSTEM_PROMPT,
                 tools=tools,
             )
+            agent.add_hook(_on_before_tool_call)
+            agent.add_hook(_on_after_tool_call)
         except Exception as agent_init_exc:
             logger.warning(
                 "Agent initialization with tools failed (%s: %s). "
@@ -275,6 +299,20 @@ async def invoke(payload, context):
     ticket_id = payload.get("issue_key") if is_jira_mode else payload["ticket_id"]
     requester_id = payload.get("requester_id", ticket_id)
     priority = payload.get("priority", "MEDIUM")
+
+    # ─── OBSERVABILITY: Set ticket_id on the current OTEL span ─────
+    # This makes the ticket_id queryable in CloudWatch Transaction Search
+    # and links OTEL traces to the business-level ticket identifier.
+    try:
+        from opentelemetry import trace as otel_trace
+        current_span = otel_trace.get_current_span()
+        if current_span and current_span.is_recording():
+            current_span.set_attribute("ticket.id", ticket_id)
+            current_span.set_attribute("ticket.priority", priority)
+            current_span.set_attribute("ticket.requester_id", requester_id)
+            current_span.set_attribute("ticket.mode", "jira" if is_jira_mode else "ddb")
+    except ImportError:
+        pass  # OTEL not available (e.g., local dev without instrumentation)
 
     logger.info(
         "Processing %s %s (priority=%s, mode=%s)",
