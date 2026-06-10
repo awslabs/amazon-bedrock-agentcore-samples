@@ -138,7 +138,7 @@ def get_streamable_http_mcp_client() -> Optional[MCPClient]:
         if not GATEWAY_OAUTH_PROVIDER_NAME:
             logger.error("CUSTOM_JWT mode requires GATEWAY_OAUTH_PROVIDER_NAME env var")
             return None
-        logger.info("Using CUSTOM_JWT auth (provider: %s)", GATEWAY_OAUTH_PROVIDER_NAME)
+        logger.info("Using CUSTOM_JWT auth")
         return _create_custom_jwt_client()
     else:
         # AWS_IAM mode — SigV4 signing via botocore (signs every request)
