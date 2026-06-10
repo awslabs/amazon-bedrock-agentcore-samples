@@ -6,7 +6,7 @@ set -euo pipefail
 TICKET_ID="${1:?Usage: show_ticket.sh <ticket_id>}"
 # Stack is deployed to us-west-2; override AWS_REGION if it points elsewhere
 REGION="${DEPLOY_REGION:-us-west-2}"
-STACK="${STACK_NAME:-AgentCore-ITIncidentAgent-default}"
+STACK="${STACK_NAME:-AgentCore-ITIncidentAgent-dev}"
 
 TABLE=$(aws cloudformation describe-stacks \
   --stack-name "$STACK" \

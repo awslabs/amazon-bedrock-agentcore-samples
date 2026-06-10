@@ -162,7 +162,8 @@ def get_all_mcp_clients() -> list[MCPClient]:
     when they're passed directly to the tools parameter.
 
     Returns an empty list if no MCP clients could be created (local dev
-    without gateway or Jira).
+    without gateway or Jira). This allows the agent to gracefully degrade
+    to LLM-only mode instead of failing the entire invocation.
     """
     from mcp_client.jira import get_jira_mcp_client_sync
 
@@ -180,3 +181,54 @@ def get_all_mcp_clients() -> list[MCPClient]:
 
     logger.info("Assembled %d MCP client(s) for agent", len(clients))
     return clients
+
+
+def get_all_mcp_clients_safe() -> tuple[list[MCPClient], list[str]]:
+    """Returns MCP clients with graceful degradation for unavailable tools.
+
+    STEP: SAFE TOOL LOADING — Wraps tool provider initialization in error
+    handling. If a tool provider (gateway or Jira) fails to initialize,
+    this function logs the failure and continues with available providers.
+
+    Returns:
+        tuple: (clients: list[MCPClient], warnings: list[str])
+        - clients: Available MCP clients (may be empty)
+        - warnings: List of tools/providers that failed to load
+
+    Usage:
+        clients, warnings = get_all_mcp_clients_safe()
+        if warnings:
+            logger.warning("Some tools unavailable: %s", warnings)
+        agent = Agent(tools=clients, ...)
+    """
+    from mcp_client.jira import get_jira_mcp_client_sync
+
+    clients: list[MCPClient] = []
+    warnings: list[str] = []
+
+    # Primary: AgentCore Gateway (internal tools)
+    try:
+        gateway_client = get_streamable_http_mcp_client()
+        if gateway_client:
+            clients.append(gateway_client)
+            logger.info("Gateway MCP client loaded successfully")
+        else:
+            logger.info("Gateway URL not configured — tools unavailable in local dev")
+    except Exception as exc:
+        msg = f"Gateway MCP client failed to initialize: {type(exc).__name__}: {exc}"
+        logger.warning(msg)
+        warnings.append(msg)
+
+    # Optional: Atlassian Remote MCP (Jira tools)
+    try:
+        jira_client = get_jira_mcp_client_sync()
+        if jira_client:
+            clients.append(jira_client)
+            logger.info("Jira MCP client loaded successfully")
+    except Exception as exc:
+        msg = f"Jira MCP client failed to initialize: {type(exc).__name__}: {exc}"
+        logger.warning(msg)
+        warnings.append(msg)
+
+    logger.info("Assembled %d MCP client(s); %d tool(s) unavailable", len(clients), len(warnings))
+    return clients, warnings

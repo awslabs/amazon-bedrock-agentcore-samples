@@ -21,7 +21,7 @@ from datetime import datetime, timezone
 import boto3
 from bedrock_agentcore.runtime import BedrockAgentCoreApp
 from model.load import load_model
-from mcp_client.client import get_all_mcp_clients, get_streamable_http_mcp_client
+from mcp_client.client import get_all_mcp_clients, get_all_mcp_clients_safe, get_streamable_http_mcp_client
 from mcp_client.jira import JIRA_MCP_URL, JIRA_SITE_URL, JIRA_PROJECT_KEY
 from memory.session import get_memory_session_manager
 from memory.enrichment import (
@@ -231,15 +231,38 @@ async def invoke(payload, context):
         session_id = getattr(context, "session_id", "default-session")
         user_id = getattr(context, "user_id", "default-user")
 
-        mcp_client = get_streamable_http_mcp_client()
-        tools = [mcp_client] if mcp_client else []
+        mcp_clients, tool_warnings = get_all_mcp_clients_safe()
+        tools = mcp_clients if mcp_clients else []
 
-        agent = Agent(
-            model=load_model(),
-            session_manager=get_memory_session_manager(session_id, user_id),
-            system_prompt=SYSTEM_PROMPT,
-            tools=tools,
-        )
+        try:
+            if tool_warnings:
+                logger.warning(
+                    "Running in degraded mode (some tools unavailable): %s",
+                    "; ".join(tool_warnings)
+                )
+            
+            agent = Agent(
+                model=load_model(),
+                session_manager=get_memory_session_manager(session_id, user_id),
+                system_prompt=SYSTEM_PROMPT,
+                tools=tools,
+            )
+        except Exception as agent_init_exc:
+            logger.warning(
+                "Agent initialization with tools failed (%s: %s). "
+                "Falling back to LLM-only mode.",
+                type(agent_init_exc).__name__,
+                agent_init_exc,
+                exc_info=True
+            )
+            
+            # Create agent without tools
+            agent = Agent(
+                model=load_model(),
+                session_manager=get_memory_session_manager(session_id, user_id),
+                system_prompt=SYSTEM_PROMPT,
+                tools=[],
+            )
 
         stream = agent.stream_async(payload.get("prompt"))
         async for event in stream:
@@ -291,16 +314,43 @@ async def invoke(payload, context):
             else:
                 system_prompt = SYSTEM_PROMPT
 
-        # STEP: MULTI-MCP — Connect to Gateway + optionally Jira
-        mcp_clients = get_all_mcp_clients()
+        # STEP: MULTI-MCP — Connect to Gateway + optionally Jira with safe fallback
+        mcp_clients, tool_warnings = get_all_mcp_clients_safe()
         tools = mcp_clients if mcp_clients else []
-
-        agent = Agent(
-            model=load_model(priority),
-            session_manager=get_memory_session_manager(ticket_id, requester_id),
-            system_prompt=system_prompt,
-            tools=tools,
-        )
+        
+        # Try to create the agent with available tools, gracefully degrade if tool loading fails
+        try:
+            if tool_warnings:
+                logger.warning(
+                    "Running in degraded mode (some tools unavailable). "
+                    "Failures: %s. Attempting with available tools.",
+                    "; ".join(tool_warnings)
+                )
+            
+            agent = Agent(
+                model=load_model(priority),
+                session_manager=get_memory_session_manager(ticket_id, requester_id),
+                system_prompt=system_prompt,
+                tools=tools,
+            )
+        except Exception as agent_init_exc:
+            # Tool loading failed even with available clients — fall back to LLM-only
+            logger.warning(
+                "Agent initialization with tools failed (%s: %s). "
+                "Falling back to LLM-only mode.",
+                type(agent_init_exc).__name__,
+                agent_init_exc,
+                exc_info=True
+            )
+            tool_warnings.append(f"Agent tool initialization failed: {type(agent_init_exc).__name__}: {agent_init_exc}")
+            
+            # Create agent without tools
+            agent = Agent(
+                model=load_model(priority),
+                session_manager=get_memory_session_manager(ticket_id, requester_id),
+                system_prompt=system_prompt,
+                tools=[],
+            )
 
         # STEP: ENRICH + REASON + ACT — Run the agent
         if is_jira_mode:

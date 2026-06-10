@@ -81,7 +81,7 @@ def _persist_ticket(ticket: dict) -> None:
 def _invoke_runtime(payload: dict, event_id: str) -> None:
     """Invoke AgentCore Runtime with the payload."""
     # runtimeSessionId must be at least 33 characters
-    session_id = f"event-{event_id}-{uuid.uuid4().hex[:12]}"
+    session_id = f"event-{event_id}-{uuid.uuid4().hex}"
     try:
         _agentcore.invoke_agent_runtime(
             agentRuntimeArn=AGENT_RUNTIME_ARN,
