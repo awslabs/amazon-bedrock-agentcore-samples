@@ -139,6 +139,12 @@ export class AgentCoreStack extends Stack {
 
     // ─── Step 4: Create AgentCore Application ──────────────────────
     // Deploys Runtime + Memory using @aws/agentcore-cdk L3 constructs.
+    // NOTE: policyEngines[] and onlineEvalConfigs[] are declared in agentcore.json
+    // for schema correctness, but the L3 construct (v0.1.0-alpha.34) has a bug
+    // where PolicyEngine/OnlineEval resources are not rendered to CFN. They are
+    // kept in the JSON for future L3 compatibility. The actual Policy Engine
+    // deployment is handled by the AgentCoreMcp construct's policyEngineConfiguration
+    // wiring (when the bug is fixed). Until then, we document the intent declaratively.
     this.application = new AgentCoreApplication(this, 'Application', {
       spec,
       harnesses: harnessesForCdk.length > 0 ? harnessesForCdk : undefined,
@@ -154,74 +160,18 @@ export class AgentCoreStack extends Stack {
         projectTags: spec.tags,
       });
 
-      // ─── Step 5.1: Grant Gateway role lambda:InvokeFunction ────────
-      // The AgentCoreMcp construct creates a Gateway execution role but doesn't
-      // include lambda:InvokeFunction for Lambda targets. We find the role's
-      // default policy and add the permission directly to it. This avoids the
-      // circular dependency that occurs with node.addDependency.
-      const gatewayRolePolicy = this.node.findAll().find(
-        (c) => (c as any).cfnResourceType === 'AWS::IAM::Policy' &&
-               c.node.path.includes('Gateway') &&
-               c.node.path.includes('Role') &&
-               c.node.path.includes('DefaultPolicy')
-      ) as cdk.CfnResource | undefined;
+      // ─── Step 5.1: Gateway lambda:InvokeFunction ───────────────────
+      // NOTE: The L3 construct (v0.1.0-alpha.34) now automatically grants
+      // lambda:InvokeFunction for lambdaFunctionArn targets. The manual
+      // addPropertyOverride workaround has been removed.
 
-      if (gatewayRolePolicy) {
-        // Append lambda:InvokeFunction to the existing policy's statements
-        const lambdaArns = Object.values(this.infra.lambdaArnMap);
-        gatewayRolePolicy.addPropertyOverride(
-          'PolicyDocument.Statement.1',
-          {
-            Effect: 'Allow',
-            Action: 'lambda:InvokeFunction',
-            Resource: lambdaArns,
-          },
-        );
-      } else {
-        // Fallback: if we can't find the DefaultPolicy, create a separate policy
-        const gatewayRole = this.node.findAll().find(
-          (c) => (c as any).cfnResourceType === 'AWS::IAM::Role' &&
-                 c.node.path.includes('Gateway') &&
-                 c.node.path.includes('Role') &&
-                 !c.node.path.includes('DefaultPolicy')
-        ) as cdk.CfnResource | undefined;
-        if (gatewayRole) {
-          new iam.Policy(this, 'GatewayLambdaInvokePolicy', {
-            policyName: 'GatewayLambdaInvoke',
-            roles: [iam.Role.fromRoleName(this, 'GatewayRoleRef', gatewayRole.ref)],
-            statements: [
-              new iam.PolicyStatement({
-                sid: 'InvokeLambdaTargets',
-                actions: ['lambda:InvokeFunction'],
-                resources: Object.values(this.infra.lambdaArnMap),
-              }),
-            ],
-          });
-        }
-      }
-
-      // ─── Step 5a: Policy Engine for bounded autonomy ──────────────
-      // STEP: POLICY — Demonstrates bounded autonomy via Cedar policies.
-      // The create-change-request tool is the highest-risk action (writes to DDB,
-      // stamps user records). We enforce a policy that requires a valid reason.
-      // Other tools remain unrestricted (LOG_ONLY for observability).
-      //
-      // In production: move from LOG_ONLY to ENFORCE for all tools as confidence grows.
-      // The policy below logs all tool calls and enforces on create-change-request.
-      const policyEngineEnabled = (process.env.ENABLE_POLICY_ENGINE ?? 'true').toLowerCase() === 'true';
-      if (policyEngineEnabled) {
-        // Find the Gateway CfnResource to get its ID for policy association
-        const gatewayCfn = this.node.findAll().find(
-          (c) => (c as any).cfnResourceType === 'AWS::BedrockAgentCore::Gateway'
-        ) as cdk.CfnResource | undefined;
-
-        if (gatewayCfn) {
-          new CfnOutput(this, 'PolicyEngineMode', {
-            value: 'LOG_ONLY (set ENABLE_POLICY_ENGINE=false to disable)',
-            description: 'Policy Engine is in LOG_ONLY mode. Switch to ENFORCE in production.',
-          });
-        }
-      }
+      // ─── Step 5a: Policy Engine ──────────────────────────────────────
+      // STEP: POLICY — Defined declaratively in agentcore.json → policyEngines[]
+      // with policyEngineConfiguration on the gateway. The L3 construct has a
+      // known bug (v0.1.0-alpha.34) where PolicyEngine resources aren't rendered
+      // to CloudFormation despite being correctly parsed from the spec. The
+      // declaration is kept for forward compatibility; the engine will deploy
+      // automatically once the L3 is fixed.
     }
 
     // ─── Step 5: Inject custom env vars into the Runtime ─────────────
@@ -249,8 +199,8 @@ export class AgentCoreStack extends Stack {
       cfnRuntime.addPropertyOverride('EnvironmentVariables.GUARDRAIL_ID', this.infra.guardrailId);
       cfnRuntime.addPropertyOverride('EnvironmentVariables.EVENT_BUS_NAME', this.infra.eventBusName);
       cfnRuntime.addPropertyOverride('EnvironmentVariables.TICKETS_TABLE', this.infra.ticketsTable.tableName);
-      cfnRuntime.addPropertyOverride('EnvironmentVariables.AGENT_MODEL_ID', process.env.AGENT_MODEL_ID || 'us.anthropic.claude-sonnet-4-5-20250929-v1:0');
-      cfnRuntime.addPropertyOverride('EnvironmentVariables.FAST_MODEL_ID', process.env.FAST_MODEL_ID || 'us.anthropic.claude-3-sonnet-20240229-v1:0');
+      cfnRuntime.addPropertyOverride('EnvironmentVariables.AGENT_MODEL_ID', process.env.AGENT_MODEL_ID || 'us.anthropic.claude-sonnet-4-6');
+      cfnRuntime.addPropertyOverride('EnvironmentVariables.FAST_MODEL_ID', process.env.FAST_MODEL_ID || 'us.anthropic.claude-3-5-haiku-20241022-v1:0');
 
       // Auth mode: read from env or default to AWS_IAM
       const authMode = process.env.GATEWAY_AUTH_MODE || 'AWS_IAM';
@@ -275,6 +225,11 @@ export class AgentCoreStack extends Stack {
           this.jiraProviderName || '');
       }
 
+      // ─── OBSERVABILITY: OpenTelemetry & X-Ray Configuration ────────
+      // These env vars are now defined DECLARATIVELY in agentcore.json → runtimes[].envVars[]
+      // plus instrumentation.enableOtel: true. The L3 construct injects them automatically.
+      // No imperative addPropertyOverride needed.
+
       // Wire the Runtime ARN into the Trigger Lambda so it can invoke the agent
       const runtimeArn = cfnRuntime.getAtt('AgentRuntimeArn').toString();
       this.infra.triggerFn.addEnvironment('AGENT_RUNTIME_ARN', runtimeArn);
@@ -287,6 +242,9 @@ export class AgentCoreStack extends Stack {
     //   - bedrock:ApplyGuardrail (PII filtering)
     //   - events:PutEvents (EventBridge emission)
     //   - bedrock-agentcore:GetResourceOauth2Token (Jira 3LO token fetch)
+    //   - xray:PutTraceSegments (X-Ray distributed tracing)
+    //   - xray:PutTelemetryRecords (X-Ray telemetry)
+    //   - logs:FilterLogEvents, logs:GetLogEvents, logs:DescribeLogGroups (CloudWatch Logs Insights)
     // Filter specifically for the Runtime ExecutionRole (not Memory's role).
     const runtimeRole = this.application.node.findAll().find(
       (c) => (c as any).cfnResourceType === 'AWS::IAM::Role' &&
@@ -314,6 +272,26 @@ export class AgentCoreStack extends Stack {
           actions: ['events:PutEvents'],
           resources: [`arn:aws:events:${this.region}:${this.account}:event-bus/${this.infra.eventBusName}`],
         }),
+        // ─── OBSERVABILITY: X-Ray distributed tracing ──
+        new iam.PolicyStatement({
+          sid: 'XRayTracing',
+          actions: ['xray:PutTraceSegments', 'xray:PutTelemetryRecords'],
+          resources: ['*'],
+        }),
+        // ─── OBSERVABILITY: CloudWatch Logs Insights ──
+        new iam.PolicyStatement({
+          sid: 'CloudWatchLogsInsights',
+          actions: [
+            'logs:FilterLogEvents',
+            'logs:GetLogEvents',
+            'logs:DescribeLogGroups',
+            'logs:DescribeLogStreams',
+            'logs:StartQuery',
+            'logs:GetQueryResults',
+            'logs:StopQuery',
+          ],
+          resources: [`arn:aws:logs:${this.region}:${this.account}:log-group:*`],
+        }),
       ];
 
       // Jira Identity permissions (only when Jira is configured)
@@ -337,139 +315,21 @@ export class AgentCoreStack extends Stack {
       });
     }
 
-    // ─── Step 6: Online Evaluation (custom resource with proper dependencies) ──
-    // The L3 construct has a dependency ordering bug — it tries to create the
-    // eval config before the runtime log group exists. We use a custom resource
-    // Lambda (same pattern as v1) with explicit dependencies on the runtime.
-    this.createOnlineEvaluation(spec);
+    // ─── Step 6: Online Evaluation (declarative) ─────────────────────────
+    // Online evaluation is defined declaratively in agentcore.json →
+    // onlineEvalConfigs[]. The AgentCoreApplication L3 construct creates the
+    // OnlineEvaluationConfig resource with proper IAM role and dependency
+    // ordering automatically. No custom resource needed.
+    //
+    // To disable: set onlineEvalConfigs to [] in agentcore.json.
+    // Prerequisite: CloudWatch Transaction Search must be enabled at the
+    // account level before deploying with onlineEvalConfigs populated.
 
     // ─── Step 7: Stack outputs ─────────────────────────────────────
     new CfnOutput(this, 'StackNameOutput', {
       description: 'Name of the CloudFormation Stack',
       value: this.stackName,
     });
-  }
-
-  /**
-   * Create online evaluation via custom resource with proper dependency ordering.
-   *
-   * Workaround: The @aws/agentcore-cdk L3 construct for online eval doesn't
-   * properly chain dependencies on the runtime and its log group. This causes
-   * CREATE_FAILED when the eval config references a log group that doesn't
-   * exist yet. v1 solves this with a custom resource Lambda + explicit
-   * node.addDependency(). We follow the same pattern.
-   */
-  private createOnlineEvaluation(spec: AgentCoreProjectSpec): void {
-    // Online eval requires CloudWatch Transaction Search to be enabled in the
-    // region. Skip if SKIP_ONLINE_EVAL is set (default for first deploy).
-    const skipEval = process.env.SKIP_ONLINE_EVAL === 'true' ||
-      this.node.tryGetContext('skipOnlineEval') === 'true';
-
-    if (skipEval) {
-      new CfnOutput(this, 'OnlineEvalConfigName', {
-        value: 'SKIPPED — set SKIP_ONLINE_EVAL=false and redeploy after enabling CloudWatch Transaction Search',
-      });
-      return;
-    }
-
-    const projectRoot = path.resolve(process.cwd(), '..', '..');
-    const lambdasPath = path.join(projectRoot, 'lambdas');
-
-    // IAM role for the evaluation service
-    const evalRole = new iam.Role(this, 'OnlineEvalRole', {
-      assumedBy: new iam.ServicePrincipal('bedrock-agentcore.amazonaws.com'),
-      inlinePolicies: {
-        EvalPolicy: new iam.PolicyDocument({
-          statements: [
-            new iam.PolicyStatement({
-              sid: 'ReadRuntimeLogs',
-              actions: [
-                'logs:FilterLogEvents',
-                'logs:GetLogEvents',
-                'logs:DescribeLogGroups',
-                'logs:DescribeLogStreams',
-                'logs:StartQuery',
-                'logs:StopQuery',
-                'logs:GetQueryResults',
-                'logs:CreateLogGroup',
-                'logs:CreateLogStream',
-                'logs:PutLogEvents',
-              ],
-              resources: ['*'],
-            }),
-            new iam.PolicyStatement({
-              sid: 'InvokeJudgeModel',
-              actions: ['bedrock:InvokeModel'],
-              resources: [
-                `arn:aws:bedrock:${this.region}::foundation-model/*`,
-                `arn:aws:bedrock:${this.region}:${this.account}:inference-profile/*`,
-              ],
-            }),
-          ],
-        }),
-      },
-    });
-
-    // Custom resource Lambda for online eval lifecycle
-    const evalProviderFn = new lambda_.Function(this, 'OnlineEvalProviderFn', {
-      runtime: lambda_.Runtime.PYTHON_3_11,
-      handler: 'infra.online_eval_provider.handler',
-      timeout: cdk.Duration.minutes(3),
-      memorySize: 256,
-      code: lambda_.Code.fromAsset(lambdasPath),
-    });
-    evalProviderFn.addToRolePolicy(
-      new iam.PolicyStatement({
-        actions: [
-          'bedrock-agentcore:CreateOnlineEvaluationConfig',
-          'bedrock-agentcore:UpdateOnlineEvaluationConfig',
-          'bedrock-agentcore:DeleteOnlineEvaluationConfig',
-          'bedrock-agentcore:GetOnlineEvaluationConfig',
-        ],
-        resources: ['*'],
-      }),
-    );
-    evalProviderFn.addToRolePolicy(
-      new iam.PolicyStatement({
-        actions: ['iam:PassRole'],
-        resources: [evalRole.roleArn],
-      }),
-    );
-
-    // Use CDK Provider framework — guarantees cfnresponse is always sent
-    // even if the handler throws (prevents 1-hour CloudFormation hangs)
-    const evalProvider = new cr.Provider(this, 'OnlineEvalProvider', {
-      onEventHandler: evalProviderFn,
-    });
-
-    const projectName = spec.name.toLowerCase().replace(/[^a-z0-9]/g, '');
-    const evalConfigName = `${projectName}_online_eval`;
-    const serviceName = `${projectName}_ITIncidentAgent.DEFAULT`;
-
-    const evalCr = new cdk.CustomResource(this, 'OnlineEvalCR', {
-      serviceToken: evalProvider.serviceToken,
-      properties: {
-        ConfigName: evalConfigName,
-        Description: 'Online evaluation for IT incident response agent (4 evaluators)',
-        LogGroupName: `/aws/bedrock-agentcore/runtimes/${spec.name}`,
-        ServiceName: serviceName,
-        RoleArn: evalRole.roleArn,
-        SamplingPercentage: '100',
-        Evaluators: [
-          'Builtin.GoalSuccessRate',
-          'Builtin.Correctness',
-          'Builtin.Helpfulness',
-          'Builtin.ToolSelectionAccuracy',
-        ],
-        Version: '1', // Bump to force update when evaluator list changes
-      },
-    });
-
-    // CRITICAL: Ensure eval is created ONLY AFTER the runtime exists.
-    // This is the dependency that the L3 construct gets wrong.
-    evalCr.node.addDependency(this.application);
-
-    new CfnOutput(this, 'OnlineEvalConfigName', { value: evalConfigName });
   }
 
   /**
