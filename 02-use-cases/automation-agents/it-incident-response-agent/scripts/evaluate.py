@@ -1,17 +1,21 @@
 #!/usr/bin/env python3
-"""On-demand evaluation: run built-in and custom evaluators against a trace.
+"""Retrieve online evaluation results from the AgentCore Online Evaluation config.
 
 Usage:
-  python scripts/evaluate.py                   # evaluates the latest trace
-  python scripts/evaluate.py <trace_id>        # evaluates a specific trace
+  python scripts/evaluate.py              # latest results (last 1 hour)
+  python scripts/evaluate.py --hours 24   # last 24 hours of results
+  python scripts/evaluate.py --raw        # print raw JSON (for piping)
 
 Prerequisites:
   - CloudWatch Transaction Search enabled in the region
-  - Stack deployed with `agentcore deploy`
-  - At least one ticket processed (to generate a trace)
+  - Stack deployed with online evaluation enabled (onlineEvalConfigs[] in agentcore.json)
+  - At least one ticket processed (to generate evaluable traces)
 
-The script runs three built-in evaluators (Correctness, Helpfulness,
-ToolSelectionAccuracy) plus a custom IncidentResolutionQuality evaluator.
+Online evaluation runs continuously against all agent invocations, scoring:
+  - Correctness — Did the agent provide accurate information?
+  - Helpfulness — Was the response useful to the user?
+  - ToolSelectionAccuracy — Did the agent choose the right tools?
+  - GoalSuccessRate — Did the agent accomplish the user's goal?
 """
 
 import argparse
@@ -21,139 +25,41 @@ import sys
 import time
 
 import boto3
-from botocore.exceptions import ClientError
 
 REGION = os.environ.get("AWS_REGION", "us-west-2")
-JUDGE_MODEL_ID = os.environ.get(
-    "JUDGE_MODEL_ID", "us.anthropic.claude-sonnet-4-6"
-)
-CUSTOM_EVALUATOR_NAME = "IncidentResolutionQuality"
-
-CUSTOM_INSTRUCTIONS = """\
-You are a senior IT incident-response engineer reviewing one agent run.
-
-Here is the full trace context:
-{context}
-
-And the agent's final response:
-{assistant_turn}
-
-Score how well the agent resolved the user's IT ticket end-to-end. Reward:
-- correct identification of the affected user / asset / process
-- relevant runbook lookups via the knowledge base
-- a change request opened only when warranted
-- a clear, actionable resolution comment back on the ticket
-
-Penalize hallucinated user IDs, skipped diagnosis steps, vague resolutions,
-or unnecessary change requests.
-
-Return your numeric rating with a one-paragraph justification.
-"""
+STACK_NAME = "AgentCore-ITIncidentAgent-dev"
 
 
-def ensure_custom_evaluator(control) -> str:
-    """Create or find the custom evaluator, return its ID."""
-    try:
-        for page in control.get_paginator("list_evaluators").paginate():
-            for e in page.get("evaluators", []):
-                if e.get("evaluatorName") == CUSTOM_EVALUATOR_NAME:
-                    print(f"  Found existing evaluator: {CUSTOM_EVALUATOR_NAME}")
-                    return e["evaluatorId"]
-    except ClientError:
-        pass
-
-    print(f"  Creating custom evaluator: {CUSTOM_EVALUATOR_NAME}")
-    resp = control.create_evaluator(
-        evaluatorName=CUSTOM_EVALUATOR_NAME,
-        description="Domain-specific quality score for IT incident resolution.",
-        level="TRACE",
-        evaluatorConfig={
-            "llmAsAJudge": {
-                "instructions": CUSTOM_INSTRUCTIONS,
-                "ratingScale": {
-                    "numerical": [
-                        {"value": 1.0, "label": "poor",
-                         "definition": "Wrong user/asset, no runbook usage, no resolution."},
-                        {"value": 3.0, "label": "ok",
-                         "definition": "Partially correct diagnosis, weak resolution."},
-                        {"value": 5.0, "label": "excellent",
-                         "definition": "Correct diagnosis, runbook-backed, clear actionable resolution."},
-                    ]
-                },
-                "modelConfig": {
-                    "bedrockEvaluatorModelConfig": {"modelId": JUDGE_MODEL_ID}
-                },
-            }
-        },
-    )
-    return resp["evaluatorId"]
-
-
-def latest_trace_id(log_group: str, lookback_minutes: int = 30) -> str:
-    """Find the most recent traceId in the runtime log group."""
+def find_eval_log_group() -> str:
+    """Find the online evaluation results log group."""
     logs = boto3.client("logs", region_name=REGION)
-    end = int(time.time() * 1000)
-    start = end - lookback_minutes * 60 * 1000
-
-    query = (
-        "fields @timestamp, traceId "
-        "| filter ispresent(traceId) "
-        "| sort @timestamp desc "
-        "| dedup traceId "
-        "| limit 1"
-    )
-    q = logs.start_query(
-        logGroupName=log_group,
-        startTime=start,
-        endTime=end,
-        queryString=query,
-    )["queryId"]
-
-    while True:
-        resp = logs.get_query_results(queryId=q)
-        if resp["status"] in ("Complete", "Failed", "Cancelled"):
-            break
-        time.sleep(1)
-
-    if not resp["results"]:
-        sys.exit(
-            f"No traces found in {log_group} in the last {lookback_minutes}m.\n"
-            "Run ./scripts/publish_ticket.sh first and wait ~30s."
-        )
-    fields = {kv["field"]: kv["value"] for kv in resp["results"][0]}
-    return fields["traceId"]
-
-
-def fetch_spans_for_trace(trace_id: str) -> list:
-    """Fetch Strands telemetry spans from the runtime log group for a given trace.
-
-    The Evaluate API requires spans with scope 'strands.telemetry.tracer'.
-    These live in the runtime log group (not aws/spans which only has X-Ray segments).
-    """
-    logs = boto3.client("logs", region_name=REGION)
-    end = int(time.time() * 1000)
-    start = end - 2 * 60 * 60 * 1000  # last 2 hours
-
-    # Find the runtime log group
     resp = logs.describe_log_groups(
-        logGroupNamePrefix="/aws/bedrock-agentcore/runtimes/ITIncidentAgent"
+        logGroupNamePrefix="/aws/bedrock-agentcore/evaluations/results/ITIncidentAgent"
     )
-    runtime_log_groups = [
-        lg["logGroupName"] for lg in resp.get("logGroups", [])
-        if "DEFAULT" in lg["logGroupName"]
-    ]
-    if not runtime_log_groups:
-        print("    No runtime log group found")
-        return []
+    groups = [lg["logGroupName"] for lg in resp.get("logGroups", [])]
+    if not groups:
+        sys.exit(
+            "No evaluation results log group found.\n"
+            "Ensure onlineEvalConfigs[] is populated in agentcore.json and\n"
+            "CloudWatch Transaction Search is enabled.\n"
+            "See: docs/online-eval-workaround.md"
+        )
+    # Use the most recently created one
+    return groups[-1]
 
-    # Use the most recent runtime log group
-    log_group = runtime_log_groups[-1]
+
+def query_eval_results(log_group: str, hours: int = 1) -> list:
+    """Query evaluation results from CloudWatch Logs."""
+    logs = boto3.client("logs", region_name=REGION)
+    end = int(time.time() * 1000)
+    start = end - hours * 60 * 60 * 1000
 
     query = (
-        f'fields @message '
-        f'| filter @message like /strands.telemetry/ and @message like /"{trace_id}"/ '
-        f'| limit 50'
+        "fields @timestamp, @message "
+        "| sort @timestamp desc "
+        "| limit 50"
     )
+
     q = logs.start_query(
         logGroupName=log_group,
         startTime=start,
@@ -161,89 +67,100 @@ def fetch_spans_for_trace(trace_id: str) -> list:
         queryString=query,
     )["queryId"]
 
+    # Poll for results
     while True:
         resp = logs.get_query_results(queryId=q)
         if resp["status"] in ("Complete", "Failed", "Cancelled"):
             break
         time.sleep(1)
 
-    spans = []
-    for result in resp.get("results", []):
-        fields = {kv["field"]: kv["value"] for kv in result}
+    results = []
+    for record in resp.get("results", []):
+        fields = {kv["field"]: kv["value"] for kv in record}
         msg = fields.get("@message", "")
         if msg:
             try:
-                spans.append(json.loads(msg))
+                results.append(json.loads(msg))
             except json.JSONDecodeError:
-                pass
-    return spans
+                results.append({"raw": msg, "timestamp": fields.get("@timestamp")})
+    return results
 
 
-def run_evaluator(rt, evaluator_id: str, trace_id: str, spans: list) -> list:
-    """Run an evaluator against a trace with span data."""
-    if not spans:
-        print("    SKIPPED: No span data available for this trace")
-        return []
-    try:
-        # Pass raw OTEL span objects directly — the API accepts free-form span structures
-        resp = rt.evaluate(
-            evaluatorId=evaluator_id,
-            evaluationInput={"sessionSpans": spans},
-        )
-        return resp.get("evaluationResults", resp.get("results", [resp]))
-    except ClientError as exc:
-        print(f"    FAILED: {exc.response['Error']['Code']}: {exc.response['Error'].get('Message','')[:200]}")
-        return []
-    except Exception as exc:
-        print(f"    FAILED: {type(exc).__name__}: {str(exc)[:200]}")
-        return []
+def format_results(results: list) -> None:
+    """Print evaluation results in a human-readable format."""
+    if not results:
+        print("  No evaluation results found in the specified time window.")
+        print("  This can mean:")
+        print("    - No tickets have been processed recently")
+        print("    - Online evaluation is still processing (wait 2-3 min after invocation)")
+        print("    - CloudWatch Transaction Search is not enabled")
+        return
+
+    print(f"  Found {len(results)} evaluation result(s):\n")
+
+    for i, result in enumerate(results, 1):
+        if isinstance(result, dict) and "raw" in result:
+            print(f"  [{i}] {result.get('timestamp', 'unknown')}: {result['raw'][:200]}")
+            continue
+
+        trace_id = result.get("traceId", result.get("trace_id", "unknown"))
+        evaluator = result.get("evaluatorName", result.get("evaluator_name", "unknown"))
+        score = result.get("score", result.get("rating", "N/A"))
+        rationale = result.get("rationale", result.get("justification", ""))
+
+        print(f"  [{i}] Trace: {trace_id[:16]}...")
+        print(f"      Evaluator: {evaluator}")
+        print(f"      Score: {score}")
+        if rationale:
+            print(f"      Rationale: {rationale[:150]}...")
+        print()
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Run on-demand evaluation")
-    parser.add_argument(
-        "trace_id",
-        nargs="?",
-        help="Trace ID to evaluate (defaults to latest)",
+    parser = argparse.ArgumentParser(
+        description="Retrieve online evaluation results for the IT Incident Response Agent"
     )
     parser.add_argument(
-        "--log-group",
-        default="aws/spans",
-        help="CloudWatch log group containing indexed spans (Transaction Search)",
+        "--hours",
+        type=int,
+        default=1,
+        help="How many hours back to query (default: 1)",
+    )
+    parser.add_argument(
+        "--raw",
+        action="store_true",
+        help="Print raw JSON output (for piping to jq, etc.)",
     )
     args = parser.parse_args()
 
-    trace_id = args.trace_id or latest_trace_id(args.log_group)
-    print(f"==> Evaluating trace: {trace_id}")
+    print("═══════════════════════════════════════════════════════════════")
+    print("  Online Evaluation Results — IT Incident Response Agent")
+    print("═══════════════════════════════════════════════════════════════")
     print()
 
-    print("  Fetching spans from aws/spans ...")
-    spans = fetch_spans_for_trace(trace_id)
-    print(f"  Found {len(spans)} span(s)")
+    # Find the evaluation results log group
+    log_group = find_eval_log_group()
+    print(f"  Log group: {log_group}")
+    print(f"  Time window: last {args.hours} hour(s)")
     print()
 
-    control = boto3.client("bedrock-agentcore-control", region_name=REGION)
-    rt = boto3.client("bedrock-agentcore", region_name=REGION)
+    # Query results
+    results = query_eval_results(log_group, args.hours)
 
-    custom_id = ensure_custom_evaluator(control)
-    evaluators = {
-        custom_id: CUSTOM_EVALUATOR_NAME,
-        "Builtin.Correctness": "Correctness",
-        "Builtin.Helpfulness": "Helpfulness",
-        "Builtin.ToolSelectionAccuracy": "Tool Selection Quality",
-    }
+    if args.raw:
+        print(json.dumps(results, indent=2, default=str))
+    else:
+        format_results(results)
 
-    all_results = []
-    for eid, name in evaluators.items():
-        print(f"  Running: {name} ...")
-        results = run_evaluator(rt, eid, trace_id, spans)
-        for r in results:
-            r["evaluator_name"] = name
-        all_results.extend(results)
-
+    print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+    print("  Evaluators (configured in agentcore.json → onlineEvalConfigs[]):")
+    print("    • Builtin.Correctness")
+    print("    • Builtin.Helpfulness")
+    print("    • Builtin.ToolSelectionAccuracy")
+    print("    • Builtin.GoalSuccessRate")
     print()
-    print("==> Results")
-    print(json.dumps(all_results, indent=2, default=str))
+    print("  Dashboard: CloudWatch → GenAI Observability → ITIncidentAgent")
+    print("═══════════════════════════════════════════════════════════════")
 
 
 if __name__ == "__main__":

@@ -158,7 +158,7 @@ flowchart TB
 | 3   | **Memory**           | SUMMARIZATION strategy — episodic recall across incidents per user                                      |
 | 4   | **Identity**         | AWS_IAM default, CUSTOM_JWT toggle via `@requires_access_token`, Atlassian 3LO (USER_FEDERATION) opt-in |
 | 5   | **Observability**    | OTEL auto-instrumentation → CloudWatch GenAI console                                                    |
-| 6   | **Evaluations**      | 4 built-in LLM-as-judge evaluators + custom domain evaluator                                            |
+| 6   | **Evaluations**      | 4 built-in LLM-as-judge evaluators (continuous, declarative)                                            |
 
 **Resilience features (10):**
 
@@ -169,7 +169,7 @@ flowchart TB
 | Bounded autonomy        | Gateway + Policy Engine + per-tool IAM                                 |
 | Guardrails              | Bedrock Guardrail (PII anonymize, content filter, prompt attack block) |
 | Event schema discipline | `REQUIRED_FIELDS` validation in trigger                                |
-| Replay-based eval       | `evaluate.py` + online eval on all traces                              |
+| Continuous eval         | Online evaluation (4 LLM-as-judge evaluators) on all traces            |
 | Cost shape              | Haiku for LOW priority, Sonnet for MEDIUM+                             |
 | Latency                 | Async invoke (fire-and-forget at trigger)                              |
 | Emit pattern            | EventBridge `TicketResolved` event for downstream                      |
@@ -547,17 +547,17 @@ OTEL instrumentation is configured declaratively in `agentcore/agentcore.json`:
 
 The L3 construct injects these into the Runtime automatically — no imperative CDK code needed. Traces flow to CloudWatch X-Ray and are viewable in the GenAI Observability console.
 
-### On-Demand Evaluation (custom)
+### Retrieve Evaluation Results
 
-Run the custom `IncidentResolutionQuality` evaluator against a specific trace (requires CloudWatch Transaction Search enabled):
+View the continuous online evaluation scores for recent agent invocations:
 
 ```bash
-python scripts/evaluate.py                    # latest trace
-python scripts/evaluate.py <trace_id>         # specific trace
+python scripts/evaluate.py              # last 1 hour of results
+python scripts/evaluate.py --hours 24   # last 24 hours
+python scripts/evaluate.py --raw        # JSON output (for piping to jq)
 ```
 
-The custom evaluator scores (1–5) based on: correct user/asset identification,
-runbook usage, appropriate change requests, and clear resolution comments.
+Results are also viewable in the CloudWatch GenAI Observability dashboard.
 
 ## Inspect What the Agent Did
 
@@ -797,7 +797,7 @@ ITIncidentAgent/
     ├── destroy.sh                  # Tear down all resources
     ├── publish_ticket.sh           # Submit a ticket to SNS
     ├── show_ticket.sh              # Check ticket resolution in DDB
-    └── evaluate.py                 # On-demand custom evaluation
+    └── evaluate.py                 # Retrieve online evaluation results
 ```
 
 </details>
