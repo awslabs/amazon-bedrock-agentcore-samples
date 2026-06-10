@@ -126,14 +126,10 @@ def delete_stack(region: str, stack_name: str) -> None:
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(
-        description="Deploy public AgentCore Browser + private VPC Runtime stack"
-    )
+    parser = argparse.ArgumentParser(description="Deploy public AgentCore Browser + private VPC Runtime stack")
     parser.add_argument("--region", default="us-east-1")
     parser.add_argument("--stack-name", default=DEFAULT_STACK)
-    parser.add_argument(
-        "--cleanup", action="store_true", help="Delete the stack instead of deploying"
-    )
+    parser.add_argument("--cleanup", action="store_true", help="Delete the stack instead of deploying")
     return parser.parse_args()
 
 

@@ -259,9 +259,7 @@ def run_part1_chrome_policies(region: str, bucket_name: str, execution_role_arn:
             network_configuration={"networkMode": "PUBLIC"},
             enterprise_policies=[
                 {
-                    "location": {
-                        "s3": {"bucket": bucket_name, "prefix": POLICY_KEY}
-                    },
+                    "location": {"s3": {"bucket": bucket_name, "prefix": POLICY_KEY}},
                     "type": "MANAGED",
                 }
             ],
@@ -470,9 +468,7 @@ def cleanup(
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(
-        description="AgentCore Browser Chrome enterprise policies and custom root CA demo"
-    )
+    parser = argparse.ArgumentParser(description="AgentCore Browser Chrome enterprise policies and custom root CA demo")
     parser.add_argument("--region", default=boto3.Session().region_name or "us-west-2")
     parser.add_argument("--skip-cleanup", action="store_true")
     parser.add_argument("--skip-root-ca", action="store_true", help="Skip Part 2 (root CA demo)")

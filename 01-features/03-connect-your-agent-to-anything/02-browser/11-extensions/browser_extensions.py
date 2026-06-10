@@ -53,8 +53,7 @@ EXTENSION_ZIP = "sample_extension.zip"
 
 def get_ws_url(browser_id: str, session_id: str, region: str) -> str:
     return (
-        f"wss://bedrock-agentcore.{region}.amazonaws.com"
-        f"/browser-streams/{browser_id}/sessions/{session_id}/automation"
+        f"wss://bedrock-agentcore.{region}.amazonaws.com/browser-streams/{browser_id}/sessions/{session_id}/automation"
     )
 
 
@@ -159,11 +158,7 @@ async def verify_extension_loaded(ws_url: str, headers: dict) -> None:
     print("\nConnecting to remote browser via CDP...")
     async with async_playwright() as p:
         browser = await p.chromium.connect_over_cdp(ws_url, headers=headers)
-        page = (
-            browser.contexts[0].pages[0]
-            if browser.contexts
-            else await browser.new_context().new_page()
-        )
+        page = browser.contexts[0].pages[0] if browser.contexts else await browser.new_context().new_page()
 
         print("Navigating to chrome://extensions/ ...")
         await page.goto("chrome://extensions/")
@@ -270,9 +265,7 @@ def run_demo(region: str, skip_cleanup: bool) -> None:
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(
-        description="AgentCore Browser extension loading demo"
-    )
+    parser = argparse.ArgumentParser(description="AgentCore Browser extension loading demo")
     parser.add_argument("--region", default=boto3.Session().region_name or "us-east-1")
     parser.add_argument("--skip-cleanup", action="store_true")
     return parser.parse_args()

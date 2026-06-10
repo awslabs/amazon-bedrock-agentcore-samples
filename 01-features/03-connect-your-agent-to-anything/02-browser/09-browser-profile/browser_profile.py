@@ -52,8 +52,7 @@ AC_ROLE_NAME = "ac-browser-profiles-execution-role"
 
 def get_ws_url(browser_id: str, session_id: str, region: str) -> str:
     return (
-        f"wss://bedrock-agentcore.{region}.amazonaws.com"
-        f"/browser-streams/{browser_id}/sessions/{session_id}/automation"
+        f"wss://bedrock-agentcore.{region}.amazonaws.com/browser-streams/{browser_id}/sessions/{session_id}/automation"
     )
 
 
@@ -159,11 +158,7 @@ async def session_a_add_to_cart(ws_url: str, headers: dict, cfn_url: str) -> Non
     print("\n[Session A] Adding items to cart...")
     async with async_playwright() as p:
         browser = await p.chromium.connect_over_cdp(ws_url, headers=headers)
-        page = (
-            browser.contexts[0].pages[0]
-            if browser.contexts
-            else await browser.new_context().new_page()
-        )
+        page = browser.contexts[0].pages[0] if browser.contexts else await browser.new_context().new_page()
         try:
             await page.goto(f"{cfn_url}/#home", wait_until="domcontentloaded")
             await page.wait_for_timeout(2000)
@@ -208,11 +203,7 @@ async def session_b_verify_cart(ws_url: str, headers: dict, cfn_url: str) -> Non
     print("\n[Session B] Verifying cart persists from saved profile...")
     async with async_playwright() as p:
         browser = await p.chromium.connect_over_cdp(ws_url, headers=headers)
-        page = (
-            browser.contexts[0].pages[0]
-            if browser.contexts
-            else await browser.new_context().new_page()
-        )
+        page = browser.contexts[0].pages[0] if browser.contexts else await browser.new_context().new_page()
         try:
             await page.goto(f"{cfn_url}/#home", wait_until="domcontentloaded")
             await page.wait_for_timeout(5000)
@@ -228,7 +219,6 @@ async def session_b_verify_cart(ws_url: str, headers: dict, cfn_url: str) -> Non
 
 
 def run_demo(cfn_url: str, region: str, skip_cleanup: bool) -> None:
-
     account_id = boto3.client("sts").get_caller_identity()["Account"]
     cp_client = boto3.client("bedrock-agentcore-control", region_name=region)
     dp_client = boto3.client("bedrock-agentcore", region_name=region)
@@ -248,9 +238,7 @@ def run_demo(cfn_url: str, region: str, skip_cleanup: bool) -> None:
         print(f"Created bucket: {bucket_name}")
 
     # 2. IAM role
-    role_arn = create_execution_role(
-        AC_ROLE_NAME, account_id, region, bucket_name, BROWSER_PROFILE_NAME, BROWSER_NAME
-    )
+    role_arn = create_execution_role(AC_ROLE_NAME, account_id, region, bucket_name, BROWSER_PROFILE_NAME, BROWSER_NAME)
 
     # 3. Custom browser
     created_browser = cp_client.create_browser(
@@ -327,9 +315,7 @@ def run_demo(cfn_url: str, region: str, skip_cleanup: bool) -> None:
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(
-        description="AgentCore Browser Profile persistence demo"
-    )
+    parser = argparse.ArgumentParser(description="AgentCore Browser Profile persistence demo")
     parser.add_argument(
         "--cfn-url",
         default=os.getenv("CFN_URL", ""),

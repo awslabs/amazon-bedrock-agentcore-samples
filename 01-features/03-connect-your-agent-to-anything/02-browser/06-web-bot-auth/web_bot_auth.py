@@ -81,9 +81,7 @@ def create_browser_execution_role(role_name: str) -> str:
                 "Action": "sts:AssumeRole",
                 "Condition": {
                     "StringEquals": {"aws:SourceAccount": account_id},
-                    "ArnLike": {
-                        "aws:SourceArn": f"arn:aws:bedrock-agentcore:{region}:{account_id}:*"
-                    },
+                    "ArnLike": {"aws:SourceArn": f"arn:aws:bedrock-agentcore:{region}:{account_id}:*"},
                 },
             }
         ],
@@ -190,9 +188,7 @@ async def run_agent(agent: Agent, prompt: str) -> str | None:
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(
-        description="AgentCore Browser Web Bot Auth Signing demo"
-    )
+    parser = argparse.ArgumentParser(description="AgentCore Browser Web Bot Auth Signing demo")
     parser.add_argument("--region", default=REGION)
     parser.add_argument(
         "--skip-cleanup",
@@ -267,9 +263,7 @@ async def async_main(args):
             terminal = {"STOPPED", "DELETED", "FAILED"}
             for s in sessions.get("items", []):
                 if s.get("status") not in terminal:
-                    dp_client.stop_browser_session(
-                        browserIdentifier=browser_id, sessionId=s["sessionId"]
-                    )
+                    dp_client.stop_browser_session(browserIdentifier=browser_id, sessionId=s["sessionId"])
             if sessions.get("items"):
                 time.sleep(2)  # brief wait for sessions to terminate
         except Exception:

@@ -121,9 +121,7 @@ def create_execution_role(role_name: str, region: str) -> str:
                 "Action": "sts:AssumeRole",
                 "Condition": {
                     "StringEquals": {"aws:SourceAccount": account_id},
-                    "ArnLike": {
-                        "aws:SourceArn": f"arn:aws:bedrock-agentcore:{region}:{account_id}:*"
-                    },
+                    "ArnLike": {"aws:SourceArn": f"arn:aws:bedrock-agentcore:{region}:{account_id}:*"},
                 },
             }
         ],
@@ -249,9 +247,7 @@ def run_os_actions(base_url: str, session_id: str, browser_id: str, region: str,
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(
-        description="AgentCore Browser OS-level actions (InvokeBrowser) demo"
-    )
+    parser = argparse.ArgumentParser(description="AgentCore Browser OS-level actions (InvokeBrowser) demo")
     parser.add_argument("--region", default=boto3.Session().region_name or "us-west-2")
     parser.add_argument("--skip-cleanup", action="store_true")
     return parser.parse_args()
