@@ -79,6 +79,36 @@ Do NOT set `"DeveloperToolsAvailability": 2` in policies. This disables CDP at t
 level and silently breaks all Playwright automation — the WebSocket connects but Chrome
 rejects CDP commands, causing timeouts. Use `0` (allowed) or `1` (extensions only).
 
+## Reviewing the Session Recording (Part 1)
+
+Because session recording is enabled on the custom browser, you can replay the session to observe
+policy enforcement in action:
+
+1. Open the [Amazon Bedrock AgentCore console](https://console.aws.amazon.com/bedrock-agentcore/home#)
+2. In the navigation pane, choose **Built-in tools**
+3. Select your browser tool (**docs_research_browser**)
+4. In the **Browser sessions** section, find the completed session with **Terminated** status
+5. Choose **View Recording**
+
+The replay shows the allowed URL loading successfully and the blocked URL returning
+`ERR_BLOCKED_BY_ADMINISTRATOR` — confirming Chrome-level enforcement, not just agent logic.
+
+## Optional: Run a Strands Agent with the Restricted Browser (Part 1b)
+
+The script includes an optional step that wires a [Strands](https://strandsagents.com/) agent to
+the policy-restricted browser. The agent will succeed navigating to `docs.aws.amazon.com` and will
+observe that `wikipedia.org` is blocked — demonstrating that policy enforcement is model-agnostic:
+no prompt injection or jailbreak can bypass a managed Chrome policy.
+
+```python
+from strands import Agent
+from strands_tools.browser import AgentCoreBrowser
+
+browser_tool = AgentCoreBrowser(region=REGION, identifier=browser_id)
+agent = Agent(tools=[browser_tool.browser], system_prompt="Research AWS docs...")
+response = agent("Summarize AgentCore Browser capabilities from docs.aws.amazon.com.")
+```
+
 ## Sample Scenarios
 
 **Scenario**: Lock a data-entry agent to only access a corporate HR portal.
@@ -89,6 +119,18 @@ rejects CDP commands, causing timeouts. Use `0` (allowed) or `1` (extensions onl
 
 **Scenario**: Enable agents to access internal microservices with private PKI.
 **Config**: Store your org's root CA in Secrets Manager; pass `Certificate.from_secret_arn(...)`
+
+## Applying Root CAs to Your Organization (Part 2)
+
+The `badssl.com` demo mirrors two real-world private-CA scenarios:
+
+| Scenario | What to store in Secrets Manager | Configuration |
+|:---------|:---------------------------------|:--------------|
+| Internal corporate services (HR portal, Jira, Artifactory) | Your organization's root CA certificate | Reference secret ARN in `certificates` on `create_browser()` or `create_code_interpreter()` |
+| SSL-intercepting corporate proxies (Zscaler, Palo Alto Networks) | Your proxy's root CA certificate | Reference secret ARN in `certificates` and set `proxyConfiguration` |
+
+You can combine root CA certificates with Chrome enterprise policies in a single `create_browser()`
+call — pass both `enterprise_policies` and `certificates` together.
 
 ## Running the Script
 

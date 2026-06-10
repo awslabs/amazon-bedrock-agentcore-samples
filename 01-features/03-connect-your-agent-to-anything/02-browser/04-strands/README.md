@@ -4,24 +4,19 @@
 
 This demo shows how to give a Strands agent the ability to browse the web by adding `AgentCoreBrowser` as a tool. The agent receives a natural language question, autonomously navigates to the relevant page, reads the content, and synthesises a structured answer — all without you managing the browser session lifecycle.
 
-```
-┌────────────┐  "Analyze Tesla stock on MarketWatch"  ┌──────────────────────┐
-│   User     │ ─────────────────────────────────────▶ │   Strands Agent      │
-│            │◀─────────────────────────────────────── │   (Claude Haiku)     │
-│            │  "Price: $180.50, Market Cap: $575B …"  │                      │
-└────────────┘                                         │  browser tool        │
-                                                       │       │              │
-                                                       └───────┼──────────────┘
-                                                               │ AgentCoreBrowser
-                                                               ▼
-                                                       ┌──────────────────────┐
-                                                       │  AgentCore Browser   │
-                                                       │  Session             │
-                                                       │                      │
-                                                       │  navigate(url)       │
-                                                       │  extract_content()   │
-                                                       │  → structured data   │
-                                                       └──────────────────────┘
+## Architecture
+
+```mermaid
+graph TD
+    A[User Request] --> B[Invoke Function]
+    B --> C[Strands Agent]
+    C --> D[AgentCoreBrowser Tool]
+    D --> E[AWS Bedrock AgentCore]
+    E --> F[Browser Automation]
+    F --> G[Target Website]
+    G --> H[Content Extraction]
+    H --> I[Claude Analysis]
+    I --> J[Structured Answer]
 ```
 
 ## How It Works

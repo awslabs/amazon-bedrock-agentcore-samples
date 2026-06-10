@@ -184,23 +184,3 @@ The `AgentCoreBrowser` integration handles the full browser session lifecycle au
 ```
 
 See [Browser Tool IAM reference](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/browser-tool-permissions.html) for full details.
-
-## Files
-
-| File | Description |
-|:-----|:------------|
-| `requirements.txt` | Python dependencies for all sub-demos |
-| `utils/browser_agent.py` | Shared Strands agent with `AgentCoreBrowser` tool |
-| `01-nova-act/` | Nova Act headless and live-view demos |
-| `02-browser-use/` | Browser-Use SDK demo and auth header patch |
-| `03-observability/` | Session recording and replay demo |
-| `04-strands/` | Strands agent web analysis demo |
-| `05-domain-filtering/` | CloudFormation + domain allow/deny list verification |
-| `06-web-bot-auth/` | Web Bot Auth signing — eliminates CAPTCHAs for AI agents |
-| `07-public-browser-private-vpc/` | Hybrid public browser + private VPC runtime architecture |
-| `08-vpc-browser-from-vpc/` | Fully private VPC browser accessing internal web servers |
-| `09-browser-profile/` | Browser profile persistence across sessions |
-| `10-proxy/` | Squid proxy routing with S3 audit logs |
-| `11-extensions/` | Custom Chrome extensions loaded from S3 |
-| `12-chrome-policies/` | Chrome enterprise policies (URL blocklist) + custom root CA certs |
-| `13-os-actions/` | OS-level InvokeBrowser API (mouse, keyboard, screenshot) |

@@ -259,6 +259,21 @@ async def async_main(args):
     # Step 6: Cleanup
     if not args.skip_cleanup:
         print("\nCleaning up...")
+        # AgentCoreBrowser manages sessions internally; stop any that are still active
+        # before attempting to delete the browser resource.
+        dp_client = boto3.client("bedrock-agentcore", region_name=REGION)
+        try:
+            sessions = dp_client.list_browser_sessions(browserIdentifier=browser_id)
+            terminal = {"STOPPED", "DELETED", "FAILED"}
+            for s in sessions.get("items", []):
+                if s.get("status") not in terminal:
+                    dp_client.stop_browser_session(
+                        browserIdentifier=browser_id, sessionId=s["sessionId"]
+                    )
+            if sessions.get("items"):
+                time.sleep(2)  # brief wait for sessions to terminate
+        except Exception:
+            pass
         try:
             cp_client.delete_browser(browserId=browser_id)
             print(f"Deleted browser: {browser_id}")

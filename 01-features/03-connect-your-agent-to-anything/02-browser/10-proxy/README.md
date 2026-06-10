@@ -110,6 +110,10 @@ The script:
 **Issue**: Secrets Manager secret doesn't match the Squid htpasswd file.
 **Solution**: Check `/var/log/squid/access.log` on the instance for the exact error. Rotate credentials via Secrets Manager and restart Squid.
 
+### No S3 logs appearing
+**Issue**: S3 audit logs are empty even after the browser has been used.
+**Solution**: Squid syncs access logs every 5 minutes via cron. Wait at least 5 minutes and refresh. If logs are still missing, SSH to the Squid EC2 instance and check `/var/log/user-data.log` for setup errors in the cron configuration.
+
 ## Access Logs
 
 Squid access logs sync to S3 every 5 minutes:
