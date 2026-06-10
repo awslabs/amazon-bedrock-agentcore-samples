@@ -95,3 +95,24 @@ variable "tavily_api_key" {
   type        = string
   sensitive   = true
 }
+
+# ---------------------------------------------------------------------------
+# Interceptor Variables
+# ---------------------------------------------------------------------------
+variable "interceptor_rate_limit_max" {
+  description = "Maximum number of tool calls allowed per caller per rate limit window"
+  type        = number
+  default     = 100
+}
+
+variable "interceptor_rate_limit_window" {
+  description = "Rate limit window in seconds (default 3600 = 1 hour)"
+  type        = number
+  default     = 3600
+}
+
+variable "interceptor_enable_rate_limit" {
+  description = "Set to false to disable rate limiting (useful for development)"
+  type        = bool
+  default     = true
+}
