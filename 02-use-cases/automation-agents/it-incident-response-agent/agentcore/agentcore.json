@@ -7,13 +7,37 @@
       "name": "ITIncidentAgent",
       "build": "Container",
       "entrypoint": "main.py",
-      "codeLocation": "app/ITIncidentAgent"
+      "codeLocation": "app/ITIncidentAgent",
+      "instrumentation": {
+        "enableOtel": true
+      },
+      "envVars": [
+        { "name": "_AWS_XRAY_DAEMON_ADDRESS", "value": "localhost:2000" },
+        { "name": "_AWS_XRAY_TRACING_ENABLED", "value": "true" },
+        { "name": "OTEL_METRICS_EXPORTER", "value": "none" },
+        { "name": "OTEL_TRACES_EXPORTER", "value": "otlp" },
+        { "name": "OTEL_EXPORTER_OTLP_PROTOCOL", "value": "http/protobuf" },
+        { "name": "OTEL_PYTHON_LOGGING_AUTO_INSTRUMENTATION_ENABLED", "value": "true" }
+      ]
     }
   ],
   "memories": [],
   "credentials": [],
   "evaluators": [],
-  "onlineEvalConfigs": [],
+  "onlineEvalConfigs": [
+    {
+      "name": "ITIncidentAgentEval",
+      "agent": "ITIncidentAgent",
+      "evaluators": [
+        "Builtin.Correctness",
+        "Builtin.Helpfulness",
+        "Builtin.ToolSelectionAccuracy",
+        "Builtin.GoalSuccessRate"
+      ],
+      "samplingRate": 100,
+      "description": "Online evaluation for IT incident response agent (4 built-in evaluators)"
+    }
+  ],
   "agentCoreGateways": [
     {
       "name": "ITIncidentGateway",
@@ -54,9 +78,32 @@
       ],
       "authorizerType": "AWS_IAM",
       "enableSemanticSearch": true,
-      "exceptionLevel": "DEBUG"
+      "exceptionLevel": "DEBUG",
+      "policyEngineConfiguration": {
+        "policyEngineName": "ITIncidentPolicyEngine",
+        "mode": "LOG_ONLY"
+      }
     }
   ],
-  "policyEngines": [],
+  "policyEngines": [
+    {
+      "name": "ITIncidentPolicyEngine",
+      "description": "Cedar policy engine for bounded autonomy — logs all tool calls, enforces on high-risk actions",
+      "policies": [
+        {
+          "name": "LogAllToolCalls",
+          "description": "Log all tool invocations for observability (no enforcement)",
+          "statement": "permit(principal, action, resource is AgentCore::Gateway);",
+          "validationMode": "IGNORE_ALL_FINDINGS"
+        },
+        {
+          "name": "RequireReasonForChangeRequest",
+          "description": "Deny create-change-request calls without a reason field (LOG_ONLY mode logs violations)",
+          "statement": "forbid(principal, action, resource is AgentCore::Gateway) when { context has \"toolName\" && context.toolName == \"create-change-request\" && !(context has \"reason\") };",
+          "validationMode": "IGNORE_ALL_FINDINGS"
+        }
+      ]
+    }
+  ],
   "harnesses": []
 }
