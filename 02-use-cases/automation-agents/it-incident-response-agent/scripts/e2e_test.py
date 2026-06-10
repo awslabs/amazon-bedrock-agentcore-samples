@@ -36,6 +36,7 @@ SPANS_LOG_GROUP = "/aws/spans"
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 
+
 def get_stack_outputs():
     """Fetch CloudFormation stack outputs."""
     cfn = boto3.client("cloudformation", region_name=REGION)
@@ -57,6 +58,7 @@ def print_step(start: float, emoji: str, message: str):
 
 
 # ─── Core Logic ───────────────────────────────────────────────────────────────
+
 
 def publish_ticket(topic_arn: str, ticket: dict) -> str:
     """Publish ticket to SNS and return message ID."""
@@ -216,8 +218,12 @@ def _check_spans_for_tools(logs_client, start: float, log_start_ms: int, seen_to
                 span = json.loads(msg)
                 span_name = span.get("name", "")
                 # Tool spans typically have the tool name in the span name
-                known = ["lookup-user", "get-process-info", "create-change-request", "query-kb",
-                         "lookup_user", "get_process_info", "create_change_request", "query_kb"]
+                known = [
+                    "lookup-user",
+                    "get-process-info",
+                    "create-change-request",
+                    "query-kb"
+                ]
                 for tool in known:
                     if tool in span_name and tool not in seen_tools:
                         seen_tools.add(tool)
@@ -287,6 +293,7 @@ def _final_log_sweep(ticket_id: str, start: float):
 
 # ─── Main ─────────────────────────────────────────────────────────────────────
 
+
 def main():
     parser = argparse.ArgumentParser(description="E2E test with step visibility")
     parser.add_argument("--ticket", help="Path to ticket JSON file")
@@ -319,9 +326,9 @@ def main():
     ticket_id = ticket["ticket_id"]
 
     # Get stack resources
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"  E2E Test: {ticket_id} ({ticket['priority']} priority)")
-    print(f"{'='*60}\n")
+    print(f"{'=' * 60}\n")
 
     try:
         outputs = get_stack_outputs()
@@ -357,6 +364,7 @@ def main():
     if not args.no_logs:
         # Interleave log tailing with status polling
         import threading
+
         stop_flag = []
         log_thread = threading.Thread(
             target=tail_runtime_logs,
@@ -377,7 +385,7 @@ def main():
     # Step 3: Report
     total_time = time.time() - start
     print()
-    print(f"{'─'*60}")
+    print(f"{'─' * 60}")
     print(f"  Total time: {total_time:.1f}s")
 
     if final_item:
@@ -396,7 +404,7 @@ def main():
         else:
             print(f"  Status: {status}")
 
-    print(f"{'─'*60}\n")
+    print(f"{'─' * 60}\n")
     return 0 if final_item.get("status", {}).get("S") == "Resolved" else 1
 
 
