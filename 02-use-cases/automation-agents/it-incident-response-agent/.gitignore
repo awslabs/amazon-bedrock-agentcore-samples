@@ -1,54 +1,47 @@
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.egg-info/
-*.egg
-dist/
-build/
-.venv/
-venv/
-.Python
-
-# Environment / Secrets
-.env
-.env.local
-.env.*.local
-*.pem
-*.key
-
-# CDK
-cdk.out/
-agentcore/cdk/node_modules/
-agentcore/cdk/cdk.out/
-
-# AgentCore CLI
-agentcore/.cli/deployed-state.json
-agentcore/aws-targets.json
-
-# IDE
-.idea/
-.vscode/
-*.swp
-*.swo
-*~
-
-# OS
-.DS_Store
-Thumbs.db
-Desktop.ini
-
-# Testing / Coverage
-.pytest_cache/
-.coverage
-htmlcov/
-
-# Logs
-*.log
-.kiro/steering/aws-credentials.md
-.kiro/steering/deployed-stack-reference.md
-docs/diagrams
-
-# Override root .gitignore exclusion of lib/ — CDK source lives in agentcore/cdk/lib/
 !agentcore/cdk/lib/
 !agentcore/cdk/lib/**
+# AgentCore CLI
+# CDK
+# Environment / Secrets
+# IDE
+# Logs
+# OS
+# Override root .gitignore exclusion of lib/ — CDK source lives in agentcore/cdk/lib/
+# Python
+# Testing / Coverage
+*$py.class
+*.egg
+*.egg-info/
+*.key
+*.log
+*.pem
+*.py[cod]
+*.swo
+*.swp
+*~
+.DS_Store
+.Python
+.coverage
+.env
+.env.*.local
+.env.local
+.idea/
+.kiro/steering/aws-credentials.md
+.kiro/steering/deployed-stack-reference.md
+.pytest_cache/
+.venv/
+.vscode/
+Desktop.ini
+Thumbs.db
+__pycache__/
+agentcore/.cli/deployed-state.json
+agentcore/aws-targets.json
+agentcore/cdk/cdk.out/
+agentcore/cdk/node_modules/
+build/
+cdk.out/
+dist/
+docs/diagrams
+htmlcov/
+venv/
+.kiro/
