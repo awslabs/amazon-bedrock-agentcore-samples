@@ -262,6 +262,7 @@ Two formats supported:
 | `scripts/publish_ticket.sh` | Submit a test ticket to SNS |
 | `scripts/show_ticket.sh` | Check ticket resolution in DDB |
 | `scripts/evaluate.py` | Run on-demand custom evaluation |
+| `scripts/test-e2e.sh` | End-to-end test: publish → poll → assert Resolved (CI-friendly) |
 | `scripts/enable-custom-jwt.sh` | Upgrade gateway to Auth0/OIDC auth |
 
 ---
