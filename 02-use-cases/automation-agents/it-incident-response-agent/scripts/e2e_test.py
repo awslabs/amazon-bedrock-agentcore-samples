@@ -154,7 +154,7 @@ def tail_runtime_logs(ticket_id: str, start: float, stop_event: list):
 
                 # App-level messages with ticket ID
                 if "Processing ticket" in msg:
-                    print_step(start, "⚡", f"Agent processing started")
+                    print_step(start, "⚡", "Agent processing started")
                 elif "Gateway MCP client loaded" in msg:
                     print_step(start, "🔌", "Connected to MCP Gateway")
                 elif "Resolved" in msg and "event" not in msg.lower():
@@ -266,8 +266,6 @@ def _final_log_sweep(ticket_id: str, start: float):
                 tool_events.append((event["timestamp"], msg))
 
         if tool_events:
-            # Find the base timestamp (first event in this session)
-            base_ts = tool_events[0][0]
             # Adjust to use the overall test start time
             print()
             print("  Tool call timeline (from runtime logs):")
