@@ -13,8 +13,8 @@ from strands.models.bedrock import BedrockModel
 
 # Local-dev fallbacks only — the CDK stack injects AGENT_MODEL_ID / FAST_MODEL_ID
 # at runtime (those values win). Keep these aligned with valid Bedrock model IDs.
-DEFAULT_MODEL_ID = "us.anthropic.claude-sonnet-4-5-20250929-v1:0"
-FAST_MODEL_ID = os.getenv("FAST_MODEL_ID", "us.anthropic.claude-3-haiku-20240307-v1:0")
+DEFAULT_MODEL_ID = "us.anthropic.claude-sonnet-4-6"
+FAST_MODEL_ID = os.getenv("FAST_MODEL_ID", "us.anthropic.claude-3-5-haiku-20241022-v1:0")
 
 
 def load_model(priority: str = "MEDIUM") -> BedrockModel:

@@ -25,7 +25,7 @@ from botocore.exceptions import ClientError
 
 REGION = os.environ.get("AWS_REGION", "us-west-2")
 JUDGE_MODEL_ID = os.environ.get(
-    "JUDGE_MODEL_ID", "us.anthropic.claude-sonnet-4-6-20250929-v1:0"
+    "JUDGE_MODEL_ID", "us.anthropic.claude-sonnet-4-6"
 )
 CUSTOM_EVALUATOR_NAME = "IncidentResolutionQuality"
 
