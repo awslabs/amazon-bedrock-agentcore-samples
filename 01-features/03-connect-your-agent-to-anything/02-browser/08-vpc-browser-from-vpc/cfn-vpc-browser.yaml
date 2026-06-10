@@ -59,6 +59,14 @@ Resources:
           - id: W79
             reason: >-
               Sample ECR repository uses default encryption
+          - id: W28
+            reason: >-
+              Explicit repository name used for reference clarity in this sample; use generated names in production
+      checkov:
+        skip:
+          - id: CKV_AWS_136
+            comment: >-
+              Sample ECR repository uses SSE (AES-256) not KMS; use KMS CMK in production
     Properties:
       RepositoryName: !Sub "${AWS::StackName}-${ECRRepositoryName}"
       ImageTagMutability: IMMUTABLE
@@ -82,6 +90,20 @@ Resources:
   # IAM - Agent Execution Role
   AgentExecutionRole:
     Type: AWS::IAM::Role
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W11
+            reason: >-
+              ECR GetAuthorizationToken, CloudWatch Logs, XRay, and Bedrock inference require wildcard resources; scope down in production
+          - id: W28
+            reason: >-
+              Explicit role name used for cross-resource reference in this sample; use generated names in production
+      checkov:
+        skip:
+          - id: CKV_AWS_111
+            comment: >-
+              Sample IAM role requires broad write access for tutorial demonstration; restrict in production
     Properties:
       RoleName: !Sub "${AWS::StackName}-${AWS::Region}-agent-execution-role"
       AssumeRolePolicyDocument:
@@ -184,6 +206,20 @@ Resources:
   # CodeBuild Role
   CodeBuildRole:
     Type: AWS::IAM::Role
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W11
+            reason: >-
+              ECR GetAuthorizationToken requires wildcard resource; scope down in production
+          - id: W28
+            reason: >-
+              Explicit role name used for cross-resource reference in this sample; use generated names in production
+      checkov:
+        skip:
+          - id: CKV_AWS_111
+            comment: >-
+              Sample IAM role requires broad write access for tutorial; restrict in production
     Properties:
       RoleName: !Sub "${AWS::StackName}-${AWS::Region}-codebuild-role"
       AssumeRolePolicyDocument:
@@ -230,6 +266,20 @@ Resources:
   # Lambda Custom Resource Role
   CustomResourceRole:
     Type: AWS::IAM::Role
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W11
+            reason: >-
+              Sample IAM roles use broad permissions for tutorial clarity; scope down in production
+          - id: W28
+            reason: >-
+              Explicit role name used for cross-resource reference in this sample; use generated names in production
+      checkov:
+        skip:
+          - id: CKV_AWS_111
+            comment: >-
+              Sample IAM role requires broad write access for tutorial; restrict in production
     Properties:
       RoleName: !Sub "${AWS::StackName}-${AWS::Region}-custom-resource-role"
       AssumeRolePolicyDocument:
@@ -284,6 +334,23 @@ Resources:
   # LAMBDA - CodeBuild Trigger Function
   CodeBuildTriggerFunction:
     Type: AWS::Lambda::Function
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W89
+            reason: >-
+              Lambda custom resource does not require VPC access for CodeBuild triggering; VPC adds latency without benefit here
+          - id: W92
+            reason: >-
+              Reserved concurrency not required for CloudFormation custom resource Lambda in this sample
+      checkov:
+        skip:
+          - id: CKV_AWS_115
+            comment: >-
+              Reserved concurrency not set for custom resource Lambda; set in production for cost control
+          - id: CKV_AWS_116
+            comment: >-
+              DLQ not required for synchronous CloudFormation custom resource Lambda
     Properties:
       FunctionName: !Sub "${AWS::StackName}-codebuild-trigger"
       Description: "Triggers CodeBuild projects as CloudFormation custom resource"
@@ -399,6 +466,12 @@ Resources:
   # CODEBUILD
   AgentImageBuildProject:
     Type: AWS::CodeBuild::Project
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W32
+            reason: >-
+              Sample CodeBuild project uses default encryption; use KMS CMK in production
     Properties:
       Name: !Sub "${AWS::StackName}-agent-build"
       Description: !Sub "Build AgentCore container with browser automation for ${AWS::StackName}"
@@ -752,6 +825,12 @@ Resources:
   # Security Group for Browser tool
   BrowserToolSG:
     Type: AWS::EC2::SecurityGroup
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W29
+            reason: >-
+              Browser tool security group requires outbound access to web server in VPC; egress rules defined separately to avoid circular dependencies
     Properties:
       GroupDescription: "Security group for Browser Tool - allows HTTPS from AgentCore runtime"
       VpcId: !Ref ClientVPC
@@ -947,6 +1026,15 @@ Resources:
           - id: W5
             reason: >-
               Demo web server allows broad ingress from VPC for tutorial access; restrict in production
+          - id: W9
+            reason: >-
+              Ingress CIDR is VPC range (not /32) for tutorial simplicity; restrict to specific IPs in production
+          - id: W27
+            reason: >-
+              Web server demo accepts wide port range from VPC for tutorial flexibility; restrict to specific ports in production
+          - id: W36
+            reason: >-
+              Egress CIDR not restricted to /32 for demo web server; restrict in production
           - id: W40
             reason: >-
               Web server requires all outbound for updates and responses; restrict in production
@@ -1094,6 +1182,20 @@ Resources:
   # IAM Role for EC2 Development Instance
   EC2InstanceRole:
     Type: AWS::IAM::Role
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W11
+            reason: >-
+              CloudWatch Logs and Bedrock inference require wildcard resources for this tutorial; scope down in production
+          - id: W28
+            reason: >-
+              Explicit role name used for reference clarity in this sample; use generated names in production
+      checkov:
+        skip:
+          - id: CKV_AWS_111
+            comment: >-
+              Sample IAM role requires broad write access for tutorial demonstration; restrict in production
     Properties:
       RoleName: !Sub "${AWS::StackName}-${AWS::Region}-ec2-instance-role"
       AssumeRolePolicyDocument:
@@ -1254,6 +1356,15 @@ Resources:
 
   RecordingBucket:
     Type: AWS::S3::Bucket
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W51
+            reason: >-
+              Sample S3 bucket does not require a bucket policy; access is controlled via IAM roles in this tutorial
+          - id: W35
+            reason: >-
+              Access logging not enabled for this sample bucket; enable in production for audit trails
     Properties:
       BucketName: !Sub "${AWS::StackName}-browser-recording"
       PublicAccessBlockConfiguration:

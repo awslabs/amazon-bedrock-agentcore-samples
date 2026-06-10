@@ -51,7 +51,7 @@ BUCKET_NAME_TPL = "ac-browser-policy-demo-{account_id}-{region}"
 AC_ROLE_NAME = "ac-browser-policy-execution-role"
 BROWSER_NAME = "docs_research_browser"
 POLICY_KEY = "browser-policies/docs-only-policy.json"
-SECRET_NAME = "demo-badssl-untrusted-root-ca"
+SECRET_NAME = "demo-badssl-untrusted-root-ca"  # pragma: allowlist secret
 
 # BadSSL untrusted root CA — public test certificate for SSL demo only
 BADSSL_ROOT_CA = """-----BEGIN CERTIFICATE-----

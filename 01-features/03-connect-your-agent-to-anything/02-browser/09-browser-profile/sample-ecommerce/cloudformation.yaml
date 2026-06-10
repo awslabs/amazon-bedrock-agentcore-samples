@@ -35,6 +35,26 @@ Resources:
 
   CloudFrontDistribution:
     Type: AWS::CloudFront::Distribution
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W10
+            reason: >-
+              CloudFront access logging not enabled for this sample static site; enable in production for audit trails
+          - id: W70
+            reason: >-
+              Sample CloudFront distribution uses default TLS; enforce TLSv1.2 minimum in production
+      checkov:
+        skip:
+          - id: CKV_AWS_68
+            comment: >-
+              WAF not required for this static sample site; attach AWS WAF in production
+          - id: CKV_AWS_86
+            comment: >-
+              CloudFront access logging not enabled for this sample; enable in production
+          - id: CKV_AWS_174
+            comment: >-
+              Sample distribution uses default TLS protocol; enforce TLSv1.2 in production
     Properties:
       DistributionConfig:
         Enabled: true

@@ -240,6 +240,15 @@ Resources:
     Type: AWS::S3::Bucket
     DeletionPolicy: Retain
     UpdateReplacePolicy: Retain
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W51
+            reason: >-
+              Sample S3 log bucket does not require a bucket policy; access is controlled via IAM instance role in this tutorial
+          - id: W35
+            reason: >-
+              Access logging not enabled for this sample log bucket to avoid circular logging; enable in production
     Properties:
       BucketName: !Sub '${AWS::StackName}-squid-logs-${AWS::AccountId}'
       BucketEncryption:
@@ -263,6 +272,12 @@ Resources:
 
   ProxyCredentialsSecret:
     Type: AWS::SecretsManager::Secret
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W77
+            reason: >-
+              Sample secret uses default AWS-managed key; use a customer-managed KMS key in production
     Properties:
       Name: !Sub '${AWS::StackName}-proxy-credentials'
       Description: Basic auth credentials for the Squid proxy
@@ -320,7 +335,7 @@ Resources:
             Statement:
               - Effect: Allow
                 Action:
-                  - secretsmanager:GetSecretValue
+                  - secretsmanager:GetSecretValue  # pragma: allowlist secret
                 Resource: !Ref ProxyCredentialsSecret
 
   SquidInstanceProfile:
@@ -355,7 +370,7 @@ Resources:
             Statement:
               - Effect: Allow
                 Action:
-                  - secretsmanager:GetSecretValue
+                  - secretsmanager:GetSecretValue  # pragma: allowlist secret
                 Resource: !Ref ProxyCredentialsSecret
 
   #############################################################################
