@@ -309,7 +309,7 @@ Optional environment variables (set in shell or `.env`):
 | Variable                      | Purpose                                                                | Default                                           |
 | ----------------------------- | ---------------------------------------------------------------------- | ------------------------------------------------- |
 | `AGENT_MODEL_ID`              | Bedrock model for the Strands agent                                    | `us.anthropic.claude-sonnet-4-6`    |
-| `FAST_MODEL_ID`               | Cheaper model for LOW priority tickets                                 | `us.anthropic.claude-3-5-haiku-20241022-v1:0`      |
+| `FAST_MODEL_ID`               | Cheaper model for LOW priority tickets                                 | `us.anthropic.claude-haiku-4-5-20251001-v1:0`      |
 | `KB_ID`                       | Pre-created Bedrock Knowledge Base ID                                  | (empty — auto-creates KB with S3 Vectors)         |
 | `SKIP_KB`.                    | Skip KB creation entirely                                              | `false`                                           |
 | `GUARDRAIL_ID`                | Bedrock Guardrail ID for PII/content filtering                         | (empty — auto-creates guardrail)                  |
@@ -465,7 +465,7 @@ The CLI passes `agentcore/.env.local` into the dev container. This file is
 ```bash
 # agentcore/.env.local
 AGENT_MODEL_ID=us.anthropic.claude-sonnet-4-6
-FAST_MODEL_ID=us.anthropic.claude-3-5-haiku-20241022-v1:0
+FAST_MODEL_ID=us.anthropic.claude-haiku-4-5-20251001-v1:0
 ```
 
 | File                      | Used by                            | Purpose                             |
@@ -588,7 +588,7 @@ variable. The model must be enabled in your Bedrock console.
 ```python
 # model/load.py — supported models include:
 # us.anthropic.claude-sonnet-4-6 (default)
-# us.anthropic.claude-3-5-haiku-20241022-v1:0 (faster, cheaper)
+# us.anthropic.claude-haiku-4-5-20251001-v1:0 (faster, cheaper)
 # us.meta.llama-4-405b-instruct-v1:0
 ```
 

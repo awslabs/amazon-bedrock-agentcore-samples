@@ -200,7 +200,7 @@ export class AgentCoreStack extends Stack {
       cfnRuntime.addPropertyOverride('EnvironmentVariables.EVENT_BUS_NAME', this.infra.eventBusName);
       cfnRuntime.addPropertyOverride('EnvironmentVariables.TICKETS_TABLE', this.infra.ticketsTable.tableName);
       cfnRuntime.addPropertyOverride('EnvironmentVariables.AGENT_MODEL_ID', process.env.AGENT_MODEL_ID || 'us.anthropic.claude-sonnet-4-6');
-      cfnRuntime.addPropertyOverride('EnvironmentVariables.FAST_MODEL_ID', process.env.FAST_MODEL_ID || 'us.anthropic.claude-3-5-haiku-20241022-v1:0');
+      cfnRuntime.addPropertyOverride('EnvironmentVariables.FAST_MODEL_ID', process.env.FAST_MODEL_ID || 'us.anthropic.claude-haiku-4-5-20251001-v1:0');
 
       // Auth mode: read from env or default to AWS_IAM
       const authMode = process.env.GATEWAY_AUTH_MODE || 'AWS_IAM';

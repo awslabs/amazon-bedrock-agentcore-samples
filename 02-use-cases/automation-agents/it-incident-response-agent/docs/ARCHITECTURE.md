@@ -983,7 +983,7 @@ sequenceDiagram
 | **agentcore.json `credentials.discoveryUrl`** | Points to `accounts.google.com` — this is correct when using Google as the OIDC provider. For Auth0, replace with `https://TENANT.auth0.com/.well-known/openid-configuration`. |
 | **agentcore.json `memories: []`** | Memory is created by the L3 `AgentCoreApplication` construct at CDK synthesis time (from the spec), not declared in agentcore.json directly. |
 | **Model ID alignment** | `model/load.py` defaults to `claude-sonnet-4-6` (matching `.env.example`). CDK injects the env var value at runtime; Python default is fallback for local dev only. |
-| **FAST_MODEL_ID** | CDK injects the `FAST_MODEL_ID` env var value. Default in `.env.example` is `claude-3-5-haiku-20241022` (fastest/cheapest for LOW priority). |
+| **FAST_MODEL_ID** | CDK injects the `FAST_MODEL_ID` env var value. Default in `.env.example` is `claude-haiku-4-5-20251001` (fastest/cheapest for LOW priority). |
 | **Gateway authorizerType** | `agentcore.json` declares `AWS_IAM` but CDK can override to `CUSTOM_JWT` via env var at deploy time. Agent code handles both modes dynamically. |
 | **query-kb target** | Always present in agentcore.json but gracefully removed by CDK `patchMcpSpecArns()` when no KB is available (SKIP_KB=true or no KB_ID). |
 | **Jira MCP transport** | Uses SSE (`sse_client`) while Gateway uses streamable HTTP (`streamablehttp_client`) — this is intentional since Atlassian's server uses SSE protocol. |
