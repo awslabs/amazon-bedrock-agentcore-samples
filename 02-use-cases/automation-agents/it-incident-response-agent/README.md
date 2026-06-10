@@ -10,14 +10,14 @@ comment back to the ticket store.
 
 ### Use case details
 
-| Information         | Details                                                                                                   |
-|---------------------|-----------------------------------------------------------------------------------------------------------|
-| Use case type       | event-driven                                                                                              |
-| Agent type          | Single agent                                                                                              |
-| Use case components | tools (MCP Gateway + Lambda), RAG (Knowledge Base), memory, observability, evaluation, guardrails, policy engine |
-| Use case vertical   | IT operations / ITSM                                                                                      |
-| Example complexity  | Advanced                                                                                                  |
-| SDK used            | Amazon Bedrock AgentCore SDK, AgentCore CLI, Strands Agents SDK, AWS CDK, boto3                            |
+| Information           | Details                                                                                                            |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| Use case type         | event-driven                                                                                                       |
+| Agent type            | Single agent                                                                                                       |
+| Use case components   | tools (MCP Gateway + Lambda), RAG (Knowledge Base), memory, observability, evaluation, guardrails, policy engine   |
+| Use case vertical     | IT operations / ITSM                                                                                               |
+| Example complexity    | Advanced                                                                                                           |
+| SDK used              | Amazon Bedrock AgentCore SDK, AgentCore CLI, Strands Agents SDK, AWS CDK, boto3                                    |
 
 ## Architecture
 
@@ -142,38 +142,38 @@ flowchart TB
 
 **Supporting services** (inside the AWS account, not shown in diagram for clarity):
 
-| Service | Role |
-|---------|------|
-| **AgentCore Memory** | SUMMARIZATION strategy — episodic recall across incidents per user |
-| **EventBridge** | Emits `TicketResolved` events for dashboards, audit, notifications |
-| **Bedrock Guardrail** | PII anonymization + content/prompt-attack filtering on event payloads |
-| **CloudWatch GenAI Observability** | OTEL traces + logs, Online Eval (4 LLM-as-judge evaluators) |
+| Service                            | Role                                                                  |
+| ---------------------------------- | --------------------------------------------------------------------- |
+| **AgentCore Memory**               | SUMMARIZATION strategy — episodic recall across incidents per user    |
+| **EventBridge**                    | Emits `TicketResolved` events for dashboards, audit, notifications    |
+| **Bedrock Guardrail**              | PII anonymization + content/prompt-attack filtering on event payloads |
+| **CloudWatch GenAI Observability** | OTEL traces + logs, Online Eval (4 LLM-as-judge evaluators)           |
 
-**AgentCore Services demonstrated (6/6):**
+**AgentCore Services demonstrated (6):**
 
-| # | Service | How it's used |
-|---|---------|---------------|
-| 1 | **Runtime** | Strands agent in container, 8-hour sessions, framework-agnostic |
-| 2 | **Gateway + Policy** | MCP protocol, 3 Lambda targets, Cedar policy engine (LOG_ONLY) |
-| 3 | **Memory** | SUMMARIZATION strategy — episodic recall across incidents per user |
-| 4 | **Identity** | AWS_IAM default, CUSTOM_JWT toggle via `@requires_access_token`, Atlassian 3LO (USER_FEDERATION) opt-in |
-| 5 | **Observability** | OTEL auto-instrumentation → CloudWatch GenAI console |
-| 6 | **Evaluations** | 4 built-in LLM-as-judge evaluators + custom domain evaluator |
+| #   | Service              | How it's used                                                                                           |
+| --- | -------------------- | ------------------------------------------------------------------------------------------------------- |
+| 1   | **Runtime**          | Strands agent in container, 8-hour sessions, framework-agnostic                                         |
+| 2   | **Gateway + Policy** | MCP protocol, 3 Lambda targets, Cedar policy engine (LOG_ONLY)                                          |
+| 3   | **Memory**           | SUMMARIZATION strategy — episodic recall across incidents per user                                      |
+| 4   | **Identity**         | AWS_IAM default, CUSTOM_JWT toggle via `@requires_access_token`, Atlassian 3LO (USER_FEDERATION) opt-in |
+| 5   | **Observability**    | OTEL auto-instrumentation → CloudWatch GenAI console                                                    |
+| 6   | **Evaluations**      | 4 built-in LLM-as-judge evaluators + custom domain evaluator                                            |
 
-**Resilience features (10/10):**
+**Resilience features (10):**
 
-| Feature | Implementation |
-|---------|---------------|
-| Idempotency | Conditional DDB writes (`attribute_not_exists`) |
-| DLQ + Retries | SQS dead-letter queue on trigger Lambda |
-| Bounded autonomy | Gateway + Policy Engine + per-tool IAM |
-| Guardrails | Bedrock Guardrail (PII anonymize, content filter, prompt attack block) |
-| Event schema discipline | `REQUIRED_FIELDS` validation in trigger |
-| Replay-based eval | `evaluate.py` + online eval on all traces |
-| Cost shape | Haiku for LOW priority, Sonnet for MEDIUM+ |
-| Latency | Async invoke (fire-and-forget at trigger) |
-| Emit pattern | EventBridge `TicketResolved` event for downstream |
-| Observability | Full OTEL tracing + CloudWatch alarms |
+| Feature                 | Implementation                                                         |
+| ----------------------- | ---------------------------------------------------------------------- |
+| Idempotency             | Conditional DDB writes (`attribute_not_exists`)                        |
+| DLQ + Retries           | SQS dead-letter queue on trigger Lambda                                |
+| Bounded autonomy        | Gateway + Policy Engine + per-tool IAM                                 |
+| Guardrails              | Bedrock Guardrail (PII anonymize, content filter, prompt attack block) |
+| Event schema discipline | `REQUIRED_FIELDS` validation in trigger                                |
+| Replay-based eval       | `evaluate.py` + online eval on all traces                              |
+| Cost shape              | Haiku for LOW priority, Sonnet for MEDIUM+                             |
+| Latency                 | Async invoke (fire-and-forget at trigger)                              |
+| Emit pattern            | EventBridge `TicketResolved` event for downstream                      |
+| Observability           | Full OTEL tracing + CloudWatch alarms                                  |
 
 ## CLI-First Approach
 
@@ -196,7 +196,27 @@ agentcore add gateway-target --name create-change-request --type lambda-function
 agentcore add gateway-target --name query-kb --type lambda-function-arn --tool-schema-file ...
 
 # Configure continuous online evaluation (LLM-as-judge) tied to the Runtime's trace output
-agentcore add online-eval --name ITIncidentEval --runtime ITIncidentAgent --evaluator Builtin.Correctness ...
+agentcore add online-eval --name ITIncidentAgentEval --runtime ITIncidentAgent \
+  --evaluator Builtin.Correctness Builtin.Helpfulness Builtin.ToolSelectionAccuracy Builtin.GoalSuccessRate \
+  --sampling-rate 100
+
+# Add a Policy Engine for bounded autonomy (Cedar policies on tool access)
+agentcore add policy-engine --name ITIncidentPolicyEngine \
+  --description "Cedar policy engine for bounded autonomy" \
+  --attach-to-gateways ITIncidentGateway --attach-mode LOG_ONLY
+
+# Add Cedar policies to the engine
+agentcore add policy --name LogAllToolCalls --engine ITIncidentPolicyEngine \
+  --statement 'permit(principal, action, resource is AgentCore::Gateway);' \
+  --validation-mode IGNORE_ALL_FINDINGS
+
+agentcore add policy --name RequireReasonForChangeRequest --engine ITIncidentPolicyEngine \
+  --statement 'forbid(principal, action, resource is AgentCore::Gateway) when { context has "toolName" && context.toolName == "create-change-request" && !(context has "reason") };' \
+  --validation-mode IGNORE_ALL_FINDINGS
+
+# Enable OpenTelemetry instrumentation (set directly in agentcore.json — no CLI command)
+# In agentcore.json → runtimes[].instrumentation: { "enableOtel": true }
+# Plus runtimes[].envVars[] for X-Ray and OTEL exporter configuration
 ```
 
 Supplementary infrastructure (DynamoDB, S3, SNS, Lambda tools) is integrated
@@ -207,7 +227,7 @@ into the same CDK stack via `InfraConstruct` — deployed together with a single
 
 1. **AWS account** with CLI configured (`aws sts get-caller-identity` works).
 2. **Bedrock model access** in your region for:
-   - The agent model (default `us.anthropic.claude-sonnet-4-6-20250929-v1:0`).
+   - The agent model (default `us.anthropic.claude-sonnet-4-6`).
    - If using KB: the embedding model (`amazon.titan-embed-text-v2:0`).
    See [Bedrock model access](https://docs.aws.amazon.com/bedrock/latest/userguide/model-access.html).
 3. **Node.js 20+** and AgentCore CLI: `npm install -g @aws/agentcore`
@@ -238,7 +258,7 @@ That's it. The deploy script handles:
 - Sourcing `.env` so CDK sees your env vars (`agentcore deploy` alone does NOT)
 - Generating `agentcore/aws-targets.json` from the template (via `envsubst`)
 - Validating `CDK_DEFAULT_ACCOUNT` is set
-- Calling `agentcore deploy -y`
+- Calling `agentcore deploy -y --target dev`
 
 > **Alternative (manual path):** If you prefer to skip the wrapper script, you
 > must export env vars yourself and create `aws-targets.json` manually:
@@ -246,9 +266,9 @@ That's it. The deploy script handles:
 > ```bash
 > set -a && source .env && set +a
 > cp agentcore/aws-targets.json.template agentcore/aws-targets.json
-> # Edit aws-targets.json → set account + region, name must be "default"
+> # Edit aws-targets.json → set account + region, name must be "dev"
 > agentcore validate
-> agentcore deploy -y
+> agentcore deploy -y --target dev
 > ```
 
 > **Note on `npm install`:** Running it inside `agentcore/cdk/` can leave an
@@ -271,13 +291,13 @@ cp .env.example .env
 ```
 
 If you need to create `aws-targets.json` manually, copy the template and fill in
-your values. Use the target name `default` unless you pass `--target <name>` to
+your values. Use the target name `dev`. You must pass `--target <name>` to
 the CLI — the name must match the deployed target recorded in
 `agentcore/.cli/deployed-state.json`, or `agentcore validate` will fail with
 "Deployed state contains target names not present in aws-targets":
 
 ```json
-[{"name": "default", "account": "YOUR_ACCOUNT_ID", "region": "us-west-2"}]
+[{"name": "dev", "account": "YOUR_ACCOUNT_ID", "region": "us-west-2"}]
 ```
 
 > **Heads-up:** `aws-targets.json` is required by `agentcore validate`. The repo
@@ -286,29 +306,28 @@ the CLI — the name must match the deployed target recorded in
 
 Optional environment variables (set in shell or `.env`):
 
-| Variable | Purpose | Default |
-|----------|---------|---------|
-| `AGENT_MODEL_ID` | Bedrock model for the Strands agent | `us.anthropic.claude-sonnet-4-5-20250929-v1:0` |
-| `FAST_MODEL_ID` | Cheaper model for LOW priority tickets | `us.anthropic.claude-3-sonnet-20240229-v1:0` |
-| `KB_ID` | Pre-created Bedrock Knowledge Base ID | (empty — auto-creates KB with S3 Vectors) |
-| `SKIP_KB` | Skip KB creation entirely | `false` |
-| `GUARDRAIL_ID` | Bedrock Guardrail ID for PII/content filtering | (empty — skips guardrail) |
-| `GUARDRAIL_VERSION` | Guardrail version to apply | `DRAFT` |
-| `EVENT_BUS_NAME` | EventBridge bus for TicketResolved events | `default` |
-| `GATEWAY_AUTH_MODE` | Auth mode: `AWS_IAM` or `CUSTOM_JWT` | `AWS_IAM` |
-| `GATEWAY_OAUTH_PROVIDER_NAME` | AgentCore credential name (CUSTOM_JWT only) | `auth0-m2m` |
-| `GATEWAY_OAUTH_AUDIENCE` | OAuth API audience (CUSTOM_JWT only) | (empty) |
-| `DESTROY_ON_DELETE` | Destroy DDB data on stack delete | `true` |
-| `SKIP_ONLINE_EVAL` | Skip online evaluation on deploy | `false` |
+| Variable                      | Purpose                                                                | Default                                           |
+| ----------------------------- | ---------------------------------------------------------------------- | ------------------------------------------------- |
+| `AGENT_MODEL_ID`              | Bedrock model for the Strands agent                                    | `us.anthropic.claude-sonnet-4-6`    |
+| `FAST_MODEL_ID`               | Cheaper model for LOW priority tickets                                 | `us.anthropic.claude-3-5-haiku-20241022-v1:0`      |
+| `KB_ID`                       | Pre-created Bedrock Knowledge Base ID                                  | (empty — auto-creates KB with S3 Vectors)         |
+| `SKIP_KB`.                    | Skip KB creation entirely                                              | `false`                                           |
+| `GUARDRAIL_ID`                | Bedrock Guardrail ID for PII/content filtering                         | (empty — auto-creates guardrail)                  |
+| `GUARDRAIL_VERSION`           | Guardrail version to apply                                             | `DRAFT`                                           |
+| `EVENT_BUS_NAME`              | EventBridge bus for TicketResolved events                              | `default`                                         |
+| `GATEWAY_AUTH_MODE`           | Auth mode: `AWS_IAM` or `CUSTOM_JWT`                                   | `AWS_IAM`                                         |
+| `GATEWAY_OAUTH_PROVIDER_NAME` | AgentCore credential name (CUSTOM_JWT only)                            | `auth0-m2m`                                       |
+| `GATEWAY_OAUTH_AUDIENCE`      | OAuth API audience (CUSTOM_JWT only)                                   | (empty)                                           |
+| `DESTROY_ON_DELETE`           | Destroy DDB data on stack delete                                       | `true`                                            |
 
 ### Jira Integration (Optional — Atlassian Remote MCP)
 
-| Variable | Purpose | Default |
-|----------|---------|---------|
-| `JIRA_OAUTH_CLIENT_ID` | Atlassian OAuth 2.0 (3LO) client ID | (empty — Jira disabled) |
-| `JIRA_OAUTH_CLIENT_SECRET` | Atlassian client secret (stored in AgentCore Identity) | (empty) |
-| `JIRA_SITE_URL` | Atlassian Cloud site (e.g. `https://your-tenant.atlassian.net`) | (empty) |
-| `JIRA_PROJECT_KEY` | Jira project key for the issues the agent operates on | `INC` |
+| Variable                   | Purpose                                                         | Default                 |
+| -------------------------- | --------------------------------------------------------------- | ----------------------- |
+| `JIRA_OAUTH_CLIENT_ID`     | Atlassian OAuth 2.0 (3LO) client ID                             | (empty — Jira disabled) |
+| `JIRA_OAUTH_CLIENT_SECRET` | Atlassian client secret (stored in AgentCore Identity)          | (empty)                 |
+| `JIRA_SITE_URL`            | Atlassian Cloud site (e.g. `https://your-tenant.atlassian.net`) | (empty)                 |
+| `JIRA_PROJECT_KEY`         | Jira project key for the issues the agent operates on           | `INC`                   |
 
 When all `JIRA_*` vars are set, the agent connects to the Atlassian Remote MCP
 server (`mcp.atlassian.com/v1/sse`) and can read issues, add comments, and
@@ -320,7 +339,7 @@ See "Enable Jira Integration" below for setup steps.
 ## Deploy
 
 ```bash
-agentcore deploy -y
+agentcore deploy -y --target dev
 ```
 
 This single command:
@@ -336,14 +355,14 @@ Expected duration: ~10–15 minutes (container build + resource provisioning).
 
 After deployment, `agentcore status` shows deployed resources. Key outputs:
 
-| Output | Description |
-|--------|-------------|
-| `TicketsTopicArn` | SNS topic — publish JSON tickets here |
-| `TicketsTableName` | DynamoDB table storing ticket state |
-| `AgentRuntimeArn` | AgentCore Runtime ARN |
-| `GatewayUrl` | MCP endpoint of the AgentCore Gateway |
-| `MemoryId` | AgentCore Memory resource ID |
-| `DLQUrl` | Dead letter queue for failed tickets |
+| Output             | Description                           |
+| ------------------ | ------------------------------------- |
+| `TicketsTopicArn`  | SNS topic — publish JSON tickets here |
+| `TicketsTableName` | DynamoDB table storing ticket state   |
+| `AgentRuntimeArn`  | AgentCore Runtime ARN                 |
+| `GatewayUrl`       | MCP endpoint of the AgentCore Gateway |
+| `MemoryId`         | AgentCore Memory resource ID          |
+| `DLQUrl`           | Dead letter queue for failed tickets  |
 
 ## Run an End-to-End Demo
 
@@ -396,13 +415,13 @@ JSON
 
 **Ticket schema** (required fields):
 
-| Field | Type | Notes |
-|-------|------|-------|
-| `ticket_id` | string | Unique. Used as Memory `session_id`. |
+| Field          | Type   | Notes                                                       |
+| -------------- | ------ | ----------------------------------------------------------- |
+| `ticket_id`    | string | Unique. Used as Memory `session_id`.                        |
 | `requester_id` | string | Must exist in the Users table (see `seed-data/users.json`). |
-| `title` | string | Brief summary of the issue. |
-| `description` | string | Detailed description with symptoms. |
-| `priority` | string | `LOW` / `MEDIUM` / `HIGH` / `CRITICAL` (default: `MEDIUM`). |
+| `title`        | string | Brief summary of the issue.                                 |
+| `description`  | string | Detailed description with symptoms.                         |
+| `priority`     | string | `LOW` / `MEDIUM` / `HIGH` / `CRITICAL` (default: `MEDIUM`). |
 
 ## Local Development
 
@@ -421,10 +440,10 @@ agentcore dev "$(cat seed-data/sample_ticket.json)"
 
 `agentcore dev` starts two services:
 
-| Port | Service | Notes |
-|------|---------|-------|
-| **8081** | Web UI (Chat inspector) | Browser-friendly, does NOT forward custom headers |
-| **8082** | Runtime container | Your agent code; accepts `curl` with custom headers |
+| Port     | Service                 | Notes                                               |
+| -------- | ----------------------- | --------------------------------------------------- |
+| **8081** | Web UI (Chat inspector) | Browser-friendly, does NOT forward custom headers   |
+| **8082** | Runtime container       | Your agent code; accepts `curl` with custom headers |
 
 > **Important**: The container's internal port 8080 is mapped to **host port 8082**.
 > Do NOT curl `localhost:8080` — nothing listens there on the host.
@@ -445,18 +464,20 @@ The CLI passes `agentcore/.env.local` into the dev container. This file is
 
 ```bash
 # agentcore/.env.local
-AGENT_MODEL_ID=us.anthropic.claude-sonnet-4-5-20250929-v1:0
-FAST_MODEL_ID=us.anthropic.claude-haiku-3-20240307-v1:0
+AGENT_MODEL_ID=us.anthropic.claude-sonnet-4-6
+FAST_MODEL_ID=us.anthropic.claude-3-5-haiku-20241022-v1:0
 ```
 
-| File | Used by | Purpose |
-|------|---------|---------|
-| `.env` | CDK synthesis (`agentcore deploy`) | Account, region, deploy-time config |
-| `agentcore/.env.local` | Dev container (`agentcore dev`) | Runtime env vars passed to agent |
-| CDK `addPropertyOverride` | Deployed Runtime | Production env vars (set at deploy) |
+| File                      | Used by                            | Purpose                             |
+| ------------------------- | ---------------------------------- | ----------------------------------- |
+| `.env`                    | CDK synthesis (`agentcore deploy`) | Account, region, deploy-time config |
+| `agentcore/.env.local`    | Dev container (`agentcore dev`)    | Runtime env vars passed to agent    |
+| CDK `addPropertyOverride` | Deployed Runtime                   | Production env vars (set at deploy) |
 
-> **Tip**: If you get "model identifier is invalid" during local dev, add
-> `AGENT_MODEL_ID` to `agentcore/.env.local` with a model you have access to.
+> **Tip**: If you get "model identifier is invalid" during local dev:
+> 1. Ensure `AWS_REGION=us-west-2` is set in `agentcore/.env.local`
+> 2. Set `AGENT_MODEL_ID` to a full model ID with version (e.g., `us.anthropic.claude-sonnet-4-6`)
+> 3. Verify the model is available in that region with `aws bedrock list-foundation-models --region us-west-2 --query 'modelSummaries[?contains(modelId, \`claude\`)].modelId'`
 
 ## Observability + Evaluation
 
@@ -476,18 +497,59 @@ agentcore traces list
 agentcore traces get <trace_id>
 ```
 
-### Online Evaluation (continuous)
+### Online Evaluation
 
-Online evaluation runs automatically on every invocation, scoring with:
-- **Correctness** — Did the agent give accurate information?
-- **Helpfulness** — Was the response useful to the user?
-- **Tool Selection Quality** — Did the agent pick the right tools?
+This project deploys **Online Evaluation** with 4 built-in evaluators:
+- `Correctness` — Did the agent provide accurate information?
+- `Helpfulness` — Was the response useful to the user?
+- `ToolSelectionAccuracy` — Did the agent choose the right tools?
+- `GoalSuccessRate` — Did the agent accomplish the user's goal?
 
-Results surface in CloudWatch under the agent's service name.
+**Configuration**: Defined declaratively in `agentcore/agentcore.json` under `onlineEvalConfigs[]`:
+
+```json
+"onlineEvalConfigs": [{
+  "name": "ITIncidentAgentEval",
+  "agent": "ITIncidentAgent",
+  "evaluators": ["Builtin.Correctness", "Builtin.Helpfulness", "Builtin.ToolSelectionAccuracy", "Builtin.GoalSuccessRate"],
+  "samplingRate": 100
+}]
+```
+
+**Important**: Online Evaluation requires **CloudWatch Transaction Search** to be enabled at the AWS account level (one-time setup). Enable it before deploying:
+
+```bash
+aws application-signals start-monitoring --region us-west-2
+# Wait 10-15 minutes for /aws/spans log group to provision
+```
+
+**To disable Online Evaluation** (e.g., for first-time setup without Transaction Search):
+set `onlineEvalConfigs` to `[]` in `agentcore/agentcore.json` and redeploy.
+
+**Cost**: Typical agent workload (100 requests/day) costs **$5-15/month**. CloudWatch Transaction Search is optional.
+
+### OpenTelemetry & Tracing (declarative)
+
+OTEL instrumentation is configured declaratively in `agentcore/agentcore.json`:
+
+```json
+"runtimes": [{
+  "name": "ITIncidentAgent",
+  "instrumentation": { "enableOtel": true },
+  "envVars": [
+    { "name": "_AWS_XRAY_DAEMON_ADDRESS", "value": "localhost:2000" },
+    { "name": "_AWS_XRAY_TRACING_ENABLED", "value": "true" },
+    { "name": "OTEL_TRACES_EXPORTER", "value": "otlp" },
+    { "name": "OTEL_EXPORTER_OTLP_PROTOCOL", "value": "http/protobuf" }
+  ]
+}]
+```
+
+The L3 construct injects these into the Runtime automatically — no imperative CDK code needed. Traces flow to CloudWatch X-Ray and are viewable in the GenAI Observability console.
 
 ### On-Demand Evaluation (custom)
 
-Run the custom `IncidentResolutionQuality` evaluator against a specific trace:
+Run the custom `IncidentResolutionQuality` evaluator against a specific trace (requires CloudWatch Transaction Search enabled):
 
 ```bash
 python scripts/evaluate.py                    # latest trace
@@ -496,9 +558,6 @@ python scripts/evaluate.py <trace_id>         # specific trace
 
 The custom evaluator scores (1–5) based on: correct user/asset identification,
 runbook usage, appropriate change requests, and clear resolution comments.
-
-> **First-time setup**: Enable **CloudWatch Transaction Search** in the region
-> or traces won't surface for evaluation.
 
 ## Inspect What the Agent Did
 
@@ -528,8 +587,8 @@ variable. The model must be enabled in your Bedrock console.
 
 ```python
 # model/load.py — supported models include:
-# us.anthropic.claude-sonnet-4-6-20250929-v1:0 (default)
-# us.anthropic.claude-haiku-3-20240307-v1:0 (faster, cheaper)
+# us.anthropic.claude-sonnet-4-6 (default)
+# us.anthropic.claude-3-5-haiku-20241022-v1:0 (faster, cheaper)
 # us.meta.llama-4-405b-instruct-v1:0
 ```
 
@@ -544,7 +603,7 @@ the agent's workflow — tool calling order, escalation logic, and output format
 2. **Create the schema**: Add `tool-schemas/my-tool.json`
 3. **Register via CLI**: `agentcore add gateway-target --name my-tool --type lambda-function-arn --tool-schema-file tool-schemas/my-tool.json --gateway ITIncidentGateway --lambda-arn PLACEHOLDER`
 4. **Wire in CDK**: Add the Lambda to `infra-construct.ts` and update `lambdaArnMap`
-5. **Deploy**: `agentcore deploy -y`
+5. **Deploy**: `agentcore deploy -y --target dev`
 
 ### Add CUSTOM_JWT Auth (Auth0/OIDC)
 
@@ -569,7 +628,7 @@ Replace AWS_IAM with external identity provider auth:
    GATEWAY_OAUTH_PROVIDER_NAME=auth0-m2m
    GATEWAY_OAUTH_AUDIENCE=https://your-api-identifier
    ```
-4. Deploy: `SKIP_ONLINE_EVAL=true agentcore deploy -y`
+4. Deploy: `agentcore deploy -y --target dev`
 5. Test: `./scripts/publish_ticket.sh && agentcore logs --since 5m`
    - Look for: `Using CUSTOM_JWT auth (provider: auth0-m2m)`
 
@@ -766,7 +825,7 @@ status directly in Jira — no mock DDB tickets needed.
    JIRA_SITE_URL=https://your-tenant.atlassian.net
    JIRA_PROJECT_KEY=INC
    ```
-4. **Deploy**: `agentcore deploy -y`
+4. **Deploy**: `agentcore deploy -y --target dev`
 5. **Add callback URL**: After deploy, copy the `JiraOauthCallbackUrl` stack output
    into the Atlassian app's "Callback URL" field.
 6. **One-time consent**: The first invocation will log a consent URL. Open it,
@@ -805,38 +864,68 @@ Or manually:
 
 ```bash
 agentcore remove all -y
-agentcore deploy -y     # deploys empty state, tears down CloudFormation
+agentcore deploy -y --target dev   # deploys empty state, tears down CloudFormation
 ```
 
 ## Troubleshooting
 
-| Issue | Solution |
-|-------|----------|
-| `agentcore validate` says "Required file not found: aws-targets.json" | Fresh clone — create it from the template: `cp agentcore/aws-targets.json.template agentcore/aws-targets.json` and fill in your account ID + region. |
-| `agentcore validate` says "Deployed state contains target names not present in aws-targets" | The `name` in `aws-targets.json` must match the deployed target in `agentcore/.cli/deployed-state.json` (default: `default`). If you tore down the stack, reset `.cli/deployed-state.json` to `{"targets": {}}`. |
-| `cdk synth`/`deploy` fails with an esbuild error | esbuild's install script was skipped by npm's allow-scripts gate. Run `npm approve-scripts esbuild` in `agentcore/cdk/`. |
-| Empty `package-lock.json` appears at the project root after `npm install` | Harmless npm quirk (parent dir has no `package.json`). Safe to delete. |
-| `agentcore deploy` fails with "S3VectorsConfiguration: required key [IndexArn] not found" | The CDK code must explicitly create `AWS::S3Vectors::VectorBucket` and `AWS::S3Vectors::Index` resources and pass their ARNs/name into the KB's `s3VectorsConfiguration`. CloudFormation does NOT auto-create S3 Vectors resources (the console's "quick create" doesn't apply to CFN). Delete the ROLLBACK_COMPLETE stack (`aws cloudformation delete-stack --stack-name <stack>`) and redeploy. |
-| Agent returns "AccessDeniedException: GetResourceOauth2Token on auth0-m2m" | `.env` has `GATEWAY_AUTH_MODE=CUSTOM_JWT` but the `auth0-m2m` credential was removed. Change to `GATEWAY_AUTH_MODE=AWS_IAM` in `.env` and redeploy. The deploy script sources `.env` and bakes `GATEWAY_AUTH_MODE` into the Runtime's env vars. |
-| `agentcore deploy` fails on container build | Ensure Docker is running. Check CodeBuild logs in the AWS console. |
-| `agentcore dev` says "No agentcore project found" | Run from `ITIncidentAgent/` (not the parent dir). The CLI looks for `agentcore/agentcore.json` in CWD. Verify `runtimes` array is not empty in `agentcore.json`. |
-| `agentcore dev` Web UI shows "Workload access token has not been set" | The agent is using `GATEWAY_AUTH_MODE=CUSTOM_JWT` but the Web UI doesn't send the `X-Amzn-Bedrock-AgentCore-Runtime-User-Id` header required for `@requires_access_token`. Fix: set `GATEWAY_AUTH_MODE=AWS_IAM` in `agentcore/.env.local` and restart, or test via `curl` on port 8082 with the header (see Local Development → Port Mapping). |
-| Gateway returns 403 | Runtime IAM role needs `bedrock-agentcore:InvokeGateway` permission (already configured). Check that the role trust policy includes `bedrock-agentcore.amazonaws.com`. |
-| `publish_ticket.sh` says "Could not find TicketsTopicArn" | Stack not deployed yet, or region mismatch. The stack is in `us-west-2` — if `AWS_REGION` is different, set `DEPLOY_REGION=us-west-2`. Run `agentcore status` to verify. |
-| Trigger Lambda says "Invalid length for runtimeSessionId" | Session ID must be ≥33 chars. This is fixed in the current code. If you see this after a manual Lambda code update, ensure you deployed the latest `lambdas/` directory. |
-| Trigger Lambda says "AGENT_RUNTIME_ARN: PENDING" | The CDK wires the Runtime ARN post-creation. Run a fresh `agentcore deploy -y` or manually set the env var via `aws lambda update-function-configuration`. |
-| Agent returns empty resolution | Check `agentcore logs --since 10m` for errors. Common cause: model access not enabled in Bedrock console. |
-| KB tool returns no results | KB requires a data source + completed ingestion job. Check the KB status in the Bedrock console. |
-| Build times out | ARM64 CodeBuild can be slow. The CLI handles retries automatically. |
-| Memory events not persisting | Verify `MEMORY_ITINCIDENTAGENTMEMORY_ID` env var is set in runtime (check `agentcore status`). |
-| Online eval shows no results | Enable **CloudWatch Transaction Search** in the region. Eval requires traces to exist first. |
-| Deploy hangs on custom resource | If a custom resource Lambda fails to import a module, CloudFormation waits 1 hour. This project uses CDK Provider framework to prevent this. If it happens, use `aws cloudformation cancel-update-stack` then fix the Lambda code. |
-| CDK synth "Cannot find asset" | Path resolution issue. The project uses `process.cwd()` instead of `__dirname` for reliable paths in compiled TypeScript. If you modify CDK code, maintain this pattern. |
-| CUSTOM_JWT auth fails with "credential not found" | Run `agentcore add credential --name <GATEWAY_OAUTH_PROVIDER_NAME> ...` first. The name must exactly match `GATEWAY_OAUTH_PROVIDER_NAME` in your `.env`. |
-| Jira MCP returns 401 / "invalid_grant" | The 3LO callback URL on the Atlassian app must exactly match `JiraOauthCallbackUrl` from stack outputs. If consent was never granted, check runtime logs for the consent URL. |
-| Jira tools not appearing in agent | Ensure `JIRA_OAUTH_CLIENT_ID` is set in `.env` AND the deploy completed after setting it. Check `agentcore logs` for "Jira integration not configured" messages. |
-| "Atlassian consent required" in logs | One-time setup: open the logged URL, authenticate as the Jira user, approve scopes. AgentCore caches the refresh token for all future invocations. |
-| Agent resolves ticket but Jira issue unchanged | Verify the agent is running in Jira mode (`"mode": "jira"` in response). Check that Jira scopes include `write:jira-work`. |
+| Issue                                                                                       | Solution                                                                                                                                                                                                                                                                                                                                                                                          |
+| ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `agentcore validate` says "Required file not found: aws-targets.json"                       | Fresh clone — create it from the template: `cp agentcore/aws-targets.json.template agentcore/aws-targets.json` and fill in your account ID + region.                                                                                                                                                                                                                                              |
+| `agentcore validate` says "Deployed state contains target names not present in aws-targets" | The `name` in `aws-targets.json` must match the deployed target in `agentcore/.cli/deployed-state.json` (default: `dev`). If you tore down the stack, reset `.cli/deployed-state.json` to `{"targets": {}}`.                                                                                                                                                                                  |
+| `cdk synth`/`deploy` fails with an esbuild error                                            | esbuild's install script was skipped by npm's allow-scripts gate. Run `npm approve-scripts esbuild` in `agentcore/cdk/`.                                                                                                                                                                                                                                                                          |
+| Empty `package-lock.json` appears at the project root after `npm install`                   | Harmless npm quirk (parent dir has no `package.json`). Safe to delete.                                                                                                                                                                                                                                                                                                                            |
+| `agentcore deploy` fails with "S3VectorsConfiguration: required key [IndexArn] not found"   | The CDK code must explicitly create `AWS::S3Vectors::VectorBucket` and `AWS::S3Vectors::Index` resources and pass their ARNs/name into the KB's `s3VectorsConfiguration`. CloudFormation does NOT auto-create S3 Vectors resources (the console's "quick create" doesn't apply to CFN). Delete the ROLLBACK_COMPLETE stack (`aws cloudformation delete-stack --stack-name <stack>`) and redeploy. |
+| Agent returns "AccessDeniedException: GetResourceOauth2Token on auth0-m2m"                  | `.env` has `GATEWAY_AUTH_MODE=CUSTOM_JWT` but the `auth0-m2m` credential was removed. Change to `GATEWAY_AUTH_MODE=AWS_IAM` in `.env` and redeploy. The deploy script sources `.env` and bakes `GATEWAY_AUTH_MODE` into the Runtime's env vars.                                                                                                                                                   |
+| `agentcore deploy` fails on container build                                                 | Ensure Docker is running. Check CodeBuild logs in the AWS console.                                                                                                                                                                                                                                                                                                                                |
+| `agentcore dev` says "No agentcore project found"                                           | Run from `ITIncidentAgent/` (not the parent dir). The CLI looks for `agentcore/agentcore.json` in CWD. Verify `runtimes` array is not empty in `agentcore.json`.                                                                                                                                                                                                                                  |
+| `agentcore dev` Web UI shows "Workload access token has not been set"                       | The agent is using `GATEWAY_AUTH_MODE=CUSTOM_JWT` but the Web UI or client oesn't send the `X-Amzn-Bedrock-AgentCore-Runtime-User-Id` header required for `@requires_access_token`. Fix: set `GATEWAY_AUTH_MODE=AWS_IAM` in `agentcore/.env.local` and restart, or test via `curl` on port 8082 with the header (see Local Development → Port Mapping).                                           |
+| Gateway returns 403                                                                         | Runtime IAM role needs `bedrock-agentcore:InvokeGateway` permission (already configured). Check that the role trust policy includes `bedrock-agentcore.amazonaws.com`.                                                                                                                                                                                                                            |
+| `publish_ticket.sh` says "Could not find TicketsTopicArn"                                   | Stack not deployed yet, or region mismatch. The stack is in `us-west-2` — if `AWS_REGION` is different, set `DEPLOY_REGION=us-west-2`. Run `agentcore status` to verify.                                                                                                                                                                                                                          |
+| Trigger Lambda says "Invalid length for runtimeSessionId"                                   | Session ID must be ≥33 chars. This is fixed in the current code. If you see this after a manual Lambda code update, ensure you deployed the latest `lambdas/` directory.                                                                                                                                                                                                                          |
+| Trigger Lambda says "AGENT_RUNTIME_ARN: PENDING"                                            | The CDK wires the Runtime ARN post-creation. Run a fresh `agentcore deploy -y --target dev` or manually set the env var via `aws lambda update-function-configuration`.                                                                                                                                                                                                                                        |
+| "The provided model identifier is invalid" during `agentcore dev`                           | (1) Verify `AWS_REGION=us-west-2` is set in `agentcore/.env.local`. (2) Verify `AGENT_MODEL_ID` includes the full version (e.g., `us.anthropic.claude-sonnet-4-6`, not truncated). (3) Check model availability: `aws bedrock list-foundation-models --region us-west-2 --query 'modelSummaries[?contains(modelId, \`claude\`)].modelId'`.                                            |
+| Agent returns empty resolution                                                              | Check `agentcore logs --since 10m` for errors. Common cause: model access not enabled in Bedrock console.                                                                                                                                                                                                                                                                                         |
+| KB tool returns no results                                                                  | KB requires a data source + completed ingestion job. Check the KB status in the Bedrock console.                                                                                                                                                                                                                                                                                                  |
+| Build times out                                                                             | ARM64 CodeBuild can be slow. The CLI handles retries automatically.                                                                                                                                                                                                                                                                                                                               |
+| Memory events not persisting                                                                | Verify `MEMORY_ITINCIDENTAGENTMEMORY_ID` env var is set in runtime (check `agentcore status`).                                                                                                                                                                                                                                                                                                    |
+| Online eval deploy fails: "Access denied when accessing index policy for aws/spans"         | CloudWatch Transaction Search is not enabled. Run `aws application-signals start-monitoring --region us-west-2`, wait 10-15 minutes for `/aws/spans` to provision, then redeploy. To skip online eval, set `onlineEvalConfigs: []` in `agentcore.json`.                                                                                                                                            |
+| Online eval shows no results                                                                | Enable **CloudWatch Transaction Search** in the region. Eval requires traces to exist first.                                                                                                                                                                                                                                                                                                      |
+| Deploy hangs on custom resource                                                             | If a custom resource Lambda fails to import a module, CloudFormation waits 1 hour. This project uses CDK Provider framework to prevent this. If it happens, use `aws cloudformation cancel-update-stack` then fix the Lambda code.                                                                                                                                                                |
+| CDK synth "Cannot find asset"                                                               | Path resolution issue. The project uses `process.cwd()` instead of `__dirname` for reliable paths in compiled TypeScript. If you modify CDK code, maintain this pattern.                                                                                                                                                                                                                          |
+| CUSTOM_JWT auth fails with "credential not found"                                           | Run `agentcore add credential --name <GATEWAY_OAUTH_PROVIDER_NAME> ...` first. The name must exactly match `GATEWAY_OAUTH_PROVIDER_NAME` in your `.env`.                                                                                                                                                                                                                                          |
+| Jira MCP returns 401 / "invalid_grant"                                                      | The 3LO callback URL on the Atlassian app must exactly match `JiraOauthCallbackUrl` from stack outputs. If consent was never granted, check runtime logs for the consent URL.                                                                                                                                                                                                                     |
+| Jira tools not appearing in agent                                                           | Ensure `JIRA_OAUTH_CLIENT_ID` is set in `.env` AND the deploy completed after setting it. Check `agentcore logs` for "Jira integration not configured" messages.                                                                                                                                                                                                                                  |
+| "Atlassian consent required" in logs                                                        | One-time setup: open the logged URL, authenticate as the Jira user, approve scopes. AgentCore caches the refresh token for all future invocations.                                                                                                                                                                                                                                                |
+| Agent resolves ticket but Jira issue unchanged                                              | Verify the agent is running in Jira mode (`"mode": "jira"` in response). Check that Jira scopes include `write:jira-work`.                                                                                                                                                                                                                                                                        |
+
+## Design Decisions
+
+This project makes specific architectural choices (Lambda tools vs inline,
+SNS trigger pattern, SUMMARIZATION memory, single CDK stack, etc.) for deliberate
+reasons. For the full rationale behind each decision, see
+**[docs/design-decisions.md](docs/design-decisions.md)**.
+
+## Contributing
+
+We welcome contributions! Please see the repository-level
+[CONTRIBUTING.md](../../CONTRIBUTING.md) for guidelines on reporting bugs,
+submitting pull requests, and code standards.
+
+**Quick links:**
+- 🐛 [Report a bug](https://github.com/aws-samples/amazon-bedrock-agentcore-samples/issues/new?labels=bug&template=bug_report.md)
+- 💡 [Request a feature](https://github.com/aws-samples/amazon-bedrock-agentcore-samples/issues/new?labels=enhancement&template=feature_request.md)
+- 💬 [Ask a question / start a discussion](https://github.com/aws-samples/amazon-bedrock-agentcore-samples/discussions)
+
+## Security
+
+Please do **not** open public GitHub issues for security concerns — use the
+[AWS vulnerability reporting page](http://aws.amazon.com/security/vulnerability-reporting/).
+
+## License
+
+This project is licensed under the **Apache License 2.0** — see the repository-level
+[LICENSE](../../LICENSE) for the full text.
 
 ## Further Reading
 

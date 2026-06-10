@@ -131,7 +131,7 @@ GATEWAY_OAUTH_AUDIENCE=https://it-incident-response/api     # your API identifie
 
 ```bash
 # Ensure AWS credentials are configured (aws configure, SSO, or environment variables)
-SKIP_ONLINE_EVAL=true agentcore deploy -y
+agentcore deploy -y --target dev
 ```
 
 The deploy will:
@@ -216,7 +216,7 @@ sed -i '' 's/GATEWAY_AUTH_MODE=CUSTOM_JWT/GATEWAY_AUTH_MODE=AWS_IAM/' .env
 
 # Redeploy
 # Ensure AWS credentials are configured (aws configure, SSO, or environment variables)
-SKIP_ONLINE_EVAL=true agentcore deploy -y
+agentcore deploy -y --target dev
 
 # Test — should work with SigV4 auth now
 ./scripts/publish_ticket.sh
@@ -293,7 +293,7 @@ is rejected at the Gateway — the agent's tools never execute.
 The `enable-custom-jwt.sh` script prompts for audience, client ID, and
 (optionally) a space-separated list of scopes, and writes all three into the
 `customJwtAuthorizer` block. To set scopes manually, edit `agentcore.json` as
-shown above and run `agentcore deploy -y`.
+shown above and run `agentcore deploy -y --target dev`.
 
 > **Tip**: Omit a field entirely to skip that check. For example, leaving out
 > `allowedScopes` accepts any scope; leaving out `allowedClients` accepts tokens
@@ -391,7 +391,7 @@ GATEWAY_AUTH_MODE=AWS_IAM
 
 # Deploy:
 # Ensure AWS credentials are configured (aws configure, SSO, or environment variables)
-SKIP_ONLINE_EVAL=true agentcore deploy -y
+agentcore deploy -y --target dev
 
 # Optionally remove the credential:
 agentcore remove credential --name auth0-m2m -y

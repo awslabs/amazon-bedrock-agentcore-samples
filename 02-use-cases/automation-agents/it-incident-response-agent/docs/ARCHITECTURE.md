@@ -207,7 +207,7 @@ Two formats supported:
 
 | File | Role | When to Edit |
 |------|------|--------------|
-| `agentcore/agentcore.json` | Declares Runtime, Gateway (semantic search + DEBUG), Memory, targets | Adding/removing AgentCore resources |
+| `agentcore/agentcore.json` | Declares Runtime, Gateway (semantic search + DEBUG), Online Eval, Policy Engine, targets | Adding/removing AgentCore resources |
 | `agentcore/aws-targets.json` | Deploy target (account + region) | Changing where you deploy |
 | `.env.example` | Environment variable template | Adding new config |
 
@@ -243,15 +243,14 @@ Two formats supported:
 | File | Role |
 |------|------|
 | `lambdas/infra/seeder.py` | Seeds DDB tables on deploy |
-| `lambdas/infra/online_eval_provider.py` | Creates online evaluation config |
 | `lambdas/infra/jira_oauth_provider.py` | Registers AtlassianOauth2 credential provider (opt-in) |
 
 ### Infrastructure (CDK)
 
 | File | Role |
 |------|------|
-| `agentcore/cdk/lib/cdk-stack.ts` | Main stack: AgentCore + Infra + Online Eval |
-| `agentcore/cdk/lib/infra-construct.ts` | Gap-fill: DDB, S3, Lambdas, SNS, EventBridge, Guardrail, alarms |
+| `agentcore/cdk/lib/cdk-stack.ts` | Main stack: AgentCore (Runtime, Gateway, Memory, Online Eval, Policy Engine) + Infra + custom env vars |
+| `agentcore/cdk/lib/infra-construct.ts` | Gap-fill: DDB, S3, Lambdas, SNS, EventBridge, Guardrail, KB, alarms |
 | `agentcore/cdk/bin/cdk.ts` | CDK app entry: reads agentcore.json, creates stacks |
 
 ### Operational Scripts
@@ -367,6 +366,52 @@ Two formats supported:
 └──────────────────────────────────────────────────────────────────────────────┘
 ```
 </details>
+
+---
+
+## Declarative vs Imperative (what's managed where)
+
+```mermaid
+graph TB
+    subgraph DECLARATIVE["agentcore.json (declarative, CLI-managed)"]
+        RT[Runtime]
+        GW[Gateway + Targets]
+        PE[Policy Engine + Policies]
+        OE[Online Evaluation]
+        MEM[Memory]
+        OTEL[OTEL Instrumentation]
+    end
+
+    subgraph IMPERATIVE["CDK (imperative, gap-fill)"]
+        DDB[DynamoDB Tables]
+        S3[S3 Buckets + KB]
+        LAM[Lambda Tools]
+        SNST[SNS + Trigger]
+        EB[EventBridge Bus]
+        GR[Guardrail]
+        ALM[CloudWatch Alarms]
+        ENV[Runtime Custom Env Vars]
+        IAM[Runtime Additional IAM]
+        JIRA_P[Jira OAuth Provider]
+    end
+
+    classDef decl fill:#6366F1,color:#fff
+    classDef imp fill:#F59E0B,color:#000
+    class RT,GW,PE,OE,MEM,OTEL decl
+    class DDB,S3,LAM,SNST,EB,GR,ALM,ENV,IAM,JIRA_P imp
+```
+
+| Resource | Managed By | Configuration |
+|----------|-----------|---------------|
+| Runtime (container, OTEL) | `agentcore.json` → L3 | `runtimes[]` + `instrumentation` + `envVars[]` |
+| Gateway + targets | `agentcore.json` → L3 | `agentCoreGateways[]` (ARNs patched at synth) |
+| Policy Engine + Cedar policies | `agentcore.json` → L3 | `policyEngines[]` + `policyEngineConfiguration` on gateway |
+| Online Evaluation | `agentcore.json` → L3 | `onlineEvalConfigs[]` (set to `[]` to disable) |
+| Memory | `agentcore.json` → L3 | `memories[]` (SUMMARIZATION strategy) |
+| DynamoDB, S3, Lambda, SNS, EventBridge, Guardrail, KB, Alarms | CDK `InfraConstruct` | Supplementary infra not managed by AgentCore |
+| Runtime custom env vars | CDK `addPropertyOverride` | GUARDRAIL_ID, EVENT_BUS_NAME, TICKETS_TABLE, model IDs, auth mode |
+| Runtime additional IAM | CDK `iam.Policy` | DynamoDB, Guardrail, EventBridge, X-Ray, CloudWatch Logs |
+| Jira OAuth provider | CDK custom resource | Conditional (when `JIRA_OAUTH_CLIENT_ID` set) |
 
 ---
 
@@ -834,6 +879,7 @@ sequenceDiagram
 │                     ▼                                                           │
 │  ┌──────────────────────────────────────┐                                      │
 │  │  Online Evaluation (continuous)      │                                      │
+│  │  (declarative: agentcore.json)       │                                      │
 │  │                                      │                                      │
 │  │  Evaluators (LLM-as-judge):          │                                      │
 │  │  • GoalSuccessRate                   │                                      │
@@ -843,6 +889,12 @@ sequenceDiagram
 │  │                                      │                                      │
 │  │  + Custom: IncidentResolutionQuality │                                      │
 │  │    (scripts/evaluate.py, on-demand)  │                                      │
+│  │                                      │                                      │
+│  │  Prerequisite: CloudWatch            │                                      │
+│  │  Transaction Search (account-level)  │                                      │
+│  │                                      │                                      │
+│  │  To disable: set onlineEvalConfigs   │                                      │
+│  │  to [] in agentcore.json             │                                      │
 │  └──────────────────────────────────────┘                                      │
 │                                                                                │
 │  Access:                                                                       │
@@ -860,9 +912,8 @@ sequenceDiagram
 
 | Pattern | Why | Reference |
 |---------|-----|-----------|
-| CDK Provider instead of raw serviceToken | Raw custom resources hang for 1 hour on import errors | `docs/online-eval-workaround.md` |
+| CDK Provider for custom resources | Raw custom resources hang for 1 hour on import errors; Provider framework guarantees cfnresponse | `infra-construct.ts` (seeder), `cdk-stack.ts` (Jira OAuth) |
 | `process.cwd()` instead of `__dirname` | Compiled TS changes `__dirname` relative path | `std.cdk.process-cwd-not-dirname` |
-| Online eval as custom resource (not L3) | L3 construct missing DependsOn Runtime | `docs/online-eval-workaround.md` |
 | `patchMcpSpecArns()` | Replaces placeholder ARNs with real Lambda ARNs at synth | `cdk-stack.ts` |
 | Targets filtered when no KB_ID | Prevents CloudFormation validation error on placeholder | `cdk-stack.ts` |
 | 3-min Lambda timeout on custom resources | Prevents hour-long hangs on API failures | `std.cdk.short-custom-resource-timeout` |
@@ -871,8 +922,6 @@ sequenceDiagram
 | SigV4 httpx.Auth for MCP client | `streamablehttp_client` doesn't sign requests; AWS_IAM gateways need SigV4 for `bedrock-agentcore` | `mcp_client/client.py` |
 | Runtime role filter: `includes('Runtime') && includes('ExecutionRole')` | Must target Runtime role specifically; `includes('Agent') && includes('Role')` matches Memory role first | `cdk-stack.ts` Step 5b |
 | Seeder depends on SeedDataDeploy | Race condition: seeder Lambda runs before BucketDeployment finishes uploading seed data to S3 → `NoSuchKey` | `infra-construct.ts` |
-| Gateway role `addPropertyOverride` for `lambda:InvokeFunction` | L3 `AgentCoreMcp` doesn't grant the Gateway role invoke permissions on Lambda targets; adding a separate Policy causes circular deps | `cdk-stack.ts` Step 5.1 |
-| `SKIP_ONLINE_EVAL` must be exported in shell | `agentcore deploy` does NOT source project-level `.env` files into CDK synthesis; env vars must be set in the shell environment | `.env.local`, deploy command |
 
 ---
 
@@ -932,8 +981,8 @@ sequenceDiagram
 |------|--------|
 | **agentcore.json `credentials.discoveryUrl`** | Points to `accounts.google.com` — this is correct when using Google as the OIDC provider. For Auth0, replace with `https://TENANT.auth0.com/.well-known/openid-configuration`. |
 | **agentcore.json `memories: []`** | Memory is created by the L3 `AgentCoreApplication` construct at CDK synthesis time (from the spec), not declared in agentcore.json directly. |
-| **Model ID alignment** | `model/load.py` defaults to `claude-sonnet-4-6` but CDK injects `claude-sonnet-4-5` via env var. CDK value wins at runtime; Python default is fallback for local dev only. |
-| **FAST_MODEL_ID** | CDK injects `claude-3-sonnet-20240229` but `model/load.py` defaults to `claude-haiku-3-20240307`. CDK value wins at runtime. Adjust `.env` if you want Haiku for cost savings. |
+| **Model ID alignment** | `model/load.py` defaults to `claude-sonnet-4-6` (matching `.env.example`). CDK injects the env var value at runtime; Python default is fallback for local dev only. |
+| **FAST_MODEL_ID** | CDK injects the `FAST_MODEL_ID` env var value. Default in `.env.example` is `claude-3-5-haiku-20241022` (fastest/cheapest for LOW priority). |
 | **Gateway authorizerType** | `agentcore.json` declares `AWS_IAM` but CDK can override to `CUSTOM_JWT` via env var at deploy time. Agent code handles both modes dynamically. |
 | **query-kb target** | Always present in agentcore.json but gracefully removed by CDK `patchMcpSpecArns()` when no KB is available (SKIP_KB=true or no KB_ID). |
 | **Jira MCP transport** | Uses SSE (`sse_client`) while Gateway uses streamable HTTP (`streamablehttp_client`) — this is intentional since Atlassian's server uses SSE protocol. |
