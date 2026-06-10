@@ -11,7 +11,7 @@ Prerequisites:
   - At least one ticket processed (to generate a trace)
 
 The script runs three built-in evaluators (Correctness, Helpfulness,
-ToolSelectionQuality) plus a custom IncidentResolutionQuality evaluator.
+ToolSelectionAccuracy) plus a custom IncidentResolutionQuality evaluator.
 """
 
 import argparse
@@ -31,6 +31,12 @@ CUSTOM_EVALUATOR_NAME = "IncidentResolutionQuality"
 
 CUSTOM_INSTRUCTIONS = """\
 You are a senior IT incident-response engineer reviewing one agent run.
+
+Here is the full trace context:
+{context}
+
+And the agent's final response:
+{assistant_turn}
 
 Score how well the agent resolved the user's IT ticket end-to-end. Reward:
 - correct identification of the affected user / asset / process
@@ -90,9 +96,10 @@ def latest_trace_id(log_group: str, lookback_minutes: int = 30) -> str:
     start = end - lookback_minutes * 60 * 1000
 
     query = (
-        "fields @timestamp, trace_id "
-        "| filter ispresent(trace_id) "
+        "fields @timestamp, traceId "
+        "| filter ispresent(traceId) "
         "| sort @timestamp desc "
+        "| dedup traceId "
         "| limit 1"
     )
     q = logs.start_query(
@@ -114,19 +121,81 @@ def latest_trace_id(log_group: str, lookback_minutes: int = 30) -> str:
             "Run ./scripts/publish_ticket.sh first and wait ~30s."
         )
     fields = {kv["field"]: kv["value"] for kv in resp["results"][0]}
-    return fields["trace_id"]
+    return fields["traceId"]
 
 
-def run_evaluator(rt, evaluator_id: str, trace_id: str) -> list:
-    """Run an evaluator against a trace."""
+def fetch_spans_for_trace(trace_id: str) -> list:
+    """Fetch Strands telemetry spans from the runtime log group for a given trace.
+
+    The Evaluate API requires spans with scope 'strands.telemetry.tracer'.
+    These live in the runtime log group (not aws/spans which only has X-Ray segments).
+    """
+    logs = boto3.client("logs", region_name=REGION)
+    end = int(time.time() * 1000)
+    start = end - 2 * 60 * 60 * 1000  # last 2 hours
+
+    # Find the runtime log group
+    resp = logs.describe_log_groups(
+        logGroupNamePrefix="/aws/bedrock-agentcore/runtimes/ITIncidentAgent"
+    )
+    runtime_log_groups = [
+        lg["logGroupName"] for lg in resp.get("logGroups", [])
+        if "DEFAULT" in lg["logGroupName"]
+    ]
+    if not runtime_log_groups:
+        print("    No runtime log group found")
+        return []
+
+    # Use the most recent runtime log group
+    log_group = runtime_log_groups[-1]
+
+    query = (
+        f'fields @message '
+        f'| filter @message like /strands.telemetry/ and @message like /"{trace_id}"/ '
+        f'| limit 50'
+    )
+    q = logs.start_query(
+        logGroupName=log_group,
+        startTime=start,
+        endTime=end,
+        queryString=query,
+    )["queryId"]
+
+    while True:
+        resp = logs.get_query_results(queryId=q)
+        if resp["status"] in ("Complete", "Failed", "Cancelled"):
+            break
+        time.sleep(1)
+
+    spans = []
+    for result in resp.get("results", []):
+        fields = {kv["field"]: kv["value"] for kv in result}
+        msg = fields.get("@message", "")
+        if msg:
+            try:
+                spans.append(json.loads(msg))
+            except json.JSONDecodeError:
+                pass
+    return spans
+
+
+def run_evaluator(rt, evaluator_id: str, trace_id: str, spans: list) -> list:
+    """Run an evaluator against a trace with span data."""
+    if not spans:
+        print("    SKIPPED: No span data available for this trace")
+        return []
     try:
+        # Pass raw OTEL span objects directly — the API accepts free-form span structures
         resp = rt.evaluate(
             evaluatorId=evaluator_id,
-            evaluationTarget={"traceIds": [trace_id]},
+            evaluationInput={"sessionSpans": spans},
         )
-        return resp.get("evaluationResults", [])
+        return resp.get("evaluationResults", resp.get("results", [resp]))
     except ClientError as exc:
-        print(f"    FAILED: {exc.response['Error']['Code']}")
+        print(f"    FAILED: {exc.response['Error']['Code']}: {exc.response['Error'].get('Message','')[:200]}")
+        return []
+    except Exception as exc:
+        print(f"    FAILED: {type(exc).__name__}: {str(exc)[:200]}")
         return []
 
 
@@ -139,13 +208,18 @@ def main():
     )
     parser.add_argument(
         "--log-group",
-        default="/aws/bedrock-agentcore/runtimes/ITIncidentAgent",
-        help="CloudWatch log group for the runtime",
+        default="aws/spans",
+        help="CloudWatch log group containing indexed spans (Transaction Search)",
     )
     args = parser.parse_args()
 
     trace_id = args.trace_id or latest_trace_id(args.log_group)
     print(f"==> Evaluating trace: {trace_id}")
+    print()
+
+    print("  Fetching spans from aws/spans ...")
+    spans = fetch_spans_for_trace(trace_id)
+    print(f"  Found {len(spans)} span(s)")
     print()
 
     control = boto3.client("bedrock-agentcore-control", region_name=REGION)
@@ -156,13 +230,13 @@ def main():
         custom_id: CUSTOM_EVALUATOR_NAME,
         "Builtin.Correctness": "Correctness",
         "Builtin.Helpfulness": "Helpfulness",
-        "Builtin.ToolSelectionQuality": "Tool Selection Quality",
+        "Builtin.ToolSelectionAccuracy": "Tool Selection Quality",
     }
 
     all_results = []
     for eid, name in evaluators.items():
         print(f"  Running: {name} ...")
-        results = run_evaluator(rt, eid, trace_id)
+        results = run_evaluator(rt, eid, trace_id, spans)
         for r in results:
             r["evaluator_name"] = name
         all_results.extend(results)
