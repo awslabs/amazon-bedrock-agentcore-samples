@@ -287,3 +287,6 @@ plan/
 02-use-cases/automation-agents/it-incident-response-agent/.env.bu
 02-use-cases/automation-agents/it-incident-response-agent/.env.bak
 02-use-cases/automation-agents/it-incident-response-agent/agentcore/cdk/.husky/pre-commit
+02-use-cases/automation-agents/it-incident-response-agent/docs/use-case-samples-evaluation.html
+02-use-cases/automation-agents/it-incident-response-agent/docs/use-case-samples-evaluation.md
+02-use-cases/automation-agents/it-incident-response-agent/docs/eval-style.css
