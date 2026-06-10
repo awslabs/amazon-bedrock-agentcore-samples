@@ -60,7 +60,8 @@ def _create_sigv4_auth():
             # Build a botocore AWSRequest for signing
             # Exclude headers that SigV4Auth will compute
             headers = {
-                k: v for k, v in request.headers.items()
+                k: v
+                for k, v in request.headers.items()
                 if k.lower() not in ("host", "authorization", "x-amz-date", "x-amz-security-token")
             }
             aws_request = AWSRequest(
@@ -88,6 +89,7 @@ def _create_sigv4_auth():
 #   - If called from a running event loop (async def invoke): uses ThreadPoolExecutor
 #   - If called from sync context (local dev): uses asyncio.run()
 # The token flows directly into the closure — no module-level cache needed.
+
 
 def _create_custom_jwt_client() -> Optional[MCPClient]:
     """Create Gateway MCP client with CUSTOM_JWT auth.
@@ -142,9 +144,7 @@ def get_streamable_http_mcp_client() -> Optional[MCPClient]:
         # AWS_IAM mode — SigV4 signing via botocore (signs every request)
         logger.info("Using AWS_IAM auth (SigV4 for bedrock-agentcore)")
         sigv4_auth = _create_sigv4_auth()
-        return MCPClient(
-            lambda: streamablehttp_client(GATEWAY_URL, auth=sigv4_auth)
-        )
+        return MCPClient(lambda: streamablehttp_client(GATEWAY_URL, auth=sigv4_auth))
 
 
 def get_all_mcp_clients() -> list[MCPClient]:

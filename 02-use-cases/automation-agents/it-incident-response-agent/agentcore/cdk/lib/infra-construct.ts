@@ -73,9 +73,7 @@ export class InfraConstruct extends Construct {
 
     const stack = cdk.Stack.of(this);
     const destroyOnDelete = props.destroyOnDelete ?? true;
-    const removalPolicy = destroyOnDelete
-      ? cdk.RemovalPolicy.DESTROY
-      : cdk.RemovalPolicy.RETAIN;
+    const removalPolicy = destroyOnDelete ? cdk.RemovalPolicy.DESTROY : cdk.RemovalPolicy.RETAIN;
 
     // ─── Bedrock Guardrail ─────────────────────────────────────────
     this.guardrailId = props.guardrailId ?? '';
@@ -209,9 +207,7 @@ export class InfraConstruct extends Construct {
               new iam.PolicyStatement({
                 sid: 'EmbeddingModel',
                 actions: ['bedrock:InvokeModel'],
-                resources: [
-                  `arn:aws:bedrock:${stack.region}::foundation-model/amazon.titan-embed-text-v2:0`,
-                ],
+                resources: [`arn:aws:bedrock:${stack.region}::foundation-model/amazon.titan-embed-text-v2:0`],
               }),
               new iam.PolicyStatement({
                 sid: 'S3VectorsAccess',
@@ -223,10 +219,7 @@ export class InfraConstruct extends Construct {
                   's3vectors:ListVectors',
                   's3vectors:DeleteVectors',
                 ],
-                resources: [
-                  vectorBucket.attrVectorBucketArn,
-                  vectorIndex.attrIndexArn,
-                ],
+                resources: [vectorBucket.attrVectorBucketArn, vectorIndex.attrIndexArn],
               }),
             ],
           }),
@@ -307,7 +300,8 @@ export class InfraConstruct extends Construct {
         properties: {
           Name: 'it-incident-agent-guardrail',
           Description: 'Filters PII and inappropriate content from ticket payloads before model invocation',
-          BlockedInputMessaging: 'This ticket contains content that cannot be processed. Please remove sensitive information and resubmit.',
+          BlockedInputMessaging:
+            'This ticket contains content that cannot be processed. Please remove sensitive information and resubmit.',
           BlockedOutputsMessaging: 'The response was filtered for safety.',
           SensitiveInformationPolicyConfig: {
             PiiEntitiesConfig: [
@@ -412,10 +406,8 @@ export class InfraConstruct extends Construct {
       queryKbFn.addToRolePolicy(
         new iam.PolicyStatement({
           actions: ['bedrock:Retrieve'],
-          resources: [
-            `arn:aws:bedrock:${stack.region}:${stack.account}:knowledge-base/*`,
-          ],
-        }),
+          resources: [`arn:aws:bedrock:${stack.region}:${stack.account}:knowledge-base/*`],
+        })
       );
       this.lambdaArnMap['query-kb'] = queryKbFn.functionArn;
       this.toolFunctions['query-kb'] = queryKbFn;
@@ -453,12 +445,10 @@ export class InfraConstruct extends Construct {
       new iam.PolicyStatement({
         actions: ['bedrock-agentcore:InvokeAgentRuntime'],
         resources: ['*'],
-      }),
+      })
     );
 
-    this.triggerFn.addEventSource(
-      new lambdaEventSources.SnsEventSource(this.ticketsTopic),
-    );
+    this.triggerFn.addEventSource(new lambdaEventSources.SnsEventSource(this.ticketsTopic));
 
     // ─── Observability ─────────────────────────────────────────────
 
@@ -499,10 +489,8 @@ export class InfraConstruct extends Construct {
       seederFn.addToRolePolicy(
         new iam.PolicyStatement({
           actions: ['bedrock:StartIngestionJob', 'bedrock:GetIngestionJob'],
-          resources: [
-            `arn:aws:bedrock:${stack.region}:${stack.account}:knowledge-base/*`,
-          ],
-        }),
+          resources: [`arn:aws:bedrock:${stack.region}:${stack.account}:knowledge-base/*`],
+        })
       );
     }
 

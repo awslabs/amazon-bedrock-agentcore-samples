@@ -42,9 +42,7 @@ def lambda_handler(event, context):
         resp = _kb.retrieve(
             knowledgeBaseId=KB_ID,
             retrievalQuery={"text": query},
-            retrievalConfiguration={
-                "vectorSearchConfiguration": {"numberOfResults": top_k}
-            },
+            retrievalConfiguration={"vectorSearchConfiguration": {"numberOfResults": top_k}},
         )
     except Exception as exc:
         logger.exception("KB retrieve failed")

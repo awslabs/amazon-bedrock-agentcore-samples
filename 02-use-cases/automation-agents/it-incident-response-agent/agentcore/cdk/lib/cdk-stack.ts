@@ -179,28 +179,33 @@ export class AgentCoreStack extends Stack {
     //   AGENTCORE_GATEWAY_{NAME}_URL, MEMORY_{NAME}_ID, etc.
     // We add a GATEWAY_URL alias and additional env vars for features the L3
     // doesn't know about (guardrails, EventBridge, DynamoDB, model routing).
-    const runtimeConstruct = this.application.node.findAll().find(
-      (c) => (c as any).cfnResourceType === 'AWS::BedrockAgentCore::Runtime'
-    );
+    const runtimeConstruct = this.application.node
+      .findAll()
+      .find(c => (c as any).cfnResourceType === 'AWS::BedrockAgentCore::Runtime');
     if (runtimeConstruct) {
       const cfnRuntime = runtimeConstruct as cdk.CfnResource;
 
       // GATEWAY_URL alias: The L3 sets AGENTCORE_GATEWAY_ITINCIDENTGATEWAY_URL
       // but agent code also reads GATEWAY_URL for backward compatibility.
       // Find the gateway resource to get its URL attribute.
-      const gatewayCfn = this.node.findAll().find(
-        (c) => (c as any).cfnResourceType === 'AWS::BedrockAgentCore::Gateway'
-      ) as cdk.CfnResource | undefined;
+      const gatewayCfn = this.node
+        .findAll()
+        .find(c => (c as any).cfnResourceType === 'AWS::BedrockAgentCore::Gateway') as cdk.CfnResource | undefined;
       if (gatewayCfn) {
-        cfnRuntime.addPropertyOverride('EnvironmentVariables.GATEWAY_URL',
-          gatewayCfn.getAtt('GatewayUrl'));
+        cfnRuntime.addPropertyOverride('EnvironmentVariables.GATEWAY_URL', gatewayCfn.getAtt('GatewayUrl'));
       }
 
       cfnRuntime.addPropertyOverride('EnvironmentVariables.GUARDRAIL_ID', this.infra.guardrailId);
       cfnRuntime.addPropertyOverride('EnvironmentVariables.EVENT_BUS_NAME', this.infra.eventBusName);
       cfnRuntime.addPropertyOverride('EnvironmentVariables.TICKETS_TABLE', this.infra.ticketsTable.tableName);
-      cfnRuntime.addPropertyOverride('EnvironmentVariables.AGENT_MODEL_ID', process.env.AGENT_MODEL_ID || 'us.anthropic.claude-sonnet-4-6');
-      cfnRuntime.addPropertyOverride('EnvironmentVariables.FAST_MODEL_ID', process.env.FAST_MODEL_ID || 'us.anthropic.claude-haiku-4-5-20251001-v1:0');
+      cfnRuntime.addPropertyOverride(
+        'EnvironmentVariables.AGENT_MODEL_ID',
+        process.env.AGENT_MODEL_ID || 'us.anthropic.claude-sonnet-4-6'
+      );
+      cfnRuntime.addPropertyOverride(
+        'EnvironmentVariables.FAST_MODEL_ID',
+        process.env.FAST_MODEL_ID || 'us.anthropic.claude-haiku-4-5-20251001-v1:0'
+      );
 
       // Auth mode: read from env or default to AWS_IAM
       const authMode = process.env.GATEWAY_AUTH_MODE || 'AWS_IAM';
@@ -221,8 +226,7 @@ export class AgentCoreStack extends Stack {
         cfnRuntime.addPropertyOverride('EnvironmentVariables.JIRA_MCP_URL', 'https://mcp.atlassian.com/v1/sse');
         cfnRuntime.addPropertyOverride('EnvironmentVariables.JIRA_SITE_URL', process.env.JIRA_SITE_URL || '');
         cfnRuntime.addPropertyOverride('EnvironmentVariables.JIRA_PROJECT_KEY', process.env.JIRA_PROJECT_KEY || 'INC');
-        cfnRuntime.addPropertyOverride('EnvironmentVariables.JIRA_OAUTH_PROVIDER_NAME',
-          this.jiraProviderName || '');
+        cfnRuntime.addPropertyOverride('EnvironmentVariables.JIRA_OAUTH_PROVIDER_NAME', this.jiraProviderName || '');
       }
 
       // ─── OBSERVABILITY: OpenTelemetry & X-Ray Configuration ────────
@@ -246,11 +250,14 @@ export class AgentCoreStack extends Stack {
     //   - xray:PutTelemetryRecords (X-Ray telemetry)
     //   - logs:FilterLogEvents, logs:GetLogEvents, logs:DescribeLogGroups (CloudWatch Logs Insights)
     // Filter specifically for the Runtime ExecutionRole (not Memory's role).
-    const runtimeRole = this.application.node.findAll().find(
-      (c) => (c as any).cfnResourceType === 'AWS::IAM::Role' &&
-             c.node.path.includes('Runtime') &&
-             c.node.path.includes('ExecutionRole')
-    );
+    const runtimeRole = this.application.node
+      .findAll()
+      .find(
+        c =>
+          (c as any).cfnResourceType === 'AWS::IAM::Role' &&
+          c.node.path.includes('Runtime') &&
+          c.node.path.includes('ExecutionRole')
+      );
     if (runtimeRole) {
       const cfnRole = runtimeRole as cdk.CfnResource;
       // Use the logical ID to get the role for policy attachment
@@ -299,12 +306,9 @@ export class AgentCoreStack extends Stack {
         statements.push(
           new iam.PolicyStatement({
             sid: 'AgentCoreIdentityJiraAccess',
-            actions: [
-              'bedrock-agentcore:GetResourceOauth2Token',
-              'bedrock-agentcore:GetWorkloadAccessToken',
-            ],
+            actions: ['bedrock-agentcore:GetResourceOauth2Token', 'bedrock-agentcore:GetWorkloadAccessToken'],
             resources: ['*'],
-          }),
+          })
         );
       }
 
@@ -339,10 +343,7 @@ export class AgentCoreStack extends Stack {
    * any ARN containing "PLACEHOLDER" with the real ARN from the lambdaArnMap.
    * Targets without a matching real ARN are removed (e.g. query-kb when no KB_ID).
    */
-  private patchMcpSpecArns(
-    mcpSpec: AgentCoreMcpSpec,
-    lambdaArnMap: Record<string, string>,
-  ): AgentCoreMcpSpec {
+  private patchMcpSpecArns(mcpSpec: AgentCoreMcpSpec, lambdaArnMap: Record<string, string>): AgentCoreMcpSpec {
     // Deep-clone to avoid mutating the original
     const patched = JSON.parse(JSON.stringify(mcpSpec));
 
@@ -382,9 +383,7 @@ export class AgentCoreStack extends Stack {
     // Secrets Manager secret for the Atlassian client_secret
     const jiraSecret = new cdk.aws_secretsmanager.Secret(this, 'JiraOauthSecret', {
       description: 'Atlassian 3LO client_secret (loaded into AgentCore Identity)',
-      secretStringValue: cdk.SecretValue.unsafePlainText(
-        JSON.stringify({ client_secret: clientSecret }),
-      ),
+      secretStringValue: cdk.SecretValue.unsafePlainText(JSON.stringify({ client_secret: clientSecret })),
     });
 
     // Custom resource Lambda for OAuth provider lifecycle
@@ -405,7 +404,7 @@ export class AgentCoreStack extends Stack {
           'bedrock-agentcore:GetOauth2CredentialProvider',
         ],
         resources: ['*'],
-      }),
+      })
     );
 
     // CDK Provider framework (prevents 1-hour hangs on Lambda failure)

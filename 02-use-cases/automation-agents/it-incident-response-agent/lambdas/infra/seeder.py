@@ -6,7 +6,6 @@ No cfnresponse needed (the Provider framework handles it).
 
 import json
 import logging
-import time
 
 import boto3
 
@@ -55,9 +54,7 @@ def handler(event, context):
 
     if kb_id and data_source_id:
         try:
-            job = _kb.start_ingestion_job(
-                knowledgeBaseId=kb_id, dataSourceId=data_source_id
-            )
+            job = _kb.start_ingestion_job(knowledgeBaseId=kb_id, dataSourceId=data_source_id)
             logger.info("Started KB ingestion: %s", job["ingestionJob"]["ingestionJobId"])
         except Exception:
             logger.exception("KB ingestion failed (non-fatal)")

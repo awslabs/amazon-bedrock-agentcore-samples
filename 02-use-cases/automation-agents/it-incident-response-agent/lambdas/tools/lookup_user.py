@@ -50,9 +50,7 @@ def lambda_handler(event, context):
     cutoff = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
     recent = _tickets.query(
         IndexName="byRequester",
-        KeyConditionExpression=(
-            Key("requester_id").eq(user_id) & Key("created_at").gte(cutoff)
-        ),
+        KeyConditionExpression=(Key("requester_id").eq(user_id) & Key("created_at").gte(cutoff)),
         Limit=10,
         ScanIndexForward=False,
     ).get("Items", [])

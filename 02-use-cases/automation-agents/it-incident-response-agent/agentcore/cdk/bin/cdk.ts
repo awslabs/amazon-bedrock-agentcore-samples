@@ -126,20 +126,24 @@ async function main() {
 
     // cdk-nag: AWS Solutions checks (report as warnings for sample flexibility)
     Aspects.of(stack).add(new AwsSolutionsChecks({ verbose: false }));
-    NagSuppressions.addStackSuppressions(stack, [
-      { id: 'AwsSolutions-IAM4', reason: 'AWS managed policies acceptable for sample' },
-      { id: 'AwsSolutions-IAM5', reason: 'Wildcard resources used for sample simplicity; restrict in production' },
-      { id: 'AwsSolutions-L1', reason: 'Python 3.11 Lambda runtime acceptable for sample' },
-      { id: 'AwsSolutions-S1', reason: 'S3 access logging not required for sample' },
-      { id: 'AwsSolutions-DDB3', reason: 'PITR enabled; backup not required for sample data' },
-      { id: 'AwsSolutions-SNS2', reason: 'SNS encryption-in-transit only for sample' },
-      { id: 'AwsSolutions-SNS3', reason: 'SNS topic-level KMS optional for sample' },
-      { id: 'AwsSolutions-SQS3', reason: 'DLQ itself does not need a DLQ for sample' },
-      { id: 'AwsSolutions-SQS4', reason: 'SQS KMS encryption optional for sample' },
-      { id: 'AwsSolutions-CB4', reason: 'CodeBuild KMS optional for sample' },
-      { id: 'AwsSolutions-CB5', reason: 'CodeBuild privileged mode needed for Docker builds' },
-      { id: 'AwsSolutions-ECR1', reason: 'ECR image scan not blocking for sample' },
-    ], true);
+    NagSuppressions.addStackSuppressions(
+      stack,
+      [
+        { id: 'AwsSolutions-IAM4', reason: 'AWS managed policies acceptable for sample' },
+        { id: 'AwsSolutions-IAM5', reason: 'Wildcard resources used for sample simplicity; restrict in production' },
+        { id: 'AwsSolutions-L1', reason: 'Python 3.11 Lambda runtime acceptable for sample' },
+        { id: 'AwsSolutions-S1', reason: 'S3 access logging not required for sample' },
+        { id: 'AwsSolutions-DDB3', reason: 'PITR enabled; backup not required for sample data' },
+        { id: 'AwsSolutions-SNS2', reason: 'SNS encryption-in-transit only for sample' },
+        { id: 'AwsSolutions-SNS3', reason: 'SNS topic-level KMS optional for sample' },
+        { id: 'AwsSolutions-SQS3', reason: 'DLQ itself does not need a DLQ for sample' },
+        { id: 'AwsSolutions-SQS4', reason: 'SQS KMS encryption optional for sample' },
+        { id: 'AwsSolutions-CB4', reason: 'CodeBuild KMS optional for sample' },
+        { id: 'AwsSolutions-CB5', reason: 'CodeBuild privileged mode needed for Docker builds' },
+        { id: 'AwsSolutions-ECR1', reason: 'ECR image scan not blocking for sample' },
+      ],
+      true
+    );
   }
 
   app.synth();

@@ -11,7 +11,6 @@ that a CloudFormation response is always sent, even on unhandled exceptions.
 
 import json
 import logging
-import os
 
 import boto3
 

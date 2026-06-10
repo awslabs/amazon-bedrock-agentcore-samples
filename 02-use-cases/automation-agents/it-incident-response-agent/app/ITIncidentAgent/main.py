@@ -22,7 +22,7 @@ from datetime import datetime, timezone
 import boto3
 from bedrock_agentcore.runtime import BedrockAgentCoreApp
 from model.load import load_model
-from mcp_client.client import get_all_mcp_clients, get_all_mcp_clients_safe, get_streamable_http_mcp_client
+from mcp_client.client import get_all_mcp_clients_safe
 from mcp_client.jira import JIRA_MCP_URL, JIRA_SITE_URL, JIRA_PROJECT_KEY
 from memory.session import get_memory_session_manager
 from memory.enrichment import (
@@ -54,6 +54,7 @@ def _on_after_tool_call(event: AfterToolCallEvent) -> None:
     start = _tool_start_times.pop(tool_id, None)
     duration_ms = (time.time() - start) * 1000 if start else 0
     logger.info("Tool call completed: %s (%.0fms)", tool_name, duration_ms)
+
 
 # Configuration from environment (injected by CDK via agentcore deploy)
 # The L3 construct uses AGENTCORE_GATEWAY_{NAME}_URL naming convention.
@@ -138,9 +139,7 @@ def _resolve_ticket(ticket_id: str, comment: str) -> None:
     table = _ddb.Table(TICKETS_TABLE)
     table.update_item(
         Key={"ticket_id": ticket_id},
-        UpdateExpression=(
-            "SET #s = :s, resolution_comment = :c, resolved_at = :t, updated_at = :t"
-        ),
+        UpdateExpression=("SET #s = :s, resolution_comment = :c, resolved_at = :t, updated_at = :t"),
         ExpressionAttributeNames={"#s": "status"},
         ExpressionAttributeValues={
             ":s": "Resolved",
@@ -181,12 +180,14 @@ def _emit_resolution_event(ticket_id: str, resolution: str, requester_id: str) -
                 {
                     "Source": "it-incident-agent",
                     "DetailType": "TicketResolved",
-                    "Detail": json.dumps({
-                        "ticket_id": ticket_id,
-                        "requester_id": requester_id,
-                        "resolution": resolution[:500],
-                        "resolved_at": datetime.now(timezone.utc).isoformat(),
-                    }),
+                    "Detail": json.dumps(
+                        {
+                            "ticket_id": ticket_id,
+                            "requester_id": requester_id,
+                            "resolution": resolution[:500],
+                            "resolved_at": datetime.now(timezone.utc).isoformat(),
+                        }
+                    ),
                     "EventBusName": EVENT_BUS_NAME,
                 }
             ]
@@ -258,11 +259,8 @@ async def invoke(payload, context):
 
         try:
             if tool_warnings:
-                logger.warning(
-                    "Running in degraded mode (some tools unavailable): %s",
-                    "; ".join(tool_warnings)
-                )
-            
+                logger.warning("Running in degraded mode (some tools unavailable): %s", "; ".join(tool_warnings))
+
             agent = Agent(
                 model=load_model(),
                 session_manager=get_memory_session_manager(session_id, user_id),
@@ -273,13 +271,12 @@ async def invoke(payload, context):
             agent.add_hook(_on_after_tool_call)
         except Exception as agent_init_exc:
             logger.warning(
-                "Agent initialization with tools failed (%s: %s). "
-                "Falling back to LLM-only mode.",
+                "Agent initialization with tools failed (%s: %s). Falling back to LLM-only mode.",
                 type(agent_init_exc).__name__,
                 agent_init_exc,
-                exc_info=True
+                exc_info=True,
             )
-            
+
             # Create agent without tools
             agent = Agent(
                 model=load_model(),
@@ -305,6 +302,7 @@ async def invoke(payload, context):
     # and links OTEL traces to the business-level ticket identifier.
     try:
         from opentelemetry import trace as otel_trace
+
         current_span = otel_trace.get_current_span()
         if current_span and current_span.is_recording():
             current_span.set_attribute("ticket.id", ticket_id)
@@ -355,16 +353,15 @@ async def invoke(payload, context):
         # STEP: MULTI-MCP — Connect to Gateway + optionally Jira with safe fallback
         mcp_clients, tool_warnings = get_all_mcp_clients_safe()
         tools = mcp_clients if mcp_clients else []
-        
+
         # Try to create the agent with available tools, gracefully degrade if tool loading fails
         try:
             if tool_warnings:
                 logger.warning(
-                    "Running in degraded mode (some tools unavailable). "
-                    "Failures: %s. Attempting with available tools.",
-                    "; ".join(tool_warnings)
+                    "Running in degraded mode (some tools unavailable). Failures: %s. Attempting with available tools.",
+                    "; ".join(tool_warnings),
                 )
-            
+
             agent = Agent(
                 model=load_model(priority),
                 session_manager=get_memory_session_manager(ticket_id, requester_id),
@@ -374,14 +371,13 @@ async def invoke(payload, context):
         except Exception as agent_init_exc:
             # Tool loading failed even with available clients — fall back to LLM-only
             logger.warning(
-                "Agent initialization with tools failed (%s: %s). "
-                "Falling back to LLM-only mode.",
+                "Agent initialization with tools failed (%s: %s). Falling back to LLM-only mode.",
                 type(agent_init_exc).__name__,
                 agent_init_exc,
-                exc_info=True
+                exc_info=True,
             )
             tool_warnings.append(f"Agent tool initialization failed: {type(agent_init_exc).__name__}: {agent_init_exc}")
-            
+
             # Create agent without tools
             agent = Agent(
                 model=load_model(priority),
@@ -418,13 +414,15 @@ async def invoke(payload, context):
         _emit_resolution_event(ticket_id, resolution, requester_id)
 
         logger.info("%s %s resolved successfully", "Issue" if is_jira_mode else "Ticket", ticket_id)
-        yield json.dumps({
-            "ticket_id": ticket_id,
-            "status": "Resolved",
-            "resolution": resolution,
-            "mode": "jira" if is_jira_mode else "ddb",
-            "recurring_incident_count": len(past_incidents),
-        })
+        yield json.dumps(
+            {
+                "ticket_id": ticket_id,
+                "status": "Resolved",
+                "resolution": resolution,
+                "mode": "jira" if is_jira_mode else "ddb",
+                "recurring_incident_count": len(past_incidents),
+            }
+        )
 
     except Exception as exc:
         error_msg = f"{type(exc).__name__}: {exc}"
@@ -436,11 +434,13 @@ async def invoke(payload, context):
         except Exception:
             logger.exception("Failed to mark ticket %s as Failed", ticket_id)
 
-        yield json.dumps({
-            "ticket_id": ticket_id,
-            "status": "Failed",
-            "error": error_msg,
-        })
+        yield json.dumps(
+            {
+                "ticket_id": ticket_id,
+                "status": "Failed",
+                "error": error_msg,
+            }
+        )
 
 
 if __name__ == "__main__":

@@ -53,12 +53,7 @@ def query_eval_results(log_group: str, hours: int = 1) -> list:
     end = int(time.time() * 1000)
     start = end - hours * 60 * 60 * 1000
 
-    query = (
-        "fields @timestamp, @message "
-        "| filter name = 'gen_ai.evaluation.result' "
-        "| sort @timestamp desc "
-        "| limit 200"
-    )
+    query = "fields @timestamp, @message | filter name = 'gen_ai.evaluation.result' | sort @timestamp desc | limit 200"
 
     q = logs.start_query(
         logGroupName=log_group,
@@ -83,17 +78,19 @@ def query_eval_results(log_group: str, hours: int = 1) -> list:
                 parsed = json.loads(msg)
                 # Extract the key fields from the nested structure
                 attrs = parsed.get("attributes", {})
-                results.append({
-                    "timestamp": fields.get("@timestamp", ""),
-                    "trace_id": parsed.get("traceId", ""),
-                    "session_id": attrs.get("session.id", ""),
-                    "evaluator": attrs.get("gen_ai.evaluation.name", ""),
-                    "score": attrs.get("gen_ai.evaluation.score.value"),
-                    "label": attrs.get("gen_ai.evaluation.score.label", ""),
-                    "explanation": attrs.get("gen_ai.evaluation.explanation", ""),
-                    "level": attrs.get("gen_ai.evaluation_level", ""),
-                    "span_id": parsed.get("spanId", ""),
-                })
+                results.append(
+                    {
+                        "timestamp": fields.get("@timestamp", ""),
+                        "trace_id": parsed.get("traceId", ""),
+                        "session_id": attrs.get("session.id", ""),
+                        "evaluator": attrs.get("gen_ai.evaluation.name", ""),
+                        "score": attrs.get("gen_ai.evaluation.score.value"),
+                        "label": attrs.get("gen_ai.evaluation.score.label", ""),
+                        "explanation": attrs.get("gen_ai.evaluation.explanation", ""),
+                        "level": attrs.get("gen_ai.evaluation_level", ""),
+                        "span_id": parsed.get("spanId", ""),
+                    }
+                )
             except json.JSONDecodeError:
                 pass
     return results
@@ -199,9 +196,7 @@ def _score_bar(score) -> str:
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Retrieve online evaluation results for IT Incident Response Agent"
-    )
+    parser = argparse.ArgumentParser(description="Retrieve online evaluation results for IT Incident Response Agent")
     parser.add_argument("--hours", type=int, default=1, help="Hours back to query (default: 1)")
     parser.add_argument("--raw", action="store_true", help="Print raw JSON")
     parser.add_argument("--summary", action="store_true", help="Show aggregate summary only")
