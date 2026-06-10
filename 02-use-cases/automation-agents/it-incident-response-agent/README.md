@@ -178,10 +178,14 @@ flowchart TB
 ## CLI-First Approach
 
 This project demonstrates the **recommended** AgentCore development workflow
-using the CLI (`@aws/agentcore`) for all AgentCore-managed resources:
+using the CLI (`@aws/agentcore`) for all AgentCore-managed resources.
+
+> **Note**: The commands below show how this project was scaffolded. You do NOT
+> need to run them — the configuration is already committed. They serve as a
+> reference for building your own project from scratch.
 
 ```bash
-# How this project was built:
+# How this project was scaffolded:
 
 # Scaffold a new AgentCore project with Strands framework, container-based Runtime, and short-term Memory
 agentcore create --name ITIncidentAgent --framework Strands --build Container --memory shortTerm
@@ -260,16 +264,18 @@ That's it. The deploy script handles:
 - Validating `CDK_DEFAULT_ACCOUNT` is set
 - Calling `agentcore deploy -y --target dev`
 
-> **Alternative (manual path):** If you prefer to skip the wrapper script, you
-> must export env vars yourself and create `aws-targets.json` manually:
->
-> ```bash
-> set -a && source .env && set +a
-> cp agentcore/aws-targets.json.template agentcore/aws-targets.json
-> # Edit aws-targets.json → set account + region, name must be "dev"
-> agentcore validate
-> agentcore deploy -y --target dev
-> ```
+<details>
+<summary>Alternative (manual path without the wrapper script)</summary>
+
+```bash
+set -a && source .env && set +a
+cp agentcore/aws-targets.json.template agentcore/aws-targets.json
+# Edit aws-targets.json → set account + region, name must be "dev"
+agentcore validate
+agentcore deploy -y --target dev
+```
+
+</details>
 
 > **Note on `npm install`:** Running it inside `agentcore/cdk/` can leave an
 > empty `package-lock.json` at the project root (an npm quirk when a parent
@@ -277,48 +283,28 @@ That's it. The deploy script handles:
 
 ## Configure
 
-The project uses `agentcore/aws-targets.json` for deployment targets. This file
-is **gitignored** (it contains your account ID). The deploy script generates it
-automatically from your `.env`:
+Copy `.env.example` to `.env` and set your AWS account ID. All configuration
+options are documented in that file with inline comments.
 
 ```bash
-# 1. Copy .env.example to .env and fill in your account:
 cp .env.example .env
 # Edit .env → set CDK_DEFAULT_ACCOUNT=<your-12-digit-account-id>
-
-# 2. Deploy (generates aws-targets.json from the template automatically)
-./scripts/deploy.sh
 ```
 
-If you need to create `aws-targets.json` manually, copy the template and fill in
-your values. Use the target name `dev`. You must pass `--target <name>` to
-the CLI — the name must match the deployed target recorded in
-`agentcore/.cli/deployed-state.json`, or `agentcore validate` will fail with
-"Deployed state contains target names not present in aws-targets":
+The deploy script generates `agentcore/aws-targets.json` automatically from
+your `.env` values (this file is gitignored since it contains your account ID).
+
+<details>
+<summary>If you need to create aws-targets.json manually</summary>
+
+Copy the template and fill in your values. The target name must be `dev`
+(matching what's recorded in `agentcore/.cli/deployed-state.json`):
 
 ```json
 [{"name": "dev", "account": "YOUR_ACCOUNT_ID", "region": "us-west-2"}]
 ```
 
-> **Heads-up:** `aws-targets.json` is required by `agentcore validate`. The repo
-> ships only `aws-targets.json.template` (the real file is gitignored because it
-> contains your account ID), so a fresh clone must create it before validating.
-
-Optional environment variables (set in shell or `.env`):
-
-| Variable                      | Purpose                                                                | Default                                           |
-| ----------------------------- | ---------------------------------------------------------------------- | ------------------------------------------------- |
-| `AGENT_MODEL_ID`              | Bedrock model for the Strands agent                                    | `us.anthropic.claude-sonnet-4-6`    |
-| `FAST_MODEL_ID`               | Cheaper model for LOW priority tickets                                 | `us.anthropic.claude-haiku-4-5-20251001-v1:0`      |
-| `KB_ID`                       | Pre-created Bedrock Knowledge Base ID                                  | (empty — auto-creates KB with S3 Vectors)         |
-| `SKIP_KB`.                    | Skip KB creation entirely                                              | `false`                                           |
-| `GUARDRAIL_ID`                | Bedrock Guardrail ID for PII/content filtering                         | (empty — auto-creates guardrail)                  |
-| `GUARDRAIL_VERSION`           | Guardrail version to apply                                             | `DRAFT`                                           |
-| `EVENT_BUS_NAME`              | EventBridge bus for TicketResolved events                              | `default`                                         |
-| `GATEWAY_AUTH_MODE`           | Auth mode: `AWS_IAM` or `CUSTOM_JWT`                                   | `AWS_IAM`                                         |
-| `GATEWAY_OAUTH_PROVIDER_NAME` | AgentCore credential name (CUSTOM_JWT only)                            | `auth0-m2m`                                       |
-| `GATEWAY_OAUTH_AUDIENCE`      | OAuth API audience (CUSTOM_JWT only)                                   | (empty)                                           |
-| `DESTROY_ON_DELETE`           | Destroy DDB data on stack delete                                       | `true`                                            |
+</details>
 
 ### Jira Integration (Optional — Atlassian Remote MCP)
 

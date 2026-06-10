@@ -582,66 +582,19 @@ applications and permission levels. See `docs/custom-jwt-auth-upgrade.md`
 > the Runtime is invoked by the Trigger Lambda (a service). See "Choosing the
 > inbound auth mode" below for when inbound JWT is the right choice.
 
-#### Choosing the inbound auth mode (event-driven vs interactive)
+#### Choosing the inbound auth mode
 
-A common question: *"If this is an automated, event-driven agent, when would I
-ever use CUSTOM_JWT to call the Runtime? Isn't it triggered by another service?"*
+This project uses **IAM/SigV4 inbound** because the direct caller is a service
+(Trigger Lambda), not a human. For the full decision framework on when to use
+CUSTOM_JWT inbound vs SigV4, see **[authentication-guide.md](authentication-guide.md)**
+→ "Boundary 1: Runtime Inbound Auth."
 
-The answer comes from identifying **who directly calls the Runtime** and
-**whether a human identity exists at invoke time**. There are really **three
-distinct trust boundaries** that are easy to conflate:
+**Quick rule:**
 
-| # | Trust boundary | Who authenticates | Right mechanism |
-|---|----------------|-------------------|-----------------|
-| 1 | **Human → ticket ingress** (UI submits a ticket) | The end user | OAuth/JWT at an API in front of SNS (or the UI's own login) |
-| 2 | **Service → Runtime** (Trigger Lambda invokes the agent) | The Lambda's IAM role | **IAM / SigV4** |
-| 3 | **Runtime → Gateway tools** (agent calls its tools) | The Runtime's IAM role or an M2M token | `GATEWAY_AUTH_MODE` (IAM or CUSTOM_JWT) |
-
-**For the event-driven pipeline (this project's primary path):**
-
-```
-UI → creates ticket → SNS → Trigger Lambda → InvokeAgentRuntime
-```
-
-The **direct caller of the Runtime is the Trigger Lambda — a service, not a
-person.** There is no user token at invoke time; the human (if any) acted earlier
-when the ticket was created. So:
-
-- Inbound to the Runtime should be **IAM/SigV4** — the identity that matters is
-  the Lambda's execution role.
-- If you want to authenticate the *human* and enforce claims, that belongs at
-  **boundary #1 (ticket ingress)** — e.g. an API Gateway with a JWT authorizer in
-  front of SNS — **not** at the Runtime. By the time the Runtime runs, the event
-  is already a trusted, internal, service-driven message.
-- **CUSTOM_JWT inbound to the Runtime adds nothing here** — there's no browser, no
-  login, no human in the loop at the moment of invocation.
-
-**When CUSTOM_JWT inbound to the Runtime *is* the right fit:**
-
-Only when you expose a **direct, synchronous invoke path** where a logged-in
-human calls the Runtime themselves (this project's optional "prompt mode" for
-live chat/triage):
-
-```
-Human → OAuth login → UI → POST /invocations  (directly to Runtime)
-```
-
-Here the human is the direct caller, so you want to **authenticate the user**
-(not just trust a spoofable `User-Id` header), **gate by claim** (e.g. only
-tokens with scope `triage:incidents` may chat), and **propagate verified
-identity** into the agent for per-user memory and audit.
-
-**Decision rule:**
-
-| Caller of the Runtime | Human in the loop at invoke time? | Inbound auth |
-|-----------------------|-----------------------------------|--------------|
-| A service (Lambda, EventBridge, Step Functions) | No | **IAM / SigV4** |
-| A UI on behalf of a logged-in user (direct invoke) | Yes | **CUSTOM_JWT** |
-
-> **Takeaway for this accelerator**: the async ticket pipeline correctly uses
-> **IAM inbound** as shipped. User-facing OAuth for ticket *submission* belongs at
-> the ingress API, separate from the Runtime. Reach for **CUSTOM_JWT inbound only
-> if you add an interactive "ask the agent" UI that invokes the Runtime directly.**
+| Caller of the Runtime | Inbound auth |
+|-----------------------|--------------|
+| A service (Lambda, EventBridge, Step Functions) | **IAM / SigV4** |
+| A UI on behalf of a logged-in user (direct invoke) | **CUSTOM_JWT** |
 
 ### Data Flow: Event-Driven Path (SNS → Resolution)
 
