@@ -218,12 +218,7 @@ def _check_spans_for_tools(logs_client, start: float, log_start_ms: int, seen_to
                 span = json.loads(msg)
                 span_name = span.get("name", "")
                 # Tool spans typically have the tool name in the span name
-                known = [
-                    "lookup-user",
-                    "get-process-info",
-                    "create-change-request",
-                    "query-kb"
-                ]
+                known = ["lookup-user", "get-process-info", "create-change-request", "query-kb"]
                 for tool in known:
                     if tool in span_name and tool not in seen_tools:
                         seen_tools.add(tool)
