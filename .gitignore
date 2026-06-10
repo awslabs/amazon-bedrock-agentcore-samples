@@ -267,3 +267,23 @@ plan/
 
 ### draw.io source files (keep rendered PNG only) ###
 *.drawio
+02-use-cases/automation-agents/it-incident-response-agent/.husky
+02-use-cases/automation-agents/it-incident-response-agent/.hooks
+02-use-cases/automation-agents/it-incident-response-agent/.github
+02-use-cases/automation-agents/it-incident-response-agent/setup.sh
+02-use-cases/automation-agents/it-incident-response-agent/SETUP.md
+02-use-cases/automation-agents/it-incident-response-agent/QUALITY-GATES-GETTING-STARTED.md
+02-use-cases/automation-agents/it-incident-response-agent/QUALITY_GATES_DELIVERY.md
+.gitignore
+02-use-cases/automation-agents/it-incident-response-agent/.lintstagedrc.json
+02-use-cases/automation-agents/it-incident-response-agent/CONTRIBUTING.md
+02-use-cases/automation-agents/it-incident-response-agent/QUALITY-GATES-SUMMARY.md
+02-use-cases/automation-agents/it-incident-response-agent/START-HERE.md
+02-use-cases/automation-agents/it-incident-response-agent/QUALITY-GATES-README.md
+02-use-cases/automation-agents/it-incident-response-agent/OBSERVABILITY_IMPLEMENTATION.md
+02-use-cases/automation-agents/it-incident-response-agent/OBSERVABILITY_DEPLOYMENT_SUMMARY.md
+02-use-cases/automation-agents/it-incident-response-agent/DEPLOY_TEST.sh
+02-use-cases/automation-agents/it-incident-response-agent/.env.local.bu
+02-use-cases/automation-agents/it-incident-response-agent/.env.bu
+02-use-cases/automation-agents/it-incident-response-agent/.env.bak
+02-use-cases/automation-agents/it-incident-response-agent/agentcore/cdk/.husky/pre-commit
