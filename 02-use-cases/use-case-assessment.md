@@ -63,6 +63,7 @@
 | **Total** | **15** |
 
 **Recommendation:** UPDATE
+**Decision:** KEEP — UPDATE
 
 **TODO:**
 1. Migrate from `bedrock-agentcore-starter-toolkit` to native `bedrock-agentcore` SDK (deploy.py pattern)
@@ -96,6 +97,7 @@
 | **Total** | **13** |
 
 **Recommendation:** UPDATE
+**Decision:** KEEP — UPDATE
 
 **TODO:**
 1. Clearly differentiate from `customer-support-assistant` — the README should open with "This sample demonstrates VPC deployment; see the base sample for the full feature set"
@@ -128,6 +130,7 @@
 | **Total** | **14** |
 
 **Recommendation:** UPDATE
+**Decision:** KEEP — UPDATE
 
 **TODO:**
 1. Migrate from starter toolkit to native SDK
@@ -160,6 +163,7 @@
 | **Total** | **16** |
 
 **Recommendation:** UPDATE
+**Decision:** KEEP — UPDATE
 
 **TODO:**
 1. Migrate from starter toolkit to native SDK
@@ -192,6 +196,9 @@
 | **Total** | **6** |
 
 **Recommendation:** MAJOR OVERHAUL
+**Decision:** KEEP — UPDATE
+**Actual Features (verified):** Gateway, Policy, Identity (3 of claimed 3)
+**Authors Contacted:** Eashan Kaushik <EashanKaushik@users.noreply.github.com>
 
 **TODO:**
 1. Either promote to a proper standalone sample (full README, deploy script, native SDK) or move content to `01-tutorials/`
@@ -225,6 +232,8 @@
 | **Total** | **15** |
 
 **Recommendation:** UPDATE
+**Decision:** KEEP — UPDATE
+**Authors Contacted:** Kamal Manchanda <kammanch@amazon.com>, Anil Nadiminti <aniloncloud@users.noreply.github.com>
 
 **TODO:**
 1. Expand README to 400+ lines: add FHIR data model explanation, appointment flow walkthrough, compliance notes (HIPAA considerations)
@@ -259,6 +268,8 @@
 | **Total** | **21** |
 
 **Recommendation:** UPDATE (starter toolkit migration only)
+**Decision:** KEEP — UPDATE (starter toolkit migration + Code Interpreter)
+**Authors Contacted:** Sunita Koppar <skopp002@users.noreply.github.com>, giryoong-kim <gi.ryoong.kim@gmail.com>, Renya Kujirada <ren8k@users.noreply.github.com>
 
 **TODO:**
 1. Migrate from starter toolkit to native SDK — this is the only required change
@@ -298,6 +309,9 @@
 | **Total** | **14** |
 
 **Recommendation:** UPDATE
+**Decision:** KEEP — UPDATE
+**Actual Features (verified):** Runtime, Memory (2 of claimed 10; feature count was grepped not verified)
+**Authors Contacted:** Uriel Ramirez <aurbac@gmail.com>, Sandeep Rohilla <rohillasandeep@users.noreply.github.com>
 
 **TODO:**
 1. **Critical: README needs complete rewrite** — currently 139 lines with no architecture, no quickstart, no troubleshooting
@@ -334,6 +348,7 @@
 | **Total** | **23** |
 
 **Recommendation:** KEEP AS-IS (minor improvements)
+**Decision:** MOVED to 01-features/05-authenticate-and-authorize/
 
 **TODO:**
 1. Add `agentcore.json` for CLI v2 deploy — currently CDK only
@@ -407,6 +422,9 @@
 | **Total** | **25** |
 
 **Recommendation:** KEEP AS-IS (minor improvements)
+**Decision:** KEEP — UPDATE (add Observability, Policy, agentcore.json)
+**Actual Features (verified):** Runtime, Memory, Browser, Evaluations, Optimization, Gateway (6 of claimed 12; feature count was grepped not verified)
+**Authors Contacted:** Erez Weinstein <erezweinstein5@users.noreply.github.com>, Visakh Madathil <vmmadathil@users.noreply.github.com>, Hardik Vasa <harniva14@users.noreply.github.com>
 
 **TODO:**
 1. Add `agentcore.json` for CLI v2 deploy — currently manual steps
@@ -439,6 +457,7 @@
 | **Total** | **22** |
 
 **Recommendation:** KEEP AS-IS (minor improvements)
+**Decision:** KEEP — minor improvements
 
 **TODO:**
 1. Add `agentcore.json` for CLI v2 — missing despite strong overall quality
@@ -510,6 +529,7 @@
 | **Total** | **14** |
 
 **Recommendation:** UPDATE
+**Decision:** KEEP — UPDATE
 
 **TODO:**
 1. Migrate from starter toolkit to native SDK
@@ -727,22 +747,22 @@
 | # | Sample | Category | Tier | Score | Starter Toolkit | Blog | Features | Recommendation |
 |---|--------|----------|------|-------|----------------|------|----------|----------------|
 | 1 | event-driven-claims-agent | Automation | S | 22 | No | — | 8 | KEEP AS-IS |
-| 2 | market-trends-agent | Automation | A | 25 | No | — | 12 | KEEP AS-IS |
+| 2 | market-trends-agent | Conversational | A | 25 | No | Yes ×3 | 6 (actual) | KEEP — UPDATE |
 | 3 | auth0-multi-agent-obo | — | A | 23 | No | — | 11 | **MOVED** to 01-features/05-authenticate-and-authorize/ |
-| 4 | SRE-agent | Automation | A | 22 | No | — | 10 | KEEP AS-IS |
-| 5 | lakehouse-agent | Conversational | A | 21 | YES | Yes | 8 | UPDATE (ST only) |
+| 4 | SRE-agent | Conversational | A | 22 | No | — | 10 | KEEP — minor improvements |
+| 5 | lakehouse-agent | Conversational | A | 21 | YES | Yes | 8 | KEEP — UPDATE (ST migration + Code Interpreter) |
 | 6 | visa-b2b-account-payable-agent | Automation | A | 18 | YES | — | 8 | UPDATE |
 | 7 | role-based-hr-data-agent | — | — | — | — | — | — | **DROPPED** |
-| 8 | AWS-operations-agent | Conversational | B | 16 | YES | — | 8 | UPDATE |
+| 8 | AWS-operations-agent | Conversational | B | 16 | YES | — | 8 | KEEP — UPDATE |
 | 9 | A2A-realestate-agentcore-multiagents | Automation | B | 16 | YES | — | 10 | UPDATE |
-| 10 | customer-support-assistant | Conversational | B | 15 | YES | — | 7 | UPDATE |
-| 11 | healthcare-appointment-agent | Conversational | B | 15 | YES | — | 5 | UPDATE |
+| 10 | customer-support-assistant | Conversational | B | 15 | YES | — | 7 | KEEP — UPDATE |
+| 11 | healthcare-appointment-agent | Conversational | B | 17 | No | Yes ×2 | 5 | KEEP — UPDATE |
 | 12 | local-prototype-to-agentcore | — | — | — | — | — | — | **DROPPED** |
-| 13 | A2A-multi-agent-incident-response | Automation | B | 14 | YES | — | 7 | UPDATE |
+| 13 | A2A-multi-agent-incident-response | Conversational | B | 14 | YES | — | 7 | KEEP — UPDATE |
 | 14 | cost-optimization-agent | Automation | C | 14 | YES | — | 8 | UPDATE |
 | 15 | DB-performance-analyzer | Automation | B | 14 | YES | — | 7 | UPDATE |
-| 16 | device-management-agent | Conversational | B | 14 | YES | — | 6 | UPDATE |
-| 17 | video-games-sales-assistant | Conversational | B | 14 | YES | — | 10* | UPDATE |
+| 16 | device-management-agent | Conversational | B | 14 | YES | — | 6 | KEEP — UPDATE |
+| 17 | video-games-sales-assistant | Conversational | B | 14 | YES | — | 2 (actual) | KEEP — UPDATE |
 | 18 | text-to-python-ide | Coding | B | 17 | No | — | 9 | UPDATE |
 | 19 | slide-deck-generator-memory-agent | — | — | — | — | — | — | **DROPPED** |
 | 20 | farm-management-advisor | Automation | C | 18* | YES | — | 12* | UPDATE |
@@ -750,7 +770,7 @@
 | 22 | okta-auth-three-tier-end-to-end-demo | Automation | B | 10 | YES | — | 4 | UPDATE |
 | 23 | enterprise-web-intelligence-agent | Automation | C | 12 | No | — | 5 | MAJOR OVERHAUL |
 | 24 | claude-code-gateway-mcp-server | Coding | C | 11 | YES | — | 6 | MAJOR OVERHAUL |
-| 25 | finance-personal-assistant | Conversational | C | 6 | YES | — | 3 | MAJOR OVERHAUL |
+| 25 | finance-personal-assistant | Conversational | C | 8 | YES | Yes | 3 (actual) | KEEP — UPDATE |
 | 26 | intelligent-event-agent | Automation | C | 7 | YES | — | 6 | MAJOR OVERHAUL |
 | 27 | cost-optimization-agent | Automation | C | 14 | YES | — | 8 | UPDATE |
 
