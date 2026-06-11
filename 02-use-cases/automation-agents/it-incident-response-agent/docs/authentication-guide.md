@@ -308,7 +308,7 @@ integration flow.
 | `JIRA_OAUTH_CLIENT_SECRET` | 3 (Jira) | Atlassian OAuth app client secret |
 | `JIRA_SITE_URL` | 3 (Jira) | `https://your-tenant.atlassian.net` |
 | `JIRA_PROJECT_KEY` | 3 (Jira) | Jira project key (e.g., `INC`) |
-| `JIRA_MCP_URL` | 3 (Jira) | Atlassian MCP endpoint (auto-set from JIRA_SITE_URL) |
+| `JIRA_MCP_URL` | 3 (Jira) | Atlassian MCP endpoint (hardcoded to `https://mcp.atlassian.com/v1/sse` by CDK when `JIRA_OAUTH_CLIENT_ID` is set) |
 | `JIRA_OAUTH_PROVIDER_NAME` | 3 (Jira) | AgentCore credential for Jira 3LO |
 
 ---

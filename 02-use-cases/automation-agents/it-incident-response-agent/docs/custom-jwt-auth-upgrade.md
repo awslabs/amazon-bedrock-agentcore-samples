@@ -310,7 +310,7 @@ Agent Runtime
     │
     ├─ If CUSTOM_JWT:
     │     │
-    │     ├─ mcp_client/client.py calls _get_oauth_token()
+    │     ├─ mcp_client/client.py calls _create_custom_jwt_client()
     │     │     │
     │     │     └─ @requires_access_token(provider_name="auth0-m2m", auth_flow="M2M")
     │     │           │
