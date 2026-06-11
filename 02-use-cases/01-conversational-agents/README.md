@@ -1,74 +1,56 @@
 # Conversational Agents
 
-Customer-facing chat agents with memory, identity, and guardrails. Move from prototype to production with enterprise security built in.
+Agents that interact with users in real time through a chat or query interface. The user authenticates through an identity provider (Entra ID, Okta, Cognito), and the agent acts on their behalf. Memory keeps context across turns within a session and across sessions. Responses stream back as the agent works.
 
-AgentCore handles the undifferentiated heavy lifting — session management, user authentication against enterprise IdPs, long-term memory, content safety, and tool access — so you focus on the conversation logic.
+## How these differ from automation agents
 
----
+Automation agents are triggered by system events and run without a user present. Conversational agents have a person on the other end of every request. This shapes how you configure AgentCore: identity is user OAuth rather than service credentials, memory is namespaced per user, and the runtime is configured for streaming with sessions up to eight hours.
 
-## What makes a Conversational Agent
+## Service configuration
 
-| Dimension | Conversational Agent Configuration |
-|-----------|-------------------------------------|
-| **Identity** | End-user OAuth token exchange (Entra ID, Okta, Cognito) — agent acts *on behalf of the user* |
-| **Memory** | Session memory for multi-turn context + long-term memory for cross-session recall, namespaced per user |
-| **Runtime** | Streaming enabled, session affinity, sessions up to 8 hours |
-| **Guardrails** | Content filters, topic boundaries, PII redaction — protects against prompt injection and social engineering |
-| **Observability** | Per-conversation tracing with user context — debugs "the agent gave me wrong info" |
-| **Gateway** | User-scoped tool access with auth propagation — agent calls APIs as the authenticated user |
+| Service | Typical setup for conversational agents |
+|---------|----------------------------------------|
+| Identity | End-user OAuth token exchange via Entra ID, Okta, or Cognito |
+| Memory | Session memory for multi-turn context plus long-term memory for cross-session recall |
+| Runtime | Streaming enabled, session affinity, up to 8-hour sessions |
+| Guardrails | Content filters, topic restrictions, PII redaction |
+| Observability | Per-conversation traces with user context |
+| Gateway | User-scoped tool access; the agent calls downstream APIs as the authenticated user |
 
-### Common Patterns
+## Common multi-agent patterns
 
-| Pattern | When to use |
+| Pattern | When it fits |
 |---------|-------------|
-| **Single Agent + Tools** | Single domain, fewer than ~10 tools, straightforward flows |
-| **Agents-as-Tools** | Multi-domain support, complex routing across specializations |
-| **Graph (Intent Router)** | Structured flows with conditional branching |
-| **Human-in-the-Loop** | Regulated industries (healthcare, finance), high-stakes decisions |
-
----
+| Single agent with tools | One domain, up to around 10 tools, linear flow |
+| Agents-as-tools | Multiple domains with routing between specialized agents |
+| Graph / intent router | Branching flows based on intent classification |
+| Human-in-the-loop | Regulated domains (healthcare, finance) where a human must approve certain steps |
 
 ## Samples
 
-| Sample | Vertical | Complexity | Key AgentCore Features |
-|--------|----------|------------|------------------------|
-| [A2A-multi-agent-incident-response](./A2A-multi-agent-incident-response/) | IT / DevOps | Advanced | Runtime, Gateway, Memory, A2A — three frameworks (Strands, OpenAI Agents, Google ADK) |
-| [A2A-realestate-agentcore-multiagents](./A2A-realestate-agentcore-multiagents/) | Real Estate | Advanced | Runtime, Gateway, Policy, Identity (Cognito), A2A — coordinator + search + booking sub-agents |
-| [auth0-multi-agent-obo](./auth0-multi-agent-obo/) | Financial Services | Advanced | Runtime, Gateway, Memory, Identity (RFC 8693 OBO — attenuated tokens per sub-agent) |
-| [AWS-operations-agent](./AWS-operations-agent/) | Cloud Operations | Advanced | Runtime, Gateway, Memory, Policy, Observability (multi-framework: Strands + ADK + OpenAI) |
-| [cost-optimization-agent](./cost-optimization-agent/) | Cloud FinOps | Beginner | Runtime, Memory, Policy — natural language AWS cost Q&A |
+| Sample | Vertical | Complexity | AgentCore features |
+|--------|----------|------------|-------------------|
+| [A2A-multi-agent-incident-response](./A2A-multi-agent-incident-response/) | IT / DevOps | Advanced | Runtime, Gateway, Memory, A2A using Strands + OpenAI Agents + Google ADK |
+| [AWS-operations-agent](./AWS-operations-agent/) | Cloud Operations | Advanced | Runtime, Gateway, Memory, Policy, Observability; built with Strands, ADK, and OpenAI Agents SDK |
 | [customer-support-assistant](./customer-support-assistant/) | Retail / E-commerce | Intermediate | Runtime, Gateway, Memory, Policy, Evaluations |
-| [customer-support-assistant-vpc](./customer-support-assistant-vpc/) | Retail / E-commerce | Intermediate | Runtime, Gateway — VPC private networking pattern |
-| [DB-performance-analyzer](./DB-performance-analyzer/) | Database / DevOps | Intermediate | Runtime, Gateway, Observability — natural language PostgreSQL analysis |
-| [device-management-agent](./device-management-agent/) | IoT / Smart Home | Intermediate | Runtime, Gateway, Policy, Identity (Cognito) |
-| [farm-management-advisor](./farm-management-advisor/) | Agriculture | Intermediate | Runtime, Gateway, Memory — plant health analysis with image input |
-| [finance-personal-assistant](./finance-personal-assistant/) | Personal Finance | Beginner | Gateway, Policy — workshop notebooks |
-| [healthcare-appointment-agent](./healthcare-appointment-agent/) | Healthcare | Intermediate | Runtime, Gateway, Policy, Observability — FHIR R4 / HealthLake |
-| [lakehouse-agent](./lakehouse-agent/) | Data & Analytics | Advanced | Runtime, Gateway, Memory, Policy — OAuth row-level security over S3 Tables + Athena |
-| [local-prototype-to-agentcore](./local-prototype-to-agentcore/) | Insurance / Tutorial | Intermediate | Runtime, Gateway, Identity — step-by-step local-to-production migration guide |
-| [market-trends-agent](./market-trends-agent/) | Financial Services | Advanced | Runtime, Memory, Browser, Evaluations, Optimization — personalized broker investment assistant |
-| [role-based-hr-data-agent](./role-based-hr-data-agent/) | HR / Compliance | Advanced | Runtime, Gateway, Policy (Cedar field-level DLP) — role-scoped HR data access |
-| [slide-deck-generator-memory-agent](./slide-deck-generator-memory-agent/) | Productivity | Beginner | Runtime, Memory — side-by-side basic vs. enhanced Memory comparison |
-| [SRE-agent](./SRE-agent/) | Site Reliability | Advanced | Runtime, Gateway, Memory, Observability — multi-agent with MCP tools and runbooks |
-| [video-games-sales-assistant](./video-games-sales-assistant/) | Retail / Gaming | Intermediate | Runtime, Gateway, Memory — Next.js + Amplify Gen 2 frontend |
+| [customer-support-assistant-vpc](./customer-support-assistant-vpc/) | Retail / E-commerce | Intermediate | Runtime, Gateway deployed inside a VPC with private endpoints |
+| [device-management-agent](./device-management-agent/) | IoT / Smart Home | Intermediate | Runtime, Gateway, Policy, Identity (Cognito); React frontend |
+| [finance-personal-assistant](./finance-personal-assistant/) | Personal Finance | Beginner | Gateway, Policy; notebook-based |
+| [healthcare-appointment-agent](./healthcare-appointment-agent/) | Healthcare | Intermediate | Runtime, Gateway, Policy, Observability; FHIR R4 via HealthLake |
+| [lakehouse-agent](./lakehouse-agent/) | Data and Analytics | Advanced | Runtime, Gateway, Memory, Policy; OAuth row-level security over S3 Tables and Athena |
+| [market-trends-agent](./market-trends-agent/) | Financial Services | Advanced | Runtime, Memory, Browser, Evaluations, Optimization; personalized broker investment assistant |
+| [SRE-agent](./SRE-agent/) | Site Reliability | Advanced | Runtime, Gateway, Memory, Observability; multi-agent system with MCP-based tools and runbooks |
+| [video-games-sales-assistant](./video-games-sales-assistant/) | Retail / Gaming | Intermediate | Runtime, Gateway, Memory; Next.js frontend with Amplify Gen 2 |
 
----
+## Where to start
 
-## Choosing a Sample
+- Multi-agent with A2A: [A2A-multi-agent-incident-response](./A2A-multi-agent-incident-response/) shows three different agent frameworks in one system.
+- Healthcare and FHIR: [healthcare-appointment-agent](./healthcare-appointment-agent/)
+- Data access with row-level security: [lakehouse-agent](./lakehouse-agent/)
+- VPC private networking: [customer-support-assistant-vpc](./customer-support-assistant-vpc/)
+- SRE and infrastructure operations: [SRE-agent](./SRE-agent/)
 
-- **New to AgentCore?** Start with [local-prototype-to-agentcore](./local-prototype-to-agentcore/) for a guided migration walkthrough, or [slide-deck-generator-memory-agent](./slide-deck-generator-memory-agent/) for a focused Memory demo.
-- **Multi-agent A2A?** See [A2A-multi-agent-incident-response](./A2A-multi-agent-incident-response/) (3 frameworks) or [A2A-realestate-agentcore-multiagents](./A2A-realestate-agentcore-multiagents/) (React UI + Cognito).
-- **Enterprise identity (OBO / token exchange)?** See [auth0-multi-agent-obo](./auth0-multi-agent-obo/) — RFC 8693 On-Behalf-Of.
-- **Healthcare / FHIR?** See [healthcare-appointment-agent](./healthcare-appointment-agent/).
-- **Data Q&A with row-level security?** See [lakehouse-agent](./lakehouse-agent/).
-- **VPC private networking?** See [customer-support-assistant-vpc](./customer-support-assistant-vpc/).
-- **Role-based data access with Cedar policies?** See [role-based-hr-data-agent](./role-based-hr-data-agent/).
-- **SRE / infrastructure operations?** See [SRE-agent](./SRE-agent/).
-- **Financial market intelligence with optimization?** See [market-trends-agent](./market-trends-agent/).
+## See also
 
----
-
-## Related Categories
-
-- [02-automation-agents](../02-automation-agents/) — Async agents triggered by events, tickets, and webhooks
-- [03-coding-assistants](../03-coding-assistants/) — IDE and CI-driven agents for code generation and review
+- [02-workflow-automation-agents](../02-workflow-automation-agents/) - event-driven and background agents
+- [03-coding-assistants](../03-coding-assistants/) - developer tools and code generation

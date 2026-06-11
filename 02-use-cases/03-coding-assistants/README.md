@@ -1,51 +1,43 @@
 # Coding Agents
 
-IDE and CI-driven agents for code generation, refactor, and review. Long-running tasks in a sandboxed Code Interpreter runtime.
+Agents that help developers write, execute, or fix code. Tasks are typically longer-running than a chat response and are scoped to a project or repository. AgentCore Code Interpreter runs user-submitted code in an isolated container, and AgentCore Gateway can aggregate multiple developer tool APIs behind a single MCP endpoint.
 
-Coding agents differ from conversational agents in execution profile: tasks are often long-running (minutes to hours), scoped to a project or repository, and require secure sandboxed execution with audit trails. AgentCore Code Interpreter provides isolated container execution with no risk to your infrastructure. AgentCore Gateway aggregates developer tool APIs (GitHub, Jira, AWS) behind a single MCP endpoint, reducing context window overhead in IDE integrations.
+## How these differ from conversational agents
 
----
+The interaction model is similar (a developer sends a request and gets a response), but the execution profile is different. Code tasks can take minutes rather than seconds, require sandboxed execution, and often involve reading from or writing to a repository. Memory is project-scoped rather than user-session-scoped.
 
-## What makes a Coding Agent
+## Service configuration
 
-| Dimension | Coding Agent Configuration |
-|-----------|---------------------------|
-| **Identity** | Developer identity — agent acts on behalf of the developer or CI service account |
-| **Memory** | Project-scoped context — remembers codebase conventions, past decisions, open issues |
-| **Runtime** | Long-running (hours), Code Interpreter for sandboxed execution |
-| **Guardrails** | Code quality gates, security scanning, blocks malicious code generation |
-| **Observability** | Per-task tracing — track which files were changed, which tools were called |
-| **Gateway** | Aggregated MCP endpoint for IDE tools (GitHub, Jira, AWS, internal APIs) |
+| Service | Typical setup for coding agents |
+|---------|--------------------------------|
+| Identity | Developer identity or a CI service account |
+| Memory | Project-scoped context: codebase conventions, past decisions, open issues |
+| Runtime | Long-running tasks (minutes to hours), Code Interpreter for sandboxed execution |
+| Guardrails | Block malicious code generation, enforce code quality requirements |
+| Observability | Per-task traces showing which files were touched and which tools were called |
+| Gateway | Aggregated MCP endpoint for GitHub, Jira, AWS, and internal APIs |
 
-### Common Patterns
+## Common patterns
 
-| Pattern | When to use |
+| Pattern | When it fits |
 |---------|-------------|
-| **Plan-Act-Reflect** | Code generation with iterative self-review (plan → write → test → fix) |
-| **Swarm** | Multi-file refactors where parallel agents handle different modules |
-| **Human-in-the-Loop** | Code review gate — agent opens PR, human approves before merge |
-
----
+| Plan-Act-Reflect | Generate code, run tests, review output, iterate until passing |
+| Swarm | Parallel agents handling different modules in a large refactor |
+| Human-in-the-loop | Agent opens a pull request; a human reviews and merges |
 
 ## Samples
 
-| Sample | Use Case | Complexity | Key AgentCore Features |
-|--------|----------|------------|------------------------|
-| [text-to-python-ide](./text-to-python-ide/) | Full-stack text-to-Python IDE with sandboxed code execution | Intermediate | Runtime, Code Interpreter, Memory, Policy (Guardrails) |
-| [claude-code-gateway-mcp-server](./claude-code-gateway-mcp-server/) | Aggregate multiple MCP servers behind one AgentCore Gateway endpoint for Claude Code | Intermediate | Gateway (MCP aggregation), Identity |
-| [gateway-schema-support-agent](./gateway-schema-support-agent/) | Auto-convert and repair OpenAPI specs for AgentCore Gateway compatibility | Intermediate | Gateway, Code tools |
+| Sample | Use case | Complexity | AgentCore features |
+|--------|----------|------------|-------------------|
+| [text-to-python-ide](./text-to-python-ide/) | Full-stack IDE where users describe what they want in plain text and the agent writes and runs the Python code | Intermediate | Runtime, Code Interpreter, Memory, Policy (Guardrails) |
+| [claude-code-gateway-mcp-server](./claude-code-gateway-mcp-server/) | Consolidate multiple MCP servers behind one AgentCore Gateway endpoint for use with Claude Code | Intermediate | Gateway, Identity |
 
----
+## Where to start
 
-## Choosing a Sample
+- Building a code execution tool: [text-to-python-ide](./text-to-python-ide/) covers Code Interpreter, Runtime, Memory, and Guardrails in a React and FastAPI app.
+- Too many MCP servers in your Claude Code setup: [claude-code-gateway-mcp-server](./claude-code-gateway-mcp-server/) shows how to put all of them behind one Gateway endpoint.
 
-- **Building a code generation or execution tool?** Start with [text-to-python-ide](./text-to-python-ide/) — demonstrates Code Interpreter, Runtime, Memory, and Guardrails together in a full-stack React + FastAPI app.
-- **Managing MCP server sprawl for Claude Code in your enterprise?** See [claude-code-gateway-mcp-server](./claude-code-gateway-mcp-server/) — consolidates N MCP servers behind a single Gateway endpoint, reducing context window overhead and configuration sprawl.
-- **Integrating an existing API with AgentCore Gateway?** See [gateway-schema-support-agent](./gateway-schema-support-agent/) — ICARUS automatically converts and repairs OpenAPI specs to meet Gateway requirements, cutting integration time from days to hours.
+## See also
 
----
-
-## Related Categories
-
-- [01-conversational-agents](../01-conversational-agents/) — Customer-facing chat agents with memory, identity, and guardrails
-- [02-automation-agents](../02-automation-agents/) — Async agents triggered by events, tickets, and webhooks
+- [01-conversational-agents](../01-conversational-agents/) - agents that interact with users in real time
+- [02-workflow-automation-agents](../02-workflow-automation-agents/) - event-driven and background agents

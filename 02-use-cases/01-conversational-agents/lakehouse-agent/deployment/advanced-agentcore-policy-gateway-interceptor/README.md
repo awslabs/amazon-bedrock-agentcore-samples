@@ -71,7 +71,7 @@ Required tooling:
 > **MCP target ownership**: `lakehouse-mcp-target` referenced by the Cedar
 > policies is the first-party MCP server deployed by Phase 1 Step 4
 > (`deployment/4-mcp-lakehouse-server/`). It is part of this sample and is
-> licensed under the Apache License 2.0 (see [LICENSE](../../../../LICENSE)).
+> licensed under the Apache License 2.0 (see [LICENSE](../../../../../LICENSE)).
 > It is not a third-party dependency and requires no separate legal review.
 
 ## Directory layout
@@ -345,4 +345,4 @@ See [../README.md](../README.md) for details.
 
 ## License
 
-This project is licensed under the Apache License 2.0 — see the [LICENSE](../../../../LICENSE) file at the repository root for details.
+This project is licensed under the Apache License 2.0 — see the [LICENSE](../../../../../LICENSE) file at the repository root for details.

@@ -11,7 +11,7 @@
 ```
 02-use-cases/
   01-conversational-agents/    # User-facing chat, Q&A, interactive assistants
-  02-automation-agents/        # Event-driven, background, multi-agent pipelines
+  02-workflow-automation-agents/        # Event-driven, background, multi-agent pipelines
   03-coding-assistants/        # Developer tools, code generation, IDE integration
 ```
 
@@ -263,42 +263,16 @@
 **TODO:**
 1. Migrate from starter toolkit to native SDK — this is the only required change
 2. Add `agentcore.json` for CLI v2 deploy
-3. Consider extracting the Policy Engine interceptor pattern into a reusable module (many samples could benefit)
-4. The notebook-driven deployment is great for learning; consider adding a `deploy.py` script for production use
-5. Link the AWS blog post prominently at the top of the README
+3. Add **Code Interpreter** — a data analyst querying a lakehouse naturally wants charts and visualizations from query results. Code Interpreter would let the agent run Python (matplotlib, pandas) on returned data and render plots inline, making this a much stronger analytics showcase.
+4. Consider extracting the Policy Engine interceptor pattern into a reusable module (many samples could benefit)
+5. The notebook-driven deployment is great for learning; consider adding a `deploy.py` script for production use
+6. Link the AWS blog post prominently at the top of the README
 
 ---
 
 #### 8. slide-deck-generator-memory-agent
 
-**Category:** Conversational
-**Starter Toolkit:** YES — needs migration
-**README Lines:** 404
-**Prior Tier:** B (18/40)
-
-**Summary:** Presentation generator agent that demonstrates the difference between basic memory and AgentCore enhanced memory. Shows how persistent memory improves multi-session continuity for content creation tasks. Strong memory-focused use case but limited feature breadth.
-
-**AgentCore Features (5):** Runtime, Memory, Policy, Registry, Identity
-
-| Criterion | Score |
-|-----------|-------|
-| Existing Tier (B=2) | 2 |
-| Blog Post | 0 |
-| Feature Count (5) | 5 |
-| Unique Customer Problem | 3 |
-| README Quality | 4 |
-| Starter Toolkit Penalty | –2 |
-| **Total** | **12** |
-
-**Recommendation:** UPDATE
-
-**TODO:**
-1. Migrate from starter toolkit to native SDK
-2. The basic vs. enhanced memory comparison is the core value — make this more visually compelling (side-by-side screenshots/output examples)
-3. Add AgentCore Observability to show memory read/write traces
-4. Add AgentCore Gateway for slide template/theme APIs (e.g., Google Slides, PowerPoint)
-5. Add evaluation scripts measuring content coherence across sessions
-6. Add `agentcore.json` for CLI v2
+> **DROPPED** — Removed from the repo. The sample had a narrow use case (presentation generation as a memory comparison vehicle), no blog post reference, limited feature coverage (5 features, all basic), and uses the deprecated starter toolkit. The basic vs. enhanced memory comparison concept is valid but not compelling enough as a standalone use-case sample — it belongs in a tutorial or feature notebook rather than the use-cases folder. Author: Akarsha Sehwag.
 
 ---
 
@@ -338,7 +312,9 @@
 
 #### 10. auth0-multi-agent-obo
 
-**Category:** Conversational
+> **MOVED** to `01-features/05-authenticate-and-authorize/auth0-multi-agent-obo/` — the sample is primarily an identity pattern demo (RFC 8693 OBO token exchange via Auth0) rather than a use case. The financial domain is incidental. Sits alongside `okta-auth-three-tier-end-to-end-demo` and `04-entra-obo-mcp-runtime` as a reference for enterprise identity patterns.
+
+**Category:** Conversational (moved)
 **Starter Toolkit:** NO
 **README Lines:** 475
 **Prior Tier:** A (27/40)
@@ -370,34 +346,7 @@
 
 #### 11. local-prototype-to-agentcore
 
-**Category:** Conversational
-**Starter Toolkit:** YES — needs migration
-**README Lines:** 413
-**Prior Tier:** B (20/40)
-
-**Summary:** Step-by-step tutorial migrating an insurance assistant from local Strands prototype to full AgentCore deployment. Unique as the only "how to migrate to production" sample. Covers Runtime + Gateway + Identity in a journey format. Cross-references LICENSE at repo root (path will need updating after restructure).
-
-**AgentCore Features (9):** Runtime, Memory, Gateway, Policy, Registry, Optimization, Observability, Browser, Identity
-
-| Criterion | Score |
-|-----------|-------|
-| Existing Tier (B=2) | 2 |
-| Blog Post | 0 |
-| Feature Count (9) | 9 |
-| Unique Customer Problem | 4 |
-| README Quality | 4 |
-| Starter Toolkit Penalty | –2 |
-| **Total** | **15** |
-
-**Recommendation:** UPDATE
-
-**TODO:**
-1. Migrate from starter toolkit to native SDK — this sample is literally about the migration journey, so it should model best practices
-2. Update LICENSE links after folder restructure: `../../LICENSE` → `../../../LICENSE` (and similarly in sub-READMEs)
-3. Add `agentcore.json` showing the final production state
-4. Add a "before/after" comparison table: local prototype metrics vs. AgentCore deployment metrics
-5. Add evaluation section showing how to validate the cloud agent matches the local prototype
-6. Consider adding a video walkthrough or animated GIF
+> **DROPPED** — Removed from the repo. The sample claimed 9 AgentCore features but only actively uses 3 in code (Runtime, Gateway, Identity). No blog post reference. Uses the deprecated starter toolkit. The tutorial format (journey from local to cloud) belongs in `01-tutorials/` rather than as a use case. The insurance domain is already better covered by `event-driven-claims-agent`.
 
 ---
 
@@ -535,34 +484,7 @@
 
 #### 16. role-based-hr-data-agent
 
-**Category:** Automation
-**Starter Toolkit:** YES — needs migration
-**README Lines:** 370
-**Prior Tier:** A (25/40)
-
-**Summary:** HR data agent with Cedar authorization + Lambda interceptors for field-level DLP. Enforces role-based access (manager sees salary data; employee does not). The only sample demonstrating Cedar policy engine at field level within an agent workflow.
-
-**AgentCore Features (7):** Runtime, Gateway, Policy, Evaluations, Optimization, Observability, Identity
-
-| Criterion | Score |
-|-----------|-------|
-| Existing Tier (A=3) | 3 |
-| Blog Post | 0 |
-| Feature Count (7) | 7 |
-| Unique Customer Problem | 5 |
-| README Quality | 3 |
-| Starter Toolkit Penalty | –2 |
-| **Total** | **16** |
-
-**Recommendation:** UPDATE
-
-**TODO:**
-1. Migrate from starter toolkit to native SDK
-2. Expand README to 500+ lines: add detailed Cedar policy explanation, role hierarchy diagram, example queries showing policy enforcement
-3. Add a side-by-side demo: same question asked as manager vs. employee showing different results
-4. Add more HR data scenarios (leave balance, performance reviews, org chart traversal)
-5. Add evaluation harness measuring policy enforcement accuracy
-6. Add `agentcore.json` for CLI v2
+> **DROPPED** — Removed from the repo. No blog post reference. Uses the deprecated starter toolkit. The Cedar field-level DLP pattern is unique and valuable but the sample needs significant investment to be production-ready. If rebuilt, it should model the Cedar policy engine prominently with a side-by-side manager vs. employee demo, native SDK, and a proper evaluation harness.
 
 ---
 
@@ -601,108 +523,23 @@
 
 #### 18. A2A-realestate-agentcore-multiagents
 
-**Category:** Automation
-**Starter Toolkit:** YES — needs migration
-**README Lines:** 216
-**Prior Tier:** B (15/40)
-
-**Summary:** A2A real estate multi-agent system with PropertySearch and PropertyBooking agents. Uses Cognito OAuth for A2A authentication. Sub-agent READMEs reference `../../README.md` which points to `02-use-cases/README.md` (paths will need updating post-restructure).
-
-**AgentCore Features (10):** Runtime, Memory, Gateway, Policy, Registry, Optimization, Observability, Payments, Browser, Identity
-
-| Criterion | Score |
-|-----------|-------|
-| Existing Tier (B=2) | 2 |
-| Blog Post | 0 |
-| Feature Count (10) | 10 |
-| Unique Customer Problem | 4 |
-| README Quality | 2 |
-| Starter Toolkit Penalty | –2 |
-| **Total** | **16** |
-
-**Recommendation:** UPDATE
-
-**TODO:**
-1. Migrate from starter toolkit to native SDK
-2. **Fix cross-folder links after restructure:** In `propertybookingagent_strands/README.md` and `propertysearchagent_strands/README.md`, update `../../README.md` → `../../../README.md`
-3. Expand main README to 400+ lines with property search/booking flow diagram
-4. Add seed property data so users can run meaningful demos
-5. Add real estate-specific evaluation scenarios (search accuracy, booking confirmation flow)
-6. Add AgentCore Memory for user preferences and previous search history
-
+> **DROPPED** — Removed from the repo. No blog post reference. Uses the deprecated starter toolkit. Actual AgentCore feature usage is only 3 (Runtime, Identity/Cognito, A2A) — the assessment's count of 10 was entirely grepped. The sample is a thin A2A demo with Cognito auth, not a showcase use case. The A2A + Cognito pattern is better demonstrated by `A2A-multi-agent-incident-response`.
 ---
 
 #### 19. auth0-multi-agent-obo
 
-*See entry #10 above — categorized under Conversational Agents.*
+*See entry #10 above — moved to `01-features/05-authenticate-and-authorize/`.*
 
 ---
 
 #### 20. cost-optimization-agent
 
-**Category:** Automation
-**Starter Toolkit:** YES — needs migration
-**README Lines:** 211
-**Prior Tier:** C (12/40)
-
-**Summary:** AWS cost monitoring agent using Cost Explorer APIs. Minimal implementation — mostly notebook-driven. Some code interpreter usage for generating cost charts. The domain (cost optimization) is valuable but the sample is underdeveloped.
-
-**AgentCore Features (8):** Runtime, Memory, Policy, Registry, Optimization, Observability, Code Interpreter, Identity
-
-| Criterion | Score |
-|-----------|-------|
-| Existing Tier (C=1) | 1 |
-| Blog Post | 0 |
-| Feature Count (8) | 8 |
-| Unique Customer Problem | 4 |
-| README Quality | 2 |
-| Starter Toolkit Penalty | –2 |
-| **Total** | **14** |
-
-**Recommendation:** UPDATE
-
-**TODO:**
-1. Migrate from starter toolkit to native SDK
-2. Add proper deploy.py and standalone Python agent (not just notebooks)
-3. Expand README with architecture, cost Explorer API coverage, example queries
-4. Add AgentCore Gateway to expose Cost Explorer APIs via MCP
-5. Add evaluation scenarios (cost anomaly detection accuracy)
-6. Add automated cost report scheduling (event-driven trigger via EventBridge)
-7. Consider merging with `AWS-operations-agent` as a "cloud operations" sample
-
+> **DROPPED** — Removed from the repo. No blog post reference. Actual AgentCore feature usage is only 1 (Runtime) — direct boto3 Cost Explorer calls, no Gateway, no Memory, no Observability. Merged January 2026 by Venkatakrishna Pullela. The FinOps domain has an associated AWS blog post but it does not reference this sample. If rebuilt, it should use Gateway to expose Cost Explorer APIs as MCP tools, add Observability, and be positioned as a companion to `AWS-operations-agent`.
 ---
 
 #### 21. DB-performance-analyzer
 
-**Category:** Automation
-**Starter Toolkit:** YES — needs migration
-**README Lines:** 345
-**Prior Tier:** B (20/40)
-
-**Summary:** PostgreSQL database performance analyzer using AgentCore Runtime + VPC Lambda tools for DB access. Analyzes slow queries, index recommendations, and table statistics. Practical DevOps use case with VPC networking pattern.
-
-**AgentCore Features (7):** Runtime, Memory, Gateway, Evaluations, Optimization, Observability, Identity
-
-| Criterion | Score |
-|-----------|-------|
-| Existing Tier (B=2) | 2 |
-| Blog Post | 0 |
-| Feature Count (7) | 7 |
-| Unique Customer Problem | 4 |
-| README Quality | 3 |
-| Starter Toolkit Penalty | –2 |
-| **Total** | **14** |
-
-**Recommendation:** UPDATE
-
-**TODO:**
-1. Migrate from starter toolkit to native SDK
-2. Add a pre-built PostgreSQL Docker image with sample slow queries for demo purposes
-3. Add AgentCore Policy Engine to restrict which DB operations the agent can perform
-4. Add evaluation harness measuring index recommendation quality
-5. Expand README with PostgreSQL performance concepts overview
-6. Add MySQL/Aurora support notes
-
+> **DROPPED** — Removed from the repo. No blog post reference. Actual AgentCore feature usage is only 3 (Gateway via starter toolkit, Identity/Cognito, Runtime implied). The core pattern (Gateway + VPC Lambda + Cognito) is valuable but thin as a standalone use case. Author: Ramesh V. If rebuilt, it would be a stronger fit as a workflow automation agent — triggered by a CloudWatch alarm on slow queries, running nightly DB health checks via EventBridge, writing reports to S3/SNS, with Runtime, Memory, Observability, and Policy added.
 ---
 
 #### 22. enterprise-web-intelligence-agent
@@ -740,37 +577,7 @@
 
 #### 23. farm-management-advisor
 
-**Category:** Automation
-**Starter Toolkit:** YES — needs migration
-**README Lines:** 191
-**Prior Tier:** C (12/40)
-
-**Summary:** LangGraph multi-agent farm management system. Notebook-driven. The only AgriTech use case in the repo — unique vertical. Uses browser automation for weather/market data. Underdeveloped for a standalone use-case sample.
-
-**AgentCore Features (12):** Runtime, Memory, Gateway, Policy, Registry, Evaluations, Optimization, Observability, Payments, Browser, Code Interpreter, Identity
-
-| Criterion | Score |
-|-----------|-------|
-| Existing Tier (C=1) | 1 |
-| Blog Post | 0 |
-| Feature Count (12) | 12 |
-| Unique Customer Problem | 4 |
-| README Quality | 2 |
-| Starter Toolkit Penalty | –2 |
-| **Total** | **18** |
-
-**Recommendation:** UPDATE
-
-**Note:** The feature count (12) appears inflated from broad grep matches — verify actual feature usage. The sample likely uses 4-5 features in practice.
-
-**TODO:**
-1. Migrate from starter toolkit to native SDK
-2. Convert from notebooks to a proper standalone Python application
-3. Add a realistic farm scenario with mock sensor data
-4. Reduce over-feature-claiming: audit each feature and only list ones actually used
-5. Add AgentCore Observability to trace the LangGraph multi-agent coordination
-6. Expand README to 400+ lines with AgriTech context, data sources, and agent decision logic
-
+> **DROPPED** — Removed from the repo. No blog post reference. Actual AgentCore feature usage is 4 (Runtime, Memory, Gateway, LangGraph). Notebook-only with a 191-line README. Mixed SDK state (notebook 1 uses deprecated starter toolkit, notebook 2 uses native SDK). The use case (multimodal plant health advisor with image input, Rekognition, weather, and persistent memory) is genuinely interesting and the AgriTech vertical is unique — but the implementation does not meet the bar. Author: Julia Hu. If rebuilt as a proper script-based sample with a deploy.py, full README, and Observability, it would be worth including.
 ---
 
 #### 24. intelligent-event-agent
@@ -877,35 +684,7 @@
 
 #### 27. gateway-schema-support-agent
 
-**Category:** Coding
-**Starter Toolkit:** NO
-**README Lines:** 82
-**Prior Tier:** B (15/40)
-
-**Summary:** ICARUS agent that automatically converts and repairs OpenAPI specifications for AgentCore Gateway compatibility. Transforms legacy specs to OpenAPI 3.0, resolves validation errors, reduces integration time. Developer tool targeting AgentCore adopters specifically — high utility for the target audience.
-
-**AgentCore Features (5):** Gateway, Registry, Optimization, Observability, Browser
-
-| Criterion | Score |
-|-----------|-------|
-| Existing Tier (B=2) | 2 |
-| Blog Post | 0 |
-| Feature Count (5) | 5 |
-| Unique Customer Problem | 5 |
-| README Quality | 1 |
-| Starter Toolkit Penalty | 0 |
-| **Total** | **13** |
-
-**Recommendation:** UPDATE
-
-**TODO:**
-1. **Critical: README is only 82 lines** — needs major expansion
-2. Add before/after examples showing an OpenAPI spec before ICARUS and after (the core value proposition)
-3. Add a library of common OpenAPI validation errors and how ICARUS fixes them
-4. Add deploy.py for proper deployment
-5. Add AgentCore Runtime for the agent itself (currently unclear how the agent is hosted)
-6. Add evaluation suite measuring fix success rate on a benchmark of broken specs
-7. Link prominently from `claude-code-gateway-mcp-server` and `lakehouse-agent` as a companion tool
+> **DROPPED** — Removed from the repo. The sample was misclassified as a coding agent. Its interaction model is conversational (user chats with the agent in a web UI to iteratively fix an OpenAPI spec), it does not use Code Interpreter, and it has no project-scoped memory. The README was only 82 lines with no before/after examples, no deploy.py, and unclear AgentCore Runtime usage. The utility is narrow (fixing Gateway-incompatible specs) and the implementation did not meet the bar for an included sample. If rebuilt, it should be a proper conversational agent with Runtime, a deploy.py, and before/after spec examples demonstrating the value.
 
 ---
 
@@ -949,25 +728,25 @@
 |---|--------|----------|------|-------|----------------|------|----------|----------------|
 | 1 | event-driven-claims-agent | Automation | S | 22 | No | — | 8 | KEEP AS-IS |
 | 2 | market-trends-agent | Automation | A | 25 | No | — | 12 | KEEP AS-IS |
-| 3 | auth0-multi-agent-obo | Conversational | A | 23 | No | — | 11 | KEEP AS-IS |
+| 3 | auth0-multi-agent-obo | — | A | 23 | No | — | 11 | **MOVED** to 01-features/05-authenticate-and-authorize/ |
 | 4 | SRE-agent | Automation | A | 22 | No | — | 10 | KEEP AS-IS |
 | 5 | lakehouse-agent | Conversational | A | 21 | YES | Yes | 8 | UPDATE (ST only) |
 | 6 | visa-b2b-account-payable-agent | Automation | A | 18 | YES | — | 8 | UPDATE |
-| 7 | role-based-hr-data-agent | Automation | A | 16 | YES | — | 7 | UPDATE |
+| 7 | role-based-hr-data-agent | — | — | — | — | — | — | **DROPPED** |
 | 8 | AWS-operations-agent | Conversational | B | 16 | YES | — | 8 | UPDATE |
 | 9 | A2A-realestate-agentcore-multiagents | Automation | B | 16 | YES | — | 10 | UPDATE |
 | 10 | customer-support-assistant | Conversational | B | 15 | YES | — | 7 | UPDATE |
 | 11 | healthcare-appointment-agent | Conversational | B | 15 | YES | — | 5 | UPDATE |
-| 12 | local-prototype-to-agentcore | Conversational | B | 15 | YES | — | 9 | UPDATE |
+| 12 | local-prototype-to-agentcore | — | — | — | — | — | — | **DROPPED** |
 | 13 | A2A-multi-agent-incident-response | Automation | B | 14 | YES | — | 7 | UPDATE |
 | 14 | cost-optimization-agent | Automation | C | 14 | YES | — | 8 | UPDATE |
 | 15 | DB-performance-analyzer | Automation | B | 14 | YES | — | 7 | UPDATE |
 | 16 | device-management-agent | Conversational | B | 14 | YES | — | 6 | UPDATE |
 | 17 | video-games-sales-assistant | Conversational | B | 14 | YES | — | 10* | UPDATE |
 | 18 | text-to-python-ide | Coding | B | 17 | No | — | 9 | UPDATE |
-| 19 | slide-deck-generator-memory-agent | Conversational | B | 12 | YES | — | 5 | UPDATE |
+| 19 | slide-deck-generator-memory-agent | — | — | — | — | — | — | **DROPPED** |
 | 20 | farm-management-advisor | Automation | C | 18* | YES | — | 12* | UPDATE |
-| 21 | gateway-schema-support-agent | Coding | B | 13 | No | — | 5 | UPDATE |
+| 21 | gateway-schema-support-agent | — | — | — | — | — | — | **DROPPED** |
 | 22 | okta-auth-three-tier-end-to-end-demo | Automation | B | 10 | YES | — | 4 | UPDATE |
 | 23 | enterprise-web-intelligence-agent | Automation | C | 12 | No | — | 5 | MAJOR OVERHAUL |
 | 24 | claude-code-gateway-mcp-server | Coding | C | 11 | YES | — | 6 | MAJOR OVERHAUL |
@@ -1022,7 +801,7 @@ client.create_agent_runtime(...)
 
 ## Cross-Folder Link Fixes Required After Restructure
 
-When moving samples into `01-conversational-agents/`, `02-automation-agents/`, or `03-coding-assistants/`, the following links in files go above the sample level and will need updating:
+When moving samples into `01-conversational-agents/`, `02-workflow-automation-agents/`, or `03-coding-assistants/`, the following links in files go above the sample level and will need updating:
 
 ### `local-prototype-to-agentcore` → `01-conversational-agents/`
 
@@ -1032,7 +811,7 @@ When moving samples into `01-conversational-agents/`, `02-automation-agents/`, o
 | `local_prototype/README.md` | `../../../LICENSE` | `../../../../LICENSE` |
 | `local_prototype/local_strands_insurance_agent/README.md` | `../../../../LICENSE` | `../../../../../LICENSE` |
 
-### `A2A-realestate-agentcore-multiagents` → `02-automation-agents/`
+### `A2A-realestate-agentcore-multiagents` → `02-workflow-automation-agents/`
 
 | File | Current Link | Updated Link |
 |------|-------------|--------------|
@@ -1043,7 +822,7 @@ When moving samples into `01-conversational-agents/`, `02-automation-agents/`, o
 | `propertybookingagent_strands/README.md` | `../../AGENTCORE_DEPLOYMENT.md` | `../../../AGENTCORE_DEPLOYMENT.md` |
 | `propertysearchagent_strands/README.md` | `../../AGENTCORE_DEPLOYMENT.md` | `../../../AGENTCORE_DEPLOYMENT.md` |
 
-### `visa-b2b-account-payable-agent` → `02-automation-agents/`
+### `visa-b2b-account-payable-agent` → `02-workflow-automation-agents/`
 
 All internal links in `DEPLOYMENT-GUIDE.md` and `DEPLOYMENT-QUICK-START.md` that use `../` patterns are relative within the project and will not be affected.
 
@@ -1054,7 +833,6 @@ All internal links in `DEPLOYMENT-GUIDE.md` and `DEPLOYMENT-QUICK-START.md` that
 ### `01-conversational-agents/` (11 samples)
 ```
 01-conversational-agents/
-  auth0-multi-agent-obo/
   AWS-operations-agent/
   customer-support-assistant/
   customer-support-assistant-vpc/
@@ -1062,25 +840,18 @@ All internal links in `DEPLOYMENT-GUIDE.md` and `DEPLOYMENT-QUICK-START.md` that
   finance-personal-assistant/
   healthcare-appointment-agent/
   lakehouse-agent/
-  local-prototype-to-agentcore/
-  slide-deck-generator-memory-agent/
   video-games-sales-assistant/
 ```
 
-### `02-automation-agents/` (13 samples)
+### `02-workflow-automation-agents/` (13 samples)
 ```
-02-automation-agents/
+02-workflow-automation-agents/
   A2A-multi-agent-incident-response/
-  A2A-realestate-agentcore-multiagents/
-  cost-optimization-agent/
-  DB-performance-analyzer/
   enterprise-web-intelligence-agent/
   event-driven-claims-agent/
-  farm-management-advisor/
   intelligent-event-agent/
   market-trends-agent/
   okta-auth-three-tier-end-to-end-demo/
-  role-based-hr-data-agent/
   SRE-agent/
   visa-b2b-account-payable-agent/
 ```
@@ -1089,7 +860,6 @@ All internal links in `DEPLOYMENT-GUIDE.md` and `DEPLOYMENT-QUICK-START.md` that
 ```
 03-coding-assistants/
   claude-code-gateway-mcp-server/
-  gateway-schema-support-agent/
   text-to-python-ide/
 ```
 
@@ -1103,7 +873,7 @@ All internal links in `DEPLOYMENT-GUIDE.md` and `DEPLOYMENT-QUICK-START.md` that
 
 ### Short-term (next sprint)
 3. Add `agentcore.json` to `event-driven-claims-agent`, `market-trends-agent`, `SRE-agent` — these are the best samples and should lead by example
-4. Expand READMEs for `text-to-python-ide` (151 lines), `gateway-schema-support-agent` (82 lines), `video-games-sales-assistant` (139 lines), `claude-code-gateway-mcp-server` (104 lines)
+4. Expand READMEs for `text-to-python-ide` (151 lines), `video-games-sales-assistant` (139 lines), `claude-code-gateway-mcp-server` (104 lines)
 
 ### Medium-term
 5. Major overhaul of `finance-personal-assistant` and `claude-code-gateway-mcp-server` — strong concepts, weak execution
