@@ -8,7 +8,6 @@ Usage:
     python invoke.py
 """
 
-import base64
 import json
 import time
 

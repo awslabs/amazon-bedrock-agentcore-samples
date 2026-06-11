@@ -145,11 +145,11 @@ def print_results(result: dict):
     else:
         # Try CloudWatch Logs for detailed results if evaluation metrics not in response
         print("\nNote: Detailed results are in CloudWatch Logs.")
-        print(f"  Log group: /aws/bedrock-agentcore/evaluations")
+        print("  Log group: /aws/bedrock-agentcore/evaluations")
         print(f"  Job ID:    {result.get('batchEvaluationId', '')}")
 
     print("\nView in console:")
-    print(f"  CloudWatch → Application Signals → Gen AI observability")
+    print("  CloudWatch → Application Signals → Gen AI observability")
     print(f"  CloudWatch → X-Ray traces → Traces (filter by {FUNCTION_NAME})")
     print("=" * 60)
 
