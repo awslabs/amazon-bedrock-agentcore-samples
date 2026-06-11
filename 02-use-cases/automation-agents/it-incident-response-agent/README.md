@@ -154,7 +154,7 @@ flowchart TB
 | #   | Service              | How it's used                                                                                           |
 | --- | -------------------- | ------------------------------------------------------------------------------------------------------- |
 | 1   | **Runtime**          | Strands agent in container, 8-hour sessions, framework-agnostic                                         |
-| 2   | **Gateway + Policy** | MCP protocol, 3 Lambda targets, Cedar policy engine (LOG_ONLY)                                          |
+| 2   | **Gateway + Policy** | MCP protocol, 4 Lambda targets, Cedar policy engine (LOG_ONLY)                                          |
 | 3   | **Memory**           | SUMMARIZATION strategy — episodic recall across incidents per user                                      |
 | 4   | **Identity**         | AWS_IAM default, CUSTOM_JWT toggle via `@requires_access_token`, Atlassian 3LO (USER_FEDERATION) opt-in |
 | 5   | **Observability**    | OTEL auto-instrumentation → CloudWatch GenAI console                                                    |
@@ -190,6 +190,12 @@ using the CLI (`@aws/agentcore`) for all AgentCore-managed resources.
 # Scaffold a new AgentCore project with Strands framework, container-based Runtime, and short-term Memory
 agentcore create --name ITIncidentAgent --framework Strands --build Container --memory shortTerm
 
+# Add long-term Memory with a SUMMARIZATION strategy (rolls each session into a
+# per-requester summary that powers cross-incident recall). The memory name
+# becomes the MEMORY_{NAME}_ID env var the L3 injects into the Runtime —
+# here ITIncidentAgentMemory → MEMORY_ITINCIDENTAGENTMEMORY_ID.
+agentcore add memory --name ITIncidentAgentMemory --strategies SUMMARIZATION --expiry 30
+
 # Add a Gateway (MCP protocol) to expose tools to the agent, secured with IAM auth
 agentcore add gateway --name ITIncidentGateway --authorizer-type AWS_IAM
 
@@ -218,9 +224,10 @@ agentcore add policy --name RequireReasonForChangeRequest --engine ITIncidentPol
   --statement 'forbid(principal, action, resource is AgentCore::Gateway) when { context has "toolName" && context.toolName == "create-change-request" && !(context has "reason") };' \
   --validation-mode IGNORE_ALL_FINDINGS
 
-# Enable OpenTelemetry instrumentation (set directly in agentcore.json — no CLI command)
-# In agentcore.json → runtimes[].instrumentation: { "enableOtel": true }
-# Plus runtimes[].envVars[] for X-Ray and OTEL exporter configuration
+# Enable OpenTelemetry instrumentation:
+# OTEL auto-instrumentation is provided by the Dockerfile CMD
+#   ["opentelemetry-instrument", "python", "-m", "main"]  (Container build)
+# Plus runtimes[].envVars[] in agentcore.json for X-Ray and OTEL exporter configuration
 ```
 
 Supplementary infrastructure (DynamoDB, S3, SNS, Lambda tools) is integrated
@@ -511,12 +518,13 @@ set `onlineEvalConfigs` to `[]` in `agentcore/agentcore.json` and redeploy. With
 
 ### OpenTelemetry & Tracing (declarative)
 
-OTEL instrumentation is configured declaratively in `agentcore/agentcore.json`:
+OTEL auto-instrumentation is provided by the Dockerfile `CMD`
+(`["opentelemetry-instrument", "python", "-m", "main"]`), and the OTEL/X-Ray
+environment variables are configured declaratively in `agentcore/agentcore.json`:
 
 ```json
 "runtimes": [{
   "name": "ITIncidentAgent",
-  "instrumentation": { "enableOtel": true },
   "envVars": [
     { "name": "_AWS_XRAY_DAEMON_ADDRESS", "value": "localhost:2000" },
     { "name": "_AWS_XRAY_TRACING_ENABLED", "value": "true" },
@@ -526,7 +534,7 @@ OTEL instrumentation is configured declaratively in `agentcore/agentcore.json`:
 }]
 ```
 
-The L3 construct injects these into the Runtime automatically — no imperative CDK code needed. Traces flow to CloudWatch X-Ray and are viewable in the GenAI Observability console.
+The L3 construct injects these env vars into the Runtime automatically — no imperative CDK code needed. Traces flow to CloudWatch X-Ray and are viewable in the GenAI Observability console.
 
 ### Retrieve Evaluation Results
 
@@ -618,6 +626,59 @@ Replace AWS_IAM with external identity provider auth:
 
 See `docs/custom-jwt-auth-upgrade.md` for detailed setup (including Google, Okta,
 Microsoft), testing steps, and troubleshooting.
+
+### Configure Memory
+
+The agent uses **AgentCore Memory** for cross-incident recall: each resolved
+ticket is summarized and, on the next ticket from the same requester, prior
+summaries are injected into the system prompt so the agent can detect recurring
+issues and escalate.
+
+Memory is declared in `agentcore/agentcore.json` under `memories[]`:
+
+```json
+"memories": [{
+  "name": "ITIncidentAgentMemory",
+  "eventExpiryDuration": 30,
+  "strategies": [
+    { "type": "SUMMARIZATION", "name": "summary_strategy", "namespaces": ["incidents/{actorId}"] }
+  ]
+}]
+```
+
+**To (re)create this via the CLI** instead of editing JSON by hand:
+
+```bash
+agentcore add memory --name ITIncidentAgentMemory --strategies SUMMARIZATION --expiry 30
+```
+
+| Flag           | Value / meaning                                                        |
+| -------------- | ---------------------------------------------------------------------- |
+| `--name`       | `ITIncidentAgentMemory` — becomes the `MEMORY_{NAME}_ID` env var the L3 injects into the Runtime (`MEMORY_ITINCIDENTAGENTMEMORY_ID`), which `config.py` reads as `MEMORY_ID`. |
+| `--strategies` | `SUMMARIZATION` — rolls each session into a per-requester summary. Comma-separate to add more (e.g. `SEMANTIC,SUMMARIZATION`). |
+| `--expiry`     | Event expiry in days (default 30, min 7, max 365).                     |
+
+After adding, validate and deploy:
+
+```bash
+agentcore validate
+agentcore deploy -y --target dev
+```
+
+> **Namespace alignment (important):** `memory/enrichment.py` retrieves from the
+> namespace `incidents/{actorId}`. If you change the strategy's `namespaces` in
+> `agentcore.json`, update `retrieve_past_incidents()` to match, or retrieval
+> returns nothing.
+
+> **Disable / no-op behavior:** If `memories[]` is empty (and no `MEMORY_ID` is
+> set), the agent's Memory code degrades gracefully to a no-op — tickets are
+> still resolved, just without cross-incident recall. Remove it with
+> `agentcore remove memory --name ITIncidentAgentMemory`.
+
+**Local dev:** Memory is not available during `agentcore dev`. To test against
+the deployed Memory resource locally, set `MEMORY_ID=<deployed-id>` in
+`agentcore/.env.local` (get the ID from `agentcore status` or the `MemoryId`
+stack output).
 
 ### Add a Knowledge Base
 

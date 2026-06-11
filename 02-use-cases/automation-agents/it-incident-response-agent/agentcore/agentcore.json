@@ -8,9 +8,6 @@
       "build": "Container",
       "entrypoint": "main.py",
       "codeLocation": "app/ITIncidentAgent",
-      "instrumentation": {
-        "enableOtel": true
-      },
       "envVars": [
         { "name": "_AWS_XRAY_DAEMON_ADDRESS", "value": "localhost:2000" },
         { "name": "_AWS_XRAY_TRACING_ENABLED", "value": "true" },
@@ -20,11 +17,26 @@
         { "name": "OTEL_PYTHON_LOGGING_AUTO_INSTRUMENTATION_ENABLED", "value": "true" },
         { "name": "AGENT_OBSERVABILITY_ENABLED", "value": "true" },
         { "name": "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT", "value": "true" },
-        { "name": "OTEL_AWS_APPLICATION_SIGNALS_ENABLED", "value": "true" }
+        { "name": "OTEL_AWS_APPLICATION_SIGNALS_ENABLED", "value": "true" },
+        { "name": "OTEL_PROPAGATORS", "value": "baggage,tracecontext,xray" },
+        { "name": "AGENT_MODEL_ID", "value": "us.anthropic.claude-sonnet-4-6" },
+        { "name": "FAST_MODEL_ID", "value": "us.anthropic.claude-haiku-4-5-20251001-v1:0" }
       ]
     }
   ],
-  "memories": [],
+  "memories": [
+    {
+      "name": "ITIncidentAgentMemory",
+      "eventExpiryDuration": 30,
+      "strategies": [
+        {
+          "type": "SUMMARIZATION",
+          "name": "summary_strategy",
+          "namespaces": ["incidents/{actorId}"]
+        }
+      ]
+    }
+  ],
   "credentials": [],
   "evaluators": [],
   "onlineEvalConfigs": [

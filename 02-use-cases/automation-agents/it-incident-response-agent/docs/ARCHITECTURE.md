@@ -284,7 +284,7 @@ Two formats supported:
 │  │  Strands      │  │ SUMMARIZATION │  │  Protocol: MCP (StreamableHTTP)  │  │
 │  │  agent in     │  │ strategy      │  │  Auth: AWS_IAM / CUSTOM_JWT      │  │
 │  │  container    │  │               │  │  Semantic Search: enabled        │  │
-│  │  (Python 3.14)│  │  Episodes per │  │                                  │  │
+│  │  (Python 3.12)│  │  Episodes per │  │                                  │  │
 │  │               │  │  user/incident│  │  ┌────────┐┌────────┐┌────────┐  │  │
 │  │  Cost routing:│  │               │  │  │lookup- ││get-    ││create- │  │  │
 │  │  Haiku (LOW)  │  │  Namespace:   │  │  │user    ││process-││change- │  │  │
@@ -380,7 +380,7 @@ graph TB
         PE[Policy Engine + Policies]
         OE[Online Evaluation]
         MEM[Memory]
-        OTEL[OTEL Instrumentation]
+        OTEL[OTEL env vars]
     end
 
     subgraph IMPERATIVE["CDK (imperative, gap-fill)"]
@@ -404,14 +404,14 @@ graph TB
 
 | Resource | Managed By | Configuration |
 |----------|-----------|---------------|
-| Runtime (container, OTEL) | `agentcore.json` → L3 | `runtimes[]` + `instrumentation` + `envVars[]` |
+| Runtime (container, OTEL) | `agentcore.json` → L3 | `runtimes[]` + `envVars[]` (incl. OTEL + model IDs); OTEL wrapping via Dockerfile CMD |
 | Gateway + targets | `agentcore.json` → L3 | `agentCoreGateways[]` (ARNs patched at synth) |
 | Policy Engine + Cedar policies | `agentcore.json` → L3 | `policyEngines[]` + `policyEngineConfiguration` on gateway |
 | Online Evaluation | `agentcore.json` → L3 | `onlineEvalConfigs[]` (set to `[]` to disable) |
 | Memory | `agentcore.json` → L3 | `memories[]` (SUMMARIZATION strategy) |
 | DynamoDB, S3, Lambda, SNS, EventBridge, Guardrail, KB, Alarms | CDK `InfraConstruct` | Supplementary infra not managed by AgentCore |
-| Runtime custom env vars | CDK `addPropertyOverride` | GUARDRAIL_ID, EVENT_BUS_NAME, TICKETS_TABLE, model IDs, auth mode |
-| Runtime additional IAM | CDK `iam.Policy` | DynamoDB, Guardrail, EventBridge, X-Ray, CloudWatch Logs |
+| Runtime custom env vars | CDK `addPropertyOverride` | GUARDRAIL_ID, EVENT_BUS_NAME, TICKETS_TABLE, GATEWAY_URL, auth mode (model IDs are declarative in `envVars[]`) |
+| Runtime additional IAM | CDK `iam.Policy` | DynamoDB, Guardrail, EventBridge, CloudWatch Logs Insights (X-Ray put-trace is granted by the L3, not here) |
 | Jira OAuth provider | CDK custom resource | Conditional (when `JIRA_OAUTH_CLIENT_ID` set) |
 
 ---
@@ -936,9 +936,9 @@ sequenceDiagram
 | Item | Detail |
 |------|--------|
 | **agentcore.json `credentials.discoveryUrl`** | Points to `accounts.google.com` — this is correct when using Google as the OIDC provider. For Auth0, replace with `https://TENANT.auth0.com/.well-known/openid-configuration`. |
-| **agentcore.json `memories: []`** | Memory is created by the L3 `AgentCoreApplication` construct at CDK synthesis time (from the spec), not declared in agentcore.json directly. |
-| **Model ID alignment** | `model/load.py` defaults to `claude-sonnet-4-6` (matching `.env.example`). CDK injects the env var value at runtime; Python default is fallback for local dev only. |
-| **FAST_MODEL_ID** | CDK injects the `FAST_MODEL_ID` env var value. Default in `.env.example` is `claude-haiku-4-5-20251001` (fastest/cheapest for LOW priority). |
+| **agentcore.json `memories[]`** | A Memory resource (`ITIncidentAgentMemory`, SUMMARIZATION strategy, namespace `incidents/{actorId}`) is declared in `memories[]` and provisioned by the L3 `AgentCoreApplication` construct. The L3 injects `MEMORY_ITINCIDENTAGENTMEMORY_ID` into the Runtime, which `config.py` reads as `MEMORY_ID`. The agent code (`memory/session.py`, `memory/enrichment.py`) records turns and retrieves past-incident summaries. If `memories[]` is emptied, the code degrades gracefully to a no-op. |
+| **Model ID alignment** | `model/load.py` defaults to `claude-sonnet-4-6`. The deployed runtime gets `AGENT_MODEL_ID` declaratively from `agentcore.json` → `runtimes[].envVars[]` (rendered by the L3 construct); the Python default is the fallback for local dev only. Editing `.env` does not affect the deployed model — edit `agentcore.json`. |
+| **FAST_MODEL_ID** | Declared in `agentcore.json` → `runtimes[].envVars[]` (`us.anthropic.claude-haiku-4-5-20251001-v1:0`, fastest/cheapest for LOW priority) and rendered into the runtime by the L3 construct. |
 | **Gateway authorizerType** | `agentcore.json` declares `AWS_IAM` but CDK can override to `CUSTOM_JWT` via env var at deploy time. Agent code handles both modes dynamically. |
 | **query-kb target** | Always present in agentcore.json but gracefully removed by CDK `patchMcpSpecArns()` when no KB is available (SKIP_KB=true or no KB_ID). |
 | **Jira MCP transport** | Uses SSE (`sse_client`) while Gateway uses streamable HTTP (`streamablehttp_client`) — this is intentional since Atlassian's server uses SSE protocol. |

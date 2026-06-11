@@ -432,6 +432,9 @@ export class InfraConstruct extends Construct {
       memorySize: 256,
       code: lambda_.Code.fromAsset(lambdasPath),
       deadLetterQueue: dlq,
+      // OBSERVABILITY: Active X-Ray tracing so the SNS → trigger → runtime hop
+      // appears in the X-Ray service map (otherwise the trace starts at the runtime).
+      tracing: lambda_.Tracing.ACTIVE,
       environment: {
         TICKETS_TABLE: this.ticketsTable.tableName,
         // AGENT_RUNTIME_ARN will be set after AgentCore constructs are created

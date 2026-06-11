@@ -45,6 +45,43 @@ aws logs describe-log-groups --log-group-name-prefix "/aws/spans" --region us-we
 > required — it is kept here only as a fallback if you deploy with
 > `onlineEvalConfigs: []` and later enable eval out of band.
 
+## Required Runtime Environment Variables
+
+The agent runtime **must** emit `gen_ai` semantic spans (with `session.id`) for the
+online evaluator to have data to score. These are enabled via env vars in
+`agentcore/agentcore.json` → `runtimes[].envVars[]` (OTEL auto-instrumentation is
+provided by the Dockerfile `CMD ["opentelemetry-instrument", "python", "-m", "main"]`):
+
+| Variable | Purpose |
+|----------|---------|
+| `AGENT_OBSERVABILITY_ENABLED` | Enables the AgentCore observability pipeline that emits `gen_ai` spans tagged with `session.id` |
+| `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT` | Captures model input/output so evaluators can assess correctness/helpfulness |
+| `OTEL_AWS_APPLICATION_SIGNALS_ENABLED` | Enables AWS Application Signals (session correlation) |
+| `OTEL_TRACES_EXPORTER=otlp` | Exports traces via OTLP |
+| `OTEL_PROPAGATORS=baggage,tracecontext,xray` | Propagates trace headers across the SNS → trigger Lambda → runtime hops |
+
+> **Failure mode:** If these are missing, the runtime still emits low-level HTTP
+> spans (IMDS/credential calls) but **no `gen_ai` spans with `session.id`**. The
+> online eval config deploys fine and `aws/spans` fills up, but evaluations never
+> trigger because there are no agent sessions to score. This was the root cause of
+> an early "evals not running" issue — the fix was adding the four vars above.
+
+## Verifying evaluations are running
+
+After invoking the agent (e.g., via `scripts/test-e2e.sh`), online eval results
+take **~10-15 minutes** to appear (5-min session timeout + backend processing):
+
+```bash
+# 1. Confirm gen_ai spans with session.id are flowing
+aws logs filter-log-events --log-group-name "aws/spans" \
+  --filter-pattern "session.id" --limit 5 --region us-west-2
+
+# 2. Check the eval results log group for scored sessions
+aws logs filter-log-events \
+  --log-group-name-prefix "/aws/bedrock-agentcore/evaluations/results/ITIncidentAgent_ITIncidentAgentEval" \
+  --limit 20 --region us-west-2
+```
+
 ## Disabling Online Evaluation
 
 To deploy without online evaluation (e.g., if Transaction Search is not enabled):

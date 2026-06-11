@@ -204,14 +204,9 @@ export class AgentCoreStack extends Stack {
       );
       cfnRuntime.addPropertyOverride('EnvironmentVariables.EVENT_BUS_NAME', this.infra.eventBusName);
       cfnRuntime.addPropertyOverride('EnvironmentVariables.TICKETS_TABLE', this.infra.ticketsTable.tableName);
-      cfnRuntime.addPropertyOverride(
-        'EnvironmentVariables.AGENT_MODEL_ID',
-        process.env.AGENT_MODEL_ID || 'us.anthropic.claude-sonnet-4-6'
-      );
-      cfnRuntime.addPropertyOverride(
-        'EnvironmentVariables.FAST_MODEL_ID',
-        process.env.FAST_MODEL_ID || 'us.anthropic.claude-haiku-4-5-20251001-v1:0'
-      );
+      // NOTE: AGENT_MODEL_ID / FAST_MODEL_ID are now defined declaratively in
+      // agentcore.json → runtimes[].envVars[] (static config, not ARN-dependent).
+      // Only genuinely ARN/resource-derived env vars remain as imperative overrides here.
 
       // Auth mode: read from env or default to AWS_IAM
       const authMode = process.env.GATEWAY_AUTH_MODE || 'AWS_IAM';
@@ -262,9 +257,9 @@ export class AgentCoreStack extends Stack {
     //   - bedrock:ApplyGuardrail (PII filtering)
     //   - events:PutEvents (EventBridge emission)
     //   - bedrock-agentcore:GetResourceOauth2Token (Jira 3LO token fetch)
-    //   - xray:PutTraceSegments (X-Ray distributed tracing)
-    //   - xray:PutTelemetryRecords (X-Ray telemetry)
-    //   - logs:FilterLogEvents, logs:GetLogEvents, logs:DescribeLogGroups (CloudWatch Logs Insights)
+    //   - logs:StartQuery, logs:GetQueryResults, logs:StopQuery, etc. (CloudWatch Logs Insights)
+    // NOTE: X-Ray put-trace permissions are NOT added here — the L3 RuntimeExecutionRole
+    // already grants xray:PutTraceSegments / xray:PutTelemetryRecords on '*'.
     // Filter specifically for the Runtime ExecutionRole (not Memory's role).
     const runtimeRole = this.application.node
       .findAll()
@@ -295,13 +290,12 @@ export class AgentCoreStack extends Stack {
           actions: ['events:PutEvents'],
           resources: [`arn:aws:events:${this.region}:${this.account}:event-bus/${this.infra.eventBusName}`],
         }),
-        // ─── OBSERVABILITY: X-Ray distributed tracing ──
-        new iam.PolicyStatement({
-          sid: 'XRayTracing',
-          actions: ['xray:PutTraceSegments', 'xray:PutTelemetryRecords'],
-          resources: ['*'],
-        }),
         // ─── OBSERVABILITY: CloudWatch Logs Insights ──
+        // NOTE: X-Ray put-trace permissions (xray:PutTraceSegments / PutTelemetryRecords)
+        // are intentionally NOT granted here — the @aws/agentcore-cdk L3 RuntimeExecutionRole
+        // already grants them on '*'. This statement only adds the Logs Insights *query*
+        // APIs (StartQuery/GetQueryResults/StopQuery) and broadens log-group scope, which
+        // the L3 does not provide.
         new iam.PolicyStatement({
           sid: 'CloudWatchLogsInsights',
           actions: [
@@ -346,13 +340,80 @@ export class AgentCoreStack extends Stack {
     // ordering automatically. No custom resource needed.
     //
     // To disable: set onlineEvalConfigs to [] in agentcore.json.
-    // Prerequisite: CloudWatch Transaction Search must be enabled at the
-    // account level before deploying with onlineEvalConfigs populated.
+    //
+    // PREREQUISITE: CloudWatch Transaction Search must be enabled at the
+    // account level so that OTEL spans land in the `aws/spans` log group
+    // (the data source the online eval pipeline reads from). Step 6a below
+    // codifies this so it no longer has to be enabled manually in the console.
+    if (spec.onlineEvalConfigs && spec.onlineEvalConfigs.length > 0) {
+      this.enableTransactionSearch();
+    }
 
     // ─── Step 7: Stack outputs ─────────────────────────────────────
     new CfnOutput(this, 'StackNameOutput', {
       description: 'Name of the CloudFormation Stack',
       value: this.stackName,
+    });
+  }
+
+  /**
+   * STEP: OBSERVABILITY — Enable CloudWatch Transaction Search via custom resource.
+   *
+   * There is no native CloudFormation type for Transaction Search. This provisions
+   * a custom-resource Lambda that calls the X-Ray control plane to:
+   *   1. Route trace segments to CloudWatch Logs (creates the `aws/spans` log group)
+   *   2. Set the span indexing sampling percentage (100% for full searchability)
+   *
+   * This is an account- and region-level setting. On stack delete it is intentionally
+   * left enabled (other agents in the account may depend on it).
+   */
+  private enableTransactionSearch(): void {
+    const projectRoot = path.resolve(process.cwd(), '..', '..');
+
+    const txnSearchFn = new lambda_.Function(this, 'TransactionSearchFn', {
+      runtime: lambda_.Runtime.PYTHON_3_11,
+      handler: 'infra.transaction_search.handler',
+      timeout: cdk.Duration.minutes(2),
+      memorySize: 256,
+      code: lambda_.Code.fromAsset(path.join(projectRoot, 'lambdas')),
+    });
+
+    // X-Ray control-plane permissions needed to configure Transaction Search.
+    txnSearchFn.addToRolePolicy(
+      new iam.PolicyStatement({
+        sid: 'TransactionSearchConfig',
+        actions: [
+          'xray:UpdateTraceSegmentDestination',
+          'xray:GetTraceSegmentDestination',
+          'xray:UpdateIndexingRule',
+          'xray:GetIndexingRules',
+          // Transaction Search writes spans to a CloudWatch Logs resource policy;
+          // these allow X-Ray to set up the aws/spans log group destination.
+          'logs:CreateLogGroup',
+          'logs:PutResourcePolicy',
+          'logs:DescribeResourcePolicies',
+          'logs:DescribeLogGroups',
+        ],
+        resources: ['*'],
+      })
+    );
+
+    const provider = new cr.Provider(this, 'TransactionSearchProvider', {
+      onEventHandler: txnSearchFn,
+    });
+
+    new cdk.CustomResource(this, 'EnableTransactionSearch', {
+      serviceToken: provider.serviceToken,
+      properties: {
+        IndexingPercentage: process.env.TXN_SEARCH_INDEXING_PERCENTAGE || '100',
+        // Bump to force re-run on deploy when needed.
+        Version: '1',
+      },
+    });
+
+    new CfnOutput(this, 'TransactionSearchEnabled', {
+      description: 'CloudWatch Transaction Search routes X-Ray spans to the aws/spans log group',
+      value: 'CloudWatchLogs',
     });
   }
 
