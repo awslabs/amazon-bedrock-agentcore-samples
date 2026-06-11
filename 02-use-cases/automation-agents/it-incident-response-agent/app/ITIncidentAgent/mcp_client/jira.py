@@ -14,18 +14,12 @@ After consent, AgentCore caches the refresh token for all future invocations.
 """
 
 import logging
-import os
 from typing import Optional
 
 from strands.tools.mcp.mcp_client import MCPClient
+from config import JIRA_MCP_URL, JIRA_OAUTH_PROVIDER_NAME
 
 logger = logging.getLogger(__name__)
-
-# Opt-in env vars: set these to enable Jira integration
-JIRA_MCP_URL = os.getenv("JIRA_MCP_URL")  # e.g. https://mcp.atlassian.com/v1/sse
-JIRA_OAUTH_PROVIDER_NAME = os.getenv("JIRA_OAUTH_PROVIDER_NAME")
-JIRA_SITE_URL = os.getenv("JIRA_SITE_URL", "")
-JIRA_PROJECT_KEY = os.getenv("JIRA_PROJECT_KEY", "INC")
 
 # Atlassian 3LO scopes: read:me + read:jira-work for fetching issues;
 # write:jira-work for commenting + transitioning; offline_access for refresh.

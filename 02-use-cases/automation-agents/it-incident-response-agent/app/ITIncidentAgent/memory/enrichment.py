@@ -11,15 +11,12 @@ enabling it to detect recurring incidents and escalate appropriately.
 """
 
 import logging
-import os
 from typing import Optional
 
 from bedrock_agentcore.memory import MemoryClient
+from config import MEMORY_ID, REGION
 
 logger = logging.getLogger(__name__)
-
-MEMORY_ID = os.getenv("MEMORY_ITINCIDENTAGENTMEMORY_ID") or os.getenv("MEMORY_ID", "")
-REGION = os.getenv("AWS_REGION", os.getenv("AWS_DEFAULT_REGION", "us-west-2"))
 
 _memory_client: Optional[MemoryClient] = None
 

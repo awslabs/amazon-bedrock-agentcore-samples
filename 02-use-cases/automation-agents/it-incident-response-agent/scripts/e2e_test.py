@@ -18,6 +18,7 @@ import json
 import os
 import sys
 import time
+import threading
 import uuid
 from datetime import datetime, timezone
 
@@ -109,7 +110,7 @@ def poll_ticket_status(table_name: str, ticket_id: str, start: float) -> dict:
     return {}
 
 
-def tail_runtime_logs(ticket_id: str, start: float, stop_event: list):
+def tail_runtime_logs(ticket_id: str, start: float, stop_event: threading.Event):
     """
     Poll CloudWatch Logs for agent processing events.
     Checks runtime logs for app-level messages and OTEL spans for tool calls.
@@ -133,7 +134,7 @@ def tail_runtime_logs(ticket_id: str, start: float, stop_event: list):
     seen_tools = set()
     log_start_ms = int((time.time() - 10) * 1000)
 
-    while not stop_event:
+    while not stop_event.is_set():
         try:
             # Check runtime logs for app-level events
             resp = logs_client.filter_log_events(
@@ -358,9 +359,7 @@ def main():
 
     if not args.no_logs:
         # Interleave log tailing with status polling
-        import threading
-
-        stop_flag = []
+        stop_flag = threading.Event()
         log_thread = threading.Thread(
             target=tail_runtime_logs,
             args=(ticket_id, start, stop_flag),
@@ -369,7 +368,10 @@ def main():
         log_thread.start()
 
     final_item = poll_ticket_status(table_name, ticket_id, start)
-    stop_flag = [True] if not args.no_logs else []
+
+    # Signal the log thread to stop
+    if not args.no_logs:
+        stop_flag.set()
 
     # Final log sweep: CloudWatch logs have ~5-15s delivery delay.
     # After resolution, wait briefly and fetch any tool call logs that arrived late.

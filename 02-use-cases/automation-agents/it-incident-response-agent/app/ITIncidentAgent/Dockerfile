@@ -31,4 +31,6 @@ USER bedrock_agentcore
 # 9000: A2A Mode
 EXPOSE 8080 8000 9000
 
+# opentelemetry-instrument is provided by aws-opentelemetry-distro (pinned in pyproject.toml).
+# The uv.lock file ensures reproducible builds — the exact version is locked there.
 CMD ["opentelemetry-instrument", "python", "-m", "main"]

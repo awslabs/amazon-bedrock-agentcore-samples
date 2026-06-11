@@ -29,7 +29,10 @@ _agentcore = boto3.client("bedrock-agentcore")
 
 # Full-ticket mode requires these fields
 REQUIRED_TICKET_FIELDS = {"ticket_id", "title", "description", "requester_id"}
-# Issue-key mode requires only this
+# Issue-key mode requires these fields
+# Note: requester_id is optional for issue-key mode — defaults to the issue_key
+# itself, which means Memory will namespace by issue rather than by user. Include
+# requester_id in the payload for proper per-user incident tracking.
 REQUIRED_ISSUE_FIELDS = {"issue_key"}
 
 
@@ -95,9 +98,17 @@ def _invoke_runtime(payload: dict, event_id: str) -> None:
 
 
 def lambda_handler(event, context):
-    """Process SNS event containing a ticket or issue-key payload."""
+    """Process SNS event containing a ticket or issue-key payload.
+
+    Processes all records in the batch, collecting failures. If any record
+    fails, the function raises after processing all records so that the
+    DLQ captures the entire event (SNS delivers one record per invocation
+    in practice, but this handles edge cases gracefully).
+    """
     # STEP: TRIGGER — Event arrives from external system via SNS
     logger.info("Trigger received event")
+
+    failures: list[str] = []
 
     for record in event.get("Records", []):
         sns_msg = record.get("Sns", {}).get("Message", "{}")
@@ -105,32 +116,47 @@ def lambda_handler(event, context):
             payload = json.loads(sns_msg)
         except json.JSONDecodeError as e:
             logger.error("Invalid JSON in SNS message: %s", e)
+            failures.append(f"JSON parse error: {e}")
             continue
 
-        if _is_jira_mode(payload):
-            # ─── Jira issue-key mode ─────────────────────────────
-            # Thin pass-through: no DDB persist, Jira is system of record.
-            error = _validate_issue(payload)
-            if error:
-                logger.error("Validation failed for issue event: %s", error)
-                raise ValueError(f"Invalid issue payload: {error}")
+        try:
+            if _is_jira_mode(payload):
+                # ─── Jira issue-key mode ─────────────────────────────
+                # Thin pass-through: no DDB persist, Jira is system of record.
+                error = _validate_issue(payload)
+                if error:
+                    logger.error("Validation failed for issue event: %s", error)
+                    failures.append(f"Invalid issue payload: {error}")
+                    continue
 
-            issue_key = payload["issue_key"]
-            # Ensure requester_id has a fallback for memory actor_id
-            payload.setdefault("requester_id", issue_key)
-            logger.info("Dispatching Jira issue %s (requester=%s)", issue_key, payload["requester_id"])
-            _invoke_runtime(payload, issue_key)
+                issue_key = payload["issue_key"]
+                # Ensure requester_id has a fallback for memory actor_id
+                payload.setdefault("requester_id", issue_key)
+                logger.info("Dispatching Jira issue %s (requester=%s)", issue_key, payload["requester_id"])
+                _invoke_runtime(payload, issue_key)
 
-        else:
-            # ─── Full-ticket mode (DDB mock) ─────────────────────
-            error = _validate_ticket(payload)
-            if error:
-                logger.error("Validation failed for ticket: %s", error)
-                raise ValueError(f"Invalid ticket payload: {error}")
+            else:
+                # ─── Full-ticket mode (DDB mock) ─────────────────────
+                error = _validate_ticket(payload)
+                if error:
+                    logger.error("Validation failed for ticket: %s", error)
+                    failures.append(f"Invalid ticket payload: {error}")
+                    continue
 
-            ticket_id = payload["ticket_id"]
-            logger.info("Processing ticket %s (priority=%s)", ticket_id, payload.get("priority"))
-            _persist_ticket(payload)
-            _invoke_runtime(payload, ticket_id)
+                ticket_id = payload["ticket_id"]
+                logger.info("Processing ticket %s (priority=%s)", ticket_id, payload.get("priority"))
+                _persist_ticket(payload)
+                _invoke_runtime(payload, ticket_id)
+
+        except Exception as exc:
+            record_id = payload.get("ticket_id") or payload.get("issue_key") or "unknown"
+            logger.exception("Failed to process record %s", record_id)
+            failures.append(f"{record_id}: {type(exc).__name__}: {exc}")
+
+    if failures:
+        # Raise so the Lambda reports failure and the event goes to the DLQ
+        raise RuntimeError(
+            f"{len(failures)} record(s) failed: {'; '.join(failures)}"
+        )
 
     return {"statusCode": 200, "body": "OK"}

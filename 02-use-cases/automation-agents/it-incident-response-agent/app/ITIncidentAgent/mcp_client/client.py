@@ -13,21 +13,13 @@ The Gateway URL is injected via environment variable at runtime.
 """
 
 import logging
-import os
 from typing import Optional
 
 from mcp.client.streamable_http import streamablehttp_client
 from strands.tools.mcp.mcp_client import MCPClient
+from config import GATEWAY_URL, GATEWAY_AUTH_MODE, GATEWAY_OAUTH_PROVIDER_NAME, GATEWAY_OAUTH_AUDIENCE, REGION
 
 logger = logging.getLogger(__name__)
-
-# The L3 construct injects the URL as AGENTCORE_GATEWAY_{NAME}_URL.
-# We also accept GATEWAY_URL for backward compat and explicit override.
-GATEWAY_URL = os.getenv("GATEWAY_URL") or os.getenv("AGENTCORE_GATEWAY_ITINCIDENTGATEWAY_URL", "")
-GATEWAY_AUTH_MODE = os.getenv("GATEWAY_AUTH_MODE", "AWS_IAM")
-# New naming: GATEWAY_OAUTH_* (boundary-scoped). Falls back to legacy names for compat.
-GATEWAY_OAUTH_PROVIDER_NAME = os.getenv("GATEWAY_OAUTH_PROVIDER_NAME") or os.getenv("OAUTH_PROVIDER_NAME", "")
-GATEWAY_OAUTH_AUDIENCE = os.getenv("GATEWAY_OAUTH_AUDIENCE") or os.getenv("GATEWAY_AUDIENCE", "")
 
 
 def _create_sigv4_auth():
@@ -46,7 +38,7 @@ def _create_sigv4_auth():
     from botocore.auth import SigV4Auth
     from botocore.awsrequest import AWSRequest
 
-    region = os.environ.get("AWS_REGION", os.environ.get("AWS_DEFAULT_REGION", "us-west-2"))
+    region = REGION
     service = "bedrock-agentcore"
     botocore_session = botocore.session.get_session()
 
@@ -145,42 +137,6 @@ def get_streamable_http_mcp_client() -> Optional[MCPClient]:
         logger.info("Using AWS_IAM auth (SigV4 for bedrock-agentcore)")
         sigv4_auth = _create_sigv4_auth()
         return MCPClient(lambda: streamablehttp_client(GATEWAY_URL, auth=sigv4_auth))
-
-
-def get_all_mcp_clients() -> list[MCPClient]:
-    """Returns all configured MCP clients (Gateway + optionally Jira).
-
-    STEP: MULTI-MCP AGGREGATION — Compose tools from multiple MCP servers
-    into a single Agent. The Gateway provides internal tools (lookup_user,
-    get_process_info, etc.) and the Jira MCP provides external tools
-    (getIssue, addComment, transitionIssue).
-
-    Usage:
-        agent = Agent(tools=get_all_mcp_clients(), ...)
-
-    The Strands Agent manages the lifecycle of all MCPClient instances
-    when they're passed directly to the tools parameter.
-
-    Returns an empty list if no MCP clients could be created (local dev
-    without gateway or Jira). This allows the agent to gracefully degrade
-    to LLM-only mode instead of failing the entire invocation.
-    """
-    from mcp_client.jira import get_jira_mcp_client_sync
-
-    clients: list[MCPClient] = []
-
-    # Primary: AgentCore Gateway (internal tools)
-    gateway_client = get_streamable_http_mcp_client()
-    if gateway_client:
-        clients.append(gateway_client)
-
-    # Optional: Atlassian Remote MCP (Jira tools)
-    jira_client = get_jira_mcp_client_sync()
-    if jira_client:
-        clients.append(jira_client)
-
-    logger.info("Assembled %d MCP client(s) for agent", len(clients))
-    return clients
 
 
 def get_all_mcp_clients_safe() -> tuple[list[MCPClient], list[str]]:

@@ -278,9 +278,10 @@ export class InfraConstruct extends Construct {
       // Use an existing bus provided by the user
       this.eventBusName = props.eventBusName;
     } else {
-      // Create a dedicated bus for this agent's events
+      // Create a dedicated bus for this agent's events (include stack name for uniqueness)
+      const busName = `it-incident-agent-${stack.stackName}`.substring(0, 64);
       const eventBus = new events.EventBus(this, 'AgentEventBus', {
-        eventBusName: `it-incident-agent-events`,
+        eventBusName: busName,
       });
       eventBus.applyRemovalPolicy(removalPolicy);
       this.eventBusName = eventBus.eventBusName;
@@ -406,7 +407,7 @@ export class InfraConstruct extends Construct {
       queryKbFn.addToRolePolicy(
         new iam.PolicyStatement({
           actions: ['bedrock:Retrieve'],
-          resources: [`arn:aws:bedrock:${stack.region}:${stack.account}:knowledge-base/*`],
+          resources: [`arn:aws:bedrock:${stack.region}:${stack.account}:knowledge-base/${this.knowledgeBaseId}`],
         })
       );
       this.lambdaArnMap['query-kb'] = queryKbFn.functionArn;

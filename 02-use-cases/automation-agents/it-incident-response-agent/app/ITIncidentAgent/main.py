@@ -15,15 +15,26 @@ Flow per invocation:
 
 import json
 import logging
-import os
 import time
+from contextvars import ContextVar
 from datetime import datetime, timezone
 
 import boto3
 from bedrock_agentcore.runtime import BedrockAgentCoreApp
+from config import (
+    GATEWAY_URL,
+    MEMORY_ID,
+    TICKETS_TABLE,
+    REGION,
+    EVENT_BUS_NAME,
+    GUARDRAIL_ID,
+    GUARDRAIL_VERSION,
+    JIRA_MCP_URL,
+    JIRA_SITE_URL,
+    JIRA_PROJECT_KEY,
+)
 from model.load import load_model
 from mcp_client.client import get_all_mcp_clients_safe
-from mcp_client.jira import JIRA_MCP_URL, JIRA_SITE_URL, JIRA_PROJECT_KEY
 from memory.session import get_memory_session_manager
 from memory.enrichment import (
     retrieve_past_incidents,
@@ -37,13 +48,26 @@ logger = logging.getLogger("it-incident-agent")
 
 # ─── Tool call timing hooks ──────────────────────────────────────────────────
 # These hooks log each tool invocation with start/end timing for bottleneck analysis.
-_tool_start_times: dict[str, float] = {}
+# Using ContextVar to scope per-invocation and avoid cross-request contamination
+# when the Runtime serves concurrent requests in the same container.
+_tool_start_times: ContextVar[dict[str, float]] = ContextVar("_tool_start_times")
+
+
+def _get_tool_times() -> dict[str, float]:
+    """Get the per-request tool timing dict, creating one if needed."""
+    try:
+        return _tool_start_times.get()
+    except LookupError:
+        times: dict[str, float] = {}
+        _tool_start_times.set(times)
+        return times
 
 
 def _on_before_tool_call(event: BeforeToolCallEvent) -> None:
     """Log when a tool call starts."""
     tool_name = event.tool_use.get("name", "unknown")
-    _tool_start_times[event.tool_use.get("toolUseId", tool_name)] = time.time()
+    times = _get_tool_times()
+    times[event.tool_use.get("toolUseId", tool_name)] = time.time()
     logger.info("Tool call started: %s", tool_name)
 
 
@@ -51,20 +75,13 @@ def _on_after_tool_call(event: AfterToolCallEvent) -> None:
     """Log when a tool call completes with duration."""
     tool_name = event.tool_use.get("name", "unknown")
     tool_id = event.tool_use.get("toolUseId", tool_name)
-    start = _tool_start_times.pop(tool_id, None)
+    times = _get_tool_times()
+    start = times.pop(tool_id, None)
     duration_ms = (time.time() - start) * 1000 if start else 0
     logger.info("Tool call completed: %s (%.0fms)", tool_name, duration_ms)
 
 
-# Configuration from environment (injected by CDK via agentcore deploy)
-# The L3 construct uses AGENTCORE_GATEWAY_{NAME}_URL naming convention.
-GATEWAY_URL = os.environ.get("GATEWAY_URL") or os.environ.get("AGENTCORE_GATEWAY_ITINCIDENTGATEWAY_URL", "")
-MEMORY_ID = os.environ.get("MEMORY_ID") or os.environ.get("MEMORY_ITINCIDENTAGENTMEMORY_ID", "")
-TICKETS_TABLE = os.environ.get("TICKETS_TABLE", "")
-REGION = os.environ.get("AWS_REGION", os.environ.get("AWS_DEFAULT_REGION", "us-west-2"))
-EVENT_BUS_NAME = os.environ.get("EVENT_BUS_NAME", "default")
-GUARDRAIL_ID = os.environ.get("GUARDRAIL_ID", "")
-GUARDRAIL_VERSION = os.environ.get("GUARDRAIL_VERSION", "DRAFT")
+# Configuration is loaded from config.py (centralized env var resolution)
 
 app = BedrockAgentCoreApp()
 log = app.logger
@@ -116,7 +133,7 @@ You receive a Jira issue key. Your job is to:
      transition tool.
 
 Rules:
-  - The site to operate on is {jira_site_url}, project {jira_project_key}.
+  - The site to operate on is $jira_site_url, project $jira_project_key.
   - Don't open a change request unless a runbook supports the action.
   - Keep the resolution comment user-facing — no chain-of-thought,
     no tool-call narration.
@@ -125,28 +142,35 @@ Rules:
     in the resolution comment and create a change request when a runbook
     supports it).
 
-{past_incidents_block}
+$past_incidents_block
 Return the resolution comment as your final message.
 """
 
 
 def _resolve_ticket(ticket_id: str, comment: str) -> None:
-    """Mark ticket as Resolved with the agent's resolution comment."""
+    """Mark ticket as Resolved with the agent's resolution comment.
+
+    Non-fatal: if the DDB write fails, the resolution was still successful
+    (the agent produced a valid response). Log the error but don't propagate.
+    """
     if not TICKETS_TABLE:
         logger.warning("TICKETS_TABLE not set, skipping ticket update")
         return
     now = datetime.now(timezone.utc).isoformat()
     table = _ddb.Table(TICKETS_TABLE)
-    table.update_item(
-        Key={"ticket_id": ticket_id},
-        UpdateExpression=("SET #s = :s, resolution_comment = :c, resolved_at = :t, updated_at = :t"),
-        ExpressionAttributeNames={"#s": "status"},
-        ExpressionAttributeValues={
-            ":s": "Resolved",
-            ":c": comment,
-            ":t": now,
-        },
-    )
+    try:
+        table.update_item(
+            Key={"ticket_id": ticket_id},
+            UpdateExpression=("SET #s = :s, resolution_comment = :c, resolved_at = :t, updated_at = :t"),
+            ExpressionAttributeNames={"#s": "status"},
+            ExpressionAttributeValues={
+                ":s": "Resolved",
+                ":c": comment,
+                ":t": now,
+            },
+        )
+    except Exception:
+        logger.exception("Failed to write resolution to DDB for %s (non-fatal)", ticket_id)
 
 
 def _fail_ticket(ticket_id: str, error: str) -> None:
@@ -212,7 +236,7 @@ def _apply_guardrail(text: str) -> str:
             guardrailIdentifier=GUARDRAIL_ID,
             guardrailVersion=GUARDRAIL_VERSION,
             source="INPUT",
-            content=[{"text": {"text": text}}],
+            content=[{"text": {"text": text, "qualifiers": ["query"]}}],
         )
         action = response.get("action", "NONE")
         if action == "GUARDRAIL_INTERVENED":
@@ -310,7 +334,7 @@ async def invoke(payload, context):
             current_span.set_attribute("ticket.requester_id", requester_id)
             current_span.set_attribute("ticket.mode", "jira" if is_jira_mode else "ddb")
     except ImportError:
-        pass  # OTEL not available (e.g., local dev without instrumentation)
+        logger.debug("OpenTelemetry not available — span attributes not set")
 
     logger.info(
         "Processing %s %s (priority=%s, mode=%s)",
@@ -337,7 +361,11 @@ async def invoke(payload, context):
         # STEP: BUILD SYSTEM PROMPT — Inject memory context
         if is_jira_mode:
             past_block = format_past_incidents_block(past_incidents)
-            system_prompt = SYSTEM_PROMPT_JIRA.format(
+            # Use string.Template ($ substitution) to avoid KeyError if
+            # past_block contains { or } characters from memory content.
+            from string import Template
+
+            system_prompt = Template(SYSTEM_PROMPT_JIRA).safe_substitute(
                 jira_site_url=JIRA_SITE_URL,
                 jira_project_key=JIRA_PROJECT_KEY,
                 past_incidents_block=past_block,
@@ -439,6 +467,7 @@ async def invoke(payload, context):
                 "ticket_id": ticket_id,
                 "status": "Failed",
                 "error": error_msg,
+                "mode": "jira" if is_jira_mode else "ddb",
             }
         )
 

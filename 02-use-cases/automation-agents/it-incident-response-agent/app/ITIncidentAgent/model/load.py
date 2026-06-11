@@ -1,20 +1,15 @@
 """Model loader for the IT Incident Response Agent.
 
-Reads the model ID from the AGENT_MODEL_ID environment variable (injected
-by the CDK stack). Falls back to Claude Sonnet for local development.
+Reads the model ID from centralized config (which resolves AGENT_MODEL_ID
+environment variable injected by the CDK stack). Falls back to Claude Sonnet
+for local development.
 
 Supports cost-efficient routing: use a cheaper/faster model for LOW priority
 tickets and the full model for MEDIUM/HIGH/CRITICAL.
 """
 
-import os
-
+from config import AGENT_MODEL_ID, FAST_MODEL_ID
 from strands.models.bedrock import BedrockModel
-
-# Local-dev fallbacks only — the CDK stack injects AGENT_MODEL_ID / FAST_MODEL_ID
-# at runtime (those values win). Keep these aligned with valid Bedrock model IDs.
-DEFAULT_MODEL_ID = "us.anthropic.claude-sonnet-4-6"
-FAST_MODEL_ID = os.getenv("FAST_MODEL_ID", "us.anthropic.claude-haiku-4-5-20251001-v1:0")
 
 
 def load_model(priority: str = "MEDIUM") -> BedrockModel:
@@ -27,7 +22,7 @@ def load_model(priority: str = "MEDIUM") -> BedrockModel:
     This demonstrates the 'cost shape' principle: filter cheap at the event
     plane and only use expensive reasoning when warranted.
     """
-    model_id = os.getenv("AGENT_MODEL_ID", DEFAULT_MODEL_ID)
+    model_id = AGENT_MODEL_ID
 
     # STEP: COST ROUTING — Use cheaper model for low-priority tickets
     if priority == "LOW":

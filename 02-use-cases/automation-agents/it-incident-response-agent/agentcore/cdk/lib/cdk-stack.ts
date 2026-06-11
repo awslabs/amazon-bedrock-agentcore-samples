@@ -196,6 +196,10 @@ export class AgentCoreStack extends Stack {
       }
 
       cfnRuntime.addPropertyOverride('EnvironmentVariables.GUARDRAIL_ID', this.infra.guardrailId);
+      cfnRuntime.addPropertyOverride(
+        'EnvironmentVariables.GUARDRAIL_VERSION',
+        process.env.GUARDRAIL_VERSION || 'DRAFT'
+      );
       cfnRuntime.addPropertyOverride('EnvironmentVariables.EVENT_BUS_NAME', this.infra.eventBusName);
       cfnRuntime.addPropertyOverride('EnvironmentVariables.TICKETS_TABLE', this.infra.ticketsTable.tableName);
       cfnRuntime.addPropertyOverride(
@@ -381,8 +385,18 @@ export class AgentCoreStack extends Stack {
     const providerName = `${this.stackName.toLowerCase().replace(/[^a-z0-9]/g, '')}_jira_3lo`;
 
     // Secrets Manager secret for the Atlassian client_secret
+    // SECURITY: In production, store the secret externally (e.g., via AWS CLI or console)
+    // and reference it by ARN instead of passing the value through CloudFormation.
+    // This approach is acceptable for samples/demos only — the secret value will be
+    // visible in the CloudFormation template and cdk.out/ synthesis output.
+    if (!clientSecret) {
+      throw new Error(
+        'JIRA_OAUTH_CLIENT_SECRET is required when JIRA_OAUTH_CLIENT_ID is set. ' +
+          'Set it in .env or as an environment variable.'
+      );
+    }
     const jiraSecret = new cdk.aws_secretsmanager.Secret(this, 'JiraOauthSecret', {
-      description: 'Atlassian 3LO client_secret (loaded into AgentCore Identity)',
+      description: 'Atlassian 3LO client_secret (loaded into AgentCore Identity). For production, replace with externally-managed secret.',
       secretStringValue: cdk.SecretValue.unsafePlainText(JSON.stringify({ client_secret: clientSecret })),
     });
 

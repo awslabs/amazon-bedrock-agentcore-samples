@@ -6,6 +6,7 @@ The agent uses this to understand requester context and detect recurring inciden
 
 import logging
 import os
+import re
 from datetime import datetime, timedelta, timezone
 
 import boto3
@@ -20,6 +21,10 @@ TICKETS_TABLE = os.environ["TICKETS_TABLE"]
 _ddb = boto3.resource("dynamodb")
 _users = _ddb.Table(USERS_TABLE)
 _tickets = _ddb.Table(TICKETS_TABLE)
+
+# Input validation constants
+MAX_USER_ID_LENGTH = 128
+USER_ID_PATTERN = re.compile(r"^[A-Za-z0-9_\-\.@]+$")
 
 
 # Gateway Lambda targets return the tool result DIRECTLY to the model — no
@@ -41,6 +46,14 @@ def lambda_handler(event, context):
     user_id = event.get("user_id")
     if not user_id:
         return _err("user_id is required")
+
+    # Input validation: prevent excessively long or malformed user IDs
+    if not isinstance(user_id, str):
+        return _err("user_id must be a string")
+    if len(user_id) > MAX_USER_ID_LENGTH:
+        return _err(f"user_id exceeds maximum length of {MAX_USER_ID_LENGTH} characters")
+    if not USER_ID_PATTERN.match(user_id):
+        return _err("user_id contains invalid characters (allowed: alphanumeric, _, -, ., @)")
 
     user = _users.get_item(Key={"user_id": user_id}).get("Item")
     if not user:

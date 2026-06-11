@@ -6,6 +6,7 @@ This is the agent's "make a change" action — demonstrating tool-driven mutatio
 
 import logging
 import os
+import re
 import uuid
 from datetime import datetime, timezone
 
@@ -20,6 +21,13 @@ USERS_TABLE = os.environ["USERS_TABLE"]
 _ddb = boto3.resource("dynamodb")
 _changes = _ddb.Table(CHANGES_TABLE)
 _users = _ddb.Table(USERS_TABLE)
+
+# Input validation constants
+MAX_ID_LENGTH = 128
+MAX_SUMMARY_LENGTH = 2000
+MAX_ACTION_LENGTH = 256
+ID_PATTERN = re.compile(r"^[A-Za-z0-9_\-\.@]+$")
+ACTION_PATTERN = re.compile(r"^[A-Za-z0-9_\-\.]+$")
 
 
 # Gateway Lambda targets return the tool result DIRECTLY to the model — no
@@ -45,6 +53,30 @@ def lambda_handler(event, context):
 
     if not all([ticket_id, user_id, summary]):
         return _err("ticket_id, user_id, and summary are required")
+
+    # Input validation: enforce type, length, and format constraints
+    for field_name, value, max_len, pattern in [
+        ("ticket_id", ticket_id, MAX_ID_LENGTH, ID_PATTERN),
+        ("user_id", user_id, MAX_ID_LENGTH, ID_PATTERN),
+    ]:
+        if not isinstance(value, str):
+            return _err(f"{field_name} must be a string")
+        if len(value) > max_len:
+            return _err(f"{field_name} exceeds maximum length of {max_len} characters")
+        if not pattern.match(value):
+            return _err(f"{field_name} contains invalid characters")
+
+    if not isinstance(summary, str):
+        return _err("summary must be a string")
+    if len(summary) > MAX_SUMMARY_LENGTH:
+        return _err(f"summary exceeds maximum length of {MAX_SUMMARY_LENGTH} characters")
+
+    if not isinstance(action, str):
+        return _err("action must be a string")
+    if len(action) > MAX_ACTION_LENGTH:
+        return _err(f"action exceeds maximum length of {MAX_ACTION_LENGTH} characters")
+    if not ACTION_PATTERN.match(action):
+        return _err("action contains invalid characters (allowed: alphanumeric, _, -, .)")
 
     now = datetime.now(timezone.utc).isoformat()
     change_id = f"CHG-{uuid.uuid4().hex[:8].upper()}"
