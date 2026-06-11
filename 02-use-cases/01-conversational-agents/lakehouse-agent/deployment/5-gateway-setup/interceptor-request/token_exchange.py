@@ -59,9 +59,7 @@ def exchange_jwt_to_iam(claim_name: str, claim_value: str) -> Optional[Dict[str,
             # Try to get from SSM Parameter Store
             try:
                 ssm = boto3.client("ssm")
-                response = ssm.get_parameter(
-                    Name="/app/lakehouse-agent/tenant-role-mapping-table"
-                )
+                response = ssm.get_parameter(Name="/app/lakehouse-agent/tenant-role-mapping-table")
                 table_name = response["Parameter"]["Value"]
                 logger.info(f"Loaded table name from SSM: {table_name}")
             except Exception as e:
@@ -76,14 +74,10 @@ def exchange_jwt_to_iam(claim_name: str, claim_value: str) -> Optional[Dict[str,
 
         logger.info(f"🔍 Looking up role mapping for claim: {claim_name}={claim_value}")
 
-        response = table.get_item(
-            Key={"claim_name": claim_name, "claim_value": claim_value}
-        )
+        response = table.get_item(Key={"claim_name": claim_name, "claim_value": claim_value})
 
         if "Item" not in response:
-            logger.warning(
-                f"⚠️  No role mapping found for claim: {claim_name}={claim_value}"
-            )
+            logger.warning(f"⚠️  No role mapping found for claim: {claim_name}={claim_value}")
             return None
 
         item = response["Item"]
@@ -105,12 +99,7 @@ def exchange_jwt_to_iam(claim_name: str, claim_value: str) -> Optional[Dict[str,
 
         # Create a safe session name from claim_value
         # Remove special characters and limit length
-        safe_claim_value = (
-            claim_value.replace("[", "")
-            .replace("]", "")
-            .replace('"', "")
-            .replace(",", "-")
-        )
+        safe_claim_value = claim_value.replace("[", "").replace("]", "").replace('"', "").replace(",", "-")
         session_name = f"lakehouse-{safe_claim_value[:32]}"
 
         response = sts_client.assume_role(

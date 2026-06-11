@@ -24,9 +24,7 @@ def lambda_handler(event, context):
         if not runtime_arn:
             return {
                 "statusCode": 500,
-                "body": json.dumps(
-                    {"error": "Missing RUNTIME_ARN environment variable"}
-                ),
+                "body": json.dumps({"error": "Missing RUNTIME_ARN environment variable"}),
             }
 
         if isinstance(event, str):
@@ -56,16 +54,12 @@ def lambda_handler(event, context):
         if response_body is not None:
             if hasattr(response_body, "read"):
                 raw = response_body.read()
-                agent_response = (
-                    raw.decode("utf-8") if isinstance(raw, bytes) else str(raw)
-                )
+                agent_response = raw.decode("utf-8") if isinstance(raw, bytes) else str(raw)
             elif isinstance(response_body, bytes):
                 agent_response = response_body.decode("utf-8")
             elif isinstance(response_body, list) and response_body:
                 item = response_body[0]
-                agent_response = (
-                    item.decode("utf-8") if isinstance(item, bytes) else str(item)
-                )
+                agent_response = item.decode("utf-8") if isinstance(item, bytes) else str(item)
             else:
                 agent_response = str(response_body)
 

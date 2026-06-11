@@ -40,10 +40,7 @@ def get_data_plane_endpoint(region: str) -> str:
 
 
 def invoke(runtime_arn: str, endpoint_name: str, region: str, payload: dict):
-    session = boto3.Session(
-        profile_name=os.getenv("AWS_PROFILE", "default"),
-        region_name=region
-    )
+    session = boto3.Session(profile_name=os.getenv("AWS_PROFILE", "default"), region_name=region)
 
     # Build the invocation URL
     encoded_arn = urllib.parse.quote(runtime_arn, safe="")
@@ -53,12 +50,7 @@ def invoke(runtime_arn: str, endpoint_name: str, region: str, payload: dict):
 
     # Sign with SigV4
     credentials = session.get_credentials().get_frozen_credentials()
-    request = AWSRequest(
-        method="POST",
-        url=url,
-        data=body,
-        headers={"Content-Type": "application/json"}
-    )
+    request = AWSRequest(method="POST", url=url, data=body, headers={"Content-Type": "application/json"})
     SigV4Auth(credentials, "bedrock-agentcore", region).add_auth(request)
 
     print(f"🔌 Invoking AgentCore Runtime...")
@@ -71,7 +63,7 @@ def invoke(runtime_arn: str, endpoint_name: str, region: str, payload: dict):
         data=body,
         headers=dict(request.headers),
         verify=False,  # macOS cert workaround
-        timeout=120
+        timeout=120,
     )
 
     if resp.ok:
@@ -87,10 +79,9 @@ def invoke(runtime_arn: str, endpoint_name: str, region: str, payload: dict):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--action", default="health",
-                        choices=["health", "generate_code", "execute_code"])
+    parser.add_argument("--action", default="health", choices=["health", "generate_code", "execute_code"])
     parser.add_argument("--prompt", default="", help="Prompt for generate_code")
-    parser.add_argument("--code",   default="", help="Code for execute_code")
+    parser.add_argument("--code", default="", help="Code for execute_code")
     parser.add_argument("--session-id", default=None)
     args = parser.parse_args()
 

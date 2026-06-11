@@ -78,9 +78,7 @@ def render_sidebar(auth_handler: Auth0Handler, session_manager: SessionManager):
                         namespace = settings.auth0.claims_namespace
 
                         custom_claims = {
-                            k.replace(namespace, ""): v
-                            for k, v in claims.items()
-                            if k.startswith(namespace)
+                            k.replace(namespace, ""): v for k, v in claims.items() if k.startswith(namespace)
                         }
 
                         if custom_claims:

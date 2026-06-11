@@ -11,9 +11,7 @@ load_dotenv()
 def create_agentcore_client():
     # create boto3 session and client
     if os.getenv("awscred_profile_name") is None:
-        boto_session = boto3.Session(
-            region_name=os.getenv("aws_default_region")
-        )  # using default profile
+        boto_session = boto3.Session(region_name=os.getenv("aws_default_region"))  # using default profile
     else:
         boto_session = boto3.Session(
             profile_name=os.getenv("awscred_profile_name"),
@@ -57,9 +55,7 @@ def get_oath_token(boto_session):
 
 
 def get_cognito_client_secret(boto_session):
-    cognito_client = boto_session.client(
-        "cognito-idp", region_name=os.getenv("aws_default_region")
-    )
+    cognito_client = boto_session.client("cognito-idp", region_name=os.getenv("aws_default_region"))
 
     print(
         f"Getting Client Secret using UserPoolId: {os.getenv('cognito_user_pool_id')} and ClientId: {os.getenv('cognito_client_id')}"

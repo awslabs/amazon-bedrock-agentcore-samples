@@ -50,9 +50,7 @@ def invoke_bedrock(prompt):
             "anthropic_version": "bedrock-2023-05-31",
             "max_tokens": 4000,
             "temperature": 0.3,
-            "messages": [
-                {"role": "user", "content": [{"type": "text", "text": prompt}]}
-            ],
+            "messages": [{"role": "user", "content": [{"type": "text", "text": prompt}]}],
         }
 
         response = bedrock_client.invoke_model(
@@ -199,12 +197,10 @@ def fetch_treasury_data(db_conn, user_id=None):
                 "total_amount": float(invoice_row[3]),
                 "avg_processing_time": float(invoice_row[4]),
                 "by_status": [
-                    {"status": row[0], "count": int(row[1]), "amount": float(row[2])}
-                    for row in invoice_status
+                    {"status": row[0], "count": int(row[1]), "amount": float(row[2])} for row in invoice_status
                 ],
                 "trends": [
-                    {"date": str(row[0]), "count": int(row[1]), "amount": float(row[2])}
-                    for row in invoice_trends
+                    {"date": str(row[0]), "count": int(row[1]), "amount": float(row[2])} for row in invoice_trends
                 ],
             },
             "payments": {
@@ -214,19 +210,15 @@ def fetch_treasury_data(db_conn, user_id=None):
                 "paid": int(payment_row[3]),
                 "total_amount": float(payment_row[4]),
                 "by_status": [
-                    {"status": row[0], "count": int(row[1]), "amount": float(row[2])}
-                    for row in payment_status
+                    {"status": row[0], "count": int(row[1]), "amount": float(row[2])} for row in payment_status
                 ],
                 "trends": [
-                    {"date": str(row[0]), "count": int(row[1]), "amount": float(row[2])}
-                    for row in payment_trends
+                    {"date": str(row[0]), "count": int(row[1]), "amount": float(row[2])} for row in payment_trends
                 ],
             },
             "vendors": {
                 "total": int(vendor_row[0]),
-                "active": int(
-                    vendor_row[0]
-                ),  # Simplified: all vendors with invoices are active
+                "active": int(vendor_row[0]),  # Simplified: all vendors with invoices are active
             },
             "time_range": {
                 "start": start_date.isoformat(),
@@ -267,11 +259,7 @@ def anonymize_data(data):
                 return "stable", 0
 
             recent = sum(t["amount"] for t in trends[:3]) / 3
-            older = (
-                sum(t["amount"] for t in trends[3:6]) / 3
-                if len(trends) >= 6
-                else recent
-            )
+            older = sum(t["amount"] for t in trends[3:6]) / 3 if len(trends) >= 6 else recent
 
             if older == 0:
                 return "stable", 0
@@ -286,14 +274,10 @@ def anonymize_data(data):
                 return "stable", round(abs(change), 1)
 
         # Calculate invoice trend
-        invoice_trend_direction, invoice_trend_pct = calculate_trend(
-            data["invoices"]["trends"]
-        )
+        invoice_trend_direction, invoice_trend_pct = calculate_trend(data["invoices"]["trends"])
 
         # Calculate payment trend
-        payment_trend_direction, payment_trend_pct = calculate_trend(
-            data["payments"]["trends"]
-        )
+        payment_trend_direction, payment_trend_pct = calculate_trend(data["payments"]["trends"])
 
         # Calculate status distributions
         invoice_total = data["invoices"]["total"] or 1
@@ -304,12 +288,8 @@ def anonymize_data(data):
                 "total": data["invoices"]["total"],
                 "pending": data["invoices"]["pending"],
                 "overdue": data["invoices"]["overdue"],
-                "total_amount_range": format_amount_range(
-                    data["invoices"]["total_amount"]
-                ),
-                "avg_processing_time": round(
-                    data["invoices"]["avg_processing_time"], 1
-                ),
+                "total_amount_range": format_amount_range(data["invoices"]["total_amount"]),
+                "avg_processing_time": round(data["invoices"]["avg_processing_time"], 1),
                 "status_distribution": [
                     {
                         "status": s["status"],
@@ -325,12 +305,8 @@ def anonymize_data(data):
                 "ready": data["payments"]["ready"],
                 "sent": data["payments"]["sent"],
                 "paid": data["payments"]["paid"],
-                "total_amount": data["payments"][
-                    "total_amount"
-                ],  # Keep numeric value for predictions
-                "total_amount_range": format_amount_range(
-                    data["payments"]["total_amount"]
-                ),
+                "total_amount": data["payments"]["total_amount"],  # Keep numeric value for predictions
+                "total_amount_range": format_amount_range(data["payments"]["total_amount"]),
                 "status_distribution": [
                     {
                         "status": s["status"],

@@ -103,9 +103,7 @@ def lambda_handler(event, context):
             }
         },
     }
-    logger.info(
-        "Returning rewritten response: %s", json.dumps(response, default=str)[:1000]
-    )
+    logger.info("Returning rewritten response: %s", json.dumps(response, default=str)[:1000])
     return response
 
 

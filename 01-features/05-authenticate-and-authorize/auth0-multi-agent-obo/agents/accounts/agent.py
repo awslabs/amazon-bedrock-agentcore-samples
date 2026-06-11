@@ -37,14 +37,9 @@ class AccountsAgent:
         self.user_id = user_id
         self.customer_id = customer_id or user_id
 
-        logger.info(
-            f"AccountsAgent initialized for user_id={user_id}, "
-            f"customer_id={self.customer_id}"
-        )
+        logger.info(f"AccountsAgent initialized for user_id={user_id}, customer_id={self.customer_id}")
 
-    def process_query(
-        self, query: str, include_auth_details: bool = True
-    ) -> Dict[str, Any]:
+    def process_query(self, query: str, include_auth_details: bool = True) -> Dict[str, Any]:
         """
         Process an account-related query.
 
@@ -111,9 +106,7 @@ class AccountsAgent:
                     include_auth_details=include_auth_details,
                 )
                 savings_accounts = [
-                    acc
-                    for acc in accounts_data.get("accounts", [])
-                    if acc["account_type"] == "savings"
+                    acc for acc in accounts_data.get("accounts", []) if acc["account_type"] == "savings"
                 ]
                 result = {
                     "accounts": savings_accounts,
@@ -129,9 +122,7 @@ class AccountsAgent:
                     include_auth_details=include_auth_details,
                 )
                 transaction_accounts = [
-                    acc
-                    for acc in accounts_data.get("accounts", [])
-                    if acc["account_type"] == "transaction"
+                    acc for acc in accounts_data.get("accounts", []) if acc["account_type"] == "transaction"
                 ]
                 result = {
                     "accounts": transaction_accounts,
@@ -147,9 +138,7 @@ class AccountsAgent:
                     include_auth_details=include_auth_details,
                 )
                 investment_accounts = [
-                    acc
-                    for acc in accounts_data.get("accounts", [])
-                    if acc["account_type"] == "investment"
+                    acc for acc in accounts_data.get("accounts", []) if acc["account_type"] == "investment"
                 ]
                 result = {
                     "accounts": investment_accounts,

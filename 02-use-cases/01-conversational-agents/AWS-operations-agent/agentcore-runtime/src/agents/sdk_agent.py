@@ -24,9 +24,7 @@ if current_dir.startswith("/app"):
     sys.path.append("/app")  # For agent_shared
 else:
     # Local development environment
-    project_root = os.path.dirname(
-        os.path.dirname(os.path.dirname(os.path.dirname(current_dir)))
-    )
+    project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(current_dir))))
     sys.path.append(project_root)  # For shared.config_manager
     sys.path.append(os.path.dirname(current_dir))  # For agent_shared
 
@@ -86,9 +84,7 @@ config_manager = AgentCoreConfigManager()
 model_settings = config_manager.get_model_settings()
 gateway_url = config_manager.get_gateway_url()
 
-logger.info(
-    f"🚀 SDK Agent (CLI deployable) starting with model: {model_settings['model_id']}"
-)
+logger.info(f"🚀 SDK Agent (CLI deployable) starting with model: {model_settings['model_id']}")
 if gateway_url:
     logger.info(f"🌐 Gateway configured: {gateway_url}")
 else:
@@ -148,9 +144,7 @@ Remember: Progress updates with emojis are MANDATORY, not optional! Follow the e
     if not gateway_url or not is_oauth_available():
         logger.info("🏠 No MCP available - using local streaming")
         local_tools = [get_current_time, echo_message, think, stop, handoff_to_user]
-        agent = Agent(
-            model=bedrock_model, tools=local_tools, system_prompt=system_prompt
-        )
+        agent = Agent(model=bedrock_model, tools=local_tools, system_prompt=system_prompt)
         async for event in agent.stream_async(prompt):
             yield event
         return
@@ -164,11 +158,7 @@ Remember: Progress updates with emojis are MANDATORY, not optional! Follow the e
         headers = {"Authorization": f"Bearer {access_token}"}
 
         # EXACT AWS pattern: Create MCP client with functools.partial
-        mcp_client = MCPClient(
-            functools.partial(
-                _create_streamable_http_transport, url=gateway_url, headers=headers
-            )
-        )
+        mcp_client = MCPClient(functools.partial(_create_streamable_http_transport, url=gateway_url, headers=headers))
 
         # EXACT AWS pattern: Use context manager
         with mcp_client:
@@ -178,13 +168,9 @@ Remember: Progress updates with emojis are MANDATORY, not optional! Follow the e
             all_tools = [get_current_time, echo_message, think, stop, handoff_to_user]
             if tools:
                 all_tools.extend(tools)
-                logger.info(
-                    f"🛠️ SDK Streaming with {len(tools)} MCP tools + local tools"
-                )
+                logger.info(f"🛠️ SDK Streaming with {len(tools)} MCP tools + local tools")
 
-            agent = Agent(
-                model=bedrock_model, tools=all_tools, system_prompt=system_prompt
-            )
+            agent = Agent(model=bedrock_model, tools=all_tools, system_prompt=system_prompt)
             async for event in agent.stream_async(prompt):
                 yield event
 
@@ -193,9 +179,7 @@ Remember: Progress updates with emojis are MANDATORY, not optional! Follow the e
         # Fallback to local streaming
         logger.info("🏠 Falling back to local streaming")
         local_tools = [get_current_time, echo_message, think, stop, handoff_to_user]
-        agent = Agent(
-            model=bedrock_model, tools=local_tools, system_prompt=system_prompt
-        )
+        agent = Agent(model=bedrock_model, tools=local_tools, system_prompt=system_prompt)
         async for event in agent.stream_async(prompt):
             yield event
 
@@ -326,9 +310,7 @@ Remember: Progress updates with emojis are MANDATORY, not optional! Follow the e
     # Add MCP tools if available and requested - but don't try to use them in agent creation
     # The MCP client context manager issue means we should fall back to local tools for now
     if use_mcp and gateway_url and is_oauth_available():
-        logger.info(
-            "🏠 MCP tools requested but using local tools only due to context manager constraints"
-        )
+        logger.info("🏠 MCP tools requested but using local tools only due to context manager constraints")
         logger.info("🛠️ SDK Agent will use local tools for reliable operation")
     else:
         if not gateway_url:

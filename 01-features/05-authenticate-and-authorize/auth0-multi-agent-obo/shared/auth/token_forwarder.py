@@ -72,9 +72,7 @@ class TokenForwarder:
         """
         try:
             # Decode from base64
-            json_str = base64.b64decode(serialized_context.encode("utf-8")).decode(
-                "utf-8"
-            )
+            json_str = base64.b64decode(serialized_context.encode("utf-8")).decode("utf-8")
             context_dict = json.loads(json_str)
 
             # Parse token expiry
@@ -163,19 +161,13 @@ class TokenForwarder:
 
         # Check required scopes
         if required_scopes:
-            missing_scopes = [
-                s for s in required_scopes if not user_context.has_scope(s)
-            ]
+            missing_scopes = [s for s in required_scopes if not user_context.has_scope(s)]
             if missing_scopes:
                 return False, f"Missing required scopes: {', '.join(missing_scopes)}"
 
         # Check required account types
         if required_account_types:
-            missing_types = [
-                t
-                for t in required_account_types
-                if not user_context.has_account_type(t)
-            ]
+            missing_types = [t for t in required_account_types if not user_context.has_account_type(t)]
             if missing_types:
                 return (
                     False,
@@ -252,7 +244,4 @@ class TokenForwarder:
         Returns:
             True if context matches expectations
         """
-        return (
-            user_context.user_id == expected_user_id
-            and user_context.customer_id == expected_customer_id
-        )
+        return user_context.user_id == expected_user_id and user_context.customer_id == expected_customer_id

@@ -13,9 +13,7 @@ logger = logging.getLogger(__name__)
 class AgentMemoryTools:
     """Memory tools for OpenAI agents based on MonitoringMemoryHooks functionality"""
 
-    def __init__(
-        self, memory_id: str, client: MemoryClient, actor_id: str, session_id: str
-    ):
+    def __init__(self, memory_id: str, client: MemoryClient, actor_id: str, session_id: str):
         # These are the variables required to create the memory for the bedrock agentcore
         # memory client, actor, session, namespaces, etc.
         self.memory_id = memory_id
@@ -47,9 +45,7 @@ class AgentMemoryTools:
         namespaces = self.namespaces
 
         @function_tool
-        def retrieve_monitoring_context(
-            query: str, context_type: Optional[str] = None, top_k: int = 3
-        ) -> str:
+        def retrieve_monitoring_context(query: str, context_type: Optional[str] = None, top_k: int = 3) -> str:
             """Retrieve monitoring context from memory using semantic search.
 
             Args:
@@ -89,9 +85,7 @@ class AgentMemoryTools:
 
                 if all_context:
                     context_text = "\n".join(all_context)
-                    logger.info(
-                        f"Retrieved {len(all_context)} context items for query: {query}"
-                    )
+                    logger.info(f"Retrieved {len(all_context)} context items for query: {query}")
                     return context_text
                 else:
                     return "No relevant context found for the query."
@@ -101,9 +95,7 @@ class AgentMemoryTools:
                 return f"Error retrieving context: {str(e)}"
 
         @function_tool
-        def save_interaction_to_memory(
-            user_message: str, assistant_response: str
-        ) -> str:
+        def save_interaction_to_memory(user_message: str, assistant_response: str) -> str:
             """Save a user-assistant interaction to memory.
 
             Args:
@@ -171,9 +163,7 @@ class AgentMemoryTools:
                 return f"Error retrieving history: {str(e)}"
 
         @function_tool
-        def save_custom_memory(
-            content: str, memory_type: str = "SemanticMemory"
-        ) -> str:
+        def save_custom_memory(content: str, memory_type: str = "SemanticMemory") -> str:
             """Save custom content to a specific memory type.
 
             Args:
@@ -199,9 +189,7 @@ class AgentMemoryTools:
                 return f"Error saving custom content: {str(e)}"
 
         @function_tool
-        def search_memory_by_namespace(
-            query: str, namespace_type: str, top_k: int = 5
-        ) -> str:
+        def search_memory_by_namespace(query: str, namespace_type: str, top_k: int = 5) -> str:
             """Search memory within a specific namespace type.
 
             Args:
@@ -235,10 +223,7 @@ class AgentMemoryTools:
                                 results.append(text)
 
                 if results:
-                    return (
-                        f"Found {len(results)} results in {namespace_type}:\n"
-                        + "\n---\n".join(results)
-                    )
+                    return f"Found {len(results)} results in {namespace_type}:\n" + "\n---\n".join(results)
                 else:
                     return f"No results found in {namespace_type} for query: {query}"
 
@@ -263,9 +248,7 @@ class AgentMemoryTools:
 
 
 # Factory functions to create memory tools for specific agents
-def create_memory_tools(
-    memory_id: str, client: MemoryClient, actor_id: str, session_id: str
-):
+def create_memory_tools(memory_id: str, client: MemoryClient, actor_id: str, session_id: str):
     """Create memory tools for the lead orchestrator agent"""
     memory_tools = AgentMemoryTools(memory_id, client, actor_id, session_id)
     return memory_tools.create_memory_tools()

@@ -56,11 +56,12 @@ def setup_telemetry():
                 kwargs["endpoint"] = OTEL_ENDPOINT
             telemetry.setup_otlp_exporter(**kwargs)
             telemetry.setup_meter(enable_otlp_exporter=True)
-            logger.info("✅ Observability: OTLP exporter enabled (endpoint=%s)",
-                        OTEL_ENDPOINT or "default")
+            logger.info("✅ Observability: OTLP exporter enabled (endpoint=%s)", OTEL_ENDPOINT or "default")
         else:
             # "none" — tracer provider is set (spans are created) but not exported
-            logger.info("✅ Observability: Tracer initialized (no exporter — set OTEL_TRACES_EXPORTER=console or otlp to export)")
+            logger.info(
+                "✅ Observability: Tracer initialized (no exporter — set OTEL_TRACES_EXPORTER=console or otlp to export)"
+            )
 
         logger.info("✅ Observability: Strands telemetry initialized (service=%s)", SERVICE_NAME)
 
@@ -76,6 +77,7 @@ def _create_xray_provider(resource):
 
     try:
         from opentelemetry.sdk.extension.aws.trace import AwsXRayIdGenerator
+
         provider = SDKProvider(resource=resource, id_generator=AwsXRayIdGenerator())
         logger.info("✅ Observability: X-Ray ID generator configured")
     except ImportError:

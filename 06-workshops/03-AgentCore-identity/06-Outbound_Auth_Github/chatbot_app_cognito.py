@@ -27,9 +27,7 @@ def get_streamlit_url():
             domain_id = data["DomainId"]
             space_name = data["SpaceName"]
     except FileNotFoundError:
-        logger.info(
-            "Resource-metadata.json file not found -- running outside SageMaker Studio"
-        )
+        logger.info("Resource-metadata.json file not found -- running outside SageMaker Studio")
         domain_id = None
         space_name = None
         # sys.exit(1)
@@ -49,9 +47,7 @@ def get_streamlit_url():
     if domain_id is not None:
         sagemaker_client = boto3.client("sagemaker")
         # Replace 'your-space-name' and 'your-domain-id' with your actual values
-        response = sagemaker_client.describe_space(
-            DomainId=domain_id, SpaceName=space_name
-        )
+        response = sagemaker_client.describe_space(DomainId=domain_id, SpaceName=space_name)
 
         streamlit_url = response["Url"] + "/proxy/8501/"
     else:
@@ -61,11 +57,7 @@ def get_streamlit_url():
 
 def build_context(messages, context_window=CONTEXT_WINDOW):
     # Only use the last context_window*2 messages (user+assistant pairs)
-    history = (
-        messages[-context_window * 2 :]
-        if len(messages) > context_window * 2
-        else messages
-    )
+    history = messages[-context_window * 2 :] if len(messages) > context_window * 2 else messages
     context = ""
     for msg in history:
         role = "User" if msg["role"] == "user" else "Assistant"
@@ -101,9 +93,7 @@ def load_bedrock_agentcore_config():
 
         agents = config.get("agents", {})
         if default_agent not in agents:
-            raise ValueError(
-                f"Agent '{default_agent}' not found in agents configuration"
-            )
+            raise ValueError(f"Agent '{default_agent}' not found in agents configuration")
 
         agent_config = agents[default_agent]
         bedrock_config = agent_config.get("bedrock_agentcore", {})
@@ -118,9 +108,7 @@ def load_bedrock_agentcore_config():
         # Handle allowedClients - it's a list, so take the first one
         allowed_clients = []
         if "customJWTAuthorizer" in auth_config:
-            allowed_clients = auth_config["customJWTAuthorizer"].get(
-                "allowedClients", []
-            )
+            allowed_clients = auth_config["customJWTAuthorizer"].get("allowedClients", [])
 
         client_id = allowed_clients[0] if allowed_clients else None
 
@@ -129,9 +117,7 @@ def load_bedrock_agentcore_config():
         if not agent_arn:
             raise ValueError("agent_arn not found in bedrock_agentcore configuration")
         if not client_id:
-            raise ValueError(
-                "allowedClients not found or empty in authorizer_configuration"
-            )
+            raise ValueError("allowedClients not found or empty in authorizer_configuration")
         if not region:
             raise ValueError("region not found in aws configuration")
 
@@ -175,9 +161,7 @@ class StreamingHttpBedrockAgentCoreClient:
         """Initialize StreamingHttpBedrockAgentCoreClient."""
         self.region = region
         self.dp_endpoint = f"https://bedrock-agentcore.{region}.amazonaws.com"
-        self.logger = logging.getLogger(
-            f"bedrock_agentcore.streaming_http_runtime.{region}"
-        )
+        self.logger = logging.getLogger(f"bedrock_agentcore.streaming_http_runtime.{region}")
 
     def invoke_endpoint_streaming(
         self,
@@ -206,9 +190,7 @@ class StreamingHttpBedrockAgentCoreClient:
             body = json.loads(payload) if isinstance(payload, str) else payload
         except json.JSONDecodeError:
             # Fallback for non-JSON strings - wrap in payload object
-            self.logger.warning(
-                "Failed to parse payload as JSON, wrapping in payload object"
-            )
+            self.logger.warning("Failed to parse payload as JSON, wrapping in payload object")
             body = {"payload": payload}
 
         try:
@@ -370,9 +352,7 @@ def main():
                 unsafe_allow_html=True,
             )
             username = st.text_input("Username", key="cognito_username")
-            password = st.text_input(
-                "Password", type="password", key="cognito_password"
-            )
+            password = st.text_input("Password", type="password", key="cognito_password")
             submitted = st.form_submit_button("Login")
 
         if submitted:
@@ -386,9 +366,7 @@ def main():
                     )
                     access_token = resp["AuthenticationResult"]["AccessToken"]
                     st.session_state["cognito_access_token"] = access_token
-                    st.success(
-                        "Cognito authentication successful! Redirecting to chatbot..."
-                    )
+                    st.success("Cognito authentication successful! Redirecting to chatbot...")
                     st.rerun()
                 except Exception as e:
                     st.error(f"Cognito authentication failed: {e}")
@@ -589,23 +567,15 @@ def main():
     if "messages" not in st.session_state:
         st.session_state.messages = []
     if "agentSessionId" not in st.session_state:
-        st.session_state["agentSessionId"] = (
-            agentSessionId if agentSessionId else str(uuid.uuid4())
-        )
+        st.session_state["agentSessionId"] = agentSessionId if agentSessionId else str(uuid.uuid4())
 
     # Display chat messages from history on app rerun
     messages_to_show = st.session_state.messages[:]
     # If waiting for assistant, don't show the last user message here (it will be shown in pending section)
-    if (
-        st.session_state.get("pending_assistant", False)
-        and messages_to_show
-        and messages_to_show[-1]["role"] == "user"
-    ):
+    if st.session_state.get("pending_assistant", False) and messages_to_show and messages_to_show[-1]["role"] == "user":
         messages_to_show = messages_to_show[:-1]
     for message in messages_to_show:
-        bubble_class = (
-            "user-bubble" if message["role"] == "user" else "assistant-bubble"
-        )
+        bubble_class = "user-bubble" if message["role"] == "user" else "assistant-bubble"
         emoji = "🧑‍💻" if message["role"] == "user" else "🤖"
         with st.chat_message(message["role"]):
             if message["role"] == "assistant" and "elapsed" in message:
@@ -707,9 +677,7 @@ def main():
 
                                 if begin_pos != -1 and end_pos != -1:
                                     # Extract everything between the markers
-                                    json_part = accumulated_response[
-                                        begin_pos + len(begin_marker) : end_pos
-                                    ].strip()
+                                    json_part = accumulated_response[begin_pos + len(begin_marker) : end_pos].strip()
 
                                     # The JSON should start immediately after the Begin marker
                                     json_start = json_part.find('{"role":')
@@ -729,30 +697,21 @@ def main():
 
                                         if json_end != -1:
                                             json_str = json_str[:json_end]
-                                            logger.info(
-                                                f"Extracted JSON: {json_str}"
-                                            )  # Debug print
+                                            logger.info(f"Extracted JSON: {json_str}")  # Debug print
                                             response_data = json.loads(json_str)
 
                                             # Extract text from the JSON structure
                                             if (
                                                 "content" in response_data
                                                 and len(response_data["content"]) > 0
-                                                and "text"
-                                                in response_data["content"][0]
+                                                and "text" in response_data["content"][0]
                                             ):
-                                                formatted_response = response_data[
-                                                    "content"
-                                                ][0]["text"]
-                                                logger.info(
-                                                    f"Extracted text: {formatted_response}"
-                                                )  # Debug print
+                                                formatted_response = response_data["content"][0]["text"]
+                                                logger.info(f"Extracted text: {formatted_response}")  # Debug print
 
                             except (json.JSONDecodeError, KeyError, IndexError) as e:
                                 logger.info(f"JSON parsing error: {e}")
-                                logger.info(
-                                    f"Accumulated response: {accumulated_response}"
-                                )
+                                logger.info(f"Accumulated response: {accumulated_response}")
                                 # Fallback to show full response for debugging
                                 formatted_response = accumulated_response
                             break
@@ -761,15 +720,11 @@ def main():
                         else:
                             # Add typing cursor effect during streaming
                             streaming_text = accumulated_response
-                            if (
-                                chunk_count % 3 == 0
-                            ):  # Add cursor every few chunks for effect
+                            if chunk_count % 3 == 0:  # Add cursor every few chunks for effect
                                 streaming_text += ""
 
                             # Update display with streaming animation (make URLs clickable)
-                            clickable_streaming_text = make_urls_clickable(
-                                streaming_text
-                            )
+                            clickable_streaming_text = make_urls_clickable(streaming_text)
                             message_placeholder.markdown(
                                 f'<div class="assistant-bubble streaming typing-cursor">🤖 {clickable_streaming_text}</div>',
                                 unsafe_allow_html=True,
@@ -782,11 +737,7 @@ def main():
                 answer = (
                     formatted_response
                     if formatted_response
-                    else (
-                        accumulated_response
-                        if accumulated_response
-                        else "No response received"
-                    )
+                    else (accumulated_response if accumulated_response else "No response received")
                 )
                 clickable_answer = make_urls_clickable(answer)
                 message_placeholder.markdown(
@@ -805,9 +756,7 @@ def main():
 
             # Add final response to session state
             final_answer = answer if "answer" in locals() else accumulated_response
-            st.session_state.messages.append(
-                {"role": "assistant", "content": final_answer, "elapsed": elapsed}
-            )
+            st.session_state.messages.append({"role": "assistant", "content": final_answer, "elapsed": elapsed})
             st.session_state["pending_assistant"] = False
             st.rerun()
 

@@ -164,16 +164,12 @@ def zip_and_upload_code():
     # Copy source files into deployment_package at root level
     for filename in os.listdir(agents_dir):
         if filename.endswith(".py"):
-            shutil.copy(
-                os.path.join(agents_dir, filename), os.path.join(pkg_dir, filename)
-            )
+            shutil.copy(os.path.join(agents_dir, filename), os.path.join(pkg_dir, filename))
             print(f"  Added {filename}")
     if os.path.isdir(helpers_dir):
         for filename in os.listdir(helpers_dir):
             if filename.endswith(".py"):
-                shutil.copy(
-                    os.path.join(helpers_dir, filename), os.path.join(pkg_dir, filename)
-                )
+                shutil.copy(os.path.join(helpers_dir, filename), os.path.join(pkg_dir, filename))
                 print(f"  Added helper: {filename}")
 
     print("  Creating deployment zip...")
@@ -237,10 +233,7 @@ def create_endpoint(runtime_id: str):
     control.create_agent_runtime_endpoint(agentRuntimeId=runtime_id, name="default")
     while True:
         eps = control.list_agent_runtime_endpoints(agentRuntimeId=runtime_id)
-        if (
-            eps.get("runtimeEndpoints")
-            and eps["runtimeEndpoints"][0]["status"] == "READY"
-        ):
+        if eps.get("runtimeEndpoints") and eps["runtimeEndpoints"][0]["status"] == "READY":
             break
         time.sleep(15)
     print("✓ Endpoint ready")

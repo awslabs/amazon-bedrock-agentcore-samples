@@ -76,9 +76,7 @@ def create_execution_role() -> str:
             {
                 "Effect": "Allow",
                 "Action": ["logs:DescribeLogStreams", "logs:CreateLogGroup"],
-                "Resource": [
-                    f"arn:aws:logs:{REGION}:{ACCOUNT_ID}:log-group:/aws/bedrock-agentcore/runtimes/*"
-                ],
+                "Resource": [f"arn:aws:logs:{REGION}:{ACCOUNT_ID}:log-group:/aws/bedrock-agentcore/runtimes/*"],
             },
             {
                 "Effect": "Allow",
@@ -95,9 +93,7 @@ def create_execution_role() -> str:
             {
                 "Effect": "Allow",
                 "Action": ["logs:PutLogEvents"],
-                "Resource": [
-                    f"arn:aws:logs:{REGION}:{ACCOUNT_ID}:log-group:aws/spans:*"
-                ],
+                "Resource": [f"arn:aws:logs:{REGION}:{ACCOUNT_ID}:log-group:aws/spans:*"],
             },
             {
                 "Effect": "Allow",
@@ -113,9 +109,7 @@ def create_execution_role() -> str:
                 "Effect": "Allow",
                 "Action": "cloudwatch:PutMetricData",
                 "Resource": "*",
-                "Condition": {
-                    "StringEquals": {"cloudwatch:namespace": "bedrock-agentcore"}
-                },
+                "Condition": {"StringEquals": {"cloudwatch:namespace": "bedrock-agentcore"}},
             },
             {
                 "Sid": "BedrockModelInvocation",
@@ -207,9 +201,7 @@ def build_and_upload_package():
         capture_output=True,
     )
     for src_file in AGENT_FILES:
-        subprocess.run(
-            ["zip", zip_file, "-j", src_file], check=True, capture_output=True
-        )
+        subprocess.run(["zip", zip_file, "-j", src_file], check=True, capture_output=True)
 
     zip_size = os.path.getsize(zip_file) / (1024 * 1024)
     print(f"  Package: {zip_file} ({zip_size:.1f} MB)")

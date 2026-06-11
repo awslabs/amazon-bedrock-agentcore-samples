@@ -34,9 +34,7 @@ def list_gateway_tools(agentcore_client, gateway_id):
 
     try:
         # List gateway targets
-        targets_response = agentcore_client.list_gateway_targets(
-            gatewayIdentifier=gateway_id
-        )
+        targets_response = agentcore_client.list_gateway_targets(gatewayIdentifier=gateway_id)
 
         if "items" not in targets_response or len(targets_response["items"]) == 0:
             print("❌ No targets found in gateway")
@@ -55,9 +53,7 @@ def list_gateway_tools(agentcore_client, gateway_id):
             print(f"  ID: {target_id}")
 
             # Get target details
-            target_details = agentcore_client.get_gateway_target(
-                gatewayIdentifier=gateway_id, targetId=target_id
-            )
+            target_details = agentcore_client.get_gateway_target(gatewayIdentifier=gateway_id, targetId=target_id)
 
             print(f"  Status: {target_details.get('status', 'unknown')}")
             print()

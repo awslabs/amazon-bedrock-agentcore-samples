@@ -43,9 +43,7 @@ def check_tool_authorization(claim_name: str, claim_value: str, tool_name: str) 
             # Try to get from SSM Parameter Store
             try:
                 ssm = boto3.client("ssm")
-                response = ssm.get_parameter(
-                    Name="/app/lakehouse-agent/tenant-role-mapping-table"
-                )
+                response = ssm.get_parameter(Name="/app/lakehouse-agent/tenant-role-mapping-table")
                 table_name = response["Parameter"]["Value"]
                 logger.info(f"Loaded table name from SSM: {table_name}")
             except Exception as e:
@@ -58,14 +56,10 @@ def check_tool_authorization(claim_name: str, claim_value: str, tool_name: str) 
         dynamodb = boto3.resource("dynamodb")
         table = dynamodb.Table(table_name)
 
-        logger.info(
-            f"🔍 Checking tool authorization: {claim_name}={claim_value}, tool={tool_name}"
-        )
+        logger.info(f"🔍 Checking tool authorization: {claim_name}={claim_value}, tool={tool_name}")
 
         # Query DynamoDB for the claim mapping
-        response = table.get_item(
-            Key={"claim_name": claim_name, "claim_value": claim_value}
-        )
+        response = table.get_item(Key={"claim_name": claim_name, "claim_value": claim_value})
 
         # Check if item exists and has allowed_tools
         if "Item" not in response:
@@ -79,13 +73,9 @@ def check_tool_authorization(claim_name: str, claim_value: str, tool_name: str) 
         is_allowed = tool_name in allowed_tools
 
         if is_allowed:
-            logger.info(
-                f"✅ Tool '{tool_name}' is allowed for {claim_name}={claim_value}"
-            )
+            logger.info(f"✅ Tool '{tool_name}' is allowed for {claim_name}={claim_value}")
         else:
-            logger.warning(
-                f"❌ Tool '{tool_name}' is NOT allowed for {claim_name}={claim_value}"
-            )
+            logger.warning(f"❌ Tool '{tool_name}' is NOT allowed for {claim_name}={claim_value}")
             logger.info(f"   Allowed tools: {allowed_tools}")
 
         return is_allowed
@@ -142,9 +132,7 @@ def get_tool_name_from_request(body: Dict[str, Any]) -> Optional[str]:
         # Format: "target-name___tool_name" -> "tool_name"
         if "___" in tool_name_with_prefix:
             tool_name = tool_name_with_prefix.split("___", 1)[1]
-            logger.info(
-                f"📋 Extracted tool name: {tool_name} (from {tool_name_with_prefix})"
-            )
+            logger.info(f"📋 Extracted tool name: {tool_name} (from {tool_name_with_prefix})")
         else:
             tool_name = tool_name_with_prefix
             logger.info(f"📋 Extracted tool name: {tool_name}")
@@ -156,9 +144,7 @@ def get_tool_name_from_request(body: Dict[str, Any]) -> Optional[str]:
         return None
 
 
-def validate_tool_access(
-    claims: Dict[str, Any], body: Dict[str, Any]
-) -> Tuple[bool, Optional[str], Optional[str]]:
+def validate_tool_access(claims: Dict[str, Any], body: Dict[str, Any]) -> Tuple[bool, Optional[str], Optional[str]]:
     """
     Validate if the user has access to the requested tool.
 

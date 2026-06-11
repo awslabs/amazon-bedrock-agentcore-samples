@@ -36,9 +36,7 @@ def main():
         render_login_interface(auth_manager)
 
 
-def render_authenticated_interface(
-    auth_manager: AuthManager, chat_manager: ChatManager
-):
+def render_authenticated_interface(auth_manager: AuthManager, chat_manager: ChatManager):
     """Render the interface for authenticated users"""
     # Sidebar
     st.sidebar.title("Access Tokens")
@@ -68,9 +66,7 @@ def render_authenticated_interface(
 
     # Initialize conversation if needed
     if not st.session_state.get("messages"):
-        chat_manager.initialize_default_conversation(
-            user_claims, tokens["access_token"]
-        )
+        chat_manager.initialize_default_conversation(user_claims, tokens["access_token"])
     else:
         # Display chat history
         chat_manager.display_chat_history()

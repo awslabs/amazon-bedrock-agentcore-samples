@@ -35,9 +35,7 @@ class MemoryHook(HookProvider):
                     for message in turn:
                         role = "assistant" if message["role"] == "ASSISTANT" else "user"
                         content = message["content"]["text"]
-                        context_messages.append(
-                            {"role": role, "content": [{"text": content}]}
-                        )
+                        context_messages.append({"role": role, "content": [{"text": content}]})
 
                 # context = "\n".join(context_messages)
                 # Add context to agent's system prompt.
@@ -51,9 +49,7 @@ class MemoryHook(HookProvider):
         except Exception as e:
             print(f"Memory load error: {e}")
 
-    def _add_context_user_query(
-        self, namespace: str, query: str, init_content: str, event: MessageAddedEvent
-    ):
+    def _add_context_user_query(self, namespace: str, query: str, init_content: str, event: MessageAddedEvent):
         content = None
         memories = self.memory_client.retrieve_memories(
             memory_id=self.memory_id, namespace=namespace, query=query, top_k=3
@@ -94,9 +90,7 @@ class MemoryHook(HookProvider):
                     memory_id=self.memory_id,
                     actor_id=self.actor_id,
                     session_id=self.session_id,
-                    messages=[
-                        (messages[-1]["content"][0]["text"], messages[-1]["role"])
-                    ],
+                    messages=[(messages[-1]["content"][0]["text"], messages[-1]["role"])],
                 )
 
         except Exception as e:

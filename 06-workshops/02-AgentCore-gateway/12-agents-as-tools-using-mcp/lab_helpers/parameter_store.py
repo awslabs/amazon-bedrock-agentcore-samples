@@ -74,15 +74,11 @@ def put_parameter(key, value, description="", region_name=None, overwrite=True):
             if str(value) == existing_value:
                 print("   → Action: SKIP (same value)")
                 print(f"✓ Parameter already exists with same value: {key}")
-                return existing["Parameter"][
-                    "Version"
-                ]  # codeql[py/clear-text-logging-sensitive-data]
+                return existing["Parameter"]["Version"]  # codeql[py/clear-text-logging-sensitive-data]
             elif not overwrite:
                 print("   → Action: SKIP (overwrite=False)")
                 print(f"⚠ Parameter exists but overwrite=False: {key}")
-                return existing["Parameter"][
-                    "Version"
-                ]  # codeql[py/clear-text-logging-sensitive-data]
+                return existing["Parameter"]["Version"]  # codeql[py/clear-text-logging-sensitive-data]
             else:
                 action = "UPDATED"
                 print("   → Action: UPDATED")
@@ -105,9 +101,7 @@ def put_parameter(key, value, description="", region_name=None, overwrite=True):
         print(f"✓ Parameter {action}: {key}")
         return version  # codeql[py/clear-text-logging-sensitive-data]
     except Exception as e:
-        print(
-            f"❌ Error storing parameter {key}: {e}"
-        )  # codeql[py/clear-text-logging-sensitive-data]
+        print(f"❌ Error storing parameter {key}: {e}")  # codeql[py/clear-text-logging-sensitive-data]
         import traceback
 
         print("Traceback:")
@@ -137,9 +131,7 @@ def get_parameter(key, default=None, region_name=None):
             return default  # codeql[py/clear-text-logging-sensitive-data]
         else:
             effective_region = region_name if region_name else DEFAULT_AWS_REGION
-            print(
-                f"❌ Parameter not found: {key}"
-            )  # codeql[py/clear-text-logging-sensitive-data]
+            print(f"❌ Parameter not found: {key}")  # codeql[py/clear-text-logging-sensitive-data]
             print(f"   Region: {effective_region}")
             print("   Check:")
             print("     • Is this parameter stored in Parameter Store?")
@@ -149,9 +141,7 @@ def get_parameter(key, default=None, region_name=None):
     except Exception as e:
         effective_region = region_name if region_name else DEFAULT_AWS_REGION
         print(f"❌ Error retrieving parameter {key}: {e}")
-        print(
-            f"   Region: {effective_region}"
-        )  # codeql[py/clear-text-logging-sensitive-data]
+        print(f"   Region: {effective_region}")  # codeql[py/clear-text-logging-sensitive-data]
         raise
 
 
@@ -191,9 +181,7 @@ def get_parameters_by_path(path_prefix, region_name=None, recursive=True):
         parameters = {}
         paginator = ssm.get_paginator("get_parameters_by_path")
 
-        for page in paginator.paginate(
-            Path=path_prefix, Recursive=recursive, WithDecryption=True
-        ):
+        for page in paginator.paginate(Path=path_prefix, Recursive=recursive, WithDecryption=True):
             for param in page.get("Parameters", []):
                 param_name = param["Name"].split("/")[-1]  # Get last part of path
                 parameters[param_name] = param["Value"]
@@ -248,16 +236,12 @@ def store_workshop_metadata(account_id, region, region_name=None):
 
 def get_lab_02_config(region_name=None):
     """Retrieve all Lab 02 configuration from Parameter Store"""
-    return get_parameters_by_path(
-        "/aiml301/lab-02", region_name=region_name, recursive=False
-    )
+    return get_parameters_by_path("/aiml301/lab-02", region_name=region_name, recursive=False)
 
 
 def get_lab_03_config(region_name=None):
     """Retrieve all Lab 03 configuration from Parameter Store"""
-    return get_parameters_by_path(
-        "/aiml301/lab-03", region_name=region_name, recursive=False
-    )
+    return get_parameters_by_path("/aiml301/lab-03", region_name=region_name, recursive=False)
 
 
 def get_all_workshop_parameters(region_name=None):
@@ -278,9 +262,7 @@ def check_lab_prerequisites(lab_number, region_name=None):
     """
     prerequisites = {
         1: [],  # Lab-01 has no prerequisites
-        2: [
-            PARAMETER_PATHS["cognito"]["user_pool_id"]
-        ],  # Lab-02 needs Cognito from Lab-01
+        2: [PARAMETER_PATHS["cognito"]["user_pool_id"]],  # Lab-02 needs Cognito from Lab-01
         3: [  # Lab-03 needs Cognito from Lab-01 AND optionally Lab-02
             PARAMETER_PATHS["cognito"]["user_pool_id"],
             PARAMETER_PATHS["cognito"]["m2m_client_id"],

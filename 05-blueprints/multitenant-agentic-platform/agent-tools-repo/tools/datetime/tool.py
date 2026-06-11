@@ -30,9 +30,7 @@ def get_datetime(timezone: str = "UTC") -> str:
         except pytz.exceptions.UnknownTimeZoneError:
             # If invalid timezone, default to UTC and note the error
             tz = pytz.UTC
-            timezone_note = (
-                f" (Note: '{timezone}' is not a valid timezone, using UTC instead)"
-            )
+            timezone_note = f" (Note: '{timezone}' is not a valid timezone, using UTC instead)"
         else:
             timezone_note = ""
 

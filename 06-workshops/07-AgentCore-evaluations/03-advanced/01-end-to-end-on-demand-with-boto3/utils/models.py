@@ -104,9 +104,7 @@ class TraceData:
         """Get all unique trace IDs from spans."""
         return list(set(span.trace_id for span in self.spans if span.trace_id))
 
-    def get_tool_execution_spans(
-        self, tool_name_filter: Optional[str] = None
-    ) -> List[str]:
+    def get_tool_execution_spans(self, tool_name_filter: Optional[str] = None) -> List[str]:
         """Get span IDs for tool execution spans.
 
         Args:

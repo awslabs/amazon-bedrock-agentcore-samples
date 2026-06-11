@@ -39,18 +39,14 @@ def lambda_handler(event, context):
     """Process a batch of Kinesis records containing memory stream events."""
     for record in event["Records"]:
         try:
-            payload = json.loads(
-                base64.b64decode(record["kinesis"]["data"]).decode("utf-8")
-            )
+            payload = json.loads(base64.b64decode(record["kinesis"]["data"]).decode("utf-8"))
         except Exception as e:
             logger.error(
                 json.dumps(
                     {
                         "action": "malformed_record",
                         "error": str(e),
-                        "kinesis_sequence": record.get("kinesis", {}).get(
-                            "sequenceNumber", "N/A"
-                        ),
+                        "kinesis_sequence": record.get("kinesis", {}).get("sequenceNumber", "N/A"),
                     }
                 )
             )
@@ -105,9 +101,7 @@ def lambda_handler(event, context):
 
         try:
             _replicate(stream_event)
-            logger.info(
-                json.dumps({"action": "replicated", "memory_record_id": record_id})
-            )
+            logger.info(json.dumps({"action": "replicated", "memory_record_id": record_id}))
         except ClientError as e:
             code = e.response["Error"]["Code"]
             if code in RETRYABLE_ERRORS:
@@ -123,15 +117,13 @@ def _is_replicated(stream_event):
 
 def _replicate(stream_event):
     original_namespaces = stream_event.get("namespaces") or []
-    replicated_namespaces = [
-        f"{REPLICATED_PREFIX}{ns}" for ns in original_namespaces[:1]
-    ] or [REPLICATED_PREFIX.rstrip("/")]
+    replicated_namespaces = [f"{REPLICATED_PREFIX}{ns}" for ns in original_namespaces[:1]] or [
+        REPLICATED_PREFIX.rstrip("/")
+    ]
 
     original_id = stream_event.get("memoryRecordId", "")
     event_time = stream_event.get("eventTime", "")
-    request_id = hashlib.sha256(
-        f"{LOCAL_REGION}:{original_id}:{event_time}".encode()
-    ).hexdigest()[:36]
+    request_id = hashlib.sha256(f"{LOCAL_REGION}:{original_id}:{event_time}".encode()).hexdigest()[:36]
 
     try:
         dt = datetime.fromisoformat(event_time.replace("Z", "+00:00"))

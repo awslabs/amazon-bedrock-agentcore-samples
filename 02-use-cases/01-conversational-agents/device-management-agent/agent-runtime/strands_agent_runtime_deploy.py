@@ -200,9 +200,7 @@ try:
     (boto_session, agentcore_client) = utils.create_agentcore_client()
 except Exception as e:
     print(f"Error creating AgentCore client: {e}")
-    print(
-        "Make sure your AWS credentials are configured and utils.py has the create_agentcore_client function"
-    )
+    print("Make sure your AWS credentials are configured and utils.py has the create_agentcore_client function")
     sys.exit(1)
 
 # Launch configurations
@@ -234,27 +232,19 @@ EnvVariables = {
     # Bedrock AgentCore Runtime configuration
     "ENDPOINT_URL": os.getenv("ENDPOINT_URL"),
     "AGENT_NAME": os.getenv("AGENT_NAME", "device-management-agent"),
-    "AGENT_DESCRIPTION": os.getenv(
-        "AGENT_DESCRIPTION", "Device Management Agent for IoT devices"
-    ),
+    "AGENT_DESCRIPTION": os.getenv("AGENT_DESCRIPTION", "Device Management Agent for IoT devices"),
     # Model configuration
-    "BEDROCK_MODEL_ID": os.getenv(
-        "BEDROCK_MODEL_ID", "global.anthropic.claude-haiku-4-5-20251001-v1:0"
-    ),
+    "BEDROCK_MODEL_ID": os.getenv("BEDROCK_MODEL_ID", "global.anthropic.claude-haiku-4-5-20251001-v1:0"),
 }
 
 # Get gateway endpoint
 try:
-    gatewayEndpoint = utils.get_gateway_endpoint(
-        agentcore_client=agentcore_client, gateway_id=args.gateway_id
-    )
+    gatewayEndpoint = utils.get_gateway_endpoint(agentcore_client=agentcore_client, gateway_id=args.gateway_id)
     print(f"Gateway Endpoint: {gatewayEndpoint}")
     if gatewayEndpoint:
         # Override MCP_SERVER_URL with the actual gateway endpoint
         EnvVariables["MCP_SERVER_URL"] = gatewayEndpoint
-        EnvVariables["gateway_endpoint"] = (
-            gatewayEndpoint  # Keep for backward compatibility
-        )
+        EnvVariables["gateway_endpoint"] = gatewayEndpoint  # Keep for backward compatibility
     else:
         print("Gateway endpoint is empty, using value from .env file")
 except Exception as e:
@@ -380,9 +370,7 @@ if status == "READY":
     # Quick test
     print("Running quick test...")
     try:
-        invoke_response = agentcore_runtime.invoke(
-            {"prompt": "Hello! Can you help me with device management?"}
-        )
+        invoke_response = agentcore_runtime.invoke({"prompt": "Hello! Can you help me with device management?"})
         print(f"Test response: {invoke_response}")
     except Exception as e:
         print(f"Test invocation failed: {e}")

@@ -249,9 +249,7 @@ def lambda_handler(event, context):
             file_ext = key.lower().split(".")[-1]
 
             if file_ext not in ["pdf", "png", "jpg", "jpeg", "gif", "webp"]:
-                raise Exception(
-                    f"Unsupported file type. Supported: .pdf, .png, .jpg, .jpeg. Got: {key}"
-                )
+                raise Exception(f"Unsupported file type. Supported: .pdf, .png, .jpg, .jpeg. Got: {key}")
 
             # Read file and get metadata
             response = s3.get_object(Bucket=bucket, Key=key)
@@ -275,15 +273,11 @@ def lambda_handler(event, context):
             # Clean the response (remove markdown if present)
             extracted_data_str = extracted_data_str.strip()
             if extracted_data_str.startswith("```json"):
-                extracted_data_str = (
-                    extracted_data_str.replace("```json", "").replace("```", "").strip()
-                )
+                extracted_data_str = extracted_data_str.replace("```json", "").replace("```", "").strip()
             elif extracted_data_str.startswith("```"):
                 extracted_data_str = extracted_data_str.replace("```", "").strip()
 
-            print(
-                f"Extracted data string (first 200 chars): {extracted_data_str[:200]}"
-            )
+            print(f"Extracted data string (first 200 chars): {extracted_data_str[:200]}")
 
             try:
                 gr_data = json.loads(extracted_data_str)
@@ -293,9 +287,7 @@ def lambda_handler(event, context):
                 raise Exception(f"Failed to parse Bedrock response as JSON: {str(e)}")
 
             print("GR data extracted successfully")
-            print(
-                f"BOL: {gr_data.get('bol_number', 'N/A')}, PO: {gr_data.get('po_reference', 'N/A')}"
-            )
+            print(f"BOL: {gr_data.get('bol_number', 'N/A')}, PO: {gr_data.get('po_reference', 'N/A')}")
 
             # Send to API
             print("Sending GR data to RTP API...")

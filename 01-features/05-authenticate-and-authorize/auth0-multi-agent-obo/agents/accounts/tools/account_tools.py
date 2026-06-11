@@ -266,15 +266,11 @@ def _map_customer_id_to_mock(customer_id: str) -> str:
     """
     if customer_id in CUSTOMER_ACCOUNTS_DB:
         return customer_id
-    logger.info(
-        f"[MOCK] Mapping unknown customer_id={customer_id} to CUST-001 for demo"
-    )
+    logger.info(f"[MOCK] Mapping unknown customer_id={customer_id} to CUST-001 for demo")
     return "CUST-001"
 
 
-def _get_customer_id_for_user(
-    user_id: str, provided_customer_id: Optional[str] = None
-) -> str:
+def _get_customer_id_for_user(user_id: str, provided_customer_id: Optional[str] = None) -> str:
     """
     Resolve the customer_id for a given user.
 
@@ -353,9 +349,7 @@ def get_accounts(
     # Map to known mock customer for demo
     customer_id = _map_customer_id_to_mock(customer_id)
 
-    logger.info(
-        f"[AUTH] Getting accounts for customer_id={customer_id}, user_id={user_id}"
-    )
+    logger.info(f"[AUTH] Getting accounts for customer_id={customer_id}, user_id={user_id}")
 
     # Authorization check
     auth_decision = {
@@ -377,10 +371,7 @@ def get_accounts(
         logger.info(f"[AUTH] No accounts found for customer_id={customer_id}")
         auth_decision["result"] = "no_accounts_found"
     else:
-        logger.info(
-            f"[AUTH] AUTHORIZED: Retrieved {len(customer_accounts)} accounts "
-            f"for customer_id={customer_id}"
-        )
+        logger.info(f"[AUTH] AUTHORIZED: Retrieved {len(customer_accounts)} accounts for customer_id={customer_id}")
         auth_decision["result"] = f"returned_{len(customer_accounts)}_accounts"
 
     # Build response with account summaries (not full details)
@@ -433,10 +424,7 @@ def get_account_balance(
     # Map to known mock customer for demo
     customer_id = _map_customer_id_to_mock(customer_id)
 
-    logger.info(
-        f"[AUTH] Getting balance for customer_id={customer_id}, "
-        f"account_number={account_number}"
-    )
+    logger.info(f"[AUTH] Getting balance for customer_id={customer_id}, account_number={account_number}")
 
     # Authorization check
     auth_result = _verify_account_ownership(customer_id, account_number)
@@ -452,8 +440,7 @@ def get_account_balance(
 
     if not auth_result["authorized"]:
         logger.warning(
-            f"[AUTH] DENIED: customer_id={customer_id} cannot access "
-            f"account {account_number} - {auth_result['reason']}"
+            f"[AUTH] DENIED: customer_id={customer_id} cannot access account {account_number} - {auth_result['reason']}"
         )
         response = {
             "error": "AUTHORIZATION_DENIED",
@@ -464,10 +451,7 @@ def get_account_balance(
             response["authorization"] = auth_decision
         return response
 
-    logger.info(
-        f"[AUTH] AUTHORIZED: customer_id={customer_id} accessing "
-        f"account {account_number}"
-    )
+    logger.info(f"[AUTH] AUTHORIZED: customer_id={customer_id} accessing account {account_number}")
 
     # Get the account data
     customer_accounts = CUSTOMER_ACCOUNTS_DB.get(customer_id, [])
@@ -532,10 +516,7 @@ def get_account_details(
     # Map to known mock customer for demo
     customer_id = _map_customer_id_to_mock(customer_id)
 
-    logger.info(
-        f"[AUTH] Getting account details for customer_id={customer_id}, "
-        f"account_number={account_number}"
-    )
+    logger.info(f"[AUTH] Getting account details for customer_id={customer_id}, account_number={account_number}")
 
     # Authorization check
     auth_result = _verify_account_ownership(customer_id, account_number)
@@ -563,10 +544,7 @@ def get_account_details(
             response["authorization"] = auth_decision
         return response
 
-    logger.info(
-        f"[AUTH] AUTHORIZED: customer_id={customer_id} accessing "
-        f"details for account {account_number}"
-    )
+    logger.info(f"[AUTH] AUTHORIZED: customer_id={customer_id} accessing details for account {account_number}")
 
     # Get the full account data
     customer_accounts = CUSTOMER_ACCOUNTS_DB.get(customer_id, [])
@@ -596,9 +574,7 @@ def get_account_details(
     return response
 
 
-def check_account_access(
-    customer_id: str, account_number: str, user_id: Optional[str] = None
-) -> Dict[str, Any]:
+def check_account_access(customer_id: str, account_number: str, user_id: Optional[str] = None) -> Dict[str, Any]:
     """
     Check if a customer has access to a specific account.
 
@@ -612,10 +588,7 @@ def check_account_access(
     Returns:
         Dict with authorization decision and details
     """
-    logger.info(
-        f"[AUTH CHECK] Checking access: customer_id={customer_id}, "
-        f"account_number={account_number}"
-    )
+    logger.info(f"[AUTH CHECK] Checking access: customer_id={customer_id}, account_number={account_number}")
 
     auth_result = _verify_account_ownership(customer_id, account_number)
 

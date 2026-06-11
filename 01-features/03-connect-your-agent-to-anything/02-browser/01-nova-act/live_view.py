@@ -71,44 +71,27 @@ def run_steps_with_captcha(nova_act: NovaAct, steps: list) -> list:
 
         while retry_count < max_retries:
             try:
-                console.print(
-                    f"\n[blue]Step {step_index + 1}/{len(steps)}:[/blue] {step}"
-                )
+                console.print(f"\n[blue]Step {step_index + 1}/{len(steps)}:[/blue] {step}")
                 result = nova_act.act(step)
-                console.print(
-                    f"[bold green]Step {step_index + 1} result:[/bold green] {result}"
-                )
+                console.print(f"[bold green]Step {step_index + 1} result:[/bold green] {result}")
                 results.append(result)
                 break
 
             except ActAgentError as err:
                 if contains_human_validation_error(err):
-                    console.print(
-                        "[yellow]CAPTCHA detected — please solve it in the browser.[/yellow]"
-                    )
+                    console.print("[yellow]CAPTCHA detected — please solve it in the browser.[/yellow]")
                     for attempt in range(8):
                         time.sleep(10)
                         try:
-                            captcha_result = nova_act.act(
-                                "Is there a captcha on the screen?", schema=BOOL_SCHEMA
-                            )
-                            if (
-                                captcha_result.matches_schema
-                                and not captcha_result.parsed_response
-                            ):
-                                console.print(
-                                    "[green]CAPTCHA solved, retrying step...[/green]"
-                                )
+                            captcha_result = nova_act.act("Is there a captcha on the screen?", schema=BOOL_SCHEMA)
+                            if captcha_result.matches_schema and not captcha_result.parsed_response:
+                                console.print("[green]CAPTCHA solved, retrying step...[/green]")
                                 break
-                            console.print(
-                                f"[yellow]CAPTCHA still present ({attempt + 1}/8)[/yellow]"
-                            )
+                            console.print(f"[yellow]CAPTCHA still present ({attempt + 1}/8)[/yellow]")
                         except Exception:
                             time.sleep(5)
                     else:
-                        console.print(
-                            "[red]Max CAPTCHA wait reached, continuing anyway.[/red]"
-                        )
+                        console.print("[red]Max CAPTCHA wait reached, continuing anyway.[/red]")
                         retry_count += 1
                 else:
                     console.print(f"[red]Error on step {step_index + 1}:[/red] {err}")
@@ -116,16 +99,12 @@ def run_steps_with_captcha(nova_act: NovaAct, steps: list) -> list:
                     time.sleep(5)
 
             except Exception as exc:
-                console.print(
-                    f"[red]Unexpected error on step {step_index + 1}:[/red] {exc}"
-                )
+                console.print(f"[red]Unexpected error on step {step_index + 1}:[/red] {exc}")
                 retry_count += 1
                 time.sleep(5)
 
         if retry_count >= max_retries:
-            console.print(
-                f"[bold red]Step {step_index + 1} failed after {max_retries} attempts.[/bold red]"
-            )
+            console.print(f"[bold red]Step {step_index + 1} failed after {max_retries} attempts.[/bold red]")
             results.append(None)
 
     return results
@@ -135,9 +114,7 @@ def run_steps_with_captcha(nova_act: NovaAct, steps: list) -> list:
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(
-        description="Live-view browser demo with Nova Act and AgentCore Browser Tool"
-    )
+    parser = argparse.ArgumentParser(description="Live-view browser demo with Nova Act and AgentCore Browser Tool")
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--prompt", help="Single natural language instruction")
     group.add_argument(
@@ -169,9 +146,7 @@ def main():
     args = parse_args()
 
     if not args.nova_act_key:
-        console.print(
-            "[red]ERROR:[/red] --nova-act-key is required (or set NOVA_ACT_API_KEY)."
-        )
+        console.print("[red]ERROR:[/red] --nova-act-key is required (or set NOVA_ACT_API_KEY).")
         raise SystemExit(1)
 
     # Resolve steps list
@@ -226,9 +201,7 @@ def main():
                 else:
                     results = []
                     for i, step in enumerate(steps):
-                        console.print(
-                            f"\n[blue]Step {i + 1}/{len(steps)}:[/blue] {step}"
-                        )
+                        console.print(f"\n[blue]Step {i + 1}/{len(steps)}:[/blue] {step}")
                         result = nova_act.act(step)
                         console.print(f"[bold green]Result:[/bold green] {result}")
                         results.append(result)

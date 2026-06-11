@@ -145,9 +145,7 @@ def render_login_page(auth_handler: Auth0Handler, session_manager: SessionManage
                     session_manager.store_pkce_state(code_verifier, state)
 
                     # Open browser for authentication
-                    st.info(
-                        "Opening browser for authentication. Please sign in with Auth0."
-                    )
+                    st.info("Opening browser for authentication. Please sign in with Auth0.")
                     webbrowser.open(auth_url)
 
                     # Wait for callback
@@ -160,9 +158,7 @@ def render_login_page(auth_handler: Auth0Handler, session_manager: SessionManage
 
                         if callback_data["error"]:
                             st.error(f"Authentication failed: {callback_data['error']}")
-                            st.error(
-                                f"Description: {callback_data['error_description']}"
-                            )
+                            st.error(f"Description: {callback_data['error_description']}")
                         else:
                             # The browser will be redirected to Streamlit with the auth code
                             # Token exchange will happen via URL parameters in app.py

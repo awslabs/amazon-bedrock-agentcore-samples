@@ -45,14 +45,9 @@ def lambda_handler(event, context):
                 "Content-Type": "application/x-www-form-urlencoded",
             }
 
-            cognito_body = (
-                f"grant_type=client_credentials"
-                f"&scope={resource_server_id}/read {resource_server_id}/write"
-            )
+            cognito_body = f"grant_type=client_credentials&scope={resource_server_id}/read {resource_server_id}/write"
 
-            response = http.request(
-                "POST", token_url, headers=req_headers, body=cognito_body
-            )
+            response = http.request("POST", token_url, headers=req_headers, body=cognito_body)
 
             if response.status == 200:
                 token_data = json.loads(response.data.decode("utf-8"))

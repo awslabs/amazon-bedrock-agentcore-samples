@@ -75,9 +75,7 @@ def cleanup_lab_02(region_name="us-west-2", cleanup_s3=True):
     print("=" * 70)
 
     # Initialize clients
-    agentcore_client = boto3.client(
-        "bedrock-agentcore-control", region_name=region_name
-    )
+    agentcore_client = boto3.client("bedrock-agentcore-control", region_name=region_name)
     lambda_client = boto3.client("lambda", region_name=region_name)
     ecr_client = boto3.client("ecr", region_name=region_name)
     s3_client = boto3.client("s3", region_name=region_name)
@@ -97,18 +95,14 @@ def cleanup_lab_02(region_name="us-west-2", cleanup_s3=True):
 
                 # Step 1: Delete targets
                 try:
-                    targets = agentcore_client.list_gateway_targets(
-                        gatewayIdentifier=gateway_id
-                    )
+                    targets = agentcore_client.list_gateway_targets(gatewayIdentifier=gateway_id)
                     target_count = len(targets.get("items", []))
 
                     if target_count > 0:
                         print(f"  Deleting {target_count} target(s)...")
                         for target in targets.get("items", []):
                             target_id = target["targetId"]
-                            agentcore_client.delete_gateway_target(
-                                gatewayIdentifier=gateway_id, targetId=target_id
-                            )
+                            agentcore_client.delete_gateway_target(gatewayIdentifier=gateway_id, targetId=target_id)
                             print(f"    • Deleted target: {target_id}")
 
                         # Step 2: Verify targets are deleted with retry logic
@@ -119,9 +113,7 @@ def cleanup_lab_02(region_name="us-west-2", cleanup_s3=True):
 
                         while retry_count < max_retries and not targets_deleted:
                             time.sleep(3)  # Wait for AWS propagation
-                            remaining_targets = agentcore_client.list_gateway_targets(
-                                gatewayIdentifier=gateway_id
-                            )
+                            remaining_targets = agentcore_client.list_gateway_targets(gatewayIdentifier=gateway_id)
                             remaining_count = len(remaining_targets.get("items", []))
 
                             if remaining_count == 0:
@@ -175,9 +167,7 @@ def cleanup_lab_02(region_name="us-west-2", cleanup_s3=True):
     # 3. Delete ECR repository
     print("[3/7] Deleting ECR repository...")
     try:
-        ecr_client.delete_repository(
-            repositoryName="aiml301-diagnostic-agent", force=True
-        )
+        ecr_client.delete_repository(repositoryName="aiml301-diagnostic-agent", force=True)
         print("  ✓ ECR repository deleted")
     except ecr_client.exceptions.RepositoryNotFoundException:
         print("  ✓ ECR repository not found (ok)")
@@ -243,9 +233,7 @@ def cleanup_lab_02(region_name="us-west-2", cleanup_s3=True):
         params_to_delete = [p for p in params_to_delete if p]
         if params_to_delete:
             ssm_client.delete_parameters(Names=params_to_delete)
-            print(
-                f"  ✓ Parameter Store entries deleted ({len(params_to_delete)} parameters)"
-            )
+            print(f"  ✓ Parameter Store entries deleted ({len(params_to_delete)} parameters)")
         else:
             print("  ✓ No parameters to delete")
     except Exception as e:
@@ -254,9 +242,7 @@ def cleanup_lab_02(region_name="us-west-2", cleanup_s3=True):
     # 6. Delete CloudWatch logs
     print("[6/7] Deleting CloudWatch log groups...")
     try:
-        logs_client.delete_log_group(
-            logGroupName="/aws/lambda/aiml301-diagnostic-agent"
-        )
+        logs_client.delete_log_group(logGroupName="/aws/lambda/aiml301-diagnostic-agent")
         print("  ✓ Lambda log group deleted")
     except logs_client.exceptions.ResourceNotFoundException:
         print("  ✓ Lambda log group not found (ok)")

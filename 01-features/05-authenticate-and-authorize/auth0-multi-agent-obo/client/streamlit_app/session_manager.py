@@ -201,12 +201,7 @@ class SessionManager:
         if not user_info:
             return "User"
 
-        return (
-            user_info.get("name")
-            or user_info.get("nickname")
-            or user_info.get("email")
-            or "User"
-        )
+        return user_info.get("name") or user_info.get("nickname") or user_info.get("email") or "User"
 
     def get_user_email(self) -> Optional[str]:
         """
@@ -227,10 +222,7 @@ class SessionManager:
         Returns:
             True if authenticated with valid token
         """
-        return (
-            st.session_state.get(self.KEY_AUTHENTICATED, False)
-            and not self.is_token_expired()
-        )
+        return st.session_state.get(self.KEY_AUTHENTICATED, False) and not self.is_token_expired()
 
     def set_authenticated(self, authenticated: bool):
         """
@@ -427,10 +419,6 @@ class SessionManager:
             "time_until_expiry": tokens.time_until_expiry(),
             "is_expired": tokens.is_expired(),
             "has_refresh_token": tokens.refresh_token is not None,
-            "access_token_preview": f"{tokens.access_token[:20]}..."
-            if tokens.access_token
-            else None,
-            "id_token_preview": f"{tokens.id_token[:20]}..."
-            if tokens.id_token
-            else None,
+            "access_token_preview": f"{tokens.access_token[:20]}..." if tokens.access_token else None,
+            "id_token_preview": f"{tokens.id_token[:20]}..." if tokens.id_token else None,
         }

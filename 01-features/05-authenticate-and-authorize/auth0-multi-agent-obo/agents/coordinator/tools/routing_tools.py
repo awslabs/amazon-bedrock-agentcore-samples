@@ -13,9 +13,7 @@ from typing import Any, Dict, List, Optional
 logger = logging.getLogger(__name__)
 
 
-def get_routing_tools(
-    router: Any, user_context: Dict[str, Any]
-) -> List[Dict[str, Any]]:
+def get_routing_tools(router: Any, user_context: Dict[str, Any]) -> List[Dict[str, Any]]:
     """
     Get MCP tool definitions for routing operations.
 
@@ -120,9 +118,7 @@ async def execute_route_to_accounts_agent(
     return await router.route_to_accounts("accounts_query", tool_input)
 
 
-async def execute_route_to_profile_agent(
-    router: Any, user_context: Dict[str, Any], query: str
-) -> str:
+async def execute_route_to_profile_agent(router: Any, user_context: Dict[str, Any], query: str) -> str:
     """
     Execute route_to_profile_agent tool.
 
@@ -139,9 +135,7 @@ async def execute_route_to_profile_agent(
     return await router.route_to_profile("profile_query", tool_input)
 
 
-async def execute_get_available_agents(
-    router: Any, user_context: Dict[str, Any]
-) -> str:
+async def execute_get_available_agents(router: Any, user_context: Dict[str, Any]) -> str:
     """
     Execute get_available_agents tool.
 

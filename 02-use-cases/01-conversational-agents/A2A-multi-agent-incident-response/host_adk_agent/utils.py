@@ -19,13 +19,9 @@ def get_aws_info():
         region = boto_session.region_name
         if not region:
             # Try to get from default session
-            region = (
-                boto3.DEFAULT_SESSION.region_name if boto3.DEFAULT_SESSION else None
-            )
+            region = boto3.DEFAULT_SESSION.region_name if boto3.DEFAULT_SESSION else None
             if not region:
-                raise ValueError(
-                    "AWS region not configured. Please set AWS_DEFAULT_REGION or configure AWS CLI."
-                )
+                raise ValueError("AWS region not configured. Please set AWS_DEFAULT_REGION or configure AWS CLI.")
 
         # Get account ID using STS
         sts = boto_session.client("sts")
@@ -35,7 +31,5 @@ def get_aws_info():
 
     except Exception as e:
         print(f"Error getting AWS info: {e}")
-        print(
-            "Please ensure AWS credentials are configured (aws configure or environment variables)"
-        )
+        print("Please ensure AWS credentials are configured (aws configure or environment variables)")
         sys.exit(1)

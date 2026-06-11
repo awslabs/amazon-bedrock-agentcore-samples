@@ -94,9 +94,7 @@ def create_gateway_role(iam_client, account_id, region):
                 "Action": "sts:AssumeRole",
                 "Condition": {
                     "StringEquals": {"aws:SourceAccount": account_id},
-                    "ArnLike": {
-                        "aws:SourceArn": f"arn:aws:bedrock-agentcore:{region}:{account_id}:gateway/*"
-                    },
+                    "ArnLike": {"aws:SourceArn": f"arn:aws:bedrock-agentcore:{region}:{account_id}:gateway/*"},
                 },
             }
         ],
@@ -187,9 +185,7 @@ def create_gateway(agentcore_client, role_arn):
                 break
 
         if not gateway_id:
-            raise Exception(
-                f"Gateway {GATEWAY_NAME} exists but couldn't be found in list"
-            )
+            raise Exception(f"Gateway {GATEWAY_NAME} exists but couldn't be found in list")
 
         # Get full gateway details including URL
         gateway_details = agentcore_client.get_gateway(gatewayIdentifier=gateway_id)
@@ -227,9 +223,7 @@ def create_api_key_credential_provider(identity_client):
     return provider_arn
 
 
-def create_or_update_openapi_target(
-    agentcore_client, gateway_id, s3_uri, credential_provider_arn
-):
+def create_or_update_openapi_target(agentcore_client, gateway_id, s3_uri, credential_provider_arn):
     """Create or update OpenAPI target for Visa B2B stub API"""
 
     # Target configuration pointing to S3 OpenAPI spec
@@ -378,9 +372,7 @@ def main():
         # Step 6: Create or update OpenAPI target
         print("Step 6: Create/Update OpenAPI Target")
         print("-" * 70)
-        create_or_update_openapi_target(
-            agentcore_client, gateway_id, s3_uri, credential_provider_arn
-        )
+        create_or_update_openapi_target(agentcore_client, gateway_id, s3_uri, credential_provider_arn)
         print()
 
         # Step 7: List targets to verify
@@ -401,9 +393,7 @@ def main():
         print()
         print("Next Steps:")
         print("  1. Wait 1-2 minutes for gateway to fully initialize")
-        print(
-            "  2. Test tool generation with: python infrastructure/scripts/test-gateway-tools.py"
-        )
+        print("  2. Test tool generation with: python infrastructure/scripts/test-gateway-tools.py")
         print("  3. Implement Payment Agent to use these MCP tools")
         print()
         print("Environment Variables for Agent:")

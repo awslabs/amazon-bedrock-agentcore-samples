@@ -26,16 +26,12 @@ langfuse_secret_key = os.environ.get("LANGFUSE_SECRET_KEY", "")
 langfuse_host = os.environ.get("LANGFUSE_HOST", "https://us.cloud.langfuse.com")
 
 if langfuse_public_key and langfuse_secret_key:
-    auth_token = base64.b64encode(
-        f"{langfuse_public_key}:{langfuse_secret_key}".encode()
-    ).decode()
+    auth_token = base64.b64encode(f"{langfuse_public_key}:{langfuse_secret_key}".encode()).decode()
     os.environ["OTEL_EXPORTER_OTLP_ENDPOINT"] = f"{langfuse_host}/api/public/otel"
     os.environ["OTEL_EXPORTER_OTLP_HEADERS"] = f"Authorization=Basic {auth_token}"
     logger.info("Langfuse OTLP configured (host: %s)", langfuse_host)
 else:
-    logger.warning(
-        "LANGFUSE_PUBLIC_KEY or LANGFUSE_SECRET_KEY not set — traces will not be sent to Langfuse"
-    )
+    logger.warning("LANGFUSE_PUBLIC_KEY or LANGFUSE_SECRET_KEY not set — traces will not be sent to Langfuse")
 
 # ── Agent ──────────────────────────────────────────────────────────────────────
 
@@ -70,13 +66,9 @@ def create_agent():
     # StrandsTelemetry reads OTEL_EXPORTER_OTLP_ENDPOINT and OTEL_EXPORTER_OTLP_HEADERS set above
     StrandsTelemetry().setup_otlp_exporter()
 
-    model_id = os.getenv(
-        "BEDROCK_MODEL_ID", "global.anthropic.claude-haiku-4-5-20251001-v1:0"
-    )
+    model_id = os.getenv("BEDROCK_MODEL_ID", "global.anthropic.claude-haiku-4-5-20251001-v1:0")
     region = os.getenv("AWS_DEFAULT_REGION", "us-east-1")
-    model = BedrockModel(
-        model_id=model_id, region_name=region, temperature=0.0, max_tokens=1024
-    )
+    model = BedrockModel(model_id=model_id, region_name=region, temperature=0.0, max_tokens=1024)
     return Agent(
         model=model,
         system_prompt=(

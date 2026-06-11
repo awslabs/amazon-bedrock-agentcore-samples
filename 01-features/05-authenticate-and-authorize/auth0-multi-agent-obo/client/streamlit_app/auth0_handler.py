@@ -91,9 +91,7 @@ class Auth0Handler:
             Tuple of (code_verifier, code_challenge)
         """
         # Generate random code verifier (43-128 characters)
-        code_verifier = base64.urlsafe_b64encode(secrets.token_bytes(32)).decode(
-            "utf-8"
-        )
+        code_verifier = base64.urlsafe_b64encode(secrets.token_bytes(32)).decode("utf-8")
         code_verifier = code_verifier.rstrip("=")
 
         # Create code challenge using SHA256

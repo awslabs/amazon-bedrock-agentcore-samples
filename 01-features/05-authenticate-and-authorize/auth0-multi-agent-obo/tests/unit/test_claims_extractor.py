@@ -24,17 +24,13 @@ class TestClaimsExtractor:
 
     def test_extract_custom_customer_id(self, sample_jwt_payload):
         """Test extraction of custom customer_id claim."""
-        customer_id = sample_jwt_payload.get(
-            "https://agentcore.example.com/customer_id"
-        )
+        customer_id = sample_jwt_payload.get("https://agentcore.example.com/customer_id")
         assert customer_id == "CUST-12345"
         assert customer_id.startswith("CUST-")
 
     def test_extract_account_ids_array(self, sample_jwt_payload):
         """Test extraction of account IDs array."""
-        account_ids = sample_jwt_payload.get(
-            "https://agentcore.example.com/account_ids"
-        )
+        account_ids = sample_jwt_payload.get("https://agentcore.example.com/account_ids")
         assert isinstance(account_ids, list)
         assert len(account_ids) == 2
         assert "ACC-001" in account_ids
@@ -102,16 +98,10 @@ class TestClaimsTransformation:
             "user_id": sample_jwt_payload.get("sub"),
             "email": sample_jwt_payload.get("email"),
             "name": sample_jwt_payload.get("name"),
-            "customer_id": sample_jwt_payload.get(
-                "https://agentcore.example.com/customer_id"
-            ),
-            "account_ids": sample_jwt_payload.get(
-                "https://agentcore.example.com/account_ids"
-            ),
+            "customer_id": sample_jwt_payload.get("https://agentcore.example.com/customer_id"),
+            "account_ids": sample_jwt_payload.get("https://agentcore.example.com/account_ids"),
             "roles": sample_jwt_payload.get("https://agentcore.example.com/roles"),
-            "kyc_status": sample_jwt_payload.get(
-                "https://agentcore.example.com/kyc_status"
-            ),
+            "kyc_status": sample_jwt_payload.get("https://agentcore.example.com/kyc_status"),
             "scopes": sample_jwt_payload.get("scope", "").split(),
         }
 
@@ -179,9 +169,7 @@ class TestCustomClaimsNamespace:
         """Test extraction of all claims under custom namespace."""
         namespace = "https://agentcore.example.com/"
         custom_claims = {
-            key.replace(namespace, ""): value
-            for key, value in sample_jwt_payload.items()
-            if key.startswith(namespace)
+            key.replace(namespace, ""): value for key, value in sample_jwt_payload.items() if key.startswith(namespace)
         }
 
         assert "customer_id" in custom_claims
@@ -210,11 +198,7 @@ class TestCustomClaimsNamespace:
             "email_verified": True,
         }
 
-        standard_claims = {
-            key: value
-            for key, value in payload.items()
-            if not key.startswith("https://")
-        }
+        standard_claims = {key: value for key, value in payload.items() if not key.startswith("https://")}
 
         assert len(standard_claims) == 4
         assert "sub" in standard_claims
@@ -288,9 +272,7 @@ class TestClaimsValidation:
 
     def test_validate_customer_id_format(self, sample_jwt_payload):
         """Test validation of customer ID format."""
-        customer_id = sample_jwt_payload.get(
-            "https://agentcore.example.com/customer_id"
-        )
+        customer_id = sample_jwt_payload.get("https://agentcore.example.com/customer_id")
 
         assert customer_id is not None
         assert customer_id.startswith("CUST-")
@@ -298,9 +280,7 @@ class TestClaimsValidation:
 
     def test_validate_account_ids_format(self, sample_jwt_payload):
         """Test validation of account IDs format."""
-        account_ids = sample_jwt_payload.get(
-            "https://agentcore.example.com/account_ids"
-        )
+        account_ids = sample_jwt_payload.get("https://agentcore.example.com/account_ids")
 
         assert isinstance(account_ids, list)
         for account_id in account_ids:

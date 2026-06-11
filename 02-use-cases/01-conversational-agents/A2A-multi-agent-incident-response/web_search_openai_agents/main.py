@@ -58,9 +58,7 @@ agent_card = AgentCard(
 )
 
 # Create request handler with executor
-request_handler = DefaultRequestHandler(
-    agent_executor=WebSearchAgentExecutor(), task_store=InMemoryTaskStore()
-)
+request_handler = DefaultRequestHandler(agent_executor=WebSearchAgentExecutor(), task_store=InMemoryTaskStore())
 
 # Create A2A server
 server = A2AStarletteApplication(agent_card=agent_card, http_handler=request_handler)

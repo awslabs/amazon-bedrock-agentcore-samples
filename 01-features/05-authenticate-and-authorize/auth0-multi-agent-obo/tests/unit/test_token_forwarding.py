@@ -26,12 +26,8 @@ from typing import Dict, Any
 def create_mock_jwt(claims: Dict[str, Any]) -> str:
     """Create a mock JWT token with given claims."""
     header = {"alg": "RS256", "typ": "JWT"}
-    header_b64 = (
-        base64.urlsafe_b64encode(json.dumps(header).encode()).decode().rstrip("=")
-    )
-    payload_b64 = (
-        base64.urlsafe_b64encode(json.dumps(claims).encode()).decode().rstrip("=")
-    )
+    header_b64 = base64.urlsafe_b64encode(json.dumps(header).encode()).decode().rstrip("=")
+    payload_b64 = base64.urlsafe_b64encode(json.dumps(claims).encode()).decode().rstrip("=")
     signature = "fake_signature"
     return f"{header_b64}.{payload_b64}.{signature}"
 
@@ -60,9 +56,7 @@ class TestTokenForwardingPriority:
         # This is NOT a valid JWT - it's an internal token
         return "workload_internal_token_abc123"
 
-    def test_payload_access_token_preferred_over_workload_token(
-        self, auth0_jwt, workload_token
-    ):
+    def test_payload_access_token_preferred_over_workload_token(self, auth0_jwt, workload_token):
         """
         CRITICAL TEST: Payload access_token should be preferred over workloadaccesstoken.
 
@@ -92,9 +86,7 @@ class TestTokenForwardingPriority:
         assert selected_token == auth0_jwt, (
             f"Should use payload access_token, not workloadaccesstoken. Got: {selected_token[:50]}..."
         )
-        assert selected_token != workload_token, (
-            "Should NOT use workloadaccesstoken for sub-agent forwarding"
-        )
+        assert selected_token != workload_token, "Should NOT use workloadaccesstoken for sub-agent forwarding"
 
     def test_authorization_header_used_when_no_payload_token(self, auth0_jwt):
         """Authorization header Bearer token should be used if no payload token."""
@@ -111,9 +103,7 @@ class TestTokenForwardingPriority:
 
         selected_token = select_token_for_forwarding(payload, context)
 
-        assert selected_token == auth0_jwt, (
-            "Should use Authorization header Bearer token when no payload token"
-        )
+        assert selected_token == auth0_jwt, "Should use Authorization header Bearer token when no payload token"
 
     def test_workload_token_only_as_last_resort(self, workload_token):
         """workloadaccesstoken should only be used when no other token available."""
@@ -132,9 +122,7 @@ class TestTokenForwardingPriority:
         selected_token = select_token_for_forwarding(payload, context)
 
         # Only use workload token as last resort
-        assert selected_token == workload_token, (
-            "Should use workloadaccesstoken only when no other token available"
-        )
+        assert selected_token == workload_token, "Should use workloadaccesstoken only when no other token available"
 
     def test_empty_payload_token_not_used(self, auth0_jwt, workload_token):
         """Empty string access_token in payload should be ignored."""
@@ -152,9 +140,7 @@ class TestTokenForwardingPriority:
 
         selected_token = select_token_for_forwarding(payload, context)
 
-        assert selected_token == auth0_jwt, (
-            "Should skip empty payload token and use Authorization header"
-        )
+        assert selected_token == auth0_jwt, "Should skip empty payload token and use Authorization header"
 
     def test_none_payload_token_not_used(self, auth0_jwt):
         """None access_token in payload should be ignored."""
@@ -171,9 +157,7 @@ class TestTokenForwardingPriority:
 
         selected_token = select_token_for_forwarding(payload, context)
 
-        assert selected_token == auth0_jwt, (
-            "Should skip None payload token and use Authorization header"
-        )
+        assert selected_token == auth0_jwt, "Should skip None payload token and use Authorization header"
 
 
 def select_token_for_forwarding(payload: Dict[str, Any], context) -> str:
@@ -204,9 +188,7 @@ def select_token_for_forwarding(payload: Dict[str, Any], context) -> str:
 
     # Priority 3: workloadaccesstoken (last resort)
     workload_token = (
-        headers.get("workloadaccesstoken")
-        or headers.get("x-amzn-bedrock-agentcore-runtime-workload-accesstoken")
-        or ""
+        headers.get("workloadaccesstoken") or headers.get("x-amzn-bedrock-agentcore-runtime-workload-accesstoken") or ""
     )
     if workload_token:
         return workload_token
@@ -241,9 +223,7 @@ class TestTokenForwardingIntegration:
 
         # Verify it's a valid JWT format (3 parts separated by dots)
         parts = selected_token.split(".")
-        assert len(parts) == 3, (
-            f"Token must be valid JWT format (3 parts), got {len(parts)} parts"
-        )
+        assert len(parts) == 3, f"Token must be valid JWT format (3 parts), got {len(parts)} parts"
 
         # Verify we can decode the payload
         payload_part = parts[1]

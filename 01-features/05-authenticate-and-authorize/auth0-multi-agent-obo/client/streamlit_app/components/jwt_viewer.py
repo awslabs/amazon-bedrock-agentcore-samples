@@ -47,9 +47,7 @@ def decode_jwt_parts(token: str) -> Tuple[Dict[str, Any], Dict[str, Any], str]:
         return {"error": str(e)}, {}, ""
 
 
-def render_jwt_viewer(
-    access_token: Optional[str], id_token: Optional[str], claims_namespace: str = ""
-):
+def render_jwt_viewer(access_token: Optional[str], id_token: Optional[str], claims_namespace: str = ""):
     """
     Render comprehensive JWT token viewer for educational purposes.
 
@@ -135,9 +133,7 @@ def render_single_token(token: str, token_name: str, claims_namespace: str = "")
     st.markdown("<br>", unsafe_allow_html=True)
 
     # Detailed breakdown
-    tab1, tab2, tab3, tab4 = st.tabs(
-        ["Header", "Payload", "Claims Analysis", "Raw Token"]
-    )
+    tab1, tab2, tab3, tab4 = st.tabs(["Header", "Payload", "Claims Analysis", "Raw Token"])
 
     with tab1:
         render_header_section(header)
@@ -309,9 +305,7 @@ def render_claims_analysis(payload: Dict[str, Any], claims_namespace: str = ""):
     with col3:
         if exp and iat:
             lifetime = exp - iat
-            st.info(
-                f"Total Lifetime: {int(lifetime / 3600)}h {int((lifetime % 3600) / 60)}m"
-            )
+            st.info(f"Total Lifetime: {int(lifetime / 3600)}h {int((lifetime % 3600) / 60)}m")
 
     # Scopes
     st.markdown("#### Scopes (Permissions)")
@@ -422,9 +416,7 @@ def render_raw_token(token: str, header: Dict, payload: Dict, signature: str):
         st.json(payload)
 
 
-def render_token_comparison(
-    access_token: Optional[str], id_token: Optional[str], claims_namespace: str = ""
-):
+def render_token_comparison(access_token: Optional[str], id_token: Optional[str], claims_namespace: str = ""):
     """Render side-by-side comparison of access and ID tokens."""
     st.markdown("### Token Comparison: Access Token vs ID Token")
 
@@ -493,9 +485,7 @@ def render_token_comparison(
             comparison_data,
             column_config={
                 "Claim": st.column_config.TextColumn("Claim", width="medium"),
-                "Access Token": st.column_config.TextColumn(
-                    "Access Token", width="large"
-                ),
+                "Access Token": st.column_config.TextColumn("Access Token", width="large"),
                 "ID Token": st.column_config.TextColumn("ID Token", width="large"),
                 "Same": st.column_config.CheckboxColumn("Match", width="small"),
             },
@@ -504,9 +494,7 @@ def render_token_comparison(
         )
 
 
-def render_compact_token_view(
-    payload: Dict[str, Any], token_type: str, claims_namespace: str = ""
-):
+def render_compact_token_view(payload: Dict[str, Any], token_type: str, claims_namespace: str = ""):
     """Render a compact view of token for comparison."""
     # Validity
     exp = payload.get("exp")
@@ -531,11 +519,7 @@ def render_compact_token_view(
             st.markdown(f"- `{claim}`: {value}")
 
     # Custom claims
-    custom = {
-        k: v
-        for k, v in payload.items()
-        if claims_namespace and k.startswith(claims_namespace)
-    }
+    custom = {k: v for k, v in payload.items() if claims_namespace and k.startswith(claims_namespace)}
     if custom:
         st.markdown("**Custom Claims:**")
         for k, v in custom.items():
@@ -608,10 +592,7 @@ def render_token_exchange_info(exchange_data: dict):
         )
 
     # Visual attenuation indicator
-    st.markdown(
-        f"**Attenuation:** `{len(original_scopes)} scopes` --> "
-        f"`{len(granted_scopes)} scopes`"
-    )
+    st.markdown(f"**Attenuation:** `{len(original_scopes)} scopes` --> `{len(granted_scopes)} scopes`")
 
     # Scope comparison table
     render_scope_diff(original_scopes, granted_scopes, removed_scopes)
@@ -636,9 +617,7 @@ def render_token_exchange_info(exchange_data: dict):
 
         # Visual chain
         st.markdown("**Delegation flow:**")
-        st.markdown(
-            f"```\nUser (subject) --> Coordinator ({actor_id}) --> Target Agent\n```"
-        )
+        st.markdown(f"```\nUser (subject) --> Coordinator ({actor_id}) --> Target Agent\n```")
 
     # ------------------------------------------------------------------
     # Exchange metadata
@@ -671,9 +650,7 @@ def render_token_exchange_info(exchange_data: dict):
         st.json(exchange_data)
 
 
-def render_scope_diff(
-    original_scopes: list, granted_scopes: list, removed_scopes: list
-):
+def render_scope_diff(original_scopes: list, granted_scopes: list, removed_scopes: list):
     """
     Render a colored scope comparison table.
 
@@ -716,21 +693,15 @@ def render_scope_diff(
             "| Status | Scope | Description |\n"
             "|--------|-------|-------------|\n"
             + "\n".join(
-                _scope_table_row(scope, granted_set, removed_set, scope_descriptions)
-                for scope in all_scopes_ordered
+                _scope_table_row(scope, granted_set, removed_set, scope_descriptions) for scope in all_scopes_ordered
             )
         )
 
         # Legend
-        st.caption(
-            "Legend: :white_check_mark: = Granted to target agent | "
-            ":x: = Removed during exchange"
-        )
+        st.caption("Legend: :white_check_mark: = Granted to target agent | :x: = Removed during exchange")
 
 
-def _scope_table_row(
-    scope: str, granted_set: set, removed_set: set, descriptions: dict
-) -> str:
+def _scope_table_row(scope: str, granted_set: set, removed_set: set, descriptions: dict) -> str:
     """Build a single Markdown table row for the scope diff table."""
     desc = descriptions.get(scope, "Application-specific scope")
     if scope in granted_set:
@@ -776,9 +747,7 @@ def render_token_timeline(tokens_info: Dict[str, Any]):
     with col2:
         st.metric(
             "Remaining",
-            f"{int(remaining / 60)}m {int(remaining % 60)}s"
-            if remaining > 0
-            else "EXPIRED",
+            f"{int(remaining / 60)}m {int(remaining % 60)}s" if remaining > 0 else "EXPIRED",
         )
     with col3:
         st.metric("Total Lifetime", f"{int(total_lifetime / 60)}m")

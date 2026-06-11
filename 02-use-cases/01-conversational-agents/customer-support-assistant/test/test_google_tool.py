@@ -50,9 +50,7 @@ def create_calendar_event() -> str:
     print(f"Access Token google: {google_access_token}")
     if not google_access_token:
         try:
-            google_access_token = get_google_access_token(
-                access_token=google_access_token
-            )
+            google_access_token = get_google_access_token(access_token=google_access_token)
 
             if not google_access_token:
                 raise Exception("requires_access_token did not provide tokens")
@@ -84,9 +82,7 @@ def create_calendar_event() -> str:
             },
         }
 
-        created_event = (
-            service.events().insert(calendarId="primary", body=event).execute()
-        )
+        created_event = service.events().insert(calendarId="primary", body=event).execute()
 
         return json.dumps(
             {
@@ -113,9 +109,7 @@ def get_calendar_events_today() -> str:
 
     if not google_access_token:
         try:
-            google_access_token = get_google_access_token(
-                access_token=google_access_token
-            )
+            google_access_token = get_google_access_token(access_token=google_access_token)
 
             if not google_access_token:
                 raise Exception("requires_access_token did not provide tokens")
@@ -190,12 +184,6 @@ agent = Agent(
 )
 
 
-print(
-    str(
-        agent(
-            "Can you create a new event on my cal? You can call the create_calendar_event directly."
-        )
-    )
-)
+print(str(agent("Can you create a new event on my cal? You can call the create_calendar_event directly.")))
 
 print(str(agent("Whats my agenda for today?")))

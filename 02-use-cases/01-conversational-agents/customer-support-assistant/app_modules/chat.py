@@ -22,9 +22,7 @@ class ChatManager:
 
         if "agent_arn" not in st.session_state:
             runtime_config = read_config(".bedrock_agentcore.yaml")
-            st.session_state["agent_arn"] = runtime_config["agents"][self.agent_name][
-                "bedrock_agentcore"
-            ]["agent_arn"]
+            st.session_state["agent_arn"] = runtime_config["agents"][self.agent_name]["bedrock_agentcore"]["agent_arn"]
 
         if "region" not in st.session_state:
             st.session_state["region"] = get_aws_region()
@@ -98,9 +96,7 @@ class ChatManager:
             messages_to_show = messages_to_show[:-1]
 
         for message in messages_to_show:
-            bubble_class = (
-                "user-bubble" if message["role"] == "user" else "assistant-bubble"
-            )
+            bubble_class = "user-bubble" if message["role"] == "user" else "assistant-bubble"
             emoji = "🧑‍💻" if message["role"] == "user" else "🤖"
 
             with st.chat_message(message["role"]):
@@ -128,9 +124,7 @@ class ChatManager:
         st.session_state.messages.append({"role": "user", "content": prompt})
 
         with st.chat_message("user"):
-            create_safe_markdown_text(
-                f'<span class="user-bubble">🧑‍💻 {prompt}</span>', st
-            )
+            create_safe_markdown_text(f'<span class="user-bubble">🧑‍💻 {prompt}</span>', st)
             st.session_state["pending_assistant"] = True
 
         with st.chat_message("assistant"):
@@ -147,9 +141,7 @@ class ChatManager:
 
             for chunk in self.invoke_endpoint(
                 agent_arn=st.session_state["agent_arn"],
-                payload=json.dumps(
-                    {"prompt": prompt, "actor_id": user_claims.get("cognito:username")}
-                ),
+                payload=json.dumps({"prompt": prompt, "actor_id": user_claims.get("cognito:username")}),
                 bearer_token=bearer_token,
                 session_id=st.session_state["session_id"],
             ):
@@ -200,9 +192,7 @@ class ChatManager:
             st.session_state.messages = [{"role": "user", "content": default_prompt}]
 
             with st.chat_message("user"):
-                create_safe_markdown_text(
-                    f'<span class="user-bubble">🧑‍💻 {default_prompt}</span>', st
-                )
+                create_safe_markdown_text(f'<span class="user-bubble">🧑‍💻 {default_prompt}</span>', st)
                 st.session_state["pending_assistant"] = True
 
             with st.chat_message("assistant"):
@@ -236,9 +226,7 @@ class ChatManager:
                         if chunk_count % 3 == 0:
                             accumulated_response += ""
 
-                        clickable_streaming_text = make_urls_clickable(
-                            accumulated_response
-                        )
+                        clickable_streaming_text = make_urls_clickable(accumulated_response)
 
                         create_safe_markdown_text(
                             f'<div class="assistant-bubble streaming typing-cursor">🤖 {clickable_streaming_text}</div>',

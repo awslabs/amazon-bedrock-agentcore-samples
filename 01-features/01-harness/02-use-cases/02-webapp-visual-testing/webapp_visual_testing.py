@@ -47,9 +47,7 @@ from utils.client import get_agentcore_control_client, get_agentcore_client
 
 # ── CLI ────────────────────────────────────────────────────────────────────────
 parser = argparse.ArgumentParser(description="Automated Visual QA with Harness")
-parser.add_argument(
-    "--skip-cleanup", action="store_true", help="Keep resources after demo"
-)
+parser.add_argument("--skip-cleanup", action="store_true", help="Keep resources after demo")
 args = parser.parse_args()
 
 # ── Configuration ─────────────────────────────────────────────────────────────
@@ -113,11 +111,7 @@ try:
     print(f"Attaching Node.js container ({NODE_CONTAINER})...")
     control.update_harness(
         harnessId=harness_id,
-        environmentArtifact={
-            "optionalValue": {
-                "containerConfiguration": {"containerUri": NODE_CONTAINER}
-            }
-        },
+        environmentArtifact={"optionalValue": {"containerConfiguration": {"containerUri": NODE_CONTAINER}}},
     )
 
     for i in range(24):
@@ -193,9 +187,7 @@ try:
 
     # Install Puppeteer
     print("\nInstalling puppeteer-core (this takes ~1 minute)...")
-    out = run_command(
-        harness_arn, session_id, "cd /tmp && npm install puppeteer-core 2>&1 | tail -3"
-    )
+    out = run_command(harness_arn, session_id, "cd /tmp && npm install puppeteer-core 2>&1 | tail -3")
     print(out)
     print("✅ Environment ready")
 

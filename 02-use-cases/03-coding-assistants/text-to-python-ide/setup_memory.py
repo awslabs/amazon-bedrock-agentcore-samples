@@ -20,16 +20,13 @@ from dotenv import load_dotenv
 
 load_dotenv(override=True)
 
-REGION      = os.getenv("AWS_REGION", "us-east-1")
+REGION = os.getenv("AWS_REGION", "us-east-1")
 MEMORY_NAME = "text_to_python_ide_memory"
-INFO_FILE   = "memory_info.json"
+INFO_FILE = "memory_info.json"
 
 
 def get_client():
-    session = boto3.Session(
-        profile_name=os.getenv("AWS_PROFILE", "default"),
-        region_name=REGION
-    )
+    session = boto3.Session(profile_name=os.getenv("AWS_PROFILE", "default"), region_name=REGION)
     return session.client("bedrock-agentcore-control", region_name=REGION)
 
 
@@ -69,27 +66,32 @@ def create():
         name=MEMORY_NAME,
         description="Persistent memory for Text-to-Python IDE — stores code generation and execution history",
         memoryExecutionRoleArn=f"arn:aws:iam::{boto3.client('sts').get_caller_identity()['Account']}:role/AgentCoreTextToPythonIDERole",
-        eventExpiryDuration=90,   # days
+        eventExpiryDuration=90,  # days
         memoryStrategies=[
             {
                 "semanticMemoryStrategy": {
                     "name": "code_knowledge",
                     "description": "Extracts reusable code patterns, functions, and solutions the user has built",
-                    "namespaces": ["ide/{actorId}/knowledge/"]
+                    "namespaces": ["ide/{actorId}/knowledge/"],
                 }
             },
             {
                 "summaryMemoryStrategy": {
                     "name": "session_summary",
                     "description": "Summarises each coding session so the agent remembers what was worked on",
-                    "namespaces": ["ide/{actorId}/sessions/{sessionId}/"]
+                    "namespaces": ["ide/{actorId}/sessions/{sessionId}/"],
                 }
-            }
-        ]
+            },
+        ],
     )
 
     # Response key may vary by SDK version
-    memory_id = resp.get("memory", {}).get("id", "") or resp.get("memoryId") or resp.get("memory", {}).get("memoryId") or resp.get("id", "")
+    memory_id = (
+        resp.get("memory", {}).get("id", "")
+        or resp.get("memoryId")
+        or resp.get("memory", {}).get("memoryId")
+        or resp.get("id", "")
+    )
     if not memory_id:
         # Try to find it from list
         print(f"   Response keys: {list(resp.keys())}")

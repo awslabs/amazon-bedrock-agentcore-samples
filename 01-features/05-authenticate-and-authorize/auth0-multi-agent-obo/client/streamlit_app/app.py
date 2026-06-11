@@ -46,9 +46,7 @@ st.set_page_config(
 )
 
 
-def handle_oauth_callback(
-    auth_handler: Auth0Handler, session_manager: SessionManager
-) -> bool:
+def handle_oauth_callback(auth_handler: Auth0Handler, session_manager: SessionManager) -> bool:
     """
     Handle OAuth callback if auth code is in URL params.
 
@@ -74,9 +72,7 @@ def handle_oauth_callback(
 
     try:
         # Exchange code for tokens
-        tokens = auth_handler.exchange_code_for_tokens(
-            code=code, code_verifier=code_verifier
-        )
+        tokens = auth_handler.exchange_code_for_tokens(code=code, code_verifier=code_verifier)
 
         # Store tokens
         session_manager.store_tokens(tokens)
@@ -133,10 +129,7 @@ def main():
         render_authenticated_app(auth_handler, agentcore_client, session_manager)
     else:
         # Check if token expired
-        if (
-            session_manager.get_tokens() is not None
-            and session_manager.is_token_expired()
-        ):
+        if session_manager.get_tokens() is not None and session_manager.is_token_expired():
             render_token_expired_warning(session_manager)
         else:
             # Render login page

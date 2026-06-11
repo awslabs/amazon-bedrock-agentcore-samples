@@ -59,11 +59,7 @@ class OutputTrack(MediaStreamTrack):
             self._frame_count = 0
 
         # Sleep until this frame's scheduled time (maintains 20ms cadence)
-        delay = (
-            self._start_time
-            + self._frame_count * (FRAME_DURATION_MS / 1000)
-            - time.time()
-        )
+        delay = self._start_time + self._frame_count * (FRAME_DURATION_MS / 1000) - time.time()
         if delay > 0:
             await asyncio.sleep(delay)
 
@@ -89,9 +85,7 @@ class OutputTrack(MediaStreamTrack):
     def add_audio(self, audio_bytes):
         """Buffer PCM bytes from Nova Sonic. AudioFifo handles chunking."""
         self._muted = False
-        frame = AudioFrame(
-            format="s16", layout="mono", samples=len(audio_bytes) // BYTES_PER_SAMPLE
-        )
+        frame = AudioFrame(format="s16", layout="mono", samples=len(audio_bytes) // BYTES_PER_SAMPLE)
         frame.planes[0].update(audio_bytes)
         frame.sample_rate = OUTPUT_SAMPLE_RATE
         self._fifo.write(frame)

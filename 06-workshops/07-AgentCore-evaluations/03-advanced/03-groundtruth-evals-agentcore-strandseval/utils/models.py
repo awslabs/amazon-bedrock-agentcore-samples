@@ -111,9 +111,7 @@ class TraceData:
         """Get all unique trace IDs from spans."""
         return list(set(span.trace_id for span in self.spans if span.trace_id))
 
-    def get_tool_execution_spans(
-        self, tool_name_filter: Optional[str] = None
-    ) -> List[str]:
+    def get_tool_execution_spans(self, tool_name_filter: Optional[str] = None) -> List[str]:
         """Get span IDs for tool execution spans.
 
         Args:
@@ -354,16 +352,10 @@ class SessionDiscoveryResult:
 
         return cls(
             sessions=[SessionInfo.from_dict(s) for s in data["sessions"]],
-            discovery_time=datetime.fromisoformat(
-                data["discovery_time"].replace("Z", "+00:00")
-            ),
+            discovery_time=datetime.fromisoformat(data["discovery_time"].replace("Z", "+00:00")),
             log_group=data["log_group"],
-            time_range_start=datetime.fromisoformat(
-                data["time_range_start"].replace("Z", "+00:00")
-            ),
-            time_range_end=datetime.fromisoformat(
-                data["time_range_end"].replace("Z", "+00:00")
-            ),
+            time_range_start=datetime.fromisoformat(data["time_range_start"].replace("Z", "+00:00")),
+            time_range_end=datetime.fromisoformat(data["time_range_end"].replace("Z", "+00:00")),
             discovery_method=data["discovery_method"],
             filter_criteria=data.get("filter_criteria"),
         )

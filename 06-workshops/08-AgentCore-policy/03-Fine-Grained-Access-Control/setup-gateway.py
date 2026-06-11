@@ -101,9 +101,7 @@ def load_existing_config() -> dict | None:
     return None
 
 
-def get_existing_gateway(
-    region: str, gateway_id: str = None, gateway_name: str = None
-) -> dict | None:
+def get_existing_gateway(region: str, gateway_id: str = None, gateway_name: str = None) -> dict | None:
     """Check if gateway exists by ID or name and return its details."""
     boto_client = boto3.client("bedrock-agentcore-control", region_name=region)
 
@@ -185,9 +183,7 @@ def create_refund_lambda(region: str, function_name: str = "RefundLambda") -> st
 
         # Try to update existing function first
         try:
-            lambda_client.update_function_code(
-                FunctionName=function_name, ZipFile=zip_content
-            )
+            lambda_client.update_function_code(FunctionName=function_name, ZipFile=zip_content)
             print(f"✓ Updated existing Lambda function: {function_name}")
 
             # Wait for update to complete
@@ -258,9 +254,7 @@ def get_default_region() -> str:
     session = boto3.Session()
     region = session.region_name or os.environ.get("AWS_DEFAULT_REGION")
     if not region:
-        raise ValueError(
-            "AWS region not configured. Pass --region or set AWS_DEFAULT_REGION."
-        )
+        raise ValueError("AWS region not configured. Pass --region or set AWS_DEFAULT_REGION.")
     return region
 
 
@@ -303,9 +297,7 @@ def setup_gateway(region: str = None, role_arn: str = None):
         gateway = get_existing_gateway(region, gateway_id=gateway_id)
 
         if gateway:
-            print(
-                f"✓ Reusing existing gateway: {gateway.get('gatewayUrl', gateway_id)}\n"
-            )
+            print(f"✓ Reusing existing gateway: {gateway.get('gatewayUrl', gateway_id)}\n")
             # Reuse existing client_info if available
             if existing_config.get("client_info"):
                 cognito_response = {"client_info": existing_config["client_info"]}
@@ -389,10 +381,7 @@ def setup_gateway(region: str = None, role_arn: str = None):
             print(f"✓ Lambda target '{target_name}' created and attached to gateway\n")
         except Exception as exc:
             error_str = str(exc)
-            if (
-                "ConflictException" in str(type(exc).__name__)
-                or "already exists" in error_str
-            ):
+            if "ConflictException" in str(type(exc).__name__) or "already exists" in error_str:
                 print(f"✓ Lambda target '{target_name}' already exists, reusing\n")
                 lambda_target = {"gatewayArn": gateway.get("gatewayArn")}
             else:
@@ -426,9 +415,7 @@ def setup_gateway(region: str = None, role_arn: str = None):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        description="Setup AgentCore Gateway with Lambda target for Policy tutorial"
-    )
+    parser = argparse.ArgumentParser(description="Setup AgentCore Gateway with Lambda target for Policy tutorial")
     parser.add_argument(
         "--region",
         type=str,

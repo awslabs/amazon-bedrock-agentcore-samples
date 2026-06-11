@@ -41,9 +41,7 @@ class C:
 REGION = os.getenv("AWS_REGION", "us-west-2")
 
 # ── Step 2: Create Registry with Auth0 CUSTOM_JWT Authorizer ──────────────────
-print(
-    f"\n{C.BOLD}=== Step 2: Create Registry with Auth0 CUSTOM_JWT Authorizer ==={C.RESET}"
-)
+print(f"\n{C.BOLD}=== Step 2: Create Registry with Auth0 CUSTOM_JWT Authorizer ==={C.RESET}")
 print(
     "  Creates a new AWS Agent Registry configured with Auth0 as the OAuth identity\n"
     "  provider, polls until READY, then automatically adds the MCP endpoint URL to\n"
@@ -63,9 +61,7 @@ print(
 )
 
 # ── Step 3: Seed Registry with Sample Capability Records ──────────────────────
-print(
-    f"\n{C.BOLD}=== Step 3: Seed Registry with Sample Capability Records ==={C.RESET}"
-)
+print(f"\n{C.BOLD}=== Step 3: Seed Registry with Sample Capability Records ==={C.RESET}")
 print(
     "  Populates the registry with four sample agent records:\n"
     "  weather_agent, order_status_agent, customer_support_agent, inventory_lookup_agent.\n"
@@ -84,21 +80,14 @@ cp = _cp_client()
 for reg in cp.list_registries()["registries"]:
     if reg["name"] == "auth0-demo-registry-dcr":
         print(f"  Registry: {C.CYAN}{reg['registryId']}{C.RESET}")
-        recs = cp.list_registry_records(registryId=reg["registryId"]).get(
-            "registryRecords", []
-        )
+        recs = cp.list_registry_records(registryId=reg["registryId"]).get("registryRecords", [])
         for rec in recs:
             sc = C.GREEN if rec["status"] == "APPROVED" else C.YELLOW
-            print(
-                f"    {sc}[{rec['status']:15s}]{C.RESET} "
-                f"{rec['recordId']:15s} {rec['name']}"
-            )
+            print(f"    {sc}[{rec['status']:15s}]{C.RESET} {rec['recordId']:15s} {rec['name']}")
 
 # ── Step 4: Connect Registry as MCP Server in Kiro ────────────────────────────
 print(f"\n{C.BOLD}=== Step 4: Connect Registry as MCP Server in Kiro ==={C.RESET}")
-mcp_url = (
-    f"https://bedrock-agentcore.{REGION}.amazonaws.com/registry/{registry_id}/mcp/"
-)
+mcp_url = f"https://bedrock-agentcore.{REGION}.amazonaws.com/registry/{registry_id}/mcp/"
 print(f"""
   Add the following to your Kiro MCP configuration (.kiro/settings/mcp.json):
 

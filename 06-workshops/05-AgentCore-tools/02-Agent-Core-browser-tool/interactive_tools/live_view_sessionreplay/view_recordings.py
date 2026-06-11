@@ -76,9 +76,7 @@ class CustomS3DataSource:
 
         # List batch files to count events
         batch_files = []
-        response = self.s3_client.list_objects_v2(
-            Bucket=self.bucket, Prefix=f"{self.session_prefix}/batch-"
-        )
+        response = self.s3_client.list_objects_v2(Bucket=self.bucket, Prefix=f"{self.session_prefix}/batch-")
 
         if "Contents" in response:
             batch_files = [obj["Key"] for obj in response["Contents"]]
@@ -94,9 +92,7 @@ class CustomS3DataSource:
             try:
                 # Handle ISO format
                 if isinstance(metadata["startTime"], str):
-                    dt = datetime.fromisoformat(
-                        metadata["startTime"].replace("Z", "+00:00")
-                    )
+                    dt = datetime.fromisoformat(metadata["startTime"].replace("Z", "+00:00"))
                     timestamp = int(dt.timestamp() * 1000)
                 else:
                     timestamp = metadata["startTime"]
@@ -116,9 +112,7 @@ class CustomS3DataSource:
             event_count = metadata["totalEvents"]
 
         # Use correct datetime formatting
-        date_string = datetime.fromtimestamp(timestamp / 1000).strftime(
-            "%Y-%m-%d %H:%M:%S"
-        )
+        date_string = datetime.fromtimestamp(timestamp / 1000).strftime("%Y-%m-%d %H:%M:%S")
 
         recordings.append(
             {
@@ -145,9 +139,7 @@ class CustomS3DataSource:
             metadata = {}
             try:
                 metadata_key = f"{self.session_prefix}/metadata.json"
-                response = self.s3_client.get_object(
-                    Bucket=self.bucket, Key=metadata_key
-                )
+                response = self.s3_client.get_object(Bucket=self.bucket, Key=metadata_key)
                 metadata = json.loads(response["Body"].read().decode("utf-8"))
                 print(f"✅ Downloaded metadata: {metadata}")
             except Exception as e:
@@ -162,9 +154,7 @@ class CustomS3DataSource:
 
             # If no batch files found in metadata, look for them directly
             if not batch_files:
-                response = self.s3_client.list_objects_v2(
-                    Bucket=self.bucket, Prefix=f"{self.session_prefix}/batch-"
-                )
+                response = self.s3_client.list_objects_v2(Bucket=self.bucket, Prefix=f"{self.session_prefix}/batch-")
 
                 if "Contents" in response:
                     batch_files = [obj["Key"] for obj in response["Contents"]]
@@ -178,9 +168,7 @@ class CustomS3DataSource:
                     response = self.s3_client.get_object(Bucket=self.bucket, Key=key)
 
                     # Try to read as gzipped JSON lines
-                    with gzip.GzipFile(
-                        fileobj=io.BytesIO(response["Body"].read())
-                    ) as gz:
+                    with gzip.GzipFile(fileobj=io.BytesIO(response["Body"].read())) as gz:
                         content = gz.read().decode("utf-8")
                         print(f"Read {len(content)} bytes of content")
 
@@ -193,9 +181,7 @@ class CustomS3DataSource:
                                     if "type" in event and "timestamp" in event:
                                         all_events.append(event)
                                     else:
-                                        print(
-                                            "⚠️ Skipping invalid event (missing required fields)"
-                                        )
+                                        print("⚠️ Skipping invalid event (missing required fields)")
                                 except json.JSONDecodeError:
                                     print(f"⚠️ Invalid JSON in line: {line[:50]}...")
 
@@ -222,9 +208,7 @@ class CustomS3DataSource:
                             "height": 720,
                         },
                     }
-                    for timestamp in range(
-                        int(time.time() * 1000), int(time.time() * 1000) + 10000, 1000
-                    )
+                    for timestamp in range(int(time.time() * 1000), int(time.time() * 1000) + 10000, 1000)
                 ]
                 # Add a minimal DOM snapshot event
                 all_events.append(
@@ -326,9 +310,7 @@ class CustomSessionReplayHandler(SessionReplayHandler):
                 self.end_headers()
                 self.wfile.write(response.encode("utf-8"))
             else:
-                error_response = json.dumps(
-                    {"success": False, "error": "Recording not found"}
-                )
+                error_response = json.dumps({"success": False, "error": "Recording not found"})
                 self.send_response(404)
                 self.send_header("Content-Type", "application/json")
                 self.send_header("Content-Length", str(len(error_response)))
@@ -371,9 +353,7 @@ class CustomSessionReplayViewer(SessionReplayViewer):
 
         # Create request handler
         def handler_factory(*args, **kwargs):
-            return CustomSessionReplayHandler(
-                self.data_source, self.viewer_path, *args, **kwargs
-            )
+            return CustomSessionReplayHandler(self.data_source, self.viewer_path, *args, **kwargs)
 
         # Start server
         self.server = HTTPServer(("", port), handler_factory)
@@ -418,12 +398,8 @@ class CustomSessionReplayViewer(SessionReplayViewer):
 
 def main():
     parser = argparse.ArgumentParser(description="Standalone Session Replay Viewer")
-    parser.add_argument(
-        "--bucket", required=True, help="S3 bucket name containing recordings"
-    )
-    parser.add_argument(
-        "--prefix", required=True, help="S3 prefix where recordings are stored"
-    )
+    parser.add_argument("--bucket", required=True, help="S3 bucket name containing recordings")
+    parser.add_argument("--prefix", required=True, help="S3 prefix where recordings are stored")
     parser.add_argument("--session", help="Specific session ID to view (optional)")
     parser.add_argument(
         "--port",
@@ -485,9 +461,7 @@ def main():
             sys.exit(1)
 
     # Create data source for the specific session
-    data_source = CustomS3DataSource(
-        bucket=args.bucket, prefix=args.prefix, session_id=args.session
-    )
+    data_source = CustomS3DataSource(bucket=args.bucket, prefix=args.prefix, session_id=args.session)
 
     # Start the viewer
     print(f"🎬 Starting session replay viewer for: {args.session}")

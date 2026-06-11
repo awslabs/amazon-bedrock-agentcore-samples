@@ -49,6 +49,7 @@ from main import (
 import main as _main_module
 import memory_manager
 
+
 # ---------------------------------------------------------------------------
 # Lifespan — reuse the same AWS + agent initialisation from main.py
 # ---------------------------------------------------------------------------
@@ -92,10 +93,8 @@ app = BedrockAgentCoreApp(lifespan=lifespan)
 @app.ping
 def ping_status():
     from bedrock_agentcore import PingStatus
-    agents_ready = (
-        _main_module.code_generator_agent is not None
-        and _main_module.code_executor_agent is not None
-    )
+
+    agents_ready = _main_module.code_generator_agent is not None and _main_module.code_executor_agent is not None
     return PingStatus.HEALTHY if agents_ready else PingStatus.HEALTHY_BUSY
 
 
@@ -168,13 +167,16 @@ async def agent_handler(payload: dict, context=None):
         memory_manager.save_turn(actor_id, session_id, prompt, generated_code)
 
         import time
-        session.conversation_history.append({
-            "type": "generation",
-            "prompt": prompt,
-            "generated_code": generated_code,
-            "agent": "agentcore_runtime",
-            "timestamp": time.time(),
-        })
+
+        session.conversation_history.append(
+            {
+                "type": "generation",
+                "prompt": prompt,
+                "generated_code": generated_code,
+                "agent": "agentcore_runtime",
+                "timestamp": time.time(),
+            }
+        )
 
         return {
             "success": True,
@@ -199,10 +201,12 @@ async def agent_handler(payload: dict, context=None):
         is_chart = detect_chart_code(prepared_code)
         session_files = []
         if session.uploaded_csv:
-            session_files.append({
-                "filename": session.uploaded_csv["filename"],
-                "content": session.uploaded_csv["content"],
-            })
+            session_files.append(
+                {
+                    "filename": session.uploaded_csv["filename"],
+                    "content": session.uploaded_csv["content"],
+                }
+            )
 
         if is_chart or session_files:
             result_str, images = execute_chart_code_direct(prepared_code, session_files)
@@ -221,20 +225,21 @@ async def agent_handler(payload: dict, context=None):
 
         # Save execution turn to AgentCore Memory
         memory_manager.save_turn(
-            actor_id, session_id,
-            f"Execute code: {code[:200]}",
-            result_str[:500] if result_str else "No output"
+            actor_id, session_id, f"Execute code: {code[:200]}", result_str[:500] if result_str else "No output"
         )
 
         import time
+
         session.code_history.append(code)
-        session.execution_results.append({
-            "code": code,
-            "result": result_str,
-            "agent": agent_used,
-            "images": images,
-            "timestamp": time.time(),
-        })
+        session.execution_results.append(
+            {
+                "code": code,
+                "result": result_str,
+                "agent": agent_used,
+                "images": images,
+                "timestamp": time.time(),
+            }
+        )
 
         return {
             "success": True,

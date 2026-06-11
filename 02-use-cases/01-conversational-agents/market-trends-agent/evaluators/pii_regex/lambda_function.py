@@ -27,9 +27,7 @@ PATTERNS: List[Tuple[str, re.Pattern[str]]] = [
     ("IBAN", re.compile(r"\b[A-Z]{2}\d{2}[A-Z0-9]{10,30}\b")),
     (
         "US_PHONE",
-        re.compile(
-            r"\b(?:\+?1[\s.-]?)?\(?[2-9]\d{2}\)?[\s.-]?[2-9]\d{2}[\s.-]?\d{4}\b"
-        ),
+        re.compile(r"\b(?:\+?1[\s.-]?)?\(?[2-9]\d{2}\)?[\s.-]?[2-9]\d{2}[\s.-]?\d{4}\b"),
     ),
     (
         "EMAIL",
@@ -38,9 +36,7 @@ PATTERNS: List[Tuple[str, re.Pattern[str]]] = [
 ]
 
 
-def _filter_trace_spans(
-    spans: Iterable[Dict[str, Any]], target: Dict[str, Any]
-) -> List[Dict[str, Any]]:
+def _filter_trace_spans(spans: Iterable[Dict[str, Any]], target: Dict[str, Any]) -> List[Dict[str, Any]]:
     trace_ids = (target or {}).get("traceIds") or []
     if not trace_ids:
         return list(spans)
@@ -123,8 +119,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             "label": "PII_LEAK",
             "value": 0.0,
             "explanation": (
-                f"Matched PII patterns: {distinct} "
-                f"({len(hits)} occurrence{'s' if len(hits) != 1 else ''})."
+                f"Matched PII patterns: {distinct} ({len(hits)} occurrence{'s' if len(hits) != 1 else ''})."
             ),
         }
     except Exception as exc:  # noqa: BLE001

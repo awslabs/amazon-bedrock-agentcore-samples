@@ -74,10 +74,7 @@ class TokenExchangeRequest:
         """Validate the request per RFC 8693 Section 2.1."""
         errors = []
         if self.grant_type != GRANT_TYPE_TOKEN_EXCHANGE:
-            errors.append(
-                f"Invalid grant_type: expected {GRANT_TYPE_TOKEN_EXCHANGE}, "
-                f"got {self.grant_type}"
-            )
+            errors.append(f"Invalid grant_type: expected {GRANT_TYPE_TOKEN_EXCHANGE}, got {self.grant_type}")
         if not self.subject_token:
             errors.append("subject_token is required")
         if self.subject_token_type not in (TOKEN_TYPE_JWT, TOKEN_TYPE_ACCESS_TOKEN):
@@ -415,9 +412,7 @@ class TokenExchangeService:
                 requested = set(request.scope.split())
                 if not requested.issubset(set(original_scopes)):
                     elevated = requested - set(original_scopes)
-                    raise InsufficientScopeError(
-                        f"Requested scopes exceed original token: {elevated}"
-                    )
+                    raise InsufficientScopeError(f"Requested scopes exceed original token: {elevated}")
                 granted_scopes = sorted(requested)
             else:
                 # No policy and no explicit scopes — pass through original
@@ -485,29 +480,15 @@ class TokenExchangeService:
 
             # Record span attributes for scope attenuation observability
             if span:
-                span.set_attribute(
-                    "token_exchange.original_scope_count", len(original_scopes)
-                )
-                span.set_attribute(
-                    "token_exchange.granted_scope_count", len(granted_scopes)
-                )
-                span.set_attribute(
-                    "token_exchange.removed_scope_count", len(removed_scopes)
-                )
-                span.set_attribute(
-                    "token_exchange.original_scopes", ", ".join(original_scopes)
-                )
-                span.set_attribute(
-                    "token_exchange.granted_scopes", ", ".join(granted_scopes)
-                )
-                span.set_attribute(
-                    "token_exchange.removed_scopes", ", ".join(removed_scopes)
-                )
+                span.set_attribute("token_exchange.original_scope_count", len(original_scopes))
+                span.set_attribute("token_exchange.granted_scope_count", len(granted_scopes))
+                span.set_attribute("token_exchange.removed_scope_count", len(removed_scopes))
+                span.set_attribute("token_exchange.original_scopes", ", ".join(original_scopes))
+                span.set_attribute("token_exchange.granted_scopes", ", ".join(granted_scopes))
+                span.set_attribute("token_exchange.removed_scopes", ", ".join(removed_scopes))
                 span.set_attribute("token_exchange.actor_id", actor_id)
                 span.set_attribute("token_exchange.token_lifetime", self.token_lifetime)
-                span.set_attribute(
-                    "token_exchange.subject_token_issuer", subject_claims.get("iss", "")
-                )
+                span.set_attribute("token_exchange.subject_token_issuer", subject_claims.get("iss", ""))
 
             logger.info(
                 json.dumps(
@@ -574,10 +555,7 @@ class TokenExchangeService:
 
             # Verify this token was issued by us
             if claims.get("iss") != self.issuer:
-                raise InvalidTokenError(
-                    f"Token issuer mismatch: expected {self.issuer}, "
-                    f"got {claims.get('iss')}"
-                )
+                raise InvalidTokenError(f"Token issuer mismatch: expected {self.issuer}, got {claims.get('iss')}")
 
             # Verify act claim is present (exchanged tokens must have it)
             if "act" not in claims:

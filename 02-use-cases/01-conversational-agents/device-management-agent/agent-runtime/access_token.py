@@ -163,18 +163,14 @@ def get_gateway_access_token():
         return get_gateway_access_token_bedrock()
     except ValueError as e:
         if "Workload access token has not been set" in str(e):
-            print(
-                "Workload access token not available, falling back to direct Cognito authentication..."
-            )
+            print("Workload access token not available, falling back to direct Cognito authentication...")
             # Fall back to direct Cognito token retrieval
             token = get_cognito_token_direct()
             if token:
                 print("Successfully obtained token via direct Cognito authentication")
                 return token
             else:
-                raise Exception(
-                    "Failed to obtain token via both bedrock_agentcore and direct Cognito methods"
-                )
+                raise Exception("Failed to obtain token via both bedrock_agentcore and direct Cognito methods")
         else:
             raise e
     except Exception as e:
@@ -186,9 +182,7 @@ def get_gateway_access_token():
             print("Successfully obtained token via direct Cognito authentication")
             return token
         else:
-            raise Exception(
-                "Failed to obtain token via both bedrock_agentcore and direct Cognito methods"
-            )
+            raise Exception("Failed to obtain token via both bedrock_agentcore and direct Cognito methods")
 
 
 if __name__ == "__main__":

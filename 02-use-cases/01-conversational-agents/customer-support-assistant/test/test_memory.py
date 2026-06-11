@@ -124,9 +124,7 @@ def list_memory():
     click.echo(f"Actor ID: {ACTOR_ID}")
     click.echo("=" * 30)
 
-    list_sessions = memory_client.list_sessions(
-        memoryId=MEMORY_ID, actorId=ACTOR_ID, maxResults=3
-    )
+    list_sessions = memory_client.list_sessions(memoryId=MEMORY_ID, actorId=ACTOR_ID, maxResults=3)
 
     click.echo("All Sessions")
     first_session = None

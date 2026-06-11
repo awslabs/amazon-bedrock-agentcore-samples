@@ -35,9 +35,7 @@ ENTRA_AUTHORITY = os.environ.get(
     "ENTRA_AUTHORITY",
     f"https://login.microsoftonline.com/{ENTRA_TENANT_ID}",
 )
-ENTRA_AUTHORITY_HOST = os.environ.get(
-    "ENTRA_AUTHORITY_HOST", "login.microsoftonline.com"
-)
+ENTRA_AUTHORITY_HOST = os.environ.get("ENTRA_AUTHORITY_HOST", "login.microsoftonline.com")
 ENTRA_AUTHORIZE_URL = f"{ENTRA_AUTHORITY}/oauth2/v2.0/authorize"
 ENTRA_TOKEN_URL = f"{ENTRA_AUTHORITY}/oauth2/v2.0/token"
 
@@ -63,9 +61,7 @@ def sign_request(request):
 def lambda_handler(event, context):
     """Main Lambda handler — routes requests based on path."""
     path = event.get("path", "/")
-    method = event.get("httpMethod") or event.get("requestContext", {}).get(
-        "http", {}
-    ).get("method", "GET")
+    method = event.get("httpMethod") or event.get("requestContext", {}).get("http", {}).get("method", "GET")
     # Log request metadata only (exclude headers which may contain tokens)
     print(f"Method: {method}, Path: {path}")
 
@@ -643,9 +639,7 @@ def handle_authorize(event):
             "state": decoded_state,
             "redirect_uri": decoded_redirect_uri,
         }
-        encoded_state = base64.urlsafe_b64encode(
-            json.dumps(compound_state).encode()
-        ).decode()
+        encoded_state = base64.urlsafe_b64encode(json.dumps(compound_state).encode()).decode()
         params["state"] = encoded_state
 
         # Replace redirect_uri with our callback
@@ -758,9 +752,7 @@ def handle_dcr(event):
 def proxy_to_gateway(event):
     """Forward MCP requests to AgentCore Gateway."""
     print("proxy_to_gateway")
-    method = event.get("httpMethod") or event.get("requestContext", {}).get(
-        "http", {}
-    ).get("method", "GET")
+    method = event.get("httpMethod") or event.get("requestContext", {}).get("http", {}).get("method", "GET")
     headers = event.get("headers", {})
     body = event.get("body", "")
 
@@ -818,9 +810,7 @@ def proxy_to_gateway(event):
         with urllib.request.urlopen(req, timeout=60) as resp:  # nosec B310
             resp_body = resp.read().decode()
             print(resp_body)
-            resp_headers = {
-                "Content-Type": resp.headers.get("Content-Type", "application/json")
-            }
+            resp_headers = {"Content-Type": resp.headers.get("Content-Type", "application/json")}
 
             session_id = resp.headers.get("Mcp-Session-Id")
             if session_id:
@@ -830,9 +820,7 @@ def proxy_to_gateway(event):
             www_auth = resp.headers.get("WWW-Authenticate")
             if www_auth:
                 api_url = get_api_url(event)
-                gateway_base = (
-                    GATEWAY_URL[:-4] if GATEWAY_URL.endswith("/mcp") else GATEWAY_URL
-                )
+                gateway_base = GATEWAY_URL[:-4] if GATEWAY_URL.endswith("/mcp") else GATEWAY_URL
                 www_auth_rewritten = www_auth.replace(gateway_base, api_url)
                 resp_headers["WWW-Authenticate"] = www_auth_rewritten
 

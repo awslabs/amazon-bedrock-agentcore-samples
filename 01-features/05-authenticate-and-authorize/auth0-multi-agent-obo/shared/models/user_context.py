@@ -20,9 +20,7 @@ class UserContext:
     customer_id: str  # Custom claim
     email: str
     name: str
-    account_types: list[str] = field(
-        default_factory=list
-    )  # e.g., ["savings", "checking", "credit"]
+    account_types: list[str] = field(default_factory=list)  # e.g., ["savings", "checking", "credit"]
     roles: list[str] = field(default_factory=list)  # e.g., ["customer", "premium"]
     scopes: list[str] = field(default_factory=list)
     kyc_status: str = "unknown"
@@ -75,11 +73,7 @@ class UserContext:
 
         # Extract token expiry
         exp_timestamp = claims.get("exp", 0)
-        token_expiry = (
-            datetime.utcfromtimestamp(exp_timestamp)
-            if exp_timestamp
-            else datetime.utcnow()
-        )
+        token_expiry = datetime.utcfromtimestamp(exp_timestamp) if exp_timestamp else datetime.utcnow()
 
         return cls(
             user_id=user_id,

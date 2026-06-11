@@ -37,9 +37,7 @@ class WebSearchAgentExecutor(AgentExecutor):
             logger.info("Web search agent created successfully")
         return self._agent
 
-    async def _execute_streaming(
-        self, agent, user_message: str, updater: TaskUpdater, task_id: str
-    ) -> None:
+    async def _execute_streaming(self, agent, user_message: str, updater: TaskUpdater, task_id: str) -> None:
         """Execute agent with streaming and update task status incrementally."""
         accumulated_text = ""
 
@@ -63,9 +61,7 @@ class WebSearchAgentExecutor(AgentExecutor):
                     logger.info(f"Stream event type: {event_type}")
 
                     # Only handle raw_response_event with ResponseTextDeltaEvent
-                    if event_type == "raw_response_event" and isinstance(
-                        event.data, ResponseTextDeltaEvent
-                    ):
+                    if event_type == "raw_response_event" and isinstance(event.data, ResponseTextDeltaEvent):
                         text_chunk = event.data.delta
                         if text_chunk:
                             accumulated_text += text_chunk

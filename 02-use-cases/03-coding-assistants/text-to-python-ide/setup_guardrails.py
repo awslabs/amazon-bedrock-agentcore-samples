@@ -32,10 +32,7 @@ INFO_FILE = "guardrail_info.json"
 
 
 def get_client():
-    session = boto3.Session(
-        profile_name=os.getenv("AWS_PROFILE", "default"),
-        region_name=REGION
-    )
+    session = boto3.Session(profile_name=os.getenv("AWS_PROFILE", "default"), region_name=REGION)
     return session.client("bedrock", region_name=REGION)
 
 
@@ -100,9 +97,7 @@ def create():
                 {"type": "EMAIL", "action": "ANONYMIZE"},
             ]
         },
-        wordPolicyConfig={
-            "managedWordListsConfig": [{"type": "PROFANITY"}]
-        },
+        wordPolicyConfig={"managedWordListsConfig": [{"type": "PROFANITY"}]},
         blockedInputMessaging="I'm unable to process this request. The Text-to-Python IDE is designed for Python code generation and execution only. Please rephrase your request to focus on a Python programming task.",
         blockedOutputsMessaging="I'm unable to provide this response as it may contain inappropriate content. Please try a different Python programming request.",
     )

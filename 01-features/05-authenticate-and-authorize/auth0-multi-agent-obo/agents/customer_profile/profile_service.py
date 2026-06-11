@@ -120,9 +120,7 @@ class ProfileService:
     def __init__(self):
         """Initialize the profile service."""
         self.profiles = MOCK_PROFILES
-        logger.info(
-            f"ProfileService initialized with {len(self.profiles)} mock profiles"
-        )
+        logger.info(f"ProfileService initialized with {len(self.profiles)} mock profiles")
 
     def get_profile(self, customer_id: str) -> Optional[Dict[str, Any]]:
         """
@@ -144,9 +142,7 @@ class ProfileService:
             logger.warning(f"Profile not found for customer_id={customer_id}")
             return None
 
-    def update_profile(
-        self, customer_id: str, updates: Dict[str, Any], updated_by: str
-    ) -> Dict[str, Any]:
+    def update_profile(self, customer_id: str, updates: Dict[str, Any], updated_by: str) -> Dict[str, Any]:
         """
         Update profile fields.
 
@@ -164,9 +160,7 @@ class ProfileService:
         profile = self.profiles.get(customer_id)
 
         if not profile:
-            logger.error(
-                f"Cannot update: profile not found for customer_id={customer_id}"
-            )
+            logger.error(f"Cannot update: profile not found for customer_id={customer_id}")
             raise ValueError(f"Profile not found for customer {customer_id}")
 
         # List of fields that cannot be updated directly
@@ -176,9 +170,7 @@ class ProfileService:
         invalid_updates = set(updates.keys()) & protected_fields
         if invalid_updates:
             logger.warning(f"Attempt to update protected fields: {invalid_updates}")
-            raise ValueError(
-                f"Cannot update protected fields: {', '.join(invalid_updates)}"
-            )
+            raise ValueError(f"Cannot update protected fields: {', '.join(invalid_updates)}")
 
         # Apply updates
         old_values = {}
@@ -234,9 +226,7 @@ class ProfileService:
         required_fields = ["street_line_1", "suburb", "state", "postcode", "country"]
         missing_fields = [f for f in required_fields if f not in address]
         if missing_fields:
-            raise ValueError(
-                f"Missing required address fields: {', '.join(missing_fields)}"
-            )
+            raise ValueError(f"Missing required address fields: {', '.join(missing_fields)}")
 
         # Update the appropriate address
         address_type = "mailing_address" if is_mailing else "address"
@@ -256,9 +246,7 @@ class ProfileService:
             updated_by=updated_by,
         )
 
-        logger.info(
-            f"Address updated for customer_id={customer_id}, type={address_type}"
-        )
+        logger.info(f"Address updated for customer_id={customer_id}, type={address_type}")
         return deepcopy(profile)
 
     def update_phone(
@@ -289,15 +277,11 @@ class ProfileService:
             raise ValueError(f"Profile not found for customer {customer_id}")
 
         if phone_type not in ["primary", "secondary"]:
-            raise ValueError(
-                f"Invalid phone type: {phone_type}. Must be 'primary' or 'secondary'"
-            )
+            raise ValueError(f"Invalid phone type: {phone_type}. Must be 'primary' or 'secondary'")
 
         # Validate phone number format if provided
         if phone_number and not phone_number.startswith("+"):
-            raise ValueError(
-                "Phone number must be in international format (e.g., +61412345678)"
-            )
+            raise ValueError("Phone number must be in international format (e.g., +61412345678)")
 
         field_name = f"{phone_type}_phone"
         old_phone = profile[field_name]
@@ -319,9 +303,7 @@ class ProfileService:
         logger.info(f"Phone updated for customer_id={customer_id}, type={phone_type}")
         return deepcopy(profile)
 
-    def update_preferences(
-        self, customer_id: str, preferences: Dict[str, Any], updated_by: str
-    ) -> Dict[str, Any]:
+    def update_preferences(self, customer_id: str, preferences: Dict[str, Any], updated_by: str) -> Dict[str, Any]:
         """
         Update customer contact and marketing preferences.
 
@@ -348,20 +330,14 @@ class ProfileService:
             method = preferences["preferred_contact_method"]
             valid_methods = ["email", "sms", "phone", "mail"]
             if method not in valid_methods:
-                raise ValueError(
-                    f"Invalid contact method: {method}. Must be one of {', '.join(valid_methods)}"
-                )
-            old_preferences["preferred_contact_method"] = profile[
-                "preferred_contact_method"
-            ]
+                raise ValueError(f"Invalid contact method: {method}. Must be one of {', '.join(valid_methods)}")
+            old_preferences["preferred_contact_method"] = profile["preferred_contact_method"]
             profile["preferred_contact_method"] = method
 
         # Update marketing preferences if provided
         if "marketing_preferences" in preferences:
             marketing = preferences["marketing_preferences"]
-            old_preferences["marketing_preferences"] = deepcopy(
-                profile["marketing_preferences"]
-            )
+            old_preferences["marketing_preferences"] = deepcopy(profile["marketing_preferences"])
 
             # Update individual marketing preferences
             for key in ["email_opt_in", "sms_opt_in", "mail_opt_in"]:

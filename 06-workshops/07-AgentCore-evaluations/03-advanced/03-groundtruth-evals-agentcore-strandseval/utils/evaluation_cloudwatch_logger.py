@@ -52,12 +52,8 @@ class EvaluationLogConfig:
         - OTEL_EXPORTER_OTLP_LOGS_HEADERS: Contains x-aws-log-stream (fallback)
         """
         # Destination log group from EVALUATION_RESULTS_LOG_GROUP
-        base_log_group = os.environ.get(
-            "EVALUATION_RESULTS_LOG_GROUP", "default_strands_evals_results"
-        )
-        destination_log_group = (
-            f"/aws/bedrock-agentcore/evaluations/results/{base_log_group}"
-        )
+        base_log_group = os.environ.get("EVALUATION_RESULTS_LOG_GROUP", "default_strands_evals_results")
+        destination_log_group = f"/aws/bedrock-agentcore/evaluations/results/{base_log_group}"
 
         # Log stream: First check LOG_STREAM_NAME env var (explicit override)
         log_stream = os.environ.get("LOG_STREAM_NAME", "")
@@ -93,9 +89,7 @@ class EvaluationLogConfig:
                     resource_log_group = value
 
         if not service_name:
-            raise ValueError(
-                "service.name must be set in OTEL_RESOURCE_ATTRIBUTES environment variable"
-            )
+            raise ValueError("service.name must be set in OTEL_RESOURCE_ATTRIBUTES environment variable")
 
         return cls(
             destination_log_group=destination_log_group,
@@ -137,18 +131,14 @@ def send_evaluation_to_cloudwatch(
         config = EvaluationLogConfig.from_environment()
 
         if not config.destination_log_group:
-            logger.warning(
-                "No destination log group configured, skipping CloudWatch logging"
-            )
+            logger.warning("No destination log group configured, skipping CloudWatch logging")
             return False
 
         cloudwatch_client = _get_cloudwatch_client()
 
         # Ensure log group exists
         try:
-            cloudwatch_client.create_log_group(
-                logGroupName=config.destination_log_group
-            )
+            cloudwatch_client.create_log_group(logGroupName=config.destination_log_group)
             logger.info(f"Created log group: {config.destination_log_group}")
         except cloudwatch_client.exceptions.ResourceAlreadyExistsException:
             pass
@@ -303,7 +293,5 @@ def log_evaluation_batch(
         if success:
             success_count += 1
 
-    logger.info(
-        f"Logged {success_count}/{len(results)} evaluation results to CloudWatch"
-    )
+    logger.info(f"Logged {success_count}/{len(results)} evaluation results to CloudWatch")
     return success_count

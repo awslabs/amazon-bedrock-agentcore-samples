@@ -61,85 +61,56 @@ def lambda_handler(event, context):
         from lab_helpers import mock_data
 
         # Get model ID from environment variable (set by Lambda configuration)
-        MODEL_ID = os.getenv(
-            "MODEL_ID", "global.anthropic.claude-sonnet-4-20250514-v1:0"
-        )
+        MODEL_ID = os.getenv("MODEL_ID", "global.anthropic.claude-sonnet-4-20250514-v1:0")
 
         # ===================================================================
         # DEFINE DIAGNOSTIC TOOLS
         # ===================================================================
 
-        @tool(
-            description="Fetch EC2 application logs to identify application errors and issues"
-        )
+        @tool(description="Fetch EC2 application logs to identify application errors and issues")
         def get_ec2_logs(limit: int = 10) -> dict:
             """Fetch recent EC2 application logs from mock data"""
             logs = mock_data.get_ec2_logs()
             return {
                 "logs": logs[:limit],
                 "total": len(logs),
-                "errors": [
-                    log["message"] for log in logs if "error" in log["message"].lower()
-                ][:5],
+                "errors": [log["message"] for log in logs if "error" in log["message"].lower()][:5],
             }
 
-        @tool(
-            description="Fetch NGINX access/error logs to identify HTTP errors and worker issues"
-        )
+        @tool(description="Fetch NGINX access/error logs to identify HTTP errors and worker issues")
         def get_nginx_logs(limit: int = 10) -> dict:
             """Fetch NGINX access/error logs from mock data"""
             logs = mock_data.get_nginx_logs()
             return {
                 "logs": logs[:limit],
                 "total": len(logs),
-                "http_errors": [
-                    log["message"] for log in logs if "5" in log["message"]
-                ][:5],
-                "worker_issues": [
-                    log["message"] for log in logs if "worker" in log["message"].lower()
-                ][:5],
+                "http_errors": [log["message"] for log in logs if "5" in log["message"]][:5],
+                "worker_issues": [log["message"] for log in logs if "worker" in log["message"].lower()][:5],
             }
 
-        @tool(
-            description="Fetch DynamoDB operation logs to detect throttling and service issues"
-        )
+        @tool(description="Fetch DynamoDB operation logs to detect throttling and service issues")
         def get_dynamodb_logs(limit: int = 10) -> dict:
             """Fetch DynamoDB operation logs from mock data"""
             logs = mock_data.get_dynamodb_logs()
             return {
                 "logs": logs[:limit],
                 "total": len(logs),
-                "throttling": [
-                    log["message"]
-                    for log in logs
-                    if "throttl" in log["message"].lower()
-                ][:5],
-                "unavailable": [
-                    log["message"]
-                    for log in logs
-                    if "unavailable" in log["message"].lower()
-                ][:5],
+                "throttling": [log["message"] for log in logs if "throttl" in log["message"].lower()][:5],
+                "unavailable": [log["message"] for log in logs if "unavailable" in log["message"].lower()][:5],
             }
 
-        @tool(
-            description="Fetch CloudWatch metrics (CPU, Memory) to analyze resource utilization"
-        )
+        @tool(description="Fetch CloudWatch metrics (CPU, Memory) to analyze resource utilization")
         def get_cloudwatch_metrics(metric_name: str, limit: int = 10) -> dict:
             """Fetch CloudWatch metrics from mock data"""
             metrics = mock_data.get_metrics(metric_name)
             high_values = [
-                m
-                for m in metrics
-                if m.get("Maximum", 0)
-                > (80 if metric_name == "MemoryUtilization" else 85)
+                m for m in metrics if m.get("Maximum", 0) > (80 if metric_name == "MemoryUtilization" else 85)
             ]
             return {
                 "metric": metric_name,
                 "data_points": len(metrics),
                 "high_utilization_periods": len(high_values),
-                "peak_value": max([m.get("Maximum", 0) for m in metrics])
-                if metrics
-                else 0,
+                "peak_value": max([m.get("Maximum", 0) for m in metrics]) if metrics else 0,
             }
 
         # ===================================================================

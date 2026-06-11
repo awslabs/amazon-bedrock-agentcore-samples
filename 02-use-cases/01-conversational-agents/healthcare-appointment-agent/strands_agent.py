@@ -41,17 +41,11 @@ if __name__ == "__main__":
     if args.gateway_id is None:
         raise Exception("Gateway Id is required")
 
-    gatewayEndpoint = utils.get_gateway_endpoint(
-        agentcore_client=agentcore_client, gateway_id=args.gateway_id
-    )
+    gatewayEndpoint = utils.get_gateway_endpoint(agentcore_client=agentcore_client, gateway_id=args.gateway_id)
     print(f"Gateway Endpoint: {gatewayEndpoint}")
 
     jwtToken = utils.get_oath_token(boto_session)
-    client = MCPClient(
-        lambda: streamablehttp_client(
-            gatewayEndpoint, headers={"Authorization": f"Bearer {jwtToken}"}
-        )
-    )
+    client = MCPClient(lambda: streamablehttp_client(gatewayEndpoint, headers={"Authorization": f"Bearer {jwtToken}"}))
 
     bedrockmodel = BedrockModel(
         model_id="global.anthropic.claude-haiku-4-5-20251001-v1:0",

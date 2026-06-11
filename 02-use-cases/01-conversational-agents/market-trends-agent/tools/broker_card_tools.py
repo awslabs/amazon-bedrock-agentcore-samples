@@ -32,35 +32,21 @@ def parse_broker_card_format(card_content: str) -> Dict[str, str]:
         elif line.startswith("Role:"):
             broker_data["role"] = line.replace("Role:", "").strip()
         elif line.startswith("Preferred News Feed:"):
-            broker_data["preferred_news_feed"] = line.replace(
-                "Preferred News Feed:", ""
-            ).strip()
+            broker_data["preferred_news_feed"] = line.replace("Preferred News Feed:", "").strip()
         elif line.startswith("Industry Interests:"):
-            broker_data["industry_interests"] = line.replace(
-                "Industry Interests:", ""
-            ).strip()
+            broker_data["industry_interests"] = line.replace("Industry Interests:", "").strip()
         elif line.startswith("Investment Strategy:"):
-            broker_data["investment_strategy"] = line.replace(
-                "Investment Strategy:", ""
-            ).strip()
+            broker_data["investment_strategy"] = line.replace("Investment Strategy:", "").strip()
         elif line.startswith("Risk Tolerance:"):
             broker_data["risk_tolerance"] = line.replace("Risk Tolerance:", "").strip()
         elif line.startswith("Client Demographics:"):
-            broker_data["client_demographics"] = line.replace(
-                "Client Demographics:", ""
-            ).strip()
+            broker_data["client_demographics"] = line.replace("Client Demographics:", "").strip()
         elif line.startswith("Geographic Focus:"):
-            broker_data["geographic_focus"] = line.replace(
-                "Geographic Focus:", ""
-            ).strip()
+            broker_data["geographic_focus"] = line.replace("Geographic Focus:", "").strip()
         elif line.startswith("Recent Interests:"):
-            broker_data["recent_interests"] = line.replace(
-                "Recent Interests:", ""
-            ).strip()
+            broker_data["recent_interests"] = line.replace("Recent Interests:", "").strip()
         elif line.startswith("Additional Notes:"):
-            broker_data["additional_notes"] = line.replace(
-                "Additional Notes:", ""
-            ).strip()
+            broker_data["additional_notes"] = line.replace("Additional Notes:", "").strip()
 
     return broker_data
 
@@ -78,10 +64,7 @@ def parse_broker_profile_from_message(user_message: str) -> str:
     """
     try:
         # Check if message contains broker card format
-        if any(
-            field in user_message
-            for field in ["Name:", "Company:", "Role:", "Industry Interests:"]
-        ):
+        if any(field in user_message for field in ["Name:", "Company:", "Role:", "Industry Interests:"]):
             broker_data = parse_broker_card_format(user_message)
 
             # Format the parsed data
@@ -93,31 +76,19 @@ def parse_broker_profile_from_message(user_message: str) -> str:
             if broker_data["role"]:
                 profile_parts.append(f"Role: {broker_data['role']}")
             if broker_data["preferred_news_feed"]:
-                profile_parts.append(
-                    f"Preferred News Feed: {broker_data['preferred_news_feed']}"
-                )
+                profile_parts.append(f"Preferred News Feed: {broker_data['preferred_news_feed']}")
             if broker_data["industry_interests"]:
-                profile_parts.append(
-                    f"Industry Interests: {broker_data['industry_interests']}"
-                )
+                profile_parts.append(f"Industry Interests: {broker_data['industry_interests']}")
             if broker_data["investment_strategy"]:
-                profile_parts.append(
-                    f"Investment Strategy: {broker_data['investment_strategy']}"
-                )
+                profile_parts.append(f"Investment Strategy: {broker_data['investment_strategy']}")
             if broker_data["risk_tolerance"]:
                 profile_parts.append(f"Risk Tolerance: {broker_data['risk_tolerance']}")
             if broker_data["client_demographics"]:
-                profile_parts.append(
-                    f"Client Demographics: {broker_data['client_demographics']}"
-                )
+                profile_parts.append(f"Client Demographics: {broker_data['client_demographics']}")
             if broker_data["geographic_focus"]:
-                profile_parts.append(
-                    f"Geographic Focus: {broker_data['geographic_focus']}"
-                )
+                profile_parts.append(f"Geographic Focus: {broker_data['geographic_focus']}")
             if broker_data["recent_interests"]:
-                profile_parts.append(
-                    f"Recent Interests: {broker_data['recent_interests']}"
-                )
+                profile_parts.append(f"Recent Interests: {broker_data['recent_interests']}")
 
             if profile_parts:
                 return "Broker Profile Detected:\n" + "\n".join(profile_parts)
@@ -131,9 +102,7 @@ def parse_broker_profile_from_message(user_message: str) -> str:
 
 
 @tool
-def generate_market_summary_for_broker(
-    broker_profile: str, market_data: str = ""
-) -> str:
+def generate_market_summary_for_broker(broker_profile: str, market_data: str = "") -> str:
     """
     Generate a tailored market trends summary based on broker profile.
 

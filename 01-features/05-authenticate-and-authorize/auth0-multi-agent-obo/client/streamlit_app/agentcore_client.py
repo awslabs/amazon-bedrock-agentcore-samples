@@ -179,10 +179,7 @@ class AgentCoreClient:
             RuntimeError: For other errors
         """
         if not self.coordinator_agent_id:
-            raise ValueError(
-                "COORDINATOR_AGENT_ID not configured. "
-                "Set this after deploying the coordinator agent."
-            )
+            raise ValueError("COORDINATOR_AGENT_ID not configured. Set this after deploying the coordinator agent.")
 
         logger.debug(f"Sending message to agent {self.coordinator_agent_id}")
         logger.debug(f"Session ID: {session_id}")
@@ -202,9 +199,7 @@ class AgentCoreClient:
             # The ARN must be URL-encoded since it contains special characters
             # The qualifier=DEFAULT is required for OAuth authorization
             encoded_arn = quote(agent_arn, safe="")
-            url = (
-                f"{self.base_url}/runtimes/{encoded_arn}/invocations?qualifier=DEFAULT"
-            )
+            url = f"{self.base_url}/runtimes/{encoded_arn}/invocations?qualifier=DEFAULT"
 
             # Prepare the request payload
             # With --request-header-allowlist "Authorization" configured on agents,
@@ -253,18 +248,12 @@ class AgentCoreClient:
                 method="POST",
                 url=url,
                 request_headers={
-                    k: v if k.lower() != "authorization" else "Bearer [TOKEN]"
-                    for k, v in headers.items()
+                    k: v if k.lower() != "authorization" else "Bearer [TOKEN]" for k, v in headers.items()
                 },
-                request_body={
-                    k: v if k != "access_token" else "[MASKED]"
-                    for k, v in payload.items()
-                },
+                request_body={k: v if k != "access_token" else "[MASKED]" for k, v in payload.items()},
                 response_status=response.status_code,
                 response_headers=dict(response.headers),
-                response_body=response.json()
-                if response.status_code < 400
-                else response.text[:500],
+                response_body=response.json() if response.status_code < 400 else response.text[:500],
                 duration_ms=duration_ms,
                 call_type="api",
             )
@@ -273,13 +262,8 @@ class AgentCoreClient:
             if response.status_code == 401:
                 error_body = response.text
                 logger.error(f"JWT validation failed - 401 Unauthorized: {error_body}")
-                logger.error(
-                    f"WWW-Authenticate header: {response.headers.get('WWW-Authenticate', 'N/A')}"
-                )
-                raise AuthenticationError(
-                    "Authentication failed. Your session may have expired. "
-                    "Please log in again."
-                )
+                logger.error(f"WWW-Authenticate header: {response.headers.get('WWW-Authenticate', 'N/A')}")
+                raise AuthenticationError("Authentication failed. Your session may have expired. Please log in again.")
 
             if response.status_code == 403:
                 error_body = response.text
@@ -287,23 +271,16 @@ class AgentCoreClient:
 
                 # Check if it's an auth method mismatch
                 if "authorization method mismatch" in error_body.lower():
-                    logger.error(
-                        "Agent may still be configured for SigV4 instead of OAuth"
-                    )
+                    logger.error("Agent may still be configured for SigV4 instead of OAuth")
                     raise RuntimeError(
-                        "Authorization method mismatch. The agent may need to be "
-                        "reconfigured for OAuth authentication."
+                        "Authorization method mismatch. The agent may need to be reconfigured for OAuth authentication."
                     )
 
-                raise AuthorizationError(
-                    "You don't have permission to perform this action."
-                )
+                raise AuthorizationError("You don't have permission to perform this action.")
 
             if response.status_code == 429:
                 logger.warning("Rate limited - 429 Too Many Requests")
-                raise RateLimitError(
-                    "Too many requests. Please wait a moment and try again."
-                )
+                raise RateLimitError("Too many requests. Please wait a moment and try again.")
 
             if response.status_code >= 400:
                 error_body = response.text
@@ -323,14 +300,11 @@ class AgentCoreClient:
         except requests.exceptions.Timeout:
             logger.error(f"Request timed out after {self.timeout}s")
             raise RuntimeError(
-                f"Request timed out after {self.timeout} seconds. "
-                "The agent may be taking too long to respond."
+                f"Request timed out after {self.timeout} seconds. The agent may be taking too long to respond."
             )
         except requests.exceptions.ConnectionError as e:
             logger.error(f"Connection error: {e}")
-            raise RuntimeError(
-                "Failed to connect to AgentCore. Please check your network connection."
-            )
+            raise RuntimeError("Failed to connect to AgentCore. Please check your network connection.")
         except Exception as e:
             full_error = str(e)
 
@@ -379,9 +353,7 @@ class AgentCoreClient:
             # Handle dict response
             if isinstance(response, dict):
                 return {
-                    "response": response.get(
-                        "output", response.get("response", str(response))
-                    ),
+                    "response": response.get("output", response.get("response", str(response))),
                     "sessionId": session_id,
                     "metadata": response.get("metadata", {}),
                 }
@@ -400,9 +372,7 @@ class AgentCoreClient:
                 "metadata": {"parse_error": str(e)},
             }
 
-    def _parse_http_response(
-        self, response: requests.Response, session_id: str
-    ) -> Dict[str, Any]:
+    def _parse_http_response(self, response: requests.Response, session_id: str) -> Dict[str, Any]:
         """
         Parse HTTP response from AgentCore into standard format.
 
@@ -524,23 +494,17 @@ class AgentCoreClient:
     # Aliases for backward compatibility
     # =========================================================================
 
-    def invoke_coordinator_agent(
-        self, message: str, session_id: str, access_token: str, **kwargs
-    ) -> Iterator[Dict]:
+    def invoke_coordinator_agent(self, message: str, session_id: str, access_token: str, **kwargs) -> Iterator[Dict]:
         """Backward-compatible alias for send_message()."""
         result = self.send_message(message, session_id, access_token)
         yield {"chunk": {"bytes": result.get("response", "").encode()}}
 
-    def get_full_response(
-        self, message: str, session_id: str, access_token: str, **kwargs
-    ) -> str:
+    def get_full_response(self, message: str, session_id: str, access_token: str, **kwargs) -> str:
         """Backward-compatible alias that returns full response text."""
         result = self.send_message(message, session_id, access_token)
         return result.get("response", "")
 
-    def invoke_with_streaming(
-        self, message: str, session_id: str, access_token: str, **kwargs
-    ) -> Iterator[str]:
+    def invoke_with_streaming(self, message: str, session_id: str, access_token: str, **kwargs) -> Iterator[str]:
         """Backward-compatible streaming alias."""
         yield from self.send_message_streaming(message, session_id, access_token)
 

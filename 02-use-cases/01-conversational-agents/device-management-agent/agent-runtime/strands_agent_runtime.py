@@ -110,9 +110,7 @@ def check_mcp_server():
             }
 
             try:
-                response = requests.post(
-                    f"{MCP_SERVER_URL}/mcp", headers=headers, json=payload, timeout=10
-                )
+                response = requests.post(f"{MCP_SERVER_URL}/mcp", headers=headers, json=payload, timeout=10)
                 response.raise_for_status()
                 logger.info(f"MCP server response status: {response.status_code}")
 
@@ -178,11 +176,7 @@ def initialize_agent():
             logger.info("Creating MCP client...")
 
             # Create the MCP client
-            mcp_client = MCPClient(
-                lambda: streamablehttp_client(
-                    url=f"{gateway_endpoint}/mcp", headers=headers
-                )
-            )
+            mcp_client = MCPClient(lambda: streamablehttp_client(url=f"{gateway_endpoint}/mcp", headers=headers))
             logger.info("MCP Client setup complete")
 
             # Enter the context manager
@@ -220,9 +214,7 @@ def initialize_agent():
         # Create an agent with these tools
         try:
             logger.info("Creating Strands Agent with tools...")
-            model_id = (
-                "global.anthropic.claude-haiku-4-5-20251001-v1:0"  # Using Claude Sonnet
-            )
+            model_id = "global.anthropic.claude-haiku-4-5-20251001-v1:0"  # Using Claude Sonnet
             model = BedrockModel(model_id=model_id)
 
             agent = Agent(
@@ -286,15 +278,11 @@ def format_response(text):
             # Format based on the type of data
             if isinstance(json_data, list) and len(json_data) > 0:
                 # Check if it's a list of devices
-                if isinstance(json_data[0], dict) and all(
-                    key in json_data[0] for key in ["device_id", "model"]
-                ):
+                if isinstance(json_data[0], dict) and all(key in json_data[0] for key in ["device_id", "model"]):
                     formatted_text = format_device_list(json_data)
                     return text[:json_start] + formatted_text + text[json_end + 1 :]
                 # Check if it's a list of users
-                elif isinstance(json_data[0], dict) and all(
-                    key in json_data[0] for key in ["user_id", "username"]
-                ):
+                elif isinstance(json_data[0], dict) and all(key in json_data[0] for key in ["user_id", "username"]):
                     formatted_text = format_user_list(json_data)
                     return text[:json_start] + formatted_text + text[json_end + 1 :]
                 # Check if it's a list of activities
@@ -318,19 +306,11 @@ def format_response(text):
                     formatted_text = format_device_settings(json_data)
                     return text[:json_start] + formatted_text + text[json_end + 1 :]
                 # Check if it's a WiFi update result
-                elif (
-                    "device_id" in json_data
-                    and "network_id" in json_data
-                    and "old_ssid" in json_data
-                ):
+                elif "device_id" in json_data and "network_id" in json_data and "old_ssid" in json_data:
                     formatted_text = format_wifi_update(json_data)
                     return text[:json_start] + formatted_text + text[json_end + 1 :]
                 # Check if it's a WiFi security update result
-                elif (
-                    "device_id" in json_data
-                    and "network_id" in json_data
-                    and "old_security_type" in json_data
-                ):
+                elif "device_id" in json_data and "network_id" in json_data and "old_security_type" in json_data:
                     formatted_text = format_wifi_security_update(json_data)
                     return text[:json_start] + formatted_text + text[json_end + 1 :]
                 # Generic object
@@ -571,10 +551,7 @@ def format_generic_list(items):
     col_widths = {}
     for key in keys:
         # Find the maximum length of values for this key
-        max_val_length = max(
-            [len(str(item.get(key, ""))) for item in items if isinstance(item, dict)]
-            + [len(key)]
-        )
+        max_val_length = max([len(str(item.get(key, ""))) for item in items if isinstance(item, dict)] + [len(key)])
         col_widths[key] = min(max(max_val_length, 10), 20)
 
     # Create header and separator
@@ -647,9 +624,7 @@ def format_generic_object(obj):
                 # Calculate column widths
                 col_widths = {}
                 for k in all_keys:
-                    max_val_length = max(
-                        [len(str(item.get(k, ""))) for item in value] + [len(k)]
-                    )
+                    max_val_length = max([len(str(item.get(k, ""))) for item in value] + [len(k)])
                     col_widths[k] = min(max(max_val_length, 10), 20)
 
                 # Create header
@@ -699,9 +674,7 @@ async def process_request(payload):
     global agent, mcp_client
     try:
         # Extract the user message from the payload
-        user_message = payload.get(
-            "prompt", "No prompt found in input, please provide a message"
-        )
+        user_message = payload.get("prompt", "No prompt found in input, please provide a message")
         logger.info(f"Received user message: {user_message}")
 
         # Check if agent is initialized
@@ -718,9 +691,7 @@ async def process_request(payload):
                     return
                 logger.info("Agent initialized successfully")
             else:
-                error_msg = (
-                    "Agent is not initialized. Please ensure MCP server is running."
-                )
+                error_msg = "Agent is not initialized. Please ensure MCP server is running."
                 logger.error(error_msg)
                 yield {"error": error_msg}
                 return
@@ -757,13 +728,8 @@ async def process_request(payload):
                 elif "result" in event:
                     # Final result
                     result = event["result"]
-                    if hasattr(result, "message") and hasattr(
-                        result.message, "content"
-                    ):
-                        if (
-                            isinstance(result.message.content, list)
-                            and len(result.message.content) > 0
-                        ):
+                    if hasattr(result, "message") and hasattr(result.message, "content"):
+                        if isinstance(result.message.content, list) and len(result.message.content) > 0:
                             final_response = result.message.content[0].get("text", "")
                         else:
                             final_response = str(result.message.content)
@@ -780,9 +746,7 @@ async def process_request(payload):
 
         except Exception as e:
             logger.error(f"Error in streaming mode: {str(e)}", exc_info=True)
-            yield {
-                "error": f"Error processing request with agent (streaming): {str(e)}"
-            }
+            yield {"error": f"Error processing request with agent (streaming): {str(e)}"}
 
     except Exception as e:
         error_msg = f"Error processing request: {str(e)}"
@@ -806,9 +770,7 @@ if __name__ == "__main__":
             "method": "tools/list",
             "params": {},
         }
-        response = requests.post(
-            f"{MCP_SERVER_URL}/mcp", headers=headers, json=payload, timeout=10
-        )
+        response = requests.post(f"{MCP_SERVER_URL}/mcp", headers=headers, json=payload, timeout=10)
         logger.info(f"Direct test response status: {response.status_code}")
     except Exception as e:
         logger.error(f"Error in direct test: {str(e)}", exc_info=True)

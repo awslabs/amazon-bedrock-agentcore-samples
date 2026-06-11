@@ -40,9 +40,7 @@ BEDROCK_MODEL_ID = "us.anthropic.claude-sonnet-4-20250514-v1:0"
 # --- ACH-specific configuration (REQUIRED for US domestic) ---
 COMPANY_BANK_NAME = os.environ.get("COMPANY_BANK_NAME", "Bank of America, N.A.")
 COMPANY_ROUTING_ABA = os.environ.get("COMPANY_ROUTING_ABA", "026009593")  # 9-digit ABA
-COMPANY_ACCOUNT_NUM = os.environ.get(
-    "COMPANY_ACCOUNT_NUM", "001234567890"
-)  # Debtor account number
+COMPANY_ACCOUNT_NUM = os.environ.get("COMPANY_ACCOUNT_NUM", "001234567890")  # Debtor account number
 
 # Optional for wires/cross-border (leave blank by default for ACH)
 COMPANY_BIC = os.environ.get("COMPANY_BIC", "")
@@ -151,9 +149,7 @@ def transform_extracted_data(bedrock_data):
             "address_lines": bedrock_data.get("supplier", {}).get("address_lines", []),
             "iban": bedrock_data.get("supplier", {}).get("iban", ""),
             "routing_aba": bedrock_data.get("supplier", {}).get("routing_aba", ""),
-            "account_number": bedrock_data.get("supplier", {}).get(
-                "account_number", ""
-            ),
+            "account_number": bedrock_data.get("supplier", {}).get("account_number", ""),
         },
         "invoice": {
             "number": invoice_data.get("number", ""),
@@ -182,18 +178,14 @@ def transform_extracted_data(bedrock_data):
     return transformed
 
 
-def send_invoice_to_api(
-    extracted_data, source_file_key, iso20022_file_key=None, job_id=None
-):
+def send_invoice_to_api(extracted_data, source_file_key, iso20022_file_key=None, job_id=None):
     """Send extracted invoice data to RTP API"""
     try:
         # Transform the extracted data into the expected format
         transformed_data = transform_extracted_data(extracted_data)
 
         # Debug: Log the transformed data to see what we're sending
-        print(
-            f"Transformed invoice data: {json.dumps(transformed_data.get('invoice', {}), indent=2)}"
-        )
+        print(f"Transformed invoice data: {json.dumps(transformed_data.get('invoice', {}), indent=2)}")
 
         payload = {"extractedData": transformed_data, "sourceFileKey": source_file_key}
 
@@ -485,9 +477,7 @@ B) Structured:
         # Replace em dashes and other special characters
         xml_content = xml_content.replace("—", "-").replace("–", "-")
         # Remove any non-printable characters except newlines and tabs
-        xml_content = "".join(
-            char for char in xml_content if char.isprintable() or char in "\n\t"
-        )
+        xml_content = "".join(char for char in xml_content if char.isprintable() or char in "\n\t")
 
         return xml_content
 
@@ -578,9 +568,7 @@ def generate_iso20022_payment(invoice_data):
         print("Generating ISO20022 payment file from invoice data...")
 
         # Generate ISO 20022 XML
-        xml_content = generate_iso20022_xml_with_bedrock(
-            invoice_data, is_csv=False, is_invoice=True
-        )
+        xml_content = generate_iso20022_xml_with_bedrock(invoice_data, is_csv=False, is_invoice=True)
 
         # Validate XML
         is_valid, errors = validate_iso20022_xml(xml_content)
@@ -654,9 +642,7 @@ def _process_and_generate_payment_file(payment_data, is_csv, is_invoice, key, jo
 
     # Generate ISO 20022 XML directly with Bedrock
     print("Calling Bedrock to generate ISO 20022 XML...")
-    xml_content = generate_iso20022_xml_with_bedrock(
-        payment_data, is_csv=is_csv, is_invoice=is_invoice
-    )
+    xml_content = generate_iso20022_xml_with_bedrock(payment_data, is_csv=is_csv, is_invoice=is_invoice)
 
     print("XML content received from Bedrock")
 
@@ -698,9 +684,7 @@ def _process_and_generate_payment_file(payment_data, is_csv, is_invoice, key, jo
             "transaction_count": str(transaction_count),
             "total_amount": str(total_amount),
             "generated_at": datetime.now().isoformat(),
-            "generated_by": "bedrock-iso20022-vision"
-            if is_invoice
-            else "bedrock-iso20022",
+            "generated_by": "bedrock-iso20022-vision" if is_invoice else "bedrock-iso20022",
             "message_standard": "ISO20022-pain.001.001.03",
             "validation_status": "passed",
         },
@@ -765,9 +749,7 @@ def lambda_handler(event, context):
             is_invoice = file_ext in ["pdf", "png", "jpg", "jpeg", "gif", "webp"]
 
             if not (is_csv or is_json or is_invoice):
-                raise Exception(
-                    f"Unsupported file type. Supported: .json, .csv, .pdf, .png, .jpg, .jpeg. Got: {key}"
-                )
+                raise Exception(f"Unsupported file type. Supported: .json, .csv, .pdf, .png, .jpg, .jpeg. Got: {key}")
 
             # Read payment instruction file and get metadata
             response = s3.get_object(Bucket=bucket, Key=key)
@@ -784,44 +766,30 @@ def lambda_handler(event, context):
 
             if is_invoice:
                 # INVOICE FLOW: Extract → Save to DB → STOP (no payment file)
-                print(
-                    f"Invoice file detected ({file_ext}), using vision to extract data"
-                )
+                print(f"Invoice file detected ({file_ext}), using vision to extract data")
                 file_content = response["Body"].read()  # Binary content for images/PDFs
 
                 # Extract invoice data using vision
-                extracted_data_str = extract_invoice_data_with_vision(
-                    file_content, file_ext
-                )
+                extracted_data_str = extract_invoice_data_with_vision(file_content, file_ext)
 
                 # Clean the response - remove markdown code blocks if present
                 extracted_data_str = extracted_data_str.strip()
                 if extracted_data_str.startswith("```json"):
-                    extracted_data_str = (
-                        extracted_data_str.replace("```json", "")
-                        .replace("```", "")
-                        .strip()
-                    )
+                    extracted_data_str = extracted_data_str.replace("```json", "").replace("```", "").strip()
                 elif extracted_data_str.startswith("```"):
                     extracted_data_str = extracted_data_str.replace("```", "").strip()
 
                 # Parse JSON
                 try:
                     payment_data = json.loads(extracted_data_str)
-                    print(
-                        f"DEBUG - Bedrock returned invoice.total: {payment_data.get('invoice', {}).get('total')}"
-                    )
+                    print(f"DEBUG - Bedrock returned invoice.total: {payment_data.get('invoice', {}).get('total')}")
                     print(
                         f"DEBUG - Bedrock returned invoice.total type: {type(payment_data.get('invoice', {}).get('total'))}"
                     )
                 except json.JSONDecodeError as json_err:
                     print(f"JSON parsing error: {str(json_err)}")
-                    print(
-                        f"Raw response from Bedrock: {extracted_data_str[:500]}"
-                    )  # Log first 500 chars
-                    raise Exception(
-                        f"Failed to parse invoice data as JSON: {str(json_err)}"
-                    )
+                    print(f"Raw response from Bedrock: {extracted_data_str[:500]}")  # Log first 500 chars
+                    raise Exception(f"Failed to parse invoice data as JSON: {str(json_err)}")
 
                 print("Invoice data extracted successfully")
 
@@ -830,22 +798,16 @@ def lambda_handler(event, context):
                 print("Sending invoice data to RTP API...")
 
                 try:
-                    api_response = send_invoice_to_api(
-                        payment_data, key, iso20022_file_key=None, job_id=job_id
-                    )
+                    api_response = send_invoice_to_api(payment_data, key, iso20022_file_key=None, job_id=job_id)
                     invoice_id = api_response.get("id", "N/A")
 
                     # Handle duplicate case - still mark as completed since processing succeeded
                     if api_response.get("status") == "duplicate":
-                        print(
-                            "Invoice already exists - marking job as completed with existing invoice ID"
-                        )
+                        print("Invoice already exists - marking job as completed with existing invoice ID")
                         # For duplicates, use the existing invoice ID if available
                         if job_id:
                             if invoice_id and invoice_id != "N/A":
-                                update_job_status(
-                                    job_id, "COMPLETED", result_id=invoice_id
-                                )
+                                update_job_status(job_id, "COMPLETED", result_id=invoice_id)
                             else:
                                 update_job_status(
                                     job_id,
@@ -859,9 +821,7 @@ def lambda_handler(event, context):
                             update_job_status(job_id, "COMPLETED", result_id=invoice_id)
 
                 except Exception as api_error:
-                    print(
-                        f"Error: Failed to store invoice in database: {str(api_error)}"
-                    )
+                    print(f"Error: Failed to store invoice in database: {str(api_error)}")
                     # Mark job as failed if we have job_id
                     if job_id:
                         update_job_status(job_id, "FAILED", str(api_error))

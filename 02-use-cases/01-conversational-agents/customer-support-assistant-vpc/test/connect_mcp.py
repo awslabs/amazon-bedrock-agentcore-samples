@@ -13,9 +13,7 @@ from mcp.client.streamable_http import streamablehttp_client
 
 from utils import get_ssm_parameter
 
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 
@@ -45,7 +43,9 @@ def create_mcp_client(provider_name, agent_arn):
 
         print(agent_arn)
         escaped_arn = urllib.parse.quote(agent_arn, safe="")
-        mcp_url = f"https://bedrock-agentcore.{region}.amazonaws.com/runtimes/{escaped_arn}/invocations?qualifier=DEFAULT"
+        mcp_url = (
+            f"https://bedrock-agentcore.{region}.amazonaws.com/runtimes/{escaped_arn}/invocations?qualifier=DEFAULT"
+        )
 
         headers = {
             "authorization": f"Bearer {bearer_token}",
@@ -106,12 +106,8 @@ def create_mcp_client(provider_name, agent_arn):
                         for tool_name, args in test_cases:
                             try:
                                 print(f"\n➕ Testing {tool_name}({args})...")
-                                logger.info(
-                                    f"Calling tool {tool_name} with args {args}"
-                                )
-                                result = await session.call_tool(
-                                    name=tool_name, arguments=args
-                                )
+                                logger.info(f"Calling tool {tool_name} with args {args}")
+                                result = await session.call_tool(name=tool_name, arguments=args)
                                 logger.info(f"Tool {tool_name} returned: {result}")
                                 if result.content:
                                     print(f"   Result: {result.content[0].text}")
@@ -149,9 +145,7 @@ def create_mcp_client(provider_name, agent_arn):
 
 def main():
     parser = argparse.ArgumentParser(description="MCP DynamoDB CLI Tool")
-    parser.add_argument(
-        "--verbose", "-v", action="store_true", help="Enable verbose logging"
-    )
+    parser.add_argument("--verbose", "-v", action="store_true", help="Enable verbose logging")
     parser.add_argument("--debug", action="store_true", help="Enable debug logging")
 
     args = parser.parse_args()

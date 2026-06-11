@@ -28,9 +28,7 @@ try:
 except ImportError:
     HAS_AGENTCORE_SDK = False
 
-pytestmark = pytest.mark.skipif(
-    not HAS_AGENTCORE_SDK, reason="bedrock_agentcore SDK not available (container-only)"
-)
+pytestmark = pytest.mark.skipif(not HAS_AGENTCORE_SDK, reason="bedrock_agentcore SDK not available (container-only)")
 
 
 class TestExtractUserContext:
@@ -280,9 +278,7 @@ class TestInvokeEntrypoint:
     @patch("main.create_agent")
     @patch("main.validate_user_authorization")
     @patch("main.extract_user_context_from_payload")
-    async def test_successful_invocation(
-        self, mock_extract, mock_validate, mock_create
-    ):
+    async def test_successful_invocation(self, mock_extract, mock_validate, mock_create):
         """Test successful invocation."""
         from main import invoke
 
@@ -333,9 +329,7 @@ class TestInvokeEntrypoint:
     @patch("main.create_agent")
     @patch("main.validate_user_authorization")
     @patch("main.extract_user_context_from_payload")
-    async def test_agent_exception_handling(
-        self, mock_extract, mock_validate, mock_create
-    ):
+    async def test_agent_exception_handling(self, mock_extract, mock_validate, mock_create):
         """Test that agent exceptions are caught."""
         from main import invoke
 
@@ -372,9 +366,7 @@ class TestInvokeEntrypoint:
     @patch("main.create_agent")
     @patch("main.validate_user_authorization")
     @patch("main.extract_user_context_from_payload")
-    async def test_response_includes_metadata(
-        self, mock_extract, mock_validate, mock_create
-    ):
+    async def test_response_includes_metadata(self, mock_extract, mock_validate, mock_create):
         """Test that response includes required metadata."""
         from main import invoke
 

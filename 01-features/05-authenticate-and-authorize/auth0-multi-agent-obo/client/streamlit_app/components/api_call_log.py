@@ -164,18 +164,12 @@ def render_api_call_log():
     elif filter_type == "Auth Calls":
         calls = [c for c in log.get_recent(count) if c.call_type in ("auth", "oauth")]
     elif filter_type == "Token Operations":
-        calls = [
-            c
-            for c in log.get_recent(count)
-            if c.call_type in ("token_refresh", "token_exchange")
-        ]
+        calls = [c for c in log.get_recent(count) if c.call_type in ("token_refresh", "token_exchange")]
     else:
         calls = log.get_recent(count)
 
     if not calls:
-        st.info(
-            "No API calls recorded yet. Interact with the application to see calls appear here."
-        )
+        st.info("No API calls recorded yet. Interact with the application to see calls appear here.")
 
         # Show example of what a call looks like
         with st.expander("Example: What an API call looks like"):
@@ -266,9 +260,7 @@ def render_request_details(call: APICallRecord):
             if key.lower() == "authorization":
                 # Show token type but mask the actual token
                 if value.startswith("Bearer "):
-                    st.markdown(
-                        f"- `{key}`: Bearer [JWT TOKEN - {len(value) - 7} chars]"
-                    )
+                    st.markdown(f"- `{key}`: Bearer [JWT TOKEN - {len(value) - 7} chars]")
                 else:
                     st.markdown(f"- `{key}`: [MASKED]")
             elif key.lower() in ("x-api-key", "cookie"):

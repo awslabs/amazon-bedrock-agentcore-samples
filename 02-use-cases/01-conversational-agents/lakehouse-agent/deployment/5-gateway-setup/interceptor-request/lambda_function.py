@@ -56,9 +56,7 @@ def get_config() -> Dict[str, str]:
         return _config
 
     # First try environment variables
-    region = os.environ.get("COGNITO_REGION") or os.environ.get(
-        "AWS_REGION", "us-west-2"
-    )
+    region = os.environ.get("COGNITO_REGION") or os.environ.get("AWS_REGION", "us-west-2")
     user_pool_id = os.environ.get("COGNITO_USER_POOL_ID", "")
     app_client_id = os.environ.get("COGNITO_APP_CLIENT_ID", "")
 
@@ -69,16 +67,12 @@ def get_config() -> Dict[str, str]:
             ssm = boto3.client("ssm", region_name=region)
 
             if not user_pool_id:
-                response = ssm.get_parameter(
-                    Name="/app/lakehouse-agent/cognito-user-pool-id"
-                )
+                response = ssm.get_parameter(Name="/app/lakehouse-agent/cognito-user-pool-id")
                 user_pool_id = response["Parameter"]["Value"]
                 logger.info(f"Loaded user_pool_id from SSM: {user_pool_id}")
 
             if not app_client_id:
-                response = ssm.get_parameter(
-                    Name="/app/lakehouse-agent/cognito-app-client-id"
-                )
+                response = ssm.get_parameter(Name="/app/lakehouse-agent/cognito-app-client-id")
                 app_client_id = response["Parameter"]["Value"]
                 logger.info(f"Loaded app_client_id from SSM: {app_client_id}")
 
@@ -93,9 +87,7 @@ def get_config() -> Dict[str, str]:
         "issuer": f"https://cognito-idp.{region}.amazonaws.com/{user_pool_id}",
     }
 
-    logger.info(
-        f"Cognito configuration loaded: region={region}, user_pool_id={user_pool_id}"
-    )
+    logger.info(f"Cognito configuration loaded: region={region}, user_pool_id={user_pool_id}")
     return _config
 
 
@@ -170,9 +162,7 @@ def validate_and_decode_jwt(token: str) -> Optional[Dict[str, Any]]:
         except JWTError as e:
             # If audience validation fails, try without audience (for access tokens)
             if "audience" in str(e).lower() or "aud" in str(e).lower():
-                logger.info(
-                    "Retrying JWT validation without audience check (access token)"
-                )
+                logger.info("Retrying JWT validation without audience check (access token)")
                 claims = jwt.decode(
                     token,
                     key,
@@ -182,16 +172,12 @@ def validate_and_decode_jwt(token: str) -> Optional[Dict[str, Any]]:
                 )
                 # Manually verify client_id for access tokens
                 if claims.get("client_id") != config["app_client_id"]:
-                    logger.error(
-                        f"Client ID mismatch: {claims.get('client_id')} != {config['app_client_id']}"
-                    )
+                    logger.error(f"Client ID mismatch: {claims.get('client_id')} != {config['app_client_id']}")
                     return None
             else:
                 raise
 
-        logger.info(
-            f"Successfully validated JWT for user: {claims.get('username', claims.get('sub'))}"
-        )
+        logger.info(f"Successfully validated JWT for user: {claims.get('username', claims.get('sub'))}")
         return claims
 
     except JWTError as e:
@@ -269,12 +255,7 @@ def extract_user_principal(claims: Dict[str, Any]) -> Optional[str]:
         User principal (email/username) or None
     """
     # Try multiple claim fields in priority order
-    principal = (
-        claims.get("email")
-        or claims.get("username")
-        or claims.get("cognito:username")
-        or claims.get("sub")
-    )
+    principal = claims.get("email") or claims.get("username") or claims.get("cognito:username") or claims.get("sub")
 
     if principal:
         logger.info(f"✅ Extracted user principal: {principal}")
@@ -315,9 +296,7 @@ def build_error_response(message, body, status_code=403):
                 "statusCode": status_code,
                 "body": {
                     "jsonrpc": "2.0",
-                    "id": body.get("id", "unknown")
-                    if isinstance(body, dict)
-                    else "unknown",
+                    "id": body.get("id", "unknown") if isinstance(body, dict) else "unknown",
                     "error": {"code": -32600, "message": message},
                 },
             }
@@ -398,9 +377,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             logger.error("❌ JWT validation failed")
             return {
                 "statusCode": 401,
-                "body": json.dumps(
-                    {"error": "Unauthorized", "message": "Invalid or expired JWT token"}
-                ),
+                "body": json.dumps({"error": "Unauthorized", "message": "Invalid or expired JWT token"}),
             }
 
         # Extract user principal from JWT claims
@@ -442,9 +419,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             tenant_credentials = exchange_jwt_to_iam(claim_name, claim_value)
 
             if tenant_credentials:
-                logger.info(
-                    f"🔑 Obtained temporary credentials for role: {tenant_credentials['RoleName']}"
-                )
+                logger.info(f"🔑 Obtained temporary credentials for role: {tenant_credentials['RoleName']}")
             else:
                 logger.warning("⚠️  Failed to exchange JWT to IAM credentials")
         else:
@@ -470,16 +445,12 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         if "params" in transformed_body and "arguments" in transformed_body["params"]:
             if "context" not in transformed_body["params"]["arguments"]:
                 transformed_body["params"]["arguments"]["context"] = {}
-            transformed_body["params"]["arguments"]["context"]["user_id"] = (
-                user_principal
-            )
+            transformed_body["params"]["arguments"]["context"]["user_id"] = user_principal
             transformed_body["params"]["arguments"]["context"]["scopes"] = scopes
 
             # Add tenant credentials to context if available
             if tenant_credentials:
-                transformed_body["params"]["arguments"]["context"][
-                    "tenant_credentials"
-                ] = {
+                transformed_body["params"]["arguments"]["context"]["tenant_credentials"] = {
                     "access_key_id": tenant_credentials["AccessKeyId"],
                     "secret_access_key": tenant_credentials["SecretAccessKey"],
                     "session_token": tenant_credentials["SessionToken"],

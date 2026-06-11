@@ -182,9 +182,7 @@ agent_runtime_updates = {
 update_env_file(env_file_path, local_updates, "local .env file")
 
 # Update agent-runtime .env file (new functionality)
-update_env_file(
-    agent_runtime_env_path, agent_runtime_updates, "agent-runtime .env file"
-)
+update_env_file(agent_runtime_env_path, agent_runtime_updates, "agent-runtime .env file")
 
 print("\n🎉 Successfully updated both .env files with Cognito OAuth configuration!")
 print("   Local .env: {}".format(os.path.abspath(env_file_path)))

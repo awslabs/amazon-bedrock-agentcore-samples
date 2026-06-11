@@ -68,10 +68,7 @@ def get_config() -> Dict[str, Optional[str]]:
     try:
         session = boto3.Session()
         config["region"] = (
-            os.environ.get("AWS_REGION")
-            or session.region_name
-            or os.environ.get("AWS_DEFAULT_REGION")
-            or "us-east-1"
+            os.environ.get("AWS_REGION") or session.region_name or os.environ.get("AWS_DEFAULT_REGION") or "us-east-1"
         )
         if not session.region_name:
             logger.warning("⚠️  No region in AWS config, using fallback")
@@ -181,9 +178,7 @@ def handle_request(payload: Dict[str, Any]) -> Dict[str, Any]:
 
     return {
         "content": response_text,
-        "tool_calls": len(response.tool_calls)
-        if hasattr(response, "tool_calls")
-        else 0,
+        "tool_calls": len(response.tool_calls) if hasattr(response, "tool_calls") else 0,
     }
 
 

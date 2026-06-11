@@ -42,9 +42,7 @@ def _auto_scroll_script():
     """
 
 
-def render_chat_interface(
-    agentcore_client: AgentCoreClient, session_manager: SessionManager
-):
+def render_chat_interface(agentcore_client: AgentCoreClient, session_manager: SessionManager):
     """
     Render the main chat interface.
 
@@ -93,9 +91,7 @@ def render_chat_interface(
     messages = session_manager.get_messages()
 
     if not messages:
-        st.info(
-            "Welcome! I'm your AI financial assistant. Ask me anything about your profile or accounts."
-        )
+        st.info("Welcome! I'm your AI financial assistant. Ask me anything about your profile or accounts.")
     else:
         # Display message history
         for message in messages:

@@ -8,9 +8,7 @@ import sys
 import os
 
 # Add agents directory to path for imports
-sys.path.insert(
-    0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "agents", "accounts")
-)
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "agents", "accounts"))
 
 from auth_validator import validate_forwarded_claims, check_account_access
 
@@ -133,9 +131,7 @@ class TestCheckAccountAccess:
 
         for account in valid_accounts:
             result = check_account_access("CUST-001", account, claims)
-            assert result["authorized"] is True, (
-                f"Account {account} should be authorized"
-            )
+            assert result["authorized"] is True, f"Account {account} should be authorized"
 
     def test_edge_case_account_99_in_middle(self):
         """Test account with 99 in middle is still authorized."""

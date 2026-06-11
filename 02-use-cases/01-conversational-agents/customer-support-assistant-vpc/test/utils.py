@@ -17,9 +17,7 @@ import time
 import urllib
 import webbrowser
 
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 
@@ -81,9 +79,7 @@ def load_access_token(agent_name: str) -> Optional[str]:
 def generate_pkce_pair():
     code_verifier = base64.urlsafe_b64encode(os.urandom(40)).decode("utf-8").rstrip("=")
     code_challenge = (
-        base64.urlsafe_b64encode(hashlib.sha256(code_verifier.encode()).digest())
-        .decode("utf-8")
-        .rstrip("=")
+        base64.urlsafe_b64encode(hashlib.sha256(code_verifier.encode()).digest()).decode("utf-8").rstrip("=")
     )
     return code_verifier, code_challenge
 
@@ -169,11 +165,7 @@ def start_oauth_server(port=8080, timeout=300):
     def run_server():
         server.timeout = 1  # Check for shutdown every second
         start_time = time.time()
-        while (
-            time.time() - start_time < timeout
-            and not callback_result["success"]
-            and not callback_result["error"]
-        ):
+        while time.time() - start_time < timeout and not callback_result["success"] and not callback_result["error"]:
             server.handle_request()
         server.server_close()
 
@@ -296,13 +288,9 @@ def get_aws_info():
         region = boto_session.region_name
         if not region:
             # Try to get from default session
-            region = (
-                boto3.DEFAULT_SESSION.region_name if boto3.DEFAULT_SESSION else None
-            )
+            region = boto3.DEFAULT_SESSION.region_name if boto3.DEFAULT_SESSION else None
             if not region:
-                raise ValueError(
-                    "AWS region not configured. Please set AWS_DEFAULT_REGION or configure AWS CLI."
-                )
+                raise ValueError("AWS region not configured. Please set AWS_DEFAULT_REGION or configure AWS CLI.")
 
         # Get account ID using STS
         sts = boto_session.client("sts")
@@ -312,7 +300,5 @@ def get_aws_info():
 
     except Exception as e:
         print(f"❌ Error getting AWS info: {e}")
-        print(
-            "Please ensure AWS credentials are configured (aws configure or environment variables)"
-        )
+        print("Please ensure AWS credentials are configured (aws configure or environment variables)")
         sys.exit(1)

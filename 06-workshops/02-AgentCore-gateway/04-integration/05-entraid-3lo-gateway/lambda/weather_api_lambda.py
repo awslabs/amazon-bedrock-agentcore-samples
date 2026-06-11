@@ -19,13 +19,9 @@ import random
 def lambda_handler(event, context):
     """Handle GET /weather?location=..."""
     # Log request metadata only (exclude headers which may contain tokens)
-    print(
-        f"Method: {event.get('httpMethod', 'unknown')}, Path: {event.get('path', '/')}"
-    )
+    print(f"Method: {event.get('httpMethod', 'unknown')}, Path: {event.get('path', '/')}")
 
-    method = event.get("httpMethod") or event.get("requestContext", {}).get(
-        "http", {}
-    ).get("method", "GET")
+    method = event.get("httpMethod") or event.get("requestContext", {}).get("http", {}).get("method", "GET")
 
     if method != "GET":
         return json_response(405, {"error": "Method not allowed"})

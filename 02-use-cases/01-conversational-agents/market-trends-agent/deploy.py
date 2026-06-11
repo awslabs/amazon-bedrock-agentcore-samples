@@ -48,9 +48,7 @@ from pathlib import Path
 from botocore.exceptions import ClientError
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 
@@ -116,9 +114,7 @@ class MarketTrendsAgentDeployer:
                     "Sid": "ECRImageAccess",
                     "Effect": "Allow",
                     "Action": ["ecr:BatchGetImage", "ecr:GetDownloadUrlForLayer"],
-                    "Resource": [
-                        f"arn:aws:ecr:{self.region}:{account_id}:repository/*"
-                    ],
+                    "Resource": [f"arn:aws:ecr:{self.region}:{account_id}:repository/*"],
                 },
                 {
                     "Effect": "Allow",
@@ -130,9 +126,7 @@ class MarketTrendsAgentDeployer:
                 {
                     "Effect": "Allow",
                     "Action": ["logs:DescribeLogGroups"],
-                    "Resource": [
-                        f"arn:aws:logs:{self.region}:{account_id}:log-group:*"
-                    ],
+                    "Resource": [f"arn:aws:logs:{self.region}:{account_id}:log-group:*"],
                 },
                 {
                     "Effect": "Allow",
@@ -161,9 +155,7 @@ class MarketTrendsAgentDeployer:
                     "Effect": "Allow",
                     "Resource": "*",
                     "Action": "cloudwatch:PutMetricData",
-                    "Condition": {
-                        "StringEquals": {"cloudwatch:namespace": "bedrock-agentcore"}
-                    },
+                    "Condition": {"StringEquals": {"cloudwatch:namespace": "bedrock-agentcore"}},
                 },
                 {
                     "Sid": "GetAgentAccessToken",
@@ -191,9 +183,7 @@ class MarketTrendsAgentDeployer:
                         "bedrock-agentcore:GetMemory",
                         "bedrock-agentcore:RetrieveMemoryRecords",
                     ],
-                    "Resource": [
-                        f"arn:aws:bedrock-agentcore:{self.region}:{account_id}:memory/*"
-                    ],
+                    "Resource": [f"arn:aws:bedrock-agentcore:{self.region}:{account_id}:memory/*"],
                 },
                 {
                     "Sid": "BedrockAgentCoreBrowserOperations",
@@ -225,9 +215,7 @@ class MarketTrendsAgentDeployer:
                     "Sid": "InvokeAgentRuntime",
                     "Effect": "Allow",
                     "Action": ["bedrock-agentcore:InvokeAgentRuntime"],
-                    "Resource": [
-                        f"arn:aws:bedrock-agentcore:{self.region}:{account_id}:runtime/*"
-                    ],
+                    "Resource": [f"arn:aws:bedrock-agentcore:{self.region}:{account_id}:runtime/*"],
                 },
                 {
                     "Sid": "ABTestAgentCoreResources",
@@ -287,9 +275,7 @@ class MarketTrendsAgentDeployer:
             )
 
             # Attach the comprehensive execution policy
-            logger.info(
-                f"📋 Attaching comprehensive execution policy to role: {role_name}"
-            )
+            logger.info(f"📋 Attaching comprehensive execution policy to role: {role_name}")
             self.iam_client.put_role_policy(
                 RoleName=role_name,
                 PolicyName="MarketTrendsAgentComprehensivePolicy",
@@ -337,23 +323,16 @@ class MarketTrendsAgentDeployer:
             try:
                 response = self.ssm_client.get_parameter(Name=param_name)
                 existing_memory_arn = response["Parameter"]["Value"]
-                logger.info(
-                    f"✅ Found existing memory ARN in SSM: {existing_memory_arn}"
-                )
+                logger.info(f"✅ Found existing memory ARN in SSM: {existing_memory_arn}")
                 return existing_memory_arn
             except self.ssm_client.exceptions.ParameterNotFound:
-                logger.info(
-                    "No existing memory ARN found in SSM, creating new memory..."
-                )
+                logger.info("No existing memory ARN found in SSM, creating new memory...")
 
             # Check if memory exists by name
             try:
                 memories = memory_client.list_memories()
                 for memory in memories:
-                    if (
-                        memory.get("name") == memory_name
-                        and memory.get("status") == "ACTIVE"
-                    ):
+                    if memory.get("name") == memory_name and memory.get("status") == "ACTIVE":
                         memory_arn = memory["arn"]
                         logger.info(f"✅ Found existing active memory: {memory_arn}")
 
@@ -458,10 +437,7 @@ class MarketTrendsAgentDeployer:
                 raise RuntimeError(f"CodeBuild failed with status: {status}")
 
         account_id = boto3.client("sts").get_caller_identity()["Account"]
-        ecr_uri = (
-            f"{account_id}.dkr.ecr.{self.region}.amazonaws.com"
-            f"/bedrock-agentcore-{agent_name}:latest"
-        )
+        ecr_uri = f"{account_id}.dkr.ecr.{self.region}.amazonaws.com/bedrock-agentcore-{agent_name}:latest"
         logger.info("Container ready at: %s", ecr_uri)
         return ecr_uri
 
@@ -534,9 +510,7 @@ class MarketTrendsAgentDeployer:
             ecr_image_uri = self._trigger_codebuild(agent_name)
 
             # Step 4: Create / update the runtime via bedrock-agentcore-control
-            runtime_arn = self._ensure_runtime(
-                agent_name, execution_role_arn, ecr_image_uri
-            )
+            runtime_arn = self._ensure_runtime(agent_name, execution_role_arn, ecr_image_uri)
 
             arn_file = Path(".agent_arn")
             arn_file.write_text(runtime_arn)
@@ -590,9 +564,7 @@ def check_prerequisites():
     if has_pyproject:
         logger.info("✅ Found pyproject.toml - will use uv for dependency management")
     elif has_requirements:
-        logger.info(
-            "✅ Found requirements.txt - will use pip for dependency management"
-        )
+        logger.info("✅ Found requirements.txt - will use pip for dependency management")
 
     missing_files = []
     for file in required_files:
@@ -604,9 +576,7 @@ def check_prerequisites():
         return False
 
     # Note: Docker/Podman not required - AgentCore uses AWS CodeBuild for container building
-    logger.info(
-        "✅ Container building will use AWS CodeBuild (no local Docker required)"
-    )
+    logger.info("✅ Container building will use AWS CodeBuild (no local Docker required)")
 
     # Check AWS credentials
     try:
@@ -622,9 +592,7 @@ def check_prerequisites():
 
 def main():
     """Main deployment function"""
-    parser = argparse.ArgumentParser(
-        description="Deploy Market Trends Agent to Amazon Bedrock AgentCore Runtime"
-    )
+    parser = argparse.ArgumentParser(description="Deploy Market Trends Agent to Amazon Bedrock AgentCore Runtime")
     parser.add_argument(
         "--agent-name",
         default="market_trends_agent",
@@ -635,12 +603,8 @@ def main():
         default="MarketTrendsAgentRole",
         help="IAM role name (default: MarketTrendsAgentRole)",
     )
-    parser.add_argument(
-        "--region", default="us-east-1", help="AWS region (default: us-east-1)"
-    )
-    parser.add_argument(
-        "--skip-checks", action="store_true", help="Skip prerequisite checks"
-    )
+    parser.add_argument("--region", default="us-east-1", help="AWS region (default: us-east-1)")
+    parser.add_argument("--skip-checks", action="store_true", help="Skip prerequisite checks")
 
     args = parser.parse_args()
 
@@ -652,9 +616,7 @@ def main():
     # Create deployer and deploy
     deployer = MarketTrendsAgentDeployer(region=args.region)
 
-    runtime_arn = deployer.deploy_agent(
-        agent_name=args.agent_name, role_name=args.role_name
-    )
+    runtime_arn = deployer.deploy_agent(agent_name=args.agent_name, role_name=args.role_name)
 
     if runtime_arn:
         logger.info("\n🎯 Deployment completed successfully!")

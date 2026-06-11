@@ -50,9 +50,7 @@ class ConfigValidator:
         if "gateway" in config:
             self._validate_gateway_config(config["gateway"])
 
-    def _validate_required_fields(
-        self, config: Dict[str, Any], required_fields: List[str]
-    ) -> None:
+    def _validate_required_fields(self, config: Dict[str, Any], required_fields: List[str]) -> None:
         """Validate that required fields exist"""
         for field in required_fields:
             if field not in config:
@@ -80,9 +78,7 @@ class ConfigValidator:
         max_concurrent = agents_config.get("max_concurrent")
         if max_concurrent is not None:
             if not isinstance(max_concurrent, int) or max_concurrent < 1:
-                raise ValueError(
-                    f"max_concurrent must be a positive integer, got: {max_concurrent}"
-                )
+                raise ValueError(f"max_concurrent must be a positive integer, got: {max_concurrent}")
 
     def _validate_okta_config(self, okta_config: Dict[str, Any]) -> None:
         """Validate Okta configuration"""
@@ -133,9 +129,7 @@ class ConfigValidator:
                 # Validate endpoint ARN format if present
                 endpoint_arn = agent_config.get("endpoint_arn")
                 if endpoint_arn and not self.arn_pattern.match(endpoint_arn):
-                    raise ValueError(
-                        f"Invalid endpoint ARN format for {agent_type}: {endpoint_arn}"
-                    )
+                    raise ValueError(f"Invalid endpoint ARN format for {agent_type}: {endpoint_arn}")
 
     def _validate_mcp_lambda_config(self, mcp_config: Dict[str, Any]) -> None:
         """Validate MCP lambda configuration"""
@@ -167,18 +161,14 @@ class ConfigValidator:
         def check_sampling_rate(value: Any, path: str) -> None:
             if isinstance(value, (int, float)):
                 if not (0.0 <= value <= 1.0):
-                    raise ValueError(
-                        f"Sampling rate at {path} must be between 0.0 and 1.0, got: {value}"
-                    )
+                    raise ValueError(f"Sampling rate at {path} must be between 0.0 and 1.0, got: {value}")
 
         # Check observability sampling rates
         obs_config = config.get("observability", {})
         if "tracing" in obs_config:
             tracing = obs_config["tracing"]
             if "sampling_rate" in tracing:
-                check_sampling_rate(
-                    tracing["sampling_rate"], "observability.tracing.sampling_rate"
-                )
+                check_sampling_rate(tracing["sampling_rate"], "observability.tracing.sampling_rate")
 
     def _validate_log_levels(self, config: Dict[str, Any]) -> None:
         """Validate log levels are valid"""

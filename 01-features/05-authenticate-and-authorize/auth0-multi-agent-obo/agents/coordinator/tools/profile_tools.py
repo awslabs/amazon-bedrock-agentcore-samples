@@ -14,9 +14,7 @@ from typing import Any, Dict, List
 logger = logging.getLogger(__name__)
 
 
-def get_profile_tools(
-    router: Any, user_context: Dict[str, Any]
-) -> List[Dict[str, Any]]:
+def get_profile_tools(router: Any, user_context: Dict[str, Any]) -> List[Dict[str, Any]]:
     """
     Get MCP tool definitions for profile agent operations.
 
@@ -216,9 +214,7 @@ def get_profile_tools(
             ]
         )
 
-    logger.info(
-        f"Generated {len(tools)} profile tools for user with permissions: {permissions}"
-    )
+    logger.info(f"Generated {len(tools)} profile tools for user with permissions: {permissions}")
 
     return tools
 
@@ -322,9 +318,7 @@ async def execute_update_customer_phone(
     return await router.route_to_profile("profile_update_customer_phone", tool_input)
 
 
-async def execute_update_customer_preferences(
-    router: Any, user_context: Dict[str, Any], **preferences
-) -> str:
+async def execute_update_customer_preferences(router: Any, user_context: Dict[str, Any], **preferences) -> str:
     """
     Execute update_customer_preferences tool.
 
@@ -338,9 +332,7 @@ async def execute_update_customer_preferences(
     """
     tool_input = {**preferences, "user_context": user_context}
 
-    return await router.route_to_profile(
-        "profile_update_customer_preferences", tool_input
-    )
+    return await router.route_to_profile("profile_update_customer_preferences", tool_input)
 
 
 async def execute_update_customer_email(

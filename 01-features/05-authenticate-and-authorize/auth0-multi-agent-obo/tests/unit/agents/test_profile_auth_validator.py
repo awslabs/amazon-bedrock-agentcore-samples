@@ -87,9 +87,7 @@ class TestValidateForwardedClaims:
         result = validate_forwarded_claims({})
 
         assert result["valid"] is False
-        assert (
-            "Missing" in result["error"]
-        )  # Could be "Missing required claims" or "Missing authentication claims"
+        assert "Missing" in result["error"]  # Could be "Missing required claims" or "Missing authentication claims"
 
     def test_none_claims_returns_error(self):
         """Test that None claims returns error."""

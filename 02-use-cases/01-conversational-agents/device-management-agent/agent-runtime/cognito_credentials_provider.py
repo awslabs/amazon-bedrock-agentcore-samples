@@ -94,9 +94,7 @@ def store_provider_name_in_env(provider_name: str):
                 env_lines = f.readlines()
 
         # Remove existing COGNITO_PROVIDER_NAME if it exists
-        env_lines = [
-            line for line in env_lines if not line.startswith("COGNITO_PROVIDER_NAME=")
-        ]
+        env_lines = [line for line in env_lines if not line.startswith("COGNITO_PROVIDER_NAME=")]
 
         # Add the new provider name
         env_lines.append(f"COGNITO_PROVIDER_NAME={provider_name}\n")
@@ -127,9 +125,7 @@ def delete_provider_name_from_env():
             env_lines = f.readlines()
 
         # Remove COGNITO_PROVIDER_NAME line
-        env_lines = [
-            line for line in env_lines if not line.startswith("COGNITO_PROVIDER_NAME=")
-        ]
+        env_lines = [line for line in env_lines if not line.startswith("COGNITO_PROVIDER_NAME=")]
 
         # Write back to .env file
         with open(env_file_path, "w", encoding="utf-8") as f:
@@ -148,9 +144,7 @@ def create_cognito_provider(provider_name: str) -> dict:
         client_id = get_env_variable("COGNITO_CLIENT_ID", "Cognito app client ID")
         click.echo(f"✅ Retrieved client ID: {client_id}")
 
-        client_secret = get_env_variable(
-            "COGNITO_CLIENT_SECRET", "Cognito app client secret"
-        )
+        client_secret = get_env_variable("COGNITO_CLIENT_SECRET", "Cognito app client secret")
         click.echo(f"✅ Retrieved client secret: {client_secret[:4]}***")
 
         issuer = get_env_variable("COGNITO_DISCOVERY_URL", "OIDC discovery URL/issuer")
@@ -243,9 +237,7 @@ def cli(ctx):
 
 
 @cli.command()
-@click.option(
-    "--name", required=True, help="Name for the credential provider (required)"
-)
+@click.option("--name", required=True, help="Name for the credential provider (required)")
 def create(name):
     """Create a new Cognito OAuth2 credential provider."""
     click.echo(f"🚀 Creating Cognito credential provider: {name}")
@@ -314,9 +306,7 @@ def delete(name, confirm):
 
         # Remove provider name from .env file
         delete_provider_name_from_env()
-        click.echo(
-            "🎉 Credential provider deleted and removed from .env file successfully"
-        )
+        click.echo("🎉 Credential provider deleted and removed from .env file successfully")
     else:
         click.echo("❌ Failed to delete credential provider", err=True)
         sys.exit(1)

@@ -14,15 +14,9 @@ def get_langfuse_client():
     """
 
     os.environ["LANGFUSE_HOST"] = get_ssm_parameter("/langfuse/LANGFUSE_HOST")
-    os.environ["LANGFUSE_SECRET_KEY"] = get_ssm_parameter(
-        "/langfuse/LANGFUSE_SECRET_KEY"
-    )
-    os.environ["LANGFUSE_PUBLIC_KEY"] = get_ssm_parameter(
-        "/langfuse/LANGFUSE_PUBLIC_KEY"
-    )
-    os.environ["LANGFUSE_PROJECT_NAME"] = get_ssm_parameter(
-        "/langfuse/LANGFUSE_PROJECT_NAME"
-    )
+    os.environ["LANGFUSE_SECRET_KEY"] = get_ssm_parameter("/langfuse/LANGFUSE_SECRET_KEY")
+    os.environ["LANGFUSE_PUBLIC_KEY"] = get_ssm_parameter("/langfuse/LANGFUSE_PUBLIC_KEY")
+    os.environ["LANGFUSE_PROJECT_NAME"] = get_ssm_parameter("/langfuse/LANGFUSE_PROJECT_NAME")
     # Initialize Langfuse client
     client = get_client()
 
@@ -139,9 +133,7 @@ def run_experiment_with_evaluators(
     from langfuse import Evaluation
 
     # Define item-level evaluator
-    def response_length_evaluator(
-        *, input, output, expected_output, metadata, **kwargs
-    ):
+    def response_length_evaluator(*, input, output, expected_output, metadata, **kwargs):
         """
         Evaluates if the response has a reasonable length (not too short).
         """
@@ -159,9 +151,7 @@ def run_experiment_with_evaluators(
             comment=f"Response length: {len(response_text)} characters",
         )
 
-    def response_quality_evaluator(
-        *, input, output, expected_output, metadata, **kwargs
-    ):
+    def response_quality_evaluator(*, input, output, expected_output, metadata, **kwargs):
         """
         Basic quality check - ensures response doesn't contain error indicators.
         """
@@ -177,9 +167,7 @@ def run_experiment_with_evaluators(
         return Evaluation(
             name="response_quality",
             value=0.0 if has_errors else 1.0,
-            comment="Response contains error indicators"
-            if has_errors
-            else "Response appears valid",
+            comment="Response contains error indicators" if has_errors else "Response appears valid",
         )
 
     # Define run-level evaluator
@@ -188,14 +176,10 @@ def run_experiment_with_evaluators(
         Calculates average score across all item evaluations.
         """
         if not run_evaluations:
-            return Evaluation(
-                name="avg_score", value=0.0, comment="No evaluations to average"
-            )
+            return Evaluation(name="avg_score", value=0.0, comment="No evaluations to average")
 
         # Calculate average of response_quality scores
-        quality_scores = [
-            eval.value for eval in run_evaluations if eval.name == "response_quality"
-        ]
+        quality_scores = [eval.value for eval in run_evaluations if eval.name == "response_quality"]
 
         if quality_scores:
             avg = sum(quality_scores) / len(quality_scores)
@@ -205,9 +189,7 @@ def run_experiment_with_evaluators(
                 comment=f"Average response quality: {avg:.2%}",
             )
 
-        return Evaluation(
-            name="avg_response_quality", value=0.0, comment="No quality scores found"
-        )
+        return Evaluation(name="avg_response_quality", value=0.0, comment="No quality scores found")
 
     # Run experiment with evaluators
     return run_experiment(

@@ -99,9 +99,7 @@ def _scan(text: str) -> List[Dict[str, Any]]:
     except Exception:
         logger.exception("Comprehend DetectPiiEntities failed")
         raise
-    return [
-        e for e in resp.get("Entities", []) if e.get("Score", 0.0) >= _MIN_CONFIDENCE
-    ]
+    return [e for e in resp.get("Entities", []) if e.get("Score", 0.0) >= _MIN_CONFIDENCE]
 
 
 def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:

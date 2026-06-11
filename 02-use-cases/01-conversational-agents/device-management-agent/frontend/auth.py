@@ -208,9 +208,7 @@ async def validate_token(token: str) -> Dict[str, Any]:
     decoded_signature = base64url_decode(encoded_signature.encode())
 
     if not hmac_key.verify(message.encode(), decoded_signature):
-        raise HTTPException(
-            status_code=401, detail="Invalid token: Signature verification failed"
-        )
+        raise HTTPException(status_code=401, detail="Invalid token: Signature verification failed")
 
     # Verify the claims
     claims = jwt.get_unverified_claims(token)

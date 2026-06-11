@@ -11,21 +11,13 @@ app = BedrockAgentCoreApp()
 # Connect to AWS Documentation MCP server
 def create_aws_docs_client():
     return MCPClient(
-        lambda: stdio_client(
-            StdioServerParameters(
-                command="uvx", args=["awslabs.aws-documentation-mcp-server@latest"]
-            )
-        )
+        lambda: stdio_client(StdioServerParameters(command="uvx", args=["awslabs.aws-documentation-mcp-server@latest"]))
     )
 
 
 # Connect to AWS CDK MCP server
 def create_cdk_client():
-    return MCPClient(
-        lambda: stdio_client(
-            StdioServerParameters(command="uvx", args=["awslabs.cdk-mcp-server@latest"])
-        )
-    )
+    return MCPClient(lambda: stdio_client(StdioServerParameters(command="uvx", args=["awslabs.cdk-mcp-server@latest"])))
 
 
 # Function to create agent with tools from both MCP servers

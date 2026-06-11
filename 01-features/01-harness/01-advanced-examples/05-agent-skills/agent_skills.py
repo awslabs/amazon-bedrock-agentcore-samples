@@ -76,9 +76,7 @@ for i in range(12):
 print(f"\n=== Part 1: Attach Node.js Container ({NODE_CONTAINER}) ===")
 control.update_harness(
     harnessId=harness_id,
-    environmentArtifact={
-        "optionalValue": {"containerConfiguration": {"containerUri": NODE_CONTAINER}}
-    },
+    environmentArtifact={"optionalValue": {"containerConfiguration": {"containerUri": NODE_CONTAINER}}},
 )
 print("Waiting for container update...")
 for i in range(12):
@@ -121,9 +119,7 @@ print("✅ xlsx skill installed")
 resp = client.invoke_agent_runtime_command(
     agentRuntimeArn=harness_arn,
     runtimeSessionId=session_id,
-    body={
-        "command": "ls -la .agents/skills/xlsx/ 2>/dev/null && echo 'skill directory OK' || echo 'skill not found'"
-    },
+    body={"command": "ls -la .agents/skills/xlsx/ 2>/dev/null && echo 'skill directory OK' || echo 'skill not found'"},
 )
 for event in resp["stream"]:
     if "chunk" in event and "contentDelta" in event["chunk"]:

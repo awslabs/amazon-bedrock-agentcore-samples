@@ -51,9 +51,7 @@ def get_gateway_url() -> str:
     global _gateway_url
     if _gateway_url is None:
         try:
-            _gateway_url = get_ssm_parameter(
-                "/app/customersupportvpc/gateway/gateway_url"
-            )
+            _gateway_url = get_ssm_parameter("/app/customersupportvpc/gateway/gateway_url")
             logger.info("Gateway URL loaded from SSM")
         except Exception as e:
             logger.error(f"Failed to load gateway URL from SSM: {e}")
@@ -66,7 +64,9 @@ def get_mcp_url() -> str:
     global _mcp_url
     if _mcp_url is None:
         escaped_arn = urllib.parse.quote(MCP_ARN, safe="")
-        _mcp_url = f"https://bedrock-agentcore.{MCP_REGION}.amazonaws.com/runtimes/{escaped_arn}/invocations?qualifier=DEFAULT"
+        _mcp_url = (
+            f"https://bedrock-agentcore.{MCP_REGION}.amazonaws.com/runtimes/{escaped_arn}/invocations?qualifier=DEFAULT"
+        )
         logger.info("MCP URL constructed")
     return _mcp_url
 

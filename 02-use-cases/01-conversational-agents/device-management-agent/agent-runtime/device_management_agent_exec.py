@@ -78,9 +78,7 @@ parser = argparse.ArgumentParser(
 )
 
 parser.add_argument("--agent_arn", help="Agent Runtime ARN", required=True)
-parser.add_argument(
-    "--session_id", help="Session ID for continuing conversation", default="start"
-)
+parser.add_argument("--session_id", help="Session ID for continuing conversation", default="start")
 
 args = parser.parse_args()
 

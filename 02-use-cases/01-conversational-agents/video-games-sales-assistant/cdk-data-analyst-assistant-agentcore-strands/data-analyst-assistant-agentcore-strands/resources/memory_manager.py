@@ -18,9 +18,7 @@ from bedrock_agentcore.memory import MemoryClient
 from botocore.exceptions import ClientError
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 # Default configuration
@@ -68,9 +66,7 @@ def create_memory(
                     Type="String",
                     Overwrite=True,
                 )
-                logger.info(
-                    f"✅ Stored memory ID in parameter store: {parameter_store_name}"
-                )
+                logger.info(f"✅ Stored memory ID in parameter store: {parameter_store_name}")
             except Exception as e:
                 logger.error(f"❌ Failed to store memory ID in parameter store: {e}")
 
@@ -131,9 +127,7 @@ def main():
     """Main function to handle command line arguments"""
     if len(sys.argv) < 2:
         print("Usage: python3 memory_manager.py [create|list]")
-        print(
-            "  create <memory_name> <parameter_store_name> - Create a new memory resource"
-        )
+        print("  create <memory_name> <parameter_store_name> - Create a new memory resource")
         print("  list   - List all existing memory resources")
         sys.exit(1)
 
@@ -141,13 +135,9 @@ def main():
 
     if action == "create":
         if len(sys.argv) != 4:
-            print(
-                "Usage: python3 memory_manager.py create <memory_name> <parameter_store_name>"
-            )
+            print("Usage: python3 memory_manager.py create <memory_name> <parameter_store_name>")
             print("  <memory_name> - Name for the memory resource")
-            print(
-                "  <parameter_store_name> - Name of the parameter store to update with memory ID"
-            )
+            print("  <parameter_store_name> - Name of the parameter store to update with memory ID")
             sys.exit(1)
 
         memory_name = sys.argv[2]
@@ -156,9 +146,7 @@ def main():
         print(f"🚀 Creating memory resource: {memory_name}")
         print(f"📝 Parameter store name: {parameter_store_name}")
 
-        memory_id = create_memory(
-            memory_name=memory_name, parameter_store_name=parameter_store_name
-        )
+        memory_id = create_memory(memory_name=memory_name, parameter_store_name=parameter_store_name)
         if memory_id:
             print("✅ Memory created successfully!")
             print(f"Memory ID: {memory_id}")

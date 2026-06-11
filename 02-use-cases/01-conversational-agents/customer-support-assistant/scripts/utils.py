@@ -9,9 +9,7 @@ def _get_boto3_client(service_name: str):
     """Get boto3 client with region from environment or default session."""
     region = os.getenv("AWS_REGION") or boto3.session.Session().region_name
     if not region:
-        raise ValueError(
-            "AWS_REGION must be set either as environment variable or in AWS config"
-        )
+        raise ValueError("AWS_REGION must be set either as environment variable or in AWS config")
     return boto3.client(service_name, region_name=region)
 
 
@@ -23,9 +21,7 @@ def get_ssm_parameter(name: str, with_decryption: bool = True) -> str:
     return response["Parameter"]["Value"]
 
 
-def put_ssm_parameter(
-    name: str, value: str, parameter_type: str = "String", with_encryption: bool = False
-) -> None:
+def put_ssm_parameter(name: str, value: str, parameter_type: str = "String", with_encryption: bool = False) -> None:
     ssm = _get_boto3_client("ssm")
 
     put_params = {
@@ -60,9 +56,7 @@ def load_api_spec(file_path: str) -> list:
 def get_aws_region() -> str:
     region = os.getenv("AWS_REGION") or boto3.session.Session().region_name
     if not region:
-        raise ValueError(
-            "AWS_REGION must be set either as environment variable or in AWS config"
-        )
+        raise ValueError("AWS_REGION must be set either as environment variable or in AWS config")
     return region
 
 
@@ -122,8 +116,7 @@ def read_config(file_path: str) -> Dict[str, Any]:
                         return yaml.safe_load(content)
                     except yaml.YAMLError:
                         raise ValueError(
-                            f"Unsupported configuration file format: {ext}. "
-                            f"Supported formats: .json, .yaml, .yml"
+                            f"Unsupported configuration file format: {ext}. Supported formats: .json, .yaml, .yml"
                         )
 
     except json.JSONDecodeError as e:

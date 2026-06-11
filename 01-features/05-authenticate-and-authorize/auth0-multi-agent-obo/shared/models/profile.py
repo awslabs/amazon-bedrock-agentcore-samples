@@ -61,8 +61,6 @@ class CustomerProfile:
 
         # Convert datetime string to datetime object
         if isinstance(profile_data.get("last_updated"), str):
-            profile_data["last_updated"] = datetime.fromisoformat(
-                profile_data["last_updated"]
-            )
+            profile_data["last_updated"] = datetime.fromisoformat(profile_data["last_updated"])
 
         return cls(**profile_data)

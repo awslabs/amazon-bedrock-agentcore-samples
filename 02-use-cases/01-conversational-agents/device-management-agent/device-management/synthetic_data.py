@@ -196,10 +196,7 @@ def create_wifi_network(network_data):
         network_data["last_updated"] = datetime_to_iso(datetime.datetime.utcnow())
 
     # Convert float to Decimal for DynamoDB
-    if (
-        "signal_strength" in network_data
-        and network_data["signal_strength"] is not None
-    ):
+    if "signal_strength" in network_data and network_data["signal_strength"] is not None:
         network_data["signal_strength"] = Decimal(str(network_data["signal_strength"]))
 
     table.put_item(Item=network_data)
@@ -229,9 +226,7 @@ def create_user(user_data):
 
 
 # User Activity CRUD operations
-def create_user_activity(
-    user_id, activity_type, description=None, ip_address=None, timestamp=None
-):
+def create_user_activity(user_id, activity_type, description=None, ip_address=None, timestamp=None):
     """Create a new user activity"""
     table = dynamodb.Table(USER_ACTIVITIES_TABLE)
 
@@ -279,13 +274,10 @@ def generate_synthetic_data():
                 ]
             ),
             "firmware_version": f"5.{random.randint(1, 9)}.{random.randint(1, 20)}",
-            "connection_status": random.choice(
-                ["Connected", "Disconnected", "Dormant", "Maintenance", "Updating"]
-            ),
+            "connection_status": random.choice(["Connected", "Disconnected", "Dormant", "Maintenance", "Updating"]),
             "ip_address": f"192.168.{random.randint(1, 5)}.{random.randint(2, 254)}",
             "mac_address": f"00:40:9D:{random.randint(10, 99)}:{random.randint(10, 99)}:{random.randint(10, 99)}",
-            "last_connected": datetime.datetime.now()
-            - datetime.timedelta(hours=random.randint(0, 72)),
+            "last_connected": datetime.datetime.now() - datetime.timedelta(hours=random.randint(0, 72)),
         }
         device = create_device(device_data)
         devices.append(device)
@@ -375,13 +367,9 @@ def generate_synthetic_data():
             elif "default_policy" in key:
                 value = random.choice(["accept", "drop", "reject"])
             elif "wifi.channel" in key:
-                value = str(
-                    random.choice([1, 6, 11, 36, 40, 44, 48, 149, 153, 157, 161])
-                )
+                value = str(random.choice([1, 6, 11, 36, 40, 44, 48, 149, 153, 157, 161]))
             elif "wifi.country" in key:
-                value = random.choice(
-                    ["US", "CA", "GB", "DE", "FR", "JP", "AU", "NZ", "SG", "IN"]
-                )
+                value = random.choice(["US", "CA", "GB", "DE", "FR", "JP", "AU", "NZ", "SG", "IN"])
             elif "regulatory_domain" in key:
                 value = random.choice(["FCC", "ETSI", "TELEC", "KCC", "SRRC"])
             elif "timezone" in key:
@@ -420,17 +408,13 @@ def generate_synthetic_data():
             elif "password_complexity" in key:
                 value = random.choice(["low", "medium", "high", "extreme"])
             elif "band_selection" in key:
-                value = random.choice(
-                    ["auto", "4g_only", "5g_only", "4g_preferred", "5g_preferred"]
-                )
+                value = random.choice(["auto", "4g_only", "5g_only", "4g_preferred", "5g_preferred"])
             elif "roaming_allowed" in key:
                 value = random.choice(["true", "false"])
             else:
                 value = f"value-{random.randint(1, 100)}"
 
-            last_updated = datetime.datetime.now() - datetime.timedelta(
-                days=random.randint(0, 30)
-            )
+            last_updated = datetime.datetime.now() - datetime.timedelta(days=random.randint(0, 30))
             create_device_setting(device["device_id"], key, value, last_updated)
             device_settings_count += 1
 
@@ -448,18 +432,11 @@ def generate_synthetic_data():
                 "device_id": device["device_id"],
                 "network_id": f"wifi_{i}",
                 "ssid": f"Device-Net-{device['device_id']}-{i}",
-                "security_type": random.choice(
-                    ["wpa2-psk", "wpa3-psk", "open", "wpa-psk", "wep", "enterprise"]
-                ),
-                "enabled": random.choice(
-                    [True, True, False]
-                ),  # More likely to be enabled
-                "channel": random.choice(
-                    [1, 6, 11, 36, 40, 44, 48, 149, 153, 157, 161]
-                ),
+                "security_type": random.choice(["wpa2-psk", "wpa3-psk", "open", "wpa-psk", "wep", "enterprise"]),
+                "enabled": random.choice([True, True, False]),  # More likely to be enabled
+                "channel": random.choice([1, 6, 11, 36, 40, 44, 48, 149, 153, 157, 161]),
                 "signal_strength": random.uniform(-90.0, -30.0),
-                "last_updated": datetime.datetime.now()
-                - datetime.timedelta(days=random.randint(0, 30)),
+                "last_updated": datetime.datetime.now() - datetime.timedelta(days=random.randint(0, 30)),
             }
             create_wifi_network(network_data)
             wifi_count += 1
@@ -574,10 +551,8 @@ def generate_synthetic_data():
             "first_name": first_name,
             "last_name": last_name,
             "role": random.choice(roles),
-            "created_at": datetime.datetime.now()
-            - datetime.timedelta(days=random.randint(30, 365)),
-            "last_login": datetime.datetime.now()
-            - datetime.timedelta(hours=random.randint(1, 240)),
+            "created_at": datetime.datetime.now() - datetime.timedelta(days=random.randint(30, 365)),
+            "last_login": datetime.datetime.now() - datetime.timedelta(hours=random.randint(1, 240)),
         }
         user = create_user(user_data)
         users.append(user)
@@ -665,14 +640,10 @@ def generate_synthetic_data():
             elif activity_type == "vpn_disconnected":
                 description = "Disconnected from VPN"
             elif activity_type == "file_upload":
-                file_type = random.choice(
-                    ["configuration", "firmware", "certificate", "log", "backup"]
-                )
+                file_type = random.choice(["configuration", "firmware", "certificate", "log", "backup"])
                 description = f"Uploaded {file_type} file"
             elif activity_type == "file_download":
-                file_type = random.choice(
-                    ["configuration", "report", "log", "backup", "template"]
-                )
+                file_type = random.choice(["configuration", "report", "log", "backup", "template"])
                 description = f"Downloaded {file_type} file"
             elif activity_type == "settings_export":
                 device = random.choice(devices)
@@ -734,15 +705,11 @@ def generate_synthetic_data():
             elif activity_type == "certificate_installed":
                 device = random.choice(devices)
                 cert_type = random.choice(["SSL", "SSH", "CA", "client"])
-                description = (
-                    f"Installed {cert_type} certificate on device {device['name']}"
-                )
+                description = f"Installed {cert_type} certificate on device {device['name']}"
             elif activity_type == "certificate_expired":
                 device = random.choice(devices)
                 cert_type = random.choice(["SSL", "SSH", "CA", "client"])
-                description = (
-                    f"{cert_type} certificate expired on device {device['name']}"
-                )
+                description = f"{cert_type} certificate expired on device {device['name']}"
             elif activity_type == "security_scan":
                 device = random.choice(devices)
                 description = f"Performed security scan on device {device['name']}"
@@ -762,11 +729,11 @@ def generate_synthetic_data():
                 minutes=random.randint(0, 59),
             )
 
-            ip_address = f"{random.randint(10, 203)}.{random.randint(0, 255)}.{random.randint(0, 255)}.{random.randint(1, 254)}"
-
-            create_user_activity(
-                user["user_id"], activity_type, description, ip_address, timestamp
+            ip_address = (
+                f"{random.randint(10, 203)}.{random.randint(0, 255)}.{random.randint(0, 255)}.{random.randint(1, 254)}"
             )
+
+            create_user_activity(user["user_id"], activity_type, description, ip_address, timestamp)
             user_activities_count += 1
 
     print("Synthetic data generated successfully!")

@@ -93,9 +93,7 @@ app.add_middleware(
 )
 
 # Add CORS middleware
-cors_origins = os.getenv(
-    "CORS_ORIGINS", "http://localhost:8000,http://127.0.0.1:8000"
-).split(",")
+cors_origins = os.getenv("CORS_ORIGINS", "http://localhost:8000,http://127.0.0.1:8000").split(",")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,
@@ -225,10 +223,7 @@ def parse_streaming_response(content):
                 # Look for the final complete response first
                 if isinstance(json_data, dict):
                     # Check for complete type with final_response (highest priority)
-                    if (
-                        json_data.get("type") == "complete"
-                        and "final_response" in json_data
-                    ):
+                    if json_data.get("type") == "complete" and "final_response" in json_data:
                         final_response = json_data["final_response"]
                         logger.debug("Found complete type with final_response")
                         break
@@ -248,9 +243,7 @@ def parse_streaming_response(content):
                                     # Only use if it's a substantial response (likely the final one)
                                     if len(candidate_response) > 200:
                                         final_response = candidate_response
-                                        logger.debug(
-                                            "Found substantial message content"
-                                        )
+                                        logger.debug("Found substantial message content")
                                         break
 
             except json.JSONDecodeError as e:
@@ -288,10 +281,7 @@ def parse_streaming_response(content):
                                     delta = event["contentBlockDelta"]
                                     if isinstance(delta, dict) and "delta" in delta:
                                         delta_data = delta["delta"]
-                                        if (
-                                            isinstance(delta_data, dict)
-                                            and "text" in delta_data
-                                        ):
+                                        if isinstance(delta_data, dict) and "text" in delta_data:
                                             accumulated_text += delta_data["text"]
 
                         # Check for chunk data
@@ -312,9 +302,7 @@ def parse_streaming_response(content):
             return accumulated_text
         else:
             logger.warning("No response text found in streaming data")
-            return (
-                f"No parseable response found. Raw content sample: {content[:500]}..."
-            )
+            return f"No parseable response found. Raw content sample: {content[:500]}..."
 
     except Exception as e:
         logger.error(f"Error parsing streaming response: {str(e)}")
@@ -331,29 +319,19 @@ def format_response_text(text):
         text = text.strip()
 
         # Try to parse as JSON if it looks like JSON
-        if (text.startswith("{") and text.endswith("}")) or (
-            text.startswith("[") and text.endswith("]")
-        ):
+        if (text.startswith("{") and text.endswith("}")) or (text.startswith("[") and text.endswith("]")):
             try:
                 parsed = json.loads(text)
 
                 # If it's a list of devices, format it nicely
-                if (
-                    isinstance(parsed, list)
-                    and len(parsed) > 0
-                    and isinstance(parsed[0], dict)
-                ):
+                if isinstance(parsed, list) and len(parsed) > 0 and isinstance(parsed[0], dict):
                     # Check if this looks like a device list
                     if all("device_id" in item or "name" in item for item in parsed):
                         result = "📱 **Device List:**\n\n"
                         for i, item in enumerate(parsed, 1):
                             name = item.get("name", "Unknown Device")
-                            device_id = item.get(
-                                "device_id", item.get("id", "Unknown ID")
-                            )
-                            status = item.get(
-                                "connection_status", item.get("status", "Unknown")
-                            )
+                            device_id = item.get("device_id", item.get("id", "Unknown ID"))
+                            status = item.get("connection_status", item.get("status", "Unknown"))
 
                             # Add status emoji
                             status_emoji = {
@@ -410,17 +388,8 @@ def format_response_text(text):
                 continue
 
             # Convert numbered lists to bullet points
-            if (
-                line
-                and len(line) > 2
-                and line[0].isdigit()
-                and line[1:3] in [". ", ") "]
-            ):
-                line = (
-                    "• " + line.split(". ", 1)[1]
-                    if ". " in line
-                    else "• " + line.split(") ", 1)[1]
-                )
+            if line and len(line) > 2 and line[0].isdigit() and line[1:3] in [". ", ") "]:
+                line = "• " + line.split(". ", 1)[1] if ". " in line else "• " + line.split(") ", 1)[1]
 
             # Ensure consistent bullet formatting
             elif line.startswith("- "):
@@ -475,9 +444,7 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
             user_message = data.strip()
 
             if not user_message:
-                await manager.send_message(
-                    json.dumps({"error": "Empty message"}), client_id
-                )
+                await manager.send_message(json.dumps({"error": "Empty message"}), client_id)
                 continue
 
             try:
@@ -502,9 +469,7 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                             )
                         else:
                             # Continuing conversation with existing session ID
-                            logger.info(
-                                f"Continuing conversation with session ID: {session_id}"
-                            )
+                            logger.info(f"Continuing conversation with session ID: {session_id}")
                             boto3_response = agentcore_client.invoke_agent_runtime(
                                 agentRuntimeArn=AGENT_ARN,
                                 qualifier="DEFAULT",
@@ -514,21 +479,10 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                         # If successful, break out of retry loop
                         break
                     except ClientError as e:
-                        if (
-                            e.response["Error"]["Code"] == "throttlingException"
-                            and attempt < max_retries - 1
-                        ):
-                            logger.warning(
-                                f"Throttling exception encountered. Retrying in {retry_delay} seconds..."
-                            )
+                        if e.response["Error"]["Code"] == "throttlingException" and attempt < max_retries - 1:
+                            logger.warning(f"Throttling exception encountered. Retrying in {retry_delay} seconds...")
                             await manager.send_message(
-                                json.dumps(
-                                    {
-                                        "status": "Rate limited. Retrying in {} seconds...".format(
-                                            retry_delay
-                                        )
-                                    }
-                                ),
+                                json.dumps({"status": "Rate limited. Retrying in {} seconds...".format(retry_delay)}),
                                 client_id,
                             )
                             import asyncio
@@ -541,10 +495,7 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                             raise
 
                 # Update session ID
-                if (
-                    isinstance(boto3_response, dict)
-                    and "runtimeSessionId" in boto3_response
-                ):
+                if isinstance(boto3_response, dict) and "runtimeSessionId" in boto3_response:
                     new_session_id = boto3_response["runtimeSessionId"]
                     logger.info(f"Received new session ID: {new_session_id}")
                     manager.set_session_id(client_id, new_session_id)
@@ -557,9 +508,7 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                 if isinstance(boto3_response, dict) and "response" in boto3_response:
                     try:
                         response_stream = boto3_response["response"]
-                        logger.info(
-                            f"Processing streaming response, type: {type(response_stream)}"
-                        )
+                        logger.info(f"Processing streaming response, type: {type(response_stream)}")
 
                         # Handle StreamingBody properly
                         if hasattr(response_stream, "read"):
@@ -567,9 +516,7 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                             if isinstance(content, bytes):
                                 content = content.decode("utf-8")
 
-                            logger.debug(
-                                f"Raw streaming content received: {len(content)} characters"
-                            )
+                            logger.debug(f"Raw streaming content received: {len(content)} characters")
 
                             # Parse the streaming content to extract the final response
                             final_response_text = parse_streaming_response(content)
@@ -579,9 +526,7 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                                 await manager.send_message(
                                     json.dumps(
                                         {
-                                            "response": format_response_text(
-                                                final_response_text
-                                            ),
+                                            "response": format_response_text(final_response_text),
                                             "sessionId": new_session_id,
                                             "complete": True,
                                         }
@@ -590,11 +535,7 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                                 )
                             else:
                                 await manager.send_message(
-                                    json.dumps(
-                                        {
-                                            "error": "No valid response content found in streaming data"
-                                        }
-                                    ),
+                                    json.dumps({"error": "No valid response content found in streaming data"}),
                                     client_id,
                                 )
 
@@ -607,9 +548,7 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                                 await manager.send_message(
                                     json.dumps(
                                         {
-                                            "response": format_response_text(
-                                                final_response_text
-                                            ),
+                                            "response": format_response_text(final_response_text),
                                             "sessionId": new_session_id,
                                             "complete": True,
                                         }
@@ -618,27 +557,19 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                                 )
                             else:
                                 await manager.send_message(
-                                    json.dumps(
-                                        {"error": "No valid response content found"}
-                                    ),
+                                    json.dumps({"error": "No valid response content found"}),
                                     client_id,
                                 )
 
                     except Exception as e:
                         logger.error(f"Error processing streaming response: {str(e)}")
                         await manager.send_message(
-                            json.dumps(
-                                {
-                                    "error": f"Error processing streaming response: {str(e)}"
-                                }
-                            ),
+                            json.dumps({"error": f"Error processing streaming response: {str(e)}"}),
                             client_id,
                         )
                 else:
                     # Fallback to non-streaming response handling
-                    logger.warning(
-                        "No streaming response found, falling back to non-streaming"
-                    )
+                    logger.warning("No streaming response found, falling back to non-streaming")
                     response_content = str(boto3_response)
                     formatted_response = format_response_text(response_content)
 
@@ -661,19 +592,12 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                     error_message = "Too many requests. The service is temporarily throttling requests. Please try again in a few moments."
                 elif "AccessDeniedException" in error_message:
                     error_message = "Access denied. Please check your AWS credentials and permissions."
-                elif (
-                    "ValidationException" in error_message
-                    and "runtimeSessionId" in error_message
-                ):
+                elif "ValidationException" in error_message and "runtimeSessionId" in error_message:
                     error_message = "Invalid session ID. Starting a new conversation."
                     manager.set_session_id(client_id, None)  # Reset the session ID
 
                 await manager.send_message(
-                    json.dumps(
-                        {
-                            "error": f"Error processing request with agent: {error_message}"
-                        }
-                    ),
+                    json.dumps({"error": f"Error processing request with agent: {error_message}"}),
                     client_id,
                 )
 
@@ -703,9 +627,7 @@ async def login_page(request: Request):
         return RedirectResponse(url="/")
 
     login_url = get_login_url()
-    return templates.TemplateResponse(
-        "login.html", {"request": request, "login_url": login_url}
-    )
+    return templates.TemplateResponse("login.html", {"request": request, "login_url": login_url})
 
 
 @app.get("/auth/callback")
@@ -801,9 +723,7 @@ async def simple_login_page(request: Request):
     csrf_token = secrets.token_urlsafe(32)
     request.session["csrf_token"] = csrf_token
 
-    return templates.TemplateResponse(
-        "simple_login.html", {"request": request, "csrf_token": csrf_token}
-    )
+    return templates.TemplateResponse("simple_login.html", {"request": request, "csrf_token": csrf_token})
 
 
 @app.post("/simple-login")
@@ -835,9 +755,7 @@ async def simple_login_submit(
     }
 
     # Redirect to the main page
-    return RedirectResponse(
-        url="/", status_code=303
-    )  # 303 See Other is used for POST redirects
+    return RedirectResponse(url="/", status_code=303)  # 303 See Other is used for POST redirects
 
 
 if __name__ == "__main__":

@@ -327,9 +327,7 @@ def main():
     parser = argparse.ArgumentParser(
         description="Setup Cedar policies for Healthcare Appointment Agent",
     )
-    parser.add_argument(
-        "--cleanup", action="store_true", help="Remove engine and all policies"
-    )
+    parser.add_argument("--cleanup", action="store_true", help="Remove engine and all policies")
     args = parser.parse_args()
 
     print("=" * 70)

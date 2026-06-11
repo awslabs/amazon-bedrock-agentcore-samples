@@ -23,9 +23,7 @@ if not MEMORY_ID:
 
 
 def create_agent(session_id: str, actor_id: str):
-    memory_tools = _get_memory_tools(
-        memory_id=MEMORY_ID, session_id=session_id, actor_id=actor_id
-    )
+    memory_tools = _get_memory_tools(memory_id=MEMORY_ID, session_id=session_id, actor_id=actor_id)
     logger.info(f"Going to add memory tools: {memory_tools}")
 
     agent_tools = [web_search_impl] + memory_tools
@@ -46,9 +44,7 @@ async def _call_agent_stream(agent, prompt: str):
     try:
         logger.info(f"📝 Calling agent with prompt: {prompt[:100]}...")
         logger.info(f"🤖 Agent type: {type(agent)}")
-        logger.info(
-            f"🤖 Agent name: {agent.name if hasattr(agent, 'name') else 'unknown'}"
-        )
+        logger.info(f"🤖 Agent name: {agent.name if hasattr(agent, 'name') else 'unknown'}")
 
         # Use the proper OpenAI Agents SDK Runner with streaming
         logger.info("🏃 Starting streaming run")

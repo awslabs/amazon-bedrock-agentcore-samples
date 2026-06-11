@@ -57,7 +57,8 @@ def destroy_identity(region: str):
 def main():
     parser = argparse.ArgumentParser(description="Clean up Cursor AgentCore runtime")
     parser.add_argument(
-        "--keep-identity", action="store_true",
+        "--keep-identity",
+        action="store_true",
         help="Keep Identity resources (workload + credential provider) for reuse",
     )
     args = parser.parse_args()

@@ -21,9 +21,7 @@ parser.add_argument("--gateway_id", help="Gateway Id")
 # create boto3 session and client
 (boto_session, agentcore_client) = utils.create_agentcore_client()
 
-bedrock_client = boto_session.client(
-    "bedrock-runtime", region_name=os.getenv("aws_default_region")
-)
+bedrock_client = boto_session.client("bedrock-runtime", region_name=os.getenv("aws_default_region"))
 
 
 async def main(gateway_endpoint, jwt_token):
@@ -128,9 +126,7 @@ if __name__ == "__main__":
     if args.gateway_id is None:
         raise Exception("Gateway Id is required")
 
-    gatewayEndpoint = utils.get_gateway_endpoint(
-        agentcore_client=agentcore_client, gateway_id=args.gateway_id
-    )
+    gatewayEndpoint = utils.get_gateway_endpoint(agentcore_client=agentcore_client, gateway_id=args.gateway_id)
     print(f"Gateway Endpoint: {gatewayEndpoint}")
 
     jwtToken = utils.get_oath_token(boto_session)

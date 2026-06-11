@@ -37,9 +37,7 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 # Bedrock model ID for Claude
-BEDROCK_MODEL_ID = os.getenv(
-    "BEDROCK_MODEL_ID", "anthropic.claude-3-5-sonnet-20241022-v2:0"
-)
+BEDROCK_MODEL_ID = os.getenv("BEDROCK_MODEL_ID", "anthropic.claude-3-5-sonnet-20241022-v2:0")
 
 
 COORDINATOR_SYSTEM_PROMPT = """You are a Financial Services Coordinator Agent for a banking platform.
@@ -105,9 +103,7 @@ class CoordinatorAgent:
         self.token_exchange_service = token_exchange_service
 
         # Initialize Bedrock Runtime client
-        self.bedrock_client = bedrock_client or boto3.client(
-            "bedrock-runtime", region_name=os.getenv("AWS_REGION")
-        )
+        self.bedrock_client = bedrock_client or boto3.client("bedrock-runtime", region_name=os.getenv("AWS_REGION"))
 
         # Initialize conversation history
         self.conversation_history: List[Dict[str, Any]] = []
@@ -118,9 +114,7 @@ class CoordinatorAgent:
             f"customer_id={user_context.get('customer_id', 'unknown')}"
         )
 
-    async def process(
-        self, user_input: str, user_context: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    async def process(self, user_input: str, user_context: Dict[str, Any]) -> Dict[str, Any]:
         """
         Process a user request through the coordinator agent.
 
@@ -136,9 +130,7 @@ class CoordinatorAgent:
 
         try:
             # Add user message to conversation history
-            self.conversation_history.append(
-                {"role": "user", "content": [{"text": user_input}]}
-            )
+            self.conversation_history.append({"role": "user", "content": [{"text": user_input}]})
 
             # Get available tools based on permissions
             tools = self._get_available_tools(user_context)
@@ -156,16 +148,12 @@ class CoordinatorAgent:
 
             # Extract the final response text
             output_text = ""
-            for block in (
-                response.get("output", {}).get("message", {}).get("content", [])
-            ):
+            for block in response.get("output", {}).get("message", {}).get("content", []):
                 if "text" in block:
                     output_text += block["text"]
 
             # Add assistant response to conversation history
-            self.conversation_history.append(
-                {"role": "assistant", "content": [{"text": output_text}]}
-            )
+            self.conversation_history.append({"role": "assistant", "content": [{"text": output_text}]})
 
             duration_ms = (time.time() - start_time) * 1000
             logger.info(f"Request completed in {duration_ms:.2f}ms")
@@ -174,9 +162,7 @@ class CoordinatorAgent:
 
         except Exception as e:
             logger.error(f"Error processing request: {e}", exc_info=True)
-            return {
-                "output": "I apologize, but I encountered an error processing your request. Please try again."
-            }
+            return {"output": "I apologize, but I encountered an error processing your request. Please try again."}
 
     def _create_system_prompt(self, user_context: Dict[str, Any]) -> str:
         """Create a system prompt with user context embedded."""
@@ -204,9 +190,7 @@ Current Customer Context:
         """Check if the user has at least one accounts scope."""
         return bool(self.ACCOUNTS_SCOPES & set(permissions))
 
-    def _get_available_tools(
-        self, user_context: Dict[str, Any]
-    ) -> List[Dict[str, Any]]:
+    def _get_available_tools(self, user_context: Dict[str, Any]) -> List[Dict[str, Any]]:
         """Get available tools based on user permissions."""
         permissions = user_context.get("permissions", [])
 
@@ -217,9 +201,7 @@ Current Customer Context:
         if self._has_accounts_scopes(permissions):
             tools.extend(routing_tools)
         else:
-            tools.extend(
-                t for t in routing_tools if t.get("name") != "route_to_accounts_agent"
-            )
+            tools.extend(t for t in routing_tools if t.get("name") != "route_to_accounts_agent")
 
         if "profile:personal:read" in permissions:
             tools.extend(get_profile_tools(self.router, user_context))
@@ -253,9 +235,7 @@ Current Customer Context:
 
             logger.debug(f"Invoking Bedrock with model: {BEDROCK_MODEL_ID}")
             response = self.bedrock_client.converse(**request_params)
-            logger.debug(
-                f"Bedrock response stop_reason: {response.get('stopReason', '')}"
-            )
+            logger.debug(f"Bedrock response stop_reason: {response.get('stopReason', '')}")
 
             # Handle tool use if present
             stop_reason = response.get("stopReason", "")
@@ -279,9 +259,7 @@ Current Customer Context:
             logger.error(f"Bedrock API call failed: {e}", exc_info=True)
             raise
 
-    def _convert_tools_to_bedrock_format(
-        self, tools: List[Dict[str, Any]]
-    ) -> List[Dict[str, Any]]:
+    def _convert_tools_to_bedrock_format(self, tools: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Convert Anthropic-style tool definitions to Bedrock format."""
         bedrock_tools = []
         for tool in tools:
@@ -350,21 +328,15 @@ Current Customer Context:
         # is sent in the payload context for application-level scope enforcement.
         if tool_name.startswith("profile_") or tool_name == "route_to_profile_agent":
             exchanged_token = self._exchange_token_for_agent(jwt_token, "profile")
-            effective_tool = (
-                "profile_query" if tool_name == "route_to_profile_agent" else tool_name
-            )
+            effective_tool = "profile_query" if tool_name == "route_to_profile_agent" else tool_name
             return await self.router.route_to_profile(
                 effective_tool,
                 tool_input,
                 jwt_token,
                 session_id,
-                exchanged_token=exchanged_token
-                if exchanged_token != jwt_token
-                else None,
+                exchanged_token=exchanged_token if exchanged_token != jwt_token else None,
             )
-        elif (
-            tool_name.startswith("accounts_") or tool_name == "route_to_accounts_agent"
-        ):
+        elif tool_name.startswith("accounts_") or tool_name == "route_to_accounts_agent":
             # Check scopes before routing — prevents retry loops on permission denial
             permissions = self.user_context.get("permissions", [])
             if not self._has_accounts_scopes(permissions):
@@ -379,19 +351,13 @@ Current Customer Context:
                     }
                 )
             exchanged_token = self._exchange_token_for_agent(jwt_token, "accounts")
-            effective_tool = (
-                "accounts_query"
-                if tool_name == "route_to_accounts_agent"
-                else tool_name
-            )
+            effective_tool = "accounts_query" if tool_name == "route_to_accounts_agent" else tool_name
             return await self.router.route_to_accounts(
                 effective_tool,
                 tool_input,
                 jwt_token,
                 session_id,
-                exchanged_token=exchanged_token
-                if exchanged_token != jwt_token
-                else None,
+                exchanged_token=exchanged_token if exchanged_token != jwt_token else None,
             )
         elif tool_name == "get_available_agents":
             return self._get_available_agents_response()

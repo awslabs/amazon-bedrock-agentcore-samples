@@ -37,17 +37,11 @@ moniter_agent_id = get_ssm_parameter("/monitoragent/agentcore/runtime-id")
 websearch_agent_id = get_ssm_parameter("/websearchagent/agentcore/runtime-id")
 hostagent_agent_id = get_ssm_parameter("/hostagent/agentcore/runtime-id")
 
-moniter_agent_arn = (
-    f"arn:aws:bedrock-agentcore:{region}:{account_id}:runtime/{moniter_agent_id}"
-)
+moniter_agent_arn = f"arn:aws:bedrock-agentcore:{region}:{account_id}:runtime/{moniter_agent_id}"
 
-websearch_agent_arn = (
-    f"arn:aws:bedrock-agentcore:{region}:{account_id}:runtime/{websearch_agent_id}"
-)
+websearch_agent_arn = f"arn:aws:bedrock-agentcore:{region}:{account_id}:runtime/{websearch_agent_id}"
 
-hostagent_agent_arn = (
-    f"arn:aws:bedrock-agentcore:{region}:{account_id}:runtime/{hostagent_agent_id}"
-)
+hostagent_agent_arn = f"arn:aws:bedrock-agentcore:{region}:{account_id}:runtime/{hostagent_agent_id}"
 
 
 def create_message(*, role: Role = Role.user, text: str) -> Message:
@@ -95,9 +89,7 @@ def fetch_agent_card(bearer_token: str, agent_arn: str):
         return None
 
 
-async def send_message(
-    message: str, session_id: str, bearer_token: str, agent_arn: str
-):
+async def send_message(message: str, session_id: str, bearer_token: str, agent_arn: str):
     """Send a message to the agent using A2A protocol."""
     # Construct runtime URL
     escaped_agent_arn = quote(agent_arn, safe="")
@@ -112,9 +104,7 @@ async def send_message(
 
     print("\n🤖 Assistant: ", end="", flush=True)
 
-    async with httpx.AsyncClient(
-        timeout=DEFAULT_TIMEOUT, headers=headers
-    ) as httpx_client:
+    async with httpx.AsyncClient(timeout=DEFAULT_TIMEOUT, headers=headers) as httpx_client:
         # Get agent card from the runtime URL
         resolver = A2ACardResolver(httpx_client=httpx_client, base_url=runtime_url)
         agent_card = await resolver.get_agent_card()
@@ -205,11 +195,7 @@ def invoke_endpoint(
                 line = line.decode("utf-8")
 
                 # Skip lines that look like Python object representations (debug output)
-                if (
-                    line.startswith("content=")
-                    or line.startswith("  ")
-                    or "grounding_metadata=" in line
-                ):
+                if line.startswith("content=") or line.startswith("  ") or "grounding_metadata=" in line:
                     continue
 
                 if line.startswith("data: "):
@@ -234,11 +220,7 @@ def invoke_endpoint(
                             content = parsed.get("content", {})
                             parts = content.get("parts", [])
                             for part in parts:
-                                if (
-                                    isinstance(part, dict)
-                                    and "text" in part
-                                    and part["text"] is not None
-                                ):
+                                if isinstance(part, dict) and "text" in part and part["text"] is not None:
                                     text = part["text"]
                                     # Handle escaped newlines
                                     text = text.replace("\\n", "\n")
@@ -261,9 +243,7 @@ def invoke_endpoint(
                         pass
 
 
-def send_message_to_host(
-    message: str, session_id: str, bearer_token: str, agent_arn: str
-):
+def send_message_to_host(message: str, session_id: str, bearer_token: str, agent_arn: str):
     """Send a message to the host agent using direct endpoint invocation."""
     payload = {"prompt": message}
     invoke_endpoint(
@@ -336,9 +316,7 @@ if __name__ == "__main__":
 
             # Send message using direct endpoint invocation with reused token
             print("\n🤖 Assistant: ", end="", flush=True)
-            send_message_to_host(
-                user_input, session_id, bearer_token, selected_agent_arn
-            )
+            send_message_to_host(user_input, session_id, bearer_token, selected_agent_arn)
             print("\n")
     else:
         # For monitor and websearch agents, use A2A protocol
@@ -377,7 +355,5 @@ if __name__ == "__main__":
                 continue
 
             # Send message using async A2A protocol with reused token
-            asyncio.run(
-                send_message(user_input, session_id, bearer_token, selected_agent_arn)
-            )
+            asyncio.run(send_message(user_input, session_id, bearer_token, selected_agent_arn))
             print()

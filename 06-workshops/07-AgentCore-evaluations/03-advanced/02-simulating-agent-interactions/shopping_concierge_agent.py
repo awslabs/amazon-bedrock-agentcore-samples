@@ -154,13 +154,9 @@ def search_products(query: str, category: str = None, max_price: float = None) -
         # Simple keyword match against name + description + category
         text = f"{p['name']} {p['description']} {p['category']}".lower()
         if any(word in text for word in query_lower.split()):
-            results.append(
-                f"{pid}: {p['name']} - ${p['price']:.2f} | Rating: {p['rating']} | Stock: {p['stock']}"
-            )
+            results.append(f"{pid}: {p['name']} - ${p['price']:.2f} | Rating: {p['rating']} | Stock: {p['stock']}")
     if not results:
-        return f"No products found matching '{query}'" + (
-            f" in category '{category}'" if category else ""
-        )
+        return f"No products found matching '{query}'" + (f" in category '{category}'" if category else "")
     return "Products found:\n" + "\n".join(results)
 
 
@@ -194,9 +190,7 @@ def add_to_cart(product_id: str, quantity: int, session_id: str = "default") -> 
         if item["product_id"] == product_id:
             item["quantity"] += quantity
             return f"Updated cart: {p['name']} quantity is now {item['quantity']}."
-    cart.append(
-        {"product_id": product_id, "quantity": quantity, "price_each": p["price"]}
-    )
+    cart.append({"product_id": product_id, "quantity": quantity, "price_each": p["price"]})
     subtotal = quantity * p["price"]
     return f"Added {quantity}x {p['name']} to cart. Item subtotal: ${subtotal:.2f}."
 
@@ -214,17 +208,13 @@ def view_cart(session_id: str = "default") -> str:
         name = p.get("name", item["product_id"])
         subtotal = item["quantity"] * item["price_each"]
         total += subtotal
-        lines.append(
-            f"  - {name} x{item['quantity']} @ ${item['price_each']:.2f} = ${subtotal:.2f}"
-        )
+        lines.append(f"  - {name} x{item['quantity']} @ ${item['price_each']:.2f} = ${subtotal:.2f}")
     lines.append(f"\nCart Total: ${total:.2f}")
     return "Your cart:\n" + "\n".join(lines)
 
 
 @tool
-def checkout(
-    shipping_address: str, payment_method: str, session_id: str = "default"
-) -> str:
+def checkout(shipping_address: str, payment_method: str, session_id: str = "default") -> str:
     """Complete checkout for current cart. Returns order confirmation."""
     import uuid
 
@@ -251,8 +241,7 @@ def get_order_status(order_id: str) -> str:
     if not order:
         return f"Order {order_id} not found. Please check your order ID."
     items_desc = ", ".join(
-        f"{PRODUCTS.get(i['product_id'], {}).get('name', i['product_id'])} x{i['qty']}"
-        for i in order["items"]
+        f"{PRODUCTS.get(i['product_id'], {}).get('name', i['product_id'])} x{i['qty']}" for i in order["items"]
     )
     status = order["status"]
     total = order["total"]
@@ -273,9 +262,7 @@ def track_shipment(order_id: str) -> str:
     if not order:
         return f"No order found with ID {order_id}."
     if order["status"] != "in_transit":
-        return (
-            f"Order {order_id} is not currently in transit (status: {order['status']})."
-        )
+        return f"Order {order_id} is not currently in transit (status: {order['status']})."
     tracking = order.get("tracking", "N/A")
     est = order.get("est_delivery", "N/A")
     return (

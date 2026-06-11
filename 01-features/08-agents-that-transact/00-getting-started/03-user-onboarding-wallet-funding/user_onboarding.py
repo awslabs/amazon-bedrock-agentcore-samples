@@ -42,9 +42,7 @@ from utils import client_token, load_tutorial_env, print_summary, wait_for_statu
 
 from bedrock_agentcore.payments import PaymentManager
 
-ENV_FILE = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env"
-)
+ENV_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env")
 load_dotenv(ENV_FILE, override=True)
 
 # ── Configuration ─────────────────────────────────────────────────────────────
@@ -122,14 +120,10 @@ print_summary(
     status="ACTIVE",
 )
 
-redirect_url = inst["paymentInstrumentDetails"]["embeddedCryptoWallet"].get(
-    "redirectUrl"
-)
+redirect_url = inst["paymentInstrumentDetails"]["embeddedCryptoWallet"].get("redirectUrl")
 if redirect_url:
     print(f"\n  WalletHub: {redirect_url}")
-    print(
-        "  Share this URL with the end user to fund the wallet and grant signing permission."
-    )
+    print("  Share this URL with the end user to fund the wallet and grant signing permission.")
 
 # ── Section 2: Fund the Wallet ────────────────────────────────────────────────
 print("\n── Section 2: Fund the Wallet ──")
@@ -144,16 +138,12 @@ print("  4. Request 20 USDC (covers all tutorials)")
 if NETWORK == "ETHEREUM":
     print(f"  5. Verify: https://sepolia.basescan.org/address/{NEW_WALLET}")
 else:
-    print(
-        f"  5. Verify: https://explorer.solana.com/address/{NEW_WALLET}?cluster=devnet"
-    )
+    print(f"  5. Verify: https://explorer.solana.com/address/{NEW_WALLET}?cluster=devnet")
 print()
 print("Funding options by provider:")
 print("  Coinbase: WalletHub URL above → fund + delegate in one UI (Coinbase managed)")
 print("  Privy: Privy reference frontend at http://localhost:3000 → Add funds →")
-print(
-    "         Pay with card (Stripe onramp), Transfer from wallet, or Receive funds (QR)"
-)
+print("         Pay with card (Stripe onramp), Transfer from wallet, or Receive funds (QR)")
 print()
 print("ACTION REQUIRED: Fund the wallet before continuing.")
 
@@ -164,14 +154,10 @@ print()
 print("Provider-specific steps:")
 print()
 print("  Coinbase CDP:")
-print(
-    "    1. Open the WalletHub URL (printed above, or from Setup Tutorial 00 Step 7a)"
-)
+print("    1. Open the WalletHub URL (printed above, or from Setup Tutorial 00 Step 7a)")
 print("    2. Log in with LINKED_EMAIL")
 print("    3. Consent to delegated signing")
-print(
-    "    (Or: CDP Portal → Wallets → Embedded Wallet → Policies → Enable Delegated Signing)"
-)
+print("    (Or: CDP Portal → Wallets → Embedded Wallet → Policies → Enable Delegated Signing)")
 print()
 print("  Stripe (Privy):")
 print("    1. Open http://localhost:3000 in your browser")
@@ -299,14 +285,8 @@ for label, created in [
     available = sess.get("availableLimits", {}).get("availableSpendAmount", {})
     print(f"\n  {label} — {sid}")
     print(f"    Budget:    {budget.get('value', 'N/A')} {budget.get('currency', '')}")
-    print(
-        f"    Available: {available.get('value', 'N/A')} {available.get('currency', '')}"
-    )
+    print(f"    Available: {available.get('value', 'N/A')} {available.get('currency', '')}")
     print(f"    Expiry:    {sess.get('expiryTimeInMinutes', 'N/A')} minutes")
 
-print(
-    "\nDone. Sessions expire automatically. Instrument cleanup: run Tutorial 00 cleanup."
-)
-print(
-    "Next: python ../04-agent-with-coinbase-bazaar-via-gateway/bazaar_gateway_agent.py"
-)
+print("\nDone. Sessions expire automatically. Instrument cleanup: run Tutorial 00 cleanup.")
+print("Next: python ../04-agent-with-coinbase-bazaar-via-gateway/bazaar_gateway_agent.py")

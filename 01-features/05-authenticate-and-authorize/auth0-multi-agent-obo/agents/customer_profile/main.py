@@ -129,9 +129,7 @@ def _extract_claims(payload, context) -> dict:
             token = auth_header[7:]
             claims = _decode_jwt_claims(token)
             if claims:
-                logger.info(
-                    f"Claims extracted from Authorization header (sub={claims.get('sub', 'N/A')[:20]})"
-                )
+                logger.info(f"Claims extracted from Authorization header (sub={claims.get('sub', 'N/A')[:20]})")
                 return claims
 
     # Priority 3: Claims in payload (backward compatibility)
@@ -144,9 +142,7 @@ def _extract_claims(payload, context) -> dict:
         token = payload["access_token"]
         claims = _decode_jwt_claims(token)
         if claims:
-            logger.info(
-                f"Claims extracted from payload.access_token (sub={claims.get('sub', 'N/A')[:20]})"
-            )
+            logger.info(f"Claims extracted from payload.access_token (sub={claims.get('sub', 'N/A')[:20]})")
             return claims
 
     logger.warning("No JWT claims found in request")
@@ -229,9 +225,7 @@ async def invoke(payload, context=None):
 
         # Extract user context
         user_id = claims.get("sub")
-        customer_id = claims.get(
-            "https://agentcore.example.com/customer_id"
-        ) or claims.get("customer_id")
+        customer_id = claims.get("https://agentcore.example.com/customer_id") or claims.get("customer_id")
 
         logger.info(
             json.dumps(

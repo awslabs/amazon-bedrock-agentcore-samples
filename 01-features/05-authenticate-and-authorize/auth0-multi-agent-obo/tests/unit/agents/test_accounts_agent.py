@@ -19,9 +19,7 @@ def load_module_from_path(module_name, file_path):
     return module
 
 
-_accounts_path = os.path.join(
-    os.path.dirname(__file__), "..", "..", "..", "agents", "accounts"
-)
+_accounts_path = os.path.join(os.path.dirname(__file__), "..", "..", "..", "agents", "accounts")
 sys.path.insert(0, _accounts_path)
 
 # Load account tools first so agent can import them

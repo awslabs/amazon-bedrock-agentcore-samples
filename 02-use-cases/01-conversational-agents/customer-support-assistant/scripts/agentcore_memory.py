@@ -45,9 +45,7 @@ def cli(ctx):
 
 
 @cli.command()
-@click.option(
-    "--name", default="CustomerSupportMemory", help="Name of the memory resource"
-)
+@click.option("--name", default="CustomerSupportMemory", help="Name of the memory resource")
 @click.option(
     "--ssm-param",
     default="/app/customersupport/agentcore/memory_id",
@@ -104,9 +102,7 @@ def create(name, ssm_param, event_expiry_days):
         if "already exists" in str(e):
             click.echo("📋 Memory already exists, finding existing resource...")
             memories = memory_client.list_memories()
-            memory_id = next(
-                (m["id"] for m in memories if name in m.get("name", "")), None
-            )
+            memory_id = next((m["id"] for m in memories if name in m.get("name", "")), None)
             if memory_id:
                 click.echo(f"✅ Using existing memory: {memory_id}")
             else:
@@ -154,9 +150,7 @@ def delete(memory_id, ssm_param, confirm):
 
     # Confirmation prompt
     if not confirm:
-        if not click.confirm(
-            f"⚠️  Are you sure you want to delete memory {memory_id}? This action cannot be undone."
-        ):
+        if not click.confirm(f"⚠️  Are you sure you want to delete memory {memory_id}? This action cannot be undone."):
             click.echo("❌ Operation cancelled")
             sys.exit(0)
 

@@ -44,9 +44,7 @@ class Auth0Config:
             client_id=os.environ.get("AUTH0_CLIENT_ID", ""),
             client_secret=os.environ.get("AUTH0_CLIENT_SECRET", ""),
             audience=os.environ.get("AUTH0_AUDIENCE", ""),
-            claims_namespace=os.environ.get(
-                "AUTH0_CLAIMS_NAMESPACE", "https://agentcore.example.com/"
-            ),
+            claims_namespace=os.environ.get("AUTH0_CLAIMS_NAMESPACE", "https://agentcore.example.com/"),
         )
 
 

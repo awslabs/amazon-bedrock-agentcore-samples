@@ -171,9 +171,7 @@ def validate_bucket_name(bucket_name: str) -> Tuple[bool, str]:
 
 def check_s3_bucket_exists(bucket_name: str, region: str) -> bool:
     """Check if S3 bucket already exists"""
-    success, output = run_command(
-        ["aws", "s3api", "head-bucket", "--bucket", bucket_name, "--region", region]
-    )
+    success, output = run_command(["aws", "s3api", "head-bucket", "--bucket", bucket_name, "--region", region])
     return success
 
 
@@ -226,14 +224,10 @@ def save_config(config: Dict[str, Any], config_path: Path):
     print_success(f"Configuration saved to {config_path}")
 
 
-def run_command(
-    cmd: list, capture_output: bool = True, timeout: int = 10
-) -> Tuple[bool, str]:
+def run_command(cmd: list, capture_output: bool = True, timeout: int = 10) -> Tuple[bool, str]:
     """Run a shell command and return (success, output)"""
     try:
-        result = subprocess.run(
-            cmd, capture_output=capture_output, text=True, timeout=timeout, check=False
-        )
+        result = subprocess.run(cmd, capture_output=capture_output, text=True, timeout=timeout, check=False)
         return (result.returncode == 0, result.stdout.strip() if capture_output else "")
     except subprocess.TimeoutExpired:
         return (False, f"Command timed out after {timeout} seconds")
@@ -251,9 +245,7 @@ def check_aws_cli() -> bool:
         return True
     else:
         print_error("AWS CLI is not installed")
-        print_info(
-            "Install AWS CLI: https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html"
-        )
+        print_info("Install AWS CLI: https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html")
         return False
 
 
@@ -298,16 +290,12 @@ def check_aws_region() -> Tuple[bool, Optional[str]]:
 def check_bedrock_model_access() -> bool:
     """Check if Bedrock model access is enabled"""
     print_info("Checking Bedrock model access...")
-    success, output = run_command(
-        ["aws", "bedrock", "list-foundation-models", "--region", "us-west-2"]
-    )
+    success, output = run_command(["aws", "bedrock", "list-foundation-models", "--region", "us-west-2"])
     if success:
         print_success("Bedrock API is accessible")
         return True
     else:
-        print_warning(
-            "Could not verify Bedrock access (this may be a permissions issue)"
-        )
+        print_warning("Could not verify Bedrock access (this may be a permissions issue)")
         return True  # Don't fail on this check, just warn
 
 
@@ -357,9 +345,7 @@ def run_pre_checks() -> Tuple[bool, Optional[str]]:
     print()
 
     if not checks_passed:
-        print_error(
-            "Pre-deployment checks failed. Please fix the issues above before continuing."
-        )
+        print_error("Pre-deployment checks failed. Please fix the issues above before continuing.")
         return (False, None)
 
     print_success("All pre-deployment checks passed!")
@@ -425,11 +411,7 @@ def collect_deployment_parameters(account_id: str = None) -> Dict[str, Any]:
         while True:
             stack_name = get_input(
                 prompt,
-                default=(
-                    existing_config.get("stacks", {}).get(key, default_name)
-                    if use_existing
-                    else default_name
-                ),
+                default=(existing_config.get("stacks", {}).get(key, default_name) if use_existing else default_name),
                 required=True,
             )
             is_valid, message = validate_stack_name(stack_name)
@@ -456,9 +438,7 @@ def collect_deployment_parameters(account_id: str = None) -> Dict[str, Any]:
         is_valid, message = validate_cognito_domain_name(domain_name)
         if is_valid:
             config["cognito"] = {"domain_name": domain_name}
-            print_info(
-                "This unique domain prevents conflicts with existing Cognito User Pools"
-            )
+            print_info("This unique domain prevents conflicts with existing Cognito User Pools")
             break
         else:
             print_error(f"Invalid domain name: {message}")
@@ -471,11 +451,7 @@ def collect_deployment_parameters(account_id: str = None) -> Dict[str, Any]:
 
     admin_email = get_input(
         "Admin User Email",
-        default=(
-            existing_config.get("cognito", {}).get("admin_email")
-            if use_existing
-            else ""
-        ),
+        default=(existing_config.get("cognito", {}).get("admin_email") if use_existing else ""),
         required=True,
     )
 
@@ -489,9 +465,7 @@ def collect_deployment_parameters(account_id: str = None) -> Dict[str, Any]:
 
     config["cognito"]["admin_email"] = admin_email
 
-    print_info(
-        "Admin password (optional - leave empty for auto-generated temporary password)"
-    )
+    print_info("Admin password (optional - leave empty for auto-generated temporary password)")
     admin_password = get_secret(
         "Admin User Password (press Enter to skip)",
         required=False,
@@ -502,22 +476,16 @@ def collect_deployment_parameters(account_id: str = None) -> Dict[str, Any]:
     # S3 Bucket for Smithy Models with validation
     print_header("S3 Configuration")
     default_bucket = (
-        existing_config.get("s3", {}).get("smithy_models_bucket")
-        if use_existing
-        else generate_bucket_name(account_id)
+        existing_config.get("s3", {}).get("smithy_models_bucket") if use_existing else generate_bucket_name(account_id)
     )
 
     while True:
-        bucket_name = get_input(
-            "S3 Bucket Name for Smithy Models", default=default_bucket, required=True
-        )
+        bucket_name = get_input("S3 Bucket Name for Smithy Models", default=default_bucket, required=True)
         is_valid, message = validate_bucket_name(bucket_name)
         if is_valid:
             # Check if bucket already exists
             if check_s3_bucket_exists(bucket_name, "us-west-2"):
-                print_warning(
-                    f"Bucket '{bucket_name}' already exists. You can use it if you own it."
-                )
+                print_warning(f"Bucket '{bucket_name}' already exists. You can use it if you own it.")
                 use_existing_bucket = get_input(
                     "Use this existing bucket? (yes/no)", default="yes", required=True
                 ).lower() in ["yes", "y"]
@@ -565,9 +533,10 @@ def collect_deployment_parameters(account_id: str = None) -> Dict[str, Any]:
     ask_for_keys = True
     if use_existing and existing_config.get("api_keys"):
         print_info("Existing API keys found in configuration.")
-        update_keys = get_input(
-            "Do you want to update API keys? (yes/no)", default="no", required=True
-        ).lower() in ["yes", "y"]
+        update_keys = get_input("Do you want to update API keys? (yes/no)", default="no", required=True).lower() in [
+            "yes",
+            "y",
+        ]
         ask_for_keys = update_keys
         print()
 
@@ -577,9 +546,7 @@ def collect_deployment_parameters(account_id: str = None) -> Dict[str, Any]:
             "openai_model": get_input(
                 "OpenAI Model ID",
                 default=(
-                    existing_config.get("api_keys", {}).get(
-                        "openai_model", "gpt-4o-2024-08-06"
-                    )
+                    existing_config.get("api_keys", {}).get("openai_model", "gpt-4o-2024-08-06")
                     if use_existing
                     else "gpt-4o-2024-08-06"
                 ),
@@ -590,9 +557,7 @@ def collect_deployment_parameters(account_id: str = None) -> Dict[str, Any]:
             "google_model": get_input(
                 "Google Model ID",
                 default=(
-                    existing_config.get("api_keys", {}).get(
-                        "google_model", "gemini-2.5-flash"
-                    )
+                    existing_config.get("api_keys", {}).get("google_model", "gemini-2.5-flash")
                     if use_existing
                     else "gemini-2.5-flash"
                 ),
@@ -625,9 +590,7 @@ def display_configuration(config: Dict[str, Any]):
     if config["cognito"].get("admin_password"):
         print(f"  Admin User Password: {'*' * 20} (configured)")
     else:
-        print(
-            "  Admin User Password: (auto-generated temporary password will be sent via email)"
-        )
+        print("  Admin User Password: (auto-generated temporary password will be sent via email)")
 
     print(f"\n{Colors.BOLD}S3 Configuration:{Colors.END}")
     print(f"  Smithy Models Bucket: {config['s3']['smithy_models_bucket']}")
@@ -646,9 +609,7 @@ def display_configuration(config: Dict[str, Any]):
     print()
 
 
-def wait_for_stack(
-    stack_name: str, region: str, operation: str = "create", thread_safe: bool = False
-) -> bool:
+def wait_for_stack(stack_name: str, region: str, operation: str = "create", thread_safe: bool = False) -> bool:
     """Wait for CloudFormation stack operation to complete"""
     print_info(
         f"Waiting for stack '{stack_name}' to complete {operation}...",
@@ -687,9 +648,7 @@ def wait_for_stack(
                 )
                 return True
             elif operation == "create" and status == "CREATE_FAILED":
-                print_error(
-                    f"Stack '{stack_name}' creation failed!", thread_safe=thread_safe
-                )
+                print_error(f"Stack '{stack_name}' creation failed!", thread_safe=thread_safe)
                 return False
             elif operation == "create" and status == "ROLLBACK_COMPLETE":
                 print_error(
@@ -730,9 +689,7 @@ def create_s3_bucket_and_upload(config: Dict[str, Any]) -> bool:
         print_info(f"Bucket '{bucket_name}' already exists, skipping creation")
     else:
         print_info(f"Creating S3 bucket: {bucket_name}")
-        success, output = run_command(
-            ["aws", "s3", "mb", f"s3://{bucket_name}", "--region", region]
-        )
+        success, output = run_command(["aws", "s3", "mb", f"s3://{bucket_name}", "--region", region])
 
         if success:
             print_success(f"S3 bucket '{bucket_name}' created successfully!")
@@ -795,9 +752,7 @@ def upload_template_to_s3(
         print_success(f"Template uploaded to S3: {s3_key}", thread_safe=thread_safe)
         return s3_url
     else:
-        print_error(
-            f"Failed to upload template to S3: {output}", thread_safe=thread_safe
-        )
+        print_error(f"Failed to upload template to S3: {output}", thread_safe=thread_safe)
         return None
 
 
@@ -852,15 +807,11 @@ def deploy_stack(
     success, output = run_command(cmd)
 
     if success:
-        print_success(
-            f"Stack creation initiated: {stack_name}", thread_safe=thread_safe
-        )
+        print_success(f"Stack creation initiated: {stack_name}", thread_safe=thread_safe)
         return wait_for_stack(stack_name, region, "create", thread_safe=thread_safe)
     else:
         if "AlreadyExistsException" in output:
-            print_warning(
-                f"Stack '{stack_name}' already exists", thread_safe=thread_safe
-            )
+            print_warning(f"Stack '{stack_name}' already exists", thread_safe=thread_safe)
             return True
         print_error(f"Failed to create stack: {output}", thread_safe=thread_safe)
         return False
@@ -877,9 +828,7 @@ def deploy_cognito_stack(config: Dict[str, Any]) -> bool:
 
     # Only add AdminUserPassword if provided
     if config["cognito"].get("admin_password"):
-        parameters.append(
-            f"ParameterKey=AdminUserPassword,ParameterValue={config['cognito']['admin_password']}"
-        )
+        parameters.append(f"ParameterKey=AdminUserPassword,ParameterValue={config['cognito']['admin_password']}")
 
     return deploy_stack(
         stack_name=config["stacks"]["cognito"],
@@ -1023,9 +972,7 @@ def deploy_agents_parallel(config: Dict[str, Any]) -> bool:
     results = {}
     with ThreadPoolExecutor(max_workers=3) as executor:
         # Submit all deployment tasks
-        future_to_agent = {
-            executor.submit(deploy_agent_parallel, *task): task[0] for task in tasks
-        }
+        future_to_agent = {executor.submit(deploy_agent_parallel, *task): task[0] for task in tasks}
 
         # Collect results as they complete
         for future in as_completed(future_to_agent):
@@ -1038,9 +985,7 @@ def deploy_agents_parallel(config: Dict[str, Any]) -> bool:
                 else:
                     print_error(f"✗ {name} deployment failed", thread_safe=True)
             except Exception as e:
-                print_error(
-                    f"Exception deploying {agent_name}: {str(e)}", thread_safe=True
-                )
+                print_error(f"Exception deploying {agent_name}: {str(e)}", thread_safe=True)
                 results[agent_name] = False
 
     # Check if all deployments succeeded
@@ -1063,9 +1008,7 @@ def print_cleanup_instructions():
     print()
     print_header("Deployment Failed - Cleanup Required")
     print_error("Deployment has failed and may have left partial resources.")
-    print_warning(
-        "You should clean up any created resources before retrying deployment.\n"
-    )
+    print_warning("You should clean up any created resources before retrying deployment.\n")
 
     print_info("To clean up all created resources, run:")
     print(f"  {Colors.GREEN}uv run cleanup.py{Colors.END}\n")
@@ -1080,13 +1023,9 @@ def run_deployment(config: Dict[str, Any], parallel: bool = True) -> bool:
     print_header("Starting Deployment")
 
     if parallel:
-        print_warning(
-            "Using parallel deployment - approximately 7-10 minutes to complete"
-        )
+        print_warning("Using parallel deployment - approximately 7-10 minutes to complete")
     else:
-        print_warning(
-            "Using sequential deployment - approximately 10-15 minutes to complete"
-        )
+        print_warning("Using sequential deployment - approximately 10-15 minutes to complete")
 
     print_info("You can monitor progress in the AWS CloudFormation console\n")
 
@@ -1141,12 +1080,8 @@ def run_deployment(config: Dict[str, Any], parallel: bool = True) -> bool:
     print_header("Deployment Complete!")
     print_success("All stacks have been deployed successfully!")
     print_info("\nNext steps:")
-    print_info(
-        "1. Test individual agents: uv run test/connect_agent.py --agent <monitor|websearch|host>"
-    )
-    print_info(
-        "2. Run the React frontend: cd frontend && npm install && ./setup-env.sh && npm run dev"
-    )
+    print_info("1. Test individual agents: uv run test/connect_agent.py --agent <monitor|websearch|host>")
+    print_info("2. Run the React frontend: cd frontend && npm install && ./setup-env.sh && npm run dev")
     print_info("3. Use A2A Inspector or ADK Web for debugging")
 
     return True
@@ -1218,9 +1153,7 @@ def main():
                 else:
                     sys.exit(1)
             else:
-                print_info(
-                    "\nDeployment skipped. You can run this script again to deploy."
-                )
+                print_info("\nDeployment skipped. You can run this script again to deploy.")
                 print_info("Or manually run the AWS CLI commands for each stack.")
 
         else:

@@ -233,9 +233,7 @@ class OAuth2CallbackServer:
 
     def start(self):
         """Start the callback server in a background thread."""
-        config = uvicorn.Config(
-            self.app, host=self.host, port=self.port, log_level="error"
-        )
+        config = uvicorn.Config(self.app, host=self.host, port=self.port, log_level="error")
         self.server = uvicorn.Server(config)
 
         def run_server():

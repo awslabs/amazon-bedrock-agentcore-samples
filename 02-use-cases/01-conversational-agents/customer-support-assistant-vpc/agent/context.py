@@ -17,19 +17,11 @@ class CustomerSupportContext:
 
     # Context variables for application state
     _mcp_token_ctx: ContextVar[Optional[str]] = ContextVar("mcp_token", default=None)
-    _gateway_token_ctx: ContextVar[Optional[str]] = ContextVar(
-        "gateway_token", default=None
-    )
+    _gateway_token_ctx: ContextVar[Optional[str]] = ContextVar("gateway_token", default=None)
     _agent_ctx: ContextVar[Optional[Agent]] = ContextVar("agent", default=None)
-    _mcp_client_ctx: ContextVar[Optional[MCPClient]] = ContextVar(
-        "mcp_client", default=None
-    )
-    _gateway_client_ctx: ContextVar[Optional[MCPClient]] = ContextVar(
-        "gateway_client", default=None
-    )
-    _aurora_mcp_client_ctx: ContextVar[Optional[MCPClient]] = ContextVar(
-        "aurora_client", default=None
-    )
+    _mcp_client_ctx: ContextVar[Optional[MCPClient]] = ContextVar("mcp_client", default=None)
+    _gateway_client_ctx: ContextVar[Optional[MCPClient]] = ContextVar("gateway_client", default=None)
+    _aurora_mcp_client_ctx: ContextVar[Optional[MCPClient]] = ContextVar("aurora_client", default=None)
 
     @classmethod
     def get_mcp_token_ctx(

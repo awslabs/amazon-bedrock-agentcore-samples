@@ -193,8 +193,7 @@ class SubAgentRouter:
             input_text = self._build_input_text(tool_name, tool_input)
 
             logger.info(
-                f"Invoking {agent_name} agent (ID: {agent_id}) "
-                f"for tool: {tool_name} via HTTP with exchanged token"
+                f"Invoking {agent_name} agent (ID: {agent_id}) for tool: {tool_name} via HTTP with exchanged token"
             )
             logger.debug(f"Input: {input_text}")
             logger.debug(f"Session ID: {session_id}")
@@ -339,13 +338,9 @@ class SubAgentRouter:
 
         # Route based on intent
         if intent_lower == "profile" and self.profile_agent_id:
-            return await self.route_to_profile(
-                "profile_query", tool_input, jwt_token, session_id
-            )
+            return await self.route_to_profile("profile_query", tool_input, jwt_token, session_id)
         elif intent_lower == "accounts" and self.accounts_agent_id:
-            return await self.route_to_accounts(
-                "accounts_query", tool_input, jwt_token, session_id
-            )
+            return await self.route_to_accounts("accounts_query", tool_input, jwt_token, session_id)
         else:
             return json.dumps(
                 {

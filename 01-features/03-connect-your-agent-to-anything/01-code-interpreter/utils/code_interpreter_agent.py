@@ -22,9 +22,7 @@ from bedrock_agentcore.tools.code_interpreter_client import code_session
 # ── Configuration ─────────────────────────────────────────────────────────────
 
 REGION = os.getenv("AWS_DEFAULT_REGION", "us-west-2")
-MODEL_ID = os.getenv(
-    "BEDROCK_MODEL_ID", "global.anthropic.claude-haiku-4-5-20251001-v1:0"
-)
+MODEL_ID = os.getenv("BEDROCK_MODEL_ID", "global.anthropic.claude-haiku-4-5-20251001-v1:0")
 
 SYSTEM_PROMPT = """You are a data-analysis assistant that validates every answer
 through code execution.
@@ -81,9 +79,7 @@ def execute_python(code: str, description: str = "") -> str:
         result = json.dumps(event["result"])
         return result
 
-    return json.dumps(
-        {"isError": True, "content": [{"type": "text", "text": "No result"}]}
-    )
+    return json.dumps({"isError": True, "content": [{"type": "text", "text": "No result"}]})
 
 
 # ── Factory ────────────────────────────────────────────────────────────────────

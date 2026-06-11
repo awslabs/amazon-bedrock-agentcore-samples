@@ -120,9 +120,7 @@ async def invoke(payload, context=None):
         # Get user input from payload
         user_input = ""
         if payload:
-            user_input = (
-                payload.get("prompt", "") or payload.get("input_text", "") or ""
-            )
+            user_input = payload.get("prompt", "") or payload.get("input_text", "") or ""
 
         # Extract user context from payload (JWT claims may be in payload or context)
         user_context = extract_user_context_from_payload(payload, context)
@@ -131,11 +129,7 @@ async def invoke(payload, context=None):
         # Note: extract_user_context_from_payload now prioritizes payload.access_token over internal tokens
         if not user_context.get("access_token") and payload:
             payload_token = payload.get("access_token", "")
-            if (
-                payload_token
-                and isinstance(payload_token, str)
-                and payload_token.strip()
-            ):
+            if payload_token and isinstance(payload_token, str) and payload_token.strip():
                 user_context["access_token"] = payload_token
                 logger.info("access_token set from payload (safety net)")
 
@@ -281,9 +275,7 @@ def decode_jwt_claims(token: str) -> Dict[str, Any]:
         return {}
 
 
-def extract_user_context_from_payload(
-    payload: Dict[str, Any], context
-) -> Dict[str, Any]:
+def extract_user_context_from_payload(payload: Dict[str, Any], context) -> Dict[str, Any]:
     """
     Extract user context from JWT token.
 
@@ -346,9 +338,7 @@ def extract_user_context_from_payload(
                         "event": "jwt_claims_decoded",
                         "timestamp": datetime.now(timezone.utc).isoformat(),
                         "claims_keys": list(claims.keys()),
-                        "sub": claims.get("sub", "N/A")[:20]
-                        if claims.get("sub")
-                        else "N/A",
+                        "sub": claims.get("sub", "N/A")[:20] if claims.get("sub") else "N/A",
                     }
                 )
             )
@@ -361,16 +351,12 @@ def extract_user_context_from_payload(
             # Extract RBAC permissions (role-based, per-user) as primary source
             permissions = claims.get("permissions", [])
             if permissions:
-                user_context["permissions"] = (
-                    permissions if isinstance(permissions, list) else [permissions]
-                )
+                user_context["permissions"] = permissions if isinstance(permissions, list) else [permissions]
             else:
                 # Fallback to scope claim for non-Auth0 IdPs that don't have RBAC
                 scope = claims.get("scope", "")
                 if scope:
-                    user_context["permissions"] = (
-                        scope.split() if isinstance(scope, str) else scope
-                    )
+                    user_context["permissions"] = scope.split() if isinstance(scope, str) else scope
 
             logger.info(
                 f"Authorization source: {'permissions claim (RBAC)' if permissions else 'scope claim (fallback)'}, values={user_context['permissions']}"
@@ -386,10 +372,7 @@ def extract_user_context_from_payload(
                         user_context["permissions"].extend(value)
 
             # Fallback: use user_id as customer_id if not in custom claims
-            if (
-                user_context["customer_id"] == "unknown"
-                and user_context["user_id"] != "unknown"
-            ):
+            if user_context["customer_id"] == "unknown" and user_context["user_id"] != "unknown":
                 user_context["customer_id"] = user_context["user_id"]
 
     logger.info(

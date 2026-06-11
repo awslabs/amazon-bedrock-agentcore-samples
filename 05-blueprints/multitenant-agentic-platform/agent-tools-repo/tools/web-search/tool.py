@@ -81,19 +81,13 @@ def web_search(query: str, max_results: int = 5) -> str:
                     if not snippet_elem:
                         snippet_elem = result_div.find("td", class_="result-snippet")
 
-                    snippet = (
-                        snippet_elem.get_text(strip=True)
-                        if snippet_elem
-                        else "No description available"
-                    )
+                    snippet = snippet_elem.get_text(strip=True) if snippet_elem else "No description available"
 
                     # Clean up the link (DuckDuckGo sometimes uses redirect URLs)
                     if link.startswith("/"):
                         # Try to extract the actual URL from redirect
                         if "uddg=" in link:
-                            link = urllib.parse.unquote(
-                                link.split("uddg=")[1].split("&")[0]
-                            )
+                            link = urllib.parse.unquote(link.split("uddg=")[1].split("&")[0])
 
                     results.append({"title": title, "snippet": snippet, "url": link})
             except Exception:

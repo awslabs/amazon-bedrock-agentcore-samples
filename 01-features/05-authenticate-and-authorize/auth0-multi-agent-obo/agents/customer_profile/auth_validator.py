@@ -70,8 +70,7 @@ def validate_scope_for_profile(claims: Dict[str, Any]) -> Dict[str, Any]:
 
     if not present_profile_scopes:
         error_msg = (
-            f"Insufficient scopes for profile agent. "
-            f"Requires at least one of {sorted(all_accepted)}, got: {scopes}"
+            f"Insufficient scopes for profile agent. Requires at least one of {sorted(all_accepted)}, got: {scopes}"
         )
         logger.warning(
             json.dumps(
@@ -212,9 +211,7 @@ def validate_forwarded_claims(claims: Dict[str, Any]) -> Dict[str, Any]:
             logger.warning("No customer_id in custom claims")
             return {"valid": False, "error": "Missing customer identity information"}
 
-    logger.info(
-        f"Validated customer_id={customer_id}, customer_number={customer_number}"
-    )
+    logger.info(f"Validated customer_id={customer_id}, customer_number={customer_number}")
 
     return {
         "valid": True,
@@ -224,9 +221,7 @@ def validate_forwarded_claims(claims: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def authorize_profile_access(
-    claims: Dict[str, Any], requested_customer_id: str
-) -> bool:
+def authorize_profile_access(claims: Dict[str, Any], requested_customer_id: str) -> bool:
     """
     Check if the authenticated user can access the requested profile.
 
@@ -241,9 +236,7 @@ def authorize_profile_access(
     """
     # Get customer_id from claims (check both locations)
     claims_namespace = "https://agentcore.example.com/"
-    customer_id = claims.get(f"{claims_namespace}customer_id") or claims.get(
-        "customer_id"
-    )
+    customer_id = claims.get(f"{claims_namespace}customer_id") or claims.get("customer_id")
 
     if not customer_id:
         logger.error("No customer_id in claims")
@@ -273,8 +266,7 @@ def get_audit_context(claims: Dict[str, Any]) -> Dict[str, Any]:
     """
     claims_namespace = "https://agentcore.example.com/"
     return {
-        "customer_id": claims.get(f"{claims_namespace}customer_id")
-        or claims.get("customer_id"),
+        "customer_id": claims.get(f"{claims_namespace}customer_id") or claims.get("customer_id"),
         "sub": claims.get("sub"),
         "email": claims.get("email"),
         "timestamp": datetime.utcnow().isoformat(),

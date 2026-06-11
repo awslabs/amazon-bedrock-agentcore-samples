@@ -78,9 +78,7 @@ def _tool_name(attrs: Dict[str, Any], span_name: str) -> str:
     return span_name or ""
 
 
-def _filter_trace_spans(
-    spans: Iterable[Dict[str, Any]], target: Dict[str, Any]
-) -> List[Dict[str, Any]]:
+def _filter_trace_spans(spans: Iterable[Dict[str, Any]], target: Dict[str, Any]) -> List[Dict[str, Any]]:
     trace_ids = (target or {}).get("traceIds") or []
     if not trace_ids:
         return list(spans)
@@ -196,12 +194,10 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             label = "FAIL"
 
         failure_summary = "; ".join(
-            f"{_tool_name(r[0].get('attributes') or {}, r[0].get('name') or '')}: {r[2]}"
-            for r in failed[:5]
+            f"{_tool_name(r[0].get('attributes') or {}, r[0].get('name') or '')}: {r[2]}" for r in failed[:5]
         )
-        explanation = (
-            f"{len(passed)}/{len(tool_spans)} tool-call spans produced schema-valid output."
-            + (f" Failures: {failure_summary}" if failure_summary else "")
+        explanation = f"{len(passed)}/{len(tool_spans)} tool-call spans produced schema-valid output." + (
+            f" Failures: {failure_summary}" if failure_summary else ""
         )
 
         return {"label": label, "value": round(score, 4), "explanation": explanation}

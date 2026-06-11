@@ -57,9 +57,7 @@ def run_sql_query(sql_query: str) -> str:
                 }
             )
 
-        response = execute_statement(
-            sql_query, aurora_resource_arn, readonly_secret_arn, database_name
-        )
+        response = execute_statement(sql_query, aurora_resource_arn, readonly_secret_arn, database_name)
 
         if "error" in response:
             return json.dumps({"error": f"Query execution failed: {response['error']}"})
@@ -76,9 +74,7 @@ def run_sql_query(sql_query: str) -> str:
                 record = {}
                 for i, value in enumerate(row):
                     for value_type, actual_value in value.items():
-                        if value_type == "numberValue" and isinstance(
-                            actual_value, Decimal
-                        ):
+                        if value_type == "numberValue" and isinstance(actual_value, Decimal):
                             record[column_names[i]] = float(actual_value)
                         else:
                             record[column_names[i]] = actual_value

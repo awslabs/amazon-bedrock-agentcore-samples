@@ -56,8 +56,6 @@ def init_aws(
     load_env_credentials(env_path=env_path, verbose=verbose)
 
     # Create and validate AWS session
-    session, region, account_id = get_aws_session(
-        profile_name=profile_name, region_name=region_name, verbose=verbose
-    )
+    session, region, account_id = get_aws_session(profile_name=profile_name, region_name=region_name, verbose=verbose)
 
     return session, region, account_id

@@ -49,9 +49,7 @@ def get_callback_base_url() -> str:
         with open("/opt/ml/metadata/resource-metadata.json", "r") as f:
             data = json.load(f)
         client = boto3.client("sagemaker")
-        resp = client.describe_space(
-            DomainId=data["DomainId"], SpaceName=data["SpaceName"]
-        )
+        resp = client.describe_space(DomainId=data["DomainId"], SpaceName=data["SpaceName"])
         return resp["Url"] + f"/proxy/{PORT}"
     except Exception:
         return f"http://localhost:{PORT}"
@@ -119,9 +117,7 @@ class TokenCallbackServer:
             return {"access_token": _captured_token or ""}
 
         @self.app.get(CALLBACK_ENDPOINT)
-        async def callback(
-            code: str = None, error: str = None, error_description: str = None
-        ):
+        async def callback(code: str = None, error: str = None, error_description: str = None):
             global _captured_token
 
             if error:
@@ -136,9 +132,7 @@ class TokenCallbackServer:
                 raise HTTPException(status_code=400, detail="Missing code parameter")
 
             redirect_uri = get_callback_url()
-            token_url = (
-                f"https://login.microsoftonline.com/{self.tenant_id}/oauth2/v2.0/token"
-            )
+            token_url = f"https://login.microsoftonline.com/{self.tenant_id}/oauth2/v2.0/token"
             r = requests.post(  # nosec B113
                 token_url,
                 data={
@@ -167,9 +161,7 @@ class TokenCallbackServer:
             print(f"{'=' * 60}")
             print(f"\nFULL ACCESS TOKEN:\n{_captured_token}")
             print(f"\n{'=' * 60}")
-            return HTMLResponse(
-                "<h2>✅ Token captured! Return to the notebook.</h2>", status_code=200
-            )
+            return HTMLResponse("<h2>✅ Token captured! Return to the notebook.</h2>", status_code=200)
 
 
 def main():

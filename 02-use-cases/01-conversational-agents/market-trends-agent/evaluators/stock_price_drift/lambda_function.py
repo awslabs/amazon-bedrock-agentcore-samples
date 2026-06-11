@@ -25,9 +25,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 DRIFT_THRESHOLD_PCT = float(os.environ.get("DRIFT_THRESHOLD_PCT", "2.0"))
-YAHOO_CHART_URL = (
-    "https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?interval=1d&range=1d"
-)
+YAHOO_CHART_URL = "https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?interval=1d&range=1d"
 HTTP_TIMEOUT_S = 4.0
 USER_AGENT = "market-trends-eval/1.0"
 
@@ -69,9 +67,7 @@ def _response_text(spans: Iterable[Dict[str, Any]]) -> str:
     return "\n".join(chunks)
 
 
-def _filter_trace_spans(
-    spans: Iterable[Dict[str, Any]], target: Dict[str, Any]
-) -> List[Dict[str, Any]]:
+def _filter_trace_spans(spans: Iterable[Dict[str, Any]], target: Dict[str, Any]) -> List[Dict[str, Any]]:
     trace_ids = (target or {}).get("traceIds") or []
     if not trace_ids:
         return list(spans)
@@ -242,9 +238,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 checked.append(f"{ticker}=unverifiable")
                 continue
             drift_pct = abs(quoted - ref) / ref * 100.0
-            checked.append(
-                f"{ticker} quoted={quoted:.2f} ref={ref:.2f} drift={drift_pct:.2f}%"
-            )
+            checked.append(f"{ticker} quoted={quoted:.2f} ref={ref:.2f} drift={drift_pct:.2f}%")
             if drift_pct > DRIFT_THRESHOLD_PCT:
                 drifts.append(f"{ticker} ({drift_pct:.2f}%)")
 
@@ -252,8 +246,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             return {
                 "label": "PASS",
                 "value": 1.0,
-                "explanation": "All ticker+price pairs within drift threshold. "
-                + "; ".join(checked),
+                "explanation": "All ticker+price pairs within drift threshold. " + "; ".join(checked),
             }
 
         return {

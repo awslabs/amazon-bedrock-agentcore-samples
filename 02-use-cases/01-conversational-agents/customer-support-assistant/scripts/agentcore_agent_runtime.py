@@ -20,9 +20,7 @@ def delete_agent_runtime(agent_name: str, dry_run: bool):
     """
 
     try:
-        agentcore_control_client = boto3.client(
-            "bedrock-agentcore-control", region_name=get_aws_region()
-        )
+        agentcore_control_client = boto3.client("bedrock-agentcore-control", region_name=get_aws_region())
     except Exception as e:
         click.echo(f"Error creating AWS client: {e}", err=True)
         sys.exit(1)

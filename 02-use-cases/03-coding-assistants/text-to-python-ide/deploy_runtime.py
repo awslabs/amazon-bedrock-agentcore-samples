@@ -28,13 +28,13 @@ from dotenv import load_dotenv
 load_dotenv(override=True)
 
 # ── Config ────────────────────────────────────────────────────────────────────
-REGION        = os.getenv("AWS_REGION", "us-east-1")
-ACCOUNT_ID    = boto3.client("sts").get_caller_identity()["Account"]
-RUNTIME_NAME  = "text_to_python_ide"
+REGION = os.getenv("AWS_REGION", "us-east-1")
+ACCOUNT_ID = boto3.client("sts").get_caller_identity()["Account"]
+RUNTIME_NAME = "text_to_python_ide"
 ECR_REPO_NAME = "bedrock-agentcore-text-to-python-ide"
-IMAGE_TAG     = "latest"
-ECR_URI       = f"{ACCOUNT_ID}.dkr.ecr.{REGION}.amazonaws.com/{ECR_REPO_NAME}"
-IMAGE_URI     = f"{ECR_URI}:{IMAGE_TAG}"
+IMAGE_TAG = "latest"
+ECR_URI = f"{ACCOUNT_ID}.dkr.ecr.{REGION}.amazonaws.com/{ECR_REPO_NAME}"
+IMAGE_URI = f"{ECR_URI}:{IMAGE_TAG}"
 ENDPOINT_NAME = "DEFAULT"
 
 EXECUTION_ROLE_NAME = "AgentCoreTextToPythonIDERole"
@@ -57,6 +57,7 @@ if os.path.exists(_guardrail_info_path):
         GUARDRAIL_ID = _gi.get("guardrail_id", "")
         GUARDRAIL_VERSION = _gi.get("guardrail_version", "")
 
+
 # ── Helpers ───────────────────────────────────────────────────────────────────
 def run(cmd: list[str], **kwargs):
     print(f"  $ {' '.join(cmd)}")
@@ -78,23 +79,23 @@ def ensure_execution_role(iam_client):
     if not role_exists:
         print(f"🔧 Creating execution role: {EXECUTION_ROLE_NAME}...")
 
-        trust_policy = json.dumps({
-            "Version": "2012-10-17",
-            "Statement": [
-                {
-                    "Effect": "Allow",
-                    "Principal": {
-                        "Service": "bedrock-agentcore.amazonaws.com"
-                    },
-                    "Action": "sts:AssumeRole"
-                }
-            ]
-        })
+        trust_policy = json.dumps(
+            {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Principal": {"Service": "bedrock-agentcore.amazonaws.com"},
+                        "Action": "sts:AssumeRole",
+                    }
+                ],
+            }
+        )
 
         iam_client.create_role(
             RoleName=EXECUTION_ROLE_NAME,
             AssumeRolePolicyDocument=trust_policy,
-            Description="Execution role for AgentCore Text-to-Python IDE runtime"
+            Description="Execution role for AgentCore Text-to-Python IDE runtime",
         )
 
     # Always ensure all required policies are attached
@@ -114,6 +115,7 @@ def ensure_execution_role(iam_client):
 
     if not role_exists:
         import time
+
         print("   Waiting 10s for IAM propagation...")
         time.sleep(10)
 
@@ -139,10 +141,14 @@ def docker_login(ecr_client):
     token = ecr_client.get_authorization_token()
     auth = token["authorizationData"][0]
     import base64
+
     user, password = base64.b64decode(auth["authorizationToken"]).decode().split(":", 1)
     registry = auth["proxyEndpoint"]
-    run([CONTAINER_ENGINE, "login", "--username", user, "--password-stdin", registry],
-        input=password.encode(), capture_output=True)
+    run(
+        [CONTAINER_ENGINE, "login", "--username", user, "--password-stdin", registry],
+        input=password.encode(),
+        capture_output=True,
+    )
     print(f"✅ {CONTAINER_ENGINE} login successful")
 
 
@@ -180,12 +186,10 @@ def deploy(cp_client):
             env_vars["BEDROCK_GUARDRAIL_VERSION"] = GUARDRAIL_VERSION
         cp_client.update_agent_runtime(
             agentRuntimeId=runtime_id,
-            agentRuntimeArtifact={
-                "containerConfiguration": {"containerUri": IMAGE_URI}
-            },
+            agentRuntimeArtifact={"containerConfiguration": {"containerUri": IMAGE_URI}},
             roleArn=EXECUTION_ROLE_ARN,
             networkConfiguration={"networkMode": "PUBLIC"},
-            environmentVariables=env_vars
+            environmentVariables=env_vars,
         )
         print("✅ Runtime updated")
     else:
@@ -201,16 +205,10 @@ def deploy(cp_client):
         response = cp_client.create_agent_runtime(
             agentRuntimeName=RUNTIME_NAME,
             description="Text-to-Python IDE agent — generates and executes Python code via AgentCore",
-            agentRuntimeArtifact={
-                "containerConfiguration": {
-                    "containerUri": IMAGE_URI
-                }
-            },
+            agentRuntimeArtifact={"containerConfiguration": {"containerUri": IMAGE_URI}},
             roleArn=EXECUTION_ROLE_ARN,
-            networkConfiguration={
-                "networkMode": "PUBLIC"
-            },
-            environmentVariables=env_vars
+            networkConfiguration={"networkMode": "PUBLIC"},
+            environmentVariables=env_vars,
         )
         runtime_id = response["agentRuntimeId"]
         print(f"✅ Runtime created: {runtime_id}")
@@ -218,6 +216,7 @@ def deploy(cp_client):
     # Wait for READY
     print("⏳ Waiting for runtime to reach READY status...")
     import time
+
     for _ in range(60):
         rt = cp_client.get_agent_runtime(agentRuntimeId=runtime_id)
         status = rt.get("status")
@@ -236,28 +235,19 @@ def deploy(cp_client):
 
     # Create DEFAULT endpoint if it doesn't exist
     try:
-        ep = cp_client.get_agent_runtime_endpoint(
-            agentRuntimeId=runtime_id,
-            endpointName=ENDPOINT_NAME
-        )
+        ep = cp_client.get_agent_runtime_endpoint(agentRuntimeId=runtime_id, endpointName=ENDPOINT_NAME)
         print(f"✅ Endpoint '{ENDPOINT_NAME}' already exists")
     except ClientError as e:
         if e.response["Error"]["Code"] == "ResourceNotFoundException":
             print(f"\n🔌 Creating endpoint '{ENDPOINT_NAME}'...")
-            cp_client.create_agent_runtime_endpoint(
-                agentRuntimeId=runtime_id,
-                name=ENDPOINT_NAME
-            )
+            cp_client.create_agent_runtime_endpoint(agentRuntimeId=runtime_id, name=ENDPOINT_NAME)
         else:
             raise
 
     # Wait for endpoint READY
     print("⏳ Waiting for endpoint to reach READY status...")
     for _ in range(60):
-        ep = cp_client.get_agent_runtime_endpoint(
-            agentRuntimeId=runtime_id,
-            endpointName=ENDPOINT_NAME
-        )
+        ep = cp_client.get_agent_runtime_endpoint(agentRuntimeId=runtime_id, endpointName=ENDPOINT_NAME)
         ep_status = ep.get("status")
         print(f"   Endpoint status: {ep_status}")
         if ep_status == "READY":
@@ -286,6 +276,7 @@ def teardown(cp_client):
     cp_client.delete_agent_runtime(agentRuntimeId=runtime_id)
 
     import time
+
     print("⏳ Waiting for deletion to complete...")
     for _ in range(60):
         try:
@@ -311,12 +302,9 @@ def main():
     parser.add_argument("--skip-build", action="store_true", help="Skip Docker build/push (use existing image)")
     args = parser.parse_args()
 
-    session = boto3.Session(
-        profile_name=os.getenv("AWS_PROFILE", "default"),
-        region_name=REGION
-    )
+    session = boto3.Session(profile_name=os.getenv("AWS_PROFILE", "default"), region_name=REGION)
     ecr_client = session.client("ecr")
-    cp_client  = session.client("bedrock-agentcore-control")
+    cp_client = session.client("bedrock-agentcore-control")
 
     if args.teardown:
         teardown(cp_client)
@@ -350,7 +338,7 @@ def main():
     with open("runtime_info.json", "w") as f:
         json.dump(info, f, indent=2)
 
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("✅ Deployment complete!")
     print(f"   Runtime ARN : {runtime_arn}")
     print(f"   Runtime ID  : {runtime_id}")
@@ -360,7 +348,7 @@ def main():
     print("   python invoke_runtime.py --action execute_code  --code 'print(2+2)'")
     print("\nTo tear down:")
     print("   python deploy_runtime.py --teardown")
-    print("="*60)
+    print("=" * 60)
 
 
 if __name__ == "__main__":

@@ -126,16 +126,10 @@ LAMBDA_TARGETS = {
 def get_aws_context(region: str = None) -> tuple:
     """Return (session, REGION, ACCOUNT_ID) — never hardcodes either."""
     session = boto3.Session()
-    resolved_region = (
-        region or session.region_name or os.environ.get("AWS_DEFAULT_REGION")
-    )
+    resolved_region = region or session.region_name or os.environ.get("AWS_DEFAULT_REGION")
     if not resolved_region:
-        raise ValueError(
-            "AWS region not configured. Pass --region or run: aws configure"
-        )
-    account_id = session.client(
-        "sts", region_name=resolved_region
-    ).get_caller_identity()["Account"]
+        raise ValueError("AWS region not configured. Pass --region or run: aws configure")
+    account_id = session.client("sts", region_name=resolved_region).get_caller_identity()["Account"]
     return session, resolved_region, account_id
 
 
@@ -176,9 +170,7 @@ def get_or_create_lambda_role(iam_client, account_id: str) -> str:
     return resp["Role"]["Arn"]
 
 
-def deploy_lambda(
-    lambda_client, function_name: str, js_path: str, role_arn: str
-) -> str:
+def deploy_lambda(lambda_client, function_name: str, js_path: str, role_arn: str) -> str:
     """Deploy a Node.js Lambda function from a .js file. Returns the function ARN."""
     print(f"  Deploying Lambda: {function_name}...")
     with open(js_path, "r", encoding="utf-8") as f:
@@ -206,24 +198,18 @@ def deploy_lambda(
         waiter.wait(FunctionName=function_name)
         return resp["FunctionArn"]
     except lambda_client.exceptions.ResourceConflictException:
-        resp = lambda_client.update_function_code(
-            FunctionName=function_name, ZipFile=zip_bytes
-        )
+        resp = lambda_client.update_function_code(FunctionName=function_name, ZipFile=zip_bytes)
         print(f"    Updated: {resp['FunctionArn']}")
         waiter = lambda_client.get_waiter("function_updated_v2")
         waiter.wait(FunctionName=function_name)
         return resp["FunctionArn"]
 
 
-def add_lambda_gateway_permission(
-    lambda_client, function_name: str, gateway_arn: str
-) -> None:
+def add_lambda_gateway_permission(lambda_client, function_name: str, gateway_arn: str) -> None:
     """Add resource policy allowing bedrock-agentcore.amazonaws.com to invoke the Lambda."""
     statement_id = "AllowAgentCoreGateway"
     try:
-        lambda_client.remove_permission(
-            FunctionName=function_name, StatementId=statement_id
-        )
+        lambda_client.remove_permission(FunctionName=function_name, StatementId=statement_id)
     except Exception:
         pass
     lambda_client.add_permission(
@@ -233,9 +219,7 @@ def add_lambda_gateway_permission(
         Principal="bedrock-agentcore.amazonaws.com",
         SourceArn=gateway_arn,
     )
-    print(
-        f"    Permission added: {function_name} → bedrock-agentcore (source: gateway)"
-    )
+    print(f"    Permission added: {function_name} → bedrock-agentcore (source: gateway)")
 
 
 def deploy_all_lambdas(lambda_client, iam_client, account_id: str) -> dict:
@@ -275,10 +259,7 @@ def setup_gateway(region: str, lambda_arns: dict) -> dict:
                 raise RuntimeError("EXISTING_GATEWAY")  # handled below
     except RuntimeError as e:
         if "EXISTING_GATEWAY" in str(e):
-            print(
-                f"  Gateway '{GATEWAY_NAME}' already exists.\n"
-                "  To redeploy, run cleanup.py first."
-            )
+            print(f"  Gateway '{GATEWAY_NAME}' already exists.\n  To redeploy, run cleanup.py first.")
             raise
 
     # Create Cognito OAuth authorizer
@@ -361,9 +342,7 @@ def create_policy_engine(region: str) -> dict:
     return {"policyEngineId": engine_id, "policyEngineArn": engine_arn}
 
 
-def attach_policy_engine_to_gateway(
-    region: str, gateway_info: dict, engine_arn: str
-) -> None:
+def attach_policy_engine_to_gateway(region: str, gateway_info: dict, engine_arn: str) -> None:
     """Attach the Policy Engine to the Gateway in ENFORCE mode."""
     print("\n[Step 4] Attaching Policy Engine to Gateway (ENFORCE mode)...")
     client = boto3.client("bedrock-agentcore-control", region_name=region)
@@ -381,9 +360,7 @@ def attach_policy_engine_to_gateway(
 
     print("  Waiting for Gateway READY...")
     for _ in range(60):
-        status = client.get_gateway(gatewayIdentifier=gateway_info["gateway_id"]).get(
-            "status"
-        )
+        status = client.get_gateway(gatewayIdentifier=gateway_info["gateway_id"]).get("status")
         if status == "READY":
             break
         if status in ("FAILED", "UPDATE_UNSUCCESSFUL"):
@@ -396,9 +373,7 @@ def attach_policy_engine_to_gateway(
 # ── Step 4: Cognito Lambda Trigger (for Custom JWT Claims) ───────────────────
 
 
-def create_or_update_claims_lambda(
-    lambda_client, iam_client, region: str, account_id: str, claims: dict
-) -> str:
+def create_or_update_claims_lambda(lambda_client, iam_client, region: str, account_id: str, claims: dict) -> str:
     """
     Create/update the Cognito Pre-Token-Generation Lambda that injects custom
     claims into every JWT token. Returns the Lambda ARN.
@@ -451,9 +426,7 @@ def lambda_handler(event, context):
         waiter.wait(FunctionName=CLAIMS_LAMBDA_NAME)
         return resp["FunctionArn"]
     except lambda_client.exceptions.ResourceConflictException:
-        resp = lambda_client.update_function_code(
-            FunctionName=CLAIMS_LAMBDA_NAME, ZipFile=zip_bytes
-        )
+        resp = lambda_client.update_function_code(FunctionName=CLAIMS_LAMBDA_NAME, ZipFile=zip_bytes)
         waiter = lambda_client.get_waiter("function_updated_v2")
         waiter.wait(FunctionName=CLAIMS_LAMBDA_NAME)
         return resp["FunctionArn"]
@@ -500,12 +473,8 @@ def configure_cognito_trigger(
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Deploy AgentCore Policy demo resources"
-    )
-    parser.add_argument(
-        "--region", default=None, help="AWS region (defaults to configured default)"
-    )
+    parser = argparse.ArgumentParser(description="Deploy AgentCore Policy demo resources")
+    parser.add_argument("--region", default=None, help="AWS region (defaults to configured default)")
     args = parser.parse_args()
 
     _, REGION, ACCOUNT_ID = get_aws_context(args.region)
@@ -535,9 +504,7 @@ def main():
     # Step 5: Create Cognito Lambda trigger for custom claims
     print("\n[Step 5] Configuring Cognito Lambda trigger for custom JWT claims...")
     user_pool_id = gateway_info["client_info"]["user_pool_id"]
-    claims_lambda_arn = create_or_update_claims_lambda(
-        lambda_client, iam_client, REGION, ACCOUNT_ID, DEFAULT_CLAIMS
-    )
+    claims_lambda_arn = create_or_update_claims_lambda(lambda_client, iam_client, REGION, ACCOUNT_ID, DEFAULT_CLAIMS)
     configure_cognito_trigger(
         cognito_client,
         lambda_client,

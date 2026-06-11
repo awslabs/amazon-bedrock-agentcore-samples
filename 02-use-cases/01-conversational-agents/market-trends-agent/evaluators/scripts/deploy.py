@@ -114,16 +114,12 @@ def _account_id(session: boto3.Session) -> str:
 # --------------------------------------------------------------------------- IAM
 
 
-def _ensure_role(
-    iam, role_name: str, trust_policy: Dict[str, Any], description: str
-) -> str:
+def _ensure_role(iam, role_name: str, trust_policy: Dict[str, Any], description: str) -> str:
     try:
         resp = iam.get_role(RoleName=role_name)
         LOG.info("Role %s exists", role_name)
         # Refresh trust policy in case it drifted.
-        iam.update_assume_role_policy(
-            RoleName=role_name, PolicyDocument=json.dumps(trust_policy)
-        )
+        iam.update_assume_role_policy(RoleName=role_name, PolicyDocument=json.dumps(trust_policy))
         return resp["Role"]["Arn"]
     except ClientError as e:
         if e.response["Error"]["Code"] != "NoSuchEntity":
@@ -139,12 +135,8 @@ def _ensure_role(
     return resp["Role"]["Arn"]
 
 
-def _ensure_inline_policy(
-    iam, role_name: str, policy_name: str, policy: Dict[str, Any]
-) -> None:
-    iam.put_role_policy(
-        RoleName=role_name, PolicyName=policy_name, PolicyDocument=json.dumps(policy)
-    )
+def _ensure_inline_policy(iam, role_name: str, policy_name: str, policy: Dict[str, Any]) -> None:
+    iam.put_role_policy(RoleName=role_name, PolicyName=policy_name, PolicyDocument=json.dumps(policy))
 
 
 def _eval_exec_role(iam) -> str:
@@ -214,17 +206,13 @@ def _zip_function(folder: Path) -> bytes:
     return buf.getvalue()
 
 
-def _deploy_lambda(
-    lam, folder_name: str, function_name: str, timeout: int, lambda_role_arn: str
-) -> str:
+def _deploy_lambda(lam, folder_name: str, function_name: str, timeout: int, lambda_role_arn: str) -> str:
     zip_bytes = _zip_function(ROOT / folder_name)
     waiter = lam.get_waiter("function_updated")
     try:
         lam.get_function(FunctionName=function_name)
         LOG.info("Updating Lambda %s", function_name)
-        lam.update_function_code(
-            FunctionName=function_name, ZipFile=zip_bytes, Publish=True
-        )
+        lam.update_function_code(FunctionName=function_name, ZipFile=zip_bytes, Publish=True)
         waiter.wait(FunctionName=function_name)
         lam.update_function_configuration(
             FunctionName=function_name,
@@ -298,9 +286,7 @@ def _find_evaluator(cp, base_name: str) -> Optional[str]:
         kwargs = {"nextToken": token}
 
 
-def _register_evaluator(
-    cp, name: str, level: str, lambda_arn: str, timeout: int
-) -> str:
+def _register_evaluator(cp, name: str, level: str, lambda_arn: str, timeout: int) -> str:
     existing = _find_evaluator(cp, name)
     if existing:
         LOG.info("Evaluator %s already registered: %s", name, existing)
@@ -335,9 +321,7 @@ def _runtime_log_group_and_service(agent_runtime_arn: str) -> Tuple[str, str]:
     return log_group, service_name
 
 
-def _create_online_config(
-    cp, evaluator_ids: List[str], exec_role_arn: str, agent_runtime_arn: str
-) -> str:
+def _create_online_config(cp, evaluator_ids: List[str], exec_role_arn: str, agent_runtime_arn: str) -> str:
     log_group, service_name = _runtime_log_group_and_service(agent_runtime_arn)
 
     # If an active config with our name prefix exists, reuse it.
@@ -404,9 +388,7 @@ def main() -> int:
         eid = _register_evaluator(cp, ev_name, level, fn_arn, timeout)
         evaluator_ids.append(eid)
 
-    cfg_id = _create_online_config(
-        cp, evaluator_ids, eval_exec_role_arn, agent_runtime_arn
-    )
+    cfg_id = _create_online_config(cp, evaluator_ids, eval_exec_role_arn, agent_runtime_arn)
 
     summary = {
         "accountId": account_id,

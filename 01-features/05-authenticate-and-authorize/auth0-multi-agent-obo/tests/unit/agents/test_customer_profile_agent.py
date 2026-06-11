@@ -9,9 +9,7 @@ import os
 from unittest.mock import patch
 
 # Add agents directory to path and clear cached modules for clean import
-_profile_path = os.path.join(
-    os.path.dirname(__file__), "..", "..", "..", "agents", "customer_profile"
-)
+_profile_path = os.path.join(os.path.dirname(__file__), "..", "..", "..", "agents", "customer_profile")
 sys.path.insert(0, _profile_path)
 
 # Clear any cached agent/profile_service modules to ensure we load the right one
@@ -154,10 +152,7 @@ class TestCustomerProfileAgentProcessQuery:
 
         assert result["status"] == "success"
         # Response includes preferred contact method
-        assert (
-            "email" in result["response"].lower()
-            or "Preferred Contact" in result["response"]
-        )
+        assert "email" in result["response"].lower() or "Preferred Contact" in result["response"]
 
     @patch.object(_agent_module, "profile_service")
     def test_profile_not_found(self, mock_profile_service):

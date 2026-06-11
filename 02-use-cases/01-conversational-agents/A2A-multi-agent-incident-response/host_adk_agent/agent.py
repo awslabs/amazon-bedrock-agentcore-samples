@@ -23,15 +23,11 @@ account_id, region = get_aws_info()
 
 MONITOR_AGENT_ID = get_ssm_parameter("/monitoragent/agentcore/runtime-id")
 MONITOR_PROVIDER_NAME = get_ssm_parameter("/monitoragent/agentcore/provider-name")
-MONITOR_AGENT_ARN = (
-    f"arn:aws:bedrock-agentcore:{region}:{account_id}:runtime/{MONITOR_AGENT_ID}"
-)
+MONITOR_AGENT_ARN = f"arn:aws:bedrock-agentcore:{region}:{account_id}:runtime/{MONITOR_AGENT_ID}"
 
 WEBSEARCH_AGENT_ID = get_ssm_parameter("/websearchagent/agentcore/runtime-id")
 WEBSEARCH_PROVIDER_NAME = get_ssm_parameter("/websearchagent/agentcore/provider-name")
-WEBSEARCH_AGENT_ARN = (
-    f"arn:aws:bedrock-agentcore:{region}:{account_id}:runtime/{WEBSEARCH_AGENT_ID}"
-)
+WEBSEARCH_AGENT_ARN = f"arn:aws:bedrock-agentcore:{region}:{account_id}:runtime/{WEBSEARCH_AGENT_ID}"
 
 
 def _create_client_factory(provider_name: str, session_id: str, actor_id: str):

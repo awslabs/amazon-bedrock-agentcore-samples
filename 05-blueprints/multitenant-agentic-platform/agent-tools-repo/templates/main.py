@@ -27,9 +27,7 @@ config_table = dynamodb.Table("agent-configurations")
 agent = Agent(model=MODEL_ID, system_prompt=SYSTEM_PROMPT)
 
 
-def send_usage_to_sqs(
-    input_tokens, output_tokens, total_tokens, user_message, response_message, tenant_id
-):
+def send_usage_to_sqs(input_tokens, output_tokens, total_tokens, user_message, response_message, tenant_id):
     """Send token usage metrics to SQS for tracking and billing"""
     try:
         message_body = {
@@ -79,9 +77,7 @@ def invoke(payload):
             output_tokens = result.metrics.accumulated_usage.get("outputTokens", 0)
             total_tokens = result.metrics.accumulated_usage.get("totalTokens", 0)
 
-            app.logger.info(
-                f"Token usage - Input: {input_tokens}, Output: {output_tokens}, Total: {total_tokens}"
-            )
+            app.logger.info(f"Token usage - Input: {input_tokens}, Output: {output_tokens}, Total: {total_tokens}")
 
             send_usage_to_sqs(
                 input_tokens,

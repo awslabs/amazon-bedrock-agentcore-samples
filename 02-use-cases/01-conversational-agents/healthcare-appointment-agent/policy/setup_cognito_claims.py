@@ -196,18 +196,14 @@ def create_or_update_lambda(session, role, sub_value, children=""):
 
     try:
         # Try updating existing function
-        lambda_client.update_function_code(
-            FunctionName=LAMBDA_FUNCTION_NAME, ZipFile=zip_content
-        )
+        lambda_client.update_function_code(FunctionName=LAMBDA_FUNCTION_NAME, ZipFile=zip_content)
         print("   ✅ Updated Lambda code")
 
         # Wait for update to complete
         time.sleep(3)
 
         # Update environment variables
-        lambda_client.update_function_configuration(
-            FunctionName=LAMBDA_FUNCTION_NAME, Environment=env_vars
-        )
+        lambda_client.update_function_configuration(FunctionName=LAMBDA_FUNCTION_NAME, Environment=env_vars)
         print(f"   ✅ Updated Lambda env vars: role={role}, sub={sub_value}")
 
         fn = lambda_client.get_function(FunctionName=LAMBDA_FUNCTION_NAME)
@@ -373,9 +369,7 @@ def verify_token(session):
     # Check for our custom claims
     has_role = "role" in claims or "custom:role" in claims
     has_pid = "patient_id" in claims
-    print(
-        f"\n   Custom claims present: role={'✅' if has_role else '❌'}, patient_id={'✅' if has_pid else '❌'}"
-    )
+    print(f"\n   Custom claims present: role={'✅' if has_role else '❌'}, patient_id={'✅' if has_pid else '❌'}")
 
 
 def main():
@@ -394,9 +388,7 @@ Examples:
         """,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    parser.add_argument(
-        "--role", default="patient", help="Role claim value (default: patient)"
-    )
+    parser.add_argument("--role", default="patient", help="Role claim value (default: patient)")
     parser.add_argument(
         "--sub",
         default="adult-patient-001",
@@ -407,9 +399,7 @@ Examples:
         action="store_true",
         help="Only update Lambda env vars (skip setup)",
     )
-    parser.add_argument(
-        "--verify", action="store_true", help="Get a token and show decoded claims"
-    )
+    parser.add_argument("--verify", action="store_true", help="Get a token and show decoded claims")
 
     args = parser.parse_args()
     session = get_session()
@@ -448,9 +438,7 @@ Examples:
     print(f"   Lambda: {LAMBDA_FUNCTION_NAME}")
     print(f"   Claims: role={args.role}, sub={args.sub}")
     print("\n   To switch roles:")
-    print(
-        "     python policy/setup_cognito_claims.py --role doctor --sub doctor-001 --update-only"
-    )
+    print("     python policy/setup_cognito_claims.py --role doctor --sub doctor-001 --update-only")
     print("   To verify:")
     print("     python policy/setup_cognito_claims.py --verify")
     print("=" * 70)

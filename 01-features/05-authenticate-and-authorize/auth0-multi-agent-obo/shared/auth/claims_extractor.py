@@ -54,9 +54,7 @@ def extract_standard_claims(claims: dict[str, Any]) -> dict[str, Any]:
     return standard_claims
 
 
-def extract_custom_claims(
-    claims: dict[str, Any], namespace: str = DEFAULT_CLAIMS_NAMESPACE
-) -> dict[str, Any]:
+def extract_custom_claims(claims: dict[str, Any], namespace: str = DEFAULT_CLAIMS_NAMESPACE) -> dict[str, Any]:
     """
     Extract custom namespaced claims from a JWT claims dictionary.
 
@@ -144,9 +142,7 @@ def extract_scopes(claims: dict[str, Any]) -> list[str]:
         return []
 
 
-def extract_permissions(
-    claims: dict[str, Any], namespace: str = DEFAULT_CLAIMS_NAMESPACE
-) -> list[str]:
+def extract_permissions(claims: dict[str, Any], namespace: str = DEFAULT_CLAIMS_NAMESPACE) -> list[str]:
     """
     Extract permissions from claims.
 
@@ -170,9 +166,7 @@ def extract_permissions(
     return permissions if isinstance(permissions, list) else [permissions]
 
 
-def build_user_context(
-    claims: dict[str, Any], namespace: str = DEFAULT_CLAIMS_NAMESPACE
-) -> UserContext:
+def build_user_context(claims: dict[str, Any], namespace: str = DEFAULT_CLAIMS_NAMESPACE) -> UserContext:
     """
     Build a UserContext instance from JWT claims.
 
@@ -215,9 +209,7 @@ def validate_required_claims(
     return len(missing_claims) == 0, missing_claims
 
 
-def extract_user_metadata(
-    claims: dict[str, Any], namespace: str = DEFAULT_CLAIMS_NAMESPACE
-) -> dict[str, Any]:
+def extract_user_metadata(claims: dict[str, Any], namespace: str = DEFAULT_CLAIMS_NAMESPACE) -> dict[str, Any]:
     """
     Extract user metadata from claims.
 

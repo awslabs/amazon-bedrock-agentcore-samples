@@ -236,9 +236,7 @@ def list_users(limit=100):
 
 
 # User Activity operations
-def query_user_activity(
-    start_date, end_date, user_id=None, activity_type=None, limit=100
-):
+def query_user_activity(start_date, end_date, user_id=None, activity_type=None, limit=100):
     """Query user activities within a time period"""
     dynamodb = get_dynamodb_resource()
     table = dynamodb.Table(USER_ACTIVITIES_TABLE)
@@ -252,9 +250,7 @@ def query_user_activity(
 
     if user_id:
         # Query by user_id and time range
-        key_condition = Key("user_id").eq(user_id) & Key("timestamp").between(
-            start_date, end_date
-        )
+        key_condition = Key("user_id").eq(user_id) & Key("timestamp").between(start_date, end_date)
 
         filter_expression = None
         if activity_type:
@@ -387,9 +383,7 @@ def tool_list_users(limit=100):
         return {"error": str(e)}
 
 
-def tool_query_user_activity(
-    start_date, end_date, user_id=None, activity_type=None, limit=100
-):
+def tool_query_user_activity(start_date, end_date, user_id=None, activity_type=None, limit=100):
     """
     Query user activity within a time period
 
@@ -404,9 +398,7 @@ def tool_query_user_activity(
         List of user activities
     """
     try:
-        activities = query_user_activity(
-            start_date, end_date, user_id, activity_type, limit
-        )
+        activities = query_user_activity(start_date, end_date, user_id, activity_type, limit)
         return activities
     except Exception as e:
         logger.error(f"Error in query_user_activity: {str(e)}")
@@ -460,9 +452,7 @@ def tool_update_wifi_security(device_id, network_id, security_type):
             "enterprise",
         ]
         if security_type not in valid_security_types:
-            return {
-                "error": f"Invalid security type. Must be one of: {', '.join(valid_security_types)}"
-            }
+            return {"error": f"Invalid security type. Must be one of: {', '.join(valid_security_types)}"}
 
         result = update_wifi_security(device_id, network_id, security_type)
         return result
@@ -514,9 +504,7 @@ def lambda_handler(event, context):
             user_id = event.get("user_id")
             activity_type = event.get("activity_type")
             limit = event.get("limit", 50)
-            result = tool_query_user_activity(
-                start_date, end_date, user_id, activity_type, limit
-            )
+            result = tool_query_user_activity(start_date, end_date, user_id, activity_type, limit)
 
         elif tool_name == "update_wifi_ssid":
             device_id = event["device_id"]

@@ -60,9 +60,7 @@ print("Endpoint URL: {}".format(ENDPOINT_URL))
 print("AWS Region: {}".format(AWS_REGION))
 
 # Initialize the Bedrock Agent Core Control client
-bedrock_agent_core_client = boto3.client(
-    "bedrock-agentcore-control", region_name=AWS_REGION
-)
+bedrock_agent_core_client = boto3.client("bedrock-agentcore-control", region_name=AWS_REGION)
 
 # Configure the authentication
 auth_config = {

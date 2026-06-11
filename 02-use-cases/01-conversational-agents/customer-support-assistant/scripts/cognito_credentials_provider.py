@@ -18,9 +18,7 @@ def store_provider_name_in_ssm(provider_name: str):
     """Store credential provider name in SSM parameter."""
     param_name = "/app/customersupport/agentcore/cognito_provider"
     try:
-        ssm.put_parameter(
-            Name=param_name, Value=provider_name, Type="String", Overwrite=True
-        )
+        ssm.put_parameter(Name=param_name, Value=provider_name, Type="String", Overwrite=True)
         click.echo(f"🔐 Stored provider name in SSM: {param_name}")
     except ClientError as e:
         click.echo(f"⚠️ Failed to store provider name in SSM: {e}")
@@ -50,23 +48,15 @@ def create_cognito_provider(provider_name: str) -> dict:
     """Create a Cognito OAuth2 credential provider."""
     try:
         click.echo("📥 Fetching Cognito configuration from SSM...")
-        client_id = get_ssm_parameter(
-            "/app/customersupport/agentcore/machine_client_id"
-        )
+        client_id = get_ssm_parameter("/app/customersupport/agentcore/machine_client_id")
         click.echo(f"✅ Retrieved client ID: {client_id}")
 
-        client_secret = get_ssm_parameter(
-            "/app/customersupport/agentcore/cognito_secret"
-        )
+        client_secret = get_ssm_parameter("/app/customersupport/agentcore/cognito_secret")
         click.echo(f"✅ Retrieved client secret: {client_secret[:4]}***")
 
-        issuer = get_ssm_parameter(
-            "/app/customersupport/agentcore/cognito_discovery_url"
-        )
+        issuer = get_ssm_parameter("/app/customersupport/agentcore/cognito_discovery_url")
         auth_url = get_ssm_parameter("/app/customersupport/agentcore/cognito_auth_url")
-        token_url = get_ssm_parameter(
-            "/app/customersupport/agentcore/cognito_token_url"
-        )
+        token_url = get_ssm_parameter("/app/customersupport/agentcore/cognito_token_url")
 
         click.echo(f"✅ Issuer: {issuer}")
         click.echo(f"✅ Authorization Endpoint: {auth_url}")
@@ -154,9 +144,7 @@ def cli(ctx):
 
 
 @cli.command()
-@click.option(
-    "--name", required=True, help="Name for the credential provider (required)"
-)
+@click.option("--name", required=True, help="Name for the credential provider (required)")
 def create(name):
     """Create a new Cognito OAuth2 credential provider."""
     click.echo(f"🚀 Creating Cognito credential provider: {name}")

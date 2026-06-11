@@ -106,9 +106,7 @@ def handle_authorize(event):
             "state": original_state,
             "redirect_uri": urllib.parse.unquote(original_redirect_uri),
         }
-        encoded_state = base64.urlsafe_b64encode(
-            json.dumps(compound_state).encode()
-        ).decode()
+        encoded_state = base64.urlsafe_b64encode(json.dumps(compound_state).encode()).decode()
         params["state"] = encoded_state
 
         # Replace redirect_uri with our callback
@@ -248,9 +246,7 @@ def proxy_to_gateway(event):
 
         with urllib.request.urlopen(req, timeout=60) as resp:  # nosec B310
             resp_body = resp.read().decode()
-            resp_headers = {
-                "Content-Type": resp.headers.get("Content-Type", "application/json")
-            }
+            resp_headers = {"Content-Type": resp.headers.get("Content-Type", "application/json")}
 
             # Forward session ID
             session_id = resp.headers.get("Mcp-Session-Id")

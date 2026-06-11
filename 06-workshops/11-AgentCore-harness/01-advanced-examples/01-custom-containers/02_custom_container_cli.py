@@ -129,12 +129,8 @@ parser.add_argument(
     metavar="CMD",
     help="Extra commands to run on the VM after invocation (e.g. 'node --version' 'ls /tmp')",
 )
-parser.add_argument(
-    "--skip-cleanup", action="store_true", help="Keep resources after the demo"
-)
-parser.add_argument(
-    "--raw-events", action="store_true", help="Print raw streaming events"
-)
+parser.add_argument("--skip-cleanup", action="store_true", help="Keep resources after the demo")
+parser.add_argument("--raw-events", action="store_true", help="Print raw streaming events")
 args = parser.parse_args()
 
 
@@ -250,9 +246,7 @@ def main():
         print("Step 1: Create Harness")
         print("=" * 60)
         name = f"ContainerCLI_{uuid.uuid4().hex[:8]}"
-        resp = aws_cp(
-            "create-harness", "--harness-name", name, "--execution-role-arn", role_arn
-        )
+        resp = aws_cp("create-harness", "--harness-name", name, "--execution-role-arn", role_arn)
         harness_id = resp["harness"]["harnessId"]
         harness_arn = resp["harness"]["arn"]
         print(f"  Harness ID:  {harness_id}")
@@ -268,13 +262,7 @@ def main():
             "--harness-id",
             harness_id,
             "--environment-artifact",
-            json.dumps(
-                {
-                    "optionalValue": {
-                        "containerConfiguration": {"containerUri": container_uri}
-                    }
-                }
-            ),
+            json.dumps({"optionalValue": {"containerConfiguration": {"containerUri": container_uri}}}),
             "--system-prompt",
             json.dumps([{"text": system_prompt}]),
         )

@@ -44,9 +44,7 @@ def setup_cognito_user_pool():
         bearer_token = auth_response["AuthenticationResult"]["AccessToken"]
         # Output the required values
         print(f"Pool id: {pool_id}")
-        print(
-            f"Discovery URL: https://cognito-idp.{region}.amazonaws.com/{pool_id}/.well-known/openid-configuration"
-        )
+        print(f"Discovery URL: https://cognito-idp.{region}.amazonaws.com/{pool_id}/.well-known/openid-configuration")
         print(f"Client ID: {client_id}")
         print(f"Bearer Token: {bearer_token}")
 

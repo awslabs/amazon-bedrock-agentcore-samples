@@ -24,17 +24,13 @@ def cleanup_duplicate_memories():
 
     try:
         memories = client.list_memories()
-        market_memories = [
-            m for m in memories if m.get("id", "").startswith(memory_name + "-")
-        ]
+        market_memories = [m for m in memories if m.get("id", "").startswith(memory_name + "-")]
 
         if len(market_memories) <= 1:
             print(f"Found {len(market_memories)} memory instances - no cleanup needed")
             return
 
-        print(
-            f"Found {len(market_memories)} memory instances - cleaning up duplicates..."
-        )
+        print(f"Found {len(market_memories)} memory instances - cleaning up duplicates...")
 
         # Sort by creation time (if available) or just use the first active one
         active_memories = [m for m in market_memories if m.get("status") == "ACTIVE"]
@@ -42,9 +38,7 @@ def cleanup_duplicate_memories():
         if active_memories:
             # Keep the first active one, delete the rest
             keep_memory = active_memories[0]
-            delete_memories = active_memories[1:] + [
-                m for m in market_memories if m.get("status") != "ACTIVE"
-            ]
+            delete_memories = active_memories[1:] + [m for m in market_memories if m.get("status") != "ACTIVE"]
 
             print(f"Keeping memory: {keep_memory['id']}")
 
@@ -86,12 +80,8 @@ def get_memory_from_ssm():
         return client, memory_id
 
     except ssm_client.exceptions.ParameterNotFound:
-        logger.error(
-            "Memory ARN not found in SSM Parameter Store. Please run deployment first."
-        )
-        raise Exception(
-            "Memory not deployed. Run 'AWS_PROFILE=burner python deploy.py' first."
-        )
+        logger.error("Memory ARN not found in SSM Parameter Store. Please run deployment first.")
+        raise Exception("Memory not deployed. Run 'AWS_PROFILE=burner python deploy.py' first.")
     except Exception as e:
         logger.error(f"Error retrieving memory from SSM: {e}")
         raise
@@ -138,9 +128,7 @@ def get_namespaces(mem_client: MemoryClient, memory_id: str) -> dict:
         return {}
 
 
-def create_memory_tools(
-    memory_client: MemoryClient, memory_id: str, session_id: str, default_actor_id: str
-):
+def create_memory_tools(memory_client: MemoryClient, memory_id: str, session_id: str, default_actor_id: str):
     """Create memory tools with the provided memory client and configuration"""
 
     @tool
@@ -166,9 +154,7 @@ def create_memory_tools(
                             content = message.get("content", "").strip()
                             role = message.get("role", "unknown")
                             if content:
-                                history_parts.append(
-                                    f"{role.upper()}: {content[:100]}..."
-                                )
+                                history_parts.append(f"{role.upper()}: {content[:100]}...")
 
                 if history_parts:
                     return "Recent conversation history:\n" + "\n".join(history_parts)
@@ -218,14 +204,10 @@ def create_memory_tools(
                             if isinstance(content, dict):
                                 text = content.get("text", "").strip()
                                 if text and len(text) > 20:  # Meaningful content
-                                    all_profile_info.append(
-                                        f"[{strategy_type.upper()}] {text}"
-                                    )
+                                    all_profile_info.append(f"[{strategy_type.upper()}] {text}")
 
                 except Exception as strategy_error:
-                    logger.info(
-                        f"No memories found in {strategy_type} strategy: {strategy_error}"
-                    )
+                    logger.info(f"No memories found in {strategy_type} strategy: {strategy_error}")
 
             if all_profile_info:
                 return "Broker Financial Profile:\n" + "\n\n".join(all_profile_info)
@@ -258,16 +240,11 @@ def create_memory_tools(
                                 ):
                                     if len(content) > 50:  # Meaningful content
                                         profile_elements.append(
-                                            content[:200] + "..."
-                                            if len(content) > 200
-                                            else content
+                                            content[:200] + "..." if len(content) > 200 else content
                                         )
 
                     if profile_elements:
-                        return (
-                            "Broker Profile (from conversation history):\n"
-                            + "\n\n".join(profile_elements[-2:])
-                        )
+                        return "Broker Profile (from conversation history):\n" + "\n\n".join(profile_elements[-2:])
                     else:
                         return "Building financial profile from our conversations. Profile will be enhanced as we continue our discussions."
                 else:
@@ -278,9 +255,7 @@ def create_memory_tools(
             return "Unable to retrieve financial profile at this time"
 
     @tool
-    def update_broker_financial_interests(
-        interests_update: str, actor_id_override: str = None
-    ):
+    def update_broker_financial_interests(interests_update: str, actor_id_override: str = None):
         """Update or add to the broker's financial interests and investment preferences
 
         Args:
@@ -313,9 +288,7 @@ def create_memory_tools(
                 messages=conversation,
             )
 
-            return (
-                "Financial interests successfully updated in long-term memory profile"
-            )
+            return "Financial interests successfully updated in long-term memory profile"
 
         except Exception as e:
             logger.error(f"Error updating financial interests: {e}")
@@ -343,9 +316,7 @@ def create_memory_tools(
 
                 for strategy_type, namespace_template in namespaces_dict.items():
                     try:
-                        namespace = namespace_template.format(
-                            actorId=identified_actor_id
-                        )
+                        namespace = namespace_template.format(actorId=identified_actor_id)
                         memories = memory_client.retrieve_memories(
                             memory_id=memory_id,
                             namespace=namespace,
@@ -356,9 +327,7 @@ def create_memory_tools(
                             found_existing_profile = True
                             break
                     except Exception as memory_error:
-                        logger.debug(
-                            f"No memories found in {strategy_type}: {memory_error}"
-                        )
+                        logger.debug(f"No memories found in {strategy_type}: {memory_error}")
                         continue
 
                 if found_existing_profile:

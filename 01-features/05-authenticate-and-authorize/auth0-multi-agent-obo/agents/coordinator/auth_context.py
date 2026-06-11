@@ -76,9 +76,7 @@ class AuthContextManager:
                     custom_claims[claim_name] = value
 
             # Customer ID from custom claims
-            context["customer_id"] = custom_claims.get("customer_id") or attributes.get(
-                "customer_id", ""
-            )
+            context["customer_id"] = custom_claims.get("customer_id") or attributes.get("customer_id", "")
 
             # Department/organization from custom claims
             context["department"] = custom_claims.get("department", "")
@@ -95,8 +93,7 @@ class AuthContextManager:
             context["request_time"] = getattr(request, "timestamp", None)
 
             logger.info(
-                f"Extracted user context for user_id: {context['user_id']}, "
-                f"customer_id: {context['customer_id']}"
+                f"Extracted user context for user_id: {context['user_id']}, customer_id: {context['customer_id']}"
             )
 
             # Cache the context
@@ -109,9 +106,7 @@ class AuthContextManager:
             logger.exception(f"Error extracting user context: {str(e)}")
             raise ValueError(f"Failed to extract user context: {str(e)}")
 
-    def validate_authorization(
-        self, context: Dict[str, Any], required_permissions: Optional[List[str]] = None
-    ) -> bool:
+    def validate_authorization(self, context: Dict[str, Any], required_permissions: Optional[List[str]] = None) -> bool:
         """
         Validate that the user has the required authorization.
 
@@ -134,9 +129,7 @@ class AuthContextManager:
 
             # Verify email is verified (for sensitive operations)
             if not context.get("email_verified", False):
-                logger.warning(
-                    f"Authorization warning: Email not verified for user {context['user_id']}"
-                )
+                logger.warning(f"Authorization warning: Email not verified for user {context['user_id']}")
                 # Note: We still allow access, but log the warning
                 # Adjust this based on your security requirements
 
@@ -147,10 +140,7 @@ class AuthContextManager:
 
                 if not required_set.issubset(user_permissions):
                     missing = required_set - user_permissions
-                    logger.warning(
-                        f"Authorization failed: Missing permissions {missing} "
-                        f"for user {context['user_id']}"
-                    )
+                    logger.warning(f"Authorization failed: Missing permissions {missing} for user {context['user_id']}")
                     return False
 
             logger.info(f"Authorization validated for user {context['user_id']}")
@@ -186,9 +176,7 @@ class AuthContextManager:
             self.context_cache.clear()
             logger.info("Cleared all context cache")
 
-    def enrich_context(
-        self, context: Dict[str, Any], additional_data: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    def enrich_context(self, context: Dict[str, Any], additional_data: Dict[str, Any]) -> Dict[str, Any]:
         """
         Enrich context with additional data.
 
@@ -223,9 +211,7 @@ def extract_user_context(request: Any) -> Dict[str, Any]:
     return _auth_manager.extract_context(request)
 
 
-def validate_user_authorization(
-    context: Dict[str, Any], required_permissions: Optional[List[str]] = None
-) -> bool:
+def validate_user_authorization(context: Dict[str, Any], required_permissions: Optional[List[str]] = None) -> bool:
     """
     Validate that the user has the required authorization.
 

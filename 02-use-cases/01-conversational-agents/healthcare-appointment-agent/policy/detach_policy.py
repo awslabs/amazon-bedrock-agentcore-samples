@@ -22,11 +22,7 @@ load_dotenv(Path(__file__).parent.parent / ".env")
 def main():
     profile = os.getenv("awscred_profile_name")
     region = os.getenv("aws_default_region", "us-east-1")
-    session = (
-        boto3.Session(profile_name=profile, region_name=region)
-        if profile
-        else boto3.Session(region_name=region)
-    )
+    session = boto3.Session(profile_name=profile, region_name=region) if profile else boto3.Session(region_name=region)
     client = session.client("bedrock-agentcore-control", region_name=region)
 
     gateway_id = os.getenv("gateway_id")

@@ -153,10 +153,7 @@ class AgentHttpClient:
         self._session.mount("https://", adapter)
         self._session.mount("http://", adapter)
 
-        logger.info(
-            f"AgentHttpClient initialized - Region: {self.region}, "
-            f"Base URL: {self.base_url}"
-        )
+        logger.info(f"AgentHttpClient initialized - Region: {self.region}, Base URL: {self.base_url}")
 
     def _build_agent_runtime_arn(self, agent_id: str) -> str:
         """
@@ -170,9 +167,7 @@ class AgentHttpClient:
         """
         return f"arn:aws:bedrock-agentcore:{self.region}:{self.account_id}:runtime/{agent_id}"
 
-    def _build_invocation_url(
-        self, agent_id: str, endpoint_url: Optional[str] = None
-    ) -> str:
+    def _build_invocation_url(self, agent_id: str, endpoint_url: Optional[str] = None) -> str:
         """
         Build the invocation URL for an agent.
 
@@ -255,9 +250,7 @@ class AgentHttpClient:
         if OTEL_AVAILABLE:
             try:
                 otel_inject(headers)
-                logger.debug(
-                    f"Injected OTEL trace context: traceparent={headers.get('traceparent', 'N/A')}"
-                )
+                logger.debug(f"Injected OTEL trace context: traceparent={headers.get('traceparent', 'N/A')}")
             except Exception as e:
                 logger.debug(f"Could not inject OTEL trace context: {e}")
 
@@ -304,9 +297,7 @@ class AgentHttpClient:
 
             if response.status_code >= 400:
                 error_msg = self._extract_error_message(response)
-                logger.error(
-                    f"Agent invocation failed ({response.status_code}): {error_msg}"
-                )
+                logger.error(f"Agent invocation failed ({response.status_code}): {error_msg}")
                 raise AgentInvocationError(
                     f"Agent invocation failed: {error_msg}",
                     status_code=response.status_code,
@@ -436,9 +427,7 @@ class AgentHttpClient:
             endpoint_url=endpoint_url,
         )
 
-    def health_check(
-        self, agent_id: str, endpoint_url: Optional[str] = None
-    ) -> Dict[str, Any]:
+    def health_check(self, agent_id: str, endpoint_url: Optional[str] = None) -> Dict[str, Any]:
         """
         Check if an agent endpoint is reachable.
 

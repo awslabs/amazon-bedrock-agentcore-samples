@@ -71,8 +71,7 @@ def validate_scope_for_accounts(claims: Dict[str, Any]) -> Dict[str, Any]:
 
     if not present_account_scopes:
         error_msg = (
-            f"Insufficient scopes for accounts agent. "
-            f"Requires at least one of {sorted(all_accepted)}, got: {scopes}"
+            f"Insufficient scopes for accounts agent. Requires at least one of {sorted(all_accepted)}, got: {scopes}"
         )
         logger.warning(
             json.dumps(
@@ -102,9 +101,7 @@ def validate_scope_for_accounts(claims: Dict[str, Any]) -> Dict[str, Any]:
     )
 
     # Warn about unexpected profile scopes that don't belong to the accounts agent
-    unexpected_scopes = [
-        s for s in scopes if s.startswith("profile:") or s in ("profile", "email")
-    ]
+    unexpected_scopes = [s for s in scopes if s.startswith("profile:") or s in ("profile", "email")]
     if unexpected_scopes:
         logger.warning(
             json.dumps(
@@ -190,9 +187,7 @@ def validate_forwarded_claims(claims: Dict[str, Any]) -> Dict[str, Any]:
         logger.warning("No customer_id in custom claims")
         return {"valid": False, "error": "Missing customer identity information"}
 
-    logger.info(
-        f"Validated customer_id={customer_id}, customer_number={customer_number}"
-    )
+    logger.info(f"Validated customer_id={customer_id}, customer_number={customer_number}")
 
     return {
         "valid": True,
@@ -202,9 +197,7 @@ def validate_forwarded_claims(claims: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def check_account_access(
-    customer_id: str, account_number: str, claims: Dict[str, Any]
-) -> Dict[str, Any]:
+def check_account_access(customer_id: str, account_number: str, claims: Dict[str, Any]) -> Dict[str, Any]:
     """
     Check if the customer has access to the specified account.
 
@@ -222,10 +215,7 @@ def check_account_access(
     Returns:
         Dict with "authorized" boolean and optional "reason" message
     """
-    logger.info(
-        f"Checking account access: customer_id={customer_id}, "
-        f"account_number={account_number}"
-    )
+    logger.info(f"Checking account access: customer_id={customer_id}, account_number={account_number}")
 
     # STUBBED: In production, query account ownership
     # For now, authorize all accounts for demonstration

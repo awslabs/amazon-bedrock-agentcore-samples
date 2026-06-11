@@ -62,9 +62,7 @@ def lambda_handler(event, context):
     # ALB uses: path, httpMethod
     # HTTP API uses: rawPath, requestContext.http.method
     path = event.get("path") or event.get("rawPath", "/")
-    method = event.get("httpMethod") or event.get("requestContext", {}).get(
-        "http", {}
-    ).get("method", "GET")
+    method = event.get("httpMethod") or event.get("requestContext", {}).get("http", {}).get("method", "GET")
 
     logger.debug(f"Method: {method}, Path: {path}")
 
@@ -79,10 +77,7 @@ def lambda_handler(event, context):
         return handle_ping(event)
     elif path.startswith("/.well-known/oauth-authorization-server"):
         return handle_oauth_metadata(event)
-    elif (
-        path == "/.well-known/oauth-protected-resource"
-        or path == "/.well-known/oauth-protected-resource/mcp"
-    ):
+    elif path == "/.well-known/oauth-protected-resource" or path == "/.well-known/oauth-protected-resource/mcp":
         return handle_protected_resource_metadata(event)
     elif path == "/authorize":
         return handle_authorize(event)
@@ -201,9 +196,7 @@ def handle_authorize(event):
             "state": decoded_state,
             "redirect_uri": decoded_redirect_uri,
         }
-        encoded_state = base64.urlsafe_b64encode(
-            json.dumps(compound_state).encode()
-        ).decode()
+        encoded_state = base64.urlsafe_b64encode(json.dumps(compound_state).encode()).decode()
         params["state"] = encoded_state
 
         logger.debug(f"Compound state created: {json.dumps(compound_state)}")
@@ -285,9 +278,7 @@ def handle_callback(event):
     )
     allowed_normalized = [u.rstrip("/") for u in ALLOWED_REDIRECT_URIS]
     if not is_localhost and normalized not in allowed_normalized:
-        logger.warning(
-            f"Rejected redirect_uri not in allowlist: {original_redirect_uri}"
-        )
+        logger.warning(f"Rejected redirect_uri not in allowlist: {original_redirect_uri}")
         logger.debug(f"Normalized redirect_uri: {normalized}")
         logger.debug(f"Allowed URIs (raw): {ALLOWED_REDIRECT_URIS}")
         logger.debug(f"Allowed URIs (normalized): {allowed_normalized}")
@@ -353,9 +344,7 @@ def proxy_to_gateway(event):
     """Forward MCP requests to AgentCore Gateway with optional target filtering."""
     logger.info("proxy_to_gateway")
     path = event.get("path", "/")
-    method = event.get("httpMethod") or event.get("requestContext", {}).get(
-        "http", {}
-    ).get("method", "GET")
+    method = event.get("httpMethod") or event.get("requestContext", {}).get("http", {}).get("method", "GET")
     headers = event.get("headers", {})
     body = event.get("body", "")
     logger.info(f"Proxying to gateway - Method: {method}, Path: {path}")
@@ -405,18 +394,12 @@ def proxy_to_gateway(event):
                 mcp_request["_meta"][MCP_METADATA_KEY] = target_filter
 
                 logger.info(f"Injected _meta: {MCP_METADATA_KEY} = '{target_filter}'")
-                logger.debug(
-                    f"Modified MCP request: {json.dumps(mcp_request, indent=2)}"
-                )
+                logger.debug(f"Modified MCP request: {json.dumps(mcp_request, indent=2)}")
             else:
                 if not target_filter:
-                    logger.debug(
-                        "No target filter - NOT injecting _meta (will return all tools)"
-                    )
+                    logger.debug("No target filter - NOT injecting _meta (will return all tools)")
                 else:
-                    logger.debug(
-                        f"Method '{mcp_request.get('method')}' - not injecting _meta"
-                    )
+                    logger.debug(f"Method '{mcp_request.get('method')}' - not injecting _meta")
 
             # Re-serialize (possibly modified) request
             body = json.dumps(mcp_request).encode()
@@ -477,9 +460,7 @@ def proxy_to_gateway(event):
             resp_body = resp.read().decode()
             logger.debug(resp_body)
             logger.debug(resp.headers)
-            resp_headers = {
-                "Content-Type": resp.headers.get("Content-Type", "application/json")
-            }
+            resp_headers = {"Content-Type": resp.headers.get("Content-Type", "application/json")}
 
             # Forward session ID
             session_id = resp.headers.get("Mcp-Session-Id")
@@ -492,14 +473,10 @@ def proxy_to_gateway(event):
                 api_url = get_api_url(event)
                 # Replace any Gateway URL references with ALB URL
                 # Use removesuffix or string slicing to properly remove /mcp suffix
-                gateway_base = (
-                    GATEWAY_URL[:-4] if GATEWAY_URL.endswith("/mcp") else GATEWAY_URL
-                )
+                gateway_base = GATEWAY_URL[:-4] if GATEWAY_URL.endswith("/mcp") else GATEWAY_URL
                 www_auth_rewritten = www_auth.replace(gateway_base, api_url)
                 resp_headers["WWW-Authenticate"] = www_auth_rewritten
-                logger.debug(
-                    f"Rewrote WWW-Authenticate: {www_auth} -> {www_auth_rewritten}"
-                )
+                logger.debug(f"Rewrote WWW-Authenticate: {www_auth} -> {www_auth_rewritten}")
 
             return {
                 "statusCode": resp.status,
@@ -525,9 +502,7 @@ def proxy_to_gateway(event):
         if www_auth:
             www_auth_rewritten = www_auth.replace(gateway_base, api_url)
             resp_headers["WWW-Authenticate"] = www_auth_rewritten
-            logger.debug(
-                f"Rewrote WWW-Authenticate in error: {www_auth} -> {www_auth_rewritten}"
-            )
+            logger.debug(f"Rewrote WWW-Authenticate in error: {www_auth} -> {www_auth_rewritten}")
 
         return {
             "statusCode": e.code,

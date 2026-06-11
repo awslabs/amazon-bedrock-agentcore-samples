@@ -35,17 +35,11 @@ TEST_PROMPTS = [
 
 boto_session, agentcore_client = utils.create_agentcore_client()
 
-gatewayEndpoint = utils.get_gateway_endpoint(
-    agentcore_client=agentcore_client, gateway_id=GATEWAY_ID
-)
+gatewayEndpoint = utils.get_gateway_endpoint(agentcore_client=agentcore_client, gateway_id=GATEWAY_ID)
 print(f"Gateway Endpoint: {gatewayEndpoint}\n")
 
 jwtToken = utils.get_oath_token(boto_session)
-client = MCPClient(
-    lambda: streamablehttp_client(
-        gatewayEndpoint, headers={"Authorization": f"Bearer {jwtToken}"}
-    )
-)
+client = MCPClient(lambda: streamablehttp_client(gatewayEndpoint, headers={"Authorization": f"Bearer {jwtToken}"}))
 
 bedrockmodel = BedrockModel(
     model_id="global.anthropic.claude-haiku-4-5-20251001-v1:0",

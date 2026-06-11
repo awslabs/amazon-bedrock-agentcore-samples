@@ -43,9 +43,7 @@ def get_stock_data_with_browser(playwright: Playwright, symbol: str) -> str:
             browser.close()
 
 
-def search_news_with_browser(
-    playwright: Playwright, query: str, news_source: str = "bloomberg"
-) -> str:
+def search_news_with_browser(playwright: Playwright, query: str, news_source: str = "bloomberg") -> str:
     """Generic news search using browser and LLM analysis"""
     with browser_session(AWS_REGION) as client:
         ws_url, headers = client.generate_ws_headers()
@@ -99,9 +97,7 @@ def search_news_with_browser(
 
             # Get URL for news source
             source_key = news_source.lower()
-            url = news_urls.get(
-                source_key, f"https://www.bloomberg.com/search?query={encoded_query}"
-            )
+            url = news_urls.get(source_key, f"https://www.bloomberg.com/search?query={encoded_query}")
 
             # Try primary URL first with retry logic
             max_retries = 2
@@ -126,19 +122,13 @@ def search_news_with_browser(
                         "rate limit",
                     ]
 
-                    if any(
-                        indicator in content.lower() for indicator in error_indicators
-                    ):
+                    if any(indicator in content.lower() for indicator in error_indicators):
                         if attempt < max_retries - 1:
-                            print(
-                                f"Error detected on attempt {attempt + 1}, retrying..."
-                            )
+                            print(f"Error detected on attempt {attempt + 1}, retrying...")
                             time.sleep(2)
                             continue
                         else:
-                            raise Exception(
-                                "Got error page after retries, trying fallback"
-                            )
+                            raise Exception("Got error page after retries, trying fallback")
 
                     # Success - break out of retry loop
                     break
@@ -152,9 +142,7 @@ def search_news_with_browser(
                         # Try fallback URL if available
                         fallback_url = fallback_urls.get(source_key)
                         if fallback_url:
-                            print(
-                                f"All attempts failed for {news_source}, trying fallback: {fallback_url}"
-                            )
+                            print(f"All attempts failed for {news_source}, trying fallback: {fallback_url}")
                             page.goto(fallback_url, timeout=15000)
                             time.sleep(3)
                             content = page.inner_text("body")
@@ -230,14 +218,10 @@ def search_news(query: str, news_source: str = "bloomberg") -> str:
                 for fallback_source in reliable_sources:
                     if fallback_source != news_source.lower():
                         try:
-                            print(
-                                f"Fallback: Trying {fallback_source} instead of {news_source}"
-                            )
+                            print(f"Fallback: Trying {fallback_source} instead of {news_source}")
                             return search_news_with_browser(p, query, fallback_source)
                         except Exception as fallback_error:
-                            logger.warning(
-                                f"Fallback source {fallback_source} failed: {fallback_error}"
-                            )
+                            logger.warning(f"Fallback source {fallback_source} failed: {fallback_error}")
                             continue
 
             return result
@@ -248,15 +232,11 @@ def search_news(query: str, news_source: str = "bloomberg") -> str:
         for fallback_source in reliable_sources:
             if fallback_source != news_source.lower():
                 try:
-                    print(
-                        f"Error with {news_source}, trying {fallback_source} as fallback"
-                    )
+                    print(f"Error with {news_source}, trying {fallback_source} as fallback")
                     with sync_playwright() as p:
                         return search_news_with_browser(p, query, fallback_source)
                 except Exception as final_fallback_error:
-                    logger.warning(
-                        f"Final fallback source {fallback_source} failed: {final_fallback_error}"
-                    )
+                    logger.warning(f"Final fallback source {fallback_source} failed: {final_fallback_error}")
                     continue
 
         return f"Error searching {news_source} for '{query}': {str(e)}. Multiple fallback sources also failed. This may be due to temporary server issues or rate limiting. Try again in a few minutes or use a different query."

@@ -38,9 +38,7 @@ from src.utils import save_raw_query_result, load_file_content
 memory_id = os.environ.get("MEMORY_ID")
 
 # Retrieve Bedrock Model ID
-bedrock_model_id_env = os.environ.get(
-    "BEDROCK_MODEL_ID", "global.anthropic.claude-haiku-4-5-20251001-v1:0"
-)
+bedrock_model_id_env = os.environ.get("BEDROCK_MODEL_ID", "global.anthropic.claude-haiku-4-5-20251001-v1:0")
 
 # Initialize the Bedrock Agent Core app
 app = BedrockAgentCoreApp()
@@ -133,9 +131,7 @@ def create_execute_sql_query_tool(user_prompt: str, prompt_uuid: str):
                 result = {"result": records_to_return}
 
             print("💾 Saving analysis results to DynamoDB for audit trail...")
-            save_result = save_raw_query_result(
-                prompt_uuid, user_prompt, sql_query, description, result, message
-            )
+            save_result = save_raw_query_result(prompt_uuid, user_prompt, sql_query, description, result, message)
 
             if not save_result["success"]:
                 print(f"⚠️  Failed to save analysis results: {save_result['error']}")
@@ -187,9 +183,7 @@ async def agent_invocation(payload):
         print("\n" + "=" * 80)
         print("🎮 VIDEO GAME SALES ANALYSIS REQUEST")
         print("=" * 80)
-        print(
-            f"💬 User Query: {user_message[:100]}{'...' if len(user_message) > 100 else ''}"
-        )
+        print(f"💬 User Query: {user_message[:100]}{'...' if len(user_message) > 100 else ''}")
         print(f"🤖 Claude Model: {bedrock_model_id_env}")
         print(f"🆔 Prompt UUID: {prompt_uuid}")
         print(f"🌍 User Timezone: {user_timezone}")
@@ -225,9 +219,9 @@ async def agent_invocation(payload):
         print("📊 LTM retrieval: /facts/{actorId} (top_k=5, relevance>=0.3)")
 
         # Configure system prompt with user context
-        system_prompt = DATA_ANALYST_SYSTEM_PROMPT.replace(
-            "{timezone}", user_timezone
-        ).replace("{user_name}", user_name)
+        system_prompt = DATA_ANALYST_SYSTEM_PROMPT.replace("{timezone}", user_timezone).replace(
+            "{user_name}", user_name
+        )
 
         print("-" * 80)
         print("🔧 Initializing agent with AgentCoreMemorySessionManager...")
@@ -266,9 +260,7 @@ async def agent_invocation(payload):
                 if "event" in item:
                     event = item["event"]
 
-                    if "contentBlockStart" in event and "toolUse" in event[
-                        "contentBlockStart"
-                    ].get("start", {}):
+                    if "contentBlockStart" in event and "toolUse" in event["contentBlockStart"].get("start", {}):
                         tool_active = True
                         yield json.dumps({"event": event}) + "\n"
 

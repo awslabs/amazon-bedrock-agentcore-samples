@@ -71,25 +71,15 @@ class KnowledgeBasesForAmazonBedrock:
         boto3_session = boto3.session.Session()
         self.region_name = boto3_session.region_name
         self.iam_client = boto3_session.client("iam", region_name=self.region_name)
-        self.account_number = (
-            boto3.client("sts", region_name=self.region_name)
-            .get_caller_identity()
-            .get("Account")
-        )
+        self.account_number = boto3.client("sts", region_name=self.region_name).get_caller_identity().get("Account")
         if suffix is not None:
             self.suffix = suffix
         else:
             self.suffix = str(uuid.uuid4())[:4]
-        self.identity = boto3.client(
-            "sts", region_name=self.region_name
-        ).get_caller_identity()["Arn"]
-        self.s3_vectors_client = boto3_session.client(
-            "s3vectors", region_name=self.region_name
-        )
+        self.identity = boto3.client("sts", region_name=self.region_name).get_caller_identity()["Arn"]
+        self.s3_vectors_client = boto3_session.client("s3vectors", region_name=self.region_name)
         self.s3_client = boto3.client("s3", region_name=self.region_name)
-        self.bedrock_agent_client = boto3.client(
-            "bedrock-agent", region_name=self.region_name
-        )
+        self.bedrock_agent_client = boto3.client("bedrock-agent", region_name=self.region_name)
         self.vector_bucket_name = None
         self.index_name = None
         self.data_bucket_name = None
@@ -131,9 +121,7 @@ class KnowledgeBasesForAmazonBedrock:
                 if kb_id == ds["knowledgeBaseId"]:
                     ds_id = ds["dataSourceId"]
                     if not data_bucket_name:
-                        self.data_bucket_name = self._get_knowledge_base_s3_bucket(
-                            kb_id, ds_id
-                        )
+                        self.data_bucket_name = self._get_knowledge_base_s3_bucket(kb_id, ds_id)
             print(f"Knowledge Base {kb_name} already exists.")
             print(f"Retrieved Knowledge Base Id: {kb_id}")
             print(f"Retrieved Data Source Id: {ds_id}")
@@ -144,39 +132,23 @@ class KnowledgeBasesForAmazonBedrock:
             if data_bucket_name is None:
                 kb_name_temp = kb_name.replace("_", "-")
                 data_bucket_name = f"{kb_name_temp}-{self.suffix}"
-                print(
-                    f"KB bucket name not provided, creating a new one called: {data_bucket_name}"
-                )
+                print(f"KB bucket name not provided, creating a new one called: {data_bucket_name}")
             if embedding_model not in valid_embedding_models:
                 valid_embeddings_str = str(valid_embedding_models)
                 raise ValueError(
                     f"Invalid embedding model. Your embedding model should be one of {valid_embeddings_str}"
                 )
-            kb_execution_role_name = (
-                f"AmazonBedrockExecutionRoleForKnowledgeBase_{self.suffix}"
-            )
-            fm_policy_name = (
-                f"AmazonBedrockFoundationModelPolicyForKnowledgeBase_{self.suffix}"
-            )
+            kb_execution_role_name = f"AmazonBedrockExecutionRoleForKnowledgeBase_{self.suffix}"
+            fm_policy_name = f"AmazonBedrockFoundationModelPolicyForKnowledgeBase_{self.suffix}"
             s3_policy_name = f"AmazonBedrockS3PolicyForKnowledgeBase_{self.suffix}"
-            s3_vectors_policy_name = (
-                f"AmazonBedrockS3VectorsPolicyForKnowledgeBase_{self.suffix}"
-            )
+            s3_vectors_policy_name = f"AmazonBedrockS3VectorsPolicyForKnowledgeBase_{self.suffix}"
             vector_bucket_name = f"{kb_name}-vectors-{self.suffix}"
             index_name = f"{kb_name}-index-{self.suffix}"
-            print(
-                "========================================================================================"
-            )
-            print(
-                f"Step 1 - Creating or retrieving {data_bucket_name} S3 bucket for Knowledge Base documents"
-            )
+            print("========================================================================================")
+            print(f"Step 1 - Creating or retrieving {data_bucket_name} S3 bucket for Knowledge Base documents")
             self.create_s3_bucket(data_bucket_name)
-            print(
-                "========================================================================================"
-            )
-            print(
-                f"Step 2 - Creating Knowledge Base Execution Role ({kb_execution_role_name}) and Policies"
-            )
+            print("========================================================================================")
+            print(f"Step 2 - Creating Knowledge Base Execution Role ({kb_execution_role_name}) and Policies")
             bedrock_kb_execution_role = self.create_bedrock_kb_execution_role(
                 embedding_model,
                 data_bucket_name,
@@ -185,23 +157,15 @@ class KnowledgeBasesForAmazonBedrock:
                 kb_execution_role_name,
             )
             print(time.sleep(10))
-            print(
-                "========================================================================================"
-            )
+            print("========================================================================================")
             print("Step 3 - Creating S3 Vectors Bucket and Index")
             vector_bucket_arn, index_arn = self.create_s3_vectors_bucket_and_index(
                 vector_bucket_name, index_name, bedrock_kb_execution_role
             )
-            print(
-                "========================================================================================"
-            )
+            print("========================================================================================")
             print("Step 4 - Creating S3 Vectors Policy")
-            self.create_s3_vectors_policy(
-                s3_vectors_policy_name, vector_bucket_arn, bedrock_kb_execution_role
-            )
-            print(
-                "========================================================================================"
-            )
+            self.create_s3_vectors_policy(s3_vectors_policy_name, vector_bucket_arn, bedrock_kb_execution_role)
+            print("========================================================================================")
             print("Step 5 - Creating Knowledge Base")
             knowledge_base, data_source = self.create_knowledge_base(
                 vector_bucket_arn,
@@ -214,9 +178,7 @@ class KnowledgeBasesForAmazonBedrock:
                 bedrock_kb_execution_role,
             )
             interactive_sleep(60)
-            print(
-                "========================================================================================"
-            )
+            print("========================================================================================")
             kb_id = knowledge_base["knowledgeBaseId"]
             ds_id = data_source["dataSourceId"]
         return kb_id, ds_id
@@ -313,9 +275,7 @@ class KnowledgeBasesForAmazonBedrock:
                     "Action": [
                         "bedrock:InvokeModel",
                     ],
-                    "Resource": [
-                        f"arn:aws:bedrock:{self.region_name}::foundation-model/{embedding_model}"
-                    ],
+                    "Resource": [f"arn:aws:bedrock:{self.region_name}::foundation-model/{embedding_model}"],
                 }
             ],
         }
@@ -330,11 +290,7 @@ class KnowledgeBasesForAmazonBedrock:
                         f"arn:aws:s3:::{bucket_name}",
                         f"arn:aws:s3:::{bucket_name}/*",
                     ],
-                    "Condition": {
-                        "StringEquals": {
-                            "aws:ResourceAccount": f"{self.account_number}"
-                        }
-                    },
+                    "Condition": {"StringEquals": {"aws:ResourceAccount": f"{self.account_number}"}},
                 }
             ],
         }
@@ -390,9 +346,7 @@ class KnowledgeBasesForAmazonBedrock:
             )
         except self.iam_client.exceptions.EntityAlreadyExistsException:
             print(f"{kb_execution_role_name} already exists, retrieving it!")
-            bedrock_kb_execution_role = self.iam_client.get_role(
-                RoleName=kb_execution_role_name
-            )
+            bedrock_kb_execution_role = self.iam_client.get_role(RoleName=kb_execution_role_name)
         # fetch arn of the policies and role created above
         s3_policy_arn = s3_policy["Policy"]["Arn"]
         fm_policy_arn = fm_policy["Policy"]["Arn"]
@@ -433,15 +387,15 @@ class KnowledgeBasesForAmazonBedrock:
                 vectorBucketName=vector_bucket_name,
                 encryptionConfiguration={"sseType": "AES256"},
             )
-            get_response = self.s3_vectors_client.get_vector_bucket(
-                vectorBucketName=vector_bucket_name
-            )
+            get_response = self.s3_vectors_client.get_vector_bucket(vectorBucketName=vector_bucket_name)
             vector_bucket_arn = get_response["vectorBucket"]["vectorBucketArn"]
             print(f"Created S3 Vectors bucket: {vector_bucket_name}")
         except self.s3_vectors_client.exceptions.ConflictException:
             print(f"S3 Vectors bucket {vector_bucket_name} already exists")
             # Get the bucket ARN
-            vector_bucket_arn = f"arn:aws:s3vectors:{self.region_name}:{self.account_number}:vector-bucket/{vector_bucket_name}"
+            vector_bucket_arn = (
+                f"arn:aws:s3vectors:{self.region_name}:{self.account_number}:vector-bucket/{vector_bucket_name}"
+            )
         except Exception as e:
             print(f"Error creating S3 vectors bucket: {e}")
             raise
@@ -470,7 +424,9 @@ class KnowledgeBasesForAmazonBedrock:
         except self.s3_vectors_client.exceptions.ConflictException:
             print(f"S3 Vectors index {index_name} already exists")
             # Get the index ARN
-            index_arn = f"arn:aws:s3vectors:{self.region_name}:{self.account_number}:index/{vector_bucket_name}/{index_name}"
+            index_arn = (
+                f"arn:aws:s3vectors:{self.region_name}:{self.account_number}:index/{vector_bucket_name}/{index_name}"
+            )
         except Exception as e:
             print(f"Error creating S3 vectors index: {e}")
             raise
@@ -505,11 +461,7 @@ class KnowledgeBasesForAmazonBedrock:
                         "s3vectors:DeleteVectors",
                     ],
                     "Resource": f"{vector_bucket_arn}/index/*",
-                    "Condition": {
-                        "StringEquals": {
-                            "aws:ResourceAccount": f"{self.account_number}"
-                        }
-                    },
+                    "Condition": {"StringEquals": {"aws:ResourceAccount": f"{self.account_number}"}},
                 }
             ],
         }
@@ -533,9 +485,7 @@ class KnowledgeBasesForAmazonBedrock:
             RoleName=bedrock_kb_execution_role["Role"]["RoleName"],
             PolicyArn=s3_vectors_policy_arn,
         )
-        print(
-            f"Attached S3 Vectors policy to role: {bedrock_kb_execution_role['Role']['RoleName']}"
-        )
+        print(f"Attached S3 Vectors policy to role: {bedrock_kb_execution_role['Role']['RoleName']}")
 
     @retry(wait_random_min=1000, wait_random_max=2000, stop_max_attempt_number=7)
     def create_knowledge_base(
@@ -591,16 +541,12 @@ class KnowledgeBasesForAmazonBedrock:
         }
 
         # The embedding model used by Bedrock to embed ingested documents, and realtime prompts
-        embedding_model_arn = (
-            f"arn:aws:bedrock:{self.region_name}::foundation-model/{embedding_model}"
-        )
+        embedding_model_arn = f"arn:aws:bedrock:{self.region_name}::foundation-model/{embedding_model}"
         print(
             str(
                 {
                     "type": "VECTOR",
-                    "vectorKnowledgeBaseConfiguration": {
-                        "embeddingModelArn": embedding_model_arn
-                    },
+                    "vectorKnowledgeBaseConfiguration": {"embeddingModelArn": embedding_model_arn},
                 }
             )
         )
@@ -612,9 +558,7 @@ class KnowledgeBasesForAmazonBedrock:
                 roleArn=bedrock_kb_execution_role["Role"]["Arn"],
                 knowledgeBaseConfiguration={
                     "type": "VECTOR",
-                    "vectorKnowledgeBaseConfiguration": {
-                        "embeddingModelArn": embedding_model_arn
-                    },
+                    "vectorKnowledgeBaseConfiguration": {"embeddingModelArn": embedding_model_arn},
                 },
                 storageConfiguration={
                     "type": "S3_VECTORS",
@@ -647,16 +591,14 @@ class KnowledgeBasesForAmazonBedrock:
                     "type": "S3",
                     "s3Configuration": s3_configuration,
                 },
-                vectorIngestionConfiguration={
-                    "chunkingConfiguration": chunking_strategy_configuration
-                },
+                vectorIngestionConfiguration={"chunkingConfiguration": chunking_strategy_configuration},
             )
             ds = create_ds_response["dataSource"]
             pp.pprint(ds)
         except self.bedrock_agent_client.exceptions.ConflictException:
-            ds_id = self.bedrock_agent_client.list_data_sources(
-                knowledgeBaseId=kb["knowledgeBaseId"], maxResults=100
-            )["dataSourceSummaries"][0]["dataSourceId"]
+            ds_id = self.bedrock_agent_client.list_data_sources(knowledgeBaseId=kb["knowledgeBaseId"], maxResults=100)[
+                "dataSourceSummaries"
+            ][0]["dataSourceId"]
             get_ds_response = self.bedrock_agent_client.get_data_source(
                 dataSourceId=ds_id, knowledgeBaseId=kb["knowledgeBaseId"]
             )
@@ -675,16 +617,11 @@ class KnowledgeBasesForAmazonBedrock:
         # ensure that the kb is available
         i_status = ["CREATING", "DELETING", "UPDATING"]
         while (
-            self.bedrock_agent_client.get_knowledge_base(knowledgeBaseId=kb_id)[
-                "knowledgeBase"
-            ]["status"]
-            in i_status
+            self.bedrock_agent_client.get_knowledge_base(knowledgeBaseId=kb_id)["knowledgeBase"]["status"] in i_status
         ):
             time.sleep(10)
         # Start an ingestion job
-        start_job_response = self.bedrock_agent_client.start_ingestion_job(
-            knowledgeBaseId=kb_id, dataSourceId=ds_id
-        )
+        start_job_response = self.bedrock_agent_client.start_ingestion_job(knowledgeBaseId=kb_id, dataSourceId=ds_id)
         job = start_job_response["ingestionJob"]
         pp.pprint(job)
         # Get job
@@ -705,9 +642,7 @@ class KnowledgeBasesForAmazonBedrock:
         Args:
             kb_id: knowledge base id
         """
-        get_job_response = self.bedrock_agent_client.get_knowledge_base(
-            knowledgeBaseId=kb_id
-        )
+        get_job_response = self.bedrock_agent_client.get_knowledge_base(knowledgeBaseId=kb_id)
         return get_job_response
 
     def delete_kb(
@@ -736,15 +671,13 @@ class KnowledgeBasesForAmazonBedrock:
         kb_details = self.bedrock_agent_client.get_knowledge_base(knowledgeBaseId=kb_id)
         kb_role = kb_details["knowledgeBase"]["roleArn"].split("/")[1]
 
-        vector_bucket_arn = kb_details["knowledgeBase"]["storageConfiguration"][
-            "s3VectorsConfiguration"
-        ]["vectorBucketArn"]
+        vector_bucket_arn = kb_details["knowledgeBase"]["storageConfiguration"]["s3VectorsConfiguration"][
+            "vectorBucketArn"
+        ]
         # index_name = kb_details["knowledgeBase"]["storageConfiguration"][
         #     "s3VectorsConfiguration"
         # ]["indexName"]
-        index_arn = kb_details["knowledgeBase"]["storageConfiguration"][
-            "s3VectorsConfiguration"
-        ]["indexArn"]
+        index_arn = kb_details["knowledgeBase"]["storageConfiguration"]["s3VectorsConfiguration"]["indexArn"]
 
         ds_available = self.bedrock_agent_client.list_data_sources(
             knowledgeBaseId=kb_id,
@@ -758,9 +691,7 @@ class KnowledgeBasesForAmazonBedrock:
             knowledgeBaseId=kb_id,
         )
 
-        if (
-            delete_s3_vector
-        ):  # Renamed for backward compatibility, but now handles S3 vectors
+        if delete_s3_vector:  # Renamed for backward compatibility, but now handles S3 vectors
             self.s3_vectors_client.delete_index(
                 # vectorBucketName=vector_bucket_name,
                 # vectorBucketArn=vector_bucket_arn,
@@ -780,9 +711,7 @@ class KnowledgeBasesForAmazonBedrock:
 
         print("Resources deleted successfully!")
 
-        self.bedrock_agent_client.delete_data_source(
-            dataSourceId=ds_id, knowledgeBaseId=kb_id
-        )
+        self.bedrock_agent_client.delete_data_source(dataSourceId=ds_id, knowledgeBaseId=kb_id)
         print("Data Source deleted successfully!")
 
         self.bedrock_agent_client.delete_knowledge_base(knowledgeBaseId=kb_id)
@@ -794,16 +723,12 @@ class KnowledgeBasesForAmazonBedrock:
         Args:
             kb_execution_role_name: knowledge base execution role
         """
-        attached_policies = self.iam_client.list_attached_role_policies(
-            RoleName=kb_execution_role_name, MaxItems=100
-        )
+        attached_policies = self.iam_client.list_attached_role_policies(RoleName=kb_execution_role_name, MaxItems=100)
         policies_arns = []
         for policy in attached_policies["AttachedPolicies"]:
             policies_arns.append(policy["PolicyArn"])
         for policy in policies_arns:
-            self.iam_client.detach_role_policy(
-                RoleName=kb_execution_role_name, PolicyArn=policy
-            )
+            self.iam_client.detach_role_policy(RoleName=kb_execution_role_name, PolicyArn=policy)
             self.iam_client.delete_policy(PolicyArn=policy)
         self.iam_client.delete_role(RoleName=kb_execution_role_name)
         return 0
@@ -849,9 +774,7 @@ if __name__ == "__main__":
         print(f"Knowledge Base ID: {kb_id}")
         print(f"Data Source ID: {ds_id}")
 
-        kb.upload_directory(
-            f"{current_dir}/{data['kb_files_path']}", kb.get_data_bucket_name()
-        )
+        kb.upload_directory(f"{current_dir}/{data['kb_files_path']}", kb.get_data_bucket_name())
         kb.synchronize_data(kb_id, ds_id)
 
         smm_client.put_parameter(
@@ -864,6 +787,4 @@ if __name__ == "__main__":
 
     if args.mode == "delete":
         kb.delete_kb(data["knowledge_base_name"])
-        smm_client.delete_parameter(
-            Name="/app/customersupport/knowledge_base/knowledge_base_id"
-        )
+        smm_client.delete_parameter(Name="/app/customersupport/knowledge_base/knowledge_base_id")

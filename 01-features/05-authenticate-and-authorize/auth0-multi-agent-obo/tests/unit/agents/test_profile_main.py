@@ -16,9 +16,7 @@ from unittest.mock import patch, MagicMock
 # Add agents directory to path for imports
 sys.path.insert(
     0,
-    os.path.join(
-        os.path.dirname(__file__), "..", "..", "..", "agents", "customer_profile"
-    ),
+    os.path.join(os.path.dirname(__file__), "..", "..", "..", "agents", "customer_profile"),
 )
 
 # Check if bedrock_agentcore SDK is available
@@ -29,9 +27,7 @@ try:
 except ImportError:
     HAS_AGENTCORE_SDK = False
 
-pytestmark = pytest.mark.skipif(
-    not HAS_AGENTCORE_SDK, reason="bedrock_agentcore SDK not available (container-only)"
-)
+pytestmark = pytest.mark.skipif(not HAS_AGENTCORE_SDK, reason="bedrock_agentcore SDK not available (container-only)")
 
 
 class TestInvokeEntrypoint:
@@ -185,9 +181,7 @@ class TestInvokeEntrypoint:
     @pytest.mark.asyncio
     @patch("main.create_agent")
     @patch("main.validate_forwarded_claims")
-    async def test_extracts_query_from_query_field(
-        self, mock_validate, mock_create_agent
-    ):
+    async def test_extracts_query_from_query_field(self, mock_validate, mock_create_agent):
         """Test that query is extracted from 'query' field as fallback."""
         from main import invoke
 

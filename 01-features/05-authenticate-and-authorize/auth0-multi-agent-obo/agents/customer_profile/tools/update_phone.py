@@ -69,8 +69,7 @@ def update_phone_tool(
 
         action = "removed" if phone_number is None else "updated"
         logger.info(
-            f"{phone_type.capitalize()} phone {action} for customer_id={customer_id} "
-            f"by {audit_ctx['customer_id']}"
+            f"{phone_type.capitalize()} phone {action} for customer_id={customer_id} by {audit_ctx['customer_id']}"
         )
 
         return {

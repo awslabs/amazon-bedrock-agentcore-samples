@@ -21,9 +21,7 @@ class CustomerProfileAgent:
     Uses direct profile_service calls instead of strands Agent.
     """
 
-    def __init__(
-        self, user_id: Optional[str] = None, customer_id: Optional[str] = None
-    ):
+    def __init__(self, user_id: Optional[str] = None, customer_id: Optional[str] = None):
         """
         Initialize the Customer Profile Agent.
 
@@ -34,9 +32,7 @@ class CustomerProfileAgent:
         self.user_id = user_id
         self.customer_id = customer_id or user_id
 
-        logger.info(
-            f"CustomerProfileAgent initialized for user={user_id}, customer={customer_id}"
-        )
+        logger.info(f"CustomerProfileAgent initialized for user={user_id}, customer={customer_id}")
 
     def process_query(self, query: str) -> Dict[str, Any]:
         """
@@ -54,11 +50,7 @@ class CustomerProfileAgent:
             query_lower = query.lower()
 
             # Simple query routing based on keywords
-            if (
-                "profile" in query_lower
-                or "show" in query_lower
-                or "view" in query_lower
-            ):
+            if "profile" in query_lower or "show" in query_lower or "view" in query_lower:
                 return self._get_profile()
             elif "address" in query_lower:
                 return self._get_address_info()
@@ -123,7 +115,9 @@ class CustomerProfileAgent:
                 response_text += f"{mailing.get('street_line_1', '')}\n"
                 if mailing.get("street_line_2"):
                     response_text += f"{mailing['street_line_2']}\n"
-                response_text += f"{mailing.get('suburb', '')} {mailing.get('state', '')} {mailing.get('postcode', '')}\n"
+                response_text += (
+                    f"{mailing.get('suburb', '')} {mailing.get('state', '')} {mailing.get('postcode', '')}\n"
+                )
 
             return {
                 "status": "success",
@@ -172,15 +166,9 @@ class CustomerProfileAgent:
             response_text = "**Contact Preferences:**\n"
             response_text += f"Preferred contact method: {profile.get('preferred_contact_method', 'Not set')}\n"
             response_text += "\n**Marketing Preferences:**\n"
-            response_text += (
-                f"Email opt-in: {'Yes' if prefs.get('email_opt_in') else 'No'}\n"
-            )
-            response_text += (
-                f"SMS opt-in: {'Yes' if prefs.get('sms_opt_in') else 'No'}\n"
-            )
-            response_text += (
-                f"Mail opt-in: {'Yes' if prefs.get('mail_opt_in') else 'No'}\n"
-            )
+            response_text += f"Email opt-in: {'Yes' if prefs.get('email_opt_in') else 'No'}\n"
+            response_text += f"SMS opt-in: {'Yes' if prefs.get('sms_opt_in') else 'No'}\n"
+            response_text += f"Mail opt-in: {'Yes' if prefs.get('mail_opt_in') else 'No'}\n"
 
             return {
                 "status": "success",
@@ -226,9 +214,7 @@ class CustomerProfileAgent:
         return formatted.strip()
 
 
-def create_agent(
-    user_id: Optional[str] = None, customer_id: Optional[str] = None
-) -> CustomerProfileAgent:
+def create_agent(user_id: Optional[str] = None, customer_id: Optional[str] = None) -> CustomerProfileAgent:
     """
     Create and configure the Customer Profile Agent.
 

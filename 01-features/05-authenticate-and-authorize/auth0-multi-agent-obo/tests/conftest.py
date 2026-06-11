@@ -19,9 +19,7 @@ import pytest
 SAMPLE_JWT_SECRET = "test-secret-key-for-jwt-signing-in-tests-only"
 
 # Public key placeholder for tests that need it
-SAMPLE_PUBLIC_KEY = (
-    SAMPLE_JWT_SECRET  # Use same secret for HS256 symmetric verification
-)
+SAMPLE_PUBLIC_KEY = SAMPLE_JWT_SECRET  # Use same secret for HS256 symmetric verification
 
 
 @pytest.fixture
@@ -426,12 +424,8 @@ def mock_secrets_manager() -> Mock:
 
     # Set up exceptions for the mock client
     client.exceptions = Mock()
-    client.exceptions.ResourceNotFoundException = type(
-        "ResourceNotFoundException", (Exception,), {}
-    )
-    client.exceptions.AccessDeniedException = type(
-        "AccessDeniedException", (Exception,), {}
-    )
+    client.exceptions.ResourceNotFoundException = type("ResourceNotFoundException", (Exception,), {})
+    client.exceptions.AccessDeniedException = type("AccessDeniedException", (Exception,), {})
 
     return client
 
@@ -443,12 +437,8 @@ def mock_secrets_manager_with_versions() -> Mock:
 
     # Set up exceptions for the mock client
     client.exceptions = Mock()
-    client.exceptions.ResourceNotFoundException = type(
-        "ResourceNotFoundException", (Exception,), {}
-    )
-    client.exceptions.AccessDeniedException = type(
-        "AccessDeniedException", (Exception,), {}
-    )
+    client.exceptions.ResourceNotFoundException = type("ResourceNotFoundException", (Exception,), {})
+    client.exceptions.AccessDeniedException = type("AccessDeniedException", (Exception,), {})
 
     def get_secret_value(SecretId, VersionStage="AWSCURRENT"):
         if VersionStage == "AWSCURRENT":
@@ -476,9 +466,7 @@ def mock_secrets_manager_with_versions() -> Mock:
                 "VersionId": "pending-version-456",
             }
         else:
-            raise client.exceptions.ResourceNotFoundException(
-                f"Unknown version stage: {VersionStage}"
-            )
+            raise client.exceptions.ResourceNotFoundException(f"Unknown version stage: {VersionStage}")
 
     client.get_secret_value.side_effect = get_secret_value
     return client

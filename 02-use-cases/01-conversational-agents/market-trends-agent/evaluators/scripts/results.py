@@ -30,9 +30,7 @@ def _load_log_group() -> str:
         lg = data.get("onlineResultsLogGroup")
         if lg:
             return lg
-    raise SystemExit(
-        "Cannot find .deploy_output.json — run deploy.py first or pass --log-group."
-    )
+    raise SystemExit("Cannot find .deploy_output.json — run deploy.py first or pass --log-group.")
 
 
 def _fetch_events(log_group: str, minutes: int) -> List[Dict]:
@@ -42,9 +40,7 @@ def _fetch_events(log_group: str, minutes: int) -> List[Dict]:
     paginator = logs.get_paginator("filter_log_events")
     events: List[Dict] = []
     try:
-        for page in paginator.paginate(
-            logGroupName=log_group, startTime=start_ms, limit=1000
-        ):
+        for page in paginator.paginate(logGroupName=log_group, startTime=start_ms, limit=1000):
             for ev in page.get("events", []):
                 try:
                     events.append(json.loads(ev["message"]))
@@ -60,9 +56,7 @@ def _summarise(events: List[Dict]) -> Dict[str, List[Dict]]:
     by_eval: Dict[str, List[Dict]] = defaultdict(list)
     for ev in events:
         attrs = (ev or {}).get("attributes") or {}
-        name = (
-            attrs.get("gen_ai.evaluation.name") or ev.get("evaluatorName") or "unknown"
-        )
+        name = attrs.get("gen_ai.evaluation.name") or ev.get("evaluatorName") or "unknown"
         by_eval[name].append(ev)
     return by_eval
 
@@ -70,12 +64,8 @@ def _summarise(events: List[Dict]) -> Dict[str, List[Dict]]:
 def main() -> int:
     p = argparse.ArgumentParser()
     p.add_argument("--log-group", help="Override results log group")
-    p.add_argument(
-        "--minutes", type=int, default=DEFAULT_WINDOW_MIN, help="Lookback window"
-    )
-    p.add_argument(
-        "--raw", action="store_true", help="Print raw events instead of summary"
-    )
+    p.add_argument("--minutes", type=int, default=DEFAULT_WINDOW_MIN, help="Lookback window")
+    p.add_argument("--raw", action="store_true", help="Print raw events instead of summary")
     args = p.parse_args()
 
     log_group = args.log_group or _load_log_group()
@@ -97,11 +87,7 @@ def main() -> int:
             value = attrs.get("gen_ai.evaluation.score.value")
             if value is None:
                 value = row.get("value")
-            explanation = (
-                attrs.get("gen_ai.evaluation.explanation")
-                or row.get("explanation")
-                or ""
-            )
+            explanation = attrs.get("gen_ai.evaluation.explanation") or row.get("explanation") or ""
             session_id = attrs.get("session.id") or "?"
             trace_id = row.get("traceId") or "?"
             print(

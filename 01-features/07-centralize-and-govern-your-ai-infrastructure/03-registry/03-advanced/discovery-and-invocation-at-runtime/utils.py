@@ -90,9 +90,7 @@ def make_lambda_zip(code_str):
     return buf.read()
 
 
-def fetch_oauth_token(
-    cognito_domain, client_id, client_secret, scopes, region, max_retries=6
-):
+def fetch_oauth_token(cognito_domain, client_id, client_secret, scopes, region, max_retries=6):
     """Fetch OAuth2 access token from Cognito with retry for DNS propagation."""
     creds = base64.b64encode(f"{client_id}:{client_secret}".encode()).decode()
     for attempt in range(max_retries):
@@ -111,9 +109,7 @@ def fetch_oauth_token(
             return token
         except Exception:
             if attempt < max_retries - 1:
-                print(
-                    f"  Waiting for Cognito DNS (attempt {attempt + 1}/{max_retries})..."
-                )
+                print(f"  Waiting for Cognito DNS (attempt {attempt + 1}/{max_retries})...")
                 time.sleep(10)
             else:
                 raise
@@ -127,9 +123,7 @@ ORDER_TOOL_SCHEMAS = [
         "description": "Get the status and details of an order by order ID, including items, total, shipping, and tracking info",
         "inputSchema": {
             "type": "object",
-            "properties": {
-                "orderId": {"type": "string", "description": "The order ID to look up"}
-            },
+            "properties": {"orderId": {"type": "string", "description": "The order ID to look up"}},
             "required": ["orderId"],
         },
     },
@@ -265,9 +259,7 @@ def write_agent_files():
         f.write(CUSTOMER_SUPPORT_AGENT_CODE)
     with open("a2a_requirements.txt", "w") as f:
         f.write(A2A_REQUIREMENTS)
-    print(
-        "  Agent files written: pricing_agent.py, customer_support_agent.py, a2a_requirements.txt"
-    )
+    print("  Agent files written: pricing_agent.py, customer_support_agent.py, a2a_requirements.txt")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -316,11 +308,7 @@ def parse_server_metadata(record):
 
     elif protocol == "A2A":
         try:
-            card = json.loads(
-                descriptors.get("a2a", {})
-                .get("agentCard", {})
-                .get("inlineContent", "{}")
-            )
+            card = json.loads(descriptors.get("a2a", {}).get("agentCard", {}).get("inlineContent", "{}"))
             meta["url"] = card.get("url")
         except Exception:
             pass
@@ -392,7 +380,9 @@ def create_a2a_tool_from_metadata(meta, session, region):
             return f"Error: {e}"
 
     _invoke.__name__ = record_name.replace("-", "_").lower()
-    _invoke.__doc__ = f"{description}\n\nArgs:\n    task: The task or question to send.\nReturns:\n    The agent's response."
+    _invoke.__doc__ = (
+        f"{description}\n\nArgs:\n    task: The task or question to send.\nReturns:\n    The agent's response."
+    )
     print(f"    [A2A] {record_name} -> {arn[:70]}...")
     return tool(_invoke)
 
@@ -437,9 +427,7 @@ def invoke_orchestrator(user_request, data_client, orchestrator_arn, max_retries
             return "\n".join(p["text"] for p in parts if p.get("kind") == "text")
         except Exception as e:
             if "502" in str(e) and attempt < max_retries - 1:
-                print(
-                    f"  Cold-start 502, retrying in 15s (attempt {attempt + 1}/{max_retries})..."
-                )
+                print(f"  Cold-start 502, retrying in 15s (attempt {attempt + 1}/{max_retries})...")
                 time.sleep(10)
             else:
                 raise

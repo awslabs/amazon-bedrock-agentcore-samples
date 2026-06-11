@@ -3,9 +3,7 @@ import contextvars
 from typing import Optional
 
 # Request context for logging
-request_id_context: contextvars.ContextVar[Optional[str]] = contextvars.ContextVar(
-    "request_id", default=None
-)
+request_id_context: contextvars.ContextVar[Optional[str]] = contextvars.ContextVar("request_id", default=None)
 
 
 class RequestContextFormatter(logging.Formatter):
@@ -25,9 +23,7 @@ class RequestContextFormatter(logging.Formatter):
 logger = logging.getLogger("bedrock_agentcore.app")
 if not logger.handlers:
     handler = logging.StreamHandler()
-    formatter = RequestContextFormatter(
-        "%(asctime)s - %(name)s - %(levelname)s - %(request_id)s%(message)s"
-    )
+    formatter = RequestContextFormatter("%(asctime)s - %(name)s - %(levelname)s - %(request_id)s%(message)s")
     handler.setFormatter(formatter)
     logger.addHandler(handler)
     logger.setLevel(logging.INFO)

@@ -17,9 +17,7 @@ from utils import (
 )
 
 # Set up detailed logging
-logging.basicConfig(
-    level=logging.DEBUG, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.DEBUG, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 
@@ -29,9 +27,7 @@ def main():
     parser = argparse.ArgumentParser(
         description="Interactive Agent Runtime CLI Tool - Start a conversation with the customer support agent"
     )
-    parser.add_argument(
-        "--verbose", "-v", action="store_true", help="Enable verbose logging"
-    )
+    parser.add_argument("--verbose", "-v", action="store_true", help="Enable verbose logging")
     parser.add_argument("--debug", action="store_true", help="Enable debug logging")
 
     args = parser.parse_args()
@@ -74,9 +70,7 @@ def main():
         state = str(uuid.uuid4())
 
         client_id = get_ssm_parameter("/app/customersupportvpc/agentcore/web_client_id")
-        cognito_domain = get_ssm_parameter(
-            "/app/customersupportvpc/agentcore/cognito_domain"
-        )
+        cognito_domain = get_ssm_parameter("/app/customersupportvpc/agentcore/cognito_domain")
         redirect_uri = "http://localhost:8080/callback"
 
         login_params = {
@@ -101,9 +95,7 @@ def main():
             print(login_url)
             auth_code = input("📥 Paste the `code` from the redirected URL: ").strip()
 
-        token_url = get_ssm_parameter(
-            "/app/customersupportvpc/agentcore/cognito_token_url"
-        )
+        token_url = get_ssm_parameter("/app/customersupportvpc/agentcore/cognito_token_url")
         response = requests.post(
             token_url,
             data={

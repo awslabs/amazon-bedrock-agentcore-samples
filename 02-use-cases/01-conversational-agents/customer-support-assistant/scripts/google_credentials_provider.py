@@ -21,9 +21,7 @@ def store_provider_name_in_ssm(provider_name: str):
     """Store credential provider name in SSM parameter."""
     param_name = "/app/customersupport/agentcore/google_provider"
     try:
-        ssm.put_parameter(
-            Name=param_name, Value=provider_name, Type="String", Overwrite=True
-        )
+        ssm.put_parameter(Name=param_name, Value=provider_name, Type="String", Overwrite=True)
         click.echo(f"🔐 Stored provider name in SSM: {param_name}")
     except ClientError as e:
         click.echo(f"⚠️ Failed to store provider name in SSM: {e}")
@@ -162,9 +160,7 @@ def cli(ctx):
 
 
 @cli.command()
-@click.option(
-    "--name", required=True, help="Name for the credential provider (required)"
-)
+@click.option("--name", required=True, help="Name for the credential provider (required)")
 @click.option(
     "--credentials-file",
     default=CREDENTIALS_FILE,
@@ -184,9 +180,7 @@ def create(name, credentials_file):
             sys.exit(0)
 
     try:
-        provider = create_google_provider(
-            provider_name=name, credentials_file=credentials_file
-        )
+        provider = create_google_provider(provider_name=name, credentials_file=credentials_file)
         click.echo("🎉 Google credential provider created successfully!")
         click.echo(f"   Provider ARN: {provider['credentialProviderArn']}")
         click.echo(f"   Provider Name: {provider['name']}")

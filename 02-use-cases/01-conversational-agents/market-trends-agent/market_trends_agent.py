@@ -58,9 +58,7 @@ def create_market_trends_agent():
     )
 
     # Create memory tools using the memory_tools module
-    memory_tools = create_memory_tools(
-        memory_client, memory_id, session_id, default_actor_id
-    )
+    memory_tools = create_memory_tools(memory_client, memory_id, session_id, default_actor_id)
 
     # Bind tools to the LLM (market data tools + memory tools + conversational broker tools)
     tools = [
@@ -175,9 +173,7 @@ def create_market_trends_agent():
         raw_messages = state["messages"]
 
         # Remove any existing system messages to avoid duplicates
-        non_system_messages = [
-            msg for msg in raw_messages if not isinstance(msg, SystemMessage)
-        ]
+        non_system_messages = [msg for msg in raw_messages if not isinstance(msg, SystemMessage)]
 
         # Filter messages more carefully to preserve tool_use/tool_result pairs
         filtered_messages = []
@@ -186,11 +182,7 @@ def create_market_trends_agent():
             msg = non_system_messages[i]
 
             # Check if message has content (for regular messages)
-            if (
-                hasattr(msg, "content")
-                and isinstance(msg.content, str)
-                and msg.content.strip()
-            ):
+            if hasattr(msg, "content") and isinstance(msg.content, str) and msg.content.strip():
                 filtered_messages.append(msg)
             # Check if message has tool_calls (for tool_use messages)
             elif hasattr(msg, "tool_calls") and msg.tool_calls:
@@ -202,8 +194,7 @@ def create_market_trends_agent():
             elif hasattr(msg, "content") and isinstance(msg.content, list):
                 # Keep messages with tool content blocks
                 has_tool_content = any(
-                    isinstance(block, dict)
-                    and block.get("type") in ["tool_use", "tool_result"]
+                    isinstance(block, dict) and block.get("type") in ["tool_use", "tool_result"]
                     for block in msg.content
                 )
                 if has_tool_content:
@@ -211,17 +202,13 @@ def create_market_trends_agent():
                 else:
                     # Check if any text blocks have content
                     has_text_content = any(
-                        isinstance(block, dict)
-                        and block.get("type") == "text"
-                        and block.get("text", "").strip()
+                        isinstance(block, dict) and block.get("type") == "text" and block.get("text", "").strip()
                         for block in msg.content
                     )
                     if has_text_content:
                         filtered_messages.append(msg)
                     else:
-                        logger.warning(
-                            f"Filtered out empty message: {type(msg).__name__}"
-                        )
+                        logger.warning(f"Filtered out empty message: {type(msg).__name__}")
             else:
                 logger.warning(f"Filtered out empty message: {type(msg).__name__}")
 
@@ -236,11 +223,7 @@ def create_market_trends_agent():
         # Save conversation to AgentCore Memory - let the agent handle actor_id through tools
         # The agent will use identify_broker() tool to get the correct actor_id when needed
         latest_user_message = next(
-            (
-                msg.content
-                for msg in reversed(messages)
-                if isinstance(msg, HumanMessage)
-            ),
+            (msg.content for msg in reversed(messages) if isinstance(msg, HumanMessage)),
             None,
         )
 
@@ -262,9 +245,7 @@ def create_market_trends_agent():
                         session_id=session_id,
                         messages=conversation,
                     )
-                    logger.info(
-                        f"Conversation saved to AgentCore Memory for session: {session_id}"
-                    )
+                    logger.info(f"Conversation saved to AgentCore Memory for session: {session_id}")
                 except Exception as e:
                     logger.error(f"Error saving conversation to memory: {e}")
 

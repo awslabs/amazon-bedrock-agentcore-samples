@@ -70,9 +70,9 @@ def save_turn(actor_id: str, session_id: str, user_prompt: str, agent_response: 
             actor_id=actor_id,
             session_id=session_id,
             messages=[
-                ConversationalMessage(user_prompt,    MessageRole.USER),
+                ConversationalMessage(user_prompt, MessageRole.USER),
                 ConversationalMessage(agent_response, MessageRole.ASSISTANT),
-            ]
+            ],
         )
         logger.info("💾 Saved turn to memory (actor=%s session=%s)", actor_id, session_id)
     except Exception as e:
@@ -91,11 +91,7 @@ def retrieve_context(actor_id: str, query: str, top_k: int = 3) -> str:
 
     try:
         namespace = KNOWLEDGE_NS.format(actorId=actor_id)
-        records = client.search_long_term_memories(
-            query=query,
-            namespace_prefix=namespace,
-            top_k=top_k
-        )
+        records = client.search_long_term_memories(query=query, namespace_prefix=namespace, top_k=top_k)
 
         if not records:
             return ""
@@ -122,7 +118,7 @@ def _extract_text(content) -> str:
 
     if isinstance(content, str):
         # Check if it's a JSON-encoded message structure
-        if content.startswith('{') and '"message"' in content:
+        if content.startswith("{") and '"message"' in content:
             try:
                 parsed = _json.loads(content)
                 return _extract_text(parsed)
@@ -241,6 +237,7 @@ def get_session_history(actor_id: str, session_id: str, k: int = 10) -> list:
     except Exception as e:
         logger.warning("⚠️  Failed to get session history from memory: %s", e)
         import traceback
+
         logger.warning("📋 Traceback: %s", traceback.format_exc())
         return []
 
@@ -265,7 +262,8 @@ def list_actor_sessions(actor_id: str) -> list:
 
             # Deduplicate: strip -generator/-executor suffix to get base session ID
             import re as _re_dedup
-            base_id = _re_dedup.sub(r'-(generator|executor)$', '', session_id)
+
+            base_id = _re_dedup.sub(r"-(generator|executor)$", "", session_id)
             if base_id in seen_base_ids:
                 continue
             seen_base_ids.add(base_id)
@@ -277,6 +275,7 @@ def list_actor_sessions(actor_id: str) -> list:
 
             # Extract the first natural-language user prompt as preview
             import re as _re
+
             first_message = ""
             fallback_func = ""
             for event in events:
@@ -291,17 +290,19 @@ def list_actor_sessions(actor_id: str) -> list:
                     if role.upper() == "USER":
                         stripped = text.strip()
                         # Skip non-prompt content
-                        if _re.match(r'^(Execute(?:\s+code)?:|```|def |class |import |from |Relevant context)', stripped):
+                        if _re.match(
+                            r"^(Execute(?:\s+code)?:|```|def |class |import |from |Relevant context)", stripped
+                        ):
                             # Extract function name as fallback
                             if not fallback_func:
-                                func_match = _re.search(r'def (\w+)\(', text)
+                                func_match = _re.search(r"def (\w+)\(", text)
                                 if func_match:
                                     fallback_func = func_match.group(1)
                             continue
                         if "blocked" in text.lower() or "guardrail" in text.lower():
                             continue
                         # Skip tool results / execution output (starts with numbers, errors, etc.)
-                        if _re.match(r'^(\d|Enter |Error:|Initial state|{)', stripped):
+                        if _re.match(r"^(\d|Enter |Error:|Initial state|{)", stripped):
                             continue
                         first_message = text[:100]
                         break
@@ -311,12 +312,14 @@ def list_actor_sessions(actor_id: str) -> list:
             if not first_message and fallback_func:
                 first_message = f"Code: {fallback_func}()"
 
-            result.append({
-                "session_id": base_id,
-                "created_at": str(s.get("createdAt", "")),
-                "updated_at": str(s.get("updatedAt", "")),
-                "first_message": first_message,
-            })
+            result.append(
+                {
+                    "session_id": base_id,
+                    "created_at": str(s.get("createdAt", "")),
+                    "updated_at": str(s.get("updatedAt", "")),
+                    "first_message": first_message,
+                }
+            )
         # Sort by created_at descending (latest first)
         result.sort(key=lambda x: x.get("created_at", ""), reverse=True)
         return result

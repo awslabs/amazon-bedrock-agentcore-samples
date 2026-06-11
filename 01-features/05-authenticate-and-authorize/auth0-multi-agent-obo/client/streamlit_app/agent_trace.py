@@ -46,9 +46,7 @@ class TraceEvent:
         return {
             "event_type": self.event_type.value,
             "timestamp": self.timestamp,
-            "formatted_time": datetime.fromtimestamp(self.timestamp).strftime(
-                "%H:%M:%S.%f"
-            )[:-3],
+            "formatted_time": datetime.fromtimestamp(self.timestamp).strftime("%H:%M:%S.%f")[:-3],
             "agent": self.agent,
             "description": self.description,
             "details": self.details,
@@ -104,9 +102,7 @@ class AgentTrace:
             )
         )
 
-    def complete(
-        self, response: str, success: bool = True, error: Optional[str] = None
-    ):
+    def complete(self, response: str, success: bool = True, error: Optional[str] = None):
         """Mark the trace as complete."""
         self.end_time = time.time()
         self.final_response = response
@@ -126,9 +122,7 @@ class AgentTrace:
             "session_id": self.session_id,
             "user_query": self.user_query,
             "start_time": datetime.fromtimestamp(self.start_time).isoformat(),
-            "end_time": datetime.fromtimestamp(self.end_time).isoformat()
-            if self.end_time
-            else None,
+            "end_time": datetime.fromtimestamp(self.end_time).isoformat() if self.end_time else None,
             "duration_ms": self.duration_ms,
             "events": [e.to_dict() for e in self.events],
             "final_response": self.final_response,
@@ -137,9 +131,7 @@ class AgentTrace:
         }
 
 
-def generate_mock_trace(
-    query: str, session_id: str, user_id: str, customer_id: str, user_email: str
-) -> AgentTrace:
+def generate_mock_trace(query: str, session_id: str, user_id: str, customer_id: str, user_email: str) -> AgentTrace:
     """
     Generate a mock trace for demonstration purposes.
 
@@ -148,15 +140,11 @@ def generate_mock_trace(
     """
     import uuid
 
-    trace = AgentTrace(
-        trace_id=str(uuid.uuid4())[:8], session_id=session_id, user_query=query
-    )
+    trace = AgentTrace(trace_id=str(uuid.uuid4())[:8], session_id=session_id, user_query=query)
 
     # Determine which agent would handle this query
     query_lower = query.lower()
-    if any(
-        word in query_lower for word in ["account", "balance", "savings", "transaction"]
-    ):
+    if any(word in query_lower for word in ["account", "balance", "savings", "transaction"]):
         target_agent = "accounts_agent"
         action = "get_accounts"
     elif any(word in query_lower for word in ["profile", "address", "email", "phone"]):
@@ -311,9 +299,7 @@ def generate_unauthorized_trace(
     """
     import uuid
 
-    trace = AgentTrace(
-        trace_id=str(uuid.uuid4())[:8], session_id=session_id, user_query=query
-    )
+    trace = AgentTrace(trace_id=str(uuid.uuid4())[:8], session_id=session_id, user_query=query)
 
     # Compute timestamps arithmetically to simulate event progression
     base_time = time.time()

@@ -23,9 +23,7 @@ class CognitoAuthenticator:
     def get_config_from_stack(self, stack_name: str) -> Dict[str, str]:
         """Extract Cognito config from CloudFormation stack outputs"""
         response = self.cfn.describe_stacks(StackName=stack_name)
-        outputs = {
-            o["OutputKey"]: o["OutputValue"] for o in response["Stacks"][0]["Outputs"]
-        }
+        outputs = {o["OutputKey"]: o["OutputValue"] for o in response["Stacks"][0]["Outputs"]}
 
         # Parse user pool ID from DiscoveryUrl
         # Format: https://cognito-idp.{region}.amazonaws.com/{user_pool_id}/.well-known/openid-configuration
@@ -37,9 +35,7 @@ class CognitoAuthenticator:
             "client_id": outputs.get("WebUserPoolClientId"),
         }
 
-    def authenticate(
-        self, user_pool_id: str, client_id: str, username: str, password: str
-    ) -> str:
+    def authenticate(self, user_pool_id: str, client_id: str, username: str, password: str) -> str:
         """Authenticate user and return access token"""
         response = self.cognito.admin_initiate_auth(
             UserPoolId=user_pool_id,
@@ -72,8 +68,7 @@ def load_config() -> Dict[str, Any]:
 
     if not config_path.exists():
         raise FileNotFoundError(
-            f"Configuration not found at {config_path}\n"
-            "Run 'uv run deploy.py' first to create the configuration."
+            f"Configuration not found at {config_path}\nRun 'uv run deploy.py' first to create the configuration."
         )
 
     with open(config_path) as f:

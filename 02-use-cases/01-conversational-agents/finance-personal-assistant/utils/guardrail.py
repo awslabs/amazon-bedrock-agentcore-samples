@@ -13,9 +13,7 @@ def create_guardrail():
         existing_guardrails = bedrock_client.list_guardrails()
         for guardrail in existing_guardrails.get("guardrails", []):
             if guardrail.get("name") == guardrail_name:
-                print(
-                    f"Guardrail '{guardrail_name}' already exists. Returning existing guardrail."
-                )
+                print(f"Guardrail '{guardrail_name}' already exists. Returning existing guardrail.")
                 return (guardrail.get("id"), guardrail.get("arn"))
     except Exception as e:
         print(f"Error checking existing guardrails: {e}")

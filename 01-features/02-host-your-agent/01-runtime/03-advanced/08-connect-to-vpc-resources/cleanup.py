@@ -51,9 +51,7 @@ def main():
         for ep in endpoints.get("runtimeEndpoints", []):
             name = ep["name"]
             print(f"  Deleting endpoint: {name}")
-            control.delete_agent_runtime_endpoint(
-                agentRuntimeId=runtime_id, endpointName=name
-            )
+            control.delete_agent_runtime_endpoint(agentRuntimeId=runtime_id, endpointName=name)
         if endpoints.get("runtimeEndpoints"):
             print("  Waiting for endpoint deletion...")
             time.sleep(30)

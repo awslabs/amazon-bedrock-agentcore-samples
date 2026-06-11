@@ -90,9 +90,7 @@ def _ordered_tool_calls(spans: Iterable[Dict[str, Any]]) -> List[str]:
     tool_spans = [s for s in spans if _is_tool_call_span(s)]
 
     def _start(span: Dict[str, Any]) -> int:
-        v = span.get("startTimeUnixNano") or (span.get("attributes") or {}).get(
-            "startTimeUnixNano"
-        )
+        v = span.get("startTimeUnixNano") or (span.get("attributes") or {}).get("startTimeUnixNano")
         try:
             return int(v)
         except (TypeError, ValueError):
@@ -111,9 +109,7 @@ def _evaluate_contract(
     for group in contract:
         any_of = set(group.get("any_of") or [])
         any_sets.append(any_of)
-        results.append(
-            (group.get("name") or ",".join(sorted(any_of)), bool(any_of & set(calls)))
-        )
+        results.append((group.get("name") or ",".join(sorted(any_of)), bool(any_of & set(calls))))
 
     # order check: advance a cursor through calls; each group must be
     # satisfied at or after the previous group's matching index.
@@ -136,11 +132,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         eval_input = event.get("evaluationInput") or {}
         spans = eval_input.get("sessionSpans") or []
         raw_contract = eval_input.get("contract")
-        contract = (
-            raw_contract
-            if isinstance(raw_contract, list) and raw_contract
-            else DEFAULT_CONTRACT
-        )
+        contract = raw_contract if isinstance(raw_contract, list) and raw_contract else DEFAULT_CONTRACT
 
         calls = _ordered_tool_calls(spans)
         group_results, ordered, _ = _evaluate_contract(calls, contract)

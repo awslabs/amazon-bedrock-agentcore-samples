@@ -19,9 +19,7 @@ from lab_helpers.config import AWS_REGION
 logger = logging.getLogger(__name__)
 
 
-def create_supervisor_runtime_iam_role(
-    role_name: str, region: str = AWS_REGION, account_id: str = None
-) -> Dict:
+def create_supervisor_runtime_iam_role(role_name: str, region: str = AWS_REGION, account_id: str = None) -> Dict:
     """
     Create IAM role for Supervisor Runtime with multi-gateway orchestration permissions.
 
@@ -53,9 +51,7 @@ def create_supervisor_runtime_iam_role(
         account_id = sts.get_caller_identity()["Account"]
 
     logger.info(f"Creating supervisor runtime IAM role: {role_name}")
-    logger.info(
-        "Authentication: JWT token propagation (User JWT → Supervisor → Gateways)"
-    )
+    logger.info("Authentication: JWT token propagation (User JWT → Supervisor → Gateways)")
 
     # Trust policy: Allow bedrock-agentcore service to assume role
     trust_policy = {
@@ -67,9 +63,7 @@ def create_supervisor_runtime_iam_role(
                 "Action": "sts:AssumeRole",
                 "Condition": {
                     "StringEquals": {"aws:SourceAccount": account_id},
-                    "ArnLike": {
-                        "aws:SourceArn": f"arn:aws:bedrock-agentcore:{region}:{account_id}:*"
-                    },
+                    "ArnLike": {"aws:SourceArn": f"arn:aws:bedrock-agentcore:{region}:{account_id}:*"},
                 },
             }
         ],
@@ -131,9 +125,7 @@ def create_supervisor_runtime_iam_role(
                     "logs:PutLogEvents",
                     "logs:DescribeLogStreams",
                 ],
-                "Resource": [
-                    f"arn:aws:logs:{region}:{account_id}:log-group:/aws/bedrock-agentcore/*"
-                ],
+                "Resource": [f"arn:aws:logs:{region}:{account_id}:log-group:/aws/bedrock-agentcore/*"],
             },
             # 2b. X-Ray Tracing (Runtime observability and tracing)
             {
@@ -151,9 +143,7 @@ def create_supervisor_runtime_iam_role(
                     "bedrock-agentcore:GetGateway",
                     "bedrock-agentcore:ListGateways",
                 ],
-                "Resource": [
-                    f"arn:aws:bedrock-agentcore:{region}:{account_id}:gateway/*"
-                ],
+                "Resource": [f"arn:aws:bedrock-agentcore:{region}:{account_id}:gateway/*"],
             },
             # 6. Parameter Store (Configuration and gateway URL retrieval)
             {
@@ -226,9 +216,7 @@ def create_supervisor_runtime_iam_role(
     }
 
 
-def delete_supervisor_runtime_iam_role(
-    role_name: str, region: str = AWS_REGION
-) -> bool:
+def delete_supervisor_runtime_iam_role(role_name: str, region: str = AWS_REGION) -> bool:
     """
     Delete supervisor runtime IAM role and associated policies.
 

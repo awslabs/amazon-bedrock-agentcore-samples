@@ -39,9 +39,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from utils import load_tutorial_env
 
 # ── Load config from Tutorial 00 .env ────────────────────────────────────────
-ENV_FILE = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env"
-)
+ENV_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env")
 load_dotenv(ENV_FILE, override=True)
 
 # ── Step 1: Load Config ───────────────────────────────────────────────────────
@@ -55,9 +53,7 @@ REGION = config["region"]
 USER_ID = config["user_id"]
 
 if config.get("multi_provider"):
-    INSTRUMENT_ID = config["instruments"][list(config["instruments"].keys())[0]][
-        "instrument_id"
-    ]
+    INSTRUMENT_ID = config["instruments"][list(config["instruments"].keys())[0]]["instrument_id"]
 else:
     INSTRUMENT_ID = config["instrument_id"]
 
@@ -66,9 +62,7 @@ NETWORK = os.environ.get("NETWORK", "ETHEREUM")
 
 # CAIP-2 chain identifiers for network preference
 NETWORK_PREFS = (
-    ["eip155:84532", "base-sepolia"]
-    if NETWORK == "ETHEREUM"
-    else ["solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"]
+    ["eip155:84532", "base-sepolia"] if NETWORK == "ETHEREUM" else ["solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"]
 )
 
 print(f"Manager: {PAYMENT_MANAGER_ARN}")
@@ -114,9 +108,7 @@ def make_http_request(url: str, method: str = "GET", headers: dict = None) -> st
     )
 
 
-def wrap_with_auto_402(
-    tool, manager, user_id, instrument_id, session_id, network_prefs=None
-):
+def wrap_with_auto_402(tool, manager, user_id, instrument_id, session_id, network_prefs=None):
     """Wrap a tool to auto-handle x402 Payment Required responses.
 
     The LLM does not see the 402 — the wrapper intercepts it, signs the payment
@@ -136,9 +128,7 @@ def wrap_with_auto_402(
 
         # 402 detected — decode x402 payment details
         headers_402 = parsed.get("headers", {})
-        payment_required = headers_402.get("payment-required") or headers_402.get(
-            "Payment-Required", ""
-        )
+        payment_required = headers_402.get("payment-required") or headers_402.get("Payment-Required", "")
         if payment_required:
             try:
                 x402_payload = json.loads(base64.b64decode(payment_required))
@@ -174,9 +164,7 @@ def wrap_with_auto_402(
         paid_result = original(**kw)
 
         try:
-            paid_parsed = (
-                json.loads(paid_result) if isinstance(paid_result, str) else paid_result
-            )
+            paid_parsed = json.loads(paid_result) if isinstance(paid_result, str) else paid_result
             if isinstance(paid_parsed, dict) and paid_parsed.get("statusCode") == 200:
                 print("  Paid content received (HTTP 200)")
         except Exception:
@@ -200,9 +188,7 @@ http_tool = StructuredTool.from_function(
 )
 
 # Wrap with auto-402 handling
-wrapped_http = wrap_with_auto_402(
-    http_tool, payment_manager, USER_ID, INSTRUMENT_ID, SESSION_ID, NETWORK_PREFS
-)
+wrapped_http = wrap_with_auto_402(http_tool, payment_manager, USER_ID, INSTRUMENT_ID, SESSION_ID, NETWORK_PREFS)
 print("http_request tool with x402 auto-payment handling ready")
 
 # ── Step 4: Create the LangGraph Agent ────────────────────────────────────────
@@ -267,9 +253,7 @@ budget_session = payment_manager.create_payment_session(
 budget_session_id = budget_session["paymentSessionId"]
 print(f"Budget session: {budget_session_id} ($0.50 USD, 60 min)")
 
-budget_http = wrap_with_auto_402(
-    http_tool, payment_manager, USER_ID, INSTRUMENT_ID, budget_session_id, NETWORK_PREFS
-)
+budget_http = wrap_with_auto_402(http_tool, payment_manager, USER_ID, INSTRUMENT_ID, budget_session_id, NETWORK_PREFS)
 budget_agent = create_agent(model, [budget_http], system_prompt=SYSTEM_PROMPT)
 
 for chunk, metadata in budget_agent.stream(
@@ -312,9 +296,7 @@ tiny_session = payment_manager.create_payment_session(
 tiny_session_id = tiny_session["paymentSessionId"]
 print(f"Tiny session: {tiny_session_id} (budget: $0.0001 USD)")
 
-tiny_http = wrap_with_auto_402(
-    http_tool, payment_manager, USER_ID, INSTRUMENT_ID, tiny_session_id, NETWORK_PREFS
-)
+tiny_http = wrap_with_auto_402(http_tool, payment_manager, USER_ID, INSTRUMENT_ID, tiny_session_id, NETWORK_PREFS)
 tiny_agent = create_agent(model, [tiny_http], system_prompt=SYSTEM_PROMPT)
 
 try:

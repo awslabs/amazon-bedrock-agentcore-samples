@@ -28,9 +28,7 @@ os.environ.setdefault("OTEL_SEMCONV_STABILITY_OPT_IN", "gen_ai_latest_experiment
 
 honeycomb_api_key = os.environ.get("HONEYCOMB_API_KEY", "")
 honeycomb_dataset = os.environ.get("HONEYCOMB_DATASET", "llmobs")
-honeycomb_endpoint = os.environ.get(
-    "HONEYCOMB_OTLP_ENDPOINT", "https://api.honeycomb.io/v1/traces"
-)
+honeycomb_endpoint = os.environ.get("HONEYCOMB_OTLP_ENDPOINT", "https://api.honeycomb.io/v1/traces")
 service_name = os.environ.get("OTEL_SERVICE_NAME", "agentcore-travel-agent")
 
 if honeycomb_api_key:
@@ -90,13 +88,9 @@ def web_search(query: str) -> str:
 
 
 def create_agent():
-    model_id = os.getenv(
-        "BEDROCK_MODEL_ID", "global.anthropic.claude-haiku-4-5-20251001-v1:0"
-    )
+    model_id = os.getenv("BEDROCK_MODEL_ID", "global.anthropic.claude-haiku-4-5-20251001-v1:0")
     region = os.getenv("AWS_DEFAULT_REGION", "us-east-1")
-    model = BedrockModel(
-        model_id=model_id, region_name=region, temperature=0.0, max_tokens=1024
-    )
+    model = BedrockModel(model_id=model_id, region_name=region, temperature=0.0, max_tokens=1024)
     return Agent(
         model=model,
         system_prompt=(

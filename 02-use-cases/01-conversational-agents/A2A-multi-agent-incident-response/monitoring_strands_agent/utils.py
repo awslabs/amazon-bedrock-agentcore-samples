@@ -17,9 +17,7 @@ GATEWAY_PROVIDER_NAME = os.getenv("GATEWAY_PROVIDER_NAME")
 def get_gateway_url() -> str:
     """Get gateway URL from SSM (cached)."""
 
-    response = ssm.get_parameter(
-        Name="/monitoragent/agentcore/gateway/gateway_url", WithDecryption=True
-    )
+    response = ssm.get_parameter(Name="/monitoragent/agentcore/gateway/gateway_url", WithDecryption=True)
     logger.info("Gateway URL loaded from SSM")
     return response["Parameter"]["Value"]
 

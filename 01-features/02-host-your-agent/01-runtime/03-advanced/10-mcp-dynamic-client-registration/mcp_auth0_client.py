@@ -258,9 +258,7 @@ class SimpleAuthClient:
                 """Redirect handler that opens the URL in a browser with Auth0 audience parameter."""
                 # Add Auth0 audience parameter if configured
                 if self.auth0_audience:
-                    authorization_url = add_auth0_audience_parameter(
-                        authorization_url, self.auth0_audience
-                    )
+                    authorization_url = add_auth0_audience_parameter(authorization_url, self.auth0_audience)
 
                 webbrowser.open(authorization_url)
 
@@ -269,9 +267,7 @@ class SimpleAuthClient:
             # Note: httpx.AsyncClient is globally patched to inject User-Agent header
             oauth_auth = OAuthClientProvider(
                 server_url=self.server_url,
-                client_metadata=OAuthClientMetadata.model_validate(
-                    client_metadata_dict
-                ),
+                client_metadata=OAuthClientMetadata.model_validate(client_metadata_dict),
                 storage=InMemoryTokenStorage(),
                 redirect_handler=redirect_handler,
                 callback_handler=callback_handler,
@@ -387,9 +383,7 @@ async def main(agent_arn, base_endpoint, auth0_audience):
 
     if not agent_arn:
         print("❌ Please set AGENT_ARN environment variable")
-        print(
-            "Example: export AGENT_ARN='arn:aws:bedrock:us-west-2:123456789012:agent/ABCD1234'"
-        )
+        print("Example: export AGENT_ARN='arn:aws:bedrock:us-west-2:123456789012:agent/ABCD1234'")
         return
 
     # Encode the ARN for use in URL

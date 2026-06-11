@@ -19,9 +19,7 @@ def setup_interactive_tools_import():
 
     # Define paths
     tutorials_path = repo_root / "06-workshops"
-    browser_tool_path = (
-        tutorials_path / "05-AgentCore-tools" / "02-Agent-Core-browser-tool"
-    )
+    browser_tool_path = tutorials_path / "05-AgentCore-tools" / "02-Agent-Core-browser-tool"
     shared_path = agent_root / "shared"
 
     # Add to sys.path

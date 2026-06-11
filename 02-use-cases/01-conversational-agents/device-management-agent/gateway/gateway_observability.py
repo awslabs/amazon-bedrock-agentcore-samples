@@ -62,9 +62,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
-def enable_observability_for_resource(
-    resource_arn, resource_id, account_id, region="us-west-2"
-):
+def enable_observability_for_resource(resource_arn, resource_id, account_id, region="us-west-2"):
     """
     Enable observability for a Bedrock AgentCore resource (e.g., Gateway)
     """
@@ -92,9 +90,7 @@ def enable_observability_for_resource(
                 "destinationResourceArn": log_group_arn,
             },
         )
-        print(
-            f"Created logs delivery destination: {logs_destination_response['deliveryDestination']['name']}"
-        )
+        print(f"Created logs delivery destination: {logs_destination_response['deliveryDestination']['name']}")
 
         print(f"Observability enabled for {resource_id}")
         return resource_id

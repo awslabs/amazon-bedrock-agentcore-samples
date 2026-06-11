@@ -28,9 +28,7 @@ otel_endpoint = os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT", "")
 if otel_endpoint:
     logger.info("OpenLIT OTLP configured (endpoint: %s)", otel_endpoint)
 else:
-    logger.warning(
-        "OTEL_EXPORTER_OTLP_ENDPOINT not set — traces will not be sent to OpenLIT"
-    )
+    logger.warning("OTEL_EXPORTER_OTLP_ENDPOINT not set — traces will not be sent to OpenLIT")
 
 # ── Agent ──────────────────────────────────────────────────────────────────────
 
@@ -65,13 +63,9 @@ def create_agent():
     # StrandsTelemetry reads OTEL_EXPORTER_OTLP_ENDPOINT from environment
     StrandsTelemetry().setup_otlp_exporter()
 
-    model_id = os.getenv(
-        "BEDROCK_MODEL_ID", "global.anthropic.claude-haiku-4-5-20251001-v1:0"
-    )
+    model_id = os.getenv("BEDROCK_MODEL_ID", "global.anthropic.claude-haiku-4-5-20251001-v1:0")
     region = os.getenv("AWS_DEFAULT_REGION", "us-east-1")
-    model = BedrockModel(
-        model_id=model_id, region_name=region, temperature=0.0, max_tokens=1024
-    )
+    model = BedrockModel(model_id=model_id, region_name=region, temperature=0.0, max_tokens=1024)
     return Agent(
         model=model,
         system_prompt=(

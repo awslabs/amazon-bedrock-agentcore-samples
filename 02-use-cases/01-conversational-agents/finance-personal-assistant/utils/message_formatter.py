@@ -43,26 +43,20 @@ def pretty_print_messages(messages, max_content_length=500, show_indices=True):
 
                         # Truncate long content
                         if len(text) > max_content_length:
-                            text = (
-                                text[:max_content_length] + "\n... [content truncated]"
-                            )
+                            text = text[:max_content_length] + "\n... [content truncated]"
 
                         if len(content) > 1:
                             print(f"  Content Block {j + 1}:")
 
                         # Format text with proper indentation
-                        formatted_text = "\n".join(
-                            ["  " + line for line in text.split("\n")]
-                        )
+                        formatted_text = "\n".join(["  " + line for line in text.split("\n")])
                         print(formatted_text)
 
                     # Handle other content types (images, etc.)
                     elif "type" in content_block:
                         print(f"  📎 Content Type: {content_block['type']}")
                         if "source" in content_block:
-                            print(
-                                f"     Source: {content_block.get('source', {}).get('type', 'unknown')}"
-                            )
+                            print(f"     Source: {content_block.get('source', {}).get('type', 'unknown')}")
                 else:
                     # Handle simple string content
                     print(f"  {content_block}")
@@ -124,9 +118,7 @@ def print_conversation_stats(messages):
     print(f"   • Assistant: {assistant_messages}")
     print(f"📝 Content blocks: {content_blocks}")
     print(f"📏 Total characters: {total_chars:,}")
-    print(
-        f"📐 Average chars per message: {total_chars // total_messages if total_messages > 0 else 0}"
-    )
+    print(f"📐 Average chars per message: {total_chars // total_messages if total_messages > 0 else 0}")
 
 
 def print_last_exchange(messages, num_pairs=1):
@@ -148,11 +140,7 @@ def print_last_exchange(messages, num_pairs=1):
     # Work backwards to find message pairs
     i = len(messages) - 1
     while i >= 0 and pairs_found < num_pairs:
-        if (
-            messages[i].get("role") == "assistant"
-            and i > 0
-            and messages[i - 1].get("role") == "user"
-        ):
+        if messages[i].get("role") == "assistant" and i > 0 and messages[i - 1].get("role") == "user":
             pairs_found += 1
             if pairs_found == num_pairs:
                 start_index = i - 1

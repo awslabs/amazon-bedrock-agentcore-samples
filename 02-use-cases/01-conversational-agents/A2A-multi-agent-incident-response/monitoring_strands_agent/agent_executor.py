@@ -35,15 +35,11 @@ class MonitoringAgentExecutor(AgentExecutor):
 
             # Get configuration from environment
             memory_id = os.getenv("MEMORY_ID")
-            model_id = os.getenv(
-                "MODEL_ID", "global.anthropic.claude-sonnet-4-20250514-v1:0"
-            )
+            model_id = os.getenv("MODEL_ID", "global.anthropic.claude-sonnet-4-20250514-v1:0")
             region_name = os.getenv("MCP_REGION")
 
             if not memory_id or not region_name:
-                raise RuntimeError(
-                    "Missing required environment variables: MEMORY_ID or MCP_REGION"
-                )
+                raise RuntimeError("Missing required environment variables: MEMORY_ID or MCP_REGION")
 
             # Create agent instance
             self._agent = MonitoringAgent(
@@ -127,9 +123,7 @@ class MonitoringAgentExecutor(AgentExecutor):
             headers = context.call_context.state.get("headers", {})
             session_id = headers.get("x-amzn-bedrock-agentcore-runtime-session-id")
             actor_id = headers.get("x-amzn-bedrock-agentcore-runtime-custom-actorid")
-            workload_token = headers.get(
-                "x-amzn-bedrock-agentcore-runtime-workload-accesstoken"
-            )
+            workload_token = headers.get("x-amzn-bedrock-agentcore-runtime-workload-accesstoken")
 
         if not actor_id:
             logger.error("Actor ID is not set")
@@ -172,9 +166,7 @@ class MonitoringAgentExecutor(AgentExecutor):
 
             # Execute the agent
             logger.info("Calling agent...")
-            await self._execute_streaming(
-                agent, user_message, updater, task_id, session_id
-            )
+            await self._execute_streaming(agent, user_message, updater, task_id, session_id)
 
             logger.info(f"Task {task_id} completed successfully")
 

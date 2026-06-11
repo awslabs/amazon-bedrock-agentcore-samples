@@ -66,9 +66,7 @@ def get_weather(location: str) -> str:
     except httpx.HTTPStatusError as exc:
         if exc.response.status_code == 401:
             return "Invalid API key. Check the OutboundApiKey credential in AgentCore Identity."
-        return (
-            f"Weather API error: {exc.response.status_code} {exc.response.text[:200]}"
-        )
+        return f"Weather API error: {exc.response.status_code} {exc.response.text[:200]}"
     except Exception as exc:
         return f"Weather API error: {exc}"
 
@@ -100,10 +98,7 @@ async def handler(payload: dict) -> str:
         _agent = Agent(
             model=_model,
             tools=[get_weather, calculate],
-            system_prompt=(
-                "You are a helpful assistant. "
-                "You can check the weather and perform calculations."
-            ),
+            system_prompt=("You are a helpful assistant. You can check the weather and perform calculations."),
         )
 
     user_input = payload.get("prompt", "")

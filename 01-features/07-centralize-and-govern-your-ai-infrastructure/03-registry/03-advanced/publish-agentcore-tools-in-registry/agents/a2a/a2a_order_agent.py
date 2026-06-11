@@ -45,10 +45,7 @@ def cancel_order(order_id: str, reason: str) -> str:
 @tool
 def list_orders(status: str = "ALL") -> str:
     """List orders, optionally filtered by status."""
-    return (
-        f"Orders (filter: {status}):\n"
-        f"  1. ORD-A1B2C3D4 | Jane Smith | Wireless Headphones (2) | SHIPPED"
-    )
+    return f"Orders (filter: {status}):\n  1. ORD-A1B2C3D4 | Jane Smith | Wireless Headphones (2) | SHIPPED"
 
 
 agent = Agent(

@@ -36,9 +36,7 @@ def get_state_history() -> List[StateTransition]:
     return st.session_state["state_history"]
 
 
-def record_state_transition(
-    from_state: str, to_state: str, trigger: str, details: Optional[Dict] = None
-):
+def record_state_transition(from_state: str, to_state: str, trigger: str, details: Optional[Dict] = None):
     """Record a state transition."""
     history = get_state_history()
     history.append(
@@ -70,9 +68,7 @@ def render_state_viewer(session_manager):
     """)
 
     # Tabs for different views
-    tab1, tab2, tab3, tab4 = st.tabs(
-        ["Auth State Machine", "PKCE Flow", "Session State", "State History"]
-    )
+    tab1, tab2, tab3, tab4 = st.tabs(["Auth State Machine", "PKCE Flow", "Session State", "State History"])
 
     with tab1:
         render_auth_state_machine(session_manager)
@@ -186,9 +182,7 @@ def render_auth_state_machine(session_manager):
             remaining = tokens.time_until_expiry()
             st.markdown(f"- **Token Valid:** {'Yes' if remaining > 0 else 'No'}")
             if remaining > 0:
-                st.markdown(
-                    f"- **Expires In:** {int(remaining / 60)}m {int(remaining % 60)}s"
-                )
+                st.markdown(f"- **Expires In:** {int(remaining / 60)}m {int(remaining % 60)}s")
 
     # State transition actions
     st.markdown("---")
@@ -351,19 +345,13 @@ def render_session_state(session_manager):
 
     with col2:
         st.markdown("#### Authentication State")
-        st.markdown(
-            f"**Authenticated:** {'Yes' if session_manager.is_authenticated() else 'No'}"
-        )
+        st.markdown(f"**Authenticated:** {'Yes' if session_manager.is_authenticated() else 'No'}")
 
         tokens = session_manager.get_tokens()
         if tokens:
             st.markdown(f"**Token Type:** {tokens.token_type}")
-            st.markdown(
-                f"**Has Refresh Token:** {'Yes' if tokens.refresh_token else 'No'}"
-            )
-            st.markdown(
-                f"**Expires At:** {datetime.fromtimestamp(tokens.expires_at).strftime('%H:%M:%S')}"
-            )
+            st.markdown(f"**Has Refresh Token:** {'Yes' if tokens.refresh_token else 'No'}")
+            st.markdown(f"**Expires At:** {datetime.fromtimestamp(tokens.expires_at).strftime('%H:%M:%S')}")
 
     # Full session state dump
     st.markdown("---")
@@ -398,16 +386,12 @@ def render_session_state(session_manager):
             "token_type": tokens.token_type,
             "scope": tokens.scope,
             "expires_at": tokens.expires_at,
-            "expires_at_formatted": datetime.fromtimestamp(
-                tokens.expires_at
-            ).isoformat(),
+            "expires_at_formatted": datetime.fromtimestamp(tokens.expires_at).isoformat(),
             "time_until_expiry_seconds": tokens.time_until_expiry(),
             "has_access_token": bool(tokens.access_token),
             "has_id_token": bool(tokens.id_token),
             "has_refresh_token": bool(tokens.refresh_token),
-            "access_token_length": len(tokens.access_token)
-            if tokens.access_token
-            else 0,
+            "access_token_length": len(tokens.access_token) if tokens.access_token else 0,
             "id_token_length": len(tokens.id_token) if tokens.id_token else 0,
         }
 
@@ -421,9 +405,7 @@ def render_state_history():
     history = get_state_history()
 
     if not history:
-        st.info(
-            "No state transitions recorded yet. Interact with the application to see state changes."
-        )
+        st.info("No state transitions recorded yet. Interact with the application to see state changes.")
 
         # Show example transitions
         with st.expander("Example State Transitions"):
@@ -474,9 +456,7 @@ def render_oauth_config_details():
 
         config_display = {
             "Domain": settings.auth0.domain,
-            "Client ID": settings.auth0.client_id[:8] + "..."
-            if settings.auth0.client_id
-            else "Not set",
+            "Client ID": settings.auth0.client_id[:8] + "..." if settings.auth0.client_id else "Not set",
             "Audience": settings.auth0.audience,
             "Callback URL": settings.auth0.callback_url,
             "Claims Namespace": settings.auth0.claims_namespace,

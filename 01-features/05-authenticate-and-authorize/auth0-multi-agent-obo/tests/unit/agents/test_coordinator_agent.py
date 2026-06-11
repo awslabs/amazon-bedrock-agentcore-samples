@@ -16,19 +16,13 @@ import os
 from unittest.mock import patch, MagicMock, AsyncMock
 
 # Skip tests if coordinator dependencies aren't available
-_coordinator_path = os.path.join(
-    os.path.dirname(__file__), "..", "..", "..", "agents", "coordinator"
-)
+_coordinator_path = os.path.join(os.path.dirname(__file__), "..", "..", "..", "agents", "coordinator")
 sys.path.insert(0, _coordinator_path)
 
 try:
     # Clear any cached agent/tools modules to ensure we load the right one
     for mod_name in list(sys.modules.keys()):
-        if (
-            mod_name in ("agent",)
-            or mod_name.startswith("agent.")
-            or mod_name.startswith("tools.")
-        ):
+        if mod_name in ("agent",) or mod_name.startswith("agent.") or mod_name.startswith("tools."):
             del sys.modules[mod_name]
 
     from agent import CoordinatorAgent, create_agent
@@ -129,9 +123,7 @@ class TestCoordinatorAgentInit:
         assert agent.session_id == "session-abc"
         assert agent.user_context == full_permissions_context
 
-    def test_init_with_token_exchange_service(
-        self, mock_router, full_permissions_context
-    ):
+    def test_init_with_token_exchange_service(self, mock_router, full_permissions_context):
         """Test initialization with optional token_exchange_service."""
         mock_tes = MagicMock()
 
@@ -144,9 +136,7 @@ class TestCoordinatorAgentInit:
 
         assert agent.token_exchange_service is mock_tes
 
-    def test_init_with_custom_bedrock_client(
-        self, mock_router, full_permissions_context
-    ):
+    def test_init_with_custom_bedrock_client(self, mock_router, full_permissions_context):
         """Test initialization with optional bedrock_client."""
         mock_bedrock = MagicMock()
 
@@ -159,9 +149,7 @@ class TestCoordinatorAgentInit:
 
         assert agent.bedrock_client is mock_bedrock
 
-    def test_init_sets_conversation_history(
-        self, mock_router, full_permissions_context
-    ):
+    def test_init_sets_conversation_history(self, mock_router, full_permissions_context):
         """Test initialization creates empty conversation history."""
         agent = CoordinatorAgent(
             session_id="session-abc",
@@ -177,9 +165,7 @@ class TestCoordinatorAgentProcess:
 
     @pytest.mark.asyncio
     @patch("agent.CoordinatorAgent._invoke_bedrock")
-    async def test_process_adds_to_history(
-        self, mock_invoke, mock_router, full_permissions_context
-    ):
+    async def test_process_adds_to_history(self, mock_invoke, mock_router, full_permissions_context):
         """Test that process adds messages to conversation history."""
         mock_invoke.return_value = {
             "output": {"message": {"content": [{"text": "Response"}]}},
@@ -199,9 +185,7 @@ class TestCoordinatorAgentProcess:
 
     @pytest.mark.asyncio
     @patch("agent.CoordinatorAgent._invoke_bedrock")
-    async def test_process_returns_response(
-        self, mock_invoke, mock_router, full_permissions_context
-    ):
+    async def test_process_returns_response(self, mock_invoke, mock_router, full_permissions_context):
         """Test that process returns the response text."""
         mock_invoke.return_value = {
             "output": {"message": {"content": [{"text": "Hello! How can I help?"}]}},
@@ -221,9 +205,7 @@ class TestCoordinatorAgentProcess:
 
     @pytest.mark.asyncio
     @patch("agent.CoordinatorAgent._invoke_bedrock")
-    async def test_process_handles_exception(
-        self, mock_invoke, mock_router, full_permissions_context
-    ):
+    async def test_process_handles_exception(self, mock_invoke, mock_router, full_permissions_context):
         """Test that process handles exceptions gracefully."""
         mock_invoke.side_effect = Exception("API Error")
 
@@ -236,10 +218,7 @@ class TestCoordinatorAgentProcess:
         response = await agent.process("Hello", full_permissions_context)
 
         assert "output" in response
-        assert (
-            "error" in response["output"].lower()
-            or "apologize" in response["output"].lower()
-        )
+        assert "error" in response["output"].lower() or "apologize" in response["output"].lower()
 
 
 class TestAccountsScopesClassAttribute:
@@ -265,17 +244,13 @@ class TestAccountsScopesClassAttribute:
     def test_accounts_scopes_does_not_contain_profile_scopes(self):
         """Test that ACCOUNTS_SCOPES has no profile-related scopes."""
         for scope in CoordinatorAgent.ACCOUNTS_SCOPES:
-            assert not scope.startswith("profile:"), (
-                f"Unexpected profile scope in ACCOUNTS_SCOPES: {scope}"
-            )
+            assert not scope.startswith("profile:"), f"Unexpected profile scope in ACCOUNTS_SCOPES: {scope}"
 
 
 class TestHasAccountsScopes:
     """Tests for _has_accounts_scopes method."""
 
-    def test_returns_true_with_all_accounts_scopes(
-        self, mock_router, full_permissions_context
-    ):
+    def test_returns_true_with_all_accounts_scopes(self, mock_router, full_permissions_context):
         """Test returns True when user has all accounts scopes."""
         agent = CoordinatorAgent(
             session_id="s1",
@@ -285,9 +260,7 @@ class TestHasAccountsScopes:
         permissions = full_permissions_context["permissions"]
         assert agent._has_accounts_scopes(permissions) is True
 
-    def test_returns_true_with_single_accounts_scope(
-        self, mock_router, full_permissions_context
-    ):
+    def test_returns_true_with_single_accounts_scope(self, mock_router, full_permissions_context):
         """Test returns True with just one accounts scope."""
         agent = CoordinatorAgent(
             session_id="s1",
@@ -296,9 +269,7 @@ class TestHasAccountsScopes:
         )
         assert agent._has_accounts_scopes(["accounts:savings:read"]) is True
 
-    def test_returns_false_with_profile_only_scopes(
-        self, mock_router, profile_only_context
-    ):
+    def test_returns_false_with_profile_only_scopes(self, mock_router, profile_only_context):
         """Test returns False when user has only profile scopes."""
         agent = CoordinatorAgent(
             session_id="s1",
@@ -308,9 +279,7 @@ class TestHasAccountsScopes:
         permissions = profile_only_context["permissions"]
         assert agent._has_accounts_scopes(permissions) is False
 
-    def test_returns_false_with_no_permissions(
-        self, mock_router, no_permissions_context
-    ):
+    def test_returns_false_with_no_permissions(self, mock_router, no_permissions_context):
         """Test returns False when user has no permissions."""
         agent = CoordinatorAgent(
             session_id="s1",
@@ -319,9 +288,7 @@ class TestHasAccountsScopes:
         )
         assert agent._has_accounts_scopes([]) is False
 
-    def test_returns_false_with_openid_only(
-        self, mock_router, full_permissions_context
-    ):
+    def test_returns_false_with_openid_only(self, mock_router, full_permissions_context):
         """Test returns False with only openid/profile/email scopes."""
         agent = CoordinatorAgent(
             session_id="s1",
@@ -334,9 +301,7 @@ class TestHasAccountsScopes:
 class TestGetAvailableTools:
     """Tests for _get_available_tools scope-gating behavior."""
 
-    def test_full_scopes_includes_accounts_tools(
-        self, mock_router, full_permissions_context
-    ):
+    def test_full_scopes_includes_accounts_tools(self, mock_router, full_permissions_context):
         """Test that user with accounts scopes gets the accounts routing tool."""
         agent = CoordinatorAgent(
             session_id="s1",
@@ -349,9 +314,7 @@ class TestGetAvailableTools:
 
         assert "route_to_accounts_agent" in tool_names
 
-    def test_full_scopes_includes_profile_tools(
-        self, mock_router, full_permissions_context
-    ):
+    def test_full_scopes_includes_profile_tools(self, mock_router, full_permissions_context):
         """Test that user with profile:personal:read gets profile tools."""
         agent = CoordinatorAgent(
             session_id="s1",
@@ -364,9 +327,7 @@ class TestGetAvailableTools:
 
         assert "route_to_profile_agent" in tool_names
 
-    def test_profile_only_user_no_accounts_tool(
-        self, mock_router, profile_only_context
-    ):
+    def test_profile_only_user_no_accounts_tool(self, mock_router, profile_only_context):
         """Test that user with only profile scopes does NOT get accounts routing tool."""
         agent = CoordinatorAgent(
             session_id="s1",
@@ -379,9 +340,7 @@ class TestGetAvailableTools:
 
         assert "route_to_accounts_agent" not in tool_names
 
-    def test_profile_only_user_still_gets_profile_tools(
-        self, mock_router, profile_only_context
-    ):
+    def test_profile_only_user_still_gets_profile_tools(self, mock_router, profile_only_context):
         """Test that profile-only user still gets profile tools."""
         agent = CoordinatorAgent(
             session_id="s1",
@@ -396,9 +355,7 @@ class TestGetAvailableTools:
         assert "route_to_profile_agent" in tool_names
         assert "profile_get_customer_profile" in tool_names
 
-    def test_profile_only_user_gets_other_routing_tools(
-        self, mock_router, profile_only_context
-    ):
+    def test_profile_only_user_gets_other_routing_tools(self, mock_router, profile_only_context):
         """Test that profile-only user still gets non-accounts routing tools."""
         agent = CoordinatorAgent(
             session_id="s1",
@@ -413,9 +370,7 @@ class TestGetAvailableTools:
         assert "get_available_agents" in tool_names
         assert "route_to_profile_agent" in tool_names
 
-    def test_no_permissions_user_gets_minimal_tools(
-        self, mock_router, no_permissions_context
-    ):
+    def test_no_permissions_user_gets_minimal_tools(self, mock_router, no_permissions_context):
         """Test that user with no permissions gets minimal tool set."""
         agent = CoordinatorAgent(
             session_id="s1",
@@ -435,9 +390,7 @@ class TestRouteToolCallPermissionDenied:
     """Tests for _route_tool_call PERMISSION_DENIED safety net."""
 
     @pytest.mark.asyncio
-    async def test_accounts_tool_denied_for_profile_only_user(
-        self, mock_router, profile_only_context
-    ):
+    async def test_accounts_tool_denied_for_profile_only_user(self, mock_router, profile_only_context):
         """Test that accounts tool call returns PERMISSION_DENIED for profile-only user."""
         agent = CoordinatorAgent(
             session_id="s1",
@@ -454,9 +407,7 @@ class TestRouteToolCallPermissionDenied:
         assert parsed["error"] == "PERMISSION_DENIED"
 
     @pytest.mark.asyncio
-    async def test_accounts_prefixed_tool_denied_for_profile_only_user(
-        self, mock_router, profile_only_context
-    ):
+    async def test_accounts_prefixed_tool_denied_for_profile_only_user(self, mock_router, profile_only_context):
         """Test that accounts_* prefixed tool is denied for profile-only user."""
         agent = CoordinatorAgent(
             session_id="s1",
@@ -474,9 +425,7 @@ class TestRouteToolCallPermissionDenied:
         assert "permission" in parsed["message"].lower()
 
     @pytest.mark.asyncio
-    async def test_accounts_tool_allowed_with_accounts_scopes(
-        self, mock_router, full_permissions_context
-    ):
+    async def test_accounts_tool_allowed_with_accounts_scopes(self, mock_router, full_permissions_context):
         """Test that accounts tool call succeeds for user with accounts scopes."""
         agent = CoordinatorAgent(
             session_id="s1",
@@ -494,9 +443,7 @@ class TestRouteToolCallPermissionDenied:
         assert parsed.get("error") != "PERMISSION_DENIED"
 
     @pytest.mark.asyncio
-    async def test_profile_tool_not_denied_for_profile_user(
-        self, mock_router, profile_only_context
-    ):
+    async def test_profile_tool_not_denied_for_profile_user(self, mock_router, profile_only_context):
         """Test that profile tool call succeeds for profile-scoped user."""
         agent = CoordinatorAgent(
             session_id="s1",
@@ -518,9 +465,7 @@ class TestRouteToolCallPermissionDenied:
             pass
 
     @pytest.mark.asyncio
-    async def test_get_available_agents_always_works(
-        self, mock_router, no_permissions_context
-    ):
+    async def test_get_available_agents_always_works(self, mock_router, no_permissions_context):
         """Test that get_available_agents tool works regardless of scopes."""
         agent = CoordinatorAgent(
             session_id="s1",
@@ -537,9 +482,7 @@ class TestRouteToolCallPermissionDenied:
         assert "available_agents" in parsed
 
     @pytest.mark.asyncio
-    async def test_unknown_tool_raises_error(
-        self, mock_router, full_permissions_context
-    ):
+    async def test_unknown_tool_raises_error(self, mock_router, full_permissions_context):
         """Test that unknown tool raises ValueError."""
         agent = CoordinatorAgent(
             session_id="s1",
@@ -683,9 +626,7 @@ class TestCreateAgentFactory:
         assert isinstance(agent, CoordinatorAgent)
         assert agent.session_id == "session-abc"
 
-    def test_creates_agent_with_token_exchange_service(
-        self, mock_router, full_permissions_context
-    ):
+    def test_creates_agent_with_token_exchange_service(self, mock_router, full_permissions_context):
         """Test factory creates agent with token_exchange_service."""
         mock_tes = MagicMock()
 
@@ -703,9 +644,7 @@ class TestCreateAgentFactory:
 class TestSystemPrompt:
     """Tests for _create_system_prompt."""
 
-    def test_system_prompt_includes_customer_context(
-        self, mock_router, full_permissions_context
-    ):
+    def test_system_prompt_includes_customer_context(self, mock_router, full_permissions_context):
         """Test that system prompt embeds user context."""
         agent = CoordinatorAgent(
             session_id="s1",
@@ -719,9 +658,7 @@ class TestSystemPrompt:
         assert "test@example.com" in prompt
         assert "auth0|123456789" in prompt
 
-    def test_system_prompt_includes_permissions(
-        self, mock_router, full_permissions_context
-    ):
+    def test_system_prompt_includes_permissions(self, mock_router, full_permissions_context):
         """Test that system prompt lists permissions."""
         agent = CoordinatorAgent(
             session_id="s1",

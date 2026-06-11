@@ -52,15 +52,9 @@ def create_agentcore_gateway():
     """
     try:
         # Validate required SSM parameters exist
-        machine_client_id = get_ssm_parameter(
-            "/app/asana/demo/agentcoregwy/machine_client_id"
-        )
-        cognito_discovery_url = get_ssm_parameter(
-            "/app/asana/demo/agentcoregwy/cognito_discovery_url"
-        )
-        gateway_iam_role = get_ssm_parameter(
-            "/app/asana/demo/agentcoregwy/gateway_iam_role"
-        )
+        machine_client_id = get_ssm_parameter("/app/asana/demo/agentcoregwy/machine_client_id")
+        cognito_discovery_url = get_ssm_parameter("/app/asana/demo/agentcoregwy/cognito_discovery_url")
+        gateway_iam_role = get_ssm_parameter("/app/asana/demo/agentcoregwy/gateway_iam_role")
 
         if not all([machine_client_id, cognito_discovery_url, gateway_iam_role]):
             raise ValueError("Required SSM parameters are missing or empty")
@@ -105,18 +99,14 @@ def create_agentcore_gateway():
         # If gateway exists, collect existing gateway ID from SSM
         print(f"Gateway creation failed: {exc}")
         try:
-            existing_gateway_id = get_ssm_parameter(
-                "/app/asana/demo/agentcoregwy/gateway_id"
-            )
+            existing_gateway_id = get_ssm_parameter("/app/asana/demo/agentcoregwy/gateway_id")
             if not existing_gateway_id:
                 raise ValueError("Gateway ID parameter exists but is empty") from exc
 
             print(f"Found existing gateway with ID: {existing_gateway_id}")
 
             # Get existing gateway details
-            gateway_response = GATEWAY_CLIENT.get_gateway(
-                gatewayIdentifier=existing_gateway_id
-            )
+            gateway_response = GATEWAY_CLIENT.get_gateway(gatewayIdentifier=existing_gateway_id)
             gateway_info = {
                 "id": existing_gateway_id,
                 "name": gateway_response["name"],
@@ -178,9 +168,7 @@ def add_gateway_target(gateway_id):
         if "servers" not in api_spec[0] or not api_spec[0]["servers"]:
             raise ValueError("API specification missing servers configuration")
 
-        api_gateway_url = get_ssm_parameter(
-            "/app/asana/demo/agentcoregwy/apigateway_url"
-        )
+        api_gateway_url = get_ssm_parameter("/app/asana/demo/agentcoregwy/apigateway_url")
 
         # Validate API Gateway URL
         if not api_gateway_url or not api_gateway_url.startswith("https://"):
@@ -195,17 +183,12 @@ def add_gateway_target(gateway_id):
 
         credential_provider_name = "AgentCoreAPIGatewayAPIKey"
 
-        existing_credential_provider_response = acps.get_api_key_credential_provider(
-            name=credential_provider_name
-        )
+        existing_credential_provider_response = acps.get_api_key_credential_provider(name=credential_provider_name)
         provider_arn = existing_credential_provider_response["credentialProviderArn"]
         print(f"Found existing credential provider with ARN: {provider_arn}")
 
         if provider_arn is None:
-            print(
-                f"❌ Credential provider not found, creating new: "
-                f"{credential_provider_name}"
-            )
+            print(f"❌ Credential provider not found, creating new: {credential_provider_name}")
             response = acps.create_api_key_credential_provider(
                 name=credential_provider_name,
                 apiKey=get_ssm_parameter("/app/asana/demo/agentcoregwy/api_key"),
@@ -237,9 +220,7 @@ def add_gateway_target(gateway_id):
         inline_spec = json.dumps(api_spec[0])
         print(f"✅ Created inline_spec: {inline_spec}")
         # S3 Uri for OpenAPI spec file
-        agentcoregwy_openapi_target_config = {
-            "mcp": {"openApiSchema": {"inlinePayload": inline_spec}}
-        }
+        agentcoregwy_openapi_target_config = {"mcp": {"openApiSchema": {"inlinePayload": inline_spec}}}
         print("✅ Creating gateway target...")
         create_target_response = GATEWAY_CLIENT.create_gateway_target(
             gatewayIdentifier=gateway_id,

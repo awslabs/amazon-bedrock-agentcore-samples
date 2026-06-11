@@ -29,9 +29,7 @@ def load_config():
 # ── Invoke ─────────────────────────────────────────────────────────────────────
 
 
-def invoke_agent(
-    runtime_arn: str, region: str, prompt: str, session_id: str = ""
-) -> str:
+def invoke_agent(runtime_arn: str, region: str, prompt: str, session_id: str = "") -> str:
     client = boto3.client("bedrock-agentcore", region_name=region)
 
     response = client.invoke_agent_runtime(

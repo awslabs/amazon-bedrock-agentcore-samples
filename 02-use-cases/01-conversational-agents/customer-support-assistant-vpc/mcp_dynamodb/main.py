@@ -10,9 +10,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Configure boto3 with 30-second timeouts
-boto_config = Config(
-    connect_timeout=30, read_timeout=30, retries={"max_attempts": 3, "mode": "adaptive"}
-)
+boto_config = Config(connect_timeout=30, read_timeout=30, retries={"max_attempts": 3, "mode": "adaptive"})
 
 # Initialize AWS clients with timeouts
 ssm = boto3.client("ssm", config=boto_config)
@@ -88,9 +86,7 @@ table_names = get_table_names()
 reviews_table = dynamodb.Table(table_names["reviews"])
 products_table = dynamodb.Table(table_names["products"])
 
-logger.info(
-    f"Initialized DynamoDB tables: reviews={table_names['reviews']}, products={table_names['products']}"
-)
+logger.info(f"Initialized DynamoDB tables: reviews={table_names['reviews']}, products={table_names['products']}")
 
 # Initialize FastMCP
 mcp = FastMCP()

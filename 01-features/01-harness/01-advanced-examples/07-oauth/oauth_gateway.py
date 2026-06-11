@@ -63,12 +63,8 @@ from utils.setup_helpers import (
 )
 
 # ── CLI ────────────────────────────────────────────────────────────────────────
-parser = argparse.ArgumentParser(
-    description="Harness JWT inbound + OAuth outbound demo"
-)
-parser.add_argument(
-    "--skip-cleanup", action="store_true", help="Keep all resources after the demo"
-)
+parser = argparse.ArgumentParser(description="Harness JWT inbound + OAuth outbound demo")
+parser.add_argument("--skip-cleanup", action="store_true", help="Keep all resources after the demo")
 args = parser.parse_args()
 
 # ── Configuration ─────────────────────────────────────────────────────────────
@@ -145,11 +141,7 @@ try:
                 "allowedClients": [pool1["client_id"]],
             }
         },
-        model={
-            "bedrockModelConfig": {
-                "modelId": "us.anthropic.claude-haiku-4-5-20251001-v1:0"
-            }
-        },
+        model={"bedrockModelConfig": {"modelId": "us.anthropic.claude-haiku-4-5-20251001-v1:0"}},
         systemPrompt=[
             {
                 "text": (

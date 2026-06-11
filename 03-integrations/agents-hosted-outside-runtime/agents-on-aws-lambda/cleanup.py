@@ -42,9 +42,7 @@ def main():
         try:
             eps = control.list_agent_runtime_endpoints(agentRuntimeId=runtime_id)
             for ep in eps.get("runtimeEndpoints", []):
-                control.delete_agent_runtime_endpoint(
-                    agentRuntimeId=runtime_id, name=ep["name"]
-                )
+                control.delete_agent_runtime_endpoint(agentRuntimeId=runtime_id, name=ep["name"])
                 print(f"Deleted endpoint: {ep['name']}")
         except Exception as e:
             print(f"Endpoint delete: {e}")
@@ -63,9 +61,7 @@ def main():
             continue
         try:
             # Detach managed policies
-            attached = iam.list_attached_role_policies(RoleName=role_name).get(
-                "AttachedPolicies", []
-            )
+            attached = iam.list_attached_role_policies(RoleName=role_name).get("AttachedPolicies", [])
             for p in attached:
                 iam.detach_role_policy(RoleName=role_name, PolicyArn=p["PolicyArn"])
 

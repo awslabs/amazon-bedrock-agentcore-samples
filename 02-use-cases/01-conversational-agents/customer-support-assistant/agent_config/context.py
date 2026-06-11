@@ -14,18 +14,10 @@ class CustomerSupportContext:
     _agent: Optional[CustomerSupport] = None
 
     # Context variables for application state
-    _google_token_ctx: ContextVar[Optional[str]] = ContextVar(
-        "google_token", default=None
-    )
-    _gateway_token_ctx: ContextVar[Optional[str]] = ContextVar(
-        "gateway_token", default=None
-    )
-    _response_queue_ctx: ContextVar[Optional[asyncio.Queue]] = ContextVar(
-        "response_queue", default=None
-    )
-    _agent_ctx: ContextVar[Optional[CustomerSupport]] = ContextVar(
-        "agent", default=None
-    )
+    _google_token_ctx: ContextVar[Optional[str]] = ContextVar("google_token", default=None)
+    _gateway_token_ctx: ContextVar[Optional[str]] = ContextVar("gateway_token", default=None)
+    _response_queue_ctx: ContextVar[Optional[asyncio.Queue]] = ContextVar("response_queue", default=None)
+    _agent_ctx: ContextVar[Optional[CustomerSupport]] = ContextVar("agent", default=None)
 
     @classmethod
     def get_google_token_ctx(

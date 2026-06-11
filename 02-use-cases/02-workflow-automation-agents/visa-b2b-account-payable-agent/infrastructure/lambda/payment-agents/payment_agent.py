@@ -25,9 +25,7 @@ lambda_client = boto3.client("lambda", region_name="us-east-1")
 
 # Environment variables
 GATEWAY_URL = os.environ.get("GATEWAY_URL")
-BEDROCK_MODEL_ID = os.environ.get(
-    "BEDROCK_MODEL_ID", "us.anthropic.claude-sonnet-4-20250514-v1:0"
-)
+BEDROCK_MODEL_ID = os.environ.get("BEDROCK_MODEL_ID", "us.anthropic.claude-sonnet-4-20250514-v1:0")
 ISO20022_LAMBDA_ARN = os.environ.get("ISO20022_LAMBDA_ARN")
 
 # Create Bedrock Model for agent
@@ -185,9 +183,7 @@ async def execute_visa_payment(invoice_data, payment_id):
             "currency": invoice_data["currency"],
         }
 
-        card_response = await call_gateway_tool(
-            "visa-b2b-stub-api-target___VirtualCardRequisition", card_request
-        )
+        card_response = await call_gateway_tool("visa-b2b-stub-api-target___VirtualCardRequisition", card_request)
 
         # Parse response - now it's a dict from MCP result
         if isinstance(card_response, dict) and "content" in card_response:
@@ -204,9 +200,7 @@ async def execute_visa_payment(invoice_data, payment_id):
         expiration_date = vcard_response.get("expirationDate")
 
         if not virtual_card_id:
-            raise Exception(
-                f"Failed to create virtual card: No requisitionId in response. Response: {card_data}"
-            )
+            raise Exception(f"Failed to create virtual card: No requisitionId in response. Response: {card_data}")
 
         print(f"Virtual card created: {virtual_card_id}")
         print(f"Account number: {account_number}")
@@ -222,9 +216,7 @@ async def execute_visa_payment(invoice_data, payment_id):
             "amount": invoice_data["amount"],
         }
 
-        payment_response = await call_gateway_tool(
-            "visa-b2b-stub-api-target___ProcessPayments", payment_request
-        )
+        payment_response = await call_gateway_tool("visa-b2b-stub-api-target___ProcessPayments", payment_request)
 
         # Parse response - now it's a dict from MCP result
         if isinstance(payment_response, dict) and "content" in payment_response:
@@ -241,9 +233,7 @@ async def execute_visa_payment(invoice_data, payment_id):
         card_holder_name = process_response.get("cardHolderName")
 
         if not transaction_id:
-            raise Exception(
-                f"Failed to process payment: No trackingNumber in response. Response: {payment_data}"
-            )
+            raise Exception(f"Failed to process payment: No trackingNumber in response. Response: {payment_data}")
 
         print(f"Payment submitted: {transaction_id}")
 
@@ -258,9 +248,7 @@ async def execute_visa_payment(invoice_data, payment_id):
         }
 
         try:
-            cvv2_response = await call_gateway_tool(
-                "visa-b2b-stub-api-target___GetSecurityCode", cvv2_request
-            )
+            cvv2_response = await call_gateway_tool("visa-b2b-stub-api-target___GetSecurityCode", cvv2_request)
 
             # Parse response - now it's a dict from MCP result
             if isinstance(cvv2_response, dict) and "content" in cvv2_response:
@@ -290,14 +278,10 @@ async def execute_visa_payment(invoice_data, payment_id):
         status_request = {
             "messageId": str(uuid.uuid4()),
             "buyerId": 12345,  # Fixed buyer ID for stub API
-            "trackingNumber": int(transaction_id)
-            if transaction_id.isdigit()
-            else 12345,
+            "trackingNumber": int(transaction_id) if transaction_id.isdigit() else 12345,
         }
 
-        status_response = await call_gateway_tool(
-            "visa-b2b-stub-api-target___GetPaymentDetails", status_request
-        )
+        status_response = await call_gateway_tool("visa-b2b-stub-api-target___GetPaymentDetails", status_request)
 
         # Parse response - now it's a dict from MCP result
         if isinstance(status_response, dict) and "content" in status_response:
@@ -315,9 +299,7 @@ async def execute_visa_payment(invoice_data, payment_id):
         # Visa B2B uses statusCode '00' for success
         payment_status = "completed" if status_code == "00" else "failed"
 
-        print(
-            f"Payment status: {payment_status} (statusCode: {status_code}, statusDesc: {status_desc})"
-        )
+        print(f"Payment status: {payment_status} (statusCode: {status_code}, statusDesc: {status_desc})")
 
         # Return results for backend to store in database
         return {
@@ -471,9 +453,7 @@ Respond with JSON only (no markdown):
         # Clean response (remove markdown if present)
         decision_text = decision_text.strip()
         if decision_text.startswith("```json"):
-            decision_text = (
-                decision_text.replace("```json", "").replace("```", "").strip()
-            )
+            decision_text = decision_text.replace("```json", "").replace("```", "").strip()
         elif decision_text.startswith("```"):
             decision_text = decision_text.replace("```", "").strip()
 

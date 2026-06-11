@@ -34,15 +34,11 @@ def get_google_access_token(access_token: str):
     description="Creates a new event on your Google Calendar",
 )
 def create_calendar_event() -> str:
-    google_access_token = (
-        CustomerSupportContext.get_google_token_ctx()
-    )  # Get from context instead of global
+    google_access_token = CustomerSupportContext.get_google_token_ctx()  # Get from context instead of global
 
     if not google_access_token:
         try:
-            google_access_token = get_google_access_token(
-                access_token=google_access_token
-            )
+            google_access_token = get_google_access_token(access_token=google_access_token)
             if not google_access_token:
                 raise Exception("requires_access_token did not provide tokens")
 
@@ -73,9 +69,7 @@ def create_calendar_event() -> str:
             },
         }
 
-        created_event = (
-            service.events().insert(calendarId="primary", body=event).execute()
-        )
+        created_event = service.events().insert(calendarId="primary", body=event).execute()
 
         return json.dumps(
             {
@@ -96,15 +90,11 @@ def create_calendar_event() -> str:
     description="Retrieves the calendar events for the day from your Google Calendar",
 )
 def get_calendar_events_today() -> str:
-    google_access_token = (
-        CustomerSupportContext.get_google_token_ctx()
-    )  # Get from context instead of global
+    google_access_token = CustomerSupportContext.get_google_token_ctx()  # Get from context instead of global
 
     if not google_access_token:
         try:
-            google_access_token = get_google_access_token(
-                access_token=google_access_token
-            )
+            google_access_token = get_google_access_token(access_token=google_access_token)
             CustomerSupportContext.set_google_token_ctx(token=google_access_token)
         except Exception as e:
             return "Error Authentication with Google: " + str(e)

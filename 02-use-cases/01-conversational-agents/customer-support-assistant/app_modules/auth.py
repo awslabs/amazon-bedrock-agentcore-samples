@@ -13,24 +13,16 @@ from scripts.utils import get_ssm_parameter
 
 class AuthManager:
     def __init__(self):
-        self.cognito_domain = get_ssm_parameter(
-            "/app/customersupport/agentcore/cognito_domain"
-        ).replace("https://", "")
-        self.client_id = get_ssm_parameter(
-            "/app/customersupport/agentcore/web_client_id"
-        )
+        self.cognito_domain = get_ssm_parameter("/app/customersupport/agentcore/cognito_domain").replace("https://", "")
+        self.client_id = get_ssm_parameter("/app/customersupport/agentcore/web_client_id")
         self.redirect_uri = "http://localhost:8501/"
         self.scopes = "email openid profile"
         self.cookies = CookieController()
 
     def generate_pkce_pair(self):
-        code_verifier = (
-            base64.urlsafe_b64encode(os.urandom(40)).decode("utf-8").rstrip("=")
-        )
+        code_verifier = base64.urlsafe_b64encode(os.urandom(40)).decode("utf-8").rstrip("=")
         code_challenge = (
-            base64.urlsafe_b64encode(hashlib.sha256(code_verifier.encode()).digest())
-            .decode("utf-8")
-            .rstrip("=")
+            base64.urlsafe_b64encode(hashlib.sha256(code_verifier.encode()).digest()).decode("utf-8").rstrip("=")
         )
         return code_verifier, code_challenge
 
@@ -61,11 +53,7 @@ class AuthManager:
 
     def handle_oauth_callback(self):
         query_params = st.query_params
-        if (
-            query_params.get("code")
-            and query_params.get("state")
-            and not self.cookies.get("tokens")
-        ):
+        if query_params.get("code") and query_params.get("state") and not self.cookies.get("tokens"):
             auth_code = query_params.get("code")
             returned_state = query_params.get("state")
 
@@ -99,9 +87,7 @@ class AuthManager:
                 self.cookies.remove("oauth_state")
                 st.query_params.clear()
             else:
-                st.error(
-                    f"Failed to exchange token: {response.status_code} - {response.text}"
-                )
+                st.error(f"Failed to exchange token: {response.status_code} - {response.text}")
 
     def get_login_url(self):
         code_verifier, code_challenge = self.generate_pkce_pair()
@@ -119,9 +105,7 @@ class AuthManager:
             "code_challenge": self.cookies.get("code_challenge"),
             "state": self.cookies.get("oauth_state"),
         }
-        return (
-            f"https://{self.cognito_domain}/oauth2/authorize?{urlencode(login_params)}"
-        )
+        return f"https://{self.cognito_domain}/oauth2/authorize?{urlencode(login_params)}"
 
     def is_authenticated(self):
         return bool(self.cookies.get("tokens"))

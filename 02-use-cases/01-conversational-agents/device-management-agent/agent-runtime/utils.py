@@ -112,16 +112,12 @@ class CognitoTokenManager:
                 expires_in = token_data.get("expires_in", 3600)  # Default to 1 hour
 
                 # Set expiration time with a 5-minute buffer
-                self.token_expires_at = datetime.now() + timedelta(
-                    seconds=expires_in - 300
-                )
+                self.token_expires_at = datetime.now() + timedelta(seconds=expires_in - 300)
 
                 logger.info("Successfully obtained new OAuth token")
                 return access_token
             else:
-                logger.error(
-                    f"Failed to get token: {response.status_code} - {response.text}"
-                )
+                logger.error(f"Failed to get token: {response.status_code} - {response.text}")
                 return None
 
         except Exception as e:

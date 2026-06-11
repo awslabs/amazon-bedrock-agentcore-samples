@@ -153,11 +153,7 @@ def agent(payload):
             elif hasattr(response, "message"):
                 result = response.message["content"][0]["text"]
             elif isinstance(response, dict):
-                result = (
-                    response.get("message", {})
-                    .get("content", [{}])[0]
-                    .get("text", str(response))
-                )
+                result = response.get("message", {}).get("content", [{}])[0].get("text", str(response))
             else:
                 result = str(response)  # noqa: F841
 
@@ -171,9 +167,7 @@ def agent(payload):
             # Mark task as complete
             app.complete_async_task(task_id)
             _active_task_count -= 1
-            print(
-                f"✅ Task {task_id} marked as complete (active: {_active_task_count})"
-            )
+            print(f"✅ Task {task_id} marked as complete (active: {_active_task_count})")
 
     # Start background thread
     threading.Thread(target=generate_report, daemon=True).start()

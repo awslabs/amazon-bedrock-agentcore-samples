@@ -13,18 +13,14 @@ from strands.tools.mcp import MCPClient
 
 from utils import get_ssm_parameter
 
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 gateway_access_token = None
 
 
 @requires_access_token(
-    provider_name=get_ssm_parameter(
-        "/app/customersupportvpc/gateway/oauth2_provider_name"
-    ),
+    provider_name=get_ssm_parameter("/app/customersupportvpc/gateway/oauth2_provider_name"),
     scopes=[],  # Optional unless required
     auth_flow="M2M",
 )
@@ -90,12 +86,8 @@ def main():
     """CLI tool to interact with Gateway using a prompt."""
 
     parser = argparse.ArgumentParser(description="Gateway MCP CLI Tool")
-    parser.add_argument(
-        "--prompt", "-p", required=True, help="Prompt to send to the gateway agent"
-    )
-    parser.add_argument(
-        "--verbose", "-v", action="store_true", help="Enable verbose logging"
-    )
+    parser.add_argument("--prompt", "-p", required=True, help="Prompt to send to the gateway agent")
+    parser.add_argument("--verbose", "-v", action="store_true", help="Enable verbose logging")
     parser.add_argument("--debug", action="store_true", help="Enable debug logging")
 
     args = parser.parse_args()
