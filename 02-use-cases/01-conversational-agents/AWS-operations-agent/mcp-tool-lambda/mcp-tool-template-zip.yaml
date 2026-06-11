@@ -16,6 +16,63 @@ Globals:
     Architectures: [x86_64]
 
 Resources:
+  # KMS key for Lambda environment variable encryption
+  MCPToolLambdaKMSKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: KMS key for MCPToolFunction environment variable encryption
+      EnableKeyRotation: true
+      KeyPolicy:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Sub arn:aws:iam::${AWS::AccountId}:root
+            Action: kms:*
+            Resource: "*"
+
+  MCPToolLambdaKMSKeyAlias:
+    Type: AWS::KMS::Alias
+    Properties:
+      AliasName: alias/bac-mcp-tool-lambda
+      TargetKeyId: !GetAtt MCPToolLambdaKMSKey.KeyId
+
+  # KMS key for CloudWatch log group encryption
+  MCPToolLogGroupKMSKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: KMS key for MCPToolLogGroup encryption
+      EnableKeyRotation: true
+      KeyPolicy:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Sub arn:aws:iam::${AWS::AccountId}:root
+            Action: kms:*
+            Resource: "*"
+          - Effect: Allow
+            Principal:
+              Service: !Sub logs.${AWS::Region}.amazonaws.com
+            Action:
+              - kms:Encrypt
+              - kms:Decrypt
+              - kms:ReEncrypt*
+              - kms:GenerateDataKey
+              - kms:Describe*
+            Resource: "*"
+            Condition:
+              ArnEquals:
+                kms:EncryptionContext:aws:logs:arn: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/bac-mcp-tool
+
+  # Dead letter queue for MCPToolFunction
+  MCPToolDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: bac-mcp-tool-dlq
+      MessageRetentionPeriod: 1209600
+      KmsMasterKeyId: alias/aws/sqs
+
   # Bedrock AgentCore Gateway Execution Role - Role that Bedrock AgentCore Gateway assumes to invoke Lambda functions
   BedrockAgentCoreGatewayExecutionRole:
     Type: AWS::IAM::Role
@@ -43,12 +100,12 @@ Resources:
                 Effect: Allow
                 Action:
                   - lambda:InvokeFunction
-                Resource: '*'
+                Resource: !Sub "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:*"
               - Sid: BedrockAgentCorePermissions
                 Effect: Allow
                 Action:
                   - bedrock-agentcore:*
-                Resource: '*'
+                Resource: !Sub "arn:aws:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:*"
               - Sid: CloudWatchLogsPermissions
                 Effect: Allow
                 Action:
@@ -57,7 +114,7 @@ Resources:
                   - logs:PutLogEvents
                   - logs:DescribeLogGroups
                   - logs:DescribeLogStreams
-                Resource: '*'
+                Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:*"
       Tags:
         - Key: Project
           Value: lambda-adaptor-bedrock-agentcore
@@ -97,7 +154,25 @@ Resources:
                 Action:
                   - bedrock:InvokeModel
                   - bedrock:InvokeModelWithResponseStream
-                Resource: '*'
+                Resource: "arn:aws:bedrock:*::foundation-model/*"
+        - PolicyName: KMSPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - kms:GenerateDataKey
+                  - kms:Decrypt
+                Resource:
+                  - !GetAtt MCPToolLambdaKMSKey.Arn
+                  - !GetAtt MCPToolLogGroupKMSKey.Arn
+        - PolicyName: DLQPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: sqs:SendMessage
+                Resource: !GetAtt MCPToolDLQ.Arn
         - PolicyName: CostExplorerPolicy
           PolicyDocument:
             Version: '2012-10-17'
@@ -163,10 +238,12 @@ Resources:
     Properties:
       LogGroupName: /aws/lambda/bac-mcp-tool
       RetentionInDays: 14
+      KmsKeyId: !GetAtt MCPToolLogGroupKMSKey.Arn
 
   # MCP Tool Lambda Function (ZIP-based)
   MCPToolFunction:
     Type: AWS::Serverless::Function
+    # checkov:skip=CKV_AWS_117:Demo sample; VPC not required for this function
     Properties:
       FunctionName: "bac-mcp-tool"
       PackageType: Zip
@@ -174,13 +251,18 @@ Resources:
       Handler: mcp-tool-handler.lambda_handler
       Description: MCP Tool Lambda for Bedrock AgentCore Gateway MCP testing (ZIP-based)
       Role: !GetAtt MCPToolFunctionRole.Arn
-      
+      KmsKeyArn: !GetAtt MCPToolLambdaKMSKey.Arn
+      ReservedConcurrentExecutions: 10
+      DeadLetterQueue:
+        Type: SQS
+        TargetArn: !GetAtt MCPToolDLQ.Arn
+
       # Environment variables
       Environment:
         Variables:
           ENVIRONMENT: !Ref Environment
           LOG_LEVEL: INFO
-      
+
       # Tracing
       Tracing: Active
 

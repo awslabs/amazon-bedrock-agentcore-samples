@@ -29,6 +29,14 @@ Parameters:
 
 Resources:
 
+  # Dead letter queue for PostSignupFunction
+  PostSignupDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: customersupport-postsignup-dlq
+      MessageRetentionPeriod: 1209600
+      KmsMasterKeyId: alias/aws/sqs
+
   UserPool:
     Type: AWS::Cognito::UserPool
     Properties:
@@ -159,6 +167,13 @@ Resources:
               Service: lambda.amazonaws.com
             Action: sts:AssumeRole
       Policies:
+        - PolicyName: AllowDLQ
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: sqs:SendMessage
+                Resource: !GetAtt PostSignupDLQ.Arn
         - PolicyName: AllowBasicLogs
           PolicyDocument:
             Version: '2012-10-17'
@@ -168,7 +183,7 @@ Resources:
                   - logs:CreateLogGroup
                   - logs:CreateLogStream
                   - logs:PutLogEvents
-                Resource: arn:aws:logs:*:*:*
+                Resource: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*
         - PolicyName: Cognito
           PolicyDocument:
             Version: '2012-10-17'
@@ -176,15 +191,19 @@ Resources:
               - Effect: Allow
                 Action:
                   - cognito-idp:AdminAddUserToGroup
-                Resource: "*"
+                Resource: !GetAtt UserPool.Arn
 
   PostSignupFunction:
     Type: AWS::Lambda::Function
+    # checkov:skip=CKV_AWS_117:Cognito trigger; VPC not required
     Properties:
       Handler: index.lambda_handler
       Runtime: python3.13
       Role: !GetAtt PostSignupFunctionRole.Arn
       Timeout: 10
+      ReservedConcurrentExecutions: 5
+      DeadLetterConfig:
+        TargetArn: !GetAtt PostSignupDLQ.Arn
       Code:
         ZipFile: |
           import boto3

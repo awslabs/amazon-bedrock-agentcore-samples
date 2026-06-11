@@ -21,6 +21,35 @@ Parameters:
     MinLength: 1
 
 Resources:
+  # KMS key for DynamoDB table encryption
+  DynamoDBKMSKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: KMS key for DynamoDB table encryption
+      EnableKeyRotation: true
+      KeyPolicy:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Sub arn:aws:iam::${AWS::AccountId}:root
+            Action: kms:*
+            Resource: "*"
+
+  DynamoDBKMSKeyAlias:
+    Type: AWS::KMS::Alias
+    Properties:
+      AliasName: alias/customersupport-dynamodb
+      TargetKeyId: !GetAtt DynamoDBKMSKey.KeyId
+
+  # Dead letter queue for PopulateDataFunction
+  PopulateDataDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: customersupport-populate-data-dlq
+      MessageRetentionPeriod: 1209600
+      KmsMasterKeyId: alias/aws/sqs
+
   RuntimeAgentCoreRole:
     Type: AWS::IAM::Role
     Properties:
@@ -179,6 +208,10 @@ Resources:
             ProjectionType: ALL
       PointInTimeRecoverySpecification:
         PointInTimeRecoveryEnabled: true
+      SSESpecification:
+        SSEEnabled: true
+        SSEType: KMS
+        KMSMasterKeyId: !GetAtt DynamoDBKMSKey.Arn
       Tags:
         - Key: Application
           Value: CustomerSupport
@@ -215,6 +248,10 @@ Resources:
             ProjectionType: ALL
       PointInTimeRecoverySpecification:
         PointInTimeRecoveryEnabled: true
+      SSESpecification:
+        SSEEnabled: true
+        SSEType: KMS
+        KMSMasterKeyId: !GetAtt DynamoDBKMSKey.Arn
       Tags:
         - Key: Application
           Value: CustomerSupport
@@ -224,11 +261,15 @@ Resources:
   # Lambda function to populate synthetic data
   PopulateDataFunction:
     Type: AWS::Lambda::Function
+    # checkov:skip=CKV_AWS_117:CloudFormation custom resource; VPC not required
     Properties:
       Runtime: python3.12
       Handler: index.lambda_handler
       Role: !GetAtt PopulateDataRole.Arn
       Timeout: 120
+      ReservedConcurrentExecutions: 5
+      DeadLetterConfig:
+        TargetArn: !GetAtt PopulateDataDLQ.Arn
       Code:
         ZipFile: |
           import boto3
@@ -521,6 +562,13 @@ Resources:
                 Resource:
                   - !GetAtt WarrantyTable.Arn
                   - !GetAtt CustomerProfileTable.Arn
+        - PolicyName: AllowDLQ
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: sqs:SendMessage
+                Resource: !GetAtt PopulateDataDLQ.Arn
         - PolicyName: AllowBasicLogs
           PolicyDocument:
             Version: "2012-10-17"
@@ -530,7 +578,7 @@ Resources:
                   - logs:CreateLogGroup
                   - logs:CreateLogStream
                   - logs:PutLogEvents
-                Resource: arn:aws:logs:*:*:*
+                Resource: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*
   # Custom resource to trigger Lambda function
   PopulateData:
     Type: AWS::CloudFormation::CustomResource
