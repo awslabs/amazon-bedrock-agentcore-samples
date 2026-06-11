@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}Error {{ code }}{% endblock %}
+{% block content %}
+<div class="card" style="text-align:center;padding:48px;">
+    <h1>{{ code }}</h1>
+    <p>{{ error }}</p>
+    <br>
+    <a href="/" class="btn btn-primary">Go Home</a>
+</div>
+{% endblock %}

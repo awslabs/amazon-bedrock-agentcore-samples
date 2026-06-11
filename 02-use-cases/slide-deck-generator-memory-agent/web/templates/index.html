@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Slide Deck Agent Demo{% endblock %}
+{% block content %}
+<div class="card">
+    <h1>🎯 Slide Deck Agent Demo</h1>
+    <p>Compare a basic agent with a memory-enabled agent that learns your presentation preferences over time.</p>
+</div>
+<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;">
+    <div class="card">
+        <h2>🤖 Basic Agent</h2>
+        <p>Creates presentations using default settings. No memory of past preferences.</p>
+        <a href="/create-basic" class="btn btn-secondary">Try Basic Agent</a>
+    </div>
+    <div class="card">
+        <h2>🧠 Memory Agent</h2>
+        <p>Learns your style preferences over time and creates personalized presentations.</p>
+        <a href="/create-memory" class="btn btn-primary">Try Memory Agent</a>
+    </div>
+    <div class="card">
+        <h2>⚖️ Compare</h2>
+        <p>Run both agents side-by-side with the same request to see the difference.</p>
+        <a href="/compare" class="btn btn-secondary">Compare Agents</a>
+    </div>
+</div>
+{% endblock %}

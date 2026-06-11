@@ -39,6 +39,9 @@ output/*.pptx
 # Keep output directory structure but not generated files
 !output/.gitkeep
 
+# Keep web templates (*.html is ignored above but templates are source files)
+!web/templates/*.html
+
 # Environment variables
 .env
 .env.local

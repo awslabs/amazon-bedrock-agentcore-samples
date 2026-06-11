@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Slide Deck Agent Demo{% endblock %}</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: Arial, sans-serif; background: #f5f7fa; color: #333; }
+        nav { background: #232f3e; padding: 12px 24px; display: flex; align-items: center; gap: 24px; }
+        nav a { color: #fff; text-decoration: none; font-size: 14px; }
+        nav a:hover { color: #ff9900; }
+        nav .brand { color: #ff9900; font-weight: bold; font-size: 16px; margin-right: auto; }
+        .container { max-width: 960px; margin: 32px auto; padding: 0 16px; }
+        .card { background: #fff; border-radius: 8px; padding: 24px; margin-bottom: 24px; box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
+        h1 { font-size: 24px; margin-bottom: 8px; }
+        h2 { font-size: 18px; margin-bottom: 12px; }
+        p { line-height: 1.6; color: #555; margin-bottom: 12px; }
+        .btn { display: inline-block; padding: 10px 20px; border-radius: 4px; border: none; cursor: pointer; font-size: 14px; text-decoration: none; }
+        .btn-primary { background: #ff9900; color: #fff; }
+        .btn-primary:hover { background: #e68900; }
+        .btn-secondary { background: #232f3e; color: #fff; }
+        .btn-secondary:hover { background: #1a2530; }
+        textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; resize: vertical; }
+        .alert { padding: 12px 16px; border-radius: 4px; margin-bottom: 16px; }
+        .alert-success { background: #d4edda; color: #155724; }
+        .alert-error { background: #f8d7da; color: #721c24; }
+        #result { margin-top: 16px; white-space: pre-wrap; background: #f8f9fa; padding: 16px; border-radius: 4px; font-size: 13px; display: none; }
+        .loading { display: none; color: #666; font-style: italic; margin-top: 8px; }
+    </style>
+</head>
+<body>
+    <nav>
+        <span class="brand">🎯 Slide Deck Agent Demo</span>
+        <a href="/">Home</a>
+        <a href="/create-basic">Basic Agent</a>
+        <a href="/create-memory">Memory Agent</a>
+        <a href="/compare">Compare</a>
+    </nav>
+    <div class="container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endwith %}
+        {% block content %}{% endblock %}
+    </div>
+</body>
+</html>
