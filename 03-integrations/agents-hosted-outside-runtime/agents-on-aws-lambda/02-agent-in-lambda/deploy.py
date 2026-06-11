@@ -29,24 +29,24 @@ from boto3.session import Session
 
 FUNCTION_NAME = f"strands-lambda-obs-{int(time.time()) % 100000}"
 HANDLER = "lambda_agent.handler"
-TIMEOUT = 300   # seconds – LLM calls can be slow
-MEMORY = 512    # MB
+TIMEOUT = 300  # seconds – LLM calls can be slow
+MEMORY = 512  # MB
 
 # ADOT Lambda layer ARNs — AWSOpenTelemetryDistroPython (x86_64)
 # Source: https://aws-otel.github.io/docs/getting-started/lambda/lambda-python
 ADOT_LAYER_ARNS = {
-    "us-east-1":      "arn:aws:lambda:us-east-1:615299751070:layer:AWSOpenTelemetryDistroPython:18",
-    "us-east-2":      "arn:aws:lambda:us-east-2:615299751070:layer:AWSOpenTelemetryDistroPython:15",
-    "us-west-1":      "arn:aws:lambda:us-west-1:615299751070:layer:AWSOpenTelemetryDistroPython:22",
-    "us-west-2":      "arn:aws:lambda:us-west-2:615299751070:layer:AWSOpenTelemetryDistroPython:22",
-    "ap-south-1":     "arn:aws:lambda:ap-south-1:615299751070:layer:AWSOpenTelemetryDistroPython:15",
+    "us-east-1": "arn:aws:lambda:us-east-1:615299751070:layer:AWSOpenTelemetryDistroPython:18",
+    "us-east-2": "arn:aws:lambda:us-east-2:615299751070:layer:AWSOpenTelemetryDistroPython:15",
+    "us-west-1": "arn:aws:lambda:us-west-1:615299751070:layer:AWSOpenTelemetryDistroPython:22",
+    "us-west-2": "arn:aws:lambda:us-west-2:615299751070:layer:AWSOpenTelemetryDistroPython:22",
+    "ap-south-1": "arn:aws:lambda:ap-south-1:615299751070:layer:AWSOpenTelemetryDistroPython:15",
     "ap-northeast-1": "arn:aws:lambda:ap-northeast-1:615299751070:layer:AWSOpenTelemetryDistroPython:15",
     "ap-northeast-2": "arn:aws:lambda:ap-northeast-2:615299751070:layer:AWSOpenTelemetryDistroPython:15",
     "ap-southeast-1": "arn:aws:lambda:ap-southeast-1:615299751070:layer:AWSOpenTelemetryDistroPython:14",
     "ap-southeast-2": "arn:aws:lambda:ap-southeast-2:615299751070:layer:AWSOpenTelemetryDistroPython:15",
-    "eu-central-1":   "arn:aws:lambda:eu-central-1:615299751070:layer:AWSOpenTelemetryDistroPython:15",
-    "eu-west-1":      "arn:aws:lambda:eu-west-1:615299751070:layer:AWSOpenTelemetryDistroPython:15",
-    "eu-west-2":      "arn:aws:lambda:eu-west-2:615299751070:layer:AWSOpenTelemetryDistroPython:15",
+    "eu-central-1": "arn:aws:lambda:eu-central-1:615299751070:layer:AWSOpenTelemetryDistroPython:15",
+    "eu-west-1": "arn:aws:lambda:eu-west-1:615299751070:layer:AWSOpenTelemetryDistroPython:15",
+    "eu-west-2": "arn:aws:lambda:eu-west-2:615299751070:layer:AWSOpenTelemetryDistroPython:15",
 }
 
 # ── AWS setup ──────────────────────────────────────────────────────────────────
@@ -62,14 +62,16 @@ print(f"Function: {FUNCTION_NAME}")
 
 # ── IAM ────────────────────────────────────────────────────────────────────────
 
+
 def create_lambda_role() -> str:
     iam = boto3.client("iam", region_name=REGION)
     role_name = f"{FUNCTION_NAME}-role"
 
     trust = {
         "Version": "2012-10-17",
-        "Statement": [{"Effect": "Allow", "Principal": {"Service": "lambda.amazonaws.com"},
-                        "Action": "sts:AssumeRole"}],
+        "Statement": [
+            {"Effect": "Allow", "Principal": {"Service": "lambda.amazonaws.com"}, "Action": "sts:AssumeRole"}
+        ],
     }
     try:
         resp = iam.create_role(
@@ -103,6 +105,7 @@ def create_lambda_role() -> str:
 
 # ── Build Lambda ZIP ───────────────────────────────────────────────────────────
 
+
 def build_zip() -> bytes:
     """Install strands-agents + aws-opentelemetry-distro for Linux x86_64 and zip with lambda_agent.py.
 
@@ -121,12 +124,19 @@ def build_zip() -> bytes:
     print("  Installing strands-agents for linux/x86_64 with uv...")
     subprocess.run(
         [
-            "uv", "pip", "install",
-            "--python-platform", "x86_64-manylinux2014",
-            "--python-version", "3.13",
-            "--target", pkg_dir,
-            "--only-binary", ":all:",
-            "-r", "requirements.txt",
+            "uv",
+            "pip",
+            "install",
+            "--python-platform",
+            "x86_64-manylinux2014",
+            "--python-version",
+            "3.13",
+            "--target",
+            pkg_dir,
+            "--only-binary",
+            ":all:",
+            "-r",
+            "requirements.txt",
         ],
         check=True,
         capture_output=True,
@@ -135,11 +145,14 @@ def build_zip() -> bytes:
     print(f"  Creating {zip_path}...")
     subprocess.run(
         ["zip", "-r9q", f"../{zip_path}", "."],
-        cwd=pkg_dir, check=True, capture_output=True,
+        cwd=pkg_dir,
+        check=True,
+        capture_output=True,
     )
     subprocess.run(
         ["zip", "-g", zip_path, "lambda_agent.py"],
-        check=True, capture_output=True,
+        check=True,
+        capture_output=True,
     )
 
     with open(zip_path, "rb") as f:
@@ -147,11 +160,12 @@ def build_zip() -> bytes:
 
     shutil.rmtree(pkg_dir)
     os.remove(zip_path)
-    print(f"  Package: {len(data) / (1024*1024):.1f} MB")
+    print(f"  Package: {len(data) / (1024 * 1024):.1f} MB")
     return data
 
 
 # ── Lambda function ────────────────────────────────────────────────────────────
+
 
 def deploy_lambda(role_arn: str, zip_bytes: bytes) -> str:
     lam = boto3.client("lambda", region_name=REGION)
@@ -207,6 +221,7 @@ def deploy_lambda(role_arn: str, zip_bytes: bytes) -> str:
 
 
 # ── Main ───────────────────────────────────────────────────────────────────────
+
 
 def main():
     print("\n" + "=" * 60)

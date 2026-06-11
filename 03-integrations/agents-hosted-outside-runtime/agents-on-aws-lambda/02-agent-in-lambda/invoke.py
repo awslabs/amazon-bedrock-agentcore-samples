@@ -46,7 +46,7 @@ def invoke(prompt: str, idx: int) -> dict:
     status = resp["StatusCode"]
     error = resp.get("FunctionError")
 
-    print(f"\n[{idx+1}/5] Prompt: {prompt[:60]}...")
+    print(f"\n[{idx + 1}/5] Prompt: {prompt[:60]}...")
     if error:
         print(f"  ERROR: {error}")
         print(f"  Body:  {body}")
@@ -79,15 +79,15 @@ def main():
     end_time = int(time.time()) + 5  # +5s buffer
 
     # Save invocation window to config for evaluate.py
-    config["eval_start_time"] = start_time - 30   # 30s before first invoke
-    config["eval_end_time"] = end_time + 120       # 2 min after last invoke (span flush time)
+    config["eval_start_time"] = start_time - 30  # 30s before first invoke
+    config["eval_end_time"] = end_time + 120  # 2 min after last invoke (span flush time)
     config["invocation_results"] = results
 
     with open("lambda_config.json", "w") as f:
         json.dump(config, f, indent=2)
 
     successes = sum(1 for r in results if not r["error"])
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"Completed: {successes}/{len(PROMPTS)} successful invocations")
     print(f"Time window saved: {start_time - 30} → {end_time + 120}")
     print("\nNext: python evaluate.py  (wait ~2 min for spans to appear in CloudWatch)")

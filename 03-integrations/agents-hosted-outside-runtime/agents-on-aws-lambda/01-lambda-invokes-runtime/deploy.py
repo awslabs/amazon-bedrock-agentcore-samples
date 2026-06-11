@@ -102,9 +102,7 @@ def create_runtime_role() -> str:
             {
                 "Effect": "Allow",
                 "Action": ["logs:DescribeLogStreams", "logs:CreateLogGroup"],
-                "Resource": [
-                    f"arn:aws:logs:{REGION}:{ACCOUNT_ID}:log-group:/aws/bedrock-agentcore/runtimes/*"
-                ],
+                "Resource": [f"arn:aws:logs:{REGION}:{ACCOUNT_ID}:log-group:/aws/bedrock-agentcore/runtimes/*"],
             },
             {
                 "Effect": "Allow",
@@ -205,9 +203,7 @@ def build_and_upload_package():
         capture_output=True,
     )
     for src_file in AGENT_FILES:
-        subprocess.run(
-            ["zip", zip_file, "-j", src_file], check=True, capture_output=True
-        )
+        subprocess.run(["zip", zip_file, "-j", src_file], check=True, capture_output=True)
 
     zip_size = os.path.getsize(zip_file) / (1024 * 1024)
     print(f"  Package: {zip_file} ({zip_size:.1f} MB)")
@@ -375,12 +371,8 @@ def create_lambda_function(lambda_role_arn: str, runtime_arn: str) -> str:
         config["Layers"] = [adot_layer_arn]
         print(f"  ADOT Layer: {adot_layer_arn}")
     else:
-        print(
-            f"  Warning: No ADOT Layer found for region {REGION}. Trace propagation may be limited."
-        )
-        print(
-            "  Check https://aws-otel.github.io/docs/getting-started/lambda/lambda-python"
-        )
+        print(f"  Warning: No ADOT Layer found for region {REGION}. Trace propagation may be limited.")
+        print("  Check https://aws-otel.github.io/docs/getting-started/lambda/lambda-python")
 
     try:
         resp = lambda_client.create_function(**config)
@@ -388,9 +380,7 @@ def create_lambda_function(lambda_role_arn: str, runtime_arn: str) -> str:
         print(f"  Created Lambda function: {LAMBDA_FUNCTION_NAME}")
     except lambda_client.exceptions.ResourceConflictException:
         print("  Updating existing Lambda function...")
-        lambda_client.update_function_code(
-            FunctionName=LAMBDA_FUNCTION_NAME, ZipFile=zip_bytes
-        )
+        lambda_client.update_function_code(FunctionName=LAMBDA_FUNCTION_NAME, ZipFile=zip_bytes)
         time.sleep(2)
         update = {
             "FunctionName": LAMBDA_FUNCTION_NAME,
@@ -402,9 +392,7 @@ def create_lambda_function(lambda_role_arn: str, runtime_arn: str) -> str:
         if adot_layer_arn:
             update["Layers"] = [adot_layer_arn]
         lambda_client.update_function_configuration(**update)
-        function_arn = lambda_client.get_function(FunctionName=LAMBDA_FUNCTION_NAME)[
-            "Configuration"
-        ]["FunctionArn"]
+        function_arn = lambda_client.get_function(FunctionName=LAMBDA_FUNCTION_NAME)["Configuration"]["FunctionArn"]
         print(f"  Updated Lambda function: {LAMBDA_FUNCTION_NAME}")
 
     # Wait for function to be active

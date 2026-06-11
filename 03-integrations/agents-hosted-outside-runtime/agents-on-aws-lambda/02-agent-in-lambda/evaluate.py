@@ -39,6 +39,7 @@ EVAL_NAME = f"lambda_obs_eval_{int(time.time()) % 100000}"
 
 # ── Wait for spans ─────────────────────────────────────────────────────────────
 
+
 def spans_are_ready(max_wait_seconds: int = 120) -> bool:
     """Poll the Lambda log group until compact Gen AI span records appear.
 
@@ -75,6 +76,7 @@ def spans_are_ready(max_wait_seconds: int = 120) -> bool:
 
 
 # ── Batch evaluation ───────────────────────────────────────────────────────────
+
 
 def start_evaluation() -> str:
     start_dt = datetime.fromtimestamp(START_TIME, tz=timezone.utc)
@@ -155,6 +157,7 @@ def print_results(result: dict):
 
 
 # ── Main ───────────────────────────────────────────────────────────────────────
+
 
 def main():
     print("=" * 60)

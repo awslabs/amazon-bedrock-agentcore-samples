@@ -32,6 +32,7 @@ logger.setLevel(logging.INFO)
 
 # ── CloudWatch compact-JSON span exporter ──────────────────────────────────────
 
+
 class _CWJsonSpanExporter(SpanExporter):
     """Emit each span as a single compact JSON line to stdout.
 
@@ -48,9 +49,7 @@ class _CWJsonSpanExporter(SpanExporter):
                 "name": span.name,
                 "traceId": format(ctx.trace_id, "032x"),
                 "spanId": format(ctx.span_id, "016x"),
-                "parentSpanId": (
-                    format(span.parent.span_id, "016x") if span.parent else None
-                ),
+                "parentSpanId": (format(span.parent.span_id, "016x") if span.parent else None),
                 "startTimeUnixNano": span.start_time,
                 "endTimeUnixNano": span.end_time,
                 "attributes": dict(span.attributes or {}),
@@ -100,6 +99,7 @@ agent = Agent()
 
 
 # ── Handler ────────────────────────────────────────────────────────────────────
+
 
 def handler(event, context=None):
     """Lambda entry point — forwards the incoming prompt to the Strands agent."""
