@@ -84,6 +84,7 @@ AgentCore identity integrates seamlessly with other AgentCore components:
 | `02-outbound-auth/` | Give agents secure access to external APIs: OpenAI (API key), Google Calendar (3LO), GitHub (3LO), self-hosted OAuth2 |
 | `03-m2m-3lo/` | Combined M2M + Auth Code flows in one runtime agent using the AgentCore CLI; Cognito inbound, GitHub + Google outbound |
 | `04-entra-obo-mcp-runtime/` | Advanced: Entra ID On-Behalf-Of token exchange across two runtimes (Agent + MCP Server); user identity preserved end-to-end |
+| `okta-auth-three-tier-end-to-end-demo/` | End-to-end Okta OAuth2 three-tier demo: per-tier JWT isolation across User → Runtime → Gateway → MCP Server with RBAC |
 
 ## How this section is organized
 
