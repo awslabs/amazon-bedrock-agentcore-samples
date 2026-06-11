@@ -302,3 +302,4 @@ plan/
 
 # Browser test report cards
 01-features/03-connect-your-agent-to-anything/02-browser/TEST_REPORT_CARD.md
+**/lambda_config.json

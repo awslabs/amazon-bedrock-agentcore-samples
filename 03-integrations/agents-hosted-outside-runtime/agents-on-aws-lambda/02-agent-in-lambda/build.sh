@@ -1,9 +1,11 @@
 #!/bin/bash
 # Build a Lambda-compatible deployment ZIP.
 #
-# Only strands-agents (and its dependencies) are bundled.
-# The ADOT instrumentation layer is attached separately in the Lambda console —
-# do NOT pip-install opentelemetry or aws-opentelemetry-distro here.
+# Bundles strands-agents + aws-opentelemetry-distro.
+# aws-opentelemetry-distro ensures the opentelemetry-sdk version in /var/task
+# is compatible with the ADOT managed layer's startup code (/opt/otel-instrument).
+# The ADOT layer is still attached separately — it provides the exec wrapper,
+# X-Ray exporter, and Application Signals integration.
 #
 # Usage (replace 'finch' with 'docker' if using Docker):
 #   chmod +x build.sh
