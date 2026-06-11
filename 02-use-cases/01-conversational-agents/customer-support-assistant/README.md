@@ -395,7 +395,7 @@ rm .bedrock_agentcore.yaml
 
 ## 🤝 Contributing
 
-We welcome contributions! Please see our [Contributing Guidelines](../../CONTRIBUTING.md) for details on:
+We welcome contributions! Please see our [Contributing Guidelines](../../../CONTRIBUTING.md) for details on:
 
 - Adding new samples
 - Improving existing examples

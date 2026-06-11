@@ -583,7 +583,7 @@ This destroys the entire CloudFormation stack including all AgentCore Services, 
 
 ## 🤝 Contributing
 
-We welcome contributions! Please see our [Contributing Guidelines](../../CONTRIBUTING.md) for details on:
+We welcome contributions! Please see our [Contributing Guidelines](../../../CONTRIBUTING.md) for details on:
 
 - Adding new samples
 - Improving existing examples

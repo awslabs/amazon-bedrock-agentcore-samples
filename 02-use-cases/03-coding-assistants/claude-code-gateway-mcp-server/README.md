@@ -89,7 +89,7 @@ Additional resources you may need to manually delete:
 
 ## 🤝 Contributing
 
-We welcome contributions! Please see our [Contributing Guidelines](../../CONTRIBUTING.md) for details.
+We welcome contributions! Please see our [Contributing Guidelines](../../../CONTRIBUTING.md) for details.
 
 ## 📄 License
 
