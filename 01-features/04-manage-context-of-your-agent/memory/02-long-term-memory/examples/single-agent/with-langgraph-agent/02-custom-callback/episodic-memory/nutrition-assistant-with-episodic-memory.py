@@ -161,6 +161,11 @@ try:
         PolicyDocument=json.dumps(trust_policy),
     )
     print(f"✅ Using existing role (trust policy updated): {MEMORY_EXECUTION_ROLE_ARN}")
+    # A trust-policy update is not immediately consistent. Without this wait, a
+    # reused role can fail CreateMemory with "Please provide a role with a valid
+    # trust policy" — the same propagation delay the create branch waits for below.
+    print("⏳ Waiting 10 seconds for IAM propagation...")
+    time.sleep(10)
 except iam_client.exceptions.NoSuchEntityException:
     # Create role
     print(f"Creating IAM role: {ROLE_NAME}")
@@ -188,6 +193,12 @@ memory_name = "NutritionAssistantEpisodic"
 client = MemoryClient(region_name=region)
 MODEL_ID = "us.anthropic.claude-haiku-4-5-20251001-v1:0"
 
+# NOTE: this tutorial implements episodic-style memory via a CUSTOM strategy with a
+# `semanticOverride` and custom extraction/consolidation prompts (see
+# custom_memory_prompts.py) — NOT the built-in `episodicMemoryStrategy`. Records are
+# extracted into the episode namespace, but the built-in reflection step is not run.
+# For the built-in episodic strategy + reflectionConfiguration, see
+# 02-long-term-memory/01-built-in-strategies/episodic.py.
 override_strategy = {
     "customMemoryStrategy": {
         "name": "NutritionEpisodicExtractor",

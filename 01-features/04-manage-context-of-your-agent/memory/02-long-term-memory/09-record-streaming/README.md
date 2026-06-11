@@ -65,10 +65,14 @@ aws bedrock-agentcore-control create-memory \
   --region "$AWS_REGION" --name "StreamingCli-$(date +%s)" \
   --event-expiry-duration 7 --client-token "$(uuidgen)" \
   --memory-execution-role-arn "$ROLE_ARN" \
-  --stream-delivery-resources "[{
-    \"kinesisStreamArn\": \"$STREAM_ARN\",
-    \"contentLevel\": \"FULL_CONTENT\"
-  }]" \
+  --stream-delivery-resources "{
+    \"resources\": [{
+      \"kinesis\": {
+        \"dataStreamArn\": \"$STREAM_ARN\",
+        \"contentConfigurations\": [{\"type\": \"MEMORY_RECORDS\", \"level\": \"FULL_CONTENT\"}]
+      }
+    }]
+  }" \
   --memory-strategies '[{
     "userPreferenceMemoryStrategy": {
       "name":"UserPreferences",

@@ -46,7 +46,7 @@ Pass both to your automation framework. Without the headers, the connection is r
 
 ### Custom Browser Resources
 
-By default, `browser_session()` uses a shared AgentCore-managed browser. For advanced features — session recording, domain filtering via network firewall — you create a **custom Browser resource** with an execution role:
+By default, `browser_session()` uses a shared AgentCore-managed browser. For advanced features — session recording, domain filtering, Chrome policies, browser profiles — you create a **custom Browser resource** with an execution role:
 
 ```python
 cp_client = boto3.client("bedrock-agentcore-control", region_name=region)
@@ -70,17 +70,25 @@ browser_id = resp["browserId"]
 | **Nova Act** | `from nova_act import NovaAct` | Amazon's native browser agent with structured output |
 | **Browser-Use** | `from browser_use import Agent, Browser` | Open-source multi-step agents with Claude |
 | **Strands** | `from strands_tools.browser import AgentCoreBrowser` | Strands agent with browser as a tool |
-| **Playwright** | `from playwright.async_api import async_playwright` | Low-level CDP automation, domain filtering tests |
+| **Playwright** | `from playwright.async_api import async_playwright` | Low-level CDP automation, policy/proxy/profile tests |
 
 ## Demos
 
-| Folder | Framework | What You'll Learn |
-|:-------|:---------|:------------------|
+| Folder | Framework / API | What You'll Learn |
+|:-------|:----------------|:------------------|
 | [01-nova-act/](01-nova-act/) | Nova Act | Start a browser session, issue a natural language prompt, get structured output |
 | [02-browser-use/](02-browser-use/) | Browser-Use | Connect the Browser-Use SDK to an AgentCore session with auth headers |
 | [03-observability/](03-observability/) | Nova Act | Enable S3 recording, replay sessions, view console + network logs |
 | [04-strands/](04-strands/) | Strands | Use `AgentCoreBrowser` as a Strands tool for autonomous web analysis |
 | [05-domain-filtering/](05-domain-filtering/) | Playwright | Restrict browser to an allow-list of domains via AWS Network Firewall |
+| [06-web-bot-auth/](06-web-bot-auth/) | Strands | Enable `browserSigning` to pass Cloudflare Web Bot Auth challenges without CAPTCHAs |
+| [07-public-browser-private-vpc/](07-public-browser-private-vpc/) | CloudFormation | Hybrid: public AgentCore Browser + private VPC AgentCore Runtime |
+| [08-vpc-browser-from-vpc/](08-vpc-browser-from-vpc/) | CloudFormation | Fully private: VPC Browser + VPC Runtime access internal web servers |
+| [09-browser-profile/](09-browser-profile/) | Playwright | Persist cookies and localStorage across sessions with Browser Profiles |
+| [10-proxy/](10-proxy/) | Playwright | Route browser traffic through a Squid proxy with full S3 audit logs |
+| [11-extensions/](11-extensions/) | Playwright | Load custom Chrome extensions into browser sessions from S3 |
+| [12-chrome-policies/](12-chrome-policies/) | Playwright + BrowserClient | Chrome enterprise policies (URL blocklist) and custom root CA certificates |
+| [13-os-actions/](13-os-actions/) | InvokeBrowser REST | Raw OS-level mouse, keyboard, scroll, and screenshot via SigV4 REST API |
 
 ## Quick Start
 
@@ -103,7 +111,7 @@ python 04-strands/demo.py \
   --url "https://www.marketwatch.com/investing/stock/tsla" \
   --question "What is the current stock price and P/E ratio?"
 
-# observability (creates custom browser with S3 recording)
+# Observability (creates custom browser with S3 recording)
 python 03-observability/browser_observability.py \
   --nova-act-key $NOVA_ACT_API_KEY --skip-cleanup
 
@@ -113,11 +121,30 @@ aws cloudformation deploy \
   --stack-name agentcore-browser-firewall \
   --capabilities CAPABILITY_IAM
 python 05-domain-filtering/verify_domain_filtering.py
+
+# Web Bot Auth signing
+python 06-web-bot-auth/web_bot_auth.py --region us-west-2
+
+# Browser profile persistence (deploy sample-ecommerce first)
+python 09-browser-profile/browser_profile.py --cfn-url https://xxxx.cloudfront.net
+
+# Squid proxy routing (deploy CFN stack first)
+python 10-proxy/verify_proxy.py
+
+# Browser extensions
+python 11-extensions/browser_extensions.py --region us-east-1
+
+# Chrome enterprise policies + root CA
+python 12-chrome-policies/chrome_policies.py --region us-west-2
+
+# OS-level actions (InvokeBrowser)
+python 13-os-actions/os_actions.py --region us-west-2
 ```
 
 ## Shared Agent
 
-Demo `04-strands` uses a shared Strands agent in `utils/browser_agent.py`:
+Demo `04-strands` and `06-web-bot-auth` use Strands agents with `AgentCoreBrowser`. The shared
+agent in `utils/browser_agent.py` is used by `04-strands`:
 
 ```python
 from strands import Agent
@@ -146,6 +173,10 @@ The `AgentCoreBrowser` integration handles the full browser session lifecycle au
     "bedrock-agentcore:ConnectBrowserLiveViewStream",
     "bedrock-agentcore:CreateBrowser",
     "bedrock-agentcore:DeleteBrowser",
+    "bedrock-agentcore:InvokeBrowser",
+    "bedrock-agentcore:SaveBrowserSessionProfile",
+    "bedrock-agentcore:CreateBrowserProfile",
+    "bedrock-agentcore:DeleteBrowserProfile",
     "bedrock:InvokeModel"
   ],
   "Resource": "*"
@@ -153,15 +184,3 @@ The `AgentCoreBrowser` integration handles the full browser session lifecycle au
 ```
 
 See [Browser Tool IAM reference](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/browser-tool-permissions.html) for full details.
-
-## Files
-
-| File | Description |
-|:-----|:------------|
-| `requirements.txt` | Python dependencies for all sub-demos |
-| `utils/browser_agent.py` | Shared Strands agent with `AgentCoreBrowser` tool |
-| `01-nova-act/` | Nova Act headless and live-view demos |
-| `02-browser-use/` | Browser-Use SDK demo and auth header patch |
-| `03-observability/` | Session recording and replay demo |
-| `04-strands/` | Strands agent web analysis demo |
-| `05-domain-filtering/` | CloudFormation + domain allow/deny list verification |

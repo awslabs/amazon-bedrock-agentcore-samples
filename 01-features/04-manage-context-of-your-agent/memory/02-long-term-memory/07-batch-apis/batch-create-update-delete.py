@@ -11,6 +11,13 @@ back-fills, migrations, and admin tooling.
 
 Each call accepts up to 100 records and reports per-record success/failure.
 
+Eventual consistency: a record returned as SUCCEEDED by BatchCreate is NOT
+immediately readable/updatable — BatchUpdate/Delete/List against it can raise
+ResourceNotFoundException for a while (observed from a few seconds to >50s, and
+the window varies run to run). This is expected for directly-written records.
+The real-world pattern — shown below — is to RETRY the dependent operation until
+the record has propagated, rather than assume it is available right after create.
+
 Two surfaces:
     python batch-create-update-delete.py boto3
     python batch-create-update-delete.py sdk
@@ -27,10 +34,35 @@ import os
 import sys
 import time
 import uuid
+from datetime import datetime, timezone
+
+from botocore.exceptions import ClientError
 
 REGION = os.getenv("AWS_REGION", "us-east-1")
 ACTOR_ID = "user-alex"
 NAMESPACE = f"/users/{ACTOR_ID}/notes/"
+
+
+def _retry_until_propagated(op, *, max_wait: int = 150, poll: int = 10):
+    """Call `op()` and retry while the record is still propagating.
+
+    Directly-written records are eventually consistent, so a dependent op
+    (BatchUpdate/Delete/List) on a just-created record may raise
+    ResourceNotFoundException until propagation completes. We retry ONLY that
+    transient error, with a deadline, and re-raise anything else immediately.
+    Returns op()'s result; raises the last ResourceNotFoundException on timeout.
+    """
+    deadline = time.time() + max_wait
+    last = None
+    while time.time() < deadline:
+        try:
+            return op()
+        except ClientError as e:
+            if e.response["Error"]["Code"] != "ResourceNotFoundException":
+                raise  # deterministic error — surface it
+            last = e
+            time.sleep(poll)
+    raise last
 
 
 # === boto3 ============================================================
@@ -58,19 +90,20 @@ def run_with_boto3(cleanup: bool = False) -> None:
             {
                 "requestIdentifier": "note-lang",
                 "namespaces": [NAMESPACE],
-                "timestamp": str(int(time.time())),
+                # timestamp is a datetime-typed field — pass a real datetime, not a string.
+                "timestamp": datetime.now(timezone.utc),
                 "content": {"text": "Alex prefers Python over Java."},
             },
             {
                 "requestIdentifier": "note-city",
                 "namespaces": [NAMESPACE],
-                "timestamp": str(int(time.time())),
+                "timestamp": datetime.now(timezone.utc),
                 "content": {"text": "Alex is based in Berlin."},
             },
             {
                 "requestIdentifier": "note-allergy",
                 "namespaces": [NAMESPACE],
-                "timestamp": str(int(time.time())),
+                "timestamp": datetime.now(timezone.utc),
                 "content": {"text": "Alex is allergic to peanuts."},
             },
         ],
@@ -79,20 +112,28 @@ def run_with_boto3(cleanup: bool = False) -> None:
     print(f"[boto3] Created {len(successes)} ({len(create_resp.get('failedRecords', []))} failed)")
     record_ids = {r["requestIdentifier"]: r["memoryRecordId"] for r in successes}
 
-    update_resp = data.batch_update_memory_records(
-        memoryId=memory_id,
-        records=[
-            {
-                "memoryRecordId": record_ids["note-lang"],
-                "content": {"text": "Alex prefers Python and writes Rust for hot paths."},
-            }
-        ],
+    # The just-created records are eventually consistent — retry the dependent
+    # update/delete until they propagate (BatchUpdateMemoryRecords requires
+    # memoryRecordId AND timestamp).
+    update_resp = _retry_until_propagated(
+        lambda: data.batch_update_memory_records(
+            memoryId=memory_id,
+            records=[
+                {
+                    "memoryRecordId": record_ids["note-lang"],
+                    "timestamp": datetime.now(timezone.utc),
+                    "content": {"text": "Alex prefers Python and writes Rust for hot paths."},
+                }
+            ],
+        )
     )
     print(f"[boto3] Updated {len(update_resp.get('successfulRecords', []))}")
 
-    delete_resp = data.batch_delete_memory_records(
-        memoryId=memory_id,
-        records=[{"memoryRecordId": record_ids["note-allergy"]}],
+    delete_resp = _retry_until_propagated(
+        lambda: data.batch_delete_memory_records(
+            memoryId=memory_id,
+            records=[{"memoryRecordId": record_ids["note-allergy"]}],
+        )
     )
     print(f"[boto3] Deleted {len(delete_resp.get('successfulRecords', []))}")
 
@@ -128,19 +169,20 @@ def run_with_sdk(cleanup: bool = False) -> None:
             {
                 "requestIdentifier": "note-lang",
                 "namespaces": [NAMESPACE],
-                "timestamp": str(int(time.time())),
+                # timestamp is a datetime-typed field — pass a real datetime, not a string.
+                "timestamp": datetime.now(timezone.utc),
                 "content": {"text": "Alex prefers Python over Java."},
             },
             {
                 "requestIdentifier": "note-city",
                 "namespaces": [NAMESPACE],
-                "timestamp": str(int(time.time())),
+                "timestamp": datetime.now(timezone.utc),
                 "content": {"text": "Alex is based in Berlin."},
             },
             {
                 "requestIdentifier": "note-allergy",
                 "namespaces": [NAMESPACE],
-                "timestamp": str(int(time.time())),
+                "timestamp": datetime.now(timezone.utc),
                 "content": {"text": "Alex is allergic to peanuts."},
             },
         ],
@@ -149,20 +191,28 @@ def run_with_sdk(cleanup: bool = False) -> None:
     print(f"[sdk] Created {len(successes)} ({len(create_resp.get('failedRecords', []))} failed)")
     record_ids = {r["requestIdentifier"]: r["memoryRecordId"] for r in successes}
 
-    update_resp = client.batch_update_memory_records(
-        memoryId=memory_id,
-        records=[
-            {
-                "memoryRecordId": record_ids["note-lang"],
-                "content": {"text": "Alex prefers Python and writes Rust for hot paths."},
-            }
-        ],
+    # The just-created records are eventually consistent — retry the dependent
+    # update/delete until they propagate (BatchUpdateMemoryRecords requires
+    # memoryRecordId AND timestamp).
+    update_resp = _retry_until_propagated(
+        lambda: client.batch_update_memory_records(
+            memoryId=memory_id,
+            records=[
+                {
+                    "memoryRecordId": record_ids["note-lang"],
+                    "timestamp": datetime.now(timezone.utc),
+                    "content": {"text": "Alex prefers Python and writes Rust for hot paths."},
+                }
+            ],
+        )
     )
     print(f"[sdk] Updated {len(update_resp.get('successfulRecords', []))}")
 
-    delete_resp = client.batch_delete_memory_records(
-        memoryId=memory_id,
-        records=[{"memoryRecordId": record_ids["note-allergy"]}],
+    delete_resp = _retry_until_propagated(
+        lambda: client.batch_delete_memory_records(
+            memoryId=memory_id,
+            records=[{"memoryRecordId": record_ids["note-allergy"]}],
+        )
     )
     print(f"[sdk] Deleted {len(delete_resp.get('successfulRecords', []))}")
 

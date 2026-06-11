@@ -43,11 +43,12 @@ api.interceptors.response.use(
   }
 );
 
-export const generateCode = async (prompt, sessionId = null) => {
+export const generateCode = async (prompt, sessionId = null, actorId = null) => {
   try {
     const response = await api.post('/api/generate-code', {
       prompt,
-      session_id: sessionId
+      session_id: sessionId,
+      actor_id: actorId
     });
     return response;
   } catch (error) {
@@ -56,11 +57,12 @@ export const generateCode = async (prompt, sessionId = null) => {
   }
 };
 
-export const executeCode = async (code, sessionId = null, interactive = false, inputs = null) => {
+export const executeCode = async (code, sessionId = null, interactive = false, inputs = null, actorId = null) => {
   try {
     const response = await api.post('/api/execute-code', {
       code,
       session_id: sessionId,
+      actor_id: actorId,
       interactive,
       inputs
     });
@@ -122,6 +124,28 @@ export const getSessionHistory = async (sessionId) => {
   }
 };
 
+export const getActorSessions = async (actorId) => {
+  try {
+    const response = await api.get(`/api/memory/sessions/${actorId}`);
+    return response;
+  } catch (error) {
+    console.error('Get actor sessions error:', error);
+    throw error;
+  }
+};
+
+export const getMemorySessionHistory = async (sessionId, actorId) => {
+  try {
+    const response = await api.get(`/api/memory/history`, {
+      params: { session_id: sessionId, actor_id: actorId }
+    });
+    return response;
+  } catch (error) {
+    console.error('Get memory session history error:', error);
+    throw error;
+  }
+};
+
 export const clearSession = async (sessionId) => {
   try {
     const response = await api.delete(`/api/session/${sessionId}`);
@@ -148,6 +172,36 @@ export const healthCheck = async () => {
     return response;
   } catch (error) {
     console.error('Health check error:', error);
+    throw error;
+  }
+};
+
+export const getGuardrailsStatus = async () => {
+  try {
+    const response = await api.get('/api/guardrails/status');
+    return response;
+  } catch (error) {
+    console.error('Get guardrails status error:', error);
+    throw error;
+  }
+};
+
+export const getSessionsStatus = async () => {
+  try {
+    const response = await api.get('/api/sessions/status');
+    return response;
+  } catch (error) {
+    console.error('Get sessions status error:', error);
+    throw error;
+  }
+};
+
+export const deleteMemorySession = async (actorId, sessionId) => {
+  try {
+    const response = await api.delete(`/api/memory/sessions/${actorId}/${sessionId}`);
+    return response;
+  } catch (error) {
+    console.error('Delete memory session error:', error);
     throw error;
   }
 };

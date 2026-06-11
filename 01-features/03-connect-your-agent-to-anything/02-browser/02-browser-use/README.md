@@ -4,33 +4,6 @@
 
 [Browser-Use](https://github.com/browser-use/browser-use) is a popular open-source browser automation framework that wraps LLMs into agentic browser loops. This demo shows how to connect Browser-Use to an AgentCore Browser session, so the automation runs in a fully managed Chromium sandbox instead of a locally installed browser.
 
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│  getting_started.py                                                 │
-│                                                                     │
-│  client = BrowserClient(region)                                     │
-│  client.start()                                                     │
-│  ws_url, headers = client.generate_ws_headers()                     │
-│              │                                                      │
-│              ▼                                                      │
-│  BrowserProfile(headers=headers, timeout=150000)                    │
-│  Browser(cdp_url=ws_url, browser_profile=browser_profile)          │
-│              │                                                      │
-│              ▼                                                      │
-│  Agent(                                                             │
-│    task="Search for a coffee maker on amazon.com …",               │
-│    llm=ChatAnthropicBedrock(model="claude-haiku-4-5"),             │
-│    browser_session=browser_session,                                 │
-│  ).run()                                                            │
-│              │                                                      │
-│              ▼                                                      │
-│  ┌─────────────────────────────────────────────────────────────┐   │
-│  │  AgentCore Browser Session (managed Chromium)               │   │
-│  │  ← CDP frames forwarded with AgentCore auth headers         │   │
-│  └─────────────────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────────────────┘
-```
-
 ## Architecture
 
 ![Browser Tool Architecture](images/browser-tool.png)
