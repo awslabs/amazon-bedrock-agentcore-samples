@@ -18,6 +18,7 @@ import logging
 import time
 from contextvars import ContextVar
 from datetime import datetime, timezone
+from string import Template
 
 import boto3
 from bedrock_agentcore.runtime import BedrockAgentCoreApp
@@ -174,21 +175,27 @@ def _resolve_ticket(ticket_id: str, comment: str) -> None:
 
 
 def _fail_ticket(ticket_id: str, error: str) -> None:
-    """Mark ticket as Failed with error context."""
+    """Mark ticket as Failed with error context.
+
+    Non-fatal: if the DDB write fails, log the error but don't propagate.
+    """
     if not TICKETS_TABLE:
         return
     now = datetime.now(timezone.utc).isoformat()
     table = _ddb.Table(TICKETS_TABLE)
-    table.update_item(
-        Key={"ticket_id": ticket_id},
-        UpdateExpression="SET #s = :s, error_message = :e, updated_at = :t",
-        ExpressionAttributeNames={"#s": "status"},
-        ExpressionAttributeValues={
-            ":s": "Failed",
-            ":e": error[:1000],
-            ":t": now,
-        },
-    )
+    try:
+        table.update_item(
+            Key={"ticket_id": ticket_id},
+            UpdateExpression="SET #s = :s, error_message = :e, updated_at = :t",
+            ExpressionAttributeNames={"#s": "status"},
+            ExpressionAttributeValues={
+                ":s": "Failed",
+                ":e": error[:1000],
+                ":t": now,
+            },
+        )
+    except Exception:
+        logger.exception("Failed to mark ticket %s as Failed in DDB (non-fatal)", ticket_id)
 
 
 def _emit_resolution_event(ticket_id: str, resolution: str, requester_id: str) -> None:
@@ -363,8 +370,6 @@ async def invoke(payload, context):
             past_block = format_past_incidents_block(past_incidents)
             # Use string.Template ($ substitution) to avoid KeyError if
             # past_block contains { or } characters from memory content.
-            from string import Template
-
             system_prompt = Template(SYSTEM_PROMPT_JIRA).safe_substitute(
                 jira_site_url=JIRA_SITE_URL,
                 jira_project_key=JIRA_PROJECT_KEY,

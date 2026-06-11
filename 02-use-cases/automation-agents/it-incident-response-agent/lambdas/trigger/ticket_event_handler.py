@@ -24,6 +24,13 @@ logger.setLevel(os.environ.get("LOG_LEVEL", "INFO"))
 TICKETS_TABLE = os.environ.get("TICKETS_TABLE", "")
 AGENT_RUNTIME_ARN = os.environ["AGENT_RUNTIME_ARN"]
 
+# Validate that the runtime ARN was properly wired by CDK (not left as placeholder)
+if AGENT_RUNTIME_ARN == "PENDING":
+    raise RuntimeError(
+        "AGENT_RUNTIME_ARN is 'PENDING' — CDK did not wire the Runtime ARN. "
+        "Ensure the parent stack sets this env var after AgentCore constructs are created."
+    )
+
 _ddb = boto3.resource("dynamodb")
 _agentcore = boto3.client("bedrock-agentcore")
 
@@ -58,22 +65,30 @@ def _validate_issue(payload: dict) -> str | None:
 
 
 def _persist_ticket(ticket: dict) -> None:
-    """Idempotent write to DynamoDB (full-ticket mode only)."""
+    """Idempotent write to DynamoDB (full-ticket mode only).
+
+    Sanitizes the payload to only persist expected fields, preventing
+    unexpected attributes from being written to the table.
+    """
     if not TICKETS_TABLE:
         logger.warning("TICKETS_TABLE not set — skipping DDB persist")
         return
 
+    # Whitelist allowed fields to prevent unexpected attribute injection
+    ALLOWED_FIELDS = {"ticket_id", "title", "description", "requester_id", "priority", "category", "status", "created_at", "updated_at"}
+    sanitized = {k: v for k, v in ticket.items() if k in ALLOWED_FIELDS}
+
     tickets_table = _ddb.Table(TICKETS_TABLE)
-    ticket_id = ticket["ticket_id"]
+    ticket_id = sanitized["ticket_id"]
     now = datetime.now(timezone.utc).isoformat()
 
-    ticket.setdefault("priority", "MEDIUM")
-    ticket.setdefault("status", "Open")
-    ticket.setdefault("created_at", now)
+    sanitized.setdefault("priority", "MEDIUM")
+    sanitized.setdefault("status", "Open")
+    sanitized.setdefault("created_at", now)
 
     try:
         tickets_table.put_item(
-            Item=ticket,
+            Item=sanitized,
             ConditionExpression="attribute_not_exists(ticket_id)",
         )
         logger.info("Persisted ticket %s", ticket_id)

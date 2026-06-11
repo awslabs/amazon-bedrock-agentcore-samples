@@ -27,6 +27,8 @@ import boto3
 # ─── Configuration ────────────────────────────────────────────────────────────
 
 REGION = os.environ.get("AWS_REGION", "us-west-2")
+# NOTE: STACK_NAME must match the CDK naming convention: AgentCore-{projectName}-{targetName}
+# where projectName comes from agentcore.json "name" and targetName from aws-targets.json.
 STACK_NAME = os.environ.get("STACK_NAME", "AgentCore-ITIncidentAgent-dev")
 POLL_INTERVAL = 5  # seconds between DDB polls
 LOG_POLL_INTERVAL = 3  # seconds between log polls

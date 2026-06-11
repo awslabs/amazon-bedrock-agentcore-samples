@@ -175,10 +175,10 @@ export class InfraConstruct extends Construct {
       //   - dimension 1024     (Titan Text Embeddings v2 default)
       //   - distance metric cosine
       // NOTE: Do NOT pre-declare nonFilterableMetadataKeys here. For S3 Vectors,
-      // Bedrock manages its own internal metadata keys when it writes chunks
-      // during ingestion; the index does not need a metadata schema. (The
-      // AMAZON_BEDROCK_TEXT_CHUNK / AMAZON_BEDROCK_METADATA keys are an
-      // OpenSearch-backend convention, not S3 Vectors.)
+      // nonFilterableMetadataKeys is optional — omitting it means all metadata
+      // keys remain filterable by default, which is sufficient for Bedrock KB
+      // ingestion. The AMAZON_BEDROCK_TEXT_CHUNK / AMAZON_BEDROCK_METADATA names
+      // are an OpenSearch-backend convention, not applicable to S3 Vectors.
       const vectorBucket = new s3vectors.CfnVectorBucket(this, 'KbVectorBucket', {
         vectorBucketName: `it-incident-kb-${stack.account}-${stack.region}`,
       });
@@ -442,12 +442,8 @@ export class InfraConstruct extends Construct {
     });
 
     this.ticketsTable.grantWriteData(this.triggerFn);
-    this.triggerFn.addToRolePolicy(
-      new iam.PolicyStatement({
-        actions: ['bedrock-agentcore:InvokeAgentRuntime'],
-        resources: ['*'],
-      })
-    );
+    // InvokeAgentRuntime permission is added in cdk-stack.ts after the Runtime ARN
+    // is resolved — scoped to the specific runtime rather than using a wildcard.
 
     this.triggerFn.addEventSource(new lambdaEventSources.SnsEventSource(this.ticketsTopic));
 

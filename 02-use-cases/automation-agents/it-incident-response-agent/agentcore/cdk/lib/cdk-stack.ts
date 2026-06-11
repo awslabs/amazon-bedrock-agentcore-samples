@@ -138,13 +138,8 @@ export class AgentCoreStack extends Stack {
     }
 
     // ─── Step 4: Create AgentCore Application ──────────────────────
-    // Deploys Runtime + Memory using @aws/agentcore-cdk L3 constructs.
-    // NOTE: policyEngines[] and onlineEvalConfigs[] are declared in agentcore.json
-    // for schema correctness, but the L3 construct (v0.1.0-alpha.34) has a bug
-    // where PolicyEngine/OnlineEval resources are not rendered to CFN. They are
-    // kept in the JSON for future L3 compatibility. The actual Policy Engine
-    // deployment is handled by the AgentCoreMcp construct's policyEngineConfiguration
-    // wiring (when the bug is fixed). Until then, we document the intent declaratively.
+    // Deploys Runtime + Memory + PolicyEngine + OnlineEval using @aws/agentcore-cdk L3 constructs.
+    // All resources declared in agentcore.json are rendered to CloudFormation by the L3 construct.
     this.application = new AgentCoreApplication(this, 'Application', {
       spec,
       harnesses: harnessesForCdk.length > 0 ? harnessesForCdk : undefined,
@@ -160,18 +155,25 @@ export class AgentCoreStack extends Stack {
         projectTags: spec.tags,
       });
 
-      // ─── Step 5.1: Gateway lambda:InvokeFunction ───────────────────
-      // NOTE: The L3 construct (v0.1.0-alpha.34) now automatically grants
-      // lambda:InvokeFunction for lambdaFunctionArn targets. The manual
-      // addPropertyOverride workaround has been removed.
+      // ─── Step 5.1: Fix IAM propagation for Gateway targets ─────────
+      // The AgentCore service validates that the Gateway execution role has
+      // lambda:InvokeFunction at GatewayTarget creation time. Due to IAM
+      // eventual consistency (~5-15s), the first deploy from scratch can
+      // fail. The workaround is deployed via tmp_patch_template.py which:
+      //   1. Adds DependsOn from GatewayTargets → IAM Policy (ordering)
+      //   2. The deploy is retried once on failure (standard IAM propagation)
+      // For resource-based policy (belt-and-suspenders):
+      for (const [targetName, fn] of Object.entries(this.infra.toolFunctions)) {
+        fn.addPermission(`GwInvoke-${targetName}`, {
+          principal: new iam.ServicePrincipal('bedrock-agentcore.amazonaws.com'),
+          action: 'lambda:InvokeFunction',
+        });
+      }
 
       // ─── Step 5a: Policy Engine ──────────────────────────────────────
       // STEP: POLICY — Defined declaratively in agentcore.json → policyEngines[]
-      // with policyEngineConfiguration on the gateway. The L3 construct has a
-      // known bug (v0.1.0-alpha.34) where PolicyEngine resources aren't rendered
-      // to CloudFormation despite being correctly parsed from the spec. The
-      // declaration is kept for forward compatibility; the engine will deploy
-      // automatically once the L3 is fixed.
+      // with policyEngineConfiguration on the gateway. The L3 construct renders
+      // PolicyEngine + Policy resources to CloudFormation automatically.
     }
 
     // ─── Step 5: Inject custom env vars into the Runtime ─────────────
@@ -241,6 +243,16 @@ export class AgentCoreStack extends Stack {
       // Wire the Runtime ARN into the Trigger Lambda so it can invoke the agent
       const runtimeArn = cfnRuntime.getAtt('AgentRuntimeArn').toString();
       this.infra.triggerFn.addEnvironment('AGENT_RUNTIME_ARN', runtimeArn);
+
+      // Grant the trigger Lambda permission to invoke THIS specific runtime (least privilege)
+      // The InvokeAgentRuntime action requires access to both the runtime ARN and its
+      // endpoint sub-resource (e.g., .../runtime-endpoint/DEFAULT), hence the /* suffix.
+      this.infra.triggerFn.addToRolePolicy(
+        new iam.PolicyStatement({
+          actions: ['bedrock-agentcore:InvokeAgentRuntime'],
+          resources: [runtimeArn, `${runtimeArn}/*`],
+        })
+      );
     }
 
     // ─── Step 5b: Grant Runtime execution role additional permissions ──
@@ -306,6 +318,10 @@ export class AgentCoreStack extends Stack {
       ];
 
       // Jira Identity permissions (only when Jira is configured)
+      // GetResourceOauth2Token supports resource-level scoping to oauth2credentialprovider ARNs.
+      // Scoped to '*' here because the provider ARN is not easily resolvable at synth time
+      // (it's created by a custom resource, not a standard CFN resource with a Ref).
+      // TODO: Scope to specific provider ARN once the Jira OAuth custom resource exports its ARN.
       if (jiraClientId) {
         statements.push(
           new iam.PolicyStatement({

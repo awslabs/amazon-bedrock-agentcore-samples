@@ -17,7 +17,10 @@
         { "name": "OTEL_METRICS_EXPORTER", "value": "none" },
         { "name": "OTEL_TRACES_EXPORTER", "value": "otlp" },
         { "name": "OTEL_EXPORTER_OTLP_PROTOCOL", "value": "http/protobuf" },
-        { "name": "OTEL_PYTHON_LOGGING_AUTO_INSTRUMENTATION_ENABLED", "value": "true" }
+        { "name": "OTEL_PYTHON_LOGGING_AUTO_INSTRUMENTATION_ENABLED", "value": "true" },
+        { "name": "AGENT_OBSERVABILITY_ENABLED", "value": "true" },
+        { "name": "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT", "value": "true" },
+        { "name": "OTEL_AWS_APPLICATION_SIGNALS_ENABLED", "value": "true" }
       ]
     }
   ],

@@ -57,6 +57,9 @@ def handler(event, context):
         }
     }
 
+    # Idempotent: if provider already exists (ConflictException on Create),
+    # fall through to Update. PhysicalResourceId is the provider name (stable
+    # across Create/Update), so CFN treats this as an in-place update.
     try:
         resp = control.create_oauth2_credential_provider(
             name=provider_name,

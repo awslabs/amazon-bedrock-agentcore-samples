@@ -11,6 +11,7 @@ enabling it to detect recurring incidents and escalate appropriately.
 """
 
 import logging
+import threading
 from typing import Optional
 
 from bedrock_agentcore.memory import MemoryClient
@@ -19,13 +20,16 @@ from config import MEMORY_ID, REGION
 logger = logging.getLogger(__name__)
 
 _memory_client: Optional[MemoryClient] = None
+_memory_client_lock = threading.Lock()
 
 
 def _get_memory_client() -> Optional[MemoryClient]:
-    """Lazy-init the MemoryClient (avoids import-time failures in local dev)."""
+    """Lazy-init the MemoryClient (thread-safe, avoids import-time failures in local dev)."""
     global _memory_client
     if _memory_client is None and MEMORY_ID:
-        _memory_client = MemoryClient(region_name=REGION)
+        with _memory_client_lock:
+            if _memory_client is None:
+                _memory_client = MemoryClient(region_name=REGION)
     return _memory_client
 
 

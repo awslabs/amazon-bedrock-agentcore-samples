@@ -13,7 +13,8 @@ logger = logging.getLogger()
 logger.setLevel(os.environ.get("LOG_LEVEL", "INFO"))
 
 KB_ID = os.environ["KB_ID"]
-_kb = boto3.client("bedrock-agent-runtime")
+# Region is auto-injected by Lambda runtime; explicit for consistency with other tool Lambdas
+_kb = boto3.client("bedrock-agent-runtime", region_name=os.environ.get("AWS_REGION", "us-west-2"))
 
 # Input validation constants
 MAX_QUERY_LENGTH = 1000
