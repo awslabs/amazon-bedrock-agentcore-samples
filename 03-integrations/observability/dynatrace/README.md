@@ -6,6 +6,7 @@ This example contains a demo of a Personal Assistant Agent built on top of [Bedr
 ## Prerequisites
 
 - Python 3.9 or higher
+- [uv package manager](https://docs.astral.sh/uv/getting-started/installation/)
 - Dynatrace Account
 - AWS Account with appropriate permissions
 - Access to the following AWS services:
