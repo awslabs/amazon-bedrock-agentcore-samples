@@ -244,6 +244,9 @@ lambda.zip
 02-use-cases/customer-support-assistant/scripts/get_cognito_token.sh
 ### CDK artifacts
 cdk.out/
+### AWS SAM ###
+.aws-sam/
+.aws_sam/
 ### Bedrock AgentCore ###
 .bedrock_agentcore/
 .bedrock_agentcore.yaml

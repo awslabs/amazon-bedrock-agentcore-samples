@@ -1,0 +1,5 @@
+bedrock-agentcore>=1.0.3
+bedrock-agentcore-starter-toolkit>=0.1
+strands-agents>=1.13.0
+requests>=2.31.0
+trafilatura>=1.6.0

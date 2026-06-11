@@ -1,0 +1,11 @@
+{
+  "app": "python3 app.py",
+  "context": {
+    "region": "us-east-1",
+    "default_origin_host": "",
+    "agent_runtime_arn": "",
+    "origin_verify_secret": "",
+    "table_name": "geo-content",
+    "create_distribution": true
+  }
+}

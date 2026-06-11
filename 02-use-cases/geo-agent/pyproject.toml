@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "geoagent"
+version = "0.1.0"
+requires-python = ">=3.10"
+
+dependencies = [
+    "bedrock-agentcore >= 1.0.3",
+    "bedrock-agentcore-starter-toolkit >= 0.1",
+    "strands-agents >= 1.13.0",
+    "requests >= 2.31.0",
+    "trafilatura >= 1.6.0",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest >= 8.0",
+    "pytest-cov >= 5.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["test/unit"]
+pythonpath = ["src", "infra/lambda"]

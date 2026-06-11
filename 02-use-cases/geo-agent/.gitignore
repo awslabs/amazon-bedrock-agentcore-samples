@@ -1,0 +1,32 @@
+# CDK
+cdk.out/
+.aws-sam/
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.egg-info/
+dist/
+build/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# Environment / secrets
+.env
+samconfig.toml
+.bedrock_agentcore.yaml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test artifacts
+test/
+test/e2e_results/
+
+# Lock file (generated)
+uv.lock

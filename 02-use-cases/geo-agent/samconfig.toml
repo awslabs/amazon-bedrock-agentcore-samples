@@ -1,0 +1,14 @@
+version = 0.1
+
+[default.deploy.parameters]
+stack_name = "geo-backend"
+resolve_s3 = true
+s3_prefix = "geo-backend"
+region = "us-east-1"
+confirm_changeset = true
+capabilities = "CAPABILITY_IAM"
+parameter_overrides = "TableName=\"geo-content\" DefaultOriginHost=\"news.tvbs.com.tw\" OriginVerifySecret=\"geo-secret-2026\" CloudFrontDistributionArn=\"arn:aws:cloudfront::023268648855:distribution/E36FNTEQL5839Z\" SetupCfOrigin=\"true\" CffArn=\"arn:aws:cloudfront::023268648855:function/geo-bot-router-oac\" CffBehaviorPath=\"*\""
+image_repositories = []
+
+[default.global.parameters]
+region = "us-east-1"
