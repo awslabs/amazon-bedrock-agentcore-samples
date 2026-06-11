@@ -246,7 +246,7 @@ into the same CDK stack via `InfraConstruct` — deployed together with a single
 5. **Docker** (for building the agent container image)
 6. **CDK bootstrapped**: `cdk bootstrap aws://ACCOUNT/REGION`
 
-## Quickstart (from a fresh clone)
+## Getting Started (Quickstart from a fresh clone)
 
 If you just cloned the repo and want the exact path from zero to a deployed
 agent, run these steps in order:
@@ -641,7 +641,7 @@ Memory is declared in `agentcore/agentcore.json` under `memories[]`:
   "name": "ITIncidentAgentMemory",
   "eventExpiryDuration": 30,
   "strategies": [
-    { "type": "SUMMARIZATION", "name": "summary_strategy", "namespaces": ["incidents/{actorId}"] }
+    { "type": "SUMMARIZATION", "name": "summary_strategy", "namespaces": ["incidents/{actorId}/{sessionId}"] }
   ]
 }]
 ```
@@ -665,10 +665,19 @@ agentcore validate
 agentcore deploy -y --target dev
 ```
 
-> **Namespace alignment (important):** `memory/enrichment.py` retrieves from the
-> namespace `incidents/{actorId}`. If you change the strategy's `namespaces` in
-> `agentcore.json`, update `retrieve_past_incidents()` to match, or retrieval
-> returns nothing.
+> **SUMMARIZATION requires `{sessionId}`:** A `SUMMARIZATION` strategy's
+> `namespaces` **must** include the `{sessionId}` placeholder, or `CreateMemory`
+> fails validation ("requiring {sessionId} as a mandatory part of namespace").
+> This project uses `incidents/{actorId}/{sessionId}`.
+
+> **Namespace alignment (important):** `memory/enrichment.py` retrieves with the
+> prefix `incidents/{requester_id}` (i.e. `incidents/{actorId}`). Because
+> `retrieve_memories` does **prefix** matching, the session-scoped namespace
+> `incidents/{actorId}/{sessionId}` is still fully matched by that prefix — so
+> retrieval returns all of a requester's session summaries. If you change the
+> strategy's `namespaces` in `agentcore.json`, keep the `incidents/{actorId}/...`
+> prefix (or update `retrieve_past_incidents()` to match), or retrieval returns
+> nothing.
 
 > **Disable / no-op behavior:** If `memories[]` is empty (and no `MEMORY_ID` is
 > set), the agent's Memory code degrades gracefully to a no-op — tickets are

@@ -155,19 +155,38 @@ export class AgentCoreStack extends Stack {
         projectTags: spec.tags,
       });
 
-      // ─── Step 5.1: Fix IAM propagation for Gateway targets ─────────
-      // The AgentCore service validates that the Gateway execution role has
-      // lambda:InvokeFunction at GatewayTarget creation time. Due to IAM
-      // eventual consistency (~5-15s), the first deploy from scratch can
-      // fail. The workaround is deployed via tmp_patch_template.py which:
-      //   1. Adds DependsOn from GatewayTargets → IAM Policy (ordering)
-      //   2. The deploy is retried once on failure (standard IAM propagation)
-      // For resource-based policy (belt-and-suspenders):
-      for (const [targetName, fn] of Object.entries(this.infra.toolFunctions)) {
-        fn.addPermission(`GwInvoke-${targetName}`, {
-          principal: new iam.ServicePrincipal('bedrock-agentcore.amazonaws.com'),
-          action: 'lambda:InvokeFunction',
-        });
+      // ─── Step 5.1: Order GatewayTargets AFTER the gateway role's invoke policy ──
+      // ROOT CAUSE: AgentCore validates that the Gateway execution ROLE has an
+      // IDENTITY-BASED lambda:InvokeFunction permission at GatewayTarget creation
+      // time. The AgentCoreMcp L3 construct DOES create that policy
+      // (Gateway Role DefaultPolicy), but it does NOT make the GatewayTarget
+      // resources depend on it. Without an explicit DependsOn, CloudFormation may
+      // create the GatewayTargets before the role policy is attached, so the
+      // service rejects them with:
+      //   "Gateway execution role lacks permission to invoke Lambda function ..."
+      // A resource-based Lambda permission (fn.addPermission) does NOT satisfy this
+      // check — AgentCore inspects the role's identity policy, not the Lambda's
+      // resource policy. The fix is a hard CloudFormation ordering dependency:
+      // every GatewayTarget must depend on the gateway role's DefaultPolicy.
+      const gatewayRolePolicy = this.node
+        .findAll()
+        .find(
+          c =>
+            (c as cdk.CfnResource).cfnResourceType === 'AWS::IAM::Policy' &&
+            c.node.path.includes('Gateway') &&
+            c.node.path.includes('Role') &&
+            c.node.path.includes('DefaultPolicy')
+        ) as cdk.CfnResource | undefined;
+
+      if (gatewayRolePolicy) {
+        const gatewayTargets = this.node
+          .findAll()
+          .filter(
+            c => (c as cdk.CfnResource).cfnResourceType === 'AWS::BedrockAgentCore::GatewayTarget'
+          ) as cdk.CfnResource[];
+        for (const target of gatewayTargets) {
+          target.addDependency(gatewayRolePolicy);
+        }
       }
 
       // ─── Step 5a: Policy Engine ──────────────────────────────────────
@@ -473,7 +492,8 @@ export class AgentCoreStack extends Stack {
       );
     }
     const jiraSecret = new cdk.aws_secretsmanager.Secret(this, 'JiraOauthSecret', {
-      description: 'Atlassian 3LO client_secret (loaded into AgentCore Identity). For production, replace with externally-managed secret.',
+      description:
+        'Atlassian 3LO client_secret (loaded into AgentCore Identity). For production, replace with externally-managed secret.',
       secretStringValue: cdk.SecretValue.unsafePlainText(JSON.stringify({ client_secret: clientSecret })),
     });
 

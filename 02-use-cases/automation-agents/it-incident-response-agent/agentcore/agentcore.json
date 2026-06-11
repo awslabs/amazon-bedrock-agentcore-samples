@@ -32,7 +32,7 @@
         {
           "type": "SUMMARIZATION",
           "name": "summary_strategy",
-          "namespaces": ["incidents/{actorId}"]
+          "namespaces": ["incidents/{actorId}/{sessionId}"]
         }
       ]
     }
