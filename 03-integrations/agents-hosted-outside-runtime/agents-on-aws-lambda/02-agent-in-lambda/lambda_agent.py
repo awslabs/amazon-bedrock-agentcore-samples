@@ -1,20 +1,19 @@
 """
-Strands agent hosted directly inside AWS Lambda with AgentCore observability.
+Strands agent hosted inside AWS Lambda with AgentCore Gen AI observability.
 
-The agent runs within Lambda's execution environment. Observability is provided
-by the AWS Distro for OpenTelemetry (ADOT) — bundled via pip install — combined
-with X-Ray active tracing enabled in the Lambda console.
+Observability is provided by the AWS ADOT managed Lambda layer — no OTel packages
+need to be bundled in the deployment ZIP. The layer auto-instruments the function
+and exports traces to CloudWatch via X-Ray.
 
-Environment variables required (see README for full list):
+Required Lambda configuration:
+  - Add the ADOT Lambda layer (see README for region-specific ARNs)
+  - Enable active X-Ray tracing on the function
+  - Set the environment variables listed below
+
+Environment variables:
     AGENT_OBSERVABILITY_ENABLED=true
-    AWS_LAMBDA_EXEC_WRAPPER=/var/task/opentelemetry-instrument
-    OTEL_PYTHON_DISTRO=aws_distro
-    OTEL_PYTHON_CONFIGURATOR=aws_configurator
-    OTEL_TRACES_EXPORTER=otlp
-    OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
+    AWS_LAMBDA_EXEC_WRAPPER=/opt/otel-instrument
     OTEL_METRICS_EXPORTER=none
-    OTEL_RESOURCE_ATTRIBUTES=service.version=1.0,service.name=<your-service-name>
-    OTEL_EXPORTER_OTLP_LOGS_HEADERS=x-aws-log-group=<log-group>,x-aws-log-stream=otel,x-aws-metric-namespace=<namespace>
 """
 
 import logging
@@ -22,25 +21,20 @@ import logging
 from strands import Agent
 
 logger = logging.getLogger()
-logger.setLevel("INFO")
+logger.setLevel(logging.INFO)
 
-# Initialize the Strands agent once at module load time (outside the handler)
-# so it is reused across warm Lambda invocations.
+# Initialise the agent once outside the handler so it is reused across warm invocations.
 agent = Agent()
 
 
 def handler(event, context=None):
-    """Lambda handler — invoke the Strands agent with the incoming prompt."""
-    logger.debug("Event: %s", event)
-    logger.debug("Context: %s", context)
+    """Lambda entry point — forwards the incoming prompt to the Strands agent."""
+    prompt = event.get("prompt", "Hello! How can I help you today?")
+    logger.info("Received prompt: %s", prompt)
 
-    user_message = event.get("prompt", "Hello! How can I help you today?")
-    logger.info("User message: %s", user_message)
-
-    result = agent(user_message)
+    result = agent(prompt)
     return {"result": result.message}
 
 
 if __name__ == "__main__":
-    payload = {"prompt": "How far is the Moon from Earth?"}
-    print(handler(payload))
+    print(handler({"prompt": "How far is the Moon from Earth?"}))
