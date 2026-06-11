@@ -845,7 +845,9 @@ sequenceDiagram
 │  │    (scripts/evaluate.py, on-demand)  │                                      │
 │  │                                      │                                      │
 │  │  Prerequisite: CloudWatch            │                                      │
-│  │  Transaction Search (account-level)  │                                      │
+│  │  Transaction Search (auto-enabled    │                                      │
+│  │  via transaction_search.py custom    │                                      │
+│  │  resource when onlineEvalConfigs set)│                                      │
 │  │                                      │                                      │
 │  │  To disable: set onlineEvalConfigs   │                                      │
 │  │  to [] in agentcore.json             │                                      │

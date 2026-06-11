@@ -502,15 +502,10 @@ This project deploys **Online Evaluation** with 4 built-in evaluators:
 }]
 ```
 
-**Important**: Online Evaluation requires **CloudWatch Transaction Search** to be enabled at the AWS account level (one-time setup). Enable it before deploying:
-
-```bash
-aws application-signals start-monitoring --region us-west-2
-# Wait 10-15 minutes for /aws/spans log group to provision
-```
+**Important**: Online Evaluation requires **CloudWatch Transaction Search** so that OTEL spans land in the `aws/spans` log group. The stack now **enables this automatically** via a custom resource (`lambdas/infra/transaction_search.py`) whenever `onlineEvalConfigs` is non-empty — no manual `aws application-signals start-monitoring` step is needed. The first deploy may take 10-15 minutes for the `/aws/spans` log group to provision before eval results appear.
 
 **To disable Online Evaluation** (e.g., for first-time setup without Transaction Search):
-set `onlineEvalConfigs` to `[]` in `agentcore/agentcore.json` and redeploy.
+set `onlineEvalConfigs` to `[]` in `agentcore/agentcore.json` and redeploy. With it empty, the Transaction Search custom resource is not created.
 
 **Cost**: Typical agent workload (100 requests/day) costs **$5-15/month**. CloudWatch Transaction Search is optional.
 
@@ -875,7 +870,7 @@ agentcore deploy -y --target dev   # deploys empty state, tears down CloudFormat
 | KB tool returns no results                                                                  | KB requires a data source + completed ingestion job. Check the KB status in the Bedrock console.                                                                                                                                                                                                                                                                                                  |
 | Build times out                                                                             | ARM64 CodeBuild can be slow. The CLI handles retries automatically.                                                                                                                                                                                                                                                                                                                               |
 | Memory events not persisting                                                                | Verify `MEMORY_ITINCIDENTAGENTMEMORY_ID` env var is set in runtime (check `agentcore status`).                                                                                                                                                                                                                                                                                                    |
-| Online eval deploy fails: "Access denied when accessing index policy for aws/spans"         | CloudWatch Transaction Search is not enabled. Run `aws application-signals start-monitoring --region us-west-2`, wait 10-15 minutes for `/aws/spans` to provision, then redeploy. To skip online eval, set `onlineEvalConfigs: []` in `agentcore.json`.                                                                                                                                            |
+| Online eval deploy fails: "Access denied when accessing index policy for aws/spans"         | The stack auto-enables Transaction Search via the `transaction_search.py` custom resource, but the `/aws/spans` log group can take 10-15 minutes to provision on first deploy. Wait, then redeploy. If it persists, manually run `aws application-signals start-monitoring --region us-west-2` as a fallback. To skip online eval, set `onlineEvalConfigs: []` in `agentcore.json`. |
 | Online eval shows no results                                                                | Enable **CloudWatch Transaction Search** in the region. Eval requires traces to exist first.                                                                                                                                                                                                                                                                                                      |
 | Deploy hangs on custom resource                                                             | If a custom resource Lambda fails to import a module, CloudFormation waits 1 hour. This project uses CDK Provider framework to prevent this. If it happens, use `aws cloudformation cancel-update-stack` then fix the Lambda code.                                                                                                                                                                |
 | CDK synth "Cannot find asset"                                                               | Path resolution issue. The project uses `process.cwd()` instead of `__dirname` for reliable paths in compiled TypeScript. If you modify CDK code, maintain this pattern.                                                                                                                                                                                                                          |

@@ -22,20 +22,28 @@ The `AgentCoreApplication` L3 construct handles the full lifecycle:
 - Creates the `OnlineEvaluationConfig` CloudFormation resource
 - Adds dependency ordering on the Runtime (ensuring the log group exists first)
 
-## Prerequisite: CloudWatch Transaction Search
+## Prerequisite: CloudWatch Transaction Search (auto-enabled)
 
-Online evaluation requires **CloudWatch Transaction Search** enabled at the account level (one-time setup):
+Online evaluation requires **CloudWatch Transaction Search** so OTEL spans are
+ingested into the `aws/spans` log group. The stack **enables this automatically**:
+when `onlineEvalConfigs` is non-empty, a custom resource
+(`lambdas/infra/transaction_search.py`, wired via `enableTransactionSearch()` in
+`cdk-stack.ts`) calls the X-Ray control plane to route trace segments to
+CloudWatch Logs and set the span indexing percentage (100% by default, override
+with `TXN_SEARCH_INDEXING_PERCENTAGE`).
 
-```bash
-aws application-signals start-monitoring --region us-west-2
-# Wait 10-15 minutes for /aws/spans log group to provision
-```
+On stack delete, Transaction Search is intentionally **left enabled** — it is an
+account/region-level setting other agents may depend on.
 
-Verify it's ready:
+The first deploy may take 10-15 minutes for the log group to provision. Verify:
 ```bash
 aws logs describe-log-groups --log-group-name-prefix "/aws/spans" --region us-west-2
 # Should return a log group; if empty, wait longer
 ```
+
+> Manual enablement (`aws application-signals start-monitoring`) is no longer
+> required — it is kept here only as a fallback if you deploy with
+> `onlineEvalConfigs: []` and later enable eval out of band.
 
 ## Disabling Online Evaluation
 
