@@ -75,7 +75,17 @@ def _persist_ticket(ticket: dict) -> None:
         return
 
     # Whitelist allowed fields to prevent unexpected attribute injection
-    ALLOWED_FIELDS = {"ticket_id", "title", "description", "requester_id", "priority", "category", "status", "created_at", "updated_at"}
+    ALLOWED_FIELDS = {
+        "ticket_id",
+        "title",
+        "description",
+        "requester_id",
+        "priority",
+        "category",
+        "status",
+        "created_at",
+        "updated_at",
+    }
     sanitized = {k: v for k, v in ticket.items() if k in ALLOWED_FIELDS}
 
     tickets_table = _ddb.Table(TICKETS_TABLE)
@@ -170,8 +180,6 @@ def lambda_handler(event, context):
 
     if failures:
         # Raise so the Lambda reports failure and the event goes to the DLQ
-        raise RuntimeError(
-            f"{len(failures)} record(s) failed: {'; '.join(failures)}"
-        )
+        raise RuntimeError(f"{len(failures)} record(s) failed: {'; '.join(failures)}")
 
     return {"statusCode": 200, "body": "OK"}
