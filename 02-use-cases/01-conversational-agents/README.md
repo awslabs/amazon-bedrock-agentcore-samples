@@ -32,7 +32,6 @@ Automation agents are triggered by system events and run without a user present.
 |--------|----------|------------|-------------------|
 | [A2A-multi-agent-incident-response](./A2A-multi-agent-incident-response/) | IT / DevOps | Advanced | Runtime, Gateway, Memory, A2A using Strands + OpenAI Agents + Google ADK |
 | [AWS-operations-agent](./AWS-operations-agent/) | Cloud Operations | Advanced | Runtime, Gateway, Memory, Policy, Observability; built with Strands, ADK, and OpenAI Agents SDK |
-| [customer-support-assistant](./customer-support-assistant/) | Retail / E-commerce | Intermediate | Runtime, Gateway, Memory, Policy, Evaluations |
 | [customer-support-assistant-vpc](./customer-support-assistant-vpc/) | Retail / E-commerce | Intermediate | Runtime, Gateway deployed inside a VPC with private endpoints |
 | [device-management-agent](./device-management-agent/) | IoT / Smart Home | Intermediate | Runtime, Gateway, Policy, Identity (Cognito); React frontend |
 | [finance-personal-assistant](./finance-personal-assistant/) | Personal Finance | Beginner | Gateway, Policy; notebook-based |

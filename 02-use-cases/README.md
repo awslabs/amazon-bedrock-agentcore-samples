@@ -4,7 +4,7 @@ End-to-end samples organized by agent type. Each folder maps to one of the three
 
 ## Categories
 
-### [01-conversational-agents](./01-conversational-agents/) (11 samples)
+### [01-conversational-agents](./01-conversational-agents/) (10 samples)
 
 Agents that interact with users in real time. Users authenticate through an identity provider, the agent maintains session and long-term memory per user, and responses stream back as the agent works. See the [category README](./01-conversational-agents/README.md) for the full list and a guide on which sample to start with.
 
@@ -12,7 +12,6 @@ Agents that interact with users in real time. Users authenticate through an iden
 |--------|----------|--------------|
 | [A2A-multi-agent-incident-response](./01-conversational-agents/A2A-multi-agent-incident-response/) | IT / DevOps | Runtime, Gateway, Memory, A2A (3 frameworks) |
 | [AWS-operations-agent](./01-conversational-agents/AWS-operations-agent/) | Cloud Operations | Runtime, Gateway, Memory, Policy, Observability |
-| [customer-support-assistant](./01-conversational-agents/customer-support-assistant/) | Retail / E-commerce | Runtime, Gateway, Memory, Policy, Evaluations |
 | [customer-support-assistant-vpc](./01-conversational-agents/customer-support-assistant-vpc/) | Retail / E-commerce | Runtime, Gateway (VPC) |
 | [device-management-agent](./01-conversational-agents/device-management-agent/) | IoT / Smart Home | Runtime, Gateway, Policy, Identity (Cognito) |
 | [finance-personal-assistant](./01-conversational-agents/finance-personal-assistant/) | Personal Finance | Gateway, Policy |
