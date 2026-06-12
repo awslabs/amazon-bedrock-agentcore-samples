@@ -2,10 +2,6 @@
 
 Agents that run without a user in the loop. They are triggered by system events such as file uploads, queue messages, scheduled jobs, or webhooks, and they process work end-to-end until they either complete or hit a confidence threshold that requires human review.
 
-## How these differ from conversational agents
-
-Conversational agents have a person on the other end of every request. Automation agents do not. This changes the AgentCore configuration: identity is service-to-service rather than user OAuth, memory is minimal because state travels in the event payload, and the runtime does not need streaming since there is no UI waiting on a response.
-
 ## Service configuration
 
 | Service | Typical setup for automation agents |
@@ -35,11 +31,6 @@ Conversational agents have a person on the other end of every request. Automatio
 | [enterprise-web-intelligence-agent](./enterprise-web-intelligence-agent/) | Market Intelligence | Intermediate | Runtime, Browser; automated web scraping pipeline implemented twice (LangGraph and Strands) for comparison |
 | [intelligent-event-agent](./intelligent-event-agent/) | General | Beginner | Runtime, Memory, Gateway *(in development, no README yet)* |
 
-## Where to start
-
-- Event-driven pipeline: [event-driven-claims-agent](./event-driven-claims-agent/) is the most complete sample in the repo. It covers all AgentCore services, deploys with CDK, and includes a demo video.
-- Payment processing: [visa-b2b-account-payable-agent](./visa-b2b-account-payable-agent/) integrates real Visa B2B Connect APIs across a four-agent system.
-- Framework comparison: [enterprise-web-intelligence-agent](./enterprise-web-intelligence-agent/) shows the same pipeline built with LangGraph and Strands so you can compare the two approaches.
 
 ## See also
 

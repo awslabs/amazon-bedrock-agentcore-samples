@@ -2,10 +2,6 @@
 
 Agents that help developers write, execute, or fix code. Tasks are typically longer-running than a chat response and are scoped to a project or repository. AgentCore Code Interpreter runs user-submitted code in an isolated container, and AgentCore Gateway can aggregate multiple developer tool APIs behind a single MCP endpoint.
 
-## How these differ from conversational agents
-
-The interaction model is similar (a developer sends a request and gets a response), but the execution profile is different. Code tasks can take minutes rather than seconds, require sandboxed execution, and often involve reading from or writing to a repository. Memory is project-scoped rather than user-session-scoped.
-
 ## Service configuration
 
 | Service | Typical setup for coding agents |
@@ -31,11 +27,6 @@ The interaction model is similar (a developer sends a request and gets a respons
 |--------|----------|------------|-------------------|
 | [text-to-python-ide](./text-to-python-ide/) | Full-stack IDE where users describe what they want in plain text and the agent writes and runs the Python code | Intermediate | Runtime, Code Interpreter, Memory, Policy (Guardrails) |
 | [claude-code-gateway-mcp-server](./claude-code-gateway-mcp-server/) | Consolidate multiple MCP servers behind one AgentCore Gateway endpoint for use with Claude Code | Intermediate | Gateway, Identity |
-
-## Where to start
-
-- Building a code execution tool: [text-to-python-ide](./text-to-python-ide/) covers Code Interpreter, Runtime, Memory, and Guardrails in a React and FastAPI app.
-- Too many MCP servers in your Claude Code setup: [claude-code-gateway-mcp-server](./claude-code-gateway-mcp-server/) shows how to put all of them behind one Gateway endpoint.
 
 ## See also
 

@@ -2,10 +2,6 @@
 
 Agents that interact with users in real time through a chat or query interface. The user authenticates through an identity provider (Entra ID, Okta, Cognito), and the agent acts on their behalf. Memory keeps context across turns within a session and across sessions. Responses stream back as the agent works.
 
-## How these differ from automation agents
-
-Automation agents are triggered by system events and run without a user present. Conversational agents have a person on the other end of every request. This shapes how you configure AgentCore: identity is user OAuth rather than service credentials, memory is namespaced per user, and the runtime is configured for streaming with sessions up to eight hours.
-
 ## Service configuration
 
 | Service | Typical setup for conversational agents |
@@ -41,13 +37,6 @@ Automation agents are triggered by system events and run without a user present.
 | [SRE-agent](./SRE-agent/) | Site Reliability | Advanced | Runtime, Gateway, Memory, Observability; multi-agent system with MCP-based tools and runbooks |
 | [video-games-sales-assistant](./video-games-sales-assistant/) | Retail / Gaming | Intermediate | Runtime, Gateway, Memory; Next.js frontend with Amplify Gen 2 |
 
-## Where to start
-
-- Multi-agent with A2A: [A2A-multi-agent-incident-response](./A2A-multi-agent-incident-response/) shows three different agent frameworks in one system.
-- Healthcare and FHIR: [healthcare-appointment-agent](./healthcare-appointment-agent/)
-- Data access with row-level security: [lakehouse-agent](./lakehouse-agent/)
-- VPC private networking: [customer-support-assistant-vpc](./customer-support-assistant-vpc/)
-- SRE and infrastructure operations: [SRE-agent](./SRE-agent/)
 
 ## See also
 

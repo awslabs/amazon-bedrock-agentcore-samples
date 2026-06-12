@@ -4,7 +4,7 @@ End-to-end samples organized by agent type. Each folder maps to one of the three
 
 ## Categories
 
-### [01-conversational-agents](./01-conversational-agents/) (10 samples)
+### [01-conversational-agents](./01-conversational-agents/) 
 
 Agents that interact with users in real time. Users authenticate through an identity provider, the agent maintains session and long-term memory per user, and responses stream back as the agent works. See the [category README](./01-conversational-agents/README.md) for the full list and a guide on which sample to start with.
 
@@ -21,7 +21,7 @@ Agents that interact with users in real time. Users authenticate through an iden
 | [SRE-agent](./01-conversational-agents/SRE-agent/) | Site Reliability | Runtime, Gateway, Memory, Observability |
 | [video-games-sales-assistant](./01-conversational-agents/video-games-sales-assistant/) | Retail / Gaming | Runtime, Gateway, Memory |
 
-### [02-workflow-automation-agents](./02-workflow-automation-agents/) (4 samples)
+### [02-workflow-automation-agents](./02-workflow-automation-agents/) 
 
 Agents that run without a user in the loop. They are triggered by events such as file uploads, webhook calls, or scheduled jobs. Identity is service-to-service rather than user-facing, and memory is minimal since state is carried in the event payload.
 
@@ -32,7 +32,7 @@ Agents that run without a user in the loop. They are triggered by events such as
 | [enterprise-web-intelligence-agent](./02-workflow-automation-agents/enterprise-web-intelligence-agent/) | Market Intelligence | Runtime, Browser |
 | [intelligent-event-agent](./02-workflow-automation-agents/intelligent-event-agent/) | General / Events | Runtime, Memory, Gateway *(in development)* |
 
-### [03-coding-assistants](./03-coding-assistants/) (2 samples)
+### [03-coding-assistants](./03-coding-assistants/) 
 
 Agents that help developers write, run, or fix code. Tasks tend to be longer-running and scoped to a project or repository. AgentCore Code Interpreter handles sandboxed execution, and Gateway can aggregate multiple developer tool APIs behind one MCP endpoint.
 
@@ -41,13 +41,6 @@ Agents that help developers write, run, or fix code. Tasks tend to be longer-run
 | [text-to-python-ide](./03-coding-assistants/text-to-python-ide/) | Text-to-Python IDE with sandboxed execution | Runtime, Code Interpreter, Memory, Policy |
 | [claude-code-gateway-mcp-server](./03-coding-assistants/claude-code-gateway-mcp-server/) | Single MCP endpoint for Claude Code | Gateway, Identity |
 
-## Sample quality notes
 
-See [use-case-assessment.md](./use-case-assessment.md) for a full breakdown of each sample: scores, gaps, starter toolkit migration status (18 of 27 samples still need migrating), and a prioritized improvement list.
-
-## Related
-
-- [01-tutorials](../01-tutorials/) - Feature-focused tutorials and notebooks
-- [03-integrations](../03-integrations/) - Framework and protocol integrations
-- [06-workshops](../06-workshops/) - Hands-on workshop labs
+## Resources
 - [AgentCore docs](https://docs.aws.amazon.com/bedrock-agentcore/)
