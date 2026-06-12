@@ -9,8 +9,6 @@ import sys
 import subprocess
 import time
 import requests
-import json
-import signal
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 

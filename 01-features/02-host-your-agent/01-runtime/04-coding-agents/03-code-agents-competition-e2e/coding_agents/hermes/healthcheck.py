@@ -1,7 +1,8 @@
 """Minimal HTTP server for AgentCore Runtime /ping health check."""
 
 from http.server import HTTPServer, BaseHTTPRequestHandler
-import json, time
+import json
+import time
 
 
 class Handler(BaseHTTPRequestHandler):

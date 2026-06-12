@@ -53,7 +53,7 @@ def invoke(runtime_arn: str, endpoint_name: str, region: str, payload: dict):
     request = AWSRequest(method="POST", url=url, data=body, headers={"Content-Type": "application/json"})
     SigV4Auth(credentials, "bedrock-agentcore", region).add_auth(request)
 
-    print(f"🔌 Invoking AgentCore Runtime...")
+    print("🔌 Invoking AgentCore Runtime...")
     print(f"   ARN      : {runtime_arn}")
     print(f"   Endpoint : {endpoint_name}")
     print(f"   Payload  : {json.dumps(payload)}\n")

@@ -8,7 +8,6 @@ import sys
 import subprocess
 import time
 import requests
-import json
 from pathlib import Path
 
 # Add project root to path

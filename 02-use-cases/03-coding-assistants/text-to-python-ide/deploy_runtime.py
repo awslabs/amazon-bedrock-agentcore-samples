@@ -119,7 +119,7 @@ def ensure_execution_role(iam_client):
         print("   Waiting 10s for IAM propagation...")
         time.sleep(10)
 
-    print(f"✅ Execution role ready with all required permissions")
+    print("✅ Execution role ready with all required permissions")
 
 
 def ensure_ecr_repo(ecr_client):

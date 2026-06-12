@@ -3,9 +3,7 @@
 Quick verification script to check if the application is properly set up
 """
 
-import os
 import sys
-import subprocess
 from pathlib import Path
 
 

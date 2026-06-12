@@ -65,7 +65,7 @@ def test_model_fallback_logic():
         model, model_id = create_bedrock_model_with_fallback(aws_region)
 
         print(f"✅ Selected model: {model_id}")
-        print(f"✅ Model object created successfully")
+        print("✅ Model object created successfully")
 
         return model, model_id
 

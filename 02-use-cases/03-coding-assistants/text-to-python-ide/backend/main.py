@@ -404,7 +404,7 @@ def upload_files_to_agentcore_sandbox(files_data: list, aws_region: str) -> bool
 def execute_chart_code_direct(code: str, session_files: list = None) -> tuple[str, list]:
     """Execute chart code directly with AgentCore to preserve full base64 output"""
     try:
-        print(f"\n🎨 Direct AgentCore chart execution")
+        print("\n🎨 Direct AgentCore chart execution")
         print(f"📝 Code length: {len(code)} characters")
 
         # Clean the code to remove any markdown formatting
@@ -476,7 +476,7 @@ def execute_chart_code_direct(code: str, session_files: list = None) -> tuple[st
         # Clean the output for display (remove image binary but keep analysis text)
         display_output = clean_output_for_display(final_output)
 
-        print(f"✅ Direct execution completed:")
+        print("✅ Direct execution completed:")
         print(f"   Output length: {len(final_output)}")
         print(f"   Display output length: {len(display_output)}")
         print(f"   Images extracted: {len(images)}")
@@ -557,7 +557,7 @@ def extract_text_from_agent_result(agent_result) -> str:
                             text_parts.append(item["text"])
                     if text_parts:
                         full_text = "\n".join(text_parts)
-                        print(f"✅ Extracted text from message.content array")
+                        print("✅ Extracted text from message.content array")
 
                         # Extract actual execution output from AI commentary
                         actual_output = extract_execution_output_from_ai_response(full_text)
@@ -566,13 +566,13 @@ def extract_text_from_agent_result(agent_result) -> str:
                 # If message has direct text content
                 if "text" in message:
                     full_text = str(message["text"])
-                    print(f"✅ Extracted text from message.text")
+                    print("✅ Extracted text from message.text")
                     actual_output = extract_execution_output_from_ai_response(full_text)
                     return actual_output
 
             # If message is a string
             if isinstance(message, str):
-                print(f"✅ Using message as string")
+                print("✅ Using message as string")
                 actual_output = extract_execution_output_from_ai_response(message)
                 return actual_output
 
@@ -580,20 +580,20 @@ def extract_text_from_agent_result(agent_result) -> str:
         if hasattr(agent_result, "content"):
             content = agent_result.content
             if isinstance(content, str):
-                print(f"✅ Using content attribute")
+                print("✅ Using content attribute")
                 actual_output = extract_execution_output_from_ai_response(content)
                 return actual_output
 
         if hasattr(agent_result, "text"):
             text = agent_result.text
             if isinstance(text, str):
-                print(f"✅ Using text attribute")
+                print("✅ Using text attribute")
                 actual_output = extract_execution_output_from_ai_response(text)
                 return actual_output
 
         # Fallback to string conversion
         result = str(agent_result)
-        print(f"⚠️  Using str() fallback")
+        print("⚠️  Using str() fallback")
         actual_output = extract_execution_output_from_ai_response(result)
         return actual_output
 
@@ -697,7 +697,7 @@ def extract_python_code_from_prompt(input_text: str) -> str:
             if matches:
                 # Return the first match (the actual Python code)
                 clean_code = matches[0].strip()
-                print(f"🔧 Extracted Python code from markdown block")
+                print("🔧 Extracted Python code from markdown block")
                 return clean_code
 
     # If no markdown blocks found, check if it's a prompt with code
@@ -748,11 +748,11 @@ def extract_python_code_from_prompt(input_text: str) -> str:
 
         if code_lines:
             clean_code = "\n".join(code_lines).strip()
-            print(f"🔧 Extracted Python code from prompt text")
+            print("🔧 Extracted Python code from prompt text")
             return clean_code
 
     # If no special formatting detected, return as-is (assume it's already clean code)
-    print(f"🔧 Using input as-is (no markdown formatting detected)")
+    print("🔧 Using input as-is (no markdown formatting detected)")
     return input_text.strip()
 
 
@@ -1061,7 +1061,7 @@ def initialize_agents():
         if MEMORY_ID and AGENTCORE_SESSION_AVAILABLE:
             print(f"   - Session Persistence: AgentCoreMemorySessionManager (memory={MEMORY_ID})")
         else:
-            print(f"   - Session Persistence: In-memory only")
+            print("   - Session Persistence: In-memory only")
 
         # Cache the agents
         current_model_id = model_id
@@ -1166,7 +1166,7 @@ async def generate_code(request: CodeGenerationRequest):
             else None
         )
         if proxy_result is not None:
-            print(f"✅ generate_code served by AgentCore Runtime")
+            print("✅ generate_code served by AgentCore Runtime")
             session.conversation_history.append(
                 {
                     "type": "generation",
@@ -1370,7 +1370,7 @@ async def execute_code(request: CodeExecutionRequest):
             else None
         )
         if proxy_result is not None:
-            print(f"✅ execute_code served by AgentCore Runtime")
+            print("✅ execute_code served by AgentCore Runtime")
             session.code_history.append(request.code)
             session.execution_results.append(
                 {**proxy_result, "timestamp": time.time(), "execution_duration": time.time() - execution_start_time}
@@ -1433,19 +1433,19 @@ async def execute_code(request: CodeExecutionRequest):
 
         # REVERTED: Use original logic - only force direct AgentCore for charts and files, NOT for interactive
         if is_chart_code or session_files:
-            print(f"🎨 Chart code detected - using direct AgentCore execution")
+            print("🎨 Chart code detected - using direct AgentCore execution")
 
             # Use direct AgentCore execution to preserve full base64 output
             execution_result_str, images = execute_chart_code_direct(prepared_code, session_files)
             agent_used = "direct_agentcore_charts"
 
         else:
-            print(f"📝 Regular code - using Strands-Agents execution")
+            print("📝 Regular code - using Strands-Agents execution")
 
             # For regular code, if files are needed, use direct AgentCore as well
             # since Strands-Agents tools can't easily access session files
             if session_files:
-                print(f"📁 Files detected - switching to direct AgentCore for file access")
+                print("📁 Files detected - switching to direct AgentCore for file access")
                 execution_result_str, images = execute_chart_code_direct(prepared_code, session_files)
                 agent_used = "direct_agentcore_with_files"
             else:
