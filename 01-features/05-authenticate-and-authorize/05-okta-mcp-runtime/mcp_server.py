@@ -21,9 +21,7 @@ from pydantic import Field
 
 mcp = FastMCP(
     "Knowledge Base MCP",
-    host="0.0.0.0",
-    stateless_http=True,
-    json_response=True,
+    host="0.0.0.0",  # nosec B104
 )
 
 

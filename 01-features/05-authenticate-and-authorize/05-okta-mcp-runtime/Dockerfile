@@ -1,3 +1,5 @@
+# MCP server container for AgentCore Runtime.
+# checkov:skip=CKV_DOCKER_2: AgentCore Runtime monitors container health at the platform level via the service contract on :8080; a Docker HEALTHCHECK would be redundant.
 FROM public.ecr.aws/docker/library/python:3.13-slim-trixie
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 

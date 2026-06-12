@@ -123,6 +123,12 @@ After deployment, the script prints a Claude Code config snippet. Add it to
 pinned redirect URI (`http://localhost:8090/callback`), and a pre-registered
 client ID (no DCR).
 
+**Stateful sessions.** The MCP server runs in stateful mode: on `initialize`
+the server returns an `Mcp-Session-Id` response header, and clients must echo
+that header on subsequent JSON-RPC calls. This lets a single AgentCore Runtime
+container handle multiple tool calls in one session instead of cold-starting per
+call. Compliant MCP clients (Claude Code, Cursor) handle this automatically.
+
 ## Invoke only (re-test after deploy)
 
 ```bash

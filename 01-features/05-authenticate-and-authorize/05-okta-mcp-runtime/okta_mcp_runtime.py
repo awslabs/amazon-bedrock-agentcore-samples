@@ -476,7 +476,7 @@ def acquire_okta_token(okta_env: dict) -> str:
         headers={"Content-Type": "application/x-www-form-urlencoded"},
     )
     try:
-        resp = urllib.request.urlopen(req).read().decode()
+        resp = urllib.request.urlopen(req).read().decode()  # nosec B310
     except urllib.error.HTTPError as e:
         print(f"  Token exchange failed: HTTP {e.code}")
         print(f"  {e.read().decode()[:500]}")
@@ -498,24 +498,50 @@ def acquire_okta_token(okta_env: dict) -> str:
 # ── MCP Invocation ────────────────────────────────────────────────────────────
 
 
-def _mcp_post(endpoint_url: str, message: dict, token: str = None) -> dict:
-    """Send a JSON-RPC message to the MCP endpoint."""
+def _parse_sse(body: str) -> str:
+    """Extract the JSON `data:` payload from a streamable-HTTP SSE response.
+
+    Stateful FastMCP returns each JSON-RPC response framed as
+    `event: message\\ndata: {json}\\n\\n`. Plain JSON bodies are passed through.
+    """
+    for line in body.splitlines():
+        if line.startswith("data:"):
+            return line[len("data:") :].strip()
+    return body
+
+
+def _mcp_post(
+    endpoint_url: str,
+    message: dict,
+    token: str | None = None,
+    session_id: str | None = None,
+) -> dict:
+    """Send a JSON-RPC message to the MCP endpoint.
+
+    Returns status, the `Mcp-Session-Id` header (set by the server on
+    `initialize`), and the parsed body.
+    """
     headers = {
         "Content-Type": "application/json",
         "Accept": "application/json, text/event-stream",
     }
     if token:
         headers["Authorization"] = f"Bearer {token}"
+    if session_id:
+        headers["Mcp-Session-Id"] = session_id
 
     resp = http_requests.post(
         endpoint_url, json=message, headers=headers, timeout=120
     )
-    return {"status": resp.status_code, "body": resp.text[:2000]}
+    return {
+        "status": resp.status_code,
+        "session_id": resp.headers.get("Mcp-Session-Id"),
+        "body": _parse_sse(resp.text)[:2000],
+    }
 
 
 def invoke_mcp(endpoint_url: str, okta_env: dict) -> None:
-    """Test the MCP server: unauthenticated rejection + authenticated calls."""
-    print("\n── Test: Unauthenticated request (expect 401) ──")
+    """Test the MCP server: unauthenticated rejection + authenticated session."""
     init_msg = {
         "jsonrpc": "2.0",
         "id": 1,
@@ -526,6 +552,8 @@ def invoke_mcp(endpoint_url: str, okta_env: dict) -> None:
             "clientInfo": {"name": "okta-mcp-test", "version": "1.0"},
         },
     }
+
+    print("\n── Test: Unauthenticated request (expect 401) ──")
     result = _mcp_post(endpoint_url, init_msg)
     print(f"  HTTP {result['status']}")
     if result["status"] == 401:
@@ -540,6 +568,19 @@ def invoke_mcp(endpoint_url: str, okta_env: dict) -> None:
     result = _mcp_post(endpoint_url, init_msg, token=token)
     print(f"  HTTP {result['status']}")
     print(f"  Body: {result['body'][:500]}")
+    session_id = result["session_id"]
+    if not session_id:
+        raise SystemExit("Server did not return an Mcp-Session-Id header.")
+    print(f"  Session: {session_id}")
+
+    print("\n── Sending notifications/initialized ──")
+    initialized_msg = {
+        "jsonrpc": "2.0",
+        "method": "notifications/initialized",
+        "params": {},
+    }
+    result = _mcp_post(endpoint_url, initialized_msg, token=token, session_id=session_id)
+    print(f"  HTTP {result['status']}")
 
     print("\n── Test: MCP tools/list ──")
     list_msg = {
@@ -548,7 +589,7 @@ def invoke_mcp(endpoint_url: str, okta_env: dict) -> None:
         "method": "tools/list",
         "params": {},
     }
-    result = _mcp_post(endpoint_url, list_msg, token=token)
+    result = _mcp_post(endpoint_url, list_msg, token=token, session_id=session_id)
     print(f"  HTTP {result['status']}")
     print(f"  Body: {result['body'][:500]}")
 
@@ -562,7 +603,7 @@ def invoke_mcp(endpoint_url: str, okta_env: dict) -> None:
             "arguments": {"query": "What is this knowledge base about?"},
         },
     }
-    result = _mcp_post(endpoint_url, call_msg, token=token)
+    result = _mcp_post(endpoint_url, call_msg, token=token, session_id=session_id)
     print(f"  HTTP {result['status']}")
     print(f"  Body: {result['body'][:1000]}")
 
