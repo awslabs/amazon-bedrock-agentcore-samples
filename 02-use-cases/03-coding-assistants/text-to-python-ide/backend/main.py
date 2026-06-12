@@ -1305,14 +1305,15 @@ async def analyze_code(request: CodeExecutionRequest):
         if is_interactive:
             # Extract input() calls with their prompt strings (deterministic, no LLM needed)
             # Matches: input("prompt"), input('prompt'), input(f"..."), input(variable), input()
-            pattern = r'input\(\s*(?:["\'](.+?)["\']|f["\'](.+?)["\']|(\w+))?\s*\)'
+            # Use negated character classes instead of .+? to avoid ReDoS on adversarial input
+            pattern = r'input\(\s*(?:["\']([^"\']{0,500})["\']|f["\']([^"\']{0,500})["\']|(\w+))?\s*\)'
             matches = _re.finditer(pattern, request.code)
 
             inputs_info = []
             for i, m in enumerate(matches, 1):
                 prompt_text = m.group(1) or m.group(2) or m.group(3) or "(no prompt)"
                 # Clean up f-string placeholders
-                prompt_text = _re.sub(r"\{.*?\}", "...", prompt_text)
+                prompt_text = _re.sub(r"\{[^{}]{0,200}\}", "...", prompt_text)
                 inputs_info.append(f"| {i} | {prompt_text.strip()} |")
 
             count = len(inputs_info)
