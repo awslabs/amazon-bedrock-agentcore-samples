@@ -321,8 +321,15 @@ async def invoke(payload, context):
         return
 
     # ─── Detect mode: issue_key (Jira) vs ticket_id (DDB mock) ─────
-    is_jira_mode = "issue_key" in payload and JIRA_MCP_URL
-    ticket_id = payload.get("issue_key") if is_jira_mode else payload["ticket_id"]
+    is_jira_mode = "issue_key" in payload and bool(JIRA_MCP_URL)
+    ticket_id = payload.get("issue_key") if is_jira_mode else payload.get("ticket_id")
+    if not ticket_id:
+        # Malformed payload (no ticket_id / issue_key, and not prompt-mode).
+        # Yield a structured failure instead of crashing the generator with a
+        # KeyError — this runs before the main try/except below.
+        logger.error("Invalid payload: missing 'ticket_id' (or 'issue_key' in Jira mode)")
+        yield json.dumps({"status": "Failed", "error": "Missing ticket_id or issue_key in payload"})
+        return
     requester_id = payload.get("requester_id", ticket_id)
     priority = payload.get("priority", "MEDIUM")
 
