@@ -23,8 +23,6 @@ from string import Template
 import boto3
 from bedrock_agentcore.runtime import BedrockAgentCoreApp
 from config import (
-    GATEWAY_URL,
-    MEMORY_ID,
     TICKETS_TABLE,
     REGION,
     EVENT_BUS_NAME,

@@ -110,7 +110,9 @@ def _create_custom_jwt_client() -> Optional[MCPClient]:
             )
         )
 
-    return _build_client()
+    # access_token is injected by the @requires_access_token decorator at call time;
+    # pylint cannot see the decorator's signature transformation.
+    return _build_client()  # pylint: disable=missing-kwoa
 
 
 def get_streamable_http_mcp_client() -> Optional[MCPClient]:
@@ -132,11 +134,11 @@ def get_streamable_http_mcp_client() -> Optional[MCPClient]:
             return None
         logger.info("Using CUSTOM_JWT auth")
         return _create_custom_jwt_client()
-    else:
-        # AWS_IAM mode — SigV4 signing via botocore (signs every request)
-        logger.info("Using AWS_IAM auth (SigV4 for bedrock-agentcore)")
-        sigv4_auth = _create_sigv4_auth()
-        return MCPClient(lambda: streamablehttp_client(GATEWAY_URL, auth=sigv4_auth))
+
+    # AWS_IAM mode — SigV4 signing via botocore (signs every request)
+    logger.info("Using AWS_IAM auth (SigV4 for bedrock-agentcore)")
+    sigv4_auth = _create_sigv4_auth()
+    return MCPClient(lambda: streamablehttp_client(GATEWAY_URL, auth=sigv4_auth))
 
 
 def get_all_mcp_clients_safe() -> tuple[list[MCPClient], list[str]]:

@@ -76,7 +76,9 @@ def get_jira_mcp_client_sync() -> Optional[MCPClient]:
         )
 
     try:
-        return _build_client()
+        # access_token is injected by the @requires_access_token decorator at call time;
+        # pylint cannot see the decorator's signature transformation.
+        return _build_client()  # pylint: disable=missing-kwoa
     except Exception as exc:
         logger.warning("Jira MCP client creation failed: %s (Jira tools unavailable)", exc)
         return None
